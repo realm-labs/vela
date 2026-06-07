@@ -285,7 +285,7 @@ fn verify_instruction(
             verify_register(function, instruction_index, code, *dst)?;
             verify_register(function, instruction_index, code, *value)
         }
-        InstructionKind::LoadHostGlobal { dst, .. } => {
+        InstructionKind::LoadGlobal { dst, .. } => {
             verify_register(function, instruction_index, code, *dst)
         }
         InstructionKind::GetHostField { dst, root, .. } => {

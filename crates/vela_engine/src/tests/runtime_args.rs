@@ -40,6 +40,16 @@ fn direct_player_type() -> TypeDesc {
         .method(MethodDesc::new(HostMethodId::new(11), "add"))
 }
 
+fn script_record_field<'value>(
+    value: &'value OwnedValue,
+    field: &str,
+) -> Option<&'value OwnedValue> {
+    let OwnedValue::Record { fields, .. } = value else {
+        return None;
+    };
+    fields.get(field)
+}
+
 impl ScriptHostObject for DirectPlayer {
     fn host_type_id(&self) -> HostTypeId {
         HostTypeId::new(1)
@@ -207,6 +217,99 @@ fn main() {
             name: "main::state".to_owned()
         })
     );
+}
+
+#[test]
+fn runtime_script_global_decl_persists_vm_owned_value_and_rust_updates() {
+    let engine = Engine::builder().build().expect("engine should build");
+    let program = compile_program_source_with_options(
+        SourceId::new(1),
+        r#"
+struct ServerState {
+    level: Int,
+    name: String,
+}
+
+global state: ServerState;
+
+fn make_state() {
+    return ServerState { level: 5, name: "boot" };
+}
+
+fn bump(amount) {
+    state.level += amount;
+    return state.level;
+}
+
+fn read_name() {
+    return state.name;
+}
+"#,
+        &engine.compiler_options(),
+    )
+    .expect("program should compile");
+    let mut runtime = Runtime::new(engine, program);
+
+    let state = runtime
+        .call("make_state", CallArgs::new(), CallOptions::unbounded())
+        .expect("factory should run")
+        .into_value();
+    runtime
+        .insert_script_global("main::state", state)
+        .expect("script global should insert");
+
+    let first = runtime
+        .call(
+            "bump",
+            CallArgs::from_positional([OwnedValue::Int(2)]),
+            CallOptions::unbounded(),
+        )
+        .expect("first bump should run");
+    let second = runtime
+        .call(
+            "bump",
+            CallArgs::from_positional([OwnedValue::Int(3)]),
+            CallOptions::unbounded(),
+        )
+        .expect("second bump should run");
+
+    assert_eq!(first.into_value(), OwnedValue::Int(7));
+    assert_eq!(second.into_value(), OwnedValue::Int(10));
+    assert_eq!(
+        script_record_field(
+            &runtime
+                .script_global("main::state")
+                .expect("script global should materialize")
+                .expect("script global should exist"),
+            "level",
+        ),
+        Some(&OwnedValue::Int(10))
+    );
+
+    runtime
+        .update_script_global("main::state", |value| {
+            let OwnedValue::Record { fields, .. } = value else {
+                panic!("state should remain a record");
+            };
+            fields
+                .set_existing("level", OwnedValue::Int(40))
+                .expect("level field should exist");
+        })
+        .expect("rust update should replace persistent global");
+
+    let after_rust_update = runtime
+        .call(
+            "bump",
+            CallArgs::from_positional([OwnedValue::Int(1)]),
+            CallOptions::unbounded(),
+        )
+        .expect("bump after rust update should run");
+    let name = runtime
+        .call("read_name", CallArgs::new(), CallOptions::unbounded())
+        .expect("read name should run");
+
+    assert_eq!(after_rust_update.into_value(), OwnedValue::Int(41));
+    assert_eq!(name.into_value(), OwnedValue::String("boot".to_owned()));
 }
 
 #[test]

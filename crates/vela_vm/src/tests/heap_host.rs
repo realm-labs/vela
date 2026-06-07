@@ -187,6 +187,7 @@ fn managed_heap_host_execution_materializes_return_and_updates_adapter() {
         let mut host = HostExecution {
             adapter: &mut adapter,
             access: &mut tx,
+            script_globals: None,
         };
         Vm::new()
             .run_program_with_host_managed_heap_and_budget(
@@ -225,6 +226,7 @@ fn main(player) {
         let mut host = HostExecution {
             adapter: &mut adapter,
             access: &mut tx,
+            script_globals: None,
         };
         Vm::new()
             .run_program_with_host_managed_heap_and_budget(
@@ -277,6 +279,7 @@ fn main(player) {
         let mut host = HostExecution {
             adapter: &mut adapter,
             access: &mut tx,
+            script_globals: None,
         };
         Vm::new()
             .run_program_with_host_managed_heap_and_budget(
@@ -324,6 +327,7 @@ fn main(player) {
         let mut host = HostExecution {
             adapter: &mut adapter,
             access: &mut tx,
+            script_globals: None,
         };
         Vm::new()
             .run_program_with_host_managed_heap_and_budget(
@@ -372,6 +376,7 @@ fn main(player, target) {
         let mut host = HostExecution {
             adapter: &mut adapter,
             access: &mut tx,
+            script_globals: None,
         };
         Vm::new()
             .run_program_with_host_managed_heap_and_budget(

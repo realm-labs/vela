@@ -175,6 +175,7 @@ fn main() {
     let mut host = HostExecution {
         adapter: &mut adapter,
         access: &mut tx,
+        script_globals: None,
     };
 
     assert_eq!(
@@ -216,12 +217,14 @@ fn main() {
     let mut first_host = HostExecution {
         adapter: &mut first_adapter,
         access: &mut first_tx,
+        script_globals: None,
     };
     let mut second_adapter = MockStateAdapter::new();
     let mut second_tx = HostAccess::new();
     let mut second_host = HostExecution {
         adapter: &mut second_adapter,
         access: &mut second_tx,
+        script_globals: None,
     };
 
     let first = first_engine

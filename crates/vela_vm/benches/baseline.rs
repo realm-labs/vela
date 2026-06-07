@@ -370,6 +370,7 @@ fn run_host_access(vm: &Vm, program: &Program) -> Result<OwnedValue, Box<dyn Err
     let mut host = HostExecution {
         adapter: &mut adapter,
         access: &mut tx,
+        script_globals: None,
     };
     let value = vm.run_program_with_host_and_budget(
         program,
@@ -401,6 +402,7 @@ fn run_managed_heap_host_conversion(
         let mut host = HostExecution {
             adapter: &mut adapter,
             access: &mut tx,
+            script_globals: None,
         };
         vm.run_program_with_host_and_budget(
             program,
@@ -438,6 +440,7 @@ fn run_managed_heap_host_read_conversion(
         let mut host = HostExecution {
             adapter: &mut adapter,
             access: &mut tx,
+            script_globals: None,
         };
         vm.run_program_with_host_managed_heap_and_budget(
             program,
@@ -499,6 +502,7 @@ fn run_gameplay_monster_kill(vm: &Vm, program: &Program) -> Result<OwnedValue, B
         let mut host = HostExecution {
             adapter: &mut adapter,
             access: &mut tx,
+            script_globals: None,
         };
         vm.run_program_with_host_and_budget(
             program,

@@ -195,12 +195,13 @@ Mutable cross-call script globals are host-managed declarations, not module
 `let` or `static` initializers. Scripts declare globals as ordinary module
 items, for example `pub global state: ServerState`; the declaration contributes
 ABI/name/type metadata and Rust inserts a runtime instance under the fully
-qualified name such as `game::state::state`. Rust-defined globals currently
-load as persistent host-object roots and then use normal `HostRef`,
-`HostPath`, `ScriptStateAdapter`, and write-through `HostAccess` semantics.
-Vela-defined script-value globals should use the same declaration surface with
-a separate persistent `ScriptValueGlobal` backend instead of adding a special
-`global.vela` file or top-level mutable initialization.
+qualified name such as `game::state::state`. Rust-defined globals load as
+persistent host-object roots and then use normal `HostRef`, `HostPath`,
+`ScriptStateAdapter`, and write-through `HostAccess` semantics. Vela-defined
+script-value globals use the same declaration surface but are stored as
+persistent VM heap roots owned by `Runtime`; Rust constructs, reads, replaces,
+or updates them through `OwnedValue` APIs. There is no special `global.vela`
+file, top-level mutable initialization, or script-owned Rust state under GC.
 
 There is no default end-of-call apply or automatic rollback. If a script writes
 a host field and later traps, the earlier Rust-side mutation remains. PathProxy

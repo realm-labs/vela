@@ -93,6 +93,7 @@ fn main(player: Player) {
     let mut host = HostExecution {
         adapter: &mut adapter,
         access: &mut tx,
+        script_globals: None,
     };
 
     assert_eq!(
@@ -140,6 +141,7 @@ fn main(player: Player) {
     let mut host = HostExecution {
         adapter: &mut adapter,
         access: &mut tx,
+        script_globals: None,
     };
 
     assert_eq!(
@@ -194,6 +196,7 @@ fn main(player: Player) {
     let mut host = HostExecution {
         adapter: &mut adapter,
         access: &mut tx,
+        script_globals: None,
     };
 
     assert_eq!(
@@ -242,6 +245,7 @@ fn main(player: Player, monster: Monster) {
     let mut host = HostExecution {
         adapter: &mut adapter,
         access: &mut tx,
+        script_globals: None,
     };
 
     assert_eq!(
@@ -323,6 +327,7 @@ fn main(player: Player) {
     let mut host = HostExecution {
         adapter: &mut adapter,
         access: &mut tx,
+        script_globals: None,
     };
 
     assert_eq!(
@@ -340,6 +345,7 @@ fn main(player: Player) {
     let mut host = HostExecution {
         adapter: &mut adapter,
         access: &mut tx,
+        script_globals: None,
     };
     assert_eq!(
         engine.into_vm().run_program_with_host(
@@ -375,6 +381,7 @@ fn engine_registers_typed_callable_native_methods_for_host_paths() {
     let mut host = HostExecution {
         adapter: &mut adapter,
         access: &mut tx,
+        script_globals: None,
     };
 
     assert_eq!(
@@ -408,6 +415,7 @@ fn typed_callable_native_method_conversion_errors_before_host_access() {
     let mut host = HostExecution {
         adapter: &mut adapter,
         access: &mut tx,
+        script_globals: None,
     };
 
     assert!(matches!(
@@ -448,6 +456,7 @@ fn typed_callable_native_method_maps_host_result_errors() {
     let mut host = HostExecution {
         adapter: &mut adapter,
         access: &mut tx,
+        script_globals: None,
     };
 
     assert_eq!(
@@ -507,6 +516,7 @@ fn callable_native_method_error_retains_written_mutation() {
     let mut host = HostExecution {
         adapter: &mut adapter,
         access: &mut tx,
+        script_globals: None,
     };
 
     let error = engine
@@ -595,6 +605,7 @@ fn engine_registers_unified_host_type_spec_with_native_method_and_index_metadata
     let mut host = HostExecution {
         adapter: &mut adapter,
         access: &mut tx,
+        script_globals: None,
     };
 
     assert_eq!(
@@ -643,6 +654,7 @@ fn typed_callable_native_method_accepts_typed_host_path_arguments() {
     let mut host = HostExecution {
         adapter: &mut adapter,
         access: &mut tx,
+        script_globals: None,
     };
 
     assert_eq!(
@@ -680,6 +692,7 @@ fn typed_host_argument_rejects_mismatched_host_type() {
     let mut host = HostExecution {
         adapter: &mut adapter,
         access: &mut tx,
+        script_globals: None,
     };
 
     assert!(matches!(
@@ -787,6 +800,7 @@ fn engine_registers_four_arg_typed_callable_native_methods() {
     let mut host = HostExecution {
         adapter: &mut adapter,
         access: &mut tx,
+        script_globals: None,
     };
 
     assert_eq!(
@@ -832,6 +846,7 @@ fn engine_registers_five_arg_typed_callable_native_methods() {
     let mut host = HostExecution {
         adapter: &mut adapter,
         access: &mut tx,
+        script_globals: None,
     };
 
     assert_eq!(
@@ -879,6 +894,7 @@ fn engine_registers_six_arg_typed_callable_native_methods() {
     let mut host = HostExecution {
         adapter: &mut adapter,
         access: &mut tx,
+        script_globals: None,
     };
 
     assert_eq!(
@@ -989,6 +1005,7 @@ fn main(player) {
     let mut host = HostExecution {
         adapter: &mut adapter,
         access: &mut tx,
+        script_globals: None,
     };
 
     assert_eq!(

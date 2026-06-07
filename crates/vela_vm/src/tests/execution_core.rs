@@ -140,6 +140,7 @@ fn call_native_uses_resolved_host_id_before_name_fallback() {
     let mut host = HostExecution {
         adapter: &mut adapter,
         access: &mut tx,
+        script_globals: None,
     };
 
     assert_eq!(vm.run_with_host(&code, &mut host), Ok(OwnedValue::Int(3)));

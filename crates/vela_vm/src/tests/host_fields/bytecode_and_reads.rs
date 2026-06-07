@@ -101,6 +101,7 @@ fn reads_host_field_through_host_access() {
     let mut host = HostExecution {
         adapter: &mut adapter,
         access: &mut tx,
+        script_globals: None,
     };
 
     let result = Vm::new().run_program_with_host(
@@ -144,6 +145,7 @@ fn set_host_field_writes_through_and_updates_adapter() {
         let mut host = HostExecution {
             adapter: &mut adapter,
             access: &mut tx,
+            script_globals: None,
         };
         Vm::new().run_program_with_host(
             &program,
@@ -193,6 +195,7 @@ fn heap_execution_converts_heap_string_for_host_field_write() {
         let mut host = HostExecution {
             adapter: &mut adapter,
             access: &mut tx,
+            script_globals: None,
         };
         Vm::new().run_program_runtime_with_host_heap_and_budget(
             &program,
@@ -244,6 +247,7 @@ fn repeated_host_writes_write_through_without_mutation_budget() {
         let mut host = HostExecution {
             adapter: &mut adapter,
             access: &mut tx,
+            script_globals: None,
         };
         Vm::new()
             .run_program_with_host_and_budget(
@@ -294,6 +298,7 @@ fn add_host_field_writes_through_and_updates_adapter() {
         let mut host = HostExecution {
             adapter: &mut adapter,
             access: &mut tx,
+            script_globals: None,
         };
         Vm::new().run_program_with_host(
             &program,
@@ -320,6 +325,7 @@ fn host_field_read_rejects_stale_generation() {
     let mut host = HostExecution {
         adapter: &mut adapter,
         access: &mut tx,
+        script_globals: None,
     };
 
     let error = Vm::new()
@@ -364,6 +370,7 @@ fn host_field_read_error_keeps_instruction_source_span() {
     let mut host = HostExecution {
         adapter: &mut adapter,
         access: &mut tx,
+        script_globals: None,
     };
 
     let error = Vm::new()

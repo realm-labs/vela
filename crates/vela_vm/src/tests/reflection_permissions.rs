@@ -30,6 +30,7 @@ fn main(player) {
         let mut host = HostExecution {
             adapter: &mut adapter,
             access: &mut tx,
+            script_globals: None,
         };
         vm.run_program_with_host(
             &program,
@@ -73,6 +74,7 @@ fn main(player) {
     let mut host = HostExecution {
         adapter: &mut adapter,
         access: &mut tx,
+        script_globals: None,
     };
 
     assert!(matches!(
@@ -107,6 +109,7 @@ fn main(player) {
     let mut host = HostExecution {
         adapter: &mut adapter,
         access: &mut tx,
+        script_globals: None,
     };
 
     assert!(matches!(
@@ -155,6 +158,7 @@ fn main(player) {
     let mut host = HostExecution {
         adapter: &mut adapter,
         access: &mut tx,
+        script_globals: None,
     };
 
     assert!(matches!(
@@ -192,6 +196,7 @@ fn main(player) {
     let mut host = HostExecution {
         adapter: &mut adapter,
         access: &mut tx,
+        script_globals: None,
     };
 
     assert!(matches!(
@@ -225,6 +230,7 @@ fn main(player) {
     let mut host = HostExecution {
         adapter: &mut adapter,
         access: &mut tx,
+        script_globals: None,
     };
 
     assert!(matches!(
@@ -258,6 +264,7 @@ fn main(player) {
     let mut host = HostExecution {
         adapter: &mut adapter,
         access: &mut tx,
+        script_globals: None,
     };
 
     assert!(matches!(
@@ -293,6 +300,7 @@ fn main() {
     let mut host = HostExecution {
         adapter: &mut adapter,
         access: &mut tx,
+        script_globals: None,
     };
 
     assert_eq!(
@@ -329,6 +337,7 @@ fn main() {
     let mut host = HostExecution {
         adapter: &mut adapter,
         access: &mut tx,
+        script_globals: None,
     };
 
     assert_eq!(
@@ -362,6 +371,7 @@ fn main() {
     let mut host = HostExecution {
         adapter: &mut adapter,
         access: &mut tx,
+        script_globals: None,
     };
 
     let error = vm
@@ -401,6 +411,7 @@ fn main() {
     let mut host = HostExecution {
         adapter: &mut adapter,
         access: &mut tx,
+        script_globals: None,
     };
 
     assert!(matches!(
@@ -441,6 +452,7 @@ fn main() {
     let mut host = HostExecution {
         adapter: &mut adapter,
         access: &mut tx,
+        script_globals: None,
     };
 
     let error = vm
@@ -489,6 +501,7 @@ fn main(player) {
     let mut host = HostExecution {
         adapter: &mut adapter,
         access: &mut tx,
+        script_globals: None,
     };
 
     let error = vm
@@ -545,6 +558,7 @@ fn main(player) {
     let mut host = HostExecution {
         adapter: &mut adapter,
         access: &mut tx,
+        script_globals: None,
     };
 
     let error = vm
@@ -607,6 +621,7 @@ fn main(player) {
     let mut host = HostExecution {
         adapter: &mut adapter,
         access: &mut tx,
+        script_globals: None,
     };
 
     let error = vm
@@ -672,6 +687,7 @@ fn main(player) {
     let mut host = HostExecution {
         adapter: &mut adapter,
         access: &mut tx,
+        script_globals: None,
     };
 
     let error = vm
@@ -717,6 +733,7 @@ fn main(player) {
     let mut host = HostExecution {
         adapter: &mut adapter,
         access: &mut tx,
+        script_globals: None,
     };
 
     assert!(matches!(
@@ -758,6 +775,7 @@ fn main(player) {
         let mut host = HostExecution {
             adapter: &mut adapter,
             access: &mut tx,
+            script_globals: None,
         };
         vm.run_program_runtime_with_host_heap_and_budget(
             &program,

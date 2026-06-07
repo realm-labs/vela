@@ -30,6 +30,11 @@ pub(crate) fn load_host_global(
             operation: "host context",
         })
     })?;
+    if let Some(script_globals) = host.script_globals
+        && let Some(value) = script_globals.get_script_global(name)
+    {
+        return Ok(value);
+    }
     let root = host
         .adapter
         .global_ref(name)

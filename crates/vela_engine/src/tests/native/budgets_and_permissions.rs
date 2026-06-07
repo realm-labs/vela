@@ -121,6 +121,7 @@ fn main(player) {
     let mut host = HostExecution {
         adapter: &mut adapter,
         access: &mut tx,
+        script_globals: None,
     };
 
     let error = engine
@@ -261,6 +262,7 @@ fn main(player) {
     let mut host = HostExecution {
         adapter: &mut adapter,
         access: &mut tx,
+        script_globals: None,
     };
 
     assert!(matches!(

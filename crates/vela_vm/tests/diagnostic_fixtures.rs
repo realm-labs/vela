@@ -85,6 +85,7 @@ fn host_permission_denied_fixture_renders_source_span() {
     let mut host = HostExecution {
         adapter: &mut adapter,
         access: &mut tx,
+        script_globals: None,
     };
 
     let error = Vm::new()
@@ -144,6 +145,7 @@ fn host_compound_write_denied_fixture_renders_source_span() {
         let mut host = HostExecution {
             adapter: &mut adapter,
             access: &mut tx,
+            script_globals: None,
         };
         Vm::new()
             .run_program_runtime_with_host(&program, "main", &[Value::HostRef(host_ref)], &mut host)
@@ -192,6 +194,7 @@ fn stale_host_ref_fixture_renders_source_span() {
     let mut host = HostExecution {
         adapter: &mut adapter,
         access: &mut tx,
+        script_globals: None,
     };
 
     let error = Vm::new()
@@ -245,6 +248,7 @@ fn reflection_unknown_field_fixture_renders_candidates_and_source_span() {
     let mut host = HostExecution {
         adapter: &mut adapter,
         access: &mut tx,
+        script_globals: None,
     };
 
     let error = vm

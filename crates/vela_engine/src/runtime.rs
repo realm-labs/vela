@@ -19,7 +19,13 @@ use vela_hot_reload::version::{HotUpdate, ProgramVersion};
 use vela_vm::HostExecution;
 use vela_vm::budget::ExecutionBudget;
 use vela_vm::error::{VmError, VmErrorKind, VmResult};
+use vela_vm::heap::ScriptHeap;
 use vela_vm::owned_value::OwnedValue;
+use vela_vm::value::Value;
+use vela_vm::{
+    PersistentHeapExecution, ScriptGlobalLookup, owned_to_persistent_value,
+    persistent_value_to_owned,
+};
 
 use crate::engine::Engine;
 use crate::error::{EngineError, EngineErrorKind, EngineResult};
@@ -33,6 +39,7 @@ pub struct Runtime {
     program: Program,
     hot_reload: Option<HotReloadRuntime>,
     globals: Rc<RefCell<RuntimeGlobalStore>>,
+    script_globals: RuntimeScriptGlobalStore,
 }
 
 impl Runtime {
@@ -43,6 +50,7 @@ impl Runtime {
             program,
             hot_reload: None,
             globals: Rc::new(RefCell::new(RuntimeGlobalStore::new())),
+            script_globals: RuntimeScriptGlobalStore::new(),
         }
     }
 
@@ -53,6 +61,7 @@ impl Runtime {
             program: version.to_program(),
             hot_reload: Some(HotReloadRuntime::new(version)),
             globals: Rc::new(RefCell::new(RuntimeGlobalStore::new())),
+            script_globals: RuntimeScriptGlobalStore::new(),
         }
     }
 
@@ -76,6 +85,34 @@ impl Runtime {
     #[must_use]
     pub fn host_global_ref(&self, name: &str) -> Option<HostRef> {
         self.globals.borrow().host_ref(name)
+    }
+
+    pub fn insert_script_global(
+        &mut self,
+        name: impl Into<String>,
+        value: impl Into<OwnedValue>,
+    ) -> VmResult<()> {
+        self.script_globals.insert(name, value.into())
+    }
+
+    pub fn set_script_global(
+        &mut self,
+        name: impl Into<String>,
+        value: impl Into<OwnedValue>,
+    ) -> VmResult<()> {
+        self.insert_script_global(name, value)
+    }
+
+    pub fn script_global(&mut self, name: &str) -> VmResult<Option<OwnedValue>> {
+        self.script_globals.value(name)
+    }
+
+    pub fn update_script_global(
+        &mut self,
+        name: &str,
+        update: impl FnOnce(&mut OwnedValue),
+    ) -> VmResult<()> {
+        self.script_globals.update(name, update)
     }
 
     #[must_use]
@@ -276,6 +313,7 @@ impl Runtime {
         let mut host = HostExecution {
             adapter: &mut adapter,
             access,
+            script_globals: Some(&self.script_globals.values),
         };
         let vm = if let Some(hot_reload) = &self.hot_reload {
             let current = hot_reload.current();
@@ -284,12 +322,17 @@ impl Runtime {
         } else {
             self.engine.into_vm_for_program(&self.program)
         };
-        if options.managed_heap {
-            vm.run_program_with_host_managed_heap_and_budget(
+        if options.managed_heap || !self.script_globals.is_empty() {
+            let roots = self.script_globals.roots();
+            vm.run_program_with_host_persistent_heap_and_budget(
                 &self.program,
                 entry,
                 args,
                 &mut host,
+                PersistentHeapExecution {
+                    heap: &mut self.script_globals.heap,
+                    roots: &roots,
+                },
                 &mut budget,
             )
         } else {
@@ -480,6 +523,73 @@ impl RuntimeGlobalStore {
 struct HostGlobalBinding {
     host_ref: HostRef,
     object: Box<dyn ScriptHostObject>,
+}
+
+#[derive(Clone, Debug, Default)]
+pub struct RuntimeScriptGlobalStore {
+    heap: ScriptHeap,
+    values: RuntimeScriptGlobalValues,
+}
+
+impl RuntimeScriptGlobalStore {
+    #[must_use]
+    pub fn new() -> Self {
+        Self::default()
+    }
+
+    #[must_use]
+    pub fn is_empty(&self) -> bool {
+        self.values.0.is_empty()
+    }
+
+    pub fn insert(&mut self, name: impl Into<String>, value: OwnedValue) -> VmResult<()> {
+        let mut budget = ExecutionBudget::unbounded();
+        let value = owned_to_persistent_value(value, &mut self.heap, Some(&mut budget))?;
+        self.values.0.insert(name.into(), value);
+        self.collect();
+        Ok(())
+    }
+
+    pub fn value(&mut self, name: &str) -> VmResult<Option<OwnedValue>> {
+        let Some(value) = self.values.0.get(name).copied() else {
+            return Ok(None);
+        };
+        persistent_value_to_owned(&value, &mut self.heap).map(Some)
+    }
+
+    pub fn update(&mut self, name: &str, update: impl FnOnce(&mut OwnedValue)) -> VmResult<()> {
+        let mut value = self.value(name)?.ok_or_else(|| VmError {
+            kind: VmErrorKind::Host(HostErrorKind::MissingGlobal {
+                name: name.to_owned(),
+            }),
+            source_span: None,
+            call_stack: Default::default(),
+        })?;
+        update(&mut value);
+        self.insert(name.to_owned(), value)
+    }
+
+    fn roots(&self) -> Vec<Value> {
+        self.values.0.values().copied().collect()
+    }
+
+    fn collect(&mut self) {
+        let mut roots = Vec::new();
+        self.values
+            .0
+            .values()
+            .for_each(|value| value.trace_heap_refs(&mut roots));
+        self.heap.collect_full(&roots);
+    }
+}
+
+#[derive(Clone, Debug, Default)]
+struct RuntimeScriptGlobalValues(BTreeMap<String, Value>);
+
+impl ScriptGlobalLookup for RuntimeScriptGlobalValues {
+    fn get_script_global(&self, name: &str) -> Option<Value> {
+        self.0.get(name).copied()
+    }
 }
 
 struct GlobalStoreAdapter<'call> {

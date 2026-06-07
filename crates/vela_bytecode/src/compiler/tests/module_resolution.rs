@@ -152,7 +152,7 @@ pub global state: Player;
         .expect("qualified main function");
     assert!(main.instructions.iter().any(|instruction| matches!(
         &instruction.kind,
-        InstructionKind::LoadHostGlobal { global, .. } if global == "game::state::state"
+        InstructionKind::LoadGlobal { global, .. } if global == "game::state::state"
     )));
 }
 

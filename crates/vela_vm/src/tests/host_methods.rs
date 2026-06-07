@@ -25,6 +25,7 @@ fn main(player) {
         let mut host = HostExecution {
             adapter: &mut adapter,
             access: &mut tx,
+            script_globals: None,
         };
         Vm::new().run_program_with_host(
             &program,
@@ -67,6 +68,7 @@ fn main(player) {
         let mut host = HostExecution {
             adapter: &mut adapter,
             access: &mut tx,
+            script_globals: None,
         };
         Vm::new().run_program_with_host(
             &program,
@@ -121,6 +123,7 @@ fn main(player) {
         let mut host = HostExecution {
             adapter: &mut adapter,
             access: &mut tx,
+            script_globals: None,
         };
         Vm::new().run_program_with_host(
             &program,
@@ -167,6 +170,7 @@ fn call_host_method_writes_through_and_updates_adapter() {
         let mut host = HostExecution {
             adapter: &mut adapter,
             access: &mut tx,
+            script_globals: None,
         };
         Vm::new().run_program_with_host(
             &program,
@@ -220,6 +224,7 @@ fn heap_execution_converts_heap_string_for_host_method_call() {
         let mut host = HostExecution {
             adapter: &mut adapter,
             access: &mut tx,
+            script_globals: None,
         };
         Vm::new().run_program_runtime_with_host_heap_and_budget(
             &program,
@@ -256,6 +261,7 @@ fn main(player) {
         let mut host = HostExecution {
             adapter: &mut adapter,
             access: &mut tx,
+            script_globals: None,
         };
         Vm::new().run_program_with_host(
             &program,

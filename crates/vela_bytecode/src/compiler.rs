@@ -628,6 +628,14 @@ impl<'ast> Compiler<'ast> {
         self.facts.global_type_symbols.get(declaration).cloned()
     }
 
+    fn global_symbol_named(&self, name: &str) -> Option<String> {
+        unique_symbol_with_short_name(self.facts.global_symbols.values(), name)
+    }
+
+    fn global_type_named(&self, name: &str) -> Option<String> {
+        unique_symbol_with_short_name(self.facts.global_type_symbols.values(), name)
+    }
+
     fn host_method_receiver_type(&self, callee: &Expr) -> Option<String> {
         match &callee.kind {
             ExprKind::Field { base, .. } => self.script_type_for_expr(base),
@@ -862,6 +870,22 @@ impl<'ast> Compiler<'ast> {
             .frame
             .push_slot(FrameSlotInfo::new(name, register, kind, local, span));
     }
+}
+
+fn unique_symbol_with_short_name<'a>(
+    symbols: impl IntoIterator<Item = &'a String>,
+    name: &str,
+) -> Option<String> {
+    let mut matched = None;
+    for symbol in symbols {
+        if symbol.rsplit("::").next() == Some(name) {
+            if matched.is_some() {
+                return None;
+            }
+            matched = Some(symbol.clone());
+        }
+    }
+    matched
 }
 
 fn frame_slot_kind(kind: LocalBindingKind) -> FrameSlotKind {

@@ -22,6 +22,7 @@ fn main(player) {
         let mut host = HostExecution {
             adapter: &mut adapter,
             access: &mut tx,
+            script_globals: None,
         };
         Vm::new().run_program_with_host(
             &program,
@@ -62,6 +63,7 @@ fn main(player) {
     let mut host = HostExecution {
         adapter: &mut adapter,
         access: &mut tx,
+        script_globals: None,
     };
 
     let error = Vm::new()
@@ -108,6 +110,7 @@ fn main(player) {
         let mut host = HostExecution {
             adapter: &mut adapter,
             access: &mut tx,
+            script_globals: None,
         };
         Vm::new().run_program_with_host(
             &program,
@@ -149,6 +152,7 @@ fn main(player) {
         let mut host = HostExecution {
             adapter: &mut adapter,
             access: &mut tx,
+            script_globals: None,
         };
         Vm::new().run_program_with_host(
             &program,
@@ -192,6 +196,7 @@ fn main(player) {
         let mut host = HostExecution {
             adapter: &mut adapter,
             access: &mut tx,
+            script_globals: None,
         };
         Vm::new().run_program_with_host(
             &program,
@@ -233,6 +238,7 @@ fn main(player) {
         let mut host = HostExecution {
             adapter: &mut adapter,
             access: &mut tx,
+            script_globals: None,
         };
         Vm::new()
             .run_program_with_host(
@@ -284,6 +290,7 @@ fn main(player) {
         let mut host = HostExecution {
             adapter: &mut adapter,
             access: &mut tx,
+            script_globals: None,
         };
         Vm::new().run_program_with_host(
             &program,
@@ -337,6 +344,7 @@ fn main(player) {
         let mut host = HostExecution {
             adapter: &mut adapter,
             access: &mut tx,
+            script_globals: None,
         };
         Vm::new().run_program_with_host(
             &program,
@@ -392,6 +400,7 @@ fn bytecode_mutates_host_variant_field_through_host_access() {
         let mut host = HostExecution {
             adapter: &mut adapter,
             access: &mut tx,
+            script_globals: None,
         };
         Vm::new().run_program_with_host(
             &program,
@@ -445,6 +454,7 @@ fn main(ctx) {
         let mut host = HostExecution {
             adapter: &mut adapter,
             access: &mut tx,
+            script_globals: None,
         };
         Vm::new().run_program_with_host_managed_heap_and_budget(
             &program,
@@ -503,6 +513,7 @@ fn main(player) {
         let mut host = HostExecution {
             adapter: &mut adapter,
             access: &mut tx,
+            script_globals: None,
         };
         Vm::new()
             .run_program_with_host_managed_heap_and_budget(

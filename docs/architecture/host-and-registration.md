@@ -164,15 +164,23 @@ global by its fully qualified declaration name, such as
 `game::state::state`, before script calls that access it.
 
 Rust-defined globals are represented as persistent host objects in the
-runtime's global store. Loading a global produces a `HostRef` root, and script
-field reads, writes, method calls, and keyed paths then use the same
-`HostPath` and write-through `HostAccess` path as call-boundary host handles.
-Missing runtime instances are runtime host errors.
+runtime's global store. Loading a Rust-defined global produces a `HostRef`
+root, and script field reads, writes, method calls, and keyed paths then use
+the same `HostPath` and write-through `HostAccess` path as call-boundary host
+handles.
 
-Vela-defined globals use the same declaration surface, but their storage is a
-future `ScriptValueGlobal` backend: host-owned persistent data shaped by Vela
-schema metadata and exposed through the same global root API. They should not
-reintroduce module-level `let` or mutable static initialization.
+Vela-defined script-value globals use the same declaration surface but are
+stored in the runtime's persistent script heap. Rust inserts, reads, replaces,
+or updates them through `OwnedValue` APIs, while scripts see ordinary script
+records, arrays, maps, sets, enums, and scalars. These values are VM-managed
+script objects, not Rust host state and not `HostRef` roots. Runtime global
+roots are retained across calls and included in GC roots during calls.
+Missing runtime instances are runtime errors.
+
+Globals do not reintroduce module-level `let` or mutable static
+initialization. A script function may construct a value and return it to Rust;
+Rust can then insert that returned `OwnedValue` as the runtime instance for a
+declared global.
 
 Direct call-boundary objects implement the same method shape through
 `ScriptHostObject::call_host_method(&HostPath, HostMethodId, &[HostValue])`.

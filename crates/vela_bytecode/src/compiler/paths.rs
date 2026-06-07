@@ -36,7 +36,12 @@ impl Compiler<'_> {
             && let Some(global) = self.facts.global_symbols.get(declaration).cloned()
         {
             let dst = self.alloc_register()?;
-            self.emit(InstructionKind::LoadHostGlobal { dst, global });
+            self.emit(InstructionKind::LoadGlobal { dst, global });
+            return Ok(dst);
+        }
+        if let Some(global) = self.global_symbol_named(name) {
+            let dst = self.alloc_register()?;
+            self.emit(InstructionKind::LoadGlobal { dst, global });
             return Ok(dst);
         }
         if let Some(value) = self.const_value_at_span(span) {
@@ -64,7 +69,13 @@ impl Compiler<'_> {
     ) -> Option<usize> {
         let type_name = match self.bindings.resolution_at_span(span) {
             Some(BindingResolution::Local(local)) => self.script_types.local(*local),
-            _ => self.script_types.name(root),
+            Some(BindingResolution::Declaration(declaration)) => {
+                self.facts.global_type_symbols.get(declaration).cloned()
+            }
+            _ => self
+                .script_types
+                .name(root)
+                .or_else(|| self.global_type_named(root)),
         }?;
         self.script_record_field_slot_for_type(&type_name, field)
     }

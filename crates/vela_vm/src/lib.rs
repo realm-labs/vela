@@ -125,6 +125,16 @@ pub struct Vm {
 pub struct HostExecution<'host> {
     pub adapter: &'host mut dyn ScriptStateAdapter,
     pub access: &'host mut vela_host::access::HostAccess,
+    pub script_globals: Option<&'host dyn ScriptGlobalLookup>,
+}
+
+pub trait ScriptGlobalLookup {
+    fn get_script_global(&self, name: &str) -> Option<Value>;
+}
+
+pub struct PersistentHeapExecution<'heap, 'roots> {
+    pub heap: &'heap mut ScriptHeap,
+    pub roots: &'roots [Value],
 }
 
 impl Vm {
@@ -468,6 +478,39 @@ impl Vm {
         owned_heap_result(result, &mut heap_execution, budget)
     }
 
+    pub fn run_program_with_host_persistent_heap_and_budget(
+        &self,
+        program: &Program,
+        entry: &str,
+        args: &[OwnedValue],
+        host: &mut HostExecution<'_>,
+        persistent: PersistentHeapExecution<'_, '_>,
+        budget: &mut ExecutionBudget,
+    ) -> VmResult<OwnedValue> {
+        let code = program_entry(program, entry)?;
+        let mut heap_execution = HeapExecution::new(persistent.heap);
+        let args = owned_args_to_runtime(args, &mut heap_execution, Some(budget))?;
+        heap_execution.protect_values(persistent.roots);
+        let result = self.execute(
+            code,
+            Some(program),
+            &args,
+            Some(host),
+            Some(&mut heap_execution),
+            Some(budget),
+        );
+        let result = result.and_then(|value| value_to_owned(&value, Some(&heap_execution)));
+        let mut roots = Vec::new();
+        persistent
+            .roots
+            .iter()
+            .for_each(|value| value.trace_heap_refs(&mut roots));
+        heap_execution
+            .heap
+            .collect_full_with_budget(&roots, Some(budget));
+        result
+    }
+
     pub fn run_program_with_host_managed_heap_and_budget(
         &self,
         program: &Program,
@@ -643,6 +686,20 @@ fn owned_heap_result(
     let result = result.and_then(|value| value_to_owned(&value, Some(heap)));
     heap.heap.collect_full_with_budget(&[], Some(budget));
     result
+}
+
+pub fn owned_to_persistent_value(
+    value: OwnedValue,
+    heap: &mut ScriptHeap,
+    budget: Option<&mut ExecutionBudget>,
+) -> VmResult<Value> {
+    let mut heap_execution = HeapExecution::new(heap);
+    owned_to_value(value, &mut heap_execution, budget)
+}
+
+pub fn persistent_value_to_owned(value: &Value, heap: &mut ScriptHeap) -> VmResult<OwnedValue> {
+    let heap_execution = HeapExecution::new(heap);
+    value_to_owned(value, Some(&heap_execution))
 }
 
 fn program_entry<'program>(

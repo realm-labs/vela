@@ -612,7 +612,7 @@ impl Vm {
                     );
                     frame.write(*dst, Value::Bool(matches))?;
                 }
-                InstructionKind::LoadHostGlobal { dst, global } => {
+                InstructionKind::LoadGlobal { dst, global } => {
                     let value = host_access::load_host_global(
                         host_access::HostAccessRuntime {
                             frame: &frame,

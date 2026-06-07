@@ -37,6 +37,7 @@ fn main(player: Player) {
     let mut host = HostExecution {
         adapter: &mut adapter,
         access: &mut tx,
+        script_globals: None,
     };
 
     assert_eq!(
