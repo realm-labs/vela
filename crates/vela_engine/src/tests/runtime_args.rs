@@ -1,7 +1,8 @@
+use std::cell::Cell;
 use std::collections::BTreeMap;
 
 use vela_bytecode::compiler::compile_program_source_with_options;
-use vela_common::{FieldId, HostMethodId, HostObjectId, HostTypeId, SourceId, TypeId};
+use vela_common::{FieldId, GlobalSlot, HostMethodId, HostObjectId, HostTypeId, SourceId, TypeId};
 use vela_host::access::HostAccess;
 use vela_host::adapter::ScriptStateAdapter;
 use vela_host::error::{HostError, HostErrorKind, HostResult};
@@ -48,6 +49,65 @@ fn script_record_field<'value>(
         return None;
     };
     fields.get(field)
+}
+
+#[derive(Default)]
+struct CountingGlobalLookupAdapter {
+    global_ref_calls: Cell<usize>,
+    global_ref_by_slot_calls: Cell<usize>,
+}
+
+impl ScriptStateAdapter for CountingGlobalLookupAdapter {
+    fn global_ref(&self, name: &str) -> HostResult<HostRef> {
+        self.global_ref_calls
+            .set(self.global_ref_calls.get().saturating_add(1));
+        Err(HostError {
+            kind: HostErrorKind::MissingGlobal {
+                name: name.to_owned(),
+            },
+            source_span: None,
+        })
+    }
+
+    fn global_ref_by_slot(&self, slot: GlobalSlot, name: &str) -> HostResult<HostRef> {
+        self.global_ref_by_slot_calls
+            .set(self.global_ref_by_slot_calls.get().saturating_add(1));
+        let _ = slot;
+        self.global_ref(name)
+    }
+
+    fn read_path(&self, path: &HostPath) -> HostResult<HostValue> {
+        Err(HostError {
+            kind: HostErrorKind::MissingPath { path: path.clone() },
+            source_span: None,
+        })
+    }
+
+    fn write_path(&mut self, path: &HostPath, _value: HostValue) -> HostResult<()> {
+        Err(HostError {
+            kind: HostErrorKind::MissingPath { path: path.clone() },
+            source_span: None,
+        })
+    }
+
+    fn remove_path(&mut self, path: &HostPath) -> HostResult<()> {
+        Err(HostError {
+            kind: HostErrorKind::MissingPath { path: path.clone() },
+            source_span: None,
+        })
+    }
+
+    fn call_method(
+        &mut self,
+        path: &HostPath,
+        _method: HostMethodId,
+        _args: &[HostValue],
+    ) -> HostResult<HostValue> {
+        Err(HostError {
+            kind: HostErrorKind::MissingPath { path: path.clone() },
+            source_span: None,
+        })
+    }
 }
 
 impl ScriptHostObject for DirectPlayer {
@@ -185,6 +245,46 @@ fn main() {
 
     assert_eq!(runtime.host_global_ref("main::state"), Some(global));
     assert_eq!(result.into_value(), OwnedValue::Int(11));
+}
+
+#[test]
+fn runtime_host_global_decl_uses_slotted_lookup_without_fallback_name_lookup() {
+    let engine = Engine::builder()
+        .register_type(direct_player_type())
+        .build()
+        .expect("engine should build");
+    let program = compile_program_source_with_options(
+        SourceId::new(1),
+        r#"
+global state: Player;
+
+fn main() {
+    return state.level;
+}
+"#,
+        &engine.compiler_options(),
+    )
+    .expect("program should compile");
+    assert!(
+        program.global_slot("main::state").is_some(),
+        "declared global should have a hot-path slot"
+    );
+    let mut runtime = Runtime::new(engine, program);
+    runtime.insert_host_global("main::state", direct_player(9));
+    let mut fallback = CountingGlobalLookupAdapter::default();
+
+    let result = runtime
+        .call_with_adapter(
+            "main",
+            CallArgs::new(),
+            CallOptions::unbounded(),
+            &mut fallback,
+        )
+        .expect("runtime call should run");
+
+    assert_eq!(result.into_value(), OwnedValue::Int(9));
+    assert_eq!(fallback.global_ref_by_slot_calls.get(), 0);
+    assert_eq!(fallback.global_ref_calls.get(), 0);
 }
 
 #[test]

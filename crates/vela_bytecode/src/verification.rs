@@ -38,6 +38,15 @@ pub enum VerificationErrorKind {
     ScriptMethodFunctionMissing {
         function: String,
     },
+    GlobalSlotOutOfBounds {
+        slot: usize,
+        global_count: usize,
+    },
+    GlobalSlotNameMismatch {
+        slot: usize,
+        expected: String,
+        actual: String,
+    },
 }
 
 impl fmt::Display for VerificationError {
@@ -62,6 +71,7 @@ impl std::error::Error for VerificationError {}
 pub fn verify_program(program: &Program) -> Result<(), VerificationError> {
     for function in program.functions.values() {
         verify_code_object(function)?;
+        verify_program_instruction_metadata(program, function)?;
     }
     for function in program.script_methods().function_names() {
         if !program.functions.contains_key(function) {
@@ -72,6 +82,46 @@ pub fn verify_program(program: &Program) -> Result<(), VerificationError> {
                     function: function.to_owned(),
                 },
             ));
+        }
+    }
+    Ok(())
+}
+
+fn verify_program_instruction_metadata(
+    program: &Program,
+    code: &CodeObject,
+) -> Result<(), VerificationError> {
+    let global_count = program.global_names().len();
+    for (index, instruction) in code.instructions.iter().enumerate() {
+        if let InstructionKind::LoadGlobal {
+            global,
+            slot: Some(slot),
+            ..
+        } = &instruction.kind
+        {
+            if slot.get() >= global_count {
+                return Err(error(
+                    &code.name,
+                    Some(index),
+                    VerificationErrorKind::GlobalSlotOutOfBounds {
+                        slot: slot.get(),
+                        global_count,
+                    },
+                ));
+            }
+            if let Some(expected) = program.global_name(*slot)
+                && expected != global
+            {
+                return Err(error(
+                    &code.name,
+                    Some(index),
+                    VerificationErrorKind::GlobalSlotNameMismatch {
+                        slot: slot.get(),
+                        expected: expected.to_owned(),
+                        actual: global.clone(),
+                    },
+                ));
+            }
         }
     }
     Ok(())

@@ -5,7 +5,7 @@ use std::path::Path;
 use std::rc::Rc;
 
 use vela_bytecode::Program;
-use vela_common::{HostObjectId, SourceId};
+use vela_common::{GlobalSlot, HostObjectId, SourceId};
 use vela_host::access::HostAccess;
 use vela_host::adapter::ScriptStateAdapter;
 use vela_host::error::{HostError, HostErrorKind, HostResult};
@@ -45,23 +45,30 @@ pub struct Runtime {
 impl Runtime {
     #[must_use]
     pub fn new(engine: Engine, program: Program) -> Self {
+        let global_names = program.global_names().to_vec();
         Self {
             engine,
             program,
             hot_reload: None,
-            globals: Rc::new(RefCell::new(RuntimeGlobalStore::new())),
-            script_globals: RuntimeScriptGlobalStore::new(),
+            globals: Rc::new(RefCell::new(RuntimeGlobalStore::with_global_layout(
+                &global_names,
+            ))),
+            script_globals: RuntimeScriptGlobalStore::with_global_layout(&global_names),
         }
     }
 
     #[must_use]
     pub fn from_hot_reload_version(engine: Engine, version: ProgramVersion) -> Self {
+        let program = version.to_program();
+        let global_names = program.global_names().to_vec();
         Self {
             engine,
-            program: version.to_program(),
+            program,
             hot_reload: Some(HotReloadRuntime::new(version)),
-            globals: Rc::new(RefCell::new(RuntimeGlobalStore::new())),
-            script_globals: RuntimeScriptGlobalStore::new(),
+            globals: Rc::new(RefCell::new(RuntimeGlobalStore::with_global_layout(
+                &global_names,
+            ))),
+            script_globals: RuntimeScriptGlobalStore::with_global_layout(&global_names),
         }
     }
 
@@ -73,6 +80,12 @@ impl Runtime {
     #[must_use]
     pub fn program(&self) -> &Program {
         &self.program
+    }
+
+    fn set_global_layout_from_program(&mut self) {
+        let names = self.program.global_names();
+        self.globals.borrow_mut().set_global_layout(names);
+        self.script_globals.set_global_layout(names);
     }
 
     pub fn insert_host_global<T>(&mut self, name: impl Into<String>, value: T) -> HostRef
@@ -161,7 +174,15 @@ impl Runtime {
                 EngineErrorKind::RuntimeNotHotReloadEnabled,
             ));
         };
-        Ok(Self::consume_reload_report(&mut self.program, hot_reload))
+        let report = Self::consume_reload_report(&mut self.program, hot_reload);
+        if report
+            .as_ref()
+            .and_then(|report| report.version())
+            .is_some()
+        {
+            self.set_global_layout_from_program();
+        }
+        Ok(report)
     }
 
     pub fn check_reload_at_tick_boundary(&mut self) -> EngineResult<Option<HotReloadReport>> {
@@ -180,6 +201,7 @@ impl Runtime {
         let report = hot_reload.apply_hot_update_result_report(update);
         if let Some(version) = report.version() {
             self.program = version.to_program();
+            self.set_global_layout_from_program();
         }
         Ok(report)
     }
@@ -402,7 +424,15 @@ impl Runtime {
 
     fn check_optional_reload(&mut self) -> Option<HotReloadReport> {
         let hot_reload = self.hot_reload.as_mut()?;
-        Self::consume_reload_report(&mut self.program, hot_reload)
+        let report = Self::consume_reload_report(&mut self.program, hot_reload);
+        if report
+            .as_ref()
+            .and_then(|report| report.version())
+            .is_some()
+        {
+            self.set_global_layout_from_program();
+        }
+        report
     }
 
     fn consume_reload_report(
@@ -463,6 +493,8 @@ const GLOBAL_HOST_OBJECT_ID_BASE: u64 = 1 << 62;
 
 pub struct RuntimeGlobalStore {
     globals: BTreeMap<String, HostGlobalBinding>,
+    slots: Vec<Option<HostRef>>,
+    slot_by_name: BTreeMap<String, GlobalSlot>,
     next_host_object_id: u64,
 }
 
@@ -477,7 +509,29 @@ impl RuntimeGlobalStore {
     pub fn new() -> Self {
         Self {
             globals: BTreeMap::new(),
+            slots: Vec::new(),
+            slot_by_name: BTreeMap::new(),
             next_host_object_id: GLOBAL_HOST_OBJECT_ID_BASE,
+        }
+    }
+
+    #[must_use]
+    pub fn with_global_layout(names: &[String]) -> Self {
+        let mut store = Self::new();
+        store.set_global_layout(names);
+        store
+    }
+
+    pub fn set_global_layout(&mut self, names: &[String]) {
+        self.slot_by_name.clear();
+        self.slots.clear();
+        self.slots.resize(names.len(), None);
+        for (index, name) in names.iter().enumerate() {
+            let slot = GlobalSlot::new(index);
+            self.slot_by_name.insert(name.clone(), slot);
+            if let Some(host_ref) = self.host_ref(name) {
+                self.slots[index] = Some(host_ref);
+            }
         }
     }
 
@@ -492,6 +546,9 @@ impl RuntimeGlobalStore {
             1,
         );
         self.next_host_object_id = self.next_host_object_id.saturating_add(1);
+        if let Some(slot) = self.slot_by_name.get(&name).copied() {
+            self.slots[slot.get()] = Some(host_ref);
+        }
         self.globals.insert(
             name,
             HostGlobalBinding {
@@ -505,6 +562,11 @@ impl RuntimeGlobalStore {
     #[must_use]
     pub fn host_ref(&self, name: &str) -> Option<HostRef> {
         self.globals.get(name).map(|global| global.host_ref)
+    }
+
+    #[must_use]
+    pub fn host_ref_by_slot(&self, slot: GlobalSlot) -> Option<HostRef> {
+        self.slots.get(slot.get()).and_then(|host_ref| *host_ref)
     }
 
     fn binding(&self, path: &HostPath) -> Option<&HostGlobalBinding> {
@@ -538,6 +600,18 @@ impl RuntimeScriptGlobalStore {
     }
 
     #[must_use]
+    pub fn with_global_layout(names: &[String]) -> Self {
+        Self {
+            heap: ScriptHeap::default(),
+            values: ScriptGlobalValues::with_layout(names),
+        }
+    }
+
+    pub fn set_global_layout(&mut self, names: &[String]) {
+        self.values.set_layout(names);
+    }
+
+    #[must_use]
     pub fn is_empty(&self) -> bool {
         self.values.is_empty()
     }
@@ -551,7 +625,7 @@ impl RuntimeScriptGlobalStore {
     }
 
     pub fn value(&mut self, name: &str) -> VmResult<Option<OwnedValue>> {
-        let Some(value) = self.values.get(name).copied() else {
+        let Some(value) = self.values.get(name) else {
             return Ok(None);
         };
         persistent_value_to_owned(&value, &mut self.heap).map(Some)
@@ -570,7 +644,7 @@ impl RuntimeScriptGlobalStore {
     }
 
     fn roots(&self) -> Vec<Value> {
-        self.values.values().copied().collect()
+        self.values.values().collect()
     }
 
     fn collect(&mut self) {
@@ -593,6 +667,19 @@ impl ScriptStateAdapter for GlobalStoreAdapter<'_> {
             .borrow()
             .host_ref(name)
             .or_else(|| self.fallback.global_ref(name).ok())
+            .ok_or_else(|| HostError {
+                kind: HostErrorKind::MissingGlobal {
+                    name: name.to_owned(),
+                },
+                source_span: None,
+            })
+    }
+
+    fn global_ref_by_slot(&self, slot: GlobalSlot, name: &str) -> HostResult<HostRef> {
+        self.globals
+            .borrow()
+            .host_ref_by_slot(slot)
+            .or_else(|| self.fallback.global_ref_by_slot(slot, name).ok())
             .ok_or_else(|| HostError {
                 kind: HostErrorKind::MissingGlobal {
                     name: name.to_owned(),

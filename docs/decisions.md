@@ -207,6 +207,11 @@ use short embedding names such as `insert_global`, `set_global`, `global`, and
 `update_global`; host-object globals keep their explicit host-specific API.
 The VM receives script globals as a concrete runtime value map rather than an
 extension trait, because there is only one runtime-owned script global store.
+Declared globals compile to `GlobalSlot` operands for the runtime hot path;
+the fully qualified global name remains in bytecode for diagnostics and
+fallback. Runtime-owned script globals and Rust-owned host globals both maintain
+slot tables, so a resolved global read avoids string map lookup on the common
+path.
 There is no special `global.vela` file, top-level mutable initialization, or
 script-owned Rust state under GC.
 

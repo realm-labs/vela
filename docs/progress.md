@@ -153,7 +153,9 @@ Cranelift JIT.
   boundaries while preserving current name fallback, small-field construction,
   and slot guards. Generic iterator and range-loop stepping now route through a
   focused iteration boundary with jump validation kept on the VM side of the
-  bytecode contract.
+  bytecode contract. Declared global reads now carry `GlobalSlot` metadata so
+  VM-owned script globals and runtime host globals can use slot lookup on the
+  common path while preserving names for diagnostics and fallback.
 
 ### Remaining Gaps
 

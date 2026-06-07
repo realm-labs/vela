@@ -6,7 +6,7 @@ pub mod verification;
 
 use std::collections::BTreeMap;
 
-use vela_common::{FieldId, FunctionId, HostMethodId, MethodId, Span};
+use vela_common::{FieldId, FunctionId, GlobalSlot, HostMethodId, MethodId, Span};
 use vela_hir::ids::HirLocalId;
 use vela_hir::module_graph::ModuleGraph;
 
@@ -15,6 +15,8 @@ use crate::script_methods::ScriptMethodTable;
 #[derive(Clone, Debug, Default, PartialEq)]
 pub struct Program {
     pub functions: BTreeMap<String, CodeObject>,
+    global_names: Vec<String>,
+    global_slots: BTreeMap<String, GlobalSlot>,
     script_methods: ScriptMethodTable,
     script_metadata: Option<ModuleGraph>,
 }
@@ -27,6 +29,34 @@ impl Program {
 
     pub fn insert_function(&mut self, function: CodeObject) {
         self.functions.insert(function.name.clone(), function);
+    }
+
+    pub fn set_global_layout(&mut self, names: impl IntoIterator<Item = String>) {
+        self.global_names.clear();
+        self.global_slots.clear();
+        for name in names {
+            if self.global_slots.contains_key(&name) {
+                continue;
+            }
+            let slot = GlobalSlot::new(self.global_names.len());
+            self.global_slots.insert(name.clone(), slot);
+            self.global_names.push(name);
+        }
+    }
+
+    #[must_use]
+    pub fn global_slot(&self, name: &str) -> Option<GlobalSlot> {
+        self.global_slots.get(name).copied()
+    }
+
+    #[must_use]
+    pub fn global_name(&self, slot: GlobalSlot) -> Option<&str> {
+        self.global_names.get(slot.get()).map(String::as_str)
+    }
+
+    #[must_use]
+    pub fn global_names(&self) -> &[String] {
+        &self.global_names
     }
 
     pub fn verify(&self) -> Result<(), verification::VerificationError> {
@@ -493,6 +523,7 @@ pub enum InstructionKind {
     LoadGlobal {
         dst: Register,
         global: String,
+        slot: Option<GlobalSlot>,
     },
     GetHostField {
         dst: Register,

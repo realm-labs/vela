@@ -150,9 +150,13 @@ pub global state: Player;
     let main = program
         .function("game::main::main")
         .expect("qualified main function");
+    let slot = program
+        .global_slot("game::state::state")
+        .expect("global slot should be assigned");
     assert!(main.instructions.iter().any(|instruction| matches!(
         &instruction.kind,
-        InstructionKind::LoadGlobal { global, .. } if global == "game::state::state"
+        InstructionKind::LoadGlobal { global, slot: Some(actual), .. }
+            if global == "game::state::state" && *actual == slot
     )));
 }
 

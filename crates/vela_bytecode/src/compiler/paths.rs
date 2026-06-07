@@ -36,12 +36,12 @@ impl Compiler<'_> {
             && let Some(global) = self.facts.global_symbols.get(declaration).cloned()
         {
             let dst = self.alloc_register()?;
-            self.emit(InstructionKind::LoadGlobal { dst, global });
+            self.emit_load_global(dst, global);
             return Ok(dst);
         }
         if let Some(global) = self.global_symbol_named(name) {
             let dst = self.alloc_register()?;
-            self.emit(InstructionKind::LoadGlobal { dst, global });
+            self.emit_load_global(dst, global);
             return Ok(dst);
         }
         if let Some(value) = self.const_value_at_span(span) {
@@ -87,6 +87,11 @@ impl Compiler<'_> {
             )));
         };
         self.local_register_at_span(span, name)
+    }
+
+    fn emit_load_global(&mut self, dst: Register, global: String) {
+        let slot = self.facts.global_slots.get(&global).copied();
+        self.emit(InstructionKind::LoadGlobal { dst, global, slot });
     }
 
     fn compile_path_access(&mut self, span: Span, path: &[String]) -> CompileResult<Register> {

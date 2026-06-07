@@ -74,7 +74,7 @@ pub(crate) use script_object::ScriptFields;
 use small_storage::SmallStorage;
 use try_propagation::{TryPropagation, try_propagate_value};
 use vela_bytecode::{CodeObject, Constant, InstructionKind, InstructionOffset, Program, Register};
-use vela_common::{FunctionId, Span, SymbolInterner};
+use vela_common::{FunctionId, GlobalSlot, Span, SymbolInterner};
 use vela_host::adapter::ScriptStateAdapter;
 #[cfg(test)]
 use vela_reflect as reflect;
@@ -128,7 +128,70 @@ pub struct HostExecution<'host> {
     pub script_globals: Option<&'host ScriptGlobalValues>,
 }
 
-pub type ScriptGlobalValues = BTreeMap<String, Value>;
+#[derive(Clone, Debug, Default)]
+pub struct ScriptGlobalValues {
+    by_name: BTreeMap<String, Value>,
+    slots: Vec<Option<Value>>,
+    slot_by_name: BTreeMap<String, GlobalSlot>,
+}
+
+impl ScriptGlobalValues {
+    #[must_use]
+    pub fn with_layout(names: &[String]) -> Self {
+        let mut values = Self::default();
+        values.set_layout(names);
+        values
+    }
+
+    pub fn set_layout(&mut self, names: &[String]) {
+        self.slot_by_name.clear();
+        self.slots.clear();
+        self.slots.resize(names.len(), None);
+        for (index, name) in names.iter().enumerate() {
+            let slot = GlobalSlot::new(index);
+            self.slot_by_name.insert(name.clone(), slot);
+            if let Some(value) = self.by_name.get(name).copied() {
+                self.slots[index] = Some(value);
+            }
+        }
+    }
+
+    #[must_use]
+    pub fn is_empty(&self) -> bool {
+        self.by_name.is_empty()
+    }
+
+    pub fn insert(&mut self, name: String, value: Value) {
+        if let Some(slot) = self.slot_by_name.get(&name).copied() {
+            self.slots[slot.get()] = Some(value);
+        }
+        self.by_name.insert(name, value);
+    }
+
+    #[must_use]
+    pub fn get(&self, name: &str) -> Option<Value> {
+        self.by_name.get(name).copied()
+    }
+
+    #[must_use]
+    pub fn get_resolved(&self, name: &str, slot: Option<GlobalSlot>) -> Option<Value> {
+        if let Some(slot) = slot
+            && slot.get() < self.slots.len()
+        {
+            return self.slots[slot.get()];
+        }
+        self.get(name)
+    }
+
+    #[must_use]
+    pub fn get_slot(&self, slot: GlobalSlot) -> Option<Value> {
+        self.slots.get(slot.get()).and_then(|value| *value)
+    }
+
+    pub fn values(&self) -> impl Iterator<Item = Value> + '_ {
+        self.by_name.values().copied()
+    }
+}
 
 pub struct PersistentHeapExecution<'heap, 'roots> {
     pub heap: &'heap mut ScriptHeap,

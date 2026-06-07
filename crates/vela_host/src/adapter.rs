@@ -1,4 +1,4 @@
-use vela_common::HostMethodId;
+use vela_common::{GlobalSlot, HostMethodId};
 
 use crate::{
     error::{HostError, HostErrorKind, HostResult},
@@ -14,6 +14,10 @@ pub trait ScriptStateAdapter {
             },
             source_span: None,
         })
+    }
+
+    fn global_ref_by_slot(&self, _slot: GlobalSlot, name: &str) -> HostResult<HostRef> {
+        self.global_ref(name)
     }
 
     fn read_path(&self, path: &HostPath) -> HostResult<HostValue>;

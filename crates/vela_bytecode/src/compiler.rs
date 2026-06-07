@@ -24,11 +24,11 @@ mod semantic;
 mod value_flow;
 mod value_types;
 
-use std::collections::{BTreeMap, HashMap};
+use std::collections::{BTreeMap, BTreeSet, HashMap};
 
 #[cfg(test)]
 use vela_common::{FieldId, HostMethodId};
-use vela_common::{MethodId, SourceId, Span};
+use vela_common::{GlobalSlot, MethodId, SourceId, Span};
 use vela_hir::binding::{BindingMap, BindingResolution, LocalBindingKind};
 use vela_hir::ids::{HirDeclId, HirLocalId};
 #[cfg(test)]
@@ -67,6 +67,7 @@ struct CompilerFacts {
     schema_defaults: ScriptSchemaDefaults,
     type_symbols: BTreeMap<HirDeclId, String>,
     global_symbols: BTreeMap<HirDeclId, String>,
+    global_slots: BTreeMap<String, GlobalSlot>,
     global_type_symbols: BTreeMap<HirDeclId, String>,
     const_values: BTreeMap<HirDeclId, Constant>,
     options: CompilerOptions,
@@ -101,6 +102,7 @@ pub fn compile_function_source_with_options(
     let script_function_signatures = semantic.script_function_signatures();
     let type_symbols = semantic.type_symbols();
     let global_symbols = semantic.global_symbols();
+    let global_slots = global_slots(&global_symbols);
     let global_type_symbols = semantic.global_type_symbols();
     let script_field_slots = semantic.script_field_slots(&type_symbols);
     let const_values = semantic.const_values()?;
@@ -114,6 +116,7 @@ pub fn compile_function_source_with_options(
         schema_defaults,
         type_symbols,
         global_symbols,
+        global_slots,
         global_type_symbols,
         const_values,
         options: options.clone(),
@@ -145,6 +148,7 @@ pub fn compile_program_source_with_options(
     let script_method_signatures = script_method_signatures(&script_impl_methods);
     let type_symbols = semantic.type_symbols();
     let global_symbols = semantic.global_symbols();
+    let global_slots = global_slots(&global_symbols);
     let global_type_symbols = semantic.global_type_symbols();
     let script_field_slots = semantic.script_field_slots(&type_symbols);
     let const_values = semantic.const_values()?;
@@ -158,11 +162,13 @@ pub fn compile_program_source_with_options(
         schema_defaults,
         type_symbols,
         global_symbols,
+        global_slots,
         global_type_symbols,
         const_values,
         options: options.clone(),
     };
     let mut program = Program::new();
+    program.set_global_layout(global_names(&facts.global_symbols));
 
     for name in &script_functions {
         let (function, signature, bindings) = semantic
@@ -202,6 +208,7 @@ pub fn compile_module_sources_with_options(
     let script_method_signatures = script_method_signatures(&script_impl_methods);
     let type_symbols = semantic.type_symbols();
     let global_symbols = semantic.global_symbols();
+    let global_slots = global_slots(&global_symbols);
     let global_type_symbols = semantic.global_type_symbols();
     let script_field_slots = semantic.script_field_slots(&type_symbols);
     let const_values = semantic.const_values()?;
@@ -215,11 +222,13 @@ pub fn compile_module_sources_with_options(
         schema_defaults,
         type_symbols,
         global_symbols,
+        global_slots,
         global_type_symbols,
         const_values,
         options: options.clone(),
     };
     let mut program = Program::new();
+    program.set_global_layout(global_names(&facts.global_symbols));
 
     for declaration in script_functions {
         let (function, signature, bindings) = semantic
@@ -251,6 +260,23 @@ fn verify_code_object(code: CodeObject) -> CompileResult<CodeObject> {
     code.verify()
         .map_err(|error| CompileError::new(CompileErrorKind::BytecodeVerification(error)))?;
     Ok(code)
+}
+
+fn global_names(global_symbols: &BTreeMap<HirDeclId, String>) -> Vec<String> {
+    global_symbols
+        .values()
+        .cloned()
+        .collect::<BTreeSet<_>>()
+        .into_iter()
+        .collect()
+}
+
+fn global_slots(global_symbols: &BTreeMap<HirDeclId, String>) -> BTreeMap<String, GlobalSlot> {
+    global_names(global_symbols)
+        .into_iter()
+        .enumerate()
+        .map(|(slot, name)| (name, GlobalSlot::new(slot)))
+        .collect()
 }
 
 fn insert_script_impl_methods(

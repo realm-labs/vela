@@ -1,5 +1,5 @@
 use vela_bytecode::{HostPathSegment, Register};
-use vela_common::{FieldId, HostMethodId, Span, SymbolInterner};
+use vela_common::{FieldId, GlobalSlot, HostMethodId, Span, SymbolInterner};
 use vela_host::path::HostPath;
 use vela_host::value::HostValue;
 
@@ -24,6 +24,7 @@ pub(crate) struct HostAccessRuntime<'a, 'host, 'heap> {
 pub(crate) fn load_host_global(
     runtime: HostAccessRuntime<'_, '_, '_>,
     name: &str,
+    slot: Option<GlobalSlot>,
 ) -> VmResult<Value> {
     let host = runtime.host.ok_or_else(|| {
         VmError::new(VmErrorKind::TypeMismatch {
@@ -31,14 +32,15 @@ pub(crate) fn load_host_global(
         })
     })?;
     if let Some(script_globals) = host.script_globals
-        && let Some(value) = script_globals.get(name).copied()
+        && let Some(value) = script_globals.get_resolved(name, slot)
     {
         return Ok(value);
     }
-    let root = host
-        .adapter
-        .global_ref(name)
-        .map_err(|error| error.with_source_span_if_absent(runtime.source_span))?;
+    let root = match slot {
+        Some(slot) => host.adapter.global_ref_by_slot(slot, name),
+        None => host.adapter.global_ref(name),
+    }
+    .map_err(|error| error.with_source_span_if_absent(runtime.source_span))?;
     Ok(Value::HostRef(root))
 }
 
