@@ -75,10 +75,6 @@ const docs = {
   },
 };
 
-const docAliases = {
-  "host-bridge": "embedding/host-bridge",
-};
-
 const docView = document.querySelector("#doc-view");
 const playgroundView = document.querySelector("#playground-view");
 const sidebar = document.querySelector("#sidebar");
@@ -134,7 +130,7 @@ async function boot() {
 function route() {
   const hash = window.location.hash || "#/en/overview";
   const [, first, ...slugParts] = hash.split("/");
-  const currentSlug = docAliases[slugParts.join("/")] || slugParts.join("/") || "overview";
+  const currentSlug = slugParts.join("/") || "overview";
 
   if (first === "playground") {
     docView.hidden = true;
