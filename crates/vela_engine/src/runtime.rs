@@ -23,7 +23,7 @@ use vela_vm::heap::ScriptHeap;
 use vela_vm::owned_value::OwnedValue;
 use vela_vm::value::Value;
 use vela_vm::{
-    PersistentHeapExecution, ScriptGlobalLookup, owned_to_persistent_value,
+    PersistentHeapExecution, ScriptGlobalValues, owned_to_persistent_value,
     persistent_value_to_owned,
 };
 
@@ -528,7 +528,7 @@ struct HostGlobalBinding {
 #[derive(Clone, Debug, Default)]
 pub struct RuntimeScriptGlobalStore {
     heap: ScriptHeap,
-    values: RuntimeScriptGlobalValues,
+    values: ScriptGlobalValues,
 }
 
 impl RuntimeScriptGlobalStore {
@@ -539,19 +539,19 @@ impl RuntimeScriptGlobalStore {
 
     #[must_use]
     pub fn is_empty(&self) -> bool {
-        self.values.0.is_empty()
+        self.values.is_empty()
     }
 
     pub fn insert(&mut self, name: impl Into<String>, value: OwnedValue) -> VmResult<()> {
         let mut budget = ExecutionBudget::unbounded();
         let value = owned_to_persistent_value(value, &mut self.heap, Some(&mut budget))?;
-        self.values.0.insert(name.into(), value);
+        self.values.insert(name.into(), value);
         self.collect();
         Ok(())
     }
 
     pub fn value(&mut self, name: &str) -> VmResult<Option<OwnedValue>> {
-        let Some(value) = self.values.0.get(name).copied() else {
+        let Some(value) = self.values.get(name).copied() else {
             return Ok(None);
         };
         persistent_value_to_owned(&value, &mut self.heap).map(Some)
@@ -570,25 +570,15 @@ impl RuntimeScriptGlobalStore {
     }
 
     fn roots(&self) -> Vec<Value> {
-        self.values.0.values().copied().collect()
+        self.values.values().copied().collect()
     }
 
     fn collect(&mut self) {
         let mut roots = Vec::new();
         self.values
-            .0
             .values()
             .for_each(|value| value.trace_heap_refs(&mut roots));
         self.heap.collect_full(&roots);
-    }
-}
-
-#[derive(Clone, Debug, Default)]
-struct RuntimeScriptGlobalValues(BTreeMap<String, Value>);
-
-impl ScriptGlobalLookup for RuntimeScriptGlobalValues {
-    fn get_script_global(&self, name: &str) -> Option<Value> {
-        self.0.get(name).copied()
     }
 }
 

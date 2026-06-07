@@ -31,7 +31,7 @@ pub(crate) fn load_host_global(
         })
     })?;
     if let Some(script_globals) = host.script_globals
-        && let Some(value) = script_globals.get_script_global(name)
+        && let Some(value) = script_globals.get(name).copied()
     {
         return Ok(value);
     }

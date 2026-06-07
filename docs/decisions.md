@@ -205,6 +205,8 @@ explicit constructors such as `OwnedValue::record` and convenience macros such
 as `owned_record!` for nested heterogeneous values. The public runtime methods
 use short embedding names such as `insert_global`, `set_global`, `global`, and
 `update_global`; host-object globals keep their explicit host-specific API.
+The VM receives script globals as a concrete runtime value map rather than an
+extension trait, because there is only one runtime-owned script global store.
 There is no special `global.vela` file, top-level mutable initialization, or
 script-owned Rust state under GC.
 

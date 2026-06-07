@@ -49,7 +49,7 @@ mod try_propagation;
 pub mod value;
 
 use std::cell::RefCell;
-use std::collections::HashMap;
+use std::collections::{BTreeMap, HashMap};
 use std::sync::Arc;
 
 use error::{VmError, VmErrorKind, VmResult, VmStackFrame};
@@ -125,12 +125,10 @@ pub struct Vm {
 pub struct HostExecution<'host> {
     pub adapter: &'host mut dyn ScriptStateAdapter,
     pub access: &'host mut vela_host::access::HostAccess,
-    pub script_globals: Option<&'host dyn ScriptGlobalLookup>,
+    pub script_globals: Option<&'host ScriptGlobalValues>,
 }
 
-pub trait ScriptGlobalLookup {
-    fn get_script_global(&self, name: &str) -> Option<Value>;
-}
+pub type ScriptGlobalValues = BTreeMap<String, Value>;
 
 pub struct PersistentHeapExecution<'heap, 'roots> {
     pub heap: &'heap mut ScriptHeap,
