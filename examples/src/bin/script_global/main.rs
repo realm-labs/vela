@@ -20,9 +20,14 @@ fn main() -> Result<(), Box<dyn Error>> {
         stats: ServerStats { handled_ticks: 0 },
     };
     runtime.insert_global(STATE_GLOBAL, &initial_state)?;
+    let handle_tick = runtime.entry("handle_tick")?;
+    let state_name_fn = runtime.entry("state_name")?;
+    let tick_count_fn = runtime.entry("tick_count")?;
+    let snapshot_state = runtime.entry("snapshot_state")?;
+    let projected_score_fn = runtime.entry("projected_score")?;
 
     let first_tick = runtime.call(
-        "handle_tick",
+        &handle_tick,
         CallArgs::from_positional([OwnedValue::Int(2), OwnedValue::Int(5)]),
         CallOptions::unbounded(),
     )?;
@@ -36,16 +41,16 @@ fn main() -> Result<(), Box<dyn Error>> {
     runtime.set_global(STATE_GLOBAL, &rust_updated_state)?;
 
     let second_tick = runtime.call(
-        "handle_tick",
+        &handle_tick,
         CallArgs::from_positional([OwnedValue::Int(1), OwnedValue::Int(3)]),
         CallOptions::unbounded(),
     )?;
-    let state_name = runtime.call("state_name", CallArgs::new(), CallOptions::unbounded())?;
-    let tick_count = runtime.call("tick_count", CallArgs::new(), CallOptions::unbounded())?;
+    let state_name = runtime.call(&state_name_fn, CallArgs::new(), CallOptions::unbounded())?;
+    let tick_count = runtime.call(&tick_count_fn, CallArgs::new(), CallOptions::unbounded())?;
     let state_snapshot =
-        runtime.call("snapshot_state", CallArgs::new(), CallOptions::unbounded())?;
+        runtime.call(&snapshot_state, CallArgs::new(), CallOptions::unbounded())?;
     let projected_score = runtime.call(
-        "projected_score",
+        &projected_score_fn,
         CallArgs::new()
             .with_vela_value(state_snapshot.clone())
             .with(OwnedValue::Int(4)),

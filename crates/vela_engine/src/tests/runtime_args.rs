@@ -17,7 +17,7 @@ use vela_vm::error::VmErrorKind;
 use vela_vm::owned_value::OwnedValue;
 
 use crate::engine::Engine;
-use crate::runtime::{CallArgs, CallOptions, Runtime, VelaValue};
+use crate::runtime::{CallArgs, CallOptions, Runtime, VelaFunction, VelaMethod, VelaValue};
 
 use super::player_type;
 
@@ -40,6 +40,8 @@ fn runtime_and_runtime_values_are_send() {
 
     assert_send::<Runtime>();
     assert_send::<VelaValue>();
+    assert_send::<VelaFunction>();
+    assert_send::<VelaMethod>();
 }
 
 fn direct_player_type() -> TypeDesc {
@@ -898,6 +900,109 @@ fn main(player: Player, amount) {
 
     assert_eq!(runtime.value_to_owned(&output), Ok(OwnedValue::Int(13)));
     assert_eq!(player.level, 13);
+}
+
+#[test]
+fn runtime_cached_entry_calls_function() {
+    let engine = Engine::builder().build().expect("engine should build");
+    let program = compile_program_source_with_options(
+        SourceId::new(1),
+        r#"
+fn main(amount, multiplier = 2) {
+    return amount * multiplier;
+}
+"#,
+        &engine.compiler_options(),
+    )
+    .expect("program should compile");
+    let mut runtime = Runtime::new(engine, program);
+    let main = runtime.entry("main").expect("entry should resolve");
+
+    let first = runtime
+        .call(
+            &main,
+            CallArgs::new().with_value("amount", 7_i64),
+            CallOptions::unbounded(),
+        )
+        .expect("cached entry should run with default args");
+    let second = runtime
+        .call(
+            &main,
+            CallArgs::new()
+                .with_value("amount", 7_i64)
+                .with_value("multiplier", 3_i64),
+            CallOptions::unbounded(),
+        )
+        .expect("cached entry should run with named args");
+
+    assert_eq!(main.name(), "main");
+    assert_eq!(runtime.value_to_owned(&first), Ok(OwnedValue::Int(14)));
+    assert_eq!(runtime.value_to_owned(&second), Ok(OwnedValue::Int(21)));
+}
+
+#[test]
+fn runtime_call_method_on_runtime_value_by_name_and_cached_method() {
+    let engine = Engine::builder().build().expect("engine should build");
+    let program = compile_program_source_with_options(
+        SourceId::new(1),
+        r#"
+trait BonusSource {
+    fn score(self, amount, multiplier = 2) -> Int;
+}
+
+struct Reward {
+    gold: Int,
+}
+
+impl BonusSource for Reward {
+    fn score(self, amount, multiplier = 2) -> Int {
+        return self.gold + amount * multiplier;
+    }
+}
+
+fn make_reward() {
+    return Reward { gold: 7 };
+}
+"#,
+        &engine.compiler_options(),
+    )
+    .expect("program should compile");
+    let mut runtime = Runtime::new(engine, program);
+    let reward = runtime
+        .call("make_reward", CallArgs::new(), CallOptions::unbounded())
+        .expect("factory should return runtime value");
+    let score_by_name = runtime
+        .call_method(
+            &reward,
+            "score",
+            CallArgs::new().with_value("amount", 5_i64),
+            CallOptions::unbounded(),
+        )
+        .expect("named value method should run");
+    let score_method = runtime
+        .method(&reward, "score")
+        .expect("method should resolve");
+    let score_by_cached_method = runtime
+        .call_method(
+            &reward,
+            &score_method,
+            CallArgs::new()
+                .with_value("amount", 3_i64)
+                .with_value("multiplier", 4_i64),
+            CallOptions::unbounded(),
+        )
+        .expect("cached value method should run");
+
+    assert_eq!(score_method.name(), "score");
+    assert_eq!(score_method.receiver_type(), "Reward");
+    assert_eq!(
+        runtime.value_to_owned(&score_by_name),
+        Ok(OwnedValue::Int(17))
+    );
+    assert_eq!(
+        runtime.value_to_owned(&score_by_cached_method),
+        Ok(OwnedValue::Int(19))
+    );
 }
 
 #[test]

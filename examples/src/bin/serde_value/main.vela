@@ -16,6 +16,16 @@ struct DamageResult {
     label: String,
 }
 
+trait DamageSummary {
+    fn score(self, bonus) -> Int;
+}
+
+impl DamageSummary for DamageResult {
+    fn score(self, bonus) -> Int {
+        return self.applied + bonus;
+    }
+}
+
 fn handle_damage(event) {
     return DamageResult {
         actor_name: event.actor.name,

@@ -79,8 +79,9 @@ Cranelift JIT.
   serde decoding from runtime-managed `VelaValue` and globals without
   materializing detached `OwnedValue`,
   runtime-managed `VelaValue` call returns that can be passed back to later calls
-  on the same runtime without owned materialization, `Send` Runtime and
-  `VelaValue` handles for worker/actor ownership transfer,
+  on the same runtime without owned materialization, cached `VelaFunction`
+  entry handles and `VelaMethod` script-value method handles for high-frequency
+  embedding calls, `Send` Runtime and `VelaValue` handles for worker/actor ownership transfer,
   direct host object method dispatch with receiver paths, unified concrete host
   type specs, host index capability metadata, typed host path arguments,
   string-key host path segments, hot-reload policies, derive-generated host

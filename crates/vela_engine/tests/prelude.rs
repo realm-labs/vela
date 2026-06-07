@@ -169,6 +169,10 @@ fn prelude_imports_cover_source_and_reload_results() {
     fn accepts_update_result(_result: EngineHotReloadSourceResult<HotUpdate>) {}
     fn accepts_safe_point_report(_report: Option<HotReloadReport>) {}
     fn accepts_event_safe_point_report(_report: EventCallSafePointReport) {}
+    fn accepts_vela_function(_function: Option<VelaFunction>) {}
+    fn accepts_vela_method(_method: Option<VelaMethod>) {}
+    fn accepts_call_target<T: RuntimeCallTarget>(_target: T) {}
+    fn accepts_method_target<T: RuntimeMethodTarget>(_target: T) {}
     fn accepts_hot_reload_result(_result: HotReloadResult<ProgramVersion>) {}
     fn accepts_report_diagnostics(_diagnostics: Vec<HotReloadDiagnostic>) {}
     fn accepts_report_detail(_detail: Option<HotReloadDiagnosticDetail>) {}
@@ -192,6 +196,10 @@ fn prelude_imports_cover_source_and_reload_results() {
         value: OwnedValue::Null,
         reload: None,
     });
+    accepts_vela_function(None);
+    accepts_vela_method(None);
+    accepts_call_target("main");
+    accepts_method_target("score");
     accepts_hot_reload_result(engine.compile_hot_reload_initial(SourceId::new(2), "fn main() {}"));
     accepts_report_diagnostics(Vec::new());
     accepts_report_detail(None);

@@ -202,6 +202,18 @@ the `serde` feature is enabled, or explicitly call `value_to_owned` when Rust
 needs an owned boundary value. Most call sites do not need to construct or pass
 a `HostAccess` explicitly.
 
+High-frequency hosts can cache script entry lookup without switching APIs:
+
+```rust
+let handle_tick = runtime.entry("handle_tick")?;
+let output = runtime.call(&handle_tick, args, CallOptions::unbounded())?;
+```
+
+The cached entry belongs to the runtime that created it. If hot reload advances
+the active version, a later call through the cached entry re-resolves the
+function by name against the current program version; removed or incompatible
+functions report the normal runtime or reload errors.
+
 With the `serde` feature enabled, hosts can pass ordinary Rust data as
 script-owned values without registering it as host state:
 
@@ -260,6 +272,28 @@ when it needs an owned, heap-detached value. With the `serde` feature enabled,
 heap into a Rust struct, enum, or scalar without first materializing an
 `OwnedValue`. VM-managed globals have the same typed read surface through
 `Runtime::global_as`.
+
+Rust can also call script methods registered on the runtime value's script
+type. Methods are still type-level script methods, not per-value monkey
+patches:
+
+```rust
+let reward = runtime.call("make_reward", CallArgs::new(), options)?;
+let score = runtime.call_method(
+    &reward,
+    "score",
+    CallArgs::new().with_value("bonus", 5),
+    options,
+)?;
+
+let score_method = runtime.method(&reward, "score")?;
+let fast_score = runtime.call_method(&reward, &score_method, args, options)?;
+```
+
+Cached methods store the owner script type and stable method ID. Calls validate
+that the receiver still belongs to the same runtime and still has the expected
+script type; hot reload re-resolves the method target by stable method ID on
+the current program version.
 
 ### Hot Reload
 

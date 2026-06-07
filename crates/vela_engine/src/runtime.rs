@@ -14,15 +14,16 @@ use vela_host::value::HostValue;
 use vela_hot_reload::error::HotReloadResult;
 use vela_hot_reload::report::HotReloadReport;
 use vela_hot_reload::runtime::HotReloadRuntime;
+use vela_hot_reload::symbol::ProgramVersionId;
 use vela_hot_reload::version::{HotUpdate, ProgramVersion};
 use vela_vm::HostExecution;
 use vela_vm::budget::ExecutionBudget;
 use vela_vm::error::{VmError, VmErrorKind, VmResult};
-use vela_vm::heap::ScriptHeap;
+use vela_vm::heap::{HeapValue, ScriptHeap};
 use vela_vm::owned_value::OwnedValue;
 use vela_vm::value::Value;
 use vela_vm::{
-    PersistentHeapExecution, ScriptGlobalValues, owned_to_persistent_value,
+    PersistentHeapExecution, RuntimeMethodCall, ScriptGlobalValues, owned_to_persistent_value,
     persistent_value_to_owned,
 };
 
@@ -33,10 +34,13 @@ use crate::reload::{
 };
 
 mod call_args;
+mod handles;
 
 pub use call_args::CallArgs;
+pub use handles::{RuntimeCallTarget, RuntimeMethodTarget, VelaFunction, VelaMethod};
 
 use call_args::{CallArgsAdapter, EmptyStateAdapter, call_args_type_error};
+use handles::RuntimeCallExecution;
 
 pub struct Runtime {
     id: u64,
@@ -306,25 +310,162 @@ impl Runtime {
         }
     }
 
-    pub fn call(
+    pub fn entry(&self, name: impl Into<String>) -> VmResult<VelaFunction> {
+        let name = name.into();
+        let code = self
+            .program
+            .function(&name)
+            .ok_or_else(|| unknown_function(name.clone()))?;
+        Ok(VelaFunction {
+            runtime_id: self.id,
+            name,
+            version_id: self.current_program_version_id(),
+            params: code.params.clone(),
+            param_defaults: code.param_defaults.clone(),
+        })
+    }
+
+    pub fn method(&self, receiver: &VelaValue, method: impl Into<String>) -> VmResult<VelaMethod> {
+        self.check_vela_value_runtime(receiver)?;
+        let method = method.into();
+        let receiver_type = self
+            .value_type_name(receiver)
+            .ok_or_else(|| unknown_method(method.clone()))?;
+        let method_id = self
+            .program
+            .script_method_id(&receiver_type, &method)
+            .ok_or_else(|| unknown_method(method.clone()))?;
+        let code = self
+            .program
+            .script_method_by_id(&receiver_type, method_id)
+            .ok_or_else(|| unknown_method(method.clone()))?;
+        Ok(VelaMethod {
+            runtime_id: self.id,
+            receiver_type,
+            name: method,
+            method_id,
+            version_id: self.current_program_version_id(),
+            params: code.params.iter().skip(1).cloned().collect(),
+            param_defaults: code.param_defaults.iter().skip(1).copied().collect(),
+        })
+    }
+
+    pub fn call<T>(
         &mut self,
-        entry: &str,
+        entry: T,
         args: CallArgs<'_>,
         options: CallOptions,
-    ) -> VmResult<VelaValue> {
+    ) -> VmResult<VelaValue>
+    where
+        T: RuntimeCallTarget,
+    {
         let mut adapter = EmptyStateAdapter;
         self.call_with_adapter(entry, args, options, &mut adapter)
     }
 
-    pub fn call_with_adapter(
+    pub fn call_with_adapter<T>(
         &mut self,
-        entry: &str,
+        entry: T,
         mut args: CallArgs<'_>,
         options: CallOptions,
         adapter: &mut dyn ScriptStateAdapter,
-    ) -> VmResult<VelaValue> {
+    ) -> VmResult<VelaValue>
+    where
+        T: RuntimeCallTarget,
+    {
+        let Self {
+            id,
+            engine,
+            program,
+            hot_reload,
+            globals,
+            script_globals,
+        } = self;
+        let target = entry.resolve(
+            *id,
+            program,
+            current_program_version_id(hot_reload.as_ref()),
+        )?;
         let mut access = HostAccess::new();
-        self.call_runtime_args(entry, &mut args, options, adapter, &mut access)
+        Self::call_runtime_args(RuntimeCallExecution {
+            runtime_id: *id,
+            engine,
+            program,
+            hot_reload: hot_reload.as_ref(),
+            globals,
+            script_globals,
+            target,
+            args: &mut args,
+            options,
+            adapter,
+            access: &mut access,
+        })
+    }
+
+    pub fn call_method<T>(
+        &mut self,
+        receiver: &VelaValue,
+        method: T,
+        mut args: CallArgs<'_>,
+        options: CallOptions,
+    ) -> VmResult<VelaValue>
+    where
+        T: RuntimeMethodTarget,
+    {
+        self.check_vela_value_runtime(receiver)?;
+        let Self {
+            id,
+            engine,
+            program,
+            hot_reload,
+            globals,
+            script_globals,
+        } = self;
+        let target = method.resolve(
+            *id,
+            program,
+            current_program_version_id(hot_reload.as_ref()),
+            receiver,
+            script_globals,
+            engine,
+        )?;
+        let mut budget = options.budget();
+        let resolved = args.resolve_values(
+            &target.name,
+            &target.params,
+            &target.param_defaults,
+            *id,
+            &mut script_globals.heap,
+            &mut budget,
+        )?;
+        let mut adapter = EmptyStateAdapter;
+        let mut access = HostAccess::new();
+        let mut adapter = CallArgsAdapter::new(&mut args, &mut adapter);
+        let mut adapter = GlobalStoreAdapter {
+            globals,
+            fallback: &mut adapter,
+        };
+        let mut host = HostExecution {
+            adapter: &mut adapter,
+            access: &mut access,
+            script_globals: Some(&script_globals.values),
+        };
+        let vm = runtime_vm(engine, program, hot_reload.as_ref());
+        let roots = script_globals.roots();
+        let result = vm.call_runtime_method(RuntimeMethodCall {
+            program,
+            receiver: receiver.value,
+            method: &target.name,
+            method_id: Some(target.method_id),
+            args: &resolved,
+            host: &mut host,
+            persistent: PersistentHeapExecution {
+                heap: &mut script_globals.heap,
+                roots: &roots,
+            },
+            budget: &mut budget,
+        })?;
+        Ok(script_globals.retain(*id, result))
     }
 
     pub fn value_to_owned(&mut self, value: &VelaValue) -> VmResult<OwnedValue> {
@@ -405,46 +546,40 @@ impl Runtime {
         self.call_raw(entry, &resolved, options, &mut adapter, access)
     }
 
-    fn call_runtime_args(
-        &mut self,
-        entry: &str,
-        args: &mut CallArgs<'_>,
-        options: CallOptions,
-        adapter: &mut dyn ScriptStateAdapter,
-        access: &mut HostAccess,
-    ) -> VmResult<VelaValue> {
-        let mut budget = options.budget();
-        let resolved = self.resolve_call_runtime_args(entry, args, &mut budget)?;
-        let mut adapter = CallArgsAdapter::new(args, adapter);
+    fn call_runtime_args(call: RuntimeCallExecution<'_, '_, '_, '_>) -> VmResult<VelaValue> {
+        let mut budget = call.options.budget();
+        let resolved = call.args.resolve_values(
+            &call.target.name,
+            &call.target.params,
+            &call.target.param_defaults,
+            call.runtime_id,
+            &mut call.script_globals.heap,
+            &mut budget,
+        )?;
+        let mut adapter = CallArgsAdapter::new(call.args, call.adapter);
         let mut adapter = GlobalStoreAdapter {
-            globals: &mut self.globals,
+            globals: call.globals,
             fallback: &mut adapter,
         };
         let mut host = HostExecution {
             adapter: &mut adapter,
-            access,
-            script_globals: Some(&self.script_globals.values),
+            access: call.access,
+            script_globals: Some(&call.script_globals.values),
         };
-        let vm = if let Some(hot_reload) = &self.hot_reload {
-            let current = hot_reload.current();
-            self.engine
-                .into_vm_for_program_with_abi(&self.program, current.abi())
-        } else {
-            self.engine.into_vm_for_program(&self.program)
-        };
-        let roots = self.script_globals.roots();
-        let result = vm.run_program_runtime_with_host_persistent_heap_and_budget(
-            &self.program,
-            entry,
+        let vm = runtime_vm(call.engine, call.program, call.hot_reload);
+        let roots = call.script_globals.roots();
+        let result = vm.run_code_runtime_with_host_persistent_heap_and_budget(
+            call.program,
+            call.target.code,
             &resolved,
             &mut host,
             PersistentHeapExecution {
-                heap: &mut self.script_globals.heap,
+                heap: &mut call.script_globals.heap,
                 roots: &roots,
             },
             &mut budget,
         )?;
-        Ok(self.script_globals.retain(self.id, result))
+        Ok(call.script_globals.retain(call.runtime_id, result))
     }
 
     pub fn call_raw_at_event_end_safe_point(
@@ -484,37 +619,23 @@ impl Runtime {
         args.resolve(entry, &code.params, &code.param_defaults)
     }
 
-    fn resolve_call_runtime_args(
-        &mut self,
-        entry: &str,
-        args: &CallArgs<'_>,
-        budget: &mut ExecutionBudget,
-    ) -> VmResult<Vec<Value>> {
-        let (params, param_defaults) = {
-            let code = self.program.function(entry).ok_or_else(|| VmError {
-                kind: VmErrorKind::UnknownFunction {
-                    name: entry.to_owned(),
-                },
-                source_span: None,
-                call_stack: Default::default(),
-            })?;
-            (code.params.clone(), code.param_defaults.clone())
-        };
-        args.resolve_values(
-            entry,
-            &params,
-            &param_defaults,
-            self.id,
-            &mut self.script_globals.heap,
-            budget,
-        )
-    }
-
     fn check_vela_value_runtime(&self, value: &VelaValue) -> VmResult<()> {
         if value.runtime_id == self.id {
             return Ok(());
         }
         Err(call_args_type_error("VelaValue belongs to another Runtime"))
+    }
+
+    fn current_program_version_id(&self) -> Option<ProgramVersionId> {
+        current_program_version_id(self.hot_reload.as_ref())
+    }
+
+    fn value_type_name(&self, value: &VelaValue) -> Option<String> {
+        value_type_name(
+            &value.value,
+            &self.script_globals.heap,
+            self.engine.registry().as_ref(),
+        )
     }
 
     fn current_hot_reload_version(&self) -> EngineResult<std::sync::Arc<ProgramVersion>> {
@@ -981,6 +1102,57 @@ impl ScriptStateAdapter for GlobalStoreAdapter<'_> {
             return global.object.call_host_method(path, method, args);
         }
         self.fallback.call_method(path, method, args)
+    }
+}
+
+fn runtime_vm(
+    engine: &Engine,
+    program: &Program,
+    hot_reload: Option<&HotReloadRuntime>,
+) -> vela_vm::Vm {
+    if let Some(hot_reload) = hot_reload {
+        let current = hot_reload.current();
+        engine.into_vm_for_program_with_abi(program, current.abi())
+    } else {
+        engine.into_vm_for_program(program)
+    }
+}
+
+fn current_program_version_id(hot_reload: Option<&HotReloadRuntime>) -> Option<ProgramVersionId> {
+    hot_reload.map(|runtime| runtime.current().id)
+}
+
+fn value_type_name(
+    value: &Value,
+    heap: &ScriptHeap,
+    registry: &vela_reflect::registry::TypeRegistry,
+) -> Option<String> {
+    match value {
+        Value::HeapRef(reference) => match heap.get(*reference)? {
+            HeapValue::Record { type_name, .. } => Some(type_name.clone()),
+            HeapValue::Enum { enum_name, .. } => Some(enum_name.clone()),
+            _ => None,
+        },
+        Value::HostRef(reference) => registry
+            .type_of_host(*reference)
+            .map(|desc| desc.key.name.clone()),
+        _ => None,
+    }
+}
+
+fn unknown_function(name: String) -> VmError {
+    VmError {
+        kind: VmErrorKind::UnknownFunction { name },
+        source_span: None,
+        call_stack: Default::default(),
+    }
+}
+
+fn unknown_method(method: String) -> VmError {
+    VmError {
+        kind: VmErrorKind::UnknownMethod { method },
+        source_span: None,
+        call_stack: Default::default(),
     }
 }
 

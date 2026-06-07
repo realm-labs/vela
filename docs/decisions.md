@@ -135,6 +135,24 @@ GC. With the `serde` feature enabled, `Runtime::from_value` deserializes a
 script-owned results into structs/enums/scalars without first constructing a
 detached `OwnedValue`.
 
+High-frequency embedding can cache script entry lookup with `Runtime::entry`.
+The common call API remains `Runtime::call`: a `&str` target performs ordinary
+name resolution, while a `VelaFunction` target carries the runtime id, entry
+name, active version id, and cached parameter metadata. Runtime execution
+resolves to a `CodeObject` before entering the VM so the VM does not repeat the
+entry-name lookup on the hot path. Hot reload does not freeze old entry
+handles; if the runtime version has advanced, the handle re-resolves by name
+against the active program and reports the normal missing-function or ABI
+errors if the target is no longer valid.
+
+Rust-side calls to methods on returned `VelaValue` handles use
+`Runtime::call_method`. Methods remain type-level script methods keyed by the
+receiver script type and stable `MethodId`; there is no per-value method
+registration or monkey patching. `Runtime::method` caches the owner type,
+method name, method id, version id, and parameter metadata. Calls validate the
+receiver runtime and script type, then re-resolve by method id when the active
+version changes.
+
 With the `serde` feature enabled, Rust structs and enums that implement serde
 traits can cross the ordinary script-owned value boundary explicitly through
 `to_owned_value`, `from_owned_value`, `CallArgs::with_serde_value`, and

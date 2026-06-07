@@ -74,7 +74,7 @@ fn game_server_examples_run() {
         ),
         (
             env!("CARGO_BIN_EXE_serde_value"),
-            "serde_value actor=player-1001 applied=34 label=slash original_amount=9\n",
+            "serde_value actor=player-1001 applied=34 score=39 label=slash original_amount=9\n",
         ),
     ];
 

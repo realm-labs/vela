@@ -23,7 +23,15 @@ fn main() -> Result<(), Box<dyn Error>> {
 
     let args = CallArgs::new().with_serde_value("event", &event)?;
     let output = runtime.call("handle_damage", args, CallOptions::unbounded())?;
+    let score_method = runtime.method(&output, "score")?;
+    let score = runtime.call_method(
+        &output,
+        &score_method,
+        CallArgs::new().with_value("bonus", 5_i64),
+        CallOptions::unbounded(),
+    )?;
     let result: DamageResult = runtime.from_value(&output)?;
+    let score: i64 = runtime.from_value(&score)?;
 
     assert_eq!(event.amount, 9);
     assert_eq!(
@@ -34,10 +42,11 @@ fn main() -> Result<(), Box<dyn Error>> {
             label: "slash".to_owned(),
         }
     );
+    assert_eq!(score, 39);
 
     println!(
-        "serde_value actor={} applied={} label={} original_amount={}",
-        result.actor_name, result.applied, result.label, event.amount
+        "serde_value actor={} applied={} score={} label={} original_amount={}",
+        result.actor_name, result.applied, score, result.label, event.amount
     );
     Ok(())
 }
