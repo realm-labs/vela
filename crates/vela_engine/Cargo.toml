@@ -5,7 +5,7 @@ license.workspace = true
 version.workspace = true
 
 [dependencies]
-serde = { version = "1", optional = true }
+serde = { version = "1", features = ["derive"], optional = true }
 vela_bytecode = { path = "../vela_bytecode" }
 vela_common = { path = "../vela_common" }
 vela_hir = { path = "../vela_hir" }

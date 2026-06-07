@@ -1,5 +1,6 @@
 use std::error::Error;
 
+use serde::{Deserialize, Serialize};
 use vela_engine::prelude::*;
 use vela_examples::example_file;
 
@@ -12,19 +13,13 @@ fn main() -> Result<(), Box<dyn Error>> {
     let program = engine.compile_file(example_file("script_global", "main.vela"))?;
     let mut runtime = Runtime::new(engine, program);
 
-    let initial_state = OwnedValue::record(
-        "ServerState",
-        vec![
-            ("level", 1.into()),
-            ("name", "boot".into()),
-            ("total_gold", 0.into()),
-            (
-                "stats",
-                OwnedValue::record("ServerStats", [("handled_ticks", 0)]),
-            ),
-        ],
-    );
-    runtime.insert_global(STATE_GLOBAL, initial_state)?;
+    let initial_state = ServerState {
+        level: 1,
+        name: "boot".to_owned(),
+        total_gold: 0,
+        stats: ServerStats { handled_ticks: 0 },
+    };
+    runtime.insert_global(STATE_GLOBAL, &initial_state)?;
 
     let first_tick = runtime.call_value(
         "handle_tick",
@@ -32,17 +27,13 @@ fn main() -> Result<(), Box<dyn Error>> {
         CallOptions::unbounded(),
     )?;
 
-    runtime.set_global(
-        STATE_GLOBAL,
-        owned_record!("ServerState", {
-            "level" => 10,
-            "name" => "rust-updated",
-            "total_gold" => 5,
-            "stats" => owned_record!("ServerStats", {
-                "handled_ticks" => 7,
-            }),
-        }),
-    )?;
+    let rust_updated_state = ServerState {
+        level: 10,
+        name: "rust-updated".to_owned(),
+        total_gold: 5,
+        stats: ServerStats { handled_ticks: 7 },
+    };
+    runtime.set_global(STATE_GLOBAL, &rust_updated_state)?;
 
     let second_tick = runtime.call_value(
         "handle_tick",
@@ -56,10 +47,11 @@ fn main() -> Result<(), Box<dyn Error>> {
     let projected_score = runtime.call_value(
         "projected_score",
         CallArgs::new()
-            .with_vela_value(state_snapshot)
+            .with_vela_value(state_snapshot.clone())
             .with(OwnedValue::Int(4)),
         CallOptions::unbounded(),
     )?;
+    runtime.insert_global(STATE_GLOBAL, state_snapshot)?;
     let final_state = runtime
         .global(STATE_GLOBAL)?
         .expect("state global should exist");
@@ -96,4 +88,17 @@ fn main() -> Result<(), Box<dyn Error>> {
     );
 
     Ok(())
+}
+
+#[derive(Debug, Eq, PartialEq, Serialize, Deserialize)]
+struct ServerStats {
+    handled_ticks: i64,
+}
+
+#[derive(Debug, Eq, PartialEq, Serialize, Deserialize)]
+struct ServerState {
+    level: i64,
+    name: String,
+    total_gold: i64,
+    stats: ServerStats,
 }

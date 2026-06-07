@@ -113,15 +113,15 @@ impl Runtime {
     pub fn insert_global(
         &mut self,
         name: impl Into<String>,
-        value: impl Into<OwnedValue>,
+        value: impl IntoGlobalValue,
     ) -> VmResult<()> {
-        self.script_globals.insert(name, value.into())
+        value.insert_global(self, name.into())
     }
 
     pub fn set_global(
         &mut self,
         name: impl Into<String>,
-        value: impl Into<OwnedValue>,
+        value: impl IntoGlobalValue,
     ) -> VmResult<()> {
         self.insert_global(name, value)
     }
@@ -647,6 +647,75 @@ impl PartialEq for VelaValue {
     }
 }
 
+pub trait IntoGlobalValue {
+    fn insert_global(self, runtime: &mut Runtime, name: String) -> VmResult<()>;
+}
+
+#[cfg(not(feature = "serde"))]
+impl<T> IntoGlobalValue for T
+where
+    T: Into<OwnedValue>,
+{
+    fn insert_global(self, runtime: &mut Runtime, name: String) -> VmResult<()> {
+        runtime.script_globals.insert(name, self.into())
+    }
+}
+
+#[cfg(feature = "serde")]
+impl IntoGlobalValue for OwnedValue {
+    fn insert_global(self, runtime: &mut Runtime, name: String) -> VmResult<()> {
+        runtime.script_globals.insert(name, self)
+    }
+}
+
+#[cfg(feature = "serde")]
+macro_rules! impl_owned_global_value {
+    ($($ty:ty),* $(,)?) => {
+        $(
+            impl IntoGlobalValue for $ty {
+                fn insert_global(self, runtime: &mut Runtime, name: String) -> VmResult<()> {
+                    runtime.script_globals.insert(name, OwnedValue::from(self))
+                }
+            }
+        )*
+    };
+}
+
+#[cfg(feature = "serde")]
+impl_owned_global_value!(bool, i32, i64, f64, String, HostRef);
+
+impl IntoGlobalValue for VelaValue {
+    fn insert_global(self, runtime: &mut Runtime, name: String) -> VmResult<()> {
+        runtime.check_vela_value_runtime(&self)?;
+        runtime
+            .script_globals
+            .insert_runtime_value(name, self.value);
+        Ok(())
+    }
+}
+
+impl IntoGlobalValue for &VelaValue {
+    fn insert_global(self, runtime: &mut Runtime, name: String) -> VmResult<()> {
+        runtime.check_vela_value_runtime(self)?;
+        runtime
+            .script_globals
+            .insert_runtime_value(name, self.value);
+        Ok(())
+    }
+}
+
+#[cfg(feature = "serde")]
+impl<T> IntoGlobalValue for &T
+where
+    T: serde::Serialize + ?Sized,
+{
+    fn insert_global(self, runtime: &mut Runtime, name: String) -> VmResult<()> {
+        runtime
+            .script_globals
+            .insert(name, vela_vm::serde::to_owned_value(self)?)
+    }
+}
+
 #[derive(Debug, Default)]
 struct RuntimeValueRoots {
     next_id: u64,
@@ -832,6 +901,11 @@ impl RuntimeScriptGlobalStore {
         self.values.insert(name.into(), value);
         self.collect();
         Ok(())
+    }
+
+    pub fn insert_runtime_value(&mut self, name: impl Into<String>, value: Value) {
+        self.values.insert(name.into(), value);
+        self.collect();
     }
 
     pub fn value(&mut self, name: &str) -> VmResult<Option<OwnedValue>> {

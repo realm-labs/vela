@@ -221,6 +221,22 @@ mutate the original Rust struct when scripts write to the script value.
 Write-through Rust state should still be passed with `with_host_ref`,
 `with_host_mut`, or adapter-backed host handles.
 
+The same owned-value conversion model is used for VM-managed globals through a
+single API:
+
+```rust
+runtime.insert_global("main::state", owned_record!("State", {
+    "level" => 1,
+}))?;
+runtime.insert_global("main::state", &serde_state)?;
+runtime.insert_global("main::state", runtime_value)?;
+```
+
+`OwnedValue` is inserted directly, serde values are passed by reference and
+serialized into script-owned records/enums, and a `VelaValue` from the same
+runtime is attached as a global root without first materializing an
+`OwnedValue`.
+
 When the host wants to keep a returned script aggregate under VM management and
 pass it back to another script call without materializing a detached copy, it
 uses `Runtime::call_value`:

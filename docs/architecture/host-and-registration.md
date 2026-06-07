@@ -173,11 +173,13 @@ global objects must be `Send`. Direct call-boundary `with_host_ref` and
 persistent-global requirement.
 
 Vela-defined script-value globals use the same declaration surface but are
-stored in the runtime's persistent script heap. Rust inserts, reads, replaces,
-or updates them through `OwnedValue` APIs, while scripts see ordinary script
-records, arrays, maps, sets, enums, and scalars. These values are VM-managed
-script objects, not Rust host state and not `HostRef` roots. Runtime global
-roots are retained across calls and included in GC roots during calls.
+stored in the runtime's persistent script heap. Rust inserts or replaces them
+through the single `Runtime::insert_global` / `set_global` API, which accepts
+`OwnedValue`, serde values passed by reference when the `serde` feature is
+enabled, and `VelaValue` handles from the same runtime. Scripts see ordinary
+script records, arrays, maps, sets, enums, and scalars. These values are
+VM-managed script objects, not Rust host state and not `HostRef` roots. Runtime
+global roots are retained across calls and included in GC roots during calls.
 Missing runtime instances are runtime errors.
 
 For non-global script values returned from calls, Rust can choose
@@ -188,8 +190,8 @@ detached Rust boundary copy when needed.
 
 Globals do not reintroduce module-level `let` or mutable static
 initialization. A script function may construct a value and return it to Rust;
-Rust can then insert that returned `OwnedValue` as the runtime instance for a
-declared global.
+Rust can then insert that returned `VelaValue` or materialized `OwnedValue` as
+the runtime instance for a declared global.
 
 Direct call-boundary objects implement the same method shape through
 `ScriptHostObject::call_host_method(&HostPath, HostMethodId, &[HostValue])`.

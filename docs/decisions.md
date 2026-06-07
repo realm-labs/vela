@@ -133,13 +133,14 @@ GC.
 
 With the `serde` feature enabled, Rust structs and enums that implement serde
 traits can cross the ordinary script-owned value boundary explicitly through
-`to_owned_value`, `from_owned_value`, and `CallArgs::with_serde_value`. This
-path serializes Rust data into Vela-owned records, enums, arrays, maps, sets,
-and scalars. It is a snapshot/data-transfer path for messages, configs, and
-return values, not a host-state binding: script mutation of the value does not
-write back to the original Rust object unless Rust deserializes a returned value
-and applies it itself. Host state that must be mutated in place still uses
-`HostRef`, `HostPath`, `PathProxy`, and `HostAccess`.
+`to_owned_value`, `from_owned_value`, `CallArgs::with_serde_value`, and
+`Runtime::insert_global`. This path serializes Rust data into Vela-owned
+records, enums, arrays, maps, sets, and scalars. It is a
+snapshot/data-transfer path for messages, configs, globals, and return values,
+not a host-state binding: script mutation of the value does not write back to
+the original Rust object unless Rust deserializes a returned value and applies
+it itself. Host state that must be mutated in place still uses `HostRef`,
+`HostPath`, `PathProxy`, and `HostAccess`.
 
 `Runtime` and `VelaValue` are `Send` so hosts can move a runtime and retained
 script values into worker or actor threads. They are not a concurrent execution
@@ -228,14 +229,14 @@ persistent host-object roots and then use normal `HostRef`, `HostPath`,
 `ScriptStateAdapter`, and write-through `HostAccess` semantics. Vela-defined
 script-value globals use the same declaration surface but are stored as
 persistent VM heap roots owned by `Runtime`; Rust constructs, reads, replaces,
-or updates them through `OwnedValue` APIs. Rust-side construction supports both
-explicit constructors such as `OwnedValue::record` and convenience macros such
-as `owned_record!` for nested heterogeneous values. The public runtime methods
-use short embedding names such as `insert_global`, `set_global`, `global`, and
-`update_global`; host-object globals keep their explicit host-specific API.
-Rust can also keep a returned script aggregate as `VelaValue` and pass it back
-to script calls on the same runtime; conversion to `OwnedValue` is explicit
-when Rust needs to inspect or mutate a detached copy.
+or updates them through one short embedding API: `insert_global` accepts
+`OwnedValue`, serde values passed by reference, and `VelaValue` handles from
+the same runtime. Rust-side construction supports explicit constructors such as
+`OwnedValue::record`, convenience macros such as `owned_record!`, and serde
+struct/enum conversion. `VelaValue` insertion attaches the runtime-managed value
+as a global root without first materializing a detached `OwnedValue`. The other
+public runtime methods remain `set_global`, `global`, and `update_global`;
+host-object globals keep their explicit host-specific API.
 The VM receives script globals as a concrete runtime value map rather than an
 extension trait, because there is only one runtime-owned script global store.
 Declared globals compile to `GlobalSlot` operands for the runtime hot path;

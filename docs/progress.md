@@ -72,7 +72,8 @@ Cranelift JIT.
   standard natives, capability profiles, reflection permissions, compiler options, dynamic
   `CallArgs`, direct call-boundary `&T`/`&mut T` host object bindings,
   module-level `global` declarations backed by persistent Rust-defined host objects
-  or Runtime-owned script values with Rust `OwnedValue` construction/update APIs,
+  or Runtime-owned script values with unified `insert_global` support for
+  `OwnedValue`, serde snapshots, and same-runtime `VelaValue` handles,
   feature-gated serde conversion between Rust structs/enums and script-owned
   `OwnedValue` records/enums for snapshot-style arguments and results,
   runtime-managed `VelaValue` call returns that can be passed back to later calls

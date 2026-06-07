@@ -1,6 +1,8 @@
 use std::cell::Cell;
 use std::collections::BTreeMap;
 
+#[cfg(feature = "serde")]
+use serde::{Deserialize, Serialize};
 use vela_bytecode::compiler::compile_program_source_with_options;
 use vela_common::{FieldId, GlobalSlot, HostMethodId, HostObjectId, HostTypeId, SourceId, TypeId};
 use vela_host::access::HostAccess;
@@ -418,6 +420,104 @@ fn read_name() {
 
     assert_eq!(after_rust_update.into_value(), OwnedValue::Int(41));
     assert_eq!(name.into_value(), OwnedValue::String("boot".to_owned()));
+}
+
+#[cfg(feature = "serde")]
+#[derive(Debug, Eq, PartialEq, Serialize, Deserialize)]
+struct SerdeServerState {
+    level: i64,
+    name: String,
+}
+
+#[cfg(feature = "serde")]
+#[test]
+fn runtime_insert_global_accepts_serde_struct_with_single_api() {
+    let engine = Engine::builder().build().expect("engine should build");
+    let program = compile_program_source_with_options(
+        SourceId::new(1),
+        r#"
+struct SerdeServerState {
+    level: Int,
+    name: String,
+}
+
+global state: SerdeServerState;
+
+fn bump(amount) {
+    state.level += amount;
+    return state.level;
+}
+
+fn read_name() {
+    return state.name;
+}
+"#,
+        &engine.compiler_options(),
+    )
+    .expect("program should compile");
+    let mut runtime = Runtime::new(engine, program);
+    let state = SerdeServerState {
+        level: 5,
+        name: "serde".to_owned(),
+    };
+
+    runtime
+        .insert_global("main::state", &state)
+        .expect("serde global should insert through unified API");
+
+    let level = runtime
+        .call(
+            "bump",
+            CallArgs::from_positional([OwnedValue::Int(4)]),
+            CallOptions::unbounded(),
+        )
+        .expect("bump should run");
+    let name = runtime
+        .call("read_name", CallArgs::new(), CallOptions::unbounded())
+        .expect("read name should run");
+
+    assert_eq!(state.level, 5);
+    assert_eq!(level.into_value(), OwnedValue::Int(9));
+    assert_eq!(name.into_value(), OwnedValue::String("serde".to_owned()));
+}
+
+#[test]
+fn runtime_insert_global_accepts_runtime_managed_value_with_single_api() {
+    let engine = Engine::builder().build().expect("engine should build");
+    let program = compile_program_source_with_options(
+        SourceId::new(1),
+        r#"
+struct ServerState {
+    level: Int,
+    name: String,
+}
+
+global state: ServerState;
+
+fn make_state() {
+    return ServerState { level: 11, name: "runtime" };
+}
+
+fn read_level() {
+    return state.level;
+}
+"#,
+        &engine.compiler_options(),
+    )
+    .expect("program should compile");
+    let mut runtime = Runtime::new(engine, program);
+
+    let state = runtime
+        .call_value("make_state", CallArgs::new(), CallOptions::unbounded())
+        .expect("factory should return runtime-managed value");
+    runtime
+        .insert_global("main::state", state)
+        .expect("runtime value should insert through unified API");
+
+    let level = runtime
+        .call("read_level", CallArgs::new(), CallOptions::unbounded())
+        .expect("read level should run");
+    assert_eq!(level.into_value(), OwnedValue::Int(11));
 }
 
 #[test]
