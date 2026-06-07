@@ -83,6 +83,8 @@ const langZh = document.querySelector("#lang-zh");
 const docsLink = document.querySelector('[data-i18n="docs"]');
 const exampleSelect = document.querySelector("#example-select");
 const sourceEditor = document.querySelector("#source-editor");
+const sourceHighlight = document.querySelector("#source-highlight");
+const sourceHighlightCode = sourceHighlight.querySelector("code");
 const entryInput = document.querySelector("#entry-input");
 const outputView = document.querySelector("#output-view");
 const diagnosticList = document.querySelector("#diagnostic-list");
@@ -105,11 +107,14 @@ function loadExample(index) {
   }
   sourceEditor.value = example.source;
   entryInput.value = example.entry;
+  syncEditorHighlight();
   outputView.textContent = "";
   diagnosticList.replaceChildren();
 }
 
 exampleSelect.addEventListener("change", () => loadExample(Number(exampleSelect.value)));
+sourceEditor.addEventListener("input", syncEditorHighlight);
+sourceEditor.addEventListener("scroll", syncEditorScroll);
 document.querySelector("#compile-button").addEventListener("click", () => execute("compile"));
 document.querySelector("#run-button").addEventListener("click", () => execute("run"));
 window.addEventListener("hashchange", route);
@@ -228,6 +233,16 @@ function renderDiagnostics(diagnostics) {
   }
 }
 
+function syncEditorHighlight() {
+  sourceHighlightCode.innerHTML = highlightVela(sourceEditor.value || " ");
+  syncEditorScroll();
+}
+
+function syncEditorScroll() {
+  sourceHighlight.scrollTop = sourceEditor.scrollTop;
+  sourceHighlight.scrollLeft = sourceEditor.scrollLeft;
+}
+
 function markdownToHtml(markdown) {
   const lines = markdown.replace(/\r\n/g, "\n").split("\n");
   const html = [];
@@ -313,31 +328,172 @@ function renderCodeBlock(code, language) {
 }
 
 function highlightVela(code) {
-  const placeholders = [];
-  let escaped = escapeHtml(code);
-  escaped = escaped.replace(/(&quot;(?:\\.|[^&])*?&quot;)/g, (match) =>
-    stash(`<span class="tok-string">${match}</span>`),
-  );
-  escaped = escaped.replace(/\b(\d+(?:\.\d+)?)\b/g, '<span class="tok-number">$1</span>');
-  escaped = escaped.replace(
-    /\b(struct|enum|trait|impl|for|fn|let|return|if|else|match|true|false|null|global)\b/g,
-    '<span class="tok-keyword">$1</span>',
-  );
-  escaped = escaped.replace(
-    /\b(Int|Float|Bool|String|None|Option|Result)\b/g,
-    '<span class="tok-type">$1</span>',
-  );
-  escaped = escaped.replace(/\b([a-zA-Z_][\w]*)\s*(?=\()/g, '<span class="tok-call">$1</span>');
-  return placeholders.reduce(
-    (text, value, index) => text.replace(`__VELA_TOKEN_${index}__`, value),
-    escaped,
-  );
+  let html = "";
+  let index = 0;
+  while (index < code.length) {
+    const char = code[index];
+    const next = code[index + 1];
 
-  function stash(value) {
-    const index = placeholders.length;
-    placeholders.push(value);
-    return `__VELA_TOKEN_${index}__`;
+    if (char === "/" && next === "/") {
+      const start = index;
+      index = readLineComment(code, index + 2);
+      html += token("comment", code.slice(start, index));
+      continue;
+    }
+
+    if (char === "/" && next === "*") {
+      const start = index;
+      index = readBlockComment(code, index + 2);
+      html += token("comment", code.slice(start, index));
+      continue;
+    }
+
+    if (char === '"') {
+      const start = index;
+      index = readString(code, index + 1);
+      html += token("string", code.slice(start, index));
+      continue;
+    }
+
+    if (isDigit(char)) {
+      const start = index;
+      index = readNumber(code, index + 1);
+      html += token("number", code.slice(start, index));
+      continue;
+    }
+
+    if (isIdentStart(char)) {
+      const start = index;
+      index = readIdent(code, index + 1);
+      const word = code.slice(start, index);
+      if (VELA_KEYWORDS.has(word)) {
+        html += token("keyword", word);
+      } else if (VELA_TYPES.has(word)) {
+        html += token("type", word);
+      } else if (nextNonSpace(code, index) === "(") {
+        html += token("call", word);
+      } else {
+        html += escapeHtml(word);
+      }
+      continue;
+    }
+
+    html += escapeHtml(char);
+    index += 1;
   }
+  return html;
+}
+
+const VELA_KEYWORDS = new Set([
+  "as",
+  "break",
+  "const",
+  "continue",
+  "else",
+  "enum",
+  "false",
+  "fn",
+  "for",
+  "global",
+  "if",
+  "impl",
+  "in",
+  "let",
+  "match",
+  "null",
+  "return",
+  "struct",
+  "trait",
+  "true",
+  "use",
+]);
+
+const VELA_TYPES = new Set([
+  "Bool",
+  "Float",
+  "Int",
+  "None",
+  "Option",
+  "Result",
+  "String",
+  "bool",
+  "float",
+  "int",
+  "string",
+]);
+
+function token(kind, text) {
+  return `<span class="tok-${kind}">${escapeHtml(text)}</span>`;
+}
+
+function readLineComment(code, index) {
+  while (index < code.length && code[index] !== "\n") {
+    index += 1;
+  }
+  return index;
+}
+
+function readBlockComment(code, index) {
+  let depth = 1;
+  while (index < code.length && depth > 0) {
+    if (code[index] === "/" && code[index + 1] === "*") {
+      depth += 1;
+      index += 2;
+    } else if (code[index] === "*" && code[index + 1] === "/") {
+      depth -= 1;
+      index += 2;
+    } else {
+      index += 1;
+    }
+  }
+  return index;
+}
+
+function readString(code, index) {
+  while (index < code.length) {
+    if (code[index] === "\\") {
+      index += 2;
+    } else if (code[index] === '"') {
+      index += 1;
+      break;
+    } else {
+      index += 1;
+    }
+  }
+  return index;
+}
+
+function readNumber(code, index) {
+  while (index < code.length && /[0-9A-Za-z_.]/.test(code[index])) {
+    index += 1;
+  }
+  return index;
+}
+
+function readIdent(code, index) {
+  while (index < code.length && isIdentPart(code[index])) {
+    index += 1;
+  }
+  return index;
+}
+
+function nextNonSpace(code, index) {
+  while (index < code.length && /[ \t\r\n]/.test(code[index])) {
+    index += 1;
+  }
+  return code[index];
+}
+
+function isDigit(char) {
+  return char >= "0" && char <= "9";
+}
+
+function isIdentStart(char) {
+  return /[A-Za-z_]/.test(char);
+}
+
+function isIdentPart(char) {
+  return /[A-Za-z0-9_]/.test(char);
 }
 
 function inlineMarkdown(text) {

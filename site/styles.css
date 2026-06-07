@@ -332,6 +332,11 @@ pre {
   color: #f0abfc;
 }
 
+.tok-comment {
+  color: #8191aa;
+  font-style: italic;
+}
+
 .playground-toolbar {
   border-bottom: 1px solid var(--line);
   flex-wrap: wrap;
@@ -381,14 +386,72 @@ input {
   font-weight: 700;
 }
 
-textarea {
+.editor-shell {
+  background: var(--code-panel);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  min-height: 520px;
+  overflow: hidden;
+  position: relative;
+}
+
+#source-highlight,
+#source-editor {
+  border: 0;
   font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
   font-size: 14px;
   line-height: 1.55;
+  margin: 0;
   min-height: 520px;
   padding: 16px;
-  resize: vertical;
+  tab-size: 4;
   width: 100%;
+}
+
+#source-highlight {
+  background: transparent;
+  color: var(--code-text);
+  inset: 0;
+  overflow: auto;
+  pointer-events: none;
+  position: absolute;
+  white-space: pre-wrap;
+}
+
+#source-highlight::-webkit-scrollbar {
+  display: none;
+}
+
+#source-highlight {
+  scrollbar-width: none;
+}
+
+#source-highlight code {
+  display: block;
+  min-height: 100%;
+  white-space: pre-wrap;
+}
+
+#source-editor {
+  background: transparent;
+  caret-color: #e2e8f0;
+  color: transparent;
+  display: block;
+  outline: none;
+  overflow: auto;
+  position: relative;
+  resize: vertical;
+  z-index: 1;
+}
+
+#source-editor::selection {
+  background: rgba(45, 212, 191, 0.24);
+  color: transparent;
+}
+
+.editor-shell:focus-within {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px rgba(15, 118, 110, 0.14);
 }
 
 .output-pane {

@@ -70,7 +70,14 @@
           <div class="playground-grid">
             <label class="editor-pane">
               <span>main.vela</span>
-              <textarea id="source-editor" spellcheck="false"></textarea>
+              <div class="editor-shell">
+                <pre id="source-highlight" aria-hidden="true"><code></code></pre>
+                <textarea
+                  id="source-editor"
+                  aria-label="Vela source editor"
+                  spellcheck="false"
+                ></textarea>
+              </div>
             </label>
             <div class="output-pane">
               <div class="output-header">
