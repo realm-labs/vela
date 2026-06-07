@@ -87,6 +87,10 @@ Cranelift JIT.
   type specs, host index capability metadata, typed host path arguments,
   string-key host path segments, hot-reload policies, derive-generated host
   bindings, and reflection schemas.
+- A dedicated `vela_c_api` crate exists for the external C ABI boundary,
+  separate from hot-reload ABI. The first slice exposes opaque engine/runtime
+  handles, source compilation, no-argument entry calls, scalar C result values,
+  and ABI-owned string/value cleanup.
 - Macro-generated host and native bindings with stable IDs, rename aliases,
   effect-aware registration, and budget-aware context helper coverage.
 - Hot reload staging and safe-point reports for source-file, directory, and

@@ -49,6 +49,14 @@ Vela source files use `.vela`. Future precompiled bytecode-only artifacts use
 schema metadata, source maps, or reload metadata, it should use a separate
 package extension rather than overloading `.vbc`.
 
+### External C ABI Boundary
+
+External binary embedding uses a dedicated `vela_c_api` crate. It is separate
+from `vela_hot_reload`: hot-reload ABI describes script/module/schema
+compatibility, while `vela_c_api` owns opaque C handles, C-compatible value
+layouts, and future host adapter vtables. The C ABI must not expose Rust
+references or place Rust host state under script GC.
+
 ### Module Imports And Exports
 
 Vela has no source-level `module` declaration. `compile_file(path)` is a

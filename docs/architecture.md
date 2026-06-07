@@ -80,6 +80,7 @@ vela/
     vela_analysis/        # Semantic model, TypeFacts, completion data
     vela_bytecode/        # Instruction, CodeObject, compiler
     vela_vm/              # Runtime, VM, Value, GC, call frames
+    vela_c_api/           # C ABI opaque handles and external FFI surface
     vela_reflect/         # TypeRegistry, TypeDesc, reflection API
     vela_host/            # HostRef, HostPath, HostAccess, StateAdapter
     vela_macros/          # #[derive(ScriptHost)] and related macros
