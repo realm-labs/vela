@@ -38,6 +38,167 @@ pub enum OwnedValue {
     Iterator(OwnedIteratorState),
 }
 
+impl OwnedValue {
+    #[must_use]
+    pub fn array<T>(values: impl IntoIterator<Item = T>) -> Self
+    where
+        T: Into<Self>,
+    {
+        Self::Array(values.into_iter().map(Into::into).collect())
+    }
+
+    #[must_use]
+    pub fn map<K, V>(entries: impl IntoIterator<Item = (K, V)>) -> Self
+    where
+        K: Into<String>,
+        V: Into<Self>,
+    {
+        Self::Map(
+            entries
+                .into_iter()
+                .map(|(key, value)| (key.into(), value.into()))
+                .collect(),
+        )
+    }
+
+    #[must_use]
+    pub fn set<T>(values: impl IntoIterator<Item = T>) -> Self
+    where
+        T: Into<Self>,
+    {
+        Self::Set(values.into_iter().map(Into::into).collect())
+    }
+
+    #[must_use]
+    pub fn record<K, V>(
+        type_name: impl Into<String>,
+        fields: impl IntoIterator<Item = (K, V)>,
+    ) -> Self
+    where
+        K: Into<String>,
+        V: Into<Self>,
+    {
+        let type_name = type_name.into();
+        let fields = ScriptFields::from_pairs(
+            &type_name,
+            fields
+                .into_iter()
+                .map(|(field, value)| (field.into(), value.into())),
+        );
+        Self::Record { type_name, fields }
+    }
+
+    #[must_use]
+    pub fn enum_variant<K, V>(
+        enum_name: impl Into<String>,
+        variant: impl Into<String>,
+        fields: impl IntoIterator<Item = (K, V)>,
+    ) -> Self
+    where
+        K: Into<String>,
+        V: Into<Self>,
+    {
+        let enum_name = enum_name.into();
+        let variant = variant.into();
+        let owner = format!("{enum_name}::{variant}");
+        let fields = ScriptFields::from_pairs(
+            &owner,
+            fields
+                .into_iter()
+                .map(|(field, value)| (field.into(), value.into())),
+        );
+        Self::Enum {
+            enum_name,
+            variant,
+            fields,
+        }
+    }
+
+    #[must_use]
+    pub fn field(&self, field: &str) -> Option<&Self> {
+        match self {
+            Self::Record { fields, .. } | Self::Enum { fields, .. } => fields.get(field),
+            _ => None,
+        }
+    }
+
+    pub fn set_existing_field(&mut self, field: &str, value: impl Into<Self>) -> Result<(), Self> {
+        let value = value.into();
+        match self {
+            Self::Record { fields, .. } | Self::Enum { fields, .. } => {
+                fields.set_existing(field, value)
+            }
+            _ => Err(value),
+        }
+    }
+}
+
+#[macro_export]
+macro_rules! owned_array {
+    [$($value:expr),* $(,)?] => {
+        $crate::owned_value::OwnedValue::Array(vec![
+            $($crate::owned_value::OwnedValue::from($value)),*
+        ])
+    };
+}
+
+#[macro_export]
+macro_rules! owned_map {
+    {} => {
+        $crate::owned_value::OwnedValue::map(
+            Vec::<(String, $crate::owned_value::OwnedValue)>::new(),
+        )
+    };
+    {$($key:expr => $value:expr),* $(,)?} => {
+        $crate::owned_value::OwnedValue::map(vec![
+            $(($key, $crate::owned_value::OwnedValue::from($value))),*
+        ])
+    };
+}
+
+#[macro_export]
+macro_rules! owned_set {
+    [$($value:expr),* $(,)?] => {
+        $crate::owned_value::OwnedValue::Set(vec![
+            $($crate::owned_value::OwnedValue::from($value)),*
+        ])
+    };
+}
+
+#[macro_export]
+macro_rules! owned_record {
+    ($type_name:expr, {}) => {
+        $crate::owned_value::OwnedValue::record(
+            $type_name,
+            Vec::<(String, $crate::owned_value::OwnedValue)>::new(),
+        )
+    };
+    ($type_name:expr, {$($field:expr => $value:expr),* $(,)?}) => {
+        $crate::owned_value::OwnedValue::record(
+            $type_name,
+            vec![$(($field, $crate::owned_value::OwnedValue::from($value))),*],
+        )
+    };
+}
+
+#[macro_export]
+macro_rules! owned_enum {
+    ($enum_name:expr, $variant:expr, {}) => {
+        $crate::owned_value::OwnedValue::enum_variant(
+            $enum_name,
+            $variant,
+            Vec::<(String, $crate::owned_value::OwnedValue)>::new(),
+        )
+    };
+    ($enum_name:expr, $variant:expr, {$($field:expr => $value:expr),* $(,)?}) => {
+        $crate::owned_value::OwnedValue::enum_variant(
+            $enum_name,
+            $variant,
+            vec![$(($field, $crate::owned_value::OwnedValue::from($value))),*],
+        )
+    };
+}
+
 #[derive(Clone, Debug, PartialEq)]
 pub struct OwnedClosureValue {
     pub(crate) code: Arc<CodeObject>,
@@ -92,6 +253,12 @@ impl From<&Constant> for OwnedValue {
 impl From<bool> for OwnedValue {
     fn from(value: bool) -> Self {
         Self::Bool(value)
+    }
+}
+
+impl From<i32> for OwnedValue {
+    fn from(value: i32) -> Self {
+        Self::Int(i64::from(value))
     }
 }
 
@@ -180,5 +347,75 @@ fn owned_value_eq_runtime(lhs: &OwnedValue, rhs: &Value) -> bool {
         (OwnedValue::Range(lhs), Value::Range(rhs)) => lhs == rhs,
         (OwnedValue::HostRef(lhs), Value::HostRef(rhs)) => lhs == rhs,
         _ => false,
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::OwnedValue;
+
+    #[test]
+    fn owned_value_constructors_build_complex_values() {
+        let state = OwnedValue::record(
+            "ServerState",
+            vec![
+                ("level", 1.into()),
+                ("name", "boot".into()),
+                (
+                    "stats",
+                    OwnedValue::record("ServerStats", [("handled_ticks", 0)]),
+                ),
+            ],
+        );
+
+        assert_eq!(state.field("level"), Some(&OwnedValue::Int(1)));
+        assert_eq!(
+            state
+                .field("stats")
+                .and_then(|stats| stats.field("handled_ticks")),
+            Some(&OwnedValue::Int(0))
+        );
+    }
+
+    #[test]
+    fn owned_value_macros_build_heterogeneous_values() {
+        let state = crate::owned_record!("ServerState", {
+            "level" => 10,
+            "name" => "rust-updated",
+            "stats" => crate::owned_record!("ServerStats", {
+                "handled_ticks" => 7,
+            }),
+            "rewards" => crate::owned_array![
+                crate::owned_map! {"kind" => "gold", "amount" => 5},
+                crate::owned_map! {"kind" => "gem", "amount" => 1},
+            ],
+        });
+
+        assert_eq!(state.field("level"), Some(&OwnedValue::Int(10)));
+        assert_eq!(
+            state
+                .field("stats")
+                .and_then(|stats| stats.field("handled_ticks")),
+            Some(&OwnedValue::Int(7))
+        );
+    }
+
+    #[test]
+    fn owned_value_set_existing_field_updates_records_and_enums() {
+        let mut state = crate::owned_record!("ServerState", {
+            "level" => 1,
+        });
+
+        assert_eq!(state.set_existing_field("level", 2), Ok(()));
+        assert_eq!(state.field("level"), Some(&OwnedValue::Int(2)));
+        assert_eq!(
+            state.set_existing_field("missing", 3),
+            Err(OwnedValue::Int(3))
+        );
+        assert_eq!(
+            OwnedValue::Int(1).set_existing_field("level", 2),
+            Err(OwnedValue::Int(2))
+        );
+        assert_eq!(crate::owned_record!("Empty", {}).field("missing"), None);
     }
 }

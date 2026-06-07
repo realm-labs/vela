@@ -92,7 +92,8 @@ Cranelift JIT.
   concrete host type specs, receiver-path methods, keyed host paths, child
   receiver method calls, and typed host path arguments. A standalone script
   global example covers VM-owned global initialization, script mutation, Rust
-  `OwnedValue` updates, and later script reads of the same persistent value.
+  `OwnedValue` constructor/macro updates, and later script reads of the same
+  persistent value.
 - A parser fuzz target exists under `fuzz/` and can be compile-checked even
   when the local machine has not installed `cargo-fuzz`.
 - Current benchmark rules, baseline summaries, and M19 exit conclusions live in

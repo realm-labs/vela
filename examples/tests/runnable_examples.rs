@@ -69,8 +69,8 @@ fn game_server_examples_run() {
         ),
         (
             env!("CARGO_BIN_EXE_script_global"),
-            "script_global first=Int(8) second=Int(19) name=String(\"rust-updated\") \
-             final_level=Int(11) final_gold=Int(8)\n",
+            "script_global first=Int(9) second=Int(27) name=String(\"rust-updated\") \
+             final_level=Int(11) final_gold=Int(8) ticks=Int(8)\n",
         ),
     ];
 

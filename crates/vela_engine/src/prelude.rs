@@ -52,3 +52,4 @@ pub use vela_reflect::registry::{
     TraitMethodDesc, TypeDesc, TypeKey, TypeKind, VariantDesc,
 };
 pub use vela_vm::owned_value::OwnedValue;
+pub use vela_vm::{owned_array, owned_enum, owned_map, owned_record, owned_set};
