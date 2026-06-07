@@ -5,13 +5,13 @@ edition.workspace = true
 license.workspace = true
 
 [dependencies]
-vela_bytecode = { path = "../vela_bytecode" }
-vela_common = { path = "../vela_common" }
-vela_hir = { path = "../vela_hir" }
-vela_reflect = { path = "../vela_reflect" }
+vela_bytecode = { workspace = true }
+vela_common = { workspace = true }
+vela_hir = { workspace = true }
+vela_reflect = { workspace = true }
 
 [dev-dependencies]
-vela_vm = { path = "../vela_vm" }
+vela_vm = { workspace = true }
 
 [lints]
 workspace = true

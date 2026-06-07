@@ -13,6 +13,7 @@ members = [
     "crates/vela_syntax",
     "crates/vela_vm",
     "examples",
+    "fuzz",
 ]
 resolver = "3"
 
@@ -20,6 +21,26 @@ resolver = "3"
 edition = "2024"
 license = "MIT OR Apache-2.0"
 version = "0.1.0"
+
+[workspace.dependencies]
+clap = { version = "4.5", features = ["derive"] }
+libfuzzer-sys = "0.4"
+proc-macro2 = "1"
+quote = "1"
+serde = { version = "1", features = ["derive"] }
+syn = { version = "2", features = ["full"] }
+vela_analysis = { path = "crates/vela_analysis" }
+vela_bytecode = { path = "crates/vela_bytecode" }
+vela_cli = { path = "crates/vela_cli" }
+vela_common = { path = "crates/vela_common" }
+vela_engine = { path = "crates/vela_engine" }
+vela_hir = { path = "crates/vela_hir" }
+vela_hot_reload = { path = "crates/vela_hot_reload" }
+vela_host = { path = "crates/vela_host" }
+vela_macros = { path = "crates/vela_macros" }
+vela_reflect = { path = "crates/vela_reflect" }
+vela_syntax = { path = "crates/vela_syntax" }
+vela_vm = { path = "crates/vela_vm" }
 
 [workspace.lints.rust]
 unsafe_code = "forbid"

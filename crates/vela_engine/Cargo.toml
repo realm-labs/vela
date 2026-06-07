@@ -5,20 +5,20 @@ license.workspace = true
 version.workspace = true
 
 [dependencies]
-serde = { version = "1", features = ["derive"], optional = true }
-vela_bytecode = { path = "../vela_bytecode" }
-vela_common = { path = "../vela_common" }
-vela_hir = { path = "../vela_hir" }
-vela_hot_reload = { path = "../vela_hot_reload" }
-vela_host = { path = "../vela_host" }
-vela_reflect = { path = "../vela_reflect" }
-vela_vm = { path = "../vela_vm" }
+serde = { workspace = true, optional = true }
+vela_bytecode = { workspace = true }
+vela_common = { workspace = true }
+vela_hir = { workspace = true }
+vela_hot_reload = { workspace = true }
+vela_host = { workspace = true }
+vela_reflect = { workspace = true }
+vela_vm = { workspace = true }
 
 [features]
 serde = ["dep:serde", "vela_vm/serde"]
 
 [dev-dependencies]
-vela_macros = { path = "../vela_macros" }
+vela_macros = { workspace = true }
 
 [[bench]]
 name = "hot_reload"

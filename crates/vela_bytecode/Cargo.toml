@@ -5,9 +5,9 @@ edition.workspace = true
 license.workspace = true
 
 [dependencies]
-vela_common = { path = "../vela_common" }
-vela_hir = { path = "../vela_hir" }
-vela_syntax = { path = "../vela_syntax" }
+vela_common = { workspace = true }
+vela_hir = { workspace = true }
+vela_syntax = { workspace = true }
 
 [lints]
 workspace = true
