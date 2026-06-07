@@ -1,17 +1,16 @@
 [package]
 name = "vela-fuzz"
-version.workspace = true
+version = "0.0.0"
 publish = false
-edition.workspace = true
-license.workspace = true
+edition = "2024"
 
 [package.metadata]
 cargo-fuzz = true
 
 [dependencies]
-libfuzzer-sys = { workspace = true }
-vela_common = { workspace = true }
-vela_syntax = { workspace = true }
+libfuzzer-sys = "0.4"
+vela_common = { path = "../crates/vela_common" }
+vela_syntax = { path = "../crates/vela_syntax" }
 
 [[bin]]
 name = "parser"
@@ -19,3 +18,6 @@ path = "fuzz_targets/parser.rs"
 test = false
 doc = false
 bench = false
+
+[workspace]
+members = ["."]
