@@ -35,20 +35,20 @@ use crate::reload::{
 
 mod call_args;
 mod handles;
+mod state;
 
 pub use call_args::CallArgs;
 pub use handles::{RuntimeCallTarget, RuntimeMethodTarget, VelaFunction, VelaMethod};
 
 use call_args::{CallArgsAdapter, EmptyStateAdapter, call_args_type_error};
 use handles::RuntimeCallExecution;
+use state::RuntimeState;
 
 pub struct Runtime {
-    id: u64,
     engine: Engine,
     program: Program,
     hot_reload: Option<HotReloadRuntime>,
-    globals: RuntimeGlobalStore,
-    script_globals: RuntimeScriptGlobalStore,
+    state: RuntimeState,
 }
 
 static NEXT_RUNTIME_ID: AtomicU64 = AtomicU64::new(1);
@@ -62,12 +62,10 @@ impl Runtime {
     pub fn new(engine: Engine, program: Program) -> Self {
         let global_names = program.global_names().to_vec();
         Self {
-            id: next_runtime_id(),
             engine,
             program,
             hot_reload: None,
-            globals: RuntimeGlobalStore::with_global_layout(&global_names),
-            script_globals: RuntimeScriptGlobalStore::with_global_layout(&global_names),
+            state: RuntimeState::with_global_layout(&global_names),
         }
     }
 
@@ -76,12 +74,10 @@ impl Runtime {
         let program = version.to_program();
         let global_names = program.global_names().to_vec();
         Self {
-            id: next_runtime_id(),
             engine,
             program,
             hot_reload: Some(HotReloadRuntime::new(version)),
-            globals: RuntimeGlobalStore::with_global_layout(&global_names),
-            script_globals: RuntimeScriptGlobalStore::with_global_layout(&global_names),
+            state: RuntimeState::with_global_layout(&global_names),
         }
     }
 
@@ -97,20 +93,19 @@ impl Runtime {
 
     fn set_global_layout_from_program(&mut self) {
         let names = self.program.global_names();
-        self.globals.set_global_layout(names);
-        self.script_globals.set_global_layout(names);
+        self.state.set_global_layout(names);
     }
 
     pub fn insert_host_global<T>(&mut self, name: impl Into<String>, value: T) -> HostRef
     where
         T: ScriptHostObject + Send + 'static,
     {
-        self.globals.insert_host(name, value)
+        self.state.globals.insert_host(name, value)
     }
 
     #[must_use]
     pub fn host_global_ref(&self, name: &str) -> Option<HostRef> {
-        self.globals.host_ref(name)
+        self.state.globals.host_ref(name)
     }
 
     pub fn insert_global(
@@ -130,7 +125,7 @@ impl Runtime {
     }
 
     pub fn global(&mut self, name: &str) -> VmResult<Option<OwnedValue>> {
-        self.script_globals.value(name)
+        self.state.script_globals.value(name)
     }
 
     pub fn update_global(
@@ -138,7 +133,7 @@ impl Runtime {
         name: &str,
         update: impl FnOnce(&mut OwnedValue),
     ) -> VmResult<()> {
-        self.script_globals.update(name, update)
+        self.state.script_globals.update(name, update)
     }
 
     #[must_use]
@@ -317,7 +312,7 @@ impl Runtime {
             .function(&name)
             .ok_or_else(|| unknown_function(name.clone()))?;
         Ok(VelaFunction {
-            runtime_id: self.id,
+            runtime_id: self.state.id,
             name,
             version_id: self.current_program_version_id(),
             params: code.params.clone(),
@@ -340,7 +335,7 @@ impl Runtime {
             .script_method_by_id(&receiver_type, method_id)
             .ok_or_else(|| unknown_method(method.clone()))?;
         Ok(VelaMethod {
-            runtime_id: self.id,
+            runtime_id: self.state.id,
             receiver_type,
             name: method,
             method_id,
@@ -373,27 +368,20 @@ impl Runtime {
     where
         T: RuntimeCallTarget,
     {
-        let Self {
-            id,
-            engine,
-            program,
-            hot_reload,
-            globals,
-            script_globals,
-        } = self;
+        let state = &mut self.state;
         let target = entry.resolve(
-            *id,
-            program,
-            current_program_version_id(hot_reload.as_ref()),
+            state.id,
+            &self.program,
+            current_program_version_id(self.hot_reload.as_ref()),
         )?;
         let mut access = HostAccess::new();
         Self::call_runtime_args(RuntimeCallExecution {
-            runtime_id: *id,
-            engine,
-            program,
-            hot_reload: hot_reload.as_ref(),
-            globals,
-            script_globals,
+            runtime_id: state.id,
+            engine: &self.engine,
+            program: &self.program,
+            hot_reload: self.hot_reload.as_ref(),
+            globals: &mut state.globals,
+            script_globals: &mut state.script_globals,
             target,
             args: &mut args,
             options,
@@ -413,64 +401,57 @@ impl Runtime {
         T: RuntimeMethodTarget,
     {
         self.check_vela_value_runtime(receiver)?;
-        let Self {
-            id,
-            engine,
-            program,
-            hot_reload,
-            globals,
-            script_globals,
-        } = self;
+        let state = &mut self.state;
         let target = method.resolve(
-            *id,
-            program,
-            current_program_version_id(hot_reload.as_ref()),
+            state.id,
+            &self.program,
+            current_program_version_id(self.hot_reload.as_ref()),
             receiver,
-            script_globals,
-            engine,
+            &state.script_globals,
+            &self.engine,
         )?;
         let mut budget = options.budget();
         let resolved = args.resolve_values(
             &target.name,
             &target.params,
             &target.param_defaults,
-            *id,
-            &mut script_globals.heap,
+            state.id,
+            &mut state.script_globals.heap,
             &mut budget,
         )?;
         let mut adapter = EmptyStateAdapter;
         let mut access = HostAccess::new();
         let mut adapter = CallArgsAdapter::new(&mut args, &mut adapter);
         let mut adapter = GlobalStoreAdapter {
-            globals,
+            globals: &mut state.globals,
             fallback: &mut adapter,
         };
         let mut host = HostExecution {
             adapter: &mut adapter,
             access: &mut access,
-            script_globals: Some(&script_globals.values),
+            script_globals: Some(&state.script_globals.values),
         };
-        let vm = runtime_vm(engine, program, hot_reload.as_ref());
-        let roots = script_globals.roots();
+        let vm = runtime_vm(&self.engine, &self.program, self.hot_reload.as_ref());
+        let roots = state.script_globals.roots();
         let result = vm.call_runtime_method(RuntimeMethodCall {
-            program,
+            program: &self.program,
             receiver: receiver.value,
             method: &target.name,
             method_id: Some(target.method_id),
             args: &resolved,
             host: &mut host,
             persistent: PersistentHeapExecution {
-                heap: &mut script_globals.heap,
+                heap: &mut state.script_globals.heap,
                 roots: &roots,
             },
             budget: &mut budget,
         })?;
-        Ok(script_globals.retain(*id, result))
+        Ok(state.script_globals.retain(state.id, result))
     }
 
     pub fn value_to_owned(&mut self, value: &VelaValue) -> VmResult<OwnedValue> {
         self.check_vela_value_runtime(value)?;
-        persistent_value_to_owned(&value.value, &mut self.script_globals.heap)
+        persistent_value_to_owned(&value.value, &mut self.state.script_globals.heap)
     }
 
     #[cfg(feature = "serde")]
@@ -479,7 +460,7 @@ impl Runtime {
         T: serde::de::DeserializeOwned,
     {
         self.check_vela_value_runtime(value)?;
-        vela_vm::serde::from_runtime_value(&value.value, &self.script_globals.heap)
+        vela_vm::serde::from_runtime_value(&value.value, &self.state.script_globals.heap)
     }
 
     #[cfg(feature = "serde")]
@@ -487,7 +468,7 @@ impl Runtime {
     where
         T: serde::de::DeserializeOwned,
     {
-        self.script_globals.value_as(name)
+        self.state.script_globals.value_as(name)
     }
 
     pub fn call_raw(
@@ -500,13 +481,13 @@ impl Runtime {
     ) -> VmResult<OwnedValue> {
         let mut budget = options.budget();
         let mut adapter = GlobalStoreAdapter {
-            globals: &mut self.globals,
+            globals: &mut self.state.globals,
             fallback: adapter,
         };
         let mut host = HostExecution {
             adapter: &mut adapter,
             access,
-            script_globals: Some(&self.script_globals.values),
+            script_globals: Some(&self.state.script_globals.values),
         };
         let vm = if let Some(hot_reload) = &self.hot_reload {
             let current = hot_reload.current();
@@ -515,15 +496,15 @@ impl Runtime {
         } else {
             self.engine.into_vm_for_program(&self.program)
         };
-        if options.managed_heap || !self.script_globals.is_empty() {
-            let roots = self.script_globals.roots();
+        if options.managed_heap || !self.state.script_globals.is_empty() {
+            let roots = self.state.script_globals.roots();
             vm.run_program_with_host_persistent_heap_and_budget(
                 &self.program,
                 entry,
                 args,
                 &mut host,
                 PersistentHeapExecution {
-                    heap: &mut self.script_globals.heap,
+                    heap: &mut self.state.script_globals.heap,
                     roots: &roots,
                 },
                 &mut budget,
@@ -620,7 +601,7 @@ impl Runtime {
     }
 
     fn check_vela_value_runtime(&self, value: &VelaValue) -> VmResult<()> {
-        if value.runtime_id == self.id {
+        if value.runtime_id == self.state.id {
             return Ok(());
         }
         Err(call_args_type_error("VelaValue belongs to another Runtime"))
@@ -633,7 +614,7 @@ impl Runtime {
     fn value_type_name(&self, value: &VelaValue) -> Option<String> {
         value_type_name(
             &value.value,
-            &self.script_globals.heap,
+            &self.state.script_globals.heap,
             self.engine.registry().as_ref(),
         )
     }
@@ -736,14 +717,14 @@ where
     T: Into<OwnedValue>,
 {
     fn insert_global(self, runtime: &mut Runtime, name: String) -> VmResult<()> {
-        runtime.script_globals.insert(name, self.into())
+        runtime.state.script_globals.insert(name, self.into())
     }
 }
 
 #[cfg(feature = "serde")]
 impl IntoGlobalValue for OwnedValue {
     fn insert_global(self, runtime: &mut Runtime, name: String) -> VmResult<()> {
-        runtime.script_globals.insert(name, self)
+        runtime.state.script_globals.insert(name, self)
     }
 }
 
@@ -753,7 +734,7 @@ macro_rules! impl_owned_global_value {
         $(
             impl IntoGlobalValue for $ty {
                 fn insert_global(self, runtime: &mut Runtime, name: String) -> VmResult<()> {
-                    runtime.script_globals.insert(name, OwnedValue::from(self))
+                    runtime.state.script_globals.insert(name, OwnedValue::from(self))
                 }
             }
         )*
@@ -767,6 +748,7 @@ impl IntoGlobalValue for VelaValue {
     fn insert_global(self, runtime: &mut Runtime, name: String) -> VmResult<()> {
         runtime.check_vela_value_runtime(&self)?;
         runtime
+            .state
             .script_globals
             .insert_runtime_value(name, self.value);
         Ok(())
@@ -777,6 +759,7 @@ impl IntoGlobalValue for &VelaValue {
     fn insert_global(self, runtime: &mut Runtime, name: String) -> VmResult<()> {
         runtime.check_vela_value_runtime(self)?;
         runtime
+            .state
             .script_globals
             .insert_runtime_value(name, self.value);
         Ok(())
@@ -790,6 +773,7 @@ where
 {
     fn insert_global(self, runtime: &mut Runtime, name: String) -> VmResult<()> {
         runtime
+            .state
             .script_globals
             .insert(name, vela_vm::serde::to_owned_value(self)?)
     }
