@@ -27,7 +27,7 @@ mod value_types;
 use std::collections::{BTreeMap, BTreeSet, HashMap};
 
 #[cfg(test)]
-use vela_common::{FieldId, HostMethodId};
+use vela_common::HostMethodId;
 use vela_common::{GlobalSlot, MethodId, SourceId, Span};
 use vela_hir::binding::{BindingMap, BindingResolution, LocalBindingKind};
 use vela_hir::ids::{HirDeclId, HirLocalId};
@@ -40,8 +40,8 @@ use vela_syntax::ast::{Argument, Block, Expr, ExprKind, FunctionItem, Param};
 #[cfg(test)]
 use crate::HostPathSegment;
 use crate::{
-    CodeObject, Constant, FrameSlotInfo, FrameSlotKind, Instruction, InstructionKind,
-    InstructionOffset, Program, Register,
+    CacheSiteKind, CodeObject, Constant, FrameSlotInfo, FrameSlotKind, Instruction,
+    InstructionKind, InstructionOffset, Program, Register,
 };
 use control_flow::LoopContext;
 use error::{CompileError, CompileErrorKind, CompileResult};
@@ -782,10 +782,18 @@ impl<'ast> Compiler<'ast> {
     }
 
     fn emit(&mut self, kind: InstructionKind) {
+        let offset = InstructionOffset(self.current_offset());
+        if let Some(cache_kind) = cache_site_kind(&kind) {
+            self.code.push_cache_site(cache_kind, offset);
+        }
         self.code.push_instruction(Instruction::new(kind));
     }
 
     fn emit_spanned(&mut self, kind: InstructionKind, span: Span) {
+        let offset = InstructionOffset(self.current_offset());
+        if let Some(cache_kind) = cache_site_kind(&kind) {
+            self.code.push_cache_site(cache_kind, offset);
+        }
         self.code
             .push_instruction(Instruction::new(kind).with_span(span));
     }
@@ -931,6 +939,37 @@ fn reject_named_args(args: &[Argument], context: &'static str) -> CompileResult<
         )));
     }
     Ok(())
+}
+
+fn cache_site_kind(kind: &InstructionKind) -> Option<CacheSiteKind> {
+    match kind {
+        InstructionKind::LoadGlobal { .. } => Some(CacheSiteKind::GlobalRead),
+        InstructionKind::CallNative { .. } => Some(CacheSiteKind::NativeCall),
+        InstructionKind::CallMethod { .. } | InstructionKind::CallMethodId { .. } => {
+            Some(CacheSiteKind::MethodCall)
+        }
+        InstructionKind::GetRecordSlot { .. } => Some(CacheSiteKind::RecordFieldRead),
+        InstructionKind::SetRecordSlot { .. } => Some(CacheSiteKind::RecordFieldWrite),
+        InstructionKind::GetHostField { .. } | InstructionKind::GetHostPath { .. } => {
+            Some(CacheSiteKind::HostPathRead)
+        }
+        InstructionKind::SetHostField { .. }
+        | InstructionKind::SetHostPath { .. }
+        | InstructionKind::AddHostField { .. }
+        | InstructionKind::SubHostField { .. }
+        | InstructionKind::MulHostField { .. }
+        | InstructionKind::DivHostField { .. }
+        | InstructionKind::RemHostField { .. }
+        | InstructionKind::AddHostPath { .. }
+        | InstructionKind::SubHostPath { .. }
+        | InstructionKind::MulHostPath { .. }
+        | InstructionKind::DivHostPath { .. }
+        | InstructionKind::RemHostPath { .. }
+        | InstructionKind::PushHostPath { .. }
+        | InstructionKind::RemoveHostPath { .. } => Some(CacheSiteKind::HostPathWrite),
+        InstructionKind::CallHostMethod { .. } => Some(CacheSiteKind::MethodCall),
+        _ => None,
+    }
 }
 
 #[cfg(test)]

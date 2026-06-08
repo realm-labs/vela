@@ -88,6 +88,20 @@ impl CacheSiteLayout {
     pub fn get(&self, id: CacheSiteId) -> Option<&CacheSiteDesc> {
         self.sites.get(id.index())
     }
+
+    pub fn push(
+        &mut self,
+        kind: CacheSiteKind,
+        function: impl Into<String>,
+        instruction_offset: InstructionOffset,
+    ) -> CacheSiteId {
+        let id = CacheSiteId::new(
+            u32::try_from(self.sites.len()).expect("cache site count exceeds u32::MAX"),
+        );
+        self.sites
+            .push(CacheSiteDesc::new(id, kind, function, instruction_offset));
+        id
+    }
 }
 
 #[cfg(test)]
@@ -104,21 +118,12 @@ mod tests {
 
     #[test]
     fn cache_site_layout_indexes_descriptors_by_id() {
-        let layout = CacheSiteLayout::new(vec![
-            CacheSiteDesc::new(
-                CacheSiteId::new(0),
-                CacheSiteKind::GlobalRead,
-                "main",
-                InstructionOffset(3),
-            ),
-            CacheSiteDesc::new(
-                CacheSiteId::new(1),
-                CacheSiteKind::RecordFieldRead,
-                "main",
-                InstructionOffset(9),
-            ),
-        ]);
+        let mut layout = CacheSiteLayout::default();
+        let global = layout.push(CacheSiteKind::GlobalRead, "main", InstructionOffset(3));
+        let record = layout.push(CacheSiteKind::RecordFieldRead, "main", InstructionOffset(9));
 
+        assert_eq!(global, CacheSiteId::new(0));
+        assert_eq!(record, CacheSiteId::new(1));
         assert_eq!(layout.len(), 2);
         assert_eq!(
             layout.get(CacheSiteId::new(1)),

@@ -134,6 +134,7 @@ pub struct CodeObject {
     pub capture_count: u16,
     pub register_count: u16,
     pub frame: FrameDebugInfo,
+    pub cache_sites: CacheSiteLayout,
     pub constants: Vec<Constant>,
     pub instructions: Vec<Instruction>,
 }
@@ -148,6 +149,7 @@ impl CodeObject {
             capture_count: 0,
             register_count,
             frame: FrameDebugInfo::default(),
+            cache_sites: CacheSiteLayout::default(),
             constants: Vec::new(),
             instructions: Vec::new(),
         }
@@ -180,6 +182,15 @@ impl CodeObject {
 
     pub fn push_instruction(&mut self, instruction: Instruction) {
         self.instructions.push(instruction);
+    }
+
+    pub fn push_cache_site(
+        &mut self,
+        kind: CacheSiteKind,
+        instruction_offset: InstructionOffset,
+    ) -> CacheSiteId {
+        self.cache_sites
+            .push(kind, self.name.clone(), instruction_offset)
     }
 
     pub fn verify(&self) -> Result<(), verification::VerificationError> {
@@ -651,6 +662,7 @@ mod tests {
         assert_eq!(code.name, "answer");
         assert!(code.params.is_empty());
         assert_eq!(code.register_count, 2);
+        assert!(code.cache_sites.is_empty());
         assert_eq!(code.constants, [Constant::Int(42)]);
         assert_eq!(code.instructions.len(), 2);
     }

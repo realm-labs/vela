@@ -1731,7 +1731,7 @@ strict runtime-local heap/value isolation
 [x] Add tests for reload image swaps, rejected reloads, and global layout rebinding.
 [x] Add RuntimeState::rebind_to_image.
 [x] Add cache-site ID types.
-[ ] Add cache-site metadata to bytecode/compiler.
+[x] Add cache-site metadata to bytecode/compiler.
 [ ] Thread InlineCaches through VM execution.
 [ ] Implement first per-runtime IC.
 [ ] Replace MakeClosure Box<CodeObject> with FunctionIndex.
