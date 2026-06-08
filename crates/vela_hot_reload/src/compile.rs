@@ -214,7 +214,7 @@ fn update_from_program(
         functions.insert(symbol, Arc::new(code));
     }
     let previous_script_method_functions = previous
-        .script_methods
+        .script_methods()
         .function_names()
         .collect::<BTreeSet<_>>();
     for old_name in previous.functions.keys() {
@@ -229,7 +229,7 @@ fn update_from_program(
     }
     previous.abi().ensure_compatible_update(&abi)?;
     let (changed_modules, impacted_modules) =
-        module_changes(previous.script_metadata.as_ref(), script_metadata.as_ref());
+        module_changes(previous.script_metadata(), script_metadata.as_ref());
     let changes =
         AcceptedHotReloadChanges::new(changed_functions, changed_modules, impacted_modules);
     Ok(HotUpdate::new(

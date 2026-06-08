@@ -66,6 +66,42 @@ fn main() {
 }
 
 #[test]
+fn program_version_owns_program_image_indexes() {
+    let version = compile_initial(
+        SourceId::new(1),
+        r#"
+global state: Player;
+
+fn helper() {
+    return 5;
+}
+
+fn main() {
+    return helper();
+}
+"#,
+    )
+    .expect("compile initial");
+
+    let helper_index = version
+        .program_image()
+        .function_index("helper")
+        .expect("helper should have image index");
+    assert_eq!(
+        version
+            .program_image()
+            .function(helper_index)
+            .expect("helper index should resolve")
+            .name,
+        "helper"
+    );
+    assert_eq!(
+        version.program_image().global_slot("main::state"),
+        Some(vela_common::GlobalSlot::new(0))
+    );
+}
+
+#[test]
 fn program_version_preserves_global_layout() {
     let version = compile_initial(
         SourceId::new(1),
@@ -85,6 +121,42 @@ fn main() {
     assert!(
         program.global_slot("main::state").is_some(),
         "converted program should keep global slot metadata"
+    );
+}
+
+#[test]
+fn hot_reload_rebuilds_program_image_for_next_version() {
+    let initial =
+        compile_initial(SourceId::new(1), "fn main() { return 20; }").expect("compile initial");
+    let mut runtime = HotReloadRuntime::new(initial);
+    let old = runtime.current();
+    assert!(old.program_image().function_index("helper").is_none());
+
+    let update = compile_update(
+        &old,
+        SourceId::new(2),
+        r#"
+global state: Player;
+
+fn helper() {
+    return 5;
+}
+
+fn main() {
+    return helper();
+}
+"#,
+    )
+    .expect("compile update");
+
+    runtime.apply_hot_update(update).expect("apply update");
+    let new = runtime.current();
+
+    assert!(old.program_image().function_index("helper").is_none());
+    assert!(new.program_image().function_index("helper").is_some());
+    assert_eq!(
+        new.program_image().global_slot("main::state"),
+        Some(vela_common::GlobalSlot::new(0))
     );
 }
 

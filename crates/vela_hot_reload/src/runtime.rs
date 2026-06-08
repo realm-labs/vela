@@ -1,5 +1,7 @@
 use std::sync::Arc;
 
+use vela_bytecode::ProgramImage;
+
 use crate::error::HotReloadResult;
 use crate::profile::ProgramProfile;
 use crate::report::HotReloadReport;
@@ -59,20 +61,31 @@ impl HotReloadRuntime {
     #[must_use]
     pub fn apply_hot_update_report(&mut self, update: HotUpdate) -> HotReloadReport {
         let from_version = self.current.id;
-        let changes = update.changes;
+        let HotUpdate {
+            functions: updated_functions,
+            global_names,
+            script_methods,
+            script_metadata,
+            abi,
+            changes,
+        } = update;
         let mut functions = self.current.functions.clone();
-        for (name, function) in update.functions {
+        for (name, function) in updated_functions {
             functions.insert(name, function);
         }
         let profile = ProgramProfile::from_functions(&functions);
+        let program_image = ProgramImage::from_parts(
+            functions.values().map(|function| (**function).clone()),
+            global_names.iter().cloned(),
+            script_methods.clone(),
+            script_metadata.clone(),
+        );
         let next = Arc::new(ProgramVersion {
             id: ProgramVersionId(self.current.id.0.saturating_add(1)),
             functions,
-            global_names: update.global_names,
-            script_methods: update.script_methods,
-            script_metadata: update.script_metadata,
-            abi: update.abi,
+            abi,
             profile,
+            program_image,
         });
         self.current = Arc::clone(&next);
         HotReloadReport::accepted(from_version, next, changes)

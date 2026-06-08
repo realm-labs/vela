@@ -2,7 +2,7 @@ use std::collections::BTreeMap;
 use std::sync::Arc;
 
 use vela_bytecode::{
-    CodeObject, Program,
+    CodeObject, Program, ProgramImage,
     script_methods::{ScriptMethod, ScriptMethodTable},
 };
 use vela_common::MethodId;
@@ -17,11 +17,9 @@ use crate::symbol::{FunctionSymbolId, ProgramVersionId};
 pub struct ProgramVersion {
     pub id: ProgramVersionId,
     pub(crate) functions: BTreeMap<FunctionSymbolId, Arc<CodeObject>>,
-    pub(crate) global_names: Vec<String>,
-    pub(crate) script_methods: ScriptMethodTable,
-    pub(crate) script_metadata: Option<ModuleGraph>,
     pub(crate) abi: HotReloadAbi,
     pub(crate) profile: ProgramProfile,
+    pub(crate) program_image: ProgramImage,
 }
 
 impl ProgramVersion {
@@ -36,9 +34,7 @@ impl ProgramVersion {
         program: Program,
         abi: HotReloadAbi,
     ) -> Self {
-        let global_names = program.global_names().to_vec();
-        let script_methods = program.script_methods().clone();
-        let script_metadata = program.script_metadata().cloned();
+        let program_image = ProgramImage::from_program(&program);
         let functions = program
             .functions
             .into_iter()
@@ -48,11 +44,9 @@ impl ProgramVersion {
         Self {
             id,
             functions,
-            global_names,
-            script_methods,
-            script_metadata,
             abi,
             profile,
+            program_image,
         }
     }
 
@@ -67,17 +61,17 @@ impl ProgramVersion {
 
     #[must_use]
     pub fn script_methods(&self) -> &ScriptMethodTable {
-        &self.script_methods
+        self.program_image.script_methods()
     }
 
     #[must_use]
     pub fn global_names(&self) -> &[String] {
-        &self.global_names
+        self.program_image.global_names()
     }
 
     #[must_use]
     pub fn script_method(&self, type_name: &str, method: &str) -> Option<&ScriptMethod> {
-        self.script_methods.get(type_name, method)
+        self.program_image.script_methods().get(type_name, method)
     }
 
     #[must_use]
@@ -86,7 +80,9 @@ impl ProgramVersion {
         type_name: &str,
         method_id: MethodId,
     ) -> Option<&ScriptMethod> {
-        self.script_methods.get_by_id(type_name, method_id)
+        self.program_image
+            .script_methods()
+            .get_by_id(type_name, method_id)
     }
 
     #[must_use]
@@ -107,7 +103,7 @@ impl ProgramVersion {
 
     #[must_use]
     pub fn script_metadata(&self) -> Option<&ModuleGraph> {
-        self.script_metadata.as_ref()
+        self.program_image.script_metadata()
     }
 
     #[must_use]
@@ -121,22 +117,18 @@ impl ProgramVersion {
     }
 
     #[must_use]
+    pub fn program_image(&self) -> &ProgramImage {
+        &self.program_image
+    }
+
+    #[must_use]
     pub fn function_profile(&self, name: &str) -> Option<&FunctionProfile> {
         self.profile.function(name)
     }
 
     #[must_use]
     pub fn to_program(&self) -> Program {
-        let mut program = Program::new();
-        for function in self.functions.values() {
-            program.insert_function((**function).clone());
-        }
-        program.set_global_layout(self.global_names.clone());
-        program.set_script_methods(self.script_methods.clone());
-        if let Some(graph) = &self.script_metadata {
-            program.set_script_metadata(graph.clone());
-        }
-        program
+        self.program_image.to_program()
     }
 }
 

@@ -1736,7 +1736,7 @@ strict runtime-local heap/value isolation
 [x] Implement first per-runtime IC.
 [x] Replace MakeClosure Box<CodeObject> with FunctionIndex.
 [x] Introduce ProgramImage.
-[ ] Move hot reload to ProgramImage-native version swapping.
+[x] Move hot reload to ProgramImage-native version swapping.
 [ ] Document JIT ownership ABI; defer JIT runtime types until M22.
 ```
 

@@ -19,15 +19,31 @@ pub struct ProgramImage {
 impl ProgramImage {
     #[must_use]
     pub fn from_program(program: &Program) -> Self {
-        let mut functions = Vec::with_capacity(program.functions.len());
+        Self::from_parts(
+            program.functions.values().cloned(),
+            program.global_names().iter().cloned(),
+            program.script_methods().clone(),
+            program.script_metadata().cloned(),
+        )
+    }
+
+    #[must_use]
+    pub fn from_parts(
+        functions: impl IntoIterator<Item = CodeObject>,
+        global_names: impl IntoIterator<Item = String>,
+        script_methods: ScriptMethodTable,
+        script_metadata: Option<ModuleGraph>,
+    ) -> Self {
+        let functions = functions.into_iter();
+        let mut indexed_functions = Vec::with_capacity(functions.size_hint().0);
         let mut function_by_name = BTreeMap::new();
-        for function in program.functions.values() {
-            let index = FunctionIndex(functions.len());
+        for function in functions {
+            let index = FunctionIndex(indexed_functions.len());
             function_by_name.insert(function.name.clone(), index);
-            functions.push(function.clone());
+            indexed_functions.push(function);
         }
 
-        let global_names = program.global_names().to_vec();
+        let global_names = global_names.into_iter().collect::<Vec<_>>();
         let global_slots = global_names
             .iter()
             .enumerate()
@@ -35,13 +51,27 @@ impl ProgramImage {
             .collect();
 
         Self {
-            functions,
+            functions: indexed_functions,
             function_by_name,
             global_names,
             global_slots,
-            script_methods: program.script_methods().clone(),
-            script_metadata: program.script_metadata().cloned(),
+            script_methods,
+            script_metadata,
         }
+    }
+
+    #[must_use]
+    pub fn to_program(&self) -> Program {
+        let mut program = Program::new();
+        for function in &self.functions {
+            program.insert_function(function.clone());
+        }
+        program.set_global_layout(self.global_names.clone());
+        program.set_script_methods(self.script_methods.clone());
+        if let Some(graph) = &self.script_metadata {
+            program.set_script_metadata(graph.clone());
+        }
+        program
     }
 
     #[must_use]

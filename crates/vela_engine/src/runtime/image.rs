@@ -97,8 +97,8 @@ impl RuntimeImage {
     pub fn from_program_version(engine: Engine, version: &ProgramVersion) -> Self {
         let version_id = Some(version.id);
         let profile = Some(version.profile().clone());
+        let program_image = version.program_image().clone();
         let program = version.to_program();
-        let program_image = ProgramImage::from_program(&program);
         let layout = RuntimeImageLayout::from_global_names(program_image.global_names());
         Self {
             engine,
