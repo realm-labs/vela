@@ -1,17 +1,22 @@
-use super::{RuntimeGlobalStore, RuntimeScriptGlobalStore, image::RuntimeImage, next_runtime_id};
+use super::{
+    RuntimeGlobalStore, RuntimeScriptGlobalStore, image::RuntimeImage, inline_cache::InlineCaches,
+    next_runtime_id,
+};
 
 pub(super) struct RuntimeState {
     pub(super) id: u64,
     pub(super) globals: RuntimeGlobalStore,
     pub(super) script_globals: RuntimeScriptGlobalStore,
+    pub(super) inline_caches: InlineCaches,
 }
 
 impl RuntimeState {
-    pub(super) fn with_global_layout(names: &[String]) -> Self {
+    pub(super) fn for_image(image: &RuntimeImage) -> Self {
         Self {
             id: next_runtime_id(),
-            globals: RuntimeGlobalStore::with_global_layout(names),
-            script_globals: RuntimeScriptGlobalStore::with_global_layout(names),
+            globals: RuntimeGlobalStore::with_global_layout(image.global_names()),
+            script_globals: RuntimeScriptGlobalStore::with_global_layout(image.global_names()),
+            inline_caches: InlineCaches::for_image(image),
         }
     }
 
@@ -22,5 +27,6 @@ impl RuntimeState {
 
     pub(super) fn rebind_to_image(&mut self, image: &RuntimeImage) {
         self.set_global_layout(image.global_names());
+        self.inline_caches.clear_for_image(image);
     }
 }

@@ -36,6 +36,7 @@ use crate::reload::{
 mod call_args;
 mod handles;
 mod image;
+mod inline_cache;
 mod state;
 
 pub use call_args::CallArgs;
@@ -62,22 +63,22 @@ impl Runtime {
     #[must_use]
     pub fn new(engine: Engine, program: Program) -> Self {
         let image = RuntimeImage::new(engine, program);
-        let global_names = image.global_names().to_vec();
+        let state = RuntimeState::for_image(&image);
         Self {
             image,
             hot_reload: None,
-            state: RuntimeState::with_global_layout(&global_names),
+            state,
         }
     }
 
     #[must_use]
     pub fn from_hot_reload_version(engine: Engine, version: ProgramVersion) -> Self {
         let image = RuntimeImage::from_program_version(engine, &version);
-        let global_names = image.global_names().to_vec();
+        let state = RuntimeState::for_image(&image);
         Self {
             image,
             hot_reload: Some(HotReloadRuntime::new(version)),
-            state: RuntimeState::with_global_layout(&global_names),
+            state,
         }
     }
 
