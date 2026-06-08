@@ -8,9 +8,9 @@ use crate::{CodeObject, FunctionIndex, InstructionKind, Program, ProgramCode};
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct ProgramImage {
-    functions: Vec<CodeObject>,
+    functions: Box<[CodeObject]>,
     function_by_name: BTreeMap<String, FunctionIndex>,
-    global_names: Vec<String>,
+    global_names: Box<[String]>,
     global_slots: BTreeMap<String, GlobalSlot>,
     script_methods: ScriptMethodTable,
     script_metadata: Option<ModuleGraph>,
@@ -53,9 +53,9 @@ impl ProgramImage {
             .collect();
 
         Self {
-            functions: indexed_functions,
+            functions: indexed_functions.into_boxed_slice(),
             function_by_name,
-            global_names,
+            global_names: global_names.into_boxed_slice(),
             global_slots,
             script_methods,
             script_metadata,
@@ -70,7 +70,7 @@ impl ProgramImage {
                 program.insert_function(function);
             }
         }
-        program.set_global_layout(self.global_names.clone());
+        program.set_global_layout(self.global_names.iter().cloned());
         program.set_script_methods(self.script_methods.clone());
         if let Some(graph) = &self.script_metadata {
             program.set_script_metadata(graph.clone());

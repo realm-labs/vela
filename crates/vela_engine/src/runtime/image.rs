@@ -32,7 +32,7 @@ pub trait RuntimeImageStorage: Deref<Target = RuntimeImage> {
 }
 
 pub(super) struct RuntimeImageLayout {
-    global_names: Vec<String>,
+    global_names: Box<[String]>,
 }
 
 impl OwnedImage {
@@ -135,7 +135,7 @@ impl RuntimeImage {
 impl RuntimeImageLayout {
     fn from_global_names(names: &[String]) -> Self {
         Self {
-            global_names: names.to_vec(),
+            global_names: names.to_vec().into_boxed_slice(),
         }
     }
 
