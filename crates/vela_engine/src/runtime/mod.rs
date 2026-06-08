@@ -35,6 +35,7 @@ use crate::reload::{
 
 mod call_args;
 mod handles;
+mod image;
 mod state;
 
 pub use call_args::CallArgs;
@@ -42,12 +43,11 @@ pub use handles::{RuntimeCallTarget, RuntimeMethodTarget, VelaFunction, VelaMeth
 
 use call_args::{CallArgsAdapter, EmptyStateAdapter, call_args_type_error};
 use handles::RuntimeCallExecution;
+use image::RuntimeImage;
 use state::RuntimeState;
 
 pub struct Runtime {
-    engine: Engine,
-    program: Program,
-    hot_reload: Option<HotReloadRuntime>,
+    image: RuntimeImage,
     state: RuntimeState,
 }
 
@@ -60,39 +60,36 @@ fn next_runtime_id() -> u64 {
 impl Runtime {
     #[must_use]
     pub fn new(engine: Engine, program: Program) -> Self {
-        let global_names = program.global_names().to_vec();
+        let image = RuntimeImage::new(engine, program);
+        let global_names = image.global_names().to_vec();
         Self {
-            engine,
-            program,
-            hot_reload: None,
+            image,
             state: RuntimeState::with_global_layout(&global_names),
         }
     }
 
     #[must_use]
     pub fn from_hot_reload_version(engine: Engine, version: ProgramVersion) -> Self {
-        let program = version.to_program();
-        let global_names = program.global_names().to_vec();
+        let image = RuntimeImage::from_hot_reload_version(engine, version);
+        let global_names = image.global_names().to_vec();
         Self {
-            engine,
-            program,
-            hot_reload: Some(HotReloadRuntime::new(version)),
+            image,
             state: RuntimeState::with_global_layout(&global_names),
         }
     }
 
     #[must_use]
     pub fn engine(&self) -> &Engine {
-        &self.engine
+        self.image.engine()
     }
 
     #[must_use]
     pub fn program(&self) -> &Program {
-        &self.program
+        self.image.program()
     }
 
     fn set_global_layout_from_program(&mut self) {
-        let names = self.program.global_names();
+        let names = self.image.global_names();
         self.state.set_global_layout(names);
     }
 
@@ -138,7 +135,7 @@ impl Runtime {
 
     #[must_use]
     pub fn hot_reload_version(&self) -> Option<std::sync::Arc<ProgramVersion>> {
-        self.hot_reload.as_ref().map(HotReloadRuntime::current)
+        self.image.hot_reload_version()
     }
 
     pub fn apply_hot_update(&mut self, update: HotUpdate) -> EngineResult<HotReloadReport> {
@@ -153,7 +150,7 @@ impl Runtime {
         &mut self,
         update: HotReloadResult<HotUpdate>,
     ) -> EngineResult<()> {
-        let Some(hot_reload) = self.hot_reload.as_mut() else {
+        let Some(hot_reload) = self.image.hot_reload_mut() else {
             return Err(EngineError::new(
                 EngineErrorKind::RuntimeNotHotReloadEnabled,
             ));
@@ -168,7 +165,7 @@ impl Runtime {
     }
 
     pub fn has_pending_hot_update(&self) -> EngineResult<bool> {
-        let Some(hot_reload) = self.hot_reload.as_ref() else {
+        let Some(hot_reload) = self.image.hot_reload() else {
             return Err(EngineError::new(
                 EngineErrorKind::RuntimeNotHotReloadEnabled,
             ));
@@ -177,12 +174,12 @@ impl Runtime {
     }
 
     pub fn check_reload(&mut self) -> EngineResult<Option<HotReloadReport>> {
-        let Some(hot_reload) = self.hot_reload.as_mut() else {
+        if self.image.hot_reload().is_none() {
             return Err(EngineError::new(
                 EngineErrorKind::RuntimeNotHotReloadEnabled,
             ));
-        };
-        let report = Self::consume_reload_report(&mut self.program, hot_reload);
+        }
+        let report = self.image.check_reload();
         if report
             .as_ref()
             .and_then(|report| report.version())
@@ -201,14 +198,16 @@ impl Runtime {
         &mut self,
         update: HotReloadResult<HotUpdate>,
     ) -> EngineResult<HotReloadReport> {
-        let Some(hot_reload) = self.hot_reload.as_mut() else {
+        if self.image.hot_reload().is_none() {
             return Err(EngineError::new(
                 EngineErrorKind::RuntimeNotHotReloadEnabled,
             ));
-        };
-        let report = hot_reload.apply_hot_update_result_report(update);
-        if let Some(version) = report.version() {
-            self.program = version.to_program();
+        }
+        let report = self
+            .image
+            .apply_hot_update_result_report(update)
+            .expect("hot reload runtime checked above");
+        if report.version().is_some() {
             self.set_global_layout_from_program();
         }
         Ok(report)
@@ -221,7 +220,8 @@ impl Runtime {
     ) -> EngineResult<HotReloadResult<HotUpdate>> {
         let previous = self.current_hot_reload_version()?;
         Ok(self
-            .engine
+            .image
+            .engine()
             .compile_hot_reload_update(&previous, source, text))
     }
 
@@ -230,7 +230,10 @@ impl Runtime {
         path: impl AsRef<Path>,
     ) -> EngineResult<EngineHotReloadSourceResult<HotUpdate>> {
         let previous = self.current_hot_reload_version()?;
-        Ok(self.engine.compile_hot_reload_update_file(&previous, path))
+        Ok(self
+            .image
+            .engine()
+            .compile_hot_reload_update_file(&previous, path))
     }
 
     pub fn compile_hot_reload_update_dir(
@@ -238,7 +241,10 @@ impl Runtime {
         root: impl AsRef<Path>,
     ) -> EngineResult<EngineHotReloadSourceResult<HotUpdate>> {
         let previous = self.current_hot_reload_version()?;
-        Ok(self.engine.compile_hot_reload_update_dir(&previous, root))
+        Ok(self
+            .image
+            .engine()
+            .compile_hot_reload_update_dir(&previous, root))
     }
 
     pub fn compile_hot_reload_update_changed_file(
@@ -247,9 +253,11 @@ impl Runtime {
         changed_file: impl AsRef<Path>,
     ) -> EngineResult<EngineHotReloadSourceResult<HotUpdate>> {
         let previous = self.current_hot_reload_version()?;
-        Ok(self
-            .engine
-            .compile_hot_reload_update_changed_file(&previous, root, changed_file))
+        Ok(self.image.engine().compile_hot_reload_update_changed_file(
+            &previous,
+            root,
+            changed_file,
+        ))
     }
 
     pub fn stage_hot_reload_update_file(
@@ -257,7 +265,10 @@ impl Runtime {
         path: impl AsRef<Path>,
     ) -> EngineResult<EngineHotReloadSourceResult<()>> {
         let previous = self.current_hot_reload_version()?;
-        let update = self.engine.compile_hot_reload_update_file(&previous, path);
+        let update = self
+            .image
+            .engine()
+            .compile_hot_reload_update_file(&previous, path);
         self.stage_hot_reload_source_update_result(update)
     }
 
@@ -266,7 +277,10 @@ impl Runtime {
         root: impl AsRef<Path>,
     ) -> EngineResult<EngineHotReloadSourceResult<()>> {
         let previous = self.current_hot_reload_version()?;
-        let update = self.engine.compile_hot_reload_update_dir(&previous, root);
+        let update = self
+            .image
+            .engine()
+            .compile_hot_reload_update_dir(&previous, root);
         self.stage_hot_reload_source_update_result(update)
     }
 
@@ -276,9 +290,11 @@ impl Runtime {
         changed_file: impl AsRef<Path>,
     ) -> EngineResult<EngineHotReloadSourceResult<()>> {
         let previous = self.current_hot_reload_version()?;
-        let update =
-            self.engine
-                .compile_hot_reload_update_changed_file(&previous, root, changed_file);
+        let update = self.image.engine().compile_hot_reload_update_changed_file(
+            &previous,
+            root,
+            changed_file,
+        );
         self.stage_hot_reload_source_update_result(update)
     }
 
@@ -308,7 +324,8 @@ impl Runtime {
     pub fn entry(&self, name: impl Into<String>) -> VmResult<VelaFunction> {
         let name = name.into();
         let code = self
-            .program
+            .image
+            .program()
             .function(&name)
             .ok_or_else(|| unknown_function(name.clone()))?;
         Ok(VelaFunction {
@@ -327,11 +344,13 @@ impl Runtime {
             .value_type_name(receiver)
             .ok_or_else(|| unknown_method(method.clone()))?;
         let method_id = self
-            .program
+            .image
+            .program()
             .script_method_id(&receiver_type, &method)
             .ok_or_else(|| unknown_method(method.clone()))?;
         let code = self
-            .program
+            .image
+            .program()
             .script_method_by_id(&receiver_type, method_id)
             .ok_or_else(|| unknown_method(method.clone()))?;
         Ok(VelaMethod {
@@ -371,15 +390,15 @@ impl Runtime {
         let state = &mut self.state;
         let target = entry.resolve(
             state.id,
-            &self.program,
-            current_program_version_id(self.hot_reload.as_ref()),
+            self.image.program(),
+            self.image.current_program_version_id(),
         )?;
         let mut access = HostAccess::new();
         Self::call_runtime_args(RuntimeCallExecution {
             runtime_id: state.id,
-            engine: &self.engine,
-            program: &self.program,
-            hot_reload: self.hot_reload.as_ref(),
+            engine: self.image.engine(),
+            program: self.image.program(),
+            hot_reload: self.image.hot_reload(),
             globals: &mut state.globals,
             script_globals: &mut state.script_globals,
             target,
@@ -404,11 +423,11 @@ impl Runtime {
         let state = &mut self.state;
         let target = method.resolve(
             state.id,
-            &self.program,
-            current_program_version_id(self.hot_reload.as_ref()),
+            self.image.program(),
+            self.image.current_program_version_id(),
             receiver,
             &state.script_globals,
-            &self.engine,
+            self.image.engine(),
         )?;
         let mut budget = options.budget();
         let resolved = args.resolve_values(
@@ -431,10 +450,14 @@ impl Runtime {
             access: &mut access,
             script_globals: Some(&state.script_globals.values),
         };
-        let vm = runtime_vm(&self.engine, &self.program, self.hot_reload.as_ref());
+        let vm = runtime_vm(
+            self.image.engine(),
+            self.image.program(),
+            self.image.hot_reload(),
+        );
         let roots = state.script_globals.roots();
         let result = vm.call_runtime_method(RuntimeMethodCall {
-            program: &self.program,
+            program: self.image.program(),
             receiver: receiver.value,
             method: &target.name,
             method_id: Some(target.method_id),
@@ -489,17 +512,20 @@ impl Runtime {
             access,
             script_globals: Some(&self.state.script_globals.values),
         };
-        let vm = if let Some(hot_reload) = &self.hot_reload {
+        let vm = if let Some(hot_reload) = self.image.hot_reload() {
             let current = hot_reload.current();
-            self.engine
-                .into_vm_for_program_with_abi(&self.program, current.abi())
+            self.image
+                .engine()
+                .into_vm_for_program_with_abi(self.image.program(), current.abi())
         } else {
-            self.engine.into_vm_for_program(&self.program)
+            self.image
+                .engine()
+                .into_vm_for_program(self.image.program())
         };
         if options.managed_heap || !self.state.script_globals.is_empty() {
             let roots = self.state.script_globals.roots();
             vm.run_program_with_host_persistent_heap_and_budget(
-                &self.program,
+                self.image.program(),
                 entry,
                 args,
                 &mut host,
@@ -510,7 +536,13 @@ impl Runtime {
                 &mut budget,
             )
         } else {
-            vm.run_program_with_host_and_budget(&self.program, entry, args, &mut host, &mut budget)
+            vm.run_program_with_host_and_budget(
+                self.image.program(),
+                entry,
+                args,
+                &mut host,
+                &mut budget,
+            )
         }
     }
 
@@ -590,13 +622,17 @@ impl Runtime {
     }
 
     fn resolve_call_args(&self, entry: &str, args: &CallArgs<'_>) -> VmResult<Vec<OwnedValue>> {
-        let code = self.program.function(entry).ok_or_else(|| VmError {
-            kind: VmErrorKind::UnknownFunction {
-                name: entry.to_owned(),
-            },
-            source_span: None,
-            call_stack: Default::default(),
-        })?;
+        let code = self
+            .image
+            .program()
+            .function(entry)
+            .ok_or_else(|| VmError {
+                kind: VmErrorKind::UnknownFunction {
+                    name: entry.to_owned(),
+                },
+                source_span: None,
+                call_stack: Default::default(),
+            })?;
         args.resolve(entry, &code.params, &code.param_defaults)
     }
 
@@ -608,27 +644,25 @@ impl Runtime {
     }
 
     fn current_program_version_id(&self) -> Option<ProgramVersionId> {
-        current_program_version_id(self.hot_reload.as_ref())
+        self.image.current_program_version_id()
     }
 
     fn value_type_name(&self, value: &VelaValue) -> Option<String> {
         value_type_name(
             &value.value,
             &self.state.script_globals.heap,
-            self.engine.registry().as_ref(),
+            self.image.engine().registry().as_ref(),
         )
     }
 
     fn current_hot_reload_version(&self) -> EngineResult<std::sync::Arc<ProgramVersion>> {
-        self.hot_reload
-            .as_ref()
-            .map(HotReloadRuntime::current)
+        self.image
+            .hot_reload_version()
             .ok_or_else(|| EngineError::new(EngineErrorKind::RuntimeNotHotReloadEnabled))
     }
 
     fn check_optional_reload(&mut self) -> Option<HotReloadReport> {
-        let hot_reload = self.hot_reload.as_mut()?;
-        let report = Self::consume_reload_report(&mut self.program, hot_reload);
+        let report = self.image.check_reload();
         if report
             .as_ref()
             .and_then(|report| report.version())
@@ -637,17 +671,6 @@ impl Runtime {
             self.set_global_layout_from_program();
         }
         report
-    }
-
-    fn consume_reload_report(
-        program: &mut Program,
-        hot_reload: &mut HotReloadRuntime,
-    ) -> Option<HotReloadReport> {
-        let report = hot_reload.check_reload()?;
-        if let Some(version) = report.version() {
-            *program = version.to_program();
-        }
-        Some(report)
     }
 }
 
@@ -1100,10 +1123,6 @@ fn runtime_vm(
     } else {
         engine.into_vm_for_program(program)
     }
-}
-
-fn current_program_version_id(hot_reload: Option<&HotReloadRuntime>) -> Option<ProgramVersionId> {
-    hot_reload.map(|runtime| runtime.current().id)
 }
 
 fn value_type_name(
