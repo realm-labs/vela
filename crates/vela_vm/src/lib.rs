@@ -636,6 +636,29 @@ impl Vm {
         owned_heap_result(result, &mut heap_execution, budget)
     }
 
+    pub fn run_program_image_with_host_and_budget(
+        &self,
+        image: &ProgramImage,
+        entry: &str,
+        args: &[OwnedValue],
+        host: &mut HostExecution<'_>,
+        budget: &mut ExecutionBudget,
+    ) -> VmResult<OwnedValue> {
+        let code = program_entry(image, entry)?;
+        let mut heap = ScriptHeap::new();
+        let mut heap_execution = HeapExecution::new(&mut heap);
+        let args = owned_args_to_runtime(args, &mut heap_execution, Some(budget))?;
+        let result = self.execute(
+            code,
+            Some(image),
+            &args,
+            Some(host),
+            Some(&mut heap_execution),
+            Some(budget),
+        );
+        owned_heap_result(result, &mut heap_execution, budget)
+    }
+
     pub fn run_program_with_host_persistent_heap_and_budget(
         &self,
         program: &Program,
@@ -652,6 +675,39 @@ impl Vm {
         let result = self.execute(
             code,
             Some(program),
+            &args,
+            Some(host),
+            Some(&mut heap_execution),
+            Some(budget),
+        );
+        let result = result.and_then(|value| value_to_owned(&value, Some(&heap_execution)));
+        let mut roots = Vec::new();
+        persistent
+            .roots
+            .iter()
+            .for_each(|value| value.trace_heap_refs(&mut roots));
+        heap_execution
+            .heap
+            .collect_full_with_budget(&roots, Some(budget));
+        result
+    }
+
+    pub fn run_program_image_with_host_persistent_heap_and_budget(
+        &self,
+        image: &ProgramImage,
+        entry: &str,
+        args: &[OwnedValue],
+        host: &mut HostExecution<'_>,
+        persistent: PersistentHeapExecution<'_, '_>,
+        budget: &mut ExecutionBudget,
+    ) -> VmResult<OwnedValue> {
+        let code = program_entry(image, entry)?;
+        let mut heap_execution = HeapExecution::new(persistent.heap);
+        let args = owned_args_to_runtime(args, &mut heap_execution, Some(budget))?;
+        heap_execution.protect_values(persistent.roots);
+        let result = self.execute(
+            code,
+            Some(image),
             &args,
             Some(host),
             Some(&mut heap_execution),

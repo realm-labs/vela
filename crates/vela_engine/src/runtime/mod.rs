@@ -535,8 +535,8 @@ where
         };
         if options.managed_heap || !self.state.script_globals.is_empty() {
             let roots = self.state.script_globals.roots();
-            vm.run_program_with_host_persistent_heap_and_budget(
-                self.image.program(),
+            vm.run_program_image_with_host_persistent_heap_and_budget(
+                self.image.program_image(),
                 entry,
                 args,
                 &mut host,
@@ -547,8 +547,8 @@ where
                 &mut budget,
             )
         } else {
-            vm.run_program_with_host_and_budget(
-                self.image.program(),
+            vm.run_program_image_with_host_and_budget(
+                self.image.program_image(),
                 entry,
                 args,
                 &mut host,
