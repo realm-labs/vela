@@ -1101,6 +1101,41 @@ fn call_compiled(
 ) -> VmResult<Value>;
 ```
 
+### Ownership ABI and M22 deferral
+
+This refactor may define interpreter-facing identifiers and ownership rules
+that future JIT code must obey, but it must not add runtime JIT storage or
+machine-code types before M22.
+
+Allowed in this refactor:
+
+```text
+ProgramImage and FunctionIndex as immutable image identities
+CacheSiteId and bytecode offsets as version-owned lookup keys
+RuntimeImage as the shared immutable execution image
+RuntimeState as the explicit mutable execution state argument
+tests proving hot reload swaps image/version metadata without sharing runtime state
+```
+
+Deferred until M22:
+
+```text
+JitPolicy
+JitImageState
+CompiledFunction
+CompiledEntry
+JitStatus
+deoptimization records
+machine-code allocation and invalidation
+worker compile queues
+```
+
+The ABI rule is that compiled code, when it exists, is called with both
+`RuntimeImage` and `RuntimeState`. Any value that can differ per actor, per
+runtime, per call, or per host adapter must be read through `RuntimeState`,
+`HostExecution`, `ExecutionBudget`, or the existing VM slow-path helpers. Shared
+compiled code may depend on image/version metadata only.
+
 ### Do not bake runtime-local data into shared machine code
 
 Shared JIT code may assume:
@@ -1737,7 +1772,7 @@ strict runtime-local heap/value isolation
 [x] Replace MakeClosure Box<CodeObject> with FunctionIndex.
 [x] Introduce ProgramImage.
 [x] Move hot reload to ProgramImage-native version swapping.
-[ ] Document JIT ownership ABI; defer JIT runtime types until M22.
+[x] Document JIT ownership ABI; defer JIT runtime types until M22.
 ```
 
 ---
