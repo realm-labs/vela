@@ -117,6 +117,14 @@ impl RuntimeImage {
         self.layout.global_names()
     }
 
+    pub(super) fn cache_site_count(&self) -> usize {
+        self.program
+            .functions
+            .values()
+            .map(|code| code.cache_sites.len())
+            .sum()
+    }
+
     pub(super) fn current_program_version_id(&self) -> Option<ProgramVersionId> {
         self.version_id
     }

@@ -11,7 +11,7 @@ use crate::engine::Engine;
 use super::call_args::call_args_type_error;
 use super::{
     CallArgs, CallOptions, RuntimeGlobalStore, RuntimeScriptGlobalStore, VelaValue,
-    unknown_function, unknown_method, value_type_name,
+    inline_cache::InlineCaches, unknown_function, unknown_method, value_type_name,
 };
 
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -271,13 +271,14 @@ pub struct ResolvedRuntimeMethod {
     pub(super) param_defaults: Vec<bool>,
 }
 
-pub(super) struct RuntimeCallExecution<'program, 'args, 'adapter, 'access> {
+pub(super) struct RuntimeCallExecution<'program, 'args, 'adapter, 'access, 'state> {
     pub(super) runtime_id: u64,
     pub(super) engine: &'program Engine,
     pub(super) program: &'program Program,
     pub(super) hot_reload: Option<&'program HotReloadRuntime>,
     pub(super) globals: &'program mut RuntimeGlobalStore,
     pub(super) script_globals: &'program mut RuntimeScriptGlobalStore,
+    pub(super) inline_caches: &'state InlineCaches,
     pub(super) target: ResolvedRuntimeFunction<'program>,
     pub(super) args: &'adapter mut CallArgs<'args>,
     pub(super) options: CallOptions,

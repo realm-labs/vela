@@ -1732,7 +1732,7 @@ strict runtime-local heap/value isolation
 [x] Add RuntimeState::rebind_to_image.
 [x] Add cache-site ID types.
 [x] Add cache-site metadata to bytecode/compiler.
-[ ] Thread InlineCaches through VM execution.
+[x] Thread InlineCaches through VM execution.
 [ ] Implement first per-runtime IC.
 [ ] Replace MakeClosure Box<CodeObject> with FunctionIndex.
 [ ] Introduce ProgramImage.

@@ -43,6 +43,7 @@ pub(crate) fn dispatch_script_function_call(
             args: values.as_slice(),
             call_site: call.call_site,
             call_site_offset: Some(call.call_site_offset),
+            inline_caches: None,
         },
         host.as_deref_mut(),
         heap.as_deref_mut(),

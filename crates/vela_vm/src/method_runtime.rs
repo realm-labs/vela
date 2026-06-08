@@ -54,6 +54,7 @@ pub(crate) fn call_callback_with_protected_values<'value>(
             args,
             call_site: None,
             call_site_offset: None,
+            inline_caches: None,
         },
         runtime.host.as_deref_mut(),
         runtime.heap.as_deref_mut(),

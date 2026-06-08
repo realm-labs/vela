@@ -23,8 +23,8 @@ use vela_vm::heap::{HeapValue, ScriptHeap};
 use vela_vm::owned_value::OwnedValue;
 use vela_vm::value::Value;
 use vela_vm::{
-    PersistentHeapExecution, RuntimeMethodCall, ScriptGlobalValues, owned_to_persistent_value,
-    persistent_value_to_owned,
+    PersistentHeapExecution, RuntimeCodeCall, RuntimeMethodCall, ScriptGlobalValues,
+    owned_to_persistent_value, persistent_value_to_owned,
 };
 
 use crate::engine::Engine;
@@ -409,6 +409,7 @@ where
             hot_reload: self.hot_reload.as_ref(),
             globals: &mut state.globals,
             script_globals: &mut state.script_globals,
+            inline_caches: &state.inline_caches,
             target,
             args: &mut args,
             options,
@@ -568,7 +569,7 @@ where
         self.call_raw(entry, &resolved, options, &mut adapter, access)
     }
 
-    fn call_runtime_args(call: RuntimeCallExecution<'_, '_, '_, '_>) -> VmResult<VelaValue> {
+    fn call_runtime_args(call: RuntimeCallExecution<'_, '_, '_, '_, '_>) -> VmResult<VelaValue> {
         let mut budget = call.options.budget();
         let resolved = call.args.resolve_values(
             &call.target.name,
@@ -590,17 +591,18 @@ where
         };
         let vm = runtime_vm(call.engine, call.program, call.hot_reload);
         let roots = call.script_globals.roots();
-        let result = vm.run_code_runtime_with_host_persistent_heap_and_budget(
-            call.program,
-            call.target.code,
-            &resolved,
-            &mut host,
-            PersistentHeapExecution {
+        let result = vm.run_runtime_code_call(RuntimeCodeCall {
+            program: call.program,
+            code: call.target.code,
+            args: &resolved,
+            host: &mut host,
+            persistent: PersistentHeapExecution {
                 heap: &mut call.script_globals.heap,
                 roots: &roots,
             },
-            &mut budget,
-        )?;
+            budget: &mut budget,
+            inline_caches: Some(call.inline_caches),
+        })?;
         Ok(call.script_globals.retain(call.runtime_id, result))
     }
 

@@ -95,6 +95,7 @@ pub(crate) struct ExecutionCall<'a> {
     pub(crate) args: &'a [Value],
     pub(crate) call_site: Option<Span>,
     pub(crate) call_site_offset: Option<InstructionOffset>,
+    pub(crate) inline_caches: Option<&'a dyn VmInlineCaches>,
 }
 
 impl ExecutionCall<'_> {
@@ -203,6 +204,14 @@ pub struct PersistentHeapExecution<'heap, 'roots> {
     pub roots: &'roots [Value],
 }
 
+pub trait VmInlineCaches {
+    fn len(&self) -> usize;
+
+    fn is_empty(&self) -> bool {
+        self.len() == 0
+    }
+}
+
 pub struct RuntimeMethodCall<'program, 'args, 'host, 'heap, 'roots, 'budget> {
     pub program: &'program Program,
     pub receiver: Value,
@@ -212,6 +221,16 @@ pub struct RuntimeMethodCall<'program, 'args, 'host, 'heap, 'roots, 'budget> {
     pub host: &'host mut HostExecution<'host>,
     pub persistent: PersistentHeapExecution<'heap, 'roots>,
     pub budget: &'budget mut ExecutionBudget,
+}
+
+pub struct RuntimeCodeCall<'program, 'args, 'host, 'heap, 'roots, 'budget, 'caches> {
+    pub program: &'program Program,
+    pub code: &'program CodeObject,
+    pub args: &'args [Value],
+    pub host: &'host mut HostExecution<'host>,
+    pub persistent: PersistentHeapExecution<'heap, 'roots>,
+    pub budget: &'budget mut ExecutionBudget,
+    pub inline_caches: Option<&'caches dyn VmInlineCaches>,
 }
 
 impl Vm {
@@ -622,35 +641,56 @@ impl Vm {
         Ok(result)
     }
 
-    pub fn run_code_runtime_with_host_persistent_heap_and_budget(
+    pub fn run_code_runtime_with_host_persistent_heap_and_budget<'host>(
         &self,
         program: &Program,
         code: &CodeObject,
         args: &[Value],
-        host: &mut HostExecution<'_>,
+        host: &'host mut HostExecution<'host>,
         persistent: PersistentHeapExecution<'_, '_>,
         budget: &mut ExecutionBudget,
     ) -> VmResult<Value> {
-        let mut heap_execution = HeapExecution::new(persistent.heap);
-        heap_execution.protect_values(persistent.roots);
-        heap_execution.protect_values(args);
-        let result = self.execute(
+        self.run_runtime_code_call(RuntimeCodeCall {
+            program,
             code,
-            Some(program),
             args,
-            Some(host),
+            host,
+            persistent,
+            budget,
+            inline_caches: None,
+        })
+    }
+
+    pub fn run_runtime_code_call(
+        &self,
+        call: RuntimeCodeCall<'_, '_, '_, '_, '_, '_, '_>,
+    ) -> VmResult<Value> {
+        let mut heap_execution = HeapExecution::new(call.persistent.heap);
+        heap_execution.protect_values(call.persistent.roots);
+        heap_execution.protect_values(call.args);
+        let result = self.execute_call(
+            ExecutionCall {
+                code: call.code,
+                program: Some(call.program),
+                captures: &[],
+                args: call.args,
+                call_site: None,
+                call_site_offset: None,
+                inline_caches: call.inline_caches,
+            },
+            Some(call.host),
             Some(&mut heap_execution),
-            Some(budget),
+            Some(call.budget),
         )?;
         let mut roots = Vec::new();
-        persistent
+        call.persistent
             .roots
             .iter()
             .for_each(|value| value.trace_heap_refs(&mut roots));
         result.trace_heap_refs(&mut roots);
         heap_execution
             .heap
-            .collect_full_with_budget(&roots, Some(budget));
+            .collect_full_with_budget(&roots, Some(call.budget));
         Ok(result)
     }
 
@@ -796,6 +836,7 @@ impl Vm {
                 args,
                 call_site: None,
                 call_site_offset: None,
+                inline_caches: None,
             },
             host,
             heap,
