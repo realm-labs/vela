@@ -1730,7 +1730,7 @@ strict runtime-local heap/value isolation
 [x] Add tests for VelaValue/VelaFunction/VelaMethod runtime mismatch.
 [x] Add tests for reload image swaps, rejected reloads, and global layout rebinding.
 [x] Add RuntimeState::rebind_to_image.
-[ ] Add cache-site ID types.
+[x] Add cache-site ID types.
 [ ] Add cache-site metadata to bytecode/compiler.
 [ ] Thread InlineCaches through VM execution.
 [ ] Implement first per-runtime IC.

@@ -1,5 +1,6 @@
 //! Register bytecode for Vela code objects.
 
+pub mod cache_site;
 pub mod compiler;
 pub mod script_methods;
 pub mod verification;
@@ -9,6 +10,8 @@ use std::collections::BTreeMap;
 use vela_common::{FieldId, FunctionId, GlobalSlot, HostMethodId, MethodId, Span};
 use vela_hir::ids::HirLocalId;
 use vela_hir::module_graph::ModuleGraph;
+
+pub use cache_site::{CacheSiteDesc, CacheSiteId, CacheSiteKind, CacheSiteLayout};
 
 use crate::script_methods::ScriptMethodTable;
 
