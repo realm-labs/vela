@@ -41,14 +41,19 @@ mod state;
 
 pub use call_args::CallArgs;
 pub use handles::{RuntimeCallTarget, RuntimeMethodTarget, VelaFunction, VelaMethod};
+pub use image::{OwnedImage, RuntimeImage, RuntimeImageStorage};
 
 use call_args::{CallArgsAdapter, EmptyStateAdapter, call_args_type_error};
 use handles::RuntimeCallExecution;
-use image::RuntimeImage;
 use state::RuntimeState;
 
-pub struct Runtime {
-    image: RuntimeImage,
+pub type Runtime = RuntimeImpl<OwnedImage>;
+
+pub struct RuntimeImpl<I = OwnedImage>
+where
+    I: RuntimeImageStorage,
+{
+    image: I,
     hot_reload: Option<HotReloadRuntime>,
     state: RuntimeState,
 }
@@ -59,10 +64,10 @@ fn next_runtime_id() -> u64 {
     NEXT_RUNTIME_ID.fetch_add(1, Ordering::Relaxed)
 }
 
-impl Runtime {
+impl RuntimeImpl<OwnedImage> {
     #[must_use]
     pub fn new(engine: Engine, program: Program) -> Self {
-        let image = RuntimeImage::new(engine, program);
+        let image = OwnedImage::from_image(RuntimeImage::new(engine, program));
         let state = RuntimeState::for_image(&image);
         Self {
             image,
@@ -73,7 +78,7 @@ impl Runtime {
 
     #[must_use]
     pub fn from_hot_reload_version(engine: Engine, version: ProgramVersion) -> Self {
-        let image = RuntimeImage::from_program_version(engine, &version);
+        let image = OwnedImage::from_image(RuntimeImage::from_program_version(engine, &version));
         let state = RuntimeState::for_image(&image);
         Self {
             image,
@@ -81,7 +86,12 @@ impl Runtime {
             state,
         }
     }
+}
 
+impl<I> RuntimeImpl<I>
+where
+    I: RuntimeImageStorage,
+{
     #[must_use]
     pub fn engine(&self) -> &Engine {
         self.image.engine()
@@ -657,7 +667,10 @@ impl Runtime {
         let Some(version) = report.and_then(HotReloadReport::version) else {
             return;
         };
-        self.image = RuntimeImage::from_program_version(self.image.engine().clone(), &version);
+        self.image = I::from_runtime_image(RuntimeImage::from_program_version(
+            self.image.engine().clone(),
+            &version,
+        ));
         self.state.rebind_to_image(&self.image);
     }
 }
@@ -719,7 +732,9 @@ impl PartialEq for VelaValue {
 }
 
 pub trait IntoGlobalValue {
-    fn insert_global(self, runtime: &mut Runtime, name: String) -> VmResult<()>;
+    fn insert_global<I>(self, runtime: &mut RuntimeImpl<I>, name: String) -> VmResult<()>
+    where
+        I: RuntimeImageStorage;
 }
 
 #[cfg(not(feature = "serde"))]
@@ -727,14 +742,20 @@ impl<T> IntoGlobalValue for T
 where
     T: Into<OwnedValue>,
 {
-    fn insert_global(self, runtime: &mut Runtime, name: String) -> VmResult<()> {
+    fn insert_global<I>(self, runtime: &mut RuntimeImpl<I>, name: String) -> VmResult<()>
+    where
+        I: RuntimeImageStorage,
+    {
         runtime.state.script_globals.insert(name, self.into())
     }
 }
 
 #[cfg(feature = "serde")]
 impl IntoGlobalValue for OwnedValue {
-    fn insert_global(self, runtime: &mut Runtime, name: String) -> VmResult<()> {
+    fn insert_global<I>(self, runtime: &mut RuntimeImpl<I>, name: String) -> VmResult<()>
+    where
+        I: RuntimeImageStorage,
+    {
         runtime.state.script_globals.insert(name, self)
     }
 }
@@ -744,7 +765,10 @@ macro_rules! impl_owned_global_value {
     ($($ty:ty),* $(,)?) => {
         $(
             impl IntoGlobalValue for $ty {
-                fn insert_global(self, runtime: &mut Runtime, name: String) -> VmResult<()> {
+                fn insert_global<I>(self, runtime: &mut RuntimeImpl<I>, name: String) -> VmResult<()>
+                where
+                    I: RuntimeImageStorage,
+                {
                     runtime.state.script_globals.insert(name, OwnedValue::from(self))
                 }
             }
@@ -756,7 +780,10 @@ macro_rules! impl_owned_global_value {
 impl_owned_global_value!(bool, i32, i64, f64, String, HostRef);
 
 impl IntoGlobalValue for VelaValue {
-    fn insert_global(self, runtime: &mut Runtime, name: String) -> VmResult<()> {
+    fn insert_global<I>(self, runtime: &mut RuntimeImpl<I>, name: String) -> VmResult<()>
+    where
+        I: RuntimeImageStorage,
+    {
         runtime.check_vela_value_runtime(&self)?;
         runtime
             .state
@@ -767,7 +794,10 @@ impl IntoGlobalValue for VelaValue {
 }
 
 impl IntoGlobalValue for &VelaValue {
-    fn insert_global(self, runtime: &mut Runtime, name: String) -> VmResult<()> {
+    fn insert_global<I>(self, runtime: &mut RuntimeImpl<I>, name: String) -> VmResult<()>
+    where
+        I: RuntimeImageStorage,
+    {
         runtime.check_vela_value_runtime(self)?;
         runtime
             .state
@@ -782,7 +812,10 @@ impl<T> IntoGlobalValue for &T
 where
     T: serde::Serialize + ?Sized,
 {
-    fn insert_global(self, runtime: &mut Runtime, name: String) -> VmResult<()> {
+    fn insert_global<I>(self, runtime: &mut RuntimeImpl<I>, name: String) -> VmResult<()>
+    where
+        I: RuntimeImageStorage,
+    {
         runtime
             .state
             .script_globals

@@ -1,3 +1,5 @@
+use std::ops::Deref;
+
 use vela_bytecode::Program;
 use vela_hot_reload::profile::ProgramProfile;
 use vela_hot_reload::symbol::ProgramVersionId;
@@ -5,7 +7,7 @@ use vela_hot_reload::version::ProgramVersion;
 
 use crate::engine::Engine;
 
-pub(super) struct RuntimeImage {
+pub struct RuntimeImage {
     engine: Engine,
     program: Program,
     version_id: Option<ProgramVersionId>,
@@ -14,12 +16,43 @@ pub(super) struct RuntimeImage {
     profile: Option<ProgramProfile>,
 }
 
+pub struct OwnedImage {
+    image: RuntimeImage,
+}
+
+pub trait RuntimeImageStorage: Deref<Target = RuntimeImage> {
+    #[doc(hidden)]
+    fn from_runtime_image(image: RuntimeImage) -> Self;
+}
+
 pub(super) struct RuntimeImageLayout {
     global_names: Vec<String>,
 }
 
+impl OwnedImage {
+    #[must_use]
+    pub fn from_image(image: RuntimeImage) -> Self {
+        Self { image }
+    }
+}
+
+impl Deref for OwnedImage {
+    type Target = RuntimeImage;
+
+    fn deref(&self) -> &Self::Target {
+        &self.image
+    }
+}
+
+impl RuntimeImageStorage for OwnedImage {
+    fn from_runtime_image(image: RuntimeImage) -> Self {
+        Self::from_image(image)
+    }
+}
+
 impl RuntimeImage {
-    pub(super) fn new(engine: Engine, program: Program) -> Self {
+    #[must_use]
+    pub fn new(engine: Engine, program: Program) -> Self {
         let layout = RuntimeImageLayout::from_global_names(program.global_names());
         Self {
             engine,
@@ -30,7 +63,8 @@ impl RuntimeImage {
         }
     }
 
-    pub(super) fn from_program_version(engine: Engine, version: &ProgramVersion) -> Self {
+    #[must_use]
+    pub fn from_program_version(engine: Engine, version: &ProgramVersion) -> Self {
         let version_id = Some(version.id);
         let layout = RuntimeImageLayout::from_global_names(version.global_names());
         let profile = Some(version.profile().clone());

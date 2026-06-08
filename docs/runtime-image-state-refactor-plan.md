@@ -1718,10 +1718,10 @@ strict runtime-local heap/value isolation
 [x] Make RuntimeImage::from_program_version preserve hot-reload metadata.
 [x] Make runtime hot reload swap RuntimeImage instead of cloning through ProgramVersion::to_program.
 [x] Add InlineCaches placeholder.
-[ ] Decide whether image storage is internal enum or RuntimeImpl<I> aliases.
-[ ] If using generics, make RuntimeImpl generic over RuntimeImageStorage.
-[ ] Add OwnedImage.
-[ ] Preserve Runtime::new.
+[x] Decide whether image storage is internal enum or RuntimeImpl<I> aliases.
+[x] If using generics, make RuntimeImpl generic over RuntimeImageStorage.
+[x] Add OwnedImage.
+[x] Preserve Runtime::new.
 [ ] Add SharedImage.
 [ ] Add SharedRuntime type alias.
 [ ] Add RuntimeImage::into_shared.
