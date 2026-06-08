@@ -398,9 +398,34 @@ fn main() {
     )
     .expect("compile captured lambda");
     let image = ProgramImage::from_program(&program);
+    let make_adder = image
+        .function_by_name("make_adder")
+        .expect("make_adder image function");
+    let closure_index = make_adder
+        .instructions
+        .iter()
+        .find_map(|instruction| match &instruction.kind {
+            InstructionKind::MakeClosure { function, .. } => Some(*function),
+            _ => None,
+        })
+        .expect("make_adder should build a closure");
+
+    assert!(make_adder.nested_functions.is_empty());
+    assert_eq!(
+        image
+            .function(closure_index)
+            .expect("image closure function")
+            .params
+            .as_slice(),
+        ["value"]
+    );
 
     assert_eq!(
         Vm::new().run_program_image(&image, "main", &[]),
+        Ok(OwnedValue::Int(15))
+    );
+    assert_eq!(
+        Vm::new().run_program(&image.to_program(), "main", &[]),
         Ok(OwnedValue::Int(15))
     );
 }

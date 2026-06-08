@@ -4,7 +4,7 @@ use vela_common::GlobalSlot;
 use vela_hir::module_graph::ModuleGraph;
 
 use crate::script_methods::ScriptMethodTable;
-use crate::{CodeObject, FunctionIndex, Program, ProgramCode};
+use crate::{CodeObject, FunctionIndex, InstructionKind, Program, ProgramCode};
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct ProgramImage {
@@ -38,8 +38,10 @@ impl ProgramImage {
         let mut indexed_functions = Vec::with_capacity(functions.size_hint().0);
         let mut function_by_name = BTreeMap::new();
         for function in functions {
+            let name = function.name.clone();
+            let function = flatten_function(function, &mut indexed_functions);
             let index = FunctionIndex(indexed_functions.len());
-            function_by_name.insert(function.name.clone(), index);
+            function_by_name.insert(name, index);
             indexed_functions.push(function);
         }
 
@@ -63,8 +65,10 @@ impl ProgramImage {
     #[must_use]
     pub fn to_program(&self) -> Program {
         let mut program = Program::new();
-        for function in &self.functions {
-            program.insert_function(function.clone());
+        for index in self.function_by_name.values().copied() {
+            if let Some(function) = self.function_for_program(index, &mut Vec::new()) {
+                program.insert_function(function);
+            }
         }
         program.set_global_layout(self.global_names.clone());
         program.set_script_methods(self.script_methods.clone());
@@ -133,11 +137,41 @@ impl ProgramImage {
             .map(|function| function.cache_sites.len())
             .sum()
     }
+
+    fn function_for_program(
+        &self,
+        index: FunctionIndex,
+        stack: &mut Vec<FunctionIndex>,
+    ) -> Option<CodeObject> {
+        if stack.contains(&index) {
+            return None;
+        }
+        let mut function = self.function(index)?.clone();
+        stack.push(index);
+        let mut nested_functions = Vec::new();
+        for instruction in &mut function.instructions {
+            if let InstructionKind::MakeClosure {
+                function: target, ..
+            } = &mut instruction.kind
+                && let Some(nested) = self.function_for_program(*target, stack)
+            {
+                *target = FunctionIndex(nested_functions.len());
+                nested_functions.push(nested);
+            }
+        }
+        function.nested_functions = nested_functions;
+        stack.pop();
+        Some(function)
+    }
 }
 
 impl ProgramCode for ProgramImage {
     fn function(&self, name: &str) -> Option<&CodeObject> {
         self.function_by_name(name)
+    }
+
+    fn function_by_index(&self, index: FunctionIndex) -> Option<&CodeObject> {
+        self.function(index)
     }
 
     fn script_method(&self, type_name: &str, method: &str) -> Option<&CodeObject> {
@@ -161,11 +195,42 @@ impl ProgramCode for ProgramImage {
     }
 }
 
+fn flatten_function(
+    mut function: CodeObject,
+    indexed_functions: &mut Vec<CodeObject>,
+) -> CodeObject {
+    let nested_functions = std::mem::take(&mut function.nested_functions);
+    if nested_functions.is_empty() {
+        return function;
+    }
+
+    let mut remapped = Vec::with_capacity(nested_functions.len());
+    for nested in nested_functions {
+        let nested = flatten_function(nested, indexed_functions);
+        let index = FunctionIndex(indexed_functions.len());
+        indexed_functions.push(nested);
+        remapped.push(index);
+    }
+
+    rewrite_closure_function_indices(&mut function, &remapped);
+    function
+}
+
+fn rewrite_closure_function_indices(function: &mut CodeObject, remapped: &[FunctionIndex]) {
+    for instruction in &mut function.instructions {
+        if let InstructionKind::MakeClosure { function, .. } = &mut instruction.kind
+            && let Some(index) = remapped.get(function.0)
+        {
+            *function = *index;
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use vela_common::{GlobalSlot, MethodId};
 
-    use crate::{CodeObject, Constant, Program};
+    use crate::{CodeObject, Constant, Instruction, InstructionKind, Program, Register};
 
     use super::ProgramImage;
 
@@ -234,6 +299,67 @@ mod tests {
                 .constants
                 .len(),
             1
+        );
+    }
+
+    #[test]
+    fn image_flattens_nested_closure_functions() {
+        let mut program = Program::new();
+        let mut main = CodeObject::new("main", 1);
+        let closure = CodeObject::new("main::<lambda>", 1);
+        let local_function = main.push_nested_function(closure);
+        main.push_instruction(Instruction::new(InstructionKind::MakeClosure {
+            dst: Register(0),
+            function: local_function,
+            captures: Vec::new(),
+        }));
+        program.insert_function(main);
+
+        let image = ProgramImage::from_program(&program);
+        let main_index = image.function_index("main").expect("main function index");
+        let main = image.function(main_index).expect("main function");
+        let closure_index = match &main.instructions[0].kind {
+            InstructionKind::MakeClosure { function, .. } => *function,
+            other => panic!("expected MakeClosure instruction, found {other:?}"),
+        };
+
+        assert!(main.nested_functions.is_empty());
+        assert_eq!(image.function_count(), 2);
+        assert_eq!(
+            image
+                .function(closure_index)
+                .expect("image closure function")
+                .name,
+            "main::<lambda>"
+        );
+    }
+
+    #[test]
+    fn image_rebuilds_nested_closures_for_program_compatibility() {
+        let mut program = Program::new();
+        let mut main = CodeObject::new("main", 1);
+        let closure = CodeObject::new("main::<lambda>", 1);
+        let local_function = main.push_nested_function(closure);
+        main.push_instruction(Instruction::new(InstructionKind::MakeClosure {
+            dst: Register(0),
+            function: local_function,
+            captures: Vec::new(),
+        }));
+        program.insert_function(main);
+
+        let rebuilt = ProgramImage::from_program(&program).to_program();
+        let main = rebuilt.function("main").expect("rebuilt main function");
+        let closure_index = match &main.instructions[0].kind {
+            InstructionKind::MakeClosure { function, .. } => *function,
+            other => panic!("expected MakeClosure instruction, found {other:?}"),
+        };
+
+        assert_eq!(rebuilt.functions.len(), 1);
+        assert_eq!(
+            main.nested_function(closure_index)
+                .expect("rebuilt nested closure")
+                .name,
+            "main::<lambda>"
         );
     }
 }

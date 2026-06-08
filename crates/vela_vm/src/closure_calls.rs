@@ -13,6 +13,7 @@ use crate::{
 
 pub(crate) struct MakeClosure<'a> {
     pub(crate) dst: Register,
+    pub(crate) program: Option<&'a dyn ProgramCode>,
     pub(crate) owner: &'a CodeObject,
     pub(crate) function: FunctionIndex,
     pub(crate) captures: &'a [Register],
@@ -34,14 +35,13 @@ pub(crate) fn make_closure(
             operation: "closure heap",
         })
     })?;
-    let code = closure
-        .owner
-        .nested_function(closure.function)
-        .ok_or_else(|| {
+    let code = resolve_closure_code(closure.program, closure.owner, closure.function).ok_or_else(
+        || {
             VmError::new(VmErrorKind::UnknownFunction {
                 name: format!("{}::<closure#{}>", closure.owner.name, closure.function.0),
             })
-        })?;
+        },
+    )?;
     let value = allocate_heap_value(
         HeapValue::Closure(ClosureValue {
             code: Arc::new(code.clone()),
@@ -51,6 +51,16 @@ pub(crate) fn make_closure(
         budget.as_deref_mut(),
     )?;
     frame.write(closure.dst, value)
+}
+
+fn resolve_closure_code<'a>(
+    program: Option<&'a dyn ProgramCode>,
+    owner: &'a CodeObject,
+    function: FunctionIndex,
+) -> Option<&'a CodeObject> {
+    program
+        .and_then(|program| program.function_by_index(function))
+        .or_else(|| owner.nested_function(function))
 }
 
 pub(crate) struct ClosureCall<'a> {

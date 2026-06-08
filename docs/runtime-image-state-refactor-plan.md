@@ -1771,6 +1771,8 @@ strict runtime-local heap/value isolation
 [x] Implement first per-runtime IC.
 [x] Replace MakeClosure Box<CodeObject> with FunctionIndex.
 [x] Introduce ProgramImage.
+[x] Flatten nested closure functions into ProgramImage function indexes.
+[x] Keep ProgramImage::to_program rebuilding nested closures for compatibility callers.
 [x] Move hot reload to ProgramImage-native version swapping.
 [x] Document JIT ownership ABI; defer JIT runtime types until M22.
 ```

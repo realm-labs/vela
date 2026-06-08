@@ -277,6 +277,7 @@ impl Vm {
                         &mut frame,
                         closure_calls::MakeClosure {
                             dst: *dst,
+                            program,
                             owner: code,
                             function: *function,
                             captures,

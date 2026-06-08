@@ -131,6 +131,10 @@ impl Program {
 pub trait ProgramCode {
     fn function(&self, name: &str) -> Option<&CodeObject>;
 
+    fn function_by_index(&self, _index: FunctionIndex) -> Option<&CodeObject> {
+        None
+    }
+
     fn script_method(&self, type_name: &str, method: &str) -> Option<&CodeObject>;
 
     fn script_method_id(&self, type_name: &str, method: &str) -> Option<MethodId>;
