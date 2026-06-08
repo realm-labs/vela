@@ -192,6 +192,7 @@ fn update_from_program(
     policy: &HotReloadPolicy,
 ) -> HotReloadResult<HotUpdate> {
     let abi = abi_with_script_metadata(abi, &program);
+    let global_names = program.global_names().to_vec();
     let script_methods = program.script_methods().clone();
     let script_metadata = program.script_metadata().cloned();
     let mut functions = BTreeMap::new();
@@ -233,6 +234,7 @@ fn update_from_program(
         AcceptedHotReloadChanges::new(changed_functions, changed_modules, impacted_modules);
     Ok(HotUpdate::new(
         functions,
+        global_names,
         script_methods,
         script_metadata,
         abi,

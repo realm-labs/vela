@@ -68,6 +68,7 @@ impl HotReloadRuntime {
         let next = Arc::new(ProgramVersion {
             id: ProgramVersionId(self.current.id.0.saturating_add(1)),
             functions,
+            global_names: update.global_names,
             script_methods: update.script_methods,
             script_metadata: update.script_metadata,
             abi: update.abi,

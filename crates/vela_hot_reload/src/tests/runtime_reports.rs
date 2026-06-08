@@ -66,6 +66,29 @@ fn main() {
 }
 
 #[test]
+fn program_version_preserves_global_layout() {
+    let version = compile_initial(
+        SourceId::new(1),
+        r#"
+global state: Player;
+
+fn main() {
+    return 1;
+}
+"#,
+    )
+    .expect("compile initial");
+
+    assert_eq!(version.global_names(), ["main::state".to_owned()]);
+    let program = version.to_program();
+    assert_eq!(program.global_names(), version.global_names());
+    assert!(
+        program.global_slot("main::state").is_some(),
+        "converted program should keep global slot metadata"
+    );
+}
+
+#[test]
 fn hot_reload_rebuilds_profile_for_next_version() {
     let initial =
         compile_initial(SourceId::new(1), "fn main() { return 20; }").expect("compile initial");
@@ -99,6 +122,39 @@ fn main() {
     assert_eq!(
         helper_profile.instruction_count(),
         helper.instructions.len()
+    );
+}
+
+#[test]
+fn hot_reload_rebuilds_global_layout_for_next_version() {
+    let initial =
+        compile_initial(SourceId::new(1), "fn main() { return 20; }").expect("compile initial");
+    let mut runtime = HotReloadRuntime::new(initial);
+    let old = runtime.current();
+    assert!(old.global_names().is_empty());
+
+    let update = compile_update(
+        &old,
+        SourceId::new(2),
+        r#"
+global state: Player;
+
+fn main() {
+    return 30;
+}
+"#,
+    )
+    .expect("compile update");
+
+    runtime.apply_hot_update(update).expect("apply update");
+    let new = runtime.current();
+
+    assert_eq!(old.id, ProgramVersionId(0));
+    assert_eq!(new.id, ProgramVersionId(1));
+    assert_eq!(new.global_names(), ["main::state".to_owned()]);
+    assert!(
+        new.to_program().global_slot("main::state").is_some(),
+        "new program should keep global slot metadata"
     );
 }
 

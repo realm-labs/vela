@@ -17,6 +17,7 @@ use crate::symbol::{FunctionSymbolId, ProgramVersionId};
 pub struct ProgramVersion {
     pub id: ProgramVersionId,
     pub(crate) functions: BTreeMap<FunctionSymbolId, Arc<CodeObject>>,
+    pub(crate) global_names: Vec<String>,
     pub(crate) script_methods: ScriptMethodTable,
     pub(crate) script_metadata: Option<ModuleGraph>,
     pub(crate) abi: HotReloadAbi,
@@ -35,6 +36,7 @@ impl ProgramVersion {
         program: Program,
         abi: HotReloadAbi,
     ) -> Self {
+        let global_names = program.global_names().to_vec();
         let script_methods = program.script_methods().clone();
         let script_metadata = program.script_metadata().cloned();
         let functions = program
@@ -46,6 +48,7 @@ impl ProgramVersion {
         Self {
             id,
             functions,
+            global_names,
             script_methods,
             script_metadata,
             abi,
@@ -65,6 +68,11 @@ impl ProgramVersion {
     #[must_use]
     pub fn script_methods(&self) -> &ScriptMethodTable {
         &self.script_methods
+    }
+
+    #[must_use]
+    pub fn global_names(&self) -> &[String] {
+        &self.global_names
     }
 
     #[must_use]
@@ -123,6 +131,7 @@ impl ProgramVersion {
         for function in self.functions.values() {
             program.insert_function((**function).clone());
         }
+        program.set_global_layout(self.global_names.clone());
         program.set_script_methods(self.script_methods.clone());
         if let Some(graph) = &self.script_metadata {
             program.set_script_metadata(graph.clone());
@@ -134,6 +143,7 @@ impl ProgramVersion {
 #[derive(Clone, Debug, PartialEq)]
 pub struct HotUpdate {
     pub(crate) functions: BTreeMap<FunctionSymbolId, Arc<CodeObject>>,
+    pub(crate) global_names: Vec<String>,
     pub(crate) script_methods: ScriptMethodTable,
     pub(crate) script_metadata: Option<ModuleGraph>,
     pub(crate) abi: HotReloadAbi,
@@ -143,6 +153,7 @@ pub struct HotUpdate {
 impl HotUpdate {
     pub(crate) fn new(
         functions: BTreeMap<FunctionSymbolId, Arc<CodeObject>>,
+        global_names: Vec<String>,
         script_methods: ScriptMethodTable,
         script_metadata: Option<ModuleGraph>,
         abi: HotReloadAbi,
@@ -150,6 +161,7 @@ impl HotUpdate {
     ) -> Self {
         Self {
             functions,
+            global_names,
             script_methods,
             script_metadata,
             abi,
