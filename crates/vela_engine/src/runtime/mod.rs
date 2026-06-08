@@ -3,7 +3,7 @@ use std::path::Path;
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::{Arc, Mutex};
 
-use vela_bytecode::Program;
+use vela_bytecode::{Program, ProgramCode};
 use vela_common::{GlobalSlot, HostObjectId, SourceId};
 use vela_host::access::HostAccess;
 use vela_host::adapter::ScriptStateAdapter;
@@ -336,8 +336,8 @@ where
         let name = name.into();
         let code = self
             .image
-            .program()
-            .function(&name)
+            .program_image()
+            .function_by_name(&name)
             .ok_or_else(|| unknown_function(name.clone()))?;
         Ok(VelaFunction {
             runtime_id: self.state.id,
@@ -356,12 +356,12 @@ where
             .ok_or_else(|| unknown_method(method.clone()))?;
         let method_id = self
             .image
-            .program()
+            .program_image()
             .script_method_id(&receiver_type, &method)
             .ok_or_else(|| unknown_method(method.clone()))?;
         let code = self
             .image
-            .program()
+            .program_image()
             .script_method_by_id(&receiver_type, method_id)
             .ok_or_else(|| unknown_method(method.clone()))?;
         Ok(VelaMethod {
@@ -636,8 +636,8 @@ where
     fn resolve_call_args(&self, entry: &str, args: &CallArgs<'_>) -> VmResult<Vec<OwnedValue>> {
         let code = self
             .image
-            .program()
-            .function(entry)
+            .program_image()
+            .function_by_name(entry)
             .ok_or_else(|| VmError {
                 kind: VmErrorKind::UnknownFunction {
                     name: entry.to_owned(),
