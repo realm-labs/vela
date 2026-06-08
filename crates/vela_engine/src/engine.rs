@@ -193,12 +193,10 @@ impl Engine {
         args: &[OwnedValue],
         host: &mut HostExecution<'_>,
     ) -> VmResult<OwnedValue> {
-        let entry = self.native_method(id).ok_or_else(|| VmError {
-            kind: VmErrorKind::UnknownMethod {
+        let entry = self.native_method(id).ok_or_else(|| {
+            VmError::new(VmErrorKind::UnknownMethod {
                 method: format!("host method {}", id.get()),
-            },
-            source_span: None,
-            call_stack: Default::default(),
+            })
         })?;
         check_capabilities(&entry.desc.name, &entry.desc.effects, self.capabilities)?;
         (entry.function)(receiver, args, host)
@@ -399,14 +397,10 @@ fn check_capabilities(
     }
 
     if let Some(capability) = required.difference(capabilities).iter().next() {
-        return Err(VmError {
-            kind: VmErrorKind::PermissionDenied {
-                native: native.to_owned(),
-                capability: capability.as_str().to_owned(),
-            },
-            source_span: None,
-            call_stack: Default::default(),
-        });
+        return Err(VmError::new(VmErrorKind::PermissionDenied {
+            native: native.to_owned(),
+            capability: capability.as_str().to_owned(),
+        }));
     }
     Ok(())
 }

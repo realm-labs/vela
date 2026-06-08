@@ -58,7 +58,7 @@ fn main() {
         .run(&code)
         .expect_err("array sum should reject non-numeric values");
     assert_eq!(
-        error.kind,
+        error.kind(),
         VmErrorKind::TypeMismatch {
             operation: "method sum"
         }
@@ -130,7 +130,7 @@ fn main() {
         .run(&code)
         .expect_err("array group_by should reject non-string keys");
     assert_eq!(
-        error.kind,
+        error.kind(),
         VmErrorKind::TypeMismatch {
             operation: "method group_by"
         }
@@ -308,7 +308,7 @@ fn main() {
         .run(&code)
         .expect_err("array sort_by should reject mixed key domains");
     assert_eq!(
-        error.kind,
+        error.kind(),
         VmErrorKind::TypeMismatch {
             operation: "method sort_by"
         }
@@ -329,7 +329,7 @@ fn main() {
         .run(&code)
         .expect_err("array sort should reject mixed scalar domains");
     assert_eq!(
-        error.kind,
+        error.kind(),
         VmErrorKind::TypeMismatch {
             operation: "method sort"
         }
@@ -350,7 +350,7 @@ fn main() {
         .run(&min_code)
         .expect_err("array min should reject mixed scalar domains");
     assert_eq!(
-        min_error.kind,
+        min_error.kind(),
         VmErrorKind::TypeMismatch {
             operation: "method min"
         }
@@ -368,7 +368,7 @@ fn main() {
         .run(&max_code)
         .expect_err("array max should reject mixed scalar domains");
     assert_eq!(
-        max_error.kind,
+        max_error.kind(),
         VmErrorKind::TypeMismatch {
             operation: "method max"
         }

@@ -31,7 +31,7 @@ fn main() {
 
     assert!(matches!(
         engine.into_vm().run_program(&program, "main", &[]),
-        Err(error) if error.kind == VmErrorKind::PermissionDenied {
+        Err(error) if error.kind() == VmErrorKind::PermissionDenied {
             native: "fs::read_to_string".to_owned(),
             capability: "io_read".to_owned(),
         }

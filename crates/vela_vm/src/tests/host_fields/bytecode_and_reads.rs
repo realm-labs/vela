@@ -18,7 +18,7 @@ fn heap_execution_enforces_memory_budget_for_bytecode_allocations() {
         .expect_err("string allocation should exceed memory budget");
 
     assert_eq!(
-        error.kind,
+        error.kind(),
         VmErrorKind::BudgetExceeded {
             budget: ExecutionBudgetKind::MemoryBytes,
             limit: 8,
@@ -338,7 +338,7 @@ fn host_field_read_rejects_stale_generation() {
         .expect_err("stale host read");
 
     assert_eq!(
-        error.kind,
+        error.kind(),
         VmErrorKind::Host(vela_host::error::HostErrorKind::StaleGeneration {
             expected: 2,
             actual: 3
@@ -384,7 +384,7 @@ fn host_field_read_error_keeps_instruction_source_span() {
 
     assert_eq!(error.source_span, Some(span));
     assert_eq!(
-        error.kind,
+        error.kind(),
         VmErrorKind::Host(HostErrorKind::PermissionDenied {
             path: level_path(host_ref),
             action: "read"
@@ -455,7 +455,7 @@ fn runtime_errors_include_script_call_stack() {
         .run_program(&program, "main", &[])
         .expect_err("division by zero should fail");
 
-    assert_eq!(error.kind, VmErrorKind::DivisionByZero);
+    assert_eq!(error.kind(), VmErrorKind::DivisionByZero);
     assert_eq!(error.source_span, Some(leaf_error_span));
     assert_eq!(
         error

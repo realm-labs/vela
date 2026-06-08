@@ -416,7 +416,7 @@ fn main() {
             .run(&code)
             .expect_err("map merge should reject non-map argument");
         assert_eq!(
-            error.kind,
+            error.kind(),
             crate::VmErrorKind::TypeMismatch {
                 operation: "method merge"
             }
@@ -532,7 +532,7 @@ fn main() {
             .run(&code)
             .expect_err("map extend should reject non-map args");
         assert_eq!(
-            error.kind,
+            error.kind(),
             crate::VmErrorKind::TypeMismatch {
                 operation: "method extend"
             }

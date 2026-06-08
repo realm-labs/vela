@@ -10,7 +10,7 @@ use vela_host::mock::MockStateAdapter;
 use vela_host::path::{HostPath, HostRef};
 use vela_host::proxy::PathProxy;
 use vela_reflect::registry::{MethodDesc, TypeDesc, TypeKey};
-use vela_vm::error::{VmError, VmErrorKind};
+use vela_vm::error::VmErrorKind;
 use vela_vm::owned_value::OwnedValue;
 
 #[test]
@@ -44,10 +44,7 @@ fn script_arg_conversions_support_optional_values() {
     );
     assert!(matches!(
         Option::<i64>::from_script_arg(&OwnedValue::String("bad".to_owned())),
-        Err(VmError {
-            kind: VmErrorKind::TypeMismatch { operation: "int" },
-            ..
-        })
+        Err(error) if matches!(error.kind(), VmErrorKind::TypeMismatch { operation: "int" })
     ));
     assert!(matches!(
         Option::<i64>::from_script_arg(&OwnedValue::Enum {
@@ -55,12 +52,7 @@ fn script_arg_conversions_support_optional_values() {
             variant: "Missing".to_owned(),
             fields: [].into(),
         }),
-        Err(VmError {
-            kind: VmErrorKind::TypeMismatch {
-                operation: "option"
-            },
-            ..
-        })
+        Err(error) if matches!(error.kind(), VmErrorKind::TypeMismatch { operation: "option" })
     ));
 }
 
@@ -93,10 +85,7 @@ fn script_arg_conversions_support_result_values() {
             variant: "Ok".to_owned(),
             fields: [("0".to_owned(), OwnedValue::String("bad".to_owned()))].into(),
         }),
-        Err(VmError {
-            kind: VmErrorKind::TypeMismatch { operation: "int" },
-            ..
-        })
+        Err(error) if matches!(error.kind(), VmErrorKind::TypeMismatch { operation: "int" })
     ));
     assert!(matches!(
         std::result::Result::<i64, String>::from_script_arg(&OwnedValue::Enum {
@@ -104,12 +93,7 @@ fn script_arg_conversions_support_result_values() {
             variant: "Unknown".to_owned(),
             fields: [("0".to_owned(), OwnedValue::Int(1))].into(),
         }),
-        Err(VmError {
-            kind: VmErrorKind::TypeMismatch {
-                operation: "result",
-            },
-            ..
-        })
+        Err(error) if matches!(error.kind(), VmErrorKind::TypeMismatch { operation: "result" })
     ));
 }
 
@@ -151,10 +135,7 @@ fn script_arg_conversions_support_set_values() {
     );
     assert!(matches!(
         BTreeSet::<i64>::from_script_arg(&OwnedValue::Array(vec![OwnedValue::Int(1)])),
-        Err(VmError {
-            kind: VmErrorKind::TypeMismatch { operation: "set" },
-            ..
-        })
+        Err(error) if matches!(error.kind(), VmErrorKind::TypeMismatch { operation: "set" })
     ));
 }
 
@@ -251,41 +232,27 @@ fn script_arg_conversions_extract_owned_rust_values() {
 
     assert!(matches!(
         args.required::<HostRef>(1),
-        Err(VmError {
-            kind: VmErrorKind::TypeMismatch {
-                operation: "host ref"
-            },
-            source_span: None,
-            ..
-        })
+        Err(error) if matches!(error.kind(), VmErrorKind::TypeMismatch { operation: "host ref" })
+            && error.source_span.is_none()
     ));
     assert!(matches!(
         f32::from_script_arg(&OwnedValue::Float(f64::MAX)),
-        Err(VmError {
-            kind: VmErrorKind::TypeMismatch { operation: "float" },
-            source_span: None,
-            ..
-        })
+        Err(error) if matches!(error.kind(), VmErrorKind::TypeMismatch { operation: "float" })
+            && error.source_span.is_none()
     ));
     assert!(matches!(
         args.required::<[i64; 2]>(4),
-        Err(VmError {
-            kind: VmErrorKind::TypeMismatch { operation: "array" },
-            source_span: None,
-            ..
-        })
+        Err(error) if matches!(error.kind(), VmErrorKind::TypeMismatch { operation: "array" })
+            && error.source_span.is_none()
     ));
     assert!(matches!(
         args.required::<i64>(9),
-        Err(VmError {
-            kind: VmErrorKind::ArityMismatch {
+        Err(error) if matches!(error.kind(), VmErrorKind::ArityMismatch {
                 name,
                 expected: 10,
                 actual: 9,
-            },
-            source_span: None,
-            ..
-        }) if name == "native argument conversion"
+            } if name == "native argument conversion")
+            && error.source_span.is_none()
     ));
 }
 

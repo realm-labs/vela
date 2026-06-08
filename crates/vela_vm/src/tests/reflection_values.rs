@@ -96,7 +96,7 @@ fn main() {
 
     assert!(matches!(
         vm.run_program_with_host(&program, "main", &[], &mut host),
-        Err(error) if error.kind == VmErrorKind::Reflect(ReflectErrorKind::InvalidTarget)
+        Err(error) if error.kind() == VmErrorKind::Reflect(ReflectErrorKind::InvalidTarget)
     ));
 }
 
@@ -126,7 +126,7 @@ fn main() {
 
     assert!(matches!(
         vm.run_program_with_host(&program, "main", &[], &mut host),
-        Err(error) if error.kind == VmErrorKind::Reflect(ReflectErrorKind::UnknownField {
+        Err(error) if error.kind() == VmErrorKind::Reflect(ReflectErrorKind::UnknownField {
             type_name: "Player".to_owned(),
             field: "leve".to_owned(),
             candidates: vec!["level".to_owned()],
@@ -173,7 +173,7 @@ fn main() {
 
     assert!(matches!(
         vm.run_program_with_host(&program, "main", &[], &mut host),
-        Err(error) if error.kind == VmErrorKind::Reflect(ReflectErrorKind::FieldPermissionDenied {
+        Err(error) if error.kind() == VmErrorKind::Reflect(ReflectErrorKind::FieldPermissionDenied {
             type_name: "Player".to_owned(),
             field: "level".to_owned(),
             permission: "player.level.inspect".to_owned(),

@@ -167,7 +167,7 @@ fn main() {
             .run(&code)
             .expect_err("string utility should reject non-string receiver");
         assert_eq!(
-            error.kind,
+            error.kind(),
             crate::VmErrorKind::TypeMismatch {
                 operation: "method trim"
             }
@@ -207,7 +207,7 @@ fn main() {
             .run(&code)
             .expect_err("string repeat should reject negative counts");
         assert_eq!(
-            error.kind,
+            error.kind(),
             crate::VmErrorKind::TypeMismatch {
                 operation: "method repeat"
             }
@@ -244,7 +244,7 @@ fn main() {
             .run(&code)
             .expect_err("string slice should reject out of bounds index");
         assert_eq!(
-            error.kind,
+            error.kind(),
             crate::VmErrorKind::IndexOutOfBounds { index: 10, len: 5 }
         );
     }
@@ -307,7 +307,7 @@ fn main() {
             .run(&code)
             .expect_err("string find should reject non-string needles");
         assert_eq!(
-            error.kind,
+            error.kind(),
             crate::VmErrorKind::TypeMismatch {
                 operation: "method find"
             }
@@ -373,7 +373,7 @@ fn main() {
             .run(&code)
             .expect_err("string char_at should reject negative indexes");
         assert_eq!(
-            error.kind,
+            error.kind(),
             crate::VmErrorKind::TypeMismatch {
                 operation: "method char_at"
             }
@@ -440,7 +440,7 @@ fn main() {
             .run(&code)
             .expect_err("string strip affix should reject non-string affixes");
         assert_eq!(
-            error.kind,
+            error.kind(),
             crate::VmErrorKind::TypeMismatch {
                 operation: "method strip_prefix"
             }

@@ -34,38 +34,28 @@ fn math_random(args: &[OwnedValue], rng: &Mutex<SeededRandom>) -> VmResult<Owned
         return type_error("math::random");
     }
 
-    let range = u128::try_from(i128::from(*max) - i128::from(*min) + 1).map_err(|_| VmError {
-        kind: VmErrorKind::TypeMismatch {
+    let range = u128::try_from(i128::from(*max) - i128::from(*min) + 1).map_err(|_| {
+        VmError::new(VmErrorKind::TypeMismatch {
             operation: "math::random",
-        },
-        source_span: None,
-        call_stack: Default::default(),
+        })
     })?;
-    let mut rng = rng.lock().map_err(|_| VmError {
-        kind: VmErrorKind::TypeMismatch {
+    let mut rng = rng.lock().map_err(|_| {
+        VmError::new(VmErrorKind::TypeMismatch {
             operation: "math::random",
-        },
-        source_span: None,
-        call_stack: Default::default(),
+        })
     })?;
     let offset = u128::from(rng.next_u64()) % range;
     let value = i128::from(*min)
-        + i128::try_from(offset).map_err(|_| VmError {
-            kind: VmErrorKind::TypeMismatch {
+        + i128::try_from(offset).map_err(|_| {
+            VmError::new(VmErrorKind::TypeMismatch {
                 operation: "math::random",
-            },
-            source_span: None,
-            call_stack: Default::default(),
+            })
         })?;
-    i64::try_from(value)
-        .map(OwnedValue::Int)
-        .map_err(|_| VmError {
-            kind: VmErrorKind::TypeMismatch {
-                operation: "math::random",
-            },
-            source_span: None,
-            call_stack: Default::default(),
+    i64::try_from(value).map(OwnedValue::Int).map_err(|_| {
+        VmError::new(VmErrorKind::TypeMismatch {
+            operation: "math::random",
         })
+    })
 }
 
 #[derive(Clone, Copy, Debug)]
@@ -91,24 +81,16 @@ impl SeededRandom {
 }
 
 fn type_error<T>(operation: &'static str) -> VmResult<T> {
-    Err(VmError {
-        kind: VmErrorKind::TypeMismatch { operation },
-        source_span: None,
-        call_stack: Default::default(),
-    })
+    Err(VmError::new(VmErrorKind::TypeMismatch { operation }))
 }
 
 fn expect_arity(name: &str, args: &[OwnedValue], expected: usize) -> VmResult<()> {
     if args.len() == expected {
         return Ok(());
     }
-    Err(VmError {
-        kind: VmErrorKind::ArityMismatch {
-            name: name.to_owned(),
-            expected,
-            actual: args.len(),
-        },
-        source_span: None,
-        call_stack: Default::default(),
-    })
+    Err(VmError::new(VmErrorKind::ArityMismatch {
+        name: name.to_owned(),
+        expected,
+        actual: args.len(),
+    }))
 }

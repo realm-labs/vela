@@ -595,14 +595,10 @@ fn typed_native_functions_propagate_vm_result_errors() {
                 if allowed {
                     Ok(17)
                 } else {
-                    Err(VmError {
-                        kind: VmErrorKind::PermissionDenied {
-                            native: "game::require_admin".to_owned(),
-                            capability: "admin".to_owned(),
-                        },
-                        source_span: None,
-                        call_stack: Default::default(),
-                    })
+                    Err(VmError::new(VmErrorKind::PermissionDenied {
+                        native: "game::require_admin".to_owned(),
+                        capability: "admin".to_owned(),
+                    }))
                 }
             },
         )
@@ -622,7 +618,7 @@ fn main(allowed) {
         engine
             .into_vm()
             .run_program(&program, "main", &[OwnedValue::Bool(false)])
-            .map_err(|error| error.kind),
+            .map_err(|error| error.kind()),
         Err(VmErrorKind::PermissionDenied {
             native: "game::require_admin".to_owned(),
             capability: "admin".to_owned(),
@@ -670,7 +666,7 @@ fn main(allowed) {
         engine
             .into_vm()
             .run_program(&program, "main", &[OwnedValue::Bool(false)])
-            .map_err(|error| error.kind),
+            .map_err(|error| error.kind()),
         Err(VmErrorKind::Host(HostErrorKind::PermissionDenied {
             path: expected_path,
             action: "write",
@@ -693,20 +689,14 @@ fn typed_native_functions_report_arity_and_type_errors() {
 
     assert!(matches!(
         (function.function)(&[OwnedValue::Int(1)]),
-        Err(VmError {
-            kind: VmErrorKind::ArityMismatch {
+        Err(error) if matches!(error.kind(), VmErrorKind::ArityMismatch {
                 expected: 2,
                 actual: 1,
                 ..
-            },
-            ..
-        })
+            })
     ));
     assert!(matches!(
         (function.function)(&[OwnedValue::String("x".to_owned()), OwnedValue::Int(1)]),
-        Err(VmError {
-            kind: VmErrorKind::TypeMismatch { operation: "int" },
-            ..
-        })
+        Err(error) if matches!(error.kind(), VmErrorKind::TypeMismatch { operation: "int" })
     ));
 }

@@ -94,7 +94,7 @@ fn main() {
         .run_program(&program, "main", &[])
         .expect_err("option helper should reject Result values");
     assert_eq!(
-        error.kind,
+        error.kind(),
         VmErrorKind::TypeMismatch {
             operation: "option::unwrap_or"
         }
@@ -118,7 +118,7 @@ fn main() {
         .run_program(&program, "main", &[])
         .expect_err("invalid option flatten should fail");
     assert_eq!(
-        error.kind,
+        error.kind(),
         VmErrorKind::TypeMismatch {
             operation: "method flatten"
         }
@@ -142,7 +142,7 @@ fn main() {
         .run_program(&program, "main", &[])
         .expect_err("invalid and_then callback should fail");
     assert_eq!(
-        error.kind,
+        error.kind(),
         VmErrorKind::TypeMismatch {
             operation: "method and_then"
         }
@@ -166,7 +166,7 @@ fn main() {
         .run_program(&program, "main", &[])
         .expect_err("invalid or_else callback should fail");
     assert_eq!(
-        error.kind,
+        error.kind(),
         VmErrorKind::TypeMismatch {
             operation: "method or_else"
         }
@@ -250,7 +250,7 @@ fn main() {
         .run(&code)
         .expect_err("set::from_array should reject non-scalar elements");
     assert_eq!(
-        error.kind,
+        error.kind(),
         VmErrorKind::TypeMismatch {
             operation: "set::from_array"
         }

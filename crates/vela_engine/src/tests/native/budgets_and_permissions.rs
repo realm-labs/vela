@@ -24,13 +24,9 @@ fn host_native_error_retains_written_mutations() {
                     HostValue::Int(*level),
                     None,
                 )?;
-                Err(VmError {
-                    kind: VmErrorKind::TypeMismatch {
-                        operation: "failing host native",
-                    },
-                    source_span: None,
-                    call_stack: Default::default(),
-                })
+                Err(VmError::new(VmErrorKind::TypeMismatch {
+                    operation: "failing host native",
+                }))
             },
         )
         .build()
@@ -61,7 +57,7 @@ fn main(player) {
         .expect_err("host native error should fail");
 
     assert_eq!(
-        error.kind,
+        error.kind(),
         VmErrorKind::TypeMismatch {
             operation: "failing host native"
         }
@@ -94,13 +90,9 @@ fn host_native_error_retains_mutations_without_call_options() {
                     HostValue::Int(*level),
                     None,
                 )?;
-                Err(VmError {
-                    kind: VmErrorKind::TypeMismatch {
-                        operation: "direct failing host native",
-                    },
-                    source_span: None,
-                    call_stack: Default::default(),
-                })
+                Err(VmError::new(VmErrorKind::TypeMismatch {
+                    operation: "direct failing host native",
+                }))
             },
         )
         .build()
@@ -135,7 +127,7 @@ fn main(player) {
         .expect_err("host native error should fail");
 
     assert_eq!(
-        error.kind,
+        error.kind(),
         VmErrorKind::TypeMismatch {
             operation: "direct failing host native"
         }
@@ -176,18 +168,15 @@ fn main() {
 
     assert_eq!(
         error,
-        VmError {
-            kind: VmErrorKind::BudgetExceeded {
-                budget: ExecutionBudgetKind::Instructions,
-                limit: 4
-            },
-            source_span: None,
-            call_stack: Arc::from([vela_vm::error::VmStackFrame {
-                function: "main".to_owned(),
-                call_site: None,
-                bytecode_offset: None,
-            }]),
-        }
+        VmError::new(VmErrorKind::BudgetExceeded {
+            budget: ExecutionBudgetKind::Instructions,
+            limit: 4
+        })
+        .with_call_stack(Arc::from([vela_vm::error::VmStackFrame {
+            function: "main".to_owned(),
+            call_site: None,
+            bytecode_offset: None,
+        }]))
     );
 }
 
@@ -269,7 +258,7 @@ fn main(player) {
         engine
             .into_vm()
             .run_program_with_host(&program, "main", &[OwnedValue::HostRef(host_ref)], &mut host),
-        Err(error) if error.kind == VmErrorKind::PermissionDenied {
+        Err(error) if error.kind() == VmErrorKind::PermissionDenied {
             native: "game::set_level".to_owned(),
             capability: Capability::HostWrite.as_str().to_owned(),
         }

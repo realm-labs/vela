@@ -635,7 +635,7 @@ mod tests {
         assert_eq!(heap.live_object_count(), 0);
         assert_eq!(budget.memory_bytes_allocated(), 0);
         assert_eq!(
-            error.kind,
+            error.kind(),
             crate::VmErrorKind::BudgetExceeded {
                 budget: crate::budget::ExecutionBudgetKind::MemoryBytes,
                 limit: 8,

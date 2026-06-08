@@ -24,7 +24,7 @@ fn main() {
 
     assert!(matches!(
         vm.run_program_with_host(&program, "main", &[], &mut host),
-        Err(error) if error.kind == VmErrorKind::Reflect(ReflectErrorKind::UnknownTypeName {
+        Err(error) if error.kind() == VmErrorKind::Reflect(ReflectErrorKind::UnknownTypeName {
             type_name: "Plyer".to_owned(),
             candidates: vec!["Player".to_owned()],
             related: vec![ReflectCandidate::new("Player", None)],
@@ -55,7 +55,7 @@ fn main() {
 
     assert!(matches!(
         vm.run_program_with_host(&program, "main", &[], &mut host),
-        Err(error) if error.kind == VmErrorKind::Reflect(ReflectErrorKind::UnknownTrait {
+        Err(error) if error.kind() == VmErrorKind::Reflect(ReflectErrorKind::UnknownTrait {
             trait_name: "Damagable".to_owned(),
             candidates: vec!["Damageable".to_owned()],
             related: vec![ReflectCandidate::new("Damageable", None)],
@@ -131,7 +131,7 @@ fn main() {
 
     assert!(matches!(
         vm.run_program_with_host(&program, "main", &[], &mut host),
-        Err(error) if error.kind == VmErrorKind::Reflect(ReflectErrorKind::FieldNotReflectReadable {
+        Err(error) if error.kind() == VmErrorKind::Reflect(ReflectErrorKind::FieldNotReflectReadable {
             type_name: "QuestProgress::Active".to_owned(),
             field: "secret".to_owned(),
             source_span: None,
@@ -302,7 +302,7 @@ fn main(player) {
 
     assert!(matches!(
         vm.run_program_with_host(&program, "main", &[OwnedValue::HostRef(host_ref)], &mut host),
-        Err(error) if error.kind == VmErrorKind::Reflect(ReflectErrorKind::UnknownMethod {
+        Err(error) if error.kind() == VmErrorKind::Reflect(ReflectErrorKind::UnknownMethod {
             type_name: "Player".to_owned(),
             method: "grant_xp".to_owned(),
             candidates: vec!["grant_exp".to_owned()],
@@ -335,7 +335,7 @@ fn main() {
 
     assert!(matches!(
         vm.run_program_with_host(&program, "main", &[], &mut host),
-        Err(error) if error.kind == VmErrorKind::Reflect(ReflectErrorKind::UnknownVariant {
+        Err(error) if error.kind() == VmErrorKind::Reflect(ReflectErrorKind::UnknownVariant {
             type_name: "QuestProgress".to_owned(),
             variant: "Actve".to_owned(),
             candidates: vec!["Active".to_owned(), "Finished".to_owned()],
@@ -371,7 +371,7 @@ fn main() {
 
     assert!(matches!(
         vm.run_program_with_host(&program, "main", &[], &mut host),
-        Err(error) if error.kind == VmErrorKind::Reflect(ReflectErrorKind::UnknownVariant {
+        Err(error) if error.kind() == VmErrorKind::Reflect(ReflectErrorKind::UnknownVariant {
             type_name: "QuestProgress".to_owned(),
             variant: "Actve".to_owned(),
             candidates: vec!["Active".to_owned(), "Finished".to_owned()],
@@ -407,7 +407,7 @@ fn main(player) {
 
     assert!(matches!(
         vm.run_program_with_host(&program, "main", &[OwnedValue::HostRef(host_ref)], &mut host),
-        Err(error) if error.kind == VmErrorKind::Reflect(ReflectErrorKind::UnknownTrait {
+        Err(error) if error.kind() == VmErrorKind::Reflect(ReflectErrorKind::UnknownTrait {
             trait_name: "Damagable".to_owned(),
             candidates: vec!["Damageable".to_owned()],
             related: vec![ReflectCandidate::new("Damageable", None)],

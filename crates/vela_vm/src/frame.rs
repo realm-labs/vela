@@ -31,11 +31,7 @@ impl CallFrame {
         let slot = self
             .registers
             .get_mut(usize::from(register.0))
-            .ok_or(VmError {
-                kind: VmErrorKind::RegisterOutOfBounds { register },
-                source_span: None,
-                call_stack: Default::default(),
-            })?;
+            .ok_or_else(|| VmError::new(VmErrorKind::RegisterOutOfBounds { register }))?;
         *slot = value;
         Ok(())
     }

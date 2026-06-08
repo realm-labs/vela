@@ -35,7 +35,7 @@ fn main() {
 
     assert!(matches!(
         engine.into_vm().run_program(&program, "main", &[]),
-        Err(error) if error.kind == VmErrorKind::PermissionDenied {
+        Err(error) if error.kind() == VmErrorKind::PermissionDenied {
             native: "time::now".to_owned(),
             capability: Capability::Time.as_str().to_owned(),
         }
@@ -60,7 +60,7 @@ fn main() {
 
     assert!(matches!(
         engine.into_vm().run_program(&program, "main", &[]),
-        Err(error) if error.kind == VmErrorKind::PermissionDenied {
+        Err(error) if error.kind() == VmErrorKind::PermissionDenied {
             native: "time::elapsed_since".to_owned(),
             capability: Capability::Time.as_str().to_owned(),
         }
@@ -103,7 +103,7 @@ fn main() {
     .expect("random program should compile");
     assert!(matches!(
         engine.into_vm().run_program(&random_program, "main", &[]),
-        Err(error) if error.kind == VmErrorKind::PermissionDenied {
+        Err(error) if error.kind() == VmErrorKind::PermissionDenied {
             native: "math::random".to_owned(),
             capability: Capability::Random.as_str().to_owned(),
         }

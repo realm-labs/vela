@@ -32,7 +32,7 @@ fn main(player) {
         engine
             .into_vm()
             .run_program_with_host(&program, "main", &[OwnedValue::HostRef(host_ref)], &mut host),
-        Err(error) if error.kind == VmErrorKind::Reflect(ReflectErrorKind::LookupBudgetExceeded {
+        Err(error) if error.kind() == VmErrorKind::Reflect(ReflectErrorKind::LookupBudgetExceeded {
             limit: 1
         })
     ));
@@ -81,7 +81,7 @@ fn main(player) {
         engine
             .into_vm()
             .run_program_with_host(&program, "main", &[OwnedValue::HostRef(host_ref)], &mut host),
-        Err(error) if error.kind == VmErrorKind::Reflect(ReflectErrorKind::MethodEffectPermissionDenied {
+        Err(error) if error.kind() == VmErrorKind::Reflect(ReflectErrorKind::MethodEffectPermissionDenied {
             method: "grant_exp".to_owned(),
             permission: ReflectPermission::CallHostWriteMethods,
             source_span: None,

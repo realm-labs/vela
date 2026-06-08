@@ -251,7 +251,7 @@ fn main(player) {
     };
 
     assert_eq!(
-        error.kind,
+        error.kind(),
         VmErrorKind::Host(HostErrorKind::InvalidPush {
             path: reward_path.clone()
         })
@@ -527,7 +527,7 @@ fn main(player) {
     };
 
     assert_eq!(
-        error.kind,
+        error.kind(),
         VmErrorKind::TypeMismatch {
             operation: "set_host_field"
         }

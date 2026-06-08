@@ -18,13 +18,9 @@ pub(crate) fn expect_arity(args: &[OwnedValue], expected: usize) -> VmResult<()>
     if args.len() == expected {
         return Ok(());
     }
-    Err(VmError {
-        kind: VmErrorKind::ArityMismatch {
-            name: "typed native function".to_owned(),
-            expected,
-            actual: args.len(),
-        },
-        source_span: None,
-        call_stack: Default::default(),
-    })
+    Err(VmError::new(VmErrorKind::ArityMismatch {
+        name: "typed native function".to_owned(),
+        expected,
+        actual: args.len(),
+    }))
 }

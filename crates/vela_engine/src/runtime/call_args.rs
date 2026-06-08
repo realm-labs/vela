@@ -305,15 +305,11 @@ impl<'a> CallArgs<'a> {
             } else if param_defaults.get(index).copied().unwrap_or(false) {
                 resolved.push(OwnedValue::Missing);
             } else {
-                return Err(VmError {
-                    kind: VmErrorKind::ArityMismatch {
-                        name: entry.to_owned(),
-                        expected: params.len(),
-                        actual: self.entries.len(),
-                    },
-                    source_span: None,
-                    call_stack: Default::default(),
-                });
+                return Err(VmError::new(VmErrorKind::ArityMismatch {
+                    name: entry.to_owned(),
+                    expected: params.len(),
+                    actual: self.entries.len(),
+                }));
             }
         }
         Ok(resolved)
@@ -348,15 +344,11 @@ impl<'a> CallArgs<'a> {
             } else if param_defaults.get(index).copied().unwrap_or(false) {
                 resolved.push(Value::Missing);
             } else {
-                return Err(VmError {
-                    kind: VmErrorKind::ArityMismatch {
-                        name: entry.to_owned(),
-                        expected: params.len(),
-                        actual: self.entries.len(),
-                    },
-                    source_span: None,
-                    call_stack: Default::default(),
-                });
+                return Err(VmError::new(VmErrorKind::ArityMismatch {
+                    name: entry.to_owned(),
+                    expected: params.len(),
+                    actual: self.entries.len(),
+                }));
             }
         }
         Ok(resolved)
@@ -577,9 +569,5 @@ enum CallArgsMode {
 }
 
 pub(crate) fn call_args_type_error(operation: &'static str) -> VmError {
-    VmError {
-        kind: VmErrorKind::TypeMismatch { operation },
-        source_span: None,
-        call_stack: Default::default(),
-    }
+    VmError::new(VmErrorKind::TypeMismatch { operation })
 }

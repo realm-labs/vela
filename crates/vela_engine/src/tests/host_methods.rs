@@ -425,10 +425,7 @@ fn typed_callable_native_method_conversion_errors_before_host_access() {
             &[OwnedValue::String("bad".to_owned())],
             &mut host,
         ),
-        Err(VmError {
-            kind: VmErrorKind::TypeMismatch { operation: "int" },
-            ..
-        })
+        Err(error) if matches!(error.kind(), VmErrorKind::TypeMismatch { operation: "int" })
     ));
 }
 
@@ -467,7 +464,7 @@ fn typed_callable_native_method_maps_host_result_errors() {
                 &[OwnedValue::Bool(false)],
                 &mut host
             )
-            .map_err(|error| error.kind),
+            .map_err(|error| error.kind()),
         Err(VmErrorKind::Host(HostErrorKind::PermissionDenied {
             path: expected_path,
             action: "call",
@@ -499,13 +496,9 @@ fn callable_native_method_error_retains_written_mutation() {
                     vec![HostValue::Int(*amount)],
                     None,
                 )?;
-                Err(VmError {
-                    kind: VmErrorKind::TypeMismatch {
-                        operation: "failing native method",
-                    },
-                    source_span: None,
-                    call_stack: Default::default(),
-                })
+                Err(VmError::new(VmErrorKind::TypeMismatch {
+                    operation: "failing native method",
+                }))
             },
         )
         .build()
@@ -529,7 +522,7 @@ fn callable_native_method_error_retains_written_mutation() {
         .expect_err("native method should fail");
 
     assert_eq!(
-        error.kind,
+        error.kind(),
         VmErrorKind::TypeMismatch {
             operation: "failing native method",
         }
@@ -702,12 +695,9 @@ fn typed_host_argument_rejects_mismatched_host_type() {
             &[OwnedValue::HostRef(player)],
             &mut host,
         ),
-        Err(VmError {
-            kind: VmErrorKind::TypeMismatch {
+        Err(error) if matches!(error.kind(), VmErrorKind::TypeMismatch {
                 operation: "typed host ref type"
-            },
-            ..
-        })
+            })
     ));
 }
 

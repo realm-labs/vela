@@ -99,12 +99,11 @@ impl Vm {
 
             match &instruction.kind {
                 InstructionKind::LoadConst { dst, constant } => {
-                    let constant_value = code.constants.get(constant.0).ok_or(VmError {
-                        kind: VmErrorKind::ConstantOutOfBounds {
+                    let constant_value = code.constants.get(constant.0).ok_or_else(|| {
+                        VmError::new(VmErrorKind::ConstantOutOfBounds {
                             constant: constant.0,
-                        },
-                        source_span: instruction.span,
-                        call_stack: Default::default(),
+                        })
+                        .with_source_span(instruction.span)
                     })?;
                     let value = match constant_value {
                         Constant::Null => Value::Null,

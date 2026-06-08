@@ -10,18 +10,46 @@ use crate::budget::ExecutionBudgetKind;
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct VmError {
-    pub kind: VmErrorKind,
+    kind: Box<VmErrorKind>,
     pub source_span: Option<Span>,
     pub call_stack: Arc<[VmStackFrame]>,
 }
 
 impl VmError {
-    pub(crate) fn new(kind: VmErrorKind) -> Self {
+    #[must_use]
+    pub fn new(kind: VmErrorKind) -> Self {
         Self {
-            kind,
+            kind: Box::new(kind),
             source_span: None,
             call_stack: Default::default(),
         }
+    }
+
+    #[must_use]
+    pub fn kind(&self) -> VmErrorKind {
+        self.kind_ref().clone()
+    }
+
+    #[must_use]
+    pub fn kind_ref(&self) -> &VmErrorKind {
+        &self.kind
+    }
+
+    #[must_use]
+    pub fn into_kind(self) -> VmErrorKind {
+        *self.kind
+    }
+
+    #[must_use]
+    pub fn with_source_span(mut self, source_span: Option<Span>) -> Self {
+        self.source_span = source_span;
+        self
+    }
+
+    #[must_use]
+    pub fn with_call_stack(mut self, call_stack: Arc<[VmStackFrame]>) -> Self {
+        self.call_stack = call_stack;
+        self
     }
 
     pub(crate) fn with_call_frame(mut self, frame: VmStackFrame) -> Self {
@@ -40,12 +68,13 @@ impl VmError {
 
     #[must_use]
     pub fn to_diagnostic(&self) -> Diagnostic {
-        let mut diagnostic = Diagnostic::error(self.kind.message()).with_code(self.kind.code());
+        let mut diagnostic =
+            Diagnostic::error(self.kind_ref().message()).with_code(self.kind_ref().code());
         if let Some(span) = self.source_span {
             diagnostic = diagnostic.with_span(span).with_label(span, "runtime error");
         }
 
-        if let VmErrorKind::Reflect(kind) = &self.kind {
+        if let VmErrorKind::Reflect(kind) = self.kind_ref() {
             for (span, message) in kind.related_labels() {
                 diagnostic = diagnostic.with_label(span, message);
             }
@@ -88,7 +117,7 @@ impl VmStackFrame {
 
 impl fmt::Display for VmError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{:?}", self.kind)
+        write!(f, "{:?}", self.kind_ref())
     }
 }
 
@@ -232,11 +261,7 @@ pub type VmResult<T> = Result<T, VmError>;
 
 impl From<HostError> for VmError {
     fn from(value: HostError) -> Self {
-        Self {
-            kind: VmErrorKind::Host(value.kind),
-            source_span: value.source_span,
-            call_stack: Default::default(),
-        }
+        Self::new(VmErrorKind::Host(value.kind)).with_source_span(value.source_span)
     }
 }
 
@@ -274,15 +299,13 @@ fn leaf() {
 ";
         let leaf_call = Span::new(SourceId::new(1), 57, 63);
         let middle_call = Span::new(SourceId::new(1), 23, 31);
-        let error = VmError {
-            kind: VmErrorKind::DivisionByZero,
-            source_span: Some(leaf_call),
-            call_stack: Arc::from([
+        let error = VmError::new(VmErrorKind::DivisionByZero)
+            .with_source_span(Some(leaf_call))
+            .with_call_stack(Arc::from([
                 VmStackFrame::new("leaf", Some(leaf_call)),
                 VmStackFrame::new("middle", Some(middle_call)),
                 VmStackFrame::new("main", None),
-            ]),
-        };
+            ]));
 
         let diagnostic = error.to_diagnostic();
 
@@ -332,16 +355,13 @@ fn leaf() {
     fn diagnostic_preserves_reflection_error_candidates() {
         let call_span = Span::new(SourceId::new(1), 12, 39);
         let field_span = Span::new(SourceId::new(2), 16, 21);
-        let error = VmError {
-            kind: VmErrorKind::Reflect(ReflectErrorKind::UnknownField {
-                type_name: "Player".to_owned(),
-                field: "leve".to_owned(),
-                candidates: vec!["level".to_owned()],
-                related: vec![ReflectCandidate::new("level", Some(field_span))],
-            }),
-            source_span: Some(call_span),
-            call_stack: Default::default(),
-        };
+        let error = VmError::new(VmErrorKind::Reflect(ReflectErrorKind::UnknownField {
+            type_name: "Player".to_owned(),
+            field: "leve".to_owned(),
+            candidates: vec!["level".to_owned()],
+            related: vec![ReflectCandidate::new("level", Some(field_span))],
+        }))
+        .with_source_span(Some(call_span));
 
         let diagnostic = error.to_diagnostic();
 

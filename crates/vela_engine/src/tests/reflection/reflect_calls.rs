@@ -82,7 +82,7 @@ fn main() {
         engine
             .into_vm()
             .run_program_with_host(&program, "main", &[], &mut host),
-        Err(error) if error.kind == VmErrorKind::Reflect(ReflectErrorKind::PermissionDenied {
+        Err(error) if error.kind() == VmErrorKind::Reflect(ReflectErrorKind::PermissionDenied {
             permission: ReflectPermission::CallMethods,
         })
     ));
@@ -123,7 +123,7 @@ fn main() {
         engine
             .into_vm()
             .run_program_with_host(&program, "main", &[], &mut host),
-        Err(error) if error.kind == VmErrorKind::Reflect(
+        Err(error) if error.kind() == VmErrorKind::Reflect(
             ReflectErrorKind::FunctionNotReflectCallable {
                 function: "game::add".to_owned(),
                 source_span: None,
@@ -251,7 +251,7 @@ fn main(player) {
         engine
             .into_vm()
             .run_program_with_host(&program, "main", &[OwnedValue::HostRef(host_ref)], &mut host),
-        Err(error) if error.kind == VmErrorKind::Reflect(
+        Err(error) if error.kind() == VmErrorKind::Reflect(
             ReflectErrorKind::FunctionEffectPermissionDenied {
                 function: "game::set_level".to_owned(),
                 permission: ReflectPermission::CallHostWriteMethods,

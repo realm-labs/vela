@@ -364,7 +364,7 @@ fn main() {
         .expect_err("missing global should fail");
 
     assert_eq!(
-        error.kind,
+        error.kind(),
         VmErrorKind::Host(HostErrorKind::MissingGlobal {
             name: "main::state".to_owned()
         })
@@ -761,7 +761,7 @@ fn read_reward(reward) {
         .expect_err("runtime values must not cross runtime heaps");
 
     assert!(matches!(
-        error.kind,
+        error.kind(),
         VmErrorKind::TypeMismatch {
             operation: "VelaValue belongs to another Runtime",
         }
@@ -826,7 +826,7 @@ fn runtime_call_args_reject_duplicate_named_values() {
         .expect_err("duplicate named args should fail");
 
     assert_eq!(
-        error.kind,
+        error.kind(),
         VmErrorKind::TypeMismatch {
             operation: "duplicate named call argument"
         }
@@ -858,7 +858,7 @@ fn runtime_call_args_reject_unknown_named_values() {
         .expect_err("unknown named args should fail");
 
     assert_eq!(
-        error.kind,
+        error.kind(),
         VmErrorKind::TypeMismatch {
             operation: "unknown named call argument"
         }
@@ -890,7 +890,7 @@ fn runtime_call_args_reject_mixed_modes() {
         .expect_err("mixed args should fail");
 
     assert_eq!(
-        error.kind,
+        error.kind(),
         VmErrorKind::TypeMismatch {
             operation: "mixed positional and named call arguments"
         }
@@ -1098,7 +1098,7 @@ fn main(amount) {
         .expect_err("cached entry from another runtime should fail");
 
     assert_eq!(
-        error.kind,
+        error.kind(),
         VmErrorKind::TypeMismatch {
             operation: "VelaFunction belongs to another Runtime"
         }
@@ -1228,7 +1228,7 @@ fn make_reward(gold) {
         .expect_err("cached method from another runtime should fail");
 
     assert_eq!(
-        error.kind,
+        error.kind(),
         VmErrorKind::TypeMismatch {
             operation: "VelaMethod belongs to another Runtime"
         }
@@ -1303,7 +1303,7 @@ fn main(player: Player) {
         .expect_err("read-only direct host args should reject writes");
 
     assert!(matches!(
-        error.kind,
+        error.kind(),
         VmErrorKind::Host(HostErrorKind::PermissionDenied {
             action: "write",
             ..

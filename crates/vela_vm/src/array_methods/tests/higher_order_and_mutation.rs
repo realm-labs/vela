@@ -240,7 +240,7 @@ fn main() {
     let error = Vm::new()
         .run(&code)
         .expect_err("array insert should reject sparse indexes");
-    assert!(matches!(error.kind, VmErrorKind::IndexOutOfBounds { .. }));
+    assert!(matches!(error.kind(), VmErrorKind::IndexOutOfBounds { .. }));
 }
 
 #[test]
@@ -312,7 +312,7 @@ fn main() {
     let error = Vm::new()
         .run(&code)
         .expect_err("array extend should reject non-array args");
-    assert!(matches!(error.kind, VmErrorKind::TypeMismatch { .. }));
+    assert!(matches!(error.kind(), VmErrorKind::TypeMismatch { .. }));
 }
 
 #[test]

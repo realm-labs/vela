@@ -329,7 +329,7 @@ fn main() {
         .run(&code)
         .expect_err("array slice should reject out of bounds index");
     assert_eq!(
-        error.kind,
+        error.kind(),
         VmErrorKind::IndexOutOfBounds { index: 3, len: 2 }
     );
 }
@@ -384,7 +384,7 @@ fn main() {
         .run(&code)
         .expect_err("array join should reject non-string values");
     assert_eq!(
-        error.kind,
+        error.kind(),
         VmErrorKind::TypeMismatch {
             operation: "method join"
         }

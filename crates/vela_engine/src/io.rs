@@ -276,21 +276,13 @@ fn expect_arity(name: &str, args: &[OwnedValue], expected: usize) -> VmResult<()
     if args.len() == expected {
         return Ok(());
     }
-    Err(VmError {
-        kind: VmErrorKind::ArityMismatch {
-            name: name.to_owned(),
-            expected,
-            actual: args.len(),
-        },
-        source_span: None,
-        call_stack: Default::default(),
-    })
+    Err(VmError::new(VmErrorKind::ArityMismatch {
+        name: name.to_owned(),
+        expected,
+        actual: args.len(),
+    }))
 }
 
 fn type_error<T>(operation: &'static str) -> VmResult<T> {
-    Err(VmError {
-        kind: VmErrorKind::TypeMismatch { operation },
-        source_span: None,
-        call_stack: Default::default(),
-    })
+    Err(VmError::new(VmErrorKind::TypeMismatch { operation }))
 }

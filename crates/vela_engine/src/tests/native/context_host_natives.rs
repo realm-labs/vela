@@ -309,7 +309,7 @@ fn main(player) {
         .expect_err("native budget charge should fail");
 
     assert_eq!(
-        error.kind,
+        error.kind(),
         VmErrorKind::BudgetExceeded {
             budget: ExecutionBudgetKind::Instructions,
             limit: 50
@@ -373,7 +373,7 @@ fn main(player) {
         .expect_err("native memory budget charge should fail");
 
     assert_eq!(
-        error.kind,
+        error.kind(),
         VmErrorKind::BudgetExceeded {
             budget: ExecutionBudgetKind::MemoryBytes,
             limit: 64

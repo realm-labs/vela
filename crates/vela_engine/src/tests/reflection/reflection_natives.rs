@@ -97,7 +97,7 @@ fn main(player) {
         engine
             .into_vm()
             .run_program_with_host(&program, "main", &[OwnedValue::HostRef(host_ref)], &mut host),
-        Err(error) if error.kind == VmErrorKind::Reflect(ReflectErrorKind::PermissionDenied {
+        Err(error) if error.kind() == VmErrorKind::Reflect(ReflectErrorKind::PermissionDenied {
             permission: ReflectPermission::WriteValueFields
         })
     ));

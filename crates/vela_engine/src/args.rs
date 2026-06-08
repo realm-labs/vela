@@ -124,14 +124,12 @@ pub trait ScriptArgsExt {
 
 impl ScriptArgsExt for [OwnedValue] {
     fn required<T: FromScriptArg>(&self, index: usize) -> VmResult<T> {
-        let value = self.get(index).ok_or_else(|| VmError {
-            kind: VmErrorKind::ArityMismatch {
+        let value = self.get(index).ok_or_else(|| {
+            VmError::new(VmErrorKind::ArityMismatch {
                 name: "native argument conversion".to_owned(),
                 expected: index.saturating_add(1),
                 actual: self.len(),
-            },
-            source_span: None,
-            call_stack: Default::default(),
+            })
         })?;
         T::from_script_arg(value)
     }
@@ -641,11 +639,7 @@ where
 }
 
 fn type_mismatch(operation: &'static str) -> VmError {
-    VmError {
-        kind: VmErrorKind::TypeMismatch { operation },
-        source_span: None,
-        call_stack: Default::default(),
-    }
+    VmError::new(VmErrorKind::TypeMismatch { operation })
 }
 
 fn host_path_arg(value: &OwnedValue, operation: &'static str) -> VmResult<HostPath> {

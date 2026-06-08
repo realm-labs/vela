@@ -633,12 +633,10 @@ where
             .image
             .program_image()
             .function_by_name(entry)
-            .ok_or_else(|| VmError {
-                kind: VmErrorKind::UnknownFunction {
+            .ok_or_else(|| {
+                VmError::new(VmErrorKind::UnknownFunction {
                     name: entry.to_owned(),
-                },
-                source_span: None,
-                call_stack: Default::default(),
+                })
             })?;
         args.resolve(entry, &code.params, &code.param_defaults)
     }
@@ -1045,12 +1043,10 @@ impl RuntimeScriptGlobalStore {
     }
 
     pub fn update(&mut self, name: &str, update: impl FnOnce(&mut OwnedValue)) -> VmResult<()> {
-        let mut value = self.value(name)?.ok_or_else(|| VmError {
-            kind: VmErrorKind::Host(HostErrorKind::MissingGlobal {
+        let mut value = self.value(name)?.ok_or_else(|| {
+            VmError::new(VmErrorKind::Host(HostErrorKind::MissingGlobal {
                 name: name.to_owned(),
-            }),
-            source_span: None,
-            call_stack: Default::default(),
+            }))
         })?;
         update(&mut value);
         self.insert(name.to_owned(), value)
@@ -1176,19 +1172,11 @@ fn value_type_name(
 }
 
 fn unknown_function(name: String) -> VmError {
-    VmError {
-        kind: VmErrorKind::UnknownFunction { name },
-        source_span: None,
-        call_stack: Default::default(),
-    }
+    VmError::new(VmErrorKind::UnknownFunction { name })
 }
 
 fn unknown_method(method: String) -> VmError {
-    VmError {
-        kind: VmErrorKind::UnknownMethod { method },
-        source_span: None,
-        call_stack: Default::default(),
-    }
+    VmError::new(VmErrorKind::UnknownMethod { method })
 }
 
 #[derive(Clone, Debug, PartialEq)]

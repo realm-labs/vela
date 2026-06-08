@@ -29,7 +29,7 @@ fn main() {
 
     assert!(matches!(
         engine.into_vm().run_program(&program, "main", &[]),
-        Err(error) if error.kind == VmErrorKind::PermissionDenied {
+        Err(error) if error.kind() == VmErrorKind::PermissionDenied {
             native: "math::random".to_owned(),
             capability: Capability::Random.as_str().to_owned(),
         }

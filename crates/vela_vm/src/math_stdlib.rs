@@ -333,7 +333,7 @@ fn main() {
             .run(&code)
             .expect_err("math distance2d should reject non-numeric values");
         assert_eq!(
-            error.kind,
+            error.kind(),
             crate::VmErrorKind::TypeMismatch {
                 operation: "math::distance2d"
             }
@@ -356,7 +356,7 @@ fn main() {
             .run(&code)
             .expect_err("math pow should reject non-numeric values");
         assert_eq!(
-            error.kind,
+            error.kind(),
             crate::VmErrorKind::TypeMismatch {
                 operation: "math::pow"
             }
@@ -379,7 +379,7 @@ fn main() {
             .run(&code)
             .expect_err("math sqrt should reject negative values");
         assert_eq!(
-            error.kind,
+            error.kind(),
             crate::VmErrorKind::TypeMismatch {
                 operation: "math::sqrt"
             }
@@ -402,7 +402,7 @@ fn main() {
             .run(&code)
             .expect_err("math sqrt should reject non-numeric values");
         assert_eq!(
-            error.kind,
+            error.kind(),
             crate::VmErrorKind::TypeMismatch {
                 operation: "math::sqrt"
             }
@@ -425,7 +425,7 @@ fn main() {
             .run(&code)
             .expect_err("math sign should reject non-numeric values");
         assert_eq!(
-            error.kind,
+            error.kind(),
             crate::VmErrorKind::TypeMismatch {
                 operation: "math::sign"
             }
@@ -448,7 +448,7 @@ fn main() {
             .run(&code)
             .expect_err("math move_towards should reject negative max_delta");
         assert_eq!(
-            error.kind,
+            error.kind(),
             crate::VmErrorKind::TypeMismatch {
                 operation: "math::move_towards"
             }
@@ -471,7 +471,7 @@ fn main() {
             .run(&code)
             .expect_err("math lerp should reject non-finite results");
         assert_eq!(
-            error.kind,
+            error.kind(),
             crate::VmErrorKind::TypeMismatch {
                 operation: "math::lerp"
             }
@@ -494,7 +494,7 @@ fn main() {
             .run(&code)
             .expect_err("math move_towards should reject non-numeric values");
         assert_eq!(
-            error.kind,
+            error.kind(),
             crate::VmErrorKind::TypeMismatch {
                 operation: "math::move_towards"
             }
@@ -517,7 +517,7 @@ fn main() {
             .run(&code)
             .expect_err("math pow should reject non-finite results");
         assert_eq!(
-            error.kind,
+            error.kind(),
             crate::VmErrorKind::TypeMismatch {
                 operation: "math::pow"
             }
@@ -540,7 +540,7 @@ fn main() {
             .run(&code)
             .expect_err("math distance3d should reject non-numeric values");
         assert_eq!(
-            error.kind,
+            error.kind(),
             crate::VmErrorKind::TypeMismatch {
                 operation: "math::distance3d"
             }

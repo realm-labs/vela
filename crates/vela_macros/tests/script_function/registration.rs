@@ -521,7 +521,7 @@ fn main(player, ok) {
         .expect_err("macro context host-result error should convert to VM host error");
 
     assert_eq!(
-        error.kind,
+        error.kind(),
         VmErrorKind::Host(HostErrorKind::MissingPath {
             path: HostPath::new(player).field(FieldId::new(1)),
         }),
@@ -558,7 +558,7 @@ fn main(player) {
         .expect_err("missing macro-native capability should fail");
 
     assert_eq!(
-        error.kind,
+        error.kind(),
         VmErrorKind::PermissionDenied {
             native: "game::set_level".to_owned(),
             capability: Capability::HostWrite.as_str().to_owned(),
@@ -598,7 +598,7 @@ fn main(player) {
         .expect_err("macro-native budget charge should fail");
 
     assert_eq!(
-        error.kind,
+        error.kind(),
         VmErrorKind::BudgetExceeded {
             budget: ExecutionBudgetKind::Instructions,
             limit: 2,
@@ -728,7 +728,7 @@ fn main(player, ok) {
         .expect_err("macro host-result error should convert to VM host error");
 
     assert_eq!(
-        error.kind,
+        error.kind(),
         VmErrorKind::Host(HostErrorKind::MissingPath {
             path: HostPath::new(player).field(FieldId::new(2)),
         }),

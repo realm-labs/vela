@@ -79,7 +79,7 @@ fn main(player) {
 
     assert!(matches!(
         vm.run_program_with_host(&program, "main", &[OwnedValue::HostRef(host_ref)], &mut host),
-        Err(error) if error.kind == VmErrorKind::Reflect(ReflectErrorKind::PermissionDenied {
+        Err(error) if error.kind() == VmErrorKind::Reflect(ReflectErrorKind::PermissionDenied {
             permission: reflect::permissions::ReflectPermission::WriteValueFields
         })
     ));
@@ -114,7 +114,7 @@ fn main(player) {
 
     assert!(matches!(
         vm.run_program_with_host(&program, "main", &[OwnedValue::HostRef(host_ref)], &mut host),
-        Err(error) if error.kind == VmErrorKind::Reflect(ReflectErrorKind::PermissionDenied {
+        Err(error) if error.kind() == VmErrorKind::Reflect(ReflectErrorKind::PermissionDenied {
             permission: reflect::permissions::ReflectPermission::CallMethods
         })
     ));
@@ -163,7 +163,7 @@ fn main(player) {
 
     assert!(matches!(
         vm.run_program_with_host(&program, "main", &[OwnedValue::HostRef(host_ref)], &mut host),
-        Err(error) if error.kind == VmErrorKind::Reflect(
+        Err(error) if error.kind() == VmErrorKind::Reflect(
             ReflectErrorKind::MethodEffectPermissionDenied {
                 method: "grant_exp".to_owned(),
                 permission: reflect::permissions::ReflectPermission::CallHostWriteMethods,
@@ -201,7 +201,7 @@ fn main(player) {
 
     assert!(matches!(
         vm.run_program_with_host(&program, "main", &[OwnedValue::HostRef(host_ref)], &mut host),
-        Err(error) if error.kind == VmErrorKind::Reflect(ReflectErrorKind::PermissionDenied {
+        Err(error) if error.kind() == VmErrorKind::Reflect(ReflectErrorKind::PermissionDenied {
             permission: reflect::permissions::ReflectPermission::InspectHostPath
         })
     ));
@@ -235,7 +235,7 @@ fn main(player) {
 
     assert!(matches!(
         vm.run_program_with_host(&program, "main", &[OwnedValue::HostRef(host_ref)], &mut host),
-        Err(error) if error.kind == VmErrorKind::Reflect(ReflectErrorKind::PermissionDenied {
+        Err(error) if error.kind() == VmErrorKind::Reflect(ReflectErrorKind::PermissionDenied {
             permission: reflect::permissions::ReflectPermission::InspectHostPath
         })
     ));
@@ -269,7 +269,7 @@ fn main(player) {
 
     assert!(matches!(
         vm.run_program_with_host(&program, "main", &[OwnedValue::HostRef(host_ref)], &mut host),
-        Err(error) if error.kind == VmErrorKind::Reflect(ReflectErrorKind::PermissionDenied {
+        Err(error) if error.kind() == VmErrorKind::Reflect(ReflectErrorKind::PermissionDenied {
             permission: reflect::permissions::ReflectPermission::InspectHostPath
         })
     ));
@@ -378,7 +378,7 @@ fn main() {
         .run_program_with_host(&program, "main", &[], &mut host)
         .expect_err("unknown permission should diagnose");
     assert_eq!(
-        error.kind,
+        error.kind(),
         VmErrorKind::Reflect(ReflectErrorKind::UnknownPermission {
             permission: "reflect::inspect_host".to_owned(),
             candidates: vec![
@@ -416,7 +416,7 @@ fn main() {
 
     assert!(matches!(
         vm.run_program_with_host(&program, "main", &[], &mut host),
-        Err(error) if error.kind == VmErrorKind::Reflect(ReflectErrorKind::PermissionDenied {
+        Err(error) if error.kind() == VmErrorKind::Reflect(ReflectErrorKind::PermissionDenied {
             permission: reflect::permissions::ReflectPermission::ReadTypeInfo
         })
     ));
@@ -459,7 +459,7 @@ fn main() {
         .run_program_with_host(&program, "main", &[], &mut host)
         .expect_err("function metadata permission should be denied");
     assert_eq!(
-        error.kind,
+        error.kind(),
         VmErrorKind::Reflect(ReflectErrorKind::FunctionPermissionDenied {
             function: "game::admin".to_owned(),
             permission: "game::admin".to_owned(),
@@ -513,7 +513,7 @@ fn main(player) {
         )
         .expect_err("hidden field read should be denied");
     assert_eq!(
-        error.kind,
+        error.kind(),
         VmErrorKind::Reflect(ReflectErrorKind::FieldNotReflectReadable {
             type_name: "Player".to_owned(),
             field: "secret".to_owned(),
@@ -570,7 +570,7 @@ fn main(player) {
         )
         .expect_err("field permission should be denied");
     assert_eq!(
-        error.kind,
+        error.kind(),
         VmErrorKind::Reflect(ReflectErrorKind::FieldPermissionDenied {
             type_name: "Player".to_owned(),
             field: "title".to_owned(),
@@ -633,7 +633,7 @@ fn main(player) {
         )
         .expect_err("unknown field should diagnose allowed candidates only");
     assert_eq!(
-        error.kind,
+        error.kind(),
         VmErrorKind::Reflect(ReflectErrorKind::UnknownField {
             type_name: "Player".to_owned(),
             field: "leve".to_owned(),
@@ -699,7 +699,7 @@ fn main(player) {
         )
         .expect_err("unknown method should diagnose allowed candidates only");
     assert_eq!(
-        error.kind,
+        error.kind(),
         VmErrorKind::Reflect(ReflectErrorKind::UnknownMethod {
             type_name: "Player".to_owned(),
             method: "visibl".to_owned(),
@@ -738,7 +738,7 @@ fn main(player) {
 
     assert!(matches!(
         vm.run_program_with_host(&program, "main", &[OwnedValue::HostRef(host_ref)], &mut host),
-        Err(error) if error.kind == VmErrorKind::Reflect(ReflectErrorKind::LookupBudgetExceeded {
+        Err(error) if error.kind() == VmErrorKind::Reflect(ReflectErrorKind::LookupBudgetExceeded {
             limit: 1
         })
     ));

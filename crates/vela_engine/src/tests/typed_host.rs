@@ -7,7 +7,7 @@ use vela_host::path::{HostPath, HostRef};
 use vela_host::value::HostValue;
 use vela_reflect::registry::TypeKey;
 use vela_vm::HostExecution;
-use vela_vm::error::{VmError, VmErrorKind, VmResult};
+use vela_vm::error::{VmErrorKind, VmResult};
 use vela_vm::owned_value::OwnedValue;
 
 use crate::context::NativeCallContext;
@@ -96,12 +96,9 @@ fn main() {
         engine
             .into_vm()
             .run_program_with_host(&program, "main", &[], &mut host),
-        Err(VmError {
-            kind: VmErrorKind::TypeMismatch {
+        Err(error) if matches!(error.kind(), VmErrorKind::TypeMismatch {
                 operation: "host ref",
-            },
-            ..
-        })
+            })
     ));
 }
 
@@ -150,7 +147,7 @@ fn main(player) {
                 &[OwnedValue::HostRef(host_ref)],
                 &mut host
             )
-            .map_err(|error| error.kind),
+            .map_err(|error| error.kind()),
         Err(VmErrorKind::Host(HostErrorKind::PermissionDenied {
             path: HostPath::new(host_ref),
             action: "write",
@@ -470,12 +467,9 @@ fn main() {
         engine
             .into_vm()
             .run_program_with_host(&program, "main", &[], &mut host),
-        Err(VmError {
-            kind: VmErrorKind::TypeMismatch {
+        Err(error) if matches!(error.kind(), VmErrorKind::TypeMismatch {
                 operation: "host ref",
-            },
-            ..
-        })
+            })
     ));
 }
 
@@ -522,7 +516,7 @@ fn main(player) {
         engine
             .into_vm()
             .run_program_with_host(&program, "main", &[OwnedValue::HostRef(player)], &mut host)
-            .map_err(|error| error.kind),
+            .map_err(|error| error.kind()),
         Err(VmErrorKind::Host(HostErrorKind::PermissionDenied {
             path: HostPath::new(player),
             action: "write",

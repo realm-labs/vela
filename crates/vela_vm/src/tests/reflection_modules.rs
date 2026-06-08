@@ -90,7 +90,7 @@ fn main() {
         .expect_err("unknown module should report candidates");
 
     assert!(matches!(
-        error.kind,
+        error.kind(),
         VmErrorKind::Reflect(ReflectErrorKind::UnknownModule {
             ref module,
             ref candidates,
@@ -130,7 +130,7 @@ fn main() {
         .expect_err("unknown function should report candidates");
 
     assert!(matches!(
-        error.kind,
+        error.kind(),
         VmErrorKind::Reflect(ReflectErrorKind::UnknownFunction {
             ref function,
             ref candidates,
@@ -173,7 +173,7 @@ fn main() {
         .expect_err("unknown function should report policy-visible candidates");
 
     assert_eq!(
-        error.kind,
+        error.kind(),
         VmErrorKind::Reflect(ReflectErrorKind::UnknownFunction {
             function: "game::reward::hiddne".to_owned(),
             candidates: vec!["game::reward::grant".to_owned()],
@@ -240,7 +240,7 @@ fn main() {
         .expect_err("unknown function call should report callable candidates only");
 
     assert_eq!(
-        error.kind,
+        error.kind(),
         VmErrorKind::Reflect(ReflectErrorKind::UnknownFunction {
             function: "game::reward::grant_visibel".to_owned(),
             candidates: vec!["game::reward::grant".to_owned()],

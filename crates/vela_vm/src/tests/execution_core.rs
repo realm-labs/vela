@@ -214,7 +214,7 @@ fn instruction_budget_stops_dispatch_before_next_instruction() {
         .expect_err("third instruction exceeds budget");
 
     assert_eq!(
-        error.kind,
+        error.kind(),
         VmErrorKind::BudgetExceeded {
             budget: ExecutionBudgetKind::Instructions,
             limit: 2,
@@ -246,7 +246,7 @@ fn main() {
         .expect_err("recursive call exceeds call depth");
 
     assert_eq!(
-        error.kind,
+        error.kind(),
         VmErrorKind::BudgetExceeded {
             budget: ExecutionBudgetKind::CallDepth,
             limit: 2,

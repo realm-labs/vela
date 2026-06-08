@@ -52,45 +52,31 @@ fn time_value(name: &str, value: i64, args: &[OwnedValue]) -> VmResult<OwnedValu
     if args.is_empty() {
         return Ok(OwnedValue::Int(value));
     }
-    Err(VmError {
-        kind: VmErrorKind::ArityMismatch {
-            name: name.to_owned(),
-            expected: 0,
-            actual: args.len(),
-        },
-        source_span: None,
-        call_stack: Default::default(),
-    })
+    Err(VmError::new(VmErrorKind::ArityMismatch {
+        name: name.to_owned(),
+        expected: 0,
+        actual: args.len(),
+    }))
 }
 
 fn elapsed_since(now: i64, args: &[OwnedValue]) -> VmResult<OwnedValue> {
     if args.len() != 1 {
-        return Err(VmError {
-            kind: VmErrorKind::ArityMismatch {
-                name: "time::elapsed_since".to_owned(),
-                expected: 1,
-                actual: args.len(),
-            },
-            source_span: None,
-            call_stack: Default::default(),
-        });
+        return Err(VmError::new(VmErrorKind::ArityMismatch {
+            name: "time::elapsed_since".to_owned(),
+            expected: 1,
+            actual: args.len(),
+        }));
     }
 
     let OwnedValue::Int(start) = args[0] else {
-        return Err(VmError {
-            kind: VmErrorKind::TypeMismatch {
-                operation: "time::elapsed_since",
-            },
-            source_span: None,
-            call_stack: Default::default(),
-        });
+        return Err(VmError::new(VmErrorKind::TypeMismatch {
+            operation: "time::elapsed_since",
+        }));
     };
 
-    now.checked_sub(start).map(OwnedValue::Int).ok_or(VmError {
-        kind: VmErrorKind::TypeMismatch {
+    now.checked_sub(start).map(OwnedValue::Int).ok_or_else(|| {
+        VmError::new(VmErrorKind::TypeMismatch {
             operation: "time::elapsed_since",
-        },
-        source_span: None,
-        call_stack: Default::default(),
+        })
     })
 }

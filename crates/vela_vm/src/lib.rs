@@ -1,7 +1,5 @@
 //! Register VM for Vela bytecode.
 
-#![allow(clippy::result_large_err)]
-
 mod array_methods;
 pub mod budget;
 mod callback_method_dispatch;

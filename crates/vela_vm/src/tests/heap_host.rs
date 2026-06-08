@@ -152,7 +152,7 @@ fn managed_heap_execution_releases_budget_after_errors() {
         .expect_err("missing native should fail");
 
     assert_eq!(
-        error.kind,
+        error.kind(),
         VmErrorKind::UnknownNative {
             name: "missing".into()
         }
@@ -240,7 +240,7 @@ fn main(player) {
     };
 
     assert_eq!(
-        error.kind,
+        error.kind(),
         VmErrorKind::TypeMismatch {
             operation: "set_host_field"
         }
@@ -293,7 +293,7 @@ fn main(player) {
     };
 
     assert_eq!(
-        error.kind,
+        error.kind(),
         VmErrorKind::TypeMismatch {
             operation: "set_host_field"
         }
@@ -341,7 +341,7 @@ fn main(player) {
     };
 
     assert_eq!(
-        error.kind,
+        error.kind(),
         VmErrorKind::TypeMismatch {
             operation: "set_host_field"
         }

@@ -1110,7 +1110,7 @@ fn main(player: Player) {
         .expect_err("denied host write should fail during call");
 
     assert!(matches!(
-        error.kind,
+        error.kind(),
         VmErrorKind::Host(HostErrorKind::PermissionDenied {
             path,
             action: "write",

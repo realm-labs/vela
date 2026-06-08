@@ -377,7 +377,7 @@ fn main() {
             .run(&code)
             .expect_err("set filter should reject non-callback args");
         assert_eq!(
-            error.kind,
+            error.kind(),
             crate::VmErrorKind::TypeMismatch {
                 operation: "method filter"
             }
@@ -401,7 +401,7 @@ fn main() {
             .run(&code)
             .expect_err("set union should reject non-set args");
         assert_eq!(
-            error.kind,
+            error.kind(),
             crate::VmErrorKind::TypeMismatch {
                 operation: "method union"
             }
@@ -420,7 +420,7 @@ fn main() {
             .run(&code)
             .expect_err("set symmetric_difference should reject non-set args");
         assert_eq!(
-            error.kind,
+            error.kind(),
             crate::VmErrorKind::TypeMismatch {
                 operation: "method symmetric_difference"
             }
@@ -439,7 +439,7 @@ fn main() {
             .run(&code)
             .expect_err("set predicate should reject non-set args");
         assert_eq!(
-            error.kind,
+            error.kind(),
             crate::VmErrorKind::TypeMismatch {
                 operation: "method is_subset"
             }
@@ -559,7 +559,7 @@ fn main() {
             .run(&code)
             .expect_err("set extend should reject non-set args");
         assert_eq!(
-            error.kind,
+            error.kind(),
             crate::VmErrorKind::TypeMismatch {
                 operation: "method extend"
             }
