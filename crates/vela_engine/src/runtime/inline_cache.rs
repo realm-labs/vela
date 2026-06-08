@@ -1,19 +1,28 @@
+use std::cell::RefCell;
+
+use vela_bytecode::CacheSiteId;
+use vela_common::GlobalSlot;
+
 use super::image::RuntimeImage;
 
-#[derive(Clone, Debug, Default)]
+#[derive(Debug, Default)]
 pub(super) struct InlineCaches {
-    entries: Vec<InlineCacheEntry>,
+    entries: RefCell<Vec<InlineCacheEntry>>,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub(super) enum InlineCacheEntry {
     Empty,
+    GlobalRead {
+        function: Box<str>,
+        slot: GlobalSlot,
+    },
 }
 
 impl InlineCaches {
     pub(super) fn for_image(image: &RuntimeImage) -> Self {
         Self {
-            entries: vec![InlineCacheEntry::Empty; image.cache_site_count()],
+            entries: RefCell::new(vec![InlineCacheEntry::Empty; image.cache_site_count()]),
         }
     }
 
@@ -22,11 +31,30 @@ impl InlineCaches {
     }
 
     pub(super) fn len(&self) -> usize {
-        self.entries.len()
+        self.entries.borrow().len()
     }
 
     pub(super) fn is_empty(&self) -> bool {
-        self.entries.is_empty()
+        self.entries.borrow().is_empty()
+    }
+
+    pub(super) fn global_read_slot(&self, function: &str, site: CacheSiteId) -> Option<GlobalSlot> {
+        match self.entries.borrow().get(site.index()) {
+            Some(InlineCacheEntry::GlobalRead {
+                function: cached_function,
+                slot,
+            }) if cached_function.as_ref() == function => Some(*slot),
+            _ => None,
+        }
+    }
+
+    pub(super) fn set_global_read_slot(&self, function: &str, site: CacheSiteId, slot: GlobalSlot) {
+        if let Some(entry) = self.entries.borrow_mut().get_mut(site.index()) {
+            *entry = InlineCacheEntry::GlobalRead {
+                function: function.into(),
+                slot,
+            };
+        }
     }
 }
 
@@ -38,15 +66,25 @@ impl vela_vm::VmInlineCaches for InlineCaches {
     fn is_empty(&self) -> bool {
         self.is_empty()
     }
+
+    fn global_read_slot(&self, function: &str, site: CacheSiteId) -> Option<GlobalSlot> {
+        self.global_read_slot(function, site)
+    }
+
+    fn set_global_read_slot(&self, function: &str, site: CacheSiteId, slot: GlobalSlot) {
+        self.set_global_read_slot(function, site, slot);
+    }
 }
 
 #[cfg(test)]
 mod tests {
+    use vela_bytecode::CacheSiteKind;
     use vela_bytecode::compiler::compile_program_source_with_options;
     use vela_common::SourceId;
+    use vela_vm::owned_value::OwnedValue;
 
     use crate::engine::Engine;
-    use crate::runtime::RuntimeImage;
+    use crate::runtime::{CallArgs, CallOptions, Runtime, RuntimeImage};
 
     use super::InlineCaches;
 
@@ -84,5 +122,110 @@ fn main() {
         assert_eq!(empty_image.cache_site_count(), 0);
         assert!(caches.is_empty());
         assert_eq!(caches.len(), 0);
+    }
+
+    #[test]
+    fn global_read_inline_cache_is_runtime_local_and_function_guarded() {
+        let engine = Engine::builder().build().expect("engine should build");
+        let program = compile_program_source_with_options(
+            SourceId::new(1),
+            r#"
+global first: Int;
+global second: Int;
+
+fn read_first() {
+    return first;
+}
+
+fn read_second() {
+    return second;
+}
+"#,
+            &engine.compiler_options(),
+        )
+        .expect("program should compile");
+        let first_slot = program
+            .global_slot("main::first")
+            .expect("first global should have slot");
+        let second_slot = program
+            .global_slot("main::second")
+            .expect("second global should have slot");
+        let first_site = program
+            .function("read_first")
+            .expect("read_first should exist")
+            .cache_sites
+            .sites()
+            .iter()
+            .find(|site| site.kind == CacheSiteKind::GlobalRead)
+            .expect("read_first should have global read site")
+            .id;
+        let second_site = program
+            .function("read_second")
+            .expect("read_second should exist")
+            .cache_sites
+            .sites()
+            .iter()
+            .find(|site| site.kind == CacheSiteKind::GlobalRead)
+            .expect("read_second should have global read site")
+            .id;
+        assert_eq!(first_site, second_site);
+
+        let mut runtime = Runtime::new(engine, program);
+        runtime
+            .insert_global("main::first", OwnedValue::Int(10))
+            .expect("first global should insert");
+        runtime
+            .insert_global("main::second", OwnedValue::Int(20))
+            .expect("second global should insert");
+
+        assert_eq!(
+            runtime
+                .state
+                .inline_caches
+                .global_read_slot("read_first", first_site),
+            None
+        );
+
+        let first = runtime
+            .call("read_first", CallArgs::new(), CallOptions::unbounded())
+            .expect("read_first should run");
+        assert_eq!(runtime.value_to_owned(&first), Ok(OwnedValue::Int(10)));
+        assert_eq!(
+            runtime
+                .state
+                .inline_caches
+                .global_read_slot("read_first", first_site),
+            Some(first_slot)
+        );
+
+        let second = runtime
+            .call("read_second", CallArgs::new(), CallOptions::unbounded())
+            .expect("read_second should run");
+        assert_eq!(runtime.value_to_owned(&second), Ok(OwnedValue::Int(20)));
+        assert_eq!(
+            runtime
+                .state
+                .inline_caches
+                .global_read_slot("read_second", second_site),
+            Some(second_slot)
+        );
+        assert_eq!(
+            runtime
+                .state
+                .inline_caches
+                .global_read_slot("read_first", first_site),
+            None
+        );
+
+        runtime
+            .insert_global("main::first", OwnedValue::Int(30))
+            .expect("first global should update");
+        let first_after_update = runtime
+            .call("read_first", CallArgs::new(), CallOptions::unbounded())
+            .expect("read_first should run after update");
+        assert_eq!(
+            runtime.value_to_owned(&first_after_update),
+            Ok(OwnedValue::Int(30))
+        );
     }
 }

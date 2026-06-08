@@ -114,6 +114,21 @@ fn main(player) {
     assert!(site_kinds.contains(&CacheSiteKind::RecordFieldRead));
     assert!(site_kinds.contains(&CacheSiteKind::HostPathRead));
     assert!(site_kinds.contains(&CacheSiteKind::HostPathWrite));
+    let load_global_site = main
+        .instructions
+        .iter()
+        .find_map(|instruction| match &instruction.kind {
+            InstructionKind::LoadGlobal { cache_site, .. } => *cache_site,
+            _ => None,
+        })
+        .expect("load global should carry cache site");
+    assert_eq!(
+        main.cache_sites
+            .get(load_global_site)
+            .expect("load global cache site should exist")
+            .kind,
+        CacheSiteKind::GlobalRead
+    );
     for (index, site) in main.cache_sites.sites().iter().enumerate() {
         assert_eq!(site.id.index(), index);
         assert_eq!(site.function, "main");

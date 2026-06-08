@@ -40,7 +40,7 @@ use vela_syntax::ast::{Argument, Block, Expr, ExprKind, FunctionItem, Param};
 #[cfg(test)]
 use crate::HostPathSegment;
 use crate::{
-    CacheSiteKind, CodeObject, Constant, FrameSlotInfo, FrameSlotKind, Instruction,
+    CacheSiteId, CacheSiteKind, CodeObject, Constant, FrameSlotInfo, FrameSlotKind, Instruction,
     InstructionKind, InstructionOffset, Program, Register,
 };
 use control_flow::LoopContext;
@@ -783,17 +783,23 @@ impl<'ast> Compiler<'ast> {
 
     fn emit(&mut self, kind: InstructionKind) {
         let offset = InstructionOffset(self.current_offset());
-        if let Some(cache_kind) = cache_site_kind(&kind) {
-            self.code.push_cache_site(cache_kind, offset);
-        }
+        let kind = if let Some(cache_kind) = cache_site_kind(&kind) {
+            let cache_site = self.code.push_cache_site(cache_kind, offset);
+            attach_cache_site(kind, cache_site)
+        } else {
+            kind
+        };
         self.code.push_instruction(Instruction::new(kind));
     }
 
     fn emit_spanned(&mut self, kind: InstructionKind, span: Span) {
         let offset = InstructionOffset(self.current_offset());
-        if let Some(cache_kind) = cache_site_kind(&kind) {
-            self.code.push_cache_site(cache_kind, offset);
-        }
+        let kind = if let Some(cache_kind) = cache_site_kind(&kind) {
+            let cache_site = self.code.push_cache_site(cache_kind, offset);
+            attach_cache_site(kind, cache_site)
+        } else {
+            kind
+        };
         self.code
             .push_instruction(Instruction::new(kind).with_span(span));
     }
@@ -969,6 +975,20 @@ fn cache_site_kind(kind: &InstructionKind) -> Option<CacheSiteKind> {
         | InstructionKind::RemoveHostPath { .. } => Some(CacheSiteKind::HostPathWrite),
         InstructionKind::CallHostMethod { .. } => Some(CacheSiteKind::MethodCall),
         _ => None,
+    }
+}
+
+fn attach_cache_site(kind: InstructionKind, cache_site: CacheSiteId) -> InstructionKind {
+    match kind {
+        InstructionKind::LoadGlobal {
+            dst, global, slot, ..
+        } => InstructionKind::LoadGlobal {
+            dst,
+            global,
+            slot,
+            cache_site: Some(cache_site),
+        },
+        _ => kind,
     }
 }
 

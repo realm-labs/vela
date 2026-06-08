@@ -538,6 +538,7 @@ pub enum InstructionKind {
         dst: Register,
         global: String,
         slot: Option<GlobalSlot>,
+        cache_site: Option<CacheSiteId>,
     },
     GetHostField {
         dst: Register,

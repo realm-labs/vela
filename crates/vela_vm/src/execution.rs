@@ -615,7 +615,18 @@ impl Vm {
                     );
                     frame.write(*dst, Value::Bool(matches))?;
                 }
-                InstructionKind::LoadGlobal { dst, global, slot } => {
+                InstructionKind::LoadGlobal {
+                    dst,
+                    global,
+                    slot,
+                    cache_site,
+                } => {
+                    let cached_slot = cache_site
+                        .and_then(|site| {
+                            call.inline_caches
+                                .and_then(|caches| caches.global_read_slot(&code.name, site))
+                        })
+                        .or(*slot);
                     let value = host_access::load_host_global(
                         host_access::HostAccessRuntime {
                             frame: &frame,
@@ -625,8 +636,14 @@ impl Vm {
                             source_span: instruction.span,
                         },
                         global,
-                        *slot,
+                        cached_slot,
                     )?;
+                    if let (Some(caches), Some(cache_site), Some(slot)) =
+                        (call.inline_caches, *cache_site, *slot)
+                        && caches.global_read_slot(&code.name, cache_site).is_none()
+                    {
+                        caches.set_global_read_slot(&code.name, cache_site, slot);
+                    }
                     frame.write(*dst, value)?;
                 }
                 InstructionKind::GetHostField { dst, root, field } => {

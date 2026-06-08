@@ -1733,7 +1733,7 @@ strict runtime-local heap/value isolation
 [x] Add cache-site ID types.
 [x] Add cache-site metadata to bytecode/compiler.
 [x] Thread InlineCaches through VM execution.
-[ ] Implement first per-runtime IC.
+[x] Implement first per-runtime IC.
 [ ] Replace MakeClosure Box<CodeObject> with FunctionIndex.
 [ ] Introduce ProgramImage.
 [ ] Move hot reload to ProgramImage-native version swapping.

@@ -78,7 +78,9 @@ use script_methods::{ScriptMethodDispatch, call_method, call_method_id};
 pub(crate) use script_object::ScriptFields;
 use small_storage::SmallStorage;
 use try_propagation::{TryPropagation, try_propagate_value};
-use vela_bytecode::{CodeObject, Constant, InstructionKind, InstructionOffset, Program, Register};
+use vela_bytecode::{
+    CacheSiteId, CodeObject, Constant, InstructionKind, InstructionOffset, Program, Register,
+};
 use vela_common::{FunctionId, GlobalSlot, Span, SymbolInterner};
 use vela_host::adapter::ScriptStateAdapter;
 #[cfg(test)]
@@ -210,6 +212,12 @@ pub trait VmInlineCaches {
     fn is_empty(&self) -> bool {
         self.len() == 0
     }
+
+    fn global_read_slot(&self, _function: &str, _site: CacheSiteId) -> Option<GlobalSlot> {
+        None
+    }
+
+    fn set_global_read_slot(&self, _function: &str, _site: CacheSiteId, _slot: GlobalSlot) {}
 }
 
 pub struct RuntimeMethodCall<'program, 'args, 'host, 'heap, 'roots, 'budget> {

@@ -91,7 +91,12 @@ impl Compiler<'_> {
 
     fn emit_load_global(&mut self, dst: Register, global: String) {
         let slot = self.facts.global_slots.get(&global).copied();
-        self.emit(InstructionKind::LoadGlobal { dst, global, slot });
+        self.emit(InstructionKind::LoadGlobal {
+            dst,
+            global,
+            slot,
+            cache_site: None,
+        });
     }
 
     fn compile_path_access(&mut self, span: Span, path: &[String]) -> CompileResult<Register> {

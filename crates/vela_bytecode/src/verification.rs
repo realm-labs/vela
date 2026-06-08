@@ -1,8 +1,8 @@
 use std::fmt;
 
 use crate::{
-    CallArgument, CodeObject, ConstantId, HostPathSegment, Instruction, InstructionKind,
-    InstructionOffset, Program, Register,
+    CacheSiteId, CacheSiteKind, CallArgument, CodeObject, ConstantId, HostPathSegment, Instruction,
+    InstructionKind, InstructionOffset, Program, Register,
 };
 
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -46,6 +46,15 @@ pub enum VerificationErrorKind {
         slot: usize,
         expected: String,
         actual: String,
+    },
+    CacheSiteOutOfBounds {
+        site: CacheSiteId,
+        cache_site_count: usize,
+    },
+    CacheSiteKindMismatch {
+        site: CacheSiteId,
+        expected: CacheSiteKind,
+        actual: CacheSiteKind,
     },
 }
 
@@ -335,8 +344,17 @@ fn verify_instruction(
             verify_register(function, instruction_index, code, *dst)?;
             verify_register(function, instruction_index, code, *value)
         }
-        InstructionKind::LoadGlobal { dst, .. } => {
-            verify_register(function, instruction_index, code, *dst)
+        InstructionKind::LoadGlobal {
+            dst, cache_site, ..
+        } => {
+            verify_register(function, instruction_index, code, *dst)?;
+            verify_optional_cache_site(
+                function,
+                instruction_index,
+                code,
+                *cache_site,
+                CacheSiteKind::GlobalRead,
+            )
         }
         InstructionKind::GetHostField { dst, root, .. } => {
             verify_register(function, instruction_index, code, *dst)?;
@@ -535,6 +553,40 @@ fn verify_jump(
             },
         ))
     }
+}
+
+fn verify_optional_cache_site(
+    function: &str,
+    instruction: Option<usize>,
+    code: &CodeObject,
+    site: Option<CacheSiteId>,
+    expected: CacheSiteKind,
+) -> Result<(), VerificationError> {
+    let Some(site) = site else {
+        return Ok(());
+    };
+    let Some(desc) = code.cache_sites.get(site) else {
+        return Err(error(
+            function,
+            instruction,
+            VerificationErrorKind::CacheSiteOutOfBounds {
+                site,
+                cache_site_count: code.cache_sites.len(),
+            },
+        ));
+    };
+    if desc.kind != expected {
+        return Err(error(
+            function,
+            instruction,
+            VerificationErrorKind::CacheSiteKindMismatch {
+                site,
+                expected,
+                actual: desc.kind,
+            },
+        ));
+    }
+    Ok(())
 }
 
 fn error(
