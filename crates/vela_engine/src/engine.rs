@@ -245,7 +245,7 @@ impl Engine {
         for entry in self.native_functions.values() {
             let id = entry.desc.id;
             let name = entry.desc.name.clone();
-            let effects = entry.desc.effects.clone();
+            let effects = entry.desc.effects;
             let capabilities = self.capabilities;
             let function = Arc::clone(&entry.function);
             vm.register_native_with_id(id, name.clone(), move |args| {
@@ -259,7 +259,7 @@ impl Engine {
         for entry in self.host_native_functions.values() {
             let id = entry.desc.id;
             let name = entry.desc.name.clone();
-            let effects = entry.desc.effects.clone();
+            let effects = entry.desc.effects;
             let capabilities = self.capabilities;
             let function = Arc::clone(&entry.function);
             vm.register_host_native_with_id(id, name.clone(), move |args, host| {
@@ -273,7 +273,7 @@ impl Engine {
         for entry in self.context_host_native_functions.values() {
             let id = entry.desc.id;
             let name = entry.desc.name.clone();
-            let effects = entry.desc.effects.clone();
+            let effects = entry.desc.effects;
             let capabilities = self.capabilities;
             let function = Arc::clone(&entry.function);
             let engine = self.clone();
@@ -297,7 +297,7 @@ impl Engine {
             let id = FunctionId::new(id);
             if let Some(entry) = self.native_functions.get(&id) {
                 let alias = alias.to_owned();
-                let effects = entry.desc.effects.clone();
+                let effects = entry.desc.effects;
                 let capabilities = self.capabilities;
                 let function = Arc::clone(&entry.function);
                 vm.register_native(alias.clone(), move |args| {
@@ -306,7 +306,7 @@ impl Engine {
                 });
             } else if let Some(entry) = self.host_native_functions.get(&id) {
                 let alias = alias.to_owned();
-                let effects = entry.desc.effects.clone();
+                let effects = entry.desc.effects;
                 let capabilities = self.capabilities;
                 let function = Arc::clone(&entry.function);
                 vm.register_host_native(alias.clone(), move |args, host| {
@@ -315,7 +315,7 @@ impl Engine {
                 });
             } else if let Some(entry) = self.context_host_native_functions.get(&id) {
                 let alias = alias.to_owned();
-                let effects = entry.desc.effects.clone();
+                let effects = entry.desc.effects;
                 let capabilities = self.capabilities;
                 let function = Arc::clone(&entry.function);
                 let engine = self.clone();
@@ -393,10 +393,12 @@ fn check_capabilities(
     effects: &crate::native::EffectSet,
     capabilities: CapabilitySet,
 ) -> VmResult<()> {
-    if let Some(capability) = effects
-        .required_capabilities()
-        .find(|capability| !capabilities.contains(*capability))
-    {
+    let required = effects.required_capability_set();
+    if capabilities.contains_all(required) {
+        return Ok(());
+    }
+
+    if let Some(capability) = required.difference(capabilities).iter().next() {
         return Err(VmError {
             kind: VmErrorKind::PermissionDenied {
                 native: native.to_owned(),

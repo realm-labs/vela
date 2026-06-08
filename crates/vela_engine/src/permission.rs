@@ -1,3 +1,4 @@
+#[repr(u8)]
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum Capability {
     HostRead,
@@ -82,6 +83,28 @@ impl CapabilitySet {
     #[must_use]
     pub const fn contains(self, capability: Capability) -> bool {
         self.bits & capability.bit() != 0
+    }
+
+    #[must_use]
+    pub const fn contains_all(self, required: Self) -> bool {
+        self.bits & required.bits == required.bits
+    }
+
+    #[must_use]
+    pub const fn difference(self, other: Self) -> Self {
+        Self {
+            bits: self.bits & !other.bits,
+        }
+    }
+
+    #[must_use]
+    pub const fn without(mut self, capability: Capability) -> Self {
+        self.bits &= !capability.bit();
+        self
+    }
+
+    pub(crate) const fn from_bits(bits: u64) -> Self {
+        Self { bits }
     }
 
     #[must_use]

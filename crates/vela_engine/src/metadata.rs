@@ -141,16 +141,16 @@ fn native_function_module(name: &str) -> Option<String> {
 
 fn reflect_effects(effects: &crate::native::EffectSet) -> MethodEffectSet {
     MethodEffectSet {
-        reads_host: effects.reads_host,
-        writes_host: effects.writes_host,
-        emits_events: effects.emits_events,
-        reads_time: effects.reads_time,
-        uses_random: effects.uses_random,
-        reads_io: effects.reads_io,
-        writes_io: effects.writes_io,
-        reads_reflection: effects.reads_reflection,
-        writes_reflection: effects.writes_reflection,
-        calls_reflection: effects.calls_reflection,
+        reads_host: effects.reads_host(),
+        writes_host: effects.writes_host(),
+        emits_events: effects.emits_events(),
+        reads_time: effects.reads_time(),
+        uses_random: effects.uses_random(),
+        reads_io: effects.reads_io(),
+        writes_io: effects.writes_io(),
+        reads_reflection: effects.reads_reflection(),
+        writes_reflection: effects.writes_reflection(),
+        calls_reflection: effects.calls_reflection(),
     }
 }
 
@@ -162,16 +162,16 @@ fn reflect_access(access: &crate::native::FunctionAccess) -> MethodAccess {
 
 fn reflect_function_effects(effects: &crate::native::EffectSet) -> FunctionEffectSet {
     FunctionEffectSet {
-        reads_host: effects.reads_host,
-        writes_host: effects.writes_host,
-        emits_events: effects.emits_events,
-        reads_time: effects.reads_time,
-        uses_random: effects.uses_random,
-        reads_io: effects.reads_io,
-        writes_io: effects.writes_io,
-        reads_reflection: effects.reads_reflection,
-        writes_reflection: effects.writes_reflection,
-        calls_reflection: effects.calls_reflection,
+        reads_host: effects.reads_host(),
+        writes_host: effects.writes_host(),
+        emits_events: effects.emits_events(),
+        reads_time: effects.reads_time(),
+        uses_random: effects.uses_random(),
+        reads_io: effects.reads_io(),
+        writes_io: effects.writes_io(),
+        reads_reflection: effects.reads_reflection(),
+        writes_reflection: effects.writes_reflection(),
+        calls_reflection: effects.calls_reflection(),
     }
 }
 

@@ -7,7 +7,7 @@ use vela_vm::error::VmResult;
 use vela_vm::owned_value::OwnedValue;
 
 use crate::context::NativeCallContext;
-use crate::permission::Capability;
+use crate::permission::{Capability, CapabilitySet};
 
 pub type NativeFunctionId = FunctionId;
 
@@ -92,164 +92,169 @@ pub struct NativeParamDesc {
     pub hint: TypeHint,
 }
 
-#[derive(Clone, Debug, Default, Eq, PartialEq)]
+#[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]
 pub struct EffectSet {
-    pub reads_host: bool,
-    pub writes_host: bool,
-    pub emits_events: bool,
-    pub reads_time: bool,
-    pub uses_random: bool,
-    pub reads_io: bool,
-    pub writes_io: bool,
-    pub reads_reflection: bool,
-    pub writes_reflection: bool,
-    pub calls_reflection: bool,
+    bits: u16,
 }
 
 impl EffectSet {
+    const READS_HOST: u16 = 1 << (Capability::HostRead as u8);
+    const WRITES_HOST: u16 = 1 << (Capability::HostWrite as u8);
+    const EMITS_EVENTS: u16 = 1 << (Capability::EventEmit as u8);
+    const READS_TIME: u16 = 1 << (Capability::Time as u8);
+    const USES_RANDOM: u16 = 1 << (Capability::Random as u8);
+    const READS_IO: u16 = 1 << (Capability::IoRead as u8);
+    const WRITES_IO: u16 = 1 << (Capability::IoWrite as u8);
+    const READS_REFLECTION: u16 = 1 << (Capability::ReflectionRead as u8);
+    const WRITES_REFLECTION: u16 = 1 << (Capability::ReflectionWrite as u8);
+    const CALLS_REFLECTION: u16 = 1 << (Capability::ReflectionCall as u8);
+
     #[must_use]
     pub const fn pure() -> Self {
-        Self {
-            reads_host: false,
-            writes_host: false,
-            emits_events: false,
-            reads_time: false,
-            uses_random: false,
-            reads_io: false,
-            writes_io: false,
-            reads_reflection: false,
-            writes_reflection: false,
-            calls_reflection: false,
-        }
+        Self { bits: 0 }
     }
 
     #[must_use]
     pub const fn host_read() -> Self {
         Self {
-            reads_host: true,
-            writes_host: false,
-            emits_events: false,
-            reads_time: false,
-            uses_random: false,
-            reads_io: false,
-            writes_io: false,
-            reads_reflection: false,
-            writes_reflection: false,
-            calls_reflection: false,
+            bits: Self::READS_HOST,
         }
     }
 
     #[must_use]
     pub const fn host_write() -> Self {
         Self {
-            reads_host: true,
-            writes_host: true,
-            emits_events: false,
-            reads_time: false,
-            uses_random: false,
-            reads_io: false,
-            writes_io: false,
-            reads_reflection: false,
-            writes_reflection: false,
-            calls_reflection: false,
+            bits: Self::READS_HOST | Self::WRITES_HOST,
         }
     }
 
     #[must_use]
     pub const fn event_emit() -> Self {
         Self {
-            reads_host: false,
-            writes_host: false,
-            emits_events: true,
-            reads_time: false,
-            uses_random: false,
-            reads_io: false,
-            writes_io: false,
-            reads_reflection: false,
-            writes_reflection: false,
-            calls_reflection: false,
+            bits: Self::EMITS_EVENTS,
         }
     }
 
     #[must_use]
     pub const fn time() -> Self {
         Self {
-            reads_host: false,
-            writes_host: false,
-            emits_events: false,
-            reads_time: true,
-            uses_random: false,
-            reads_io: false,
-            writes_io: false,
-            reads_reflection: false,
-            writes_reflection: false,
-            calls_reflection: false,
+            bits: Self::READS_TIME,
         }
     }
 
     #[must_use]
     pub const fn random() -> Self {
         Self {
-            reads_host: false,
-            writes_host: false,
-            emits_events: false,
-            reads_time: false,
-            uses_random: true,
-            reads_io: false,
-            writes_io: false,
-            reads_reflection: false,
-            writes_reflection: false,
-            calls_reflection: false,
+            bits: Self::USES_RANDOM,
         }
     }
 
     #[must_use]
     pub const fn io_read() -> Self {
         Self {
-            reads_host: false,
-            writes_host: false,
-            emits_events: false,
-            reads_time: false,
-            uses_random: false,
-            reads_io: true,
-            writes_io: false,
-            reads_reflection: false,
-            writes_reflection: false,
-            calls_reflection: false,
+            bits: Self::READS_IO,
         }
     }
 
     #[must_use]
     pub const fn io_write() -> Self {
         Self {
-            reads_host: false,
-            writes_host: false,
-            emits_events: false,
-            reads_time: false,
-            uses_random: false,
-            reads_io: false,
-            writes_io: true,
-            reads_reflection: false,
-            writes_reflection: false,
-            calls_reflection: false,
+            bits: Self::WRITES_IO,
         }
     }
 
+    #[must_use]
+    pub const fn reflection_read() -> Self {
+        Self {
+            bits: Self::READS_REFLECTION,
+        }
+    }
+
+    #[must_use]
+    pub const fn reflection_write() -> Self {
+        Self {
+            bits: Self::WRITES_REFLECTION,
+        }
+    }
+
+    #[must_use]
+    pub const fn reflection_call() -> Self {
+        Self {
+            bits: Self::CALLS_REFLECTION,
+        }
+    }
+
+    #[must_use]
+    pub const fn union(self, other: Self) -> Self {
+        Self {
+            bits: self.bits | other.bits,
+        }
+    }
+
+    #[must_use]
+    pub const fn reads_host(self) -> bool {
+        self.contains(Self::READS_HOST)
+    }
+
+    #[must_use]
+    pub const fn writes_host(self) -> bool {
+        self.contains(Self::WRITES_HOST)
+    }
+
+    #[must_use]
+    pub const fn emits_events(self) -> bool {
+        self.contains(Self::EMITS_EVENTS)
+    }
+
+    #[must_use]
+    pub const fn reads_time(self) -> bool {
+        self.contains(Self::READS_TIME)
+    }
+
+    #[must_use]
+    pub const fn uses_random(self) -> bool {
+        self.contains(Self::USES_RANDOM)
+    }
+
+    #[must_use]
+    pub const fn reads_io(self) -> bool {
+        self.contains(Self::READS_IO)
+    }
+
+    #[must_use]
+    pub const fn writes_io(self) -> bool {
+        self.contains(Self::WRITES_IO)
+    }
+
+    #[must_use]
+    pub const fn reads_reflection(self) -> bool {
+        self.contains(Self::READS_REFLECTION)
+    }
+
+    #[must_use]
+    pub const fn writes_reflection(self) -> bool {
+        self.contains(Self::WRITES_REFLECTION)
+    }
+
+    #[must_use]
+    pub const fn calls_reflection(self) -> bool {
+        self.contains(Self::CALLS_REFLECTION)
+    }
+
+    pub const fn required_capability_set(self) -> CapabilitySet {
+        let mut capabilities = CapabilitySet::from_bits(self.bits as u64);
+        if self.writes_host() {
+            capabilities = capabilities.without(Capability::HostRead);
+        }
+        capabilities
+    }
+
     pub fn required_capabilities(&self) -> impl Iterator<Item = Capability> {
-        [
-            (self.reads_host && !self.writes_host, Capability::HostRead),
-            (self.writes_host, Capability::HostWrite),
-            (self.emits_events, Capability::EventEmit),
-            (self.reads_time, Capability::Time),
-            (self.uses_random, Capability::Random),
-            (self.reads_io, Capability::IoRead),
-            (self.writes_io, Capability::IoWrite),
-            (self.reads_reflection, Capability::ReflectionRead),
-            (self.writes_reflection, Capability::ReflectionWrite),
-            (self.calls_reflection, Capability::ReflectionCall),
-        ]
-        .into_iter()
-        .filter_map(|(required, capability)| required.then_some(capability))
+        (*self).required_capability_set().iter()
+    }
+
+    const fn contains(self, bit: u16) -> bool {
+        self.bits & bit != 0
     }
 }
 
@@ -398,5 +403,35 @@ impl ContextHostNativeFunctionEntry {
             desc,
             function: Arc::new(function),
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::EffectSet;
+    use crate::permission::Capability;
+
+    #[test]
+    fn required_capability_set_matches_effect_flags() {
+        let effects = EffectSet::host_write()
+            .union(EffectSet::time())
+            .union(EffectSet::io_write())
+            .union(EffectSet::reflection_read())
+            .union(EffectSet::reflection_call());
+
+        let capabilities = effects.required_capability_set();
+
+        assert!(effects.reads_host());
+        assert!(effects.writes_host());
+        assert!(!capabilities.contains(Capability::HostRead));
+        assert!(capabilities.contains(Capability::HostWrite));
+        assert!(capabilities.contains(Capability::Time));
+        assert!(capabilities.contains(Capability::IoWrite));
+        assert!(capabilities.contains(Capability::ReflectionRead));
+        assert!(capabilities.contains(Capability::ReflectionCall));
+        assert_eq!(
+            effects.required_capabilities().collect::<Vec<_>>(),
+            capabilities.iter().collect::<Vec<_>>()
+        );
     }
 }

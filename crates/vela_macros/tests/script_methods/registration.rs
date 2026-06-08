@@ -134,14 +134,17 @@ fn assert_registered_method_matches_native_desc(
         registered.return_type.as_deref(),
         Some(type_hint_name(&generated.returns))
     );
-    assert_eq!(registered.effects.reads_host, generated.effects.reads_host);
+    assert_eq!(
+        registered.effects.reads_host,
+        generated.effects.reads_host()
+    );
     assert_eq!(
         registered.effects.writes_host,
-        generated.effects.writes_host
+        generated.effects.writes_host()
     );
     assert_eq!(
         registered.effects.emits_events,
-        generated.effects.emits_events
+        generated.effects.emits_events()
     );
     assert_eq!(registered.access.public, generated.access.public);
     assert_eq!(
