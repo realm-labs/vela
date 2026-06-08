@@ -1036,6 +1036,40 @@ fn main(amount, multiplier = 2) {
 }
 
 #[test]
+fn runtime_cached_entry_rejects_function_from_another_runtime() {
+    let engine = Engine::builder().build().expect("engine should build");
+    let source = r#"
+fn main(amount) {
+    return amount * 2;
+}
+"#;
+    let program_a =
+        compile_program_source_with_options(SourceId::new(1), source, &engine.compiler_options())
+            .expect("program should compile");
+    let program_b =
+        compile_program_source_with_options(SourceId::new(2), source, &engine.compiler_options())
+            .expect("program should compile");
+    let runtime_a = Runtime::new(engine.clone(), program_a);
+    let mut runtime_b = Runtime::new(engine, program_b);
+    let main = runtime_a.entry("main").expect("entry should resolve");
+
+    let error = runtime_b
+        .call(
+            &main,
+            CallArgs::from_positional([OwnedValue::Int(7)]),
+            CallOptions::unbounded(),
+        )
+        .expect_err("cached entry from another runtime should fail");
+
+    assert_eq!(
+        error.kind,
+        VmErrorKind::TypeMismatch {
+            operation: "VelaFunction belongs to another Runtime"
+        }
+    );
+}
+
+#[test]
 fn runtime_call_method_on_runtime_value_by_name_and_cached_method() {
     let engine = Engine::builder().build().expect("engine should build");
     let program = compile_program_source_with_options(
@@ -1097,6 +1131,71 @@ fn make_reward() {
     assert_eq!(
         runtime.value_to_owned(&score_by_cached_method),
         Ok(OwnedValue::Int(19))
+    );
+}
+
+#[test]
+fn runtime_cached_method_rejects_method_from_another_runtime() {
+    let engine = Engine::builder().build().expect("engine should build");
+    let source = r#"
+trait BonusSource {
+    fn score(self, amount) -> Int;
+}
+
+struct Reward {
+    gold: Int,
+}
+
+impl BonusSource for Reward {
+    fn score(self, amount) -> Int {
+        return self.gold + amount;
+    }
+}
+
+fn make_reward(gold) {
+    return Reward { gold: gold };
+}
+"#;
+    let program_a =
+        compile_program_source_with_options(SourceId::new(1), source, &engine.compiler_options())
+            .expect("program should compile");
+    let program_b =
+        compile_program_source_with_options(SourceId::new(2), source, &engine.compiler_options())
+            .expect("program should compile");
+    let mut runtime_a = Runtime::new(engine.clone(), program_a);
+    let mut runtime_b = Runtime::new(engine, program_b);
+    let reward_a = runtime_a
+        .call(
+            "make_reward",
+            CallArgs::from_positional([OwnedValue::Int(7)]),
+            CallOptions::unbounded(),
+        )
+        .expect("first factory should run");
+    let reward_b = runtime_b
+        .call(
+            "make_reward",
+            CallArgs::from_positional([OwnedValue::Int(11)]),
+            CallOptions::unbounded(),
+        )
+        .expect("second factory should run");
+    let score = runtime_a
+        .method(&reward_a, "score")
+        .expect("method should resolve");
+
+    let error = runtime_b
+        .call_method(
+            &reward_b,
+            &score,
+            CallArgs::from_positional([OwnedValue::Int(5)]),
+            CallOptions::unbounded(),
+        )
+        .expect_err("cached method from another runtime should fail");
+
+    assert_eq!(
+        error.kind,
+        VmErrorKind::TypeMismatch {
+            operation: "VelaMethod belongs to another Runtime"
+        }
     );
 }
 

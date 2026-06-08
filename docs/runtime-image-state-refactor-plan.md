@@ -1727,7 +1727,7 @@ strict runtime-local heap/value isolation
 [x] Add RuntimeImage::into_shared.
 [x] Add SharedRuntime::from_shared_image.
 [x] Add tests for shared image and isolated state.
-[ ] Add tests for VelaValue/VelaFunction/VelaMethod runtime mismatch.
+[x] Add tests for VelaValue/VelaFunction/VelaMethod runtime mismatch.
 [x] Add tests for reload image swaps, rejected reloads, and global layout rebinding.
 [x] Add RuntimeState::rebind_to_image.
 [ ] Add cache-site ID types.
