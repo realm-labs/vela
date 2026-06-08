@@ -138,6 +138,10 @@ impl ProgramImage {
             .sum()
     }
 
+    pub fn verify(&self) -> Result<(), crate::verification::VerificationError> {
+        crate::verification::verify_program_image(self)
+    }
+
     fn function_for_program(
         &self,
         index: FunctionIndex,

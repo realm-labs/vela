@@ -2,7 +2,7 @@ use std::fmt;
 
 use crate::{
     CacheSiteId, CacheSiteKind, CallArgument, CodeObject, ConstantId, HostPathSegment, Instruction,
-    InstructionKind, InstructionOffset, Program, Register,
+    InstructionKind, InstructionOffset, Program, ProgramImage, Register,
 };
 
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -100,6 +100,28 @@ pub fn verify_program(program: &Program) -> Result<(), VerificationError> {
     Ok(())
 }
 
+pub fn verify_program_image(image: &ProgramImage) -> Result<(), VerificationError> {
+    let closure_scope = ClosureIndexScope::Image {
+        function_count: image.function_count(),
+    };
+    for (_, function) in image.functions() {
+        verify_code_object_with_scope(function, &function.name, closure_scope)?;
+        verify_program_image_instruction_metadata(image, function)?;
+    }
+    for function in image.script_methods().function_names() {
+        if image.function_by_name(function).is_none() {
+            return Err(error(
+                function,
+                None,
+                VerificationErrorKind::ScriptMethodFunctionMissing {
+                    function: function.to_owned(),
+                },
+            ));
+        }
+    }
+    Ok(())
+}
+
 fn verify_program_instruction_metadata(
     program: &Program,
     code: &CodeObject,
@@ -143,6 +165,46 @@ fn verify_program_instruction_metadata(
     Ok(())
 }
 
+fn verify_program_image_instruction_metadata(
+    image: &ProgramImage,
+    code: &CodeObject,
+) -> Result<(), VerificationError> {
+    let global_count = image.global_names().len();
+    for (index, instruction) in code.instructions.iter().enumerate() {
+        if let InstructionKind::LoadGlobal {
+            global,
+            slot: Some(slot),
+            ..
+        } = &instruction.kind
+        {
+            if slot.get() >= global_count {
+                return Err(error(
+                    &code.name,
+                    Some(index),
+                    VerificationErrorKind::GlobalSlotOutOfBounds {
+                        slot: slot.get(),
+                        global_count,
+                    },
+                ));
+            }
+            if let Some(expected) = image.global_name(*slot)
+                && expected != global
+            {
+                return Err(error(
+                    &code.name,
+                    Some(index),
+                    VerificationErrorKind::GlobalSlotNameMismatch {
+                        slot: slot.get(),
+                        expected: expected.to_owned(),
+                        actual: global.clone(),
+                    },
+                ));
+            }
+        }
+    }
+    Ok(())
+}
+
 pub fn verify_code_object(code: &CodeObject) -> Result<(), VerificationError> {
     verify_code_object_with_name(code, &code.name)
 }
@@ -150,6 +212,20 @@ pub fn verify_code_object(code: &CodeObject) -> Result<(), VerificationError> {
 fn verify_code_object_with_name(
     code: &CodeObject,
     function: &str,
+) -> Result<(), VerificationError> {
+    verify_code_object_with_scope(code, function, ClosureIndexScope::Nested)
+}
+
+#[derive(Clone, Copy)]
+enum ClosureIndexScope {
+    Nested,
+    Image { function_count: usize },
+}
+
+fn verify_code_object_with_scope(
+    code: &CodeObject,
+    function: &str,
+    closure_scope: ClosureIndexScope,
 ) -> Result<(), VerificationError> {
     let parameter_count = code.params.len();
     let frame_count = usize::from(code.capture_count) + parameter_count;
@@ -179,10 +255,10 @@ fn verify_code_object_with_name(
         verify_register(function, None, code, slot.register)?;
     }
     for (index, instruction) in code.instructions.iter().enumerate() {
-        verify_instruction(function, code, index, instruction)?;
+        verify_instruction(function, code, index, instruction, closure_scope)?;
     }
     for nested in &code.nested_functions {
-        verify_code_object_with_name(nested, &nested.name)?;
+        verify_code_object_with_scope(nested, &nested.name, closure_scope)?;
     }
     Ok(())
 }
@@ -192,6 +268,7 @@ fn verify_instruction(
     code: &CodeObject,
     index: usize,
     instruction: &Instruction,
+    closure_scope: ClosureIndexScope,
 ) -> Result<(), VerificationError> {
     let instruction_index = Some(index);
     match &instruction.kind {
@@ -248,7 +325,7 @@ fn verify_instruction(
         } => {
             verify_register(function, instruction_index, code, *dst)?;
             verify_registers(function, instruction_index, code, captures)?;
-            verify_function_index(function, instruction_index, code, *nested)
+            verify_function_index(function, instruction_index, code, *nested, closure_scope)
         }
         InstructionKind::CallClosure { dst, callee, args } => {
             verify_register(function, instruction_index, code, *dst)?;
@@ -550,8 +627,13 @@ fn verify_function_index(
     instruction: Option<usize>,
     code: &CodeObject,
     nested: crate::FunctionIndex,
+    closure_scope: ClosureIndexScope,
 ) -> Result<(), VerificationError> {
-    if nested.0 < code.nested_functions.len() {
+    let function_count = match closure_scope {
+        ClosureIndexScope::Nested => code.nested_functions.len(),
+        ClosureIndexScope::Image { function_count } => function_count,
+    };
+    if nested.0 < function_count {
         Ok(())
     } else {
         Err(error(
@@ -559,7 +641,7 @@ fn verify_function_index(
             instruction,
             VerificationErrorKind::FunctionIndexOutOfBounds {
                 function: nested,
-                function_count: code.nested_functions.len(),
+                function_count,
             },
         ))
     }
@@ -864,6 +946,51 @@ mod tests {
                 VerificationErrorKind::FunctionIndexOutOfBounds {
                     function: crate::FunctionIndex(0),
                     function_count: 0
+                }
+            ))
+        );
+    }
+
+    #[test]
+    fn program_image_verify_accepts_flattened_closure_function_index() {
+        let mut program = Program::new();
+        let mut code = CodeObject::new("main", 1);
+        let closure = CodeObject::new("main::<lambda>", 1);
+        let function = code.push_nested_function(closure);
+        code.push_instruction(Instruction::new(InstructionKind::MakeClosure {
+            dst: Register(0),
+            function,
+            captures: Vec::new(),
+        }));
+        program.insert_function(code);
+        let image = ProgramImage::from_program(&program);
+
+        assert_eq!(image.verify(), Ok(()));
+    }
+
+    #[test]
+    fn program_image_verify_rejects_out_of_bounds_closure_function_index() {
+        let mut code = CodeObject::new("main", 1);
+        code.push_instruction(Instruction::new(InstructionKind::MakeClosure {
+            dst: Register(0),
+            function: crate::FunctionIndex(7),
+            captures: Vec::new(),
+        }));
+        let image = ProgramImage::from_parts(
+            [code],
+            Vec::<String>::new(),
+            crate::script_methods::ScriptMethodTable::default(),
+            None,
+        );
+
+        assert_eq!(
+            image.verify(),
+            Err(error(
+                "main",
+                Some(0),
+                VerificationErrorKind::FunctionIndexOutOfBounds {
+                    function: crate::FunctionIndex(7),
+                    function_count: 1
                 }
             ))
         );
