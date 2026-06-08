@@ -272,7 +272,7 @@ fn main() {
         .instructions
         .iter()
         .find_map(|instruction| match &instruction.kind {
-            InstructionKind::MakeClosure { code, .. } => Some(code),
+            InstructionKind::MakeClosure { function, .. } => main.nested_function(*function),
             _ => None,
         })
         .expect("lambda code object");

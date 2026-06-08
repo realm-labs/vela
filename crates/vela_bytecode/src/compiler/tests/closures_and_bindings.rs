@@ -26,8 +26,11 @@ fn main() {
     let main = program.function("main").expect("main function");
     assert!(make_adder.instructions.iter().any(|instruction| matches!(
         &instruction.kind,
-        InstructionKind::MakeClosure { code, captures, .. }
-            if code.capture_count == 1 && code.params == ["value"] && captures.len() == 1
+        InstructionKind::MakeClosure { function, captures, .. }
+            if make_adder
+                .nested_function(*function)
+                .is_some_and(|code| code.capture_count == 1 && code.params == ["value"])
+                && captures.len() == 1
     )));
     assert!(
         main.instructions
@@ -99,7 +102,7 @@ fn make_adder(base) {
         .instructions
         .iter()
         .find_map(|instruction| match &instruction.kind {
-            InstructionKind::MakeClosure { code, .. } => Some(code.as_ref()),
+            InstructionKind::MakeClosure { function, .. } => make_adder.nested_function(*function),
             _ => None,
         })
         .expect("lambda code object");
@@ -140,8 +143,11 @@ fn main() {
         .expect("make_nested function");
     assert!(make_nested.instructions.iter().any(|instruction| matches!(
         &instruction.kind,
-        InstructionKind::MakeClosure { code, captures, .. }
-            if code.capture_count == 1 && code.params == ["amount"] && captures.len() == 1
+        InstructionKind::MakeClosure { function, captures, .. }
+            if make_nested
+                .nested_function(*function)
+                .is_some_and(|code| code.capture_count == 1 && code.params == ["amount"])
+                && captures.len() == 1
     )));
 }
 #[test]

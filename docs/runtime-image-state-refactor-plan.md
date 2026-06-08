@@ -1734,7 +1734,7 @@ strict runtime-local heap/value isolation
 [x] Add cache-site metadata to bytecode/compiler.
 [x] Thread InlineCaches through VM execution.
 [x] Implement first per-runtime IC.
-[ ] Replace MakeClosure Box<CodeObject> with FunctionIndex.
+[x] Replace MakeClosure Box<CodeObject> with FunctionIndex.
 [ ] Introduce ProgramImage.
 [ ] Move hot reload to ProgramImage-native version swapping.
 [ ] Document JIT ownership ABI; defer JIT runtime types until M22.

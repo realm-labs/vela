@@ -66,10 +66,11 @@ impl Compiler<'_> {
             }
         }
         let code = lambda_compiler.compile_lambda_body(body)?;
+        let function = self.code.push_nested_function(code);
         let dst = self.alloc_register()?;
         self.emit(InstructionKind::MakeClosure {
             dst,
-            code: Box::new(code),
+            function,
             captures: capture_registers,
         });
         Ok(dst)

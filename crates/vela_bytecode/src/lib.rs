@@ -136,6 +136,7 @@ pub struct CodeObject {
     pub frame: FrameDebugInfo,
     pub cache_sites: CacheSiteLayout,
     pub constants: Vec<Constant>,
+    pub nested_functions: Vec<CodeObject>,
     pub instructions: Vec<Instruction>,
 }
 
@@ -151,6 +152,7 @@ impl CodeObject {
             frame: FrameDebugInfo::default(),
             cache_sites: CacheSiteLayout::default(),
             constants: Vec::new(),
+            nested_functions: Vec::new(),
             instructions: Vec::new(),
         }
     }
@@ -182,6 +184,17 @@ impl CodeObject {
 
     pub fn push_instruction(&mut self, instruction: Instruction) {
         self.instructions.push(instruction);
+    }
+
+    pub fn push_nested_function(&mut self, function: CodeObject) -> FunctionIndex {
+        let index = FunctionIndex(self.nested_functions.len());
+        self.nested_functions.push(function);
+        index
+    }
+
+    #[must_use]
+    pub fn nested_function(&self, index: FunctionIndex) -> Option<&CodeObject> {
+        self.nested_functions.get(index.0)
     }
 
     pub fn push_cache_site(
@@ -296,6 +309,9 @@ pub struct ConstantId(pub usize);
 
 #[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
 pub struct InstructionOffset(pub usize);
+
+#[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
+pub struct FunctionIndex(pub usize);
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct Instruction {
@@ -417,7 +433,7 @@ pub enum InstructionKind {
     },
     MakeClosure {
         dst: Register,
-        code: Box<CodeObject>,
+        function: FunctionIndex,
         captures: Vec<Register>,
     },
     CallClosure {

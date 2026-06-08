@@ -1,6 +1,6 @@
 use std::sync::Arc;
 
-use vela_bytecode::{CodeObject, InstructionOffset, Program, Register};
+use vela_bytecode::{CodeObject, FunctionIndex, InstructionOffset, Program, Register};
 use vela_common::Span;
 
 use crate::heap::HeapValue;
@@ -13,7 +13,8 @@ use crate::{
 
 pub(crate) struct MakeClosure<'a> {
     pub(crate) dst: Register,
-    pub(crate) code: &'a CodeObject,
+    pub(crate) owner: &'a CodeObject,
+    pub(crate) function: FunctionIndex,
     pub(crate) captures: &'a [Register],
 }
 
@@ -33,9 +34,17 @@ pub(crate) fn make_closure(
             operation: "closure heap",
         })
     })?;
+    let code = closure
+        .owner
+        .nested_function(closure.function)
+        .ok_or_else(|| {
+            VmError::new(VmErrorKind::UnknownFunction {
+                name: format!("{}::<closure#{}>", closure.owner.name, closure.function.0),
+            })
+        })?;
     let value = allocate_heap_value(
         HeapValue::Closure(ClosureValue {
-            code: Arc::new(closure.code.clone()),
+            code: Arc::new(code.clone()),
             captures,
         }),
         heap,

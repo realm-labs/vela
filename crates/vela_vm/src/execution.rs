@@ -268,7 +268,7 @@ impl Vm {
                 }
                 InstructionKind::MakeClosure {
                     dst,
-                    code,
+                    function,
                     captures,
                 } => {
                     closure_calls::make_closure(
@@ -277,7 +277,8 @@ impl Vm {
                         &mut frame,
                         closure_calls::MakeClosure {
                             dst: *dst,
-                            code,
+                            owner: code,
+                            function: *function,
                             captures,
                         },
                     )?;

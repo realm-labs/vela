@@ -35,6 +35,10 @@ pub enum VerificationErrorKind {
         parameter_count: usize,
         default_count: usize,
     },
+    FunctionIndexOutOfBounds {
+        function: crate::FunctionIndex,
+        function_count: usize,
+    },
     ScriptMethodFunctionMissing {
         function: String,
     },
@@ -133,6 +137,9 @@ fn verify_program_instruction_metadata(
             }
         }
     }
+    for nested in &code.nested_functions {
+        verify_program_instruction_metadata(program, nested)?;
+    }
     Ok(())
 }
 
@@ -173,6 +180,9 @@ fn verify_code_object_with_name(
     }
     for (index, instruction) in code.instructions.iter().enumerate() {
         verify_instruction(function, code, index, instruction)?;
+    }
+    for nested in &code.nested_functions {
+        verify_code_object_with_name(nested, &nested.name)?;
     }
     Ok(())
 }
@@ -233,12 +243,12 @@ fn verify_instruction(
         }
         InstructionKind::MakeClosure {
             dst,
-            code: closure,
+            function: nested,
             captures,
         } => {
             verify_register(function, instruction_index, code, *dst)?;
             verify_registers(function, instruction_index, code, captures)?;
-            verify_code_object_with_name(closure, &closure.name)
+            verify_function_index(function, instruction_index, code, *nested)
         }
         InstructionKind::CallClosure { dst, callee, args } => {
             verify_register(function, instruction_index, code, *dst)?;
@@ -535,6 +545,26 @@ fn verify_constant(
     }
 }
 
+fn verify_function_index(
+    function: &str,
+    instruction: Option<usize>,
+    code: &CodeObject,
+    nested: crate::FunctionIndex,
+) -> Result<(), VerificationError> {
+    if nested.0 < code.nested_functions.len() {
+        Ok(())
+    } else {
+        Err(error(
+            function,
+            instruction,
+            VerificationErrorKind::FunctionIndexOutOfBounds {
+                function: nested,
+                function_count: code.nested_functions.len(),
+            },
+        ))
+    }
+}
+
 fn verify_jump(
     function: &str,
     instruction: Option<usize>,
@@ -797,9 +827,10 @@ mod tests {
         }));
 
         let mut code = CodeObject::new("main", 1);
+        let function = code.push_nested_function(closure);
         code.push_instruction(Instruction::new(InstructionKind::MakeClosure {
             dst: Register(0),
-            code: Box::new(closure),
+            function,
             captures: Vec::new(),
         }));
 
@@ -811,6 +842,28 @@ mod tests {
                 VerificationErrorKind::RegisterOutOfBounds {
                     register: Register(1),
                     register_count: 1
+                }
+            ))
+        );
+    }
+
+    #[test]
+    fn rejects_out_of_bounds_closure_function_index() {
+        let mut code = CodeObject::new("main", 1);
+        code.push_instruction(Instruction::new(InstructionKind::MakeClosure {
+            dst: Register(0),
+            function: crate::FunctionIndex(0),
+            captures: Vec::new(),
+        }));
+
+        assert_eq!(
+            verify_code_object(&code),
+            Err(error(
+                "main",
+                Some(0),
+                VerificationErrorKind::FunctionIndexOutOfBounds {
+                    function: crate::FunctionIndex(0),
+                    function_count: 0
                 }
             ))
         );
