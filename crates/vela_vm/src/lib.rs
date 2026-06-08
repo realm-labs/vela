@@ -214,11 +214,11 @@ pub trait VmInlineCaches {
         self.len() == 0
     }
 
-    fn global_read_slot(&self, _function: &str, _site: CacheSiteId) -> Option<GlobalSlot> {
+    fn global_read_slot(&self, _site: CacheSiteId) -> Option<GlobalSlot> {
         None
     }
 
-    fn set_global_read_slot(&self, _function: &str, _site: CacheSiteId, _slot: GlobalSlot) {}
+    fn set_global_read_slot(&self, _site: CacheSiteId, _slot: GlobalSlot) {}
 }
 
 pub struct RuntimeMethodCall<'program, 'args, 'host, 'heap, 'roots, 'budget> {

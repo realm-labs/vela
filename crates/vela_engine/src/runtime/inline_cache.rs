@@ -13,10 +13,7 @@ pub(super) struct InlineCaches {
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub(super) enum InlineCacheEntry {
     Empty,
-    GlobalRead {
-        function: Box<str>,
-        slot: GlobalSlot,
-    },
+    GlobalRead { slot: GlobalSlot },
 }
 
 impl InlineCaches {
@@ -38,22 +35,16 @@ impl InlineCaches {
         self.entries.borrow().is_empty()
     }
 
-    pub(super) fn global_read_slot(&self, function: &str, site: CacheSiteId) -> Option<GlobalSlot> {
+    pub(super) fn global_read_slot(&self, site: CacheSiteId) -> Option<GlobalSlot> {
         match self.entries.borrow().get(site.index()) {
-            Some(InlineCacheEntry::GlobalRead {
-                function: cached_function,
-                slot,
-            }) if cached_function.as_ref() == function => Some(*slot),
+            Some(InlineCacheEntry::GlobalRead { slot }) => Some(*slot),
             _ => None,
         }
     }
 
-    pub(super) fn set_global_read_slot(&self, function: &str, site: CacheSiteId, slot: GlobalSlot) {
+    pub(super) fn set_global_read_slot(&self, site: CacheSiteId, slot: GlobalSlot) {
         if let Some(entry) = self.entries.borrow_mut().get_mut(site.index()) {
-            *entry = InlineCacheEntry::GlobalRead {
-                function: function.into(),
-                slot,
-            };
+            *entry = InlineCacheEntry::GlobalRead { slot };
         }
     }
 }
@@ -67,12 +58,12 @@ impl vela_vm::VmInlineCaches for InlineCaches {
         self.is_empty()
     }
 
-    fn global_read_slot(&self, function: &str, site: CacheSiteId) -> Option<GlobalSlot> {
-        self.global_read_slot(function, site)
+    fn global_read_slot(&self, site: CacheSiteId) -> Option<GlobalSlot> {
+        self.global_read_slot(site)
     }
 
-    fn set_global_read_slot(&self, function: &str, site: CacheSiteId, slot: GlobalSlot) {
-        self.set_global_read_slot(function, site, slot);
+    fn set_global_read_slot(&self, site: CacheSiteId, slot: GlobalSlot) {
+        self.set_global_read_slot(site, slot);
     }
 }
 
@@ -125,7 +116,7 @@ fn main() {
     }
 
     #[test]
-    fn global_read_inline_cache_is_runtime_local_and_function_guarded() {
+    fn global_read_inline_cache_is_runtime_local_and_site_indexed() {
         let engine = Engine::builder().build().expect("engine should build");
         let program = compile_program_source_with_options(
             SourceId::new(1),
@@ -183,10 +174,7 @@ fn read_second() {
             .expect("second global should insert");
 
         assert_eq!(
-            runtime
-                .state
-                .inline_caches
-                .global_read_slot("read_first", first_site),
+            runtime.state.inline_caches.global_read_slot(first_site),
             None
         );
 
@@ -195,10 +183,7 @@ fn read_second() {
             .expect("read_first should run");
         assert_eq!(runtime.value_to_owned(&first), Ok(OwnedValue::Int(10)));
         assert_eq!(
-            runtime
-                .state
-                .inline_caches
-                .global_read_slot("read_first", first_site),
+            runtime.state.inline_caches.global_read_slot(first_site),
             Some(first_slot)
         );
 
@@ -207,17 +192,11 @@ fn read_second() {
             .expect("read_second should run");
         assert_eq!(runtime.value_to_owned(&second), Ok(OwnedValue::Int(20)));
         assert_eq!(
-            runtime
-                .state
-                .inline_caches
-                .global_read_slot("read_second", second_site),
+            runtime.state.inline_caches.global_read_slot(second_site),
             Some(second_slot)
         );
         assert_eq!(
-            runtime
-                .state
-                .inline_caches
-                .global_read_slot("read_first", first_site),
+            runtime.state.inline_caches.global_read_slot(first_site),
             Some(first_slot)
         );
 

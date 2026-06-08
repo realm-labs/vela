@@ -1770,6 +1770,7 @@ strict runtime-local heap/value isolation
 [x] Rewrite ProgramImage cache-site IDs to image-global indexes.
 [x] Thread InlineCaches through VM execution.
 [x] Implement first per-runtime IC.
+[x] Key global-read inline cache entries by image-global CacheSiteId without function-name guards.
 [x] Replace MakeClosure Box<CodeObject> with FunctionIndex.
 [x] Introduce ProgramImage.
 [x] Flatten nested closure functions into ProgramImage function indexes.

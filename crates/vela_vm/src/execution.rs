@@ -626,7 +626,7 @@ impl Vm {
                     let cached_slot = cache_site
                         .and_then(|site| {
                             call.inline_caches
-                                .and_then(|caches| caches.global_read_slot(&code.name, site))
+                                .and_then(|caches| caches.global_read_slot(site))
                         })
                         .or(*slot);
                     let value = host_access::load_host_global(
@@ -642,9 +642,9 @@ impl Vm {
                     )?;
                     if let (Some(caches), Some(cache_site), Some(slot)) =
                         (call.inline_caches, *cache_site, *slot)
-                        && caches.global_read_slot(&code.name, cache_site).is_none()
+                        && caches.global_read_slot(cache_site).is_none()
                     {
-                        caches.set_global_read_slot(&code.name, cache_site, slot);
+                        caches.set_global_read_slot(cache_site, slot);
                     }
                     frame.write(*dst, value)?;
                 }
