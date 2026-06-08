@@ -4,7 +4,10 @@ use vela_common::GlobalSlot;
 use vela_hir::module_graph::ModuleGraph;
 
 use crate::script_methods::ScriptMethodTable;
-use crate::{CodeObject, FunctionIndex, InstructionKind, Program, ProgramCode};
+use crate::{
+    CacheSiteDesc, CacheSiteId, CacheSiteLayout, CodeObject, FunctionIndex, InstructionKind,
+    Program, ProgramCode,
+};
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct ProgramImage {
@@ -12,6 +15,7 @@ pub struct ProgramImage {
     function_by_name: BTreeMap<String, FunctionIndex>,
     global_names: Box<[String]>,
     global_slots: BTreeMap<String, GlobalSlot>,
+    cache_sites: Box<[CacheSiteDesc]>,
     script_methods: ScriptMethodTable,
     script_metadata: Option<ModuleGraph>,
 }
@@ -44,6 +48,7 @@ impl ProgramImage {
             function_by_name.insert(name, index);
             indexed_functions.push(function);
         }
+        let cache_sites = rewrite_image_cache_sites(&mut indexed_functions);
 
         let global_names = global_names.into_iter().collect::<Vec<_>>();
         let global_slots = global_names
@@ -57,6 +62,7 @@ impl ProgramImage {
             function_by_name,
             global_names: global_names.into_boxed_slice(),
             global_slots,
+            cache_sites,
             script_methods,
             script_metadata,
         }
@@ -132,10 +138,12 @@ impl ProgramImage {
 
     #[must_use]
     pub fn cache_site_count(&self) -> usize {
-        self.functions
-            .iter()
-            .map(|function| function.cache_sites.len())
-            .sum()
+        self.cache_sites.len()
+    }
+
+    #[must_use]
+    pub fn cache_site(&self, site: CacheSiteId) -> Option<&CacheSiteDesc> {
+        self.cache_sites.get(site.index())
     }
 
     pub fn verify(&self) -> Result<(), crate::verification::VerificationError> {
@@ -164,6 +172,7 @@ impl ProgramImage {
             }
         }
         function.nested_functions = nested_functions;
+        localize_function_cache_sites(&mut function);
         stack.pop();
         Some(function)
     }
@@ -230,11 +239,85 @@ fn rewrite_closure_function_indices(function: &mut CodeObject, remapped: &[Funct
     }
 }
 
+fn rewrite_image_cache_sites(functions: &mut [CodeObject]) -> Box<[CacheSiteDesc]> {
+    let mut image_sites = Vec::new();
+    for function in functions {
+        let local_sites = function.cache_sites.sites().to_vec();
+        if local_sites.is_empty() {
+            continue;
+        }
+
+        let mut remapped = vec![None; local_sites.len()];
+        let mut function_sites = Vec::with_capacity(local_sites.len());
+        for site in local_sites {
+            let id = CacheSiteId::new(
+                u32::try_from(image_sites.len()).expect("cache site count exceeds u32::MAX"),
+            );
+            if let Some(slot) = remapped.get_mut(site.id.index()) {
+                *slot = Some(id);
+            }
+            let site = CacheSiteDesc::new(id, site.kind, site.function, site.instruction_offset);
+            image_sites.push(site.clone());
+            function_sites.push(site);
+        }
+
+        rewrite_instruction_cache_sites(function, &remapped);
+        function.cache_sites = CacheSiteLayout::new(function_sites);
+    }
+    image_sites.into_boxed_slice()
+}
+
+fn rewrite_instruction_cache_sites(function: &mut CodeObject, remapped: &[Option<CacheSiteId>]) {
+    for instruction in &mut function.instructions {
+        if let InstructionKind::LoadGlobal {
+            cache_site: Some(site),
+            ..
+        } = &mut instruction.kind
+            && let Some(Some(id)) = remapped.get(site.index())
+        {
+            *site = *id;
+        }
+    }
+}
+
+fn localize_function_cache_sites(function: &mut CodeObject) {
+    let image_sites = function.cache_sites.sites().to_vec();
+    if image_sites.is_empty() {
+        return;
+    }
+
+    let mut remapped = BTreeMap::new();
+    let mut local_sites = Vec::with_capacity(image_sites.len());
+    for (index, mut site) in image_sites.into_iter().enumerate() {
+        let local_id =
+            CacheSiteId::new(u32::try_from(index).expect("cache site count exceeds u32::MAX"));
+        remapped.insert(site.id, local_id);
+        site.id = local_id;
+        local_sites.push(site);
+    }
+
+    for instruction in &mut function.instructions {
+        if let InstructionKind::LoadGlobal {
+            cache_site: Some(site),
+            ..
+        } = &mut instruction.kind
+            && let Some(local_id) = remapped.get(site)
+        {
+            *site = *local_id;
+        }
+    }
+
+    function.cache_sites = CacheSiteLayout::new(local_sites);
+}
+
 #[cfg(test)]
 mod tests {
     use vela_common::{GlobalSlot, MethodId};
 
-    use crate::{CodeObject, Constant, Instruction, InstructionKind, Program, Register};
+    use crate::{
+        CacheSiteId, CacheSiteKind, CodeObject, Constant, Instruction, InstructionKind,
+        InstructionOffset, Program, Register,
+    };
 
     use super::ProgramImage;
 
@@ -365,5 +448,74 @@ mod tests {
                 .name,
             "main::<lambda>"
         );
+    }
+
+    #[test]
+    fn image_rewrites_cache_site_ids_to_image_global_indexes() {
+        let mut first = CodeObject::new("read_first", 1);
+        let first_local = first.push_cache_site(CacheSiteKind::GlobalRead, InstructionOffset(0));
+        first.push_instruction(Instruction::new(InstructionKind::LoadGlobal {
+            dst: Register(0),
+            global: "main::first".to_owned(),
+            slot: None,
+            cache_site: Some(first_local),
+        }));
+        let mut second = CodeObject::new("read_second", 1);
+        let second_local = second.push_cache_site(CacheSiteKind::GlobalRead, InstructionOffset(0));
+        second.push_instruction(Instruction::new(InstructionKind::LoadGlobal {
+            dst: Register(0),
+            global: "main::second".to_owned(),
+            slot: None,
+            cache_site: Some(second_local),
+        }));
+        assert_eq!(first_local, second_local);
+
+        let mut program = Program::new();
+        program.insert_function(first);
+        program.insert_function(second);
+        let image = ProgramImage::from_program(&program);
+        let first = image
+            .function_by_name("read_first")
+            .expect("first function");
+        let second = image
+            .function_by_name("read_second")
+            .expect("second function");
+        let first_site = load_global_cache_site(first);
+        let second_site = load_global_cache_site(second);
+
+        assert_eq!(image.cache_site_count(), 2);
+        assert_ne!(first_site, second_site);
+        assert_eq!(
+            image.cache_site(first_site).expect("first site").id,
+            first_site
+        );
+        assert_eq!(
+            image.cache_site(second_site).expect("second site").id,
+            second_site
+        );
+
+        let rebuilt = image.to_program();
+        assert_eq!(
+            load_global_cache_site(rebuilt.function("read_first").expect("rebuilt first")),
+            CacheSiteId::new(0)
+        );
+        assert_eq!(
+            load_global_cache_site(rebuilt.function("read_second").expect("rebuilt second")),
+            CacheSiteId::new(0)
+        );
+    }
+
+    fn load_global_cache_site(function: &CodeObject) -> CacheSiteId {
+        function
+            .instructions
+            .iter()
+            .find_map(|instruction| match &instruction.kind {
+                InstructionKind::LoadGlobal {
+                    cache_site: Some(site),
+                    ..
+                } => Some(*site),
+                _ => None,
+            })
+            .expect("function should have global read cache site")
     }
 }

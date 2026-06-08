@@ -105,7 +105,12 @@ pub fn verify_program_image(image: &ProgramImage) -> Result<(), VerificationErro
         function_count: image.function_count(),
     };
     for (_, function) in image.functions() {
-        verify_code_object_with_scope(function, &function.name, closure_scope)?;
+        verify_code_object_with_scope(
+            function,
+            &function.name,
+            closure_scope,
+            CacheIndexScope::Image(image),
+        )?;
         verify_program_image_instruction_metadata(image, function)?;
     }
     for function in image.script_methods().function_names() {
@@ -213,7 +218,12 @@ fn verify_code_object_with_name(
     code: &CodeObject,
     function: &str,
 ) -> Result<(), VerificationError> {
-    verify_code_object_with_scope(code, function, ClosureIndexScope::Nested)
+    verify_code_object_with_scope(
+        code,
+        function,
+        ClosureIndexScope::Nested,
+        CacheIndexScope::Local,
+    )
 }
 
 #[derive(Clone, Copy)]
@@ -222,10 +232,17 @@ enum ClosureIndexScope {
     Image { function_count: usize },
 }
 
+#[derive(Clone, Copy)]
+enum CacheIndexScope<'a> {
+    Local,
+    Image(&'a ProgramImage),
+}
+
 fn verify_code_object_with_scope(
     code: &CodeObject,
     function: &str,
     closure_scope: ClosureIndexScope,
+    cache_scope: CacheIndexScope<'_>,
 ) -> Result<(), VerificationError> {
     let parameter_count = code.params.len();
     let frame_count = usize::from(code.capture_count) + parameter_count;
@@ -255,10 +272,17 @@ fn verify_code_object_with_scope(
         verify_register(function, None, code, slot.register)?;
     }
     for (index, instruction) in code.instructions.iter().enumerate() {
-        verify_instruction(function, code, index, instruction, closure_scope)?;
+        verify_instruction(
+            function,
+            code,
+            index,
+            instruction,
+            closure_scope,
+            cache_scope,
+        )?;
     }
     for nested in &code.nested_functions {
-        verify_code_object_with_scope(nested, &nested.name, closure_scope)?;
+        verify_code_object_with_scope(nested, &nested.name, closure_scope, cache_scope)?;
     }
     Ok(())
 }
@@ -269,6 +293,7 @@ fn verify_instruction(
     index: usize,
     instruction: &Instruction,
     closure_scope: ClosureIndexScope,
+    cache_scope: CacheIndexScope<'_>,
 ) -> Result<(), VerificationError> {
     let instruction_index = Some(index);
     match &instruction.kind {
@@ -441,6 +466,7 @@ fn verify_instruction(
                 code,
                 *cache_site,
                 CacheSiteKind::GlobalRead,
+                cache_scope,
             )
         }
         InstructionKind::GetHostField { dst, root, .. } => {
@@ -673,17 +699,26 @@ fn verify_optional_cache_site(
     code: &CodeObject,
     site: Option<CacheSiteId>,
     expected: CacheSiteKind,
+    cache_scope: CacheIndexScope<'_>,
 ) -> Result<(), VerificationError> {
     let Some(site) = site else {
         return Ok(());
     };
-    let Some(desc) = code.cache_sites.get(site) else {
+    let desc = match cache_scope {
+        CacheIndexScope::Local => code.cache_sites.get(site),
+        CacheIndexScope::Image(image) => image.cache_site(site),
+    };
+    let Some(desc) = desc else {
+        let cache_site_count = match cache_scope {
+            CacheIndexScope::Local => code.cache_sites.len(),
+            CacheIndexScope::Image(image) => image.cache_site_count(),
+        };
         return Err(error(
             function,
             instruction,
             VerificationErrorKind::CacheSiteOutOfBounds {
                 site,
-                cache_site_count: code.cache_sites.len(),
+                cache_site_count,
             },
         ));
     };
@@ -991,6 +1026,35 @@ mod tests {
                 VerificationErrorKind::FunctionIndexOutOfBounds {
                     function: crate::FunctionIndex(7),
                     function_count: 1
+                }
+            ))
+        );
+    }
+
+    #[test]
+    fn program_image_verify_rejects_out_of_bounds_cache_site_index() {
+        let mut code = CodeObject::new("main", 1);
+        code.push_instruction(Instruction::new(InstructionKind::LoadGlobal {
+            dst: Register(0),
+            global: "main::value".to_owned(),
+            slot: None,
+            cache_site: Some(CacheSiteId::new(7)),
+        }));
+        let image = ProgramImage::from_parts(
+            [code],
+            Vec::<String>::new(),
+            crate::script_methods::ScriptMethodTable::default(),
+            None,
+        );
+
+        assert_eq!(
+            image.verify(),
+            Err(error(
+                "main",
+                Some(0),
+                VerificationErrorKind::CacheSiteOutOfBounds {
+                    site: CacheSiteId::new(7),
+                    cache_site_count: 0
                 }
             ))
         );

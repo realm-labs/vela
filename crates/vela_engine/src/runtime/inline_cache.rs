@@ -150,8 +150,12 @@ fn read_second() {
         let second_slot = program
             .global_slot("main::second")
             .expect("second global should have slot");
-        let first_site = program
-            .function("read_first")
+
+        let mut runtime = Runtime::new(engine, program);
+        let first_site = runtime
+            .image
+            .program_image()
+            .function_by_name("read_first")
             .expect("read_first should exist")
             .cache_sites
             .sites()
@@ -159,8 +163,10 @@ fn read_second() {
             .find(|site| site.kind == CacheSiteKind::GlobalRead)
             .expect("read_first should have global read site")
             .id;
-        let second_site = program
-            .function("read_second")
+        let second_site = runtime
+            .image
+            .program_image()
+            .function_by_name("read_second")
             .expect("read_second should exist")
             .cache_sites
             .sites()
@@ -168,9 +174,7 @@ fn read_second() {
             .find(|site| site.kind == CacheSiteKind::GlobalRead)
             .expect("read_second should have global read site")
             .id;
-        assert_eq!(first_site, second_site);
-
-        let mut runtime = Runtime::new(engine, program);
+        assert_ne!(first_site, second_site);
         runtime
             .insert_global("main::first", OwnedValue::Int(10))
             .expect("first global should insert");
@@ -214,7 +218,7 @@ fn read_second() {
                 .state
                 .inline_caches
                 .global_read_slot("read_first", first_site),
-            None
+            Some(first_slot)
         );
 
         runtime
