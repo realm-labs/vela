@@ -1,8 +1,8 @@
 use std::collections::BTreeMap;
 use std::sync::Arc;
 
-use vela_bytecode::Program;
 use vela_bytecode::compiler::options::CompilerOptions;
+use vela_bytecode::{Program, ProgramImage};
 use vela_common::{FunctionId, HostMethodId};
 use vela_host::path::HostPath;
 use vela_hot_reload::abi::HotReloadAbi;
@@ -212,6 +212,10 @@ impl Engine {
         self.install_with_registry(vm, self.registry_for_program(program));
     }
 
+    pub fn install_program_image(&self, vm: &mut Vm, image: &ProgramImage) {
+        self.install_with_registry(vm, self.registry_for_program_image(image));
+    }
+
     fn install_with_registry(&self, vm: &mut Vm, registry: Arc<TypeRegistry>) {
         if self.standard_natives {
             vm.register_standard_natives();
@@ -334,6 +338,16 @@ impl Engine {
         Arc::new(registry)
     }
 
+    fn registry_for_program_image(&self, image: &ProgramImage) -> Arc<TypeRegistry> {
+        let Some(graph) = image.script_metadata() else {
+            return Arc::clone(&self.registry);
+        };
+        let mut registry = (*self.registry).clone();
+        registry.register_script_types(graph);
+        registry.register_script_modules(graph);
+        Arc::new(registry)
+    }
+
     #[must_use]
     pub fn into_vm(&self) -> Vm {
         let mut vm = Vm::new();
@@ -349,9 +363,27 @@ impl Engine {
     }
 
     #[must_use]
+    pub fn into_vm_for_program_image(&self, image: &ProgramImage) -> Vm {
+        let mut vm = Vm::new();
+        self.install_program_image(&mut vm, image);
+        vm
+    }
+
+    #[must_use]
     pub fn into_vm_for_program_with_abi(&self, program: &Program, abi: &HotReloadAbi) -> Vm {
         let mut vm = Vm::new();
         self.install_with_registry_and_abi(&mut vm, self.registry_for_program(program), abi);
+        vm
+    }
+
+    #[must_use]
+    pub fn into_vm_for_program_image_with_abi(
+        &self,
+        image: &ProgramImage,
+        abi: &HotReloadAbi,
+    ) -> Vm {
+        let mut vm = Vm::new();
+        self.install_with_registry_and_abi(&mut vm, self.registry_for_program_image(image), abi);
         vm
     }
 }

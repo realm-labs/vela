@@ -3,7 +3,7 @@ use std::path::Path;
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::{Arc, Mutex};
 
-use vela_bytecode::{Program, ProgramCode};
+use vela_bytecode::{Program, ProgramCode, ProgramImage};
 use vela_common::{GlobalSlot, HostObjectId, SourceId};
 use vela_host::access::HostAccess;
 use vela_host::adapter::ScriptStateAdapter;
@@ -108,11 +108,6 @@ where
     #[must_use]
     pub fn engine(&self) -> &Engine {
         self.image.engine()
-    }
-
-    #[must_use]
-    pub fn program(&self) -> &Program {
-        self.image.program()
     }
 
     pub fn insert_host_global<T>(&mut self, name: impl Into<String>, value: T) -> HostRef
@@ -405,7 +400,7 @@ where
         Self::call_runtime_args(RuntimeCallExecution {
             runtime_id: state.id,
             engine: self.image.engine(),
-            registry_program: self.image.program(),
+            registry_image: self.image.program_image(),
             program: self.image.program_image(),
             hot_reload: self.hot_reload.as_ref(),
             globals: &mut state.globals,
@@ -463,7 +458,7 @@ where
         };
         let vm = runtime_vm(
             self.image.engine(),
-            self.image.program(),
+            self.image.program_image(),
             self.hot_reload.as_ref(),
         );
         let roots = state.script_globals.roots();
@@ -527,11 +522,11 @@ where
             let current = hot_reload.current();
             self.image
                 .engine()
-                .into_vm_for_program_with_abi(self.image.program(), current.abi())
+                .into_vm_for_program_image_with_abi(self.image.program_image(), current.abi())
         } else {
             self.image
                 .engine()
-                .into_vm_for_program(self.image.program())
+                .into_vm_for_program_image(self.image.program_image())
         };
         if options.managed_heap || !self.state.script_globals.is_empty() {
             let roots = self.state.script_globals.roots();
@@ -590,7 +585,7 @@ where
             access: call.access,
             script_globals: Some(&call.script_globals.values),
         };
-        let vm = runtime_vm(call.engine, call.registry_program, call.hot_reload);
+        let vm = runtime_vm(call.engine, call.registry_image, call.hot_reload);
         let roots = call.script_globals.roots();
         let result = vm.run_runtime_code_call(RuntimeCodeCall {
             program: call.program,
@@ -1151,14 +1146,14 @@ impl ScriptStateAdapter for GlobalStoreAdapter<'_> {
 
 fn runtime_vm(
     engine: &Engine,
-    program: &Program,
+    image: &ProgramImage,
     hot_reload: Option<&HotReloadRuntime>,
 ) -> vela_vm::Vm {
     if let Some(hot_reload) = hot_reload {
         let current = hot_reload.current();
-        engine.into_vm_for_program_with_abi(program, current.abi())
+        engine.into_vm_for_program_image_with_abi(image, current.abi())
     } else {
-        engine.into_vm_for_program(program)
+        engine.into_vm_for_program_image(image)
     }
 }
 

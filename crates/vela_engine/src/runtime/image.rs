@@ -10,7 +10,6 @@ use crate::engine::Engine;
 
 pub struct RuntimeImage {
     engine: Engine,
-    program: Program,
     program_image: ProgramImage,
     version_id: Option<ProgramVersionId>,
     layout: RuntimeImageLayout,
@@ -85,7 +84,6 @@ impl RuntimeImage {
         let layout = RuntimeImageLayout::from_global_names(program_image.global_names());
         Self {
             engine,
-            program,
             program_image,
             version_id: None,
             layout,
@@ -98,11 +96,9 @@ impl RuntimeImage {
         let version_id = Some(version.id);
         let profile = Some(version.profile().clone());
         let program_image = version.program_image().clone();
-        let program = version.to_program();
         let layout = RuntimeImageLayout::from_global_names(program_image.global_names());
         Self {
             engine,
-            program,
             program_image,
             version_id,
             layout,
@@ -112,10 +108,6 @@ impl RuntimeImage {
 
     pub(super) const fn engine(&self) -> &Engine {
         &self.engine
-    }
-
-    pub(super) const fn program(&self) -> &Program {
-        &self.program
     }
 
     pub(super) const fn program_image(&self) -> &ProgramImage {

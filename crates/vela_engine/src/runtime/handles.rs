@@ -1,4 +1,4 @@
-use vela_bytecode::{CodeObject, Program, ProgramCode};
+use vela_bytecode::{CodeObject, ProgramCode, ProgramImage};
 use vela_common::MethodId;
 use vela_host::access::HostAccess;
 use vela_host::adapter::ScriptStateAdapter;
@@ -274,7 +274,7 @@ pub struct ResolvedRuntimeMethod {
 pub(super) struct RuntimeCallExecution<'program, 'args, 'adapter, 'access, 'state> {
     pub(super) runtime_id: u64,
     pub(super) engine: &'program Engine,
-    pub(super) registry_program: &'program Program,
+    pub(super) registry_image: &'program ProgramImage,
     pub(super) program: &'program dyn ProgramCode,
     pub(super) hot_reload: Option<&'program HotReloadRuntime>,
     pub(super) globals: &'program mut RuntimeGlobalStore,
