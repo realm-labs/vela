@@ -42,76 +42,111 @@ This is intentionally **not** a minimal refactor. The goal is a clean long-term 
 
 ## Current State Summary
 
-Based on the currently inspected repository state:
-
-`Runtime` currently mixes immutable and mutable data:
+This refactor has completed its first implementation pass. The current runtime
+shape is now an explicit image/state split:
 
 ```rust
-pub struct Runtime {
-    id: u64,
-    engine: Engine,
-    program: Program,
+pub type Runtime = RuntimeImpl<OwnedImage>;
+pub type SharedRuntime = RuntimeImpl<SharedImage>;
+
+pub struct RuntimeImpl<I = OwnedImage>
+where
+    I: RuntimeImageStorage,
+{
+    image: I,
     hot_reload: Option<HotReloadRuntime>,
-    globals: RuntimeGlobalStore,
-    script_globals: RuntimeScriptGlobalStore,
+    state: RuntimeState,
 }
 ```
 
-This means every runtime owns an `Engine` and a full `Program` by value.
-
-`Program` currently owns code objects directly:
+`RuntimeImage` owns immutable execution data and can be kept owned by one
+runtime or shared through `SharedImage`:
 
 ```rust
-pub struct Program {
-    pub functions: BTreeMap<String, CodeObject>,
-    global_names: Vec<String>,
+pub struct RuntimeImage {
+    engine: Engine,
+    program_image: ProgramImage,
+    version_id: Option<ProgramVersionId>,
+    layout: RuntimeImageLayout,
+    profile: Option<ProgramProfile>,
+}
+```
+
+`RuntimeState` owns per-runtime mutable state:
+
+```rust
+pub struct RuntimeState {
+    id: u64,
+    globals: RuntimeGlobalStore,
+    script_globals: RuntimeScriptGlobalStore,
+    inline_caches: InlineCaches,
+}
+```
+
+That split means code, metadata, profile/layout information, and bytecode image
+state are separated from actor-local globals, script heap roots, runtime-bound
+handles, and per-runtime inline caches.
+
+`Runtime::new(engine, program)` is still the default embedding API. Internally
+it lowers the compiler `Program` into a `ProgramImage` when constructing the
+runtime image.
+
+`SharedRuntime` is opt-in. `RuntimeImage::into_shared()` returns a `SharedImage`,
+and each `SharedRuntime::from_shared_image(image.clone())` creates a fresh
+`RuntimeState` over the same immutable image.
+
+`ProgramImage` exists and is the runtime execution artifact:
+
+```rust
+pub struct ProgramImage {
+    functions: Box<[CodeObject]>,
+    function_by_name: BTreeMap<String, FunctionIndex>,
+    global_names: Box<[String]>,
     global_slots: BTreeMap<String, GlobalSlot>,
+    cache_sites: Box<[CacheSiteDesc]>,
     script_methods: ScriptMethodTable,
     script_metadata: Option<ModuleGraph>,
 }
 ```
 
-Each `CodeObject` owns parameters, constants, bytecode instructions, and debug frame info:
+The current image already flattens nested closures into image-level
+`FunctionIndex` references, rewrites per-function cache-site IDs into
+image-global IDs, verifies image-level closure and cache-site operands, and can
+rebuild a compatibility `Program` through `ProgramImage::to_program()`.
 
-```rust
-pub struct CodeObject {
-    pub name: String,
-    pub params: Vec<String>,
-    pub param_defaults: Vec<bool>,
-    pub capture_count: u16,
-    pub register_count: u16,
-    pub frame: FrameDebugInfo,
-    pub constants: Vec<Constant>,
-    pub instructions: Vec<Instruction>,
-}
-```
-
-The hot reload layer is already closer to the desired architecture. `ProgramVersion` stores functions as `Arc<CodeObject>`:
+Hot reload now swaps runtime images from accepted `ProgramVersion` values rather
+than converting through `ProgramVersion::to_program()` on the runtime path.
+`ProgramVersion` still keeps a transitional function map as well as a
+`ProgramImage`:
 
 ```rust
 pub struct ProgramVersion {
     pub id: ProgramVersionId,
     pub(crate) functions: BTreeMap<FunctionSymbolId, Arc<CodeObject>>,
-    pub(crate) script_methods: ScriptMethodTable,
-    pub(crate) script_metadata: Option<ModuleGraph>,
     pub(crate) abi: HotReloadAbi,
     pub(crate) profile: ProgramProfile,
+    pub(crate) program_image: ProgramImage,
 }
 ```
 
-However, `Runtime::from_hot_reload_version` converts a `ProgramVersion` back into an owned `Program`, and `ProgramVersion::to_program()` clones code objects back into a normal `Program`. That loses most of the sharing benefit at runtime creation time.
+The transitional map remains useful for existing hot-reload function-diff and
+reporting paths. A later cleanup can make `ProgramImage` the single canonical
+program representation for `ProgramVersion` if that reduces duplication without
+weakening compatibility checks.
 
-`RuntimeScriptGlobalStore` is already clearly per-runtime because it owns a `ScriptHeap`, script global values, and retained runtime roots:
+Inline caches are now explicitly per-runtime. The first implemented cache is a
+global-read cache keyed only by image-global `CacheSiteId`:
 
 ```rust
-pub struct RuntimeScriptGlobalStore {
-    heap: ScriptHeap,
-    values: ScriptGlobalValues,
-    retained_values: Arc<Mutex<RuntimeValueRoots>>,
+pub enum InlineCacheEntry {
+    Empty,
+    GlobalRead { slot: GlobalSlot },
 }
 ```
 
-The current docs already define the correct high-level threading model: a `Runtime` executes one script call at a time, has one VM stack and one script heap/GC context, and may be moved into an actor or worker thread but must not be called concurrently.
+This pass is complete enough for the runtime ownership boundary and first cache
+site plumbing. The remaining work is final-shape cleanup and M20 cache families,
+not a blocker for continuing M19.5.
 
 ---
 
@@ -170,9 +205,9 @@ Game server users should be able to compile once and instantiate many runtimes:
 ```rust
 let image = RuntimeImage::new(engine, program).into_shared();
 
-let runtime_a = SharedRuntime::from_shared_image(Arc::clone(&image));
-let runtime_b = SharedRuntime::from_shared_image(Arc::clone(&image));
-let runtime_c = SharedRuntime::from_shared_image(Arc::clone(&image));
+let runtime_a = SharedRuntime::from_shared_image(image.clone());
+let runtime_b = SharedRuntime::from_shared_image(image.clone());
+let runtime_c = SharedRuntime::from_shared_image(image.clone());
 ```
 
 ### Goal 4: Per-runtime inline caches
@@ -330,25 +365,19 @@ runtime.rs:
 
 ### `RuntimeImage`
 
-Initial version:
+Implemented first-pass version:
 
 ```rust
 pub struct RuntimeImage {
     engine: Engine,
-    program: Program,
+    program_image: ProgramImage,
     version_id: Option<ProgramVersionId>,
     layout: RuntimeImageLayout,
-    hot_reload: Option<RuntimeImageHotReload>,
+    profile: Option<ProgramProfile>,
 }
 
 pub struct RuntimeImageLayout {
     global_names: Box<[String]>,
-    // Later: function IDs, cache site layouts, method dispatch tables, etc.
-}
-
-pub struct RuntimeImageHotReload {
-    abi: HotReloadAbi,
-    profile: ProgramProfile,
 }
 ```
 
@@ -374,7 +403,7 @@ impl RuntimeImage {
 
     pub fn engine(&self) -> &Engine;
 
-    pub fn program(&self) -> &Program;
+    pub fn program_image(&self) -> &ProgramImage;
 
     pub fn global_names(&self) -> &[String];
 
@@ -382,15 +411,7 @@ impl RuntimeImage {
 
     pub fn hot_reload_profile(&self) -> Option<&ProgramProfile>;
 
-    pub fn into_shared(self) -> Arc<Self>;
-}
-```
-
-Later, when `ProgramImage` exists:
-
-```rust
-impl RuntimeImage {
-    pub fn program_image(&self) -> &ProgramImage;
+    pub fn into_shared(self) -> SharedImage;
 }
 ```
 
@@ -543,8 +564,8 @@ where
         self.image().engine()
     }
 
-    pub fn program(&self) -> &Program {
-        self.image().program()
+    pub fn program_image(&self) -> &ProgramImage {
+        self.image().program_image()
     }
 
     pub fn id(&self) -> u64 {
@@ -592,10 +613,10 @@ Shared constructor:
 pub type SharedRuntime = RuntimeImpl<SharedImage>;
 
 impl RuntimeImpl<SharedImage> {
-    pub fn from_shared_image(image: Arc<RuntimeImage>) -> Self {
+    pub fn from_shared_image(image: SharedImage) -> Self {
         let state = RuntimeState::new_for_image(&image);
         Self {
-            image: SharedImage { image },
+            image,
             state,
             reload: None,
         }
@@ -607,11 +628,27 @@ impl RuntimeImpl<SharedImage> {
 
 ## Program Image Design
 
-The first milestone can keep using `Program` inside `RuntimeImage`.
-
-However, for the clean long-term architecture, introduce `ProgramImage` as an immutable, index-friendly representation.
+The first pass now lowers `Program` into `ProgramImage` inside
+`RuntimeImage`. `Program` remains the compiler/compatibility wrapper, while
+runtime execution uses `ProgramImage`.
 
 ### `ProgramImage`
+
+Implemented first-pass shape:
+
+```rust
+pub struct ProgramImage {
+    functions: Box<[CodeObject]>,
+    function_by_name: BTreeMap<String, FunctionIndex>,
+    global_names: Box<[String]>,
+    global_slots: BTreeMap<String, GlobalSlot>,
+    cache_sites: Box<[CacheSiteDesc]>,
+    script_methods: ScriptMethodTable,
+    script_metadata: Option<ModuleGraph>,
+}
+```
+
+Long-term final shape:
 
 ```rust
 pub struct ProgramImage {
@@ -667,7 +704,7 @@ ProgramImage:
 
 ## Closure Representation
 
-Current bytecode has a problematic shape for long-term sharing/JIT:
+Older bytecode nested closure code directly under the containing function:
 
 ```rust
 MakeClosure {
@@ -677,7 +714,7 @@ MakeClosure {
 }
 ```
 
-For shared images and JIT, nested `Box<CodeObject>` should become a stable function/lambda reference:
+The image path now rewrites closures to stable function/lambda references:
 
 ```rust
 MakeClosure {
@@ -931,12 +968,13 @@ old image: Arc<RuntimeImage>
 new image: Arc<RuntimeImage>
 ```
 
-The host compiles or receives the new image once, then distributes it to many actor runtimes.
+The host compiles or receives the new image once, wraps it as `SharedImage`,
+then distributes it to many actor runtimes.
 
 ```rust
 let new_image = hot_reload_manager.compile_next_image()?;
 for actor in actors {
-    actor.runtime.stage_shared_image(Arc::clone(&new_image));
+    actor.runtime.stage_shared_image(new_image.clone());
 }
 ```
 
@@ -957,7 +995,7 @@ pub struct RuntimeReloadState<I> {
 }
 ```
 
-For `SharedImage`, `pending_image` is another `Arc<RuntimeImage>`.
+For `SharedImage`, `pending_image` is another shared image handle.
 
 For `OwnedImage`, hot reload can either:
 
@@ -970,10 +1008,10 @@ For `OwnedImage`, hot reload can either:
 
 ```rust
 impl SharedRuntime {
-    pub fn stage_shared_image(&mut self, image: Arc<RuntimeImage>) {
+    pub fn stage_shared_image(&mut self, image: SharedImage) {
         self.reload
             .get_or_insert_with(RuntimeReloadState::default)
-            .pending_image = Some(SharedImage { image });
+            .pending_image = Some(image);
     }
 
     pub fn check_reload_at_tick_boundary(&mut self) -> EngineResult<Option<HotReloadReport>> {
@@ -995,7 +1033,8 @@ impl SharedRuntime {
 
 ### Version lifetime
 
-With `Arc<RuntimeImage>`, old code naturally stays alive while any runtime still references it:
+With the Arc-backed `SharedImage`, old code naturally stays alive while any
+runtime still references it:
 
 ```text
 worker 1 runtime still executing old image -> old image alive
@@ -1209,7 +1248,7 @@ let engine = Engine::builder()
 let program = engine.compile_dir("scripts")?;
 let image = RuntimeImage::new(engine, program).into_shared();
 
-let mut runtime = SharedRuntime::from_shared_image(Arc::clone(&image));
+let mut runtime = SharedRuntime::from_shared_image(image.clone());
 ```
 
 ### Actor creation
@@ -1222,10 +1261,10 @@ pub struct Actor {
 }
 
 impl Actor {
-    pub fn new(id: ActorId, image: Arc<RuntimeImage>, state: PlayerState) -> Self {
+    pub fn new(id: ActorId, image: SharedImage, state: PlayerState) -> Self {
         Self {
             id,
-            runtime: SharedRuntime::from_shared_image(image),
+            runtime: SharedRuntime::from_shared_image(image.clone()),
             state,
         }
     }
@@ -1234,11 +1273,15 @@ impl Actor {
 
 ### Hot reload distribution
 
+This is deferred API shape. The current runtime supports hot reload through
+`HotReloadRuntime` and image rebinding after accepted reports, but it does not
+yet expose a direct `stage_shared_image` distribution API.
+
 ```rust
 let new_image = reload_manager.compile_next_runtime_image()?;
 
 for actor in actors.iter_mut() {
-    actor.runtime.stage_shared_image(Arc::clone(&new_image));
+    actor.runtime.stage_shared_image(new_image.clone());
 }
 
 // Later, at actor tick boundary:
@@ -1250,6 +1293,10 @@ actor.runtime.check_reload_at_tick_boundary()?;
 ## Migration Plan
 
 This is a clean architecture migration, not a minimal patch.
+
+This sequence is now completed as a first pass. The snippets below describe the
+staged migration path and may show transitional shapes rather than the final
+current API.
 
 ### PR 1: Create runtime submodules
 
@@ -1305,7 +1352,7 @@ pub struct RuntimeImage {
     program: Program,
     version_id: Option<ProgramVersionId>,
     layout: RuntimeImageLayout,
-    hot_reload: Option<RuntimeImageHotReload>,
+    profile: Option<ProgramProfile>,
 }
 ```
 
@@ -1502,8 +1549,8 @@ Example:
 fn shared_image_isolates_script_globals() {
     let image = compile_test_image();
 
-    let mut a = SharedRuntime::from_shared_image(Arc::clone(&image));
-    let mut b = SharedRuntime::from_shared_image(Arc::clone(&image));
+    let mut a = SharedRuntime::from_shared_image(image.clone());
+    let mut b = SharedRuntime::from_shared_image(image.clone());
 
     a.set_global("score", 10).unwrap();
     b.set_global("score", 99).unwrap();
@@ -1743,6 +1790,8 @@ strict runtime-local heap/value isolation
 
 ## Implementation Checklist
 
+First-pass implementation completed:
+
 ```text
 [x] Move runtime code into runtime/ module directory.
 [x] Add RuntimeState.
@@ -1779,6 +1828,17 @@ strict runtime-local heap/value isolation
 [x] Document JIT ownership ABI; defer JIT runtime types until M22.
 ```
 
+Deferred final-shape cleanup:
+
+```text
+[ ] Make ProgramImage use a dedicated FunctionImage payload instead of CodeObject directly.
+[ ] Change CacheSiteDesc function ownership from diagnostic String to image FunctionIndex where practical.
+[ ] Decide whether ProgramVersion should keep the transitional Arc<CodeObject> function map or become ProgramImage-canonical.
+[ ] Add a direct shared-image staging/distribution API if actor-level hot reload needs image fan-out outside HotReloadRuntime.
+[ ] Add cache families beyond global reads during M20: record fields, host paths, methods, and stdlib methods.
+[ ] Record memory/runtime creation benchmarks for owned Runtime versus SharedRuntime when this becomes a performance decision point.
+```
+
 ---
 
 ## Bottom Line
@@ -1789,11 +1849,11 @@ The clean architecture is:
 Runtime
   default
   simple embedding
-  no Arc<RuntimeImage>
+  owned RuntimeImage through OwnedImage
 
 SharedRuntime
   opt-in
-  Arc<RuntimeImage>
+  Arc-backed RuntimeImage through SharedImage
   ideal for actor-per-runtime game servers
 
 RuntimeImage
