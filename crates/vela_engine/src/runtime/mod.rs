@@ -48,6 +48,7 @@ use state::RuntimeState;
 
 pub struct Runtime {
     image: RuntimeImage,
+    hot_reload: Option<HotReloadRuntime>,
     state: RuntimeState,
 }
 
@@ -64,16 +65,18 @@ impl Runtime {
         let global_names = image.global_names().to_vec();
         Self {
             image,
+            hot_reload: None,
             state: RuntimeState::with_global_layout(&global_names),
         }
     }
 
     #[must_use]
     pub fn from_hot_reload_version(engine: Engine, version: ProgramVersion) -> Self {
-        let image = RuntimeImage::from_hot_reload_version(engine, version);
+        let image = RuntimeImage::from_program_version(engine, &version);
         let global_names = image.global_names().to_vec();
         Self {
             image,
+            hot_reload: Some(HotReloadRuntime::new(version)),
             state: RuntimeState::with_global_layout(&global_names),
         }
     }
@@ -86,11 +89,6 @@ impl Runtime {
     #[must_use]
     pub fn program(&self) -> &Program {
         self.image.program()
-    }
-
-    fn set_global_layout_from_program(&mut self) {
-        let names = self.image.global_names();
-        self.state.set_global_layout(names);
     }
 
     pub fn insert_host_global<T>(&mut self, name: impl Into<String>, value: T) -> HostRef
@@ -135,7 +133,7 @@ impl Runtime {
 
     #[must_use]
     pub fn hot_reload_version(&self) -> Option<std::sync::Arc<ProgramVersion>> {
-        self.image.hot_reload_version()
+        self.hot_reload.as_ref().map(HotReloadRuntime::current)
     }
 
     pub fn apply_hot_update(&mut self, update: HotUpdate) -> EngineResult<HotReloadReport> {
@@ -150,7 +148,7 @@ impl Runtime {
         &mut self,
         update: HotReloadResult<HotUpdate>,
     ) -> EngineResult<()> {
-        let Some(hot_reload) = self.image.hot_reload_mut() else {
+        let Some(hot_reload) = self.hot_reload.as_mut() else {
             return Err(EngineError::new(
                 EngineErrorKind::RuntimeNotHotReloadEnabled,
             ));
@@ -165,7 +163,7 @@ impl Runtime {
     }
 
     pub fn has_pending_hot_update(&self) -> EngineResult<bool> {
-        let Some(hot_reload) = self.image.hot_reload() else {
+        let Some(hot_reload) = self.hot_reload.as_ref() else {
             return Err(EngineError::new(
                 EngineErrorKind::RuntimeNotHotReloadEnabled,
             ));
@@ -174,19 +172,13 @@ impl Runtime {
     }
 
     pub fn check_reload(&mut self) -> EngineResult<Option<HotReloadReport>> {
-        if self.image.hot_reload().is_none() {
+        let Some(hot_reload) = self.hot_reload.as_mut() else {
             return Err(EngineError::new(
                 EngineErrorKind::RuntimeNotHotReloadEnabled,
             ));
-        }
-        let report = self.image.check_reload();
-        if report
-            .as_ref()
-            .and_then(|report| report.version())
-            .is_some()
-        {
-            self.set_global_layout_from_program();
-        }
+        };
+        let report = hot_reload.check_reload();
+        self.rebind_image_from_reload_report(report.as_ref());
         Ok(report)
     }
 
@@ -198,18 +190,13 @@ impl Runtime {
         &mut self,
         update: HotReloadResult<HotUpdate>,
     ) -> EngineResult<HotReloadReport> {
-        if self.image.hot_reload().is_none() {
+        let Some(hot_reload) = self.hot_reload.as_mut() else {
             return Err(EngineError::new(
                 EngineErrorKind::RuntimeNotHotReloadEnabled,
             ));
-        }
-        let report = self
-            .image
-            .apply_hot_update_result_report(update)
-            .expect("hot reload runtime checked above");
-        if report.version().is_some() {
-            self.set_global_layout_from_program();
-        }
+        };
+        let report = hot_reload.apply_hot_update_result_report(update);
+        self.rebind_image_from_reload_report(Some(&report));
         Ok(report)
     }
 
@@ -387,18 +374,15 @@ impl Runtime {
     where
         T: RuntimeCallTarget,
     {
+        let version_id = self.current_program_version_id();
         let state = &mut self.state;
-        let target = entry.resolve(
-            state.id,
-            self.image.program(),
-            self.image.current_program_version_id(),
-        )?;
+        let target = entry.resolve(state.id, self.image.program(), version_id)?;
         let mut access = HostAccess::new();
         Self::call_runtime_args(RuntimeCallExecution {
             runtime_id: state.id,
             engine: self.image.engine(),
             program: self.image.program(),
-            hot_reload: self.image.hot_reload(),
+            hot_reload: self.hot_reload.as_ref(),
             globals: &mut state.globals,
             script_globals: &mut state.script_globals,
             target,
@@ -420,11 +404,12 @@ impl Runtime {
         T: RuntimeMethodTarget,
     {
         self.check_vela_value_runtime(receiver)?;
+        let version_id = self.current_program_version_id();
         let state = &mut self.state;
         let target = method.resolve(
             state.id,
             self.image.program(),
-            self.image.current_program_version_id(),
+            version_id,
             receiver,
             &state.script_globals,
             self.image.engine(),
@@ -453,7 +438,7 @@ impl Runtime {
         let vm = runtime_vm(
             self.image.engine(),
             self.image.program(),
-            self.image.hot_reload(),
+            self.hot_reload.as_ref(),
         );
         let roots = state.script_globals.roots();
         let result = vm.call_runtime_method(RuntimeMethodCall {
@@ -512,7 +497,7 @@ impl Runtime {
             access,
             script_globals: Some(&self.state.script_globals.values),
         };
-        let vm = if let Some(hot_reload) = self.image.hot_reload() {
+        let vm = if let Some(hot_reload) = self.hot_reload.as_ref() {
             let current = hot_reload.current();
             self.image
                 .engine()
@@ -656,21 +641,23 @@ impl Runtime {
     }
 
     fn current_hot_reload_version(&self) -> EngineResult<std::sync::Arc<ProgramVersion>> {
-        self.image
-            .hot_reload_version()
+        self.hot_reload_version()
             .ok_or_else(|| EngineError::new(EngineErrorKind::RuntimeNotHotReloadEnabled))
     }
 
     fn check_optional_reload(&mut self) -> Option<HotReloadReport> {
-        let report = self.image.check_reload();
-        if report
-            .as_ref()
-            .and_then(|report| report.version())
-            .is_some()
-        {
-            self.set_global_layout_from_program();
-        }
+        let hot_reload = self.hot_reload.as_mut()?;
+        let report = hot_reload.check_reload();
+        self.rebind_image_from_reload_report(report.as_ref());
         report
+    }
+
+    fn rebind_image_from_reload_report(&mut self, report: Option<&HotReloadReport>) {
+        let Some(version) = report.and_then(HotReloadReport::version) else {
+            return;
+        };
+        self.image = RuntimeImage::from_program_version(self.image.engine().clone(), &version);
+        self.state.rebind_to_image(&self.image);
     }
 }
 

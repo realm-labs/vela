@@ -1,12 +1,7 @@
-use std::sync::Arc;
-
 use vela_bytecode::Program;
-use vela_hot_reload::error::HotReloadResult;
 use vela_hot_reload::profile::ProgramProfile;
-use vela_hot_reload::report::HotReloadReport;
-use vela_hot_reload::runtime::HotReloadRuntime;
 use vela_hot_reload::symbol::ProgramVersionId;
-use vela_hot_reload::version::{HotUpdate, ProgramVersion};
+use vela_hot_reload::version::ProgramVersion;
 
 use crate::engine::Engine;
 
@@ -17,7 +12,6 @@ pub(super) struct RuntimeImage {
     layout: RuntimeImageLayout,
     #[allow(dead_code)]
     profile: Option<ProgramProfile>,
-    hot_reload: Option<HotReloadRuntime>,
 }
 
 pub(super) struct RuntimeImageLayout {
@@ -33,11 +27,10 @@ impl RuntimeImage {
             version_id: None,
             layout,
             profile: None,
-            hot_reload: None,
         }
     }
 
-    pub(super) fn from_hot_reload_version(engine: Engine, version: ProgramVersion) -> Self {
+    pub(super) fn from_program_version(engine: Engine, version: &ProgramVersion) -> Self {
         let version_id = Some(version.id);
         let layout = RuntimeImageLayout::from_global_names(version.global_names());
         let profile = Some(version.profile().clone());
@@ -48,7 +41,6 @@ impl RuntimeImage {
             version_id,
             layout,
             profile,
-            hot_reload: Some(HotReloadRuntime::new(version)),
         }
     }
 
@@ -64,48 +56,8 @@ impl RuntimeImage {
         self.layout.global_names()
     }
 
-    pub(super) fn hot_reload(&self) -> Option<&HotReloadRuntime> {
-        self.hot_reload.as_ref()
-    }
-
-    pub(super) fn hot_reload_mut(&mut self) -> Option<&mut HotReloadRuntime> {
-        self.hot_reload.as_mut()
-    }
-
-    pub(super) fn hot_reload_version(&self) -> Option<Arc<ProgramVersion>> {
-        self.hot_reload.as_ref().map(HotReloadRuntime::current)
-    }
-
     pub(super) fn current_program_version_id(&self) -> Option<ProgramVersionId> {
         self.version_id
-    }
-
-    pub(super) fn apply_hot_update_result_report(
-        &mut self,
-        update: HotReloadResult<HotUpdate>,
-    ) -> Option<HotReloadReport> {
-        let hot_reload = self.hot_reload.as_mut()?;
-        let report = hot_reload.apply_hot_update_result_report(update);
-        if let Some(version) = report.version() {
-            self.refresh_from_version(&version);
-        }
-        Some(report)
-    }
-
-    pub(super) fn check_reload(&mut self) -> Option<HotReloadReport> {
-        let hot_reload = self.hot_reload.as_mut()?;
-        let report = hot_reload.check_reload()?;
-        if let Some(version) = report.version() {
-            self.refresh_from_version(&version);
-        }
-        Some(report)
-    }
-
-    fn refresh_from_version(&mut self, version: &ProgramVersion) {
-        self.program = version.to_program();
-        self.version_id = Some(version.id);
-        self.layout = RuntimeImageLayout::from_global_names(version.global_names());
-        self.profile = Some(version.profile().clone());
     }
 }
 

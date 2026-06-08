@@ -261,6 +261,109 @@ fn runtime_applies_engine_hot_reload_updates() {
 }
 
 #[test]
+fn runtime_rebinds_script_globals_after_reload_image_swap() {
+    let engine = Engine::builder()
+        .execution_profile(ExecutionProfile::trusted())
+        .build()
+        .expect("engine should build");
+    let initial = engine
+        .compile_hot_reload_initial(
+            SourceId::new(1),
+            r#"
+struct ServerState {
+    level: Int,
+    name: String,
+}
+
+global state: ServerState;
+
+fn make_state() {
+    return ServerState { level: 5, name: "boot" };
+}
+
+fn bump(amount) {
+    state.level += amount;
+    return state.level;
+}
+"#,
+        )
+        .expect("initial hot reload compile");
+    let mut runtime = Runtime::from_hot_reload_version(engine, initial);
+    let state = runtime
+        .call("make_state", CallArgs::new(), CallOptions::unbounded())
+        .expect("factory should run");
+    runtime
+        .insert_global("main::state", state)
+        .expect("script global should insert");
+
+    runtime
+        .stage_hot_reload_update(
+            SourceId::new(2),
+            r#"
+struct ServerState {
+    level: Int,
+    name: String,
+}
+
+global state: ServerState;
+
+fn make_state() {
+    return ServerState { level: 0, name: "reload" };
+}
+
+fn bump(amount) {
+    state.level += amount;
+    return state.level + 100;
+}
+"#,
+        )
+        .expect("stage source text update");
+    let report = runtime
+        .check_reload()
+        .expect("check reload at safe point")
+        .expect("pending report");
+
+    assert!(report.accepted);
+    assert_eq!(
+        runtime
+            .hot_reload_version()
+            .expect("current hot reload version")
+            .id,
+        report.to_version.expect("accepted version id")
+    );
+
+    let bumped = runtime
+        .call(
+            "bump",
+            CallArgs::from_positional([OwnedValue::Int(2)]),
+            CallOptions::unbounded(),
+        )
+        .expect("bump after reload should run");
+
+    assert_eq!(runtime.value_to_owned(&bumped), Ok(OwnedValue::Int(107)));
+    assert_eq!(
+        script_record_field(
+            &runtime
+                .global("main::state")
+                .expect("script global should materialize")
+                .expect("script global should exist"),
+            "level",
+        ),
+        Some(&OwnedValue::Int(7))
+    );
+}
+
+fn script_record_field<'value>(
+    value: &'value OwnedValue,
+    field: &str,
+) -> Option<&'value OwnedValue> {
+    let OwnedValue::Record { fields, .. } = value else {
+        return None;
+    };
+    fields.get(field)
+}
+
+#[test]
 fn runtime_stages_engine_hot_reload_until_check_reload_safe_point() {
     let engine = Engine::builder()
         .execution_profile(ExecutionProfile::trusted())

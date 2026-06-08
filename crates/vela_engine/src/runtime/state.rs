@@ -1,4 +1,4 @@
-use super::{RuntimeGlobalStore, RuntimeScriptGlobalStore, next_runtime_id};
+use super::{RuntimeGlobalStore, RuntimeScriptGlobalStore, image::RuntimeImage, next_runtime_id};
 
 pub(super) struct RuntimeState {
     pub(super) id: u64,
@@ -18,5 +18,9 @@ impl RuntimeState {
     pub(super) fn set_global_layout(&mut self, names: &[String]) {
         self.globals.set_global_layout(names);
         self.script_globals.set_global_layout(names);
+    }
+
+    pub(super) fn rebind_to_image(&mut self, image: &RuntimeImage) {
+        self.set_global_layout(image.global_names());
     }
 }

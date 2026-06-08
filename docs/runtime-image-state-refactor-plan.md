@@ -1715,8 +1715,8 @@ strict runtime-local heap/value isolation
 [x] Add RuntimeImage.
 [x] Move engine/program into RuntimeImage.
 [x] Add version/profile/global-layout metadata to RuntimeImage.
-[ ] Make RuntimeImage::from_program_version preserve hot-reload metadata.
-[ ] Make runtime hot reload swap RuntimeImage instead of cloning through ProgramVersion::to_program.
+[x] Make RuntimeImage::from_program_version preserve hot-reload metadata.
+[x] Make runtime hot reload swap RuntimeImage instead of cloning through ProgramVersion::to_program.
 [ ] Add InlineCaches placeholder.
 [ ] Decide whether image storage is internal enum or RuntimeImpl<I> aliases.
 [ ] If using generics, make RuntimeImpl generic over RuntimeImageStorage.
@@ -1728,8 +1728,8 @@ strict runtime-local heap/value isolation
 [ ] Add SharedRuntime::from_shared_image.
 [ ] Add tests for shared image and isolated state.
 [ ] Add tests for VelaValue/VelaFunction/VelaMethod runtime mismatch.
-[ ] Add tests for reload image swaps, rejected reloads, and global layout rebinding.
-[ ] Add RuntimeState::rebind_to_image.
+[x] Add tests for reload image swaps, rejected reloads, and global layout rebinding.
+[x] Add RuntimeState::rebind_to_image.
 [ ] Add cache-site ID types.
 [ ] Add cache-site metadata to bytecode/compiler.
 [ ] Thread InlineCaches through VM execution.
