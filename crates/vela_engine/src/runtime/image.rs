@@ -1,7 +1,7 @@
 use std::ops::Deref;
 use std::sync::Arc;
 
-use vela_bytecode::Program;
+use vela_bytecode::{Program, ProgramImage};
 use vela_hot_reload::profile::ProgramProfile;
 use vela_hot_reload::symbol::ProgramVersionId;
 use vela_hot_reload::version::ProgramVersion;
@@ -11,6 +11,7 @@ use crate::engine::Engine;
 pub struct RuntimeImage {
     engine: Engine,
     program: Program,
+    program_image: ProgramImage,
     version_id: Option<ProgramVersionId>,
     layout: RuntimeImageLayout,
     #[allow(dead_code)]
@@ -80,10 +81,12 @@ impl RuntimeImageStorage for SharedImage {
 impl RuntimeImage {
     #[must_use]
     pub fn new(engine: Engine, program: Program) -> Self {
-        let layout = RuntimeImageLayout::from_global_names(program.global_names());
+        let program_image = ProgramImage::from_program(&program);
+        let layout = RuntimeImageLayout::from_global_names(program_image.global_names());
         Self {
             engine,
             program,
+            program_image,
             version_id: None,
             layout,
             profile: None,
@@ -93,12 +96,14 @@ impl RuntimeImage {
     #[must_use]
     pub fn from_program_version(engine: Engine, version: &ProgramVersion) -> Self {
         let version_id = Some(version.id);
-        let layout = RuntimeImageLayout::from_global_names(version.global_names());
         let profile = Some(version.profile().clone());
         let program = version.to_program();
+        let program_image = ProgramImage::from_program(&program);
+        let layout = RuntimeImageLayout::from_global_names(program_image.global_names());
         Self {
             engine,
             program,
+            program_image,
             version_id,
             layout,
             profile,
@@ -118,11 +123,7 @@ impl RuntimeImage {
     }
 
     pub(super) fn cache_site_count(&self) -> usize {
-        self.program
-            .functions
-            .values()
-            .map(|code| code.cache_sites.len())
-            .sum()
+        self.program_image.cache_site_count()
     }
 
     pub(super) fn current_program_version_id(&self) -> Option<ProgramVersionId> {
@@ -144,5 +145,45 @@ impl RuntimeImageLayout {
 
     fn global_names(&self) -> &[String] {
         &self.global_names
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use vela_bytecode::{CacheSiteKind, CodeObject, InstructionOffset, Program};
+
+    use crate::engine::Engine;
+
+    use super::RuntimeImage;
+
+    #[test]
+    fn runtime_image_builds_indexed_program_sidecar() {
+        let mut main = CodeObject::new("main", 0);
+        main.push_cache_site(CacheSiteKind::GlobalRead, InstructionOffset(0));
+        let mut helper = CodeObject::new("helper", 0);
+        helper.push_cache_site(CacheSiteKind::NativeCall, InstructionOffset(0));
+
+        let mut program = Program::new();
+        program.set_global_layout(["main::state".to_owned()]);
+        program.insert_function(main);
+        program.insert_function(helper);
+
+        let engine = Engine::builder().build().expect("engine should build");
+        let image = RuntimeImage::new(engine, program);
+
+        assert_eq!(image.global_names(), &["main::state".to_owned()]);
+        assert_eq!(image.cache_site_count(), 2);
+        let main_index = image
+            .program_image
+            .function_index("main")
+            .expect("main function should have image index");
+        assert_eq!(
+            image
+                .program_image
+                .function(main_index)
+                .expect("main index should resolve")
+                .name,
+            "main"
+        );
     }
 }

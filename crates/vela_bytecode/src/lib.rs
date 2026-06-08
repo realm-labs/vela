@@ -2,6 +2,7 @@
 
 pub mod cache_site;
 pub mod compiler;
+pub mod program_image;
 pub mod script_methods;
 pub mod verification;
 
@@ -12,6 +13,7 @@ use vela_hir::ids::HirLocalId;
 use vela_hir::module_graph::ModuleGraph;
 
 pub use cache_site::{CacheSiteDesc, CacheSiteId, CacheSiteKind, CacheSiteLayout};
+pub use program_image::ProgramImage;
 
 use crate::script_methods::ScriptMethodTable;
 
