@@ -41,13 +41,14 @@ mod state;
 
 pub use call_args::CallArgs;
 pub use handles::{RuntimeCallTarget, RuntimeMethodTarget, VelaFunction, VelaMethod};
-pub use image::{OwnedImage, RuntimeImage, RuntimeImageStorage};
+pub use image::{OwnedImage, RuntimeImage, RuntimeImageStorage, SharedImage};
 
 use call_args::{CallArgsAdapter, EmptyStateAdapter, call_args_type_error};
 use handles::RuntimeCallExecution;
 use state::RuntimeState;
 
 pub type Runtime = RuntimeImpl<OwnedImage>;
+pub type SharedRuntime = RuntimeImpl<SharedImage>;
 
 pub struct RuntimeImpl<I = OwnedImage>
 where
@@ -83,6 +84,18 @@ impl RuntimeImpl<OwnedImage> {
         Self {
             image,
             hot_reload: Some(HotReloadRuntime::new(version)),
+            state,
+        }
+    }
+}
+
+impl RuntimeImpl<SharedImage> {
+    #[must_use]
+    pub fn from_shared_image(image: SharedImage) -> Self {
+        let state = RuntimeState::for_image(&image);
+        Self {
+            image,
+            hot_reload: None,
             state,
         }
     }

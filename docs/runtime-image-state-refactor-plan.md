@@ -1722,11 +1722,11 @@ strict runtime-local heap/value isolation
 [x] If using generics, make RuntimeImpl generic over RuntimeImageStorage.
 [x] Add OwnedImage.
 [x] Preserve Runtime::new.
-[ ] Add SharedImage.
-[ ] Add SharedRuntime type alias.
-[ ] Add RuntimeImage::into_shared.
-[ ] Add SharedRuntime::from_shared_image.
-[ ] Add tests for shared image and isolated state.
+[x] Add SharedImage.
+[x] Add SharedRuntime type alias.
+[x] Add RuntimeImage::into_shared.
+[x] Add SharedRuntime::from_shared_image.
+[x] Add tests for shared image and isolated state.
 [ ] Add tests for VelaValue/VelaFunction/VelaMethod runtime mismatch.
 [x] Add tests for reload image swaps, rejected reloads, and global layout rebinding.
 [x] Add RuntimeState::rebind_to_image.

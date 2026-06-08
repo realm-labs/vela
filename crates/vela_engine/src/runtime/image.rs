@@ -1,4 +1,5 @@
 use std::ops::Deref;
+use std::sync::Arc;
 
 use vela_bytecode::Program;
 use vela_hot_reload::profile::ProgramProfile;
@@ -20,6 +21,11 @@ pub struct OwnedImage {
     image: RuntimeImage,
 }
 
+#[derive(Clone)]
+pub struct SharedImage {
+    image: Arc<RuntimeImage>,
+}
+
 pub trait RuntimeImageStorage: Deref<Target = RuntimeImage> {
     #[doc(hidden)]
     fn from_runtime_image(image: RuntimeImage) -> Self;
@@ -36,6 +42,13 @@ impl OwnedImage {
     }
 }
 
+impl SharedImage {
+    #[must_use]
+    pub fn from_arc(image: Arc<RuntimeImage>) -> Self {
+        Self { image }
+    }
+}
+
 impl Deref for OwnedImage {
     type Target = RuntimeImage;
 
@@ -44,9 +57,23 @@ impl Deref for OwnedImage {
     }
 }
 
+impl Deref for SharedImage {
+    type Target = RuntimeImage;
+
+    fn deref(&self) -> &Self::Target {
+        self.image.as_ref()
+    }
+}
+
 impl RuntimeImageStorage for OwnedImage {
     fn from_runtime_image(image: RuntimeImage) -> Self {
         Self::from_image(image)
+    }
+}
+
+impl RuntimeImageStorage for SharedImage {
+    fn from_runtime_image(image: RuntimeImage) -> Self {
+        image.into_shared()
     }
 }
 
@@ -92,6 +119,11 @@ impl RuntimeImage {
 
     pub(super) fn current_program_version_id(&self) -> Option<ProgramVersionId> {
         self.version_id
+    }
+
+    #[must_use]
+    pub fn into_shared(self) -> SharedImage {
+        SharedImage::from_arc(Arc::new(self))
     }
 }
 

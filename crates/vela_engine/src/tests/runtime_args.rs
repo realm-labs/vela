@@ -17,7 +17,10 @@ use vela_vm::error::VmErrorKind;
 use vela_vm::owned_value::OwnedValue;
 
 use crate::engine::Engine;
-use crate::runtime::{CallArgs, CallOptions, Runtime, VelaFunction, VelaMethod, VelaValue};
+use crate::runtime::{
+    CallArgs, CallOptions, Runtime, RuntimeImage, SharedRuntime, VelaFunction, VelaMethod,
+    VelaValue,
+};
 
 use super::player_type;
 
@@ -39,6 +42,7 @@ fn runtime_and_runtime_values_are_send() {
     fn assert_send<T: Send>() {}
 
     assert_send::<Runtime>();
+    assert_send::<SharedRuntime>();
     assert_send::<VelaValue>();
     assert_send::<VelaFunction>();
     assert_send::<VelaMethod>();
@@ -426,6 +430,97 @@ fn read_name() {
     assert_eq!(
         runtime.value_to_owned(&name),
         Ok(OwnedValue::String("boot".to_owned()))
+    );
+}
+
+#[test]
+fn shared_runtime_image_keeps_script_globals_isolated() {
+    let engine = Engine::builder().build().expect("engine should build");
+    let program = compile_program_source_with_options(
+        SourceId::new(1),
+        r#"
+struct ServerState {
+    level: Int,
+    name: String,
+}
+
+global state: ServerState;
+
+fn make_state(level, name) {
+    return ServerState { level: level, name: name };
+}
+
+fn bump(amount) {
+    state.level += amount;
+    return state.level;
+}
+
+fn read_name() {
+    return state.name;
+}
+"#,
+        &engine.compiler_options(),
+    )
+    .expect("program should compile");
+    let shared_image = RuntimeImage::new(engine, program).into_shared();
+    let mut first = SharedRuntime::from_shared_image(shared_image.clone());
+    let mut second = SharedRuntime::from_shared_image(shared_image);
+
+    let first_state = first
+        .call(
+            "make_state",
+            CallArgs::from_positional([OwnedValue::Int(5), OwnedValue::String("first".into())]),
+            CallOptions::unbounded(),
+        )
+        .expect("first factory should run");
+    let second_state = second
+        .call(
+            "make_state",
+            CallArgs::from_positional([OwnedValue::Int(40), OwnedValue::String("second".into())]),
+            CallOptions::unbounded(),
+        )
+        .expect("second factory should run");
+
+    first
+        .insert_global("main::state", first_state)
+        .expect("first script global should insert");
+    second
+        .insert_global("main::state", second_state)
+        .expect("second script global should insert");
+
+    let first_bumped = first
+        .call(
+            "bump",
+            CallArgs::from_positional([OwnedValue::Int(2)]),
+            CallOptions::unbounded(),
+        )
+        .expect("first bump should run");
+    let second_bumped = second
+        .call(
+            "bump",
+            CallArgs::from_positional([OwnedValue::Int(3)]),
+            CallOptions::unbounded(),
+        )
+        .expect("second bump should run");
+    let first_name = first
+        .call("read_name", CallArgs::new(), CallOptions::unbounded())
+        .expect("first name should read");
+    let second_name = second
+        .call("read_name", CallArgs::new(), CallOptions::unbounded())
+        .expect("second name should read");
+
+    assert_eq!(first.value_to_owned(&first_bumped), Ok(OwnedValue::Int(7)));
+    assert_eq!(
+        second.value_to_owned(&second_bumped),
+        Ok(OwnedValue::Int(43))
+    );
+    assert_eq!(
+        first.value_to_owned(&first_name),
+        Ok(OwnedValue::String("first".to_owned()))
+    );
+    assert_eq!(
+        second.value_to_owned(&second_name),
+        Ok(OwnedValue::String("second".to_owned()))
     );
 }
 
