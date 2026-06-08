@@ -1,4 +1,4 @@
-use vela_bytecode::{Program, Register};
+use vela_bytecode::{ProgramCode, Register};
 use vela_common::{HostMethodId, MethodId};
 
 use crate::heap::GcRef;
@@ -22,7 +22,7 @@ pub(crate) struct ScriptMethodCall<'a> {
 
 pub(crate) fn dispatch_script_method_call(
     vm: &Vm,
-    program: Option<&Program>,
+    program: Option<&dyn ProgramCode>,
     host: &mut Option<&mut HostExecution<'_>>,
     heap: &mut Option<&mut HeapExecution<'_>>,
     budget: &mut Option<&mut ExecutionBudget>,
@@ -95,7 +95,7 @@ pub(crate) struct ScriptMethodIdCall<'a> {
 
 pub(crate) fn dispatch_script_method_id_call(
     vm: &Vm,
-    program: Option<&Program>,
+    program: Option<&dyn ProgramCode>,
     host: &mut Option<&mut HostExecution<'_>>,
     heap: &mut Option<&mut HeapExecution<'_>>,
     budget: &mut Option<&mut ExecutionBudget>,

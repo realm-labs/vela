@@ -128,6 +128,34 @@ impl Program {
     }
 }
 
+pub trait ProgramCode {
+    fn function(&self, name: &str) -> Option<&CodeObject>;
+
+    fn script_method(&self, type_name: &str, method: &str) -> Option<&CodeObject>;
+
+    fn script_method_id(&self, type_name: &str, method: &str) -> Option<MethodId>;
+
+    fn script_method_by_id(&self, type_name: &str, method_id: MethodId) -> Option<&CodeObject>;
+}
+
+impl ProgramCode for Program {
+    fn function(&self, name: &str) -> Option<&CodeObject> {
+        Program::function(self, name)
+    }
+
+    fn script_method(&self, type_name: &str, method: &str) -> Option<&CodeObject> {
+        Program::script_method(self, type_name, method)
+    }
+
+    fn script_method_id(&self, type_name: &str, method: &str) -> Option<MethodId> {
+        Program::script_method_id(self, type_name, method)
+    }
+
+    fn script_method_by_id(&self, type_name: &str, method_id: MethodId) -> Option<&CodeObject> {
+        Program::script_method_by_id(self, type_name, method_id)
+    }
+}
+
 #[derive(Clone, Debug, PartialEq)]
 pub struct CodeObject {
     pub name: String,

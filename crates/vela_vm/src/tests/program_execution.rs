@@ -297,6 +297,30 @@ fn main() {
 }
 
 #[test]
+fn runs_program_image_script_function_calls() {
+    let program = compile_program_source(
+        SourceId::new(1),
+        r#"
+fn add_bonus(value) {
+    return value + 5;
+}
+
+fn main() {
+    let base = 10;
+    return add_bonus(base) * 2;
+}
+"#,
+    )
+    .expect("compile program source");
+    let image = ProgramImage::from_program(&program);
+
+    assert_eq!(
+        Vm::new().run_program_image(&image, "main", &[]),
+        Ok(OwnedValue::Int(30))
+    );
+}
+
+#[test]
 fn runs_compiled_named_args_and_parameter_defaults() {
     let program = compile_program_source(
         SourceId::new(1),
@@ -353,6 +377,30 @@ fn main() {
 
     assert_eq!(
         Vm::new().run_program(&program, "main", &[]),
+        Ok(OwnedValue::Int(15))
+    );
+}
+
+#[test]
+fn runs_program_image_lambdas_with_captures_after_outer_return() {
+    let program = compile_program_source(
+        SourceId::new(1),
+        r#"
+fn make_adder(base) {
+    return |value| value + base;
+}
+
+fn main() {
+    let add = make_adder(10);
+    return add(5);
+}
+"#,
+    )
+    .expect("compile captured lambda");
+    let image = ProgramImage::from_program(&program);
+
+    assert_eq!(
+        Vm::new().run_program_image(&image, "main", &[]),
         Ok(OwnedValue::Int(15))
     );
 }

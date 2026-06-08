@@ -1,4 +1,4 @@
-use vela_bytecode::{CallArgument, InstructionOffset, Program, Register};
+use vela_bytecode::{CallArgument, InstructionOffset, ProgramCode, Register};
 use vela_common::Span;
 
 use crate::{
@@ -16,7 +16,7 @@ pub(crate) struct ScriptFunctionCall<'a> {
 
 pub(crate) fn dispatch_script_function_call(
     vm: &Vm,
-    program: Option<&Program>,
+    program: Option<&dyn ProgramCode>,
     host: &mut Option<&mut HostExecution<'_>>,
     heap: &mut Option<&mut HeapExecution<'_>>,
     budget: &mut Option<&mut ExecutionBudget>,

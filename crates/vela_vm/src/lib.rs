@@ -79,7 +79,8 @@ pub(crate) use script_object::ScriptFields;
 use small_storage::SmallStorage;
 use try_propagation::{TryPropagation, try_propagate_value};
 use vela_bytecode::{
-    CacheSiteId, CodeObject, Constant, InstructionKind, InstructionOffset, Program, Register,
+    CacheSiteId, CodeObject, Constant, InstructionKind, InstructionOffset, Program, ProgramCode,
+    ProgramImage, Register,
 };
 use vela_common::{FunctionId, GlobalSlot, Span, SymbolInterner};
 use vela_host::adapter::ScriptStateAdapter;
@@ -92,7 +93,7 @@ use value::Value;
 
 pub(crate) struct ExecutionCall<'a> {
     pub(crate) code: &'a CodeObject,
-    pub(crate) program: Option<&'a Program>,
+    pub(crate) program: Option<&'a dyn ProgramCode>,
     pub(crate) captures: &'a [Value],
     pub(crate) args: &'a [Value],
     pub(crate) call_site: Option<Span>,
@@ -221,7 +222,7 @@ pub trait VmInlineCaches {
 }
 
 pub struct RuntimeMethodCall<'program, 'args, 'host, 'heap, 'roots, 'budget> {
-    pub program: &'program Program,
+    pub program: &'program dyn ProgramCode,
     pub receiver: Value,
     pub method: &'args str,
     pub method_id: Option<vela_common::MethodId>,
@@ -232,7 +233,7 @@ pub struct RuntimeMethodCall<'program, 'args, 'host, 'heap, 'roots, 'budget> {
 }
 
 pub struct RuntimeCodeCall<'program, 'args, 'host, 'heap, 'roots, 'budget, 'caches> {
-    pub program: &'program Program,
+    pub program: &'program dyn ProgramCode,
     pub code: &'program CodeObject,
     pub args: &'args [Value],
     pub host: &'host mut HostExecution<'host>,
@@ -414,6 +415,27 @@ impl Vm {
         value_to_owned(&result, Some(&heap_execution))
     }
 
+    pub fn run_program_image(
+        &self,
+        image: &ProgramImage,
+        entry: &str,
+        args: &[OwnedValue],
+    ) -> VmResult<OwnedValue> {
+        let code = program_entry(image, entry)?;
+        let mut heap = ScriptHeap::new();
+        let mut heap_execution = HeapExecution::new(&mut heap);
+        let args = owned_args_to_runtime(args, &mut heap_execution, None)?;
+        let result = self.execute(
+            code,
+            Some(image),
+            &args,
+            None,
+            Some(&mut heap_execution),
+            None,
+        )?;
+        value_to_owned(&result, Some(&heap_execution))
+    }
+
     pub fn run_program_with_budget(
         &self,
         program: &Program,
@@ -428,6 +450,28 @@ impl Vm {
         let result = self.execute(
             code,
             Some(program),
+            &args,
+            None,
+            Some(&mut heap_execution),
+            Some(budget),
+        );
+        owned_heap_result(result, &mut heap_execution, budget)
+    }
+
+    pub fn run_program_image_with_budget(
+        &self,
+        image: &ProgramImage,
+        entry: &str,
+        args: &[OwnedValue],
+        budget: &mut ExecutionBudget,
+    ) -> VmResult<OwnedValue> {
+        let code = program_entry(image, entry)?;
+        let mut heap = ScriptHeap::new();
+        let mut heap_execution = HeapExecution::new(&mut heap);
+        let args = owned_args_to_runtime(args, &mut heap_execution, Some(budget))?;
+        let result = self.execute(
+            code,
+            Some(image),
             &args,
             None,
             Some(&mut heap_execution),
@@ -454,6 +498,16 @@ impl Vm {
     ) -> VmResult<Value> {
         let code = program_entry(program, entry)?;
         self.execute(code, Some(program), args, None, None, None)
+    }
+
+    pub fn run_program_image_runtime(
+        &self,
+        image: &ProgramImage,
+        entry: &str,
+        args: &[Value],
+    ) -> VmResult<Value> {
+        let code = program_entry(image, entry)?;
+        self.execute(code, Some(image), args, None, None, None)
     }
 
     pub fn run_program_runtime_with_budget(
@@ -809,7 +863,7 @@ impl Vm {
     fn execute_with_managed_heap_and_budget(
         &self,
         code: &CodeObject,
-        program: Option<&Program>,
+        program: Option<&dyn ProgramCode>,
         args: &[Value],
         host: Option<&mut HostExecution<'_>>,
         budget: &mut ExecutionBudget,
@@ -830,7 +884,7 @@ impl Vm {
     fn execute(
         &self,
         code: &CodeObject,
-        program: Option<&Program>,
+        program: Option<&dyn ProgramCode>,
         args: &[Value],
         host: Option<&mut HostExecution<'_>>,
         heap: Option<&mut HeapExecution<'_>>,
@@ -887,7 +941,7 @@ impl Vm {
     pub(crate) fn execute_code_object(
         &self,
         code: &CodeObject,
-        program: Option<&Program>,
+        program: Option<&dyn ProgramCode>,
         args: &[Value],
         host: Option<&mut HostExecution<'_>>,
         heap: Option<&mut HeapExecution<'_>>,
@@ -933,7 +987,7 @@ pub fn persistent_value_to_owned(value: &Value, heap: &mut ScriptHeap) -> VmResu
 }
 
 fn program_entry<'program>(
-    program: &'program Program,
+    program: &'program (impl ProgramCode + ?Sized),
     entry: &str,
 ) -> VmResult<&'program CodeObject> {
     program.function(entry).ok_or_else(|| {

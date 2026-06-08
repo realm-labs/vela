@@ -1,4 +1,4 @@
-use vela_bytecode::Program;
+use vela_bytecode::ProgramCode;
 use vela_common::{HostMethodId, MethodId};
 use vela_reflect::registry::TypeRegistry;
 
@@ -13,7 +13,7 @@ use crate::{
 
 pub(crate) struct ScriptMethodDispatch<'a, 'host, 'heap> {
     pub(crate) vm: &'a Vm,
-    pub(crate) program: Option<&'a Program>,
+    pub(crate) program: Option<&'a dyn ProgramCode>,
     pub(crate) host: Option<&'a mut HostExecution<'host>>,
     pub(crate) heap: Option<&'a mut HeapExecution<'heap>>,
     pub(crate) budget: Option<&'a mut ExecutionBudget>,

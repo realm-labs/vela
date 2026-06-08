@@ -118,6 +118,10 @@ impl RuntimeImage {
         &self.program
     }
 
+    pub(super) const fn program_image(&self) -> &ProgramImage {
+        &self.program_image
+    }
+
     pub(super) fn global_names(&self) -> &[String] {
         self.layout.global_names()
     }

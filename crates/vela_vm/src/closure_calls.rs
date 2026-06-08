@@ -1,6 +1,6 @@
 use std::sync::Arc;
 
-use vela_bytecode::{CodeObject, FunctionIndex, InstructionOffset, Program, Register};
+use vela_bytecode::{CodeObject, FunctionIndex, InstructionOffset, ProgramCode, Register};
 use vela_common::Span;
 
 use crate::heap::HeapValue;
@@ -63,7 +63,7 @@ pub(crate) struct ClosureCall<'a> {
 
 pub(crate) fn dispatch_closure_call(
     vm: &Vm,
-    program: Option<&Program>,
+    program: Option<&dyn ProgramCode>,
     host: &mut Option<&mut HostExecution<'_>>,
     heap: &mut Option<&mut HeapExecution<'_>>,
     budget: &mut Option<&mut ExecutionBudget>,

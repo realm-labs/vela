@@ -1,4 +1,4 @@
-use vela_bytecode::{CodeObject, Program};
+use vela_bytecode::{CodeObject, Program, ProgramCode};
 use vela_common::MethodId;
 use vela_host::access::HostAccess;
 use vela_host::adapter::ScriptStateAdapter;
@@ -72,7 +72,7 @@ pub trait RuntimeCallTarget {
     fn resolve<'program>(
         self,
         runtime_id: u64,
-        program: &'program Program,
+        program: &'program dyn ProgramCode,
         version_id: Option<ProgramVersionId>,
     ) -> VmResult<ResolvedRuntimeFunction<'program>>;
 }
@@ -81,7 +81,7 @@ impl RuntimeCallTarget for &str {
     fn resolve<'program>(
         self,
         _runtime_id: u64,
-        program: &'program Program,
+        program: &'program dyn ProgramCode,
         _version_id: Option<ProgramVersionId>,
     ) -> VmResult<ResolvedRuntimeFunction<'program>> {
         let code = program
@@ -100,7 +100,7 @@ impl RuntimeCallTarget for &String {
     fn resolve<'program>(
         self,
         runtime_id: u64,
-        program: &'program Program,
+        program: &'program dyn ProgramCode,
         version_id: Option<ProgramVersionId>,
     ) -> VmResult<ResolvedRuntimeFunction<'program>> {
         RuntimeCallTarget::resolve(self.as_str(), runtime_id, program, version_id)
@@ -111,7 +111,7 @@ impl RuntimeCallTarget for &VelaFunction {
     fn resolve<'program>(
         self,
         runtime_id: u64,
-        program: &'program Program,
+        program: &'program dyn ProgramCode,
         version_id: Option<ProgramVersionId>,
     ) -> VmResult<ResolvedRuntimeFunction<'program>> {
         if self.runtime_id != runtime_id {
@@ -140,7 +140,7 @@ impl RuntimeCallTarget for VelaFunction {
     fn resolve<'program>(
         self,
         runtime_id: u64,
-        program: &'program Program,
+        program: &'program dyn ProgramCode,
         version_id: Option<ProgramVersionId>,
     ) -> VmResult<ResolvedRuntimeFunction<'program>> {
         (&self).resolve(runtime_id, program, version_id)
@@ -151,7 +151,7 @@ pub trait RuntimeMethodTarget {
     fn resolve(
         self,
         runtime_id: u64,
-        program: &Program,
+        program: &dyn ProgramCode,
         version_id: Option<ProgramVersionId>,
         receiver: &VelaValue,
         script_globals: &RuntimeScriptGlobalStore,
@@ -163,7 +163,7 @@ impl RuntimeMethodTarget for &str {
     fn resolve(
         self,
         _runtime_id: u64,
-        program: &Program,
+        program: &dyn ProgramCode,
         _version_id: Option<ProgramVersionId>,
         receiver: &VelaValue,
         script_globals: &RuntimeScriptGlobalStore,
@@ -194,7 +194,7 @@ impl RuntimeMethodTarget for &VelaMethod {
     fn resolve(
         self,
         runtime_id: u64,
-        program: &Program,
+        program: &dyn ProgramCode,
         version_id: Option<ProgramVersionId>,
         receiver: &VelaValue,
         script_globals: &RuntimeScriptGlobalStore,
@@ -240,7 +240,7 @@ impl RuntimeMethodTarget for VelaMethod {
     fn resolve(
         self,
         runtime_id: u64,
-        program: &Program,
+        program: &dyn ProgramCode,
         version_id: Option<ProgramVersionId>,
         receiver: &VelaValue,
         script_globals: &RuntimeScriptGlobalStore,
@@ -274,7 +274,8 @@ pub struct ResolvedRuntimeMethod {
 pub(super) struct RuntimeCallExecution<'program, 'args, 'adapter, 'access, 'state> {
     pub(super) runtime_id: u64,
     pub(super) engine: &'program Engine,
-    pub(super) program: &'program Program,
+    pub(super) registry_program: &'program Program,
+    pub(super) program: &'program dyn ProgramCode,
     pub(super) hot_reload: Option<&'program HotReloadRuntime>,
     pub(super) globals: &'program mut RuntimeGlobalStore,
     pub(super) script_globals: &'program mut RuntimeScriptGlobalStore,

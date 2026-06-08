@@ -8,7 +8,9 @@ use vela_bytecode::compiler::{
     compile_function_source, compile_module_sources, compile_program_source,
     compile_program_source_with_options,
 };
-use vela_bytecode::{Constant, ConstantId, HostPathSegment, Instruction, InstructionOffset};
+use vela_bytecode::{
+    Constant, ConstantId, HostPathSegment, Instruction, InstructionOffset, ProgramImage,
+};
 use vela_common::{
     FieldId, FunctionId, HostMethodId, HostObjectId, HostTypeId, MethodId, SourceId, TypeId,
     VariantId,

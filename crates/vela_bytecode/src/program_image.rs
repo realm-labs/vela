@@ -4,7 +4,7 @@ use vela_common::GlobalSlot;
 use vela_hir::module_graph::ModuleGraph;
 
 use crate::script_methods::ScriptMethodTable;
-use crate::{CodeObject, FunctionIndex, Program};
+use crate::{CodeObject, FunctionIndex, Program, ProgramCode};
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct ProgramImage {
@@ -132,6 +132,32 @@ impl ProgramImage {
             .iter()
             .map(|function| function.cache_sites.len())
             .sum()
+    }
+}
+
+impl ProgramCode for ProgramImage {
+    fn function(&self, name: &str) -> Option<&CodeObject> {
+        self.function_by_name(name)
+    }
+
+    fn script_method(&self, type_name: &str, method: &str) -> Option<&CodeObject> {
+        let method = self.script_methods.get(type_name, method)?;
+        self.function_by_name(&method.function)
+    }
+
+    fn script_method_id(&self, type_name: &str, method: &str) -> Option<vela_common::MethodId> {
+        self.script_methods
+            .get(type_name, method)
+            .map(|method| method.id)
+    }
+
+    fn script_method_by_id(
+        &self,
+        type_name: &str,
+        method_id: vela_common::MethodId,
+    ) -> Option<&CodeObject> {
+        let method = self.script_methods.get_by_id(type_name, method_id)?;
+        self.function_by_name(&method.function)
     }
 }
 

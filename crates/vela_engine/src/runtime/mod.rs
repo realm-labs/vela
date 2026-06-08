@@ -400,12 +400,13 @@ where
     {
         let version_id = self.current_program_version_id();
         let state = &mut self.state;
-        let target = entry.resolve(state.id, self.image.program(), version_id)?;
+        let target = entry.resolve(state.id, self.image.program_image(), version_id)?;
         let mut access = HostAccess::new();
         Self::call_runtime_args(RuntimeCallExecution {
             runtime_id: state.id,
             engine: self.image.engine(),
-            program: self.image.program(),
+            registry_program: self.image.program(),
+            program: self.image.program_image(),
             hot_reload: self.hot_reload.as_ref(),
             globals: &mut state.globals,
             script_globals: &mut state.script_globals,
@@ -433,7 +434,7 @@ where
         let state = &mut self.state;
         let target = method.resolve(
             state.id,
-            self.image.program(),
+            self.image.program_image(),
             version_id,
             receiver,
             &state.script_globals,
@@ -467,7 +468,7 @@ where
         );
         let roots = state.script_globals.roots();
         let result = vm.call_runtime_method(RuntimeMethodCall {
-            program: self.image.program(),
+            program: self.image.program_image(),
             receiver: receiver.value,
             method: &target.name,
             method_id: Some(target.method_id),
@@ -589,7 +590,7 @@ where
             access: call.access,
             script_globals: Some(&call.script_globals.values),
         };
-        let vm = runtime_vm(call.engine, call.program, call.hot_reload);
+        let vm = runtime_vm(call.engine, call.registry_program, call.hot_reload);
         let roots = call.script_globals.roots();
         let result = vm.run_runtime_code_call(RuntimeCodeCall {
             program: call.program,

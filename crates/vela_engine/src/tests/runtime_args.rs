@@ -48,6 +48,42 @@ fn runtime_and_runtime_values_are_send() {
     assert_send::<VelaMethod>();
 }
 
+#[test]
+fn runtime_call_executes_program_image_code_view() {
+    let engine = Engine::builder().build().expect("engine should build");
+    let program = compile_program_source_with_options(
+        SourceId::new(1),
+        r#"
+trait BonusSource { fn bonus(self, amount) -> int; }
+struct Player { level: int }
+
+impl BonusSource for Player {
+    fn bonus(self, amount) -> int {
+        return self.level + amount;
+    }
+}
+
+fn add_bonus(value) {
+    return value + 5;
+}
+
+fn main() {
+    let player = Player { level: 7 };
+    return add_bonus(player.bonus(4));
+}
+"#,
+        &engine.compiler_options(),
+    )
+    .expect("compile runtime image code-view source");
+    let mut runtime = Runtime::new(engine, program);
+
+    let value = runtime
+        .call("main", CallArgs::new(), CallOptions::unbounded())
+        .expect("runtime call should execute");
+
+    assert_eq!(runtime.value_to_owned(&value), Ok(OwnedValue::Int(16)));
+}
+
 fn direct_player_type() -> TypeDesc {
     TypeDesc::new(TypeKey::new(TypeId::new(1), "Player"))
         .host_type(HostTypeId::new(1))
