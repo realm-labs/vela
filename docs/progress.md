@@ -233,8 +233,6 @@ Cranelift JIT.
     unchecked register, operand, and cache fast paths;
   - ProgramVersion-owned profile metadata covers hot bytecode offsets and has
     hot-reload/schema invalidation tests;
-  - frame-map, HostAccess slow-path, and hot-reload
-    invalidation contracts are documented or tested as interpreter contracts;
   - interpreter-only benchmark rows identify which remaining costs belong to
     M20 cache work versus later JIT work.
 - M20: after M19.5, implement guarded inline caches and specialization for
