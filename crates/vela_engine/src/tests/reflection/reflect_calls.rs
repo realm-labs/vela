@@ -150,7 +150,7 @@ fn engine_reflect_call_invokes_host_native_functions_through_host_access() {
                 let [OwnedValue::HostRef(player), OwnedValue::Int(level)] = args else {
                     return Ok(OwnedValue::Null);
                 };
-                host.access.set_path(
+                host.access.write_diagnostic_path(
                     host.adapter,
                     HostPath::new(*player).field(FieldId::new(1)),
                     HostValue::Int(*level),
@@ -211,7 +211,7 @@ fn engine_reflect_call_denies_effectful_native_functions_without_effect_permissi
                 let [OwnedValue::HostRef(player), OwnedValue::Int(level)] = args else {
                     return Ok(OwnedValue::Null);
                 };
-                host.access.set_path(
+                host.access.write_diagnostic_path(
                     host.adapter,
                     HostPath::new(*player).field(FieldId::new(1)),
                     HostValue::Int(*level),

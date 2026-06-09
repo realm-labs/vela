@@ -1049,10 +1049,10 @@ cargo clippy -p vela_host --all-targets -- -D warnings
   `HostTargetInstance` and `ResolvedHostAccess`.
 - [x] Keep source-spanned error wrapping.
 - [x] Keep immediate write-through semantics.
-- [ ] Delete path-construction helpers such as `read_path`, `read_path_at`,
+- [x] Delete path-construction helpers such as `read_path`, `read_path_at`,
   `remove_path`, and `call_method` from the normal `HostAccess` surface, or
   move them behind explicit diagnostic/embedding conversion names.
-- [ ] Record or rerun acceptance:
+- [x] Record or rerun acceptance:
 
 ```text
 cargo test -p vela_host

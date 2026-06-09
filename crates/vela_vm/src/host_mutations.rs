@@ -54,11 +54,21 @@ impl HostNumericMutation {
         source_span: Option<Span>,
     ) -> VmResult<()> {
         match self {
-            Self::Add => host.access.add_path(host.adapter, path, value, source_span),
-            Self::Sub => host.access.sub_path(host.adapter, path, value, source_span),
-            Self::Mul => host.access.mul_path(host.adapter, path, value, source_span),
-            Self::Div => host.access.div_path(host.adapter, path, value, source_span),
-            Self::Rem => host.access.rem_path(host.adapter, path, value, source_span),
+            Self::Add => host
+                .access
+                .add_diagnostic_path(host.adapter, path, value, source_span),
+            Self::Sub => host
+                .access
+                .sub_diagnostic_path(host.adapter, path, value, source_span),
+            Self::Mul => host
+                .access
+                .mul_diagnostic_path(host.adapter, path, value, source_span),
+            Self::Div => host
+                .access
+                .div_diagnostic_path(host.adapter, path, value, source_span),
+            Self::Rem => host
+                .access
+                .rem_diagnostic_path(host.adapter, path, value, source_span),
         }?;
         Ok(())
     }

@@ -156,7 +156,7 @@ fn main(player) {
 }
 
 fn typed_host_set_level(host: &mut HostExecution<'_>, player: HostRef, level: i64) -> VmResult<()> {
-    host.access.set_path(
+    host.access.write_diagnostic_path(
         host.adapter,
         HostPath::new(player).field(FieldId::new(1)),
         HostValue::Int(level),
@@ -341,7 +341,7 @@ fn typed_host_sum_level(
     c: i64,
 ) -> VmResult<i64> {
     let level = a + b + c;
-    host.access.set_path(
+    host.access.write_diagnostic_path(
         host.adapter,
         HostPath::new(player).field(FieldId::new(1)),
         HostValue::Int(level),
@@ -359,7 +359,7 @@ fn typed_host_sum5_level(
     d: i64,
 ) -> VmResult<i64> {
     let level = a + b + c + d;
-    host.access.set_path(
+    host.access.write_diagnostic_path(
         host.adapter,
         HostPath::new(player).field(FieldId::new(1)),
         HostValue::Int(level),
@@ -378,7 +378,7 @@ fn typed_host_sum6_level(
     e: i64,
 ) -> VmResult<i64> {
     let level = a + b + c + d + e;
-    host.access.set_path(
+    host.access.write_diagnostic_path(
         host.adapter,
         HostPath::new(player).field(FieldId::new(1)),
         HostValue::Int(level),

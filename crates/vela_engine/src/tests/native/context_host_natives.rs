@@ -18,7 +18,7 @@ fn engine_installs_registered_host_native_functions_into_vm() {
                 let [OwnedValue::HostRef(player), OwnedValue::Int(level)] = args else {
                     return Ok(OwnedValue::Null);
                 };
-                host.access.set_path(
+                host.access.write_diagnostic_path(
                     host.adapter,
                     HostPath::new(*player).field(FieldId::new(1)),
                     HostValue::Int(*level),

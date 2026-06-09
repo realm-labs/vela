@@ -466,7 +466,7 @@ pub(crate) fn push_host_path(
         })
     })?;
     host.access
-        .push_path(host.adapter, path, value, runtime.source_span)?;
+        .push_diagnostic_path(host.adapter, path, value, runtime.source_span)?;
     Ok(())
 }
 
@@ -490,7 +490,7 @@ pub(crate) fn remove_host_path(
         })
     })?;
     host.access
-        .remove_path(host.adapter, path, runtime.source_span)?;
+        .remove_diagnostic_path(host.adapter, path, runtime.source_span)?;
     Ok(())
 }
 
@@ -526,9 +526,13 @@ pub(crate) fn call_host_method(
             operation: "host context",
         })
     })?;
-    let return_value =
-        host.access
-            .call_method(host.adapter, path, method, values, runtime.source_span)?;
+    let return_value = host.access.call_diagnostic_path_method(
+        host.adapter,
+        path,
+        method,
+        values,
+        runtime.source_span,
+    )?;
     if wants_return {
         runtime_value_from_host(return_value, runtime.heap, runtime.budget).map(Some)
     } else {
@@ -544,7 +548,7 @@ fn read_host_path_value(path: HostPath, runtime: HostAccessRuntime<'_, '_, '_>) 
     })?;
     let value = host
         .access
-        .read_path_at(host.adapter, &path, runtime.source_span)?;
+        .read_diagnostic_path_at(host.adapter, &path, runtime.source_span)?;
     runtime_value_from_host(value, runtime.heap, runtime.budget)
 }
 
@@ -559,7 +563,7 @@ fn set_host_path_value(
         })
     })?;
     host.access
-        .set_path(host.adapter, path, value, runtime.source_span)?;
+        .write_diagnostic_path(host.adapter, path, value, runtime.source_span)?;
     Ok(())
 }
 

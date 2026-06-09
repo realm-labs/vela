@@ -56,7 +56,7 @@ impl<'ctx, 'host> NativeCallContext<'ctx, 'host> {
         Ok(self
             .host
             .access
-            .read_path_at(self.host.adapter, path, source_span)?)
+            .read_diagnostic_path_at(self.host.adapter, path, source_span)?)
     }
 
     pub fn charge_instructions(&mut self, instructions: u64) -> VmResult<()> {
@@ -81,7 +81,7 @@ impl<'ctx, 'host> NativeCallContext<'ctx, 'host> {
     ) -> VmResult<()> {
         self.host
             .access
-            .set_path(self.host.adapter, path, value, source_span)?;
+            .write_diagnostic_path(self.host.adapter, path, value, source_span)?;
         Ok(())
     }
 
@@ -93,7 +93,7 @@ impl<'ctx, 'host> NativeCallContext<'ctx, 'host> {
     ) -> VmResult<()> {
         self.host
             .access
-            .add_path(self.host.adapter, path, value, source_span)?;
+            .add_diagnostic_path(self.host.adapter, path, value, source_span)?;
         Ok(())
     }
 
@@ -105,7 +105,7 @@ impl<'ctx, 'host> NativeCallContext<'ctx, 'host> {
     ) -> VmResult<()> {
         self.host
             .access
-            .sub_path(self.host.adapter, path, value, source_span)?;
+            .sub_diagnostic_path(self.host.adapter, path, value, source_span)?;
         Ok(())
     }
 
@@ -117,7 +117,7 @@ impl<'ctx, 'host> NativeCallContext<'ctx, 'host> {
     ) -> VmResult<()> {
         self.host
             .access
-            .mul_path(self.host.adapter, path, value, source_span)?;
+            .mul_diagnostic_path(self.host.adapter, path, value, source_span)?;
         Ok(())
     }
 
@@ -129,7 +129,7 @@ impl<'ctx, 'host> NativeCallContext<'ctx, 'host> {
     ) -> VmResult<()> {
         self.host
             .access
-            .div_path(self.host.adapter, path, value, source_span)?;
+            .div_diagnostic_path(self.host.adapter, path, value, source_span)?;
         Ok(())
     }
 
@@ -141,7 +141,7 @@ impl<'ctx, 'host> NativeCallContext<'ctx, 'host> {
     ) -> VmResult<()> {
         self.host
             .access
-            .rem_path(self.host.adapter, path, value, source_span)?;
+            .rem_diagnostic_path(self.host.adapter, path, value, source_span)?;
         Ok(())
     }
 
@@ -153,14 +153,14 @@ impl<'ctx, 'host> NativeCallContext<'ctx, 'host> {
     ) -> VmResult<()> {
         self.host
             .access
-            .push_path(self.host.adapter, path, value, source_span)?;
+            .push_diagnostic_path(self.host.adapter, path, value, source_span)?;
         Ok(())
     }
 
     pub fn remove_path(&mut self, path: HostPath, source_span: Option<Span>) -> VmResult<()> {
         self.host
             .access
-            .remove_path(self.host.adapter, path, source_span)?;
+            .remove_diagnostic_path(self.host.adapter, path, source_span)?;
         Ok(())
     }
 
@@ -171,10 +171,13 @@ impl<'ctx, 'host> NativeCallContext<'ctx, 'host> {
         args: Vec<HostValue>,
         source_span: Option<Span>,
     ) -> VmResult<HostValue> {
-        Ok(self
-            .host
-            .access
-            .call_method(self.host.adapter, path, method, args, source_span)?)
+        Ok(self.host.access.call_diagnostic_path_method(
+            self.host.adapter,
+            path,
+            method,
+            args,
+            source_span,
+        )?)
     }
 
     #[must_use]

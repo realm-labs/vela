@@ -18,7 +18,7 @@ fn host_native_error_retains_written_mutations() {
                 let [OwnedValue::HostRef(player), OwnedValue::Int(level)] = args else {
                     return Ok(OwnedValue::Null);
                 };
-                host.access.set_path(
+                host.access.write_diagnostic_path(
                     host.adapter,
                     HostPath::new(*player).field(FieldId::new(1)),
                     HostValue::Int(*level),
@@ -84,7 +84,7 @@ fn host_native_error_retains_mutations_without_call_options() {
                 let [OwnedValue::HostRef(player), OwnedValue::Int(level)] = args else {
                     return Ok(OwnedValue::Null);
                 };
-                host.access.set_path(
+                host.access.write_diagnostic_path(
                     host.adapter,
                     HostPath::new(*player).field(FieldId::new(1)),
                     HostValue::Int(*level),
@@ -224,7 +224,7 @@ fn engine_denies_host_native_before_host_access() {
                 let [OwnedValue::HostRef(player), OwnedValue::Int(level)] = args else {
                     return Ok(OwnedValue::Null);
                 };
-                host.access.set_path(
+                host.access.write_diagnostic_path(
                     host.adapter,
                     HostPath::new(*player).field(FieldId::new(1)),
                     HostValue::Int(*level),

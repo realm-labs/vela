@@ -139,7 +139,7 @@ fn get_impl(
             }
             let value = ctx
                 .access
-                .read_path(ctx.adapter, &HostPath::new(*host_ref).field(field_desc.id))
+                .read_diagnostic_path(ctx.adapter, &HostPath::new(*host_ref).field(field_desc.id))
                 .map_err(|error| ReflectError::new(ReflectErrorKind::Host(error.to_string())))?;
             Ok(ReflectValue::Host(value))
         }
@@ -265,7 +265,7 @@ fn set_impl(
                 return Err(ReflectError::new(ReflectErrorKind::InvalidValue));
             };
             ctx.access
-                .set_path(
+                .write_diagnostic_path(
                     ctx.adapter,
                     HostPath::new(*host_ref).field(field_desc.id),
                     value,
@@ -393,7 +393,7 @@ fn call_impl(
         .collect::<ReflectResult<Vec<_>>>()?;
     let result = ctx
         .access
-        .call_method(
+        .call_diagnostic_path_method(
             ctx.adapter,
             HostPath::new(*host_ref),
             method_desc.id,

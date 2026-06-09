@@ -281,7 +281,7 @@ fn engine_registers_callable_native_methods_for_host_paths() {
                 let [OwnedValue::Int(amount)] = args else {
                     return Ok(OwnedValue::Null);
                 };
-                host.access.call_method(
+                host.access.call_diagnostic_path_method(
                     host.adapter,
                     receiver.clone(),
                     method,
@@ -491,7 +491,7 @@ fn callable_native_method_error_retains_written_mutation() {
                 let [OwnedValue::Int(amount)] = args else {
                     return Ok(OwnedValue::Null);
                 };
-                host.access.call_method(
+                host.access.call_diagnostic_path_method(
                     host.adapter,
                     receiver.clone(),
                     method,
@@ -560,7 +560,7 @@ fn engine_registers_unified_host_type_spec_with_native_method_and_index_metadata
             let [OwnedValue::Int(key), OwnedValue::Int(value)] = args else {
                 return Ok(OwnedValue::Null);
             };
-            host.access.set_path(
+            host.access.write_diagnostic_path(
                 host.adapter,
                 receiver.clone().key(key.to_string()),
                 HostValue::Int(*value),
@@ -711,7 +711,7 @@ fn typed_grant_exp(
     host: &mut HostExecution<'_>,
     amount: i64,
 ) -> VmResult<Option<i64>> {
-    host.access.call_method(
+    host.access.call_diagnostic_path_method(
         host.adapter,
         receiver.clone(),
         HostMethodId::new(8),
@@ -752,7 +752,7 @@ fn typed_transfer_to(
     target: TypedHostMut<InventoryArg>,
     amount: i64,
 ) -> VmResult<()> {
-    host.access.set_path(
+    host.access.write_diagnostic_path(
         host.adapter,
         target.into_path().field(FieldId::new(77)),
         HostValue::Int(amount),
@@ -919,7 +919,7 @@ fn typed_sum4(
     d: i64,
 ) -> VmResult<i64> {
     let total = a + b + c + d;
-    host.access.call_method(
+    host.access.call_diagnostic_path_method(
         host.adapter,
         receiver.clone(),
         HostMethodId::new(9),
@@ -939,7 +939,7 @@ fn typed_sum5(
     e: i64,
 ) -> VmResult<i64> {
     let total = a + b + c + d + e;
-    host.access.call_method(
+    host.access.call_diagnostic_path_method(
         host.adapter,
         receiver.clone(),
         HostMethodId::new(10),
@@ -961,7 +961,7 @@ fn typed_sum6(
     f: i64,
 ) -> VmResult<i64> {
     let total = a + b + c + d + e + f;
-    host.access.call_method(
+    host.access.call_diagnostic_path_method(
         host.adapter,
         receiver.clone(),
         HostMethodId::new(11),

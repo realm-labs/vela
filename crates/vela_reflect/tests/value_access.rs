@@ -54,7 +54,7 @@ fn reflect_get_host_ref_reads_write_through_state() {
     let registry = registry();
     let mut adapter = adapter_with_level(HostValue::Int(9));
     let mut tx = HostAccess::new();
-    tx.set_path(
+    tx.write_diagnostic_path(
         &mut adapter,
         HostPath::new(player_ref()).field(FieldId::new(2)),
         HostValue::Int(12),

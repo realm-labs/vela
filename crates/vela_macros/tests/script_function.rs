@@ -109,7 +109,7 @@ fn checked_level(
 /// Sets a copied player score through host execution.
 #[script_host_function(name = "game::set_score", effect = "write_host", reflect = true)]
 fn set_score(host: &mut HostExecution<'_>, player: HostRef, score: i64) -> VmResult<i64> {
-    host.access.set_path(
+    host.access.write_diagnostic_path(
         host.adapter,
         HostPath::new(player).field(FieldId::new(2)),
         HostValue::Int(score),
@@ -126,7 +126,7 @@ fn set_score(host: &mut HostExecution<'_>, player: HostRef, score: i64) -> VmRes
     reflect = true
 )]
 fn set_score_v2(host: &mut HostExecution<'_>, player: HostRef, score: i64) -> VmResult<i64> {
-    host.access.set_path(
+    host.access.write_diagnostic_path(
         host.adapter,
         HostPath::new(player).field(FieldId::new(2)),
         HostValue::Int(score),
@@ -151,7 +151,7 @@ fn checked_score(
         });
     }
     host.access
-        .set_path(host.adapter, path, HostValue::Int(score), None)?;
+        .write_diagnostic_path(host.adapter, path, HostValue::Int(score), None)?;
     Ok(score)
 }
 

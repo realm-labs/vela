@@ -7,13 +7,13 @@ fn write_through_set_and_numeric_mutations_mutate_immediately() {
     adapter.insert_diagnostic_path_value(path.clone(), HostValue::Int(9));
     let mut tx = HostAccess::new();
 
-    tx.set_path(&mut adapter, path.clone(), HostValue::Int(10), None)
+    tx.write_diagnostic_path(&mut adapter, path.clone(), HostValue::Int(10), None)
         .expect("set path");
     assert_eq!(adapter.read_diagnostic_path(&path), Ok(HostValue::Int(10)));
 
-    tx.add_path(&mut adapter, path.clone(), HostValue::Int(2), None)
+    tx.add_diagnostic_path(&mut adapter, path.clone(), HostValue::Int(2), None)
         .expect("add path");
-    tx.sub_path(&mut adapter, path.clone(), HostValue::Int(5), None)
+    tx.sub_diagnostic_path(&mut adapter, path.clone(), HostValue::Int(5), None)
         .expect("sub path");
 
     assert_eq!(adapter.read_diagnostic_path(&path), Ok(HostValue::Int(7)));
@@ -31,7 +31,7 @@ fn write_through_rejects_push_and_keeps_method_call_remove_immediate() {
     let mut tx = HostAccess::new();
 
     let push_error = tx
-        .push_path(
+        .push_diagnostic_path(
             &mut adapter,
             rewards.clone(),
             HostValue::String("gold".into()),
@@ -50,7 +50,7 @@ fn write_through_rejects_push_and_keeps_method_call_remove_immediate() {
     );
 
     let result = tx
-        .call_method(
+        .call_diagnostic_path_method(
             &mut adapter,
             method_path.clone(),
             method,
@@ -64,7 +64,7 @@ fn write_through_rejects_push_and_keeps_method_call_remove_immediate() {
     assert_eq!(adapter.method_calls()[0].method, method);
     assert_eq!(adapter.method_calls()[0].args, vec![HostValue::Int(1)]);
 
-    tx.remove_path(&mut adapter, rewards.clone(), None)
+    tx.remove_diagnostic_path(&mut adapter, rewards.clone(), None)
         .expect("remove path");
     assert_eq!(
         adapter.read_diagnostic_path(&rewards),
@@ -81,7 +81,7 @@ fn write_through_error_keeps_source_span() {
     let mut tx = HostAccess::new();
 
     let error = tx
-        .push_path(
+        .push_diagnostic_path(
             &mut adapter,
             path.clone(),
             HostValue::String("gold".into()),
@@ -100,10 +100,10 @@ fn write_through_error_keeps_previous_successful_writes() {
     adapter.insert_diagnostic_path_value(path.clone(), HostValue::Int(9));
     let mut tx = HostAccess::new();
 
-    tx.set_path(&mut adapter, path.clone(), HostValue::Int(10), None)
+    tx.write_diagnostic_path(&mut adapter, path.clone(), HostValue::Int(10), None)
         .expect("set path");
     let error = tx
-        .div_path(&mut adapter, path.clone(), HostValue::Int(0), None)
+        .div_diagnostic_path(&mut adapter, path.clone(), HostValue::Int(0), None)
         .expect_err("division by zero should fail");
 
     assert_eq!(error.kind, HostErrorKind::InvalidDiv { path: path.clone() });

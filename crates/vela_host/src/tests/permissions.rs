@@ -30,10 +30,10 @@ fn write_denied_path_fails_before_mutation_and_keeps_previous_writes() {
     adapter.deny_diagnostic_path_write(rewards.clone());
     let mut tx = HostAccess::new();
 
-    tx.set_path(&mut adapter, level.clone(), HostValue::Int(10), None)
+    tx.write_diagnostic_path(&mut adapter, level.clone(), HostValue::Int(10), None)
         .expect("set level");
     let error = tx
-        .set_path(&mut adapter, rewards.clone(), HostValue::Int(2), None)
+        .write_diagnostic_path(&mut adapter, rewards.clone(), HostValue::Int(2), None)
         .expect_err("write denied path should fail");
 
     assert_eq!(
@@ -60,7 +60,7 @@ fn denied_write_error_keeps_source_span() {
     let mut tx = HostAccess::new();
 
     let error = tx
-        .set_path(&mut adapter, path.clone(), HostValue::Int(10), Some(span))
+        .write_diagnostic_path(&mut adapter, path.clone(), HostValue::Int(10), Some(span))
         .expect_err("denied write should fail");
 
     assert_eq!(error.source_span, Some(span));
@@ -84,7 +84,7 @@ fn call_denied_path_fails_before_method_call() {
     let mut tx = HostAccess::new();
 
     let error = tx
-        .call_method(
+        .call_diagnostic_path_method(
             &mut adapter,
             path.clone(),
             method,
@@ -123,7 +123,7 @@ fn adapter_rejects_stale_generation_on_read_and_write() {
     );
 
     let write_error = tx
-        .set_path(&mut adapter, stale_path, HostValue::Int(10), None)
+        .write_diagnostic_path(&mut adapter, stale_path, HostValue::Int(10), None)
         .expect_err("stale write should fail");
     assert_eq!(
         write_error.kind,

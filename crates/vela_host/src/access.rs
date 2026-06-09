@@ -25,15 +25,15 @@ impl HostAccess {
         Self
     }
 
-    pub fn read_path(
+    pub fn read_diagnostic_path(
         &self,
         adapter: &(impl ScriptStateAdapter + ?Sized),
         path: &HostPath,
     ) -> HostResult<HostValue> {
-        self.read_path_at(adapter, path, None)
+        self.read_diagnostic_path_at(adapter, path, None)
     }
 
-    pub fn read_path_at(
+    pub fn read_diagnostic_path_at(
         &self,
         adapter: &(impl ScriptStateAdapter + ?Sized),
         path: &HostPath,
@@ -68,7 +68,7 @@ impl HostAccess {
             .map_err(|error| error.with_source_span_if_absent(source_span))
     }
 
-    pub fn set_path(
+    pub fn write_diagnostic_path(
         &mut self,
         adapter: &mut (impl ScriptStateAdapter + ?Sized),
         path: HostPath,
@@ -106,67 +106,67 @@ impl HostAccess {
             .map_err(|error| error.with_source_span_if_absent(source_span))
     }
 
-    pub fn add_path(
+    pub fn add_diagnostic_path(
         &mut self,
         adapter: &mut (impl ScriptStateAdapter + ?Sized),
         path: HostPath,
         value: HostValue,
         source_span: Option<Span>,
     ) -> HostResult<()> {
-        self.mutate_path(adapter, path, value, source_span, HostMutationOp::Add)
+        self.mutate_diagnostic_path(adapter, path, value, source_span, HostMutationOp::Add)
     }
 
-    pub fn sub_path(
+    pub fn sub_diagnostic_path(
         &mut self,
         adapter: &mut (impl ScriptStateAdapter + ?Sized),
         path: HostPath,
         value: HostValue,
         source_span: Option<Span>,
     ) -> HostResult<()> {
-        self.mutate_path(adapter, path, value, source_span, HostMutationOp::Sub)
+        self.mutate_diagnostic_path(adapter, path, value, source_span, HostMutationOp::Sub)
     }
 
-    pub fn mul_path(
+    pub fn mul_diagnostic_path(
         &mut self,
         adapter: &mut (impl ScriptStateAdapter + ?Sized),
         path: HostPath,
         value: HostValue,
         source_span: Option<Span>,
     ) -> HostResult<()> {
-        self.mutate_path(adapter, path, value, source_span, HostMutationOp::Mul)
+        self.mutate_diagnostic_path(adapter, path, value, source_span, HostMutationOp::Mul)
     }
 
-    pub fn div_path(
+    pub fn div_diagnostic_path(
         &mut self,
         adapter: &mut (impl ScriptStateAdapter + ?Sized),
         path: HostPath,
         value: HostValue,
         source_span: Option<Span>,
     ) -> HostResult<()> {
-        self.mutate_path(adapter, path, value, source_span, HostMutationOp::Div)
+        self.mutate_diagnostic_path(adapter, path, value, source_span, HostMutationOp::Div)
     }
 
-    pub fn rem_path(
+    pub fn rem_diagnostic_path(
         &mut self,
         adapter: &mut (impl ScriptStateAdapter + ?Sized),
         path: HostPath,
         value: HostValue,
         source_span: Option<Span>,
     ) -> HostResult<()> {
-        self.mutate_path(adapter, path, value, source_span, HostMutationOp::Rem)
+        self.mutate_diagnostic_path(adapter, path, value, source_span, HostMutationOp::Rem)
     }
 
-    pub fn push_path(
+    pub fn push_diagnostic_path(
         &mut self,
         adapter: &mut (impl ScriptStateAdapter + ?Sized),
         path: HostPath,
         value: HostValue,
         source_span: Option<Span>,
     ) -> HostResult<()> {
-        self.mutate_path(adapter, path, value, source_span, HostMutationOp::Push)
+        self.mutate_diagnostic_path(adapter, path, value, source_span, HostMutationOp::Push)
     }
 
-    fn mutate_path(
+    fn mutate_diagnostic_path(
         &mut self,
         adapter: &mut (impl ScriptStateAdapter + ?Sized),
         path: HostPath,
@@ -207,7 +207,7 @@ impl HostAccess {
             .map_err(|error| error.with_source_span_if_absent(source_span))
     }
 
-    pub fn remove_path(
+    pub fn remove_diagnostic_path(
         &mut self,
         adapter: &mut (impl ScriptStateAdapter + ?Sized),
         path: HostPath,
@@ -242,7 +242,7 @@ impl HostAccess {
             .map_err(|error| error.with_source_span_if_absent(source_span))
     }
 
-    pub fn call_method(
+    pub fn call_diagnostic_path_method(
         &mut self,
         adapter: &mut (impl ScriptStateAdapter + ?Sized),
         path: HostPath,

@@ -58,7 +58,7 @@ impl Player {
         host: &mut HostExecution<'_>,
         amount: i64,
     ) -> VmResult<i64> {
-        host.access.set_path(
+        host.access.write_diagnostic_path(
             host.adapter,
             receiver.clone().field(Player::vela_field_id_level()),
             HostValue::Int(amount),
@@ -89,7 +89,7 @@ impl Player {
         e: i64,
     ) -> VmResult<i64> {
         let total = a + b + c + d + e;
-        host.access.set_path(
+        host.access.write_diagnostic_path(
             host.adapter,
             receiver.clone().field(Player::vela_field_id_level()),
             HostValue::Int(total),
@@ -112,7 +112,7 @@ impl Player {
         f: i64,
     ) -> VmResult<i64> {
         let total = a + b + c + d + e + f;
-        host.access.set_path(
+        host.access.write_diagnostic_path(
             host.adapter,
             receiver.clone().field(Player::vela_field_id_level()),
             HostValue::Int(total),
