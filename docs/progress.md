@@ -196,6 +196,9 @@ Cranelift JIT.
   Persistent runtime-managed `VelaValue` handles are now included in
   script-global collection roots, so retained call results survive later
   `insert_global`/`update_global` heap collections.
+  Runtime `CallOptions` budget checkpoints now cover both instruction limits
+  and recursive call-depth limits at the embedding boundary, including
+  source-spanned call-stack reports.
   Script array/map/range construction, record/enum construction, and script
   field reads/writes now route through focused script aggregate/object
   boundaries while preserving current name fallback, small-field construction,
@@ -230,7 +233,7 @@ Cranelift JIT.
     unchecked register, operand, and cache fast paths;
   - ProgramVersion-owned profile metadata covers hot bytecode offsets and has
     hot-reload/schema invalidation tests;
-  - frame-map, budget-checkpoint, HostAccess slow-path, and hot-reload
+  - frame-map, HostAccess slow-path, and hot-reload
     invalidation contracts are documented or tested as interpreter contracts;
   - interpreter-only benchmark rows identify which remaining costs belong to
     M20 cache work versus later JIT work.

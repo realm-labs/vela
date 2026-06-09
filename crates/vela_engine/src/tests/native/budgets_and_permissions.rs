@@ -181,6 +181,58 @@ fn main() {
 }
 
 #[test]
+fn runtime_call_enforces_call_depth_budget() {
+    let engine = Engine::builder().build().expect("engine should build");
+    let program = compile_program_source(
+        SourceId::new(1),
+        r#"
+fn recurse() {
+    return recurse();
+}
+
+fn main() {
+    return recurse();
+}
+"#,
+    )
+    .expect("program should compile");
+    let mut runtime = Runtime::new(engine, program);
+    let mut adapter = MockStateAdapter::new();
+    let mut tx = HostAccess::new();
+
+    let error = runtime
+        .call_raw(
+            "main",
+            &[],
+            CallOptions::new(u64::MAX, usize::MAX, 2),
+            &mut adapter,
+            &mut tx,
+        )
+        .expect_err("runtime call should exhaust call-depth budget");
+
+    assert_eq!(
+        error.kind(),
+        VmErrorKind::BudgetExceeded {
+            budget: ExecutionBudgetKind::CallDepth,
+            limit: 2
+        }
+    );
+    assert_eq!(error.call_stack.len(), 3);
+    assert_eq!(error.call_stack[0].function, "recurse");
+    assert_eq!(
+        error.call_stack[0].bytecode_offset,
+        Some(vela_bytecode::InstructionOffset(0))
+    );
+    assert_eq!(error.call_stack[1].function, "recurse");
+    assert_eq!(
+        error.call_stack[1].bytecode_offset,
+        Some(vela_bytecode::InstructionOffset(0))
+    );
+    assert_eq!(error.call_stack[2].function, "main");
+    assert_eq!(error.call_stack[2].bytecode_offset, None);
+}
+
+#[test]
 fn engine_allows_pure_native_calls_without_capabilities() {
     let engine = Engine::builder()
         .register_native_fn(
