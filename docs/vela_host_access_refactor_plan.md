@@ -24,6 +24,26 @@ The final architecture should preserve Vela's product semantics:
 - Reflection, diagnostics, permissions, hot reload, and schema invalidation remain explicit.
 - The VM does not know how Rust structs, ECS worlds, actor state, databases, or mocks are traversed.
 
+Status note: checked items below reflect the repository state inspected on
+2026-06-09. Keep this plan as a checklist, not a changelog: when a checkbox is
+marked, it should point to current code, tests, docs, or validation output.
+
+## Terminal Condition
+
+This refactor is finished only when every item in both the task checklist and
+the architecture acceptance checklist is checked, and the final validation
+commands pass:
+
+- [ ] `cargo fmt --all -- --check`
+- [ ] `cargo clippy --workspace --all-targets -- -D warnings`
+- [ ] `cargo test --workspace`
+- [ ] focused host-boundary benchmarks have durable before/after conclusions in
+  `docs/performance.md`, or the benchmark deferral is explicitly documented.
+- [ ] `docs/progress.md` moves the HostPath/HostAccess M19.5 gap to completed.
+- [ ] `docs/architecture/host-and-registration.md` describes only the resolved
+  host access model, with `HostPath` documented as diagnostic, reflection, or
+  embedding materialization rather than the hot adapter API.
+
 ## Current Problem
 
 The current core adapter contract is path-first:
@@ -977,25 +997,22 @@ Add verification for:
   - dynamic index host read
   - host method call
 
-## Codex Work Units
+## Refactor Checklist
 
-Use these as separate tasks or PRs. Do not ask Codex to do the entire refactor in
-one pass unless the repository is small enough for a single coherent patch.
+Use these as separate tasks or PRs. Do not ask Codex to do the entire refactor
+in one pass unless the repository is small enough for a single coherent patch.
+Mark a top-level task only when all of its subitems and acceptance commands are
+complete.
 
 ### Task 1: Introduce Target and Resolved Types
 
-Prompt:
-
-```text
-Refactor Vela host access foundation by introducing `HostTargetPlan`,
-`HostPathPart`, `HostTargetInstance`, `HostPathArg`, `HostAccessSpec`,
-`ResolvedHostAccess`, `HostSchemaEpoch`, and `HostMutationOp` in `vela_host`.
-Do not wire them into VM execution yet. Keep code safe Rust only. Add focused
-unit tests for target identity, inline storage behavior, dynamic arg counting,
-and diagnostic path materialization.
-```
-
-Acceptance:
+- [x] Add `HostTargetPlan`, `HostPathPart`, `HostTargetInstance`,
+  `HostPathArg`, and owned dynamic args in `vela_host`.
+- [x] Add `HostAccessSpec`, `ResolvedHostAccess`, `HostSchemaEpoch`, and
+  `HostMutationOp`.
+- [x] Add diagnostic path materialization from `HostTargetInstance`.
+- [x] Keep the new types safe Rust only.
+- [ ] Record or rerun acceptance:
 
 ```text
 cargo test -p vela_host target resolved
@@ -1005,16 +1022,19 @@ cargo clippy --workspace --all-targets -- -D warnings
 
 ### Task 2: Replace `ScriptStateAdapter`
 
-Prompt:
-
-```text
-Replace the path-first `ScriptStateAdapter` trait with the new resolved-access
-contract. Remove `read_path`, `write_path`, `remove_path`, and `call_method`.
-Rewrite `MockStateAdapter` as the first implementation. Update host access tests
-to use `HostTargetPlan` and `HostTargetInstance`, not `HostPath`.
-```
-
-Acceptance:
+- [x] Replace the path-first trait contract with `global_ref(GlobalBinding)`,
+  `resolve_host_access`, `read_host`, `write_host`, `mutate_host`,
+  `remove_host`, and `call_host`.
+- [x] Remove path-first methods from the `ScriptStateAdapter` trait itself.
+- [x] Add `host_schema_epoch`.
+- [x] Rewrite `MockStateAdapter` around resolved access and target identity for
+  successful operations.
+- [ ] Remove or quarantine `MockStateAdapter` path convenience helpers so tests
+  no longer treat path-first access as the primary API.
+- [ ] Update host access tests to use `HostTargetPlan` and
+  `HostTargetInstance`, not `HostPath`, except for explicit diagnostic or
+  embedding materialization tests.
+- [ ] Record or rerun acceptance:
 
 ```text
 cargo test -p vela_host
@@ -1024,16 +1044,14 @@ cargo clippy -p vela_host --all-targets -- -D warnings
 
 ### Task 3: Refactor HostAccess Boundary
 
-Prompt:
-
-```text
-Refactor `HostAccess` so it routes `read`, `write`, `mutate`, `remove`, and
-`call` through `HostTargetInstance` and `ResolvedHostAccess`. Keep source-spanned
-error wrapping and immediate write-through semantics. Remove path-construction
-responsibility from `HostAccess`.
-```
-
-Acceptance:
+- [x] Route `read`, `write`, `mutate`, `remove`, and `call` through
+  `HostTargetInstance` and `ResolvedHostAccess`.
+- [x] Keep source-spanned error wrapping.
+- [x] Keep immediate write-through semantics.
+- [ ] Delete path-construction helpers such as `read_path`, `read_path_at`,
+  `remove_path`, and `call_method` from the normal `HostAccess` surface, or
+  move them behind explicit diagnostic/embedding conversion names.
+- [ ] Record or rerun acceptance:
 
 ```text
 cargo test -p vela_host
@@ -1042,16 +1060,16 @@ cargo test -p vela_vm host_access
 
 ### Task 4: Collapse Host Bytecode Instructions
 
-Prompt:
-
-```text
-Replace the host bytecode instruction family with `HostRead`, `HostWrite`,
-`HostMutate`, `HostRemove`, and `HostCall`. Add `host_targets` to `CodeObject`
-and use `HostTargetPlanId` operands. Update bytecode verification for target ID
-bounds, dynamic arg count, and cache-site kind matching.
-```
-
-Acceptance:
+- [x] Add `HostRead`, `HostWrite`, `HostMutate`, `HostRemove`, and `HostCall`.
+- [x] Add `host_targets` to `CodeObject`.
+- [x] Add and use `HostTargetPlanId`.
+- [x] Verify target bounds, dynamic arg count, contiguous dynamic arg indexes,
+  and cache-site kind matching for the collapsed host family.
+- [ ] Delete or fully retire legacy host instruction variants such as
+  `GetHostPath`, `SetHostPath`, and `AddHostPath`.
+- [ ] Delete `HostPathSegment::Value(Register)` once no remaining legacy
+  instruction needs it.
+- [ ] Record or rerun acceptance:
 
 ```text
 cargo test -p vela_bytecode
@@ -1060,16 +1078,17 @@ cargo test -p vela_bytecode verification
 
 ### Task 5: Rewrite VM Host Execution
 
-Prompt:
-
-```text
-Rewrite VM host execution to use `HostTargetPlanId` plus dynamic arg registers.
-Delete normal execution-time `HostPath` materialization. Convert dynamic index/key
-registers into `HostPathArg` values. Route all host operations through the new
-`HostAccess` boundary.
-```
-
-Acceptance:
+- [x] Execute the collapsed host family through `HostTargetPlanId` plus dynamic
+  arg registers.
+- [x] Convert dynamic index/key registers into `HostPathArg` values for the
+  collapsed family.
+- [x] Route collapsed host operations through the focused VM host access
+  boundary.
+- [ ] Delete normal execution-time `HostPath` materialization for all successful
+  hot host reads/writes.
+- [ ] Remove legacy host instruction execution arms once all callers compile to
+  the collapsed family.
+- [ ] Record or rerun acceptance:
 
 ```text
 cargo test -p vela_vm host
@@ -1079,16 +1098,15 @@ cargo test --workspace
 
 ### Task 6: Update Compiler Lowering
 
-Prompt:
-
-```text
-Update bytecode compiler lowering for host field, host path, host mutation, host
-remove, and host method calls. Intern `HostTargetPlan` values into each
-`CodeObject`. Emit dynamic arg registers separately from target shape. Preserve
-names only in diagnostics/debug metadata, not hot operands.
-```
-
-Acceptance:
+- [x] Lower host field, host path, host mutation, host remove, push, and host
+  method calls to the collapsed host instruction family.
+- [x] Intern `HostTargetPlan` values into each `CodeObject`.
+- [x] Emit dynamic arg registers separately from target shape.
+- [ ] Audit that diagnostic names are not retained as hot operands where a
+  stable ID, slot, or target plan is available.
+- [ ] Remove tests that still expect legacy host bytecode, unless the test is
+  explicitly covering legacy removal.
+- [ ] Record or rerun acceptance:
 
 ```text
 cargo test -p vela_bytecode compiler
@@ -1098,16 +1116,12 @@ cargo test --workspace
 
 ### Task 7: Refactor Direct Host Object and Macros
 
-Prompt:
-
-```text
-Refactor direct host object support and derive-generated host bindings to resolve
-`HostTargetPlan` values into safe direct access handles. Generate safe Rust
-resolver tables and thunks for reads, writes, mutations, and method calls. Do not
-use unsafe code or raw field offsets.
-```
-
-Acceptance:
+- [x] Add resolved target access methods to direct host object support.
+- [ ] Generate `HostTargetPlan` resolver metadata from macros.
+- [ ] Generate safe direct access thunks for reads, writes, mutations, and
+  method calls.
+- [ ] Ensure generated diagnostics metadata is separate from hot operands.
+- [ ] Record or rerun acceptance:
 
 ```text
 cargo test -p vela_macros
@@ -1117,15 +1131,13 @@ cargo test --workspace
 
 ### Task 8: Reflection and Diagnostics Cleanup
 
-Prompt:
-
-```text
-Update reflection and diagnostics to use `HostTargetPlan` and materialize
-`HostDiagnosticPath` only for user-facing messages. Remove test assumptions that
-successful host access creates owned `HostPath` values.
-```
-
-Acceptance:
+- [x] Add `HostDiagnosticPath` and materialization from target instances.
+- [x] Keep reflection able to show readable host paths.
+- [ ] Update reflection reads, writes, and calls to use target plans internally
+  where practical.
+- [ ] Remove test assumptions that successful hot host access creates owned
+  `HostPath` values.
+- [ ] Record or rerun acceptance:
 
 ```text
 cargo test -p vela_reflect
@@ -1134,15 +1146,12 @@ cargo test --workspace reflection diagnostics
 
 ### Task 9: Delete Old Path-First API
 
-Prompt:
-
-```text
-Delete obsolete path-first APIs and unused `HostPath` execution helpers. Keep
-only `HostRef` and diagnostic path materialization. Update docs and examples to
-show the resolved host access model. Do not add compatibility aliases.
-```
-
-Acceptance:
+- [ ] Delete obsolete path-first adapter, access, bytecode, VM, and test helper
+  surfaces that are not explicit diagnostic/embedding conversion APIs.
+- [ ] Keep `HostRef` and diagnostic path materialization.
+- [ ] Update docs and examples to show the resolved host access model only.
+- [ ] Do not add compatibility aliases.
+- [ ] Record or rerun acceptance:
 
 ```text
 cargo test --workspace
@@ -1152,16 +1161,14 @@ cargo clippy --workspace --all-targets -- -D warnings
 
 ### Task 10: Benchmark and Performance Report
 
-Prompt:
-
-```text
-Add or update host-boundary benchmarks for field read/write, nested path
-read/write, RMW mutation, dynamic index/key access, and host method calls.
-Compare before/after if prior baseline data is available. Update
-`docs/performance.md` only with durable conclusion rows, not routine logs.
-```
-
-Acceptance:
+- [ ] Add or update host-boundary benchmark rows for host field read/write.
+- [ ] Add or update rows for nested host path read/write.
+- [ ] Add or update rows for RMW mutation.
+- [ ] Add or update rows for dynamic index/key access.
+- [ ] Add or update rows for host method calls.
+- [ ] Update `docs/performance.md` only with durable conclusions, not routine
+  logs.
+- [ ] Record or rerun acceptance:
 
 ```text
 cargo bench -p vela_vm --bench baseline -- --quick
@@ -1199,19 +1206,30 @@ cargo bench -p vela_vm --bench baseline -- --quick
 
 The refactor is done when all of these are true:
 
-- `ScriptStateAdapter` no longer exposes `read_path`, `write_path`, `remove_path`, or `call_method`.
-- VM bytecode no longer stores `Vec<HostPathSegment>` for host access instructions.
-- VM execution no longer materializes `HostPath` on successful hot reads/writes.
-- Host dynamic indexes and keys are passed as explicit dynamic args.
-- Host inline caches key on root type, operation, target plan, and schema epoch.
-- Cache keys do not include object ID or generation.
-- Stale generation validation still happens during adapter execution.
-- `HostAccess` still preserves immediate write-through semantics.
-- Source-spanned diagnostics still work.
-- Reflection can still show readable host paths.
-- Direct host object access uses safe generated Rust only.
-- Workspace still forbids unsafe code.
-- Tests and examples use the new architecture rather than compatibility shims.
+- [x] `ScriptStateAdapter` no longer exposes `read_path`, `write_path`,
+  `remove_path`, or `call_method`.
+- [ ] VM bytecode no longer stores `Vec<HostPathSegment>` for host access
+  instructions. Legacy host instruction variants still exist.
+- [ ] VM execution no longer materializes `HostPath` on successful hot
+  reads/writes. Collapsed host instructions avoid it, but legacy execution arms
+  still materialize paths.
+- [ ] Host dynamic indexes and keys are passed as explicit dynamic args
+  everywhere. The collapsed family does this; `HostPathSegment::Value(Register)`
+  still exists for legacy paths.
+- [x] Host inline caches key on root type, operation, target plan, and schema
+  epoch.
+- [x] Cache keys do not include object ID or generation.
+- [x] Stale generation validation still happens during adapter execution.
+- [x] `HostAccess` still preserves immediate write-through semantics.
+- [x] Source-spanned diagnostics still work.
+- [x] Reflection can still show readable host paths.
+- [ ] Direct host object access uses safe generated Rust only. The resolved
+  object surface exists, but macro-generated resolver/thunk coverage still
+  needs completion or audit.
+- [x] The refactor crates remain safe Rust. The existing `vela_c_api` FFI crate
+  is the explicit workspace exception and is outside this host access refactor.
+- [ ] Tests and examples use the new architecture rather than compatibility
+  shims. Several tests still assert through `HostPath` convenience helpers.
 
 ## Anti-Goals
 
