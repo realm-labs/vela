@@ -145,5 +145,8 @@ fn cli_renders_clap_help() {
     assert!(output.status.success());
     let stdout = String::from_utf8(output.stdout).expect("stdout should be utf8");
     assert!(stdout.contains("Run a Vela script file"));
-    assert!(stdout.contains("Usage: vela_cli <SCRIPT>"));
+    assert!(
+        stdout.contains("Usage: vela_cli <SCRIPT>")
+            || stdout.contains("Usage: vela_cli.exe <SCRIPT>")
+    );
 }
