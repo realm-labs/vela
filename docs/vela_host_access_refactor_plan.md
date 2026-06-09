@@ -1118,10 +1118,10 @@ cargo test --workspace
 ### Task 7: Refactor Direct Host Object and Macros
 
 - [x] Add resolved target access methods to direct host object support.
-- [ ] Generate `HostTargetPlan` resolver metadata from macros.
+- [x] Generate `HostTargetPlan` resolver metadata from macros.
 - [ ] Generate safe direct access thunks for reads, writes, mutations, and
   method calls.
-- [ ] Ensure generated diagnostics metadata is separate from hot operands.
+- [x] Ensure generated diagnostics metadata is separate from hot operands.
 - [ ] Record or rerun acceptance:
 
 ```text
