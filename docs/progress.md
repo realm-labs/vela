@@ -138,9 +138,10 @@ Cranelift JIT.
   lookup targets. Native call dispatch is routed through a focused VM call
   boundary, preserving ID-first lookup, name fallback, HostAccess routing
   checks, and source-spanned errors. Standard value method calls can also carry
-  optional `HostMethodId` metadata, with string/range `len`/`is_empty` using an
-  ID fast path before name fallback, and script/value method dispatch is routed
-  through a focused VM call boundary. Host field/path reads, writes, compound
+  optional `HostMethodId` metadata, with string/range `len`/`is_empty` and
+  Option/Result predicates using an ID fast path before name fallback, and
+  script/value method dispatch is routed through a focused VM call boundary.
+  Host field/path reads, writes, compound
   mutations, and host method calls are routed through a focused VM
   host-access boundary, giving later path-key or direct-adapter work one
   replacement point. The host adapter boundary now resolves `HostTargetPlan`

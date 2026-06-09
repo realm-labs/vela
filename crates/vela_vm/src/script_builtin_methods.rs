@@ -5,7 +5,9 @@ use crate::{
 };
 use vela_common::HostMethodId;
 use vela_common::standard_ids::{
-    RANGE_IS_EMPTY_METHOD_ID, RANGE_LEN_METHOD_ID, STRING_IS_EMPTY_METHOD_ID, STRING_LEN_METHOD_ID,
+    OPTION_IS_NONE_METHOD_ID, OPTION_IS_SOME_METHOD_ID, RANGE_IS_EMPTY_METHOD_ID,
+    RANGE_LEN_METHOD_ID, RESULT_IS_ERR_METHOD_ID, RESULT_IS_OK_METHOD_ID,
+    STRING_IS_EMPTY_METHOD_ID, STRING_LEN_METHOD_ID,
 };
 
 pub(crate) fn call(
@@ -135,6 +137,18 @@ pub(crate) fn call_readonly_by_id(
             expect_no_args("is_empty", args)
                 .and_then(|()| is_empty(receiver, heap).map(Value::Bool)),
         );
+    }
+    if method_id == OPTION_IS_SOME_METHOD_ID && option_result_methods::is_option(receiver, heap) {
+        return Some(option_result_methods::is_some(receiver, args, heap));
+    }
+    if method_id == OPTION_IS_NONE_METHOD_ID && option_result_methods::is_option(receiver, heap) {
+        return Some(option_result_methods::is_none(receiver, args, heap));
+    }
+    if method_id == RESULT_IS_OK_METHOD_ID && option_result_methods::is_result(receiver, heap) {
+        return Some(option_result_methods::is_ok(receiver, args, heap));
+    }
+    if method_id == RESULT_IS_ERR_METHOD_ID && option_result_methods::is_result(receiver, heap) {
+        return Some(option_result_methods::is_err(receiver, args, heap));
     }
     None
 }

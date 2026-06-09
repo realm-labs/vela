@@ -226,6 +226,52 @@ fn call_method_uses_standard_range_method_id_before_name_fallback() {
 }
 
 #[test]
+fn call_method_uses_standard_option_method_id_before_name_fallback() {
+    let mut code = CodeObject::new("standard_option_method_id", 2);
+    code.push_instruction(Instruction::new(InstructionKind::MakeEnum {
+        dst: Register(0),
+        enum_name: "Option".into(),
+        variant: "None".into(),
+        fields: Vec::new(),
+    }));
+    code.push_instruction(Instruction::new(InstructionKind::CallMethod {
+        dst: Register(1),
+        receiver: Register(0),
+        method: "missing_is_none".into(),
+        value_method_id: Some(vela_common::standard_ids::OPTION_IS_NONE_METHOD_ID),
+        args: Vec::new(),
+    }));
+    code.push_instruction(Instruction::new(InstructionKind::Return {
+        src: Register(1),
+    }));
+
+    assert_eq!(Vm::new().run(&code), Ok(OwnedValue::Bool(true)));
+}
+
+#[test]
+fn call_method_uses_standard_result_method_id_before_name_fallback() {
+    let mut code = CodeObject::new("standard_result_method_id", 2);
+    code.push_instruction(Instruction::new(InstructionKind::MakeEnum {
+        dst: Register(0),
+        enum_name: "Result".into(),
+        variant: "Err".into(),
+        fields: Vec::new(),
+    }));
+    code.push_instruction(Instruction::new(InstructionKind::CallMethod {
+        dst: Register(1),
+        receiver: Register(0),
+        method: "missing_is_err".into(),
+        value_method_id: Some(vela_common::standard_ids::RESULT_IS_ERR_METHOD_ID),
+        args: Vec::new(),
+    }));
+    code.push_instruction(Instruction::new(InstructionKind::Return {
+        src: Register(1),
+    }));
+
+    assert_eq!(Vm::new().run(&code), Ok(OwnedValue::Bool(true)));
+}
+
+#[test]
 fn instruction_budget_stops_dispatch_before_next_instruction() {
     let mut code = CodeObject::new("budgeted", 2);
     let one = code.push_constant(Constant::Int(1));

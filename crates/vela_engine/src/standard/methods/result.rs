@@ -2,6 +2,7 @@ use vela_common::HostMethodId;
 use vela_reflect::registry::MethodDesc;
 
 use super::{MethodSpec, ParamSpec, descs};
+use crate::standard::ids::{RESULT_IS_ERR_METHOD_ID, RESULT_IS_OK_METHOD_ID};
 
 pub(crate) fn result_method_descs() -> Vec<MethodDesc> {
     descs(RESULT_METHODS, "result")
@@ -9,14 +10,14 @@ pub(crate) fn result_method_descs() -> Vec<MethodDesc> {
 
 const RESULT_METHODS: &[MethodSpec] = &[
     MethodSpec::new(
-        result_id(0),
+        RESULT_IS_OK_METHOD_ID,
         "is_ok",
         &[],
         "bool",
         "Returns true when the result contains a success value.",
     ),
     MethodSpec::new(
-        result_id(1),
+        RESULT_IS_ERR_METHOD_ID,
         "is_err",
         &[],
         "bool",

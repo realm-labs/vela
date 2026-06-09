@@ -2,6 +2,7 @@ use vela_common::HostMethodId;
 use vela_reflect::registry::MethodDesc;
 
 use super::{MethodSpec, ParamSpec, descs};
+use crate::standard::ids::{OPTION_IS_NONE_METHOD_ID, OPTION_IS_SOME_METHOD_ID};
 
 pub(crate) fn option_method_descs() -> Vec<MethodDesc> {
     descs(OPTION_METHODS, "option")
@@ -9,14 +10,14 @@ pub(crate) fn option_method_descs() -> Vec<MethodDesc> {
 
 const OPTION_METHODS: &[MethodSpec] = &[
     MethodSpec::new(
-        option_id(0),
+        OPTION_IS_SOME_METHOD_ID,
         "is_some",
         &[],
         "bool",
         "Returns true when the option contains a value.",
     ),
     MethodSpec::new(
-        option_id(1),
+        OPTION_IS_NONE_METHOD_ID,
         "is_none",
         &[],
         "bool",

@@ -37,5 +37,11 @@ pub const SET_FROM_ARRAY_FUNCTION_ID: FunctionId = FunctionId::new(0xff00_0400);
 pub const STRING_LEN_METHOD_ID: HostMethodId = HostMethodId::new(0xff00_0700);
 pub const STRING_IS_EMPTY_METHOD_ID: HostMethodId = HostMethodId::new(0xff00_0701);
 
+pub const OPTION_IS_SOME_METHOD_ID: HostMethodId = HostMethodId::new(0xff00_0b00);
+pub const OPTION_IS_NONE_METHOD_ID: HostMethodId = HostMethodId::new(0xff00_0b01);
+
+pub const RESULT_IS_OK_METHOD_ID: HostMethodId = HostMethodId::new(0xff00_0c00);
+pub const RESULT_IS_ERR_METHOD_ID: HostMethodId = HostMethodId::new(0xff00_0c01);
+
 pub const RANGE_LEN_METHOD_ID: HostMethodId = HostMethodId::new(0xff00_0d00);
 pub const RANGE_IS_EMPTY_METHOD_ID: HostMethodId = HostMethodId::new(0xff00_0d01);
