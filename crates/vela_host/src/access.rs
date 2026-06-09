@@ -2,11 +2,10 @@ use vela_common::{HostMethodId, Span};
 
 use crate::{
     adapter::ScriptStateAdapter,
-    add_values, div_values,
     error::{HostError, HostErrorKind, HostResult},
-    mul_values,
     path::{HostPath, HostRef},
-    rem_values, sub_values,
+    resolved::{HostAccessOp, HostAccessSpec, HostMutationOp},
+    target::{HostTargetInstance, HostTargetPlan},
     value::HostValue,
 };
 
@@ -40,8 +39,22 @@ impl HostAccess {
         path: &HostPath,
         source_span: Option<Span>,
     ) -> HostResult<HostValue> {
+        let plan = HostTargetPlan::from(path);
+        let target = HostTargetInstance::new(path.root, &plan, &[]);
+        self.read(adapter, target, source_span)
+    }
+
+    pub fn read(
+        &self,
+        adapter: &(impl ScriptStateAdapter + ?Sized),
+        target: HostTargetInstance<'_>,
+        source_span: Option<Span>,
+    ) -> HostResult<HostValue> {
+        let access = adapter
+            .resolve_host_access(HostAccessSpec::new(HostAccessOp::Read, target.plan))
+            .map_err(|error| error.with_source_span_if_absent(source_span))?;
         adapter
-            .read_path(path)
+            .read_host(access, target)
             .map_err(|error| error.with_source_span_if_absent(source_span))
     }
 
@@ -52,8 +65,23 @@ impl HostAccess {
         value: HostValue,
         source_span: Option<Span>,
     ) -> HostResult<()> {
+        let plan = HostTargetPlan::from(&path);
+        let target = HostTargetInstance::new(path.root, &plan, &[]);
+        self.write(adapter, target, value, source_span)
+    }
+
+    pub fn write(
+        &mut self,
+        adapter: &mut (impl ScriptStateAdapter + ?Sized),
+        target: HostTargetInstance<'_>,
+        value: HostValue,
+        source_span: Option<Span>,
+    ) -> HostResult<()> {
+        let access = adapter
+            .resolve_host_access(HostAccessSpec::new(HostAccessOp::Write, target.plan))
+            .map_err(|error| error.with_source_span_if_absent(source_span))?;
         adapter
-            .write_path(&path, value)
+            .write_host(access, target, value)
             .map_err(|error| error.with_source_span_if_absent(source_span))
     }
 
@@ -64,7 +92,7 @@ impl HostAccess {
         value: HostValue,
         source_span: Option<Span>,
     ) -> HostResult<()> {
-        self.write_compound_path(adapter, path, value, source_span, CompoundWrite::Add)
+        self.mutate_path(adapter, path, value, source_span, HostMutationOp::Add)
     }
 
     pub fn sub_path(
@@ -74,7 +102,7 @@ impl HostAccess {
         value: HostValue,
         source_span: Option<Span>,
     ) -> HostResult<()> {
-        self.write_compound_path(adapter, path, value, source_span, CompoundWrite::Sub)
+        self.mutate_path(adapter, path, value, source_span, HostMutationOp::Sub)
     }
 
     pub fn mul_path(
@@ -84,7 +112,7 @@ impl HostAccess {
         value: HostValue,
         source_span: Option<Span>,
     ) -> HostResult<()> {
-        self.write_compound_path(adapter, path, value, source_span, CompoundWrite::Mul)
+        self.mutate_path(adapter, path, value, source_span, HostMutationOp::Mul)
     }
 
     pub fn div_path(
@@ -94,7 +122,7 @@ impl HostAccess {
         value: HostValue,
         source_span: Option<Span>,
     ) -> HostResult<()> {
-        self.write_compound_path(adapter, path, value, source_span, CompoundWrite::Div)
+        self.mutate_path(adapter, path, value, source_span, HostMutationOp::Div)
     }
 
     pub fn rem_path(
@@ -104,7 +132,7 @@ impl HostAccess {
         value: HostValue,
         source_span: Option<Span>,
     ) -> HostResult<()> {
-        self.write_compound_path(adapter, path, value, source_span, CompoundWrite::Rem)
+        self.mutate_path(adapter, path, value, source_span, HostMutationOp::Rem)
     }
 
     pub fn push_path(
@@ -114,7 +142,36 @@ impl HostAccess {
         value: HostValue,
         source_span: Option<Span>,
     ) -> HostResult<()> {
-        self.write_compound_path(adapter, path, value, source_span, CompoundWrite::Push)
+        self.mutate_path(adapter, path, value, source_span, HostMutationOp::Push)
+    }
+
+    fn mutate_path(
+        &mut self,
+        adapter: &mut (impl ScriptStateAdapter + ?Sized),
+        path: HostPath,
+        value: HostValue,
+        source_span: Option<Span>,
+        op: HostMutationOp,
+    ) -> HostResult<()> {
+        let plan = HostTargetPlan::from(&path);
+        let target = HostTargetInstance::new(path.root, &plan, &[]);
+        self.mutate(adapter, target, op, value, source_span)
+    }
+
+    pub fn mutate(
+        &mut self,
+        adapter: &mut (impl ScriptStateAdapter + ?Sized),
+        target: HostTargetInstance<'_>,
+        op: HostMutationOp,
+        rhs: HostValue,
+        source_span: Option<Span>,
+    ) -> HostResult<()> {
+        let access = adapter
+            .resolve_host_access(HostAccessSpec::new(HostAccessOp::Mutate(op), target.plan))
+            .map_err(|error| error.with_source_span_if_absent(source_span))?;
+        adapter
+            .mutate_host(access, target, op, rhs)
+            .map_err(|error| error.with_source_span_if_absent(source_span))
     }
 
     pub fn remove_path(
@@ -123,8 +180,22 @@ impl HostAccess {
         path: HostPath,
         source_span: Option<Span>,
     ) -> HostResult<()> {
+        let plan = HostTargetPlan::from(&path);
+        let target = HostTargetInstance::new(path.root, &plan, &[]);
+        self.remove(adapter, target, source_span)
+    }
+
+    pub fn remove(
+        &mut self,
+        adapter: &mut (impl ScriptStateAdapter + ?Sized),
+        target: HostTargetInstance<'_>,
+        source_span: Option<Span>,
+    ) -> HostResult<()> {
+        let access = adapter
+            .resolve_host_access(HostAccessSpec::new(HostAccessOp::Remove, target.plan))
+            .map_err(|error| error.with_source_span_if_absent(source_span))?;
         adapter
-            .remove_path(&path)
+            .remove_host(access, target)
             .map_err(|error| error.with_source_span_if_absent(source_span))
     }
 
@@ -136,10 +207,25 @@ impl HostAccess {
         args: Vec<HostValue>,
         source_span: Option<Span>,
     ) -> HostResult<HostValue> {
-        let result = adapter
-            .call_method(&path, method, &args)
+        let plan = HostTargetPlan::from(&path);
+        let target = HostTargetInstance::new(path.root, &plan, &[]);
+        self.call(adapter, target, method, &args, source_span)
+    }
+
+    pub fn call(
+        &mut self,
+        adapter: &mut (impl ScriptStateAdapter + ?Sized),
+        target: HostTargetInstance<'_>,
+        method: HostMethodId,
+        args: &[HostValue],
+        source_span: Option<Span>,
+    ) -> HostResult<HostValue> {
+        let access = adapter
+            .resolve_host_access(HostAccessSpec::new(HostAccessOp::Call(method), target.plan))
             .map_err(|error| error.with_source_span_if_absent(source_span))?;
-        Ok(result)
+        adapter
+            .call_host(access, target, method, args)
+            .map_err(|error| error.with_source_span_if_absent(source_span))
     }
 
     pub fn require_fresh_ref(host_ref: HostRef, snapshot: &HostObjectSnapshot) -> HostResult<()> {
@@ -162,60 +248,5 @@ impl HostAccess {
             }));
         }
         Ok(())
-    }
-
-    fn write_compound_path(
-        &mut self,
-        adapter: &mut (impl ScriptStateAdapter + ?Sized),
-        path: HostPath,
-        value: HostValue,
-        source_span: Option<Span>,
-        write: CompoundWrite,
-    ) -> HostResult<()> {
-        let current = adapter
-            .read_path(&path)
-            .map_err(|error| error.with_source_span_if_absent(source_span))?;
-        let next = write.compute(&current, &value).ok_or_else(|| {
-            write
-                .invalid_error(path.clone())
-                .with_source_span(source_span)
-        })?;
-        adapter
-            .write_path(&path, next)
-            .map_err(|error| error.with_source_span_if_absent(source_span))
-    }
-}
-
-#[derive(Clone, Copy, Debug, Eq, PartialEq)]
-enum CompoundWrite {
-    Add,
-    Sub,
-    Mul,
-    Div,
-    Rem,
-    Push,
-}
-
-impl CompoundWrite {
-    fn compute(self, current: &HostValue, value: &HostValue) -> Option<HostValue> {
-        match self {
-            Self::Add => add_values(current, value),
-            Self::Sub => sub_values(current, value),
-            Self::Mul => mul_values(current, value),
-            Self::Div => div_values(current, value),
-            Self::Rem => rem_values(current, value),
-            Self::Push => None,
-        }
-    }
-
-    fn invalid_error(self, path: HostPath) -> HostError {
-        match self {
-            Self::Add => HostError::new(HostErrorKind::InvalidAdd { path }),
-            Self::Sub => HostError::new(HostErrorKind::InvalidSub { path }),
-            Self::Mul => HostError::new(HostErrorKind::InvalidMul { path }),
-            Self::Div => HostError::new(HostErrorKind::InvalidDiv { path }),
-            Self::Rem => HostError::new(HostErrorKind::InvalidRem { path }),
-            Self::Push => HostError::new(HostErrorKind::InvalidPush { path }),
-        }
     }
 }

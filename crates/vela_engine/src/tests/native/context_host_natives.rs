@@ -245,13 +245,12 @@ fn main(player) {
         ),
         Ok(OwnedValue::String("accepted".to_owned()))
     );
+    assert_eq!(adapter.method_calls().len(), 1);
+    assert_eq!(adapter.method_calls()[0].diagnostic_path(), inventory);
+    assert_eq!(adapter.method_calls()[0].method, method);
     assert_eq!(
-        adapter.method_calls(),
-        &[(
-            inventory,
-            method,
-            vec![HostValue::String("gold".to_owned()), HostValue::Int(2)]
-        )]
+        adapter.method_calls()[0].args,
+        vec![HostValue::String("gold".to_owned()), HostValue::Int(2)]
     );
 }
 

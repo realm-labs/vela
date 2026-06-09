@@ -4,7 +4,6 @@ use vela_bytecode::InstructionKind;
 use vela_bytecode::compiler::{compile_program_source, compile_program_source_with_options};
 use vela_common::{FieldId, HostMethodId, HostObjectId, HostTypeId, SourceId, TypeId};
 use vela_host::access::HostAccess;
-use vela_host::adapter::ScriptStateAdapter;
 use vela_host::mock::MockStateAdapter;
 use vela_host::path::{HostPath, HostRef};
 use vela_host::value::HostValue;

@@ -11,7 +11,6 @@ use vela_bytecode::compiler::{
 use vela_bytecode::{CodeObject, Program};
 use vela_common::{FieldId, HostMethodId, HostObjectId, HostTypeId, SourceId};
 use vela_host::access::HostAccess;
-use vela_host::adapter::ScriptStateAdapter;
 use vela_host::mock::MockStateAdapter;
 use vela_host::path::{HostPath, HostRef};
 use vela_host::value::HostValue;

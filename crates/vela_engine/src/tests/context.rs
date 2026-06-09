@@ -400,23 +400,27 @@ fn main(ctx) {
         ),
         Ok(OwnedValue::Int(1_700_000_042))
     );
+    assert_eq!(adapter.method_calls().len(), 2);
     assert_eq!(
-        adapter.method_calls(),
-        &[
-            (
-                HostPath::new(ctx),
-                CONTEXT_EMIT_METHOD_ID,
-                vec![HostValue::String("player.level_checked".to_owned())],
-            ),
-            (
-                HostPath::new(ctx),
-                CONTEXT_LOG_METHOD_ID,
-                vec![
-                    HostValue::String("info".to_owned()),
-                    HostValue::String("player.level_checked".to_owned()),
-                    HostValue::Int(1_700_000_042),
-                ],
-            ),
+        adapter.method_calls()[0].diagnostic_path(),
+        HostPath::new(ctx)
+    );
+    assert_eq!(adapter.method_calls()[0].method, CONTEXT_EMIT_METHOD_ID);
+    assert_eq!(
+        adapter.method_calls()[0].args,
+        vec![HostValue::String("player.level_checked".to_owned())]
+    );
+    assert_eq!(
+        adapter.method_calls()[1].diagnostic_path(),
+        HostPath::new(ctx)
+    );
+    assert_eq!(adapter.method_calls()[1].method, CONTEXT_LOG_METHOD_ID);
+    assert_eq!(
+        adapter.method_calls()[1].args,
+        vec![
+            HostValue::String("info".to_owned()),
+            HostValue::String("player.level_checked".to_owned()),
+            HostValue::Int(1_700_000_042),
         ]
     );
 }

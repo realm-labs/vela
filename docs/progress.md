@@ -143,7 +143,11 @@ Cranelift JIT.
   focused VM call boundary. Host field/path reads, writes, compound
   mutations, and host method calls are routed through a focused VM
   host-access boundary, giving later path-key or direct-adapter work one
-  replacement point. HostPath construction now has an exact-capacity/static
+  replacement point. The host adapter boundary now resolves `HostTargetPlan`
+  shapes into `ResolvedHostAccess` handles before executing read, write,
+  mutate, remove, or call operations, and the mock adapter stores successful
+  values by target instance identity while materializing diagnostic paths only
+  for current error/reporting surfaces. HostPath construction now has an exact-capacity/static
   segment materialization boundary so field-only paths can bypass dynamic
   index/key conversion, and HostPath/HostAccess identity now uses a dedicated
   HostPathKey sidecar with inline storage for common short paths. Host-boundary

@@ -6,10 +6,12 @@ use std::sync::{Arc, Mutex};
 use vela_bytecode::{Program, ProgramCode, ProgramImage};
 use vela_common::{GlobalSlot, HostObjectId, SourceId};
 use vela_host::access::HostAccess;
-use vela_host::adapter::ScriptStateAdapter;
+use vela_host::adapter::{GlobalBinding, ScriptStateAdapter};
 use vela_host::error::{HostError, HostErrorKind, HostResult};
 use vela_host::object::ScriptHostObject;
 use vela_host::path::{HostPath, HostRef};
+use vela_host::resolved::{HostMutationOp, ResolvedHostAccess};
+use vela_host::target::HostTargetInstance;
 use vela_host::value::HostValue;
 use vela_hot_reload::error::HotReloadResult;
 use vela_hot_reload::report::HotReloadReport;
@@ -962,16 +964,14 @@ impl RuntimeGlobalStore {
         self.slots.get(slot.get()).and_then(|host_ref| *host_ref)
     }
 
-    fn binding(&self, path: &HostPath) -> Option<&HostGlobalBinding> {
-        self.globals
-            .values()
-            .find(|global| global.host_ref == path.root)
+    fn binding(&self, root: HostRef) -> Option<&HostGlobalBinding> {
+        self.globals.values().find(|global| global.host_ref == root)
     }
 
-    fn binding_mut(&mut self, path: &HostPath) -> Option<&mut HostGlobalBinding> {
+    fn binding_mut(&mut self, root: HostRef) -> Option<&mut HostGlobalBinding> {
         self.globals
             .values_mut()
-            .find(|global| global.host_ref == path.root)
+            .find(|global| global.host_ref == root)
     }
 }
 
@@ -1082,61 +1082,161 @@ struct GlobalStoreAdapter<'call> {
 }
 
 impl ScriptStateAdapter for GlobalStoreAdapter<'_> {
-    fn global_ref(&self, name: &str) -> HostResult<HostRef> {
-        self.globals
-            .host_ref(name)
-            .or_else(|| self.fallback.global_ref(name).ok())
+    fn global_ref(&self, global: GlobalBinding<'_>) -> HostResult<HostRef> {
+        global
+            .slot
+            .and_then(|slot| self.globals.host_ref_by_slot(slot))
+            .or_else(|| self.globals.host_ref(global.name))
+            .or_else(|| self.fallback.global_ref(global).ok())
             .ok_or_else(|| HostError {
                 kind: HostErrorKind::MissingGlobal {
-                    name: name.to_owned(),
+                    name: global.name.to_owned(),
                 },
                 source_span: None,
             })
     }
 
-    fn global_ref_by_slot(&self, slot: GlobalSlot, name: &str) -> HostResult<HostRef> {
-        self.globals
-            .host_ref_by_slot(slot)
-            .or_else(|| self.fallback.global_ref_by_slot(slot, name).ok())
-            .ok_or_else(|| HostError {
-                kind: HostErrorKind::MissingGlobal {
-                    name: name.to_owned(),
-                },
-                source_span: None,
-            })
-    }
-
-    fn read_path(&self, path: &HostPath) -> HostResult<HostValue> {
-        if let Some(global) = self.globals.binding(path) {
-            return global.object.read_host_path(path);
+    fn read_host(
+        &self,
+        access: ResolvedHostAccess,
+        target: HostTargetInstance<'_>,
+    ) -> HostResult<HostValue> {
+        let path = target.to_diagnostic_path().to_host_path();
+        if let Some(global) = self.globals.binding(target.root) {
+            return global.object.read_host_path(&path);
         }
-        self.fallback.read_path(path)
+        self.fallback.read_host(access, target)
     }
 
-    fn write_path(&mut self, path: &HostPath, value: HostValue) -> HostResult<()> {
-        if let Some(global) = self.globals.binding_mut(path) {
-            return global.object.write_host_path(path, value);
-        }
-        self.fallback.write_path(path, value)
-    }
-
-    fn remove_path(&mut self, path: &HostPath) -> HostResult<()> {
-        if let Some(global) = self.globals.binding_mut(path) {
-            return global.object.remove_host_path(path);
-        }
-        self.fallback.remove_path(path)
-    }
-
-    fn call_method(
+    fn write_host(
         &mut self,
-        path: &HostPath,
+        access: ResolvedHostAccess,
+        target: HostTargetInstance<'_>,
+        value: HostValue,
+    ) -> HostResult<()> {
+        let path = target.to_diagnostic_path().to_host_path();
+        if let Some(global) = self.globals.binding_mut(target.root) {
+            return global.object.write_host_path(&path, value);
+        }
+        self.fallback.write_host(access, target, value)
+    }
+
+    fn mutate_host(
+        &mut self,
+        access: ResolvedHostAccess,
+        target: HostTargetInstance<'_>,
+        op: HostMutationOp,
+        rhs: HostValue,
+    ) -> HostResult<()> {
+        if self.globals.binding(target.root).is_some() {
+            let path = target.to_diagnostic_path().to_host_path();
+            let current = self.read_host(access, target)?;
+            let next = host_mutation_value(op, &current, &rhs, path)?;
+            return self.write_host(access, target, next);
+        }
+        self.fallback.mutate_host(access, target, op, rhs)
+    }
+
+    fn remove_host(
+        &mut self,
+        access: ResolvedHostAccess,
+        target: HostTargetInstance<'_>,
+    ) -> HostResult<()> {
+        let path = target.to_diagnostic_path().to_host_path();
+        if let Some(global) = self.globals.binding_mut(target.root) {
+            return global.object.remove_host_path(&path);
+        }
+        self.fallback.remove_host(access, target)
+    }
+
+    fn call_host(
+        &mut self,
+        access: ResolvedHostAccess,
+        target: HostTargetInstance<'_>,
         method: vela_common::HostMethodId,
         args: &[HostValue],
     ) -> HostResult<HostValue> {
-        if let Some(global) = self.globals.binding_mut(path) {
-            return global.object.call_host_method(path, method, args);
+        let path = target.to_diagnostic_path().to_host_path();
+        if let Some(global) = self.globals.binding_mut(target.root) {
+            return global.object.call_host_method(&path, method, args);
         }
-        self.fallback.call_method(path, method, args)
+        self.fallback.call_host(access, target, method, args)
+    }
+}
+
+fn host_mutation_value(
+    op: HostMutationOp,
+    current: &HostValue,
+    rhs: &HostValue,
+    path: HostPath,
+) -> HostResult<HostValue> {
+    let next = match op {
+        HostMutationOp::Add => host_add_values(current, rhs),
+        HostMutationOp::Sub => host_sub_values(current, rhs),
+        HostMutationOp::Mul => host_mul_values(current, rhs),
+        HostMutationOp::Div => host_div_values(current, rhs),
+        HostMutationOp::Rem => host_rem_values(current, rhs),
+        HostMutationOp::Push => None,
+    };
+    next.ok_or(HostError {
+        kind: match op {
+            HostMutationOp::Add => HostErrorKind::InvalidAdd { path },
+            HostMutationOp::Sub => HostErrorKind::InvalidSub { path },
+            HostMutationOp::Mul => HostErrorKind::InvalidMul { path },
+            HostMutationOp::Div => HostErrorKind::InvalidDiv { path },
+            HostMutationOp::Rem => HostErrorKind::InvalidRem { path },
+            HostMutationOp::Push => HostErrorKind::InvalidPush { path },
+        },
+        source_span: None,
+    })
+}
+
+fn host_add_values(lhs: &HostValue, rhs: &HostValue) -> Option<HostValue> {
+    match (lhs, rhs) {
+        (HostValue::Int(lhs), HostValue::Int(rhs)) => lhs.checked_add(*rhs).map(HostValue::Int),
+        (HostValue::Float(lhs), HostValue::Float(rhs)) => Some(HostValue::Float(lhs + rhs)),
+        (HostValue::String(lhs), HostValue::String(rhs)) => {
+            Some(HostValue::String(format!("{lhs}{rhs}")))
+        }
+        _ => None,
+    }
+}
+
+fn host_sub_values(lhs: &HostValue, rhs: &HostValue) -> Option<HostValue> {
+    match (lhs, rhs) {
+        (HostValue::Int(lhs), HostValue::Int(rhs)) => lhs.checked_sub(*rhs).map(HostValue::Int),
+        (HostValue::Float(lhs), HostValue::Float(rhs)) => Some(HostValue::Float(lhs - rhs)),
+        _ => None,
+    }
+}
+
+fn host_mul_values(lhs: &HostValue, rhs: &HostValue) -> Option<HostValue> {
+    match (lhs, rhs) {
+        (HostValue::Int(lhs), HostValue::Int(rhs)) => lhs.checked_mul(*rhs).map(HostValue::Int),
+        (HostValue::Float(lhs), HostValue::Float(rhs)) => Some(HostValue::Float(lhs * rhs)),
+        _ => None,
+    }
+}
+
+fn host_div_values(lhs: &HostValue, rhs: &HostValue) -> Option<HostValue> {
+    match (lhs, rhs) {
+        (HostValue::Int(_), HostValue::Int(0)) => None,
+        (HostValue::Int(lhs), HostValue::Int(rhs)) => lhs.checked_div(*rhs).map(HostValue::Int),
+        (HostValue::Float(lhs), HostValue::Float(rhs)) if *rhs != 0.0 => {
+            Some(HostValue::Float(lhs / rhs))
+        }
+        _ => None,
+    }
+}
+
+fn host_rem_values(lhs: &HostValue, rhs: &HostValue) -> Option<HostValue> {
+    match (lhs, rhs) {
+        (HostValue::Int(_), HostValue::Int(0)) => None,
+        (HostValue::Int(lhs), HostValue::Int(rhs)) => lhs.checked_rem(*rhs).map(HostValue::Int),
+        (HostValue::Float(lhs), HostValue::Float(rhs)) if *rhs != 0.0 => {
+            Some(HostValue::Float(lhs % rhs))
+        }
+        _ => None,
     }
 }
 

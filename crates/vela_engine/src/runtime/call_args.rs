@@ -5,6 +5,8 @@ use vela_host::adapter::ScriptStateAdapter;
 use vela_host::error::{HostError, HostErrorKind, HostResult};
 use vela_host::object::ScriptHostObject;
 use vela_host::path::{HostPath, HostRef};
+use vela_host::resolved::{HostMutationOp, ResolvedHostAccess};
+use vela_host::target::HostTargetInstance;
 use vela_host::value::HostValue;
 use vela_vm::budget::ExecutionBudget;
 use vela_vm::error::{VmError, VmErrorKind, VmResult};
@@ -445,12 +447,12 @@ impl<'call, 'args> CallArgsAdapter<'call, 'args> {
         Self { args, fallback }
     }
 
-    fn direct_binding<'s>(&'s self, path: &HostPath) -> Option<&'s HostArgBinding<'args>> {
+    fn direct_binding<'s>(&'s self, root: HostRef) -> Option<&'s HostArgBinding<'args>> {
         for entry in &self.args.entries {
             if let CallArg::NamedHost {
                 host_ref, binding, ..
             } = entry
-                && *host_ref == path.root
+                && *host_ref == root
             {
                 return Some(binding);
             }
@@ -460,13 +462,13 @@ impl<'call, 'args> CallArgsAdapter<'call, 'args> {
 
     fn direct_binding_mut<'s>(
         &'s mut self,
-        path: &HostPath,
+        root: HostRef,
     ) -> Option<&'s mut HostArgBinding<'args>> {
         for entry in &mut self.args.entries {
             if let CallArg::NamedHost {
                 host_ref, binding, ..
             } = entry
-                && *host_ref == path.root
+                && *host_ref == root
             {
                 return Some(binding);
             }
@@ -486,40 +488,94 @@ impl<'call, 'args> CallArgsAdapter<'call, 'args> {
 }
 
 impl ScriptStateAdapter for CallArgsAdapter<'_, '_> {
-    fn read_path(&self, path: &HostPath) -> HostResult<HostValue> {
-        match self.direct_binding(path) {
-            Some(HostArgBinding::Shared(object)) => object.read_host_path(path),
-            Some(HostArgBinding::Mutable(object)) => object.read_host_path(path),
-            None => self.fallback.read_path(path),
+    fn read_host(
+        &self,
+        access: ResolvedHostAccess,
+        target: HostTargetInstance<'_>,
+    ) -> HostResult<HostValue> {
+        let path = target.to_diagnostic_path().to_host_path();
+        match self.direct_binding(target.root) {
+            Some(HostArgBinding::Shared(object)) => object.read_host_path(&path),
+            Some(HostArgBinding::Mutable(object)) => object.read_host_path(&path),
+            None => self.fallback.read_host(access, target),
         }
     }
 
-    fn write_path(&mut self, path: &HostPath, value: HostValue) -> HostResult<()> {
-        match self.direct_binding_mut(path) {
-            Some(HostArgBinding::Shared(_)) => Err(Self::direct_access_error(path, "write")),
-            Some(HostArgBinding::Mutable(object)) => object.write_host_path(path, value),
-            None => self.fallback.write_path(path, value),
-        }
-    }
-
-    fn remove_path(&mut self, path: &HostPath) -> HostResult<()> {
-        match self.direct_binding_mut(path) {
-            Some(HostArgBinding::Shared(_)) => Err(Self::direct_access_error(path, "write")),
-            Some(HostArgBinding::Mutable(object)) => object.remove_host_path(path),
-            None => self.fallback.remove_path(path),
-        }
-    }
-
-    fn call_method(
+    fn write_host(
         &mut self,
-        path: &HostPath,
+        access: ResolvedHostAccess,
+        target: HostTargetInstance<'_>,
+        value: HostValue,
+    ) -> HostResult<()> {
+        let path = target.to_diagnostic_path().to_host_path();
+        match self.direct_binding_mut(target.root) {
+            Some(HostArgBinding::Shared(_)) => Err(Self::direct_access_error(&path, "write")),
+            Some(HostArgBinding::Mutable(object)) => object.write_host_path(&path, value),
+            None => self.fallback.write_host(access, target, value),
+        }
+    }
+
+    fn mutate_host(
+        &mut self,
+        access: ResolvedHostAccess,
+        target: HostTargetInstance<'_>,
+        op: HostMutationOp,
+        rhs: HostValue,
+    ) -> HostResult<()> {
+        match self.direct_binding(target.root) {
+            Some(_) => {
+                let path = target.to_diagnostic_path().to_host_path();
+                let current = self.read_host(access, target)?;
+                let next = match op {
+                    HostMutationOp::Add => host_add_values(&current, &rhs),
+                    HostMutationOp::Sub => host_sub_values(&current, &rhs),
+                    HostMutationOp::Mul => host_mul_values(&current, &rhs),
+                    HostMutationOp::Div => host_div_values(&current, &rhs),
+                    HostMutationOp::Rem => host_rem_values(&current, &rhs),
+                    HostMutationOp::Push => None,
+                }
+                .ok_or_else(|| HostError {
+                    kind: match op {
+                        HostMutationOp::Add => HostErrorKind::InvalidAdd { path: path.clone() },
+                        HostMutationOp::Sub => HostErrorKind::InvalidSub { path: path.clone() },
+                        HostMutationOp::Mul => HostErrorKind::InvalidMul { path: path.clone() },
+                        HostMutationOp::Div => HostErrorKind::InvalidDiv { path: path.clone() },
+                        HostMutationOp::Rem => HostErrorKind::InvalidRem { path: path.clone() },
+                        HostMutationOp::Push => HostErrorKind::InvalidPush { path: path.clone() },
+                    },
+                    source_span: None,
+                })?;
+                self.write_host(access, target, next)
+            }
+            None => self.fallback.mutate_host(access, target, op, rhs),
+        }
+    }
+
+    fn remove_host(
+        &mut self,
+        access: ResolvedHostAccess,
+        target: HostTargetInstance<'_>,
+    ) -> HostResult<()> {
+        let path = target.to_diagnostic_path().to_host_path();
+        match self.direct_binding_mut(target.root) {
+            Some(HostArgBinding::Shared(_)) => Err(Self::direct_access_error(&path, "write")),
+            Some(HostArgBinding::Mutable(object)) => object.remove_host_path(&path),
+            None => self.fallback.remove_host(access, target),
+        }
+    }
+
+    fn call_host(
+        &mut self,
+        access: ResolvedHostAccess,
+        target: HostTargetInstance<'_>,
         method: vela_common::HostMethodId,
         args: &[HostValue],
     ) -> HostResult<HostValue> {
-        match self.direct_binding_mut(path) {
-            Some(HostArgBinding::Shared(_)) => Err(Self::direct_access_error(path, "call")),
-            Some(HostArgBinding::Mutable(object)) => object.call_host_method(path, method, args),
-            None => self.fallback.call_method(path, method, args),
+        let path = target.to_diagnostic_path().to_host_path();
+        match self.direct_binding_mut(target.root) {
+            Some(HostArgBinding::Shared(_)) => Err(Self::direct_access_error(&path, "call")),
+            Some(HostArgBinding::Mutable(object)) => object.call_host_method(&path, method, args),
+            None => self.fallback.call_host(access, target, method, args),
         }
     }
 }
@@ -527,30 +583,65 @@ impl ScriptStateAdapter for CallArgsAdapter<'_, '_> {
 pub(crate) struct EmptyStateAdapter;
 
 impl ScriptStateAdapter for EmptyStateAdapter {
-    fn read_path(&self, path: &HostPath) -> HostResult<HostValue> {
+    fn read_host(
+        &self,
+        _access: ResolvedHostAccess,
+        target: HostTargetInstance<'_>,
+    ) -> HostResult<HostValue> {
         Err(HostError {
-            kind: HostErrorKind::MissingPath { path: path.clone() },
+            kind: HostErrorKind::MissingPath {
+                path: target.to_diagnostic_path().to_host_path(),
+            },
             source_span: None,
         })
     }
 
-    fn write_path(&mut self, path: &HostPath, _value: HostValue) -> HostResult<()> {
-        Err(HostError {
-            kind: HostErrorKind::MissingPath { path: path.clone() },
-            source_span: None,
-        })
-    }
-
-    fn remove_path(&mut self, path: &HostPath) -> HostResult<()> {
-        Err(HostError {
-            kind: HostErrorKind::MissingPath { path: path.clone() },
-            source_span: None,
-        })
-    }
-
-    fn call_method(
+    fn write_host(
         &mut self,
-        _path: &HostPath,
+        _access: ResolvedHostAccess,
+        target: HostTargetInstance<'_>,
+        _value: HostValue,
+    ) -> HostResult<()> {
+        Err(HostError {
+            kind: HostErrorKind::MissingPath {
+                path: target.to_diagnostic_path().to_host_path(),
+            },
+            source_span: None,
+        })
+    }
+
+    fn mutate_host(
+        &mut self,
+        _access: ResolvedHostAccess,
+        target: HostTargetInstance<'_>,
+        _op: HostMutationOp,
+        _rhs: HostValue,
+    ) -> HostResult<()> {
+        Err(HostError {
+            kind: HostErrorKind::MissingPath {
+                path: target.to_diagnostic_path().to_host_path(),
+            },
+            source_span: None,
+        })
+    }
+
+    fn remove_host(
+        &mut self,
+        _access: ResolvedHostAccess,
+        target: HostTargetInstance<'_>,
+    ) -> HostResult<()> {
+        Err(HostError {
+            kind: HostErrorKind::MissingPath {
+                path: target.to_diagnostic_path().to_host_path(),
+            },
+            source_span: None,
+        })
+    }
+
+    fn call_host(
+        &mut self,
+        _access: ResolvedHostAccess,
+        _target: HostTargetInstance<'_>,
         method: vela_common::HostMethodId,
         _args: &[HostValue],
     ) -> HostResult<HostValue> {
@@ -570,4 +661,53 @@ enum CallArgsMode {
 
 pub(crate) fn call_args_type_error(operation: &'static str) -> VmError {
     VmError::new(VmErrorKind::TypeMismatch { operation })
+}
+
+fn host_add_values(lhs: &HostValue, rhs: &HostValue) -> Option<HostValue> {
+    match (lhs, rhs) {
+        (HostValue::Int(lhs), HostValue::Int(rhs)) => lhs.checked_add(*rhs).map(HostValue::Int),
+        (HostValue::Float(lhs), HostValue::Float(rhs)) => Some(HostValue::Float(lhs + rhs)),
+        (HostValue::String(lhs), HostValue::String(rhs)) => {
+            Some(HostValue::String(format!("{lhs}{rhs}")))
+        }
+        _ => None,
+    }
+}
+
+fn host_sub_values(lhs: &HostValue, rhs: &HostValue) -> Option<HostValue> {
+    match (lhs, rhs) {
+        (HostValue::Int(lhs), HostValue::Int(rhs)) => lhs.checked_sub(*rhs).map(HostValue::Int),
+        (HostValue::Float(lhs), HostValue::Float(rhs)) => Some(HostValue::Float(lhs - rhs)),
+        _ => None,
+    }
+}
+
+fn host_mul_values(lhs: &HostValue, rhs: &HostValue) -> Option<HostValue> {
+    match (lhs, rhs) {
+        (HostValue::Int(lhs), HostValue::Int(rhs)) => lhs.checked_mul(*rhs).map(HostValue::Int),
+        (HostValue::Float(lhs), HostValue::Float(rhs)) => Some(HostValue::Float(lhs * rhs)),
+        _ => None,
+    }
+}
+
+fn host_div_values(lhs: &HostValue, rhs: &HostValue) -> Option<HostValue> {
+    match (lhs, rhs) {
+        (HostValue::Int(_), HostValue::Int(0)) => None,
+        (HostValue::Int(lhs), HostValue::Int(rhs)) => lhs.checked_div(*rhs).map(HostValue::Int),
+        (HostValue::Float(lhs), HostValue::Float(rhs)) if *rhs != 0.0 => {
+            Some(HostValue::Float(lhs / rhs))
+        }
+        _ => None,
+    }
+}
+
+fn host_rem_values(lhs: &HostValue, rhs: &HostValue) -> Option<HostValue> {
+    match (lhs, rhs) {
+        (HostValue::Int(_), HostValue::Int(0)) => None,
+        (HostValue::Int(lhs), HostValue::Int(rhs)) => lhs.checked_rem(*rhs).map(HostValue::Int),
+        (HostValue::Float(lhs), HostValue::Float(rhs)) if *rhs != 0.0 => {
+            Some(HostValue::Float(lhs % rhs))
+        }
+        _ => None,
+    }
 }

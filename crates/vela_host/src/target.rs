@@ -2,7 +2,7 @@ use vela_common::{FieldId, HostTypeId};
 
 use crate::path::HostRef;
 
-#[derive(Clone, Debug, Eq, Hash, PartialEq)]
+#[derive(Clone, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
 pub struct HostTargetPlan {
     pub root_type: HostTypeId,
     pub parts: HostPathParts,
@@ -151,6 +151,18 @@ impl Eq for HostPathParts {}
 impl std::hash::Hash for HostPathParts {
     fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
         std::hash::Hash::hash(self.as_slice(), state);
+    }
+}
+
+impl Ord for HostPathParts {
+    fn cmp(&self, other: &Self) -> std::cmp::Ordering {
+        self.as_slice().cmp(other.as_slice())
+    }
+}
+
+impl PartialOrd for HostPathParts {
+    fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
+        Some(self.cmp(other))
     }
 }
 
@@ -319,6 +331,21 @@ impl<'a> HostTargetInstance<'a> {
     }
 }
 
+impl From<&crate::path::HostPath> for HostTargetPlan {
+    fn from(path: &crate::path::HostPath) -> Self {
+        let mut plan = Self::with_part_capacity(path.root.type_id, path.segments.len());
+        for segment in &path.segments {
+            plan.parts.push(match segment {
+                crate::path::PathSegment::Field(field) => HostPathPart::Field(*field),
+                crate::path::PathSegment::Index(index) => HostPathPart::ConstIndex(*index),
+                crate::path::PathSegment::Key(key) => HostPathPart::ConstKey(key.clone()),
+                crate::path::PathSegment::VariantField(field) => HostPathPart::VariantField(*field),
+            });
+        }
+        plan
+    }
+}
+
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub struct MissingHostPathArg {
     pub index: u8,
@@ -340,6 +367,24 @@ impl std::error::Error for MissingHostPathArg {}
 pub struct HostDiagnosticPath {
     pub root: HostRef,
     pub segments: Vec<HostDiagnosticSegment>,
+}
+
+impl HostDiagnosticPath {
+    #[must_use]
+    pub fn to_host_path(&self) -> crate::path::HostPath {
+        let mut path = crate::path::HostPath::with_segment_capacity(self.root, self.segments.len());
+        for segment in &self.segments {
+            path.segments.push(match segment {
+                HostDiagnosticSegment::Field(field) => crate::path::PathSegment::Field(*field),
+                HostDiagnosticSegment::Index(index) => crate::path::PathSegment::Index(*index),
+                HostDiagnosticSegment::Key(key) => crate::path::PathSegment::Key(key.clone()),
+                HostDiagnosticSegment::VariantField(field) => {
+                    crate::path::PathSegment::VariantField(*field)
+                }
+            });
+        }
+        path
+    }
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]

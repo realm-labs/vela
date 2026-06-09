@@ -4,13 +4,15 @@ use std::collections::BTreeMap;
 #[cfg(feature = "serde")]
 use serde::{Deserialize, Serialize};
 use vela_bytecode::compiler::compile_program_source_with_options;
-use vela_common::{FieldId, GlobalSlot, HostMethodId, HostObjectId, HostTypeId, SourceId, TypeId};
+use vela_common::{FieldId, HostMethodId, HostObjectId, HostTypeId, SourceId, TypeId};
 use vela_host::access::HostAccess;
-use vela_host::adapter::ScriptStateAdapter;
+use vela_host::adapter::{GlobalBinding, ScriptStateAdapter};
 use vela_host::error::{HostError, HostErrorKind, HostResult};
 use vela_host::mock::MockStateAdapter;
 use vela_host::object::ScriptHostObject;
 use vela_host::path::{HostPath, HostRef, PathSegment};
+use vela_host::resolved::{HostMutationOp, ResolvedHostAccess};
+use vela_host::target::HostTargetInstance;
 use vela_host::value::HostValue;
 use vela_reflect::registry::{FieldDesc, MethodDesc, TypeDesc, TypeKey};
 use vela_vm::error::VmErrorKind;
@@ -110,53 +112,87 @@ struct CountingGlobalLookupAdapter {
 }
 
 impl ScriptStateAdapter for CountingGlobalLookupAdapter {
-    fn global_ref(&self, name: &str) -> HostResult<HostRef> {
+    fn global_ref(&self, global: GlobalBinding<'_>) -> HostResult<HostRef> {
+        if global.slot.is_some() {
+            self.global_ref_by_slot_calls
+                .set(self.global_ref_by_slot_calls.get().saturating_add(1));
+        }
         self.global_ref_calls
             .set(self.global_ref_calls.get().saturating_add(1));
         Err(HostError {
             kind: HostErrorKind::MissingGlobal {
-                name: name.to_owned(),
+                name: global.name.to_owned(),
             },
             source_span: None,
         })
     }
 
-    fn global_ref_by_slot(&self, slot: GlobalSlot, name: &str) -> HostResult<HostRef> {
-        self.global_ref_by_slot_calls
-            .set(self.global_ref_by_slot_calls.get().saturating_add(1));
-        let _ = slot;
-        self.global_ref(name)
-    }
-
-    fn read_path(&self, path: &HostPath) -> HostResult<HostValue> {
+    fn read_host(
+        &self,
+        _access: ResolvedHostAccess,
+        target: HostTargetInstance<'_>,
+    ) -> HostResult<HostValue> {
         Err(HostError {
-            kind: HostErrorKind::MissingPath { path: path.clone() },
+            kind: HostErrorKind::MissingPath {
+                path: target.to_diagnostic_path().to_host_path(),
+            },
             source_span: None,
         })
     }
 
-    fn write_path(&mut self, path: &HostPath, _value: HostValue) -> HostResult<()> {
-        Err(HostError {
-            kind: HostErrorKind::MissingPath { path: path.clone() },
-            source_span: None,
-        })
-    }
-
-    fn remove_path(&mut self, path: &HostPath) -> HostResult<()> {
-        Err(HostError {
-            kind: HostErrorKind::MissingPath { path: path.clone() },
-            source_span: None,
-        })
-    }
-
-    fn call_method(
+    fn write_host(
         &mut self,
-        path: &HostPath,
+        _access: ResolvedHostAccess,
+        target: HostTargetInstance<'_>,
+        _value: HostValue,
+    ) -> HostResult<()> {
+        Err(HostError {
+            kind: HostErrorKind::MissingPath {
+                path: target.to_diagnostic_path().to_host_path(),
+            },
+            source_span: None,
+        })
+    }
+
+    fn mutate_host(
+        &mut self,
+        _access: ResolvedHostAccess,
+        target: HostTargetInstance<'_>,
+        _op: HostMutationOp,
+        _rhs: HostValue,
+    ) -> HostResult<()> {
+        Err(HostError {
+            kind: HostErrorKind::MissingPath {
+                path: target.to_diagnostic_path().to_host_path(),
+            },
+            source_span: None,
+        })
+    }
+
+    fn remove_host(
+        &mut self,
+        _access: ResolvedHostAccess,
+        target: HostTargetInstance<'_>,
+    ) -> HostResult<()> {
+        Err(HostError {
+            kind: HostErrorKind::MissingPath {
+                path: target.to_diagnostic_path().to_host_path(),
+            },
+            source_span: None,
+        })
+    }
+
+    fn call_host(
+        &mut self,
+        _access: ResolvedHostAccess,
+        target: HostTargetInstance<'_>,
         _method: HostMethodId,
         _args: &[HostValue],
     ) -> HostResult<HostValue> {
         Err(HostError {
-            kind: HostErrorKind::MissingPath { path: path.clone() },
+            kind: HostErrorKind::MissingPath {
+                path: target.to_diagnostic_path().to_host_path(),
+            },
             source_span: None,
         })
     }

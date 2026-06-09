@@ -1,5 +1,6 @@
 use vela_bytecode::{HostPathSegment, Register};
 use vela_common::{FieldId, GlobalSlot, HostMethodId, Span, SymbolInterner};
+use vela_host::adapter::GlobalBinding;
 use vela_host::path::HostPath;
 use vela_host::value::HostValue;
 
@@ -36,11 +37,10 @@ pub(crate) fn load_host_global(
     {
         return Ok(value);
     }
-    let root = match slot {
-        Some(slot) => host.adapter.global_ref_by_slot(slot, name),
-        None => host.adapter.global_ref(name),
-    }
-    .map_err(|error| error.with_source_span_if_absent(runtime.source_span))?;
+    let root = host
+        .adapter
+        .global_ref(GlobalBinding { name, slot })
+        .map_err(|error| error.with_source_span_if_absent(runtime.source_span))?;
     Ok(Value::HostRef(root))
 }
 

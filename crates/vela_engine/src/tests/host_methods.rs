@@ -1,7 +1,6 @@
 use vela_bytecode::compiler::{compile_program_source, compile_program_source_with_options};
 use vela_common::{FieldId, HostMethodId, HostObjectId, HostTypeId, SourceId, TypeId, VariantId};
 use vela_host::access::HostAccess;
-use vela_host::adapter::ScriptStateAdapter;
 use vela_host::error::{HostError, HostErrorKind, HostResult};
 use vela_host::mock::MockStateAdapter;
 use vela_host::path::{HostPath, HostRef};
@@ -60,10 +59,13 @@ fn main(player: Player) {
         .expect("runtime call should run");
 
     assert_eq!(result, OwnedValue::String("done".to_owned()));
+    assert_eq!(adapter.method_calls().len(), 1);
     assert_eq!(
-        adapter.method_calls(),
-        &[(HostPath::new(host_ref), method, vec![HostValue::Int(12)])]
+        adapter.method_calls()[0].diagnostic_path(),
+        HostPath::new(host_ref)
     );
+    assert_eq!(adapter.method_calls()[0].method, method);
+    assert_eq!(adapter.method_calls()[0].args, vec![HostValue::Int(12)]);
 }
 
 #[test]

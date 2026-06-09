@@ -3,7 +3,6 @@ use std::error::Error;
 use vela_bytecode::CodeObject;
 use vela_common::HostObjectId;
 use vela_engine::runtime::CallArgs;
-use vela_host::adapter::ScriptStateAdapter;
 use vela_host::mock::MockStateAdapter;
 use vela_host::path::{HostPath, HostRef};
 use vela_host::value::HostValue;
@@ -217,7 +216,7 @@ impl DemoHostState {
         self.adapter
             .method_calls()
             .iter()
-            .filter(|(_, called_method, _)| *called_method == method)
+            .filter(|call| call.method == method)
             .count()
     }
 }

@@ -7,7 +7,6 @@ use vela_common::{FieldId, HostMethodId, HostObjectId, HostTypeId, SourceId, Spa
 
 use crate::{
     access::{HostAccess, HostObjectSnapshot},
-    adapter::ScriptStateAdapter,
     error::{HostError, HostErrorKind},
     mock::MockStateAdapter,
     path::{HostPath, HostRef},

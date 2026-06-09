@@ -56,10 +56,10 @@ fn write_through_rejects_push_and_keeps_method_call_remove_immediate() {
         )
         .expect("call method");
     assert_eq!(result, HostValue::String("ok".into()));
-    assert_eq!(
-        adapter.method_calls(),
-        &[(method_path.clone(), method, vec![HostValue::Int(1)])]
-    );
+    assert_eq!(adapter.method_calls().len(), 1);
+    assert_eq!(adapter.method_calls()[0].diagnostic_path(), method_path);
+    assert_eq!(adapter.method_calls()[0].method, method);
+    assert_eq!(adapter.method_calls()[0].args, vec![HostValue::Int(1)]);
 
     tx.remove_path(&mut adapter, rewards.clone(), None)
         .expect("remove path");
