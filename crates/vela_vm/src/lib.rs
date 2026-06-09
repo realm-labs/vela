@@ -77,11 +77,12 @@ pub(crate) use script_object::ScriptFields;
 use small_storage::SmallStorage;
 use try_propagation::{TryPropagation, try_propagate_value};
 use vela_bytecode::{
-    CacheSiteId, CodeObject, Constant, InstructionKind, InstructionOffset, Program, ProgramCode,
-    ProgramImage, Register,
+    CacheSiteId, CodeObject, Constant, HostTargetPlanId, InstructionKind, InstructionOffset,
+    Program, ProgramCode, ProgramImage, Register,
 };
-use vela_common::{FunctionId, GlobalSlot, Span, SymbolInterner};
+use vela_common::{FunctionId, GlobalSlot, HostTypeId, Span, SymbolInterner};
 use vela_host::adapter::ScriptStateAdapter;
+use vela_host::resolved::{HostAccessOp, HostSchemaEpoch, ResolvedHostAccess};
 #[cfg(test)]
 use vela_reflect as reflect;
 use vela_reflect::registry::TypeRegistry;
@@ -217,6 +218,21 @@ pub trait VmInlineCaches {
     }
 
     fn set_global_read_slot(&self, _site: CacheSiteId, _slot: GlobalSlot) {}
+
+    fn host_access(&self, _site: CacheSiteId) -> Option<HostInlineCacheEntry> {
+        None
+    }
+
+    fn set_host_access(&self, _site: CacheSiteId, _entry: HostInlineCacheEntry) {}
+}
+
+#[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
+pub struct HostInlineCacheEntry {
+    pub root_type: HostTypeId,
+    pub plan_id: HostTargetPlanId,
+    pub op: HostAccessOp,
+    pub schema_epoch: HostSchemaEpoch,
+    pub resolved: ResolvedHostAccess,
 }
 
 pub struct RuntimeMethodCall<'program, 'args, 'host, 'heap, 'roots, 'budget> {
@@ -234,6 +250,16 @@ pub struct RuntimeCodeCall<'program, 'args, 'host, 'heap, 'roots, 'budget, 'cach
     pub program: &'program dyn ProgramCode,
     pub code: &'program CodeObject,
     pub args: &'args [Value],
+    pub host: &'host mut HostExecution<'host>,
+    pub persistent: PersistentHeapExecution<'heap, 'roots>,
+    pub budget: &'budget mut ExecutionBudget,
+    pub inline_caches: Option<&'caches dyn VmInlineCaches>,
+}
+
+pub struct ProgramImageHostCall<'image, 'entry, 'args, 'host, 'heap, 'roots, 'budget, 'caches> {
+    pub image: &'image ProgramImage,
+    pub entry: &'entry str,
+    pub args: &'args [OwnedValue],
     pub host: &'host mut HostExecution<'host>,
     pub persistent: PersistentHeapExecution<'heap, 'roots>,
     pub budget: &'budget mut ExecutionBudget,
@@ -642,14 +668,32 @@ impl Vm {
         host: &mut HostExecution<'_>,
         budget: &mut ExecutionBudget,
     ) -> VmResult<OwnedValue> {
+        self.run_program_image_with_host_budget_and_caches(image, entry, args, host, budget, None)
+    }
+
+    pub fn run_program_image_with_host_budget_and_caches(
+        &self,
+        image: &ProgramImage,
+        entry: &str,
+        args: &[OwnedValue],
+        host: &mut HostExecution<'_>,
+        budget: &mut ExecutionBudget,
+        inline_caches: Option<&dyn VmInlineCaches>,
+    ) -> VmResult<OwnedValue> {
         let code = program_entry(image, entry)?;
         let mut heap = ScriptHeap::new();
         let mut heap_execution = HeapExecution::new(&mut heap);
         let args = owned_args_to_runtime(args, &mut heap_execution, Some(budget))?;
-        let result = self.execute(
-            code,
-            Some(image),
-            &args,
+        let result = self.execute_call(
+            ExecutionCall {
+                code,
+                program: Some(image),
+                captures: &[],
+                args: &args,
+                call_site: None,
+                call_site_offset: None,
+                inline_caches,
+            },
             Some(host),
             Some(&mut heap_execution),
             Some(budget),
@@ -690,36 +734,57 @@ impl Vm {
         result
     }
 
-    pub fn run_program_image_with_host_persistent_heap_and_budget(
+    pub fn run_program_image_with_host_persistent_heap_and_budget<'host>(
         &self,
         image: &ProgramImage,
         entry: &str,
         args: &[OwnedValue],
-        host: &mut HostExecution<'_>,
+        host: &'host mut HostExecution<'host>,
         persistent: PersistentHeapExecution<'_, '_>,
         budget: &mut ExecutionBudget,
     ) -> VmResult<OwnedValue> {
-        let code = program_entry(image, entry)?;
-        let mut heap_execution = HeapExecution::new(persistent.heap);
-        let args = owned_args_to_runtime(args, &mut heap_execution, Some(budget))?;
-        heap_execution.protect_values(persistent.roots);
-        let result = self.execute(
-            code,
-            Some(image),
-            &args,
-            Some(host),
+        self.run_program_image_host_call(ProgramImageHostCall {
+            image,
+            entry,
+            args,
+            host,
+            persistent,
+            budget,
+            inline_caches: None,
+        })
+    }
+
+    pub fn run_program_image_host_call(
+        &self,
+        call: ProgramImageHostCall<'_, '_, '_, '_, '_, '_, '_, '_>,
+    ) -> VmResult<OwnedValue> {
+        let code = program_entry(call.image, call.entry)?;
+        let mut heap_execution = HeapExecution::new(call.persistent.heap);
+        let args = owned_args_to_runtime(call.args, &mut heap_execution, Some(call.budget))?;
+        heap_execution.protect_values(call.persistent.roots);
+        let result = self.execute_call(
+            ExecutionCall {
+                code,
+                program: Some(call.image),
+                captures: &[],
+                args: &args,
+                call_site: None,
+                call_site_offset: None,
+                inline_caches: call.inline_caches,
+            },
+            Some(call.host),
             Some(&mut heap_execution),
-            Some(budget),
+            Some(call.budget),
         );
         let result = result.and_then(|value| value_to_owned(&value, Some(&heap_execution)));
         let mut roots = Vec::new();
-        persistent
+        call.persistent
             .roots
             .iter()
             .for_each(|value| value.trace_heap_refs(&mut roots));
         heap_execution
             .heap
-            .collect_full_with_budget(&roots, Some(budget));
+            .collect_full_with_budget(&roots, Some(call.budget));
         result
     }
 

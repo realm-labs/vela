@@ -4,7 +4,7 @@ use crate::{
     adapter::ScriptStateAdapter,
     error::{HostError, HostErrorKind, HostResult},
     path::{HostPath, HostRef},
-    resolved::{HostAccessOp, HostAccessSpec, HostMutationOp},
+    resolved::{HostAccessOp, HostAccessSpec, HostMutationOp, ResolvedHostAccess},
     target::{HostTargetInstance, HostTargetPlan},
     value::HostValue,
 };
@@ -53,6 +53,16 @@ impl HostAccess {
         let access = adapter
             .resolve_host_access(HostAccessSpec::new(HostAccessOp::Read, target.plan))
             .map_err(|error| error.with_source_span_if_absent(source_span))?;
+        self.read_resolved(adapter, access, target, source_span)
+    }
+
+    pub fn read_resolved(
+        &self,
+        adapter: &(impl ScriptStateAdapter + ?Sized),
+        access: ResolvedHostAccess,
+        target: HostTargetInstance<'_>,
+        source_span: Option<Span>,
+    ) -> HostResult<HostValue> {
         adapter
             .read_host(access, target)
             .map_err(|error| error.with_source_span_if_absent(source_span))
@@ -80,6 +90,17 @@ impl HostAccess {
         let access = adapter
             .resolve_host_access(HostAccessSpec::new(HostAccessOp::Write, target.plan))
             .map_err(|error| error.with_source_span_if_absent(source_span))?;
+        self.write_resolved(adapter, access, target, value, source_span)
+    }
+
+    pub fn write_resolved(
+        &mut self,
+        adapter: &mut (impl ScriptStateAdapter + ?Sized),
+        access: ResolvedHostAccess,
+        target: HostTargetInstance<'_>,
+        value: HostValue,
+        source_span: Option<Span>,
+    ) -> HostResult<()> {
         adapter
             .write_host(access, target, value)
             .map_err(|error| error.with_source_span_if_absent(source_span))
@@ -169,6 +190,18 @@ impl HostAccess {
         let access = adapter
             .resolve_host_access(HostAccessSpec::new(HostAccessOp::Mutate(op), target.plan))
             .map_err(|error| error.with_source_span_if_absent(source_span))?;
+        self.mutate_resolved(adapter, access, target, op, rhs, source_span)
+    }
+
+    pub fn mutate_resolved(
+        &mut self,
+        adapter: &mut (impl ScriptStateAdapter + ?Sized),
+        access: ResolvedHostAccess,
+        target: HostTargetInstance<'_>,
+        op: HostMutationOp,
+        rhs: HostValue,
+        source_span: Option<Span>,
+    ) -> HostResult<()> {
         adapter
             .mutate_host(access, target, op, rhs)
             .map_err(|error| error.with_source_span_if_absent(source_span))
@@ -194,6 +227,16 @@ impl HostAccess {
         let access = adapter
             .resolve_host_access(HostAccessSpec::new(HostAccessOp::Remove, target.plan))
             .map_err(|error| error.with_source_span_if_absent(source_span))?;
+        self.remove_resolved(adapter, access, target, source_span)
+    }
+
+    pub fn remove_resolved(
+        &mut self,
+        adapter: &mut (impl ScriptStateAdapter + ?Sized),
+        access: ResolvedHostAccess,
+        target: HostTargetInstance<'_>,
+        source_span: Option<Span>,
+    ) -> HostResult<()> {
         adapter
             .remove_host(access, target)
             .map_err(|error| error.with_source_span_if_absent(source_span))
@@ -223,6 +266,18 @@ impl HostAccess {
         let access = adapter
             .resolve_host_access(HostAccessSpec::new(HostAccessOp::Call(method), target.plan))
             .map_err(|error| error.with_source_span_if_absent(source_span))?;
+        self.call_resolved(adapter, access, target, method, args, source_span)
+    }
+
+    pub fn call_resolved(
+        &mut self,
+        adapter: &mut (impl ScriptStateAdapter + ?Sized),
+        access: ResolvedHostAccess,
+        target: HostTargetInstance<'_>,
+        method: HostMethodId,
+        args: &[HostValue],
+        source_span: Option<Span>,
+    ) -> HostResult<HostValue> {
         adapter
             .call_host(access, target, method, args)
             .map_err(|error| error.with_source_span_if_absent(source_span))

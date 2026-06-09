@@ -25,8 +25,8 @@ use vela_vm::heap::{HeapValue, ScriptHeap};
 use vela_vm::owned_value::OwnedValue;
 use vela_vm::value::Value;
 use vela_vm::{
-    PersistentHeapExecution, RuntimeCodeCall, RuntimeMethodCall, ScriptGlobalValues,
-    owned_to_persistent_value, persistent_value_to_owned,
+    PersistentHeapExecution, ProgramImageHostCall, RuntimeCodeCall, RuntimeMethodCall,
+    ScriptGlobalValues, owned_to_persistent_value, persistent_value_to_owned,
 };
 
 use crate::engine::Engine;
@@ -532,24 +532,26 @@ where
         };
         if options.managed_heap || !self.state.script_globals.is_empty() {
             let roots = self.state.script_globals.roots();
-            vm.run_program_image_with_host_persistent_heap_and_budget(
-                self.image.program_image(),
+            vm.run_program_image_host_call(ProgramImageHostCall {
+                image: self.image.program_image(),
                 entry,
                 args,
-                &mut host,
-                PersistentHeapExecution {
+                host: &mut host,
+                persistent: PersistentHeapExecution {
                     heap: &mut self.state.script_globals.heap,
                     roots: &roots,
                 },
-                &mut budget,
-            )
+                budget: &mut budget,
+                inline_caches: Some(&self.state.inline_caches),
+            })
         } else {
-            vm.run_program_image_with_host_and_budget(
+            vm.run_program_image_with_host_budget_and_caches(
                 self.image.program_image(),
                 entry,
                 args,
                 &mut host,
                 &mut budget,
+                Some(&self.state.inline_caches),
             )
         }
     }

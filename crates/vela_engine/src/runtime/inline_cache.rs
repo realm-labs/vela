@@ -2,6 +2,7 @@ use std::cell::RefCell;
 
 use vela_bytecode::CacheSiteId;
 use vela_common::GlobalSlot;
+use vela_vm::HostInlineCacheEntry;
 
 use super::image::RuntimeImage;
 
@@ -14,6 +15,7 @@ pub(super) struct InlineCaches {
 pub(super) enum InlineCacheEntry {
     Empty,
     GlobalRead { slot: GlobalSlot },
+    HostAccess(HostInlineCacheEntry),
 }
 
 impl InlineCaches {
@@ -47,6 +49,19 @@ impl InlineCaches {
             *entry = InlineCacheEntry::GlobalRead { slot };
         }
     }
+
+    pub(super) fn host_access(&self, site: CacheSiteId) -> Option<HostInlineCacheEntry> {
+        match self.entries.borrow().get(site.index()) {
+            Some(InlineCacheEntry::HostAccess(entry)) => Some(*entry),
+            _ => None,
+        }
+    }
+
+    pub(super) fn set_host_access(&self, site: CacheSiteId, entry: HostInlineCacheEntry) {
+        if let Some(slot) = self.entries.borrow_mut().get_mut(site.index()) {
+            *slot = InlineCacheEntry::HostAccess(entry);
+        }
+    }
 }
 
 impl vela_vm::VmInlineCaches for InlineCaches {
@@ -65,13 +80,27 @@ impl vela_vm::VmInlineCaches for InlineCaches {
     fn set_global_read_slot(&self, site: CacheSiteId, slot: GlobalSlot) {
         self.set_global_read_slot(site, slot);
     }
+
+    fn host_access(&self, site: CacheSiteId) -> Option<HostInlineCacheEntry> {
+        self.host_access(site)
+    }
+
+    fn set_host_access(&self, site: CacheSiteId, entry: HostInlineCacheEntry) {
+        self.set_host_access(site, entry);
+    }
 }
 
 #[cfg(test)]
 mod tests {
     use vela_bytecode::CacheSiteKind;
     use vela_bytecode::compiler::compile_program_source_with_options;
-    use vela_common::SourceId;
+    use vela_common::{FieldId, HostObjectId, HostTypeId, SourceId, TypeId};
+    use vela_host::access::HostAccess;
+    use vela_host::mock::MockStateAdapter;
+    use vela_host::path::{HostPath, HostRef};
+    use vela_host::resolved::{HostAccessOp, ResolvedHostAccessKind};
+    use vela_host::value::HostValue;
+    use vela_reflect::registry::{FieldDesc, TypeDesc, TypeKey};
     use vela_vm::owned_value::OwnedValue;
 
     use crate::engine::Engine;
@@ -210,5 +239,77 @@ fn read_second() {
             runtime.value_to_owned(&first_after_update),
             Ok(OwnedValue::Int(30))
         );
+    }
+
+    #[test]
+    fn host_access_inline_cache_records_resolved_target_guard() {
+        let engine = Engine::builder()
+            .register_type(
+                TypeDesc::new(TypeKey::new(TypeId::new(1), "CachedHostPlayer"))
+                    .host_type(HostTypeId::new(1))
+                    .field(FieldDesc::new(FieldId::new(1), "level")),
+            )
+            .build()
+            .expect("engine should build");
+        let program = compile_program_source_with_options(
+            SourceId::new(1),
+            r#"
+fn read_level(player: CachedHostPlayer) {
+    return player.level;
+}
+"#,
+            &engine.compiler_options(),
+        )
+        .expect("program should compile");
+        let function = program
+            .function("read_level")
+            .expect("read_level should exist");
+        let cache_site = function
+            .cache_sites
+            .sites()
+            .iter()
+            .find(|site| site.kind == CacheSiteKind::HostPathRead)
+            .expect("read_level should have host read site")
+            .id;
+        let host_target = function
+            .host_targets
+            .first()
+            .expect("read_level should have host target")
+            .clone();
+        let mut runtime = Runtime::new(engine, program);
+        let host_ref = HostRef::new(HostTypeId::new(1), HostObjectId::new(42), 1);
+        let host_path = HostPath::new(host_ref).field(FieldId::new(1));
+        let mut adapter = MockStateAdapter::new();
+        adapter.insert_value(host_path, HostValue::Int(12));
+        let mut access = HostAccess::new();
+
+        assert_eq!(runtime.state.inline_caches.host_access(cache_site), None);
+
+        let value = runtime
+            .call_raw(
+                "read_level",
+                &[OwnedValue::HostRef(host_ref)],
+                CallOptions::unbounded(),
+                &mut adapter,
+                &mut access,
+            )
+            .expect("read_level should run");
+
+        assert_eq!(value, OwnedValue::Int(12));
+        let entry = runtime
+            .state
+            .inline_caches
+            .host_access(cache_site)
+            .expect("host read should populate cache");
+        assert_eq!(entry.root_type, HostTypeId::new(1));
+        assert_eq!(entry.plan_id.index(), 0);
+        assert_eq!(entry.op, HostAccessOp::Read);
+        assert_eq!(entry.schema_epoch.get(), 0);
+        assert_eq!(
+            entry.resolved.adapter_kind,
+            ResolvedHostAccessKind::GenericPath
+        );
+        assert_eq!(entry.resolved.schema_epoch.get(), 0);
+        assert_eq!(host_target.root_type, HostTypeId::new(1));
     }
 }

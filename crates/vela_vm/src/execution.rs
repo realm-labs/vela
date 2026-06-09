@@ -634,6 +634,7 @@ impl Vm {
                             heap: heap.as_deref_mut(),
                             budget: budget.as_deref_mut(),
                             host: host.as_deref_mut(),
+                            inline_caches: call.inline_caches,
                             source_span: instruction.span,
                         },
                         global,
@@ -652,9 +653,9 @@ impl Vm {
                     root,
                     target,
                     dynamic_args,
-                    ..
+                    cache_site,
                 } => {
-                    let target = host_access::code_host_target(
+                    let plan = host_access::code_host_target(
                         &code.host_targets,
                         *target,
                         instruction.span,
@@ -665,11 +666,14 @@ impl Vm {
                             heap: heap.as_deref_mut(),
                             budget: budget.as_deref_mut(),
                             host: host.as_deref_mut(),
+                            inline_caches: call.inline_caches,
                             source_span: instruction.span,
                         },
                         *root,
-                        target,
+                        *target,
+                        plan,
                         dynamic_args,
+                        *cache_site,
                     )?;
                     frame.write(*dst, value)?;
                 }
@@ -678,9 +682,9 @@ impl Vm {
                     target,
                     dynamic_args,
                     src,
-                    ..
+                    cache_site,
                 } => {
-                    let target = host_access::code_host_target(
+                    let plan = host_access::code_host_target(
                         &code.host_targets,
                         *target,
                         instruction.span,
@@ -691,12 +695,15 @@ impl Vm {
                             heap: heap.as_deref_mut(),
                             budget: budget.as_deref_mut(),
                             host: host.as_deref_mut(),
+                            inline_caches: call.inline_caches,
                             source_span: instruction.span,
                         },
                         *root,
-                        target,
+                        *target,
+                        plan,
                         dynamic_args,
                         *src,
+                        *cache_site,
                     )?;
                 }
                 InstructionKind::HostMutate {
@@ -705,9 +712,9 @@ impl Vm {
                     dynamic_args,
                     op,
                     rhs,
-                    ..
+                    cache_site,
                 } => {
-                    let target = host_access::code_host_target(
+                    let plan = host_access::code_host_target(
                         &code.host_targets,
                         *target,
                         instruction.span,
@@ -718,22 +725,27 @@ impl Vm {
                             heap: heap.as_deref_mut(),
                             budget: budget.as_deref_mut(),
                             host: host.as_deref_mut(),
+                            inline_caches: call.inline_caches,
                             source_span: instruction.span,
                         },
                         *root,
-                        target,
-                        dynamic_args,
-                        *op,
-                        *rhs,
+                        host_access::HostMutationPlan {
+                            target_id: *target,
+                            target: plan,
+                            dynamic_args,
+                            op: *op,
+                            rhs: *rhs,
+                            cache_site: *cache_site,
+                        },
                     )?;
                 }
                 InstructionKind::HostRemove {
                     root,
                     target,
                     dynamic_args,
-                    ..
+                    cache_site,
                 } => {
-                    let target = host_access::code_host_target(
+                    let plan = host_access::code_host_target(
                         &code.host_targets,
                         *target,
                         instruction.span,
@@ -744,11 +756,14 @@ impl Vm {
                             heap: heap.as_deref_mut(),
                             budget: budget.as_deref_mut(),
                             host: host.as_deref_mut(),
+                            inline_caches: call.inline_caches,
                             source_span: instruction.span,
                         },
                         *root,
-                        target,
+                        *target,
+                        plan,
                         dynamic_args,
+                        *cache_site,
                     )?;
                 }
                 InstructionKind::HostCall {
@@ -758,9 +773,9 @@ impl Vm {
                     dynamic_args,
                     method,
                     args,
-                    ..
+                    cache_site,
                 } => {
-                    let target = host_access::code_host_target(
+                    let plan = host_access::code_host_target(
                         &code.host_targets,
                         *target,
                         instruction.span,
@@ -771,15 +786,18 @@ impl Vm {
                             heap: heap.as_deref_mut(),
                             budget: budget.as_deref_mut(),
                             host: host.as_deref_mut(),
+                            inline_caches: call.inline_caches,
                             source_span: instruction.span,
                         },
                         *root,
                         host_access::HostCallPlan {
-                            target,
+                            target_id: *target,
+                            target: plan,
                             dynamic_args,
                             method: *method,
                             args,
                             wants_return: dst.is_some(),
+                            cache_site: *cache_site,
                         },
                     )?;
                     if let (Some(dst), Some(return_value)) = (dst, return_value) {
@@ -793,6 +811,7 @@ impl Vm {
                             heap: heap.as_deref_mut(),
                             budget: budget.as_deref_mut(),
                             host: host.as_deref_mut(),
+                            inline_caches: call.inline_caches,
                             source_span: instruction.span,
                         },
                         *root,
@@ -812,6 +831,7 @@ impl Vm {
                             heap: heap.as_deref_mut(),
                             budget: budget.as_deref_mut(),
                             host: host.as_deref_mut(),
+                            inline_caches: call.inline_caches,
                             source_span: instruction.span,
                         },
                         *root,
@@ -827,6 +847,7 @@ impl Vm {
                             heap: heap.as_deref_mut(),
                             budget: budget.as_deref_mut(),
                             host: host.as_deref_mut(),
+                            inline_caches: call.inline_caches,
                             source_span: instruction.span,
                         },
                         *root,
@@ -846,6 +867,7 @@ impl Vm {
                             heap: heap.as_deref_mut(),
                             budget: budget.as_deref_mut(),
                             host: host.as_deref_mut(),
+                            inline_caches: call.inline_caches,
                             source_span: instruction.span,
                         },
                         *root,
@@ -861,6 +883,7 @@ impl Vm {
                             heap: heap.as_deref_mut(),
                             budget: budget.as_deref_mut(),
                             host: host.as_deref_mut(),
+                            inline_caches: call.inline_caches,
                             source_span: instruction.span,
                         },
                         *root,
@@ -876,6 +899,7 @@ impl Vm {
                             heap: heap.as_deref_mut(),
                             budget: budget.as_deref_mut(),
                             host: host.as_deref_mut(),
+                            inline_caches: call.inline_caches,
                             source_span: instruction.span,
                         },
                         *root,
@@ -891,6 +915,7 @@ impl Vm {
                             heap: heap.as_deref_mut(),
                             budget: budget.as_deref_mut(),
                             host: host.as_deref_mut(),
+                            inline_caches: call.inline_caches,
                             source_span: instruction.span,
                         },
                         *root,
@@ -906,6 +931,7 @@ impl Vm {
                             heap: heap.as_deref_mut(),
                             budget: budget.as_deref_mut(),
                             host: host.as_deref_mut(),
+                            inline_caches: call.inline_caches,
                             source_span: instruction.span,
                         },
                         *root,
@@ -921,6 +947,7 @@ impl Vm {
                             heap: heap.as_deref_mut(),
                             budget: budget.as_deref_mut(),
                             host: host.as_deref_mut(),
+                            inline_caches: call.inline_caches,
                             source_span: instruction.span,
                         },
                         *root,
@@ -941,6 +968,7 @@ impl Vm {
                             heap: heap.as_deref_mut(),
                             budget: budget.as_deref_mut(),
                             host: host.as_deref_mut(),
+                            inline_caches: call.inline_caches,
                             source_span: instruction.span,
                         },
                         *root,
@@ -962,6 +990,7 @@ impl Vm {
                             heap: heap.as_deref_mut(),
                             budget: budget.as_deref_mut(),
                             host: host.as_deref_mut(),
+                            inline_caches: call.inline_caches,
                             source_span: instruction.span,
                         },
                         *root,
@@ -983,6 +1012,7 @@ impl Vm {
                             heap: heap.as_deref_mut(),
                             budget: budget.as_deref_mut(),
                             host: host.as_deref_mut(),
+                            inline_caches: call.inline_caches,
                             source_span: instruction.span,
                         },
                         *root,
@@ -1004,6 +1034,7 @@ impl Vm {
                             heap: heap.as_deref_mut(),
                             budget: budget.as_deref_mut(),
                             host: host.as_deref_mut(),
+                            inline_caches: call.inline_caches,
                             source_span: instruction.span,
                         },
                         *root,
@@ -1025,6 +1056,7 @@ impl Vm {
                             heap: heap.as_deref_mut(),
                             budget: budget.as_deref_mut(),
                             host: host.as_deref_mut(),
+                            inline_caches: call.inline_caches,
                             source_span: instruction.span,
                         },
                         *root,
@@ -1046,6 +1078,7 @@ impl Vm {
                             heap: heap.as_deref_mut(),
                             budget: budget.as_deref_mut(),
                             host: host.as_deref_mut(),
+                            inline_caches: call.inline_caches,
                             source_span: instruction.span,
                         },
                         *root,
@@ -1062,6 +1095,7 @@ impl Vm {
                             heap: heap.as_deref_mut(),
                             budget: budget.as_deref_mut(),
                             host: host.as_deref_mut(),
+                            inline_caches: call.inline_caches,
                             source_span: instruction.span,
                         },
                         *root,
@@ -1083,6 +1117,7 @@ impl Vm {
                             heap: heap.as_deref_mut(),
                             budget: budget.as_deref_mut(),
                             host: host.as_deref_mut(),
+                            inline_caches: call.inline_caches,
                             source_span: instruction.span,
                         },
                         *root,

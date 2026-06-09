@@ -162,6 +162,10 @@ Cranelift JIT.
   `PathProxy` now stores a root `HostRef`, `HostTargetPlan`, and owned dynamic
   args, routing operations through `HostTargetInstance` and materializing
   `HostPath` only at explicit diagnostic/embedding conversion edges.
+  Runtime inline caches now have host access entries guarded by root type,
+  target-plan ID, operation, and host schema epoch; collapsed host bytecode
+  resolves through that cache boundary while adapter execution still validates
+  generations, permissions, and source-spanned slow paths.
   Host-boundary
   conversion failures are covered as HostAccess slow paths that leave adapter
   state unchanged.
