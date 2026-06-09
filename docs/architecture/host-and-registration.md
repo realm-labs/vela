@@ -12,6 +12,7 @@ Correct direction:
 
 ```rust
 HostRef<Account>
+HostTargetPlan<Account.balance>
 PathProxy<Account.balance>
 HostAccess
 ```
@@ -27,9 +28,9 @@ account.ledger.add("credit", 100)
 Runtime operations are explicit:
 
 ```text
-ReadModifyWrite(account.balance, Add(1))
-Set(account.status, "preferred")
-CallHostMethod(account.ledger, add, ["credit", 100])
+HostMutate(target=account.balance, op=Add, rhs=1)
+HostWrite(target=account.status, value="preferred")
+HostCall(target=account.ledger, method=add, args=["credit", 100])
 ```
 
 ### HostRef
@@ -44,7 +45,37 @@ pub struct HostRef {
 
 `generation` prevents stale references from writing to a new object after ID reuse.
 
-### HostPath
+### Host Targets
+
+```rust
+pub struct HostTargetPlan {
+    pub root_type: HostTypeId,
+    pub parts: HostPathParts,
+}
+
+pub enum HostPathPart {
+    Field(FieldId),
+    VariantField(FieldId),
+    ConstIndex(u32),
+    ConstKey(String),
+    DynIndex { arg: u8 },
+    DynKey { arg: u8 },
+}
+
+pub struct HostTargetInstance<'a> {
+    pub root: HostRef,
+    pub plan: &'a HostTargetPlan,
+    pub args: &'a [HostPathArg<'a>],
+}
+```
+
+Compiled bytecode stores interned `HostTargetPlan` values. Runtime execution
+combines a plan with the current root `HostRef` and any dynamic index/key
+arguments to form a `HostTargetInstance`.
+
+`HostPath` remains available for diagnostics, reflection inspection, mock
+fixture setup, and embedding APIs that intentionally materialize a readable
+path. It is not the hot adapter API.
 
 ```rust
 pub struct HostPath {
@@ -73,12 +104,12 @@ writes, and method calls to the adapter immediately.
 ### Read And Write Semantics
 
 Host handles are call-scope references to Rust-owned state. Complex Rust
-objects stay behind `HostRef` and `HostPath`; child field access appends path
-segments instead of cloning parent structures. Host field reads and writes use
-scalar `HostValue` conversion at the boundary: null, bool, int, float, string,
-and handles. Complex script-owned records, arrays, maps, and enums cross via
-the explicit owned-value serialization path, not the high-frequency host
-handle path.
+objects stay behind `HostRef` roots and compiled `HostTargetPlan` shapes; child
+field access extends the target plan instead of cloning parent structures. Host
+field reads and writes use scalar `HostValue` conversion at the boundary: null,
+bool, int, float, string, and handles. Complex script-owned records, arrays,
+maps, and enums cross via the explicit owned-value serialization path, not the
+high-frequency host handle path.
 
 Scripts observe writes made earlier in the same call because writes mutate the
 adapter immediately:
@@ -91,7 +122,8 @@ print(account.balance) // prints 10
 Read logic:
 
 ```text
-read_path(path):
+read(target):
+    resolve HostAccessSpec(Read, target.plan) to ResolvedHostAccess
     validate generation and read permission
     return current adapter value
 ```
@@ -99,7 +131,8 @@ read_path(path):
 Write logic:
 
 ```text
-write_path(path, value):
+write(target, value):
+    resolve HostAccessSpec(Write, target.plan) to ResolvedHostAccess
     validate access
     write adapter immediately
 ```
@@ -112,27 +145,45 @@ If a later script operation traps, previous host writes are retained.
 result, and writes the adapter. This keeps permissions and source-spanned
 diagnostics in one host access boundary without retaining a growing journal.
 
-Map-like host paths keep script string keys in `PathSegment::Key(String)` so
-directly injected Rust objects and generic adapters can resolve the key without
-depending on VM-internal symbol tables. Collection-shaped host mutations must
-be adapter-defined write-through operations. The default host boundary must not
-read a complex host collection, clone it into `HostValue`, modify the clone,
-and write it back. Scalar-only `HostValue` conversion cannot synthesize
-collection mutation by copying arrays or maps.
+Dynamic host indexes and keys are passed as explicit `HostPathArg` values, so
+adapters can resolve them without depending on VM-internal symbol tables.
+Collection-shaped host mutations must be adapter-defined write-through
+operations. The default host boundary must not read a complex host collection,
+clone it into `HostValue`, modify the clone, and write it back. Scalar-only
+`HostValue` conversion cannot synthesize collection mutation by copying arrays
+or maps.
 
 ### Host State Adapter
 
 ```rust
 pub trait ScriptStateAdapter {
-    fn read_path(&self, path: &HostPath) -> HostResult<HostValue>;
+    fn host_schema_epoch(&self) -> HostSchemaEpoch;
 
-    fn write_path(&mut self, path: &HostPath, value: HostValue) -> HostResult<()>;
+    fn global_ref(&self, global: GlobalBinding<'_>) -> HostResult<HostRef>;
 
-    fn remove_path(&mut self, path: &HostPath) -> HostResult<()>;
+    fn resolve_host_access(&self, spec: HostAccessSpec<'_>) -> HostResult<ResolvedHostAccess>;
 
-    fn call_method(
+    fn read_host(&self, access: ResolvedHostAccess, target: HostTargetInstance<'_>)
+        -> HostResult<HostValue>;
+
+    fn write_host(&mut self, access: ResolvedHostAccess, target: HostTargetInstance<'_>, value: HostValue)
+        -> HostResult<()>;
+
+    fn mutate_host(
         &mut self,
-        path: &HostPath,
+        access: ResolvedHostAccess,
+        target: HostTargetInstance<'_>,
+        op: HostMutationOp,
+        rhs: HostValue,
+    ) -> HostResult<()>;
+
+    fn remove_host(&mut self, access: ResolvedHostAccess, target: HostTargetInstance<'_>)
+        -> HostResult<()>;
+
+    fn call_host(
+        &mut self,
+        access: ResolvedHostAccess,
+        target: HostTargetInstance<'_>,
         method: HostMethodId,
         args: &[HostValue],
     ) -> HostResult<HostValue>;
@@ -166,8 +217,8 @@ global by its fully qualified declaration name, such as
 Rust-defined globals are represented as persistent host objects in the
 runtime's global store. Loading a Rust-defined global produces a `HostRef`
 root, and script field reads, writes, method calls, and keyed paths then use
-the same `HostPath` and write-through `HostAccess` path as call-boundary host
-handles. Because a `Runtime` may be moved to a worker thread, persistent host
+the same `HostTargetPlan` and write-through `HostAccess` execution path as
+call-boundary host handles. Because a `Runtime` may be moved to a worker thread, persistent host
 global objects must be `Send`. Direct call-boundary `with_host_ref` and
 `with_host_mut` bindings are scoped to the call and do not impose this
 persistent-global requirement.
@@ -196,10 +247,10 @@ Rust can then insert that returned `VelaValue` or materialized `OwnedValue` as
 the runtime instance for a declared global.
 
 Direct call-boundary objects implement the same method shape through
-`ScriptHostObject::call_host_method(&HostPath, HostMethodId, &[HostValue])`.
-Passing the receiver path is required for child methods such as
-`player.inventory.add("gold", 10)` and trait-object fields whose callable
-surface lives behind a host path.
+`ScriptHostObject::call_resolved_host(ResolvedHostAccess, HostTargetInstance,
+HostMethodId, &[HostValue])`. Passing the receiver target instance is required
+for child methods such as `player.inventory.add("gold", 10)` and trait-object
+fields whose callable surface lives behind a nested host target.
 
 ### Host Type Methods And Indexing
 
@@ -217,7 +268,8 @@ spec. There is no separate `host_map`, `host_set`, or `host_vec` script model.
 Host method calls use a single runtime shape:
 
 ```text
-receiver_path: HostPath
+receiver: HostTargetInstance
+access: ResolvedHostAccess
 method_id: HostMethodId
 args: scalar HostValue values or typed script-owned arguments
 ```
@@ -233,10 +285,10 @@ be diagnosed as unsupported index access once the compiler has enough receiver
 type facts; dynamic fallback remains a runtime adapter error.
 
 Rust native methods that need another host object parameter should use typed
-path wrappers such as `TypedHostRef<T>` or `TypedHostMut<T>`. These wrappers
-store only `HostPath` and optional type metadata; they do not contain Rust
-references. Except for receiver syntax sugar generated inside future typed
-registration helpers, script-visible Rust parameters should not use bare
+handle/proxy wrappers such as `HostRef`, `PathProxy`, or typed embedding
+wrappers. These wrappers store handles, target plans, dynamic args, or optional
+type metadata; they do not contain Rust references. Except for receiver syntax
+sugar generated inside future typed registration helpers, script-visible Rust parameters should not use bare
 `&T` or `&mut T`.
 
 ### Direct Call Arguments
@@ -255,9 +307,9 @@ let output = runtime.call("handle", args, options)?;
 This is an embedding API convenience, not a different script value model.
 `config` and `player` become call-scope `HostRef` handles inside the VM.
 The Rust type implements the host object adapter surface that reads and writes
-`HostPath` scalar fields. Scripts can copy handles, pass them to closures, and
-mutate aliases inside the same call; they still never receive real `&T` or
-`&mut T`.
+`HostTargetInstance` scalar fields. Scripts can copy handles, pass them to
+closures, and mutate aliases inside the same call; they still never receive
+real `&T` or `&mut T`.
 
 `with_host_ref` creates a read-only handle. `with_host_mut` creates a writable
 handle whose mutations write through immediately through `HostAccess`. Hosts that
@@ -315,8 +367,10 @@ impl Account {
 ```
 
 Host method implementations mutate real Rust state through the adapter
-immediately. The VM-facing callable receives `HostRef`, `HostPath`, or copied
-scalar values rather than `&mut self`.
+immediately. `NativeCallContext` path helpers are embedding conveniences that
+materialize a diagnostic path before routing through `HostAccess` and the
+resolved target adapter API. The VM-facing callable receives `HostRef`,
+`PathProxy`, target instances, or copied scalar values rather than `&mut self`.
 
 ### Generated Items
 
@@ -512,7 +566,7 @@ If a native function needs to mutate host state, it should either:
 
 ```text
 record HostAccess operations through NativeCallContext
-call ScriptStateAdapter methods
+call ScriptStateAdapter resolved target methods
 return a value that script code later writes through normal HostAccess paths
 ```
 
@@ -520,7 +574,8 @@ return a value that script code later writes through normal HostAccess paths
 
 Host type methods are registered through `#[script_methods]` and become
 `MethodDesc { kind: MethodKind::HostNative(...) }`. Method calls receive the
-receiver as a host path or host ref, not as `&mut T` in the VM.
+receiver as a `HostTargetInstance`, `PathProxy`, or host ref, not as `&mut T`
+in the VM.
 
 ```rust
 #[script_methods]

@@ -243,8 +243,11 @@ fn compile_workload(workload: &Workload) -> Result<CompiledWorkload, String> {
                 .with_host_field("level", LEVEL_FIELD)
                 .with_host_field("exp", EXP_FIELD)
                 .with_host_field("inventory", INVENTORY_FIELD)
+                .with_host_field("items", ITEMS_FIELD)
                 .with_host_field("gold", GOLD_FIELD)
-                .with_host_field("rewards", REWARDS_FIELD),
+                .with_host_field("rewards", REWARDS_FIELD)
+                .with_host_field("count", ITEM_COUNT_FIELD)
+                .with_host_method("add_reward", ADD_REWARD_METHOD),
         )
         .map(|program| match workload.mode {
             ExecutionMode::HostAccess => CompiledWorkload::HostAccess {
@@ -366,6 +369,15 @@ fn run_host_access(vm: &Vm, program: &Program) -> Result<OwnedValue, Box<dyn Err
             .field(GOLD_FIELD),
         HostValue::Int(5),
     );
+    adapter.insert_diagnostic_path_value(
+        HostPath::new(player)
+            .field(INVENTORY_FIELD)
+            .field(ITEMS_FIELD)
+            .key("gold")
+            .field(ITEM_COUNT_FIELD),
+        HostValue::Int(7),
+    );
+    adapter.insert_method_return(ADD_REWARD_METHOD, HostValue::Null);
     let mut tx = HostAccess::new();
     let mut budget = ExecutionBudget::unbounded();
     let mut host = HostExecution {

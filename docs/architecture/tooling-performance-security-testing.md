@@ -179,7 +179,7 @@ FieldId, MethodId, VariantId, FunctionId, TraitId, ShapeId, and TypeKey are stab
 bytecode offsets, source spans, and source maps remain available for diagnostics, profiling, and debugging
 ProgramVersion owns bytecode, registry snapshots, debug metadata, profile data, inline-cache state, and compiled code
 call frames expose registers, frame maps, and roots for GC, debugging, deoptimization, and hot reload lifetime tracking
-host mutation flows through HostRef, HostPath, PathProxy, HostAccess, and ScriptStateAdapter only
+host mutation flows through HostRef, HostTargetPlan, PathProxy, HostAccess, and ScriptStateAdapter only
 ```
 
 Optimization rules:
@@ -245,7 +245,7 @@ an already-loaded function, because that function already runs as bytecode.
 ```text
 resolved call operands for native, stdlib, script, method, and callback paths
 focused VM dispatch modules for host access, script calls, stdlib/method calls, and callback-heavy paths
-HostPath and HostAccess reusable path keys or direct adapter thunk boundaries
+HostTargetPlan and HostAccess resolved targets or direct adapter thunk boundaries
 borrowed Value views at native and stdlib boundaries where semantics allow
 verified-bytecode invariants for future unchecked register and operand access
 version-owned profile metadata for hot bytecode offsets and later cache invalidation

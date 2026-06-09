@@ -36,7 +36,7 @@ array, map, set, string, Option, and Result stdlib methods
 callbacks and higher-order collection methods
 record and enum construction and field access
 managed heap allocation and materialization
-host field reads, writes, RMW mutations, and method calls
+host field reads, nested path reads/writes, RMW mutations, dynamic key access, and method calls
 reflection reads, writes, and calls
 hot reload compile/apply/reject workflow
 GC pacing and pause-budget scenarios
@@ -102,14 +102,17 @@ The Lua 5.x target is not met across all microbenchmarks. Remaining gaps are
 cache-shaped, but M20 should wait until the hot operands are cache-ready:
 
 - script record field slot reads and writes need shape/slot-ready operands
-- host field/path reads, writes, and RMW operations need reusable path keys
+- host field/path reads, writes, and RMW operations now have `HostTargetPlan`
+  operands and resolved access boundaries ready for M20 caches
 - method and stdlib dispatch need ID or resolved-target lookup
 - native/stdlib calls need lower materialization through borrowed Value views
 - callback invocation and hot closure calls need lower root/materialization cost
 - hot bytecode offset profiling needs versioned ownership before specialization
 - cache invalidation must stay tied to hot reload and schema ABI changes
 
-M19.5 reports interpreter-only before/after rows for each prep family. M20
+M19.5 reports interpreter-only before/after rows for each prep family. The
+baseline harness now splits host-boundary rows into field read/write, nested
+path read/write, RMW mutation, dynamic key access, and host method calls. M20
 reports must separate interpreter-only and cache-enabled results.
 
 ## Targets

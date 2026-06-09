@@ -34,13 +34,13 @@ This refactor is finished only when every item in both the task checklist and
 the architecture acceptance checklist is checked, and the final validation
 commands pass:
 
-- [ ] `cargo fmt --all -- --check`
-- [ ] `cargo clippy --workspace --all-targets -- -D warnings`
-- [ ] `cargo test --workspace`
-- [ ] focused host-boundary benchmarks have durable before/after conclusions in
+- [x] `cargo fmt --all -- --check`
+- [x] `cargo clippy --workspace --all-targets -- -D warnings`
+- [x] `cargo test --workspace`
+- [x] focused host-boundary benchmarks have durable before/after conclusions in
   `docs/performance.md`, or the benchmark deferral is explicitly documented.
-- [ ] `docs/progress.md` moves the HostPath/HostAccess M19.5 gap to completed.
-- [ ] `docs/architecture/host-and-registration.md` describes only the resolved
+- [x] `docs/progress.md` moves the HostPath/HostAccess M19.5 gap to completed.
+- [x] `docs/architecture/host-and-registration.md` describes only the resolved
   host access model, with `HostPath` documented as diagnostic, reflection, or
   embedding materialization rather than the hot adapter API.
 
@@ -1163,14 +1163,14 @@ cargo clippy --workspace --all-targets -- -D warnings
 
 ### Task 10: Benchmark and Performance Report
 
-- [ ] Add or update host-boundary benchmark rows for host field read/write.
-- [ ] Add or update rows for nested host path read/write.
-- [ ] Add or update rows for RMW mutation.
-- [ ] Add or update rows for dynamic index/key access.
-- [ ] Add or update rows for host method calls.
-- [ ] Update `docs/performance.md` only with durable conclusions, not routine
+- [x] Add or update host-boundary benchmark rows for host field read/write.
+- [x] Add or update rows for nested host path read/write.
+- [x] Add or update rows for RMW mutation.
+- [x] Add or update rows for dynamic index/key access.
+- [x] Add or update rows for host method calls.
+- [x] Update `docs/performance.md` only with durable conclusions, not routine
   logs.
-- [ ] Record or rerun acceptance:
+- [x] Record or rerun acceptance:
 
 ```text
 cargo bench -p vela_vm --bench baseline -- --quick

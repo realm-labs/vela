@@ -166,6 +166,10 @@ Cranelift JIT.
   target-plan ID, operation, and host schema epoch; collapsed host bytecode
   resolves through that cache boundary while adapter execution still validates
   generations, permissions, and source-spanned slow paths.
+  The HostPath/HostAccess M19.5 gap is complete: hot execution uses
+  `HostTargetPlan`, `HostTargetInstance`, and `ResolvedHostAccess`, with
+  `HostPath` reserved for diagnostics, reflection, embedding materialization,
+  and fixture setup.
   Host-boundary
   conversion failures are covered as HostAccess slow paths that leave adapter
   state unchanged.

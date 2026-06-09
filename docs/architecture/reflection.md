@@ -5,7 +5,7 @@ Reflection exists for:
 1. Host type exposure.
 2. Script type metadata queries.
 3. Dynamic field reads/writes and method calls.
-4. Automatic `HostPath` construction for controlled host access.
+4. Diagnostic host path materialization for controlled inspection.
 5. Hot reload ABI checks.
 6. Debuggers, GM panels, admin backends, editors, and LSP support.
 

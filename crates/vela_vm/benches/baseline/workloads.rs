@@ -553,6 +553,74 @@ fn main(player) {
 "#,
     },
     Workload {
+        name: "host_field_read_write",
+        mode: ExecutionMode::HostAccess,
+        source: r#"
+fn main(player) {
+    let total = 0;
+    for tick in 0..32 {
+        player.level = tick + 1;
+        total += player.level;
+    }
+    return total;
+}
+"#,
+    },
+    Workload {
+        name: "host_nested_read_write",
+        mode: ExecutionMode::HostAccess,
+        source: r#"
+fn main(player) {
+    let total = 0;
+    for tick in 0..32 {
+        player.inventory.gold = tick + 3;
+        total += player.inventory.gold;
+    }
+    return total;
+}
+"#,
+    },
+    Workload {
+        name: "host_rmw_mutation",
+        mode: ExecutionMode::HostAccess,
+        source: r#"
+fn main(player) {
+    for tick in 0..32 {
+        player.level += 1;
+        player.exp += tick;
+    }
+    return player.level + player.exp;
+}
+"#,
+    },
+    Workload {
+        name: "host_dynamic_key_access",
+        mode: ExecutionMode::HostAccess,
+        source: r#"
+fn main(player) {
+    let item_id = "gold";
+    let total = 0;
+    for tick in 0..32 {
+        player.inventory.items[item_id].count += 1;
+        total += player.inventory.items[item_id].count + tick - tick;
+    }
+    return total;
+}
+"#,
+    },
+    Workload {
+        name: "host_method_calls",
+        mode: ExecutionMode::HostAccess,
+        source: r#"
+fn main(player) {
+    for tick in 0..32 {
+        player.add_reward("gold", tick + 1);
+    }
+    return player.level;
+}
+"#,
+    },
+    Workload {
         name: "managed_heap_host_conversion",
         mode: ExecutionMode::HostManagedHeapHostAccess,
         source: r#"
