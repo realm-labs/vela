@@ -1,5 +1,8 @@
 use super::*;
 use crate::value::Value as RuntimeValue;
+use vela_bytecode::CacheSiteKind;
+use vela_host::resolved::HostMutationOp;
+use vela_host::target::HostTargetPlan;
 
 #[test]
 fn heap_execution_enforces_memory_budget_for_bytecode_allocations() {
@@ -160,6 +163,65 @@ fn set_host_field_writes_through_and_updates_adapter() {
         adapter.read_path(&level_path(host_ref)),
         Ok(HostValue::Int(10))
     );
+    assert_eq!(
+        adapter.read_path(&level_path(host_ref)),
+        Ok(HostValue::Int(10))
+    );
+}
+
+#[test]
+fn collapsed_host_mutate_and_read_execute_through_target_plan() {
+    let host_ref = player_ref(3);
+    let mut code = CodeObject::new("main", 3).with_params(vec!["player".into()]);
+    let one = code.push_constant(Constant::Int(1));
+    let target =
+        code.intern_host_target(HostTargetPlan::new(host_ref.type_id).field(level_field()));
+    let mutate_cache = code.push_cache_site(CacheSiteKind::HostPathMutate, InstructionOffset(1));
+    let read_cache = code.push_cache_site(CacheSiteKind::HostPathRead, InstructionOffset(2));
+
+    code.push_instruction(Instruction::new(InstructionKind::LoadConst {
+        dst: Register(1),
+        constant: one,
+    }));
+    code.push_instruction(Instruction::new(InstructionKind::HostMutate {
+        root: Register(0),
+        target,
+        dynamic_args: Vec::new(),
+        op: HostMutationOp::Add,
+        rhs: Register(1),
+        cache_site: mutate_cache,
+    }));
+    code.push_instruction(Instruction::new(InstructionKind::HostRead {
+        dst: Register(2),
+        root: Register(0),
+        target,
+        dynamic_args: Vec::new(),
+        cache_site: read_cache,
+    }));
+    code.push_instruction(Instruction::new(InstructionKind::Return {
+        src: Register(2),
+    }));
+
+    let mut program = Program::new();
+    program.insert_function(code);
+    let mut adapter = host_adapter(host_ref, HostValue::Int(9));
+    let mut tx = HostAccess::new();
+
+    let result = {
+        let mut host = HostExecution {
+            adapter: &mut adapter,
+            access: &mut tx,
+            script_globals: None,
+        };
+        Vm::new().run_program_with_host(
+            &program,
+            "main",
+            &[OwnedValue::HostRef(host_ref)],
+            &mut host,
+        )
+    };
+
+    assert_eq!(result, Ok(OwnedValue::Int(10)));
     assert_eq!(
         adapter.read_path(&level_path(host_ref)),
         Ok(HostValue::Int(10))

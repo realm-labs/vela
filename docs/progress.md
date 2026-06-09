@@ -150,7 +150,13 @@ Cranelift JIT.
   for current error/reporting surfaces. HostPath construction now has an exact-capacity/static
   segment materialization boundary so field-only paths can bypass dynamic
   index/key conversion, and HostPath/HostAccess identity now uses a dedicated
-  HostPathKey sidecar with inline storage for common short paths. Host-boundary
+  HostPathKey sidecar with inline storage for common short paths. Bytecode
+  `CodeObject` values now own interned `HostTargetPlan` tables and the
+  collapsed `HostRead`/`HostWrite`/`HostMutate`/`HostRemove`/`HostCall`
+  instruction family has verifier coverage for target bounds, contiguous
+  dynamic arguments, and cache-site kind matching, plus VM execution support
+  through the focused host-access boundary before compiler lowering migrates to
+  it. Host-boundary
   conversion failures are covered as HostAccess slow paths that leave adapter
   state unchanged.
   Source and module compilation now verifies bytecode before returning

@@ -11,6 +11,8 @@ use std::collections::BTreeMap;
 use vela_common::{FieldId, FunctionId, GlobalSlot, HostMethodId, MethodId, Span};
 use vela_hir::ids::HirLocalId;
 use vela_hir::module_graph::ModuleGraph;
+use vela_host::resolved::HostMutationOp;
+use vela_host::target::HostTargetPlan;
 
 pub use cache_site::{CacheSiteDesc, CacheSiteId, CacheSiteKind, CacheSiteLayout};
 pub use program_image::ProgramImage;
@@ -170,6 +172,7 @@ pub struct CodeObject {
     pub frame: FrameDebugInfo,
     pub cache_sites: CacheSiteLayout,
     pub constants: Vec<Constant>,
+    pub host_targets: Vec<HostTargetPlan>,
     pub nested_functions: Vec<CodeObject>,
     pub instructions: Vec<Instruction>,
 }
@@ -186,6 +189,7 @@ impl CodeObject {
             frame: FrameDebugInfo::default(),
             cache_sites: CacheSiteLayout::default(),
             constants: Vec::new(),
+            host_targets: Vec::new(),
             nested_functions: Vec::new(),
             instructions: Vec::new(),
         }
@@ -214,6 +218,24 @@ impl CodeObject {
         let id = ConstantId(self.constants.len());
         self.constants.push(constant);
         id
+    }
+
+    pub fn intern_host_target(&mut self, target: HostTargetPlan) -> HostTargetPlanId {
+        if let Some(index) = self
+            .host_targets
+            .iter()
+            .position(|existing| existing == &target)
+        {
+            return HostTargetPlanId::new(index);
+        }
+        let id = HostTargetPlanId::new(self.host_targets.len());
+        self.host_targets.push(target);
+        id
+    }
+
+    #[must_use]
+    pub fn host_target(&self, id: HostTargetPlanId) -> Option<&HostTargetPlan> {
+        self.host_targets.get(id.index())
     }
 
     pub fn push_instruction(&mut self, instruction: Instruction) {
@@ -346,6 +368,27 @@ pub struct InstructionOffset(pub usize);
 
 #[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
 pub struct FunctionIndex(pub usize);
+
+#[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
+#[repr(transparent)]
+pub struct HostTargetPlanId(u32);
+
+impl HostTargetPlanId {
+    #[must_use]
+    pub fn new(value: usize) -> Self {
+        Self(u32::try_from(value).expect("host target plan count exceeds u32::MAX"))
+    }
+
+    #[must_use]
+    pub const fn get(self) -> u32 {
+        self.0
+    }
+
+    #[must_use]
+    pub const fn index(self) -> usize {
+        self.0 as usize
+    }
+}
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct Instruction {
@@ -590,6 +633,43 @@ pub enum InstructionKind {
         slot: Option<GlobalSlot>,
         cache_site: Option<CacheSiteId>,
     },
+    HostRead {
+        dst: Register,
+        root: Register,
+        target: HostTargetPlanId,
+        dynamic_args: Vec<Register>,
+        cache_site: CacheSiteId,
+    },
+    HostWrite {
+        root: Register,
+        target: HostTargetPlanId,
+        dynamic_args: Vec<Register>,
+        src: Register,
+        cache_site: CacheSiteId,
+    },
+    HostMutate {
+        root: Register,
+        target: HostTargetPlanId,
+        dynamic_args: Vec<Register>,
+        op: HostMutationOp,
+        rhs: Register,
+        cache_site: CacheSiteId,
+    },
+    HostRemove {
+        root: Register,
+        target: HostTargetPlanId,
+        dynamic_args: Vec<Register>,
+        cache_site: CacheSiteId,
+    },
+    HostCall {
+        dst: Option<Register>,
+        root: Register,
+        target: HostTargetPlanId,
+        dynamic_args: Vec<Register>,
+        method: HostMethodId,
+        args: Vec<Register>,
+        cache_site: CacheSiteId,
+    },
     GetHostField {
         dst: Register,
         root: Register,
@@ -697,6 +777,8 @@ pub enum CallArgument {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use vela_common::HostTypeId;
+    use vela_host::target::HostTargetPlan;
 
     #[test]
     fn code_object_records_constants_and_instructions() {
@@ -716,6 +798,21 @@ mod tests {
         assert!(code.cache_sites.is_empty());
         assert_eq!(code.constants, [Constant::Int(42)]);
         assert_eq!(code.instructions.len(), 2);
+    }
+
+    #[test]
+    fn code_object_interns_host_target_plans() {
+        let mut code = CodeObject::new("host", 1);
+        let target = HostTargetPlan::new(HostTypeId::new(1)).field(FieldId::new(2));
+
+        let first = code.intern_host_target(target.clone());
+        let second = code.intern_host_target(target.clone());
+        let third = code.intern_host_target(target.const_index(0));
+
+        assert_eq!(first, second);
+        assert_ne!(first, third);
+        assert_eq!(code.host_targets.len(), 2);
+        assert_eq!(code.host_target(first), code.host_targets.first());
     }
 
     #[test]

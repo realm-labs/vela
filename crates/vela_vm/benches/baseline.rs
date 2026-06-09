@@ -164,7 +164,7 @@ fn register_bench_natives(vm: &mut Vm) {
 enum CompiledWorkload {
     Function {
         mode: ExecutionMode,
-        code: CodeObject,
+        code: Box<CodeObject>,
     },
     ScriptProgram {
         program: Box<Program>,
@@ -276,7 +276,7 @@ fn compile_workload(workload: &Workload) -> Result<CompiledWorkload, String> {
             compile_function_source(SourceId::new(1), workload.source, "main")
                 .map(|code| CompiledWorkload::Function {
                     mode: workload.mode,
-                    code,
+                    code: Box::new(code),
                 })
                 .map_err(|error| format!("{error:?}"))
         }
@@ -288,7 +288,7 @@ fn compile_workload(workload: &Workload) -> Result<CompiledWorkload, String> {
         ExecutionMode::Inline => compile_function_source(SourceId::new(1), workload.source, "main")
             .map(|code| CompiledWorkload::Function {
                 mode: workload.mode,
-                code,
+                code: Box::new(code),
             })
             .map_err(|error| format!("{error:?}")),
     }

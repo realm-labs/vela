@@ -1,8 +1,9 @@
 use std::fmt;
 
 use crate::{
-    CacheSiteId, CacheSiteKind, CallArgument, CodeObject, ConstantId, HostPathSegment, Instruction,
-    InstructionKind, InstructionOffset, Program, ProgramImage, Register,
+    CacheSiteId, CacheSiteKind, CallArgument, CodeObject, ConstantId, HostPathSegment,
+    HostTargetPlanId, Instruction, InstructionKind, InstructionOffset, Program, ProgramImage,
+    Register,
 };
 
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -59,6 +60,17 @@ pub enum VerificationErrorKind {
         site: CacheSiteId,
         expected: CacheSiteKind,
         actual: CacheSiteKind,
+    },
+    HostTargetOutOfBounds {
+        target: HostTargetPlanId,
+        target_count: usize,
+    },
+    HostTargetDynamicArgMismatch {
+        expected: usize,
+        actual: usize,
+    },
+    HostTargetDynamicArgGap {
+        index: u8,
     },
 }
 
@@ -469,6 +481,140 @@ fn verify_instruction(
                 cache_scope,
             )
         }
+        InstructionKind::HostRead {
+            dst,
+            root,
+            target,
+            dynamic_args,
+            cache_site,
+        } => {
+            verify_register(function, instruction_index, code, *dst)?;
+            verify_register(function, instruction_index, code, *root)?;
+            verify_registers(function, instruction_index, code, dynamic_args)?;
+            verify_host_target(
+                function,
+                instruction_index,
+                code,
+                *target,
+                dynamic_args.len(),
+            )?;
+            verify_cache_site(
+                function,
+                instruction_index,
+                code,
+                *cache_site,
+                CacheSiteKind::HostPathRead,
+                cache_scope,
+            )
+        }
+        InstructionKind::HostWrite {
+            root,
+            target,
+            dynamic_args,
+            src,
+            cache_site,
+        } => {
+            verify_register(function, instruction_index, code, *root)?;
+            verify_register(function, instruction_index, code, *src)?;
+            verify_registers(function, instruction_index, code, dynamic_args)?;
+            verify_host_target(
+                function,
+                instruction_index,
+                code,
+                *target,
+                dynamic_args.len(),
+            )?;
+            verify_cache_site(
+                function,
+                instruction_index,
+                code,
+                *cache_site,
+                CacheSiteKind::HostPathWrite,
+                cache_scope,
+            )
+        }
+        InstructionKind::HostMutate {
+            root,
+            target,
+            dynamic_args,
+            rhs,
+            cache_site,
+            ..
+        } => {
+            verify_register(function, instruction_index, code, *root)?;
+            verify_register(function, instruction_index, code, *rhs)?;
+            verify_registers(function, instruction_index, code, dynamic_args)?;
+            verify_host_target(
+                function,
+                instruction_index,
+                code,
+                *target,
+                dynamic_args.len(),
+            )?;
+            verify_cache_site(
+                function,
+                instruction_index,
+                code,
+                *cache_site,
+                CacheSiteKind::HostPathMutate,
+                cache_scope,
+            )
+        }
+        InstructionKind::HostRemove {
+            root,
+            target,
+            dynamic_args,
+            cache_site,
+        } => {
+            verify_register(function, instruction_index, code, *root)?;
+            verify_registers(function, instruction_index, code, dynamic_args)?;
+            verify_host_target(
+                function,
+                instruction_index,
+                code,
+                *target,
+                dynamic_args.len(),
+            )?;
+            verify_cache_site(
+                function,
+                instruction_index,
+                code,
+                *cache_site,
+                CacheSiteKind::HostPathRemove,
+                cache_scope,
+            )
+        }
+        InstructionKind::HostCall {
+            dst,
+            root,
+            target,
+            dynamic_args,
+            args,
+            cache_site,
+            ..
+        } => {
+            if let Some(dst) = dst {
+                verify_register(function, instruction_index, code, *dst)?;
+            }
+            verify_register(function, instruction_index, code, *root)?;
+            verify_registers(function, instruction_index, code, dynamic_args)?;
+            verify_registers(function, instruction_index, code, args)?;
+            verify_host_target(
+                function,
+                instruction_index,
+                code,
+                *target,
+                dynamic_args.len(),
+            )?;
+            verify_cache_site(
+                function,
+                instruction_index,
+                code,
+                *cache_site,
+                CacheSiteKind::HostPathCall,
+                cache_scope,
+            )
+        }
         InstructionKind::GetHostField { dst, root, .. } => {
             verify_register(function, instruction_index, code, *dst)?;
             verify_register(function, instruction_index, code, *root)
@@ -648,6 +794,58 @@ fn verify_constant(
     }
 }
 
+fn verify_host_target(
+    function: &str,
+    instruction: Option<usize>,
+    code: &CodeObject,
+    target: HostTargetPlanId,
+    dynamic_arg_count: usize,
+) -> Result<(), VerificationError> {
+    let Some(plan) = code.host_target(target) else {
+        return Err(error(
+            function,
+            instruction,
+            VerificationErrorKind::HostTargetOutOfBounds {
+                target,
+                target_count: code.host_targets.len(),
+            },
+        ));
+    };
+    let expected = plan.parts.dynamic_arg_count();
+    if expected != dynamic_arg_count {
+        return Err(error(
+            function,
+            instruction,
+            VerificationErrorKind::HostTargetDynamicArgMismatch {
+                expected,
+                actual: dynamic_arg_count,
+            },
+        ));
+    }
+    for expected_index in 0..expected {
+        let expected_index =
+            u8::try_from(expected_index).expect("host target dynamic arg index exceeds u8::MAX");
+        let has_placeholder = plan.parts.as_slice().iter().any(|part| match part {
+            vela_host::target::HostPathPart::DynIndex { arg }
+            | vela_host::target::HostPathPart::DynKey { arg } => *arg == expected_index,
+            vela_host::target::HostPathPart::Field(_)
+            | vela_host::target::HostPathPart::VariantField(_)
+            | vela_host::target::HostPathPart::ConstIndex(_)
+            | vela_host::target::HostPathPart::ConstKey(_) => false,
+        });
+        if !has_placeholder {
+            return Err(error(
+                function,
+                instruction,
+                VerificationErrorKind::HostTargetDynamicArgGap {
+                    index: expected_index,
+                },
+            ));
+        }
+    }
+    Ok(())
+}
+
 fn verify_function_index(
     function: &str,
     instruction: Option<usize>,
@@ -736,6 +934,24 @@ fn verify_optional_cache_site(
     Ok(())
 }
 
+fn verify_cache_site(
+    function: &str,
+    instruction: Option<usize>,
+    code: &CodeObject,
+    site: CacheSiteId,
+    expected: CacheSiteKind,
+    cache_scope: CacheIndexScope<'_>,
+) -> Result<(), VerificationError> {
+    verify_optional_cache_site(
+        function,
+        instruction,
+        code,
+        Some(site),
+        expected,
+        cache_scope,
+    )
+}
+
 fn error(
     function: &str,
     instruction: Option<usize>,
@@ -751,6 +967,7 @@ fn error(
 #[cfg(test)]
 mod tests {
     use vela_common::FieldId;
+    use vela_host::target::HostTargetPlan;
 
     use crate::{Constant, FrameSlotInfo, FrameSlotKind, Instruction};
 
@@ -959,6 +1176,129 @@ mod tests {
                 VerificationErrorKind::RegisterOutOfBounds {
                     register: Register(1),
                     register_count: 1
+                }
+            ))
+        );
+    }
+
+    #[test]
+    fn accepts_collapsed_host_read_with_verified_target_and_cache_site() {
+        let mut code = CodeObject::new("main", 3);
+        let target = code.intern_host_target(
+            HostTargetPlan::new(vela_common::HostTypeId::new(1))
+                .field(FieldId::new(2))
+                .dyn_index(0),
+        );
+        let cache_site = code.push_cache_site(CacheSiteKind::HostPathRead, InstructionOffset(0));
+        code.push_instruction(Instruction::new(InstructionKind::HostRead {
+            dst: Register(0),
+            root: Register(1),
+            target,
+            dynamic_args: vec![Register(2)],
+            cache_site,
+        }));
+
+        assert_eq!(verify_code_object(&code), Ok(()));
+    }
+
+    #[test]
+    fn rejects_collapsed_host_target_out_of_bounds() {
+        let mut code = CodeObject::new("main", 2);
+        let cache_site = code.push_cache_site(CacheSiteKind::HostPathRead, InstructionOffset(0));
+        code.push_instruction(Instruction::new(InstructionKind::HostRead {
+            dst: Register(0),
+            root: Register(1),
+            target: HostTargetPlanId::new(0),
+            dynamic_args: Vec::new(),
+            cache_site,
+        }));
+
+        assert_eq!(
+            verify_code_object(&code),
+            Err(error(
+                "main",
+                Some(0),
+                VerificationErrorKind::HostTargetOutOfBounds {
+                    target: HostTargetPlanId::new(0),
+                    target_count: 0
+                }
+            ))
+        );
+    }
+
+    #[test]
+    fn rejects_collapsed_host_dynamic_arg_count_mismatch() {
+        let mut code = CodeObject::new("main", 3);
+        let target = code
+            .intern_host_target(HostTargetPlan::new(vela_common::HostTypeId::new(1)).dyn_key(0));
+        let cache_site = code.push_cache_site(CacheSiteKind::HostPathRead, InstructionOffset(0));
+        code.push_instruction(Instruction::new(InstructionKind::HostRead {
+            dst: Register(0),
+            root: Register(1),
+            target,
+            dynamic_args: Vec::new(),
+            cache_site,
+        }));
+
+        assert_eq!(
+            verify_code_object(&code),
+            Err(error(
+                "main",
+                Some(0),
+                VerificationErrorKind::HostTargetDynamicArgMismatch {
+                    expected: 1,
+                    actual: 0
+                }
+            ))
+        );
+    }
+
+    #[test]
+    fn rejects_collapsed_host_dynamic_arg_gaps() {
+        let mut code = CodeObject::new("main", 4);
+        let target = code
+            .intern_host_target(HostTargetPlan::new(vela_common::HostTypeId::new(1)).dyn_key(1));
+        let cache_site = code.push_cache_site(CacheSiteKind::HostPathRead, InstructionOffset(0));
+        code.push_instruction(Instruction::new(InstructionKind::HostRead {
+            dst: Register(0),
+            root: Register(1),
+            target,
+            dynamic_args: vec![Register(2), Register(3)],
+            cache_site,
+        }));
+
+        assert_eq!(
+            verify_code_object(&code),
+            Err(error(
+                "main",
+                Some(0),
+                VerificationErrorKind::HostTargetDynamicArgGap { index: 0 }
+            ))
+        );
+    }
+
+    #[test]
+    fn rejects_collapsed_host_cache_site_kind_mismatch() {
+        let mut code = CodeObject::new("main", 2);
+        let target = code.intern_host_target(HostTargetPlan::new(vela_common::HostTypeId::new(1)));
+        let cache_site = code.push_cache_site(CacheSiteKind::HostPathWrite, InstructionOffset(0));
+        code.push_instruction(Instruction::new(InstructionKind::HostRead {
+            dst: Register(0),
+            root: Register(1),
+            target,
+            dynamic_args: Vec::new(),
+            cache_site,
+        }));
+
+        assert_eq!(
+            verify_code_object(&code),
+            Err(error(
+                "main",
+                Some(0),
+                VerificationErrorKind::CacheSiteKindMismatch {
+                    site: cache_site,
+                    expected: CacheSiteKind::HostPathRead,
+                    actual: CacheSiteKind::HostPathWrite
                 }
             ))
         );

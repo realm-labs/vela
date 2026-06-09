@@ -647,6 +647,145 @@ impl Vm {
                     }
                     frame.write(*dst, value)?;
                 }
+                InstructionKind::HostRead {
+                    dst,
+                    root,
+                    target,
+                    dynamic_args,
+                    ..
+                } => {
+                    let target = host_access::code_host_target(
+                        &code.host_targets,
+                        *target,
+                        instruction.span,
+                    )?;
+                    let value = host_access::execute_host_read(
+                        host_access::HostAccessRuntime {
+                            frame: &frame,
+                            heap: heap.as_deref_mut(),
+                            budget: budget.as_deref_mut(),
+                            host: host.as_deref_mut(),
+                            source_span: instruction.span,
+                        },
+                        *root,
+                        target,
+                        dynamic_args,
+                    )?;
+                    frame.write(*dst, value)?;
+                }
+                InstructionKind::HostWrite {
+                    root,
+                    target,
+                    dynamic_args,
+                    src,
+                    ..
+                } => {
+                    let target = host_access::code_host_target(
+                        &code.host_targets,
+                        *target,
+                        instruction.span,
+                    )?;
+                    host_access::execute_host_write(
+                        host_access::HostAccessRuntime {
+                            frame: &frame,
+                            heap: heap.as_deref_mut(),
+                            budget: budget.as_deref_mut(),
+                            host: host.as_deref_mut(),
+                            source_span: instruction.span,
+                        },
+                        *root,
+                        target,
+                        dynamic_args,
+                        *src,
+                    )?;
+                }
+                InstructionKind::HostMutate {
+                    root,
+                    target,
+                    dynamic_args,
+                    op,
+                    rhs,
+                    ..
+                } => {
+                    let target = host_access::code_host_target(
+                        &code.host_targets,
+                        *target,
+                        instruction.span,
+                    )?;
+                    host_access::execute_host_mutate(
+                        host_access::HostAccessRuntime {
+                            frame: &frame,
+                            heap: heap.as_deref_mut(),
+                            budget: budget.as_deref_mut(),
+                            host: host.as_deref_mut(),
+                            source_span: instruction.span,
+                        },
+                        *root,
+                        target,
+                        dynamic_args,
+                        *op,
+                        *rhs,
+                    )?;
+                }
+                InstructionKind::HostRemove {
+                    root,
+                    target,
+                    dynamic_args,
+                    ..
+                } => {
+                    let target = host_access::code_host_target(
+                        &code.host_targets,
+                        *target,
+                        instruction.span,
+                    )?;
+                    host_access::execute_host_remove(
+                        host_access::HostAccessRuntime {
+                            frame: &frame,
+                            heap: heap.as_deref_mut(),
+                            budget: budget.as_deref_mut(),
+                            host: host.as_deref_mut(),
+                            source_span: instruction.span,
+                        },
+                        *root,
+                        target,
+                        dynamic_args,
+                    )?;
+                }
+                InstructionKind::HostCall {
+                    dst,
+                    root,
+                    target,
+                    dynamic_args,
+                    method,
+                    args,
+                    ..
+                } => {
+                    let target = host_access::code_host_target(
+                        &code.host_targets,
+                        *target,
+                        instruction.span,
+                    )?;
+                    let return_value = host_access::execute_host_call(
+                        host_access::HostAccessRuntime {
+                            frame: &frame,
+                            heap: heap.as_deref_mut(),
+                            budget: budget.as_deref_mut(),
+                            host: host.as_deref_mut(),
+                            source_span: instruction.span,
+                        },
+                        *root,
+                        host_access::HostCallPlan {
+                            target,
+                            dynamic_args,
+                            method: *method,
+                            args,
+                            wants_return: dst.is_some(),
+                        },
+                    )?;
+                    if let (Some(dst), Some(return_value)) = (dst, return_value) {
+                        frame.write(*dst, return_value)?;
+                    }
+                }
                 InstructionKind::GetHostField { dst, root, field } => {
                     let value = host_access::read_host_field(
                         host_access::HostAccessRuntime {

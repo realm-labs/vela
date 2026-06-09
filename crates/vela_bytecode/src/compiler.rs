@@ -956,6 +956,11 @@ fn cache_site_kind(kind: &InstructionKind) -> Option<CacheSiteKind> {
         }
         InstructionKind::GetRecordSlot { .. } => Some(CacheSiteKind::RecordFieldRead),
         InstructionKind::SetRecordSlot { .. } => Some(CacheSiteKind::RecordFieldWrite),
+        InstructionKind::HostRead { .. } => Some(CacheSiteKind::HostPathRead),
+        InstructionKind::HostWrite { .. } => Some(CacheSiteKind::HostPathWrite),
+        InstructionKind::HostMutate { .. } => Some(CacheSiteKind::HostPathMutate),
+        InstructionKind::HostRemove { .. } => Some(CacheSiteKind::HostPathRemove),
+        InstructionKind::HostCall { .. } => Some(CacheSiteKind::HostPathCall),
         InstructionKind::GetHostField { .. } | InstructionKind::GetHostPath { .. } => {
             Some(CacheSiteKind::HostPathRead)
         }
@@ -987,6 +992,75 @@ fn attach_cache_site(kind: InstructionKind, cache_site: CacheSiteId) -> Instruct
             global,
             slot,
             cache_site: Some(cache_site),
+        },
+        InstructionKind::HostRead {
+            dst,
+            root,
+            target,
+            dynamic_args,
+            ..
+        } => InstructionKind::HostRead {
+            dst,
+            root,
+            target,
+            dynamic_args,
+            cache_site,
+        },
+        InstructionKind::HostWrite {
+            root,
+            target,
+            dynamic_args,
+            src,
+            ..
+        } => InstructionKind::HostWrite {
+            root,
+            target,
+            dynamic_args,
+            src,
+            cache_site,
+        },
+        InstructionKind::HostMutate {
+            root,
+            target,
+            dynamic_args,
+            op,
+            rhs,
+            ..
+        } => InstructionKind::HostMutate {
+            root,
+            target,
+            dynamic_args,
+            op,
+            rhs,
+            cache_site,
+        },
+        InstructionKind::HostRemove {
+            root,
+            target,
+            dynamic_args,
+            ..
+        } => InstructionKind::HostRemove {
+            root,
+            target,
+            dynamic_args,
+            cache_site,
+        },
+        InstructionKind::HostCall {
+            dst,
+            root,
+            target,
+            dynamic_args,
+            method,
+            args,
+            ..
+        } => InstructionKind::HostCall {
+            dst,
+            root,
+            target,
+            dynamic_args,
+            method,
+            args,
+            cache_site,
         },
         _ => kind,
     }

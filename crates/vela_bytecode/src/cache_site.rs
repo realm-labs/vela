@@ -30,6 +30,9 @@ pub enum CacheSiteKind {
     MethodCall,
     HostPathRead,
     HostPathWrite,
+    HostPathMutate,
+    HostPathRemove,
+    HostPathCall,
     NativeCall,
 }
 
