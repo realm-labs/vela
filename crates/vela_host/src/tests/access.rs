@@ -1,18 +1,30 @@
 use super::*;
 
 #[test]
-fn read_path_reads_current_adapter_state() {
+fn read_target_reads_current_adapter_state() {
     let mut adapter = MockStateAdapter::new();
     let path = level_path();
     adapter.insert_diagnostic_path_value(path.clone(), HostValue::Int(9));
+    let plan = target_plan(&path);
     let mut tx = HostAccess::new();
 
-    assert_eq!(tx.read_path(&adapter, &path), Ok(HostValue::Int(9)));
+    assert_eq!(
+        tx.read(&adapter, target_instance(&path, &plan), None),
+        Ok(HostValue::Int(9))
+    );
 
-    tx.set_path(&mut adapter, path.clone(), HostValue::Int(10), None)
-        .expect("set path");
+    tx.write(
+        &mut adapter,
+        target_instance(&path, &plan),
+        HostValue::Int(10),
+        None,
+    )
+    .expect("write target");
 
-    assert_eq!(tx.read_path(&adapter, &path), Ok(HostValue::Int(10)));
+    assert_eq!(
+        tx.read(&adapter, target_instance(&path, &plan), None),
+        Ok(HostValue::Int(10))
+    );
     assert_eq!(adapter.read_diagnostic_path(&path), Ok(HostValue::Int(10)));
 }
 
@@ -21,10 +33,17 @@ fn compound_write_validates_against_current_adapter_value() {
     let mut adapter = MockStateAdapter::new();
     let path = level_path();
     adapter.insert_diagnostic_path_value(path.clone(), HostValue::Int(9));
+    let plan = target_plan(&path);
     let mut tx = HostAccess::new();
 
-    tx.add_path(&mut adapter, path.clone(), HostValue::Int(1), None)
-        .expect("add path");
+    tx.mutate(
+        &mut adapter,
+        target_instance(&path, &plan),
+        HostMutationOp::Add,
+        HostValue::Int(1),
+        None,
+    )
+    .expect("add target");
 
     assert_eq!(adapter.read_diagnostic_path(&path), Ok(HostValue::Int(10)));
 }
@@ -34,12 +53,25 @@ fn repeated_alias_writes_read_current_host_state() {
     let mut adapter = MockStateAdapter::new();
     let path = level_path();
     adapter.insert_diagnostic_path_value(path.clone(), HostValue::Int(1));
+    let plan = target_plan(&path);
     let mut tx = HostAccess::new();
 
-    tx.add_path(&mut adapter, path.clone(), HostValue::Int(1), None)
-        .expect("first alias add");
-    tx.add_path(&mut adapter, path.clone(), HostValue::Int(2), None)
-        .expect("second alias add");
+    tx.mutate(
+        &mut adapter,
+        target_instance(&path, &plan),
+        HostMutationOp::Add,
+        HostValue::Int(1),
+        None,
+    )
+    .expect("first alias add");
+    tx.mutate(
+        &mut adapter,
+        target_instance(&path, &plan),
+        HostMutationOp::Add,
+        HostValue::Int(2),
+        None,
+    )
+    .expect("second alias add");
 
     assert_eq!(adapter.read_diagnostic_path(&path), Ok(HostValue::Int(4)));
 }
@@ -49,10 +81,17 @@ fn variant_field_paths_write_through() {
     let path = quest_variant_count_path();
     let mut adapter = MockStateAdapter::new();
     adapter.insert_diagnostic_path_value(path.clone(), HostValue::Int(2));
+    let plan = target_plan(&path);
     let mut tx = HostAccess::new();
 
-    tx.add_path(&mut adapter, path.clone(), HostValue::Int(1), None)
-        .expect("variant field add");
+    tx.mutate(
+        &mut adapter,
+        target_instance(&path, &plan),
+        HostMutationOp::Add,
+        HostValue::Int(1),
+        None,
+    )
+    .expect("variant field add");
 
     assert_eq!(adapter.read_diagnostic_path(&path), Ok(HostValue::Int(3)));
 }
@@ -61,11 +100,12 @@ fn variant_field_paths_write_through() {
 fn access_read_error_keeps_source_span() {
     let adapter = MockStateAdapter::new();
     let path = level_path();
+    let plan = target_plan(&path);
     let span = test_span();
     let tx = HostAccess::new();
 
     let error = tx
-        .read_path_at(&adapter, &path, Some(span))
+        .read(&adapter, target_instance(&path, &plan), Some(span))
         .expect_err("missing path should fail");
 
     assert_eq!(error.source_span, Some(span));
@@ -97,8 +137,14 @@ fn write_through_keeps_no_retained_journal() {
     let mut adapter = MockStateAdapter::new();
     let path = level_path();
     adapter.insert_diagnostic_path_value(path.clone(), HostValue::Int(9));
+    let plan = target_plan(&path);
     let mut tx = HostAccess::new();
 
-    tx.set_path(&mut adapter, path, HostValue::Int(10), None)
-        .expect("set path");
+    tx.write(
+        &mut adapter,
+        target_instance(&path, &plan),
+        HostValue::Int(10),
+        None,
+    )
+    .expect("write target");
 }

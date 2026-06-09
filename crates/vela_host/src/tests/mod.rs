@@ -11,6 +11,8 @@ use crate::{
     mock::MockStateAdapter,
     path::{HostPath, HostRef},
     proxy::PathProxy,
+    resolved::HostMutationOp,
+    target::{HostTargetInstance, HostTargetPlan},
     value::HostValue,
 };
 
@@ -30,6 +32,14 @@ fn quest_variant_count_path() -> HostPath {
     HostPath::new(player_ref(3))
         .field(FieldId::new(4))
         .variant_field(FieldId::new(5))
+}
+
+fn target_plan(path: &HostPath) -> HostTargetPlan {
+    HostTargetPlan::from(path)
+}
+
+fn target_instance<'a>(path: &HostPath, plan: &'a HostTargetPlan) -> HostTargetInstance<'a> {
+    HostTargetInstance::new(path.root, plan, &[])
 }
 
 fn test_span() -> Span {
