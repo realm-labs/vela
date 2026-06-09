@@ -1103,11 +1103,11 @@ cargo test --workspace
   method calls to the collapsed host instruction family.
 - [x] Intern `HostTargetPlan` values into each `CodeObject`.
 - [x] Emit dynamic arg registers separately from target shape.
-- [ ] Audit that diagnostic names are not retained as hot operands where a
+- [x] Audit that diagnostic names are not retained as hot operands where a
   stable ID, slot, or target plan is available.
 - [x] Remove tests that still expect legacy host bytecode, unless the test is
   explicitly covering legacy removal.
-- [ ] Record or rerun acceptance:
+- [x] Record or rerun acceptance:
 
 ```text
 cargo test -p vela_bytecode compiler
