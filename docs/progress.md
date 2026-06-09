@@ -159,6 +159,9 @@ Cranelift JIT.
   into those tables and emits the collapsed family through the focused
   host-access boundary, with registered host type IDs preserved for typed root
   plans and mock storage canonicalized across static and dynamic key shapes.
+  `PathProxy` now stores a root `HostRef`, `HostTargetPlan`, and owned dynamic
+  args, routing operations through `HostTargetInstance` and materializing
+  `HostPath` only at explicit diagnostic/embedding conversion edges.
   Host-boundary
   conversion failures are covered as HostAccess slow paths that leave adapter
   state unchanged.

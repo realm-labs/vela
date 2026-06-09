@@ -645,7 +645,7 @@ fn type_mismatch(operation: &'static str) -> VmError {
 fn host_path_arg(value: &OwnedValue, operation: &'static str) -> VmResult<HostPath> {
     match value {
         OwnedValue::HostRef(host_ref) => Ok(HostPath::new(*host_ref)),
-        OwnedValue::PathProxy(proxy) => Ok(proxy.path().clone()),
+        OwnedValue::PathProxy(proxy) => Ok(proxy.to_diagnostic_path()),
         _ => Err(type_mismatch(operation)),
     }
 }

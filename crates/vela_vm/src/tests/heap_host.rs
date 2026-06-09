@@ -94,7 +94,7 @@ fn main() {
 #[test]
 fn managed_heap_execution_preserves_path_proxy_slots() {
     let host_ref = HostRef::new(HostTypeId::new(1), HostObjectId::new(7), 3);
-    let proxy = PathProxy::new(HostPath::new(host_ref).field(FieldId::new(2)));
+    let proxy = PathProxy::from_diagnostic_path(HostPath::new(host_ref).field(FieldId::new(2)));
     let expected = proxy.clone();
     let mut vm = Vm::new();
     vm.register_native("game::path", move |_| {

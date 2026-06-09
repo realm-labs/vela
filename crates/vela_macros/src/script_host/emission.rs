@@ -61,7 +61,11 @@ pub(super) fn field_helper_tokens(field: &FieldMeta) -> TokenStream {
 
         #[must_use]
         pub fn #field_proxy_ident(host_ref: ::vela_host::path::HostRef) -> ::vela_host::proxy::PathProxy {
-            ::vela_host::proxy::PathProxy::new(Self::#field_path_ident(host_ref))
+            ::vela_host::proxy::PathProxy::new(
+                host_ref,
+                ::vela_host::target::HostTargetPlan::new(Self::vela_host_type_id())
+                    .field(Self::#field_id_ident()),
+            )
         }
     }
 }

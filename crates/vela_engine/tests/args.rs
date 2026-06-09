@@ -142,7 +142,7 @@ fn script_arg_conversions_support_set_values() {
 #[test]
 fn args_macro_converts_rust_values_and_host_refs() {
     let host_ref = HostRef::new(HostTypeId::new(1), HostObjectId::new(42), 7);
-    let proxy = PathProxy::new(HostPath::new(host_ref).field(FieldId::new(9)));
+    let proxy = PathProxy::from_diagnostic_path(HostPath::new(host_ref).field(FieldId::new(9)));
     let mut map = BTreeMap::new();
     map.insert("key", 9);
     let mut hash_map = HashMap::new();
@@ -199,7 +199,7 @@ fn args_macro_converts_rust_values_and_host_refs() {
 #[test]
 fn script_arg_conversions_extract_owned_rust_values() {
     let host_ref = HostRef::new(HostTypeId::new(1), HostObjectId::new(42), 7);
-    let proxy = PathProxy::new(HostPath::new(host_ref).field(FieldId::new(9)));
+    let proxy = PathProxy::from_diagnostic_path(HostPath::new(host_ref).field(FieldId::new(9)));
     let args = vela_engine::args![
         true,
         5,

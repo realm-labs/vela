@@ -140,7 +140,7 @@ impl Player {
         _host: &mut HostExecution<'_>,
         path: PathProxy,
     ) -> i64 {
-        i64::try_from(path.path().segments.len()).expect("path depth fits i64")
+        i64::try_from(path.to_diagnostic_path().segments.len()).expect("path depth fits i64")
     }
 }
 

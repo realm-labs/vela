@@ -1,46 +1,95 @@
 use vela_common::{FieldId, HostMethodId, Span};
 
 use crate::{
-    access::HostAccess, adapter::ScriptStateAdapter, error::HostResult, path::HostPath,
+    access::HostAccess,
+    adapter::ScriptStateAdapter,
+    error::HostResult,
+    path::{HostPath, HostRef},
+    resolved::HostMutationOp,
+    target::{HostPathArg, HostPathArgOwned, HostPathPart, HostTargetInstance, HostTargetPlan},
     value::HostValue,
 };
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct PathProxy {
-    path: HostPath,
+    root: HostRef,
+    target: Box<HostTargetPlan>,
+    args: Vec<HostPathArgOwned>,
 }
 
 impl PathProxy {
     #[must_use]
-    pub fn new(path: HostPath) -> Self {
-        Self { path }
+    pub fn new(root: HostRef, target: HostTargetPlan) -> Self {
+        Self {
+            root,
+            target: Box::new(target),
+            args: Vec::new(),
+        }
     }
 
     #[must_use]
-    pub fn path(&self) -> &HostPath {
-        &self.path
+    pub fn from_diagnostic_path(path: HostPath) -> Self {
+        Self::new(path.root, HostTargetPlan::from(&path))
     }
 
     #[must_use]
-    pub fn into_path(self) -> HostPath {
-        self.path
+    pub fn root(&self) -> HostRef {
+        self.root
+    }
+
+    #[must_use]
+    pub fn target(&self) -> &HostTargetPlan {
+        self.target.as_ref()
+    }
+
+    #[must_use]
+    pub fn args(&self) -> &[HostPathArgOwned] {
+        &self.args
+    }
+
+    #[must_use]
+    pub fn to_diagnostic_path(&self) -> HostPath {
+        let args = self.borrowed_args();
+        HostTargetInstance::new(self.root, self.target(), &args)
+            .to_diagnostic_path()
+            .to_host_path()
     }
 
     #[must_use]
     pub fn field(mut self, field: FieldId) -> Self {
-        self.path = self.path.field(field);
+        self.target.parts.push(HostPathPart::Field(field));
         self
     }
 
     #[must_use]
     pub fn index(mut self, index: u32) -> Self {
-        self.path = self.path.index(index);
+        let arg = self.push_arg(HostPathArgOwned::Index(index));
+        self.target.parts.push(HostPathPart::DynIndex { arg });
         self
     }
 
     #[must_use]
     pub fn key(mut self, key: impl Into<String>) -> Self {
-        self.path = self.path.key(key);
+        let arg = self.push_arg(HostPathArgOwned::Key(key.into()));
+        self.target.parts.push(HostPathPart::DynKey { arg });
+        self
+    }
+
+    #[must_use]
+    pub fn const_index(mut self, index: u32) -> Self {
+        self.target.parts.push(HostPathPart::ConstIndex(index));
+        self
+    }
+
+    #[must_use]
+    pub fn const_key(mut self, key: impl Into<String>) -> Self {
+        self.target.parts.push(HostPathPart::ConstKey(key.into()));
+        self
+    }
+
+    #[must_use]
+    pub fn variant_field(mut self, field: FieldId) -> Self {
+        self.target.parts.push(HostPathPart::VariantField(field));
         self
     }
 
@@ -50,7 +99,9 @@ impl PathProxy {
         access: &HostAccess,
         source_span: Option<Span>,
     ) -> HostResult<HostValue> {
-        access.read_path_at(adapter, &self.path, source_span)
+        let args = self.borrowed_args();
+        let target = HostTargetInstance::new(self.root, self.target(), &args);
+        access.read(adapter, target, source_span)
     }
 
     pub fn set(
@@ -60,7 +111,9 @@ impl PathProxy {
         value: HostValue,
         source_span: Option<Span>,
     ) -> HostResult<()> {
-        access.set_path(adapter, self.path.clone(), value, source_span)
+        let args = self.borrowed_args();
+        let target = HostTargetInstance::new(self.root, self.target(), &args);
+        access.write(adapter, target, value, source_span)
     }
 
     pub fn add(
@@ -70,7 +123,7 @@ impl PathProxy {
         value: HostValue,
         source_span: Option<Span>,
     ) -> HostResult<()> {
-        access.add_path(adapter, self.path.clone(), value, source_span)
+        self.mutate(adapter, access, HostMutationOp::Add, value, source_span)
     }
 
     pub fn sub(
@@ -80,7 +133,7 @@ impl PathProxy {
         value: HostValue,
         source_span: Option<Span>,
     ) -> HostResult<()> {
-        access.sub_path(adapter, self.path.clone(), value, source_span)
+        self.mutate(adapter, access, HostMutationOp::Sub, value, source_span)
     }
 
     pub fn mul(
@@ -90,7 +143,7 @@ impl PathProxy {
         value: HostValue,
         source_span: Option<Span>,
     ) -> HostResult<()> {
-        access.mul_path(adapter, self.path.clone(), value, source_span)
+        self.mutate(adapter, access, HostMutationOp::Mul, value, source_span)
     }
 
     pub fn div(
@@ -100,7 +153,7 @@ impl PathProxy {
         value: HostValue,
         source_span: Option<Span>,
     ) -> HostResult<()> {
-        access.div_path(adapter, self.path.clone(), value, source_span)
+        self.mutate(adapter, access, HostMutationOp::Div, value, source_span)
     }
 
     pub fn rem(
@@ -110,7 +163,7 @@ impl PathProxy {
         value: HostValue,
         source_span: Option<Span>,
     ) -> HostResult<()> {
-        access.rem_path(adapter, self.path.clone(), value, source_span)
+        self.mutate(adapter, access, HostMutationOp::Rem, value, source_span)
     }
 
     pub fn push(
@@ -120,7 +173,7 @@ impl PathProxy {
         value: HostValue,
         source_span: Option<Span>,
     ) -> HostResult<()> {
-        access.push_path(adapter, self.path.clone(), value, source_span)
+        self.mutate(adapter, access, HostMutationOp::Push, value, source_span)
     }
 
     pub fn remove(
@@ -129,7 +182,9 @@ impl PathProxy {
         access: &mut HostAccess,
         source_span: Option<Span>,
     ) -> HostResult<()> {
-        access.remove_path(adapter, self.path.clone(), source_span)
+        let args = self.borrowed_args();
+        let target = HostTargetInstance::new(self.root, self.target(), &args);
+        access.remove(adapter, target, source_span)
     }
 
     pub fn call_method(
@@ -140,6 +195,32 @@ impl PathProxy {
         args: Vec<HostValue>,
         source_span: Option<Span>,
     ) -> HostResult<HostValue> {
-        access.call_method(adapter, self.path.clone(), method, args, source_span)
+        let target_args = self.borrowed_args();
+        let target = HostTargetInstance::new(self.root, self.target(), &target_args);
+        access.call(adapter, target, method, &args, source_span)
+    }
+
+    fn mutate(
+        &self,
+        adapter: &mut (impl ScriptStateAdapter + ?Sized),
+        access: &mut HostAccess,
+        op: HostMutationOp,
+        value: HostValue,
+        source_span: Option<Span>,
+    ) -> HostResult<()> {
+        let args = self.borrowed_args();
+        let target = HostTargetInstance::new(self.root, self.target(), &args);
+        access.mutate(adapter, target, op, value, source_span)
+    }
+
+    fn borrowed_args(&self) -> Vec<HostPathArg<'_>> {
+        self.args.iter().map(HostPathArg::from).collect()
+    }
+
+    fn push_arg(&mut self, arg: HostPathArgOwned) -> u8 {
+        let index =
+            u8::try_from(self.args.len()).expect("path proxy supports at most 256 dynamic args");
+        self.args.push(arg);
+        index
     }
 }

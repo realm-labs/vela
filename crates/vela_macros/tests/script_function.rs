@@ -232,7 +232,7 @@ fn checked_host_bonus(ok: bool) -> HostResult<i64> {
 /// Measures a copied host path proxy.
 #[script_function(name = "game::path_depth", effect = "pure", reflect = true)]
 fn path_depth(path: PathProxy) -> i64 {
-    i64::try_from(path.path().segments.len()).expect("path depth fits i64")
+    i64::try_from(path.to_diagnostic_path().segments.len()).expect("path depth fits i64")
 }
 
 /// Private reflection-only debug probe.

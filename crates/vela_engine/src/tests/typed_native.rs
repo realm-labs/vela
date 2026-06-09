@@ -124,7 +124,8 @@ fn typed_native_functions_accept_path_proxies() {
                 .param("path", TypeHint::PathProxy)
                 .returns(TypeHint::Int),
             |path: PathProxy| {
-                i64::try_from(path.path().segments.len()).expect("path depth fits i64")
+                i64::try_from(path.to_diagnostic_path().segments.len())
+                    .expect("path depth fits i64")
             },
         )
         .build()
@@ -144,7 +145,8 @@ fn main(path) {
         .expect("typed native should register metadata");
     assert_eq!(reflected.params[0].type_hint.as_deref(), Some("path_proxy"));
     let player = HostRef::new(HostTypeId::new(1), HostObjectId::new(42), 7);
-    let path = PathProxy::new(HostPath::new(player).field(FieldId::new(3)).index(2));
+    let path =
+        PathProxy::from_diagnostic_path(HostPath::new(player).field(FieldId::new(3)).index(2));
 
     assert_eq!(
         engine

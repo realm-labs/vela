@@ -349,7 +349,7 @@ fn main(path) {
         "source should compile with macro registered path-proxy native"
     );
     let host_ref = HostRef::new(HostTypeId::new(1), HostObjectId::new(42), 7);
-    let path = PathProxy::new(
+    let path = PathProxy::from_diagnostic_path(
         HostPath::new(host_ref)
             .field(FieldId::new(9))
             .field(FieldId::new(10)),

@@ -1,6 +1,7 @@
 use vela_common::{FieldId, HostObjectId, TypeId, stable_id};
 use vela_host::path::{HostPath, HostRef};
 use vela_host::proxy::PathProxy;
+use vela_host::target::HostTargetPlan;
 use vela_macros::{ScriptHost, ScriptReflect};
 use vela_reflect::access::FieldAccess;
 use vela_reflect::registry::{FieldDesc, TraitDesc, TypeDesc, TypeKey, TypeKind, VariantDesc};
@@ -272,11 +273,17 @@ fn script_host_derive_generates_field_helpers() {
     );
     assert_eq!(
         Player::vela_field_proxy_level(player),
-        PathProxy::new(HostPath::new(player).field(Player::vela_field_id_level())),
+        PathProxy::new(
+            player,
+            HostTargetPlan::new(Player::vela_host_type_id()).field(Player::vela_field_id_level()),
+        ),
     );
     assert_eq!(
         Player::vela_field_proxy_name(player),
-        PathProxy::new(HostPath::new(player).field(Player::vela_field_id_name())),
+        PathProxy::new(
+            player,
+            HostTargetPlan::new(Player::vela_host_type_id()).field(Player::vela_field_id_name()),
+        ),
     );
 }
 

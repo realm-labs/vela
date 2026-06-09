@@ -55,7 +55,7 @@ fn main(player: Player, amount: int) {
 #[test]
 fn prelude_imports_cover_script_arg_conversion_traits() {
     let host_ref = HostRef::new(HostTypeId::new(1), HostObjectId::new(42), 7);
-    let proxy = PathProxy::new(HostPath::new(host_ref).field(FieldId::new(9)));
+    let proxy = PathProxy::from_diagnostic_path(HostPath::new(host_ref).field(FieldId::new(9)));
     let args = args![host(host_ref), proxy.clone(), Some(3_i64), "tag"];
 
     assert_eq!(args.required::<HostRef>(0), Ok(host_ref));
