@@ -1134,15 +1134,16 @@ cargo test --workspace
 
 - [x] Add `HostDiagnosticPath` and materialization from target instances.
 - [x] Keep reflection able to show readable host paths.
-- [ ] Update reflection reads, writes, and calls to use target plans internally
+- [x] Update reflection reads, writes, and calls to use target plans internally
   where practical.
-- [ ] Remove test assumptions that successful hot host access creates owned
+- [x] Remove test assumptions that successful hot host access creates owned
   `HostPath` values.
-- [ ] Record or rerun acceptance:
+- [x] Record or rerun acceptance:
 
 ```text
 cargo test -p vela_reflect
-cargo test --workspace reflection diagnostics
+cargo test --workspace reflection
+cargo test --workspace diagnostics
 ```
 
 ### Task 9: Delete Old Path-First API

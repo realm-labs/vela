@@ -2,7 +2,8 @@ use std::collections::BTreeMap;
 
 use vela_host::access::HostAccess;
 use vela_host::adapter::ScriptStateAdapter;
-use vela_host::path::{HostPath, HostRef};
+use vela_host::path::HostRef;
+use vela_host::target::{HostTargetInstance, HostTargetPlan};
 use vela_host::value::HostValue;
 
 use crate::{
@@ -137,9 +138,11 @@ fn get_impl(
                     },
                 ));
             }
+            let plan = HostTargetPlan::new(host_ref.type_id).field(field_desc.id);
+            let target = HostTargetInstance::new(*host_ref, &plan, &[]);
             let value = ctx
                 .access
-                .read_diagnostic_path(ctx.adapter, &HostPath::new(*host_ref).field(field_desc.id))
+                .read(ctx.adapter, target, None)
                 .map_err(|error| ReflectError::new(ReflectErrorKind::Host(error.to_string())))?;
             Ok(ReflectValue::Host(value))
         }
@@ -264,13 +267,10 @@ fn set_impl(
             let ReflectValue::Host(value) = value else {
                 return Err(ReflectError::new(ReflectErrorKind::InvalidValue));
             };
+            let plan = HostTargetPlan::new(host_ref.type_id).field(field_desc.id);
+            let target = HostTargetInstance::new(*host_ref, &plan, &[]);
             ctx.access
-                .write_diagnostic_path(
-                    ctx.adapter,
-                    HostPath::new(*host_ref).field(field_desc.id),
-                    value,
-                    None,
-                )
+                .write(ctx.adapter, target, value, None)
                 .map_err(|error| ReflectError::new(ReflectErrorKind::Host(error.to_string())))?;
             Ok(ReflectValue::Host(HostValue::Null))
         }
@@ -391,15 +391,11 @@ fn call_impl(
         .into_iter()
         .map(host_arg)
         .collect::<ReflectResult<Vec<_>>>()?;
+    let plan = HostTargetPlan::new(host_ref.type_id);
+    let target = HostTargetInstance::new(*host_ref, &plan, &[]);
     let result = ctx
         .access
-        .call_diagnostic_path_method(
-            ctx.adapter,
-            HostPath::new(*host_ref),
-            method_desc.id,
-            args,
-            None,
-        )
+        .call(ctx.adapter, target, method_desc.id, &args, None)
         .map_err(|error| ReflectError::new(ReflectErrorKind::Host(error.to_string())))?;
     Ok(ReflectValue::Host(result))
 }

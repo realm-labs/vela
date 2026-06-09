@@ -2,6 +2,7 @@ use vela_common::{FieldId, HostMethodId, HostObjectId, HostTypeId, TypeId};
 use vela_host::access::HostAccess;
 use vela_host::mock::MockStateAdapter;
 use vela_host::path::{HostPath, HostRef};
+use vela_host::target::{HostTargetInstance, HostTargetPlan};
 use vela_host::value::HostValue;
 use vela_reflect::error::ReflectErrorKind;
 use vela_reflect::registry::{FieldDesc, MethodDesc, TypeDesc, TypeKey, TypeRegistry};
@@ -54,13 +55,14 @@ fn reflect_get_host_ref_reads_write_through_state() {
     let registry = registry();
     let mut adapter = adapter_with_level(HostValue::Int(9));
     let mut tx = HostAccess::new();
-    tx.write_diagnostic_path(
+    let plan = HostTargetPlan::new(player_ref().type_id).field(FieldId::new(2));
+    tx.write(
         &mut adapter,
-        HostPath::new(player_ref()).field(FieldId::new(2)),
+        HostTargetInstance::new(player_ref(), &plan, &[]),
         HostValue::Int(12),
         None,
     )
-    .expect("set host path");
+    .expect("set host target");
     let mut ctx = ReflectContext {
         registry: &registry,
         adapter: &mut adapter,
@@ -124,12 +126,13 @@ fn reflect_call_host_ref_writes_through_and_updates_adapter() {
 
         assert_eq!(value, ReflectValue::Host(HostValue::Null));
     }
+    let calls = adapter.method_calls();
+    assert_eq!(calls.len(), 1);
+    assert_eq!(calls[0].target.root, player_ref());
     assert_eq!(
-        adapter.method_calls(),
-        &[(
-            HostPath::new(player_ref()),
-            HostMethodId::new(5),
-            vec![HostValue::Int(20)]
-        )]
+        calls[0].target.target,
+        HostTargetPlan::new(player_ref().type_id)
     );
+    assert_eq!(calls[0].method, HostMethodId::new(5));
+    assert_eq!(calls[0].args, vec![HostValue::Int(20)]);
 }
