@@ -154,9 +154,12 @@ Cranelift JIT.
   `CodeObject` values now own interned `HostTargetPlan` tables and the
   collapsed `HostRead`/`HostWrite`/`HostMutate`/`HostRemove`/`HostCall`
   instruction family has verifier coverage for target bounds, contiguous
-  dynamic arguments, and cache-site kind matching, plus VM execution support
-  through the focused host-access boundary before compiler lowering migrates to
-  it. Host-boundary
+  dynamic arguments, and cache-site kind matching. Source compiler lowering
+  now interns host field, path, mutation, remove, push, and method-call targets
+  into those tables and emits the collapsed family through the focused
+  host-access boundary, with registered host type IDs preserved for typed root
+  plans and mock storage canonicalized across static and dynamic key shapes.
+  Host-boundary
   conversion failures are covered as HostAccess slow paths that leave adapter
   state unchanged.
   Source and module compilation now verifies bytecode before returning

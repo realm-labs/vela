@@ -1,6 +1,6 @@
 use std::collections::{HashMap, HashSet};
 
-use vela_common::{FieldId, FunctionId, HostMethodId};
+use vela_common::{FieldId, FunctionId, HostMethodId, HostTypeId};
 
 #[derive(Clone, Debug, Default, PartialEq)]
 pub struct CompilerOptions {
@@ -10,6 +10,7 @@ pub struct CompilerOptions {
     pub(super) host_methods: HashMap<String, HostMethodId>,
     pub(super) host_methods_by_type: HashMap<(String, String), HostMethodId>,
     pub(super) host_method_params: HashMap<HostMethodId, Vec<HostMethodParam>>,
+    pub(super) host_type_ids: HashMap<String, HostTypeId>,
     pub(super) value_method_params: HashMap<String, Vec<ValueMethodParam>>,
     pub(super) value_methods_by_type: HashMap<(String, String), ValueMethodInfo>,
     pub(super) host_types: HashSet<String>,
@@ -226,6 +227,14 @@ impl CompilerOptions {
     }
 
     #[must_use]
+    pub fn with_host_type_id(mut self, type_name: impl Into<String>, id: HostTypeId) -> Self {
+        let type_name = type_name.into();
+        self.host_types.insert(type_name.clone());
+        self.host_type_ids.insert(type_name, id);
+        self
+    }
+
+    #[must_use]
     pub fn with_host_index_capability(
         mut self,
         type_name: impl Into<String>,
@@ -306,6 +315,10 @@ impl CompilerOptions {
             })
             .copied()
             .or_else(|| self.host_methods.get(name).copied())
+    }
+
+    pub(super) fn host_type_id(&self, type_name: &str) -> Option<HostTypeId> {
+        self.host_type_ids.get(type_name).copied()
     }
 
     pub(super) fn host_field(

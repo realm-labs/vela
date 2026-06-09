@@ -37,8 +37,6 @@ use vela_hir::module_graph::ModuleSource;
 use vela_hir::type_hint::{FunctionSignature, HirTypeHint, ParamHint};
 use vela_syntax::ast::{Argument, Block, Expr, ExprKind, FunctionItem, Param};
 
-#[cfg(test)]
-use crate::HostPathSegment;
 use crate::{
     CacheSiteId, CacheSiteKind, CodeObject, Constant, FrameSlotInfo, FrameSlotKind, Instruction,
     InstructionKind, InstructionOffset, Program, Register,

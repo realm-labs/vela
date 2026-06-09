@@ -3,7 +3,7 @@ use vela_hir::binding::BindingResolution;
 
 use crate::{Constant, InstructionKind, Register};
 
-use super::host_paths::host_field_path_parts;
+use super::host_paths::{HostPath, HostPathPart, HostPathRoot, host_field_path_parts};
 use super::{CompileError, CompileErrorKind, CompileResult, Compiler};
 
 impl Compiler<'_> {
@@ -109,13 +109,8 @@ impl Compiler<'_> {
             && host_path.requires_path_instruction()
         {
             let root = self.compile_host_path_root(host_path.root)?;
-            let segments = self.compile_host_path_segments(host_path.segments)?;
             let dst = self.alloc_register()?;
-            self.emit(InstructionKind::GetHostPath {
-                dst,
-                root,
-                segments,
-            });
+            self.emit_host_read(dst, root, host_path, span)?;
             return Ok(dst);
         }
         let mut current = self.local_register_at_span(span, &path[0])?;
@@ -148,11 +143,18 @@ impl Compiler<'_> {
                     .host_field(None, segment)
                     .map(|field| field.id)
             {
-                self.emit(InstructionKind::GetHostField {
+                self.emit_host_read(
                     dst,
-                    root: current,
-                    field,
-                });
+                    current,
+                    HostPath {
+                        root: HostPathRoot::LocalPath {
+                            name: &path[0],
+                            span,
+                        },
+                        segments: vec![HostPathPart::Field(field)],
+                    },
+                    span,
+                )?;
             } else {
                 self.emit(InstructionKind::GetRecordField {
                     dst,

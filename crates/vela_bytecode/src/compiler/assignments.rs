@@ -1,11 +1,12 @@
 use vela_common::{Diagnostic, Span};
 use vela_hir::binding::BindingResolution;
 use vela_hir::ids::HirLocalId;
+use vela_host::resolved::HostMutationOp;
 use vela_syntax::ast::{AssignOp, Expr, ExprKind};
 
 use crate::{InstructionKind, Register};
 
-use super::host_paths::{HostPath, HostPathPart, host_field_path};
+use super::host_paths::{HostPath, host_field_path};
 use super::operators::compound_assignment_instruction;
 use super::script_types::ScriptTypeFact;
 use super::{CompileError, CompileErrorKind, CompileResult, Compiler};
@@ -401,82 +402,32 @@ impl Compiler<'_> {
         target: &Expr,
         value: &Expr,
     ) -> CompileResult<Register> {
-        let HostPath { root, segments } = self.compile_host_assignment_target(target)?;
-        let root = self.compile_host_path_root(root)?;
-        let field = match segments.as_slice() {
-            [HostPathPart::Field(field)] => Some(*field),
-            _ => None,
-        };
-        let segments = field
-            .is_none()
-            .then(|| self.compile_host_path_segments(segments))
-            .transpose()?;
+        let path = self.compile_host_assignment_target(target)?;
+        let root_path = path.root;
+        let root = self.compile_host_path_root(root_path)?;
         let src = self.compile_expr(value)?;
-        let instruction = if let Some(field) = field {
-            match op {
-                AssignOp::Set => InstructionKind::SetHostField { root, field, src },
-                AssignOp::Add => InstructionKind::AddHostField {
-                    root,
-                    field,
-                    rhs: src,
-                },
-                AssignOp::Sub => InstructionKind::SubHostField {
-                    root,
-                    field,
-                    rhs: src,
-                },
-                AssignOp::Mul => InstructionKind::MulHostField {
-                    root,
-                    field,
-                    rhs: src,
-                },
-                AssignOp::Div => InstructionKind::DivHostField {
-                    root,
-                    field,
-                    rhs: src,
-                },
-                AssignOp::Rem => InstructionKind::RemHostField {
-                    root,
-                    field,
-                    rhs: src,
-                },
-            }
-        } else {
-            let segments = segments.expect("host path segments");
-            match op {
-                AssignOp::Set => InstructionKind::SetHostPath {
-                    root,
-                    segments,
-                    src,
-                },
-                AssignOp::Add => InstructionKind::AddHostPath {
-                    root,
-                    segments,
-                    rhs: src,
-                },
-                AssignOp::Sub => InstructionKind::SubHostPath {
-                    root,
-                    segments,
-                    rhs: src,
-                },
-                AssignOp::Mul => InstructionKind::MulHostPath {
-                    root,
-                    segments,
-                    rhs: src,
-                },
-                AssignOp::Div => InstructionKind::DivHostPath {
-                    root,
-                    segments,
-                    rhs: src,
-                },
-                AssignOp::Rem => InstructionKind::RemHostPath {
-                    root,
-                    segments,
-                    rhs: src,
-                },
-            }
+        let path = HostPath {
+            root: root_path,
+            segments: path.segments,
         };
-        self.emit_spanned(instruction, target.span);
+        match op {
+            AssignOp::Set => self.emit_host_write(root, path, src, target.span)?,
+            AssignOp::Add => {
+                self.emit_host_mutate(root, path, HostMutationOp::Add, src, target.span)?
+            }
+            AssignOp::Sub => {
+                self.emit_host_mutate(root, path, HostMutationOp::Sub, src, target.span)?
+            }
+            AssignOp::Mul => {
+                self.emit_host_mutate(root, path, HostMutationOp::Mul, src, target.span)?
+            }
+            AssignOp::Div => {
+                self.emit_host_mutate(root, path, HostMutationOp::Div, src, target.span)?
+            }
+            AssignOp::Rem => {
+                self.emit_host_mutate(root, path, HostMutationOp::Rem, src, target.span)?
+            }
+        }
         Ok(src)
     }
 

@@ -21,6 +21,9 @@ pub(crate) fn compiler_options_from_registry(registry: &TypeRegistry) -> Compile
     }
     for desc in registry.types() {
         options = options.with_host_type(desc.key.name.clone());
+        if let Some(host_type_id) = desc.host_type_id {
+            options = options.with_host_type_id(desc.key.name.clone(), host_type_id);
+        }
         if let Some(index) = &desc.index_capability {
             options = options.with_host_index_capability(
                 desc.key.name.clone(),

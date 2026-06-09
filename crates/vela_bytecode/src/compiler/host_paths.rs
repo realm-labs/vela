@@ -1,8 +1,10 @@
-use vela_common::FieldId;
 use vela_common::Span;
+use vela_common::{FieldId, HostTypeId};
 use vela_syntax::ast::{Argument, Expr, ExprKind};
 
-use crate::{Constant, HostPathSegment, InstructionKind, Register};
+use crate::{CacheSiteId, Constant, HostTargetPlanId, InstructionKind, Register};
+use vela_host::resolved::HostMutationOp;
+use vela_host::target::HostTargetPlan;
 
 use super::{
     CompileError, CompileErrorKind, CompileResult, Compiler, CompilerOptions, reject_named_args,
@@ -141,6 +143,130 @@ fn host_path_field_part<'ast>(options: &CompilerOptions, name: &str) -> Option<H
 }
 
 impl Compiler<'_> {
+    pub(super) fn emit_host_read(
+        &mut self,
+        dst: Register,
+        root: Register,
+        path: HostPath<'_>,
+        span: Span,
+    ) -> CompileResult<()> {
+        let CompiledHostTarget {
+            target,
+            dynamic_args,
+        } = self.compile_host_target(path)?;
+        self.emit_spanned(
+            InstructionKind::HostRead {
+                dst,
+                root,
+                target,
+                dynamic_args,
+                cache_site: CacheSiteId::new(0),
+            },
+            span,
+        );
+        Ok(())
+    }
+
+    pub(super) fn emit_host_write(
+        &mut self,
+        root: Register,
+        path: HostPath<'_>,
+        src: Register,
+        span: Span,
+    ) -> CompileResult<()> {
+        let CompiledHostTarget {
+            target,
+            dynamic_args,
+        } = self.compile_host_target(path)?;
+        self.emit_spanned(
+            InstructionKind::HostWrite {
+                root,
+                target,
+                dynamic_args,
+                src,
+                cache_site: CacheSiteId::new(0),
+            },
+            span,
+        );
+        Ok(())
+    }
+
+    pub(super) fn emit_host_mutate(
+        &mut self,
+        root: Register,
+        path: HostPath<'_>,
+        op: HostMutationOp,
+        rhs: Register,
+        span: Span,
+    ) -> CompileResult<()> {
+        let CompiledHostTarget {
+            target,
+            dynamic_args,
+        } = self.compile_host_target(path)?;
+        self.emit_spanned(
+            InstructionKind::HostMutate {
+                root,
+                target,
+                dynamic_args,
+                op,
+                rhs,
+                cache_site: CacheSiteId::new(0),
+            },
+            span,
+        );
+        Ok(())
+    }
+
+    pub(super) fn emit_host_remove(
+        &mut self,
+        root: Register,
+        path: HostPath<'_>,
+        span: Span,
+    ) -> CompileResult<()> {
+        let CompiledHostTarget {
+            target,
+            dynamic_args,
+        } = self.compile_host_target(path)?;
+        self.emit_spanned(
+            InstructionKind::HostRemove {
+                root,
+                target,
+                dynamic_args,
+                cache_site: CacheSiteId::new(0),
+            },
+            span,
+        );
+        Ok(())
+    }
+
+    pub(super) fn emit_host_call(
+        &mut self,
+        dst: Option<Register>,
+        root: Register,
+        path: HostPath<'_>,
+        method: vela_common::HostMethodId,
+        args: Vec<Register>,
+        span: Span,
+    ) -> CompileResult<()> {
+        let CompiledHostTarget {
+            target,
+            dynamic_args,
+        } = self.compile_host_target(path)?;
+        self.emit_spanned(
+            InstructionKind::HostCall {
+                dst,
+                root,
+                target,
+                dynamic_args,
+                method,
+                args,
+                cache_site: CacheSiteId::new(0),
+            },
+            span,
+        );
+        Ok(())
+    }
+
     pub(super) fn host_path_push_call(
         &mut self,
         callee: &Expr,
@@ -168,13 +294,8 @@ impl Compiler<'_> {
             )));
         };
         let root = self.compile_host_path_root(path.root)?;
-        let segments = self.compile_host_path_segments(path.segments)?;
         let value = self.compile_expr(&arg.value)?;
-        self.emit(InstructionKind::PushHostPath {
-            root,
-            segments,
-            value,
-        });
+        self.emit_host_mutate(root, path, HostMutationOp::Push, value, callee.span)?;
         let dst = self.alloc_register()?;
         self.emit_constant_to(dst, Constant::Null);
         Ok(Some(dst))
@@ -207,8 +328,7 @@ impl Compiler<'_> {
             )));
         }
         let root = self.compile_host_path_root(path.root)?;
-        let segments = self.compile_host_path_segments(path.segments)?;
-        self.emit(InstructionKind::RemoveHostPath { root, segments });
+        self.emit_host_remove(root, path, callee.span)?;
         let dst = self.alloc_register()?;
         self.emit_constant_to(dst, Constant::Null);
         Ok(Some(dst))
@@ -224,17 +344,88 @@ impl Compiler<'_> {
         }
     }
 
-    pub(super) fn compile_host_path_segments<'expr>(
+    fn compile_host_target<'expr>(
         &mut self,
-        segments: Vec<HostPathPart<'expr>>,
-    ) -> CompileResult<Vec<HostPathSegment>> {
-        segments
-            .into_iter()
-            .map(|segment| match segment {
-                HostPathPart::Field(field) => Ok(HostPathSegment::Field(field)),
-                HostPathPart::VariantField(field) => Ok(HostPathSegment::VariantField(field)),
-                HostPathPart::Value(expr) => self.compile_expr(expr).map(HostPathSegment::Value),
-            })
-            .collect()
+        path: HostPath<'expr>,
+    ) -> CompileResult<CompiledHostTarget> {
+        let root_type = self.host_path_root_type(path.root);
+        let mut plan = HostTargetPlan::with_part_capacity(root_type, path.segments.len());
+        let mut dynamic_args = Vec::new();
+        for segment in path.segments {
+            match segment {
+                HostPathPart::Field(field) => {
+                    plan = plan.field(field);
+                }
+                HostPathPart::VariantField(field) => {
+                    plan = plan.variant_field(field);
+                }
+                HostPathPart::Value(expr) => {
+                    if let Some(arg) = const_host_path_arg(expr) {
+                        plan = match arg {
+                            ConstHostPathArg::Index(index) => plan.const_index(index),
+                            ConstHostPathArg::Key(key) => plan.const_key(key),
+                        };
+                        continue;
+                    }
+                    let arg = u8::try_from(dynamic_args.len()).map_err(|_| {
+                        CompileError::new(CompileErrorKind::UnsupportedSyntax(
+                            "host path dynamic argument count",
+                        ))
+                    })?;
+                    let register = self.compile_expr(expr)?;
+                    dynamic_args.push(register);
+                    plan = plan.dyn_key(arg);
+                }
+            }
+        }
+        Ok(CompiledHostTarget {
+            target: self.code.intern_host_target(plan),
+            dynamic_args,
+        })
+    }
+
+    fn host_path_root_type(&self, root: HostPathRoot<'_>) -> HostTypeId {
+        self.host_path_root_type_name(root)
+            .and_then(|type_name| self.facts.options.host_type_id(&type_name))
+            .unwrap_or_else(|| HostTypeId::new(0))
+    }
+
+    fn host_path_root_type_name(&self, root: HostPathRoot<'_>) -> Option<String> {
+        match root {
+            HostPathRoot::Expr(expr) => self.script_type_for_expr(expr),
+            HostPathRoot::LocalPath { name, span } => self.host_local_type_name(name, span),
+        }
+    }
+
+    fn host_local_type_name(&self, name: &str, span: Span) -> Option<String> {
+        self.script_types
+            .local_at_span(self.bindings, span)
+            .or_else(|| self.global_type_at_span(span))
+            .or_else(|| self.script_types.name(name))
+            .or_else(|| self.global_type_named(name))
+    }
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub(super) struct CompiledHostTarget {
+    pub(super) target: HostTargetPlanId,
+    pub(super) dynamic_args: Vec<Register>,
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+enum ConstHostPathArg {
+    Index(u32),
+    Key(String),
+}
+
+fn const_host_path_arg(expr: &Expr) -> Option<ConstHostPathArg> {
+    match &expr.kind {
+        ExprKind::Literal(vela_syntax::ast::Literal::Int(value)) => {
+            value.parse::<u32>().ok().map(ConstHostPathArg::Index)
+        }
+        ExprKind::Literal(vela_syntax::ast::Literal::String(value)) => {
+            Some(ConstHostPathArg::Key(value.clone()))
+        }
+        _ => None,
     }
 }

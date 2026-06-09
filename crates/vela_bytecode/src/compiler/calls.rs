@@ -37,19 +37,19 @@ impl Compiler<'_> {
             path_root_is_local,
         ) {
             let root = self.compile_host_path_root(call.receiver)?;
-            let segments = self.compile_host_path_segments(call.segments)?;
             let arg_registers = self.compile_host_method_call_args(call.method, args, expr.span)?;
             let dst = self.alloc_register()?;
-            self.emit_spanned(
-                InstructionKind::CallHostMethod {
-                    dst: Some(dst),
-                    root,
-                    segments,
-                    method: call.method,
-                    args: arg_registers,
+            self.emit_host_call(
+                Some(dst),
+                root,
+                super::host_paths::HostPath {
+                    root: call.receiver,
+                    segments: call.segments,
                 },
+                call.method,
+                arg_registers,
                 expr.span,
-            );
+            )?;
             return Ok(dst);
         }
 

@@ -5,7 +5,7 @@ use crate::{InstructionKind, Register};
 
 use super::const_eval::compile_literal_constant;
 use super::constructors::schema_default_fields;
-use super::host_paths::host_field_path;
+use super::host_paths::{HostPath, host_field_path};
 use super::operators::non_logical_binary_instruction;
 use super::patterns::enum_variant_path;
 use super::schema_defaults::{record_constructor_diagnostics, unknown_enum_variant_diagnostic};
@@ -69,16 +69,8 @@ impl Compiler<'_> {
                         && path.requires_path_instruction()
                     {
                         let root = self.compile_host_path_root(path.root)?;
-                        let segments = self.compile_host_path_segments(path.segments)?;
                         let dst = self.alloc_register()?;
-                        self.emit_spanned(
-                            InstructionKind::GetHostPath {
-                                dst,
-                                root,
-                                segments,
-                            },
-                            expr.span,
-                        );
+                        self.emit_host_read(dst, root, path, expr.span)?;
                         return Ok(dst);
                     }
                     let root = self.compile_expr(base)?;
@@ -89,10 +81,11 @@ impl Compiler<'_> {
                         .host_field(None, name)
                         .map(|field| field.id)
                     {
-                        self.emit_spanned(
-                            InstructionKind::GetHostField { dst, root, field },
-                            expr.span,
-                        );
+                        let path = HostPath {
+                            root: super::host_paths::HostPathRoot::Expr(base),
+                            segments: vec![super::host_paths::HostPathPart::Field(field)],
+                        };
+                        self.emit_host_read(dst, root, path, expr.span)?;
                     } else {
                         self.emit(InstructionKind::GetRecordField {
                             dst,
@@ -108,16 +101,8 @@ impl Compiler<'_> {
                     && !path.segments.is_empty()
                 {
                     let root = self.compile_host_path_root(path.root)?;
-                    let segments = self.compile_host_path_segments(path.segments)?;
                     let dst = self.alloc_register()?;
-                    self.emit_spanned(
-                        InstructionKind::GetHostPath {
-                            dst,
-                            root,
-                            segments,
-                        },
-                        expr.span,
-                    );
+                    self.emit_host_read(dst, root, path, expr.span)?;
                     return Ok(dst);
                 }
                 let base = self.compile_expr(base)?;

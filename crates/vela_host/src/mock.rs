@@ -46,15 +46,25 @@ impl MockValueKey {
 
     #[must_use]
     pub fn from_path(path: &HostPath) -> Self {
-        Self::new(path.root, HostTargetPlan::from(path), Vec::new())
+        Self::new(path.root, HostTargetPlan::from(path), Vec::new()).canonical()
     }
 
     fn from_instance(target: HostTargetInstance<'_>) -> Self {
+        let mut plan = target.plan.clone();
+        if plan.root_type == HostTypeId::new(0) {
+            plan.root_type = target.root.type_id;
+        }
         Self::new(
             target.root,
-            target.plan.clone(),
+            plan,
             target.args.iter().map(|arg| arg.to_owned_arg()).collect(),
         )
+        .canonical()
+    }
+
+    fn canonical(self) -> Self {
+        let path = self.diagnostic_path();
+        Self::new(path.root, HostTargetPlan::from(&path), Vec::new())
     }
 
     fn diagnostic_path(&self) -> HostPath {

@@ -148,7 +148,7 @@ pub(crate) fn execute_host_write(
     let root = expect_host_ref(runtime.frame.read(root)?, "host_write")?;
     let value = value_to_host(
         runtime.frame.read(src)?,
-        "host_write",
+        "set_host_field",
         runtime.heap.as_deref(),
     )?;
     let args = materialize_host_args(

@@ -1,4 +1,127 @@
 use super::*;
+use crate::HostTargetPlanId;
+use vela_common::HostTypeId;
+use vela_host::target::HostPathPart;
+
+fn host_target_parts(code: &CodeObject, target: HostTargetPlanId) -> &[HostPathPart] {
+    code.host_target(target)
+        .expect("host target should exist")
+        .parts
+        .as_slice()
+}
+
+fn has_host_call(code: &CodeObject, method: HostMethodId, arg_count: usize) -> bool {
+    code.instructions.iter().any(|instruction| {
+        matches!(
+            &instruction.kind,
+            InstructionKind::HostCall {
+                method: lowered_method,
+                args,
+                ..
+            } if *lowered_method == method && args.len() == arg_count
+        )
+    })
+}
+
+fn has_host_call_target(
+    code: &CodeObject,
+    method: HostMethodId,
+    expected: &[HostPathPart],
+    dynamic_arg_count: usize,
+) -> bool {
+    code.instructions
+        .iter()
+        .any(|instruction| match &instruction.kind {
+            InstructionKind::HostCall {
+                method: lowered_method,
+                target,
+                dynamic_args,
+                ..
+            } => {
+                *lowered_method == method
+                    && dynamic_args.len() == dynamic_arg_count
+                    && host_target_parts(code, *target) == expected
+            }
+            _ => false,
+        })
+}
+
+fn has_host_mutate_target(
+    code: &CodeObject,
+    op: vela_host::resolved::HostMutationOp,
+    expected: &[HostPathPart],
+    dynamic_arg_count: usize,
+) -> bool {
+    code.instructions
+        .iter()
+        .any(|instruction| match &instruction.kind {
+            InstructionKind::HostMutate {
+                op: lowered_op,
+                target,
+                dynamic_args,
+                ..
+            } => {
+                *lowered_op == op
+                    && dynamic_args.len() == dynamic_arg_count
+                    && host_target_parts(code, *target) == expected
+            }
+            _ => false,
+        })
+}
+
+fn has_host_read_target(
+    code: &CodeObject,
+    expected: &[HostPathPart],
+    dynamic_arg_count: usize,
+) -> bool {
+    code.instructions
+        .iter()
+        .any(|instruction| match &instruction.kind {
+            InstructionKind::HostRead {
+                target,
+                dynamic_args,
+                ..
+            } => {
+                dynamic_args.len() == dynamic_arg_count
+                    && host_target_parts(code, *target) == expected
+            }
+            _ => false,
+        })
+}
+
+#[test]
+fn compiler_lowers_typed_host_target_root_type_id() {
+    let player_type = HostTypeId::new(77);
+    let level = FieldId::new(3);
+    let code = compile_function_source_with_options(
+        SourceId::new(1),
+        r#"
+fn main(player: Player) {
+    return player.level;
+}
+"#,
+        "main",
+        &CompilerOptions::new()
+            .with_host_type_id("Player", player_type)
+            .with_host_field("level", level)
+            .with_host_field_for_type("Player", "level", level, true),
+    )
+    .expect("typed host field read should compile");
+
+    let Some(target) = code
+        .instructions
+        .iter()
+        .find_map(|instruction| match instruction.kind {
+            InstructionKind::HostRead { target, .. } => Some(target),
+            _ => None,
+        })
+    else {
+        panic!("expected HostRead");
+    };
+    let plan = code.host_target(target).expect("host target should exist");
+    assert_eq!(plan.root_type, player_type);
+    assert_eq!(plan.parts.as_slice(), [HostPathPart::Field(level)]);
+}
 
 #[test]
 fn compiler_lowers_configured_host_method_calls() {
@@ -15,13 +138,7 @@ fn main(player) {
         &CompilerOptions::new().with_host_method("grant_exp", method),
     )
     .expect("host method call should compile");
-    assert!(code.instructions.iter().any(|instruction| matches!(
-        instruction.kind,
-        InstructionKind::CallHostMethod {
-            method: lowered_method,
-            ..
-        } if lowered_method == method
-    )));
+    assert!(has_host_call(&code, method, 1));
 }
 
 #[test]
@@ -42,14 +159,7 @@ fn main(ctx) {
     )
     .expect("named/default host method args should compile");
 
-    assert!(code.instructions.iter().any(|instruction| matches!(
-        &instruction.kind,
-        InstructionKind::CallHostMethod {
-            method: lowered_method,
-            args,
-            ..
-        } if *lowered_method == method && args.len() == 1
-    )));
+    assert!(has_host_call(&code, method, 1));
 }
 
 #[test]
@@ -70,14 +180,7 @@ fn main(ctx) {
     )
     .expect("positional host method args should stay variadic");
 
-    assert!(code.instructions.iter().any(|instruction| matches!(
-        &instruction.kind,
-        InstructionKind::CallHostMethod {
-            method: lowered_method,
-            args,
-            ..
-        } if *lowered_method == method && args.len() == 3
-    )));
+    assert!(has_host_call(&code, method, 3));
 }
 
 #[test]
@@ -124,13 +227,7 @@ fn main(ctx) {
             .with_host_method("emit", method),
     )
     .expect("local host method should shadow native module root");
-    assert!(code.instructions.iter().any(|instruction| matches!(
-        instruction.kind,
-        InstructionKind::CallHostMethod {
-            method: lowered_method,
-            ..
-        } if lowered_method == method
-    )));
+    assert!(has_host_call(&code, method, 1));
 }
 
 #[test]
@@ -151,15 +248,12 @@ fn main(player) {
             .with_host_method("add", method),
     )
     .expect("host field method call should compile");
-    assert!(code.instructions.iter().any(|instruction| matches!(
-        &instruction.kind,
-        InstructionKind::CallHostMethod {
-            method: lowered_method,
-            segments,
-            ..
-        } if *lowered_method == method
-            && segments.as_slice() == [HostPathSegment::Field(inventory)]
-    )));
+    assert!(has_host_call_target(
+        &code,
+        method,
+        &[HostPathPart::Field(inventory)],
+        0
+    ));
 }
 #[test]
 fn compiler_lowers_configured_host_method_calls_on_indexed_paths() {
@@ -181,22 +275,16 @@ fn main(player, item_id) {
             .with_host_method("grant", method),
     )
     .expect("indexed host method call should compile");
-    assert!(code.instructions.iter().any(|instruction| matches!(
-        &instruction.kind,
-        InstructionKind::CallHostMethod {
-            method: lowered_method,
-            segments,
-            ..
-        } if *lowered_method == method
-            && matches!(
-                segments.as_slice(),
-                [
-                    HostPathSegment::Field(first),
-                    HostPathSegment::Field(second),
-                    HostPathSegment::Value(_)
-                ] if *first == inventory && *second == items
-            )
-    )));
+    assert!(has_host_call_target(
+        &code,
+        method,
+        &[
+            HostPathPart::Field(inventory),
+            HostPathPart::Field(items),
+            HostPathPart::DynKey { arg: 0 },
+        ],
+        1
+    ));
 }
 #[test]
 fn compiler_lowers_nested_host_field_paths() {
@@ -216,26 +304,14 @@ fn main(player) {
             .with_host_field("level", level),
     )
     .expect("nested host field path should compile");
-    assert!(code.instructions.iter().any(|instruction| matches!(
-        &instruction.kind,
-        InstructionKind::AddHostPath {
-            segments,
-            ..
-        } if segments.as_slice() == [
-            HostPathSegment::Field(stats),
-            HostPathSegment::Field(level)
-        ]
-    )));
-    assert!(code.instructions.iter().any(|instruction| matches!(
-        &instruction.kind,
-        InstructionKind::GetHostPath {
-            segments,
-            ..
-        } if segments.as_slice() == [
-            HostPathSegment::Field(stats),
-            HostPathSegment::Field(level)
-        ]
-    )));
+    let target = [HostPathPart::Field(stats), HostPathPart::Field(level)];
+    assert!(has_host_mutate_target(
+        &code,
+        vela_host::resolved::HostMutationOp::Add,
+        &target,
+        0
+    ));
+    assert!(has_host_read_target(&code, &target, 0));
 }
 
 #[test]
@@ -282,36 +358,19 @@ fn main(player, item_id) {
             .with_host_field("count", count),
     )
     .expect("indexed host field path should compile");
-    assert!(code.instructions.iter().any(|instruction| matches!(
-        &instruction.kind,
-        InstructionKind::AddHostPath {
-            segments,
-            ..
-        } if matches!(
-            segments.as_slice(),
-            [
-                HostPathSegment::Field(first),
-                HostPathSegment::Field(second),
-                HostPathSegment::Value(_),
-                HostPathSegment::Field(third)
-            ] if *first == inventory && *second == items && *third == count
-        )
-    )));
-    assert!(code.instructions.iter().any(|instruction| matches!(
-        &instruction.kind,
-        InstructionKind::GetHostPath {
-            segments,
-            ..
-        } if matches!(
-            segments.as_slice(),
-            [
-                HostPathSegment::Field(first),
-                HostPathSegment::Field(second),
-                HostPathSegment::Value(_),
-                HostPathSegment::Field(third)
-            ] if *first == inventory && *second == items && *third == count
-        )
-    )));
+    let target = [
+        HostPathPart::Field(inventory),
+        HostPathPart::Field(items),
+        HostPathPart::DynKey { arg: 0 },
+        HostPathPart::Field(count),
+    ];
+    assert!(has_host_mutate_target(
+        &code,
+        vela_host::resolved::HostMutationOp::Add,
+        &target,
+        1
+    ));
+    assert!(has_host_read_target(&code, &target, 1));
 }
 #[test]
 fn compiler_lowers_host_variant_field_paths() {
@@ -331,26 +390,17 @@ fn main(player) {
             .with_host_variant_field("count", count),
     )
     .expect("host variant field path should compile");
-    assert!(code.instructions.iter().any(|instruction| matches!(
-        &instruction.kind,
-        InstructionKind::AddHostPath {
-            segments,
-            ..
-        } if segments.as_slice() == [
-            HostPathSegment::Field(quest_progress),
-            HostPathSegment::VariantField(count)
-        ]
-    )));
-    assert!(code.instructions.iter().any(|instruction| matches!(
-        &instruction.kind,
-        InstructionKind::GetHostPath {
-            segments,
-            ..
-        } if segments.as_slice() == [
-            HostPathSegment::Field(quest_progress),
-            HostPathSegment::VariantField(count)
-        ]
-    )));
+    let target = [
+        HostPathPart::Field(quest_progress),
+        HostPathPart::VariantField(count),
+    ];
+    assert!(has_host_mutate_target(
+        &code,
+        vela_host::resolved::HostMutationOp::Add,
+        &target,
+        0
+    ));
+    assert!(has_host_read_target(&code, &target, 0));
 }
 #[test]
 fn compiler_lowers_host_sub_assignments() {
@@ -370,16 +420,12 @@ fn main(player) {
             .with_host_field("level", level),
     )
     .expect("host sub assignment should compile");
-    assert!(code.instructions.iter().any(|instruction| matches!(
-        &instruction.kind,
-        InstructionKind::SubHostPath {
-            segments,
-            ..
-        } if segments.as_slice() == [
-            HostPathSegment::Field(stats),
-            HostPathSegment::Field(level)
-        ]
-    )));
+    assert!(has_host_mutate_target(
+        &code,
+        vela_host::resolved::HostMutationOp::Sub,
+        &[HostPathPart::Field(stats), HostPathPart::Field(level)],
+        0
+    ));
 }
 #[test]
 fn compiler_lowers_host_numeric_compound_assignments() {
@@ -401,30 +447,25 @@ fn main(player) {
             .with_host_field("level", level),
     )
     .expect("host numeric compound assignments should compile");
-    assert!(code.instructions.iter().any(|instruction| matches!(
-        &instruction.kind,
-        InstructionKind::MulHostPath { segments, .. }
-            if segments.as_slice() == [
-                HostPathSegment::Field(stats),
-                HostPathSegment::Field(level)
-            ]
-    )));
-    assert!(code.instructions.iter().any(|instruction| matches!(
-        &instruction.kind,
-        InstructionKind::DivHostPath { segments, .. }
-            if segments.as_slice() == [
-                HostPathSegment::Field(stats),
-                HostPathSegment::Field(level)
-            ]
-    )));
-    assert!(code.instructions.iter().any(|instruction| matches!(
-        &instruction.kind,
-        InstructionKind::RemHostPath { segments, .. }
-            if segments.as_slice() == [
-                HostPathSegment::Field(stats),
-                HostPathSegment::Field(level)
-            ]
-    )));
+    let target = [HostPathPart::Field(stats), HostPathPart::Field(level)];
+    assert!(has_host_mutate_target(
+        &code,
+        vela_host::resolved::HostMutationOp::Mul,
+        &target,
+        0
+    ));
+    assert!(has_host_mutate_target(
+        &code,
+        vela_host::resolved::HostMutationOp::Div,
+        &target,
+        0
+    ));
+    assert!(has_host_mutate_target(
+        &code,
+        vela_host::resolved::HostMutationOp::Rem,
+        &target,
+        0
+    ));
 }
 #[test]
 fn compiler_lowers_host_path_push_calls() {
@@ -444,16 +485,12 @@ fn main(player) {
             .with_host_field("rewards", rewards),
     )
     .expect("host path push should compile");
-    assert!(code.instructions.iter().any(|instruction| matches!(
-        &instruction.kind,
-        InstructionKind::PushHostPath {
-            segments,
-            ..
-        } if segments.as_slice() == [
-            HostPathSegment::Field(inventory),
-            HostPathSegment::Field(rewards)
-        ]
-    )));
+    assert!(has_host_mutate_target(
+        &code,
+        vela_host::resolved::HostMutationOp::Push,
+        &[HostPathPart::Field(inventory), HostPathPart::Field(rewards)],
+        0
+    ));
 }
 #[test]
 fn compiler_lowers_host_path_remove_calls() {
@@ -478,14 +515,18 @@ fn main(player) {
         code.instructions
             .iter()
             .any(|instruction| match &instruction.kind {
-                InstructionKind::RemoveHostPath { segments, .. } => matches!(
-                    segments.as_slice(),
-                    [
-                        HostPathSegment::Field(first),
-                        HostPathSegment::Field(second),
-                        HostPathSegment::Value(_)
-                    ] if *first == inventory && *second == items
-                ),
+                InstructionKind::HostRemove {
+                    target,
+                    dynamic_args,
+                    ..
+                } =>
+                    dynamic_args.len() == 1
+                        && host_target_parts(&code, *target)
+                            == [
+                                HostPathPart::Field(inventory),
+                                HostPathPart::Field(items),
+                                HostPathPart::DynKey { arg: 0 },
+                            ],
                 _ => false,
             })
     );
