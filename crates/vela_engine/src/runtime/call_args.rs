@@ -4,8 +4,8 @@ use vela_common::HostObjectId;
 use vela_host::adapter::ScriptStateAdapter;
 use vela_host::error::{HostError, HostErrorKind, HostResult};
 use vela_host::object::ScriptHostObject;
-use vela_host::path::{HostPath, HostRef};
-use vela_host::resolved::{HostMutationOp, ResolvedHostAccess};
+use vela_host::path::HostRef;
+use vela_host::resolved::{HostAccessOp, HostAccessSpec, HostMutationOp, ResolvedHostAccess};
 use vela_host::target::HostTargetInstance;
 use vela_host::value::HostValue;
 use vela_vm::budget::ExecutionBudget;
@@ -476,10 +476,26 @@ impl<'call, 'args> CallArgsAdapter<'call, 'args> {
         None
     }
 
-    fn direct_access_error(path: &HostPath, action: &'static str) -> HostError {
+    fn direct_binding_by_type<'s>(
+        &'s self,
+        type_id: vela_common::HostTypeId,
+    ) -> Option<&'s HostArgBinding<'args>> {
+        for entry in &self.args.entries {
+            if let CallArg::NamedHost {
+                host_ref, binding, ..
+            } = entry
+                && host_ref.type_id == type_id
+            {
+                return Some(binding);
+            }
+        }
+        None
+    }
+
+    fn direct_access_error(target: HostTargetInstance<'_>, action: &'static str) -> HostError {
         HostError {
             kind: HostErrorKind::PermissionDenied {
-                path: path.clone(),
+                path: target.to_diagnostic_path().to_host_path(),
                 action,
             },
             source_span: None,
@@ -488,15 +504,22 @@ impl<'call, 'args> CallArgsAdapter<'call, 'args> {
 }
 
 impl ScriptStateAdapter for CallArgsAdapter<'_, '_> {
+    fn resolve_host_access(&self, spec: HostAccessSpec<'_>) -> HostResult<ResolvedHostAccess> {
+        match self.direct_binding_by_type(spec.plan.root_type) {
+            Some(HostArgBinding::Shared(object)) => object.resolve_host_target(spec),
+            Some(HostArgBinding::Mutable(object)) => object.resolve_host_target(spec),
+            None => self.fallback.resolve_host_access(spec),
+        }
+    }
+
     fn read_host(
         &self,
         access: ResolvedHostAccess,
         target: HostTargetInstance<'_>,
     ) -> HostResult<HostValue> {
-        let path = target.to_diagnostic_path().to_host_path();
         match self.direct_binding(target.root) {
-            Some(HostArgBinding::Shared(object)) => object.read_host_path(&path),
-            Some(HostArgBinding::Mutable(object)) => object.read_host_path(&path),
+            Some(HostArgBinding::Shared(object)) => object.read_resolved_host(access, target),
+            Some(HostArgBinding::Mutable(object)) => object.read_resolved_host(access, target),
             None => self.fallback.read_host(access, target),
         }
     }
@@ -507,10 +530,11 @@ impl ScriptStateAdapter for CallArgsAdapter<'_, '_> {
         target: HostTargetInstance<'_>,
         value: HostValue,
     ) -> HostResult<()> {
-        let path = target.to_diagnostic_path().to_host_path();
         match self.direct_binding_mut(target.root) {
-            Some(HostArgBinding::Shared(_)) => Err(Self::direct_access_error(&path, "write")),
-            Some(HostArgBinding::Mutable(object)) => object.write_host_path(&path, value),
+            Some(HostArgBinding::Shared(_)) => Err(Self::direct_access_error(target, "write")),
+            Some(HostArgBinding::Mutable(object)) => {
+                object.write_resolved_host(access, target, value)
+            }
             None => self.fallback.write_host(access, target, value),
         }
     }
@@ -524,7 +548,6 @@ impl ScriptStateAdapter for CallArgsAdapter<'_, '_> {
     ) -> HostResult<()> {
         match self.direct_binding(target.root) {
             Some(_) => {
-                let path = target.to_diagnostic_path().to_host_path();
                 let current = self.read_host(access, target)?;
                 let next = match op {
                     HostMutationOp::Add => host_add_values(&current, &rhs),
@@ -534,18 +557,23 @@ impl ScriptStateAdapter for CallArgsAdapter<'_, '_> {
                     HostMutationOp::Rem => host_rem_values(&current, &rhs),
                     HostMutationOp::Push => None,
                 }
-                .ok_or_else(|| HostError {
-                    kind: match op {
-                        HostMutationOp::Add => HostErrorKind::InvalidAdd { path: path.clone() },
-                        HostMutationOp::Sub => HostErrorKind::InvalidSub { path: path.clone() },
-                        HostMutationOp::Mul => HostErrorKind::InvalidMul { path: path.clone() },
-                        HostMutationOp::Div => HostErrorKind::InvalidDiv { path: path.clone() },
-                        HostMutationOp::Rem => HostErrorKind::InvalidRem { path: path.clone() },
-                        HostMutationOp::Push => HostErrorKind::InvalidPush { path: path.clone() },
-                    },
-                    source_span: None,
+                .ok_or_else(|| {
+                    let path = target.to_diagnostic_path().to_host_path();
+                    HostError {
+                        kind: match op {
+                            HostMutationOp::Add => HostErrorKind::InvalidAdd { path },
+                            HostMutationOp::Sub => HostErrorKind::InvalidSub { path },
+                            HostMutationOp::Mul => HostErrorKind::InvalidMul { path },
+                            HostMutationOp::Div => HostErrorKind::InvalidDiv { path },
+                            HostMutationOp::Rem => HostErrorKind::InvalidRem { path },
+                            HostMutationOp::Push => HostErrorKind::InvalidPush { path },
+                        },
+                        source_span: None,
+                    }
                 })?;
-                self.write_host(access, target, next)
+                let write_access = self
+                    .resolve_host_access(HostAccessSpec::new(HostAccessOp::Write, target.plan))?;
+                self.write_host(write_access, target, next)
             }
             None => self.fallback.mutate_host(access, target, op, rhs),
         }
@@ -556,10 +584,9 @@ impl ScriptStateAdapter for CallArgsAdapter<'_, '_> {
         access: ResolvedHostAccess,
         target: HostTargetInstance<'_>,
     ) -> HostResult<()> {
-        let path = target.to_diagnostic_path().to_host_path();
         match self.direct_binding_mut(target.root) {
-            Some(HostArgBinding::Shared(_)) => Err(Self::direct_access_error(&path, "write")),
-            Some(HostArgBinding::Mutable(object)) => object.remove_host_path(&path),
+            Some(HostArgBinding::Shared(_)) => Err(Self::direct_access_error(target, "write")),
+            Some(HostArgBinding::Mutable(object)) => object.remove_resolved_host(access, target),
             None => self.fallback.remove_host(access, target),
         }
     }
@@ -571,10 +598,11 @@ impl ScriptStateAdapter for CallArgsAdapter<'_, '_> {
         method: vela_common::HostMethodId,
         args: &[HostValue],
     ) -> HostResult<HostValue> {
-        let path = target.to_diagnostic_path().to_host_path();
         match self.direct_binding_mut(target.root) {
-            Some(HostArgBinding::Shared(_)) => Err(Self::direct_access_error(&path, "call")),
-            Some(HostArgBinding::Mutable(object)) => object.call_host_method(&path, method, args),
+            Some(HostArgBinding::Shared(_)) => Err(Self::direct_access_error(target, "call")),
+            Some(HostArgBinding::Mutable(object)) => {
+                object.call_resolved_host(access, target, method, args)
+            }
             None => self.fallback.call_host(access, target, method, args),
         }
     }

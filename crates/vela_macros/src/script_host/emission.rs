@@ -71,6 +71,7 @@ pub(super) fn field_helper_tokens(field: &FieldMeta) -> TokenStream {
 }
 
 pub(super) fn field_access_impl_tokens(ident: &Ident, fields: &[FieldMeta]) -> TokenStream {
+    let resolve_arms = fields.iter().enumerate().map(field_resolve_arm_tokens);
     let read_arms = fields
         .iter()
         .filter(|field| field.readable)
@@ -87,33 +88,46 @@ pub(super) fn field_access_impl_tokens(ident: &Ident, fields: &[FieldMeta]) -> T
                 Self::vela_host_type_id()
             }
 
-            fn read_host_path_from(
+            fn resolve_host_target_from(
                 &self,
-                path: &::vela_host::path::HostPath,
+                spec: ::vela_host::resolved::HostAccessSpec<'_>,
+                offset: usize,
+            ) -> ::vela_host::error::HostResult<::vela_host::resolved::ResolvedHostAccess> {
+                match spec.plan.parts.as_slice().get(offset) {
+                    #(#resolve_arms)*
+                    _ => Ok(::vela_host::resolved::ResolvedHostAccess::generic_path(
+                        ::vela_host::resolved::HostSchemaEpoch::new(0),
+                    )),
+                }
+            }
+
+            fn read_host_target_from(
+                &self,
+                target: ::vela_host::target::HostTargetInstance<'_>,
                 offset: usize,
             ) -> ::vela_host::error::HostResult<::vela_host::value::HostValue> {
-                match path.segments.get(offset) {
+                match target.plan.parts.as_slice().get(offset) {
                     #(#read_arms)*
                     _ => Err(::vela_host::error::HostError {
                         kind: ::vela_host::error::HostErrorKind::MissingPath {
-                            path: path.clone(),
+                            path: target.to_diagnostic_path().to_host_path(),
                         },
                         source_span: None,
                     }),
                 }
             }
 
-            fn write_host_path_from(
+            fn write_host_target_from(
                 &mut self,
-                path: &::vela_host::path::HostPath,
+                target: ::vela_host::target::HostTargetInstance<'_>,
                 offset: usize,
                 value: ::vela_host::value::HostValue,
             ) -> ::vela_host::error::HostResult<()> {
-                match path.segments.get(offset) {
+                match target.plan.parts.as_slice().get(offset) {
                     #(#write_arms)*
                     _ => Err(::vela_host::error::HostError {
                         kind: ::vela_host::error::HostErrorKind::PermissionDenied {
-                            path: path.clone(),
+                            path: target.to_diagnostic_path().to_host_path(),
                             action: "write",
                         },
                         source_span: None,
@@ -121,24 +135,24 @@ pub(super) fn field_access_impl_tokens(ident: &Ident, fields: &[FieldMeta]) -> T
                 }
             }
 
-            fn call_host_method_from(
+            fn call_host_target_from(
                 &mut self,
-                path: &::vela_host::path::HostPath,
+                target: ::vela_host::target::HostTargetInstance<'_>,
                 offset: usize,
                 method: ::vela_common::HostMethodId,
                 args: &[::vela_host::value::HostValue],
             ) -> ::vela_host::error::HostResult<::vela_host::value::HostValue> {
-                if offset >= path.segments.len() {
+                if offset >= target.plan.parts.len() {
                     return Err(::vela_host::error::HostError {
                         kind: ::vela_host::error::HostErrorKind::UnsupportedMethod { method },
                         source_span: None,
                     });
                 }
-                match path.segments.get(offset) {
+                match target.plan.parts.as_slice().get(offset) {
                     #(#call_arms)*
                     _ => Err(::vela_host::error::HostError {
                         kind: ::vela_host::error::HostErrorKind::MissingPath {
-                            path: path.clone(),
+                            path: target.to_diagnostic_path().to_host_path(),
                         },
                         source_span: None,
                     }),
@@ -148,16 +162,55 @@ pub(super) fn field_access_impl_tokens(ident: &Ident, fields: &[FieldMeta]) -> T
     }
 }
 
+fn field_resolve_arm_tokens((slot, field): (usize, &FieldMeta)) -> TokenStream {
+    let id = field.id;
+    let slot = u32::try_from(slot).expect("host field slot index fits u32");
+    let rust_name = format_ident!("{}", field.rust_name);
+    quote! {
+        Some(::vela_host::target::HostPathPart::Field(field))
+            if *field == ::vela_common::FieldId::new(#id) =>
+        {
+            if offset + 1 == spec.plan.parts.len()
+                && !matches!(spec.op, ::vela_host::resolved::HostAccessOp::Call(_))
+            {
+                Ok(::vela_host::resolved::ResolvedHostAccess::direct_field(
+                    #slot,
+                    ::vela_host::resolved::HostSchemaEpoch::new(0),
+                ))
+            } else if let ::vela_host::resolved::HostAccessOp::Call(method) = spec.op {
+                let __vela_child_plan = ::vela_host::target::HostTargetPlan::from_parts(
+                    spec.plan.root_type,
+                    spec.plan.parts.as_slice()[(offset + 1)..].iter().cloned(),
+                );
+                let __vela_child_spec = ::vela_host::resolved::HostAccessSpec::new(
+                    ::vela_host::resolved::HostAccessOp::Call(method),
+                    &__vela_child_plan,
+                );
+                ::vela_host::object::ScriptHostObject::resolve_host_target(
+                    &self.#rust_name,
+                    __vela_child_spec,
+                )
+            } else {
+                ::vela_host::object::ScriptHostFieldAccess::resolve_host_target_from(
+                    &self.#rust_name,
+                    spec,
+                    offset + 1,
+                )
+            }
+        }
+    }
+}
+
 fn field_read_arm_tokens(field: &FieldMeta) -> TokenStream {
     let id = field.id;
     let rust_name = format_ident!("{}", field.rust_name);
     quote! {
-        Some(::vela_host::path::PathSegment::Field(field))
+        Some(::vela_host::target::HostPathPart::Field(field))
             if *field == ::vela_common::FieldId::new(#id) =>
         {
-            ::vela_host::object::ScriptHostFieldAccess::read_host_path_from(
+            ::vela_host::object::ScriptHostFieldAccess::read_host_target_from(
                 &self.#rust_name,
-                path,
+                target,
                 offset + 1,
             )
         }
@@ -169,21 +222,21 @@ fn field_write_arm_tokens(field: &FieldMeta) -> TokenStream {
     let writable = field.writable;
     let rust_name = format_ident!("{}", field.rust_name);
     quote! {
-        Some(::vela_host::path::PathSegment::Field(field))
+        Some(::vela_host::target::HostPathPart::Field(field))
             if *field == ::vela_common::FieldId::new(#id) =>
         {
-            if offset + 1 == path.segments.len() && !#writable {
+            if offset + 1 == target.plan.parts.len() && !#writable {
                 return Err(::vela_host::error::HostError {
                     kind: ::vela_host::error::HostErrorKind::PermissionDenied {
-                        path: path.clone(),
+                        path: target.to_diagnostic_path().to_host_path(),
                         action: "write",
                     },
                     source_span: None,
                 });
             }
-            ::vela_host::object::ScriptHostFieldAccess::write_host_path_from(
+            ::vela_host::object::ScriptHostFieldAccess::write_host_target_from(
                 &mut self.#rust_name,
-                path,
+                target,
                 offset + 1,
                 value,
             )
@@ -195,14 +248,31 @@ fn field_call_arm_tokens(field: &FieldMeta) -> TokenStream {
     let id = field.id;
     let rust_name = format_ident!("{}", field.rust_name);
     quote! {
-        Some(::vela_host::path::PathSegment::Field(field))
+        Some(::vela_host::target::HostPathPart::Field(field))
             if *field == ::vela_common::FieldId::new(#id) =>
         {
-            let mut __vela_child_path = path.clone();
-            __vela_child_path.segments = path.segments[(offset + 1)..].to_vec();
-            ::vela_host::object::ScriptHostObject::call_host_method(
+            let __vela_child_plan = ::vela_host::target::HostTargetPlan::from_parts(
+                target.plan.root_type,
+                target.plan.parts.as_slice()[(offset + 1)..].iter().cloned(),
+            );
+            let __vela_child_target = ::vela_host::target::HostTargetInstance::new(
+                target.root,
+                &__vela_child_plan,
+                target.args,
+            );
+            let __vela_child_spec = ::vela_host::resolved::HostAccessSpec::new(
+                ::vela_host::resolved::HostAccessOp::Call(method),
+                &__vela_child_plan,
+            );
+            let __vela_child_access =
+                ::vela_host::object::ScriptHostObject::resolve_host_target(
+                    &self.#rust_name,
+                    __vela_child_spec,
+                )?;
+            ::vela_host::object::ScriptHostObject::call_resolved_host(
                 &mut self.#rust_name,
-                &__vela_child_path,
+                __vela_child_access,
+                __vela_child_target,
                 method,
                 args,
             )

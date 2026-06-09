@@ -164,26 +164,28 @@ impl vela_host::object::ScriptHostFieldAccess for HostQuestProgress {
         vela_common::HostTypeId::new(0)
     }
 
-    fn read_host_path_from(
+    fn read_host_target_from(
         &self,
-        path: &vela_host::path::HostPath,
+        target: vela_host::target::HostTargetInstance<'_>,
         _offset: usize,
     ) -> vela_host::error::HostResult<vela_host::value::HostValue> {
         Err(vela_host::error::HostError {
-            kind: vela_host::error::HostErrorKind::MissingPath { path: path.clone() },
+            kind: vela_host::error::HostErrorKind::MissingPath {
+                path: target.to_diagnostic_path().to_host_path(),
+            },
             source_span: None,
         })
     }
 
-    fn write_host_path_from(
+    fn write_host_target_from(
         &mut self,
-        path: &vela_host::path::HostPath,
+        target: vela_host::target::HostTargetInstance<'_>,
         _offset: usize,
         _value: vela_host::value::HostValue,
     ) -> vela_host::error::HostResult<()> {
         Err(vela_host::error::HostError {
             kind: vela_host::error::HostErrorKind::PermissionDenied {
-                path: path.clone(),
+                path: target.to_diagnostic_path().to_host_path(),
                 action: "write",
             },
             source_span: None,
@@ -196,11 +198,12 @@ impl vela_host::object::ScriptHostObject for HostQuestProgress {
         vela_host::object::ScriptHostFieldAccess::script_host_type_id(self)
     }
 
-    fn read_host_path(
+    fn read_resolved_host(
         &self,
-        path: &vela_host::path::HostPath,
+        _access: vela_host::resolved::ResolvedHostAccess,
+        target: vela_host::target::HostTargetInstance<'_>,
     ) -> vela_host::error::HostResult<vela_host::value::HostValue> {
-        vela_host::object::ScriptHostFieldAccess::read_host_path_from(self, path, 0)
+        vela_host::object::ScriptHostFieldAccess::read_host_target_from(self, target, 0)
     }
 }
 
@@ -209,26 +212,28 @@ impl vela_host::object::ScriptHostFieldAccess for KillRewardConfig {
         vela_common::HostTypeId::new(0)
     }
 
-    fn read_host_path_from(
+    fn read_host_target_from(
         &self,
-        path: &vela_host::path::HostPath,
+        target: vela_host::target::HostTargetInstance<'_>,
         _offset: usize,
     ) -> vela_host::error::HostResult<vela_host::value::HostValue> {
         Err(vela_host::error::HostError {
-            kind: vela_host::error::HostErrorKind::MissingPath { path: path.clone() },
+            kind: vela_host::error::HostErrorKind::MissingPath {
+                path: target.to_diagnostic_path().to_host_path(),
+            },
             source_span: None,
         })
     }
 
-    fn write_host_path_from(
+    fn write_host_target_from(
         &mut self,
-        path: &vela_host::path::HostPath,
+        target: vela_host::target::HostTargetInstance<'_>,
         _offset: usize,
         _value: vela_host::value::HostValue,
     ) -> vela_host::error::HostResult<()> {
         Err(vela_host::error::HostError {
             kind: vela_host::error::HostErrorKind::PermissionDenied {
-                path: path.clone(),
+                path: target.to_diagnostic_path().to_host_path(),
                 action: "write",
             },
             source_span: None,

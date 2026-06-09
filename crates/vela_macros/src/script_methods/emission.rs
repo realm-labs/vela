@@ -103,6 +103,11 @@ pub(super) fn script_host_object_impl_tokens(
         .iter()
         .filter(|method| method.receiver != MethodReceiver::HostBoundary)
         .map(host_method_arm_tokens);
+    let resolve_arms = methods
+        .iter()
+        .filter(|method| method.receiver != MethodReceiver::HostBoundary)
+        .enumerate()
+        .map(host_method_resolve_arm_tokens);
 
     quote! {
         impl ::vela_host::object::ScriptHostObject for #self_ty {
@@ -110,31 +115,57 @@ pub(super) fn script_host_object_impl_tokens(
                 ::vela_host::object::ScriptHostFieldAccess::script_host_type_id(self)
             }
 
-            fn read_host_path(
+            fn resolve_host_target(
                 &self,
-                path: &::vela_host::path::HostPath,
-            ) -> ::vela_host::error::HostResult<::vela_host::value::HostValue> {
-                ::vela_host::object::ScriptHostFieldAccess::read_host_path_from(self, path, 0)
+                spec: ::vela_host::resolved::HostAccessSpec<'_>,
+            ) -> ::vela_host::error::HostResult<::vela_host::resolved::ResolvedHostAccess> {
+                if !spec.plan.parts.is_empty() {
+                    return ::vela_host::object::ScriptHostFieldAccess::resolve_host_target_from(
+                        self,
+                        spec,
+                        0,
+                    );
+                }
+                let owner_stable_path = Self::vela_stable_type_path();
+                match spec.op {
+                    #(#resolve_arms)*
+                    _ => Ok(::vela_host::resolved::ResolvedHostAccess::generic_path(
+                        ::vela_host::resolved::HostSchemaEpoch::new(0),
+                    )),
+                }
             }
 
-            fn write_host_path(
+            fn read_resolved_host(
+                &self,
+                access: ::vela_host::resolved::ResolvedHostAccess,
+                target: ::vela_host::target::HostTargetInstance<'_>,
+            ) -> ::vela_host::error::HostResult<::vela_host::value::HostValue> {
+                let _ = access;
+                ::vela_host::object::ScriptHostFieldAccess::read_host_target_from(self, target, 0)
+            }
+
+            fn write_resolved_host(
                 &mut self,
-                path: &::vela_host::path::HostPath,
+                access: ::vela_host::resolved::ResolvedHostAccess,
+                target: ::vela_host::target::HostTargetInstance<'_>,
                 value: ::vela_host::value::HostValue,
             ) -> ::vela_host::error::HostResult<()> {
-                ::vela_host::object::ScriptHostFieldAccess::write_host_path_from(self, path, 0, value)
+                let _ = access;
+                ::vela_host::object::ScriptHostFieldAccess::write_host_target_from(self, target, 0, value)
             }
 
-            fn call_host_method(
+            fn call_resolved_host(
                 &mut self,
-                path: &::vela_host::path::HostPath,
+                access: ::vela_host::resolved::ResolvedHostAccess,
+                target: ::vela_host::target::HostTargetInstance<'_>,
                 method: ::vela_common::HostMethodId,
                 args: &[::vela_host::value::HostValue],
             ) -> ::vela_host::error::HostResult<::vela_host::value::HostValue> {
-                if !path.segments.is_empty() {
-                    return ::vela_host::object::ScriptHostFieldAccess::call_host_method_from(
+                let _ = access;
+                if !target.plan.parts.is_empty() {
+                    return ::vela_host::object::ScriptHostFieldAccess::call_host_target_from(
                         self,
-                        path,
+                        target,
                         0,
                         method,
                         args,
@@ -149,6 +180,25 @@ pub(super) fn script_host_object_impl_tokens(
                     }),
                 }
             }
+        }
+    }
+}
+
+fn host_method_resolve_arm_tokens((slot, method): (usize, &MethodMeta)) -> TokenStream {
+    let stable_name = &method.stable_name;
+    let slot = u32::try_from(slot).expect("host method slot index fits u32");
+    quote! {
+        ::vela_host::resolved::HostAccessOp::Call(method)
+            if method == ::vela_common::HostMethodId::new(::vela_common::stable_id(
+                "host_method",
+                owner_stable_path,
+                #stable_name,
+            )) =>
+        {
+            Ok(::vela_host::resolved::ResolvedHostAccess::direct_method(
+                #slot,
+                ::vela_host::resolved::HostSchemaEpoch::new(0),
+            ))
         }
     }
 }

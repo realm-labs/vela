@@ -10,9 +10,12 @@ use vela_host::adapter::{GlobalBinding, ScriptStateAdapter};
 use vela_host::error::{HostError, HostErrorKind, HostResult};
 use vela_host::mock::MockStateAdapter;
 use vela_host::object::ScriptHostObject;
-use vela_host::path::{HostPath, HostRef, PathSegment};
-use vela_host::resolved::{HostMutationOp, ResolvedHostAccess};
-use vela_host::target::HostTargetInstance;
+use vela_host::path::{HostPath, HostRef};
+use vela_host::resolved::{
+    HostAccessOp, HostAccessSpec, HostMutationOp, HostSchemaEpoch, ResolvedHostAccess,
+    ResolvedHostAccessKind,
+};
+use vela_host::target::{HostPathArg, HostPathPart, HostTargetInstance};
 use vela_host::value::HostValue;
 use vela_reflect::registry::{FieldDesc, MethodDesc, TypeDesc, TypeKey};
 use vela_vm::error::VmErrorKind;
@@ -203,56 +206,101 @@ impl ScriptHostObject for DirectPlayer {
         HostTypeId::new(1)
     }
 
-    fn read_host_path(&self, path: &HostPath) -> HostResult<HostValue> {
-        match path.segments.as_slice() {
-            [PathSegment::Field(field)] if *field == FieldId::new(1) => {
+    fn resolve_host_target(&self, spec: HostAccessSpec<'_>) -> HostResult<ResolvedHostAccess> {
+        let epoch = HostSchemaEpoch::new(0);
+        match (spec.op, spec.plan.parts.as_slice()) {
+            (
+                HostAccessOp::Read | HostAccessOp::Write | HostAccessOp::Mutate(_),
+                [HostPathPart::Field(field)],
+            ) if *field == FieldId::new(1) => Ok(ResolvedHostAccess::direct_field(0, epoch)),
+            (
+                HostAccessOp::Read | HostAccessOp::Write | HostAccessOp::Mutate(_),
+                [HostPathPart::Field(field), _],
+            ) if *field == FieldId::new(2) => Ok(ResolvedHostAccess::direct_field(1, epoch)),
+            (HostAccessOp::Call(method), []) if method == HostMethodId::new(10) => {
+                Ok(ResolvedHostAccess::direct_method(0, epoch))
+            }
+            (HostAccessOp::Call(method), [HostPathPart::Field(field)])
+                if method == HostMethodId::new(11) && *field == FieldId::new(2) =>
+            {
+                Ok(ResolvedHostAccess::direct_method(1, epoch))
+            }
+            _ => Ok(ResolvedHostAccess::generic_path(epoch)),
+        }
+    }
+
+    fn read_resolved_host(
+        &self,
+        access: ResolvedHostAccess,
+        target: HostTargetInstance<'_>,
+    ) -> HostResult<HostValue> {
+        match target.plan.parts.as_slice() {
+            [HostPathPart::Field(field)] if *field == FieldId::new(1) => {
+                require_direct_field(access, 0)?;
                 Ok(HostValue::Int(self.level))
             }
-            [PathSegment::Field(field), PathSegment::Key(key)] if *field == FieldId::new(2) => {
+            [HostPathPart::Field(field), key_part] if *field == FieldId::new(2) => {
+                require_direct_field(access, 1)?;
+                let key = direct_target_key(target, key_part)?;
                 Ok(HostValue::Int(*self.inventory.get(key).unwrap_or(&0)))
             }
             _ => Err(HostError {
-                kind: HostErrorKind::MissingPath { path: path.clone() },
+                kind: HostErrorKind::MissingPath {
+                    path: target.to_diagnostic_path().to_host_path(),
+                },
                 source_span: None,
             }),
         }
     }
 
-    fn write_host_path(&mut self, path: &HostPath, value: HostValue) -> HostResult<()> {
-        match (path.segments.as_slice(), value) {
-            ([PathSegment::Field(field)], HostValue::Int(level)) if *field == FieldId::new(1) => {
+    fn write_resolved_host(
+        &mut self,
+        access: ResolvedHostAccess,
+        target: HostTargetInstance<'_>,
+        value: HostValue,
+    ) -> HostResult<()> {
+        match (target.plan.parts.as_slice(), value) {
+            ([HostPathPart::Field(field)], HostValue::Int(level)) if *field == FieldId::new(1) => {
+                require_direct_field(access, 0)?;
                 self.level = level;
                 Ok(())
             }
-            ([PathSegment::Field(field), PathSegment::Key(key)], HostValue::Int(count))
+            ([HostPathPart::Field(field), key_part], HostValue::Int(count))
                 if *field == FieldId::new(2) =>
             {
-                self.inventory.insert(key.clone(), count);
+                require_direct_field(access, 1)?;
+                let key = direct_target_key(target, key_part)?.to_owned();
+                self.inventory.insert(key, count);
                 Ok(())
             }
             _ => Err(HostError {
-                kind: HostErrorKind::MissingPath { path: path.clone() },
+                kind: HostErrorKind::MissingPath {
+                    path: target.to_diagnostic_path().to_host_path(),
+                },
                 source_span: None,
             }),
         }
     }
 
-    fn call_host_method(
+    fn call_resolved_host(
         &mut self,
-        path: &HostPath,
+        access: ResolvedHostAccess,
+        target: HostTargetInstance<'_>,
         method: HostMethodId,
         args: &[HostValue],
     ) -> HostResult<HostValue> {
-        match (path.segments.as_slice(), method, args) {
+        match (target.plan.parts.as_slice(), method, args) {
             ([], method, [HostValue::Int(amount)]) if method == HostMethodId::new(10) => {
+                require_direct_method(access, 0)?;
                 self.level += amount;
                 Ok(HostValue::Int(self.level))
             }
             (
-                [PathSegment::Field(field)],
+                [HostPathPart::Field(field)],
                 method,
                 [HostValue::String(key), HostValue::Int(amount)],
             ) if *field == FieldId::new(2) && method == HostMethodId::new(11) => {
+                require_direct_method(access, 1)?;
                 *self.inventory.entry(key.clone()).or_insert(0) += amount;
                 Ok(HostValue::Null)
             }
@@ -260,6 +308,57 @@ impl ScriptHostObject for DirectPlayer {
                 kind: HostErrorKind::UnsupportedMethod { method },
                 source_span: None,
             }),
+        }
+    }
+}
+
+fn require_direct_field(access: ResolvedHostAccess, slot: u32) -> HostResult<()> {
+    if access.adapter_kind == ResolvedHostAccessKind::DirectField(slot) {
+        Ok(())
+    } else {
+        Err(invalid_direct_access())
+    }
+}
+
+fn require_direct_method(access: ResolvedHostAccess, slot: u32) -> HostResult<()> {
+    if access.adapter_kind == ResolvedHostAccessKind::DirectMethod(slot) {
+        Ok(())
+    } else {
+        Err(invalid_direct_access())
+    }
+}
+
+fn invalid_direct_access() -> HostError {
+    HostError {
+        kind: HostErrorKind::InvalidArgument {
+            expected: "resolved direct host access",
+        },
+        source_span: None,
+    }
+}
+
+fn direct_target_key<'a>(
+    target: HostTargetInstance<'a>,
+    part: &'a HostPathPart,
+) -> HostResult<&'a str> {
+    match part {
+        HostPathPart::ConstKey(key) => Ok(key),
+        HostPathPart::DynKey { arg } | HostPathPart::DynIndex { arg } => match target.arg(*arg) {
+            Some(HostPathArg::Key(key)) => Ok(key),
+            Some(HostPathArg::Index(_)) | None => Err(HostError {
+                kind: HostErrorKind::MissingPath {
+                    path: target.to_diagnostic_path().to_host_path(),
+                },
+                source_span: None,
+            }),
+        },
+        HostPathPart::Field(_) | HostPathPart::VariantField(_) | HostPathPart::ConstIndex(_) => {
+            Err(HostError {
+                kind: HostErrorKind::MissingPath {
+                    path: target.to_diagnostic_path().to_host_path(),
+                },
+                source_span: None,
+            })
         }
     }
 }

@@ -9,8 +9,8 @@ use vela_host::access::HostAccess;
 use vela_host::adapter::{GlobalBinding, ScriptStateAdapter};
 use vela_host::error::{HostError, HostErrorKind, HostResult};
 use vela_host::object::ScriptHostObject;
-use vela_host::path::{HostPath, HostRef};
-use vela_host::resolved::{HostMutationOp, ResolvedHostAccess};
+use vela_host::path::HostRef;
+use vela_host::resolved::{HostAccessOp, HostAccessSpec, HostMutationOp, ResolvedHostAccess};
 use vela_host::target::HostTargetInstance;
 use vela_host::value::HostValue;
 use vela_hot_reload::error::HotReloadResult;
@@ -975,6 +975,12 @@ impl RuntimeGlobalStore {
             .values_mut()
             .find(|global| global.host_ref == root)
     }
+
+    fn binding_by_type(&self, type_id: vela_common::HostTypeId) -> Option<&HostGlobalBinding> {
+        self.globals
+            .values()
+            .find(|global| global.host_ref.type_id == type_id)
+    }
 }
 
 struct HostGlobalBinding {
@@ -1098,14 +1104,20 @@ impl ScriptStateAdapter for GlobalStoreAdapter<'_> {
             })
     }
 
+    fn resolve_host_access(&self, spec: HostAccessSpec<'_>) -> HostResult<ResolvedHostAccess> {
+        if let Some(global) = self.globals.binding_by_type(spec.plan.root_type) {
+            return global.object.resolve_host_target(spec);
+        }
+        self.fallback.resolve_host_access(spec)
+    }
+
     fn read_host(
         &self,
         access: ResolvedHostAccess,
         target: HostTargetInstance<'_>,
     ) -> HostResult<HostValue> {
-        let path = target.to_diagnostic_path().to_host_path();
         if let Some(global) = self.globals.binding(target.root) {
-            return global.object.read_host_path(&path);
+            return global.object.read_resolved_host(access, target);
         }
         self.fallback.read_host(access, target)
     }
@@ -1116,9 +1128,8 @@ impl ScriptStateAdapter for GlobalStoreAdapter<'_> {
         target: HostTargetInstance<'_>,
         value: HostValue,
     ) -> HostResult<()> {
-        let path = target.to_diagnostic_path().to_host_path();
         if let Some(global) = self.globals.binding_mut(target.root) {
-            return global.object.write_host_path(&path, value);
+            return global.object.write_resolved_host(access, target, value);
         }
         self.fallback.write_host(access, target, value)
     }
@@ -1131,10 +1142,11 @@ impl ScriptStateAdapter for GlobalStoreAdapter<'_> {
         rhs: HostValue,
     ) -> HostResult<()> {
         if self.globals.binding(target.root).is_some() {
-            let path = target.to_diagnostic_path().to_host_path();
             let current = self.read_host(access, target)?;
-            let next = host_mutation_value(op, &current, &rhs, path)?;
-            return self.write_host(access, target, next);
+            let next = host_mutation_value(op, &current, &rhs, target)?;
+            let write_access =
+                self.resolve_host_access(HostAccessSpec::new(HostAccessOp::Write, target.plan))?;
+            return self.write_host(write_access, target, next);
         }
         self.fallback.mutate_host(access, target, op, rhs)
     }
@@ -1144,9 +1156,8 @@ impl ScriptStateAdapter for GlobalStoreAdapter<'_> {
         access: ResolvedHostAccess,
         target: HostTargetInstance<'_>,
     ) -> HostResult<()> {
-        let path = target.to_diagnostic_path().to_host_path();
         if let Some(global) = self.globals.binding_mut(target.root) {
-            return global.object.remove_host_path(&path);
+            return global.object.remove_resolved_host(access, target);
         }
         self.fallback.remove_host(access, target)
     }
@@ -1158,9 +1169,10 @@ impl ScriptStateAdapter for GlobalStoreAdapter<'_> {
         method: vela_common::HostMethodId,
         args: &[HostValue],
     ) -> HostResult<HostValue> {
-        let path = target.to_diagnostic_path().to_host_path();
         if let Some(global) = self.globals.binding_mut(target.root) {
-            return global.object.call_host_method(&path, method, args);
+            return global
+                .object
+                .call_resolved_host(access, target, method, args);
         }
         self.fallback.call_host(access, target, method, args)
     }
@@ -1170,7 +1182,7 @@ fn host_mutation_value(
     op: HostMutationOp,
     current: &HostValue,
     rhs: &HostValue,
-    path: HostPath,
+    target: HostTargetInstance<'_>,
 ) -> HostResult<HostValue> {
     let next = match op {
         HostMutationOp::Add => host_add_values(current, rhs),
@@ -1180,16 +1192,19 @@ fn host_mutation_value(
         HostMutationOp::Rem => host_rem_values(current, rhs),
         HostMutationOp::Push => None,
     };
-    next.ok_or(HostError {
-        kind: match op {
-            HostMutationOp::Add => HostErrorKind::InvalidAdd { path },
-            HostMutationOp::Sub => HostErrorKind::InvalidSub { path },
-            HostMutationOp::Mul => HostErrorKind::InvalidMul { path },
-            HostMutationOp::Div => HostErrorKind::InvalidDiv { path },
-            HostMutationOp::Rem => HostErrorKind::InvalidRem { path },
-            HostMutationOp::Push => HostErrorKind::InvalidPush { path },
-        },
-        source_span: None,
+    next.ok_or_else(|| {
+        let path = target.to_diagnostic_path().to_host_path();
+        HostError {
+            kind: match op {
+                HostMutationOp::Add => HostErrorKind::InvalidAdd { path },
+                HostMutationOp::Sub => HostErrorKind::InvalidSub { path },
+                HostMutationOp::Mul => HostErrorKind::InvalidMul { path },
+                HostMutationOp::Div => HostErrorKind::InvalidDiv { path },
+                HostMutationOp::Rem => HostErrorKind::InvalidRem { path },
+                HostMutationOp::Push => HostErrorKind::InvalidPush { path },
+            },
+            source_span: None,
+        }
     })
 }
 

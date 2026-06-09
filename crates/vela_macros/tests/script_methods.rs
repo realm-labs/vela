@@ -10,6 +10,8 @@ use vela_host::mock::MockStateAdapter;
 use vela_host::path::HostPath;
 use vela_host::path::HostRef;
 use vela_host::proxy::PathProxy;
+use vela_host::resolved::{HostAccessOp, HostAccessSpec, ResolvedHostAccessKind};
+use vela_host::target::HostTargetPlan;
 use vela_host::value::HostValue;
 use vela_macros::{ScriptHost, script_methods};
 use vela_reflect::registry::{FieldDesc, TypeDesc, TypeKey, TypeKind};
@@ -144,6 +146,43 @@ impl Player {
     }
 }
 
+#[allow(dead_code)]
+#[derive(ScriptHost)]
+#[script(path = "game::counter::DirectCounter")]
+struct DirectCounter {
+    #[script(get, set)]
+    total: i64,
+}
+
+#[allow(dead_code)]
+#[script_methods]
+impl DirectCounter {
+    #[script_method(effect = "write_host")]
+    pub fn add(&mut self, amount: i64) -> i64 {
+        self.total += amount;
+        self.total
+    }
+}
+
 fn method_id(name: &str) -> HostMethodId {
     HostMethodId::new(stable_id("host_method", "game::player::Player", name))
+}
+
+#[test]
+fn script_methods_resolve_root_methods_to_direct_access() {
+    let counter = DirectCounter { total: 1 };
+    let plan = HostTargetPlan::new(DirectCounter::vela_host_type_id());
+    let method = HostMethodId::new(stable_id(
+        "host_method",
+        "game::counter::DirectCounter",
+        "add",
+    ));
+
+    let access = <DirectCounter as vela_host::object::ScriptHostObject>::resolve_host_target(
+        &counter,
+        HostAccessSpec::new(HostAccessOp::Call(method), &plan),
+    )
+    .expect("generated script method resolver should resolve direct self method");
+
+    assert_eq!(access.adapter_kind, ResolvedHostAccessKind::DirectMethod(0));
 }

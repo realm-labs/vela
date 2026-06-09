@@ -26,6 +26,18 @@ impl HostTargetPlan {
     }
 
     #[must_use]
+    pub fn from_parts(
+        root_type: HostTypeId,
+        parts: impl IntoIterator<Item = HostPathPart>,
+    ) -> Self {
+        let mut plan = Self::new(root_type);
+        for part in parts {
+            plan.parts.push(part);
+        }
+        plan
+    }
+
+    #[must_use]
     pub fn field(mut self, field: FieldId) -> Self {
         self.parts.push(HostPathPart::Field(field));
         self

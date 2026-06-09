@@ -1,6 +1,7 @@
 use vela_common::{FieldId, HostObjectId, TypeId, stable_id};
 use vela_host::path::{HostPath, HostRef};
 use vela_host::proxy::PathProxy;
+use vela_host::resolved::{HostAccessOp, HostAccessSpec, ResolvedHostAccessKind};
 use vela_host::target::HostTargetPlan;
 use vela_macros::{ScriptHost, ScriptReflect};
 use vela_reflect::access::FieldAccess;
@@ -285,6 +286,26 @@ fn script_host_derive_generates_field_helpers() {
             HostTargetPlan::new(Player::vela_host_type_id()).field(Player::vela_field_id_name()),
         ),
     );
+}
+
+#[test]
+fn script_host_derive_resolves_leaf_fields_to_direct_access() {
+    let player = Player {
+        level: 7,
+        name: "Ada".to_owned(),
+        internal_revision: 1,
+    };
+    let plan =
+        HostTargetPlan::new(Player::vela_host_type_id()).field(Player::vela_field_id_level());
+
+    let access = <Player as vela_host::object::ScriptHostFieldAccess>::resolve_host_target_from(
+        &player,
+        HostAccessSpec::new(HostAccessOp::Read, &plan),
+        0,
+    )
+    .expect("generated host field resolver should resolve level");
+
+    assert_eq!(access.adapter_kind, ResolvedHostAccessKind::DirectField(0));
 }
 
 #[test]
