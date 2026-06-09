@@ -1089,7 +1089,7 @@ cargo test -p vela_bytecode verification
   hot host reads/writes.
 - [x] Remove legacy host instruction execution arms once all callers compile to
   the collapsed family.
-- [ ] Record or rerun acceptance:
+- [x] Record or rerun acceptance:
 
 ```text
 cargo test -p vela_vm host
