@@ -2,15 +2,22 @@ use vela_common::HostMethodId;
 use vela_reflect::registry::MethodDesc;
 
 use super::{MethodSpec, ParamSpec, descs};
+use crate::standard::ids::{MAP_IS_EMPTY_METHOD_ID, MAP_LEN_METHOD_ID};
 
 pub(crate) fn map_method_descs() -> Vec<MethodDesc> {
     descs(MAP_METHODS, "map")
 }
 
 const MAP_METHODS: &[MethodSpec] = &[
-    MethodSpec::new(map_id(0), "len", &[], "int", "Returns the map length."),
     MethodSpec::new(
-        map_id(1),
+        MAP_LEN_METHOD_ID,
+        "len",
+        &[],
+        "int",
+        "Returns the map length.",
+    ),
+    MethodSpec::new(
+        MAP_IS_EMPTY_METHOD_ID,
         "is_empty",
         &[],
         "bool",

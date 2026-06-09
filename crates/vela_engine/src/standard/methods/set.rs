@@ -2,15 +2,22 @@ use vela_common::HostMethodId;
 use vela_reflect::registry::MethodDesc;
 
 use super::{MethodSpec, ParamSpec, descs};
+use crate::standard::ids::{SET_IS_EMPTY_METHOD_ID, SET_LEN_METHOD_ID};
 
 pub(crate) fn set_method_descs() -> Vec<MethodDesc> {
     descs(SET_METHODS, "set")
 }
 
 const SET_METHODS: &[MethodSpec] = &[
-    MethodSpec::new(set_id(0), "len", &[], "int", "Returns the set length."),
     MethodSpec::new(
-        set_id(1),
+        SET_LEN_METHOD_ID,
+        "len",
+        &[],
+        "int",
+        "Returns the set length.",
+    ),
+    MethodSpec::new(
+        SET_IS_EMPTY_METHOD_ID,
         "is_empty",
         &[],
         "bool",

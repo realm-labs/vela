@@ -2,15 +2,22 @@ use vela_common::HostMethodId;
 use vela_reflect::registry::MethodDesc;
 
 use super::{MethodSpec, ParamSpec, descs};
+use crate::standard::ids::{ARRAY_IS_EMPTY_METHOD_ID, ARRAY_LEN_METHOD_ID};
 
 pub(crate) fn array_method_descs() -> Vec<MethodDesc> {
     descs(ARRAY_METHODS, "array")
 }
 
 const ARRAY_METHODS: &[MethodSpec] = &[
-    MethodSpec::new(array_id(0), "len", &[], "int", "Returns the array length."),
     MethodSpec::new(
-        array_id(1),
+        ARRAY_LEN_METHOD_ID,
+        "len",
+        &[],
+        "int",
+        "Returns the array length.",
+    ),
+    MethodSpec::new(
+        ARRAY_IS_EMPTY_METHOD_ID,
         "is_empty",
         &[],
         "bool",

@@ -34,6 +34,18 @@ pub(super) fn string_value<'a>(
     }
 }
 
+pub(crate) fn is_array(receiver: &Value, heap: Option<&HeapExecution<'_>>) -> bool {
+    match receiver {
+        Value::HeapRef(reference) => {
+            matches!(
+                heap.and_then(|heap| heap.heap.get(*reference)),
+                Some(HeapValue::Array(_))
+            )
+        }
+        _ => false,
+    }
+}
+
 pub(super) fn array_values(
     receiver: &Value,
     heap: Option<&HeapExecution<'_>>,
