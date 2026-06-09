@@ -966,8 +966,8 @@ impl RuntimeScriptGlobalStore {
 
     fn collect(&mut self) {
         let mut roots = Vec::new();
-        self.values
-            .values()
+        self.roots()
+            .into_iter()
             .for_each(|value| value.trace_heap_refs(&mut roots));
         self.heap.collect_full(&roots);
     }
