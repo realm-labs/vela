@@ -13,8 +13,6 @@ pub mod heap;
 pub mod heap_execution;
 mod heap_values;
 mod host_access;
-mod host_mutations;
-mod host_paths;
 mod host_values;
 mod indexing;
 pub mod iteration;
@@ -50,7 +48,6 @@ mod string_methods;
 mod try_propagation;
 pub mod value;
 
-use std::cell::RefCell;
 use std::collections::{BTreeMap, HashMap};
 use std::sync::Arc;
 
@@ -80,7 +77,7 @@ use vela_bytecode::{
     CacheSiteId, CodeObject, Constant, HostTargetPlanId, InstructionKind, InstructionOffset,
     Program, ProgramCode, ProgramImage, Register,
 };
-use vela_common::{FunctionId, GlobalSlot, HostTypeId, Span, SymbolInterner};
+use vela_common::{FunctionId, GlobalSlot, HostTypeId, Span};
 use vela_host::adapter::ScriptStateAdapter;
 use vela_host::resolved::{HostAccessOp, HostSchemaEpoch, ResolvedHostAccess};
 #[cfg(test)]
@@ -127,7 +124,6 @@ pub struct Vm {
     host_natives: HashMap<String, HostNativeFunction>,
     host_native_ids: HashMap<FunctionId, HostNativeFunction>,
     type_registry: Option<Arc<TypeRegistry>>,
-    host_path_symbols: RefCell<SymbolInterner>,
 }
 
 pub struct HostExecution<'host> {

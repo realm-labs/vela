@@ -1,8 +1,20 @@
 use super::*;
 use crate::value::Value as RuntimeValue;
-use vela_bytecode::CacheSiteKind;
+use vela_bytecode::{CacheSiteId, CacheSiteKind, HostTargetPlanId};
 use vela_host::resolved::HostMutationOp;
 use vela_host::target::HostTargetPlan;
+
+fn level_target(code: &mut CodeObject, host_ref: HostRef) -> HostTargetPlanId {
+    code.intern_host_target(HostTargetPlan::new(host_ref.type_id).field(level_field()))
+}
+
+fn host_cache_site(
+    code: &mut CodeObject,
+    kind: CacheSiteKind,
+    instruction_offset: usize,
+) -> CacheSiteId {
+    code.push_cache_site(kind, InstructionOffset(instruction_offset))
+}
 
 #[test]
 fn heap_execution_enforces_memory_budget_for_bytecode_allocations() {
@@ -122,19 +134,26 @@ fn set_host_field_writes_through_and_updates_adapter() {
     let host_ref = player_ref(3);
     let mut code = CodeObject::new("main", 3).with_params(vec!["player".into()]);
     let ten = code.push_constant(Constant::Int(10));
+    let target = level_target(&mut code, host_ref);
+    let write_cache = host_cache_site(&mut code, CacheSiteKind::HostPathWrite, 1);
+    let read_cache = host_cache_site(&mut code, CacheSiteKind::HostPathRead, 2);
     code.push_instruction(Instruction::new(InstructionKind::LoadConst {
         dst: Register(1),
         constant: ten,
     }));
-    code.push_instruction(Instruction::new(InstructionKind::SetHostField {
+    code.push_instruction(Instruction::new(InstructionKind::HostWrite {
         root: Register(0),
-        field: level_field(),
+        target,
+        dynamic_args: Vec::new(),
         src: Register(1),
+        cache_site: write_cache,
     }));
-    code.push_instruction(Instruction::new(InstructionKind::GetHostField {
+    code.push_instruction(Instruction::new(InstructionKind::HostRead {
         dst: Register(2),
         root: Register(0),
-        field: level_field(),
+        target,
+        dynamic_args: Vec::new(),
+        cache_site: read_cache,
     }));
     code.push_instruction(Instruction::new(InstructionKind::Return {
         src: Register(2),
@@ -174,10 +193,9 @@ fn collapsed_host_mutate_and_read_execute_through_target_plan() {
     let host_ref = player_ref(3);
     let mut code = CodeObject::new("main", 3).with_params(vec!["player".into()]);
     let one = code.push_constant(Constant::Int(1));
-    let target =
-        code.intern_host_target(HostTargetPlan::new(host_ref.type_id).field(level_field()));
-    let mutate_cache = code.push_cache_site(CacheSiteKind::HostPathMutate, InstructionOffset(1));
-    let read_cache = code.push_cache_site(CacheSiteKind::HostPathRead, InstructionOffset(2));
+    let target = level_target(&mut code, host_ref);
+    let mutate_cache = host_cache_site(&mut code, CacheSiteKind::HostPathMutate, 1);
+    let read_cache = host_cache_site(&mut code, CacheSiteKind::HostPathRead, 2);
 
     code.push_instruction(Instruction::new(InstructionKind::LoadConst {
         dst: Register(1),
@@ -233,14 +251,18 @@ fn heap_execution_converts_heap_string_for_host_field_write() {
     let host_ref = player_ref(3);
     let mut code = CodeObject::new("main", 2).with_params(vec!["player".into()]);
     let gold = code.push_constant(Constant::String("gold".into()));
+    let target = level_target(&mut code, host_ref);
+    let write_cache = host_cache_site(&mut code, CacheSiteKind::HostPathWrite, 1);
     code.push_instruction(Instruction::new(InstructionKind::LoadConst {
         dst: Register(1),
         constant: gold,
     }));
-    code.push_instruction(Instruction::new(InstructionKind::SetHostField {
+    code.push_instruction(Instruction::new(InstructionKind::HostWrite {
         root: Register(0),
-        field: level_field(),
+        target,
+        dynamic_args: Vec::new(),
         src: Register(1),
+        cache_site: write_cache,
     }));
     code.push_instruction(Instruction::new(InstructionKind::Return {
         src: Register(1),
@@ -278,23 +300,30 @@ fn repeated_host_writes_write_through_without_mutation_budget() {
     let mut code = CodeObject::new("main", 3).with_params(vec!["player".into()]);
     let ten = code.push_constant(Constant::Int(10));
     let eleven = code.push_constant(Constant::Int(11));
+    let target = level_target(&mut code, host_ref);
+    let first_write_cache = host_cache_site(&mut code, CacheSiteKind::HostPathWrite, 1);
+    let second_write_cache = host_cache_site(&mut code, CacheSiteKind::HostPathWrite, 3);
     code.push_instruction(Instruction::new(InstructionKind::LoadConst {
         dst: Register(1),
         constant: ten,
     }));
-    code.push_instruction(Instruction::new(InstructionKind::SetHostField {
+    code.push_instruction(Instruction::new(InstructionKind::HostWrite {
         root: Register(0),
-        field: level_field(),
+        target,
+        dynamic_args: Vec::new(),
         src: Register(1),
+        cache_site: first_write_cache,
     }));
     code.push_instruction(Instruction::new(InstructionKind::LoadConst {
         dst: Register(2),
         constant: eleven,
     }));
-    code.push_instruction(Instruction::new(InstructionKind::SetHostField {
+    code.push_instruction(Instruction::new(InstructionKind::HostWrite {
         root: Register(0),
-        field: level_field(),
+        target,
+        dynamic_args: Vec::new(),
         src: Register(2),
+        cache_site: second_write_cache,
     }));
     code.push_instruction(Instruction::new(InstructionKind::Return {
         src: Register(2),
@@ -334,19 +363,27 @@ fn add_host_field_writes_through_and_updates_adapter() {
     let host_ref = player_ref(3);
     let mut code = CodeObject::new("main", 3).with_params(vec!["player".into()]);
     let one = code.push_constant(Constant::Int(1));
+    let target = level_target(&mut code, host_ref);
+    let mutate_cache = host_cache_site(&mut code, CacheSiteKind::HostPathMutate, 1);
+    let read_cache = host_cache_site(&mut code, CacheSiteKind::HostPathRead, 2);
     code.push_instruction(Instruction::new(InstructionKind::LoadConst {
         dst: Register(1),
         constant: one,
     }));
-    code.push_instruction(Instruction::new(InstructionKind::AddHostField {
+    code.push_instruction(Instruction::new(InstructionKind::HostMutate {
         root: Register(0),
-        field: level_field(),
+        target,
+        dynamic_args: Vec::new(),
+        op: HostMutationOp::Add,
         rhs: Register(1),
+        cache_site: mutate_cache,
     }));
-    code.push_instruction(Instruction::new(InstructionKind::GetHostField {
+    code.push_instruction(Instruction::new(InstructionKind::HostRead {
         dst: Register(2),
         root: Register(0),
-        field: level_field(),
+        target,
+        dynamic_args: Vec::new(),
+        cache_site: read_cache,
     }));
     code.push_instruction(Instruction::new(InstructionKind::Return {
         src: Register(2),
@@ -413,11 +450,15 @@ fn host_field_read_error_keeps_instruction_source_span() {
     let host_ref = player_ref(3);
     let span = Span::new(SourceId::new(7), 20, 32);
     let mut code = CodeObject::new("main", 2).with_params(vec!["player".into()]);
+    let target = level_target(&mut code, host_ref);
+    let cache_site = host_cache_site(&mut code, CacheSiteKind::HostPathRead, 0);
     code.push_instruction(
-        Instruction::new(InstructionKind::GetHostField {
+        Instruction::new(InstructionKind::HostRead {
             dst: Register(1),
             root: Register(0),
-            field: level_field(),
+            target,
+            dynamic_args: Vec::new(),
+            cache_site,
         })
         .with_span(span),
     );

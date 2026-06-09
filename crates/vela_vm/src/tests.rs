@@ -9,7 +9,7 @@ use vela_bytecode::compiler::{
     compile_program_source_with_options,
 };
 use vela_bytecode::{
-    Constant, ConstantId, HostPathSegment, Instruction, InstructionOffset, ProgramImage,
+    CacheSiteKind, Constant, ConstantId, Instruction, InstructionOffset, ProgramImage,
 };
 use vela_common::{
     FieldId, FunctionId, HostMethodId, HostObjectId, HostTypeId, MethodId, SourceId, TypeId,
@@ -21,6 +21,7 @@ use vela_host::error::HostErrorKind;
 use vela_host::mock::MockStateAdapter;
 use vela_host::path::{HostPath, HostRef};
 use vela_host::proxy::PathProxy;
+use vela_host::target::HostTargetPlan;
 use vela_host::value::HostValue;
 use vela_reflect::access::{FieldAccess, FunctionAccess, MethodAccess, MethodEffectSet};
 use vela_reflect::candidates::ReflectCandidate;
@@ -62,10 +63,15 @@ mod script_methods;
 fn host_read_program() -> (Program, HostRef) {
     let host_ref = player_ref(3);
     let mut code = CodeObject::new("main", 2).with_params(vec!["player".into()]);
-    code.push_instruction(Instruction::new(InstructionKind::GetHostField {
+    let target =
+        code.intern_host_target(HostTargetPlan::new(host_ref.type_id).field(level_field()));
+    let cache_site = code.push_cache_site(CacheSiteKind::HostPathRead, InstructionOffset(0));
+    code.push_instruction(Instruction::new(InstructionKind::HostRead {
         dst: Register(1),
         root: Register(0),
-        field: level_field(),
+        target,
+        dynamic_args: Vec::new(),
+        cache_site,
     }));
     code.push_instruction(Instruction::new(InstructionKind::Return {
         src: Register(1),

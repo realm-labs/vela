@@ -1,16 +1,12 @@
-use vela_bytecode::{CacheSiteId, HostPathSegment, HostTargetPlanId, Register};
-use vela_common::{FieldId, GlobalSlot, HostMethodId, Span, SymbolInterner};
+use vela_bytecode::{CacheSiteId, HostTargetPlanId, Register};
+use vela_common::{GlobalSlot, HostMethodId, Span};
 use vela_host::adapter::GlobalBinding;
-use vela_host::path::HostPath;
 use vela_host::resolved::{HostAccessOp, HostAccessSpec, HostMutationOp, ResolvedHostAccess};
 use vela_host::target::{HostPathArg, HostTargetInstance, HostTargetPlan};
 use vela_host::value::HostValue;
 
 use crate::heap::HeapValue;
 use crate::heap_values::host_to_value;
-use crate::host_mutations;
-pub(crate) use crate::host_mutations::HostNumericMutation;
-use crate::host_paths::{host_field_path, host_path_from_segments};
 use crate::host_values::{value_from_host, value_to_host};
 use crate::{
     CallFrame, ExecutionBudget, HeapExecution, HostExecution, HostInlineCacheEntry, Value, VmError,
@@ -46,72 +42,6 @@ pub(crate) fn load_host_global(
         .global_ref(GlobalBinding { name, slot })
         .map_err(|error| error.with_source_span_if_absent(runtime.source_span))?;
     Ok(Value::HostRef(root))
-}
-
-pub(crate) fn read_host_field(
-    runtime: HostAccessRuntime<'_, '_, '_>,
-    root: Register,
-    field: FieldId,
-) -> VmResult<Value> {
-    let root = expect_host_ref(runtime.frame.read(root)?, "get_host_field")?;
-    let path = host_field_path(root, field);
-    read_host_path_value(path, runtime)
-}
-
-pub(crate) fn read_host_path(
-    runtime: HostAccessRuntime<'_, '_, '_>,
-    root: Register,
-    segments: &[HostPathSegment],
-    symbols: &mut SymbolInterner,
-) -> VmResult<Value> {
-    let root = expect_host_ref(runtime.frame.read(root)?, "get_host_path")?;
-    let path = host_path_from_segments(
-        root,
-        segments,
-        runtime.frame,
-        runtime.heap.as_deref(),
-        symbols,
-    )?;
-    read_host_path_value(path, runtime)
-}
-
-pub(crate) fn set_host_field(
-    runtime: HostAccessRuntime<'_, '_, '_>,
-    root: Register,
-    field: FieldId,
-    src: Register,
-) -> VmResult<()> {
-    let root = expect_host_ref(runtime.frame.read(root)?, "set_host_field")?;
-    let value = value_to_host(
-        runtime.frame.read(src)?,
-        "set_host_field",
-        runtime.heap.as_deref(),
-    )?;
-    let path = host_field_path(root, field);
-    set_host_path_value(path, value, runtime)
-}
-
-pub(crate) fn set_host_path(
-    runtime: HostAccessRuntime<'_, '_, '_>,
-    root: Register,
-    segments: &[HostPathSegment],
-    src: Register,
-    symbols: &mut SymbolInterner,
-) -> VmResult<()> {
-    let root = expect_host_ref(runtime.frame.read(root)?, "set_host_path")?;
-    let value = value_to_host(
-        runtime.frame.read(src)?,
-        "set_host_path",
-        runtime.heap.as_deref(),
-    )?;
-    let path = host_path_from_segments(
-        root,
-        segments,
-        runtime.frame,
-        runtime.heap.as_deref(),
-        symbols,
-    )?;
-    set_host_path_value(path, value, runtime)
 }
 
 pub(crate) fn execute_host_read(
@@ -394,177 +324,6 @@ pub(crate) fn code_host_target(
         })
         .with_source_span(source_span)
     })
-}
-
-pub(crate) fn write_host_field_numeric_mutation(
-    runtime: HostAccessRuntime<'_, '_, '_>,
-    root: Register,
-    field: FieldId,
-    rhs: Register,
-    patch: HostNumericMutation,
-) -> VmResult<()> {
-    host_mutations::write_host_field_numeric_mutation(
-        host_mutations::HostMutationRuntime {
-            frame: runtime.frame,
-            heap: runtime.heap.as_deref(),
-            host: runtime.host,
-            source_span: runtime.source_span,
-        },
-        root,
-        field,
-        rhs,
-        patch,
-    )
-}
-
-pub(crate) fn write_host_path_numeric_mutation(
-    runtime: HostAccessRuntime<'_, '_, '_>,
-    root: Register,
-    segments: &[HostPathSegment],
-    rhs: Register,
-    patch: HostNumericMutation,
-    symbols: &mut SymbolInterner,
-) -> VmResult<()> {
-    host_mutations::write_host_path_numeric_mutation(
-        host_mutations::HostMutationRuntime {
-            frame: runtime.frame,
-            heap: runtime.heap.as_deref(),
-            host: runtime.host,
-            source_span: runtime.source_span,
-        },
-        root,
-        segments,
-        rhs,
-        patch,
-        symbols,
-    )
-}
-
-pub(crate) fn push_host_path(
-    runtime: HostAccessRuntime<'_, '_, '_>,
-    root: Register,
-    segments: &[HostPathSegment],
-    value: Register,
-    symbols: &mut SymbolInterner,
-) -> VmResult<()> {
-    let root = expect_host_ref(runtime.frame.read(root)?, "push_host_path")?;
-    let value = value_to_host(
-        runtime.frame.read(value)?,
-        "push_host_path",
-        runtime.heap.as_deref(),
-    )?;
-    let path = host_path_from_segments(
-        root,
-        segments,
-        runtime.frame,
-        runtime.heap.as_deref(),
-        symbols,
-    )?;
-    let host = runtime.host.ok_or_else(|| {
-        VmError::new(VmErrorKind::TypeMismatch {
-            operation: "host context",
-        })
-    })?;
-    host.access
-        .push_diagnostic_path(host.adapter, path, value, runtime.source_span)?;
-    Ok(())
-}
-
-pub(crate) fn remove_host_path(
-    runtime: HostAccessRuntime<'_, '_, '_>,
-    root: Register,
-    segments: &[HostPathSegment],
-    symbols: &mut SymbolInterner,
-) -> VmResult<()> {
-    let root = expect_host_ref(runtime.frame.read(root)?, "remove_host_path")?;
-    let path = host_path_from_segments(
-        root,
-        segments,
-        runtime.frame,
-        runtime.heap.as_deref(),
-        symbols,
-    )?;
-    let host = runtime.host.ok_or_else(|| {
-        VmError::new(VmErrorKind::TypeMismatch {
-            operation: "host context",
-        })
-    })?;
-    host.access
-        .remove_diagnostic_path(host.adapter, path, runtime.source_span)?;
-    Ok(())
-}
-
-pub(crate) fn call_host_method(
-    runtime: HostAccessRuntime<'_, '_, '_>,
-    root: Register,
-    segments: &[HostPathSegment],
-    method: HostMethodId,
-    args: &[Register],
-    wants_return: bool,
-    symbols: &mut SymbolInterner,
-) -> VmResult<Option<Value>> {
-    let root = expect_host_ref(runtime.frame.read(root)?, "call_host_method")?;
-    let path = host_path_from_segments(
-        root,
-        segments,
-        runtime.frame,
-        runtime.heap.as_deref(),
-        symbols,
-    )?;
-    let values = args
-        .iter()
-        .map(|register| {
-            value_to_host(
-                runtime.frame.read(*register)?,
-                "call_host_method",
-                runtime.heap.as_deref(),
-            )
-        })
-        .collect::<VmResult<Vec<_>>>()?;
-    let host = runtime.host.ok_or_else(|| {
-        VmError::new(VmErrorKind::TypeMismatch {
-            operation: "host context",
-        })
-    })?;
-    let return_value = host.access.call_diagnostic_path_method(
-        host.adapter,
-        path,
-        method,
-        values,
-        runtime.source_span,
-    )?;
-    if wants_return {
-        runtime_value_from_host(return_value, runtime.heap, runtime.budget).map(Some)
-    } else {
-        Ok(None)
-    }
-}
-
-fn read_host_path_value(path: HostPath, runtime: HostAccessRuntime<'_, '_, '_>) -> VmResult<Value> {
-    let host = runtime.host.ok_or_else(|| {
-        VmError::new(VmErrorKind::TypeMismatch {
-            operation: "host context",
-        })
-    })?;
-    let value = host
-        .access
-        .read_diagnostic_path_at(host.adapter, &path, runtime.source_span)?;
-    runtime_value_from_host(value, runtime.heap, runtime.budget)
-}
-
-fn set_host_path_value(
-    path: HostPath,
-    value: HostValue,
-    runtime: HostAccessRuntime<'_, '_, '_>,
-) -> VmResult<()> {
-    let host = runtime.host.ok_or_else(|| {
-        VmError::new(VmErrorKind::TypeMismatch {
-            operation: "host context",
-        })
-    })?;
-    host.access
-        .write_diagnostic_path(host.adapter, path, value, runtime.source_span)?;
-    Ok(())
 }
 
 fn runtime_value_from_host(

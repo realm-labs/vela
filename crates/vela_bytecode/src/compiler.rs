@@ -959,24 +959,6 @@ fn cache_site_kind(kind: &InstructionKind) -> Option<CacheSiteKind> {
         InstructionKind::HostMutate { .. } => Some(CacheSiteKind::HostPathMutate),
         InstructionKind::HostRemove { .. } => Some(CacheSiteKind::HostPathRemove),
         InstructionKind::HostCall { .. } => Some(CacheSiteKind::HostPathCall),
-        InstructionKind::GetHostField { .. } | InstructionKind::GetHostPath { .. } => {
-            Some(CacheSiteKind::HostPathRead)
-        }
-        InstructionKind::SetHostField { .. }
-        | InstructionKind::SetHostPath { .. }
-        | InstructionKind::AddHostField { .. }
-        | InstructionKind::SubHostField { .. }
-        | InstructionKind::MulHostField { .. }
-        | InstructionKind::DivHostField { .. }
-        | InstructionKind::RemHostField { .. }
-        | InstructionKind::AddHostPath { .. }
-        | InstructionKind::SubHostPath { .. }
-        | InstructionKind::MulHostPath { .. }
-        | InstructionKind::DivHostPath { .. }
-        | InstructionKind::RemHostPath { .. }
-        | InstructionKind::PushHostPath { .. }
-        | InstructionKind::RemoveHostPath { .. } => Some(CacheSiteKind::HostPathWrite),
-        InstructionKind::CallHostMethod { .. } => Some(CacheSiteKind::MethodCall),
         _ => None,
     }
 }

@@ -1,11 +1,16 @@
 use std::sync::Arc;
 
 use vela_bytecode::compiler::compile_program_source;
-use vela_bytecode::{CodeObject, Constant, Instruction, InstructionKind, Program, Register};
+use vela_bytecode::{
+    CacheSiteKind, CodeObject, Constant, Instruction, InstructionKind, InstructionOffset, Program,
+    Register,
+};
 use vela_common::{FieldId, HostObjectId, HostTypeId, SourceId, Span, TypeId};
 use vela_host::access::HostAccess;
 use vela_host::mock::MockStateAdapter;
 use vela_host::path::{HostPath, HostRef};
+use vela_host::resolved::HostMutationOp;
+use vela_host::target::HostTargetPlan;
 use vela_host::value::HostValue;
 use vela_reflect::access::FieldAccess;
 use vela_reflect::permissions::{ReflectPermission, ReflectPermissionSet};
@@ -63,11 +68,15 @@ fn host_permission_denied_fixture_renders_source_span() {
     let source_span = Span::new(SourceId::new(1), 29, 41);
 
     let mut code = CodeObject::new("main", 2).with_params(vec!["player".to_owned()]);
+    let target = code.intern_host_target(HostTargetPlan::new(host_ref.type_id).field(level_field));
+    let cache_site = code.push_cache_site(CacheSiteKind::HostPathRead, InstructionOffset(0));
     code.push_instruction(
-        Instruction::new(InstructionKind::GetHostField {
+        Instruction::new(InstructionKind::HostRead {
             dst: Register(1),
             root: Register(0),
-            field: level_field,
+            target,
+            dynamic_args: Vec::new(),
+            cache_site,
         })
         .with_span(source_span),
     );
@@ -113,22 +122,30 @@ fn host_compound_write_denied_fixture_renders_source_span() {
 
     let mut code = CodeObject::new("main", 2).with_params(vec!["player".to_owned()]);
     let one = code.push_constant(Constant::Int(1));
+    let target = code.intern_host_target(HostTargetPlan::new(host_ref.type_id).field(level_field));
+    let mutate_cache = code.push_cache_site(CacheSiteKind::HostPathMutate, InstructionOffset(1));
+    let read_cache = code.push_cache_site(CacheSiteKind::HostPathRead, InstructionOffset(2));
     code.push_instruction(Instruction::new(InstructionKind::LoadConst {
         dst: Register(1),
         constant: one,
     }));
     code.push_instruction(
-        Instruction::new(InstructionKind::AddHostField {
+        Instruction::new(InstructionKind::HostMutate {
             root: Register(0),
-            field: level_field,
+            target,
+            dynamic_args: Vec::new(),
+            op: HostMutationOp::Add,
             rhs: Register(1),
+            cache_site: mutate_cache,
         })
         .with_span(source_span),
     );
-    code.push_instruction(Instruction::new(InstructionKind::GetHostField {
+    code.push_instruction(Instruction::new(InstructionKind::HostRead {
         dst: Register(1),
         root: Register(0),
-        field: level_field,
+        target,
+        dynamic_args: Vec::new(),
+        cache_site: read_cache,
     }));
     code.push_instruction(Instruction::new(InstructionKind::Return {
         src: Register(1),
@@ -173,11 +190,15 @@ fn stale_host_ref_fixture_renders_source_span() {
     let source_span = Span::new(SourceId::new(1), 29, 41);
 
     let mut code = CodeObject::new("main", 2).with_params(vec!["player".to_owned()]);
+    let target = code.intern_host_target(HostTargetPlan::new(stale_ref.type_id).field(level_field));
+    let cache_site = code.push_cache_site(CacheSiteKind::HostPathRead, InstructionOffset(0));
     code.push_instruction(
-        Instruction::new(InstructionKind::GetHostField {
+        Instruction::new(InstructionKind::HostRead {
             dst: Register(1),
             root: Register(0),
-            field: level_field,
+            target,
+            dynamic_args: Vec::new(),
+            cache_site,
         })
         .with_span(source_span),
     );

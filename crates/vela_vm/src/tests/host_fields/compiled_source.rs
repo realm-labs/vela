@@ -1,4 +1,5 @@
 use super::*;
+use vela_host::resolved::HostMutationOp;
 
 #[test]
 fn compiled_source_mutates_host_field_through_host_access() {
@@ -396,23 +397,31 @@ fn bytecode_mutates_host_variant_field_through_host_access() {
         .variant_field(count);
     let mut code = CodeObject::new("main", 3).with_params(vec!["player".into()]);
     let one = code.push_constant(Constant::Int(1));
-    let segments = vec![
-        HostPathSegment::Field(quest_progress),
-        HostPathSegment::VariantField(count),
-    ];
+    let target = code.intern_host_target(
+        HostTargetPlan::new(host_ref.type_id)
+            .field(quest_progress)
+            .variant_field(count),
+    );
+    let mutate_cache = code.push_cache_site(CacheSiteKind::HostPathMutate, InstructionOffset(1));
+    let read_cache = code.push_cache_site(CacheSiteKind::HostPathRead, InstructionOffset(2));
     code.push_instruction(Instruction::new(InstructionKind::LoadConst {
         dst: Register(1),
         constant: one,
     }));
-    code.push_instruction(Instruction::new(InstructionKind::AddHostPath {
+    code.push_instruction(Instruction::new(InstructionKind::HostMutate {
         root: Register(0),
-        segments: segments.clone(),
+        target,
+        dynamic_args: Vec::new(),
+        op: HostMutationOp::Add,
         rhs: Register(1),
+        cache_site: mutate_cache,
     }));
-    code.push_instruction(Instruction::new(InstructionKind::GetHostPath {
+    code.push_instruction(Instruction::new(InstructionKind::HostRead {
         dst: Register(2),
         root: Register(0),
-        segments,
+        target,
+        dynamic_args: Vec::new(),
+        cache_site: read_cache,
     }));
     code.push_instruction(Instruction::new(InstructionKind::Return {
         src: Register(2),

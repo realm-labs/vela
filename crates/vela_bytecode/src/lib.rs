@@ -8,7 +8,7 @@ pub mod verification;
 
 use std::collections::BTreeMap;
 
-use vela_common::{FieldId, FunctionId, GlobalSlot, HostMethodId, MethodId, Span};
+use vela_common::{FunctionId, GlobalSlot, HostMethodId, MethodId, Span};
 use vela_hir::ids::HirLocalId;
 use vela_hir::module_graph::ModuleGraph;
 use vela_host::resolved::HostMutationOp;
@@ -670,102 +670,9 @@ pub enum InstructionKind {
         args: Vec<Register>,
         cache_site: CacheSiteId,
     },
-    GetHostField {
-        dst: Register,
-        root: Register,
-        field: FieldId,
-    },
-    GetHostPath {
-        dst: Register,
-        root: Register,
-        segments: Vec<HostPathSegment>,
-    },
-    SetHostField {
-        root: Register,
-        field: FieldId,
-        src: Register,
-    },
-    SetHostPath {
-        root: Register,
-        segments: Vec<HostPathSegment>,
-        src: Register,
-    },
-    AddHostField {
-        root: Register,
-        field: FieldId,
-        rhs: Register,
-    },
-    SubHostField {
-        root: Register,
-        field: FieldId,
-        rhs: Register,
-    },
-    MulHostField {
-        root: Register,
-        field: FieldId,
-        rhs: Register,
-    },
-    DivHostField {
-        root: Register,
-        field: FieldId,
-        rhs: Register,
-    },
-    RemHostField {
-        root: Register,
-        field: FieldId,
-        rhs: Register,
-    },
-    AddHostPath {
-        root: Register,
-        segments: Vec<HostPathSegment>,
-        rhs: Register,
-    },
-    SubHostPath {
-        root: Register,
-        segments: Vec<HostPathSegment>,
-        rhs: Register,
-    },
-    MulHostPath {
-        root: Register,
-        segments: Vec<HostPathSegment>,
-        rhs: Register,
-    },
-    DivHostPath {
-        root: Register,
-        segments: Vec<HostPathSegment>,
-        rhs: Register,
-    },
-    RemHostPath {
-        root: Register,
-        segments: Vec<HostPathSegment>,
-        rhs: Register,
-    },
-    PushHostPath {
-        root: Register,
-        segments: Vec<HostPathSegment>,
-        value: Register,
-    },
-    RemoveHostPath {
-        root: Register,
-        segments: Vec<HostPathSegment>,
-    },
-    CallHostMethod {
-        dst: Option<Register>,
-        root: Register,
-        segments: Vec<HostPathSegment>,
-        method: HostMethodId,
-        args: Vec<Register>,
-    },
     Return {
         src: Register,
     },
-}
-
-#[derive(Clone, Copy, Debug, Eq, PartialEq)]
-pub enum HostPathSegment {
-    Field(FieldId),
-    VariantField(FieldId),
-    Value(Register),
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -777,7 +684,7 @@ pub enum CallArgument {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use vela_common::HostTypeId;
+    use vela_common::{FieldId, HostTypeId};
     use vela_host::target::HostTargetPlan;
 
     #[test]

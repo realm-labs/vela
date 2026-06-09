@@ -165,14 +165,19 @@ fn managed_heap_host_execution_materializes_return_and_updates_adapter() {
     let host_ref = player_ref(3);
     let mut code = CodeObject::new("main", 2).with_params(vec!["player".into()]);
     let gold = code.push_constant(Constant::String("gold".into()));
+    let target =
+        code.intern_host_target(HostTargetPlan::new(host_ref.type_id).field(level_field()));
+    let cache_site = code.push_cache_site(CacheSiteKind::HostPathWrite, InstructionOffset(1));
     code.push_instruction(Instruction::new(InstructionKind::LoadConst {
         dst: Register(1),
         constant: gold,
     }));
-    code.push_instruction(Instruction::new(InstructionKind::SetHostField {
+    code.push_instruction(Instruction::new(InstructionKind::HostWrite {
         root: Register(0),
-        field: level_field(),
+        target,
+        dynamic_args: Vec::new(),
         src: Register(1),
+        cache_site,
     }));
     code.push_instruction(Instruction::new(InstructionKind::Return {
         src: Register(1),

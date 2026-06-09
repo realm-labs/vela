@@ -1066,11 +1066,11 @@ cargo test -p vela_vm host_access
 - [x] Add and use `HostTargetPlanId`.
 - [x] Verify target bounds, dynamic arg count, contiguous dynamic arg indexes,
   and cache-site kind matching for the collapsed host family.
-- [ ] Delete or fully retire legacy host instruction variants such as
+- [x] Delete or fully retire legacy host instruction variants such as
   `GetHostPath`, `SetHostPath`, and `AddHostPath`.
-- [ ] Delete `HostPathSegment::Value(Register)` once no remaining legacy
+- [x] Delete `HostPathSegment::Value(Register)` once no remaining legacy
   instruction needs it.
-- [ ] Record or rerun acceptance:
+- [x] Record or rerun acceptance:
 
 ```text
 cargo test -p vela_bytecode
@@ -1085,9 +1085,9 @@ cargo test -p vela_bytecode verification
   collapsed family.
 - [x] Route collapsed host operations through the focused VM host access
   boundary.
-- [ ] Delete normal execution-time `HostPath` materialization for all successful
+- [x] Delete normal execution-time `HostPath` materialization for all successful
   hot host reads/writes.
-- [ ] Remove legacy host instruction execution arms once all callers compile to
+- [x] Remove legacy host instruction execution arms once all callers compile to
   the collapsed family.
 - [ ] Record or rerun acceptance:
 
@@ -1105,7 +1105,7 @@ cargo test --workspace
 - [x] Emit dynamic arg registers separately from target shape.
 - [ ] Audit that diagnostic names are not retained as hot operands where a
   stable ID, slot, or target plan is available.
-- [ ] Remove tests that still expect legacy host bytecode, unless the test is
+- [x] Remove tests that still expect legacy host bytecode, unless the test is
   explicitly covering legacy removal.
 - [ ] Record or rerun acceptance:
 
@@ -1209,14 +1209,12 @@ The refactor is done when all of these are true:
 
 - [x] `ScriptStateAdapter` no longer exposes `read_path`, `write_path`,
   `remove_path`, or `call_method`.
-- [ ] VM bytecode no longer stores `Vec<HostPathSegment>` for host access
-  instructions. Legacy host instruction variants still exist.
-- [ ] VM execution no longer materializes `HostPath` on successful hot
-  reads/writes. Collapsed host instructions avoid it, but legacy execution arms
-  still materialize paths.
-- [ ] Host dynamic indexes and keys are passed as explicit dynamic args
-  everywhere. The collapsed family does this; `HostPathSegment::Value(Register)`
-  still exists for legacy paths.
+- [x] VM bytecode no longer stores `Vec<HostPathSegment>` for host access
+  instructions.
+- [x] VM execution no longer materializes `HostPath` on successful hot
+  reads/writes.
+- [x] Host dynamic indexes and keys are passed as explicit dynamic args
+  everywhere.
 - [x] Host inline caches key on root type, operation, target plan, and schema
   epoch.
 - [x] Cache keys do not include object ID or generation.

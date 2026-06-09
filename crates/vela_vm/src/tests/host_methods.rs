@@ -145,17 +145,21 @@ fn call_host_method_writes_through_and_updates_adapter() {
     let host_ref = player_ref(3);
     let method = HostMethodId::new(8);
     let mut code = CodeObject::new("main", 3).with_params(vec!["player".into()]);
+    let target = code.intern_host_target(HostTargetPlan::new(host_ref.type_id));
     let gold = code.push_constant(Constant::String("gold".into()));
     code.push_instruction(Instruction::new(InstructionKind::LoadConst {
         dst: Register(1),
         constant: gold,
     }));
-    code.push_instruction(Instruction::new(InstructionKind::CallHostMethod {
+    let cache_site = code.push_cache_site(CacheSiteKind::HostPathCall, InstructionOffset(1));
+    code.push_instruction(Instruction::new(InstructionKind::HostCall {
         dst: Some(Register(2)),
         root: Register(0),
-        segments: Vec::new(),
+        target,
+        dynamic_args: Vec::new(),
         method,
         args: vec![Register(1)],
+        cache_site,
     }));
     code.push_instruction(Instruction::new(InstructionKind::Return {
         src: Register(2),
@@ -196,17 +200,21 @@ fn heap_execution_converts_heap_string_for_host_method_call() {
     let host_ref = player_ref(3);
     let method = HostMethodId::new(8);
     let mut code = CodeObject::new("main", 3).with_params(vec!["player".into()]);
+    let target = code.intern_host_target(HostTargetPlan::new(host_ref.type_id));
     let gold = code.push_constant(Constant::String("gold".into()));
     code.push_instruction(Instruction::new(InstructionKind::LoadConst {
         dst: Register(1),
         constant: gold,
     }));
-    code.push_instruction(Instruction::new(InstructionKind::CallHostMethod {
+    let cache_site = code.push_cache_site(CacheSiteKind::HostPathCall, InstructionOffset(1));
+    code.push_instruction(Instruction::new(InstructionKind::HostCall {
         dst: Some(Register(2)),
         root: Register(0),
-        segments: Vec::new(),
+        target,
+        dynamic_args: Vec::new(),
         method,
         args: vec![Register(1)],
+        cache_site,
     }));
     code.push_instruction(Instruction::new(InstructionKind::Return {
         src: Register(2),

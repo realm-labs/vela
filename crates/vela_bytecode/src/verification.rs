@@ -1,9 +1,8 @@
 use std::fmt;
 
 use crate::{
-    CacheSiteId, CacheSiteKind, CallArgument, CodeObject, ConstantId, HostPathSegment,
-    HostTargetPlanId, Instruction, InstructionKind, InstructionOffset, Program, ProgramImage,
-    Register,
+    CacheSiteId, CacheSiteKind, CallArgument, CodeObject, ConstantId, HostTargetPlanId,
+    Instruction, InstructionKind, InstructionOffset, Program, ProgramImage, Register,
 };
 
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -615,89 +614,6 @@ fn verify_instruction(
                 cache_scope,
             )
         }
-        InstructionKind::GetHostField { dst, root, .. } => {
-            verify_register(function, instruction_index, code, *dst)?;
-            verify_register(function, instruction_index, code, *root)
-        }
-        InstructionKind::GetHostPath {
-            dst,
-            root,
-            segments,
-        } => {
-            verify_register(function, instruction_index, code, *dst)?;
-            verify_register(function, instruction_index, code, *root)?;
-            verify_host_path_segments(function, instruction_index, code, segments)
-        }
-        InstructionKind::SetHostField { root, src, .. }
-        | InstructionKind::AddHostField { root, rhs: src, .. }
-        | InstructionKind::SubHostField { root, rhs: src, .. }
-        | InstructionKind::MulHostField { root, rhs: src, .. }
-        | InstructionKind::DivHostField { root, rhs: src, .. }
-        | InstructionKind::RemHostField { root, rhs: src, .. } => {
-            verify_register(function, instruction_index, code, *root)?;
-            verify_register(function, instruction_index, code, *src)
-        }
-        InstructionKind::SetHostPath {
-            root,
-            segments,
-            src,
-        }
-        | InstructionKind::AddHostPath {
-            root,
-            segments,
-            rhs: src,
-        }
-        | InstructionKind::SubHostPath {
-            root,
-            segments,
-            rhs: src,
-        }
-        | InstructionKind::MulHostPath {
-            root,
-            segments,
-            rhs: src,
-        }
-        | InstructionKind::DivHostPath {
-            root,
-            segments,
-            rhs: src,
-        }
-        | InstructionKind::RemHostPath {
-            root,
-            segments,
-            rhs: src,
-        } => {
-            verify_register(function, instruction_index, code, *root)?;
-            verify_host_path_segments(function, instruction_index, code, segments)?;
-            verify_register(function, instruction_index, code, *src)
-        }
-        InstructionKind::PushHostPath {
-            root,
-            segments,
-            value,
-        } => {
-            verify_register(function, instruction_index, code, *root)?;
-            verify_host_path_segments(function, instruction_index, code, segments)?;
-            verify_register(function, instruction_index, code, *value)
-        }
-        InstructionKind::RemoveHostPath { root, segments } => {
-            verify_register(function, instruction_index, code, *root)?;
-            verify_host_path_segments(function, instruction_index, code, segments)
-        }
-        InstructionKind::CallHostMethod {
-            dst,
-            root,
-            segments,
-            args,
-            ..
-        } => {
-            if let Some(dst) = dst {
-                verify_register(function, instruction_index, code, *dst)?;
-            }
-            verify_register(function, instruction_index, code, *root)?;
-            verify_host_path_segments(function, instruction_index, code, segments)?;
-            verify_registers(function, instruction_index, code, args)
-        }
         InstructionKind::Return { src } => verify_register(function, instruction_index, code, *src),
     }
 }
@@ -734,20 +650,6 @@ fn verify_call_arguments(
 ) -> Result<(), VerificationError> {
     for arg in args {
         if let CallArgument::Register(register) = arg {
-            verify_register(function, instruction, code, *register)?;
-        }
-    }
-    Ok(())
-}
-
-fn verify_host_path_segments(
-    function: &str,
-    instruction: Option<usize>,
-    code: &CodeObject,
-    segments: &[HostPathSegment],
-) -> Result<(), VerificationError> {
-    for segment in segments {
-        if let HostPathSegment::Value(register) = segment {
             verify_register(function, instruction, code, *register)?;
         }
     }
@@ -1131,13 +1033,15 @@ mod tests {
     #[test]
     fn rejects_host_path_dynamic_registers_outside_frame() {
         let mut code = CodeObject::new("main", 2);
-        code.push_instruction(Instruction::new(InstructionKind::GetHostPath {
+        let target = code
+            .intern_host_target(HostTargetPlan::new(vela_common::HostTypeId::new(1)).dyn_key(0));
+        let cache_site = code.push_cache_site(CacheSiteKind::HostPathRead, InstructionOffset(0));
+        code.push_instruction(Instruction::new(InstructionKind::HostRead {
             dst: Register(0),
             root: Register(1),
-            segments: vec![
-                HostPathSegment::Field(FieldId::new(2)),
-                HostPathSegment::Value(Register(2)),
-            ],
+            target,
+            dynamic_args: vec![Register(2)],
+            cache_site,
         }));
 
         assert_eq!(

@@ -500,7 +500,7 @@ fn main() {
         !code
             .instructions
             .iter()
-            .any(|instruction| matches!(instruction.kind, InstructionKind::GetHostPath { .. }))
+            .any(|instruction| matches!(instruction.kind, InstructionKind::HostRead { .. }))
     );
 }
 #[test]
