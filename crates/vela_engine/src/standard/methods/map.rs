@@ -2,7 +2,10 @@ use vela_common::HostMethodId;
 use vela_reflect::registry::MethodDesc;
 
 use super::{MethodSpec, ParamSpec, descs};
-use crate::standard::ids::{MAP_HAS_METHOD_ID, MAP_IS_EMPTY_METHOD_ID, MAP_LEN_METHOD_ID};
+use crate::standard::ids::{
+    MAP_CLEAR_METHOD_ID, MAP_HAS_METHOD_ID, MAP_IS_EMPTY_METHOD_ID, MAP_LEN_METHOD_ID,
+    MAP_REMOVE_METHOD_ID, MAP_SET_METHOD_ID,
+};
 
 pub(crate) fn map_method_descs() -> Vec<MethodDesc> {
     descs(MAP_METHODS, "map")
@@ -48,7 +51,7 @@ const MAP_METHODS: &[MethodSpec] = &[
         "Returns the value for a key or a default.",
     ),
     MethodSpec::new(
-        map_id(5),
+        MAP_SET_METHOD_ID,
         "set",
         &[
             ParamSpec::new("key", "string"),
@@ -58,7 +61,7 @@ const MAP_METHODS: &[MethodSpec] = &[
         "Sets and returns a value for a key.",
     ),
     MethodSpec::new(
-        map_id(6),
+        MAP_REMOVE_METHOD_ID,
         "remove",
         &[ParamSpec::new("key", "string")],
         "Option",
@@ -71,7 +74,13 @@ const MAP_METHODS: &[MethodSpec] = &[
         "null",
         "Inserts entries from another map.",
     ),
-    MethodSpec::new(map_id(8), "clear", &[], "null", "Removes all entries."),
+    MethodSpec::new(
+        MAP_CLEAR_METHOD_ID,
+        "clear",
+        &[],
+        "null",
+        "Removes all entries.",
+    ),
     MethodSpec::new(
         map_id(9),
         "keys",

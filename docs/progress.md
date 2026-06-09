@@ -139,7 +139,7 @@ Cranelift JIT.
   boundary, preserving ID-first lookup, name fallback, HostAccess routing
   checks, and source-spanned errors. Standard value method calls can also carry
   optional `HostMethodId` metadata, with string/range/collection
-  `len`/`is_empty`, read-only collection predicates, array mutators, and
+  `len`/`is_empty`, read-only collection predicates, array/map mutators, and
   Option/Result predicates using an ID fast path before name fallback, and
   script/value method dispatch is routed through a focused VM call boundary.
   Host field/path reads, writes, compound
