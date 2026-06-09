@@ -1032,10 +1032,10 @@ cargo clippy --workspace --all-targets -- -D warnings
   successful operations.
 - [x] Remove or quarantine `MockStateAdapter` path convenience helpers so tests
   no longer treat path-first access as the primary API.
-- [ ] Update host access tests to use `HostTargetPlan` and
+- [x] Update host access tests to use `HostTargetPlan` and
   `HostTargetInstance`, not `HostPath`, except for explicit diagnostic or
   embedding materialization tests.
-- [ ] Record or rerun acceptance:
+- [x] Record or rerun acceptance:
 
 ```text
 cargo test -p vela_host
