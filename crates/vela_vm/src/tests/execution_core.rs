@@ -193,6 +193,39 @@ fn call_method_uses_standard_value_method_id_before_name_fallback() {
 }
 
 #[test]
+fn call_method_uses_standard_range_method_id_before_name_fallback() {
+    let mut code = CodeObject::new("standard_range_method_id", 4);
+    let start = code.push_constant(Constant::Int(2));
+    let end = code.push_constant(Constant::Int(5));
+    code.push_instruction(Instruction::new(InstructionKind::LoadConst {
+        dst: Register(0),
+        constant: start,
+    }));
+    code.push_instruction(Instruction::new(InstructionKind::LoadConst {
+        dst: Register(1),
+        constant: end,
+    }));
+    code.push_instruction(Instruction::new(InstructionKind::MakeRange {
+        dst: Register(2),
+        start: Register(0),
+        end: Register(1),
+        inclusive: false,
+    }));
+    code.push_instruction(Instruction::new(InstructionKind::CallMethod {
+        dst: Register(3),
+        receiver: Register(2),
+        method: "missing_len".into(),
+        value_method_id: Some(vela_common::standard_ids::RANGE_LEN_METHOD_ID),
+        args: Vec::new(),
+    }));
+    code.push_instruction(Instruction::new(InstructionKind::Return {
+        src: Register(3),
+    }));
+
+    assert_eq!(Vm::new().run(&code), Ok(OwnedValue::Int(3)));
+}
+
+#[test]
 fn instruction_budget_stops_dispatch_before_next_instruction() {
     let mut code = CodeObject::new("budgeted", 2);
     let one = code.push_constant(Constant::Int(1));

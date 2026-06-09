@@ -158,6 +158,39 @@ fn main() {
 }
 
 #[test]
+fn engine_compiler_options_emit_standard_range_method_ids() {
+    let engine = Engine::builder()
+        .with_standard_natives()
+        .build()
+        .expect("engine should build with standard natives");
+    let program = compile_program_source_with_options(
+        SourceId::new(1),
+        r#"
+fn main() {
+    return (1..4).len();
+}
+"#,
+        &engine.compiler_options(),
+    )
+    .expect("standard range method should compile");
+    let main = program.function("main").expect("main should compile");
+
+    let value_method = main
+        .instructions
+        .iter()
+        .find_map(|instruction| match &instruction.kind {
+            InstructionKind::CallMethod {
+                method,
+                value_method_id,
+                ..
+            } if method == "len" => *value_method_id,
+            _ => None,
+        });
+
+    assert_eq!(value_method, Some(crate::standard::RANGE_LEN_METHOD_ID));
+}
+
+#[test]
 fn engine_compiler_options_lower_named_standard_value_method_arguments() {
     let engine = Engine::builder()
         .with_standard_natives()

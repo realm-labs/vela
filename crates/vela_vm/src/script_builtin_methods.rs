@@ -4,7 +4,9 @@ use crate::{
     map_methods, option_result_methods, set_methods,
 };
 use vela_common::HostMethodId;
-use vela_common::standard_ids::{STRING_IS_EMPTY_METHOD_ID, STRING_LEN_METHOD_ID};
+use vela_common::standard_ids::{
+    RANGE_IS_EMPTY_METHOD_ID, RANGE_LEN_METHOD_ID, STRING_IS_EMPTY_METHOD_ID, STRING_LEN_METHOD_ID,
+};
 
 pub(crate) fn call(
     receiver: &mut Value,
@@ -76,18 +78,7 @@ pub(crate) fn call_by_id(
     args: &[Value],
     heap: &mut Option<&mut HeapExecution<'_>>,
 ) -> Option<VmResult<Value>> {
-    if !crate::string_methods::is_string(receiver, heap.as_deref()) {
-        return None;
-    }
-    let result = if method_id == STRING_LEN_METHOD_ID {
-        expect_no_args("len", args).and_then(|()| len(receiver, heap.as_deref()).map(Value::Int))
-    } else if method_id == STRING_IS_EMPTY_METHOD_ID {
-        expect_no_args("is_empty", args)
-            .and_then(|()| is_empty(receiver, heap.as_deref()).map(Value::Bool))
-    } else {
-        return None;
-    };
-    Some(result)
+    call_readonly_by_id(receiver, method_id, args, heap.as_deref())
 }
 
 pub(crate) fn call_readonly(
@@ -123,17 +114,29 @@ pub(crate) fn call_readonly_by_id(
     args: &[Value],
     heap: Option<&HeapExecution<'_>>,
 ) -> Option<VmResult<Value>> {
-    if !crate::string_methods::is_string(receiver, heap) {
-        return None;
+    if method_id == STRING_LEN_METHOD_ID && crate::string_methods::is_string(receiver, heap) {
+        return Some(
+            expect_no_args("len", args).and_then(|()| len(receiver, heap).map(Value::Int)),
+        );
     }
-    let result = if method_id == STRING_LEN_METHOD_ID {
-        expect_no_args("len", args).and_then(|()| len(receiver, heap).map(Value::Int))
-    } else if method_id == STRING_IS_EMPTY_METHOD_ID {
-        expect_no_args("is_empty", args).and_then(|()| is_empty(receiver, heap).map(Value::Bool))
-    } else {
-        return None;
-    };
-    Some(result)
+    if method_id == STRING_IS_EMPTY_METHOD_ID && crate::string_methods::is_string(receiver, heap) {
+        return Some(
+            expect_no_args("is_empty", args)
+                .and_then(|()| is_empty(receiver, heap).map(Value::Bool)),
+        );
+    }
+    if method_id == RANGE_LEN_METHOD_ID && matches!(receiver, Value::Range(_)) {
+        return Some(
+            expect_no_args("len", args).and_then(|()| len(receiver, heap).map(Value::Int)),
+        );
+    }
+    if method_id == RANGE_IS_EMPTY_METHOD_ID && matches!(receiver, Value::Range(_)) {
+        return Some(
+            expect_no_args("is_empty", args)
+                .and_then(|()| is_empty(receiver, heap).map(Value::Bool)),
+        );
+    }
+    None
 }
 
 fn extend(
