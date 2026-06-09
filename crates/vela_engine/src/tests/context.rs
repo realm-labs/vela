@@ -374,11 +374,11 @@ fn main(ctx) {
     .expect("program should compile");
     let ctx = HostRef::new(CONTEXT_HOST_TYPE_ID, HostObjectId::new(99), 1);
     let mut adapter = MockStateAdapter::new();
-    adapter.insert_value(
+    adapter.insert_diagnostic_path_value(
         HostPath::new(ctx).field(CONTEXT_NOW_FIELD_ID),
         HostValue::Int(1_700_000_000),
     );
-    adapter.insert_value(
+    adapter.insert_diagnostic_path_value(
         HostPath::new(ctx).field(CONTEXT_TICK_FIELD_ID),
         HostValue::Int(42),
     );

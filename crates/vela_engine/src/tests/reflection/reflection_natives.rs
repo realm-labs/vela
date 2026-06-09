@@ -82,7 +82,7 @@ fn main(player) {
     .expect("program should compile");
     let host_ref = HostRef::new(HostTypeId::new(1), HostObjectId::new(42), 1);
     let mut adapter = MockStateAdapter::new();
-    adapter.insert_value(
+    adapter.insert_diagnostic_path_value(
         HostPath::new(host_ref).field(FieldId::new(1)),
         HostValue::Int(7),
     );
@@ -126,7 +126,7 @@ fn main(player: Player) {
     .expect("reflect::set should compile as a native module call");
     let host_ref = HostRef::new(HostTypeId::new(1), HostObjectId::new(42), 1);
     let mut adapter = MockStateAdapter::new();
-    adapter.insert_value(
+    adapter.insert_diagnostic_path_value(
         HostPath::new(host_ref).field(FieldId::new(1)),
         HostValue::Int(7),
     );

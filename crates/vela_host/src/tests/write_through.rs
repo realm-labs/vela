@@ -4,19 +4,19 @@ use super::*;
 fn write_through_set_and_numeric_mutations_mutate_immediately() {
     let mut adapter = MockStateAdapter::new();
     let path = level_path();
-    adapter.insert_value(path.clone(), HostValue::Int(9));
+    adapter.insert_diagnostic_path_value(path.clone(), HostValue::Int(9));
     let mut tx = HostAccess::new();
 
     tx.set_path(&mut adapter, path.clone(), HostValue::Int(10), None)
         .expect("set path");
-    assert_eq!(adapter.read_path(&path), Ok(HostValue::Int(10)));
+    assert_eq!(adapter.read_diagnostic_path(&path), Ok(HostValue::Int(10)));
 
     tx.add_path(&mut adapter, path.clone(), HostValue::Int(2), None)
         .expect("add path");
     tx.sub_path(&mut adapter, path.clone(), HostValue::Int(5), None)
         .expect("sub path");
 
-    assert_eq!(adapter.read_path(&path), Ok(HostValue::Int(7)));
+    assert_eq!(adapter.read_diagnostic_path(&path), Ok(HostValue::Int(7)));
 }
 
 #[test]
@@ -25,8 +25,8 @@ fn write_through_rejects_push_and_keeps_method_call_remove_immediate() {
     let rewards = rewards_path();
     let method_path = level_path();
     let method = HostMethodId::new(4);
-    adapter.insert_value(rewards.clone(), HostValue::Int(0));
-    adapter.insert_value(method_path.clone(), HostValue::Int(9));
+    adapter.insert_diagnostic_path_value(rewards.clone(), HostValue::Int(0));
+    adapter.insert_diagnostic_path_value(method_path.clone(), HostValue::Int(9));
     adapter.insert_method_return(method, HostValue::String("ok".into()));
     let mut tx = HostAccess::new();
 
@@ -44,7 +44,10 @@ fn write_through_rejects_push_and_keeps_method_call_remove_immediate() {
             path: rewards.clone()
         }
     );
-    assert_eq!(adapter.read_path(&rewards), Ok(HostValue::Int(0)));
+    assert_eq!(
+        adapter.read_diagnostic_path(&rewards),
+        Ok(HostValue::Int(0))
+    );
 
     let result = tx
         .call_method(
@@ -64,7 +67,7 @@ fn write_through_rejects_push_and_keeps_method_call_remove_immediate() {
     tx.remove_path(&mut adapter, rewards.clone(), None)
         .expect("remove path");
     assert_eq!(
-        adapter.read_path(&rewards),
+        adapter.read_diagnostic_path(&rewards),
         Err(HostError::new(HostErrorKind::MissingPath { path: rewards }))
     );
 }
@@ -74,7 +77,7 @@ fn write_through_error_keeps_source_span() {
     let mut adapter = MockStateAdapter::new();
     let path = level_path();
     let span = test_span();
-    adapter.insert_value(path.clone(), HostValue::Int(9));
+    adapter.insert_diagnostic_path_value(path.clone(), HostValue::Int(9));
     let mut tx = HostAccess::new();
 
     let error = tx
@@ -94,7 +97,7 @@ fn write_through_error_keeps_source_span() {
 fn write_through_error_keeps_previous_successful_writes() {
     let mut adapter = MockStateAdapter::new();
     let path = level_path();
-    adapter.insert_value(path.clone(), HostValue::Int(9));
+    adapter.insert_diagnostic_path_value(path.clone(), HostValue::Int(9));
     let mut tx = HostAccess::new();
 
     tx.set_path(&mut adapter, path.clone(), HostValue::Int(10), None)
@@ -104,5 +107,5 @@ fn write_through_error_keeps_previous_successful_writes() {
         .expect_err("division by zero should fail");
 
     assert_eq!(error.kind, HostErrorKind::InvalidDiv { path: path.clone() });
-    assert_eq!(adapter.read_path(&path), Ok(HostValue::Int(10)));
+    assert_eq!(adapter.read_diagnostic_path(&path), Ok(HostValue::Int(10)));
 }

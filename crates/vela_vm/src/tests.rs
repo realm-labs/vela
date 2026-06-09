@@ -77,7 +77,7 @@ fn host_read_program() -> (Program, HostRef) {
 
 fn host_adapter(host_ref: HostRef, value: HostValue) -> MockStateAdapter {
     let mut adapter = MockStateAdapter::new();
-    adapter.insert_value(level_path(host_ref), value);
+    adapter.insert_diagnostic_path_value(level_path(host_ref), value);
     adapter
 }
 

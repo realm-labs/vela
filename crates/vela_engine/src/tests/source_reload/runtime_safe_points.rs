@@ -1021,7 +1021,7 @@ fn main(player: Player) {
     let host_ref = HostRef::new(HostTypeId::new(1), HostObjectId::new(42), 1);
     let level_path = HostPath::new(host_ref).field(FieldId::new(1));
     let mut adapter = MockStateAdapter::new();
-    adapter.insert_value(level_path, HostValue::Int(10));
+    adapter.insert_diagnostic_path_value(level_path, HostValue::Int(10));
     let mut tx = HostAccess::new();
 
     assert_eq!(
@@ -1092,11 +1092,11 @@ fn main(player: Player) {
     let host_ref = HostRef::new(HostTypeId::new(1), HostObjectId::new(42), 1);
     let level_path = HostPath::new(host_ref).field(FieldId::new(1));
     let mut adapter = MockStateAdapter::new();
-    adapter.insert_value(level_path.clone(), HostValue::Int(10));
+    adapter.insert_diagnostic_path_value(level_path.clone(), HostValue::Int(10));
     runtime
         .stage_hot_update(update)
         .expect("stage pending update");
-    adapter.deny_write(level_path.clone());
+    adapter.deny_diagnostic_path_write(level_path.clone());
     let mut tx = HostAccess::new();
 
     let error = runtime

@@ -115,7 +115,7 @@ fn main(player) {
     )
     .expect("compile indexed host method source");
     let mut adapter = MockStateAdapter::new();
-    adapter.insert_value(item_path.clone(), HostValue::Int(0));
+    adapter.insert_diagnostic_path_value(item_path.clone(), HostValue::Int(0));
     adapter.insert_method_return(method, HostValue::Null);
     let mut tx = HostAccess::new();
 

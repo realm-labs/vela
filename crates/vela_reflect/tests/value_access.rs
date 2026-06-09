@@ -25,7 +25,7 @@ fn registry() -> TypeRegistry {
 
 fn adapter_with_level(value: HostValue) -> MockStateAdapter {
     let mut adapter = MockStateAdapter::new();
-    adapter.insert_value(HostPath::new(player_ref()).field(FieldId::new(2)), value);
+    adapter.insert_diagnostic_path_value(HostPath::new(player_ref()).field(FieldId::new(2)), value);
     adapter
 }
 

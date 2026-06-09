@@ -29,7 +29,7 @@ fn main(player: Player) {
     let program = engine.compile_file(&source).expect("compile file");
     let host_ref = HostRef::new(HostTypeId::new(1), HostObjectId::new(42), 1);
     let mut adapter = MockStateAdapter::new();
-    adapter.insert_value(
+    adapter.insert_diagnostic_path_value(
         HostPath::new(host_ref).field(FieldId::new(1)),
         HostValue::Int(10),
     );

@@ -384,7 +384,7 @@ fn main(player: Player, amount, bonus = 1) {
     let player = HostRef::new(HostTypeId::new(1), HostObjectId::new(42), 1);
     let level = HostPath::new(player).field(super::FieldId::new(1));
     let mut adapter = MockStateAdapter::new();
-    adapter.insert_value(level.clone(), HostValue::Int(9));
+    adapter.insert_diagnostic_path_value(level.clone(), HostValue::Int(9));
     let mut tx = HostAccess::new();
     let mut args = CallArgs::new()
         .with_value("amount", 2_i64)
@@ -401,7 +401,7 @@ fn main(player: Player, amount, bonus = 1) {
         .expect("runtime call args should run");
 
     assert_eq!(result, OwnedValue::Int(12));
-    assert_eq!(adapter.read_path(&level), Ok(HostValue::Int(11)));
+    assert_eq!(adapter.read_diagnostic_path(&level), Ok(HostValue::Int(11)));
 }
 
 #[test]

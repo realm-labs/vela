@@ -160,11 +160,11 @@ fn set_host_field_writes_through_and_updates_adapter() {
 
     assert_eq!(result, Ok(OwnedValue::Int(10)));
     assert_eq!(
-        adapter.read_path(&level_path(host_ref)),
+        adapter.read_diagnostic_path(&level_path(host_ref)),
         Ok(HostValue::Int(10))
     );
     assert_eq!(
-        adapter.read_path(&level_path(host_ref)),
+        adapter.read_diagnostic_path(&level_path(host_ref)),
         Ok(HostValue::Int(10))
     );
 }
@@ -223,7 +223,7 @@ fn collapsed_host_mutate_and_read_execute_through_target_plan() {
 
     assert_eq!(result, Ok(OwnedValue::Int(10)));
     assert_eq!(
-        adapter.read_path(&level_path(host_ref)),
+        adapter.read_diagnostic_path(&level_path(host_ref)),
         Ok(HostValue::Int(10))
     );
 }
@@ -324,7 +324,7 @@ fn repeated_host_writes_write_through_without_mutation_budget() {
 
     assert_eq!(value, OwnedValue::Int(11));
     assert_eq!(
-        adapter.read_path(&level_path(host_ref)),
+        adapter.read_diagnostic_path(&level_path(host_ref)),
         Ok(HostValue::Int(11))
     );
 }
@@ -372,7 +372,7 @@ fn add_host_field_writes_through_and_updates_adapter() {
 
     assert_eq!(result, Ok(OwnedValue::Int(10)));
     assert_eq!(
-        adapter.read_path(&level_path(host_ref)),
+        adapter.read_diagnostic_path(&level_path(host_ref)),
         Ok(HostValue::Int(10))
     );
 }
@@ -427,7 +427,7 @@ fn host_field_read_error_keeps_instruction_source_span() {
     let mut program = Program::new();
     program.insert_function(code);
     let mut adapter = host_adapter(host_ref, HostValue::Int(9));
-    adapter.deny_read(level_path(host_ref));
+    adapter.deny_diagnostic_path_read(level_path(host_ref));
     let mut tx = HostAccess::new();
     let mut host = HostExecution {
         adapter: &mut adapter,

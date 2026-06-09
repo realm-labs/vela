@@ -34,11 +34,11 @@ fn main(player) {
 
     assert_eq!(result, Ok(OwnedValue::Int(11)));
     assert_eq!(
-        adapter.read_path(&level_path(host_ref)),
+        adapter.read_diagnostic_path(&level_path(host_ref)),
         Ok(HostValue::Int(11))
     );
     assert_eq!(
-        adapter.read_path(&level_path(host_ref)),
+        adapter.read_diagnostic_path(&level_path(host_ref)),
         Ok(HostValue::Int(11))
     );
 }
@@ -58,7 +58,7 @@ fn main(player) {
     )
     .expect("compile host field source");
     let mut adapter = host_adapter(host_ref, HostValue::Int(9));
-    adapter.deny_read(level_path(host_ref));
+    adapter.deny_diagnostic_path_read(level_path(host_ref));
     let mut tx = HostAccess::new();
     let mut host = HostExecution {
         adapter: &mut adapter,
@@ -103,7 +103,7 @@ fn main(player) {
     )
     .expect("compile nested host field source");
     let mut adapter = MockStateAdapter::new();
-    adapter.insert_value(stats_level.clone(), HostValue::Int(9));
+    adapter.insert_diagnostic_path_value(stats_level.clone(), HostValue::Int(9));
     let mut tx = HostAccess::new();
 
     let result = {
@@ -121,8 +121,14 @@ fn main(player) {
     };
 
     assert_eq!(result, Ok(OwnedValue::Int(11)));
-    assert_eq!(adapter.read_path(&stats_level), Ok(HostValue::Int(11)));
-    assert_eq!(adapter.read_path(&stats_level), Ok(HostValue::Int(11)));
+    assert_eq!(
+        adapter.read_diagnostic_path(&stats_level),
+        Ok(HostValue::Int(11))
+    );
+    assert_eq!(
+        adapter.read_diagnostic_path(&stats_level),
+        Ok(HostValue::Int(11))
+    );
 }
 
 #[test]
@@ -145,7 +151,7 @@ fn main(player) {
     )
     .expect("compile nested host subtraction source");
     let mut adapter = MockStateAdapter::new();
-    adapter.insert_value(stats_level.clone(), HostValue::Int(9));
+    adapter.insert_diagnostic_path_value(stats_level.clone(), HostValue::Int(9));
     let mut tx = HostAccess::new();
 
     let result = {
@@ -163,8 +169,14 @@ fn main(player) {
     };
 
     assert_eq!(result, Ok(OwnedValue::Int(7)));
-    assert_eq!(adapter.read_path(&stats_level), Ok(HostValue::Int(7)));
-    assert_eq!(adapter.read_path(&stats_level), Ok(HostValue::Int(7)));
+    assert_eq!(
+        adapter.read_diagnostic_path(&stats_level),
+        Ok(HostValue::Int(7))
+    );
+    assert_eq!(
+        adapter.read_diagnostic_path(&stats_level),
+        Ok(HostValue::Int(7))
+    );
 }
 
 #[test]
@@ -189,7 +201,7 @@ fn main(player) {
     )
     .expect("compile nested host numeric compound source");
     let mut adapter = MockStateAdapter::new();
-    adapter.insert_value(stats_level.clone(), HostValue::Int(4));
+    adapter.insert_diagnostic_path_value(stats_level.clone(), HostValue::Int(4));
     let mut tx = HostAccess::new();
 
     let result = {
@@ -207,8 +219,14 @@ fn main(player) {
     };
 
     assert_eq!(result, Ok(OwnedValue::Int(1)));
-    assert_eq!(adapter.read_path(&stats_level), Ok(HostValue::Int(1)));
-    assert_eq!(adapter.read_path(&stats_level), Ok(HostValue::Int(1)));
+    assert_eq!(
+        adapter.read_diagnostic_path(&stats_level),
+        Ok(HostValue::Int(1))
+    );
+    assert_eq!(
+        adapter.read_diagnostic_path(&stats_level),
+        Ok(HostValue::Int(1))
+    );
 }
 
 #[test]
@@ -231,7 +249,7 @@ fn main(player) {
     )
     .expect("compile host path push source");
     let mut adapter = MockStateAdapter::new();
-    adapter.insert_value(reward_path.clone(), HostValue::Int(0));
+    adapter.insert_diagnostic_path_value(reward_path.clone(), HostValue::Int(0));
     let mut tx = HostAccess::new();
 
     let error = {
@@ -256,7 +274,10 @@ fn main(player) {
             path: reward_path.clone()
         })
     );
-    assert_eq!(adapter.read_path(&reward_path), Ok(HostValue::Int(0)));
+    assert_eq!(
+        adapter.read_diagnostic_path(&reward_path),
+        Ok(HostValue::Int(0))
+    );
 }
 
 #[test]
@@ -283,7 +304,7 @@ fn main(player) {
     )
     .expect("compile host path remove source");
     let mut adapter = MockStateAdapter::new();
-    adapter.insert_value(item_path.clone(), HostValue::String("gold".into()));
+    adapter.insert_diagnostic_path_value(item_path.clone(), HostValue::String("gold".into()));
     let mut tx = HostAccess::new();
 
     let result = {
@@ -302,7 +323,7 @@ fn main(player) {
 
     assert_eq!(result, Ok(OwnedValue::Int(1)));
     assert!(matches!(
-        adapter.read_path(&item_path),
+        adapter.read_diagnostic_path(&item_path),
         Err(error)
             if error.kind == (HostErrorKind::MissingPath {
                 path: item_path.clone()
@@ -337,7 +358,7 @@ fn main(player) {
     )
     .expect("compile indexed host field source");
     let mut adapter = MockStateAdapter::new();
-    adapter.insert_value(item_count.clone(), HostValue::Int(4));
+    adapter.insert_diagnostic_path_value(item_count.clone(), HostValue::Int(4));
     let mut tx = HostAccess::new();
 
     let result = {
@@ -355,8 +376,14 @@ fn main(player) {
     };
 
     assert_eq!(result, Ok(OwnedValue::Int(5)));
-    assert_eq!(adapter.read_path(&item_count), Ok(HostValue::Int(5)));
-    assert_eq!(adapter.read_path(&item_count), Ok(HostValue::Int(5)));
+    assert_eq!(
+        adapter.read_diagnostic_path(&item_count),
+        Ok(HostValue::Int(5))
+    );
+    assert_eq!(
+        adapter.read_diagnostic_path(&item_count),
+        Ok(HostValue::Int(5))
+    );
 }
 
 #[test]
@@ -393,7 +420,7 @@ fn bytecode_mutates_host_variant_field_through_host_access() {
     let mut program = Program::new();
     program.insert_function(code);
     let mut adapter = MockStateAdapter::new();
-    adapter.insert_value(quest_count.clone(), HostValue::Int(4));
+    adapter.insert_diagnostic_path_value(quest_count.clone(), HostValue::Int(4));
     let mut tx = HostAccess::new();
 
     let result = {
@@ -411,8 +438,14 @@ fn bytecode_mutates_host_variant_field_through_host_access() {
     };
 
     assert_eq!(result, Ok(OwnedValue::Int(5)));
-    assert_eq!(adapter.read_path(&quest_count), Ok(HostValue::Int(5)));
-    assert_eq!(adapter.read_path(&quest_count), Ok(HostValue::Int(5)));
+    assert_eq!(
+        adapter.read_diagnostic_path(&quest_count),
+        Ok(HostValue::Int(5))
+    );
+    assert_eq!(
+        adapter.read_diagnostic_path(&quest_count),
+        Ok(HostValue::Int(5))
+    );
 }
 
 #[test]
@@ -440,11 +473,12 @@ fn main(ctx) {
     )
     .expect("compile context source");
     let mut adapter = MockStateAdapter::new();
-    adapter.insert_value(
+    adapter.insert_diagnostic_path_value(
         HostPath::new(ctx_ref).field(now_field),
         HostValue::Int(1000),
     );
-    adapter.insert_value(HostPath::new(ctx_ref).field(tick_field), HostValue::Int(42));
+    adapter
+        .insert_diagnostic_path_value(HostPath::new(ctx_ref).field(tick_field), HostValue::Int(42));
     adapter.insert_method_return(emit_method, HostValue::Null);
     adapter.insert_method_return(log_method, HostValue::Null);
     let mut tx = HostAccess::new();
@@ -533,7 +567,7 @@ fn main(player) {
         }
     );
     assert_eq!(
-        adapter.read_path(&level_path(host_ref)),
+        adapter.read_diagnostic_path(&level_path(host_ref)),
         Ok(HostValue::Int(9))
     );
 }

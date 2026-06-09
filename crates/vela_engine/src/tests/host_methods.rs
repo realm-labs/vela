@@ -193,7 +193,7 @@ fn main(player: Player) {
         .field(quest_progress)
         .variant_field(count);
     let mut adapter = MockStateAdapter::new();
-    adapter.insert_value(quest_count.clone(), HostValue::Int(4));
+    adapter.insert_diagnostic_path_value(quest_count.clone(), HostValue::Int(4));
     let mut tx = HostAccess::new();
     let mut host = HostExecution {
         adapter: &mut adapter,
@@ -613,7 +613,7 @@ fn engine_registers_unified_host_type_spec_with_native_method_and_index_metadata
         Ok(OwnedValue::Null)
     );
     assert_eq!(
-        adapter.read_path(&HostPath::new(host_ref).key("7")),
+        adapter.read_diagnostic_path(&HostPath::new(host_ref).key("7")),
         Ok(HostValue::Int(99))
     );
 }
@@ -661,7 +661,10 @@ fn typed_callable_native_method_accepts_typed_host_path_arguments() {
         ),
         Ok(OwnedValue::Null)
     );
-    assert_eq!(adapter.read_path(&amount_path), Ok(HostValue::Int(20)));
+    assert_eq!(
+        adapter.read_diagnostic_path(&amount_path),
+        Ok(HostValue::Int(20))
+    );
 }
 
 #[test]

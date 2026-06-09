@@ -179,7 +179,7 @@ fn reflect_get_denies_non_reflect_readable_host_fields() {
             ),
     );
     let mut adapter = MockStateAdapter::new();
-    adapter.insert_value(
+    adapter.insert_diagnostic_path_value(
         HostPath::new(player_ref()).field(FieldId::new(2)),
         HostValue::Int(9),
     );
@@ -776,7 +776,7 @@ fn reflect_get_propagates_host_generation_errors() {
     let registry = registry();
     let mut adapter = MockStateAdapter::new();
     let fresh_ref = player_ref();
-    adapter.insert_value(
+    adapter.insert_diagnostic_path_value(
         HostPath::new(fresh_ref).field(FieldId::new(2)),
         HostValue::Int(9),
     );

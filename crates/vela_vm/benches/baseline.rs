@@ -356,9 +356,11 @@ fn seed_gc_garbage(heap: &mut ScriptHeap) {
 fn run_host_access(vm: &Vm, program: &Program) -> Result<OwnedValue, Box<dyn Error>> {
     let player = HostRef::new(PLAYER_TYPE, PLAYER_OBJECT, PLAYER_GENERATION);
     let mut adapter = MockStateAdapter::new();
-    adapter.insert_value(HostPath::new(player).field(LEVEL_FIELD), HostValue::Int(10));
-    adapter.insert_value(HostPath::new(player).field(EXP_FIELD), HostValue::Int(90));
-    adapter.insert_value(
+    adapter
+        .insert_diagnostic_path_value(HostPath::new(player).field(LEVEL_FIELD), HostValue::Int(10));
+    adapter
+        .insert_diagnostic_path_value(HostPath::new(player).field(EXP_FIELD), HostValue::Int(90));
+    adapter.insert_diagnostic_path_value(
         HostPath::new(player)
             .field(INVENTORY_FIELD)
             .field(GOLD_FIELD),
@@ -392,9 +394,9 @@ fn run_managed_heap_host_conversion(
         .field(INVENTORY_FIELD)
         .field(GOLD_FIELD);
     let mut adapter = MockStateAdapter::new();
-    adapter.insert_value(level_path.clone(), HostValue::Int(0));
-    adapter.insert_value(exp_path.clone(), HostValue::Int(0));
-    adapter.insert_value(damage_path.clone(), HostValue::Int(0));
+    adapter.insert_diagnostic_path_value(level_path.clone(), HostValue::Int(0));
+    adapter.insert_diagnostic_path_value(exp_path.clone(), HostValue::Int(0));
+    adapter.insert_diagnostic_path_value(damage_path.clone(), HostValue::Int(0));
     let mut tx = HostAccess::new();
     let mut budget = ExecutionBudget::unbounded();
     let value = {
@@ -430,9 +432,9 @@ fn run_managed_heap_host_read_conversion(
         .field(INVENTORY_FIELD)
         .field(GOLD_FIELD);
     let mut adapter = MockStateAdapter::new();
-    adapter.insert_value(level_path.clone(), HostValue::Int(3));
-    adapter.insert_value(exp_path.clone(), HostValue::Int(5));
-    adapter.insert_value(damage_path.clone(), HostValue::Int(7));
+    adapter.insert_diagnostic_path_value(level_path.clone(), HostValue::Int(3));
+    adapter.insert_diagnostic_path_value(exp_path.clone(), HostValue::Int(5));
+    adapter.insert_diagnostic_path_value(damage_path.clone(), HostValue::Int(7));
     let mut tx = HostAccess::new();
     let mut budget = ExecutionBudget::unbounded();
     let value = {
@@ -474,24 +476,28 @@ fn run_gameplay_monster_kill(vm: &Vm, program: &Program) -> Result<OwnedValue, B
         .field(QUEST_DONE_FIELD);
 
     let mut adapter = MockStateAdapter::new();
-    adapter.insert_value(HostPath::new(player).field(LEVEL_FIELD), HostValue::Int(1));
-    adapter.insert_value(HostPath::new(player).field(EXP_FIELD), HostValue::Int(90));
-    adapter.insert_value(HostPath::new(player).field(ID_FIELD), HostValue::Int(7));
-    adapter.insert_value(quest_count_path.clone(), HostValue::Int(2));
-    adapter.insert_value(
+    adapter
+        .insert_diagnostic_path_value(HostPath::new(player).field(LEVEL_FIELD), HostValue::Int(1));
+    adapter
+        .insert_diagnostic_path_value(HostPath::new(player).field(EXP_FIELD), HostValue::Int(90));
+    adapter.insert_diagnostic_path_value(HostPath::new(player).field(ID_FIELD), HostValue::Int(7));
+    adapter.insert_diagnostic_path_value(quest_count_path.clone(), HostValue::Int(2));
+    adapter.insert_diagnostic_path_value(
         HostPath::new(player).field(QUEST_GOAL_FIELD),
         HostValue::Int(3),
     );
-    adapter.insert_value(quest_done_path.clone(), HostValue::Bool(false));
-    adapter.insert_value(inventory_gold_count_path.clone(), HostValue::Int(0));
-    adapter.insert_value(
+    adapter.insert_diagnostic_path_value(quest_done_path.clone(), HostValue::Bool(false));
+    adapter.insert_diagnostic_path_value(inventory_gold_count_path.clone(), HostValue::Int(0));
+    adapter.insert_diagnostic_path_value(
         HostPath::new(ctx)
             .field(CONFIG_FIELD)
             .field(EXP_TO_NEXT_LEVEL_FIELD),
         HostValue::Int(100),
     );
-    adapter.insert_value(HostPath::new(monster).field(EXP_FIELD), HostValue::Int(20));
-    adapter.insert_value(HostPath::new(monster).field(ID_FIELD), HostValue::Int(11));
+    adapter
+        .insert_diagnostic_path_value(HostPath::new(monster).field(EXP_FIELD), HostValue::Int(20));
+    adapter
+        .insert_diagnostic_path_value(HostPath::new(monster).field(ID_FIELD), HostValue::Int(11));
     adapter.insert_method_return(EMIT_METHOD, HostValue::Null);
     adapter.insert_method_return(ADD_REWARD_METHOD, HostValue::Null);
 
@@ -527,14 +533,14 @@ fn run_gameplay_monster_kill(vm: &Vm, program: &Program) -> Result<OwnedValue, B
 }
 
 fn host_int(adapter: &MockStateAdapter, path: HostPath) -> Result<i64, Box<dyn Error>> {
-    match adapter.read_path(&path)? {
+    match adapter.read_diagnostic_path(&path)? {
         HostValue::Int(value) => Ok(value),
         value => Err(format!("expected int host value, got {value:?}").into()),
     }
 }
 
 fn host_bool(adapter: &MockStateAdapter, path: HostPath) -> Result<bool, Box<dyn Error>> {
-    match adapter.read_path(&path)? {
+    match adapter.read_diagnostic_path(&path)? {
         HostValue::Bool(value) => Ok(value),
         value => Err(format!("expected bool host value, got {value:?}").into()),
     }

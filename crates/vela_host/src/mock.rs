@@ -45,7 +45,7 @@ impl MockValueKey {
     }
 
     #[must_use]
-    pub fn from_path(path: &HostPath) -> Self {
+    pub fn from_diagnostic_path(path: &HostPath) -> Self {
         Self::new(path.root, HostTargetPlan::from(path), Vec::new()).canonical()
     }
 
@@ -132,8 +132,8 @@ impl MockStateAdapter {
         Self::default()
     }
 
-    pub fn insert_value(&mut self, path: HostPath, value: HostValue) {
-        self.insert_value_key(MockValueKey::from_path(&path), value);
+    pub fn insert_diagnostic_path_value(&mut self, path: HostPath, value: HostValue) {
+        self.insert_value_key(MockValueKey::from_diagnostic_path(&path), value);
     }
 
     pub fn insert_value_key(&mut self, key: MockValueKey, value: HostValue) {
@@ -150,16 +150,19 @@ impl MockStateAdapter {
         self.method_returns.insert(method, value);
     }
 
-    pub fn deny_read(&mut self, path: HostPath) {
-        self.denied_reads.insert(MockValueKey::from_path(&path));
+    pub fn deny_diagnostic_path_read(&mut self, path: HostPath) {
+        self.denied_reads
+            .insert(MockValueKey::from_diagnostic_path(&path));
     }
 
-    pub fn deny_write(&mut self, path: HostPath) {
-        self.denied_writes.insert(MockValueKey::from_path(&path));
+    pub fn deny_diagnostic_path_write(&mut self, path: HostPath) {
+        self.denied_writes
+            .insert(MockValueKey::from_diagnostic_path(&path));
     }
 
-    pub fn deny_call(&mut self, path: HostPath) {
-        self.denied_calls.insert(MockValueKey::from_path(&path));
+    pub fn deny_diagnostic_path_call(&mut self, path: HostPath) {
+        self.denied_calls
+            .insert(MockValueKey::from_diagnostic_path(&path));
     }
 
     #[must_use]
@@ -167,7 +170,7 @@ impl MockStateAdapter {
         &self.method_calls
     }
 
-    pub fn read_path(&self, path: &HostPath) -> HostResult<HostValue> {
+    pub fn read_diagnostic_path(&self, path: &HostPath) -> HostResult<HostValue> {
         let plan = HostTargetPlan::from(path);
         let target = HostTargetInstance::new(path.root, &plan, &[]);
         let access = ResolvedHostAccess::generic_path(self.schema_epoch);

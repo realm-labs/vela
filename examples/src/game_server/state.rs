@@ -88,35 +88,38 @@ impl DemoHostState {
             .field(ids.exp_to_next_level_field);
 
         let mut adapter = MockStateAdapter::new();
-        adapter.insert_value(
+        adapter.insert_diagnostic_path_value(
             level_path.clone(),
             HostValue::Int(if options.has_monster { 1 } else { 9 }),
         );
-        adapter.insert_value(
+        adapter.insert_diagnostic_path_value(
             exp_path.clone(),
             HostValue::Int(if options.has_monster { 90 } else { 0 }),
         );
-        adapter.insert_value(HostPath::new(player).field(ids.id_field), HostValue::Int(7));
-        adapter.insert_value(quest_count_path.clone(), HostValue::Int(2));
-        adapter.insert_value(quest_goal_path, HostValue::Int(3));
-        adapter.insert_value(quest_done_path.clone(), HostValue::Bool(false));
-        adapter.insert_value(inventory_gold_count_path.clone(), HostValue::Int(0));
-        adapter.insert_value(now_path.clone(), HostValue::Int(1_700_000_000));
-        adapter.insert_value(tick_path.clone(), HostValue::Int(42));
-        adapter.insert_value(exp_to_next_level_path, HostValue::Int(100));
-        adapter.insert_value(
+        adapter.insert_diagnostic_path_value(
+            HostPath::new(player).field(ids.id_field),
+            HostValue::Int(7),
+        );
+        adapter.insert_diagnostic_path_value(quest_count_path.clone(), HostValue::Int(2));
+        adapter.insert_diagnostic_path_value(quest_goal_path, HostValue::Int(3));
+        adapter.insert_diagnostic_path_value(quest_done_path.clone(), HostValue::Bool(false));
+        adapter.insert_diagnostic_path_value(inventory_gold_count_path.clone(), HostValue::Int(0));
+        adapter.insert_diagnostic_path_value(now_path.clone(), HostValue::Int(1_700_000_000));
+        adapter.insert_diagnostic_path_value(tick_path.clone(), HostValue::Int(42));
+        adapter.insert_diagnostic_path_value(exp_to_next_level_path, HostValue::Int(100));
+        adapter.insert_diagnostic_path_value(
             HostPath::new(monster).field(ids.monster_exp_field),
             HostValue::Int(20),
         );
-        adapter.insert_value(
+        adapter.insert_diagnostic_path_value(
             HostPath::new(monster).field(ids.exp_field),
             HostValue::Int(20),
         );
-        adapter.insert_value(
+        adapter.insert_diagnostic_path_value(
             HostPath::new(monster).field(ids.monster_id_field),
             HostValue::Int(11),
         );
-        adapter.insert_value(
+        adapter.insert_diagnostic_path_value(
             HostPath::new(monster).field(ids.id_field),
             HostValue::Int(11),
         );
@@ -124,13 +127,13 @@ impl DemoHostState {
         adapter.insert_method_return(ids.add_reward_method, HostValue::Null);
         adapter.insert_method_return(ids.log_method, HostValue::Null);
         if options.deny_player_level_read {
-            adapter.deny_read(level_path.clone());
+            adapter.deny_diagnostic_path_read(level_path.clone());
         }
         if options.deny_player_level_write {
-            adapter.deny_write(level_path.clone());
+            adapter.deny_diagnostic_path_write(level_path.clone());
         }
         if options.deny_context_emit_call {
-            adapter.deny_call(HostPath::new(ctx));
+            adapter.deny_diagnostic_path_call(HostPath::new(ctx));
         }
 
         Self {
@@ -208,7 +211,7 @@ impl DemoHostState {
 
     fn read(&self, path: &HostPath) -> Result<HostValue, Box<dyn Error>> {
         self.adapter
-            .read_path(path)
+            .read_diagnostic_path(path)
             .map_err(|error| format!("{error:?}").into())
     }
 

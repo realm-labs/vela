@@ -246,7 +246,7 @@ fn main(player) {
         }
     );
     assert_eq!(
-        adapter.read_path(&level_path(host_ref)),
+        adapter.read_diagnostic_path(&level_path(host_ref)),
         Ok(HostValue::Null)
     );
     assert_eq!(budget.memory_bytes_allocated(), 0);
@@ -299,7 +299,7 @@ fn main(player) {
         }
     );
     assert_eq!(
-        adapter.read_path(&level_path(host_ref)),
+        adapter.read_diagnostic_path(&level_path(host_ref)),
         Ok(HostValue::Null)
     );
     assert_eq!(budget.memory_bytes_allocated(), 0);
@@ -347,7 +347,7 @@ fn main(player) {
         }
     );
     assert_eq!(
-        adapter.read_path(&level_path(host_ref)),
+        adapter.read_diagnostic_path(&level_path(host_ref)),
         Ok(HostValue::Null)
     );
     assert_eq!(budget.memory_bytes_allocated(), 0);
@@ -394,7 +394,7 @@ fn main(player, target) {
 
     assert_eq!(result, OwnedValue::HostRef(target_ref));
     assert_eq!(
-        adapter.read_path(&level_path(host_ref)),
+        adapter.read_diagnostic_path(&level_path(host_ref)),
         Ok(HostValue::HostRef(target_ref))
     );
     assert_eq!(budget.memory_bytes_allocated(), 0);

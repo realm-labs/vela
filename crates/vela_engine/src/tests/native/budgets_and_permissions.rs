@@ -63,7 +63,7 @@ fn main(player) {
         }
     );
     let level = HostPath::new(host_ref).field(FieldId::new(1));
-    assert_eq!(adapter.read_path(&level), Ok(HostValue::Int(13)));
+    assert_eq!(adapter.read_diagnostic_path(&level), Ok(HostValue::Int(13)));
 }
 
 #[test]
@@ -133,7 +133,7 @@ fn main(player) {
         }
     );
     let level = HostPath::new(host_ref).field(FieldId::new(1));
-    assert_eq!(adapter.read_path(&level), Ok(HostValue::Int(13)));
+    assert_eq!(adapter.read_diagnostic_path(&level), Ok(HostValue::Int(13)));
 }
 
 #[test]

@@ -280,7 +280,7 @@ fn read_level(player: CachedHostPlayer) {
         let host_ref = HostRef::new(HostTypeId::new(1), HostObjectId::new(42), 1);
         let host_path = HostPath::new(host_ref).field(FieldId::new(1));
         let mut adapter = MockStateAdapter::new();
-        adapter.insert_value(host_path, HostValue::Int(12));
+        adapter.insert_diagnostic_path_value(host_path, HostValue::Int(12));
         let mut access = HostAccess::new();
 
         assert_eq!(runtime.state.inline_caches.host_access(cache_site), None);

@@ -176,7 +176,7 @@ fn main(player) {
     let host_ref = HostRef::new(HostTypeId::new(1), HostObjectId::new(42), 1);
     let level = HostPath::new(host_ref).field(FieldId::new(1));
     let mut adapter = MockStateAdapter::new();
-    adapter.insert_value(level.clone(), HostValue::Int(3));
+    adapter.insert_diagnostic_path_value(level.clone(), HostValue::Int(3));
     let mut tx = HostAccess::new();
 
     assert_eq!(
@@ -189,7 +189,7 @@ fn main(player) {
         ),
         Ok(OwnedValue::Int(17))
     );
-    assert_eq!(adapter.read_path(&level), Ok(HostValue::Int(17)));
+    assert_eq!(adapter.read_diagnostic_path(&level), Ok(HostValue::Int(17)));
 }
 
 #[test]
@@ -358,7 +358,7 @@ fn main(player) {
     let host_ref = HostRef::new(HostTypeId::new(1), HostObjectId::new(42), 1);
     let mut adapter = MockStateAdapter::new();
     let numeric = HostPath::new(host_ref).field(FieldId::new(1));
-    adapter.insert_value(numeric.clone(), HostValue::Int(10));
+    adapter.insert_diagnostic_path_value(numeric.clone(), HostValue::Int(10));
     let mut tx = HostAccess::new();
 
     let error = runtime
@@ -433,7 +433,7 @@ fn main(player) {
         Ok(OwnedValue::Int(1))
     );
     assert_eq!(
-        adapter.read_path(&HostPath::new(host_ref).field(FieldId::new(1))),
+        adapter.read_diagnostic_path(&HostPath::new(host_ref).field(FieldId::new(1))),
         Ok(HostValue::Int(13))
     );
 }
@@ -484,8 +484,8 @@ fn main(player) {
     let mut adapter = MockStateAdapter::new();
     let numeric = HostPath::new(host_ref).field(FieldId::new(1));
     let scratch = HostPath::new(host_ref).field(FieldId::new(2));
-    adapter.insert_value(numeric.clone(), HostValue::Int(10));
-    adapter.insert_value(scratch.clone(), HostValue::Int(0));
+    adapter.insert_diagnostic_path_value(numeric.clone(), HostValue::Int(10));
+    adapter.insert_diagnostic_path_value(scratch.clone(), HostValue::Int(0));
     let mut tx = HostAccess::new();
 
     assert_eq!(
@@ -498,8 +498,11 @@ fn main(player) {
         ),
         Ok(OwnedValue::Int(1))
     );
-    assert_eq!(adapter.read_path(&numeric), Ok(HostValue::Int(3)));
-    assert!(adapter.read_path(&scratch).is_err());
+    assert_eq!(
+        adapter.read_diagnostic_path(&numeric),
+        Ok(HostValue::Int(3))
+    );
+    assert!(adapter.read_diagnostic_path(&scratch).is_err());
     assert_eq!(adapter.method_calls().len(), 1);
 }
 
@@ -552,7 +555,7 @@ fn main(player) {
         Ok(OwnedValue::Int(1))
     );
     assert_eq!(
-        adapter.read_path(&HostPath::new(host_ref).field(FieldId::new(1))),
+        adapter.read_diagnostic_path(&HostPath::new(host_ref).field(FieldId::new(1))),
         Ok(HostValue::Int(13))
     );
 }

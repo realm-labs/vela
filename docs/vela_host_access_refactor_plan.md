@@ -1012,10 +1012,11 @@ complete.
   `HostMutationOp`.
 - [x] Add diagnostic path materialization from `HostTargetInstance`.
 - [x] Keep the new types safe Rust only.
-- [ ] Record or rerun acceptance:
+- [x] Record or rerun acceptance:
 
 ```text
-cargo test -p vela_host target resolved
+cargo test -p vela_host target
+cargo test -p vela_host resolved
 cargo fmt --all -- --check
 cargo clippy --workspace --all-targets -- -D warnings
 ```
@@ -1029,7 +1030,7 @@ cargo clippy --workspace --all-targets -- -D warnings
 - [x] Add `host_schema_epoch`.
 - [x] Rewrite `MockStateAdapter` around resolved access and target identity for
   successful operations.
-- [ ] Remove or quarantine `MockStateAdapter` path convenience helpers so tests
+- [x] Remove or quarantine `MockStateAdapter` path convenience helpers so tests
   no longer treat path-first access as the primary API.
 - [ ] Update host access tests to use `HostTargetPlan` and
   `HostTargetInstance`, not `HostPath`, except for explicit diagnostic or

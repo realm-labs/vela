@@ -42,11 +42,11 @@ fn main(player) {
 
     assert_eq!(result, Ok(OwnedValue::Int(10)));
     assert_eq!(
-        adapter.read_path(&level_path(host_ref)),
+        adapter.read_diagnostic_path(&level_path(host_ref)),
         Ok(HostValue::Int(10))
     );
     assert_eq!(
-        adapter.read_path(&level_path(host_ref)),
+        adapter.read_diagnostic_path(&level_path(host_ref)),
         Ok(HostValue::Int(10))
     );
 }
@@ -491,7 +491,7 @@ fn main(player) {
             ),
     );
     let mut adapter = MockStateAdapter::new();
-    adapter.insert_value(
+    adapter.insert_diagnostic_path_value(
         HostPath::new(host_ref).field(secret_field),
         HostValue::Int(99),
     );
@@ -545,7 +545,7 @@ fn main(player) {
             ),
     );
     let mut adapter = MockStateAdapter::new();
-    adapter.insert_value(
+    adapter.insert_diagnostic_path_value(
         HostPath::new(host_ref).field(title_field),
         HostValue::String("Knight".to_owned()),
     );
@@ -607,7 +607,7 @@ fn main(player) {
             ),
     );
     let mut adapter = MockStateAdapter::new();
-    adapter.insert_value(
+    adapter.insert_diagnostic_path_value(
         HostPath::new(host_ref).field(FieldId::new(1)),
         HostValue::Int(9),
     );
