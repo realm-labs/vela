@@ -5,8 +5,9 @@ use crate::{
 };
 use vela_common::HostMethodId;
 use vela_common::standard_ids::{
-    ARRAY_CONTAINS_METHOD_ID, ARRAY_IS_EMPTY_METHOD_ID, ARRAY_LEN_METHOD_ID, MAP_HAS_METHOD_ID,
-    MAP_IS_EMPTY_METHOD_ID, MAP_LEN_METHOD_ID, OPTION_IS_NONE_METHOD_ID, OPTION_IS_SOME_METHOD_ID,
+    ARRAY_CLEAR_METHOD_ID, ARRAY_CONTAINS_METHOD_ID, ARRAY_IS_EMPTY_METHOD_ID, ARRAY_LEN_METHOD_ID,
+    ARRAY_POP_METHOD_ID, ARRAY_PUSH_METHOD_ID, MAP_HAS_METHOD_ID, MAP_IS_EMPTY_METHOD_ID,
+    MAP_LEN_METHOD_ID, OPTION_IS_NONE_METHOD_ID, OPTION_IS_SOME_METHOD_ID,
     RANGE_IS_EMPTY_METHOD_ID, RANGE_LEN_METHOD_ID, RESULT_IS_ERR_METHOD_ID, RESULT_IS_OK_METHOD_ID,
     SET_HAS_METHOD_ID, SET_IS_DISJOINT_METHOD_ID, SET_IS_EMPTY_METHOD_ID, SET_IS_SUBSET_METHOD_ID,
     SET_IS_SUPERSET_METHOD_ID, SET_LEN_METHOD_ID, STRING_IS_EMPTY_METHOD_ID, STRING_LEN_METHOD_ID,
@@ -81,8 +82,31 @@ pub(crate) fn call_by_id(
     method_id: HostMethodId,
     args: &[Value],
     heap: &mut Option<&mut HeapExecution<'_>>,
+    budget: &mut Option<&mut ExecutionBudget>,
 ) -> Option<VmResult<Value>> {
-    call_readonly_by_id(receiver, method_id, args, heap.as_deref())
+    if let Some(result) = call_readonly_by_id(receiver, method_id, args, heap.as_deref()) {
+        return Some(result);
+    }
+    if method_id == ARRAY_PUSH_METHOD_ID && array_methods::is_array(receiver, heap.as_deref()) {
+        return Some(array_methods::push(
+            receiver,
+            args,
+            heap.as_deref_mut(),
+            budget.as_deref_mut(),
+        ));
+    }
+    if method_id == ARRAY_POP_METHOD_ID && array_methods::is_array(receiver, heap.as_deref()) {
+        return Some(array_methods::pop(
+            receiver,
+            args,
+            heap.as_deref_mut(),
+            budget.as_deref_mut(),
+        ));
+    }
+    if method_id == ARRAY_CLEAR_METHOD_ID && array_methods::is_array(receiver, heap.as_deref()) {
+        return Some(array_methods::clear(receiver, args, heap.as_deref_mut()));
+    }
+    None
 }
 
 pub(crate) fn call_readonly(

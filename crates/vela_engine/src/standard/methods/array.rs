@@ -3,7 +3,8 @@ use vela_reflect::registry::MethodDesc;
 
 use super::{MethodSpec, ParamSpec, descs};
 use crate::standard::ids::{
-    ARRAY_CONTAINS_METHOD_ID, ARRAY_IS_EMPTY_METHOD_ID, ARRAY_LEN_METHOD_ID,
+    ARRAY_CLEAR_METHOD_ID, ARRAY_CONTAINS_METHOD_ID, ARRAY_IS_EMPTY_METHOD_ID, ARRAY_LEN_METHOD_ID,
+    ARRAY_POP_METHOD_ID, ARRAY_PUSH_METHOD_ID,
 };
 
 pub(crate) fn array_method_descs() -> Vec<MethodDesc> {
@@ -26,14 +27,14 @@ const ARRAY_METHODS: &[MethodSpec] = &[
         "Returns true when the array has no elements.",
     ),
     MethodSpec::new(
-        array_id(2),
+        ARRAY_PUSH_METHOD_ID,
         "push",
         &[ParamSpec::new("value", "any")],
         "null",
         "Appends a value to the array.",
     ),
     MethodSpec::new(
-        array_id(3),
+        ARRAY_POP_METHOD_ID,
         "pop",
         &[],
         "Option",
@@ -56,7 +57,13 @@ const ARRAY_METHODS: &[MethodSpec] = &[
         "null",
         "Appends all values from another array.",
     ),
-    MethodSpec::new(array_id(6), "clear", &[], "null", "Removes all values."),
+    MethodSpec::new(
+        ARRAY_CLEAR_METHOD_ID,
+        "clear",
+        &[],
+        "null",
+        "Removes all values.",
+    ),
     MethodSpec::new(
         array_id(7),
         "first",

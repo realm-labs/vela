@@ -162,6 +162,111 @@ fn call_method_uses_standard_array_method_id_before_name_fallback() {
 }
 
 #[test]
+fn call_method_uses_standard_array_mutator_ids_before_name_fallback() {
+    let mut push_code = CodeObject::new("standard_array_push_method_id", 5);
+    let first = push_code.push_constant(Constant::Int(2));
+    let second = push_code.push_constant(Constant::Int(4));
+    push_code.push_instruction(Instruction::new(InstructionKind::LoadConst {
+        dst: Register(0),
+        constant: first,
+    }));
+    push_code.push_instruction(Instruction::new(InstructionKind::LoadConst {
+        dst: Register(1),
+        constant: second,
+    }));
+    push_code.push_instruction(Instruction::new(InstructionKind::MakeArray {
+        dst: Register(2),
+        elements: vec![Register(0)],
+    }));
+    push_code.push_instruction(Instruction::new(InstructionKind::CallMethod {
+        dst: Register(3),
+        receiver: Register(2),
+        method: "missing_push".into(),
+        value_method_id: Some(vela_common::standard_ids::ARRAY_PUSH_METHOD_ID),
+        args: vec![vela_bytecode::CallArgument::Register(Register(1))],
+    }));
+    push_code.push_instruction(Instruction::new(InstructionKind::CallMethod {
+        dst: Register(4),
+        receiver: Register(2),
+        method: "missing_len".into(),
+        value_method_id: Some(vela_common::standard_ids::ARRAY_LEN_METHOD_ID),
+        args: Vec::new(),
+    }));
+    push_code.push_instruction(Instruction::new(InstructionKind::Return {
+        src: Register(4),
+    }));
+    assert_eq!(Vm::new().run(&push_code), Ok(OwnedValue::Int(2)));
+
+    let mut pop_code = CodeObject::new("standard_array_pop_method_id", 5);
+    let first = pop_code.push_constant(Constant::Int(2));
+    let second = pop_code.push_constant(Constant::Int(4));
+    pop_code.push_instruction(Instruction::new(InstructionKind::LoadConst {
+        dst: Register(0),
+        constant: first,
+    }));
+    pop_code.push_instruction(Instruction::new(InstructionKind::LoadConst {
+        dst: Register(1),
+        constant: second,
+    }));
+    pop_code.push_instruction(Instruction::new(InstructionKind::MakeArray {
+        dst: Register(2),
+        elements: vec![Register(0), Register(1)],
+    }));
+    pop_code.push_instruction(Instruction::new(InstructionKind::CallMethod {
+        dst: Register(3),
+        receiver: Register(2),
+        method: "missing_pop".into(),
+        value_method_id: Some(vela_common::standard_ids::ARRAY_POP_METHOD_ID),
+        args: Vec::new(),
+    }));
+    pop_code.push_instruction(Instruction::new(InstructionKind::CallMethod {
+        dst: Register(4),
+        receiver: Register(2),
+        method: "missing_len".into(),
+        value_method_id: Some(vela_common::standard_ids::ARRAY_LEN_METHOD_ID),
+        args: Vec::new(),
+    }));
+    pop_code.push_instruction(Instruction::new(InstructionKind::Return {
+        src: Register(4),
+    }));
+    assert_eq!(Vm::new().run(&pop_code), Ok(OwnedValue::Int(1)));
+
+    let mut clear_code = CodeObject::new("standard_array_clear_method_id", 5);
+    let first = clear_code.push_constant(Constant::Int(2));
+    let second = clear_code.push_constant(Constant::Int(4));
+    clear_code.push_instruction(Instruction::new(InstructionKind::LoadConst {
+        dst: Register(0),
+        constant: first,
+    }));
+    clear_code.push_instruction(Instruction::new(InstructionKind::LoadConst {
+        dst: Register(1),
+        constant: second,
+    }));
+    clear_code.push_instruction(Instruction::new(InstructionKind::MakeArray {
+        dst: Register(2),
+        elements: vec![Register(0), Register(1)],
+    }));
+    clear_code.push_instruction(Instruction::new(InstructionKind::CallMethod {
+        dst: Register(3),
+        receiver: Register(2),
+        method: "missing_clear".into(),
+        value_method_id: Some(vela_common::standard_ids::ARRAY_CLEAR_METHOD_ID),
+        args: Vec::new(),
+    }));
+    clear_code.push_instruction(Instruction::new(InstructionKind::CallMethod {
+        dst: Register(4),
+        receiver: Register(2),
+        method: "missing_len".into(),
+        value_method_id: Some(vela_common::standard_ids::ARRAY_LEN_METHOD_ID),
+        args: Vec::new(),
+    }));
+    clear_code.push_instruction(Instruction::new(InstructionKind::Return {
+        src: Register(4),
+    }));
+    assert_eq!(Vm::new().run(&clear_code), Ok(OwnedValue::Int(0)));
+}
+
+#[test]
 fn call_method_uses_standard_map_method_id_before_name_fallback() {
     let mut code = CodeObject::new("standard_map_method_id", 3);
     let value = code.push_constant(Constant::Int(6));

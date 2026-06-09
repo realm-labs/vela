@@ -241,6 +241,8 @@ fn main() {
     let rewards: map = {"gold": 4};
     let tags: set = set::from_array(["daily"]);
     let other: set = set::from_array(["raid"]);
+    names.push("bonus");
+    names.pop();
     if names.contains("gold")
         && rewards.has("gold")
         && tags.has("daily")
@@ -248,6 +250,7 @@ fn main() {
         && tags.is_superset(tags)
         && tags.is_disjoint(other)
     {
+        names.clear();
         return names.len() + rewards.len() + tags.len();
     }
     return 0;
@@ -275,6 +278,9 @@ fn main() {
     assert!(value_methods.contains(&("len", Some(crate::standard::MAP_LEN_METHOD_ID))));
     assert!(value_methods.contains(&("len", Some(crate::standard::SET_LEN_METHOD_ID))));
     assert!(value_methods.contains(&("contains", Some(crate::standard::ARRAY_CONTAINS_METHOD_ID))));
+    assert!(value_methods.contains(&("push", Some(crate::standard::ARRAY_PUSH_METHOD_ID))));
+    assert!(value_methods.contains(&("pop", Some(crate::standard::ARRAY_POP_METHOD_ID))));
+    assert!(value_methods.contains(&("clear", Some(crate::standard::ARRAY_CLEAR_METHOD_ID))));
     assert!(value_methods.contains(&("has", Some(crate::standard::MAP_HAS_METHOD_ID))));
     assert!(value_methods.contains(&("has", Some(crate::standard::SET_HAS_METHOD_ID))));
     assert!(value_methods.contains(&("is_subset", Some(crate::standard::SET_IS_SUBSET_METHOD_ID))));

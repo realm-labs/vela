@@ -28,7 +28,13 @@ pub(crate) fn call_method(
     mut dispatch: ScriptMethodDispatch<'_, '_, '_>,
 ) -> VmResult<Value> {
     if let Some(result) = value_method_id.and_then(|method_id| {
-        script_builtin_methods::call_by_id(receiver, method_id, args, &mut dispatch.heap)
+        script_builtin_methods::call_by_id(
+            receiver,
+            method_id,
+            args,
+            &mut dispatch.heap,
+            &mut dispatch.budget,
+        )
     }) {
         return result;
     }
