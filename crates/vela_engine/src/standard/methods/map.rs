@@ -2,7 +2,7 @@ use vela_common::HostMethodId;
 use vela_reflect::registry::MethodDesc;
 
 use super::{MethodSpec, ParamSpec, descs};
-use crate::standard::ids::{MAP_IS_EMPTY_METHOD_ID, MAP_LEN_METHOD_ID};
+use crate::standard::ids::{MAP_HAS_METHOD_ID, MAP_IS_EMPTY_METHOD_ID, MAP_LEN_METHOD_ID};
 
 pub(crate) fn map_method_descs() -> Vec<MethodDesc> {
     descs(MAP_METHODS, "map")
@@ -24,7 +24,7 @@ const MAP_METHODS: &[MethodSpec] = &[
         "Returns true when the map has no entries.",
     ),
     MethodSpec::new(
-        map_id(2),
+        MAP_HAS_METHOD_ID,
         "has",
         &[ParamSpec::new("key", "string")],
         "bool",

@@ -5,10 +5,11 @@ use crate::{
 };
 use vela_common::HostMethodId;
 use vela_common::standard_ids::{
-    ARRAY_IS_EMPTY_METHOD_ID, ARRAY_LEN_METHOD_ID, MAP_IS_EMPTY_METHOD_ID, MAP_LEN_METHOD_ID,
-    OPTION_IS_NONE_METHOD_ID, OPTION_IS_SOME_METHOD_ID, RANGE_IS_EMPTY_METHOD_ID,
-    RANGE_LEN_METHOD_ID, RESULT_IS_ERR_METHOD_ID, RESULT_IS_OK_METHOD_ID, SET_IS_EMPTY_METHOD_ID,
-    SET_LEN_METHOD_ID, STRING_IS_EMPTY_METHOD_ID, STRING_LEN_METHOD_ID,
+    ARRAY_CONTAINS_METHOD_ID, ARRAY_IS_EMPTY_METHOD_ID, ARRAY_LEN_METHOD_ID, MAP_HAS_METHOD_ID,
+    MAP_IS_EMPTY_METHOD_ID, MAP_LEN_METHOD_ID, OPTION_IS_NONE_METHOD_ID, OPTION_IS_SOME_METHOD_ID,
+    RANGE_IS_EMPTY_METHOD_ID, RANGE_LEN_METHOD_ID, RESULT_IS_ERR_METHOD_ID, RESULT_IS_OK_METHOD_ID,
+    SET_HAS_METHOD_ID, SET_IS_DISJOINT_METHOD_ID, SET_IS_EMPTY_METHOD_ID, SET_IS_SUBSET_METHOD_ID,
+    SET_IS_SUPERSET_METHOD_ID, SET_LEN_METHOD_ID, STRING_IS_EMPTY_METHOD_ID, STRING_LEN_METHOD_ID,
 };
 
 pub(crate) fn call(
@@ -150,6 +151,9 @@ pub(crate) fn call_readonly_by_id(
                 .and_then(|()| is_empty(receiver, heap).map(Value::Bool)),
         );
     }
+    if method_id == ARRAY_CONTAINS_METHOD_ID && array_methods::is_array(receiver, heap) {
+        return Some(array_methods::contains(receiver, args, heap).map(Value::Bool));
+    }
     if method_id == MAP_LEN_METHOD_ID && map_methods::is_map(receiver, heap) {
         return Some(
             expect_no_args("len", args).and_then(|()| len(receiver, heap).map(Value::Int)),
@@ -161,6 +165,9 @@ pub(crate) fn call_readonly_by_id(
                 .and_then(|()| is_empty(receiver, heap).map(Value::Bool)),
         );
     }
+    if method_id == MAP_HAS_METHOD_ID && map_methods::is_map(receiver, heap) {
+        return Some(map_methods::has(receiver, args, heap).map(Value::Bool));
+    }
     if method_id == SET_LEN_METHOD_ID && set_methods::is_set(receiver, heap) {
         return Some(
             expect_no_args("len", args).and_then(|()| len(receiver, heap).map(Value::Int)),
@@ -171,6 +178,18 @@ pub(crate) fn call_readonly_by_id(
             expect_no_args("is_empty", args)
                 .and_then(|()| is_empty(receiver, heap).map(Value::Bool)),
         );
+    }
+    if method_id == SET_HAS_METHOD_ID && set_methods::is_set(receiver, heap) {
+        return Some(set_methods::has(receiver, args, heap).map(Value::Bool));
+    }
+    if method_id == SET_IS_SUBSET_METHOD_ID && set_methods::is_set(receiver, heap) {
+        return Some(set_methods::is_subset(receiver, args, heap).map(Value::Bool));
+    }
+    if method_id == SET_IS_SUPERSET_METHOD_ID && set_methods::is_set(receiver, heap) {
+        return Some(set_methods::is_superset(receiver, args, heap).map(Value::Bool));
+    }
+    if method_id == SET_IS_DISJOINT_METHOD_ID && set_methods::is_set(receiver, heap) {
+        return Some(set_methods::is_disjoint(receiver, args, heap).map(Value::Bool));
     }
     if method_id == OPTION_IS_SOME_METHOD_ID && option_result_methods::is_option(receiver, heap) {
         return Some(option_result_methods::is_some(receiver, args, heap));

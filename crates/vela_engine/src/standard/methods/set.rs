@@ -2,7 +2,10 @@ use vela_common::HostMethodId;
 use vela_reflect::registry::MethodDesc;
 
 use super::{MethodSpec, ParamSpec, descs};
-use crate::standard::ids::{SET_IS_EMPTY_METHOD_ID, SET_LEN_METHOD_ID};
+use crate::standard::ids::{
+    SET_HAS_METHOD_ID, SET_IS_DISJOINT_METHOD_ID, SET_IS_EMPTY_METHOD_ID, SET_IS_SUBSET_METHOD_ID,
+    SET_IS_SUPERSET_METHOD_ID, SET_LEN_METHOD_ID,
+};
 
 pub(crate) fn set_method_descs() -> Vec<MethodDesc> {
     descs(SET_METHODS, "set")
@@ -24,7 +27,7 @@ const SET_METHODS: &[MethodSpec] = &[
         "Returns true when the set has no values.",
     ),
     MethodSpec::new(
-        set_id(2),
+        SET_HAS_METHOD_ID,
         "has",
         &[ParamSpec::new("value", "any")],
         "bool",
@@ -124,21 +127,21 @@ const SET_METHODS: &[MethodSpec] = &[
         "Returns values present in exactly one set::",
     ),
     MethodSpec::new(
-        set_id(18),
+        SET_IS_SUBSET_METHOD_ID,
         "is_subset",
         &[ParamSpec::new("other", "set")],
         "bool",
         "Returns true when all values exist in another set::",
     ),
     MethodSpec::new(
-        set_id(19),
+        SET_IS_SUPERSET_METHOD_ID,
         "is_superset",
         &[ParamSpec::new("other", "set")],
         "bool",
         "Returns true when all other values exist in this set::",
     ),
     MethodSpec::new(
-        set_id(20),
+        SET_IS_DISJOINT_METHOD_ID,
         "is_disjoint",
         &[ParamSpec::new("other", "set")],
         "bool",

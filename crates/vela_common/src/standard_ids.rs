@@ -39,12 +39,18 @@ pub const STRING_IS_EMPTY_METHOD_ID: HostMethodId = HostMethodId::new(0xff00_070
 
 pub const ARRAY_LEN_METHOD_ID: HostMethodId = HostMethodId::new(0xff00_0800);
 pub const ARRAY_IS_EMPTY_METHOD_ID: HostMethodId = HostMethodId::new(0xff00_0801);
+pub const ARRAY_CONTAINS_METHOD_ID: HostMethodId = HostMethodId::new(0xff00_080b);
 
 pub const MAP_LEN_METHOD_ID: HostMethodId = HostMethodId::new(0xff00_0900);
 pub const MAP_IS_EMPTY_METHOD_ID: HostMethodId = HostMethodId::new(0xff00_0901);
+pub const MAP_HAS_METHOD_ID: HostMethodId = HostMethodId::new(0xff00_0902);
 
 pub const SET_LEN_METHOD_ID: HostMethodId = HostMethodId::new(0xff00_0a00);
 pub const SET_IS_EMPTY_METHOD_ID: HostMethodId = HostMethodId::new(0xff00_0a01);
+pub const SET_HAS_METHOD_ID: HostMethodId = HostMethodId::new(0xff00_0a02);
+pub const SET_IS_SUBSET_METHOD_ID: HostMethodId = HostMethodId::new(0xff00_0a12);
+pub const SET_IS_SUPERSET_METHOD_ID: HostMethodId = HostMethodId::new(0xff00_0a13);
+pub const SET_IS_DISJOINT_METHOD_ID: HostMethodId = HostMethodId::new(0xff00_0a14);
 
 pub const OPTION_IS_SOME_METHOD_ID: HostMethodId = HostMethodId::new(0xff00_0b00);
 pub const OPTION_IS_NONE_METHOD_ID: HostMethodId = HostMethodId::new(0xff00_0b01);

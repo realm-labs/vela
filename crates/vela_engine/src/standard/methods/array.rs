@@ -2,7 +2,9 @@ use vela_common::HostMethodId;
 use vela_reflect::registry::MethodDesc;
 
 use super::{MethodSpec, ParamSpec, descs};
-use crate::standard::ids::{ARRAY_IS_EMPTY_METHOD_ID, ARRAY_LEN_METHOD_ID};
+use crate::standard::ids::{
+    ARRAY_CONTAINS_METHOD_ID, ARRAY_IS_EMPTY_METHOD_ID, ARRAY_LEN_METHOD_ID,
+};
 
 pub(crate) fn array_method_descs() -> Vec<MethodDesc> {
     descs(ARRAY_METHODS, "array")
@@ -84,7 +86,7 @@ const ARRAY_METHODS: &[MethodSpec] = &[
         "Joins values into a string with a separator.",
     ),
     MethodSpec::new(
-        array_id(11),
+        ARRAY_CONTAINS_METHOD_ID,
         "contains",
         &[ParamSpec::new("value", "any")],
         "bool",
