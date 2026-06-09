@@ -5,7 +5,7 @@ use vela_host::adapter::ScriptStateAdapter;
 use vela_host::error::{HostError, HostErrorKind, HostResult};
 use vela_host::object::ScriptHostObject;
 use vela_host::path::HostRef;
-use vela_host::resolved::{HostAccessOp, HostAccessSpec, HostMutationOp, ResolvedHostAccess};
+use vela_host::resolved::{HostAccessSpec, HostMutationOp, ResolvedHostAccess};
 use vela_host::target::HostTargetInstance;
 use vela_host::value::HostValue;
 use vela_vm::budget::ExecutionBudget;
@@ -546,34 +546,10 @@ impl ScriptStateAdapter for CallArgsAdapter<'_, '_> {
         op: HostMutationOp,
         rhs: HostValue,
     ) -> HostResult<()> {
-        match self.direct_binding(target.root) {
-            Some(_) => {
-                let current = self.read_host(access, target)?;
-                let next = match op {
-                    HostMutationOp::Add => host_add_values(&current, &rhs),
-                    HostMutationOp::Sub => host_sub_values(&current, &rhs),
-                    HostMutationOp::Mul => host_mul_values(&current, &rhs),
-                    HostMutationOp::Div => host_div_values(&current, &rhs),
-                    HostMutationOp::Rem => host_rem_values(&current, &rhs),
-                    HostMutationOp::Push => None,
-                }
-                .ok_or_else(|| {
-                    let path = target.to_diagnostic_path().to_host_path();
-                    HostError {
-                        kind: match op {
-                            HostMutationOp::Add => HostErrorKind::InvalidAdd { path },
-                            HostMutationOp::Sub => HostErrorKind::InvalidSub { path },
-                            HostMutationOp::Mul => HostErrorKind::InvalidMul { path },
-                            HostMutationOp::Div => HostErrorKind::InvalidDiv { path },
-                            HostMutationOp::Rem => HostErrorKind::InvalidRem { path },
-                            HostMutationOp::Push => HostErrorKind::InvalidPush { path },
-                        },
-                        source_span: None,
-                    }
-                })?;
-                let write_access = self
-                    .resolve_host_access(HostAccessSpec::new(HostAccessOp::Write, target.plan))?;
-                self.write_host(write_access, target, next)
+        match self.direct_binding_mut(target.root) {
+            Some(HostArgBinding::Shared(_)) => Err(Self::direct_access_error(target, "write")),
+            Some(HostArgBinding::Mutable(object)) => {
+                object.mutate_resolved_host(access, target, op, rhs)
             }
             None => self.fallback.mutate_host(access, target, op, rhs),
         }
@@ -689,53 +665,4 @@ enum CallArgsMode {
 
 pub(crate) fn call_args_type_error(operation: &'static str) -> VmError {
     VmError::new(VmErrorKind::TypeMismatch { operation })
-}
-
-fn host_add_values(lhs: &HostValue, rhs: &HostValue) -> Option<HostValue> {
-    match (lhs, rhs) {
-        (HostValue::Int(lhs), HostValue::Int(rhs)) => lhs.checked_add(*rhs).map(HostValue::Int),
-        (HostValue::Float(lhs), HostValue::Float(rhs)) => Some(HostValue::Float(lhs + rhs)),
-        (HostValue::String(lhs), HostValue::String(rhs)) => {
-            Some(HostValue::String(format!("{lhs}{rhs}")))
-        }
-        _ => None,
-    }
-}
-
-fn host_sub_values(lhs: &HostValue, rhs: &HostValue) -> Option<HostValue> {
-    match (lhs, rhs) {
-        (HostValue::Int(lhs), HostValue::Int(rhs)) => lhs.checked_sub(*rhs).map(HostValue::Int),
-        (HostValue::Float(lhs), HostValue::Float(rhs)) => Some(HostValue::Float(lhs - rhs)),
-        _ => None,
-    }
-}
-
-fn host_mul_values(lhs: &HostValue, rhs: &HostValue) -> Option<HostValue> {
-    match (lhs, rhs) {
-        (HostValue::Int(lhs), HostValue::Int(rhs)) => lhs.checked_mul(*rhs).map(HostValue::Int),
-        (HostValue::Float(lhs), HostValue::Float(rhs)) => Some(HostValue::Float(lhs * rhs)),
-        _ => None,
-    }
-}
-
-fn host_div_values(lhs: &HostValue, rhs: &HostValue) -> Option<HostValue> {
-    match (lhs, rhs) {
-        (HostValue::Int(_), HostValue::Int(0)) => None,
-        (HostValue::Int(lhs), HostValue::Int(rhs)) => lhs.checked_div(*rhs).map(HostValue::Int),
-        (HostValue::Float(lhs), HostValue::Float(rhs)) if *rhs != 0.0 => {
-            Some(HostValue::Float(lhs / rhs))
-        }
-        _ => None,
-    }
-}
-
-fn host_rem_values(lhs: &HostValue, rhs: &HostValue) -> Option<HostValue> {
-    match (lhs, rhs) {
-        (HostValue::Int(_), HostValue::Int(0)) => None,
-        (HostValue::Int(lhs), HostValue::Int(rhs)) => lhs.checked_rem(*rhs).map(HostValue::Int),
-        (HostValue::Float(lhs), HostValue::Float(rhs)) if *rhs != 0.0 => {
-            Some(HostValue::Float(lhs % rhs))
-        }
-        _ => None,
-    }
 }

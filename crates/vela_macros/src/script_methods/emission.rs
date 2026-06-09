@@ -154,6 +154,23 @@ pub(super) fn script_host_object_impl_tokens(
                 ::vela_host::object::ScriptHostFieldAccess::write_host_target_from(self, target, 0, value)
             }
 
+            fn mutate_resolved_host(
+                &mut self,
+                access: ::vela_host::resolved::ResolvedHostAccess,
+                target: ::vela_host::target::HostTargetInstance<'_>,
+                op: ::vela_host::resolved::HostMutationOp,
+                rhs: ::vela_host::value::HostValue,
+            ) -> ::vela_host::error::HostResult<()> {
+                let _ = access;
+                ::vela_host::object::ScriptHostFieldAccess::mutate_host_target_from(
+                    self,
+                    target,
+                    0,
+                    op,
+                    rhs,
+                )
+            }
+
             fn call_resolved_host(
                 &mut self,
                 access: ::vela_host::resolved::ResolvedHostAccess,

@@ -135,6 +135,28 @@ pub(super) fn field_access_impl_tokens(ident: &Ident, fields: &[FieldMeta]) -> T
                 }
             }
 
+            fn mutate_host_target_from(
+                &mut self,
+                target: ::vela_host::target::HostTargetInstance<'_>,
+                offset: usize,
+                op: ::vela_host::resolved::HostMutationOp,
+                rhs: ::vela_host::value::HostValue,
+            ) -> ::vela_host::error::HostResult<()> {
+                let current =
+                    ::vela_host::object::ScriptHostFieldAccess::read_host_target_from(
+                        self,
+                        target,
+                        offset,
+                    )?;
+                let next = ::vela_host::object::mutate_host_value(op, &current, &rhs, target)?;
+                ::vela_host::object::ScriptHostFieldAccess::write_host_target_from(
+                    self,
+                    target,
+                    offset,
+                    next,
+                )
+            }
+
             fn call_host_target_from(
                 &mut self,
                 target: ::vela_host::target::HostTargetInstance<'_>,

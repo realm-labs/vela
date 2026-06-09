@@ -1119,10 +1119,10 @@ cargo test --workspace
 
 - [x] Add resolved target access methods to direct host object support.
 - [x] Generate `HostTargetPlan` resolver metadata from macros.
-- [ ] Generate safe direct access thunks for reads, writes, mutations, and
+- [x] Generate safe direct access thunks for reads, writes, mutations, and
   method calls.
 - [x] Ensure generated diagnostics metadata is separate from hot operands.
-- [ ] Record or rerun acceptance:
+- [x] Record or rerun acceptance:
 
 ```text
 cargo test -p vela_macros
@@ -1222,9 +1222,7 @@ The refactor is done when all of these are true:
 - [x] `HostAccess` still preserves immediate write-through semantics.
 - [x] Source-spanned diagnostics still work.
 - [x] Reflection can still show readable host paths.
-- [ ] Direct host object access uses safe generated Rust only. The resolved
-  object surface exists, but macro-generated resolver/thunk coverage still
-  needs completion or audit.
+- [x] Direct host object access uses safe generated Rust only.
 - [x] The refactor crates remain safe Rust. The existing `vela_c_api` FFI crate
   is the explicit workspace exception and is outside this host access refactor.
 - [ ] Tests and examples use the new architecture rather than compatibility

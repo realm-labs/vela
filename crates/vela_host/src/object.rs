@@ -5,7 +5,7 @@ use vela_common::{HostMethodId, HostTypeId};
 
 use crate::{
     error::{HostError, HostErrorKind, HostResult},
-    resolved::{HostAccessSpec, HostSchemaEpoch, ResolvedHostAccess},
+    resolved::{HostAccessOp, HostAccessSpec, HostMutationOp, HostSchemaEpoch, ResolvedHostAccess},
     target::{HostPathArg, HostPathPart, HostTargetInstance},
     value::HostValue,
 };
@@ -33,6 +33,20 @@ pub trait ScriptHostObject {
         let _ = access;
         let _ = value;
         Err(permission_denied(target, "write"))
+    }
+
+    fn mutate_resolved_host(
+        &mut self,
+        access: ResolvedHostAccess,
+        target: HostTargetInstance<'_>,
+        op: HostMutationOp,
+        rhs: HostValue,
+    ) -> HostResult<()> {
+        let current = self.read_resolved_host(access, target)?;
+        let next = mutate_host_value(op, &current, &rhs, target)?;
+        let write_access =
+            self.resolve_host_target(HostAccessSpec::new(HostAccessOp::Write, target.plan))?;
+        self.write_resolved_host(write_access, target, next)
     }
 
     fn remove_resolved_host(
@@ -87,6 +101,18 @@ pub trait ScriptHostFieldAccess {
         value: HostValue,
     ) -> HostResult<()>;
 
+    fn mutate_host_target_from(
+        &mut self,
+        target: HostTargetInstance<'_>,
+        offset: usize,
+        op: HostMutationOp,
+        rhs: HostValue,
+    ) -> HostResult<()> {
+        let current = self.read_host_target_from(target, offset)?;
+        let next = mutate_host_value(op, &current, &rhs, target)?;
+        self.write_host_target_from(target, offset, next)
+    }
+
     fn call_host_target_from(
         &mut self,
         target: HostTargetInstance<'_>,
@@ -139,6 +165,17 @@ macro_rules! impl_script_host_object_via_field {
             ) -> HostResult<()> {
                 let _ = access;
                 ScriptHostFieldAccess::write_host_target_from(self, target, 0, value)
+            }
+
+            fn mutate_resolved_host(
+                &mut self,
+                access: ResolvedHostAccess,
+                target: HostTargetInstance<'_>,
+                op: HostMutationOp,
+                rhs: HostValue,
+            ) -> HostResult<()> {
+                let _ = access;
+                ScriptHostFieldAccess::mutate_host_target_from(self, target, 0, op, rhs)
             }
 
             fn call_resolved_host(
@@ -690,6 +727,87 @@ fn permission_denied(target: HostTargetInstance<'_>, action: &'static str) -> Ho
             action,
         },
         source_span: None,
+    }
+}
+
+pub fn mutate_host_value(
+    op: HostMutationOp,
+    current: &HostValue,
+    rhs: &HostValue,
+    target: HostTargetInstance<'_>,
+) -> HostResult<HostValue> {
+    let next = match op {
+        HostMutationOp::Add => host_add_values(current, rhs),
+        HostMutationOp::Sub => host_sub_values(current, rhs),
+        HostMutationOp::Mul => host_mul_values(current, rhs),
+        HostMutationOp::Div => host_div_values(current, rhs),
+        HostMutationOp::Rem => host_rem_values(current, rhs),
+        HostMutationOp::Push => None,
+    };
+    next.ok_or_else(|| invalid_mutation_error(op, target))
+}
+
+fn invalid_mutation_error(op: HostMutationOp, target: HostTargetInstance<'_>) -> HostError {
+    let path = target.to_diagnostic_path().to_host_path();
+    HostError {
+        kind: match op {
+            HostMutationOp::Add => HostErrorKind::InvalidAdd { path },
+            HostMutationOp::Sub => HostErrorKind::InvalidSub { path },
+            HostMutationOp::Mul => HostErrorKind::InvalidMul { path },
+            HostMutationOp::Div => HostErrorKind::InvalidDiv { path },
+            HostMutationOp::Rem => HostErrorKind::InvalidRem { path },
+            HostMutationOp::Push => HostErrorKind::InvalidPush { path },
+        },
+        source_span: None,
+    }
+}
+
+fn host_add_values(lhs: &HostValue, rhs: &HostValue) -> Option<HostValue> {
+    match (lhs, rhs) {
+        (HostValue::Int(lhs), HostValue::Int(rhs)) => lhs.checked_add(*rhs).map(HostValue::Int),
+        (HostValue::Float(lhs), HostValue::Float(rhs)) => Some(HostValue::Float(lhs + rhs)),
+        (HostValue::String(lhs), HostValue::String(rhs)) => {
+            Some(HostValue::String(format!("{lhs}{rhs}")))
+        }
+        _ => None,
+    }
+}
+
+fn host_sub_values(lhs: &HostValue, rhs: &HostValue) -> Option<HostValue> {
+    match (lhs, rhs) {
+        (HostValue::Int(lhs), HostValue::Int(rhs)) => lhs.checked_sub(*rhs).map(HostValue::Int),
+        (HostValue::Float(lhs), HostValue::Float(rhs)) => Some(HostValue::Float(lhs - rhs)),
+        _ => None,
+    }
+}
+
+fn host_mul_values(lhs: &HostValue, rhs: &HostValue) -> Option<HostValue> {
+    match (lhs, rhs) {
+        (HostValue::Int(lhs), HostValue::Int(rhs)) => lhs.checked_mul(*rhs).map(HostValue::Int),
+        (HostValue::Float(lhs), HostValue::Float(rhs)) => Some(HostValue::Float(lhs * rhs)),
+        _ => None,
+    }
+}
+
+fn host_div_values(lhs: &HostValue, rhs: &HostValue) -> Option<HostValue> {
+    match (lhs, rhs) {
+        (HostValue::Int(_), HostValue::Int(0)) => None,
+        (HostValue::Int(lhs), HostValue::Int(rhs)) => lhs.checked_div(*rhs).map(HostValue::Int),
+        (HostValue::Float(lhs), HostValue::Float(rhs)) if *rhs != 0.0 => {
+            Some(HostValue::Float(lhs / rhs))
+        }
+        _ => None,
+    }
+}
+
+fn host_rem_values(lhs: &HostValue, rhs: &HostValue) -> Option<HostValue> {
+    match (lhs, rhs) {
+        (HostValue::Int(_), HostValue::Int(0)) => None,
+        (HostValue::Int(lhs), HostValue::Int(rhs)) => lhs.checked_rem(*rhs).map(HostValue::Int),
+        (HostValue::Float(lhs), HostValue::Float(rhs)) if *rhs != 0.0 => {
+            Some(HostValue::Float(lhs % rhs))
+        }
+        _ => None,
     }
 }
 

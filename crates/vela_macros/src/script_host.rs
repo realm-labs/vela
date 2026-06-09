@@ -493,6 +493,26 @@ mod tests {
     }
 
     #[test]
+    fn derives_host_access_target_helpers_and_mutation_forwarder() {
+        let expanded = expand_result(
+            quote! {
+                #[script(path = "game::player::Player")]
+                struct Player {
+                    #[script(get, set)]
+                    level: i64,
+                }
+            },
+            GeneratedMethod::Host,
+        )
+        .expect("host access helpers should expand")
+        .to_string();
+
+        assert!(expanded.contains("HostTargetPlan :: new"));
+        assert!(expanded.contains("mutate_host_target_from"));
+        assert!(expanded.contains("mutate_host_value"));
+    }
+
+    #[test]
     fn rejects_generic_field_type_hints() {
         let error = expand_result(
             quote! {
