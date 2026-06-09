@@ -29,7 +29,7 @@ pub trait ScriptStateAdapter {
     }
 
     fn resolve_host_access(&self, _spec: HostAccessSpec<'_>) -> HostResult<ResolvedHostAccess> {
-        Ok(ResolvedHostAccess::generic_path(self.host_schema_epoch()))
+        Ok(ResolvedHostAccess::generic_target(self.host_schema_epoch()))
     }
 
     fn read_host(

@@ -65,8 +65,8 @@ impl ResolvedHostAccess {
     }
 
     #[must_use]
-    pub const fn generic_path(schema_epoch: HostSchemaEpoch) -> Self {
-        Self::new(ResolvedHostAccessKind::GenericPath, schema_epoch)
+    pub const fn generic_target(schema_epoch: HostSchemaEpoch) -> Self {
+        Self::new(ResolvedHostAccessKind::GenericTarget, schema_epoch)
     }
 
     #[must_use]
@@ -87,7 +87,7 @@ impl ResolvedHostAccess {
 
 #[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
 pub enum ResolvedHostAccessKind {
-    GenericPath,
+    GenericTarget,
     DirectField(u32),
     DirectMethod(u32),
     AdapterLocal(u32),

@@ -225,7 +225,7 @@ impl ScriptHostObject for DirectPlayer {
             {
                 Ok(ResolvedHostAccess::direct_method(1, epoch))
             }
-            _ => Ok(ResolvedHostAccess::generic_path(epoch)),
+            _ => Ok(ResolvedHostAccess::generic_target(epoch)),
         }
     }
 

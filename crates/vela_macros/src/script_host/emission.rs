@@ -95,7 +95,7 @@ pub(super) fn field_access_impl_tokens(ident: &Ident, fields: &[FieldMeta]) -> T
             ) -> ::vela_host::error::HostResult<::vela_host::resolved::ResolvedHostAccess> {
                 match spec.plan.parts.as_slice().get(offset) {
                     #(#resolve_arms)*
-                    _ => Ok(::vela_host::resolved::ResolvedHostAccess::generic_path(
+                    _ => Ok(::vela_host::resolved::ResolvedHostAccess::generic_target(
                         ::vela_host::resolved::HostSchemaEpoch::new(0),
                     )),
                 }

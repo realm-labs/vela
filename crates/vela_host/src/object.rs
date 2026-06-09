@@ -15,7 +15,7 @@ pub trait ScriptHostObject {
 
     fn resolve_host_target(&self, spec: HostAccessSpec<'_>) -> HostResult<ResolvedHostAccess> {
         let _ = spec;
-        Ok(ResolvedHostAccess::generic_path(HostSchemaEpoch::new(0)))
+        Ok(ResolvedHostAccess::generic_target(HostSchemaEpoch::new(0)))
     }
 
     fn read_resolved_host(
@@ -85,7 +85,7 @@ pub trait ScriptHostFieldAccess {
     ) -> HostResult<ResolvedHostAccess> {
         let _ = spec;
         let _ = offset;
-        Ok(ResolvedHostAccess::generic_path(HostSchemaEpoch::new(0)))
+        Ok(ResolvedHostAccess::generic_target(HostSchemaEpoch::new(0)))
     }
 
     fn read_host_target_from(

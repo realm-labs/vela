@@ -129,7 +129,7 @@ pub(super) fn script_host_object_impl_tokens(
                 let owner_stable_path = Self::vela_stable_type_path();
                 match spec.op {
                     #(#resolve_arms)*
-                    _ => Ok(::vela_host::resolved::ResolvedHostAccess::generic_path(
+                    _ => Ok(::vela_host::resolved::ResolvedHostAccess::generic_target(
                         ::vela_host::resolved::HostSchemaEpoch::new(0),
                     )),
                 }

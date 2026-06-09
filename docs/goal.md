@@ -696,7 +696,7 @@ move hot dispatch families into focused modules instead of growing the main VM l
 prepare method dispatch for receiver-shape/type + MethodId direct lookup
 prepare native and stdlib calls for ID-based lookup and borrowed Value views
 prepare script function calls for resolved targets without changing hot-reload rename semantics
-prepare HostPath and HostAccess hot paths for reusable path keys and direct adapter thunks
+prepare HostTargetPlan and HostAccess hot paths for resolved targets and direct adapter thunks
 prepare callback and closure calls to reduce avoidable argument materialization
 keep record/enum heap values compatible with shape + slot fast paths
 define verified-bytecode invariants needed for unchecked register and operand access later

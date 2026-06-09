@@ -82,7 +82,7 @@ vela/
     vela_vm/              # Runtime, VM, Value, GC, call frames
     vela_c_api/           # C ABI opaque handles and external FFI surface
     vela_reflect/         # TypeRegistry, TypeDesc, reflection API
-    vela_host/            # HostRef, HostPath, HostAccess, StateAdapter
+    vela_host/            # HostRef, HostTargetPlan, HostAccess, adapters, diagnostics
     vela_macros/          # #[derive(ScriptHost)] and related macros
     vela_std/             # Native standard library implementation
     vela_hot_reload/      # ProgramVersion, ABI diff, code swap

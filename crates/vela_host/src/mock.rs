@@ -173,7 +173,7 @@ impl MockStateAdapter {
     pub fn read_diagnostic_path(&self, path: &HostPath) -> HostResult<HostValue> {
         let plan = HostTargetPlan::from(path);
         let target = HostTargetInstance::new(path.root, &plan, &[]);
-        let access = ResolvedHostAccess::generic_path(self.schema_epoch);
+        let access = ResolvedHostAccess::generic_target(self.schema_epoch);
         self.read_host(access, target)
     }
 
@@ -244,7 +244,7 @@ impl ScriptStateAdapter for MockStateAdapter {
     }
 
     fn resolve_host_access(&self, _spec: HostAccessSpec<'_>) -> HostResult<ResolvedHostAccess> {
-        Ok(ResolvedHostAccess::generic_path(self.schema_epoch))
+        Ok(ResolvedHostAccess::generic_target(self.schema_epoch))
     }
 
     fn read_host(

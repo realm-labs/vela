@@ -21,7 +21,7 @@ preserve all runtime, host, reflection, GC, and hot-reload semantics
 move hot dispatch operands from names to IDs, slots, or resolved targets
 split growing VM hot dispatch families behind focused boundaries
 prepare cache/JIT-facing invariants while keeping generic fallback behavior
-finish verified-bytecode, profile ownership, HostPath/HostAccess keys, and callback/closure materialization prep before M20
+finish verified-bytecode, profile ownership, HostTargetPlan/HostAccess boundaries, and callback/closure materialization prep before M20
 ```
 
 Post-MVP performance remains a separate track: measure first, then optimize the
@@ -47,7 +47,7 @@ Cranelift JIT.
 | M17 | Complete enough | Game-server demos, negative workflows, conformance fixtures, and parser fuzz harness exist. |
 | M18 | Complete enough | Quick and full/default baseline captures exist with environment metadata and checksums. |
 | M19 | Complete enough | Non-JIT interpreter and heap optimization has a recorded exit checkpoint. Accepted work includes GC pacing, direct heap aggregate construction, argument materialization/storage cleanup, borrowed receiver/runtime views, stdlib collection/string/Option/Result fast paths, scalar/equality/constant/peephole/range-loop lowering, small script-field and short-array construction, and expanded benchmark coverage. Remaining Lua 5.x deltas are measured and belong to M20 cache/specialization families rather than more unguarded M19 micro-optimization. |
-| M19.5 | Active | Required M20 gate: resolve hot call sites to IDs/slots/targets, split hot dispatch families out of the main VM loop, prepare method/native/stdlib dispatch for cache-ready lookup, prepare HostPath/HostAccess fast-path keys, reduce callback/closure materialization, and define verified-bytecode/profile/JIT-facing interpreter invariants before M20 cache state. |
+| M19.5 | Active | Required M20 gate: resolve hot call sites to IDs/slots/targets, split hot dispatch families out of the main VM loop, prepare method/native/stdlib dispatch for cache-ready lookup, prepare HostTargetPlan/HostAccess boundaries for cache-ready lookup, reduce callback/closure materialization, and define verified-bytecode/profile/JIT-facing interpreter invariants before M20 cache state. |
 | M20 | Not started | Inline caches and specialization start after M19.5, beginning with script record field, host field/path, method dispatch, stdlib method, and hot bytecode offset profiling guards. |
 | M21 | Not started | Debugger runtime hooks and DAP integration follow stable runtime/tooling contracts. |
 | M22 | Not started | Cranelift JIT follows interpreter/cache/debugger/conformance stability. |
@@ -129,7 +129,7 @@ Cranelift JIT.
 - The remaining Lua 5.x deltas are concentrated in cache-shaped paths, but
   M20 should not start until their operands are cache-ready: script record
   fields need shape/slot representations, host field/path reads and writes
-  need reusable path keys, method and stdlib dispatch need ID/target lookup,
+  need `HostTargetPlan` and resolved access boundaries, method and stdlib dispatch need ID/target lookup,
   callback and closure calls need lower materialization overhead, and hot
   bytecode offsets need versioned ownership for invalidation.
 - M19.5 has started with native call operands: compiled native calls can carry
@@ -149,8 +149,8 @@ Cranelift JIT.
   values by target instance identity while materializing diagnostic paths only
   for current error/reporting surfaces. HostPath construction now has an exact-capacity/static
   segment materialization boundary so field-only paths can bypass dynamic
-  index/key conversion, and HostPath/HostAccess identity now uses a dedicated
-  HostPathKey sidecar with inline storage for common short paths. Bytecode
+  index/key conversion, and HostPath no longer carries a root-inclusive cache
+  key sidecar. Bytecode
   `CodeObject` values now own interned `HostTargetPlan` tables and the
   collapsed `HostRead`/`HostWrite`/`HostMutate`/`HostRemove`/`HostCall`
   instruction family has verifier coverage for target bounds, contiguous
@@ -211,7 +211,7 @@ Cranelift JIT.
     through focused boundaries instead of growing `execution.rs`;
   - native and stdlib hot paths have borrowed `Value` view coverage or a named
     reason to defer the remaining conversions to M20/JIT work;
-  - HostPath/HostAccess reusable path keys or direct adapter-thunk boundaries are
+  - HostTargetPlan/HostAccess resolved targets and direct adapter-thunk boundaries are
     implemented enough for M20 host field/path caches;
   - root host receiver index lowering such as `scores[1]` needs HIR/TypeFacts
     receiver-type plumbing before compile-time index capability diagnostics can
@@ -257,7 +257,7 @@ ownership, schema invalidation, and source-spanned diagnostics.
 
 - Continue M19.5 before M20: first finish ID/slot/target-ready focused modules
   for native, stdlib, script function, method, callback, and host-boundary
-  dispatch; then prepare HostPath/HostAccess reusable keys or direct adapter
+  dispatch; then prepare HostTargetPlan/HostAccess resolved targets and direct adapter
   thunks; then reduce callback/closure materialization; then define
   version-owned profile metadata and JIT-facing frame/GC/budget/HostAccess
   invariants for future cache state.

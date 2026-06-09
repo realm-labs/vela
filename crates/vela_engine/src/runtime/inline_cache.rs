@@ -307,7 +307,7 @@ fn read_level(player: CachedHostPlayer) {
         assert_eq!(entry.schema_epoch.get(), 0);
         assert_eq!(
             entry.resolved.adapter_kind,
-            ResolvedHostAccessKind::GenericPath
+            ResolvedHostAccessKind::GenericTarget
         );
         assert_eq!(entry.resolved.schema_epoch.get(), 0);
         assert_eq!(host_target.root_type, HostTypeId::new(1));

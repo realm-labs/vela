@@ -129,7 +129,7 @@ pub enum HostPathPart {
 #[derive(Clone, Debug, Eq, Hash, PartialEq)]
 pub struct HostPathParts {
     // Use inline storage for 0-4 common segments and Vec fallback for long paths.
-    // This can reuse the existing PathKeySegments idea but without HostRef.
+    // This keeps inline storage for common short paths without carrying HostRef.
     inner: HostPathPartsStorage,
 }
 
@@ -203,7 +203,7 @@ pub struct ResolvedHostAccess {
 
 #[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
 pub enum ResolvedHostAccessKind {
-    GenericPath,
+    GenericTarget,
     DirectField(u32),
     DirectMethod(u32),
     AdapterLocal(u32),
@@ -874,7 +874,7 @@ On hot reload:
 ### `crates/vela_host/src/path.rs`
 
 - Keep `HostRef`.
-- Move old `HostPath`, `PathSegment`, and `HostPathKey` into diagnostic or legacy-removal scope.
+- Move old `HostPath` and `PathSegment` into diagnostic or legacy-removal scope.
 - Add or move new target types into `target.rs`.
 - Delete root-inclusive `HostPathKey` as a cache key.
 - If keeping a key type, make it shape-based: `HostTargetKey { root_type, parts, op }`.
@@ -1148,12 +1148,12 @@ cargo test --workspace diagnostics
 
 ### Task 9: Delete Old Path-First API
 
-- [ ] Delete obsolete path-first adapter, access, bytecode, VM, and test helper
+- [x] Delete obsolete path-first adapter, access, bytecode, VM, and test helper
   surfaces that are not explicit diagnostic/embedding conversion APIs.
-- [ ] Keep `HostRef` and diagnostic path materialization.
-- [ ] Update docs and examples to show the resolved host access model only.
-- [ ] Do not add compatibility aliases.
-- [ ] Record or rerun acceptance:
+- [x] Keep `HostRef` and diagnostic path materialization.
+- [x] Update docs and examples to show the resolved host access model only.
+- [x] Do not add compatibility aliases.
+- [x] Record or rerun acceptance:
 
 ```text
 cargo test --workspace
@@ -1226,8 +1226,8 @@ The refactor is done when all of these are true:
 - [x] Direct host object access uses safe generated Rust only.
 - [x] The refactor crates remain safe Rust. The existing `vela_c_api` FFI crate
   is the explicit workspace exception and is outside this host access refactor.
-- [ ] Tests and examples use the new architecture rather than compatibility
-  shims. Several tests still assert through `HostPath` convenience helpers.
+- [x] Tests and examples use the new architecture rather than compatibility
+  shims. Remaining `HostPath` use is diagnostic or embedding materialization.
 
 ## Anti-Goals
 
