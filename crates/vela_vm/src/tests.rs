@@ -59,6 +59,7 @@ mod reflection_modules;
 mod reflection_permissions;
 mod reflection_values;
 mod script_methods;
+mod standard_id_dispatch;
 
 fn host_read_program() -> (Program, HostRef) {
     let host_ref = player_ref(3);
