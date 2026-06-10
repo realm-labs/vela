@@ -22,7 +22,7 @@ fn main() {
     )
     .expect("compile for-in source");
 
-    assert_eq!(Vm::new().run(&code), Ok(OwnedValue::Int(16)));
+    assert_eq!(run_linked_test_code(code), Ok(OwnedValue::Int(16)));
 }
 
 #[test]
@@ -50,9 +50,10 @@ fn main() {
 "#,
     )
     .expect("compile for-in variant patterns");
+    let mut budget = ExecutionBudget::unbounded();
 
     assert_eq!(
-        Vm::new().run_program(&program, "main", &[]),
+        run_linked_test_program_with_budget(&Vm::new(), &program, "main", &[], &mut budget),
         Ok(OwnedValue::Int(7))
     );
 }
@@ -74,7 +75,7 @@ fn main() {
     )
     .expect("compile indexed for-in source");
 
-    assert_eq!(Vm::new().run(&code), Ok(OwnedValue::Int(40)));
+    assert_eq!(run_linked_test_code(code), Ok(OwnedValue::Int(40)));
 }
 
 #[test]
@@ -102,9 +103,10 @@ fn main() {
 "#,
     )
     .expect("compile indexed for-in pattern source");
+    let mut budget = ExecutionBudget::unbounded();
 
     assert_eq!(
-        Vm::new().run_program(&program, "main", &[]),
+        run_linked_test_program_with_budget(&Vm::new(), &program, "main", &[], &mut budget),
         Ok(OwnedValue::Int(9))
     );
 }
@@ -126,12 +128,12 @@ fn main() {
     )
     .expect("compile statement attributes");
 
-    assert_eq!(Vm::new().run(&code), Ok(OwnedValue::Int(3)));
+    assert_eq!(run_linked_test_code(code), Ok(OwnedValue::Int(3)));
 }
 
 #[test]
 fn runs_compiled_for_in_over_native_iterator() {
-    let code = compile_function_source(
+    let program = compile_standard_program_source_with_native_functions(
         SourceId::new(1),
         r#"
 fn main() {
@@ -142,10 +144,11 @@ fn main() {
     return total;
 }
 "#,
-        "main",
+        &["game::values"],
     )
     .expect("compile native iterator for-in source");
     let mut vm = Vm::new();
+    vm.register_standard_natives();
     vm.register_native("game::values", |_| {
         Ok(OwnedValue::Array(vec![
             OwnedValue::Int(2),
@@ -153,8 +156,12 @@ fn main() {
             OwnedValue::Int(5),
         ]))
     });
+    let mut budget = ExecutionBudget::unbounded();
 
-    assert_eq!(vm.run(&code), Ok(OwnedValue::Int(10)));
+    assert_eq!(
+        run_linked_test_program_with_budget(&vm, &program, "main", &[], &mut budget),
+        Ok(OwnedValue::Int(10))
+    );
 }
 
 #[test]
@@ -188,5 +195,5 @@ fn main() {
     )
     .expect("compile range for-in source");
 
-    assert_eq!(Vm::new().run(&code), Ok(OwnedValue::Int(16)));
+    assert_eq!(run_linked_test_code(code), Ok(OwnedValue::Int(16)));
 }
