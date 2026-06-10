@@ -1,6 +1,6 @@
 use std::error::Error;
 
-use vela_bytecode::CodeObject;
+use vela_bytecode::UnlinkedCodeObject;
 use vela_common::HostObjectId;
 use vela_engine::runtime::CallArgs;
 use vela_host::mock::MockStateAdapter;
@@ -153,7 +153,10 @@ impl DemoHostState {
         }
     }
 
-    pub(crate) fn main_args(&self, main: &CodeObject) -> Result<CallArgs<'static>, Box<dyn Error>> {
+    pub(crate) fn main_args(
+        &self,
+        main: &UnlinkedCodeObject,
+    ) -> Result<CallArgs<'static>, Box<dyn Error>> {
         let mut args = CallArgs::new();
         for param in &main.params {
             match param.as_str() {

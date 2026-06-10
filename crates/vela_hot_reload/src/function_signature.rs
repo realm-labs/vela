@@ -1,12 +1,12 @@
-use vela_bytecode::CodeObject;
+use vela_bytecode::UnlinkedCodeObject;
 
 use crate::error::{HotReloadError, HotReloadErrorKind, HotReloadResult};
 use crate::policy::HotReloadPolicy;
 
 pub(crate) fn ensure_compatible_function_signature(
     name: &str,
-    old_code: &CodeObject,
-    new_code: &CodeObject,
+    old_code: &UnlinkedCodeObject,
+    new_code: &UnlinkedCodeObject,
     policy: &HotReloadPolicy,
 ) -> HotReloadResult<()> {
     if new_code.params.len() < old_code.params.len() {

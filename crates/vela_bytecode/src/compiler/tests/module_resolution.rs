@@ -30,11 +30,11 @@ pub fn grant(amount) {
     assert!(program.function("game::reward::grant").is_some());
     assert!(main.instructions.iter().any(|instruction| matches!(
         &instruction.kind,
-        InstructionKind::CallFunction { name, .. } if name == "game::reward::grant"
+        UnlinkedInstructionKind::CallFunction { name, .. } if name == "game::reward::grant"
     )));
     assert!(!main.instructions.iter().any(|instruction| matches!(
         &instruction.kind,
-        InstructionKind::CallNative { name, .. } if name == "give_reward"
+        UnlinkedInstructionKind::CallNative { name, .. } if name == "give_reward"
     )));
 }
 #[test]
@@ -68,7 +68,7 @@ pub fn main() {
         .expect("qualified main function");
     assert!(main.instructions.iter().any(|instruction| matches!(
         &instruction.kind,
-        InstructionKind::CallFunction { name, .. } if name == "game::reward::main"
+        UnlinkedInstructionKind::CallFunction { name, .. } if name == "game::reward::main"
     )));
 }
 #[test]
@@ -112,11 +112,11 @@ pub enum Damage { Physical { amount: int } }
         .expect("qualified damage function");
     assert!(reward.instructions.iter().any(|instruction| matches!(
         &instruction.kind,
-        InstructionKind::MakeRecord { type_name, .. } if type_name == "game::reward::Reward"
+        UnlinkedInstructionKind::MakeRecord { type_name, .. } if type_name == "game::reward::Reward"
     )));
     assert!(damage.instructions.iter().any(|instruction| matches!(
         &instruction.kind,
-        InstructionKind::MakeEnum { enum_name, variant, .. }
+        UnlinkedInstructionKind::MakeEnum { enum_name, variant, .. }
             if enum_name == "game::damage::Damage" && variant == "Physical"
     )));
 }
@@ -171,7 +171,7 @@ pub global state: Player;
         .expect("global slot should be assigned");
     assert!(main.instructions.iter().any(|instruction| matches!(
         &instruction.kind,
-        InstructionKind::LoadGlobal { global, slot: Some(actual), .. }
+        UnlinkedInstructionKind::LoadGlobal { global, slot: Some(actual), .. }
             if global == "game::state::state" && *actual == slot
     )));
 }
@@ -207,7 +207,7 @@ pub enum Damage { Physical { amount: int } }
         .expect("qualified main function");
     assert!(main.instructions.iter().any(|instruction| matches!(
         &instruction.kind,
-        InstructionKind::EnumTagEqual { enum_name, variant, .. }
+        UnlinkedInstructionKind::EnumTagEqual { enum_name, variant, .. }
             if enum_name == "game::damage::Damage" && variant == "Physical"
     )));
 }
@@ -246,7 +246,7 @@ pub const BONUS: int = 5;
         .expect("qualified main function");
     assert!(main.instructions.iter().any(|instruction| matches!(
         &instruction.kind,
-        InstructionKind::CallFunction { name, .. } if name == "game::reward::grant"
+        UnlinkedInstructionKind::CallFunction { name, .. } if name == "game::reward::grant"
     )));
     assert!(main.constants.contains(&Constant::Int(5)));
 }

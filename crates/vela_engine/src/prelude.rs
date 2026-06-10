@@ -25,7 +25,7 @@ pub use crate::schema::{ScriptHostMethodMetadata, ScriptHostSchema, ScriptReflec
 pub use crate::source::{EngineSourceError, EngineSourceErrorKind};
 pub use crate::{args, host};
 pub use vela_bytecode::{
-    CodeObject,
+    UnlinkedCodeObject,
     script_methods::{ScriptMethod, ScriptMethodTable},
 };
 pub use vela_common::{HostMethodId, HostObjectId, HostTypeId, SourceId};

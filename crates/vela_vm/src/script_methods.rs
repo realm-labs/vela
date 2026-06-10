@@ -1,4 +1,4 @@
-use vela_bytecode::ProgramCode;
+use vela_bytecode::UnlinkedProgramCode;
 use vela_def::MethodId;
 use vela_reflect::registry::TypeRegistry;
 
@@ -13,7 +13,7 @@ use crate::{
 
 pub(crate) struct ScriptMethodDispatch<'a, 'host, 'heap> {
     pub(crate) vm: &'a Vm,
-    pub(crate) program: Option<&'a dyn ProgramCode>,
+    pub(crate) program: Option<&'a dyn UnlinkedProgramCode>,
     pub(crate) host: Option<&'a mut HostExecution<'host>>,
     pub(crate) heap: Option<&'a mut HeapExecution<'heap>>,
     pub(crate) budget: Option<&'a mut ExecutionBudget>,
@@ -83,12 +83,22 @@ pub(crate) fn call_method(
 }
 
 pub(crate) fn call_method_id(
-    receiver: &Value,
+    receiver: &mut Value,
     method: &str,
     method_id: MethodId,
     args: &[Value],
     mut dispatch: ScriptMethodDispatch<'_, '_, '_>,
 ) -> VmResult<Value> {
+    if let Some(result) = script_builtin_methods::call_by_id(
+        receiver,
+        method_id,
+        args,
+        &mut dispatch.heap,
+        &mut dispatch.budget,
+    ) {
+        return result;
+    }
+
     call_script_impl_method(
         receiver,
         ScriptMethodLookup::Id(method_id),

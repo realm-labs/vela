@@ -1,6 +1,6 @@
 use vela_syntax::ast::{Argument, Expr, ExprKind};
 
-use crate::{CallArgument, InstructionKind};
+use crate::{CallArgument, UnlinkedInstructionKind};
 
 use super::call_args::resolve_script_call_arguments;
 use super::methods::host_method_call;
@@ -21,7 +21,7 @@ impl Compiler<'_, '_> {
             let fields =
                 self.compile_tuple_variant_fields(callee.span, &enum_name, &variant, args)?;
             let dst = self.alloc_register()?;
-            self.emit(InstructionKind::MakeEnum {
+            self.emit(UnlinkedInstructionKind::MakeEnum {
                 dst,
                 enum_name,
                 variant,
@@ -73,7 +73,15 @@ impl Compiler<'_, '_> {
         let dst = self.alloc_register()?;
         if let Some((declaration, name)) = self.script_function_call(callee) {
             let args = self.compile_script_call_args(declaration, args, callee.span)?;
-            self.emit_spanned(InstructionKind::CallFunction { dst, name, args }, expr.span);
+            self.emit_spanned(
+                UnlinkedInstructionKind::CallFunction {
+                    dst,
+                    target: function_id_for_script_name(&name),
+                    name,
+                    args,
+                },
+                expr.span,
+            );
         } else if self.local_callee(callee).is_some() || !matches!(callee.kind, ExprKind::Path(_)) {
             reject_named_args(args, "closure call")?;
             let callee = self.compile_expr(callee)?;
@@ -82,7 +90,7 @@ impl Compiler<'_, '_> {
                 .map(|arg| self.compile_expr(&arg.value))
                 .collect::<CompileResult<Vec<_>>>()?;
             self.emit_spanned(
-                InstructionKind::CallClosure { dst, callee, args },
+                UnlinkedInstructionKind::CallClosure { dst, callee, args },
                 expr.span,
             );
         } else {
@@ -91,7 +99,7 @@ impl Compiler<'_, '_> {
             let arg_registers =
                 self.compile_native_call_args(&fallback_name, native, args, callee.span)?;
             self.emit_spanned(
-                InstructionKind::CallNative {
+                UnlinkedInstructionKind::CallNative {
                     dst: Some(dst),
                     name: fallback_name,
                     native,
@@ -157,7 +165,18 @@ impl Compiler<'_, '_> {
         let dst = self.alloc_register()?;
         if let Some(method_id) = method_id {
             self.emit_spanned(
-                InstructionKind::CallMethodId {
+                UnlinkedInstructionKind::CallMethodId {
+                    dst,
+                    receiver,
+                    method: name.to_owned(),
+                    method_id,
+                    args: arg_registers,
+                },
+                expr.span,
+            );
+        } else if let Some(method_id) = value_method_id {
+            self.emit_spanned(
+                UnlinkedInstructionKind::CallMethodId {
                     dst,
                     receiver,
                     method: name.to_owned(),
@@ -168,11 +187,10 @@ impl Compiler<'_, '_> {
             );
         } else {
             self.emit_spanned(
-                InstructionKind::CallMethod {
+                UnlinkedInstructionKind::CallMethod {
                     dst,
                     receiver,
                     method: name.to_owned(),
-                    value_method_id,
                     args: arg_registers,
                 },
                 expr.span,
@@ -208,7 +226,18 @@ impl Compiler<'_, '_> {
         let dst = self.alloc_register()?;
         if let Some(method_id) = method_id {
             self.emit_spanned(
-                InstructionKind::CallMethodId {
+                UnlinkedInstructionKind::CallMethodId {
+                    dst,
+                    receiver,
+                    method: method.to_owned(),
+                    method_id,
+                    args: arg_registers,
+                },
+                expr.span,
+            );
+        } else if let Some(method_id) = value_method_id {
+            self.emit_spanned(
+                UnlinkedInstructionKind::CallMethodId {
                     dst,
                     receiver,
                     method: method.to_owned(),
@@ -219,11 +248,10 @@ impl Compiler<'_, '_> {
             );
         } else {
             self.emit_spanned(
-                InstructionKind::CallMethod {
+                UnlinkedInstructionKind::CallMethod {
                     dst,
                     receiver,
                     method: method.to_owned(),
-                    value_method_id,
                     args: arg_registers,
                 },
                 expr.span,
@@ -343,7 +371,7 @@ impl Compiler<'_, '_> {
     fn compile_native_call_args(
         &mut self,
         _name: &str,
-        native: Option<FunctionId>,
+        native: FunctionId,
         args: &[Argument],
         call_span: vela_common::Span,
     ) -> CompileResult<Vec<crate::Register>> {
@@ -351,7 +379,7 @@ impl Compiler<'_, '_> {
         let registry_params = self
             .facts
             .registry
-            .and_then(|registry| native.and_then(|id| registry.function_params(id)));
+            .and_then(|registry| registry.function_params(native));
         let Some(params) = registry_params else {
             reject_named_args(args, "native call")?;
             return args
@@ -377,16 +405,12 @@ impl Compiler<'_, '_> {
         self.compile_metadata_register_args(&params, args, call_span)
     }
 
-    fn resolve_native_function_id(
-        &self,
-        name: &str,
-        call_span: Span,
-    ) -> CompileResult<Option<FunctionId>> {
+    fn resolve_native_function_id(&self, name: &str, call_span: Span) -> CompileResult<FunctionId> {
         let Some(registry) = self.facts.registry else {
-            return Ok(None);
+            return Ok(function_id_for_native_name(name));
         };
         if let Some(id) = registry.resolve_native_function_name(name) {
-            return Ok(Some(id));
+            return Ok(id);
         }
 
         Err(CompileError::new(CompileErrorKind::SemanticDiagnostics(
@@ -423,6 +447,20 @@ impl Compiler<'_, '_> {
         let type_name = standard_value_type_name(receiver_type)?;
         registry.resolve_type(&DefPath::ty("std", std::iter::empty::<&str>(), type_name))
     }
+}
+
+fn function_id_for_script_name(name: &str) -> FunctionId {
+    function_id_for_path("script", name)
+}
+
+fn function_id_for_native_name(name: &str) -> FunctionId {
+    function_id_for_path("host", name)
+}
+
+fn function_id_for_path(package: &str, name: &str) -> FunctionId {
+    let mut segments = name.split("::").collect::<Vec<_>>();
+    let function = segments.pop().unwrap_or(name);
+    FunctionId::from_def_id(DefPath::function(package, segments, function).id())
 }
 
 fn registry_param_hints(params: &[ParamDef], call_span: Span) -> Vec<ParamHint> {

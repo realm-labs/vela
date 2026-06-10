@@ -9,7 +9,7 @@ use vela_bytecode::compiler::{
     compile_function_source, compile_program_source,
     compile_program_source_with_options_and_registry,
 };
-use vela_bytecode::{CodeObject, Program};
+use vela_bytecode::{UnlinkedCodeObject, UnlinkedProgram};
 use vela_common::{HostMethodId, HostObjectId, HostTypeId, SourceId};
 use vela_def::{DefPath, FieldId, TypeId};
 use vela_host::access::HostAccess;
@@ -166,22 +166,22 @@ fn register_bench_natives(vm: &mut Vm) {
 enum CompiledWorkload {
     Function {
         mode: ExecutionMode,
-        code: Box<CodeObject>,
+        code: Box<UnlinkedCodeObject>,
     },
     ScriptProgram {
-        program: Box<Program>,
+        program: Box<UnlinkedProgram>,
     },
     HostAccess {
-        program: Box<Program>,
+        program: Box<UnlinkedProgram>,
     },
     HostManagedHeapReadConversion {
-        program: Box<Program>,
+        program: Box<UnlinkedProgram>,
     },
     HostManagedHeapHostAccess {
-        program: Box<Program>,
+        program: Box<UnlinkedProgram>,
     },
     GameplayHost {
-        program: Box<Program>,
+        program: Box<UnlinkedProgram>,
     },
 }
 
@@ -501,7 +501,7 @@ fn register_bench_host_method(
         .expect("bench host method should register");
 }
 
-fn run_gc_pacing(vm: &Vm, code: &CodeObject) -> Result<OwnedValue, Box<dyn Error>> {
+fn run_gc_pacing(vm: &Vm, code: &UnlinkedCodeObject) -> Result<OwnedValue, Box<dyn Error>> {
     let mut heap = ScriptHeap::new();
     heap.set_gc_config(GcConfig {
         max_pause_micros: 50,
@@ -539,7 +539,7 @@ fn seed_gc_garbage(heap: &mut ScriptHeap) {
     }
 }
 
-fn run_host_access(vm: &Vm, program: &Program) -> Result<OwnedValue, Box<dyn Error>> {
+fn run_host_access(vm: &Vm, program: &UnlinkedProgram) -> Result<OwnedValue, Box<dyn Error>> {
     let player = HostRef::new(PLAYER_TYPE, PLAYER_OBJECT, PLAYER_GENERATION);
     let mut adapter = MockStateAdapter::new();
     adapter
@@ -580,7 +580,7 @@ fn run_host_access(vm: &Vm, program: &Program) -> Result<OwnedValue, Box<dyn Err
 
 fn run_managed_heap_host_conversion(
     vm: &Vm,
-    program: &Program,
+    program: &UnlinkedProgram,
 ) -> Result<OwnedValue, Box<dyn Error>> {
     let player = HostRef::new(PLAYER_TYPE, PLAYER_OBJECT, PLAYER_GENERATION);
     let level_path = HostPath::new(player).field(LEVEL_FIELD);
@@ -618,7 +618,7 @@ fn run_managed_heap_host_conversion(
 
 fn run_managed_heap_host_read_conversion(
     vm: &Vm,
-    program: &Program,
+    program: &UnlinkedProgram,
 ) -> Result<OwnedValue, Box<dyn Error>> {
     let player = HostRef::new(PLAYER_TYPE, PLAYER_OBJECT, PLAYER_GENERATION);
     let level_path = HostPath::new(player).field(LEVEL_FIELD);
@@ -654,7 +654,10 @@ fn run_managed_heap_host_read_conversion(
     ))
 }
 
-fn run_gameplay_monster_kill(vm: &Vm, program: &Program) -> Result<OwnedValue, Box<dyn Error>> {
+fn run_gameplay_monster_kill(
+    vm: &Vm,
+    program: &UnlinkedProgram,
+) -> Result<OwnedValue, Box<dyn Error>> {
     let player = HostRef::new(PLAYER_TYPE, PLAYER_OBJECT, PLAYER_GENERATION);
     let ctx = HostRef::new(CTX_TYPE, CTX_OBJECT, 1);
     let monster = HostRef::new(MONSTER_TYPE, MONSTER_OBJECT, 1);

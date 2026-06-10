@@ -38,8 +38,8 @@ use vela_registry::RegistryCompileView;
 use vela_syntax::ast::{Argument, Block, Expr, ExprKind, FunctionItem, Param};
 
 use crate::{
-    CacheSiteId, CacheSiteKind, CodeObject, Constant, FrameSlotInfo, FrameSlotKind, Instruction,
-    InstructionKind, InstructionOffset, Program, Register,
+    CacheSiteId, CacheSiteKind, Constant, FrameSlotInfo, FrameSlotKind, InstructionOffset,
+    Register, UnlinkedCodeObject, UnlinkedInstruction, UnlinkedInstructionKind, UnlinkedProgram,
 };
 use control_flow::LoopContext;
 use error::{CompileError, CompileErrorKind, CompileResult};
@@ -91,7 +91,7 @@ pub fn compile_function_source(
     source: SourceId,
     text: &str,
     function_name: &str,
-) -> CompileResult<CodeObject> {
+) -> CompileResult<UnlinkedCodeObject> {
     compile_function_source_with_options(source, text, function_name, &CompilerOptions::default())
 }
 
@@ -100,7 +100,7 @@ pub fn compile_function_source_with_registry(
     text: &str,
     function_name: &str,
     registry: RegistryCompileView<'_>,
-) -> CompileResult<CodeObject> {
+) -> CompileResult<UnlinkedCodeObject> {
     compile_function_source_with_options_and_registry(
         source,
         text,
@@ -115,7 +115,7 @@ pub fn compile_function_source_with_options(
     text: &str,
     function_name: &str,
     options: &CompilerOptions,
-) -> CompileResult<CodeObject> {
+) -> CompileResult<UnlinkedCodeObject> {
     compile_function_source_inner(source, text, function_name, options, None)
 }
 
@@ -125,7 +125,7 @@ pub fn compile_function_source_with_options_and_registry(
     function_name: &str,
     options: &CompilerOptions,
     registry: RegistryCompileView<'_>,
-) -> CompileResult<CodeObject> {
+) -> CompileResult<UnlinkedCodeObject> {
     compile_function_source_inner(source, text, function_name, options, Some(registry))
 }
 
@@ -135,7 +135,7 @@ fn compile_function_source_inner<'registry>(
     function_name: &str,
     options: &CompilerOptions,
     registry: Option<RegistryCompileView<'registry>>,
-) -> CompileResult<CodeObject> {
+) -> CompileResult<UnlinkedCodeObject> {
     let semantic = parse_semantic_source(source, text)?;
     let script_function_symbols = semantic.script_function_symbols();
     let script_function_signatures = semantic.script_function_signatures();
@@ -170,7 +170,7 @@ fn compile_function_source_inner<'registry>(
     )
 }
 
-pub fn compile_program_source(source: SourceId, text: &str) -> CompileResult<Program> {
+pub fn compile_program_source(source: SourceId, text: &str) -> CompileResult<UnlinkedProgram> {
     compile_program_source_with_options(source, text, &CompilerOptions::default())
 }
 
@@ -178,7 +178,7 @@ pub fn compile_program_source_with_registry(
     source: SourceId,
     text: &str,
     registry: RegistryCompileView<'_>,
-) -> CompileResult<Program> {
+) -> CompileResult<UnlinkedProgram> {
     compile_program_source_with_options_and_registry(
         source,
         text,
@@ -191,7 +191,7 @@ pub fn compile_program_source_with_options(
     source: SourceId,
     text: &str,
     options: &CompilerOptions,
-) -> CompileResult<Program> {
+) -> CompileResult<UnlinkedProgram> {
     compile_program_source_inner(source, text, options, None)
 }
 
@@ -200,7 +200,7 @@ pub fn compile_program_source_with_options_and_registry(
     text: &str,
     options: &CompilerOptions,
     registry: RegistryCompileView<'_>,
-) -> CompileResult<Program> {
+) -> CompileResult<UnlinkedProgram> {
     compile_program_source_inner(source, text, options, Some(registry))
 }
 
@@ -209,7 +209,7 @@ fn compile_program_source_inner<'registry>(
     text: &str,
     options: &CompilerOptions,
     registry: Option<RegistryCompileView<'registry>>,
-) -> CompileResult<Program> {
+) -> CompileResult<UnlinkedProgram> {
     let semantic = parse_semantic_source(source, text)?;
     let script_functions = semantic.script_function_names();
     let script_function_symbols = semantic.script_function_symbols();
@@ -239,7 +239,7 @@ fn compile_program_source_inner<'registry>(
         options: options.clone(),
         registry,
     };
-    let mut program = Program::new();
+    let mut program = UnlinkedProgram::new();
     program.set_global_layout(global_names(&facts.global_symbols));
 
     for name in &script_functions {
@@ -263,21 +263,21 @@ fn compile_program_source_inner<'registry>(
     verify_program(program)
 }
 
-pub fn compile_module_sources(sources: &[ModuleSource]) -> CompileResult<Program> {
+pub fn compile_module_sources(sources: &[ModuleSource]) -> CompileResult<UnlinkedProgram> {
     compile_module_sources_with_options(sources, &CompilerOptions::default())
 }
 
 pub fn compile_module_sources_with_registry(
     sources: &[ModuleSource],
     registry: RegistryCompileView<'_>,
-) -> CompileResult<Program> {
+) -> CompileResult<UnlinkedProgram> {
     compile_module_sources_with_options_and_registry(sources, &CompilerOptions::default(), registry)
 }
 
 pub fn compile_module_sources_with_options(
     sources: &[ModuleSource],
     options: &CompilerOptions,
-) -> CompileResult<Program> {
+) -> CompileResult<UnlinkedProgram> {
     compile_module_sources_inner(sources, options, None)
 }
 
@@ -285,7 +285,7 @@ pub fn compile_module_sources_with_options_and_registry(
     sources: &[ModuleSource],
     options: &CompilerOptions,
     registry: RegistryCompileView<'_>,
-) -> CompileResult<Program> {
+) -> CompileResult<UnlinkedProgram> {
     compile_module_sources_inner(sources, options, Some(registry))
 }
 
@@ -293,7 +293,7 @@ fn compile_module_sources_inner<'registry>(
     sources: &[ModuleSource],
     options: &CompilerOptions,
     registry: Option<RegistryCompileView<'registry>>,
-) -> CompileResult<Program> {
+) -> CompileResult<UnlinkedProgram> {
     let semantic = parse_semantic_modules(sources)?;
     let script_functions = semantic.script_function_declarations();
     let script_function_symbols = semantic.script_function_symbols();
@@ -323,7 +323,7 @@ fn compile_module_sources_inner<'registry>(
         options: options.clone(),
         registry,
     };
-    let mut program = Program::new();
+    let mut program = UnlinkedProgram::new();
     program.set_global_layout(global_names(&facts.global_symbols));
 
     for declaration in script_functions {
@@ -345,14 +345,14 @@ fn compile_module_sources_inner<'registry>(
     verify_program(program)
 }
 
-fn verify_program(program: Program) -> CompileResult<Program> {
+fn verify_program(program: UnlinkedProgram) -> CompileResult<UnlinkedProgram> {
     program
         .verify()
         .map_err(|error| CompileError::new(CompileErrorKind::BytecodeVerification(error)))?;
     Ok(program)
 }
 
-fn verify_code_object(code: CodeObject) -> CompileResult<CodeObject> {
+fn verify_code_object(code: UnlinkedCodeObject) -> CompileResult<UnlinkedCodeObject> {
     code.verify()
         .map_err(|error| CompileError::new(CompileErrorKind::BytecodeVerification(error)))?;
     Ok(code)
@@ -376,7 +376,7 @@ fn global_slots(global_symbols: &BTreeMap<HirDeclId, String>) -> BTreeMap<String
 }
 
 fn insert_script_impl_methods(
-    program: &mut Program,
+    program: &mut UnlinkedProgram,
     methods: Vec<script_impls::ScriptImplMethod<'_>>,
     facts: &CompilerFacts<'_>,
 ) -> CompileResult<()> {
@@ -432,7 +432,7 @@ fn script_method_signatures(
 }
 
 struct Compiler<'ast, 'registry> {
-    code: CodeObject,
+    code: UnlinkedCodeObject,
     locals: HashMap<String, Register>,
     hir_locals: HashMap<HirLocalId, Register>,
     script_types: ScriptTypeFlow,
@@ -482,7 +482,7 @@ impl<'ast, 'registry> Compiler<'ast, 'registry> {
             .iter()
             .map(|param| param.default_value.is_some())
             .collect::<Vec<_>>();
-        let mut code = CodeObject::new(code_name, 0)
+        let mut code = UnlinkedCodeObject::new(code_name, 0)
             .with_params(param_names)
             .with_param_defaults(param_defaults);
         let mut locals = HashMap::new();
@@ -580,7 +580,7 @@ impl<'ast, 'registry> Compiler<'ast, 'registry> {
             .map(|param| param.name.clone())
             .collect::<Vec<_>>();
         let param_default_flags = vec![false; params.len()];
-        let mut code = CodeObject::new(name, 0)
+        let mut code = UnlinkedCodeObject::new(name, 0)
             .with_params(param_names)
             .with_param_defaults(param_default_flags)
             .with_capture_count(capture_count);
@@ -666,12 +666,12 @@ impl<'ast, 'registry> Compiler<'ast, 'registry> {
         })
     }
 
-    fn compile(mut self) -> CompileResult<CodeObject> {
+    fn compile(mut self) -> CompileResult<UnlinkedCodeObject> {
         self.compile_param_defaults()?;
         let returned = self.compile_statements(&self.body.statements)?;
         if !returned {
             let null = self.emit_constant(Constant::Null)?;
-            self.emit(InstructionKind::Return { src: null });
+            self.emit(UnlinkedInstructionKind::Return { src: null });
         }
         self.code.register_count = self.next_register;
         Ok(self.code)
@@ -693,7 +693,7 @@ impl<'ast, 'registry> Compiler<'ast, 'registry> {
             );
             let skip_default = self.emit_jump_if_not_missing(param);
             let value = self.compile_expr(&default_value)?;
-            self.emit(InstructionKind::Move {
+            self.emit(UnlinkedInstructionKind::Move {
                 dst: param,
                 src: value,
             });
@@ -915,7 +915,7 @@ impl<'ast, 'registry> Compiler<'ast, 'registry> {
     fn emit_constant(&mut self, constant: Constant) -> CompileResult<Register> {
         let dst = self.alloc_register()?;
         let constant = self.code.push_constant(constant);
-        self.emit(InstructionKind::LoadConst { dst, constant });
+        self.emit(UnlinkedInstructionKind::LoadConst { dst, constant });
         Ok(dst)
     }
 
@@ -925,7 +925,7 @@ impl<'ast, 'registry> Compiler<'ast, 'registry> {
 
     fn emit_constant_to(&mut self, dst: Register, value: Constant) {
         let constant = self.code.push_constant(value);
-        self.emit(InstructionKind::LoadConst { dst, constant });
+        self.emit(UnlinkedInstructionKind::LoadConst { dst, constant });
     }
 
     fn alloc_register(&mut self) -> CompileResult<Register> {
@@ -937,7 +937,7 @@ impl<'ast, 'registry> Compiler<'ast, 'registry> {
         Ok(Register(register))
     }
 
-    fn emit(&mut self, kind: InstructionKind) {
+    fn emit(&mut self, kind: UnlinkedInstructionKind) {
         let offset = InstructionOffset(self.current_offset());
         let kind = if let Some(cache_kind) = cache_site_kind(&kind) {
             let cache_site = self.code.push_cache_site(cache_kind, offset);
@@ -945,10 +945,10 @@ impl<'ast, 'registry> Compiler<'ast, 'registry> {
         } else {
             kind
         };
-        self.code.push_instruction(Instruction::new(kind));
+        self.code.push_instruction(UnlinkedInstruction::new(kind));
     }
 
-    fn emit_spanned(&mut self, kind: InstructionKind, span: Span) {
+    fn emit_spanned(&mut self, kind: UnlinkedInstructionKind, span: Span) {
         let offset = InstructionOffset(self.current_offset());
         let kind = if let Some(cache_kind) = cache_site_kind(&kind) {
             let cache_site = self.code.push_cache_site(cache_kind, offset);
@@ -957,12 +957,12 @@ impl<'ast, 'registry> Compiler<'ast, 'registry> {
             kind
         };
         self.code
-            .push_instruction(Instruction::new(kind).with_span(span));
+            .push_instruction(UnlinkedInstruction::new(kind).with_span(span));
     }
 
     fn emit_jump_if_false(&mut self, condition: Register) -> usize {
         let offset = self.current_offset();
-        self.emit(InstructionKind::JumpIfFalse {
+        self.emit(UnlinkedInstructionKind::JumpIfFalse {
             condition,
             target: InstructionOffset(usize::MAX),
         });
@@ -971,7 +971,7 @@ impl<'ast, 'registry> Compiler<'ast, 'registry> {
 
     fn emit_jump_if_not_missing(&mut self, value: Register) -> usize {
         let offset = self.current_offset();
-        self.emit(InstructionKind::JumpIfNotMissing {
+        self.emit(UnlinkedInstructionKind::JumpIfNotMissing {
             value,
             target: InstructionOffset(usize::MAX),
         });
@@ -980,7 +980,7 @@ impl<'ast, 'registry> Compiler<'ast, 'registry> {
 
     fn emit_jump(&mut self) -> usize {
         let offset = self.current_offset();
-        self.emit(InstructionKind::Jump {
+        self.emit(UnlinkedInstructionKind::Jump {
             target: InstructionOffset(usize::MAX),
         });
         offset
@@ -988,7 +988,7 @@ impl<'ast, 'registry> Compiler<'ast, 'registry> {
 
     fn emit_iter_next(&mut self, iterator: Register, dst: Register) -> usize {
         let offset = self.current_offset();
-        self.emit(InstructionKind::IterNext {
+        self.emit(UnlinkedInstructionKind::IterNext {
             iterator,
             dst,
             jump_if_done: InstructionOffset(usize::MAX),
@@ -1005,7 +1005,7 @@ impl<'ast, 'registry> Compiler<'ast, 'registry> {
         dst: Register,
     ) -> usize {
         let offset = self.current_offset();
-        self.emit(InstructionKind::RangeNext {
+        self.emit(UnlinkedInstructionKind::RangeNext {
             cursor,
             end,
             done,
@@ -1022,22 +1022,22 @@ impl<'ast, 'registry> Compiler<'ast, 'registry> {
                 CompileError::new(CompileErrorKind::UnsupportedSyntax("jump patch"))
             })?;
         match &mut instruction.kind {
-            InstructionKind::JumpIfFalse {
+            UnlinkedInstructionKind::JumpIfFalse {
                 target: jump_target,
                 ..
             }
-            | InstructionKind::JumpIfNotMissing {
+            | UnlinkedInstructionKind::JumpIfNotMissing {
                 target: jump_target,
                 ..
             }
-            | InstructionKind::Jump {
+            | UnlinkedInstructionKind::Jump {
                 target: jump_target,
             }
-            | InstructionKind::IterNext {
+            | UnlinkedInstructionKind::IterNext {
                 jump_if_done: jump_target,
                 ..
             }
-            | InstructionKind::RangeNext {
+            | UnlinkedInstructionKind::RangeNext {
                 jump_if_done: jump_target,
                 ..
             } => {
@@ -1111,68 +1111,70 @@ fn reject_named_args(args: &[Argument], context: &'static str) -> CompileResult<
     Ok(())
 }
 
-fn cache_site_kind(kind: &InstructionKind) -> Option<CacheSiteKind> {
+fn cache_site_kind(kind: &UnlinkedInstructionKind) -> Option<CacheSiteKind> {
     match kind {
-        InstructionKind::LoadGlobal { .. } => Some(CacheSiteKind::GlobalRead),
-        InstructionKind::CallNative { .. } => Some(CacheSiteKind::NativeCall),
-        InstructionKind::CallMethod { .. } | InstructionKind::CallMethodId { .. } => {
-            Some(CacheSiteKind::MethodCall)
-        }
-        InstructionKind::GetRecordSlot { .. } => Some(CacheSiteKind::RecordFieldRead),
-        InstructionKind::SetRecordSlot { .. } => Some(CacheSiteKind::RecordFieldWrite),
-        InstructionKind::HostRead { .. } => Some(CacheSiteKind::HostPathRead),
-        InstructionKind::HostWrite { .. } => Some(CacheSiteKind::HostPathWrite),
-        InstructionKind::HostMutate { .. } => Some(CacheSiteKind::HostPathMutate),
-        InstructionKind::HostRemove { .. } => Some(CacheSiteKind::HostPathRemove),
-        InstructionKind::HostCall { .. } => Some(CacheSiteKind::HostPathCall),
+        UnlinkedInstructionKind::LoadGlobal { .. } => Some(CacheSiteKind::GlobalRead),
+        UnlinkedInstructionKind::CallNative { .. } => Some(CacheSiteKind::NativeCall),
+        UnlinkedInstructionKind::CallMethod { .. }
+        | UnlinkedInstructionKind::CallMethodId { .. } => Some(CacheSiteKind::MethodCall),
+        UnlinkedInstructionKind::GetRecordSlot { .. } => Some(CacheSiteKind::RecordFieldRead),
+        UnlinkedInstructionKind::SetRecordSlot { .. } => Some(CacheSiteKind::RecordFieldWrite),
+        UnlinkedInstructionKind::HostRead { .. } => Some(CacheSiteKind::HostPathRead),
+        UnlinkedInstructionKind::HostWrite { .. } => Some(CacheSiteKind::HostPathWrite),
+        UnlinkedInstructionKind::HostMutate { .. } => Some(CacheSiteKind::HostPathMutate),
+        UnlinkedInstructionKind::HostRemove { .. } => Some(CacheSiteKind::HostPathRemove),
+        UnlinkedInstructionKind::HostCall { .. } => Some(CacheSiteKind::HostPathCall),
         _ => None,
     }
 }
 
-fn attach_cache_site(kind: InstructionKind, cache_site: CacheSiteId) -> InstructionKind {
+fn attach_cache_site(
+    kind: UnlinkedInstructionKind,
+    cache_site: CacheSiteId,
+) -> UnlinkedInstructionKind {
     match kind {
-        InstructionKind::LoadGlobal {
+        UnlinkedInstructionKind::LoadGlobal {
             dst, global, slot, ..
-        } => InstructionKind::LoadGlobal {
+        } => UnlinkedInstructionKind::LoadGlobal {
             dst,
             global,
             slot,
             cache_site: Some(cache_site),
         },
-        InstructionKind::HostRead {
+        UnlinkedInstructionKind::HostRead {
             dst,
             root,
             target,
             dynamic_args,
             ..
-        } => InstructionKind::HostRead {
+        } => UnlinkedInstructionKind::HostRead {
             dst,
             root,
             target,
             dynamic_args,
             cache_site,
         },
-        InstructionKind::HostWrite {
+        UnlinkedInstructionKind::HostWrite {
             root,
             target,
             dynamic_args,
             src,
             ..
-        } => InstructionKind::HostWrite {
+        } => UnlinkedInstructionKind::HostWrite {
             root,
             target,
             dynamic_args,
             src,
             cache_site,
         },
-        InstructionKind::HostMutate {
+        UnlinkedInstructionKind::HostMutate {
             root,
             target,
             dynamic_args,
             op,
             rhs,
             ..
-        } => InstructionKind::HostMutate {
+        } => UnlinkedInstructionKind::HostMutate {
             root,
             target,
             dynamic_args,
@@ -1180,18 +1182,18 @@ fn attach_cache_site(kind: InstructionKind, cache_site: CacheSiteId) -> Instruct
             rhs,
             cache_site,
         },
-        InstructionKind::HostRemove {
+        UnlinkedInstructionKind::HostRemove {
             root,
             target,
             dynamic_args,
             ..
-        } => InstructionKind::HostRemove {
+        } => UnlinkedInstructionKind::HostRemove {
             root,
             target,
             dynamic_args,
             cache_site,
         },
-        InstructionKind::HostCall {
+        UnlinkedInstructionKind::HostCall {
             dst,
             root,
             target,
@@ -1199,7 +1201,7 @@ fn attach_cache_site(kind: InstructionKind, cache_site: CacheSiteId) -> Instruct
             method,
             args,
             ..
-        } => InstructionKind::HostCall {
+        } => UnlinkedInstructionKind::HostCall {
             dst,
             root,
             target,

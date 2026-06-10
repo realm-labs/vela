@@ -4,33 +4,39 @@ use crate::value::Value as RuntimeValue;
 
 #[test]
 fn runs_basic_arithmetic() {
-    let mut code = CodeObject::new("calc", 5);
+    let mut code = UnlinkedCodeObject::new("calc", 5);
     let two = code.push_constant(Constant::Int(2));
     let three = code.push_constant(Constant::Int(3));
     let four = code.push_constant(Constant::Int(4));
-    code.push_instruction(Instruction::new(InstructionKind::LoadConst {
-        dst: Register(0),
-        constant: two,
-    }));
-    code.push_instruction(Instruction::new(InstructionKind::LoadConst {
-        dst: Register(1),
-        constant: three,
-    }));
-    code.push_instruction(Instruction::new(InstructionKind::LoadConst {
-        dst: Register(2),
-        constant: four,
-    }));
-    code.push_instruction(Instruction::new(InstructionKind::Mul {
+    code.push_instruction(UnlinkedInstruction::new(
+        UnlinkedInstructionKind::LoadConst {
+            dst: Register(0),
+            constant: two,
+        },
+    ));
+    code.push_instruction(UnlinkedInstruction::new(
+        UnlinkedInstructionKind::LoadConst {
+            dst: Register(1),
+            constant: three,
+        },
+    ));
+    code.push_instruction(UnlinkedInstruction::new(
+        UnlinkedInstructionKind::LoadConst {
+            dst: Register(2),
+            constant: four,
+        },
+    ));
+    code.push_instruction(UnlinkedInstruction::new(UnlinkedInstructionKind::Mul {
         dst: Register(3),
         lhs: Register(1),
         rhs: Register(2),
     }));
-    code.push_instruction(Instruction::new(InstructionKind::Add {
+    code.push_instruction(UnlinkedInstruction::new(UnlinkedInstructionKind::Add {
         dst: Register(4),
         lhs: Register(0),
         rhs: Register(3),
     }));
-    code.push_instruction(Instruction::new(InstructionKind::Return {
+    code.push_instruction(UnlinkedInstruction::new(UnlinkedInstructionKind::Return {
         src: Register(4),
     }));
 
@@ -39,30 +45,38 @@ fn runs_basic_arithmetic() {
 
 #[test]
 fn branches_on_false_conditions() {
-    let mut code = CodeObject::new("branch", 3);
+    let mut code = UnlinkedCodeObject::new("branch", 3);
     let false_id = code.push_constant(Constant::Bool(false));
     let one = code.push_constant(Constant::Int(1));
     let two = code.push_constant(Constant::Int(2));
-    code.push_instruction(Instruction::new(InstructionKind::LoadConst {
-        dst: Register(0),
-        constant: false_id,
-    }));
-    code.push_instruction(Instruction::new(InstructionKind::JumpIfFalse {
-        condition: Register(0),
-        target: InstructionOffset(4),
-    }));
-    code.push_instruction(Instruction::new(InstructionKind::LoadConst {
-        dst: Register(1),
-        constant: one,
-    }));
-    code.push_instruction(Instruction::new(InstructionKind::Jump {
+    code.push_instruction(UnlinkedInstruction::new(
+        UnlinkedInstructionKind::LoadConst {
+            dst: Register(0),
+            constant: false_id,
+        },
+    ));
+    code.push_instruction(UnlinkedInstruction::new(
+        UnlinkedInstructionKind::JumpIfFalse {
+            condition: Register(0),
+            target: InstructionOffset(4),
+        },
+    ));
+    code.push_instruction(UnlinkedInstruction::new(
+        UnlinkedInstructionKind::LoadConst {
+            dst: Register(1),
+            constant: one,
+        },
+    ));
+    code.push_instruction(UnlinkedInstruction::new(UnlinkedInstructionKind::Jump {
         target: InstructionOffset(5),
     }));
-    code.push_instruction(Instruction::new(InstructionKind::LoadConst {
-        dst: Register(1),
-        constant: two,
-    }));
-    code.push_instruction(Instruction::new(InstructionKind::Return {
+    code.push_instruction(UnlinkedInstruction::new(
+        UnlinkedInstructionKind::LoadConst {
+            dst: Register(1),
+            constant: two,
+        },
+    ));
+    code.push_instruction(UnlinkedInstruction::new(UnlinkedInstructionKind::Return {
         src: Register(1),
     }));
 
@@ -77,19 +91,23 @@ fn calls_registered_native_functions() {
         Ok(OwnedValue::Null)
     });
 
-    let mut code = CodeObject::new("native", 2);
+    let mut code = UnlinkedCodeObject::new("native", 2);
     code.push_constant(Constant::String("level up".into()));
-    code.push_instruction(Instruction::new(InstructionKind::LoadConst {
-        dst: Register(0),
-        constant: ConstantId(0),
-    }));
-    code.push_instruction(Instruction::new(InstructionKind::CallNative {
-        dst: Some(Register(1)),
-        name: "log".into(),
-        native: None,
-        args: vec![Register(0)],
-    }));
-    code.push_instruction(Instruction::new(InstructionKind::Return {
+    code.push_instruction(UnlinkedInstruction::new(
+        UnlinkedInstructionKind::LoadConst {
+            dst: Register(0),
+            constant: ConstantId(0),
+        },
+    ));
+    code.push_instruction(UnlinkedInstruction::new(
+        UnlinkedInstructionKind::CallNative {
+            dst: Some(Register(1)),
+            name: "log".into(),
+            native: vela_def::FunctionId::new(0),
+            args: vec![Register(0)],
+        },
+    ));
+    code.push_instruction(UnlinkedInstruction::new(UnlinkedInstructionKind::Return {
         src: Register(1),
     }));
 
@@ -98,17 +116,19 @@ fn calls_registered_native_functions() {
 
 #[test]
 fn instruction_budget_stops_dispatch_before_next_instruction() {
-    let mut code = CodeObject::new("budgeted", 2);
+    let mut code = UnlinkedCodeObject::new("budgeted", 2);
     let one = code.push_constant(Constant::Int(1));
-    code.push_instruction(Instruction::new(InstructionKind::LoadConst {
-        dst: Register(0),
-        constant: one,
-    }));
-    code.push_instruction(Instruction::new(InstructionKind::Move {
+    code.push_instruction(UnlinkedInstruction::new(
+        UnlinkedInstructionKind::LoadConst {
+            dst: Register(0),
+            constant: one,
+        },
+    ));
+    code.push_instruction(UnlinkedInstruction::new(UnlinkedInstructionKind::Move {
         dst: Register(1),
         src: Register(0),
     }));
-    code.push_instruction(Instruction::new(InstructionKind::Return {
+    code.push_instruction(UnlinkedInstruction::new(UnlinkedInstructionKind::Return {
         src: Register(1),
     }));
     let mut budget = ExecutionBudget::new(2, usize::MAX, usize::MAX);
@@ -209,38 +229,48 @@ fn nested_values_expose_heap_roots_for_gc() {
 
 #[test]
 fn record_slot_bytecode_reads_and_writes_by_slot() {
-    let mut code = CodeObject::new("slot_record", 3);
+    let mut code = UnlinkedCodeObject::new("slot_record", 3);
     let count = code.push_constant(Constant::Int(2));
     let updated = code.push_constant(Constant::Int(5));
-    code.push_instruction(Instruction::new(InstructionKind::LoadConst {
-        dst: Register(0),
-        constant: count,
-    }));
-    code.push_instruction(Instruction::new(InstructionKind::MakeRecord {
-        dst: Register(1),
-        type_name: "Reward".into(),
-        fields: vec![
-            ("item_id".into(), Register(0)),
-            ("count".into(), Register(0)),
-        ],
-    }));
-    code.push_instruction(Instruction::new(InstructionKind::LoadConst {
-        dst: Register(0),
-        constant: updated,
-    }));
-    code.push_instruction(Instruction::new(InstructionKind::SetRecordSlot {
-        record: Register(1),
-        field: "count".into(),
-        slot: 0,
-        src: Register(0),
-    }));
-    code.push_instruction(Instruction::new(InstructionKind::GetRecordSlot {
-        dst: Register(2),
-        record: Register(1),
-        field: "count".into(),
-        slot: 0,
-    }));
-    code.push_instruction(Instruction::new(InstructionKind::Return {
+    code.push_instruction(UnlinkedInstruction::new(
+        UnlinkedInstructionKind::LoadConst {
+            dst: Register(0),
+            constant: count,
+        },
+    ));
+    code.push_instruction(UnlinkedInstruction::new(
+        UnlinkedInstructionKind::MakeRecord {
+            dst: Register(1),
+            type_name: "Reward".into(),
+            fields: vec![
+                ("item_id".into(), Register(0)),
+                ("count".into(), Register(0)),
+            ],
+        },
+    ));
+    code.push_instruction(UnlinkedInstruction::new(
+        UnlinkedInstructionKind::LoadConst {
+            dst: Register(0),
+            constant: updated,
+        },
+    ));
+    code.push_instruction(UnlinkedInstruction::new(
+        UnlinkedInstructionKind::SetRecordSlot {
+            record: Register(1),
+            field: "count".into(),
+            slot: 0,
+            src: Register(0),
+        },
+    ));
+    code.push_instruction(UnlinkedInstruction::new(
+        UnlinkedInstructionKind::GetRecordSlot {
+            dst: Register(2),
+            record: Register(1),
+            field: "count".into(),
+            slot: 0,
+        },
+    ));
+    code.push_instruction(UnlinkedInstruction::new(UnlinkedInstructionKind::Return {
         src: Register(2),
     }));
 
@@ -249,25 +279,31 @@ fn record_slot_bytecode_reads_and_writes_by_slot() {
 
 #[test]
 fn enum_slot_bytecode_reads_by_slot() {
-    let mut code = CodeObject::new("slot_enum", 3);
+    let mut code = UnlinkedCodeObject::new("slot_enum", 3);
     let amount = code.push_constant(Constant::Int(7));
-    code.push_instruction(Instruction::new(InstructionKind::LoadConst {
-        dst: Register(0),
-        constant: amount,
-    }));
-    code.push_instruction(Instruction::new(InstructionKind::MakeEnum {
-        dst: Register(1),
-        enum_name: "Damage".into(),
-        variant: "Physical".into(),
-        fields: vec![("amount".into(), Register(0))],
-    }));
-    code.push_instruction(Instruction::new(InstructionKind::GetEnumSlot {
-        dst: Register(2),
-        value: Register(1),
-        field: "amount".into(),
-        slot: 0,
-    }));
-    code.push_instruction(Instruction::new(InstructionKind::Return {
+    code.push_instruction(UnlinkedInstruction::new(
+        UnlinkedInstructionKind::LoadConst {
+            dst: Register(0),
+            constant: amount,
+        },
+    ));
+    code.push_instruction(UnlinkedInstruction::new(
+        UnlinkedInstructionKind::MakeEnum {
+            dst: Register(1),
+            enum_name: "Damage".into(),
+            variant: "Physical".into(),
+            fields: vec![("amount".into(), Register(0))],
+        },
+    ));
+    code.push_instruction(UnlinkedInstruction::new(
+        UnlinkedInstructionKind::GetEnumSlot {
+            dst: Register(2),
+            value: Register(1),
+            field: "amount".into(),
+            slot: 0,
+        },
+    ));
+    code.push_instruction(UnlinkedInstruction::new(UnlinkedInstructionKind::Return {
         src: Register(2),
     }));
 

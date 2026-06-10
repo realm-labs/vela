@@ -2,7 +2,7 @@ use std::collections::BTreeMap;
 use std::sync::Arc;
 
 use vela_bytecode::compiler::options::CompilerOptions;
-use vela_bytecode::{Program, ProgramImage};
+use vela_bytecode::{ProgramImage, UnlinkedProgram};
 use vela_common::HostMethodId;
 use vela_def::FunctionId;
 use vela_host::path::HostPath;
@@ -216,7 +216,7 @@ impl Engine {
         self.install_with_registry(vm, Arc::clone(&self.registry));
     }
 
-    pub fn install_program(&self, vm: &mut Vm, program: &Program) {
+    pub fn install_program(&self, vm: &mut Vm, program: &UnlinkedProgram) {
         self.install_with_registry(vm, self.registry_for_program(program));
     }
 
@@ -336,7 +336,7 @@ impl Engine {
         }
     }
 
-    fn registry_for_program(&self, program: &Program) -> Arc<TypeRegistry> {
+    fn registry_for_program(&self, program: &UnlinkedProgram) -> Arc<TypeRegistry> {
         let Some(graph) = program.script_metadata() else {
             return Arc::clone(&self.registry);
         };
@@ -364,7 +364,7 @@ impl Engine {
     }
 
     #[must_use]
-    pub fn into_vm_for_program(&self, program: &Program) -> Vm {
+    pub fn into_vm_for_program(&self, program: &UnlinkedProgram) -> Vm {
         let mut vm = Vm::new();
         self.install_program(&mut vm, program);
         vm
@@ -378,7 +378,11 @@ impl Engine {
     }
 
     #[must_use]
-    pub fn into_vm_for_program_with_abi(&self, program: &Program, abi: &HotReloadAbi) -> Vm {
+    pub fn into_vm_for_program_with_abi(
+        &self,
+        program: &UnlinkedProgram,
+        abi: &HotReloadAbi,
+    ) -> Vm {
         let mut vm = Vm::new();
         self.install_with_registry_and_abi(&mut vm, self.registry_for_program(program), abi);
         vm

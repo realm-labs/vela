@@ -28,25 +28,31 @@ fn run_string_predicate_by_id(
     method_id: vela_def::MethodId,
     argument: &str,
 ) -> VmResult<OwnedValue> {
-    let mut code = CodeObject::new("standard_string_predicate_method_id", 3);
+    let mut code = UnlinkedCodeObject::new("standard_string_predicate_method_id", 3);
     let receiver = code.push_constant(Constant::String("reward:gold".into()));
     let argument = code.push_constant(Constant::String(argument.into()));
-    code.push_instruction(Instruction::new(InstructionKind::LoadConst {
-        dst: Register(0),
-        constant: receiver,
-    }));
-    code.push_instruction(Instruction::new(InstructionKind::LoadConst {
-        dst: Register(1),
-        constant: argument,
-    }));
-    code.push_instruction(Instruction::new(InstructionKind::CallMethod {
-        dst: Register(2),
-        receiver: Register(0),
-        method: "missing_string_predicate".into(),
-        value_method_id: Some(method_id),
-        args: vec![vela_bytecode::CallArgument::Register(Register(1))],
-    }));
-    code.push_instruction(Instruction::new(InstructionKind::Return {
+    code.push_instruction(UnlinkedInstruction::new(
+        UnlinkedInstructionKind::LoadConst {
+            dst: Register(0),
+            constant: receiver,
+        },
+    ));
+    code.push_instruction(UnlinkedInstruction::new(
+        UnlinkedInstructionKind::LoadConst {
+            dst: Register(1),
+            constant: argument,
+        },
+    ));
+    code.push_instruction(UnlinkedInstruction::new(
+        UnlinkedInstructionKind::CallMethodId {
+            dst: Register(2),
+            receiver: Register(0),
+            method: "missing_string_predicate".into(),
+            method_id,
+            args: vec![vela_bytecode::CallArgument::Register(Register(1))],
+        },
+    ));
+    code.push_instruction(UnlinkedInstruction::new(UnlinkedInstructionKind::Return {
         src: Register(2),
     }));
 
@@ -81,20 +87,24 @@ fn run_string_transform_by_id(
     method_id: vela_def::MethodId,
     receiver: &str,
 ) -> VmResult<OwnedValue> {
-    let mut code = CodeObject::new("standard_string_transform_method_id", 2);
+    let mut code = UnlinkedCodeObject::new("standard_string_transform_method_id", 2);
     let receiver = code.push_constant(Constant::String(receiver.into()));
-    code.push_instruction(Instruction::new(InstructionKind::LoadConst {
-        dst: Register(0),
-        constant: receiver,
-    }));
-    code.push_instruction(Instruction::new(InstructionKind::CallMethod {
-        dst: Register(1),
-        receiver: Register(0),
-        method: "missing_string_transform".into(),
-        value_method_id: Some(method_id),
-        args: Vec::new(),
-    }));
-    code.push_instruction(Instruction::new(InstructionKind::Return {
+    code.push_instruction(UnlinkedInstruction::new(
+        UnlinkedInstructionKind::LoadConst {
+            dst: Register(0),
+            constant: receiver,
+        },
+    ));
+    code.push_instruction(UnlinkedInstruction::new(
+        UnlinkedInstructionKind::CallMethodId {
+            dst: Register(1),
+            receiver: Register(0),
+            method: "missing_string_transform".into(),
+            method_id,
+            args: Vec::new(),
+        },
+    ));
+    code.push_instruction(UnlinkedInstruction::new(UnlinkedInstructionKind::Return {
         src: Register(1),
     }));
 
@@ -230,30 +240,38 @@ fn run_string_transform_with_args_by_id(
     args: &[Constant],
 ) -> VmResult<OwnedValue> {
     let result = Register((args.len() + 1) as u16);
-    let mut code = CodeObject::new("standard_string_arg_transform_method_id", result.0 + 1);
+    let mut code = UnlinkedCodeObject::new("standard_string_arg_transform_method_id", result.0 + 1);
     let receiver = code.push_constant(Constant::String(receiver.into()));
-    code.push_instruction(Instruction::new(InstructionKind::LoadConst {
-        dst: Register(0),
-        constant: receiver,
-    }));
+    code.push_instruction(UnlinkedInstruction::new(
+        UnlinkedInstructionKind::LoadConst {
+            dst: Register(0),
+            constant: receiver,
+        },
+    ));
     for (index, arg) in args.iter().enumerate() {
         let register = Register((index + 1) as u16);
         let constant = code.push_constant(arg.clone());
-        code.push_instruction(Instruction::new(InstructionKind::LoadConst {
-            dst: register,
-            constant,
-        }));
+        code.push_instruction(UnlinkedInstruction::new(
+            UnlinkedInstructionKind::LoadConst {
+                dst: register,
+                constant,
+            },
+        ));
     }
-    code.push_instruction(Instruction::new(InstructionKind::CallMethod {
-        dst: result,
-        receiver: Register(0),
-        method: "missing_string_arg_transform".into(),
-        value_method_id: Some(method_id),
-        args: (1..=args.len())
-            .map(|index| vela_bytecode::CallArgument::Register(Register(index as u16)))
-            .collect(),
+    code.push_instruction(UnlinkedInstruction::new(
+        UnlinkedInstructionKind::CallMethodId {
+            dst: result,
+            receiver: Register(0),
+            method: "missing_string_arg_transform".into(),
+            method_id,
+            args: (1..=args.len())
+                .map(|index| vela_bytecode::CallArgument::Register(Register(index as u16)))
+                .collect(),
+        },
+    ));
+    code.push_instruction(UnlinkedInstruction::new(UnlinkedInstructionKind::Return {
+        src: result,
     }));
-    code.push_instruction(Instruction::new(InstructionKind::Return { src: result }));
 
     Vm::new().run(&code)
 }

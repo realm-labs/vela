@@ -452,7 +452,7 @@ fn bytecode_mutates_host_variant_field_through_host_access() {
     let quest_count = HostPath::new(host_ref)
         .field(quest_progress)
         .variant_field(count);
-    let mut code = CodeObject::new("main", 3).with_params(vec!["player".into()]);
+    let mut code = UnlinkedCodeObject::new("main", 3).with_params(vec!["player".into()]);
     let one = code.push_constant(Constant::Int(1));
     let target = code.intern_host_target(
         HostTargetPlan::new(host_ref.type_id)
@@ -461,29 +461,35 @@ fn bytecode_mutates_host_variant_field_through_host_access() {
     );
     let mutate_cache = code.push_cache_site(CacheSiteKind::HostPathMutate, InstructionOffset(1));
     let read_cache = code.push_cache_site(CacheSiteKind::HostPathRead, InstructionOffset(2));
-    code.push_instruction(Instruction::new(InstructionKind::LoadConst {
-        dst: Register(1),
-        constant: one,
-    }));
-    code.push_instruction(Instruction::new(InstructionKind::HostMutate {
-        root: Register(0),
-        target,
-        dynamic_args: Vec::new(),
-        op: HostMutationOp::Add,
-        rhs: Register(1),
-        cache_site: mutate_cache,
-    }));
-    code.push_instruction(Instruction::new(InstructionKind::HostRead {
-        dst: Register(2),
-        root: Register(0),
-        target,
-        dynamic_args: Vec::new(),
-        cache_site: read_cache,
-    }));
-    code.push_instruction(Instruction::new(InstructionKind::Return {
+    code.push_instruction(UnlinkedInstruction::new(
+        UnlinkedInstructionKind::LoadConst {
+            dst: Register(1),
+            constant: one,
+        },
+    ));
+    code.push_instruction(UnlinkedInstruction::new(
+        UnlinkedInstructionKind::HostMutate {
+            root: Register(0),
+            target,
+            dynamic_args: Vec::new(),
+            op: HostMutationOp::Add,
+            rhs: Register(1),
+            cache_site: mutate_cache,
+        },
+    ));
+    code.push_instruction(UnlinkedInstruction::new(
+        UnlinkedInstructionKind::HostRead {
+            dst: Register(2),
+            root: Register(0),
+            target,
+            dynamic_args: Vec::new(),
+            cache_site: read_cache,
+        },
+    ));
+    code.push_instruction(UnlinkedInstruction::new(UnlinkedInstructionKind::Return {
         src: Register(2),
     }));
-    let mut program = Program::new();
+    let mut program = UnlinkedProgram::new();
     program.insert_function(code);
     let mut adapter = MockStateAdapter::new();
     adapter.insert_diagnostic_path_value(quest_count.clone(), HostValue::Int(4));

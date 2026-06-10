@@ -130,19 +130,23 @@ fn map_case() {
 
 #[test]
 fn managed_heap_execution_releases_budget_after_errors() {
-    let mut code = CodeObject::new("main", 2);
+    let mut code = UnlinkedCodeObject::new("main", 2);
     let label = code.push_constant(Constant::String("allocated-before-error".into()));
-    code.push_instruction(Instruction::new(InstructionKind::LoadConst {
-        dst: Register(0),
-        constant: label,
-    }));
-    code.push_instruction(Instruction::new(InstructionKind::CallNative {
-        dst: Some(Register(1)),
-        name: "missing".into(),
-        native: None,
-        args: Vec::new(),
-    }));
-    code.push_instruction(Instruction::new(InstructionKind::Return {
+    code.push_instruction(UnlinkedInstruction::new(
+        UnlinkedInstructionKind::LoadConst {
+            dst: Register(0),
+            constant: label,
+        },
+    ));
+    code.push_instruction(UnlinkedInstruction::new(
+        UnlinkedInstructionKind::CallNative {
+            dst: Some(Register(1)),
+            name: "missing".into(),
+            native: vela_def::FunctionId::new(0),
+            args: Vec::new(),
+        },
+    ));
+    code.push_instruction(UnlinkedInstruction::new(UnlinkedInstructionKind::Return {
         src: Register(0),
     }));
     let mut budget = ExecutionBudget::new(u64::MAX, 4096, usize::MAX);
@@ -163,26 +167,30 @@ fn managed_heap_execution_releases_budget_after_errors() {
 #[test]
 fn managed_heap_host_execution_materializes_return_and_updates_adapter() {
     let host_ref = player_ref(3);
-    let mut code = CodeObject::new("main", 2).with_params(vec!["player".into()]);
+    let mut code = UnlinkedCodeObject::new("main", 2).with_params(vec!["player".into()]);
     let gold = code.push_constant(Constant::String("gold".into()));
     let target =
         code.intern_host_target(HostTargetPlan::new(host_ref.type_id).field(level_field()));
     let cache_site = code.push_cache_site(CacheSiteKind::HostPathWrite, InstructionOffset(1));
-    code.push_instruction(Instruction::new(InstructionKind::LoadConst {
-        dst: Register(1),
-        constant: gold,
-    }));
-    code.push_instruction(Instruction::new(InstructionKind::HostWrite {
-        root: Register(0),
-        target,
-        dynamic_args: Vec::new(),
+    code.push_instruction(UnlinkedInstruction::new(
+        UnlinkedInstructionKind::LoadConst {
+            dst: Register(1),
+            constant: gold,
+        },
+    ));
+    code.push_instruction(UnlinkedInstruction::new(
+        UnlinkedInstructionKind::HostWrite {
+            root: Register(0),
+            target,
+            dynamic_args: Vec::new(),
+            src: Register(1),
+            cache_site,
+        },
+    ));
+    code.push_instruction(UnlinkedInstruction::new(UnlinkedInstructionKind::Return {
         src: Register(1),
-        cache_site,
     }));
-    code.push_instruction(Instruction::new(InstructionKind::Return {
-        src: Register(1),
-    }));
-    let mut program = Program::new();
+    let mut program = UnlinkedProgram::new();
     program.insert_function(code);
     let mut adapter = host_adapter(host_ref, HostValue::String("old".into()));
     let mut tx = HostAccess::new();

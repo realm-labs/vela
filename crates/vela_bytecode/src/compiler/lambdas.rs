@@ -7,7 +7,7 @@ use vela_syntax::ast::{
     RecordField, Stmt, StmtKind,
 };
 
-use crate::{CodeObject, InstructionKind, Register};
+use crate::{Register, UnlinkedCodeObject, UnlinkedInstructionKind};
 
 use super::{CompileResult, Compiler};
 
@@ -68,7 +68,7 @@ impl Compiler<'_, '_> {
         let code = lambda_compiler.compile_lambda_body(body)?;
         let function = self.code.push_nested_function(code);
         let dst = self.alloc_register()?;
-        self.emit(InstructionKind::MakeClosure {
+        self.emit(UnlinkedInstructionKind::MakeClosure {
             dst,
             function,
             captures: capture_registers,
@@ -76,19 +76,19 @@ impl Compiler<'_, '_> {
         Ok(dst)
     }
 
-    fn compile_lambda_body(mut self, body: &Expr) -> CompileResult<CodeObject> {
+    fn compile_lambda_body(mut self, body: &Expr) -> CompileResult<UnlinkedCodeObject> {
         self.compile_param_defaults()?;
         match &body.kind {
             ExprKind::Block(block) => {
                 let dst = self.alloc_register()?;
                 let returned = self.compile_block_value_to(block, dst)?;
                 if !returned {
-                    self.emit(InstructionKind::Return { src: dst });
+                    self.emit(UnlinkedInstructionKind::Return { src: dst });
                 }
             }
             _ => {
                 let value = self.compile_expr(body)?;
-                self.emit(InstructionKind::Return { src: value });
+                self.emit(UnlinkedInstructionKind::Return { src: value });
             }
         }
         self.code.register_count = self.next_register;

@@ -1,7 +1,7 @@
 use std::fmt;
 use std::path::Path;
 
-use vela_bytecode::Program;
+use vela_bytecode::UnlinkedProgram;
 use vela_bytecode::compiler::error::CompileError;
 use vela_bytecode::compiler::{
     compile_module_sources_with_options_and_registry,
@@ -85,7 +85,7 @@ impl Engine {
         &self,
         source: SourceId,
         text: &str,
-    ) -> Result<Program, EngineSourceError> {
+    ) -> Result<UnlinkedProgram, EngineSourceError> {
         compile_program_source_with_options_and_registry(
             source,
             text,
@@ -95,13 +95,19 @@ impl Engine {
         .map_err(EngineSourceError::compile)
     }
 
-    pub fn compile_file(&self, path: impl AsRef<Path>) -> Result<Program, EngineSourceError> {
+    pub fn compile_file(
+        &self,
+        path: impl AsRef<Path>,
+    ) -> Result<UnlinkedProgram, EngineSourceError> {
         let path = path.as_ref();
         let text = read_source_text(path)?;
         self.compile_source(SourceId::new(1), &text)
     }
 
-    pub fn compile_dir(&self, root: impl AsRef<Path>) -> Result<Program, EngineSourceError> {
+    pub fn compile_dir(
+        &self,
+        root: impl AsRef<Path>,
+    ) -> Result<UnlinkedProgram, EngineSourceError> {
         let root = root.as_ref();
         let sources = load_module_sources(root)?;
         compile_module_sources_with_options_and_registry(

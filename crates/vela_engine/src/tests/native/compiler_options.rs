@@ -125,7 +125,9 @@ fn main() {
         .instructions
         .iter()
         .find_map(|instruction| match &instruction.kind {
-            InstructionKind::CallNative { name, native, .. } if name == "math::clamp" => *native,
+            UnlinkedInstructionKind::CallNative { name, native, .. } if name == "math::clamp" => {
+                Some(*native)
+            }
             _ => None,
         });
 
@@ -190,11 +192,9 @@ fn main() {
         .instructions
         .iter()
         .find_map(|instruction| match &instruction.kind {
-            InstructionKind::CallMethod {
-                method,
-                value_method_id,
-                ..
-            } if method == "len" => *value_method_id,
+            UnlinkedInstructionKind::CallMethodId {
+                method, method_id, ..
+            } if method == "len" => Some(*method_id),
             _ => None,
         });
 
@@ -225,11 +225,9 @@ fn main() {
         .instructions
         .iter()
         .filter_map(|instruction| match &instruction.kind {
-            InstructionKind::CallMethod {
-                method,
-                value_method_id,
-                ..
-            } => Some((method.as_str(), *value_method_id)),
+            UnlinkedInstructionKind::CallMethodId {
+                method, method_id, ..
+            } => Some((method.as_str(), Some(*method_id))),
             _ => None,
         })
         .collect::<Vec<_>>();
@@ -266,11 +264,9 @@ fn main() {
         .instructions
         .iter()
         .filter_map(|instruction| match &instruction.kind {
-            InstructionKind::CallMethod {
-                method,
-                value_method_id,
-                ..
-            } => Some((method.as_str(), *value_method_id)),
+            UnlinkedInstructionKind::CallMethodId {
+                method, method_id, ..
+            } => Some((method.as_str(), Some(*method_id))),
             _ => None,
         })
         .collect::<Vec<_>>();
@@ -307,11 +303,9 @@ fn main() {
         .instructions
         .iter()
         .filter_map(|instruction| match &instruction.kind {
-            InstructionKind::CallMethod {
-                method,
-                value_method_id,
-                ..
-            } => Some((method.as_str(), *value_method_id)),
+            UnlinkedInstructionKind::CallMethodId {
+                method, method_id, ..
+            } => Some((method.as_str(), Some(*method_id))),
             _ => None,
         })
         .collect::<Vec<_>>();
@@ -347,11 +341,9 @@ fn main() {
         .instructions
         .iter()
         .filter_map(|instruction| match &instruction.kind {
-            InstructionKind::CallMethod {
-                method,
-                value_method_id,
-                ..
-            } => Some((method.as_str(), *value_method_id)),
+            UnlinkedInstructionKind::CallMethodId {
+                method, method_id, ..
+            } => Some((method.as_str(), Some(*method_id))),
             _ => None,
         })
         .collect::<Vec<_>>();
@@ -394,11 +386,9 @@ fn main() {
         .instructions
         .iter()
         .filter_map(|instruction| match &instruction.kind {
-            InstructionKind::CallMethod {
-                method,
-                value_method_id,
-                ..
-            } => Some((method.as_str(), *value_method_id)),
+            UnlinkedInstructionKind::CallMethodId {
+                method, method_id, ..
+            } => Some((method.as_str(), Some(*method_id))),
             _ => None,
         })
         .collect::<Vec<_>>();
@@ -436,11 +426,9 @@ fn main() {
         .instructions
         .iter()
         .filter_map(|instruction| match &instruction.kind {
-            InstructionKind::CallMethod {
-                method,
-                value_method_id,
-                ..
-            } => Some((method.as_str(), *value_method_id)),
+            UnlinkedInstructionKind::CallMethodId {
+                method, method_id, ..
+            } => Some((method.as_str(), Some(*method_id))),
             _ => None,
         })
         .collect::<Vec<_>>();
@@ -472,11 +460,9 @@ fn main() {
         .instructions
         .iter()
         .find_map(|instruction| match &instruction.kind {
-            InstructionKind::CallMethod {
-                method,
-                value_method_id,
-                ..
-            } if method == "len" => *value_method_id,
+            UnlinkedInstructionKind::CallMethodId {
+                method, method_id, ..
+            } if method == "len" => Some(*method_id),
             _ => None,
         });
 
@@ -507,11 +493,9 @@ fn main() {
         .instructions
         .iter()
         .filter_map(|instruction| match &instruction.kind {
-            InstructionKind::CallMethod {
-                method,
-                value_method_id,
-                ..
-            } => Some((method.as_str(), *value_method_id)),
+            UnlinkedInstructionKind::CallMethodId {
+                method, method_id, ..
+            } => Some((method.as_str(), Some(*method_id))),
             _ => None,
         })
         .collect::<Vec<_>>();
@@ -554,11 +538,9 @@ fn main() {
         .instructions
         .iter()
         .filter_map(|instruction| match &instruction.kind {
-            InstructionKind::CallMethod {
-                method,
-                value_method_id,
-                ..
-            } => Some((method.as_str(), *value_method_id)),
+            UnlinkedInstructionKind::CallMethodId {
+                method, method_id, ..
+            } => Some((method.as_str(), Some(*method_id))),
             _ => None,
         })
         .collect::<Vec<_>>();
@@ -616,11 +598,9 @@ fn main() {
         .instructions
         .iter()
         .filter_map(|instruction| match &instruction.kind {
-            InstructionKind::CallMethod {
-                method,
-                value_method_id,
-                ..
-            } => Some((method.as_str(), *value_method_id)),
+            UnlinkedInstructionKind::CallMethodId {
+                method, method_id, ..
+            } => Some((method.as_str(), Some(*method_id))),
             _ => None,
         })
         .collect::<Vec<_>>();
@@ -670,11 +650,9 @@ fn main() {
         .instructions
         .iter()
         .filter_map(|instruction| match &instruction.kind {
-            InstructionKind::CallMethod {
-                method,
-                value_method_id,
-                ..
-            } => Some((method.as_str(), *value_method_id)),
+            UnlinkedInstructionKind::CallMethodId {
+                method, method_id, ..
+            } => Some((method.as_str(), Some(*method_id))),
             _ => None,
         })
         .collect::<Vec<_>>();
@@ -710,11 +688,9 @@ fn main() {
         .instructions
         .iter()
         .filter_map(|instruction| match &instruction.kind {
-            InstructionKind::CallMethod {
-                method,
-                value_method_id,
-                ..
-            } => Some((method.as_str(), *value_method_id)),
+            UnlinkedInstructionKind::CallMethodId {
+                method, method_id, ..
+            } => Some((method.as_str(), Some(*method_id))),
             _ => None,
         })
         .collect::<Vec<_>>();

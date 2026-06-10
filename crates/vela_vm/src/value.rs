@@ -1,6 +1,6 @@
 use std::sync::Arc;
 
-use vela_bytecode::CodeObject;
+use vela_bytecode::UnlinkedCodeObject;
 use vela_host::path::HostRef;
 
 use crate::heap::GcRef;
@@ -28,6 +28,6 @@ impl Value {
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct ClosureValue {
-    pub(crate) code: Arc<CodeObject>,
+    pub(crate) code: Arc<UnlinkedCodeObject>,
     pub(crate) captures: Vec<Value>,
 }

@@ -33,7 +33,7 @@ fn main() {
     let main = program.function("main").expect("main function");
     assert!(main.instructions.iter().any(|instruction| matches!(
         instruction.kind,
-        InstructionKind::CallMethodId {
+        UnlinkedInstructionKind::CallMethodId {
             method_id: lowered,
             ..
         } if lowered == method_id
@@ -75,7 +75,7 @@ fn main() {
     let main = program.function("main").expect("main function");
     assert!(main.instructions.iter().any(|instruction| matches!(
         instruction.kind,
-        InstructionKind::CallMethodId {
+        UnlinkedInstructionKind::CallMethodId {
             method_id: lowered,
             ..
         } if lowered == method_id
@@ -116,7 +116,7 @@ pub fn main(player: Player) {
         .expect("game::combat::main function");
     assert!(main.instructions.iter().any(|instruction| matches!(
         instruction.kind,
-        InstructionKind::CallMethodId {
+        UnlinkedInstructionKind::CallMethodId {
             method_id: lowered,
             ..
         } if lowered == method_id
@@ -173,7 +173,7 @@ fn main() {
         .instructions
         .iter()
         .find_map(|instruction| match &instruction.kind {
-            InstructionKind::CallMethodId {
+            UnlinkedInstructionKind::CallMethodId {
                 method_id: lowered,
                 args,
                 ..
@@ -236,7 +236,7 @@ fn main() {
     let main = program.function("main").expect("main function");
     assert!(main.instructions.iter().any(|instruction| matches!(
         instruction.kind,
-        InstructionKind::CallMethodId {
+        UnlinkedInstructionKind::CallMethodId {
             method_id: lowered,
             ..
         } if lowered == method_id
@@ -270,7 +270,7 @@ fn main() {
         .expect("trait default summary method");
     assert!(summary.instructions.iter().any(|instruction| matches!(
         instruction.kind,
-        InstructionKind::CallMethodId {
+        UnlinkedInstructionKind::CallMethodId {
             method_id: lowered,
             ..
         } if lowered == label_id
@@ -302,13 +302,15 @@ fn main() {
         .instructions
         .iter()
         .find_map(|instruction| match &instruction.kind {
-            InstructionKind::MakeClosure { function, .. } => main.nested_function(*function),
+            UnlinkedInstructionKind::MakeClosure { function, .. } => {
+                main.nested_function(*function)
+            }
             _ => None,
         })
         .expect("capturing closure code");
     assert!(closure.instructions.iter().any(|instruction| matches!(
         instruction.kind,
-        InstructionKind::CallMethodId {
+        UnlinkedInstructionKind::CallMethodId {
             method_id: lowered,
             ..
         } if lowered == method_id
@@ -339,7 +341,7 @@ fn main() {
     let main = program.function("main").expect("main function");
     assert!(main.instructions.iter().any(|instruction| matches!(
         instruction.kind,
-        InstructionKind::CallMethodId {
+        UnlinkedInstructionKind::CallMethodId {
             method_id: lowered,
             ..
         } if lowered == method_id
@@ -375,7 +377,7 @@ fn main() {
     let main = program.function("main").expect("main function");
     assert!(main.instructions.iter().any(|instruction| matches!(
         instruction.kind,
-        InstructionKind::CallMethodId {
+        UnlinkedInstructionKind::CallMethodId {
             method_id: lowered,
             ..
         } if lowered == method_id
@@ -411,7 +413,7 @@ fn main() {
     let main = program.function("main").expect("main function");
     assert!(main.instructions.iter().any(|instruction| matches!(
         instruction.kind,
-        InstructionKind::CallMethodId {
+        UnlinkedInstructionKind::CallMethodId {
             method_id: lowered,
             ..
         } if lowered == method_id
@@ -440,7 +442,7 @@ fn main() {
     let main = program.function("main").expect("main function");
     assert!(main.instructions.iter().any(|instruction| matches!(
         instruction.kind,
-        InstructionKind::CallMethodId {
+        UnlinkedInstructionKind::CallMethodId {
             method_id: lowered,
             ..
         } if lowered == method_id
@@ -468,7 +470,7 @@ fn main(player: Player) {
     let main = program.function("main").expect("main function");
     assert!(main.instructions.iter().any(|instruction| matches!(
         instruction.kind,
-        InstructionKind::CallMethodId {
+        UnlinkedInstructionKind::CallMethodId {
             method_id: lowered,
             ..
         } if lowered == method_id
@@ -500,7 +502,7 @@ fn main() {
     let main = program.function("main").expect("main function");
     assert!(main.instructions.iter().any(|instruction| matches!(
         instruction.kind,
-        InstructionKind::CallMethodId {
+        UnlinkedInstructionKind::CallMethodId {
             method_id: lowered,
             ..
         } if lowered == method_id
@@ -540,7 +542,7 @@ pub fn main(player: Player) {
         .expect("game::combat::main function");
     assert!(main.instructions.iter().any(|instruction| matches!(
         instruction.kind,
-        InstructionKind::CallMethodId {
+        UnlinkedInstructionKind::CallMethodId {
             method_id: lowered,
             ..
         } if lowered == method_id

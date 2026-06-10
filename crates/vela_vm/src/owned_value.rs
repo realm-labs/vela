@@ -1,7 +1,7 @@
 use std::collections::BTreeMap;
 use std::sync::Arc;
 
-use vela_bytecode::{CodeObject, Constant};
+use vela_bytecode::{Constant, UnlinkedCodeObject};
 use vela_host::path::HostRef;
 use vela_host::proxy::PathProxy;
 
@@ -201,7 +201,7 @@ macro_rules! owned_enum {
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct OwnedClosureValue {
-    pub(crate) code: Arc<CodeObject>,
+    pub(crate) code: Arc<UnlinkedCodeObject>,
     pub(crate) captures: Vec<OwnedValue>,
 }
 

@@ -4,12 +4,12 @@ use vela_bytecode::{CacheSiteId, CacheSiteKind, HostTargetPlanId};
 use vela_host::resolved::HostMutationOp;
 use vela_host::target::HostTargetPlan;
 
-fn level_target(code: &mut CodeObject, host_ref: HostRef) -> HostTargetPlanId {
+fn level_target(code: &mut UnlinkedCodeObject, host_ref: HostRef) -> HostTargetPlanId {
     code.intern_host_target(HostTargetPlan::new(host_ref.type_id).field(level_field()))
 }
 
 fn host_cache_site(
-    code: &mut CodeObject,
+    code: &mut UnlinkedCodeObject,
     kind: CacheSiteKind,
     instruction_offset: usize,
 ) -> CacheSiteId {
@@ -132,33 +132,39 @@ fn reads_host_field_through_host_access() {
 #[test]
 fn set_host_field_writes_through_and_updates_adapter() {
     let host_ref = player_ref(3);
-    let mut code = CodeObject::new("main", 3).with_params(vec!["player".into()]);
+    let mut code = UnlinkedCodeObject::new("main", 3).with_params(vec!["player".into()]);
     let ten = code.push_constant(Constant::Int(10));
     let target = level_target(&mut code, host_ref);
     let write_cache = host_cache_site(&mut code, CacheSiteKind::HostPathWrite, 1);
     let read_cache = host_cache_site(&mut code, CacheSiteKind::HostPathRead, 2);
-    code.push_instruction(Instruction::new(InstructionKind::LoadConst {
-        dst: Register(1),
-        constant: ten,
-    }));
-    code.push_instruction(Instruction::new(InstructionKind::HostWrite {
-        root: Register(0),
-        target,
-        dynamic_args: Vec::new(),
-        src: Register(1),
-        cache_site: write_cache,
-    }));
-    code.push_instruction(Instruction::new(InstructionKind::HostRead {
-        dst: Register(2),
-        root: Register(0),
-        target,
-        dynamic_args: Vec::new(),
-        cache_site: read_cache,
-    }));
-    code.push_instruction(Instruction::new(InstructionKind::Return {
+    code.push_instruction(UnlinkedInstruction::new(
+        UnlinkedInstructionKind::LoadConst {
+            dst: Register(1),
+            constant: ten,
+        },
+    ));
+    code.push_instruction(UnlinkedInstruction::new(
+        UnlinkedInstructionKind::HostWrite {
+            root: Register(0),
+            target,
+            dynamic_args: Vec::new(),
+            src: Register(1),
+            cache_site: write_cache,
+        },
+    ));
+    code.push_instruction(UnlinkedInstruction::new(
+        UnlinkedInstructionKind::HostRead {
+            dst: Register(2),
+            root: Register(0),
+            target,
+            dynamic_args: Vec::new(),
+            cache_site: read_cache,
+        },
+    ));
+    code.push_instruction(UnlinkedInstruction::new(UnlinkedInstructionKind::Return {
         src: Register(2),
     }));
-    let mut program = Program::new();
+    let mut program = UnlinkedProgram::new();
     program.insert_function(code);
     let mut adapter = host_adapter(host_ref, HostValue::Int(9));
     let mut tx = HostAccess::new();
@@ -191,36 +197,42 @@ fn set_host_field_writes_through_and_updates_adapter() {
 #[test]
 fn collapsed_host_mutate_and_read_execute_through_target_plan() {
     let host_ref = player_ref(3);
-    let mut code = CodeObject::new("main", 3).with_params(vec!["player".into()]);
+    let mut code = UnlinkedCodeObject::new("main", 3).with_params(vec!["player".into()]);
     let one = code.push_constant(Constant::Int(1));
     let target = level_target(&mut code, host_ref);
     let mutate_cache = host_cache_site(&mut code, CacheSiteKind::HostPathMutate, 1);
     let read_cache = host_cache_site(&mut code, CacheSiteKind::HostPathRead, 2);
 
-    code.push_instruction(Instruction::new(InstructionKind::LoadConst {
-        dst: Register(1),
-        constant: one,
-    }));
-    code.push_instruction(Instruction::new(InstructionKind::HostMutate {
-        root: Register(0),
-        target,
-        dynamic_args: Vec::new(),
-        op: HostMutationOp::Add,
-        rhs: Register(1),
-        cache_site: mutate_cache,
-    }));
-    code.push_instruction(Instruction::new(InstructionKind::HostRead {
-        dst: Register(2),
-        root: Register(0),
-        target,
-        dynamic_args: Vec::new(),
-        cache_site: read_cache,
-    }));
-    code.push_instruction(Instruction::new(InstructionKind::Return {
+    code.push_instruction(UnlinkedInstruction::new(
+        UnlinkedInstructionKind::LoadConst {
+            dst: Register(1),
+            constant: one,
+        },
+    ));
+    code.push_instruction(UnlinkedInstruction::new(
+        UnlinkedInstructionKind::HostMutate {
+            root: Register(0),
+            target,
+            dynamic_args: Vec::new(),
+            op: HostMutationOp::Add,
+            rhs: Register(1),
+            cache_site: mutate_cache,
+        },
+    ));
+    code.push_instruction(UnlinkedInstruction::new(
+        UnlinkedInstructionKind::HostRead {
+            dst: Register(2),
+            root: Register(0),
+            target,
+            dynamic_args: Vec::new(),
+            cache_site: read_cache,
+        },
+    ));
+    code.push_instruction(UnlinkedInstruction::new(UnlinkedInstructionKind::Return {
         src: Register(2),
     }));
 
-    let mut program = Program::new();
+    let mut program = UnlinkedProgram::new();
     program.insert_function(code);
     let mut adapter = host_adapter(host_ref, HostValue::Int(9));
     let mut tx = HostAccess::new();
@@ -249,25 +261,29 @@ fn collapsed_host_mutate_and_read_execute_through_target_plan() {
 #[test]
 fn heap_execution_converts_heap_string_for_host_field_write() {
     let host_ref = player_ref(3);
-    let mut code = CodeObject::new("main", 2).with_params(vec!["player".into()]);
+    let mut code = UnlinkedCodeObject::new("main", 2).with_params(vec!["player".into()]);
     let gold = code.push_constant(Constant::String("gold".into()));
     let target = level_target(&mut code, host_ref);
     let write_cache = host_cache_site(&mut code, CacheSiteKind::HostPathWrite, 1);
-    code.push_instruction(Instruction::new(InstructionKind::LoadConst {
-        dst: Register(1),
-        constant: gold,
-    }));
-    code.push_instruction(Instruction::new(InstructionKind::HostWrite {
-        root: Register(0),
-        target,
-        dynamic_args: Vec::new(),
+    code.push_instruction(UnlinkedInstruction::new(
+        UnlinkedInstructionKind::LoadConst {
+            dst: Register(1),
+            constant: gold,
+        },
+    ));
+    code.push_instruction(UnlinkedInstruction::new(
+        UnlinkedInstructionKind::HostWrite {
+            root: Register(0),
+            target,
+            dynamic_args: Vec::new(),
+            src: Register(1),
+            cache_site: write_cache,
+        },
+    ));
+    code.push_instruction(UnlinkedInstruction::new(UnlinkedInstructionKind::Return {
         src: Register(1),
-        cache_site: write_cache,
     }));
-    code.push_instruction(Instruction::new(InstructionKind::Return {
-        src: Register(1),
-    }));
-    let mut program = Program::new();
+    let mut program = UnlinkedProgram::new();
     program.insert_function(code);
     let mut adapter = host_adapter(host_ref, HostValue::String("old".into()));
     let mut tx = HostAccess::new();
@@ -297,38 +313,46 @@ fn heap_execution_converts_heap_string_for_host_field_write() {
 #[test]
 fn repeated_host_writes_write_through_without_mutation_budget() {
     let host_ref = player_ref(3);
-    let mut code = CodeObject::new("main", 3).with_params(vec!["player".into()]);
+    let mut code = UnlinkedCodeObject::new("main", 3).with_params(vec!["player".into()]);
     let ten = code.push_constant(Constant::Int(10));
     let eleven = code.push_constant(Constant::Int(11));
     let target = level_target(&mut code, host_ref);
     let first_write_cache = host_cache_site(&mut code, CacheSiteKind::HostPathWrite, 1);
     let second_write_cache = host_cache_site(&mut code, CacheSiteKind::HostPathWrite, 3);
-    code.push_instruction(Instruction::new(InstructionKind::LoadConst {
-        dst: Register(1),
-        constant: ten,
-    }));
-    code.push_instruction(Instruction::new(InstructionKind::HostWrite {
-        root: Register(0),
-        target,
-        dynamic_args: Vec::new(),
-        src: Register(1),
-        cache_site: first_write_cache,
-    }));
-    code.push_instruction(Instruction::new(InstructionKind::LoadConst {
-        dst: Register(2),
-        constant: eleven,
-    }));
-    code.push_instruction(Instruction::new(InstructionKind::HostWrite {
-        root: Register(0),
-        target,
-        dynamic_args: Vec::new(),
+    code.push_instruction(UnlinkedInstruction::new(
+        UnlinkedInstructionKind::LoadConst {
+            dst: Register(1),
+            constant: ten,
+        },
+    ));
+    code.push_instruction(UnlinkedInstruction::new(
+        UnlinkedInstructionKind::HostWrite {
+            root: Register(0),
+            target,
+            dynamic_args: Vec::new(),
+            src: Register(1),
+            cache_site: first_write_cache,
+        },
+    ));
+    code.push_instruction(UnlinkedInstruction::new(
+        UnlinkedInstructionKind::LoadConst {
+            dst: Register(2),
+            constant: eleven,
+        },
+    ));
+    code.push_instruction(UnlinkedInstruction::new(
+        UnlinkedInstructionKind::HostWrite {
+            root: Register(0),
+            target,
+            dynamic_args: Vec::new(),
+            src: Register(2),
+            cache_site: second_write_cache,
+        },
+    ));
+    code.push_instruction(UnlinkedInstruction::new(UnlinkedInstructionKind::Return {
         src: Register(2),
-        cache_site: second_write_cache,
     }));
-    code.push_instruction(Instruction::new(InstructionKind::Return {
-        src: Register(2),
-    }));
-    let mut program = Program::new();
+    let mut program = UnlinkedProgram::new();
     program.insert_function(code);
     let mut adapter = host_adapter(host_ref, HostValue::Int(9));
     let mut tx = HostAccess::new();
@@ -361,34 +385,40 @@ fn repeated_host_writes_write_through_without_mutation_budget() {
 #[test]
 fn add_host_field_writes_through_and_updates_adapter() {
     let host_ref = player_ref(3);
-    let mut code = CodeObject::new("main", 3).with_params(vec!["player".into()]);
+    let mut code = UnlinkedCodeObject::new("main", 3).with_params(vec!["player".into()]);
     let one = code.push_constant(Constant::Int(1));
     let target = level_target(&mut code, host_ref);
     let mutate_cache = host_cache_site(&mut code, CacheSiteKind::HostPathMutate, 1);
     let read_cache = host_cache_site(&mut code, CacheSiteKind::HostPathRead, 2);
-    code.push_instruction(Instruction::new(InstructionKind::LoadConst {
-        dst: Register(1),
-        constant: one,
-    }));
-    code.push_instruction(Instruction::new(InstructionKind::HostMutate {
-        root: Register(0),
-        target,
-        dynamic_args: Vec::new(),
-        op: HostMutationOp::Add,
-        rhs: Register(1),
-        cache_site: mutate_cache,
-    }));
-    code.push_instruction(Instruction::new(InstructionKind::HostRead {
-        dst: Register(2),
-        root: Register(0),
-        target,
-        dynamic_args: Vec::new(),
-        cache_site: read_cache,
-    }));
-    code.push_instruction(Instruction::new(InstructionKind::Return {
+    code.push_instruction(UnlinkedInstruction::new(
+        UnlinkedInstructionKind::LoadConst {
+            dst: Register(1),
+            constant: one,
+        },
+    ));
+    code.push_instruction(UnlinkedInstruction::new(
+        UnlinkedInstructionKind::HostMutate {
+            root: Register(0),
+            target,
+            dynamic_args: Vec::new(),
+            op: HostMutationOp::Add,
+            rhs: Register(1),
+            cache_site: mutate_cache,
+        },
+    ));
+    code.push_instruction(UnlinkedInstruction::new(
+        UnlinkedInstructionKind::HostRead {
+            dst: Register(2),
+            root: Register(0),
+            target,
+            dynamic_args: Vec::new(),
+            cache_site: read_cache,
+        },
+    ));
+    code.push_instruction(UnlinkedInstruction::new(UnlinkedInstructionKind::Return {
         src: Register(2),
     }));
-    let mut program = Program::new();
+    let mut program = UnlinkedProgram::new();
     program.insert_function(code);
     let mut adapter = host_adapter(host_ref, HostValue::Int(9));
     let mut tx = HostAccess::new();
@@ -449,11 +479,11 @@ fn host_field_read_rejects_stale_generation() {
 fn host_field_read_error_keeps_instruction_source_span() {
     let host_ref = player_ref(3);
     let span = Span::new(SourceId::new(7), 20, 32);
-    let mut code = CodeObject::new("main", 2).with_params(vec!["player".into()]);
+    let mut code = UnlinkedCodeObject::new("main", 2).with_params(vec!["player".into()]);
     let target = level_target(&mut code, host_ref);
     let cache_site = host_cache_site(&mut code, CacheSiteKind::HostPathRead, 0);
     code.push_instruction(
-        Instruction::new(InstructionKind::HostRead {
+        UnlinkedInstruction::new(UnlinkedInstructionKind::HostRead {
             dst: Register(1),
             root: Register(0),
             target,
@@ -462,10 +492,10 @@ fn host_field_read_error_keeps_instruction_source_span() {
         })
         .with_span(span),
     );
-    code.push_instruction(Instruction::new(InstructionKind::Return {
+    code.push_instruction(UnlinkedInstruction::new(UnlinkedInstructionKind::Return {
         src: Register(1),
     }));
-    let mut program = Program::new();
+    let mut program = UnlinkedProgram::new();
     program.insert_function(code);
     let mut adapter = host_adapter(host_ref, HostValue::Int(9));
     adapter.deny_diagnostic_path_read(level_path(host_ref));
@@ -500,56 +530,62 @@ fn runtime_errors_include_script_call_stack() {
     let leaf_error_span = Span::new(SourceId::new(1), 80, 86);
     let leaf_call_span = Span::new(SourceId::new(1), 44, 50);
     let middle_call_span = Span::new(SourceId::new(1), 18, 26);
-    let mut program = Program::new();
+    let mut program = UnlinkedProgram::new();
 
-    let mut main = CodeObject::new("main", 1);
+    let mut main = UnlinkedCodeObject::new("main", 1);
     main.push_instruction(
-        Instruction::new(InstructionKind::CallFunction {
+        UnlinkedInstruction::new(UnlinkedInstructionKind::CallFunction {
             dst: Register(0),
+            target: vela_def::FunctionId::new(1),
             name: "middle".to_owned(),
             args: Vec::new(),
         })
         .with_span(middle_call_span),
     );
-    main.push_instruction(Instruction::new(InstructionKind::Return {
+    main.push_instruction(UnlinkedInstruction::new(UnlinkedInstructionKind::Return {
         src: Register(0),
     }));
     program.insert_function(main);
 
-    let mut middle = CodeObject::new("middle", 1);
+    let mut middle = UnlinkedCodeObject::new("middle", 1);
     middle.push_instruction(
-        Instruction::new(InstructionKind::CallFunction {
+        UnlinkedInstruction::new(UnlinkedInstructionKind::CallFunction {
             dst: Register(0),
+            target: vela_def::FunctionId::new(2),
             name: "leaf".to_owned(),
             args: Vec::new(),
         })
         .with_span(leaf_call_span),
     );
-    middle.push_instruction(Instruction::new(InstructionKind::Return {
+    middle.push_instruction(UnlinkedInstruction::new(UnlinkedInstructionKind::Return {
         src: Register(0),
     }));
     program.insert_function(middle);
 
-    let mut leaf = CodeObject::new("leaf", 3);
+    let mut leaf = UnlinkedCodeObject::new("leaf", 3);
     let ten = leaf.push_constant(Constant::Int(10));
     let zero = leaf.push_constant(Constant::Int(0));
-    leaf.push_instruction(Instruction::new(InstructionKind::LoadConst {
-        dst: Register(0),
-        constant: ten,
-    }));
-    leaf.push_instruction(Instruction::new(InstructionKind::LoadConst {
-        dst: Register(1),
-        constant: zero,
-    }));
+    leaf.push_instruction(UnlinkedInstruction::new(
+        UnlinkedInstructionKind::LoadConst {
+            dst: Register(0),
+            constant: ten,
+        },
+    ));
+    leaf.push_instruction(UnlinkedInstruction::new(
+        UnlinkedInstructionKind::LoadConst {
+            dst: Register(1),
+            constant: zero,
+        },
+    ));
     leaf.push_instruction(
-        Instruction::new(InstructionKind::Div {
+        UnlinkedInstruction::new(UnlinkedInstructionKind::Div {
             dst: Register(2),
             lhs: Register(0),
             rhs: Register(1),
         })
         .with_span(leaf_error_span),
     );
-    leaf.push_instruction(Instruction::new(InstructionKind::Return {
+    leaf.push_instruction(UnlinkedInstruction::new(UnlinkedInstructionKind::Return {
         src: Register(2),
     }));
     program.insert_function(leaf);

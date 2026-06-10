@@ -74,8 +74,8 @@ pub(crate) use script_object::ScriptFields;
 use small_storage::SmallStorage;
 use try_propagation::{TryPropagation, try_propagate_value};
 use vela_bytecode::{
-    CacheSiteId, CodeObject, Constant, HostTargetPlanId, InstructionKind, InstructionOffset,
-    Program, ProgramCode, ProgramImage, Register,
+    CacheSiteId, Constant, HostTargetPlanId, InstructionOffset, ProgramImage, Register,
+    UnlinkedCodeObject, UnlinkedInstructionKind, UnlinkedProgram, UnlinkedProgramCode,
 };
 use vela_common::{GlobalSlot, HostTypeId, Span};
 use vela_def::FunctionId;
@@ -89,8 +89,8 @@ use budget::ExecutionBudget;
 use value::Value;
 
 pub(crate) struct ExecutionCall<'a> {
-    pub(crate) code: &'a CodeObject,
-    pub(crate) program: Option<&'a dyn ProgramCode>,
+    pub(crate) code: &'a UnlinkedCodeObject,
+    pub(crate) program: Option<&'a dyn UnlinkedProgramCode>,
     pub(crate) captures: &'a [Value],
     pub(crate) args: &'a [Value],
     pub(crate) call_site: Option<Span>,
@@ -233,7 +233,7 @@ pub struct HostInlineCacheEntry {
 }
 
 pub struct RuntimeMethodCall<'program, 'args, 'host, 'heap, 'roots, 'budget> {
-    pub program: &'program dyn ProgramCode,
+    pub program: &'program dyn UnlinkedProgramCode,
     pub receiver: Value,
     pub method: &'args str,
     pub method_id: Option<vela_def::MethodId>,
@@ -244,8 +244,8 @@ pub struct RuntimeMethodCall<'program, 'args, 'host, 'heap, 'roots, 'budget> {
 }
 
 pub struct RuntimeCodeCall<'program, 'args, 'host, 'heap, 'roots, 'budget, 'caches> {
-    pub program: &'program dyn ProgramCode,
-    pub code: &'program CodeObject,
+    pub program: &'program dyn UnlinkedProgramCode,
+    pub code: &'program UnlinkedCodeObject,
     pub args: &'args [Value],
     pub host: &'host mut HostExecution<'host>,
     pub persistent: PersistentHeapExecution<'heap, 'roots>,
@@ -375,14 +375,14 @@ impl Vm {
         self.type_registry.as_deref()
     }
 
-    pub fn run(&self, code: &CodeObject) -> VmResult<OwnedValue> {
+    pub fn run(&self, code: &UnlinkedCodeObject) -> VmResult<OwnedValue> {
         let mut budget = ExecutionBudget::unbounded();
         self.run_with_budget(code, &mut budget)
     }
 
     pub fn run_with_budget(
         &self,
-        code: &CodeObject,
+        code: &UnlinkedCodeObject,
         budget: &mut ExecutionBudget,
     ) -> VmResult<OwnedValue> {
         let mut heap = ScriptHeap::new();
@@ -400,7 +400,7 @@ impl Vm {
 
     pub fn run_with_heap_and_budget(
         &self,
-        code: &CodeObject,
+        code: &UnlinkedCodeObject,
         heap: &mut HeapExecution<'_>,
         budget: &mut ExecutionBudget,
     ) -> VmResult<Value> {
@@ -409,7 +409,7 @@ impl Vm {
 
     pub fn run_with_managed_heap_and_budget(
         &self,
-        code: &CodeObject,
+        code: &UnlinkedCodeObject,
         budget: &mut ExecutionBudget,
     ) -> VmResult<OwnedValue> {
         self.run_with_budget(code, budget)
@@ -417,7 +417,7 @@ impl Vm {
 
     pub fn run_program(
         &self,
-        program: &Program,
+        program: &UnlinkedProgram,
         entry: &str,
         args: &[OwnedValue],
     ) -> VmResult<OwnedValue> {
@@ -459,7 +459,7 @@ impl Vm {
 
     pub fn run_program_with_budget(
         &self,
-        program: &Program,
+        program: &UnlinkedProgram,
         entry: &str,
         args: &[OwnedValue],
         budget: &mut ExecutionBudget,
@@ -503,7 +503,7 @@ impl Vm {
 
     pub fn run_program_with_managed_heap_and_budget(
         &self,
-        program: &Program,
+        program: &UnlinkedProgram,
         entry: &str,
         args: &[OwnedValue],
         budget: &mut ExecutionBudget,
@@ -513,7 +513,7 @@ impl Vm {
 
     pub fn run_program_runtime(
         &self,
-        program: &Program,
+        program: &UnlinkedProgram,
         entry: &str,
         args: &[Value],
     ) -> VmResult<Value> {
@@ -533,7 +533,7 @@ impl Vm {
 
     pub fn run_program_runtime_with_budget(
         &self,
-        program: &Program,
+        program: &UnlinkedProgram,
         entry: &str,
         args: &[Value],
         budget: &mut ExecutionBudget,
@@ -544,7 +544,7 @@ impl Vm {
 
     pub fn run_program_runtime_with_heap_and_budget(
         &self,
-        program: &Program,
+        program: &UnlinkedProgram,
         entry: &str,
         args: &[Value],
         heap: &mut HeapExecution<'_>,
@@ -556,7 +556,7 @@ impl Vm {
 
     pub fn run_program_runtime_with_managed_heap_and_budget(
         &self,
-        program: &Program,
+        program: &UnlinkedProgram,
         entry: &str,
         args: &[Value],
         budget: &mut ExecutionBudget,
@@ -567,7 +567,7 @@ impl Vm {
 
     pub fn run_with_host(
         &self,
-        code: &CodeObject,
+        code: &UnlinkedCodeObject,
         host: &mut HostExecution<'_>,
     ) -> VmResult<OwnedValue> {
         let mut budget = ExecutionBudget::unbounded();
@@ -576,7 +576,7 @@ impl Vm {
 
     pub fn run_with_host_and_budget(
         &self,
-        code: &CodeObject,
+        code: &UnlinkedCodeObject,
         host: &mut HostExecution<'_>,
         budget: &mut ExecutionBudget,
     ) -> VmResult<OwnedValue> {
@@ -595,7 +595,7 @@ impl Vm {
 
     pub fn run_with_host_heap_and_budget(
         &self,
-        code: &CodeObject,
+        code: &UnlinkedCodeObject,
         host: &mut HostExecution<'_>,
         heap: &mut HeapExecution<'_>,
         budget: &mut ExecutionBudget,
@@ -605,7 +605,7 @@ impl Vm {
 
     pub fn run_with_host_managed_heap_and_budget(
         &self,
-        code: &CodeObject,
+        code: &UnlinkedCodeObject,
         host: &mut HostExecution<'_>,
         budget: &mut ExecutionBudget,
     ) -> VmResult<OwnedValue> {
@@ -614,7 +614,7 @@ impl Vm {
 
     pub fn run_program_with_host(
         &self,
-        program: &Program,
+        program: &UnlinkedProgram,
         entry: &str,
         args: &[OwnedValue],
         host: &mut HostExecution<'_>,
@@ -636,7 +636,7 @@ impl Vm {
 
     pub fn run_program_with_host_and_budget(
         &self,
-        program: &Program,
+        program: &UnlinkedProgram,
         entry: &str,
         args: &[OwnedValue],
         host: &mut HostExecution<'_>,
@@ -700,7 +700,7 @@ impl Vm {
 
     pub fn run_program_with_host_persistent_heap_and_budget(
         &self,
-        program: &Program,
+        program: &UnlinkedProgram,
         entry: &str,
         args: &[OwnedValue],
         host: &mut HostExecution<'_>,
@@ -787,7 +787,7 @@ impl Vm {
 
     pub fn run_program_runtime_with_host_persistent_heap_and_budget(
         &self,
-        program: &Program,
+        program: &UnlinkedProgram,
         entry: &str,
         args: &[Value],
         host: &mut HostExecution<'_>,
@@ -821,8 +821,8 @@ impl Vm {
 
     pub fn run_code_runtime_with_host_persistent_heap_and_budget<'host>(
         &self,
-        program: &Program,
-        code: &CodeObject,
+        program: &UnlinkedProgram,
+        code: &UnlinkedCodeObject,
         args: &[Value],
         host: &'host mut HostExecution<'host>,
         persistent: PersistentHeapExecution<'_, '_>,
@@ -889,10 +889,10 @@ impl Vm {
             budget: Some(call.budget),
             caller_roots,
         };
+        let mut receiver = call.receiver;
         let result = if let Some(method_id) = call.method_id {
-            call_method_id(&call.receiver, call.method, method_id, call.args, dispatch)
+            call_method_id(&mut receiver, call.method, method_id, call.args, dispatch)
         } else {
-            let mut receiver = call.receiver;
             call_method(&mut receiver, call.method, None, call.args, dispatch)
         }?;
         let result =
@@ -902,7 +902,7 @@ impl Vm {
             .roots
             .iter()
             .for_each(|value| value.trace_heap_refs(&mut roots));
-        call.receiver.trace_heap_refs(&mut roots);
+        receiver.trace_heap_refs(&mut roots);
         result.trace_heap_refs(&mut roots);
         heap_execution
             .heap
@@ -912,7 +912,7 @@ impl Vm {
 
     pub fn run_program_with_host_managed_heap_and_budget(
         &self,
-        program: &Program,
+        program: &UnlinkedProgram,
         entry: &str,
         args: &[OwnedValue],
         host: &mut HostExecution<'_>,
@@ -923,7 +923,7 @@ impl Vm {
 
     pub fn run_program_runtime_with_host(
         &self,
-        program: &Program,
+        program: &UnlinkedProgram,
         entry: &str,
         args: &[Value],
         host: &mut HostExecution<'_>,
@@ -934,7 +934,7 @@ impl Vm {
 
     pub fn run_program_runtime_with_host_and_budget(
         &self,
-        program: &Program,
+        program: &UnlinkedProgram,
         entry: &str,
         args: &[Value],
         host: &mut HostExecution<'_>,
@@ -946,7 +946,7 @@ impl Vm {
 
     pub fn run_program_runtime_with_host_heap_and_budget(
         &self,
-        program: &Program,
+        program: &UnlinkedProgram,
         entry: &str,
         args: &[Value],
         host: &mut HostExecution<'_>,
@@ -966,7 +966,7 @@ impl Vm {
 
     pub fn run_program_runtime_with_host_managed_heap_and_budget(
         &self,
-        program: &Program,
+        program: &UnlinkedProgram,
         entry: &str,
         args: &[Value],
         host: &mut HostExecution<'_>,
@@ -978,8 +978,8 @@ impl Vm {
 
     fn execute_with_managed_heap_and_budget(
         &self,
-        code: &CodeObject,
-        program: Option<&dyn ProgramCode>,
+        code: &UnlinkedCodeObject,
+        program: Option<&dyn UnlinkedProgramCode>,
         args: &[Value],
         host: Option<&mut HostExecution<'_>>,
         budget: &mut ExecutionBudget,
@@ -999,8 +999,8 @@ impl Vm {
 
     fn execute(
         &self,
-        code: &CodeObject,
-        program: Option<&dyn ProgramCode>,
+        code: &UnlinkedCodeObject,
+        program: Option<&dyn UnlinkedProgramCode>,
         args: &[Value],
         host: Option<&mut HostExecution<'_>>,
         heap: Option<&mut HeapExecution<'_>>,
@@ -1056,8 +1056,8 @@ impl Vm {
 
     pub(crate) fn execute_code_object(
         &self,
-        code: &CodeObject,
-        program: Option<&dyn ProgramCode>,
+        code: &UnlinkedCodeObject,
+        program: Option<&dyn UnlinkedProgramCode>,
         args: &[Value],
         host: Option<&mut HostExecution<'_>>,
         heap: Option<&mut HeapExecution<'_>>,
@@ -1103,9 +1103,9 @@ pub fn persistent_value_to_owned(value: &Value, heap: &mut ScriptHeap) -> VmResu
 }
 
 fn program_entry<'program>(
-    program: &'program (impl ProgramCode + ?Sized),
+    program: &'program (impl UnlinkedProgramCode + ?Sized),
     entry: &str,
-) -> VmResult<&'program CodeObject> {
+) -> VmResult<&'program UnlinkedCodeObject> {
     program.function(entry).ok_or_else(|| {
         VmError::new(VmErrorKind::UnknownFunction {
             name: entry.to_owned(),

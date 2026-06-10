@@ -3,7 +3,7 @@ use std::path::Path;
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::{Arc, Mutex};
 
-use vela_bytecode::{Program, ProgramCode, ProgramImage};
+use vela_bytecode::{ProgramImage, UnlinkedProgram, UnlinkedProgramCode};
 use vela_common::SourceId;
 use vela_host::access::HostAccess;
 use vela_host::adapter::ScriptStateAdapter;
@@ -69,7 +69,7 @@ fn next_runtime_id() -> u64 {
 
 impl RuntimeImpl<OwnedImage> {
     #[must_use]
-    pub fn new(engine: Engine, program: Program) -> Self {
+    pub fn new(engine: Engine, program: UnlinkedProgram) -> Self {
         let image = OwnedImage::from_image(RuntimeImage::new(engine, program));
         let state = RuntimeState::for_image(&image);
         Self {

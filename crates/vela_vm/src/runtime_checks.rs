@@ -1,4 +1,4 @@
-use vela_bytecode::CodeObject;
+use vela_bytecode::UnlinkedCodeObject;
 use vela_host::path::HostRef;
 
 use crate::heap::HeapValue;
@@ -81,7 +81,7 @@ pub(crate) fn is_truthy(value: &Value) -> bool {
     !matches!(value, Value::Missing | Value::Null | Value::Bool(false))
 }
 
-pub(crate) fn validate_jump(code: &CodeObject, offset: usize) -> VmResult<()> {
+pub(crate) fn validate_jump(code: &UnlinkedCodeObject, offset: usize) -> VmResult<()> {
     if offset <= code.instructions.len() {
         Ok(())
     } else {

@@ -1,4 +1,4 @@
-use vela_bytecode::{ProgramCode, Register};
+use vela_bytecode::{Register, UnlinkedProgramCode};
 use vela_def::MethodId;
 
 use crate::heap::GcRef;
@@ -16,13 +16,12 @@ pub(crate) struct ScriptMethodCall<'a> {
     pub(crate) dst: Register,
     pub(crate) receiver: Register,
     pub(crate) method: &'a str,
-    pub(crate) value_method_id: Option<MethodId>,
     pub(crate) values: &'a [Value],
 }
 
 pub(crate) fn dispatch_script_method_call(
     vm: &Vm,
-    program: Option<&dyn ProgramCode>,
+    program: Option<&dyn UnlinkedProgramCode>,
     host: &mut Option<&mut HostExecution<'_>>,
     heap: &mut Option<&mut HeapExecution<'_>>,
     budget: &mut Option<&mut ExecutionBudget>,
@@ -32,7 +31,7 @@ pub(crate) fn dispatch_script_method_call(
     if let Some(result) = call_readonly_method_without_callbacks(
         frame.read(call.receiver)?,
         call.method,
-        call.value_method_id,
+        None,
         call.values,
         heap.as_deref(),
     ) {
@@ -46,7 +45,7 @@ pub(crate) fn dispatch_script_method_call(
     if let Some(result) = call_non_mutating_method(
         frame.read(call.receiver)?,
         call.method,
-        call.value_method_id,
+        None,
         call.values,
         ScriptMethodDispatch {
             vm,
@@ -66,7 +65,7 @@ pub(crate) fn dispatch_script_method_call(
         let result = call_method(
             &mut receiver_value,
             call.method,
-            call.value_method_id,
+            None,
             call.values,
             ScriptMethodDispatch {
                 vm,
@@ -95,17 +94,17 @@ pub(crate) struct ScriptMethodIdCall<'a> {
 
 pub(crate) fn dispatch_script_method_id_call(
     vm: &Vm,
-    program: Option<&dyn ProgramCode>,
+    program: Option<&dyn UnlinkedProgramCode>,
     host: &mut Option<&mut HostExecution<'_>>,
     heap: &mut Option<&mut HeapExecution<'_>>,
     budget: &mut Option<&mut ExecutionBudget>,
     frame: &mut CallFrame,
     call: ScriptMethodIdCall<'_>,
 ) -> VmResult<()> {
-    let receiver_value = *frame.read(call.receiver)?;
+    let mut receiver_value = *frame.read(call.receiver)?;
     let caller_roots = caller_roots_for_heap(frame, heap.as_deref());
     let result = call_method_id(
-        &receiver_value,
+        &mut receiver_value,
         call.method,
         call.method_id,
         call.values,
@@ -119,6 +118,7 @@ pub(crate) fn dispatch_script_method_id_call(
         },
     )?;
     let result = store_value_in_heap_if_needed(result, heap.as_deref_mut(), budget.as_deref_mut())?;
+    frame.write(call.receiver, receiver_value)?;
     frame.write(call.dst, result)
 }
 

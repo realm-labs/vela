@@ -1,6 +1,8 @@
 use std::sync::Arc;
 
-use vela_bytecode::{CodeObject, FunctionIndex, InstructionOffset, ProgramCode, Register};
+use vela_bytecode::{
+    FunctionIndex, InstructionOffset, Register, UnlinkedCodeObject, UnlinkedProgramCode,
+};
 use vela_common::Span;
 
 use crate::heap::HeapValue;
@@ -13,8 +15,8 @@ use crate::{
 
 pub(crate) struct MakeClosure<'a> {
     pub(crate) dst: Register,
-    pub(crate) program: Option<&'a dyn ProgramCode>,
-    pub(crate) owner: &'a CodeObject,
+    pub(crate) program: Option<&'a dyn UnlinkedProgramCode>,
+    pub(crate) owner: &'a UnlinkedCodeObject,
     pub(crate) function: FunctionIndex,
     pub(crate) captures: &'a [Register],
 }
@@ -54,10 +56,10 @@ pub(crate) fn make_closure(
 }
 
 fn resolve_closure_code<'a>(
-    program: Option<&'a dyn ProgramCode>,
-    owner: &'a CodeObject,
+    program: Option<&'a dyn UnlinkedProgramCode>,
+    owner: &'a UnlinkedCodeObject,
     function: FunctionIndex,
-) -> Option<&'a CodeObject> {
+) -> Option<&'a UnlinkedCodeObject> {
     program
         .and_then(|program| program.function_by_index(function))
         .or_else(|| owner.nested_function(function))
@@ -73,7 +75,7 @@ pub(crate) struct ClosureCall<'a> {
 
 pub(crate) fn dispatch_closure_call(
     vm: &Vm,
-    program: Option<&dyn ProgramCode>,
+    program: Option<&dyn UnlinkedProgramCode>,
     host: &mut Option<&mut HostExecution<'_>>,
     heap: &mut Option<&mut HeapExecution<'_>>,
     budget: &mut Option<&mut ExecutionBudget>,

@@ -103,7 +103,7 @@ fn main() {
     .expect("script value method call should compile");
     assert!(code.instructions.iter().any(|instruction| matches!(
         &instruction.kind,
-        InstructionKind::CallMethod { method, .. } if method == "len"
+        UnlinkedInstructionKind::CallMethod { method, .. } if method == "len"
     )));
 }
 #[test]
@@ -137,15 +137,13 @@ fn main() {
     let grant = program.function("grant").expect("grant function");
     let main = program.function("main").expect("main function");
     assert_eq!(grant.param_defaults, [false, true, true]);
-    assert!(
-        grant.instructions.iter().any(|instruction| matches!(
-            instruction.kind,
-            InstructionKind::JumpIfNotMissing { .. }
-        ))
-    );
+    assert!(grant.instructions.iter().any(|instruction| matches!(
+        instruction.kind,
+        UnlinkedInstructionKind::JumpIfNotMissing { .. }
+    )));
     assert!(main.instructions.iter().any(|instruction| matches!(
         &instruction.kind,
-        InstructionKind::CallFunction { args, .. }
+        UnlinkedInstructionKind::CallFunction { args, .. }
             if args.len() == 3 && matches!(args[1], CallArgument::Missing)
     )));
 }
@@ -184,8 +182,8 @@ fn main() {
 
     assert!(main.instructions.iter().any(|instruction| matches!(
         &instruction.kind,
-        InstructionKind::CallNative { name, native, args, .. }
-            if name == "game::add" && *native == Some(native_id) && args.len() == 2
+        UnlinkedInstructionKind::CallNative { name, native, args, .. }
+            if name == "game::add" && *native == native_id && args.len() == 2
     )));
 }
 
@@ -227,7 +225,7 @@ fn main() {
 
     assert!(main.instructions.iter().any(|instruction| matches!(
         &instruction.kind,
-        InstructionKind::CallMethod { method, args, .. } if method == "get_or" && args.len() == 2
+        UnlinkedInstructionKind::CallMethodId { method, args, .. } if method == "get_or" && args.len() == 2
     )));
 }
 
@@ -277,7 +275,7 @@ fn main() {
             .iter()
             .filter(|instruction| matches!(
                 &instruction.kind,
-                InstructionKind::CallMethod { method, args, .. }
+                UnlinkedInstructionKind::CallMethodId { method, args, .. }
                     if method == "contains" && args.len() == 1
             ))
             .count(),
@@ -320,19 +318,19 @@ fn main() {
     let main = program.function("main").expect("main function");
 
     let lowered = main.instructions.iter().find_map(|instruction| {
-        let InstructionKind::CallMethod {
+        let UnlinkedInstructionKind::CallMethodId {
             method: name,
-            value_method_id,
+            method_id,
             args,
             ..
         } = &instruction.kind
         else {
             return None;
         };
-        (name == "contains").then_some((*value_method_id, args.len()))
+        (name == "contains").then_some((*method_id, args.len()))
     });
 
-    assert_eq!(lowered, Some((Some(method), 1)));
+    assert_eq!(lowered, Some((method, 1)));
 }
 
 #[test]
@@ -362,7 +360,7 @@ fn main(text: string) {
             .iter()
             .filter(|instruction| matches!(
                 &instruction.kind,
-                InstructionKind::CallMethod { method, args, .. }
+                UnlinkedInstructionKind::CallMethodId { method, args, .. }
                     if method == "contains" && args.len() == 1
             ))
             .count(),
@@ -390,14 +388,16 @@ fn main() {
         .instructions
         .iter()
         .find_map(|instruction| match &instruction.kind {
-            InstructionKind::MakeClosure { function, .. } => main.nested_function(*function),
+            UnlinkedInstructionKind::MakeClosure { function, .. } => {
+                main.nested_function(*function)
+            }
             _ => None,
         })
         .expect("lambda code object");
 
     assert!(lambda.instructions.iter().any(|instruction| matches!(
         &instruction.kind,
-        InstructionKind::CallMethod { method, args, .. } if method == "contains" && args.len() == 1
+        UnlinkedInstructionKind::CallMethodId { method, args, .. } if method == "contains" && args.len() == 1
     )));
 }
 

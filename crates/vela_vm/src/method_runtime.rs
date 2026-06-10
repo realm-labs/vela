@@ -1,4 +1,4 @@
-use vela_bytecode::ProgramCode;
+use vela_bytecode::UnlinkedProgramCode;
 
 use crate::heap::GcRef;
 use crate::runtime_checks::expect_closure_ref;
@@ -9,7 +9,7 @@ use crate::{
 
 pub(crate) struct MethodRuntime<'a, 'host, 'heap> {
     pub(crate) vm: &'a Vm,
-    pub(crate) program: Option<&'a dyn ProgramCode>,
+    pub(crate) program: Option<&'a dyn UnlinkedProgramCode>,
     pub(crate) host: Option<&'a mut HostExecution<'host>>,
     pub(crate) heap: Option<&'a mut HeapExecution<'heap>>,
     pub(crate) budget: Option<&'a mut ExecutionBudget>,

@@ -5,13 +5,13 @@ use vela_hir::module_graph::ModuleGraph;
 
 use crate::script_methods::ScriptMethodTable;
 use crate::{
-    CacheSiteDesc, CacheSiteId, CacheSiteLayout, CodeObject, FunctionIndex, InstructionKind,
-    Program, ProgramCode,
+    CacheSiteDesc, CacheSiteId, CacheSiteLayout, FunctionIndex, UnlinkedCodeObject,
+    UnlinkedInstructionKind, UnlinkedProgram, UnlinkedProgramCode,
 };
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct ProgramImage {
-    functions: Box<[CodeObject]>,
+    functions: Box<[UnlinkedCodeObject]>,
     function_by_name: BTreeMap<String, FunctionIndex>,
     global_names: Box<[String]>,
     global_slots: BTreeMap<String, GlobalSlot>,
@@ -22,7 +22,7 @@ pub struct ProgramImage {
 
 impl ProgramImage {
     #[must_use]
-    pub fn from_program(program: &Program) -> Self {
+    pub fn from_program(program: &UnlinkedProgram) -> Self {
         Self::from_parts(
             program.functions.values().cloned(),
             program.global_names().iter().cloned(),
@@ -33,7 +33,7 @@ impl ProgramImage {
 
     #[must_use]
     pub fn from_parts(
-        functions: impl IntoIterator<Item = CodeObject>,
+        functions: impl IntoIterator<Item = UnlinkedCodeObject>,
         global_names: impl IntoIterator<Item = String>,
         script_methods: ScriptMethodTable,
         script_metadata: Option<ModuleGraph>,
@@ -69,8 +69,8 @@ impl ProgramImage {
     }
 
     #[must_use]
-    pub fn to_program(&self) -> Program {
-        let mut program = Program::new();
+    pub fn to_program(&self) -> UnlinkedProgram {
+        let mut program = UnlinkedProgram::new();
         for index in self.function_by_name.values().copied() {
             if let Some(function) = self.function_for_program(index, &mut Vec::new()) {
                 program.insert_function(function);
@@ -85,12 +85,12 @@ impl ProgramImage {
     }
 
     #[must_use]
-    pub fn function(&self, index: FunctionIndex) -> Option<&CodeObject> {
+    pub fn function(&self, index: FunctionIndex) -> Option<&UnlinkedCodeObject> {
         self.functions.get(index.0)
     }
 
     #[must_use]
-    pub fn function_by_name(&self, name: &str) -> Option<&CodeObject> {
+    pub fn function_by_name(&self, name: &str) -> Option<&UnlinkedCodeObject> {
         self.function(self.function_index(name)?)
     }
 
@@ -99,7 +99,7 @@ impl ProgramImage {
         self.function_by_name.get(name).copied()
     }
 
-    pub fn functions(&self) -> impl Iterator<Item = (FunctionIndex, &CodeObject)> {
+    pub fn functions(&self) -> impl Iterator<Item = (FunctionIndex, &UnlinkedCodeObject)> {
         self.functions
             .iter()
             .enumerate()
@@ -154,7 +154,7 @@ impl ProgramImage {
         &self,
         index: FunctionIndex,
         stack: &mut Vec<FunctionIndex>,
-    ) -> Option<CodeObject> {
+    ) -> Option<UnlinkedCodeObject> {
         if stack.contains(&index) {
             return None;
         }
@@ -162,7 +162,7 @@ impl ProgramImage {
         stack.push(index);
         let mut nested_functions = Vec::new();
         for instruction in &mut function.instructions {
-            if let InstructionKind::MakeClosure {
+            if let UnlinkedInstructionKind::MakeClosure {
                 function: target, ..
             } = &mut instruction.kind
                 && let Some(nested) = self.function_for_program(*target, stack)
@@ -178,16 +178,16 @@ impl ProgramImage {
     }
 }
 
-impl ProgramCode for ProgramImage {
-    fn function(&self, name: &str) -> Option<&CodeObject> {
+impl UnlinkedProgramCode for ProgramImage {
+    fn function(&self, name: &str) -> Option<&UnlinkedCodeObject> {
         self.function_by_name(name)
     }
 
-    fn function_by_index(&self, index: FunctionIndex) -> Option<&CodeObject> {
+    fn function_by_index(&self, index: FunctionIndex) -> Option<&UnlinkedCodeObject> {
         self.function(index)
     }
 
-    fn script_method(&self, type_name: &str, method: &str) -> Option<&CodeObject> {
+    fn script_method(&self, type_name: &str, method: &str) -> Option<&UnlinkedCodeObject> {
         let method = self.script_methods.get(type_name, method)?;
         self.function_by_name(&method.function)
     }
@@ -202,16 +202,16 @@ impl ProgramCode for ProgramImage {
         &self,
         type_name: &str,
         method_id: vela_def::MethodId,
-    ) -> Option<&CodeObject> {
+    ) -> Option<&UnlinkedCodeObject> {
         let method = self.script_methods.get_by_id(type_name, method_id)?;
         self.function_by_name(&method.function)
     }
 }
 
 fn flatten_function(
-    mut function: CodeObject,
-    indexed_functions: &mut Vec<CodeObject>,
-) -> CodeObject {
+    mut function: UnlinkedCodeObject,
+    indexed_functions: &mut Vec<UnlinkedCodeObject>,
+) -> UnlinkedCodeObject {
     let nested_functions = std::mem::take(&mut function.nested_functions);
     if nested_functions.is_empty() {
         return function;
@@ -229,9 +229,9 @@ fn flatten_function(
     function
 }
 
-fn rewrite_closure_function_indices(function: &mut CodeObject, remapped: &[FunctionIndex]) {
+fn rewrite_closure_function_indices(function: &mut UnlinkedCodeObject, remapped: &[FunctionIndex]) {
     for instruction in &mut function.instructions {
-        if let InstructionKind::MakeClosure { function, .. } = &mut instruction.kind
+        if let UnlinkedInstructionKind::MakeClosure { function, .. } = &mut instruction.kind
             && let Some(index) = remapped.get(function.0)
         {
             *function = *index;
@@ -239,7 +239,7 @@ fn rewrite_closure_function_indices(function: &mut CodeObject, remapped: &[Funct
     }
 }
 
-fn rewrite_image_cache_sites(functions: &mut [CodeObject]) -> Box<[CacheSiteDesc]> {
+fn rewrite_image_cache_sites(functions: &mut [UnlinkedCodeObject]) -> Box<[CacheSiteDesc]> {
     let mut image_sites = Vec::new();
     for function in functions {
         let local_sites = function.cache_sites.sites().to_vec();
@@ -267,9 +267,12 @@ fn rewrite_image_cache_sites(functions: &mut [CodeObject]) -> Box<[CacheSiteDesc
     image_sites.into_boxed_slice()
 }
 
-fn rewrite_instruction_cache_sites(function: &mut CodeObject, remapped: &[Option<CacheSiteId>]) {
+fn rewrite_instruction_cache_sites(
+    function: &mut UnlinkedCodeObject,
+    remapped: &[Option<CacheSiteId>],
+) {
     for instruction in &mut function.instructions {
-        if let InstructionKind::LoadGlobal {
+        if let UnlinkedInstructionKind::LoadGlobal {
             cache_site: Some(site),
             ..
         } = &mut instruction.kind
@@ -280,7 +283,7 @@ fn rewrite_instruction_cache_sites(function: &mut CodeObject, remapped: &[Option
     }
 }
 
-fn localize_function_cache_sites(function: &mut CodeObject) {
+fn localize_function_cache_sites(function: &mut UnlinkedCodeObject) {
     let image_sites = function.cache_sites.sites().to_vec();
     if image_sites.is_empty() {
         return;
@@ -297,7 +300,7 @@ fn localize_function_cache_sites(function: &mut CodeObject) {
     }
 
     for instruction in &mut function.instructions {
-        if let InstructionKind::LoadGlobal {
+        if let UnlinkedInstructionKind::LoadGlobal {
             cache_site: Some(site),
             ..
         } = &mut instruction.kind
@@ -316,17 +319,17 @@ mod tests {
     use vela_def::MethodId;
 
     use crate::{
-        CacheSiteId, CacheSiteKind, CodeObject, Constant, Instruction, InstructionKind,
-        InstructionOffset, Program, Register,
+        CacheSiteId, CacheSiteKind, Constant, InstructionOffset, Register, UnlinkedCodeObject,
+        UnlinkedInstruction, UnlinkedInstructionKind, UnlinkedProgram,
     };
 
     use super::ProgramImage;
 
     #[test]
     fn image_indexes_functions_by_stable_names() {
-        let mut program = Program::new();
-        program.insert_function(CodeObject::new("zeta", 0));
-        program.insert_function(CodeObject::new("alpha", 0));
+        let mut program = UnlinkedProgram::new();
+        program.insert_function(UnlinkedCodeObject::new("zeta", 0));
+        program.insert_function(UnlinkedCodeObject::new("alpha", 0));
 
         let image = ProgramImage::from_program(&program);
         let alpha = image
@@ -347,9 +350,9 @@ mod tests {
 
     #[test]
     fn image_preserves_global_layout_and_script_methods() {
-        let mut program = Program::new();
+        let mut program = UnlinkedProgram::new();
         program.set_global_layout(["main::first".to_owned(), "main::second".to_owned()]);
-        program.insert_function(CodeObject::new("main", 0));
+        program.insert_function(UnlinkedCodeObject::new("main", 0));
         program.insert_script_method("Player", "bonus", MethodId::new(7), "main");
 
         let image = ProgramImage::from_program(&program);
@@ -368,8 +371,8 @@ mod tests {
 
     #[test]
     fn image_is_detached_from_later_program_mutation() {
-        let mut program = Program::new();
-        let mut main = CodeObject::new("main", 0);
+        let mut program = UnlinkedProgram::new();
+        let mut main = UnlinkedCodeObject::new("main", 0);
         main.push_constant(Constant::Int(1));
         program.insert_function(main);
 
@@ -392,22 +395,24 @@ mod tests {
 
     #[test]
     fn image_flattens_nested_closure_functions() {
-        let mut program = Program::new();
-        let mut main = CodeObject::new("main", 1);
-        let closure = CodeObject::new("main::<lambda>", 1);
+        let mut program = UnlinkedProgram::new();
+        let mut main = UnlinkedCodeObject::new("main", 1);
+        let closure = UnlinkedCodeObject::new("main::<lambda>", 1);
         let local_function = main.push_nested_function(closure);
-        main.push_instruction(Instruction::new(InstructionKind::MakeClosure {
-            dst: Register(0),
-            function: local_function,
-            captures: Vec::new(),
-        }));
+        main.push_instruction(UnlinkedInstruction::new(
+            UnlinkedInstructionKind::MakeClosure {
+                dst: Register(0),
+                function: local_function,
+                captures: Vec::new(),
+            },
+        ));
         program.insert_function(main);
 
         let image = ProgramImage::from_program(&program);
         let main_index = image.function_index("main").expect("main function index");
         let main = image.function(main_index).expect("main function");
         let closure_index = match &main.instructions[0].kind {
-            InstructionKind::MakeClosure { function, .. } => *function,
+            UnlinkedInstructionKind::MakeClosure { function, .. } => *function,
             other => panic!("expected MakeClosure instruction, found {other:?}"),
         };
 
@@ -424,21 +429,23 @@ mod tests {
 
     #[test]
     fn image_rebuilds_nested_closures_for_program_compatibility() {
-        let mut program = Program::new();
-        let mut main = CodeObject::new("main", 1);
-        let closure = CodeObject::new("main::<lambda>", 1);
+        let mut program = UnlinkedProgram::new();
+        let mut main = UnlinkedCodeObject::new("main", 1);
+        let closure = UnlinkedCodeObject::new("main::<lambda>", 1);
         let local_function = main.push_nested_function(closure);
-        main.push_instruction(Instruction::new(InstructionKind::MakeClosure {
-            dst: Register(0),
-            function: local_function,
-            captures: Vec::new(),
-        }));
+        main.push_instruction(UnlinkedInstruction::new(
+            UnlinkedInstructionKind::MakeClosure {
+                dst: Register(0),
+                function: local_function,
+                captures: Vec::new(),
+            },
+        ));
         program.insert_function(main);
 
         let rebuilt = ProgramImage::from_program(&program).to_program();
         let main = rebuilt.function("main").expect("rebuilt main function");
         let closure_index = match &main.instructions[0].kind {
-            InstructionKind::MakeClosure { function, .. } => *function,
+            UnlinkedInstructionKind::MakeClosure { function, .. } => *function,
             other => panic!("expected MakeClosure instruction, found {other:?}"),
         };
 
@@ -453,25 +460,29 @@ mod tests {
 
     #[test]
     fn image_rewrites_cache_site_ids_to_image_global_indexes() {
-        let mut first = CodeObject::new("read_first", 1);
+        let mut first = UnlinkedCodeObject::new("read_first", 1);
         let first_local = first.push_cache_site(CacheSiteKind::GlobalRead, InstructionOffset(0));
-        first.push_instruction(Instruction::new(InstructionKind::LoadGlobal {
-            dst: Register(0),
-            global: "main::first".to_owned(),
-            slot: None,
-            cache_site: Some(first_local),
-        }));
-        let mut second = CodeObject::new("read_second", 1);
+        first.push_instruction(UnlinkedInstruction::new(
+            UnlinkedInstructionKind::LoadGlobal {
+                dst: Register(0),
+                global: "main::first".to_owned(),
+                slot: None,
+                cache_site: Some(first_local),
+            },
+        ));
+        let mut second = UnlinkedCodeObject::new("read_second", 1);
         let second_local = second.push_cache_site(CacheSiteKind::GlobalRead, InstructionOffset(0));
-        second.push_instruction(Instruction::new(InstructionKind::LoadGlobal {
-            dst: Register(0),
-            global: "main::second".to_owned(),
-            slot: None,
-            cache_site: Some(second_local),
-        }));
+        second.push_instruction(UnlinkedInstruction::new(
+            UnlinkedInstructionKind::LoadGlobal {
+                dst: Register(0),
+                global: "main::second".to_owned(),
+                slot: None,
+                cache_site: Some(second_local),
+            },
+        ));
         assert_eq!(first_local, second_local);
 
-        let mut program = Program::new();
+        let mut program = UnlinkedProgram::new();
         program.insert_function(first);
         program.insert_function(second);
         let image = ProgramImage::from_program(&program);
@@ -506,12 +517,12 @@ mod tests {
         );
     }
 
-    fn load_global_cache_site(function: &CodeObject) -> CacheSiteId {
+    fn load_global_cache_site(function: &UnlinkedCodeObject) -> CacheSiteId {
         function
             .instructions
             .iter()
             .find_map(|instruction| match &instruction.kind {
-                InstructionKind::LoadGlobal {
+                UnlinkedInstructionKind::LoadGlobal {
                     cache_site: Some(site),
                     ..
                 } => Some(*site),

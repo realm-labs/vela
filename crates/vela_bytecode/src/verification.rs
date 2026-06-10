@@ -1,8 +1,9 @@
 use std::fmt;
 
 use crate::{
-    CacheSiteId, CacheSiteKind, CallArgument, CodeObject, ConstantId, HostTargetPlanId,
-    Instruction, InstructionKind, InstructionOffset, Program, ProgramImage, Register,
+    CacheSiteId, CacheSiteKind, CallArgument, ConstantId, HostTargetPlanId, InstructionOffset,
+    ProgramImage, Register, UnlinkedCodeObject, UnlinkedInstruction, UnlinkedInstructionKind,
+    UnlinkedProgram,
 };
 
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -92,7 +93,7 @@ impl fmt::Display for VerificationError {
 
 impl std::error::Error for VerificationError {}
 
-pub fn verify_program(program: &Program) -> Result<(), VerificationError> {
+pub fn verify_program(program: &UnlinkedProgram) -> Result<(), VerificationError> {
     for function in program.functions.values() {
         verify_code_object(function)?;
         verify_program_instruction_metadata(program, function)?;
@@ -139,12 +140,12 @@ pub fn verify_program_image(image: &ProgramImage) -> Result<(), VerificationErro
 }
 
 fn verify_program_instruction_metadata(
-    program: &Program,
-    code: &CodeObject,
+    program: &UnlinkedProgram,
+    code: &UnlinkedCodeObject,
 ) -> Result<(), VerificationError> {
     let global_count = program.global_names().len();
     for (index, instruction) in code.instructions.iter().enumerate() {
-        if let InstructionKind::LoadGlobal {
+        if let UnlinkedInstructionKind::LoadGlobal {
             global,
             slot: Some(slot),
             ..
@@ -183,11 +184,11 @@ fn verify_program_instruction_metadata(
 
 fn verify_program_image_instruction_metadata(
     image: &ProgramImage,
-    code: &CodeObject,
+    code: &UnlinkedCodeObject,
 ) -> Result<(), VerificationError> {
     let global_count = image.global_names().len();
     for (index, instruction) in code.instructions.iter().enumerate() {
-        if let InstructionKind::LoadGlobal {
+        if let UnlinkedInstructionKind::LoadGlobal {
             global,
             slot: Some(slot),
             ..
@@ -221,12 +222,12 @@ fn verify_program_image_instruction_metadata(
     Ok(())
 }
 
-pub fn verify_code_object(code: &CodeObject) -> Result<(), VerificationError> {
+pub fn verify_code_object(code: &UnlinkedCodeObject) -> Result<(), VerificationError> {
     verify_code_object_with_name(code, &code.name)
 }
 
 fn verify_code_object_with_name(
-    code: &CodeObject,
+    code: &UnlinkedCodeObject,
     function: &str,
 ) -> Result<(), VerificationError> {
     verify_code_object_with_scope(
@@ -250,7 +251,7 @@ enum CacheIndexScope<'a> {
 }
 
 fn verify_code_object_with_scope(
-    code: &CodeObject,
+    code: &UnlinkedCodeObject,
     function: &str,
     closure_scope: ClosureIndexScope,
     cache_scope: CacheIndexScope<'_>,
@@ -300,61 +301,63 @@ fn verify_code_object_with_scope(
 
 fn verify_instruction(
     function: &str,
-    code: &CodeObject,
+    code: &UnlinkedCodeObject,
     index: usize,
-    instruction: &Instruction,
+    instruction: &UnlinkedInstruction,
     closure_scope: ClosureIndexScope,
     cache_scope: CacheIndexScope<'_>,
 ) -> Result<(), VerificationError> {
     let instruction_index = Some(index);
     match &instruction.kind {
-        InstructionKind::LoadConst { dst, constant } => {
+        UnlinkedInstructionKind::LoadConst { dst, constant } => {
             verify_register(function, instruction_index, code, *dst)?;
             verify_constant(function, instruction_index, code, *constant)
         }
-        InstructionKind::Move { dst, src }
-        | InstructionKind::Not { dst, src }
-        | InstructionKind::Truthy { dst, src }
-        | InstructionKind::Negate { dst, src }
-        | InstructionKind::TryPropagate { dst, src } => {
+        UnlinkedInstructionKind::Move { dst, src }
+        | UnlinkedInstructionKind::Not { dst, src }
+        | UnlinkedInstructionKind::Truthy { dst, src }
+        | UnlinkedInstructionKind::Negate { dst, src }
+        | UnlinkedInstructionKind::TryPropagate { dst, src } => {
             verify_register(function, instruction_index, code, *dst)?;
             verify_register(function, instruction_index, code, *src)
         }
-        InstructionKind::Add { dst, lhs, rhs }
-        | InstructionKind::Sub { dst, lhs, rhs }
-        | InstructionKind::Mul { dst, lhs, rhs }
-        | InstructionKind::Div { dst, lhs, rhs }
-        | InstructionKind::Rem { dst, lhs, rhs }
-        | InstructionKind::Equal { dst, lhs, rhs }
-        | InstructionKind::NotEqual { dst, lhs, rhs }
-        | InstructionKind::Less { dst, lhs, rhs }
-        | InstructionKind::LessEqual { dst, lhs, rhs }
-        | InstructionKind::Greater { dst, lhs, rhs }
-        | InstructionKind::GreaterEqual { dst, lhs, rhs } => {
+        UnlinkedInstructionKind::Add { dst, lhs, rhs }
+        | UnlinkedInstructionKind::Sub { dst, lhs, rhs }
+        | UnlinkedInstructionKind::Mul { dst, lhs, rhs }
+        | UnlinkedInstructionKind::Div { dst, lhs, rhs }
+        | UnlinkedInstructionKind::Rem { dst, lhs, rhs }
+        | UnlinkedInstructionKind::Equal { dst, lhs, rhs }
+        | UnlinkedInstructionKind::NotEqual { dst, lhs, rhs }
+        | UnlinkedInstructionKind::Less { dst, lhs, rhs }
+        | UnlinkedInstructionKind::LessEqual { dst, lhs, rhs }
+        | UnlinkedInstructionKind::Greater { dst, lhs, rhs }
+        | UnlinkedInstructionKind::GreaterEqual { dst, lhs, rhs } => {
             verify_register(function, instruction_index, code, *dst)?;
             verify_register(function, instruction_index, code, *lhs)?;
             verify_register(function, instruction_index, code, *rhs)
         }
-        InstructionKind::JumpIfFalse { condition, target } => {
+        UnlinkedInstructionKind::JumpIfFalse { condition, target } => {
             verify_register(function, instruction_index, code, *condition)?;
             verify_jump(function, instruction_index, code, *target)
         }
-        InstructionKind::JumpIfNotMissing { value, target } => {
+        UnlinkedInstructionKind::JumpIfNotMissing { value, target } => {
             verify_register(function, instruction_index, code, *value)?;
             verify_jump(function, instruction_index, code, *target)
         }
-        InstructionKind::Jump { target } => verify_jump(function, instruction_index, code, *target),
-        InstructionKind::CallNative { dst, args, .. } => {
+        UnlinkedInstructionKind::Jump { target } => {
+            verify_jump(function, instruction_index, code, *target)
+        }
+        UnlinkedInstructionKind::CallNative { dst, args, .. } => {
             if let Some(dst) = dst {
                 verify_register(function, instruction_index, code, *dst)?;
             }
             verify_registers(function, instruction_index, code, args)
         }
-        InstructionKind::CallFunction { dst, args, .. } => {
+        UnlinkedInstructionKind::CallFunction { dst, args, .. } => {
             verify_register(function, instruction_index, code, *dst)?;
             verify_call_arguments(function, instruction_index, code, args)
         }
-        InstructionKind::MakeClosure {
+        UnlinkedInstructionKind::MakeClosure {
             dst,
             function: nested,
             captures,
@@ -363,12 +366,12 @@ fn verify_instruction(
             verify_registers(function, instruction_index, code, captures)?;
             verify_function_index(function, instruction_index, code, *nested, closure_scope)
         }
-        InstructionKind::CallClosure { dst, callee, args } => {
+        UnlinkedInstructionKind::CallClosure { dst, callee, args } => {
             verify_register(function, instruction_index, code, *dst)?;
             verify_register(function, instruction_index, code, *callee)?;
             verify_registers(function, instruction_index, code, args)
         }
-        InstructionKind::CallMethod {
+        UnlinkedInstructionKind::CallMethod {
             dst,
             receiver,
             args,
@@ -378,7 +381,7 @@ fn verify_instruction(
             verify_register(function, instruction_index, code, *receiver)?;
             verify_call_arguments(function, instruction_index, code, args)
         }
-        InstructionKind::CallMethodId {
+        UnlinkedInstructionKind::CallMethodId {
             dst,
             receiver,
             args,
@@ -388,59 +391,59 @@ fn verify_instruction(
             verify_register(function, instruction_index, code, *receiver)?;
             verify_call_arguments(function, instruction_index, code, args)
         }
-        InstructionKind::MakeArray { dst, elements } => {
+        UnlinkedInstructionKind::MakeArray { dst, elements } => {
             verify_register(function, instruction_index, code, *dst)?;
             verify_registers(function, instruction_index, code, elements)
         }
-        InstructionKind::MakeMap { dst, entries } => {
+        UnlinkedInstructionKind::MakeMap { dst, entries } => {
             verify_register(function, instruction_index, code, *dst)?;
             verify_registers_from_pairs(function, instruction_index, code, entries)
         }
-        InstructionKind::MakeRange {
+        UnlinkedInstructionKind::MakeRange {
             dst, start, end, ..
         } => {
             verify_register(function, instruction_index, code, *dst)?;
             verify_register(function, instruction_index, code, *start)?;
             verify_register(function, instruction_index, code, *end)
         }
-        InstructionKind::MakeRecord { dst, fields, .. }
-        | InstructionKind::MakeEnum { dst, fields, .. } => {
+        UnlinkedInstructionKind::MakeRecord { dst, fields, .. }
+        | UnlinkedInstructionKind::MakeEnum { dst, fields, .. } => {
             verify_register(function, instruction_index, code, *dst)?;
             verify_registers_from_pairs(function, instruction_index, code, fields)
         }
-        InstructionKind::GetRecordField { dst, record, .. }
-        | InstructionKind::GetRecordSlot { dst, record, .. }
-        | InstructionKind::GetEnumField {
+        UnlinkedInstructionKind::GetRecordField { dst, record, .. }
+        | UnlinkedInstructionKind::GetRecordSlot { dst, record, .. }
+        | UnlinkedInstructionKind::GetEnumField {
             dst, value: record, ..
         }
-        | InstructionKind::GetEnumSlot {
+        | UnlinkedInstructionKind::GetEnumSlot {
             dst, value: record, ..
         }
-        | InstructionKind::GetIndex {
+        | UnlinkedInstructionKind::GetIndex {
             dst, base: record, ..
         } => {
             verify_register(function, instruction_index, code, *dst)?;
             verify_register(function, instruction_index, code, *record)?;
-            if let InstructionKind::GetIndex { index, .. } = &instruction.kind {
+            if let UnlinkedInstructionKind::GetIndex { index, .. } = &instruction.kind {
                 verify_register(function, instruction_index, code, *index)?;
             }
             Ok(())
         }
-        InstructionKind::SetRecordField { record, src, .. }
-        | InstructionKind::SetRecordSlot { record, src, .. } => {
+        UnlinkedInstructionKind::SetRecordField { record, src, .. }
+        | UnlinkedInstructionKind::SetRecordSlot { record, src, .. } => {
             verify_register(function, instruction_index, code, *record)?;
             verify_register(function, instruction_index, code, *src)
         }
-        InstructionKind::SetIndex { base, index, src } => {
+        UnlinkedInstructionKind::SetIndex { base, index, src } => {
             verify_register(function, instruction_index, code, *base)?;
             verify_register(function, instruction_index, code, *index)?;
             verify_register(function, instruction_index, code, *src)
         }
-        InstructionKind::IterInit { dst, iterable } => {
+        UnlinkedInstructionKind::IterInit { dst, iterable } => {
             verify_register(function, instruction_index, code, *dst)?;
             verify_register(function, instruction_index, code, *iterable)
         }
-        InstructionKind::IterNext {
+        UnlinkedInstructionKind::IterNext {
             iterator,
             dst,
             jump_if_done,
@@ -449,7 +452,7 @@ fn verify_instruction(
             verify_register(function, instruction_index, code, *dst)?;
             verify_jump(function, instruction_index, code, *jump_if_done)
         }
-        InstructionKind::RangeNext {
+        UnlinkedInstructionKind::RangeNext {
             cursor,
             end,
             done,
@@ -463,11 +466,11 @@ fn verify_instruction(
             verify_register(function, instruction_index, code, *dst)?;
             verify_jump(function, instruction_index, code, *jump_if_done)
         }
-        InstructionKind::EnumTagEqual { dst, value, .. } => {
+        UnlinkedInstructionKind::EnumTagEqual { dst, value, .. } => {
             verify_register(function, instruction_index, code, *dst)?;
             verify_register(function, instruction_index, code, *value)
         }
-        InstructionKind::LoadGlobal {
+        UnlinkedInstructionKind::LoadGlobal {
             dst, cache_site, ..
         } => {
             verify_register(function, instruction_index, code, *dst)?;
@@ -480,7 +483,7 @@ fn verify_instruction(
                 cache_scope,
             )
         }
-        InstructionKind::HostRead {
+        UnlinkedInstructionKind::HostRead {
             dst,
             root,
             target,
@@ -506,7 +509,7 @@ fn verify_instruction(
                 cache_scope,
             )
         }
-        InstructionKind::HostWrite {
+        UnlinkedInstructionKind::HostWrite {
             root,
             target,
             dynamic_args,
@@ -532,7 +535,7 @@ fn verify_instruction(
                 cache_scope,
             )
         }
-        InstructionKind::HostMutate {
+        UnlinkedInstructionKind::HostMutate {
             root,
             target,
             dynamic_args,
@@ -559,7 +562,7 @@ fn verify_instruction(
                 cache_scope,
             )
         }
-        InstructionKind::HostRemove {
+        UnlinkedInstructionKind::HostRemove {
             root,
             target,
             dynamic_args,
@@ -583,7 +586,7 @@ fn verify_instruction(
                 cache_scope,
             )
         }
-        InstructionKind::HostCall {
+        UnlinkedInstructionKind::HostCall {
             dst,
             root,
             target,
@@ -614,14 +617,16 @@ fn verify_instruction(
                 cache_scope,
             )
         }
-        InstructionKind::Return { src } => verify_register(function, instruction_index, code, *src),
+        UnlinkedInstructionKind::Return { src } => {
+            verify_register(function, instruction_index, code, *src)
+        }
     }
 }
 
 fn verify_registers(
     function: &str,
     instruction: Option<usize>,
-    code: &CodeObject,
+    code: &UnlinkedCodeObject,
     registers: &[Register],
 ) -> Result<(), VerificationError> {
     for register in registers {
@@ -633,7 +638,7 @@ fn verify_registers(
 fn verify_registers_from_pairs(
     function: &str,
     instruction: Option<usize>,
-    code: &CodeObject,
+    code: &UnlinkedCodeObject,
     fields: &[(String, Register)],
 ) -> Result<(), VerificationError> {
     for (_, register) in fields {
@@ -645,7 +650,7 @@ fn verify_registers_from_pairs(
 fn verify_call_arguments(
     function: &str,
     instruction: Option<usize>,
-    code: &CodeObject,
+    code: &UnlinkedCodeObject,
     args: &[CallArgument],
 ) -> Result<(), VerificationError> {
     for arg in args {
@@ -659,7 +664,7 @@ fn verify_call_arguments(
 fn verify_register(
     function: &str,
     instruction: Option<usize>,
-    code: &CodeObject,
+    code: &UnlinkedCodeObject,
     register: Register,
 ) -> Result<(), VerificationError> {
     if register.0 < code.register_count {
@@ -679,7 +684,7 @@ fn verify_register(
 fn verify_constant(
     function: &str,
     instruction: Option<usize>,
-    code: &CodeObject,
+    code: &UnlinkedCodeObject,
     constant: ConstantId,
 ) -> Result<(), VerificationError> {
     if constant.0 < code.constants.len() {
@@ -699,7 +704,7 @@ fn verify_constant(
 fn verify_host_target(
     function: &str,
     instruction: Option<usize>,
-    code: &CodeObject,
+    code: &UnlinkedCodeObject,
     target: HostTargetPlanId,
     dynamic_arg_count: usize,
 ) -> Result<(), VerificationError> {
@@ -751,7 +756,7 @@ fn verify_host_target(
 fn verify_function_index(
     function: &str,
     instruction: Option<usize>,
-    code: &CodeObject,
+    code: &UnlinkedCodeObject,
     nested: crate::FunctionIndex,
     closure_scope: ClosureIndexScope,
 ) -> Result<(), VerificationError> {
@@ -776,7 +781,7 @@ fn verify_function_index(
 fn verify_jump(
     function: &str,
     instruction: Option<usize>,
-    code: &CodeObject,
+    code: &UnlinkedCodeObject,
     target: InstructionOffset,
 ) -> Result<(), VerificationError> {
     if target.0 <= code.instructions.len() {
@@ -796,7 +801,7 @@ fn verify_jump(
 fn verify_optional_cache_site(
     function: &str,
     instruction: Option<usize>,
-    code: &CodeObject,
+    code: &UnlinkedCodeObject,
     site: Option<CacheSiteId>,
     expected: CacheSiteKind,
     cache_scope: CacheIndexScope<'_>,
@@ -839,7 +844,7 @@ fn verify_optional_cache_site(
 fn verify_cache_site(
     function: &str,
     instruction: Option<usize>,
-    code: &CodeObject,
+    code: &UnlinkedCodeObject,
     site: CacheSiteId,
     expected: CacheSiteKind,
     cache_scope: CacheIndexScope<'_>,

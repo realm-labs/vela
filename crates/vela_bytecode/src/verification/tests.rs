@@ -1,19 +1,21 @@
 use vela_def::FieldId;
 use vela_host::target::HostTargetPlan;
 
-use crate::{Constant, FrameSlotInfo, FrameSlotKind, Instruction};
+use crate::{Constant, FrameSlotInfo, FrameSlotKind, UnlinkedInstruction};
 
 use super::*;
 
 #[test]
 fn accepts_valid_code_object() {
-    let mut code = CodeObject::new("main", 2).with_params(vec!["value".to_owned()]);
+    let mut code = UnlinkedCodeObject::new("main", 2).with_params(vec!["value".to_owned()]);
     let constant = code.push_constant(Constant::Int(42));
-    code.push_instruction(Instruction::new(InstructionKind::LoadConst {
-        dst: Register(1),
-        constant,
-    }));
-    code.push_instruction(Instruction::new(InstructionKind::Return {
+    code.push_instruction(UnlinkedInstruction::new(
+        UnlinkedInstructionKind::LoadConst {
+            dst: Register(1),
+            constant,
+        },
+    ));
+    code.push_instruction(UnlinkedInstruction::new(UnlinkedInstructionKind::Return {
         src: Register(1),
     }));
 
@@ -22,11 +24,11 @@ fn accepts_valid_code_object() {
 
 #[test]
 fn program_verify_checks_all_functions() {
-    let mut code = CodeObject::new("main", 1);
-    code.push_instruction(Instruction::new(InstructionKind::Return {
+    let mut code = UnlinkedCodeObject::new("main", 1);
+    code.push_instruction(UnlinkedInstruction::new(UnlinkedInstructionKind::Return {
         src: Register(2),
     }));
-    let mut program = Program::new();
+    let mut program = UnlinkedProgram::new();
     program.insert_function(code);
 
     assert_eq!(
@@ -44,7 +46,7 @@ fn program_verify_checks_all_functions() {
 
 #[test]
 fn program_verify_rejects_missing_script_method_function() {
-    let mut program = Program::new();
+    let mut program = UnlinkedProgram::new();
     program.insert_script_method("Player", "bonus", vela_def::MethodId::new(7), "missing");
 
     assert_eq!(
@@ -61,7 +63,7 @@ fn program_verify_rejects_missing_script_method_function() {
 
 #[test]
 fn rejects_parameter_frame_mismatch() {
-    let code = CodeObject::new("main", 1)
+    let code = UnlinkedCodeObject::new("main", 1)
         .with_capture_count(1)
         .with_params(vec!["value".to_owned()]);
 
@@ -81,7 +83,7 @@ fn rejects_parameter_frame_mismatch() {
 
 #[test]
 fn rejects_parameter_default_mismatch() {
-    let code = CodeObject::new("main", 1)
+    let code = UnlinkedCodeObject::new("main", 1)
         .with_params(vec!["value".to_owned()])
         .with_param_defaults(Vec::new());
 
@@ -100,8 +102,8 @@ fn rejects_parameter_default_mismatch() {
 
 #[test]
 fn rejects_out_of_bounds_registers() {
-    let mut code = CodeObject::new("main", 1);
-    code.push_instruction(Instruction::new(InstructionKind::Move {
+    let mut code = UnlinkedCodeObject::new("main", 1);
+    code.push_instruction(UnlinkedInstruction::new(UnlinkedInstructionKind::Move {
         dst: Register(0),
         src: Register(1),
     }));
@@ -121,11 +123,13 @@ fn rejects_out_of_bounds_registers() {
 
 #[test]
 fn rejects_out_of_bounds_constants() {
-    let mut code = CodeObject::new("main", 1);
-    code.push_instruction(Instruction::new(InstructionKind::LoadConst {
-        dst: Register(0),
-        constant: ConstantId(4),
-    }));
+    let mut code = UnlinkedCodeObject::new("main", 1);
+    code.push_instruction(UnlinkedInstruction::new(
+        UnlinkedInstructionKind::LoadConst {
+            dst: Register(0),
+            constant: ConstantId(4),
+        },
+    ));
 
     assert_eq!(
         verify_code_object(&code),
@@ -142,8 +146,8 @@ fn rejects_out_of_bounds_constants() {
 
 #[test]
 fn rejects_out_of_bounds_jumps() {
-    let mut code = CodeObject::new("main", 1);
-    code.push_instruction(Instruction::new(InstructionKind::Jump {
+    let mut code = UnlinkedCodeObject::new("main", 1);
+    code.push_instruction(UnlinkedInstruction::new(UnlinkedInstructionKind::Jump {
         target: InstructionOffset(2),
     }));
 
@@ -162,17 +166,19 @@ fn rejects_out_of_bounds_jumps() {
 
 #[test]
 fn rejects_host_path_dynamic_registers_outside_frame() {
-    let mut code = CodeObject::new("main", 2);
+    let mut code = UnlinkedCodeObject::new("main", 2);
     let target =
         code.intern_host_target(HostTargetPlan::new(vela_common::HostTypeId::new(1)).dyn_key(0));
     let cache_site = code.push_cache_site(CacheSiteKind::HostPathRead, InstructionOffset(0));
-    code.push_instruction(Instruction::new(InstructionKind::HostRead {
-        dst: Register(0),
-        root: Register(1),
-        target,
-        dynamic_args: vec![Register(2)],
-        cache_site,
-    }));
+    code.push_instruction(UnlinkedInstruction::new(
+        UnlinkedInstructionKind::HostRead {
+            dst: Register(0),
+            root: Register(1),
+            target,
+            dynamic_args: vec![Register(2)],
+            cache_site,
+        },
+    ));
 
     assert_eq!(
         verify_code_object(&code),
@@ -189,18 +195,20 @@ fn rejects_host_path_dynamic_registers_outside_frame() {
 
 #[test]
 fn rejects_nested_closure_invalid_registers() {
-    let mut closure = CodeObject::new("main::<lambda>", 1);
-    closure.push_instruction(Instruction::new(InstructionKind::Return {
+    let mut closure = UnlinkedCodeObject::new("main::<lambda>", 1);
+    closure.push_instruction(UnlinkedInstruction::new(UnlinkedInstructionKind::Return {
         src: Register(1),
     }));
 
-    let mut code = CodeObject::new("main", 1);
+    let mut code = UnlinkedCodeObject::new("main", 1);
     let function = code.push_nested_function(closure);
-    code.push_instruction(Instruction::new(InstructionKind::MakeClosure {
-        dst: Register(0),
-        function,
-        captures: Vec::new(),
-    }));
+    code.push_instruction(UnlinkedInstruction::new(
+        UnlinkedInstructionKind::MakeClosure {
+            dst: Register(0),
+            function,
+            captures: Vec::new(),
+        },
+    ));
 
     assert_eq!(
         verify_code_object(&code),
@@ -217,35 +225,39 @@ fn rejects_nested_closure_invalid_registers() {
 
 #[test]
 fn accepts_collapsed_host_read_with_verified_target_and_cache_site() {
-    let mut code = CodeObject::new("main", 3);
+    let mut code = UnlinkedCodeObject::new("main", 3);
     let target = code.intern_host_target(
         HostTargetPlan::new(vela_common::HostTypeId::new(1))
             .field(FieldId::new(2))
             .dyn_index(0),
     );
     let cache_site = code.push_cache_site(CacheSiteKind::HostPathRead, InstructionOffset(0));
-    code.push_instruction(Instruction::new(InstructionKind::HostRead {
-        dst: Register(0),
-        root: Register(1),
-        target,
-        dynamic_args: vec![Register(2)],
-        cache_site,
-    }));
+    code.push_instruction(UnlinkedInstruction::new(
+        UnlinkedInstructionKind::HostRead {
+            dst: Register(0),
+            root: Register(1),
+            target,
+            dynamic_args: vec![Register(2)],
+            cache_site,
+        },
+    ));
 
     assert_eq!(verify_code_object(&code), Ok(()));
 }
 
 #[test]
 fn rejects_collapsed_host_target_out_of_bounds() {
-    let mut code = CodeObject::new("main", 2);
+    let mut code = UnlinkedCodeObject::new("main", 2);
     let cache_site = code.push_cache_site(CacheSiteKind::HostPathRead, InstructionOffset(0));
-    code.push_instruction(Instruction::new(InstructionKind::HostRead {
-        dst: Register(0),
-        root: Register(1),
-        target: HostTargetPlanId::new(0),
-        dynamic_args: Vec::new(),
-        cache_site,
-    }));
+    code.push_instruction(UnlinkedInstruction::new(
+        UnlinkedInstructionKind::HostRead {
+            dst: Register(0),
+            root: Register(1),
+            target: HostTargetPlanId::new(0),
+            dynamic_args: Vec::new(),
+            cache_site,
+        },
+    ));
 
     assert_eq!(
         verify_code_object(&code),
@@ -262,17 +274,19 @@ fn rejects_collapsed_host_target_out_of_bounds() {
 
 #[test]
 fn rejects_collapsed_host_dynamic_arg_count_mismatch() {
-    let mut code = CodeObject::new("main", 3);
+    let mut code = UnlinkedCodeObject::new("main", 3);
     let target =
         code.intern_host_target(HostTargetPlan::new(vela_common::HostTypeId::new(1)).dyn_key(0));
     let cache_site = code.push_cache_site(CacheSiteKind::HostPathRead, InstructionOffset(0));
-    code.push_instruction(Instruction::new(InstructionKind::HostRead {
-        dst: Register(0),
-        root: Register(1),
-        target,
-        dynamic_args: Vec::new(),
-        cache_site,
-    }));
+    code.push_instruction(UnlinkedInstruction::new(
+        UnlinkedInstructionKind::HostRead {
+            dst: Register(0),
+            root: Register(1),
+            target,
+            dynamic_args: Vec::new(),
+            cache_site,
+        },
+    ));
 
     assert_eq!(
         verify_code_object(&code),
@@ -289,17 +303,19 @@ fn rejects_collapsed_host_dynamic_arg_count_mismatch() {
 
 #[test]
 fn rejects_collapsed_host_dynamic_arg_gaps() {
-    let mut code = CodeObject::new("main", 4);
+    let mut code = UnlinkedCodeObject::new("main", 4);
     let target =
         code.intern_host_target(HostTargetPlan::new(vela_common::HostTypeId::new(1)).dyn_key(1));
     let cache_site = code.push_cache_site(CacheSiteKind::HostPathRead, InstructionOffset(0));
-    code.push_instruction(Instruction::new(InstructionKind::HostRead {
-        dst: Register(0),
-        root: Register(1),
-        target,
-        dynamic_args: vec![Register(2), Register(3)],
-        cache_site,
-    }));
+    code.push_instruction(UnlinkedInstruction::new(
+        UnlinkedInstructionKind::HostRead {
+            dst: Register(0),
+            root: Register(1),
+            target,
+            dynamic_args: vec![Register(2), Register(3)],
+            cache_site,
+        },
+    ));
 
     assert_eq!(
         verify_code_object(&code),
@@ -313,16 +329,18 @@ fn rejects_collapsed_host_dynamic_arg_gaps() {
 
 #[test]
 fn rejects_collapsed_host_cache_site_kind_mismatch() {
-    let mut code = CodeObject::new("main", 2);
+    let mut code = UnlinkedCodeObject::new("main", 2);
     let target = code.intern_host_target(HostTargetPlan::new(vela_common::HostTypeId::new(1)));
     let cache_site = code.push_cache_site(CacheSiteKind::HostPathWrite, InstructionOffset(0));
-    code.push_instruction(Instruction::new(InstructionKind::HostRead {
-        dst: Register(0),
-        root: Register(1),
-        target,
-        dynamic_args: Vec::new(),
-        cache_site,
-    }));
+    code.push_instruction(UnlinkedInstruction::new(
+        UnlinkedInstructionKind::HostRead {
+            dst: Register(0),
+            root: Register(1),
+            target,
+            dynamic_args: Vec::new(),
+            cache_site,
+        },
+    ));
 
     assert_eq!(
         verify_code_object(&code),
@@ -340,12 +358,14 @@ fn rejects_collapsed_host_cache_site_kind_mismatch() {
 
 #[test]
 fn rejects_out_of_bounds_closure_function_index() {
-    let mut code = CodeObject::new("main", 1);
-    code.push_instruction(Instruction::new(InstructionKind::MakeClosure {
-        dst: Register(0),
-        function: crate::FunctionIndex(0),
-        captures: Vec::new(),
-    }));
+    let mut code = UnlinkedCodeObject::new("main", 1);
+    code.push_instruction(UnlinkedInstruction::new(
+        UnlinkedInstructionKind::MakeClosure {
+            dst: Register(0),
+            function: crate::FunctionIndex(0),
+            captures: Vec::new(),
+        },
+    ));
 
     assert_eq!(
         verify_code_object(&code),
@@ -362,15 +382,17 @@ fn rejects_out_of_bounds_closure_function_index() {
 
 #[test]
 fn program_image_verify_accepts_flattened_closure_function_index() {
-    let mut program = Program::new();
-    let mut code = CodeObject::new("main", 1);
-    let closure = CodeObject::new("main::<lambda>", 1);
+    let mut program = UnlinkedProgram::new();
+    let mut code = UnlinkedCodeObject::new("main", 1);
+    let closure = UnlinkedCodeObject::new("main::<lambda>", 1);
     let function = code.push_nested_function(closure);
-    code.push_instruction(Instruction::new(InstructionKind::MakeClosure {
-        dst: Register(0),
-        function,
-        captures: Vec::new(),
-    }));
+    code.push_instruction(UnlinkedInstruction::new(
+        UnlinkedInstructionKind::MakeClosure {
+            dst: Register(0),
+            function,
+            captures: Vec::new(),
+        },
+    ));
     program.insert_function(code);
     let image = ProgramImage::from_program(&program);
 
@@ -379,12 +401,14 @@ fn program_image_verify_accepts_flattened_closure_function_index() {
 
 #[test]
 fn program_image_verify_rejects_out_of_bounds_closure_function_index() {
-    let mut code = CodeObject::new("main", 1);
-    code.push_instruction(Instruction::new(InstructionKind::MakeClosure {
-        dst: Register(0),
-        function: crate::FunctionIndex(7),
-        captures: Vec::new(),
-    }));
+    let mut code = UnlinkedCodeObject::new("main", 1);
+    code.push_instruction(UnlinkedInstruction::new(
+        UnlinkedInstructionKind::MakeClosure {
+            dst: Register(0),
+            function: crate::FunctionIndex(7),
+            captures: Vec::new(),
+        },
+    ));
     let image = ProgramImage::from_parts(
         [code],
         Vec::<String>::new(),
@@ -407,13 +431,15 @@ fn program_image_verify_rejects_out_of_bounds_closure_function_index() {
 
 #[test]
 fn program_image_verify_rejects_out_of_bounds_cache_site_index() {
-    let mut code = CodeObject::new("main", 1);
-    code.push_instruction(Instruction::new(InstructionKind::LoadGlobal {
-        dst: Register(0),
-        global: "main::value".to_owned(),
-        slot: None,
-        cache_site: Some(CacheSiteId::new(7)),
-    }));
+    let mut code = UnlinkedCodeObject::new("main", 1);
+    code.push_instruction(UnlinkedInstruction::new(
+        UnlinkedInstructionKind::LoadGlobal {
+            dst: Register(0),
+            global: "main::value".to_owned(),
+            slot: None,
+            cache_site: Some(CacheSiteId::new(7)),
+        },
+    ));
     let image = ProgramImage::from_parts(
         [code],
         Vec::<String>::new(),
@@ -436,7 +462,7 @@ fn program_image_verify_rejects_out_of_bounds_cache_site_index() {
 
 #[test]
 fn rejects_frame_metadata_registers_outside_frame() {
-    let mut code = CodeObject::new("main", 1);
+    let mut code = UnlinkedCodeObject::new("main", 1);
     code.frame.push_slot(FrameSlotInfo::new(
         "bad",
         Register(3),

@@ -1,7 +1,7 @@
 use vela_common::Span;
 use vela_syntax::ast::{BinaryOp, Expr, ExprKind, Literal, UnaryOp};
 
-use crate::{InstructionKind, Register};
+use crate::{Register, UnlinkedInstructionKind};
 
 use super::const_eval::compile_literal_constant;
 use super::constructors::schema_default_fields;
@@ -30,24 +30,28 @@ impl Compiler<'_, '_> {
                     let root = self.compile_expr(base)?;
                     let dst = self.alloc_register()?;
                     match slot_kind {
-                        LiteralFieldSlotKind::Record => self.emit(InstructionKind::GetRecordSlot {
-                            dst,
-                            record: root,
-                            field: name.clone(),
-                            slot,
-                        }),
-                        LiteralFieldSlotKind::Enum => self.emit(InstructionKind::GetEnumSlot {
-                            dst,
-                            value: root,
-                            field: name.clone(),
-                            slot,
-                        }),
+                        LiteralFieldSlotKind::Record => {
+                            self.emit(UnlinkedInstructionKind::GetRecordSlot {
+                                dst,
+                                record: root,
+                                field: name.clone(),
+                                slot,
+                            })
+                        }
+                        LiteralFieldSlotKind::Enum => {
+                            self.emit(UnlinkedInstructionKind::GetEnumSlot {
+                                dst,
+                                value: root,
+                                field: name.clone(),
+                                slot,
+                            })
+                        }
                     }
                     Ok(dst)
                 } else if let Some(slot) = typed_record_slot {
                     let root = self.compile_expr(base)?;
                     let dst = self.alloc_register()?;
-                    self.emit(InstructionKind::GetRecordSlot {
+                    self.emit(UnlinkedInstructionKind::GetRecordSlot {
                         dst,
                         record: root,
                         field: name.clone(),
@@ -57,7 +61,7 @@ impl Compiler<'_, '_> {
                 } else if let Some(slot) = typed_enum_slot {
                     let root = self.compile_expr(base)?;
                     let dst = self.alloc_register()?;
-                    self.emit(InstructionKind::GetEnumSlot {
+                    self.emit(UnlinkedInstructionKind::GetEnumSlot {
                         dst,
                         value: root,
                         field: name.clone(),
@@ -86,7 +90,7 @@ impl Compiler<'_, '_> {
                         };
                         self.emit_host_read(dst, root, path, expr.span)?;
                     } else {
-                        self.emit(InstructionKind::GetRecordField {
+                        self.emit(UnlinkedInstructionKind::GetRecordField {
                             dst,
                             record: root,
                             field: name.clone(),
@@ -107,7 +111,7 @@ impl Compiler<'_, '_> {
                 let base = self.compile_expr(base)?;
                 let index = self.compile_expr(index)?;
                 let dst = self.alloc_register()?;
-                self.emit(InstructionKind::GetIndex { dst, base, index });
+                self.emit(UnlinkedInstructionKind::GetIndex { dst, base, index });
                 Ok(dst)
             }
             ExprKind::Call { callee, args } => self.compile_call_expr(expr, callee, args),
@@ -115,7 +119,7 @@ impl Compiler<'_, '_> {
             ExprKind::Try(value) => {
                 let src = self.compile_expr(value)?;
                 let dst = self.alloc_register()?;
-                self.emit(InstructionKind::TryPropagate { dst, src });
+                self.emit(UnlinkedInstructionKind::TryPropagate { dst, src });
                 Ok(dst)
             }
             ExprKind::Block(block) => {
@@ -129,7 +133,7 @@ impl Compiler<'_, '_> {
                     .map(|item| self.compile_expr(item))
                     .collect::<CompileResult<Vec<_>>>()?;
                 let dst = self.alloc_register()?;
-                self.emit(InstructionKind::MakeArray { dst, elements });
+                self.emit(UnlinkedInstructionKind::MakeArray { dst, elements });
                 Ok(dst)
             }
             ExprKind::Map(entries) => {
@@ -138,7 +142,7 @@ impl Compiler<'_, '_> {
                     .map(|entry| self.compile_map_entry(entry))
                     .collect::<CompileResult<Vec<_>>>()?;
                 let dst = self.alloc_register()?;
-                self.emit(InstructionKind::MakeMap { dst, entries });
+                self.emit(UnlinkedInstructionKind::MakeMap { dst, entries });
                 Ok(dst)
             }
             ExprKind::Record { path, fields } => {
@@ -162,7 +166,7 @@ impl Compiler<'_, '_> {
                     ))?;
                     let defaults = schema_default_fields(shape.as_ref());
                     let fields = self.compile_record_fields(fields, defaults)?;
-                    self.emit(InstructionKind::MakeEnum {
+                    self.emit(UnlinkedInstructionKind::MakeEnum {
                         dst,
                         enum_name,
                         variant,
@@ -181,7 +185,7 @@ impl Compiler<'_, '_> {
                     ))?;
                     let defaults = schema_default_fields(shape.as_ref());
                     let fields = self.compile_record_fields(fields, defaults)?;
-                    self.emit(InstructionKind::MakeRecord {
+                    self.emit(UnlinkedInstructionKind::MakeRecord {
                         dst,
                         type_name,
                         fields,
@@ -242,7 +246,7 @@ impl Compiler<'_, '_> {
         let start = self.compile_expr(left)?;
         let end = self.compile_expr(right)?;
         let dst = self.alloc_register()?;
-        self.emit(InstructionKind::MakeRange {
+        self.emit(UnlinkedInstructionKind::MakeRange {
             dst,
             start,
             end,
@@ -312,7 +316,7 @@ impl Compiler<'_, '_> {
     }
 
     fn emit_truthy_to_bool(&mut self, dst: Register, src: Register) -> CompileResult<()> {
-        self.emit(InstructionKind::Truthy { dst, src });
+        self.emit(UnlinkedInstructionKind::Truthy { dst, src });
         Ok(())
     }
 
@@ -326,8 +330,8 @@ impl Compiler<'_, '_> {
         let src = self.compile_expr(expr)?;
         let dst = self.alloc_register()?;
         let instruction = match op {
-            UnaryOp::Not => InstructionKind::Not { dst, src },
-            UnaryOp::Negate => InstructionKind::Negate { dst, src },
+            UnaryOp::Not => UnlinkedInstructionKind::Not { dst, src },
+            UnaryOp::Negate => UnlinkedInstructionKind::Negate { dst, src },
         };
         self.emit_spanned(instruction, span);
         Ok(dst)

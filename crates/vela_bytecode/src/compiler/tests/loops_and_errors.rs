@@ -17,14 +17,16 @@ fn main() {
     )
     .expect("for-in loop should compile");
     assert!(
-        code.instructions
-            .iter()
-            .any(|instruction| matches!(instruction.kind, InstructionKind::IterInit { .. }))
+        code.instructions.iter().any(|instruction| matches!(
+            instruction.kind,
+            UnlinkedInstructionKind::IterInit { .. }
+        ))
     );
     assert!(
-        code.instructions
-            .iter()
-            .any(|instruction| matches!(instruction.kind, InstructionKind::IterNext { .. }))
+        code.instructions.iter().any(|instruction| matches!(
+            instruction.kind,
+            UnlinkedInstructionKind::IterNext { .. }
+        ))
     );
 }
 
@@ -48,15 +50,16 @@ fn main() {
     )
     .expect("range for-in loop should compile");
     assert!(
-        code.instructions
-            .iter()
-            .any(|instruction| matches!(instruction.kind, InstructionKind::RangeNext { .. }))
+        code.instructions.iter().any(|instruction| matches!(
+            instruction.kind,
+            UnlinkedInstructionKind::RangeNext { .. }
+        ))
     );
     assert!(
-        !code
-            .instructions
-            .iter()
-            .any(|instruction| matches!(instruction.kind, InstructionKind::IterInit { .. }))
+        !code.instructions.iter().any(|instruction| matches!(
+            instruction.kind,
+            UnlinkedInstructionKind::IterInit { .. }
+        ))
     );
 }
 
@@ -85,14 +88,13 @@ fn main() {
     )
     .expect("for-in pattern should compile");
     let main = program.function("main").expect("main function");
-    assert!(
-        main.instructions
-            .iter()
-            .any(|instruction| matches!(instruction.kind, InstructionKind::EnumTagEqual { .. }))
-    );
     assert!(main.instructions.iter().any(|instruction| matches!(
         instruction.kind,
-        InstructionKind::GetEnumField { ref field, .. } if field == "amount"
+        UnlinkedInstructionKind::EnumTagEqual { .. }
+    )));
+    assert!(main.instructions.iter().any(|instruction| matches!(
+        instruction.kind,
+        UnlinkedInstructionKind::GetEnumField { ref field, .. } if field == "amount"
     )));
 }
 #[test]
@@ -118,14 +120,15 @@ fn main() {
     )
     .expect("break and continue should compile");
     assert!(
-        code.instructions
-            .iter()
-            .any(|instruction| matches!(instruction.kind, InstructionKind::IterNext { .. }))
+        code.instructions.iter().any(|instruction| matches!(
+            instruction.kind,
+            UnlinkedInstructionKind::IterNext { .. }
+        ))
     );
     assert!(
         code.instructions
             .iter()
-            .filter(|instruction| matches!(instruction.kind, InstructionKind::Jump { .. }))
+            .filter(|instruction| matches!(instruction.kind, UnlinkedInstructionKind::Jump { .. }))
             .count()
             >= 3
     );

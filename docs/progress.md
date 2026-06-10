@@ -194,12 +194,16 @@ Cranelift JIT.
   conversion failures are covered as HostAccess slow paths that leave adapter
   state unchanged.
   Source and module compilation now verifies bytecode before returning
-  `CodeObject` or `Program` values, covering register, constant, jump,
+  `UnlinkedCodeObject` or `UnlinkedProgram` values, covering register, constant, jump,
   frame-slot, call-argument, host-path dynamic segment, and nested closure
   invariants before future unchecked register, operand, or cache fast paths
   are introduced. Program verification also rejects script method metadata
   whose resolved target function is missing, keeping MethodId dispatch and
   future method-cache metadata target-complete before M20.
+  Compiler output is now explicitly unlinked bytecode:
+  `UnlinkedProgram`, `UnlinkedCodeObject`, `UnlinkedInstruction`, and
+  `UnlinkedInstructionKind` carry semantic IDs without requiring runtime
+  handles during compilation.
   ProgramVersion now owns bytecode-offset profile layout metadata for each
   function and rebuilds that sidecar when hot reload creates a new version, so
   future counters, cache state, or JIT decisions can be version-scoped and

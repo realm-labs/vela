@@ -1,25 +1,25 @@
 use vela_syntax::ast::{AssignOp, BinaryOp};
 
-use crate::{InstructionKind, Register};
+use crate::{Register, UnlinkedInstructionKind};
 
 pub(super) fn non_logical_binary_instruction(
     op: BinaryOp,
     dst: Register,
     lhs: Register,
     rhs: Register,
-) -> Option<InstructionKind> {
+) -> Option<UnlinkedInstructionKind> {
     match op {
-        BinaryOp::Add => Some(InstructionKind::Add { dst, lhs, rhs }),
-        BinaryOp::Sub => Some(InstructionKind::Sub { dst, lhs, rhs }),
-        BinaryOp::Mul => Some(InstructionKind::Mul { dst, lhs, rhs }),
-        BinaryOp::Div => Some(InstructionKind::Div { dst, lhs, rhs }),
-        BinaryOp::Rem => Some(InstructionKind::Rem { dst, lhs, rhs }),
-        BinaryOp::Equal => Some(InstructionKind::Equal { dst, lhs, rhs }),
-        BinaryOp::NotEqual => Some(InstructionKind::NotEqual { dst, lhs, rhs }),
-        BinaryOp::Less => Some(InstructionKind::Less { dst, lhs, rhs }),
-        BinaryOp::LessEqual => Some(InstructionKind::LessEqual { dst, lhs, rhs }),
-        BinaryOp::Greater => Some(InstructionKind::Greater { dst, lhs, rhs }),
-        BinaryOp::GreaterEqual => Some(InstructionKind::GreaterEqual { dst, lhs, rhs }),
+        BinaryOp::Add => Some(UnlinkedInstructionKind::Add { dst, lhs, rhs }),
+        BinaryOp::Sub => Some(UnlinkedInstructionKind::Sub { dst, lhs, rhs }),
+        BinaryOp::Mul => Some(UnlinkedInstructionKind::Mul { dst, lhs, rhs }),
+        BinaryOp::Div => Some(UnlinkedInstructionKind::Div { dst, lhs, rhs }),
+        BinaryOp::Rem => Some(UnlinkedInstructionKind::Rem { dst, lhs, rhs }),
+        BinaryOp::Equal => Some(UnlinkedInstructionKind::Equal { dst, lhs, rhs }),
+        BinaryOp::NotEqual => Some(UnlinkedInstructionKind::NotEqual { dst, lhs, rhs }),
+        BinaryOp::Less => Some(UnlinkedInstructionKind::Less { dst, lhs, rhs }),
+        BinaryOp::LessEqual => Some(UnlinkedInstructionKind::LessEqual { dst, lhs, rhs }),
+        BinaryOp::Greater => Some(UnlinkedInstructionKind::Greater { dst, lhs, rhs }),
+        BinaryOp::GreaterEqual => Some(UnlinkedInstructionKind::GreaterEqual { dst, lhs, rhs }),
         BinaryOp::Range | BinaryOp::RangeInclusive | BinaryOp::Or | BinaryOp::And => None,
     }
 }
@@ -29,13 +29,13 @@ pub(super) fn compound_assignment_instruction(
     dst: Register,
     lhs: Register,
     rhs: Register,
-) -> Option<InstructionKind> {
+) -> Option<UnlinkedInstructionKind> {
     match op {
-        AssignOp::Add => Some(InstructionKind::Add { dst, lhs, rhs }),
-        AssignOp::Sub => Some(InstructionKind::Sub { dst, lhs, rhs }),
-        AssignOp::Mul => Some(InstructionKind::Mul { dst, lhs, rhs }),
-        AssignOp::Div => Some(InstructionKind::Div { dst, lhs, rhs }),
-        AssignOp::Rem => Some(InstructionKind::Rem { dst, lhs, rhs }),
+        AssignOp::Add => Some(UnlinkedInstructionKind::Add { dst, lhs, rhs }),
+        AssignOp::Sub => Some(UnlinkedInstructionKind::Sub { dst, lhs, rhs }),
+        AssignOp::Mul => Some(UnlinkedInstructionKind::Mul { dst, lhs, rhs }),
+        AssignOp::Div => Some(UnlinkedInstructionKind::Div { dst, lhs, rhs }),
+        AssignOp::Rem => Some(UnlinkedInstructionKind::Rem { dst, lhs, rhs }),
         AssignOp::Set => None,
     }
 }

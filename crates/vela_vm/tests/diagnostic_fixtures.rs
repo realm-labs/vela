@@ -2,8 +2,8 @@ use std::sync::Arc;
 
 use vela_bytecode::compiler::compile_program_source;
 use vela_bytecode::{
-    CacheSiteKind, CodeObject, Constant, Instruction, InstructionKind, InstructionOffset, Program,
-    Register,
+    CacheSiteKind, Constant, InstructionOffset, Register, UnlinkedCodeObject, UnlinkedInstruction,
+    UnlinkedInstructionKind, UnlinkedProgram,
 };
 use vela_common::{HostObjectId, HostTypeId, SourceId, Span};
 use vela_def::{FieldId, TypeId};
@@ -68,11 +68,11 @@ fn host_permission_denied_fixture_renders_source_span() {
     let level_path = HostPath::new(host_ref).field(level_field);
     let source_span = Span::new(SourceId::new(1), 29, 41);
 
-    let mut code = CodeObject::new("main", 2).with_params(vec!["player".to_owned()]);
+    let mut code = UnlinkedCodeObject::new("main", 2).with_params(vec!["player".to_owned()]);
     let target = code.intern_host_target(HostTargetPlan::new(host_ref.type_id).field(level_field));
     let cache_site = code.push_cache_site(CacheSiteKind::HostPathRead, InstructionOffset(0));
     code.push_instruction(
-        Instruction::new(InstructionKind::HostRead {
+        UnlinkedInstruction::new(UnlinkedInstructionKind::HostRead {
             dst: Register(1),
             root: Register(0),
             target,
@@ -81,11 +81,11 @@ fn host_permission_denied_fixture_renders_source_span() {
         })
         .with_span(source_span),
     );
-    code.push_instruction(Instruction::new(InstructionKind::Return {
+    code.push_instruction(UnlinkedInstruction::new(UnlinkedInstructionKind::Return {
         src: Register(1),
     }));
 
-    let mut program = Program::new();
+    let mut program = UnlinkedProgram::new();
     program.insert_function(code);
 
     let mut adapter = MockStateAdapter::new();
@@ -121,17 +121,19 @@ fn host_compound_write_denied_fixture_renders_source_span() {
     let level_path = HostPath::new(host_ref).field(level_field);
     let source_span = Span::new(SourceId::new(1), 22, 34);
 
-    let mut code = CodeObject::new("main", 2).with_params(vec!["player".to_owned()]);
+    let mut code = UnlinkedCodeObject::new("main", 2).with_params(vec!["player".to_owned()]);
     let one = code.push_constant(Constant::Int(1));
     let target = code.intern_host_target(HostTargetPlan::new(host_ref.type_id).field(level_field));
     let mutate_cache = code.push_cache_site(CacheSiteKind::HostPathMutate, InstructionOffset(1));
     let read_cache = code.push_cache_site(CacheSiteKind::HostPathRead, InstructionOffset(2));
-    code.push_instruction(Instruction::new(InstructionKind::LoadConst {
-        dst: Register(1),
-        constant: one,
-    }));
+    code.push_instruction(UnlinkedInstruction::new(
+        UnlinkedInstructionKind::LoadConst {
+            dst: Register(1),
+            constant: one,
+        },
+    ));
     code.push_instruction(
-        Instruction::new(InstructionKind::HostMutate {
+        UnlinkedInstruction::new(UnlinkedInstructionKind::HostMutate {
             root: Register(0),
             target,
             dynamic_args: Vec::new(),
@@ -141,18 +143,20 @@ fn host_compound_write_denied_fixture_renders_source_span() {
         })
         .with_span(source_span),
     );
-    code.push_instruction(Instruction::new(InstructionKind::HostRead {
-        dst: Register(1),
-        root: Register(0),
-        target,
-        dynamic_args: Vec::new(),
-        cache_site: read_cache,
-    }));
-    code.push_instruction(Instruction::new(InstructionKind::Return {
+    code.push_instruction(UnlinkedInstruction::new(
+        UnlinkedInstructionKind::HostRead {
+            dst: Register(1),
+            root: Register(0),
+            target,
+            dynamic_args: Vec::new(),
+            cache_site: read_cache,
+        },
+    ));
+    code.push_instruction(UnlinkedInstruction::new(UnlinkedInstructionKind::Return {
         src: Register(1),
     }));
 
-    let mut program = Program::new();
+    let mut program = UnlinkedProgram::new();
     program.insert_function(code);
 
     let mut adapter = MockStateAdapter::new();
@@ -190,11 +194,11 @@ fn stale_host_ref_fixture_renders_source_span() {
     let level_path = HostPath::new(fresh_ref).field(level_field);
     let source_span = Span::new(SourceId::new(1), 29, 41);
 
-    let mut code = CodeObject::new("main", 2).with_params(vec!["player".to_owned()]);
+    let mut code = UnlinkedCodeObject::new("main", 2).with_params(vec!["player".to_owned()]);
     let target = code.intern_host_target(HostTargetPlan::new(stale_ref.type_id).field(level_field));
     let cache_site = code.push_cache_site(CacheSiteKind::HostPathRead, InstructionOffset(0));
     code.push_instruction(
-        Instruction::new(InstructionKind::HostRead {
+        UnlinkedInstruction::new(UnlinkedInstructionKind::HostRead {
             dst: Register(1),
             root: Register(0),
             target,
@@ -203,11 +207,11 @@ fn stale_host_ref_fixture_renders_source_span() {
         })
         .with_span(source_span),
     );
-    code.push_instruction(Instruction::new(InstructionKind::Return {
+    code.push_instruction(UnlinkedInstruction::new(UnlinkedInstructionKind::Return {
         src: Register(1),
     }));
 
-    let mut program = Program::new();
+    let mut program = UnlinkedProgram::new();
     program.insert_function(code);
 
     let mut adapter = MockStateAdapter::new();

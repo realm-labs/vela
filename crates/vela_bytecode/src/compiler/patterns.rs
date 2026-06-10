@@ -2,7 +2,7 @@ use vela_common::Span;
 use vela_hir::binding::{BindingResolution, LocalBindingKind};
 use vela_syntax::ast::{Pattern, RecordPatternField};
 
-use crate::{InstructionKind, Register};
+use crate::{Register, UnlinkedInstructionKind};
 
 use super::script_types::ScriptTypeFact;
 use super::{CompileError, CompileErrorKind, CompileResult, Compiler, frame_slot_kind};
@@ -52,7 +52,7 @@ impl Compiler<'_, '_> {
             Pattern::Literal(literal) => {
                 let pattern = self.compile_literal(literal)?;
                 let condition = self.alloc_register()?;
-                self.emit(InstructionKind::Equal {
+                self.emit(UnlinkedInstructionKind::Equal {
                     dst: condition,
                     lhs: scrutinee,
                     rhs: pattern,
@@ -67,7 +67,7 @@ impl Compiler<'_, '_> {
                         continue;
                     };
                     let field_value = self.alloc_register()?;
-                    self.emit(InstructionKind::GetEnumField {
+                    self.emit(UnlinkedInstructionKind::GetEnumField {
                         dst: field_value,
                         value: scrutinee,
                         field: field.name.clone(),
@@ -83,7 +83,7 @@ impl Compiler<'_, '_> {
                         continue;
                     }
                     let field_value = self.alloc_register()?;
-                    self.emit(InstructionKind::GetEnumField {
+                    self.emit(UnlinkedInstructionKind::GetEnumField {
                         dst: field_value,
                         value: scrutinee,
                         field: tuple_variant_field_name(index),
@@ -107,7 +107,7 @@ impl Compiler<'_, '_> {
         };
         let enum_name = self.type_symbol_for_pattern(path).unwrap_or(enum_name);
         let condition = self.alloc_register()?;
-        self.emit(InstructionKind::EnumTagEqual {
+        self.emit(UnlinkedInstructionKind::EnumTagEqual {
             dst: condition,
             value: scrutinee,
             enum_name,
@@ -127,7 +127,7 @@ impl Compiler<'_, '_> {
         match pattern {
             Pattern::Binding(binding) => {
                 let dst = self.alloc_register()?;
-                self.emit(InstructionKind::Move {
+                self.emit(UnlinkedInstructionKind::Move {
                     dst,
                     src: scrutinee,
                 });
@@ -140,7 +140,7 @@ impl Compiler<'_, '_> {
                         continue;
                     }
                     let dst = self.alloc_register()?;
-                    self.emit(InstructionKind::GetEnumField {
+                    self.emit(UnlinkedInstructionKind::GetEnumField {
                         dst,
                         value: scrutinee,
                         field: field.name.clone(),
@@ -163,7 +163,7 @@ impl Compiler<'_, '_> {
                         continue;
                     }
                     let field_value = self.alloc_register()?;
-                    self.emit(InstructionKind::GetEnumField {
+                    self.emit(UnlinkedInstructionKind::GetEnumField {
                         dst: field_value,
                         value: scrutinee,
                         field: tuple_variant_field_name(index),

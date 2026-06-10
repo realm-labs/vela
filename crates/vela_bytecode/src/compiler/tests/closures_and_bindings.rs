@@ -1,7 +1,11 @@
 use super::*;
 use crate::{FrameSlotInfo, FrameSlotKind};
 
-fn frame_slot<'a>(code: &'a CodeObject, name: &str, kind: FrameSlotKind) -> &'a FrameSlotInfo {
+fn frame_slot<'a>(
+    code: &'a UnlinkedCodeObject,
+    name: &str,
+    kind: FrameSlotKind,
+) -> &'a FrameSlotInfo {
     code.frame
         .slot(name, kind)
         .unwrap_or_else(|| panic!("expected {kind:?} frame slot `{name}`"))
@@ -26,17 +30,16 @@ fn main() {
     let main = program.function("main").expect("main function");
     assert!(make_adder.instructions.iter().any(|instruction| matches!(
         &instruction.kind,
-        InstructionKind::MakeClosure { function, captures, .. }
+        UnlinkedInstructionKind::MakeClosure { function, captures, .. }
             if make_adder
                 .nested_function(*function)
                 .is_some_and(|code| code.capture_count == 1 && code.params == ["value"])
                 && captures.len() == 1
     )));
-    assert!(
-        main.instructions
-            .iter()
-            .any(|instruction| matches!(instruction.kind, InstructionKind::CallClosure { .. }))
-    );
+    assert!(main.instructions.iter().any(|instruction| matches!(
+        instruction.kind,
+        UnlinkedInstructionKind::CallClosure { .. }
+    )));
 }
 
 #[test]
@@ -102,7 +105,9 @@ fn make_adder(base) {
         .instructions
         .iter()
         .find_map(|instruction| match &instruction.kind {
-            InstructionKind::MakeClosure { function, .. } => make_adder.nested_function(*function),
+            UnlinkedInstructionKind::MakeClosure { function, .. } => {
+                make_adder.nested_function(*function)
+            }
             _ => None,
         })
         .expect("lambda code object");
@@ -143,7 +148,7 @@ fn main() {
         .expect("make_nested function");
     assert!(make_nested.instructions.iter().any(|instruction| matches!(
         &instruction.kind,
-        InstructionKind::MakeClosure { function, captures, .. }
+        UnlinkedInstructionKind::MakeClosure { function, captures, .. }
             if make_nested
                 .nested_function(*function)
                 .is_some_and(|code| code.capture_count == 1 && code.params == ["amount"])
@@ -170,11 +175,10 @@ fn main() {
         "main",
     )
     .expect("try propagation should compile");
-    assert!(
-        code.instructions
-            .iter()
-            .any(|instruction| matches!(instruction.kind, InstructionKind::TryPropagate { .. }))
-    );
+    assert!(code.instructions.iter().any(|instruction| matches!(
+        instruction.kind,
+        UnlinkedInstructionKind::TryPropagate { .. }
+    )));
 }
 #[test]
 fn compiler_lowers_range_expressions() {
@@ -191,7 +195,7 @@ fn main() {
     .expect("range expression should compile");
     assert!(code.instructions.iter().any(|instruction| matches!(
         instruction.kind,
-        InstructionKind::MakeRange {
+        UnlinkedInstructionKind::MakeRange {
             inclusive: true,
             ..
         }
@@ -214,12 +218,12 @@ fn main() {
         .instructions
         .iter()
         .find_map(|instruction| match instruction.kind {
-            InstructionKind::Return { src } => Some(src),
+            UnlinkedInstructionKind::Return { src } => Some(src),
             _ => None,
         })
         .expect("return instruction");
     let constant = code.instructions.iter().find_map(|instruction| {
-        let InstructionKind::LoadConst { dst, constant } = instruction.kind else {
+        let UnlinkedInstructionKind::LoadConst { dst, constant } = instruction.kind else {
             return None;
         };
         (dst == returned).then_some(constant)
@@ -247,12 +251,12 @@ fn main() {
         .instructions
         .iter()
         .find_map(|instruction| match instruction.kind {
-            InstructionKind::Return { src } => Some(src),
+            UnlinkedInstructionKind::Return { src } => Some(src),
             _ => None,
         })
         .expect("return instruction");
     let constant = code.instructions.iter().find_map(|instruction| {
-        let InstructionKind::LoadConst { dst, constant } = instruction.kind else {
+        let UnlinkedInstructionKind::LoadConst { dst, constant } = instruction.kind else {
             return None;
         };
         (dst == returned).then_some(constant)
@@ -317,7 +321,7 @@ fn main() {
         .instructions
         .iter()
         .find_map(|instruction| match instruction.kind {
-            InstructionKind::Return { src } => Some(src),
+            UnlinkedInstructionKind::Return { src } => Some(src),
             _ => None,
         })
         .expect("return instruction");
@@ -343,7 +347,7 @@ fn main() {
         .instructions
         .iter()
         .find_map(|instruction| match &instruction.kind {
-            InstructionKind::MakeRecord { fields, .. } => fields
+            UnlinkedInstructionKind::MakeRecord { fields, .. } => fields
                 .iter()
                 .find_map(|(name, register)| (name == "value").then_some(*register)),
             _ => None,
@@ -378,13 +382,15 @@ fn main(reward) {
         .instructions
         .iter()
         .find_map(|instruction| match instruction.kind {
-            InstructionKind::GetEnumField { dst, ref field, .. } if field == "amount" => Some(dst),
+            UnlinkedInstructionKind::GetEnumField { dst, ref field, .. } if field == "amount" => {
+                Some(dst)
+            }
             _ => None,
         })
         .expect("pattern field register");
     assert!(code.instructions.iter().any(|instruction| matches!(
         instruction.kind,
-        InstructionKind::Return { src } if src == pattern_register
+        UnlinkedInstructionKind::Return { src } if src == pattern_register
     )));
 }
 #[test]
@@ -403,14 +409,13 @@ fn main() {
         "main",
     )
     .expect("shadowed callee name should compile through HIR binding facts");
-    assert!(
-        code.instructions
-            .iter()
-            .any(|instruction| matches!(&instruction.kind, InstructionKind::CallClosure { .. }))
-    );
+    assert!(code.instructions.iter().any(|instruction| matches!(
+        &instruction.kind,
+        UnlinkedInstructionKind::CallClosure { .. }
+    )));
     assert!(!code.instructions.iter().any(|instruction| matches!(
         &instruction.kind,
-        InstructionKind::CallFunction { name, .. } if name == "helper"
+        UnlinkedInstructionKind::CallFunction { name, .. } if name == "helper"
     )));
 }
 #[test]
@@ -432,7 +437,7 @@ fn main() {
         .instructions
         .iter()
         .find_map(|instruction| match instruction.kind {
-            InstructionKind::Div { .. } => instruction.span,
+            UnlinkedInstructionKind::Div { .. } => instruction.span,
             _ => None,
         })
         .expect("division instruction span");
@@ -442,7 +447,9 @@ fn main() {
         .instructions
         .iter()
         .find_map(|instruction| match instruction.kind {
-            InstructionKind::CallFunction { ref name, .. } if name == "helper" => instruction.span,
+            UnlinkedInstructionKind::CallFunction { ref name, .. } if name == "helper" => {
+                instruction.span
+            }
             _ => None,
         })
         .expect("script call instruction span");

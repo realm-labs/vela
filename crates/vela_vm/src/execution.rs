@@ -98,7 +98,7 @@ impl Vm {
             ip = ip.saturating_add(1);
 
             match &instruction.kind {
-                InstructionKind::LoadConst { dst, constant } => {
+                UnlinkedInstructionKind::LoadConst { dst, constant } => {
                     let constant_value = code.constants.get(constant.0).ok_or_else(|| {
                         VmError::new(VmErrorKind::ConstantOutOfBounds {
                             constant: constant.0,
@@ -133,49 +133,49 @@ impl Vm {
                     };
                     frame.write(*dst, value)?;
                 }
-                InstructionKind::Move { dst, src } => {
+                UnlinkedInstructionKind::Move { dst, src } => {
                     let value = *frame.read(*src)?;
                     frame.write(*dst, value)?;
                 }
-                InstructionKind::Not { dst, src } => {
+                UnlinkedInstructionKind::Not { dst, src } => {
                     let value = Value::Bool(!is_truthy(frame.read(*src)?));
                     frame.write(*dst, value)?;
                 }
-                InstructionKind::Truthy { dst, src } => {
+                UnlinkedInstructionKind::Truthy { dst, src } => {
                     let value = Value::Bool(is_truthy(frame.read(*src)?));
                     frame.write(*dst, value)?;
                 }
-                InstructionKind::Negate { dst, src } => {
+                UnlinkedInstructionKind::Negate { dst, src } => {
                     let value = negate_numeric(frame.read(*src)?)
                         .map_err(|error| error.with_source_span_if_absent(instruction.span))?;
                     frame.write(*dst, value)?;
                 }
-                InstructionKind::Add { dst, lhs, rhs } => {
+                UnlinkedInstructionKind::Add { dst, lhs, rhs } => {
                     let value = add_numeric(frame.read(*lhs)?, frame.read(*rhs)?)
                         .map_err(|error| error.with_source_span_if_absent(instruction.span))?;
                     frame.write(*dst, value)?;
                 }
-                InstructionKind::Sub { dst, lhs, rhs } => {
+                UnlinkedInstructionKind::Sub { dst, lhs, rhs } => {
                     let value = sub_numeric(frame.read(*lhs)?, frame.read(*rhs)?)
                         .map_err(|error| error.with_source_span_if_absent(instruction.span))?;
                     frame.write(*dst, value)?;
                 }
-                InstructionKind::Mul { dst, lhs, rhs } => {
+                UnlinkedInstructionKind::Mul { dst, lhs, rhs } => {
                     let value = mul_numeric(frame.read(*lhs)?, frame.read(*rhs)?)
                         .map_err(|error| error.with_source_span_if_absent(instruction.span))?;
                     frame.write(*dst, value)?;
                 }
-                InstructionKind::Div { dst, lhs, rhs } => {
+                UnlinkedInstructionKind::Div { dst, lhs, rhs } => {
                     let value = div_numeric(frame.read(*lhs)?, frame.read(*rhs)?)
                         .map_err(|error| error.with_source_span_if_absent(instruction.span))?;
                     frame.write(*dst, value)?;
                 }
-                InstructionKind::Rem { dst, lhs, rhs } => {
+                UnlinkedInstructionKind::Rem { dst, lhs, rhs } => {
                     let value = rem_numeric(frame.read(*lhs)?, frame.read(*rhs)?)
                         .map_err(|error| error.with_source_span_if_absent(instruction.span))?;
                     frame.write(*dst, value)?;
                 }
-                InstructionKind::Equal { dst, lhs, rhs } => {
+                UnlinkedInstructionKind::Equal { dst, lhs, rhs } => {
                     let value = Value::Bool(values_equal(
                         frame.read(*lhs)?,
                         frame.read(*rhs)?,
@@ -183,7 +183,7 @@ impl Vm {
                     )?);
                     frame.write(*dst, value)?;
                 }
-                InstructionKind::NotEqual { dst, lhs, rhs } => {
+                UnlinkedInstructionKind::NotEqual { dst, lhs, rhs } => {
                     let value = Value::Bool(!values_equal(
                         frame.read(*lhs)?,
                         frame.read(*rhs)?,
@@ -191,43 +191,43 @@ impl Vm {
                     )?);
                     frame.write(*dst, value)?;
                 }
-                InstructionKind::Less { dst, lhs, rhs } => {
+                UnlinkedInstructionKind::Less { dst, lhs, rhs } => {
                     let value = less_numeric(frame.read(*lhs)?, frame.read(*rhs)?)
                         .map_err(|error| error.with_source_span_if_absent(instruction.span))?;
                     frame.write(*dst, Value::Bool(value))?;
                 }
-                InstructionKind::LessEqual { dst, lhs, rhs } => {
+                UnlinkedInstructionKind::LessEqual { dst, lhs, rhs } => {
                     let value = less_equal_numeric(frame.read(*lhs)?, frame.read(*rhs)?)
                         .map_err(|error| error.with_source_span_if_absent(instruction.span))?;
                     frame.write(*dst, Value::Bool(value))?;
                 }
-                InstructionKind::Greater { dst, lhs, rhs } => {
+                UnlinkedInstructionKind::Greater { dst, lhs, rhs } => {
                     let value = greater_numeric(frame.read(*lhs)?, frame.read(*rhs)?)
                         .map_err(|error| error.with_source_span_if_absent(instruction.span))?;
                     frame.write(*dst, Value::Bool(value))?;
                 }
-                InstructionKind::GreaterEqual { dst, lhs, rhs } => {
+                UnlinkedInstructionKind::GreaterEqual { dst, lhs, rhs } => {
                     let value = greater_equal_numeric(frame.read(*lhs)?, frame.read(*rhs)?)
                         .map_err(|error| error.with_source_span_if_absent(instruction.span))?;
                     frame.write(*dst, Value::Bool(value))?;
                 }
-                InstructionKind::JumpIfFalse { condition, target } => {
+                UnlinkedInstructionKind::JumpIfFalse { condition, target } => {
                     if !is_truthy(frame.read(*condition)?) {
                         validate_jump(code, target.0)?;
                         ip = target.0;
                     }
                 }
-                InstructionKind::JumpIfNotMissing { value, target } => {
+                UnlinkedInstructionKind::JumpIfNotMissing { value, target } => {
                     if !matches!(frame.read(*value)?, Value::Missing) {
                         validate_jump(code, target.0)?;
                         ip = target.0;
                     }
                 }
-                InstructionKind::Jump { target } => {
+                UnlinkedInstructionKind::Jump { target } => {
                     validate_jump(code, target.0)?;
                     ip = target.0;
                 }
-                InstructionKind::CallNative {
+                UnlinkedInstructionKind::CallNative {
                     dst,
                     name,
                     native,
@@ -248,7 +248,9 @@ impl Vm {
                         },
                     )?;
                 }
-                InstructionKind::CallFunction { dst, name, args } => {
+                UnlinkedInstructionKind::CallFunction {
+                    dst, name, args, ..
+                } => {
                     script_function_calls::dispatch_script_function_call(
                         self,
                         program,
@@ -265,7 +267,7 @@ impl Vm {
                         },
                     )?;
                 }
-                InstructionKind::MakeClosure {
+                UnlinkedInstructionKind::MakeClosure {
                     dst,
                     function,
                     captures,
@@ -283,7 +285,7 @@ impl Vm {
                         },
                     )?;
                 }
-                InstructionKind::CallClosure { dst, callee, args } => {
+                UnlinkedInstructionKind::CallClosure { dst, callee, args } => {
                     closure_calls::dispatch_closure_call(
                         self,
                         program,
@@ -300,11 +302,10 @@ impl Vm {
                         },
                     )?;
                 }
-                InstructionKind::CallMethod {
+                UnlinkedInstructionKind::CallMethod {
                     dst,
                     receiver,
                     method,
-                    value_method_id,
                     args,
                 } => {
                     if args.is_empty() {
@@ -319,7 +320,6 @@ impl Vm {
                                 dst: *dst,
                                 receiver: *receiver,
                                 method,
-                                value_method_id: *value_method_id,
                                 values: &[],
                             },
                         )?;
@@ -338,13 +338,12 @@ impl Vm {
                                 dst: *dst,
                                 receiver: *receiver,
                                 method,
-                                value_method_id: *value_method_id,
                                 values: values.as_slice(),
                             },
                         )?;
                     }
                 }
-                InstructionKind::CallMethodId {
+                UnlinkedInstructionKind::CallMethodId {
                     dst,
                     receiver,
                     method,
@@ -388,13 +387,13 @@ impl Vm {
                         )?;
                     }
                 }
-                InstructionKind::TryPropagate { dst, src } => {
+                UnlinkedInstructionKind::TryPropagate { dst, src } => {
                     match try_propagate_value(frame.read(*src)?, heap.as_deref())? {
                         TryPropagation::Continue(value) => frame.write(*dst, value)?,
                         TryPropagation::Return(value) => return Ok(value),
                     }
                 }
-                InstructionKind::MakeArray { dst, elements } => {
+                UnlinkedInstructionKind::MakeArray { dst, elements } => {
                     script_aggregate_construction::make_array(
                         &mut frame,
                         heap.as_deref_mut(),
@@ -403,7 +402,7 @@ impl Vm {
                         elements,
                     )?;
                 }
-                InstructionKind::MakeMap { dst, entries } => {
+                UnlinkedInstructionKind::MakeMap { dst, entries } => {
                     script_aggregate_construction::make_map(
                         &mut frame,
                         heap.as_deref_mut(),
@@ -412,7 +411,7 @@ impl Vm {
                         entries,
                     )?;
                 }
-                InstructionKind::MakeRange {
+                UnlinkedInstructionKind::MakeRange {
                     dst,
                     start,
                     end,
@@ -422,7 +421,7 @@ impl Vm {
                         &mut frame, *dst, *start, *end, *inclusive,
                     )?;
                 }
-                InstructionKind::MakeRecord {
+                UnlinkedInstructionKind::MakeRecord {
                     dst,
                     type_name,
                     fields,
@@ -436,7 +435,7 @@ impl Vm {
                         fields,
                     )?;
                 }
-                InstructionKind::MakeEnum {
+                UnlinkedInstructionKind::MakeEnum {
                     dst,
                     enum_name,
                     variant,
@@ -452,7 +451,7 @@ impl Vm {
                         fields,
                     )?;
                 }
-                InstructionKind::GetRecordField { dst, record, field } => {
+                UnlinkedInstructionKind::GetRecordField { dst, record, field } => {
                     field_access::dispatch_get_record_field(
                         &mut frame,
                         heap.as_deref_mut(),
@@ -461,7 +460,7 @@ impl Vm {
                         field,
                     )?;
                 }
-                InstructionKind::GetRecordSlot {
+                UnlinkedInstructionKind::GetRecordSlot {
                     dst,
                     record,
                     field,
@@ -476,7 +475,7 @@ impl Vm {
                         *slot,
                     )?;
                 }
-                InstructionKind::SetRecordField { record, field, src } => {
+                UnlinkedInstructionKind::SetRecordField { record, field, src } => {
                     field_access::dispatch_set_record_field(
                         &mut frame,
                         heap.as_deref_mut(),
@@ -486,7 +485,7 @@ impl Vm {
                         *src,
                     )?;
                 }
-                InstructionKind::SetRecordSlot {
+                UnlinkedInstructionKind::SetRecordSlot {
                     record,
                     field,
                     slot,
@@ -502,7 +501,7 @@ impl Vm {
                         *src,
                     )?;
                 }
-                InstructionKind::GetEnumField { dst, value, field } => {
+                UnlinkedInstructionKind::GetEnumField { dst, value, field } => {
                     field_access::dispatch_get_enum_field(
                         &mut frame,
                         heap.as_deref_mut(),
@@ -511,7 +510,7 @@ impl Vm {
                         field,
                     )?;
                 }
-                InstructionKind::GetEnumSlot {
+                UnlinkedInstructionKind::GetEnumSlot {
                     dst,
                     value,
                     field,
@@ -526,7 +525,7 @@ impl Vm {
                         *slot,
                     )?;
                 }
-                InstructionKind::GetIndex { dst, base, index } => {
+                UnlinkedInstructionKind::GetIndex { dst, base, index } => {
                     let value = indexing::get_index(
                         frame.read(*base)?,
                         frame.read(*index)?,
@@ -534,7 +533,7 @@ impl Vm {
                     )?;
                     frame.write(*dst, value)?;
                 }
-                InstructionKind::SetIndex { base, index, src } => {
+                UnlinkedInstructionKind::SetIndex { base, index, src } => {
                     let mut base_value = *frame.read(*base)?;
                     indexing::set_index(
                         &mut base_value,
@@ -545,7 +544,7 @@ impl Vm {
                     )?;
                     frame.write(*base, base_value)?;
                 }
-                InstructionKind::IterInit { dst, iterable } => {
+                UnlinkedInstructionKind::IterInit { dst, iterable } => {
                     iteration::dispatch_iter_init(
                         iteration::IterRuntime {
                             frame: &mut frame,
@@ -556,7 +555,7 @@ impl Vm {
                         *iterable,
                     )?;
                 }
-                InstructionKind::IterNext {
+                UnlinkedInstructionKind::IterNext {
                     iterator,
                     dst,
                     jump_if_done,
@@ -575,7 +574,7 @@ impl Vm {
                         ip = target;
                     }
                 }
-                InstructionKind::RangeNext {
+                UnlinkedInstructionKind::RangeNext {
                     cursor,
                     end,
                     done,
@@ -602,7 +601,7 @@ impl Vm {
                         ip = target;
                     }
                 }
-                InstructionKind::EnumTagEqual {
+                UnlinkedInstructionKind::EnumTagEqual {
                     dst,
                     value,
                     enum_name,
@@ -616,7 +615,7 @@ impl Vm {
                     );
                     frame.write(*dst, Value::Bool(matches))?;
                 }
-                InstructionKind::LoadGlobal {
+                UnlinkedInstructionKind::LoadGlobal {
                     dst,
                     global,
                     slot,
@@ -648,7 +647,7 @@ impl Vm {
                     }
                     frame.write(*dst, value)?;
                 }
-                InstructionKind::HostRead {
+                UnlinkedInstructionKind::HostRead {
                     dst,
                     root,
                     target,
@@ -677,7 +676,7 @@ impl Vm {
                     )?;
                     frame.write(*dst, value)?;
                 }
-                InstructionKind::HostWrite {
+                UnlinkedInstructionKind::HostWrite {
                     root,
                     target,
                     dynamic_args,
@@ -706,7 +705,7 @@ impl Vm {
                         *cache_site,
                     )?;
                 }
-                InstructionKind::HostMutate {
+                UnlinkedInstructionKind::HostMutate {
                     root,
                     target,
                     dynamic_args,
@@ -739,7 +738,7 @@ impl Vm {
                         },
                     )?;
                 }
-                InstructionKind::HostRemove {
+                UnlinkedInstructionKind::HostRemove {
                     root,
                     target,
                     dynamic_args,
@@ -766,7 +765,7 @@ impl Vm {
                         *cache_site,
                     )?;
                 }
-                InstructionKind::HostCall {
+                UnlinkedInstructionKind::HostCall {
                     dst,
                     root,
                     target,
@@ -804,7 +803,7 @@ impl Vm {
                         frame.write(*dst, return_value)?;
                     }
                 }
-                InstructionKind::Return { src } => return Ok(*frame.read(*src)?),
+                UnlinkedInstructionKind::Return { src } => return Ok(*frame.read(*src)?),
             }
 
             if let Some(heap) = heap.as_deref_mut() {

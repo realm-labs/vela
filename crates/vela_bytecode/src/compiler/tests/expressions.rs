@@ -15,12 +15,12 @@ fn main() {
     assert!(
         code.instructions
             .iter()
-            .any(|instruction| { matches!(instruction.kind, InstructionKind::Not { .. }) })
+            .any(|instruction| { matches!(instruction.kind, UnlinkedInstructionKind::Not { .. }) })
     );
     assert!(
-        code.instructions
-            .iter()
-            .any(|instruction| { matches!(instruction.kind, InstructionKind::Negate { .. }) })
+        code.instructions.iter().any(|instruction| {
+            matches!(instruction.kind, UnlinkedInstructionKind::Negate { .. })
+        })
     );
 }
 
@@ -39,15 +39,15 @@ fn main() {
     .expect("negated equality should compile");
 
     assert!(
-        code.instructions
-            .iter()
-            .any(|instruction| { matches!(instruction.kind, InstructionKind::Equal { .. }) })
+        code.instructions.iter().any(|instruction| {
+            matches!(instruction.kind, UnlinkedInstructionKind::Equal { .. })
+        })
     );
     assert!(
         !code
             .instructions
             .iter()
-            .any(|instruction| { matches!(instruction.kind, InstructionKind::Not { .. }) })
+            .any(|instruction| { matches!(instruction.kind, UnlinkedInstructionKind::Not { .. }) })
     );
 }
 
@@ -63,30 +63,29 @@ fn main() {
         "main",
     )
     .expect("logical operators should compile");
+    assert!(code.instructions.iter().any(|instruction| matches!(
+        instruction.kind,
+        UnlinkedInstructionKind::JumpIfFalse { .. }
+    )));
     assert!(
-        code.instructions
-            .iter()
-            .any(|instruction| matches!(instruction.kind, InstructionKind::JumpIfFalse { .. }))
+        code.instructions.iter().any(|instruction| {
+            matches!(instruction.kind, UnlinkedInstructionKind::Jump { .. })
+        })
     );
     assert!(
-        code.instructions
-            .iter()
-            .any(|instruction| { matches!(instruction.kind, InstructionKind::Jump { .. }) })
-    );
-    assert!(
-        code.instructions
-            .iter()
-            .any(|instruction| { matches!(instruction.kind, InstructionKind::Truthy { .. }) })
+        code.instructions.iter().any(|instruction| {
+            matches!(instruction.kind, UnlinkedInstructionKind::Truthy { .. })
+        })
     );
     assert!(
         !code
             .instructions
             .iter()
-            .any(|instruction| { matches!(instruction.kind, InstructionKind::Not { .. }) })
+            .any(|instruction| { matches!(instruction.kind, UnlinkedInstructionKind::Not { .. }) })
     );
     assert!(code.instructions.iter().any(|instruction| matches!(
         instruction.kind,
-        InstructionKind::CallNative { ref name, .. } if name == "fail"
+        UnlinkedInstructionKind::CallNative { ref name, .. } if name == "fail"
     )));
 }
 #[test]
@@ -109,15 +108,14 @@ fn main() {
         "main",
     )
     .expect("block and if expression values should compile");
+    assert!(code.instructions.iter().any(|instruction| matches!(
+        instruction.kind,
+        UnlinkedInstructionKind::JumpIfFalse { .. }
+    )));
     assert!(
         code.instructions
             .iter()
-            .any(|instruction| matches!(instruction.kind, InstructionKind::JumpIfFalse { .. }))
-    );
-    assert!(
-        code.instructions
-            .iter()
-            .any(|instruction| matches!(instruction.kind, InstructionKind::Move { .. }))
+            .any(|instruction| matches!(instruction.kind, UnlinkedInstructionKind::Move { .. }))
     );
 }
 #[test]
@@ -155,7 +153,7 @@ fn main() {
     assert!(
         code.instructions
             .iter()
-            .any(|instruction| matches!(instruction.kind, InstructionKind::Return { .. }))
+            .any(|instruction| matches!(instruction.kind, UnlinkedInstructionKind::Return { .. }))
     );
 }
 #[test]
@@ -186,7 +184,7 @@ fn main(kind) {
     assert!(
         code.instructions
             .iter()
-            .any(|instruction| matches!(instruction.kind, InstructionKind::Return { .. }))
+            .any(|instruction| matches!(instruction.kind, UnlinkedInstructionKind::Return { .. }))
     );
 }
 #[test]
@@ -241,15 +239,14 @@ fn main() {
         "main",
     )
     .expect("match expression values should compile");
+    assert!(code.instructions.iter().any(|instruction| matches!(
+        instruction.kind,
+        UnlinkedInstructionKind::EnumTagEqual { .. }
+    )));
     assert!(
         code.instructions
             .iter()
-            .any(|instruction| matches!(instruction.kind, InstructionKind::EnumTagEqual { .. }))
-    );
-    assert!(
-        code.instructions
-            .iter()
-            .any(|instruction| matches!(instruction.kind, InstructionKind::Move { .. }))
+            .any(|instruction| matches!(instruction.kind, UnlinkedInstructionKind::Move { .. }))
     );
 }
 #[test]
@@ -272,12 +269,15 @@ fn main() {
     assert!(
         code.instructions
             .iter()
-            .any(|instruction| matches!(instruction.kind, InstructionKind::Equal { .. }))
+            .any(|instruction| matches!(instruction.kind, UnlinkedInstructionKind::Equal { .. }))
     );
     assert!(
         code.instructions
             .iter()
-            .filter(|instruction| matches!(instruction.kind, InstructionKind::JumpIfFalse { .. }))
+            .filter(|instruction| matches!(
+                instruction.kind,
+                UnlinkedInstructionKind::JumpIfFalse { .. }
+            ))
             .count()
             >= 2
     );
@@ -300,12 +300,12 @@ fn main() {
     assert!(
         code.instructions
             .iter()
-            .any(|instruction| matches!(instruction.kind, InstructionKind::Move { .. }))
+            .any(|instruction| matches!(instruction.kind, UnlinkedInstructionKind::Move { .. }))
     );
     assert!(
         code.instructions
             .iter()
-            .any(|instruction| matches!(instruction.kind, InstructionKind::Add { .. }))
+            .any(|instruction| matches!(instruction.kind, UnlinkedInstructionKind::Add { .. }))
     );
 }
 #[test]
@@ -328,14 +328,17 @@ fn main() {
     assert!(
         code.instructions
             .iter()
-            .filter(|instruction| matches!(instruction.kind, InstructionKind::JumpIfFalse { .. }))
+            .filter(|instruction| matches!(
+                instruction.kind,
+                UnlinkedInstructionKind::JumpIfFalse { .. }
+            ))
             .count()
             >= 2
     );
     assert!(
         code.instructions
             .iter()
-            .any(|instruction| matches!(instruction.kind, InstructionKind::Less { .. }))
+            .any(|instruction| matches!(instruction.kind, UnlinkedInstructionKind::Less { .. }))
     );
 }
 #[test]
@@ -361,13 +364,16 @@ fn main() {
     assert!(
         code.instructions
             .iter()
-            .any(|instruction| matches!(instruction.kind, InstructionKind::Equal { .. }))
+            .any(|instruction| matches!(instruction.kind, UnlinkedInstructionKind::Equal { .. }))
     );
     assert!(
         code.instructions
             .iter()
             .filter(|instruction| {
-                matches!(instruction.kind, InstructionKind::GetEnumField { .. })
+                matches!(
+                    instruction.kind,
+                    UnlinkedInstructionKind::GetEnumField { .. }
+                )
             })
             .count()
             >= 2
@@ -394,15 +400,19 @@ fn main() {
     )
     .expect("tuple variant constructor and pattern should compile");
     assert!(
-        code.instructions
-            .iter()
-            .any(|instruction| matches!(instruction.kind, InstructionKind::MakeEnum { .. }))
+        code.instructions.iter().any(|instruction| matches!(
+            instruction.kind,
+            UnlinkedInstructionKind::MakeEnum { .. }
+        ))
     );
     assert!(
         code.instructions
             .iter()
             .filter(|instruction| {
-                matches!(instruction.kind, InstructionKind::GetEnumField { .. })
+                matches!(
+                    instruction.kind,
+                    UnlinkedInstructionKind::GetEnumField { .. }
+                )
             })
             .count()
             >= 2
@@ -430,27 +440,27 @@ fn main() {
     assert!(
         code.instructions
             .iter()
-            .any(|instruction| matches!(instruction.kind, InstructionKind::Add { .. }))
+            .any(|instruction| matches!(instruction.kind, UnlinkedInstructionKind::Add { .. }))
     );
     assert!(
         code.instructions
             .iter()
-            .any(|instruction| matches!(instruction.kind, InstructionKind::Sub { .. }))
+            .any(|instruction| matches!(instruction.kind, UnlinkedInstructionKind::Sub { .. }))
     );
     assert!(
         code.instructions
             .iter()
-            .any(|instruction| matches!(instruction.kind, InstructionKind::Mul { .. }))
+            .any(|instruction| matches!(instruction.kind, UnlinkedInstructionKind::Mul { .. }))
     );
     assert!(
         code.instructions
             .iter()
-            .any(|instruction| matches!(instruction.kind, InstructionKind::Div { .. }))
+            .any(|instruction| matches!(instruction.kind, UnlinkedInstructionKind::Div { .. }))
     );
     assert!(
         code.instructions
             .iter()
-            .any(|instruction| matches!(instruction.kind, InstructionKind::Rem { .. }))
+            .any(|instruction| matches!(instruction.kind, UnlinkedInstructionKind::Rem { .. }))
     );
 }
 #[test]
@@ -470,7 +480,10 @@ fn main() {
     assert!(
         code.instructions
             .iter()
-            .filter(|instruction| matches!(instruction.kind, InstructionKind::GetIndex { .. }))
+            .filter(|instruction| matches!(
+                instruction.kind,
+                UnlinkedInstructionKind::GetIndex { .. }
+            ))
             .count()
             >= 2
     );
@@ -491,15 +504,16 @@ fn main() {
     )
     .expect("call result index read should compile");
     assert!(
-        code.instructions
-            .iter()
-            .any(|instruction| matches!(instruction.kind, InstructionKind::GetIndex { .. }))
+        code.instructions.iter().any(|instruction| matches!(
+            instruction.kind,
+            UnlinkedInstructionKind::GetIndex { .. }
+        ))
     );
     assert!(
-        !code
-            .instructions
-            .iter()
-            .any(|instruction| matches!(instruction.kind, InstructionKind::HostRead { .. }))
+        !code.instructions.iter().any(|instruction| matches!(
+            instruction.kind,
+            UnlinkedInstructionKind::HostRead { .. }
+        ))
     );
 }
 #[test]
@@ -518,9 +532,10 @@ fn main() {
     )
     .expect("index writes should compile");
     assert!(
-        code.instructions
-            .iter()
-            .any(|instruction| matches!(instruction.kind, InstructionKind::SetIndex { .. }))
+        code.instructions.iter().any(|instruction| matches!(
+            instruction.kind,
+            UnlinkedInstructionKind::SetIndex { .. }
+        ))
     );
 }
 #[test]
@@ -538,11 +553,12 @@ fn main() {
         "main",
     )
     .expect("record field writes should compile");
-    assert!(
-        code.instructions.iter().any(|instruction| {
-            matches!(instruction.kind, InstructionKind::SetRecordField { .. })
-        })
-    );
+    assert!(code.instructions.iter().any(|instruction| {
+        matches!(
+            instruction.kind,
+            UnlinkedInstructionKind::SetRecordField { .. }
+        )
+    }));
 }
 #[test]
 fn compiler_lowers_nested_record_field_writes() {
@@ -568,7 +584,10 @@ fn main() {
         code.instructions
             .iter()
             .filter(|instruction| {
-                matches!(instruction.kind, InstructionKind::SetRecordField { .. })
+                matches!(
+                    instruction.kind,
+                    UnlinkedInstructionKind::SetRecordField { .. }
+                )
             })
             .count()
             >= 3
@@ -593,15 +612,17 @@ fn main() {
     )
     .expect("indexed record field writes should compile");
     assert!(
-        code.instructions
-            .iter()
-            .any(|instruction| matches!(instruction.kind, InstructionKind::SetIndex { .. }))
+        code.instructions.iter().any(|instruction| matches!(
+            instruction.kind,
+            UnlinkedInstructionKind::SetIndex { .. }
+        ))
     );
-    assert!(
-        code.instructions.iter().any(|instruction| {
-            matches!(instruction.kind, InstructionKind::SetRecordField { .. })
-        })
-    );
+    assert!(code.instructions.iter().any(|instruction| {
+        matches!(
+            instruction.kind,
+            UnlinkedInstructionKind::SetRecordField { .. }
+        )
+    }));
 }
 #[test]
 fn compiler_lowers_immediate_record_field_reads_to_slots() {
@@ -618,7 +639,7 @@ fn main() {
     assert!(code.instructions.iter().any(|instruction| {
         matches!(
             instruction.kind,
-            InstructionKind::GetRecordSlot {
+            UnlinkedInstructionKind::GetRecordSlot {
                 ref field,
                 slot: 0,
                 ..
@@ -641,7 +662,7 @@ fn main() {
     assert!(code.instructions.iter().any(|instruction| {
         matches!(
             instruction.kind,
-            InstructionKind::GetEnumSlot {
+            UnlinkedInstructionKind::GetEnumSlot {
                 ref field,
                 slot: 0,
                 ..
@@ -669,19 +690,17 @@ fn main() {
     assert!(main.instructions.iter().any(|instruction| {
         matches!(
             instruction.kind,
-            InstructionKind::GetEnumSlot {
+            UnlinkedInstructionKind::GetEnumSlot {
                 ref field,
                 slot: 0,
                 ..
             } if field == "amount"
         )
     }));
-    assert!(
-        !main
-            .instructions
-            .iter()
-            .any(|instruction| matches!(instruction.kind, InstructionKind::GetEnumField { .. }))
-    );
+    assert!(!main.instructions.iter().any(|instruction| matches!(
+        instruction.kind,
+        UnlinkedInstructionKind::GetEnumField { .. }
+    )));
 }
 #[test]
 fn compiler_lowers_typed_record_field_reads_to_slots() {
@@ -706,7 +725,7 @@ fn main() {
     assert!(main.instructions.iter().any(|instruction| {
         matches!(
             instruction.kind,
-            InstructionKind::GetRecordSlot {
+            UnlinkedInstructionKind::GetRecordSlot {
                 ref field,
                 slot: 0,
                 ..
@@ -739,7 +758,7 @@ fn main() {
     assert!(main.instructions.iter().any(|instruction| {
         matches!(
             instruction.kind,
-            InstructionKind::SetRecordSlot {
+            UnlinkedInstructionKind::SetRecordSlot {
                 ref field,
                 slot: 0,
                 ..
@@ -749,17 +768,15 @@ fn main() {
     assert!(main.instructions.iter().any(|instruction| {
         matches!(
             instruction.kind,
-            InstructionKind::SetRecordSlot {
+            UnlinkedInstructionKind::SetRecordSlot {
                 ref field,
                 slot: 1,
                 ..
             } if field == "item_id"
         )
     }));
-    assert!(
-        !main
-            .instructions
-            .iter()
-            .any(|instruction| matches!(instruction.kind, InstructionKind::SetRecordField { .. }))
-    );
+    assert!(!main.instructions.iter().any(|instruction| matches!(
+        instruction.kind,
+        UnlinkedInstructionKind::SetRecordField { .. }
+    )));
 }

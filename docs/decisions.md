@@ -528,6 +528,14 @@ metadata on those definitions and are used only when emitting current
 `HostTargetPlan` and host call operands. This keeps registry identity globally
 deterministic while preserving existing HostAccess adapter contracts.
 
+### Unlinked Bytecode Naming
+
+Compiler output bytecode is named `UnlinkedProgram`, `UnlinkedCodeObject`,
+`UnlinkedInstruction`, and `UnlinkedInstructionKind`. These types may still be
+consumed by current runtime image and VM paths until the linked-bytecode phase
+lands, but new compiler-facing APIs should use the unlinked names and must not
+reintroduce ambiguous `Program` or `CodeObject` output types.
+
 ## Validation Rules
 
 - Multi-level `super` scan must return no matches:

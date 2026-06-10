@@ -6,7 +6,7 @@ use crate::{
     CallFrame, ExecutionBudget, HeapExecution, Value, VmError, VmErrorKind, VmResult,
     stored_runtime_value,
 };
-use vela_bytecode::{CodeObject, InstructionOffset, Register};
+use vela_bytecode::{InstructionOffset, Register, UnlinkedCodeObject};
 
 pub(crate) struct IterRuntime<'a, 'heap> {
     pub(crate) frame: &'a mut CallFrame,
@@ -150,7 +150,7 @@ pub(crate) fn dispatch_iter_init(
 
 pub(crate) fn dispatch_iter_next(
     mut runtime: IterRuntime<'_, '_>,
-    code: &CodeObject,
+    code: &UnlinkedCodeObject,
     iterator: Register,
     dst: Register,
     jump_if_done: InstructionOffset,
@@ -187,7 +187,7 @@ pub(crate) fn dispatch_iter_next(
 
 pub(crate) fn dispatch_range_next(
     runtime: IterRuntime<'_, '_>,
-    code: &CodeObject,
+    code: &UnlinkedCodeObject,
     step: RangeNextStep,
 ) -> VmResult<Option<usize>> {
     let frame = runtime.frame;

@@ -91,7 +91,7 @@ fn run_script_inner(source: &str, entry: &str) -> PlaygroundResponse {
     }
 }
 
-fn compile_program(source: &str) -> Result<vela_bytecode::Program, EngineSourceError> {
+fn compile_program(source: &str) -> Result<vela_bytecode::UnlinkedProgram, EngineSourceError> {
     playground_engine()?.compile_source(PLAYGROUND_SOURCE_ID, source)
 }
 

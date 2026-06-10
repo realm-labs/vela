@@ -5,7 +5,7 @@ use vela_syntax::ast::{
     BinaryOp, Block, ElseBranch, Expr, ExprKind, IfExpr, MatchExpr, Pattern, Stmt, StmtKind,
 };
 
-use crate::{Constant, InstructionKind, InstructionOffset, Register};
+use crate::{Constant, InstructionOffset, Register, UnlinkedInstructionKind};
 
 use super::script_types::{ScriptTypeFact, type_hint_script_type};
 use super::value_flow::{BlockValue, block_value};
@@ -135,7 +135,7 @@ impl Compiler<'_, '_> {
                 } else {
                     self.emit_constant(Constant::Null)?
                 };
-                self.emit(InstructionKind::Return { src: register });
+                self.emit(UnlinkedInstructionKind::Return { src: register });
                 Ok(true)
             }
             StmtKind::Expr(expr) => {
@@ -220,7 +220,7 @@ impl Compiler<'_, '_> {
         } else {
             let iterable = self.compile_expr(iterable)?;
             let iterator = self.alloc_register()?;
-            self.emit(InstructionKind::IterInit {
+            self.emit(UnlinkedInstructionKind::IterInit {
                 dst: iterator,
                 iterable,
             });
@@ -256,11 +256,11 @@ impl Compiler<'_, '_> {
             } => self.emit_range_next(cursor, end, done, inclusive, item_register),
         };
         if let (Some((counter, one)), Some(index_register)) = (loop_index, index_register) {
-            self.emit(InstructionKind::Move {
+            self.emit(UnlinkedInstructionKind::Move {
                 dst: index_register,
                 src: counter,
             });
-            self.emit(InstructionKind::Add {
+            self.emit(UnlinkedInstructionKind::Add {
                 dst: counter,
                 lhs: counter,
                 rhs: one,
@@ -292,7 +292,7 @@ impl Compiler<'_, '_> {
             .pop()
             .expect("loop context pushed before compiling for body");
         if !body_returned {
-            self.emit(InstructionKind::Jump {
+            self.emit(UnlinkedInstructionKind::Jump {
                 target: InstructionOffset(loop_start),
             });
         }
@@ -361,7 +361,7 @@ impl Compiler<'_, '_> {
                     }
                 }
                 let value = self.compile_expr(expr)?;
-                self.emit(InstructionKind::Move { dst, src: value });
+                self.emit(UnlinkedInstructionKind::Move { dst, src: value });
                 Ok(false)
             }
             BlockValue::Statements(statements) => {
@@ -555,7 +555,7 @@ impl Compiler<'_, '_> {
             ExprKind::Block(block) => self.compile_block_value_to(block, dst),
             _ => {
                 let value = self.compile_expr(body)?;
-                self.emit(InstructionKind::Move { dst, src: value });
+                self.emit(UnlinkedInstructionKind::Move { dst, src: value });
                 Ok(false)
             }
         }

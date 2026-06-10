@@ -405,7 +405,7 @@ fn main() {
         .instructions
         .iter()
         .find_map(|instruction| match &instruction.kind {
-            InstructionKind::MakeClosure { function, .. } => Some(*function),
+            UnlinkedInstructionKind::MakeClosure { function, .. } => Some(*function),
             _ => None,
         })
         .expect("make_adder should build a closure");

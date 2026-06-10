@@ -9,7 +9,7 @@ use vela_bytecode::compiler::{
     compile_program_source_with_registry,
 };
 use vela_bytecode::{
-    CacheSiteKind, Constant, ConstantId, Instruction, InstructionOffset, ProgramImage,
+    CacheSiteKind, Constant, ConstantId, InstructionOffset, ProgramImage, UnlinkedInstruction,
 };
 use vela_common::{HostMethodId, HostObjectId, HostTypeId, SourceId};
 use vela_def::{FieldId, FunctionId, MethodId, TypeId, VariantId};
@@ -60,23 +60,25 @@ mod script_methods;
 mod standard_id_dispatch;
 mod standard_string_id_dispatch;
 
-fn host_read_program() -> (Program, HostRef) {
+fn host_read_program() -> (UnlinkedProgram, HostRef) {
     let host_ref = player_ref(3);
-    let mut code = CodeObject::new("main", 2).with_params(vec!["player".into()]);
+    let mut code = UnlinkedCodeObject::new("main", 2).with_params(vec!["player".into()]);
     let target =
         code.intern_host_target(HostTargetPlan::new(host_ref.type_id).field(level_field()));
     let cache_site = code.push_cache_site(CacheSiteKind::HostPathRead, InstructionOffset(0));
-    code.push_instruction(Instruction::new(InstructionKind::HostRead {
-        dst: Register(1),
-        root: Register(0),
-        target,
-        dynamic_args: Vec::new(),
-        cache_site,
-    }));
-    code.push_instruction(Instruction::new(InstructionKind::Return {
+    code.push_instruction(UnlinkedInstruction::new(
+        UnlinkedInstructionKind::HostRead {
+            dst: Register(1),
+            root: Register(0),
+            target,
+            dynamic_args: Vec::new(),
+            cache_site,
+        },
+    ));
+    code.push_instruction(UnlinkedInstruction::new(UnlinkedInstructionKind::Return {
         src: Register(1),
     }));
-    let mut program = Program::new();
+    let mut program = UnlinkedProgram::new();
     program.insert_function(code);
     (program, host_ref)
 }
@@ -259,7 +261,7 @@ fn compile_host_program_source(
     source: SourceId,
     text: &str,
     registry: vela_registry::DefinitionRegistry,
-) -> vela_bytecode::compiler::error::CompileResult<Program> {
+) -> vela_bytecode::compiler::error::CompileResult<UnlinkedProgram> {
     compile_program_source_with_registry(source, text, registry.compile_view())
 }
 
@@ -268,7 +270,7 @@ fn compile_host_program_source_with_options(
     text: &str,
     options: &CompilerOptions,
     registry: vela_registry::DefinitionRegistry,
-) -> vela_bytecode::compiler::error::CompileResult<Program> {
+) -> vela_bytecode::compiler::error::CompileResult<UnlinkedProgram> {
     vela_bytecode::compiler::compile_program_source_with_options_and_registry(
         source,
         text,

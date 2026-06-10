@@ -4,7 +4,7 @@ use vela_hir::ids::HirLocalId;
 use vela_host::resolved::HostMutationOp;
 use vela_syntax::ast::{AssignOp, Expr, ExprKind};
 
-use crate::{InstructionKind, Register};
+use crate::{Register, UnlinkedInstructionKind};
 
 use super::host_paths::HostPath;
 use super::operators::compound_assignment_instruction;
@@ -107,7 +107,7 @@ impl Compiler<'_, '_> {
         let assigned = match op {
             AssignOp::Set => {
                 let src = self.compile_expr(value)?;
-                self.emit(InstructionKind::Move { dst: target, src });
+                self.emit(UnlinkedInstructionKind::Move { dst: target, src });
                 src
             }
             AssignOp::Add | AssignOp::Sub | AssignOp::Mul | AssignOp::Div | AssignOp::Rem => {
@@ -116,7 +116,7 @@ impl Compiler<'_, '_> {
                 self.emit(compound_assignment_instruction_or_error(
                     op, dst, target, rhs,
                 )?);
-                self.emit(InstructionKind::Move {
+                self.emit(UnlinkedInstructionKind::Move {
                     dst: target,
                     src: dst,
                 });
@@ -139,7 +139,7 @@ impl Compiler<'_, '_> {
             AssignOp::Set => self.compile_expr(value)?,
             AssignOp::Add | AssignOp::Sub | AssignOp::Mul | AssignOp::Div | AssignOp::Rem => {
                 let current = self.alloc_register()?;
-                self.emit(InstructionKind::GetIndex {
+                self.emit(UnlinkedInstructionKind::GetIndex {
                     dst: current,
                     base,
                     index,
@@ -152,7 +152,7 @@ impl Compiler<'_, '_> {
                 dst
             }
         };
-        self.emit(InstructionKind::SetIndex {
+        self.emit(UnlinkedInstructionKind::SetIndex {
             base,
             index,
             src: assigned,
@@ -258,14 +258,14 @@ impl Compiler<'_, '_> {
             AssignOp::Add | AssignOp::Sub | AssignOp::Mul | AssignOp::Div | AssignOp::Rem => {
                 let current = self.alloc_register()?;
                 if let Some(slot) = slot {
-                    self.emit(InstructionKind::GetRecordSlot {
+                    self.emit(UnlinkedInstructionKind::GetRecordSlot {
                         dst: current,
                         record: root,
                         field: field.to_owned(),
                         slot,
                     });
                 } else {
-                    self.emit(InstructionKind::GetRecordField {
+                    self.emit(UnlinkedInstructionKind::GetRecordField {
                         dst: current,
                         record: root,
                         field: field.to_owned(),
@@ -280,14 +280,14 @@ impl Compiler<'_, '_> {
             }
         };
         if let Some(slot) = slot {
-            self.emit(InstructionKind::SetRecordSlot {
+            self.emit(UnlinkedInstructionKind::SetRecordSlot {
                 record: root,
                 field: field.to_owned(),
                 slot,
                 src: assigned,
             });
         } else {
-            self.emit(InstructionKind::SetRecordField {
+            self.emit(UnlinkedInstructionKind::SetRecordField {
                 record: root,
                 field: field.to_owned(),
                 src: assigned,
@@ -305,7 +305,7 @@ impl Compiler<'_, '_> {
         let collection = self.compile_expr(target.collection)?;
         let index = self.compile_expr(target.index)?;
         let record = self.alloc_register()?;
-        self.emit(InstructionKind::GetIndex {
+        self.emit(UnlinkedInstructionKind::GetIndex {
             dst: record,
             base: collection,
             index,
@@ -322,7 +322,7 @@ impl Compiler<'_, '_> {
             self.compile_record_field_assignment_at_root(op, record, field, None, value)?
         };
 
-        self.emit(InstructionKind::SetIndex {
+        self.emit(UnlinkedInstructionKind::SetIndex {
             base: collection,
             index,
             src: record,
@@ -343,7 +343,7 @@ impl Compiler<'_, '_> {
             let record = *records
                 .last()
                 .expect("nested record assignment always has root");
-            self.emit(InstructionKind::GetRecordField {
+            self.emit(UnlinkedInstructionKind::GetRecordField {
                 dst,
                 record,
                 field: field.clone(),
@@ -362,7 +362,7 @@ impl Compiler<'_, '_> {
             AssignOp::Set => self.compile_expr(value)?,
             AssignOp::Add | AssignOp::Sub | AssignOp::Mul | AssignOp::Div | AssignOp::Rem => {
                 let current = self.alloc_register()?;
-                self.emit(InstructionKind::GetRecordField {
+                self.emit(UnlinkedInstructionKind::GetRecordField {
                     dst: current,
                     record: leaf_record,
                     field: leaf_field.clone(),
@@ -376,7 +376,7 @@ impl Compiler<'_, '_> {
             }
         };
 
-        self.emit(InstructionKind::SetRecordField {
+        self.emit(UnlinkedInstructionKind::SetRecordField {
             record: leaf_record,
             field: leaf_field,
             src: assigned,
@@ -387,7 +387,7 @@ impl Compiler<'_, '_> {
             .enumerate()
             .rev()
         {
-            self.emit(InstructionKind::SetRecordField {
+            self.emit(UnlinkedInstructionKind::SetRecordField {
                 record: records[index],
                 field: field.clone(),
                 src: records[index + 1],
@@ -551,7 +551,7 @@ fn compound_assignment_instruction_or_error(
     dst: Register,
     lhs: Register,
     rhs: Register,
-) -> CompileResult<InstructionKind> {
+) -> CompileResult<UnlinkedInstructionKind> {
     compound_assignment_instruction(op, dst, lhs, rhs).ok_or_else(|| {
         CompileError::new(CompileErrorKind::UnsupportedSyntax(
             "compound assignment operator",

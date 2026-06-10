@@ -90,18 +90,18 @@ fn register_registry_host_method(
         .expect("test host method should register");
 }
 
-fn host_target_parts(code: &CodeObject, target: HostTargetPlanId) -> &[HostPathPart] {
+fn host_target_parts(code: &UnlinkedCodeObject, target: HostTargetPlanId) -> &[HostPathPart] {
     code.host_target(target)
         .expect("host target should exist")
         .parts
         .as_slice()
 }
 
-fn has_host_call(code: &CodeObject, method: HostMethodId, arg_count: usize) -> bool {
+fn has_host_call(code: &UnlinkedCodeObject, method: HostMethodId, arg_count: usize) -> bool {
     code.instructions.iter().any(|instruction| {
         matches!(
             &instruction.kind,
-            InstructionKind::HostCall {
+            UnlinkedInstructionKind::HostCall {
                 method: lowered_method,
                 args,
                 ..
@@ -111,7 +111,7 @@ fn has_host_call(code: &CodeObject, method: HostMethodId, arg_count: usize) -> b
 }
 
 fn has_host_call_target(
-    code: &CodeObject,
+    code: &UnlinkedCodeObject,
     method: HostMethodId,
     expected: &[HostPathPart],
     dynamic_arg_count: usize,
@@ -119,7 +119,7 @@ fn has_host_call_target(
     code.instructions
         .iter()
         .any(|instruction| match &instruction.kind {
-            InstructionKind::HostCall {
+            UnlinkedInstructionKind::HostCall {
                 method: lowered_method,
                 target,
                 dynamic_args,
@@ -134,7 +134,7 @@ fn has_host_call_target(
 }
 
 fn has_host_mutate_target(
-    code: &CodeObject,
+    code: &UnlinkedCodeObject,
     op: vela_host::resolved::HostMutationOp,
     expected: &[HostPathPart],
     dynamic_arg_count: usize,
@@ -142,7 +142,7 @@ fn has_host_mutate_target(
     code.instructions
         .iter()
         .any(|instruction| match &instruction.kind {
-            InstructionKind::HostMutate {
+            UnlinkedInstructionKind::HostMutate {
                 op: lowered_op,
                 target,
                 dynamic_args,
@@ -157,14 +157,14 @@ fn has_host_mutate_target(
 }
 
 fn has_host_read_target(
-    code: &CodeObject,
+    code: &UnlinkedCodeObject,
     expected: &[HostPathPart],
     dynamic_arg_count: usize,
 ) -> bool {
     code.instructions
         .iter()
         .any(|instruction| match &instruction.kind {
-            InstructionKind::HostRead {
+            UnlinkedInstructionKind::HostRead {
                 target,
                 dynamic_args,
                 ..
@@ -199,7 +199,7 @@ fn main(player: Player) {
         .instructions
         .iter()
         .find_map(|instruction| match instruction.kind {
-            InstructionKind::HostRead { target, .. } => Some(target),
+            UnlinkedInstructionKind::HostRead { target, .. } => Some(target),
             _ => None,
         })
     else {
@@ -235,7 +235,7 @@ fn main(player: Player) {
         .instructions
         .iter()
         .find_map(|instruction| match instruction.kind {
-            InstructionKind::HostRead { target, .. } => Some(target),
+            UnlinkedInstructionKind::HostRead { target, .. } => Some(target),
             _ => None,
         })
     else {
@@ -922,7 +922,7 @@ fn main(player: Player) {
         code.instructions
             .iter()
             .any(|instruction| match &instruction.kind {
-                InstructionKind::HostRemove {
+                UnlinkedInstructionKind::HostRemove {
                     target,
                     dynamic_args,
                     ..

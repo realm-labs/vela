@@ -4,7 +4,7 @@ use std::hint::black_box;
 use std::process::Command;
 use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 
-use vela_bytecode::Program;
+use vela_bytecode::UnlinkedProgram;
 use vela_bytecode::compiler::compile_program_source;
 use vela_common::SourceId;
 use vela_vm::Vm;
@@ -662,7 +662,7 @@ fn run_vela(
 
 fn run_vela_iterations(
     vm: &Vm,
-    program: &Program,
+    program: &UnlinkedProgram,
     iterations: usize,
 ) -> Result<u64, Box<dyn Error>> {
     let mut checksum = 0_u64;

@@ -21,21 +21,21 @@ pub use program_image::ProgramImage;
 use crate::script_methods::ScriptMethodTable;
 
 #[derive(Clone, Debug, Default, PartialEq)]
-pub struct Program {
-    pub functions: BTreeMap<String, CodeObject>,
+pub struct UnlinkedProgram {
+    pub functions: BTreeMap<String, UnlinkedCodeObject>,
     global_names: Vec<String>,
     global_slots: BTreeMap<String, GlobalSlot>,
     script_methods: ScriptMethodTable,
     script_metadata: Option<ModuleGraph>,
 }
 
-impl Program {
+impl UnlinkedProgram {
     #[must_use]
     pub fn new() -> Self {
         Self::default()
     }
 
-    pub fn insert_function(&mut self, function: CodeObject) {
+    pub fn insert_function(&mut self, function: UnlinkedCodeObject) {
         self.functions.insert(function.name.clone(), function);
     }
 
@@ -107,12 +107,12 @@ impl Program {
     }
 
     #[must_use]
-    pub fn function(&self, name: &str) -> Option<&CodeObject> {
+    pub fn function(&self, name: &str) -> Option<&UnlinkedCodeObject> {
         self.functions.get(name)
     }
 
     #[must_use]
-    pub fn script_method(&self, type_name: &str, method: &str) -> Option<&CodeObject> {
+    pub fn script_method(&self, type_name: &str, method: &str) -> Option<&UnlinkedCodeObject> {
         let method = self.script_methods.get(type_name, method)?;
         self.function(&method.function)
     }
@@ -125,46 +125,58 @@ impl Program {
     }
 
     #[must_use]
-    pub fn script_method_by_id(&self, type_name: &str, method_id: MethodId) -> Option<&CodeObject> {
+    pub fn script_method_by_id(
+        &self,
+        type_name: &str,
+        method_id: MethodId,
+    ) -> Option<&UnlinkedCodeObject> {
         let method = self.script_methods.get_by_id(type_name, method_id)?;
         self.function(&method.function)
     }
 }
 
-pub trait ProgramCode {
-    fn function(&self, name: &str) -> Option<&CodeObject>;
+pub trait UnlinkedProgramCode {
+    fn function(&self, name: &str) -> Option<&UnlinkedCodeObject>;
 
-    fn function_by_index(&self, _index: FunctionIndex) -> Option<&CodeObject> {
+    fn function_by_index(&self, _index: FunctionIndex) -> Option<&UnlinkedCodeObject> {
         None
     }
 
-    fn script_method(&self, type_name: &str, method: &str) -> Option<&CodeObject>;
+    fn script_method(&self, type_name: &str, method: &str) -> Option<&UnlinkedCodeObject>;
 
     fn script_method_id(&self, type_name: &str, method: &str) -> Option<MethodId>;
 
-    fn script_method_by_id(&self, type_name: &str, method_id: MethodId) -> Option<&CodeObject>;
+    fn script_method_by_id(
+        &self,
+        type_name: &str,
+        method_id: MethodId,
+    ) -> Option<&UnlinkedCodeObject>;
 }
 
-impl ProgramCode for Program {
-    fn function(&self, name: &str) -> Option<&CodeObject> {
-        Program::function(self, name)
+impl UnlinkedProgramCode for UnlinkedProgram {
+    fn function(&self, name: &str) -> Option<&UnlinkedCodeObject> {
+        UnlinkedProgram::function(self, name)
     }
 
-    fn script_method(&self, type_name: &str, method: &str) -> Option<&CodeObject> {
-        Program::script_method(self, type_name, method)
+    fn script_method(&self, type_name: &str, method: &str) -> Option<&UnlinkedCodeObject> {
+        UnlinkedProgram::script_method(self, type_name, method)
     }
 
     fn script_method_id(&self, type_name: &str, method: &str) -> Option<MethodId> {
-        Program::script_method_id(self, type_name, method)
+        UnlinkedProgram::script_method_id(self, type_name, method)
     }
 
-    fn script_method_by_id(&self, type_name: &str, method_id: MethodId) -> Option<&CodeObject> {
-        Program::script_method_by_id(self, type_name, method_id)
+    fn script_method_by_id(
+        &self,
+        type_name: &str,
+        method_id: MethodId,
+    ) -> Option<&UnlinkedCodeObject> {
+        UnlinkedProgram::script_method_by_id(self, type_name, method_id)
     }
 }
 
 #[derive(Clone, Debug, PartialEq)]
-pub struct CodeObject {
+pub struct UnlinkedCodeObject {
     pub name: String,
     pub params: Vec<String>,
     pub param_defaults: Vec<bool>,
@@ -174,11 +186,11 @@ pub struct CodeObject {
     pub cache_sites: CacheSiteLayout,
     pub constants: Vec<Constant>,
     pub host_targets: Vec<HostTargetPlan>,
-    pub nested_functions: Vec<CodeObject>,
-    pub instructions: Vec<Instruction>,
+    pub nested_functions: Vec<UnlinkedCodeObject>,
+    pub instructions: Vec<UnlinkedInstruction>,
 }
 
-impl CodeObject {
+impl UnlinkedCodeObject {
     #[must_use]
     pub fn new(name: impl Into<String>, register_count: u16) -> Self {
         Self {
@@ -239,18 +251,18 @@ impl CodeObject {
         self.host_targets.get(id.index())
     }
 
-    pub fn push_instruction(&mut self, instruction: Instruction) {
+    pub fn push_instruction(&mut self, instruction: UnlinkedInstruction) {
         self.instructions.push(instruction);
     }
 
-    pub fn push_nested_function(&mut self, function: CodeObject) -> FunctionIndex {
+    pub fn push_nested_function(&mut self, function: UnlinkedCodeObject) -> FunctionIndex {
         let index = FunctionIndex(self.nested_functions.len());
         self.nested_functions.push(function);
         index
     }
 
     #[must_use]
-    pub fn nested_function(&self, index: FunctionIndex) -> Option<&CodeObject> {
+    pub fn nested_function(&self, index: FunctionIndex) -> Option<&UnlinkedCodeObject> {
         self.nested_functions.get(index.0)
     }
 
@@ -392,14 +404,14 @@ impl HostTargetPlanId {
 }
 
 #[derive(Clone, Debug, PartialEq)]
-pub struct Instruction {
-    pub kind: InstructionKind,
+pub struct UnlinkedInstruction {
+    pub kind: UnlinkedInstructionKind,
     pub span: Option<Span>,
 }
 
-impl Instruction {
+impl UnlinkedInstruction {
     #[must_use]
-    pub fn new(kind: InstructionKind) -> Self {
+    pub fn new(kind: UnlinkedInstructionKind) -> Self {
         Self { kind, span: None }
     }
 
@@ -411,7 +423,7 @@ impl Instruction {
 }
 
 #[derive(Clone, Debug, PartialEq)]
-pub enum InstructionKind {
+pub enum UnlinkedInstructionKind {
     LoadConst {
         dst: Register,
         constant: ConstantId,
@@ -501,11 +513,12 @@ pub enum InstructionKind {
     CallNative {
         dst: Option<Register>,
         name: String,
-        native: Option<FunctionId>,
+        native: FunctionId,
         args: Vec<Register>,
     },
     CallFunction {
         dst: Register,
+        target: FunctionId,
         name: String,
         args: Vec<CallArgument>,
     },
@@ -523,7 +536,6 @@ pub enum InstructionKind {
         dst: Register,
         receiver: Register,
         method: String,
-        value_method_id: Option<MethodId>,
         args: Vec<CallArgument>,
     },
     CallMethodId {
@@ -691,13 +703,15 @@ mod tests {
 
     #[test]
     fn code_object_records_constants_and_instructions() {
-        let mut code = CodeObject::new("answer", 2);
+        let mut code = UnlinkedCodeObject::new("answer", 2);
         let constant = code.push_constant(Constant::Int(42));
-        code.push_instruction(Instruction::new(InstructionKind::LoadConst {
-            dst: Register(0),
-            constant,
-        }));
-        code.push_instruction(Instruction::new(InstructionKind::Return {
+        code.push_instruction(UnlinkedInstruction::new(
+            UnlinkedInstructionKind::LoadConst {
+                dst: Register(0),
+                constant,
+            },
+        ));
+        code.push_instruction(UnlinkedInstruction::new(UnlinkedInstructionKind::Return {
             src: Register(0),
         }));
 
@@ -711,7 +725,7 @@ mod tests {
 
     #[test]
     fn code_object_interns_host_target_plans() {
-        let mut code = CodeObject::new("host", 1);
+        let mut code = UnlinkedCodeObject::new("host", 1);
         let target = HostTargetPlan::new(HostTypeId::new(1)).field(FieldId::new(2));
 
         let first = code.intern_host_target(target.clone());
@@ -726,8 +740,8 @@ mod tests {
 
     #[test]
     fn program_indexes_functions_by_name() {
-        let mut program = Program::new();
-        program.insert_function(CodeObject::new("main", 0));
+        let mut program = UnlinkedProgram::new();
+        program.insert_function(UnlinkedCodeObject::new("main", 0));
 
         assert!(program.function("main").is_some());
         assert!(program.function("missing").is_none());

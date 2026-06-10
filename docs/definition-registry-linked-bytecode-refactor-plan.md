@@ -1437,7 +1437,7 @@ surface.
 
 ### Phase 5: Split unlinked and linked bytecode
 
-- [ ] **Task 5.1: Introduce `UnlinkedProgram` and `UnlinkedInstructionKind`**
+- [x] **Task 5.1: Introduce `UnlinkedProgram` and `UnlinkedInstructionKind`**
 
 **Objective:** Let compiler output semantic-ID bytecode.
 

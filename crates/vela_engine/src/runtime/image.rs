@@ -1,7 +1,7 @@
 use std::ops::Deref;
 use std::sync::Arc;
 
-use vela_bytecode::{Program, ProgramImage};
+use vela_bytecode::{ProgramImage, UnlinkedProgram};
 use vela_hot_reload::profile::ProgramProfile;
 use vela_hot_reload::symbol::ProgramVersionId;
 use vela_hot_reload::version::ProgramVersion;
@@ -79,7 +79,7 @@ impl RuntimeImageStorage for SharedImage {
 
 impl RuntimeImage {
     #[must_use]
-    pub fn new(engine: Engine, program: Program) -> Self {
+    pub fn new(engine: Engine, program: UnlinkedProgram) -> Self {
         let program_image = ProgramImage::from_program(&program);
         let layout = RuntimeImageLayout::from_global_names(program_image.global_names());
         Self {
@@ -146,7 +146,7 @@ impl RuntimeImageLayout {
 
 #[cfg(test)]
 mod tests {
-    use vela_bytecode::{CacheSiteKind, CodeObject, InstructionOffset, Program};
+    use vela_bytecode::{CacheSiteKind, InstructionOffset, UnlinkedCodeObject, UnlinkedProgram};
 
     use crate::engine::Engine;
 
@@ -154,12 +154,12 @@ mod tests {
 
     #[test]
     fn runtime_image_builds_indexed_program_sidecar() {
-        let mut main = CodeObject::new("main", 0);
+        let mut main = UnlinkedCodeObject::new("main", 0);
         main.push_cache_site(CacheSiteKind::GlobalRead, InstructionOffset(0));
-        let mut helper = CodeObject::new("helper", 0);
+        let mut helper = UnlinkedCodeObject::new("helper", 0);
         helper.push_cache_site(CacheSiteKind::NativeCall, InstructionOffset(0));
 
-        let mut program = Program::new();
+        let mut program = UnlinkedProgram::new();
         program.set_global_layout(["main::state".to_owned()]);
         program.insert_function(main);
         program.insert_function(helper);

@@ -2,7 +2,7 @@ use std::collections::BTreeMap;
 use std::sync::Arc;
 
 use vela_bytecode::{
-    CodeObject, Program, ProgramImage,
+    ProgramImage, UnlinkedCodeObject, UnlinkedProgram,
     script_methods::{ScriptMethod, ScriptMethodTable},
 };
 use vela_def::MethodId;
@@ -16,7 +16,7 @@ use crate::symbol::{FunctionSymbolId, ProgramVersionId};
 #[derive(Clone, Debug, PartialEq)]
 pub struct ProgramVersion {
     pub id: ProgramVersionId,
-    pub(crate) functions: BTreeMap<FunctionSymbolId, Arc<CodeObject>>,
+    pub(crate) functions: BTreeMap<FunctionSymbolId, Arc<UnlinkedCodeObject>>,
     pub(crate) abi: HotReloadAbi,
     pub(crate) profile: ProgramProfile,
     pub(crate) program_image: ProgramImage,
@@ -24,14 +24,14 @@ pub struct ProgramVersion {
 
 impl ProgramVersion {
     #[must_use]
-    pub fn from_program(id: ProgramVersionId, program: Program) -> Self {
+    pub fn from_program(id: ProgramVersionId, program: UnlinkedProgram) -> Self {
         Self::from_program_with_abi(id, program, HotReloadAbi::empty())
     }
 
     #[must_use]
     pub fn from_program_with_abi(
         id: ProgramVersionId,
-        program: Program,
+        program: UnlinkedProgram,
         abi: HotReloadAbi,
     ) -> Self {
         let program_image = ProgramImage::from_program(&program);
@@ -51,7 +51,7 @@ impl ProgramVersion {
     }
 
     #[must_use]
-    pub fn function(&self, name: &str) -> Option<Arc<CodeObject>> {
+    pub fn function(&self, name: &str) -> Option<Arc<UnlinkedCodeObject>> {
         self.functions.get(&FunctionSymbolId::new(name)).cloned()
     }
 
@@ -86,7 +86,11 @@ impl ProgramVersion {
     }
 
     #[must_use]
-    pub fn script_method_function(&self, type_name: &str, method: &str) -> Option<Arc<CodeObject>> {
+    pub fn script_method_function(
+        &self,
+        type_name: &str,
+        method: &str,
+    ) -> Option<Arc<UnlinkedCodeObject>> {
         let method = self.script_method(type_name, method)?;
         self.function(&method.function)
     }
@@ -96,7 +100,7 @@ impl ProgramVersion {
         &self,
         type_name: &str,
         method_id: MethodId,
-    ) -> Option<Arc<CodeObject>> {
+    ) -> Option<Arc<UnlinkedCodeObject>> {
         let method = self.script_method_by_id(type_name, method_id)?;
         self.function(&method.function)
     }
@@ -127,14 +131,14 @@ impl ProgramVersion {
     }
 
     #[must_use]
-    pub fn to_program(&self) -> Program {
+    pub fn to_program(&self) -> UnlinkedProgram {
         self.program_image.to_program()
     }
 }
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct HotUpdate {
-    pub(crate) functions: BTreeMap<FunctionSymbolId, Arc<CodeObject>>,
+    pub(crate) functions: BTreeMap<FunctionSymbolId, Arc<UnlinkedCodeObject>>,
     pub(crate) global_names: Vec<String>,
     pub(crate) script_methods: ScriptMethodTable,
     pub(crate) script_metadata: Option<ModuleGraph>,
@@ -144,7 +148,7 @@ pub struct HotUpdate {
 
 impl HotUpdate {
     pub(crate) fn new(
-        functions: BTreeMap<FunctionSymbolId, Arc<CodeObject>>,
+        functions: BTreeMap<FunctionSymbolId, Arc<UnlinkedCodeObject>>,
         global_names: Vec<String>,
         script_methods: ScriptMethodTable,
         script_metadata: Option<ModuleGraph>,
@@ -162,7 +166,7 @@ impl HotUpdate {
     }
 
     #[must_use]
-    pub fn function(&self, name: &str) -> Option<Arc<CodeObject>> {
+    pub fn function(&self, name: &str) -> Option<Arc<UnlinkedCodeObject>> {
         self.functions.get(&FunctionSymbolId::new(name)).cloned()
     }
 
@@ -207,7 +211,11 @@ impl HotUpdate {
     }
 
     #[must_use]
-    pub fn script_method_function(&self, type_name: &str, method: &str) -> Option<Arc<CodeObject>> {
+    pub fn script_method_function(
+        &self,
+        type_name: &str,
+        method: &str,
+    ) -> Option<Arc<UnlinkedCodeObject>> {
         let method = self.script_method(type_name, method)?;
         self.function(&method.function)
     }
@@ -217,7 +225,7 @@ impl HotUpdate {
         &self,
         type_name: &str,
         method_id: MethodId,
-    ) -> Option<Arc<CodeObject>> {
+    ) -> Option<Arc<UnlinkedCodeObject>> {
         let method = self.script_method_by_id(type_name, method_id)?;
         self.function(&method.function)
     }

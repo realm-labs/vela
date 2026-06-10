@@ -10,7 +10,7 @@ use crate::{
 pub(crate) struct NativeFunctionCall<'a> {
     pub(crate) dst: Option<Register>,
     pub(crate) name: &'a str,
-    pub(crate) native: Option<FunctionId>,
+    pub(crate) native: FunctionId,
     pub(crate) args: &'a [Register],
     pub(crate) call_site: Option<Span>,
 }
@@ -67,15 +67,12 @@ pub(crate) fn dispatch_native_function_call(
 fn resolve_native_call_target<'a>(
     vm: &'a Vm,
     name: &str,
-    native: Option<FunctionId>,
+    native: FunctionId,
 ) -> Option<NativeCallTarget<'a>> {
-    native
-        .and_then(|id| {
-            vm.native_ids
-                .get(&id)
-                .map(NativeCallTarget::Pure)
-                .or_else(|| vm.host_native_ids.get(&id).map(NativeCallTarget::Host))
-        })
+    vm.native_ids
+        .get(&native)
+        .map(NativeCallTarget::Pure)
+        .or_else(|| vm.host_native_ids.get(&native).map(NativeCallTarget::Host))
         .or_else(|| vm.natives.get(name).map(NativeCallTarget::Pure))
         .or_else(|| vm.host_natives.get(name).map(NativeCallTarget::Host))
 }

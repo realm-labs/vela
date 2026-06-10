@@ -1,7 +1,8 @@
 use super::*;
 use crate::verification::VerificationErrorKind;
 use crate::{
-    CacheSiteKind, CallArgument, CodeObject, Instruction, InstructionKind, Program, Register,
+    CacheSiteKind, CallArgument, Register, UnlinkedCodeObject, UnlinkedInstruction,
+    UnlinkedInstructionKind, UnlinkedProgram,
 };
 use vela_def::{DefPath, FunctionId, MethodId};
 fn semantic_diagnostic_codes(error: CompileError) -> Vec<String> {
@@ -31,12 +32,38 @@ fn stable_test_inherent_method_id(type_name: &str, method_name: &str) -> MethodI
 }
 
 #[test]
+fn compiler_entry_points_return_unlinked_bytecode() {
+    let program: UnlinkedProgram = compile_program_source(
+        SourceId::new(1),
+        r#"
+fn main() {
+    return 42;
+}
+"#,
+    )
+    .expect("program should compile");
+    assert!(program.function("main").is_some());
+
+    let code: UnlinkedCodeObject = compile_function_source(
+        SourceId::new(2),
+        r#"
+fn main() {
+    return 7;
+}
+"#,
+        "main",
+    )
+    .expect("function should compile");
+    assert_eq!(code.name, "main");
+}
+
+#[test]
 fn compiler_boundary_rejects_invalid_program_bytecode() {
-    let mut code = CodeObject::new("main", 1);
-    code.push_instruction(Instruction::new(InstructionKind::Return {
+    let mut code = UnlinkedCodeObject::new("main", 1);
+    code.push_instruction(UnlinkedInstruction::new(UnlinkedInstructionKind::Return {
         src: Register(2),
     }));
-    let mut program = Program::new();
+    let mut program = UnlinkedProgram::new();
     program.insert_function(code);
 
     let error = verify_program(program).expect_err("invalid bytecode should fail verification");
@@ -56,8 +83,8 @@ fn compiler_boundary_rejects_invalid_program_bytecode() {
 
 #[test]
 fn compiler_boundary_rejects_invalid_function_bytecode() {
-    let mut code = CodeObject::new("main", 1);
-    code.push_instruction(Instruction::new(InstructionKind::Return {
+    let mut code = UnlinkedCodeObject::new("main", 1);
+    code.push_instruction(UnlinkedInstruction::new(UnlinkedInstructionKind::Return {
         src: Register(2),
     }));
 
@@ -143,7 +170,7 @@ fn main(player: Player) {
         .instructions
         .iter()
         .find_map(|instruction| match &instruction.kind {
-            InstructionKind::LoadGlobal { cache_site, .. } => *cache_site,
+            UnlinkedInstructionKind::LoadGlobal { cache_site, .. } => *cache_site,
             _ => None,
         })
         .expect("load global should carry cache site");

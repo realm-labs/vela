@@ -180,27 +180,31 @@ fn main(player: Player) {
 fn call_host_method_writes_through_and_updates_adapter() {
     let host_ref = player_ref(3);
     let method = HostMethodId::new(8);
-    let mut code = CodeObject::new("main", 3).with_params(vec!["player".into()]);
+    let mut code = UnlinkedCodeObject::new("main", 3).with_params(vec!["player".into()]);
     let target = code.intern_host_target(HostTargetPlan::new(host_ref.type_id));
     let gold = code.push_constant(Constant::String("gold".into()));
-    code.push_instruction(Instruction::new(InstructionKind::LoadConst {
-        dst: Register(1),
-        constant: gold,
-    }));
+    code.push_instruction(UnlinkedInstruction::new(
+        UnlinkedInstructionKind::LoadConst {
+            dst: Register(1),
+            constant: gold,
+        },
+    ));
     let cache_site = code.push_cache_site(CacheSiteKind::HostPathCall, InstructionOffset(1));
-    code.push_instruction(Instruction::new(InstructionKind::HostCall {
-        dst: Some(Register(2)),
-        root: Register(0),
-        target,
-        dynamic_args: Vec::new(),
-        method,
-        args: vec![Register(1)],
-        cache_site,
-    }));
-    code.push_instruction(Instruction::new(InstructionKind::Return {
+    code.push_instruction(UnlinkedInstruction::new(
+        UnlinkedInstructionKind::HostCall {
+            dst: Some(Register(2)),
+            root: Register(0),
+            target,
+            dynamic_args: Vec::new(),
+            method,
+            args: vec![Register(1)],
+            cache_site,
+        },
+    ));
+    code.push_instruction(UnlinkedInstruction::new(UnlinkedInstructionKind::Return {
         src: Register(2),
     }));
-    let mut program = Program::new();
+    let mut program = UnlinkedProgram::new();
     program.insert_function(code);
     let mut adapter = host_adapter(host_ref, HostValue::Int(9));
     adapter.insert_method_return(method, HostValue::Int(12));
@@ -235,27 +239,31 @@ fn call_host_method_writes_through_and_updates_adapter() {
 fn heap_execution_converts_heap_string_for_host_method_call() {
     let host_ref = player_ref(3);
     let method = HostMethodId::new(8);
-    let mut code = CodeObject::new("main", 3).with_params(vec!["player".into()]);
+    let mut code = UnlinkedCodeObject::new("main", 3).with_params(vec!["player".into()]);
     let target = code.intern_host_target(HostTargetPlan::new(host_ref.type_id));
     let gold = code.push_constant(Constant::String("gold".into()));
-    code.push_instruction(Instruction::new(InstructionKind::LoadConst {
-        dst: Register(1),
-        constant: gold,
-    }));
+    code.push_instruction(UnlinkedInstruction::new(
+        UnlinkedInstructionKind::LoadConst {
+            dst: Register(1),
+            constant: gold,
+        },
+    ));
     let cache_site = code.push_cache_site(CacheSiteKind::HostPathCall, InstructionOffset(1));
-    code.push_instruction(Instruction::new(InstructionKind::HostCall {
-        dst: Some(Register(2)),
-        root: Register(0),
-        target,
-        dynamic_args: Vec::new(),
-        method,
-        args: vec![Register(1)],
-        cache_site,
-    }));
-    code.push_instruction(Instruction::new(InstructionKind::Return {
+    code.push_instruction(UnlinkedInstruction::new(
+        UnlinkedInstructionKind::HostCall {
+            dst: Some(Register(2)),
+            root: Register(0),
+            target,
+            dynamic_args: Vec::new(),
+            method,
+            args: vec![Register(1)],
+            cache_site,
+        },
+    ));
+    code.push_instruction(UnlinkedInstruction::new(UnlinkedInstructionKind::Return {
         src: Register(2),
     }));
-    let mut program = Program::new();
+    let mut program = UnlinkedProgram::new();
     program.insert_function(code);
     let mut adapter = host_adapter(host_ref, HostValue::Int(9));
     adapter.insert_method_return(method, HostValue::Null);

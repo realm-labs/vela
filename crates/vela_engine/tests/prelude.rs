@@ -179,7 +179,7 @@ fn prelude_imports_cover_source_and_reload_results() {
     fn accepts_report_lines(_lines: Vec<HotReloadReportLine>) {}
     fn accepts_report_line_kind(_kind: Option<HotReloadReportLineKind>) {}
     fn accepts_version_id(_version: Option<ProgramVersionId>) {}
-    fn accepts_code_object(_code: Option<Arc<CodeObject>>) {}
+    fn accepts_code_object(_code: Option<Arc<UnlinkedCodeObject>>) {}
     fn accepts_script_metadata(_metadata: Option<&ModuleGraph>) {}
     fn accepts_module_path(_path: ModulePath) {}
     fn accepts_module_id(_module: Option<ModuleId>) {}

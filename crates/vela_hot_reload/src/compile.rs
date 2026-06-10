@@ -1,7 +1,7 @@
 use std::collections::{BTreeMap, BTreeSet};
 use std::sync::Arc;
 
-use vela_bytecode::Program;
+use vela_bytecode::UnlinkedProgram;
 use vela_bytecode::compiler::options::CompilerOptions;
 use vela_bytecode::compiler::{
     compile_module_sources_with_options, compile_module_sources_with_options_and_registry,
@@ -224,12 +224,12 @@ pub fn compile_update_modules_with_abi_options_registry_and_policy(
     update_from_program(previous, program, abi, policy)
 }
 
-fn initial_version_from_program(program: Program, abi: HotReloadAbi) -> ProgramVersion {
+fn initial_version_from_program(program: UnlinkedProgram, abi: HotReloadAbi) -> ProgramVersion {
     let abi = abi_with_script_metadata(abi, &program);
     ProgramVersion::from_program_with_abi(ProgramVersionId(0), program, abi)
 }
 
-fn abi_with_script_metadata(abi: HotReloadAbi, program: &Program) -> HotReloadAbi {
+fn abi_with_script_metadata(abi: HotReloadAbi, program: &UnlinkedProgram) -> HotReloadAbi {
     if let Some(graph) = program.script_metadata() {
         abi.with_script_metadata(graph)
     } else {
@@ -239,7 +239,7 @@ fn abi_with_script_metadata(abi: HotReloadAbi, program: &Program) -> HotReloadAb
 
 fn update_from_program(
     previous: &ProgramVersion,
-    program: Program,
+    program: UnlinkedProgram,
     abi: HotReloadAbi,
     policy: &HotReloadPolicy,
 ) -> HotReloadResult<HotUpdate> {

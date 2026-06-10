@@ -49,6 +49,8 @@ struct StdMethodIds {
     map_len: MethodId,
     map_is_empty: MethodId,
     map_has: MethodId,
+    map_get: MethodId,
+    map_get_or: MethodId,
     map_set: MethodId,
     map_remove: MethodId,
     map_clear: MethodId,
@@ -112,6 +114,8 @@ impl StdMethodIds {
             map_len: standard_method_id("Map", "len"),
             map_is_empty: standard_method_id("Map", "is_empty"),
             map_has: standard_method_id("Map", "has"),
+            map_get: standard_method_id("Map", "get"),
+            map_get_or: standard_method_id("Map", "get_or"),
             map_set: standard_method_id("Map", "set"),
             map_remove: standard_method_id("Map", "remove"),
             map_clear: standard_method_id("Map", "clear"),
@@ -260,6 +264,9 @@ pub(crate) fn call_by_id(
     }
     if method_id == ids.array_slice && array_methods::is_array(receiver, heap.as_deref()) {
         return Some(array_methods::slice(receiver, args, heap, budget));
+    }
+    if method_id == ids.map_get && map_methods::is_map(receiver, heap.as_deref()) {
+        return Some(map_methods::get(receiver, args, heap, budget));
     }
     if method_id == ids.map_set && map_methods::is_map(receiver, heap.as_deref()) {
         return Some(map_methods::set(
@@ -501,6 +508,9 @@ pub(crate) fn call_readonly_by_id(
     }
     if method_id == ids.map_has && map_methods::is_map(receiver, heap) {
         return Some(map_methods::has(receiver, args, heap).map(Value::Bool));
+    }
+    if method_id == ids.map_get_or && map_methods::is_map(receiver, heap) {
+        return Some(map_methods::get_or(receiver, args, heap));
     }
     if method_id == ids.set_len && set_methods::is_set(receiver, heap) {
         return Some(

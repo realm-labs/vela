@@ -428,9 +428,8 @@ fn main() {
     assert_eq!(main.params, Vec::<String>::new());
     assert!(program.function("bonus").is_none());
     assert!(!main.instructions.is_empty());
-    assert!(
-        main.instructions
-            .iter()
-            .any(|instruction| matches!(instruction.kind, InstructionKind::CallFunction { .. }))
-    );
+    assert!(main.instructions.iter().any(|instruction| matches!(
+        instruction.kind,
+        UnlinkedInstructionKind::CallFunction { .. }
+    )));
 }

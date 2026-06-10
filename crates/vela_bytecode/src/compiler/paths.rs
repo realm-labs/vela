@@ -1,7 +1,7 @@
 use vela_common::Span;
 use vela_hir::binding::BindingResolution;
 
-use crate::{Constant, InstructionKind, Register};
+use crate::{Constant, Register, UnlinkedInstructionKind};
 
 use super::host_paths::{HostPath, HostPathPart, HostPathRoot};
 use super::{CompileError, CompileErrorKind, CompileResult, Compiler};
@@ -91,7 +91,7 @@ impl Compiler<'_, '_> {
 
     fn emit_load_global(&mut self, dst: Register, global: String) {
         let slot = self.facts.global_slots.get(&global).copied();
-        self.emit(InstructionKind::LoadGlobal {
+        self.emit(UnlinkedInstructionKind::LoadGlobal {
             dst,
             global,
             slot,
@@ -122,7 +122,7 @@ impl Compiler<'_, '_> {
                 && let Some(slot) =
                     self.script_record_field_slot_for_path_root(span, &path[0], segment)
             {
-                self.emit(InstructionKind::GetRecordSlot {
+                self.emit(UnlinkedInstructionKind::GetRecordSlot {
                     dst,
                     record: current,
                     field: segment.clone(),
@@ -132,7 +132,7 @@ impl Compiler<'_, '_> {
                 && let Some(slot) =
                     self.script_enum_field_slot_for_path_root(span, &path[0], segment)
             {
-                self.emit(InstructionKind::GetEnumSlot {
+                self.emit(UnlinkedInstructionKind::GetEnumSlot {
                     dst,
                     value: current,
                     field: segment.clone(),
@@ -159,7 +159,7 @@ impl Compiler<'_, '_> {
                     span,
                 )?;
             } else {
-                self.emit(InstructionKind::GetRecordField {
+                self.emit(UnlinkedInstructionKind::GetRecordField {
                     dst,
                     record: current,
                     field: segment.clone(),

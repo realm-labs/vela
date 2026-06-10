@@ -3,7 +3,7 @@ use vela_common::Span;
 use vela_def::FieldId;
 use vela_syntax::ast::{Argument, Expr, ExprKind};
 
-use crate::{CacheSiteId, Constant, HostTargetPlanId, InstructionKind, Register};
+use crate::{CacheSiteId, Constant, HostTargetPlanId, Register, UnlinkedInstructionKind};
 use vela_host::resolved::HostMutationOp;
 use vela_host::target::HostTargetPlan;
 
@@ -172,7 +172,7 @@ impl Compiler<'_, '_> {
             dynamic_args,
         } = self.compile_host_target(path)?;
         self.emit_spanned(
-            InstructionKind::HostRead {
+            UnlinkedInstructionKind::HostRead {
                 dst,
                 root,
                 target,
@@ -196,7 +196,7 @@ impl Compiler<'_, '_> {
             dynamic_args,
         } = self.compile_host_target(path)?;
         self.emit_spanned(
-            InstructionKind::HostWrite {
+            UnlinkedInstructionKind::HostWrite {
                 root,
                 target,
                 dynamic_args,
@@ -221,7 +221,7 @@ impl Compiler<'_, '_> {
             dynamic_args,
         } = self.compile_host_target(path)?;
         self.emit_spanned(
-            InstructionKind::HostMutate {
+            UnlinkedInstructionKind::HostMutate {
                 root,
                 target,
                 dynamic_args,
@@ -245,7 +245,7 @@ impl Compiler<'_, '_> {
             dynamic_args,
         } = self.compile_host_target(path)?;
         self.emit_spanned(
-            InstructionKind::HostRemove {
+            UnlinkedInstructionKind::HostRemove {
                 root,
                 target,
                 dynamic_args,
@@ -270,7 +270,7 @@ impl Compiler<'_, '_> {
             dynamic_args,
         } = self.compile_host_target(path)?;
         self.emit_spanned(
-            InstructionKind::HostCall {
+            UnlinkedInstructionKind::HostCall {
                 dst,
                 root,
                 target,
