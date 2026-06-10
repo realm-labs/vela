@@ -1,7 +1,7 @@
 use std::ops::Deref;
 use std::sync::Arc;
 
-use vela_bytecode::{ProgramImage, UnlinkedProgram};
+use vela_bytecode::{LinkedProgram, ProgramImage, UnlinkedProgram};
 use vela_hot_reload::profile::ProgramProfile;
 use vela_hot_reload::symbol::ProgramVersionId;
 use vela_hot_reload::version::ProgramVersion;
@@ -11,6 +11,7 @@ use crate::engine::Engine;
 pub struct RuntimeImage {
     engine: Engine,
     program_image: ProgramImage,
+    linked_program: Option<LinkedProgram>,
     version_id: Option<ProgramVersionId>,
     layout: RuntimeImageLayout,
     #[allow(dead_code)]
@@ -80,11 +81,13 @@ impl RuntimeImageStorage for SharedImage {
 impl RuntimeImage {
     #[must_use]
     pub fn new(engine: Engine, program: UnlinkedProgram) -> Self {
+        let linked_program = engine.link_program(&program).ok();
         let program_image = ProgramImage::from_program(&program);
         let layout = RuntimeImageLayout::from_global_names(program_image.global_names());
         Self {
             engine,
             program_image,
+            linked_program,
             version_id: None,
             layout,
             profile: None,
@@ -95,11 +98,13 @@ impl RuntimeImage {
     pub fn from_program_version(engine: Engine, version: &ProgramVersion) -> Self {
         let version_id = Some(version.id);
         let profile = Some(version.profile().clone());
+        let linked_program = engine.link_program(&version.to_program()).ok();
         let program_image = version.program_image().clone();
         let layout = RuntimeImageLayout::from_global_names(program_image.global_names());
         Self {
             engine,
             program_image,
+            linked_program,
             version_id,
             layout,
             profile,
@@ -112,6 +117,10 @@ impl RuntimeImage {
 
     pub(super) const fn program_image(&self) -> &ProgramImage {
         &self.program_image
+    }
+
+    pub const fn linked_program(&self) -> Option<&LinkedProgram> {
+        self.linked_program.as_ref()
     }
 
     pub(super) fn global_names(&self) -> &[String] {
@@ -146,9 +155,15 @@ impl RuntimeImageLayout {
 
 #[cfg(test)]
 mod tests {
-    use vela_bytecode::{CacheSiteKind, InstructionOffset, UnlinkedCodeObject, UnlinkedProgram};
+    use vela_bytecode::{
+        CacheSiteKind, InstructionOffset, Register, UnlinkedCodeObject, UnlinkedInstruction,
+        UnlinkedInstructionKind, UnlinkedProgram,
+    };
+    use vela_def::FunctionId;
+    use vela_vm::owned_value::OwnedValue;
 
     use crate::engine::Engine;
+    use crate::native::{NativeFunctionDesc, NativeFunctionId};
 
     use super::RuntimeImage;
 
@@ -169,6 +184,13 @@ mod tests {
 
         assert_eq!(image.global_names(), &["main::state".to_owned()]);
         assert_eq!(image.cache_site_count(), 2);
+        assert_eq!(
+            image
+                .linked_program()
+                .expect("pure script image should link")
+                .function_count(),
+            2
+        );
         let main_index = image
             .program_image
             .function_index("main")
@@ -181,5 +203,45 @@ mod tests {
                 .name,
             "main"
         );
+    }
+
+    #[test]
+    fn runtime_image_links_with_engine_native_implementations() {
+        let native_id = NativeFunctionId::new(91);
+        let mut main = UnlinkedCodeObject::new("main", 1);
+        main.push_instruction(UnlinkedInstruction::new(
+            UnlinkedInstructionKind::CallNative {
+                dst: Some(Register(0)),
+                name: "test::answer".to_owned(),
+                native: native_id,
+                args: Vec::new(),
+            },
+        ));
+        main.push_instruction(UnlinkedInstruction::new(UnlinkedInstructionKind::Return {
+            src: Register(0),
+        }));
+        let mut program = UnlinkedProgram::new();
+        program.insert_function(main);
+
+        let engine = Engine::builder()
+            .register_native_fn(NativeFunctionDesc::new("test::answer", native_id), |_| {
+                Ok(OwnedValue::Int(42))
+            })
+            .build()
+            .expect("engine should build");
+        let image = RuntimeImage::new(engine, program);
+
+        let linked = image
+            .linked_program()
+            .expect("registered native program should link");
+        assert_eq!(linked.function_count(), 1);
+        assert_eq!(linked.native_function_count(), 1);
+        let linked_native = image
+            .linked_program()
+            .expect("registered native program should link")
+            .native_functions()
+            .next()
+            .map(|(_, native)| native.id);
+        assert_eq!(linked_native, Some(FunctionId::new(91)));
     }
 }

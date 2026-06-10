@@ -2,7 +2,7 @@ use std::collections::BTreeMap;
 use std::sync::Arc;
 
 use vela_bytecode::compiler::options::CompilerOptions;
-use vela_bytecode::{ProgramImage, UnlinkedProgram};
+use vela_bytecode::{LinkError, LinkedProgram, Linker, ProgramImage, UnlinkedProgram};
 use vela_common::HostMethodId;
 use vela_def::FunctionId;
 use vela_host::path::HostPath;
@@ -212,6 +212,14 @@ impl Engine {
         (entry.function)(receiver, args, host)
     }
 
+    pub fn link_program(&self, program: &UnlinkedProgram) -> Result<LinkedProgram, LinkError> {
+        let mut linker = Linker::new();
+        for id in self.native_implementation_ids() {
+            linker.add_native_implementation(id);
+        }
+        linker.link_program(program)
+    }
+
     pub fn install(&self, vm: &mut Vm) {
         self.install_with_registry(vm, Arc::clone(&self.registry));
     }
@@ -361,6 +369,21 @@ impl Engine {
                 );
             }
         }
+    }
+
+    fn native_implementation_ids(&self) -> impl Iterator<Item = FunctionId> + '_ {
+        self.native_functions
+            .keys()
+            .copied()
+            .chain(self.host_native_functions.keys().copied())
+            .chain(self.context_host_native_functions.keys().copied())
+            .chain(
+                self.standard_natives
+                    .then_some(vela_stdlib::STD_FUNCTIONS)
+                    .into_iter()
+                    .flatten()
+                    .map(|spec| spec.id()),
+            )
     }
 
     fn registry_for_program(&self, program: &UnlinkedProgram) -> Arc<TypeRegistry> {
