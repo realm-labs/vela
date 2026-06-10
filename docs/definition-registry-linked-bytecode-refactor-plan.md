@@ -2,7 +2,7 @@
 
 > **Track:** breaking-change definition-registry and linked-bytecode refactor
 > **Primary goal:** rebuild Vela’s definition identity, stdlib registration, registry, linker, bytecode, and VM dispatch model around a clean architecture.
-> **Compatibility policy:** do **not** preserve old IDs, old bytecode, old serialized `ProgramImage`, old public APIs, or old fallback behavior. Prefer deleting legacy layers over adapting them.
+> **Breaking refactor policy:** do **not** preserve old IDs, old bytecode, old serialized `ProgramImage`, old public APIs, or old fallback behavior. Prefer deleting legacy layers over adapting them.
 > **Audience:** Codex and engineering agents executing the refactor task-by-task.
 
 ---
@@ -160,6 +160,29 @@ This refactor deliberately does **not** preserve:
 
 This refactor may break examples, tests, docs, generated output, and host embedding APIs. Updating them is part of the plan.
 
+### 2.1 Non-negotiable runtime invariants
+
+No compatibility is preserved for old internal shapes, but the product
+architecture contract is not optional. The refactor must preserve these
+invariants from the first replacement implementation that executes code:
+
+- scripts never observe or retain real Rust `&mut T` references;
+- host mutation remains represented through `HostRef`, host target plans or
+  materialized `HostPath`, `PathProxy`, and `HostAccess`;
+- host reads, writes, mutations, removals, pushes, and calls remain
+  adapter-validated, capability-checked, budgeted, and source-spanned;
+- later script traps do not roll back earlier host write-through effects;
+- reflection can query metadata and perform controlled reads/writes/calls, but
+  it cannot mutate type structure or become monkey patching;
+- execution budgets, call-depth budgets, GC roots, and host-ref exclusion from
+  script GC tracing remain enforced;
+- hot reload keeps active frames on their old linked code and routes new calls
+  to the new `ProgramVersion` only after the appropriate safe point;
+- stdlib and builtin APIs stay domain-neutral.
+
+If a task has to choose between preserving an old API and preserving one of
+these invariants, preserve the invariant and delete or redesign the old API.
+
 ---
 
 ## 3. Target Architecture
@@ -189,8 +212,13 @@ crates/
   vela_stdlib/
     src/
       manifest.rs         # single source of truth for stdlib definitions
-      generated.rs        # generated or macro-expanded definitions
-      register.rs         # installs stdlib into DefinitionRegistry and VM tables
+      generated.rs        # generated or macro-expanded definition data
+      register.rs         # installs stdlib definitions into DefinitionRegistry
+
+  vela_stdlib_runtime/
+    src/
+      lib.rs              # maps stdlib DefIds to VM/native implementations
+      install.rs          # installs stdlib runtime bindings into VM tables
 
   vela_bytecode/
     src/
@@ -207,6 +235,23 @@ crates/
 ```
 
 This structure does not have to be introduced in one PR. The task plan below gives a safer incremental sequence.
+
+### 3.1.1 Dependency boundaries
+
+The refactor should enforce crate dependencies rather than rely on convention:
+
+| Crate | May depend on | Must not depend on |
+|---|---|---|
+| `vela_def` | external stable-hash crate only | any Vela crate |
+| `vela_registry` | `vela_def`, shared diagnostics/effects if split | `vela_vm`, `vela_engine`, compiler internals |
+| `vela_stdlib` definition manifest | `vela_def`, `vela_registry` metadata types | `vela_vm` execution internals |
+| `vela_stdlib_runtime` | `vela_def`, `vela_stdlib`, VM native function types | compiler or engine builders |
+| `vela_bytecode` | `vela_def`; linker may query `vela_registry` | `vela_engine`, host adapters |
+| `vela_vm` | linked `vela_bytecode`, `vela_def`, host/runtime contracts | parser, HIR, compiler, registry mutation APIs, `vela_stdlib_runtime` |
+| `vela_engine` | compiler, registry, stdlib registration, VM, stdlib runtime installation | internal fallback registries that duplicate identity |
+
+If these boundaries create a dependency cycle, split the data model before
+continuing. Do not add a shortcut dependency that makes the cycle permanent.
 
 ### 3.2 Data flow
 
@@ -250,6 +295,25 @@ VM execution
 | Linker | dense handles, slots, executable layout | source lookup |
 | VM | linked bytecode execution | string fallback resolution |
 | Reflection | metadata and debug names | hot dispatch operands |
+
+### 3.4 `ProgramVersion` ownership
+
+Executable state must be version-owned. A `ProgramVersion` owns:
+
+- linked bytecode and linked code objects;
+- runtime handle tables and linked layouts;
+- debug name tables and source-span/call-site metadata;
+- inline cache state and cache invalidation metadata;
+- bytecode-offset profile layout and future counter storage;
+- hot-reload ABI/schema manifests derived from the registry.
+
+Hot reload builds a new `ProgramVersion` with fresh linked layouts. Rejected
+reloads keep the previous version unchanged. Active frames retain references to
+their old version and cannot observe partial updates. New calls enter the new
+version only after a safe point accepts it.
+
+No linked handle, slot, cache entry, or debug-name table index may outlive the
+`ProgramVersion` that owns it.
 
 ---
 
@@ -300,9 +364,8 @@ field    std::Option::Some::0
 
 ### 4.3 `DefId`
 
-Use a deterministic hash of canonical `DefPath`.
-
-Recommended:
+Use a deterministic hash of canonical `DefPath`. The final identity
+representation is fixed by this refactor:
 
 ```rust
 #[repr(transparent)]
@@ -351,14 +414,13 @@ Rules:
 - no implicit alias normalization;
 - module separators canonicalized to `::`;
 - owner path canonicalized before hashing;
-- hash algorithm chosen once and kept stable inside this refactor generation.
+- hash algorithm is BLAKE3 truncated to 128 bits;
+- the BLAKE3 input format and version prefix are part of the artifact ABI for
+  this clean architecture generation.
 
-Recommended implementation options:
-
-- BLAKE3-128 if adding a dependency is acceptable;
-- SipHash is not appropriate for stable cross-run IDs;
-- FNV is simple but not ideal for long-term collision resistance;
-- `u128` with a deterministic cryptographic or high-quality stable hash is preferred.
+SipHash is not appropriate for stable cross-run IDs. FNV is too weak for this
+long-term identity role. Do not add temporary `u64` IDs or preserve old raw ID
+spaces during the migration.
 
 ### 4.5 Collision policy
 
@@ -587,12 +649,25 @@ impl BuiltinFunction {
 Also generate:
 
 - `register_stdlib_defs(registry: &mut DefinitionRegistry)`;
-- `install_stdlib_vm(vm: &mut VmRuntimeTables)`;
 - reflection descriptors;
 - docs metadata;
 - parameter metadata;
 - compile signatures;
 - duplicate validation tests.
+
+Runtime implementation bindings are a separate generated or declarative table
+keyed by `FunctionId`/`MethodId`:
+
+```rust
+pub fn stdlib_runtime_bindings() -> &'static [StdlibRuntimeBinding];
+```
+
+The semantic manifest is the source of identity and metadata. Runtime bindings
+map those identities to VM/native implementation functions. Keeping these
+in `vela_stdlib_runtime`, outside the semantic manifest crate, prevents
+dependency cycles and keeps `DefinitionRegistry` from owning VM function
+pointers. `vela_vm` must not depend on `vela_stdlib_runtime`; the engine or
+runtime builder installs those bindings into VM runtime tables.
 
 ### 6.4 No raw numeric constants
 
@@ -1014,6 +1089,9 @@ Do not let reflection-only descriptors become the compiler’s input format. The
 This section is written as executable task groups. Each group can become one or more Codex tasks.
 Each task title is a Markdown checkbox. Codex should change `[ ]` to `[x]`
 only after the task acceptance criteria and validation pass.
+Transitional APIs may exist only inside the task sequence that removes them.
+They must not become milestone architecture or be listed as accepted final
+surface.
 
 ---
 
@@ -1033,6 +1111,30 @@ only after the task acceptance criteria and validation pass.
 
 - The repository documents that old stdlib IDs and bytecode are not preserved.
 - No code changes yet.
+
+- [ ] **Task 0.2: Inventory and delete-plan current identity surfaces**
+
+**Objective:** Make every legacy identity and dispatch surface visible before demolition.
+
+**Changes:**
+
+- Inventory all uses of:
+  - `standard_ids`;
+  - raw `0xff00_...` stdlib IDs;
+  - `CallNative` name or optional-ID operands;
+  - `CallMethod` name or optional value-method operands;
+  - `CompilerOptions` identity maps;
+  - native and host-native name maps;
+  - Option/Result string type, variant, and field identity;
+  - `ProgramImage` serialization assumptions;
+  - C API, WASM playground, example, and docs entry points that compile or run code.
+- Record which phase deletes or replaces each surface.
+- Add grep commands for each surface to the cleanup checks if missing.
+
+**Acceptance criteria:**
+
+- The plan names every known legacy identity surface and its removal phase.
+- Later tasks can delete old paths without rediscovering hidden dependencies.
 
 ---
 
@@ -1067,6 +1169,7 @@ only after the task acceptance criteria and validation pass.
   - same path generates same ID;
   - different kinds generate different IDs;
   - different owners generate different IDs;
+  - BLAKE3-128 output is stable for committed fixture paths;
   - canonical path formatting is stable.
 
 - [ ] **Task 1.2: Move ID wrapper types out of `vela_common`**
@@ -1089,6 +1192,7 @@ only after the task acceptance criteria and validation pass.
 
 - `FunctionId`, `MethodId`, `TypeId`, `FieldId`, `VariantId` come from `vela_def`.
 - `vela_common` no longer owns semantic definition identity.
+- Old raw numeric stdlib ID spaces are not preserved or aliased.
 - Workspace compiles after mechanical import updates.
 
 ---
@@ -1175,15 +1279,19 @@ only after the task acceptance criteria and validation pass.
 
 **Changes:**
 
-- Add `crates/vela_stdlib` or `crates/vela_engine/src/standard/manifest.rs` as an intermediate step.
+- Add `crates/vela_stdlib` for semantic stdlib definitions.
+- Add `crates/vela_stdlib_runtime` for VM implementation bindings.
 - Define stdlib functions, methods, types, variants, fields in one manifest.
 - Generate/register definitions into `DefinitionRegistry`.
+- Define stdlib runtime bindings separately from semantic definitions.
 
 **Acceptance criteria:**
 
 - All current stdlib native functions are declared in the manifest.
 - All current stdlib value methods are declared in the manifest.
 - Option/Result types, variants, and fields are declared in the manifest.
+- Runtime implementation bindings are keyed by manifest-derived IDs.
+- Registry metadata and `vela_stdlib` do not depend on VM function pointers.
 - Registry validation catches duplicate stdlib names.
 
 - [ ] **Task 3.2: Generate stdlib function metadata from manifest**
@@ -1217,7 +1325,8 @@ only after the task acceptance criteria and validation pass.
 **Acceptance criteria:**
 
 - VM stdlib registration consumes manifest-generated data.
-- The same manifest entry drives registry metadata and VM implementation registration.
+- The same manifest entry drives registry metadata and runtime binding lookup.
+- No semantic registry type stores VM function pointers.
 
 - [ ] **Task 3.4: Delete `standard_ids.rs`**
 
@@ -1404,11 +1513,15 @@ only after the task acceptance criteria and validation pass.
 - Change `Vm::run` and program execution APIs to use `LinkedCodeObject` / `LinkedProgram`.
 - Engine/runtime should compile and link before VM execution.
 - Tests that directly compile and run should call link step.
+- `ProgramVersion` should own linked bytecode, debug tables, runtime handles,
+  profile layout, and cache state.
 
 **Acceptance criteria:**
 
 - VM execution path receives no unlinked bytecode.
 - VM cannot accidentally execute unresolved calls.
+- Active frames retain old linked code through old `ProgramVersion` ownership.
+- New calls enter newly linked code only after hot-reload safe-point acceptance.
 
 - [ ] **Task 6.2: Remove native name fallback**
 
@@ -1553,6 +1666,11 @@ only after the task acceptance criteria and validation pass.
 
 ### Phase 9: Delete legacy layers
 
+Start Phase 9 only after registry compiler queries, stdlib manifest/runtime
+bindings, linked bytecode execution, runtime typed identity, and
+`ProgramVersion` ownership are all validated. This phase is cleanup, not a
+place to discover missing architecture.
+
 - [ ] **Task 9.1: Remove old stdlib ID APIs**
 
 **Delete:**
@@ -1661,6 +1779,7 @@ cargo fmt --all -- --check
 cargo test -p vela_def
 cargo test -p vela_registry
 cargo test -p vela_stdlib
+cargo test -p vela_stdlib_runtime
 ```
 
 After compiler/bytecode changes:
@@ -1711,6 +1830,8 @@ rg "CallNative"
 rg "Option<FunctionId>"
 rg "value_method_id"
 rg "CompilerOptions"
+rg "enum_name: String|variant: String"
+rg "ProgramImage"
 ```
 
 Expected final state:
@@ -1720,6 +1841,8 @@ Expected final state:
 - native dispatch maps by name removed;
 - linked `CallNative` contains handle only;
 - `CompilerOptions` no longer carries identity maps.
+- runtime Option/Result and script enum identity no longer uses string type or
+  variant names.
 
 ---
 
@@ -1792,16 +1915,18 @@ This refactor is complete when:
 
 1. `standard_ids.rs` is deleted.
 2. Stdlib definitions are declared once in a manifest.
-3. Stable typed IDs are generated from canonical definition paths.
+3. Stable typed IDs are generated from canonical definition paths with BLAKE3-128.
 4. Compiler consumes `DefinitionRegistry` / `RegistryCompileView`, not identity maps in `CompilerOptions`.
 5. Compiler emits unlinked bytecode with typed IDs.
 6. Linker produces linked bytecode with dense handles, slots, and resolved targets.
-7. VM executes linked bytecode only.
-8. VM native/method/script dispatch does not use string fallback.
-9. Runtime Option/Result and script enum identity use `TypeId`/`VariantId`, not strings.
-10. Reflection/debug names come from side tables.
-11. Old bytecode compatibility and old raw ID compatibility are not preserved.
-12. Workspace tests pass after updating tests/examples to the new architecture.
+7. `ProgramVersion` owns linked code, handle tables, debug names, profile layout, cache state, and hot-reload manifests.
+8. VM executes linked bytecode only.
+9. VM native/method/script dispatch does not use string fallback.
+10. Runtime Option/Result and script enum identity use `TypeId`/`VariantId`, not strings.
+11. Reflection/debug names come from side tables.
+12. Old bytecode compatibility and old raw ID compatibility are not preserved.
+13. HostAccess, reflection, budget, GC, and hot-reload invariants listed in section 2.1 are preserved.
+14. Workspace tests pass after updating tests/examples to the new architecture.
 
 ---
 
