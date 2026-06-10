@@ -172,6 +172,36 @@ fn linker_maps_script_functions_and_methods_to_dense_handles() {
 }
 
 #[test]
+fn linker_rejects_script_call_with_matching_name_and_wrong_id() {
+    let mut helper = UnlinkedCodeObject::new("helper", 1);
+    helper.push_instruction(UnlinkedInstruction::new(UnlinkedInstructionKind::Return {
+        src: Register(0),
+    }));
+    let wrong_id = FunctionId::new(999);
+    let mut main = UnlinkedCodeObject::new("main", 1);
+    main.push_instruction(UnlinkedInstruction::new(
+        UnlinkedInstructionKind::CallFunction {
+            dst: Register(0),
+            target: wrong_id,
+            name: "helper".to_owned(),
+            args: Vec::new(),
+        },
+    ));
+    let mut program = UnlinkedProgram::new();
+    program.insert_function(helper);
+    program.insert_function(main);
+
+    let error = Linker::new()
+        .link_program(&program)
+        .expect_err("script calls should resolve by id, not matching debug name");
+
+    assert!(matches!(
+        error,
+        LinkError::MissingScriptFunction { name, id } if name == "helper" && id == wrong_id
+    ));
+}
+
+#[test]
 fn linker_maps_globals_map_keys_and_field_slots_without_instruction_names() {
     let mut code = UnlinkedCodeObject::new("main", 4);
     code.push_constant(Constant::Int(1));

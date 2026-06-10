@@ -749,7 +749,6 @@ impl<'linker, 'registry> LinkContext<'linker, 'registry> {
         self.script_functions_by_id
             .get(&target)
             .copied()
-            .or_else(|| self.script_functions_by_name.get(name).copied())
             .ok_or_else(|| LinkError::MissingScriptFunction {
                 name: name.to_owned(),
                 id: target,
