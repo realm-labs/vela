@@ -1,6 +1,26 @@
 use super::*;
 use vela_host::resolved::HostMutationOp;
 
+fn exec_compiled_host_field(
+    program: &UnlinkedProgram,
+    entry: &str,
+    args: &[OwnedValue],
+    host: &mut HostExecution<'_>,
+) -> VmResult<OwnedValue> {
+    let mut budget = ExecutionBudget::unbounded();
+    exec_compiled_host_field_with_budget(program, entry, args, host, &mut budget)
+}
+
+fn exec_compiled_host_field_with_budget(
+    program: &UnlinkedProgram,
+    entry: &str,
+    args: &[OwnedValue],
+    host: &mut HostExecution<'_>,
+    budget: &mut ExecutionBudget,
+) -> VmResult<OwnedValue> {
+    run_linked_test_program_with_host_budget(&Vm::new(), program, entry, args, host, budget)
+}
+
 #[test]
 fn compiled_source_mutates_host_field_through_host_access() {
     let host_ref = player_ref(3);
@@ -29,7 +49,7 @@ fn main(player: Player) {
             access: &mut tx,
             script_globals: None,
         };
-        Vm::new().run_program_with_host(
+        exec_compiled_host_field(
             &program,
             "main",
             &[OwnedValue::HostRef(host_ref)],
@@ -75,14 +95,13 @@ fn main(player: Player) {
         script_globals: None,
     };
 
-    let error = Vm::new()
-        .run_program_with_host(
-            &program,
-            "main",
-            &[OwnedValue::HostRef(host_ref)],
-            &mut host,
-        )
-        .expect_err("host read should fail");
+    let error = exec_compiled_host_field(
+        &program,
+        "main",
+        &[OwnedValue::HostRef(host_ref)],
+        &mut host,
+    )
+    .expect_err("host read should fail");
 
     let span = error.source_span.expect("host read error source span");
     assert_eq!(span.source, SourceId::new(1));
@@ -126,7 +145,7 @@ fn main(player: Player) {
             access: &mut tx,
             script_globals: None,
         };
-        Vm::new().run_program_with_host(
+        exec_compiled_host_field(
             &program,
             "main",
             &[OwnedValue::HostRef(host_ref)],
@@ -179,7 +198,7 @@ fn main(player: Player) {
             access: &mut tx,
             script_globals: None,
         };
-        Vm::new().run_program_with_host(
+        exec_compiled_host_field(
             &program,
             "main",
             &[OwnedValue::HostRef(host_ref)],
@@ -234,7 +253,7 @@ fn main(player: Player) {
             access: &mut tx,
             script_globals: None,
         };
-        Vm::new().run_program_with_host(
+        exec_compiled_host_field(
             &program,
             "main",
             &[OwnedValue::HostRef(host_ref)],
@@ -264,7 +283,7 @@ fn compiled_source_rejects_host_path_push_without_collection_adapter() {
         r#"
 fn main(player: Player) {
     player.inventory.rewards.push("gold");
-    return player.inventory.rewards.len();
+    return 1;
 }
 "#,
         host_definition_registry(
@@ -290,14 +309,13 @@ fn main(player: Player) {
             access: &mut tx,
             script_globals: None,
         };
-        Vm::new()
-            .run_program_with_host(
-                &program,
-                "main",
-                &[OwnedValue::HostRef(host_ref)],
-                &mut host,
-            )
-            .expect_err("host push should reject scalar-only host values")
+        exec_compiled_host_field(
+            &program,
+            "main",
+            &[OwnedValue::HostRef(host_ref)],
+            &mut host,
+        )
+        .expect_err("host push should reject scalar-only host values")
     };
 
     assert_eq!(
@@ -353,7 +371,7 @@ fn main(player: Player) {
             access: &mut tx,
             script_globals: None,
         };
-        Vm::new().run_program_with_host(
+        exec_compiled_host_field(
             &program,
             "main",
             &[OwnedValue::HostRef(host_ref)],
@@ -425,7 +443,7 @@ fn main(player: Player) {
             access: &mut tx,
             script_globals: None,
         };
-        Vm::new().run_program_with_host(
+        exec_compiled_host_field(
             &program,
             "main",
             &[OwnedValue::HostRef(host_ref)],
@@ -501,7 +519,7 @@ fn bytecode_mutates_host_variant_field_through_host_access() {
             access: &mut tx,
             script_globals: None,
         };
-        Vm::new().run_program_with_host(
+        exec_compiled_host_field(
             &program,
             "main",
             &[OwnedValue::HostRef(host_ref)],
@@ -568,7 +586,7 @@ fn main(ctx: Ctx) {
             access: &mut tx,
             script_globals: None,
         };
-        Vm::new().run_program_with_host_managed_heap_and_budget(
+        exec_compiled_host_field_with_budget(
             &program,
             "main",
             &[OwnedValue::HostRef(ctx_ref)],
@@ -631,15 +649,14 @@ fn main(player: Player) {
             access: &mut tx,
             script_globals: None,
         };
-        Vm::new()
-            .run_program_with_host_managed_heap_and_budget(
-                &program,
-                "main",
-                &[OwnedValue::HostRef(host_ref)],
-                &mut host,
-                &mut budget,
-            )
-            .expect_err("closure values cannot be written to host state")
+        exec_compiled_host_field_with_budget(
+            &program,
+            "main",
+            &[OwnedValue::HostRef(host_ref)],
+            &mut host,
+            &mut budget,
+        )
+        .expect_err("closure values cannot be written to host state")
     };
 
     assert_eq!(
