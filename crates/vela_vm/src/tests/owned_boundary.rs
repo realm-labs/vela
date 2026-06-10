@@ -22,9 +22,10 @@ fn identity(value) {
         ),
         ("enabled".to_owned(), OwnedValue::Bool(true)),
     ]));
+    let linked = link_test_program(&program);
 
     let result = Vm::new()
-        .run_program(&program, "identity", std::slice::from_ref(&value))
+        .run_linked_program(&linked, "identity", std::slice::from_ref(&value))
         .expect("run public owned boundary");
 
     assert_eq!(result, value);
@@ -46,10 +47,11 @@ fn identity(value) {
         OwnedValue::String("reward".to_owned()),
     ]);
     let mut budget = ExecutionBudget::unbounded();
+    let linked = link_test_program(&program);
 
     let result = Vm::new()
-        .run_program_with_budget(
-            &program,
+        .run_linked_program_with_budget(
+            &linked,
             "identity",
             std::slice::from_ref(&value),
             &mut budget,

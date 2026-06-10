@@ -9,7 +9,7 @@ use vela_bytecode::compiler::{
     compile_program_source_with_registry,
 };
 use vela_bytecode::{
-    CacheSiteKind, Constant, ConstantId, InstructionOffset, Linker, ProgramImage,
+    CacheSiteKind, Constant, ConstantId, InstructionOffset, LinkedProgram, Linker, ProgramImage,
     UnlinkedInstruction,
 };
 use vela_common::{HostMethodId, HostObjectId, HostTypeId, SourceId};
@@ -60,6 +60,12 @@ mod reflection_values;
 mod script_methods;
 mod standard_id_dispatch;
 mod standard_string_id_dispatch;
+
+fn link_test_program(program: &UnlinkedProgram) -> LinkedProgram {
+    Linker::new()
+        .link_program(program)
+        .expect("test program should link")
+}
 
 fn host_read_program() -> (UnlinkedProgram, HostRef) {
     let host_ref = player_ref(3);
