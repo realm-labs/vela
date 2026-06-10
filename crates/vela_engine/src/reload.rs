@@ -134,7 +134,7 @@ impl Engine {
     }
 
     fn attach_linked_program_to_version(&self, version: ProgramVersion) -> ProgramVersion {
-        let Ok(linked_program) = self.link_program(&version.to_program()) else {
+        let Ok(linked_program) = self.link_program(&version.to_unlinked_program()) else {
             return version;
         };
         version.with_linked_program(linked_program)
@@ -145,7 +145,7 @@ impl Engine {
         previous: &ProgramVersion,
         update: HotUpdate,
     ) -> HotUpdate {
-        let program = update.to_program_with_previous(previous);
+        let program = update.to_unlinked_program_with_previous(previous);
         let Ok(linked_program) = self.link_program(&program) else {
             return update;
         };

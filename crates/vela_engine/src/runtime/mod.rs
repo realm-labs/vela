@@ -176,7 +176,7 @@ where
             ));
         };
         let update = update.map(|update| {
-            let program = update.to_program_with_previous(&previous);
+            let program = update.to_unlinked_program_with_previous(&previous);
             match self.image.engine().link_program(&program) {
                 Ok(linked) => update.with_linked_program(linked),
                 Err(_) => update,
@@ -226,7 +226,7 @@ where
         };
         let current = hot_reload.current();
         let update = update.map(|update| {
-            let program = update.to_program_with_previous(&current);
+            let program = update.to_unlinked_program_with_previous(&current);
             match self.image.engine().link_program(&program) {
                 Ok(linked) => update.with_linked_program(linked),
                 Err(_) => update,

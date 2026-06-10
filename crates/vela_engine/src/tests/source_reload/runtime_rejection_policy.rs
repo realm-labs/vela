@@ -50,7 +50,7 @@ fn runtime_rejects_hot_update_when_not_created_from_version() {
     let update = engine
         .compile_hot_reload_update(&initial, SourceId::new(2), "fn main() { return 2; }")
         .expect("compatible update should compile");
-    let mut runtime = Runtime::new(engine, initial.to_program());
+    let mut runtime = Runtime::new(engine, initial.to_unlinked_program());
 
     assert!(matches!(
         runtime.apply_hot_update(update),
@@ -67,7 +67,7 @@ fn runtime_rejects_compile_update_when_not_created_from_version() {
     let initial = engine
         .compile_hot_reload_initial(SourceId::new(1), "fn main() { return 1; }")
         .expect("initial hot reload compile");
-    let runtime = Runtime::new(engine, initial.to_program());
+    let runtime = Runtime::new(engine, initial.to_unlinked_program());
 
     assert!(matches!(
         runtime.compile_hot_reload_update(SourceId::new(2), "fn main() { return 2; }"),

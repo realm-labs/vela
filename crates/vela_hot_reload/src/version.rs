@@ -143,8 +143,17 @@ impl ProgramVersion {
     }
 
     #[must_use]
-    pub fn to_program(&self) -> UnlinkedProgram {
-        self.program_image.to_program()
+    pub fn to_unlinked_program(&self) -> UnlinkedProgram {
+        let mut program = UnlinkedProgram::new();
+        for function in self.functions.values() {
+            program.insert_function((**function).clone());
+        }
+        program.set_global_layout(self.global_names().iter().cloned());
+        program.set_script_methods(self.script_methods().clone());
+        if let Some(graph) = self.script_metadata() {
+            program.set_script_metadata(graph.clone());
+        }
+        program
     }
 }
 
@@ -261,7 +270,7 @@ impl HotUpdate {
     }
 
     #[must_use]
-    pub fn to_program_with_previous(&self, previous: &ProgramVersion) -> UnlinkedProgram {
+    pub fn to_unlinked_program_with_previous(&self, previous: &ProgramVersion) -> UnlinkedProgram {
         let mut functions = previous.functions.clone();
         functions.extend(
             self.functions
