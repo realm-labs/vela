@@ -13,7 +13,8 @@ use vela_common::standard_ids::{
     SET_CLEAR_METHOD_ID, SET_HAS_METHOD_ID, SET_IS_DISJOINT_METHOD_ID, SET_IS_EMPTY_METHOD_ID,
     SET_IS_SUBSET_METHOD_ID, SET_IS_SUPERSET_METHOD_ID, SET_LEN_METHOD_ID, SET_REMOVE_METHOD_ID,
     STRING_CONTAINS_METHOD_ID, STRING_ENDS_WITH_METHOD_ID, STRING_IS_EMPTY_METHOD_ID,
-    STRING_LEN_METHOD_ID, STRING_STARTS_WITH_METHOD_ID, STRING_TO_LOWER_METHOD_ID,
+    STRING_LEN_METHOD_ID, STRING_REPEAT_METHOD_ID, STRING_REPLACE_METHOD_ID,
+    STRING_SLICE_METHOD_ID, STRING_STARTS_WITH_METHOD_ID, STRING_TO_LOWER_METHOD_ID,
     STRING_TO_UPPER_METHOD_ID, STRING_TRIM_END_METHOD_ID, STRING_TRIM_METHOD_ID,
     STRING_TRIM_START_METHOD_ID,
 };
@@ -176,6 +177,21 @@ pub(crate) fn call_by_id(
         return Some(crate::string_methods::trim_end(
             receiver, args, heap, budget,
         ));
+    }
+    if method_id == STRING_REPLACE_METHOD_ID
+        && crate::string_methods::is_string(receiver, heap.as_deref())
+    {
+        return Some(crate::string_methods::replace(receiver, args, heap, budget));
+    }
+    if method_id == STRING_REPEAT_METHOD_ID
+        && crate::string_methods::is_string(receiver, heap.as_deref())
+    {
+        return Some(crate::string_methods::repeat(receiver, args, heap, budget));
+    }
+    if method_id == STRING_SLICE_METHOD_ID
+        && crate::string_methods::is_string(receiver, heap.as_deref())
+    {
+        return Some(crate::string_methods::slice(receiver, args, heap, budget));
     }
     None
 }

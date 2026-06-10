@@ -44,6 +44,9 @@ pub const STRING_TO_LOWER_METHOD_ID: HostMethodId = HostMethodId::new(0xff00_070
 pub const STRING_TRIM_METHOD_ID: HostMethodId = HostMethodId::new(0xff00_070a);
 pub const STRING_TRIM_START_METHOD_ID: HostMethodId = HostMethodId::new(0xff00_070b);
 pub const STRING_TRIM_END_METHOD_ID: HostMethodId = HostMethodId::new(0xff00_070c);
+pub const STRING_REPLACE_METHOD_ID: HostMethodId = HostMethodId::new(0xff00_070d);
+pub const STRING_REPEAT_METHOD_ID: HostMethodId = HostMethodId::new(0xff00_070e);
+pub const STRING_SLICE_METHOD_ID: HostMethodId = HostMethodId::new(0xff00_070f);
 
 pub const ARRAY_LEN_METHOD_ID: HostMethodId = HostMethodId::new(0xff00_0800);
 pub const ARRAY_IS_EMPTY_METHOD_ID: HostMethodId = HostMethodId::new(0xff00_0801);

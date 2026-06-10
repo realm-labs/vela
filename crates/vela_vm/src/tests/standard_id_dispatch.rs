@@ -209,6 +209,71 @@ fn run_string_transform_by_id(
 }
 
 #[test]
+fn call_method_uses_standard_string_argument_transform_ids_before_name_fallback() {
+    assert_eq!(
+        run_string_transform_with_args_by_id(
+            vela_common::standard_ids::STRING_REPLACE_METHOD_ID,
+            "gold.gold",
+            &[
+                Constant::String("gold".to_owned()),
+                Constant::String("xp".to_owned())
+            ],
+        ),
+        Ok(OwnedValue::String("xp.xp".to_owned()))
+    );
+    assert_eq!(
+        run_string_transform_with_args_by_id(
+            vela_common::standard_ids::STRING_REPEAT_METHOD_ID,
+            "xp",
+            &[Constant::Int(3)],
+        ),
+        Ok(OwnedValue::String("xpxpxp".to_owned()))
+    );
+    assert_eq!(
+        run_string_transform_with_args_by_id(
+            vela_common::standard_ids::STRING_SLICE_METHOD_ID,
+            "reward",
+            &[Constant::Int(1), Constant::Int(5)],
+        ),
+        Ok(OwnedValue::String("ewar".to_owned()))
+    );
+}
+
+fn run_string_transform_with_args_by_id(
+    method_id: vela_common::HostMethodId,
+    receiver: &str,
+    args: &[Constant],
+) -> VmResult<OwnedValue> {
+    let result = Register((args.len() + 1) as u16);
+    let mut code = CodeObject::new("standard_string_arg_transform_method_id", result.0 + 1);
+    let receiver = code.push_constant(Constant::String(receiver.into()));
+    code.push_instruction(Instruction::new(InstructionKind::LoadConst {
+        dst: Register(0),
+        constant: receiver,
+    }));
+    for (index, arg) in args.iter().enumerate() {
+        let register = Register((index + 1) as u16);
+        let constant = code.push_constant(arg.clone());
+        code.push_instruction(Instruction::new(InstructionKind::LoadConst {
+            dst: register,
+            constant,
+        }));
+    }
+    code.push_instruction(Instruction::new(InstructionKind::CallMethod {
+        dst: result,
+        receiver: Register(0),
+        method: "missing_string_arg_transform".into(),
+        value_method_id: Some(method_id),
+        args: (1..=args.len())
+            .map(|index| vela_bytecode::CallArgument::Register(Register(index as u16)))
+            .collect(),
+    }));
+    code.push_instruction(Instruction::new(InstructionKind::Return { src: result }));
+
+    Vm::new().run(&code)
+}
+
+#[test]
 fn call_method_uses_standard_range_method_id_before_name_fallback() {
     let mut code = CodeObject::new("standard_range_method_id", 4);
     let start = code.push_constant(Constant::Int(2));

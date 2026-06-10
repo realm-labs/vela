@@ -256,6 +256,45 @@ fn main() {
 }
 
 #[test]
+fn engine_compiler_options_emit_standard_string_argument_transform_method_ids() {
+    let engine = Engine::builder()
+        .with_standard_natives()
+        .build()
+        .expect("engine should build with standard natives");
+    let program = compile_program_source_with_options(
+        SourceId::new(1),
+        r#"
+fn main() {
+    let label = "reward.gold";
+    return label.replace(".", ":") == "reward:gold"
+        && "xp".repeat(3) == "xpxpxp"
+        && label.slice(0, 6) == "reward";
+}
+"#,
+        &engine.compiler_options(),
+    )
+    .expect("standard string argument transform methods should compile");
+    let main = program.function("main").expect("main should compile");
+
+    let value_methods = main
+        .instructions
+        .iter()
+        .filter_map(|instruction| match &instruction.kind {
+            InstructionKind::CallMethod {
+                method,
+                value_method_id,
+                ..
+            } => Some((method.as_str(), *value_method_id)),
+            _ => None,
+        })
+        .collect::<Vec<_>>();
+
+    assert!(value_methods.contains(&("replace", Some(crate::standard::STRING_REPLACE_METHOD_ID))));
+    assert!(value_methods.contains(&("repeat", Some(crate::standard::STRING_REPEAT_METHOD_ID))));
+    assert!(value_methods.contains(&("slice", Some(crate::standard::STRING_SLICE_METHOD_ID))));
+}
+
+#[test]
 fn engine_compiler_options_emit_standard_range_method_ids() {
     let engine = Engine::builder()
         .with_standard_natives()
