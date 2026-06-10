@@ -57,9 +57,9 @@ pub(crate) use frame::CallFrame;
 use heap::{HeapValue, ScriptHeap};
 use heap_execution::HeapExecution;
 use heap_values::{
-    allocate_heap_value, enum_variant_owner, finish_managed_heap_result, owned_to_value,
-    store_runtime_value, store_value_in_heap_if_needed, stored_runtime_value, value_from_constant,
-    value_to_owned, values_equal,
+    allocate_heap_value, enum_variant_owner, owned_to_value, store_runtime_value,
+    store_value_in_heap_if_needed, stored_runtime_value, value_from_constant, value_to_owned,
+    values_equal,
 };
 use numeric_ops::{
     add_numeric, div_numeric, greater_equal_numeric, greater_numeric, less_equal_numeric,
@@ -549,17 +549,6 @@ impl Vm {
         self.execute(code, Some(program), args, None, Some(heap), Some(budget))
     }
 
-    pub fn run_program_runtime_with_managed_heap_and_budget(
-        &self,
-        program: &UnlinkedProgram,
-        entry: &str,
-        args: &[Value],
-        budget: &mut ExecutionBudget,
-    ) -> VmResult<Value> {
-        let code = program_entry(program, entry)?;
-        self.execute_with_managed_heap_and_budget(code, Some(program), args, None, budget)
-    }
-
     pub fn run_with_host(
         &self,
         code: &UnlinkedCodeObject,
@@ -596,15 +585,6 @@ impl Vm {
         budget: &mut ExecutionBudget,
     ) -> VmResult<Value> {
         self.execute(code, None, &[], Some(host), Some(heap), Some(budget))
-    }
-
-    pub fn run_with_host_managed_heap_and_budget(
-        &self,
-        code: &UnlinkedCodeObject,
-        host: &mut HostExecution<'_>,
-        budget: &mut ExecutionBudget,
-    ) -> VmResult<OwnedValue> {
-        self.run_with_host_and_budget(code, host, budget)
     }
 
     pub fn run_program_with_host(
@@ -874,39 +854,6 @@ impl Vm {
             Some(heap),
             Some(budget),
         )
-    }
-
-    pub fn run_program_runtime_with_host_managed_heap_and_budget(
-        &self,
-        program: &UnlinkedProgram,
-        entry: &str,
-        args: &[Value],
-        host: &mut HostExecution<'_>,
-        budget: &mut ExecutionBudget,
-    ) -> VmResult<Value> {
-        let code = program_entry(program, entry)?;
-        self.execute_with_managed_heap_and_budget(code, Some(program), args, Some(host), budget)
-    }
-
-    fn execute_with_managed_heap_and_budget(
-        &self,
-        code: &UnlinkedCodeObject,
-        program: Option<&dyn UnlinkedProgramCode>,
-        args: &[Value],
-        host: Option<&mut HostExecution<'_>>,
-        budget: &mut ExecutionBudget,
-    ) -> VmResult<Value> {
-        let mut heap = ScriptHeap::new();
-        let mut heap_execution = HeapExecution::new(&mut heap);
-        let result = self.execute(
-            code,
-            program,
-            args,
-            host,
-            Some(&mut heap_execution),
-            Some(budget),
-        );
-        finish_managed_heap_result(result, &mut heap_execution, budget)
     }
 
     fn execute(

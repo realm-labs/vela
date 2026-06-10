@@ -429,18 +429,6 @@ fn store_value_in_heap(
     }
 }
 
-pub(crate) fn finish_managed_heap_result(
-    result: VmResult<Value>,
-    heap: &mut HeapExecution<'_>,
-    budget: &mut ExecutionBudget,
-) -> VmResult<Value> {
-    let result = result?;
-    let mut roots = Vec::new();
-    result.trace_heap_refs(&mut roots);
-    heap.heap.collect_full_with_budget(&roots, Some(budget));
-    Ok(result)
-}
-
 pub(crate) fn values_equal(
     lhs: &Value,
     rhs: &Value,
