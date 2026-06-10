@@ -129,7 +129,8 @@ fn map_case() {
 }
 
 #[test]
-fn managed_heap_execution_releases_budget_after_errors() {
+fn linked_execution_rejects_missing_native_before_heap_execution() {
+    let native = vela_def::FunctionId::new(0);
     let mut code = UnlinkedCodeObject::new("main", 2);
     let label = code.push_constant(Constant::String("allocated-before-error".into()));
     code.push_instruction(UnlinkedInstruction::new(
@@ -142,26 +143,25 @@ fn managed_heap_execution_releases_budget_after_errors() {
         UnlinkedInstructionKind::CallNative {
             dst: Some(Register(1)),
             name: "missing".into(),
-            native: vela_def::FunctionId::new(0),
+            native,
             args: Vec::new(),
         },
     ));
     code.push_instruction(UnlinkedInstruction::new(UnlinkedInstructionKind::Return {
         src: Register(0),
     }));
-    let mut budget = ExecutionBudget::new(u64::MAX, 4096, usize::MAX);
+    let mut program = UnlinkedProgram::new();
+    program.insert_function(code);
 
-    let error = Vm::new()
-        .run_with_managed_heap_and_budget(&code, &mut budget)
-        .expect_err("missing native should fail");
+    let error = Linker::new()
+        .link_program(&program)
+        .expect_err("missing native should fail during linking");
 
-    assert_eq!(
-        error.kind(),
-        VmErrorKind::UnknownNative {
-            name: "missing".into()
-        }
-    );
-    assert_eq!(budget.memory_bytes_allocated(), 0);
+    assert!(matches!(
+        error,
+        vela_bytecode::LinkError::MissingNativeImplementation { name, id }
+            if name == "missing" && id == native
+    ));
 }
 
 #[test]
