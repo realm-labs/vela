@@ -1,9 +1,48 @@
 use super::*;
 use crate::owned_value::OwnedValue;
 
+fn run_script_method_program(
+    vm: &Vm,
+    program: &UnlinkedProgram,
+    entry: &str,
+    args: &[OwnedValue],
+) -> VmResult<OwnedValue> {
+    let mut budget = ExecutionBudget::unbounded();
+    run_linked_test_program_with_budget(vm, program, entry, args, &mut budget)
+}
+
+fn run_script_method_program_with_host(
+    vm: &Vm,
+    program: &UnlinkedProgram,
+    entry: &str,
+    args: &[OwnedValue],
+    host: &mut HostExecution<'_>,
+) -> VmResult<OwnedValue> {
+    let mut budget = ExecutionBudget::unbounded();
+    run_linked_test_program_with_host_budget(vm, program, entry, args, host, &mut budget)
+}
+
+fn host_ref_script_method_registry(
+    host_type: HostTypeId,
+    natives: &[&str],
+) -> vela_registry::DefinitionRegistry {
+    let mut registry = host_definition_registry(&[("Player", host_type)], &[], &[]);
+    for native in natives {
+        let mut segments = native.split("::").collect::<Vec<_>>();
+        let function = segments.pop().unwrap_or(native);
+        registry
+            .register_function(vela_registry::FunctionDef::new(
+                vela_def::DefPath::function("host", segments, function),
+                vela_registry::FunctionSignature::default(),
+            ))
+            .expect("test native function should register");
+    }
+    registry
+}
+
 #[test]
 fn runs_compiled_script_value_methods() {
-    let program = compile_program_source(
+    let program = compile_standard_program_source(
             SourceId::new(1),
             r#"
 fn main() {
@@ -41,7 +80,7 @@ fn main() {
     vm.register_standard_natives();
 
     assert_eq!(
-        vm.run_program(&program, "main", &[]),
+        run_script_method_program(&vm, &program, "main", &[]),
         Ok(OwnedValue::Int(3))
     );
 }
@@ -69,7 +108,7 @@ fn main() {
     .expect("compile script impl method dispatch");
 
     assert_eq!(
-        Vm::new().run_program(&program, "main", &[]),
+        run_script_method_program(&Vm::new(), &program, "main", &[]),
         Ok(OwnedValue::Int(12))
     );
 }
@@ -96,7 +135,7 @@ fn main() {
     .expect("compile inherent script impl method dispatch");
 
     assert_eq!(
-        Vm::new().run_program(&program, "main", &[]),
+        run_script_method_program(&Vm::new(), &program, "main", &[]),
         Ok(OwnedValue::Int(12))
     );
 }
@@ -127,7 +166,7 @@ fn main() {
     .expect("compile script method named/default args");
 
     assert_eq!(
-        Vm::new().run_program(&program, "main", &[]),
+        run_script_method_program(&Vm::new(), &program, "main", &[]),
         Ok(OwnedValue::Int(29))
     );
 }
@@ -158,7 +197,7 @@ fn main(player: Player) {
     };
 
     assert_eq!(
-        Vm::new().run_program(&program, "main", &[player]),
+        run_script_method_program(&Vm::new(), &program, "main", &[player]),
         Ok(OwnedValue::Int(12))
     );
 }
@@ -185,7 +224,7 @@ fn main() {
     .expect("compile immediate script method id dispatch");
 
     assert_eq!(
-        Vm::new().run_program(&program, "main", &[]),
+        run_script_method_program(&Vm::new(), &program, "main", &[]),
         Ok(OwnedValue::Int(12))
     );
 }
@@ -205,14 +244,17 @@ impl BonusSource for Player {}
 
 fn main() {
     let player = Player { level: 7, name: "hero" };
-    return player.bonus(5) + player.label().len();
+    if player.label() == "hero" {
+        return player.bonus(5) + 4;
+    }
+    return 0;
 }
 "#,
     )
     .expect("compile trait default method dispatch");
 
     assert_eq!(
-        Vm::new().run_program(&program, "main", &[]),
+        run_script_method_program(&Vm::new(), &program, "main", &[]),
         Ok(OwnedValue::Int(16))
     );
 }
@@ -242,7 +284,7 @@ fn main() {
     .expect("compile self method id dispatch");
 
     assert_eq!(
-        Vm::new().run_program(&program, "main", &[]),
+        run_script_method_program(&Vm::new(), &program, "main", &[]),
         Ok(OwnedValue::String("hero".to_owned()))
     );
 }
@@ -271,7 +313,7 @@ fn main() {
     .expect("compile captured receiver method id dispatch");
 
     assert_eq!(
-        Vm::new().run_program(&program, "main", &[]),
+        run_script_method_program(&Vm::new(), &program, "main", &[]),
         Ok(OwnedValue::Int(12))
     );
 }
@@ -301,7 +343,7 @@ fn main() {
     .expect("compile binding pattern receiver method id dispatch");
 
     assert_eq!(
-        Vm::new().run_program(&program, "main", &[]),
+        run_script_method_program(&Vm::new(), &program, "main", &[]),
         Ok(OwnedValue::Int(12))
     );
 }
@@ -309,7 +351,7 @@ fn main() {
 #[test]
 fn runs_compiled_host_ref_script_impl_method_dispatch() {
     let host_ref = player_ref(3);
-    let program = compile_program_source(
+    let program = compile_host_program_source(
         SourceId::new(1),
         r#"
 trait BonusSource { fn bonus(self, amount) -> int; }
@@ -320,10 +362,11 @@ impl BonusSource for Player {
     }
 }
 
-fn main(player) {
+fn main(player: Player) {
     return player.bonus(5);
 }
 "#,
+        host_ref_script_method_registry(host_ref.type_id, &["reflect::get"]),
     )
     .expect("compile host ref script impl method dispatch");
     let mut adapter = host_adapter(host_ref, HostValue::Int(7));
@@ -337,7 +380,8 @@ fn main(player) {
     };
 
     assert_eq!(
-        vm.run_program_with_host(
+        run_script_method_program_with_host(
+            &vm,
             &program,
             "main",
             &[OwnedValue::HostRef(host_ref)],
@@ -350,7 +394,7 @@ fn main(player) {
 #[test]
 fn host_ref_script_impl_dispatch_uses_registered_type_registry() {
     let host_ref = player_ref(3);
-    let program = compile_program_source(
+    let program = compile_host_program_source(
         SourceId::new(1),
         r#"
 trait BonusSource { fn bonus(self, amount) -> int; }
@@ -361,10 +405,11 @@ impl BonusSource for Player {
     }
 }
 
-fn main(player) {
+fn main(player: Player) {
     return player.bonus(5);
 }
 "#,
+        host_ref_script_method_registry(host_ref.type_id, &[]),
     )
     .expect("compile host ref script impl method dispatch");
     let mut adapter = host_adapter(host_ref, HostValue::Int(7));
@@ -377,7 +422,8 @@ fn main(player) {
     };
 
     assert_eq!(
-        vm.run_program_with_host(
+        run_script_method_program_with_host(
+            &vm,
             &program,
             "main",
             &[OwnedValue::HostRef(host_ref)],
@@ -418,7 +464,7 @@ fn main() {
     .expect("compile record variant field method id dispatch");
 
     assert_eq!(
-        Vm::new().run_program(&program, "main", &[]),
+        run_script_method_program(&Vm::new(), &program, "main", &[]),
         Ok(OwnedValue::Int(12))
     );
 }
@@ -454,7 +500,7 @@ fn main() {
     .expect("compile tuple variant field method id dispatch");
 
     assert_eq!(
-        Vm::new().run_program(&program, "main", &[]),
+        run_script_method_program(&Vm::new(), &program, "main", &[]),
         Ok(OwnedValue::Int(12))
     );
 }
@@ -484,7 +530,7 @@ fn main() {
     .expect("compile explicit impl method override");
 
     assert_eq!(
-        Vm::new().run_program(&program, "main", &[]),
+        run_script_method_program(&Vm::new(), &program, "main", &[]),
         Ok(OwnedValue::Int(10))
     );
 }
@@ -513,7 +559,7 @@ pub fn main() {
     .expect("compile module-qualified script impl method dispatch");
 
     assert_eq!(
-        Vm::new().run_program(&program, "game::combat::main", &[]),
+        run_script_method_program(&Vm::new(), &program, "game::combat::main", &[]),
         Ok(OwnedValue::Int(14))
     );
 }
@@ -557,7 +603,7 @@ pub fn main(player: Player) {
     };
 
     assert_eq!(
-        Vm::new().run_program(&program, "game::combat::main", &[player]),
+        run_script_method_program(&Vm::new(), &program, "game::combat::main", &[player]),
         Ok(OwnedValue::Int(12))
     );
 }

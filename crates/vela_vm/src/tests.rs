@@ -101,6 +101,26 @@ fn run_linked_test_program_with_budget(
     vm.run_linked_program_with_budget(&linked, entry, args, budget)
 }
 
+fn run_linked_test_program_with_host_budget(
+    vm: &Vm,
+    program: &UnlinkedProgram,
+    entry: &str,
+    args: &[OwnedValue],
+    host: &mut HostExecution<'_>,
+    budget: &mut ExecutionBudget,
+) -> VmResult<OwnedValue> {
+    let mut linker = Linker::new();
+    vm.native_ids
+        .keys()
+        .chain(vm.host_native_ids.keys())
+        .copied()
+        .for_each(|id| linker.add_native_implementation(id));
+    let linked = linker
+        .link_program(program)
+        .expect("test program should link");
+    vm.run_linked_program_with_host_budget_and_caches(&linked, entry, args, host, budget, None)
+}
+
 fn run_linked_test_program_runtime_with_heap_and_budget(
     vm: &Vm,
     program: &UnlinkedProgram,
