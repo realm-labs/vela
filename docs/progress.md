@@ -239,7 +239,9 @@ Cranelift JIT.
   `execution_core` coverage and the compiled conformance fixture now run
   through linked bytecode after ad-hoc source record literals, enum pattern
   fields, stdlib callback receiver facts, and linked callback closures gained
-  linker-ready operands/runtime ownership.
+  linker-ready operands/runtime ownership. Script function calls are linked
+  through `ScriptFunctionHandle` tables, with mismatched call IDs rejected by
+  the linker and linked execution calling by dense handle.
   Script function dispatch is being isolated behind a focused call boundary so
   later resolved-target work does not grow the main VM loop or change current
   hot-reload rename semantics. Closure creation and invocation now have a

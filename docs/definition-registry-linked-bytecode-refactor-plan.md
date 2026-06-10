@@ -1578,7 +1578,7 @@ surface.
 - Script method dispatch uses handles/IDs.
 - Fallback-by-name is removed from linked execution.
 
-- [ ] **Task 6.4: Update script function calls**
+- [x] **Task 6.4: Update script function calls**
 
 **Objective:** Script calls use function handles.
 
