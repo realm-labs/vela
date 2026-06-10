@@ -1,6 +1,4 @@
-use vela_bytecode::compiler::{
-    compile_function_source, compile_program_source, compile_program_source_with_registry,
-};
+use vela_bytecode::compiler::compile_program_source_with_registry;
 use vela_bytecode::{Linker, UnlinkedProgram};
 use vela_common::SourceId;
 

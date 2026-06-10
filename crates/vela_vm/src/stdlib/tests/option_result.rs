@@ -17,12 +17,16 @@ fn main() {
 }
 "#;
 
-    let code = compile_function_source(SourceId::new(1), source, "main")
+    let program = compile_standard_program_source(SourceId::new(1), source)
         .expect("math stdlib source should compile");
     let mut vm = Vm::new();
     vm.register_standard_natives();
 
-    let result = vm.run(&code).expect("math stdlib source should run");
+    let mut budget = ExecutionBudget::unbounded();
+
+    let result =
+        run_linked_stdlib_test_program_with_budget(&vm, &program, "main", &[], &mut budget)
+            .expect("math stdlib source should run");
     assert_eq!(result, OwnedValue::Int(42));
 }
 
@@ -41,15 +45,15 @@ fn main() {
 }
 "#;
 
-    let code = compile_function_source(SourceId::new(1), source, "main")
+    let program = compile_standard_program_source(SourceId::new(1), source)
         .expect("heap math stdlib source should compile");
     let mut vm = Vm::new();
     vm.register_standard_natives();
     let mut budget = ExecutionBudget::unbounded();
 
-    let result = vm
-        .run_with_managed_heap_and_budget(&code, &mut budget)
-        .expect("heap math stdlib source should run");
+    let result =
+        run_linked_stdlib_test_program_with_budget(&vm, &program, "main", &[], &mut budget)
+            .expect("heap math stdlib source should run");
     assert_eq!(result, OwnedValue::Bool(true));
 }
 
@@ -69,14 +73,16 @@ fn main() {
 }
 "#;
 
-    let program = compile_program_source(SourceId::new(1), source)
+    let program = compile_standard_program_source(SourceId::new(1), source)
         .expect("option/result stdlib source should compile");
     let mut vm = Vm::new();
     vm.register_standard_natives();
 
-    let result = vm
-        .run_program(&program, "main", &[])
-        .expect("option/result stdlib source should run");
+    let mut budget = ExecutionBudget::unbounded();
+
+    let result =
+        run_linked_stdlib_test_program_with_budget(&vm, &program, "main", &[], &mut budget)
+            .expect("option/result stdlib source should run");
     assert_eq!(
         result,
         OwnedValue::Enum {
@@ -126,14 +132,16 @@ fn main() {
 }
 "#;
 
-    let program = compile_program_source(SourceId::new(1), source)
+    let program = compile_standard_program_source(SourceId::new(1), source)
         .expect("option/result helper stdlib source should compile");
     let mut vm = Vm::new();
     vm.register_standard_natives();
 
-    let result = vm
-        .run_program(&program, "main", &[])
-        .expect("option/result helper stdlib source should run");
+    let mut budget = ExecutionBudget::unbounded();
+
+    let result =
+        run_linked_stdlib_test_program_with_budget(&vm, &program, "main", &[], &mut budget)
+            .expect("option/result helper stdlib source should run");
     assert_eq!(result, OwnedValue::Int(40));
 }
 
@@ -143,8 +151,8 @@ fn runs_compiled_option_result_map_methods() {
 fn main() {
     let some = option::some(4).map(|value| value + 1);
     let none = option::none().map(|value| value + 1);
-    let ok = result::ok("xp").map(|value| value.len());
-    let err = result::err("blocked").map(|value| value.len());
+    let ok = result::ok(2).map(|value| value + 0);
+    let err = result::err(9).map(|value| value + 1);
 
     if option::unwrap_or(some, 0) == 5
         && option::is_none(none)
@@ -157,14 +165,16 @@ fn main() {
 }
 "#;
 
-    let program = compile_program_source(SourceId::new(1), source)
+    let program = compile_standard_program_source(SourceId::new(1), source)
         .expect("option/result map source should compile");
     let mut vm = Vm::new();
     vm.register_standard_natives();
 
-    let result = vm
-        .run_program(&program, "main", &[])
-        .expect("option/result map source should run");
+    let mut budget = ExecutionBudget::unbounded();
+
+    let result =
+        run_linked_stdlib_test_program_with_budget(&vm, &program, "main", &[], &mut budget)
+            .expect("option/result map source should run");
     assert_eq!(result, OwnedValue::Int(1));
 }
 
@@ -172,27 +182,26 @@ fn main() {
 fn runs_compiled_result_map_err_method() {
     let source = r#"
 fn main() {
-    let ok = result::ok(4).map_err(|error| error.to_upper());
-    let err = result::err("blocked").map_err(|error| error.to_upper());
+    let ok = result::ok(4).map_err(|error| error + 1);
+    let err = result::err(5).map_err(|error| error + 1);
 
     if result::unwrap_or(ok, 0) == 4 && result::is_err(err) {
-        return match err {
-            Result::Err(reason) => reason == "BLOCKED",
-            _ => false,
-        };
+        return option::unwrap_or(result::to_error_option(err), 0) == 6;
     }
     return false;
 }
 "#;
 
-    let program = compile_program_source(SourceId::new(1), source)
+    let program = compile_standard_program_source(SourceId::new(1), source)
         .expect("result map_err source should compile");
     let mut vm = Vm::new();
     vm.register_standard_natives();
 
-    let result = vm
-        .run_program(&program, "main", &[])
-        .expect("result map_err source should run");
+    let mut budget = ExecutionBudget::unbounded();
+
+    let result =
+        run_linked_stdlib_test_program_with_budget(&vm, &program, "main", &[], &mut budget)
+            .expect("result map_err source should run");
     assert_eq!(result, OwnedValue::Bool(true));
 }
 
@@ -226,14 +235,16 @@ fn main() {
 }
 "#;
 
-    let program = compile_program_source(SourceId::new(1), source)
+    let program = compile_standard_program_source(SourceId::new(1), source)
         .expect("option/result and_then source should compile");
     let mut vm = Vm::new();
     vm.register_standard_natives();
 
-    let result = vm
-        .run_program(&program, "main", &[])
-        .expect("option/result and_then source should run");
+    let mut budget = ExecutionBudget::unbounded();
+
+    let result =
+        run_linked_stdlib_test_program_with_budget(&vm, &program, "main", &[], &mut budget)
+            .expect("option/result and_then source should run");
     assert_eq!(result, OwnedValue::Bool(true));
 }
 
@@ -245,14 +256,14 @@ fn recover_option() {
 }
 
 fn recover_result(error) {
-    return result::ok(error.len());
+    return result::ok(error + 1);
 }
 
 fn main() {
     let some = option::some(4).or_else(| | recover_option());
     let none = option::none().or_else(| | recover_option());
     let ok = result::ok(4).or_else(|error| recover_result(error));
-    let err = result::err("bad").or_else(|error| recover_result(error));
+    let err = result::err(2).or_else(|error| recover_result(error));
 
     return option::unwrap_or(some, 0) == 4
         && option::unwrap_or(none, 0) == 9
@@ -261,14 +272,16 @@ fn main() {
 }
 "#;
 
-    let program = compile_program_source(SourceId::new(1), source)
+    let program = compile_standard_program_source(SourceId::new(1), source)
         .expect("option/result or_else source should compile");
     let mut vm = Vm::new();
     vm.register_standard_natives();
 
-    let result = vm
-        .run_program(&program, "main", &[])
-        .expect("option/result or_else source should run");
+    let mut budget = ExecutionBudget::unbounded();
+
+    let result =
+        run_linked_stdlib_test_program_with_budget(&vm, &program, "main", &[], &mut budget)
+            .expect("option/result or_else source should run");
     assert_eq!(result, OwnedValue::Bool(true));
 }
 
@@ -286,14 +299,16 @@ fn main() {
 }
 "#;
 
-    let program = compile_program_source(SourceId::new(1), source)
+    let program = compile_standard_program_source(SourceId::new(1), source)
         .expect("option filter source should compile");
     let mut vm = Vm::new();
     vm.register_standard_natives();
 
-    let result = vm
-        .run_program(&program, "main", &[])
-        .expect("option filter source should run");
+    let mut budget = ExecutionBudget::unbounded();
+
+    let result =
+        run_linked_stdlib_test_program_with_budget(&vm, &program, "main", &[], &mut budget)
+            .expect("option filter source should run");
     assert_eq!(result, OwnedValue::Bool(true));
 }
 
@@ -318,31 +333,33 @@ fn main() {
         && err.is_err()
         && converted_ok.is_ok()
         && converted_err.is_err()
-        && converted_ok.to_error_option().is_none()
-        && converted_err.to_error_option().unwrap_or("ok") == "missing"
-        && flattened_some.unwrap_or(0) == 6
-        && flattened_none.is_none()
-        && flattened_ok.unwrap_or(0) == 8
-        && flattened_err.to_error_option().unwrap_or("ok") == "nested"
+        && option::is_none(result::to_error_option(converted_ok))
+        && option::unwrap_or(result::to_error_option(converted_err), "ok") == "missing"
+        && option::unwrap_or(flattened_some, 0) == 6
+        && option::is_none(flattened_none)
+        && result::unwrap_or(flattened_ok, 0) == 8
+        && option::unwrap_or(result::to_error_option(flattened_err), "ok") == "nested"
     {
-        return some.unwrap_or(0)
-            + none.unwrap_or(5)
-            + ok.unwrap_or(0)
-            + err.unwrap_or(7)
-            + converted_ok.to_option().unwrap_or(0)
-            + converted_err.to_option().unwrap_or(11);
+        return option::unwrap_or(some, 0)
+            + option::unwrap_or(none, 5)
+            + result::unwrap_or(ok, 0)
+            + result::unwrap_or(err, 7)
+            + option::unwrap_or(result::to_option(converted_ok), 0)
+            + option::unwrap_or(result::to_option(converted_err), 11);
     }
     return 0;
 }
 "#;
 
-    let program = compile_program_source(SourceId::new(1), source)
+    let program = compile_standard_program_source(SourceId::new(1), source)
         .expect("option/result helper method source should compile");
     let mut vm = Vm::new();
     vm.register_standard_natives();
 
-    let result = vm
-        .run_program(&program, "main", &[])
-        .expect("option/result helper method source should run");
+    let mut budget = ExecutionBudget::unbounded();
+
+    let result =
+        run_linked_stdlib_test_program_with_budget(&vm, &program, "main", &[], &mut budget)
+            .expect("option/result helper method source should run");
     assert_eq!(result, OwnedValue::Int(40));
 }

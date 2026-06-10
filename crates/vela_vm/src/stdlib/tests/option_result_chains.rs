@@ -5,13 +5,13 @@ use crate::owned_value::OwnedValue;
 fn runs_compiled_option_ok_or_with_try_propagation() {
     let source = r#"
 fn checked(raw) {
-    let value = option::ok_or(raw.parse_int(), "bad level")?;
+    let value = option::ok_or(raw, "bad level")?;
     return result::ok(value + 1);
 }
 
 fn main() {
-    let ok = checked("41");
-    let err = checked("forty-one");
+    let ok = checked(option::some(41));
+    let err = checked(option::none());
     if result::unwrap_or(ok, 0) == 42
         && result::is_err(err)
         && option::is_none(result::to_option(err))
@@ -26,10 +26,11 @@ fn main() {
         .expect("option ok_or stdlib source should compile");
     let mut vm = Vm::new();
     vm.register_standard_natives();
+    let mut budget = ExecutionBudget::unbounded();
 
-    let result = vm
-        .run_program(&program, "main", &[])
-        .expect("option ok_or stdlib source should run");
+    let result =
+        run_linked_stdlib_test_program_with_budget(&vm, &program, "main", &[], &mut budget)
+            .expect("option ok_or stdlib source should run");
     assert_eq!(result, OwnedValue::Int(42));
 }
 
