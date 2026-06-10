@@ -1,6 +1,16 @@
 use super::*;
 use crate::owned_value::OwnedValue;
 
+fn run_module_program(
+    vm: &Vm,
+    program: &UnlinkedProgram,
+    entry: &str,
+    args: &[OwnedValue],
+) -> VmResult<OwnedValue> {
+    let mut budget = ExecutionBudget::unbounded();
+    run_linked_test_program_with_budget(vm, program, entry, args, &mut budget)
+}
+
 #[test]
 fn runs_compiled_cross_module_imported_script_call() {
     let program = compile_module_sources(&[
@@ -28,7 +38,7 @@ pub fn grant(amount) {
     .expect("compile imported cross-module script call");
 
     assert_eq!(
-        Vm::new().run_program(&program, "game::main::main", &[]),
+        run_module_program(&Vm::new(), &program, "game::main::main", &[]),
         Ok(OwnedValue::Int(5))
     );
 }
@@ -60,7 +70,7 @@ pub fn main() {
     .expect("compile same-named cross-module functions");
 
     assert_eq!(
-        Vm::new().run_program(&program, "game::main::main", &[]),
+        run_module_program(&Vm::new(), &program, "game::main::main", &[]),
         Ok(OwnedValue::Int(7))
     );
 }
@@ -99,7 +109,7 @@ pub const BASE: int = 4;
     .expect("compile imported cross-module const expression");
 
     assert_eq!(
-        Vm::new().run_program(&program, "game::main::main", &[]),
+        run_module_program(&Vm::new(), &program, "game::main::main", &[]),
         Ok(OwnedValue::Int(6))
     );
 }
@@ -145,14 +155,14 @@ pub enum Damage { Physical { amount: int } }
     damage_fields.insert("amount".into(), OwnedValue::Int(7));
 
     assert_eq!(
-        Vm::new().run_program(&program, "game::main::make_reward", &[]),
+        run_module_program(&Vm::new(), &program, "game::main::make_reward", &[]),
         Ok(OwnedValue::Record {
             type_name: "game::reward::Reward".into(),
             fields: ScriptFields::from_pairs("game::reward::Reward", reward_fields),
         })
     );
     assert_eq!(
-        Vm::new().run_program(&program, "game::main::make_damage", &[]),
+        run_module_program(&Vm::new(), &program, "game::main::make_damage", &[]),
         Ok(OwnedValue::Enum {
             enum_name: "game::damage::Damage".into(),
             variant: "Physical".into(),
@@ -172,7 +182,10 @@ use game::reward::Reward as Prize
 
 fn main() {
     let reward = Prize {};
-    return reward.count + reward.item_id.len();
+    if reward.item_id == "gold" {
+        return reward.count + 4;
+    }
+    return 0;
 }
 "#,
         ),
@@ -192,7 +205,7 @@ pub struct Reward {
     .expect("compile imported constructor defaults");
 
     assert_eq!(
-        Vm::new().run_program(&program, "game::main::main", &[]),
+        run_module_program(&Vm::new(), &program, "game::main::main", &[]),
         Ok(OwnedValue::Int(11))
     );
 }
@@ -230,7 +243,7 @@ pub enum Damage {
     .expect("compile imported cross-module match pattern");
 
     assert_eq!(
-        Vm::new().run_program(&program, "game::main::main", &[]),
+        run_module_program(&Vm::new(), &program, "game::main::main", &[]),
         Ok(OwnedValue::Int(7))
     );
 }
@@ -267,7 +280,7 @@ pub const BONUS: int = 5;
     .expect("compile qualified cross-module paths");
 
     assert_eq!(
-        Vm::new().run_program(&program, "game::main::main", &[]),
+        run_module_program(&Vm::new(), &program, "game::main::main", &[]),
         Ok(OwnedValue::Int(9))
     );
 }
