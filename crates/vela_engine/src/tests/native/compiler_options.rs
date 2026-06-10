@@ -627,6 +627,47 @@ fn main() {
 }
 
 #[test]
+fn engine_compiler_options_emit_standard_array_transform_method_ids() {
+    let engine = Engine::builder()
+        .with_standard_natives()
+        .build()
+        .expect("engine should build with standard natives");
+    let program = compile_program_source_with_options(
+        SourceId::new(1),
+        r#"
+fn main() {
+    let names: array = ["gold", "xp", "gold"];
+    return names.join(":") == "gold:xp:gold"
+        && names.distinct().len() == 2
+        && names.reverse()[0] == "gold"
+        && names.slice(1, 3).len() == 2;
+}
+"#,
+        &engine.compiler_options(),
+    )
+    .expect("standard array transform methods should compile");
+    let main = program.function("main").expect("main should compile");
+
+    let value_methods = main
+        .instructions
+        .iter()
+        .filter_map(|instruction| match &instruction.kind {
+            InstructionKind::CallMethod {
+                method,
+                value_method_id,
+                ..
+            } => Some((method.as_str(), *value_method_id)),
+            _ => None,
+        })
+        .collect::<Vec<_>>();
+
+    assert!(value_methods.contains(&("join", Some(crate::standard::ARRAY_JOIN_METHOD_ID))));
+    assert!(value_methods.contains(&("distinct", Some(crate::standard::ARRAY_DISTINCT_METHOD_ID))));
+    assert!(value_methods.contains(&("reverse", Some(crate::standard::ARRAY_REVERSE_METHOD_ID))));
+    assert!(value_methods.contains(&("slice", Some(crate::standard::ARRAY_SLICE_METHOD_ID))));
+}
+
+#[test]
 fn engine_compiler_options_lower_named_standard_value_method_arguments() {
     let engine = Engine::builder()
         .with_standard_natives()

@@ -3,9 +3,10 @@ use vela_reflect::registry::MethodDesc;
 
 use super::{MethodSpec, ParamSpec, descs};
 use crate::standard::ids::{
-    ARRAY_CLEAR_METHOD_ID, ARRAY_CONTAINS_METHOD_ID, ARRAY_FIRST_METHOD_ID,
-    ARRAY_INDEX_OF_METHOD_ID, ARRAY_IS_EMPTY_METHOD_ID, ARRAY_LAST_METHOD_ID, ARRAY_LEN_METHOD_ID,
-    ARRAY_POP_METHOD_ID, ARRAY_PUSH_METHOD_ID,
+    ARRAY_CLEAR_METHOD_ID, ARRAY_CONTAINS_METHOD_ID, ARRAY_DISTINCT_METHOD_ID,
+    ARRAY_FIRST_METHOD_ID, ARRAY_INDEX_OF_METHOD_ID, ARRAY_IS_EMPTY_METHOD_ID,
+    ARRAY_JOIN_METHOD_ID, ARRAY_LAST_METHOD_ID, ARRAY_LEN_METHOD_ID, ARRAY_POP_METHOD_ID,
+    ARRAY_PUSH_METHOD_ID, ARRAY_REVERSE_METHOD_ID, ARRAY_SLICE_METHOD_ID,
 };
 
 pub(crate) fn array_method_descs() -> Vec<MethodDesc> {
@@ -87,7 +88,7 @@ const ARRAY_METHODS: &[MethodSpec] = &[
         "Removes and returns the value at an index.",
     ),
     MethodSpec::new(
-        array_id(10),
+        ARRAY_JOIN_METHOD_ID,
         "join",
         &[ParamSpec::new("separator", "string")],
         "string",
@@ -108,21 +109,21 @@ const ARRAY_METHODS: &[MethodSpec] = &[
         "Returns the first index of a value, or Option::None.",
     ),
     MethodSpec::new(
-        array_id(13),
+        ARRAY_DISTINCT_METHOD_ID,
         "distinct",
         &[],
         "array",
         "Returns unique values.",
     ),
     MethodSpec::new(
-        array_id(14),
+        ARRAY_REVERSE_METHOD_ID,
         "reverse",
         &[],
         "array",
         "Returns values in reverse order.",
     ),
     MethodSpec::new(
-        array_id(15),
+        ARRAY_SLICE_METHOD_ID,
         "slice",
         &[ParamSpec::new("start", "int"), ParamSpec::new("end", "int")],
         "array",
