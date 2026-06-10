@@ -277,8 +277,7 @@ fn main() {
     let mut budget = ExecutionBudget::unbounded();
 
     assert_eq!(
-        Vm::new()
-            .run_program_with_managed_heap_and_budget(&program, "main", &[], &mut budget)
+        run_linked_test_program_with_budget(&Vm::new(), &program, "main", &[], &mut budget)
             .expect("run heap string literal match patterns"),
         OwnedValue::Int(2)
     );
@@ -421,7 +420,7 @@ fn main() {
     let mut budget = ExecutionBudget::new(10_000, 32_000, 32);
 
     assert_eq!(
-        Vm::new().run_program_with_managed_heap_and_budget(&program, "main", &[], &mut budget),
+        run_linked_test_program_with_budget(&Vm::new(), &program, "main", &[], &mut budget),
         Ok(OwnedValue::Int(8))
     );
 }

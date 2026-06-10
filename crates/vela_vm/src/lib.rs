@@ -527,16 +527,6 @@ impl Vm {
         owned_heap_result(result, &mut heap_execution, budget)
     }
 
-    pub fn run_program_with_managed_heap_and_budget(
-        &self,
-        program: &UnlinkedProgram,
-        entry: &str,
-        args: &[OwnedValue],
-        budget: &mut ExecutionBudget,
-    ) -> VmResult<OwnedValue> {
-        self.run_program_with_budget(program, entry, args, budget)
-    }
-
     pub fn run_program_runtime_with_heap_and_budget(
         &self,
         program: &UnlinkedProgram,

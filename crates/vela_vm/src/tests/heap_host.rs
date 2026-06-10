@@ -77,9 +77,9 @@ fn main() {
     fields.insert("count".into(), OwnedValue::Int(2));
     fields.insert("item_id".into(), OwnedValue::String("gold".into()));
 
-    let result = Vm::new()
-        .run_program_with_managed_heap_and_budget(&program, "main", &[], &mut budget)
-        .expect("run managed heap source");
+    let result =
+        run_linked_test_program_with_budget(&Vm::new(), &program, "main", &[], &mut budget)
+            .expect("run managed heap source");
 
     assert_eq!(
         result,
@@ -118,11 +118,11 @@ fn map_case() {
     let mut budget = ExecutionBudget::new(u64::MAX, 4096, usize::MAX);
 
     assert_eq!(
-        vm.run_program_with_managed_heap_and_budget(&program, "array_case", &[], &mut budget),
+        run_linked_test_program_with_budget(&vm, &program, "array_case", &[], &mut budget),
         Ok(OwnedValue::PathProxy(expected.clone()))
     );
     assert_eq!(
-        vm.run_program_with_managed_heap_and_budget(&program, "map_case", &[], &mut budget),
+        run_linked_test_program_with_budget(&vm, &program, "map_case", &[], &mut budget),
         Ok(OwnedValue::PathProxy(expected))
     );
     assert_eq!(budget.memory_bytes_allocated(), 0);

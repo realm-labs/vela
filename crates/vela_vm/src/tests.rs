@@ -82,6 +82,25 @@ fn run_linked_test_code_with_budget(
     Vm::new().run_linked_program_with_budget(&linked, &entry, &[], budget)
 }
 
+fn run_linked_test_program_with_budget(
+    vm: &Vm,
+    program: &UnlinkedProgram,
+    entry: &str,
+    args: &[OwnedValue],
+    budget: &mut ExecutionBudget,
+) -> VmResult<OwnedValue> {
+    let mut linker = Linker::new();
+    vm.native_ids
+        .keys()
+        .chain(vm.host_native_ids.keys())
+        .copied()
+        .for_each(|id| linker.add_native_implementation(id));
+    let linked = linker
+        .link_program(program)
+        .expect("test program should link");
+    vm.run_linked_program_with_budget(&linked, entry, args, budget)
+}
+
 fn run_linked_test_code_with_linker(
     vm: &Vm,
     code: UnlinkedCodeObject,
@@ -298,6 +317,33 @@ fn compile_host_program_source(
     text: &str,
     registry: vela_registry::DefinitionRegistry,
 ) -> vela_bytecode::compiler::error::CompileResult<UnlinkedProgram> {
+    compile_program_source_with_registry(source, text, registry.compile_view())
+}
+
+fn compile_standard_program_source(
+    source: SourceId,
+    text: &str,
+) -> vela_bytecode::compiler::error::CompileResult<UnlinkedProgram> {
+    let registry = vela_stdlib::standard_registry().expect("standard registry should build");
+    compile_program_source_with_registry(source, text, registry.compile_view())
+}
+
+fn compile_standard_program_source_with_native_functions(
+    source: SourceId,
+    text: &str,
+    natives: &[&str],
+) -> vela_bytecode::compiler::error::CompileResult<UnlinkedProgram> {
+    let mut registry = vela_stdlib::standard_registry().expect("standard registry should build");
+    for native in natives {
+        let mut segments = native.split("::").collect::<Vec<_>>();
+        let function = segments.pop().unwrap_or(native);
+        registry
+            .register_function(vela_registry::FunctionDef::new(
+                vela_def::DefPath::function("host", segments, function),
+                vela_registry::FunctionSignature::default(),
+            ))
+            .expect("test native function should register");
+    }
     compile_program_source_with_registry(source, text, registry.compile_view())
 }
 

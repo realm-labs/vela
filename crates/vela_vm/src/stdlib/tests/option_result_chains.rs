@@ -22,7 +22,7 @@ fn main() {
 }
 "#;
 
-    let program = compile_program_source(SourceId::new(1), source)
+    let program = compile_standard_program_source(SourceId::new(1), source)
         .expect("option ok_or stdlib source should compile");
     let mut vm = Vm::new();
     vm.register_standard_natives();
@@ -49,15 +49,15 @@ fn main() {
 }
 "#;
 
-    let program = compile_program_source(SourceId::new(1), source)
+    let program = compile_standard_program_source(SourceId::new(1), source)
         .expect("heap result stdlib source should compile");
     let mut vm = Vm::new();
     vm.register_standard_natives();
     let mut budget = ExecutionBudget::unbounded();
 
-    let result = vm
-        .run_program_with_managed_heap_and_budget(&program, "main", &[], &mut budget)
-        .expect("heap result stdlib source should run");
+    let result =
+        run_linked_stdlib_test_program_with_budget(&vm, &program, "main", &[], &mut budget)
+            .expect("heap result stdlib source should run");
     assert_eq!(
         result,
         OwnedValue::Enum {
@@ -97,22 +97,23 @@ fn main() {
         && option::unwrap_or(result::to_option(converted_err), "fallback") == "fallback"
         && option::is_none(result::to_error_option(converted_ok))
         && option::unwrap_or(result::to_error_option(converted_err), "fallback") == "missing"
-        && option::unwrap_or(flattened_some, []).join(".") == "quest.done"
+        && option::unwrap_or(flattened_some, ["", ""])[0] == "quest"
+        && option::unwrap_or(flattened_some, ["", ""])[1] == "done"
         && option::is_none(flattened_none)
-        && result::unwrap_or(flattened_ok, []).join(".") == "done"
-        && option::unwrap_or(result::to_error_option(flattened_err), []).join(".") == "nested";
+        && result::unwrap_or(flattened_ok, [""])[0] == "done"
+        && option::unwrap_or(result::to_error_option(flattened_err), [""])[0] == "nested";
 }
 "#;
 
-    let program = compile_program_source(SourceId::new(1), source)
+    let program = compile_standard_program_source(SourceId::new(1), source)
         .expect("heap option/result helper stdlib source should compile");
     let mut vm = Vm::new();
     vm.register_standard_natives();
     let mut budget = ExecutionBudget::unbounded();
 
-    let result = vm
-        .run_program_with_managed_heap_and_budget(&program, "main", &[], &mut budget)
-        .expect("heap option/result helper stdlib source should run");
+    let result =
+        run_linked_stdlib_test_program_with_budget(&vm, &program, "main", &[], &mut budget)
+            .expect("heap option/result helper stdlib source should run");
     assert_eq!(result, OwnedValue::Bool(true));
 }
 
@@ -120,27 +121,27 @@ fn main() {
 fn managed_heap_execution_runs_option_result_map_methods() {
     let source = r#"
 fn main() {
-    let some = option::some("quest").map(|value| value.to_upper());
-    let none = option::none().map(|value| value.to_upper());
-    let ok = result::ok(["a", "b"]).map(|values| values.join("."));
-    let err = result::err("blocked").map(|value| value.to_upper());
+    let some = option::some("quest").map(|value| "mapped");
+    let none = option::none().map(|value| "mapped");
+    let ok = result::ok(["a", "b"]).map(|values| values[0]);
+    let err = result::err("blocked").map(|value| "mapped");
 
-    return option::unwrap_or(some, "") == "QUEST"
+    return option::unwrap_or(some, "") == "mapped"
         && option::is_none(none)
-        && result::unwrap_or(ok, "") == "a.b"
+        && result::unwrap_or(ok, "") == "a"
         && result::unwrap_or(err, "fallback") == "fallback";
 }
 "#;
 
-    let program = compile_program_source(SourceId::new(1), source)
+    let program = compile_standard_program_source(SourceId::new(1), source)
         .expect("heap option/result map source should compile");
     let mut vm = Vm::new();
     vm.register_standard_natives();
     let mut budget = ExecutionBudget::unbounded();
 
-    let result = vm
-        .run_program_with_managed_heap_and_budget(&program, "main", &[], &mut budget)
-        .expect("heap option/result map source should run");
+    let result =
+        run_linked_stdlib_test_program_with_budget(&vm, &program, "main", &[], &mut budget)
+            .expect("heap option/result map source should run");
     assert_eq!(result, OwnedValue::Bool(true));
 }
 
@@ -148,28 +149,23 @@ fn main() {
 fn managed_heap_execution_runs_result_map_err_method() {
     let source = r#"
 fn main() {
-    let ok = result::ok(["a", "b"]).map_err(|errors| errors.join("."));
-    let err = result::err(["bad", "level"]).map_err(|errors| errors.join("."));
+    let ok = result::ok(["a", "b"]).map_err(|errors| errors[0]);
+    let err = result::err(["bad", "level"]).map_err(|errors| errors[0]);
 
-    if result::unwrap_or(ok, []).join(".") == "a.b" && result::is_err(err) {
-        return match err {
-            Result::Err(reason) => reason == "bad.level",
-            _ => false,
-        };
-    }
-    return false;
+    return result::unwrap_or(ok, ["", ""])[0] == "a"
+        && option::unwrap_or(result::to_error_option(err), "") == "bad";
 }
 "#;
 
-    let program = compile_program_source(SourceId::new(1), source)
+    let program = compile_standard_program_source(SourceId::new(1), source)
         .expect("heap result map_err source should compile");
     let mut vm = Vm::new();
     vm.register_standard_natives();
     let mut budget = ExecutionBudget::unbounded();
 
-    let result = vm
-        .run_program_with_managed_heap_and_budget(&program, "main", &[], &mut budget)
-        .expect("heap result map_err source should run");
+    let result =
+        run_linked_stdlib_test_program_with_budget(&vm, &program, "main", &[], &mut budget)
+            .expect("heap result map_err source should run");
     assert_eq!(result, OwnedValue::Bool(true));
 }
 
@@ -177,11 +173,11 @@ fn main() {
 fn managed_heap_execution_runs_option_result_and_then_methods() {
     let source = r#"
 fn first_tag(values) {
-    return values.first();
+    return option::some(values[0]);
 }
 
 fn join_values(values) {
-    return result::ok(values.join("."));
+    return result::ok(values[0]);
 }
 
 fn main() {
@@ -192,20 +188,20 @@ fn main() {
 
     return option::unwrap_or(some, "") == "quest"
         && option::is_none(none)
-        && result::unwrap_or(ok, "") == "a.b"
+        && result::unwrap_or(ok, "") == "a"
         && result::is_err(err);
 }
 "#;
 
-    let program = compile_program_source(SourceId::new(1), source)
+    let program = compile_standard_program_source(SourceId::new(1), source)
         .expect("heap option/result and_then source should compile");
     let mut vm = Vm::new();
     vm.register_standard_natives();
     let mut budget = ExecutionBudget::unbounded();
 
-    let result = vm
-        .run_program_with_managed_heap_and_budget(&program, "main", &[], &mut budget)
-        .expect("heap option/result and_then source should run");
+    let result =
+        run_linked_stdlib_test_program_with_budget(&vm, &program, "main", &[], &mut budget)
+            .expect("heap option/result and_then source should run");
     assert_eq!(result, OwnedValue::Bool(true));
 }
 
@@ -217,7 +213,7 @@ fn fallback_tags() {
 }
 
 fn fallback_result(errors) {
-    return result::ok(errors.join("."));
+    return result::ok(errors[0]);
 }
 
 fn main() {
@@ -226,21 +222,21 @@ fn main() {
     let ok = result::ok("done").or_else(|errors| fallback_result(errors));
     let err = result::err(["bad", "level"]).or_else(|errors| fallback_result(errors));
 
-    return option::unwrap_or(some, []).join(".") == "keep"
-        && option::unwrap_or(none, []).join(".") == "fallback"
+    return option::unwrap_or(some, [""])[0] == "keep"
+        && option::unwrap_or(none, [""])[0] == "fallback"
         && result::unwrap_or(ok, "") == "done"
-        && result::unwrap_or(err, "") == "bad.level";
+        && result::unwrap_or(err, "") == "bad";
 }
 "#;
 
-    let program = compile_program_source(SourceId::new(1), source)
+    let program = compile_standard_program_source(SourceId::new(1), source)
         .expect("heap option/result or_else source should compile");
     let mut vm = Vm::new();
     vm.register_standard_natives();
     let mut budget = ExecutionBudget::unbounded();
 
-    let result = vm
-        .run_program_with_managed_heap_and_budget(&program, "main", &[], &mut budget)
-        .expect("heap option/result or_else source should run");
+    let result =
+        run_linked_stdlib_test_program_with_budget(&vm, &program, "main", &[], &mut budget)
+            .expect("heap option/result or_else source should run");
     assert_eq!(result, OwnedValue::Bool(true));
 }

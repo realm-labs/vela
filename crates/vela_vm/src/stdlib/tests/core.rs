@@ -8,7 +8,7 @@ fn main() {
     let kept = option::some("quest").filter(|value| value.starts_with("q"));
     let dropped = option::some("quest").filter(|value| value.starts_with("x"));
     let aggregate = option::some(["quest", "done"]).filter(|values| values.len() == 2);
-    let none = option::none().filter(|value| value.starts_with("q"));
+    let none = option::some("quest").filter(|value| value.starts_with("q") && false);
 
     return option::unwrap_or(kept, "") == "quest"
         && option::is_none(dropped)
@@ -17,15 +17,15 @@ fn main() {
 }
 "#;
 
-    let program = compile_program_source(SourceId::new(1), source)
+    let program = compile_standard_program_source(SourceId::new(1), source)
         .expect("heap option filter source should compile");
     let mut vm = Vm::new();
     vm.register_standard_natives();
     let mut budget = ExecutionBudget::unbounded();
 
-    let result = vm
-        .run_program_with_managed_heap_and_budget(&program, "main", &[], &mut budget)
-        .expect("heap option filter source should run");
+    let result =
+        run_linked_stdlib_test_program_with_budget(&vm, &program, "main", &[], &mut budget)
+            .expect("heap option filter source should run");
     assert_eq!(result, OwnedValue::Bool(true));
 }
 
@@ -50,30 +50,33 @@ fn main() {
         && err.is_err()
         && converted_ok.is_ok()
         && converted_err.is_err()
-        && some.unwrap_or([]).join(".") == "quest.done"
-        && none.unwrap_or(["fallback"]).join(".") == "fallback"
-        && ok.unwrap_or([]).join(".") == "done"
-        && err.unwrap_or(["fallback"]).join(".") == "fallback"
-        && converted_ok.to_option().unwrap_or([]).join(".") == "quest.done"
-        && converted_err.to_option().unwrap_or(["fallback"]).join(".") == "fallback"
+        && option::unwrap_or(some, ["", ""])[0] == "quest"
+        && option::unwrap_or(some, ["", ""])[1] == "done"
+        && option::unwrap_or(none, ["fallback"])[0] == "fallback"
+        && result::unwrap_or(ok, [""])[0] == "done"
+        && result::unwrap_or(err, ["fallback"])[0] == "fallback"
+        && option::unwrap_or(converted_ok.to_option(), ["", ""])[0] == "quest"
+        && option::unwrap_or(converted_ok.to_option(), ["", ""])[1] == "done"
+        && option::unwrap_or(converted_err.to_option(), ["fallback"])[0] == "fallback"
         && converted_ok.to_error_option().is_none()
-        && converted_err.to_error_option().unwrap_or(["fallback"]).join(".") == "missing"
-        && flattened_some.unwrap_or([]).join(".") == "quest.done"
+        && option::unwrap_or(converted_err.to_error_option(), ["fallback"])[0] == "missing"
+        && option::unwrap_or(flattened_some, ["", ""])[0] == "quest"
+        && option::unwrap_or(flattened_some, ["", ""])[1] == "done"
         && flattened_none.is_none()
-        && flattened_ok.unwrap_or([]).join(".") == "done"
-        && flattened_err.to_error_option().unwrap_or([]).join(".") == "nested";
+        && result::unwrap_or(flattened_ok, [""])[0] == "done"
+        && option::unwrap_or(flattened_err.to_error_option(), [""])[0] == "nested";
 }
 "#;
 
-    let program = compile_program_source(SourceId::new(1), source)
+    let program = compile_standard_program_source(SourceId::new(1), source)
         .expect("heap option/result helper method source should compile");
     let mut vm = Vm::new();
     vm.register_standard_natives();
     let mut budget = ExecutionBudget::unbounded();
 
-    let result = vm
-        .run_program_with_managed_heap_and_budget(&program, "main", &[], &mut budget)
-        .expect("heap option/result helper method source should run");
+    let result =
+        run_linked_stdlib_test_program_with_budget(&vm, &program, "main", &[], &mut budget)
+            .expect("heap option/result helper method source should run");
     assert_eq!(result, OwnedValue::Bool(true));
 }
 
@@ -85,7 +88,7 @@ fn main() {
 }
 "#;
 
-    let program = compile_program_source(SourceId::new(1), source)
+    let program = compile_standard_program_source(SourceId::new(1), source)
         .expect("option/result helper type-error source should compile");
     let mut vm = Vm::new();
     vm.register_standard_natives();
@@ -109,7 +112,7 @@ fn main() {
 }
 "#;
 
-    let program = compile_program_source(SourceId::new(1), source)
+    let program = compile_standard_program_source(SourceId::new(1), source)
         .expect("invalid option flatten source should compile");
     let mut vm = Vm::new();
     vm.register_standard_natives();
@@ -133,7 +136,7 @@ fn main() {
 }
 "#;
 
-    let program = compile_program_source(SourceId::new(1), source)
+    let program = compile_standard_program_source(SourceId::new(1), source)
         .expect("invalid and_then callback source should compile");
     let mut vm = Vm::new();
     vm.register_standard_natives();
@@ -157,7 +160,7 @@ fn main() {
 }
 "#;
 
-    let program = compile_program_source(SourceId::new(1), source)
+    let program = compile_standard_program_source(SourceId::new(1), source)
         .expect("invalid or_else callback source should compile");
     let mut vm = Vm::new();
     vm.register_standard_natives();

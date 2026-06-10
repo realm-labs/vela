@@ -257,6 +257,9 @@ pub(super) fn expression_value_shape(
             Some(ValueShape::Record(shape))
         }
         ExprKind::Array(values) => {
+            if values.is_empty() {
+                return Some(ValueShape::Array(Box::new(ValueShape::Unknown)));
+            }
             let mut shapes = values
                 .iter()
                 .map(|value| {
@@ -277,6 +280,12 @@ pub(super) fn expression_value_shape(
             }
         }
         ExprKind::Map(entries) => {
+            if entries.is_empty() {
+                return Some(ValueShape::Map {
+                    key: Box::new(ValueShape::Unknown),
+                    value: Box::new(ValueShape::Unknown),
+                });
+            }
             let mut keys = entries
                 .iter()
                 .map(|entry| {

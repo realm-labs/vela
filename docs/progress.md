@@ -236,9 +236,13 @@ Cranelift JIT.
   path, and `ProgramImage::to_program()` has been removed. No-heap raw runtime
   `run_program_runtime*` VM APIs and their diagnostic fixture callers have been
   replaced with linked-program execution, and dead managed-heap runtime wrapper
-  aliases plus their helper have been deleted. The remaining Task 6.1 gap is
-  direct VM API cleanup that deletes the still-used unlinked execution
-  entrypoints and transitional unlinked reconstruction APIs; linkable
+  aliases plus their helper have been deleted. The unlinked
+  `run_program_with_managed_heap_and_budget` API has also been removed; its VM
+  test callers now link before execution, with standard-registry facts used for
+  stdlib/value methods and empty aggregate literals carrying unknown element
+  shapes instead of falling back to unresolved method names. The remaining Task
+  6.1 gap is direct VM API cleanup that deletes the still-used unlinked
+  execution entrypoints and transitional unlinked reconstruction APIs; linkable
   `execution_core` coverage and the compiled conformance fixture now run
   through linked bytecode after ad-hoc source record literals, enum pattern
   fields, stdlib callback receiver facts, and linked callback closures gained

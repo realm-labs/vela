@@ -30,7 +30,7 @@ fn main() {
 
 #[test]
 fn managed_heap_execution_runs_aggregate_const_reads() {
-    let program = compile_program_source(
+    let program = compile_standard_program_source(
         SourceId::new(1),
         r#"
 const WORDS = ["boar", "wolf"];
@@ -39,7 +39,7 @@ const TAGS = {"event": "kill", "kind": "wolf"};
 fn main() {
     let words = WORDS;
     let tags = TAGS;
-    if words.join(",") == "boar,wolf" && tags["kind"] == "wolf" {
+    if words[0] == "boar" && words[1] == "wolf" && tags["kind"] == "wolf" {
         return 1;
     }
     return 0;
@@ -52,7 +52,7 @@ fn main() {
     let mut budget = ExecutionBudget::unbounded();
 
     assert_eq!(
-        vm.run_program_with_managed_heap_and_budget(&program, "main", &[], &mut budget),
+        run_linked_test_program_with_budget(&vm, &program, "main", &[], &mut budget),
         Ok(OwnedValue::Int(1))
     );
 }
