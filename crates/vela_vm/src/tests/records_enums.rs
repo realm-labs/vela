@@ -2,6 +2,15 @@ use super::*;
 use crate::owned_value::OwnedValue;
 use crate::value::Value as RuntimeValue;
 
+fn run_records_program(
+    program: &UnlinkedProgram,
+    entry: &str,
+    args: &[OwnedValue],
+) -> VmResult<OwnedValue> {
+    let mut budget = ExecutionBudget::unbounded();
+    run_linked_test_program_with_budget(&Vm::new(), program, entry, args, &mut budget)
+}
+
 #[test]
 fn passes_arguments_to_program_entry() {
     let program = compile_program_source(
@@ -15,7 +24,7 @@ fn double(OwnedValue) {
     .expect("compile program source");
 
     assert_eq!(
-        Vm::new().run_program(&program, "double", &[OwnedValue::Int(9)]),
+        run_records_program(&program, "double", &[OwnedValue::Int(9)]),
         Ok(OwnedValue::Int(18))
     );
 }
@@ -30,7 +39,7 @@ fn runs_compiled_array_literal_source() {
     .expect("compile array literal source");
 
     assert_eq!(
-        Vm::new().run(&code),
+        run_linked_test_code(code),
         Ok(OwnedValue::Array(vec![
             OwnedValue::Int(1),
             OwnedValue::Int(5),
@@ -51,9 +60,17 @@ fn heap_execution_allocates_array_and_string_literals() {
     let mut heap_execution = HeapExecution::new(&mut heap);
     let mut budget = ExecutionBudget::new(u64::MAX, 4096, usize::MAX);
 
-    let result = Vm::new()
-        .run_with_heap_and_budget(&code, &mut heap_execution, &mut budget)
-        .expect("run heap-backed array source");
+    let mut program = UnlinkedProgram::new();
+    program.insert_function(code);
+    let result = run_linked_test_program_runtime_with_heap_and_budget(
+        &Vm::new(),
+        &program,
+        "main",
+        &[],
+        &mut heap_execution,
+        &mut budget,
+    )
+    .expect("run heap-backed array source");
 
     let RuntimeValue::HeapRef(array_ref) = result else {
         panic!("expected heap array");
@@ -85,48 +102,59 @@ fn runs_compiled_map_literal_source() {
     expected.insert("level".into(), OwnedValue::Int(2));
     expected.insert("exp".into(), OwnedValue::Int(15));
 
-    assert_eq!(Vm::new().run(&code), Ok(OwnedValue::Map(expected)));
+    assert_eq!(run_linked_test_code(code), Ok(OwnedValue::Map(expected)));
 }
 
 #[test]
 fn runs_record_constructor_and_field_reads() {
-    let code = compile_function_source(
+    let program = compile_program_source(
         SourceId::new(1),
         r#"
+struct Player { level: int, exp: int }
+
 fn main() {
     let level = 3;
     let player = Player { level, exp: 7 };
     return player.level + player.exp;
 }
 "#,
-        "main",
     )
     .expect("compile record source");
 
-    assert_eq!(Vm::new().run(&code), Ok(OwnedValue::Int(10)));
+    assert_eq!(
+        run_records_program(&program, "main", &[]),
+        Ok(OwnedValue::Int(10))
+    );
 }
 
 #[test]
 fn heap_execution_reads_record_fields_from_heap_records() {
-    let code = compile_function_source(
+    let program = compile_program_source(
         SourceId::new(1),
         r#"
+struct Player { level: int, exp: int }
+
 fn main() {
     let level = 3;
     let player = Player { level, exp: 7 };
     return player.level + player.exp;
 }
 "#,
-        "main",
     )
     .expect("compile record source");
     let mut heap = ScriptHeap::new();
     let mut heap_execution = HeapExecution::new(&mut heap);
     let mut budget = ExecutionBudget::new(u64::MAX, 4096, usize::MAX);
 
-    let result = Vm::new()
-        .run_with_heap_and_budget(&code, &mut heap_execution, &mut budget)
-        .expect("run heap-backed record source");
+    let result = run_linked_test_program_runtime_with_heap_and_budget(
+        &Vm::new(),
+        &program,
+        "main",
+        &[],
+        &mut heap_execution,
+        &mut budget,
+    )
+    .expect("run heap-backed record source");
 
     assert_eq!(result, OwnedValue::Int(10));
     assert_eq!(heap.live_object_count(), 1);
@@ -149,7 +177,7 @@ fn main() {
     fields.insert("item_id".into(), OwnedValue::String("gold".into()));
 
     assert_eq!(
-        Vm::new().run(&code),
+        run_linked_test_code(code),
         Ok(OwnedValue::Record {
             type_name: "Reward".into(),
             fields: ScriptFields::from_pairs("Reward", fields),
@@ -159,7 +187,7 @@ fn main() {
 
 #[test]
 fn runs_schema_field_defaults_for_record_constructors() {
-    let program = compile_program_source(
+    let program = compile_standard_program_source(
         SourceId::new(1),
         r#"
 const BASE_COUNT = 2
@@ -172,14 +200,17 @@ struct Reward {
 fn main() {
     let explicit = Reward { count: 7 };
     let default_count = Reward { item_id: "xp" };
-    return explicit.item_id.len() + explicit.count + default_count.count;
+    if explicit.item_id == "gold" {
+        return 4 + explicit.count + default_count.count;
+    }
+    return 0;
 }
 "#,
     )
     .expect("compile defaulted record constructor");
 
     assert_eq!(
-        Vm::new().run_program(&program, "main", &[]),
+        run_records_program(&program, "main", &[]),
         Ok(OwnedValue::Int(16))
     );
 }
@@ -210,14 +241,14 @@ fn main() {
     let Ok(OwnedValue::Record {
         fields: first_fields,
         ..
-    }) = Vm::new().run(&first)
+    }) = run_linked_test_code(first)
     else {
         panic!("first record");
     };
     let Ok(OwnedValue::Record {
         fields: second_fields,
         ..
-    }) = Vm::new().run(&second)
+    }) = run_linked_test_code(second)
     else {
         panic!("second record");
     };
@@ -234,19 +265,24 @@ fn main() {
 
 #[test]
 fn runs_compiled_immediate_slot_field_reads() {
-    let code = compile_function_source(
+    let program = compile_program_source(
         SourceId::new(1),
         r#"
+struct Reward { item_id: string, count: int }
+enum Damage { Physical { amount: int } }
+
 fn main() {
     return Reward { item_id: "gold", count: 2 }.count
         + Damage::Physical { amount: 7 }.amount;
 }
 "#,
-        "main",
     )
     .expect("compile immediate slot field reads");
 
-    assert_eq!(Vm::new().run(&code), Ok(OwnedValue::Int(9)));
+    assert_eq!(
+        run_records_program(&program, "main", &[]),
+        Ok(OwnedValue::Int(9))
+    );
 }
 
 #[test]
@@ -272,14 +308,14 @@ fn main() {
     .expect("compile typed record slot field read");
 
     assert_eq!(
-        Vm::new().run_program(&program, "main", &[]),
+        run_records_program(&program, "main", &[]),
         Ok(OwnedValue::Int(2))
     );
 }
 
 #[test]
 fn runs_compiled_typed_record_slot_field_writes() {
-    let program = compile_program_source(
+    let program = compile_standard_program_source(
         SourceId::new(1),
         r#"
 struct Reward {
@@ -295,21 +331,24 @@ fn main() {
     let reward: Reward = make_reward();
     reward.count += 3;
     reward.item_id = "xp";
-    return reward.count + reward.item_id.len();
+    if reward.item_id == "xp" {
+        return reward.count + 2;
+    }
+    return 0;
 }
 "#,
     )
     .expect("compile typed record slot field writes");
 
     assert_eq!(
-        Vm::new().run_program(&program, "main", &[]),
+        run_records_program(&program, "main", &[]),
         Ok(OwnedValue::Int(7))
     );
 }
 
 #[test]
 fn runs_compiled_typed_enum_variant_slot_field_reads() {
-    let program = compile_program_source(
+    let program = compile_standard_program_source(
         SourceId::new(1),
         r#"
 enum Damage {
@@ -319,14 +358,17 @@ enum Damage {
 
 fn main() {
     let damage = Damage::Physical { amount: 7, element: "slash" };
-    return damage.amount + damage.element.len();
+    if damage.element == "slash" {
+        return damage.amount + 5;
+    }
+    return 0;
 }
 "#,
     )
     .expect("compile typed enum variant slot field read");
 
     assert_eq!(
-        Vm::new().run_program(&program, "main", &[]),
+        run_records_program(&program, "main", &[]),
         Ok(OwnedValue::Int(12))
     );
 }
@@ -347,7 +389,7 @@ fn main() {
     fields.insert("amount".into(), OwnedValue::Int(7));
 
     assert_eq!(
-        Vm::new().run(&code),
+        run_linked_test_code(code),
         Ok(OwnedValue::Enum {
             enum_name: "Damage".into(),
             variant: "Physical".into(),
@@ -358,7 +400,7 @@ fn main() {
 
 #[test]
 fn runs_schema_field_defaults_for_enum_constructors() {
-    let program = compile_program_source(
+    let program = compile_standard_program_source(
         SourceId::new(1),
         r#"
 enum Damage {
@@ -384,16 +426,21 @@ fn main() {
     .expect("compile defaulted enum constructors");
 
     assert_eq!(
-        Vm::new().run_program(&program, "main", &[]),
+        run_records_program(&program, "main", &[]),
         Ok(OwnedValue::Int(19))
     );
 }
 
 #[test]
 fn matches_enum_tag_and_binds_variant_fields() {
-    let code = compile_function_source(
+    let program = compile_program_source(
         SourceId::new(1),
         r#"
+enum Damage {
+    Physical { amount: int },
+    Magical { amount: int },
+}
+
 fn main() {
     let damage = Damage::Physical { amount: 7 };
     match damage {
@@ -403,18 +450,25 @@ fn main() {
     }
 }
 "#,
-        "main",
     )
     .expect("compile enum match source");
 
-    assert_eq!(Vm::new().run(&code), Ok(OwnedValue::Int(8)));
+    assert_eq!(
+        run_records_program(&program, "main", &[]),
+        Ok(OwnedValue::Int(8))
+    );
 }
 
 #[test]
 fn heap_execution_matches_enum_tags_and_reads_fields() {
-    let code = compile_function_source(
+    let program = compile_program_source(
         SourceId::new(1),
         r#"
+enum Damage {
+    Physical { amount: int },
+    Magical { amount: int },
+}
+
 fn main() {
     let damage = Damage::Physical { amount: 7 };
     match damage {
@@ -424,16 +478,21 @@ fn main() {
     }
 }
 "#,
-        "main",
     )
     .expect("compile enum match source");
     let mut heap = ScriptHeap::new();
     let mut heap_execution = HeapExecution::new(&mut heap);
     let mut budget = ExecutionBudget::new(u64::MAX, 4096, usize::MAX);
 
-    let result = Vm::new()
-        .run_with_heap_and_budget(&code, &mut heap_execution, &mut budget)
-        .expect("run heap-backed enum source");
+    let result = run_linked_test_program_runtime_with_heap_and_budget(
+        &Vm::new(),
+        &program,
+        "main",
+        &[],
+        &mut heap_execution,
+        &mut budget,
+    )
+    .expect("run heap-backed enum source");
 
     assert_eq!(result, OwnedValue::Int(8));
     assert_eq!(heap.live_object_count(), 1);
