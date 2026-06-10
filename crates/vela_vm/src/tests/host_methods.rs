@@ -2,6 +2,35 @@ use super::*;
 use crate::owned_value::OwnedValue;
 use crate::value::Value as RuntimeValue;
 
+fn run_host_method_program(
+    program: &UnlinkedProgram,
+    entry: &str,
+    args: &[OwnedValue],
+    host: &mut HostExecution<'_>,
+) -> VmResult<OwnedValue> {
+    let mut budget = ExecutionBudget::unbounded();
+    run_linked_test_program_with_host_budget(&Vm::new(), program, entry, args, host, &mut budget)
+}
+
+fn run_host_method_program_runtime(
+    program: &UnlinkedProgram,
+    entry: &str,
+    args: &[RuntimeValue],
+    host: &mut HostExecution<'_>,
+    heap: &mut HeapExecution<'_>,
+    budget: &mut ExecutionBudget,
+) -> VmResult<RuntimeValue> {
+    run_linked_test_program_runtime_with_host_heap_and_budget(
+        &Vm::new(),
+        program,
+        entry,
+        args,
+        host,
+        heap,
+        budget,
+    )
+}
+
 #[test]
 fn compiled_source_host_method_call_writes_through() {
     let host_ref = player_ref(3);
@@ -36,7 +65,7 @@ fn main(player: Player) {
             access: &mut tx,
             script_globals: None,
         };
-        Vm::new().run_program_with_host(
+        run_host_method_program(
             &program,
             "main",
             &[OwnedValue::HostRef(host_ref)],
@@ -89,7 +118,7 @@ fn main(player: Player) {
             access: &mut tx,
             script_globals: None,
         };
-        Vm::new().run_program_with_host(
+        run_host_method_program(
             &program,
             "main",
             &[OwnedValue::HostRef(host_ref)],
@@ -161,7 +190,7 @@ fn main(player: Player) {
             access: &mut tx,
             script_globals: None,
         };
-        Vm::new().run_program_with_host(
+        run_host_method_program(
             &program,
             "main",
             &[OwnedValue::HostRef(host_ref)],
@@ -216,7 +245,7 @@ fn call_host_method_writes_through_and_updates_adapter() {
             access: &mut tx,
             script_globals: None,
         };
-        Vm::new().run_program_with_host(
+        run_host_method_program(
             &program,
             "main",
             &[OwnedValue::HostRef(host_ref)],
@@ -278,7 +307,7 @@ fn heap_execution_converts_heap_string_for_host_method_call() {
             access: &mut tx,
             script_globals: None,
         };
-        Vm::new().run_program_runtime_with_host_heap_and_budget(
+        run_host_method_program_runtime(
             &program,
             "main",
             &[RuntimeValue::HostRef(host_ref)],
@@ -324,7 +353,7 @@ fn main(player: Player) {
             access: &mut tx,
             script_globals: None,
         };
-        Vm::new().run_program_with_host(
+        run_host_method_program(
             &program,
             "main",
             &[OwnedValue::HostRef(host_ref)],

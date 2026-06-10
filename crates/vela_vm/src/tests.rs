@@ -162,6 +162,48 @@ fn run_linked_test_program_runtime_with_heap_and_budget(
     )
 }
 
+fn run_linked_test_program_runtime_with_host_heap_and_budget(
+    vm: &Vm,
+    program: &UnlinkedProgram,
+    entry: &str,
+    args: &[Value],
+    host: &mut HostExecution<'_>,
+    heap: &mut HeapExecution<'_>,
+    budget: &mut ExecutionBudget,
+) -> VmResult<Value> {
+    let mut linker = Linker::new();
+    vm.native_ids
+        .keys()
+        .chain(vm.host_native_ids.keys())
+        .copied()
+        .for_each(|id| linker.add_native_implementation(id));
+    let linked = linker
+        .link_program(program)
+        .expect("test program should link");
+    let code = linked
+        .functions()
+        .find_map(|(_, code)| (linked.debug_name(code.debug_name) == entry).then_some(code))
+        .ok_or_else(|| {
+            VmError::new(VmErrorKind::UnknownFunction {
+                name: entry.to_owned(),
+            })
+        })?;
+    vm.execute_linked_call(
+        crate::linked_execution::LinkedExecutionCall {
+            code,
+            program: &linked,
+            captures: &[],
+            args,
+            call_site: None,
+            call_site_offset: None,
+            inline_caches: None,
+        },
+        Some(host),
+        Some(heap),
+        Some(budget),
+    )
+}
+
 fn run_linked_test_code_with_linker(
     vm: &Vm,
     code: UnlinkedCodeObject,
