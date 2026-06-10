@@ -479,7 +479,7 @@ fn param_names(params: &[ParamAbi]) -> Vec<String> {
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct MethodAbi {
-    pub id: Option<u64>,
+    pub id: Option<u128>,
     pub type_name: String,
     pub name: String,
     pub origin: DeclOrigin,
@@ -545,7 +545,7 @@ impl MethodAbi {
     }
 
     #[must_use]
-    pub fn id(mut self, id: u64) -> Self {
+    pub fn id(mut self, id: u128) -> Self {
         self.id = Some(id);
         self
     }

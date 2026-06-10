@@ -71,11 +71,11 @@ impl DemoIds {
             config_field: host_field("Context", "config"),
             exp_to_next_level_field: Config::vela_field_id_exp_to_next_level(),
             emit_method: CONTEXT_EMIT_METHOD_ID,
-            add_reward_method: HostMethodId::new(stable_id(
+            add_reward_method: HostMethodId::new(u128::from(stable_id(
                 "host_method",
                 "game::player::Player",
                 "add_reward",
-            )),
+            ))),
             log_method: CONTEXT_LOG_METHOD_ID,
             reward_grant_function: FunctionId::new(u128::from(stable_id(
                 "native_function",

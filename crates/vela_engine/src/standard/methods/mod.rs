@@ -44,7 +44,6 @@ impl ParamSpec {
 
 #[derive(Clone, Copy)]
 struct MethodSpec {
-    id: HostMethodId,
     name: &'static str,
     params: &'static [ParamSpec],
     return_type: &'static str,
@@ -53,14 +52,12 @@ struct MethodSpec {
 
 impl MethodSpec {
     const fn new(
-        id: HostMethodId,
         name: &'static str,
         params: &'static [ParamSpec],
         return_type: &'static str,
         docs: &'static str,
     ) -> Self {
         Self {
-            id,
             name,
             params,
             return_type,
@@ -69,12 +66,15 @@ impl MethodSpec {
     }
 }
 
-fn descs(specs: &[MethodSpec], stdlib: &'static str) -> Vec<MethodDesc> {
-    specs.iter().map(|spec| desc(*spec, stdlib)).collect()
+fn descs(owner: &'static str, specs: &[MethodSpec], stdlib: &'static str) -> Vec<MethodDesc> {
+    specs
+        .iter()
+        .map(|spec| desc(owner, *spec, stdlib))
+        .collect()
 }
 
-fn desc(spec: MethodSpec, stdlib: &'static str) -> MethodDesc {
-    let mut desc = MethodDesc::new(spec.id, spec.name)
+fn desc(owner: &'static str, spec: MethodSpec, stdlib: &'static str) -> MethodDesc {
+    let mut desc = MethodDesc::new(std_method_host_id(owner, spec.name), spec.name)
         .return_type(spec.return_type)
         .attr("stdlib", stdlib)
         .docs(spec.docs);
@@ -86,4 +86,11 @@ fn desc(spec: MethodSpec, stdlib: &'static str) -> MethodDesc {
         );
     }
     desc
+}
+
+fn std_method_host_id(owner: &str, name: &str) -> HostMethodId {
+    let Some(id) = vela_stdlib::std_method_id(owner, name) else {
+        panic!("missing standard method identity for {owner}::{name}");
+    };
+    HostMethodId::new(id.get())
 }

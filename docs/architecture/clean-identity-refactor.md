@@ -68,8 +68,7 @@ runtime-local.
 
 Task 0.1 searched the repository for legacy ID compatibility tests. Existing
 `standard_id_dispatch` and `standard_string_id_dispatch` tests exercise current
-ID-based stdlib dispatch behavior through `standard_ids`; they do not assert
-that old raw numeric ID values are a compatibility contract. They should remain
-until the manifest, registry, and runtime binding replacement tasks provide
-equivalent behavior coverage. Tests that assert raw legacy ID numbers should be
-removed or rewritten when found.
+ID-based stdlib dispatch behavior through manifest-derived stdlib method IDs;
+they do not assert that old raw numeric ID values are a compatibility contract.
+Tests that assert raw legacy ID numbers should be removed or rewritten when
+found.

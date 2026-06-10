@@ -1346,7 +1346,7 @@ surface.
 - The same manifest entry drives registry metadata and runtime binding lookup.
 - No semantic registry type stores VM function pointers.
 
-- [ ] **Task 3.4: Delete `standard_ids.rs`**
+- [x] **Task 3.4: Delete `standard_ids.rs`**
 
 **Objective:** Remove handwritten stdlib ID tables.
 

@@ -24,7 +24,7 @@ pub(crate) fn method_record_with_owner(type_name: &str, method: &MethodDesc) -> 
 
 fn method_record_fields(method: &MethodDesc) -> ReflectFields {
     let mut fields = BTreeMap::new();
-    fields.insert("id".to_owned(), id_value(u128::from(method.id.get())));
+    fields.insert("id".to_owned(), id_value(method.id.get()));
     fields.insert("name".to_owned(), string(method.name.clone()));
     fields.insert("origin".to_owned(), origin_value(method.origin));
     fields.insert(

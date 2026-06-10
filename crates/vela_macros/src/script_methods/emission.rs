@@ -29,11 +29,11 @@ fn method_desc_expr(method: &MethodMeta) -> TokenStream {
     });
 
     quote! {{
-        let method_id = ::vela_common::HostMethodId::new(::vela_common::stable_id(
+        let method_id = ::vela_common::HostMethodId::new(::core::primitive::u128::from(::vela_common::stable_id(
             "host_method",
             &owner_stable_path,
             #stable_name,
-        ));
+        )));
         let mut desc = ::vela_engine::method::NativeMethodDesc::new(
             owner_key.clone(),
             method_id,
@@ -206,11 +206,11 @@ fn host_method_resolve_arm_tokens((slot, method): (usize, &MethodMeta)) -> Token
     let slot = u32::try_from(slot).expect("host method slot index fits u32");
     quote! {
         ::vela_host::resolved::HostAccessOp::Call(method)
-            if method == ::vela_common::HostMethodId::new(::vela_common::stable_id(
+            if method == ::vela_common::HostMethodId::new(::core::primitive::u128::from(::vela_common::stable_id(
                 "host_method",
                 owner_stable_path,
                 #stable_name,
-            )) =>
+            ))) =>
         {
             Ok(::vela_host::resolved::ResolvedHostAccess::direct_method(
                 #slot,
@@ -240,11 +240,11 @@ fn host_method_arm_tokens(method: &MethodMeta) -> TokenStream {
     };
 
     quote! {
-        method if method == ::vela_common::HostMethodId::new(::vela_common::stable_id(
+        method if method == ::vela_common::HostMethodId::new(::core::primitive::u128::from(::vela_common::stable_id(
             "host_method",
             owner_stable_path,
             #stable_name,
-        )) => {
+        ))) => {
             #(#arg_bindings)*
             let __vela_result = #receiver.#ident(#(#arg_names),*);
             ::vela_host::object::HostValueInto::into_host_value(__vela_result)

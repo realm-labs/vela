@@ -1,24 +1,25 @@
 use super::*;
 use crate::owned_value::OwnedValue;
 
+fn std_method_id(owner: &str, name: &str) -> vela_common::HostMethodId {
+    let Some(id) = vela_stdlib::std_method_id(owner, name) else {
+        panic!("missing standard method identity for {owner}::{name}");
+    };
+    vela_common::HostMethodId::new(id.get())
+}
+
 #[test]
 fn call_method_uses_standard_string_predicate_ids_before_name_fallback() {
     assert_eq!(
-        run_string_predicate_by_id(vela_common::standard_ids::STRING_CONTAINS_METHOD_ID, ":"),
+        run_string_predicate_by_id(std_method_id("String", "contains"), ":"),
         Ok(OwnedValue::Bool(true))
     );
     assert_eq!(
-        run_string_predicate_by_id(
-            vela_common::standard_ids::STRING_STARTS_WITH_METHOD_ID,
-            "reward"
-        ),
+        run_string_predicate_by_id(std_method_id("String", "starts_with"), "reward"),
         Ok(OwnedValue::Bool(true))
     );
     assert_eq!(
-        run_string_predicate_by_id(
-            vela_common::standard_ids::STRING_ENDS_WITH_METHOD_ID,
-            "gold"
-        ),
+        run_string_predicate_by_id(std_method_id("String", "ends_with"), "gold"),
         Ok(OwnedValue::Bool(true))
     );
 }
@@ -55,35 +56,23 @@ fn run_string_predicate_by_id(
 #[test]
 fn call_method_uses_standard_string_transform_ids_before_name_fallback() {
     assert_eq!(
-        run_string_transform_by_id(
-            vela_common::standard_ids::STRING_TO_UPPER_METHOD_ID,
-            "Reward"
-        ),
+        run_string_transform_by_id(std_method_id("String", "to_upper"), "Reward"),
         Ok(OwnedValue::String("REWARD".to_owned()))
     );
     assert_eq!(
-        run_string_transform_by_id(
-            vela_common::standard_ids::STRING_TO_LOWER_METHOD_ID,
-            "Reward"
-        ),
+        run_string_transform_by_id(std_method_id("String", "to_lower"), "Reward"),
         Ok(OwnedValue::String("reward".to_owned()))
     );
     assert_eq!(
-        run_string_transform_by_id(vela_common::standard_ids::STRING_TRIM_METHOD_ID, " Reward "),
+        run_string_transform_by_id(std_method_id("String", "trim"), " Reward "),
         Ok(OwnedValue::String("Reward".to_owned()))
     );
     assert_eq!(
-        run_string_transform_by_id(
-            vela_common::standard_ids::STRING_TRIM_START_METHOD_ID,
-            " Reward "
-        ),
+        run_string_transform_by_id(std_method_id("String", "trim_start"), " Reward "),
         Ok(OwnedValue::String("Reward ".to_owned()))
     );
     assert_eq!(
-        run_string_transform_by_id(
-            vela_common::standard_ids::STRING_TRIM_END_METHOD_ID,
-            " Reward "
-        ),
+        run_string_transform_by_id(std_method_id("String", "trim_end"), " Reward "),
         Ok(OwnedValue::String(" Reward".to_owned()))
     );
 }
@@ -116,7 +105,7 @@ fn run_string_transform_by_id(
 fn call_method_uses_standard_string_argument_transform_ids_before_name_fallback() {
     assert_eq!(
         run_string_transform_with_args_by_id(
-            vela_common::standard_ids::STRING_REPLACE_METHOD_ID,
+            std_method_id("String", "replace"),
             "gold.gold",
             &[
                 Constant::String("gold".to_owned()),
@@ -127,7 +116,7 @@ fn call_method_uses_standard_string_argument_transform_ids_before_name_fallback(
     );
     assert_eq!(
         run_string_transform_with_args_by_id(
-            vela_common::standard_ids::STRING_REPEAT_METHOD_ID,
+            std_method_id("String", "repeat"),
             "xp",
             &[Constant::Int(3)],
         ),
@@ -135,7 +124,7 @@ fn call_method_uses_standard_string_argument_transform_ids_before_name_fallback(
     );
     assert_eq!(
         run_string_transform_with_args_by_id(
-            vela_common::standard_ids::STRING_SLICE_METHOD_ID,
+            std_method_id("String", "slice"),
             "reward",
             &[Constant::Int(1), Constant::Int(5)],
         ),
@@ -147,7 +136,7 @@ fn call_method_uses_standard_string_argument_transform_ids_before_name_fallback(
 fn call_method_uses_standard_string_option_ids_before_name_fallback() {
     assert_eq!(
         run_string_transform_with_args_by_id(
-            vela_common::standard_ids::STRING_FIND_METHOD_ID,
+            std_method_id("String", "find"),
             "reward:gold",
             &[Constant::String(":".to_owned())],
         ),
@@ -155,7 +144,7 @@ fn call_method_uses_standard_string_option_ids_before_name_fallback() {
     );
     assert_eq!(
         run_string_transform_with_args_by_id(
-            vela_common::standard_ids::STRING_STRIP_PREFIX_METHOD_ID,
+            std_method_id("String", "strip_prefix"),
             "reward:gold",
             &[Constant::String("reward:".to_owned())],
         ),
@@ -163,7 +152,7 @@ fn call_method_uses_standard_string_option_ids_before_name_fallback() {
     );
     assert_eq!(
         run_string_transform_with_args_by_id(
-            vela_common::standard_ids::STRING_STRIP_SUFFIX_METHOD_ID,
+            std_method_id("String", "strip_suffix"),
             "reward:gold",
             &[Constant::String(":gold".to_owned())],
         ),
@@ -171,7 +160,7 @@ fn call_method_uses_standard_string_option_ids_before_name_fallback() {
     );
     assert_eq!(
         run_string_transform_with_args_by_id(
-            vela_common::standard_ids::STRING_CHAR_AT_METHOD_ID,
+            std_method_id("String", "char_at"),
             "reward:gold",
             &[Constant::Int(6)],
         ),
@@ -183,7 +172,7 @@ fn call_method_uses_standard_string_option_ids_before_name_fallback() {
 fn call_method_uses_standard_string_split_ids_before_name_fallback() {
     assert_eq!(
         run_string_transform_with_args_by_id(
-            vela_common::standard_ids::STRING_SPLIT_METHOD_ID,
+            std_method_id("String", "split"),
             "reward:gold",
             &[Constant::String(":".to_owned())],
         ),
@@ -191,7 +180,7 @@ fn call_method_uses_standard_string_split_ids_before_name_fallback() {
     );
     assert_eq!(
         run_string_transform_with_args_by_id(
-            vela_common::standard_ids::STRING_SPLIT_ONCE_METHOD_ID,
+            std_method_id("String", "split_once"),
             "reward:gold",
             &[Constant::String(":".to_owned())],
         ),
@@ -199,7 +188,7 @@ fn call_method_uses_standard_string_split_ids_before_name_fallback() {
     );
     assert_eq!(
         run_string_transform_with_args_by_id(
-            vela_common::standard_ids::STRING_SPLIT_LINES_METHOD_ID,
+            std_method_id("String", "split_lines"),
             "reward\ngold",
             &[],
         ),
@@ -207,7 +196,7 @@ fn call_method_uses_standard_string_split_ids_before_name_fallback() {
     );
     assert_eq!(
         run_string_transform_with_args_by_id(
-            vela_common::standard_ids::STRING_SPLIT_WHITESPACE_METHOD_ID,
+            std_method_id("String", "split_whitespace"),
             "reward gold",
             &[],
         ),
@@ -218,27 +207,15 @@ fn call_method_uses_standard_string_split_ids_before_name_fallback() {
 #[test]
 fn call_method_uses_standard_string_parse_ids_before_name_fallback() {
     assert_eq!(
-        run_string_transform_with_args_by_id(
-            vela_common::standard_ids::STRING_PARSE_INT_METHOD_ID,
-            "42",
-            &[],
-        ),
+        run_string_transform_with_args_by_id(std_method_id("String", "parse_int"), "42", &[],),
         Ok(option_some(OwnedValue::Int(42)))
     );
     assert_eq!(
-        run_string_transform_with_args_by_id(
-            vela_common::standard_ids::STRING_PARSE_FLOAT_METHOD_ID,
-            "1.5",
-            &[],
-        ),
+        run_string_transform_with_args_by_id(std_method_id("String", "parse_float"), "1.5", &[],),
         Ok(option_some(OwnedValue::Float(1.5)))
     );
     assert_eq!(
-        run_string_transform_with_args_by_id(
-            vela_common::standard_ids::STRING_PARSE_BOOL_METHOD_ID,
-            "true",
-            &[],
-        ),
+        run_string_transform_with_args_by_id(std_method_id("String", "parse_bool"), "true", &[],),
         Ok(option_some(OwnedValue::Bool(true)))
     );
 }

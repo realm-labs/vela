@@ -165,18 +165,22 @@ impl DirectCounter {
 }
 
 fn method_id(name: &str) -> HostMethodId {
-    HostMethodId::new(stable_id("host_method", "game::player::Player", name))
+    HostMethodId::new(u128::from(stable_id(
+        "host_method",
+        "game::player::Player",
+        name,
+    )))
 }
 
 #[test]
 fn script_methods_resolve_root_methods_to_direct_access() {
     let counter = DirectCounter { total: 1 };
     let plan = HostTargetPlan::new(DirectCounter::vela_host_type_id());
-    let method = HostMethodId::new(stable_id(
+    let method = HostMethodId::new(u128::from(stable_id(
         "host_method",
         "game::counter::DirectCounter",
         "add",
-    ));
+    )));
 
     let access = <DirectCounter as vela_host::object::ScriptHostObject>::resolve_host_target(
         &counter,

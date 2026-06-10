@@ -1,47 +1,32 @@
-use vela_common::{HostMethodId, stable_id};
 use vela_reflect::registry::MethodDesc;
 
 use super::{MethodSpec, ParamSpec, descs};
-use crate::standard::ids::{
-    MAP_CLEAR_METHOD_ID, MAP_HAS_METHOD_ID, MAP_IS_EMPTY_METHOD_ID, MAP_LEN_METHOD_ID,
-    MAP_REMOVE_METHOD_ID, MAP_SET_METHOD_ID,
-};
 
 pub(crate) fn map_method_descs() -> Vec<MethodDesc> {
-    descs(MAP_METHODS, "map")
+    descs("Map", MAP_METHODS, "map")
 }
 
 const MAP_METHODS: &[MethodSpec] = &[
+    MethodSpec::new("len", &[], "int", "Returns the map length."),
     MethodSpec::new(
-        MAP_LEN_METHOD_ID,
-        "len",
-        &[],
-        "int",
-        "Returns the map length.",
-    ),
-    MethodSpec::new(
-        MAP_IS_EMPTY_METHOD_ID,
         "is_empty",
         &[],
         "bool",
         "Returns true when the map has no entries.",
     ),
     MethodSpec::new(
-        MAP_HAS_METHOD_ID,
         "has",
         &[ParamSpec::new("key", "string")],
         "bool",
         "Returns true when a key exists.",
     ),
     MethodSpec::new(
-        map_id(3),
         "get",
         &[ParamSpec::new("key", "string")],
         "Option",
         "Returns the value for a key, or Option::None.",
     ),
     MethodSpec::new(
-        map_id(4),
         "get_or",
         &[
             ParamSpec::new("key", "string"),
@@ -51,7 +36,6 @@ const MAP_METHODS: &[MethodSpec] = &[
         "Returns the value for a key or a default.",
     ),
     MethodSpec::new(
-        MAP_SET_METHOD_ID,
         "set",
         &[
             ParamSpec::new("key", "string"),
@@ -61,98 +45,61 @@ const MAP_METHODS: &[MethodSpec] = &[
         "Sets and returns a value for a key.",
     ),
     MethodSpec::new(
-        MAP_REMOVE_METHOD_ID,
         "remove",
         &[ParamSpec::new("key", "string")],
         "Option",
         "Removes and returns the value for a key.",
     ),
     MethodSpec::new(
-        map_id(7),
         "extend",
         &[ParamSpec::new("values", "map")],
         "null",
         "Inserts entries from another map.",
     ),
+    MethodSpec::new("clear", &[], "null", "Removes all entries."),
+    MethodSpec::new("keys", &[], "array", "Returns keys in sorted order."),
+    MethodSpec::new("values", &[], "array", "Returns values in key order."),
+    MethodSpec::new("entries", &[], "array", "Returns key/value records."),
     MethodSpec::new(
-        MAP_CLEAR_METHOD_ID,
-        "clear",
-        &[],
-        "null",
-        "Removes all entries.",
-    ),
-    MethodSpec::new(
-        map_id(9),
-        "keys",
-        &[],
-        "array",
-        "Returns keys in sorted order.",
-    ),
-    MethodSpec::new(
-        map_id(10),
-        "values",
-        &[],
-        "array",
-        "Returns values in key order.",
-    ),
-    MethodSpec::new(
-        map_id(11),
-        "entries",
-        &[],
-        "array",
-        "Returns key/value records.",
-    ),
-    MethodSpec::new(
-        map_id(12),
         "merge",
         &[ParamSpec::new("other", "map")],
         "map",
         "Returns a merged map.",
     ),
     MethodSpec::new(
-        map_id(13),
         "map_values",
         &[ParamSpec::new("callback", "function")],
         "map",
         "Maps values with a callback.",
     ),
     MethodSpec::new(
-        map_id(14),
         "filter",
         &[ParamSpec::new("callback", "function")],
         "map",
         "Keeps entries accepted by a callback.",
     ),
     MethodSpec::new(
-        map_id(15),
         "find",
         &[ParamSpec::new("callback", "function")],
         "Option",
         "Returns the first matching entry, or Option::None.",
     ),
     MethodSpec::new(
-        map_id(16),
         "any",
         &[ParamSpec::new("callback", "function")],
         "bool",
         "Returns true when any entry matches a callback.",
     ),
     MethodSpec::new(
-        map_id(17),
         "all",
         &[ParamSpec::new("callback", "function")],
         "bool",
         "Returns true when all entries match a callback.",
     ),
     MethodSpec::new(
-        map_id(18),
         "count",
         &[ParamSpec::new("callback", "function")],
         "int",
         "Counts entries accepted by a callback.",
     ),
 ];
-
-const fn map_id(offset: u64) -> HostMethodId {
-    HostMethodId::new(stable_id("std_method_family", "Map", "").wrapping_add(offset))
-}

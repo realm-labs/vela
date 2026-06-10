@@ -13,9 +13,9 @@ pub const CONTEXT_NOW_FIELD_ID: FieldId =
 pub const CONTEXT_TICK_FIELD_ID: FieldId =
     FieldId::new(stable_id("std_field", "Context", "tick") as u128);
 pub const CONTEXT_EMIT_METHOD_ID: HostMethodId =
-    HostMethodId::new(stable_id("std_method", "Context", "emit"));
+    HostMethodId::new(stable_id("std_method", "Context", "emit") as u128);
 pub const CONTEXT_LOG_METHOD_ID: HostMethodId =
-    HostMethodId::new(stable_id("std_method", "Context", "log"));
+    HostMethodId::new(stable_id("std_method", "Context", "log") as u128);
 
 #[must_use]
 pub fn context_host_type_desc() -> TypeDesc {

@@ -11,6 +11,13 @@ fn std_function_id(implementation: StdFunctionImplementation) -> vela_def::Funct
     panic!("missing standard function runtime binding for {implementation:?}");
 }
 
+fn std_method_id(owner: &str, name: &str) -> vela_common::HostMethodId {
+    let Some(id) = vela_stdlib::std_method_id(owner, name) else {
+        panic!("missing standard method identity for {owner}::{name}");
+    };
+    vela_common::HostMethodId::new(id.get())
+}
+
 #[test]
 fn call_native_uses_resolved_id_before_name_fallback() {
     let native_id = vela_def::FunctionId::new(77);
@@ -97,7 +104,7 @@ fn call_method_uses_standard_value_method_id_before_name_fallback() {
         dst: Register(1),
         receiver: Register(0),
         method: "missing_len".into(),
-        value_method_id: Some(vela_common::standard_ids::STRING_LEN_METHOD_ID),
+        value_method_id: Some(std_method_id("String", "len")),
         args: Vec::new(),
     }));
     code.push_instruction(Instruction::new(InstructionKind::Return {
@@ -134,7 +141,7 @@ fn call_method_uses_standard_range_method_id_before_name_fallback() {
         dst: Register(3),
         receiver: Register(2),
         method: "missing_len".into(),
-        value_method_id: Some(vela_common::standard_ids::RANGE_LEN_METHOD_ID),
+        value_method_id: Some(std_method_id("Range", "len")),
         args: Vec::new(),
     }));
     code.push_instruction(Instruction::new(InstructionKind::Return {
@@ -165,7 +172,7 @@ fn call_method_uses_standard_array_method_id_before_name_fallback() {
         dst: Register(3),
         receiver: Register(2),
         method: "missing_len".into(),
-        value_method_id: Some(vela_common::standard_ids::ARRAY_LEN_METHOD_ID),
+        value_method_id: Some(std_method_id("Array", "len")),
         args: Vec::new(),
     }));
     code.push_instruction(Instruction::new(InstructionKind::Return {
@@ -178,16 +185,16 @@ fn call_method_uses_standard_array_method_id_before_name_fallback() {
 #[test]
 fn call_method_uses_standard_array_lookup_ids_before_name_fallback() {
     assert_eq!(
-        run_array_lookup_with_args_by_id(vela_common::standard_ids::ARRAY_FIRST_METHOD_ID, &[]),
+        run_array_lookup_with_args_by_id(std_method_id("Array", "first"), &[]),
         Ok(option_some(OwnedValue::String("gold".to_owned())))
     );
     assert_eq!(
-        run_array_lookup_with_args_by_id(vela_common::standard_ids::ARRAY_LAST_METHOD_ID, &[]),
+        run_array_lookup_with_args_by_id(std_method_id("Array", "last"), &[]),
         Ok(option_some(OwnedValue::String("xp".to_owned())))
     );
     assert_eq!(
         run_array_lookup_with_args_by_id(
-            vela_common::standard_ids::ARRAY_INDEX_OF_METHOD_ID,
+            std_method_id("Array", "index_of"),
             &[Constant::String("xp".to_owned())],
         ),
         Ok(option_some(OwnedValue::Int(1)))
@@ -241,7 +248,7 @@ fn run_array_lookup_with_args_by_id(
 fn call_method_uses_standard_array_transform_ids_before_name_fallback() {
     assert_eq!(
         run_array_transform_with_args_by_id(
-            vela_common::standard_ids::ARRAY_JOIN_METHOD_ID,
+            std_method_id("Array", "join"),
             &["gold", "xp", "bonus"],
             &[Constant::String(":".to_owned())],
         ),
@@ -249,7 +256,7 @@ fn call_method_uses_standard_array_transform_ids_before_name_fallback() {
     );
     assert_eq!(
         run_array_transform_with_args_by_id(
-            vela_common::standard_ids::ARRAY_DISTINCT_METHOD_ID,
+            std_method_id("Array", "distinct"),
             &["gold", "xp", "gold"],
             &[],
         ),
@@ -257,7 +264,7 @@ fn call_method_uses_standard_array_transform_ids_before_name_fallback() {
     );
     assert_eq!(
         run_array_transform_with_args_by_id(
-            vela_common::standard_ids::ARRAY_REVERSE_METHOD_ID,
+            std_method_id("Array", "reverse"),
             &["gold", "xp", "bonus"],
             &[],
         ),
@@ -265,7 +272,7 @@ fn call_method_uses_standard_array_transform_ids_before_name_fallback() {
     );
     assert_eq!(
         run_array_transform_with_args_by_id(
-            vela_common::standard_ids::ARRAY_SLICE_METHOD_ID,
+            std_method_id("Array", "slice"),
             &["gold", "xp", "bonus"],
             &[Constant::Int(1), Constant::Int(3)],
         ),
@@ -340,14 +347,14 @@ fn call_method_uses_standard_array_mutator_ids_before_name_fallback() {
         dst: Register(3),
         receiver: Register(2),
         method: "missing_push".into(),
-        value_method_id: Some(vela_common::standard_ids::ARRAY_PUSH_METHOD_ID),
+        value_method_id: Some(std_method_id("Array", "push")),
         args: vec![vela_bytecode::CallArgument::Register(Register(1))],
     }));
     push_code.push_instruction(Instruction::new(InstructionKind::CallMethod {
         dst: Register(4),
         receiver: Register(2),
         method: "missing_len".into(),
-        value_method_id: Some(vela_common::standard_ids::ARRAY_LEN_METHOD_ID),
+        value_method_id: Some(std_method_id("Array", "len")),
         args: Vec::new(),
     }));
     push_code.push_instruction(Instruction::new(InstructionKind::Return {
@@ -374,14 +381,14 @@ fn call_method_uses_standard_array_mutator_ids_before_name_fallback() {
         dst: Register(3),
         receiver: Register(2),
         method: "missing_pop".into(),
-        value_method_id: Some(vela_common::standard_ids::ARRAY_POP_METHOD_ID),
+        value_method_id: Some(std_method_id("Array", "pop")),
         args: Vec::new(),
     }));
     pop_code.push_instruction(Instruction::new(InstructionKind::CallMethod {
         dst: Register(4),
         receiver: Register(2),
         method: "missing_len".into(),
-        value_method_id: Some(vela_common::standard_ids::ARRAY_LEN_METHOD_ID),
+        value_method_id: Some(std_method_id("Array", "len")),
         args: Vec::new(),
     }));
     pop_code.push_instruction(Instruction::new(InstructionKind::Return {
@@ -408,14 +415,14 @@ fn call_method_uses_standard_array_mutator_ids_before_name_fallback() {
         dst: Register(3),
         receiver: Register(2),
         method: "missing_clear".into(),
-        value_method_id: Some(vela_common::standard_ids::ARRAY_CLEAR_METHOD_ID),
+        value_method_id: Some(std_method_id("Array", "clear")),
         args: Vec::new(),
     }));
     clear_code.push_instruction(Instruction::new(InstructionKind::CallMethod {
         dst: Register(4),
         receiver: Register(2),
         method: "missing_len".into(),
-        value_method_id: Some(vela_common::standard_ids::ARRAY_LEN_METHOD_ID),
+        value_method_id: Some(std_method_id("Array", "len")),
         args: Vec::new(),
     }));
     clear_code.push_instruction(Instruction::new(InstructionKind::Return {
@@ -440,7 +447,7 @@ fn call_method_uses_standard_map_method_id_before_name_fallback() {
         dst: Register(2),
         receiver: Register(1),
         method: "missing_is_empty".into(),
-        value_method_id: Some(vela_common::standard_ids::MAP_IS_EMPTY_METHOD_ID),
+        value_method_id: Some(std_method_id("Map", "is_empty")),
         args: Vec::new(),
     }));
     code.push_instruction(Instruction::new(InstructionKind::Return {
@@ -471,7 +478,7 @@ fn call_method_uses_standard_map_mutator_ids_before_name_fallback() {
         dst: Register(3),
         receiver: Register(2),
         method: "missing_set".into(),
-        value_method_id: Some(vela_common::standard_ids::MAP_SET_METHOD_ID),
+        value_method_id: Some(std_method_id("Map", "set")),
         args: vec![
             vela_bytecode::CallArgument::Register(Register(0)),
             vela_bytecode::CallArgument::Register(Register(1)),
@@ -481,7 +488,7 @@ fn call_method_uses_standard_map_mutator_ids_before_name_fallback() {
         dst: Register(4),
         receiver: Register(2),
         method: "missing_has".into(),
-        value_method_id: Some(vela_common::standard_ids::MAP_HAS_METHOD_ID),
+        value_method_id: Some(std_method_id("Map", "has")),
         args: vec![vela_bytecode::CallArgument::Register(Register(0))],
     }));
     set_code.push_instruction(Instruction::new(InstructionKind::Return {
@@ -508,14 +515,14 @@ fn call_method_uses_standard_map_mutator_ids_before_name_fallback() {
         dst: Register(3),
         receiver: Register(2),
         method: "missing_remove".into(),
-        value_method_id: Some(vela_common::standard_ids::MAP_REMOVE_METHOD_ID),
+        value_method_id: Some(std_method_id("Map", "remove")),
         args: vec![vela_bytecode::CallArgument::Register(Register(0))],
     }));
     remove_code.push_instruction(Instruction::new(InstructionKind::CallMethod {
         dst: Register(4),
         receiver: Register(2),
         method: "missing_has".into(),
-        value_method_id: Some(vela_common::standard_ids::MAP_HAS_METHOD_ID),
+        value_method_id: Some(std_method_id("Map", "has")),
         args: vec![vela_bytecode::CallArgument::Register(Register(0))],
     }));
     remove_code.push_instruction(Instruction::new(InstructionKind::Return {
@@ -542,14 +549,14 @@ fn call_method_uses_standard_map_mutator_ids_before_name_fallback() {
         dst: Register(3),
         receiver: Register(2),
         method: "missing_clear".into(),
-        value_method_id: Some(vela_common::standard_ids::MAP_CLEAR_METHOD_ID),
+        value_method_id: Some(std_method_id("Map", "clear")),
         args: Vec::new(),
     }));
     clear_code.push_instruction(Instruction::new(InstructionKind::CallMethod {
         dst: Register(4),
         receiver: Register(2),
         method: "missing_len".into(),
-        value_method_id: Some(vela_common::standard_ids::MAP_LEN_METHOD_ID),
+        value_method_id: Some(std_method_id("Map", "len")),
         args: Vec::new(),
     }));
     clear_code.push_instruction(Instruction::new(InstructionKind::Return {
@@ -588,7 +595,7 @@ fn call_method_uses_standard_set_method_id_before_name_fallback() {
         dst: Register(4),
         receiver: Register(3),
         method: "missing_len".into(),
-        value_method_id: Some(vela_common::standard_ids::SET_LEN_METHOD_ID),
+        value_method_id: Some(std_method_id("Set", "len")),
         args: Vec::new(),
     }));
     code.push_instruction(Instruction::new(InstructionKind::Return {
@@ -625,14 +632,14 @@ fn call_method_uses_standard_set_mutator_ids_before_name_fallback() {
         dst: Register(4),
         receiver: Register(3),
         method: "missing_add".into(),
-        value_method_id: Some(vela_common::standard_ids::SET_ADD_METHOD_ID),
+        value_method_id: Some(std_method_id("Set", "add")),
         args: vec![vela_bytecode::CallArgument::Register(Register(1))],
     }));
     add_code.push_instruction(Instruction::new(InstructionKind::CallMethod {
         dst: Register(5),
         receiver: Register(3),
         method: "missing_has".into(),
-        value_method_id: Some(vela_common::standard_ids::SET_HAS_METHOD_ID),
+        value_method_id: Some(std_method_id("Set", "has")),
         args: vec![vela_bytecode::CallArgument::Register(Register(1))],
     }));
     add_code.push_instruction(Instruction::new(InstructionKind::Return {
@@ -667,14 +674,14 @@ fn call_method_uses_standard_set_mutator_ids_before_name_fallback() {
         dst: Register(4),
         receiver: Register(3),
         method: "missing_remove".into(),
-        value_method_id: Some(vela_common::standard_ids::SET_REMOVE_METHOD_ID),
+        value_method_id: Some(std_method_id("Set", "remove")),
         args: vec![vela_bytecode::CallArgument::Register(Register(1))],
     }));
     remove_code.push_instruction(Instruction::new(InstructionKind::CallMethod {
         dst: Register(5),
         receiver: Register(3),
         method: "missing_has".into(),
-        value_method_id: Some(vela_common::standard_ids::SET_HAS_METHOD_ID),
+        value_method_id: Some(std_method_id("Set", "has")),
         args: vec![vela_bytecode::CallArgument::Register(Register(1))],
     }));
     remove_code.push_instruction(Instruction::new(InstructionKind::Return {
@@ -709,14 +716,14 @@ fn call_method_uses_standard_set_mutator_ids_before_name_fallback() {
         dst: Register(4),
         receiver: Register(3),
         method: "missing_clear".into(),
-        value_method_id: Some(vela_common::standard_ids::SET_CLEAR_METHOD_ID),
+        value_method_id: Some(std_method_id("Set", "clear")),
         args: Vec::new(),
     }));
     clear_code.push_instruction(Instruction::new(InstructionKind::CallMethod {
         dst: Register(5),
         receiver: Register(3),
         method: "missing_len".into(),
-        value_method_id: Some(vela_common::standard_ids::SET_LEN_METHOD_ID),
+        value_method_id: Some(std_method_id("Set", "len")),
         args: Vec::new(),
     }));
     clear_code.push_instruction(Instruction::new(InstructionKind::Return {
@@ -748,7 +755,7 @@ fn call_method_uses_standard_collection_predicate_ids_before_name_fallback() {
         dst: Register(3),
         receiver: Register(2),
         method: "missing_contains".into(),
-        value_method_id: Some(vela_common::standard_ids::ARRAY_CONTAINS_METHOD_ID),
+        value_method_id: Some(std_method_id("Array", "contains")),
         args: vec![vela_bytecode::CallArgument::Register(Register(1))],
     }));
     array_code.push_instruction(Instruction::new(InstructionKind::Return {
@@ -775,7 +782,7 @@ fn call_method_uses_standard_collection_predicate_ids_before_name_fallback() {
         dst: Register(3),
         receiver: Register(2),
         method: "missing_has".into(),
-        value_method_id: Some(vela_common::standard_ids::MAP_HAS_METHOD_ID),
+        value_method_id: Some(std_method_id("Map", "has")),
         args: vec![vela_bytecode::CallArgument::Register(Register(1))],
     }));
     map_code.push_instruction(Instruction::new(InstructionKind::Return {
@@ -808,7 +815,7 @@ fn call_method_uses_standard_collection_predicate_ids_before_name_fallback() {
         dst: Register(4),
         receiver: Register(3),
         method: "missing_has".into(),
-        value_method_id: Some(vela_common::standard_ids::SET_HAS_METHOD_ID),
+        value_method_id: Some(std_method_id("Set", "has")),
         args: vec![vela_bytecode::CallArgument::Register(Register(1))],
     }));
     set_code.push_instruction(Instruction::new(InstructionKind::Return {
@@ -819,27 +826,15 @@ fn call_method_uses_standard_collection_predicate_ids_before_name_fallback() {
     assert_eq!(vm.run(&set_code), Ok(OwnedValue::Bool(true)));
 
     assert_eq!(
-        run_set_relation_by_id(
-            vela_common::standard_ids::SET_IS_SUBSET_METHOD_ID,
-            &[2],
-            &[2, 4],
-        ),
+        run_set_relation_by_id(std_method_id("Set", "is_subset"), &[2], &[2, 4],),
         Ok(OwnedValue::Bool(true))
     );
     assert_eq!(
-        run_set_relation_by_id(
-            vela_common::standard_ids::SET_IS_SUPERSET_METHOD_ID,
-            &[2, 4],
-            &[2],
-        ),
+        run_set_relation_by_id(std_method_id("Set", "is_superset"), &[2, 4], &[2],),
         Ok(OwnedValue::Bool(true))
     );
     assert_eq!(
-        run_set_relation_by_id(
-            vela_common::standard_ids::SET_IS_DISJOINT_METHOD_ID,
-            &[2],
-            &[4],
-        ),
+        run_set_relation_by_id(std_method_id("Set", "is_disjoint"), &[2], &[4],),
         Ok(OwnedValue::Bool(true))
     );
 }
@@ -923,7 +918,7 @@ fn call_method_uses_standard_option_method_id_before_name_fallback() {
         dst: Register(1),
         receiver: Register(0),
         method: "missing_is_none".into(),
-        value_method_id: Some(vela_common::standard_ids::OPTION_IS_NONE_METHOD_ID),
+        value_method_id: Some(std_method_id("Option", "is_none")),
         args: Vec::new(),
     }));
     code.push_instruction(Instruction::new(InstructionKind::Return {
@@ -946,7 +941,7 @@ fn call_method_uses_standard_result_method_id_before_name_fallback() {
         dst: Register(1),
         receiver: Register(0),
         method: "missing_is_err".into(),
-        value_method_id: Some(vela_common::standard_ids::RESULT_IS_ERR_METHOD_ID),
+        value_method_id: Some(std_method_id("Result", "is_err")),
         args: Vec::new(),
     }));
     code.push_instruction(Instruction::new(InstructionKind::Return {

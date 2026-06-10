@@ -1,7 +1,6 @@
 //! Shared foundations for Vela crates.
 
 pub mod diagnostic_render;
-pub mod standard_ids;
 
 use std::collections::HashMap;
 use std::fmt;
@@ -28,7 +27,7 @@ macro_rules! stable_id {
 }
 
 stable_id!(GlobalSlot, usize);
-stable_id!(HostMethodId, u64);
+stable_id!(HostMethodId, u128);
 stable_id!(HostObjectId, u64);
 stable_id!(HostTypeId, u64);
 stable_id!(ShapeId, u32);

@@ -1,49 +1,27 @@
-use vela_common::{HostMethodId, stable_id};
 use vela_reflect::registry::MethodDesc;
 
 use super::{MethodSpec, ParamSpec, descs};
-use crate::standard::ids::{
-    ARRAY_CLEAR_METHOD_ID, ARRAY_CONTAINS_METHOD_ID, ARRAY_DISTINCT_METHOD_ID,
-    ARRAY_FIRST_METHOD_ID, ARRAY_INDEX_OF_METHOD_ID, ARRAY_IS_EMPTY_METHOD_ID,
-    ARRAY_JOIN_METHOD_ID, ARRAY_LAST_METHOD_ID, ARRAY_LEN_METHOD_ID, ARRAY_POP_METHOD_ID,
-    ARRAY_PUSH_METHOD_ID, ARRAY_REVERSE_METHOD_ID, ARRAY_SLICE_METHOD_ID,
-};
 
 pub(crate) fn array_method_descs() -> Vec<MethodDesc> {
-    descs(ARRAY_METHODS, "array")
+    descs("Array", ARRAY_METHODS, "array")
 }
 
 const ARRAY_METHODS: &[MethodSpec] = &[
+    MethodSpec::new("len", &[], "int", "Returns the array length."),
     MethodSpec::new(
-        ARRAY_LEN_METHOD_ID,
-        "len",
-        &[],
-        "int",
-        "Returns the array length.",
-    ),
-    MethodSpec::new(
-        ARRAY_IS_EMPTY_METHOD_ID,
         "is_empty",
         &[],
         "bool",
         "Returns true when the array has no elements.",
     ),
     MethodSpec::new(
-        ARRAY_PUSH_METHOD_ID,
         "push",
         &[ParamSpec::new("value", "any")],
         "null",
         "Appends a value to the array.",
     ),
+    MethodSpec::new("pop", &[], "Option", "Removes and returns the last value."),
     MethodSpec::new(
-        ARRAY_POP_METHOD_ID,
-        "pop",
-        &[],
-        "Option",
-        "Removes and returns the last value.",
-    ),
-    MethodSpec::new(
-        array_id(4),
         "insert",
         &[
             ParamSpec::new("index", "int"),
@@ -53,162 +31,101 @@ const ARRAY_METHODS: &[MethodSpec] = &[
         "Inserts a value at an index.",
     ),
     MethodSpec::new(
-        array_id(5),
         "extend",
         &[ParamSpec::new("values", "array")],
         "null",
         "Appends all values from another array.",
     ),
+    MethodSpec::new("clear", &[], "null", "Removes all values."),
+    MethodSpec::new("first", &[], "Option", "Returns the first value."),
+    MethodSpec::new("last", &[], "Option", "Returns the last value."),
     MethodSpec::new(
-        ARRAY_CLEAR_METHOD_ID,
-        "clear",
-        &[],
-        "null",
-        "Removes all values.",
-    ),
-    MethodSpec::new(
-        ARRAY_FIRST_METHOD_ID,
-        "first",
-        &[],
-        "Option",
-        "Returns the first value.",
-    ),
-    MethodSpec::new(
-        ARRAY_LAST_METHOD_ID,
-        "last",
-        &[],
-        "Option",
-        "Returns the last value.",
-    ),
-    MethodSpec::new(
-        array_id(9),
         "remove_at",
         &[ParamSpec::new("index", "int")],
         "Option",
         "Removes and returns the value at an index.",
     ),
     MethodSpec::new(
-        ARRAY_JOIN_METHOD_ID,
         "join",
         &[ParamSpec::new("separator", "string")],
         "string",
         "Joins values into a string with a separator.",
     ),
     MethodSpec::new(
-        ARRAY_CONTAINS_METHOD_ID,
         "contains",
         &[ParamSpec::new("value", "any")],
         "bool",
         "Returns true when the array contains a value.",
     ),
     MethodSpec::new(
-        ARRAY_INDEX_OF_METHOD_ID,
         "index_of",
         &[ParamSpec::new("value", "any")],
         "Option",
         "Returns the first index of a value, or Option::None.",
     ),
+    MethodSpec::new("distinct", &[], "array", "Returns unique values."),
+    MethodSpec::new("reverse", &[], "array", "Returns values in reverse order."),
     MethodSpec::new(
-        ARRAY_DISTINCT_METHOD_ID,
-        "distinct",
-        &[],
-        "array",
-        "Returns unique values.",
-    ),
-    MethodSpec::new(
-        ARRAY_REVERSE_METHOD_ID,
-        "reverse",
-        &[],
-        "array",
-        "Returns values in reverse order.",
-    ),
-    MethodSpec::new(
-        ARRAY_SLICE_METHOD_ID,
         "slice",
         &[ParamSpec::new("start", "int"), ParamSpec::new("end", "int")],
         "array",
         "Returns values in the index range.",
     ),
     MethodSpec::new(
-        array_id(16),
         "map",
         &[ParamSpec::new("callback", "function")],
         "array",
         "Maps each value with a callback.",
     ),
     MethodSpec::new(
-        array_id(17),
         "filter",
         &[ParamSpec::new("callback", "function")],
         "array",
         "Keeps values accepted by a callback.",
     ),
     MethodSpec::new(
-        array_id(18),
         "find",
         &[ParamSpec::new("callback", "function")],
         "Option",
         "Returns the first callback match, or Option::None.",
     ),
     MethodSpec::new(
-        array_id(19),
         "any",
         &[ParamSpec::new("callback", "function")],
         "bool",
         "Returns true when any value matches a callback.",
     ),
     MethodSpec::new(
-        array_id(20),
         "all",
         &[ParamSpec::new("callback", "function")],
         "bool",
         "Returns true when all values match a callback.",
     ),
     MethodSpec::new(
-        array_id(21),
         "count",
         &[ParamSpec::new("callback", "function")],
         "int",
         "Counts values accepted by a callback.",
     ),
     MethodSpec::new(
-        array_id(22),
         "sum",
         &[ParamSpec::optional("callback", "function")],
         "any",
         "Sums values or callback results.",
     ),
     MethodSpec::new(
-        array_id(23),
         "group_by",
         &[ParamSpec::new("callback", "function")],
         "map",
         "Groups values by string callback keys.",
     ),
-    MethodSpec::new(array_id(24), "sort", &[], "array", "Returns sorted values."),
+    MethodSpec::new("sort", &[], "array", "Returns sorted values."),
+    MethodSpec::new("min", &[], "Option", "Returns the minimum value."),
+    MethodSpec::new("max", &[], "Option", "Returns the maximum value."),
     MethodSpec::new(
-        array_id(25),
-        "min",
-        &[],
-        "Option",
-        "Returns the minimum value.",
-    ),
-    MethodSpec::new(
-        array_id(26),
-        "max",
-        &[],
-        "Option",
-        "Returns the maximum value.",
-    ),
-    MethodSpec::new(
-        array_id(27),
         "sort_by",
         &[ParamSpec::new("callback", "function")],
         "array",
         "Returns values sorted by callback keys.",
     ),
 ];
-
-const fn array_id(offset: u64) -> HostMethodId {
-    HostMethodId::new(stable_id("std_method_family", "Array", "").wrapping_add(offset))
-}

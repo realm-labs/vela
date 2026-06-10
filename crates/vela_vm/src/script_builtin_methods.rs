@@ -1,29 +1,150 @@
+use std::sync::OnceLock;
+
 use crate::heap::HeapValue;
 use crate::{
     ExecutionBudget, HeapExecution, Value, VmError, VmErrorKind, VmResult, array_methods,
     map_methods, option_result_methods, set_methods,
 };
 use vela_common::HostMethodId;
-use vela_common::standard_ids::{
-    ARRAY_CLEAR_METHOD_ID, ARRAY_CONTAINS_METHOD_ID, ARRAY_DISTINCT_METHOD_ID,
-    ARRAY_FIRST_METHOD_ID, ARRAY_INDEX_OF_METHOD_ID, ARRAY_IS_EMPTY_METHOD_ID,
-    ARRAY_JOIN_METHOD_ID, ARRAY_LAST_METHOD_ID, ARRAY_LEN_METHOD_ID, ARRAY_POP_METHOD_ID,
-    ARRAY_PUSH_METHOD_ID, ARRAY_REVERSE_METHOD_ID, ARRAY_SLICE_METHOD_ID, MAP_CLEAR_METHOD_ID,
-    MAP_HAS_METHOD_ID, MAP_IS_EMPTY_METHOD_ID, MAP_LEN_METHOD_ID, MAP_REMOVE_METHOD_ID,
-    MAP_SET_METHOD_ID, OPTION_IS_NONE_METHOD_ID, OPTION_IS_SOME_METHOD_ID,
-    RANGE_IS_EMPTY_METHOD_ID, RANGE_LEN_METHOD_ID, RESULT_IS_ERR_METHOD_ID, RESULT_IS_OK_METHOD_ID,
-    SET_ADD_METHOD_ID, SET_CLEAR_METHOD_ID, SET_HAS_METHOD_ID, SET_IS_DISJOINT_METHOD_ID,
-    SET_IS_EMPTY_METHOD_ID, SET_IS_SUBSET_METHOD_ID, SET_IS_SUPERSET_METHOD_ID, SET_LEN_METHOD_ID,
-    SET_REMOVE_METHOD_ID, STRING_CHAR_AT_METHOD_ID, STRING_CONTAINS_METHOD_ID,
-    STRING_ENDS_WITH_METHOD_ID, STRING_FIND_METHOD_ID, STRING_IS_EMPTY_METHOD_ID,
-    STRING_LEN_METHOD_ID, STRING_PARSE_BOOL_METHOD_ID, STRING_PARSE_FLOAT_METHOD_ID,
-    STRING_PARSE_INT_METHOD_ID, STRING_REPEAT_METHOD_ID, STRING_REPLACE_METHOD_ID,
-    STRING_SLICE_METHOD_ID, STRING_SPLIT_LINES_METHOD_ID, STRING_SPLIT_METHOD_ID,
-    STRING_SPLIT_ONCE_METHOD_ID, STRING_SPLIT_WHITESPACE_METHOD_ID, STRING_STARTS_WITH_METHOD_ID,
-    STRING_STRIP_PREFIX_METHOD_ID, STRING_STRIP_SUFFIX_METHOD_ID, STRING_TO_LOWER_METHOD_ID,
-    STRING_TO_UPPER_METHOD_ID, STRING_TRIM_END_METHOD_ID, STRING_TRIM_METHOD_ID,
-    STRING_TRIM_START_METHOD_ID,
-};
+
+#[derive(Clone, Copy)]
+struct StdMethodIds {
+    string_len: HostMethodId,
+    string_is_empty: HostMethodId,
+    string_contains: HostMethodId,
+    string_find: HostMethodId,
+    string_starts_with: HostMethodId,
+    string_ends_with: HostMethodId,
+    string_strip_prefix: HostMethodId,
+    string_strip_suffix: HostMethodId,
+    string_to_upper: HostMethodId,
+    string_to_lower: HostMethodId,
+    string_trim: HostMethodId,
+    string_trim_start: HostMethodId,
+    string_trim_end: HostMethodId,
+    string_replace: HostMethodId,
+    string_repeat: HostMethodId,
+    string_slice: HostMethodId,
+    string_split: HostMethodId,
+    string_split_once: HostMethodId,
+    string_split_lines: HostMethodId,
+    string_split_whitespace: HostMethodId,
+    string_char_at: HostMethodId,
+    string_parse_int: HostMethodId,
+    string_parse_float: HostMethodId,
+    string_parse_bool: HostMethodId,
+    array_len: HostMethodId,
+    array_is_empty: HostMethodId,
+    array_push: HostMethodId,
+    array_pop: HostMethodId,
+    array_clear: HostMethodId,
+    array_first: HostMethodId,
+    array_last: HostMethodId,
+    array_join: HostMethodId,
+    array_contains: HostMethodId,
+    array_index_of: HostMethodId,
+    array_distinct: HostMethodId,
+    array_reverse: HostMethodId,
+    array_slice: HostMethodId,
+    map_len: HostMethodId,
+    map_is_empty: HostMethodId,
+    map_has: HostMethodId,
+    map_set: HostMethodId,
+    map_remove: HostMethodId,
+    map_clear: HostMethodId,
+    set_len: HostMethodId,
+    set_is_empty: HostMethodId,
+    set_has: HostMethodId,
+    set_add: HostMethodId,
+    set_remove: HostMethodId,
+    set_clear: HostMethodId,
+    set_is_subset: HostMethodId,
+    set_is_superset: HostMethodId,
+    set_is_disjoint: HostMethodId,
+    option_is_some: HostMethodId,
+    option_is_none: HostMethodId,
+    result_is_ok: HostMethodId,
+    result_is_err: HostMethodId,
+    range_len: HostMethodId,
+    range_is_empty: HostMethodId,
+}
+
+impl StdMethodIds {
+    fn new() -> Self {
+        Self {
+            string_len: standard_method_id("String", "len"),
+            string_is_empty: standard_method_id("String", "is_empty"),
+            string_contains: standard_method_id("String", "contains"),
+            string_find: standard_method_id("String", "find"),
+            string_starts_with: standard_method_id("String", "starts_with"),
+            string_ends_with: standard_method_id("String", "ends_with"),
+            string_strip_prefix: standard_method_id("String", "strip_prefix"),
+            string_strip_suffix: standard_method_id("String", "strip_suffix"),
+            string_to_upper: standard_method_id("String", "to_upper"),
+            string_to_lower: standard_method_id("String", "to_lower"),
+            string_trim: standard_method_id("String", "trim"),
+            string_trim_start: standard_method_id("String", "trim_start"),
+            string_trim_end: standard_method_id("String", "trim_end"),
+            string_replace: standard_method_id("String", "replace"),
+            string_repeat: standard_method_id("String", "repeat"),
+            string_slice: standard_method_id("String", "slice"),
+            string_split: standard_method_id("String", "split"),
+            string_split_once: standard_method_id("String", "split_once"),
+            string_split_lines: standard_method_id("String", "split_lines"),
+            string_split_whitespace: standard_method_id("String", "split_whitespace"),
+            string_char_at: standard_method_id("String", "char_at"),
+            string_parse_int: standard_method_id("String", "parse_int"),
+            string_parse_float: standard_method_id("String", "parse_float"),
+            string_parse_bool: standard_method_id("String", "parse_bool"),
+            array_len: standard_method_id("Array", "len"),
+            array_is_empty: standard_method_id("Array", "is_empty"),
+            array_push: standard_method_id("Array", "push"),
+            array_pop: standard_method_id("Array", "pop"),
+            array_clear: standard_method_id("Array", "clear"),
+            array_first: standard_method_id("Array", "first"),
+            array_last: standard_method_id("Array", "last"),
+            array_join: standard_method_id("Array", "join"),
+            array_contains: standard_method_id("Array", "contains"),
+            array_index_of: standard_method_id("Array", "index_of"),
+            array_distinct: standard_method_id("Array", "distinct"),
+            array_reverse: standard_method_id("Array", "reverse"),
+            array_slice: standard_method_id("Array", "slice"),
+            map_len: standard_method_id("Map", "len"),
+            map_is_empty: standard_method_id("Map", "is_empty"),
+            map_has: standard_method_id("Map", "has"),
+            map_set: standard_method_id("Map", "set"),
+            map_remove: standard_method_id("Map", "remove"),
+            map_clear: standard_method_id("Map", "clear"),
+            set_len: standard_method_id("Set", "len"),
+            set_is_empty: standard_method_id("Set", "is_empty"),
+            set_has: standard_method_id("Set", "has"),
+            set_add: standard_method_id("Set", "add"),
+            set_remove: standard_method_id("Set", "remove"),
+            set_clear: standard_method_id("Set", "clear"),
+            set_is_subset: standard_method_id("Set", "is_subset"),
+            set_is_superset: standard_method_id("Set", "is_superset"),
+            set_is_disjoint: standard_method_id("Set", "is_disjoint"),
+            option_is_some: standard_method_id("Option", "is_some"),
+            option_is_none: standard_method_id("Option", "is_none"),
+            result_is_ok: standard_method_id("Result", "is_ok"),
+            result_is_err: standard_method_id("Result", "is_err"),
+            range_len: standard_method_id("Range", "len"),
+            range_is_empty: standard_method_id("Range", "is_empty"),
+        }
+    }
+}
+
+fn std_method_ids() -> &'static StdMethodIds {
+    static IDS: OnceLock<StdMethodIds> = OnceLock::new();
+    IDS.get_or_init(StdMethodIds::new)
+}
+
+fn standard_method_id(owner: &str, name: &str) -> HostMethodId {
+    let Some(id) = vela_stdlib::std_method_id(owner, name) else {
+        panic!("missing standard method identity for {owner}::{name}");
+    };
+    HostMethodId::new(id.get())
+}
 
 pub(crate) fn call(
     receiver: &mut Value,
@@ -96,10 +217,11 @@ pub(crate) fn call_by_id(
     heap: &mut Option<&mut HeapExecution<'_>>,
     budget: &mut Option<&mut ExecutionBudget>,
 ) -> Option<VmResult<Value>> {
+    let ids = std_method_ids();
     if let Some(result) = call_readonly_by_id(receiver, method_id, args, heap.as_deref()) {
         return Some(result);
     }
-    if method_id == ARRAY_PUSH_METHOD_ID && array_methods::is_array(receiver, heap.as_deref()) {
+    if method_id == ids.array_push && array_methods::is_array(receiver, heap.as_deref()) {
         return Some(array_methods::push(
             receiver,
             args,
@@ -107,7 +229,7 @@ pub(crate) fn call_by_id(
             budget.as_deref_mut(),
         ));
     }
-    if method_id == ARRAY_POP_METHOD_ID && array_methods::is_array(receiver, heap.as_deref()) {
+    if method_id == ids.array_pop && array_methods::is_array(receiver, heap.as_deref()) {
         return Some(array_methods::pop(
             receiver,
             args,
@@ -115,31 +237,31 @@ pub(crate) fn call_by_id(
             budget.as_deref_mut(),
         ));
     }
-    if method_id == ARRAY_CLEAR_METHOD_ID && array_methods::is_array(receiver, heap.as_deref()) {
+    if method_id == ids.array_clear && array_methods::is_array(receiver, heap.as_deref()) {
         return Some(array_methods::clear(receiver, args, heap.as_deref_mut()));
     }
-    if method_id == ARRAY_FIRST_METHOD_ID && array_methods::is_array(receiver, heap.as_deref()) {
+    if method_id == ids.array_first && array_methods::is_array(receiver, heap.as_deref()) {
         return Some(array_methods::first(receiver, args, heap, budget));
     }
-    if method_id == ARRAY_LAST_METHOD_ID && array_methods::is_array(receiver, heap.as_deref()) {
+    if method_id == ids.array_last && array_methods::is_array(receiver, heap.as_deref()) {
         return Some(array_methods::last(receiver, args, heap, budget));
     }
-    if method_id == ARRAY_INDEX_OF_METHOD_ID && array_methods::is_array(receiver, heap.as_deref()) {
+    if method_id == ids.array_index_of && array_methods::is_array(receiver, heap.as_deref()) {
         return Some(array_methods::index_of(receiver, args, heap, budget));
     }
-    if method_id == ARRAY_JOIN_METHOD_ID && array_methods::is_array(receiver, heap.as_deref()) {
+    if method_id == ids.array_join && array_methods::is_array(receiver, heap.as_deref()) {
         return Some(array_methods::join(receiver, args, heap, budget));
     }
-    if method_id == ARRAY_DISTINCT_METHOD_ID && array_methods::is_array(receiver, heap.as_deref()) {
+    if method_id == ids.array_distinct && array_methods::is_array(receiver, heap.as_deref()) {
         return Some(array_methods::distinct(receiver, args, heap, budget));
     }
-    if method_id == ARRAY_REVERSE_METHOD_ID && array_methods::is_array(receiver, heap.as_deref()) {
+    if method_id == ids.array_reverse && array_methods::is_array(receiver, heap.as_deref()) {
         return Some(array_methods::reverse(receiver, args, heap, budget));
     }
-    if method_id == ARRAY_SLICE_METHOD_ID && array_methods::is_array(receiver, heap.as_deref()) {
+    if method_id == ids.array_slice && array_methods::is_array(receiver, heap.as_deref()) {
         return Some(array_methods::slice(receiver, args, heap, budget));
     }
-    if method_id == MAP_SET_METHOD_ID && map_methods::is_map(receiver, heap.as_deref()) {
+    if method_id == ids.map_set && map_methods::is_map(receiver, heap.as_deref()) {
         return Some(map_methods::set(
             receiver,
             args,
@@ -147,7 +269,7 @@ pub(crate) fn call_by_id(
             budget.as_deref_mut(),
         ));
     }
-    if method_id == MAP_REMOVE_METHOD_ID && map_methods::is_map(receiver, heap.as_deref()) {
+    if method_id == ids.map_remove && map_methods::is_map(receiver, heap.as_deref()) {
         return Some(map_methods::remove(
             receiver,
             args,
@@ -155,10 +277,10 @@ pub(crate) fn call_by_id(
             budget.as_deref_mut(),
         ));
     }
-    if method_id == MAP_CLEAR_METHOD_ID && map_methods::is_map(receiver, heap.as_deref()) {
+    if method_id == ids.map_clear && map_methods::is_map(receiver, heap.as_deref()) {
         return Some(map_methods::clear(receiver, args, heap.as_deref_mut()));
     }
-    if method_id == SET_ADD_METHOD_ID && set_methods::is_set(receiver, heap.as_deref()) {
+    if method_id == ids.set_add && set_methods::is_set(receiver, heap.as_deref()) {
         return Some(set_methods::add(
             receiver,
             args,
@@ -166,125 +288,118 @@ pub(crate) fn call_by_id(
             budget.as_deref_mut(),
         ));
     }
-    if method_id == SET_REMOVE_METHOD_ID && set_methods::is_set(receiver, heap.as_deref()) {
+    if method_id == ids.set_remove && set_methods::is_set(receiver, heap.as_deref()) {
         return Some(set_methods::remove(receiver, args, heap.as_deref_mut()));
     }
-    if method_id == SET_CLEAR_METHOD_ID && set_methods::is_set(receiver, heap.as_deref()) {
+    if method_id == ids.set_clear && set_methods::is_set(receiver, heap.as_deref()) {
         return Some(set_methods::clear(receiver, args, heap.as_deref_mut()));
     }
-    if method_id == STRING_TO_UPPER_METHOD_ID
+    if method_id == ids.string_to_upper
         && crate::string_methods::is_string(receiver, heap.as_deref())
     {
         return Some(crate::string_methods::to_upper(
             receiver, args, heap, budget,
         ));
     }
-    if method_id == STRING_TO_LOWER_METHOD_ID
+    if method_id == ids.string_to_lower
         && crate::string_methods::is_string(receiver, heap.as_deref())
     {
         return Some(crate::string_methods::to_lower(
             receiver, args, heap, budget,
         ));
     }
-    if method_id == STRING_TRIM_METHOD_ID
-        && crate::string_methods::is_string(receiver, heap.as_deref())
-    {
+    if method_id == ids.string_trim && crate::string_methods::is_string(receiver, heap.as_deref()) {
         return Some(crate::string_methods::trim(receiver, args, heap, budget));
     }
-    if method_id == STRING_TRIM_START_METHOD_ID
+    if method_id == ids.string_trim_start
         && crate::string_methods::is_string(receiver, heap.as_deref())
     {
         return Some(crate::string_methods::trim_start(
             receiver, args, heap, budget,
         ));
     }
-    if method_id == STRING_TRIM_END_METHOD_ID
+    if method_id == ids.string_trim_end
         && crate::string_methods::is_string(receiver, heap.as_deref())
     {
         return Some(crate::string_methods::trim_end(
             receiver, args, heap, budget,
         ));
     }
-    if method_id == STRING_REPLACE_METHOD_ID
+    if method_id == ids.string_replace
         && crate::string_methods::is_string(receiver, heap.as_deref())
     {
         return Some(crate::string_methods::replace(receiver, args, heap, budget));
     }
-    if method_id == STRING_REPEAT_METHOD_ID
-        && crate::string_methods::is_string(receiver, heap.as_deref())
+    if method_id == ids.string_repeat && crate::string_methods::is_string(receiver, heap.as_deref())
     {
         return Some(crate::string_methods::repeat(receiver, args, heap, budget));
     }
-    if method_id == STRING_SLICE_METHOD_ID
-        && crate::string_methods::is_string(receiver, heap.as_deref())
+    if method_id == ids.string_slice && crate::string_methods::is_string(receiver, heap.as_deref())
     {
         return Some(crate::string_methods::slice(receiver, args, heap, budget));
     }
-    if method_id == STRING_FIND_METHOD_ID
-        && crate::string_methods::is_string(receiver, heap.as_deref())
-    {
+    if method_id == ids.string_find && crate::string_methods::is_string(receiver, heap.as_deref()) {
         return Some(crate::string_methods::find(receiver, args, heap, budget));
     }
-    if method_id == STRING_STRIP_PREFIX_METHOD_ID
+    if method_id == ids.string_strip_prefix
         && crate::string_methods::is_string(receiver, heap.as_deref())
     {
         return Some(crate::string_methods::strip_prefix(
             receiver, args, heap, budget,
         ));
     }
-    if method_id == STRING_STRIP_SUFFIX_METHOD_ID
+    if method_id == ids.string_strip_suffix
         && crate::string_methods::is_string(receiver, heap.as_deref())
     {
         return Some(crate::string_methods::strip_suffix(
             receiver, args, heap, budget,
         ));
     }
-    if method_id == STRING_CHAR_AT_METHOD_ID
+    if method_id == ids.string_char_at
         && crate::string_methods::is_string(receiver, heap.as_deref())
     {
         return Some(crate::string_methods::char_at(receiver, args, heap, budget));
     }
-    if method_id == STRING_SPLIT_METHOD_ID
-        && crate::string_methods::is_string(receiver, heap.as_deref())
+    if method_id == ids.string_split && crate::string_methods::is_string(receiver, heap.as_deref())
     {
         return Some(crate::string_methods::split(receiver, args, heap, budget));
     }
-    if method_id == STRING_SPLIT_ONCE_METHOD_ID
+    if method_id == ids.string_split_once
         && crate::string_methods::is_string(receiver, heap.as_deref())
     {
         return Some(crate::string_methods::split_once(
             receiver, args, heap, budget,
         ));
     }
-    if method_id == STRING_SPLIT_LINES_METHOD_ID
+    if method_id == ids.string_split_lines
         && crate::string_methods::is_string(receiver, heap.as_deref())
     {
         return Some(crate::string_methods::split_lines(
             receiver, args, heap, budget,
         ));
     }
-    if method_id == STRING_SPLIT_WHITESPACE_METHOD_ID
+    if method_id == ids.string_split_whitespace
         && crate::string_methods::is_string(receiver, heap.as_deref())
     {
         return Some(crate::string_methods::split_whitespace(
             receiver, args, heap, budget,
         ));
     }
-    if method_id == STRING_PARSE_INT_METHOD_ID
+    if method_id == ids.string_parse_int
         && crate::string_methods::is_string(receiver, heap.as_deref())
     {
         return Some(crate::string_methods::parse_int(
             receiver, args, heap, budget,
         ));
     }
-    if method_id == STRING_PARSE_FLOAT_METHOD_ID
+    if method_id == ids.string_parse_float
         && crate::string_methods::is_string(receiver, heap.as_deref())
     {
         return Some(crate::string_methods::parse_float(
             receiver, args, heap, budget,
         ));
     }
-    if method_id == STRING_PARSE_BOOL_METHOD_ID
+    if method_id == ids.string_parse_bool
         && crate::string_methods::is_string(receiver, heap.as_deref())
     {
         return Some(crate::string_methods::parse_bool(
@@ -327,99 +442,99 @@ pub(crate) fn call_readonly_by_id(
     args: &[Value],
     heap: Option<&HeapExecution<'_>>,
 ) -> Option<VmResult<Value>> {
-    if method_id == STRING_LEN_METHOD_ID && crate::string_methods::is_string(receiver, heap) {
+    let ids = std_method_ids();
+    if method_id == ids.string_len && crate::string_methods::is_string(receiver, heap) {
         return Some(
             expect_no_args("len", args).and_then(|()| len(receiver, heap).map(Value::Int)),
         );
     }
-    if method_id == STRING_IS_EMPTY_METHOD_ID && crate::string_methods::is_string(receiver, heap) {
+    if method_id == ids.string_is_empty && crate::string_methods::is_string(receiver, heap) {
         return Some(
             expect_no_args("is_empty", args)
                 .and_then(|()| is_empty(receiver, heap).map(Value::Bool)),
         );
     }
-    if method_id == STRING_CONTAINS_METHOD_ID && crate::string_methods::is_string(receiver, heap) {
+    if method_id == ids.string_contains && crate::string_methods::is_string(receiver, heap) {
         return Some(crate::string_methods::contains(receiver, args, heap).map(Value::Bool));
     }
-    if method_id == STRING_STARTS_WITH_METHOD_ID && crate::string_methods::is_string(receiver, heap)
-    {
+    if method_id == ids.string_starts_with && crate::string_methods::is_string(receiver, heap) {
         return Some(crate::string_methods::starts_with(receiver, args, heap).map(Value::Bool));
     }
-    if method_id == STRING_ENDS_WITH_METHOD_ID && crate::string_methods::is_string(receiver, heap) {
+    if method_id == ids.string_ends_with && crate::string_methods::is_string(receiver, heap) {
         return Some(crate::string_methods::ends_with(receiver, args, heap).map(Value::Bool));
     }
-    if method_id == RANGE_LEN_METHOD_ID && matches!(receiver, Value::Range(_)) {
+    if method_id == ids.range_len && matches!(receiver, Value::Range(_)) {
         return Some(
             expect_no_args("len", args).and_then(|()| len(receiver, heap).map(Value::Int)),
         );
     }
-    if method_id == RANGE_IS_EMPTY_METHOD_ID && matches!(receiver, Value::Range(_)) {
+    if method_id == ids.range_is_empty && matches!(receiver, Value::Range(_)) {
         return Some(
             expect_no_args("is_empty", args)
                 .and_then(|()| is_empty(receiver, heap).map(Value::Bool)),
         );
     }
-    if method_id == ARRAY_LEN_METHOD_ID && array_methods::is_array(receiver, heap) {
+    if method_id == ids.array_len && array_methods::is_array(receiver, heap) {
         return Some(
             expect_no_args("len", args).and_then(|()| len(receiver, heap).map(Value::Int)),
         );
     }
-    if method_id == ARRAY_IS_EMPTY_METHOD_ID && array_methods::is_array(receiver, heap) {
+    if method_id == ids.array_is_empty && array_methods::is_array(receiver, heap) {
         return Some(
             expect_no_args("is_empty", args)
                 .and_then(|()| is_empty(receiver, heap).map(Value::Bool)),
         );
     }
-    if method_id == ARRAY_CONTAINS_METHOD_ID && array_methods::is_array(receiver, heap) {
+    if method_id == ids.array_contains && array_methods::is_array(receiver, heap) {
         return Some(array_methods::contains(receiver, args, heap).map(Value::Bool));
     }
-    if method_id == MAP_LEN_METHOD_ID && map_methods::is_map(receiver, heap) {
+    if method_id == ids.map_len && map_methods::is_map(receiver, heap) {
         return Some(
             expect_no_args("len", args).and_then(|()| len(receiver, heap).map(Value::Int)),
         );
     }
-    if method_id == MAP_IS_EMPTY_METHOD_ID && map_methods::is_map(receiver, heap) {
+    if method_id == ids.map_is_empty && map_methods::is_map(receiver, heap) {
         return Some(
             expect_no_args("is_empty", args)
                 .and_then(|()| is_empty(receiver, heap).map(Value::Bool)),
         );
     }
-    if method_id == MAP_HAS_METHOD_ID && map_methods::is_map(receiver, heap) {
+    if method_id == ids.map_has && map_methods::is_map(receiver, heap) {
         return Some(map_methods::has(receiver, args, heap).map(Value::Bool));
     }
-    if method_id == SET_LEN_METHOD_ID && set_methods::is_set(receiver, heap) {
+    if method_id == ids.set_len && set_methods::is_set(receiver, heap) {
         return Some(
             expect_no_args("len", args).and_then(|()| len(receiver, heap).map(Value::Int)),
         );
     }
-    if method_id == SET_IS_EMPTY_METHOD_ID && set_methods::is_set(receiver, heap) {
+    if method_id == ids.set_is_empty && set_methods::is_set(receiver, heap) {
         return Some(
             expect_no_args("is_empty", args)
                 .and_then(|()| is_empty(receiver, heap).map(Value::Bool)),
         );
     }
-    if method_id == SET_HAS_METHOD_ID && set_methods::is_set(receiver, heap) {
+    if method_id == ids.set_has && set_methods::is_set(receiver, heap) {
         return Some(set_methods::has(receiver, args, heap).map(Value::Bool));
     }
-    if method_id == SET_IS_SUBSET_METHOD_ID && set_methods::is_set(receiver, heap) {
+    if method_id == ids.set_is_subset && set_methods::is_set(receiver, heap) {
         return Some(set_methods::is_subset(receiver, args, heap).map(Value::Bool));
     }
-    if method_id == SET_IS_SUPERSET_METHOD_ID && set_methods::is_set(receiver, heap) {
+    if method_id == ids.set_is_superset && set_methods::is_set(receiver, heap) {
         return Some(set_methods::is_superset(receiver, args, heap).map(Value::Bool));
     }
-    if method_id == SET_IS_DISJOINT_METHOD_ID && set_methods::is_set(receiver, heap) {
+    if method_id == ids.set_is_disjoint && set_methods::is_set(receiver, heap) {
         return Some(set_methods::is_disjoint(receiver, args, heap).map(Value::Bool));
     }
-    if method_id == OPTION_IS_SOME_METHOD_ID && option_result_methods::is_option(receiver, heap) {
+    if method_id == ids.option_is_some && option_result_methods::is_option(receiver, heap) {
         return Some(option_result_methods::is_some(receiver, args, heap));
     }
-    if method_id == OPTION_IS_NONE_METHOD_ID && option_result_methods::is_option(receiver, heap) {
+    if method_id == ids.option_is_none && option_result_methods::is_option(receiver, heap) {
         return Some(option_result_methods::is_none(receiver, args, heap));
     }
-    if method_id == RESULT_IS_OK_METHOD_ID && option_result_methods::is_result(receiver, heap) {
+    if method_id == ids.result_is_ok && option_result_methods::is_result(receiver, heap) {
         return Some(option_result_methods::is_ok(receiver, args, heap));
     }
-    if method_id == RESULT_IS_ERR_METHOD_ID && option_result_methods::is_result(receiver, heap) {
+    if method_id == ids.result_is_err && option_result_methods::is_result(receiver, heap) {
         return Some(option_result_methods::is_err(receiver, args, heap));
     }
     None

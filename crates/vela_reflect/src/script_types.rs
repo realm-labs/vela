@@ -468,11 +468,11 @@ fn stable_trait_method_id(trait_name: &str, method_name: &str) -> MethodId {
 }
 
 fn stable_inherent_host_method_id(type_name: &str, method_name: &str) -> HostMethodId {
-    HostMethodId::new(vela_common::stable_id(
+    HostMethodId::new(u128::from(vela_common::stable_id(
         "inherent_method",
         type_name,
         method_name,
-    ))
+    )))
 }
 
 fn script_field_id(type_name: &str, field_name: &str, attrs: &[HirAttribute]) -> FieldId {

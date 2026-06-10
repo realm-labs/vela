@@ -115,7 +115,7 @@ pub enum EngineErrorKind {
         name: String,
     },
     DuplicateHostMethodId {
-        id: u64,
+        id: u128,
     },
     DuplicateHostMethodName {
         name: String,

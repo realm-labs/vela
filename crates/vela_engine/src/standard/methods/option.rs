@@ -1,79 +1,64 @@
-use vela_common::{HostMethodId, stable_id};
 use vela_reflect::registry::MethodDesc;
 
 use super::{MethodSpec, ParamSpec, descs};
-use crate::standard::ids::{OPTION_IS_NONE_METHOD_ID, OPTION_IS_SOME_METHOD_ID};
 
 pub(crate) fn option_method_descs() -> Vec<MethodDesc> {
-    descs(OPTION_METHODS, "option")
+    descs("Option", OPTION_METHODS, "option")
 }
 
 const OPTION_METHODS: &[MethodSpec] = &[
     MethodSpec::new(
-        OPTION_IS_SOME_METHOD_ID,
         "is_some",
         &[],
         "bool",
         "Returns true when the option contains a value.",
     ),
     MethodSpec::new(
-        OPTION_IS_NONE_METHOD_ID,
         "is_none",
         &[],
         "bool",
         "Returns true when the option is empty.",
     ),
     MethodSpec::new(
-        option_id(2),
         "unwrap_or",
         &[ParamSpec::new("default", "any")],
         "any",
         "Returns the contained value or a default.",
     ),
     MethodSpec::new(
-        option_id(3),
         "ok_or",
         &[ParamSpec::new("error", "any")],
         "Result",
         "Converts Option::None to Result::Err with an error value.",
     ),
     MethodSpec::new(
-        option_id(4),
         "flatten",
         &[],
         "Option",
         "Flattens a nested dynamic Option value.",
     ),
     MethodSpec::new(
-        option_id(5),
         "map",
         &[ParamSpec::new("callback", "function")],
         "Option",
         "Maps an Option::Some payload with a callback.",
     ),
     MethodSpec::new(
-        option_id(6),
         "and_then",
         &[ParamSpec::new("callback", "function")],
         "Option",
         "Chains an Option::Some payload through an Option-returning callback.",
     ),
     MethodSpec::new(
-        option_id(7),
         "or_else",
         &[ParamSpec::new("callback", "function")],
         "Option",
         "Calls a fallback callback when the option is empty.",
     ),
     MethodSpec::new(
-        option_id(8),
         "filter",
         &[ParamSpec::new("predicate", "function")],
         "Option",
         "Keeps an Option::Some payload accepted by a predicate.",
     ),
 ];
-
-const fn option_id(offset: u64) -> HostMethodId {
-    HostMethodId::new(stable_id("std_method_family", "Option", "").wrapping_add(offset))
-}

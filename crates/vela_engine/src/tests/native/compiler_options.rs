@@ -1,5 +1,12 @@
 use super::*;
 
+fn std_method_id(owner: &str, name: &str) -> vela_common::HostMethodId {
+    let Some(id) = vela_stdlib::std_method_id(owner, name) else {
+        panic!("missing standard method identity for {owner}::{name}");
+    };
+    vela_common::HostMethodId::new(id.get())
+}
+
 #[test]
 fn engine_installs_registered_native_functions_into_vm() {
     let engine = Engine::builder()
@@ -159,7 +166,7 @@ fn main() {
             _ => None,
         });
 
-    assert_eq!(value_method, Some(crate::standard::STRING_LEN_METHOD_ID));
+    assert_eq!(value_method, Some(std_method_id("String", "len")));
 }
 
 #[test]
@@ -195,17 +202,9 @@ fn main() {
         })
         .collect::<Vec<_>>();
 
-    assert!(
-        value_methods.contains(&("contains", Some(crate::standard::STRING_CONTAINS_METHOD_ID)))
-    );
-    assert!(value_methods.contains(&(
-        "starts_with",
-        Some(crate::standard::STRING_STARTS_WITH_METHOD_ID)
-    )));
-    assert!(value_methods.contains(&(
-        "ends_with",
-        Some(crate::standard::STRING_ENDS_WITH_METHOD_ID)
-    )));
+    assert!(value_methods.contains(&("contains", Some(std_method_id("String", "contains")))));
+    assert!(value_methods.contains(&("starts_with", Some(std_method_id("String", "starts_with")))));
+    assert!(value_methods.contains(&("ends_with", Some(std_method_id("String", "ends_with")))));
 }
 
 #[test]
@@ -244,20 +243,11 @@ fn main() {
         })
         .collect::<Vec<_>>();
 
-    assert!(
-        value_methods.contains(&("to_upper", Some(crate::standard::STRING_TO_UPPER_METHOD_ID)))
-    );
-    assert!(
-        value_methods.contains(&("to_lower", Some(crate::standard::STRING_TO_LOWER_METHOD_ID)))
-    );
-    assert!(value_methods.contains(&("trim", Some(crate::standard::STRING_TRIM_METHOD_ID))));
-    assert!(value_methods.contains(&(
-        "trim_start",
-        Some(crate::standard::STRING_TRIM_START_METHOD_ID)
-    )));
-    assert!(
-        value_methods.contains(&("trim_end", Some(crate::standard::STRING_TRIM_END_METHOD_ID)))
-    );
+    assert!(value_methods.contains(&("to_upper", Some(std_method_id("String", "to_upper")))));
+    assert!(value_methods.contains(&("to_lower", Some(std_method_id("String", "to_lower")))));
+    assert!(value_methods.contains(&("trim", Some(std_method_id("String", "trim")))));
+    assert!(value_methods.contains(&("trim_start", Some(std_method_id("String", "trim_start")))));
+    assert!(value_methods.contains(&("trim_end", Some(std_method_id("String", "trim_end")))));
 }
 
 #[test]
@@ -294,9 +284,9 @@ fn main() {
         })
         .collect::<Vec<_>>();
 
-    assert!(value_methods.contains(&("replace", Some(crate::standard::STRING_REPLACE_METHOD_ID))));
-    assert!(value_methods.contains(&("repeat", Some(crate::standard::STRING_REPEAT_METHOD_ID))));
-    assert!(value_methods.contains(&("slice", Some(crate::standard::STRING_SLICE_METHOD_ID))));
+    assert!(value_methods.contains(&("replace", Some(std_method_id("String", "replace")))));
+    assert!(value_methods.contains(&("repeat", Some(std_method_id("String", "repeat")))));
+    assert!(value_methods.contains(&("slice", Some(std_method_id("String", "slice")))));
 }
 
 #[test]
@@ -334,16 +324,16 @@ fn main() {
         })
         .collect::<Vec<_>>();
 
-    assert!(value_methods.contains(&("find", Some(crate::standard::STRING_FIND_METHOD_ID))));
+    assert!(value_methods.contains(&("find", Some(std_method_id("String", "find")))));
     assert!(value_methods.contains(&(
         "strip_prefix",
-        Some(crate::standard::STRING_STRIP_PREFIX_METHOD_ID)
+        Some(std_method_id("String", "strip_prefix"))
     )));
     assert!(value_methods.contains(&(
         "strip_suffix",
-        Some(crate::standard::STRING_STRIP_SUFFIX_METHOD_ID)
+        Some(std_method_id("String", "strip_suffix"))
     )));
-    assert!(value_methods.contains(&("char_at", Some(crate::standard::STRING_CHAR_AT_METHOD_ID))));
+    assert!(value_methods.contains(&("char_at", Some(std_method_id("String", "char_at")))));
 }
 
 #[test]
@@ -381,18 +371,12 @@ fn main() {
         })
         .collect::<Vec<_>>();
 
-    assert!(value_methods.contains(&("split", Some(crate::standard::STRING_SPLIT_METHOD_ID))));
-    assert!(value_methods.contains(&(
-        "split_once",
-        Some(crate::standard::STRING_SPLIT_ONCE_METHOD_ID)
-    )));
-    assert!(value_methods.contains(&(
-        "split_lines",
-        Some(crate::standard::STRING_SPLIT_LINES_METHOD_ID)
-    )));
+    assert!(value_methods.contains(&("split", Some(std_method_id("String", "split")))));
+    assert!(value_methods.contains(&("split_once", Some(std_method_id("String", "split_once")))));
+    assert!(value_methods.contains(&("split_lines", Some(std_method_id("String", "split_lines")))));
     assert!(value_methods.contains(&(
         "split_whitespace",
-        Some(crate::standard::STRING_SPLIT_WHITESPACE_METHOD_ID)
+        Some(std_method_id("String", "split_whitespace"))
     )));
 }
 
@@ -429,18 +413,9 @@ fn main() {
         })
         .collect::<Vec<_>>();
 
-    assert!(value_methods.contains(&(
-        "parse_int",
-        Some(crate::standard::STRING_PARSE_INT_METHOD_ID)
-    )));
-    assert!(value_methods.contains(&(
-        "parse_float",
-        Some(crate::standard::STRING_PARSE_FLOAT_METHOD_ID)
-    )));
-    assert!(value_methods.contains(&(
-        "parse_bool",
-        Some(crate::standard::STRING_PARSE_BOOL_METHOD_ID)
-    )));
+    assert!(value_methods.contains(&("parse_int", Some(std_method_id("String", "parse_int")))));
+    assert!(value_methods.contains(&("parse_float", Some(std_method_id("String", "parse_float")))));
+    assert!(value_methods.contains(&("parse_bool", Some(std_method_id("String", "parse_bool")))));
 }
 
 #[test]
@@ -473,7 +448,7 @@ fn main() {
             _ => None,
         });
 
-    assert_eq!(value_method, Some(crate::standard::RANGE_LEN_METHOD_ID));
+    assert_eq!(value_method, Some(std_method_id("Range", "len")));
 }
 
 #[test]
@@ -509,8 +484,8 @@ fn main() {
         })
         .collect::<Vec<_>>();
 
-    assert!(value_methods.contains(&("is_some", Some(crate::standard::OPTION_IS_SOME_METHOD_ID))));
-    assert!(value_methods.contains(&("is_err", Some(crate::standard::RESULT_IS_ERR_METHOD_ID))));
+    assert!(value_methods.contains(&("is_some", Some(std_method_id("Option", "is_some")))));
+    assert!(value_methods.contains(&("is_err", Some(std_method_id("Result", "is_err")))));
 }
 
 #[test]
@@ -566,30 +541,24 @@ fn main() {
         })
         .collect::<Vec<_>>();
 
-    assert!(value_methods.contains(&("len", Some(crate::standard::ARRAY_LEN_METHOD_ID))));
-    assert!(value_methods.contains(&("len", Some(crate::standard::MAP_LEN_METHOD_ID))));
-    assert!(value_methods.contains(&("len", Some(crate::standard::SET_LEN_METHOD_ID))));
-    assert!(value_methods.contains(&("contains", Some(crate::standard::ARRAY_CONTAINS_METHOD_ID))));
-    assert!(value_methods.contains(&("push", Some(crate::standard::ARRAY_PUSH_METHOD_ID))));
-    assert!(value_methods.contains(&("pop", Some(crate::standard::ARRAY_POP_METHOD_ID))));
-    assert!(value_methods.contains(&("clear", Some(crate::standard::ARRAY_CLEAR_METHOD_ID))));
-    assert!(value_methods.contains(&("has", Some(crate::standard::MAP_HAS_METHOD_ID))));
-    assert!(value_methods.contains(&("set", Some(crate::standard::MAP_SET_METHOD_ID))));
-    assert!(value_methods.contains(&("remove", Some(crate::standard::MAP_REMOVE_METHOD_ID))));
-    assert!(value_methods.contains(&("clear", Some(crate::standard::MAP_CLEAR_METHOD_ID))));
-    assert!(value_methods.contains(&("has", Some(crate::standard::SET_HAS_METHOD_ID))));
-    assert!(value_methods.contains(&("add", Some(crate::standard::SET_ADD_METHOD_ID))));
-    assert!(value_methods.contains(&("remove", Some(crate::standard::SET_REMOVE_METHOD_ID))));
-    assert!(value_methods.contains(&("clear", Some(crate::standard::SET_CLEAR_METHOD_ID))));
-    assert!(value_methods.contains(&("is_subset", Some(crate::standard::SET_IS_SUBSET_METHOD_ID))));
-    assert!(value_methods.contains(&(
-        "is_superset",
-        Some(crate::standard::SET_IS_SUPERSET_METHOD_ID)
-    )));
-    assert!(value_methods.contains(&(
-        "is_disjoint",
-        Some(crate::standard::SET_IS_DISJOINT_METHOD_ID)
-    )));
+    assert!(value_methods.contains(&("len", Some(std_method_id("Array", "len")))));
+    assert!(value_methods.contains(&("len", Some(std_method_id("Map", "len")))));
+    assert!(value_methods.contains(&("len", Some(std_method_id("Set", "len")))));
+    assert!(value_methods.contains(&("contains", Some(std_method_id("Array", "contains")))));
+    assert!(value_methods.contains(&("push", Some(std_method_id("Array", "push")))));
+    assert!(value_methods.contains(&("pop", Some(std_method_id("Array", "pop")))));
+    assert!(value_methods.contains(&("clear", Some(std_method_id("Array", "clear")))));
+    assert!(value_methods.contains(&("has", Some(std_method_id("Map", "has")))));
+    assert!(value_methods.contains(&("set", Some(std_method_id("Map", "set")))));
+    assert!(value_methods.contains(&("remove", Some(std_method_id("Map", "remove")))));
+    assert!(value_methods.contains(&("clear", Some(std_method_id("Map", "clear")))));
+    assert!(value_methods.contains(&("has", Some(std_method_id("Set", "has")))));
+    assert!(value_methods.contains(&("add", Some(std_method_id("Set", "add")))));
+    assert!(value_methods.contains(&("remove", Some(std_method_id("Set", "remove")))));
+    assert!(value_methods.contains(&("clear", Some(std_method_id("Set", "clear")))));
+    assert!(value_methods.contains(&("is_subset", Some(std_method_id("Set", "is_subset")))));
+    assert!(value_methods.contains(&("is_superset", Some(std_method_id("Set", "is_superset")))));
+    assert!(value_methods.contains(&("is_disjoint", Some(std_method_id("Set", "is_disjoint")))));
 }
 
 #[test]
@@ -626,9 +595,9 @@ fn main() {
         })
         .collect::<Vec<_>>();
 
-    assert!(value_methods.contains(&("first", Some(crate::standard::ARRAY_FIRST_METHOD_ID))));
-    assert!(value_methods.contains(&("last", Some(crate::standard::ARRAY_LAST_METHOD_ID))));
-    assert!(value_methods.contains(&("index_of", Some(crate::standard::ARRAY_INDEX_OF_METHOD_ID))));
+    assert!(value_methods.contains(&("first", Some(std_method_id("Array", "first")))));
+    assert!(value_methods.contains(&("last", Some(std_method_id("Array", "last")))));
+    assert!(value_methods.contains(&("index_of", Some(std_method_id("Array", "index_of")))));
 }
 
 #[test]
@@ -666,10 +635,10 @@ fn main() {
         })
         .collect::<Vec<_>>();
 
-    assert!(value_methods.contains(&("join", Some(crate::standard::ARRAY_JOIN_METHOD_ID))));
-    assert!(value_methods.contains(&("distinct", Some(crate::standard::ARRAY_DISTINCT_METHOD_ID))));
-    assert!(value_methods.contains(&("reverse", Some(crate::standard::ARRAY_REVERSE_METHOD_ID))));
-    assert!(value_methods.contains(&("slice", Some(crate::standard::ARRAY_SLICE_METHOD_ID))));
+    assert!(value_methods.contains(&("join", Some(std_method_id("Array", "join")))));
+    assert!(value_methods.contains(&("distinct", Some(std_method_id("Array", "distinct")))));
+    assert!(value_methods.contains(&("reverse", Some(std_method_id("Array", "reverse")))));
+    assert!(value_methods.contains(&("slice", Some(std_method_id("Array", "slice")))));
 }
 
 #[test]
