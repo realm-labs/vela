@@ -311,6 +311,34 @@ fn call_method_uses_standard_string_split_ids_before_name_fallback() {
     );
 }
 
+#[test]
+fn call_method_uses_standard_string_parse_ids_before_name_fallback() {
+    assert_eq!(
+        run_string_transform_with_args_by_id(
+            vela_common::standard_ids::STRING_PARSE_INT_METHOD_ID,
+            "42",
+            &[],
+        ),
+        Ok(option_some(OwnedValue::Int(42)))
+    );
+    assert_eq!(
+        run_string_transform_with_args_by_id(
+            vela_common::standard_ids::STRING_PARSE_FLOAT_METHOD_ID,
+            "1.5",
+            &[],
+        ),
+        Ok(option_some(OwnedValue::Float(1.5)))
+    );
+    assert_eq!(
+        run_string_transform_with_args_by_id(
+            vela_common::standard_ids::STRING_PARSE_BOOL_METHOD_ID,
+            "true",
+            &[],
+        ),
+        Ok(option_some(OwnedValue::Bool(true)))
+    );
+}
+
 fn option_some(value: OwnedValue) -> OwnedValue {
     OwnedValue::enum_variant("Option", "Some", [("0", value)])
 }

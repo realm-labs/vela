@@ -55,6 +55,9 @@ pub const STRING_SPLIT_ONCE_METHOD_ID: HostMethodId = HostMethodId::new(0xff00_0
 pub const STRING_SPLIT_LINES_METHOD_ID: HostMethodId = HostMethodId::new(0xff00_0712);
 pub const STRING_SPLIT_WHITESPACE_METHOD_ID: HostMethodId = HostMethodId::new(0xff00_0713);
 pub const STRING_CHAR_AT_METHOD_ID: HostMethodId = HostMethodId::new(0xff00_0714);
+pub const STRING_PARSE_INT_METHOD_ID: HostMethodId = HostMethodId::new(0xff00_0715);
+pub const STRING_PARSE_FLOAT_METHOD_ID: HostMethodId = HostMethodId::new(0xff00_0716);
+pub const STRING_PARSE_BOOL_METHOD_ID: HostMethodId = HostMethodId::new(0xff00_0717);
 
 pub const ARRAY_LEN_METHOD_ID: HostMethodId = HostMethodId::new(0xff00_0800);
 pub const ARRAY_IS_EMPTY_METHOD_ID: HostMethodId = HostMethodId::new(0xff00_0801);
