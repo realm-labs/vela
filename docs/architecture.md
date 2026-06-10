@@ -174,6 +174,7 @@ contract before changing that subsystem:
 - [Hot reload](architecture/hot-reload.md)
 - [Standard library and embedding](architecture/stdlib-and-embedding.md)
 - [Tooling, performance, security, and testing](architecture/tooling-performance-security-testing.md)
+- [Clean identity refactor](architecture/clean-identity-refactor.md)
 
 Keep this file as the entrypoint and cross-subsystem contract. Subsystem files
 carry the detailed rules so active architecture docs remain reviewable and stay

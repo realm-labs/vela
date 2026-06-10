@@ -1097,7 +1097,7 @@ surface.
 
 ### Phase 0: Baseline and branch setup
 
-- [ ] **Task 0.1: Create breaking-change branch and architecture notes**
+- [x] **Task 0.1: Create breaking-change branch and architecture notes**
 
 **Objective:** Make it explicit that this branch does not preserve compatibility.
 

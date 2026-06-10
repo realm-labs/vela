@@ -8,6 +8,23 @@ Detailed historical progress before the 2026-06-01 compaction lives in
 Later history should be read from git unless a durable milestone summary needs
 to be archived.
 
+## Breaking Clean Architecture Track
+
+The active definition-registry and linked-bytecode refactor is a breaking
+internal architecture track. Old handwritten stdlib IDs, raw `0xff00_...`
+identity spaces, old bytecode shapes, old serialized `ProgramImage`
+assumptions, internal/public APIs kept only for the old implementation shape,
+and runtime string fallback dispatch are not compatibility requirements. The
+current executable checklist is
+[definition-registry-linked-bytecode-refactor-plan.md](definition-registry-linked-bytecode-refactor-plan.md),
+with supporting runtime ownership context in
+[runtime-image-state-refactor-plan.md](runtime-image-state-refactor-plan.md).
+
+This does not weaken product contracts: hot reload ABI/schema compatibility,
+HostAccess safety, reflection permissioning, execution budgets, GC roots,
+source-spanned diagnostics, and the no-Rust-`&mut` script boundary remain
+required.
+
 ## Current Focus
 
 M0-M19 are complete enough as a runnable prototype, embedding surface,
