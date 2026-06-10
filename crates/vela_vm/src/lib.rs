@@ -537,27 +537,6 @@ impl Vm {
         self.run_program_with_budget(program, entry, args, budget)
     }
 
-    pub fn run_program_runtime(
-        &self,
-        program: &UnlinkedProgram,
-        entry: &str,
-        args: &[Value],
-    ) -> VmResult<Value> {
-        let code = program_entry(program, entry)?;
-        self.execute(code, Some(program), args, None, None, None)
-    }
-
-    pub fn run_program_runtime_with_budget(
-        &self,
-        program: &UnlinkedProgram,
-        entry: &str,
-        args: &[Value],
-        budget: &mut ExecutionBudget,
-    ) -> VmResult<Value> {
-        let code = program_entry(program, entry)?;
-        self.execute(code, Some(program), args, None, None, Some(budget))
-    }
-
     pub fn run_program_runtime_with_heap_and_budget(
         &self,
         program: &UnlinkedProgram,
@@ -875,29 +854,6 @@ impl Vm {
         budget: &mut ExecutionBudget,
     ) -> VmResult<OwnedValue> {
         self.run_program_with_host_and_budget(program, entry, args, host, budget)
-    }
-
-    pub fn run_program_runtime_with_host(
-        &self,
-        program: &UnlinkedProgram,
-        entry: &str,
-        args: &[Value],
-        host: &mut HostExecution<'_>,
-    ) -> VmResult<Value> {
-        let code = program_entry(program, entry)?;
-        self.execute(code, Some(program), args, Some(host), None, None)
-    }
-
-    pub fn run_program_runtime_with_host_and_budget(
-        &self,
-        program: &UnlinkedProgram,
-        entry: &str,
-        args: &[Value],
-        host: &mut HostExecution<'_>,
-        budget: &mut ExecutionBudget,
-    ) -> VmResult<Value> {
-        let code = program_entry(program, entry)?;
-        self.execute(code, Some(program), args, Some(host), None, Some(budget))
     }
 
     pub fn run_program_runtime_with_host_heap_and_budget(

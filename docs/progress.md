@@ -233,13 +233,15 @@ Cranelift JIT.
   of rebuilding unlinked programs through `ProgramVersion::to_program()`.
   Engine hot-reload linking now rebuilds linker input from version/update-owned
   function metadata instead of the `ProgramImage::to_program()` compatibility
-  path, and `ProgramImage::to_program()` has been removed. The remaining Task
-  6.1 gap is direct VM API cleanup that deletes old unlinked execution
-  entrypoints and transitional unlinked reconstruction APIs; linkable
-  `execution_core` coverage and the compiled conformance fixture now run
-  through linked bytecode after ad-hoc source record literals, enum pattern
-  fields, stdlib callback receiver facts, and linked callback closures gained
-  linker-ready operands/runtime ownership. Script function calls are linked
+  path, and `ProgramImage::to_program()` has been removed. No-heap raw runtime
+  `run_program_runtime*` VM APIs and their diagnostic fixture callers have been
+  replaced with linked-program execution. The remaining Task 6.1 gap is direct
+  VM API cleanup that deletes the still-used unlinked execution entrypoints and
+  transitional unlinked reconstruction APIs; linkable `execution_core` coverage
+  and the compiled conformance fixture now run through linked bytecode after
+  ad-hoc source record literals, enum pattern fields, stdlib callback receiver
+  facts, and linked callback closures gained linker-ready operands/runtime
+  ownership. Script function calls are linked
   through `ScriptFunctionHandle` tables, with mismatched call IDs rejected by
   the linker and linked execution calling by dense handle.
   Script function dispatch is being isolated behind a focused call boundary so

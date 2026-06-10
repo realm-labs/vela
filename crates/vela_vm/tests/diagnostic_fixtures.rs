@@ -2,8 +2,8 @@ use std::sync::Arc;
 
 use vela_bytecode::compiler::compile_program_source;
 use vela_bytecode::{
-    CacheSiteKind, Constant, InstructionOffset, Register, UnlinkedCodeObject, UnlinkedInstruction,
-    UnlinkedInstructionKind, UnlinkedProgram,
+    CacheSiteKind, Constant, InstructionOffset, LinkedProgram, Linker, Register,
+    UnlinkedCodeObject, UnlinkedInstruction, UnlinkedInstructionKind, UnlinkedProgram,
 };
 use vela_common::{HostObjectId, HostTypeId, SourceId, Span};
 use vela_def::{FieldId, TypeId};
@@ -16,8 +16,8 @@ use vela_host::value::HostValue;
 use vela_reflect::access::FieldAccess;
 use vela_reflect::permissions::{ReflectPermission, ReflectPermissionSet};
 use vela_reflect::registry::{FieldDesc, TypeDesc, TypeKey, TypeRegistry};
+use vela_vm::budget::ExecutionBudget;
 use vela_vm::owned_value::OwnedValue;
-use vela_vm::value::Value;
 use vela_vm::{HostExecution, Vm};
 
 use vela_common::diagnostic_render::{DiagnosticSource, render_diagnostic};
@@ -48,8 +48,9 @@ fn runtime_division_by_zero_fixture_renders_source_span_and_call_stack() {
     let source = normalized_fixture(RUNTIME_DIVISION_BY_ZERO);
     let program = compile_program_source(SourceId::new(1), &source)
         .expect("runtime diagnostic fixture should compile");
+    let linked = link_fixture_program(&program);
     let error = Vm::new()
-        .run_program_runtime(&program, "main", &[])
+        .run_linked_program(&linked, "main", &[])
         .expect_err("fixture should fail at runtime");
 
     let rendered = render_diagnostic(
@@ -98,8 +99,17 @@ fn host_permission_denied_fixture_renders_source_span() {
         script_globals: None,
     };
 
+    let linked = link_fixture_program(&program);
+    let mut budget = ExecutionBudget::unbounded();
     let error = Vm::new()
-        .run_program_runtime_with_host(&program, "main", &[Value::HostRef(host_ref)], &mut host)
+        .run_linked_program_with_host_budget_and_caches(
+            &linked,
+            "main",
+            &[OwnedValue::HostRef(host_ref)],
+            &mut host,
+            &mut budget,
+            None,
+        )
         .expect_err("fixture should fail at the host boundary");
 
     let rendered = render_diagnostic(
@@ -169,8 +179,17 @@ fn host_compound_write_denied_fixture_renders_source_span() {
             access: &mut tx,
             script_globals: None,
         };
+        let linked = link_fixture_program(&program);
+        let mut budget = ExecutionBudget::unbounded();
         Vm::new()
-            .run_program_runtime_with_host(&program, "main", &[Value::HostRef(host_ref)], &mut host)
+            .run_linked_program_with_host_budget_and_caches(
+                &linked,
+                "main",
+                &[OwnedValue::HostRef(host_ref)],
+                &mut host,
+                &mut budget,
+                None,
+            )
             .expect_err("fixture should fail on immediate host write")
     };
 
@@ -223,8 +242,17 @@ fn stale_host_ref_fixture_renders_source_span() {
         script_globals: None,
     };
 
+    let linked = link_fixture_program(&program);
+    let mut budget = ExecutionBudget::unbounded();
     let error = Vm::new()
-        .run_program_runtime_with_host(&program, "main", &[Value::HostRef(stale_ref)], &mut host)
+        .run_linked_program_with_host_budget_and_caches(
+            &linked,
+            "main",
+            &[OwnedValue::HostRef(stale_ref)],
+            &mut host,
+            &mut budget,
+            None,
+        )
         .expect_err("fixture should fail on stale host ref generation");
 
     let rendered = render_diagnostic(
@@ -297,6 +325,12 @@ fn reflection_unknown_field_fixture_renders_candidates_and_source_span() {
 
 fn diagnostic_source(name: &str, source: String) -> DiagnosticSource {
     DiagnosticSource::new(SourceId::new(1), name, source)
+}
+
+fn link_fixture_program(program: &UnlinkedProgram) -> LinkedProgram {
+    Linker::new()
+        .link_program(program)
+        .expect("diagnostic fixture program should link")
 }
 
 fn normalized_fixture(source: &str) -> String {
