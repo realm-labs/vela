@@ -1,8 +1,6 @@
 use std::cell::Cell;
 use std::collections::BTreeMap;
 
-#[cfg(feature = "serde")]
-use serde::{Deserialize, Serialize};
 use vela_bytecode::compiler::compile_program_source_with_options;
 use vela_common::{FieldId, HostMethodId, HostObjectId, HostTypeId, SourceId, TypeId};
 use vela_host::access::HostAccess;
