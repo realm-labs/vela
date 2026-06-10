@@ -1112,7 +1112,7 @@ surface.
 - The repository documents that old stdlib IDs and bytecode are not preserved.
 - No code changes yet.
 
-- [ ] **Task 0.2: Inventory and delete-plan current identity surfaces**
+- [x] **Task 0.2: Inventory and delete-plan current identity surfaces**
 
 **Objective:** Make every legacy identity and dispatch surface visible before demolition.
 
@@ -1135,6 +1135,24 @@ surface.
 
 - The plan names every known legacy identity surface and its removal phase.
 - Later tasks can delete old paths without rediscovering hidden dependencies.
+
+**Inventory and delete plan:**
+
+| Legacy surface | Current owner examples | Replacement/delete phase |
+|---|---|---|
+| `standard_ids` module and re-exports | `crates/vela_common/src/standard_ids.rs`, `crates/vela_common/src/lib.rs`, `crates/vela_engine/src/standard/ids.rs` | Phase 1 moves typed IDs to `vela_def`; Phase 3 replaces stdlib identity with manifest data; Phase 3.4 deletes `standard_ids.rs`; Phase 9.1 removes public old ID APIs. |
+| Raw `0xff00_...` stdlib and builtin IDs | `vela_common::standard_ids`, `vela_engine/src/standard/ids.rs`, `clock.rs`, `random.rs`, `io.rs`, `context_schema.rs`, standard method modules, standard type schema hashes | Phase 1 introduces BLAKE3-128 `DefPath` IDs; Phase 3 stdlib manifest owns stdlib IDs; Phase 8 registers host/context surfaces through registry; Phase 9.1 removes handwritten raw constants. |
+| `CallNative` mixed diagnostic name and optional semantic ID | `crates/vela_bytecode/src/lib.rs`, `compiler/calls.rs`, `verification.rs`, `crates/vela_vm/src/execution.rs`, `native_function_calls.rs`, standard ID dispatch tests | Phase 5 introduces unlinked vs linked instructions; Phase 5.2/5.3 link native calls to dense handles; Phase 6.1 executes linked code only; Phase 6.2 removes native name fallback; Phase 9.2 deletes name/optional-ID operands. |
+| `CallMethod` mixed method name and optional value-method ID | `crates/vela_bytecode/src/lib.rs`, `compiler/calls.rs`, `compiler/methods.rs`, `crates/vela_vm/src/execution.rs`, `script_method_calls.rs`, `script_methods.rs`, engine compiler-options tests | Phase 4 replaces compiler lookup with registry queries; Phase 5 links method targets; Phase 6.3 updates method dispatch; Phase 9.2 deletes fallback method-name and optional-ID operand patterns. |
+| `CompilerOptions` identity maps | `crates/vela_bytecode/src/compiler/options.rs`, `crates/vela_engine/src/compiler_options.rs`, compiler/VM/engine tests and benches that construct options directly | Phase 2 adds `RegistryCompileView`; Phase 4 makes compiler entry points consume registry data; Phase 4.4 reduces `CompilerOptions` to real settings; Phase 9.3 removes identity maps. |
+| VM native and host-native name maps | `crates/vela_vm/src/lib.rs` `natives`, `native_ids`, `host_natives`, `host_native_ids`; `crates/vela_engine/src/engine.rs` install paths and alias fallback | Phase 3.3 separates stdlib runtime bindings; Phase 5 linker produces handles; Phase 6.2 removes name fallback; Phase 9.4 deletes name maps from VM dispatch. |
+| Engine/native lookup by name | `Engine::host_native_function_by_name`, `Engine::context_host_native_function_by_name`, validation and reflection/native tests | Phase 2 registry debug names preserve reflection/source lookup; Phase 4 registry compile view replaces compiler identity lookup; Phase 6/9 keep any name lookup as reflection/debug only, not dispatch. |
+| Option/Result string enum identity | `crates/vela_vm/src/try_propagation.rs`, `heap_values.rs`, `owned_value.rs`, `option_result.rs`, option/result method modules, serde/runtime value conversion | Phase 3 manifest declares Option/Result type, variants, and fields; Phase 7.1 converts runtime Option/Result identity to `TypeId`/`VariantId`; Phase 9 cleanup removes string-based runtime identity. |
+| Script enum/record string identity | `crates/vela_bytecode/src/compiler/constructors.rs`, `patterns.rs`, `schema_defaults.rs`, `crates/vela_vm/src/script_object_construction.rs`, `record_fields.rs`, reflection value access | Phase 2 registry/debug names separate identity from names; Phase 7.2 converts enum values to typed identity; Phase 7.3 converts records to `TypeId`/`ShapeId`/field slots. |
+| `ProgramImage` old compatibility assumptions | `crates/vela_bytecode/src/program_image.rs`, `ProgramImage::to_program`, `ProgramVersion::to_program`, hot-reload tests that execute `to_program()` output, runtime-image plan compatibility notes | Phase 5 defines unlinked/linked program artifacts; Phase 6 makes VM entry accept linked code; Phase 6.1 makes `ProgramVersion` own linked layouts; Phase 9 removes old bytecode/image compatibility paths that are not diagnostics/tests. |
+| C API compile/run entry points | `crates/vela_c_api/src/lib.rs` `vela_runtime_compile_source`, `Runtime::new(engine, program)`, `runtime.call` | Phase 6 updates runtime construction/execution to linked code; Phase 9 updates external entry points to the final artifact/runtime shape without old bytecode compatibility. |
+| WASM playground entry points | `crates/vela_playground_wasm/src/lib.rs`, site quickstart/runtime docs | Phase 6 updates compile/run path after linked execution becomes canonical; Phase 9 updates playground/docs to stop relying on old `Program`/name-dispatch assumptions. |
+| Examples, CLI, docs, benches, and tests that compile or run code | `examples/`, `crates/vela_cli/src/main.rs`, `crates/vela_vm/benches`, `crates/vela_engine` and `crates/vela_vm` tests, `site/docs`, architecture docs | Update continuously with each implementation phase; Phase 9 final cleanup removes tests/docs asserting old API shapes and keeps only new-architecture coverage. |
 
 ---
 
@@ -1823,24 +1841,36 @@ Useful commands:
 ```bash
 rg "standard_ids"
 rg "0xff00_"
+rg "CallNative \{"
+rg "native: Option<FunctionId>"
+rg "CallMethod \{"
+rg "value_method_id: Option"
 rg "native_ids"
 rg "host_native_ids"
 rg "HashMap<String, NativeFunction>"
-rg "CallNative"
-rg "Option<FunctionId>"
-rg "value_method_id"
+rg "HashMap<String, HostNativeFunction>"
 rg "CompilerOptions"
+rg "compiler_options_from_registry"
 rg "enum_name: String|variant: String"
+rg "enum_tag\(|is_builtin_enum"
 rg "ProgramImage"
+rg "to_program\("
+rg "vela_runtime_compile_source|Runtime::new|run_program\("
 ```
 
 Expected final state:
 
 - `standard_ids` not found;
 - no handwritten stdlib raw ID constants;
-- native dispatch maps by name removed;
+- native and host-native dispatch maps by name removed;
 - linked `CallNative` contains handle only;
-- `CompilerOptions` no longer carries identity maps.
+- linked `CallMethod` contains linked method targets or handles only;
+- optional semantic IDs are not used as name-fallback markers;
+- `CompilerOptions` no longer carries identity maps;
+- `ProgramImage::to_program` is not part of runtime execution or compatibility
+  support;
+- C API, WASM playground, examples, CLI, tests, benches, and docs use the final
+  linked runtime entry path rather than old `Program`/name-dispatch assumptions;
 - runtime Option/Result and script enum identity no longer uses string type or
   variant names.
 
