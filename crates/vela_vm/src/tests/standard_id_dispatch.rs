@@ -18,6 +18,43 @@ fn std_method_id(owner: &str, name: &str) -> vela_def::MethodId {
     id
 }
 
+fn run_linked_standard_id_code(vm: &Vm, code: UnlinkedCodeObject) -> VmResult<OwnedValue> {
+    let entry = code.name.clone();
+    let mut program = UnlinkedProgram::new();
+    program.insert_function(code);
+    let mut linker = Linker::new();
+    vm.native_ids
+        .keys()
+        .chain(vm.host_native_ids.keys())
+        .copied()
+        .for_each(|id| linker.add_native_implementation(id));
+    let linked = linker
+        .link_program(&program)
+        .expect("standard id dispatch test program should link");
+    vm.run_linked_program(&linked, &entry, &[])
+}
+
+fn run_linked_standard_id_code_with_host(
+    vm: &Vm,
+    code: UnlinkedCodeObject,
+    host: &mut HostExecution<'_>,
+) -> VmResult<OwnedValue> {
+    let entry = code.name.clone();
+    let mut program = UnlinkedProgram::new();
+    program.insert_function(code);
+    let mut linker = Linker::new();
+    vm.native_ids
+        .keys()
+        .chain(vm.host_native_ids.keys())
+        .copied()
+        .for_each(|id| linker.add_native_implementation(id));
+    let linked = linker
+        .link_program(&program)
+        .expect("standard host id dispatch test program should link");
+    let mut budget = ExecutionBudget::unbounded();
+    vm.run_linked_program_with_host_budget_and_caches(&linked, &entry, &[], host, &mut budget, None)
+}
+
 #[test]
 fn call_native_uses_resolved_id_even_when_debug_name_differs() {
     let native_id = vela_def::FunctionId::new(77);
@@ -37,7 +74,10 @@ fn call_native_uses_resolved_id_even_when_debug_name_differs() {
     code.push_instruction(UnlinkedInstruction::new(UnlinkedInstructionKind::Return {
         src: Register(0),
     }));
-    assert_eq!(vm.run(&code), Ok(OwnedValue::Int(2)));
+    assert_eq!(
+        run_linked_standard_id_code(&vm, code),
+        Ok(OwnedValue::Int(2))
+    );
 }
 
 #[test]
@@ -67,7 +107,10 @@ fn call_native_uses_resolved_host_id_even_when_debug_name_differs() {
         access: &mut tx,
         script_globals: None,
     };
-    assert_eq!(vm.run_with_host(&code, &mut host), Ok(OwnedValue::Int(3)));
+    assert_eq!(
+        run_linked_standard_id_code_with_host(&vm, code, &mut host),
+        Ok(OwnedValue::Int(3))
+    );
 }
 
 #[test]
@@ -94,7 +137,10 @@ fn call_native_uses_standard_native_id_even_when_debug_name_differs() {
     code.push_instruction(UnlinkedInstruction::new(UnlinkedInstructionKind::Return {
         src: Register(1),
     }));
-    assert_eq!(vm.run(&code), Ok(OwnedValue::Int(4)));
+    assert_eq!(
+        run_linked_standard_id_code(&vm, code),
+        Ok(OwnedValue::Int(4))
+    );
 }
 
 #[test]
@@ -120,7 +166,10 @@ fn call_method_uses_standard_value_method_id_before_name_fallback() {
         src: Register(1),
     }));
 
-    assert_eq!(Vm::new().run(&code), Ok(OwnedValue::Int(4)));
+    assert_eq!(
+        run_linked_standard_id_code(&Vm::new(), code),
+        Ok(OwnedValue::Int(4))
+    );
 }
 
 fn option_some(value: OwnedValue) -> OwnedValue {
@@ -165,7 +214,10 @@ fn call_method_uses_standard_range_method_id_before_name_fallback() {
         src: Register(3),
     }));
 
-    assert_eq!(Vm::new().run(&code), Ok(OwnedValue::Int(3)));
+    assert_eq!(
+        run_linked_standard_id_code(&Vm::new(), code),
+        Ok(OwnedValue::Int(3))
+    );
 }
 
 #[test]
@@ -204,7 +256,10 @@ fn call_method_uses_standard_array_method_id_before_name_fallback() {
         src: Register(3),
     }));
 
-    assert_eq!(Vm::new().run(&code), Ok(OwnedValue::Int(2)));
+    assert_eq!(
+        run_linked_standard_id_code(&Vm::new(), code),
+        Ok(OwnedValue::Int(2))
+    );
 }
 
 #[test]
@@ -280,7 +335,7 @@ fn run_array_lookup_with_args_by_id(
         src: result,
     }));
 
-    Vm::new().run(&code)
+    run_linked_standard_id_code(&Vm::new(), code)
 }
 
 #[test]
@@ -374,7 +429,7 @@ fn run_array_transform_with_args_by_id(
         src: result,
     }));
 
-    Vm::new().run(&code)
+    run_linked_standard_id_code(&Vm::new(), code)
 }
 
 #[test]
@@ -421,7 +476,10 @@ fn call_method_uses_standard_array_mutator_ids_before_name_fallback() {
     push_code.push_instruction(UnlinkedInstruction::new(UnlinkedInstructionKind::Return {
         src: Register(4),
     }));
-    assert_eq!(Vm::new().run(&push_code), Ok(OwnedValue::Int(2)));
+    assert_eq!(
+        run_linked_standard_id_code(&Vm::new(), push_code),
+        Ok(OwnedValue::Int(2))
+    );
 
     let mut pop_code = UnlinkedCodeObject::new("standard_array_pop_method_id", 5);
     let first = pop_code.push_constant(Constant::Int(2));
@@ -465,7 +523,10 @@ fn call_method_uses_standard_array_mutator_ids_before_name_fallback() {
     pop_code.push_instruction(UnlinkedInstruction::new(UnlinkedInstructionKind::Return {
         src: Register(4),
     }));
-    assert_eq!(Vm::new().run(&pop_code), Ok(OwnedValue::Int(1)));
+    assert_eq!(
+        run_linked_standard_id_code(&Vm::new(), pop_code),
+        Ok(OwnedValue::Int(1))
+    );
 
     let mut clear_code = UnlinkedCodeObject::new("standard_array_clear_method_id", 5);
     let first = clear_code.push_constant(Constant::Int(2));
@@ -509,7 +570,10 @@ fn call_method_uses_standard_array_mutator_ids_before_name_fallback() {
     clear_code.push_instruction(UnlinkedInstruction::new(UnlinkedInstructionKind::Return {
         src: Register(4),
     }));
-    assert_eq!(Vm::new().run(&clear_code), Ok(OwnedValue::Int(0)));
+    assert_eq!(
+        run_linked_standard_id_code(&Vm::new(), clear_code),
+        Ok(OwnedValue::Int(0))
+    );
 }
 
 #[test]
@@ -539,7 +603,10 @@ fn call_method_uses_standard_map_method_id_before_name_fallback() {
         src: Register(2),
     }));
 
-    assert_eq!(Vm::new().run(&code), Ok(OwnedValue::Bool(false)));
+    assert_eq!(
+        run_linked_standard_id_code(&Vm::new(), code),
+        Ok(OwnedValue::Bool(false))
+    );
 
     let mut get_or_code = UnlinkedCodeObject::new("standard_map_get_or_method_id", 5);
     let value = get_or_code.push_constant(Constant::Int(6));
@@ -583,7 +650,10 @@ fn call_method_uses_standard_map_method_id_before_name_fallback() {
         src: Register(4),
     }));
 
-    assert_eq!(Vm::new().run(&get_or_code), Ok(OwnedValue::Int(6)));
+    assert_eq!(
+        run_linked_standard_id_code(&Vm::new(), get_or_code),
+        Ok(OwnedValue::Int(6))
+    );
 }
 
 #[test]
@@ -631,7 +701,10 @@ fn call_method_uses_standard_map_mutator_ids_before_name_fallback() {
     set_code.push_instruction(UnlinkedInstruction::new(UnlinkedInstructionKind::Return {
         src: Register(4),
     }));
-    assert_eq!(Vm::new().run(&set_code), Ok(OwnedValue::Bool(true)));
+    assert_eq!(
+        run_linked_standard_id_code(&Vm::new(), set_code),
+        Ok(OwnedValue::Bool(true))
+    );
 
     let mut remove_code = UnlinkedCodeObject::new("standard_map_remove_method_id", 5);
     let key = remove_code.push_constant(Constant::String("xp".into()));
@@ -673,7 +746,10 @@ fn call_method_uses_standard_map_mutator_ids_before_name_fallback() {
     remove_code.push_instruction(UnlinkedInstruction::new(UnlinkedInstructionKind::Return {
         src: Register(4),
     }));
-    assert_eq!(Vm::new().run(&remove_code), Ok(OwnedValue::Bool(false)));
+    assert_eq!(
+        run_linked_standard_id_code(&Vm::new(), remove_code),
+        Ok(OwnedValue::Bool(false))
+    );
 
     let mut clear_code = UnlinkedCodeObject::new("standard_map_clear_method_id", 5);
     let key = clear_code.push_constant(Constant::String("xp".into()));
@@ -715,7 +791,10 @@ fn call_method_uses_standard_map_mutator_ids_before_name_fallback() {
     clear_code.push_instruction(UnlinkedInstruction::new(UnlinkedInstructionKind::Return {
         src: Register(4),
     }));
-    assert_eq!(Vm::new().run(&clear_code), Ok(OwnedValue::Int(0)));
+    assert_eq!(
+        run_linked_standard_id_code(&Vm::new(), clear_code),
+        Ok(OwnedValue::Int(0))
+    );
 }
 
 #[test]
@@ -765,7 +844,10 @@ fn call_method_uses_standard_set_method_id_before_name_fallback() {
         src: Register(4),
     }));
 
-    assert_eq!(vm.run(&code), Ok(OwnedValue::Int(2)));
+    assert_eq!(
+        run_linked_standard_id_code(&vm, code),
+        Ok(OwnedValue::Int(2))
+    );
 }
 
 #[test]
@@ -822,7 +904,10 @@ fn call_method_uses_standard_set_mutator_ids_before_name_fallback() {
     }));
     let mut vm = Vm::new();
     vm.register_standard_natives();
-    assert_eq!(vm.run(&add_code), Ok(OwnedValue::Bool(true)));
+    assert_eq!(
+        run_linked_standard_id_code(&vm, add_code),
+        Ok(OwnedValue::Bool(true))
+    );
 
     let mut remove_code = UnlinkedCodeObject::new("standard_set_remove_method_id", 6);
     let first = remove_code.push_constant(Constant::Int(2));
@@ -876,7 +961,10 @@ fn call_method_uses_standard_set_mutator_ids_before_name_fallback() {
     }));
     let mut vm = Vm::new();
     vm.register_standard_natives();
-    assert_eq!(vm.run(&remove_code), Ok(OwnedValue::Bool(false)));
+    assert_eq!(
+        run_linked_standard_id_code(&vm, remove_code),
+        Ok(OwnedValue::Bool(false))
+    );
 
     let mut clear_code = UnlinkedCodeObject::new("standard_set_clear_method_id", 6);
     let first = clear_code.push_constant(Constant::Int(2));
@@ -930,7 +1018,10 @@ fn call_method_uses_standard_set_mutator_ids_before_name_fallback() {
     }));
     let mut vm = Vm::new();
     vm.register_standard_natives();
-    assert_eq!(vm.run(&clear_code), Ok(OwnedValue::Int(0)));
+    assert_eq!(
+        run_linked_standard_id_code(&vm, clear_code),
+        Ok(OwnedValue::Int(0))
+    );
 }
 
 #[test]
@@ -968,7 +1059,10 @@ fn call_method_uses_standard_collection_predicate_ids_before_name_fallback() {
     array_code.push_instruction(UnlinkedInstruction::new(UnlinkedInstructionKind::Return {
         src: Register(3),
     }));
-    assert_eq!(Vm::new().run(&array_code), Ok(OwnedValue::Bool(true)));
+    assert_eq!(
+        run_linked_standard_id_code(&Vm::new(), array_code),
+        Ok(OwnedValue::Bool(true))
+    );
 
     let mut map_code = UnlinkedCodeObject::new("standard_map_has_method_id", 4);
     let value = map_code.push_constant(Constant::Int(6));
@@ -1001,7 +1095,10 @@ fn call_method_uses_standard_collection_predicate_ids_before_name_fallback() {
     map_code.push_instruction(UnlinkedInstruction::new(UnlinkedInstructionKind::Return {
         src: Register(3),
     }));
-    assert_eq!(Vm::new().run(&map_code), Ok(OwnedValue::Bool(true)));
+    assert_eq!(
+        run_linked_standard_id_code(&Vm::new(), map_code),
+        Ok(OwnedValue::Bool(true))
+    );
 
     let mut set_code = UnlinkedCodeObject::new("standard_set_has_method_id", 5);
     let first = set_code.push_constant(Constant::Int(2));
@@ -1046,7 +1143,10 @@ fn call_method_uses_standard_collection_predicate_ids_before_name_fallback() {
     }));
     let mut vm = Vm::new();
     vm.register_standard_natives();
-    assert_eq!(vm.run(&set_code), Ok(OwnedValue::Bool(true)));
+    assert_eq!(
+        run_linked_standard_id_code(&vm, set_code),
+        Ok(OwnedValue::Bool(true))
+    );
 
     assert_eq!(
         run_set_relation_by_id(std_method_id("Set", "is_subset"), &[2], &[2, 4],),
@@ -1141,7 +1241,7 @@ fn run_set_relation_by_id(
 
     let mut vm = Vm::new();
     vm.register_standard_natives();
-    vm.run(&code)
+    run_linked_standard_id_code(&vm, code)
 }
 
 #[test]
@@ -1168,7 +1268,10 @@ fn call_method_uses_standard_option_method_id_before_name_fallback() {
         src: Register(1),
     }));
 
-    assert_eq!(Vm::new().run(&code), Ok(OwnedValue::Bool(true)));
+    assert_eq!(
+        run_linked_standard_id_code(&Vm::new(), code),
+        Ok(OwnedValue::Bool(true))
+    );
 }
 
 #[test]
@@ -1195,5 +1298,8 @@ fn call_method_uses_standard_result_method_id_before_name_fallback() {
         src: Register(1),
     }));
 
-    assert_eq!(Vm::new().run(&code), Ok(OwnedValue::Bool(true)));
+    assert_eq!(
+        run_linked_standard_id_code(&Vm::new(), code),
+        Ok(OwnedValue::Bool(true))
+    );
 }
