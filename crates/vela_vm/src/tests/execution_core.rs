@@ -40,11 +40,11 @@ fn runs_basic_arithmetic() {
         src: Register(4),
     }));
 
-    assert_eq!(Vm::new().run(&code), Ok(OwnedValue::Int(14)));
+    assert_eq!(run_linked_test_code(code), Ok(OwnedValue::Int(14)));
 }
 
 #[test]
-fn unlinked_script_function_call_uses_id_not_debug_name_fallback() {
+fn linker_rejects_script_function_id_debug_name_mismatch() {
     let mut helper = UnlinkedCodeObject::new("helper", 1);
     let value = helper.push_constant(Constant::Int(7));
     helper.push_instruction(UnlinkedInstruction::new(
@@ -74,16 +74,15 @@ fn unlinked_script_function_call_uses_id_not_debug_name_fallback() {
     program.insert_function(helper);
     program.insert_function(main);
 
-    let error = Vm::new()
-        .run_program(&program, "main", &[])
+    let error = Linker::new()
+        .link_program(&program)
         .expect_err("matching debug name must not rescue wrong FunctionId");
 
-    assert_eq!(
-        error.kind(),
-        VmErrorKind::UnknownFunction {
-            name: "helper".to_owned()
-        }
-    );
+    assert!(matches!(
+        error,
+        vela_bytecode::LinkError::MissingScriptFunction { name, id }
+            if name == "helper" && id == FunctionId::new(0xDEAD)
+    ));
 }
 
 #[test]
@@ -762,7 +761,7 @@ fn branches_on_false_conditions() {
         src: Register(1),
     }));
 
-    assert_eq!(Vm::new().run(&code), Ok(OwnedValue::Int(2)));
+    assert_eq!(run_linked_test_code(code), Ok(OwnedValue::Int(2)));
 }
 
 #[test]
@@ -826,7 +825,14 @@ fn calls_registered_native_functions() {
         src: Register(1),
     }));
 
-    assert_eq!(vm.run(&code), Ok(OwnedValue::Null));
+    assert_eq!(
+        run_linked_test_code_with_linker(
+            &vm,
+            code,
+            Linker::new().with_native_implementation(native_id)
+        ),
+        Ok(OwnedValue::Null)
+    );
 }
 
 #[test]
@@ -848,8 +854,7 @@ fn instruction_budget_stops_dispatch_before_next_instruction() {
     }));
     let mut budget = ExecutionBudget::new(2, usize::MAX, usize::MAX);
 
-    let error = Vm::new()
-        .run_with_budget(&code, &mut budget)
+    let error = run_linked_test_code_with_budget(code, &mut budget)
         .expect_err("third instruction exceeds budget");
 
     assert_eq!(
@@ -878,10 +883,11 @@ fn main() {
 "#,
     )
     .expect("compile recursive source");
+    let linked = link_test_program(&program);
     let mut budget = ExecutionBudget::new(100, usize::MAX, 2);
 
     let error = Vm::new()
-        .run_program_with_budget(&program, "main", &[], &mut budget)
+        .run_linked_program_with_budget(&linked, "main", &[], &mut budget)
         .expect_err("recursive call exceeds call depth");
 
     assert_eq!(
@@ -989,7 +995,7 @@ fn record_slot_bytecode_reads_and_writes_by_slot() {
         src: Register(2),
     }));
 
-    assert_eq!(Vm::new().run(&code), Ok(OwnedValue::Int(5)));
+    assert_eq!(run_linked_test_code(code), Ok(OwnedValue::Int(5)));
 }
 
 #[test]
@@ -1022,7 +1028,7 @@ fn enum_slot_bytecode_reads_by_slot() {
         src: Register(2),
     }));
 
-    assert_eq!(Vm::new().run(&code), Ok(OwnedValue::Int(7)));
+    assert_eq!(run_linked_test_code(code), Ok(OwnedValue::Int(7)));
 }
 
 #[test]
@@ -1034,7 +1040,7 @@ fn runs_compiled_arithmetic_source() {
     )
     .expect("compile arithmetic source");
 
-    assert_eq!(Vm::new().run(&code), Ok(OwnedValue::Int(14)));
+    assert_eq!(run_linked_test_code(code), Ok(OwnedValue::Int(14)));
 }
 
 #[test]
@@ -1055,7 +1061,7 @@ fn main() {
     )
     .expect("compile numeric literal source");
 
-    assert_eq!(Vm::new().run(&code), Ok(OwnedValue::Float(14.0)));
+    assert_eq!(run_linked_test_code(code), Ok(OwnedValue::Float(14.0)));
 }
 
 #[test]
@@ -1076,7 +1082,7 @@ fn main() {
     )
     .expect("compile large int comparison source");
 
-    assert_eq!(Vm::new().run(&code), Ok(OwnedValue::Int(1)));
+    assert_eq!(run_linked_test_code(code), Ok(OwnedValue::Int(1)));
 }
 
 #[test]
@@ -1104,7 +1110,7 @@ fn main() {
     )
     .expect("compile scalar equality source");
 
-    assert_eq!(Vm::new().run(&code), Ok(OwnedValue::Int(1)));
+    assert_eq!(run_linked_test_code(code), Ok(OwnedValue::Int(1)));
 }
 
 #[test]
@@ -1116,7 +1122,7 @@ fn runs_compiled_shebang_source() {
     )
     .expect("compile shebang source");
 
-    assert_eq!(Vm::new().run(&code), Ok(OwnedValue::Int(7)));
+    assert_eq!(run_linked_test_code(code), Ok(OwnedValue::Int(7)));
 }
 
 #[test]
@@ -1128,7 +1134,10 @@ fn runs_compiled_unicode_string_escapes() {
     )
     .expect("compile unicode escaped string source");
 
-    assert_eq!(Vm::new().run(&code), Ok(OwnedValue::String("Az".into())));
+    assert_eq!(
+        run_linked_test_code(code),
+        Ok(OwnedValue::String("Az".into()))
+    );
 }
 
 #[test]
@@ -1147,7 +1156,7 @@ fn main() {
     )
     .expect("compile unary operator source");
 
-    assert_eq!(Vm::new().run(&code), Ok(OwnedValue::Int(-5)));
+    assert_eq!(run_linked_test_code(code), Ok(OwnedValue::Int(-5)));
 }
 
 #[test]
@@ -1166,20 +1175,25 @@ fn or_case() {
 fn truthy_case() {
     return true && 5 && ("reward" || fail());
 }
+
+fn fail() {
+    return false;
+}
 "#,
     )
     .expect("compile logical short-circuit source");
+    let linked = link_test_program(&program);
 
     assert_eq!(
-        Vm::new().run_program(&program, "and_case", &[]),
+        Vm::new().run_linked_program(&linked, "and_case", &[]),
         Ok(OwnedValue::Bool(false))
     );
     assert_eq!(
-        Vm::new().run_program(&program, "or_case", &[]),
+        Vm::new().run_linked_program(&linked, "or_case", &[]),
         Ok(OwnedValue::Bool(true))
     );
     assert_eq!(
-        Vm::new().run_program(&program, "truthy_case", &[]),
+        Vm::new().run_linked_program(&linked, "truthy_case", &[]),
         Ok(OwnedValue::Bool(true))
     );
 }
@@ -1207,13 +1221,14 @@ fn or_case() {{
     );
     let program =
         compile_program_source(SourceId::new(1), &source).expect("compile long logical chains");
+    let linked = link_test_program(&program);
 
     assert_eq!(
-        Vm::new().run_program(&program, "and_case", &[]),
+        Vm::new().run_linked_program(&linked, "and_case", &[]),
         Ok(OwnedValue::Bool(true))
     );
     assert_eq!(
-        Vm::new().run_program(&program, "or_case", &[]),
+        Vm::new().run_linked_program(&linked, "or_case", &[]),
         Ok(OwnedValue::Bool(true))
     );
 }
@@ -1238,7 +1253,7 @@ fn main() {
     )
     .expect("compile local assignment source");
 
-    assert_eq!(Vm::new().run(&code), Ok(OwnedValue::Int(20)));
+    assert_eq!(run_linked_test_code(code), Ok(OwnedValue::Int(20)));
 }
 
 #[test]
@@ -1256,7 +1271,7 @@ fn main() {
     )
     .expect("compile index read source");
 
-    assert_eq!(Vm::new().run(&code), Ok(OwnedValue::Int(10)));
+    assert_eq!(run_linked_test_code(code), Ok(OwnedValue::Int(10)));
 }
 
 #[test]
@@ -1276,17 +1291,18 @@ fn map_case() {
 "#,
     )
     .expect("compile heap index source");
+    let linked = link_test_program(&program);
     let mut budget = ExecutionBudget::unbounded();
 
     assert_eq!(
         Vm::new()
-            .run_program_with_managed_heap_and_budget(&program, "array_case", &[], &mut budget)
+            .run_linked_program_with_budget(&linked, "array_case", &[], &mut budget)
             .expect("run heap array index"),
         OwnedValue::String("xp".into())
     );
     assert_eq!(
         Vm::new()
-            .run_program_with_managed_heap_and_budget(&program, "map_case", &[], &mut budget)
+            .run_linked_program_with_budget(&linked, "map_case", &[], &mut budget)
             .expect("run heap map index"),
         OwnedValue::Int(7)
     );
@@ -1313,7 +1329,7 @@ fn main() {
     )
     .expect("compile index write source");
 
-    assert_eq!(Vm::new().run(&code), Ok(OwnedValue::Int(45)));
+    assert_eq!(run_linked_test_code(code), Ok(OwnedValue::Int(45)));
 }
 
 #[test]
@@ -1401,17 +1417,18 @@ fn map_case() {
 "#,
     )
     .expect("compile heap index write source");
+    let linked = link_test_program(&program);
     let mut budget = ExecutionBudget::unbounded();
 
     assert_eq!(
         Vm::new()
-            .run_program_with_managed_heap_and_budget(&program, "array_case", &[], &mut budget)
+            .run_linked_program_with_budget(&linked, "array_case", &[], &mut budget)
             .expect("run heap array index write"),
         OwnedValue::String("silver".into())
     );
     assert_eq!(
         Vm::new()
-            .run_program_with_managed_heap_and_budget(&program, "map_case", &[], &mut budget)
+            .run_linked_program_with_budget(&linked, "map_case", &[], &mut budget)
             .expect("run heap map index write"),
         OwnedValue::Int(15)
     );

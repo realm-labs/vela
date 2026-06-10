@@ -67,6 +67,35 @@ fn link_test_program(program: &UnlinkedProgram) -> LinkedProgram {
         .expect("test program should link")
 }
 
+fn run_linked_test_code(code: UnlinkedCodeObject) -> VmResult<OwnedValue> {
+    run_linked_test_code_with_linker(&Vm::new(), code, Linker::new())
+}
+
+fn run_linked_test_code_with_budget(
+    code: UnlinkedCodeObject,
+    budget: &mut ExecutionBudget,
+) -> VmResult<OwnedValue> {
+    let entry = code.name.clone();
+    let mut program = UnlinkedProgram::new();
+    program.insert_function(code);
+    let linked = link_test_program(&program);
+    Vm::new().run_linked_program_with_budget(&linked, &entry, &[], budget)
+}
+
+fn run_linked_test_code_with_linker(
+    vm: &Vm,
+    code: UnlinkedCodeObject,
+    linker: Linker<'_>,
+) -> VmResult<OwnedValue> {
+    let entry = code.name.clone();
+    let mut program = UnlinkedProgram::new();
+    program.insert_function(code);
+    let linked = linker
+        .link_program(&program)
+        .expect("test code should link");
+    vm.run_linked_program(&linked, &entry, &[])
+}
+
 fn host_read_program() -> (UnlinkedProgram, HostRef) {
     let host_ref = player_ref(3);
     let mut code = UnlinkedCodeObject::new("main", 2).with_params(vec!["player".into()]);
