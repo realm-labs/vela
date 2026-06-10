@@ -720,10 +720,33 @@ fn type_error<T>(operation: &'static str) -> VmResult<T> {
 
 #[cfg(test)]
 mod tests {
-    use vela_bytecode::compiler::compile_function_source;
+    use vela_bytecode::compiler::compile_function_source_with_registry;
+    use vela_bytecode::{Linker, UnlinkedCodeObject, UnlinkedProgram};
     use vela_common::SourceId;
 
-    use crate::{ExecutionBudget, Value, Vm};
+    use crate::{ExecutionBudget, OwnedValue, Vm, VmResult};
+
+    fn compile_standard_function_source(
+        source: SourceId,
+        text: &str,
+        function_name: &str,
+    ) -> vela_bytecode::compiler::error::CompileResult<UnlinkedCodeObject> {
+        let registry = vela_stdlib::standard_registry().expect("standard registry should build");
+        compile_function_source_with_registry(source, text, function_name, registry.compile_view())
+    }
+
+    fn run_linked_builtin_test_code(
+        code: UnlinkedCodeObject,
+        budget: &mut ExecutionBudget,
+    ) -> VmResult<OwnedValue> {
+        let entry = code.name.clone();
+        let mut program = UnlinkedProgram::new();
+        program.insert_function(code);
+        let linked = Linker::new()
+            .link_program(&program)
+            .expect("builtin method test program should link");
+        Vm::new().run_linked_program_with_budget(&linked, &entry, &[], budget)
+    }
 
     #[test]
     fn string_len_counts_unicode_characters() {
@@ -732,11 +755,13 @@ fn main() {
     return "quest".len() * 100 + "é日".len();
 }
 "#;
-        let code = compile_function_source(SourceId::new(1), source, "main")
+        let code = compile_standard_function_source(SourceId::new(1), source, "main")
             .expect("string len source should compile");
+        let mut budget = ExecutionBudget::unbounded();
 
-        let result = Vm::new().run(&code).expect("string len should run");
-        assert_eq!(result, Value::Int(502));
+        let result =
+            run_linked_builtin_test_code(code, &mut budget).expect("string len should run");
+        assert_eq!(result, OwnedValue::Int(502));
     }
 
     #[test]
@@ -748,13 +773,12 @@ fn main() {
     return ascii.len() * 100 + unicode.len();
 }
 "#;
-        let code = compile_function_source(SourceId::new(1), source, "main")
+        let code = compile_standard_function_source(SourceId::new(1), source, "main")
             .expect("managed heap string len source should compile");
         let mut budget = ExecutionBudget::unbounded();
 
-        let result = Vm::new()
-            .run_with_managed_heap_and_budget(&code, &mut budget)
+        let result = run_linked_builtin_test_code(code, &mut budget)
             .expect("managed heap string len should run");
-        assert_eq!(result, Value::Int(502));
+        assert_eq!(result, OwnedValue::Int(502));
     }
 }
