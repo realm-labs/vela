@@ -1,12 +1,15 @@
+use vela_def::TypeId;
 use vela_engine::context_schema::context_host_type_desc;
 use vela_engine::engine::Engine;
 use vela_engine::error::EngineResult;
+use vela_engine::host_type::HostTypeSpec;
 use vela_engine::native::{EffectSet, FunctionAccess, NativeFunctionDesc, TypeHint};
 use vela_engine::permission::Capability;
 use vela_macros::{ScriptHost, ScriptReflect, script_methods};
 use vela_reflect::modules::ModuleDesc;
 use vela_reflect::permissions::ReflectPolicy;
-use vela_reflect::registry::{FieldDesc, TypeKey, TypeRegistry};
+use vela_reflect::registry::HostIndexCapability;
+use vela_reflect::registry::{FieldDesc, TypeDesc, TypeKey, TypeRegistry};
 use vela_vm::owned_value::OwnedValue;
 
 use super::DemoEngineOptions;
@@ -27,6 +30,7 @@ pub(crate) fn demo_engine(ids: DemoIds, options: DemoEngineOptions) -> EngineRes
         .register_host_type::<Monster>()
         .register_host_type::<Inventory>()
         .register_host_type::<ItemStack>()
+        .register_host_type_spec(string_item_map_type())
         .register_host_type::<Config>()
         .register_reflect_schema::<HostQuestProgress>()
         .register_module(
@@ -129,12 +133,24 @@ pub(crate) struct Config {
 #[derive(ScriptHost)]
 #[script(path = "game::inventory::Inventory")]
 pub(crate) struct Inventory {
-    #[script(get, hint = "map")]
+    #[script(get, hint = "StringItemMap")]
     items: std::collections::BTreeMap<String, ItemStack>,
 }
 
 #[script_methods]
 impl Inventory {}
+
+fn string_item_map_type() -> HostTypeSpec {
+    HostTypeSpec::new(
+        TypeDesc::new(TypeKey::new(TypeId::new(8_802), "StringItemMap")).index_capability(
+            HostIndexCapability::new()
+                .readable(true)
+                .writable(true)
+                .key_type("string")
+                .value_type("ItemStack"),
+        ),
+    )
+}
 
 #[allow(dead_code)]
 #[derive(ScriptHost)]

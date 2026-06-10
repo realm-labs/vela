@@ -1,6 +1,5 @@
 use std::collections::{BTreeMap, BTreeSet, HashMap, HashSet};
 
-use vela_bytecode::compiler::compile_program_source_with_options;
 use vela_common::{HostMethodId, HostObjectId, HostTypeId, SourceId};
 use vela_def::{FieldId, TypeId};
 use vela_engine::args::{FromScriptArg, IntoScriptArg, ScriptArgsExt};
@@ -268,17 +267,17 @@ fn runtime_call_accepts_args_and_host_macros() {
         )
         .build()
         .expect("engine should build");
-    let program = compile_program_source_with_options(
-        SourceId::new(1),
-        r#"
+    let program = engine
+        .compile_source(
+            SourceId::new(1),
+            r#"
 fn main(player: Player, amount: int) {
     player.grant_exp(amount);
     return amount;
 }
 "#,
-        &engine.compiler_options(),
-    )
-    .expect("program should compile");
+        )
+        .expect("program should compile");
     let mut runtime = vela_engine::runtime::Runtime::new(engine, program);
     let mut adapter = MockStateAdapter::new();
     let mut tx = HostAccess::new();

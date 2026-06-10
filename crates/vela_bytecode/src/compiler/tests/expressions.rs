@@ -477,7 +477,7 @@ fn main() {
 }
 #[test]
 fn compiler_keeps_call_result_index_reads_off_host_paths() {
-    let code = compile_function_source_with_options(
+    let code = compile_function_source(
         SourceId::new(1),
         r#"
 fn values() {
@@ -488,7 +488,6 @@ fn main() {
 }
 "#,
         "main",
-        &CompilerOptions::new().with_host_field("count", FieldId::new(1)),
     )
     .expect("call result index read should compile");
     assert!(

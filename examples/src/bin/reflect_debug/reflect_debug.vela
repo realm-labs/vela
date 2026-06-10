@@ -3,7 +3,7 @@ enum QuestProgress {
     Finished { count }
 }
 
-fn main(ctx, player) {
+fn main(ctx: Context, player: Player) {
     let player_type = reflect::type_info("Player");
     let inventory_type = reflect::type_info("Inventory");
     let item_stack_type = reflect::type_info("ItemStack");
@@ -221,7 +221,7 @@ fn main(ctx, player) {
         && inventory_fields.len() == 1
         && inventory_fields[0].owner == "Inventory"
         && inventory_fields[0].name == "items"
-        && inventory_fields[0].type == "map"
+        && inventory_fields[0].type == "StringItemMap"
         && reflect::has_type("ItemStack")
         && reflect::kind(item_stack_type) == "host"
         && reflect::id(item_stack_type) > 0

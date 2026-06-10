@@ -1412,7 +1412,7 @@ surface.
 - Host field/method lowering no longer depends on raw `(String, String)` maps as the primary API.
 - Host target planning still passes current tests after test updates.
 
-- [ ] **Task 4.4: Remove `CompilerOptions` or reduce it to non-identity options**
+- [x] **Task 4.4: Remove `CompilerOptions` or reduce it to non-identity options**
 
 **Objective:** Stop using `CompilerOptions` as an identity registry.
 

@@ -1,5 +1,34 @@
 use super::*;
 
+fn value_method_registry(specs: &[(&str, &str, &[&str])]) -> vela_registry::DefinitionRegistry {
+    let mut registry = vela_registry::DefinitionRegistry::new();
+    let mut types = std::collections::BTreeMap::new();
+    for (type_name, method, params) in specs {
+        let owner = *types.entry(*type_name).or_insert_with(|| {
+            registry
+                .register_type(vela_registry::TypeDef::new(vela_def::DefPath::ty(
+                    "std",
+                    std::iter::empty::<&str>(),
+                    *type_name,
+                )))
+                .expect("test value method type should register")
+        });
+        registry
+            .register_method(vela_registry::MethodDef::new(
+                vela_def::DefPath::method("std", std::iter::empty::<&str>(), *type_name, *method),
+                owner,
+                vela_registry::FunctionSignature::new(
+                    params
+                        .iter()
+                        .map(|param| vela_registry::ParamDef::new(*param, None::<String>)),
+                    None,
+                ),
+            ))
+            .expect("test value method should register");
+    }
+    registry
+}
+
 #[test]
 fn compiler_lowers_radix_ints_and_exponent_floats() {
     let code = compile_function_source(
@@ -122,30 +151,6 @@ fn main() {
 }
 
 #[test]
-fn compiler_lowers_named_native_args_from_compiler_options() {
-    let native_id = vela_def::FunctionId::new(77);
-    let program = compile_program_source_with_options(
-        SourceId::new(1),
-        r#"
-fn main() {
-    return game::add(rhs = 3, lhs = 2);
-}
-"#,
-        &CompilerOptions::new()
-            .with_native_module_root("game")
-            .with_native_function("game::add", native_id, ["lhs", "rhs"]),
-    )
-    .expect("named native args should compile with descriptor metadata");
-    let main = program.function("main").expect("main function");
-
-    assert!(main.instructions.iter().any(|instruction| matches!(
-        &instruction.kind,
-        InstructionKind::CallNative { name, native, args, .. }
-            if name == "game::add" && *native == Some(native_id) && args.len() == 2
-    )));
-}
-
-#[test]
 fn compiler_lowers_named_native_args_from_registry() {
     let native_id = vela_def::FunctionId::new(77);
     let mut registry = vela_registry::DefinitionRegistry::new();
@@ -206,17 +211,18 @@ fn main() {
 }
 
 #[test]
-fn compiler_lowers_named_value_method_args_from_compiler_options() {
-    let program = compile_program_source_with_options(
+fn compiler_lowers_named_value_method_args_from_registry() {
+    let registry = value_method_registry(&[("Map", "get_or", &["key", "default"])]);
+    let program = compile_program_source_with_registry(
         SourceId::new(1),
         r#"
 fn main() {
     return {"gold": 4}.get_or(default = 0, key = "gold");
 }
 "#,
-        &CompilerOptions::new().with_required_value_method_params("get_or", ["key", "default"]),
+        registry.compile_view(),
     )
-    .expect("named value method args should compile with descriptor metadata");
+    .expect("named value method args should compile with registry metadata");
     let main = program.function("main").expect("main function");
 
     assert!(main.instructions.iter().any(|instruction| matches!(
@@ -226,15 +232,16 @@ fn main() {
 }
 
 #[test]
-fn compiler_reports_named_value_method_arg_diagnostics_from_compiler_options() {
-    let error = compile_program_source_with_options(
+fn compiler_reports_named_value_method_arg_diagnostics_from_registry() {
+    let registry = value_method_registry(&[("Map", "get_or", &["key", "default"])]);
+    let error = compile_program_source_with_registry(
         SourceId::new(1),
         r#"
 fn main() {
     return {"gold": 4}.get_or(defalt = 0, key = "gold");
 }
 "#,
-        &CompilerOptions::new().with_required_value_method_params("get_or", ["key", "default"]),
+        registry.compile_view(),
     )
     .expect_err("unknown named value method arg should fail");
 
@@ -248,17 +255,19 @@ fn main() {
 }
 
 #[test]
-fn compiler_lowers_named_value_method_args_by_receiver_type_from_compiler_options() {
-    let program = compile_program_source_with_options(
+fn compiler_lowers_named_value_method_args_by_receiver_type_from_registry() {
+    let registry = value_method_registry(&[
+        ("String", "contains", &["needle"]),
+        ("Array", "contains", &["value"]),
+    ]);
+    let program = compile_program_source_with_registry(
         SourceId::new(1),
         r#"
 fn main() {
     return "reward:gold".contains(needle = ":") && ["gold"].contains(value = "gold");
 }
 "#,
-        &CompilerOptions::new()
-            .with_required_value_method_params_for_type("string", "contains", ["needle"])
-            .with_required_value_method_params_for_type("array", "contains", ["value"]),
+        registry.compile_view(),
     )
     .expect("receiver-specific named value method args should compile");
     let main = program.function("main").expect("main function");
@@ -328,7 +337,11 @@ fn main() {
 
 #[test]
 fn compiler_lowers_named_value_method_args_from_local_value_type_flow() {
-    let program = compile_program_source_with_options(
+    let registry = value_method_registry(&[
+        ("String", "contains", &["needle"]),
+        ("Array", "contains", &["value"]),
+    ]);
+    let program = compile_program_source_with_registry(
         SourceId::new(1),
         r#"
 fn main(text: string) {
@@ -339,9 +352,7 @@ fn main(text: string) {
         && parts.contains(value = "gold");
 }
 "#,
-        &CompilerOptions::new()
-            .with_required_value_method_params_for_type("string", "contains", ["needle"])
-            .with_required_value_method_params_for_type("array", "contains", ["value"]),
+        registry.compile_view(),
     )
     .expect("local value method receiver facts should compile");
     let main = program.function("main").expect("main function");
@@ -361,7 +372,8 @@ fn main(text: string) {
 
 #[test]
 fn compiler_lowers_named_value_method_args_from_captured_value_type_flow() {
-    let program = compile_program_source_with_options(
+    let registry = value_method_registry(&[("String", "contains", &["needle"])]);
+    let program = compile_program_source_with_registry(
         SourceId::new(1),
         r#"
 fn main() {
@@ -370,11 +382,7 @@ fn main() {
     return has_separator(":");
 }
 "#,
-        &CompilerOptions::new().with_required_value_method_params_for_type(
-            "string",
-            "contains",
-            ["needle"],
-        ),
+        registry.compile_view(),
     )
     .expect("captured value method receiver facts should compile");
     let main = program.function("main").expect("main function");
@@ -395,7 +403,11 @@ fn main() {
 
 #[test]
 fn compiler_does_not_leak_named_value_method_receiver_facts_from_for_body() {
-    let err = compile_program_source_with_options(
+    let registry = value_method_registry(&[
+        ("String", "contains", &["needle"]),
+        ("Array", "contains", &["value"]),
+    ]);
+    let err = compile_program_source_with_registry(
         SourceId::new(1),
         r#"
 fn main() {
@@ -406,9 +418,7 @@ fn main() {
     return value.contains(needle = ":");
 }
 "#,
-        &CompilerOptions::new()
-            .with_required_value_method_params_for_type("string", "contains", ["needle"])
-            .with_required_value_method_params_for_type("array", "contains", ["value"]),
+        registry.compile_view(),
     )
     .expect_err("for body value receiver facts must not leak after loop scope");
 
@@ -420,7 +430,11 @@ fn main() {
 
 #[test]
 fn compiler_does_not_leak_named_value_method_receiver_facts_from_match_arm() {
-    let err = compile_program_source_with_options(
+    let registry = value_method_registry(&[
+        ("String", "contains", &["needle"]),
+        ("Array", "contains", &["value"]),
+    ]);
+    let err = compile_program_source_with_registry(
         SourceId::new(1),
         r#"
 fn main() {
@@ -434,9 +448,7 @@ fn main() {
     return value.contains(needle = ":");
 }
 "#,
-        &CompilerOptions::new()
-            .with_required_value_method_params_for_type("string", "contains", ["needle"])
-            .with_required_value_method_params_for_type("array", "contains", ["value"]),
+        registry.compile_view(),
     )
     .expect_err("match arm value receiver facts must not leak after match scope");
 
@@ -448,32 +460,45 @@ fn main() {
 
 #[test]
 fn compiler_rejects_ambiguous_named_value_method_args_without_receiver_type() {
-    compile_program_source_with_options(
+    let registry = value_method_registry(&[
+        ("String", "contains", &["needle"]),
+        ("Array", "contains", &["value"]),
+    ]);
+    compile_program_source_with_registry(
         SourceId::new(1),
         r#"
 fn main(value) {
     return value.contains(needle = ":");
 }
 "#,
-        &CompilerOptions::new()
-            .with_required_value_method_params_for_type("string", "contains", ["needle"])
-            .with_required_value_method_params_for_type("array", "contains", ["value"]),
+        registry.compile_view(),
     )
     .expect_err("ambiguous named method args should require receiver type evidence");
 }
 
 #[test]
-fn compiler_reports_named_native_arg_diagnostics_from_compiler_options() {
-    let error = compile_program_source_with_options(
+fn compiler_reports_named_native_arg_diagnostics_from_registry() {
+    let mut registry = vela_registry::DefinitionRegistry::new();
+    registry
+        .register_function(vela_registry::FunctionDef::new(
+            vela_def::DefPath::function("host", ["game"], "add"),
+            vela_registry::FunctionSignature::new(
+                [
+                    vela_registry::ParamDef::new("lhs", Some("int")),
+                    vela_registry::ParamDef::new("rhs", Some("int")),
+                ],
+                Some("int".to_owned()),
+            ),
+        ))
+        .expect("test native function should register");
+    let error = compile_program_source_with_registry(
         SourceId::new(1),
         r#"
 fn main() {
     return game::add(rsh = 3, lhs = 2);
 }
 "#,
-        &CompilerOptions::new()
-            .with_native_module_root("game")
-            .with_native_function_params("game::add", ["lhs", "rhs"]),
+        registry.compile_view(),
     )
     .expect_err("unknown named native arg should fail");
 

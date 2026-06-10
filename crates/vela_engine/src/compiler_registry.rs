@@ -17,7 +17,7 @@ pub(crate) fn definition_registry_from_reflect(
         vela_stdlib::register_stdlib(&mut registry)?;
     }
     for desc in reflect.types() {
-        if include_stdlib && desc.attrs.get("stdlib").is_some() {
+        if include_stdlib && desc.attrs.get("stdlib").is_some() && desc.host_type_id.is_none() {
             continue;
         }
         register_type_def(&mut registry, desc)?;
@@ -91,6 +91,7 @@ fn variant_field_def(
     )
     .host_runtime_id(field.id.get())
     .writable(field.access.writable)
+    .variant_field(true)
     .type_hint(field.type_hint.clone())
 }
 

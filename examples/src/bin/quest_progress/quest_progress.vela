@@ -1,4 +1,4 @@
-fn main(ctx, player, monster) {
+fn main(ctx: Context, player: Player, monster: Monster) {
     if monster.id == 11 {
         player.quest_progress.quest_count += 1;
     }

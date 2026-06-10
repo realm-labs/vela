@@ -7,9 +7,7 @@ use crate::{CacheSiteId, Constant, HostTargetPlanId, InstructionKind, Register};
 use vela_host::resolved::HostMutationOp;
 use vela_host::target::HostTargetPlan;
 
-use super::{
-    CompileError, CompileErrorKind, CompileResult, Compiler, CompilerOptions, reject_named_args,
-};
+use super::{CompileError, CompileErrorKind, CompileResult, Compiler, reject_named_args};
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub(super) struct HostPath<'ast> {
@@ -36,119 +34,15 @@ impl HostPath<'_> {
     }
 }
 
-pub(super) fn host_field_path<'ast>(
-    options: &CompilerOptions,
-    expr: &'ast Expr,
-) -> Option<HostPath<'ast>> {
-    match &expr.kind {
-        ExprKind::Field { base, name } => {
-            let field = host_path_field_part(options, name)?;
-            let mut path = host_path_receiver(options, base)?;
-            path.segments.push(field);
-            Some(path)
-        }
-        ExprKind::Path(path) => host_field_path_parts(options, expr.span, path),
-        ExprKind::Index { base, index } => {
-            let mut path = host_path_index_receiver(options, base)?;
-            path.segments.push(HostPathPart::Value(index));
-            Some(path)
-        }
-        _ => None,
-    }
-}
-
-fn host_path_receiver<'ast>(
-    options: &CompilerOptions,
-    receiver: &'ast Expr,
-) -> Option<HostPath<'ast>> {
-    match &receiver.kind {
-        ExprKind::Field { base, name } => {
-            let field = host_path_field_part(options, name)?;
-            let mut path = host_path_receiver(options, base)?;
-            path.segments.push(field);
-            Some(path)
-        }
-        ExprKind::Index { base, index } => {
-            let mut path = host_path_receiver(options, base)?;
-            path.segments.push(HostPathPart::Value(index));
-            Some(path)
-        }
-        ExprKind::Path(path) => host_field_path_parts(options, receiver.span, path).or_else(|| {
-            path.first().map(|root| HostPath {
-                root: HostPathRoot::LocalPath {
-                    name: root,
-                    span: receiver.span,
-                },
-                segments: Vec::new(),
-            })
-        }),
-        _ => Some(HostPath {
-            root: HostPathRoot::Expr(receiver),
-            segments: Vec::new(),
-        }),
-    }
-}
-
-fn host_path_index_receiver<'ast>(
-    options: &CompilerOptions,
-    receiver: &'ast Expr,
-) -> Option<HostPath<'ast>> {
-    match &receiver.kind {
-        ExprKind::Field { base, name } => {
-            let field = host_path_field_part(options, name)?;
-            let mut path = host_path_receiver(options, base)?;
-            path.segments.push(field);
-            Some(path)
-        }
-        ExprKind::Index { base, index } => {
-            let mut path = host_path_index_receiver(options, base)?;
-            path.segments.push(HostPathPart::Value(index));
-            Some(path)
-        }
-        ExprKind::Path(path) => host_field_path_parts(options, receiver.span, path),
-        _ => None,
-    }
-}
-
-pub(super) fn host_field_path_parts<'ast>(
-    options: &CompilerOptions,
-    span: Span,
-    path: &'ast [String],
-) -> Option<HostPath<'ast>> {
-    if path.len() < 2 {
-        return None;
-    }
-    let root = path.first()?;
-    let segments = path[1..]
-        .iter()
-        .map(|segment| host_path_field_part(options, segment))
-        .collect::<Option<Vec<_>>>()?;
-    Some(HostPath {
-        root: HostPathRoot::LocalPath { name: root, span },
-        segments,
-    })
-}
-
-fn host_path_field_part<'ast>(options: &CompilerOptions, name: &str) -> Option<HostPathPart<'ast>> {
-    options
-        .host_field(None, name)
-        .map(|field| field.id)
-        .map(HostPathPart::Field)
-        .or_else(|| {
-            options
-                .host_variant_fields
-                .get(name)
-                .copied()
-                .map(HostPathPart::VariantField)
-        })
-}
-
 impl Compiler<'_, '_> {
     pub(super) fn host_field_path<'ast>(&self, expr: &'ast Expr) -> Option<HostPath<'ast>> {
         self.resolve_host_path(expr).map(|resolved| resolved.path)
     }
 
-    fn resolve_host_path<'ast>(&self, expr: &'ast Expr) -> Option<ResolvedHostPath<'ast>> {
+    pub(super) fn resolve_host_path<'ast>(
+        &self,
+        expr: &'ast Expr,
+    ) -> Option<ResolvedHostPath<'ast>> {
         match &expr.kind {
             ExprKind::Field { base, name } => {
                 let mut receiver = self.resolve_host_path_receiver(base);
@@ -163,9 +57,15 @@ impl Compiler<'_, '_> {
             ExprKind::Index { base, index } => {
                 let mut receiver = self.resolve_host_path_index_receiver(base)?;
                 receiver.path.segments.push(HostPathPart::Value(index));
+                let value_type = receiver.type_name.as_deref().and_then(|type_name| {
+                    self.facts
+                        .options
+                        .host_index_capability(type_name)
+                        .and_then(|capability| capability.value_type.clone())
+                });
                 Some(ResolvedHostPath {
                     path: receiver.path,
-                    type_name: None,
+                    type_name: value_type,
                 })
             }
             _ => None,
@@ -249,19 +149,15 @@ impl Compiler<'_, '_> {
     ) -> Option<ResolvedHostPathField<'ast>> {
         if let Some(field) = self.host_field_info(receiver_type, name) {
             return Some(ResolvedHostPathField {
-                part: HostPathPart::Field(field.id),
+                part: if field.variant_field {
+                    HostPathPart::VariantField(field.id)
+                } else {
+                    HostPathPart::Field(field.id)
+                },
                 type_hint: field.type_hint,
             });
         }
-        self.facts
-            .options
-            .host_variant_fields
-            .get(name)
-            .copied()
-            .map(|field| ResolvedHostPathField {
-                part: HostPathPart::VariantField(field),
-                type_hint: None,
-            })
+        None
     }
 
     pub(super) fn emit_host_read(

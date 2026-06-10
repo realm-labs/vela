@@ -74,11 +74,16 @@ struct CompilerFacts<'registry> {
 
 impl CompilerFacts<'_> {
     fn known_type_names(&self) -> Vec<String> {
-        self.type_symbols
-            .values()
-            .cloned()
-            .chain(self.options.host_types.iter().cloned())
-            .collect()
+        let mut names = self.type_symbols.values().cloned().collect::<Vec<_>>();
+        if let Some(registry) = self.registry {
+            names.extend(
+                registry
+                    .type_names_for_package("host")
+                    .into_iter()
+                    .map(str::to_owned),
+            );
+        }
+        names
     }
 }
 
@@ -818,6 +823,10 @@ impl<'ast, 'registry> Compiler<'ast, 'registry> {
         registry.resolve_type(&DefPath::ty("host", std::iter::empty::<&str>(), type_name))
     }
 
+    pub(super) fn is_native_module_root(&self, root: &str) -> bool {
+        self.facts.options.is_native_module_root(root)
+    }
+
     pub(super) fn host_runtime_type_id(&self, type_name: &str) -> Option<HostTypeId> {
         if let Some(registry) = self.facts.registry
             && let Some(type_id) = self.host_type_id_for_name(type_name)
@@ -826,7 +835,7 @@ impl<'ast, 'registry> Compiler<'ast, 'registry> {
         {
             return Some(HostTypeId::new(runtime_id));
         }
-        self.facts.options.host_type_id(type_name)
+        None
     }
 
     pub(super) fn host_field_info(
@@ -847,16 +856,10 @@ impl<'ast, 'registry> Compiler<'ast, 'registry> {
                 id: runtime_id,
                 writable: registry.field_writable(id).unwrap_or(true),
                 type_hint: registry.field_type_hint(id).map(str::to_owned),
+                variant_field: registry.field_is_variant_field(id).unwrap_or(false),
             });
         }
-        self.facts
-            .options
-            .host_field(receiver_type, name)
-            .map(|field| HostFieldLookup {
-                id: field.id,
-                writable: field.writable,
-                type_hint: None,
-            })
+        None
     }
 
     pub(super) fn host_method_id(
@@ -872,7 +875,7 @@ impl<'ast, 'registry> Compiler<'ast, 'registry> {
         {
             return Some(HostMethodId::new(runtime_id));
         }
-        self.facts.options.host_method(receiver_type, name)
+        None
     }
 
     fn script_type_for_expr(&self, expr: &Expr) -> Option<String> {
@@ -1070,6 +1073,7 @@ pub(super) struct HostFieldLookup {
     pub(super) id: FieldId,
     pub(super) writable: bool,
     pub(super) type_hint: Option<String>,
+    pub(super) variant_field: bool,
 }
 
 fn unique_symbol_with_short_name<'a>(

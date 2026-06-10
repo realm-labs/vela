@@ -226,8 +226,29 @@ impl<'registry> RegistryCompileView<'registry> {
     }
 
     #[must_use]
+    pub fn field_is_variant_field(&self, id: FieldId) -> Option<bool> {
+        self.registry
+            .get(id.def_id())
+            .and_then(Def::field_is_variant_field)
+    }
+
+    #[must_use]
     pub fn resolve_type(&self, path: &DefPath) -> Option<TypeId> {
         self.registry.get_by_path(path).and_then(Def::type_id)
+    }
+
+    #[must_use]
+    pub fn type_names_for_package(&self, package: &str) -> Vec<&'registry str> {
+        self.registry
+            .defs_by_id
+            .values()
+            .filter_map(|def| {
+                let Def::Type(ty) = def else {
+                    return None;
+                };
+                (ty.path.package == package).then_some(ty.path.name.as_str())
+            })
+            .collect()
     }
 
     #[must_use]
@@ -575,6 +596,18 @@ impl Def {
             | Self::Trait(_) => None,
         }
     }
+
+    #[must_use]
+    pub const fn field_is_variant_field(&self) -> Option<bool> {
+        match self {
+            Self::Field(def) => Some(def.variant_field),
+            Self::Function(_)
+            | Self::Method(_)
+            | Self::Type(_)
+            | Self::Variant(_)
+            | Self::Trait(_) => None,
+        }
+    }
 }
 
 #[derive(Clone, Debug, Eq, Ord, PartialEq, PartialOrd)]
@@ -778,6 +811,7 @@ pub struct FieldDef {
     pub writable: bool,
     pub type_hint: Option<String>,
     pub host_runtime_id: Option<u128>,
+    pub variant_field: bool,
 }
 
 impl FieldDef {
@@ -793,6 +827,7 @@ impl FieldDef {
             writable: true,
             type_hint: None,
             host_runtime_id: None,
+            variant_field: false,
         }
     }
 
@@ -817,6 +852,12 @@ impl FieldDef {
     #[must_use]
     pub const fn host_runtime_id(mut self, id: u128) -> Self {
         self.host_runtime_id = Some(id);
+        self
+    }
+
+    #[must_use]
+    pub const fn variant_field(mut self, variant_field: bool) -> Self {
+        self.variant_field = variant_field;
         self
     }
 }

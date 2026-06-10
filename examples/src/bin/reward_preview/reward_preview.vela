@@ -1,4 +1,4 @@
-fn main(ctx, player, monster) {
+fn main(ctx: Context, player: Player, monster: Monster) {
     let item_id = if monster.id == 11 { "gold" } else { "none" };
     let count = if monster.id == 11 { 2 } else { 0 };
     let granted = game::reward::grant(player, item_id);

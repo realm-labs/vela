@@ -6,11 +6,12 @@ use std::time::{Duration, Instant};
 
 use vela_bytecode::compiler::options::CompilerOptions;
 use vela_bytecode::compiler::{
-    compile_function_source, compile_program_source, compile_program_source_with_options,
+    compile_function_source, compile_program_source,
+    compile_program_source_with_options_and_registry,
 };
 use vela_bytecode::{CodeObject, Program};
 use vela_common::{HostMethodId, HostObjectId, HostTypeId, SourceId};
-use vela_def::FieldId;
+use vela_def::{DefPath, FieldId, TypeId};
 use vela_host::access::HostAccess;
 use vela_host::mock::MockStateAdapter;
 use vela_host::path::{HostPath, HostRef};
@@ -237,40 +238,36 @@ fn compile_workload(workload: &Workload) -> Result<CompiledWorkload, String> {
     match workload.mode {
         ExecutionMode::HostAccess
         | ExecutionMode::HostManagedHeapReadConversion
-        | ExecutionMode::HostManagedHeapHostAccess => compile_program_source_with_options(
+        | ExecutionMode::HostManagedHeapHostAccess => {
+            compile_program_source_with_options_and_registry(
+                SourceId::new(1),
+                workload.source,
+                &host_access_compiler_options(),
+                host_access_definition_registry().compile_view(),
+            )
+            .map(|program| match workload.mode {
+                ExecutionMode::HostAccess => CompiledWorkload::HostAccess {
+                    program: Box::new(program),
+                },
+                ExecutionMode::HostManagedHeapHostAccess => {
+                    CompiledWorkload::HostManagedHeapHostAccess {
+                        program: Box::new(program),
+                    }
+                }
+                ExecutionMode::HostManagedHeapReadConversion => {
+                    CompiledWorkload::HostManagedHeapReadConversion {
+                        program: Box::new(program),
+                    }
+                }
+                _ => unreachable!("only host patch modes are handled here"),
+            })
+            .map_err(|error| format!("{error:?}"))
+        }
+        ExecutionMode::GameplayHost => compile_program_source_with_options_and_registry(
             SourceId::new(1),
             workload.source,
-            &CompilerOptions::new()
-                .with_host_field("level", LEVEL_FIELD)
-                .with_host_field("exp", EXP_FIELD)
-                .with_host_field("inventory", INVENTORY_FIELD)
-                .with_host_field("items", ITEMS_FIELD)
-                .with_host_field("gold", GOLD_FIELD)
-                .with_host_field("rewards", REWARDS_FIELD)
-                .with_host_field("count", ITEM_COUNT_FIELD)
-                .with_host_method("add_reward", ADD_REWARD_METHOD),
-        )
-        .map(|program| match workload.mode {
-            ExecutionMode::HostAccess => CompiledWorkload::HostAccess {
-                program: Box::new(program),
-            },
-            ExecutionMode::HostManagedHeapHostAccess => {
-                CompiledWorkload::HostManagedHeapHostAccess {
-                    program: Box::new(program),
-                }
-            }
-            ExecutionMode::HostManagedHeapReadConversion => {
-                CompiledWorkload::HostManagedHeapReadConversion {
-                    program: Box::new(program),
-                }
-            }
-            _ => unreachable!("only host patch modes are handled here"),
-        })
-        .map_err(|error| format!("{error:?}")),
-        ExecutionMode::GameplayHost => compile_program_source_with_options(
-            SourceId::new(1),
-            workload.source,
-            &gameplay_compiler_options(),
+            &host_access_compiler_options(),
+            gameplay_definition_registry().compile_view(),
         )
         .map(|program| CompiledWorkload::GameplayHost {
             program: Box::new(program),
@@ -298,25 +295,210 @@ fn compile_workload(workload: &Workload) -> Result<CompiledWorkload, String> {
     }
 }
 
-fn gameplay_compiler_options() -> CompilerOptions {
-    CompilerOptions::new()
-        .with_host_field("level", LEVEL_FIELD)
-        .with_host_field("exp", EXP_FIELD)
-        .with_host_field("inventory", INVENTORY_FIELD)
-        .with_host_field("items", ITEMS_FIELD)
-        .with_host_field("count", ITEM_COUNT_FIELD)
-        .with_host_field("id", ID_FIELD)
-        .with_host_field("quest_progress", QUEST_PROGRESS_FIELD)
-        .with_host_field("quest_count", QUEST_COUNT_FIELD)
-        .with_host_variant_field("quest_count", QUEST_COUNT_FIELD)
-        .with_host_field("quest_goal", QUEST_GOAL_FIELD)
-        .with_host_field("quest_done", QUEST_DONE_FIELD)
-        .with_host_variant_field("quest_done", QUEST_DONE_FIELD)
-        .with_host_field("config", CONFIG_FIELD)
-        .with_host_field("exp_to_next_level", EXP_TO_NEXT_LEVEL_FIELD)
-        .with_host_field("kill_rewards", KILL_REWARDS_FIELD)
-        .with_host_method("emit", EMIT_METHOD)
-        .with_host_method("add_reward", ADD_REWARD_METHOD)
+fn host_access_compiler_options() -> CompilerOptions {
+    CompilerOptions::new().with_host_index_capability(
+        "Items",
+        vela_bytecode::compiler::options::HostIndexCapabilityInfo {
+            value_type: Some("Item".to_owned()),
+            ..Default::default()
+        },
+    )
+}
+
+fn host_access_definition_registry() -> vela_registry::DefinitionRegistry {
+    let mut registry = vela_registry::DefinitionRegistry::new();
+    let player = register_bench_host_type(&mut registry, "Player", PLAYER_TYPE);
+    let inventory = register_bench_host_type(&mut registry, "Inventory", HostTypeId::new(4));
+    let _items = register_bench_host_type(&mut registry, "Items", HostTypeId::new(5));
+    let item = register_bench_host_type(&mut registry, "Item", HostTypeId::new(6));
+
+    register_bench_host_field(&mut registry, player, "Player", "level", LEVEL_FIELD, None);
+    register_bench_host_field(&mut registry, player, "Player", "exp", EXP_FIELD, None);
+    register_bench_host_field(
+        &mut registry,
+        player,
+        "Player",
+        "inventory",
+        INVENTORY_FIELD,
+        Some("Inventory"),
+    );
+    register_bench_host_field(
+        &mut registry,
+        inventory,
+        "Inventory",
+        "gold",
+        GOLD_FIELD,
+        None,
+    );
+    register_bench_host_field(
+        &mut registry,
+        inventory,
+        "Inventory",
+        "items",
+        ITEMS_FIELD,
+        Some("Items"),
+    );
+    register_bench_host_field(
+        &mut registry,
+        inventory,
+        "Inventory",
+        "rewards",
+        REWARDS_FIELD,
+        None,
+    );
+    register_bench_host_field(&mut registry, item, "Item", "count", ITEM_COUNT_FIELD, None);
+    register_bench_host_method(
+        &mut registry,
+        player,
+        "Player",
+        "add_reward",
+        ADD_REWARD_METHOD,
+        &["item_id", "count"],
+    );
+
+    registry
+}
+
+fn gameplay_definition_registry() -> vela_registry::DefinitionRegistry {
+    let mut registry = host_access_definition_registry();
+    let ctx = register_bench_host_type(&mut registry, "Context", CTX_TYPE);
+    let monster = register_bench_host_type(&mut registry, "Monster", MONSTER_TYPE);
+    let config = register_bench_host_type(&mut registry, "Config", HostTypeId::new(7));
+    let quest_progress =
+        register_bench_host_type(&mut registry, "QuestProgress", HostTypeId::new(8));
+
+    let player = registry
+        .compile_view()
+        .resolve_type(&DefPath::ty("host", std::iter::empty::<&str>(), "Player"))
+        .expect("Player bench type should exist");
+    register_bench_host_field(&mut registry, player, "Player", "id", ID_FIELD, None);
+    register_bench_host_field(
+        &mut registry,
+        player,
+        "Player",
+        "quest_progress",
+        QUEST_PROGRESS_FIELD,
+        Some("QuestProgress"),
+    );
+    register_bench_host_field(
+        &mut registry,
+        player,
+        "Player",
+        "quest_goal",
+        QUEST_GOAL_FIELD,
+        None,
+    );
+    register_bench_host_field(
+        &mut registry,
+        quest_progress,
+        "QuestProgress",
+        "quest_count",
+        QUEST_COUNT_FIELD,
+        None,
+    );
+    register_bench_host_field(
+        &mut registry,
+        quest_progress,
+        "QuestProgress",
+        "quest_done",
+        QUEST_DONE_FIELD,
+        None,
+    );
+    register_bench_host_field(
+        &mut registry,
+        ctx,
+        "Context",
+        "config",
+        CONFIG_FIELD,
+        Some("Config"),
+    );
+    register_bench_host_field(
+        &mut registry,
+        config,
+        "Config",
+        "exp_to_next_level",
+        EXP_TO_NEXT_LEVEL_FIELD,
+        None,
+    );
+    register_bench_host_field(
+        &mut registry,
+        config,
+        "Config",
+        "kill_rewards",
+        KILL_REWARDS_FIELD,
+        None,
+    );
+    register_bench_host_field(&mut registry, monster, "Monster", "exp", EXP_FIELD, None);
+    register_bench_host_field(&mut registry, monster, "Monster", "id", ID_FIELD, None);
+    register_bench_host_method(
+        &mut registry,
+        ctx,
+        "Context",
+        "emit",
+        EMIT_METHOD,
+        &["event", "a", "b"],
+    );
+
+    registry
+}
+
+fn register_bench_host_type(
+    registry: &mut vela_registry::DefinitionRegistry,
+    name: &str,
+    host_type: HostTypeId,
+) -> TypeId {
+    registry
+        .register_type(
+            vela_registry::TypeDef::new(DefPath::ty("host", std::iter::empty::<&str>(), name))
+                .host_runtime_id(host_type.get().into()),
+        )
+        .expect("bench host type should register")
+}
+
+fn register_bench_host_field(
+    registry: &mut vela_registry::DefinitionRegistry,
+    owner: TypeId,
+    owner_name: &str,
+    name: &str,
+    field: FieldId,
+    type_hint: Option<&str>,
+) {
+    registry
+        .register_field(
+            vela_registry::FieldDef::new(
+                DefPath::field("host", std::iter::empty::<&str>(), owner_name, name),
+                owner,
+            )
+            .host_runtime_id(field.get())
+            .writable(true)
+            .type_hint(type_hint.map(str::to_owned)),
+        )
+        .expect("bench host field should register");
+}
+
+fn register_bench_host_method(
+    registry: &mut vela_registry::DefinitionRegistry,
+    owner: TypeId,
+    owner_name: &str,
+    name: &str,
+    method: HostMethodId,
+    params: &[&str],
+) {
+    registry
+        .register_method(
+            vela_registry::MethodDef::new(
+                DefPath::method("host", std::iter::empty::<&str>(), owner_name, name),
+                owner,
+                vela_registry::FunctionSignature::new(
+                    params
+                        .iter()
+                        .map(|param| vela_registry::ParamDef::new(*param, None::<String>)),
+                    None,
+                ),
+            )
+            .host_runtime_id(method.get()),
+        )
+        .expect("bench host method should register");
 }
 
 fn run_gc_pacing(vm: &Vm, code: &CodeObject) -> Result<OwnedValue, Box<dyn Error>> {

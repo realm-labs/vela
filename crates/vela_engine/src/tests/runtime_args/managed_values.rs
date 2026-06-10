@@ -19,9 +19,10 @@ fn runtime_host_global_decl_reads_and_writes_persistent_host_object() {
         .register_type(direct_player_type())
         .build()
         .expect("engine should build");
-    let program = compile_program_source_with_options(
-        SourceId::new(1),
-        r#"
+    let program = engine
+        .compile_source(
+            SourceId::new(1),
+            r#"
 global state: Player;
 
 fn main() {
@@ -29,9 +30,8 @@ fn main() {
     return state.level;
 }
 "#,
-        &engine.compiler_options(),
-    )
-    .expect("program should compile");
+        )
+        .expect("program should compile");
     let mut runtime = Runtime::new(engine, program);
     let global = runtime.insert_host_global("main::state", direct_player(9));
 
@@ -49,18 +49,18 @@ fn runtime_host_global_decl_uses_slotted_lookup_without_fallback_name_lookup() {
         .register_type(direct_player_type())
         .build()
         .expect("engine should build");
-    let program = compile_program_source_with_options(
-        SourceId::new(1),
-        r#"
+    let program = engine
+        .compile_source(
+            SourceId::new(1),
+            r#"
 global state: Player;
 
 fn main() {
     return state.level;
 }
 "#,
-        &engine.compiler_options(),
-    )
-    .expect("program should compile");
+        )
+        .expect("program should compile");
     assert!(
         program.global_slot("main::state").is_some(),
         "declared global should have a hot-path slot"
@@ -89,18 +89,18 @@ fn runtime_host_global_decl_requires_host_inserted_instance() {
         .register_type(direct_player_type())
         .build()
         .expect("engine should build");
-    let program = compile_program_source_with_options(
-        SourceId::new(1),
-        r#"
+    let program = engine
+        .compile_source(
+            SourceId::new(1),
+            r#"
 global state: Player;
 
 fn main() {
     return state.level;
 }
 "#,
-        &engine.compiler_options(),
-    )
-    .expect("program should compile");
+        )
+        .expect("program should compile");
     let mut runtime = Runtime::new(engine, program);
 
     let error = runtime
@@ -118,9 +118,10 @@ fn main() {
 #[test]
 fn runtime_script_global_decl_persists_vm_owned_value_and_rust_updates() {
     let engine = Engine::builder().build().expect("engine should build");
-    let program = compile_program_source_with_options(
-        SourceId::new(1),
-        r#"
+    let program = engine
+        .compile_source(
+            SourceId::new(1),
+            r#"
 struct ServerState {
     level: Int,
     name: String,
@@ -141,9 +142,8 @@ fn read_name() {
     return state.name;
 }
 "#,
-        &engine.compiler_options(),
-    )
-    .expect("program should compile");
+        )
+        .expect("program should compile");
     let mut runtime = Runtime::new(engine, program);
 
     let state = runtime
@@ -216,9 +216,10 @@ fn read_name() {
 #[test]
 fn shared_runtime_image_keeps_script_globals_isolated() {
     let engine = Engine::builder().build().expect("engine should build");
-    let program = compile_program_source_with_options(
-        SourceId::new(1),
-        r#"
+    let program = engine
+        .compile_source(
+            SourceId::new(1),
+            r#"
 struct ServerState {
     level: Int,
     name: String,
@@ -239,9 +240,8 @@ fn read_name() {
     return state.name;
 }
 "#,
-        &engine.compiler_options(),
-    )
-    .expect("program should compile");
+        )
+        .expect("program should compile");
     let shared_image = RuntimeImage::new(engine, program).into_shared();
     let mut first = SharedRuntime::from_shared_image(shared_image.clone());
     let mut second = SharedRuntime::from_shared_image(shared_image);
@@ -315,9 +315,10 @@ struct SerdeServerState {
 #[test]
 fn runtime_insert_global_accepts_serde_struct_with_single_api() {
     let engine = Engine::builder().build().expect("engine should build");
-    let program = compile_program_source_with_options(
-        SourceId::new(1),
-        r#"
+    let program = engine
+        .compile_source(
+            SourceId::new(1),
+            r#"
 struct SerdeServerState {
     level: Int,
     name: String,
@@ -334,9 +335,8 @@ fn read_name() {
     return state.name;
 }
 "#,
-        &engine.compiler_options(),
-    )
-    .expect("program should compile");
+        )
+        .expect("program should compile");
     let mut runtime = Runtime::new(engine, program);
     let state = SerdeServerState {
         level: 5,
@@ -383,9 +383,10 @@ fn read_name() {
 #[test]
 fn runtime_insert_global_accepts_runtime_managed_value_with_single_api() {
     let engine = Engine::builder().build().expect("engine should build");
-    let program = compile_program_source_with_options(
-        SourceId::new(1),
-        r#"
+    let program = engine
+        .compile_source(
+            SourceId::new(1),
+            r#"
 struct ServerState {
     level: Int,
     name: String,
@@ -401,9 +402,8 @@ fn read_level() {
     return state.level;
 }
 "#,
-        &engine.compiler_options(),
-    )
-    .expect("program should compile");
+        )
+        .expect("program should compile");
     let mut runtime = Runtime::new(engine, program);
 
     let state = runtime
@@ -422,9 +422,10 @@ fn read_level() {
 #[test]
 fn runtime_call_returns_runtime_managed_value_that_can_be_passed_back() {
     let engine = Engine::builder().build().expect("engine should build");
-    let program = compile_program_source_with_options(
-        SourceId::new(1),
-        r#"
+    let program = engine
+        .compile_source(
+            SourceId::new(1),
+            r#"
 struct Reward {
     gold: Int,
     xp: Int,
@@ -438,9 +439,8 @@ fn reward_score(reward, bonus) {
     return reward.gold + reward.xp + bonus;
 }
 "#,
-        &engine.compiler_options(),
-    )
-    .expect("program should compile");
+        )
+        .expect("program should compile");
     let mut runtime = Runtime::new(engine, program);
 
     let reward = runtime
@@ -471,9 +471,10 @@ fn reward_score(reward, bonus) {
 #[test]
 fn retained_runtime_value_survives_script_global_collection() {
     let engine = Engine::builder().build().expect("engine should build");
-    let program = compile_program_source_with_options(
-        SourceId::new(1),
-        r#"
+    let program = engine
+        .compile_source(
+            SourceId::new(1),
+            r#"
 struct Reward {
     gold: Int,
     label: String,
@@ -489,9 +490,8 @@ fn reward_score(reward) {
     return reward.gold;
 }
 "#,
-        &engine.compiler_options(),
-    )
-    .expect("program should compile");
+        )
+        .expect("program should compile");
     let mut runtime = Runtime::new(engine, program);
 
     let retained = runtime
@@ -555,12 +555,12 @@ fn read_reward(reward) {
     return reward.gold;
 }
 "#;
-    let program_a =
-        compile_program_source_with_options(SourceId::new(1), source, &engine.compiler_options())
-            .expect("program should compile");
-    let program_b =
-        compile_program_source_with_options(SourceId::new(2), source, &engine.compiler_options())
-            .expect("program should compile");
+    let program_a = engine
+        .compile_source(SourceId::new(1), source)
+        .expect("program should compile");
+    let program_b = engine
+        .compile_source(SourceId::new(2), source)
+        .expect("program should compile");
     let mut runtime_a = Runtime::new(engine.clone(), program_a);
     let mut runtime_b = Runtime::new(engine, program_b);
 

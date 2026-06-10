@@ -1,5 +1,6 @@
 use super::*;
 use crate::HostTargetPlanId;
+use crate::compiler::options::HostIndexCapabilityInfo;
 use vela_common::HostTypeId;
 use vela_def::{DefPath, TypeId};
 use vela_host::target::HostPathPart;
@@ -25,6 +26,18 @@ fn register_registry_host_field(
     id: FieldId,
     writable: bool,
 ) {
+    register_registry_host_field_with_type(registry, owner, owner_name, name, id, writable, None);
+}
+
+fn register_registry_host_field_with_type(
+    registry: &mut vela_registry::DefinitionRegistry,
+    owner: TypeId,
+    owner_name: &str,
+    name: &str,
+    id: FieldId,
+    writable: bool,
+    type_hint: Option<&str>,
+) {
     registry
         .register_field(
             vela_registry::FieldDef::new(
@@ -32,9 +45,29 @@ fn register_registry_host_field(
                 owner,
             )
             .host_runtime_id(id.get())
-            .writable(writable),
+            .writable(writable)
+            .type_hint(type_hint.map(str::to_owned)),
         )
         .expect("test host field should register");
+}
+
+fn register_registry_host_variant_field(
+    registry: &mut vela_registry::DefinitionRegistry,
+    owner: TypeId,
+    owner_name: &str,
+    name: &str,
+    id: FieldId,
+) {
+    registry
+        .register_field(
+            vela_registry::FieldDef::new(
+                DefPath::field("host", std::iter::empty::<&str>(), owner_name, name),
+                owner,
+            )
+            .host_runtime_id(id.get())
+            .variant_field(true),
+        )
+        .expect("test host variant field should register");
 }
 
 fn register_registry_host_method(
@@ -147,7 +180,10 @@ fn has_host_read_target(
 fn compiler_lowers_typed_host_target_root_type_id() {
     let player_type = HostTypeId::new(77);
     let level = FieldId::new(3);
-    let code = compile_function_source_with_options(
+    let mut registry = vela_registry::DefinitionRegistry::new();
+    let player = register_registry_host_type(&mut registry, "Player", player_type);
+    register_registry_host_field(&mut registry, player, "Player", "level", level, true);
+    let code = compile_function_source_with_registry(
         SourceId::new(1),
         r#"
 fn main(player: Player) {
@@ -155,10 +191,7 @@ fn main(player: Player) {
 }
 "#,
         "main",
-        &CompilerOptions::new()
-            .with_host_type_id("Player", player_type)
-            .with_host_field("level", level)
-            .with_host_field_for_type("Player", "level", level, true),
+        registry.compile_view(),
     )
     .expect("typed host field read should compile");
 
@@ -193,7 +226,7 @@ fn main(player: Player) {
 }
 "#,
         "main",
-        &CompilerOptions::new().with_host_type("Player"),
+        &CompilerOptions::new(),
         registry.compile_view(),
     )
     .expect("registry host field read should compile");
@@ -229,7 +262,7 @@ fn main(player: Player) {
 }
 "#,
         "main",
-        &CompilerOptions::new().with_host_type("Player"),
+        &CompilerOptions::new(),
         registry.compile_view(),
     )
     .expect_err("read-only registry host field assignment should be rejected");
@@ -243,16 +276,26 @@ fn main(player: Player) {
 #[test]
 fn compiler_lowers_configured_host_method_calls() {
     let method = HostMethodId::new(5);
-    let code = compile_function_source_with_options(
+    let mut registry = vela_registry::DefinitionRegistry::new();
+    let player = register_registry_host_type(&mut registry, "Player", HostTypeId::new(77));
+    register_registry_host_method(
+        &mut registry,
+        player,
+        "Player",
+        "grant_exp",
+        method,
+        [vela_registry::ParamDef::new("amount", Some("int"))],
+    );
+    let code = compile_function_source_with_registry(
         SourceId::new(1),
         r#"
-fn main(player) {
+fn main(player: Player) {
     player.grant_exp(20);
     return 1;
 }
 "#,
         "main",
-        &CompilerOptions::new().with_host_method("grant_exp", method),
+        registry.compile_view(),
     )
     .expect("host method call should compile");
     assert!(has_host_call(&code, method, 1));
@@ -284,7 +327,7 @@ fn main(player: Player) {
 }
 "#,
         "main",
-        &CompilerOptions::new().with_host_type("Player"),
+        &CompilerOptions::new(),
         registry.compile_view(),
     )
     .expect("registry host method call should compile");
@@ -293,20 +336,31 @@ fn main(player: Player) {
 }
 
 #[test]
-fn compiler_lowers_named_and_default_host_method_args_from_compiler_options() {
+fn compiler_lowers_named_and_default_host_method_args_from_registry() {
     let method = HostMethodId::new(5);
-    let code = compile_function_source_with_options(
+    let mut registry = vela_registry::DefinitionRegistry::new();
+    let ctx = register_registry_host_type(&mut registry, "Ctx", HostTypeId::new(81));
+    register_registry_host_method(
+        &mut registry,
+        ctx,
+        "Ctx",
+        "emit",
+        method,
+        [
+            vela_registry::ParamDef::new("event", Some("string")),
+            vela_registry::ParamDef::new("payload", Some("any")).defaulted(true),
+        ],
+    );
+    let code = compile_function_source_with_registry(
         SourceId::new(1),
         r#"
-fn main(ctx) {
+fn main(ctx: Ctx) {
     ctx.emit(event = "player.level_checked");
     return 1;
 }
 "#,
         "main",
-        &CompilerOptions::new()
-            .with_host_method("emit", method)
-            .with_host_method_params(method, [("event", false), ("payload", true)]),
+        registry.compile_view(),
     )
     .expect("named/default host method args should compile");
 
@@ -316,18 +370,29 @@ fn main(ctx) {
 #[test]
 fn compiler_keeps_positional_host_method_args_variadic_with_metadata() {
     let method = HostMethodId::new(5);
-    let code = compile_function_source_with_options(
+    let mut registry = vela_registry::DefinitionRegistry::new();
+    let ctx = register_registry_host_type(&mut registry, "Ctx", HostTypeId::new(81));
+    register_registry_host_method(
+        &mut registry,
+        ctx,
+        "Ctx",
+        "emit",
+        method,
+        [
+            vela_registry::ParamDef::new("event", Some("string")),
+            vela_registry::ParamDef::new("payload", Some("any")).defaulted(true),
+        ],
+    );
+    let code = compile_function_source_with_registry(
         SourceId::new(1),
         r#"
-fn main(ctx) {
+fn main(ctx: Ctx) {
     ctx.emit("player.level_checked", 10, 42);
     return 1;
 }
 "#,
         "main",
-        &CompilerOptions::new()
-            .with_host_method("emit", method)
-            .with_host_method_params(method, [("event", false), ("payload", true)]),
+        registry.compile_view(),
     )
     .expect("positional host method args should stay variadic");
 
@@ -335,20 +400,31 @@ fn main(ctx) {
 }
 
 #[test]
-fn compiler_reports_named_host_method_arg_diagnostics_from_compiler_options() {
+fn compiler_reports_named_host_method_arg_diagnostics_from_registry() {
     let method = HostMethodId::new(5);
-    let error = compile_function_source_with_options(
+    let mut registry = vela_registry::DefinitionRegistry::new();
+    let ctx = register_registry_host_type(&mut registry, "Ctx", HostTypeId::new(81));
+    register_registry_host_method(
+        &mut registry,
+        ctx,
+        "Ctx",
+        "emit",
+        method,
+        [
+            vela_registry::ParamDef::new("event", Some("string")),
+            vela_registry::ParamDef::new("payload", Some("any")).defaulted(true),
+        ],
+    );
+    let error = compile_function_source_with_registry(
         SourceId::new(1),
         r#"
-fn main(ctx) {
+fn main(ctx: Ctx) {
     ctx.emit(evnt = "player.level_checked");
     return 1;
 }
 "#,
         "main",
-        &CompilerOptions::new()
-            .with_host_method("emit", method)
-            .with_host_method_params(method, [("event", false), ("payload", true)]),
+        registry.compile_view(),
     )
     .expect_err("unknown named host method arg should fail");
 
@@ -364,18 +440,27 @@ fn main(ctx) {
 #[test]
 fn compiler_lowers_local_host_method_when_root_matches_native_module() {
     let method = HostMethodId::new(5);
-    let code = compile_function_source_with_options(
+    let mut registry = vela_registry::DefinitionRegistry::new();
+    let ctx = register_registry_host_type(&mut registry, "Ctx", HostTypeId::new(81));
+    register_registry_host_method(
+        &mut registry,
+        ctx,
+        "Ctx",
+        "emit",
+        method,
+        [vela_registry::ParamDef::new("event", Some("string"))],
+    );
+    let code = compile_function_source_with_options_and_registry(
         SourceId::new(1),
         r#"
-fn main(ctx) {
+fn main(ctx: Ctx) {
     ctx.emit("player.level_checked");
     return 1;
 }
 "#,
         "main",
-        &CompilerOptions::new()
-            .with_native_module_root("ctx")
-            .with_host_method("emit", method),
+        &CompilerOptions::new().with_native_module_root("ctx"),
+        registry.compile_view(),
     )
     .expect("local host method should shadow native module root");
     assert!(has_host_call(&code, method, 1));
@@ -385,18 +470,39 @@ fn main(ctx) {
 fn compiler_lowers_configured_host_method_calls_on_field_paths() {
     let inventory = FieldId::new(3);
     let method = HostMethodId::new(5);
-    let code = compile_function_source_with_options(
+    let mut registry = vela_registry::DefinitionRegistry::new();
+    let player = register_registry_host_type(&mut registry, "Player", HostTypeId::new(77));
+    let inventory_ty = register_registry_host_type(&mut registry, "Inventory", HostTypeId::new(78));
+    register_registry_host_field_with_type(
+        &mut registry,
+        player,
+        "Player",
+        "inventory",
+        inventory,
+        true,
+        Some("Inventory"),
+    );
+    register_registry_host_method(
+        &mut registry,
+        inventory_ty,
+        "Inventory",
+        "add",
+        method,
+        [
+            vela_registry::ParamDef::new("kind", Some("string")),
+            vela_registry::ParamDef::new("amount", Some("int")),
+        ],
+    );
+    let code = compile_function_source_with_registry(
         SourceId::new(1),
         r#"
-fn main(player) {
+fn main(player: Player) {
     player.inventory.add("gold", 20);
     return 1;
 }
 "#,
         "main",
-        &CompilerOptions::new()
-            .with_host_field("inventory", inventory)
-            .with_host_method("add", method),
+        registry.compile_view(),
     )
     .expect("host field method call should compile");
     assert!(has_host_call_target(
@@ -411,19 +517,57 @@ fn compiler_lowers_configured_host_method_calls_on_indexed_paths() {
     let inventory = FieldId::new(3);
     let items = FieldId::new(4);
     let method = HostMethodId::new(5);
-    let code = compile_function_source_with_options(
+    let mut registry = vela_registry::DefinitionRegistry::new();
+    let player = register_registry_host_type(&mut registry, "Player", HostTypeId::new(77));
+    let inventory_ty = register_registry_host_type(&mut registry, "Inventory", HostTypeId::new(78));
+    let item_ty = register_registry_host_type(&mut registry, "Item", HostTypeId::new(79));
+    register_registry_host_field_with_type(
+        &mut registry,
+        player,
+        "Player",
+        "inventory",
+        inventory,
+        true,
+        Some("Inventory"),
+    );
+    register_registry_host_field_with_type(
+        &mut registry,
+        inventory_ty,
+        "Inventory",
+        "items",
+        items,
+        true,
+        Some("ItemMap"),
+    );
+    register_registry_host_method(
+        &mut registry,
+        item_ty,
+        "Item",
+        "grant",
+        method,
+        [vela_registry::ParamDef::new("amount", Some("int"))],
+    );
+    let code = compile_function_source_with_options_and_registry(
         SourceId::new(1),
         r#"
-fn main(player, item_id) {
+fn main(player: Player, item_id) {
     player.inventory.items[item_id].grant(20);
     return 1;
 }
 "#,
         "main",
-        &CompilerOptions::new()
-            .with_host_field("inventory", inventory)
-            .with_host_field("items", items)
-            .with_host_method("grant", method),
+        &CompilerOptions::new().with_host_index_capability(
+            "ItemMap",
+            HostIndexCapabilityInfo {
+                readable: true,
+                writable: true,
+                addable: true,
+                removable: true,
+                key_type: None,
+                value_type: Some("Item".to_owned()),
+            },
+        ),
+        registry.compile_view(),
     )
     .expect("indexed host method call should compile");
     assert!(has_host_call_target(
@@ -441,18 +585,29 @@ fn main(player, item_id) {
 fn compiler_lowers_nested_host_field_paths() {
     let stats = FieldId::new(3);
     let level = FieldId::new(4);
-    let code = compile_function_source_with_options(
+    let mut registry = vela_registry::DefinitionRegistry::new();
+    let player = register_registry_host_type(&mut registry, "Player", HostTypeId::new(77));
+    let stats_ty = register_registry_host_type(&mut registry, "Stats", HostTypeId::new(78));
+    register_registry_host_field_with_type(
+        &mut registry,
+        player,
+        "Player",
+        "stats",
+        stats,
+        true,
+        Some("Stats"),
+    );
+    register_registry_host_field(&mut registry, stats_ty, "Stats", "level", level, true);
+    let code = compile_function_source_with_registry(
         SourceId::new(1),
         r#"
-fn main(player) {
+fn main(player: Player) {
     player.stats.level += 2;
     return player.stats.level;
 }
 "#,
         "main",
-        &CompilerOptions::new()
-            .with_host_field("stats", stats)
-            .with_host_field("level", level),
+        registry.compile_view(),
     )
     .expect("nested host field path should compile");
     let target = [HostPathPart::Field(stats), HostPathPart::Field(level)];
@@ -468,7 +623,10 @@ fn main(player) {
 #[test]
 fn compiler_rejects_read_only_host_field_assignment_for_typed_receiver() {
     let id = FieldId::new(3);
-    let error = compile_function_source_with_options(
+    let mut registry = vela_registry::DefinitionRegistry::new();
+    let player = register_registry_host_type(&mut registry, "Player", HostTypeId::new(77));
+    register_registry_host_field(&mut registry, player, "Player", "id", id, false);
+    let error = compile_function_source_with_registry(
         SourceId::new(1),
         r#"
 fn main(player: Player) {
@@ -477,9 +635,7 @@ fn main(player: Player) {
 }
 "#,
         "main",
-        &CompilerOptions::new()
-            .with_host_field("id", id)
-            .with_host_field_for_type("Player", "id", id, false),
+        registry.compile_view(),
     )
     .expect_err("read-only host field assignment should be rejected");
 
@@ -494,19 +650,50 @@ fn compiler_lowers_indexed_host_field_paths() {
     let inventory = FieldId::new(3);
     let items = FieldId::new(4);
     let count = FieldId::new(5);
-    let code = compile_function_source_with_options(
+    let mut registry = vela_registry::DefinitionRegistry::new();
+    let player = register_registry_host_type(&mut registry, "Player", HostTypeId::new(77));
+    let inventory_ty = register_registry_host_type(&mut registry, "Inventory", HostTypeId::new(78));
+    let item_ty = register_registry_host_type(&mut registry, "Item", HostTypeId::new(79));
+    register_registry_host_field_with_type(
+        &mut registry,
+        player,
+        "Player",
+        "inventory",
+        inventory,
+        true,
+        Some("Inventory"),
+    );
+    register_registry_host_field_with_type(
+        &mut registry,
+        inventory_ty,
+        "Inventory",
+        "items",
+        items,
+        true,
+        Some("ItemMap"),
+    );
+    register_registry_host_field(&mut registry, item_ty, "Item", "count", count, true);
+    let code = compile_function_source_with_options_and_registry(
         SourceId::new(1),
         r#"
-fn main(player, item_id) {
+fn main(player: Player, item_id) {
     player.inventory.items[item_id].count += 1;
     return player.inventory.items[item_id].count;
 }
 "#,
         "main",
-        &CompilerOptions::new()
-            .with_host_field("inventory", inventory)
-            .with_host_field("items", items)
-            .with_host_field("count", count),
+        &CompilerOptions::new().with_host_index_capability(
+            "ItemMap",
+            HostIndexCapabilityInfo {
+                readable: true,
+                writable: true,
+                addable: true,
+                removable: true,
+                key_type: None,
+                value_type: Some("Item".to_owned()),
+            },
+        ),
+        registry.compile_view(),
     )
     .expect("indexed host field path should compile");
     let target = [
@@ -527,18 +714,29 @@ fn main(player, item_id) {
 fn compiler_lowers_host_variant_field_paths() {
     let quest_progress = FieldId::new(3);
     let count = FieldId::new(4);
-    let code = compile_function_source_with_options(
+    let mut registry = vela_registry::DefinitionRegistry::new();
+    let player = register_registry_host_type(&mut registry, "Player", HostTypeId::new(77));
+    let quest_ty = register_registry_host_type(&mut registry, "QuestProgress", HostTypeId::new(78));
+    register_registry_host_field_with_type(
+        &mut registry,
+        player,
+        "Player",
+        "quest_progress",
+        quest_progress,
+        true,
+        Some("QuestProgress"),
+    );
+    register_registry_host_variant_field(&mut registry, quest_ty, "QuestProgress", "count", count);
+    let code = compile_function_source_with_registry(
         SourceId::new(1),
         r#"
-fn main(player) {
+fn main(player: Player) {
     player.quest_progress.count += 1;
     return player.quest_progress.count;
 }
 "#,
         "main",
-        &CompilerOptions::new()
-            .with_host_field("quest_progress", quest_progress)
-            .with_host_variant_field("count", count),
+        registry.compile_view(),
     )
     .expect("host variant field path should compile");
     let target = [
@@ -557,18 +755,29 @@ fn main(player) {
 fn compiler_lowers_host_sub_assignments() {
     let stats = FieldId::new(3);
     let level = FieldId::new(4);
-    let code = compile_function_source_with_options(
+    let mut registry = vela_registry::DefinitionRegistry::new();
+    let player = register_registry_host_type(&mut registry, "Player", HostTypeId::new(77));
+    let stats_ty = register_registry_host_type(&mut registry, "Stats", HostTypeId::new(78));
+    register_registry_host_field_with_type(
+        &mut registry,
+        player,
+        "Player",
+        "stats",
+        stats,
+        true,
+        Some("Stats"),
+    );
+    register_registry_host_field(&mut registry, stats_ty, "Stats", "level", level, true);
+    let code = compile_function_source_with_registry(
         SourceId::new(1),
         r#"
-fn main(player) {
+fn main(player: Player) {
     player.stats.level -= 2;
     return player.stats.level;
 }
 "#,
         "main",
-        &CompilerOptions::new()
-            .with_host_field("stats", stats)
-            .with_host_field("level", level),
+        registry.compile_view(),
     )
     .expect("host sub assignment should compile");
     assert!(has_host_mutate_target(
@@ -582,10 +791,23 @@ fn main(player) {
 fn compiler_lowers_host_numeric_compound_assignments() {
     let stats = FieldId::new(3);
     let level = FieldId::new(4);
-    let code = compile_function_source_with_options(
+    let mut registry = vela_registry::DefinitionRegistry::new();
+    let player = register_registry_host_type(&mut registry, "Player", HostTypeId::new(77));
+    let stats_ty = register_registry_host_type(&mut registry, "Stats", HostTypeId::new(78));
+    register_registry_host_field_with_type(
+        &mut registry,
+        player,
+        "Player",
+        "stats",
+        stats,
+        true,
+        Some("Stats"),
+    );
+    register_registry_host_field(&mut registry, stats_ty, "Stats", "level", level, true);
+    let code = compile_function_source_with_registry(
         SourceId::new(1),
         r#"
-fn main(player) {
+fn main(player: Player) {
     player.stats.level *= 3;
     player.stats.level /= 2;
     player.stats.level %= 5;
@@ -593,9 +815,7 @@ fn main(player) {
 }
 "#,
         "main",
-        &CompilerOptions::new()
-            .with_host_field("stats", stats)
-            .with_host_field("level", level),
+        registry.compile_view(),
     )
     .expect("host numeric compound assignments should compile");
     let target = [HostPathPart::Field(stats), HostPathPart::Field(level)];
@@ -622,18 +842,36 @@ fn main(player) {
 fn compiler_lowers_host_path_push_calls() {
     let inventory = FieldId::new(3);
     let rewards = FieldId::new(4);
-    let code = compile_function_source_with_options(
+    let mut registry = vela_registry::DefinitionRegistry::new();
+    let player = register_registry_host_type(&mut registry, "Player", HostTypeId::new(77));
+    let inventory_ty = register_registry_host_type(&mut registry, "Inventory", HostTypeId::new(78));
+    register_registry_host_field_with_type(
+        &mut registry,
+        player,
+        "Player",
+        "inventory",
+        inventory,
+        true,
+        Some("Inventory"),
+    );
+    register_registry_host_field(
+        &mut registry,
+        inventory_ty,
+        "Inventory",
+        "rewards",
+        rewards,
+        true,
+    );
+    let code = compile_function_source_with_registry(
         SourceId::new(1),
         r#"
-fn main(player) {
+fn main(player: Player) {
     player.inventory.rewards.push("gold");
     return 1;
 }
 "#,
         "main",
-        &CompilerOptions::new()
-            .with_host_field("inventory", inventory)
-            .with_host_field("rewards", rewards),
+        registry.compile_view(),
     )
     .expect("host path push should compile");
     assert!(has_host_mutate_target(
@@ -647,19 +885,37 @@ fn main(player) {
 fn compiler_lowers_host_path_remove_calls() {
     let inventory = FieldId::new(3);
     let items = FieldId::new(4);
-    let code = compile_function_source_with_options(
+    let mut registry = vela_registry::DefinitionRegistry::new();
+    let player = register_registry_host_type(&mut registry, "Player", HostTypeId::new(77));
+    let inventory_ty = register_registry_host_type(&mut registry, "Inventory", HostTypeId::new(78));
+    register_registry_host_field_with_type(
+        &mut registry,
+        player,
+        "Player",
+        "inventory",
+        inventory,
+        true,
+        Some("Inventory"),
+    );
+    register_registry_host_field(
+        &mut registry,
+        inventory_ty,
+        "Inventory",
+        "items",
+        items,
+        true,
+    );
+    let code = compile_function_source_with_registry(
         SourceId::new(1),
         r#"
-fn main(player) {
+fn main(player: Player) {
     let item_id = "gold";
     player.inventory.items[item_id].remove();
     return 1;
 }
 "#,
         "main",
-        &CompilerOptions::new()
-            .with_host_field("inventory", inventory)
-            .with_host_field("items", items),
+        registry.compile_view(),
     )
     .expect("host path remove should compile");
     assert!(

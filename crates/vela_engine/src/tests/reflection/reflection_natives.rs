@@ -113,17 +113,17 @@ fn engine_compiler_keeps_reflect_module_calls_off_host_method_lowering() {
         .reflection_policy(vela_reflect::permissions::ReflectPolicy::all())
         .build()
         .expect("engine should build");
-    let program = compile_program_source_with_options(
-        SourceId::new(1),
-        r#"
+    let program = engine
+        .compile_source(
+            SourceId::new(1),
+            r#"
 fn main(player: Player) {
     reflect::set(player, "level", 12);
     return reflect::get(player, "level");
 }
 "#,
-        &engine.compiler_options(),
-    )
-    .expect("reflect::set should compile as a native module call");
+        )
+        .expect("reflect::set should compile as a native module call");
     let host_ref = HostRef::new(HostTypeId::new(1), HostObjectId::new(42), 1);
     let mut adapter = MockStateAdapter::new();
     adapter.insert_diagnostic_path_value(

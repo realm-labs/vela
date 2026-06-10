@@ -1,10 +1,7 @@
 use vela_common::HostMethodId;
 use vela_syntax::ast::{Expr, ExprKind};
 
-use super::{
-    CompilerOptions,
-    host_paths::{HostPath, HostPathPart, HostPathRoot, host_field_path, host_field_path_parts},
-};
+use super::host_paths::{HostPath, HostPathPart, HostPathRoot, ResolvedHostPath};
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub(super) struct HostMethodCall<'ast> {
@@ -15,18 +12,18 @@ pub(super) struct HostMethodCall<'ast> {
 
 pub(super) fn host_method_call<'ast>(
     compiler: &super::Compiler<'_, '_>,
-    options: &CompilerOptions,
     callee: &'ast Expr,
     receiver_type: Option<&str>,
     path_root_is_local: bool,
 ) -> Option<HostMethodCall<'ast>> {
     match &callee.kind {
         ExprKind::Field { base, name } => {
-            let method = compiler.host_method_id(receiver_type, name)?;
-            let path = host_method_receiver_path(options, base)?;
+            let receiver = host_method_receiver_path(compiler, base)?;
+            let method =
+                compiler.host_method_id(receiver_type.or(receiver.type_name.as_deref()), name)?;
             Some(HostMethodCall {
-                receiver: path.root,
-                segments: path.segments,
+                receiver: receiver.path.root,
+                segments: receiver.path.segments,
                 method,
             })
         }
@@ -34,15 +31,16 @@ pub(super) fn host_method_call<'ast>(
             if path.len() < 2 {
                 return None;
             }
-            if options.is_native_module_root(&path[0]) && !path_root_is_local {
+            if compiler.is_native_module_root(&path[0]) && !path_root_is_local {
                 return None;
             }
             let method_name = path.last()?;
-            let method = compiler.host_method_id(receiver_type, method_name)?;
-            let path = host_method_path_receiver(options, callee, &path[..path.len() - 1])?;
+            let receiver = host_method_path_receiver(compiler, callee, &path[..path.len() - 1])?;
+            let method = compiler
+                .host_method_id(receiver_type.or(receiver.type_name.as_deref()), method_name)?;
             Some(HostMethodCall {
-                receiver: path.root,
-                segments: path.segments,
+                receiver: receiver.path.root,
+                segments: receiver.path.segments,
                 method,
             })
         }
@@ -51,30 +49,38 @@ pub(super) fn host_method_call<'ast>(
 }
 
 fn host_method_receiver_path<'ast>(
-    options: &CompilerOptions,
+    compiler: &super::Compiler<'_, '_>,
     receiver: &'ast Expr,
-) -> Option<HostPath<'ast>> {
-    host_field_path(options, receiver).or(Some(HostPath {
-        root: HostPathRoot::Expr(receiver),
-        segments: Vec::new(),
-    }))
+) -> Option<ResolvedHostPath<'ast>> {
+    compiler.resolve_host_path(receiver).or_else(|| {
+        Some(ResolvedHostPath {
+            path: HostPath {
+                root: HostPathRoot::Expr(receiver),
+                segments: Vec::new(),
+            },
+            type_name: compiler.script_type_for_expr(receiver),
+        })
+    })
 }
 
 fn host_method_path_receiver<'ast>(
-    options: &CompilerOptions,
+    compiler: &super::Compiler<'_, '_>,
     callee: &'ast Expr,
     path: &'ast [String],
-) -> Option<HostPath<'ast>> {
+) -> Option<ResolvedHostPath<'ast>> {
     let root = path.first()?;
     if path.len() == 1 {
-        Some(HostPath {
-            root: HostPathRoot::LocalPath {
-                name: root,
-                span: callee.span,
+        Some(ResolvedHostPath {
+            path: HostPath {
+                root: HostPathRoot::LocalPath {
+                    name: root,
+                    span: callee.span,
+                },
+                segments: Vec::new(),
             },
-            segments: Vec::new(),
+            type_name: compiler.host_local_type_name(root, callee.span),
         })
     } else {
-        host_field_path_parts(options, callee.span, path)
+        compiler.host_field_path_parts(callee.span, path)
     }
 }

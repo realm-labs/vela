@@ -14,6 +14,7 @@ fn main() -> Result<(), Box<dyn Error>> {
         .register_script_host::<Player>()
         .register_host_type::<Inventory>()
         .register_host_type::<ItemStack>()
+        .register_host_type_spec(string_item_map_type())
         .register_script_host::<IntIntMap>()
         .register_script_host::<TagSet>()
         .register_script_host::<RewardSink>()
@@ -87,12 +88,24 @@ impl Player {}
 #[derive(Debug, Default, ScriptHost)]
 #[script(path = "examples::host_type_methods::Inventory")]
 struct Inventory {
-    #[script(get, hint = "IntItemMap")]
+    #[script(get, hint = "StringItemMap")]
     items: BTreeMap<String, ItemStack>,
 }
 
 #[script_methods]
 impl Inventory {}
+
+fn string_item_map_type() -> HostTypeSpec {
+    HostTypeSpec::new(
+        TypeDesc::new(TypeKey::new(TypeId::new(8_801), "StringItemMap")).index_capability(
+            HostIndexCapability::new()
+                .readable(true)
+                .writable(true)
+                .key_type("string")
+                .value_type("ItemStack"),
+        ),
+    )
+}
 
 #[derive(Debug, Default, ScriptHost)]
 #[script(path = "examples::host_type_methods::ItemStack")]

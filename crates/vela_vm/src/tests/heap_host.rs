@@ -212,15 +212,19 @@ fn managed_heap_host_execution_materializes_return_and_updates_adapter() {
 #[test]
 fn managed_heap_host_execution_rejects_map_for_host_write() {
     let host_ref = player_ref(3);
-    let program = compile_program_source_with_options(
+    let program = compile_host_program_source(
         SourceId::new(1),
         r#"
-fn main(player) {
+fn main(player: Player) {
     player.level = {"class": "mage", score: 3};
     return player.level.len();
 }
 "#,
-        &CompilerOptions::new().with_host_field("level", level_field()),
+        host_definition_registry(
+            &[("Player", host_ref.type_id)],
+            &[TestHostField::new("Player", "level", level_field())],
+            &[],
+        ),
     )
     .expect("compile host map write source");
     let mut adapter = host_adapter(host_ref, HostValue::Null);
@@ -260,7 +264,7 @@ fn main(player) {
 #[test]
 fn managed_heap_host_execution_rejects_record_for_host_write() {
     let host_ref = player_ref(3);
-    let program = compile_program_source_with_options(
+    let program = compile_host_program_source(
         SourceId::new(1),
         r#"
 struct Reward {
@@ -268,12 +272,16 @@ struct Reward {
     count,
 }
 
-fn main(player) {
+fn main(player: Player) {
     player.level = Reward { item_id: "gold", count: 2 };
     return player.level;
 }
 "#,
-        &CompilerOptions::new().with_host_field("level", level_field()),
+        host_definition_registry(
+            &[("Player", host_ref.type_id)],
+            &[TestHostField::new("Player", "level", level_field())],
+            &[],
+        ),
     )
     .expect("compile host record write source");
     let mut adapter = host_adapter(host_ref, HostValue::Null);
@@ -313,15 +321,19 @@ fn main(player) {
 #[test]
 fn managed_heap_host_execution_rejects_enum_for_host_write() {
     let host_ref = player_ref(3);
-    let program = compile_program_source_with_options(
+    let program = compile_host_program_source(
         SourceId::new(1),
         r#"
-fn main(player) {
+fn main(player: Player) {
     player.level = Damage::Physical { amount: 7 };
     return player.level;
 }
 "#,
-        &CompilerOptions::new().with_host_field("level", level_field()),
+        host_definition_registry(
+            &[("Player", host_ref.type_id)],
+            &[TestHostField::new("Player", "level", level_field())],
+            &[],
+        ),
     )
     .expect("compile host enum write source");
     let mut adapter = host_adapter(host_ref, HostValue::Null);
@@ -362,15 +374,19 @@ fn main(player) {
 fn managed_heap_host_execution_converts_host_ref_for_host_write_and_readback() {
     let host_ref = player_ref(3);
     let target_ref = HostRef::new(HostTypeId::new(2), HostObjectId::new(11), 4);
-    let program = compile_program_source_with_options(
+    let program = compile_host_program_source(
         SourceId::new(1),
         r#"
-fn main(player, target) {
+fn main(player: Player, target) {
     player.level = target;
     return player.level;
 }
 "#,
-        &CompilerOptions::new().with_host_field("level", level_field()),
+        host_definition_registry(
+            &[("Player", host_ref.type_id)],
+            &[TestHostField::new("Player", "level", level_field())],
+            &[],
+        ),
     )
     .expect("compile host ref write source");
     let mut adapter = host_adapter(host_ref, HostValue::Null);

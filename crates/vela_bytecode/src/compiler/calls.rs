@@ -34,7 +34,6 @@ impl Compiler<'_, '_> {
         let path_root_is_local = path_root_is_local(callee, &self.locals);
         if let Some(call) = host_method_call(
             self,
-            &self.facts.options,
             callee,
             host_receiver_type.as_deref(),
             path_root_is_local,
@@ -115,15 +114,7 @@ impl Compiler<'_, '_> {
             .facts
             .registry
             .and_then(|registry| registry.host_method_params_by_runtime_id(method.get()));
-        let option_params = if self.facts.registry.is_none() {
-            self.facts.options.host_method_params(method)
-        } else {
-            None
-        };
-        let Some(params) = registry_params
-            .map(HostMethodParams::Registry)
-            .or_else(|| option_params.map(HostMethodParams::CompilerOptions))
-        else {
+        let Some(params) = registry_params else {
             reject_named_args(args, "host method call")?;
             return args
                 .iter()
@@ -136,7 +127,7 @@ impl Compiler<'_, '_> {
                 .map(|arg| self.compile_expr(&arg.value))
                 .collect();
         }
-        let params = params.param_hints(call_span);
+        let params = registry_param_hints(params, call_span);
         self.compile_metadata_register_args(&params, args, call_span)
     }
 
@@ -294,28 +285,14 @@ impl Compiler<'_, '_> {
         call_span: Span,
     ) -> CompileResult<Vec<CallArgument>> {
         let registry_params = self.registry_value_method_params(receiver_type, method);
-        let option_params = if self.facts.registry.is_none() {
-            receiver_type
-                .and_then(|receiver_type| {
-                    self.facts
-                        .options
-                        .value_method_params_for_type(receiver_type, method)
-                })
-                .or_else(|| self.facts.options.value_method_params(method))
-        } else {
-            None
-        };
-        let Some(params) = registry_params
-            .map(ValueMethodParams::Registry)
-            .or_else(|| option_params.map(ValueMethodParams::CompilerOptions))
-        else {
+        let Some(params) = registry_params else {
             reject_named_args(args, "script method call")?;
             return self.compile_positional_method_args(args);
         };
         if !args.iter().any(|arg| arg.name.is_some()) {
             return self.compile_positional_method_args(args);
         }
-        let params = params.param_hints(call_span);
+        let params = registry_param_hints(params, call_span);
         let slots =
             resolve_script_call_arguments(&params, args, call_span).map_err(|diagnostics| {
                 CompileError::new(CompileErrorKind::SemanticDiagnostics(diagnostics))
@@ -365,7 +342,7 @@ impl Compiler<'_, '_> {
 
     fn compile_native_call_args(
         &mut self,
-        name: &str,
+        _name: &str,
         native: Option<FunctionId>,
         args: &[Argument],
         call_span: vela_common::Span,
@@ -375,31 +352,12 @@ impl Compiler<'_, '_> {
             .facts
             .registry
             .and_then(|registry| native.and_then(|id| registry.function_params(id)));
-        let option_params = self.facts.options.native_function_params(name);
         let Some(params) = registry_params else {
-            let Some(params) = option_params else {
-                reject_named_args(args, "native call")?;
-                return args
-                    .iter()
-                    .map(|arg| self.compile_expr(&arg.value))
-                    .collect();
-            };
-            if !has_named_args {
-                return args
-                    .iter()
-                    .map(|arg| self.compile_expr(&arg.value))
-                    .collect();
-            }
-            let params = params
+            reject_named_args(args, "native call")?;
+            return args
                 .iter()
-                .map(|param| ParamHint {
-                    name: param.name.clone(),
-                    span: call_span,
-                    type_hint: None,
-                    default_value_span: None,
-                })
-                .collect::<Vec<_>>();
-            return self.compile_metadata_register_args(&params, args, call_span);
+                .map(|arg| self.compile_expr(&arg.value))
+                .collect();
         };
         if !has_named_args {
             return args
@@ -425,7 +383,7 @@ impl Compiler<'_, '_> {
         call_span: Span,
     ) -> CompileResult<Option<FunctionId>> {
         let Some(registry) = self.facts.registry else {
-            return Ok(self.facts.options.native_function_id(name));
+            return Ok(None);
         };
         if let Some(id) = registry.resolve_native_function_name(name) {
             return Ok(Some(id));
@@ -446,10 +404,7 @@ impl Compiler<'_, '_> {
             let owner = self.registry_value_type_id(receiver_type)?;
             return registry.resolve_value_method(owner, method);
         }
-        self.facts
-            .options
-            .value_method_id_for_type(receiver_type, method)
-            .map(|id| MethodId::new(id.get()))
+        None
     }
 
     fn registry_value_method_params(
@@ -470,64 +425,16 @@ impl Compiler<'_, '_> {
     }
 }
 
-enum ValueMethodParams<'a> {
-    Registry(&'a [ParamDef]),
-    CompilerOptions(&'a [super::options::ValueMethodParam]),
-}
-
-impl ValueMethodParams<'_> {
-    fn param_hints(&self, call_span: Span) -> Vec<ParamHint> {
-        match self {
-            Self::Registry(params) => params
-                .iter()
-                .map(|param| ParamHint {
-                    name: param.name.clone(),
-                    span: call_span,
-                    type_hint: None,
-                    default_value_span: None,
-                })
-                .collect(),
-            Self::CompilerOptions(params) => params
-                .iter()
-                .map(|param| ParamHint {
-                    name: param.name.clone(),
-                    span: call_span,
-                    type_hint: None,
-                    default_value_span: param.has_default.then_some(call_span),
-                })
-                .collect(),
-        }
-    }
-}
-
-enum HostMethodParams<'a> {
-    Registry(&'a [ParamDef]),
-    CompilerOptions(&'a [super::options::HostMethodParam]),
-}
-
-impl HostMethodParams<'_> {
-    fn param_hints(&self, call_span: Span) -> Vec<ParamHint> {
-        match self {
-            Self::Registry(params) => params
-                .iter()
-                .map(|param| ParamHint {
-                    name: param.name.clone(),
-                    span: call_span,
-                    type_hint: None,
-                    default_value_span: param.has_default.then_some(call_span),
-                })
-                .collect(),
-            Self::CompilerOptions(params) => params
-                .iter()
-                .map(|param| ParamHint {
-                    name: param.name.clone(),
-                    span: call_span,
-                    type_hint: None,
-                    default_value_span: param.has_default.then_some(call_span),
-                })
-                .collect(),
-        }
-    }
+fn registry_param_hints(params: &[ParamDef], call_span: Span) -> Vec<ParamHint> {
+    params
+        .iter()
+        .map(|param| ParamHint {
+            name: param.name.clone(),
+            span: call_span,
+            type_hint: None,
+            default_value_span: param.has_default.then_some(call_span),
+        })
+        .collect()
 }
 
 fn standard_value_type_name(receiver_type: &str) -> Option<&'static str> {

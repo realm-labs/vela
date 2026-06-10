@@ -93,7 +93,6 @@ impl vela_vm::VmInlineCaches for InlineCaches {
 #[cfg(test)]
 mod tests {
     use vela_bytecode::CacheSiteKind;
-    use vela_bytecode::compiler::compile_program_source_with_options;
     use vela_common::{HostObjectId, HostTypeId, SourceId};
     use vela_def::{FieldId, TypeId};
     use vela_host::access::HostAccess;
@@ -112,18 +111,18 @@ mod tests {
     #[test]
     fn inline_caches_allocate_from_image_cache_site_count() {
         let engine = Engine::builder().build().expect("engine should build");
-        let cached_program = compile_program_source_with_options(
-            SourceId::new(1),
-            r#"
+        let cached_program = engine
+            .compile_source(
+                SourceId::new(1),
+                r#"
 global value: Int;
 
 fn main() {
     return value;
 }
 "#,
-            &engine.compiler_options(),
-        )
-        .expect("program should compile");
+            )
+            .expect("program should compile");
         let cached_image = RuntimeImage::new(engine.clone(), cached_program);
         let mut caches = InlineCaches::for_image(&cached_image);
 
@@ -131,12 +130,9 @@ fn main() {
         assert!(!caches.is_empty());
         assert_eq!(caches.len(), cached_image.cache_site_count());
 
-        let empty_program = compile_program_source_with_options(
-            SourceId::new(2),
-            "fn main() { return 1; }",
-            &engine.compiler_options(),
-        )
-        .expect("program should compile");
+        let empty_program = engine
+            .compile_source(SourceId::new(2), "fn main() { return 1; }")
+            .expect("program should compile");
         let empty_image = RuntimeImage::new(engine, empty_program);
         caches.clear_for_image(&empty_image);
 
@@ -148,9 +144,10 @@ fn main() {
     #[test]
     fn global_read_inline_cache_is_runtime_local_and_site_indexed() {
         let engine = Engine::builder().build().expect("engine should build");
-        let program = compile_program_source_with_options(
-            SourceId::new(1),
-            r#"
+        let program = engine
+            .compile_source(
+                SourceId::new(1),
+                r#"
 global first: Int;
 global second: Int;
 
@@ -162,9 +159,8 @@ fn read_second() {
     return second;
 }
 "#,
-            &engine.compiler_options(),
-        )
-        .expect("program should compile");
+            )
+            .expect("program should compile");
         let first_slot = program
             .global_slot("main::first")
             .expect("first global should have slot");
@@ -252,16 +248,16 @@ fn read_second() {
             )
             .build()
             .expect("engine should build");
-        let program = compile_program_source_with_options(
-            SourceId::new(1),
-            r#"
+        let program = engine
+            .compile_source(
+                SourceId::new(1),
+                r#"
 fn read_level(player: CachedHostPlayer) {
     return player.level;
 }
 "#,
-            &engine.compiler_options(),
-        )
-        .expect("program should compile");
+            )
+            .expect("program should compile");
         let function = program
             .function("read_level")
             .expect("read_level should exist");

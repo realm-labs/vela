@@ -3,10 +3,10 @@ use crate::budget::ExecutionBudgetKind;
 use crate::heap::{GcBudget, HeapValue, ScriptHeap};
 use std::collections::BTreeMap;
 use std::sync::Arc;
-use vela_bytecode::compiler::options::CompilerOptions;
+use vela_bytecode::compiler::options::{CompilerOptions, HostIndexCapabilityInfo};
 use vela_bytecode::compiler::{
     compile_function_source, compile_module_sources, compile_program_source,
-    compile_program_source_with_options,
+    compile_program_source_with_registry,
 };
 use vela_bytecode::{
     CacheSiteKind, Constant, ConstantId, Instruction, InstructionOffset, ProgramImage,
@@ -253,4 +253,146 @@ fn level_path(host_ref: HostRef) -> HostPath {
 
 fn level_field() -> FieldId {
     FieldId::new(2)
+}
+
+fn compile_host_program_source(
+    source: SourceId,
+    text: &str,
+    registry: vela_registry::DefinitionRegistry,
+) -> vela_bytecode::compiler::error::CompileResult<Program> {
+    compile_program_source_with_registry(source, text, registry.compile_view())
+}
+
+fn compile_host_program_source_with_options(
+    source: SourceId,
+    text: &str,
+    options: &CompilerOptions,
+    registry: vela_registry::DefinitionRegistry,
+) -> vela_bytecode::compiler::error::CompileResult<Program> {
+    vela_bytecode::compiler::compile_program_source_with_options_and_registry(
+        source,
+        text,
+        options,
+        registry.compile_view(),
+    )
+}
+
+fn host_definition_registry(
+    types: &[(&str, HostTypeId)],
+    fields: &[TestHostField<'_>],
+    methods: &[TestHostMethod<'_>],
+) -> vela_registry::DefinitionRegistry {
+    let mut registry = vela_registry::DefinitionRegistry::new();
+    let mut type_ids = BTreeMap::new();
+    for (name, runtime_id) in types {
+        let type_id = registry
+            .register_type(
+                vela_registry::TypeDef::new(vela_def::DefPath::ty(
+                    "host",
+                    std::iter::empty::<&str>(),
+                    *name,
+                ))
+                .host_runtime_id(runtime_id.get().into()),
+            )
+            .expect("test host type should register");
+        type_ids.insert(*name, type_id);
+    }
+
+    for field in fields {
+        let owner = *type_ids
+            .get(field.owner)
+            .expect("test field owner type should exist");
+        let def = vela_registry::FieldDef::new(
+            vela_def::DefPath::field("host", std::iter::empty::<&str>(), field.owner, field.name),
+            owner,
+        )
+        .host_runtime_id(field.id.get())
+        .writable(field.writable)
+        .type_hint(field.type_hint.map(str::to_owned))
+        .variant_field(field.variant);
+        registry
+            .register_field(def)
+            .expect("test host field should register");
+    }
+
+    for method in methods {
+        let owner = *type_ids
+            .get(method.owner)
+            .expect("test method owner type should exist");
+        registry
+            .register_method(
+                vela_registry::MethodDef::new(
+                    vela_def::DefPath::method(
+                        "host",
+                        std::iter::empty::<&str>(),
+                        method.owner,
+                        method.name,
+                    ),
+                    owner,
+                    vela_registry::FunctionSignature::new(
+                        method
+                            .params
+                            .iter()
+                            .map(|name| vela_registry::ParamDef::new(*name, None::<String>)),
+                        None,
+                    ),
+                )
+                .host_runtime_id(method.id.get()),
+            )
+            .expect("test host method should register");
+    }
+
+    registry
+}
+
+#[derive(Clone, Copy)]
+struct TestHostField<'a> {
+    owner: &'a str,
+    name: &'a str,
+    id: FieldId,
+    writable: bool,
+    type_hint: Option<&'a str>,
+    variant: bool,
+}
+
+impl<'a> TestHostField<'a> {
+    const fn new(owner: &'a str, name: &'a str, id: FieldId) -> Self {
+        Self {
+            owner,
+            name,
+            id,
+            writable: true,
+            type_hint: None,
+            variant: false,
+        }
+    }
+
+    const fn readonly(mut self) -> Self {
+        self.writable = false;
+        self
+    }
+
+    const fn type_hint(mut self, type_hint: &'a str) -> Self {
+        self.type_hint = Some(type_hint);
+        self
+    }
+}
+
+#[derive(Clone, Copy)]
+struct TestHostMethod<'a> {
+    owner: &'a str,
+    name: &'a str,
+    id: HostMethodId,
+    params: &'a [&'a str],
+}
+
+impl<'a> TestHostMethod<'a> {
+    const fn new(owner: &'a str, name: &'a str, id: HostMethodId, params: &'a [&'a str]) -> Self {
+        Self {
+            owner,
+            name,
+            id,
+            params,
+        }
+    }
 }

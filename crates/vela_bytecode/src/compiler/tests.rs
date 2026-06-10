@@ -3,7 +3,7 @@ use crate::verification::VerificationErrorKind;
 use crate::{
     CacheSiteKind, CallArgument, CodeObject, Instruction, InstructionKind, Program, Register,
 };
-use vela_def::{FieldId, FunctionId, MethodId};
+use vela_def::{DefPath, FunctionId, MethodId};
 fn semantic_diagnostic_codes(error: CompileError) -> Vec<String> {
     let CompileErrorKind::SemanticDiagnostics(diagnostics) = error.kind else {
         panic!("expected semantic diagnostics");
@@ -71,10 +71,35 @@ fn compiler_boundary_rejects_invalid_function_bytecode() {
 
 #[test]
 fn compiler_records_cache_site_metadata_for_cacheable_instructions() {
-    let options = CompilerOptions::new()
-        .with_host_field("level", FieldId::new(1))
-        .with_native_function("give_reward", FunctionId::new(7), ["amount"]);
-    let program = compile_program_source_with_options(
+    let mut registry = vela_registry::DefinitionRegistry::new();
+    let player = registry
+        .register_type(
+            vela_registry::TypeDef::new(DefPath::ty("host", std::iter::empty::<&str>(), "Player"))
+                .host_runtime_id(77),
+        )
+        .expect("Player type should register");
+    registry
+        .register_field(
+            vela_registry::FieldDef::new(
+                DefPath::field("host", std::iter::empty::<&str>(), "Player", "level"),
+                player,
+            )
+            .host_runtime_id(1),
+        )
+        .expect("Player::level field should register");
+    registry
+        .register_function(
+            vela_registry::FunctionDef::new(
+                DefPath::function("host", std::iter::empty::<&str>(), "give_reward"),
+                vela_registry::FunctionSignature::new(
+                    [vela_registry::ParamDef::new("amount", Some("int"))],
+                    None,
+                ),
+            )
+            .with_id(FunctionId::new(7)),
+        )
+        .expect("give_reward function should register");
+    let program = compile_program_source_with_registry(
         SourceId::new(1),
         r#"
 global bonus: Int;
@@ -89,7 +114,7 @@ impl Reward {
     }
 }
 
-fn main(player) {
+fn main(player: Player) {
     let reward = Reward { gold: bonus };
     let current = player.level;
     player.level = current + reward.gold;
@@ -97,7 +122,7 @@ fn main(player) {
     return player.level;
 }
 "#,
-        &options,
+        registry.compile_view(),
     )
     .expect("program should compile");
     let main = program.function("main").expect("main should exist");

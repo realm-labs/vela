@@ -174,16 +174,16 @@ fn engine_compiler_options_emit_standard_value_method_ids() {
         .with_standard_natives()
         .build()
         .expect("engine should build with standard natives");
-    let program = compile_program_source_with_options(
-        SourceId::new(1),
-        r#"
+    let program = engine
+        .compile_source(
+            SourceId::new(1),
+            r#"
 fn main() {
     return "gold".len();
 }
 "#,
-        &engine.compiler_options(),
-    )
-    .expect("standard value method should compile");
+        )
+        .expect("standard value method should compile");
     let main = program.function("main").expect("main should compile");
 
     let value_method = main
@@ -207,18 +207,18 @@ fn engine_compiler_options_emit_standard_string_predicate_method_ids() {
         .with_standard_natives()
         .build()
         .expect("engine should build with standard natives");
-    let program = compile_program_source_with_options(
-        SourceId::new(1),
-        r#"
+    let program = engine
+        .compile_source(
+            SourceId::new(1),
+            r#"
 fn main() {
     return "reward:gold".contains(":")
         && "reward:gold".starts_with("reward")
         && "reward:gold".ends_with("gold");
 }
 "#,
-        &engine.compiler_options(),
-    )
-    .expect("standard string predicate methods should compile");
+        )
+        .expect("standard string predicate methods should compile");
     let main = program.function("main").expect("main should compile");
 
     let value_methods = main
@@ -245,9 +245,10 @@ fn engine_compiler_options_emit_standard_string_transform_method_ids() {
         .with_standard_natives()
         .build()
         .expect("engine should build with standard natives");
-    let program = compile_program_source_with_options(
-        SourceId::new(1),
-        r#"
+    let program = engine
+        .compile_source(
+            SourceId::new(1),
+            r#"
 fn main() {
     let label = " Reward ";
     return label.to_upper() == " REWARD "
@@ -257,9 +258,8 @@ fn main() {
         && label.trim_end() == " Reward";
 }
 "#,
-        &engine.compiler_options(),
-    )
-    .expect("standard string transform methods should compile");
+        )
+        .expect("standard string transform methods should compile");
     let main = program.function("main").expect("main should compile");
 
     let value_methods = main
@@ -288,9 +288,10 @@ fn engine_compiler_options_emit_standard_string_argument_transform_method_ids() 
         .with_standard_natives()
         .build()
         .expect("engine should build with standard natives");
-    let program = compile_program_source_with_options(
-        SourceId::new(1),
-        r#"
+    let program = engine
+        .compile_source(
+            SourceId::new(1),
+            r#"
 fn main() {
     let label = "reward.gold";
     return label.replace(".", ":") == "reward:gold"
@@ -298,9 +299,8 @@ fn main() {
         && label.slice(0, 6) == "reward";
 }
 "#,
-        &engine.compiler_options(),
-    )
-    .expect("standard string argument transform methods should compile");
+        )
+        .expect("standard string argument transform methods should compile");
     let main = program.function("main").expect("main should compile");
 
     let value_methods = main
@@ -327,9 +327,10 @@ fn engine_compiler_options_emit_standard_string_option_method_ids() {
         .with_standard_natives()
         .build()
         .expect("engine should build with standard natives");
-    let program = compile_program_source_with_options(
-        SourceId::new(1),
-        r#"
+    let program = engine
+        .compile_source(
+            SourceId::new(1),
+            r#"
 fn main() {
     let label = "reward:gold";
     return label.find(":").unwrap_or(-1) == 6
@@ -338,9 +339,8 @@ fn main() {
         && label.char_at(6).unwrap_or("") == ":";
 }
 "#,
-        &engine.compiler_options(),
-    )
-    .expect("standard string option methods should compile");
+        )
+        .expect("standard string option methods should compile");
     let main = program.function("main").expect("main should compile");
 
     let value_methods = main
@@ -374,9 +374,10 @@ fn engine_compiler_options_emit_standard_string_split_method_ids() {
         .with_standard_natives()
         .build()
         .expect("engine should build with standard natives");
-    let program = compile_program_source_with_options(
-        SourceId::new(1),
-        r#"
+    let program = engine
+        .compile_source(
+            SourceId::new(1),
+            r#"
 fn main() {
     let pair = "reward:gold".split_once(":").unwrap_or(["", ""]);
     return "reward:gold".split(":").len() == 2
@@ -385,9 +386,8 @@ fn main() {
         && "reward gold".split_whitespace().len() == 2;
 }
 "#,
-        &engine.compiler_options(),
-    )
-    .expect("standard string split methods should compile");
+        )
+        .expect("standard string split methods should compile");
     let main = program.function("main").expect("main should compile");
 
     let value_methods = main
@@ -418,18 +418,18 @@ fn engine_compiler_options_emit_standard_string_parse_method_ids() {
         .with_standard_natives()
         .build()
         .expect("engine should build with standard natives");
-    let program = compile_program_source_with_options(
-        SourceId::new(1),
-        r#"
+    let program = engine
+        .compile_source(
+            SourceId::new(1),
+            r#"
 fn main() {
     return "42".parse_int().unwrap_or(0) == 42
         && "1.5".parse_float().unwrap_or(0.0) == 1.5
         && "true".parse_bool().unwrap_or(false);
 }
 "#,
-        &engine.compiler_options(),
-    )
-    .expect("standard string parse methods should compile");
+        )
+        .expect("standard string parse methods should compile");
     let main = program.function("main").expect("main should compile");
 
     let value_methods = main
@@ -456,16 +456,16 @@ fn engine_compiler_options_emit_standard_range_method_ids() {
         .with_standard_natives()
         .build()
         .expect("engine should build with standard natives");
-    let program = compile_program_source_with_options(
-        SourceId::new(1),
-        r#"
+    let program = engine
+        .compile_source(
+            SourceId::new(1),
+            r#"
 fn main() {
     return (1..4).len();
 }
 "#,
-        &engine.compiler_options(),
-    )
-    .expect("standard range method should compile");
+        )
+        .expect("standard range method should compile");
     let main = program.function("main").expect("main should compile");
 
     let value_method = main
@@ -489,18 +489,18 @@ fn engine_compiler_options_emit_standard_option_result_method_ids() {
         .with_standard_natives()
         .build()
         .expect("engine should build with standard natives");
-    let program = compile_program_source_with_options(
-        SourceId::new(1),
-        r#"
+    let program = engine
+        .compile_source(
+            SourceId::new(1),
+            r#"
 fn main() {
     let some: Option = option::some(1);
     let err: Result = result::err("bad");
     return some.is_some() && err.is_err();
 }
 "#,
-        &engine.compiler_options(),
-    )
-    .expect("standard option/result methods should compile");
+        )
+        .expect("standard option/result methods should compile");
     let main = program.function("main").expect("main should compile");
 
     let value_methods = main
@@ -578,9 +578,10 @@ fn engine_compiler_options_emit_standard_collection_method_ids() {
         .with_standard_natives()
         .build()
         .expect("engine should build with standard natives");
-    let program = compile_program_source_with_options(
-        SourceId::new(1),
-        r#"
+    let program = engine
+        .compile_source(
+            SourceId::new(1),
+            r#"
 fn main() {
     let names: array = ["gold", "xp"];
     let rewards: map = {"gold": 4};
@@ -607,9 +608,8 @@ fn main() {
     return 0;
 }
 "#,
-        &engine.compiler_options(),
-    )
-    .expect("standard collection methods should compile");
+        )
+        .expect("standard collection methods should compile");
     let main = program.function("main").expect("main should compile");
 
     let value_methods = main
@@ -651,9 +651,10 @@ fn engine_compiler_options_emit_standard_array_lookup_method_ids() {
         .with_standard_natives()
         .build()
         .expect("engine should build with standard natives");
-    let program = compile_program_source_with_options(
-        SourceId::new(1),
-        r#"
+    let program = engine
+        .compile_source(
+            SourceId::new(1),
+            r#"
 fn main() {
     let names: array = ["gold", "xp"];
     return names.first().unwrap_or("") == "gold"
@@ -661,9 +662,8 @@ fn main() {
         && names.index_of("xp").unwrap_or(-1) == 1;
 }
 "#,
-        &engine.compiler_options(),
-    )
-    .expect("standard array lookup methods should compile");
+        )
+        .expect("standard array lookup methods should compile");
     let main = program.function("main").expect("main should compile");
 
     let value_methods = main
@@ -690,9 +690,10 @@ fn engine_compiler_options_emit_standard_array_transform_method_ids() {
         .with_standard_natives()
         .build()
         .expect("engine should build with standard natives");
-    let program = compile_program_source_with_options(
-        SourceId::new(1),
-        r#"
+    let program = engine
+        .compile_source(
+            SourceId::new(1),
+            r#"
 fn main() {
     let names: array = ["gold", "xp", "gold"];
     return names.join(":") == "gold:xp:gold"
@@ -701,9 +702,8 @@ fn main() {
         && names.slice(1, 3).len() == 2;
 }
 "#,
-        &engine.compiler_options(),
-    )
-    .expect("standard array transform methods should compile");
+        )
+        .expect("standard array transform methods should compile");
     let main = program.function("main").expect("main should compile");
 
     let value_methods = main
@@ -731,17 +731,17 @@ fn engine_compiler_options_lower_named_standard_value_method_arguments() {
         .with_standard_natives()
         .build()
         .expect("engine should build with standard natives");
-    let program = compile_program_source_with_options(
-        SourceId::new(1),
-        r#"
+    let program = engine
+        .compile_source(
+            SourceId::new(1),
+            r#"
 fn main() {
     let pair = "reward:gold".split_once(separator = ":").unwrap_or(["", ""]);
     return {"gold": 4}.get_or(default = 0, key = pair[1]);
 }
 "#,
-        &engine.compiler_options(),
-    )
-    .expect("named stdlib value method arguments should compile");
+        )
+        .expect("named stdlib value method arguments should compile");
 
     assert_eq!(
         engine.into_vm().run_program(&program, "main", &[]),
@@ -778,9 +778,10 @@ fn engine_compiler_options_lower_local_receiver_named_standard_value_method_argu
         .with_standard_natives()
         .build()
         .expect("engine should build with standard natives");
-    let program = compile_program_source_with_options(
-        SourceId::new(1),
-        r#"
+    let program = engine
+        .compile_source(
+            SourceId::new(1),
+            r#"
 fn main(text: string) {
     let parts = ["gold"];
     let reward = "reward:gold";
@@ -789,9 +790,8 @@ fn main(text: string) {
         && parts.contains(value = "gold");
 }
 "#,
-        &engine.compiler_options(),
-    )
-    .expect("local receiver named stdlib value method arguments should compile");
+        )
+        .expect("local receiver named stdlib value method arguments should compile");
 
     assert_eq!(
         engine.into_vm().run_program(
@@ -809,16 +809,16 @@ fn engine_compiler_options_reject_ambiguous_named_standard_value_method_argument
         .with_standard_natives()
         .build()
         .expect("engine should build with standard natives");
-    compile_program_source_with_options(
-        SourceId::new(1),
-        r#"
+    engine
+        .compile_source(
+            SourceId::new(1),
+            r#"
 fn main(value) {
     return value.contains(needle = ":");
 }
 "#,
-        &engine.compiler_options(),
-    )
-    .expect_err("ambiguous stdlib value method names should not accept named args");
+        )
+        .expect_err("ambiguous stdlib value method names should not accept named args");
 }
 
 #[test]

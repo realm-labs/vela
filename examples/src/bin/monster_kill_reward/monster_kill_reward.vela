@@ -1,4 +1,4 @@
-fn main(ctx, player, monster) {
+fn main(ctx: Context, player: Player, monster: Monster) {
     player.exp += monster.exp;
 
     if player.exp >= ctx.config.exp_to_next_level {

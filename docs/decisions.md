@@ -115,6 +115,10 @@ and native metadata; source and hot-reload compiler entry points pass a
 `RegistryCompileView` so native calls resolve to `FunctionId` before bytecode
 emission. Reflection metadata remains the user-visible query surface, while the
 definition registry is the compiler/linker identity source.
+`CompilerOptions` may carry only non-identity compile settings or capability
+hints, such as host index capability metadata and native module roots. It must
+not store native function IDs, value method IDs, host type IDs, host field IDs,
+host method IDs, or method parameter metadata.
 
 ### Runtime And Heap
 
@@ -511,9 +515,9 @@ and debugger-visible frame/source metadata.
 
 Value method compilation resolves receiver value facts to stdlib `TypeId`
 definitions and then resolves methods through the `DefinitionRegistry`.
-`CallMethod` carries a typed `MethodId` for value methods; the old
-`CompilerOptions` value-method maps are retained only for compiler tests and
-transitional callers that do not yet provide a registry view.
+`CallMethod` carries a typed `MethodId` for value methods when a registry view
+is available. Named argument metadata and method identity come from method
+definitions in the registry, not from `CompilerOptions`.
 
 ### Host Definition Runtime IDs
 

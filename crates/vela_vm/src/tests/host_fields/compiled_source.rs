@@ -4,16 +4,20 @@ use vela_host::resolved::HostMutationOp;
 #[test]
 fn compiled_source_mutates_host_field_through_host_access() {
     let host_ref = player_ref(3);
-    let program = compile_program_source_with_options(
+    let program = compile_host_program_source(
         SourceId::new(1),
         r#"
-fn main(player) {
+fn main(player: Player) {
     player.level = 10;
     player.level += 1;
     return player.level;
 }
 "#,
-        &CompilerOptions::new().with_host_field("level", level_field()),
+        host_definition_registry(
+            &[("Player", host_ref.type_id)],
+            &[TestHostField::new("Player", "level", level_field())],
+            &[],
+        ),
     )
     .expect("compile host field source");
     let mut adapter = host_adapter(host_ref, HostValue::Int(9));
@@ -47,15 +51,19 @@ fn main(player) {
 #[test]
 fn compiled_source_host_field_read_error_keeps_source_span() {
     let source = r#"
-fn main(player) {
+fn main(player: Player) {
     return player.level;
 }
 "#;
     let host_ref = player_ref(3);
-    let program = compile_program_source_with_options(
+    let program = compile_host_program_source(
         SourceId::new(1),
         source,
-        &CompilerOptions::new().with_host_field("level", level_field()),
+        host_definition_registry(
+            &[("Player", host_ref.type_id)],
+            &[TestHostField::new("Player", "level", level_field()).readonly()],
+            &[],
+        ),
     )
     .expect("compile host field source");
     let mut adapter = host_adapter(host_ref, HostValue::Int(9));
@@ -90,17 +98,22 @@ fn compiled_source_mutates_nested_host_field_through_host_access() {
     let stats = FieldId::new(8);
     let level = FieldId::new(9);
     let stats_level = HostPath::new(host_ref).field(stats).field(level);
-    let program = compile_program_source_with_options(
+    let program = compile_host_program_source(
         SourceId::new(1),
         r#"
-fn main(player) {
+fn main(player: Player) {
     player.stats.level += 2;
     return player.stats.level;
 }
 "#,
-        &CompilerOptions::new()
-            .with_host_field("stats", stats)
-            .with_host_field("level", level),
+        host_definition_registry(
+            &[("Player", host_ref.type_id), ("Stats", HostTypeId::new(8))],
+            &[
+                TestHostField::new("Player", "stats", stats).type_hint("Stats"),
+                TestHostField::new("Stats", "level", level),
+            ],
+            &[],
+        ),
     )
     .expect("compile nested host field source");
     let mut adapter = MockStateAdapter::new();
@@ -138,17 +151,22 @@ fn compiled_source_subtracts_nested_host_field_through_host_access() {
     let stats = FieldId::new(8);
     let level = FieldId::new(9);
     let stats_level = HostPath::new(host_ref).field(stats).field(level);
-    let program = compile_program_source_with_options(
+    let program = compile_host_program_source(
         SourceId::new(1),
         r#"
-fn main(player) {
+fn main(player: Player) {
     player.stats.level -= 2;
     return player.stats.level;
 }
 "#,
-        &CompilerOptions::new()
-            .with_host_field("stats", stats)
-            .with_host_field("level", level),
+        host_definition_registry(
+            &[("Player", host_ref.type_id), ("Stats", HostTypeId::new(8))],
+            &[
+                TestHostField::new("Player", "stats", stats).type_hint("Stats"),
+                TestHostField::new("Stats", "level", level),
+            ],
+            &[],
+        ),
     )
     .expect("compile nested host subtraction source");
     let mut adapter = MockStateAdapter::new();
@@ -186,19 +204,24 @@ fn compiled_source_writes_host_numeric_compound_assignments_through_host_access(
     let stats = FieldId::new(8);
     let level = FieldId::new(9);
     let stats_level = HostPath::new(host_ref).field(stats).field(level);
-    let program = compile_program_source_with_options(
+    let program = compile_host_program_source(
         SourceId::new(1),
         r#"
-fn main(player) {
+fn main(player: Player) {
     player.stats.level *= 3;
     player.stats.level /= 2;
     player.stats.level %= 5;
     return player.stats.level;
 }
 "#,
-        &CompilerOptions::new()
-            .with_host_field("stats", stats)
-            .with_host_field("level", level),
+        host_definition_registry(
+            &[("Player", host_ref.type_id), ("Stats", HostTypeId::new(8))],
+            &[
+                TestHostField::new("Player", "stats", stats).type_hint("Stats"),
+                TestHostField::new("Stats", "level", level),
+            ],
+            &[],
+        ),
     )
     .expect("compile nested host numeric compound source");
     let mut adapter = MockStateAdapter::new();
@@ -236,17 +259,25 @@ fn compiled_source_rejects_host_path_push_without_collection_adapter() {
     let inventory = FieldId::new(8);
     let rewards = FieldId::new(9);
     let reward_path = HostPath::new(host_ref).field(inventory).field(rewards);
-    let program = compile_program_source_with_options(
+    let program = compile_host_program_source(
         SourceId::new(1),
         r#"
-fn main(player) {
+fn main(player: Player) {
     player.inventory.rewards.push("gold");
     return player.inventory.rewards.len();
 }
 "#,
-        &CompilerOptions::new()
-            .with_host_field("inventory", inventory)
-            .with_host_field("rewards", rewards),
+        host_definition_registry(
+            &[
+                ("Player", host_ref.type_id),
+                ("Inventory", HostTypeId::new(8)),
+            ],
+            &[
+                TestHostField::new("Player", "inventory", inventory).type_hint("Inventory"),
+                TestHostField::new("Inventory", "rewards", rewards),
+            ],
+            &[],
+        ),
     )
     .expect("compile host path push source");
     let mut adapter = MockStateAdapter::new();
@@ -290,18 +321,26 @@ fn compiled_source_removes_host_path_through_host_access() {
         .field(inventory)
         .field(items)
         .key("gold");
-    let program = compile_program_source_with_options(
+    let program = compile_host_program_source(
         SourceId::new(1),
         r#"
-fn main(player) {
+fn main(player: Player) {
     let item_id = "gold";
     player.inventory.items[item_id].remove();
     return 1;
 }
 "#,
-        &CompilerOptions::new()
-            .with_host_field("inventory", inventory)
-            .with_host_field("items", items),
+        host_definition_registry(
+            &[
+                ("Player", host_ref.type_id),
+                ("Inventory", HostTypeId::new(8)),
+            ],
+            &[
+                TestHostField::new("Player", "inventory", inventory).type_hint("Inventory"),
+                TestHostField::new("Inventory", "items", items),
+            ],
+            &[],
+        ),
     )
     .expect("compile host path remove source");
     let mut adapter = MockStateAdapter::new();
@@ -343,19 +382,37 @@ fn compiled_source_mutates_indexed_host_field_through_host_access() {
         .field(items)
         .key("gold")
         .field(count);
-    let program = compile_program_source_with_options(
+    let options = CompilerOptions::new().with_host_index_capability(
+        "Items",
+        HostIndexCapabilityInfo {
+            value_type: Some("Item".into()),
+            ..HostIndexCapabilityInfo::default()
+        },
+    );
+    let program = compile_host_program_source_with_options(
         SourceId::new(1),
         r#"
-fn main(player) {
+fn main(player: Player) {
     let item_id = "gold";
     player.inventory.items[item_id].count += 1;
     return player.inventory.items[item_id].count;
 }
 "#,
-        &CompilerOptions::new()
-            .with_host_field("inventory", inventory)
-            .with_host_field("items", items)
-            .with_host_field("count", count),
+        &options,
+        host_definition_registry(
+            &[
+                ("Player", host_ref.type_id),
+                ("Inventory", HostTypeId::new(8)),
+                ("Items", HostTypeId::new(9)),
+                ("Item", HostTypeId::new(10)),
+            ],
+            &[
+                TestHostField::new("Player", "inventory", inventory).type_hint("Inventory"),
+                TestHostField::new("Inventory", "items", items).type_hint("Items"),
+                TestHostField::new("Item", "count", count),
+            ],
+            &[],
+        ),
     )
     .expect("compile indexed host field source");
     let mut adapter = MockStateAdapter::new();
@@ -464,21 +521,27 @@ fn compiled_source_context_time_and_emit_writes_through() {
     let tick_field = FieldId::new(7);
     let emit_method = HostMethodId::new(8);
     let log_method = HostMethodId::new(9);
-    let program = compile_program_source_with_options(
+    let program = compile_host_program_source(
         SourceId::new(1),
         r#"
-fn main(ctx) {
+fn main(ctx: Ctx) {
     let stamp = ctx.now + ctx.tick;
     ctx.emit("player.level_checked", stamp);
     ctx.log("info", "player.level_checked", stamp);
     return stamp;
 }
 "#,
-        &CompilerOptions::new()
-            .with_host_field("now", now_field)
-            .with_host_field("tick", tick_field)
-            .with_host_method("emit", emit_method)
-            .with_host_method("log", log_method),
+        host_definition_registry(
+            &[("Ctx", ctx_ref.type_id)],
+            &[
+                TestHostField::new("Ctx", "now", now_field),
+                TestHostField::new("Ctx", "tick", tick_field),
+            ],
+            &[
+                TestHostMethod::new("Ctx", "emit", emit_method, &["event", "value"]),
+                TestHostMethod::new("Ctx", "log", log_method, &["level", "event", "value"]),
+            ],
+        ),
     )
     .expect("compile context source");
     let mut adapter = MockStateAdapter::new();
@@ -536,16 +599,20 @@ fn main(ctx) {
 #[test]
 fn host_field_write_conversion_error_leaves_no_write() {
     let host_ref = player_ref(3);
-    let program = compile_program_source_with_options(
+    let program = compile_host_program_source(
         SourceId::new(1),
         r#"
-fn main(player) {
+fn main(player: Player) {
     let callback = || 1;
     player.level = callback;
     return 0;
 }
 "#,
-        &CompilerOptions::new().with_host_field("level", level_field()),
+        host_definition_registry(
+            &[("Player", host_ref.type_id)],
+            &[TestHostField::new("Player", "level", level_field())],
+            &[],
+        ),
     )
     .expect("compile host closure write source");
     let mut adapter = host_adapter(host_ref, HostValue::Int(9));

@@ -6,15 +6,24 @@ use crate::value::Value as RuntimeValue;
 fn compiled_source_host_method_call_writes_through() {
     let host_ref = player_ref(3);
     let method = HostMethodId::new(5);
-    let program = compile_program_source_with_options(
+    let program = compile_host_program_source(
         SourceId::new(1),
         r#"
-fn main(player) {
+fn main(player: Player) {
     player.grant_exp(20);
     return 1;
 }
 "#,
-        &CompilerOptions::new().with_host_method("grant_exp", method),
+        host_definition_registry(
+            &[("Player", host_ref.type_id)],
+            &[],
+            &[TestHostMethod::new(
+                "Player",
+                "grant_exp",
+                method,
+                &["amount"],
+            )],
+        ),
     )
     .expect("compile host method source");
     let mut adapter = host_adapter(host_ref, HostValue::Int(9));
@@ -47,17 +56,27 @@ fn compiled_source_host_field_method_call_uses_host_path() {
     let host_ref = player_ref(3);
     let inventory = FieldId::new(8);
     let method = HostMethodId::new(9);
-    let program = compile_program_source_with_options(
+    let program = compile_host_program_source(
         SourceId::new(1),
         r#"
-fn main(player) {
+fn main(player: Player) {
     player.inventory.add("gold", 100);
     return 1;
 }
 "#,
-        &CompilerOptions::new()
-            .with_host_field("inventory", inventory)
-            .with_host_method("add", method),
+        host_definition_registry(
+            &[
+                ("Player", host_ref.type_id),
+                ("Inventory", HostTypeId::new(8)),
+            ],
+            &[TestHostField::new("Player", "inventory", inventory).type_hint("Inventory")],
+            &[TestHostMethod::new(
+                "Inventory",
+                "add",
+                method,
+                &["item", "amount"],
+            )],
+        ),
     )
     .expect("compile host field method source");
     let mut adapter = host_adapter(host_ref, HostValue::Int(9));
@@ -99,19 +118,36 @@ fn compiled_source_host_indexed_method_call_uses_host_path() {
         .field(inventory)
         .field(items)
         .key("gold");
-    let program = compile_program_source_with_options(
+    let options = CompilerOptions::new().with_host_index_capability(
+        "Items",
+        HostIndexCapabilityInfo {
+            value_type: Some("Item".into()),
+            ..HostIndexCapabilityInfo::default()
+        },
+    );
+    let program = compile_host_program_source_with_options(
         SourceId::new(1),
         r#"
-fn main(player) {
+fn main(player: Player) {
     let item_id = "gold";
     player.inventory.items[item_id].grant(20);
     return 1;
 }
 "#,
-        &CompilerOptions::new()
-            .with_host_field("inventory", inventory)
-            .with_host_field("items", items)
-            .with_host_method("grant", method),
+        &options,
+        host_definition_registry(
+            &[
+                ("Player", host_ref.type_id),
+                ("Inventory", HostTypeId::new(8)),
+                ("Items", HostTypeId::new(9)),
+                ("Item", HostTypeId::new(10)),
+            ],
+            &[
+                TestHostField::new("Player", "inventory", inventory).type_hint("Inventory"),
+                TestHostField::new("Inventory", "items", items).type_hint("Items"),
+            ],
+            &[TestHostMethod::new("Item", "grant", method, &["amount"])],
+        ),
     )
     .expect("compile indexed host method source");
     let mut adapter = MockStateAdapter::new();
@@ -251,14 +287,23 @@ fn heap_execution_converts_heap_string_for_host_method_call() {
 fn compiled_source_host_method_call_returns_adapter_value() {
     let host_ref = player_ref(3);
     let method = HostMethodId::new(5);
-    let program = compile_program_source_with_options(
+    let program = compile_host_program_source(
         SourceId::new(1),
         r#"
-fn main(player) {
+fn main(player: Player) {
     return player.grant_exp(20);
 }
 "#,
-        &CompilerOptions::new().with_host_method("grant_exp", method),
+        host_definition_registry(
+            &[("Player", host_ref.type_id)],
+            &[],
+            &[TestHostMethod::new(
+                "Player",
+                "grant_exp",
+                method,
+                &["amount"],
+            )],
+        ),
     )
     .expect("compile host method return source");
     let mut adapter = host_adapter(host_ref, HostValue::Int(9));

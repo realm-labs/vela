@@ -1,7 +1,6 @@
 use std::cell::Cell;
 use std::collections::BTreeMap;
 
-use vela_bytecode::compiler::compile_program_source_with_options;
 use vela_common::{HostMethodId, HostObjectId, HostTypeId, SourceId};
 use vela_def::{FieldId, TypeId};
 use vela_host::access::HostAccess;
@@ -16,7 +15,7 @@ use vela_host::resolved::{
 };
 use vela_host::target::{HostPathArg, HostPathPart, HostTargetInstance};
 use vela_host::value::HostValue;
-use vela_reflect::registry::{FieldDesc, MethodDesc, TypeDesc, TypeKey};
+use vela_reflect::registry::{FieldDesc, MethodDesc, MethodParamDesc, TypeDesc, TypeKey};
 use vela_vm::error::VmErrorKind;
 use vela_vm::owned_value::OwnedValue;
 
@@ -57,9 +56,10 @@ fn runtime_and_runtime_values_are_send() {
 #[test]
 fn runtime_call_executes_program_image_code_view() {
     let engine = Engine::builder().build().expect("engine should build");
-    let program = compile_program_source_with_options(
-        SourceId::new(1),
-        r#"
+    let program = engine
+        .compile_source(
+            SourceId::new(1),
+            r#"
 trait BonusSource { fn bonus(self, amount) -> int; }
 struct Player { level: int }
 
@@ -78,9 +78,8 @@ fn main() {
     return add_bonus(player.bonus(4));
 }
 "#,
-        &engine.compiler_options(),
-    )
-    .expect("compile runtime image code-view source");
+        )
+        .expect("compile runtime image code-view source");
     let mut runtime = Runtime::new(engine, program);
 
     let value = runtime
@@ -95,8 +94,15 @@ fn direct_player_type() -> TypeDesc {
         .host_type(HostTypeId::new(1))
         .field(FieldDesc::new(FieldId::new(1), "level").writable(true))
         .field(FieldDesc::new(FieldId::new(2), "inventory").writable(true))
-        .method(MethodDesc::new(HostMethodId::new(10), "grant_exp"))
-        .method(MethodDesc::new(HostMethodId::new(11), "add"))
+        .method(
+            MethodDesc::new(HostMethodId::new(10), "grant_exp")
+                .param(MethodParamDesc::new("amount").type_hint("int")),
+        )
+        .method(
+            MethodDesc::new(HostMethodId::new(11), "add")
+                .param(MethodParamDesc::new("key").type_hint("string"))
+                .param(MethodParamDesc::new("amount").type_hint("int")),
+        )
 }
 
 #[derive(Default)]
@@ -208,6 +214,9 @@ impl ScriptHostObject for DirectPlayer {
                 HostAccessOp::Read | HostAccessOp::Write | HostAccessOp::Mutate(_),
                 [HostPathPart::Field(field), _],
             ) if *field == FieldId::new(2) => Ok(ResolvedHostAccess::direct_field(1, epoch)),
+            (HostAccessOp::Read, [HostPathPart::Field(field)]) if *field == FieldId::new(2) => {
+                Ok(ResolvedHostAccess::direct_field(1, epoch))
+            }
             (HostAccessOp::Call(method), []) if method == HostMethodId::new(10) => {
                 Ok(ResolvedHostAccess::direct_method(0, epoch))
             }
@@ -229,6 +238,10 @@ impl ScriptHostObject for DirectPlayer {
             [HostPathPart::Field(field)] if *field == FieldId::new(1) => {
                 require_direct_field(access, 0)?;
                 Ok(HostValue::Int(self.level))
+            }
+            [HostPathPart::Field(field)] if *field == FieldId::new(2) => {
+                require_direct_field(access, 1)?;
+                Ok(HostValue::Null)
             }
             [HostPathPart::Field(field), key_part] if *field == FieldId::new(2) => {
                 require_direct_field(access, 1)?;
@@ -360,17 +373,17 @@ fn runtime_call_args_bind_named_values_by_function_params() {
         .register_type(player_type(TypeId::new(1), HostTypeId::new(1)))
         .build()
         .expect("engine should build");
-    let program = compile_program_source_with_options(
-        SourceId::new(1),
-        r#"
+    let program = engine
+        .compile_source(
+            SourceId::new(1),
+            r#"
 fn main(player: Player, amount, bonus = 1) {
     player.level += amount;
     return player.level + bonus;
 }
 "#,
-        &engine.compiler_options(),
-    )
-    .expect("program should compile");
+        )
+        .expect("program should compile");
     let mut runtime = Runtime::new(engine, program);
     let player = HostRef::new(HostTypeId::new(1), HostObjectId::new(42), 1);
     let level = HostPath::new(player).field(super::FieldId::new(1));
@@ -398,16 +411,16 @@ fn main(player: Player, amount, bonus = 1) {
 #[test]
 fn runtime_call_args_accept_positional_values() {
     let engine = Engine::builder().build().expect("engine should build");
-    let program = compile_program_source_with_options(
-        SourceId::new(1),
-        r#"
+    let program = engine
+        .compile_source(
+            SourceId::new(1),
+            r#"
 fn main(left, right) {
     return left * 10 + right;
 }
 "#,
-        &engine.compiler_options(),
-    )
-    .expect("program should compile");
+        )
+        .expect("program should compile");
     let mut runtime = Runtime::new(engine, program);
     let mut adapter = MockStateAdapter::new();
     let mut tx = HostAccess::new();
@@ -429,12 +442,9 @@ fn main(left, right) {
 #[test]
 fn runtime_call_args_reject_duplicate_named_values() {
     let engine = Engine::builder().build().expect("engine should build");
-    let program = compile_program_source_with_options(
-        SourceId::new(1),
-        "fn main(value) { return value; }",
-        &engine.compiler_options(),
-    )
-    .expect("program should compile");
+    let program = engine
+        .compile_source(SourceId::new(1), "fn main(value) { return value; }")
+        .expect("program should compile");
     let mut runtime = Runtime::new(engine, program);
     let mut adapter = MockStateAdapter::new();
     let mut tx = HostAccess::new();
@@ -463,12 +473,9 @@ fn runtime_call_args_reject_duplicate_named_values() {
 #[test]
 fn runtime_call_args_reject_unknown_named_values() {
     let engine = Engine::builder().build().expect("engine should build");
-    let program = compile_program_source_with_options(
-        SourceId::new(1),
-        "fn main(value) { return value; }",
-        &engine.compiler_options(),
-    )
-    .expect("program should compile");
+    let program = engine
+        .compile_source(SourceId::new(1), "fn main(value) { return value; }")
+        .expect("program should compile");
     let mut runtime = Runtime::new(engine, program);
     let mut adapter = MockStateAdapter::new();
     let mut tx = HostAccess::new();
@@ -495,12 +502,9 @@ fn runtime_call_args_reject_unknown_named_values() {
 #[test]
 fn runtime_call_args_reject_mixed_modes() {
     let engine = Engine::builder().build().expect("engine should build");
-    let program = compile_program_source_with_options(
-        SourceId::new(1),
-        "fn main(value) { return value; }",
-        &engine.compiler_options(),
-    )
-    .expect("program should compile");
+    let program = engine
+        .compile_source(SourceId::new(1), "fn main(value) { return value; }")
+        .expect("program should compile");
     let mut runtime = Runtime::new(engine, program);
     let mut adapter = MockStateAdapter::new();
     let mut tx = HostAccess::new();
@@ -530,17 +534,17 @@ fn runtime_call_args_host_mut_writes_through_to_rust_object() {
         .register_type(player_type(TypeId::new(1), HostTypeId::new(1)))
         .build()
         .expect("engine should build");
-    let program = compile_program_source_with_options(
-        SourceId::new(1),
-        r#"
+    let program = engine
+        .compile_source(
+            SourceId::new(1),
+            r#"
 fn main(player: Player, amount) {
     player.level += amount;
     return player.level;
 }
 "#,
-        &engine.compiler_options(),
-    )
-    .expect("program should compile");
+        )
+        .expect("program should compile");
     let mut runtime = Runtime::new(engine, program);
     let mut player = direct_player(9);
     let output = runtime
@@ -563,17 +567,17 @@ fn runtime_call_args_host_mut_writes_string_key_map_path_to_rust_object() {
         .register_type(direct_player_type())
         .build()
         .expect("engine should build");
-    let program = compile_program_source_with_options(
-        SourceId::new(1),
-        r#"
+    let program = engine
+        .compile_source(
+            SourceId::new(1),
+            r#"
 fn main(player: Player, amount) {
     player.inventory["gold"] += amount;
     return player.inventory["gold"];
 }
 "#,
-        &engine.compiler_options(),
-    )
-    .expect("program should compile");
+        )
+        .expect("program should compile");
     let mut runtime = Runtime::new(engine, program);
     let mut player = direct_player(9);
     player.inventory.insert("gold".to_owned(), 3);
@@ -595,21 +599,43 @@ fn main(player: Player, amount) {
 #[test]
 fn runtime_call_args_host_mut_dispatches_root_and_child_host_methods() {
     let engine = Engine::builder()
-        .register_type(direct_player_type())
+        .register_type(
+            TypeDesc::new(TypeKey::new(TypeId::new(1), "Player"))
+                .host_type(HostTypeId::new(1))
+                .field(FieldDesc::new(FieldId::new(1), "level").writable(true))
+                .field(
+                    FieldDesc::new(FieldId::new(2), "inventory")
+                        .writable(true)
+                        .type_hint("Inventory"),
+                )
+                .method(
+                    MethodDesc::new(HostMethodId::new(10), "grant_exp")
+                        .param(MethodParamDesc::new("amount").type_hint("int")),
+                ),
+        )
+        .register_type(
+            TypeDesc::new(TypeKey::new(TypeId::new(2), "Inventory"))
+                .host_type(HostTypeId::new(2))
+                .method(
+                    MethodDesc::new(HostMethodId::new(11), "add")
+                        .param(MethodParamDesc::new("key").type_hint("string"))
+                        .param(MethodParamDesc::new("amount").type_hint("int")),
+                ),
+        )
         .build()
         .expect("engine should build");
-    let program = compile_program_source_with_options(
-        SourceId::new(1),
-        r#"
+    let program = engine
+        .compile_source(
+            SourceId::new(1),
+            r#"
 fn main(player: Player) {
     let level = player.grant_exp(2);
     player.inventory.add("gold", 5);
     return level + player.inventory["gold"];
 }
 "#,
-        &engine.compiler_options(),
-    )
-    .expect("program should compile");
+        )
+        .expect("program should compile");
     let mut runtime = Runtime::new(engine, program);
     let mut player = direct_player(9);
 
@@ -632,17 +658,17 @@ fn runtime_call_returns_runtime_value() {
         .register_type(player_type(TypeId::new(1), HostTypeId::new(1)))
         .build()
         .expect("engine should build");
-    let program = compile_program_source_with_options(
-        SourceId::new(1),
-        r#"
+    let program = engine
+        .compile_source(
+            SourceId::new(1),
+            r#"
 fn main(player: Player, amount) {
     player.level += amount;
     return player.level;
 }
 "#,
-        &engine.compiler_options(),
-    )
-    .expect("program should compile");
+        )
+        .expect("program should compile");
     let mut runtime = Runtime::new(engine, program);
     let mut player = direct_player(9);
 
@@ -663,16 +689,16 @@ fn main(player: Player, amount) {
 #[test]
 fn runtime_cached_entry_calls_function() {
     let engine = Engine::builder().build().expect("engine should build");
-    let program = compile_program_source_with_options(
-        SourceId::new(1),
-        r#"
+    let program = engine
+        .compile_source(
+            SourceId::new(1),
+            r#"
 fn main(amount, multiplier = 2) {
     return amount * multiplier;
 }
 "#,
-        &engine.compiler_options(),
-    )
-    .expect("program should compile");
+        )
+        .expect("program should compile");
     let mut runtime = Runtime::new(engine, program);
     let main = runtime.entry("main").expect("entry should resolve");
 
@@ -706,12 +732,12 @@ fn main(amount) {
     return amount * 2;
 }
 "#;
-    let program_a =
-        compile_program_source_with_options(SourceId::new(1), source, &engine.compiler_options())
-            .expect("program should compile");
-    let program_b =
-        compile_program_source_with_options(SourceId::new(2), source, &engine.compiler_options())
-            .expect("program should compile");
+    let program_a = engine
+        .compile_source(SourceId::new(1), source)
+        .expect("program should compile");
+    let program_b = engine
+        .compile_source(SourceId::new(2), source)
+        .expect("program should compile");
     let runtime_a = Runtime::new(engine.clone(), program_a);
     let mut runtime_b = Runtime::new(engine, program_b);
     let main = runtime_a.entry("main").expect("entry should resolve");
@@ -735,9 +761,10 @@ fn main(amount) {
 #[test]
 fn runtime_call_method_on_runtime_value_by_name_and_cached_method() {
     let engine = Engine::builder().build().expect("engine should build");
-    let program = compile_program_source_with_options(
-        SourceId::new(1),
-        r#"
+    let program = engine
+        .compile_source(
+            SourceId::new(1),
+            r#"
 trait BonusSource {
     fn score(self, amount, multiplier = 2) -> Int;
 }
@@ -756,9 +783,8 @@ fn make_reward() {
     return Reward { gold: 7 };
 }
 "#,
-        &engine.compiler_options(),
-    )
-    .expect("program should compile");
+        )
+        .expect("program should compile");
     let mut runtime = Runtime::new(engine, program);
     let reward = runtime
         .call("make_reward", CallArgs::new(), CallOptions::unbounded())
@@ -819,12 +845,12 @@ fn make_reward(gold) {
     return Reward { gold: gold };
 }
 "#;
-    let program_a =
-        compile_program_source_with_options(SourceId::new(1), source, &engine.compiler_options())
-            .expect("program should compile");
-    let program_b =
-        compile_program_source_with_options(SourceId::new(2), source, &engine.compiler_options())
-            .expect("program should compile");
+    let program_a = engine
+        .compile_source(SourceId::new(1), source)
+        .expect("program should compile");
+    let program_b = engine
+        .compile_source(SourceId::new(2), source)
+        .expect("program should compile");
     let mut runtime_a = Runtime::new(engine.clone(), program_a);
     let mut runtime_b = Runtime::new(engine, program_b);
     let reward_a = runtime_a
@@ -868,17 +894,17 @@ fn runtime_call_args_safe_point_preserves_direct_host_bindings() {
         .register_type(player_type(TypeId::new(1), HostTypeId::new(1)))
         .build()
         .expect("engine should build");
-    let program = compile_program_source_with_options(
-        SourceId::new(1),
-        r#"
+    let program = engine
+        .compile_source(
+            SourceId::new(1),
+            r#"
 fn main(player: Player) {
     player.level += 1;
     return player.level;
 }
 "#,
-        &engine.compiler_options(),
-    )
-    .expect("program should compile");
+        )
+        .expect("program should compile");
     let mut runtime = Runtime::new(engine, program);
     let mut player = direct_player(9);
     let mut args = CallArgs::new().with_host_mut("player", &mut player);
@@ -907,17 +933,17 @@ fn runtime_call_args_host_ref_denies_writes_to_rust_object() {
         .register_type(player_type(TypeId::new(1), HostTypeId::new(1)))
         .build()
         .expect("engine should build");
-    let program = compile_program_source_with_options(
-        SourceId::new(1),
-        r#"
+    let program = engine
+        .compile_source(
+            SourceId::new(1),
+            r#"
 fn main(player: Player) {
     player.level += 1;
     return player.level;
 }
 "#,
-        &engine.compiler_options(),
-    )
-    .expect("program should compile");
+        )
+        .expect("program should compile");
     let mut runtime = Runtime::new(engine, program);
     let player = direct_player(9);
 

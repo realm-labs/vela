@@ -1,4 +1,4 @@
-use vela_bytecode::compiler::{compile_program_source, compile_program_source_with_options};
+use vela_bytecode::compiler::compile_program_source;
 use vela_common::{HostObjectId, SourceId};
 use vela_host::access::HostAccess;
 use vela_host::mock::MockStateAdapter;
@@ -302,9 +302,7 @@ fn engine_context_host_schema_metadata_is_script_reflectable() {
         .reflection_permissions(ReflectPermissionSet::all())
         .build()
         .expect("engine should build");
-    let program = compile_program_source_with_options(
-        SourceId::new(1),
-        r#"
+    let program = engine.compile_source(SourceId::new(1), r#"
 fn main() {
     let context = reflect::type_info("Context");
     let fields = reflect::fields(context);
@@ -333,9 +331,7 @@ fn main() {
         && reflect::attr(log, "stdlib") == "context"
         && reflect::attr(log, "domain") == "context";
 }
-"#,
-        &engine.compiler_options(),
-    )
+"#)
     .expect("program should compile");
     let mut adapter = MockStateAdapter::new();
     let mut tx = HostAccess::new();
@@ -359,19 +355,19 @@ fn engine_context_host_schema_lowers_host_access_workflows() {
         .with_context_host_schema()
         .build()
         .expect("engine should build");
-    let program = compile_program_source_with_options(
-        SourceId::new(1),
-        r#"
-fn main(ctx) {
+    let program = engine
+        .compile_source(
+            SourceId::new(1),
+            r#"
+fn main(ctx: Context) {
     let stamp = ctx.now + ctx.tick;
     ctx.emit(event = "player.level_checked");
     ctx.log(message = "player.level_checked", level = "info", payload = stamp);
     return stamp;
 }
 "#,
-        &engine.compiler_options(),
-    )
-    .expect("program should compile");
+        )
+        .expect("program should compile");
     let ctx = HostRef::new(CONTEXT_HOST_TYPE_ID, HostObjectId::new(99), 1);
     let mut adapter = MockStateAdapter::new();
     adapter.insert_diagnostic_path_value(

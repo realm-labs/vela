@@ -1,4 +1,4 @@
-use vela_bytecode::compiler::{compile_program_source, compile_program_source_with_options};
+use vela_bytecode::compiler::compile_program_source;
 use vela_common::{HostMethodId, HostObjectId, HostTypeId, SourceId};
 use vela_def::{FieldId, TypeId, VariantId};
 use vela_host::access::HostAccess;
@@ -33,17 +33,17 @@ fn runtime_call_writes_through_host_method_and_updates_adapter() {
         )
         .build()
         .expect("engine should build");
-    let program = compile_program_source_with_options(
-        SourceId::new(1),
-        r#"
+    let program = engine
+        .compile_source(
+            SourceId::new(1),
+            r#"
 fn main(player: Player) {
     player.grant_exp(12);
     return "done";
 }
 "#,
-        &engine.compiler_options(),
-    )
-    .expect("program should compile");
+        )
+        .expect("program should compile");
     let mut runtime = Runtime::new(engine, program);
     let host_ref = HostRef::new(HostTypeId::new(1), HostObjectId::new(42), 1);
     let mut adapter = MockStateAdapter::new();
@@ -79,17 +79,17 @@ fn engine_compiler_options_lower_registered_host_methods() {
         )
         .build()
         .expect("engine should build");
-    let program = compile_program_source_with_options(
-        SourceId::new(1),
-        r#"
+    let program = engine
+        .compile_source(
+            SourceId::new(1),
+            r#"
 fn main(player: Player) {
     player.grant_exp(10);
     return 1;
 }
 "#,
-        &engine.compiler_options(),
-    )
-    .expect("program should compile");
+        )
+        .expect("program should compile");
     let host_ref = HostRef::new(HostTypeId::new(1), HostObjectId::new(42), 1);
     let mut adapter = MockStateAdapter::new();
     let mut tx = HostAccess::new();
@@ -118,7 +118,7 @@ fn engine_compiler_options_lower_registered_host_field_methods() {
         .register_type(
             TypeDesc::new(TypeKey::new(TypeId::new(1), "Player"))
                 .host_type(HostTypeId::new(1))
-                .field(FieldDesc::new(inventory, "inventory")),
+                .field(FieldDesc::new(inventory, "inventory").type_hint("Inventory")),
         )
         .register_type(
             TypeDesc::new(TypeKey::new(TypeId::new(2), "Inventory"))
@@ -127,17 +127,17 @@ fn engine_compiler_options_lower_registered_host_field_methods() {
         )
         .build()
         .expect("engine should build");
-    let program = compile_program_source_with_options(
-        SourceId::new(1),
-        r#"
+    let program = engine
+        .compile_source(
+            SourceId::new(1),
+            r#"
 fn main(player: Player) {
     player.inventory.add("gold", 20);
     return 1;
 }
 "#,
-        &engine.compiler_options(),
-    )
-    .expect("program should compile");
+        )
+        .expect("program should compile");
     let host_ref = HostRef::new(HostTypeId::new(1), HostObjectId::new(42), 1);
     let mut adapter = MockStateAdapter::new();
     let mut tx = HostAccess::new();
@@ -166,7 +166,7 @@ fn engine_compiler_options_lower_registered_host_variant_fields() {
         .register_type(
             TypeDesc::new(TypeKey::new(TypeId::new(1), "Player"))
                 .host_type(HostTypeId::new(1))
-                .field(FieldDesc::new(quest_progress, "quest_progress")),
+                .field(FieldDesc::new(quest_progress, "quest_progress").type_hint("QuestProgress")),
         )
         .register_type(
             TypeDesc::new(TypeKey::new(TypeId::new(2), "QuestProgress"))
@@ -178,17 +178,17 @@ fn engine_compiler_options_lower_registered_host_variant_fields() {
         )
         .build()
         .expect("engine should build");
-    let program = compile_program_source_with_options(
-        SourceId::new(1),
-        r#"
+    let program = engine
+        .compile_source(
+            SourceId::new(1),
+            r#"
 fn main(player: Player) {
     player.quest_progress.count += 1;
     return player.quest_progress.count;
 }
 "#,
-        &engine.compiler_options(),
-    )
-    .expect("program should compile");
+        )
+        .expect("program should compile");
     let host_ref = HostRef::new(HostTypeId::new(1), HostObjectId::new(42), 1);
     let quest_count = HostPath::new(host_ref)
         .field(quest_progress)
@@ -229,18 +229,18 @@ fn engine_compiler_options_disambiguate_host_methods_by_receiver_type() {
         )
         .build()
         .expect("engine should build");
-    let program = compile_program_source_with_options(
-        SourceId::new(1),
-        r#"
+    let program = engine
+        .compile_source(
+            SourceId::new(1),
+            r#"
 fn main(player: Player, monster: Monster) {
     player.grant_exp(10);
     monster.grant_exp(3);
     return 1;
 }
 "#,
-        &engine.compiler_options(),
-    )
-    .expect("program should compile");
+        )
+        .expect("program should compile");
     let player = HostRef::new(HostTypeId::new(1), HostObjectId::new(42), 1);
     let monster = HostRef::new(HostTypeId::new(2), HostObjectId::new(7), 1);
     let mut adapter = MockStateAdapter::new();
@@ -313,17 +313,17 @@ fn engine_registers_callable_native_methods_for_host_paths() {
     assert_eq!(reflected_method.return_type.as_deref(), Some("null"));
     assert_eq!(reflected_method.attrs.get("domain"), Some("gameplay"));
     assert_eq!(reflected_method.attrs.get("effect"), Some("reward"));
-    let program = compile_program_source_with_options(
-        SourceId::new(1),
-        r#"
+    let program = engine
+        .compile_source(
+            SourceId::new(1),
+            r#"
 fn main(player: Player) {
     player.grant_exp(10);
     return 1;
 }
 "#,
-        &engine.compiler_options(),
-    )
-    .expect("program should compile");
+        )
+        .expect("program should compile");
     let host_ref = HostRef::new(HostTypeId::new(1), HostObjectId::new(42), 1);
     let mut adapter = MockStateAdapter::new();
     let mut tx = HostAccess::new();

@@ -123,7 +123,23 @@ pub enum Damage { Physical { amount: int } }
 
 #[test]
 fn compiler_lowers_imported_global_roots_to_qualified_host_globals() {
-    let program = compile_module_sources_with_options(
+    let mut registry = vela_registry::DefinitionRegistry::new();
+    let player = registry
+        .register_type(
+            vela_registry::TypeDef::new(DefPath::ty("host", std::iter::empty::<&str>(), "Player"))
+                .host_runtime_id(77),
+        )
+        .expect("Player type should register");
+    registry
+        .register_field(
+            vela_registry::FieldDef::new(
+                DefPath::field("host", std::iter::empty::<&str>(), "Player", "level"),
+                player,
+            )
+            .host_runtime_id(1),
+        )
+        .expect("Player::level should register");
+    let program = compile_module_sources_with_registry(
         &[
             ModuleSource::new(
                 SourceId::new(1),
@@ -144,7 +160,7 @@ pub global state: Player;
 "#,
             ),
         ],
-        &CompilerOptions::new().with_host_field("level", FieldId::new(1)),
+        registry.compile_view(),
     )
     .expect("imported global root should compile");
     let main = program

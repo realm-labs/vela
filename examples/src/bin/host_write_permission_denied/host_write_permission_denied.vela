@@ -1,4 +1,4 @@
-fn main(player) {
+fn main(player: Player) {
     player.level = 12;
     return player.level;
 }

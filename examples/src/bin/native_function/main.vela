@@ -1,4 +1,4 @@
-fn main(player) {
+fn main(player: Player) {
     let manual = game::bonus_manual(3, 4);
     let generated = game::bonus_macro(10, 7);
     let collection = game::collection_bonus(

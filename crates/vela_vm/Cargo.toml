@@ -20,6 +20,7 @@ serde = ["dep:serde"]
 
 [dev-dependencies]
 vela_hir = { workspace = true }
+vela_registry = { workspace = true }
 
 [[bench]]
 name = "baseline"
