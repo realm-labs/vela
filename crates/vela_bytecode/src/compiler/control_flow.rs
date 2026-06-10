@@ -96,6 +96,9 @@ impl Compiler<'_, '_> {
                     .as_ref()
                     .and_then(|value| self.value_type_for_expr(value));
                 let value_type = hinted_value_type.or(value_type);
+                let value_shape = value
+                    .as_ref()
+                    .and_then(|value| self.value_shape_for_expr(value));
                 let (register, returned) = if let Some(value) = value {
                     self.compile_let_initializer(value)?
                 } else {
@@ -116,6 +119,7 @@ impl Compiler<'_, '_> {
                     );
                     self.script_types.set_local_fact(local, name, script_fact);
                     self.value_types.set_local(local, name, value_type);
+                    self.value_shapes.set_local(local, name, value_shape);
                 } else {
                     self.record_frame_slot(
                         name.clone(),
@@ -126,6 +130,7 @@ impl Compiler<'_, '_> {
                     );
                     self.script_types.set_name_fact(name, script_fact);
                     self.value_types.set_name(name, value_type);
+                    self.value_shapes.set_name(name, value_shape);
                 }
                 Ok(returned)
             }

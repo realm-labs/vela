@@ -24,7 +24,9 @@ impl Compiler<'_, '_> {
             }
             ExprKind::Unary { op, expr } => self.compile_unary(*op, expr.span, expr),
             ExprKind::Field { base, name } => {
-                let typed_record_slot = self.script_record_field_slot_for_receiver(base, name);
+                let typed_record_slot = self
+                    .script_record_field_slot_for_receiver(base, name)
+                    .or_else(|| self.record_field_shape_slot_for_receiver(base, name));
                 let typed_enum_slot = self.script_enum_field_slot_for_receiver(base, name);
                 if let Some((slot_kind, slot)) = record_literal_field_slot(base, name) {
                     let root = self.compile_expr(base)?;

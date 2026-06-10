@@ -64,6 +64,13 @@ impl Compiler<'_, '_> {
                     Some(value_type),
                 );
             }
+            if let Some(value_shape) = self.value_shapes.local(capture.local) {
+                lambda_compiler.value_shapes.set_local(
+                    capture.local,
+                    &capture.name,
+                    Some(value_shape),
+                );
+            }
         }
         let code = lambda_compiler.compile_lambda_body(body)?;
         let function = self.code.push_nested_function(code);

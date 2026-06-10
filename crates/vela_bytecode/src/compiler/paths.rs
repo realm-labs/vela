@@ -116,12 +116,18 @@ impl Compiler<'_, '_> {
             return Ok(dst);
         }
         let mut current = self.local_register_at_span(span, &path[0])?;
+        let mut current_record_shape = self.record_shape_for_path_root(span, &path[0]);
         for (index, segment) in path.iter().enumerate().skip(1) {
             let dst = self.alloc_register()?;
-            if index == 1
-                && let Some(slot) =
-                    self.script_record_field_slot_for_path_root(span, &path[0], segment)
-            {
+            let record_slot = (index == 1)
+                .then(|| self.script_record_field_slot_for_path_root(span, &path[0], segment))
+                .flatten()
+                .or_else(|| {
+                    current_record_shape
+                        .as_ref()
+                        .and_then(|shape| shape.field_slot(segment))
+                });
+            if let Some(slot) = record_slot {
                 self.emit(UnlinkedInstructionKind::GetRecordSlot {
                     dst,
                     record: current,
@@ -165,6 +171,10 @@ impl Compiler<'_, '_> {
                     field: segment.clone(),
                 });
             }
+            current_record_shape = current_record_shape
+                .as_ref()
+                .and_then(|shape| shape.field_record_shape(segment))
+                .cloned();
             current = dst;
         }
         Ok(current)

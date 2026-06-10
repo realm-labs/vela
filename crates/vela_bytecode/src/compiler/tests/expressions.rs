@@ -556,6 +556,26 @@ fn main() {
     assert!(code.instructions.iter().any(|instruction| {
         matches!(
             instruction.kind,
+            UnlinkedInstructionKind::SetRecordSlot {
+                ref field,
+                slot: 0,
+                ..
+            } if field == "count"
+        )
+    }));
+    assert!(code.instructions.iter().any(|instruction| {
+        matches!(
+            instruction.kind,
+            UnlinkedInstructionKind::SetRecordSlot {
+                ref field,
+                slot: 1,
+                ..
+            } if field == "item_id"
+        )
+    }));
+    assert!(!code.instructions.iter().any(|instruction| {
+        matches!(
+            instruction.kind,
             UnlinkedInstructionKind::SetRecordField { .. }
         )
     }));
@@ -586,12 +606,19 @@ fn main() {
             .filter(|instruction| {
                 matches!(
                     instruction.kind,
-                    UnlinkedInstructionKind::SetRecordField { .. }
+                    UnlinkedInstructionKind::SetRecordSlot { .. }
                 )
             })
             .count()
             >= 3
     );
+    assert!(!code.instructions.iter().any(|instruction| {
+        matches!(
+            instruction.kind,
+            UnlinkedInstructionKind::GetRecordField { .. }
+                | UnlinkedInstructionKind::SetRecordField { .. }
+        )
+    }));
 }
 #[test]
 fn compiler_lowers_indexed_record_field_writes() {
@@ -620,7 +647,14 @@ fn main() {
     assert!(code.instructions.iter().any(|instruction| {
         matches!(
             instruction.kind,
-            UnlinkedInstructionKind::SetRecordField { .. }
+            UnlinkedInstructionKind::SetRecordSlot { .. }
+        )
+    }));
+    assert!(!code.instructions.iter().any(|instruction| {
+        matches!(
+            instruction.kind,
+            UnlinkedInstructionKind::GetRecordField { .. }
+                | UnlinkedInstructionKind::SetRecordField { .. }
         )
     }));
 }

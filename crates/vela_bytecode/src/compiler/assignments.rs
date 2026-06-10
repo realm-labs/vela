@@ -8,6 +8,7 @@ use crate::{Register, UnlinkedInstructionKind};
 
 use super::host_paths::HostPath;
 use super::operators::compound_assignment_instruction;
+use super::record_shapes::RecordShape;
 use super::script_types::ScriptTypeFact;
 use super::{CompileError, CompileErrorKind, CompileResult, Compiler};
 
@@ -15,6 +16,7 @@ use super::{CompileError, CompileErrorKind, CompileResult, Compiler};
 struct RecordFieldAssignmentTarget {
     root: Register,
     fields: Vec<String>,
+    shape: Option<RecordShape>,
     slot: Option<usize>,
 }
 
@@ -23,12 +25,14 @@ struct IndexedRecordFieldAssignmentTarget<'expr> {
     collection: &'expr Expr,
     index: &'expr Expr,
     fields: Vec<String>,
+    element_shape: Option<RecordShape>,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 struct LocalAssignmentFacts {
     script: Option<ScriptTypeFact>,
     value_type: Option<String>,
+    value_shape: Option<super::record_shapes::ValueShape>,
 }
 
 impl Compiler<'_, '_> {
@@ -45,9 +49,13 @@ impl Compiler<'_, '_> {
             let value_type = (*op == AssignOp::Set)
                 .then(|| self.value_type_for_expr(value))
                 .flatten();
+            let value_shape = (*op == AssignOp::Set)
+                .then(|| self.value_shape_for_expr(value))
+                .flatten();
             let facts = LocalAssignmentFacts {
                 script: script_fact,
                 value_type,
+                value_shape,
             };
             let assigned =
                 self.compile_local_assignment(*op, target.span, name, local, value, facts)?;
@@ -100,9 +108,12 @@ impl Compiler<'_, '_> {
                 .set_local_fact(local, name.clone(), facts.script);
             self.value_types
                 .set_local(local, name.clone(), facts.value_type);
+            self.value_shapes
+                .set_local(local, name.clone(), facts.value_shape);
         } else {
             self.script_types.set_name_fact(name.clone(), facts.script);
             self.value_types.set_name(name.clone(), facts.value_type);
+            self.value_shapes.set_name(name.clone(), facts.value_shape);
         }
         let assigned = match op {
             AssignOp::Set => {
@@ -172,6 +183,7 @@ impl Compiler<'_, '_> {
             collection,
             index,
             fields,
+            element_shape: self.record_shape_for_index_collection(collection),
         })
     }
 
@@ -188,16 +200,18 @@ impl Compiler<'_, '_> {
                     return Ok(None);
                 }
                 let slot = match fields.as_slice() {
-                    [field] => self.script_record_field_slot_for_path_root(
-                        target.span,
-                        record,
-                        field.as_str(),
-                    ),
+                    [field] => self
+                        .script_record_field_slot_for_path_root(target.span, record, field.as_str())
+                        .or_else(|| {
+                            self.record_shape_for_path_root(target.span, record)?
+                                .field_slot(field)
+                        }),
                     _ => None,
                 };
                 Ok(Some(RecordFieldAssignmentTarget {
                     root: self.local_register_at_span(target.span, record)?,
                     fields,
+                    shape: self.record_shape_for_path_root(target.span, record),
                     slot,
                 }))
             }
@@ -211,11 +225,15 @@ impl Compiler<'_, '_> {
                     )));
                 };
                 let slot = (fields.len() == 1)
-                    .then(|| self.script_record_field_slot_for_receiver(base, name))
+                    .then(|| {
+                        self.script_record_field_slot_for_receiver(base, name)
+                            .or_else(|| self.record_field_shape_slot_for_receiver(base, name))
+                    })
                     .flatten();
                 Ok(Some(RecordFieldAssignmentTarget {
                     root: self.local_register_at_span(target.span, record)?,
                     fields,
+                    shape: self.record_shape_for_path_root(target.span, record),
                     slot,
                 }))
             }
@@ -234,6 +252,7 @@ impl Compiler<'_, '_> {
                 op,
                 target.root,
                 target.fields,
+                target.shape,
                 value,
             );
         }
@@ -312,14 +331,24 @@ impl Compiler<'_, '_> {
         });
 
         let assigned = if target.fields.len() > 1 {
-            self.compile_nested_record_field_assignment(op, record, target.fields, value)?
+            self.compile_nested_record_field_assignment(
+                op,
+                record,
+                target.fields,
+                target.element_shape,
+                value,
+            )?
         } else {
             let [field] = target.fields.as_slice() else {
                 return Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(
                     "record field assignment target",
                 )));
             };
-            self.compile_record_field_assignment_at_root(op, record, field, None, value)?
+            let slot = target
+                .element_shape
+                .as_ref()
+                .and_then(|shape| shape.field_slot(field));
+            self.compile_record_field_assignment_at_root(op, record, field, slot, value)?
         };
 
         self.emit(UnlinkedInstructionKind::SetIndex {
@@ -335,19 +364,36 @@ impl Compiler<'_, '_> {
         op: AssignOp,
         root: Register,
         fields: Vec<String>,
+        shape: Option<RecordShape>,
         value: &Expr,
     ) -> CompileResult<Register> {
         let mut records = vec![root];
+        let mut shapes = vec![shape];
         for field in fields.iter().take(fields.len().saturating_sub(1)) {
             let dst = self.alloc_register()?;
             let record = *records
                 .last()
                 .expect("nested record assignment always has root");
-            self.emit(UnlinkedInstructionKind::GetRecordField {
-                dst,
-                record,
-                field: field.clone(),
-            });
+            let shape = shapes.last().and_then(|shape| shape.as_ref());
+            if let Some(slot) = shape.and_then(|shape| shape.field_slot(field)) {
+                self.emit(UnlinkedInstructionKind::GetRecordSlot {
+                    dst,
+                    record,
+                    field: field.clone(),
+                    slot,
+                });
+            } else {
+                self.emit(UnlinkedInstructionKind::GetRecordField {
+                    dst,
+                    record,
+                    field: field.clone(),
+                });
+            }
+            shapes.push(
+                shape
+                    .and_then(|shape| shape.field_record_shape(field))
+                    .cloned(),
+            );
             records.push(dst);
         }
 
@@ -362,11 +408,24 @@ impl Compiler<'_, '_> {
             AssignOp::Set => self.compile_expr(value)?,
             AssignOp::Add | AssignOp::Sub | AssignOp::Mul | AssignOp::Div | AssignOp::Rem => {
                 let current = self.alloc_register()?;
-                self.emit(UnlinkedInstructionKind::GetRecordField {
-                    dst: current,
-                    record: leaf_record,
-                    field: leaf_field.clone(),
-                });
+                let leaf_slot = shapes
+                    .last()
+                    .and_then(|shape| shape.as_ref())
+                    .and_then(|shape| shape.field_slot(&leaf_field));
+                if let Some(slot) = leaf_slot {
+                    self.emit(UnlinkedInstructionKind::GetRecordSlot {
+                        dst: current,
+                        record: leaf_record,
+                        field: leaf_field.clone(),
+                        slot,
+                    });
+                } else {
+                    self.emit(UnlinkedInstructionKind::GetRecordField {
+                        dst: current,
+                        record: leaf_record,
+                        field: leaf_field.clone(),
+                    });
+                }
                 let rhs = self.compile_expr(value)?;
                 let dst = self.alloc_register()?;
                 self.emit(compound_assignment_instruction_or_error(
@@ -376,22 +435,47 @@ impl Compiler<'_, '_> {
             }
         };
 
-        self.emit(UnlinkedInstructionKind::SetRecordField {
-            record: leaf_record,
-            field: leaf_field,
-            src: assigned,
-        });
+        let leaf_slot = shapes
+            .last()
+            .and_then(|shape| shape.as_ref())
+            .and_then(|shape| shape.field_slot(&leaf_field));
+        if let Some(slot) = leaf_slot {
+            self.emit(UnlinkedInstructionKind::SetRecordSlot {
+                record: leaf_record,
+                field: leaf_field,
+                slot,
+                src: assigned,
+            });
+        } else {
+            self.emit(UnlinkedInstructionKind::SetRecordField {
+                record: leaf_record,
+                field: leaf_field,
+                src: assigned,
+            });
+        }
         for (index, field) in fields
             .iter()
             .take(fields.len().saturating_sub(1))
             .enumerate()
             .rev()
         {
-            self.emit(UnlinkedInstructionKind::SetRecordField {
-                record: records[index],
-                field: field.clone(),
-                src: records[index + 1],
-            });
+            let slot = shapes[index]
+                .as_ref()
+                .and_then(|shape| shape.field_slot(field));
+            if let Some(slot) = slot {
+                self.emit(UnlinkedInstructionKind::SetRecordSlot {
+                    record: records[index],
+                    field: field.clone(),
+                    slot,
+                    src: records[index + 1],
+                });
+            } else {
+                self.emit(UnlinkedInstructionKind::SetRecordField {
+                    record: records[index],
+                    field: field.clone(),
+                    src: records[index + 1],
+                });
+            }
         }
         Ok(assigned)
     }

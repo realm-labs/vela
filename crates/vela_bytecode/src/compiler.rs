@@ -17,6 +17,7 @@ mod operators;
 pub mod options;
 mod paths;
 mod patterns;
+mod record_shapes;
 mod schema_defaults;
 mod script_impls;
 mod script_types;
@@ -47,13 +48,11 @@ use field_slots::ScriptFieldSlots;
 use lambdas::LambdaCapture;
 use options::CompilerOptions;
 use patterns::enum_variant_path;
+use record_shapes::ValueShapeFlow;
 use schema_defaults::ScriptSchemaDefaults;
-use script_types::{
-    ScriptTypeFact, ScriptTypeFlow, expression_script_fact, expression_script_type,
-    type_hint_script_type,
-};
+use script_types::{ScriptTypeFlow, type_hint_script_type};
 use semantic::{parse_semantic_modules, parse_semantic_source};
-use value_types::{ValueTypeFlow, expression_value_type, type_hint_value_type};
+use value_types::{ValueTypeFlow, type_hint_value_type};
 
 #[derive(Clone, Debug)]
 struct CompilerFacts<'registry> {
@@ -437,6 +436,7 @@ struct Compiler<'ast, 'registry> {
     hir_locals: HashMap<HirLocalId, Register>,
     script_types: ScriptTypeFlow,
     value_types: ValueTypeFlow,
+    value_shapes: ValueShapeFlow,
     bindings: &'ast BindingMap,
     next_register: u16,
     param_defaults: Vec<Option<Expr>>,
@@ -489,6 +489,7 @@ impl<'ast, 'registry> Compiler<'ast, 'registry> {
         let mut hir_locals = HashMap::new();
         let mut script_types = ScriptTypeFlow::default();
         let mut value_types = ValueTypeFlow::default();
+        let value_shapes = ValueShapeFlow::default();
         let parameter_locals = bindings
             .locals()
             .filter(|local| local.kind == LocalBindingKind::Parameter)
@@ -534,6 +535,7 @@ impl<'ast, 'registry> Compiler<'ast, 'registry> {
             hir_locals,
             script_types,
             value_types,
+            value_shapes,
             bindings,
             next_register: param_count,
             param_defaults: params
@@ -588,6 +590,7 @@ impl<'ast, 'registry> Compiler<'ast, 'registry> {
         let mut hir_locals = HashMap::new();
         let mut script_types = ScriptTypeFlow::default();
         let mut value_types = ValueTypeFlow::default();
+        let value_shapes = ValueShapeFlow::default();
 
         for (index, capture) in captures.iter().enumerate() {
             let register = Register(
@@ -655,6 +658,7 @@ impl<'ast, 'registry> Compiler<'ast, 'registry> {
             hir_locals,
             script_types,
             value_types,
+            value_shapes,
             bindings,
             next_register: capture_count
                 .checked_add(param_count)
@@ -799,7 +803,13 @@ impl<'ast, 'registry> Compiler<'ast, 'registry> {
 
     fn value_type_for_receiver_path(&self, receiver_path: &[String]) -> Option<String> {
         let [receiver] = receiver_path else {
-            return None;
+            let (field, prefix) = receiver_path.split_last()?;
+            let root = prefix.first()?;
+            let mut shape = self.value_shapes.name(root)?.as_record().cloned()?;
+            for segment in prefix.iter().skip(1) {
+                shape = shape.field_record_shape(segment)?.clone();
+            }
+            return shape.field_value_type(field);
         };
         self.value_types.name(receiver)
     }
@@ -876,40 +886,6 @@ impl<'ast, 'registry> Compiler<'ast, 'registry> {
             return Some(HostMethodId::new(runtime_id));
         }
         None
-    }
-
-    fn script_type_for_expr(&self, expr: &Expr) -> Option<String> {
-        expression_script_type(
-            expr,
-            |span| self.type_symbol_at_span(span),
-            |span| {
-                self.script_types
-                    .local_at_span(self.bindings, span)
-                    .or_else(|| self.global_type_at_span(span))
-            },
-            |name| self.script_types.name(name),
-        )
-    }
-
-    fn value_type_for_expr(&self, expr: &Expr) -> Option<String> {
-        expression_value_type(
-            expr,
-            |span| self.value_types.local_at_span(self.bindings, span),
-            |name| self.value_types.name(name),
-        )
-    }
-
-    fn script_fact_for_expr(&self, expr: &Expr) -> Option<ScriptTypeFact> {
-        expression_script_fact(
-            expr,
-            |span| self.type_symbol_at_span(span),
-            |span| {
-                self.script_types
-                    .local_fact_at_span(self.bindings, span)
-                    .or_else(|| self.global_type_at_span(span).map(ScriptTypeFact::new))
-            },
-            |name| self.script_types.name_fact(name),
-        )
     }
 
     fn emit_constant(&mut self, constant: Constant) -> CompileResult<Register> {

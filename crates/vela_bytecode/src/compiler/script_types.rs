@@ -180,3 +180,31 @@ pub(super) fn type_hint_script_type<'a>(
     }
     suffix_match
 }
+
+impl super::Compiler<'_, '_> {
+    pub(super) fn script_type_for_expr(&self, expr: &Expr) -> Option<String> {
+        expression_script_type(
+            expr,
+            |span| self.type_symbol_at_span(span),
+            |span| {
+                self.script_types
+                    .local_at_span(self.bindings, span)
+                    .or_else(|| self.global_type_at_span(span))
+            },
+            |name| self.script_types.name(name),
+        )
+    }
+
+    pub(super) fn script_fact_for_expr(&self, expr: &Expr) -> Option<ScriptTypeFact> {
+        expression_script_fact(
+            expr,
+            |span| self.type_symbol_at_span(span),
+            |span| {
+                self.script_types
+                    .local_fact_at_span(self.bindings, span)
+                    .or_else(|| self.global_type_at_span(span).map(ScriptTypeFact::new))
+            },
+            |name| self.script_types.name_fact(name),
+        )
+    }
+}

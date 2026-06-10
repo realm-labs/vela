@@ -95,3 +95,14 @@ pub(super) fn type_hint_value_type(hint: &HirTypeHint) -> Option<String> {
         _ => None,
     }
 }
+
+impl super::Compiler<'_, '_> {
+    pub(super) fn value_type_for_expr(&self, expr: &Expr) -> Option<String> {
+        expression_value_type(
+            expr,
+            |span| self.value_types.local_at_span(self.bindings, span),
+            |name| self.value_types.name(name),
+        )
+        .or_else(|| self.record_field_value_type_for_expr(expr))
+    }
+}

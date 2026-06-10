@@ -1341,14 +1341,17 @@ fn main() {
     let reward = Reward { item_id: "gold", count: 2 };
     reward.count += 3;
     reward.item_id = "xp";
-    return reward.count + reward.item_id.len();
+    if reward.item_id == "xp" {
+        return reward.count;
+    }
+    return 0;
 }
 "#,
         "main",
     )
     .expect("compile record field write source");
 
-    assert_eq!(Vm::new().run(&code), Ok(OwnedValue::Int(7)));
+    assert_eq!(run_linked_test_code(code), Ok(OwnedValue::Int(5)));
 }
 
 #[test]
@@ -1372,7 +1375,7 @@ fn main() {
     )
     .expect("compile nested record field write source");
 
-    assert_eq!(Vm::new().run(&code), Ok(OwnedValue::Int(11)));
+    assert_eq!(run_linked_test_code(code), Ok(OwnedValue::Int(11)));
 }
 
 #[test]
@@ -1394,7 +1397,7 @@ fn main() {
     )
     .expect("compile indexed record field write source");
 
-    assert_eq!(Vm::new().run(&code), Ok(OwnedValue::Int(14)));
+    assert_eq!(run_linked_test_code(code), Ok(OwnedValue::Int(14)));
 }
 
 #[test]
@@ -1444,16 +1447,20 @@ fn main() {
     let reward = Reward { item_id: "gold", count: 2 };
     reward.count += 5;
     reward.item_id = "xp";
-    return reward.count + reward.item_id.len();
+    if reward.item_id == "xp" {
+        return reward.count;
+    }
+    return 0;
 }
 "#,
     )
     .expect("compile heap record field writes");
+    let linked = link_test_program(&program);
     let mut budget = ExecutionBudget::unbounded();
 
     assert_eq!(
-        Vm::new().run_program_with_managed_heap_and_budget(&program, "main", &[], &mut budget),
-        Ok(OwnedValue::Int(9))
+        Vm::new().run_linked_program_with_budget(&linked, "main", &[], &mut budget),
+        Ok(OwnedValue::Int(7))
     );
     assert_eq!(budget.memory_bytes_allocated(), 0);
 }
