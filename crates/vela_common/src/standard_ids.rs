@@ -64,7 +64,10 @@ pub const ARRAY_IS_EMPTY_METHOD_ID: HostMethodId = HostMethodId::new(0xff00_0801
 pub const ARRAY_PUSH_METHOD_ID: HostMethodId = HostMethodId::new(0xff00_0802);
 pub const ARRAY_POP_METHOD_ID: HostMethodId = HostMethodId::new(0xff00_0803);
 pub const ARRAY_CLEAR_METHOD_ID: HostMethodId = HostMethodId::new(0xff00_0806);
+pub const ARRAY_FIRST_METHOD_ID: HostMethodId = HostMethodId::new(0xff00_0807);
+pub const ARRAY_LAST_METHOD_ID: HostMethodId = HostMethodId::new(0xff00_0808);
 pub const ARRAY_CONTAINS_METHOD_ID: HostMethodId = HostMethodId::new(0xff00_080b);
+pub const ARRAY_INDEX_OF_METHOD_ID: HostMethodId = HostMethodId::new(0xff00_080c);
 
 pub const MAP_LEN_METHOD_ID: HostMethodId = HostMethodId::new(0xff00_0900);
 pub const MAP_IS_EMPTY_METHOD_ID: HostMethodId = HostMethodId::new(0xff00_0901);

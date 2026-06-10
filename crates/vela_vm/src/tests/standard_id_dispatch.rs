@@ -442,6 +442,68 @@ fn call_method_uses_standard_array_method_id_before_name_fallback() {
 }
 
 #[test]
+fn call_method_uses_standard_array_lookup_ids_before_name_fallback() {
+    assert_eq!(
+        run_array_lookup_with_args_by_id(vela_common::standard_ids::ARRAY_FIRST_METHOD_ID, &[]),
+        Ok(option_some(OwnedValue::String("gold".to_owned())))
+    );
+    assert_eq!(
+        run_array_lookup_with_args_by_id(vela_common::standard_ids::ARRAY_LAST_METHOD_ID, &[]),
+        Ok(option_some(OwnedValue::String("xp".to_owned())))
+    );
+    assert_eq!(
+        run_array_lookup_with_args_by_id(
+            vela_common::standard_ids::ARRAY_INDEX_OF_METHOD_ID,
+            &[Constant::String("xp".to_owned())],
+        ),
+        Ok(option_some(OwnedValue::Int(1)))
+    );
+}
+
+fn run_array_lookup_with_args_by_id(
+    method_id: vela_common::HostMethodId,
+    args: &[Constant],
+) -> VmResult<OwnedValue> {
+    let arg_start = 3u16;
+    let result = Register(arg_start + args.len() as u16);
+    let mut code = CodeObject::new("standard_array_lookup_method_id", result.0 + 1);
+    let first = code.push_constant(Constant::String("gold".to_owned()));
+    let second = code.push_constant(Constant::String("xp".to_owned()));
+    code.push_instruction(Instruction::new(InstructionKind::LoadConst {
+        dst: Register(0),
+        constant: first,
+    }));
+    code.push_instruction(Instruction::new(InstructionKind::LoadConst {
+        dst: Register(1),
+        constant: second,
+    }));
+    code.push_instruction(Instruction::new(InstructionKind::MakeArray {
+        dst: Register(2),
+        elements: vec![Register(0), Register(1)],
+    }));
+    for (index, arg) in args.iter().enumerate() {
+        let register = Register(arg_start + index as u16);
+        let constant = code.push_constant(arg.clone());
+        code.push_instruction(Instruction::new(InstructionKind::LoadConst {
+            dst: register,
+            constant,
+        }));
+    }
+    code.push_instruction(Instruction::new(InstructionKind::CallMethod {
+        dst: result,
+        receiver: Register(2),
+        method: "missing_array_lookup".into(),
+        value_method_id: Some(method_id),
+        args: (0..args.len())
+            .map(|index| vela_bytecode::CallArgument::Register(Register(arg_start + index as u16)))
+            .collect(),
+    }));
+    code.push_instruction(Instruction::new(InstructionKind::Return { src: result }));
+
+    Vm::new().run(&code)
+}
+
+#[test]
 fn call_method_uses_standard_array_mutator_ids_before_name_fallback() {
     let mut push_code = CodeObject::new("standard_array_push_method_id", 5);
     let first = push_code.push_constant(Constant::Int(2));

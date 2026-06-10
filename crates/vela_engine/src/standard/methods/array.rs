@@ -3,7 +3,8 @@ use vela_reflect::registry::MethodDesc;
 
 use super::{MethodSpec, ParamSpec, descs};
 use crate::standard::ids::{
-    ARRAY_CLEAR_METHOD_ID, ARRAY_CONTAINS_METHOD_ID, ARRAY_IS_EMPTY_METHOD_ID, ARRAY_LEN_METHOD_ID,
+    ARRAY_CLEAR_METHOD_ID, ARRAY_CONTAINS_METHOD_ID, ARRAY_FIRST_METHOD_ID,
+    ARRAY_INDEX_OF_METHOD_ID, ARRAY_IS_EMPTY_METHOD_ID, ARRAY_LAST_METHOD_ID, ARRAY_LEN_METHOD_ID,
     ARRAY_POP_METHOD_ID, ARRAY_PUSH_METHOD_ID,
 };
 
@@ -65,14 +66,14 @@ const ARRAY_METHODS: &[MethodSpec] = &[
         "Removes all values.",
     ),
     MethodSpec::new(
-        array_id(7),
+        ARRAY_FIRST_METHOD_ID,
         "first",
         &[],
         "Option",
         "Returns the first value.",
     ),
     MethodSpec::new(
-        array_id(8),
+        ARRAY_LAST_METHOD_ID,
         "last",
         &[],
         "Option",
@@ -100,7 +101,7 @@ const ARRAY_METHODS: &[MethodSpec] = &[
         "Returns true when the array contains a value.",
     ),
     MethodSpec::new(
-        array_id(12),
+        ARRAY_INDEX_OF_METHOD_ID,
         "index_of",
         &[ParamSpec::new("value", "any")],
         "Option",

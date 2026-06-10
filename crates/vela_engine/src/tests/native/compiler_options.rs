@@ -588,6 +588,45 @@ fn main() {
 }
 
 #[test]
+fn engine_compiler_options_emit_standard_array_lookup_method_ids() {
+    let engine = Engine::builder()
+        .with_standard_natives()
+        .build()
+        .expect("engine should build with standard natives");
+    let program = compile_program_source_with_options(
+        SourceId::new(1),
+        r#"
+fn main() {
+    let names: array = ["gold", "xp"];
+    return names.first().unwrap_or("") == "gold"
+        && names.last().unwrap_or("") == "xp"
+        && names.index_of("xp").unwrap_or(-1) == 1;
+}
+"#,
+        &engine.compiler_options(),
+    )
+    .expect("standard array lookup methods should compile");
+    let main = program.function("main").expect("main should compile");
+
+    let value_methods = main
+        .instructions
+        .iter()
+        .filter_map(|instruction| match &instruction.kind {
+            InstructionKind::CallMethod {
+                method,
+                value_method_id,
+                ..
+            } => Some((method.as_str(), *value_method_id)),
+            _ => None,
+        })
+        .collect::<Vec<_>>();
+
+    assert!(value_methods.contains(&("first", Some(crate::standard::ARRAY_FIRST_METHOD_ID))));
+    assert!(value_methods.contains(&("last", Some(crate::standard::ARRAY_LAST_METHOD_ID))));
+    assert!(value_methods.contains(&("index_of", Some(crate::standard::ARRAY_INDEX_OF_METHOD_ID))));
+}
+
+#[test]
 fn engine_compiler_options_lower_named_standard_value_method_arguments() {
     let engine = Engine::builder()
         .with_standard_natives()

@@ -5,7 +5,8 @@ use crate::{
 };
 use vela_common::HostMethodId;
 use vela_common::standard_ids::{
-    ARRAY_CLEAR_METHOD_ID, ARRAY_CONTAINS_METHOD_ID, ARRAY_IS_EMPTY_METHOD_ID, ARRAY_LEN_METHOD_ID,
+    ARRAY_CLEAR_METHOD_ID, ARRAY_CONTAINS_METHOD_ID, ARRAY_FIRST_METHOD_ID,
+    ARRAY_INDEX_OF_METHOD_ID, ARRAY_IS_EMPTY_METHOD_ID, ARRAY_LAST_METHOD_ID, ARRAY_LEN_METHOD_ID,
     ARRAY_POP_METHOD_ID, ARRAY_PUSH_METHOD_ID, MAP_CLEAR_METHOD_ID, MAP_HAS_METHOD_ID,
     MAP_IS_EMPTY_METHOD_ID, MAP_LEN_METHOD_ID, MAP_REMOVE_METHOD_ID, MAP_SET_METHOD_ID,
     OPTION_IS_NONE_METHOD_ID, OPTION_IS_SOME_METHOD_ID, RANGE_IS_EMPTY_METHOD_ID,
@@ -114,6 +115,15 @@ pub(crate) fn call_by_id(
     }
     if method_id == ARRAY_CLEAR_METHOD_ID && array_methods::is_array(receiver, heap.as_deref()) {
         return Some(array_methods::clear(receiver, args, heap.as_deref_mut()));
+    }
+    if method_id == ARRAY_FIRST_METHOD_ID && array_methods::is_array(receiver, heap.as_deref()) {
+        return Some(array_methods::first(receiver, args, heap, budget));
+    }
+    if method_id == ARRAY_LAST_METHOD_ID && array_methods::is_array(receiver, heap.as_deref()) {
+        return Some(array_methods::last(receiver, args, heap, budget));
+    }
+    if method_id == ARRAY_INDEX_OF_METHOD_ID && array_methods::is_array(receiver, heap.as_deref()) {
+        return Some(array_methods::index_of(receiver, args, heap, budget));
     }
     if method_id == MAP_SET_METHOD_ID && map_methods::is_map(receiver, heap.as_deref()) {
         return Some(map_methods::set(
