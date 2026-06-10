@@ -3,7 +3,7 @@ use crate::owned_value::OwnedValue;
 
 #[test]
 fn runs_compiled_aggregate_const_reads() {
-    let program = compile_program_source(
+    let program = compile_standard_program_source(
         SourceId::new(1),
         r#"
 const BASE = 2;
@@ -12,19 +12,20 @@ const TABLE = {"gold": BASE, "xp": BASE + 4};
 
 fn main() {
     let rewards = REWARDS;
-    rewards.push(11);
+    rewards[0] = 11;
     let fresh = REWARDS;
-    return fresh.len() * 100 + rewards.sum() + TABLE["xp"];
+    return fresh[0] * 100 + fresh[1] * 10 + fresh[2] + rewards[0] + TABLE["xp"];
 }
 "#,
     )
     .expect("compile aggregate const source");
     let mut vm = Vm::new();
     vm.register_standard_natives();
+    let mut budget = ExecutionBudget::unbounded();
 
     assert_eq!(
-        vm.run_program(&program, "main", &[]),
-        Ok(OwnedValue::Int(331))
+        run_linked_test_program_with_budget(&vm, &program, "main", &[], &mut budget),
+        Ok(OwnedValue::Int(274))
     );
 }
 
@@ -88,46 +89,51 @@ fn main() {
 
 #[test]
 fn runs_cross_module_imported_aggregate_const_reads() {
-    let program = compile_module_sources(&[
-        ModuleSource::new(
-            SourceId::new(1),
-            ModulePath::from_qualified("game::main"),
-            r#"
+    let registry = vela_stdlib::standard_registry().expect("standard registry should build");
+    let program = vela_bytecode::compiler::compile_module_sources_with_registry(
+        &[
+            ModuleSource::new(
+                SourceId::new(1),
+                ModulePath::from_qualified("game::main"),
+                r#"
 use game::tuning::REWARDS
 use game::tuning::LABELS as META
 
 fn main() {
     let rewards = REWARDS;
-    rewards.push(9);
+    rewards[0] = 9;
     let fresh = REWARDS;
-    return fresh.sum() * 100 + rewards.sum() + META["xp"];
+    return fresh[0] * 100 + fresh[1] * 10 + fresh[2] + rewards[0] + META["xp"];
 }
 "#,
-        ),
-        ModuleSource::new(
-            SourceId::new(2),
-            ModulePath::from_qualified("game::tuning"),
-            r#"
+            ),
+            ModuleSource::new(
+                SourceId::new(2),
+                ModulePath::from_qualified("game::tuning"),
+                r#"
 use game::base::BASE
 
 pub const REWARDS = [BASE, BASE + 2, 7];
 pub const LABELS = {"xp": BASE + 5};
 "#,
-        ),
-        ModuleSource::new(
-            SourceId::new(3),
-            ModulePath::from_qualified("game::base"),
-            r#"
+            ),
+            ModuleSource::new(
+                SourceId::new(3),
+                ModulePath::from_qualified("game::base"),
+                r#"
 pub const BASE = 3;
 "#,
-        ),
-    ])
+            ),
+        ],
+        registry.compile_view(),
+    )
     .expect("compile imported aggregate const source");
     let mut vm = Vm::new();
     vm.register_standard_natives();
+    let mut budget = ExecutionBudget::unbounded();
 
     assert_eq!(
-        vm.run_program(&program, "game::main::main", &[]),
-        Ok(OwnedValue::Int(1532))
+        run_linked_test_program_with_budget(&vm, &program, "game::main::main", &[], &mut budget),
+        Ok(OwnedValue::Int(374))
     );
 }
