@@ -24,6 +24,45 @@ fn script_function_id(name: &str) -> vela_def::FunctionId {
     )
 }
 
+fn exec_host_field(
+    program: &UnlinkedProgram,
+    entry: &str,
+    args: &[OwnedValue],
+    host: &mut HostExecution<'_>,
+) -> VmResult<OwnedValue> {
+    let mut budget = ExecutionBudget::unbounded();
+    exec_host_field_with_budget(program, entry, args, host, &mut budget)
+}
+
+fn exec_host_field_with_budget(
+    program: &UnlinkedProgram,
+    entry: &str,
+    args: &[OwnedValue],
+    host: &mut HostExecution<'_>,
+    budget: &mut ExecutionBudget,
+) -> VmResult<OwnedValue> {
+    run_linked_test_program_with_host_budget(&Vm::new(), program, entry, args, host, budget)
+}
+
+fn exec_host_field_runtime(
+    program: &UnlinkedProgram,
+    entry: &str,
+    args: &[RuntimeValue],
+    host: &mut HostExecution<'_>,
+    heap: &mut HeapExecution<'_>,
+    budget: &mut ExecutionBudget,
+) -> VmResult<RuntimeValue> {
+    run_linked_test_program_runtime_with_host_heap_and_budget(
+        &Vm::new(),
+        program,
+        entry,
+        args,
+        host,
+        heap,
+        budget,
+    )
+}
+
 #[test]
 fn heap_execution_enforces_memory_budget_for_bytecode_allocations() {
     let code = compile_function_source(
@@ -135,7 +174,7 @@ fn reads_host_field_through_host_access() {
         script_globals: None,
     };
 
-    let result = Vm::new().run_program_with_host(
+    let result = exec_host_field(
         &program,
         "main",
         &[OwnedValue::HostRef(host_ref)],
@@ -191,7 +230,7 @@ fn set_host_field_writes_through_and_updates_adapter() {
             access: &mut tx,
             script_globals: None,
         };
-        Vm::new().run_program_with_host(
+        exec_host_field(
             &program,
             "main",
             &[OwnedValue::HostRef(host_ref)],
@@ -259,7 +298,7 @@ fn collapsed_host_mutate_and_read_execute_through_target_plan() {
             access: &mut tx,
             script_globals: None,
         };
-        Vm::new().run_program_with_host(
+        exec_host_field(
             &program,
             "main",
             &[OwnedValue::HostRef(host_ref)],
@@ -313,7 +352,7 @@ fn heap_execution_converts_heap_string_for_host_field_write() {
             access: &mut tx,
             script_globals: None,
         };
-        Vm::new().run_program_runtime_with_host_heap_and_budget(
+        exec_host_field_runtime(
             &program,
             "main",
             &[RuntimeValue::HostRef(host_ref)],
@@ -380,15 +419,14 @@ fn repeated_host_writes_write_through_without_mutation_budget() {
             access: &mut tx,
             script_globals: None,
         };
-        Vm::new()
-            .run_program_with_host_and_budget(
-                &program,
-                "main",
-                &[OwnedValue::HostRef(host_ref)],
-                &mut host,
-                &mut budget,
-            )
-            .expect("host writes should not have a host-write count budget")
+        exec_host_field_with_budget(
+            &program,
+            "main",
+            &[OwnedValue::HostRef(host_ref)],
+            &mut host,
+            &mut budget,
+        )
+        .expect("host writes should not have a host-write count budget")
     };
 
     assert_eq!(value, OwnedValue::Int(11));
@@ -445,7 +483,7 @@ fn add_host_field_writes_through_and_updates_adapter() {
             access: &mut tx,
             script_globals: None,
         };
-        Vm::new().run_program_with_host(
+        exec_host_field(
             &program,
             "main",
             &[OwnedValue::HostRef(host_ref)],
@@ -473,14 +511,13 @@ fn host_field_read_rejects_stale_generation() {
         script_globals: None,
     };
 
-    let error = Vm::new()
-        .run_program_with_host(
-            &program,
-            "main",
-            &[OwnedValue::HostRef(stale_ref)],
-            &mut host,
-        )
-        .expect_err("stale host read");
+    let error = exec_host_field(
+        &program,
+        "main",
+        &[OwnedValue::HostRef(stale_ref)],
+        &mut host,
+    )
+    .expect_err("stale host read");
 
     assert_eq!(
         error.kind(),
@@ -522,14 +559,13 @@ fn host_field_read_error_keeps_instruction_source_span() {
         script_globals: None,
     };
 
-    let error = Vm::new()
-        .run_program_with_host(
-            &program,
-            "main",
-            &[OwnedValue::HostRef(host_ref)],
-            &mut host,
-        )
-        .expect_err("denied host read");
+    let error = exec_host_field(
+        &program,
+        "main",
+        &[OwnedValue::HostRef(host_ref)],
+        &mut host,
+    )
+    .expect_err("denied host read");
 
     assert_eq!(error.source_span, Some(span));
     assert_eq!(
