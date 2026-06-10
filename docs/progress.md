@@ -240,7 +240,9 @@ Cranelift JIT.
   `run_program_with_managed_heap_and_budget` API has also been removed; its VM
   test callers now link before execution, with standard-registry facts used for
   stdlib/value methods and empty aggregate literals carrying unknown element
-  shapes instead of falling back to unresolved method names. The remaining Task
+  shapes instead of falling back to unresolved method names. The unlinked
+  `run_program_with_budget` wrapper has also been deleted after its callers
+  moved to linked execution. The remaining Task
   6.1 gap is direct VM API cleanup that deletes the still-used unlinked
   execution entrypoints and transitional unlinked reconstruction APIs; linkable
   `execution_core` coverage and the compiled conformance fixture now run

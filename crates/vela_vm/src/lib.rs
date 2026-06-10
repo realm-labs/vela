@@ -505,28 +505,6 @@ impl Vm {
         owned_heap_result(result, &mut heap_execution, budget)
     }
 
-    pub fn run_program_with_budget(
-        &self,
-        program: &UnlinkedProgram,
-        entry: &str,
-        args: &[OwnedValue],
-        budget: &mut ExecutionBudget,
-    ) -> VmResult<OwnedValue> {
-        let code = program_entry(program, entry)?;
-        let mut heap = ScriptHeap::new();
-        let mut heap_execution = HeapExecution::new(&mut heap);
-        let args = owned_args_to_runtime(args, &mut heap_execution, Some(budget))?;
-        let result = self.execute(
-            code,
-            Some(program),
-            &args,
-            None,
-            Some(&mut heap_execution),
-            Some(budget),
-        );
-        owned_heap_result(result, &mut heap_execution, budget)
-    }
-
     pub fn run_program_runtime_with_heap_and_budget(
         &self,
         program: &UnlinkedProgram,
