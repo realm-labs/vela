@@ -123,7 +123,7 @@ fn main() {
 
 #[test]
 fn compiler_lowers_named_native_args_from_compiler_options() {
-    let native_id = vela_common::FunctionId::new(77);
+    let native_id = vela_def::FunctionId::new(77);
     let program = compile_program_source_with_options(
         SourceId::new(1),
         r#"

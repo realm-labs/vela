@@ -1,4 +1,5 @@
-use vela_common::{FieldId, FunctionId, HostMethodId, HostTypeId, stable_id};
+use vela_common::{HostMethodId, HostTypeId, stable_id};
+use vela_def::{FieldId, FunctionId};
 use vela_engine::context_schema::{
     CONTEXT_EMIT_METHOD_ID, CONTEXT_HOST_TYPE_ID, CONTEXT_LOG_METHOD_ID, CONTEXT_NOW_FIELD_ID,
     CONTEXT_TICK_FIELD_ID,
@@ -53,17 +54,17 @@ impl DemoIds {
             monster_exp_field: Monster::vela_field_id_exp(),
             monster_id_field: Monster::vela_field_id_id(),
             quest_progress_field: Player::vela_field_id_quest_progress(),
-            quest_count_field: FieldId::new(stable_id(
+            quest_count_field: FieldId::new(u128::from(stable_id(
                 "field",
                 "HostQuestProgress::Active",
                 "quest_count",
-            )),
+            ))),
             quest_goal_field: Player::vela_field_id_quest_goal(),
-            quest_done_field: FieldId::new(stable_id(
+            quest_done_field: FieldId::new(u128::from(stable_id(
                 "field",
                 "HostQuestProgress::Active",
                 "quest_done",
-            )),
+            ))),
             inventory_field: Player::vela_field_id_inventory(),
             items_field: Inventory::vela_field_id_items(),
             count_field: ItemStack::vela_field_id_count(),
@@ -76,11 +77,11 @@ impl DemoIds {
                 "add_reward",
             )),
             log_method: CONTEXT_LOG_METHOD_ID,
-            reward_grant_function: FunctionId::new(stable_id(
+            reward_grant_function: FunctionId::new(u128::from(stable_id(
                 "native_function",
                 "",
                 "game::reward::grant",
-            )),
+            ))),
         }
     }
 }
@@ -90,5 +91,5 @@ fn host_type(path: &str) -> HostTypeId {
 }
 
 fn host_field(owner: &str, field: &str) -> FieldId {
-    FieldId::new(stable_id("host_field", owner, field))
+    FieldId::new(u128::from(stable_id("host_field", owner, field)))
 }

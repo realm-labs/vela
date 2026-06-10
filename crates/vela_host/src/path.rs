@@ -1,4 +1,5 @@
-use vela_common::{FieldId, HostObjectId, HostTypeId};
+use vela_common::{HostObjectId, HostTypeId};
+use vela_def::FieldId;
 
 #[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
 pub struct HostRef {
@@ -76,7 +77,8 @@ pub enum PathSegment {
 
 #[cfg(test)]
 mod tests {
-    use vela_common::{FieldId, HostObjectId, HostTypeId};
+    use vela_common::{HostObjectId, HostTypeId};
+    use vela_def::FieldId;
 
     use super::*;
 

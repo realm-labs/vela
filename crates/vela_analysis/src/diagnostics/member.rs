@@ -493,7 +493,8 @@ fn unknown_member_diagnostic(
 
 #[cfg(test)]
 mod tests {
-    use vela_common::{FieldId, HostMethodId, SourceId, TypeId};
+    use vela_common::{HostMethodId, SourceId};
+    use vela_def::{FieldId, TypeId};
     use vela_reflect::access::{MethodAccess, MethodEffectSet};
     use vela_reflect::registry::{FieldDesc, MethodDesc, TypeDesc, TypeKey, TypeRegistry};
     use vela_syntax::ast::{ItemKind, StmtKind};
@@ -754,7 +755,7 @@ mod tests {
     }
 
     fn quest_registry_facts() -> RegistryFacts {
-        use vela_common::VariantId;
+        use vela_def::VariantId;
         use vela_reflect::registry::{TypeKind, VariantDesc};
 
         let mut registry = TypeRegistry::new();

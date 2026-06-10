@@ -1,7 +1,8 @@
 use std::collections::{BTreeMap, BTreeSet, HashMap, HashSet};
 
 use vela_bytecode::compiler::compile_program_source;
-use vela_common::{FieldId, HostObjectId, HostTypeId, SourceId, TypeId};
+use vela_common::{HostObjectId, HostTypeId, SourceId};
+use vela_def::{FieldId, TypeId};
 use vela_host::error::{HostError, HostErrorKind, HostResult};
 use vela_host::path::{HostPath, HostRef};
 use vela_host::proxy::PathProxy;

@@ -1,5 +1,5 @@
 use vela_bytecode::{CodeObject, ProgramCode, ProgramImage};
-use vela_common::MethodId;
+use vela_def::MethodId;
 use vela_host::access::HostAccess;
 use vela_host::adapter::ScriptStateAdapter;
 use vela_hot_reload::runtime::HotReloadRuntime;

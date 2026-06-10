@@ -5,7 +5,7 @@ use vela_bytecode::{
     CodeObject, Program, ProgramImage,
     script_methods::{ScriptMethod, ScriptMethodTable},
 };
-use vela_common::MethodId;
+use vela_def::MethodId;
 use vela_hir::module_graph::ModuleGraph;
 
 use crate::abi::HotReloadAbi;

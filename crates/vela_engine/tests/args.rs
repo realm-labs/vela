@@ -1,7 +1,8 @@
 use std::collections::{BTreeMap, BTreeSet, HashMap, HashSet};
 
 use vela_bytecode::compiler::compile_program_source_with_options;
-use vela_common::{FieldId, HostMethodId, HostObjectId, HostTypeId, SourceId, TypeId};
+use vela_common::{HostMethodId, HostObjectId, HostTypeId, SourceId};
+use vela_def::{FieldId, TypeId};
 use vela_engine::args::{FromScriptArg, IntoScriptArg, ScriptArgsExt};
 use vela_engine::engine::Engine;
 use vela_engine::runtime::CallOptions;

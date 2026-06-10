@@ -13,9 +13,8 @@ use crate::value::{
     ReflectContext, ReflectValue, call, call_with_policy, fields, get, get_with_policy, implements,
     set, set_with_policy, type_of,
 };
-use vela_common::{
-    FieldId, HostMethodId, HostObjectId, HostTypeId, SourceId, Span, TypeId, VariantId,
-};
+use vela_common::{HostMethodId, HostObjectId, HostTypeId, SourceId, Span};
+use vela_def::{FieldId, TypeId, VariantId};
 use vela_host::access::{HostAccess, HostObjectSnapshot};
 use vela_host::mock::MockStateAdapter;
 use vela_host::path::{HostPath, HostRef};

@@ -1,4 +1,5 @@
-use vela_common::{FieldId, TypeId, VariantId};
+use vela_common::stable_id;
+use vela_def::{FieldId, TypeId, VariantId};
 
 pub use vela_common::standard_ids::{
     ARRAY_CLEAR_METHOD_ID, ARRAY_CONTAINS_METHOD_ID, ARRAY_DISTINCT_METHOD_ID,
@@ -31,24 +32,36 @@ pub use vela_common::standard_ids::{
     STRING_TRIM_START_METHOD_ID,
 };
 
-pub const NULL_TYPE_ID: TypeId = TypeId::new(0xff00_0500);
-pub const BOOL_TYPE_ID: TypeId = TypeId::new(0xff00_0501);
-pub const INT_TYPE_ID: TypeId = TypeId::new(0xff00_0502);
-pub const FLOAT_TYPE_ID: TypeId = TypeId::new(0xff00_0503);
-pub const STRING_TYPE_ID: TypeId = TypeId::new(0xff00_0504);
-pub const ARRAY_TYPE_ID: TypeId = TypeId::new(0xff00_0505);
-pub const MAP_TYPE_ID: TypeId = TypeId::new(0xff00_0506);
-pub const SET_TYPE_ID: TypeId = TypeId::new(0xff00_0507);
-pub const FUNCTION_TYPE_ID: TypeId = TypeId::new(0xff00_0508);
-pub const CLOSURE_TYPE_ID: TypeId = TypeId::new(0xff00_0509);
-pub const RANGE_TYPE_ID: TypeId = TypeId::new(0xff00_050a);
-pub const OPTION_TYPE_ID: TypeId = TypeId::new(0xff00_0600);
-pub const RESULT_TYPE_ID: TypeId = TypeId::new(0xff00_0601);
+const fn std_type(name: &str) -> TypeId {
+    TypeId::new(stable_id("std_type", "", name) as u128)
+}
 
-pub(crate) const OPTION_SOME_VARIANT_ID: VariantId = VariantId::new(0xff00_0602);
-pub(crate) const OPTION_NONE_VARIANT_ID: VariantId = VariantId::new(0xff00_0603);
-pub(crate) const RESULT_OK_VARIANT_ID: VariantId = VariantId::new(0xff00_0604);
-pub(crate) const RESULT_ERR_VARIANT_ID: VariantId = VariantId::new(0xff00_0605);
-pub(crate) const OPTION_SOME_FIELD_ID: FieldId = FieldId::new(0xff00_0606);
-pub(crate) const RESULT_OK_FIELD_ID: FieldId = FieldId::new(0xff00_0607);
-pub(crate) const RESULT_ERR_FIELD_ID: FieldId = FieldId::new(0xff00_0608);
+const fn std_variant(owner: &str, name: &str) -> VariantId {
+    VariantId::new(stable_id("std_variant", owner, name) as u128)
+}
+
+const fn std_field(owner: &str, name: &str) -> FieldId {
+    FieldId::new(stable_id("std_field", owner, name) as u128)
+}
+
+pub const NULL_TYPE_ID: TypeId = std_type("Null");
+pub const BOOL_TYPE_ID: TypeId = std_type("Bool");
+pub const INT_TYPE_ID: TypeId = std_type("Int");
+pub const FLOAT_TYPE_ID: TypeId = std_type("Float");
+pub const STRING_TYPE_ID: TypeId = std_type("String");
+pub const ARRAY_TYPE_ID: TypeId = std_type("Array");
+pub const MAP_TYPE_ID: TypeId = std_type("Map");
+pub const SET_TYPE_ID: TypeId = std_type("Set");
+pub const FUNCTION_TYPE_ID: TypeId = std_type("Function");
+pub const CLOSURE_TYPE_ID: TypeId = std_type("Closure");
+pub const RANGE_TYPE_ID: TypeId = std_type("Range");
+pub const OPTION_TYPE_ID: TypeId = std_type("Option");
+pub const RESULT_TYPE_ID: TypeId = std_type("Result");
+
+pub(crate) const OPTION_SOME_VARIANT_ID: VariantId = std_variant("Option", "Some");
+pub(crate) const OPTION_NONE_VARIANT_ID: VariantId = std_variant("Option", "None");
+pub(crate) const RESULT_OK_VARIANT_ID: VariantId = std_variant("Result", "Ok");
+pub(crate) const RESULT_ERR_VARIANT_ID: VariantId = std_variant("Result", "Err");
+pub(crate) const OPTION_SOME_FIELD_ID: FieldId = std_field("Option::Some", "0");
+pub(crate) const RESULT_OK_FIELD_ID: FieldId = std_field("Result::Ok", "0");
+pub(crate) const RESULT_ERR_FIELD_ID: FieldId = std_field("Result::Err", "0");

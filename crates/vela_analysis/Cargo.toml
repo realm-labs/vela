@@ -6,6 +6,8 @@ license.workspace = true
 
 [dependencies]
 vela_common = { workspace = true }
+
+vela_def = { workspace = true }
 vela_hir = { workspace = true }
 vela_reflect = { workspace = true }
 vela_syntax = { workspace = true }

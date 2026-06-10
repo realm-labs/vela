@@ -1,5 +1,6 @@
+use vela_common::HostTypeId;
 use vela_common::Span;
-use vela_common::{FieldId, HostTypeId};
+use vela_def::FieldId;
 use vela_syntax::ast::{Argument, Expr, ExprKind};
 
 use crate::{CacheSiteId, Constant, HostTargetPlanId, InstructionKind, Register};

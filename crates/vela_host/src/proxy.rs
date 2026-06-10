@@ -1,4 +1,5 @@
-use vela_common::{FieldId, HostMethodId, Span};
+use vela_common::{HostMethodId, Span};
+use vela_def::FieldId;
 
 use crate::{
     access::HostAccess,

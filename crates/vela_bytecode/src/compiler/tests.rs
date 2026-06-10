@@ -3,7 +3,7 @@ use crate::verification::VerificationErrorKind;
 use crate::{
     CacheSiteKind, CallArgument, CodeObject, Instruction, InstructionKind, Program, Register,
 };
-use vela_common::{FieldId, FunctionId, MethodId};
+use vela_def::{FieldId, FunctionId, MethodId};
 fn semantic_diagnostic_codes(error: CompileError) -> Vec<String> {
     let CompileErrorKind::SemanticDiagnostics(diagnostics) = error.kind else {
         panic!("expected semantic diagnostics");
@@ -15,19 +15,19 @@ fn semantic_diagnostic_codes(error: CompileError) -> Vec<String> {
 }
 
 fn stable_test_trait_method_id(trait_name: &str, method_name: &str) -> MethodId {
-    MethodId::new(vela_common::stable_id(
+    MethodId::new(u128::from(vela_common::stable_id(
         "trait_method",
         trait_name,
         method_name,
-    ))
+    )))
 }
 
 fn stable_test_inherent_method_id(type_name: &str, method_name: &str) -> MethodId {
-    MethodId::new(vela_common::stable_id(
+    MethodId::new(u128::from(vela_common::stable_id(
         "inherent_method",
         type_name,
         method_name,
-    ))
+    )))
 }
 
 #[test]

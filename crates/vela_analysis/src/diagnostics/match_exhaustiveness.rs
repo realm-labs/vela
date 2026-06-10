@@ -254,7 +254,8 @@ fn pattern_variant_name(pattern: &Pattern) -> Option<String> {
 
 #[cfg(test)]
 mod tests {
-    use vela_common::{SourceId, TypeId, VariantId};
+    use vela_common::SourceId;
+    use vela_def::{TypeId, VariantId};
     use vela_reflect::registry::{TypeDesc, TypeKey, TypeRegistry, VariantDesc};
     use vela_syntax::ast::{ItemKind, StmtKind};
     use vela_syntax::parser::parse_source;

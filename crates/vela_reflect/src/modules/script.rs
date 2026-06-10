@@ -1,4 +1,4 @@
-use vela_common::FunctionId;
+use vela_def::FunctionId;
 use vela_hir::module_graph::{DeclarationKind, ModuleGraph};
 use vela_hir::type_hint::FunctionSignature;
 use vela_syntax::ast::Visibility;
@@ -102,5 +102,5 @@ fn stable_function_id(module: &str, name: &str) -> FunctionId {
         hash ^= u64::from(byte);
         hash = hash.wrapping_mul(0x0000_0100_0000_01b3);
     }
-    FunctionId::new(if hash == 0 { 1 } else { hash })
+    FunctionId::new(u128::from(if hash == 0 { 1 } else { hash }))
 }

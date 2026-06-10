@@ -1,4 +1,5 @@
-use vela_common::{FieldId, HostTypeId, TraitId, TypeId};
+use vela_common::HostTypeId;
+use vela_def::{FieldId, TraitId, TypeId};
 use vela_reflect::registry::{FieldDesc, TraitDesc, TypeDesc, TypeKey};
 
 mod context;

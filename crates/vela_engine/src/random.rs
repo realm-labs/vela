@@ -1,6 +1,7 @@
 use std::sync::{Arc, Mutex};
 
-use vela_common::FunctionId;
+use vela_common::stable_id;
+use vela_def::FunctionId;
 use vela_vm::error::{VmError, VmErrorKind, VmResult};
 use vela_vm::owned_value::OwnedValue;
 
@@ -8,7 +9,8 @@ use crate::native::{
     EffectSet, FunctionAccess, NativeFunctionDesc, NativeFunctionEntry, NativeFunctionId, TypeHint,
 };
 
-pub const MATH_RANDOM_FUNCTION_ID: NativeFunctionId = FunctionId::new(0xff00_0001);
+pub const MATH_RANDOM_FUNCTION_ID: NativeFunctionId =
+    FunctionId::new(stable_id("std_function", "math", "random") as u128);
 
 pub(crate) fn controlled_math_random(seed: u64) -> NativeFunctionEntry {
     let rng = Arc::new(Mutex::new(SeededRandom::new(seed)));

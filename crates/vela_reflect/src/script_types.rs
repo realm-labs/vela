@@ -1,4 +1,5 @@
-use vela_common::{FieldId, HostMethodId, MethodId, Span, TypeId, VariantId};
+use vela_common::{HostMethodId, Span};
+use vela_def::{FieldId, MethodId, TypeId, VariantId};
 use vela_hir::attributes::{HirAttribute, schema_id_attr};
 use vela_hir::module_graph::{Declaration, DeclarationKind, ModuleGraph};
 use vela_hir::type_hint::EnumVariantFieldsHint;
@@ -411,7 +412,11 @@ fn enum_variant_owner(type_name: &str, variant: &str) -> String {
     format!("{type_name}::{variant}")
 }
 
-fn schema_hash(kind: &str, type_name: &str, mut members: Vec<(u64, String, String)>) -> SchemaHash {
+fn schema_hash(
+    kind: &str,
+    type_name: &str,
+    mut members: Vec<(u128, String, String)>,
+) -> SchemaHash {
     members.sort_by(|left, right| left.0.cmp(&right.0).then_with(|| left.1.cmp(&right.1)));
     let mut hash = 0xcbf2_9ce4_8422_2325;
     hash_bytes(&mut hash, kind.as_bytes());
@@ -437,23 +442,29 @@ fn hash_bytes(hash: &mut u64, bytes: &[u8]) {
 }
 
 fn stable_type_id(name: &str) -> TypeId {
-    TypeId::new(vela_common::stable_id("type", name, ""))
+    TypeId::new(u128::from(vela_common::stable_id("type", name, "")))
 }
 
 fn stable_field_id(type_name: &str, field_name: &str) -> FieldId {
-    FieldId::new(vela_common::stable_id("field", type_name, field_name))
+    FieldId::new(u128::from(vela_common::stable_id(
+        "field", type_name, field_name,
+    )))
 }
 
 fn stable_variant_id(type_name: &str, variant_name: &str) -> VariantId {
-    VariantId::new(vela_common::stable_id("variant", type_name, variant_name))
+    VariantId::new(u128::from(vela_common::stable_id(
+        "variant",
+        type_name,
+        variant_name,
+    )))
 }
 
 fn stable_trait_method_id(trait_name: &str, method_name: &str) -> MethodId {
-    MethodId::new(vela_common::stable_id(
+    MethodId::new(u128::from(vela_common::stable_id(
         "trait_method",
         trait_name,
         method_name,
-    ))
+    )))
 }
 
 fn stable_inherent_host_method_id(type_name: &str, method_name: &str) -> HostMethodId {
@@ -466,13 +477,13 @@ fn stable_inherent_host_method_id(type_name: &str, method_name: &str) -> HostMet
 
 fn script_field_id(type_name: &str, field_name: &str, attrs: &[HirAttribute]) -> FieldId {
     script_id_attr(attrs)
-        .map(FieldId::new)
+        .map(|id| FieldId::new(u128::from(id)))
         .unwrap_or_else(|| stable_field_id(type_name, field_name))
 }
 
 fn script_variant_id(type_name: &str, variant_name: &str, attrs: &[HirAttribute]) -> VariantId {
     script_id_attr(attrs)
-        .map(VariantId::new)
+        .map(|id| VariantId::new(u128::from(id)))
         .unwrap_or_else(|| stable_variant_id(type_name, variant_name))
 }
 

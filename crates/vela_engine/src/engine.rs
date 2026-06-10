@@ -3,7 +3,8 @@ use std::sync::Arc;
 
 use vela_bytecode::compiler::options::CompilerOptions;
 use vela_bytecode::{Program, ProgramImage};
-use vela_common::{FunctionId, HostMethodId};
+use vela_common::HostMethodId;
+use vela_def::FunctionId;
 use vela_host::path::HostPath;
 use vela_hot_reload::abi::HotReloadAbi;
 use vela_hot_reload::policy::HotReloadPolicy;

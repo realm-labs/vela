@@ -3,7 +3,7 @@ use crate::owned_value::OwnedValue;
 
 #[test]
 fn call_native_uses_resolved_id_before_name_fallback() {
-    let native_id = vela_common::FunctionId::new(77);
+    let native_id = vela_def::FunctionId::new(77);
     let mut vm = Vm::new();
     vm.register_native("diagnostic_name", |_| Ok(OwnedValue::Int(1)));
     vm.register_native_with_id(native_id, "resolved_name", |_| Ok(OwnedValue::Int(2)));

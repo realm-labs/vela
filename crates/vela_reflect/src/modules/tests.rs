@@ -1,6 +1,7 @@
 use std::collections::BTreeMap;
 
-use vela_common::{FunctionId, SourceId, Span};
+use vela_common::{SourceId, Span};
+use vela_def::FunctionId;
 use vela_hir::module_graph::{ModuleGraph, ModulePath, ModuleSource};
 use vela_host::value::HostValue;
 

@@ -1,4 +1,4 @@
-use vela_common::TypeId;
+use vela_def::TypeId;
 use vela_reflect::modules::DeclOrigin;
 use vela_reflect::registry::{FieldDesc, SchemaHash, TypeDesc, TypeKey, TypeKind, VariantDesc};
 
@@ -51,7 +51,11 @@ pub(crate) fn standard_type_descs() -> Vec<TypeDesc> {
 fn builtin_type(name: &'static str, id: TypeId, kind: TypeKind, docs: &'static str) -> TypeDesc {
     TypeDesc::new(TypeKey::new(id, name))
         .kind(kind)
-        .schema_hash(SchemaHash::new(id.get()))
+        .schema_hash(SchemaHash::new(vela_common::stable_id(
+            "std_schema",
+            "",
+            name,
+        )))
         .origin(DeclOrigin::Host)
         .docs(docs)
         .attr("stdlib", "builtin")
@@ -110,7 +114,11 @@ fn range_type_desc() -> TypeDesc {
 fn option_type_desc() -> TypeDesc {
     let mut desc = TypeDesc::new(TypeKey::new(OPTION_TYPE_ID, "Option"))
         .kind(TypeKind::ScriptEnum)
-        .schema_hash(SchemaHash::new(0xff00_0600_0000_0001))
+        .schema_hash(SchemaHash::new(vela_common::stable_id(
+            "std_schema",
+            "",
+            "Option",
+        )))
         .origin(DeclOrigin::Host)
         .docs("Dynamic standard Option enum without script-language generics.")
         .attr("stdlib", "option")
@@ -141,7 +149,11 @@ fn option_type_desc() -> TypeDesc {
 fn result_type_desc() -> TypeDesc {
     let mut desc = TypeDesc::new(TypeKey::new(RESULT_TYPE_ID, "Result"))
         .kind(TypeKind::ScriptEnum)
-        .schema_hash(SchemaHash::new(0xff00_0601_0000_0001))
+        .schema_hash(SchemaHash::new(vela_common::stable_id(
+            "std_schema",
+            "",
+            "Result",
+        )))
         .origin(DeclOrigin::Host)
         .docs("Dynamic standard Result enum without script-language generics.")
         .attr("stdlib", "result")

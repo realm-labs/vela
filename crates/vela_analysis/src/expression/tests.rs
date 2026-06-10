@@ -1,4 +1,5 @@
-use vela_common::{FieldId, SourceId, TypeId, VariantId};
+use vela_common::SourceId;
+use vela_def::{FieldId, TypeId, VariantId};
 use vela_reflect::registry::{FieldDesc, TypeDesc, TypeKey, TypeKind, TypeRegistry, VariantDesc};
 use vela_syntax::ast::{ItemKind, StmtKind};
 use vela_syntax::parser::parse_source;

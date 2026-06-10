@@ -1,4 +1,5 @@
-use vela_common::{FunctionId, HostMethodId, SourceId, TypeId};
+use vela_common::{HostMethodId, SourceId};
+use vela_def::{FunctionId, TypeId};
 use vela_reflect::access::{FunctionEffectSet, MethodEffectSet};
 use vela_reflect::modules::FunctionDesc;
 use vela_reflect::registry::{MethodDesc, TypeDesc, TypeKey, TypeRegistry};

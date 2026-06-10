@@ -28,7 +28,8 @@ use std::collections::{BTreeMap, BTreeSet, HashMap};
 
 #[cfg(test)]
 use vela_common::HostMethodId;
-use vela_common::{GlobalSlot, MethodId, SourceId, Span};
+use vela_common::{GlobalSlot, SourceId, Span};
+use vela_def::MethodId;
 use vela_hir::binding::{BindingMap, BindingResolution, LocalBindingKind};
 use vela_hir::ids::{HirDeclId, HirLocalId};
 #[cfg(test)]

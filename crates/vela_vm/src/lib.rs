@@ -77,7 +77,8 @@ use vela_bytecode::{
     CacheSiteId, CodeObject, Constant, HostTargetPlanId, InstructionKind, InstructionOffset,
     Program, ProgramCode, ProgramImage, Register,
 };
-use vela_common::{FunctionId, GlobalSlot, HostTypeId, Span};
+use vela_common::{GlobalSlot, HostTypeId, Span};
+use vela_def::FunctionId;
 use vela_host::adapter::ScriptStateAdapter;
 use vela_host::resolved::{HostAccessOp, HostSchemaEpoch, ResolvedHostAccess};
 #[cfg(test)]
@@ -235,7 +236,7 @@ pub struct RuntimeMethodCall<'program, 'args, 'host, 'heap, 'roots, 'budget> {
     pub program: &'program dyn ProgramCode,
     pub receiver: Value,
     pub method: &'args str,
-    pub method_id: Option<vela_common::MethodId>,
+    pub method_id: Option<vela_def::MethodId>,
     pub args: &'args [Value],
     pub host: &'host mut HostExecution<'host>,
     pub persistent: PersistentHeapExecution<'heap, 'roots>,

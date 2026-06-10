@@ -1,20 +1,26 @@
-use vela_common::{FieldId, HostMethodId, HostTypeId, TypeId};
+use vela_common::{HostMethodId, HostTypeId, stable_id};
+use vela_def::{FieldId, TypeId};
 use vela_reflect::access::{MethodAccess, MethodEffectSet};
 use vela_reflect::registry::{
     FieldDesc, MethodDesc, MethodParamDesc, SchemaHash, TypeDesc, TypeKey,
 };
 
-pub const CONTEXT_TYPE_ID: TypeId = TypeId::new(0xff00_1000);
-pub const CONTEXT_HOST_TYPE_ID: HostTypeId = HostTypeId::new(0xff00_1001);
-pub const CONTEXT_NOW_FIELD_ID: FieldId = FieldId::new(0xff00_1002);
-pub const CONTEXT_TICK_FIELD_ID: FieldId = FieldId::new(0xff00_1003);
-pub const CONTEXT_EMIT_METHOD_ID: HostMethodId = HostMethodId::new(0xff00_1004);
-pub const CONTEXT_LOG_METHOD_ID: HostMethodId = HostMethodId::new(0xff00_1005);
+pub const CONTEXT_TYPE_ID: TypeId = TypeId::new(stable_id("std_type", "", "Context") as u128);
+pub const CONTEXT_HOST_TYPE_ID: HostTypeId =
+    HostTypeId::new(stable_id("std_host_type", "", "Context"));
+pub const CONTEXT_NOW_FIELD_ID: FieldId =
+    FieldId::new(stable_id("std_field", "Context", "now") as u128);
+pub const CONTEXT_TICK_FIELD_ID: FieldId =
+    FieldId::new(stable_id("std_field", "Context", "tick") as u128);
+pub const CONTEXT_EMIT_METHOD_ID: HostMethodId =
+    HostMethodId::new(stable_id("std_method", "Context", "emit"));
+pub const CONTEXT_LOG_METHOD_ID: HostMethodId =
+    HostMethodId::new(stable_id("std_method", "Context", "log"));
 
 #[must_use]
 pub fn context_host_type_desc() -> TypeDesc {
     TypeDesc::new(TypeKey::new(CONTEXT_TYPE_ID, "Context"))
-        .schema_hash(SchemaHash::new(0xff00_1000_0000_0001))
+        .schema_hash(SchemaHash::new(stable_id("std_schema", "", "Context")))
         .host_type(CONTEXT_HOST_TYPE_ID)
         .docs("Standard host context object for deterministic time, events, and logging.")
         .attr("stdlib", "context")

@@ -218,13 +218,18 @@ impl DefId {
 
 macro_rules! typed_def_id {
     ($name:ident) => {
-        #[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
+        #[derive(Clone, Copy, Eq, Hash, Ord, PartialEq, PartialOrd)]
         #[repr(transparent)]
         pub struct $name(DefId);
 
         impl $name {
             #[must_use]
-            pub const fn new(id: DefId) -> Self {
+            pub const fn new(value: u128) -> Self {
+                Self(DefId::new(value))
+            }
+
+            #[must_use]
+            pub const fn from_def_id(id: DefId) -> Self {
                 Self(id)
             }
 
@@ -248,6 +253,12 @@ macro_rules! typed_def_id {
         impl From<$name> for DefId {
             fn from(id: $name) -> Self {
                 id.0
+            }
+        }
+
+        impl fmt::Debug for $name {
+            fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
+                write!(formatter, "{}({})", stringify!($name), self.get())
             }
         }
     };
@@ -344,7 +355,7 @@ mod tests {
     #[test]
     fn typed_wrappers_preserve_def_id() {
         let id = DefPath::trait_def("script", ["combat"], "Scored").id();
-        let trait_id = TraitId::new(id);
+        let trait_id = TraitId::from_def_id(id);
 
         assert_eq!(trait_id.def_id(), id);
         assert_eq!(DefId::from(trait_id), id);

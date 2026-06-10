@@ -1,7 +1,8 @@
 use std::io::Write;
 use std::path::{Component, Path, PathBuf};
 
-use vela_common::FunctionId;
+use vela_common::stable_id;
+use vela_def::FunctionId;
 use vela_reflect::modules::ModuleDesc;
 use vela_vm::error::{VmError, VmErrorKind, VmResult};
 use vela_vm::owned_value::OwnedValue;
@@ -10,9 +11,12 @@ use crate::native::{
     EffectSet, FunctionAccess, NativeFunctionDesc, NativeFunctionEntry, NativeFunctionId, TypeHint,
 };
 
-pub const IO_PRINTLN_FUNCTION_ID: NativeFunctionId = FunctionId::new(0xff00_0005);
-pub const FS_READ_TO_STRING_FUNCTION_ID: NativeFunctionId = FunctionId::new(0xff00_0006);
-pub const FS_WRITE_STRING_FUNCTION_ID: NativeFunctionId = FunctionId::new(0xff00_0007);
+pub const IO_PRINTLN_FUNCTION_ID: NativeFunctionId =
+    FunctionId::new(stable_id("std_function", "io", "println") as u128);
+pub const FS_READ_TO_STRING_FUNCTION_ID: NativeFunctionId =
+    FunctionId::new(stable_id("std_function", "fs", "read_to_string") as u128);
+pub const FS_WRITE_STRING_FUNCTION_ID: NativeFunctionId =
+    FunctionId::new(stable_id("std_function", "fs", "write_string") as u128);
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct FsSandbox {

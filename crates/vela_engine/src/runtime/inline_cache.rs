@@ -94,7 +94,8 @@ impl vela_vm::VmInlineCaches for InlineCaches {
 mod tests {
     use vela_bytecode::CacheSiteKind;
     use vela_bytecode::compiler::compile_program_source_with_options;
-    use vela_common::{FieldId, HostObjectId, HostTypeId, SourceId, TypeId};
+    use vela_common::{HostObjectId, HostTypeId, SourceId};
+    use vela_def::{FieldId, TypeId};
     use vela_host::access::HostAccess;
     use vela_host::mock::MockStateAdapter;
     use vela_host::path::{HostPath, HostRef};

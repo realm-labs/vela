@@ -1,4 +1,5 @@
-use vela_common::{FieldId, FunctionId, HostMethodId, MethodId, SourceId, TypeId, VariantId};
+use vela_common::{HostMethodId, SourceId};
+use vela_def::{FieldId, FunctionId, MethodId, TypeId, VariantId};
 use vela_hir::module_graph::{ModulePath, ModuleSource};
 use vela_reflect::modules::FunctionDesc;
 use vela_reflect::registry::{

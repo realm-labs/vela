@@ -192,7 +192,7 @@ impl ProgramCode for ProgramImage {
         self.function_by_name(&method.function)
     }
 
-    fn script_method_id(&self, type_name: &str, method: &str) -> Option<vela_common::MethodId> {
+    fn script_method_id(&self, type_name: &str, method: &str) -> Option<vela_def::MethodId> {
         self.script_methods
             .get(type_name, method)
             .map(|method| method.id)
@@ -201,7 +201,7 @@ impl ProgramCode for ProgramImage {
     fn script_method_by_id(
         &self,
         type_name: &str,
-        method_id: vela_common::MethodId,
+        method_id: vela_def::MethodId,
     ) -> Option<&CodeObject> {
         let method = self.script_methods.get_by_id(type_name, method_id)?;
         self.function_by_name(&method.function)
@@ -312,7 +312,8 @@ fn localize_function_cache_sites(function: &mut CodeObject) {
 
 #[cfg(test)]
 mod tests {
-    use vela_common::{GlobalSlot, MethodId};
+    use vela_common::GlobalSlot;
+    use vela_def::MethodId;
 
     use crate::{
         CacheSiteId, CacheSiteKind, CodeObject, Constant, Instruction, InstructionKind,

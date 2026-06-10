@@ -1190,7 +1190,7 @@ surface.
   - BLAKE3-128 output is stable for committed fixture paths;
   - canonical path formatting is stable.
 
-- [ ] **Task 1.2: Move ID wrapper types out of `vela_common`**
+- [x] **Task 1.2: Move ID wrapper types out of `vela_common`**
 
 **Objective:** Stop treating definition IDs as generic common utilities.
 

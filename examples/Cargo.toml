@@ -8,6 +8,8 @@ license.workspace = true
 serde = { workspace = true }
 vela_bytecode = { workspace = true }
 vela_common = { workspace = true }
+
+vela_def = { workspace = true }
 vela_engine = { workspace = true, features = ["serde"] }
 vela_hot_reload = { workspace = true }
 vela_host = { workspace = true }

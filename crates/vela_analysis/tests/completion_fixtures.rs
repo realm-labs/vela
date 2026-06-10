@@ -1,7 +1,8 @@
 use vela_analysis::completion::{CompletionItem, CompletionKind, member_completions};
 use vela_analysis::registry::RegistryFacts;
 use vela_analysis::type_fact::TypeFact;
-use vela_common::{FieldId, HostMethodId, SourceId, TypeId};
+use vela_common::{HostMethodId, SourceId};
+use vela_def::{FieldId, TypeId};
 use vela_reflect::registry::{
     FieldDesc, MethodDesc, MethodParamDesc, TypeDesc, TypeKey, TypeRegistry,
 };

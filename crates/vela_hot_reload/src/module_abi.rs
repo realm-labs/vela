@@ -74,12 +74,12 @@ impl ModuleAbi {
 pub struct ModuleExportAbi {
     pub name: String,
     pub kind: ModuleExportKindAbi,
-    pub function: Option<u64>,
+    pub function: Option<u128>,
 }
 
 impl ModuleExportAbi {
     #[must_use]
-    pub fn function(name: impl Into<String>, function: u64) -> Self {
+    pub fn function(name: impl Into<String>, function: u128) -> Self {
         Self {
             name: name.into(),
             kind: ModuleExportKindAbi::Function,

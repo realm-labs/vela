@@ -3,7 +3,8 @@ mod permissions;
 mod proxy;
 mod write_through;
 
-use vela_common::{FieldId, HostMethodId, HostObjectId, HostTypeId, SourceId, Span};
+use vela_common::{HostMethodId, HostObjectId, HostTypeId, SourceId, Span};
+use vela_def::FieldId;
 
 use crate::{
     access::{HostAccess, HostObjectSnapshot},

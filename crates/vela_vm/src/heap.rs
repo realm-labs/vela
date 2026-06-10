@@ -540,7 +540,8 @@ impl ScriptHeap {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use vela_common::{FieldId, HostObjectId, HostTypeId};
+    use vela_common::{HostObjectId, HostTypeId};
+    use vela_def::FieldId;
     use vela_host::path::{HostPath, HostRef};
 
     fn host_ref() -> HostRef {

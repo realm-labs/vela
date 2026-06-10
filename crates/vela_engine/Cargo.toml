@@ -8,6 +8,8 @@ version.workspace = true
 serde = { workspace = true, optional = true }
 vela_bytecode = { workspace = true }
 vela_common = { workspace = true }
+
+vela_def = { workspace = true }
 vela_hir = { workspace = true }
 vela_hot_reload = { workspace = true }
 vela_host = { workspace = true }

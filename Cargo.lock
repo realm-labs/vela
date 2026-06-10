@@ -316,6 +316,7 @@ name = "vela_analysis"
 version = "0.1.0"
 dependencies = [
  "vela_common",
+ "vela_def",
  "vela_hir",
  "vela_reflect",
  "vela_syntax",
@@ -326,6 +327,7 @@ name = "vela_bytecode"
 version = "0.1.0"
 dependencies = [
  "vela_common",
+ "vela_def",
  "vela_hir",
  "vela_host",
  "vela_syntax",
@@ -354,6 +356,9 @@ dependencies = [
 [[package]]
 name = "vela_common"
 version = "0.1.0"
+dependencies = [
+ "vela_def",
+]
 
 [[package]]
 name = "vela_def"
@@ -369,6 +374,7 @@ dependencies = [
  "serde",
  "vela_bytecode",
  "vela_common",
+ "vela_def",
  "vela_hir",
  "vela_host",
  "vela_hot_reload",
@@ -384,6 +390,7 @@ dependencies = [
  "serde",
  "vela_bytecode",
  "vela_common",
+ "vela_def",
  "vela_engine",
  "vela_host",
  "vela_hot_reload",
@@ -405,6 +412,7 @@ name = "vela_host"
 version = "0.1.0"
 dependencies = [
  "vela_common",
+ "vela_def",
 ]
 
 [[package]]
@@ -413,6 +421,7 @@ version = "0.1.0"
 dependencies = [
  "vela_bytecode",
  "vela_common",
+ "vela_def",
  "vela_hir",
  "vela_reflect",
  "vela_vm",
@@ -426,6 +435,7 @@ dependencies = [
  "quote",
  "syn",
  "vela_common",
+ "vela_def",
  "vela_engine",
  "vela_host",
  "vela_reflect",
@@ -450,6 +460,7 @@ name = "vela_reflect"
 version = "0.1.0"
 dependencies = [
  "vela_common",
+ "vela_def",
  "vela_hir",
  "vela_host",
  "vela_syntax",
@@ -469,6 +480,7 @@ dependencies = [
  "serde",
  "vela_bytecode",
  "vela_common",
+ "vela_def",
  "vela_hir",
  "vela_host",
  "vela_reflect",

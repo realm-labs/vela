@@ -1,9 +1,8 @@
 use std::collections::BTreeMap;
 
 use super::*;
-use vela_common::{
-    FieldId, HostMethodId, HostObjectId, HostTypeId, MethodId, SourceId, Span, TypeId, VariantId,
-};
+use vela_common::{HostMethodId, HostObjectId, HostTypeId, SourceId, Span};
+use vela_def::{FieldId, MethodId, TypeId, VariantId};
 use vela_host::path::HostRef;
 
 use crate::permissions::ReflectPolicy;

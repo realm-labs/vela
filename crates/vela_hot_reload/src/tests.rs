@@ -9,7 +9,8 @@ use crate::report_render::{HotReloadReportLine, HotReloadReportLineKind};
 use crate::runtime::HotReloadRuntime;
 use crate::schema_abi::*;
 use crate::symbol::ProgramVersionId;
-use vela_common::{FieldId, FunctionId, HostMethodId, MethodId, SourceId, Span, TypeId, VariantId};
+use vela_common::{HostMethodId, SourceId, Span};
+use vela_def::{FieldId, FunctionId, MethodId, TypeId, VariantId};
 use vela_reflect::access::{FunctionAccess, FunctionEffectSet, MethodAccess, MethodEffectSet};
 use vela_reflect::modules::{DeclOrigin, FunctionDesc, FunctionParamDesc, ModuleDesc};
 use vela_reflect::registry::{

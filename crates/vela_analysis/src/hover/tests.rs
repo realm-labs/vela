@@ -1,4 +1,5 @@
-use vela_common::{FieldId, FunctionId, HostMethodId, SourceId, Span, TypeId, VariantId};
+use vela_common::{HostMethodId, SourceId, Span};
+use vela_def::{FieldId, FunctionId, TypeId, VariantId};
 use vela_reflect::access::{FieldAccess, FunctionEffectSet, MethodEffectSet};
 use vela_reflect::modules::{DeclOrigin, FunctionDesc, FunctionParamDesc, ModuleDesc};
 use vela_reflect::registry::{
@@ -160,7 +161,7 @@ fn hover_registry() -> TypeRegistry {
         TraitDesc::new("Damageable")
             .docs("can receive damage")
             .method(
-                TraitMethodDesc::new(vela_common::MethodId::new(1), "damage")
+                TraitMethodDesc::new(vela_def::MethodId::new(1), "damage")
                     .defaulted(true)
                     .param(MethodParamDesc::new("amount").type_hint("int"))
                     .return_type("null"),

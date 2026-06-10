@@ -1,4 +1,5 @@
-use vela_common::{FieldId, HostMethodId, HostTypeId, MethodId, TraitId, TypeId, VariantId};
+use vela_common::{HostMethodId, HostTypeId};
+use vela_def::{FieldId, MethodId, TraitId, TypeId, VariantId};
 use vela_reflect::access::FieldAccess;
 use vela_reflect::modules::ModuleDesc;
 use vela_reflect::registry::{

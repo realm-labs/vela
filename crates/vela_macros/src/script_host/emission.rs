@@ -5,7 +5,7 @@ use syn::Ident;
 use super::schema::{FieldMeta, VariantMeta};
 
 pub(super) fn field_tokens(field: &FieldMeta) -> TokenStream {
-    let id = field.id;
+    let id = u128::from(field.id);
     let script_name = &field.script_name;
     let rust_name = &field.rust_name;
     let readable = field.readable;
@@ -26,7 +26,7 @@ pub(super) fn field_tokens(field: &FieldMeta) -> TokenStream {
     });
 
     quote! {
-        ::vela_reflect::registry::FieldDesc::new(::vela_common::FieldId::new(#id), #script_name)
+        ::vela_reflect::registry::FieldDesc::new(::vela_def::FieldId::new(#id), #script_name)
             .access(
                 ::vela_reflect::access::FieldAccess::new()
                     .readable(#readable)
@@ -43,15 +43,15 @@ pub(super) fn field_tokens(field: &FieldMeta) -> TokenStream {
 }
 
 pub(super) fn field_helper_tokens(field: &FieldMeta) -> TokenStream {
-    let id = field.id;
+    let id = u128::from(field.id);
     let field_id_ident = format_ident!("vela_field_id_{}", field.rust_name);
     let field_path_ident = format_ident!("vela_field_path_{}", field.rust_name);
     let field_proxy_ident = format_ident!("vela_field_proxy_{}", field.rust_name);
 
     quote! {
         #[must_use]
-        pub const fn #field_id_ident() -> ::vela_common::FieldId {
-            ::vela_common::FieldId::new(#id)
+        pub const fn #field_id_ident() -> ::vela_def::FieldId {
+            ::vela_def::FieldId::new(#id)
         }
 
         #[must_use]
@@ -185,12 +185,12 @@ pub(super) fn field_access_impl_tokens(ident: &Ident, fields: &[FieldMeta]) -> T
 }
 
 fn field_resolve_arm_tokens((slot, field): (usize, &FieldMeta)) -> TokenStream {
-    let id = field.id;
+    let id = u128::from(field.id);
     let slot = u32::try_from(slot).expect("host field slot index fits u32");
     let rust_name = format_ident!("{}", field.rust_name);
     quote! {
         Some(::vela_host::target::HostPathPart::Field(field))
-            if *field == ::vela_common::FieldId::new(#id) =>
+            if *field == ::vela_def::FieldId::new(#id) =>
         {
             if offset + 1 == spec.plan.parts.len()
                 && !matches!(spec.op, ::vela_host::resolved::HostAccessOp::Call(_))
@@ -224,11 +224,11 @@ fn field_resolve_arm_tokens((slot, field): (usize, &FieldMeta)) -> TokenStream {
 }
 
 fn field_read_arm_tokens(field: &FieldMeta) -> TokenStream {
-    let id = field.id;
+    let id = u128::from(field.id);
     let rust_name = format_ident!("{}", field.rust_name);
     quote! {
         Some(::vela_host::target::HostPathPart::Field(field))
-            if *field == ::vela_common::FieldId::new(#id) =>
+            if *field == ::vela_def::FieldId::new(#id) =>
         {
             ::vela_host::object::ScriptHostFieldAccess::read_host_target_from(
                 &self.#rust_name,
@@ -240,12 +240,12 @@ fn field_read_arm_tokens(field: &FieldMeta) -> TokenStream {
 }
 
 fn field_write_arm_tokens(field: &FieldMeta) -> TokenStream {
-    let id = field.id;
+    let id = u128::from(field.id);
     let writable = field.writable;
     let rust_name = format_ident!("{}", field.rust_name);
     quote! {
         Some(::vela_host::target::HostPathPart::Field(field))
-            if *field == ::vela_common::FieldId::new(#id) =>
+            if *field == ::vela_def::FieldId::new(#id) =>
         {
             if offset + 1 == target.plan.parts.len() && !#writable {
                 return Err(::vela_host::error::HostError {
@@ -267,11 +267,11 @@ fn field_write_arm_tokens(field: &FieldMeta) -> TokenStream {
 }
 
 fn field_call_arm_tokens(field: &FieldMeta) -> TokenStream {
-    let id = field.id;
+    let id = u128::from(field.id);
     let rust_name = format_ident!("{}", field.rust_name);
     quote! {
         Some(::vela_host::target::HostPathPart::Field(field))
-            if *field == ::vela_common::FieldId::new(#id) =>
+            if *field == ::vela_def::FieldId::new(#id) =>
         {
             let __vela_child_plan = ::vela_host::target::HostTargetPlan::from_parts(
                 target.plan.root_type,
@@ -303,7 +303,7 @@ fn field_call_arm_tokens(field: &FieldMeta) -> TokenStream {
 }
 
 pub(super) fn variant_tokens(variant: &VariantMeta) -> TokenStream {
-    let id = variant.id;
+    let id = u128::from(variant.id);
     let script_name = &variant.script_name;
     let docs_tokens = variant.docs.as_ref().map(|docs| quote! { .docs(#docs) });
     let attr_tokens = variant.attrs.iter().map(|(name, value)| {
@@ -315,7 +315,7 @@ pub(super) fn variant_tokens(variant: &VariantMeta) -> TokenStream {
 
     quote! {
         ::vela_reflect::registry::VariantDesc::new(
-            ::vela_common::VariantId::new(#id),
+            ::vela_def::VariantId::new(#id),
             #script_name,
         )
         #(#attr_tokens)*

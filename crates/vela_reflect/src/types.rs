@@ -113,7 +113,8 @@ fn kind_name(kind: TypeKind) -> String {
 
 #[cfg(test)]
 mod tests {
-    use vela_common::{FieldId, HostObjectId, HostTypeId, SourceId, Span, TypeId, VariantId};
+    use vela_common::{HostObjectId, HostTypeId, SourceId, Span};
+    use vela_def::{FieldId, TypeId, VariantId};
     use vela_host::path::HostRef;
 
     use super::*;

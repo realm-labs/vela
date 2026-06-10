@@ -1,4 +1,4 @@
-use vela_common::FieldId;
+use vela_def::FieldId;
 use vela_host::target::HostTargetPlan;
 
 use crate::{Constant, FrameSlotInfo, FrameSlotKind, Instruction};
@@ -45,7 +45,7 @@ fn program_verify_checks_all_functions() {
 #[test]
 fn program_verify_rejects_missing_script_method_function() {
     let mut program = Program::new();
-    program.insert_script_method("Player", "bonus", vela_common::MethodId::new(7), "missing");
+    program.insert_script_method("Player", "bonus", vela_def::MethodId::new(7), "missing");
 
     assert_eq!(
         program.verify(),

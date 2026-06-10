@@ -2,7 +2,8 @@
 
 use std::collections::{BTreeMap, BTreeSet, HashMap, HashSet};
 
-use vela_common::{FieldId, HostObjectId, HostTypeId, SourceId};
+use vela_common::{HostObjectId, HostTypeId, SourceId};
+use vela_def::FieldId;
 use vela_engine::context::NativeCallContext;
 use vela_engine::engine::Engine;
 use vela_engine::native::{
@@ -247,5 +248,9 @@ fn debug_probe() -> bool {
 }
 
 fn function_id(name: &str) -> NativeFunctionId {
-    NativeFunctionId::new(vela_common::stable_id("native_function", "", name))
+    NativeFunctionId::new(u128::from(vela_common::stable_id(
+        "native_function",
+        "",
+        name,
+    )))
 }

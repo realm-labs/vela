@@ -13,11 +13,15 @@ quote = { workspace = true }
 syn = { workspace = true }
 vela_common = { workspace = true }
 
+vela_def = { workspace = true }
+
 [dev-dependencies]
 vela_engine = { workspace = true }
 vela_host = { workspace = true }
 vela_vm = { workspace = true }
 vela_common = { workspace = true }
+
+vela_def = { workspace = true }
 vela_reflect = { workspace = true }
 
 [lints]

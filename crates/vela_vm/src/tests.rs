@@ -11,10 +11,8 @@ use vela_bytecode::compiler::{
 use vela_bytecode::{
     CacheSiteKind, Constant, ConstantId, Instruction, InstructionOffset, ProgramImage,
 };
-use vela_common::{
-    FieldId, FunctionId, HostMethodId, HostObjectId, HostTypeId, MethodId, SourceId, TypeId,
-    VariantId,
-};
+use vela_common::{HostMethodId, HostObjectId, HostTypeId, SourceId};
+use vela_def::{FieldId, FunctionId, MethodId, TypeId, VariantId};
 use vela_hir::module_graph::{ModuleGraph, ModulePath, ModuleSource};
 use vela_host::access::HostAccess;
 use vela_host::error::HostErrorKind;

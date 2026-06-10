@@ -1,4 +1,5 @@
-use vela_common::{FieldId, HostTypeId};
+use vela_common::HostTypeId;
+use vela_def::FieldId;
 
 use crate::path::HostRef;
 
@@ -409,7 +410,8 @@ pub enum HostDiagnosticSegment {
 
 #[cfg(test)]
 mod tests {
-    use vela_common::{FieldId, HostObjectId, HostTypeId};
+    use vela_common::{HostObjectId, HostTypeId};
+    use vela_def::FieldId;
 
     use super::*;
 

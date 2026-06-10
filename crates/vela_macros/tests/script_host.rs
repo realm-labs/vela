@@ -1,4 +1,5 @@
-use vela_common::{FieldId, HostObjectId, TypeId, stable_id};
+use vela_common::{HostObjectId, stable_id};
+use vela_def::{FieldId, TypeId};
 use vela_host::path::{HostPath, HostRef};
 use vela_host::proxy::PathProxy;
 use vela_host::resolved::{HostAccessOp, HostAccessSpec, ResolvedHostAccessKind};
@@ -144,7 +145,11 @@ fn script_host_derive_generates_type_metadata() {
     assert_eq!(desc.kind, TypeKind::Host);
     assert_eq!(
         Player::vela_type_id(),
-        TypeId::new(stable_id("host_type", "", "game::player::Player")),
+        TypeId::new(u128::from(stable_id(
+            "host_type",
+            "",
+            "game::player::Player",
+        ))),
     );
     assert_eq!(desc.host_type_id, Some(Player::vela_host_type_id()));
     assert_eq!(desc.attrs.get("module"), Some("game::player"));
@@ -166,21 +171,21 @@ fn script_host_derive_generates_type_metadata() {
 fn script_reflect_derive_generates_enum_variant_metadata() {
     let desc = HostQuestProgress::vela_reflect_type_desc();
     let active_variant = VariantDesc::new(
-        vela_common::VariantId::new(stable_id(
+        vela_def::VariantId::new(u128::from(stable_id(
             "variant",
             "game::quest::HostQuestProgress",
             "Active",
-        )),
+        ))),
         "Active",
     )
     .docs("Active quest progress.")
     .field(
         FieldDesc::new(
-            FieldId::new(stable_id(
+            FieldId::new(u128::from(stable_id(
                 "field",
                 "HostQuestProgress::Active",
                 "quest_count",
-            )),
+            ))),
             "quest_count",
         )
         .access(
@@ -195,11 +200,11 @@ fn script_reflect_derive_generates_enum_variant_metadata() {
     )
     .field(
         FieldDesc::new(
-            FieldId::new(stable_id(
+            FieldId::new(u128::from(stable_id(
                 "field",
                 "HostQuestProgress::Active",
                 "quest_done",
-            )),
+            ))),
             "quest_done",
         )
         .access(
@@ -213,11 +218,11 @@ fn script_reflect_derive_generates_enum_variant_metadata() {
         .type_hint("bool"),
     );
     let finished_variant = VariantDesc::new(
-        vela_common::VariantId::new(stable_id(
+        vela_def::VariantId::new(u128::from(stable_id(
             "variant",
             "game::quest::HostQuestProgress",
             "Finished",
-        )),
+        ))),
         "Finished",
     );
 
@@ -254,15 +259,19 @@ fn script_host_derive_generates_field_helpers() {
 
     assert_eq!(
         Player::vela_field_id_level(),
-        FieldId::new(stable_id("host_field", "game::player::Player", "level")),
+        FieldId::new(u128::from(stable_id(
+            "host_field",
+            "game::player::Player",
+            "level",
+        ))),
     );
     assert_eq!(
         Player::vela_field_id_name(),
-        FieldId::new(stable_id(
+        FieldId::new(u128::from(stable_id(
             "host_field",
             "game::player::Player",
             "display_name"
-        )),
+        ))),
     );
     assert_eq!(
         Player::vela_field_path_level(player),

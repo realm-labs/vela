@@ -1,6 +1,7 @@
 use std::collections::{HashMap, HashSet};
 
-use vela_common::{FieldId, FunctionId, HostMethodId, HostTypeId};
+use vela_common::{HostMethodId, HostTypeId};
+use vela_def::{FieldId, FunctionId};
 
 #[derive(Clone, Debug, Default, PartialEq)]
 pub struct CompilerOptions {

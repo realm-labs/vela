@@ -13,7 +13,7 @@ use crate::signature::{
 
 #[derive(Clone)]
 pub(super) struct FunctionMeta {
-    pub(super) id: u64,
+    pub(super) id: u128,
     pub(super) name: String,
     pub(super) effect: FunctionEffect,
     pub(super) docs: Option<String>,
@@ -244,7 +244,7 @@ pub(super) fn function_meta(
         )
     })?;
     let stable_name = attrs.alias.unwrap_or_else(|| name.clone());
-    let id = vela_common::stable_id("native_function", "", &stable_name);
+    let id = u128::from(vela_common::stable_id("native_function", "", &stable_name));
     let public = attrs.public.unwrap_or(true);
     let reflect_visible = attrs.reflect_visible.unwrap_or(public);
 

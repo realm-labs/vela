@@ -1,4 +1,4 @@
-use vela_common::HostMethodId;
+use vela_common::{HostMethodId, stable_id};
 use vela_reflect::registry::MethodDesc;
 
 use super::{MethodSpec, ParamSpec, descs};
@@ -157,5 +157,5 @@ const SET_METHODS: &[MethodSpec] = &[
 ];
 
 const fn set_id(offset: u64) -> HostMethodId {
-    HostMethodId::new(0xff00_0a00 + offset)
+    HostMethodId::new(stable_id("std_method_family", "Set", "").wrapping_add(offset))
 }

@@ -168,7 +168,7 @@ impl HotReloadAbi {
         Ok(())
     }
 
-    pub fn host_function_aliases(&self) -> impl Iterator<Item = (u64, &str)> + '_ {
+    pub fn host_function_aliases(&self) -> impl Iterator<Item = (u128, &str)> + '_ {
         self.functions.values().filter_map(|function| {
             let id = function.id?;
             (function.origin == DeclOrigin::Host).then_some((id, function.name.as_str()))
@@ -215,7 +215,7 @@ fn find_compatible_method<'a>(
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct FunctionAbi {
-    pub id: Option<u64>,
+    pub id: Option<u128>,
     pub name: String,
     pub origin: DeclOrigin,
     pub params: Vec<ParamAbi>,
@@ -282,7 +282,7 @@ impl FunctionAbi {
     }
 
     #[must_use]
-    pub fn id(mut self, id: u64) -> Self {
+    pub fn id(mut self, id: u128) -> Self {
         self.id = Some(id);
         self
     }
@@ -743,7 +743,7 @@ impl TraitAbi {
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct TraitMethodAbi {
-    pub id: u64,
+    pub id: u128,
     pub name: String,
     pub params: Vec<ParamAbi>,
     pub return_type: Option<String>,
@@ -752,7 +752,7 @@ pub struct TraitMethodAbi {
 
 impl TraitMethodAbi {
     #[must_use]
-    pub fn new(id: u64, name: impl Into<String>) -> Self {
+    pub fn new(id: u128, name: impl Into<String>) -> Self {
         Self {
             id,
             name: name.into(),

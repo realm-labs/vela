@@ -2,7 +2,8 @@ use std::cell::Cell;
 use std::collections::BTreeMap;
 
 use vela_bytecode::compiler::compile_program_source_with_options;
-use vela_common::{FieldId, HostMethodId, HostObjectId, HostTypeId, SourceId, TypeId};
+use vela_common::{HostMethodId, HostObjectId, HostTypeId, SourceId};
+use vela_def::{FieldId, TypeId};
 use vela_host::access::HostAccess;
 use vela_host::adapter::{GlobalBinding, ScriptStateAdapter};
 use vela_host::error::{HostError, HostErrorKind, HostResult};

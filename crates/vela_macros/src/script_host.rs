@@ -11,14 +11,14 @@ struct TypeIdentity {
     name: String,
     module: String,
     stable_path: String,
-    type_id: u64,
+    type_id: u128,
     host_id: u64,
 }
 
 struct EnumExpansion {
     input: DeriveInput,
     generated_method: GeneratedMethod,
-    type_id: u64,
+    type_id: u128,
     host_id: u64,
     type_name: String,
     module_name: String,
@@ -146,8 +146,8 @@ fn expand_result(input: TokenStream, generated_method: GeneratedMethod) -> Resul
     let type_helper_tokens = match generated_method {
         GeneratedMethod::Host => quote! {
             #[must_use]
-            pub const fn vela_type_id() -> ::vela_common::TypeId {
-                ::vela_common::TypeId::new(#type_id)
+            pub const fn vela_type_id() -> ::vela_def::TypeId {
+                ::vela_def::TypeId::new(#type_id)
             }
 
             #[must_use]
@@ -171,7 +171,7 @@ fn expand_result(input: TokenStream, generated_method: GeneratedMethod) -> Resul
             pub fn #method() -> ::vela_reflect::registry::TypeDesc {
                 let mut desc = ::vela_reflect::registry::TypeDesc::new(
                     ::vela_reflect::registry::TypeKey::new(
-                        ::vela_common::TypeId::new(#type_id),
+                        ::vela_def::TypeId::new(#type_id),
                         #type_name,
                     ),
                 )
@@ -248,7 +248,7 @@ fn expand_enum_result(expansion: EnumExpansion) -> Result<TokenStream> {
             pub fn #method() -> ::vela_reflect::registry::TypeDesc {
                 let mut desc = ::vela_reflect::registry::TypeDesc::new(
                     ::vela_reflect::registry::TypeKey::new(
-                        ::vela_common::TypeId::new(#type_id),
+                        ::vela_def::TypeId::new(#type_id),
                         #type_name,
                     ),
                 )
@@ -316,7 +316,7 @@ fn type_identity(
             }
         })
         .unwrap_or_else(|| current_path.clone());
-    let type_id = vela_common::stable_id("host_type", "", &stable_path);
+    let type_id = u128::from(vela_common::stable_id("host_type", "", &stable_path));
     let host_id = vela_common::stable_id("host_ref_type", "", &stable_path);
     Ok(TypeIdentity {
         name,

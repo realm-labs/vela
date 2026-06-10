@@ -1,5 +1,6 @@
 use vela_bytecode::{ProgramCode, Register};
-use vela_common::{HostMethodId, MethodId};
+use vela_common::HostMethodId;
+use vela_def::MethodId;
 
 use crate::heap::GcRef;
 use crate::{

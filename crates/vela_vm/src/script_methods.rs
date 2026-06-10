@@ -1,5 +1,6 @@
 use vela_bytecode::ProgramCode;
-use vela_common::{HostMethodId, MethodId};
+use vela_common::HostMethodId;
+use vela_def::MethodId;
 use vela_reflect::registry::TypeRegistry;
 
 use crate::callback_method_dispatch::{self, CallbackMethodDispatch};

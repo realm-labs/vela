@@ -8,7 +8,8 @@ pub mod verification;
 
 use std::collections::BTreeMap;
 
-use vela_common::{FunctionId, GlobalSlot, HostMethodId, MethodId, Span};
+use vela_common::{GlobalSlot, HostMethodId, Span};
+use vela_def::{FunctionId, MethodId};
 use vela_hir::ids::HirLocalId;
 use vela_hir::module_graph::ModuleGraph;
 use vela_host::resolved::HostMutationOp;
@@ -684,7 +685,8 @@ pub enum CallArgument {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use vela_common::{FieldId, HostTypeId};
+    use vela_common::HostTypeId;
+    use vela_def::FieldId;
     use vela_host::target::HostTargetPlan;
 
     #[test]

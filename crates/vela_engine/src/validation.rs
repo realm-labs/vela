@@ -125,7 +125,7 @@ pub(crate) fn validate_types(types: &[TypeDesc], include_standard_types: bool) -
 
 fn validate_type_desc(
     desc: &TypeDesc,
-    ids: &mut BTreeSet<vela_common::TypeId>,
+    ids: &mut BTreeSet<vela_def::TypeId>,
     names: &mut BTreeSet<String>,
     host_ids: &mut BTreeSet<vela_common::HostTypeId>,
     host_method_ids: &mut BTreeSet<vela_common::HostMethodId>,

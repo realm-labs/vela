@@ -1,6 +1,6 @@
 use std::collections::BTreeMap;
 
-use vela_common::MethodId;
+use vela_def::MethodId;
 
 #[derive(Clone, Debug, Default, Eq, PartialEq)]
 pub struct ScriptMethodTable {

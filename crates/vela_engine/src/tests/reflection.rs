@@ -1,5 +1,6 @@
 use vela_bytecode::compiler::{compile_program_source, compile_program_source_with_options};
-use vela_common::{FieldId, HostMethodId, HostObjectId, HostTypeId, SourceId, Span, TypeId};
+use vela_common::{HostMethodId, HostObjectId, HostTypeId, SourceId, Span};
+use vela_def::{FieldId, TypeId};
 use vela_host::access::HostAccess;
 use vela_host::mock::MockStateAdapter;
 use vela_host::path::{HostPath, HostRef};

@@ -1,6 +1,7 @@
 use std::sync::Arc;
 
-use vela_common::{FunctionId, Span};
+use vela_common::Span;
+use vela_def::FunctionId;
 use vela_reflect::registry::{AttrMap, TypeKey};
 use vela_vm::HostExecution;
 use vela_vm::error::VmResult;

@@ -1,6 +1,6 @@
 use std::collections::{BTreeMap, BTreeSet};
 
-use vela_common::MethodId;
+use vela_def::MethodId;
 use vela_hir::binding::BindingMap;
 use vela_hir::ids::ModuleId;
 use vela_hir::module_graph::{DeclarationKind, ModuleGraph, ModulePath};
@@ -350,19 +350,19 @@ fn trait_method_owner_name(module_path: Option<&ModulePath>, trait_path: &[Strin
 }
 
 fn stable_trait_method_id(trait_name: &str, method_name: &str) -> MethodId {
-    MethodId::new(vela_common::stable_id(
+    MethodId::new(u128::from(vela_common::stable_id(
         "trait_method",
         trait_name,
         method_name,
-    ))
+    )))
 }
 
 fn stable_inherent_method_id(type_name: &str, method_name: &str) -> MethodId {
-    MethodId::new(vela_common::stable_id(
+    MethodId::new(u128::from(vela_common::stable_id(
         "inherent_method",
         type_name,
         method_name,
-    ))
+    )))
 }
 
 trait ImplMetadataExt {

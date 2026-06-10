@@ -1,4 +1,5 @@
-use vela_common::{FieldId, HostMethodId, HostObjectId, HostTypeId, TypeId};
+use vela_common::{HostMethodId, HostObjectId, HostTypeId};
+use vela_def::{FieldId, TypeId};
 use vela_host::access::HostAccess;
 use vela_host::mock::MockStateAdapter;
 use vela_host::path::{HostPath, HostRef};

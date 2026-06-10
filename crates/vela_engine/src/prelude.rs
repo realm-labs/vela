@@ -28,10 +28,8 @@ pub use vela_bytecode::{
     CodeObject,
     script_methods::{ScriptMethod, ScriptMethodTable},
 };
-pub use vela_common::{
-    FieldId, FunctionId, HostMethodId, HostObjectId, HostTypeId, MethodId, SourceId, TraitId,
-    TypeId, VariantId,
-};
+pub use vela_common::{HostMethodId, HostObjectId, HostTypeId, SourceId};
+pub use vela_def::{FieldId, FunctionId, MethodId, TraitId, TypeId, VariantId};
 pub use vela_hir::ids::{HirDeclId, ModuleId};
 pub use vela_hir::module_graph::{
     Declaration, DeclarationIndex, DeclarationKind, Import, ImportResolution, ModuleGraph,

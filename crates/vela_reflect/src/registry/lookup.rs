@@ -42,5 +42,5 @@ pub(super) fn find_method<'a>(desc: &'a TypeDesc, method: &str) -> ReflectResult
 }
 
 pub(super) fn stable_trait_id(name: &str) -> TraitId {
-    TraitId::new(vela_common::stable_id("trait", name, ""))
+    TraitId::new(u128::from(vela_common::stable_id("trait", name, "")))
 }

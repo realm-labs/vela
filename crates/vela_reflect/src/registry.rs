@@ -7,9 +7,8 @@ use lookup::{find_field, find_method, stable_trait_id};
 use crate::access::{FieldAccess, MethodAccess, MethodEffectSet};
 use crate::error::{ReflectError, ReflectErrorKind, ReflectResult};
 use crate::modules::{DeclOrigin, FunctionDesc, ModuleDesc};
-use vela_common::{
-    FieldId, FunctionId, HostMethodId, HostTypeId, MethodId, Span, TraitId, TypeId, VariantId,
-};
+use vela_common::{HostMethodId, HostTypeId, Span};
+use vela_def::{FieldId, FunctionId, MethodId, TraitId, TypeId, VariantId};
 use vela_host::path::HostRef;
 
 #[derive(Clone, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]

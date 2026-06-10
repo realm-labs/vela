@@ -1,4 +1,5 @@
-use vela_common::{FunctionId, Span};
+use vela_common::Span;
+use vela_def::FunctionId;
 
 use crate::{
     access::{FunctionAccess, FunctionEffectSet},

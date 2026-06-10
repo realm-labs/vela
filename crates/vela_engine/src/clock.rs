@@ -1,4 +1,5 @@
-use vela_common::FunctionId;
+use vela_common::stable_id;
+use vela_def::FunctionId;
 use vela_reflect::modules::ModuleDesc;
 use vela_vm::error::{VmError, VmErrorKind, VmResult};
 use vela_vm::owned_value::OwnedValue;
@@ -7,9 +8,12 @@ use crate::native::{
     EffectSet, FunctionAccess, NativeFunctionDesc, NativeFunctionEntry, NativeFunctionId, TypeHint,
 };
 
-pub const TIME_NOW_FUNCTION_ID: NativeFunctionId = FunctionId::new(0xff00_0002);
-pub const TIME_TICK_FUNCTION_ID: NativeFunctionId = FunctionId::new(0xff00_0003);
-pub const TIME_ELAPSED_SINCE_FUNCTION_ID: NativeFunctionId = FunctionId::new(0xff00_0004);
+pub const TIME_NOW_FUNCTION_ID: NativeFunctionId =
+    FunctionId::new(stable_id("std_function", "time", "now") as u128);
+pub const TIME_TICK_FUNCTION_ID: NativeFunctionId =
+    FunctionId::new(stable_id("std_function", "time", "tick") as u128);
+pub const TIME_ELAPSED_SINCE_FUNCTION_ID: NativeFunctionId =
+    FunctionId::new(stable_id("std_function", "time", "elapsed_since") as u128);
 
 pub(crate) fn time_module_desc() -> ModuleDesc {
     ModuleDesc::new("time")

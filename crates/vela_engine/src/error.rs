@@ -15,7 +15,7 @@ impl EngineError {
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub enum EngineErrorKind {
     DuplicateNativeFunctionId {
-        id: u64,
+        id: u128,
     },
     DuplicateNativeFunctionName {
         name: String,
@@ -38,7 +38,7 @@ pub enum EngineErrorKind {
         name: String,
     },
     DuplicateTypeId {
-        id: u64,
+        id: u128,
     },
     DuplicateTypeName {
         name: String,
@@ -72,7 +72,7 @@ pub enum EngineErrorKind {
     },
     DuplicateFieldId {
         type_name: String,
-        id: u64,
+        id: u128,
     },
     DuplicateFieldName {
         type_name: String,
@@ -80,7 +80,7 @@ pub enum EngineErrorKind {
     },
     DuplicateVariantId {
         type_name: String,
-        id: u64,
+        id: u128,
     },
     DuplicateVariantName {
         type_name: String,
@@ -89,7 +89,7 @@ pub enum EngineErrorKind {
     DuplicateVariantFieldId {
         type_name: String,
         variant: String,
-        id: u64,
+        id: u128,
     },
     DuplicateVariantFieldName {
         type_name: String,
@@ -98,7 +98,7 @@ pub enum EngineErrorKind {
     },
     DuplicateTraitId {
         type_name: String,
-        id: u64,
+        id: u128,
     },
     DuplicateTraitName {
         type_name: String,
@@ -107,7 +107,7 @@ pub enum EngineErrorKind {
     DuplicateTraitMethodId {
         type_name: String,
         trait_name: String,
-        id: u64,
+        id: u128,
     },
     DuplicateTraitMethodName {
         type_name: String,

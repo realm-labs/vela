@@ -95,7 +95,8 @@ pub enum ResolvedHostAccessKind {
 
 #[cfg(test)]
 mod tests {
-    use vela_common::{FieldId, HostMethodId, HostTypeId};
+    use vela_common::{HostMethodId, HostTypeId};
+    use vela_def::FieldId;
 
     use super::*;
     use crate::target::HostTargetPlan;
