@@ -575,7 +575,7 @@ pub enum InstructionKind {
     MakeRecord {
         dst: Register,
         ty: TypeHandle,
-        fields: Vec<(FieldSlot, Register)>,
+        fields: Vec<(FieldSlot, DebugNameId, Register)>,
     },
     MakeEnum {
         dst: Register,
@@ -587,10 +587,12 @@ pub enum InstructionKind {
         dst: Register,
         record: Register,
         field: FieldSlot,
+        debug_name: DebugNameId,
     },
     SetRecordSlot {
         record: Register,
         field: FieldSlot,
+        debug_name: DebugNameId,
         src: Register,
     },
     GetEnumSlot {
@@ -769,6 +771,7 @@ mod tests {
     fn linked_field_and_global_instructions_use_slots() {
         let mut program = LinkedProgram::new();
         let global_name = program.intern_debug_name("main::score");
+        let score_name = program.intern_debug_name("score");
         let score_slot = FieldSlot::new(7);
         let player_type = TypeHandle::new(1);
         let variant = VariantHandle::new(2);
@@ -776,7 +779,7 @@ mod tests {
         let record = InstructionKind::MakeRecord {
             dst: Register(0),
             ty: player_type,
-            fields: vec![(score_slot, Register(1))],
+            fields: vec![(score_slot, score_name, Register(1))],
         };
         let tag_check = InstructionKind::EnumTagEqual {
             dst: Register(2),
@@ -794,7 +797,7 @@ mod tests {
         assert!(matches!(
             record,
             InstructionKind::MakeRecord { ty, fields, .. }
-                if ty == player_type && fields == vec![(score_slot, Register(1))]
+                if ty == player_type && fields == vec![(score_slot, score_name, Register(1))]
         ));
         assert!(matches!(
             tag_check,

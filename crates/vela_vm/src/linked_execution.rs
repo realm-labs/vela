@@ -1,5 +1,8 @@
 use vela_bytecode::linked::{InstructionKind, LinkedMethodDispatchKind};
-use vela_bytecode::{InstructionOffset, LinkedCodeObject, LinkedProgram};
+use vela_bytecode::{
+    DebugNameId, FieldSlot, InstructionOffset, LinkedCodeObject, LinkedProgram, Register,
+    TypeHandle,
+};
 use vela_common::Span;
 
 use super::*;
@@ -483,6 +486,49 @@ impl Vm {
                         &mut frame, *dst, *start, *end, *inclusive,
                     )?;
                 }
+                InstructionKind::MakeRecord { dst, ty, fields } => {
+                    let type_name = linked_type_name(call.program, *ty, "MakeRecord")?;
+                    let fields = linked_record_fields(call.program, fields);
+                    script_object_construction::make_record(
+                        &mut frame,
+                        heap.as_deref_mut(),
+                        budget.as_deref_mut(),
+                        *dst,
+                        type_name,
+                        &fields,
+                    )?;
+                }
+                InstructionKind::GetRecordSlot {
+                    dst,
+                    record,
+                    field,
+                    debug_name,
+                } => {
+                    field_access::dispatch_get_record_slot(
+                        &mut frame,
+                        heap.as_deref_mut(),
+                        *dst,
+                        *record,
+                        call.program.debug_name(*debug_name),
+                        field.index(),
+                    )?;
+                }
+                InstructionKind::SetRecordSlot {
+                    record,
+                    field,
+                    debug_name,
+                    src,
+                } => {
+                    field_access::dispatch_set_record_slot(
+                        &mut frame,
+                        heap.as_deref_mut(),
+                        budget.as_deref_mut(),
+                        *record,
+                        call.program.debug_name(*debug_name),
+                        field.index(),
+                        *src,
+                    )?;
+                }
                 InstructionKind::GetIndex { dst, base, index } => {
                     let value = indexing::get_index(
                         frame.read(*base)?,
@@ -853,6 +899,27 @@ fn linked_range_next(
         validate_linked_jump(code, step.jump_if_done.0)?;
         Ok(Some(step.jump_if_done.0))
     }
+}
+
+fn linked_type_name<'program>(
+    program: &'program LinkedProgram,
+    ty: TypeHandle,
+    opcode: &'static str,
+) -> VmResult<&'program str> {
+    let ty = program
+        .ty(ty)
+        .ok_or_else(|| VmError::new(VmErrorKind::UnsupportedLinkedInstruction { opcode }))?;
+    Ok(program.debug_name(ty.debug_name))
+}
+
+fn linked_record_fields(
+    program: &LinkedProgram,
+    fields: &[(FieldSlot, DebugNameId, Register)],
+) -> Vec<(String, Register)> {
+    fields
+        .iter()
+        .map(|(_, debug_name, register)| (program.debug_name(*debug_name).to_owned(), *register))
+        .collect()
 }
 
 fn linked_opcode_name(kind: &InstructionKind) -> &'static str {

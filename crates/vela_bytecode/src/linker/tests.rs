@@ -260,11 +260,16 @@ fn linker_maps_globals_map_keys_and_field_slots_without_instruction_names() {
     assert!(matches!(
         &main.instructions[2].kind,
         InstructionKind::MakeRecord { fields, .. }
-            if fields == &vec![(FieldSlot::new(1), Register(0)), (FieldSlot::new(0), Register(1))]
+            if fields.iter().map(|(slot, debug_name, register)| (*slot, linked.debug_name(*debug_name), *register)).collect::<Vec<_>>()
+                == vec![
+                    (FieldSlot::new(1), "score", Register(0)),
+                    (FieldSlot::new(0), "level", Register(1)),
+                ]
     ));
     assert!(matches!(
         main.instructions[3].kind,
-        InstructionKind::GetRecordSlot { field, .. } if field == FieldSlot::new(1)
+        InstructionKind::GetRecordSlot { field, debug_name, .. }
+            if field == FieldSlot::new(1) && linked.debug_name(debug_name) == "score"
     ));
 }
 

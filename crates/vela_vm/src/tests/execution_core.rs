@@ -447,6 +447,71 @@ fn linked_program_executes_array_and_index_ops() {
 }
 
 #[test]
+fn linked_program_executes_record_slot_reads_and_writes() {
+    let mut program = vela_bytecode::LinkedProgram::new();
+    let main_name = program.intern_debug_name("main");
+    let reward_name = program.intern_debug_name("Reward");
+    let count_name = program.intern_debug_name("count");
+    let item_name = program.intern_debug_name("item_id");
+    let reward_type = program.push_type(vela_bytecode::LinkedType::new(
+        vela_def::TypeId::new(0x77),
+        reward_name,
+    ));
+
+    let mut code = vela_bytecode::LinkedCodeObject::new(main_name, 3);
+    let initial = code.push_constant(Constant::Int(2));
+    let updated = code.push_constant(Constant::Int(5));
+    code.push_instruction(vela_bytecode::linked::Instruction::new(
+        vela_bytecode::linked::InstructionKind::LoadConst {
+            dst: Register(0),
+            constant: initial,
+        },
+    ));
+    code.push_instruction(vela_bytecode::linked::Instruction::new(
+        vela_bytecode::linked::InstructionKind::MakeRecord {
+            dst: Register(1),
+            ty: reward_type,
+            fields: vec![
+                (vela_bytecode::FieldSlot::new(1), item_name, Register(0)),
+                (vela_bytecode::FieldSlot::new(0), count_name, Register(0)),
+            ],
+        },
+    ));
+    code.push_instruction(vela_bytecode::linked::Instruction::new(
+        vela_bytecode::linked::InstructionKind::LoadConst {
+            dst: Register(0),
+            constant: updated,
+        },
+    ));
+    code.push_instruction(vela_bytecode::linked::Instruction::new(
+        vela_bytecode::linked::InstructionKind::SetRecordSlot {
+            record: Register(1),
+            field: vela_bytecode::FieldSlot::new(0),
+            debug_name: count_name,
+            src: Register(0),
+        },
+    ));
+    code.push_instruction(vela_bytecode::linked::Instruction::new(
+        vela_bytecode::linked::InstructionKind::GetRecordSlot {
+            dst: Register(2),
+            record: Register(1),
+            field: vela_bytecode::FieldSlot::new(0),
+            debug_name: count_name,
+        },
+    ));
+    code.push_instruction(vela_bytecode::linked::Instruction::new(
+        vela_bytecode::linked::InstructionKind::Return { src: Register(2) },
+    ));
+    let function = program.push_function(code);
+    program.set_entry_point(main_name, function);
+
+    assert_eq!(
+        Vm::new().run_linked_program(&program, "main", &[]),
+        Ok(OwnedValue::Int(5))
+    );
+}
+
+#[test]
 fn branches_on_false_conditions() {
     let mut code = UnlinkedCodeObject::new("branch", 3);
     let false_id = code.push_constant(Constant::Bool(false));

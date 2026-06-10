@@ -504,7 +504,13 @@ impl<'linker, 'registry> LinkContext<'linker, 'registry> {
                 let field_slots = sorted_field_slots(fields.iter().map(|(field, _)| field));
                 let fields = fields
                     .iter()
-                    .map(|(field, register)| (FieldSlot::new(field_slots[field]), *register))
+                    .map(|(field, register)| {
+                        (
+                            FieldSlot::new(field_slots[field]),
+                            self.linked.intern_debug_name(field.clone()),
+                            *register,
+                        )
+                    })
                     .collect();
                 InstructionKind::MakeRecord {
                     dst: *dst,
@@ -539,11 +545,15 @@ impl<'linker, 'registry> LinkContext<'linker, 'registry> {
                 });
             }
             UnlinkedInstructionKind::GetRecordSlot {
-                dst, record, slot, ..
+                dst,
+                record,
+                field,
+                slot,
             } => InstructionKind::GetRecordSlot {
                 dst: *dst,
                 record: *record,
                 field: FieldSlot::new(*slot),
+                debug_name: self.linked.intern_debug_name(field.clone()),
             },
             UnlinkedInstructionKind::SetRecordField { field, .. } => {
                 return Err(LinkError::UnresolvedRecordField {
@@ -552,10 +562,14 @@ impl<'linker, 'registry> LinkContext<'linker, 'registry> {
                 });
             }
             UnlinkedInstructionKind::SetRecordSlot {
-                record, slot, src, ..
+                record,
+                field,
+                slot,
+                src,
             } => InstructionKind::SetRecordSlot {
                 record: *record,
                 field: FieldSlot::new(*slot),
+                debug_name: self.linked.intern_debug_name(field.clone()),
                 src: *src,
             },
             UnlinkedInstructionKind::GetEnumField { field, .. } => {

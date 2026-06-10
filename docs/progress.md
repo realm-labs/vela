@@ -215,10 +215,12 @@ Cranelift JIT.
   future counters, cache state, or JIT decisions can be version-scoped and
   invalidated with the version; rejected reloads keep the previous version
   profile unchanged.
-  The VM now has an initial linked-program execution entry for scalar,
-  comparison, branch, return, and budget-charged instructions without rebuilding
-  unlinked code; linked call, method, aggregate, host, global, and iterator
-  instruction families remain to move before Task 6.1 is complete.
+  The VM now has linked-program execution for scalar, comparison, branch,
+  return, budget-charged instructions, script/native/value/script-method calls,
+  array/map/range/index/iterator/global/host operations, and record slot
+  construction/read/write without rebuilding unlinked code; linked closure
+  opcodes, enum object operations, and host-method `CallMethod` dispatch remain
+  to move before Task 6.1 is complete.
   Script function dispatch is being isolated behind a focused call boundary so
   later resolved-target work does not grow the main VM loop or change current
   hot-reload rename semantics. Closure creation and invocation now have a

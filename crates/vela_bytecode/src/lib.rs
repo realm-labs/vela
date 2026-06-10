@@ -26,6 +26,7 @@ pub use linked::{
 };
 pub use linker::{LinkError, Linker};
 pub use program_image::ProgramImage;
+pub use vela_registry::DebugNameId;
 
 use crate::script_methods::ScriptMethodTable;
 
