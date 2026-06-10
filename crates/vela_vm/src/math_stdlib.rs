@@ -33,9 +33,30 @@ pub(super) fn expect_arity(name: &str, args: &[OwnedValue], expected: usize) -> 
 #[cfg(test)]
 mod tests {
     use vela_bytecode::compiler::compile_function_source;
+    use vela_bytecode::{Linker, UnlinkedCodeObject, UnlinkedProgram};
     use vela_common::SourceId;
 
-    use crate::{ExecutionBudget, OwnedValue, Vm};
+    use crate::{ExecutionBudget, OwnedValue, Vm, VmResult};
+
+    fn run_linked_math_code(
+        vm: &Vm,
+        code: UnlinkedCodeObject,
+        budget: &mut ExecutionBudget,
+    ) -> VmResult<OwnedValue> {
+        let entry = code.name.clone();
+        let mut program = UnlinkedProgram::new();
+        program.insert_function(code);
+        let mut linker = Linker::new();
+        vm.native_ids
+            .keys()
+            .chain(vm.host_native_ids.keys())
+            .copied()
+            .for_each(|id| linker.add_native_implementation(id));
+        let linked = linker
+            .link_program(&program)
+            .expect("math test program should link");
+        vm.run_linked_program_with_budget(&linked, &entry, &[], budget)
+    }
 
     #[test]
     fn runs_compiled_math_distance2d() {
@@ -52,8 +73,10 @@ fn main() {
             .expect("math distance2d source should compile");
         let mut vm = Vm::new();
         vm.register_standard_natives();
+        let mut budget = ExecutionBudget::unbounded();
 
-        let result = vm.run(&code).expect("math distance2d should run");
+        let result =
+            run_linked_math_code(&vm, code, &mut budget).expect("math distance2d should run");
         assert_eq!(result, OwnedValue::Int(5));
     }
 
@@ -72,8 +95,10 @@ fn main() {
             .expect("math distance3d source should compile");
         let mut vm = Vm::new();
         vm.register_standard_natives();
+        let mut budget = ExecutionBudget::unbounded();
 
-        let result = vm.run(&code).expect("math distance3d should run");
+        let result =
+            run_linked_math_code(&vm, code, &mut budget).expect("math distance3d should run");
         assert_eq!(result, OwnedValue::Int(7));
     }
 
@@ -91,8 +116,9 @@ fn main() {
             .expect("math pow source should compile");
         let mut vm = Vm::new();
         vm.register_standard_natives();
+        let mut budget = ExecutionBudget::unbounded();
 
-        let result = vm.run(&code).expect("math pow should run");
+        let result = run_linked_math_code(&vm, code, &mut budget).expect("math pow should run");
         assert_eq!(result, OwnedValue::Int(8));
     }
 
@@ -110,8 +136,9 @@ fn main() {
             .expect("math sqrt source should compile");
         let mut vm = Vm::new();
         vm.register_standard_natives();
+        let mut budget = ExecutionBudget::unbounded();
 
-        let result = vm.run(&code).expect("math sqrt should run");
+        let result = run_linked_math_code(&vm, code, &mut budget).expect("math sqrt should run");
         assert_eq!(result, OwnedValue::Int(4));
     }
 
@@ -129,8 +156,9 @@ fn main() {
             .expect("math sign source should compile");
         let mut vm = Vm::new();
         vm.register_standard_natives();
+        let mut budget = ExecutionBudget::unbounded();
 
-        let result = vm.run(&code).expect("math sign should run");
+        let result = run_linked_math_code(&vm, code, &mut budget).expect("math sign should run");
         assert_eq!(result, OwnedValue::Int(0));
     }
 
@@ -152,8 +180,10 @@ fn main() {
             .expect("math move_towards source should compile");
         let mut vm = Vm::new();
         vm.register_standard_natives();
+        let mut budget = ExecutionBudget::unbounded();
 
-        let result = vm.run(&code).expect("math move_towards should run");
+        let result =
+            run_linked_math_code(&vm, code, &mut budget).expect("math move_towards should run");
         assert_eq!(result, OwnedValue::Int(19));
     }
 
@@ -170,9 +200,8 @@ fn main() {
         vm.register_standard_natives();
         let mut budget = ExecutionBudget::unbounded();
 
-        let result = vm
-            .run_with_managed_heap_and_budget(&code, &mut budget)
-            .expect("heap math distance2d should run");
+        let result =
+            run_linked_math_code(&vm, code, &mut budget).expect("heap math distance2d should run");
         assert_eq!(result, OwnedValue::Bool(true));
     }
 
@@ -189,9 +218,8 @@ fn main() {
         vm.register_standard_natives();
         let mut budget = ExecutionBudget::unbounded();
 
-        let result = vm
-            .run_with_managed_heap_and_budget(&code, &mut budget)
-            .expect("heap math distance3d should run");
+        let result =
+            run_linked_math_code(&vm, code, &mut budget).expect("heap math distance3d should run");
         assert_eq!(result, OwnedValue::Bool(true));
     }
 
@@ -208,9 +236,8 @@ fn main() {
         vm.register_standard_natives();
         let mut budget = ExecutionBudget::unbounded();
 
-        let result = vm
-            .run_with_managed_heap_and_budget(&code, &mut budget)
-            .expect("heap math pow should run");
+        let result =
+            run_linked_math_code(&vm, code, &mut budget).expect("heap math pow should run");
         assert_eq!(result, OwnedValue::Bool(true));
     }
 
@@ -227,9 +254,8 @@ fn main() {
         vm.register_standard_natives();
         let mut budget = ExecutionBudget::unbounded();
 
-        let result = vm
-            .run_with_managed_heap_and_budget(&code, &mut budget)
-            .expect("heap math sqrt should run");
+        let result =
+            run_linked_math_code(&vm, code, &mut budget).expect("heap math sqrt should run");
         assert_eq!(result, OwnedValue::Bool(true));
     }
 
@@ -246,9 +272,8 @@ fn main() {
         vm.register_standard_natives();
         let mut budget = ExecutionBudget::unbounded();
 
-        let result = vm
-            .run_with_managed_heap_and_budget(&code, &mut budget)
-            .expect("heap math sign should run");
+        let result =
+            run_linked_math_code(&vm, code, &mut budget).expect("heap math sign should run");
         assert_eq!(result, OwnedValue::Bool(true));
     }
 
@@ -267,8 +292,7 @@ fn main() {
         vm.register_standard_natives();
         let mut budget = ExecutionBudget::unbounded();
 
-        let result = vm
-            .run_with_managed_heap_and_budget(&code, &mut budget)
+        let result = run_linked_math_code(&vm, code, &mut budget)
             .expect("heap math move_towards should run");
         assert_eq!(result, OwnedValue::Bool(true));
     }
@@ -284,9 +308,9 @@ fn main() {
             .expect("math distance2d type error source should compile");
         let mut vm = Vm::new();
         vm.register_standard_natives();
+        let mut budget = ExecutionBudget::unbounded();
 
-        let error = vm
-            .run(&code)
+        let error = run_linked_math_code(&vm, code, &mut budget)
             .expect_err("math distance2d should reject non-numeric values");
         assert_eq!(
             error.kind(),
@@ -307,9 +331,9 @@ fn main() {
             .expect("math pow type error source should compile");
         let mut vm = Vm::new();
         vm.register_standard_natives();
+        let mut budget = ExecutionBudget::unbounded();
 
-        let error = vm
-            .run(&code)
+        let error = run_linked_math_code(&vm, code, &mut budget)
             .expect_err("math pow should reject non-numeric values");
         assert_eq!(
             error.kind(),
@@ -330,9 +354,9 @@ fn main() {
             .expect("math sqrt negative source should compile");
         let mut vm = Vm::new();
         vm.register_standard_natives();
+        let mut budget = ExecutionBudget::unbounded();
 
-        let error = vm
-            .run(&code)
+        let error = run_linked_math_code(&vm, code, &mut budget)
             .expect_err("math sqrt should reject negative values");
         assert_eq!(
             error.kind(),
@@ -353,9 +377,9 @@ fn main() {
             .expect("math sqrt type error source should compile");
         let mut vm = Vm::new();
         vm.register_standard_natives();
+        let mut budget = ExecutionBudget::unbounded();
 
-        let error = vm
-            .run(&code)
+        let error = run_linked_math_code(&vm, code, &mut budget)
             .expect_err("math sqrt should reject non-numeric values");
         assert_eq!(
             error.kind(),
@@ -376,9 +400,9 @@ fn main() {
             .expect("math sign type error source should compile");
         let mut vm = Vm::new();
         vm.register_standard_natives();
+        let mut budget = ExecutionBudget::unbounded();
 
-        let error = vm
-            .run(&code)
+        let error = run_linked_math_code(&vm, code, &mut budget)
             .expect_err("math sign should reject non-numeric values");
         assert_eq!(
             error.kind(),
@@ -399,9 +423,9 @@ fn main() {
             .expect("math move_towards negative delta source should compile");
         let mut vm = Vm::new();
         vm.register_standard_natives();
+        let mut budget = ExecutionBudget::unbounded();
 
-        let error = vm
-            .run(&code)
+        let error = run_linked_math_code(&vm, code, &mut budget)
             .expect_err("math move_towards should reject negative max_delta");
         assert_eq!(
             error.kind(),
@@ -422,9 +446,9 @@ fn main() {
             .expect("math lerp non-finite source should compile");
         let mut vm = Vm::new();
         vm.register_standard_natives();
+        let mut budget = ExecutionBudget::unbounded();
 
-        let error = vm
-            .run(&code)
+        let error = run_linked_math_code(&vm, code, &mut budget)
             .expect_err("math lerp should reject non-finite results");
         assert_eq!(
             error.kind(),
@@ -445,9 +469,9 @@ fn main() {
             .expect("math move_towards type error source should compile");
         let mut vm = Vm::new();
         vm.register_standard_natives();
+        let mut budget = ExecutionBudget::unbounded();
 
-        let error = vm
-            .run(&code)
+        let error = run_linked_math_code(&vm, code, &mut budget)
             .expect_err("math move_towards should reject non-numeric values");
         assert_eq!(
             error.kind(),
@@ -468,9 +492,9 @@ fn main() {
             .expect("math pow non-finite source should compile");
         let mut vm = Vm::new();
         vm.register_standard_natives();
+        let mut budget = ExecutionBudget::unbounded();
 
-        let error = vm
-            .run(&code)
+        let error = run_linked_math_code(&vm, code, &mut budget)
             .expect_err("math pow should reject non-finite results");
         assert_eq!(
             error.kind(),
@@ -491,9 +515,9 @@ fn main() {
             .expect("math distance3d type error source should compile");
         let mut vm = Vm::new();
         vm.register_standard_natives();
+        let mut budget = ExecutionBudget::unbounded();
 
-        let error = vm
-            .run(&code)
+        let error = run_linked_math_code(&vm, code, &mut budget)
             .expect_err("math distance3d should reject non-numeric values");
         assert_eq!(
             error.kind(),
