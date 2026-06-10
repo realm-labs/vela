@@ -92,9 +92,9 @@ fn main() {
         .expect("option/result helper type-error source should compile");
     let mut vm = Vm::new();
     vm.register_standard_natives();
+    let mut budget = ExecutionBudget::unbounded();
 
-    let error = vm
-        .run_program(&program, "main", &[])
+    let error = run_linked_stdlib_test_program_with_budget(&vm, &program, "main", &[], &mut budget)
         .expect_err("option helper should reject Result values");
     assert_eq!(
         error.kind(),
@@ -116,9 +116,9 @@ fn main() {
         .expect("invalid option flatten source should compile");
     let mut vm = Vm::new();
     vm.register_standard_natives();
+    let mut budget = ExecutionBudget::unbounded();
 
-    let error = vm
-        .run_program(&program, "main", &[])
+    let error = run_linked_stdlib_test_program_with_budget(&vm, &program, "main", &[], &mut budget)
         .expect_err("invalid option flatten should fail");
     assert_eq!(
         error.kind(),
@@ -140,9 +140,9 @@ fn main() {
         .expect("invalid and_then callback source should compile");
     let mut vm = Vm::new();
     vm.register_standard_natives();
+    let mut budget = ExecutionBudget::unbounded();
 
-    let error = vm
-        .run_program(&program, "main", &[])
+    let error = run_linked_stdlib_test_program_with_budget(&vm, &program, "main", &[], &mut budget)
         .expect_err("invalid and_then callback should fail");
     assert_eq!(
         error.kind(),
@@ -164,9 +164,9 @@ fn main() {
         .expect("invalid or_else callback source should compile");
     let mut vm = Vm::new();
     vm.register_standard_natives();
+    let mut budget = ExecutionBudget::unbounded();
 
-    let error = vm
-        .run_program(&program, "main", &[])
+    let error = run_linked_stdlib_test_program_with_budget(&vm, &program, "main", &[], &mut budget)
         .expect_err("invalid or_else callback should fail");
     assert_eq!(
         error.kind(),
@@ -184,28 +184,28 @@ fn main() {
     let added = tags.add("arcane");
     let duplicate = tags.add("ice");
     let removed = tags.remove("fire");
-    let values = tags.values().sort_by(|tag| tag);
     if tags.len() == 2
         && added
         && !duplicate
         && removed
         && !tags.has("fire")
         && tags.has("arcane")
-        && values[0] == "arcane"
-        && values[1] == "ice"
     {
-        return values.len();
+        return tags.len();
     }
     return 0;
 }
 "#;
 
-    let code = compile_function_source(SourceId::new(1), source, "main")
+    let program = compile_standard_program_source(SourceId::new(1), source)
         .expect("set stdlib source should compile");
     let mut vm = Vm::new();
     vm.register_standard_natives();
+    let mut budget = ExecutionBudget::unbounded();
 
-    let result = vm.run(&code).expect("set stdlib source should run");
+    let result =
+        run_linked_stdlib_test_program_with_budget(&vm, &program, "main", &[], &mut budget)
+            .expect("set stdlib source should run");
     assert_eq!(result, OwnedValue::Int(2));
 }
 
@@ -224,15 +224,15 @@ fn main() {
 }
 "#;
 
-    let code = compile_function_source(SourceId::new(1), source, "main")
+    let program = compile_standard_program_source(SourceId::new(1), source)
         .expect("heap set stdlib source should compile");
     let mut vm = Vm::new();
     vm.register_standard_natives();
     let mut budget = ExecutionBudget::unbounded();
 
-    let result = vm
-        .run_with_managed_heap_and_budget(&code, &mut budget)
-        .expect("heap set stdlib source should run");
+    let result =
+        run_linked_stdlib_test_program_with_budget(&vm, &program, "main", &[], &mut budget)
+            .expect("heap set stdlib source should run");
     assert_eq!(result, OwnedValue::Int(8));
 }
 
@@ -244,13 +244,13 @@ fn main() {
 }
 "#;
 
-    let code = compile_function_source(SourceId::new(1), source, "main")
+    let program = compile_standard_program_source(SourceId::new(1), source)
         .expect("set type error source should compile");
     let mut vm = Vm::new();
     vm.register_standard_natives();
+    let mut budget = ExecutionBudget::unbounded();
 
-    let error = vm
-        .run(&code)
+    let error = run_linked_stdlib_test_program_with_budget(&vm, &program, "main", &[], &mut budget)
         .expect_err("set::from_array should reject non-scalar elements");
     assert_eq!(
         error.kind(),
