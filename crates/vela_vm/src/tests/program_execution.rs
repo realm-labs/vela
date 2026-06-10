@@ -224,7 +224,7 @@ fn main() {
     )
     .expect("compile const expression source");
 
-    assert_eq!(Vm::new().run(&code), Ok(OwnedValue::Int(20)));
+    assert_eq!(run_linked_test_code(code), Ok(OwnedValue::Int(20)));
 }
 
 #[test]
@@ -235,14 +235,18 @@ fn runs_compiled_native_call_source() {
         Ok(OwnedValue::Int(7))
     });
 
-    let code = compile_function_source(
+    let program = compile_standard_program_source_with_native_functions(
         SourceId::new(1),
         "fn main() { return log(\"compiled\"); }",
-        "main",
+        &["log"],
     )
     .expect("compile native call source");
+    let mut budget = ExecutionBudget::unbounded();
 
-    assert_eq!(vm.run(&code), Ok(OwnedValue::Int(7)));
+    assert_eq!(
+        run_linked_test_program_with_budget(&vm, &program, "main", &[], &mut budget),
+        Ok(OwnedValue::Int(7))
+    );
 }
 
 #[test]
@@ -252,19 +256,25 @@ fn heap_execution_materializes_native_args_and_stores_result() {
         assert_eq!(args, [OwnedValue::String("compiled".into())]);
         Ok(OwnedValue::String("native-result".into()))
     });
-    let code = compile_function_source(
+    let program = compile_standard_program_source_with_native_functions(
         SourceId::new(1),
         "fn main() { return echo_label(\"compiled\"); }",
-        "main",
+        &["echo_label"],
     )
     .expect("compile native call source");
     let mut heap = ScriptHeap::new();
     let mut heap_execution = HeapExecution::new(&mut heap);
     let mut budget = ExecutionBudget::new(u64::MAX, 4096, usize::MAX);
 
-    let result = vm
-        .run_with_heap_and_budget(&code, &mut heap_execution, &mut budget)
-        .expect("run heap native call");
+    let result = run_linked_test_program_runtime_with_heap_and_budget(
+        &vm,
+        &program,
+        "main",
+        &[],
+        &mut heap_execution,
+        &mut budget,
+    )
+    .expect("run heap native call");
 
     let RuntimeValue::HeapRef(result_ref) = result else {
         panic!("expected heap-backed native result");
@@ -291,9 +301,10 @@ fn main() {
 "#,
     )
     .expect("compile program source");
+    let mut budget = ExecutionBudget::unbounded();
 
     assert_eq!(
-        Vm::new().run_program(&program, "main", &[]),
+        run_linked_test_program_with_budget(&Vm::new(), &program, "main", &[], &mut budget),
         Ok(OwnedValue::Int(30))
     );
 }
@@ -339,9 +350,10 @@ fn main() {
 "#,
     )
     .expect("compile named args and parameter defaults");
+    let mut budget = ExecutionBudget::unbounded();
 
     assert_eq!(
-        Vm::new().run_program(&program, "main", &[]),
+        run_linked_test_program_with_budget(&Vm::new(), &program, "main", &[], &mut budget),
         Ok(OwnedValue::Int(16))
     );
 }
@@ -359,7 +371,7 @@ fn main(value = 7) {
     )
     .expect("compile entrypoint default");
 
-    assert_eq!(Vm::new().run(&code), Ok(OwnedValue::Int(8)));
+    assert_eq!(run_linked_test_code(code), Ok(OwnedValue::Int(8)));
 }
 
 #[test]
@@ -378,9 +390,10 @@ fn main() {
 "#,
     )
     .expect("compile captured lambda");
+    let mut budget = ExecutionBudget::unbounded();
 
     assert_eq!(
-        Vm::new().run_program(&program, "main", &[]),
+        run_linked_test_program_with_budget(&Vm::new(), &program, "main", &[], &mut budget),
         Ok(OwnedValue::Int(15))
     );
 }
@@ -453,9 +466,10 @@ fn main() {
 "#,
     )
     .expect("compile nested captured lambda");
+    let mut budget = ExecutionBudget::unbounded();
 
     assert_eq!(
-        Vm::new().run_program(&program, "main", &[]),
+        run_linked_test_program_with_budget(&Vm::new(), &program, "main", &[], &mut budget),
         Ok(OwnedValue::Int(21))
     );
 }
@@ -475,7 +489,7 @@ fn main() {
     )
     .expect("compile immediate lambda call");
 
-    assert_eq!(Vm::new().run(&code), Ok(OwnedValue::Int(11)));
+    assert_eq!(run_linked_test_code(code), Ok(OwnedValue::Int(11)));
 }
 
 #[test]
@@ -507,9 +521,10 @@ fn missing() {
 "#,
     )
     .expect("compile option propagation");
+    let mut budget = ExecutionBudget::unbounded();
 
     assert_eq!(
-        Vm::new().run_program(&program, "present", &[]),
+        run_linked_test_program_with_budget(&Vm::new(), &program, "present", &[], &mut budget),
         Ok(OwnedValue::Enum {
             enum_name: "Option".into(),
             variant: "Some".into(),
@@ -517,7 +532,7 @@ fn missing() {
         })
     );
     assert_eq!(
-        Vm::new().run_program(&program, "missing", &[]),
+        run_linked_test_program_with_budget(&Vm::new(), &program, "missing", &[], &mut budget),
         Ok(OwnedValue::Enum {
             enum_name: "Option".into(),
             variant: "None".into(),
