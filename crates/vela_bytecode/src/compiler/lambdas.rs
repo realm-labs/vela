@@ -9,6 +9,7 @@ use vela_syntax::ast::{
 
 use crate::{Register, UnlinkedCodeObject, UnlinkedInstructionKind};
 
+use super::record_shapes::ValueShape;
 use super::{CompileResult, Compiler};
 
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -34,6 +35,16 @@ impl Compiler<'_, '_> {
         lambda: &Expr,
         params: &[Param],
         body: &Expr,
+    ) -> CompileResult<Register> {
+        self.compile_lambda_with_callback_shapes(lambda, params, body, &[])
+    }
+
+    pub(super) fn compile_lambda_with_callback_shapes(
+        &mut self,
+        lambda: &Expr,
+        params: &[Param],
+        body: &Expr,
+        callback_shapes: &[Option<ValueShape>],
     ) -> CompileResult<Register> {
         let captures = collect_lambda_captures(self.bindings, &self.hir_locals, body);
         let capture_registers = captures
@@ -70,6 +81,33 @@ impl Compiler<'_, '_> {
                     &capture.name,
                     Some(value_shape),
                 );
+            }
+        }
+        for (index, shape) in callback_shapes.iter().enumerate() {
+            let Some(shape) = shape else {
+                continue;
+            };
+            let Some(param) = params.get(index) else {
+                continue;
+            };
+            if let Some(local) = self.bindings.local_named_at(
+                &param.name,
+                vela_hir::binding::LocalBindingKind::LambdaParameter,
+                param.span,
+            ) {
+                lambda_compiler
+                    .value_types
+                    .set_local(local, &param.name, shape.value_type());
+                lambda_compiler
+                    .value_shapes
+                    .set_local(local, &param.name, Some(shape.clone()));
+            } else {
+                lambda_compiler
+                    .value_types
+                    .set_name(&param.name, shape.value_type());
+                lambda_compiler
+                    .value_shapes
+                    .set_name(&param.name, Some(shape.clone()));
             }
         }
         let code = lambda_compiler.compile_lambda_body(body)?;

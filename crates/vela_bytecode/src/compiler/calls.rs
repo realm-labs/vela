@@ -4,6 +4,7 @@ use crate::{CallArgument, UnlinkedInstructionKind};
 
 use super::call_args::resolve_script_call_arguments;
 use super::methods::host_method_call;
+use super::record_shapes::{ValueShape, callback_param_shapes};
 use super::{CompileError, CompileErrorKind, CompileResult, Compiler, reject_named_args};
 use vela_common::{Diagnostic, HostMethodId, Span};
 use vela_def::{DefPath, FunctionId, MethodId, TypeId};
@@ -147,13 +148,17 @@ impl Compiler<'_, '_> {
         args: &[Argument],
     ) -> CompileResult<crate::Register> {
         let receiver_type = self.script_type_for_expr(base);
-        let value_receiver_type = self.value_type_for_expr(base);
+        let receiver_shape = self.value_shape_for_expr(base);
+        let value_receiver_type = self
+            .value_type_for_expr(base)
+            .or_else(|| receiver_shape.as_ref().and_then(ValueShape::value_type));
         let method_id = receiver_type
             .as_deref()
             .and_then(|type_name| self.script_method_id_for_type(type_name, name));
         let arg_registers = self.compile_script_method_call_args(
             receiver_type.as_deref(),
             value_receiver_type.as_deref(),
+            receiver_shape.as_ref(),
             name,
             args,
             expr.span,
@@ -208,13 +213,17 @@ impl Compiler<'_, '_> {
         args: &[Argument],
     ) -> CompileResult<crate::Register> {
         let receiver_type = self.script_type_for_receiver_path(receiver_path);
-        let value_receiver_type = self.value_type_for_receiver_path(receiver_path);
+        let receiver_shape = self.value_shape_for_receiver_path(receiver_path);
+        let value_receiver_type = self
+            .value_type_for_receiver_path(receiver_path)
+            .or_else(|| receiver_shape.as_ref().and_then(ValueShape::value_type));
         let method_id = receiver_type
             .as_deref()
             .and_then(|type_name| self.script_method_id_for_type(type_name, method));
         let arg_registers = self.compile_script_method_call_args(
             receiver_type.as_deref(),
             value_receiver_type.as_deref().or(receiver_type.as_deref()),
+            receiver_shape.as_ref(),
             method,
             args,
             expr.span,
@@ -264,6 +273,7 @@ impl Compiler<'_, '_> {
         &mut self,
         receiver_type: Option<&str>,
         value_receiver_type: Option<&str>,
+        receiver_shape: Option<&ValueShape>,
         method: &str,
         args: &[Argument],
         call_span: vela_common::Span,
@@ -271,6 +281,7 @@ impl Compiler<'_, '_> {
         let Some(receiver_type) = receiver_type else {
             return self.compile_value_method_call_args(
                 value_receiver_type,
+                receiver_shape,
                 method,
                 args,
                 call_span,
@@ -279,6 +290,7 @@ impl Compiler<'_, '_> {
         let Some(params) = self.script_method_params(receiver_type, method) else {
             return self.compile_value_method_call_args(
                 value_receiver_type.or(Some(receiver_type)),
+                receiver_shape,
                 method,
                 args,
                 call_span,
@@ -308,6 +320,7 @@ impl Compiler<'_, '_> {
     fn compile_value_method_call_args(
         &mut self,
         receiver_type: Option<&str>,
+        receiver_shape: Option<&ValueShape>,
         method: &str,
         args: &[Argument],
         call_span: Span,
@@ -315,10 +328,10 @@ impl Compiler<'_, '_> {
         let registry_params = self.registry_value_method_params(receiver_type, method);
         let Some(params) = registry_params else {
             reject_named_args(args, "script method call")?;
-            return self.compile_positional_method_args(args);
+            return self.compile_positional_method_args(receiver_shape, method, args);
         };
         if !args.iter().any(|arg| arg.name.is_some()) {
-            return self.compile_positional_method_args(args);
+            return self.compile_positional_method_args(receiver_shape, method, args);
         }
         let params = registry_param_hints(params, call_span);
         let slots =
@@ -329,7 +342,11 @@ impl Compiler<'_, '_> {
         let mut registers = Vec::new();
         for (slot, param) in slots.into_iter().zip(params) {
             if let Some(arg) = slot {
-                registers.push(CallArgument::Register(self.compile_expr(&arg.value)?));
+                registers.push(CallArgument::Register(self.compile_method_arg(
+                    receiver_shape,
+                    method,
+                    arg,
+                )?));
             } else if param.default_value_span.is_none() {
                 unreachable!("call argument resolver rejects missing required arguments");
             }
@@ -339,11 +356,34 @@ impl Compiler<'_, '_> {
 
     fn compile_positional_method_args(
         &mut self,
+        receiver_shape: Option<&ValueShape>,
+        method: &str,
         args: &[Argument],
     ) -> CompileResult<Vec<CallArgument>> {
         args.iter()
-            .map(|arg| self.compile_expr(&arg.value).map(CallArgument::Register))
+            .map(|arg| {
+                self.compile_method_arg(receiver_shape, method, arg)
+                    .map(CallArgument::Register)
+            })
             .collect()
+    }
+
+    fn compile_method_arg(
+        &mut self,
+        receiver_shape: Option<&ValueShape>,
+        method: &str,
+        arg: &Argument,
+    ) -> CompileResult<crate::Register> {
+        let ExprKind::Lambda { params, body } = &arg.value.kind else {
+            return self.compile_expr(&arg.value);
+        };
+        let Some(receiver_shape) = receiver_shape else {
+            return self.compile_expr(&arg.value);
+        };
+        let Some(param_shapes) = callback_param_shapes(receiver_shape, method, params.len()) else {
+            return self.compile_expr(&arg.value);
+        };
+        self.compile_lambda_with_callback_shapes(&arg.value, params, body, &param_shapes)
     }
 
     fn compile_metadata_register_args(

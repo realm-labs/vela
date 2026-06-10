@@ -5,12 +5,14 @@ use vela_hir::module_graph::ModuleGraph;
 use vela_hir::type_hint::{EnumVariantFieldsHint, HirTypeHint};
 
 use super::script_types::{ScriptTypeFact, type_hint_script_type};
+use super::value_types::type_hint_value_type;
 
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
 pub(super) struct ScriptFieldSlots {
     record_slots: BTreeMap<(String, String), usize>,
     enum_slots: BTreeMap<(String, String, String), usize>,
     enum_field_facts: BTreeMap<(String, String, String), ScriptTypeFact>,
+    enum_field_value_types: BTreeMap<(String, String, String), String>,
 }
 
 impl ScriptFieldSlots {
@@ -21,6 +23,7 @@ impl ScriptFieldSlots {
         let mut record_slots = BTreeMap::new();
         let mut enum_slots = BTreeMap::new();
         let mut enum_field_facts = BTreeMap::new();
+        let mut enum_field_value_types = BTreeMap::new();
         let type_names = type_symbols.values().collect::<Vec<_>>();
 
         for (declaration, type_name) in type_symbols {
@@ -41,15 +44,20 @@ impl ScriptFieldSlots {
                         );
                     }
                     for (field, hint) in enum_variant_field_hints(&variant.fields) {
-                        let Some(type_name_hint) =
+                        if let Some(type_name_hint) =
                             hint.and_then(|hint| type_hint_script_type(hint, type_names.clone()))
-                        else {
-                            continue;
-                        };
-                        enum_field_facts.insert(
-                            (type_name.clone(), variant.name.clone(), field),
-                            ScriptTypeFact::new(type_name_hint),
-                        );
+                        {
+                            enum_field_facts.insert(
+                                (type_name.clone(), variant.name.clone(), field.clone()),
+                                ScriptTypeFact::new(type_name_hint),
+                            );
+                        }
+                        if let Some(value_type) = hint.and_then(type_hint_value_type) {
+                            enum_field_value_types.insert(
+                                (type_name.clone(), variant.name.clone(), field),
+                                value_type,
+                            );
+                        }
                     }
                 }
             }
@@ -59,6 +67,7 @@ impl ScriptFieldSlots {
             record_slots,
             enum_slots,
             enum_field_facts,
+            enum_field_value_types,
         }
     }
 
@@ -86,6 +95,17 @@ impl ScriptFieldSlots {
         field: &str,
     ) -> Option<ScriptTypeFact> {
         self.enum_field_facts
+            .get(&(type_name.to_owned(), variant.to_owned(), field.to_owned()))
+            .cloned()
+    }
+
+    pub(super) fn enum_variant_field_value_type(
+        &self,
+        type_name: &str,
+        variant: &str,
+        field: &str,
+    ) -> Option<String> {
+        self.enum_field_value_types
             .get(&(type_name.to_owned(), variant.to_owned(), field.to_owned()))
             .cloned()
     }

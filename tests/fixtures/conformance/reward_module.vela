@@ -9,7 +9,7 @@ pub struct RewardConfig {
 
 pub enum RewardOutcome {
     Granted { item: string, count: int },
-    Skipped(string),
+    Skipped(reason: string),
 }
 
 pub fn reward_bonus(amount, scale = 2) {

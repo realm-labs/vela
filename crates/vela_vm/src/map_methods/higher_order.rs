@@ -1,9 +1,9 @@
 use std::collections::BTreeMap;
 
-use crate::method_runtime::{MethodRuntime, call_callback, call_callback_with_protected_values};
+use crate::method_runtime::{
+    MethodRuntime, call_callback, call_callback_with_protected_values, callback_param_len,
+};
 use crate::option_result::option_value;
-use crate::runtime_checks::expect_closure_ref;
-use crate::value::ClosureCode;
 use crate::{Value, VmError, VmErrorKind, VmResult};
 
 use super::{expect_arity, map_entries, map_entry};
@@ -182,11 +182,7 @@ fn call_map_callback(
     value: Value,
     protected_values: &[Value],
 ) -> VmResult<Value> {
-    let closure = expect_closure_ref(callback, runtime.heap.as_deref(), operation)?;
-    let ClosureCode::Unlinked(code) = &closure.code else {
-        return Err(VmError::new(VmErrorKind::TypeMismatch { operation }));
-    };
-    let param_len = code.params.len();
+    let param_len = callback_param_len(runtime, operation, callback)?;
     match param_len {
         0 => call_callback(runtime, operation, callback, &[], protected_values),
         1 => call_callback(
@@ -218,11 +214,7 @@ fn call_map_callback_with_protected_values<'value>(
     value: Value,
     protected_values: impl IntoIterator<Item = &'value Value>,
 ) -> VmResult<Value> {
-    let closure = expect_closure_ref(callback, runtime.heap.as_deref(), operation)?;
-    let ClosureCode::Unlinked(code) = &closure.code else {
-        return Err(VmError::new(VmErrorKind::TypeMismatch { operation }));
-    };
-    let param_len = code.params.len();
+    let param_len = callback_param_len(runtime, operation, callback)?;
     match param_len {
         0 => {
             call_callback_with_protected_values(runtime, operation, callback, &[], protected_values)

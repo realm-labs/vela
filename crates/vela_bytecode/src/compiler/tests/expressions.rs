@@ -372,7 +372,7 @@ fn main() {
             .filter(|instruction| {
                 matches!(
                     instruction.kind,
-                    UnlinkedInstructionKind::GetEnumField { .. }
+                    UnlinkedInstructionKind::GetEnumSlot { .. }
                 )
             })
             .count()
@@ -411,7 +411,7 @@ fn main() {
             .filter(|instruction| {
                 matches!(
                     instruction.kind,
-                    UnlinkedInstructionKind::GetEnumField { .. }
+                    UnlinkedInstructionKind::GetEnumSlot { .. }
                 )
             })
             .count()

@@ -1,4 +1,4 @@
-use vela_bytecode::UnlinkedProgramCode;
+use vela_bytecode::{LinkedProgram, UnlinkedProgramCode};
 
 use crate::heap::GcRef;
 use crate::method_runtime::MethodRuntime;
@@ -10,6 +10,7 @@ use crate::{
 pub(crate) struct CallbackMethodDispatch<'a, 'host, 'heap> {
     pub(crate) vm: &'a Vm,
     pub(crate) program: Option<&'a dyn UnlinkedProgramCode>,
+    pub(crate) linked_program: Option<&'a LinkedProgram>,
     pub(crate) host: Option<&'a mut HostExecution<'host>>,
     pub(crate) heap: Option<&'a mut HeapExecution<'heap>>,
     pub(crate) budget: Option<&'a mut ExecutionBudget>,
@@ -21,6 +22,7 @@ impl<'a, 'host, 'heap> CallbackMethodDispatch<'a, 'host, 'heap> {
         MethodRuntime {
             vm: self.vm,
             program: self.program,
+            linked_program: self.linked_program,
             host: self.host.as_deref_mut(),
             heap: self.heap.as_deref_mut(),
             budget: self.budget.as_deref_mut(),

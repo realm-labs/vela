@@ -1,4 +1,4 @@
-use vela_bytecode::UnlinkedProgramCode;
+use vela_bytecode::{LinkedProgram, UnlinkedProgramCode};
 use vela_def::MethodId;
 use vela_reflect::registry::TypeRegistry;
 
@@ -14,6 +14,7 @@ use crate::{
 pub(crate) struct ScriptMethodDispatch<'a, 'host, 'heap> {
     pub(crate) vm: &'a Vm,
     pub(crate) program: Option<&'a dyn UnlinkedProgramCode>,
+    pub(crate) linked_program: Option<&'a LinkedProgram>,
     pub(crate) host: Option<&'a mut HostExecution<'host>>,
     pub(crate) heap: Option<&'a mut HeapExecution<'heap>>,
     pub(crate) budget: Option<&'a mut ExecutionBudget>,
@@ -51,6 +52,7 @@ pub(crate) fn call_method(
         let mut callback_dispatch = CallbackMethodDispatch {
             vm: dispatch.vm,
             program: dispatch.program,
+            linked_program: dispatch.linked_program,
             host: dispatch.host.as_deref_mut(),
             heap: dispatch.heap.as_deref_mut(),
             budget: dispatch.budget.as_deref_mut(),
@@ -97,6 +99,42 @@ pub(crate) fn call_method_id(
         &mut dispatch.budget,
     ) {
         return result;
+    }
+    if let Some(std_method) = script_builtin_methods::standard_method_name_by_id(method_id) {
+        if let Some(result) = string_method_dispatch::call(
+            std_method,
+            receiver,
+            args,
+            &mut dispatch.heap,
+            &mut dispatch.budget,
+        ) {
+            return result;
+        }
+        {
+            let mut callback_dispatch = CallbackMethodDispatch {
+                vm: dispatch.vm,
+                program: dispatch.program,
+                linked_program: dispatch.linked_program,
+                host: dispatch.host.as_deref_mut(),
+                heap: dispatch.heap.as_deref_mut(),
+                budget: dispatch.budget.as_deref_mut(),
+                caller_roots: &dispatch.caller_roots,
+            };
+            if let Some(result) =
+                callback_method_dispatch::call(std_method, receiver, args, &mut callback_dispatch)
+            {
+                return result;
+            }
+        }
+        if let Some(result) = script_builtin_methods::call(
+            receiver,
+            std_method,
+            args,
+            &mut dispatch.heap,
+            &mut dispatch.budget,
+        ) {
+            return result;
+        }
     }
 
     call_script_impl_method(
@@ -157,6 +195,7 @@ pub(crate) fn call_non_mutating_method(
         let mut callback_dispatch = CallbackMethodDispatch {
             vm: dispatch.vm,
             program: dispatch.program,
+            linked_program: dispatch.linked_program,
             host: dispatch.host.as_deref_mut(),
             heap: dispatch.heap.as_deref_mut(),
             budget: dispatch.budget.as_deref_mut(),

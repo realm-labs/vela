@@ -262,10 +262,10 @@ impl<'linker, 'registry> LinkContext<'linker, 'registry> {
 
         let mut nested_handles = Vec::with_capacity(code.nested_functions.len());
         for nested in &code.nested_functions {
+            let linked_nested = self.link_code(program, nested)?;
             let handle = ScriptFunctionHandle::new(self.next_function_index);
             self.next_function_index += 1;
             nested_handles.push(handle);
-            let linked_nested = self.link_code(program, nested)?;
             self.extra_functions.push(linked_nested);
         }
 

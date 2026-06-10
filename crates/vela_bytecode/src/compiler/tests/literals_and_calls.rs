@@ -402,6 +402,63 @@ fn main() {
 }
 
 #[test]
+fn compiler_lowers_value_method_ids_in_collection_callback_params() {
+    let registry = vela_stdlib::standard_registry().expect("standard registry should build");
+    let program = compile_program_source_with_registry(
+        SourceId::new(1),
+        r#"
+fn main() {
+    let names = ["Quest", "Raid"];
+    let rewards = {"gold": 5, "gem": 6};
+    let tags = set::from_array(["daily", "raid"]);
+    let matched = names.filter(|name| name.starts_with("Q"));
+    let valuable = rewards.filter(|key, value| key.len() >= 3 && value >= 5);
+    let found = tags.find(|tag| tag.starts_with("r"));
+    return matched.len() + valuable.len() + found.unwrap_or("").len();
+}
+"#,
+        registry.compile_view(),
+    )
+    .expect("collection callback parameter value methods should compile");
+    let main = program.function("main").expect("main function");
+    let methods = nested_method_id_names(main);
+
+    assert!(methods.iter().any(|method| method == "starts_with"));
+    assert!(methods.iter().any(|method| method == "len"));
+}
+
+#[test]
+fn compiler_lowers_value_method_ids_in_option_result_callback_params() {
+    let registry = vela_stdlib::standard_registry().expect("standard registry should build");
+    let program = compile_program_source_with_registry(
+        SourceId::new(1),
+        r#"
+fn main() {
+    let option_chain = option::some("quest")
+        .map(|value| value.to_upper())
+        .filter(|value| value.starts_with("Q"));
+    let result_chain = result::ok(["gold", "xp"])
+        .map(|values| values.join("+"))
+        .and_then(|text| result::ok(text.replace("+", ".")));
+    let mapped_err = result::err(["bad", "level"]).map_err(|errors| errors.join("."));
+    return option_chain.unwrap_or("")
+        + result_chain.unwrap_or("")
+        + mapped_err.to_error_option().unwrap_or("");
+}
+"#,
+        registry.compile_view(),
+    )
+    .expect("Option/Result callback parameter value methods should compile");
+    let main = program.function("main").expect("main function");
+    let methods = nested_method_id_names(main);
+
+    assert!(methods.iter().any(|method| method == "to_upper"));
+    assert!(methods.iter().any(|method| method == "starts_with"));
+    assert!(methods.iter().any(|method| method == "join"));
+    assert!(methods.iter().any(|method| method == "replace"));
+}
+
+#[test]
 fn compiler_does_not_leak_named_value_method_receiver_facts_from_for_body() {
     let registry = value_method_registry(&[
         ("String", "contains", &["needle"]),
@@ -426,6 +483,23 @@ fn main() {
         err.kind,
         CompileErrorKind::UnsupportedSyntax("script method call")
     );
+}
+
+fn nested_method_id_names(code: &UnlinkedCodeObject) -> Vec<String> {
+    let mut methods = Vec::new();
+    collect_nested_method_id_names(code, &mut methods);
+    methods
+}
+
+fn collect_nested_method_id_names(code: &UnlinkedCodeObject, methods: &mut Vec<String>) {
+    for instruction in &code.instructions {
+        if let UnlinkedInstructionKind::CallMethodId { method, .. } = &instruction.kind {
+            methods.push(method.clone());
+        }
+    }
+    for nested in &code.nested_functions {
+        collect_nested_method_id_names(nested, methods);
+    }
 }
 
 #[test]

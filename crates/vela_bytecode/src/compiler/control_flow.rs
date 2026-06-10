@@ -7,6 +7,7 @@ use vela_syntax::ast::{
 
 use crate::{Constant, InstructionOffset, Register, UnlinkedInstructionKind};
 
+use super::patterns::PatternBindingFacts;
 use super::script_types::{ScriptTypeFact, type_hint_script_type};
 use super::value_flow::{BlockValue, block_value};
 use super::value_types::type_hint_value_type;
@@ -278,7 +279,7 @@ impl Compiler<'_, '_> {
                 index_register,
                 index_pattern,
                 stmt_span,
-                None,
+                PatternBindingFacts::default(),
                 LocalBindingKind::For,
             )?;
         }
@@ -287,7 +288,7 @@ impl Compiler<'_, '_> {
             item_register,
             pattern,
             stmt_span,
-            None,
+            PatternBindingFacts::default(),
             LocalBindingKind::For,
         )?;
         self.loop_stack.push(LoopContext::new(loop_start));
@@ -450,11 +451,12 @@ impl Compiler<'_, '_> {
             let previous_hir_locals = self.hir_locals.clone();
             let previous_script_types = self.script_types.clone();
             let previous_value_types = self.value_types.clone();
+            let previous_value_shapes = self.value_shapes.clone();
             self.bind_pattern_locals(
                 scrutinee,
                 &arm.pattern,
                 arm.body.span,
-                scrutinee_fact.clone(),
+                PatternBindingFacts::new(scrutinee_fact.clone()),
                 LocalBindingKind::Pattern,
             )?;
             if let Some(jump) = self.compile_match_guard(arm.guard.as_ref())? {
@@ -471,6 +473,7 @@ impl Compiler<'_, '_> {
             self.hir_locals = previous_hir_locals;
             self.script_types = previous_script_types;
             self.value_types = previous_value_types;
+            self.value_shapes = previous_value_shapes;
             all_arms_return &= arm_returned;
             if !arm_returned {
                 end_jumps.push(self.emit_jump());
@@ -507,11 +510,12 @@ impl Compiler<'_, '_> {
             let previous_hir_locals = self.hir_locals.clone();
             let previous_script_types = self.script_types.clone();
             let previous_value_types = self.value_types.clone();
+            let previous_value_shapes = self.value_shapes.clone();
             self.bind_pattern_locals(
                 scrutinee,
                 &arm.pattern,
                 arm.body.span,
-                scrutinee_fact.clone(),
+                PatternBindingFacts::new(scrutinee_fact.clone()),
                 LocalBindingKind::Pattern,
             )?;
             if let Some(jump) = self.compile_match_guard(arm.guard.as_ref())? {
@@ -522,6 +526,7 @@ impl Compiler<'_, '_> {
             self.hir_locals = previous_hir_locals;
             self.script_types = previous_script_types;
             self.value_types = previous_value_types;
+            self.value_shapes = previous_value_shapes;
             all_arms_return &= arm_returned;
             if !arm_returned {
                 end_jumps.push(self.emit_jump());

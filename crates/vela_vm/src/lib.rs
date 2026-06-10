@@ -839,6 +839,7 @@ impl Vm {
         let dispatch = ScriptMethodDispatch {
             vm: self,
             program: Some(call.program),
+            linked_program: None,
             host: Some(call.host),
             heap: Some(&mut heap_execution),
             budget: Some(call.budget),

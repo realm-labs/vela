@@ -236,10 +236,10 @@ Cranelift JIT.
   path, and `ProgramImage::to_program()` has been removed. The remaining Task
   6.1 gap is direct VM API cleanup that deletes old unlinked execution
   entrypoints and transitional unlinked reconstruction APIs; linkable
-  `execution_core` coverage now runs through linked bytecode after ad-hoc
-  source record literals gained compile-time slot shapes, while compiled
-  conformance stdlib method calls still need linker-ready operands before
-  those VM test callers can move.
+  `execution_core` coverage and the compiled conformance fixture now run
+  through linked bytecode after ad-hoc source record literals, enum pattern
+  fields, stdlib callback receiver facts, and linked callback closures gained
+  linker-ready operands/runtime ownership.
   Script function dispatch is being isolated behind a focused call boundary so
   later resolved-target work does not grow the main VM loop or change current
   hot-reload rename semantics. Closure creation and invocation now have a

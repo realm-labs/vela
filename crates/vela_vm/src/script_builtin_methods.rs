@@ -150,6 +150,13 @@ fn standard_method_id(owner: &str, name: &str) -> MethodId {
     id
 }
 
+pub(crate) fn standard_method_name_by_id(method_id: MethodId) -> Option<&'static str> {
+    vela_stdlib::STD_METHODS
+        .iter()
+        .find(|spec| spec.id() == method_id)
+        .map(|spec| spec.name)
+}
+
 pub(crate) fn call(
     receiver: &mut Value,
     method: &str,

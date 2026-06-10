@@ -1,6 +1,7 @@
-use vela_bytecode::UnlinkedProgramCode;
+use vela_bytecode::{LinkedProgram, UnlinkedProgramCode};
 
 use crate::heap::GcRef;
+use crate::linked_execution::LinkedExecutionCall;
 use crate::runtime_checks::expect_closure_ref;
 use crate::value::ClosureCode;
 use crate::{
@@ -11,6 +12,7 @@ use crate::{
 pub(crate) struct MethodRuntime<'a, 'host, 'heap> {
     pub(crate) vm: &'a Vm,
     pub(crate) program: Option<&'a dyn UnlinkedProgramCode>,
+    pub(crate) linked_program: Option<&'a LinkedProgram>,
     pub(crate) host: Option<&'a mut HostExecution<'host>>,
     pub(crate) heap: Option<&'a mut HeapExecution<'heap>>,
     pub(crate) budget: Option<&'a mut ExecutionBudget>,
@@ -27,6 +29,28 @@ pub(crate) fn call_callback(
     call_callback_with_protected_values(runtime, operation, callback, args, protected_values.iter())
 }
 
+pub(crate) fn callback_param_len(
+    runtime: &MethodRuntime<'_, '_, '_>,
+    operation: &'static str,
+    callback: &Value,
+) -> VmResult<usize> {
+    let closure = expect_closure_ref(callback, runtime.heap.as_deref(), operation)?;
+    match &closure.code {
+        ClosureCode::Unlinked(code) => Ok(code.params.len()),
+        ClosureCode::Linked(function) => {
+            let program = runtime
+                .linked_program
+                .ok_or_else(|| VmError::new(VmErrorKind::TypeMismatch { operation }))?;
+            let code = program.function(*function).ok_or_else(|| {
+                VmError::new(VmErrorKind::UnknownFunction {
+                    name: format!("<linked closure#{}>", function.index()),
+                })
+            })?;
+            Ok(code.params.len())
+        }
+    }
+}
+
 pub(crate) fn call_callback_with_protected_values<'value>(
     runtime: &mut MethodRuntime<'_, '_, '_>,
     operation: &'static str,
@@ -36,13 +60,10 @@ pub(crate) fn call_callback_with_protected_values<'value>(
 ) -> VmResult<Value> {
     let (code, captures) = {
         let closure = expect_closure_ref(callback, runtime.heap.as_deref(), operation)?;
-        let ClosureCode::Unlinked(code) = &closure.code else {
-            return Err(VmError::new(VmErrorKind::TypeMismatch { operation }));
-        };
         let captures = SmallStorage::try_from_slice_map(&closure.captures, 4, |value| {
             Ok::<_, VmError>(*value)
         })?;
-        (code.clone(), captures)
+        (closure.code.clone(), captures)
     };
     let protected_root_len = runtime.heap.as_deref_mut().map(|heap| {
         let protected_root_len = heap.push_protected_roots(runtime.caller_roots);
@@ -50,20 +71,46 @@ pub(crate) fn call_callback_with_protected_values<'value>(
         heap.protect_value_refs(protected_values);
         protected_root_len
     });
-    let result = runtime.vm.execute_call(
-        ExecutionCall {
-            code: &code,
-            program: runtime.program,
-            captures: captures.as_slice(),
-            args,
-            call_site: None,
-            call_site_offset: None,
-            inline_caches: None,
-        },
-        runtime.host.as_deref_mut(),
-        runtime.heap.as_deref_mut(),
-        runtime.budget.as_deref_mut(),
-    );
+    let result = match code {
+        ClosureCode::Unlinked(code) => runtime.vm.execute_call(
+            ExecutionCall {
+                code: &code,
+                program: runtime.program,
+                captures: captures.as_slice(),
+                args,
+                call_site: None,
+                call_site_offset: None,
+                inline_caches: None,
+            },
+            runtime.host.as_deref_mut(),
+            runtime.heap.as_deref_mut(),
+            runtime.budget.as_deref_mut(),
+        ),
+        ClosureCode::Linked(function) => {
+            let program = runtime
+                .linked_program
+                .ok_or_else(|| VmError::new(VmErrorKind::TypeMismatch { operation }))?;
+            let code = program.function(function).ok_or_else(|| {
+                VmError::new(VmErrorKind::UnknownFunction {
+                    name: format!("<linked closure#{}>", function.index()),
+                })
+            })?;
+            runtime.vm.execute_linked_call(
+                LinkedExecutionCall {
+                    code,
+                    program,
+                    captures: captures.as_slice(),
+                    args,
+                    call_site: None,
+                    call_site_offset: None,
+                    inline_caches: None,
+                },
+                runtime.host.as_deref_mut(),
+                runtime.heap.as_deref_mut(),
+                runtime.budget.as_deref_mut(),
+            )
+        }
+    };
     if let (Some(heap), Some(protected_root_len)) =
         (runtime.heap.as_deref_mut(), protected_root_len)
     {

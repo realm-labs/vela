@@ -562,6 +562,20 @@ references. Invalid debug names and out-of-bounds native, script function,
 method dispatch, type, or variant handles are rejected before linked bytecode
 can become executable.
 
+### Linked Closure Ownership
+
+Linked closures store `ScriptFunctionHandle` values and execute only with the
+owning `LinkedProgram` that contains those handles. Higher-order stdlib
+callbacks must carry linked-program context through `MethodRuntime`; they must
+not reconstruct unlinked bytecode or rely on script-provided method names.
+
+### Nested Linked Function Handles
+
+The linker assigns nested `ScriptFunctionHandle` values in the same order that
+linked nested functions are appended to the linked program side table. Recursive
+linking must not reserve handles before recursively appending child functions,
+because transitive closures would otherwise point at the wrong code object.
+
 ## Validation Rules
 
 - Multi-level `super` scan must return no matches:

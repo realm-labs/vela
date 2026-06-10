@@ -94,7 +94,7 @@ fn main() {
     )));
     assert!(main.instructions.iter().any(|instruction| matches!(
         instruction.kind,
-        UnlinkedInstructionKind::GetEnumField { ref field, .. } if field == "amount"
+        UnlinkedInstructionKind::GetEnumSlot { ref field, .. } if field == "amount"
     )));
 }
 #[test]
