@@ -1217,7 +1217,7 @@ surface.
 
 ### Phase 2: Introduce `DefinitionRegistry`
 
-- [ ] **Task 2.1: Add `vela_registry` crate**
+- [x] **Task 2.1: Add `vela_registry` crate**
 
 **Objective:** Create the central definition table.
 

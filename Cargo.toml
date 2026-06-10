@@ -12,6 +12,7 @@ members = [
     "crates/vela_host",
     "crates/vela_macros",
     "crates/vela_playground_wasm",
+    "crates/vela_registry",
     "crates/vela_reflect",
     "crates/vela_syntax",
     "crates/vela_vm",
@@ -44,6 +45,7 @@ vela_hot_reload = { path = "crates/vela_hot_reload" }
 vela_host = { path = "crates/vela_host" }
 vela_macros = { path = "crates/vela_macros" }
 vela_playground_wasm = { path = "crates/vela_playground_wasm" }
+vela_registry = { path = "crates/vela_registry" }
 vela_reflect = { path = "crates/vela_reflect" }
 vela_syntax = { path = "crates/vela_syntax" }
 vela_vm = { path = "crates/vela_vm" }

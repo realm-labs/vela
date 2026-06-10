@@ -467,6 +467,13 @@ dependencies = [
 ]
 
 [[package]]
+name = "vela_registry"
+version = "0.1.0"
+dependencies = [
+ "vela_def",
+]
+
+[[package]]
 name = "vela_syntax"
 version = "0.1.0"
 dependencies = [
