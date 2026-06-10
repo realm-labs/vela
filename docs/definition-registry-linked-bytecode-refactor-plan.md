@@ -1562,7 +1562,7 @@ surface.
 - No instruction dispatch uses `name` as fallback.
 - Unknown native is a link error, not a runtime fallback error.
 
-- [ ] **Task 6.3: Update method dispatch**
+- [x] **Task 6.3: Update method dispatch**
 
 **Objective:** Method calls use linked method handles.
 

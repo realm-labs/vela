@@ -244,7 +244,10 @@ Cranelift JIT.
   dispatch no longer has string-name fallback maps: standard and host-native
   source-name aliases install as explicit `FunctionId` bindings, reflection
   calls resolve callable descriptors to IDs, and linked bytecode keeps native
-  handles plus debug names separated from runtime dispatch.
+  handles plus debug names separated from runtime dispatch. Linked method
+  dispatch now uses dense method handles for script, host, and value method
+  paths; linked value method execution calls standard methods by `MethodId`
+  only, with debug names reserved for error reporting.
 
 ### Remaining Gaps
 

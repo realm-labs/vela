@@ -170,6 +170,146 @@ fn linked_program_calls_native_by_dense_handle() {
 }
 
 #[test]
+fn linked_program_calls_value_method_by_dispatch_handle() {
+    let method_id = vela_stdlib::std_method_id("String", "len").expect("String::len method id");
+    let mut program = vela_bytecode::LinkedProgram::new();
+    let main_name = program.intern_debug_name("main");
+    let method_name = program.intern_debug_name("debug_only_name");
+    let method = program.push_method_dispatch(vela_bytecode::LinkedMethodDispatch::new(
+        method_name,
+        vela_bytecode::LinkedMethodDispatchKind::Value { method_id },
+    ));
+
+    let mut code = vela_bytecode::LinkedCodeObject::new(main_name, 2);
+    let value = code.push_constant(Constant::String("gold".into()));
+    code.push_instruction(vela_bytecode::linked::Instruction::new(
+        vela_bytecode::linked::InstructionKind::LoadConst {
+            dst: Register(0),
+            constant: value,
+        },
+    ));
+    code.push_instruction(vela_bytecode::linked::Instruction::new(
+        vela_bytecode::linked::InstructionKind::CallMethod {
+            dst: Register(1),
+            receiver: Register(0),
+            dispatch: method,
+            debug_name: method_name,
+            args: Vec::new(),
+        },
+    ));
+    code.push_instruction(vela_bytecode::linked::Instruction::new(
+        vela_bytecode::linked::InstructionKind::Return { src: Register(1) },
+    ));
+    let function = program.push_function(code);
+    program.set_entry_point(main_name, function);
+
+    assert_eq!(
+        Vm::new().run_linked_program(&program, "main", &[]),
+        Ok(OwnedValue::Int(4))
+    );
+}
+
+#[test]
+fn linked_value_method_dispatch_uses_id_not_debug_name_fallback() {
+    let mut program = vela_bytecode::LinkedProgram::new();
+    let main_name = program.intern_debug_name("main");
+    let method_name = program.intern_debug_name("len");
+    let method = program.push_method_dispatch(vela_bytecode::LinkedMethodDispatch::new(
+        method_name,
+        vela_bytecode::LinkedMethodDispatchKind::Value {
+            method_id: MethodId::new(0x55),
+        },
+    ));
+
+    let mut code = vela_bytecode::LinkedCodeObject::new(main_name, 2);
+    let value = code.push_constant(Constant::String("gold".into()));
+    code.push_instruction(vela_bytecode::linked::Instruction::new(
+        vela_bytecode::linked::InstructionKind::LoadConst {
+            dst: Register(0),
+            constant: value,
+        },
+    ));
+    code.push_instruction(vela_bytecode::linked::Instruction::new(
+        vela_bytecode::linked::InstructionKind::CallMethod {
+            dst: Register(1),
+            receiver: Register(0),
+            dispatch: method,
+            debug_name: method_name,
+            args: Vec::new(),
+        },
+    ));
+    code.push_instruction(vela_bytecode::linked::Instruction::new(
+        vela_bytecode::linked::InstructionKind::Return { src: Register(1) },
+    ));
+    let function = program.push_function(code);
+    program.set_entry_point(main_name, function);
+
+    let error = Vm::new()
+        .run_linked_program(&program, "main", &[])
+        .expect_err("linked value method dispatch must not use debug name fallback");
+
+    assert_eq!(
+        error.kind(),
+        VmErrorKind::UnknownMethod {
+            method: "len".to_owned()
+        }
+    );
+}
+
+#[test]
+fn linked_program_calls_script_method_by_dispatch_handle() {
+    let mut program = vela_bytecode::LinkedProgram::new();
+    let main_name = program.intern_debug_name("main");
+    let method_name = program.intern_debug_name("debug_only_method");
+    let receiver_name = program.intern_debug_name("self");
+
+    let mut main = vela_bytecode::LinkedCodeObject::new(main_name, 2);
+    let method_function = vela_bytecode::ScriptFunctionHandle::new(1);
+    let method = program.push_method_dispatch(vela_bytecode::LinkedMethodDispatch::new(
+        method_name,
+        vela_bytecode::LinkedMethodDispatchKind::Script {
+            method_id: MethodId::new(0x66),
+            function: method_function,
+        },
+    ));
+    let value = main.push_constant(Constant::Int(41));
+    main.push_instruction(vela_bytecode::linked::Instruction::new(
+        vela_bytecode::linked::InstructionKind::LoadConst {
+            dst: Register(0),
+            constant: value,
+        },
+    ));
+    main.push_instruction(vela_bytecode::linked::Instruction::new(
+        vela_bytecode::linked::InstructionKind::CallMethod {
+            dst: Register(1),
+            receiver: Register(0),
+            dispatch: method,
+            debug_name: method_name,
+            args: Vec::new(),
+        },
+    ));
+    main.push_instruction(vela_bytecode::linked::Instruction::new(
+        vela_bytecode::linked::InstructionKind::Return { src: Register(1) },
+    ));
+
+    let mut method_code =
+        vela_bytecode::LinkedCodeObject::new(method_name, 1).with_params(vec![receiver_name]);
+    method_code.push_instruction(vela_bytecode::linked::Instruction::new(
+        vela_bytecode::linked::InstructionKind::Return { src: Register(0) },
+    ));
+
+    let main = program.push_function(main);
+    let method_handle = program.push_function(method_code);
+    assert_eq!(method_handle, method_function);
+    program.set_entry_point(main_name, main);
+
+    assert_eq!(
+        Vm::new().run_linked_program(&program, "main", &[]),
+        Ok(OwnedValue::Int(41))
+    );
+}
+
+#[test]
 fn linked_program_calls_script_function_by_dense_handle() {
     let mut program = vela_bytecode::LinkedProgram::new();
     let main_name = program.intern_debug_name("main");

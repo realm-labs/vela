@@ -416,10 +416,7 @@ impl Vm {
                             frame.write(*dst, result)?;
                         }
                         LinkedMethodDispatchKind::Value { method_id } => {
-                            script_method_calls::dispatch_script_method_id_call(
-                                self,
-                                None,
-                                &mut host,
+                            script_method_calls::dispatch_value_method_id_call(
                                 &mut heap,
                                 &mut budget,
                                 &mut frame,

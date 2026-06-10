@@ -3,8 +3,8 @@ use vela_def::MethodId;
 
 use crate::heap::GcRef;
 use crate::{
-    CallFrame, ExecutionBudget, HeapExecution, HostExecution, Value, Vm, VmResult,
-    store_value_in_heap_if_needed,
+    CallFrame, ExecutionBudget, HeapExecution, HostExecution, Value, Vm, VmError, VmErrorKind,
+    VmResult, script_builtin_methods, store_value_in_heap_if_needed,
 };
 
 use crate::script_methods::{
@@ -117,6 +117,30 @@ pub(crate) fn dispatch_script_method_id_call(
             caller_roots,
         },
     )?;
+    let result = store_value_in_heap_if_needed(result, heap.as_deref_mut(), budget.as_deref_mut())?;
+    frame.write(call.receiver, receiver_value)?;
+    frame.write(call.dst, result)
+}
+
+pub(crate) fn dispatch_value_method_id_call(
+    heap: &mut Option<&mut HeapExecution<'_>>,
+    budget: &mut Option<&mut ExecutionBudget>,
+    frame: &mut CallFrame,
+    call: ScriptMethodIdCall<'_>,
+) -> VmResult<()> {
+    let mut receiver_value = *frame.read(call.receiver)?;
+    let result = script_builtin_methods::call_by_id(
+        &mut receiver_value,
+        call.method_id,
+        call.values,
+        heap,
+        budget,
+    )
+    .ok_or_else(|| {
+        VmError::new(VmErrorKind::UnknownMethod {
+            method: call.method.to_owned(),
+        })
+    })??;
     let result = store_value_in_heap_if_needed(result, heap.as_deref_mut(), budget.as_deref_mut())?;
     frame.write(call.receiver, receiver_value)?;
     frame.write(call.dst, result)
