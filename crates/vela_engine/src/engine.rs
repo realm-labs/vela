@@ -213,7 +213,7 @@ impl Engine {
     }
 
     pub fn link_program(&self, program: &UnlinkedProgram) -> Result<LinkedProgram, LinkError> {
-        let mut linker = Linker::new();
+        let mut linker = Linker::with_registry(&self.definition_registry);
         for id in self.native_implementation_ids() {
             linker.add_native_implementation(id);
         }
@@ -383,6 +383,13 @@ impl Engine {
                     .into_iter()
                     .flatten()
                     .map(|spec| spec.id()),
+            )
+            .chain(
+                self.reflection_policy
+                    .is_some()
+                    .then(crate::compiler_registry::reflection_native_function_ids)
+                    .into_iter()
+                    .flatten(),
             )
     }
 

@@ -903,9 +903,7 @@ impl<'linker, 'registry> LinkContext<'linker, 'registry> {
                     return Ok(id);
                 }
             }
-            return Err(LinkError::UnresolvedType {
-                name: name.to_owned(),
-            });
+            return Ok(TypeId::from_def_id(script_type_path(name).id()));
         }
 
         Ok(TypeId::from_def_id(script_type_path(name).id()))
@@ -918,10 +916,9 @@ impl<'linker, 'registry> LinkContext<'linker, 'registry> {
                     return Ok(id);
                 }
             }
-            return Err(LinkError::UnresolvedVariant {
-                enum_name: enum_name.to_owned(),
-                variant: variant.to_owned(),
-            });
+            return Ok(VariantId::from_def_id(
+                script_variant_path(enum_name, variant).id(),
+            ));
         }
 
         Ok(VariantId::from_def_id(

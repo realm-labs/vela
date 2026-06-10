@@ -22,8 +22,8 @@ use vela_vm::heap::{HeapValue, ScriptHeap};
 use vela_vm::owned_value::OwnedValue;
 use vela_vm::value::Value;
 use vela_vm::{
-    LinkedProgramHostCall, PersistentHeapExecution, ProgramImageHostCall, RuntimeCodeCall,
-    RuntimeMethodCall, ScriptGlobalValues, owned_to_persistent_value, persistent_value_to_owned,
+    LinkedProgramHostCall, PersistentHeapExecution, RuntimeCodeCall, RuntimeMethodCall,
+    ScriptGlobalValues, owned_to_persistent_value, persistent_value_to_owned,
 };
 
 use crate::engine::Engine;
@@ -540,24 +540,14 @@ where
                 .engine()
                 .into_vm_for_program_image(self.image.program_image())
         };
+        let linked_program = self
+            .image
+            .linked_program()
+            .ok_or_else(|| VmError::new(VmErrorKind::ProgramNotLinked))?;
         if options.managed_heap || !self.state.script_globals.is_empty() {
             let roots = self.state.script_globals.roots();
-            if let Some(linked_program) = self.image.linked_program() {
-                return vm.run_linked_program_host_call(LinkedProgramHostCall {
-                    program: linked_program,
-                    entry,
-                    args,
-                    host: &mut host,
-                    persistent: PersistentHeapExecution {
-                        heap: &mut self.state.script_globals.heap,
-                        roots: &roots,
-                    },
-                    budget: &mut budget,
-                    inline_caches: Some(&self.state.inline_caches),
-                });
-            }
-            vm.run_program_image_host_call(ProgramImageHostCall {
-                image: self.image.program_image(),
+            vm.run_linked_program_host_call(LinkedProgramHostCall {
+                program: linked_program,
                 entry,
                 args,
                 host: &mut host,
@@ -569,18 +559,8 @@ where
                 inline_caches: Some(&self.state.inline_caches),
             })
         } else {
-            if let Some(linked_program) = self.image.linked_program() {
-                return vm.run_linked_program_with_host_budget_and_caches(
-                    linked_program,
-                    entry,
-                    args,
-                    &mut host,
-                    &mut budget,
-                    Some(&self.state.inline_caches),
-                );
-            }
-            vm.run_program_image_with_host_budget_and_caches(
-                self.image.program_image(),
+            vm.run_linked_program_with_host_budget_and_caches(
+                linked_program,
                 entry,
                 args,
                 &mut host,
@@ -1059,6 +1039,7 @@ mod tests {
     use vela_bytecode::{Constant, LinkedCodeObject, LinkedProgram, ProgramImage, Register};
     use vela_host::access::HostAccess;
     use vela_host::mock::MockStateAdapter;
+    use vela_vm::error::VmErrorKind;
     use vela_vm::owned_value::OwnedValue;
 
     use crate::engine::Engine;
@@ -1066,7 +1047,7 @@ mod tests {
     use super::{CallOptions, OwnedImage, RuntimeImage, RuntimeImpl, RuntimeState};
 
     #[test]
-    fn call_raw_prefers_linked_program_over_legacy_program_image() {
+    fn call_raw_executes_linked_program_image() {
         for options in [
             CallOptions::unbounded(),
             CallOptions::unbounded().with_managed_heap(false),
@@ -1079,6 +1060,26 @@ mod tests {
 
             assert_eq!(result, Ok(OwnedValue::Int(7)));
         }
+    }
+
+    #[test]
+    fn call_raw_rejects_runtime_image_without_linked_program() {
+        let mut runtime = runtime_without_linked_program();
+        let mut adapter = MockStateAdapter::new();
+        let mut access = HostAccess::new();
+
+        let result = runtime.call_raw(
+            "main",
+            &[],
+            CallOptions::unbounded(),
+            &mut adapter,
+            &mut access,
+        );
+
+        assert_eq!(
+            result.map_err(|error| error.kind()),
+            Err(VmErrorKind::ProgramNotLinked)
+        );
     }
 
     fn linked_only_runtime() -> RuntimeImpl<OwnedImage> {
@@ -1104,6 +1105,24 @@ mod tests {
         linked_program.set_entry_point(main_name, main);
 
         let image = RuntimeImage::from_parts_for_test(engine, program_image, Some(linked_program));
+        let image = OwnedImage::from_image(image);
+        let state = RuntimeState::for_image(&image);
+        RuntimeImpl {
+            image,
+            hot_reload: None,
+            state,
+        }
+    }
+
+    fn runtime_without_linked_program() -> RuntimeImpl<OwnedImage> {
+        let engine = Engine::builder().build().expect("engine should build");
+        let program_image = ProgramImage::from_parts(
+            std::iter::empty::<vela_bytecode::UnlinkedCodeObject>(),
+            std::iter::empty::<String>(),
+            ScriptMethodTable::new(),
+            None,
+        );
+        let image = RuntimeImage::from_parts_for_test(engine, program_image, None);
         let image = OwnedImage::from_image(image);
         let state = RuntimeState::for_image(&image);
         RuntimeImpl {

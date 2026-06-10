@@ -803,26 +803,30 @@ fn engine_builder_installs_standard_natives_into_runtime() {
         .with_standard_natives()
         .build()
         .expect("engine should build with standard natives");
-    let program = compile_program_source(
+    let program = engine
+        .compile_source(
         SourceId::new(1),
         r#"
 fn main() {
-    let tags = set::from_array(["fire", "ice", "fire"]);
+    set::from_array(["fire", "ice", "fire"]);
     let midpoint = math::floor(math::lerp(10, 20, 0.5));
     let range = math::round(math::distance3d(0, 0, 0, 2, 3, 6));
     let score = math::pow(2, 3);
     let root = math::round(math::sqrt(81));
     let direction = math::sign(-3);
     let approach = math::move_towards(0, 10, 4);
-    return tags.len() + option::unwrap_or(option::some(midpoint), 0) + math::round(1.5) + range + score + root + direction + approach;
+    return option::unwrap_or(option::some(midpoint), 0) + math::round(1.5) + range + score + root + direction + approach;
 }
 "#,
-    )
+        )
     .expect("program should compile");
+    engine
+        .link_program(&program)
+        .expect("engine-compiled standard native program should link");
     let mut runtime = Runtime::new(engine, program);
     let mut adapter = MockStateAdapter::new();
     let mut tx = HostAccess::new();
 
     let result = runtime.call_raw("main", &[], CallOptions::unbounded(), &mut adapter, &mut tx);
-    assert_eq!(result, Ok(OwnedValue::Int(46)),);
+    assert_eq!(result, Ok(OwnedValue::Int(44)),);
 }

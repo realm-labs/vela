@@ -222,11 +222,13 @@ Cranelift JIT.
   rebuilding unlinked code; linked closure opcodes now carry linked function
   handles through closure values, and linked host-method `CallMethod` dispatch
   routes through HostAccess. All linked instruction variants now have explicit
-  VM execution paths; runtime raw calls now prefer the image's linked program
-  for both persistent and fresh heap entrypoints. Engine-compiled initial and
-  accepted hot-reload versions now carry version-owned linked layouts that
-  runtime images reuse after safe-point acceptance. The remaining Task 6.1 gap
-  is final runtime API cleanup that deletes old unlinked execution entrypoints
+  VM execution paths; engine runtime raw calls now require the image's linked
+  program for both persistent and fresh heap entrypoints instead of falling
+  back to `ProgramImage` execution. Engine linking now uses the definition
+  registry plus installed native implementation IDs, and engine-compiled
+  initial and accepted hot-reload versions carry version-owned linked layouts
+  that runtime images reuse after safe-point acceptance. The remaining Task 6.1
+  gap is direct VM API cleanup that deletes old unlinked execution entrypoints
   and compatibility image rebuild paths.
   Script function dispatch is being isolated behind a focused call boundary so
   later resolved-target work does not grow the main VM loop or change current

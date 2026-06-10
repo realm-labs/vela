@@ -31,16 +31,17 @@ fn host_native_error_retains_written_mutations() {
         )
         .build()
         .expect("engine should build");
-    let program = compile_program_source(
-        SourceId::new(1),
-        r#"
+    let program = engine
+        .compile_source(
+            SourceId::new(1),
+            r#"
 fn main(player) {
     game::failing_set_level(player, 13);
     return 1;
 }
 "#,
-    )
-    .expect("program should compile");
+        )
+        .expect("program should compile");
     let mut runtime = Runtime::new(engine, program);
     let host_ref = HostRef::new(HostTypeId::new(1), HostObjectId::new(42), 1);
     let mut adapter = MockStateAdapter::new();

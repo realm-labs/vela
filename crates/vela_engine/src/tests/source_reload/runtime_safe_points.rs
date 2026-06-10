@@ -1,5 +1,15 @@
 use super::*;
 
+fn link_test_version(
+    engine: &Engine,
+    version: vela_hot_reload::version::ProgramVersion,
+) -> vela_hot_reload::version::ProgramVersion {
+    let linked = engine
+        .link_program(&version.to_program())
+        .expect("test version should link");
+    version.with_linked_program(linked)
+}
+
 #[test]
 fn engine_compile_hot_reload_changed_file_reloads_module_root() {
     let root = unique_test_dir("hot_reload_changed_file");
@@ -616,6 +626,7 @@ fn runtime_tick_boundary_safe_point_reports_staged_module_export_rejection() {
         .expect("engine should build");
     let initial =
         compile_initial_with_abi(SourceId::new(1), "fn main() { return 1; }", initial_abi)
+            .map(|version| link_test_version(&engine, version))
             .expect("initial hot reload compile");
     let update_abi = HotReloadAbi::empty().module(ModuleAbi::new("host::reward"));
     let update = compile_update_with_abi(
@@ -671,6 +682,7 @@ fn runtime_tick_boundary_safe_point_reports_staged_removed_function_abi_rejectio
         .expect("engine should build");
     let initial =
         compile_initial_with_abi(SourceId::new(1), "fn main() { return 1; }", initial_abi)
+            .map(|version| link_test_version(&engine, version))
             .expect("initial hot reload compile");
     let update = compile_update_with_abi(
         &initial,
@@ -729,6 +741,7 @@ fn runtime_tick_boundary_safe_point_reports_staged_removed_method_abi_rejection(
         .expect("engine should build");
     let initial =
         compile_initial_with_abi(SourceId::new(1), "fn main() { return 1; }", initial_abi)
+            .map(|version| link_test_version(&engine, version))
             .expect("initial hot reload compile");
     let update = compile_update_with_abi(
         &initial,
@@ -782,6 +795,7 @@ fn runtime_tick_boundary_safe_point_reports_staged_removed_module_rejection() {
         .expect("engine should build");
     let initial =
         compile_initial_with_abi(SourceId::new(1), "fn main() { return 1; }", initial_abi)
+            .map(|version| link_test_version(&engine, version))
             .expect("initial hot reload compile");
     let update = compile_update_with_abi(
         &initial,

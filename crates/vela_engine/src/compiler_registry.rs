@@ -1,4 +1,4 @@
-use vela_def::DefPath;
+use vela_def::{DefPath, FunctionId};
 use vela_reflect::access::FunctionEffectSet;
 use vela_reflect::modules::FunctionDesc;
 use vela_reflect::registry::{FieldDesc, MethodDesc, MethodParamDesc, TypeDesc, TypeRegistry};
@@ -193,6 +193,12 @@ fn register_reflection_native_defs(registry: &mut DefinitionRegistry) -> Result<
         ))?;
     }
     Ok(())
+}
+
+pub(crate) fn reflection_native_function_ids() -> impl Iterator<Item = FunctionId> {
+    REFLECTION_NATIVE_DEFS
+        .iter()
+        .map(|(name, _)| FunctionId::from_def_id(source_function_path("host", name).id()))
 }
 
 const REFLECTION_NATIVE_DEFS: &[(&str, &[&str])] = &[

@@ -163,15 +163,16 @@ fn context_host_native_read_path_observes_write_through_state() {
         )
         .build()
         .expect("engine should build");
-    let program = compile_program_source(
-        SourceId::new(1),
-        r#"
+    let program = engine
+        .compile_source(
+            SourceId::new(1),
+            r#"
 fn main(player) {
     return game::read_after_context_write(player, 17);
 }
 "#,
-    )
-    .expect("program should compile");
+        )
+        .expect("program should compile");
     let mut runtime = Runtime::new(engine, program);
     let host_ref = HostRef::new(HostTypeId::new(1), HostObjectId::new(42), 1);
     let level = HostPath::new(host_ref).field(FieldId::new(1));
@@ -219,15 +220,16 @@ fn context_host_native_returns_immediate_method_result() {
         )
         .build()
         .expect("engine should build");
-    let program = compile_program_source(
-        SourceId::new(1),
-        r#"
+    let program = engine
+        .compile_source(
+            SourceId::new(1),
+            r#"
 fn main(player) {
     return game::preview_inventory_add(player);
 }
 "#,
-    )
-    .expect("program should compile");
+        )
+        .expect("program should compile");
     let mut runtime = Runtime::new(engine, program);
     let host_ref = HostRef::new(HostTypeId::new(1), HostObjectId::new(42), 1);
     let inventory = HostPath::new(host_ref).field(FieldId::new(3));
@@ -282,16 +284,17 @@ fn context_host_native_can_charge_execution_budget_before_host_access() {
         )
         .build()
         .expect("engine should build");
-    let program = compile_program_source(
-        SourceId::new(1),
-        r#"
+    let program = engine
+        .compile_source(
+            SourceId::new(1),
+            r#"
 fn main(player) {
     game::expensive_set_level(player, 13);
     return 1;
 }
 "#,
-    )
-    .expect("program should compile");
+        )
+        .expect("program should compile");
     let mut runtime = Runtime::new(engine, program);
     let host_ref = HostRef::new(HostTypeId::new(1), HostObjectId::new(42), 1);
     let mut adapter = MockStateAdapter::new();
@@ -344,16 +347,17 @@ fn context_host_native_can_charge_memory_budget_before_host_access() {
         )
         .build()
         .expect("engine should build");
-    let program = compile_program_source(
-        SourceId::new(1),
-        r#"
+    let program = engine
+        .compile_source(
+            SourceId::new(1),
+            r#"
 fn main(player) {
     game::memory_checked_set_level(player, 13);
     return 1;
 }
 "#,
-    )
-    .expect("program should compile");
+        )
+        .expect("program should compile");
     let mut runtime = Runtime::new(engine, program);
     let host_ref = HostRef::new(HostTypeId::new(1), HostObjectId::new(42), 1);
     let mut adapter = MockStateAdapter::new();
@@ -407,16 +411,17 @@ fn context_host_native_set_path_writes_through() {
         )
         .build()
         .expect("engine should build");
-    let program = compile_program_source(
-        SourceId::new(1),
-        r#"
+    let program = engine
+        .compile_source(
+            SourceId::new(1),
+            r#"
 fn main(player) {
     game::patch_checked_set_level(player, 13);
     return 1;
 }
 "#,
-    )
-    .expect("program should compile");
+        )
+        .expect("program should compile");
     let mut runtime = Runtime::new(engine, program);
     let host_ref = HostRef::new(HostTypeId::new(1), HostObjectId::new(42), 1);
     let mut adapter = MockStateAdapter::new();
@@ -469,16 +474,17 @@ fn context_host_native_patch_helpers_write_through() {
         )
         .build()
         .expect("engine should build");
-    let program = compile_program_source(
-        SourceId::new(1),
-        r#"
+    let program = engine
+        .compile_source(
+            SourceId::new(1),
+            r#"
 fn main(player) {
     game::count_patch_helpers(player);
     return 1;
 }
 "#,
-    )
-    .expect("program should compile");
+        )
+        .expect("program should compile");
     let mut runtime = Runtime::new(engine, program);
     let host_ref = HostRef::new(HostTypeId::new(1), HostObjectId::new(42), 1);
     let mut adapter = MockStateAdapter::new();
@@ -529,16 +535,17 @@ fn context_host_native_repeated_writes_write_through() {
         )
         .build()
         .expect("engine should build");
-    let program = compile_program_source(
-        SourceId::new(1),
-        r#"
+    let program = engine
+        .compile_source(
+            SourceId::new(1),
+            r#"
 fn main(player) {
     game::double_set_level(player);
     return 1;
 }
 "#,
-    )
-    .expect("program should compile");
+        )
+        .expect("program should compile");
     let mut runtime = Runtime::new(engine, program);
     let host_ref = HostRef::new(HostTypeId::new(1), HostObjectId::new(42), 1);
     let mut adapter = MockStateAdapter::new();

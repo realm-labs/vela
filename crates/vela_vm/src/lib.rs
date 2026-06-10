@@ -253,16 +253,6 @@ pub struct RuntimeCodeCall<'program, 'args, 'host, 'heap, 'roots, 'budget, 'cach
     pub inline_caches: Option<&'caches dyn VmInlineCaches>,
 }
 
-pub struct ProgramImageHostCall<'image, 'entry, 'args, 'host, 'heap, 'roots, 'budget, 'caches> {
-    pub image: &'image ProgramImage,
-    pub entry: &'entry str,
-    pub args: &'args [OwnedValue],
-    pub host: &'host mut HostExecution<'host>,
-    pub persistent: PersistentHeapExecution<'heap, 'roots>,
-    pub budget: &'budget mut ExecutionBudget,
-    pub inline_caches: Option<&'caches dyn VmInlineCaches>,
-}
-
 pub struct LinkedProgramHostCall<'program, 'entry, 'args, 'host, 'heap, 'roots, 'budget, 'caches> {
     pub program: &'program LinkedProgram,
     pub entry: &'entry str,
@@ -737,47 +727,6 @@ impl Vm {
         owned_heap_result(result, &mut heap_execution, budget)
     }
 
-    pub fn run_program_image_with_host_and_budget(
-        &self,
-        image: &ProgramImage,
-        entry: &str,
-        args: &[OwnedValue],
-        host: &mut HostExecution<'_>,
-        budget: &mut ExecutionBudget,
-    ) -> VmResult<OwnedValue> {
-        self.run_program_image_with_host_budget_and_caches(image, entry, args, host, budget, None)
-    }
-
-    pub fn run_program_image_with_host_budget_and_caches(
-        &self,
-        image: &ProgramImage,
-        entry: &str,
-        args: &[OwnedValue],
-        host: &mut HostExecution<'_>,
-        budget: &mut ExecutionBudget,
-        inline_caches: Option<&dyn VmInlineCaches>,
-    ) -> VmResult<OwnedValue> {
-        let code = program_entry(image, entry)?;
-        let mut heap = ScriptHeap::new();
-        let mut heap_execution = HeapExecution::new(&mut heap);
-        let args = owned_args_to_runtime(args, &mut heap_execution, Some(budget))?;
-        let result = self.execute_call(
-            ExecutionCall {
-                code,
-                program: Some(image),
-                captures: &[],
-                args: &args,
-                call_site: None,
-                call_site_offset: None,
-                inline_caches,
-            },
-            Some(host),
-            Some(&mut heap_execution),
-            Some(budget),
-        );
-        owned_heap_result(result, &mut heap_execution, budget)
-    }
-
     pub fn run_program_with_host_persistent_heap_and_budget(
         &self,
         program: &UnlinkedProgram,
@@ -808,60 +757,6 @@ impl Vm {
         heap_execution
             .heap
             .collect_full_with_budget(&roots, Some(budget));
-        result
-    }
-
-    pub fn run_program_image_with_host_persistent_heap_and_budget<'host>(
-        &self,
-        image: &ProgramImage,
-        entry: &str,
-        args: &[OwnedValue],
-        host: &'host mut HostExecution<'host>,
-        persistent: PersistentHeapExecution<'_, '_>,
-        budget: &mut ExecutionBudget,
-    ) -> VmResult<OwnedValue> {
-        self.run_program_image_host_call(ProgramImageHostCall {
-            image,
-            entry,
-            args,
-            host,
-            persistent,
-            budget,
-            inline_caches: None,
-        })
-    }
-
-    pub fn run_program_image_host_call(
-        &self,
-        call: ProgramImageHostCall<'_, '_, '_, '_, '_, '_, '_, '_>,
-    ) -> VmResult<OwnedValue> {
-        let code = program_entry(call.image, call.entry)?;
-        let mut heap_execution = HeapExecution::new(call.persistent.heap);
-        let args = owned_args_to_runtime(call.args, &mut heap_execution, Some(call.budget))?;
-        heap_execution.protect_values(call.persistent.roots);
-        let result = self.execute_call(
-            ExecutionCall {
-                code,
-                program: Some(call.image),
-                captures: &[],
-                args: &args,
-                call_site: None,
-                call_site_offset: None,
-                inline_caches: call.inline_caches,
-            },
-            Some(call.host),
-            Some(&mut heap_execution),
-            Some(call.budget),
-        );
-        let result = result.and_then(|value| value_to_owned(&value, Some(&heap_execution)));
-        let mut roots = Vec::new();
-        call.persistent
-            .roots
-            .iter()
-            .for_each(|value| value.trace_heap_refs(&mut roots));
-        heap_execution
-            .heap
-            .collect_full_with_budget(&roots, Some(call.budget));
         result
     }
 
