@@ -1,6 +1,15 @@
 use super::*;
 use crate::owned_value::OwnedValue;
 
+fn run_control_program(
+    program: &UnlinkedProgram,
+    entry: &str,
+    args: &[OwnedValue],
+) -> VmResult<OwnedValue> {
+    let mut budget = ExecutionBudget::unbounded();
+    run_linked_test_program_with_budget(&Vm::new(), program, entry, args, &mut budget)
+}
+
 #[test]
 fn runs_compiled_break_continue_source() {
     let code = compile_function_source(
@@ -24,7 +33,7 @@ fn main() {
     )
     .expect("compile break and continue source");
 
-    assert_eq!(Vm::new().run(&code), Ok(OwnedValue::Int(8)));
+    assert_eq!(run_linked_test_code(code), Ok(OwnedValue::Int(8)));
 }
 
 #[test]
@@ -49,7 +58,7 @@ fn main() {
     )
     .expect("compile block and if expression values");
 
-    assert_eq!(Vm::new().run(&code), Ok(OwnedValue::Int(5)));
+    assert_eq!(run_linked_test_code(code), Ok(OwnedValue::Int(5)));
 }
 
 #[test]
@@ -74,7 +83,7 @@ fn main() {
     )
     .expect("compile no-else if expression");
 
-    assert_eq!(Vm::new().run(&code), Ok(OwnedValue::Int(7)));
+    assert_eq!(run_linked_test_code(code), Ok(OwnedValue::Int(7)));
 }
 
 #[test]
@@ -96,7 +105,7 @@ fn main() {
     )
     .expect("compile no-else if expression");
 
-    assert_eq!(Vm::new().run(&code), Ok(OwnedValue::Int(1)));
+    assert_eq!(run_linked_test_code(code), Ok(OwnedValue::Int(1)));
 }
 
 #[test]
@@ -115,7 +124,7 @@ fn main() {
     )
     .expect("compile returning block initializer");
 
-    assert_eq!(Vm::new().run(&code), Ok(OwnedValue::Int(7)));
+    assert_eq!(run_linked_test_code(code), Ok(OwnedValue::Int(7)));
 }
 
 #[test]
@@ -123,8 +132,12 @@ fn runs_compiled_returning_expression_operands() {
     let program = compile_program_source(
         SourceId::new(1),
         r#"
+fn sink(value) {
+    return value;
+}
+
 fn block_arg() {
-    log({
+    sink({
         return 7;
     });
     return 0;
@@ -149,23 +162,23 @@ fn match_value(value) {
     .expect("compile returning expression operands");
 
     assert_eq!(
-        Vm::new().run_program(&program, "block_arg", &[]),
+        run_control_program(&program, "block_arg", &[]),
         Ok(OwnedValue::Int(7))
     );
     assert_eq!(
-        Vm::new().run_program(&program, "if_value", &[OwnedValue::Bool(true)]),
+        run_control_program(&program, "if_value", &[OwnedValue::Bool(true)]),
         Ok(OwnedValue::Int(1))
     );
     assert_eq!(
-        Vm::new().run_program(&program, "if_value", &[OwnedValue::Bool(false)]),
+        run_control_program(&program, "if_value", &[OwnedValue::Bool(false)]),
         Ok(OwnedValue::Int(2))
     );
     assert_eq!(
-        Vm::new().run_program(&program, "match_value", &[OwnedValue::Int(1)]),
+        run_control_program(&program, "match_value", &[OwnedValue::Int(1)]),
         Ok(OwnedValue::Int(10))
     );
     assert_eq!(
-        Vm::new().run_program(&program, "match_value", &[OwnedValue::Int(9)]),
+        run_control_program(&program, "match_value", &[OwnedValue::Int(9)]),
         Ok(OwnedValue::Int(11))
     );
 }
@@ -196,28 +209,33 @@ fn match_case(value) {
     .expect("compile returning if and match initializers");
 
     assert_eq!(
-        Vm::new().run_program(&program, "if_case", &[OwnedValue::Bool(true)]),
+        run_control_program(&program, "if_case", &[OwnedValue::Bool(true)]),
         Ok(OwnedValue::Int(7))
     );
     assert_eq!(
-        Vm::new().run_program(&program, "if_case", &[OwnedValue::Bool(false)]),
+        run_control_program(&program, "if_case", &[OwnedValue::Bool(false)]),
         Ok(OwnedValue::Int(8))
     );
     assert_eq!(
-        Vm::new().run_program(&program, "match_case", &[OwnedValue::Int(1)]),
+        run_control_program(&program, "match_case", &[OwnedValue::Int(1)]),
         Ok(OwnedValue::Int(10))
     );
     assert_eq!(
-        Vm::new().run_program(&program, "match_case", &[OwnedValue::Int(2)]),
+        run_control_program(&program, "match_case", &[OwnedValue::Int(2)]),
         Ok(OwnedValue::Int(11))
     );
 }
 
 #[test]
 fn runs_compiled_match_expression_values() {
-    let code = compile_function_source(
+    let program = compile_program_source(
         SourceId::new(1),
         r#"
+enum Damage {
+    Physical { amount }
+    Magical { amount }
+}
+
 fn main() {
     let damage = Damage::Physical { amount: 7 };
     let value = match damage {
@@ -230,11 +248,13 @@ fn main() {
     return value;
 }
 "#,
-        "main",
     )
     .expect("compile match expression values");
 
-    assert_eq!(Vm::new().run(&code), Ok(OwnedValue::Int(8)));
+    assert_eq!(
+        run_control_program(&program, "main", &[]),
+        Ok(OwnedValue::Int(8))
+    );
 }
 
 #[test]
@@ -255,7 +275,7 @@ fn main() {
     )
     .expect("compile literal match patterns");
 
-    assert_eq!(Vm::new().run(&code), Ok(OwnedValue::Int(20)));
+    assert_eq!(run_linked_test_code(code), Ok(OwnedValue::Int(20)));
 }
 
 #[test]
@@ -300,7 +320,7 @@ fn main() {
     )
     .expect("compile binding match patterns");
 
-    assert_eq!(Vm::new().run(&code), Ok(OwnedValue::Int(8)));
+    assert_eq!(run_linked_test_code(code), Ok(OwnedValue::Int(8)));
 }
 
 #[test]
@@ -322,7 +342,7 @@ fn main() {
     )
     .expect("compile binding match assignment");
 
-    assert_eq!(Vm::new().run(&code), Ok(OwnedValue::Int(7)));
+    assert_eq!(run_linked_test_code(code), Ok(OwnedValue::Int(7)));
 }
 
 #[test]
@@ -343,14 +363,18 @@ fn main() {
     )
     .expect("compile match guards");
 
-    assert_eq!(Vm::new().run(&code), Ok(OwnedValue::Int(8)));
+    assert_eq!(run_linked_test_code(code), Ok(OwnedValue::Int(8)));
 }
 
 #[test]
 fn match_guards_can_read_record_pattern_bindings() {
-    let code = compile_function_source(
+    let program = compile_program_source(
         SourceId::new(1),
         r#"
+enum Damage {
+    Physical { amount }
+}
+
 fn main() {
     let damage = Damage::Physical { amount: 7 };
     return match damage {
@@ -360,11 +384,13 @@ fn main() {
     };
 }
 "#,
-        "main",
     )
     .expect("compile tuple variant literal pattern");
 
-    assert_eq!(Vm::new().run(&code), Ok(OwnedValue::Int(8)));
+    assert_eq!(
+        run_control_program(&program, "main", &[]),
+        Ok(OwnedValue::Int(8))
+    );
 }
 
 #[test]
@@ -389,7 +415,7 @@ fn main() {
     )
     .expect("compile record variant field patterns");
 
-    assert_eq!(Vm::new().run(&code), Ok(OwnedValue::Int(8)));
+    assert_eq!(run_linked_test_code(code), Ok(OwnedValue::Int(8)));
 }
 
 #[test]
@@ -447,7 +473,7 @@ fn main() {
     )
     .expect("compile tuple variant constructor and pattern");
 
-    assert_eq!(Vm::new().run(&code), Ok(OwnedValue::Int(9)));
+    assert_eq!(run_linked_test_code(code), Ok(OwnedValue::Int(9)));
 }
 
 #[test]
@@ -474,7 +500,7 @@ fn main() {
 
     let mut budget = ExecutionBudget::new(10_000, 32_000, 32);
     assert_eq!(
-        Vm::new().run_with_managed_heap_and_budget(&code, &mut budget),
+        run_linked_test_code_with_budget(code, &mut budget),
         Ok(OwnedValue::Int(8))
     );
 }
