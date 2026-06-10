@@ -536,6 +536,15 @@ consumed by current runtime image and VM paths until the linked-bytecode phase
 lands, but new compiler-facing APIs should use the unlinked names and must not
 reintroduce ambiguous `Program` or `CodeObject` output types.
 
+### Linked Bytecode Shape
+
+Executable bytecode is represented by `LinkedProgram`, `LinkedCodeObject`,
+`Instruction`, and `InstructionKind`. Linked instructions carry dense runtime
+handles or slots such as `NativeHandle`, `ScriptFunctionHandle`,
+`MethodDispatchHandle`, `TypeHandle`, `VariantHandle`, and `FieldSlot`.
+Human-readable names live in a `DebugNameTable` side table and linked
+instructions reference them by `DebugNameId` only.
+
 ## Validation Rules
 
 - Multi-level `super` scan must return no matches:

@@ -170,8 +170,8 @@ Cranelift JIT.
   for current error/reporting surfaces. HostPath construction now has an exact-capacity/static
   segment materialization boundary so field-only paths can bypass dynamic
   index/key conversion, and HostPath no longer carries a root-inclusive cache
-  key sidecar. Bytecode
-  `CodeObject` values now own interned `HostTargetPlan` tables and the
+  key sidecar. Unlinked bytecode
+  `UnlinkedCodeObject` values now own interned `HostTargetPlan` tables and the
   collapsed `HostRead`/`HostWrite`/`HostMutate`/`HostRemove`/`HostCall`
   instruction family has verifier coverage for target bounds, contiguous
   dynamic arguments, and cache-site kind matching. Source compiler lowering
@@ -204,6 +204,10 @@ Cranelift JIT.
   `UnlinkedProgram`, `UnlinkedCodeObject`, `UnlinkedInstruction`, and
   `UnlinkedInstructionKind` carry semantic IDs without requiring runtime
   handles during compilation.
+  The linked-bytecode representation now exists separately as `LinkedProgram`,
+  `LinkedCodeObject`, `Instruction`, and `InstructionKind`, with executable
+  operands shaped as dense handles or slots and debug names stored in a side
+  table.
   ProgramVersion now owns bytecode-offset profile layout metadata for each
   function and rebuilds that sidecar when hot reload creates a new version, so
   future counters, cache state, or JIT decisions can be version-scoped and

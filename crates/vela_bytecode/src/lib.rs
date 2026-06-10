@@ -2,6 +2,7 @@
 
 pub mod cache_site;
 pub mod compiler;
+pub mod linked;
 pub mod program_image;
 pub mod script_methods;
 pub mod verification;
@@ -16,6 +17,11 @@ use vela_host::resolved::HostMutationOp;
 use vela_host::target::HostTargetPlan;
 
 pub use cache_site::{CacheSiteDesc, CacheSiteId, CacheSiteKind, CacheSiteLayout};
+pub use linked::{
+    FieldSlot, Instruction, InstructionKind, LinkedCodeObject, LinkedFrameDebugInfo,
+    LinkedFrameSlotInfo, LinkedProgram, MethodDispatchHandle, NativeHandle, ScriptFunctionHandle,
+    TypeHandle, VariantHandle,
+};
 pub use program_image::ProgramImage;
 
 use crate::script_methods::ScriptMethodTable;

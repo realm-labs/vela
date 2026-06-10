@@ -1455,7 +1455,7 @@ surface.
 - Compiler outputs `UnlinkedProgram` / `UnlinkedCodeObject`.
 - No runtime handles are required during compilation.
 
-- [ ] **Task 5.2: Introduce `LinkedProgram` and runtime handles**
+- [x] **Task 5.2: Introduce `LinkedProgram` and runtime handles**
 
 **Objective:** Add the executable bytecode representation.
 
