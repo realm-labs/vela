@@ -1249,7 +1249,7 @@ surface.
 - ID collision with different path is rejected.
 - Registry lookup by path and ID works.
 
-- [ ] **Task 2.2: Add `DebugNameTable`**
+- [x] **Task 2.2: Add `DebugNameTable`**
 
 **Objective:** Decouple names from hot operands.
 

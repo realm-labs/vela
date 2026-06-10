@@ -13,6 +13,8 @@ pub struct DefinitionRegistry {
     defs_by_id: BTreeMap<DefId, Def>,
     ids_by_path: BTreeMap<DefPath, DefId>,
     ids_by_semantic_key: BTreeMap<SemanticKey, DefId>,
+    debug_names: DebugNameTable,
+    debug_names_by_def: BTreeMap<DefId, DebugNameId>,
 }
 
 impl DefinitionRegistry {
@@ -97,6 +99,8 @@ impl DefinitionRegistry {
 
         self.ids_by_path.insert(path, id);
         self.ids_by_semantic_key.insert(semantic_key, id);
+        let debug_name = self.debug_names.intern(def.path().canonical_display());
+        self.debug_names_by_def.insert(id, debug_name);
         self.defs_by_id.insert(id, def);
         Ok(id)
     }
@@ -119,6 +123,81 @@ impl DefinitionRegistry {
     #[must_use]
     pub fn id_for_semantic_key(&self, key: &SemanticKey) -> Option<DefId> {
         self.ids_by_semantic_key.get(key).copied()
+    }
+
+    #[must_use]
+    pub fn debug_name(&self, id: DebugNameId) -> &str {
+        self.debug_names.debug_name(id)
+    }
+
+    #[must_use]
+    pub fn debug_name_for_def(&self, id: DefId) -> DebugNameId {
+        self.debug_names_by_def[&id]
+    }
+}
+
+#[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
+#[repr(transparent)]
+pub struct DebugNameId(u32);
+
+impl DebugNameId {
+    #[must_use]
+    pub const fn new(index: u32) -> Self {
+        Self(index)
+    }
+
+    #[must_use]
+    pub const fn get(self) -> u32 {
+        self.0
+    }
+
+    fn as_usize(self) -> usize {
+        self.0 as usize
+    }
+}
+
+#[derive(Clone, Debug, Default, Eq, PartialEq)]
+pub struct DebugNameTable {
+    names: Vec<String>,
+    ids_by_name: BTreeMap<String, DebugNameId>,
+}
+
+impl DebugNameTable {
+    #[must_use]
+    pub fn new() -> Self {
+        Self::default()
+    }
+
+    #[must_use]
+    pub fn len(&self) -> usize {
+        self.names.len()
+    }
+
+    #[must_use]
+    pub fn is_empty(&self) -> bool {
+        self.names.is_empty()
+    }
+
+    pub fn intern(&mut self, name: impl Into<String>) -> DebugNameId {
+        let name = name.into();
+        if let Some(id) = self.ids_by_name.get(&name) {
+            return *id;
+        }
+
+        let next = self.names.len();
+        assert!(
+            u32::try_from(next).is_ok(),
+            "debug name table exceeds u32::MAX entries"
+        );
+        let id = DebugNameId::new(next as u32);
+        self.names.push(name.clone());
+        self.ids_by_name.insert(name, id);
+        id
+    }
+
+    #[must_use]
+    pub fn debug_name(&self, id: DebugNameId) -> &str {
+        &self.names[id.as_usize()]
     }
 }
 
@@ -644,5 +723,70 @@ mod tests {
 
         assert_eq!(registry.id_for_path(&ok_variant), Some(variant_id.def_id()));
         assert_eq!(registry.id_for_path(&value_field), Some(field_id.def_id()));
+    }
+
+    #[test]
+    fn debug_name_table_interns_names_with_stable_instance_ids() {
+        let mut table = DebugNameTable::new();
+
+        let first = table.intern("function script::combat::score");
+        let second = table.intern("type script::combat::Player");
+        let repeated = table.intern("function script::combat::score");
+
+        assert_eq!(first, repeated);
+        assert_ne!(first, second);
+        assert_eq!(first.get(), 0);
+        assert_eq!(second.get(), 1);
+        assert_eq!(table.debug_name(first), "function script::combat::score");
+        assert_eq!(table.debug_name(second), "type script::combat::Player");
+    }
+
+    #[test]
+    fn registry_assigns_debug_names_for_definitions() {
+        let mut registry = DefinitionRegistry::new();
+        let path = function_path("score");
+        let id = registry
+            .register_function(FunctionDef::new(path.clone(), FunctionSignature::default()))
+            .expect("function registration should succeed");
+
+        let debug_name_id = registry.debug_name_for_def(id.def_id());
+
+        assert_eq!(debug_name_id.get(), 0);
+        assert_eq!(
+            registry.debug_name(debug_name_id),
+            "function script::combat::score"
+        );
+    }
+
+    #[test]
+    fn registry_debug_name_ids_are_stable_inside_registry_instance() {
+        let mut registry = DefinitionRegistry::new();
+        let score = registry
+            .register_function(FunctionDef::new(
+                function_path("score"),
+                FunctionSignature::default(),
+            ))
+            .expect("score function registration should succeed");
+        let award = registry
+            .register_function(FunctionDef::new(
+                function_path("award"),
+                FunctionSignature::default(),
+            ))
+            .expect("award function registration should succeed");
+
+        let score_debug_name = registry.debug_name_for_def(score.def_id());
+        let award_debug_name = registry.debug_name_for_def(award.def_id());
+
+        assert_eq!(
+            registry.debug_name_for_def(score.def_id()),
+            score_debug_name
+        );
+        assert_eq!(
+            registry.debug_name_for_def(award.def_id()),
+            award_debug_name
+        );
+        assert_ne!(score_debug_name, award_debug_name);
+        assert_eq!(score_debug_name.get(), 0);
+        assert_eq!(award_debug_name.get(), 1);
     }
 }
