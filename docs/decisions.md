@@ -545,6 +545,15 @@ handles or slots such as `NativeHandle`, `ScriptFunctionHandle`,
 Human-readable names live in a `DebugNameTable` side table and linked
 instructions reference them by `DebugNameId` only.
 
+### Linked Bytecode Linker
+
+`vela_bytecode::linker` converts `UnlinkedProgram` values into
+`LinkedProgram` values. Native functions, methods, script functions, types,
+and variants are stored in linked side tables owned by the linked program, and
+instructions carry only dense handles, slots, host target plan IDs, or global
+slots. Name-only method and record/enum field bytecode is rejected by
+`LinkError` instead of being preserved as runtime fallback dispatch.
+
 ## Validation Rules
 
 - Multi-level `super` scan must return no matches:

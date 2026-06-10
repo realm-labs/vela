@@ -67,6 +67,12 @@ impl ScriptMethodTable {
     pub fn function_names(&self) -> impl Iterator<Item = &str> {
         self.methods.values().map(|method| method.function.as_str())
     }
+
+    pub fn methods(&self) -> impl Iterator<Item = (&str, &str, &ScriptMethod)> {
+        self.methods
+            .iter()
+            .map(|(key, method)| (key.type_name.as_str(), key.method.as_str(), method))
+    }
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]

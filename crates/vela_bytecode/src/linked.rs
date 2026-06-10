@@ -1,6 +1,7 @@
 use std::collections::BTreeMap;
 
-use vela_common::{GlobalSlot, Span};
+use vela_common::{GlobalSlot, HostMethodId, Span};
+use vela_def::{FunctionId, MethodId, TypeId, VariantId};
 use vela_host::resolved::HostMutationOp;
 use vela_host::target::HostTargetPlan;
 use vela_registry::{DebugNameId, DebugNameTable};
@@ -48,6 +49,10 @@ dense_handle!(FieldSlot);
 #[derive(Clone, Debug, Default, PartialEq)]
 pub struct LinkedProgram {
     debug_names: DebugNameTable,
+    native_functions: Vec<LinkedNativeFunction>,
+    method_dispatches: Vec<LinkedMethodDispatch>,
+    types: Vec<LinkedType>,
+    variants: Vec<LinkedVariant>,
     functions: Vec<LinkedCodeObject>,
     entry_points: BTreeMap<DebugNameId, ScriptFunctionHandle>,
 }
@@ -70,6 +75,60 @@ impl LinkedProgram {
     #[must_use]
     pub fn debug_names(&self) -> &DebugNameTable {
         &self.debug_names
+    }
+
+    pub fn push_native_function(&mut self, function: LinkedNativeFunction) -> NativeHandle {
+        let handle = NativeHandle::new(self.native_functions.len());
+        self.native_functions.push(function);
+        handle
+    }
+
+    #[must_use]
+    pub fn native_function(&self, handle: NativeHandle) -> Option<&LinkedNativeFunction> {
+        self.native_functions.get(handle.index())
+    }
+
+    #[must_use]
+    pub fn native_function_count(&self) -> usize {
+        self.native_functions.len()
+    }
+
+    pub fn push_method_dispatch(&mut self, dispatch: LinkedMethodDispatch) -> MethodDispatchHandle {
+        let handle = MethodDispatchHandle::new(self.method_dispatches.len());
+        self.method_dispatches.push(dispatch);
+        handle
+    }
+
+    #[must_use]
+    pub fn method_dispatch(&self, handle: MethodDispatchHandle) -> Option<&LinkedMethodDispatch> {
+        self.method_dispatches.get(handle.index())
+    }
+
+    #[must_use]
+    pub fn method_dispatch_count(&self) -> usize {
+        self.method_dispatches.len()
+    }
+
+    pub fn push_type(&mut self, ty: LinkedType) -> TypeHandle {
+        let handle = TypeHandle::new(self.types.len());
+        self.types.push(ty);
+        handle
+    }
+
+    #[must_use]
+    pub fn ty(&self, handle: TypeHandle) -> Option<&LinkedType> {
+        self.types.get(handle.index())
+    }
+
+    pub fn push_variant(&mut self, variant: LinkedVariant) -> VariantHandle {
+        let handle = VariantHandle::new(self.variants.len());
+        self.variants.push(variant);
+        handle
+    }
+
+    #[must_use]
+    pub fn variant(&self, handle: VariantHandle) -> Option<&LinkedVariant> {
+        self.variants.get(handle.index())
     }
 
     pub fn push_function(&mut self, function: LinkedCodeObject) -> ScriptFunctionHandle {
@@ -107,6 +166,77 @@ impl LinkedProgram {
     #[must_use]
     pub fn entry_point(&self, debug_name: DebugNameId) -> Option<ScriptFunctionHandle> {
         self.entry_points.get(&debug_name).copied()
+    }
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct LinkedNativeFunction {
+    pub id: FunctionId,
+    pub debug_name: DebugNameId,
+}
+
+impl LinkedNativeFunction {
+    #[must_use]
+    pub const fn new(id: FunctionId, debug_name: DebugNameId) -> Self {
+        Self { id, debug_name }
+    }
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct LinkedMethodDispatch {
+    pub debug_name: DebugNameId,
+    pub kind: LinkedMethodDispatchKind,
+}
+
+impl LinkedMethodDispatch {
+    #[must_use]
+    pub const fn new(debug_name: DebugNameId, kind: LinkedMethodDispatchKind) -> Self {
+        Self { debug_name, kind }
+    }
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub enum LinkedMethodDispatchKind {
+    Script {
+        method_id: MethodId,
+        function: ScriptFunctionHandle,
+    },
+    Value {
+        method_id: MethodId,
+    },
+    Host {
+        method_id: HostMethodId,
+    },
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct LinkedType {
+    pub id: TypeId,
+    pub debug_name: DebugNameId,
+}
+
+impl LinkedType {
+    #[must_use]
+    pub const fn new(id: TypeId, debug_name: DebugNameId) -> Self {
+        Self { id, debug_name }
+    }
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct LinkedVariant {
+    pub id: VariantId,
+    pub owner: TypeHandle,
+    pub debug_name: DebugNameId,
+}
+
+impl LinkedVariant {
+    #[must_use]
+    pub const fn new(id: VariantId, owner: TypeHandle, debug_name: DebugNameId) -> Self {
+        Self {
+            id,
+            owner,
+            debug_name,
+        }
     }
 }
 

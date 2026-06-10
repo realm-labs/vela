@@ -514,6 +514,18 @@ impl Def {
     }
 
     #[must_use]
+    pub const fn variant_id(&self) -> Option<VariantId> {
+        match self {
+            Self::Variant(def) => Some(def.id),
+            Self::Function(_)
+            | Self::Method(_)
+            | Self::Type(_)
+            | Self::Field(_)
+            | Self::Trait(_) => None,
+        }
+    }
+
+    #[must_use]
     pub const fn function_signature(&self) -> Option<&FunctionSignature> {
         match self {
             Self::Function(def) => Some(&def.signature),

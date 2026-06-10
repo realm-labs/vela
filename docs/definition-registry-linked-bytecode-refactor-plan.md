@@ -1477,7 +1477,7 @@ surface.
 - Linked instructions contain handles/slots, not strings or unresolved IDs.
 - Debug names live in a side table.
 
-- [ ] **Task 5.3: Implement linker**
+- [x] **Task 5.3: Implement linker**
 
 **Objective:** Convert unlinked bytecode to linked bytecode.
 
