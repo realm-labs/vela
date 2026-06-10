@@ -1,0 +1,12 @@
+[package]
+name = "vela_stdlib"
+edition.workspace = true
+license.workspace = true
+version.workspace = true
+
+[dependencies]
+vela_def.workspace = true
+vela_registry.workspace = true
+
+[lints]
+workspace = true

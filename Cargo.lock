@@ -474,6 +474,22 @@ dependencies = [
 ]
 
 [[package]]
+name = "vela_stdlib"
+version = "0.1.0"
+dependencies = [
+ "vela_def",
+ "vela_registry",
+]
+
+[[package]]
+name = "vela_stdlib_runtime"
+version = "0.1.0"
+dependencies = [
+ "vela_def",
+ "vela_stdlib",
+]
+
+[[package]]
 name = "vela_syntax"
 version = "0.1.0"
 dependencies = [

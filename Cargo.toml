@@ -14,6 +14,8 @@ members = [
     "crates/vela_playground_wasm",
     "crates/vela_registry",
     "crates/vela_reflect",
+    "crates/vela_stdlib",
+    "crates/vela_stdlib_runtime",
     "crates/vela_syntax",
     "crates/vela_vm",
     "examples",
@@ -47,6 +49,8 @@ vela_macros = { path = "crates/vela_macros" }
 vela_playground_wasm = { path = "crates/vela_playground_wasm" }
 vela_registry = { path = "crates/vela_registry" }
 vela_reflect = { path = "crates/vela_reflect" }
+vela_stdlib = { path = "crates/vela_stdlib" }
+vela_stdlib_runtime = { path = "crates/vela_stdlib_runtime" }
 vela_syntax = { path = "crates/vela_syntax" }
 vela_vm = { path = "crates/vela_vm" }
 wasm-bindgen = "0.2"

@@ -1291,7 +1291,7 @@ surface.
 
 ### Phase 3: Replace stdlib ID constants with stdlib manifest
 
-- [ ] **Task 3.1: Add `vela_stdlib` crate or module**
+- [x] **Task 3.1: Add `vela_stdlib` crate or module**
 
 **Objective:** Create the single source of truth for stdlib definitions.
 
