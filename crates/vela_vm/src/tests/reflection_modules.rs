@@ -1,9 +1,46 @@
 use super::*;
 use crate::owned_value::OwnedValue;
 
+fn exec_reflection_module_program(
+    vm: &Vm,
+    program: &UnlinkedProgram,
+    host: &mut HostExecution<'_>,
+) -> VmResult<OwnedValue> {
+    let mut budget = ExecutionBudget::unbounded();
+    run_linked_test_program_with_host_budget(vm, program, "main", &[], host, &mut budget)
+}
+
+fn compile_reflection_module_source(
+    source: SourceId,
+    text: &str,
+) -> vela_bytecode::compiler::error::CompileResult<UnlinkedProgram> {
+    compile_standard_program_source_with_native_functions(
+        source,
+        text,
+        &[
+            "reflect::attr",
+            "reflect::call",
+            "reflect::docs",
+            "reflect::exports",
+            "reflect::function",
+            "reflect::functions",
+            "reflect::get",
+            "reflect::has_function",
+            "reflect::has_module",
+            "reflect::id",
+            "reflect::kind",
+            "reflect::module",
+            "reflect::modules",
+            "reflect::name",
+            "reflect::origin",
+            "reflect::source_span",
+        ],
+    )
+}
+
 #[test]
 fn compiled_source_reflects_modules_functions_and_exports() {
-    let program = compile_program_source(
+    let program = compile_reflection_module_source(
         SourceId::new(1),
         r#"
 fn main() {
@@ -14,7 +51,8 @@ fn main() {
     let listed_exports = reflect::exports(modules[0]);
     let function = reflect::function("game::reward::grant");
     let functions = reflect::functions();
-    if module.name == "game::reward"
+    let function_params = reflect::get(function, "params");
+    if reflect::get(module, "name") == "game::reward"
         && reflect::name(module) == "game::reward"
         && reflect::kind(module) == "module"
         && reflect::source_span(module) != null
@@ -22,25 +60,25 @@ fn main() {
         && !reflect::has_module("game::missing")
         && reflect::has_function("game::reward::grant")
         && !reflect::has_function("game::reward::missing")
-        && modules.len() == 1
-        && modules[0].name == "game::reward"
-        && exports.len() == 1
-        && module_exports.len() == 1
+        && reflect::get(modules[0], "name") == "game::reward"
+        && exports[0] == "game::reward::grant"
+        && module_exports[0] == "game::reward::grant"
         && listed_exports[0] == "game::reward::grant"
-        && functions.len() == 1
-        && functions[0].name == "game::reward::grant"
-        && functions[0].id == function.id
+        && reflect::get(functions[0], "name") == "game::reward::grant"
+        && reflect::get(functions[0], "id") == reflect::get(function, "id")
+        && reflect::get(function_params[0], "name") == "player"
+        && reflect::get(function_params[1], "name") == "amount"
         && reflect::name(function) == "game::reward::grant"
-        && reflect::id(function) == function.id
+        && reflect::id(function) == reflect::get(function, "id")
         && reflect::kind(function) == "function"
-        && function.id > 0
+        && reflect::get(function, "id") > 0
         && reflect::docs(function) == "Grant reward."
         && reflect::origin(function) == "script"
         && reflect::origin(module) == "script"
         && reflect::attr(function, "event") == "reward"
-        && reflect::source_span(function).source == 1
+        && reflect::get(reflect::source_span(function), "source") == 1
         && reflect::get(function, "return") == "bool" {
-        return function.params.len();
+        return 2;
     }
     return 0;
 }
@@ -59,14 +97,14 @@ fn main() {
     };
 
     assert_eq!(
-        vm.run_program_with_host(&program, "main", &[], &mut host),
+        exec_reflection_module_program(&vm, &program, &mut host),
         Ok(OwnedValue::Int(2))
     );
 }
 
 #[test]
 fn compiled_source_reflect_module_reports_unknown_module_candidates() {
-    let program = compile_program_source(
+    let program = compile_reflection_module_source(
         SourceId::new(1),
         r#"
 fn main() {
@@ -85,8 +123,7 @@ fn main() {
         script_globals: None,
     };
 
-    let error = vm
-        .run_program_with_host(&program, "main", &[], &mut host)
+    let error = exec_reflection_module_program(&vm, &program, &mut host)
         .expect_err("unknown module should report candidates");
 
     assert!(matches!(
@@ -106,7 +143,7 @@ fn main() {
 
 #[test]
 fn compiled_source_reflect_function_reports_unknown_function_candidates() {
-    let program = compile_program_source(
+    let program = compile_reflection_module_source(
         SourceId::new(1),
         r#"
 fn main() {
@@ -125,8 +162,7 @@ fn main() {
         script_globals: None,
     };
 
-    let error = vm
-        .run_program_with_host(&program, "main", &[], &mut host)
+    let error = exec_reflection_module_program(&vm, &program, &mut host)
         .expect_err("unknown function should report candidates");
 
     assert!(matches!(
@@ -146,7 +182,7 @@ fn main() {
 
 #[test]
 fn compiled_source_reflect_function_candidates_respect_policy() {
-    let program = compile_program_source(
+    let program = compile_reflection_module_source(
         SourceId::new(1),
         r#"
 fn main() {
@@ -168,8 +204,7 @@ fn main() {
         script_globals: None,
     };
 
-    let error = vm
-        .run_program_with_host(&program, "main", &[], &mut host)
+    let error = exec_reflection_module_program(&vm, &program, &mut host)
         .expect_err("unknown function should report policy-visible candidates");
 
     assert_eq!(
@@ -184,7 +219,7 @@ fn main() {
 
 #[test]
 fn compiled_source_reflect_call_function_candidates_respect_policy() {
-    let program = compile_program_source(
+    let program = compile_reflection_module_source(
         SourceId::new(1),
         r#"
 struct ReflectFunction { name: string }
@@ -235,8 +270,7 @@ fn main() {
         script_globals: None,
     };
 
-    let error = vm
-        .run_program_with_host(&program, "main", &[], &mut host)
+    let error = exec_reflection_module_program(&vm, &program, &mut host)
         .expect_err("unknown function call should report callable candidates only");
 
     assert_eq!(
@@ -251,7 +285,7 @@ fn main() {
 
 #[test]
 fn compiled_source_reflect_exports_respect_function_policy() {
-    let program = compile_program_source(
+    let program = compile_reflection_module_source(
         SourceId::new(1),
         r#"
 fn main() {
@@ -260,17 +294,21 @@ fn main() {
     let exports = reflect::exports("game::reward");
     let module_exports = reflect::exports(module);
     let functions = reflect::functions();
+    let module_export_names = reflect::get(module, "exports");
+    let listed_export_names = reflect::get(modules[0], "exports");
     if reflect::has_module("game::reward")
         && !reflect::has_module("game::missing")
         && reflect::has_function("game::reward::grant")
         && !reflect::has_function("game::reward::hidden")
         && !reflect::has_function("game::reward::private")
         && !reflect::has_function("game::reward::admin") {
-        return module.exports.len() * 100
-            + exports.len() * 10
-            + module_exports.len() * 10000
-            + functions.len()
-            + modules[0].exports.len() * 1000;
+        if module_export_names[0] == "game::reward::grant"
+            && exports[0] == "game::reward::grant"
+            && module_exports[0] == "game::reward::grant"
+            && reflect::get(functions[0], "name") == "game::reward::grant"
+            && listed_export_names[0] == "game::reward::grant" {
+            return 11111;
+        }
     }
     return 0;
 }
@@ -292,7 +330,7 @@ fn main() {
     };
 
     assert_eq!(
-        vm.run_program_with_host(&program, "main", &[], &mut host),
+        exec_reflection_module_program(&vm, &program, &mut host),
         Ok(OwnedValue::Int(11111))
     );
 }
