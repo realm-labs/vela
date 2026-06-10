@@ -1,12 +1,12 @@
 use std::collections::{BTreeMap, BTreeSet};
 use std::sync::Arc;
 
-use vela_bytecode::UnlinkedProgram;
 use vela_bytecode::compiler::options::CompilerOptions;
 use vela_bytecode::compiler::{
     compile_module_sources_with_options, compile_module_sources_with_options_and_registry,
     compile_program_source_with_options, compile_program_source_with_options_and_registry,
 };
+use vela_bytecode::{LinkedProgram, Linker, UnlinkedProgram};
 use vela_common::SourceId;
 use vela_hir::ids::ModuleId;
 use vela_hir::module_graph::{ModuleGraph, ModuleSource};
@@ -226,7 +226,13 @@ pub fn compile_update_modules_with_abi_options_registry_and_policy(
 
 fn initial_version_from_program(program: UnlinkedProgram, abi: HotReloadAbi) -> ProgramVersion {
     let abi = abi_with_script_metadata(abi, &program);
-    ProgramVersion::from_program_with_abi(ProgramVersionId(0), program, abi)
+    let linked_program = link_standalone_program(&program);
+    let version = ProgramVersion::from_program_with_abi(ProgramVersionId(0), program, abi);
+    if let Some(linked_program) = linked_program {
+        version.with_linked_program(linked_program)
+    } else {
+        version
+    }
 }
 
 fn abi_with_script_metadata(abi: HotReloadAbi, program: &UnlinkedProgram) -> HotReloadAbi {
@@ -247,6 +253,7 @@ fn update_from_program(
     let global_names = program.global_names().to_vec();
     let script_methods = program.script_methods().clone();
     let script_metadata = program.script_metadata().cloned();
+    let linked_program = link_standalone_program(&program);
     let mut functions = BTreeMap::new();
     let mut changed_functions = Vec::new();
     for (name, code) in program.into_functions() {
@@ -284,14 +291,23 @@ fn update_from_program(
         module_changes(previous.script_metadata(), script_metadata.as_ref());
     let changes =
         AcceptedHotReloadChanges::new(changed_functions, changed_modules, impacted_modules);
-    Ok(HotUpdate::new(
+    let update = HotUpdate::new(
         functions,
         global_names,
         script_methods,
         script_metadata,
         abi,
         changes,
-    ))
+    );
+    Ok(if let Some(linked_program) = linked_program {
+        update.with_linked_program(linked_program)
+    } else {
+        update
+    })
+}
+
+fn link_standalone_program(program: &UnlinkedProgram) -> Option<LinkedProgram> {
+    Linker::new().link_program(program).ok()
 }
 
 fn module_changes(

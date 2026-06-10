@@ -227,9 +227,13 @@ Cranelift JIT.
   back to `ProgramImage` execution. Engine linking now uses the definition
   registry plus installed native implementation IDs, and engine-compiled
   initial and accepted hot-reload versions carry version-owned linked layouts
-  that runtime images reuse after safe-point acceptance. The remaining Task 6.1
-  gap is direct VM API cleanup that deletes old unlinked execution entrypoints
-  and compatibility image rebuild paths.
+  that runtime images reuse after safe-point acceptance. Standalone hot-reload
+  compilation now attaches linked layouts for linkable script-only versions,
+  and hot-reload behavior tests execute those linked version layouts instead
+  of rebuilding unlinked programs through `ProgramVersion::to_program()`. The
+  remaining Task 6.1 gap is direct VM API cleanup that deletes old unlinked
+  execution entrypoints plus the remaining engine-side compatibility image
+  rebuild paths.
   Script function dispatch is being isolated behind a focused call boundary so
   later resolved-target work does not grow the main VM loop or change current
   hot-reload rename semantics. Closure creation and invocation now have a

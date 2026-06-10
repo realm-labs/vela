@@ -18,6 +18,9 @@ use vela_reflect::registry::{
     TypeKey, TypeKind, TypeRegistry, VariantDesc,
 };
 use vela_vm::Vm;
+use vela_vm::owned_value::OwnedValue;
+
+use crate::version::ProgramVersion;
 
 mod function_abi;
 mod function_policy;
@@ -26,3 +29,14 @@ mod registry_manifest;
 mod runtime_reports;
 mod schema_abi;
 mod trait_module_abi;
+
+fn run_linked_version(
+    version: &ProgramVersion,
+    entry: &str,
+    args: &[OwnedValue],
+) -> vela_vm::error::VmResult<OwnedValue> {
+    let linked = version
+        .linked_program()
+        .expect("hot-reload version should own linked bytecode");
+    Vm::new().run_linked_program(linked, entry, args)
+}

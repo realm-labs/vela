@@ -26,7 +26,7 @@ fn new_calls_enter_new_code_after_update() {
     runtime.apply_hot_update(update).expect("apply update");
 
     assert_eq!(
-        Vm::new().run_program(&runtime.current().to_program(), "main", &[]),
+        run_linked_version(&runtime.current(), "main", &[]),
         Ok(OwnedValue::Int(30))
     );
 }
@@ -116,11 +116,13 @@ fn main() {
     .expect("compile initial");
 
     assert_eq!(version.global_names(), ["main::state".to_owned()]);
-    let program = version.to_program();
-    assert_eq!(program.global_names(), version.global_names());
+    assert_eq!(
+        version.program_image().global_names(),
+        version.global_names()
+    );
     assert!(
-        program.global_slot("main::state").is_some(),
-        "converted program should keep global slot metadata"
+        version.program_image().global_slot("main::state").is_some(),
+        "program image should keep global slot metadata"
     );
 }
 
@@ -225,8 +227,8 @@ fn main() {
     assert_eq!(new.id, ProgramVersionId(1));
     assert_eq!(new.global_names(), ["main::state".to_owned()]);
     assert!(
-        new.to_program().global_slot("main::state").is_some(),
-        "new program should keep global slot metadata"
+        new.program_image().global_slot("main::state").is_some(),
+        "new program image should keep global slot metadata"
     );
 }
 
@@ -245,7 +247,7 @@ fn staged_update_waits_for_check_reload_safe_point() {
     assert_eq!(runtime.stage_hot_update(update), None);
     assert!(runtime.has_pending_update());
     assert_eq!(
-        Vm::new().run_program(&runtime.current().to_program(), "main", &[]),
+        run_linked_version(&runtime.current(), "main", &[]),
         Ok(OwnedValue::Int(20))
     );
 
@@ -257,7 +259,7 @@ fn staged_update_waits_for_check_reload_safe_point() {
     assert_eq!(report.changed_functions, ["main"]);
     assert!(!runtime.has_pending_update());
     assert_eq!(
-        Vm::new().run_program(&runtime.current().to_program(), "main", &[]),
+        run_linked_version(&runtime.current(), "main", &[]),
         Ok(OwnedValue::Int(30))
     );
 }
@@ -308,7 +310,7 @@ fn main() {
     assert!(!runtime.has_pending_update());
     assert_eq!(report.errors[0].code, "reload.function.new_denied");
     assert_eq!(
-        Vm::new().run_program(&runtime.current().to_program(), "main", &[]),
+        run_linked_version(&runtime.current(), "main", &[]),
         Ok(OwnedValue::Int(20))
     );
 }
@@ -342,7 +344,7 @@ fn main() {
     assert!(report.errors.is_empty());
     let version = report.version().expect("accepted report version");
     assert_eq!(
-        Vm::new().run_program(&version.to_program(), "main", &[]),
+        run_linked_version(&version, "main", &[]),
         Ok(OwnedValue::Int(5))
     );
 }
@@ -476,7 +478,7 @@ fn program_version_exposes_read_only_module_and_script_method_metadata() {
         .expect("main module should be indexed");
     assert!(metadata.module_source_hash(module).is_some());
     assert_eq!(
-        Vm::new().run_program(&current.to_program(), "game::main::main", &[]),
+        run_linked_version(&current, "game::main::main", &[]),
         Ok(OwnedValue::Int(12))
     );
 }
@@ -511,7 +513,7 @@ fn program_version_exposes_inherent_script_method_metadata() {
         Some(function_name)
     );
     assert_eq!(
-        Vm::new().run_program(&current.to_program(), "game::main::main", &[]),
+        run_linked_version(&current, "game::main::main", &[]),
         Ok(OwnedValue::Int(12))
     );
 }
@@ -630,11 +632,11 @@ fn old_version_lifetime_preserves_old_code() {
     let new = runtime.apply_hot_update(update).expect("apply update");
 
     assert_eq!(
-        Vm::new().run_program(&old.to_program(), "main", &[]),
+        run_linked_version(&old, "main", &[]),
         Ok(OwnedValue::Int(20))
     );
     assert_eq!(
-        Vm::new().run_program(&new.to_program(), "main", &[]),
+        run_linked_version(&new, "main", &[]),
         Ok(OwnedValue::Int(30))
     );
 }
@@ -853,7 +855,7 @@ fn main() {
         "new function `helper` is denied by reload policy"
     );
     assert_eq!(
-        Vm::new().run_program(&runtime.current().to_program(), "main", &[]),
+        run_linked_version(&runtime.current(), "main", &[]),
         Ok(OwnedValue::Int(1))
     );
 }
