@@ -11,7 +11,7 @@ pub mod verification;
 use std::collections::BTreeMap;
 
 use vela_common::{GlobalSlot, HostMethodId, Span};
-use vela_def::{FunctionId, MethodId};
+use vela_def::{DefPath, FunctionId, MethodId};
 use vela_hir::ids::HirLocalId;
 use vela_hir::module_graph::ModuleGraph;
 use vela_host::resolved::HostMutationOp;
@@ -33,6 +33,7 @@ use crate::script_methods::ScriptMethodTable;
 pub struct UnlinkedProgram {
     functions: Vec<UnlinkedCodeObject>,
     function_by_name: BTreeMap<String, FunctionIndex>,
+    function_by_id: BTreeMap<FunctionId, FunctionIndex>,
     global_names: Vec<String>,
     global_slots: BTreeMap<String, GlobalSlot>,
     script_methods: ScriptMethodTable,
@@ -139,6 +140,13 @@ impl UnlinkedProgram {
     }
 
     #[must_use]
+    pub fn function_by_id(&self, id: FunctionId) -> Option<&UnlinkedCodeObject> {
+        self.function_by_id
+            .get(&id)
+            .and_then(|index| self.function_by_index(*index))
+    }
+
+    #[must_use]
     pub fn function_mut(&mut self, name: &str) -> Option<&mut UnlinkedCodeObject> {
         let index = self.function_by_name.get(name).copied()?;
         self.functions.get_mut(index.0)
@@ -189,12 +197,20 @@ impl UnlinkedProgram {
 
     fn rebuild_function_index(&mut self) {
         self.function_by_name.clear();
+        self.function_by_id.clear();
         self.function_by_name.extend(
             self.functions
                 .iter()
                 .enumerate()
                 .map(|(index, function)| (function.name.clone(), FunctionIndex(index))),
         );
+        self.function_by_id
+            .extend(self.functions.iter().enumerate().map(|(index, function)| {
+                (
+                    function_id_for_script_name(&function.name),
+                    FunctionIndex(index),
+                )
+            }));
     }
 }
 
@@ -202,6 +218,10 @@ pub trait UnlinkedProgramCode {
     fn function(&self, name: &str) -> Option<&UnlinkedCodeObject>;
 
     fn function_by_index(&self, _index: FunctionIndex) -> Option<&UnlinkedCodeObject> {
+        None
+    }
+
+    fn function_by_id(&self, _id: FunctionId) -> Option<&UnlinkedCodeObject> {
         None
     }
 
@@ -221,8 +241,8 @@ impl UnlinkedProgramCode for UnlinkedProgram {
         UnlinkedProgram::function(self, name)
     }
 
-    fn function_by_index(&self, index: FunctionIndex) -> Option<&UnlinkedCodeObject> {
-        UnlinkedProgram::function_by_index(self, index)
+    fn function_by_id(&self, id: FunctionId) -> Option<&UnlinkedCodeObject> {
+        UnlinkedProgram::function_by_id(self, id)
     }
 
     fn script_method(&self, type_name: &str, method: &str) -> Option<&UnlinkedCodeObject> {
@@ -240,6 +260,12 @@ impl UnlinkedProgramCode for UnlinkedProgram {
     ) -> Option<&UnlinkedCodeObject> {
         UnlinkedProgram::script_method_by_id(self, type_name, method_id)
     }
+}
+
+pub(crate) fn function_id_for_script_name(name: &str) -> FunctionId {
+    let mut segments = name.split("::").collect::<Vec<_>>();
+    let function = segments.pop().unwrap_or(name);
+    FunctionId::from_def_id(DefPath::function("script", segments, function).id())
 }
 
 #[derive(Clone, Debug, PartialEq)]

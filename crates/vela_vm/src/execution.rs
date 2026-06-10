@@ -249,7 +249,10 @@ impl Vm {
                     )?;
                 }
                 UnlinkedInstructionKind::CallFunction {
-                    dst, name, args, ..
+                    dst,
+                    target,
+                    name,
+                    args,
                 } => {
                     script_function_calls::dispatch_script_function_call(
                         self,
@@ -260,6 +263,7 @@ impl Vm {
                         &mut frame,
                         script_function_calls::ScriptFunctionCall {
                             dst: *dst,
+                            target: *target,
                             name,
                             args,
                             call_site: instruction.span,

@@ -16,6 +16,14 @@ fn host_cache_site(
     code.push_cache_site(kind, InstructionOffset(instruction_offset))
 }
 
+fn script_function_id(name: &str) -> vela_def::FunctionId {
+    let mut segments = name.split("::").collect::<Vec<_>>();
+    let function = segments.pop().unwrap_or(name);
+    vela_def::FunctionId::from_def_id(
+        vela_def::DefPath::function("script", segments, function).id(),
+    )
+}
+
 #[test]
 fn heap_execution_enforces_memory_budget_for_bytecode_allocations() {
     let code = compile_function_source(
@@ -536,7 +544,7 @@ fn runtime_errors_include_script_call_stack() {
     main.push_instruction(
         UnlinkedInstruction::new(UnlinkedInstructionKind::CallFunction {
             dst: Register(0),
-            target: vela_def::FunctionId::new(1),
+            target: script_function_id("middle"),
             name: "middle".to_owned(),
             args: Vec::new(),
         })
@@ -551,7 +559,7 @@ fn runtime_errors_include_script_call_stack() {
     middle.push_instruction(
         UnlinkedInstruction::new(UnlinkedInstructionKind::CallFunction {
             dst: Register(0),
-            target: vela_def::FunctionId::new(2),
+            target: script_function_id("leaf"),
             name: "leaf".to_owned(),
             args: Vec::new(),
         })

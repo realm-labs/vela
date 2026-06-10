@@ -1,5 +1,6 @@
 use vela_bytecode::{CallArgument, InstructionOffset, Register, UnlinkedProgramCode};
 use vela_common::Span;
+use vela_def::FunctionId;
 
 use crate::{
     CallFrame, ExecutionBudget, ExecutionCall, HeapExecution, HostExecution, SmallStorage, Value,
@@ -8,6 +9,7 @@ use crate::{
 
 pub(crate) struct ScriptFunctionCall<'a> {
     pub(crate) dst: Register,
+    pub(crate) target: FunctionId,
     pub(crate) name: &'a str,
     pub(crate) args: &'a [CallArgument],
     pub(crate) call_site: Option<Span>,
@@ -28,7 +30,7 @@ pub(crate) fn dispatch_script_function_call(
             name: call.name.to_owned(),
         })
     })?;
-    let function = program.function(call.name).ok_or_else(|| {
+    let function = program.function_by_id(call.target).ok_or_else(|| {
         VmError::new(VmErrorKind::UnknownFunction {
             name: call.name.to_owned(),
         })

@@ -44,6 +44,49 @@ fn runs_basic_arithmetic() {
 }
 
 #[test]
+fn unlinked_script_function_call_uses_id_not_debug_name_fallback() {
+    let mut helper = UnlinkedCodeObject::new("helper", 1);
+    let value = helper.push_constant(Constant::Int(7));
+    helper.push_instruction(UnlinkedInstruction::new(
+        UnlinkedInstructionKind::LoadConst {
+            dst: Register(0),
+            constant: value,
+        },
+    ));
+    helper.push_instruction(UnlinkedInstruction::new(UnlinkedInstructionKind::Return {
+        src: Register(0),
+    }));
+
+    let mut main = UnlinkedCodeObject::new("main", 1);
+    main.push_instruction(UnlinkedInstruction::new(
+        UnlinkedInstructionKind::CallFunction {
+            dst: Register(0),
+            target: FunctionId::new(0xDEAD),
+            name: "helper".to_owned(),
+            args: Vec::new(),
+        },
+    ));
+    main.push_instruction(UnlinkedInstruction::new(UnlinkedInstructionKind::Return {
+        src: Register(0),
+    }));
+
+    let mut program = UnlinkedProgram::new();
+    program.insert_function(helper);
+    program.insert_function(main);
+
+    let error = Vm::new()
+        .run_program(&program, "main", &[])
+        .expect_err("matching debug name must not rescue wrong FunctionId");
+
+    assert_eq!(
+        error.kind(),
+        VmErrorKind::UnknownFunction {
+            name: "helper".to_owned()
+        }
+    );
+}
+
+#[test]
 fn runs_linked_program_basic_arithmetic_without_unlinked_code() {
     let mut program = vela_bytecode::LinkedProgram::new();
     let main_name = program.intern_debug_name("main");

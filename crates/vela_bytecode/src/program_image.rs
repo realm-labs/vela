@@ -1,18 +1,20 @@
 use std::collections::BTreeMap;
 
 use vela_common::GlobalSlot;
+use vela_def::FunctionId;
 use vela_hir::module_graph::ModuleGraph;
 
 use crate::script_methods::ScriptMethodTable;
 use crate::{
     CacheSiteDesc, CacheSiteId, CacheSiteLayout, FunctionIndex, UnlinkedCodeObject,
-    UnlinkedInstructionKind, UnlinkedProgram, UnlinkedProgramCode,
+    UnlinkedInstructionKind, UnlinkedProgram, UnlinkedProgramCode, function_id_for_script_name,
 };
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct ProgramImage {
     functions: Box<[UnlinkedCodeObject]>,
     function_by_name: BTreeMap<String, FunctionIndex>,
+    function_by_id: BTreeMap<FunctionId, FunctionIndex>,
     global_names: Box<[String]>,
     global_slots: BTreeMap<String, GlobalSlot>,
     cache_sites: Box<[CacheSiteDesc]>,
@@ -41,10 +43,12 @@ impl ProgramImage {
         let functions = functions.into_iter();
         let mut indexed_functions = Vec::with_capacity(functions.size_hint().0);
         let mut function_by_name = BTreeMap::new();
+        let mut function_by_id = BTreeMap::new();
         for function in functions {
             let name = function.name.clone();
             let function = flatten_function(function, &mut indexed_functions);
             let index = FunctionIndex(indexed_functions.len());
+            function_by_id.insert(function_id_for_script_name(&name), index);
             function_by_name.insert(name, index);
             indexed_functions.push(function);
         }
@@ -60,6 +64,7 @@ impl ProgramImage {
         Self {
             functions: indexed_functions.into_boxed_slice(),
             function_by_name,
+            function_by_id,
             global_names: global_names.into_boxed_slice(),
             global_slots,
             cache_sites,
@@ -92,6 +97,11 @@ impl ProgramImage {
     #[must_use]
     pub fn function_by_name(&self, name: &str) -> Option<&UnlinkedCodeObject> {
         self.function(self.function_index(name)?)
+    }
+
+    #[must_use]
+    pub fn function_by_id(&self, id: FunctionId) -> Option<&UnlinkedCodeObject> {
+        self.function(self.function_by_id.get(&id).copied()?)
     }
 
     #[must_use]
@@ -185,6 +195,10 @@ impl UnlinkedProgramCode for ProgramImage {
 
     fn function_by_index(&self, index: FunctionIndex) -> Option<&UnlinkedCodeObject> {
         self.function(index)
+    }
+
+    fn function_by_id(&self, id: FunctionId) -> Option<&UnlinkedCodeObject> {
+        ProgramImage::function_by_id(self, id)
     }
 
     fn script_method(&self, type_name: &str, method: &str) -> Option<&UnlinkedCodeObject> {

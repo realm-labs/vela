@@ -14,7 +14,7 @@ use crate::linked::{
 use crate::{
     Constant, FieldSlot, FunctionIndex, HostTargetPlanId, MethodDispatchHandle, NativeHandle,
     ScriptFunctionHandle, TypeHandle, UnlinkedCodeObject, UnlinkedInstruction,
-    UnlinkedInstructionKind, UnlinkedProgram, VariantHandle,
+    UnlinkedInstructionKind, UnlinkedProgram, VariantHandle, function_id_for_script_name,
 };
 
 #[derive(Clone, Debug, Default)]
@@ -937,12 +937,6 @@ fn sorted_field_slots<'field>(
         .enumerate()
         .map(|(slot, field)| (field, slot))
         .collect()
-}
-
-fn function_id_for_script_name(name: &str) -> FunctionId {
-    let mut segments = name.split("::").collect::<Vec<_>>();
-    let function = segments.pop().unwrap_or(name);
-    FunctionId::from_def_id(DefPath::function("script", segments, function).id())
 }
 
 fn type_path_candidates(name: &str) -> Vec<DefPath> {
