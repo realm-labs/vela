@@ -239,6 +239,46 @@ fn call_method_uses_standard_string_argument_transform_ids_before_name_fallback(
     );
 }
 
+#[test]
+fn call_method_uses_standard_string_option_ids_before_name_fallback() {
+    assert_eq!(
+        run_string_transform_with_args_by_id(
+            vela_common::standard_ids::STRING_FIND_METHOD_ID,
+            "reward:gold",
+            &[Constant::String(":".to_owned())],
+        ),
+        Ok(option_some(OwnedValue::Int(6)))
+    );
+    assert_eq!(
+        run_string_transform_with_args_by_id(
+            vela_common::standard_ids::STRING_STRIP_PREFIX_METHOD_ID,
+            "reward:gold",
+            &[Constant::String("reward:".to_owned())],
+        ),
+        Ok(option_some(OwnedValue::String("gold".to_owned())))
+    );
+    assert_eq!(
+        run_string_transform_with_args_by_id(
+            vela_common::standard_ids::STRING_STRIP_SUFFIX_METHOD_ID,
+            "reward:gold",
+            &[Constant::String(":gold".to_owned())],
+        ),
+        Ok(option_some(OwnedValue::String("reward".to_owned())))
+    );
+    assert_eq!(
+        run_string_transform_with_args_by_id(
+            vela_common::standard_ids::STRING_CHAR_AT_METHOD_ID,
+            "reward:gold",
+            &[Constant::Int(6)],
+        ),
+        Ok(option_some(OwnedValue::String(":".to_owned())))
+    );
+}
+
+fn option_some(value: OwnedValue) -> OwnedValue {
+    OwnedValue::enum_variant("Option", "Some", [("0", value)])
+}
+
 fn run_string_transform_with_args_by_id(
     method_id: vela_common::HostMethodId,
     receiver: &str,

@@ -295,6 +295,53 @@ fn main() {
 }
 
 #[test]
+fn engine_compiler_options_emit_standard_string_option_method_ids() {
+    let engine = Engine::builder()
+        .with_standard_natives()
+        .build()
+        .expect("engine should build with standard natives");
+    let program = compile_program_source_with_options(
+        SourceId::new(1),
+        r#"
+fn main() {
+    let label = "reward:gold";
+    return label.find(":").unwrap_or(-1) == 6
+        && label.strip_prefix("reward:").unwrap_or("") == "gold"
+        && label.strip_suffix(":gold").unwrap_or("") == "reward"
+        && label.char_at(6).unwrap_or("") == ":";
+}
+"#,
+        &engine.compiler_options(),
+    )
+    .expect("standard string option methods should compile");
+    let main = program.function("main").expect("main should compile");
+
+    let value_methods = main
+        .instructions
+        .iter()
+        .filter_map(|instruction| match &instruction.kind {
+            InstructionKind::CallMethod {
+                method,
+                value_method_id,
+                ..
+            } => Some((method.as_str(), *value_method_id)),
+            _ => None,
+        })
+        .collect::<Vec<_>>();
+
+    assert!(value_methods.contains(&("find", Some(crate::standard::STRING_FIND_METHOD_ID))));
+    assert!(value_methods.contains(&(
+        "strip_prefix",
+        Some(crate::standard::STRING_STRIP_PREFIX_METHOD_ID)
+    )));
+    assert!(value_methods.contains(&(
+        "strip_suffix",
+        Some(crate::standard::STRING_STRIP_SUFFIX_METHOD_ID)
+    )));
+    assert!(value_methods.contains(&("char_at", Some(crate::standard::STRING_CHAR_AT_METHOD_ID))));
+}
+
+#[test]
 fn engine_compiler_options_emit_standard_range_method_ids() {
     let engine = Engine::builder()
         .with_standard_natives()
