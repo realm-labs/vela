@@ -581,7 +581,7 @@ pub enum InstructionKind {
         dst: Register,
         enum_ty: TypeHandle,
         variant: VariantHandle,
-        fields: Vec<(FieldSlot, Register)>,
+        fields: Vec<(FieldSlot, DebugNameId, Register)>,
     },
     GetRecordSlot {
         dst: Register,
@@ -599,6 +599,7 @@ pub enum InstructionKind {
         dst: Register,
         value: Register,
         field: FieldSlot,
+        debug_name: DebugNameId,
     },
     GetIndex {
         dst: Register,

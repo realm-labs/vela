@@ -267,7 +267,7 @@ fn verify_linked_instruction(
         InstructionKind::MakeRecord { dst, ty, fields } => {
             verify_linked_register(function, instruction_index, code, *dst)?;
             verify_linked_type_handle(function, instruction_index, context, *ty)?;
-            verify_linked_record_fields(function, instruction_index, code, context, fields)
+            verify_linked_object_fields(function, instruction_index, code, context, fields)
         }
         InstructionKind::MakeEnum {
             dst,
@@ -278,7 +278,7 @@ fn verify_linked_instruction(
             verify_linked_register(function, instruction_index, code, *dst)?;
             verify_linked_type_handle(function, instruction_index, context, *enum_ty)?;
             verify_linked_variant_handle(function, instruction_index, context, *variant)?;
-            verify_linked_field_registers(function, instruction_index, code, fields)
+            verify_linked_object_fields(function, instruction_index, code, context, fields)
         }
         InstructionKind::GetRecordSlot {
             dst,
@@ -300,9 +300,15 @@ fn verify_linked_instruction(
             verify_linked_debug_name(function, instruction_index, context, *debug_name)?;
             verify_linked_register(function, instruction_index, code, *src)
         }
-        InstructionKind::GetEnumSlot { dst, value, .. } => {
+        InstructionKind::GetEnumSlot {
+            dst,
+            value,
+            debug_name,
+            ..
+        } => {
             verify_linked_register(function, instruction_index, code, *dst)?;
-            verify_linked_register(function, instruction_index, code, *value)
+            verify_linked_register(function, instruction_index, code, *value)?;
+            verify_linked_debug_name(function, instruction_index, context, *debug_name)
         }
         InstructionKind::GetIndex { dst, base, index } => {
             verify_linked_register(function, instruction_index, code, *dst)?;
@@ -642,19 +648,7 @@ fn verify_linked_registers(
     Ok(())
 }
 
-fn verify_linked_field_registers(
-    function: &str,
-    instruction: Option<usize>,
-    code: &LinkedCodeObject,
-    fields: &[(crate::FieldSlot, Register)],
-) -> Result<(), VerificationError> {
-    for (_, register) in fields {
-        verify_linked_register(function, instruction, code, *register)?;
-    }
-    Ok(())
-}
-
-fn verify_linked_record_fields(
+fn verify_linked_object_fields(
     function: &str,
     instruction: Option<usize>,
     code: &LinkedCodeObject,

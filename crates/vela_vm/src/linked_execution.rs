@@ -1,7 +1,7 @@
 use vela_bytecode::linked::{InstructionKind, LinkedMethodDispatchKind};
 use vela_bytecode::{
     DebugNameId, FieldSlot, InstructionOffset, LinkedCodeObject, LinkedProgram, Register,
-    TypeHandle,
+    TypeHandle, VariantHandle,
 };
 use vela_common::Span;
 
@@ -488,7 +488,7 @@ impl Vm {
                 }
                 InstructionKind::MakeRecord { dst, ty, fields } => {
                     let type_name = linked_type_name(call.program, *ty, "MakeRecord")?;
-                    let fields = linked_record_fields(call.program, fields);
+                    let fields = linked_object_fields(call.program, fields);
                     script_object_construction::make_record(
                         &mut frame,
                         heap.as_deref_mut(),
@@ -527,6 +527,40 @@ impl Vm {
                         call.program.debug_name(*debug_name),
                         field.index(),
                         *src,
+                    )?;
+                }
+                InstructionKind::MakeEnum {
+                    dst,
+                    enum_ty,
+                    variant,
+                    fields,
+                } => {
+                    let enum_name = linked_type_name(call.program, *enum_ty, "MakeEnum")?;
+                    let variant = linked_variant_name(call.program, *variant, "MakeEnum")?;
+                    let fields = linked_object_fields(call.program, fields);
+                    script_object_construction::make_enum(
+                        &mut frame,
+                        heap.as_deref_mut(),
+                        budget.as_deref_mut(),
+                        *dst,
+                        enum_name,
+                        variant,
+                        &fields,
+                    )?;
+                }
+                InstructionKind::GetEnumSlot {
+                    dst,
+                    value,
+                    field,
+                    debug_name,
+                } => {
+                    field_access::dispatch_get_enum_slot(
+                        &mut frame,
+                        heap.as_deref_mut(),
+                        *dst,
+                        *value,
+                        call.program.debug_name(*debug_name),
+                        field.index(),
                     )?;
                 }
                 InstructionKind::GetIndex { dst, base, index } => {
@@ -600,6 +634,22 @@ impl Vm {
                     )? {
                         ip = target;
                     }
+                }
+                InstructionKind::EnumTagEqual {
+                    dst,
+                    value,
+                    enum_ty,
+                    variant,
+                } => {
+                    let enum_name = linked_type_name(call.program, *enum_ty, "EnumTagEqual")?;
+                    let variant = linked_variant_name(call.program, *variant, "EnumTagEqual")?;
+                    let matches = field_access::enum_tag_equal(
+                        frame.read(*value)?,
+                        enum_name,
+                        variant,
+                        heap.as_deref(),
+                    );
+                    frame.write(*dst, Value::Bool(matches))?;
                 }
                 InstructionKind::LoadGlobal {
                     dst,
@@ -912,7 +962,21 @@ fn linked_type_name<'program>(
     Ok(program.debug_name(ty.debug_name))
 }
 
-fn linked_record_fields(
+fn linked_variant_name<'program>(
+    program: &'program LinkedProgram,
+    variant: VariantHandle,
+    opcode: &'static str,
+) -> VmResult<&'program str> {
+    let variant = program
+        .variant(variant)
+        .ok_or_else(|| VmError::new(VmErrorKind::UnsupportedLinkedInstruction { opcode }))?;
+    Ok(program
+        .debug_name(variant.debug_name)
+        .rsplit_once("::")
+        .map_or_else(|| program.debug_name(variant.debug_name), |(_, name)| name))
+}
+
+fn linked_object_fields(
     program: &LinkedProgram,
     fields: &[(FieldSlot, DebugNameId, Register)],
 ) -> Vec<(String, Register)> {

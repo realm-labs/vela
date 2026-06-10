@@ -529,7 +529,13 @@ impl<'linker, 'registry> LinkContext<'linker, 'registry> {
                 let field_slots = sorted_field_slots(fields.iter().map(|(field, _)| field));
                 let fields = fields
                     .iter()
-                    .map(|(field, register)| (FieldSlot::new(field_slots[field]), *register))
+                    .map(|(field, register)| {
+                        (
+                            FieldSlot::new(field_slots[field]),
+                            self.linked.intern_debug_name(field.clone()),
+                            *register,
+                        )
+                    })
                     .collect();
                 InstructionKind::MakeEnum {
                     dst: *dst,
@@ -579,11 +585,15 @@ impl<'linker, 'registry> LinkContext<'linker, 'registry> {
                 });
             }
             UnlinkedInstructionKind::GetEnumSlot {
-                dst, value, slot, ..
+                dst,
+                value,
+                field,
+                slot,
             } => InstructionKind::GetEnumSlot {
                 dst: *dst,
                 value: *value,
                 field: FieldSlot::new(*slot),
+                debug_name: self.linked.intern_debug_name(field.clone()),
             },
             UnlinkedInstructionKind::GetIndex { dst, base, index } => InstructionKind::GetIndex {
                 dst: *dst,

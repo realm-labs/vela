@@ -36,6 +36,7 @@ fn linked_program_verify_accepts_valid_handles_and_debug_names() {
     let method_name = program.intern_debug_name("score");
     let type_name = program.intern_debug_name("Player");
     let variant_name = program.intern_debug_name("Player::Ranked");
+    let field_name = program.intern_debug_name("score");
 
     let native = program.push_native_function(LinkedNativeFunction::new(
         vela_def::FunctionId::new(1),
@@ -77,7 +78,7 @@ fn linked_program_verify_accepts_valid_handles_and_debug_names() {
         dst: Register(2),
         enum_ty: ty,
         variant,
-        fields: vec![(FieldSlot::new(0), Register(1))],
+        fields: vec![(FieldSlot::new(0), field_name, Register(1))],
     }));
     code.push_instruction(Instruction::new(InstructionKind::Return {
         src: Register(2),
