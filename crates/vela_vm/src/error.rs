@@ -178,6 +178,9 @@ pub enum VmErrorKind {
         budget: ExecutionBudgetKind,
         limit: u64,
     },
+    UnsupportedLinkedInstruction {
+        opcode: &'static str,
+    },
     MissingReturn,
 }
 
@@ -201,6 +204,7 @@ impl VmErrorKind {
             Self::IndexOutOfBounds { .. } => "vm::index_out_of_bounds",
             Self::UnknownMapKey { .. } => "vm::unknown_map_key",
             Self::BudgetExceeded { .. } => "vm::budget_exceeded",
+            Self::UnsupportedLinkedInstruction { .. } => "vm::unsupported_linked_instruction",
             Self::MissingReturn => "vm::missing_return",
         }
     }
@@ -251,6 +255,9 @@ impl VmErrorKind {
             Self::UnknownMapKey { key } => format!("unknown map key `{key}`"),
             Self::BudgetExceeded { budget, limit } => {
                 format!("execution budget exceeded for {budget:?} with limit {limit}")
+            }
+            Self::UnsupportedLinkedInstruction { opcode } => {
+                format!("linked instruction `{opcode}` is not executable yet")
             }
             Self::MissingReturn => "function completed without returning a value".to_owned(),
         }

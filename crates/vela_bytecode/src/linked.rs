@@ -212,6 +212,13 @@ impl LinkedProgram {
         self.entry_points.get(&debug_name).copied()
     }
 
+    #[must_use]
+    pub fn entry_point_by_name(&self, name: &str) -> Option<ScriptFunctionHandle> {
+        self.entry_points.iter().find_map(|(debug_name, function)| {
+            (self.debug_name(*debug_name) == name).then_some(*function)
+        })
+    }
+
     pub fn entry_points(&self) -> impl Iterator<Item = (DebugNameId, ScriptFunctionHandle)> + '_ {
         self.entry_points
             .iter()

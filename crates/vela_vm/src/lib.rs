@@ -16,6 +16,7 @@ mod host_access;
 mod host_values;
 mod indexing;
 pub mod iteration;
+mod linked_execution;
 mod map_methods;
 mod math_stdlib;
 mod method_runtime;
@@ -74,8 +75,9 @@ pub(crate) use script_object::ScriptFields;
 use small_storage::SmallStorage;
 use try_propagation::{TryPropagation, try_propagate_value};
 use vela_bytecode::{
-    CacheSiteId, Constant, HostTargetPlanId, InstructionOffset, ProgramImage, Register,
-    UnlinkedCodeObject, UnlinkedInstructionKind, UnlinkedProgram, UnlinkedProgramCode,
+    CacheSiteId, Constant, HostTargetPlanId, InstructionOffset, LinkedCodeObject, LinkedProgram,
+    ProgramImage, Register, UnlinkedCodeObject, UnlinkedInstructionKind, UnlinkedProgram,
+    UnlinkedProgramCode,
 };
 use vela_common::{GlobalSlot, HostTypeId, Span};
 use vela_def::FunctionId;
@@ -455,6 +457,44 @@ impl Vm {
             None,
         )?;
         value_to_owned(&result, Some(&heap_execution))
+    }
+
+    pub fn run_linked_program(
+        &self,
+        program: &LinkedProgram,
+        entry: &str,
+        args: &[OwnedValue],
+    ) -> VmResult<OwnedValue> {
+        let mut budget = ExecutionBudget::unbounded();
+        self.run_linked_program_with_budget(program, entry, args, &mut budget)
+    }
+
+    pub fn run_linked_program_with_budget(
+        &self,
+        program: &LinkedProgram,
+        entry: &str,
+        args: &[OwnedValue],
+        budget: &mut ExecutionBudget,
+    ) -> VmResult<OwnedValue> {
+        let code = linked_program_entry(program, entry)?;
+        let mut heap = ScriptHeap::new();
+        let mut heap_execution = HeapExecution::new(&mut heap);
+        let args = owned_args_to_runtime(args, &mut heap_execution, Some(budget))?;
+        let result = self.execute_linked_call(
+            linked_execution::LinkedExecutionCall {
+                code,
+                program,
+                captures: &[],
+                args: &args,
+                call_site: None,
+                call_site_offset: None,
+                inline_caches: None,
+            },
+            None,
+            Some(&mut heap_execution),
+            Some(budget),
+        );
+        owned_heap_result(result, &mut heap_execution, budget)
     }
 
     pub fn run_program_with_budget(
@@ -1107,6 +1147,22 @@ fn program_entry<'program>(
     entry: &str,
 ) -> VmResult<&'program UnlinkedCodeObject> {
     program.function(entry).ok_or_else(|| {
+        VmError::new(VmErrorKind::UnknownFunction {
+            name: entry.to_owned(),
+        })
+    })
+}
+
+fn linked_program_entry<'program>(
+    program: &'program LinkedProgram,
+    entry: &str,
+) -> VmResult<&'program LinkedCodeObject> {
+    let function = program.entry_point_by_name(entry).ok_or_else(|| {
+        VmError::new(VmErrorKind::UnknownFunction {
+            name: entry.to_owned(),
+        })
+    })?;
+    program.function(function).ok_or_else(|| {
         VmError::new(VmErrorKind::UnknownFunction {
             name: entry.to_owned(),
         })

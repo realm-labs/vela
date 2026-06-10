@@ -44,6 +44,58 @@ fn runs_basic_arithmetic() {
 }
 
 #[test]
+fn runs_linked_program_basic_arithmetic_without_unlinked_code() {
+    let mut program = vela_bytecode::LinkedProgram::new();
+    let main_name = program.intern_debug_name("main");
+    let mut code = vela_bytecode::LinkedCodeObject::new(main_name, 5);
+    let two = code.push_constant(Constant::Int(2));
+    let three = code.push_constant(Constant::Int(3));
+    let four = code.push_constant(Constant::Int(4));
+    code.push_instruction(vela_bytecode::linked::Instruction::new(
+        vela_bytecode::linked::InstructionKind::LoadConst {
+            dst: Register(0),
+            constant: two,
+        },
+    ));
+    code.push_instruction(vela_bytecode::linked::Instruction::new(
+        vela_bytecode::linked::InstructionKind::LoadConst {
+            dst: Register(1),
+            constant: three,
+        },
+    ));
+    code.push_instruction(vela_bytecode::linked::Instruction::new(
+        vela_bytecode::linked::InstructionKind::LoadConst {
+            dst: Register(2),
+            constant: four,
+        },
+    ));
+    code.push_instruction(vela_bytecode::linked::Instruction::new(
+        vela_bytecode::linked::InstructionKind::Mul {
+            dst: Register(3),
+            lhs: Register(1),
+            rhs: Register(2),
+        },
+    ));
+    code.push_instruction(vela_bytecode::linked::Instruction::new(
+        vela_bytecode::linked::InstructionKind::Add {
+            dst: Register(4),
+            lhs: Register(0),
+            rhs: Register(3),
+        },
+    ));
+    code.push_instruction(vela_bytecode::linked::Instruction::new(
+        vela_bytecode::linked::InstructionKind::Return { src: Register(4) },
+    ));
+    let function = program.push_function(code);
+    program.set_entry_point(main_name, function);
+
+    assert_eq!(
+        Vm::new().run_linked_program(&program, "main", &[]),
+        Ok(OwnedValue::Int(14))
+    );
+}
+
+#[test]
 fn branches_on_false_conditions() {
     let mut code = UnlinkedCodeObject::new("branch", 3);
     let false_id = code.push_constant(Constant::Bool(false));
@@ -81,6 +133,38 @@ fn branches_on_false_conditions() {
     }));
 
     assert_eq!(Vm::new().run(&code), Ok(OwnedValue::Int(2)));
+}
+
+#[test]
+fn linked_program_execution_charges_instruction_budget() {
+    let mut program = vela_bytecode::LinkedProgram::new();
+    let main_name = program.intern_debug_name("main");
+    let mut code = vela_bytecode::LinkedCodeObject::new(main_name, 1);
+    let value = code.push_constant(Constant::Int(1));
+    code.push_instruction(vela_bytecode::linked::Instruction::new(
+        vela_bytecode::linked::InstructionKind::LoadConst {
+            dst: Register(0),
+            constant: value,
+        },
+    ));
+    code.push_instruction(vela_bytecode::linked::Instruction::new(
+        vela_bytecode::linked::InstructionKind::Return { src: Register(0) },
+    ));
+    let function = program.push_function(code);
+    program.set_entry_point(main_name, function);
+    let mut budget = ExecutionBudget::new(1, usize::MAX, usize::MAX);
+
+    let error = Vm::new()
+        .run_linked_program_with_budget(&program, "main", &[], &mut budget)
+        .expect_err("second instruction should exceed the budget");
+
+    assert_eq!(
+        error.kind(),
+        VmErrorKind::BudgetExceeded {
+            budget: ExecutionBudgetKind::Instructions,
+            limit: 1,
+        }
+    );
 }
 
 #[test]
