@@ -78,6 +78,12 @@ fn run_version_main(
 ) -> Result<OwnedValue, Box<dyn Error>> {
     engine
         .into_vm()
-        .run_program(&version.to_program(), "main", &[])
+        .run_linked_program(
+            version
+                .linked_program()
+                .ok_or("hot reload version must own linked bytecode")?,
+            "main",
+            &[],
+        )
         .map_err(|error| format!("{error:?}").into())
 }

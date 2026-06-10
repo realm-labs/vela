@@ -111,8 +111,10 @@ pub struct ProgramImage {
 
 The current image already flattens nested closures into image-level
 `FunctionIndex` references, rewrites per-function cache-site IDs into
-image-global IDs, verifies image-level closure and cache-site operands, and can
-rebuild a compatibility `Program` through `ProgramImage::to_program()`.
+image-global IDs, and verifies image-level closure and cache-site operands.
+The old `ProgramImage::to_program()` compatibility rebuild API has been
+removed; linker input needed by transitional hot-reload paths is rebuilt from
+version/update-owned function metadata instead of from the image.
 
 Hot reload now swaps runtime images from accepted `ProgramVersion` values rather
 than converting through `ProgramVersion::to_program()` on the runtime path.
@@ -416,8 +418,8 @@ impl RuntimeImage {
 ```
 
 Important: runtime image construction must copy the complete execution layout
-from the source artifact. Do not make `ProgramVersion::to_program()` the
-canonical runtime path, because conversion back into `Program` can drop or
+from the source artifact. Do not reintroduce `ProgramVersion::to_program()` as
+the canonical runtime path, because conversion back into `Program` can drop or
 reconstruct layout details such as global slots.
 
 ---
@@ -1384,8 +1386,10 @@ paths. Instead, accepted updates should produce or be converted directly into a
 new `RuntimeImage`, and `RuntimeState::rebind_to_image` should update
 per-runtime global layouts and clear runtime-local caches.
 
-Keep `ProgramVersion::to_program()` only for tests, diagnostics, or
-compatibility callers that explicitly need a `Program`.
+Do not reintroduce `ProgramVersion::to_program()` or `ProgramImage::to_program()`;
+tests and diagnostics that need linker input should use explicitly named
+unlinked reconstruction from version/update-owned function metadata until that
+transitional path is removed.
 
 Tests should verify:
 
@@ -1709,9 +1713,10 @@ Mitigation:
 
 Make `RuntimeImage::from_program_version` the runtime construction path for hot
 reload images. Preserve version id, ABI/profile metadata, script method
-metadata, module metadata, and global layout there. Keep
-`ProgramVersion::to_program()` as an explicit compatibility helper rather than
-the execution path.
+metadata, module metadata, and global layout there. Linker input needed by
+transitional paths should be rebuilt through explicitly named unlinked
+reconstruction from version/update-owned functions rather than through a
+compatibility image conversion.
 
 ### Risk: JIT bakes in runtime-local state
 
@@ -1823,7 +1828,7 @@ First-pass implementation completed:
 [x] Replace MakeClosure Box<CodeObject> with FunctionIndex.
 [x] Introduce ProgramImage.
 [x] Flatten nested closure functions into ProgramImage function indexes.
-[x] Keep ProgramImage::to_program rebuilding nested closures for compatibility callers.
+[x] Remove ProgramImage::to_program compatibility rebuilding.
 [x] Move hot reload to ProgramImage-native version swapping.
 [x] Document JIT ownership ABI; defer JIT runtime types until M22.
 ```

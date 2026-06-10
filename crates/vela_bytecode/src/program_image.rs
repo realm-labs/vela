@@ -74,22 +74,6 @@ impl ProgramImage {
     }
 
     #[must_use]
-    pub fn to_program(&self) -> UnlinkedProgram {
-        let mut program = UnlinkedProgram::new();
-        for index in self.function_by_name.values().copied() {
-            if let Some(function) = self.function_for_program(index, &mut Vec::new()) {
-                program.insert_function(function);
-            }
-        }
-        program.set_global_layout(self.global_names.iter().cloned());
-        program.set_script_methods(self.script_methods.clone());
-        if let Some(graph) = &self.script_metadata {
-            program.set_script_metadata(graph.clone());
-        }
-        program
-    }
-
-    #[must_use]
     pub fn function(&self, index: FunctionIndex) -> Option<&UnlinkedCodeObject> {
         self.functions.get(index.0)
     }
@@ -158,33 +142,6 @@ impl ProgramImage {
 
     pub fn verify(&self) -> Result<(), crate::verification::VerificationError> {
         crate::verification::verify_program_image(self)
-    }
-
-    fn function_for_program(
-        &self,
-        index: FunctionIndex,
-        stack: &mut Vec<FunctionIndex>,
-    ) -> Option<UnlinkedCodeObject> {
-        if stack.contains(&index) {
-            return None;
-        }
-        let mut function = self.function(index)?.clone();
-        stack.push(index);
-        let mut nested_functions = Vec::new();
-        for instruction in &mut function.instructions {
-            if let UnlinkedInstructionKind::MakeClosure {
-                function: target, ..
-            } = &mut instruction.kind
-                && let Some(nested) = self.function_for_program(*target, stack)
-            {
-                *target = FunctionIndex(nested_functions.len());
-                nested_functions.push(nested);
-            }
-        }
-        function.nested_functions = nested_functions;
-        localize_function_cache_sites(&mut function);
-        stack.pop();
-        Some(function)
     }
 }
 
@@ -295,36 +252,6 @@ fn rewrite_instruction_cache_sites(
             *site = *id;
         }
     }
-}
-
-fn localize_function_cache_sites(function: &mut UnlinkedCodeObject) {
-    let image_sites = function.cache_sites.sites().to_vec();
-    if image_sites.is_empty() {
-        return;
-    }
-
-    let mut remapped = BTreeMap::new();
-    let mut local_sites = Vec::with_capacity(image_sites.len());
-    for (index, mut site) in image_sites.into_iter().enumerate() {
-        let local_id =
-            CacheSiteId::new(u32::try_from(index).expect("cache site count exceeds u32::MAX"));
-        remapped.insert(site.id, local_id);
-        site.id = local_id;
-        local_sites.push(site);
-    }
-
-    for instruction in &mut function.instructions {
-        if let UnlinkedInstructionKind::LoadGlobal {
-            cache_site: Some(site),
-            ..
-        } = &mut instruction.kind
-            && let Some(local_id) = remapped.get(site)
-        {
-            *site = *local_id;
-        }
-    }
-
-    function.cache_sites = CacheSiteLayout::new(local_sites);
 }
 
 #[cfg(test)]
@@ -441,37 +368,6 @@ mod tests {
     }
 
     #[test]
-    fn image_rebuilds_nested_closures_for_program_compatibility() {
-        let mut program = UnlinkedProgram::new();
-        let mut main = UnlinkedCodeObject::new("main", 1);
-        let closure = UnlinkedCodeObject::new("main::<lambda>", 1);
-        let local_function = main.push_nested_function(closure);
-        main.push_instruction(UnlinkedInstruction::new(
-            UnlinkedInstructionKind::MakeClosure {
-                dst: Register(0),
-                function: local_function,
-                captures: Vec::new(),
-            },
-        ));
-        program.insert_function(main);
-
-        let rebuilt = ProgramImage::from_program(&program).to_program();
-        let main = rebuilt.function("main").expect("rebuilt main function");
-        let closure_index = match &main.instructions[0].kind {
-            UnlinkedInstructionKind::MakeClosure { function, .. } => *function,
-            other => panic!("expected MakeClosure instruction, found {other:?}"),
-        };
-
-        assert_eq!(rebuilt.function_count(), 1);
-        assert_eq!(
-            main.nested_function(closure_index)
-                .expect("rebuilt nested closure")
-                .name,
-            "main::<lambda>"
-        );
-    }
-
-    #[test]
     fn image_rewrites_cache_site_ids_to_image_global_indexes() {
         let mut first = UnlinkedCodeObject::new("read_first", 1);
         let first_local = first.push_cache_site(CacheSiteKind::GlobalRead, InstructionOffset(0));
@@ -517,16 +413,6 @@ mod tests {
         assert_eq!(
             image.cache_site(second_site).expect("second site").id,
             second_site
-        );
-
-        let rebuilt = image.to_program();
-        assert_eq!(
-            load_global_cache_site(rebuilt.function("read_first").expect("rebuilt first")),
-            CacheSiteId::new(0)
-        );
-        assert_eq!(
-            load_global_cache_site(rebuilt.function("read_second").expect("rebuilt second")),
-            CacheSiteId::new(0)
         );
     }
 

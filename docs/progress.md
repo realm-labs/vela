@@ -233,9 +233,9 @@ Cranelift JIT.
   of rebuilding unlinked programs through `ProgramVersion::to_program()`.
   Engine hot-reload linking now rebuilds linker input from version/update-owned
   function metadata instead of the `ProgramImage::to_program()` compatibility
-  path. The remaining Task 6.1 gap is direct VM API cleanup that deletes old
-  unlinked execution entrypoints and the last `ProgramImage::to_program()`
-  compatibility surface.
+  path, and `ProgramImage::to_program()` has been removed. The remaining Task
+  6.1 gap is direct VM API cleanup that deletes old unlinked execution
+  entrypoints and transitional unlinked reconstruction APIs.
   Script function dispatch is being isolated behind a focused call boundary so
   later resolved-target work does not grow the main VM loop or change current
   hot-reload rename semantics. Closure creation and invocation now have a
