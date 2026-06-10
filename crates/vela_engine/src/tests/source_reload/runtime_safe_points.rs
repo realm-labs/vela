@@ -232,9 +232,11 @@ fn runtime_applies_engine_hot_reload_updates() {
     let initial = engine
         .compile_hot_reload_initial(SourceId::new(1), "fn main() { return 1; }")
         .expect("initial hot reload compile");
+    assert!(initial.linked_program().is_some());
     let update = engine
         .compile_hot_reload_update(&initial, SourceId::new(2), "fn main() { return 2; }")
         .expect("compatible update should compile");
+    assert!(update.linked_program().is_some());
     let mut runtime = Runtime::from_hot_reload_version(engine, initial);
     let mut adapter = MockStateAdapter::new();
     let mut tx = HostAccess::new();
@@ -398,6 +400,13 @@ fn runtime_stages_engine_hot_reload_until_check_reload_safe_point() {
         .expect("pending report");
 
     assert!(report.accepted);
+    assert!(
+        report
+            .version()
+            .expect("accepted report should carry version")
+            .linked_program()
+            .is_some()
+    );
     assert_eq!(report.changed_functions, vec!["main".to_owned()]);
     assert!(
         !runtime

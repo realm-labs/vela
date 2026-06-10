@@ -2,7 +2,7 @@ use std::collections::BTreeMap;
 use std::sync::Arc;
 
 use vela_bytecode::{
-    ProgramImage, UnlinkedCodeObject, UnlinkedProgram,
+    LinkedProgram, ProgramImage, UnlinkedCodeObject, UnlinkedProgram,
     script_methods::{ScriptMethod, ScriptMethodTable},
 };
 use vela_def::MethodId;
@@ -20,6 +20,7 @@ pub struct ProgramVersion {
     pub(crate) abi: HotReloadAbi,
     pub(crate) profile: ProgramProfile,
     pub(crate) program_image: ProgramImage,
+    pub(crate) linked_program: Option<LinkedProgram>,
 }
 
 impl ProgramVersion {
@@ -46,7 +47,14 @@ impl ProgramVersion {
             abi,
             profile,
             program_image,
+            linked_program: None,
         }
+    }
+
+    #[must_use]
+    pub fn with_linked_program(mut self, linked_program: LinkedProgram) -> Self {
+        self.linked_program = Some(linked_program);
+        self
     }
 
     #[must_use]
@@ -125,6 +133,11 @@ impl ProgramVersion {
     }
 
     #[must_use]
+    pub fn linked_program(&self) -> Option<&LinkedProgram> {
+        self.linked_program.as_ref()
+    }
+
+    #[must_use]
     pub fn function_profile(&self, name: &str) -> Option<&FunctionProfile> {
         self.profile.function(name)
     }
@@ -143,6 +156,7 @@ pub struct HotUpdate {
     pub(crate) script_metadata: Option<ModuleGraph>,
     pub(crate) abi: HotReloadAbi,
     pub(crate) changes: AcceptedHotReloadChanges,
+    pub(crate) linked_program: Option<LinkedProgram>,
 }
 
 impl HotUpdate {
@@ -161,7 +175,14 @@ impl HotUpdate {
             script_metadata,
             abi,
             changes,
+            linked_program: None,
         }
+    }
+
+    #[must_use]
+    pub fn with_linked_program(mut self, linked_program: LinkedProgram) -> Self {
+        self.linked_program = Some(linked_program);
+        self
     }
 
     #[must_use]
@@ -178,6 +199,11 @@ impl HotUpdate {
             .changed_functions
             .iter()
             .map(|name| name.0.as_str())
+    }
+
+    #[must_use]
+    pub fn linked_program(&self) -> Option<&LinkedProgram> {
+        self.linked_program.as_ref()
     }
 
     #[must_use]
@@ -232,5 +258,25 @@ impl HotUpdate {
     #[must_use]
     pub fn script_metadata(&self) -> Option<&ModuleGraph> {
         self.script_metadata.as_ref()
+    }
+
+    #[must_use]
+    pub fn to_program_with_previous(&self, previous: &ProgramVersion) -> UnlinkedProgram {
+        let mut functions = previous.functions.clone();
+        functions.extend(
+            self.functions
+                .iter()
+                .map(|(name, function)| (name.clone(), Arc::clone(function))),
+        );
+        let mut program = UnlinkedProgram::new();
+        for function in functions.values() {
+            program.insert_function((**function).clone());
+        }
+        program.set_global_layout(self.global_names.iter().cloned());
+        program.set_script_methods(self.script_methods.clone());
+        if let Some(graph) = &self.script_metadata {
+            program.set_script_metadata(graph.clone());
+        }
+        program
     }
 }

@@ -68,6 +68,7 @@ impl HotReloadRuntime {
             script_metadata,
             abi,
             changes,
+            linked_program,
         } = update;
         let mut functions = self.current.functions.clone();
         for (name, function) in updated_functions {
@@ -86,6 +87,7 @@ impl HotReloadRuntime {
             abi,
             profile,
             program_image,
+            linked_program,
         });
         self.current = Arc::clone(&next);
         HotReloadReport::accepted(from_version, next, changes)

@@ -169,11 +169,19 @@ where
         &mut self,
         update: HotReloadResult<HotUpdate>,
     ) -> EngineResult<()> {
+        let previous = self.current_hot_reload_version()?;
         let Some(hot_reload) = self.hot_reload.as_mut() else {
             return Err(EngineError::new(
                 EngineErrorKind::RuntimeNotHotReloadEnabled,
             ));
         };
+        let update = update.map(|update| {
+            let program = update.to_program_with_previous(&previous);
+            match self.image.engine().link_program(&program) {
+                Ok(linked) => update.with_linked_program(linked),
+                Err(_) => update,
+            }
+        });
         let _replaced = hot_reload.stage_hot_update_result(update);
         Ok(())
     }
@@ -216,6 +224,14 @@ where
                 EngineErrorKind::RuntimeNotHotReloadEnabled,
             ));
         };
+        let current = hot_reload.current();
+        let update = update.map(|update| {
+            let program = update.to_program_with_previous(&current);
+            match self.image.engine().link_program(&program) {
+                Ok(linked) => update.with_linked_program(linked),
+                Err(_) => update,
+            }
+        });
         let report = hot_reload.apply_hot_update_result_report(update);
         self.rebind_image_from_reload_report(Some(&report));
         Ok(report)

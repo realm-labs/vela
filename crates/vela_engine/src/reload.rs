@@ -38,6 +38,7 @@ impl Engine {
             &self.compiler_options(),
             self.compiler_registry(),
         )
+        .map(|version| self.attach_linked_program_to_version(version))
     }
 
     pub fn compile_hot_reload_update(
@@ -55,6 +56,7 @@ impl Engine {
             self.compiler_registry(),
             self.hot_reload_policy(),
         )
+        .map(|update| self.attach_linked_program_to_update(previous, update))
     }
 
     pub fn compile_hot_reload_initial_file(
@@ -88,6 +90,7 @@ impl Engine {
             &self.compiler_options(),
             self.compiler_registry(),
         )
+        .map(|version| self.attach_linked_program_to_version(version))
         .map_err(EngineHotReloadSourceError::hot_reload)
     }
 
@@ -106,6 +109,7 @@ impl Engine {
             self.compiler_registry(),
             self.hot_reload_policy(),
         )
+        .map(|update| self.attach_linked_program_to_update(previous, update))
         .map_err(EngineHotReloadSourceError::hot_reload)
     }
 
@@ -125,6 +129,26 @@ impl Engine {
             self.compiler_registry(),
             self.hot_reload_policy(),
         )
+        .map(|update| self.attach_linked_program_to_update(previous, update))
         .map_err(EngineHotReloadSourceError::hot_reload)
+    }
+
+    fn attach_linked_program_to_version(&self, version: ProgramVersion) -> ProgramVersion {
+        let Ok(linked_program) = self.link_program(&version.to_program()) else {
+            return version;
+        };
+        version.with_linked_program(linked_program)
+    }
+
+    fn attach_linked_program_to_update(
+        &self,
+        previous: &ProgramVersion,
+        update: HotUpdate,
+    ) -> HotUpdate {
+        let program = update.to_program_with_previous(previous);
+        let Ok(linked_program) = self.link_program(&program) else {
+            return update;
+        };
+        update.with_linked_program(linked_program)
     }
 }
