@@ -1312,7 +1312,7 @@ surface.
 - Registry metadata and `vela_stdlib` do not depend on VM function pointers.
 - Registry validation catches duplicate stdlib names.
 
-- [ ] **Task 3.2: Generate stdlib function metadata from manifest**
+- [x] **Task 3.2: Generate stdlib function metadata from manifest**
 
 **Objective:** Delete duplicated stdlib metadata definitions.
 

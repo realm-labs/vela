@@ -121,7 +121,12 @@ fn main() {
             _ => None,
         });
 
-    assert_eq!(native, Some(crate::standard::MATH_CLAMP_FUNCTION_ID));
+    let expected = vela_stdlib::STD_FUNCTIONS
+        .iter()
+        .find(|spec| spec.module == "math" && spec.name == "clamp")
+        .map(|spec| spec.id());
+
+    assert_eq!(native, expected);
 }
 
 #[test]

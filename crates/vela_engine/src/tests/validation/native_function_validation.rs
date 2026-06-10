@@ -345,10 +345,15 @@ fn engine_rejects_native_function_names_that_shadow_standard_natives() {
 
 #[test]
 fn engine_rejects_native_function_ids_that_collide_with_standard_natives() {
+    let math_clamp_id = vela_stdlib::STD_FUNCTIONS
+        .iter()
+        .find(|spec| spec.module == "math" && spec.name == "clamp")
+        .expect("math::clamp should be declared in the stdlib manifest")
+        .id();
     let result = Engine::builder()
         .with_standard_natives()
         .register_native_fn(
-            NativeFunctionDesc::new("game::custom_clamp", MATH_CLAMP_FUNCTION_ID),
+            NativeFunctionDesc::new("game::custom_clamp", math_clamp_id),
             |_| Ok(OwnedValue::Null),
         )
         .build();
@@ -357,7 +362,7 @@ fn engine_rejects_native_function_ids_that_collide_with_standard_natives() {
         Err(error) => assert_eq!(
             error.kind,
             EngineErrorKind::DuplicateNativeFunctionId {
-                id: MATH_CLAMP_FUNCTION_ID.get()
+                id: math_clamp_id.get()
             }
         ),
         Ok(_) => panic!("standard native ID collision should fail"),

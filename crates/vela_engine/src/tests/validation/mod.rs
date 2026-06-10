@@ -13,7 +13,7 @@ use crate::engine::Engine;
 use crate::error::EngineErrorKind;
 use crate::method::NativeMethodDesc;
 use crate::native::{NativeFunctionDesc, NativeFunctionId, TypeHint};
-use crate::standard::{INT_TYPE_ID, MATH_CLAMP_FUNCTION_ID};
+use crate::standard::INT_TYPE_ID;
 
 use super::{player_type, trait_desc_with_id};
 
