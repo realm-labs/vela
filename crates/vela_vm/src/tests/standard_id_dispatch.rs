@@ -98,6 +98,57 @@ fn call_method_uses_standard_value_method_id_before_name_fallback() {
 }
 
 #[test]
+fn call_method_uses_standard_string_predicate_ids_before_name_fallback() {
+    assert_eq!(
+        run_string_predicate_by_id(vela_common::standard_ids::STRING_CONTAINS_METHOD_ID, ":"),
+        Ok(OwnedValue::Bool(true))
+    );
+    assert_eq!(
+        run_string_predicate_by_id(
+            vela_common::standard_ids::STRING_STARTS_WITH_METHOD_ID,
+            "reward"
+        ),
+        Ok(OwnedValue::Bool(true))
+    );
+    assert_eq!(
+        run_string_predicate_by_id(
+            vela_common::standard_ids::STRING_ENDS_WITH_METHOD_ID,
+            "gold"
+        ),
+        Ok(OwnedValue::Bool(true))
+    );
+}
+
+fn run_string_predicate_by_id(
+    method_id: vela_common::HostMethodId,
+    argument: &str,
+) -> VmResult<OwnedValue> {
+    let mut code = CodeObject::new("standard_string_predicate_method_id", 3);
+    let receiver = code.push_constant(Constant::String("reward:gold".into()));
+    let argument = code.push_constant(Constant::String(argument.into()));
+    code.push_instruction(Instruction::new(InstructionKind::LoadConst {
+        dst: Register(0),
+        constant: receiver,
+    }));
+    code.push_instruction(Instruction::new(InstructionKind::LoadConst {
+        dst: Register(1),
+        constant: argument,
+    }));
+    code.push_instruction(Instruction::new(InstructionKind::CallMethod {
+        dst: Register(2),
+        receiver: Register(0),
+        method: "missing_string_predicate".into(),
+        value_method_id: Some(method_id),
+        args: vec![vela_bytecode::CallArgument::Register(Register(1))],
+    }));
+    code.push_instruction(Instruction::new(InstructionKind::Return {
+        src: Register(2),
+    }));
+
+    Vm::new().run(&code)
+}
+
+#[test]
 fn call_method_uses_standard_range_method_id_before_name_fallback() {
     let mut code = CodeObject::new("standard_range_method_id", 4);
     let start = code.push_constant(Constant::Int(2));

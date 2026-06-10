@@ -18,7 +18,8 @@ pub use vela_common::standard_ids::{
     RESULT_TO_OPTION_FUNCTION_ID, RESULT_UNWRAP_OR_FUNCTION_ID, SET_ADD_METHOD_ID,
     SET_CLEAR_METHOD_ID, SET_FROM_ARRAY_FUNCTION_ID, SET_HAS_METHOD_ID, SET_IS_DISJOINT_METHOD_ID,
     SET_IS_EMPTY_METHOD_ID, SET_IS_SUBSET_METHOD_ID, SET_IS_SUPERSET_METHOD_ID, SET_LEN_METHOD_ID,
-    SET_REMOVE_METHOD_ID, STRING_IS_EMPTY_METHOD_ID, STRING_LEN_METHOD_ID,
+    SET_REMOVE_METHOD_ID, STRING_CONTAINS_METHOD_ID, STRING_ENDS_WITH_METHOD_ID,
+    STRING_IS_EMPTY_METHOD_ID, STRING_LEN_METHOD_ID, STRING_STARTS_WITH_METHOD_ID,
 };
 
 pub const NULL_TYPE_ID: TypeId = TypeId::new(0xff00_0500);
@@ -43,10 +44,7 @@ pub(crate) const OPTION_SOME_FIELD_ID: FieldId = FieldId::new(0xff00_0606);
 pub(crate) const RESULT_OK_FIELD_ID: FieldId = FieldId::new(0xff00_0607);
 pub(crate) const RESULT_ERR_FIELD_ID: FieldId = FieldId::new(0xff00_0608);
 
-pub(crate) const STRING_CONTAINS_METHOD_ID: HostMethodId = HostMethodId::new(0xff00_0702);
 pub(crate) const STRING_FIND_METHOD_ID: HostMethodId = HostMethodId::new(0xff00_0703);
-pub(crate) const STRING_STARTS_WITH_METHOD_ID: HostMethodId = HostMethodId::new(0xff00_0704);
-pub(crate) const STRING_ENDS_WITH_METHOD_ID: HostMethodId = HostMethodId::new(0xff00_0705);
 pub(crate) const STRING_STRIP_PREFIX_METHOD_ID: HostMethodId = HostMethodId::new(0xff00_0706);
 pub(crate) const STRING_STRIP_SUFFIX_METHOD_ID: HostMethodId = HostMethodId::new(0xff00_0707);
 pub(crate) const STRING_TO_UPPER_METHOD_ID: HostMethodId = HostMethodId::new(0xff00_0708);

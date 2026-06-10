@@ -158,6 +158,52 @@ fn main() {
 }
 
 #[test]
+fn engine_compiler_options_emit_standard_string_predicate_method_ids() {
+    let engine = Engine::builder()
+        .with_standard_natives()
+        .build()
+        .expect("engine should build with standard natives");
+    let program = compile_program_source_with_options(
+        SourceId::new(1),
+        r#"
+fn main() {
+    return "reward:gold".contains(":")
+        && "reward:gold".starts_with("reward")
+        && "reward:gold".ends_with("gold");
+}
+"#,
+        &engine.compiler_options(),
+    )
+    .expect("standard string predicate methods should compile");
+    let main = program.function("main").expect("main should compile");
+
+    let value_methods = main
+        .instructions
+        .iter()
+        .filter_map(|instruction| match &instruction.kind {
+            InstructionKind::CallMethod {
+                method,
+                value_method_id,
+                ..
+            } => Some((method.as_str(), *value_method_id)),
+            _ => None,
+        })
+        .collect::<Vec<_>>();
+
+    assert!(
+        value_methods.contains(&("contains", Some(crate::standard::STRING_CONTAINS_METHOD_ID)))
+    );
+    assert!(value_methods.contains(&(
+        "starts_with",
+        Some(crate::standard::STRING_STARTS_WITH_METHOD_ID)
+    )));
+    assert!(value_methods.contains(&(
+        "ends_with",
+        Some(crate::standard::STRING_ENDS_WITH_METHOD_ID)
+    )));
+}
+
+#[test]
 fn engine_compiler_options_emit_standard_range_method_ids() {
     let engine = Engine::builder()
         .with_standard_natives()

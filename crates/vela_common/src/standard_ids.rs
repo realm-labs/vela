@@ -36,6 +36,9 @@ pub const SET_FROM_ARRAY_FUNCTION_ID: FunctionId = FunctionId::new(0xff00_0400);
 
 pub const STRING_LEN_METHOD_ID: HostMethodId = HostMethodId::new(0xff00_0700);
 pub const STRING_IS_EMPTY_METHOD_ID: HostMethodId = HostMethodId::new(0xff00_0701);
+pub const STRING_CONTAINS_METHOD_ID: HostMethodId = HostMethodId::new(0xff00_0702);
+pub const STRING_STARTS_WITH_METHOD_ID: HostMethodId = HostMethodId::new(0xff00_0704);
+pub const STRING_ENDS_WITH_METHOD_ID: HostMethodId = HostMethodId::new(0xff00_0705);
 
 pub const ARRAY_LEN_METHOD_ID: HostMethodId = HostMethodId::new(0xff00_0800);
 pub const ARRAY_IS_EMPTY_METHOD_ID: HostMethodId = HostMethodId::new(0xff00_0801);

@@ -12,7 +12,8 @@ use vela_common::standard_ids::{
     RANGE_LEN_METHOD_ID, RESULT_IS_ERR_METHOD_ID, RESULT_IS_OK_METHOD_ID, SET_ADD_METHOD_ID,
     SET_CLEAR_METHOD_ID, SET_HAS_METHOD_ID, SET_IS_DISJOINT_METHOD_ID, SET_IS_EMPTY_METHOD_ID,
     SET_IS_SUBSET_METHOD_ID, SET_IS_SUPERSET_METHOD_ID, SET_LEN_METHOD_ID, SET_REMOVE_METHOD_ID,
-    STRING_IS_EMPTY_METHOD_ID, STRING_LEN_METHOD_ID,
+    STRING_CONTAINS_METHOD_ID, STRING_ENDS_WITH_METHOD_ID, STRING_IS_EMPTY_METHOD_ID,
+    STRING_LEN_METHOD_ID, STRING_STARTS_WITH_METHOD_ID,
 };
 
 pub(crate) fn call(
@@ -187,6 +188,16 @@ pub(crate) fn call_readonly_by_id(
             expect_no_args("is_empty", args)
                 .and_then(|()| is_empty(receiver, heap).map(Value::Bool)),
         );
+    }
+    if method_id == STRING_CONTAINS_METHOD_ID && crate::string_methods::is_string(receiver, heap) {
+        return Some(crate::string_methods::contains(receiver, args, heap).map(Value::Bool));
+    }
+    if method_id == STRING_STARTS_WITH_METHOD_ID && crate::string_methods::is_string(receiver, heap)
+    {
+        return Some(crate::string_methods::starts_with(receiver, args, heap).map(Value::Bool));
+    }
+    if method_id == STRING_ENDS_WITH_METHOD_ID && crate::string_methods::is_string(receiver, heap) {
+        return Some(crate::string_methods::ends_with(receiver, args, heap).map(Value::Bool));
     }
     if method_id == RANGE_LEN_METHOD_ID && matches!(receiver, Value::Range(_)) {
         return Some(
