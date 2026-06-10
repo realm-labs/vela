@@ -32,13 +32,21 @@ fn heap_execution_enforces_memory_budget_for_bytecode_allocations() {
         "main",
     )
     .expect("compile string source");
+    let mut program = UnlinkedProgram::new();
+    program.insert_function(code);
     let mut heap = ScriptHeap::new();
     let mut heap_execution = HeapExecution::new(&mut heap);
     let mut budget = ExecutionBudget::new(u64::MAX, 8, usize::MAX);
 
-    let error = Vm::new()
-        .run_with_heap_and_budget(&code, &mut heap_execution, &mut budget)
-        .expect_err("string allocation should exceed memory budget");
+    let error = run_linked_test_program_runtime_with_heap_and_budget(
+        &Vm::new(),
+        &program,
+        "main",
+        &[],
+        &mut heap_execution,
+        &mut budget,
+    )
+    .expect_err("string allocation should exceed memory budget");
 
     assert_eq!(
         error.kind(),
