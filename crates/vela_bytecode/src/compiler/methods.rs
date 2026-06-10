@@ -14,6 +14,7 @@ pub(super) struct HostMethodCall<'ast> {
 }
 
 pub(super) fn host_method_call<'ast>(
+    compiler: &super::Compiler<'_, '_>,
     options: &CompilerOptions,
     callee: &'ast Expr,
     receiver_type: Option<&str>,
@@ -21,7 +22,7 @@ pub(super) fn host_method_call<'ast>(
 ) -> Option<HostMethodCall<'ast>> {
     match &callee.kind {
         ExprKind::Field { base, name } => {
-            let method = options.host_method(receiver_type, name)?;
+            let method = compiler.host_method_id(receiver_type, name)?;
             let path = host_method_receiver_path(options, base)?;
             Some(HostMethodCall {
                 receiver: path.root,
@@ -37,7 +38,7 @@ pub(super) fn host_method_call<'ast>(
                 return None;
             }
             let method_name = path.last()?;
-            let method = options.host_method(receiver_type, method_name)?;
+            let method = compiler.host_method_id(receiver_type, method_name)?;
             let path = host_method_path_receiver(options, callee, &path[..path.len() - 1])?;
             Some(HostMethodCall {
                 receiver: path.root,

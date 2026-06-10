@@ -188,6 +188,13 @@ impl<'registry> RegistryCompileView<'registry> {
     }
 
     #[must_use]
+    pub fn host_method_runtime_id(&self, id: MethodId) -> Option<u128> {
+        self.registry
+            .get(id.def_id())
+            .and_then(Def::host_method_runtime_id)
+    }
+
+    #[must_use]
     pub fn resolve_host_field(&self, owner: TypeId, name: &str) -> Option<FieldId> {
         let key = SemanticKey::Field {
             owner,
@@ -200,8 +207,34 @@ impl<'registry> RegistryCompileView<'registry> {
     }
 
     #[must_use]
+    pub fn field_writable(&self, id: FieldId) -> Option<bool> {
+        self.registry.get(id.def_id()).and_then(Def::field_writable)
+    }
+
+    #[must_use]
+    pub fn field_type_hint(&self, id: FieldId) -> Option<&'registry str> {
+        self.registry
+            .get(id.def_id())
+            .and_then(Def::field_type_hint)
+    }
+
+    #[must_use]
+    pub fn field_host_runtime_id(&self, id: FieldId) -> Option<u128> {
+        self.registry
+            .get(id.def_id())
+            .and_then(Def::field_host_runtime_id)
+    }
+
+    #[must_use]
     pub fn resolve_type(&self, path: &DefPath) -> Option<TypeId> {
         self.registry.get_by_path(path).and_then(Def::type_id)
+    }
+
+    #[must_use]
+    pub fn type_host_runtime_id(&self, id: TypeId) -> Option<u128> {
+        self.registry
+            .get(id.def_id())
+            .and_then(Def::type_host_runtime_id)
     }
 
     #[must_use]
@@ -218,6 +251,20 @@ impl<'registry> RegistryCompileView<'registry> {
             .get(id.def_id())
             .and_then(Def::method_signature)
             .map(|signature| signature.params.as_slice())
+    }
+
+    #[must_use]
+    pub fn host_method_params_by_runtime_id(
+        &self,
+        runtime_id: u128,
+    ) -> Option<&'registry [ParamDef]> {
+        self.registry.defs_by_id.values().find_map(|def| {
+            let Def::Method(method) = def else {
+                return None;
+            };
+            (method.host_runtime_id == Some(runtime_id))
+                .then_some(method.signature.params.as_slice())
+        })
     }
 
     fn resolve_method(&self, owner: TypeId, name: &str) -> Option<MethodId> {
@@ -468,6 +515,66 @@ impl Def {
             | Self::Trait(_) => None,
         }
     }
+
+    #[must_use]
+    pub const fn type_host_runtime_id(&self) -> Option<u128> {
+        match self {
+            Self::Type(def) => def.host_runtime_id,
+            Self::Function(_)
+            | Self::Method(_)
+            | Self::Field(_)
+            | Self::Variant(_)
+            | Self::Trait(_) => None,
+        }
+    }
+
+    #[must_use]
+    pub const fn host_method_runtime_id(&self) -> Option<u128> {
+        match self {
+            Self::Method(def) => def.host_runtime_id,
+            Self::Function(_)
+            | Self::Type(_)
+            | Self::Field(_)
+            | Self::Variant(_)
+            | Self::Trait(_) => None,
+        }
+    }
+
+    #[must_use]
+    pub const fn field_writable(&self) -> Option<bool> {
+        match self {
+            Self::Field(def) => Some(def.writable),
+            Self::Function(_)
+            | Self::Method(_)
+            | Self::Type(_)
+            | Self::Variant(_)
+            | Self::Trait(_) => None,
+        }
+    }
+
+    #[must_use]
+    pub fn field_type_hint(&self) -> Option<&str> {
+        match self {
+            Self::Field(def) => def.type_hint.as_deref(),
+            Self::Function(_)
+            | Self::Method(_)
+            | Self::Type(_)
+            | Self::Variant(_)
+            | Self::Trait(_) => None,
+        }
+    }
+
+    #[must_use]
+    pub const fn field_host_runtime_id(&self) -> Option<u128> {
+        match self {
+            Self::Field(def) => def.host_runtime_id,
+            Self::Function(_)
+            | Self::Method(_)
+            | Self::Type(_)
+            | Self::Variant(_)
+            | Self::Trait(_) => None,
+        }
+    }
 }
 
 #[derive(Clone, Debug, Eq, Ord, PartialEq, PartialOrd)]
@@ -590,6 +697,7 @@ pub struct MethodDef {
     pub owner: TypeId,
     pub signature: FunctionSignature,
     pub effects: EffectSet,
+    pub host_runtime_id: Option<u128>,
 }
 
 impl MethodDef {
@@ -604,6 +712,7 @@ impl MethodDef {
             owner,
             signature,
             effects: EffectSet::default(),
+            host_runtime_id: None,
         }
     }
 
@@ -618,6 +727,12 @@ impl MethodDef {
         self.effects = effects;
         self
     }
+
+    #[must_use]
+    pub const fn host_runtime_id(mut self, id: u128) -> Self {
+        self.host_runtime_id = Some(id);
+        self
+    }
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -625,6 +740,7 @@ pub struct TypeDef {
     pub id: TypeId,
     pub path: DefPath,
     pub semantic_key: SemanticKey,
+    pub host_runtime_id: Option<u128>,
 }
 
 impl TypeDef {
@@ -636,12 +752,19 @@ impl TypeDef {
             id,
             path,
             semantic_key,
+            host_runtime_id: None,
         }
     }
 
     #[must_use]
     pub fn with_id(mut self, id: TypeId) -> Self {
         self.id = id;
+        self
+    }
+
+    #[must_use]
+    pub const fn host_runtime_id(mut self, id: u128) -> Self {
+        self.host_runtime_id = Some(id);
         self
     }
 }
@@ -652,6 +775,9 @@ pub struct FieldDef {
     pub path: DefPath,
     pub semantic_key: SemanticKey,
     pub owner: TypeId,
+    pub writable: bool,
+    pub type_hint: Option<String>,
+    pub host_runtime_id: Option<u128>,
 }
 
 impl FieldDef {
@@ -664,12 +790,33 @@ impl FieldDef {
             path,
             semantic_key: SemanticKey::Field { owner, name },
             owner,
+            writable: true,
+            type_hint: None,
+            host_runtime_id: None,
         }
     }
 
     #[must_use]
     pub fn with_id(mut self, id: FieldId) -> Self {
         self.id = id;
+        self
+    }
+
+    #[must_use]
+    pub const fn writable(mut self, writable: bool) -> Self {
+        self.writable = writable;
+        self
+    }
+
+    #[must_use]
+    pub fn type_hint(mut self, type_hint: Option<String>) -> Self {
+        self.type_hint = type_hint;
+        self
+    }
+
+    #[must_use]
+    pub const fn host_runtime_id(mut self, id: u128) -> Self {
+        self.host_runtime_id = Some(id);
         self
     }
 }
@@ -748,6 +895,7 @@ impl FunctionSignature {
 pub struct ParamDef {
     pub name: String,
     pub type_hint: Option<String>,
+    pub has_default: bool,
 }
 
 impl ParamDef {
@@ -756,7 +904,14 @@ impl ParamDef {
         Self {
             name: name.into(),
             type_hint: type_hint.map(Into::into),
+            has_default: false,
         }
+    }
+
+    #[must_use]
+    pub const fn defaulted(mut self, has_default: bool) -> Self {
+        self.has_default = has_default;
+        self
     }
 }
 

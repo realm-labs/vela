@@ -33,6 +33,7 @@ impl Compiler<'_, '_> {
         let host_receiver_type = self.host_method_receiver_type(callee);
         let path_root_is_local = path_root_is_local(callee, &self.locals);
         if let Some(call) = host_method_call(
+            self,
             &self.facts.options,
             callee,
             host_receiver_type.as_deref(),
@@ -110,7 +111,19 @@ impl Compiler<'_, '_> {
         call_span: Span,
     ) -> CompileResult<Vec<crate::Register>> {
         let has_named_args = args.iter().any(|arg| arg.name.is_some());
-        let Some(params) = self.facts.options.host_method_params(method) else {
+        let registry_params = self
+            .facts
+            .registry
+            .and_then(|registry| registry.host_method_params_by_runtime_id(method.get()));
+        let option_params = if self.facts.registry.is_none() {
+            self.facts.options.host_method_params(method)
+        } else {
+            None
+        };
+        let Some(params) = registry_params
+            .map(HostMethodParams::Registry)
+            .or_else(|| option_params.map(HostMethodParams::CompilerOptions))
+        else {
             reject_named_args(args, "host method call")?;
             return args
                 .iter()
@@ -123,15 +136,7 @@ impl Compiler<'_, '_> {
                 .map(|arg| self.compile_expr(&arg.value))
                 .collect();
         }
-        let params = params
-            .iter()
-            .map(|param| ParamHint {
-                name: param.name.clone(),
-                span: call_span,
-                type_hint: None,
-                default_value_span: param.has_default.then_some(call_span),
-            })
-            .collect::<Vec<_>>();
+        let params = params.param_hints(call_span);
         self.compile_metadata_register_args(&params, args, call_span)
     }
 
@@ -480,6 +485,36 @@ impl ValueMethodParams<'_> {
                     span: call_span,
                     type_hint: None,
                     default_value_span: None,
+                })
+                .collect(),
+            Self::CompilerOptions(params) => params
+                .iter()
+                .map(|param| ParamHint {
+                    name: param.name.clone(),
+                    span: call_span,
+                    type_hint: None,
+                    default_value_span: param.has_default.then_some(call_span),
+                })
+                .collect(),
+        }
+    }
+}
+
+enum HostMethodParams<'a> {
+    Registry(&'a [ParamDef]),
+    CompilerOptions(&'a [super::options::HostMethodParam]),
+}
+
+impl HostMethodParams<'_> {
+    fn param_hints(&self, call_span: Span) -> Vec<ParamHint> {
+        match self {
+            Self::Registry(params) => params
+                .iter()
+                .map(|param| ParamHint {
+                    name: param.name.clone(),
+                    span: call_span,
+                    type_hint: None,
+                    default_value_span: param.has_default.then_some(call_span),
                 })
                 .collect(),
             Self::CompilerOptions(params) => params

@@ -5,7 +5,7 @@ use crate::{InstructionKind, Register};
 
 use super::const_eval::compile_literal_constant;
 use super::constructors::schema_default_fields;
-use super::host_paths::{HostPath, host_field_path};
+use super::host_paths::HostPath;
 use super::operators::non_logical_binary_instruction;
 use super::patterns::enum_variant_path;
 use super::schema_defaults::{record_constructor_diagnostics, unknown_enum_variant_diagnostic};
@@ -65,7 +65,7 @@ impl Compiler<'_, '_> {
                     });
                     Ok(dst)
                 } else {
-                    if let Some(path) = host_field_path(&self.facts.options, expr)
+                    if let Some(path) = self.host_field_path(expr)
                         && path.requires_path_instruction()
                     {
                         let root = self.compile_host_path_root(path.root)?;
@@ -75,10 +75,9 @@ impl Compiler<'_, '_> {
                     }
                     let root = self.compile_expr(base)?;
                     let dst = self.alloc_register()?;
+                    let receiver_type = self.script_type_for_expr(base);
                     if let Some(field) = self
-                        .facts
-                        .options
-                        .host_field(None, name)
+                        .host_field_info(receiver_type.as_deref(), name)
                         .map(|field| field.id)
                     {
                         let path = HostPath {
@@ -97,7 +96,7 @@ impl Compiler<'_, '_> {
                 }
             }
             ExprKind::Index { base, index } => {
-                if let Some(path) = host_field_path(&self.facts.options, expr)
+                if let Some(path) = self.host_field_path(expr)
                     && !path.segments.is_empty()
                 {
                     let root = self.compile_host_path_root(path.root)?;

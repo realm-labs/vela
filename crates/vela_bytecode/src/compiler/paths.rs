@@ -3,7 +3,7 @@ use vela_hir::binding::BindingResolution;
 
 use crate::{Constant, InstructionKind, Register};
 
-use super::host_paths::{HostPath, HostPathPart, HostPathRoot, host_field_path_parts};
+use super::host_paths::{HostPath, HostPathPart, HostPathRoot};
 use super::{CompileError, CompileErrorKind, CompileResult, Compiler};
 
 impl Compiler<'_, '_> {
@@ -105,7 +105,9 @@ impl Compiler<'_, '_> {
                 "path expression",
             )));
         }
-        if let Some(host_path) = host_field_path_parts(&self.facts.options, span, path)
+        if let Some(host_path) = self
+            .host_field_path_parts(span, path)
+            .map(|resolved| resolved.path)
             && host_path.requires_path_instruction()
         {
             let root = self.compile_host_path_root(host_path.root)?;
@@ -138,9 +140,10 @@ impl Compiler<'_, '_> {
                 });
             } else if index == 1
                 && let Some(field) = self
-                    .facts
-                    .options
-                    .host_field(None, segment)
+                    .host_field_info(
+                        self.host_local_type_name(&path[0], span).as_deref(),
+                        segment,
+                    )
                     .map(|field| field.id)
             {
                 self.emit_host_read(

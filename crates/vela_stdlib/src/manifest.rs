@@ -31,7 +31,7 @@ impl StdParamSpec {
 
     #[must_use]
     pub fn def(self) -> ParamDef {
-        ParamDef::new(self.name, Some(self.type_hint))
+        ParamDef::new(self.name, Some(self.type_hint)).defaulted(self.defaulted)
     }
 }
 

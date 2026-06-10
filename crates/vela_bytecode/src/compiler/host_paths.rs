@@ -144,6 +144,126 @@ fn host_path_field_part<'ast>(options: &CompilerOptions, name: &str) -> Option<H
 }
 
 impl Compiler<'_, '_> {
+    pub(super) fn host_field_path<'ast>(&self, expr: &'ast Expr) -> Option<HostPath<'ast>> {
+        self.resolve_host_path(expr).map(|resolved| resolved.path)
+    }
+
+    fn resolve_host_path<'ast>(&self, expr: &'ast Expr) -> Option<ResolvedHostPath<'ast>> {
+        match &expr.kind {
+            ExprKind::Field { base, name } => {
+                let mut receiver = self.resolve_host_path_receiver(base);
+                let field = self.host_path_field_part(receiver.type_name.as_deref(), name)?;
+                receiver.path.segments.push(field.part);
+                Some(ResolvedHostPath {
+                    path: receiver.path,
+                    type_name: field.type_hint,
+                })
+            }
+            ExprKind::Path(path) => self.host_field_path_parts(expr.span, path),
+            ExprKind::Index { base, index } => {
+                let mut receiver = self.resolve_host_path_index_receiver(base)?;
+                receiver.path.segments.push(HostPathPart::Value(index));
+                Some(ResolvedHostPath {
+                    path: receiver.path,
+                    type_name: None,
+                })
+            }
+            _ => None,
+        }
+    }
+
+    fn resolve_host_path_receiver<'ast>(&self, receiver: &'ast Expr) -> ResolvedHostPath<'ast> {
+        match &receiver.kind {
+            ExprKind::Field { .. } | ExprKind::Index { .. } => self
+                .resolve_host_path(receiver)
+                .unwrap_or_else(|| self.expr_host_path_receiver(receiver)),
+            ExprKind::Path(path) => self
+                .host_field_path_parts(receiver.span, path)
+                .or_else(|| {
+                    path.first().map(|root| ResolvedHostPath {
+                        path: HostPath {
+                            root: HostPathRoot::LocalPath {
+                                name: root,
+                                span: receiver.span,
+                            },
+                            segments: Vec::new(),
+                        },
+                        type_name: self.host_local_type_name(root, receiver.span),
+                    })
+                })
+                .unwrap_or_else(|| self.expr_host_path_receiver(receiver)),
+            _ => self.expr_host_path_receiver(receiver),
+        }
+    }
+
+    fn expr_host_path_receiver<'ast>(&self, receiver: &'ast Expr) -> ResolvedHostPath<'ast> {
+        ResolvedHostPath {
+            path: HostPath {
+                root: HostPathRoot::Expr(receiver),
+                segments: Vec::new(),
+            },
+            type_name: self.script_type_for_expr(receiver),
+        }
+    }
+
+    fn resolve_host_path_index_receiver<'ast>(
+        &self,
+        receiver: &'ast Expr,
+    ) -> Option<ResolvedHostPath<'ast>> {
+        match &receiver.kind {
+            ExprKind::Field { .. } | ExprKind::Index { .. } => self.resolve_host_path(receiver),
+            ExprKind::Path(path) => self.host_field_path_parts(receiver.span, path),
+            _ => None,
+        }
+    }
+
+    pub(super) fn host_field_path_parts<'ast>(
+        &self,
+        span: Span,
+        path: &'ast [String],
+    ) -> Option<ResolvedHostPath<'ast>> {
+        if path.len() < 2 {
+            return None;
+        }
+        let root = path.first()?;
+        let mut current_type = self.host_local_type_name(root, span);
+        let mut segments = Vec::with_capacity(path.len() - 1);
+        for segment in &path[1..] {
+            let field = self.host_path_field_part(current_type.as_deref(), segment)?;
+            segments.push(field.part);
+            current_type = field.type_hint;
+        }
+        Some(ResolvedHostPath {
+            path: HostPath {
+                root: HostPathRoot::LocalPath { name: root, span },
+                segments,
+            },
+            type_name: current_type,
+        })
+    }
+
+    fn host_path_field_part<'ast>(
+        &self,
+        receiver_type: Option<&str>,
+        name: &str,
+    ) -> Option<ResolvedHostPathField<'ast>> {
+        if let Some(field) = self.host_field_info(receiver_type, name) {
+            return Some(ResolvedHostPathField {
+                part: HostPathPart::Field(field.id),
+                type_hint: field.type_hint,
+            });
+        }
+        self.facts
+            .options
+            .host_variant_fields
+            .get(name)
+            .copied()
+            .map(|field| ResolvedHostPathField {
+                part: HostPathPart::VariantField(field),
+                type_hint: None,
+            })
+    }
+
     pub(super) fn emit_host_read(
         &mut self,
         dst: Register,
@@ -274,12 +394,10 @@ impl Compiler<'_, '_> {
         args: &[Argument],
     ) -> CompileResult<Option<Register>> {
         let path = match &callee.kind {
-            ExprKind::Field { base, name } if name == "push" => {
-                host_field_path(&self.facts.options, base)
-            }
-            ExprKind::Path(parts) if parts.last().is_some_and(|name| name == "push") => {
-                host_field_path_parts(&self.facts.options, callee.span, &parts[..parts.len() - 1])
-            }
+            ExprKind::Field { base, name } if name == "push" => self.host_field_path(base),
+            ExprKind::Path(parts) if parts.last().is_some_and(|name| name == "push") => self
+                .host_field_path_parts(callee.span, &parts[..parts.len() - 1])
+                .map(|resolved| resolved.path),
             _ => None,
         };
         let Some(path) = path else {
@@ -308,12 +426,10 @@ impl Compiler<'_, '_> {
         args: &[Argument],
     ) -> CompileResult<Option<Register>> {
         let path = match &callee.kind {
-            ExprKind::Field { base, name } if name == "remove" => {
-                host_field_path(&self.facts.options, base)
-            }
-            ExprKind::Path(parts) if parts.last().is_some_and(|name| name == "remove") => {
-                host_field_path_parts(&self.facts.options, callee.span, &parts[..parts.len() - 1])
-            }
+            ExprKind::Field { base, name } if name == "remove" => self.host_field_path(base),
+            ExprKind::Path(parts) if parts.last().is_some_and(|name| name == "remove") => self
+                .host_field_path_parts(callee.span, &parts[..parts.len() - 1])
+                .map(|resolved| resolved.path),
             _ => None,
         };
         let Some(path) = path else {
@@ -387,7 +503,7 @@ impl Compiler<'_, '_> {
 
     fn host_path_root_type(&self, root: HostPathRoot<'_>) -> HostTypeId {
         self.host_path_root_type_name(root)
-            .and_then(|type_name| self.facts.options.host_type_id(&type_name))
+            .and_then(|type_name| self.host_runtime_type_id(&type_name))
             .unwrap_or_else(|| HostTypeId::new(0))
     }
 
@@ -398,13 +514,25 @@ impl Compiler<'_, '_> {
         }
     }
 
-    fn host_local_type_name(&self, name: &str, span: Span) -> Option<String> {
+    pub(super) fn host_local_type_name(&self, name: &str, span: Span) -> Option<String> {
         self.script_types
             .local_at_span(self.bindings, span)
             .or_else(|| self.global_type_at_span(span))
             .or_else(|| self.script_types.name(name))
             .or_else(|| self.global_type_named(name))
     }
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub(super) struct ResolvedHostPath<'ast> {
+    pub(super) path: HostPath<'ast>,
+    pub(super) type_name: Option<String>,
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+struct ResolvedHostPathField<'ast> {
+    part: HostPathPart<'ast>,
+    type_hint: Option<String>,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]

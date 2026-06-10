@@ -515,6 +515,15 @@ definitions and then resolves methods through the `DefinitionRegistry`.
 `CompilerOptions` value-method maps are retained only for compiler tests and
 transitional callers that do not yet provide a registry view.
 
+### Host Definition Runtime IDs
+
+Host types, fields, and methods register into `DefinitionRegistry` with
+semantic IDs derived from canonical `DefPath`. Adapter-facing runtime IDs such
+as `HostTypeId`, host `FieldId`, and `HostMethodId` are stored as host runtime
+metadata on those definitions and are used only when emitting current
+`HostTargetPlan` and host call operands. This keeps registry identity globally
+deterministic while preserving existing HostAccess adapter contracts.
+
 ## Validation Rules
 
 - Multi-level `super` scan must return no matches:

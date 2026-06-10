@@ -6,7 +6,7 @@ use vela_syntax::ast::{AssignOp, Expr, ExprKind};
 
 use crate::{InstructionKind, Register};
 
-use super::host_paths::{HostPath, host_field_path};
+use super::host_paths::HostPath;
 use super::operators::compound_assignment_instruction;
 use super::script_types::ScriptTypeFact;
 use super::{CompileError, CompileErrorKind, CompileResult, Compiler};
@@ -55,7 +55,7 @@ impl Compiler<'_, '_> {
         }
         self.reject_read_only_host_assignment(target)?;
         if matches!(&target.kind, ExprKind::Index { .. })
-            && host_field_path(&self.facts.options, target).is_none()
+            && self.host_field_path(target).is_none()
             && let ExprKind::Index { base, index } = &target.kind
         {
             return self.compile_index_assignment(*op, base, index, value);
@@ -164,7 +164,7 @@ impl Compiler<'_, '_> {
         &self,
         target: &'expr Expr,
     ) -> Option<IndexedRecordFieldAssignmentTarget<'expr>> {
-        if host_field_path(&self.facts.options, target).is_some() {
+        if self.host_field_path(target).is_some() {
             return None;
         }
         let (collection, index, fields) = indexed_record_field_parts(target)?;
@@ -184,7 +184,7 @@ impl Compiler<'_, '_> {
                 let Some((record, fields)) = record_path_parts(path) else {
                     return Ok(None);
                 };
-                if host_field_path(&self.facts.options, target).is_some() {
+                if self.host_field_path(target).is_some() {
                     return Ok(None);
                 }
                 let slot = match fields.as_slice() {
@@ -202,7 +202,7 @@ impl Compiler<'_, '_> {
                 }))
             }
             ExprKind::Field { base, name } => {
-                if host_field_path(&self.facts.options, target).is_some() {
+                if self.host_field_path(target).is_some() {
                     return Ok(None);
                 }
                 let Some((record, fields)) = record_field_expr_parts(target) else {
@@ -435,7 +435,7 @@ impl Compiler<'_, '_> {
         &mut self,
         target: &'expr Expr,
     ) -> CompileResult<HostPath<'expr>> {
-        let Some(path) = host_field_path(&self.facts.options, target) else {
+        let Some(path) = self.host_field_path(target) else {
             return Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(
                 "assignment target",
             )));
@@ -452,10 +452,7 @@ impl Compiler<'_, '_> {
         let Some((receiver_type, field)) = self.host_assignment_receiver_and_field(target) else {
             return Ok(());
         };
-        let Some(access) = self
-            .facts
-            .options
-            .host_field(Some(receiver_type.as_str()), field.as_str())
+        let Some(access) = self.host_field_info(Some(receiver_type.as_str()), field.as_str())
         else {
             return Ok(());
         };

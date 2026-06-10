@@ -26,10 +26,8 @@ mod value_types;
 
 use std::collections::{BTreeMap, BTreeSet, HashMap};
 
-#[cfg(test)]
-use vela_common::HostMethodId;
-use vela_common::{GlobalSlot, SourceId, Span};
-use vela_def::MethodId;
+use vela_common::{GlobalSlot, HostMethodId, HostTypeId, SourceId, Span};
+use vela_def::{DefPath, FieldId, MethodId, TypeId};
 use vela_hir::binding::{BindingMap, BindingResolution, LocalBindingKind};
 use vela_hir::ids::{HirDeclId, HirLocalId};
 #[cfg(test)]
@@ -815,6 +813,68 @@ impl<'ast, 'registry> Compiler<'ast, 'registry> {
             .cloned()
     }
 
+    fn host_type_id_for_name(&self, type_name: &str) -> Option<TypeId> {
+        let registry = self.facts.registry?;
+        registry.resolve_type(&DefPath::ty("host", std::iter::empty::<&str>(), type_name))
+    }
+
+    pub(super) fn host_runtime_type_id(&self, type_name: &str) -> Option<HostTypeId> {
+        if let Some(registry) = self.facts.registry
+            && let Some(type_id) = self.host_type_id_for_name(type_name)
+            && let Some(runtime_id) = registry.type_host_runtime_id(type_id)
+            && let Ok(runtime_id) = u64::try_from(runtime_id)
+        {
+            return Some(HostTypeId::new(runtime_id));
+        }
+        self.facts.options.host_type_id(type_name)
+    }
+
+    pub(super) fn host_field_info(
+        &self,
+        receiver_type: Option<&str>,
+        name: &str,
+    ) -> Option<HostFieldLookup> {
+        if let Some(registry) = self.facts.registry
+            && let Some(receiver_type) = receiver_type
+            && let Some(owner) = self.host_type_id_for_name(receiver_type)
+            && let Some(id) = registry.resolve_host_field(owner, name)
+        {
+            let runtime_id = registry
+                .field_host_runtime_id(id)
+                .map(FieldId::new)
+                .unwrap_or(id);
+            return Some(HostFieldLookup {
+                id: runtime_id,
+                writable: registry.field_writable(id).unwrap_or(true),
+                type_hint: registry.field_type_hint(id).map(str::to_owned),
+            });
+        }
+        self.facts
+            .options
+            .host_field(receiver_type, name)
+            .map(|field| HostFieldLookup {
+                id: field.id,
+                writable: field.writable,
+                type_hint: None,
+            })
+    }
+
+    pub(super) fn host_method_id(
+        &self,
+        receiver_type: Option<&str>,
+        name: &str,
+    ) -> Option<HostMethodId> {
+        if let Some(registry) = self.facts.registry
+            && let Some(receiver_type) = receiver_type
+            && let Some(owner) = self.host_type_id_for_name(receiver_type)
+            && let Some(method_id) = registry.resolve_host_method(owner, name)
+            && let Some(runtime_id) = registry.host_method_runtime_id(method_id)
+        {
+            return Some(HostMethodId::new(runtime_id));
+        }
+        self.facts.options.host_method(receiver_type, name)
+    }
+
     fn script_type_for_expr(&self, expr: &Expr) -> Option<String> {
         expression_script_type(
             expr,
@@ -1003,6 +1063,13 @@ impl<'ast, 'registry> Compiler<'ast, 'registry> {
             .frame
             .push_slot(FrameSlotInfo::new(name, register, kind, local, span));
     }
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub(super) struct HostFieldLookup {
+    pub(super) id: FieldId,
+    pub(super) writable: bool,
+    pub(super) type_hint: Option<String>,
 }
 
 fn unique_symbol_with_short_name<'a>(

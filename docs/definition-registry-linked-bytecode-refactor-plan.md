@@ -1396,7 +1396,7 @@ surface.
 - String/array/map/set/range/Option/Result methods compile to typed `MethodId`.
 - Named argument handling uses registry param metadata.
 
-- [ ] **Task 4.3: Replace host type/field/method lookup**
+- [x] **Task 4.3: Replace host type/field/method lookup**
 
 **Objective:** Compile host access via typed registry definitions.
 
