@@ -24,7 +24,7 @@ impl ProgramImage {
     #[must_use]
     pub fn from_program(program: &UnlinkedProgram) -> Self {
         Self::from_parts(
-            program.functions.values().cloned(),
+            program.functions().cloned(),
             program.global_names().iter().cloned(),
             program.script_methods().clone(),
             program.script_metadata().cloned(),
@@ -378,8 +378,7 @@ mod tests {
 
         let image = ProgramImage::from_program(&program);
         program
-            .functions
-            .get_mut("main")
+            .function_mut("main")
             .expect("main function")
             .push_constant(Constant::Int(2));
 
@@ -449,7 +448,7 @@ mod tests {
             other => panic!("expected MakeClosure instruction, found {other:?}"),
         };
 
-        assert_eq!(rebuilt.functions.len(), 1);
+        assert_eq!(rebuilt.function_count(), 1);
         assert_eq!(
             main.nested_function(closure_index)
                 .expect("rebuilt nested closure")

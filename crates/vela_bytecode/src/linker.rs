@@ -187,9 +187,9 @@ impl<'linker, 'registry> LinkContext<'linker, 'registry> {
     fn new(linker: &'linker Linker<'registry>, program: &UnlinkedProgram) -> Self {
         let mut script_functions_by_name = BTreeMap::new();
         let mut script_functions_by_id = BTreeMap::new();
-        for (index, name) in program.functions.keys().enumerate() {
+        for (index, name) in program.function_names().enumerate() {
             let handle = ScriptFunctionHandle::new(index);
-            script_functions_by_name.insert(name.clone(), handle);
+            script_functions_by_name.insert(name.to_owned(), handle);
             script_functions_by_id.insert(function_id_for_script_name(name), handle);
         }
 
@@ -210,14 +210,14 @@ impl<'linker, 'registry> LinkContext<'linker, 'registry> {
             method_handles: BTreeMap::new(),
             type_handles: BTreeMap::new(),
             variant_handles: BTreeMap::new(),
-            next_function_index: program.functions.len(),
+            next_function_index: program.function_count(),
             extra_functions: Vec::new(),
         }
     }
 
     fn link_program(mut self, program: &UnlinkedProgram) -> Result<LinkedProgram, LinkError> {
-        let mut top_level = Vec::with_capacity(program.functions.len());
-        for code in program.functions.values() {
+        let mut top_level = Vec::with_capacity(program.function_count());
+        for code in program.functions() {
             top_level.push(self.link_code(program, code)?);
         }
 
@@ -228,8 +228,8 @@ impl<'linker, 'registry> LinkContext<'linker, 'registry> {
             self.linked.push_function(code);
         }
 
-        for name in program.functions.keys() {
-            let debug_name = self.linked.intern_debug_name(name.clone());
+        for name in program.function_names() {
+            let debug_name = self.linked.intern_debug_name(name.to_owned());
             if let Some(function) = self.script_functions_by_name.get(name).copied() {
                 self.linked.set_entry_point(debug_name, function);
             }

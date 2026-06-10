@@ -36,8 +36,7 @@ impl ProgramVersion {
     ) -> Self {
         let program_image = ProgramImage::from_program(&program);
         let functions = program
-            .functions
-            .into_iter()
+            .into_functions()
             .map(|(name, code)| (FunctionSymbolId::new(name), Arc::new(code)))
             .collect();
         let profile = ProgramProfile::from_functions(&functions);

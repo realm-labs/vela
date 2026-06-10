@@ -249,7 +249,7 @@ fn update_from_program(
     let script_metadata = program.script_metadata().cloned();
     let mut functions = BTreeMap::new();
     let mut changed_functions = Vec::new();
-    for (name, code) in program.functions {
+    for (name, code) in program.into_functions() {
         let symbol = FunctionSymbolId::new(&name);
         if let Some(old_code) = previous.functions.get(&symbol) {
             ensure_compatible_function_signature(&name, old_code, &code, policy)?;

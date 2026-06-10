@@ -127,12 +127,12 @@ impl fmt::Display for VerificationError {
 impl std::error::Error for VerificationError {}
 
 pub fn verify_program(program: &UnlinkedProgram) -> Result<(), VerificationError> {
-    for function in program.functions.values() {
+    for function in program.functions() {
         verify_code_object(function)?;
         verify_program_instruction_metadata(program, function)?;
     }
     for function in program.script_methods().function_names() {
-        if !program.functions.contains_key(function) {
+        if program.function(function).is_none() {
             return Err(error(
                 function,
                 None,

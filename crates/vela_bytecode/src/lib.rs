@@ -31,7 +31,8 @@ use crate::script_methods::ScriptMethodTable;
 
 #[derive(Clone, Debug, Default, PartialEq)]
 pub struct UnlinkedProgram {
-    pub functions: BTreeMap<String, UnlinkedCodeObject>,
+    functions: Vec<UnlinkedCodeObject>,
+    function_by_name: BTreeMap<String, FunctionIndex>,
     global_names: Vec<String>,
     global_slots: BTreeMap<String, GlobalSlot>,
     script_methods: ScriptMethodTable,
@@ -45,7 +46,17 @@ impl UnlinkedProgram {
     }
 
     pub fn insert_function(&mut self, function: UnlinkedCodeObject) {
-        self.functions.insert(function.name.clone(), function);
+        if let Some(index) = self.function_by_name.get(&function.name).copied() {
+            self.functions[index.0] = function;
+            return;
+        }
+
+        let insertion = self
+            .functions
+            .binary_search_by(|existing| existing.name.as_str().cmp(function.name.as_str()))
+            .unwrap_or_else(|index| index);
+        self.functions.insert(insertion, function);
+        self.rebuild_function_index();
     }
 
     pub fn set_global_layout(&mut self, names: impl IntoIterator<Item = String>) {
@@ -117,7 +128,40 @@ impl UnlinkedProgram {
 
     #[must_use]
     pub fn function(&self, name: &str) -> Option<&UnlinkedCodeObject> {
-        self.functions.get(name)
+        self.function_by_name
+            .get(name)
+            .and_then(|index| self.function_by_index(*index))
+    }
+
+    #[must_use]
+    pub fn function_by_index(&self, index: FunctionIndex) -> Option<&UnlinkedCodeObject> {
+        self.functions.get(index.0)
+    }
+
+    #[must_use]
+    pub fn function_mut(&mut self, name: &str) -> Option<&mut UnlinkedCodeObject> {
+        let index = self.function_by_name.get(name).copied()?;
+        self.functions.get_mut(index.0)
+    }
+
+    pub fn functions(&self) -> impl Iterator<Item = &UnlinkedCodeObject> {
+        self.functions.iter()
+    }
+
+    pub fn function_names(&self) -> impl Iterator<Item = &str> {
+        self.functions.iter().map(|function| function.name.as_str())
+    }
+
+    #[must_use]
+    pub fn function_count(&self) -> usize {
+        self.functions.len()
+    }
+
+    pub fn into_functions(self) -> impl Iterator<Item = (String, UnlinkedCodeObject)> {
+        self.functions.into_iter().map(|function| {
+            let name = function.name.clone();
+            (name, function)
+        })
     }
 
     #[must_use]
@@ -142,6 +186,16 @@ impl UnlinkedProgram {
         let method = self.script_methods.get_by_id(type_name, method_id)?;
         self.function(&method.function)
     }
+
+    fn rebuild_function_index(&mut self) {
+        self.function_by_name.clear();
+        self.function_by_name.extend(
+            self.functions
+                .iter()
+                .enumerate()
+                .map(|(index, function)| (function.name.clone(), FunctionIndex(index))),
+        );
+    }
 }
 
 pub trait UnlinkedProgramCode {
@@ -165,6 +219,10 @@ pub trait UnlinkedProgramCode {
 impl UnlinkedProgramCode for UnlinkedProgram {
     fn function(&self, name: &str) -> Option<&UnlinkedCodeObject> {
         UnlinkedProgram::function(self, name)
+    }
+
+    fn function_by_index(&self, index: FunctionIndex) -> Option<&UnlinkedCodeObject> {
+        UnlinkedProgram::function_by_index(self, index)
     }
 
     fn script_method(&self, type_name: &str, method: &str) -> Option<&UnlinkedCodeObject> {
@@ -750,9 +808,23 @@ mod tests {
     #[test]
     fn program_indexes_functions_by_name() {
         let mut program = UnlinkedProgram::new();
+        program.insert_function(UnlinkedCodeObject::new("zeta", 0));
         program.insert_function(UnlinkedCodeObject::new("main", 0));
 
         assert!(program.function("main").is_some());
         assert!(program.function("missing").is_none());
+        assert_eq!(program.function_count(), 2);
+        assert_eq!(
+            program
+                .function_by_index(FunctionIndex(0))
+                .map(|function| function.name.as_str()),
+            Some("main")
+        );
+        assert_eq!(
+            program
+                .function_by_index(FunctionIndex(1))
+                .map(|function| function.name.as_str()),
+            Some("zeta")
+        );
     }
 }
