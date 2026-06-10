@@ -12,6 +12,7 @@ vela_common = { workspace = true }
 vela_def = { workspace = true }
 vela_host = { workspace = true }
 vela_reflect = { workspace = true }
+vela_stdlib_runtime = { workspace = true }
 
 [features]
 serde = ["dep:serde"]

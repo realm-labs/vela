@@ -1326,7 +1326,7 @@ surface.
 - `standard_native_function_descs()` or its replacement is generated from manifest data.
 - No separate list of math/option/result/set descriptors exists outside the manifest.
 
-- [ ] **Task 3.3: Generate VM stdlib registration from manifest**
+- [x] **Task 3.3: Generate VM stdlib registration from manifest**
 
 **Objective:** Delete duplicated stdlib VM registration lists.
 

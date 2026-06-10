@@ -508,6 +508,7 @@ dependencies = [
  "vela_hir",
  "vela_host",
  "vela_reflect",
+ "vela_stdlib_runtime",
 ]
 
 [[package]]

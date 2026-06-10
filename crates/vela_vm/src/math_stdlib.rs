@@ -1,55 +1,11 @@
 use crate::owned_value::OwnedValue;
-use crate::{Vm, VmError, VmErrorKind, VmResult};
-use vela_common::standard_ids::{
-    MATH_ABS_FUNCTION_ID, MATH_CEIL_FUNCTION_ID, MATH_CLAMP_FUNCTION_ID,
-    MATH_DISTANCE2D_FUNCTION_ID, MATH_DISTANCE3D_FUNCTION_ID, MATH_FLOOR_FUNCTION_ID,
-    MATH_LERP_FUNCTION_ID, MATH_MAX_FUNCTION_ID, MATH_MIN_FUNCTION_ID,
-    MATH_MOVE_TOWARDS_FUNCTION_ID, MATH_POW_FUNCTION_ID, MATH_ROUND_FUNCTION_ID,
-    MATH_SIGN_FUNCTION_ID, MATH_SQRT_FUNCTION_ID,
-};
+use crate::{VmError, VmErrorKind, VmResult};
 
-mod distance;
-mod movement;
-mod power;
-mod root;
-mod scalar;
-
-use distance::{math_distance2d, math_distance3d};
-use movement::{math_lerp, math_move_towards};
-use power::math_pow;
-use root::math_sqrt;
-use scalar::{
-    math_abs, math_ceil, math_clamp, math_floor, math_max, math_min, math_round, math_sign,
-};
-
-pub(crate) fn register(vm: &mut Vm) {
-    vm.register_native_with_id(MATH_MAX_FUNCTION_ID, "math::max", math_max);
-    vm.register_native_with_id(MATH_MIN_FUNCTION_ID, "math::min", math_min);
-    vm.register_native_with_id(MATH_CLAMP_FUNCTION_ID, "math::clamp", math_clamp);
-    vm.register_native_with_id(MATH_LERP_FUNCTION_ID, "math::lerp", math_lerp);
-    vm.register_native_with_id(
-        MATH_MOVE_TOWARDS_FUNCTION_ID,
-        "math::move_towards",
-        math_move_towards,
-    );
-    vm.register_native_with_id(
-        MATH_DISTANCE2D_FUNCTION_ID,
-        "math::distance2d",
-        math_distance2d,
-    );
-    vm.register_native_with_id(
-        MATH_DISTANCE3D_FUNCTION_ID,
-        "math::distance3d",
-        math_distance3d,
-    );
-    vm.register_native_with_id(MATH_POW_FUNCTION_ID, "math::pow", math_pow);
-    vm.register_native_with_id(MATH_SQRT_FUNCTION_ID, "math::sqrt", math_sqrt);
-    vm.register_native_with_id(MATH_SIGN_FUNCTION_ID, "math::sign", math_sign);
-    vm.register_native_with_id(MATH_FLOOR_FUNCTION_ID, "math::floor", math_floor);
-    vm.register_native_with_id(MATH_CEIL_FUNCTION_ID, "math::ceil", math_ceil);
-    vm.register_native_with_id(MATH_ROUND_FUNCTION_ID, "math::round", math_round);
-    vm.register_native_with_id(MATH_ABS_FUNCTION_ID, "math::abs", math_abs);
-}
+pub(crate) mod distance;
+pub(crate) mod movement;
+pub(crate) mod power;
+pub(crate) mod root;
+pub(crate) mod scalar;
 
 pub(super) fn expect_finite_float(value: &OwnedValue, operation: &'static str) -> VmResult<f64> {
     match value {

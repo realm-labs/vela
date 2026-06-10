@@ -6,10 +6,84 @@
 use vela_def::{FunctionId, MethodId};
 use vela_stdlib::{STD_FUNCTIONS, STD_METHODS};
 
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum StdFunctionImplementation {
+    MathMax,
+    MathMin,
+    MathClamp,
+    MathLerp,
+    MathMoveTowards,
+    MathDistance2d,
+    MathDistance3d,
+    MathPow,
+    MathSqrt,
+    MathSign,
+    MathFloor,
+    MathCeil,
+    MathRound,
+    MathAbs,
+    OptionSome,
+    OptionNone,
+    OptionIsSome,
+    OptionIsNone,
+    OptionUnwrapOr,
+    OptionOkOr,
+    OptionFlatten,
+    ResultOk,
+    ResultErr,
+    ResultIsOk,
+    ResultIsErr,
+    ResultUnwrapOr,
+    ResultToOption,
+    ResultToErrorOption,
+    ResultFlatten,
+    SetFromArray,
+}
+
+impl StdFunctionImplementation {
+    #[must_use]
+    pub const fn from_manifest_path(module: &str, name: &str) -> Option<Self> {
+        match (module.as_bytes(), name.as_bytes()) {
+            (b"math", b"max") => Some(Self::MathMax),
+            (b"math", b"min") => Some(Self::MathMin),
+            (b"math", b"clamp") => Some(Self::MathClamp),
+            (b"math", b"lerp") => Some(Self::MathLerp),
+            (b"math", b"move_towards") => Some(Self::MathMoveTowards),
+            (b"math", b"distance2d") => Some(Self::MathDistance2d),
+            (b"math", b"distance3d") => Some(Self::MathDistance3d),
+            (b"math", b"pow") => Some(Self::MathPow),
+            (b"math", b"sqrt") => Some(Self::MathSqrt),
+            (b"math", b"sign") => Some(Self::MathSign),
+            (b"math", b"floor") => Some(Self::MathFloor),
+            (b"math", b"ceil") => Some(Self::MathCeil),
+            (b"math", b"round") => Some(Self::MathRound),
+            (b"math", b"abs") => Some(Self::MathAbs),
+            (b"option", b"some") => Some(Self::OptionSome),
+            (b"option", b"none") => Some(Self::OptionNone),
+            (b"option", b"is_some") => Some(Self::OptionIsSome),
+            (b"option", b"is_none") => Some(Self::OptionIsNone),
+            (b"option", b"unwrap_or") => Some(Self::OptionUnwrapOr),
+            (b"option", b"ok_or") => Some(Self::OptionOkOr),
+            (b"option", b"flatten") => Some(Self::OptionFlatten),
+            (b"result", b"ok") => Some(Self::ResultOk),
+            (b"result", b"err") => Some(Self::ResultErr),
+            (b"result", b"is_ok") => Some(Self::ResultIsOk),
+            (b"result", b"is_err") => Some(Self::ResultIsErr),
+            (b"result", b"unwrap_or") => Some(Self::ResultUnwrapOr),
+            (b"result", b"to_option") => Some(Self::ResultToOption),
+            (b"result", b"to_error_option") => Some(Self::ResultToErrorOption),
+            (b"result", b"flatten") => Some(Self::ResultFlatten),
+            (b"set", b"from_array") => Some(Self::SetFromArray),
+            _ => None,
+        }
+    }
+}
+
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct StdFunctionRuntimeBinding {
     pub id: FunctionId,
-    pub implementation: String,
+    pub debug_name: String,
+    pub implementation: StdFunctionImplementation,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -22,9 +96,20 @@ pub struct StdMethodRuntimeBinding {
 pub fn stdlib_function_runtime_bindings() -> Vec<StdFunctionRuntimeBinding> {
     STD_FUNCTIONS
         .iter()
-        .map(|spec| StdFunctionRuntimeBinding {
-            id: spec.id(),
-            implementation: format!("{}::{}", spec.module, spec.name),
+        .map(|spec| {
+            let Some(implementation) =
+                StdFunctionImplementation::from_manifest_path(spec.module, spec.name)
+            else {
+                panic!(
+                    "missing standard runtime implementation for {}::{}",
+                    spec.module, spec.name
+                );
+            };
+            StdFunctionRuntimeBinding {
+                id: spec.id(),
+                debug_name: format!("{}::{}", spec.module, spec.name),
+                implementation,
+            }
         })
         .collect()
 }
@@ -53,7 +138,32 @@ mod tests {
 
         assert_eq!(bindings.len(), STD_FUNCTIONS.len());
         assert_eq!(bindings[0].id, STD_FUNCTIONS[0].id());
-        assert_eq!(bindings[0].implementation, "math::max");
+        assert_eq!(bindings[0].debug_name, "math::max");
+        assert_eq!(
+            bindings[0].implementation,
+            StdFunctionImplementation::MathMax
+        );
+    }
+
+    #[test]
+    fn every_manifest_function_has_a_typed_runtime_implementation() {
+        let bindings = stdlib_function_runtime_bindings();
+
+        for spec in STD_FUNCTIONS {
+            let binding = bindings
+                .iter()
+                .find(|binding| binding.id == spec.id())
+                .expect("manifest function should have a runtime binding");
+
+            assert_eq!(
+                binding.debug_name,
+                format!("{}::{}", spec.module, spec.name)
+            );
+            assert_eq!(
+                Some(binding.implementation),
+                StdFunctionImplementation::from_manifest_path(spec.module, spec.name)
+            );
+        }
     }
 
     #[test]

@@ -2,65 +2,8 @@ use crate::heap::HeapValue;
 use crate::owned_value::OwnedValue;
 use crate::script_object::ScriptFields;
 use crate::{
-    ExecutionBudget, HeapExecution, Value, Vm, VmError, VmErrorKind, VmResult, allocate_heap_value,
+    ExecutionBudget, HeapExecution, Value, VmError, VmErrorKind, VmResult, allocate_heap_value,
 };
-use vela_common::standard_ids::{
-    OPTION_FLATTEN_FUNCTION_ID, OPTION_IS_NONE_FUNCTION_ID, OPTION_IS_SOME_FUNCTION_ID,
-    OPTION_NONE_FUNCTION_ID, OPTION_OK_OR_FUNCTION_ID, OPTION_SOME_FUNCTION_ID,
-    OPTION_UNWRAP_OR_FUNCTION_ID, RESULT_ERR_FUNCTION_ID, RESULT_FLATTEN_FUNCTION_ID,
-    RESULT_IS_ERR_FUNCTION_ID, RESULT_IS_OK_FUNCTION_ID, RESULT_OK_FUNCTION_ID,
-    RESULT_TO_ERROR_OPTION_FUNCTION_ID, RESULT_TO_OPTION_FUNCTION_ID, RESULT_UNWRAP_OR_FUNCTION_ID,
-};
-
-pub(crate) fn register(vm: &mut Vm) {
-    vm.register_native_with_id(OPTION_SOME_FUNCTION_ID, "option::some", option_some);
-    vm.register_native_with_id(OPTION_NONE_FUNCTION_ID, "option::none", option_none);
-    vm.register_native_with_id(
-        OPTION_IS_SOME_FUNCTION_ID,
-        "option::is_some",
-        option_is_some,
-    );
-    vm.register_native_with_id(
-        OPTION_IS_NONE_FUNCTION_ID,
-        "option::is_none",
-        option_is_none,
-    );
-    vm.register_native_with_id(
-        OPTION_UNWRAP_OR_FUNCTION_ID,
-        "option::unwrap_or",
-        option_unwrap_or,
-    );
-    vm.register_native_with_id(OPTION_OK_OR_FUNCTION_ID, "option::ok_or", option_ok_or);
-    vm.register_native_with_id(
-        OPTION_FLATTEN_FUNCTION_ID,
-        "option::flatten",
-        option_flatten,
-    );
-    vm.register_native_with_id(RESULT_OK_FUNCTION_ID, "result::ok", result_ok);
-    vm.register_native_with_id(RESULT_ERR_FUNCTION_ID, "result::err", result_err);
-    vm.register_native_with_id(RESULT_IS_OK_FUNCTION_ID, "result::is_ok", result_is_ok);
-    vm.register_native_with_id(RESULT_IS_ERR_FUNCTION_ID, "result::is_err", result_is_err);
-    vm.register_native_with_id(
-        RESULT_UNWRAP_OR_FUNCTION_ID,
-        "result::unwrap_or",
-        result_unwrap_or,
-    );
-    vm.register_native_with_id(
-        RESULT_TO_OPTION_FUNCTION_ID,
-        "result::to_option",
-        result_to_option,
-    );
-    vm.register_native_with_id(
-        RESULT_TO_ERROR_OPTION_FUNCTION_ID,
-        "result::to_error_option",
-        result_to_error_option,
-    );
-    vm.register_native_with_id(
-        RESULT_FLATTEN_FUNCTION_ID,
-        "result::flatten",
-        result_flatten,
-    );
-}
 
 pub(crate) fn option_value(
     payload: Option<Value>,
@@ -148,27 +91,27 @@ fn owned_option_value(payload: Option<OwnedValue>) -> OwnedValue {
     }
 }
 
-fn option_some(args: &[OwnedValue]) -> VmResult<OwnedValue> {
+pub(crate) fn option_some(args: &[OwnedValue]) -> VmResult<OwnedValue> {
     expect_arity("option::some", args, 1)?;
     Ok(owned_option_value(Some(args[0].clone())))
 }
 
-fn option_none(args: &[OwnedValue]) -> VmResult<OwnedValue> {
+pub(crate) fn option_none(args: &[OwnedValue]) -> VmResult<OwnedValue> {
     expect_arity("option::none", args, 0)?;
     Ok(owned_option_value(None))
 }
 
-fn option_is_some(args: &[OwnedValue]) -> VmResult<OwnedValue> {
+pub(crate) fn option_is_some(args: &[OwnedValue]) -> VmResult<OwnedValue> {
     expect_arity("option::is_some", args, 1)?;
     option_variant(&args[0], "option::is_some").map(|variant| OwnedValue::Bool(variant == "Some"))
 }
 
-fn option_is_none(args: &[OwnedValue]) -> VmResult<OwnedValue> {
+pub(crate) fn option_is_none(args: &[OwnedValue]) -> VmResult<OwnedValue> {
     expect_arity("option::is_none", args, 1)?;
     option_variant(&args[0], "option::is_none").map(|variant| OwnedValue::Bool(variant == "None"))
 }
 
-fn option_unwrap_or(args: &[OwnedValue]) -> VmResult<OwnedValue> {
+pub(crate) fn option_unwrap_or(args: &[OwnedValue]) -> VmResult<OwnedValue> {
     expect_arity("option::unwrap_or", args, 2)?;
     match option_variant(&args[0], "option::unwrap_or")? {
         "Some" => enum_payload(&args[0], "option::unwrap_or"),
@@ -177,7 +120,7 @@ fn option_unwrap_or(args: &[OwnedValue]) -> VmResult<OwnedValue> {
     }
 }
 
-fn option_ok_or(args: &[OwnedValue]) -> VmResult<OwnedValue> {
+pub(crate) fn option_ok_or(args: &[OwnedValue]) -> VmResult<OwnedValue> {
     expect_arity("option::ok_or", args, 2)?;
     match option_variant(&args[0], "option::ok_or")? {
         "Some" => {
@@ -188,7 +131,7 @@ fn option_ok_or(args: &[OwnedValue]) -> VmResult<OwnedValue> {
     }
 }
 
-fn option_flatten(args: &[OwnedValue]) -> VmResult<OwnedValue> {
+pub(crate) fn option_flatten(args: &[OwnedValue]) -> VmResult<OwnedValue> {
     expect_arity("option::flatten", args, 1)?;
     match option_variant(&args[0], "option::flatten")? {
         "Some" => {
@@ -201,27 +144,27 @@ fn option_flatten(args: &[OwnedValue]) -> VmResult<OwnedValue> {
     }
 }
 
-fn result_ok(args: &[OwnedValue]) -> VmResult<OwnedValue> {
+pub(crate) fn result_ok(args: &[OwnedValue]) -> VmResult<OwnedValue> {
     expect_arity("result::ok", args, 1)?;
     Ok(owned_result_value("Ok", args[0].clone()))
 }
 
-fn result_err(args: &[OwnedValue]) -> VmResult<OwnedValue> {
+pub(crate) fn result_err(args: &[OwnedValue]) -> VmResult<OwnedValue> {
     expect_arity("result::err", args, 1)?;
     Ok(owned_result_value("Err", args[0].clone()))
 }
 
-fn result_is_ok(args: &[OwnedValue]) -> VmResult<OwnedValue> {
+pub(crate) fn result_is_ok(args: &[OwnedValue]) -> VmResult<OwnedValue> {
     expect_arity("result::is_ok", args, 1)?;
     result_variant(&args[0], "result::is_ok").map(|variant| OwnedValue::Bool(variant == "Ok"))
 }
 
-fn result_is_err(args: &[OwnedValue]) -> VmResult<OwnedValue> {
+pub(crate) fn result_is_err(args: &[OwnedValue]) -> VmResult<OwnedValue> {
     expect_arity("result::is_err", args, 1)?;
     result_variant(&args[0], "result::is_err").map(|variant| OwnedValue::Bool(variant == "Err"))
 }
 
-fn result_unwrap_or(args: &[OwnedValue]) -> VmResult<OwnedValue> {
+pub(crate) fn result_unwrap_or(args: &[OwnedValue]) -> VmResult<OwnedValue> {
     expect_arity("result::unwrap_or", args, 2)?;
     match result_variant(&args[0], "result::unwrap_or")? {
         "Ok" => enum_payload(&args[0], "result::unwrap_or"),
@@ -230,7 +173,7 @@ fn result_unwrap_or(args: &[OwnedValue]) -> VmResult<OwnedValue> {
     }
 }
 
-fn result_to_option(args: &[OwnedValue]) -> VmResult<OwnedValue> {
+pub(crate) fn result_to_option(args: &[OwnedValue]) -> VmResult<OwnedValue> {
     expect_arity("result::to_option", args, 1)?;
     match result_variant(&args[0], "result::to_option")? {
         "Ok" => enum_payload(&args[0], "result::to_option")
@@ -241,7 +184,7 @@ fn result_to_option(args: &[OwnedValue]) -> VmResult<OwnedValue> {
     }
 }
 
-fn result_to_error_option(args: &[OwnedValue]) -> VmResult<OwnedValue> {
+pub(crate) fn result_to_error_option(args: &[OwnedValue]) -> VmResult<OwnedValue> {
     expect_arity("result::to_error_option", args, 1)?;
     match result_variant(&args[0], "result::to_error_option")? {
         "Ok" => Ok(owned_option_value(None)),
@@ -252,7 +195,7 @@ fn result_to_error_option(args: &[OwnedValue]) -> VmResult<OwnedValue> {
     }
 }
 
-fn result_flatten(args: &[OwnedValue]) -> VmResult<OwnedValue> {
+pub(crate) fn result_flatten(args: &[OwnedValue]) -> VmResult<OwnedValue> {
     expect_arity("result::flatten", args, 1)?;
     match result_variant(&args[0], "result::flatten")? {
         "Ok" => {

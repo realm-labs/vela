@@ -1,5 +1,15 @@
 use super::*;
 use crate::owned_value::OwnedValue;
+use vela_stdlib_runtime::{StdFunctionImplementation, stdlib_function_runtime_bindings};
+
+fn std_function_id(implementation: StdFunctionImplementation) -> vela_def::FunctionId {
+    for binding in stdlib_function_runtime_bindings() {
+        if binding.implementation == implementation {
+            return binding.id;
+        }
+    }
+    panic!("missing standard function runtime binding for {implementation:?}");
+}
 
 #[test]
 fn call_native_uses_resolved_id_before_name_fallback() {
@@ -65,7 +75,7 @@ fn call_native_uses_standard_native_id_before_name_fallback() {
     code.push_instruction(Instruction::new(InstructionKind::CallNative {
         dst: Some(Register(1)),
         name: "missing::abs".into(),
-        native: Some(vela_common::standard_ids::MATH_ABS_FUNCTION_ID),
+        native: Some(std_function_id(StdFunctionImplementation::MathAbs)),
         args: vec![Register(0)],
     }));
     code.push_instruction(Instruction::new(InstructionKind::Return {
@@ -571,7 +581,7 @@ fn call_method_uses_standard_set_method_id_before_name_fallback() {
     code.push_instruction(Instruction::new(InstructionKind::CallNative {
         dst: Some(Register(3)),
         name: "missing::set_from_array".into(),
-        native: Some(vela_common::standard_ids::SET_FROM_ARRAY_FUNCTION_ID),
+        native: Some(std_function_id(StdFunctionImplementation::SetFromArray)),
         args: vec![Register(2)],
     }));
     code.push_instruction(Instruction::new(InstructionKind::CallMethod {
@@ -608,7 +618,7 @@ fn call_method_uses_standard_set_mutator_ids_before_name_fallback() {
     add_code.push_instruction(Instruction::new(InstructionKind::CallNative {
         dst: Some(Register(3)),
         name: "missing::set_from_array".into(),
-        native: Some(vela_common::standard_ids::SET_FROM_ARRAY_FUNCTION_ID),
+        native: Some(std_function_id(StdFunctionImplementation::SetFromArray)),
         args: vec![Register(2)],
     }));
     add_code.push_instruction(Instruction::new(InstructionKind::CallMethod {
@@ -650,7 +660,7 @@ fn call_method_uses_standard_set_mutator_ids_before_name_fallback() {
     remove_code.push_instruction(Instruction::new(InstructionKind::CallNative {
         dst: Some(Register(3)),
         name: "missing::set_from_array".into(),
-        native: Some(vela_common::standard_ids::SET_FROM_ARRAY_FUNCTION_ID),
+        native: Some(std_function_id(StdFunctionImplementation::SetFromArray)),
         args: vec![Register(2)],
     }));
     remove_code.push_instruction(Instruction::new(InstructionKind::CallMethod {
@@ -692,7 +702,7 @@ fn call_method_uses_standard_set_mutator_ids_before_name_fallback() {
     clear_code.push_instruction(Instruction::new(InstructionKind::CallNative {
         dst: Some(Register(3)),
         name: "missing::set_from_array".into(),
-        native: Some(vela_common::standard_ids::SET_FROM_ARRAY_FUNCTION_ID),
+        native: Some(std_function_id(StdFunctionImplementation::SetFromArray)),
         args: vec![Register(2)],
     }));
     clear_code.push_instruction(Instruction::new(InstructionKind::CallMethod {
@@ -791,7 +801,7 @@ fn call_method_uses_standard_collection_predicate_ids_before_name_fallback() {
     set_code.push_instruction(Instruction::new(InstructionKind::CallNative {
         dst: Some(Register(3)),
         name: "missing::set_from_array".into(),
-        native: Some(vela_common::standard_ids::SET_FROM_ARRAY_FUNCTION_ID),
+        native: Some(std_function_id(StdFunctionImplementation::SetFromArray)),
         args: vec![Register(2)],
     }));
     set_code.push_instruction(Instruction::new(InstructionKind::CallMethod {
@@ -877,13 +887,13 @@ fn run_set_relation_by_id(
     code.push_instruction(Instruction::new(InstructionKind::CallNative {
         dst: Some(receiver_set),
         name: "missing::set_from_array".into(),
-        native: Some(vela_common::standard_ids::SET_FROM_ARRAY_FUNCTION_ID),
+        native: Some(std_function_id(StdFunctionImplementation::SetFromArray)),
         args: vec![receiver_array],
     }));
     code.push_instruction(Instruction::new(InstructionKind::CallNative {
         dst: Some(other_set),
         name: "missing::set_from_array".into(),
-        native: Some(vela_common::standard_ids::SET_FROM_ARRAY_FUNCTION_ID),
+        native: Some(std_function_id(StdFunctionImplementation::SetFromArray)),
         args: vec![other_array],
     }));
     code.push_instruction(Instruction::new(InstructionKind::CallMethod {
