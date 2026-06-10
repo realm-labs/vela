@@ -2,9 +2,10 @@ use vela_bytecode::UnlinkedProgramCode;
 
 use crate::heap::GcRef;
 use crate::runtime_checks::expect_closure_ref;
+use crate::value::ClosureCode;
 use crate::{
     ExecutionBudget, ExecutionCall, HeapExecution, HostExecution, SmallStorage, Value, Vm, VmError,
-    VmResult,
+    VmErrorKind, VmResult,
 };
 
 pub(crate) struct MethodRuntime<'a, 'host, 'heap> {
@@ -35,10 +36,13 @@ pub(crate) fn call_callback_with_protected_values<'value>(
 ) -> VmResult<Value> {
     let (code, captures) = {
         let closure = expect_closure_ref(callback, runtime.heap.as_deref(), operation)?;
+        let ClosureCode::Unlinked(code) = &closure.code else {
+            return Err(VmError::new(VmErrorKind::TypeMismatch { operation }));
+        };
         let captures = SmallStorage::try_from_slice_map(&closure.captures, 4, |value| {
             Ok::<_, VmError>(*value)
         })?;
-        (closure.code.clone(), captures)
+        (code.clone(), captures)
     };
     let protected_root_len = runtime.heap.as_deref_mut().map(|heap| {
         let protected_root_len = heap.push_protected_roots(runtime.caller_roots);

@@ -7,7 +7,7 @@ use vela_common::Span;
 
 use crate::heap::HeapValue;
 use crate::runtime_checks::expect_closure_ref;
-use crate::value::ClosureValue;
+use crate::value::{ClosureCode, ClosureValue};
 use crate::{
     CallFrame, ExecutionBudget, ExecutionCall, HeapExecution, HostExecution, SmallStorage, Value,
     Vm, VmError, VmErrorKind, VmResult, allocate_heap_value, store_value_in_heap_if_needed,
@@ -46,7 +46,7 @@ pub(crate) fn make_closure(
     )?;
     let value = allocate_heap_value(
         HeapValue::Closure(ClosureValue {
-            code: Arc::new(code.clone()),
+            code: ClosureCode::Unlinked(Arc::new(code.clone())),
             captures,
         }),
         heap,
@@ -85,10 +85,15 @@ pub(crate) fn dispatch_closure_call(
     let (code, captures) = {
         let closure =
             expect_closure_ref(frame.read(call.callee)?, heap.as_deref(), "closure call")?;
+        let ClosureCode::Unlinked(code) = &closure.code else {
+            return Err(VmError::new(VmErrorKind::TypeMismatch {
+                operation: "closure call",
+            }));
+        };
         let captures = SmallStorage::try_from_slice_map(&closure.captures, 4, |value| {
             Ok::<_, VmError>(*value)
         })?;
-        (Arc::clone(&closure.code), captures)
+        (Arc::clone(code), captures)
     };
     let values = script_call_args_from_registers(frame, call.args)?;
     let protected_root_len = heap.as_deref_mut().map(|heap| heap.push_frame_roots(frame));

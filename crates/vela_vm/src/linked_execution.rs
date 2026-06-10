@@ -5,6 +5,9 @@ use vela_bytecode::{
 };
 use vela_common::Span;
 
+use crate::heap::HeapValue;
+use crate::value::{ClosureCode, ClosureValue};
+
 use super::*;
 
 pub(crate) struct LinkedExecutionCall<'a> {
@@ -334,6 +337,89 @@ impl Vm {
                             code: function_code,
                             program: call.program,
                             captures: &[],
+                            args: values.as_slice(),
+                            call_site: instruction.span,
+                            call_site_offset: Some(instruction_offset),
+                            inline_caches: call.inline_caches,
+                        },
+                        host.as_deref_mut(),
+                        heap.as_deref_mut(),
+                        budget.as_deref_mut(),
+                    );
+                    if let (Some(heap), Some(protected_root_len)) =
+                        (heap.as_deref_mut(), protected_root_len)
+                    {
+                        heap.truncate_protected_roots(protected_root_len);
+                    }
+                    let result = store_value_in_heap_if_needed(
+                        result?,
+                        heap.as_deref_mut(),
+                        budget.as_deref_mut(),
+                    )?;
+                    frame.write(*dst, result)?;
+                }
+                InstructionKind::MakeClosure {
+                    dst,
+                    function,
+                    captures,
+                } => {
+                    let captures = captures
+                        .iter()
+                        .map(|register| frame.read(*register).cloned())
+                        .collect::<VmResult<Vec<_>>>()?;
+                    let heap = heap.as_deref_mut().ok_or_else(|| {
+                        VmError::new(VmErrorKind::TypeMismatch {
+                            operation: "closure heap",
+                        })
+                        .with_source_span_if_absent(instruction.span)
+                    })?;
+                    let value = allocate_heap_value(
+                        HeapValue::Closure(ClosureValue {
+                            code: ClosureCode::Linked(*function),
+                            captures,
+                        }),
+                        heap,
+                        budget.as_deref_mut(),
+                    )?;
+                    frame.write(*dst, value)?;
+                }
+                InstructionKind::CallClosure { dst, callee, args } => {
+                    let (function, captures) = {
+                        let closure = runtime_checks::expect_closure_ref(
+                            frame.read(*callee)?,
+                            heap.as_deref(),
+                            "closure call",
+                        )?;
+                        let ClosureCode::Linked(function) = &closure.code else {
+                            return Err(VmError::new(VmErrorKind::TypeMismatch {
+                                operation: "closure call",
+                            })
+                            .with_source_span_if_absent(instruction.span));
+                        };
+                        let function = *function;
+                        let captures =
+                            SmallStorage::try_from_slice_map(&closure.captures, 4, |value| {
+                                Ok::<_, VmError>(*value)
+                            })?;
+                        (function, captures)
+                    };
+                    let function_code = call.program.function(function).ok_or_else(|| {
+                        VmError::new(VmErrorKind::UnknownFunction {
+                            name: format!("<linked closure#{}>", function.index()),
+                        })
+                        .with_source_span_if_absent(instruction.span)
+                    })?;
+                    let values = SmallStorage::try_from_slice_map(args, 4, |register| {
+                        Ok::<_, VmError>(*frame.read(*register)?)
+                    })?;
+                    let protected_root_len = heap
+                        .as_deref_mut()
+                        .map(|heap| heap.push_frame_roots(&frame));
+                    let result = self.execute_linked_call(
+                        LinkedExecutionCall {
+                            code: function_code,
+                            program: call.program,
+                            captures: captures.as_slice(),
                             args: values.as_slice(),
                             call_site: instruction.span,
                             call_site_offset: Some(instruction_offset),
@@ -851,12 +937,6 @@ impl Vm {
                 InstructionKind::Return { src } => {
                     return Ok(*frame.read(*src)?);
                 }
-                unsupported => {
-                    return Err(VmError::new(VmErrorKind::UnsupportedLinkedInstruction {
-                        opcode: linked_opcode_name(unsupported),
-                    })
-                    .with_source_span_if_absent(instruction.span));
-                }
             }
         }
 
@@ -984,55 +1064,4 @@ fn linked_object_fields(
         .iter()
         .map(|(_, debug_name, register)| (program.debug_name(*debug_name).to_owned(), *register))
         .collect()
-}
-
-fn linked_opcode_name(kind: &InstructionKind) -> &'static str {
-    match kind {
-        InstructionKind::LoadConst { .. } => "LoadConst",
-        InstructionKind::Move { .. } => "Move",
-        InstructionKind::Not { .. } => "Not",
-        InstructionKind::Truthy { .. } => "Truthy",
-        InstructionKind::Negate { .. } => "Negate",
-        InstructionKind::Add { .. } => "Add",
-        InstructionKind::Sub { .. } => "Sub",
-        InstructionKind::Mul { .. } => "Mul",
-        InstructionKind::Div { .. } => "Div",
-        InstructionKind::Rem { .. } => "Rem",
-        InstructionKind::Equal { .. } => "Equal",
-        InstructionKind::NotEqual { .. } => "NotEqual",
-        InstructionKind::Less { .. } => "Less",
-        InstructionKind::LessEqual { .. } => "LessEqual",
-        InstructionKind::Greater { .. } => "Greater",
-        InstructionKind::GreaterEqual { .. } => "GreaterEqual",
-        InstructionKind::JumpIfFalse { .. } => "JumpIfFalse",
-        InstructionKind::JumpIfNotMissing { .. } => "JumpIfNotMissing",
-        InstructionKind::Jump { .. } => "Jump",
-        InstructionKind::CallNative { .. } => "CallNative",
-        InstructionKind::CallFunction { .. } => "CallFunction",
-        InstructionKind::MakeClosure { .. } => "MakeClosure",
-        InstructionKind::CallClosure { .. } => "CallClosure",
-        InstructionKind::CallMethod { .. } => "CallMethod",
-        InstructionKind::TryPropagate { .. } => "TryPropagate",
-        InstructionKind::MakeArray { .. } => "MakeArray",
-        InstructionKind::MakeMap { .. } => "MakeMap",
-        InstructionKind::MakeRange { .. } => "MakeRange",
-        InstructionKind::MakeRecord { .. } => "MakeRecord",
-        InstructionKind::MakeEnum { .. } => "MakeEnum",
-        InstructionKind::GetRecordSlot { .. } => "GetRecordSlot",
-        InstructionKind::SetRecordSlot { .. } => "SetRecordSlot",
-        InstructionKind::GetEnumSlot { .. } => "GetEnumSlot",
-        InstructionKind::GetIndex { .. } => "GetIndex",
-        InstructionKind::SetIndex { .. } => "SetIndex",
-        InstructionKind::IterInit { .. } => "IterInit",
-        InstructionKind::IterNext { .. } => "IterNext",
-        InstructionKind::RangeNext { .. } => "RangeNext",
-        InstructionKind::EnumTagEqual { .. } => "EnumTagEqual",
-        InstructionKind::LoadGlobal { .. } => "LoadGlobal",
-        InstructionKind::HostRead { .. } => "HostRead",
-        InstructionKind::HostWrite { .. } => "HostWrite",
-        InstructionKind::HostMutate { .. } => "HostMutate",
-        InstructionKind::HostRemove { .. } => "HostRemove",
-        InstructionKind::HostCall { .. } => "HostCall",
-        InstructionKind::Return { .. } => "Return",
-    }
 }

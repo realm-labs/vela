@@ -1,6 +1,6 @@
 use std::sync::Arc;
 
-use vela_bytecode::UnlinkedCodeObject;
+use vela_bytecode::{ScriptFunctionHandle, UnlinkedCodeObject};
 use vela_host::path::HostRef;
 
 use crate::heap::GcRef;
@@ -28,6 +28,12 @@ impl Value {
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct ClosureValue {
-    pub(crate) code: Arc<UnlinkedCodeObject>,
+    pub(crate) code: ClosureCode,
     pub(crate) captures: Vec<Value>,
+}
+
+#[derive(Clone, Debug, PartialEq)]
+pub enum ClosureCode {
+    Unlinked(Arc<UnlinkedCodeObject>),
+    Linked(ScriptFunctionHandle),
 }

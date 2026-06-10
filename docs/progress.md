@@ -219,8 +219,9 @@ Cranelift JIT.
   return, budget-charged instructions, script/native/value/script-method calls,
   array/map/range/index/iterator/global/host operations, and record slot
   construction/read/write plus enum construction/slot/tag operations without
-  rebuilding unlinked code; linked closure opcodes and host-method `CallMethod`
-  dispatch remain to move before Task 6.1 is complete.
+  rebuilding unlinked code; linked closure opcodes now carry linked function
+  handles through closure values, leaving host-method `CallMethod` dispatch as
+  the remaining linked VM instruction gap before Task 6.1 is complete.
   Script function dispatch is being isolated behind a focused call boundary so
   later resolved-target work does not grow the main VM loop or change current
   hot-reload rename semantics. Closure creation and invocation now have a

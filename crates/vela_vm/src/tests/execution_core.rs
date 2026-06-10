@@ -396,6 +396,72 @@ fn linked_program_calls_script_function_by_dense_handle() {
 }
 
 #[test]
+fn linked_program_executes_closure_creation_and_call() {
+    let mut program = vela_bytecode::LinkedProgram::new();
+    let main_name = program.intern_debug_name("main");
+    let closure_name = program.intern_debug_name("main::<lambda>");
+    let param_name = program.intern_debug_name("amount");
+
+    let mut main = vela_bytecode::LinkedCodeObject::new(main_name, 4);
+    let captured = main.push_constant(Constant::Int(4));
+    let amount = main.push_constant(Constant::Int(5));
+    let closure = vela_bytecode::ScriptFunctionHandle::new(1);
+    main.push_instruction(vela_bytecode::linked::Instruction::new(
+        vela_bytecode::linked::InstructionKind::LoadConst {
+            dst: Register(0),
+            constant: captured,
+        },
+    ));
+    main.push_instruction(vela_bytecode::linked::Instruction::new(
+        vela_bytecode::linked::InstructionKind::MakeClosure {
+            dst: Register(1),
+            function: closure,
+            captures: vec![Register(0)],
+        },
+    ));
+    main.push_instruction(vela_bytecode::linked::Instruction::new(
+        vela_bytecode::linked::InstructionKind::LoadConst {
+            dst: Register(2),
+            constant: amount,
+        },
+    ));
+    main.push_instruction(vela_bytecode::linked::Instruction::new(
+        vela_bytecode::linked::InstructionKind::CallClosure {
+            dst: Register(3),
+            callee: Register(1),
+            args: vec![Register(2)],
+        },
+    ));
+    main.push_instruction(vela_bytecode::linked::Instruction::new(
+        vela_bytecode::linked::InstructionKind::Return { src: Register(3) },
+    ));
+
+    let mut closure_code = vela_bytecode::LinkedCodeObject::new(closure_name, 3)
+        .with_capture_count(1)
+        .with_params(vec![param_name]);
+    closure_code.push_instruction(vela_bytecode::linked::Instruction::new(
+        vela_bytecode::linked::InstructionKind::Add {
+            dst: Register(2),
+            lhs: Register(0),
+            rhs: Register(1),
+        },
+    ));
+    closure_code.push_instruction(vela_bytecode::linked::Instruction::new(
+        vela_bytecode::linked::InstructionKind::Return { src: Register(2) },
+    ));
+
+    let main = program.push_function(main);
+    let closure_handle = program.push_function(closure_code);
+    assert_eq!(closure_handle, closure);
+    program.set_entry_point(main_name, main);
+
+    assert_eq!(
+        Vm::new().run_linked_program(&program, "main", &[]),
+        Ok(OwnedValue::Int(9))
+    );
+}
+
+#[test]
 fn linked_program_executes_array_and_index_ops() {
     let mut program = vela_bytecode::LinkedProgram::new();
     let main_name = program.intern_debug_name("main");

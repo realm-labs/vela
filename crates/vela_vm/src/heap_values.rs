@@ -10,7 +10,7 @@ use crate::heap::HeapValue;
 use crate::heap_execution::HeapExecution;
 use crate::owned_value::{OwnedClosureValue, OwnedIteratorState, OwnedValue};
 use crate::script_object::ScriptFields;
-use crate::value::{ClosureValue, Value};
+use crate::value::{ClosureCode, ClosureValue, Value};
 
 pub(crate) fn value_from_constant(
     constant: &Constant,
@@ -225,7 +225,7 @@ pub(crate) fn owned_to_value(
                 .collect::<VmResult<Vec<_>>>()?;
             allocate_heap_value(
                 HeapValue::Closure(ClosureValue {
-                    code: Arc::clone(&closure.code),
+                    code: ClosureCode::Unlinked(Arc::clone(&closure.code)),
                     captures,
                 }),
                 heap,
@@ -326,17 +326,24 @@ fn heap_value_to_owned(
                 variant: variant.clone(),
                 fields: ScriptFields::from_pairs(&enum_variant_owner(enum_name, variant), fields),
             }),
-        HeapValue::Closure(closure) => closure
-            .captures
-            .iter()
-            .map(|capture| value_to_owned(capture, heap))
-            .collect::<VmResult<Vec<_>>>()
-            .map(|captures| {
-                OwnedValue::Closure(OwnedClosureValue {
-                    code: Arc::clone(&closure.code),
-                    captures,
+        HeapValue::Closure(closure) => {
+            let ClosureCode::Unlinked(code) = &closure.code else {
+                return Err(VmError::new(VmErrorKind::TypeMismatch {
+                    operation: "linked closure materialization",
+                }));
+            };
+            closure
+                .captures
+                .iter()
+                .map(|capture| value_to_owned(capture, heap))
+                .collect::<VmResult<Vec<_>>>()
+                .map(|captures| {
+                    OwnedValue::Closure(OwnedClosureValue {
+                        code: Arc::clone(code),
+                        captures,
+                    })
                 })
-            }),
+        }
         HeapValue::Iterator(iterator) => iterator
             .values()
             .iter()
