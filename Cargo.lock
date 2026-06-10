@@ -330,6 +330,7 @@ dependencies = [
  "vela_def",
  "vela_hir",
  "vela_host",
+ "vela_registry",
  "vela_syntax",
 ]
 
@@ -380,6 +381,7 @@ dependencies = [
  "vela_hot_reload",
  "vela_macros",
  "vela_reflect",
+ "vela_registry",
  "vela_stdlib",
  "vela_vm",
 ]
@@ -425,6 +427,7 @@ dependencies = [
  "vela_def",
  "vela_hir",
  "vela_reflect",
+ "vela_registry",
  "vela_vm",
 ]
 

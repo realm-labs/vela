@@ -4,11 +4,13 @@ use std::sync::Arc;
 use vela_bytecode::Program;
 use vela_bytecode::compiler::options::CompilerOptions;
 use vela_bytecode::compiler::{
-    compile_module_sources_with_options, compile_program_source_with_options,
+    compile_module_sources_with_options, compile_module_sources_with_options_and_registry,
+    compile_program_source_with_options, compile_program_source_with_options_and_registry,
 };
 use vela_common::SourceId;
 use vela_hir::ids::ModuleId;
 use vela_hir::module_graph::{ModuleGraph, ModuleSource};
+use vela_registry::RegistryCompileView;
 
 use crate::abi::HotReloadAbi;
 use crate::error::{HotReloadError, HotReloadErrorKind, HotReloadResult};
@@ -54,12 +56,35 @@ pub fn compile_initial_with_abi_and_options(
     Ok(initial_version_from_program(program, abi))
 }
 
+pub fn compile_initial_with_abi_options_and_registry(
+    source: SourceId,
+    text: &str,
+    abi: HotReloadAbi,
+    options: &CompilerOptions,
+    registry: RegistryCompileView<'_>,
+) -> HotReloadResult<ProgramVersion> {
+    let program = compile_program_source_with_options_and_registry(source, text, options, registry)
+        .map_err(|error| HotReloadError::new(HotReloadErrorKind::Compile(error)))?;
+    Ok(initial_version_from_program(program, abi))
+}
+
 pub fn compile_initial_modules_with_abi_and_options(
     sources: &[ModuleSource],
     abi: HotReloadAbi,
     options: &CompilerOptions,
 ) -> HotReloadResult<ProgramVersion> {
     let program = compile_module_sources_with_options(sources, options)
+        .map_err(|error| HotReloadError::new(HotReloadErrorKind::Compile(error)))?;
+    Ok(initial_version_from_program(program, abi))
+}
+
+pub fn compile_initial_modules_with_abi_options_and_registry(
+    sources: &[ModuleSource],
+    abi: HotReloadAbi,
+    options: &CompilerOptions,
+    registry: RegistryCompileView<'_>,
+) -> HotReloadResult<ProgramVersion> {
+    let program = compile_module_sources_with_options_and_registry(sources, options, registry)
         .map_err(|error| HotReloadError::new(HotReloadErrorKind::Compile(error)))?;
     Ok(initial_version_from_program(program, abi))
 }
@@ -160,6 +185,20 @@ pub fn compile_update_with_abi_and_options_and_policy(
     update_from_program(previous, program, abi, policy)
 }
 
+pub fn compile_update_with_abi_options_registry_and_policy(
+    previous: &ProgramVersion,
+    source: SourceId,
+    text: &str,
+    abi: HotReloadAbi,
+    options: &CompilerOptions,
+    registry: RegistryCompileView<'_>,
+    policy: &HotReloadPolicy,
+) -> HotReloadResult<HotUpdate> {
+    let program = compile_program_source_with_options_and_registry(source, text, options, registry)
+        .map_err(|error| HotReloadError::new(HotReloadErrorKind::Compile(error)))?;
+    update_from_program(previous, program, abi, policy)
+}
+
 pub fn compile_update_modules_with_abi_and_options_and_policy(
     previous: &ProgramVersion,
     sources: &[ModuleSource],
@@ -168,6 +207,19 @@ pub fn compile_update_modules_with_abi_and_options_and_policy(
     policy: &HotReloadPolicy,
 ) -> HotReloadResult<HotUpdate> {
     let program = compile_module_sources_with_options(sources, options)
+        .map_err(|error| HotReloadError::new(HotReloadErrorKind::Compile(error)))?;
+    update_from_program(previous, program, abi, policy)
+}
+
+pub fn compile_update_modules_with_abi_options_registry_and_policy(
+    previous: &ProgramVersion,
+    sources: &[ModuleSource],
+    abi: HotReloadAbi,
+    options: &CompilerOptions,
+    registry: RegistryCompileView<'_>,
+    policy: &HotReloadPolicy,
+) -> HotReloadResult<HotUpdate> {
+    let program = compile_module_sources_with_options_and_registry(sources, options, registry)
         .map_err(|error| HotReloadError::new(HotReloadErrorKind::Compile(error)))?;
     update_from_program(previous, program, abi, policy)
 }

@@ -31,7 +31,7 @@ struct LocalAssignmentFacts {
     value_type: Option<String>,
 }
 
-impl Compiler<'_> {
+impl Compiler<'_, '_> {
     pub(super) fn compile_assignment(&mut self, expr: &Expr) -> CompileResult<Register> {
         let ExprKind::Assign { op, target, value } = &expr.kind else {
             return Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(

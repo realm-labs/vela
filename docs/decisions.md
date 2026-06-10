@@ -108,6 +108,14 @@ and method name. A receiver type may not have two script methods with the same
 name, even if one comes from an inherent impl and another comes from a trait
 impl.
 
+Compiler identity lookup uses the definition registry, not reflection metadata
+or `CompilerOptions` identity maps. During the registry migration the engine
+keeps a `DefinitionRegistry` compile sidecar derived from validated reflection
+and native metadata; source and hot-reload compiler entry points pass a
+`RegistryCompileView` so native calls resolve to `FunctionId` before bytecode
+emission. Reflection metadata remains the user-visible query surface, while the
+definition registry is the compiler/linker identity source.
+
 ### Runtime And Heap
 
 The VM is a register bytecode interpreter. Execution budgets cover

@@ -6,6 +6,7 @@ pub mod args;
 pub mod builder;
 pub mod clock;
 mod compiler_options;
+mod compiler_registry;
 pub mod context;
 pub mod context_schema;
 pub mod engine;

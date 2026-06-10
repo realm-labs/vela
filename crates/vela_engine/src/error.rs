@@ -125,6 +125,9 @@ pub enum EngineErrorKind {
         method: String,
         name: String,
     },
+    DefinitionRegistry {
+        message: String,
+    },
     DuplicateTraitMethodParamName {
         type_name: String,
         trait_name: String,
@@ -289,6 +292,9 @@ impl fmt::Display for EngineError {
                     formatter,
                     "duplicate parameter name {name} on host method {type_name}.{method}"
                 )
+            }
+            EngineErrorKind::DefinitionRegistry { message } => {
+                write!(formatter, "definition registry error: {message}")
             }
             EngineErrorKind::DuplicateTraitMethodParamName {
                 type_name,

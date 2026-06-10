@@ -13,7 +13,7 @@ use super::schema_defaults::{
 };
 use super::{CompileError, CompileErrorKind, CompileResult, Compiler};
 
-impl Compiler<'_> {
+impl Compiler<'_, '_> {
     pub(super) fn compile_tuple_variant_fields(
         &mut self,
         constructor_span: Span,

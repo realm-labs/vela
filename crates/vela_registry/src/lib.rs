@@ -153,6 +153,31 @@ impl<'registry> RegistryCompileView<'registry> {
     }
 
     #[must_use]
+    pub fn resolve_native_function_name(&self, name: &str) -> Option<FunctionId> {
+        self.native_function_by_source_name(name).map(|def| def.id)
+    }
+
+    #[must_use]
+    pub fn native_function_params_by_name(&self, name: &str) -> Option<&'registry [ParamDef]> {
+        self.native_function_by_source_name(name)
+            .map(|def| def.signature.params.as_slice())
+    }
+
+    #[must_use]
+    pub fn has_native_module_root(&self, root: &str) -> bool {
+        self.registry.defs_by_id.values().any(|def| {
+            let Def::Function(function) = def else {
+                return false;
+            };
+            function
+                .path
+                .module
+                .first()
+                .is_some_and(|module| module == root)
+        })
+    }
+
+    #[must_use]
     pub fn resolve_value_method(&self, owner: TypeId, name: &str) -> Option<MethodId> {
         self.resolve_method(owner, name)
     }
@@ -204,6 +229,47 @@ impl<'registry> RegistryCompileView<'registry> {
             .id_for_semantic_key(&key)
             .and_then(|id| self.registry.get(id))
             .and_then(Def::method_id)
+    }
+
+    fn native_function_by_source_name(&self, name: &str) -> Option<&'registry FunctionDef> {
+        let source = SourceFunctionName::parse(name)?;
+        let mut matches = self.registry.defs_by_id.values().filter_map(|def| {
+            let Def::Function(function) = def else {
+                return None;
+            };
+            source.matches(&function.path).then_some(function)
+        });
+        let first = matches.next()?;
+        matches.next().is_none().then_some(first)
+    }
+}
+
+struct SourceFunctionName<'name> {
+    module: Vec<&'name str>,
+    name: &'name str,
+}
+
+impl<'name> SourceFunctionName<'name> {
+    fn parse(name: &'name str) -> Option<Self> {
+        let parts = name
+            .split("::")
+            .filter(|part| !part.is_empty())
+            .collect::<Vec<_>>();
+        let (name, module) = parts.split_last()?;
+        Some(Self {
+            module: module.to_vec(),
+            name: *name,
+        })
+    }
+
+    fn matches(&self, path: &DefPath) -> bool {
+        path.kind == DefKind::Function
+            && path.name.as_str() == self.name
+            && path
+                .module
+                .iter()
+                .map(String::as_str)
+                .eq(self.module.iter().copied())
     }
 }
 

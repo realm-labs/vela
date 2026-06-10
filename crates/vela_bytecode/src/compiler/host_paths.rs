@@ -143,7 +143,7 @@ fn host_path_field_part<'ast>(options: &CompilerOptions, name: &str) -> Option<H
         })
 }
 
-impl Compiler<'_> {
+impl Compiler<'_, '_> {
     pub(super) fn emit_host_read(
         &mut self,
         dst: Register,

@@ -4,7 +4,7 @@ use crate::Register;
 
 use super::{CompileError, CompileErrorKind, CompileResult, Compiler};
 
-impl Compiler<'_> {
+impl Compiler<'_, '_> {
     pub(super) fn compile_map_entry(
         &mut self,
         entry: &MapEntry,

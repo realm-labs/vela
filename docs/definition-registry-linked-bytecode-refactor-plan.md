@@ -1366,7 +1366,7 @@ surface.
 
 ### Phase 4: Migrate compiler from `CompilerOptions` to registry queries
 
-- [ ] **Task 4.1: Add registry to compiler entry points**
+- [x] **Task 4.1: Add registry to compiler entry points**
 
 **Objective:** Make the compiler consume `RegistryCompileView`.
 

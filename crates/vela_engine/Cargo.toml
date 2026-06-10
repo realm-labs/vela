@@ -13,6 +13,7 @@ vela_def = { workspace = true }
 vela_hir = { workspace = true }
 vela_hot_reload = { workspace = true }
 vela_host = { workspace = true }
+vela_registry = { workspace = true }
 vela_reflect = { workspace = true }
 vela_stdlib = { workspace = true }
 vela_vm = { workspace = true }

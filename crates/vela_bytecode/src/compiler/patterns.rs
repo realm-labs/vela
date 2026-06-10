@@ -41,7 +41,7 @@ pub(crate) fn pattern_declares_locals(pattern: &Pattern) -> bool {
     }
 }
 
-impl Compiler<'_> {
+impl Compiler<'_, '_> {
     pub(super) fn compile_match_pattern(
         &mut self,
         scrutinee: Register,

@@ -62,7 +62,7 @@ impl LoopContext {
     }
 }
 
-impl Compiler<'_> {
+impl Compiler<'_, '_> {
     pub(super) fn compile_statements(&mut self, statements: &[Stmt]) -> CompileResult<bool> {
         for stmt in statements {
             if self.compile_statement(stmt)? {

@@ -11,7 +11,7 @@ use super::patterns::enum_variant_path;
 use super::schema_defaults::{record_constructor_diagnostics, unknown_enum_variant_diagnostic};
 use super::{CompileError, CompileErrorKind, CompileResult, Compiler};
 
-impl Compiler<'_> {
+impl Compiler<'_, '_> {
     pub(super) fn compile_expr(&mut self, expr: &Expr) -> CompileResult<Register> {
         match &expr.kind {
             ExprKind::Literal(literal) => self.compile_literal(literal),

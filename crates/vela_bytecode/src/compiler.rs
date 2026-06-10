@@ -36,6 +36,7 @@ use vela_hir::ids::{HirDeclId, HirLocalId};
 use vela_hir::module_graph::ModulePath;
 use vela_hir::module_graph::ModuleSource;
 use vela_hir::type_hint::{FunctionSignature, HirTypeHint, ParamHint};
+use vela_registry::RegistryCompileView;
 use vela_syntax::ast::{Argument, Block, Expr, ExprKind, FunctionItem, Param};
 
 use crate::{
@@ -57,7 +58,7 @@ use semantic::{parse_semantic_modules, parse_semantic_source};
 use value_types::{ValueTypeFlow, expression_value_type, type_hint_value_type};
 
 #[derive(Clone, Debug)]
-struct CompilerFacts {
+struct CompilerFacts<'registry> {
     script_function_symbols: BTreeMap<HirDeclId, String>,
     script_function_signatures: BTreeMap<HirDeclId, Vec<ParamHint>>,
     script_method_ids: BTreeMap<(String, String), MethodId>,
@@ -70,9 +71,10 @@ struct CompilerFacts {
     global_type_symbols: BTreeMap<HirDeclId, String>,
     const_values: BTreeMap<HirDeclId, Constant>,
     options: CompilerOptions,
+    registry: Option<RegistryCompileView<'registry>>,
 }
 
-impl CompilerFacts {
+impl CompilerFacts<'_> {
     fn known_type_names(&self) -> Vec<String> {
         self.type_symbols
             .values()
@@ -90,11 +92,46 @@ pub fn compile_function_source(
     compile_function_source_with_options(source, text, function_name, &CompilerOptions::default())
 }
 
+pub fn compile_function_source_with_registry(
+    source: SourceId,
+    text: &str,
+    function_name: &str,
+    registry: RegistryCompileView<'_>,
+) -> CompileResult<CodeObject> {
+    compile_function_source_with_options_and_registry(
+        source,
+        text,
+        function_name,
+        &CompilerOptions::default(),
+        registry,
+    )
+}
+
 pub fn compile_function_source_with_options(
     source: SourceId,
     text: &str,
     function_name: &str,
     options: &CompilerOptions,
+) -> CompileResult<CodeObject> {
+    compile_function_source_inner(source, text, function_name, options, None)
+}
+
+pub fn compile_function_source_with_options_and_registry(
+    source: SourceId,
+    text: &str,
+    function_name: &str,
+    options: &CompilerOptions,
+    registry: RegistryCompileView<'_>,
+) -> CompileResult<CodeObject> {
+    compile_function_source_inner(source, text, function_name, options, Some(registry))
+}
+
+fn compile_function_source_inner<'registry>(
+    source: SourceId,
+    text: &str,
+    function_name: &str,
+    options: &CompilerOptions,
+    registry: Option<RegistryCompileView<'registry>>,
 ) -> CompileResult<CodeObject> {
     let semantic = parse_semantic_source(source, text)?;
     let script_function_symbols = semantic.script_function_symbols();
@@ -119,6 +156,7 @@ pub fn compile_function_source_with_options(
         global_type_symbols,
         const_values,
         options: options.clone(),
+        registry,
     };
     let (function, signature, bindings) = semantic.function(function_name).ok_or_else(|| {
         CompileError::new(CompileErrorKind::FunctionNotFound(function_name.to_owned()))
@@ -133,10 +171,41 @@ pub fn compile_program_source(source: SourceId, text: &str) -> CompileResult<Pro
     compile_program_source_with_options(source, text, &CompilerOptions::default())
 }
 
+pub fn compile_program_source_with_registry(
+    source: SourceId,
+    text: &str,
+    registry: RegistryCompileView<'_>,
+) -> CompileResult<Program> {
+    compile_program_source_with_options_and_registry(
+        source,
+        text,
+        &CompilerOptions::default(),
+        registry,
+    )
+}
+
 pub fn compile_program_source_with_options(
     source: SourceId,
     text: &str,
     options: &CompilerOptions,
+) -> CompileResult<Program> {
+    compile_program_source_inner(source, text, options, None)
+}
+
+pub fn compile_program_source_with_options_and_registry(
+    source: SourceId,
+    text: &str,
+    options: &CompilerOptions,
+    registry: RegistryCompileView<'_>,
+) -> CompileResult<Program> {
+    compile_program_source_inner(source, text, options, Some(registry))
+}
+
+fn compile_program_source_inner<'registry>(
+    source: SourceId,
+    text: &str,
+    options: &CompilerOptions,
+    registry: Option<RegistryCompileView<'registry>>,
 ) -> CompileResult<Program> {
     let semantic = parse_semantic_source(source, text)?;
     let script_functions = semantic.script_function_names();
@@ -165,6 +234,7 @@ pub fn compile_program_source_with_options(
         global_type_symbols,
         const_values,
         options: options.clone(),
+        registry,
     };
     let mut program = Program::new();
     program.set_global_layout(global_names(&facts.global_symbols));
@@ -194,9 +264,32 @@ pub fn compile_module_sources(sources: &[ModuleSource]) -> CompileResult<Program
     compile_module_sources_with_options(sources, &CompilerOptions::default())
 }
 
+pub fn compile_module_sources_with_registry(
+    sources: &[ModuleSource],
+    registry: RegistryCompileView<'_>,
+) -> CompileResult<Program> {
+    compile_module_sources_with_options_and_registry(sources, &CompilerOptions::default(), registry)
+}
+
 pub fn compile_module_sources_with_options(
     sources: &[ModuleSource],
     options: &CompilerOptions,
+) -> CompileResult<Program> {
+    compile_module_sources_inner(sources, options, None)
+}
+
+pub fn compile_module_sources_with_options_and_registry(
+    sources: &[ModuleSource],
+    options: &CompilerOptions,
+    registry: RegistryCompileView<'_>,
+) -> CompileResult<Program> {
+    compile_module_sources_inner(sources, options, Some(registry))
+}
+
+fn compile_module_sources_inner<'registry>(
+    sources: &[ModuleSource],
+    options: &CompilerOptions,
+    registry: Option<RegistryCompileView<'registry>>,
 ) -> CompileResult<Program> {
     let semantic = parse_semantic_modules(sources)?;
     let script_functions = semantic.script_function_declarations();
@@ -225,6 +318,7 @@ pub fn compile_module_sources_with_options(
         global_type_symbols,
         const_values,
         options: options.clone(),
+        registry,
     };
     let mut program = Program::new();
     program.set_global_layout(global_names(&facts.global_symbols));
@@ -281,7 +375,7 @@ fn global_slots(global_symbols: &BTreeMap<HirDeclId, String>) -> BTreeMap<String
 fn insert_script_impl_methods(
     program: &mut Program,
     methods: Vec<script_impls::ScriptImplMethod<'_>>,
-    facts: &CompilerFacts,
+    facts: &CompilerFacts<'_>,
 ) -> CompileResult<()> {
     for method in methods {
         program.insert_script_method(
@@ -334,7 +428,7 @@ fn script_method_signatures(
         .collect()
 }
 
-struct Compiler<'ast> {
+struct Compiler<'ast, 'registry> {
     code: CodeObject,
     locals: HashMap<String, Register>,
     hir_locals: HashMap<HirLocalId, Register>,
@@ -344,17 +438,17 @@ struct Compiler<'ast> {
     next_register: u16,
     param_defaults: Vec<Option<Expr>>,
     body: &'ast Block,
-    facts: CompilerFacts,
+    facts: CompilerFacts<'registry>,
     loop_stack: Vec<LoopContext>,
 }
 
-impl<'ast> Compiler<'ast> {
+impl<'ast, 'registry> Compiler<'ast, 'registry> {
     fn new(
         code_name: String,
         function: &'ast FunctionItem,
         signature: &FunctionSignature,
         bindings: &'ast BindingMap,
-        facts: CompilerFacts,
+        facts: CompilerFacts<'registry>,
     ) -> CompileResult<Self> {
         Self::new_body(
             code_name,
@@ -372,7 +466,7 @@ impl<'ast> Compiler<'ast> {
         signature: &FunctionSignature,
         body: &'ast Block,
         bindings: &'ast BindingMap,
-        facts: CompilerFacts,
+        facts: CompilerFacts<'registry>,
     ) -> CompileResult<Self> {
         let param_count = u16::try_from(signature.params.len())
             .map_err(|_| CompileError::new(CompileErrorKind::RegisterOverflow))?;
@@ -456,7 +550,7 @@ impl<'ast> Compiler<'ast> {
         body: &'ast Block,
         bindings: &'ast BindingMap,
         receiver_type: &str,
-        facts: CompilerFacts,
+        facts: CompilerFacts<'registry>,
     ) -> CompileResult<Self> {
         let mut compiler = Self::new_body(code_name, params, signature, body, bindings, facts)?;
         compiler
@@ -472,7 +566,7 @@ impl<'ast> Compiler<'ast> {
         fallback_body: &'ast Block,
         captures: &[LambdaCapture],
         bindings: &'ast BindingMap,
-        facts: CompilerFacts,
+        facts: CompilerFacts<'registry>,
     ) -> CompileResult<Self> {
         let capture_count = u16::try_from(captures.len())
             .map_err(|_| CompileError::new(CompileErrorKind::RegisterOverflow))?;

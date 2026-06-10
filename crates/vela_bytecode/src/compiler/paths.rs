@@ -6,7 +6,7 @@ use crate::{Constant, InstructionKind, Register};
 use super::host_paths::{HostPath, HostPathPart, HostPathRoot, host_field_path_parts};
 use super::{CompileError, CompileErrorKind, CompileResult, Compiler};
 
-impl Compiler<'_> {
+impl Compiler<'_, '_> {
     pub(super) fn compile_path_expr(
         &mut self,
         span: Span,

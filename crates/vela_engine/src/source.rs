@@ -4,7 +4,8 @@ use std::path::Path;
 use vela_bytecode::Program;
 use vela_bytecode::compiler::error::CompileError;
 use vela_bytecode::compiler::{
-    compile_module_sources_with_options, compile_program_source_with_options,
+    compile_module_sources_with_options_and_registry,
+    compile_program_source_with_options_and_registry,
 };
 use vela_common::SourceId;
 
@@ -85,8 +86,13 @@ impl Engine {
         source: SourceId,
         text: &str,
     ) -> Result<Program, EngineSourceError> {
-        compile_program_source_with_options(source, text, &self.compiler_options())
-            .map_err(EngineSourceError::compile)
+        compile_program_source_with_options_and_registry(
+            source,
+            text,
+            &self.compiler_options(),
+            self.compiler_registry(),
+        )
+        .map_err(EngineSourceError::compile)
     }
 
     pub fn compile_file(&self, path: impl AsRef<Path>) -> Result<Program, EngineSourceError> {
@@ -98,7 +104,11 @@ impl Engine {
     pub fn compile_dir(&self, root: impl AsRef<Path>) -> Result<Program, EngineSourceError> {
         let root = root.as_ref();
         let sources = load_module_sources(root)?;
-        compile_module_sources_with_options(&sources, &self.compiler_options())
-            .map_err(EngineSourceError::compile)
+        compile_module_sources_with_options_and_registry(
+            &sources,
+            &self.compiler_options(),
+            self.compiler_registry(),
+        )
+        .map_err(EngineSourceError::compile)
     }
 }

@@ -146,6 +146,66 @@ fn main() {
 }
 
 #[test]
+fn compiler_lowers_named_native_args_from_registry() {
+    let native_id = vela_def::FunctionId::new(77);
+    let mut registry = vela_registry::DefinitionRegistry::new();
+    registry
+        .register_function(
+            vela_registry::FunctionDef::new(
+                vela_def::DefPath::function("host", ["game"], "add"),
+                vela_registry::FunctionSignature::new(
+                    [
+                        vela_registry::ParamDef::new("lhs", Some("int")),
+                        vela_registry::ParamDef::new("rhs", Some("int")),
+                    ],
+                    Some("int".to_owned()),
+                ),
+            )
+            .with_id(native_id),
+        )
+        .expect("test native function should register");
+    let program = compile_program_source_with_options_and_registry(
+        SourceId::new(1),
+        r#"
+fn main() {
+    return game::add(rhs = 3, lhs = 2);
+}
+"#,
+        &CompilerOptions::new(),
+        registry.compile_view(),
+    )
+    .expect("named native args should compile from registry metadata");
+    let main = program.function("main").expect("main function");
+
+    assert!(main.instructions.iter().any(|instruction| matches!(
+        &instruction.kind,
+        InstructionKind::CallNative { name, native, args, .. }
+            if name == "game::add" && *native == Some(native_id) && args.len() == 2
+    )));
+}
+
+#[test]
+fn compiler_reports_unresolved_native_from_registry() {
+    let registry = vela_registry::DefinitionRegistry::new();
+    let error = compile_program_source_with_options_and_registry(
+        SourceId::new(1),
+        r#"
+fn main() {
+    return game::missing(1);
+}
+"#,
+        &CompilerOptions::new(),
+        registry.compile_view(),
+    )
+    .expect_err("missing registry native should fail before bytecode emission");
+
+    assert_eq!(
+        semantic_diagnostic_codes(error),
+        ["compiler::unresolved_native_function"]
+    );
+}
+
+#[test]
 fn compiler_lowers_named_value_method_args_from_compiler_options() {
     let program = compile_program_source_with_options(
         SourceId::new(1),

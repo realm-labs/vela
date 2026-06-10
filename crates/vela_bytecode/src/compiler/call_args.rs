@@ -9,7 +9,7 @@ use crate::CallArgument;
 
 use super::{CompileError, CompileErrorKind, CompileResult, Compiler};
 
-impl Compiler<'_> {
+impl Compiler<'_, '_> {
     pub(super) fn compile_script_call_args(
         &mut self,
         declaration: HirDeclId,

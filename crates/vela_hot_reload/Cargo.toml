@@ -10,6 +10,7 @@ vela_common = { workspace = true }
 
 vela_def = { workspace = true }
 vela_hir = { workspace = true }
+vela_registry = { workspace = true }
 vela_reflect = { workspace = true }
 
 [dev-dependencies]

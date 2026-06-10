@@ -28,7 +28,7 @@ pub(crate) fn collect_lambda_captures(
     captures.into_values().collect()
 }
 
-impl Compiler<'_> {
+impl Compiler<'_, '_> {
     pub(super) fn compile_lambda(
         &mut self,
         lambda: &Expr,

@@ -27,15 +27,16 @@ fn engine_installs_registered_native_functions_into_vm() {
         )
         .build()
         .expect("engine should build");
-    let program = compile_program_source(
-        SourceId::new(1),
-        r#"
+    let program = engine
+        .compile_source(
+            SourceId::new(1),
+            r#"
 fn main() {
     return game::add(2, 3);
 }
 "#,
-    )
-    .expect("program should compile");
+        )
+        .expect("program should compile");
 
     assert_eq!(
         engine.into_vm().run_program(&program, "main", &[]),
@@ -62,16 +63,16 @@ fn engine_compiler_options_lower_named_registered_native_arguments() {
         )
         .build()
         .expect("engine should build");
-    let program = compile_program_source_with_options(
-        SourceId::new(1),
-        r#"
+    let program = engine
+        .compile_source(
+            SourceId::new(1),
+            r#"
 fn main() {
     return game::subtract(rhs = 3, lhs = 10);
 }
 "#,
-        &engine.compiler_options(),
-    )
-    .expect("named registered native arguments should compile");
+        )
+        .expect("named registered native arguments should compile");
 
     assert_eq!(
         engine.into_vm().run_program(&program, "main", &[]),
@@ -85,16 +86,16 @@ fn engine_compiler_options_lower_named_standard_native_arguments() {
         .with_standard_natives()
         .build()
         .expect("engine should build with standard natives");
-    let program = compile_program_source_with_options(
-        SourceId::new(1),
-        r#"
+    let program = engine
+        .compile_source(
+            SourceId::new(1),
+            r#"
 fn main() {
     return math::clamp(max = 10, value = 15, min = 1);
 }
 "#,
-        &engine.compiler_options(),
-    )
-    .expect("named stdlib native arguments should compile");
+        )
+        .expect("named stdlib native arguments should compile");
 
     assert_eq!(
         engine.into_vm().run_program(&program, "main", &[]),
@@ -108,16 +109,16 @@ fn engine_compiler_options_emit_standard_native_ids() {
         .with_standard_natives()
         .build()
         .expect("engine should build with standard natives");
-    let program = compile_program_source_with_options(
-        SourceId::new(1),
-        r#"
+    let program = engine
+        .compile_source(
+            SourceId::new(1),
+            r#"
 fn main() {
     return math::clamp(max = 10, value = 15, min = 1);
 }
 "#,
-        &engine.compiler_options(),
-    )
-    .expect("standard native should compile");
+        )
+        .expect("standard native should compile");
     let main = program.function("main").expect("main should compile");
 
     let native = main
@@ -134,6 +135,37 @@ fn main() {
         .map(|spec| spec.id());
 
     assert_eq!(native, expected);
+}
+
+#[test]
+fn engine_compile_source_rejects_unregistered_native_function() {
+    let engine = Engine::builder()
+        .build()
+        .expect("engine should build without native functions");
+    let error = engine
+        .compile_source(
+            SourceId::new(1),
+            r#"
+fn main() {
+    return game::missing(1);
+}
+"#,
+        )
+        .expect_err("unregistered native should fail during engine compilation");
+    let crate::source::EngineSourceErrorKind::Compile(error) = error.kind else {
+        panic!("expected compile error");
+    };
+    let vela_bytecode::compiler::error::CompileErrorKind::SemanticDiagnostics(diagnostics) =
+        error.kind
+    else {
+        panic!("expected semantic diagnostics");
+    };
+    let codes = diagnostics
+        .into_iter()
+        .filter_map(|diagnostic| diagnostic.code)
+        .collect::<Vec<_>>();
+
+    assert_eq!(codes, ["compiler::unresolved_native_function"]);
 }
 
 #[test]

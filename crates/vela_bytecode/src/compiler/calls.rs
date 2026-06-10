@@ -5,10 +5,11 @@ use crate::{CallArgument, InstructionKind};
 use super::call_args::resolve_script_call_arguments;
 use super::methods::host_method_call;
 use super::{CompileError, CompileErrorKind, CompileResult, Compiler, reject_named_args};
-use vela_common::{HostMethodId, Span};
+use vela_common::{Diagnostic, HostMethodId, Span};
+use vela_def::FunctionId;
 use vela_hir::type_hint::ParamHint;
 
-impl Compiler<'_> {
+impl Compiler<'_, '_> {
     pub(super) fn compile_call_expr(
         &mut self,
         expr: &Expr,
@@ -85,8 +86,9 @@ impl Compiler<'_> {
             );
         } else {
             let fallback_name = callable_name(callee)?;
-            let arg_registers = self.compile_native_call_args(&fallback_name, args, callee.span)?;
-            let native = self.facts.options.native_function_id(&fallback_name);
+            let native = self.resolve_native_function_id(&fallback_name, callee.span)?;
+            let arg_registers =
+                self.compile_native_call_args(&fallback_name, native, args, callee.span)?;
             self.emit_spanned(
                 InstructionKind::CallNative {
                     dst: Some(dst),
@@ -360,16 +362,47 @@ impl Compiler<'_> {
     fn compile_native_call_args(
         &mut self,
         name: &str,
+        native: Option<FunctionId>,
         args: &[Argument],
         call_span: vela_common::Span,
     ) -> CompileResult<Vec<crate::Register>> {
-        let Some(params) = self.facts.options.native_function_params(name) else {
-            reject_named_args(args, "native call")?;
+        let has_named_args = args.iter().any(|arg| arg.name.is_some());
+        let registry_params = self
+            .facts
+            .registry
+            .and_then(|registry| native.and_then(|id| registry.function_params(id)));
+        let option_params = self.facts.options.native_function_params(name);
+        let Some(params) = registry_params else {
+            let Some(params) = option_params else {
+                reject_named_args(args, "native call")?;
+                return args
+                    .iter()
+                    .map(|arg| self.compile_expr(&arg.value))
+                    .collect();
+            };
+            if !has_named_args {
+                return args
+                    .iter()
+                    .map(|arg| self.compile_expr(&arg.value))
+                    .collect();
+            }
+            let params = params
+                .iter()
+                .map(|param| ParamHint {
+                    name: param.name.clone(),
+                    span: call_span,
+                    type_hint: None,
+                    default_value_span: None,
+                })
+                .collect::<Vec<_>>();
+            return self.compile_metadata_register_args(&params, args, call_span);
+        };
+        if !has_named_args {
             return args
                 .iter()
                 .map(|arg| self.compile_expr(&arg.value))
                 .collect();
-        };
+        }
         let params = params
             .iter()
             .map(|param| ParamHint {
@@ -380,6 +413,28 @@ impl Compiler<'_> {
             })
             .collect::<Vec<_>>();
         self.compile_metadata_register_args(&params, args, call_span)
+    }
+
+    fn resolve_native_function_id(
+        &self,
+        name: &str,
+        call_span: Span,
+    ) -> CompileResult<Option<FunctionId>> {
+        let Some(registry) = self.facts.registry else {
+            return Ok(self.facts.options.native_function_id(name));
+        };
+        if let Some(id) = registry.resolve_native_function_name(name) {
+            return Ok(Some(id));
+        }
+
+        Err(CompileError::new(CompileErrorKind::SemanticDiagnostics(
+            vec![
+                Diagnostic::error(format!("unresolved native function `{name}`"))
+                    .with_code("compiler::unresolved_native_function")
+                    .with_span(call_span)
+                    .with_label(call_span, "native function is not registered"),
+            ],
+        )))
     }
 }
 

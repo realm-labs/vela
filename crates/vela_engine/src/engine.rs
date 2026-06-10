@@ -10,6 +10,7 @@ use vela_hot_reload::abi::HotReloadAbi;
 use vela_hot_reload::policy::HotReloadPolicy;
 use vela_reflect::permissions::ReflectPolicy;
 use vela_reflect::registry::TypeRegistry;
+use vela_registry::{DefinitionRegistry, RegistryCompileView};
 use vela_vm::error::{VmError, VmErrorKind, VmResult};
 use vela_vm::owned_value::OwnedValue;
 use vela_vm::{HostExecution, Vm};
@@ -26,6 +27,7 @@ use crate::permission::CapabilitySet;
 #[derive(Clone)]
 pub struct Engine {
     registry: Arc<TypeRegistry>,
+    definition_registry: Arc<DefinitionRegistry>,
     native_functions: BTreeMap<FunctionId, NativeFunctionEntry>,
     host_native_functions: BTreeMap<FunctionId, HostNativeFunctionEntry>,
     context_host_native_functions: BTreeMap<FunctionId, ContextHostNativeFunctionEntry>,
@@ -39,6 +41,7 @@ pub struct Engine {
 
 pub(crate) struct EngineParts {
     pub(crate) registry: TypeRegistry,
+    pub(crate) definition_registry: DefinitionRegistry,
     pub(crate) native_functions: Vec<NativeFunctionEntry>,
     pub(crate) host_native_functions: Vec<HostNativeFunctionEntry>,
     pub(crate) context_host_native_functions: Vec<ContextHostNativeFunctionEntry>,
@@ -91,6 +94,7 @@ impl Engine {
 
         Self {
             registry: Arc::new(parts.registry),
+            definition_registry: Arc::new(parts.definition_registry),
             native_functions,
             host_native_functions,
             context_host_native_functions,
@@ -106,6 +110,11 @@ impl Engine {
     #[must_use]
     pub fn registry(&self) -> Arc<TypeRegistry> {
         Arc::clone(&self.registry)
+    }
+
+    #[must_use]
+    pub(crate) fn compiler_registry(&self) -> RegistryCompileView<'_> {
+        self.definition_registry.compile_view()
     }
 
     #[must_use]

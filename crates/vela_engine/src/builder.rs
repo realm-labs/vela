@@ -6,9 +6,10 @@ use vela_vm::HostExecution;
 use vela_vm::error::VmResult;
 use vela_vm::owned_value::OwnedValue;
 
+use crate::compiler_registry::definition_registry_from_reflect;
 use crate::context::NativeCallContext;
 use crate::engine::{Engine, EngineParts};
-use crate::error::EngineResult;
+use crate::error::{EngineError, EngineErrorKind, EngineResult};
 use crate::host_type::HostTypeSpec;
 use crate::method::{NativeMethodDesc, NativeMethodEntry};
 use crate::native::{
@@ -352,9 +353,18 @@ impl EngineBuilder {
             &self.host_native_functions,
             &self.context_host_native_functions,
         );
+        let definition_registry =
+            definition_registry_from_reflect(&registry, self.reflection_policy.is_some()).map_err(
+                |error| {
+                    EngineError::new(EngineErrorKind::DefinitionRegistry {
+                        message: error.to_string(),
+                    })
+                },
+            )?;
 
         Ok(Engine::new(EngineParts {
             registry,
+            definition_registry,
             native_functions: self.native_functions,
             host_native_functions: self.host_native_functions,
             context_host_native_functions: self.context_host_native_functions,

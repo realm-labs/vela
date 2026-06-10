@@ -3,9 +3,10 @@ use std::path::Path;
 use vela_common::SourceId;
 use vela_hot_reload::abi::HotReloadAbi;
 use vela_hot_reload::compile::{
-    compile_initial_modules_with_abi_and_options, compile_initial_with_abi_and_options,
-    compile_update_modules_with_abi_and_options_and_policy,
-    compile_update_with_abi_and_options_and_policy,
+    compile_initial_modules_with_abi_options_and_registry,
+    compile_initial_with_abi_options_and_registry,
+    compile_update_modules_with_abi_options_registry_and_policy,
+    compile_update_with_abi_options_registry_and_policy,
 };
 use vela_hot_reload::error::HotReloadResult;
 use vela_hot_reload::version::{HotUpdate, ProgramVersion};
@@ -30,11 +31,12 @@ impl Engine {
         source: SourceId,
         text: &str,
     ) -> HotReloadResult<ProgramVersion> {
-        compile_initial_with_abi_and_options(
+        compile_initial_with_abi_options_and_registry(
             source,
             text,
             self.hot_reload_abi(),
             &self.compiler_options(),
+            self.compiler_registry(),
         )
     }
 
@@ -44,12 +46,13 @@ impl Engine {
         source: SourceId,
         text: &str,
     ) -> HotReloadResult<HotUpdate> {
-        compile_update_with_abi_and_options_and_policy(
+        compile_update_with_abi_options_registry_and_policy(
             previous,
             source,
             text,
             self.hot_reload_abi(),
             &self.compiler_options(),
+            self.compiler_registry(),
             self.hot_reload_policy(),
         )
     }
@@ -79,10 +82,11 @@ impl Engine {
     ) -> EngineHotReloadSourceResult<ProgramVersion> {
         let sources =
             load_module_sources(root.as_ref()).map_err(EngineHotReloadSourceError::source)?;
-        compile_initial_modules_with_abi_and_options(
+        compile_initial_modules_with_abi_options_and_registry(
             &sources,
             self.hot_reload_abi(),
             &self.compiler_options(),
+            self.compiler_registry(),
         )
         .map_err(EngineHotReloadSourceError::hot_reload)
     }
@@ -94,11 +98,12 @@ impl Engine {
     ) -> EngineHotReloadSourceResult<HotUpdate> {
         let sources =
             load_module_sources(root.as_ref()).map_err(EngineHotReloadSourceError::source)?;
-        compile_update_modules_with_abi_and_options_and_policy(
+        compile_update_modules_with_abi_options_registry_and_policy(
             previous,
             &sources,
             self.hot_reload_abi(),
             &self.compiler_options(),
+            self.compiler_registry(),
             self.hot_reload_policy(),
         )
         .map_err(EngineHotReloadSourceError::hot_reload)
@@ -112,11 +117,12 @@ impl Engine {
     ) -> EngineHotReloadSourceResult<HotUpdate> {
         let sources = load_module_sources_for_changed_file(root.as_ref(), changed_file.as_ref())
             .map_err(EngineHotReloadSourceError::source)?;
-        compile_update_modules_with_abi_and_options_and_policy(
+        compile_update_modules_with_abi_options_registry_and_policy(
             previous,
             &sources,
             self.hot_reload_abi(),
             &self.compiler_options(),
+            self.compiler_registry(),
             self.hot_reload_policy(),
         )
         .map_err(EngineHotReloadSourceError::hot_reload)
