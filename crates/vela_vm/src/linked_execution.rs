@@ -1,4 +1,4 @@
-use vela_bytecode::linked::InstructionKind;
+use vela_bytecode::linked::{InstructionKind, LinkedMethodDispatchKind};
 use vela_bytecode::{InstructionOffset, LinkedCodeObject, LinkedProgram};
 use vela_common::Span;
 
@@ -60,7 +60,7 @@ impl Vm {
     fn execute_linked_body(
         &self,
         call: LinkedExecutionCall<'_>,
-        _host: Option<&mut HostExecution<'_>>,
+        mut host: Option<&mut HostExecution<'_>>,
         mut heap: Option<&mut HeapExecution<'_>>,
         mut budget: Option<&mut ExecutionBudget>,
     ) -> VmResult<Value> {
@@ -145,6 +145,7 @@ impl Vm {
 
         let mut ip = 0_usize;
         while ip < code.instructions.len() {
+            let instruction_offset = InstructionOffset(ip);
             let instruction = &code.instructions[ip];
             if let Some(budget) = budget.as_deref_mut() {
                 budget.charge_instruction()?;
@@ -281,10 +282,477 @@ impl Vm {
                     validate_linked_jump(code, target.0)?;
                     ip = target.0;
                 }
+                InstructionKind::CallNative {
+                    dst,
+                    native,
+                    debug_name,
+                    args,
+                } => {
+                    let target = call.program.native_function(*native).ok_or_else(|| {
+                        VmError::new(VmErrorKind::UnknownNative {
+                            name: call.program.debug_name(*debug_name).to_owned(),
+                        })
+                        .with_source_span_if_absent(instruction.span)
+                    })?;
+                    native_function_calls::dispatch_linked_native_function_call(
+                        self,
+                        &mut host,
+                        &mut heap,
+                        &mut budget,
+                        &mut frame,
+                        native_function_calls::NativeFunctionCall {
+                            dst: *dst,
+                            name: call.program.debug_name(target.debug_name),
+                            native: target.id,
+                            args,
+                            call_site: instruction.span,
+                        },
+                    )?;
+                }
+                InstructionKind::CallFunction {
+                    dst,
+                    function,
+                    debug_name,
+                    args,
+                } => {
+                    let function_code = call.program.function(*function).ok_or_else(|| {
+                        VmError::new(VmErrorKind::UnknownFunction {
+                            name: call.program.debug_name(*debug_name).to_owned(),
+                        })
+                        .with_source_span_if_absent(instruction.span)
+                    })?;
+                    let values =
+                        script_function_calls::script_call_args_from_call_arguments(&frame, args)?;
+                    let protected_root_len = heap
+                        .as_deref_mut()
+                        .map(|heap| heap.push_frame_roots(&frame));
+                    let result = self.execute_linked_call(
+                        LinkedExecutionCall {
+                            code: function_code,
+                            program: call.program,
+                            captures: &[],
+                            args: values.as_slice(),
+                            call_site: instruction.span,
+                            call_site_offset: Some(instruction_offset),
+                            inline_caches: call.inline_caches,
+                        },
+                        host.as_deref_mut(),
+                        heap.as_deref_mut(),
+                        budget.as_deref_mut(),
+                    );
+                    if let (Some(heap), Some(protected_root_len)) =
+                        (heap.as_deref_mut(), protected_root_len)
+                    {
+                        heap.truncate_protected_roots(protected_root_len);
+                    }
+                    let result = store_value_in_heap_if_needed(
+                        result?,
+                        heap.as_deref_mut(),
+                        budget.as_deref_mut(),
+                    )?;
+                    frame.write(*dst, result)?;
+                }
+                InstructionKind::CallMethod {
+                    dst,
+                    receiver,
+                    dispatch,
+                    debug_name,
+                    args,
+                } => {
+                    let dispatch = call.program.method_dispatch(*dispatch).ok_or_else(|| {
+                        VmError::new(VmErrorKind::UnknownMethod {
+                            method: call.program.debug_name(*debug_name).to_owned(),
+                        })
+                        .with_source_span_if_absent(instruction.span)
+                    })?;
+                    let values =
+                        script_function_calls::script_call_args_from_call_arguments(&frame, args)?;
+                    match &dispatch.kind {
+                        LinkedMethodDispatchKind::Script {
+                            method_id: _,
+                            function,
+                        } => {
+                            let function_code =
+                                call.program.function(*function).ok_or_else(|| {
+                                    VmError::new(VmErrorKind::UnknownMethod {
+                                        method: call
+                                            .program
+                                            .debug_name(dispatch.debug_name)
+                                            .to_owned(),
+                                    })
+                                    .with_source_span_if_absent(instruction.span)
+                                })?;
+                            let receiver_value = *frame.read(*receiver)?;
+                            let mut method_args = Vec::with_capacity(values.as_slice().len() + 1);
+                            method_args.push(receiver_value);
+                            method_args.extend(values.as_slice().iter().copied());
+                            let protected_root_len = heap
+                                .as_deref_mut()
+                                .map(|heap| heap.push_frame_roots(&frame));
+                            let result = self.execute_linked_call(
+                                LinkedExecutionCall {
+                                    code: function_code,
+                                    program: call.program,
+                                    captures: &[],
+                                    args: method_args.as_slice(),
+                                    call_site: instruction.span,
+                                    call_site_offset: Some(instruction_offset),
+                                    inline_caches: call.inline_caches,
+                                },
+                                host.as_deref_mut(),
+                                heap.as_deref_mut(),
+                                budget.as_deref_mut(),
+                            );
+                            if let (Some(heap), Some(protected_root_len)) =
+                                (heap.as_deref_mut(), protected_root_len)
+                            {
+                                heap.truncate_protected_roots(protected_root_len);
+                            }
+                            let result = store_value_in_heap_if_needed(
+                                result?,
+                                heap.as_deref_mut(),
+                                budget.as_deref_mut(),
+                            )?;
+                            frame.write(*dst, result)?;
+                        }
+                        LinkedMethodDispatchKind::Value { method_id } => {
+                            script_method_calls::dispatch_script_method_id_call(
+                                self,
+                                None,
+                                &mut host,
+                                &mut heap,
+                                &mut budget,
+                                &mut frame,
+                                script_method_calls::ScriptMethodIdCall {
+                                    dst: *dst,
+                                    receiver: *receiver,
+                                    method: call.program.debug_name(dispatch.debug_name),
+                                    method_id: *method_id,
+                                    values: values.as_slice(),
+                                },
+                            )?;
+                        }
+                        LinkedMethodDispatchKind::Host { .. } => {
+                            return Err(VmError::new(VmErrorKind::UnsupportedLinkedInstruction {
+                                opcode: "CallMethod(Host)",
+                            })
+                            .with_source_span_if_absent(instruction.span));
+                        }
+                    }
+                }
                 InstructionKind::TryPropagate { dst, src } => {
                     match try_propagate_value(frame.read(*src)?, heap.as_deref())? {
                         TryPropagation::Continue(value) => frame.write(*dst, value)?,
                         TryPropagation::Return(value) => return Ok(value),
+                    }
+                }
+                InstructionKind::MakeArray { dst, elements } => {
+                    script_aggregate_construction::make_array(
+                        &mut frame,
+                        heap.as_deref_mut(),
+                        budget.as_deref_mut(),
+                        *dst,
+                        elements,
+                    )?;
+                }
+                InstructionKind::MakeMap { dst, entries } => {
+                    let entries = entries
+                        .iter()
+                        .map(|(key, register)| {
+                            let Some(Constant::String(key)) = code.constants.get(key.0) else {
+                                return Err(VmError::new(VmErrorKind::ConstantOutOfBounds {
+                                    constant: key.0,
+                                })
+                                .with_source_span(instruction.span));
+                            };
+                            Ok((key.clone(), *register))
+                        })
+                        .collect::<VmResult<Vec<_>>>()?;
+                    script_aggregate_construction::make_map(
+                        &mut frame,
+                        heap.as_deref_mut(),
+                        budget.as_deref_mut(),
+                        *dst,
+                        &entries,
+                    )?;
+                }
+                InstructionKind::MakeRange {
+                    dst,
+                    start,
+                    end,
+                    inclusive,
+                } => {
+                    script_aggregate_construction::make_range(
+                        &mut frame, *dst, *start, *end, *inclusive,
+                    )?;
+                }
+                InstructionKind::GetIndex { dst, base, index } => {
+                    let value = indexing::get_index(
+                        frame.read(*base)?,
+                        frame.read(*index)?,
+                        heap.as_deref(),
+                    )?;
+                    frame.write(*dst, value)?;
+                }
+                InstructionKind::SetIndex { base, index, src } => {
+                    let mut base_value = *frame.read(*base)?;
+                    indexing::set_index(
+                        &mut base_value,
+                        frame.read(*index)?,
+                        frame.read(*src)?,
+                        heap.as_deref_mut(),
+                        budget.as_deref_mut(),
+                    )?;
+                    frame.write(*base, base_value)?;
+                }
+                InstructionKind::IterInit { dst, iterable } => {
+                    iteration::dispatch_iter_init(
+                        iteration::IterRuntime {
+                            frame: &mut frame,
+                            heap: heap.as_deref_mut(),
+                            budget: budget.as_deref_mut(),
+                        },
+                        *dst,
+                        *iterable,
+                    )?;
+                }
+                InstructionKind::IterNext {
+                    iterator,
+                    dst,
+                    jump_if_done,
+                } => {
+                    if let Some(target) = linked_iter_next(
+                        iteration::IterRuntime {
+                            frame: &mut frame,
+                            heap: heap.as_deref_mut(),
+                            budget: budget.as_deref_mut(),
+                        },
+                        code,
+                        *iterator,
+                        *dst,
+                        *jump_if_done,
+                    )? {
+                        ip = target;
+                    }
+                }
+                InstructionKind::RangeNext {
+                    cursor,
+                    end,
+                    done,
+                    inclusive,
+                    dst,
+                    jump_if_done,
+                } => {
+                    if let Some(target) = linked_range_next(
+                        &mut frame,
+                        code,
+                        iteration::RangeNextStep {
+                            cursor: *cursor,
+                            end: *end,
+                            done: *done,
+                            inclusive: *inclusive,
+                            dst: *dst,
+                            jump_if_done: *jump_if_done,
+                        },
+                    )? {
+                        ip = target;
+                    }
+                }
+                InstructionKind::LoadGlobal {
+                    dst,
+                    slot,
+                    debug_name,
+                    cache_site,
+                } => {
+                    let cached_slot = cache_site
+                        .and_then(|site| {
+                            call.inline_caches
+                                .and_then(|caches| caches.global_read_slot(site))
+                        })
+                        .or(Some(*slot));
+                    let value = host_access::load_host_global(
+                        host_access::HostAccessRuntime {
+                            frame: &frame,
+                            heap: heap.as_deref_mut(),
+                            budget: budget.as_deref_mut(),
+                            host: host.as_deref_mut(),
+                            inline_caches: call.inline_caches,
+                            source_span: instruction.span,
+                        },
+                        call.program.debug_name(*debug_name),
+                        cached_slot,
+                    )?;
+                    if let (Some(caches), Some(cache_site)) = (call.inline_caches, *cache_site)
+                        && caches.global_read_slot(cache_site).is_none()
+                    {
+                        caches.set_global_read_slot(cache_site, *slot);
+                    }
+                    frame.write(*dst, value)?;
+                }
+                InstructionKind::HostRead {
+                    dst,
+                    root,
+                    target,
+                    dynamic_args,
+                    cache_site,
+                } => {
+                    let plan = host_access::code_host_target(
+                        &code.host_targets,
+                        *target,
+                        instruction.span,
+                    )?;
+                    let value = host_access::execute_host_read(
+                        host_access::HostAccessRuntime {
+                            frame: &frame,
+                            heap: heap.as_deref_mut(),
+                            budget: budget.as_deref_mut(),
+                            host: host.as_deref_mut(),
+                            inline_caches: call.inline_caches,
+                            source_span: instruction.span,
+                        },
+                        *root,
+                        *target,
+                        plan,
+                        dynamic_args,
+                        *cache_site,
+                    )?;
+                    frame.write(*dst, value)?;
+                }
+                InstructionKind::HostWrite {
+                    root,
+                    target,
+                    dynamic_args,
+                    src,
+                    cache_site,
+                } => {
+                    let plan = host_access::code_host_target(
+                        &code.host_targets,
+                        *target,
+                        instruction.span,
+                    )?;
+                    host_access::execute_host_write(
+                        host_access::HostAccessRuntime {
+                            frame: &frame,
+                            heap: heap.as_deref_mut(),
+                            budget: budget.as_deref_mut(),
+                            host: host.as_deref_mut(),
+                            inline_caches: call.inline_caches,
+                            source_span: instruction.span,
+                        },
+                        *root,
+                        *target,
+                        plan,
+                        dynamic_args,
+                        *src,
+                        *cache_site,
+                    )?;
+                }
+                InstructionKind::HostMutate {
+                    root,
+                    target,
+                    dynamic_args,
+                    op,
+                    rhs,
+                    cache_site,
+                } => {
+                    let plan = host_access::code_host_target(
+                        &code.host_targets,
+                        *target,
+                        instruction.span,
+                    )?;
+                    host_access::execute_host_mutate(
+                        host_access::HostAccessRuntime {
+                            frame: &frame,
+                            heap: heap.as_deref_mut(),
+                            budget: budget.as_deref_mut(),
+                            host: host.as_deref_mut(),
+                            inline_caches: call.inline_caches,
+                            source_span: instruction.span,
+                        },
+                        *root,
+                        host_access::HostMutationPlan {
+                            target_id: *target,
+                            target: plan,
+                            dynamic_args,
+                            op: *op,
+                            rhs: *rhs,
+                            cache_site: *cache_site,
+                        },
+                    )?;
+                }
+                InstructionKind::HostRemove {
+                    root,
+                    target,
+                    dynamic_args,
+                    cache_site,
+                } => {
+                    let plan = host_access::code_host_target(
+                        &code.host_targets,
+                        *target,
+                        instruction.span,
+                    )?;
+                    host_access::execute_host_remove(
+                        host_access::HostAccessRuntime {
+                            frame: &frame,
+                            heap: heap.as_deref_mut(),
+                            budget: budget.as_deref_mut(),
+                            host: host.as_deref_mut(),
+                            inline_caches: call.inline_caches,
+                            source_span: instruction.span,
+                        },
+                        *root,
+                        *target,
+                        plan,
+                        dynamic_args,
+                        *cache_site,
+                    )?;
+                }
+                InstructionKind::HostCall {
+                    dst,
+                    root,
+                    target,
+                    dynamic_args,
+                    method,
+                    args,
+                    cache_site,
+                    ..
+                } => {
+                    let method_id = match call.program.method_dispatch(*method).map(|d| &d.kind) {
+                        Some(LinkedMethodDispatchKind::Host { method_id }) => *method_id,
+                        _ => {
+                            return Err(VmError::new(VmErrorKind::UnsupportedLinkedInstruction {
+                                opcode: "HostCall",
+                            })
+                            .with_source_span_if_absent(instruction.span));
+                        }
+                    };
+                    let plan = host_access::code_host_target(
+                        &code.host_targets,
+                        *target,
+                        instruction.span,
+                    )?;
+                    let value = host_access::execute_host_call(
+                        host_access::HostAccessRuntime {
+                            frame: &frame,
+                            heap: heap.as_deref_mut(),
+                            budget: budget.as_deref_mut(),
+                            host: host.as_deref_mut(),
+                            inline_caches: call.inline_caches,
+                            source_span: instruction.span,
+                        },
+                        *root,
+                        host_access::HostCallPlan {
+                            target_id: *target,
+                            target: plan,
+                            dynamic_args,
+                            method: method_id,
+                            args,
+                            wants_return: dst.is_some(),
+                            cache_site: *cache_site,
+                        },
+                    )?;
+                    if let (Some(dst), Some(value)) = (dst, value) {
+                        frame.write(*dst, value)?;
                     }
                 }
                 InstructionKind::Return { src } => {
@@ -308,6 +776,85 @@ fn validate_linked_jump(code: &LinkedCodeObject, offset: usize) -> VmResult<()> 
         Ok(())
     } else {
         Err(VmError::new(VmErrorKind::InstructionOutOfBounds { offset }))
+    }
+}
+
+fn linked_iter_next(
+    mut runtime: iteration::IterRuntime<'_, '_>,
+    code: &LinkedCodeObject,
+    iterator: Register,
+    dst: Register,
+    jump_if_done: InstructionOffset,
+) -> VmResult<Option<usize>> {
+    let value = *runtime.frame.read(iterator)?;
+    let next = match value {
+        Value::HeapRef(reference) => {
+            let Some(HeapValue::Iterator(iterator_state)) = runtime
+                .heap
+                .as_deref_mut()
+                .and_then(|heap| heap.heap.get_mut(reference).ok())
+            else {
+                return Err(VmError::new(VmErrorKind::TypeMismatch {
+                    operation: "iterator",
+                }));
+            };
+            iterator_state.next()
+        }
+        _ => {
+            return Err(VmError::new(VmErrorKind::TypeMismatch {
+                operation: "iterator",
+            }));
+        }
+    };
+    match next {
+        Some(value) => {
+            runtime.frame.write(dst, value)?;
+            Ok(None)
+        }
+        None => {
+            validate_linked_jump(code, jump_if_done.0)?;
+            Ok(Some(jump_if_done.0))
+        }
+    }
+}
+
+fn linked_range_next(
+    frame: &mut CallFrame,
+    code: &LinkedCodeObject,
+    step: iteration::RangeNextStep,
+) -> VmResult<Option<usize>> {
+    let is_done = match frame.read(step.done)? {
+        Value::Bool(value) => *value,
+        _ => {
+            return Err(VmError::new(VmErrorKind::TypeMismatch {
+                operation: "range",
+            }));
+        }
+    };
+    if is_done {
+        validate_linked_jump(code, step.jump_if_done.0)?;
+        return Ok(Some(step.jump_if_done.0));
+    }
+
+    let current = expect_int(frame.read(step.cursor)?, "range")?;
+    let end = expect_int(frame.read(step.end)?, "range")?;
+    let has_next = if step.inclusive {
+        current <= end
+    } else {
+        current < end
+    };
+    if has_next {
+        frame.write(step.dst, Value::Int(current))?;
+        if current == i64::MAX {
+            frame.write(step.done, Value::Bool(true))?;
+        } else {
+            frame.write(step.cursor, Value::Int(current + 1))?;
+        }
+        Ok(None)
+    } else {
+        frame.write(step.done, Value::Bool(true))?;
+        validate_linked_jump(code, step.jump_if_done.0)?;
+        Ok(Some(step.jump_if_done.0))
     }
 }
 

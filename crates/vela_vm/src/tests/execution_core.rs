@@ -96,6 +96,174 @@ fn runs_linked_program_basic_arithmetic_without_unlinked_code() {
 }
 
 #[test]
+fn linked_native_dispatch_uses_id_not_debug_name_fallback() {
+    let mut vm = Vm::new();
+    vm.register_native("legacy_name", |_| Ok(OwnedValue::Int(99)));
+
+    let mut program = vela_bytecode::LinkedProgram::new();
+    let main_name = program.intern_debug_name("main");
+    let native_name = program.intern_debug_name("legacy_name");
+    let native_id = FunctionId::new(0x55);
+    let native = program.push_native_function(vela_bytecode::LinkedNativeFunction::new(
+        native_id,
+        native_name,
+    ));
+    let mut code = vela_bytecode::LinkedCodeObject::new(main_name, 1);
+    code.push_instruction(vela_bytecode::linked::Instruction::new(
+        vela_bytecode::linked::InstructionKind::CallNative {
+            dst: Some(Register(0)),
+            native,
+            debug_name: native_name,
+            args: Vec::new(),
+        },
+    ));
+    code.push_instruction(vela_bytecode::linked::Instruction::new(
+        vela_bytecode::linked::InstructionKind::Return { src: Register(0) },
+    ));
+    let function = program.push_function(code);
+    program.set_entry_point(main_name, function);
+
+    let error = vm
+        .run_linked_program(&program, "main", &[])
+        .expect_err("linked native dispatch must not use debug name fallback");
+
+    assert_eq!(
+        error.kind(),
+        VmErrorKind::UnknownNative {
+            name: "legacy_name".to_owned()
+        }
+    );
+}
+
+#[test]
+fn linked_program_calls_native_by_dense_handle() {
+    let native_id = FunctionId::new(0x56);
+    let mut vm = Vm::new();
+    vm.register_native_with_id(native_id, "actual_name", |_| Ok(OwnedValue::Int(7)));
+
+    let mut program = vela_bytecode::LinkedProgram::new();
+    let main_name = program.intern_debug_name("main");
+    let native_name = program.intern_debug_name("debug_only_name");
+    let native = program.push_native_function(vela_bytecode::LinkedNativeFunction::new(
+        native_id,
+        native_name,
+    ));
+    let mut code = vela_bytecode::LinkedCodeObject::new(main_name, 1);
+    code.push_instruction(vela_bytecode::linked::Instruction::new(
+        vela_bytecode::linked::InstructionKind::CallNative {
+            dst: Some(Register(0)),
+            native,
+            debug_name: native_name,
+            args: Vec::new(),
+        },
+    ));
+    code.push_instruction(vela_bytecode::linked::Instruction::new(
+        vela_bytecode::linked::InstructionKind::Return { src: Register(0) },
+    ));
+    let function = program.push_function(code);
+    program.set_entry_point(main_name, function);
+
+    assert_eq!(
+        vm.run_linked_program(&program, "main", &[]),
+        Ok(OwnedValue::Int(7))
+    );
+}
+
+#[test]
+fn linked_program_calls_script_function_by_dense_handle() {
+    let mut program = vela_bytecode::LinkedProgram::new();
+    let main_name = program.intern_debug_name("main");
+    let helper_name = program.intern_debug_name("helper");
+
+    let mut main = vela_bytecode::LinkedCodeObject::new(main_name, 2);
+    let helper = vela_bytecode::ScriptFunctionHandle::new(1);
+    main.push_instruction(vela_bytecode::linked::Instruction::new(
+        vela_bytecode::linked::InstructionKind::CallFunction {
+            dst: Register(0),
+            function: helper,
+            debug_name: helper_name,
+            args: Vec::new(),
+        },
+    ));
+    main.push_instruction(vela_bytecode::linked::Instruction::new(
+        vela_bytecode::linked::InstructionKind::Return { src: Register(0) },
+    ));
+
+    let mut helper_code = vela_bytecode::LinkedCodeObject::new(helper_name, 1);
+    let value = helper_code.push_constant(Constant::Int(11));
+    helper_code.push_instruction(vela_bytecode::linked::Instruction::new(
+        vela_bytecode::linked::InstructionKind::LoadConst {
+            dst: Register(0),
+            constant: value,
+        },
+    ));
+    helper_code.push_instruction(vela_bytecode::linked::Instruction::new(
+        vela_bytecode::linked::InstructionKind::Return { src: Register(0) },
+    ));
+
+    let main = program.push_function(main);
+    let helper_handle = program.push_function(helper_code);
+    assert_eq!(helper_handle, helper);
+    program.set_entry_point(main_name, main);
+
+    assert_eq!(
+        Vm::new().run_linked_program(&program, "main", &[]),
+        Ok(OwnedValue::Int(11))
+    );
+}
+
+#[test]
+fn linked_program_executes_array_and_index_ops() {
+    let mut program = vela_bytecode::LinkedProgram::new();
+    let main_name = program.intern_debug_name("main");
+    let mut code = vela_bytecode::LinkedCodeObject::new(main_name, 5);
+    let two = code.push_constant(Constant::Int(2));
+    let four = code.push_constant(Constant::Int(4));
+    let index = code.push_constant(Constant::Int(1));
+    code.push_instruction(vela_bytecode::linked::Instruction::new(
+        vela_bytecode::linked::InstructionKind::LoadConst {
+            dst: Register(0),
+            constant: two,
+        },
+    ));
+    code.push_instruction(vela_bytecode::linked::Instruction::new(
+        vela_bytecode::linked::InstructionKind::LoadConst {
+            dst: Register(1),
+            constant: four,
+        },
+    ));
+    code.push_instruction(vela_bytecode::linked::Instruction::new(
+        vela_bytecode::linked::InstructionKind::MakeArray {
+            dst: Register(2),
+            elements: vec![Register(0), Register(1)],
+        },
+    ));
+    code.push_instruction(vela_bytecode::linked::Instruction::new(
+        vela_bytecode::linked::InstructionKind::LoadConst {
+            dst: Register(3),
+            constant: index,
+        },
+    ));
+    code.push_instruction(vela_bytecode::linked::Instruction::new(
+        vela_bytecode::linked::InstructionKind::GetIndex {
+            dst: Register(4),
+            base: Register(2),
+            index: Register(3),
+        },
+    ));
+    code.push_instruction(vela_bytecode::linked::Instruction::new(
+        vela_bytecode::linked::InstructionKind::Return { src: Register(4) },
+    ));
+    let function = program.push_function(code);
+    program.set_entry_point(main_name, function);
+
+    assert_eq!(
+        Vm::new().run_linked_program(&program, "main", &[]),
+        Ok(OwnedValue::Int(4))
+    );
+}
+
+#[test]
 fn branches_on_false_conditions() {
     let mut code = UnlinkedCodeObject::new("branch", 3);
     let false_id = code.push_constant(Constant::Bool(false));
