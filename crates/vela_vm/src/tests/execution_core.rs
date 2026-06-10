@@ -338,6 +338,7 @@ fn linked_program_execution_charges_instruction_budget() {
 #[test]
 fn calls_registered_native_functions() {
     let mut vm = Vm::new();
+    let native_id = function_id_for_native_name("log");
     vm.register_native("log", |args| {
         assert_eq!(args, [OwnedValue::String("level up".into())]);
         Ok(OwnedValue::Null)
@@ -355,7 +356,7 @@ fn calls_registered_native_functions() {
         UnlinkedInstructionKind::CallNative {
             dst: Some(Register(1)),
             name: "log".into(),
-            native: vela_def::FunctionId::new(0),
+            native: native_id,
             args: vec![Register(0)],
         },
     ));

@@ -51,8 +51,10 @@ impl Vm {
         methods::register(self, &registry, &policy, &lookup_budget);
         traits::register(self, &registry, &policy, &lookup_budget);
         variants::register(self, &registry, &policy, &lookup_budget);
-        let function_calls =
-            values::ReflectedFunctionCalls::new(self.natives.clone(), self.host_natives.clone());
+        let function_calls = values::ReflectedFunctionCalls::new(
+            self.native_ids.clone(),
+            self.host_native_ids.clone(),
+        );
         values::register(self, &registry, &policy, &lookup_budget, function_calls);
     }
 }

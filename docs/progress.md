@@ -240,7 +240,11 @@ Cranelift JIT.
   focused iteration boundary with jump validation kept on the VM side of the
   bytecode contract. Declared global reads now carry `GlobalSlot` metadata so
   VM-owned script globals and runtime host globals can use slot lookup on the
-  common path while preserving names for diagnostics and fallback.
+  common path while preserving names for diagnostics and fallback. Native
+  dispatch no longer has string-name fallback maps: standard and host-native
+  source-name aliases install as explicit `FunctionId` bindings, reflection
+  calls resolve callable descriptors to IDs, and linked bytecode keeps native
+  handles plus debug names separated from runtime dispatch.
 
 ### Remaining Gaps
 

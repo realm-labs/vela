@@ -1,6 +1,7 @@
 use std::collections::HashMap;
 use std::sync::Arc;
 
+use vela_def::FunctionId;
 use vela_reflect::registry::TypeRegistry;
 use vela_reflect::{self as reflect};
 
@@ -14,14 +15,14 @@ use super::common::check_reflect_policy;
 
 #[derive(Clone, Default)]
 pub(super) struct ReflectedFunctionCalls {
-    natives: HashMap<String, NativeFunction>,
-    host_natives: HashMap<String, HostNativeFunction>,
+    natives: HashMap<FunctionId, NativeFunction>,
+    host_natives: HashMap<FunctionId, HostNativeFunction>,
 }
 
 impl ReflectedFunctionCalls {
     pub(super) fn new(
-        natives: HashMap<String, NativeFunction>,
-        host_natives: HashMap<String, HostNativeFunction>,
+        natives: HashMap<FunctionId, NativeFunction>,
+        host_natives: HashMap<FunctionId, HostNativeFunction>,
     ) -> Self {
         Self {
             natives,
@@ -31,19 +32,20 @@ impl ReflectedFunctionCalls {
 
     fn call(
         &self,
-        name: &str,
+        id: FunctionId,
+        diagnostic_name: &str,
         args: &[OwnedValue],
         host: &mut HostExecution<'_>,
         budget: Option<&mut ExecutionBudget>,
     ) -> VmResult<OwnedValue> {
-        if let Some(native) = self.natives.get(name) {
+        if let Some(native) = self.natives.get(&id) {
             return native(args);
         }
-        if let Some(native) = self.host_natives.get(name) {
+        if let Some(native) = self.host_natives.get(&id) {
             return native(args, host, budget);
         }
         Err(VmError::new(VmErrorKind::UnknownNative {
-            name: name.to_owned(),
+            name: diagnostic_name.to_owned(),
         }))
     }
 }
@@ -120,12 +122,22 @@ pub(super) fn register(
             }));
         }
         let target = value_to_reflect(&args[0], "reflect::call")?;
-        if let Some(function_name) = reflect::modules::callable_function_name_with_policy(
+        if let Some(function_id) = reflect::modules::callable_function_id_with_policy(
             &call_registry,
             &target,
             &call_policy,
         )? {
-            return function_calls.call(&function_name, &args[1..], host, budget.as_deref_mut());
+            let function_name = call_registry
+                .function_by_id(function_id)
+                .map(|function| function.name.as_str())
+                .unwrap_or("unknown");
+            return function_calls.call(
+                function_id,
+                function_name,
+                &args[1..],
+                host,
+                budget.as_deref_mut(),
+            );
         }
         if args.len() < 2 {
             return Err(VmError::new(VmErrorKind::ArityMismatch {

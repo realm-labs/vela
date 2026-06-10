@@ -256,7 +256,15 @@ impl Engine {
             let effects = entry.desc.effects;
             let capabilities = self.capabilities;
             let function = Arc::clone(&entry.function);
-            vm.register_native_with_id(id, name.clone(), move |args| {
+            vm.register_native_with_id(id, name.clone(), {
+                let name = name.clone();
+                let function = Arc::clone(&function);
+                move |args| {
+                    check_capabilities(&name, &effects, capabilities)?;
+                    function(args)
+                }
+            });
+            vm.register_native(name.clone(), move |args| {
                 check_capabilities(&name, &effects, capabilities)?;
                 function(args)
             });
@@ -270,7 +278,15 @@ impl Engine {
             let effects = entry.desc.effects;
             let capabilities = self.capabilities;
             let function = Arc::clone(&entry.function);
-            vm.register_host_native_with_id(id, name.clone(), move |args, host| {
+            vm.register_host_native_with_id(id, name.clone(), {
+                let name = name.clone();
+                let function = Arc::clone(&function);
+                move |args, host| {
+                    check_capabilities(&name, &effects, capabilities)?;
+                    function(args, host)
+                }
+            });
+            vm.register_host_native(name.clone(), move |args, host| {
                 check_capabilities(&name, &effects, capabilities)?;
                 function(args, host)
             });
@@ -285,15 +301,21 @@ impl Engine {
             let capabilities = self.capabilities;
             let function = Arc::clone(&entry.function);
             let engine = self.clone();
-            vm.register_budgeted_host_native_with_id(
-                id,
-                name.clone(),
+            vm.register_budgeted_host_native_with_id(id, name.clone(), {
+                let name = name.clone();
+                let function = Arc::clone(&function);
+                let engine = engine.clone();
                 move |args, host, budget| {
                     check_capabilities(&name, &effects, capabilities)?;
                     let mut context = crate::context::NativeCallContext::new(&engine, host, budget);
                     function(args, &mut context)
-                },
-            );
+                }
+            });
+            vm.register_budgeted_host_native(name.clone(), move |args, host, budget| {
+                check_capabilities(&name, &effects, capabilities)?;
+                let mut context = crate::context::NativeCallContext::new(&engine, host, budget);
+                function(args, &mut context)
+            });
         }
     }
 
@@ -308,7 +330,7 @@ impl Engine {
                 let effects = entry.desc.effects;
                 let capabilities = self.capabilities;
                 let function = Arc::clone(&entry.function);
-                vm.register_native(alias.clone(), move |args| {
+                vm.register_native_with_id(id, alias.clone(), move |args| {
                     check_capabilities(&alias, &effects, capabilities)?;
                     function(args)
                 });
@@ -317,7 +339,7 @@ impl Engine {
                 let effects = entry.desc.effects;
                 let capabilities = self.capabilities;
                 let function = Arc::clone(&entry.function);
-                vm.register_host_native(alias.clone(), move |args, host| {
+                vm.register_host_native_with_id(id, alias.clone(), move |args, host| {
                     check_capabilities(&alias, &effects, capabilities)?;
                     function(args, host)
                 });
@@ -327,11 +349,16 @@ impl Engine {
                 let capabilities = self.capabilities;
                 let function = Arc::clone(&entry.function);
                 let engine = self.clone();
-                vm.register_budgeted_host_native(alias.clone(), move |args, host, budget| {
-                    check_capabilities(&alias, &effects, capabilities)?;
-                    let mut context = crate::context::NativeCallContext::new(&engine, host, budget);
-                    function(args, &mut context)
-                });
+                vm.register_budgeted_host_native_with_id(
+                    id,
+                    alias.clone(),
+                    move |args, host, budget| {
+                        check_capabilities(&alias, &effects, capabilities)?;
+                        let mut context =
+                            crate::context::NativeCallContext::new(&engine, host, budget);
+                        function(args, &mut context)
+                    },
+                );
             }
         }
     }

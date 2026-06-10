@@ -80,7 +80,7 @@ use vela_bytecode::{
     UnlinkedProgramCode,
 };
 use vela_common::{GlobalSlot, HostTypeId, Span};
-use vela_def::FunctionId;
+use vela_def::{DefPath, FunctionId};
 use vela_host::adapter::ScriptStateAdapter;
 use vela_host::resolved::{HostAccessOp, HostSchemaEpoch, ResolvedHostAccess};
 #[cfg(test)]
@@ -122,9 +122,7 @@ pub type HostNativeFunction = Arc<
 
 #[derive(Clone, Default)]
 pub struct Vm {
-    natives: HashMap<String, NativeFunction>,
     native_ids: HashMap<FunctionId, NativeFunction>,
-    host_natives: HashMap<String, HostNativeFunction>,
     host_native_ids: HashMap<FunctionId, HostNativeFunction>,
     type_registry: Option<Arc<TypeRegistry>>,
 }
@@ -276,7 +274,8 @@ impl Vm {
         name: impl Into<String>,
         function: impl Fn(&[OwnedValue]) -> VmResult<OwnedValue> + Send + Sync + 'static,
     ) {
-        self.natives.insert(name.into(), Arc::new(function));
+        let name = name.into();
+        self.register_native_with_id(function_id_for_native_name(&name), name, function);
     }
 
     pub fn register_native_with_id(
@@ -285,9 +284,8 @@ impl Vm {
         name: impl Into<String>,
         function: impl Fn(&[OwnedValue]) -> VmResult<OwnedValue> + Send + Sync + 'static,
     ) {
-        let function = Arc::new(function) as NativeFunction;
-        self.natives.insert(name.into(), Arc::clone(&function));
-        self.native_ids.insert(id, function);
+        let _debug_name = name.into();
+        self.native_ids.insert(id, Arc::new(function));
     }
 
     pub fn register_host_native(
@@ -298,10 +296,8 @@ impl Vm {
         + Sync
         + 'static,
     ) {
-        self.host_natives.insert(
-            name.into(),
-            Arc::new(move |args, host, _budget| function(args, host)),
-        );
+        let name = name.into();
+        self.register_host_native_with_id(function_id_for_native_name(&name), name, function);
     }
 
     pub fn register_host_native_with_id(
@@ -313,11 +309,11 @@ impl Vm {
         + Sync
         + 'static,
     ) {
-        let name = name.into();
-        self.register_host_native(name.clone(), function);
-        if let Some(function) = self.host_natives.get(&name) {
-            self.host_native_ids.insert(id, Arc::clone(function));
-        }
+        let _debug_name = name.into();
+        self.host_native_ids.insert(
+            id,
+            Arc::new(move |args, host, _budget| function(args, host)),
+        );
     }
 
     pub fn register_budgeted_host_native(
@@ -332,7 +328,12 @@ impl Vm {
         + Sync
         + 'static,
     ) {
-        self.host_natives.insert(name.into(), Arc::new(function));
+        let name = name.into();
+        self.register_budgeted_host_native_with_id(
+            function_id_for_native_name(&name),
+            name,
+            function,
+        );
     }
 
     pub fn register_budgeted_host_native_with_id(
@@ -348,9 +349,8 @@ impl Vm {
         + Sync
         + 'static,
     ) {
-        let function = Arc::new(function) as HostNativeFunction;
-        self.host_natives.insert(name.into(), Arc::clone(&function));
-        self.host_native_ids.insert(id, function);
+        let _debug_name = name.into();
+        self.host_native_ids.insert(id, Arc::new(function));
     }
 
     pub fn register_standard_natives(&mut self) {
@@ -1167,6 +1167,17 @@ fn linked_program_entry<'program>(
             name: entry.to_owned(),
         })
     })
+}
+
+fn function_id_for_native_name(name: &str) -> FunctionId {
+    if let Some((module, function)) = name.rsplit_once("::")
+        && let Some(id) = vela_stdlib::std_function_id(module, function)
+    {
+        return id;
+    }
+    let mut segments = name.split("::").collect::<Vec<_>>();
+    let function = segments.pop().unwrap_or(name);
+    FunctionId::from_def_id(DefPath::function("host", segments, function).id())
 }
 
 #[cfg(test)]

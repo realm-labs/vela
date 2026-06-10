@@ -454,6 +454,11 @@ fn function_id_for_script_name(name: &str) -> FunctionId {
 }
 
 fn function_id_for_native_name(name: &str) -> FunctionId {
+    if let Some((module, function)) = name.rsplit_once("::")
+        && let Some(id) = vela_stdlib::std_function_id(module, function)
+    {
+        return id;
+    }
     function_id_for_path("host", name)
 }
 

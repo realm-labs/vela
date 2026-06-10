@@ -10,6 +10,7 @@ vela_def = { workspace = true }
 vela_host = { workspace = true }
 vela_hir = { workspace = true }
 vela_registry = { workspace = true }
+vela_stdlib = { workspace = true }
 vela_syntax = { workspace = true }
 
 [lints]

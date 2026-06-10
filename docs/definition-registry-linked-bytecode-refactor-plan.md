@@ -1541,7 +1541,7 @@ surface.
 - Active frames retain old linked code through old `ProgramVersion` ownership.
 - New calls enter newly linked code only after hot-reload safe-point acceptance.
 
-- [ ] **Task 6.2: Remove native name fallback**
+- [x] **Task 6.2: Remove native name fallback**
 
 **Objective:** Delete name lookup from runtime dispatch.
 

@@ -179,11 +179,11 @@ pub fn functions_with_policy(registry: &TypeRegistry, policy: &ReflectPolicy) ->
     )
 }
 
-pub fn callable_function_name_with_policy(
+pub fn callable_function_id_with_policy(
     registry: &TypeRegistry,
     target: &ReflectValue,
     policy: &ReflectPolicy,
-) -> ReflectResult<Option<String>> {
+) -> ReflectResult<Option<vela_def::FunctionId>> {
     policy.require(crate::permissions::ReflectPermission::CallMethods)?;
     let Some(name) = function_target_name(target)? else {
         return Ok(None);
@@ -197,7 +197,7 @@ pub fn callable_function_name_with_policy(
         })
     })?;
     policy.require_function_call_access(desc)?;
-    Ok(Some(desc.name.clone()))
+    Ok(Some(desc.id))
 }
 
 fn module_candidates(

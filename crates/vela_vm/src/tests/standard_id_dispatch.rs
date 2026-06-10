@@ -19,7 +19,7 @@ fn std_method_id(owner: &str, name: &str) -> vela_def::MethodId {
 }
 
 #[test]
-fn call_native_uses_resolved_id_before_name_fallback() {
+fn call_native_uses_resolved_id_even_when_debug_name_differs() {
     let native_id = vela_def::FunctionId::new(77);
     let mut vm = Vm::new();
     vm.register_native("diagnostic_name", |_| Ok(OwnedValue::Int(1)));
@@ -37,12 +37,11 @@ fn call_native_uses_resolved_id_before_name_fallback() {
     code.push_instruction(UnlinkedInstruction::new(UnlinkedInstructionKind::Return {
         src: Register(0),
     }));
-
     assert_eq!(vm.run(&code), Ok(OwnedValue::Int(2)));
 }
 
 #[test]
-fn call_native_uses_resolved_host_id_before_name_fallback() {
+fn call_native_uses_resolved_host_id_even_when_debug_name_differs() {
     let native_id = FunctionId::new(78);
     let mut vm = Vm::new();
     vm.register_native("diagnostic_name", |_| Ok(OwnedValue::Int(1)));
@@ -68,12 +67,11 @@ fn call_native_uses_resolved_host_id_before_name_fallback() {
         access: &mut tx,
         script_globals: None,
     };
-
     assert_eq!(vm.run_with_host(&code, &mut host), Ok(OwnedValue::Int(3)));
 }
 
 #[test]
-fn call_native_uses_standard_native_id_before_name_fallback() {
+fn call_native_uses_standard_native_id_even_when_debug_name_differs() {
     let mut vm = Vm::new();
     vm.register_standard_natives();
 
@@ -96,7 +94,6 @@ fn call_native_uses_standard_native_id_before_name_fallback() {
     code.push_instruction(UnlinkedInstruction::new(UnlinkedInstructionKind::Return {
         src: Register(1),
     }));
-
     assert_eq!(vm.run(&code), Ok(OwnedValue::Int(4)));
 }
 

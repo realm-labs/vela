@@ -29,7 +29,7 @@ pub(crate) fn dispatch_native_function_call(
     call: NativeFunctionCall<'_>,
 ) -> VmResult<()> {
     let values = native_call_args_from_registers(frame, call.args, heap.as_deref())?;
-    let target = resolve_native_call_target(vm, call.name, call.native);
+    let target = resolve_native_call_target_by_id(vm, call.native);
     let result = match target {
         Some(NativeCallTarget::Pure(native)) => native(values.as_slice())
             .map_err(|error| error.with_source_span_if_absent(call.call_site))?,
@@ -106,19 +106,6 @@ pub(crate) fn dispatch_linked_native_function_call(
         frame.write(dst, result)?;
     }
     Ok(())
-}
-
-fn resolve_native_call_target<'a>(
-    vm: &'a Vm,
-    name: &str,
-    native: FunctionId,
-) -> Option<NativeCallTarget<'a>> {
-    vm.native_ids
-        .get(&native)
-        .map(NativeCallTarget::Pure)
-        .or_else(|| vm.host_native_ids.get(&native).map(NativeCallTarget::Host))
-        .or_else(|| vm.natives.get(name).map(NativeCallTarget::Pure))
-        .or_else(|| vm.host_natives.get(name).map(NativeCallTarget::Host))
 }
 
 fn resolve_native_call_target_by_id(vm: &Vm, native: FunctionId) -> Option<NativeCallTarget<'_>> {

@@ -497,7 +497,7 @@ fn function_call_policy_filters_unknown_candidates() {
             .with(ReflectPermission::ReadTypeInfo)
             .with(ReflectPermission::CallMethods),
     );
-    let error = callable_function_name_with_policy(&registry, &target, &policy)
+    let error = callable_function_id_with_policy(&registry, &target, &policy)
         .expect_err("unknown callable function");
     let ReflectErrorKind::UnknownFunction {
         candidates,
@@ -620,7 +620,7 @@ fn callable_function_lookup_requires_call_methods_permission() {
     );
     let target = function(&registry, "game::callable").expect("callable function metadata");
 
-    let error = callable_function_name_with_policy(&registry, &target, &ReflectPolicy::read_only())
+    let error = callable_function_id_with_policy(&registry, &target, &ReflectPolicy::read_only())
         .expect_err("callable lookup should require call permission");
 
     assert_eq!(
@@ -636,8 +636,8 @@ fn callable_function_lookup_requires_call_methods_permission() {
             .with(ReflectPermission::CallMethods),
     );
     assert_eq!(
-        callable_function_name_with_policy(&registry, &target, &policy),
-        Ok(Some("game::callable".to_owned()))
+        callable_function_id_with_policy(&registry, &target, &policy),
+        Ok(Some(FunctionId::new(1)))
     );
 }
 
