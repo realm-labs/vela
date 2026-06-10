@@ -56,7 +56,7 @@ fn run_string_predicate_by_id(
         src: Register(2),
     }));
 
-    Vm::new().run(&code)
+    run_linked_test_code(code)
 }
 
 #[test]
@@ -108,7 +108,7 @@ fn run_string_transform_by_id(
         src: Register(1),
     }));
 
-    Vm::new().run(&code)
+    run_linked_test_code(code)
 }
 
 #[test]
@@ -273,5 +273,5 @@ fn run_string_transform_with_args_by_id(
         src: result,
     }));
 
-    Vm::new().run(&code)
+    run_linked_test_code(code)
 }
