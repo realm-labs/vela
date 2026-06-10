@@ -149,6 +149,66 @@ fn run_string_predicate_by_id(
 }
 
 #[test]
+fn call_method_uses_standard_string_transform_ids_before_name_fallback() {
+    assert_eq!(
+        run_string_transform_by_id(
+            vela_common::standard_ids::STRING_TO_UPPER_METHOD_ID,
+            "Reward"
+        ),
+        Ok(OwnedValue::String("REWARD".to_owned()))
+    );
+    assert_eq!(
+        run_string_transform_by_id(
+            vela_common::standard_ids::STRING_TO_LOWER_METHOD_ID,
+            "Reward"
+        ),
+        Ok(OwnedValue::String("reward".to_owned()))
+    );
+    assert_eq!(
+        run_string_transform_by_id(vela_common::standard_ids::STRING_TRIM_METHOD_ID, " Reward "),
+        Ok(OwnedValue::String("Reward".to_owned()))
+    );
+    assert_eq!(
+        run_string_transform_by_id(
+            vela_common::standard_ids::STRING_TRIM_START_METHOD_ID,
+            " Reward "
+        ),
+        Ok(OwnedValue::String("Reward ".to_owned()))
+    );
+    assert_eq!(
+        run_string_transform_by_id(
+            vela_common::standard_ids::STRING_TRIM_END_METHOD_ID,
+            " Reward "
+        ),
+        Ok(OwnedValue::String(" Reward".to_owned()))
+    );
+}
+
+fn run_string_transform_by_id(
+    method_id: vela_common::HostMethodId,
+    receiver: &str,
+) -> VmResult<OwnedValue> {
+    let mut code = CodeObject::new("standard_string_transform_method_id", 2);
+    let receiver = code.push_constant(Constant::String(receiver.into()));
+    code.push_instruction(Instruction::new(InstructionKind::LoadConst {
+        dst: Register(0),
+        constant: receiver,
+    }));
+    code.push_instruction(Instruction::new(InstructionKind::CallMethod {
+        dst: Register(1),
+        receiver: Register(0),
+        method: "missing_string_transform".into(),
+        value_method_id: Some(method_id),
+        args: Vec::new(),
+    }));
+    code.push_instruction(Instruction::new(InstructionKind::Return {
+        src: Register(1),
+    }));
+
+    Vm::new().run(&code)
+}
+
+#[test]
 fn call_method_uses_standard_range_method_id_before_name_fallback() {
     let mut code = CodeObject::new("standard_range_method_id", 4);
     let start = code.push_constant(Constant::Int(2));

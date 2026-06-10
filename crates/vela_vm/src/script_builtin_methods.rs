@@ -13,7 +13,9 @@ use vela_common::standard_ids::{
     SET_CLEAR_METHOD_ID, SET_HAS_METHOD_ID, SET_IS_DISJOINT_METHOD_ID, SET_IS_EMPTY_METHOD_ID,
     SET_IS_SUBSET_METHOD_ID, SET_IS_SUPERSET_METHOD_ID, SET_LEN_METHOD_ID, SET_REMOVE_METHOD_ID,
     STRING_CONTAINS_METHOD_ID, STRING_ENDS_WITH_METHOD_ID, STRING_IS_EMPTY_METHOD_ID,
-    STRING_LEN_METHOD_ID, STRING_STARTS_WITH_METHOD_ID,
+    STRING_LEN_METHOD_ID, STRING_STARTS_WITH_METHOD_ID, STRING_TO_LOWER_METHOD_ID,
+    STRING_TO_UPPER_METHOD_ID, STRING_TRIM_END_METHOD_ID, STRING_TRIM_METHOD_ID,
+    STRING_TRIM_START_METHOD_ID,
 };
 
 pub(crate) fn call(
@@ -141,6 +143,39 @@ pub(crate) fn call_by_id(
     }
     if method_id == SET_CLEAR_METHOD_ID && set_methods::is_set(receiver, heap.as_deref()) {
         return Some(set_methods::clear(receiver, args, heap.as_deref_mut()));
+    }
+    if method_id == STRING_TO_UPPER_METHOD_ID
+        && crate::string_methods::is_string(receiver, heap.as_deref())
+    {
+        return Some(crate::string_methods::to_upper(
+            receiver, args, heap, budget,
+        ));
+    }
+    if method_id == STRING_TO_LOWER_METHOD_ID
+        && crate::string_methods::is_string(receiver, heap.as_deref())
+    {
+        return Some(crate::string_methods::to_lower(
+            receiver, args, heap, budget,
+        ));
+    }
+    if method_id == STRING_TRIM_METHOD_ID
+        && crate::string_methods::is_string(receiver, heap.as_deref())
+    {
+        return Some(crate::string_methods::trim(receiver, args, heap, budget));
+    }
+    if method_id == STRING_TRIM_START_METHOD_ID
+        && crate::string_methods::is_string(receiver, heap.as_deref())
+    {
+        return Some(crate::string_methods::trim_start(
+            receiver, args, heap, budget,
+        ));
+    }
+    if method_id == STRING_TRIM_END_METHOD_ID
+        && crate::string_methods::is_string(receiver, heap.as_deref())
+    {
+        return Some(crate::string_methods::trim_end(
+            receiver, args, heap, budget,
+        ));
     }
     None
 }
