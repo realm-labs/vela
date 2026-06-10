@@ -7,8 +7,8 @@ use vela_host::target::HostTargetPlan;
 use vela_registry::{DebugNameId, DebugNameTable};
 
 use crate::{
-    CacheSiteId, CacheSiteLayout, CallArgument, Constant, ConstantId, HostTargetPlanId,
-    InstructionOffset, Register,
+    CacheSiteId, CacheSiteKind, CacheSiteLayout, CallArgument, Constant, ConstantId,
+    HostTargetPlanId, InstructionOffset, Register,
 };
 
 macro_rules! dense_handle {
@@ -93,6 +93,13 @@ impl LinkedProgram {
         self.native_functions.len()
     }
 
+    pub fn native_functions(&self) -> impl Iterator<Item = (NativeHandle, &LinkedNativeFunction)> {
+        self.native_functions
+            .iter()
+            .enumerate()
+            .map(|(index, function)| (NativeHandle::new(index), function))
+    }
+
     pub fn push_method_dispatch(&mut self, dispatch: LinkedMethodDispatch) -> MethodDispatchHandle {
         let handle = MethodDispatchHandle::new(self.method_dispatches.len());
         self.method_dispatches.push(dispatch);
@@ -109,6 +116,15 @@ impl LinkedProgram {
         self.method_dispatches.len()
     }
 
+    pub fn method_dispatches(
+        &self,
+    ) -> impl Iterator<Item = (MethodDispatchHandle, &LinkedMethodDispatch)> {
+        self.method_dispatches
+            .iter()
+            .enumerate()
+            .map(|(index, dispatch)| (MethodDispatchHandle::new(index), dispatch))
+    }
+
     pub fn push_type(&mut self, ty: LinkedType) -> TypeHandle {
         let handle = TypeHandle::new(self.types.len());
         self.types.push(ty);
@@ -120,6 +136,18 @@ impl LinkedProgram {
         self.types.get(handle.index())
     }
 
+    #[must_use]
+    pub fn type_count(&self) -> usize {
+        self.types.len()
+    }
+
+    pub fn types(&self) -> impl Iterator<Item = (TypeHandle, &LinkedType)> {
+        self.types
+            .iter()
+            .enumerate()
+            .map(|(index, ty)| (TypeHandle::new(index), ty))
+    }
+
     pub fn push_variant(&mut self, variant: LinkedVariant) -> VariantHandle {
         let handle = VariantHandle::new(self.variants.len());
         self.variants.push(variant);
@@ -129,6 +157,18 @@ impl LinkedProgram {
     #[must_use]
     pub fn variant(&self, handle: VariantHandle) -> Option<&LinkedVariant> {
         self.variants.get(handle.index())
+    }
+
+    #[must_use]
+    pub fn variant_count(&self) -> usize {
+        self.variants.len()
+    }
+
+    pub fn variants(&self) -> impl Iterator<Item = (VariantHandle, &LinkedVariant)> {
+        self.variants
+            .iter()
+            .enumerate()
+            .map(|(index, variant)| (VariantHandle::new(index), variant))
     }
 
     pub fn push_function(&mut self, function: LinkedCodeObject) -> ScriptFunctionHandle {
@@ -159,6 +199,10 @@ impl LinkedProgram {
         self.functions.is_empty()
     }
 
+    pub fn verify(&self) -> Result<(), crate::verification::VerificationError> {
+        crate::verification::verify_linked_program(self)
+    }
+
     pub fn set_entry_point(&mut self, debug_name: DebugNameId, function: ScriptFunctionHandle) {
         self.entry_points.insert(debug_name, function);
     }
@@ -166,6 +210,12 @@ impl LinkedProgram {
     #[must_use]
     pub fn entry_point(&self, debug_name: DebugNameId) -> Option<ScriptFunctionHandle> {
         self.entry_points.get(&debug_name).copied()
+    }
+
+    pub fn entry_points(&self) -> impl Iterator<Item = (DebugNameId, ScriptFunctionHandle)> + '_ {
+        self.entry_points
+            .iter()
+            .map(|(debug_name, function)| (*debug_name, *function))
     }
 }
 
@@ -316,6 +366,19 @@ impl LinkedCodeObject {
 
     pub fn push_instruction(&mut self, instruction: Instruction) {
         self.instructions.push(instruction);
+    }
+
+    pub fn push_cache_site(
+        &mut self,
+        kind: CacheSiteKind,
+        instruction_offset: InstructionOffset,
+    ) -> CacheSiteId {
+        let function = "<linked>".to_owned();
+        self.cache_sites.push(kind, function, instruction_offset)
+    }
+
+    pub fn verify(&self) -> Result<(), crate::verification::VerificationError> {
+        crate::verification::verify_linked_code_object(self)
     }
 }
 

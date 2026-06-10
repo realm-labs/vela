@@ -554,6 +554,14 @@ instructions carry only dense handles, slots, host target plan IDs, or global
 slots. Name-only method and record/enum field bytecode is rejected by
 `LinkError` instead of being preserved as runtime fallback dispatch.
 
+### Linked Bytecode Verification
+
+Linked bytecode verification checks local register, constant, jump,
+cache-site, and host target invariants plus linked-program side-table
+references. Invalid debug names and out-of-bounds native, script function,
+method dispatch, type, or variant handles are rejected before linked bytecode
+can become executable.
+
 ## Validation Rules
 
 - Multi-level `super` scan must return no matches:

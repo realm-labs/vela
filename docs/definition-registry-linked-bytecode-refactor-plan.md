@@ -1501,7 +1501,7 @@ surface.
 - Linker maps functions/methods to dense handles.
 - VM no longer needs to know names for dispatch.
 
-- [ ] **Task 5.4: Update verifier for linked bytecode**
+- [x] **Task 5.4: Update verifier for linked bytecode**
 
 **Objective:** Verify executable invariants.
 

@@ -1,10 +1,19 @@
 use std::fmt;
 
+use vela_registry::DebugNameId;
+
+use crate::linked::{
+    MethodDispatchHandle, NativeHandle, ScriptFunctionHandle, TypeHandle, VariantHandle,
+};
 use crate::{
     CacheSiteId, CacheSiteKind, CallArgument, ConstantId, HostTargetPlanId, InstructionOffset,
     ProgramImage, Register, UnlinkedCodeObject, UnlinkedInstruction, UnlinkedInstructionKind,
     UnlinkedProgram,
 };
+
+mod linked;
+
+pub use linked::{verify_linked_code_object, verify_linked_program};
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct VerificationError {
@@ -71,6 +80,30 @@ pub enum VerificationErrorKind {
     },
     HostTargetDynamicArgGap {
         index: u8,
+    },
+    DebugNameOutOfBounds {
+        debug_name: DebugNameId,
+        debug_name_count: usize,
+    },
+    NativeHandleOutOfBounds {
+        handle: NativeHandle,
+        native_count: usize,
+    },
+    ScriptFunctionHandleOutOfBounds {
+        handle: ScriptFunctionHandle,
+        function_count: usize,
+    },
+    MethodDispatchHandleOutOfBounds {
+        handle: MethodDispatchHandle,
+        dispatch_count: usize,
+    },
+    TypeHandleOutOfBounds {
+        handle: TypeHandle,
+        type_count: usize,
+    },
+    VariantHandleOutOfBounds {
+        handle: VariantHandle,
+        variant_count: usize,
     },
 }
 
@@ -859,7 +892,7 @@ fn verify_cache_site(
     )
 }
 
-fn error(
+pub(super) fn error(
     function: &str,
     instruction: Option<usize>,
     kind: VerificationErrorKind,
