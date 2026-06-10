@@ -1,13 +1,14 @@
 use super::*;
 
 fn link_test_version(
-    engine: &Engine,
+    _engine: &Engine,
     version: vela_hot_reload::version::ProgramVersion,
 ) -> vela_hot_reload::version::ProgramVersion {
-    let linked = engine
-        .link_program(&version.to_program())
-        .expect("test version should link");
-    version.with_linked_program(linked)
+    assert!(
+        version.linked_program().is_some(),
+        "test version should own linked bytecode"
+    );
+    version
 }
 
 #[test]
@@ -36,10 +37,15 @@ fn engine_compile_hot_reload_changed_file_reloads_module_root() {
         report.impacted_modules,
         vec!["game::main".to_owned(), "game::reward".to_owned()]
     );
+    let current = runtime.current();
     assert_eq!(
-        engine
-            .into_vm()
-            .run_program(&runtime.current().to_program(), "game::main::main", &[]),
+        engine.into_vm().run_linked_program(
+            current
+                .linked_program()
+                .expect("current version should own linked bytecode"),
+            "game::main::main",
+            &[]
+        ),
         Ok(OwnedValue::Int(10))
     );
 }
@@ -66,10 +72,15 @@ fn engine_compile_hot_reload_changed_file_accepts_normalized_root_paths() {
 
     assert!(report.accepted);
     assert_eq!(report.changed_functions, vec!["game::reward::grant"]);
+    let current = runtime.current();
     assert_eq!(
-        engine
-            .into_vm()
-            .run_program(&runtime.current().to_program(), "game::main::main", &[]),
+        engine.into_vm().run_linked_program(
+            current
+                .linked_program()
+                .expect("current version should own linked bytecode"),
+            "game::main::main",
+            &[]
+        ),
         Ok(OwnedValue::Int(8))
     );
 }
@@ -222,13 +233,20 @@ fn main(player: Player) {
         script_globals: None,
     };
 
+    let mut budget = vela_vm::budget::ExecutionBudget::unbounded();
     assert_eq!(
-        engine.into_vm().run_program_with_host(
-            &version.to_program(),
-            "main",
-            &[OwnedValue::HostRef(host_ref)],
-            &mut host
-        ),
+        engine
+            .into_vm()
+            .run_linked_program_with_host_budget_and_caches(
+                version
+                    .linked_program()
+                    .expect("accepted version should own linked bytecode"),
+                "main",
+                &[OwnedValue::HostRef(host_ref)],
+                &mut host,
+                &mut budget,
+                None
+            ),
         Ok(OwnedValue::Int(2))
     );
 }
