@@ -63,6 +63,11 @@ impl DefinitionRegistry {
         self.insert(Def::Trait(def)).map(|_| id)
     }
 
+    #[must_use]
+    pub const fn compile_view(&self) -> RegistryCompileView<'_> {
+        RegistryCompileView { registry: self }
+    }
+
     pub fn insert(&mut self, def: Def) -> Result<DefId, RegistryError> {
         let id = def.id();
         let path = def.path().clone();
@@ -133,6 +138,72 @@ impl DefinitionRegistry {
     #[must_use]
     pub fn debug_name_for_def(&self, id: DefId) -> DebugNameId {
         self.debug_names_by_def[&id]
+    }
+}
+
+#[derive(Clone, Copy, Debug)]
+pub struct RegistryCompileView<'registry> {
+    registry: &'registry DefinitionRegistry,
+}
+
+impl<'registry> RegistryCompileView<'registry> {
+    #[must_use]
+    pub fn resolve_native_function_path(&self, path: &DefPath) -> Option<FunctionId> {
+        self.registry.get_by_path(path).and_then(Def::function_id)
+    }
+
+    #[must_use]
+    pub fn resolve_value_method(&self, owner: TypeId, name: &str) -> Option<MethodId> {
+        self.resolve_method(owner, name)
+    }
+
+    #[must_use]
+    pub fn resolve_host_method(&self, owner: TypeId, name: &str) -> Option<MethodId> {
+        self.resolve_method(owner, name)
+    }
+
+    #[must_use]
+    pub fn resolve_host_field(&self, owner: TypeId, name: &str) -> Option<FieldId> {
+        let key = SemanticKey::Field {
+            owner,
+            name: name.to_owned(),
+        };
+        self.registry
+            .id_for_semantic_key(&key)
+            .and_then(|id| self.registry.get(id))
+            .and_then(Def::field_id)
+    }
+
+    #[must_use]
+    pub fn resolve_type(&self, path: &DefPath) -> Option<TypeId> {
+        self.registry.get_by_path(path).and_then(Def::type_id)
+    }
+
+    #[must_use]
+    pub fn function_params(&self, id: FunctionId) -> Option<&'registry [ParamDef]> {
+        self.registry
+            .get(id.def_id())
+            .and_then(Def::function_signature)
+            .map(|signature| signature.params.as_slice())
+    }
+
+    #[must_use]
+    pub fn method_params(&self, id: MethodId) -> Option<&'registry [ParamDef]> {
+        self.registry
+            .get(id.def_id())
+            .and_then(Def::method_signature)
+            .map(|signature| signature.params.as_slice())
+    }
+
+    fn resolve_method(&self, owner: TypeId, name: &str) -> Option<MethodId> {
+        let key = SemanticKey::Method {
+            owner,
+            name: name.to_owned(),
+        };
+        self.registry
+            .id_for_semantic_key(&key)
+            .and_then(|id| self.registry.get(id))
+            .and_then(Def::method_id)
     }
 }
 
@@ -257,6 +328,78 @@ impl Def {
             Self::Field(def) => def.semantic_key.clone(),
             Self::Variant(def) => def.semantic_key.clone(),
             Self::Trait(def) => def.semantic_key.clone(),
+        }
+    }
+
+    #[must_use]
+    pub const fn function_id(&self) -> Option<FunctionId> {
+        match self {
+            Self::Function(def) => Some(def.id),
+            Self::Method(_)
+            | Self::Type(_)
+            | Self::Field(_)
+            | Self::Variant(_)
+            | Self::Trait(_) => None,
+        }
+    }
+
+    #[must_use]
+    pub const fn method_id(&self) -> Option<MethodId> {
+        match self {
+            Self::Method(def) => Some(def.id),
+            Self::Function(_)
+            | Self::Type(_)
+            | Self::Field(_)
+            | Self::Variant(_)
+            | Self::Trait(_) => None,
+        }
+    }
+
+    #[must_use]
+    pub const fn type_id(&self) -> Option<TypeId> {
+        match self {
+            Self::Type(def) => Some(def.id),
+            Self::Function(_)
+            | Self::Method(_)
+            | Self::Field(_)
+            | Self::Variant(_)
+            | Self::Trait(_) => None,
+        }
+    }
+
+    #[must_use]
+    pub const fn field_id(&self) -> Option<FieldId> {
+        match self {
+            Self::Field(def) => Some(def.id),
+            Self::Function(_)
+            | Self::Method(_)
+            | Self::Type(_)
+            | Self::Variant(_)
+            | Self::Trait(_) => None,
+        }
+    }
+
+    #[must_use]
+    pub const fn function_signature(&self) -> Option<&FunctionSignature> {
+        match self {
+            Self::Function(def) => Some(&def.signature),
+            Self::Method(_)
+            | Self::Type(_)
+            | Self::Field(_)
+            | Self::Variant(_)
+            | Self::Trait(_) => None,
+        }
+    }
+
+    #[must_use]
+    pub const fn method_signature(&self) -> Option<&FunctionSignature> {
+        match self {
+            Self::Method(def) => Some(&def.signature),
+            Self::Function(_)
+            | Self::Type(_)
+            | Self::Field(_)
+            | Self::Variant(_)
+            | Self::Trait(_) => None,
         }
     }
 }
@@ -628,6 +771,10 @@ mod tests {
         TypeDef::new(DefPath::ty("script", ["combat"], name))
     }
 
+    fn int_param(name: &str) -> ParamDef {
+        ParamDef::new(name, Some("Int"))
+    }
+
     #[test]
     fn registry_lookup_by_path_and_id_works() {
         let mut registry = DefinitionRegistry::new();
@@ -788,5 +935,75 @@ mod tests {
         assert_ne!(score_debug_name, award_debug_name);
         assert_eq!(score_debug_name.get(), 0);
         assert_eq!(award_debug_name.get(), 1);
+    }
+
+    #[test]
+    fn compile_view_resolves_function_path_and_params() {
+        let mut registry = DefinitionRegistry::new();
+        let path = function_path("score");
+        let signature = FunctionSignature::new([int_param("amount")], Some("Int".to_owned()));
+        let function_id = registry
+            .register_function(FunctionDef::new(path.clone(), signature))
+            .expect("function registration should succeed");
+        let view = registry.compile_view();
+
+        assert_eq!(view.resolve_native_function_path(&path), Some(function_id));
+        assert_eq!(
+            view.function_params(function_id),
+            Some([int_param("amount")].as_slice())
+        );
+        assert_eq!(
+            view.resolve_native_function_path(&type_def("Player").path),
+            None
+        );
+    }
+
+    #[test]
+    fn compile_view_resolves_value_and_host_methods_with_params() {
+        let mut registry = DefinitionRegistry::new();
+        let owner = registry
+            .register_type(type_def("Player"))
+            .expect("type registration should succeed");
+        let method_path = DefPath::method("script", ["combat"], "Player", "grant_exp");
+        let signature = FunctionSignature::new([int_param("amount")], None);
+        let method_id = registry
+            .register_method(MethodDef::new(method_path, owner, signature))
+            .expect("method registration should succeed");
+        let view = registry.compile_view();
+
+        assert_eq!(
+            view.resolve_value_method(owner, "grant_exp"),
+            Some(method_id)
+        );
+        assert_eq!(
+            view.resolve_host_method(owner, "grant_exp"),
+            Some(method_id)
+        );
+        assert_eq!(view.resolve_value_method(owner, "missing"), None);
+        assert_eq!(
+            view.method_params(method_id),
+            Some([int_param("amount")].as_slice())
+        );
+    }
+
+    #[test]
+    fn compile_view_resolves_host_fields_and_types() {
+        let mut registry = DefinitionRegistry::new();
+        let type_path = DefPath::ty("script", ["combat"], "Player");
+        let owner = registry
+            .register_type(TypeDef::new(type_path.clone()))
+            .expect("type registration should succeed");
+        let field_id = registry
+            .register_field(FieldDef::new(
+                DefPath::field("script", ["combat"], "Player", "level"),
+                owner,
+            ))
+            .expect("field registration should succeed");
+        let view = registry.compile_view();
+
+        assert_eq!(view.resolve_type(&type_path), Some(owner));
+        assert_eq!(view.resolve_host_field(owner, "level"), Some(field_id));
+        assert_eq!(view.resolve_host_field(owner, "missing"), None);
+        assert_eq!(view.resolve_type(&function_path("score")), None);
     }
 }

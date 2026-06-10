@@ -1267,7 +1267,7 @@ surface.
 - Definitions can be printed/debugged without embedding strings in instructions.
 - Debug name IDs are stable inside a registry instance.
 
-- [ ] **Task 2.3: Add `RegistryCompileView`**
+- [x] **Task 2.3: Add `RegistryCompileView`**
 
 **Objective:** Prepare to replace `CompilerOptions`.
 
