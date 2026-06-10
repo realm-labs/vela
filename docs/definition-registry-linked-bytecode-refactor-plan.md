@@ -1158,7 +1158,7 @@ surface.
 
 ### Phase 1: Introduce `vela_def`
 
-- [ ] **Task 1.1: Add `vela_def` crate**
+- [x] **Task 1.1: Add `vela_def` crate**
 
 **Objective:** Centralize typed definition identities.
 

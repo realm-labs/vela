@@ -5,6 +5,7 @@ members = [
     "crates/vela_c_api",
     "crates/vela_cli",
     "crates/vela_common",
+    "crates/vela_def",
     "crates/vela_engine",
     "crates/vela_hir",
     "crates/vela_hot_reload",
@@ -30,11 +31,13 @@ quote = "1"
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 syn = { version = "2", features = ["full"] }
+blake3 = "1"
 vela_analysis = { path = "crates/vela_analysis" }
 vela_bytecode = { path = "crates/vela_bytecode" }
 vela_c_api = { path = "crates/vela_c_api" }
 vela_cli = { path = "crates/vela_cli" }
 vela_common = { path = "crates/vela_common" }
+vela_def = { path = "crates/vela_def" }
 vela_engine = { path = "crates/vela_engine" }
 vela_hir = { path = "crates/vela_hir" }
 vela_hot_reload = { path = "crates/vela_hot_reload" }
