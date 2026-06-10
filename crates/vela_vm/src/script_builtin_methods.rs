@@ -9,9 +9,10 @@ use vela_common::standard_ids::{
     ARRAY_POP_METHOD_ID, ARRAY_PUSH_METHOD_ID, MAP_CLEAR_METHOD_ID, MAP_HAS_METHOD_ID,
     MAP_IS_EMPTY_METHOD_ID, MAP_LEN_METHOD_ID, MAP_REMOVE_METHOD_ID, MAP_SET_METHOD_ID,
     OPTION_IS_NONE_METHOD_ID, OPTION_IS_SOME_METHOD_ID, RANGE_IS_EMPTY_METHOD_ID,
-    RANGE_LEN_METHOD_ID, RESULT_IS_ERR_METHOD_ID, RESULT_IS_OK_METHOD_ID, SET_HAS_METHOD_ID,
-    SET_IS_DISJOINT_METHOD_ID, SET_IS_EMPTY_METHOD_ID, SET_IS_SUBSET_METHOD_ID,
-    SET_IS_SUPERSET_METHOD_ID, SET_LEN_METHOD_ID, STRING_IS_EMPTY_METHOD_ID, STRING_LEN_METHOD_ID,
+    RANGE_LEN_METHOD_ID, RESULT_IS_ERR_METHOD_ID, RESULT_IS_OK_METHOD_ID, SET_ADD_METHOD_ID,
+    SET_CLEAR_METHOD_ID, SET_HAS_METHOD_ID, SET_IS_DISJOINT_METHOD_ID, SET_IS_EMPTY_METHOD_ID,
+    SET_IS_SUBSET_METHOD_ID, SET_IS_SUPERSET_METHOD_ID, SET_LEN_METHOD_ID, SET_REMOVE_METHOD_ID,
+    STRING_IS_EMPTY_METHOD_ID, STRING_LEN_METHOD_ID,
 };
 
 pub(crate) fn call(
@@ -125,6 +126,20 @@ pub(crate) fn call_by_id(
     }
     if method_id == MAP_CLEAR_METHOD_ID && map_methods::is_map(receiver, heap.as_deref()) {
         return Some(map_methods::clear(receiver, args, heap.as_deref_mut()));
+    }
+    if method_id == SET_ADD_METHOD_ID && set_methods::is_set(receiver, heap.as_deref()) {
+        return Some(set_methods::add(
+            receiver,
+            args,
+            heap.as_deref_mut(),
+            budget.as_deref_mut(),
+        ));
+    }
+    if method_id == SET_REMOVE_METHOD_ID && set_methods::is_set(receiver, heap.as_deref()) {
+        return Some(set_methods::remove(receiver, args, heap.as_deref_mut()));
+    }
+    if method_id == SET_CLEAR_METHOD_ID && set_methods::is_set(receiver, heap.as_deref()) {
+        return Some(set_methods::clear(receiver, args, heap.as_deref_mut()));
     }
     None
 }

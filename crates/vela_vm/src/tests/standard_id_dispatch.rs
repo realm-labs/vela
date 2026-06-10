@@ -441,6 +441,135 @@ fn call_method_uses_standard_set_method_id_before_name_fallback() {
 }
 
 #[test]
+fn call_method_uses_standard_set_mutator_ids_before_name_fallback() {
+    let mut add_code = CodeObject::new("standard_set_add_method_id", 6);
+    let first = add_code.push_constant(Constant::Int(2));
+    let second = add_code.push_constant(Constant::Int(4));
+    add_code.push_instruction(Instruction::new(InstructionKind::LoadConst {
+        dst: Register(0),
+        constant: first,
+    }));
+    add_code.push_instruction(Instruction::new(InstructionKind::LoadConst {
+        dst: Register(1),
+        constant: second,
+    }));
+    add_code.push_instruction(Instruction::new(InstructionKind::MakeArray {
+        dst: Register(2),
+        elements: vec![Register(0)],
+    }));
+    add_code.push_instruction(Instruction::new(InstructionKind::CallNative {
+        dst: Some(Register(3)),
+        name: "missing::set_from_array".into(),
+        native: Some(vela_common::standard_ids::SET_FROM_ARRAY_FUNCTION_ID),
+        args: vec![Register(2)],
+    }));
+    add_code.push_instruction(Instruction::new(InstructionKind::CallMethod {
+        dst: Register(4),
+        receiver: Register(3),
+        method: "missing_add".into(),
+        value_method_id: Some(vela_common::standard_ids::SET_ADD_METHOD_ID),
+        args: vec![vela_bytecode::CallArgument::Register(Register(1))],
+    }));
+    add_code.push_instruction(Instruction::new(InstructionKind::CallMethod {
+        dst: Register(5),
+        receiver: Register(3),
+        method: "missing_has".into(),
+        value_method_id: Some(vela_common::standard_ids::SET_HAS_METHOD_ID),
+        args: vec![vela_bytecode::CallArgument::Register(Register(1))],
+    }));
+    add_code.push_instruction(Instruction::new(InstructionKind::Return {
+        src: Register(5),
+    }));
+    let mut vm = Vm::new();
+    vm.register_standard_natives();
+    assert_eq!(vm.run(&add_code), Ok(OwnedValue::Bool(true)));
+
+    let mut remove_code = CodeObject::new("standard_set_remove_method_id", 6);
+    let first = remove_code.push_constant(Constant::Int(2));
+    let second = remove_code.push_constant(Constant::Int(4));
+    remove_code.push_instruction(Instruction::new(InstructionKind::LoadConst {
+        dst: Register(0),
+        constant: first,
+    }));
+    remove_code.push_instruction(Instruction::new(InstructionKind::LoadConst {
+        dst: Register(1),
+        constant: second,
+    }));
+    remove_code.push_instruction(Instruction::new(InstructionKind::MakeArray {
+        dst: Register(2),
+        elements: vec![Register(0), Register(1)],
+    }));
+    remove_code.push_instruction(Instruction::new(InstructionKind::CallNative {
+        dst: Some(Register(3)),
+        name: "missing::set_from_array".into(),
+        native: Some(vela_common::standard_ids::SET_FROM_ARRAY_FUNCTION_ID),
+        args: vec![Register(2)],
+    }));
+    remove_code.push_instruction(Instruction::new(InstructionKind::CallMethod {
+        dst: Register(4),
+        receiver: Register(3),
+        method: "missing_remove".into(),
+        value_method_id: Some(vela_common::standard_ids::SET_REMOVE_METHOD_ID),
+        args: vec![vela_bytecode::CallArgument::Register(Register(1))],
+    }));
+    remove_code.push_instruction(Instruction::new(InstructionKind::CallMethod {
+        dst: Register(5),
+        receiver: Register(3),
+        method: "missing_has".into(),
+        value_method_id: Some(vela_common::standard_ids::SET_HAS_METHOD_ID),
+        args: vec![vela_bytecode::CallArgument::Register(Register(1))],
+    }));
+    remove_code.push_instruction(Instruction::new(InstructionKind::Return {
+        src: Register(5),
+    }));
+    let mut vm = Vm::new();
+    vm.register_standard_natives();
+    assert_eq!(vm.run(&remove_code), Ok(OwnedValue::Bool(false)));
+
+    let mut clear_code = CodeObject::new("standard_set_clear_method_id", 6);
+    let first = clear_code.push_constant(Constant::Int(2));
+    let second = clear_code.push_constant(Constant::Int(4));
+    clear_code.push_instruction(Instruction::new(InstructionKind::LoadConst {
+        dst: Register(0),
+        constant: first,
+    }));
+    clear_code.push_instruction(Instruction::new(InstructionKind::LoadConst {
+        dst: Register(1),
+        constant: second,
+    }));
+    clear_code.push_instruction(Instruction::new(InstructionKind::MakeArray {
+        dst: Register(2),
+        elements: vec![Register(0), Register(1)],
+    }));
+    clear_code.push_instruction(Instruction::new(InstructionKind::CallNative {
+        dst: Some(Register(3)),
+        name: "missing::set_from_array".into(),
+        native: Some(vela_common::standard_ids::SET_FROM_ARRAY_FUNCTION_ID),
+        args: vec![Register(2)],
+    }));
+    clear_code.push_instruction(Instruction::new(InstructionKind::CallMethod {
+        dst: Register(4),
+        receiver: Register(3),
+        method: "missing_clear".into(),
+        value_method_id: Some(vela_common::standard_ids::SET_CLEAR_METHOD_ID),
+        args: Vec::new(),
+    }));
+    clear_code.push_instruction(Instruction::new(InstructionKind::CallMethod {
+        dst: Register(5),
+        receiver: Register(3),
+        method: "missing_len".into(),
+        value_method_id: Some(vela_common::standard_ids::SET_LEN_METHOD_ID),
+        args: Vec::new(),
+    }));
+    clear_code.push_instruction(Instruction::new(InstructionKind::Return {
+        src: Register(5),
+    }));
+    let mut vm = Vm::new();
+    vm.register_standard_natives();
+    assert_eq!(vm.run(&clear_code), Ok(OwnedValue::Int(0)));
+}
+
+#[test]
 fn call_method_uses_standard_collection_predicate_ids_before_name_fallback() {
     let mut array_code = CodeObject::new("standard_array_contains_method_id", 4);
     let first = array_code.push_constant(Constant::Int(2));

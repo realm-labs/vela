@@ -245,6 +245,8 @@ fn main() {
     names.pop();
     rewards.set("xp", 6);
     rewards.remove("xp");
+    tags.add("bonus");
+    tags.remove("bonus");
     if names.contains("gold")
         && rewards.has("gold")
         && tags.has("daily")
@@ -254,6 +256,7 @@ fn main() {
     {
         names.clear();
         rewards.clear();
+        tags.clear();
         return names.len() + rewards.len() + tags.len();
     }
     return 0;
@@ -289,6 +292,9 @@ fn main() {
     assert!(value_methods.contains(&("remove", Some(crate::standard::MAP_REMOVE_METHOD_ID))));
     assert!(value_methods.contains(&("clear", Some(crate::standard::MAP_CLEAR_METHOD_ID))));
     assert!(value_methods.contains(&("has", Some(crate::standard::SET_HAS_METHOD_ID))));
+    assert!(value_methods.contains(&("add", Some(crate::standard::SET_ADD_METHOD_ID))));
+    assert!(value_methods.contains(&("remove", Some(crate::standard::SET_REMOVE_METHOD_ID))));
+    assert!(value_methods.contains(&("clear", Some(crate::standard::SET_CLEAR_METHOD_ID))));
     assert!(value_methods.contains(&("is_subset", Some(crate::standard::SET_IS_SUBSET_METHOD_ID))));
     assert!(value_methods.contains(&(
         "is_superset",

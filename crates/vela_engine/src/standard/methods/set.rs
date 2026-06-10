@@ -3,8 +3,9 @@ use vela_reflect::registry::MethodDesc;
 
 use super::{MethodSpec, ParamSpec, descs};
 use crate::standard::ids::{
-    SET_HAS_METHOD_ID, SET_IS_DISJOINT_METHOD_ID, SET_IS_EMPTY_METHOD_ID, SET_IS_SUBSET_METHOD_ID,
-    SET_IS_SUPERSET_METHOD_ID, SET_LEN_METHOD_ID,
+    SET_ADD_METHOD_ID, SET_CLEAR_METHOD_ID, SET_HAS_METHOD_ID, SET_IS_DISJOINT_METHOD_ID,
+    SET_IS_EMPTY_METHOD_ID, SET_IS_SUBSET_METHOD_ID, SET_IS_SUPERSET_METHOD_ID, SET_LEN_METHOD_ID,
+    SET_REMOVE_METHOD_ID,
 };
 
 pub(crate) fn set_method_descs() -> Vec<MethodDesc> {
@@ -34,14 +35,14 @@ const SET_METHODS: &[MethodSpec] = &[
         "Returns true when a value exists.",
     ),
     MethodSpec::new(
-        set_id(3),
+        SET_ADD_METHOD_ID,
         "add",
         &[ParamSpec::new("value", "any")],
         "bool",
         "Adds a value and returns whether it was new.",
     ),
     MethodSpec::new(
-        set_id(4),
+        SET_REMOVE_METHOD_ID,
         "remove",
         &[ParamSpec::new("value", "any")],
         "bool",
@@ -54,7 +55,13 @@ const SET_METHODS: &[MethodSpec] = &[
         "null",
         "Adds all values from another set::",
     ),
-    MethodSpec::new(set_id(6), "clear", &[], "null", "Removes all values."),
+    MethodSpec::new(
+        SET_CLEAR_METHOD_ID,
+        "clear",
+        &[],
+        "null",
+        "Removes all values.",
+    ),
     MethodSpec::new(set_id(7), "values", &[], "array", "Returns set values."),
     MethodSpec::new(
         set_id(8),
