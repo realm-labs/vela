@@ -342,6 +342,56 @@ fn main() {
 }
 
 #[test]
+fn engine_compiler_options_emit_standard_string_split_method_ids() {
+    let engine = Engine::builder()
+        .with_standard_natives()
+        .build()
+        .expect("engine should build with standard natives");
+    let program = compile_program_source_with_options(
+        SourceId::new(1),
+        r#"
+fn main() {
+    let pair = "reward:gold".split_once(":").unwrap_or(["", ""]);
+    return "reward:gold".split(":").len() == 2
+        && pair[1] == "gold"
+        && "reward\ngold".split_lines().len() == 2
+        && "reward gold".split_whitespace().len() == 2;
+}
+"#,
+        &engine.compiler_options(),
+    )
+    .expect("standard string split methods should compile");
+    let main = program.function("main").expect("main should compile");
+
+    let value_methods = main
+        .instructions
+        .iter()
+        .filter_map(|instruction| match &instruction.kind {
+            InstructionKind::CallMethod {
+                method,
+                value_method_id,
+                ..
+            } => Some((method.as_str(), *value_method_id)),
+            _ => None,
+        })
+        .collect::<Vec<_>>();
+
+    assert!(value_methods.contains(&("split", Some(crate::standard::STRING_SPLIT_METHOD_ID))));
+    assert!(value_methods.contains(&(
+        "split_once",
+        Some(crate::standard::STRING_SPLIT_ONCE_METHOD_ID)
+    )));
+    assert!(value_methods.contains(&(
+        "split_lines",
+        Some(crate::standard::STRING_SPLIT_LINES_METHOD_ID)
+    )));
+    assert!(value_methods.contains(&(
+        "split_whitespace",
+        Some(crate::standard::STRING_SPLIT_WHITESPACE_METHOD_ID)
+    )));
+}
+
+#[test]
 fn engine_compiler_options_emit_standard_range_method_ids() {
     let engine = Engine::builder()
         .with_standard_natives()

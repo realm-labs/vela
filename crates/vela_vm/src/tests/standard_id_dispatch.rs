@@ -275,6 +275,42 @@ fn call_method_uses_standard_string_option_ids_before_name_fallback() {
     );
 }
 
+#[test]
+fn call_method_uses_standard_string_split_ids_before_name_fallback() {
+    assert_eq!(
+        run_string_transform_with_args_by_id(
+            vela_common::standard_ids::STRING_SPLIT_METHOD_ID,
+            "reward:gold",
+            &[Constant::String(":".to_owned())],
+        ),
+        Ok(OwnedValue::array(["reward", "gold"]))
+    );
+    assert_eq!(
+        run_string_transform_with_args_by_id(
+            vela_common::standard_ids::STRING_SPLIT_ONCE_METHOD_ID,
+            "reward:gold",
+            &[Constant::String(":".to_owned())],
+        ),
+        Ok(option_some(OwnedValue::array(["reward", "gold"])))
+    );
+    assert_eq!(
+        run_string_transform_with_args_by_id(
+            vela_common::standard_ids::STRING_SPLIT_LINES_METHOD_ID,
+            "reward\ngold",
+            &[],
+        ),
+        Ok(OwnedValue::array(["reward", "gold"]))
+    );
+    assert_eq!(
+        run_string_transform_with_args_by_id(
+            vela_common::standard_ids::STRING_SPLIT_WHITESPACE_METHOD_ID,
+            "reward gold",
+            &[],
+        ),
+        Ok(OwnedValue::array(["reward", "gold"]))
+    );
+}
+
 fn option_some(value: OwnedValue) -> OwnedValue {
     OwnedValue::enum_variant("Option", "Some", [("0", value)])
 }

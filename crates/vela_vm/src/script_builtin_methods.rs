@@ -15,9 +15,10 @@ use vela_common::standard_ids::{
     STRING_CHAR_AT_METHOD_ID, STRING_CONTAINS_METHOD_ID, STRING_ENDS_WITH_METHOD_ID,
     STRING_FIND_METHOD_ID, STRING_IS_EMPTY_METHOD_ID, STRING_LEN_METHOD_ID,
     STRING_REPEAT_METHOD_ID, STRING_REPLACE_METHOD_ID, STRING_SLICE_METHOD_ID,
-    STRING_STARTS_WITH_METHOD_ID, STRING_STRIP_PREFIX_METHOD_ID, STRING_STRIP_SUFFIX_METHOD_ID,
-    STRING_TO_LOWER_METHOD_ID, STRING_TO_UPPER_METHOD_ID, STRING_TRIM_END_METHOD_ID,
-    STRING_TRIM_METHOD_ID, STRING_TRIM_START_METHOD_ID,
+    STRING_SPLIT_LINES_METHOD_ID, STRING_SPLIT_METHOD_ID, STRING_SPLIT_ONCE_METHOD_ID,
+    STRING_SPLIT_WHITESPACE_METHOD_ID, STRING_STARTS_WITH_METHOD_ID, STRING_STRIP_PREFIX_METHOD_ID,
+    STRING_STRIP_SUFFIX_METHOD_ID, STRING_TO_LOWER_METHOD_ID, STRING_TO_UPPER_METHOD_ID,
+    STRING_TRIM_END_METHOD_ID, STRING_TRIM_METHOD_ID, STRING_TRIM_START_METHOD_ID,
 };
 
 pub(crate) fn call(
@@ -217,6 +218,32 @@ pub(crate) fn call_by_id(
         && crate::string_methods::is_string(receiver, heap.as_deref())
     {
         return Some(crate::string_methods::char_at(receiver, args, heap, budget));
+    }
+    if method_id == STRING_SPLIT_METHOD_ID
+        && crate::string_methods::is_string(receiver, heap.as_deref())
+    {
+        return Some(crate::string_methods::split(receiver, args, heap, budget));
+    }
+    if method_id == STRING_SPLIT_ONCE_METHOD_ID
+        && crate::string_methods::is_string(receiver, heap.as_deref())
+    {
+        return Some(crate::string_methods::split_once(
+            receiver, args, heap, budget,
+        ));
+    }
+    if method_id == STRING_SPLIT_LINES_METHOD_ID
+        && crate::string_methods::is_string(receiver, heap.as_deref())
+    {
+        return Some(crate::string_methods::split_lines(
+            receiver, args, heap, budget,
+        ));
+    }
+    if method_id == STRING_SPLIT_WHITESPACE_METHOD_ID
+        && crate::string_methods::is_string(receiver, heap.as_deref())
+    {
+        return Some(crate::string_methods::split_whitespace(
+            receiver, args, heap, budget,
+        ));
     }
     None
 }
