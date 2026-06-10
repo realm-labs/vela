@@ -220,8 +220,10 @@ Cranelift JIT.
   array/map/range/index/iterator/global/host operations, and record slot
   construction/read/write plus enum construction/slot/tag operations without
   rebuilding unlinked code; linked closure opcodes now carry linked function
-  handles through closure values, leaving host-method `CallMethod` dispatch as
-  the remaining linked VM instruction gap before Task 6.1 is complete.
+  handles through closure values, and linked host-method `CallMethod` dispatch
+  routes through HostAccess. All linked instruction variants now have explicit
+  VM execution paths; the remaining Task 6.1 gaps are linked-code entrypoint
+  ownership and ProgramVersion/runtime API cleanup.
   Script function dispatch is being isolated behind a focused call boundary so
   later resolved-target work does not grow the main VM loop or change current
   hot-reload rename semantics. Closure creation and invocation now have a

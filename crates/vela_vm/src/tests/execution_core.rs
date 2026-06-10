@@ -353,6 +353,77 @@ fn linked_program_calls_script_method_by_dispatch_handle() {
 }
 
 #[test]
+fn linked_program_calls_host_method_by_dispatch_handle() {
+    let host_ref = player_ref(3);
+    let method_id = HostMethodId::new(8);
+    let mut program = vela_bytecode::LinkedProgram::new();
+    let main_name = program.intern_debug_name("main");
+    let player_name = program.intern_debug_name("player");
+    let method_name = program.intern_debug_name("debug_only_host_method");
+    let method = program.push_method_dispatch(vela_bytecode::LinkedMethodDispatch::new(
+        method_name,
+        vela_bytecode::LinkedMethodDispatchKind::Host { method_id },
+    ));
+
+    let mut code =
+        vela_bytecode::LinkedCodeObject::new(main_name, 3).with_params(vec![player_name]);
+    let amount = code.push_constant(Constant::Int(20));
+    code.push_instruction(vela_bytecode::linked::Instruction::new(
+        vela_bytecode::linked::InstructionKind::LoadConst {
+            dst: Register(1),
+            constant: amount,
+        },
+    ));
+    code.push_instruction(vela_bytecode::linked::Instruction::new(
+        vela_bytecode::linked::InstructionKind::CallMethod {
+            dst: Register(2),
+            receiver: Register(0),
+            dispatch: method,
+            debug_name: method_name,
+            args: vec![vela_bytecode::CallArgument::Register(Register(1))],
+        },
+    ));
+    code.push_instruction(vela_bytecode::linked::Instruction::new(
+        vela_bytecode::linked::InstructionKind::Return { src: Register(2) },
+    ));
+    let main = program.push_function(code);
+    program.set_entry_point(main_name, main);
+
+    let mut adapter = host_adapter(host_ref, HostValue::Int(9));
+    adapter.insert_method_return(method_id, HostValue::Int(12));
+    let mut access = HostAccess::new();
+    let mut budget = ExecutionBudget::unbounded();
+    let result = {
+        let mut host = HostExecution {
+            adapter: &mut adapter,
+            access: &mut access,
+            script_globals: None,
+        };
+        let code = program.function(main).expect("main linked code exists");
+        Vm::new().execute_linked_call(
+            crate::linked_execution::LinkedExecutionCall {
+                code,
+                program: &program,
+                captures: &[],
+                args: &[Value::HostRef(host_ref)],
+                call_site: None,
+                call_site_offset: None,
+                inline_caches: None,
+            },
+            Some(&mut host),
+            None,
+            Some(&mut budget),
+        )
+    };
+
+    assert_eq!(result, Ok(Value::Int(12)));
+    assert_eq!(
+        adapter.method_calls(),
+        &[(HostPath::new(host_ref), method_id, vec![HostValue::Int(20)])]
+    );
+}
+
+#[test]
 fn linked_program_calls_script_function_by_dense_handle() {
     let mut program = vela_bytecode::LinkedProgram::new();
     let main_name = program.intern_debug_name("main");

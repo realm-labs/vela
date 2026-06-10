@@ -518,11 +518,26 @@ impl Vm {
                                 },
                             )?;
                         }
-                        LinkedMethodDispatchKind::Host { .. } => {
-                            return Err(VmError::new(VmErrorKind::UnsupportedLinkedInstruction {
-                                opcode: "CallMethod(Host)",
-                            })
-                            .with_source_span_if_absent(instruction.span));
+                        LinkedMethodDispatchKind::Host { method_id } => {
+                            let return_value = host_access::execute_host_root_method_call(
+                                host_access::HostAccessRuntime {
+                                    frame: &frame,
+                                    heap: heap.as_deref_mut(),
+                                    budget: budget.as_deref_mut(),
+                                    host: host.as_deref_mut(),
+                                    inline_caches: call.inline_caches,
+                                    source_span: instruction.span,
+                                },
+                                *receiver,
+                                host_access::HostRootMethodCall {
+                                    method: *method_id,
+                                    args: values.as_slice(),
+                                    wants_return: true,
+                                },
+                            )?;
+                            if let Some(return_value) = return_value {
+                                frame.write(*dst, return_value)?;
+                            }
                         }
                     }
                 }

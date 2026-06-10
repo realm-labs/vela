@@ -223,6 +223,12 @@ pub(crate) struct HostCallPlan<'a> {
     pub(crate) cache_site: CacheSiteId,
 }
 
+pub(crate) struct HostRootMethodCall<'a> {
+    pub(crate) method: HostMethodId,
+    pub(crate) args: &'a [Value],
+    pub(crate) wants_return: bool,
+}
+
 pub(crate) fn execute_host_call(
     runtime: HostAccessRuntime<'_, '_, '_>,
     root: Register,
@@ -264,6 +270,47 @@ pub(crate) fn execute_host_call(
     let value = host.access.call_resolved(
         host.adapter,
         cached_access,
+        instance,
+        call.method,
+        &values,
+        runtime.source_span,
+    )?;
+    if call.wants_return {
+        runtime_value_from_host(value, runtime.heap, runtime.budget).map(Some)
+    } else {
+        Ok(None)
+    }
+}
+
+pub(crate) fn execute_host_root_method_call(
+    runtime: HostAccessRuntime<'_, '_, '_>,
+    receiver: Register,
+    call: HostRootMethodCall<'_>,
+) -> VmResult<Option<Value>> {
+    let root = expect_host_ref(runtime.frame.read(receiver)?, "host_call")?;
+    let values = call
+        .args
+        .iter()
+        .map(|value| value_to_host(value, "host_call", runtime.heap.as_deref()))
+        .collect::<VmResult<Vec<_>>>()?;
+    let target = HostTargetPlan::new(root.type_id);
+    let dynamic_args = [];
+    let instance = HostTargetInstance::new(root, &target, &dynamic_args);
+    let host = runtime.host.ok_or_else(|| {
+        VmError::new(VmErrorKind::TypeMismatch {
+            operation: "host context",
+        })
+    })?;
+    let resolved = host
+        .adapter
+        .resolve_host_access(HostAccessSpec::new(
+            HostAccessOp::Call(call.method),
+            &target,
+        ))
+        .map_err(|error| error.with_source_span_if_absent(runtime.source_span))?;
+    let value = host.access.call_resolved(
+        host.adapter,
+        resolved,
         instance,
         call.method,
         &values,
