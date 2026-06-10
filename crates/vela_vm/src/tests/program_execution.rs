@@ -297,7 +297,7 @@ fn main() {
 }
 
 #[test]
-fn runs_program_image_script_function_calls() {
+fn runs_linked_compiled_script_function_calls() {
     let program = compile_program_source(
         SourceId::new(1),
         r#"
@@ -312,10 +312,12 @@ fn main() {
 "#,
     )
     .expect("compile program source");
-    let image = ProgramImage::from_program(&program);
+    let linked = Linker::new()
+        .link_program(&program)
+        .expect("link compiled program");
 
     assert_eq!(
-        Vm::new().run_program_image(&image, "main", &[]),
+        Vm::new().run_linked_program(&linked, "main", &[]),
         Ok(OwnedValue::Int(30))
     );
 }
@@ -382,7 +384,7 @@ fn main() {
 }
 
 #[test]
-fn runs_program_image_lambdas_with_captures_after_outer_return() {
+fn program_image_flattens_lambdas_and_linked_program_runs_captures_after_outer_return() {
     let program = compile_program_source(
         SourceId::new(1),
         r#"
@@ -398,6 +400,9 @@ fn main() {
     )
     .expect("compile captured lambda");
     let image = ProgramImage::from_program(&program);
+    let linked = Linker::new()
+        .link_program(&program)
+        .expect("link captured lambda program");
     let make_adder = image
         .function_by_name("make_adder")
         .expect("make_adder image function");
@@ -421,11 +426,7 @@ fn main() {
     );
 
     assert_eq!(
-        Vm::new().run_program_image(&image, "main", &[]),
-        Ok(OwnedValue::Int(15))
-    );
-    assert_eq!(
-        Vm::new().run_program(&image.to_program(), "main", &[]),
+        Vm::new().run_linked_program(&linked, "main", &[]),
         Ok(OwnedValue::Int(15))
     );
 }

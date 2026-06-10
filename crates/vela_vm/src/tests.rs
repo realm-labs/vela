@@ -9,7 +9,8 @@ use vela_bytecode::compiler::{
     compile_program_source_with_registry,
 };
 use vela_bytecode::{
-    CacheSiteKind, Constant, ConstantId, InstructionOffset, ProgramImage, UnlinkedInstruction,
+    CacheSiteKind, Constant, ConstantId, InstructionOffset, Linker, ProgramImage,
+    UnlinkedInstruction,
 };
 use vela_common::{HostMethodId, HostObjectId, HostTypeId, SourceId};
 use vela_def::{FieldId, FunctionId, MethodId, TypeId, VariantId};

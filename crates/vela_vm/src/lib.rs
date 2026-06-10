@@ -76,8 +76,7 @@ use small_storage::SmallStorage;
 use try_propagation::{TryPropagation, try_propagate_value};
 use vela_bytecode::{
     CacheSiteId, Constant, HostTargetPlanId, InstructionOffset, LinkedCodeObject, LinkedProgram,
-    ProgramImage, Register, UnlinkedCodeObject, UnlinkedInstructionKind, UnlinkedProgram,
-    UnlinkedProgramCode,
+    Register, UnlinkedCodeObject, UnlinkedInstructionKind, UnlinkedProgram, UnlinkedProgramCode,
 };
 use vela_common::{GlobalSlot, HostTypeId, Span};
 use vela_def::{DefPath, FunctionId};
@@ -438,27 +437,6 @@ impl Vm {
         value_to_owned(&result, Some(&heap_execution))
     }
 
-    pub fn run_program_image(
-        &self,
-        image: &ProgramImage,
-        entry: &str,
-        args: &[OwnedValue],
-    ) -> VmResult<OwnedValue> {
-        let code = program_entry(image, entry)?;
-        let mut heap = ScriptHeap::new();
-        let mut heap_execution = HeapExecution::new(&mut heap);
-        let args = owned_args_to_runtime(args, &mut heap_execution, None)?;
-        let result = self.execute(
-            code,
-            Some(image),
-            &args,
-            None,
-            Some(&mut heap_execution),
-            None,
-        )?;
-        value_to_owned(&result, Some(&heap_execution))
-    }
-
     pub fn run_linked_program(
         &self,
         program: &LinkedProgram,
@@ -549,28 +527,6 @@ impl Vm {
         owned_heap_result(result, &mut heap_execution, budget)
     }
 
-    pub fn run_program_image_with_budget(
-        &self,
-        image: &ProgramImage,
-        entry: &str,
-        args: &[OwnedValue],
-        budget: &mut ExecutionBudget,
-    ) -> VmResult<OwnedValue> {
-        let code = program_entry(image, entry)?;
-        let mut heap = ScriptHeap::new();
-        let mut heap_execution = HeapExecution::new(&mut heap);
-        let args = owned_args_to_runtime(args, &mut heap_execution, Some(budget))?;
-        let result = self.execute(
-            code,
-            Some(image),
-            &args,
-            None,
-            Some(&mut heap_execution),
-            Some(budget),
-        );
-        owned_heap_result(result, &mut heap_execution, budget)
-    }
-
     pub fn run_program_with_managed_heap_and_budget(
         &self,
         program: &UnlinkedProgram,
@@ -589,16 +545,6 @@ impl Vm {
     ) -> VmResult<Value> {
         let code = program_entry(program, entry)?;
         self.execute(code, Some(program), args, None, None, None)
-    }
-
-    pub fn run_program_image_runtime(
-        &self,
-        image: &ProgramImage,
-        entry: &str,
-        args: &[Value],
-    ) -> VmResult<Value> {
-        let code = program_entry(image, entry)?;
-        self.execute(code, Some(image), args, None, None, None)
     }
 
     pub fn run_program_runtime_with_budget(
