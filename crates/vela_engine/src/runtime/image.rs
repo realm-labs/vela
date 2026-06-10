@@ -135,6 +135,23 @@ impl RuntimeImage {
         self.version_id
     }
 
+    #[cfg(test)]
+    pub(super) fn from_parts_for_test(
+        engine: Engine,
+        program_image: ProgramImage,
+        linked_program: Option<LinkedProgram>,
+    ) -> Self {
+        let layout = RuntimeImageLayout::from_global_names(program_image.global_names());
+        Self {
+            engine,
+            program_image,
+            linked_program,
+            version_id: None,
+            layout,
+            profile: None,
+        }
+    }
+
     #[must_use]
     pub fn into_shared(self) -> SharedImage {
         SharedImage::from_arc(Arc::new(self))

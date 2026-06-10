@@ -22,8 +22,8 @@ use vela_vm::heap::{HeapValue, ScriptHeap};
 use vela_vm::owned_value::OwnedValue;
 use vela_vm::value::Value;
 use vela_vm::{
-    PersistentHeapExecution, ProgramImageHostCall, RuntimeCodeCall, RuntimeMethodCall,
-    ScriptGlobalValues, owned_to_persistent_value, persistent_value_to_owned,
+    LinkedProgramHostCall, PersistentHeapExecution, ProgramImageHostCall, RuntimeCodeCall,
+    RuntimeMethodCall, ScriptGlobalValues, owned_to_persistent_value, persistent_value_to_owned,
 };
 
 use crate::engine::Engine;
@@ -526,6 +526,20 @@ where
         };
         if options.managed_heap || !self.state.script_globals.is_empty() {
             let roots = self.state.script_globals.roots();
+            if let Some(linked_program) = self.image.linked_program() {
+                return vm.run_linked_program_host_call(LinkedProgramHostCall {
+                    program: linked_program,
+                    entry,
+                    args,
+                    host: &mut host,
+                    persistent: PersistentHeapExecution {
+                        heap: &mut self.state.script_globals.heap,
+                        roots: &roots,
+                    },
+                    budget: &mut budget,
+                    inline_caches: Some(&self.state.inline_caches),
+                });
+            }
             vm.run_program_image_host_call(ProgramImageHostCall {
                 image: self.image.program_image(),
                 entry,
@@ -539,6 +553,16 @@ where
                 inline_caches: Some(&self.state.inline_caches),
             })
         } else {
+            if let Some(linked_program) = self.image.linked_program() {
+                return vm.run_linked_program_with_host_budget_and_caches(
+                    linked_program,
+                    entry,
+                    args,
+                    &mut host,
+                    &mut budget,
+                    Some(&self.state.inline_caches),
+                );
+            }
             vm.run_program_image_with_host_budget_and_caches(
                 self.image.program_image(),
                 entry,
@@ -1010,6 +1034,68 @@ fn unknown_function(name: String) -> VmError {
 
 fn unknown_method(method: String) -> VmError {
     VmError::new(VmErrorKind::UnknownMethod { method })
+}
+
+#[cfg(test)]
+mod tests {
+    use vela_bytecode::linked::{Instruction, InstructionKind};
+    use vela_bytecode::script_methods::ScriptMethodTable;
+    use vela_bytecode::{Constant, LinkedCodeObject, LinkedProgram, ProgramImage, Register};
+    use vela_host::access::HostAccess;
+    use vela_host::mock::MockStateAdapter;
+    use vela_vm::owned_value::OwnedValue;
+
+    use crate::engine::Engine;
+
+    use super::{CallOptions, OwnedImage, RuntimeImage, RuntimeImpl, RuntimeState};
+
+    #[test]
+    fn call_raw_prefers_linked_program_over_legacy_program_image() {
+        for options in [
+            CallOptions::unbounded(),
+            CallOptions::unbounded().with_managed_heap(false),
+        ] {
+            let mut runtime = linked_only_runtime();
+            let mut adapter = MockStateAdapter::new();
+            let mut access = HostAccess::new();
+
+            let result = runtime.call_raw("main", &[], options, &mut adapter, &mut access);
+
+            assert_eq!(result, Ok(OwnedValue::Int(7)));
+        }
+    }
+
+    fn linked_only_runtime() -> RuntimeImpl<OwnedImage> {
+        let engine = Engine::builder().build().expect("engine should build");
+        let program_image = ProgramImage::from_parts(
+            std::iter::empty::<vela_bytecode::UnlinkedCodeObject>(),
+            std::iter::empty::<String>(),
+            ScriptMethodTable::new(),
+            None,
+        );
+        let mut linked_program = LinkedProgram::new();
+        let main_name = linked_program.intern_debug_name("main");
+        let mut code = LinkedCodeObject::new(main_name, 1);
+        let value = code.push_constant(Constant::Int(7));
+        code.push_instruction(Instruction::new(InstructionKind::LoadConst {
+            dst: Register(0),
+            constant: value,
+        }));
+        code.push_instruction(Instruction::new(InstructionKind::Return {
+            src: Register(0),
+        }));
+        let main = linked_program.push_function(code);
+        linked_program.set_entry_point(main_name, main);
+
+        let image = RuntimeImage::from_parts_for_test(engine, program_image, Some(linked_program));
+        let image = OwnedImage::from_image(image);
+        let state = RuntimeState::for_image(&image);
+        RuntimeImpl {
+            image,
+            hot_reload: None,
+            state,
+        }
+    }
 }
 
 #[derive(Clone, Debug, PartialEq)]

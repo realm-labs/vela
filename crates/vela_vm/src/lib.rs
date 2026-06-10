@@ -263,6 +263,16 @@ pub struct ProgramImageHostCall<'image, 'entry, 'args, 'host, 'heap, 'roots, 'bu
     pub inline_caches: Option<&'caches dyn VmInlineCaches>,
 }
 
+pub struct LinkedProgramHostCall<'program, 'entry, 'args, 'host, 'heap, 'roots, 'budget, 'caches> {
+    pub program: &'program LinkedProgram,
+    pub entry: &'entry str,
+    pub args: &'args [OwnedValue],
+    pub host: &'host mut HostExecution<'host>,
+    pub persistent: PersistentHeapExecution<'heap, 'roots>,
+    pub budget: &'budget mut ExecutionBudget,
+    pub inline_caches: Option<&'caches dyn VmInlineCaches>,
+}
+
 impl Vm {
     #[must_use]
     pub fn new() -> Self {
@@ -491,6 +501,36 @@ impl Vm {
                 inline_caches: None,
             },
             None,
+            Some(&mut heap_execution),
+            Some(budget),
+        );
+        owned_heap_result(result, &mut heap_execution, budget)
+    }
+
+    pub fn run_linked_program_with_host_budget_and_caches(
+        &self,
+        program: &LinkedProgram,
+        entry: &str,
+        args: &[OwnedValue],
+        host: &mut HostExecution<'_>,
+        budget: &mut ExecutionBudget,
+        inline_caches: Option<&dyn VmInlineCaches>,
+    ) -> VmResult<OwnedValue> {
+        let code = linked_program_entry(program, entry)?;
+        let mut heap = ScriptHeap::new();
+        let mut heap_execution = HeapExecution::new(&mut heap);
+        let args = owned_args_to_runtime(args, &mut heap_execution, Some(budget))?;
+        let result = self.execute_linked_call(
+            linked_execution::LinkedExecutionCall {
+                code,
+                program,
+                captures: &[],
+                args: &args,
+                call_site: None,
+                call_site_offset: None,
+                inline_caches,
+            },
+            Some(host),
             Some(&mut heap_execution),
             Some(budget),
         );
@@ -803,6 +843,40 @@ impl Vm {
             ExecutionCall {
                 code,
                 program: Some(call.image),
+                captures: &[],
+                args: &args,
+                call_site: None,
+                call_site_offset: None,
+                inline_caches: call.inline_caches,
+            },
+            Some(call.host),
+            Some(&mut heap_execution),
+            Some(call.budget),
+        );
+        let result = result.and_then(|value| value_to_owned(&value, Some(&heap_execution)));
+        let mut roots = Vec::new();
+        call.persistent
+            .roots
+            .iter()
+            .for_each(|value| value.trace_heap_refs(&mut roots));
+        heap_execution
+            .heap
+            .collect_full_with_budget(&roots, Some(call.budget));
+        result
+    }
+
+    pub fn run_linked_program_host_call(
+        &self,
+        call: LinkedProgramHostCall<'_, '_, '_, '_, '_, '_, '_, '_>,
+    ) -> VmResult<OwnedValue> {
+        let code = linked_program_entry(call.program, call.entry)?;
+        let mut heap_execution = HeapExecution::new(call.persistent.heap);
+        let args = owned_args_to_runtime(call.args, &mut heap_execution, Some(call.budget))?;
+        heap_execution.protect_values(call.persistent.roots);
+        let result = self.execute_linked_call(
+            linked_execution::LinkedExecutionCall {
+                code,
+                program: call.program,
                 captures: &[],
                 args: &args,
                 call_site: None,
