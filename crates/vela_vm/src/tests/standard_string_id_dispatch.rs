@@ -1,11 +1,11 @@
 use super::*;
 use crate::owned_value::OwnedValue;
 
-fn std_method_id(owner: &str, name: &str) -> vela_common::HostMethodId {
+fn std_method_id(owner: &str, name: &str) -> vela_def::MethodId {
     let Some(id) = vela_stdlib::std_method_id(owner, name) else {
         panic!("missing standard method identity for {owner}::{name}");
     };
-    vela_common::HostMethodId::new(id.get())
+    id
 }
 
 #[test]
@@ -25,7 +25,7 @@ fn call_method_uses_standard_string_predicate_ids_before_name_fallback() {
 }
 
 fn run_string_predicate_by_id(
-    method_id: vela_common::HostMethodId,
+    method_id: vela_def::MethodId,
     argument: &str,
 ) -> VmResult<OwnedValue> {
     let mut code = CodeObject::new("standard_string_predicate_method_id", 3);
@@ -78,7 +78,7 @@ fn call_method_uses_standard_string_transform_ids_before_name_fallback() {
 }
 
 fn run_string_transform_by_id(
-    method_id: vela_common::HostMethodId,
+    method_id: vela_def::MethodId,
     receiver: &str,
 ) -> VmResult<OwnedValue> {
     let mut code = CodeObject::new("standard_string_transform_method_id", 2);
@@ -225,7 +225,7 @@ fn option_some(value: OwnedValue) -> OwnedValue {
 }
 
 fn run_string_transform_with_args_by_id(
-    method_id: vela_common::HostMethodId,
+    method_id: vela_def::MethodId,
     receiver: &str,
     args: &[Constant],
 ) -> VmResult<OwnedValue> {

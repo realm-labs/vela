@@ -11,11 +11,11 @@ fn std_function_id(implementation: StdFunctionImplementation) -> vela_def::Funct
     panic!("missing standard function runtime binding for {implementation:?}");
 }
 
-fn std_method_id(owner: &str, name: &str) -> vela_common::HostMethodId {
+fn std_method_id(owner: &str, name: &str) -> vela_def::MethodId {
     let Some(id) = vela_stdlib::std_method_id(owner, name) else {
         panic!("missing standard method identity for {owner}::{name}");
     };
-    vela_common::HostMethodId::new(id.get())
+    id
 }
 
 #[test]
@@ -202,7 +202,7 @@ fn call_method_uses_standard_array_lookup_ids_before_name_fallback() {
 }
 
 fn run_array_lookup_with_args_by_id(
-    method_id: vela_common::HostMethodId,
+    method_id: vela_def::MethodId,
     args: &[Constant],
 ) -> VmResult<OwnedValue> {
     let arg_start = 3u16;
@@ -281,7 +281,7 @@ fn call_method_uses_standard_array_transform_ids_before_name_fallback() {
 }
 
 fn run_array_transform_with_args_by_id(
-    method_id: vela_common::HostMethodId,
+    method_id: vela_def::MethodId,
     receiver: &[&str],
     args: &[Constant],
 ) -> VmResult<OwnedValue> {
@@ -840,7 +840,7 @@ fn call_method_uses_standard_collection_predicate_ids_before_name_fallback() {
 }
 
 fn run_set_relation_by_id(
-    method_id: vela_common::HostMethodId,
+    method_id: vela_def::MethodId,
     receiver_values: &[i64],
     other_values: &[i64],
 ) -> VmResult<OwnedValue> {

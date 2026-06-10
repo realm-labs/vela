@@ -10,10 +10,21 @@ use vela_registry::{
 pub(crate) fn definition_registry_from_reflect(
     reflect: &TypeRegistry,
     include_reflection_natives: bool,
+    include_stdlib: bool,
 ) -> Result<DefinitionRegistry, RegistryError> {
     let mut registry = DefinitionRegistry::new();
+    if include_stdlib {
+        vela_stdlib::register_stdlib(&mut registry)?;
+    }
     for function in reflect.functions() {
-        registry.register_function(function_def(function))?;
+        let def = function_def(function);
+        if include_stdlib
+            && function.attrs.get("stdlib").is_some()
+            && registry.id_for_path(&def.path).is_some()
+        {
+            continue;
+        }
+        registry.register_function(def)?;
     }
     if include_reflection_natives {
         register_reflection_native_defs(&mut registry)?;

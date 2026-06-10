@@ -353,14 +353,16 @@ impl EngineBuilder {
             &self.host_native_functions,
             &self.context_host_native_functions,
         );
-        let definition_registry =
-            definition_registry_from_reflect(&registry, self.reflection_policy.is_some()).map_err(
-                |error| {
-                    EngineError::new(EngineErrorKind::DefinitionRegistry {
-                        message: error.to_string(),
-                    })
-                },
-            )?;
+        let definition_registry = definition_registry_from_reflect(
+            &registry,
+            self.reflection_policy.is_some(),
+            self.standard_natives,
+        )
+        .map_err(|error| {
+            EngineError::new(EngineErrorKind::DefinitionRegistry {
+                message: error.to_string(),
+            })
+        })?;
 
         Ok(Engine::new(EngineParts {
             registry,

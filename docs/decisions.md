@@ -507,6 +507,14 @@ disableable, must be semantically equivalent to VM execution, and must preserve
 ExecutionBudget, GC roots, HostAccess, reflection policy, hot reload invalidation,
 and debugger-visible frame/source metadata.
 
+### Value Method Identity
+
+Value method compilation resolves receiver value facts to stdlib `TypeId`
+definitions and then resolves methods through the `DefinitionRegistry`.
+`CallMethod` carries a typed `MethodId` for value methods; the old
+`CompilerOptions` value-method maps are retained only for compiler tests and
+transitional callers that do not yet provide a registry view.
+
 ## Validation Rules
 
 - Multi-level `super` scan must return no matches:

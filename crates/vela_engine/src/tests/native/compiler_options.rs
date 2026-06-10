@@ -1,10 +1,10 @@
 use super::*;
 
-fn std_method_id(owner: &str, name: &str) -> vela_common::HostMethodId {
+fn std_method_id(owner: &str, name: &str) -> vela_def::MethodId {
     let Some(id) = vela_stdlib::std_method_id(owner, name) else {
         panic!("missing standard method identity for {owner}::{name}");
     };
-    vela_common::HostMethodId::new(id.get())
+    id
 }
 
 #[test]
@@ -521,6 +521,58 @@ fn main() {
 }
 
 #[test]
+fn engine_compile_source_emits_standard_value_method_ids_from_registry() {
+    let engine = Engine::builder()
+        .with_standard_natives()
+        .build()
+        .expect("engine should build with standard natives");
+    let program = engine
+        .compile_source(
+            SourceId::new(1),
+            r#"
+fn main() {
+    let names: array = ["gold", "xp"];
+    let rewards: map = {"gold": 4};
+    let tags: set = set::from_array(["daily"]);
+    let some: Option = option::some(1);
+    let err: Result = result::err("bad");
+    if some.is_some() && err.is_err() {
+        return "gold".len()
+            + names.len()
+            + rewards.len()
+            + tags.len()
+            + (1..4).len();
+    }
+    return 0;
+}
+"#,
+        )
+        .expect("standard value methods should compile from registry");
+    let main = program.function("main").expect("main should compile");
+
+    let value_methods = main
+        .instructions
+        .iter()
+        .filter_map(|instruction| match &instruction.kind {
+            InstructionKind::CallMethod {
+                method,
+                value_method_id,
+                ..
+            } => Some((method.as_str(), *value_method_id)),
+            _ => None,
+        })
+        .collect::<Vec<_>>();
+
+    assert!(value_methods.contains(&("len", Some(std_method_id("String", "len")))));
+    assert!(value_methods.contains(&("len", Some(std_method_id("Array", "len")))));
+    assert!(value_methods.contains(&("len", Some(std_method_id("Map", "len")))));
+    assert!(value_methods.contains(&("len", Some(std_method_id("Set", "len")))));
+    assert!(value_methods.contains(&("len", Some(std_method_id("Range", "len")))));
+    assert!(value_methods.contains(&("is_some", Some(std_method_id("Option", "is_some")))));
+    assert!(value_methods.contains(&("is_err", Some(std_method_id("Result", "is_err")))));
+}
+
+#[test]
 fn engine_compiler_options_emit_standard_collection_method_ids() {
     let engine = Engine::builder()
         .with_standard_natives()
@@ -703,16 +755,16 @@ fn engine_compiler_options_lower_receiver_specific_named_standard_value_method_a
         .with_standard_natives()
         .build()
         .expect("engine should build with standard natives");
-    let program = compile_program_source_with_options(
-        SourceId::new(1),
-        r#"
+    let program = engine
+        .compile_source(
+            SourceId::new(1),
+            r#"
 fn main() {
     return "reward:gold".contains(needle = ":") && ["gold"].contains(value = "gold");
 }
 "#,
-        &engine.compiler_options(),
-    )
-    .expect("receiver-specific named stdlib value method arguments should compile");
+        )
+        .expect("receiver-specific named stdlib value method arguments should compile");
 
     assert_eq!(
         engine.into_vm().run_program(&program, "main", &[]),

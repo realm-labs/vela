@@ -1,5 +1,4 @@
 use vela_bytecode::ProgramCode;
-use vela_common::HostMethodId;
 use vela_def::MethodId;
 use vela_reflect::registry::TypeRegistry;
 
@@ -24,7 +23,7 @@ pub(crate) struct ScriptMethodDispatch<'a, 'host, 'heap> {
 pub(crate) fn call_method(
     receiver: &mut Value,
     method: &str,
-    value_method_id: Option<HostMethodId>,
+    value_method_id: Option<MethodId>,
     args: &[Value],
     mut dispatch: ScriptMethodDispatch<'_, '_, '_>,
 ) -> VmResult<Value> {
@@ -102,7 +101,7 @@ pub(crate) fn call_method_id(
 pub(crate) fn call_readonly_method_without_callbacks(
     receiver: &Value,
     method: &str,
-    value_method_id: Option<HostMethodId>,
+    value_method_id: Option<MethodId>,
     args: &[Value],
     heap: Option<&HeapExecution<'_>>,
 ) -> Option<VmResult<Value>> {
@@ -121,7 +120,7 @@ pub(crate) fn call_readonly_method_without_callbacks(
 pub(crate) fn call_non_mutating_method(
     receiver: &Value,
     method: &str,
-    value_method_id: Option<HostMethodId>,
+    value_method_id: Option<MethodId>,
     args: &[Value],
     mut dispatch: ScriptMethodDispatch<'_, '_, '_>,
 ) -> Option<VmResult<Value>> {

@@ -1381,7 +1381,7 @@ surface.
 - Native calls compile to `FunctionId` from registry.
 - Missing native functions become compile errors or unresolved external errors, not silent string fallback.
 
-- [ ] **Task 4.2: Replace value method lookup**
+- [x] **Task 4.2: Replace value method lookup**
 
 **Objective:** Compile value methods to `MethodId`.
 

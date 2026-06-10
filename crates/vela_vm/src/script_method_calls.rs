@@ -1,5 +1,4 @@
 use vela_bytecode::{ProgramCode, Register};
-use vela_common::HostMethodId;
 use vela_def::MethodId;
 
 use crate::heap::GcRef;
@@ -17,7 +16,7 @@ pub(crate) struct ScriptMethodCall<'a> {
     pub(crate) dst: Register,
     pub(crate) receiver: Register,
     pub(crate) method: &'a str,
-    pub(crate) value_method_id: Option<HostMethodId>,
+    pub(crate) value_method_id: Option<MethodId>,
     pub(crate) values: &'a [Value],
 }
 

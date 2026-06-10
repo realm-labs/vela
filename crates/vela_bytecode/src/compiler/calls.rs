@@ -6,8 +6,9 @@ use super::call_args::resolve_script_call_arguments;
 use super::methods::host_method_call;
 use super::{CompileError, CompileErrorKind, CompileResult, Compiler, reject_named_args};
 use vela_common::{Diagnostic, HostMethodId, Span};
-use vela_def::FunctionId;
+use vela_def::{DefPath, FunctionId, MethodId, TypeId};
 use vela_hir::type_hint::ParamHint;
+use vela_registry::ParamDef;
 
 impl Compiler<'_, '_> {
     pub(super) fn compile_call_expr(
@@ -155,7 +156,7 @@ impl Compiler<'_, '_> {
         )?;
         let value_method_id = value_receiver_type
             .as_deref()
-            .and_then(|type_name| self.facts.options.value_method_id_for_type(type_name, name));
+            .and_then(|type_name| self.value_method_id_for_type(type_name, name));
         let receiver = self.compile_expr(base)?;
         let dst = self.alloc_register()?;
         if let Some(method_id) = method_id {
@@ -204,11 +205,9 @@ impl Compiler<'_, '_> {
             args,
             expr.span,
         )?;
-        let value_method_id = value_receiver_type.as_deref().and_then(|type_name| {
-            self.facts
-                .options
-                .value_method_id_for_type(type_name, method)
-        });
+        let value_method_id = value_receiver_type
+            .as_deref()
+            .and_then(|type_name| self.value_method_id_for_type(type_name, method));
         let receiver = self.compile_path_expr(callee.span, receiver_path)?;
         let dst = self.alloc_register()?;
         if let Some(method_id) = method_id {
@@ -289,29 +288,29 @@ impl Compiler<'_, '_> {
         args: &[Argument],
         call_span: Span,
     ) -> CompileResult<Vec<CallArgument>> {
-        let params = receiver_type
-            .and_then(|receiver_type| {
-                self.facts
-                    .options
-                    .value_method_params_for_type(receiver_type, method)
-            })
-            .or_else(|| self.facts.options.value_method_params(method));
-        let Some(params) = params else {
+        let registry_params = self.registry_value_method_params(receiver_type, method);
+        let option_params = if self.facts.registry.is_none() {
+            receiver_type
+                .and_then(|receiver_type| {
+                    self.facts
+                        .options
+                        .value_method_params_for_type(receiver_type, method)
+                })
+                .or_else(|| self.facts.options.value_method_params(method))
+        } else {
+            None
+        };
+        let Some(params) = registry_params
+            .map(ValueMethodParams::Registry)
+            .or_else(|| option_params.map(ValueMethodParams::CompilerOptions))
+        else {
             reject_named_args(args, "script method call")?;
             return self.compile_positional_method_args(args);
         };
         if !args.iter().any(|arg| arg.name.is_some()) {
             return self.compile_positional_method_args(args);
         }
-        let params = params
-            .iter()
-            .map(|param| ParamHint {
-                name: param.name.clone(),
-                span: call_span,
-                type_hint: None,
-                default_value_span: param.has_default.then_some(call_span),
-            })
-            .collect::<Vec<_>>();
+        let params = params.param_hints(call_span);
         let slots =
             resolve_script_call_arguments(&params, args, call_span).map_err(|diagnostics| {
                 CompileError::new(CompileErrorKind::SemanticDiagnostics(diagnostics))
@@ -435,6 +434,83 @@ impl Compiler<'_, '_> {
                     .with_label(call_span, "native function is not registered"),
             ],
         )))
+    }
+
+    fn value_method_id_for_type(&self, receiver_type: &str, method: &str) -> Option<MethodId> {
+        if let Some(registry) = self.facts.registry {
+            let owner = self.registry_value_type_id(receiver_type)?;
+            return registry.resolve_value_method(owner, method);
+        }
+        self.facts
+            .options
+            .value_method_id_for_type(receiver_type, method)
+            .map(|id| MethodId::new(id.get()))
+    }
+
+    fn registry_value_method_params(
+        &self,
+        receiver_type: Option<&str>,
+        method: &str,
+    ) -> Option<&[ParamDef]> {
+        let registry = self.facts.registry?;
+        let owner = self.registry_value_type_id(receiver_type?)?;
+        let method = registry.resolve_value_method(owner, method)?;
+        registry.method_params(method)
+    }
+
+    fn registry_value_type_id(&self, receiver_type: &str) -> Option<TypeId> {
+        let registry = self.facts.registry?;
+        let type_name = standard_value_type_name(receiver_type)?;
+        registry.resolve_type(&DefPath::ty("std", std::iter::empty::<&str>(), type_name))
+    }
+}
+
+enum ValueMethodParams<'a> {
+    Registry(&'a [ParamDef]),
+    CompilerOptions(&'a [super::options::ValueMethodParam]),
+}
+
+impl ValueMethodParams<'_> {
+    fn param_hints(&self, call_span: Span) -> Vec<ParamHint> {
+        match self {
+            Self::Registry(params) => params
+                .iter()
+                .map(|param| ParamHint {
+                    name: param.name.clone(),
+                    span: call_span,
+                    type_hint: None,
+                    default_value_span: None,
+                })
+                .collect(),
+            Self::CompilerOptions(params) => params
+                .iter()
+                .map(|param| ParamHint {
+                    name: param.name.clone(),
+                    span: call_span,
+                    type_hint: None,
+                    default_value_span: param.has_default.then_some(call_span),
+                })
+                .collect(),
+        }
+    }
+}
+
+fn standard_value_type_name(receiver_type: &str) -> Option<&'static str> {
+    match receiver_type {
+        "null" => Some("Null"),
+        "bool" => Some("Bool"),
+        "int" => Some("Int"),
+        "float" => Some("Float"),
+        "string" => Some("String"),
+        "array" => Some("Array"),
+        "map" => Some("Map"),
+        "set" => Some("Set"),
+        "function" => Some("Function"),
+        "closure" => Some("Closure"),
+        "range" => Some("Range"),
+        "Option" => Some("Option"),
+        "Result" => Some("Result"),
+        _ => None,
     }
 }
 

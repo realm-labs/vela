@@ -277,6 +277,56 @@ fn main() {
 }
 
 #[test]
+fn compiler_lowers_named_value_method_args_and_id_from_registry() {
+    let mut registry = vela_registry::DefinitionRegistry::new();
+    let string_type = vela_registry::TypeDef::new(vela_def::DefPath::ty(
+        "std",
+        std::iter::empty::<&str>(),
+        "String",
+    ));
+    let string_type_id = registry
+        .register_type(string_type)
+        .expect("String type should register");
+    let method_def = vela_registry::MethodDef::new(
+        vela_def::DefPath::method("std", std::iter::empty::<&str>(), "String", "contains"),
+        string_type_id,
+        vela_registry::FunctionSignature::new(
+            [vela_registry::ParamDef::new("needle", Some("string"))],
+            Some("bool".to_owned()),
+        ),
+    );
+    let method = registry
+        .register_method(method_def)
+        .expect("String::contains method should register");
+    let program = compile_program_source_with_registry(
+        SourceId::new(1),
+        r#"
+fn main() {
+    return "reward:gold".contains(needle = ":");
+}
+"#,
+        registry.compile_view(),
+    )
+    .expect("registry value method args should compile");
+    let main = program.function("main").expect("main function");
+
+    let lowered = main.instructions.iter().find_map(|instruction| {
+        let InstructionKind::CallMethod {
+            method: name,
+            value_method_id,
+            args,
+            ..
+        } = &instruction.kind
+        else {
+            return None;
+        };
+        (name == "contains").then_some((*value_method_id, args.len()))
+    });
+
+    assert_eq!(lowered, Some((Some(method), 1)));
+}
+
+#[test]
 fn compiler_lowers_named_value_method_args_from_local_value_type_flow() {
     let program = compile_program_source_with_options(
         SourceId::new(1),
