@@ -68,7 +68,7 @@ fn main() {
     )
     .expect("compile if source");
 
-    assert_eq!(Vm::new().run(&code), Ok(OwnedValue::Int(10)));
+    assert_eq!(run_linked_test_code(code), Ok(OwnedValue::Int(10)));
 }
 
 #[test]
@@ -88,7 +88,7 @@ fn main() {
     )
     .expect("compile if source");
 
-    assert_eq!(Vm::new().run(&code), Ok(OwnedValue::Int(20)));
+    assert_eq!(run_linked_test_code(code), Ok(OwnedValue::Int(20)));
 }
 
 #[test]
@@ -113,7 +113,7 @@ fn main() {
     )
     .expect("compile operator source");
 
-    assert_eq!(Vm::new().run(&code), Ok(OwnedValue::Int(1)));
+    assert_eq!(run_linked_test_code(code), Ok(OwnedValue::Int(1)));
 }
 
 #[test]
@@ -598,8 +598,9 @@ fn runtime_errors_include_script_call_stack() {
     }));
     program.insert_function(leaf);
 
+    let linked = link_test_program(&program);
     let error = Vm::new()
-        .run_program(&program, "main", &[])
+        .run_linked_program(&linked, "main", &[])
         .expect_err("division by zero should fail");
 
     assert_eq!(error.kind(), VmErrorKind::DivisionByZero);
