@@ -30,15 +30,15 @@ fn main() {
         HeapExecution::new(&mut heap).with_safe_point_gc_budget(GcBudget::unlimited());
     let mut budget = ExecutionBudget::new(u64::MAX, 4096, usize::MAX);
 
-    let result = Vm::new()
-        .run_program_runtime_with_heap_and_budget(
-            &program,
-            "main",
-            &[],
-            &mut heap_execution,
-            &mut budget,
-        )
-        .expect("run nested heap source");
+    let result = run_linked_test_program_runtime_with_heap_and_budget(
+        &Vm::new(),
+        &program,
+        "main",
+        &[],
+        &mut heap_execution,
+        &mut budget,
+    )
+    .expect("run nested heap source");
 
     let RuntimeValue::HeapRef(result_ref) = result else {
         panic!("expected heap-backed field result");
@@ -202,15 +202,15 @@ fn managed_heap_host_execution_materializes_return_and_updates_adapter() {
             access: &mut tx,
             script_globals: None,
         };
-        Vm::new()
-            .run_program_with_host_managed_heap_and_budget(
-                &program,
-                "main",
-                &[OwnedValue::HostRef(host_ref)],
-                &mut host,
-                &mut budget,
-            )
-            .expect("run managed host heap source")
+        run_linked_test_program_with_host_budget(
+            &Vm::new(),
+            &program,
+            "main",
+            &[OwnedValue::HostRef(host_ref)],
+            &mut host,
+            &mut budget,
+        )
+        .expect("run managed host heap source")
     };
 
     assert_eq!(result, OwnedValue::String("gold".into()));
@@ -225,7 +225,7 @@ fn managed_heap_host_execution_rejects_map_for_host_write() {
         r#"
 fn main(player: Player) {
     player.level = {"class": "mage", score: 3};
-    return player.level.len();
+    return 1;
 }
 "#,
         host_definition_registry(
@@ -245,15 +245,15 @@ fn main(player: Player) {
             access: &mut tx,
             script_globals: None,
         };
-        Vm::new()
-            .run_program_with_host_managed_heap_and_budget(
-                &program,
-                "main",
-                &[OwnedValue::HostRef(host_ref)],
-                &mut host,
-                &mut budget,
-            )
-            .expect_err("host map write should be rejected")
+        run_linked_test_program_with_host_budget(
+            &Vm::new(),
+            &program,
+            "main",
+            &[OwnedValue::HostRef(host_ref)],
+            &mut host,
+            &mut budget,
+        )
+        .expect_err("host map write should be rejected")
     };
 
     assert_eq!(
@@ -302,15 +302,15 @@ fn main(player: Player) {
             access: &mut tx,
             script_globals: None,
         };
-        Vm::new()
-            .run_program_with_host_managed_heap_and_budget(
-                &program,
-                "main",
-                &[OwnedValue::HostRef(host_ref)],
-                &mut host,
-                &mut budget,
-            )
-            .expect_err("host record write should be rejected")
+        run_linked_test_program_with_host_budget(
+            &Vm::new(),
+            &program,
+            "main",
+            &[OwnedValue::HostRef(host_ref)],
+            &mut host,
+            &mut budget,
+        )
+        .expect_err("host record write should be rejected")
     };
 
     assert_eq!(
@@ -354,15 +354,15 @@ fn main(player: Player) {
             access: &mut tx,
             script_globals: None,
         };
-        Vm::new()
-            .run_program_with_host_managed_heap_and_budget(
-                &program,
-                "main",
-                &[OwnedValue::HostRef(host_ref)],
-                &mut host,
-                &mut budget,
-            )
-            .expect_err("host enum write should be rejected")
+        run_linked_test_program_with_host_budget(
+            &Vm::new(),
+            &program,
+            "main",
+            &[OwnedValue::HostRef(host_ref)],
+            &mut host,
+            &mut budget,
+        )
+        .expect_err("host enum write should be rejected")
     };
 
     assert_eq!(
@@ -407,18 +407,18 @@ fn main(player: Player, target) {
             access: &mut tx,
             script_globals: None,
         };
-        Vm::new()
-            .run_program_with_host_managed_heap_and_budget(
-                &program,
-                "main",
-                &[
-                    OwnedValue::HostRef(host_ref),
-                    OwnedValue::HostRef(target_ref),
-                ],
-                &mut host,
-                &mut budget,
-            )
-            .expect("run managed host ref source")
+        run_linked_test_program_with_host_budget(
+            &Vm::new(),
+            &program,
+            "main",
+            &[
+                OwnedValue::HostRef(host_ref),
+                OwnedValue::HostRef(target_ref),
+            ],
+            &mut host,
+            &mut budget,
+        )
+        .expect("run managed host ref source")
     };
 
     assert_eq!(result, OwnedValue::HostRef(target_ref));
