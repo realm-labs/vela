@@ -1,14 +1,21 @@
 use vela_def::{DefPath, FunctionId};
-use vela_reflect::access::FunctionEffectSet;
-use vela_reflect::modules::FunctionDesc;
-use vela_reflect::registry::{FieldDesc, MethodDesc, MethodParamDesc, TypeDesc, TypeRegistry};
+use vela_reflect::registry::{FieldDesc, MethodDesc, MethodParamDesc, TypeDesc};
 use vela_registry::{
     DefinitionRegistry, EffectSet as DefinitionEffectSet, FieldDef, FunctionDef, FunctionSignature,
     MethodDef, ParamDef, RegistryError, TypeDef,
 };
 
-pub(crate) fn definition_registry_from_reflect(
-    reflect: &TypeRegistry,
+use crate::metadata::type_hint_display;
+use crate::native::{
+    ContextHostNativeFunctionEntry, HostNativeFunctionEntry, NativeFunctionDesc,
+    NativeFunctionEntry,
+};
+
+pub(crate) fn definition_registry_from_engine_parts(
+    types: &[TypeDesc],
+    native_functions: &[NativeFunctionEntry],
+    host_native_functions: &[HostNativeFunctionEntry],
+    context_host_native_functions: &[ContextHostNativeFunctionEntry],
     include_reflection_natives: bool,
     include_stdlib: bool,
 ) -> Result<DefinitionRegistry, RegistryError> {
@@ -16,21 +23,20 @@ pub(crate) fn definition_registry_from_reflect(
     if include_stdlib {
         vela_stdlib::register_stdlib(&mut registry)?;
     }
-    for desc in reflect.types() {
-        if include_stdlib && desc.attrs.get("stdlib").is_some() && desc.host_type_id.is_none() {
-            continue;
-        }
+    for desc in types {
         register_type_def(&mut registry, desc)?;
     }
-    for function in reflect.functions() {
-        let def = function_def(function);
-        if include_stdlib
-            && function.attrs.get("stdlib").is_some()
-            && registry.id_for_path(&def.path).is_some()
-        {
-            continue;
-        }
-        registry.register_function(def)?;
+    for desc in native_functions
+        .iter()
+        .map(|entry| &entry.desc)
+        .chain(host_native_functions.iter().map(|entry| &entry.desc))
+        .chain(
+            context_host_native_functions
+                .iter()
+                .map(|entry| &entry.desc),
+        )
+    {
+        registry.register_function(native_function_def(desc))?;
     }
     if include_reflection_natives {
         register_reflection_native_defs(&mut registry)?;
@@ -112,7 +118,7 @@ fn method_param_def(param: &MethodParamDesc) -> ParamDef {
     ParamDef::new(param.name.clone(), param.type_hint.clone()).defaulted(param.has_default)
 }
 
-fn function_def(desc: &FunctionDesc) -> FunctionDef {
+fn native_function_def(desc: &NativeFunctionDesc) -> FunctionDef {
     let package = if desc.attrs.get("stdlib").is_some() {
         "std"
     } else {
@@ -121,14 +127,14 @@ fn function_def(desc: &FunctionDesc) -> FunctionDef {
     FunctionDef::new(
         source_function_path(package, &desc.name),
         FunctionSignature::new(
-            desc.params
-                .iter()
-                .map(|param| ParamDef::new(param.name.clone(), param.type_hint.clone())),
-            desc.return_type.clone(),
+            desc.params.iter().map(|param| {
+                ParamDef::new(param.name.clone(), Some(type_hint_display(&param.hint)))
+            }),
+            Some(type_hint_display(&desc.returns)),
         ),
     )
     .with_id(desc.id)
-    .effects(function_effects(&desc.effects))
+    .effects(native_function_effects(&desc.effects))
 }
 
 fn source_function_path(package: &str, name: &str) -> DefPath {
@@ -152,17 +158,17 @@ fn source_method_path(package: &str, owner: &str, name: &str) -> DefPath {
     DefPath::method(package, std::iter::empty::<&str>(), owner, name)
 }
 
-fn function_effects(effects: &FunctionEffectSet) -> DefinitionEffectSet {
+fn native_function_effects(effects: &crate::native::EffectSet) -> DefinitionEffectSet {
     DefinitionEffectSet {
-        host_read: effects.reads_host,
-        host_write: effects.writes_host,
-        reflection_read: effects.reads_reflection,
-        reflection_call: effects.calls_reflection,
-        event_emit: effects.emits_events,
-        time: effects.reads_time,
-        random: effects.uses_random,
-        io_read: effects.reads_io,
-        io_write: effects.writes_io,
+        host_read: effects.reads_host(),
+        host_write: effects.writes_host(),
+        reflection_read: effects.reads_reflection(),
+        reflection_call: effects.calls_reflection(),
+        event_emit: effects.emits_events(),
+        time: effects.reads_time(),
+        random: effects.uses_random(),
+        io_read: effects.reads_io(),
+        io_write: effects.writes_io(),
     }
 }
 

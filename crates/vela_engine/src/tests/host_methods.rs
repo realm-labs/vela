@@ -1,6 +1,6 @@
 use vela_bytecode::UnlinkedProgram;
 use vela_common::{HostMethodId, HostObjectId, HostTypeId, SourceId};
-use vela_def::{FieldId, TypeId, VariantId};
+use vela_def::{DefPath, FieldId, TypeId, VariantId};
 use vela_host::access::HostAccess;
 use vela_host::error::{HostError, HostErrorKind, HostResult};
 use vela_host::mock::MockStateAdapter;
@@ -130,6 +130,45 @@ fn main(player: Player) {
             &mut host
         ),
         Ok(OwnedValue::Int(1))
+    );
+}
+
+#[test]
+fn engine_compiler_registry_resolves_registered_host_definitions() {
+    let level = FieldId::new(3);
+    let method = HostMethodId::new(5);
+    let host_type = HostTypeId::new(1);
+    let engine = Engine::builder()
+        .register_type(
+            TypeDesc::new(TypeKey::new(TypeId::new(1), "Player"))
+                .host_type(host_type)
+                .field(FieldDesc::new(level, "level"))
+                .method(MethodDesc::new(method, "grant_exp")),
+        )
+        .build()
+        .expect("engine should build");
+
+    let registry = engine.compiler_registry();
+    let player = registry
+        .resolve_type(&DefPath::ty("host", std::iter::empty::<&str>(), "Player"))
+        .expect("host type should resolve from definition registry");
+    let level_def = registry
+        .resolve_host_field(player, "level")
+        .expect("host field should resolve from definition registry");
+    let method_def = registry
+        .resolve_host_method(player, "grant_exp")
+        .expect("host method should resolve from definition registry");
+
+    assert_eq!(
+        registry.type_host_runtime_id(player),
+        Some(host_type.get().into())
+    );
+    assert_ne!(level_def, level);
+    assert_eq!(registry.field_host_runtime_id(level_def), Some(level.get()));
+    assert_eq!(registry.field_writable(level_def), Some(false));
+    assert_eq!(
+        registry.host_method_runtime_id(method_def),
+        Some(method.get())
     );
 }
 

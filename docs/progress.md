@@ -289,7 +289,10 @@ Cranelift JIT.
   diagnostics and reflection. Linked record construction now stores
   `TypeId` plus `ShapeId` identity in heap record values, while linked record
   field reads/writes continue through `FieldSlot` operands and diagnostic
-  names remain side-table metadata.
+  names remain side-table metadata. Engine definition registry construction now
+  consumes registered host type, field, method, and native function inputs
+  directly instead of rebuilding compiler identity from reflection-only
+  descriptors; reflection metadata remains a separate runtime view.
 
 ### Remaining Gaps
 

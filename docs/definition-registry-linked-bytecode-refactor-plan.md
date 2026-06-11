@@ -1650,7 +1650,7 @@ surface.
 
 ### Phase 8: Clean host boundary and registry integration
 
-- [ ] **Task 8.1: Register host types directly into registry**
+- [x] **Task 8.1: Register host types directly into registry**
 
 **Objective:** Stop building compiler identity maps from reflection descriptors.
 

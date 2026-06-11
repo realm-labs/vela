@@ -182,7 +182,7 @@ fn reflect_function_access(access: &crate::native::FunctionAccess) -> ReflectFun
         .reflect_callable(access.reflect_callable)
 }
 
-fn type_hint_display(hint: &TypeHint) -> String {
+pub(crate) fn type_hint_display(hint: &TypeHint) -> String {
     match hint {
         TypeHint::Any => "any".to_owned(),
         TypeHint::Null => "null".to_owned(),

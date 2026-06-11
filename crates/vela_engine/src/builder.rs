@@ -6,7 +6,7 @@ use vela_vm::HostExecution;
 use vela_vm::error::VmResult;
 use vela_vm::owned_value::OwnedValue;
 
-use crate::compiler_registry::definition_registry_from_reflect;
+use crate::compiler_registry::definition_registry_from_engine_parts;
 use crate::context::NativeCallContext;
 use crate::engine::{Engine, EngineParts};
 use crate::error::{EngineError, EngineErrorKind, EngineResult};
@@ -337,6 +337,20 @@ impl EngineBuilder {
             self.standard_natives,
         )?;
 
+        let definition_registry = definition_registry_from_engine_parts(
+            &types,
+            &self.native_functions,
+            &self.host_native_functions,
+            &self.context_host_native_functions,
+            self.reflection_policy.is_some(),
+            self.standard_natives,
+        )
+        .map_err(|error| {
+            EngineError::new(EngineErrorKind::DefinitionRegistry {
+                message: error.to_string(),
+            })
+        })?;
+
         let mut registry = TypeRegistry::new();
         for desc in types {
             registry.register(desc);
@@ -353,16 +367,6 @@ impl EngineBuilder {
             &self.host_native_functions,
             &self.context_host_native_functions,
         );
-        let definition_registry = definition_registry_from_reflect(
-            &registry,
-            self.reflection_policy.is_some(),
-            self.standard_natives,
-        )
-        .map_err(|error| {
-            EngineError::new(EngineErrorKind::DefinitionRegistry {
-                message: error.to_string(),
-            })
-        })?;
 
         Ok(Engine::new(EngineParts {
             registry,
