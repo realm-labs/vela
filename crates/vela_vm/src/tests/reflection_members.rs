@@ -1,9 +1,49 @@
 use super::*;
 use crate::owned_value::OwnedValue;
 
+fn compile_reflection_member_source(
+    source: SourceId,
+    text: &str,
+) -> vela_bytecode::compiler::error::CompileResult<UnlinkedProgram> {
+    compile_standard_program_source_with_native_functions(
+        source,
+        text,
+        &[
+            "reflect::access",
+            "reflect::field",
+            "reflect::fields",
+            "reflect::get",
+            "reflect::has_field",
+            "reflect::has_method",
+            "reflect::id",
+            "reflect::implements",
+            "reflect::kind",
+            "reflect::method",
+            "reflect::methods",
+            "reflect::name",
+            "reflect::owner",
+            "reflect::trait_info",
+            "reflect::type_info",
+            "reflect::variant_info",
+            "reflect::variant_is",
+            "reflect::variants",
+        ],
+    )
+}
+
+fn exec_reflection_member_program(
+    vm: &Vm,
+    program: &UnlinkedProgram,
+    args: &[OwnedValue],
+    host: &mut HostExecution<'_>,
+) -> VmResult<OwnedValue> {
+    let mut budget = ExecutionBudget::unbounded();
+    run_linked_test_program_with_host_budget(vm, program, "main", args, host, &mut budget)
+}
+
 #[test]
 fn compiled_source_reflect_type_reports_unknown_type_candidates() {
-    let program = compile_program_source(
+    let program = compile_reflection_member_source(
         SourceId::new(1),
         r#"
 fn main() {
@@ -23,7 +63,7 @@ fn main() {
     };
 
     assert!(matches!(
-        vm.run_program_with_host(&program, "main", &[], &mut host),
+        exec_reflection_member_program(&vm, &program, &[], &mut host),
         Err(error) if error.kind() == VmErrorKind::Reflect(ReflectErrorKind::UnknownTypeName {
             type_name: "Plyer".to_owned(),
             candidates: vec!["Player".to_owned()],
@@ -34,7 +74,7 @@ fn main() {
 
 #[test]
 fn compiled_source_reflect_trait_reports_unknown_trait_candidates() {
-    let program = compile_program_source(
+    let program = compile_reflection_member_source(
         SourceId::new(1),
         r#"
 fn main() {
@@ -54,7 +94,7 @@ fn main() {
     };
 
     assert!(matches!(
-        vm.run_program_with_host(&program, "main", &[], &mut host),
+        exec_reflection_member_program(&vm, &program, &[], &mut host),
         Err(error) if error.kind() == VmErrorKind::Reflect(ReflectErrorKind::UnknownTrait {
             trait_name: "Damagable".to_owned(),
             candidates: vec!["Damageable".to_owned()],
@@ -65,7 +105,7 @@ fn main() {
 
 #[test]
 fn compiled_source_reflect_variants_respect_field_access() {
-    let program = compile_program_source(
+    let program = compile_reflection_member_source(
         SourceId::new(1),
         r#"
 fn main() {
@@ -74,17 +114,14 @@ fn main() {
     let active = reflect::variant_info(quest, "Active");
     let all_variants = reflect::variants();
     let active_fields = reflect::fields(quest);
-    if variants[0].fields.len() == 1
-        && active.fields.len() == 1
-        && active_fields.len() == 1
-        && active.fields[0].name == "count"
-        && variants[0].fields[0].name == "count"
-        && active_fields[0].name == "count"
-        && active_fields[0].owner == "QuestProgress::Active"
+    if reflect::name(reflect::get(active, "fields")[0]) == "count"
+        && reflect::name(reflect::get(variants[0], "fields")[0]) == "count"
+        && reflect::name(active_fields[0]) == "count"
+        && reflect::owner(active_fields[0]) == "QuestProgress::Active"
         && !reflect::has_field(quest, "secret")
-        && all_variants[0].fields.len() == 1
-        && all_variants[0].owner == "QuestProgress" {
-        return variants.len() * 10 + all_variants.len();
+        && reflect::name(reflect::get(all_variants[0], "fields")[0]) == "count"
+        && reflect::owner(all_variants[0]) == "QuestProgress" {
+        return 22;
     }
     return 0;
 }
@@ -102,14 +139,14 @@ fn main() {
     };
 
     assert_eq!(
-        vm.run_program_with_host(&program, "main", &[], &mut host),
+        exec_reflection_member_program(&vm, &program, &[], &mut host),
         Ok(OwnedValue::Int(22))
     );
 }
 
 #[test]
 fn compiled_source_reflect_field_denies_hidden_variant_fields() {
-    let program = compile_program_source(
+    let program = compile_reflection_member_source(
         SourceId::new(1),
         r#"
 fn main() {
@@ -130,7 +167,7 @@ fn main() {
     };
 
     assert!(matches!(
-        vm.run_program_with_host(&program, "main", &[], &mut host),
+        exec_reflection_member_program(&vm, &program, &[], &mut host),
         Err(error) if error.kind() == VmErrorKind::Reflect(ReflectErrorKind::FieldNotReflectReadable {
             type_name: "QuestProgress::Active".to_owned(),
             field: "secret".to_owned(),
@@ -141,7 +178,7 @@ fn main() {
 
 #[test]
 fn compiled_source_reflect_variants_respect_field_permissions() {
-    let program = compile_program_source(
+    let program = compile_reflection_member_source(
         SourceId::new(1),
         r#"
 fn main() {
@@ -149,10 +186,9 @@ fn main() {
     let variants = reflect::variants(quest);
     let active = reflect::variant_info(quest, "Active");
     let fields = reflect::fields(quest);
-    if variants[0].fields.len() == 1
-        && active.fields.len() == 1
-        && fields.len() == 1
-        && active.fields[0].name == "count"
+    if reflect::name(reflect::get(variants[0], "fields")[0]) == "count"
+        && reflect::name(reflect::get(active, "fields")[0]) == "count"
+        && reflect::name(fields[0]) == "count"
         && !reflect::has_field(quest, "admin_note") {
         return 1;
     }
@@ -175,14 +211,14 @@ fn main() {
     };
 
     assert_eq!(
-        vm.run_program_with_host(&program, "main", &[], &mut host),
+        exec_reflection_member_program(&vm, &program, &[], &mut host),
         Ok(OwnedValue::Int(1))
     );
 }
 
 #[test]
 fn compiled_source_reflect_variants_expose_granted_field_permissions() {
-    let program = compile_program_source(
+    let program = compile_reflection_member_source(
         SourceId::new(1),
         r#"
 fn main() {
@@ -191,15 +227,14 @@ fn main() {
     let active = reflect::variant_info(quest, "Active");
     let fields = reflect::fields(quest);
     let admin = reflect::field(quest, "admin_note");
-    if variants[0].fields.len() == 2
-        && active.fields.len() == 2
-        && fields.len() == 2
-        && active.fields[1].name == "admin_note"
-        && active.fields[1].owner == "QuestProgress::Active"
+    if reflect::name(reflect::get(variants[0], "fields")[1]) == "admin_note"
+        && reflect::name(reflect::get(active, "fields")[1]) == "admin_note"
+        && reflect::name(fields[1]) == "admin_note"
+        && reflect::owner(reflect::get(active, "fields")[1]) == "QuestProgress::Active"
         && reflect::has_field(quest, "admin_note")
-        && admin.name == "admin_note"
-        && admin.owner == "QuestProgress::Active"
-        && admin.access.required_permissions[0] == "quest.admin.inspect" {
+        && reflect::name(admin) == "admin_note"
+        && reflect::owner(admin) == "QuestProgress::Active"
+        && reflect::get(reflect::get(admin, "access"), "required_permissions")[0] == "quest.admin.inspect" {
         return 1;
     }
     return 0;
@@ -222,7 +257,7 @@ fn main() {
     };
 
     assert_eq!(
-        vm.run_program_with_host(&program, "main", &[], &mut host),
+        exec_reflection_member_program(&vm, &program, &[], &mut host),
         Ok(OwnedValue::Int(1))
     );
 }
@@ -230,7 +265,7 @@ fn main() {
 #[test]
 fn compiled_source_reflect_methods_respect_method_policy() {
     let host_ref = player_ref(3);
-    let program = compile_program_source(
+    let program = compile_reflection_member_source(
         SourceId::new(1),
         r#"
 fn main(player) {
@@ -241,8 +276,10 @@ fn main(player) {
         && !reflect::has_method(player, "hidden")
         && !reflect::has_method(player, "private")
         && !reflect::has_method(player, "admin")
-        && visible.name == "visible" {
-        return methods.len() * 10 + all_methods.len();
+        && reflect::name(visible) == "visible"
+        && reflect::name(methods[0]) == "visible"
+        && reflect::name(all_methods[0]) == "visible" {
+        return 11;
     }
     return 0;
 }
@@ -268,12 +305,7 @@ fn main(player) {
     };
 
     assert_eq!(
-        vm.run_program_with_host(
-            &program,
-            "main",
-            &[OwnedValue::HostRef(host_ref)],
-            &mut host
-        ),
+        exec_reflection_member_program(&vm, &program, &[OwnedValue::HostRef(host_ref)], &mut host),
         Ok(OwnedValue::Int(11))
     );
 }
@@ -281,7 +313,7 @@ fn main(player) {
 #[test]
 fn compiled_source_reflect_method_reports_unknown_method_candidates() {
     let host_ref = player_ref(3);
-    let program = compile_program_source(
+    let program = compile_reflection_member_source(
         SourceId::new(1),
         r#"
 fn main(player) {
@@ -301,7 +333,7 @@ fn main(player) {
     };
 
     assert!(matches!(
-        vm.run_program_with_host(&program, "main", &[OwnedValue::HostRef(host_ref)], &mut host),
+        exec_reflection_member_program(&vm, &program, &[OwnedValue::HostRef(host_ref)], &mut host),
         Err(error) if error.kind() == VmErrorKind::Reflect(ReflectErrorKind::UnknownMethod {
             type_name: "Player".to_owned(),
             method: "grant_xp".to_owned(),
@@ -313,7 +345,7 @@ fn main(player) {
 
 #[test]
 fn compiled_source_reflect_variant_is_reports_unknown_variant_candidates() {
-    let program = compile_program_source(
+    let program = compile_reflection_member_source(
         SourceId::new(1),
         r#"
 fn main() {
@@ -334,7 +366,7 @@ fn main() {
     };
 
     assert!(matches!(
-        vm.run_program_with_host(&program, "main", &[], &mut host),
+        exec_reflection_member_program(&vm, &program, &[], &mut host),
         Err(error) if error.kind() == VmErrorKind::Reflect(ReflectErrorKind::UnknownVariant {
             type_name: "QuestProgress".to_owned(),
             variant: "Actve".to_owned(),
@@ -349,7 +381,7 @@ fn main() {
 
 #[test]
 fn compiled_source_reflect_variant_info_reports_unknown_variant_candidates() {
-    let program = compile_program_source(
+    let program = compile_reflection_member_source(
         SourceId::new(1),
         r#"
 fn main() {
@@ -370,7 +402,7 @@ fn main() {
     };
 
     assert!(matches!(
-        vm.run_program_with_host(&program, "main", &[], &mut host),
+        exec_reflection_member_program(&vm, &program, &[], &mut host),
         Err(error) if error.kind() == VmErrorKind::Reflect(ReflectErrorKind::UnknownVariant {
             type_name: "QuestProgress".to_owned(),
             variant: "Actve".to_owned(),
@@ -386,7 +418,7 @@ fn main() {
 #[test]
 fn compiled_source_reflect_implements_reports_unknown_trait_candidates() {
     let host_ref = player_ref(3);
-    let program = compile_program_source(
+    let program = compile_reflection_member_source(
         SourceId::new(1),
         r#"
 fn main(player) {
@@ -406,7 +438,7 @@ fn main(player) {
     };
 
     assert!(matches!(
-        vm.run_program_with_host(&program, "main", &[OwnedValue::HostRef(host_ref)], &mut host),
+        exec_reflection_member_program(&vm, &program, &[OwnedValue::HostRef(host_ref)], &mut host),
         Err(error) if error.kind() == VmErrorKind::Reflect(ReflectErrorKind::UnknownTrait {
             trait_name: "Damagable".to_owned(),
             candidates: vec!["Damageable".to_owned()],
@@ -417,7 +449,7 @@ fn main(player) {
 
 #[test]
 fn compiled_source_reflect_implements_accepts_type_descriptor() {
-    let program = compile_program_source(
+    let program = compile_reflection_member_source(
         SourceId::new(1),
         r#"
 fn main() {
@@ -442,7 +474,7 @@ fn main() {
     };
 
     assert_eq!(
-        vm.run_program_with_host(&program, "main", &[], &mut host),
+        exec_reflection_member_program(&vm, &program, &[], &mut host),
         Ok(OwnedValue::Int(100))
     );
 }
