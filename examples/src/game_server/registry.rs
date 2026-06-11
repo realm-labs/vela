@@ -123,7 +123,7 @@ pub(crate) struct Monster {
     docs = "Demo host configuration exposed through context host paths."
 )]
 pub(crate) struct Config {
-    #[script(get, hint = "int", docs = "Experience threshold for the next level.")]
+    #[script(get, hint = "i64", docs = "Experience threshold for the next level.")]
     exp_to_next_level: i64,
     #[script(get, hint = "array", docs = "Configured monster reward table.")]
     kill_rewards: Vec<KillRewardConfig>,
@@ -156,7 +156,7 @@ fn string_item_map_type() -> HostTypeSpec {
 #[derive(ScriptHost)]
 #[script(path = "game::inventory::ItemStack")]
 pub(crate) struct ItemStack {
-    #[script(get, set, hint = "int")]
+    #[script(get, set, hint = "i64")]
     count: i64,
 }
 
@@ -165,7 +165,7 @@ pub(crate) struct ItemStack {
 #[script(path = "game::quest::HostQuestProgress")]
 enum HostQuestProgress {
     Active {
-        #[script(get, set, hint = "int")]
+        #[script(get, set, hint = "i64")]
         quest_count: i64,
         #[script(get, set, hint = "bool")]
         quest_done: bool,

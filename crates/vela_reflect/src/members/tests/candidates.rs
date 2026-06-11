@@ -127,11 +127,11 @@ fn trait_query_returns_metadata_and_unknown_trait_candidates() {
     );
     assert_eq!(
         method_fields.get("return"),
-        Some(&ReflectValue::Host(HostValue::String("int".to_owned())))
+        Some(&ReflectValue::Host(HostValue::String("i64".to_owned())))
     );
     assert_eq!(
         method_fields.get("returns"),
-        Some(&ReflectValue::Host(HostValue::String("int".to_owned())))
+        Some(&ReflectValue::Host(HostValue::String("i64".to_owned())))
     );
     let Some(ReflectValue::Array(params)) = method_fields.get("params") else {
         panic!("trait method params should be an array");

@@ -21,7 +21,7 @@ fn registers_script_module_functions_and_exports() {
         SourceId::new(1),
         ModulePath::from_qualified("game::reward"),
         r#"
-pub fn grant(player: Player, amount: int = 1) -> bool {
+pub fn grant(player: Player, amount: i64 = 1) -> bool {
     return true;
 }
 
@@ -57,7 +57,7 @@ fn helper() {
     assert_eq!(grant.params[0].name, "player");
     assert_eq!(grant.params[0].type_hint.as_deref(), Some("Player"));
     assert_eq!(grant.params[1].name, "amount");
-    assert_eq!(grant.params[1].type_hint.as_deref(), Some("int"));
+    assert_eq!(grant.params[1].type_hint.as_deref(), Some("i64"));
     assert!(grant.params[1].has_default);
     assert_eq!(grant.return_type.as_deref(), Some("bool"));
     assert_eq!(
@@ -90,7 +90,7 @@ fn module_function_queries_return_records_and_candidates() {
             .module("game::reward")
             .param(
                 FunctionParamDesc::new("amount")
-                    .type_hint("int")
+                    .type_hint("i64")
                     .defaulted(true),
             )
             .return_type("bool")

@@ -292,12 +292,12 @@ fn engine_context_host_schema_registers_metadata() {
     assert_eq!(context.fields.len(), 2);
     assert_eq!(context.fields[0].id, CONTEXT_NOW_FIELD_ID);
     assert_eq!(context.fields[0].name, "now");
-    assert_eq!(context.fields[0].type_hint.as_deref(), Some("int"));
+    assert_eq!(context.fields[0].type_hint.as_deref(), Some("i64"));
     assert_eq!(context.fields[0].attrs.get("stdlib"), Some("context"));
     assert_eq!(context.fields[0].attrs.get("domain"), Some("context"));
     assert_eq!(context.fields[1].id, CONTEXT_TICK_FIELD_ID);
     assert_eq!(context.fields[1].name, "tick");
-    assert_eq!(context.fields[1].type_hint.as_deref(), Some("int"));
+    assert_eq!(context.fields[1].type_hint.as_deref(), Some("i64"));
     assert_eq!(context.fields[1].attrs.get("stdlib"), Some("context"));
     assert_eq!(context.fields[1].attrs.get("domain"), Some("context"));
 

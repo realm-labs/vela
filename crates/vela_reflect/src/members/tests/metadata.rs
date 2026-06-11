@@ -40,7 +40,7 @@ fn name_kind_and_field_queries_return_copied_metadata() {
     );
     assert_eq!(
         fields.get("type"),
-        Some(&ReflectValue::Host(HostValue::String("int".to_owned())))
+        Some(&ReflectValue::Host(HostValue::String("i64".to_owned())))
     );
     assert_eq!(
         fields.get("access"),
@@ -232,7 +232,7 @@ fn method_trait_and_variant_queries_return_copied_metadata() {
     );
     assert_eq!(
         param_fields.get("type"),
-        Some(&ReflectValue::Host(HostValue::String("int".to_owned())))
+        Some(&ReflectValue::Host(HostValue::String("i64".to_owned())))
     );
     let Some(ReflectValue::ScriptRecord {
         fields: effect_fields,

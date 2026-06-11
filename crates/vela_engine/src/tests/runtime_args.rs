@@ -60,11 +60,11 @@ fn runtime_call_executes_program_image_code_view() {
         .compile_source(
             SourceId::new(1),
             r#"
-trait BonusSource { fn bonus(self, amount) -> int; }
-struct Player { level: int }
+trait BonusSource { fn bonus(self, amount) -> i64; }
+struct Player { level: i64 }
 
 impl BonusSource for Player {
-    fn bonus(self, amount) -> int {
+    fn bonus(self, amount) -> i64 {
         return self.level + amount;
     }
 }
@@ -132,12 +132,12 @@ fn direct_player_type() -> TypeDesc {
         .field(FieldDesc::new(FieldId::new(2), "inventory").writable(true))
         .method(
             MethodDesc::new(HostMethodId::new(10), "grant_exp")
-                .param(MethodParamDesc::new("amount").type_hint("int")),
+                .param(MethodParamDesc::new("amount").type_hint("i64")),
         )
         .method(
             MethodDesc::new(HostMethodId::new(11), "add")
                 .param(MethodParamDesc::new("key").type_hint("string"))
-                .param(MethodParamDesc::new("amount").type_hint("int")),
+                .param(MethodParamDesc::new("amount").type_hint("i64")),
         )
 }
 
@@ -676,7 +676,7 @@ fn runtime_call_args_host_mut_dispatches_root_and_child_host_methods() {
                 )
                 .method(
                     MethodDesc::new(HostMethodId::new(10), "grant_exp")
-                        .param(MethodParamDesc::new("amount").type_hint("int")),
+                        .param(MethodParamDesc::new("amount").type_hint("i64")),
                 ),
         )
         .register_type(
@@ -685,7 +685,7 @@ fn runtime_call_args_host_mut_dispatches_root_and_child_host_methods() {
                 .method(
                     MethodDesc::new(HostMethodId::new(11), "add")
                         .param(MethodParamDesc::new("key").type_hint("string"))
-                        .param(MethodParamDesc::new("amount").type_hint("int")),
+                        .param(MethodParamDesc::new("amount").type_hint("i64")),
                 ),
         )
         .build()

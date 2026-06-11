@@ -135,7 +135,7 @@ fn main(player) {
         && reflect::origin(field) == "host"
         && reflect::id(field) == 2
         && reflect::kind(field) == "field"
-        && reflect::get(field, "type") == "int"
+        && reflect::get(field, "type") == "i64"
         && reflect::get(field, "docs") == "Current player level."
         && reflect::docs(field) == "Current player level."
         && reflect::source_span(field) == null
@@ -388,7 +388,7 @@ fn main(player) {
         && reflect::attr(method, "effect") == "write"
         && reflect::get(methods[0], "return") == "bool"
         && reflect::get(reflect::get(methods[0], "params")[0], "name") == "amount"
-        && reflect::get(reflect::get(methods[0], "params")[0], "type") == "int"
+        && reflect::get(reflect::get(methods[0], "params")[0], "type") == "i64"
         && reflect::get(reflect::get(method, "params")[0], "name") == "amount"
         && reflect::get(player_type, "trait_count") == 1
         && reflect::get(quest_type, "variant_count") == 2

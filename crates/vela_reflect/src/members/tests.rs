@@ -26,14 +26,14 @@ fn registry() -> TypeRegistry {
             .field(
                 FieldDesc::new(FieldId::new(2), "level")
                     .writable(true)
-                    .type_hint("int")
+                    .type_hint("i64")
                     .source_span(Span::new(SourceId::new(8), 50, 55))
                     .docs("Current level.")
                     .attr("unit", "level"),
             )
             .method(
                 MethodDesc::new(HostMethodId::new(5), "grant_exp")
-                    .param(MethodParamDesc::new("amount").type_hint("int"))
+                    .param(MethodParamDesc::new("amount").type_hint("i64"))
                     .return_type("bool")
                     .source_span(Span::new(SourceId::new(8), 60, 80))
                     .effects(crate::access::MethodEffectSet::host_write())
@@ -52,8 +52,8 @@ fn registry() -> TypeRegistry {
                     .attr("combat", "true")
                     .method(
                         TraitMethodDesc::new(MethodId::new(9), "damage")
-                            .param(MethodParamDesc::new("amount").type_hint("int"))
-                            .return_type("int")
+                            .param(MethodParamDesc::new("amount").type_hint("i64"))
+                            .return_type("i64")
                             .defaulted(true)
                             .docs("Apply damage.")
                             .attr("default", "true"),

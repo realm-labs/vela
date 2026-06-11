@@ -614,8 +614,8 @@ fn engine_registers_unified_host_type_spec_with_native_method_and_index_metadata
                     .writable(true)
                     .addable(true)
                     .removable(true)
-                    .key_type("int")
-                    .value_type("int"),
+                    .key_type("i64")
+                    .value_type("i64"),
             ),
     )
     .native_method_fn(
@@ -656,8 +656,8 @@ fn engine_registers_unified_host_type_spec_with_native_method_and_index_metadata
     assert!(index.writable);
     assert!(index.addable);
     assert!(index.removable);
-    assert_eq!(index.key_type.as_deref(), Some("int"));
-    assert_eq!(index.value_type.as_deref(), Some("int"));
+    assert_eq!(index.key_type.as_deref(), Some("i64"));
+    assert_eq!(index.value_type.as_deref(), Some("i64"));
     assert!(reflected.methods.iter().any(|method| method.name == "set"));
     assert!(
         engine
@@ -1060,10 +1060,10 @@ fn engine_installs_type_registry_for_host_ref_script_impl_dispatch() {
         .compile_source(
             SourceId::new(1),
             r#"
-trait BonusSource { fn bonus(self, amount) -> int; }
+trait BonusSource { fn bonus(self, amount) -> i64; }
 
 impl BonusSource for Player {
-    fn bonus(self, amount) -> int {
+    fn bonus(self, amount) -> i64 {
         return amount + 7;
     }
 }

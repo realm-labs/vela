@@ -27,14 +27,14 @@ pub fn context_host_type_desc() -> TypeDesc {
         .attr("domain", "context")
         .field(
             FieldDesc::new(CONTEXT_NOW_FIELD_ID, "now")
-                .type_hint("int")
+                .type_hint("i64")
                 .docs("Current deterministic context timestamp.")
                 .attr("stdlib", "context")
                 .attr("domain", "context"),
         )
         .field(
             FieldDesc::new(CONTEXT_TICK_FIELD_ID, "tick")
-                .type_hint("int")
+                .type_hint("i64")
                 .docs("Current deterministic context tick.")
                 .attr("stdlib", "context")
                 .attr("domain", "context"),

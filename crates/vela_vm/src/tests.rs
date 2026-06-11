@@ -269,14 +269,14 @@ fn reflection_registry() -> TypeRegistry {
             .field(
                 FieldDesc::new(level_field(), "level")
                     .writable(true)
-                    .type_hint("int")
+                    .type_hint("i64")
                     .docs("Current player level.")
                     .attr("unit", "level"),
             )
             .method(
                 MethodDesc::new(HostMethodId::new(5), "grant_exp")
                     .effects(MethodEffectSet::host_write())
-                    .param(MethodParamDesc::new("amount").type_hint("int"))
+                    .param(MethodParamDesc::new("amount").type_hint("i64"))
                     .return_type("bool")
                     .docs("Grant experience.")
                     .attr("effect", "write"),
@@ -305,7 +305,7 @@ fn script_module_reflection_registry() -> TypeRegistry {
         r#"
 #[doc("Grant reward.")]
 #[event("reward")]
-pub fn grant(player: Player, amount: int = 1) -> bool {
+pub fn grant(player: Player, amount: i64 = 1) -> bool {
     return true;
 }
 "#,

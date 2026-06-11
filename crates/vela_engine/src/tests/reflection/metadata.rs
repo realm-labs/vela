@@ -571,7 +571,15 @@ fn main() {
     let result_type = reflect::type_info("Result");
     let null_value_type = reflect::type_of(null);
     let bool_value_type = reflect::type_of(true);
+    let i8_type = reflect::type_info("i8");
+    let i16_type = reflect::type_info("i16");
+    let i32_type = reflect::type_info("i32");
     let int_value_type = reflect::type_of(42);
+    let u8_type = reflect::type_info("u8");
+    let u16_type = reflect::type_info("u16");
+    let u32_type = reflect::type_info("u32");
+    let u64_type = reflect::type_info("u64");
+    let f32_type = reflect::type_info("f32");
     let float_value_type = reflect::type_of(1.5);
     let string_value_type = reflect::type_of("quest");
     let array_value_type = reflect::type_of(["quest"]);
@@ -628,10 +636,26 @@ fn main() {
         && reflect::kind(null_value_type) == "null"
         && reflect::name(bool_value_type) == "bool"
         && reflect::kind(bool_value_type) == "bool"
+        && reflect::name(i8_type) == "i8"
+        && reflect::kind(i8_type) == "i8"
+        && reflect::name(i16_type) == "i16"
+        && reflect::kind(i16_type) == "i16"
+        && reflect::name(i32_type) == "i32"
+        && reflect::kind(i32_type) == "i32"
         && reflect::name(int_value_type) == "i64"
-        && reflect::kind(int_value_type) == "int"
+        && reflect::kind(int_value_type) == "i64"
+        && reflect::name(u8_type) == "u8"
+        && reflect::kind(u8_type) == "u8"
+        && reflect::name(u16_type) == "u16"
+        && reflect::kind(u16_type) == "u16"
+        && reflect::name(u32_type) == "u32"
+        && reflect::kind(u32_type) == "u32"
+        && reflect::name(u64_type) == "u64"
+        && reflect::kind(u64_type) == "u64"
+        && reflect::name(f32_type) == "f32"
+        && reflect::kind(f32_type) == "f32"
         && reflect::name(float_value_type) == "f64"
-        && reflect::kind(float_value_type) == "float"
+        && reflect::kind(float_value_type) == "f64"
         && reflect::name(string_value_type) == "string"
         && reflect::kind(string_value_type) == "string"
         && reflect::name(array_value_type) == "array"
@@ -654,6 +678,16 @@ fn main() {
         && reflect::has_function("bytes::from_hex")
         && reflect::has_type("string")
         && reflect::has_type("bytes")
+        && reflect::has_type("i8")
+        && reflect::has_type("i16")
+        && reflect::has_type("i32")
+        && reflect::has_type("i64")
+        && reflect::has_type("u8")
+        && reflect::has_type("u16")
+        && reflect::has_type("u32")
+        && reflect::has_type("u64")
+        && reflect::has_type("f32")
+        && reflect::has_type("f64")
         && reflect::has_type("array")
         && reflect::has_type("map")
         && reflect::has_type("set")

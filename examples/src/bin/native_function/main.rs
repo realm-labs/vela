@@ -47,7 +47,7 @@ fn main() -> Result<(), Box<dyn Error>> {
 #[derive(Debug, ScriptHost)]
 #[script(path = "examples::native_function::Player")]
 struct Player {
-    #[script(get, set, hint = "int")]
+    #[script(get, set, hint = "i64")]
     level: i64,
 }
 

@@ -509,14 +509,14 @@ mod tests {
 #[policy(level = 3, tags = ["reward", game::reward::Event])]
 struct Reward {
     #[doc("Reward count.")]
-    count: int = 1,
+    count: i64 = 1,
     item_id: string = "gold",
 }
 
 enum QuestProgress {
     None,
     #[active]
-    Active { quest_id: string, count: int = 0 },
+    Active { quest_id: string, count: i64 = 0 },
     Finished(quest_id: string),
 }
 "#,
@@ -570,7 +570,7 @@ enum QuestProgress {
             .iter()
             .find(|field| field.name == "count")
             .expect("count field");
-        assert_eq!(count_field.type_hint.as_deref(), Some("int"));
+        assert_eq!(count_field.type_hint.as_deref(), Some("i64"));
         assert!(count_field.has_default);
         assert!(count_field.writable);
         assert!(count_field.access.writable);
@@ -735,7 +735,7 @@ struct Reward {
     #[id(101)]
     item_id: string,
     #[id(102)]
-    count: int,
+    count: i64,
 }
 
 enum QuestProgress {
@@ -753,7 +753,7 @@ struct Reward {
     #[id(101)]
     item: string,
     #[id(102)]
-    quantity: int,
+    quantity: i64,
 }
 
 enum QuestProgress {
@@ -797,13 +797,13 @@ enum QuestProgress {
         original.add_source(ModuleSource::new(
             SourceId::new(1),
             ModulePath::from_qualified("game::reward"),
-            "struct Reward { count: int, item_id: string }\nenum QuestProgress { None, Active }",
+            "struct Reward { count: i64, item_id: string }\nenum QuestProgress { None, Active }",
         ));
         let mut changed = ModuleGraph::new();
         changed.add_source(ModuleSource::new(
             SourceId::new(1),
             ModulePath::from_qualified("game::reward"),
-            "struct Reward { count: float, bonus: int }\nenum QuestProgress { None, Finished }",
+            "struct Reward { count: float, bonus: i64 }\nenum QuestProgress { None, Finished }",
         ));
         let mut original_registry = TypeRegistry::new();
         let mut changed_registry = TypeRegistry::new();
@@ -835,9 +835,9 @@ enum QuestProgress {
             SourceId::new(1),
             ModulePath::from_qualified("game::combat"),
             r#"
-struct Player { level: int }
+struct Player { level: i64 }
 impl Player {
-    fn bonus(self, amount: int) -> int {
+    fn bonus(self, amount: i64) -> i64 {
         return self.level + amount;
     }
 }
@@ -864,14 +864,14 @@ impl Player {
             stable_inherent_host_method_id("game::combat::Player", "bonus")
         );
         assert_eq!(method.origin, DeclOrigin::Script);
-        assert_eq!(method.return_type.as_deref(), Some("int"));
+        assert_eq!(method.return_type.as_deref(), Some("i64"));
         assert_eq!(
             method
                 .params
                 .iter()
                 .map(|param| (param.name.as_str(), param.type_hint.as_deref()))
                 .collect::<Vec<_>>(),
-            [("self", None), ("amount", Some("int"))]
+            [("self", None), ("amount", Some("i64"))]
         );
     }
 
@@ -885,14 +885,14 @@ impl Player {
 #[doc("Damage protocol.")]
 trait Damageable {
     #[doc("Apply damage.")]
-    fn damage(self, amount: int) -> int;
+    fn damage(self, amount: i64) -> i64;
     fn alive(self) -> bool { return true; }
 }
 
-struct Player { hp: int }
+struct Player { hp: i64 }
 
 impl Damageable for Player {
-    fn damage(self, amount: int) -> int {
+    fn damage(self, amount: i64) -> i64 {
         return self.hp - amount;
     }
 }
@@ -925,14 +925,14 @@ impl Damageable for Player {
         );
         assert_eq!(damageable.methods[0].docs.as_deref(), Some("Apply damage."));
         assert_eq!(damageable.methods[0].origin, DeclOrigin::Script);
-        assert_eq!(damageable.methods[0].return_type.as_deref(), Some("int"));
+        assert_eq!(damageable.methods[0].return_type.as_deref(), Some("i64"));
         assert_eq!(
             damageable.methods[0]
                 .params
                 .iter()
                 .map(|param| (param.name.as_str(), param.type_hint.as_deref()))
                 .collect::<Vec<_>>(),
-            [("self", None), ("amount", Some("int"))]
+            [("self", None), ("amount", Some("i64"))]
         );
         assert_eq!(damageable.methods[1].return_type.as_deref(), Some("bool"));
         assert_eq!(

@@ -110,7 +110,7 @@ fn string_item_map_type() -> HostTypeSpec {
 #[derive(Debug, Default, ScriptHost)]
 #[script(path = "examples::host_type_methods::ItemStack")]
 struct ItemStack {
-    #[script(get, set, hint = "int")]
+    #[script(get, set, hint = "i64")]
     count: i64,
 }
 

@@ -175,9 +175,9 @@ fn main(ctx: Context, player: Player) {
         && reflect::name(bool_value_type) == "bool"
         && reflect::kind(bool_value_type) == "bool"
         && reflect::name(int_value_type) == "i64"
-        && reflect::kind(int_value_type) == "int"
+        && reflect::kind(int_value_type) == "i64"
         && reflect::name(float_value_type) == "f64"
-        && reflect::kind(float_value_type) == "float"
+        && reflect::kind(float_value_type) == "f64"
         && reflect::name(string_value_type) == "string"
         && reflect::kind(string_value_type) == "string"
         && reflect::name(array_value_type) == "array"
@@ -247,7 +247,7 @@ fn main(ctx: Context, player: Player) {
         && range_is_empty.params.is_empty()
         && reflect::returns(range_is_empty) == "bool"
         && reflect::has_field(config_type, "kill_rewards")
-        && reflect::field(config_type, "exp_to_next_level").type == "int"
+        && reflect::field(config_type, "exp_to_next_level").type == "i64"
         && reflect::has_type("Inventory")
         && reflect::kind(inventory_type) == "host"
         && reflect::id(inventory_type) > 0
@@ -261,7 +261,7 @@ fn main(ctx: Context, player: Player) {
         && item_stack_fields.len() == 1
         && item_stack_fields[0].owner == "ItemStack"
         && item_stack_fields[0].name == "count"
-        && item_stack_fields[0].type == "int"
+        && item_stack_fields[0].type == "i64"
         && item_count.owner == "ItemStack"
         && item_count.name == "count"
         && item_count.writable

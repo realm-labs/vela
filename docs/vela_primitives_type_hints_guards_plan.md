@@ -1611,13 +1611,13 @@ rg 'TypeHint::Float'
 ```
 
 - [ ] Remove all old type names from compiler logic.
-- [ ] Remove old `Value` / `OwnedValue` / `HostValue` / `Constant` variants.
-- [ ] Remove old `TypeHint` variants.
+- [x] Remove old `Value` / `OwnedValue` / `HostValue` / `Constant` variants.
+- [x] Remove old `TypeHint` variants.
 - [ ] Update docs/examples/tests.
 
 **Termination condition:**
 
-- [ ] Grep finds no old int/float runtime variants.
+- [x] Grep finds no old int/float runtime variants.
 - [ ] Grep finds no source-level `"int"`/`"float"` type hint support, except migration notes or docs explaining removal.
 
 #### Task 10.3: Add conformance fixtures
