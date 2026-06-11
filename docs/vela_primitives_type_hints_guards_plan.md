@@ -1077,18 +1077,18 @@ then build registry, syntax, guards, and runtime behavior on the new model.
 
 #### Task 2.1: Add primitive metadata to registry type definitions
 
-- [ ] Add `PrimitiveKind` to `vela_registry` or reuse the shared primitive tag model if it is sufficient.
-- [ ] Add `primitive: Option<PrimitiveKind>` to `TypeDef` or equivalent.
-- [ ] Add constructors/helpers for primitive type definitions.
-- [ ] Add registry query:
-  - [ ] `type_primitive_kind(TypeId) -> Option<PrimitiveKind>`
-  - [ ] `primitive_type_id(PrimitiveKind) -> Option<TypeId>` or equivalent.
-- [ ] Add duplicate checks so primitive type names cannot collide.
+- [x] Add `PrimitiveKind` to `vela_registry` or reuse the shared primitive tag model if it is sufficient.
+- [x] Add `primitive: Option<PrimitiveKind>` to `TypeDef` or equivalent.
+- [x] Add constructors/helpers for primitive type definitions.
+- [x] Add registry query:
+  - [x] `type_primitive_kind(TypeId) -> Option<PrimitiveKind>`
+  - [x] `primitive_type_id(PrimitiveKind) -> Option<TypeId>` or equivalent.
+- [x] Add duplicate checks so primitive type names cannot collide.
 
 **Termination condition:**
 
-- [ ] Unit tests can register and query `i64`, `u8`, `f32`, `bytes`.
-- [ ] Registry duplicate path/key tests still pass.
+- [x] Unit tests can register and query `i64`, `u8`, `f32`, `bytes`.
+- [x] Registry duplicate path/key tests still pass.
 
 #### Task 2.2: Replace stdlib `Int` / `Float` types
 

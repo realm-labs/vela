@@ -4,6 +4,7 @@ use std::collections::BTreeMap;
 use std::error::Error;
 use std::fmt;
 
+use vela_common::PrimitiveTag;
 use vela_def::{
     DefId, DefKind, DefPath, FieldId, FunctionId, MethodId, TraitId, TypeId, VariantId,
 };
@@ -13,6 +14,7 @@ pub struct DefinitionRegistry {
     defs_by_id: BTreeMap<DefId, Def>,
     ids_by_path: BTreeMap<DefPath, DefId>,
     ids_by_semantic_key: BTreeMap<SemanticKey, DefId>,
+    primitive_type_ids: BTreeMap<PrimitiveTag, TypeId>,
     debug_names: DebugNameTable,
     debug_names_by_def: BTreeMap<DefId, DebugNameId>,
 }
@@ -72,6 +74,7 @@ impl DefinitionRegistry {
         let id = def.id();
         let path = def.path().clone();
         let semantic_key = def.semantic_key();
+        let primitive = def.type_primitive_tag();
 
         if let Some(existing_id) = self.ids_by_path.get(&path) {
             return Err(RegistryError::DuplicatePath {
@@ -102,8 +105,29 @@ impl DefinitionRegistry {
             });
         }
 
+        if let Some(primitive) = primitive
+            && let Some(existing_id) = self.primitive_type_ids.get(&primitive)
+        {
+            let existing_path = self
+                .defs_by_id
+                .get(&existing_id.def_id())
+                .map(|def| def.path().clone())
+                .unwrap_or_else(|| path.clone());
+            return Err(RegistryError::DuplicatePrimitiveType {
+                primitive,
+                existing: Box::new(existing_path),
+                incoming: Box::new(path),
+            });
+        }
+
         self.ids_by_path.insert(path, id);
         self.ids_by_semantic_key.insert(semantic_key, id);
+        if let Some(primitive) = primitive {
+            let type_id = def
+                .type_id()
+                .expect("primitive metadata is only attached to type definitions");
+            self.primitive_type_ids.insert(primitive, type_id);
+        }
         let debug_name = self.debug_names.intern(def.path().canonical_display());
         self.debug_names_by_def.insert(id, debug_name);
         self.defs_by_id.insert(id, def);
@@ -138,6 +162,16 @@ impl DefinitionRegistry {
     #[must_use]
     pub fn debug_name_for_def(&self, id: DefId) -> DebugNameId {
         self.debug_names_by_def[&id]
+    }
+
+    #[must_use]
+    pub fn type_primitive_kind(&self, id: TypeId) -> Option<PrimitiveTag> {
+        self.get(id.def_id()).and_then(Def::type_primitive_tag)
+    }
+
+    #[must_use]
+    pub fn primitive_type_id(&self, primitive: PrimitiveTag) -> Option<TypeId> {
+        self.primitive_type_ids.get(&primitive).copied()
     }
 }
 
@@ -256,6 +290,16 @@ impl<'registry> RegistryCompileView<'registry> {
         self.registry
             .get(id.def_id())
             .and_then(Def::type_host_runtime_id)
+    }
+
+    #[must_use]
+    pub fn type_primitive_kind(&self, id: TypeId) -> Option<PrimitiveTag> {
+        self.registry.type_primitive_kind(id)
+    }
+
+    #[must_use]
+    pub fn primitive_type_id(&self, primitive: PrimitiveTag) -> Option<TypeId> {
+        self.registry.primitive_type_id(primitive)
     }
 
     #[must_use]
@@ -562,6 +606,18 @@ impl Def {
     }
 
     #[must_use]
+    pub const fn type_primitive_tag(&self) -> Option<PrimitiveTag> {
+        match self {
+            Self::Type(def) => def.primitive,
+            Self::Function(_)
+            | Self::Method(_)
+            | Self::Field(_)
+            | Self::Variant(_)
+            | Self::Trait(_) => None,
+        }
+    }
+
+    #[must_use]
     pub const fn host_method_runtime_id(&self) -> Option<u128> {
         match self {
             Self::Method(def) => def.host_runtime_id,
@@ -785,6 +841,7 @@ pub struct TypeDef {
     pub id: TypeId,
     pub path: DefPath,
     pub semantic_key: SemanticKey,
+    pub primitive: Option<PrimitiveTag>,
     pub host_runtime_id: Option<u128>,
 }
 
@@ -797,8 +854,14 @@ impl TypeDef {
             id,
             path,
             semantic_key,
+            primitive: None,
             host_runtime_id: None,
         }
+    }
+
+    #[must_use]
+    pub fn primitive(path: DefPath, primitive: PrimitiveTag) -> Self {
+        Self::new(path).primitive_tag(primitive)
     }
 
     #[must_use]
@@ -810,6 +873,12 @@ impl TypeDef {
     #[must_use]
     pub const fn host_runtime_id(mut self, id: u128) -> Self {
         self.host_runtime_id = Some(id);
+        self
+    }
+
+    #[must_use]
+    pub const fn primitive_tag(mut self, primitive: PrimitiveTag) -> Self {
+        self.primitive = Some(primitive);
         self
     }
 }
@@ -998,6 +1067,11 @@ pub enum RegistryError {
         existing: Box<DefPath>,
         incoming: Box<DefPath>,
     },
+    DuplicatePrimitiveType {
+        primitive: PrimitiveTag,
+        existing: Box<DefPath>,
+        incoming: Box<DefPath>,
+    },
 }
 
 impl fmt::Display for RegistryError {
@@ -1027,6 +1101,14 @@ impl fmt::Display for RegistryError {
                 formatter,
                 "definition id collision {id:?}; existing path {existing}, incoming path {incoming}"
             ),
+            Self::DuplicatePrimitiveType {
+                primitive,
+                existing,
+                incoming,
+            } => write!(
+                formatter,
+                "duplicate primitive type {primitive}; existing path {existing}, incoming path {incoming}"
+            ),
         }
     }
 }
@@ -1043,6 +1125,10 @@ mod tests {
 
     fn type_def(name: &str) -> TypeDef {
         TypeDef::new(DefPath::ty("script", ["combat"], name))
+    }
+
+    fn primitive_type_def(name: &str, primitive: PrimitiveTag) -> TypeDef {
+        TypeDef::primitive(DefPath::ty("script", ["primitive"], name), primitive)
     }
 
     fn int_param(name: &str) -> ParamDef {
@@ -1144,6 +1230,61 @@ mod tests {
 
         assert_eq!(registry.id_for_path(&ok_variant), Some(variant_id.def_id()));
         assert_eq!(registry.id_for_path(&value_field), Some(field_id.def_id()));
+    }
+
+    #[test]
+    fn primitive_type_metadata_registers_and_queries_by_type_and_tag() {
+        let mut registry = DefinitionRegistry::new();
+        let primitive_defs = [
+            primitive_type_def("i64", PrimitiveTag::I64),
+            primitive_type_def("u8", PrimitiveTag::U8),
+            primitive_type_def("f32", PrimitiveTag::F32),
+            primitive_type_def("bytes", PrimitiveTag::Bytes),
+        ];
+
+        let ids = primitive_defs
+            .into_iter()
+            .map(|def| {
+                let primitive = def.primitive.expect("test primitive should be set");
+                let id = registry
+                    .register_type(def)
+                    .expect("primitive registration should succeed");
+                (primitive, id)
+            })
+            .collect::<Vec<_>>();
+
+        for (primitive, id) in ids {
+            assert_eq!(registry.type_primitive_kind(id), Some(primitive));
+            assert_eq!(registry.primitive_type_id(primitive), Some(id));
+        }
+
+        let view = registry.compile_view();
+        assert_eq!(
+            view.primitive_type_id(PrimitiveTag::Bytes)
+                .and_then(|id| view.type_primitive_kind(id)),
+            Some(PrimitiveTag::Bytes)
+        );
+        assert_eq!(view.primitive_type_id(PrimitiveTag::I16), None);
+    }
+
+    #[test]
+    fn duplicate_primitive_type_tag_is_rejected() {
+        let mut registry = DefinitionRegistry::new();
+        registry
+            .register_type(primitive_type_def("i64", PrimitiveTag::I64))
+            .expect("initial primitive registration should succeed");
+
+        let error = registry
+            .register_type(primitive_type_def("script_i64", PrimitiveTag::I64))
+            .expect_err("duplicate primitive tag should be rejected");
+
+        assert!(matches!(
+            error,
+            RegistryError::DuplicatePrimitiveType {
+                primitive: PrimitiveTag::I64,
+                ..
+            }
+        ));
     }
 
     #[test]

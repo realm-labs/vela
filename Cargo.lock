@@ -476,6 +476,7 @@ dependencies = [
 name = "vela_registry"
 version = "0.1.0"
 dependencies = [
+ "vela_common",
  "vela_def",
 ]
 
