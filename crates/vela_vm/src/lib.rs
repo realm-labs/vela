@@ -18,6 +18,7 @@ mod host_values;
 mod indexing;
 pub mod iteration;
 mod linked_execution;
+mod linked_iteration;
 mod map_methods;
 mod math_stdlib;
 mod method_runtime;

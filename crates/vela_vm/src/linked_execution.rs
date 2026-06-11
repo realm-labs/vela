@@ -5,7 +5,7 @@ use vela_bytecode::{
 };
 use vela_common::Span;
 
-use crate::heap::{EnumIdentity, HeapValue};
+use crate::heap::EnumIdentity;
 use crate::option_result::std_enum_identity_for_names;
 use crate::value::{ClosureCode, ClosureValue};
 
@@ -341,18 +341,18 @@ impl Vm {
                 }
                 InstructionKind::JumpIfFalse { condition, target } => {
                     if !is_truthy(frame.read(*condition)?) {
-                        validate_linked_jump(code, target.0)?;
+                        linked_iteration::validate_jump(code, target.0)?;
                         ip = target.0;
                     }
                 }
                 InstructionKind::JumpIfNotMissing { value, target } => {
                     if !matches!(frame.read(*value)?, Value::Missing) {
-                        validate_linked_jump(code, target.0)?;
+                        linked_iteration::validate_jump(code, target.0)?;
                         ip = target.0;
                     }
                 }
                 InstructionKind::Jump { target } => {
-                    validate_linked_jump(code, target.0)?;
+                    linked_iteration::validate_jump(code, target.0)?;
                     ip = target.0;
                 }
                 InstructionKind::CallNative {
@@ -791,7 +791,7 @@ impl Vm {
                     dst,
                     jump_if_done,
                 } => {
-                    if let Some(target) = linked_iter_next(
+                    if let Some(target) = linked_iteration::iter_next(
                         iteration::IterRuntime {
                             frame: &mut frame,
                             heap: heap.as_deref_mut(),
@@ -813,7 +813,7 @@ impl Vm {
                     dst,
                     jump_if_done,
                 } => {
-                    if let Some(target) = linked_range_next(
+                    if let Some(target) = linked_iteration::range_next(
                         &mut frame,
                         code,
                         iteration::RangeNextStep {
@@ -1121,99 +1121,6 @@ fn execute_linked_return_guard(
         program.debug_name(guard.context.debug_name),
     )?;
     Ok(value)
-}
-
-fn validate_linked_jump(code: &LinkedCodeObject, offset: usize) -> VmResult<()> {
-    if offset <= code.instructions.len() {
-        Ok(())
-    } else {
-        Err(VmError::new(VmErrorKind::InstructionOutOfBounds { offset }))
-    }
-}
-
-fn linked_iter_next(
-    mut runtime: iteration::IterRuntime<'_, '_>,
-    code: &LinkedCodeObject,
-    iterator: Register,
-    dst: Register,
-    jump_if_done: InstructionOffset,
-) -> VmResult<Option<usize>> {
-    let value = *runtime.frame.read(iterator)?;
-    let next = match value {
-        Value::HeapRef(reference) => {
-            let Some(HeapValue::Iterator(iterator_state)) = runtime
-                .heap
-                .as_deref_mut()
-                .and_then(|heap| heap.heap.get_mut(reference).ok())
-            else {
-                return Err(VmError::new(VmErrorKind::TypeMismatch {
-                    operation: "iterator",
-                }));
-            };
-            iterator_state.next()
-        }
-        _ => {
-            return Err(VmError::new(VmErrorKind::TypeMismatch {
-                operation: "iterator",
-            }));
-        }
-    };
-    match next {
-        Some(value) => {
-            runtime.frame.write(dst, value)?;
-            Ok(None)
-        }
-        None => {
-            validate_linked_jump(code, jump_if_done.0)?;
-            Ok(Some(jump_if_done.0))
-        }
-    }
-}
-
-fn linked_range_next(
-    frame: &mut CallFrame,
-    code: &LinkedCodeObject,
-    step: iteration::RangeNextStep,
-) -> VmResult<Option<usize>> {
-    let is_done = match frame.read(step.done)? {
-        Value::Bool(value) => *value,
-        _ => {
-            return Err(VmError::new(VmErrorKind::TypeMismatch {
-                operation: "range",
-            }));
-        }
-    };
-    if is_done {
-        validate_linked_jump(code, step.jump_if_done.0)?;
-        return Ok(Some(step.jump_if_done.0));
-    }
-
-    let current = expect_int(frame.read(step.cursor)?, "range")?;
-    let end = expect_int(frame.read(step.end)?, "range")?;
-    let has_next = if step.inclusive {
-        current <= end
-    } else {
-        current < end
-    };
-    if has_next {
-        frame.write(
-            step.dst,
-            Value::Scalar(vela_common::ScalarValue::I64(current)),
-        )?;
-        if current == i64::MAX {
-            frame.write(step.done, Value::Bool(true))?;
-        } else {
-            frame.write(
-                step.cursor,
-                Value::Scalar(vela_common::ScalarValue::I64(current + 1)),
-            )?;
-        }
-        Ok(None)
-    } else {
-        frame.write(step.done, Value::Bool(true))?;
-        validate_linked_jump(code, step.jump_if_done.0)?;
-        Ok(Some(step.jump_if_done.0))
-    }
 }
 
 fn linked_type<'program>(
