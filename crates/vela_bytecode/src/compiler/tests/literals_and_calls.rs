@@ -428,6 +428,34 @@ fn main() {
 }
 
 #[test]
+fn compiler_lowers_value_method_ids_after_array_extrema_methods() {
+    let registry = vela_stdlib::standard_registry().expect("standard registry should build");
+    let program = compile_program_source_with_registry(
+        SourceId::new(1),
+        r#"
+fn main() {
+    let values = [4, 1, 3, 1];
+    return values.min().unwrap_or(0) + values.max().unwrap_or(0);
+}
+"#,
+        registry.compile_view(),
+    )
+    .expect("array extrema option methods should compile");
+    let main = program.function("main").expect("main function");
+    let methods = nested_method_id_names(main);
+
+    assert!(methods.iter().any(|method| method == "min"));
+    assert!(methods.iter().any(|method| method == "max"));
+    assert_eq!(
+        methods
+            .iter()
+            .filter(|method| method.as_str() == "unwrap_or")
+            .count(),
+        2
+    );
+}
+
+#[test]
 fn compiler_lowers_value_method_ids_in_option_result_callback_params() {
     let registry = vela_stdlib::standard_registry().expect("standard registry should build");
     let program = compile_program_source_with_registry(

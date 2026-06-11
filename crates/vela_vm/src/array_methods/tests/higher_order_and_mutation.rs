@@ -26,9 +26,8 @@ fn main() {
     let mut vm = Vm::new();
     vm.register_standard_natives();
 
-    let result = vm
-        .run(&code)
-        .expect("array higher-order methods should run");
+    let result =
+        run_linked_array_test_code(&vm, code).expect("array higher-order methods should run");
     assert_eq!(result, OwnedValue::Int(3));
 }
 
@@ -59,8 +58,7 @@ fn main() {
     let mut vm = Vm::new();
     vm.register_standard_natives();
 
-    let result = vm
-        .run_with_managed_heap_and_budget(&code, &mut budget)
+    let result = run_linked_array_test_code_with_budget(&vm, code, &mut budget)
         .expect("heap array higher-order methods should run");
     assert_eq!(result, OwnedValue::Int(2));
 }
@@ -86,7 +84,7 @@ fn main() {
     let mut vm = Vm::new();
     vm.register_standard_natives();
 
-    let result = vm.run(&code).expect("array endpoint methods should run");
+    let result = run_linked_array_test_code(&vm, code).expect("array endpoint methods should run");
     assert_eq!(result, OwnedValue::Int(1));
 }
 
@@ -112,8 +110,7 @@ fn main() {
     let mut vm = Vm::new();
     vm.register_standard_natives();
 
-    let result = vm
-        .run_with_managed_heap_and_budget(&code, &mut budget)
+    let result = run_linked_array_test_code_with_budget(&vm, code, &mut budget)
         .expect("heap array endpoint methods should run");
     assert_eq!(result, OwnedValue::String("wyrm".to_owned()));
 }
@@ -141,7 +138,7 @@ fn main() {
     let mut vm = Vm::new();
     vm.register_standard_natives();
 
-    let result = vm.run(&code).expect("array remove_at method should run");
+    let result = run_linked_array_test_code(&vm, code).expect("array remove_at method should run");
     assert_eq!(result, OwnedValue::Int(30));
 }
 
@@ -167,8 +164,7 @@ fn main() {
     let mut vm = Vm::new();
     vm.register_standard_natives();
 
-    let result = vm
-        .run_with_managed_heap_and_budget(&code, &mut budget)
+    let result = run_linked_array_test_code_with_budget(&vm, code, &mut budget)
         .expect("heap array remove_at method should run");
     assert_eq!(result, OwnedValue::String("quest".to_owned()));
 }
@@ -196,7 +192,7 @@ fn main() {
     let mut vm = Vm::new();
     vm.register_standard_natives();
 
-    let result = vm.run(&code).expect("array insert method should run");
+    let result = run_linked_array_test_code(&vm, code).expect("array insert method should run");
     assert_eq!(result, OwnedValue::Int(20));
 }
 
@@ -219,8 +215,7 @@ fn main() {
     let mut vm = Vm::new();
     vm.register_standard_natives();
 
-    let result = vm
-        .run_with_managed_heap_and_budget(&code, &mut budget)
+    let result = run_linked_array_test_code_with_budget(&vm, code, &mut budget)
         .expect("heap array insert method should run");
     assert_eq!(result, OwnedValue::String("quest".to_owned()));
 }
@@ -237,8 +232,7 @@ fn main() {
     let code = compile_function_source(SourceId::new(1), source, "main")
         .expect("array insert error source should compile");
 
-    let error = Vm::new()
-        .run(&code)
+    let error = run_linked_array_test_code(&Vm::new(), code)
         .expect_err("array insert should reject sparse indexes");
     assert!(matches!(error.kind(), VmErrorKind::IndexOutOfBounds { .. }));
 }
@@ -267,7 +261,7 @@ fn main() {
     let mut vm = Vm::new();
     vm.register_standard_natives();
 
-    let result = vm.run(&code).expect("array extend method should run");
+    let result = run_linked_array_test_code(&vm, code).expect("array extend method should run");
     assert_eq!(result, OwnedValue::Int(40));
 }
 
@@ -291,8 +285,7 @@ fn main() {
     let mut vm = Vm::new();
     vm.register_standard_natives();
 
-    let result = vm
-        .run_with_managed_heap_and_budget(&code, &mut budget)
+    let result = run_linked_array_test_code_with_budget(&vm, code, &mut budget)
         .expect("heap array extend method should run");
     assert_eq!(result, OwnedValue::String("raid".to_owned()));
 }
@@ -309,8 +302,7 @@ fn main() {
     let code = compile_function_source(SourceId::new(1), source, "main")
         .expect("array extend error source should compile");
 
-    let error = Vm::new()
-        .run(&code)
+    let error = run_linked_array_test_code(&Vm::new(), code)
         .expect_err("array extend should reject non-array args");
     assert!(matches!(error.kind(), VmErrorKind::TypeMismatch { .. }));
 }
@@ -333,7 +325,7 @@ fn main() {
     let mut vm = Vm::new();
     vm.register_standard_natives();
 
-    let result = vm.run(&code).expect("array clear method should run");
+    let result = run_linked_array_test_code(&vm, code).expect("array clear method should run");
     assert_eq!(result, OwnedValue::Int(40));
 }
 
@@ -356,8 +348,7 @@ fn main() {
     let mut vm = Vm::new();
     vm.register_standard_natives();
 
-    let result = vm
-        .run_with_managed_heap_and_budget(&code, &mut budget)
+    let result = run_linked_array_test_code_with_budget(&vm, code, &mut budget)
         .expect("heap array clear method should run");
     assert_eq!(result, OwnedValue::String("raid".to_owned()));
 }

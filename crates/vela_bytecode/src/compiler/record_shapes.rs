@@ -641,6 +641,10 @@ fn method_call_shape(
             .array_element()
             .cloned()
             .map(|element| ValueShape::Option(Box::new(element))),
+        "min" | "max" => receiver
+            .array_element()
+            .cloned()
+            .map(|element| ValueShape::Option(Box::new(element))),
         "merge" => Some(receiver),
         "union" | "intersection" | "difference" | "symmetric_difference" => Some(receiver),
         "clear" | "set" | "remove" => None,

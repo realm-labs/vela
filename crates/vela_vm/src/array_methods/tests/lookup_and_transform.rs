@@ -22,7 +22,7 @@ fn main() {
     let mut vm = Vm::new();
     vm.register_standard_natives();
 
-    let result = vm.run(&code).expect("array contains method should run");
+    let result = run_linked_array_test_code(&vm, code).expect("array contains method should run");
     assert_eq!(result, OwnedValue::Int(1));
 }
 
@@ -47,8 +47,7 @@ fn main() {
     let mut vm = Vm::new();
     vm.register_standard_natives();
 
-    let result = vm
-        .run_with_managed_heap_and_budget(&code, &mut budget)
+    let result = run_linked_array_test_code_with_budget(&vm, code, &mut budget)
         .expect("heap array contains method should run");
     assert_eq!(result, OwnedValue::String("daily,quest,raid".to_owned()));
 }
@@ -75,7 +74,7 @@ fn main() {
     let mut vm = Vm::new();
     vm.register_standard_natives();
 
-    let result = vm.run(&code).expect("array index_of method should run");
+    let result = run_linked_array_test_code(&vm, code).expect("array index_of method should run");
     assert_eq!(result, OwnedValue::Int(1));
 }
 
@@ -100,8 +99,7 @@ fn main() {
     let mut vm = Vm::new();
     vm.register_standard_natives();
 
-    let result = vm
-        .run_with_managed_heap_and_budget(&code, &mut budget)
+    let result = run_linked_array_test_code_with_budget(&vm, code, &mut budget)
         .expect("heap array index_of method should run");
     assert_eq!(result, OwnedValue::String("raid".to_owned()));
 }
@@ -127,8 +125,7 @@ fn main() {
     let mut vm = Vm::new();
     vm.register_standard_natives();
 
-    let result = vm
-        .run_with_managed_heap_and_budget(&code, &mut budget)
+    let result = run_linked_array_test_code_with_budget(&vm, code, &mut budget)
         .expect("heap array scalar lookup methods should run");
     assert_eq!(result, OwnedValue::Int(6));
 }
@@ -159,7 +156,7 @@ fn main() {
     let code = compile_function_source(SourceId::new(1), source, "main")
         .expect("array distinct source should compile");
 
-    let result = Vm::new().run(&code).expect("array distinct should run");
+    let result = run_linked_array_test_code(&Vm::new(), code).expect("array distinct should run");
     assert_eq!(result, OwnedValue::String("gold".to_owned()));
 }
 
@@ -191,8 +188,7 @@ fn main() {
         .expect("heap array distinct source should compile");
     let mut budget = ExecutionBudget::unbounded();
 
-    let result = Vm::new()
-        .run_with_managed_heap_and_budget(&code, &mut budget)
+    let result = run_linked_array_test_code_with_budget(&Vm::new(), code, &mut budget)
         .expect("heap array distinct should run");
     assert_eq!(result, OwnedValue::Int(6));
 }
@@ -220,7 +216,7 @@ fn main() {
     let code = compile_function_source(SourceId::new(1), source, "main")
         .expect("array reverse source should compile");
 
-    let result = Vm::new().run(&code).expect("array reverse should run");
+    let result = run_linked_array_test_code(&Vm::new(), code).expect("array reverse should run");
     assert_eq!(result, OwnedValue::Int(2));
 }
 
@@ -249,8 +245,7 @@ fn main() {
         .expect("heap array reverse source should compile");
     let mut budget = ExecutionBudget::unbounded();
 
-    let result = Vm::new()
-        .run_with_managed_heap_and_budget(&code, &mut budget)
+    let result = run_linked_array_test_code_with_budget(&Vm::new(), code, &mut budget)
         .expect("heap array reverse should run");
     assert_eq!(result, OwnedValue::Int(26));
 }
@@ -281,7 +276,7 @@ fn main() {
     let code = compile_function_source(SourceId::new(1), source, "main")
         .expect("array slice source should compile");
 
-    let result = Vm::new().run(&code).expect("array slice should run");
+    let result = run_linked_array_test_code(&Vm::new(), code).expect("array slice should run");
     assert_eq!(result, OwnedValue::Int(2));
 }
 
@@ -309,8 +304,7 @@ fn main() {
         .expect("heap array slice source should compile");
     let mut budget = ExecutionBudget::unbounded();
 
-    let result = Vm::new()
-        .run_with_managed_heap_and_budget(&code, &mut budget)
+    let result = run_linked_array_test_code_with_budget(&Vm::new(), code, &mut budget)
         .expect("heap array slice should run");
     assert_eq!(result, OwnedValue::Int(1));
 }
@@ -325,8 +319,7 @@ fn main() {
     let code = compile_function_source(SourceId::new(1), source, "main")
         .expect("array slice bounds source should compile");
 
-    let error = Vm::new()
-        .run(&code)
+    let error = run_linked_array_test_code(&Vm::new(), code)
         .expect_err("array slice should reject out of bounds index");
     assert_eq!(
         error.kind(),
@@ -348,7 +341,8 @@ fn main() {
     let code = compile_function_source(SourceId::new(1), source, "main")
         .expect("array join method should compile");
 
-    let result = Vm::new().run(&code).expect("array join method should run");
+    let result =
+        run_linked_array_test_code(&Vm::new(), code).expect("array join method should run");
     assert_eq!(result, OwnedValue::String("quest.stage.done".to_owned()));
 }
 
@@ -364,8 +358,7 @@ fn main() {
         .expect("heap array join method should compile");
     let mut budget = ExecutionBudget::unbounded();
 
-    let result = Vm::new()
-        .run_with_managed_heap_and_budget(&code, &mut budget)
+    let result = run_linked_array_test_code_with_budget(&Vm::new(), code, &mut budget)
         .expect("heap array join method should run");
     assert_eq!(result, OwnedValue::String("boar|wolf|wyrm".to_owned()));
 }
@@ -380,8 +373,7 @@ fn main() {
     let code = compile_function_source(SourceId::new(1), source, "main")
         .expect("array join type error source should compile");
 
-    let error = Vm::new()
-        .run(&code)
+    let error = run_linked_array_test_code(&Vm::new(), code)
         .expect_err("array join should reject non-string values");
     assert_eq!(
         error.kind(),
