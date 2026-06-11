@@ -213,6 +213,7 @@ fn linked_program_calls_value_method_by_dispatch_handle() {
             receiver: Register(0),
             dispatch: method,
             debug_name: method_name,
+            cache_site: None,
             args: Vec::new(),
         },
     ));
@@ -254,6 +255,7 @@ fn linked_value_method_dispatch_uses_id_not_debug_name_fallback() {
             receiver: Register(0),
             dispatch: method,
             debug_name: method_name,
+            cache_site: None,
             args: Vec::new(),
         },
     ));
@@ -304,6 +306,7 @@ fn linked_program_calls_script_method_by_dispatch_handle() {
             receiver: Register(0),
             dispatch: method,
             debug_name: method_name,
+            cache_site: None,
             args: Vec::new(),
         },
     ));
@@ -356,6 +359,7 @@ fn linked_program_calls_host_method_by_dispatch_handle() {
             receiver: Register(0),
             dispatch: method,
             debug_name: method_name,
+            cache_site: None,
             args: vec![vela_bytecode::CallArgument::Register(Register(1))],
         },
     ));

@@ -12,10 +12,10 @@ use crate::linked::{
     LinkedProgram, LinkedType, LinkedVariant, TypeGuard, TypeGuardPlan,
 };
 use crate::{
-    Constant, FieldSlot, FunctionIndex, HostTargetPlanId, MethodDispatchHandle, NativeHandle,
-    ScriptFunctionHandle, TypeHandle, UnlinkedCodeObject, UnlinkedInstruction,
-    UnlinkedInstructionKind, UnlinkedProgram, UnlinkedTypeGuard, UnlinkedTypeGuardPlan,
-    VariantHandle, function_id_for_script_name,
+    CacheSiteId, CacheSiteKind, Constant, FieldSlot, FunctionIndex, HostTargetPlanId,
+    InstructionOffset, MethodDispatchHandle, NativeHandle, ScriptFunctionHandle, TypeHandle,
+    UnlinkedCodeObject, UnlinkedInstruction, UnlinkedInstructionKind, UnlinkedProgram,
+    UnlinkedTypeGuard, UnlinkedTypeGuardPlan, VariantHandle, function_id_for_script_name,
 };
 
 #[derive(Clone, Debug, Default)]
@@ -184,6 +184,15 @@ struct LinkContext<'linker, 'registry> {
     extra_functions: Vec<LinkedCodeObject>,
 }
 
+struct LinkInstructionContext<'a> {
+    program: &'a UnlinkedProgram,
+    code: &'a UnlinkedCodeObject,
+    nested_handles: &'a [ScriptFunctionHandle],
+    host_target_map: &'a [HostTargetPlanId],
+    linked_code: &'a mut LinkedCodeObject,
+    instruction_offset: InstructionOffset,
+}
+
 impl<'linker, 'registry> LinkContext<'linker, 'registry> {
     fn new(linker: &'linker Linker<'registry>, program: &UnlinkedProgram) -> Self {
         let mut script_functions_by_name = BTreeMap::new();
@@ -283,13 +292,16 @@ impl<'linker, 'registry> LinkContext<'linker, 'registry> {
             self.extra_functions.push(linked_nested);
         }
 
-        for instruction in &code.instructions {
+        for (offset, instruction) in code.instructions.iter().enumerate() {
             let instruction = self.link_instruction(
-                program,
-                code,
-                &nested_handles,
-                &host_target_map,
-                &mut linked,
+                LinkInstructionContext {
+                    program,
+                    code,
+                    nested_handles: &nested_handles,
+                    host_target_map: &host_target_map,
+                    linked_code: &mut linked,
+                    instruction_offset: InstructionOffset(offset),
+                },
                 instruction,
             )?;
             linked.push_instruction(instruction);
@@ -312,13 +324,15 @@ impl<'linker, 'registry> LinkContext<'linker, 'registry> {
 
     fn link_instruction(
         &mut self,
-        program: &UnlinkedProgram,
-        code: &UnlinkedCodeObject,
-        nested_handles: &[ScriptFunctionHandle],
-        host_target_map: &[HostTargetPlanId],
-        linked_code: &mut LinkedCodeObject,
+        context: LinkInstructionContext<'_>,
         instruction: &UnlinkedInstruction,
     ) -> Result<Instruction, LinkError> {
+        let program = context.program;
+        let code = context.code;
+        let nested_handles = context.nested_handles;
+        let host_target_map = context.host_target_map;
+        let linked_code = context.linked_code;
+        let instruction_offset = context.instruction_offset;
         let kind = match &instruction.kind {
             UnlinkedInstructionKind::LoadConst { dst, constant } => InstructionKind::LoadConst {
                 dst: *dst,
@@ -512,6 +526,7 @@ impl<'linker, 'registry> LinkContext<'linker, 'registry> {
                     receiver: *receiver,
                     dispatch,
                     debug_name,
+                    cache_site: cache_site_at(code, instruction_offset, CacheSiteKind::MethodCall),
                     args: args.clone(),
                 }
             }
@@ -1031,6 +1046,18 @@ impl<'linker, 'registry> LinkContext<'linker, 'registry> {
             }
         }
     }
+}
+
+fn cache_site_at(
+    code: &UnlinkedCodeObject,
+    instruction_offset: InstructionOffset,
+    kind: CacheSiteKind,
+) -> Option<CacheSiteId> {
+    code.cache_sites
+        .sites()
+        .iter()
+        .find(|site| site.instruction_offset == instruction_offset && site.kind == kind)
+        .map(|site| site.id)
 }
 
 #[derive(Clone, Copy, Debug, Eq, Ord, PartialEq, PartialOrd)]

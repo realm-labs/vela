@@ -404,6 +404,7 @@ impl Vm {
                     receiver,
                     dispatch,
                     debug_name,
+                    cache_site: _,
                     args,
                 } => {
                     script_method_calls::dispatch_linked_method_call(

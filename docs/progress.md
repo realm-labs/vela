@@ -311,7 +311,10 @@ Cranelift JIT.
   names remain side-table metadata. Engine definition registry construction now
   consumes registered host type, field, method, and native function inputs
   directly instead of rebuilding compiler identity from reflection-only
-  descriptors; reflection metadata remains a separate runtime view. The
+  descriptors; reflection metadata remains a separate runtime view. Linked
+  method-call instructions now preserve method-call cache-site operands from
+  cache-site sidecars, with linked verifier coverage for future M20 method
+  dispatch caches. The
   primitive scalar, bytes, type-hint contract, and guard-plan refactor is
   complete: source `int`/`float` hints are gone, runtime/owned/host/constant
   values share `ScalarValue` and bytes representations, type hints are

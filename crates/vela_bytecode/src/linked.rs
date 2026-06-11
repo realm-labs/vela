@@ -682,6 +682,7 @@ pub enum InstructionKind {
         receiver: Register,
         dispatch: MethodDispatchHandle,
         debug_name: DebugNameId,
+        cache_site: Option<CacheSiteId>,
         args: Vec<CallArgument>,
     },
     TryPropagate {
@@ -870,6 +871,7 @@ mod tests {
             receiver: Register(2),
             dispatch: method,
             debug_name: method_name,
+            cache_site: Some(CacheSiteId::new(9)),
             args: vec![CallArgument::Missing],
         };
 
@@ -894,8 +896,9 @@ mod tests {
             InstructionKind::CallMethod {
                 dispatch: id,
                 debug_name,
+                cache_site,
                 ..
-            } if id == method && debug_name == method_name
+            } if id == method && debug_name == method_name && cache_site == Some(CacheSiteId::new(9))
         ));
     }
 

@@ -91,6 +91,7 @@ fn linked_program_verify_accepts_valid_handles_and_debug_names() {
         receiver: Register(1),
         dispatch,
         debug_name: method_name,
+        cache_site: None,
         args: Vec::new(),
     }));
     code.push_instruction(Instruction::new(InstructionKind::MakeEnum {
@@ -194,6 +195,7 @@ fn linked_program_verify_rejects_invalid_method_type_and_variant_handles() {
         receiver: Register(1),
         dispatch: MethodDispatchHandle::new(0),
         debug_name: method_name,
+        cache_site: None,
         args: Vec::new(),
     }));
     method_program.push_function(method_code);
@@ -253,6 +255,43 @@ fn linked_program_verify_rejects_invalid_method_type_and_variant_handles() {
             VerificationErrorKind::VariantHandleOutOfBounds {
                 handle: VariantHandle::new(0),
                 variant_count: 0,
+            }
+        ))
+    );
+}
+
+#[test]
+fn linked_program_verify_rejects_invalid_method_cache_site_operand() {
+    let mut program = LinkedProgram::new();
+    let main_name = program.intern_debug_name("main");
+    let method_name = program.intern_debug_name("score");
+    let dispatch = program.push_method_dispatch(LinkedMethodDispatch::new(
+        method_name,
+        LinkedMethodDispatchKind::Value {
+            method_id: vela_def::MethodId::new(4),
+        },
+    ));
+    let mut code = LinkedCodeObject::new(main_name, 2);
+    let cache_site = code.push_cache_site(CacheSiteKind::GlobalRead, InstructionOffset(0));
+    code.push_instruction(Instruction::new(InstructionKind::CallMethod {
+        dst: Register(0),
+        receiver: Register(1),
+        dispatch,
+        debug_name: method_name,
+        cache_site: Some(cache_site),
+        args: Vec::new(),
+    }));
+    program.push_function(code);
+
+    assert_eq!(
+        verify_linked_program(&program),
+        Err(error(
+            "main",
+            Some(0),
+            VerificationErrorKind::CacheSiteKindMismatch {
+                site: cache_site,
+                expected: CacheSiteKind::MethodCall,
+                actual: CacheSiteKind::GlobalRead,
             }
         ))
     );

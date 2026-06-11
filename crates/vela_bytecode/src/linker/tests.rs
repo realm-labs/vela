@@ -176,6 +176,45 @@ fn linker_maps_script_functions_and_methods_to_dense_handles() {
 }
 
 #[test]
+fn linker_preserves_method_call_cache_site_operand() {
+    let method = MethodId::new(200);
+    let mut main = UnlinkedCodeObject::new("main", 2);
+    let cache_site = main.push_cache_site(CacheSiteKind::MethodCall, InstructionOffset(0));
+    main.push_instruction(UnlinkedInstruction::new(
+        UnlinkedInstructionKind::CallMethodId {
+            dst: Register(1),
+            receiver: Register(0),
+            method: "score".to_owned(),
+            method_id: method,
+            args: Vec::new(),
+        },
+    ));
+    main.push_instruction(UnlinkedInstruction::new(UnlinkedInstructionKind::Return {
+        src: Register(1),
+    }));
+    let mut program = UnlinkedProgram::new();
+    program.insert_function(main);
+    program.insert_script_method("Player", "score", method, "main");
+
+    let linked = Linker::new()
+        .link_program(&program)
+        .expect("method call should link");
+    let main = linked
+        .functions()
+        .find(|(_, code)| linked.debug_name(code.debug_name) == "main")
+        .map(|(_, code)| code)
+        .expect("main function should link");
+
+    assert!(matches!(
+        main.instructions[0].kind,
+        InstructionKind::CallMethod {
+            cache_site: Some(site),
+            ..
+        } if site == cache_site
+    ));
+}
+
+#[test]
 fn linker_rejects_script_call_with_matching_name_and_wrong_id() {
     let mut helper = UnlinkedCodeObject::new("helper", 1);
     helper.push_instruction(UnlinkedInstruction::new(UnlinkedInstructionKind::Return {

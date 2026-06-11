@@ -259,13 +259,21 @@ fn verify_linked_instruction(
             receiver,
             dispatch,
             debug_name,
+            cache_site,
             args,
         } => {
             verify_linked_register(function, instruction_index, code, *dst)?;
             verify_linked_register(function, instruction_index, code, *receiver)?;
             verify_linked_method_handle(function, instruction_index, context, *dispatch)?;
             verify_linked_debug_name(function, instruction_index, context, *debug_name)?;
-            verify_linked_call_arguments(function, instruction_index, code, args)
+            verify_linked_call_arguments(function, instruction_index, code, args)?;
+            verify_linked_optional_cache_site(
+                function,
+                instruction_index,
+                code,
+                *cache_site,
+                CacheSiteKind::MethodCall,
+            )
         }
         InstructionKind::MakeArray { dst, elements } => {
             verify_linked_register(function, instruction_index, code, *dst)?;
