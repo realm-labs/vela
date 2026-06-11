@@ -238,14 +238,14 @@ impl Compiler<'_, '_> {
         }
         let register = self.compile_expr(expr)?;
         if let ExpectedTypeOutcome::RequiresRuntimeGuard(RuntimeTypeFact::Primitive(tag)) = &outcome
-            && let TypeContractContext::TypedLet { name } = context
+            && let Some((location, name)) = guard_location_and_name(context)
         {
             self.emit_spanned(
                 UnlinkedInstructionKind::GuardType {
                     src: register,
                     guard: UnlinkedTypeGuard::new(
                         UnlinkedTypeGuardPlan::Primitive(*tag),
-                        UnlinkedGuardContext::new(GuardKind::Contract, GuardLocation::Local, name),
+                        UnlinkedGuardContext::new(GuardKind::Contract, location, name),
                     ),
                 },
                 expr.span,
@@ -402,6 +402,14 @@ impl Compiler<'_, '_> {
             _ => unreachable!("binary equality was matched above"),
         };
         self.compile_binary(inverse, span, left, right).map(Some)
+    }
+}
+
+fn guard_location_and_name(context: TypeContractContext) -> Option<(GuardLocation, String)> {
+    match context {
+        TypeContractContext::TypedLet { name } => Some((GuardLocation::Local, name)),
+        TypeContractContext::Field { name } => Some((GuardLocation::Field, name)),
+        TypeContractContext::FunctionParameter { .. } => None,
     }
 }
 

@@ -67,7 +67,12 @@ impl Compiler<'_, '_> {
         root: &str,
         field: &str,
     ) -> Option<usize> {
-        let type_name = match self.bindings.resolution_at_span(span) {
+        let type_name = self.script_type_for_path_root(span, root)?;
+        self.script_record_field_slot_for_type(&type_name, field)
+    }
+
+    pub(super) fn script_type_for_path_root(&self, span: Span, root: &str) -> Option<String> {
+        match self.bindings.resolution_at_span(span) {
             Some(BindingResolution::Local(local)) => self.script_types.local(*local),
             Some(BindingResolution::Declaration(declaration)) => {
                 self.facts.global_type_symbols.get(declaration).cloned()
@@ -76,8 +81,7 @@ impl Compiler<'_, '_> {
                 .script_types
                 .name(root)
                 .or_else(|| self.global_type_named(root)),
-        }?;
-        self.script_record_field_slot_for_type(&type_name, field)
+        }
     }
 
     fn compile_local_path(&mut self, span: Span, path: &[String]) -> CompileResult<Register> {

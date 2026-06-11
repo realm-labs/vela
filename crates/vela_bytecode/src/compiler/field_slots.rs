@@ -100,6 +100,17 @@ impl ScriptFieldSlots {
             .copied()
     }
 
+    pub(super) fn record_field_value_type(
+        &self,
+        type_name: &str,
+        field: &str,
+    ) -> Option<RuntimeTypeFact> {
+        let type_name = self.resolve_record_type_name(type_name)?;
+        self.record_field_value_types
+            .get(&(type_name, field.to_owned()))
+            .cloned()
+    }
+
     pub(super) fn record_fields(
         &self,
         type_name: &str,

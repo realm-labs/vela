@@ -10,7 +10,7 @@ use super::host_paths::HostPath;
 use super::operators::compound_assignment_instruction;
 use super::record_shapes::RecordShape;
 use super::script_types::ScriptTypeFact;
-use super::value_types::RuntimeTypeFact;
+use super::value_types::{RuntimeTypeFact, TypeContractContext};
 use super::{CompileError, CompileErrorKind, CompileResult, Compiler};
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -19,6 +19,7 @@ struct RecordFieldAssignmentTarget {
     fields: Vec<String>,
     shape: Option<RecordShape>,
     slot: Option<usize>,
+    value_type: Option<RuntimeTypeFact>,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -200,6 +201,7 @@ impl Compiler<'_, '_> {
                 if self.host_field_path(target).is_some() {
                     return Ok(None);
                 }
+                let root_type = self.script_type_for_path_root(target.span, record);
                 let slot = match fields.as_slice() {
                     [field] => self
                         .script_record_field_slot_for_path_root(target.span, record, field.as_str())
@@ -209,11 +211,20 @@ impl Compiler<'_, '_> {
                         }),
                     _ => None,
                 };
+                let value_type = match fields.as_slice() {
+                    [field] => root_type.as_deref().and_then(|type_name| {
+                        self.facts
+                            .script_field_slots
+                            .record_field_value_type(type_name, field)
+                    }),
+                    _ => None,
+                };
                 Ok(Some(RecordFieldAssignmentTarget {
                     root: self.local_register_at_span(target.span, record)?,
                     fields,
                     shape: self.record_shape_for_path_root(target.span, record),
                     slot,
+                    value_type,
                 }))
             }
             ExprKind::Field { base, name } => {
@@ -231,11 +242,21 @@ impl Compiler<'_, '_> {
                             .or_else(|| self.record_field_shape_slot_for_receiver(base, name))
                     })
                     .flatten();
+                let value_type = (fields.len() == 1)
+                    .then(|| {
+                        self.script_type_for_expr(base).and_then(|type_name| {
+                            self.facts
+                                .script_field_slots
+                                .record_field_value_type(&type_name, name)
+                        })
+                    })
+                    .flatten();
                 Ok(Some(RecordFieldAssignmentTarget {
                     root: self.local_register_at_span(target.span, record)?,
                     fields,
                     shape: self.record_shape_for_path_root(target.span, record),
                     slot,
+                    value_type,
                 }))
             }
             _ => Ok(None),
@@ -262,7 +283,14 @@ impl Compiler<'_, '_> {
                 "record field assignment target",
             )));
         };
-        self.compile_record_field_assignment_at_root(op, target.root, field, target.slot, value)
+        self.compile_record_field_assignment_at_root(
+            op,
+            target.root,
+            field,
+            target.slot,
+            target.value_type,
+            value,
+        )
     }
 
     fn compile_record_field_assignment_at_root(
@@ -271,10 +299,23 @@ impl Compiler<'_, '_> {
         root: Register,
         field: &str,
         slot: Option<usize>,
+        value_type: Option<RuntimeTypeFact>,
         value: &Expr,
     ) -> CompileResult<Register> {
         let assigned = match op {
-            AssignOp::Set => self.compile_expr(value)?,
+            AssignOp::Set => {
+                if let Some(expected) = value_type {
+                    self.compile_expr_with_expected_type(
+                        value,
+                        expected,
+                        TypeContractContext::Field {
+                            name: field.to_owned(),
+                        },
+                    )?
+                } else {
+                    self.compile_expr(value)?
+                }
+            }
             AssignOp::Add | AssignOp::Sub | AssignOp::Mul | AssignOp::Div | AssignOp::Rem => {
                 let current = self.alloc_register()?;
                 if let Some(slot) = slot {
@@ -349,7 +390,7 @@ impl Compiler<'_, '_> {
                 .element_shape
                 .as_ref()
                 .and_then(|shape| shape.field_slot(field));
-            self.compile_record_field_assignment_at_root(op, record, field, slot, value)?
+            self.compile_record_field_assignment_at_root(op, record, field, slot, None, value)?
         };
 
         self.emit(UnlinkedInstructionKind::SetIndex {

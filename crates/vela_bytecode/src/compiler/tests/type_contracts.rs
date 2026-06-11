@@ -459,6 +459,135 @@ fn main(value) {
 }
 
 #[test]
+fn compiler_emits_field_guard_for_dynamic_typed_record_write() {
+    let program = compile_program_source(
+        SourceId::new(1),
+        r#"
+struct Reward {
+    amount: i64,
+}
+fn make_reward() {
+    return Reward { amount: 1 };
+}
+fn main(value) {
+    let reward: Reward = make_reward();
+    reward.amount = value;
+    return reward.amount;
+}
+"#,
+    )
+    .expect("dynamic typed record write should compile with runtime guard");
+    let main = program.function("main").expect("main function");
+    let guard_index = main
+        .instructions
+        .iter()
+        .position(|instruction| {
+            matches!(instruction.kind, UnlinkedInstructionKind::GuardType { .. })
+        })
+        .expect("dynamic typed record write should emit GuardType");
+    let set_index = main
+        .instructions
+        .iter()
+        .position(|instruction| {
+            matches!(
+                instruction.kind,
+                UnlinkedInstructionKind::SetRecordSlot {
+                    ref field,
+                    slot: 0,
+                    ..
+                } if field == "amount"
+            )
+        })
+        .expect("typed record write should use a slot write");
+
+    assert!(guard_index < set_index);
+    let UnlinkedInstructionKind::GuardType {
+        src: guard_src,
+        guard,
+    } = &main.instructions[guard_index].kind
+    else {
+        panic!("expected GuardType");
+    };
+    let UnlinkedInstructionKind::SetRecordSlot { src: set_src, .. } =
+        &main.instructions[set_index].kind
+    else {
+        panic!("expected SetRecordSlot");
+    };
+
+    assert_eq!(guard_src, set_src);
+    assert_eq!(guard.context.location, crate::GuardLocation::Field);
+    assert_eq!(guard.context.debug_name, "amount");
+    assert!(matches!(
+        guard.plan,
+        crate::UnlinkedTypeGuardPlan::Primitive(vela_common::PrimitiveTag::I64)
+    ));
+
+    let linked = crate::Linker::new()
+        .link_program(&program)
+        .expect("program should link");
+    linked.verify().expect("linked field guard should verify");
+}
+
+#[test]
+fn compiler_contextualizes_typed_record_field_literals_without_guard() {
+    let program = compile_program_source(
+        SourceId::new(1),
+        r#"
+struct Reward {
+    amount: u8,
+}
+fn make_reward() {
+    return Reward { amount: 1 };
+}
+fn main() {
+    let reward: Reward = make_reward();
+    reward.amount = 12;
+    return reward.amount;
+}
+"#,
+    )
+    .expect("typed record write literal should compile without runtime guard");
+    let main = program.function("main").expect("main function");
+
+    assert!(
+        !main.instructions.iter().any(|instruction| matches!(
+            instruction.kind,
+            UnlinkedInstructionKind::GuardType { .. }
+        ))
+    );
+    assert!(
+        main.constants
+            .contains(&Constant::Scalar(vela_common::ScalarValue::U8(12)))
+    );
+}
+
+#[test]
+fn compiler_rejects_static_typed_record_field_contract_mismatches() {
+    let error = compile_program_source(
+        SourceId::new(1),
+        r#"
+struct Reward {
+    amount: i64,
+}
+fn make_reward() {
+    return Reward { amount: 1 };
+}
+fn main() {
+    let reward: Reward = make_reward();
+    reward.amount = "x";
+    return reward.amount;
+}
+"#,
+    )
+    .expect_err("static typed record write mismatch should fail before bytecode emission");
+
+    assert_eq!(
+        semantic_diagnostic_codes(error),
+        ["compiler::type_contract_mismatch"]
+    );
+}
+
+#[test]
 fn compiler_rejects_static_typed_let_contract_mismatches() {
     let error = compile_function_source(
         SourceId::new(1),

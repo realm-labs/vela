@@ -1328,7 +1328,7 @@ then build registry, syntax, guards, and runtime behavior on the new model.
 **Termination condition:**
 
 - [x] `let x: i64 = dynamic_value;` emits a guard.
-- [ ] `typed_record.amount = dynamic_value;` emits a guard.
+- [x] `typed_record.amount = dynamic_value;` emits a guard.
 - [x] `let x: i64 = 12;` emits no guard.
 - [x] `let x: i64 = "x";` compile-errors.
 

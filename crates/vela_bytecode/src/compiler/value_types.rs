@@ -33,6 +33,7 @@ pub(super) enum ExpectedTypeOutcome {
 pub(super) enum TypeContractContext {
     FunctionParameter { name: String },
     TypedLet { name: String },
+    Field { name: String },
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -374,6 +375,7 @@ impl TypeContractContext {
         match self {
             Self::FunctionParameter { name } => format!("parameter `{name}`"),
             Self::TypedLet { name } => format!("let binding `{name}`"),
+            Self::Field { name } => format!("field `{name}`"),
         }
     }
 }
