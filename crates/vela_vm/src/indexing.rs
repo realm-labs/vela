@@ -1,8 +1,39 @@
 use crate::heap::HeapValue;
 use crate::{
-    ExecutionBudget, HeapExecution, Value, VmError, VmErrorKind, VmResult, store_runtime_value,
-    stored_runtime_value,
+    CallFrame, ExecutionBudget, HeapExecution, Value, VmError, VmErrorKind, VmResult,
+    store_runtime_value, stored_runtime_value,
 };
+use vela_bytecode::Register;
+
+pub(crate) fn dispatch_get_index(
+    frame: &mut CallFrame,
+    heap: Option<&HeapExecution<'_>>,
+    dst: Register,
+    base: Register,
+    index: Register,
+) -> VmResult<()> {
+    let value = get_index(frame.read(base)?, frame.read(index)?, heap)?;
+    frame.write(dst, value)
+}
+
+pub(crate) fn dispatch_set_index(
+    frame: &mut CallFrame,
+    heap: Option<&mut HeapExecution<'_>>,
+    budget: Option<&mut ExecutionBudget>,
+    base: Register,
+    index: Register,
+    src: Register,
+) -> VmResult<()> {
+    let mut base_value = *frame.read(base)?;
+    set_index(
+        &mut base_value,
+        frame.read(index)?,
+        frame.read(src)?,
+        heap,
+        budget,
+    )?;
+    frame.write(base, base_value)
+}
 
 pub(crate) fn get_index(
     base: &Value,

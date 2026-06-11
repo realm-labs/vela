@@ -591,23 +591,17 @@ impl Vm {
                     )?;
                 }
                 UnlinkedInstructionKind::GetIndex { dst, base, index } => {
-                    let value = indexing::get_index(
-                        frame.read(*base)?,
-                        frame.read(*index)?,
-                        heap.as_deref(),
-                    )?;
-                    frame.write(*dst, value)?;
+                    indexing::dispatch_get_index(&mut frame, heap.as_deref(), *dst, *base, *index)?;
                 }
                 UnlinkedInstructionKind::SetIndex { base, index, src } => {
-                    let mut base_value = *frame.read(*base)?;
-                    indexing::set_index(
-                        &mut base_value,
-                        frame.read(*index)?,
-                        frame.read(*src)?,
+                    indexing::dispatch_set_index(
+                        &mut frame,
                         heap.as_deref_mut(),
                         budget.as_deref_mut(),
+                        *base,
+                        *index,
+                        *src,
                     )?;
-                    frame.write(*base, base_value)?;
                 }
                 UnlinkedInstructionKind::IterInit { dst, iterable } => {
                     iteration::dispatch_iter_init(
