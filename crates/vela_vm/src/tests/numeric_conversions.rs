@@ -54,6 +54,30 @@ fn main() {
 }
 
 #[test]
+fn explicit_numeric_conversions_repair_mixed_numeric_code() {
+    assert_eq!(
+        run_conversion_source(
+            r#"
+fn main() {
+    return i64::from_i32(1i32) + 2;
+}
+"#
+        ),
+        Ok(OwnedValue::Scalar(ScalarValue::I64(3)))
+    );
+    assert_eq!(
+        run_conversion_source(
+            r#"
+fn main() {
+    return f64::from_f32(1.5f32) + 2.5;
+}
+"#
+        ),
+        Ok(OwnedValue::Scalar(ScalarValue::F64(4.0)))
+    );
+}
+
+#[test]
 fn numeric_try_conversions_return_result_ok_with_narrow_scalar_tags() {
     assert_eq!(
         run_conversion_source(

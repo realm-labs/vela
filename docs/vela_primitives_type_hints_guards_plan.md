@@ -1481,15 +1481,15 @@ Representative conversion slice implemented:
   - [x] `i8::try_from_i64`
   - [x] `u8::try_from_u64`
   - [ ] etc.
-- [ ] Add float conversions:
+- [x] Add float conversions:
   - [x] `f64::from_f32`
   - [x] `f32::try_from_f64` or explicit policy.
 - [x] Do not add implicit conversion.
 
 **Termination condition:**
 
-- [ ] Mixed numeric code can be fixed through explicit conversion APIs.
-- [ ] Conversion APIs are manifest-driven and registered in stdlib runtime.
+- [x] Mixed numeric code can be fixed through explicit conversion APIs.
+- [x] Conversion APIs are manifest-driven and registered in stdlib runtime.
 
 #### Task 8.2: Add wrapping/bit APIs
 
