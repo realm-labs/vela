@@ -456,6 +456,31 @@ fn main() {
 }
 
 #[test]
+fn compiler_lowers_value_method_ids_after_set_values_method() {
+    let registry = vela_stdlib::standard_registry().expect("standard registry should build");
+    let program = compile_program_source_with_registry(
+        SourceId::new(1),
+        r#"
+fn main() {
+    let numbers = set::from_array([1, 2, 3]);
+    let tags = set::from_array(["raid", "daily"]);
+    return numbers.values().sum() + tags.values().sort_by(|tag| tag).join(",").len();
+}
+"#,
+        registry.compile_view(),
+    )
+    .expect("set values array methods should compile");
+    let main = program.function("main").expect("main function");
+    let methods = nested_method_id_names(main);
+
+    assert!(methods.iter().any(|method| method == "values"));
+    assert!(methods.iter().any(|method| method == "sum"));
+    assert!(methods.iter().any(|method| method == "sort_by"));
+    assert!(methods.iter().any(|method| method == "join"));
+    assert!(methods.iter().any(|method| method == "len"));
+}
+
+#[test]
 fn compiler_lowers_value_method_ids_in_option_result_callback_params() {
     let registry = vela_stdlib::standard_registry().expect("standard registry should build");
     let program = compile_program_source_with_registry(

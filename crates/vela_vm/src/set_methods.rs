@@ -86,11 +86,52 @@ pub(super) fn type_error<T>(operation: &'static str) -> VmResult<T> {
 
 #[cfg(test)]
 mod tests {
-    use vela_bytecode::compiler::compile_function_source;
+    use vela_bytecode::compiler::compile_function_source_with_registry;
+    use vela_bytecode::compiler::error::CompileResult;
+    use vela_bytecode::{Linker, UnlinkedCodeObject, UnlinkedProgram};
     use vela_common::SourceId;
 
     use crate::owned_value::OwnedValue;
-    use crate::{ExecutionBudget, Vm};
+    use crate::{ExecutionBudget, Vm, VmResult};
+
+    fn compile_function_source(
+        source: SourceId,
+        text: &str,
+        function_name: &str,
+    ) -> CompileResult<UnlinkedCodeObject> {
+        let registry = vela_stdlib::standard_registry().expect("standard registry should build");
+        compile_function_source_with_registry(source, text, function_name, registry.compile_view())
+    }
+
+    fn run_linked_set_test_code(vm: &Vm, code: UnlinkedCodeObject) -> VmResult<OwnedValue> {
+        let mut budget = ExecutionBudget::unbounded();
+        run_linked_set_test_code_with_budget(vm, code, &mut budget)
+    }
+
+    fn run_linked_set_test_code_with_budget(
+        vm: &Vm,
+        code: UnlinkedCodeObject,
+        budget: &mut ExecutionBudget,
+    ) -> VmResult<OwnedValue> {
+        let entry = code.name.clone();
+        let mut program = UnlinkedProgram::new();
+        program.insert_function(code);
+
+        let mut linker = Linker::new();
+        for id in vm
+            .native_ids
+            .keys()
+            .chain(vm.host_native_ids.keys())
+            .copied()
+        {
+            linker.add_native_implementation(id);
+        }
+        let linked = linker
+            .link_program(&program)
+            .expect("set method test code should link");
+
+        vm.run_linked_program_with_budget(&linked, &entry, &[], budget)
+    }
 
     #[test]
     fn runs_compiled_set_combination_methods() {
@@ -122,7 +163,8 @@ fn main() {
         let mut vm = Vm::new();
         vm.register_standard_natives();
 
-        let result = vm.run(&code).expect("set combination methods should run");
+        let result =
+            run_linked_set_test_code(&vm, code).expect("set combination methods should run");
         assert_eq!(result, OwnedValue::String("daily,quest".to_owned()));
     }
 
@@ -153,8 +195,7 @@ fn main() {
         vm.register_standard_natives();
         let mut budget = ExecutionBudget::unbounded();
 
-        let result = vm
-            .run_with_managed_heap_and_budget(&code, &mut budget)
+        let result = run_linked_set_test_code_with_budget(&vm, code, &mut budget)
             .expect("heap set combination methods should run");
         assert_eq!(result, OwnedValue::Int(34));
     }
@@ -189,8 +230,7 @@ fn main() {
         vm.register_standard_natives();
         let mut budget = ExecutionBudget::unbounded();
 
-        let result = vm
-            .run_with_managed_heap_and_budget(&code, &mut budget)
+        let result = run_linked_set_test_code_with_budget(&vm, code, &mut budget)
             .expect("heap string set predicates should run");
         assert_eq!(
             result,
@@ -216,8 +256,7 @@ fn main() {
         vm.register_standard_natives();
         let mut budget = ExecutionBudget::unbounded();
 
-        let result = vm
-            .run_with_managed_heap_and_budget(&code, &mut budget)
+        let result = run_linked_set_test_code_with_budget(&vm, code, &mut budget)
             .expect("heap set has method should run");
         assert_eq!(result, OwnedValue::Int(6));
     }
@@ -240,7 +279,7 @@ fn main() {
         let mut vm = Vm::new();
         vm.register_standard_natives();
 
-        let result = vm.run(&code).expect("set filter should run");
+        let result = run_linked_set_test_code(&vm, code).expect("set filter should run");
         assert_eq!(result, OwnedValue::String("quest,raid".to_owned()));
     }
 
@@ -259,8 +298,7 @@ fn main() {
         vm.register_standard_natives();
         let mut budget = ExecutionBudget::unbounded();
 
-        let result = vm
-            .run_with_managed_heap_and_budget(&code, &mut budget)
+        let result = run_linked_set_test_code_with_budget(&vm, code, &mut budget)
             .expect("heap set filter should run");
         assert_eq!(result, OwnedValue::Int(23));
     }
@@ -283,7 +321,7 @@ fn main() {
         let mut vm = Vm::new();
         vm.register_standard_natives();
 
-        let result = vm.run(&code).expect("set map should run");
+        let result = run_linked_set_test_code(&vm, code).expect("set map should run");
         assert_eq!(result, OwnedValue::String("DAILY,QUEST,RAID".to_owned()));
     }
 
@@ -303,8 +341,7 @@ fn main() {
         vm.register_standard_natives();
         let mut budget = ExecutionBudget::unbounded();
 
-        let result = vm
-            .run_with_managed_heap_and_budget(&code, &mut budget)
+        let result = run_linked_set_test_code_with_budget(&vm, code, &mut budget)
             .expect("heap set map should run");
         assert_eq!(result, OwnedValue::Int(21));
     }
@@ -329,7 +366,8 @@ fn main() {
         let mut vm = Vm::new();
         vm.register_standard_natives();
 
-        let result = vm.run(&code).expect("set higher-order methods should run");
+        let result =
+            run_linked_set_test_code(&vm, code).expect("set higher-order methods should run");
         assert_eq!(result, OwnedValue::String("quest".to_owned()));
     }
 
@@ -354,8 +392,7 @@ fn main() {
         vm.register_standard_natives();
         let mut budget = ExecutionBudget::unbounded();
 
-        let result = vm
-            .run_with_managed_heap_and_budget(&code, &mut budget)
+        let result = run_linked_set_test_code_with_budget(&vm, code, &mut budget)
             .expect("heap set higher-order methods should run");
         assert_eq!(result, OwnedValue::Int(27));
     }
@@ -373,8 +410,7 @@ fn main() {
         let mut vm = Vm::new();
         vm.register_standard_natives();
 
-        let error = vm
-            .run(&code)
+        let error = run_linked_set_test_code(&vm, code)
             .expect_err("set filter should reject non-callback args");
         assert_eq!(
             error.kind(),
@@ -397,9 +433,8 @@ fn main() {
         let mut vm = Vm::new();
         vm.register_standard_natives();
 
-        let error = vm
-            .run(&code)
-            .expect_err("set union should reject non-set args");
+        let error =
+            run_linked_set_test_code(&vm, code).expect_err("set union should reject non-set args");
         assert_eq!(
             error.kind(),
             crate::VmErrorKind::TypeMismatch {
@@ -416,8 +451,7 @@ fn main() {
         let code = compile_function_source(SourceId::new(1), source, "main")
             .expect("set symmetric_difference type error source should compile");
 
-        let error = vm
-            .run(&code)
+        let error = run_linked_set_test_code(&vm, code)
             .expect_err("set symmetric_difference should reject non-set args");
         assert_eq!(
             error.kind(),
@@ -435,8 +469,7 @@ fn main() {
         let code = compile_function_source(SourceId::new(1), source, "main")
             .expect("set predicate type error source should compile");
 
-        let error = vm
-            .run(&code)
+        let error = run_linked_set_test_code(&vm, code)
             .expect_err("set predicate should reject non-set args");
         assert_eq!(
             error.kind(),
@@ -465,7 +498,7 @@ fn main() {
         let mut vm = Vm::new();
         vm.register_standard_natives();
 
-        let result = vm.run(&code).expect("set clear method should run");
+        let result = run_linked_set_test_code(&vm, code).expect("set clear method should run");
         assert_eq!(result, OwnedValue::String("raid".to_owned()));
     }
 
@@ -489,8 +522,7 @@ fn main() {
         vm.register_standard_natives();
         let mut budget = ExecutionBudget::unbounded();
 
-        let result = vm
-            .run_with_managed_heap_and_budget(&code, &mut budget)
+        let result = run_linked_set_test_code_with_budget(&vm, code, &mut budget)
             .expect("heap set clear method should run");
         assert_eq!(result, OwnedValue::Int(9));
     }
@@ -512,7 +544,7 @@ fn main() {
         let mut vm = Vm::new();
         vm.register_standard_natives();
 
-        let result = vm.run(&code).expect("set extend method should run");
+        let result = run_linked_set_test_code(&vm, code).expect("set extend method should run");
         assert_eq!(result, OwnedValue::String("daily|quest|raid".to_owned()));
     }
 
@@ -535,8 +567,7 @@ fn main() {
         vm.register_standard_natives();
         let mut budget = ExecutionBudget::unbounded();
 
-        let result = vm
-            .run_with_managed_heap_and_budget(&code, &mut budget)
+        let result = run_linked_set_test_code_with_budget(&vm, code, &mut budget)
             .expect("heap set extend method should run");
         assert_eq!(result, OwnedValue::Int(20));
     }
@@ -555,9 +586,8 @@ fn main() {
         let mut vm = Vm::new();
         vm.register_standard_natives();
 
-        let error = vm
-            .run(&code)
-            .expect_err("set extend should reject non-set args");
+        let error =
+            run_linked_set_test_code(&vm, code).expect_err("set extend should reject non-set args");
         assert_eq!(
             error.kind(),
             crate::VmErrorKind::TypeMismatch {

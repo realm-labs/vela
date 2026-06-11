@@ -659,9 +659,11 @@ fn method_call_shape(
         "keys" => Some(ValueShape::Array(Box::new(ValueShape::Scalar(
             "string".to_owned(),
         )))),
-        "values" => receiver
-            .map_parts()
-            .map(|(_, value)| ValueShape::Array(Box::new(value.clone()))),
+        "values" => match &receiver {
+            ValueShape::Map { value, .. } => Some(ValueShape::Array(value.clone())),
+            ValueShape::Set(element) => Some(ValueShape::Array(element.clone())),
+            _ => None,
+        },
         "entries" => receiver.map_parts().map(|(key, value)| {
             ValueShape::Array(Box::new(ValueShape::Record(
                 RecordShape::from_field_shapes([
