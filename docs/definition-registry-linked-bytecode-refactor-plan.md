@@ -1689,7 +1689,7 @@ bindings, linked bytecode execution, runtime typed identity, and
 `ProgramVersion` ownership are all validated. This phase is cleanup, not a
 place to discover missing architecture.
 
-- [ ] **Task 9.1: Remove old stdlib ID APIs**
+- [x] **Task 9.1: Remove old stdlib ID APIs**
 
 **Delete:**
 
