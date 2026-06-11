@@ -435,7 +435,7 @@ fn make_reward() {
     return Reward { gold: 7, xp: 3 };
 }
 
-fn reward_score(reward, bonus) {
+fn reward_score(reward: Reward, bonus) {
     return reward.gold + reward.xp + bonus;
 }
 "#,
@@ -486,7 +486,7 @@ fn make_reward(gold, label) {
     return Reward { gold: gold, label: label };
 }
 
-fn reward_score(reward) {
+fn reward_score(reward: Reward) {
     return reward.gold;
 }
 "#,
@@ -551,7 +551,7 @@ fn make_reward() {
     return Reward { gold: 7 };
 }
 
-fn read_reward(reward) {
+fn read_reward(reward: Reward) {
     return reward.gold;
 }
 "#;
