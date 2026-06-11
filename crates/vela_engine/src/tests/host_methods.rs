@@ -1,4 +1,4 @@
-use vela_bytecode::compiler::compile_program_source;
+use vela_bytecode::UnlinkedProgram;
 use vela_common::{HostMethodId, HostObjectId, HostTypeId, SourceId};
 use vela_def::{FieldId, TypeId, VariantId};
 use vela_host::access::HostAccess;
@@ -10,6 +10,7 @@ use vela_reflect::registry::{
     FieldDesc, HostIndexCapability, MethodDesc, TypeDesc, TypeKey, VariantDesc,
 };
 use vela_vm::HostExecution;
+use vela_vm::budget::ExecutionBudget;
 use vela_vm::error::{VmError, VmErrorKind, VmResult};
 use vela_vm::owned_value::OwnedValue;
 
@@ -22,6 +23,28 @@ use crate::permission::Capability;
 use crate::runtime::{CallOptions, Runtime};
 
 use super::player_type;
+
+fn run_linked_program_with_host(
+    engine: &Engine,
+    program: &UnlinkedProgram,
+    args: &[OwnedValue],
+    host: &mut HostExecution<'_>,
+) -> VmResult<OwnedValue> {
+    let linked = engine
+        .link_program(program)
+        .expect("engine host method test program should link");
+    let mut budget = ExecutionBudget::unbounded();
+    engine
+        .into_vm_for_program(program)
+        .run_linked_program_with_host_budget_and_caches(
+            &linked,
+            "main",
+            args,
+            host,
+            &mut budget,
+            None,
+        )
+}
 
 #[test]
 fn runtime_call_writes_through_host_method_and_updates_adapter() {
@@ -100,9 +123,9 @@ fn main(player: Player) {
     };
 
     assert_eq!(
-        engine.into_vm().run_program_with_host(
+        run_linked_program_with_host(
+            &engine,
             &program,
-            "main",
             &[OwnedValue::HostRef(host_ref)],
             &mut host
         ),
@@ -148,9 +171,9 @@ fn main(player: Player) {
     };
 
     assert_eq!(
-        engine.into_vm().run_program_with_host(
+        run_linked_program_with_host(
+            &engine,
             &program,
-            "main",
             &[OwnedValue::HostRef(host_ref)],
             &mut host
         ),
@@ -203,9 +226,9 @@ fn main(player: Player) {
     };
 
     assert_eq!(
-        engine.into_vm().run_program_with_host(
+        run_linked_program_with_host(
+            &engine,
             &program,
-            "main",
             &[OwnedValue::HostRef(host_ref)],
             &mut host
         ),
@@ -252,11 +275,11 @@ fn main(player: Player, monster: Monster) {
     };
 
     assert_eq!(
-        engine.into_vm().run_program_with_host(
+        run_linked_program_with_host(
+            &engine,
             &program,
-            "main",
             &[OwnedValue::HostRef(player), OwnedValue::HostRef(monster)],
-            &mut host
+            &mut host,
         ),
         Ok(OwnedValue::Int(1))
     );
@@ -351,9 +374,9 @@ fn main(player: Player) {
         script_globals: None,
     };
     assert_eq!(
-        engine.into_vm().run_program_with_host(
+        run_linked_program_with_host(
+            &engine,
             &program,
-            "main",
             &[OwnedValue::HostRef(host_ref)],
             &mut host
         ),
@@ -978,9 +1001,10 @@ fn engine_installs_type_registry_for_host_ref_script_impl_dispatch() {
         .register_type(player_type(TypeId::new(1), HostTypeId::new(1)))
         .build()
         .expect("engine should build");
-    let program = compile_program_source(
-        SourceId::new(1),
-        r#"
+    let program = engine
+        .compile_source(
+            SourceId::new(1),
+            r#"
 trait BonusSource { fn bonus(self, amount) -> int; }
 
 impl BonusSource for Player {
@@ -989,12 +1013,12 @@ impl BonusSource for Player {
     }
 }
 
-fn main(player) {
+fn main(player: Player) {
     return player.bonus(5);
 }
 "#,
-    )
-    .expect("program should compile");
+        )
+        .expect("program should compile");
     let host_ref = HostRef::new(HostTypeId::new(1), HostObjectId::new(42), 1);
     let mut adapter = MockStateAdapter::new();
     let mut tx = HostAccess::new();
@@ -1005,9 +1029,9 @@ fn main(player) {
     };
 
     assert_eq!(
-        engine.into_vm().run_program_with_host(
+        run_linked_program_with_host(
+            &engine,
             &program,
-            "main",
             &[OwnedValue::HostRef(host_ref)],
             &mut host
         ),
