@@ -1,4 +1,4 @@
-use vela_bytecode::linked::{InstructionKind, LinkedMethodDispatchKind};
+use vela_bytecode::linked::InstructionKind;
 use vela_bytecode::{InstructionOffset, LinkedCodeObject, LinkedProgram, Register};
 use vela_common::Span;
 
@@ -774,16 +774,7 @@ impl Vm {
                     cache_site,
                     ..
                 } => {
-                    let method_id = match call.program.method_dispatch(*method).map(|d| &d.kind) {
-                        Some(LinkedMethodDispatchKind::Host { method_id }) => *method_id,
-                        _ => {
-                            return Err(VmError::new(VmErrorKind::UnsupportedLinkedInstruction {
-                                opcode: "HostCall",
-                            })
-                            .with_source_span_if_absent(instruction.span));
-                        }
-                    };
-                    let value = host_access::execute_code_host_call(
+                    let value = host_access::execute_linked_code_host_call(
                         host_access::HostAccessRuntime {
                             frame: &frame,
                             heap: heap.as_deref_mut(),
@@ -793,14 +784,15 @@ impl Vm {
                             source_span: instruction.span,
                         },
                         *root,
-                        host_access::CodeHostCallPlan {
+                        host_access::LinkedCodeHostCallPlan {
+                            program: call.program,
                             target: host_access::CodeHostTargetPlan {
                                 targets: &code.host_targets,
                                 target_id: *target,
                                 dynamic_args,
                                 cache_site: *cache_site,
                             },
-                            method: method_id,
+                            method: *method,
                             args,
                             wants_return: dst.is_some(),
                         },

@@ -1,4 +1,5 @@
-use vela_bytecode::{CacheSiteId, HostTargetPlanId, Register};
+use vela_bytecode::linked::LinkedMethodDispatchKind;
+use vela_bytecode::{CacheSiteId, HostTargetPlanId, LinkedProgram, MethodDispatchHandle, Register};
 use vela_common::{GlobalSlot, HostMethodId, Span};
 use vela_host::adapter::GlobalBinding;
 use vela_host::resolved::{HostAccessOp, HostAccessSpec, HostMutationOp, ResolvedHostAccess};
@@ -336,6 +337,14 @@ pub(crate) struct CodeHostCallPlan<'a> {
     pub(crate) wants_return: bool,
 }
 
+pub(crate) struct LinkedCodeHostCallPlan<'a> {
+    pub(crate) program: &'a LinkedProgram,
+    pub(crate) target: CodeHostTargetPlan<'a>,
+    pub(crate) method: MethodDispatchHandle,
+    pub(crate) args: &'a [Register],
+    pub(crate) wants_return: bool,
+}
+
 pub(crate) struct HostRootMethodCall<'a> {
     pub(crate) method: HostMethodId,
     pub(crate) args: &'a [Value],
@@ -416,6 +425,32 @@ pub(crate) fn execute_code_host_call(
             args: call.args,
             wants_return: call.wants_return,
             cache_site: call.target.cache_site,
+        },
+    )
+}
+
+pub(crate) fn execute_linked_code_host_call(
+    runtime: HostAccessRuntime<'_, '_, '_>,
+    root: Register,
+    call: LinkedCodeHostCallPlan<'_>,
+) -> VmResult<Option<Value>> {
+    let method_id = match call.program.method_dispatch(call.method).map(|d| &d.kind) {
+        Some(LinkedMethodDispatchKind::Host { method_id }) => *method_id,
+        _ => {
+            return Err(VmError::new(VmErrorKind::UnsupportedLinkedInstruction {
+                opcode: "HostCall",
+            })
+            .with_source_span_if_absent(runtime.source_span));
+        }
+    };
+    execute_code_host_call(
+        runtime,
+        root,
+        CodeHostCallPlan {
+            target: call.target,
+            method: method_id,
+            args: call.args,
+            wants_return: call.wants_return,
         },
     )
 }
