@@ -1,7 +1,7 @@
 use vela_bytecode::linked::{InstructionKind, LinkedMethodDispatchKind};
 use vela_bytecode::{
     DebugNameId, FieldSlot, InstructionOffset, LinkedCodeObject, LinkedProgram, LinkedType,
-    LinkedVariant, Register, ScriptCallMode, TypeHandle, VariantHandle,
+    LinkedVariant, Register, TypeHandle, VariantHandle,
 };
 use vela_common::Span;
 
@@ -389,43 +389,26 @@ impl Vm {
                     mode,
                     args,
                 } => {
-                    let function_code = call.program.function(*function).ok_or_else(|| {
-                        VmError::new(VmErrorKind::UnknownFunction {
-                            name: call.program.debug_name(*debug_name).to_owned(),
-                        })
-                        .with_source_span_if_absent(instruction.span)
-                    })?;
-                    let values =
-                        script_function_calls::script_call_args_from_call_arguments(&frame, args)?;
-                    let protected_root_len = heap
-                        .as_deref_mut()
-                        .map(|heap| heap.push_frame_roots(&frame));
-                    let result = self.execute_linked_call(
-                        LinkedExecutionCall {
-                            code: function_code,
+                    script_function_calls::dispatch_linked_script_function_call(
+                        self,
+                        script_function_calls::LinkedScriptFunctionCallContext {
                             program: call.program,
-                            captures: &[],
-                            args: values.as_slice(),
-                            check_param_guards: matches!(mode, ScriptCallMode::Checked),
+                            inline_caches: call.inline_caches,
                             call_site: instruction.span,
                             call_site_offset: Some(instruction_offset),
-                            inline_caches: call.inline_caches,
                         },
-                        host.as_deref_mut(),
-                        heap.as_deref_mut(),
-                        budget.as_deref_mut(),
-                    );
-                    if let (Some(heap), Some(protected_root_len)) =
-                        (heap.as_deref_mut(), protected_root_len)
-                    {
-                        heap.truncate_protected_roots(protected_root_len);
-                    }
-                    let result = store_value_in_heap_if_needed(
-                        result?,
-                        heap.as_deref_mut(),
-                        budget.as_deref_mut(),
+                        &mut host,
+                        &mut heap,
+                        &mut budget,
+                        &mut frame,
+                        script_function_calls::LinkedScriptFunctionCall {
+                            dst: *dst,
+                            function: *function,
+                            debug_name: *debug_name,
+                            mode: *mode,
+                            args,
+                        },
                     )?;
-                    frame.write(*dst, result)?;
                 }
                 InstructionKind::MakeClosure {
                     dst,
