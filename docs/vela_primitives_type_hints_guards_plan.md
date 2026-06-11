@@ -1580,16 +1580,16 @@ functions:
 
 #### Task 10.1: Update verifier
 
-- [ ] Verify param guard count matches param count.
-- [ ] Verify return guard handles are valid.
-- [ ] Verify guard instruction handles are valid.
-- [ ] Verify deferred literal instruction operands are valid.
-- [ ] Verify bytes constants load correctly.
+- [x] Verify param guard count matches param count.
+- [x] Verify return guard handles are valid.
+- [x] Verify guard instruction handles are valid.
+- [x] Verify deferred literal instruction operands are valid.
+- [x] Verify bytes constants load correctly.
 
 **Termination condition:**
 
-- [ ] Invalid guard handle tests fail verification.
-- [ ] Valid programs pass verification.
+- [x] Invalid guard handle tests fail verification.
+- [x] Valid programs pass verification.
 
 #### Task 10.2: Remove old `int` / `float` assumptions
 

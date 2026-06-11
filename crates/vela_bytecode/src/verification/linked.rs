@@ -140,10 +140,10 @@ fn verify_linked_code_object_with_context(
     }
     for guard in &code.param_guards {
         verify_linked_parameter_guard(function, code, guard.parameter)?;
-        verify_linked_type_guard_id(function, code, guard.guard)?;
+        verify_linked_type_guard_id(function, None, code, guard.guard)?;
     }
     if let Some(guard) = code.return_guard {
-        verify_linked_type_guard_id(function, code, guard)?;
+        verify_linked_type_guard_id(function, None, code, guard)?;
     }
     for slot in &code.frame.slots {
         verify_linked_debug_name(function, None, context, slot.name)?;
@@ -201,7 +201,7 @@ fn verify_linked_instruction(
         }
         InstructionKind::GuardType { src, guard } => {
             verify_linked_register(function, instruction_index, code, *src)?;
-            verify_linked_type_guard_id(function, code, *guard)
+            verify_linked_type_guard_id(function, instruction_index, code, *guard)
         }
         InstructionKind::JumpIfFalse { condition, target } => {
             verify_linked_register(function, instruction_index, code, *condition)?;
@@ -696,6 +696,7 @@ fn verify_linked_parameter_guard(
 
 fn verify_linked_type_guard_id(
     function: &str,
+    instruction: Option<usize>,
     code: &LinkedCodeObject,
     guard: crate::TypeGuardPlanId,
 ) -> Result<(), VerificationError> {
@@ -704,7 +705,7 @@ fn verify_linked_type_guard_id(
     } else {
         Err(error(
             function,
-            None,
+            instruction,
             VerificationErrorKind::TypeGuardPlanOutOfBounds {
                 guard,
                 guard_count: code.type_guards.len(),

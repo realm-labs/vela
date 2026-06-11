@@ -30,6 +30,23 @@ fn accepts_valid_code_object() {
 }
 
 #[test]
+fn accepts_load_const_with_bytes_constant() {
+    let mut code = UnlinkedCodeObject::new("bytes", 1);
+    let constant = code.push_constant(Constant::Bytes(vec![0, 1, 2, 255]));
+    code.push_instruction(UnlinkedInstruction::new(
+        UnlinkedInstructionKind::LoadConst {
+            dst: Register(0),
+            constant,
+        },
+    ));
+    code.push_instruction(UnlinkedInstruction::new(UnlinkedInstructionKind::Return {
+        src: Register(0),
+    }));
+
+    assert_eq!(verify_code_object(&code), Ok(()));
+}
+
+#[test]
 fn linked_program_verify_accepts_valid_handles_and_debug_names() {
     let mut program = LinkedProgram::new();
     let main_name = program.intern_debug_name("main");
@@ -382,6 +399,51 @@ fn verify_rejects_guard_metadata_outside_function_layout() {
         Err(error(
             "main",
             None,
+            VerificationErrorKind::TypeGuardPlanOutOfBounds {
+                guard: crate::TypeGuardPlanId::new(0),
+                guard_count: 0,
+            }
+        ))
+    );
+}
+
+#[test]
+fn linked_verify_rejects_invalid_return_guard_handle() {
+    let mut program = LinkedProgram::new();
+    let main_name = program.intern_debug_name("main");
+    let mut code = LinkedCodeObject::new(main_name, 1);
+    code.set_return_guard(crate::TypeGuardPlanId::new(0));
+    program.push_function(code);
+
+    assert_eq!(
+        verify_linked_program(&program),
+        Err(error(
+            "main",
+            None,
+            VerificationErrorKind::TypeGuardPlanOutOfBounds {
+                guard: crate::TypeGuardPlanId::new(0),
+                guard_count: 0,
+            }
+        ))
+    );
+}
+
+#[test]
+fn linked_verify_rejects_invalid_guard_instruction_handle() {
+    let mut program = LinkedProgram::new();
+    let main_name = program.intern_debug_name("main");
+    let mut code = LinkedCodeObject::new(main_name, 1);
+    code.push_instruction(Instruction::new(InstructionKind::GuardType {
+        src: Register(0),
+        guard: crate::TypeGuardPlanId::new(0),
+    }));
+    program.push_function(code);
+
+    assert_eq!(
+        verify_linked_program(&program),
+        Err(error(
+            "main",
+            Some(0),
             VerificationErrorKind::TypeGuardPlanOutOfBounds {
                 guard: crate::TypeGuardPlanId::new(0),
                 guard_count: 0,
