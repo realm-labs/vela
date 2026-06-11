@@ -40,14 +40,20 @@ pub(crate) fn dispatch_script_function_call(
             name: call.name.to_owned(),
         })
     })?;
-    let values = script_call_args_from_call_arguments(frame, call.args)?;
+    let values_storage;
+    let values = if call.args.is_empty() {
+        &[]
+    } else {
+        values_storage = script_call_args_from_call_arguments(frame, call.args)?;
+        values_storage.as_slice()
+    };
     let protected_root_len = heap.as_deref_mut().map(|heap| heap.push_frame_roots(frame));
     let result = vm.execute_call(
         ExecutionCall {
             code: function,
             program: Some(program),
             captures: &[],
-            args: values.as_slice(),
+            args: values,
             check_param_guards: matches!(call.mode, ScriptCallMode::Checked),
             call_site: call.call_site,
             call_site_offset: Some(call.call_site_offset),
@@ -95,14 +101,20 @@ pub(crate) fn dispatch_linked_script_function_call(
         })
         .with_source_span_if_absent(context.call_site)
     })?;
-    let values = script_call_args_from_call_arguments(frame, call.args)?;
+    let values_storage;
+    let values = if call.args.is_empty() {
+        &[]
+    } else {
+        values_storage = script_call_args_from_call_arguments(frame, call.args)?;
+        values_storage.as_slice()
+    };
     let protected_root_len = heap.as_deref_mut().map(|heap| heap.push_frame_roots(frame));
     let result = vm.execute_linked_call(
         LinkedExecutionCall {
             code: function_code,
             program: context.program,
             captures: &[],
-            args: values.as_slice(),
+            args: values,
             check_param_guards: matches!(call.mode, ScriptCallMode::Checked),
             call_site: context.call_site,
             call_site_offset: context.call_site_offset,

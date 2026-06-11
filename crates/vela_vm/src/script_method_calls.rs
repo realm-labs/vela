@@ -297,7 +297,14 @@ pub(crate) fn dispatch_linked_method_call(
             })
             .with_source_span_if_absent(context.call_site)
         })?;
-    let values = script_function_calls::script_call_args_from_call_arguments(frame, call.args)?;
+    let values_storage;
+    let values = if call.args.is_empty() {
+        &[]
+    } else {
+        values_storage =
+            script_function_calls::script_call_args_from_call_arguments(frame, call.args)?;
+        values_storage.as_slice()
+    };
     match &dispatch.kind {
         LinkedMethodDispatchKind::Script {
             method_id: _,
@@ -314,7 +321,7 @@ pub(crate) fn dispatch_linked_method_call(
                 receiver: call.receiver,
                 debug_name: dispatch.debug_name,
                 function: *function,
-                values: values.as_slice(),
+                values,
             },
         ),
         LinkedMethodDispatchKind::Value { method_id } => dispatch_linked_method_id_call(
@@ -329,7 +336,7 @@ pub(crate) fn dispatch_linked_method_call(
                 receiver: call.receiver,
                 method: context.program.debug_name(dispatch.debug_name),
                 method_id: *method_id,
-                values: values.as_slice(),
+                values,
             },
         ),
         LinkedMethodDispatchKind::Host { method_id } => {
@@ -345,7 +352,7 @@ pub(crate) fn dispatch_linked_method_call(
                 call.receiver,
                 host_access::HostRootMethodCall {
                     method: *method_id,
-                    args: values.as_slice(),
+                    args: values,
                     wants_return: true,
                 },
             )?;
