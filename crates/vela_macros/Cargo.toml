@@ -16,6 +16,7 @@ vela_common = { workspace = true }
 vela_def = { workspace = true }
 
 [dev-dependencies]
+vela_bytecode = { workspace = true }
 vela_engine = { workspace = true }
 vela_host = { workspace = true }
 vela_vm = { workspace = true }

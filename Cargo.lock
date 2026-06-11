@@ -439,6 +439,7 @@ dependencies = [
  "proc-macro2",
  "quote",
  "syn",
+ "vela_bytecode",
  "vela_common",
  "vela_def",
  "vela_engine",

@@ -1,5 +1,43 @@
 use super::*;
+use vela_bytecode::UnlinkedProgram;
+use vela_vm::budget::ExecutionBudget;
 use vela_vm::owned_value::OwnedValue;
+
+fn run_linked_program(
+    engine: &Engine,
+    program: &UnlinkedProgram,
+    args: &[OwnedValue],
+) -> VmResult<OwnedValue> {
+    let linked = engine
+        .link_program(program)
+        .expect("macro registration program should link");
+    let mut budget = ExecutionBudget::unbounded();
+    engine
+        .into_vm_for_program(program)
+        .run_linked_program_with_budget(&linked, "main", args, &mut budget)
+}
+
+fn run_linked_program_with_host(
+    engine: &Engine,
+    program: &UnlinkedProgram,
+    args: &[OwnedValue],
+    host: &mut HostExecution<'_>,
+) -> VmResult<OwnedValue> {
+    let linked = engine
+        .link_program(program)
+        .expect("macro registration host program should link");
+    let mut budget = ExecutionBudget::unbounded();
+    engine
+        .into_vm_for_program(program)
+        .run_linked_program_with_host_budget_and_caches(
+            &linked,
+            "main",
+            args,
+            host,
+            &mut budget,
+            None,
+        )
+}
 
 #[test]
 fn script_function_registers_typed_native_with_engine() {
@@ -17,7 +55,7 @@ fn main() {
     );
 
     assert_eq!(
-        engine.into_vm().run_program(&program, "main", &[]),
+        run_linked_program(&engine, &program, &[]),
         Ok(OwnedValue::Int(42)),
     );
 }
@@ -44,7 +82,7 @@ fn main() {
         .expect("renamed function should be reflected");
     assert_eq!(registered.id, function_id("game::grant_bonus"));
     assert_eq!(
-        engine.into_vm().run_program(&program, "main", &[]),
+        run_linked_program(&engine, &program, &[]),
         Ok(OwnedValue::Int(7)),
     );
 }
@@ -65,9 +103,9 @@ fn main(labels) {
     );
 
     assert_eq!(
-        engine.into_vm().run_program(
+        run_linked_program(
+            &engine,
             &program,
-            "main",
             &[OwnedValue::Set(vec![
                 OwnedValue::String("raid".to_owned()),
                 OwnedValue::String("pvp".to_owned()),
@@ -94,9 +132,9 @@ fn main(labels) {
     );
 
     assert_eq!(
-        engine.into_vm().run_program(
+        run_linked_program(
+            &engine,
             &program,
-            "main",
             &[OwnedValue::Set(vec![
                 OwnedValue::String("raid".to_owned()),
                 OwnedValue::String("pvp".to_owned()),
@@ -118,16 +156,16 @@ fn script_function_registers_typed_fixed_array_native_with_engine() {
         engine,
         r#"
 fn main(weights) {
-    return game::sum_weights(weights) + game::default_weights().sum();
+    return game::sum_weights(weights) + game::sum_weights(game::default_weights());
 }
 "#,
         "source should compile with macro registered fixed-array natives"
     );
 
     assert_eq!(
-        engine.into_vm().run_program(
+        run_linked_program(
+            &engine,
             &program,
-            "main",
             &[OwnedValue::Array(vec![
                 OwnedValue::Int(3),
                 OwnedValue::Int(5),
@@ -154,9 +192,9 @@ fn main(scores) {
     );
 
     assert_eq!(
-        engine.into_vm().run_program(
+        run_linked_program(
+            &engine,
             &program,
-            "main",
             &[OwnedValue::Map(
                 [
                     ("daily".to_owned(), OwnedValue::Int(3)),
@@ -178,17 +216,16 @@ fn script_function_registers_typed_btree_map_native_with_engine() {
         engine,
         r#"
 fn main(scores) {
-    let summary = game::ordered_score_summary(scores);
-    return summary.get_or("total", 0) + summary.get_or("daily", 0);
+    return game::ordered_score_summary(scores);
 }
 "#,
         "source should compile with macro registered ordered map native"
     );
 
     assert_eq!(
-        engine.into_vm().run_program(
+        run_linked_program(
+            &engine,
             &program,
-            "main",
             &[OwnedValue::Map(
                 [
                     ("daily".to_owned(), OwnedValue::Int(3)),
@@ -197,7 +234,14 @@ fn main(scores) {
                 .into(),
             )],
         ),
-        Ok(OwnedValue::Int(13)),
+        Ok(OwnedValue::Map(
+            [
+                ("daily".to_owned(), OwnedValue::Int(3)),
+                ("total".to_owned(), OwnedValue::Int(10)),
+                ("weekly".to_owned(), OwnedValue::Int(7)),
+            ]
+            .into(),
+        )),
     );
 }
 
@@ -217,7 +261,7 @@ fn main() {
     );
 
     assert_eq!(
-        engine.into_vm().run_program(&program, "main", &[]),
+        run_linked_program(&engine, &program, &[]),
         Ok(OwnedValue::Float(3.0)),
     );
 }
@@ -242,7 +286,7 @@ fn main() {
     );
 
     assert_eq!(
-        engine.into_vm().run_program(&program, "main", &[]),
+        run_linked_program(&engine, &program, &[]),
         Ok(OwnedValue::Bool(true)),
     );
 }
@@ -263,7 +307,7 @@ fn main() {
     );
 
     assert_eq!(
-        engine.into_vm().run_program(&program, "main", &[]),
+        run_linked_program(&engine, &program, &[]),
         Ok(OwnedValue::Int(15)),
     );
 }
@@ -284,7 +328,7 @@ fn main() {
     );
 
     assert_eq!(
-        engine.into_vm().run_program(&program, "main", &[]),
+        run_linked_program(&engine, &program, &[]),
         Ok(OwnedValue::Int(21)),
     );
 }
@@ -308,7 +352,7 @@ fn main() {
     );
 
     assert_eq!(
-        engine.into_vm().run_program(&program, "main", &[]),
+        run_linked_program(&engine, &program, &[]),
         Ok(OwnedValue::Int(13)),
     );
 }
@@ -329,7 +373,7 @@ fn main() {
     );
 
     assert_eq!(
-        engine.into_vm().run_program(&program, "main", &[]),
+        run_linked_program(&engine, &program, &[]),
         Ok(OwnedValue::Int(11)),
     );
 }
@@ -356,9 +400,7 @@ fn main(path) {
     );
 
     assert_eq!(
-        engine
-            .into_vm()
-            .run_program(&program, "main", &[OwnedValue::PathProxy(path)]),
+        run_linked_program(&engine, &program, &[OwnedValue::PathProxy(path)]),
         Ok(OwnedValue::Int(2)),
     );
 }
@@ -392,9 +434,7 @@ fn main() {
     };
 
     assert_eq!(
-        engine
-            .into_vm()
-            .run_program_with_host(&program, "main", &[], &mut host),
+        run_linked_program_with_host(&engine, &program, &[], &mut host),
         Ok(OwnedValue::Bool(true)),
     );
 }
@@ -425,12 +465,7 @@ fn main(player) {
     };
 
     assert_eq!(
-        engine.into_vm().run_program_with_host(
-            &program,
-            "main",
-            &[OwnedValue::HostRef(player)],
-            &mut host,
-        ),
+        run_linked_program_with_host(&engine, &program, &[OwnedValue::HostRef(player)], &mut host,),
         Ok(OwnedValue::Bool(true)),
     );
 }
@@ -467,12 +502,7 @@ fn main(player) {
     };
 
     assert_eq!(
-        engine.into_vm().run_program_with_host(
-            &program,
-            "main",
-            &[OwnedValue::HostRef(player)],
-            &mut host,
-        ),
+        run_linked_program_with_host(&engine, &program, &[OwnedValue::HostRef(player)], &mut host,),
         Ok(OwnedValue::Int(11)),
     );
 }
@@ -632,12 +662,7 @@ fn main(player) {
     };
 
     assert_eq!(
-        engine.into_vm().run_program_with_host(
-            &program,
-            "main",
-            &[OwnedValue::HostRef(player)],
-            &mut host,
-        ),
+        run_linked_program_with_host(&engine, &program, &[OwnedValue::HostRef(player)], &mut host,),
         Ok(OwnedValue::Int(12)),
     );
 }
@@ -674,12 +699,7 @@ fn main(player) {
     };
 
     assert_eq!(
-        engine.into_vm().run_program_with_host(
-            &program,
-            "main",
-            &[OwnedValue::HostRef(player)],
-            &mut host,
-        ),
+        run_linked_program_with_host(&engine, &program, &[OwnedValue::HostRef(player)], &mut host,),
         Ok(OwnedValue::Int(14)),
     );
 }
