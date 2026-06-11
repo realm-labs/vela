@@ -1,5 +1,6 @@
 use vela_common::{Diagnostic, SourceId, Span};
 
+use crate::ast::{FloatLiteral, FloatSuffix, IntRadix, IntegerLiteral, IntegerSuffix};
 use crate::token::{Keyword, Symbol, Token, TokenKind};
 
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -277,11 +278,30 @@ impl<'src> Lexer<'src> {
             self.consume_exponent();
         }
 
-        let text = self.slice(start, self.offset).to_owned();
+        let number_end = self.offset;
+        let suffix = self.consume_numeric_suffix();
+        let token_end = self.offset;
         if is_float {
-            self.push_token(TokenKind::Float(text), start, self.offset);
+            let suffix = self.validate_float_suffix(suffix);
+            self.push_token(
+                TokenKind::Float(FloatLiteral {
+                    text: self.slice(start, number_end).to_owned(),
+                    suffix,
+                }),
+                start,
+                token_end,
+            );
         } else {
-            self.push_token(TokenKind::Int(text), start, self.offset);
+            let suffix = self.validate_integer_suffix(suffix);
+            self.push_token(
+                TokenKind::Int(IntegerLiteral {
+                    text: self.slice(start, number_end).to_owned(),
+                    radix: IntRadix::Decimal,
+                    suffix,
+                }),
+                start,
+                token_end,
+            );
         }
     }
 
@@ -289,13 +309,21 @@ impl<'src> Lexer<'src> {
         self.bump_char();
         let prefix = self.bump_char();
         let has_digit = self.consume_digits_or_underscores_with(is_digit);
+        let number_end = self.offset;
         if !has_digit || matches!(prefix, Some('X' | 'B')) {
             self.push_int_literal_diagnostic(start);
         }
+        let suffix = self.consume_numeric_suffix();
+        let token_end = self.offset;
+        let suffix = self.validate_integer_suffix(suffix);
         self.push_token(
-            TokenKind::Int(self.slice(start, self.offset).to_owned()),
+            TokenKind::Int(IntegerLiteral {
+                text: self.slice(start, number_end).to_owned(),
+                radix: IntRadix::from_literal_text(self.slice(start, number_end)),
+                suffix,
+            }),
             start,
-            self.offset,
+            token_end,
         );
     }
 
@@ -344,6 +372,66 @@ impl<'src> Lexer<'src> {
             self.bump_char();
         }
         self.consume_digits_or_underscores();
+    }
+
+    fn consume_numeric_suffix(&mut self) -> Option<(usize, String)> {
+        let start = self.offset;
+        if !self
+            .peek_char()
+            .is_some_and(|ch| ch == '_' || ch.is_ascii_alphabetic())
+        {
+            return None;
+        }
+        while self
+            .peek_char()
+            .is_some_and(|ch| ch == '_' || ch.is_ascii_alphanumeric())
+        {
+            self.bump_char();
+        }
+        Some((start, self.slice(start, self.offset).to_owned()))
+    }
+
+    fn validate_integer_suffix(
+        &mut self,
+        suffix: Option<(usize, String)>,
+    ) -> Option<IntegerSuffix> {
+        let (start, suffix) = suffix?;
+        let parsed = match suffix.as_str() {
+            "i8" => Some(IntegerSuffix::I8),
+            "i16" => Some(IntegerSuffix::I16),
+            "i32" => Some(IntegerSuffix::I32),
+            "i64" => Some(IntegerSuffix::I64),
+            "u8" => Some(IntegerSuffix::U8),
+            "u16" => Some(IntegerSuffix::U16),
+            "u32" => Some(IntegerSuffix::U32),
+            "u64" => Some(IntegerSuffix::U64),
+            _ => None,
+        };
+        if parsed.is_none() {
+            self.push_numeric_suffix_diagnostic(start);
+        }
+        parsed
+    }
+
+    fn validate_float_suffix(&mut self, suffix: Option<(usize, String)>) -> Option<FloatSuffix> {
+        let (start, suffix) = suffix?;
+        let parsed = match suffix.as_str() {
+            "f32" => Some(FloatSuffix::F32),
+            "f64" => Some(FloatSuffix::F64),
+            _ => None,
+        };
+        if parsed.is_none() {
+            self.push_numeric_suffix_diagnostic(start);
+        }
+        parsed
+    }
+
+    fn push_numeric_suffix_diagnostic(&mut self, start: usize) {
+        self.diagnostics.push(
+            Diagnostic::error("invalid numeric literal suffix")
+                .with_code("E_LEX_NUMERIC_SUFFIX")
+                .with_span(self.span(start, self.offset)),
+        );
     }
 
     fn lex_ident_or_keyword(&mut self) {

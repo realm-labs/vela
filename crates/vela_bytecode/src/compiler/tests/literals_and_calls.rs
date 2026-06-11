@@ -76,6 +76,26 @@ fn main() {
     );
     assert_eq!(diagnostics.len(), 2);
 }
+
+#[test]
+fn compiler_rejects_suffixed_numeric_literals_until_scalar_lowering() {
+    let error = compile_function_source(
+        SourceId::new(1),
+        r#"
+fn main() {
+    return 12i8;
+}
+"#,
+        "main",
+    )
+    .expect_err("suffixed literals should not lower as default i64");
+
+    assert!(matches!(
+        error.kind,
+        CompileErrorKind::UnsupportedSyntax("suffixed integer literal")
+    ));
+}
+
 #[test]
 fn compiler_accepts_leading_shebang() {
     let code = compile_function_source(

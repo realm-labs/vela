@@ -1,5 +1,7 @@
 use vela_common::Span;
 
+use crate::ast::{FloatLiteral, IntegerLiteral};
+
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct Token {
     pub kind: TokenKind,
@@ -9,8 +11,8 @@ pub struct Token {
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub enum TokenKind {
     Ident(String),
-    Int(String),
-    Float(String),
+    Int(IntegerLiteral),
+    Float(FloatLiteral),
     String(String),
     Keyword(Keyword),
     Symbol(Symbol),

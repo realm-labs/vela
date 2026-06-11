@@ -351,6 +351,15 @@ impl IntegerLiteral {
     pub fn source_text(&self) -> &str {
         &self.text
     }
+
+    #[must_use]
+    pub fn source_text_with_suffix(&self) -> String {
+        let mut text = self.text.clone();
+        if let Some(suffix) = self.suffix {
+            text.push_str(suffix.text());
+        }
+        text
+    }
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -394,6 +403,22 @@ pub enum IntegerSuffix {
     U64,
 }
 
+impl IntegerSuffix {
+    #[must_use]
+    pub const fn text(self) -> &'static str {
+        match self {
+            Self::I8 => "i8",
+            Self::I16 => "i16",
+            Self::I32 => "i32",
+            Self::I64 => "i64",
+            Self::U8 => "u8",
+            Self::U16 => "u16",
+            Self::U32 => "u32",
+            Self::U64 => "u64",
+        }
+    }
+}
+
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct FloatLiteral {
     pub text: String,
@@ -413,12 +438,31 @@ impl FloatLiteral {
     pub fn source_text(&self) -> &str {
         &self.text
     }
+
+    #[must_use]
+    pub fn source_text_with_suffix(&self) -> String {
+        let mut text = self.text.clone();
+        if let Some(suffix) = self.suffix {
+            text.push_str(suffix.text());
+        }
+        text
+    }
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum FloatSuffix {
     F32,
     F64,
+}
+
+impl FloatSuffix {
+    #[must_use]
+    pub const fn text(self) -> &'static str {
+        match self {
+            Self::F32 => "f32",
+            Self::F64 => "f64",
+        }
+    }
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]

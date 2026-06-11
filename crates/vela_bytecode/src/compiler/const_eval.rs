@@ -203,6 +203,11 @@ fn evaluate_numeric_compare_const(
 }
 
 fn parse_int(value: &IntegerLiteral) -> CompileResult<i64> {
+    if value.suffix.is_some() {
+        return Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(
+            "suffixed integer literal",
+        )));
+    }
     let value_without_separators = value.source_text().replace('_', "");
     let digits = match value.radix {
         IntRadix::Binary | IntRadix::Hex => &value_without_separators[2..],
@@ -217,6 +222,11 @@ fn parse_int(value: &IntegerLiteral) -> CompileResult<i64> {
 }
 
 fn parse_float(value: &FloatLiteral) -> CompileResult<f64> {
+    if value.suffix.is_some() {
+        return Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(
+            "suffixed float literal",
+        )));
+    }
     value
         .source_text()
         .replace('_', "")

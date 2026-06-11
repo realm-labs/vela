@@ -1168,19 +1168,19 @@ then build registry, syntax, guards, and runtime behavior on the new model.
 
 #### Task 3.2: Extend lexer for numeric suffixes
 
-- [ ] Lex `12i8`, `12i16`, `12i32`, `12i64`.
-- [ ] Lex `12u8`, `12u16`, `12u32`, `12u64`.
-- [ ] Lex `12.0f32`, `12.0f64`.
-- [ ] Preserve radix forms:
-  - [ ] `0xffu8`
-  - [ ] `0b1010u16`
-- [ ] Reject invalid suffixes with lexer diagnostics.
-- [ ] Ensure suffix text is not tokenized as a following identifier.
+- [x] Lex `12i8`, `12i16`, `12i32`, `12i64`.
+- [x] Lex `12u8`, `12u16`, `12u32`, `12u64`.
+- [x] Lex `12.0f32`, `12.0f64`.
+- [x] Preserve radix forms:
+  - [x] `0xffu8`
+  - [x] `0b1010u16`
+- [x] Reject invalid suffixes with lexer diagnostics.
+- [x] Ensure suffix text is not tokenized as a following identifier.
 
 **Termination condition:**
 
-- [ ] Lexer tests cover every suffix.
-- [ ] Lexer rejects `12i128`, `12usize`, `12abc`, `12.0i32`.
+- [x] Lexer tests cover every suffix.
+- [x] Lexer rejects `12i128`, `12usize`, `12abc`, `12.0i32`.
 
 #### Task 3.3: Add signed-min and contextual literal validation
 

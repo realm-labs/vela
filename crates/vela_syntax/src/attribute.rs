@@ -3,7 +3,8 @@ use crate::token::{Keyword, Symbol, TokenKind};
 pub(crate) fn normalize_attribute_value(tokens: &[TokenKind]) -> String {
     match tokens {
         [TokenKind::String(value)] | [TokenKind::Ident(value)] => return value.clone(),
-        [TokenKind::Int(value)] | [TokenKind::Float(value)] => return value.clone(),
+        [TokenKind::Int(value)] => return value.source_text_with_suffix(),
+        [TokenKind::Float(value)] => return value.source_text_with_suffix(),
         [TokenKind::Keyword(keyword)] => return keyword_text(*keyword).to_owned(),
         _ => {}
     }
@@ -17,7 +18,9 @@ pub(crate) fn normalize_attribute_value(tokens: &[TokenKind]) -> String {
 
 fn attribute_token_text(token: &TokenKind) -> String {
     match token {
-        TokenKind::Ident(value) | TokenKind::Int(value) | TokenKind::Float(value) => value.clone(),
+        TokenKind::Ident(value) => value.clone(),
+        TokenKind::Int(value) => value.source_text_with_suffix(),
+        TokenKind::Float(value) => value.source_text_with_suffix(),
         TokenKind::String(value) => quoted_attribute_string(value),
         TokenKind::Keyword(keyword) => keyword_text(*keyword).to_owned(),
         TokenKind::Symbol(symbol) => symbol_text(*symbol).to_owned(),

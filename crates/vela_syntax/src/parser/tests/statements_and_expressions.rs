@@ -303,6 +303,43 @@ fn parses_integer_literal_radix_metadata() {
 }
 
 #[test]
+fn parses_numeric_literal_suffix_metadata() {
+    let parsed = parse_source(
+        source_id(),
+        "fn numbers() { let int = 12i8; let float = 12.0f32; }",
+    );
+
+    assert!(parsed.diagnostics.is_empty(), "{:?}", parsed.diagnostics);
+    let ItemKind::Function(function) = &parsed.items[0].kind else {
+        panic!("expected function item");
+    };
+
+    let StmtKind::Let {
+        value: Some(int), ..
+    } = &function.body.statements[0].kind
+    else {
+        panic!("expected int binding");
+    };
+    assert!(matches!(
+        &int.kind,
+        ExprKind::Literal(Literal::Integer(value))
+            if value.source_text() == "12" && value.suffix == Some(IntegerSuffix::I8)
+    ));
+
+    let StmtKind::Let {
+        value: Some(float), ..
+    } = &function.body.statements[1].kind
+    else {
+        panic!("expected float binding");
+    };
+    assert!(matches!(
+        &float.kind,
+        ExprKind::Literal(Literal::Float(value))
+            if value.source_text() == "12.0" && value.suffix == Some(FloatSuffix::F32)
+    ));
+}
+
+#[test]
 fn parses_range_expressions() {
     let parsed = parse_source(
         source_id(),

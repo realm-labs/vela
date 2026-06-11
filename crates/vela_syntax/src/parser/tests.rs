@@ -1,5 +1,8 @@
 use super::*;
-use crate::ast::{BinaryOp, ExprKind, ImplKind, IntRadix, Literal, StmtKind};
+use crate::ast::{
+    BinaryOp, ExprKind, FloatLiteral, FloatSuffix, ImplKind, IntRadix, IntegerLiteral,
+    IntegerSuffix, Literal, StmtKind,
+};
 use crate::lexer::lex;
 use crate::token::{Keyword, Symbol, TokenKind};
 use std::fmt::Write as _;
@@ -25,6 +28,21 @@ fn enum_variant_names(variants: &[EnumVariant]) -> Vec<String> {
 
 fn trait_method_names(methods: &[TraitMethod]) -> Vec<String> {
     methods.iter().map(|method| method.name.clone()).collect()
+}
+
+fn int_token(text: impl Into<String>, radix: IntRadix, suffix: Option<IntegerSuffix>) -> TokenKind {
+    TokenKind::Int(IntegerLiteral {
+        text: text.into(),
+        radix,
+        suffix,
+    })
+}
+
+fn float_token(text: impl Into<String>, suffix: Option<FloatSuffix>) -> TokenKind {
+    TokenKind::Float(FloatLiteral {
+        text: text.into(),
+        suffix,
+    })
 }
 
 mod items;
