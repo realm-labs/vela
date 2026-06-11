@@ -4,6 +4,7 @@ use crate::{
     record_fields, stored_runtime_value,
 };
 use vela_bytecode::Register;
+use vela_def::{TypeId, VariantId};
 
 pub(crate) fn dispatch_get_record_field(
     frame: &mut CallFrame,
@@ -204,6 +205,24 @@ pub(crate) fn enum_tag_equal(
                 variant: value_variant,
                 ..
             }) if value_enum == enum_name && value_variant == variant
+        ),
+        _ => false,
+    }
+}
+
+pub(crate) fn enum_tag_id_equal(
+    value: &Value,
+    type_id: TypeId,
+    variant_id: VariantId,
+    heap: Option<&HeapExecution<'_>>,
+) -> bool {
+    match value {
+        Value::HeapRef(reference) => matches!(
+            heap.and_then(|heap| heap.heap.get(*reference)),
+            Some(HeapValue::Enum {
+                identity: Some(identity),
+                ..
+            }) if identity.type_id == type_id && identity.variant_id == variant_id
         ),
         _ => false,
     }

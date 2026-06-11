@@ -725,6 +725,89 @@ fn linked_program_executes_enum_slot_reads_and_tag_checks() {
 }
 
 #[test]
+fn linked_enum_tag_checks_use_ids_not_debug_names() {
+    let mut program = vela_bytecode::LinkedProgram::new();
+    let main_name = program.intern_debug_name("main");
+    let damage_name = program.intern_debug_name("Damage");
+    let physical_name = program.intern_debug_name("Damage::Physical");
+    let renamed_physical_name = program.intern_debug_name("Damage::RenamedPhysical");
+    let amount_name = program.intern_debug_name("amount");
+    let damage_type = program.push_type(vela_bytecode::LinkedType::new(
+        vela_def::TypeId::new(0x98),
+        damage_name,
+    ));
+    let physical_variant = program.push_variant(vela_bytecode::LinkedVariant::new(
+        vela_def::VariantId::new(0x99),
+        damage_type,
+        physical_name,
+    ));
+    let renamed_physical_variant = program.push_variant(vela_bytecode::LinkedVariant::new(
+        vela_def::VariantId::new(0x99),
+        damage_type,
+        renamed_physical_name,
+    ));
+
+    let mut code = vela_bytecode::LinkedCodeObject::new(main_name, 5);
+    let amount = code.push_constant(Constant::Int(7));
+    let zero = code.push_constant(Constant::Int(0));
+    code.push_instruction(vela_bytecode::linked::Instruction::new(
+        vela_bytecode::linked::InstructionKind::LoadConst {
+            dst: Register(0),
+            constant: amount,
+        },
+    ));
+    code.push_instruction(vela_bytecode::linked::Instruction::new(
+        vela_bytecode::linked::InstructionKind::MakeEnum {
+            dst: Register(1),
+            enum_ty: damage_type,
+            variant: physical_variant,
+            fields: vec![(vela_bytecode::FieldSlot::new(0), amount_name, Register(0))],
+        },
+    ));
+    code.push_instruction(vela_bytecode::linked::Instruction::new(
+        vela_bytecode::linked::InstructionKind::EnumTagEqual {
+            dst: Register(2),
+            value: Register(1),
+            enum_ty: damage_type,
+            variant: renamed_physical_variant,
+        },
+    ));
+    code.push_instruction(vela_bytecode::linked::Instruction::new(
+        vela_bytecode::linked::InstructionKind::JumpIfFalse {
+            condition: Register(2),
+            target: InstructionOffset(6),
+        },
+    ));
+    code.push_instruction(vela_bytecode::linked::Instruction::new(
+        vela_bytecode::linked::InstructionKind::GetEnumSlot {
+            dst: Register(3),
+            value: Register(1),
+            field: vela_bytecode::FieldSlot::new(0),
+            debug_name: amount_name,
+        },
+    ));
+    code.push_instruction(vela_bytecode::linked::Instruction::new(
+        vela_bytecode::linked::InstructionKind::Return { src: Register(3) },
+    ));
+    code.push_instruction(vela_bytecode::linked::Instruction::new(
+        vela_bytecode::linked::InstructionKind::LoadConst {
+            dst: Register(4),
+            constant: zero,
+        },
+    ));
+    code.push_instruction(vela_bytecode::linked::Instruction::new(
+        vela_bytecode::linked::InstructionKind::Return { src: Register(4) },
+    ));
+    let function = program.push_function(code);
+    program.set_entry_point(main_name, function);
+
+    assert_eq!(
+        Vm::new().run_linked_program(&program, "main", &[]),
+        Ok(OwnedValue::Int(7))
+    );
+}
+
+#[test]
 fn branches_on_false_conditions() {
     let mut code = UnlinkedCodeObject::new("branch", 3);
     let false_id = code.push_constant(Constant::Bool(false));

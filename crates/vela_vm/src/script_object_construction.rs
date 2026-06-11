@@ -1,4 +1,4 @@
-use crate::heap::HeapValue;
+use crate::heap::{EnumIdentity, HeapValue};
 use crate::option_result::std_enum_identity_for_names;
 use crate::script_object::ScriptFields;
 use crate::{
@@ -6,6 +6,13 @@ use crate::{
     allocate_heap_value, enum_variant_owner, store_runtime_value,
 };
 use vela_bytecode::Register;
+
+pub(crate) struct EnumConstruction<'a> {
+    pub(crate) enum_name: &'a str,
+    pub(crate) variant: &'a str,
+    pub(crate) identity: Option<EnumIdentity>,
+    pub(crate) fields: &'a [(String, Register)],
+}
 
 pub(crate) fn make_record(
     frame: &mut CallFrame,
@@ -36,12 +43,39 @@ pub(crate) fn make_record(
 pub(crate) fn make_enum(
     frame: &mut CallFrame,
     heap: Option<&mut HeapExecution<'_>>,
-    mut budget: Option<&mut ExecutionBudget>,
+    budget: Option<&mut ExecutionBudget>,
     dst: Register,
     enum_name: &str,
     variant: &str,
     fields: &[(String, Register)],
 ) -> VmResult<()> {
+    make_enum_with_identity(
+        frame,
+        heap,
+        budget,
+        dst,
+        EnumConstruction {
+            enum_name,
+            variant,
+            identity: std_enum_identity_for_names(enum_name, variant),
+            fields,
+        },
+    )
+}
+
+pub(crate) fn make_enum_with_identity(
+    frame: &mut CallFrame,
+    heap: Option<&mut HeapExecution<'_>>,
+    mut budget: Option<&mut ExecutionBudget>,
+    dst: Register,
+    construction: EnumConstruction<'_>,
+) -> VmResult<()> {
+    let EnumConstruction {
+        enum_name,
+        variant,
+        identity,
+        fields,
+    } = construction;
     let owner = enum_variant_owner(enum_name, variant);
     let Some(heap) = heap else {
         return Err(VmError::new(VmErrorKind::TypeMismatch {
@@ -54,7 +88,7 @@ pub(crate) fn make_enum(
         HeapValue::Enum {
             enum_name: enum_name.to_owned(),
             variant: variant.to_owned(),
-            identity: std_enum_identity_for_names(enum_name, variant),
+            identity,
             fields: slots,
         },
         heap,

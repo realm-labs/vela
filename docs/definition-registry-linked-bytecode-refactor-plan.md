@@ -1615,7 +1615,7 @@ surface.
 - Option/Result operations compare typed IDs, not strings.
 - Error messages still print readable names through debug metadata.
 
-- [ ] **Task 7.2: Convert script enum values to typed identity**
+- [x] **Task 7.2: Convert script enum values to typed identity**
 
 **Objective:** Use the same identity model for script enums.
 

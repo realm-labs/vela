@@ -283,7 +283,10 @@ Cranelift JIT.
   only, with debug names reserved for error reporting. Runtime Option/Result
   heap values now carry standard `TypeId`/`VariantId`/payload-field identity,
   and standard method plus `try` propagation paths classify them through those
-  IDs and slot reads instead of string-name fallback.
+  IDs and slot reads instead of string-name fallback. Linked script enum
+  construction now stores `TypeId`/`VariantId` identity in heap enum values,
+  and linked enum tag checks compare those IDs while retaining names for
+  diagnostics and reflection.
 
 ### Remaining Gaps
 

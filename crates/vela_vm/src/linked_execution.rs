@@ -1,11 +1,12 @@
 use vela_bytecode::linked::{InstructionKind, LinkedMethodDispatchKind};
 use vela_bytecode::{
-    DebugNameId, FieldSlot, InstructionOffset, LinkedCodeObject, LinkedProgram, Register,
-    TypeHandle, VariantHandle,
+    DebugNameId, FieldSlot, InstructionOffset, LinkedCodeObject, LinkedProgram, LinkedType,
+    LinkedVariant, Register, TypeHandle, VariantHandle,
 };
 use vela_common::Span;
 
-use crate::heap::HeapValue;
+use crate::heap::{EnumIdentity, HeapValue};
+use crate::option_result::std_enum_identity_for_names;
 use crate::value::{ClosureCode, ClosureValue};
 
 use super::*;
@@ -639,17 +640,24 @@ impl Vm {
                     variant,
                     fields,
                 } => {
-                    let enum_name = linked_type_name(call.program, *enum_ty, "MakeEnum")?;
-                    let variant = linked_variant_name(call.program, *variant, "MakeEnum")?;
+                    let enum_ty = linked_type(call.program, *enum_ty, "MakeEnum")?;
+                    let variant = linked_variant(call.program, *variant, "MakeEnum")?;
+                    let enum_name = call.program.debug_name(enum_ty.debug_name);
+                    let variant_name = linked_variant_short_name(call.program, variant);
+                    let identity = std_enum_identity_for_names(enum_name, variant_name)
+                        .unwrap_or_else(|| linked_enum_identity(enum_ty, variant));
                     let fields = linked_object_fields(call.program, fields);
-                    script_object_construction::make_enum(
+                    script_object_construction::make_enum_with_identity(
                         &mut frame,
                         heap.as_deref_mut(),
                         budget.as_deref_mut(),
                         *dst,
-                        enum_name,
-                        variant,
-                        &fields,
+                        script_object_construction::EnumConstruction {
+                            enum_name,
+                            variant: variant_name,
+                            identity: Some(identity),
+                            fields: &fields,
+                        },
                     )?;
                 }
                 InstructionKind::GetEnumSlot {
@@ -745,12 +753,12 @@ impl Vm {
                     enum_ty,
                     variant,
                 } => {
-                    let enum_name = linked_type_name(call.program, *enum_ty, "EnumTagEqual")?;
-                    let variant = linked_variant_name(call.program, *variant, "EnumTagEqual")?;
-                    let matches = field_access::enum_tag_equal(
+                    let enum_ty = linked_type(call.program, *enum_ty, "EnumTagEqual")?;
+                    let variant = linked_variant(call.program, *variant, "EnumTagEqual")?;
+                    let matches = field_access::enum_tag_id_equal(
                         frame.read(*value)?,
-                        enum_name,
-                        variant,
+                        enum_ty.id,
+                        variant.id,
                         heap.as_deref(),
                     );
                     frame.write(*dst, Value::Bool(matches))?;
@@ -1058,24 +1066,42 @@ fn linked_type_name<'program>(
     ty: TypeHandle,
     opcode: &'static str,
 ) -> VmResult<&'program str> {
-    let ty = program
-        .ty(ty)
-        .ok_or_else(|| VmError::new(VmErrorKind::UnsupportedLinkedInstruction { opcode }))?;
+    let ty = linked_type(program, ty, opcode)?;
     Ok(program.debug_name(ty.debug_name))
 }
 
-fn linked_variant_name<'program>(
+fn linked_type<'program>(
+    program: &'program LinkedProgram,
+    ty: TypeHandle,
+    opcode: &'static str,
+) -> VmResult<&'program LinkedType> {
+    program
+        .ty(ty)
+        .ok_or_else(|| VmError::new(VmErrorKind::UnsupportedLinkedInstruction { opcode }))
+}
+
+fn linked_variant<'program>(
     program: &'program LinkedProgram,
     variant: VariantHandle,
     opcode: &'static str,
-) -> VmResult<&'program str> {
-    let variant = program
+) -> VmResult<&'program LinkedVariant> {
+    program
         .variant(variant)
-        .ok_or_else(|| VmError::new(VmErrorKind::UnsupportedLinkedInstruction { opcode }))?;
-    Ok(program
+        .ok_or_else(|| VmError::new(VmErrorKind::UnsupportedLinkedInstruction { opcode }))
+}
+
+fn linked_variant_short_name<'program>(
+    program: &'program LinkedProgram,
+    variant: &LinkedVariant,
+) -> &'program str {
+    program
         .debug_name(variant.debug_name)
         .rsplit_once("::")
-        .map_or_else(|| program.debug_name(variant.debug_name), |(_, name)| name))
+        .map_or_else(|| program.debug_name(variant.debug_name), |(_, name)| name)
+}
+
+fn linked_enum_identity(enum_ty: &LinkedType, variant: &LinkedVariant) -> EnumIdentity {
+    EnumIdentity::new(enum_ty.id, variant.id, None)
 }
 
 fn linked_object_fields(
