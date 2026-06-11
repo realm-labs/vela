@@ -1,17 +1,32 @@
 use std::collections::{BTreeMap, BTreeSet, HashMap, HashSet};
 
-use vela_bytecode::compiler::compile_program_source;
+use vela_bytecode::UnlinkedProgram;
 use vela_common::{HostObjectId, HostTypeId, SourceId};
 use vela_def::{FieldId, TypeId};
 use vela_host::error::{HostError, HostErrorKind, HostResult};
 use vela_host::path::{HostPath, HostRef};
 use vela_host::proxy::PathProxy;
 use vela_reflect::registry::TypeKey;
-use vela_vm::error::{VmError, VmErrorKind};
+use vela_vm::budget::ExecutionBudget;
+use vela_vm::error::{VmError, VmErrorKind, VmResult};
 use vela_vm::owned_value::OwnedValue;
 
 use crate::engine::Engine;
 use crate::native::{NativeFunctionDesc, NativeFunctionId, TypeHint};
+
+fn run_linked_program(
+    engine: &Engine,
+    program: &UnlinkedProgram,
+    args: &[OwnedValue],
+) -> VmResult<OwnedValue> {
+    let linked = engine
+        .link_program(program)
+        .expect("engine typed native test program should link");
+    let mut budget = ExecutionBudget::unbounded();
+    engine
+        .into_vm_for_program(program)
+        .run_linked_program_with_budget(&linked, "main", args, &mut budget)
+}
 
 #[test]
 fn engine_registers_typed_native_functions() {
@@ -30,18 +45,22 @@ fn engine_registers_typed_native_functions() {
         )
         .build()
         .expect("engine should build");
-    let program = compile_program_source(
-        SourceId::new(1),
-        r#"
+    let program = engine
+        .compile_source(
+            SourceId::new(1),
+            r#"
 fn main() {
-    return game::add(2, 3) + game::label().len();
+    if game::label() == "typed" {
+        return game::add(2, 3) + 5;
+    }
+    return 0;
 }
 "#,
-    )
-    .expect("program should compile");
+        )
+        .expect("program should compile");
 
     assert_eq!(
-        engine.into_vm().run_program(&program, "main", &[]),
+        run_linked_program(&engine, &program, &[]),
         Ok(OwnedValue::Int(10)),
     );
 }
@@ -62,18 +81,19 @@ fn typed_native_functions_accept_string_values() {
         )
         .build()
         .expect("engine should build");
-    let program = compile_program_source(
-        SourceId::new(1),
-        r#"
+    let program = engine
+        .compile_source(
+            SourceId::new(1),
+            r#"
 fn main() {
     return game::tag_len("dragon") + game::tag_len(game::default_tag());
 }
 "#,
-    )
-    .expect("program should compile");
+        )
+        .expect("program should compile");
 
     assert_eq!(
-        engine.into_vm().run_program(&program, "main", &[]),
+        run_linked_program(&engine, &program, &[]),
         Ok(OwnedValue::Int(11)),
     );
 }
@@ -98,21 +118,20 @@ fn typed_native_functions_accept_host_refs() {
         )
         .build()
         .expect("engine should build");
-    let program = compile_program_source(
-        SourceId::new(1),
-        r#"
+    let program = engine
+        .compile_source(
+            SourceId::new(1),
+            r#"
 fn main(player) {
     return game::host_generation(player) + game::host_object_id(player);
 }
 "#,
-    )
-    .expect("program should compile");
+        )
+        .expect("program should compile");
     let player = HostRef::new(HostTypeId::new(1), HostObjectId::new(42), 7);
 
     assert_eq!(
-        engine
-            .into_vm()
-            .run_program(&program, "main", &[OwnedValue::HostRef(player)]),
+        run_linked_program(&engine, &program, &[OwnedValue::HostRef(player)]),
         Ok(OwnedValue::Int(49)),
     );
 }
@@ -131,15 +150,16 @@ fn typed_native_functions_accept_path_proxies() {
         )
         .build()
         .expect("engine should build");
-    let program = compile_program_source(
-        SourceId::new(1),
-        r#"
+    let program = engine
+        .compile_source(
+            SourceId::new(1),
+            r#"
 fn main(path) {
     return game::path_depth(path);
 }
 "#,
-    )
-    .expect("program should compile");
+        )
+        .expect("program should compile");
     let registry = engine.registry();
     let reflected = registry
         .function_by_name("game::path_depth")
@@ -150,9 +170,7 @@ fn main(path) {
         PathProxy::from_diagnostic_path(HostPath::new(player).field(FieldId::new(3)).index(2));
 
     assert_eq!(
-        engine
-            .into_vm()
-            .run_program(&program, "main", &[OwnedValue::PathProxy(path)]),
+        run_linked_program(&engine, &program, &[OwnedValue::PathProxy(path)]),
         Ok(OwnedValue::Int(2)),
     );
 }
@@ -171,18 +189,19 @@ fn typed_native_functions_accept_four_script_args() {
         )
         .build()
         .expect("engine should build");
-    let program = compile_program_source(
-        SourceId::new(1),
-        r#"
+    let program = engine
+        .compile_source(
+            SourceId::new(1),
+            r#"
 fn main() {
     return game::sum4(1, 2, 3, 4);
 }
 "#,
-    )
-    .expect("program should compile");
+        )
+        .expect("program should compile");
 
     assert_eq!(
-        engine.into_vm().run_program(&program, "main", &[]),
+        run_linked_program(&engine, &program, &[]),
         Ok(OwnedValue::Int(10)),
     );
 }
@@ -202,18 +221,19 @@ fn typed_native_functions_accept_five_script_args() {
         )
         .build()
         .expect("engine should build");
-    let program = compile_program_source(
-        SourceId::new(1),
-        r#"
+    let program = engine
+        .compile_source(
+            SourceId::new(1),
+            r#"
 fn main() {
     return game::sum5(1, 2, 3, 4, 5);
 }
 "#,
-    )
-    .expect("program should compile");
+        )
+        .expect("program should compile");
 
     assert_eq!(
-        engine.into_vm().run_program(&program, "main", &[]),
+        run_linked_program(&engine, &program, &[]),
         Ok(OwnedValue::Int(15)),
     );
 }
@@ -234,18 +254,19 @@ fn typed_native_functions_accept_six_script_args() {
         )
         .build()
         .expect("engine should build");
-    let program = compile_program_source(
-        SourceId::new(1),
-        r#"
+    let program = engine
+        .compile_source(
+            SourceId::new(1),
+            r#"
 fn main() {
     return game::sum6(1, 2, 3, 4, 5, 6);
 }
 "#,
-    )
-    .expect("program should compile");
+        )
+        .expect("program should compile");
 
     assert_eq!(
-        engine.into_vm().run_program(&program, "main", &[]),
+        run_linked_program(&engine, &program, &[]),
         Ok(OwnedValue::Int(21)),
     );
 }
@@ -262,9 +283,10 @@ fn typed_native_functions_accept_optional_values() {
         )
         .build()
         .expect("engine should build");
-    let program = compile_program_source(
-        SourceId::new(1),
-        r#"
+    let program = engine
+        .compile_source(
+            SourceId::new(1),
+            r#"
 fn main() {
     return game::option_bonus(null)
         + game::option_bonus(5)
@@ -272,11 +294,11 @@ fn main() {
         + game::option_bonus(option::some(9));
 }
 "#,
-    )
-    .expect("program should compile");
+        )
+        .expect("program should compile");
 
     assert_eq!(
-        engine.into_vm().run_program(&program, "main", &[]),
+        run_linked_program(&engine, &program, &[]),
         Ok(OwnedValue::Int(28)),
     );
 }
@@ -292,18 +314,19 @@ fn typed_native_functions_accept_f32_values() {
         )
         .build()
         .expect("engine should build");
-    let program = compile_program_source(
-        SourceId::new(1),
-        r#"
+    let program = engine
+        .compile_source(
+            SourceId::new(1),
+            r#"
 fn main() {
     return game::scale_weight(1.5);
 }
 "#,
-    )
-    .expect("program should compile");
+        )
+        .expect("program should compile");
 
     assert_eq!(
-        engine.into_vm().run_program(&program, "main", &[]),
+        run_linked_program(&engine, &program, &[]),
         Ok(OwnedValue::Float(3.0)),
     );
 }
@@ -324,20 +347,21 @@ fn typed_native_functions_accept_set_values() {
         )
         .build()
         .expect("engine should build");
-    let program = compile_program_source(
-        SourceId::new(1),
-        r#"
+    let program = engine
+        .compile_source(
+            SourceId::new(1),
+            r#"
 fn main(tags) {
-    return game::count_tags(tags) + game::reward_tags().len();
+    return game::count_tags(tags) + game::count_tags(game::reward_tags());
 }
 "#,
-    )
-    .expect("program should compile");
+        )
+        .expect("program should compile");
 
     assert_eq!(
-        engine.into_vm().run_program(
+        run_linked_program(
+            &engine,
             &program,
-            "main",
             &[OwnedValue::Set(vec![
                 OwnedValue::String("fire".to_owned()),
                 OwnedValue::String("ice".to_owned()),
@@ -364,20 +388,21 @@ fn typed_native_functions_accept_hash_set_values() {
         )
         .build()
         .expect("engine should build");
-    let program = compile_program_source(
-        SourceId::new(1),
-        r#"
+    let program = engine
+        .compile_source(
+            SourceId::new(1),
+            r#"
 fn main(tags) {
-    return game::count_unordered_tags(tags) + game::unordered_reward_tags().len();
+    return game::count_unordered_tags(tags) + game::count_unordered_tags(game::unordered_reward_tags());
 }
 "#,
-    )
-    .expect("program should compile");
+        )
+        .expect("program should compile");
 
     assert_eq!(
-        engine.into_vm().run_program(
+        run_linked_program(
+            &engine,
             &program,
-            "main",
             &[OwnedValue::Set(vec![
                 OwnedValue::String("fire".to_owned()),
                 OwnedValue::String("ice".to_owned()),
@@ -404,20 +429,21 @@ fn typed_native_functions_accept_fixed_array_values() {
         )
         .build()
         .expect("engine should build");
-    let program = compile_program_source(
-        SourceId::new(1),
-        r#"
+    let program = engine
+        .compile_source(
+            SourceId::new(1),
+            r#"
 fn main(weights) {
-    return game::sum_weights(weights) + game::default_weights().sum();
+    return game::sum_weights(weights) + game::sum_weights(game::default_weights());
 }
 "#,
-    )
-    .expect("program should compile");
+        )
+        .expect("program should compile");
 
     assert_eq!(
-        engine.into_vm().run_program(
+        run_linked_program(
+            &engine,
             &program,
-            "main",
             &[OwnedValue::Array(vec![
                 OwnedValue::Int(3),
                 OwnedValue::Int(5),
@@ -444,20 +470,21 @@ fn typed_native_functions_accept_vec_values() {
         )
         .build()
         .expect("engine should build");
-    let program = compile_program_source(
-        SourceId::new(1),
-        r#"
+    let program = engine
+        .compile_source(
+            SourceId::new(1),
+            r#"
 fn main(rewards) {
-    return game::sum_rewards(rewards) + game::default_rewards().sum();
+    return game::sum_rewards(rewards) + game::sum_rewards(game::default_rewards());
 }
 "#,
-    )
-    .expect("program should compile");
+        )
+        .expect("program should compile");
 
     assert_eq!(
-        engine.into_vm().run_program(
+        run_linked_program(
+            &engine,
             &program,
-            "main",
             &[OwnedValue::Array(vec![
                 OwnedValue::Int(3),
                 OwnedValue::Int(5),
@@ -484,21 +511,22 @@ fn typed_native_functions_accept_hash_map_values() {
         )
         .build()
         .expect("engine should build");
-    let program = compile_program_source(
-        SourceId::new(1),
-        r#"
+    let program = engine
+        .compile_source(
+            SourceId::new(1),
+            r#"
 fn main(scores) {
     let defaults = game::default_scores();
-    return game::sum_scores(scores) + defaults.get_or("quest", 0);
+    return game::sum_scores(scores) + game::sum_scores(defaults);
 }
 "#,
-    )
-    .expect("program should compile");
+        )
+        .expect("program should compile");
 
     assert_eq!(
-        engine.into_vm().run_program(
+        run_linked_program(
+            &engine,
             &program,
-            "main",
             &[OwnedValue::Map(
                 [
                     ("daily".to_owned(), OwnedValue::Int(2)),
@@ -507,7 +535,7 @@ fn main(scores) {
                 .into(),
             )],
         ),
-        Ok(OwnedValue::Int(11)),
+        Ok(OwnedValue::Int(17)),
     );
 }
 
@@ -527,21 +555,22 @@ fn typed_native_functions_accept_btree_map_values() {
         )
         .build()
         .expect("engine should build");
-    let program = compile_program_source(
-        SourceId::new(1),
-        r#"
+    let program = engine
+        .compile_source(
+            SourceId::new(1),
+            r#"
 fn main(scores) {
     let defaults = game::default_ordered_scores();
-    return game::sum_ordered_scores(scores) + defaults.get_or("raid", 0);
+    return game::sum_ordered_scores(scores) + game::sum_ordered_scores(defaults);
 }
 "#,
-    )
-    .expect("program should compile");
+        )
+        .expect("program should compile");
 
     assert_eq!(
-        engine.into_vm().run_program(
+        run_linked_program(
+            &engine,
             &program,
-            "main",
             &[OwnedValue::Map(
                 [
                     ("daily".to_owned(), OwnedValue::Int(2)),
@@ -550,7 +579,7 @@ fn main(scores) {
                 .into(),
             )],
         ),
-        Ok(OwnedValue::Int(13)),
+        Ok(OwnedValue::Int(17)),
     );
 }
 
@@ -567,18 +596,19 @@ fn typed_native_functions_return_dynamic_result_values() {
         )
         .build()
         .expect("engine should build");
-    let program = compile_program_source(
-        SourceId::new(1),
-        r#"
+    let program = engine
+        .compile_source(
+            SourceId::new(1),
+            r#"
 fn main() {
     return game::checked_bonus(false);
 }
 "#,
-    )
-    .expect("program should compile");
+        )
+        .expect("program should compile");
 
     assert_eq!(
-        engine.into_vm().run_program(&program, "main", &[]),
+        run_linked_program(&engine, &program, &[]),
         Ok(OwnedValue::Enum {
             enum_name: "Result".to_owned(),
             variant: "Err".to_owned(),
@@ -607,20 +637,19 @@ fn typed_native_functions_propagate_vm_result_errors() {
         )
         .build()
         .expect("engine should build");
-    let program = compile_program_source(
-        SourceId::new(1),
-        r#"
+    let program = engine
+        .compile_source(
+            SourceId::new(1),
+            r#"
 fn main(allowed) {
     return game::require_admin(allowed);
 }
 "#,
-    )
-    .expect("program should compile");
+        )
+        .expect("program should compile");
 
     assert_eq!(
-        engine
-            .into_vm()
-            .run_program(&program, "main", &[OwnedValue::Bool(false)])
+        run_linked_program(&engine, &program, &[OwnedValue::Bool(false)])
             .map_err(|error| error.kind()),
         Err(VmErrorKind::PermissionDenied {
             native: "game::require_admin".to_owned(),
@@ -655,20 +684,19 @@ fn typed_native_functions_map_host_result_errors() {
         )
         .build()
         .expect("engine should build");
-    let program = compile_program_source(
-        SourceId::new(1),
-        r#"
+    let program = engine
+        .compile_source(
+            SourceId::new(1),
+            r#"
 fn main(allowed) {
     return game::write_score(allowed);
 }
 "#,
-    )
-    .expect("program should compile");
+        )
+        .expect("program should compile");
 
     assert_eq!(
-        engine
-            .into_vm()
-            .run_program(&program, "main", &[OwnedValue::Bool(false)])
+        run_linked_program(&engine, &program, &[OwnedValue::Bool(false)])
             .map_err(|error| error.kind()),
         Err(VmErrorKind::Host(HostErrorKind::PermissionDenied {
             path: expected_path,
