@@ -6,7 +6,7 @@ use crate::{
     CallFrame, ExecutionBudget, HeapExecution, Value, VmError, VmErrorKind, VmResult,
     stored_runtime_value,
 };
-use vela_bytecode::{InstructionOffset, Register, UnlinkedCodeObject};
+use vela_bytecode::{InstructionOffset, LinkedCodeObject, Register, UnlinkedCodeObject};
 
 pub(crate) struct IterRuntime<'a, 'heap> {
     pub(crate) frame: &'a mut CallFrame,
@@ -156,24 +156,7 @@ pub(crate) fn dispatch_iter_next(
     dst: Register,
     jump_if_done: InstructionOffset,
 ) -> VmResult<Option<usize>> {
-    let value = *runtime.frame.read(iterator)?;
-    let next = match value {
-        Value::HeapRef(reference) => {
-            let Some(HeapValue::Iterator(iterator_state)) =
-                heap_ref(&mut runtime.heap).and_then(|heap| heap.heap.get_mut(reference).ok())
-            else {
-                return Err(VmError::new(VmErrorKind::TypeMismatch {
-                    operation: "iterator",
-                }));
-            };
-            iterator_state.next()
-        }
-        _ => {
-            return Err(VmError::new(VmErrorKind::TypeMismatch {
-                operation: "iterator",
-            }));
-        }
-    };
+    let next = next_iterator_value(&mut runtime, iterator)?;
     match next {
         Some(value) => {
             runtime.frame.write(dst, value)?;
@@ -186,12 +169,79 @@ pub(crate) fn dispatch_iter_next(
     }
 }
 
+pub(crate) fn dispatch_linked_iter_next(
+    mut runtime: IterRuntime<'_, '_>,
+    code: &LinkedCodeObject,
+    iterator: Register,
+    dst: Register,
+    jump_if_done: InstructionOffset,
+) -> VmResult<Option<usize>> {
+    let next = next_iterator_value(&mut runtime, iterator)?;
+    match next {
+        Some(value) => {
+            runtime.frame.write(dst, value)?;
+            Ok(None)
+        }
+        None => {
+            validate_linked_jump(code, jump_if_done.0)?;
+            Ok(Some(jump_if_done.0))
+        }
+    }
+}
+
 pub(crate) fn dispatch_range_next(
     runtime: IterRuntime<'_, '_>,
     code: &UnlinkedCodeObject,
     step: RangeNextStep,
 ) -> VmResult<Option<usize>> {
-    let frame = runtime.frame;
+    dispatch_range_next_with(runtime.frame, step, |offset| validate_jump(code, offset))
+}
+
+pub(crate) fn dispatch_linked_range_next(
+    runtime: IterRuntime<'_, '_>,
+    code: &LinkedCodeObject,
+    step: RangeNextStep,
+) -> VmResult<Option<usize>> {
+    dispatch_range_next_with(runtime.frame, step, |offset| {
+        validate_linked_jump(code, offset)
+    })
+}
+
+pub(crate) fn validate_linked_jump(code: &LinkedCodeObject, offset: usize) -> VmResult<()> {
+    if offset <= code.instructions.len() {
+        Ok(())
+    } else {
+        Err(VmError::new(VmErrorKind::InstructionOutOfBounds { offset }))
+    }
+}
+
+fn next_iterator_value(
+    runtime: &mut IterRuntime<'_, '_>,
+    iterator: Register,
+) -> VmResult<Option<Value>> {
+    let value = *runtime.frame.read(iterator)?;
+    match value {
+        Value::HeapRef(reference) => {
+            let Some(HeapValue::Iterator(iterator_state)) =
+                heap_ref(&mut runtime.heap).and_then(|heap| heap.heap.get_mut(reference).ok())
+            else {
+                return Err(VmError::new(VmErrorKind::TypeMismatch {
+                    operation: "iterator",
+                }));
+            };
+            Ok(iterator_state.next())
+        }
+        _ => Err(VmError::new(VmErrorKind::TypeMismatch {
+            operation: "iterator",
+        })),
+    }
+}
+
+fn dispatch_range_next_with(
+    frame: &mut CallFrame,
+    step: RangeNextStep,
+    mut validate: impl FnMut(usize) -> VmResult<()>,
+) -> VmResult<Option<usize>> {
     let is_done = match frame.read(step.done)? {
         Value::Bool(value) => *value,
         _ => {
@@ -201,7 +251,7 @@ pub(crate) fn dispatch_range_next(
         }
     };
     if is_done {
-        validate_jump(code, step.jump_if_done.0)?;
+        validate(step.jump_if_done.0)?;
         return Ok(Some(step.jump_if_done.0));
     }
 
@@ -228,7 +278,7 @@ pub(crate) fn dispatch_range_next(
         Ok(None)
     } else {
         frame.write(step.done, Value::Bool(true))?;
-        validate_jump(code, step.jump_if_done.0)?;
+        validate(step.jump_if_done.0)?;
         Ok(Some(step.jump_if_done.0))
     }
 }

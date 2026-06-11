@@ -300,18 +300,18 @@ impl Vm {
                 }
                 InstructionKind::JumpIfFalse { condition, target } => {
                     if !is_truthy(frame.read(*condition)?) {
-                        linked_iteration::validate_jump(code, target.0)?;
+                        iteration::validate_linked_jump(code, target.0)?;
                         ip = target.0;
                     }
                 }
                 InstructionKind::JumpIfNotMissing { value, target } => {
                     if !matches!(frame.read(*value)?, Value::Missing) {
-                        linked_iteration::validate_jump(code, target.0)?;
+                        iteration::validate_linked_jump(code, target.0)?;
                         ip = target.0;
                     }
                 }
                 InstructionKind::Jump { target } => {
-                    linked_iteration::validate_jump(code, target.0)?;
+                    iteration::validate_linked_jump(code, target.0)?;
                     ip = target.0;
                 }
                 InstructionKind::CallNative {
@@ -584,7 +584,7 @@ impl Vm {
                     dst,
                     jump_if_done,
                 } => {
-                    if let Some(target) = linked_iteration::iter_next(
+                    if let Some(target) = iteration::dispatch_linked_iter_next(
                         iteration::IterRuntime {
                             frame: &mut frame,
                             heap: heap.as_deref_mut(),
@@ -606,8 +606,12 @@ impl Vm {
                     dst,
                     jump_if_done,
                 } => {
-                    if let Some(target) = linked_iteration::range_next(
-                        &mut frame,
+                    if let Some(target) = iteration::dispatch_linked_range_next(
+                        iteration::IterRuntime {
+                            frame: &mut frame,
+                            heap: heap.as_deref_mut(),
+                            budget: budget.as_deref_mut(),
+                        },
                         code,
                         iteration::RangeNextStep {
                             cursor: *cursor,
