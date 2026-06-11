@@ -881,6 +881,34 @@ fn main(scores: Scores) {
         semantic_diagnostic_codes(error),
         ["analysis::host_index_not_mutable"]
     );
+
+    let error = compile_function_source_with_options_and_registry(
+        SourceId::new(6),
+        r#"
+fn main(scores: Scores) {
+    scores[0].remove();
+    return 1;
+}
+"#,
+        "main",
+        &CompilerOptions::new().with_host_index_capability(
+            "Scores",
+            HostIndexCapabilityInfo {
+                readable: true,
+                writable: true,
+                addable: true,
+                removable: false,
+                key_type: Some("i64".to_owned()),
+                value_type: Some("i64".to_owned()),
+            },
+        ),
+        registry.compile_view(),
+    )
+    .expect_err("non-removable host index should fail");
+    assert_eq!(
+        semantic_diagnostic_codes(error),
+        ["analysis::host_index_not_removable"]
+    );
 }
 
 #[test]
@@ -1107,6 +1135,50 @@ fn main(player: Player) {
                                 HostPathPart::Field(items),
                                 HostPathPart::DynKey { arg: 0 },
                             ],
+                _ => false,
+            })
+    );
+}
+
+#[test]
+fn compiler_lowers_removable_root_host_index_remove_calls() {
+    let mut registry = vela_registry::DefinitionRegistry::new();
+    register_registry_host_type(&mut registry, "Scores", HostTypeId::new(88));
+    let code = compile_function_source_with_options_and_registry(
+        SourceId::new(1),
+        r#"
+fn main(scores: Scores, key) {
+    scores[key].remove();
+    return 1;
+}
+"#,
+        "main",
+        &CompilerOptions::new().with_host_index_capability(
+            "Scores",
+            HostIndexCapabilityInfo {
+                readable: true,
+                writable: true,
+                addable: true,
+                removable: true,
+                key_type: Some("i64".to_owned()),
+                value_type: Some("i64".to_owned()),
+            },
+        ),
+        registry.compile_view(),
+    )
+    .expect("removable root host index should compile");
+
+    assert!(
+        code.instructions
+            .iter()
+            .any(|instruction| match &instruction.kind {
+                UnlinkedInstructionKind::HostRemove {
+                    target,
+                    dynamic_args,
+                    ..
+                } =>
+                    dynamic_args.len() == 1
+                        && host_target_parts(&code, *target) == [HostPathPart::DynKey { arg: 0 }],
                 _ => false,
             })
     );

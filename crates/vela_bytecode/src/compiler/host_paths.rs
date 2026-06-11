@@ -362,6 +362,11 @@ impl Compiler<'_, '_> {
                 "host path remove arity",
             )));
         }
+        if let ExprKind::Field { base, name } = &callee.kind
+            && name == "remove"
+        {
+            self.reject_terminal_host_index_access(base, HostIndexAccessKind::Remove)?;
+        }
         let root = self.compile_host_path_root(path.root)?;
         self.emit_host_remove(root, path, callee.span)?;
         let dst = self.alloc_register()?;
@@ -447,12 +452,9 @@ impl Compiler<'_, '_> {
         index: &Expr,
         kind: HostIndexAccessKind,
     ) -> CompileResult<()> {
-        let Some(receiver_type) = self.script_type_for_expr(base) else {
+        let Some(receiver_type) = self.host_index_receiver_type_name(base) else {
             return Ok(());
         };
-        if self.host_runtime_type_id(&receiver_type).is_none() {
-            return Ok(());
-        }
         let Some(capability) = self.facts.options.host_index_capability(&receiver_type) else {
             return Err(host_index_diagnostic_error(
                 Diagnostic::error(format!(
@@ -501,6 +503,26 @@ impl Compiler<'_, '_> {
         }
         Ok(())
     }
+
+    fn reject_terminal_host_index_access(
+        &self,
+        expr: &Expr,
+        kind: HostIndexAccessKind,
+    ) -> CompileResult<()> {
+        let ExprKind::Index { base, index } = &expr.kind else {
+            return Ok(());
+        };
+        self.reject_invalid_host_index_access(expr, base, index, kind)
+    }
+
+    fn host_index_receiver_type_name(&self, receiver: &Expr) -> Option<String> {
+        self.resolve_host_path_index_receiver(receiver)
+            .and_then(|resolved| resolved.type_name)
+            .or_else(|| {
+                let type_name = self.script_type_for_expr(receiver)?;
+                self.host_runtime_type_id(&type_name).map(|_| type_name)
+            })
+    }
 }
 
 fn host_index_diagnostic_error(diagnostic: Diagnostic) -> CompileError {
@@ -536,6 +558,7 @@ pub(super) enum HostIndexAccessKind {
     Read,
     Write,
     Mutate,
+    Remove,
 }
 
 impl HostIndexAccessKind {
@@ -544,6 +567,7 @@ impl HostIndexAccessKind {
             Self::Read => capability.readable,
             Self::Write => capability.writable,
             Self::Mutate => capability.addable,
+            Self::Remove => capability.removable,
         }
     }
 
@@ -552,6 +576,7 @@ impl HostIndexAccessKind {
             Self::Read => "analysis::host_index_not_readable",
             Self::Write => "analysis::host_index_not_writable",
             Self::Mutate => "analysis::host_index_not_mutable",
+            Self::Remove => "analysis::host_index_not_removable",
         }
     }
 
@@ -560,6 +585,7 @@ impl HostIndexAccessKind {
             Self::Read => "reads",
             Self::Write => "writes",
             Self::Mutate => "mutations",
+            Self::Remove => "removals",
         }
     }
 
@@ -568,6 +594,7 @@ impl HostIndexAccessKind {
             Self::Read => "host index capability is not readable",
             Self::Write => "host index capability is not writable",
             Self::Mutate => "host index capability is not addable",
+            Self::Remove => "host index capability is not removable",
         }
     }
 
@@ -576,6 +603,7 @@ impl HostIndexAccessKind {
             Self::Read => "enable readable host index access for this type",
             Self::Write => "enable writable host index access for this type",
             Self::Mutate => "enable addable host index access for this type",
+            Self::Remove => "enable removable host index access for this type",
         }
     }
 }

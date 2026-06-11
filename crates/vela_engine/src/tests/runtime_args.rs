@@ -15,7 +15,9 @@ use vela_host::resolved::{
 };
 use vela_host::target::{HostPathArg, HostPathPart, HostTargetInstance};
 use vela_host::value::HostValue;
-use vela_reflect::registry::{FieldDesc, MethodDesc, MethodParamDesc, TypeDesc, TypeKey};
+use vela_reflect::registry::{
+    FieldDesc, HostIndexCapability, MethodDesc, MethodParamDesc, TypeDesc, TypeKey,
+};
 use vela_vm::error::VmErrorKind;
 use vela_vm::owned_value::OwnedValue;
 
@@ -682,6 +684,13 @@ fn runtime_call_args_host_mut_dispatches_root_and_child_host_methods() {
         .register_type(
             TypeDesc::new(TypeKey::new(TypeId::new(2), "Inventory"))
                 .host_type(HostTypeId::new(2))
+                .index_capability(
+                    HostIndexCapability::new()
+                        .readable(true)
+                        .addable(true)
+                        .key_type("string")
+                        .value_type("i64"),
+                )
                 .method(
                     MethodDesc::new(HostMethodId::new(11), "add")
                         .param(MethodParamDesc::new("key").type_hint("string"))
