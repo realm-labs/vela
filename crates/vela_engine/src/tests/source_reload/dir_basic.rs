@@ -1,5 +1,46 @@
 use super::*;
 
+use vela_bytecode::UnlinkedProgram;
+use vela_vm::budget::ExecutionBudget;
+use vela_vm::error::VmResult;
+
+fn run_linked_program(
+    engine: &Engine,
+    program: &UnlinkedProgram,
+    entry: &str,
+    args: &[OwnedValue],
+) -> VmResult<OwnedValue> {
+    let linked = engine
+        .link_program(program)
+        .expect("source reload directory test program should link");
+    engine
+        .into_vm_for_program(program)
+        .run_linked_program(&linked, entry, args)
+}
+
+fn run_linked_program_with_host(
+    engine: &Engine,
+    program: &UnlinkedProgram,
+    entry: &str,
+    args: &[OwnedValue],
+    host: &mut HostExecution<'_>,
+) -> VmResult<OwnedValue> {
+    let linked = engine
+        .link_program(program)
+        .expect("source reload directory host test program should link");
+    let mut budget = ExecutionBudget::unbounded();
+    engine
+        .into_vm_for_program(program)
+        .run_linked_program_with_host_budget_and_caches(
+            &linked,
+            entry,
+            args,
+            host,
+            &mut budget,
+            None,
+        )
+}
+
 #[test]
 fn engine_compile_file_uses_engine_compiler_options() {
     let root = unique_test_dir("compile_file");
@@ -41,7 +82,8 @@ fn main(player: Player) {
     };
 
     assert_eq!(
-        engine.into_vm().run_program_with_host(
+        run_linked_program_with_host(
+            &engine,
             &program,
             "main",
             &[OwnedValue::HostRef(host_ref)],
@@ -93,9 +135,7 @@ pub const BONUS: int = 6;
     let program = engine.compile_dir(&root).expect("compile dir");
 
     assert_eq!(
-        engine
-            .into_vm()
-            .run_program(&program, "game::main::main", &[]),
+        run_linked_program(&engine, &program, "game::main::main", &[]),
         Ok(OwnedValue::Int(10))
     );
     assert!(program.function("ignored.main").is_none());
