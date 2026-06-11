@@ -243,12 +243,11 @@ Cranelift JIT.
   stdlib/value methods and empty aggregate literals carrying unknown element
   shapes instead of falling back to unresolved method names. The unlinked
   `run_program_with_budget` wrapper has also been deleted after its callers
-  moved to linked execution. VM test callers no longer use the still-present
-  unlinked execution entrypoints. The remaining Task
-  6.1 gap is direct VM API cleanup that deletes the remaining direct unlinked
-  execution convenience entrypoints and transitional unlinked reconstruction APIs; linkable
-  `execution_core` coverage and the compiled conformance fixture now run
-  through linked bytecode after ad-hoc source record literals, enum pattern
+  moved to linked execution. The remaining public direct unlinked VM execution
+  convenience entrypoints have been deleted, and single-function VM benchmark
+  modes now link before execution while preserving linked heap-budget coverage.
+  Linkable `execution_core` coverage and the compiled conformance fixture now
+  run through linked bytecode after ad-hoc source record literals, enum pattern
   fields, stdlib callback receiver facts, and linked callback closures gained
   linker-ready operands/runtime ownership. Script function calls are linked
   through `ScriptFunctionHandle` tables, with mismatched call IDs rejected by

@@ -166,7 +166,7 @@ fn register_bench_natives(vm: &mut Vm) {
 enum CompiledWorkload {
     Function {
         mode: ExecutionMode,
-        code: Box<UnlinkedCodeObject>,
+        program: Box<LinkedProgram>,
     },
     ScriptProgram {
         program: Box<LinkedProgram>,
@@ -189,22 +189,22 @@ fn run_once(vm: &Vm, workload: &CompiledWorkload) -> Result<OwnedValue, Box<dyn 
     match workload {
         CompiledWorkload::Function {
             mode: ExecutionMode::Inline,
-            code,
-        } => Ok(vm.run(code)?),
+            program,
+        } => Ok(vm.run_linked_program(program, "main", &[])?),
         CompiledWorkload::ScriptProgram { program } => {
             Ok(vm.run_linked_program(program, "main", &[])?)
         }
         CompiledWorkload::Function {
             mode: ExecutionMode::ManagedHeap,
-            code,
+            program,
         } => {
             let mut budget = ExecutionBudget::unbounded();
-            Ok(vm.run_with_managed_heap_and_budget(code, &mut budget)?)
+            Ok(vm.run_linked_program_with_budget(program, "main", &[], &mut budget)?)
         }
         CompiledWorkload::Function {
             mode: ExecutionMode::GcPacing,
-            code,
-        } => run_gc_pacing(vm, code),
+            program,
+        } => run_gc_pacing(vm, program),
         CompiledWorkload::Function {
             mode: ExecutionMode::HostAccess,
             ..
@@ -273,12 +273,12 @@ fn compile_workload(workload: &Workload, vm: &Vm) -> Result<CompiledWorkload, St
             })
         }
         ExecutionMode::ManagedHeap | ExecutionMode::GcPacing => {
-            compile_function_source(SourceId::new(1), workload.source, "main")
-                .map(|code| CompiledWorkload::Function {
-                    mode: workload.mode,
-                    code: Box::new(code),
-                })
-                .map_err(|error| format!("{error:?}"))
+            let code = compile_function_source(SourceId::new(1), workload.source, "main")
+                .map_err(|error| format!("{error:?}"))?;
+            Ok(CompiledWorkload::Function {
+                mode: workload.mode,
+                program: Box::new(link_single_function_for_vm(vm, code)?),
+            })
         }
         ExecutionMode::ScriptProgram => {
             let program = compile_program_source(SourceId::new(1), workload.source)
@@ -287,13 +287,21 @@ fn compile_workload(workload: &Workload, vm: &Vm) -> Result<CompiledWorkload, St
                 program: Box::new(link_program_for_vm(vm, &program)?),
             })
         }
-        ExecutionMode::Inline => compile_function_source(SourceId::new(1), workload.source, "main")
-            .map(|code| CompiledWorkload::Function {
+        ExecutionMode::Inline => {
+            let code = compile_function_source(SourceId::new(1), workload.source, "main")
+                .map_err(|error| format!("{error:?}"))?;
+            Ok(CompiledWorkload::Function {
                 mode: workload.mode,
-                code: Box::new(code),
+                program: Box::new(link_single_function_for_vm(vm, code)?),
             })
-            .map_err(|error| format!("{error:?}")),
+        }
     }
+}
+
+fn link_single_function_for_vm(vm: &Vm, code: UnlinkedCodeObject) -> Result<LinkedProgram, String> {
+    let mut program = UnlinkedProgram::new();
+    program.insert_function(code);
+    link_program_for_vm(vm, &program)
 }
 
 fn link_program_for_vm(vm: &Vm, program: &UnlinkedProgram) -> Result<LinkedProgram, String> {
@@ -512,7 +520,7 @@ fn register_bench_host_method(
         .expect("bench host method should register");
 }
 
-fn run_gc_pacing(vm: &Vm, code: &UnlinkedCodeObject) -> Result<OwnedValue, Box<dyn Error>> {
+fn run_gc_pacing(vm: &Vm, program: &LinkedProgram) -> Result<OwnedValue, Box<dyn Error>> {
     let mut heap = ScriptHeap::new();
     heap.set_gc_config(GcConfig {
         max_pause_micros: 50,
@@ -524,7 +532,13 @@ fn run_gc_pacing(vm: &Vm, code: &UnlinkedCodeObject) -> Result<OwnedValue, Box<d
     let (value, gc_checksum) = {
         let mut heap_execution = HeapExecution::new(&mut heap)
             .with_safe_point_gc_budget(GcBudget::sweep_slots(GC_SAFE_POINT_SWEEP_SLOTS));
-        let value = vm.run_with_heap_and_budget(code, &mut heap_execution, &mut budget)?;
+        let value = vm.run_linked_program_with_heap_and_budget(
+            program,
+            "main",
+            &[],
+            &mut heap_execution,
+            &mut budget,
+        )?;
         let stats = heap_execution.last_gc_step().cloned();
         let gc_checksum = stats.map_or(0, |stats| {
             (stats.marked as u64)

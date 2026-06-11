@@ -373,46 +373,6 @@ impl Vm {
             .copied()
     }
 
-    pub fn run(&self, code: &UnlinkedCodeObject) -> VmResult<OwnedValue> {
-        let mut budget = ExecutionBudget::unbounded();
-        self.run_with_budget(code, &mut budget)
-    }
-
-    pub fn run_with_budget(
-        &self,
-        code: &UnlinkedCodeObject,
-        budget: &mut ExecutionBudget,
-    ) -> VmResult<OwnedValue> {
-        let mut heap = ScriptHeap::new();
-        let mut heap_execution = HeapExecution::new(&mut heap);
-        let result = self.execute(
-            code,
-            None,
-            &[],
-            None,
-            Some(&mut heap_execution),
-            Some(budget),
-        );
-        owned_heap_result(result, &mut heap_execution, budget)
-    }
-
-    pub fn run_with_heap_and_budget(
-        &self,
-        code: &UnlinkedCodeObject,
-        heap: &mut HeapExecution<'_>,
-        budget: &mut ExecutionBudget,
-    ) -> VmResult<Value> {
-        self.execute(code, None, &[], None, Some(heap), Some(budget))
-    }
-
-    pub fn run_with_managed_heap_and_budget(
-        &self,
-        code: &UnlinkedCodeObject,
-        budget: &mut ExecutionBudget,
-    ) -> VmResult<OwnedValue> {
-        self.run_with_budget(code, budget)
-    }
-
     pub fn run_linked_program(
         &self,
         program: &LinkedProgram,
@@ -451,6 +411,31 @@ impl Vm {
         owned_heap_result(result, &mut heap_execution, budget)
     }
 
+    pub fn run_linked_program_with_heap_and_budget(
+        &self,
+        program: &LinkedProgram,
+        entry: &str,
+        args: &[Value],
+        heap: &mut HeapExecution<'_>,
+        budget: &mut ExecutionBudget,
+    ) -> VmResult<Value> {
+        let code = linked_program_entry(program, entry)?;
+        self.execute_linked_call(
+            linked_execution::LinkedExecutionCall {
+                code,
+                program,
+                captures: &[],
+                args,
+                call_site: None,
+                call_site_offset: None,
+                inline_caches: None,
+            },
+            None,
+            Some(heap),
+            Some(budget),
+        )
+    }
+
     pub fn run_linked_program_with_host_budget_and_caches(
         &self,
         program: &LinkedProgram,
@@ -479,44 +464,6 @@ impl Vm {
             Some(budget),
         );
         owned_heap_result(result, &mut heap_execution, budget)
-    }
-
-    pub fn run_with_host(
-        &self,
-        code: &UnlinkedCodeObject,
-        host: &mut HostExecution<'_>,
-    ) -> VmResult<OwnedValue> {
-        let mut budget = ExecutionBudget::unbounded();
-        self.run_with_host_and_budget(code, host, &mut budget)
-    }
-
-    pub fn run_with_host_and_budget(
-        &self,
-        code: &UnlinkedCodeObject,
-        host: &mut HostExecution<'_>,
-        budget: &mut ExecutionBudget,
-    ) -> VmResult<OwnedValue> {
-        let mut heap = ScriptHeap::new();
-        let mut heap_execution = HeapExecution::new(&mut heap);
-        let result = self.execute(
-            code,
-            None,
-            &[],
-            Some(host),
-            Some(&mut heap_execution),
-            Some(budget),
-        );
-        owned_heap_result(result, &mut heap_execution, budget)
-    }
-
-    pub fn run_with_host_heap_and_budget(
-        &self,
-        code: &UnlinkedCodeObject,
-        host: &mut HostExecution<'_>,
-        heap: &mut HeapExecution<'_>,
-        budget: &mut ExecutionBudget,
-    ) -> VmResult<Value> {
-        self.execute(code, None, &[], Some(host), Some(heap), Some(budget))
     }
 
     pub fn run_linked_program_host_call(
@@ -586,31 +533,6 @@ impl Vm {
         Ok(result)
     }
 
-    fn execute(
-        &self,
-        code: &UnlinkedCodeObject,
-        program: Option<&dyn UnlinkedProgramCode>,
-        args: &[Value],
-        host: Option<&mut HostExecution<'_>>,
-        heap: Option<&mut HeapExecution<'_>>,
-        budget: Option<&mut ExecutionBudget>,
-    ) -> VmResult<Value> {
-        self.execute_call(
-            ExecutionCall {
-                code,
-                program,
-                captures: &[],
-                args,
-                call_site: None,
-                call_site_offset: None,
-                inline_caches: None,
-            },
-            host,
-            heap,
-            budget,
-        )
-    }
-
     pub(crate) fn execute_call(
         &self,
         call: ExecutionCall<'_>,
@@ -652,7 +574,20 @@ impl Vm {
         heap: Option<&mut HeapExecution<'_>>,
         budget: Option<&mut ExecutionBudget>,
     ) -> VmResult<Value> {
-        self.execute(code, program, args, host, heap, budget)
+        self.execute_call(
+            ExecutionCall {
+                code,
+                program,
+                captures: &[],
+                args,
+                call_site: None,
+                call_site_offset: None,
+                inline_caches: None,
+            },
+            host,
+            heap,
+            budget,
+        )
     }
 }
 

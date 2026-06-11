@@ -1522,7 +1522,7 @@ surface.
 
 ### Phase 6: Move VM to linked-only execution
 
-- [ ] **Task 6.1: Change VM entry points to accept linked code**
+- [x] **Task 6.1: Change VM entry points to accept linked code**
 
 **Objective:** Make the VM execute only linked bytecode.
 
