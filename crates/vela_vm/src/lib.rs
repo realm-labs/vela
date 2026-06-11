@@ -242,6 +242,23 @@ pub trait VmInlineCaches {
     fn set_host_access(&self, _site: CacheSiteId, _entry: HostInlineCacheEntry) {}
 }
 
+pub(crate) fn validate_inline_cache_layout(
+    inline_caches: Option<&dyn VmInlineCaches>,
+    required: usize,
+) -> VmResult<()> {
+    let Some(inline_caches) = inline_caches else {
+        return Ok(());
+    };
+    let actual = inline_caches.len();
+    if actual < required {
+        return Err(VmError::new(VmErrorKind::InlineCacheLayoutMismatch {
+            required,
+            actual,
+        }));
+    }
+    Ok(())
+}
+
 #[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
 pub struct HostInlineCacheEntry {
     pub root_type: HostTypeId,

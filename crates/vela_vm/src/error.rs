@@ -186,6 +186,10 @@ pub enum VmErrorKind {
         budget: ExecutionBudgetKind,
         limit: u64,
     },
+    InlineCacheLayoutMismatch {
+        required: usize,
+        actual: usize,
+    },
     ProgramNotLinked,
     UnsupportedLinkedInstruction {
         opcode: &'static str,
@@ -215,6 +219,7 @@ impl VmErrorKind {
             Self::IndexOutOfBounds { .. } => "vm::index_out_of_bounds",
             Self::UnknownMapKey { .. } => "vm::unknown_map_key",
             Self::BudgetExceeded { .. } => "vm::budget_exceeded",
+            Self::InlineCacheLayoutMismatch { .. } => "vm::inline_cache_layout_mismatch",
             Self::ProgramNotLinked => "vm::program_not_linked",
             Self::UnsupportedLinkedInstruction { .. } => "vm::unsupported_linked_instruction",
             Self::MissingReturn => "vm::missing_return",
@@ -277,6 +282,9 @@ impl VmErrorKind {
             Self::UnknownMapKey { key } => format!("unknown map key `{key}`"),
             Self::BudgetExceeded { budget, limit } => {
                 format!("execution budget exceeded for {budget:?} with limit {limit}")
+            }
+            Self::InlineCacheLayoutMismatch { required, actual } => {
+                format!("inline cache layout has {actual} entries but bytecode requires {required}")
             }
             Self::ProgramNotLinked => "runtime image does not contain linked bytecode".to_owned(),
             Self::UnsupportedLinkedInstruction { opcode } => {

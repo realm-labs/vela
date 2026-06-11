@@ -195,11 +195,12 @@ Cranelift JIT.
   target-plan ID, operation, and host schema epoch; collapsed host bytecode
   resolves through that cache boundary while adapter execution still validates
   generations, permissions, and source-spanned slow paths. Runtime inline
-  caches are scoped to the active runtime image, and accepted hot reloads clear
-  stale entries before reused cache-site indexes can repopulate from the new
-  bytecode. `ProgramImage` rebases embedded global and host cache-site operands
-  to image-wide IDs so multi-function images cannot alias cache entries by
-  local site index.
+  caches are scoped to the active runtime image, undersized cache providers are
+  rejected before execution, and accepted hot reloads clear stale entries
+  before reused cache-site indexes can repopulate from the new bytecode.
+  `ProgramImage` rebases embedded global and host cache-site operands to
+  image-wide IDs so multi-function images cannot alias cache entries by local
+  site index.
   The HostPath/HostAccess M19.5 gap is complete: hot execution uses
   `HostTargetPlan`, `HostTargetInstance`, and `ResolvedHostAccess`, with
   `HostPath` reserved for diagnostics, reflection, embedding materialization,

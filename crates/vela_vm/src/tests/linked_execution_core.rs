@@ -55,6 +55,62 @@ fn runs_linked_program_basic_arithmetic_without_unlinked_code() {
 }
 
 #[test]
+fn linked_execution_rejects_undersized_inline_cache_provider() {
+    struct EmptyInlineCaches;
+
+    impl VmInlineCaches for EmptyInlineCaches {
+        fn len(&self) -> usize {
+            0
+        }
+    }
+
+    let mut program = vela_bytecode::LinkedProgram::new();
+    let main_name = program.intern_debug_name("main");
+    let mut code = vela_bytecode::LinkedCodeObject::new(main_name, 1);
+    let cache_site = code.push_cache_site(CacheSiteKind::GlobalRead, InstructionOffset(0));
+    code.push_instruction(vela_bytecode::linked::Instruction::new(
+        vela_bytecode::linked::InstructionKind::LoadGlobal {
+            dst: Register(0),
+            slot: vela_common::GlobalSlot::new(0),
+            debug_name: main_name,
+            cache_site: Some(cache_site),
+        },
+    ));
+    code.push_instruction(vela_bytecode::linked::Instruction::new(
+        vela_bytecode::linked::InstructionKind::Return { src: Register(0) },
+    ));
+    let function = program.push_function(code);
+    program.set_entry_point(main_name, function);
+    let code = program.function(function).expect("main function");
+
+    let error = Vm::new()
+        .execute_linked_call(
+            crate::linked_execution::LinkedExecutionCall {
+                code,
+                program: &program,
+                captures: &[],
+                args: &[],
+                check_param_guards: true,
+                call_site: None,
+                call_site_offset: None,
+                inline_caches: Some(&EmptyInlineCaches),
+            },
+            None,
+            None,
+            None,
+        )
+        .expect_err("undersized inline caches should be rejected before dispatch");
+
+    assert_eq!(
+        error.kind(),
+        VmErrorKind::InlineCacheLayoutMismatch {
+            required: 1,
+            actual: 0
+        }
+    );
+}
+
+#[test]
 fn linked_native_dispatch_uses_id_not_debug_name_fallback() {
     let mut vm = Vm::new();
     vm.register_native("legacy_name", |_| {

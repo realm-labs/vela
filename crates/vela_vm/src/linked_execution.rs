@@ -66,9 +66,7 @@ impl Vm {
         mut budget: Option<&mut ExecutionBudget>,
     ) -> VmResult<Value> {
         let code = call.code;
-        if let Some(inline_caches) = call.inline_caches {
-            debug_assert!(inline_caches.len() >= code.cache_sites.len());
-        }
+        validate_inline_cache_layout(call.inline_caches, code.cache_sites.len())?;
         let function_name = call.program.debug_name(code.debug_name);
         if call.captures.len() != usize::from(code.capture_count) {
             return Err(VmError::new(VmErrorKind::ArityMismatch {

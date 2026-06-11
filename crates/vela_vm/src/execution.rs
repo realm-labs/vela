@@ -9,9 +9,7 @@ impl Vm {
         mut budget: Option<&mut ExecutionBudget>,
     ) -> VmResult<Value> {
         let code = call.code;
-        if let Some(inline_caches) = call.inline_caches {
-            debug_assert!(inline_caches.len() >= code.cache_sites.len());
-        }
+        validate_inline_cache_layout(call.inline_caches, code.cache_sites.len())?;
         let program = call.program;
         let captures = call.captures;
         let args = call.args;
