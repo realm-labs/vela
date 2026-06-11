@@ -47,6 +47,26 @@ fn runs_basic_arithmetic() {
 }
 
 #[test]
+fn load_const_loads_heap_bytes() {
+    let mut code = UnlinkedCodeObject::new("bytes", 1);
+    let bytes = code.push_constant(Constant::Bytes(vec![0, 1, 2, 255]));
+    code.push_instruction(UnlinkedInstruction::new(
+        UnlinkedInstructionKind::LoadConst {
+            dst: Register(0),
+            constant: bytes,
+        },
+    ));
+    code.push_instruction(UnlinkedInstruction::new(UnlinkedInstructionKind::Return {
+        src: Register(0),
+    }));
+
+    assert_eq!(
+        run_linked_test_code(code),
+        Ok(OwnedValue::Bytes(vec![0, 1, 2, 255]))
+    );
+}
+
+#[test]
 fn linker_rejects_script_function_id_debug_name_mismatch() {
     let mut helper = UnlinkedCodeObject::new("helper", 1);
     let value = helper.push_constant(Constant::Scalar(vela_common::ScalarValue::I64(7)));

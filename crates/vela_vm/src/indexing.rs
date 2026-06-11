@@ -34,6 +34,7 @@ pub(crate) fn get_index(
                         .ok_or_else(|| VmError::new(VmErrorKind::UnknownMapKey { key }))
                 }
                 HeapValue::String(_)
+                | HeapValue::Bytes(_)
                 | HeapValue::Set(_)
                 | HeapValue::Record { .. }
                 | HeapValue::Enum { .. }
@@ -71,6 +72,7 @@ pub(crate) fn set_index(
                 Some(HeapValue::Map(_)) => set_heap_map_index(*reference, index, src, heap, budget),
                 Some(
                     HeapValue::String(_)
+                    | HeapValue::Bytes(_)
                     | HeapValue::Set(_)
                     | HeapValue::Record { .. }
                     | HeapValue::Enum { .. }

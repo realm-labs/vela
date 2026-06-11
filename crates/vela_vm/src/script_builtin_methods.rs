@@ -648,6 +648,7 @@ fn len(receiver: &Value, heap: Option<&HeapExecution<'_>>) -> VmResult<i64> {
             };
             match value {
                 HeapValue::String(value) => usize_to_i64(string_char_len(value), "method len"),
+                HeapValue::Bytes(value) => usize_to_i64(value.len(), "method len"),
                 HeapValue::Array(values) | HeapValue::Set(values) => {
                     usize_to_i64(values.len(), "method len")
                 }
@@ -682,6 +683,7 @@ fn is_empty(receiver: &Value, heap: Option<&HeapExecution<'_>>) -> VmResult<bool
             };
             match value {
                 HeapValue::String(value) => Ok(value.is_empty()),
+                HeapValue::Bytes(value) => Ok(value.is_empty()),
                 HeapValue::Array(values) | HeapValue::Set(values) => Ok(values.is_empty()),
                 HeapValue::Map(values) => Ok(values.is_empty()),
                 HeapValue::Record { fields: values, .. }

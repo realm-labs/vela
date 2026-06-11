@@ -61,9 +61,10 @@ pub(crate) fn value_to_reflect(
         }
         OwnedValue::Closure(_) => Ok(reflect::value::ReflectValue::Closure),
         OwnedValue::Range(_) => Ok(reflect::value::ReflectValue::Range),
-        OwnedValue::Missing | OwnedValue::PathProxy(_) | OwnedValue::Iterator(_) => {
-            Err(type_error(operation))
-        }
+        OwnedValue::Missing
+        | OwnedValue::Bytes(_)
+        | OwnedValue::PathProxy(_)
+        | OwnedValue::Iterator(_) => Err(type_error(operation)),
         OwnedValue::Null | OwnedValue::Bool(_) | OwnedValue::Scalar(_) | OwnedValue::String(_) => {
             Ok(reflect::value::ReflectValue::Host(owned_to_host(
                 value, operation,
@@ -90,6 +91,7 @@ pub(crate) fn runtime_value_to_reflect(
             Some(HeapValue::String(value)) => Ok(reflect::value::ReflectValue::Host(
                 HostValue::String(value.clone()),
             )),
+            Some(HeapValue::Bytes(_)) => Err(type_error(operation)),
             Some(HeapValue::Array(values)) => values
                 .iter()
                 .map(|value| runtime_value_to_reflect(value, heap, operation))
@@ -217,6 +219,7 @@ fn owned_to_host(value: &OwnedValue, operation: &'static str) -> VmResult<HostVa
         OwnedValue::String(value) => Ok(HostValue::String(value.clone())),
         OwnedValue::HostRef(value) => Ok(HostValue::HostRef(*value)),
         OwnedValue::Missing
+        | OwnedValue::Bytes(_)
         | OwnedValue::Array(_)
         | OwnedValue::Map(_)
         | OwnedValue::Set(_)

@@ -39,6 +39,7 @@ impl GcRef {
 #[derive(Clone, Debug, PartialEq)]
 pub enum HeapValue {
     String(String),
+    Bytes(Vec<u8>),
     Array(Vec<Value>),
     Map(BTreeMap<String, Value>),
     Set(Vec<Value>),
@@ -96,7 +97,7 @@ impl EnumIdentity {
 impl HeapValue {
     fn trace_refs(&self, refs: &mut Vec<GcRef>) {
         match self {
-            Self::String(_) | Self::PathProxy(_) => {}
+            Self::String(_) | Self::Bytes(_) | Self::PathProxy(_) => {}
             Self::Array(values) | Self::Set(values) => {
                 values.iter().for_each(|value| value.trace_refs(refs));
             }
@@ -119,6 +120,7 @@ impl HeapValue {
     fn shallow_size_bytes(&self) -> usize {
         match self {
             Self::String(value) => mem::size_of::<Self>() + value.len(),
+            Self::Bytes(value) => mem::size_of::<Self>() + value.len(),
             Self::Array(values) | Self::Set(values) => {
                 mem::size_of::<Self>() + values.capacity() * mem::size_of::<Value>()
             }
@@ -644,6 +646,20 @@ mod tests {
         let proxy =
             PathProxy::from_diagnostic_path(HostPath::new(host_ref()).field(FieldId::new(2)));
         let root = heap.allocate(HeapValue::PathProxy(proxy));
+        let unreachable = heap.allocate(HeapValue::String("unused".into()));
+
+        let stats = heap.collect_full(&[root]);
+
+        assert_eq!(stats.marked, 1);
+        assert_eq!(stats.swept, 1);
+        assert!(heap.contains(root));
+        assert!(!heap.contains(unreachable));
+    }
+
+    #[test]
+    fn bytes_are_leaf_values_and_do_not_trace_false_refs() {
+        let mut heap = ScriptHeap::new();
+        let root = heap.allocate(HeapValue::Bytes(vec![0, 1, 2, 3, 255]));
         let unreachable = heap.allocate(HeapValue::String("unused".into()));
 
         let stats = heap.collect_full(&[root]);

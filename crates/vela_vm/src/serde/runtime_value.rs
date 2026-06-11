@@ -59,6 +59,7 @@ impl<'de> de::Deserializer<'de> for RuntimeValueDeserializer<'de> {
             Value::Scalar(vela_common::ScalarValue::F64(value)) => visitor.visit_f64(*value),
             Value::HeapRef(_) => match self.heap_value()? {
                 HeapValue::String(value) => visitor.visit_str(value),
+                HeapValue::Bytes(value) => visitor.visit_bytes(value),
                 HeapValue::Array(values) | HeapValue::Set(values) => {
                     visitor.visit_seq(RuntimeSeqAccess {
                         iter: values.iter(),

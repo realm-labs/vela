@@ -459,6 +459,7 @@ pub enum Constant {
     Bool(bool),
     Scalar(vela_common::ScalarValue),
     String(String),
+    Bytes(Vec<u8>),
     Array(Vec<Constant>),
     Map(Vec<(String, Constant)>),
 }

@@ -19,6 +19,7 @@ pub enum OwnedValue {
     Bool(bool),
     Scalar(ScalarValue),
     String(String),
+    Bytes(Vec<u8>),
     Array(Vec<OwnedValue>),
     Map(BTreeMap<String, OwnedValue>),
     Set(Vec<OwnedValue>),
@@ -248,6 +249,7 @@ impl From<&Constant> for OwnedValue {
             Constant::Bool(value) => Self::Bool(*value),
             Constant::Scalar(value) => Self::Scalar(*value),
             Constant::String(value) => Self::String(value.clone()),
+            Constant::Bytes(value) => Self::Bytes(value.clone()),
             Constant::Array(values) => Self::Array(values.iter().map(Self::from).collect()),
             Constant::Map(entries) => Self::Map(
                 entries
@@ -295,6 +297,12 @@ impl From<&str> for OwnedValue {
     }
 }
 
+impl From<Vec<u8>> for OwnedValue {
+    fn from(value: Vec<u8>) -> Self {
+        Self::Bytes(value)
+    }
+}
+
 impl From<HostRef> for OwnedValue {
     fn from(value: HostRef) -> Self {
         Self::HostRef(value)
@@ -310,6 +318,7 @@ pub fn owned_to_value_detached(value: OwnedValue) -> Value {
         OwnedValue::Range(value) => Value::Range(value),
         OwnedValue::HostRef(value) => Value::HostRef(value),
         OwnedValue::String(_)
+        | OwnedValue::Bytes(_)
         | OwnedValue::Array(_)
         | OwnedValue::Map(_)
         | OwnedValue::Set(_)

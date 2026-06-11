@@ -655,6 +655,7 @@ impl<'de> de::Deserializer<'de> for &'de OwnedValue {
             OwnedValue::Scalar(vela_common::ScalarValue::F32(value)) => visitor.visit_f32(*value),
             OwnedValue::Scalar(vela_common::ScalarValue::F64(value)) => visitor.visit_f64(*value),
             OwnedValue::String(value) => visitor.visit_str(value),
+            OwnedValue::Bytes(value) => visitor.visit_bytes(value),
             OwnedValue::Array(values) | OwnedValue::Set(values) => {
                 visitor.visit_seq(ValueSeqAccess {
                     iter: values.iter(),

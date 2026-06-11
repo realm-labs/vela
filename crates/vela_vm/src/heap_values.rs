@@ -28,6 +28,12 @@ pub(crate) fn value_from_constant(
             };
             allocate_heap_value(HeapValue::String(value.clone()), heap, budget)
         }
+        Constant::Bytes(value) => {
+            let Some(heap) = heap else {
+                return Err(type_error("constant bytes"));
+            };
+            allocate_heap_value(HeapValue::Bytes(value.clone()), heap, budget)
+        }
         Constant::Array(values) => {
             let Some(mut heap) = heap else {
                 return Err(type_error("constant array"));
@@ -163,6 +169,9 @@ pub(crate) fn owned_to_value(
         OwnedValue::String(value) => {
             allocate_heap_value(HeapValue::String(value), heap, budget.as_deref_mut())
         }
+        OwnedValue::Bytes(value) => {
+            allocate_heap_value(HeapValue::Bytes(value), heap, budget.as_deref_mut())
+        }
         OwnedValue::Array(values) => {
             let values = values
                 .into_iter()
@@ -293,6 +302,7 @@ fn heap_value_to_owned(
 ) -> VmResult<OwnedValue> {
     match value {
         HeapValue::String(value) => Ok(OwnedValue::String(value.clone())),
+        HeapValue::Bytes(value) => Ok(OwnedValue::Bytes(value.clone())),
         HeapValue::Array(values) => values
             .iter()
             .map(|value| value_to_owned(value, heap))
@@ -390,6 +400,7 @@ pub(crate) fn value_to_host(
             Some(HeapValue::String(value)) => Ok(HostValue::String(value.clone())),
             Some(
                 HeapValue::Array(_)
+                | HeapValue::Bytes(_)
                 | HeapValue::Map(_)
                 | HeapValue::Set(_)
                 | HeapValue::Record { .. }
@@ -443,6 +454,9 @@ pub(crate) fn values_equal(
     if let Some(equal) = heap_string_values_equal(lhs, rhs, heap) {
         return Ok(equal);
     }
+    if let Some(equal) = heap_bytes_values_equal(lhs, rhs, heap) {
+        return Ok(equal);
+    }
     let lhs = materialize_value(lhs, heap)?;
     let rhs = materialize_value(rhs, heap)?;
     Ok(lhs == rhs)
@@ -494,6 +508,26 @@ fn heap_string_values_equal(
     Some(lhs == rhs)
 }
 
+fn heap_bytes_values_equal(
+    lhs: &Value,
+    rhs: &Value,
+    heap: Option<&HeapExecution<'_>>,
+) -> Option<bool> {
+    let (Value::HeapRef(lhs), Value::HeapRef(rhs)) = (lhs, rhs) else {
+        return None;
+    };
+    let heap = heap?;
+    let lhs = match heap.heap.get(*lhs)? {
+        HeapValue::Bytes(value) => value,
+        _ => return None,
+    };
+    let rhs = match heap.heap.get(*rhs)? {
+        HeapValue::Bytes(value) => value,
+        _ => return None,
+    };
+    Some(lhs == rhs)
+}
+
 fn type_error(operation: &'static str) -> VmError {
     VmError::new(VmErrorKind::TypeMismatch { operation })
 }
@@ -523,5 +557,70 @@ mod tests {
         );
         assert_eq!(heap_string_values_equal(&gold, &array, Some(&heap)), None);
         assert_eq!(heap_string_values_equal(&gold, &gold_again, None), None);
+    }
+
+    #[test]
+    fn owned_bytes_round_trip_through_heap_value() {
+        let mut heap = ScriptHeap::new();
+        let mut heap_execution = HeapExecution::new(&mut heap);
+        let value = owned_to_value(
+            OwnedValue::Bytes(vec![0, 1, 255]),
+            &mut heap_execution,
+            None,
+        )
+        .expect("bytes should allocate");
+
+        let Value::HeapRef(reference) = value else {
+            panic!("bytes should be heap backed");
+        };
+        assert_eq!(
+            heap_execution.heap.get(reference),
+            Some(&HeapValue::Bytes(vec![0, 1, 255]))
+        );
+        assert_eq!(
+            value_to_owned(&value, Some(&heap_execution)),
+            Ok(OwnedValue::Bytes(vec![0, 1, 255]))
+        );
+    }
+
+    #[test]
+    fn bytes_constant_allocates_heap_bytes() {
+        let mut heap = ScriptHeap::new();
+        let mut heap_execution = HeapExecution::new(&mut heap);
+        let value = value_from_constant(
+            &Constant::Bytes(vec![b'a', b'b', b'c']),
+            Some(&mut heap_execution),
+            None,
+        )
+        .expect("bytes constant should allocate");
+
+        let Value::HeapRef(reference) = value else {
+            panic!("bytes should be heap backed");
+        };
+        assert_eq!(
+            heap_execution.heap.get(reference),
+            Some(&HeapValue::Bytes(vec![b'a', b'b', b'c']))
+        );
+    }
+
+    #[test]
+    fn heap_bytes_equality_compares_borrowed_byte_slots() {
+        let mut heap = ScriptHeap::new();
+        let bytes = Value::HeapRef(heap.allocate(HeapValue::Bytes(vec![1, 2, 3])));
+        let bytes_again = Value::HeapRef(heap.allocate(HeapValue::Bytes(vec![1, 2, 3])));
+        let other = Value::HeapRef(heap.allocate(HeapValue::Bytes(vec![3])));
+        let string = Value::HeapRef(heap.allocate(HeapValue::String("123".to_owned())));
+        let heap = HeapExecution::new(&mut heap);
+
+        assert_eq!(
+            heap_bytes_values_equal(&bytes, &bytes_again, Some(&heap)),
+            Some(true)
+        );
+        assert_eq!(
+            heap_bytes_values_equal(&bytes, &other, Some(&heap)),
+            Some(false)
+        );
+        assert_eq!(heap_bytes_values_equal(&bytes, &string, Some(&heap)), None);
+        assert_eq!(heap_bytes_values_equal(&bytes, &bytes_again, None), None);
     }
 }

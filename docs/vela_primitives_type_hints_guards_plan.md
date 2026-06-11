@@ -1057,19 +1057,19 @@ then build registry, syntax, guards, and runtime behavior on the new model.
 
 #### Task 1.3: Add heap bytes after scalar boundaries compile
 
-- [ ] Add `OwnedValue::Bytes(Vec<u8>)`.
-- [ ] Add `Constant::Bytes(Vec<u8>)`.
-- [ ] Add `HeapValue::Bytes(Vec<u8>)`.
-- [ ] Add tracing behavior: bytes contain no heap refs.
-- [ ] Add heap size accounting.
-- [ ] Add owned/runtime conversion for bytes.
-- [ ] Add equality/hash behavior if relevant.
+- [x] Add `OwnedValue::Bytes(Vec<u8>)`.
+- [x] Add `Constant::Bytes(Vec<u8>)`.
+- [x] Add `HeapValue::Bytes(Vec<u8>)`.
+- [x] Add tracing behavior: bytes contain no heap refs.
+- [x] Add heap size accounting.
+- [x] Add owned/runtime conversion for bytes.
+- [x] Add equality/hash behavior if relevant.
 
 **Termination condition:**
 
-- [ ] `OwnedValue::Bytes` converts to runtime `Value` and back.
-- [ ] `LoadConst` can load bytes.
-- [ ] GC tests include bytes and bytes do not trace false refs.
+- [x] `OwnedValue::Bytes` converts to runtime `Value` and back.
+- [x] `LoadConst` can load bytes.
+- [x] GC tests include bytes and bytes do not trace false refs.
 
 ---
 

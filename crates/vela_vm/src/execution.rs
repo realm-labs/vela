@@ -124,6 +124,21 @@ impl Vm {
                                 )?
                             }
                         }
+                        Constant::Bytes(value) => {
+                            if let Some(value) = constant_loads::loaded_bytes_constant(
+                                frame.read(*dst).ok(),
+                                value,
+                                heap.as_deref(),
+                            ) {
+                                value
+                            } else {
+                                value_from_constant(
+                                    constant_value,
+                                    heap.as_deref_mut(),
+                                    budget.as_deref_mut(),
+                                )?
+                            }
+                        }
                         Constant::Array(_) | Constant::Map(_) => value_from_constant(
                             constant_value,
                             heap.as_deref_mut(),

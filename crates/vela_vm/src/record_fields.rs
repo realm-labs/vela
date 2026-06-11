@@ -25,6 +25,7 @@ pub(crate) fn set_record_field_value(
                 }
                 Some(
                     HeapValue::String(_)
+                    | HeapValue::Bytes(_)
                     | HeapValue::Array(_)
                     | HeapValue::Map(_)
                     | HeapValue::Set(_)
@@ -82,6 +83,7 @@ pub(crate) fn set_record_slot_value(
                 }
                 Some(
                     HeapValue::String(_)
+                    | HeapValue::Bytes(_)
                     | HeapValue::Array(_)
                     | HeapValue::Map(_)
                     | HeapValue::Set(_)

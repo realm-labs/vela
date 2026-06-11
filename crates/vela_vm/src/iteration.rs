@@ -115,6 +115,7 @@ pub(crate) fn make_iterator(
                 )),
                 HeapValue::Iterator(iterator) => Ok(iterator.clone()),
                 HeapValue::String(_)
+                | HeapValue::Bytes(_)
                 | HeapValue::Record { .. }
                 | HeapValue::Enum { .. }
                 | HeapValue::Closure(_)

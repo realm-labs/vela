@@ -224,6 +224,7 @@ fn owned_value_to_json(value: &OwnedValue) -> JsonValue {
         OwnedValue::Scalar(vela_common::ScalarValue::F32(value)) => json!(value),
         OwnedValue::Scalar(vela_common::ScalarValue::F64(value)) => json!(value),
         OwnedValue::String(value) => json!(value),
+        OwnedValue::Bytes(value) => json!({ "kind": "bytes", "values": value }),
         OwnedValue::Array(values) => {
             JsonValue::Array(values.iter().map(owned_value_to_json).collect())
         }

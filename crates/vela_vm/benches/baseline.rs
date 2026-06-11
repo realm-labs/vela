@@ -848,6 +848,7 @@ fn value_checksum(value: &OwnedValue) -> u64 {
         OwnedValue::Bool(value) => u64::from(*value) ^ 0x03,
         OwnedValue::Scalar(value) => scalar_checksum(*value),
         OwnedValue::String(value) => bytes_checksum(value.as_bytes()),
+        OwnedValue::Bytes(value) => bytes_checksum(value),
         OwnedValue::Array(values) | OwnedValue::Set(values) => values
             .iter()
             .fold(0x05, |checksum, value| mix(checksum, value_checksum(value))),
