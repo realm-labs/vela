@@ -436,63 +436,24 @@ impl Vm {
                     frame.write(*dst, value)?;
                 }
                 InstructionKind::CallClosure { dst, callee, args } => {
-                    let (function, captures) = {
-                        let closure = runtime_checks::expect_closure_ref(
-                            frame.read(*callee)?,
-                            heap.as_deref(),
-                            "closure call",
-                        )?;
-                        let ClosureCode::Linked(function) = &closure.code else {
-                            return Err(VmError::new(VmErrorKind::TypeMismatch {
-                                operation: "closure call",
-                            })
-                            .with_source_span_if_absent(instruction.span));
-                        };
-                        let function = *function;
-                        let captures =
-                            SmallStorage::try_from_slice_map(&closure.captures, 4, |value| {
-                                Ok::<_, VmError>(*value)
-                            })?;
-                        (function, captures)
-                    };
-                    let function_code = call.program.function(function).ok_or_else(|| {
-                        VmError::new(VmErrorKind::UnknownFunction {
-                            name: format!("<linked closure#{}>", function.index()),
-                        })
-                        .with_source_span_if_absent(instruction.span)
-                    })?;
-                    let values = SmallStorage::try_from_slice_map(args, 4, |register| {
-                        Ok::<_, VmError>(*frame.read(*register)?)
-                    })?;
-                    let protected_root_len = heap
-                        .as_deref_mut()
-                        .map(|heap| heap.push_frame_roots(&frame));
-                    let result = self.execute_linked_call(
-                        LinkedExecutionCall {
-                            code: function_code,
+                    closure_calls::dispatch_linked_closure_call(
+                        self,
+                        closure_calls::LinkedClosureCallContext {
                             program: call.program,
-                            captures: captures.as_slice(),
-                            args: values.as_slice(),
-                            check_param_guards: true,
-                            call_site: instruction.span,
-                            call_site_offset: Some(instruction_offset),
                             inline_caches: call.inline_caches,
+                            call_site: instruction.span,
+                            call_site_offset: instruction_offset,
                         },
-                        host.as_deref_mut(),
-                        heap.as_deref_mut(),
-                        budget.as_deref_mut(),
-                    );
-                    if let (Some(heap), Some(protected_root_len)) =
-                        (heap.as_deref_mut(), protected_root_len)
-                    {
-                        heap.truncate_protected_roots(protected_root_len);
-                    }
-                    let result = store_value_in_heap_if_needed(
-                        result?,
-                        heap.as_deref_mut(),
-                        budget.as_deref_mut(),
+                        &mut host,
+                        &mut heap,
+                        &mut budget,
+                        &mut frame,
+                        closure_calls::LinkedClosureCall {
+                            dst: *dst,
+                            callee: *callee,
+                            args,
+                        },
                     )?;
-                    frame.write(*dst, result)?;
                 }
                 InstructionKind::CallMethod {
                     dst,
