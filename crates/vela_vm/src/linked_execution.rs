@@ -149,6 +149,7 @@ impl Vm {
                 }));
             }
         }
+        execute_linked_param_guards(code, call.program, &frame, heap.as_deref())?;
 
         let mut ip = 0_usize;
         while ip < code.instructions.len() {
@@ -609,7 +610,14 @@ impl Vm {
                 InstructionKind::TryPropagate { dst, src } => {
                     match try_propagate_value(frame.read(*src)?, heap.as_deref())? {
                         TryPropagation::Continue(value) => frame.write(*dst, value)?,
-                        TryPropagation::Return(value) => return Ok(value),
+                        TryPropagation::Return(value) => {
+                            return execute_linked_return_guard(
+                                code,
+                                call.program,
+                                value,
+                                heap.as_deref(),
+                            );
+                        }
                     }
                 }
                 InstructionKind::MakeArray { dst, elements } => {
@@ -1026,7 +1034,12 @@ impl Vm {
                     }
                 }
                 InstructionKind::Return { src } => {
-                    return Ok(*frame.read(*src)?);
+                    return execute_linked_return_guard(
+                        code,
+                        call.program,
+                        *frame.read(*src)?,
+                        heap.as_deref(),
+                    );
                 }
             }
 
@@ -1037,6 +1050,67 @@ impl Vm {
 
         Err(VmError::new(VmErrorKind::MissingReturn))
     }
+}
+
+fn execute_linked_param_guards(
+    code: &LinkedCodeObject,
+    program: &LinkedProgram,
+    frame: &CallFrame,
+    heap: Option<&HeapExecution<'_>>,
+) -> VmResult<()> {
+    let param_offset = usize::from(code.capture_count);
+    for param_guard in &code.param_guards {
+        let register = Register(
+            code.capture_count
+                .checked_add(param_guard.parameter)
+                .ok_or_else(|| {
+                    VmError::new(VmErrorKind::RegisterOutOfBounds {
+                        register: Register(u16::MAX),
+                    })
+                })?,
+        );
+        let value = frame.read(register)?;
+        if matches!(value, Value::Missing) {
+            continue;
+        }
+        let guard = code.type_guard(param_guard.guard).ok_or_else(|| {
+            VmError::new(VmErrorKind::UnsupportedLinkedInstruction {
+                opcode: "param_guard",
+            })
+        })?;
+        runtime_type_guards::execute_linked_guard(
+            value,
+            guard,
+            heap,
+            program.debug_name(guard.context.debug_name),
+        )?;
+        debug_assert!(usize::from(param_guard.parameter) < code.params.len());
+        debug_assert!(usize::from(register.0) >= param_offset);
+    }
+    Ok(())
+}
+
+fn execute_linked_return_guard(
+    code: &LinkedCodeObject,
+    program: &LinkedProgram,
+    value: Value,
+    heap: Option<&HeapExecution<'_>>,
+) -> VmResult<Value> {
+    let Some(guard_id) = code.return_guard else {
+        return Ok(value);
+    };
+    let guard = code.type_guard(guard_id).ok_or_else(|| {
+        VmError::new(VmErrorKind::UnsupportedLinkedInstruction {
+            opcode: "return_guard",
+        })
+    })?;
+    runtime_type_guards::execute_linked_guard(
+        &value,
+        guard,
+        heap,
+        program.debug_name(guard.context.debug_name),
+    )?;
+    Ok(value)
 }
 
 fn validate_linked_jump(code: &LinkedCodeObject, offset: usize) -> VmResult<()> {

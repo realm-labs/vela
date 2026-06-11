@@ -87,6 +87,7 @@ impl Vm {
                 }));
             }
         }
+        execute_unlinked_param_guards(code, &frame, heap.as_deref())?;
         let mut ip = 0_usize;
 
         while ip < code.instructions.len() {
@@ -448,7 +449,9 @@ impl Vm {
                 UnlinkedInstructionKind::TryPropagate { dst, src } => {
                     match try_propagate_value(frame.read(*src)?, heap.as_deref())? {
                         TryPropagation::Continue(value) => frame.write(*dst, value)?,
-                        TryPropagation::Return(value) => return Ok(value),
+                        TryPropagation::Return(value) => {
+                            return execute_unlinked_return_guard(code, value, heap.as_deref());
+                        }
                     }
                 }
                 UnlinkedInstructionKind::MakeArray { dst, elements } => {
@@ -861,7 +864,13 @@ impl Vm {
                         frame.write(*dst, return_value)?;
                     }
                 }
-                UnlinkedInstructionKind::Return { src } => return Ok(*frame.read(*src)?),
+                UnlinkedInstructionKind::Return { src } => {
+                    return execute_unlinked_return_guard(
+                        code,
+                        *frame.read(*src)?,
+                        heap.as_deref(),
+                    );
+                }
             }
 
             if let Some(heap) = heap.as_deref_mut() {
@@ -871,4 +880,40 @@ impl Vm {
 
         Err(VmError::new(VmErrorKind::MissingReturn))
     }
+}
+
+fn execute_unlinked_param_guards(
+    code: &UnlinkedCodeObject,
+    frame: &CallFrame,
+    heap: Option<&HeapExecution<'_>>,
+) -> VmResult<()> {
+    for param_guard in &code.param_guards {
+        let register = Register(
+            code.capture_count
+                .checked_add(param_guard.parameter)
+                .ok_or_else(|| {
+                    VmError::new(VmErrorKind::RegisterOutOfBounds {
+                        register: Register(u16::MAX),
+                    })
+                })?,
+        );
+        let value = frame.read(register)?;
+        if matches!(value, Value::Missing) {
+            continue;
+        }
+        runtime_type_guards::execute_unlinked_guard(value, &param_guard.guard, heap)?;
+    }
+    Ok(())
+}
+
+fn execute_unlinked_return_guard(
+    code: &UnlinkedCodeObject,
+    value: Value,
+    heap: Option<&HeapExecution<'_>>,
+) -> VmResult<Value> {
+    let Some(guard) = &code.return_guard else {
+        return Ok(value);
+    };
+    runtime_type_guards::execute_unlinked_guard(&value, guard, heap)?;
+    Ok(value)
 }

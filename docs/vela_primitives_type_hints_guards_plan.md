@@ -1353,19 +1353,19 @@ then build registry, syntax, guards, and runtime behavior on the new model.
 #### Task 6.1: Execute contract guards
 
 - [ ] Add runtime type extraction:
-  - [ ] primitive tag;
+  - [x] primitive tag;
   - [ ] type handle for records/enums if available;
-  - [ ] bytes/string tags.
-- [ ] Execute parameter guards at checked entry.
-- [ ] Execute return guards before returning from a function.
-- [ ] Execute `GuardType` instruction for locals/globals/fields.
-- [ ] Add `VmErrorKind::TypeContractViolation`.
+  - [x] bytes/string tags.
+- [x] Execute parameter guards at checked entry.
+- [x] Execute return guards before returning from a function.
+- [x] Execute `GuardType` instruction for locals/globals/fields.
+- [x] Add `VmErrorKind::TypeContractViolation`.
 
 **Termination condition:**
 
-- [ ] Dynamic mismatch at function entry produces runtime contract error.
-- [ ] Dynamic mismatch at return produces runtime contract error.
-- [ ] Static mismatch remains compile error.
+- [x] Dynamic mismatch at function entry produces runtime contract error.
+- [x] Dynamic mismatch at return produces runtime contract error.
+- [x] Static mismatch remains compile error.
 
 #### Task 6.2: Add checked/unchecked entry support
 
