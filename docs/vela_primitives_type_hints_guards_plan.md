@@ -1186,8 +1186,8 @@ then build registry, syntax, guards, and runtime behavior on the new model.
 
 - [x] Ensure `-128i8`, `-32768i16`, `-2147483648i32`, and `-9223372036854775808i64` are accepted through unary-minus-aware constant evaluation.
 - [x] Reject positive suffixed literals that exceed their type.
-- [ ] Reject contextual unsuffixed integer literals that do not fit the expected type.
-- [ ] Reject contextual unsuffixed float literals that do not satisfy the expected float policy.
+- [x] Reject contextual unsuffixed integer literals that do not fit the expected type.
+- [x] Reject contextual unsuffixed float literals that do not satisfy the expected float policy.
 
 **Termination condition:**
 

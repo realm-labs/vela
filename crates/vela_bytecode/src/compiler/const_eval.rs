@@ -434,18 +434,27 @@ fn is_float_tag(tag: PrimitiveTag) -> bool {
 
 fn parse_float<T>(value: &FloatLiteral) -> CompileResult<T>
 where
-    T: std::str::FromStr<Err = ParseFloatError>,
+    T: Copy + Into<f64> + std::str::FromStr<Err = ParseFloatError>,
 {
-    value
-        .source_text()
-        .replace('_', "")
-        .parse()
-        .map_err(|error: ParseFloatError| {
-            CompileError::new(CompileErrorKind::InvalidFloatLiteral {
-                literal: value.source_text_with_suffix(),
-                error: error.to_string(),
-            })
-        })
+    let parsed: T =
+        value
+            .source_text()
+            .replace('_', "")
+            .parse()
+            .map_err(|error: ParseFloatError| {
+                CompileError::new(CompileErrorKind::InvalidFloatLiteral {
+                    literal: value.source_text_with_suffix(),
+                    error: error.to_string(),
+                })
+            })?;
+    if parsed.into().is_finite() {
+        Ok(parsed)
+    } else {
+        Err(CompileError::new(CompileErrorKind::InvalidFloatLiteral {
+            literal: value.source_text_with_suffix(),
+            error: "float literal out of range".to_owned(),
+        }))
+    }
 }
 
 fn negate_float_scalar(value: ScalarValue) -> ScalarValue {

@@ -776,6 +776,40 @@ fn main() {
 }
 
 #[test]
+fn compiler_rejects_out_of_range_contextual_float_literals() {
+    for source in [
+        r#"
+fn f(x: f32) {
+    return x;
+}
+fn main() {
+    return f(1.0e100);
+}
+"#,
+        r#"
+fn main() {
+    let amount: f32 = 1.0e100;
+    return amount;
+}
+"#,
+        r#"
+fn main() {
+    let amount: f64 = 1.0e10000;
+    return amount;
+}
+"#,
+    ] {
+        let error = compile_program_source(SourceId::new(1), source)
+            .expect_err("out-of-range contextual float should fail");
+        let CompileErrorKind::InvalidFloatLiteral { literal, error } = error.kind else {
+            panic!("expected invalid float literal");
+        };
+        assert!(literal.starts_with("1.0e"), "{literal}");
+        assert!(error.contains("out of range"), "{error}");
+    }
+}
+
+#[test]
 fn compiler_defers_inline_unsuffixed_int_literals_in_dynamic_binary_ops() {
     let program = compile_program_source(
         SourceId::new(1),
