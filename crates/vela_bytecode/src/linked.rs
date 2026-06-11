@@ -336,6 +336,19 @@ impl TypeGuard {
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]
+pub struct ParameterTypeGuard {
+    pub parameter: u16,
+    pub guard: TypeGuardPlanId,
+}
+
+impl ParameterTypeGuard {
+    #[must_use]
+    pub const fn new(parameter: u16, guard: TypeGuardPlanId) -> Self {
+        Self { parameter, guard }
+    }
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
 pub struct GuardContext {
     pub kind: GuardKind,
     pub location: GuardLocation,
@@ -374,6 +387,8 @@ pub struct LinkedCodeObject {
     pub constants: Vec<Constant>,
     pub host_targets: Vec<HostTargetPlan>,
     pub type_guards: Vec<TypeGuard>,
+    pub param_guards: Vec<ParameterTypeGuard>,
+    pub return_guard: Option<TypeGuardPlanId>,
     pub instructions: Vec<Instruction>,
 }
 
@@ -391,6 +406,8 @@ impl LinkedCodeObject {
             constants: Vec::new(),
             host_targets: Vec::new(),
             type_guards: Vec::new(),
+            param_guards: Vec::new(),
+            return_guard: None,
             instructions: Vec::new(),
         }
     }
@@ -454,6 +471,15 @@ impl LinkedCodeObject {
     #[must_use]
     pub fn type_guard(&self, id: TypeGuardPlanId) -> Option<&TypeGuard> {
         self.type_guards.get(id.index())
+    }
+
+    pub fn push_param_guard(&mut self, parameter: u16, guard: TypeGuardPlanId) {
+        self.param_guards
+            .push(ParameterTypeGuard::new(parameter, guard));
+    }
+
+    pub fn set_return_guard(&mut self, guard: TypeGuardPlanId) {
+        self.return_guard = Some(guard);
     }
 
     pub fn push_instruction(&mut self, instruction: Instruction) {

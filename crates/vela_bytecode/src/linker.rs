@@ -7,14 +7,15 @@ use vela_def::{DefPath, FunctionId, MethodId, TypeId, VariantId};
 use vela_registry::{Def, DefinitionRegistry};
 
 use crate::linked::{
-    Instruction, InstructionKind, LinkedCodeObject, LinkedFrameDebugInfo, LinkedFrameSlotInfo,
-    LinkedMethodDispatch, LinkedMethodDispatchKind, LinkedNativeFunction, LinkedProgram,
-    LinkedType, LinkedVariant,
+    GuardContext, Instruction, InstructionKind, LinkedCodeObject, LinkedFrameDebugInfo,
+    LinkedFrameSlotInfo, LinkedMethodDispatch, LinkedMethodDispatchKind, LinkedNativeFunction,
+    LinkedProgram, LinkedType, LinkedVariant, TypeGuard, TypeGuardPlan,
 };
 use crate::{
     Constant, FieldSlot, FunctionIndex, HostTargetPlanId, MethodDispatchHandle, NativeHandle,
     ScriptFunctionHandle, TypeHandle, UnlinkedCodeObject, UnlinkedInstruction,
-    UnlinkedInstructionKind, UnlinkedProgram, VariantHandle, function_id_for_script_name,
+    UnlinkedInstructionKind, UnlinkedProgram, UnlinkedTypeGuard, UnlinkedTypeGuardPlan,
+    VariantHandle, function_id_for_script_name,
 };
 
 #[derive(Clone, Debug, Default)]
@@ -258,6 +259,14 @@ impl<'linker, 'registry> LinkContext<'linker, 'registry> {
         linked.frame = frame;
         linked.cache_sites = code.cache_sites.clone();
         linked.constants = code.constants.clone();
+        for guard in &code.param_guards {
+            let linked_guard = self.link_type_guard(guard.guard.clone(), &mut linked)?;
+            linked.push_param_guard(guard.parameter, linked_guard);
+        }
+        if let Some(guard) = code.return_guard.clone() {
+            let linked_guard = self.link_type_guard(guard, &mut linked)?;
+            linked.set_return_guard(linked_guard);
+        }
         let host_target_map = code
             .host_targets
             .iter()
@@ -951,6 +960,44 @@ impl<'linker, 'registry> LinkContext<'linker, 'registry> {
                 function: code.name.clone(),
                 target,
             })
+    }
+
+    fn link_type_guard(
+        &mut self,
+        guard: UnlinkedTypeGuard,
+        code: &mut LinkedCodeObject,
+    ) -> Result<crate::TypeGuardPlanId, LinkError> {
+        let plan = self.link_type_guard_plan(guard.plan)?;
+        let context = GuardContext::new(
+            guard.context.kind,
+            guard.context.location,
+            self.linked.intern_debug_name(guard.context.debug_name),
+        );
+        Ok(code.intern_type_guard(TypeGuard::new(plan, context)))
+    }
+
+    fn link_type_guard_plan(
+        &mut self,
+        plan: UnlinkedTypeGuardPlan,
+    ) -> Result<TypeGuardPlan, LinkError> {
+        match plan {
+            UnlinkedTypeGuardPlan::Primitive(tag) => Ok(TypeGuardPlan::Primitive(tag)),
+            UnlinkedTypeGuardPlan::Type(name) => self.link_type(&name).map(TypeGuardPlan::Type),
+            UnlinkedTypeGuardPlan::Variant { enum_name, variant } => {
+                let owner = self.link_type(&enum_name)?;
+                self.link_variant(&enum_name, &variant, owner)
+                    .map(TypeGuardPlan::Variant)
+            }
+            UnlinkedTypeGuardPlan::Shape {
+                type_name,
+                shape_id,
+            } => self
+                .link_type(&type_name)
+                .map(|ty| TypeGuardPlan::Shape { ty, shape_id }),
+            UnlinkedTypeGuardPlan::HostType(name) => {
+                self.link_type(&name).map(TypeGuardPlan::HostType)
+            }
+        }
     }
 }
 

@@ -7,8 +7,8 @@ use crate::linked::{
 };
 use crate::{
     CacheSiteId, CacheSiteKind, CallArgument, ConstantId, HostTargetPlanId, InstructionOffset,
-    ProgramImage, Register, UnlinkedCodeObject, UnlinkedInstruction, UnlinkedInstructionKind,
-    UnlinkedProgram,
+    ProgramImage, Register, TypeGuardPlanId, UnlinkedCodeObject, UnlinkedInstruction,
+    UnlinkedInstructionKind, UnlinkedProgram,
 };
 
 mod linked;
@@ -44,6 +44,14 @@ pub enum VerificationErrorKind {
     ParameterDefaultsMismatch {
         parameter_count: usize,
         default_count: usize,
+    },
+    ParameterGuardOutOfBounds {
+        parameter: u16,
+        parameter_count: usize,
+    },
+    TypeGuardPlanOutOfBounds {
+        guard: TypeGuardPlanId,
+        guard_count: usize,
     },
     FunctionIndexOutOfBounds {
         function: crate::FunctionIndex,
@@ -311,6 +319,18 @@ fn verify_code_object_with_scope(
                 default_count: code.param_defaults.len(),
             },
         ));
+    }
+    for guard in &code.param_guards {
+        if usize::from(guard.parameter) >= parameter_count {
+            return Err(error(
+                function,
+                None,
+                VerificationErrorKind::ParameterGuardOutOfBounds {
+                    parameter: guard.parameter,
+                    parameter_count,
+                },
+            ));
+        }
     }
 
     for slot in &code.frame.slots {

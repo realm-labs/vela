@@ -7,7 +7,7 @@ use crate::{
     Instruction, InstructionKind, LinkedCodeObject, LinkedMethodDispatch, LinkedMethodDispatchKind,
     LinkedNativeFunction, LinkedProgram, LinkedType, LinkedVariant, MethodDispatchHandle,
     NativeHandle, ScriptFunctionHandle, TypeGuard, TypeGuardPlan, TypeHandle, UnlinkedInstruction,
-    VariantHandle,
+    UnlinkedTypeGuard, UnlinkedTypeGuardPlan, VariantHandle,
 };
 
 use super::*;
@@ -338,6 +338,52 @@ fn linked_program_verify_rejects_invalid_guard_type_and_variant_handles() {
             VerificationErrorKind::VariantHandleOutOfBounds {
                 handle: VariantHandle::new(0),
                 variant_count: 0,
+            }
+        ))
+    );
+}
+
+#[test]
+fn verify_rejects_guard_metadata_outside_function_layout() {
+    let mut unlinked = UnlinkedCodeObject::new("main", 1).with_params(vec!["value".to_owned()]);
+    unlinked.push_param_guard(
+        1,
+        UnlinkedTypeGuard::new(
+            UnlinkedTypeGuardPlan::Primitive(vela_common::PrimitiveTag::I64),
+            crate::UnlinkedGuardContext::new(
+                GuardKind::Contract,
+                GuardLocation::Parameter { index: 1 },
+                "value",
+            ),
+        ),
+    );
+
+    assert_eq!(
+        verify_code_object(&unlinked),
+        Err(error(
+            "main",
+            None,
+            VerificationErrorKind::ParameterGuardOutOfBounds {
+                parameter: 1,
+                parameter_count: 1,
+            }
+        ))
+    );
+
+    let mut program = LinkedProgram::new();
+    let main_name = program.intern_debug_name("main");
+    let mut linked = LinkedCodeObject::new(main_name, 1).with_params(vec![main_name]);
+    linked.push_param_guard(0, crate::TypeGuardPlanId::new(0));
+    program.push_function(linked);
+
+    assert_eq!(
+        verify_linked_program(&program),
+        Err(error(
+            "main",
+            None,
+            VerificationErrorKind::TypeGuardPlanOutOfBounds {
+                guard: crate::TypeGuardPlanId::new(0),
+                guard_count: 0,
             }
         ))
     );

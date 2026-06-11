@@ -10,7 +10,7 @@ pub mod verification;
 
 use std::collections::BTreeMap;
 
-use vela_common::{GlobalSlot, HostMethodId, Span};
+use vela_common::{GlobalSlot, HostMethodId, PrimitiveTag, ShapeId, Span};
 use vela_def::{DefPath, FunctionId, MethodId};
 use vela_hir::ids::HirLocalId;
 use vela_hir::module_graph::ModuleGraph;
@@ -22,8 +22,8 @@ pub use linked::{
     FieldSlot, GuardContext, GuardKind, GuardLocation, Instruction, InstructionKind,
     LinkedCodeObject, LinkedFrameDebugInfo, LinkedFrameSlotInfo, LinkedMethodDispatch,
     LinkedMethodDispatchKind, LinkedNativeFunction, LinkedProgram, LinkedType, LinkedVariant,
-    MethodDispatchHandle, NativeHandle, ScriptFunctionHandle, TypeGuard, TypeGuardPlan,
-    TypeGuardPlanId, TypeHandle, VariantHandle,
+    MethodDispatchHandle, NativeHandle, ParameterTypeGuard, ScriptFunctionHandle, TypeGuard,
+    TypeGuardPlan, TypeGuardPlanId, TypeHandle, VariantHandle,
 };
 pub use linker::{LinkError, Linker};
 pub use program_image::ProgramImage;
@@ -281,6 +281,8 @@ pub struct UnlinkedCodeObject {
     pub cache_sites: CacheSiteLayout,
     pub constants: Vec<Constant>,
     pub host_targets: Vec<HostTargetPlan>,
+    pub param_guards: Vec<UnlinkedParameterTypeGuard>,
+    pub return_guard: Option<UnlinkedTypeGuard>,
     pub nested_functions: Vec<UnlinkedCodeObject>,
     pub instructions: Vec<UnlinkedInstruction>,
 }
@@ -298,6 +300,8 @@ impl UnlinkedCodeObject {
             cache_sites: CacheSiteLayout::default(),
             constants: Vec::new(),
             host_targets: Vec::new(),
+            param_guards: Vec::new(),
+            return_guard: None,
             nested_functions: Vec::new(),
             instructions: Vec::new(),
         }
@@ -344,6 +348,15 @@ impl UnlinkedCodeObject {
     #[must_use]
     pub fn host_target(&self, id: HostTargetPlanId) -> Option<&HostTargetPlan> {
         self.host_targets.get(id.index())
+    }
+
+    pub fn push_param_guard(&mut self, parameter: u16, guard: UnlinkedTypeGuard) {
+        self.param_guards
+            .push(UnlinkedParameterTypeGuard { parameter, guard });
+    }
+
+    pub fn set_return_guard(&mut self, guard: UnlinkedTypeGuard) {
+        self.return_guard = Some(guard);
     }
 
     pub fn push_instruction(&mut self, instruction: UnlinkedInstruction) {
@@ -507,6 +520,58 @@ impl HostTargetPlanId {
     #[must_use]
     pub const fn index(self) -> usize {
         self.0 as usize
+    }
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct UnlinkedParameterTypeGuard {
+    pub parameter: u16,
+    pub guard: UnlinkedTypeGuard,
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct UnlinkedTypeGuard {
+    pub plan: UnlinkedTypeGuardPlan,
+    pub context: UnlinkedGuardContext,
+}
+
+impl UnlinkedTypeGuard {
+    #[must_use]
+    pub fn new(plan: UnlinkedTypeGuardPlan, context: UnlinkedGuardContext) -> Self {
+        Self { plan, context }
+    }
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub enum UnlinkedTypeGuardPlan {
+    Primitive(PrimitiveTag),
+    Type(String),
+    Variant {
+        enum_name: String,
+        variant: String,
+    },
+    Shape {
+        type_name: String,
+        shape_id: ShapeId,
+    },
+    HostType(String),
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct UnlinkedGuardContext {
+    pub kind: GuardKind,
+    pub location: GuardLocation,
+    pub debug_name: String,
+}
+
+impl UnlinkedGuardContext {
+    #[must_use]
+    pub fn new(kind: GuardKind, location: GuardLocation, debug_name: impl Into<String>) -> Self {
+        Self {
+            kind,
+            location,
+            debug_name: debug_name.into(),
+        }
     }
 }
 

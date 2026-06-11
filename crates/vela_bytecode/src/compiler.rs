@@ -39,8 +39,9 @@ use vela_registry::RegistryCompileView;
 use vela_syntax::ast::{Argument, Block, Expr, ExprKind, FunctionItem, Param};
 
 use crate::{
-    CacheSiteId, CacheSiteKind, Constant, FrameSlotInfo, FrameSlotKind, InstructionOffset,
-    Register, UnlinkedCodeObject, UnlinkedInstruction, UnlinkedInstructionKind, UnlinkedProgram,
+    CacheSiteId, CacheSiteKind, Constant, FrameSlotInfo, FrameSlotKind, GuardKind, GuardLocation,
+    InstructionOffset, Register, UnlinkedCodeObject, UnlinkedGuardContext, UnlinkedInstruction,
+    UnlinkedInstructionKind, UnlinkedProgram, UnlinkedTypeGuard, UnlinkedTypeGuardPlan,
 };
 use control_flow::LoopContext;
 use error::{CompileError, CompileErrorKind, CompileResult};
@@ -430,6 +431,20 @@ fn script_method_signatures(
         .collect()
 }
 
+fn primitive_type_guard_for_hint(
+    hint: &HirTypeHint,
+    location: GuardLocation,
+    debug_name: impl Into<String>,
+) -> Option<UnlinkedTypeGuard> {
+    let RuntimeTypeFact::Primitive(tag) = type_hint_value_type(hint)? else {
+        return None;
+    };
+    Some(UnlinkedTypeGuard::new(
+        UnlinkedTypeGuardPlan::Primitive(tag),
+        UnlinkedGuardContext::new(GuardKind::Contract, location, debug_name),
+    ))
+}
+
 struct Compiler<'ast, 'registry> {
     code: UnlinkedCodeObject,
     locals: HashMap<String, Register>,
@@ -485,6 +500,12 @@ impl<'ast, 'registry> Compiler<'ast, 'registry> {
         let mut code = UnlinkedCodeObject::new(code_name, 0)
             .with_params(param_names)
             .with_param_defaults(param_defaults);
+        if let Some(return_type) = &signature.return_type
+            && let Some(guard) =
+                primitive_type_guard_for_hint(return_type, GuardLocation::Return, "return")
+        {
+            code.set_return_guard(guard);
+        }
         let mut locals = HashMap::new();
         let mut hir_locals = HashMap::new();
         let mut script_types = ScriptTypeFlow::default();
@@ -499,6 +520,15 @@ impl<'ast, 'registry> Compiler<'ast, 'registry> {
         for (index, param) in signature.params.iter().enumerate() {
             let register = u16::try_from(index)
                 .map_err(|_| CompileError::new(CompileErrorKind::RegisterOverflow))?;
+            if let Some(type_hint) = &param.type_hint
+                && let Some(guard) = primitive_type_guard_for_hint(
+                    type_hint,
+                    GuardLocation::Parameter { index: register },
+                    param.name.clone(),
+                )
+            {
+                code.push_param_guard(register, guard);
+            }
             locals.insert(param.name.clone(), Register(register));
             let script_type = param
                 .type_hint
@@ -618,6 +648,23 @@ impl<'ast, 'registry> Compiler<'ast, 'registry> {
                     )
                     .ok_or_else(|| CompileError::new(CompileErrorKind::RegisterOverflow))?,
             );
+            if let Some(type_hint) = &param.type_hint {
+                let hint = HirTypeHint::from_syntax(type_hint);
+                if let Some(guard) = primitive_type_guard_for_hint(
+                    &hint,
+                    GuardLocation::Parameter {
+                        index: u16::try_from(index)
+                            .map_err(|_| CompileError::new(CompileErrorKind::RegisterOverflow))?,
+                    },
+                    param.name.clone(),
+                ) {
+                    code.push_param_guard(
+                        u16::try_from(index)
+                            .map_err(|_| CompileError::new(CompileErrorKind::RegisterOverflow))?,
+                        guard,
+                    );
+                }
+            }
             locals.insert(param.name.clone(), register);
             let script_type = param.type_hint.as_ref().and_then(|hint| {
                 type_hint_script_type(&HirTypeHint::from_syntax(hint), known_type_names.iter())

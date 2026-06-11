@@ -304,6 +304,90 @@ fn main(value) {
 }
 
 #[test]
+fn compiler_emits_linked_parameter_and_return_guard_metadata() {
+    let program = compile_program_source(
+        SourceId::new(1),
+        r#"
+fn f(x: i64) -> i64 {
+    return x;
+}
+fn main() {
+    return f(12);
+}
+"#,
+    )
+    .expect("typed function should compile");
+    let unlinked = program.function("f").expect("function should exist");
+
+    assert_eq!(unlinked.param_guards.len(), 1);
+    assert_eq!(unlinked.param_guards[0].parameter, 0);
+    assert!(matches!(
+        unlinked.param_guards[0].guard.plan,
+        crate::UnlinkedTypeGuardPlan::Primitive(vela_common::PrimitiveTag::I64)
+    ));
+    assert!(matches!(
+        unlinked.return_guard.as_ref().map(|guard| &guard.plan),
+        Some(crate::UnlinkedTypeGuardPlan::Primitive(
+            vela_common::PrimitiveTag::I64
+        ))
+    ));
+
+    let linked = crate::Linker::new()
+        .link_program(&program)
+        .expect("program should link");
+    linked.verify().expect("linked guards should verify");
+    let function = linked
+        .entry_point_by_name("f")
+        .and_then(|handle| linked.function(handle))
+        .expect("linked function should exist");
+
+    assert_eq!(function.param_guards.len(), 1);
+    let param_guard = function.param_guards[0].guard;
+    assert!(matches!(
+        function.type_guard(param_guard).map(|guard| &guard.plan),
+        Some(crate::TypeGuardPlan::Primitive(
+            vela_common::PrimitiveTag::I64
+        ))
+    ));
+    let return_guard = function.return_guard.expect("return guard should exist");
+    assert!(matches!(
+        function.type_guard(return_guard).map(|guard| &guard.plan),
+        Some(crate::TypeGuardPlan::Primitive(
+            vela_common::PrimitiveTag::I64
+        ))
+    ));
+}
+
+#[test]
+fn compiler_leaves_unhinted_functions_without_guard_metadata() {
+    let program = compile_program_source(
+        SourceId::new(1),
+        r#"
+fn f(x) {
+    return x;
+}
+"#,
+    )
+    .expect("unhinted function should compile");
+    let unlinked = program.function("f").expect("function should exist");
+
+    assert!(unlinked.param_guards.is_empty());
+    assert!(unlinked.return_guard.is_none());
+
+    let linked = crate::Linker::new()
+        .link_program(&program)
+        .expect("program should link");
+    let function = linked
+        .entry_point_by_name("f")
+        .and_then(|handle| linked.function(handle))
+        .expect("linked function should exist");
+
+    assert!(function.type_guards.is_empty());
+    assert!(function.param_guards.is_empty());
+    assert!(function.return_guard.is_none());
+}
+
+#[test]
 fn compiler_contextualizes_typed_let_literals() {
     let code = compile_function_source(
         SourceId::new(1),

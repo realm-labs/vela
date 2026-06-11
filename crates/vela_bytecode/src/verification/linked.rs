@@ -138,6 +138,13 @@ fn verify_linked_code_object_with_context(
     for param in &code.params {
         verify_linked_debug_name(function, None, context, *param)?;
     }
+    for guard in &code.param_guards {
+        verify_linked_parameter_guard(function, code, guard.parameter)?;
+        verify_linked_type_guard_id(function, code, guard.guard)?;
+    }
+    if let Some(guard) = code.return_guard {
+        verify_linked_type_guard_id(function, code, guard)?;
+    }
     for slot in &code.frame.slots {
         verify_linked_debug_name(function, None, context, slot.name)?;
         verify_register_count(function, None, code.register_count, slot.register)?;
@@ -655,6 +662,44 @@ fn verify_linked_type_guard(
             verify_linked_variant_handle(function, None, context, handle)
         }
         TypeGuardPlan::Shape { ty, .. } => verify_linked_type_handle(function, None, context, ty),
+    }
+}
+
+fn verify_linked_parameter_guard(
+    function: &str,
+    code: &LinkedCodeObject,
+    parameter: u16,
+) -> Result<(), VerificationError> {
+    if usize::from(parameter) < code.params.len() {
+        Ok(())
+    } else {
+        Err(error(
+            function,
+            None,
+            VerificationErrorKind::ParameterGuardOutOfBounds {
+                parameter,
+                parameter_count: code.params.len(),
+            },
+        ))
+    }
+}
+
+fn verify_linked_type_guard_id(
+    function: &str,
+    code: &LinkedCodeObject,
+    guard: crate::TypeGuardPlanId,
+) -> Result<(), VerificationError> {
+    if guard.index() < code.type_guards.len() {
+        Ok(())
+    } else {
+        Err(error(
+            function,
+            None,
+            VerificationErrorKind::TypeGuardPlanOutOfBounds {
+                guard,
+                guard_count: code.type_guards.len(),
+            },
+        ))
     }
 }
 

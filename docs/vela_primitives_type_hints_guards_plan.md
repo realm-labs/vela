@@ -1307,16 +1307,16 @@ then build registry, syntax, guards, and runtime behavior on the new model.
 
 #### Task 5.2: Add parameter and return guard metadata
 
-- [ ] Add param guard metadata to `UnlinkedCodeObject`.
-- [ ] Link param guard metadata into `LinkedCodeObject`.
-- [ ] Add return guard metadata.
-- [ ] Keep default/capture layout unchanged unless necessary.
+- [x] Add param guard metadata to `UnlinkedCodeObject`.
+- [x] Link param guard metadata into `LinkedCodeObject`.
+- [x] Add return guard metadata.
+- [x] Keep default/capture layout unchanged unless necessary.
 
 **Termination condition:**
 
-- [ ] A function with `x: i64` has a linked parameter guard.
-- [ ] A function with `-> i64` has a linked return guard.
-- [ ] A function with no hints has no guards.
+- [x] A function with `x: i64` has a linked parameter guard.
+- [x] A function with `-> i64` has a linked return guard.
+- [x] A function with no hints has no guards.
 
 #### Task 5.3: Add guard instruction for local/global/field contracts
 
