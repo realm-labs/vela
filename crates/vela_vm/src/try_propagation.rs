@@ -1,10 +1,26 @@
 use crate::option_result::{StdEnumKind, StdEnumVariant, std_enum_tag};
 use crate::stored_runtime_value;
-use crate::{HeapExecution, HeapValue, Value, VmError, VmErrorKind, VmResult};
+use crate::{CallFrame, HeapExecution, HeapValue, Value, VmError, VmErrorKind, VmResult};
+use vela_bytecode::Register;
 
 pub(crate) enum TryPropagation {
     Continue(Value),
     Return(Value),
+}
+
+pub(crate) fn dispatch_try_propagate(
+    frame: &mut CallFrame,
+    heap: Option<&HeapExecution<'_>>,
+    dst: Register,
+    src: Register,
+) -> VmResult<Option<Value>> {
+    match try_propagate_value(frame.read(src)?, heap)? {
+        TryPropagation::Continue(value) => {
+            frame.write(dst, value)?;
+            Ok(None)
+        }
+        TryPropagation::Return(value) => Ok(Some(value)),
+    }
 }
 
 pub(crate) fn try_propagate_value(

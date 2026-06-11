@@ -79,7 +79,6 @@ use runtime_checks::{expect_int, is_truthy, validate_jump};
 #[cfg(test)]
 pub(crate) use script_object::ScriptFields;
 use small_storage::SmallStorage;
-use try_propagation::{TryPropagation, try_propagate_value};
 #[cfg(test)]
 use vela_bytecode::UnlinkedProgram;
 use vela_bytecode::{

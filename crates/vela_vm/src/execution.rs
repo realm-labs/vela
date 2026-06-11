@@ -451,11 +451,13 @@ impl Vm {
                     }
                 }
                 UnlinkedInstructionKind::TryPropagate { dst, src } => {
-                    match try_propagate_value(frame.read(*src)?, heap.as_deref())? {
-                        TryPropagation::Continue(value) => frame.write(*dst, value)?,
-                        TryPropagation::Return(value) => {
-                            return execute_unlinked_return_guard(code, value, heap.as_deref());
-                        }
+                    if let Some(value) = try_propagation::dispatch_try_propagate(
+                        &mut frame,
+                        heap.as_deref(),
+                        *dst,
+                        *src,
+                    )? {
+                        return execute_unlinked_return_guard(code, value, heap.as_deref());
                     }
                 }
                 UnlinkedInstructionKind::MakeArray { dst, elements } => {

@@ -469,16 +469,18 @@ impl Vm {
                     )?;
                 }
                 InstructionKind::TryPropagate { dst, src } => {
-                    match try_propagate_value(frame.read(*src)?, heap.as_deref())? {
-                        TryPropagation::Continue(value) => frame.write(*dst, value)?,
-                        TryPropagation::Return(value) => {
-                            return execute_linked_return_guard(
-                                code,
-                                call.program,
-                                value,
-                                heap.as_deref(),
-                            );
-                        }
+                    if let Some(value) = try_propagation::dispatch_try_propagate(
+                        &mut frame,
+                        heap.as_deref(),
+                        *dst,
+                        *src,
+                    )? {
+                        return execute_linked_return_guard(
+                            code,
+                            call.program,
+                            value,
+                            heap.as_deref(),
+                        );
                     }
                 }
                 InstructionKind::MakeArray { dst, elements } => {
