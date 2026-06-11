@@ -399,6 +399,42 @@ mod tests {
     }
 
     #[test]
+    fn c_api_reports_runtime_contract_errors() {
+        let mut error = ptr::null_mut();
+        let engine = unsafe { vela_engine_new(&mut error) };
+        assert!(!engine.is_null());
+        assert!(error.is_null());
+
+        let source = c_string(
+            r#"
+fn dynamic() {
+    return "bad";
+}
+
+fn main() -> i64 {
+    return dynamic();
+}
+"#,
+        );
+        let runtime = unsafe { vela_runtime_compile_source(engine, source.as_ptr(), &mut error) };
+        assert!(!runtime.is_null());
+        assert!(error.is_null());
+
+        let entry = c_string("main");
+        let mut result = VelaCValue::default();
+        let status = unsafe { vela_runtime_call(runtime, entry.as_ptr(), &mut result, &mut error) };
+        assert_eq!(status, VelaStatus::RuntimeError);
+        assert!(!error.is_null());
+
+        unsafe {
+            vela_string_free(error);
+            vela_value_free(&mut result);
+            vela_runtime_free(runtime);
+            vela_engine_free(engine);
+        }
+    }
+
+    #[test]
     fn c_api_reports_compile_errors() {
         let mut error = ptr::null_mut();
         let engine = unsafe { vela_engine_new(&mut error) };

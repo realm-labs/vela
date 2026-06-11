@@ -1374,7 +1374,11 @@ then build registry, syntax, guards, and runtime behavior on the new model.
   - [x] unchecked script call.
 - [x] Static known-safe calls use unchecked path.
 - [x] Dynamic calls use checked path.
-- [ ] Reflection/host/C API calls use checked path.
+- [x] Reflection/host/C API calls use checked path.
+  - [x] Host embedding `Runtime::call` executes public entry parameter guards.
+  - [x] Reflection calls into registered typed native functions enforce typed native argument contracts.
+  - [x] The current C API no-argument entry call path reports runtime contract failures through `Runtime::call`.
+  - [x] Reflection script-function descriptor calls are not a current supported call form; do not add an unchecked reflection script-entry path without checked guard coverage.
 
 **Termination condition:**
 

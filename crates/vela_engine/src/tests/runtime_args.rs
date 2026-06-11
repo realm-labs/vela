@@ -92,6 +92,39 @@ fn main() {
     );
 }
 
+#[test]
+fn runtime_call_checks_public_entry_parameter_contracts() {
+    let engine = Engine::builder().build().expect("engine should build");
+    let program = engine
+        .compile_source(
+            SourceId::new(1),
+            r#"
+fn main(value: i64) {
+    return value;
+}
+"#,
+        )
+        .expect("program should compile");
+    let mut runtime = Runtime::new(engine, program);
+
+    let error = runtime
+        .call(
+            "main",
+            CallArgs::new().with_value("value", "bad"),
+            CallOptions::unbounded(),
+        )
+        .expect_err("runtime host entry should check parameter guards");
+
+    assert_eq!(
+        error.kind(),
+        VmErrorKind::TypeContractViolation {
+            expected: "i64".to_owned(),
+            actual: "string".to_owned(),
+            debug_name: "value".to_owned(),
+        }
+    );
+}
+
 fn direct_player_type() -> TypeDesc {
     TypeDesc::new(TypeKey::new(TypeId::new(1), "Player"))
         .host_type(HostTypeId::new(1))

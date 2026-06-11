@@ -75,6 +75,44 @@ fn main() {
 }
 
 #[test]
+fn engine_reflect_call_checks_typed_native_parameter_contracts() {
+    let engine = Engine::builder()
+        .register_typed_native_fn::<(i64,), _>(
+            NativeFunctionDesc::new("game::double", NativeFunctionId::new(96))
+                .param("value", TypeHint::i64())
+                .returns(TypeHint::i64())
+                .access(FunctionAccess::public().reflect_callable(true)),
+            |value: i64| value * 2,
+        )
+        .reflection_permissions(ReflectPermissionSet::all())
+        .build()
+        .expect("engine should build");
+    let program = engine
+        .compile_source(
+            SourceId::new(1),
+            r#"
+fn main() {
+    let double = reflect::function("game::double");
+    return reflect::call(double, "bad");
+}
+"#,
+        )
+        .expect("program should compile");
+    let mut adapter = MockStateAdapter::new();
+    let mut tx = HostAccess::new();
+    let mut host = HostExecution {
+        adapter: &mut adapter,
+        access: &mut tx,
+        script_globals: None,
+    };
+
+    assert!(matches!(
+        run_linked_program_with_host(&engine, &program, &[], &mut host),
+        Err(error) if matches!(error.kind(), VmErrorKind::TypeMismatch { .. })
+    ));
+}
+
+#[test]
 fn engine_reflect_call_requires_call_permission_for_function_descriptors() {
     let engine = Engine::builder()
         .register_native_fn(
