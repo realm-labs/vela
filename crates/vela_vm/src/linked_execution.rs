@@ -1,12 +1,9 @@
 use vela_bytecode::linked::{InstructionKind, LinkedMethodDispatchKind};
 use vela_bytecode::{
-    DebugNameId, FieldSlot, InstructionOffset, LinkedCodeObject, LinkedProgram, LinkedType,
-    LinkedVariant, Register, TypeHandle, VariantHandle,
+    InstructionOffset, LinkedCodeObject, LinkedProgram, LinkedType, LinkedVariant, Register,
+    TypeHandle, VariantHandle,
 };
 use vela_common::Span;
-
-use crate::heap::EnumIdentity;
-use crate::option_result::std_enum_identity_for_names;
 
 use super::*;
 
@@ -518,19 +515,14 @@ impl Vm {
                     )?;
                 }
                 InstructionKind::MakeRecord { dst, ty, fields } => {
-                    let linked_ty = linked_type(call.program, *ty, "MakeRecord")?;
-                    let type_name = call.program.debug_name(linked_ty.debug_name);
-                    let fields = linked_object_fields(call.program, fields);
-                    script_object_construction::make_record_with_identity(
+                    script_object_construction::make_linked_record(
                         &mut frame,
                         heap.as_deref_mut(),
                         budget.as_deref_mut(),
                         *dst,
-                        script_object_construction::RecordConstruction {
-                            type_name,
-                            type_id: Some(linked_ty.id),
-                            fields: &fields,
-                        },
+                        call.program,
+                        *ty,
+                        fields,
                     )?;
                 }
                 InstructionKind::GetRecordSlot {
@@ -570,23 +562,16 @@ impl Vm {
                     variant,
                     fields,
                 } => {
-                    let enum_ty = linked_type(call.program, *enum_ty, "MakeEnum")?;
-                    let variant = linked_variant(call.program, *variant, "MakeEnum")?;
-                    let enum_name = call.program.debug_name(enum_ty.debug_name);
-                    let variant_name = linked_variant_short_name(call.program, variant);
-                    let identity = std_enum_identity_for_names(enum_name, variant_name)
-                        .unwrap_or_else(|| linked_enum_identity(enum_ty, variant));
-                    let fields = linked_object_fields(call.program, fields);
-                    script_object_construction::make_enum_with_identity(
+                    script_object_construction::make_linked_enum(
                         &mut frame,
                         heap.as_deref_mut(),
                         budget.as_deref_mut(),
                         *dst,
-                        script_object_construction::EnumConstruction {
-                            enum_name,
-                            variant: variant_name,
-                            identity: Some(identity),
-                            fields: &fields,
+                        call.program,
+                        script_object_construction::LinkedEnumConstruction {
+                            enum_ty: *enum_ty,
+                            variant: *variant,
+                            fields,
                         },
                     )?;
                 }
@@ -990,28 +975,4 @@ fn linked_variant<'program>(
     program
         .variant(variant)
         .ok_or_else(|| VmError::new(VmErrorKind::UnsupportedLinkedInstruction { opcode }))
-}
-
-fn linked_variant_short_name<'program>(
-    program: &'program LinkedProgram,
-    variant: &LinkedVariant,
-) -> &'program str {
-    program
-        .debug_name(variant.debug_name)
-        .rsplit_once("::")
-        .map_or_else(|| program.debug_name(variant.debug_name), |(_, name)| name)
-}
-
-fn linked_enum_identity(enum_ty: &LinkedType, variant: &LinkedVariant) -> EnumIdentity {
-    EnumIdentity::new(enum_ty.id, variant.id, None)
-}
-
-fn linked_object_fields(
-    program: &LinkedProgram,
-    fields: &[(FieldSlot, DebugNameId, Register)],
-) -> Vec<(String, Register)> {
-    fields
-        .iter()
-        .map(|(_, debug_name, register)| (program.debug_name(*debug_name).to_owned(), *register))
-        .collect()
 }

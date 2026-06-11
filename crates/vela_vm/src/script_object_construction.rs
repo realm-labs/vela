@@ -5,7 +5,10 @@ use crate::{
     CallFrame, ExecutionBudget, HeapExecution, Value, VmError, VmErrorKind, VmResult,
     allocate_heap_value, enum_variant_owner, store_runtime_value,
 };
-use vela_bytecode::Register;
+use vela_bytecode::{
+    DebugNameId, FieldSlot, LinkedProgram, LinkedType, LinkedVariant, Register, TypeHandle,
+    VariantHandle,
+};
 
 pub(crate) struct EnumConstruction<'a> {
     pub(crate) enum_name: &'a str,
@@ -18,6 +21,12 @@ pub(crate) struct RecordConstruction<'a> {
     pub(crate) type_name: &'a str,
     pub(crate) type_id: Option<vela_def::TypeId>,
     pub(crate) fields: &'a [(String, Register)],
+}
+
+pub(crate) struct LinkedEnumConstruction<'a> {
+    pub(crate) enum_ty: TypeHandle,
+    pub(crate) variant: VariantHandle,
+    pub(crate) fields: &'a [(FieldSlot, DebugNameId, Register)],
 }
 
 pub(crate) fn make_record(
@@ -71,6 +80,31 @@ pub(crate) fn make_record_with_identity(
         budget_ref(&mut budget),
     )?;
     frame.write(dst, value)
+}
+
+pub(crate) fn make_linked_record(
+    frame: &mut CallFrame,
+    heap: Option<&mut HeapExecution<'_>>,
+    budget: Option<&mut ExecutionBudget>,
+    dst: Register,
+    program: &LinkedProgram,
+    ty: TypeHandle,
+    fields: &[(FieldSlot, DebugNameId, Register)],
+) -> VmResult<()> {
+    let linked_ty = linked_type(program, ty, "MakeRecord")?;
+    let type_name = program.debug_name(linked_ty.debug_name);
+    let fields = linked_object_fields(program, fields);
+    make_record_with_identity(
+        frame,
+        heap,
+        budget,
+        dst,
+        RecordConstruction {
+            type_name,
+            type_id: Some(linked_ty.id),
+            fields: &fields,
+        },
+    )
 }
 
 pub(crate) fn make_enum(
@@ -128,6 +162,40 @@ pub(crate) fn make_enum_with_identity(
         budget_ref(&mut budget),
     )?;
     frame.write(dst, value)
+}
+
+pub(crate) fn make_linked_enum(
+    frame: &mut CallFrame,
+    heap: Option<&mut HeapExecution<'_>>,
+    budget: Option<&mut ExecutionBudget>,
+    dst: Register,
+    program: &LinkedProgram,
+    construction: LinkedEnumConstruction<'_>,
+) -> VmResult<()> {
+    let LinkedEnumConstruction {
+        enum_ty,
+        variant,
+        fields,
+    } = construction;
+    let enum_ty = linked_type(program, enum_ty, "MakeEnum")?;
+    let variant = linked_variant(program, variant, "MakeEnum")?;
+    let enum_name = program.debug_name(enum_ty.debug_name);
+    let variant_name = linked_variant_short_name(program, variant);
+    let identity = std_enum_identity_for_names(enum_name, variant_name)
+        .unwrap_or_else(|| linked_enum_identity(enum_ty, variant));
+    let fields = linked_object_fields(program, fields);
+    make_enum_with_identity(
+        frame,
+        heap,
+        budget,
+        dst,
+        EnumConstruction {
+            enum_name,
+            variant: variant_name,
+            identity: Some(identity),
+            fields: &fields,
+        },
+    )
 }
 
 #[inline]
@@ -280,4 +348,48 @@ fn runtime_fields_from_registers(
             .collect::<VmResult<Vec<_>>>()
             .map(|fields| ScriptFields::from_pairs(owner, fields)),
     }
+}
+
+fn linked_type<'program>(
+    program: &'program LinkedProgram,
+    ty: TypeHandle,
+    opcode: &'static str,
+) -> VmResult<&'program LinkedType> {
+    program
+        .ty(ty)
+        .ok_or_else(|| VmError::new(VmErrorKind::UnsupportedLinkedInstruction { opcode }))
+}
+
+fn linked_variant<'program>(
+    program: &'program LinkedProgram,
+    variant: VariantHandle,
+    opcode: &'static str,
+) -> VmResult<&'program LinkedVariant> {
+    program
+        .variant(variant)
+        .ok_or_else(|| VmError::new(VmErrorKind::UnsupportedLinkedInstruction { opcode }))
+}
+
+fn linked_variant_short_name<'program>(
+    program: &'program LinkedProgram,
+    variant: &LinkedVariant,
+) -> &'program str {
+    program
+        .debug_name(variant.debug_name)
+        .rsplit_once("::")
+        .map_or_else(|| program.debug_name(variant.debug_name), |(_, name)| name)
+}
+
+fn linked_enum_identity(enum_ty: &LinkedType, variant: &LinkedVariant) -> EnumIdentity {
+    EnumIdentity::new(enum_ty.id, variant.id, None)
+}
+
+fn linked_object_fields(
+    program: &LinkedProgram,
+    fields: &[(FieldSlot, DebugNameId, Register)],
+) -> Vec<(String, Register)> {
+    fields
+        .iter()
+        .map(|(_, debug_name, register)| (program.debug_name(*debug_name).to_owned(), *register))
+        .collect()
 }
