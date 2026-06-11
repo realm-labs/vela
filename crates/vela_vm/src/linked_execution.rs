@@ -665,12 +665,7 @@ impl Vm {
                     dynamic_args,
                     cache_site,
                 } => {
-                    let plan = host_access::code_host_target(
-                        &code.host_targets,
-                        *target,
-                        instruction.span,
-                    )?;
-                    let value = host_access::execute_host_read(
+                    let value = host_access::execute_code_host_read(
                         host_access::HostAccessRuntime {
                             frame: &frame,
                             heap: heap.as_deref_mut(),
@@ -680,10 +675,12 @@ impl Vm {
                             source_span: instruction.span,
                         },
                         *root,
-                        *target,
-                        plan,
-                        dynamic_args,
-                        *cache_site,
+                        host_access::CodeHostTargetPlan {
+                            targets: &code.host_targets,
+                            target_id: *target,
+                            dynamic_args,
+                            cache_site: *cache_site,
+                        },
                     )?;
                     frame.write(*dst, value)?;
                 }
@@ -694,12 +691,7 @@ impl Vm {
                     src,
                     cache_site,
                 } => {
-                    let plan = host_access::code_host_target(
-                        &code.host_targets,
-                        *target,
-                        instruction.span,
-                    )?;
-                    host_access::execute_host_write(
+                    host_access::execute_code_host_write(
                         host_access::HostAccessRuntime {
                             frame: &frame,
                             heap: heap.as_deref_mut(),
@@ -709,11 +701,13 @@ impl Vm {
                             source_span: instruction.span,
                         },
                         *root,
-                        *target,
-                        plan,
-                        dynamic_args,
+                        host_access::CodeHostTargetPlan {
+                            targets: &code.host_targets,
+                            target_id: *target,
+                            dynamic_args,
+                            cache_site: *cache_site,
+                        },
                         *src,
-                        *cache_site,
                     )?;
                 }
                 InstructionKind::HostMutate {
@@ -724,12 +718,7 @@ impl Vm {
                     rhs,
                     cache_site,
                 } => {
-                    let plan = host_access::code_host_target(
-                        &code.host_targets,
-                        *target,
-                        instruction.span,
-                    )?;
-                    host_access::execute_host_mutate(
+                    host_access::execute_code_host_mutate(
                         host_access::HostAccessRuntime {
                             frame: &frame,
                             heap: heap.as_deref_mut(),
@@ -739,13 +728,15 @@ impl Vm {
                             source_span: instruction.span,
                         },
                         *root,
-                        host_access::HostMutationPlan {
-                            target_id: *target,
-                            target: plan,
-                            dynamic_args,
+                        host_access::CodeHostMutationPlan {
+                            target: host_access::CodeHostTargetPlan {
+                                targets: &code.host_targets,
+                                target_id: *target,
+                                dynamic_args,
+                                cache_site: *cache_site,
+                            },
                             op: *op,
                             rhs: *rhs,
-                            cache_site: *cache_site,
                         },
                     )?;
                 }
@@ -755,12 +746,7 @@ impl Vm {
                     dynamic_args,
                     cache_site,
                 } => {
-                    let plan = host_access::code_host_target(
-                        &code.host_targets,
-                        *target,
-                        instruction.span,
-                    )?;
-                    host_access::execute_host_remove(
+                    host_access::execute_code_host_remove(
                         host_access::HostAccessRuntime {
                             frame: &frame,
                             heap: heap.as_deref_mut(),
@@ -770,10 +756,12 @@ impl Vm {
                             source_span: instruction.span,
                         },
                         *root,
-                        *target,
-                        plan,
-                        dynamic_args,
-                        *cache_site,
+                        host_access::CodeHostTargetPlan {
+                            targets: &code.host_targets,
+                            target_id: *target,
+                            dynamic_args,
+                            cache_site: *cache_site,
+                        },
                     )?;
                 }
                 InstructionKind::HostCall {
@@ -795,12 +783,7 @@ impl Vm {
                             .with_source_span_if_absent(instruction.span));
                         }
                     };
-                    let plan = host_access::code_host_target(
-                        &code.host_targets,
-                        *target,
-                        instruction.span,
-                    )?;
-                    let value = host_access::execute_host_call(
+                    let value = host_access::execute_code_host_call(
                         host_access::HostAccessRuntime {
                             frame: &frame,
                             heap: heap.as_deref_mut(),
@@ -810,14 +793,16 @@ impl Vm {
                             source_span: instruction.span,
                         },
                         *root,
-                        host_access::HostCallPlan {
-                            target_id: *target,
-                            target: plan,
-                            dynamic_args,
+                        host_access::CodeHostCallPlan {
+                            target: host_access::CodeHostTargetPlan {
+                                targets: &code.host_targets,
+                                target_id: *target,
+                                dynamic_args,
+                                cache_site: *cache_site,
+                            },
                             method: method_id,
                             args,
                             wants_return: dst.is_some(),
-                            cache_site: *cache_site,
                         },
                     )?;
                     if let (Some(dst), Some(value)) = (dst, value) {

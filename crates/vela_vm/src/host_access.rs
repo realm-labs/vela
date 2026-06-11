@@ -22,6 +22,13 @@ pub(crate) struct HostAccessRuntime<'a, 'host, 'heap> {
     pub(crate) source_span: Option<Span>,
 }
 
+pub(crate) struct CodeHostTargetPlan<'a> {
+    pub(crate) targets: &'a [HostTargetPlan],
+    pub(crate) target_id: HostTargetPlanId,
+    pub(crate) dynamic_args: &'a [Register],
+    pub(crate) cache_site: CacheSiteId,
+}
+
 pub(crate) fn load_host_global(
     runtime: HostAccessRuntime<'_, '_, '_>,
     name: &str,
@@ -99,6 +106,22 @@ pub(crate) fn execute_host_read(
     runtime_value_from_host(value, runtime.heap, runtime.budget)
 }
 
+pub(crate) fn execute_code_host_read(
+    runtime: HostAccessRuntime<'_, '_, '_>,
+    root: Register,
+    target: CodeHostTargetPlan<'_>,
+) -> VmResult<Value> {
+    let plan = code_host_target(target.targets, target.target_id, runtime.source_span)?;
+    execute_host_read(
+        runtime,
+        root,
+        target.target_id,
+        plan,
+        target.dynamic_args,
+        target.cache_site,
+    )
+}
+
 pub(crate) fn execute_host_write(
     runtime: HostAccessRuntime<'_, '_, '_>,
     root: Register,
@@ -143,6 +166,24 @@ pub(crate) fn execute_host_write(
         runtime.source_span,
     )?;
     Ok(())
+}
+
+pub(crate) fn execute_code_host_write(
+    runtime: HostAccessRuntime<'_, '_, '_>,
+    root: Register,
+    target: CodeHostTargetPlan<'_>,
+    src: Register,
+) -> VmResult<()> {
+    let plan = code_host_target(target.targets, target.target_id, runtime.source_span)?;
+    execute_host_write(
+        runtime,
+        root,
+        target.target_id,
+        plan,
+        target.dynamic_args,
+        src,
+        target.cache_site,
+    )
 }
 
 pub(crate) fn execute_host_mutate(
@@ -197,6 +238,36 @@ pub(crate) struct HostMutationPlan<'a> {
     pub(crate) cache_site: CacheSiteId,
 }
 
+pub(crate) struct CodeHostMutationPlan<'a> {
+    pub(crate) target: CodeHostTargetPlan<'a>,
+    pub(crate) op: HostMutationOp,
+    pub(crate) rhs: Register,
+}
+
+pub(crate) fn execute_code_host_mutate(
+    runtime: HostAccessRuntime<'_, '_, '_>,
+    root: Register,
+    mutation: CodeHostMutationPlan<'_>,
+) -> VmResult<()> {
+    let plan = code_host_target(
+        mutation.target.targets,
+        mutation.target.target_id,
+        runtime.source_span,
+    )?;
+    execute_host_mutate(
+        runtime,
+        root,
+        HostMutationPlan {
+            target_id: mutation.target.target_id,
+            target: plan,
+            dynamic_args: mutation.target.dynamic_args,
+            op: mutation.op,
+            rhs: mutation.rhs,
+            cache_site: mutation.target.cache_site,
+        },
+    )
+}
+
 pub(crate) fn execute_host_remove(
     runtime: HostAccessRuntime<'_, '_, '_>,
     root: Register,
@@ -232,6 +303,22 @@ pub(crate) fn execute_host_remove(
     Ok(())
 }
 
+pub(crate) fn execute_code_host_remove(
+    runtime: HostAccessRuntime<'_, '_, '_>,
+    root: Register,
+    target: CodeHostTargetPlan<'_>,
+) -> VmResult<()> {
+    let plan = code_host_target(target.targets, target.target_id, runtime.source_span)?;
+    execute_host_remove(
+        runtime,
+        root,
+        target.target_id,
+        plan,
+        target.dynamic_args,
+        target.cache_site,
+    )
+}
+
 pub(crate) struct HostCallPlan<'a> {
     pub(crate) target_id: HostTargetPlanId,
     pub(crate) target: &'a HostTargetPlan,
@@ -240,6 +327,13 @@ pub(crate) struct HostCallPlan<'a> {
     pub(crate) args: &'a [Register],
     pub(crate) wants_return: bool,
     pub(crate) cache_site: CacheSiteId,
+}
+
+pub(crate) struct CodeHostCallPlan<'a> {
+    pub(crate) target: CodeHostTargetPlan<'a>,
+    pub(crate) method: HostMethodId,
+    pub(crate) args: &'a [Register],
+    pub(crate) wants_return: bool,
 }
 
 pub(crate) struct HostRootMethodCall<'a> {
@@ -299,6 +393,31 @@ pub(crate) fn execute_host_call(
     } else {
         Ok(None)
     }
+}
+
+pub(crate) fn execute_code_host_call(
+    runtime: HostAccessRuntime<'_, '_, '_>,
+    root: Register,
+    call: CodeHostCallPlan<'_>,
+) -> VmResult<Option<Value>> {
+    let plan = code_host_target(
+        call.target.targets,
+        call.target.target_id,
+        runtime.source_span,
+    )?;
+    execute_host_call(
+        runtime,
+        root,
+        HostCallPlan {
+            target_id: call.target.target_id,
+            target: plan,
+            dynamic_args: call.target.dynamic_args,
+            method: call.method,
+            args: call.args,
+            wants_return: call.wants_return,
+            cache_site: call.target.cache_site,
+        },
+    )
 }
 
 pub(crate) fn execute_host_root_method_call(
