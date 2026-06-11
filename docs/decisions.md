@@ -626,6 +626,13 @@ unsigned integers use JSON integer text and must round-trip through Rust
 `serde_json` as `u64` without precision loss; JavaScript-number-safe encodings
 would require an explicit future config rather than a hidden conversion.
 
+The C ABI value surface uses explicit primitive tags (`I8` through `U64`,
+`F32`, `F64`) instead of old `Int`/`Float` tags. C arguments are copied into
+Vela-owned `OwnedValue` values before execution; returned strings and bytes are
+ABI-owned buffers that callers must release with `vela_value_free`, or with
+the specific `vela_string_free` / `vela_bytes_free` helper when they own the
+raw pointer directly.
+
 ## Validation Rules
 
 - Multi-level `super` scan must return no matches:

@@ -1552,15 +1552,15 @@ functions:
 
 #### Task 9.3: C API tags
 
-- [ ] Add C ABI tags for new scalar types.
-- [ ] Add bytes result/argument representation.
-- [ ] Add cleanup rules for bytes buffers.
-- [ ] Update C API tests.
+- [x] Add C ABI tags for new scalar types.
+- [x] Add bytes result/argument representation.
+- [x] Add cleanup rules for bytes buffers.
+- [x] Update C API tests.
 
 **Termination condition:**
 
-- [ ] C API can pass and return `i32`, `u32`, `f32`, `f64`, and bytes.
-- [ ] ABI ownership for bytes is documented.
+- [x] C API can pass and return `i32`, `u32`, `f32`, `f64`, and bytes.
+- [x] ABI ownership for bytes is documented.
 
 #### Task 9.4: Hot-reload ABI/schema primitive diffs
 

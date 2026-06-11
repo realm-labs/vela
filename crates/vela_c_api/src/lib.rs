@@ -8,9 +8,9 @@
 
 use std::ffi::{CStr, CString, c_char};
 use std::panic::{AssertUnwindSafe, catch_unwind};
-use std::ptr;
+use std::{mem, ptr, slice};
 
-use vela_common::SourceId;
+use vela_common::{ScalarValue, SourceId};
 use vela_engine::engine::Engine;
 use vela_engine::permission::ExecutionProfile;
 use vela_engine::runtime::{CallArgs, CallOptions, Runtime};
@@ -43,9 +43,18 @@ pub enum VelaCValueKind {
     Missing = 0,
     Null = 1,
     Bool = 2,
-    Int = 3,
-    Float = 4,
-    String = 5,
+    I8 = 3,
+    I16 = 4,
+    I32 = 5,
+    I64 = 6,
+    U8 = 7,
+    U16 = 8,
+    U32 = 9,
+    U64 = 10,
+    F32 = 11,
+    F64 = 12,
+    String = 13,
+    Bytes = 14,
 }
 
 #[repr(C)]
@@ -53,9 +62,19 @@ pub enum VelaCValueKind {
 pub struct VelaCValue {
     pub kind: VelaCValueKind,
     pub bool_value: u8,
-    pub int_value: i64,
-    pub float_value: f64,
+    pub i8_value: i8,
+    pub i16_value: i16,
+    pub i32_value: i32,
+    pub i64_value: i64,
+    pub u8_value: u8,
+    pub u16_value: u16,
+    pub u32_value: u32,
+    pub u64_value: u64,
+    pub f32_value: f32,
+    pub f64_value: f64,
     pub string_value: *mut c_char,
+    pub bytes_data: *mut u8,
+    pub bytes_len: usize,
 }
 
 impl VelaCValue {
@@ -63,9 +82,19 @@ impl VelaCValue {
         Self {
             kind: VelaCValueKind::Missing,
             bool_value: 0,
-            int_value: 0,
-            float_value: 0.0,
+            i8_value: 0,
+            i16_value: 0,
+            i32_value: 0,
+            i64_value: 0,
+            u8_value: 0,
+            u16_value: 0,
+            u32_value: 0,
+            u64_value: 0,
+            f32_value: 0.0,
+            f64_value: 0.0,
             string_value: ptr::null_mut(),
+            bytes_data: ptr::null_mut(),
+            bytes_len: 0,
         }
     }
 }
@@ -109,13 +138,30 @@ pub unsafe extern "C" fn vela_string_free(value: *mut c_char) {
     }
 }
 
+/// Frees a byte buffer allocated by Vela C ABI functions.
+///
+/// # Safety
+///
+/// `data` must be either null with `len == 0`, or a pointer/length pair
+/// returned by this crate for a bytes value. It must not be freed more than
+/// once.
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn vela_bytes_free(data: *mut u8, len: usize) {
+    if data.is_null() {
+        return;
+    }
+    unsafe {
+        drop(Box::from_raw(ptr::slice_from_raw_parts_mut(data, len)));
+    }
+}
+
 /// Releases resources held by a `VelaCValue`.
 ///
 /// # Safety
 ///
 /// `value` must be either null or a valid mutable pointer to a `VelaCValue`
 /// initialized by the caller or returned through this ABI. If it contains a
-/// string, the string pointer must still be owned by that value.
+/// string or bytes buffer, the pointer must still be owned by that value.
 #[unsafe(no_mangle)]
 pub unsafe extern "C" fn vela_value_free(value: *mut VelaCValue) {
     if value.is_null() {
@@ -123,8 +169,10 @@ pub unsafe extern "C" fn vela_value_free(value: *mut VelaCValue) {
     }
     unsafe {
         let value = &mut *value;
-        if value.kind == VelaCValueKind::String {
-            vela_string_free(value.string_value);
+        match value.kind {
+            VelaCValueKind::String => vela_string_free(value.string_value),
+            VelaCValueKind::Bytes => vela_bytes_free(value.bytes_data, value.bytes_len),
+            _ => {}
         }
         *value = VelaCValue::missing();
     }
@@ -228,20 +276,62 @@ pub unsafe extern "C" fn vela_runtime_call(
         }
         let runtime = non_null_mut(runtime, "runtime")?;
         let entry = c_str(entry, "entry")?;
-        let value = runtime
-            .runtime
-            .call(entry, CallArgs::new(), CallOptions::unbounded())
-            .map_err(|error| (VelaStatus::RuntimeError, error.to_string()))?;
-        let owned = runtime
-            .runtime
-            .value_to_owned(&value)
-            .map_err(|error| (VelaStatus::RuntimeError, error.to_string()))?;
-        let c_value = value_to_c(owned)?;
+        let c_value = call_runtime(runtime, entry, CallArgs::new())?;
         unsafe {
             *result_out = c_value;
         }
         Ok(())
     })
+}
+
+/// Calls a script entry with positional value arguments.
+///
+/// # Safety
+///
+/// `runtime` must be a valid pointer returned by `vela_runtime_compile_source`.
+/// `entry` must be a valid null-terminated UTF-8 string. If `arg_count > 0`,
+/// `args` must point to `arg_count` readable `VelaCValue` entries. The call
+/// borrows input strings and bytes only for the duration of the call and copies
+/// them into Vela-owned values. `result_out` and `error_out` follow the same
+/// ownership rules as `vela_runtime_call`.
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn vela_runtime_call_with_args(
+    runtime: *mut VelaRuntime,
+    entry: *const c_char,
+    args: *const VelaCValue,
+    arg_count: usize,
+    result_out: *mut VelaCValue,
+    error_out: *mut *mut c_char,
+) -> VelaStatus {
+    ffi_status(error_out, || {
+        if result_out.is_null() {
+            return Err((VelaStatus::NullPointer, "result pointer is null".to_owned()));
+        }
+        let runtime = non_null_mut(runtime, "runtime")?;
+        let entry = c_str(entry, "entry")?;
+        let args = c_args(args, arg_count)?;
+        let c_value = call_runtime(runtime, entry, CallArgs::from_positional(args))?;
+        unsafe {
+            *result_out = c_value;
+        }
+        Ok(())
+    })
+}
+
+fn call_runtime(
+    runtime: &mut VelaRuntime,
+    entry: &str,
+    args: CallArgs<'_>,
+) -> Result<VelaCValue, (VelaStatus, String)> {
+    let value = runtime
+        .runtime
+        .call(entry, args, CallOptions::unbounded())
+        .map_err(|error| (VelaStatus::RuntimeError, error.to_string()))?;
+    let owned = runtime
+        .runtime
+        .value_to_owned(&value)
+        .map_err(|error| (VelaStatus::RuntimeError, error.to_string()))?;
+    value_to_c(owned)
 }
 
 fn value_to_c(value: OwnedValue) -> Result<VelaCValue, (VelaStatus, String)> {
@@ -256,14 +346,54 @@ fn value_to_c(value: OwnedValue) -> Result<VelaCValue, (VelaStatus, String)> {
             bool_value: u8::from(value),
             ..VelaCValue::missing()
         }),
-        OwnedValue::Scalar(vela_common::ScalarValue::I64(value)) => Ok(VelaCValue {
-            kind: VelaCValueKind::Int,
-            int_value: value,
+        OwnedValue::Scalar(ScalarValue::I8(value)) => Ok(VelaCValue {
+            kind: VelaCValueKind::I8,
+            i8_value: value,
             ..VelaCValue::missing()
         }),
-        OwnedValue::Scalar(vela_common::ScalarValue::F64(value)) => Ok(VelaCValue {
-            kind: VelaCValueKind::Float,
-            float_value: value,
+        OwnedValue::Scalar(ScalarValue::I16(value)) => Ok(VelaCValue {
+            kind: VelaCValueKind::I16,
+            i16_value: value,
+            ..VelaCValue::missing()
+        }),
+        OwnedValue::Scalar(ScalarValue::I32(value)) => Ok(VelaCValue {
+            kind: VelaCValueKind::I32,
+            i32_value: value,
+            ..VelaCValue::missing()
+        }),
+        OwnedValue::Scalar(ScalarValue::I64(value)) => Ok(VelaCValue {
+            kind: VelaCValueKind::I64,
+            i64_value: value,
+            ..VelaCValue::missing()
+        }),
+        OwnedValue::Scalar(ScalarValue::U8(value)) => Ok(VelaCValue {
+            kind: VelaCValueKind::U8,
+            u8_value: value,
+            ..VelaCValue::missing()
+        }),
+        OwnedValue::Scalar(ScalarValue::U16(value)) => Ok(VelaCValue {
+            kind: VelaCValueKind::U16,
+            u16_value: value,
+            ..VelaCValue::missing()
+        }),
+        OwnedValue::Scalar(ScalarValue::U32(value)) => Ok(VelaCValue {
+            kind: VelaCValueKind::U32,
+            u32_value: value,
+            ..VelaCValue::missing()
+        }),
+        OwnedValue::Scalar(ScalarValue::U64(value)) => Ok(VelaCValue {
+            kind: VelaCValueKind::U64,
+            u64_value: value,
+            ..VelaCValue::missing()
+        }),
+        OwnedValue::Scalar(ScalarValue::F32(value)) => Ok(VelaCValue {
+            kind: VelaCValueKind::F32,
+            f32_value: value,
+            ..VelaCValue::missing()
+        }),
+        OwnedValue::Scalar(ScalarValue::F64(value)) => Ok(VelaCValue {
+            kind: VelaCValueKind::F64,
+            f64_value: value,
             ..VelaCValue::missing()
         }),
         OwnedValue::String(value) => Ok(VelaCValue {
@@ -271,10 +401,67 @@ fn value_to_c(value: OwnedValue) -> Result<VelaCValue, (VelaStatus, String)> {
             string_value: c_string_ptr(value),
             ..VelaCValue::missing()
         }),
+        OwnedValue::Bytes(value) => {
+            let (bytes_data, bytes_len) = c_bytes_ptr(value);
+            Ok(VelaCValue {
+                kind: VelaCValueKind::Bytes,
+                bytes_data,
+                bytes_len,
+                ..VelaCValue::missing()
+            })
+        }
         _ => Err((
             VelaStatus::UnsupportedValue,
             "C ABI scalar call result does not support aggregate or host values yet".to_owned(),
         )),
+    }
+}
+
+fn c_args(
+    args: *const VelaCValue,
+    arg_count: usize,
+) -> Result<Vec<OwnedValue>, (VelaStatus, String)> {
+    if arg_count == 0 {
+        return Ok(Vec::new());
+    }
+    if args.is_null() {
+        return Err((VelaStatus::NullPointer, "args pointer is null".to_owned()));
+    }
+    unsafe { slice::from_raw_parts(args, arg_count) }
+        .iter()
+        .map(c_value_to_owned)
+        .collect()
+}
+
+fn c_value_to_owned(value: &VelaCValue) -> Result<OwnedValue, (VelaStatus, String)> {
+    match value.kind {
+        VelaCValueKind::Missing => Ok(OwnedValue::Missing),
+        VelaCValueKind::Null => Ok(OwnedValue::Null),
+        VelaCValueKind::Bool => Ok(OwnedValue::Bool(value.bool_value != 0)),
+        VelaCValueKind::I8 => Ok(OwnedValue::Scalar(ScalarValue::I8(value.i8_value))),
+        VelaCValueKind::I16 => Ok(OwnedValue::Scalar(ScalarValue::I16(value.i16_value))),
+        VelaCValueKind::I32 => Ok(OwnedValue::Scalar(ScalarValue::I32(value.i32_value))),
+        VelaCValueKind::I64 => Ok(OwnedValue::Scalar(ScalarValue::I64(value.i64_value))),
+        VelaCValueKind::U8 => Ok(OwnedValue::Scalar(ScalarValue::U8(value.u8_value))),
+        VelaCValueKind::U16 => Ok(OwnedValue::Scalar(ScalarValue::U16(value.u16_value))),
+        VelaCValueKind::U32 => Ok(OwnedValue::Scalar(ScalarValue::U32(value.u32_value))),
+        VelaCValueKind::U64 => Ok(OwnedValue::Scalar(ScalarValue::U64(value.u64_value))),
+        VelaCValueKind::F32 => Ok(OwnedValue::Scalar(ScalarValue::F32(value.f32_value))),
+        VelaCValueKind::F64 => Ok(OwnedValue::Scalar(ScalarValue::F64(value.f64_value))),
+        VelaCValueKind::String => {
+            let value = c_str(value.string_value, "string value")?;
+            Ok(OwnedValue::String(value.to_owned()))
+        }
+        VelaCValueKind::Bytes => {
+            if value.bytes_len == 0 {
+                return Ok(OwnedValue::Bytes(Vec::new()));
+            }
+            if value.bytes_data.is_null() {
+                return Err((VelaStatus::NullPointer, "bytes pointer is null".to_owned()));
+            }
+            let bytes = unsafe { slice::from_raw_parts(value.bytes_data, value.bytes_len) };
+            Ok(OwnedValue::Bytes(bytes.to_vec()))
+        }
     }
 }
 
@@ -357,6 +544,17 @@ fn c_string_ptr(value: String) -> *mut c_char {
     }
 }
 
+fn c_bytes_ptr(value: Vec<u8>) -> (*mut u8, usize) {
+    if value.is_empty() {
+        return (ptr::null_mut(), 0);
+    }
+    let mut value = value.into_boxed_slice();
+    let len = value.len();
+    let data = value.as_mut_ptr();
+    mem::forget(value);
+    (data, len)
+}
+
 #[cfg(test)]
 mod tests {
     use std::ffi::CString;
@@ -368,6 +566,60 @@ mod tests {
         match CString::new(value) {
             Ok(value) => value,
             Err(error) => panic!("test string contains nul byte: {error}"),
+        }
+    }
+
+    fn compile_runtime(source: &str) -> (*mut VelaEngine, *mut VelaRuntime, *mut c_char) {
+        let mut error = ptr::null_mut();
+        let engine = unsafe { vela_engine_new(&mut error) };
+        assert!(!engine.is_null());
+        assert!(error.is_null());
+
+        let source = c_string(source);
+        let runtime = unsafe { vela_runtime_compile_source(engine, source.as_ptr(), &mut error) };
+        assert!(!runtime.is_null());
+        assert!(error.is_null());
+        (engine, runtime, error)
+    }
+
+    fn input_i32(value: i32) -> VelaCValue {
+        VelaCValue {
+            kind: VelaCValueKind::I32,
+            i32_value: value,
+            ..VelaCValue::default()
+        }
+    }
+
+    fn input_u32(value: u32) -> VelaCValue {
+        VelaCValue {
+            kind: VelaCValueKind::U32,
+            u32_value: value,
+            ..VelaCValue::default()
+        }
+    }
+
+    fn input_f32(value: f32) -> VelaCValue {
+        VelaCValue {
+            kind: VelaCValueKind::F32,
+            f32_value: value,
+            ..VelaCValue::default()
+        }
+    }
+
+    fn input_f64(value: f64) -> VelaCValue {
+        VelaCValue {
+            kind: VelaCValueKind::F64,
+            f64_value: value,
+            ..VelaCValue::default()
+        }
+    }
+
+    fn input_bytes(bytes: &mut [u8]) -> VelaCValue {
+        VelaCValue {
+            kind: VelaCValueKind::Bytes,
+            bytes_data: bytes.as_mut_ptr(),
+            bytes_len: bytes.len(),
+            ..VelaCValue::default()
         }
     }
 
@@ -388,8 +640,222 @@ mod tests {
         let status = unsafe { vela_runtime_call(runtime, entry.as_ptr(), &mut result, &mut error) };
         assert_eq!(status, VelaStatus::Ok);
         assert!(error.is_null());
-        assert_eq!(result.kind, VelaCValueKind::Int);
-        assert_eq!(result.int_value, 42);
+        assert_eq!(result.kind, VelaCValueKind::I64);
+        assert_eq!(result.i64_value, 42);
+
+        unsafe {
+            vela_value_free(&mut result);
+            vela_runtime_free(runtime);
+            vela_engine_free(engine);
+        }
+    }
+
+    #[test]
+    fn c_api_returns_exact_scalar_and_bytes_tags() {
+        let (engine, runtime, mut error) = compile_runtime(
+            r#"
+fn i8_value() -> i8 { return -8i8; }
+fn i16_value() -> i16 { return -16i16; }
+fn i32_value() -> i32 { return -32i32; }
+fn i64_value() -> i64 { return -64i64; }
+fn u8_value() -> u8 { return 8u8; }
+fn u16_value() -> u16 { return 16u16; }
+fn u32_value() -> u32 { return 32u32; }
+fn u64_value() -> u64 { return 64u64; }
+fn f32_value() -> f32 { return 1.5f32; }
+fn f64_value() -> f64 { return 2.5f64; }
+fn bytes_value() -> bytes { return b"\x00\xff"; }
+"#,
+        );
+
+        let mut result = VelaCValue::default();
+
+        let entry = c_string("i8_value");
+        let status = unsafe { vela_runtime_call(runtime, entry.as_ptr(), &mut result, &mut error) };
+        assert_eq!(status, VelaStatus::Ok);
+        assert_eq!(result.kind, VelaCValueKind::I8);
+        assert_eq!(result.i8_value, -8);
+        unsafe { vela_value_free(&mut result) };
+
+        let entry = c_string("i16_value");
+        let status = unsafe { vela_runtime_call(runtime, entry.as_ptr(), &mut result, &mut error) };
+        assert_eq!(status, VelaStatus::Ok);
+        assert_eq!(result.kind, VelaCValueKind::I16);
+        assert_eq!(result.i16_value, -16);
+        unsafe { vela_value_free(&mut result) };
+
+        let entry = c_string("i32_value");
+        let status = unsafe { vela_runtime_call(runtime, entry.as_ptr(), &mut result, &mut error) };
+        assert_eq!(status, VelaStatus::Ok);
+        assert_eq!(result.kind, VelaCValueKind::I32);
+        assert_eq!(result.i32_value, -32);
+        unsafe { vela_value_free(&mut result) };
+
+        let entry = c_string("i64_value");
+        let status = unsafe { vela_runtime_call(runtime, entry.as_ptr(), &mut result, &mut error) };
+        assert_eq!(status, VelaStatus::Ok);
+        assert_eq!(result.kind, VelaCValueKind::I64);
+        assert_eq!(result.i64_value, -64);
+        unsafe { vela_value_free(&mut result) };
+
+        let entry = c_string("u8_value");
+        let status = unsafe { vela_runtime_call(runtime, entry.as_ptr(), &mut result, &mut error) };
+        assert_eq!(status, VelaStatus::Ok);
+        assert_eq!(result.kind, VelaCValueKind::U8);
+        assert_eq!(result.u8_value, 8);
+        unsafe { vela_value_free(&mut result) };
+
+        let entry = c_string("u16_value");
+        let status = unsafe { vela_runtime_call(runtime, entry.as_ptr(), &mut result, &mut error) };
+        assert_eq!(status, VelaStatus::Ok);
+        assert_eq!(result.kind, VelaCValueKind::U16);
+        assert_eq!(result.u16_value, 16);
+        unsafe { vela_value_free(&mut result) };
+
+        let entry = c_string("u32_value");
+        let status = unsafe { vela_runtime_call(runtime, entry.as_ptr(), &mut result, &mut error) };
+        assert_eq!(status, VelaStatus::Ok);
+        assert_eq!(result.kind, VelaCValueKind::U32);
+        assert_eq!(result.u32_value, 32);
+        unsafe { vela_value_free(&mut result) };
+
+        let entry = c_string("u64_value");
+        let status = unsafe { vela_runtime_call(runtime, entry.as_ptr(), &mut result, &mut error) };
+        assert_eq!(status, VelaStatus::Ok);
+        assert_eq!(result.kind, VelaCValueKind::U64);
+        assert_eq!(result.u64_value, 64);
+        unsafe { vela_value_free(&mut result) };
+
+        let entry = c_string("f32_value");
+        let status = unsafe { vela_runtime_call(runtime, entry.as_ptr(), &mut result, &mut error) };
+        assert_eq!(status, VelaStatus::Ok);
+        assert_eq!(result.kind, VelaCValueKind::F32);
+        assert_eq!(result.f32_value, 1.5);
+        unsafe { vela_value_free(&mut result) };
+
+        let entry = c_string("f64_value");
+        let status = unsafe { vela_runtime_call(runtime, entry.as_ptr(), &mut result, &mut error) };
+        assert_eq!(status, VelaStatus::Ok);
+        assert_eq!(result.kind, VelaCValueKind::F64);
+        assert_eq!(result.f64_value, 2.5);
+        unsafe { vela_value_free(&mut result) };
+
+        let entry = c_string("bytes_value");
+        let status = unsafe { vela_runtime_call(runtime, entry.as_ptr(), &mut result, &mut error) };
+        assert_eq!(status, VelaStatus::Ok);
+        assert_eq!(result.kind, VelaCValueKind::Bytes);
+        assert_eq!(result.bytes_len, 2);
+        assert!(!result.bytes_data.is_null());
+        let bytes = unsafe { slice::from_raw_parts(result.bytes_data, result.bytes_len) };
+        assert_eq!(bytes, &[0, 255]);
+
+        unsafe {
+            vela_value_free(&mut result);
+            vela_runtime_free(runtime);
+            vela_engine_free(engine);
+        }
+    }
+
+    #[test]
+    fn c_api_call_with_args_passes_scalars_and_bytes() {
+        let (engine, runtime, mut error) = compile_runtime(
+            r#"
+fn id_i32(value: i32) -> i32 { return value; }
+fn id_u32(value: u32) -> u32 { return value; }
+fn id_f32(value: f32) -> f32 { return value; }
+fn id_f64(value: f64) -> f64 { return value; }
+fn id_bytes(value: bytes) -> bytes { return value; }
+"#,
+        );
+
+        let mut result = VelaCValue::default();
+
+        let entry = c_string("id_i32");
+        let args = [input_i32(-123)];
+        let status = unsafe {
+            vela_runtime_call_with_args(
+                runtime,
+                entry.as_ptr(),
+                args.as_ptr(),
+                args.len(),
+                &mut result,
+                &mut error,
+            )
+        };
+        assert_eq!(status, VelaStatus::Ok);
+        assert_eq!(result.kind, VelaCValueKind::I32);
+        assert_eq!(result.i32_value, -123);
+        unsafe { vela_value_free(&mut result) };
+
+        let entry = c_string("id_u32");
+        let args = [input_u32(123)];
+        let status = unsafe {
+            vela_runtime_call_with_args(
+                runtime,
+                entry.as_ptr(),
+                args.as_ptr(),
+                args.len(),
+                &mut result,
+                &mut error,
+            )
+        };
+        assert_eq!(status, VelaStatus::Ok);
+        assert_eq!(result.kind, VelaCValueKind::U32);
+        assert_eq!(result.u32_value, 123);
+        unsafe { vela_value_free(&mut result) };
+
+        let entry = c_string("id_f32");
+        let args = [input_f32(1.25)];
+        let status = unsafe {
+            vela_runtime_call_with_args(
+                runtime,
+                entry.as_ptr(),
+                args.as_ptr(),
+                args.len(),
+                &mut result,
+                &mut error,
+            )
+        };
+        assert_eq!(status, VelaStatus::Ok);
+        assert_eq!(result.kind, VelaCValueKind::F32);
+        assert_eq!(result.f32_value, 1.25);
+        unsafe { vela_value_free(&mut result) };
+
+        let entry = c_string("id_f64");
+        let args = [input_f64(2.5)];
+        let status = unsafe {
+            vela_runtime_call_with_args(
+                runtime,
+                entry.as_ptr(),
+                args.as_ptr(),
+                args.len(),
+                &mut result,
+                &mut error,
+            )
+        };
+        assert_eq!(status, VelaStatus::Ok);
+        assert_eq!(result.kind, VelaCValueKind::F64);
+        assert_eq!(result.f64_value, 2.5);
+        unsafe { vela_value_free(&mut result) };
+
+        let entry = c_string("id_bytes");
+        let mut bytes = [0, 1, 255];
+        let args = [input_bytes(&mut bytes)];
+        let status = unsafe {
+            vela_runtime_call_with_args(
+                runtime,
+                entry.as_ptr(),
+                args.as_ptr(),
+                args.len(),
+                &mut result,
+                &mut error,
+            )
+        };
+        assert_eq!(status, VelaStatus::Ok);
+        assert_eq!(result.kind, VelaCValueKind::Bytes);
+        assert_eq!(result.bytes_len, 3);
+        let returned = unsafe { slice::from_raw_parts(result.bytes_data, result.bytes_len) };
+        assert_eq!(returned, &[0, 1, 255]);
 
         unsafe {
             vela_value_free(&mut result);
