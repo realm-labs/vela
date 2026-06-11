@@ -844,15 +844,15 @@ fn runtime_call_method_on_runtime_value_by_name_and_cached_method() {
             SourceId::new(1),
             r#"
 trait BonusSource {
-    fn score(self, amount, multiplier = 2) -> Int;
+    fn score(self, amount, multiplier = 2) -> i64;
 }
 
 struct Reward {
-    gold: Int,
+    gold: i64,
 }
 
 impl BonusSource for Reward {
-    fn score(self, amount, multiplier = 2) -> Int {
+    fn score(self, amount, multiplier = 2) -> i64 {
         return self.gold + amount * multiplier;
     }
 }
@@ -906,15 +906,15 @@ fn runtime_cached_method_rejects_method_from_another_runtime() {
     let engine = Engine::builder().build().expect("engine should build");
     let source = r#"
 trait BonusSource {
-    fn score(self, amount) -> Int;
+    fn score(self, amount) -> i64;
 }
 
 struct Reward {
-    gold: Int,
+    gold: i64,
 }
 
 impl BonusSource for Reward {
-    fn score(self, amount) -> Int {
+    fn score(self, amount) -> i64 {
         return self.gold + amount;
     }
 }

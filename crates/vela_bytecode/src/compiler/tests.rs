@@ -129,10 +129,10 @@ fn compiler_records_cache_site_metadata_for_cacheable_instructions() {
     let program = compile_program_source_with_registry(
         SourceId::new(1),
         r#"
-global bonus: Int;
+global bonus: i64;
 
 struct Reward {
-    gold: Int,
+    gold: i64,
 }
 
 impl Reward {

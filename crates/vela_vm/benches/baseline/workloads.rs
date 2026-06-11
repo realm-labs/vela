@@ -791,11 +791,11 @@ fn main() {
         source: r#"
 struct Reward {
     item_id: string
-    count: int
+    count: i64
 }
 
 enum ResultState {
-    Done { score: int }
+    Done { score: i64 }
     Blocked(reason: string)
 }
 

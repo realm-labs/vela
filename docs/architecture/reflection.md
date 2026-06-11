@@ -93,19 +93,27 @@ pub struct TypeDesc {
 pub enum TypeKind {
     Null,
     Bool,
-    Int,
-    Float,
+    I8,
+    I16,
+    I32,
+    I64,
+    U8,
+    U16,
+    U32,
+    U64,
+    F32,
+    F64,
     String,
+    Bytes,
     Array,
     Map,
     Set,
-    ScriptRecord,
-    ScriptEnum,
-    HostObject,
-    HostValue,
-    Trait,
+    Range,
     Function,
     Closure,
+    Host,
+    ScriptStruct,
+    ScriptEnum,
 }
 ```
 
@@ -152,27 +160,25 @@ There are no generics, but lightweight type hints are allowed:
 ```rust
 pub enum TypeHint {
     Any,
-    Null,
-    Bool,
-    Int,
-    Float,
-    String,
+    Primitive(PrimitiveTag),
     Array,
     Map,
     Set,
+    PathProxy,
     Record(TypeKey),
     Enum(TypeKey),
     Host(TypeKey),
-    Trait(TraitKey),
+    Trait(String),
     Function,
 }
 ```
 
-`TypeHint` is public metadata and syntax-facing documentation. Script-local
-parameter, local, field, and return annotations do not enforce runtime value
-types by themselves; a function annotated `fn f(name: string) -> string` can
-still receive or return a different script value unless a host/native/schema
-boundary explicitly performs conversion or validation.
+`TypeHint` is public metadata and syntax-facing documentation. Primitive hints
+use the shared `PrimitiveTag` set: `null`, `bool`, `i8`, `i16`, `i32`, `i64`,
+`u8`, `u16`, `u32`, `u64`, `f32`, `f64`, `string`, and `bytes`. Script-local
+parameter, local, field, and return annotations are contracts, not conversions:
+statically known mismatches are compile errors, and dynamic or externally
+supplied mismatches are runtime guard errors.
 
 Hints are still meaningful. They feed reflection metadata, hot-reload ABI
 checks, diagnostics, completions, hover, dispatch hints, field-slot lowering,
@@ -189,13 +195,10 @@ not script syntax, so they may be more expressive than `TypeHint`.
 ```rust
 pub enum TypeFact {
     Unknown,
-    Any,
     Never,
-    Null,
-    Bool,
-    Int,
-    Float,
-    String,
+    Any,
+    Primitive(PrimitiveTag),
+    Range,
     Array {
         element: Box<TypeFact>,
     },
@@ -206,23 +209,49 @@ pub enum TypeFact {
     Set {
         element: Box<TypeFact>,
     },
-    Record(TypeKey),
-    Enum(TypeKey),
-    Host(TypeKey),
-    Trait(TraitKey),
-    Function(FunctionSigFact),
+    Option {
+        some: Box<TypeFact>,
+    },
+    OptionSome {
+        some: Box<TypeFact>,
+    },
+    OptionNone,
+    Result {
+        ok: Box<TypeFact>,
+        err: Box<TypeFact>,
+    },
+    ResultOk {
+        ok: Box<TypeFact>,
+    },
+    ResultErr {
+        err: Box<TypeFact>,
+    },
+    Function {
+        params: Vec<TypeFact>,
+        returns: Box<TypeFact>,
+    },
+    Record {
+        name: String,
+    },
+    Enum {
+        name: String,
+        variant: Option<String>,
+    },
+    Host {
+        name: String,
+    },
+    Trait {
+        name: String,
+    },
+    Module {
+        name: String,
+    },
     PathProxy {
         root: Box<TypeFact>,
         path: HostPathShape,
         value: Box<TypeFact>,
     },
     Union(Vec<TypeFact>),
-}
-
-pub struct FunctionSigFact {
-    pub params: Vec<TypeFact>,
-    pub returns: Box<TypeFact>,
-    pub effects: EffectSet,
 }
 
 pub struct HostPathShape {
@@ -253,7 +282,7 @@ blocking execution.
 Examples:
 
 ```rust
-let xs = [1, 2, 3]        // TypeFact::Array { element: Int }
+let xs = [1, 2, 3]        // TypeFact::Array { element: Primitive(I64) }
 let ys: array = []        // public TypeHint::Array, internal element Unknown
 let z = reflect::get(x, k) // Any unless k is a known constant and schema exists
 ```
@@ -397,8 +426,7 @@ for all MVP functions.
 ```rust
 pub enum AttrValue {
     Bool(bool),
-    Int(i64),
-    Float(f64),
+    Scalar(ScalarValue),
     String(Symbol),
     Array(Vec<AttrValue>),
     Map(HashMap<Symbol, AttrValue>),

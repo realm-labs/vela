@@ -368,7 +368,7 @@ fn engine_rejects_generic_host_method_type_hints() {
             player_type(TypeId::new(1), HostTypeId::new(1)).method(
                 MethodDesc::new(HostMethodId::new(1), "grant_rewards")
                     .param(MethodParamDesc::new("items").type_hint("Array<Item>"))
-                    .return_type("Result<int>"),
+                    .return_type("Result<i64>"),
             ),
         )
         .build();
@@ -377,7 +377,7 @@ fn engine_rejects_generic_host_method_type_hints() {
         result,
         Err(error) if error.kind == EngineErrorKind::InvalidTypeHintName {
             descriptor: "host method Player.grant_rewards return".to_owned(),
-            type_name: "Result<int>".to_owned(),
+            type_name: "Result<i64>".to_owned(),
         }
     ));
 }

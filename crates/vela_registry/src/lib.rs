@@ -1132,7 +1132,7 @@ mod tests {
     }
 
     fn int_param(name: &str) -> ParamDef {
-        ParamDef::new(name, Some("Int"))
+        ParamDef::new(name, Some("i64"))
     }
 
     #[test]
@@ -1356,7 +1356,7 @@ mod tests {
     fn compile_view_resolves_function_path_and_params() {
         let mut registry = DefinitionRegistry::new();
         let path = function_path("score");
-        let signature = FunctionSignature::new([int_param("amount")], Some("Int".to_owned()));
+        let signature = FunctionSignature::new([int_param("amount")], Some("i64".to_owned()));
         let function_id = registry
             .register_function(FunctionDef::new(path.clone(), signature))
             .expect("function registration should succeed");

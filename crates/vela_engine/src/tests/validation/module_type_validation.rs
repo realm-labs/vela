@@ -307,7 +307,7 @@ fn engine_rejects_generic_variant_field_type_hints() {
         .register_type(
             TypeDesc::new(TypeKey::new(TypeId::new(1), "Reward")).variant(
                 VariantDesc::new(VariantId::new(1), "Gold")
-                    .field(FieldDesc::new(FieldId::new(1), "count").type_hint("Option<int>")),
+                    .field(FieldDesc::new(FieldId::new(1), "count").type_hint("Option<i64>")),
             ),
         )
         .build();
@@ -316,7 +316,7 @@ fn engine_rejects_generic_variant_field_type_hints() {
         result,
         Err(error) if error.kind == EngineErrorKind::InvalidTypeHintName {
             descriptor: "variant field Reward::Gold::count".to_owned(),
-            type_name: "Option<int>".to_owned(),
+            type_name: "Option<i64>".to_owned(),
         }
     ));
 }
@@ -367,7 +367,7 @@ fn engine_rejects_generic_trait_method_type_hints() {
                 trait_desc_with_id(TraitId::new(1), "Rewardable").method(
                     TraitMethodDesc::new(MethodId::new(1), "reward")
                         .param(MethodParamDesc::new("items").type_hint("Array<Item>"))
-                        .return_type("Result<int>"),
+                        .return_type("Result<i64>"),
                 ),
             ),
         )
@@ -377,7 +377,7 @@ fn engine_rejects_generic_trait_method_type_hints() {
         result,
         Err(error) if error.kind == EngineErrorKind::InvalidTypeHintName {
             descriptor: "trait method Player::Rewardable::reward return".to_owned(),
-            type_name: "Result<int>".to_owned(),
+            type_name: "Result<i64>".to_owned(),
         }
     ));
 }

@@ -236,13 +236,13 @@ fn runtime_script_global_nested_record_program_links() {
             SourceId::new(1),
             r#"
 struct ServerStats {
-    handled_ticks: int,
+    handled_ticks: i64,
 }
 
 struct ServerState {
-    level: int,
+    level: i64,
     name: string,
-    total_gold: int,
+    total_gold: i64,
     stats: ServerStats,
 }
 

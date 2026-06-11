@@ -803,7 +803,7 @@ enum QuestProgress {
         changed.add_source(ModuleSource::new(
             SourceId::new(1),
             ModulePath::from_qualified("game::reward"),
-            "struct Reward { count: float, bonus: i64 }\nenum QuestProgress { None, Finished }",
+            "struct Reward { count: f64, bonus: i64 }\nenum QuestProgress { None, Finished }",
         ));
         let mut original_registry = TypeRegistry::new();
         let mut changed_registry = TypeRegistry::new();

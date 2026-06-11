@@ -646,7 +646,7 @@ Scope:
 
 ```text
 VM dispatch tightening and operand decode cleanup
-fast paths for int, float, bool, and string operations
+fast paths for explicit scalar, bool, and string operations
 Value layout profiling before low-level representation changes
 shape + slot record and enum access
 heap allocation reduction for temporary arrays, records, strings, and callbacks
@@ -994,7 +994,10 @@ fn invoice_payment_updates_account_through_host_access() {
 
     assert_eq!(state.account(account).balance, 110);
     assert_eq!(state.account(account).status, "preferred");
-    assert_eq!(runtime.value_to_owned(&output).unwrap(), OwnedValue::Int(110));
+    assert_eq!(
+        runtime.value_to_owned(&output).unwrap(),
+        OwnedValue::Scalar(ScalarValue::I64(110)),
+    );
 }
 ```
 

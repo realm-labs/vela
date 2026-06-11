@@ -115,7 +115,7 @@ mod tests {
             .compile_source(
                 SourceId::new(1),
                 r#"
-global value: Int;
+global value: i64;
 
 fn main() {
     return value;
@@ -148,8 +148,8 @@ fn main() {
             .compile_source(
                 SourceId::new(1),
                 r#"
-global first: Int;
-global second: Int;
+global first: i64;
+global second: i64;
 
 fn read_first() {
     return first;

@@ -301,8 +301,8 @@ fn runtime_rebinds_script_globals_after_reload_image_swap() {
             SourceId::new(1),
             r#"
 struct ServerState {
-    level: Int,
-    name: String,
+    level: i64,
+    name: string,
 }
 
 global state: ServerState;
@@ -331,8 +331,8 @@ fn bump(amount) {
             SourceId::new(2),
             r#"
 struct ServerState {
-    level: Int,
-    name: String,
+    level: i64,
+    name: string,
 }
 
 global state: ServerState;
