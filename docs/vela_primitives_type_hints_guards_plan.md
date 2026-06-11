@@ -1427,17 +1427,17 @@ unless the implementation stays small.
 
 #### Task 7.1: Implement bytes runtime behavior
 
-- [ ] Load bytes constants into heap.
-- [ ] Convert bytes owned/runtime values.
-- [ ] Implement bytes indexing to `u8`.
+- [x] Load bytes constants into heap.
+- [x] Convert bytes owned/runtime values.
+- [x] Implement bytes indexing to `u8`.
 - [ ] Implement bytes stdlib methods.
-- [ ] Keep bytes immutable.
-- [ ] Use `i64` indexes/counts for bytes APIs to match array/string/range conventions.
+- [x] Keep bytes immutable.
+- [x] Use `i64` indexes for bytes indexing; counts for remaining bytes APIs stay with Phase 7.2.
 
 **Termination condition:**
 
-- [ ] `b"abc"[0]` returns `97u8`.
-- [ ] Negative and out-of-bounds indexes produce the chosen runtime error.
+- [x] `b"abc"[0]` returns `97u8`.
+- [x] Negative and out-of-bounds indexes produce the chosen runtime error.
 - [ ] `read_u32_le` and `read_u32_be` tests pass.
 
 #### Task 7.2: Add bytes stdlib and conversion APIs

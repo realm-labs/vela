@@ -33,8 +33,19 @@ pub(crate) fn get_index(
                         .map(stored_runtime_value)
                         .ok_or_else(|| VmError::new(VmErrorKind::UnknownMapKey { key }))
                 }
+                HeapValue::Bytes(values) => {
+                    let (index, diagnostic_index) = bytes_index(index, values.len())?;
+                    values
+                        .get(index)
+                        .map(|value| Value::Scalar(vela_common::ScalarValue::U8(*value)))
+                        .ok_or_else(|| {
+                            VmError::new(VmErrorKind::IndexOutOfBounds {
+                                index: diagnostic_index,
+                                len: values.len(),
+                            })
+                        })
+                }
                 HeapValue::String(_)
-                | HeapValue::Bytes(_)
                 | HeapValue::Set(_)
                 | HeapValue::Record { .. }
                 | HeapValue::Enum { .. }
@@ -149,6 +160,23 @@ fn array_index(index: &Value) -> VmResult<usize> {
         Value::Scalar(vela_common::ScalarValue::I64(index)) if *index >= 0 => Ok(*index as usize),
         _ => Err(VmError::new(VmErrorKind::TypeMismatch {
             operation: "array index",
+        })),
+    }
+}
+
+fn bytes_index(index: &Value, len: usize) -> VmResult<(usize, i64)> {
+    match index {
+        Value::Scalar(vela_common::ScalarValue::I64(index)) if *index >= 0 => {
+            Ok((*index as usize, *index))
+        }
+        Value::Scalar(vela_common::ScalarValue::I64(index)) => {
+            Err(VmError::new(VmErrorKind::IndexOutOfBounds {
+                index: *index,
+                len,
+            }))
+        }
+        _ => Err(VmError::new(VmErrorKind::TypeMismatch {
+            operation: "bytes index",
         })),
     }
 }
