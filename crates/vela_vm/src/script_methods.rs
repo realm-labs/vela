@@ -116,27 +116,6 @@ pub(crate) fn call_method_id(
             return result;
         }
     }
-    if let Some(std_method) = script_builtin_methods::standard_method_name_by_id(method_id) {
-        if let Some(result) = string_method_dispatch::call(
-            std_method,
-            receiver,
-            args,
-            &mut dispatch.heap,
-            &mut dispatch.budget,
-        ) {
-            return result;
-        }
-        if let Some(result) = script_builtin_methods::call(
-            receiver,
-            std_method,
-            args,
-            &mut dispatch.heap,
-            &mut dispatch.budget,
-        ) {
-            return result;
-        }
-    }
-
     call_script_impl_method(
         receiver,
         ScriptMethodLookup::Id(method_id),

@@ -89,8 +89,15 @@ struct StdMethodIds {
     set_is_disjoint: MethodId,
     option_is_some: MethodId,
     option_is_none: MethodId,
+    option_unwrap_or: MethodId,
+    option_ok_or: MethodId,
+    option_flatten: MethodId,
     result_is_ok: MethodId,
     result_is_err: MethodId,
+    result_unwrap_or: MethodId,
+    result_to_option: MethodId,
+    result_to_error_option: MethodId,
+    result_flatten: MethodId,
     range_len: MethodId,
     range_is_empty: MethodId,
 }
@@ -178,8 +185,15 @@ impl StdMethodIds {
             set_is_disjoint: standard_method_id("Set", "is_disjoint"),
             option_is_some: standard_method_id("Option", "is_some"),
             option_is_none: standard_method_id("Option", "is_none"),
+            option_unwrap_or: standard_method_id("Option", "unwrap_or"),
+            option_ok_or: standard_method_id("Option", "ok_or"),
+            option_flatten: standard_method_id("Option", "flatten"),
             result_is_ok: standard_method_id("Result", "is_ok"),
             result_is_err: standard_method_id("Result", "is_err"),
+            result_unwrap_or: standard_method_id("Result", "unwrap_or"),
+            result_to_option: standard_method_id("Result", "to_option"),
+            result_to_error_option: standard_method_id("Result", "to_error_option"),
+            result_flatten: standard_method_id("Result", "flatten"),
             range_len: standard_method_id("Range", "len"),
             range_is_empty: standard_method_id("Range", "is_empty"),
         }
@@ -196,13 +210,6 @@ fn standard_method_id(owner: &str, name: &str) -> MethodId {
         panic!("missing standard method identity for {owner}::{name}");
     };
     id
-}
-
-pub(crate) fn standard_method_name_by_id(method_id: MethodId) -> Option<&'static str> {
-    vela_stdlib::STD_METHODS
-        .iter()
-        .find(|spec| spec.id() == method_id)
-        .map(|spec| spec.name)
 }
 
 pub(crate) fn call(
@@ -444,6 +451,34 @@ pub(crate) fn call_by_id(
         return Some(set_methods::symmetric_difference(
             receiver, args, heap, budget,
         ));
+    }
+    if method_id == ids.option_ok_or && option_result_methods::is_option(receiver, heap.as_deref())
+    {
+        return Some(option_result_methods::ok_or(receiver, args, heap, budget));
+    }
+    if method_id == ids.option_flatten
+        && option_result_methods::is_option(receiver, heap.as_deref())
+    {
+        return Some(flatten(receiver, args, heap, budget));
+    }
+    if method_id == ids.result_to_option
+        && option_result_methods::is_result(receiver, heap.as_deref())
+    {
+        return Some(option_result_methods::to_option(
+            receiver, args, heap, budget,
+        ));
+    }
+    if method_id == ids.result_to_error_option
+        && option_result_methods::is_result(receiver, heap.as_deref())
+    {
+        return Some(option_result_methods::to_error_option(
+            receiver, args, heap, budget,
+        ));
+    }
+    if method_id == ids.result_flatten
+        && option_result_methods::is_result(receiver, heap.as_deref())
+    {
+        return Some(flatten(receiver, args, heap, budget));
     }
     if method_id == ids.string_to_upper
         && crate::string_methods::is_string(receiver, heap.as_deref())
@@ -705,11 +740,17 @@ pub(crate) fn call_readonly_by_id(
     if method_id == ids.option_is_none && option_result_methods::is_option(receiver, heap) {
         return Some(option_result_methods::is_none(receiver, args, heap));
     }
+    if method_id == ids.option_unwrap_or && option_result_methods::is_option(receiver, heap) {
+        return Some(option_result_methods::unwrap_or(receiver, args, heap));
+    }
     if method_id == ids.result_is_ok && option_result_methods::is_result(receiver, heap) {
         return Some(option_result_methods::is_ok(receiver, args, heap));
     }
     if method_id == ids.result_is_err && option_result_methods::is_result(receiver, heap) {
         return Some(option_result_methods::is_err(receiver, args, heap));
+    }
+    if method_id == ids.result_unwrap_or && option_result_methods::is_result(receiver, heap) {
+        return Some(option_result_methods::unwrap_or(receiver, args, heap));
     }
     None
 }

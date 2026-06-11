@@ -66,6 +66,7 @@ mod script_methods;
 mod standard_array_id_dispatch;
 mod standard_id_dispatch;
 mod standard_map_set_id_dispatch;
+mod standard_option_result_id_dispatch;
 mod standard_string_id_dispatch;
 mod type_guards;
 
