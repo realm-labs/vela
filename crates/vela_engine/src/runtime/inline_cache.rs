@@ -811,4 +811,100 @@ fn award(player: EpochCallHostPlayer, amount: i64) {
         assert_eq!(entry.schema_epoch, HostSchemaEpoch::new(1));
         assert_eq!(entry.resolved.schema_epoch, HostSchemaEpoch::new(1));
     }
+
+    #[test]
+    fn host_remove_inline_cache_refreshes_on_schema_epoch_change() {
+        let inventory = FieldId::new(8);
+        let items = FieldId::new(9);
+        let engine = Engine::builder()
+            .register_type(
+                TypeDesc::new(TypeKey::new(TypeId::new(1), "EpochRemoveHostPlayer"))
+                    .host_type(HostTypeId::new(1))
+                    .field(FieldDesc::new(inventory, "inventory").type_hint("EpochInventory")),
+            )
+            .register_type(
+                TypeDesc::new(TypeKey::new(TypeId::new(2), "EpochInventory"))
+                    .host_type(HostTypeId::new(2))
+                    .field(FieldDesc::new(items, "items").writable(true)),
+            )
+            .build()
+            .expect("engine should build");
+        let program = engine
+            .compile_source(
+                SourceId::new(1),
+                r#"
+fn remove_item(player: EpochRemoveHostPlayer, item_id: string) {
+    player.inventory.items[item_id].remove();
+}
+"#,
+            )
+            .expect("program should compile");
+        let function = program
+            .function("remove_item")
+            .expect("remove_item should exist");
+        let cache_site = function
+            .cache_sites
+            .sites()
+            .iter()
+            .find(|site| site.kind == CacheSiteKind::HostPathRemove)
+            .expect("remove_item should have host remove site")
+            .id;
+        let mut runtime = Runtime::new(engine, program);
+        let host_ref = HostRef::new(HostTypeId::new(1), HostObjectId::new(42), 1);
+        let host_path = HostPath::new(host_ref)
+            .field(inventory)
+            .field(items)
+            .key("gold");
+        let mut adapter = MockStateAdapter::new();
+        adapter.insert_diagnostic_path_value(host_path.clone(), HostValue::String("gold".into()));
+        let mut access = HostAccess::new();
+
+        runtime
+            .call_raw(
+                "remove_item",
+                &[
+                    OwnedValue::HostRef(host_ref),
+                    OwnedValue::String("gold".into()),
+                ],
+                CallOptions::unbounded(),
+                &mut adapter,
+                &mut access,
+            )
+            .expect("first remove_item should run");
+        assert!(adapter.read_diagnostic_path(&host_path).is_err());
+        let entry = runtime
+            .state
+            .inline_caches
+            .host_access(cache_site)
+            .expect("host remove should populate cache");
+        assert_eq!(entry.root_type, HostTypeId::new(1));
+        assert_eq!(entry.plan_id.index(), 0);
+        assert_eq!(entry.op, HostAccessOp::Remove);
+        assert_eq!(entry.schema_epoch, HostSchemaEpoch::new(0));
+
+        adapter.set_schema_epoch(HostSchemaEpoch::new(1));
+        adapter.insert_diagnostic_path_value(host_path.clone(), HostValue::String("gold".into()));
+        runtime
+            .call_raw(
+                "remove_item",
+                &[
+                    OwnedValue::HostRef(host_ref),
+                    OwnedValue::String("gold".into()),
+                ],
+                CallOptions::unbounded(),
+                &mut adapter,
+                &mut access,
+            )
+            .expect("second remove_item should run through refreshed cache");
+
+        assert!(adapter.read_diagnostic_path(&host_path).is_err());
+        let entry = runtime
+            .state
+            .inline_caches
+            .host_access(cache_site)
+            .expect("host remove should refresh cache");
+        assert_eq!(entry.op, HostAccessOp::Remove);
+        assert_eq!(entry.schema_epoch, HostSchemaEpoch::new(1));
+        assert_eq!(entry.resolved.schema_epoch, HostSchemaEpoch::new(1));
+    }
 }
