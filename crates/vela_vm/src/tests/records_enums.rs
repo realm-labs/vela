@@ -120,7 +120,7 @@ fn runs_record_constructor_and_field_reads() {
     let program = compile_program_source(
         SourceId::new(1),
         r#"
-struct Player { level: int, exp: int }
+struct Player { level: i64, exp: i64 }
 
 fn main() {
     let level = 3;
@@ -142,7 +142,7 @@ fn heap_execution_reads_record_fields_from_heap_records() {
     let program = compile_program_source(
         SourceId::new(1),
         r#"
-struct Player { level: int, exp: int }
+struct Player { level: i64, exp: i64 }
 
 fn main() {
     let level = 3;
@@ -206,11 +206,11 @@ fn runs_schema_field_defaults_for_record_constructors() {
     let program = compile_standard_program_source(
         SourceId::new(1),
         r#"
-const BASE_COUNT = 2
+const BASE_COUNT: i64 = 2
 
 struct Reward {
     item_id: string = "gold",
-    count: int = BASE_COUNT + 3,
+    count: i64 = BASE_COUNT + 3,
 }
 
 fn main() {
@@ -284,8 +284,8 @@ fn runs_compiled_immediate_slot_field_reads() {
     let program = compile_program_source(
         SourceId::new(1),
         r#"
-struct Reward { item_id: string, count: int }
-enum Damage { Physical { amount: int } }
+struct Reward { item_id: string, count: i64 }
+enum Damage { Physical { amount: i64 } }
 
 fn main() {
     return Reward { item_id: "gold", count: 2 }.count
@@ -308,7 +308,7 @@ fn runs_compiled_typed_record_slot_field_reads() {
         r#"
 struct Reward {
     item_id: string,
-    count: int,
+    count: i64,
 }
 
 fn make_reward() {
@@ -336,7 +336,7 @@ fn runs_compiled_typed_record_slot_field_writes() {
         r#"
 struct Reward {
     item_id: string,
-    count: int,
+    count: i64,
 }
 
 fn make_reward() {
@@ -368,8 +368,8 @@ fn runs_compiled_typed_enum_variant_slot_field_reads() {
         SourceId::new(1),
         r#"
 enum Damage {
-    Physical { amount: int, element: string },
-    Magical { amount: int },
+    Physical { amount: i64, element: string },
+    Magical { amount: i64 },
 }
 
 fn main() {
@@ -423,8 +423,8 @@ fn runs_schema_field_defaults_for_enum_constructors() {
         SourceId::new(1),
         r#"
 enum Damage {
-    Physical { amount: int = 7, element: string = "slash" },
-    Magical(amount: int = 3, element: string = "arcane"),
+    Physical { amount: i64 = 7, element: string = "slash" },
+    Magical(amount: i64 = 3, element: string = "arcane"),
 }
 
 fn main() {
@@ -456,8 +456,8 @@ fn matches_enum_tag_and_binds_variant_fields() {
         SourceId::new(1),
         r#"
 enum Damage {
-    Physical { amount: int },
-    Magical { amount: int },
+    Physical { amount: i64 },
+    Magical { amount: i64 },
 }
 
 fn main() {
@@ -484,8 +484,8 @@ fn heap_execution_matches_enum_tags_and_reads_fields() {
         SourceId::new(1),
         r#"
 enum Damage {
-    Physical { amount: int },
-    Magical { amount: int },
+    Physical { amount: i64 },
+    Magical { amount: i64 },
 }
 
 fn main() {

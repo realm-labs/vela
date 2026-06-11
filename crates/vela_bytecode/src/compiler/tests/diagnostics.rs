@@ -45,11 +45,11 @@ fn compiler_rejects_duplicate_schema_members_from_hir() {
         SourceId::new(1),
         r#"
 struct Reward {
-    count: int,
+    count: i64,
     count: string
 }
 enum QuestProgress {
-    Active { quest_id: int, quest_id: string },
+    Active { quest_id: i64, quest_id: string },
     Active
 }
 trait Rewardable {
@@ -87,27 +87,27 @@ fn compiler_rejects_invalid_and_duplicate_schema_ids_from_hir() {
         r#"
 struct Reward {
     #[id(0)]
-    zero: int
+    zero: i64
     #[id("bad")]
-    bad: int
+    bad: i64
     #[id]
-    missing: int
+    missing: i64
     #[id(101)]
     item_id: string
     #[id(101)]
-    count: int
+    count: i64
     #[id(102)]
     #[id(103)]
-    bonus: int
+    bonus: i64
 }
 
 enum QuestProgress {
     #[id(201)]
     Active {
         #[id(301)]
-        count: int
+        count: i64
         #[id(301)]
-        total: int
+        total: i64
     }
     #[id(201)]
     Started
@@ -145,7 +145,7 @@ fn compiler_rejects_missing_required_constructor_fields() {
         r#"
 struct Reward {
     item_id: string,
-    count: int = 1,
+    count: i64 = 1,
 }
 fn main() {
     return Reward { count: 2 };
@@ -165,7 +165,7 @@ fn compiler_rejects_unknown_constructor_fields() {
         r#"
 struct Reward {
     item_id: string,
-    count: int,
+    count: i64,
 }
 fn main() {
     return Reward { item_id: "gold", count: 2, bonus: 5 };
@@ -185,7 +185,7 @@ fn compiler_rejects_duplicate_constructor_fields() {
         r#"
 struct Reward {
     item_id: string,
-    count: int,
+    count: i64,
 }
 fn main() {
     return Reward { item_id: "gold", item_id: "xp", count: 2 };
@@ -204,7 +204,7 @@ fn compiler_rejects_invalid_tuple_constructor_arity() {
         SourceId::new(1),
         r#"
 enum Damage {
-    Magical(amount: int, element: string = "arcane"),
+    Magical(amount: i64, element: string = "arcane"),
 }
 fn main() {
     return Damage::Magical();
@@ -216,7 +216,7 @@ fn main() {
         SourceId::new(2),
         r#"
 enum Damage {
-    Magical(amount: int),
+    Magical(amount: i64),
 }
 fn main() {
     return Damage::Magical(1, 2);
@@ -239,7 +239,7 @@ fn compiler_rejects_unknown_constructor_variants() {
         SourceId::new(1),
         r#"
 enum Damage {
-    Physical { amount: int },
+    Physical { amount: i64 },
 }
 fn main() {
     return Damage::Magical { amount: 7 };
@@ -283,7 +283,7 @@ fn compiler_rejects_unknown_schema_hints_from_hir_with_candidates() {
     let error = compile_function_source(
         SourceId::new(1),
         r#"
-struct Player { level: int }
+struct Player { level: i64 }
 fn main(player: Plyer) {
     return 1;
 }
@@ -408,11 +408,11 @@ fn compiler_keeps_valid_program_bytecode_equivalent_after_hir_gate() {
     let program = compile_program_source(
         SourceId::new(1),
         r#"
-const BONUS: int = 5;
-trait BonusSource { fn bonus(self) -> int; }
-struct Player { level: int }
+const BONUS: i64 = 5;
+trait BonusSource { fn bonus(self) -> i64; }
+struct Player { level: i64 }
 impl BonusSource for Player {
-    fn bonus(self) -> int { return self.level; }
+    fn bonus(self) -> i64 { return self.level; }
 }
 fn add_bonus(value) {
     return value + 5;

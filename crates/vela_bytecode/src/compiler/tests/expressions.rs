@@ -717,8 +717,8 @@ fn compiler_lowers_typed_enum_variant_field_reads_to_slots() {
         SourceId::new(1),
         r#"
 enum Damage {
-    Physical { amount: int, element: string },
-    Magical { amount: int },
+    Physical { amount: i64, element: string },
+    Magical { amount: i64 },
 }
 fn main() {
     let damage = Damage::Physical { amount: 7, element: "slash" };
@@ -750,7 +750,7 @@ fn compiler_lowers_typed_record_field_reads_to_slots() {
         r#"
 struct Reward {
     item_id: string,
-    count: int,
+    count: i64,
 }
 fn make_reward() {
     return Reward { item_id: "gold", count: 2 };
@@ -781,7 +781,7 @@ fn compiler_lowers_typed_record_field_writes_to_slots() {
         r#"
 struct Reward {
     item_id: string,
-    count: int,
+    count: i64,
 }
 fn make_reward() {
     return Reward { item_id: "gold", count: 2 };

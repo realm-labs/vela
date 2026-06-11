@@ -177,7 +177,7 @@ fn event_parameter_reorder_rejection(test_name: &str, workflow: EventReloadWorkf
         &event_file,
         r#"
 #[event("monster.kill")]
-fn on_kill(player_id: int, monster_id: int) {
+fn on_kill(player_id: i64, monster_id: i64) {
     return 1;
 }
 "#,
@@ -206,7 +206,7 @@ fn on_kill(player_id: int, monster_id: int) {
         &event_file,
         r#"
 #[event("monster.kill")]
-fn on_kill(monster_id: int, player_id: int) {
+fn on_kill(monster_id: i64, player_id: i64) {
     return 2;
 }
 "#,
@@ -270,7 +270,7 @@ fn event_target_rejection(test_name: &str, workflow: EventReloadWorkflow) {
         &event_file,
         r#"
 #[event("monster.kill")]
-fn on_kill(player_id: int, monster_id: int) {
+fn on_kill(player_id: i64, monster_id: i64) {
     return 1;
 }
 "#,
@@ -299,7 +299,7 @@ fn on_kill(player_id: int, monster_id: int) {
         &event_file,
         r#"
 #[event("quest.complete")]
-fn on_kill(player_id: int, monster_id: int) {
+fn on_kill(player_id: i64, monster_id: i64) {
     return 2;
 }
 "#,

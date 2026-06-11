@@ -8,7 +8,7 @@ fn indexes_top_level_declarations_with_stable_ids() {
         "game::reward",
         r#"
 pub fn grant(player) { return player; }
-pub const START_LEVEL: int = 1 + 2;
+pub const START_LEVEL: i64 = 1 + 2;
 struct Reward { item_id, count }
 enum QuestProgress { None, Active }
 trait Damageable { fn damage(self, amount); }
@@ -37,7 +37,7 @@ trait Damageable { fn damage(self, amount); }
             .and_then(|metadata| metadata.type_hint.as_ref())
             .map(HirTypeHint::display)
             .as_deref(),
-        Some("int")
+        Some("i64")
     );
     assert_eq!(
         graph.declaration(reward).map(|decl| decl.kind),
@@ -167,7 +167,7 @@ fn duplicate_struct_fields_report_both_spans() {
         "game::reward",
         r#"
 struct Reward {
-    count: int,
+    count: i64,
     count: string
 }
 "#,
@@ -190,7 +190,7 @@ fn duplicate_enum_variants_and_fields_report_both_spans() {
         "game::quest",
         r#"
 enum QuestProgress {
-    Active { count: int, count: string },
+    Active { count: i64, count: string },
     Active
 }
 "#,
@@ -223,7 +223,7 @@ fn duplicate_trait_and_impl_methods_report_both_spans() {
         1,
         "game::player",
         r#"
-struct Player { level: int }
+struct Player { level: i64 }
 trait Rewardable {
     fn reward(self, amount);
     fn reward(self, bonus);

@@ -380,7 +380,7 @@ fn reflection_permissions_allow_script_metadata_without_host_inspection() {
     let program = compile_reflection_permission_source(
         SourceId::new(1),
         r#"
-struct Player { level: int }
+struct Player { level: i64 }
 
 fn main() {
     let player = Player { level: 7 };

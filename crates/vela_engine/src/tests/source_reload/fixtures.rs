@@ -150,9 +150,9 @@ impl StructCountField {
     const fn source(self) -> &'static str {
         match self {
             Self::Absent => "",
-            Self::Defaulted => "    count: int = 1\n",
-            Self::Required => "    count: int\n",
-            Self::Float => "    count: float\n",
+            Self::Defaulted => "    count: i64 = 1\n",
+            Self::Required => "    count: i64\n",
+            Self::Float => "    count: f64\n",
         }
     }
 }
@@ -218,7 +218,7 @@ struct Reward {{
     #[id(101)]
     {item_field}: string
     #[id(102)]
-    {count_field}: int
+    {count_field}: i64
 }}
 
 enum QuestProgress {{
@@ -270,9 +270,9 @@ impl EnumVariantCountField {
     const fn source(self) -> &'static str {
         match self {
             Self::Absent => "",
-            Self::Defaulted => "        count: int = 0\n",
-            Self::Required => "        count: int\n",
-            Self::Float => "        count: float\n",
+            Self::Defaulted => "        count: i64 = 0\n",
+            Self::Required => "        count: i64\n",
+            Self::Float => "        count: f64\n",
         }
     }
 }
@@ -336,11 +336,11 @@ fn write_trait_impl_module(path: &std::path::Path, reward: i64, implemented: boo
         format!(
             r#"
 trait Damageable {{
-    fn damage(self) -> int {{ return self.level; }}
+    fn damage(self) -> i64 {{ return self.level; }}
 }}
 
 struct Player {{
-    level: int
+    level: i64
 }}
 
 {impl_block}
@@ -384,8 +384,8 @@ fn write_trait_abi_module_with_required_method(path: &std::path::Path, reward: i
     write_trait_abi_module_with_methods(
         path,
         reward,
-        "int",
-        "    fn heal(self, amount: int) -> int;\n",
+        "i64",
+        "    fn heal(self, amount: i64) -> i64;\n",
     );
 }
 
@@ -393,8 +393,8 @@ fn write_trait_abi_module_with_defaulted_method(path: &std::path::Path, reward: 
     write_trait_abi_module_with_methods(
         path,
         reward,
-        "int",
-        "    fn heal(self, amount: int) -> int { return amount; }\n",
+        "i64",
+        "    fn heal(self, amount: i64) -> i64 { return amount; }\n",
     );
 }
 
@@ -409,7 +409,7 @@ fn write_trait_abi_module_with_methods(
         format!(
             r#"
 trait Damageable {{
-    fn damage(self, amount: int) -> {return_type};
+    fn damage(self, amount: i64) -> {return_type};
 {additional_methods}
 }}
 

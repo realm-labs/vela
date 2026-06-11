@@ -1,27 +1,27 @@
 struct DamageActor {
     name: string,
-    level: int,
+    level: i64,
 }
 
 struct DamageEvent {
     actor: DamageActor,
-    amount: int,
-    multiplier: int,
+    amount: i64,
+    multiplier: i64,
     reason: string,
 }
 
 struct DamageResult {
     actor_name: string,
-    applied: int,
+    applied: i64,
     label: string,
 }
 
 trait DamageSummary {
-    fn score(self, bonus) -> int;
+    fn score(self, bonus) -> i64;
 }
 
 impl DamageSummary for DamageResult {
-    fn score(self, bonus) -> int {
+    fn score(self, bonus) -> i64 {
         return self.applied + bonus;
     }
 }

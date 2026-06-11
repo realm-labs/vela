@@ -5,15 +5,15 @@ fn parses_type_hint_metadata_and_rejects_generics() {
     let parsed = parse_source(
         source_id(),
         r#"
-fn level_up(player: game::Player, amount: int) -> Result {
-    let next: int = player.level + amount;
+fn level_up(player: game::Player, amount: i64) -> Result {
+    let next: i64 = player.level + amount;
     let mapper = |reward: Reward| reward.count;
     return next;
 }
 
 struct Reward {
     item_id: string,
-    count: int,
+    count: i64,
 }
 "#,
     );
@@ -36,7 +36,7 @@ struct Reward {
             .as_ref()
             .expect("amount type hint")
             .path,
-        ["int"]
+        ["i64"]
     );
     assert_eq!(
         function
@@ -54,7 +54,7 @@ struct Reward {
     else {
         panic!("expected typed let");
     };
-    assert_eq!(next_hint.path, ["int"]);
+    assert_eq!(next_hint.path, ["i64"]);
 
     let StmtKind::Let {
         value: Some(lambda),
@@ -92,10 +92,10 @@ struct Reward {
             .as_ref()
             .expect("count field type hint")
             .path,
-        ["int"]
+        ["i64"]
     );
 
-    let generic = parse_source(source_id(), "fn bad(xs: Array<int>) { return xs; }");
+    let generic = parse_source(source_id(), "fn bad(xs: Array<i64>) { return xs; }");
     assert!(
         generic
             .diagnostics
@@ -111,7 +111,7 @@ fn parses_enum_variant_payload_metadata() {
         r#"
 enum QuestProgress {
     None,
-    Active { quest_id: string, count: int },
+    Active { quest_id: string, count: i64 },
     Finished(quest_id: string),
 }
 "#,
@@ -142,11 +142,11 @@ fn parses_struct_and_record_variant_field_defaults() {
         r#"
 struct Reward {
     item_id: string = "gold",
-    count: int = 1,
+    count: i64 = 1,
 }
 
 enum QuestProgress {
-    Active { quest_id: string, count: int = 0 },
+    Active { quest_id: string, count: i64 = 0 },
 }
 "#,
     );

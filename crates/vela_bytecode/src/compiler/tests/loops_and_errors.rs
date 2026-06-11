@@ -207,7 +207,7 @@ fn compiler_rejects_generic_type_hints_before_codegen() {
     let error = compile_program_source(
         SourceId::new(1),
         r#"
-fn main(values: Array<int>) {
+fn main(values: Array<i64>) {
     return values;
 }
 "#,

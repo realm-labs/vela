@@ -3,7 +3,7 @@ use super::*;
 #[test]
 fn runtime_stages_dir_required_parameter_rejection_until_safe_point() {
     let root = unique_test_dir("runtime_stage_dir_required_parameter");
-    let reward_file = write_typed_reward_modules(&root, "return 2;", "int", "2");
+    let reward_file = write_typed_reward_modules(&root, "return 2;", "i64", "2");
     let engine = Engine::builder()
         .execution_profile(ExecutionProfile::trusted())
         .build()
@@ -26,7 +26,7 @@ fn runtime_stages_dir_required_parameter_rejection_until_safe_point() {
         Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(2)))
     );
 
-    write_reward_module_with_signature(&reward_file, "(amount: int) -> int", "amount");
+    write_reward_module_with_signature(&reward_file, "(amount: i64) -> i64", "amount");
     runtime
         .stage_hot_reload_update_dir(&root)
         .expect("runtime should be hot-reload enabled")

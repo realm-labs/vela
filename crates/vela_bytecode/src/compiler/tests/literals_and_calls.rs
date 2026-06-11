@@ -262,7 +262,7 @@ fn compiler_uses_hir_signatures_for_code_object_params() {
     let code = compile_function_source(
         SourceId::new(1),
         r#"
-fn main(player: game::Player, amount: int) -> int {
+fn main(player: game::Player, amount: i64) -> i64 {
     return amount;
 }
 "#,

@@ -80,7 +80,7 @@ fn compiled_source_reflects_script_record_implements() {
     let program = compile_reflection_value_source(
         SourceId::new(1),
         r#"
-struct Player { level: int }
+struct Player { level: i64 }
 
 fn main() {
     let player = Player { level: 7 };
@@ -146,7 +146,7 @@ fn compiled_source_reflect_set_returns_updated_script_record() {
     let program = compile_reflection_value_source(
         SourceId::new(1),
         r#"
-struct Player { level: int, name: string }
+struct Player { level: i64, name: string }
 
 fn main() {
     let player = Player { level: 7, name: "hero" };
@@ -211,7 +211,7 @@ fn compiled_source_reflect_get_script_record_unknown_field_reports_schema() {
     let program = compile_reflection_value_source(
         SourceId::new(1),
         r#"
-struct Player { level: int }
+struct Player { level: i64 }
 
 fn main() {
     let player = Player { level: 7 };
@@ -246,7 +246,7 @@ fn compiled_source_reflect_get_script_record_respects_field_permission() {
     let program = compile_reflection_value_source(
         SourceId::new(1),
         r#"
-struct Player { level: int }
+struct Player { level: i64 }
 
 fn main() {
     let player = Player { level: 7 };
@@ -341,7 +341,7 @@ fn heap_execution_reflects_script_record_implements() {
     let program = compile_reflection_value_source(
         SourceId::new(1),
         r#"
-struct Player { level: int }
+struct Player { level: i64 }
 
 fn main() {
     let player = Player { level: 7 };
@@ -392,9 +392,9 @@ fn compiled_module_reflects_registered_script_trait_impls() {
         ModulePath::from_qualified("game"),
         r#"
 trait Damageable {
-    fn damage(self) -> int { return self.level; }
+    fn damage(self) -> i64 { return self.level; }
 }
-struct Player { level: int }
+struct Player { level: i64 }
 
 impl Damageable for Player {}
 

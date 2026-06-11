@@ -7,13 +7,13 @@ fn lowers_type_hint_metadata_for_signatures_structs_and_locals() {
         1,
         "game::reward",
         r#"
-fn grant(player: game::Player, amount: int) -> Result {
+fn grant(player: game::Player, amount: i64) -> Result {
     let reward: Reward = Reward { count: amount };
     let mapper = |entry: Reward| entry.count;
     return reward;
 }
 struct Reward {
-    count: int,
+    count: i64,
 }
 "#,
     ));
@@ -47,7 +47,7 @@ struct Reward {
             .as_ref()
             .map(HirTypeHint::display)
             .as_deref(),
-        Some("int")
+        Some("i64")
     );
     let bindings = graph.bindings(grant).expect("grant bindings");
     let [reward_local] = bindings.locals_named("reward") else {
@@ -78,7 +78,7 @@ fn unknown_schema_type_hints_report_ranked_related_candidates() {
         1,
         "game::combat",
         r#"
-struct Player { hp: int }
+struct Player { hp: i64 }
 fn grant(player: Plyer) {
     return null;
 }
@@ -116,7 +116,7 @@ fn unknown_impl_schema_names_report_trait_and_target_candidates() {
 trait Damageable {
     fn damage(self);
 }
-struct Player { hp: int }
+struct Player { hp: i64 }
 impl Damageabl for Playr {}
 "#,
     ));
@@ -187,7 +187,7 @@ fn rejects_side_effecting_const_initializers() {
         1,
         "game::config",
         r#"
-const SAFE_LIMIT: int = 10 + 5;
+const SAFE_LIMIT: i64 = 10 + 5;
 const BAD_CALL = register_event("monster.kill");
 const BAD_ASSIGN = { global_counter += 1; 0 };
 fn main() { return SAFE_LIMIT; }
@@ -241,7 +241,7 @@ enum QuestProgress {
 }
 trait Damageable {
     #[doc("Apply damage")]
-    fn damage(self, amount: int) -> int;
+    fn damage(self, amount: i64) -> i64;
 }
 "#,
     ));
@@ -296,7 +296,7 @@ fn lowers_enum_shape_metadata() {
         r#"
 enum QuestProgress {
     None,
-    Active { quest_id: string, count: int },
+    Active { quest_id: string, count: i64 },
     Finished(quest_id: string),
 }
 "#,
@@ -353,10 +353,10 @@ fn lowers_schema_field_default_metadata() {
         r#"
 struct Reward {
     item_id: string = "gold",
-    count: int = 1,
+    count: i64 = 1,
 }
 enum QuestProgress {
-    Active { quest_id: string, count: int = 0 },
+    Active { quest_id: string, count: i64 = 0 },
 }
 "#,
     ));
@@ -384,13 +384,13 @@ fn lowers_impl_metadata_and_method_bindings() {
         "game::combat",
         r#"
 trait Damageable {
-    fn damage(self, amount: int) -> int;
+    fn damage(self, amount: i64) -> i64;
     fn alive(self) -> bool { return true; }
 }
-struct Player { hp: int }
+struct Player { hp: i64 }
 impl Damageable for Player {
-    fn damage(self, amount: int) -> int {
-        let remaining: int = self.hp - amount;
+    fn damage(self, amount: i64) -> i64 {
+        let remaining: i64 = self.hp - amount;
         return remaining;
     }
 }
@@ -439,7 +439,7 @@ impl Damageable for Player {
             .as_ref()
             .map(HirTypeHint::display)
             .as_deref(),
-        Some("int")
+        Some("i64")
     );
     assert_eq!(
         method
@@ -448,7 +448,7 @@ impl Damageable for Player {
             .as_ref()
             .map(HirTypeHint::display)
             .as_deref(),
-        Some("int")
+        Some("i64")
     );
     let bindings = graph
         .impl_method_bindings(method.node)
@@ -462,7 +462,7 @@ impl Damageable for Player {
             .and_then(|local| local.type_hint.as_ref())
             .map(HirTypeHint::display)
             .as_deref(),
-        Some("int")
+        Some("i64")
     );
     assert!(bindings.expression_count() >= 3);
 }
@@ -474,10 +474,10 @@ fn lowers_inherent_impl_metadata_and_method_bindings() {
         1,
         "game::combat",
         r#"
-struct Player { level: int }
+struct Player { level: i64 }
 impl Player {
-    fn bonus(self, amount: int) -> int {
-        let total: int = self.level + amount;
+    fn bonus(self, amount: i64) -> i64 {
+        let total: i64 = self.level + amount;
         return total;
     }
 }
@@ -498,7 +498,7 @@ impl Player {
             .as_ref()
             .map(HirTypeHint::display)
             .as_deref(),
-        Some("int")
+        Some("i64")
     );
     let bindings = graph
         .impl_method_bindings(method.node)

@@ -95,14 +95,14 @@ fn main() {
             r#"
 use game::base::BASE as START
 
-pub const BONUS: int = START + 1;
+pub const BONUS: i64 = START + 1;
 "#,
         ),
         ModuleSource::new(
             SourceId::new(3),
             ModulePath::from_qualified("game::base"),
             r#"
-pub const BASE: int = 4;
+pub const BASE: i64 = 4;
 "#,
         ),
     ])
@@ -137,14 +137,14 @@ fn make_damage() {
             SourceId::new(2),
             ModulePath::from_qualified("game::reward"),
             r#"
-pub struct Reward { count: int }
+pub struct Reward { count: i64 }
 "#,
         ),
         ModuleSource::new(
             SourceId::new(3),
             ModulePath::from_qualified("game::damage"),
             r#"
-pub enum Damage { Physical { amount: int } }
+pub enum Damage { Physical { amount: i64 } }
 "#,
         ),
     ])
@@ -199,11 +199,11 @@ fn main() {
             SourceId::new(2),
             ModulePath::from_qualified("game::reward"),
             r#"
-pub const BASE_COUNT = 5
+pub const BASE_COUNT: i64 = 5
 
 pub struct Reward {
     item_id: string = "gold",
-    count: int = BASE_COUNT + 2,
+    count: i64 = BASE_COUNT + 2,
 }
 "#,
         ),
@@ -240,8 +240,8 @@ fn main() {
             ModulePath::from_qualified("game::damage"),
             r#"
 pub enum Damage {
-    Physical { amount: int },
-    Magical { amount: int },
+    Physical { amount: i64 },
+    Magical { amount: i64 },
 }
 "#,
         ),
@@ -279,7 +279,7 @@ pub fn grant() {
             SourceId::new(3),
             ModulePath::from_qualified("game::config"),
             r#"
-pub const BONUS: int = 5;
+pub const BONUS: i64 = 5;
 "#,
         ),
     ])

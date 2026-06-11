@@ -143,15 +143,15 @@ fn hot_reload_runtime_preserves_script_method_dispatch_tables() {
             SourceId::new(1),
             r#"
 trait BonusSource {
-    fn bonus(self, amount) -> int;
+    fn bonus(self, amount) -> i64;
 }
 
 struct Player {
-    level: int
+    level: i64
 }
 
 impl BonusSource for Player {
-    fn bonus(self, amount) -> int {
+    fn bonus(self, amount) -> i64 {
         return self.level + amount;
     }
 }
@@ -176,15 +176,15 @@ fn main() {
             SourceId::new(2),
             r#"
 trait BonusSource {
-    fn bonus(self, amount) -> int;
+    fn bonus(self, amount) -> i64;
 }
 
 struct Player {
-    level: int
+    level: i64
 }
 
 impl BonusSource for Player {
-    fn bonus(self, amount) -> int {
+    fn bonus(self, amount) -> i64 {
         return self.level + amount * 2;
     }
 }

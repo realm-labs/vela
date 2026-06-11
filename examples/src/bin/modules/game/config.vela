@@ -1,1 +1,1 @@
-pub const BASE_REWARD: int = 6;
+pub const BASE_REWARD: i64 = 6;

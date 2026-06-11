@@ -92,14 +92,14 @@ fn make_damage() {
             SourceId::new(2),
             ModulePath::from_qualified("game::reward"),
             r#"
-pub struct Reward { count: int }
+pub struct Reward { count: i64 }
 "#,
         ),
         ModuleSource::new(
             SourceId::new(3),
             ModulePath::from_qualified("game::damage"),
             r#"
-pub enum Damage { Physical { amount: int } }
+pub enum Damage { Physical { amount: i64 } }
 "#,
         ),
     ])
@@ -197,7 +197,7 @@ fn main() {
             SourceId::new(2),
             ModulePath::from_qualified("game::damage"),
             r#"
-pub enum Damage { Physical { amount: int } }
+pub enum Damage { Physical { amount: i64 } }
 "#,
         ),
     ])
@@ -236,7 +236,7 @@ pub fn grant() {
             SourceId::new(3),
             ModulePath::from_qualified("game::config"),
             r#"
-pub const BONUS: int = 5;
+pub const BONUS: i64 = 5;
 "#,
         ),
     ])

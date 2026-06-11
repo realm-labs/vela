@@ -206,7 +206,7 @@ fn compiler_uses_hir_declarations_for_literal_const_reads() {
     let code = compile_function_source(
         SourceId::new(1),
         r#"
-const BONUS: int = 5;
+const BONUS: i64 = 5;
 fn main() {
     return BONUS;
 }
@@ -238,8 +238,8 @@ fn compiler_evaluates_pure_scalar_const_expressions() {
     let code = compile_function_source(
         SourceId::new(1),
         r#"
-const BASE: int = 10;
-const BONUS: int = BASE + 5 * 2;
+const BASE: i64 = 10;
+const BONUS: i64 = BASE + 5 * 2;
 fn main() {
     return BONUS;
 }
@@ -284,14 +284,14 @@ fn main() {
             ModulePath::from_qualified("game::tuning"),
             r#"
 use game::base::BASE as START
-pub const BONUS: int = START + 1;
+pub const BONUS: i64 = START + 1;
 "#,
         ),
         ModuleSource::new(
             SourceId::new(3),
             ModulePath::from_qualified("game::base"),
             r#"
-pub const BASE: int = 4;
+pub const BASE: i64 = 4;
 "#,
         ),
     ])

@@ -7,7 +7,7 @@ fn parses_core_module_items() {
         r#"
 use game::player::Player;
 
-pub const START_LEVEL: int = 1 + 2;
+pub const START_LEVEL: i64 = 1 + 2;
 
 pub global state: GameState;
 
@@ -57,7 +57,7 @@ impl Damageable for Player {
     assert_eq!(constant.name, "START_LEVEL");
     assert_eq!(
         constant.type_hint.as_ref().expect("const type hint").path,
-        ["int"]
+        ["i64"]
     );
 
     let ItemKind::Global(global) = &parsed.items[2].kind else {

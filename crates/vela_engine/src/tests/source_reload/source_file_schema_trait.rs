@@ -26,7 +26,7 @@ fn main() {
         r#"
 struct Reward {
     item_id: string
-    count: int = 1
+    count: i64 = 1
 }
 
 fn main() {
@@ -65,7 +65,7 @@ struct Reward {
     #[id(101)]
     item_id: string
     #[id(102)]
-    count: int
+    count: i64
 }
 
 enum QuestProgress {
@@ -88,7 +88,7 @@ struct Reward {
     #[id(101)]
     item: string
     #[id(102)]
-    quantity: int
+    quantity: i64
 }
 
 enum QuestProgress {
@@ -147,7 +147,7 @@ fn main() {
         r#"
 struct Reward {
     item_id: string
-    count: int
+    count: i64
 }
 
 fn main() {
@@ -187,7 +187,7 @@ fn runtime_stages_source_file_removed_schema_rejection_until_safe_point() {
         r#"
 struct Reward {
     item_id: string
-    count: int
+    count: i64
 }
 
 fn main() {
@@ -249,7 +249,7 @@ fn runtime_stages_source_file_schema_field_type_rejection_until_safe_point() {
         r#"
 struct Reward {
     item_id: string
-    count: int
+    count: i64
 }
 
 fn main() {
@@ -265,7 +265,7 @@ fn main() {
         r#"
 struct Reward {
     item_id: string
-    count: float
+    count: f64
 }
 
 fn main() {
@@ -323,7 +323,7 @@ fn main() {
 enum QuestProgress {
     Active {
         quest_id: string
-        count: int = 0
+        count: i64 = 0
     }
 }
 
@@ -379,7 +379,7 @@ fn main() {
 enum QuestProgress {
     Active {
         quest_id: string
-        count: int
+        count: i64
     }
 }
 
@@ -421,7 +421,7 @@ fn runtime_stages_source_file_enum_variant_field_type_rejection_until_safe_point
 enum QuestProgress {
     Active {
         quest_id: string
-        count: int
+        count: i64
     }
 }
 
@@ -439,7 +439,7 @@ fn main() {
 enum QuestProgress {
     Active {
         quest_id: string
-        count: float
+        count: f64
     }
 }
 
@@ -479,11 +479,11 @@ fn runtime_stages_source_file_removed_trait_impl_rejection_until_safe_point() {
         engine,
         r#"
 trait Damageable {
-    fn damage(self) -> int { return self.level; }
+    fn damage(self) -> i64 { return self.level; }
 }
 
 struct Player {
-    level: int
+    level: i64
 }
 
 impl Damageable for Player {}
@@ -500,11 +500,11 @@ fn main() {
         &mut runtime,
         r#"
 trait Damageable {
-    fn damage(self) -> int { return self.level; }
+    fn damage(self) -> i64 { return self.level; }
 }
 
 struct Player {
-    level: int
+    level: i64
 }
 
 fn main() {
@@ -543,11 +543,11 @@ fn runtime_stages_source_file_added_trait_impl_until_safe_point() {
         engine,
         r#"
 trait Damageable {
-    fn damage(self) -> int { return self.level; }
+    fn damage(self) -> i64 { return self.level; }
 }
 
 struct Player {
-    level: int
+    level: i64
 }
 
 fn main() {
@@ -562,11 +562,11 @@ fn main() {
         &mut runtime,
         r#"
 trait Damageable {
-    fn damage(self) -> int { return self.level; }
+    fn damage(self) -> i64 { return self.level; }
 }
 
 struct Player {
-    level: int
+    level: i64
 }
 
 impl Damageable for Player {}
@@ -604,7 +604,7 @@ fn runtime_stages_source_file_removed_trait_rejection_until_safe_point() {
         engine,
         r#"
 trait Damageable {
-    fn damage(self, amount: int) -> int;
+    fn damage(self, amount: i64) -> i64;
 }
 
 fn main() {
@@ -654,7 +654,7 @@ fn runtime_stages_source_file_trait_method_return_rejection_until_safe_point() {
         engine,
         r#"
 trait Damageable {
-    fn damage(self, amount: int) -> int;
+    fn damage(self, amount: i64) -> i64;
 }
 
 fn main() {
@@ -669,7 +669,7 @@ fn main() {
         &mut runtime,
         r#"
 trait Damageable {
-    fn damage(self, amount: int) -> float;
+    fn damage(self, amount: i64) -> f64;
 }
 
 fn main() {
@@ -708,7 +708,7 @@ fn runtime_stages_source_file_required_trait_method_rejection_until_safe_point()
         engine,
         r#"
 trait Damageable {
-    fn damage(self, amount: int) -> int;
+    fn damage(self, amount: i64) -> i64;
 }
 
 fn main() {
@@ -723,8 +723,8 @@ fn main() {
         &mut runtime,
         r#"
 trait Damageable {
-    fn damage(self, amount: int) -> int;
-    fn heal(self, amount: int) -> int;
+    fn damage(self, amount: i64) -> i64;
+    fn heal(self, amount: i64) -> i64;
 }
 
 fn main() {
@@ -763,7 +763,7 @@ fn runtime_stages_source_file_defaulted_trait_method_addition_until_safe_point()
         engine,
         r#"
 trait Damageable {
-    fn damage(self, amount: int) -> int;
+    fn damage(self, amount: i64) -> i64;
 }
 
 fn main() {
@@ -778,8 +778,8 @@ fn main() {
         &mut runtime,
         r#"
 trait Damageable {
-    fn damage(self, amount: int) -> int;
-    fn heal(self, amount: int) -> int { return amount; }
+    fn damage(self, amount: i64) -> i64;
+    fn heal(self, amount: i64) -> i64 { return amount; }
 }
 
 fn main() {
@@ -816,7 +816,7 @@ fn runtime_stages_source_file_event_parameter_reorder_rejection_until_safe_point
         engine,
         r#"
 #[event("monster.kill")]
-fn on_kill(player_id: int, monster_id: int) {
+fn on_kill(player_id: i64, monster_id: i64) {
     return 1;
 }
 "#,
@@ -828,7 +828,7 @@ fn on_kill(player_id: int, monster_id: int) {
         &mut runtime,
         r#"
 #[event("monster.kill")]
-fn on_kill(monster_id: int, player_id: int) {
+fn on_kill(monster_id: i64, player_id: i64) {
     return 2;
 }
 "#,
@@ -888,7 +888,7 @@ fn runtime_stages_source_file_event_target_rejection_until_safe_point() {
         engine,
         r#"
 #[event("monster.kill")]
-fn on_kill(player_id: int, monster_id: int) {
+fn on_kill(player_id: i64, monster_id: i64) {
     return 1;
 }
 "#,
@@ -900,7 +900,7 @@ fn on_kill(player_id: int, monster_id: int) {
         &mut runtime,
         r#"
 #[event("quest.complete")]
-fn on_kill(player_id: int, monster_id: int) {
+fn on_kill(player_id: i64, monster_id: i64) {
     return 2;
 }
 "#,
@@ -964,7 +964,7 @@ fn runtime_stages_source_file_return_abi_rejection_until_safe_point() {
     let mut runtime = runtime_from_hot_reload_source(
         engine,
         r#"
-fn main() -> int {
+fn main() -> i64 {
     return 1;
 }
 "#,
@@ -975,7 +975,7 @@ fn main() -> int {
     stage_source_update(
         &mut runtime,
         r#"
-fn main() -> float {
+fn main() -> f64 {
     return 2.0;
 }
 "#,
@@ -1008,8 +1008,8 @@ fn main() -> float {
         panic!("expected changed function return ABI");
     };
     assert_eq!(function, "main");
-    assert_eq!(old.as_deref(), Some("int"));
-    assert_eq!(new.as_deref(), Some("float"));
+    assert_eq!(old.as_deref(), Some("i64"));
+    assert_eq!(new.as_deref(), Some("f64"));
     assert!(source_span.is_some());
     assert_eq!(
         runtime.call_raw("main", &[], CallOptions::unbounded(), &mut adapter, &mut tx),
@@ -1026,7 +1026,7 @@ fn runtime_stages_source_file_required_parameter_addition_rejection_until_safe_p
     let mut runtime = runtime_from_hot_reload_source(
         engine,
         r#"
-fn main(player_id: int) {
+fn main(player_id: i64) {
     return player_id;
 }
 "#,
@@ -1037,7 +1037,7 @@ fn main(player_id: int) {
     stage_source_update(
         &mut runtime,
         r#"
-fn main(player_id: int, amount: int) {
+fn main(player_id: i64, amount: i64) {
     return amount;
 }
 "#,

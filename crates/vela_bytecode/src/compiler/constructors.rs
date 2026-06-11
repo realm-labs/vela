@@ -11,7 +11,9 @@ use super::schema_defaults::{
     ConstructorShape, SchemaFieldDefault, resolve_tuple_constructor_arguments,
     tuple_constructor_diagnostics, unknown_enum_variant_diagnostic,
 };
-use super::value_types::{RuntimeTypeFact, TypeContractContext};
+use super::value_types::{
+    RuntimeTypeFact, StaticExprType, TypeContractContext, check_expected_type,
+};
 use super::{CompileError, CompileErrorKind, CompileResult, Compiler};
 
 impl Compiler<'_, '_> {
@@ -193,6 +195,19 @@ impl Compiler<'_, '_> {
         default: &SchemaFieldDefault,
         expected: Option<RuntimeTypeFact>,
     ) -> CompileResult<Register> {
+        if let Some(value) = evaluate_const_expr(&default.value, &default.constants)? {
+            if let Some(expected) = expected {
+                check_expected_type(
+                    static_type_for_constant(&value),
+                    expected,
+                    default.value.span,
+                    TypeContractContext::Field {
+                        name: default.name.clone(),
+                    },
+                )?;
+            }
+            return self.emit_constant(value);
+        }
         if let Some(expected) = expected {
             return self.compile_expr_with_expected_type(
                 &default.value,
@@ -202,13 +217,34 @@ impl Compiler<'_, '_> {
                 },
             );
         }
-        if let Some(value) = evaluate_const_expr(&default.value, &default.constants)? {
-            return self.emit_constant(value);
-        }
         self.compile_expr(&default.value)
     }
 }
 
 pub(super) fn schema_default_fields(shape: Option<&ConstructorShape>) -> Vec<SchemaFieldDefault> {
     shape.map_or_else(Vec::new, |shape| shape.defaults().cloned().collect())
+}
+
+fn static_type_for_constant(value: &crate::Constant) -> StaticExprType {
+    let Some(fact) = runtime_type_for_constant(value) else {
+        return StaticExprType::Dynamic;
+    };
+    StaticExprType::Exact(fact)
+}
+
+fn runtime_type_for_constant(value: &crate::Constant) -> Option<RuntimeTypeFact> {
+    match value {
+        crate::Constant::Null => Some(RuntimeTypeFact::primitive(vela_common::PrimitiveTag::Null)),
+        crate::Constant::Bool(_) => {
+            Some(RuntimeTypeFact::primitive(vela_common::PrimitiveTag::Bool))
+        }
+        crate::Constant::Scalar(value) => Some(RuntimeTypeFact::primitive(value.primitive_tag())),
+        crate::Constant::String(_) => Some(RuntimeTypeFact::primitive(
+            vela_common::PrimitiveTag::String,
+        )),
+        crate::Constant::Bytes(_) => {
+            Some(RuntimeTypeFact::primitive(vela_common::PrimitiveTag::Bytes))
+        }
+        crate::Constant::Array(_) | crate::Constant::Map(_) => None,
+    }
 }

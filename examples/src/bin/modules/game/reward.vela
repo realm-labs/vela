@@ -1,5 +1,5 @@
 use game::config::BASE_REWARD
 
-pub fn grant(level: int) -> int {
+pub fn grant(level: i64) -> i64 {
     return BASE_REWARD + level;
 }

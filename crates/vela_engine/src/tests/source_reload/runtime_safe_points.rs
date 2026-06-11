@@ -496,14 +496,14 @@ fn runtime_stages_source_text_hot_reload_rejection_until_check_reload_safe_point
         .build()
         .expect("engine should build");
     let initial = engine
-        .compile_hot_reload_initial(SourceId::new(1), "pub fn main() -> int { return 1; }")
+        .compile_hot_reload_initial(SourceId::new(1), "pub fn main() -> i64 { return 1; }")
         .expect("initial hot reload compile");
     let mut runtime = Runtime::from_hot_reload_version(engine, initial);
     let mut adapter = MockStateAdapter::new();
     let mut tx = HostAccess::new();
 
     runtime
-        .stage_hot_reload_update(SourceId::new(2), "pub fn main() -> float { return 2.0; }")
+        .stage_hot_reload_update(SourceId::new(2), "pub fn main() -> f64 { return 2.0; }")
         .expect("stage rejected source text update");
     assert_eq!(
         runtime.call_raw("main", &[], CallOptions::unbounded(), &mut adapter, &mut tx),
@@ -526,8 +526,8 @@ fn runtime_stages_source_text_hot_reload_rejection_until_check_reload_safe_point
         panic!("expected changed function return ABI");
     };
     assert_eq!(function, "main");
-    assert_eq!(old.as_deref(), Some("int"));
-    assert_eq!(new.as_deref(), Some("float"));
+    assert_eq!(old.as_deref(), Some("i64"));
+    assert_eq!(new.as_deref(), Some("f64"));
     assert!(source_span.is_some());
     assert_eq!(
         runtime.call_raw("main", &[], CallOptions::unbounded(), &mut adapter, &mut tx),
@@ -590,13 +590,13 @@ fn runtime_tick_boundary_safe_point_reports_staged_reload_rejection() {
         .build()
         .expect("engine should build");
     let initial = engine
-        .compile_hot_reload_initial(SourceId::new(1), "pub fn main() -> int { return 1; }")
+        .compile_hot_reload_initial(SourceId::new(1), "pub fn main() -> i64 { return 1; }")
         .expect("initial hot reload compile");
     let update = engine
         .compile_hot_reload_update(
             &initial,
             SourceId::new(2),
-            "pub fn main() -> float { return 2.0; }",
+            "pub fn main() -> f64 { return 2.0; }",
         )
         .expect_err("return hint change should be rejected");
     let mut runtime = Runtime::from_hot_reload_version(engine, initial);
@@ -622,8 +622,8 @@ fn runtime_tick_boundary_safe_point_reports_staged_reload_rejection() {
         panic!("expected changed function return ABI");
     };
     assert_eq!(function, "main");
-    assert_eq!(old.as_deref(), Some("int"));
-    assert_eq!(new.as_deref(), Some("float"));
+    assert_eq!(old.as_deref(), Some("i64"));
+    assert_eq!(new.as_deref(), Some("f64"));
     assert!(source_span.is_some());
     assert!(
         !runtime
@@ -984,13 +984,13 @@ fn runtime_call_at_event_end_safe_point_reports_staged_reload_rejection() {
         .build()
         .expect("engine should build");
     let initial = engine
-        .compile_hot_reload_initial(SourceId::new(1), "pub fn main() -> int { return 1; }")
+        .compile_hot_reload_initial(SourceId::new(1), "pub fn main() -> i64 { return 1; }")
         .expect("initial hot reload compile");
     let update = engine
         .compile_hot_reload_update(
             &initial,
             SourceId::new(2),
-            "pub fn main() -> float { return 2.0; }",
+            "pub fn main() -> f64 { return 2.0; }",
         )
         .expect_err("return hint change should be rejected");
     let mut runtime = Runtime::from_hot_reload_version(engine, initial);
@@ -1026,8 +1026,8 @@ fn runtime_call_at_event_end_safe_point_reports_staged_reload_rejection() {
         panic!("expected changed function return ABI");
     };
     assert_eq!(function, "main");
-    assert_eq!(old.as_deref(), Some("int"));
-    assert_eq!(new.as_deref(), Some("float"));
+    assert_eq!(old.as_deref(), Some("i64"));
+    assert_eq!(new.as_deref(), Some("f64"));
     assert!(source_span.is_some());
     assert!(
         !runtime

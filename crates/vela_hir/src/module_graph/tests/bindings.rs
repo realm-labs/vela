@@ -233,7 +233,7 @@ fn main() {
         2,
         "game::reward",
         r#"
-pub struct Reward { count: int }
+pub struct Reward { count: i64 }
 "#,
     ));
     graph.resolve_imports();
@@ -400,7 +400,7 @@ pub fn grant() { return 4; }
         3,
         "game::config",
         r#"
-pub const BONUS: int = 5;
+pub const BONUS: i64 = 5;
 "#,
     ));
     let main = graph

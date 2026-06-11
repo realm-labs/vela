@@ -81,7 +81,7 @@ fn runtime_reflection_includes_compiled_script_modules_and_exports() {
         r#"
 #[doc("Grant reward.")]
 #[event("reward")]
-pub fn grant(player, amount: int = 1) -> bool {
+pub fn grant(player, amount: i64 = 1) -> bool {
     return true;
 }
 "#,

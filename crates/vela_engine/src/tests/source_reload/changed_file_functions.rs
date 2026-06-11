@@ -200,7 +200,7 @@ fn runtime_stages_changed_file_hot_reload_rejection_until_safe_point() {
 #[test]
 fn runtime_stages_changed_file_return_abi_rejection_until_safe_point() {
     let root = unique_test_dir("runtime_stage_changed_file_return_abi");
-    let reward_file = write_typed_reward_modules(&root, "return grant();", "int", "2");
+    let reward_file = write_typed_reward_modules(&root, "return grant();", "i64", "2");
     let engine = Engine::builder()
         .execution_profile(ExecutionProfile::trusted())
         .build()
@@ -223,7 +223,7 @@ fn runtime_stages_changed_file_return_abi_rejection_until_safe_point() {
         Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(2)))
     );
 
-    write_typed_reward_module(&reward_file, "float", "6.0");
+    write_typed_reward_module(&reward_file, "f64", "6.0");
     runtime
         .stage_hot_reload_update_changed_file(&root, &reward_file)
         .expect("runtime should be hot-reload enabled")
@@ -258,8 +258,8 @@ fn runtime_stages_changed_file_return_abi_rejection_until_safe_point() {
         panic!("expected changed function return ABI");
     };
     assert_eq!(function, "game::reward::grant");
-    assert_eq!(old.as_deref(), Some("int"));
-    assert_eq!(new.as_deref(), Some("float"));
+    assert_eq!(old.as_deref(), Some("i64"));
+    assert_eq!(new.as_deref(), Some("f64"));
     assert!(source_span.is_some());
     assert_eq!(
         runtime.call_raw(
@@ -276,7 +276,7 @@ fn runtime_stages_changed_file_return_abi_rejection_until_safe_point() {
 #[test]
 fn runtime_stages_changed_file_required_parameter_rejection_until_safe_point() {
     let root = unique_test_dir("runtime_stage_changed_file_required_parameter");
-    let reward_file = write_typed_reward_modules(&root, "return 2;", "int", "2");
+    let reward_file = write_typed_reward_modules(&root, "return 2;", "i64", "2");
     let engine = Engine::builder()
         .execution_profile(ExecutionProfile::trusted())
         .build()
@@ -299,7 +299,7 @@ fn runtime_stages_changed_file_required_parameter_rejection_until_safe_point() {
         Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(2)))
     );
 
-    write_reward_module_with_signature(&reward_file, "(amount: int) -> int", "amount");
+    write_reward_module_with_signature(&reward_file, "(amount: i64) -> i64", "amount");
     runtime
         .stage_hot_reload_update_changed_file(&root, &reward_file)
         .expect("runtime should be hot-reload enabled")

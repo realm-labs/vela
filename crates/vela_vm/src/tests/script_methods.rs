@@ -90,11 +90,11 @@ fn runs_compiled_script_impl_method_dispatch() {
     let program = compile_program_source(
         SourceId::new(1),
         r#"
-trait BonusSource { fn bonus(self, amount) -> int; }
-struct Player { level: int }
+trait BonusSource { fn bonus(self, amount) -> i64; }
+struct Player { level: i64 }
 
 impl BonusSource for Player {
-    fn bonus(self, amount) -> int {
+    fn bonus(self, amount) -> i64 {
         return self.level + amount;
     }
 }
@@ -118,10 +118,10 @@ fn runs_compiled_inherent_script_impl_method_dispatch() {
     let program = compile_program_source(
         SourceId::new(1),
         r#"
-struct Player { level: int }
+struct Player { level: i64 }
 
 impl Player {
-    fn bonus(self, amount) -> int {
+    fn bonus(self, amount) -> i64 {
         return self.level + amount;
     }
 }
@@ -146,12 +146,12 @@ fn runs_compiled_script_method_named_and_default_args() {
         SourceId::new(1),
         r#"
 trait BonusSource {
-    fn bonus(self, amount, multiplier = 2, offset = 1) -> int;
+    fn bonus(self, amount, multiplier = 2, offset = 1) -> i64;
 }
-struct Player { level: int }
+struct Player { level: i64 }
 
 impl BonusSource for Player {
-    fn bonus(self, amount, multiplier = 2, offset = 1) -> int {
+    fn bonus(self, amount, multiplier = 2, offset = 1) -> i64 {
         return self.level + amount * multiplier + offset;
     }
 }
@@ -176,11 +176,11 @@ fn runs_compiled_typed_parameter_method_id_dispatch() {
     let program = compile_program_source(
         SourceId::new(1),
         r#"
-trait BonusSource { fn bonus(self, amount) -> int; }
-struct Player { level: int }
+trait BonusSource { fn bonus(self, amount) -> i64; }
+struct Player { level: i64 }
 
 impl BonusSource for Player {
-    fn bonus(self, amount) -> int {
+    fn bonus(self, amount) -> i64 {
         return self.level + amount;
     }
 }
@@ -213,11 +213,11 @@ fn runs_compiled_immediate_script_method_id_dispatch() {
     let program = compile_program_source(
         SourceId::new(1),
         r#"
-trait BonusSource { fn bonus(self, amount) -> int; }
-struct Player { level: int }
+trait BonusSource { fn bonus(self, amount) -> i64; }
+struct Player { level: i64 }
 
 impl BonusSource for Player {
-    fn bonus(self, amount) -> int {
+    fn bonus(self, amount) -> i64 {
         return self.level + amount;
     }
 }
@@ -241,10 +241,10 @@ fn runs_compiled_trait_default_method_dispatch() {
         SourceId::new(1),
         r#"
 trait BonusSource {
-    fn bonus(self, amount) -> int { return self.level + amount; }
+    fn bonus(self, amount) -> i64 { return self.level + amount; }
     fn label(self) -> string { return self.name; }
 }
-struct Player { level: int, name: string }
+struct Player { level: i64, name: string }
 
 impl BonusSource for Player {}
 
@@ -300,11 +300,11 @@ fn runs_compiled_captured_receiver_method_id_dispatch() {
     let program = compile_program_source(
         SourceId::new(1),
         r#"
-trait BonusSource { fn bonus(self, amount) -> int; }
-struct Player { level: int }
+trait BonusSource { fn bonus(self, amount) -> i64; }
+struct Player { level: i64 }
 
 impl BonusSource for Player {
-    fn bonus(self, amount) -> int {
+    fn bonus(self, amount) -> i64 {
         return self.level + amount;
     }
 }
@@ -329,11 +329,11 @@ fn runs_compiled_binding_pattern_receiver_method_id_dispatch() {
     let program = compile_program_source(
         SourceId::new(1),
         r#"
-trait BonusSource { fn bonus(self, amount) -> int; }
-struct Player { level: int }
+trait BonusSource { fn bonus(self, amount) -> i64; }
+struct Player { level: i64 }
 
 impl BonusSource for Player {
-    fn bonus(self, amount) -> int {
+    fn bonus(self, amount) -> i64 {
         return self.level + amount;
     }
 }
@@ -360,10 +360,10 @@ fn runs_compiled_host_ref_script_impl_method_dispatch() {
     let program = compile_host_program_source(
         SourceId::new(1),
         r#"
-trait BonusSource { fn bonus(self, amount) -> int; }
+trait BonusSource { fn bonus(self, amount) -> i64; }
 
 impl BonusSource for Player {
-    fn bonus(self, amount) -> int {
+    fn bonus(self, amount) -> i64 {
         return reflect::get(self, "level") + amount;
     }
 }
@@ -406,10 +406,10 @@ fn host_ref_script_impl_dispatch_uses_registered_type_registry() {
     let program = compile_host_program_source(
         SourceId::new(1),
         r#"
-trait BonusSource { fn bonus(self, amount) -> int; }
+trait BonusSource { fn bonus(self, amount) -> i64; }
 
 impl BonusSource for Player {
-    fn bonus(self, amount) -> int {
+    fn bonus(self, amount) -> i64 {
         return amount + 7;
     }
 }
@@ -450,8 +450,8 @@ fn runs_compiled_record_variant_field_method_id_dispatch() {
     let program = compile_program_source(
         SourceId::new(1),
         r#"
-trait BonusSource { fn bonus(self, amount) -> int; }
-struct Player { level: int }
+trait BonusSource { fn bonus(self, amount) -> i64; }
+struct Player { level: i64 }
 
 enum Event {
     Grant { player: Player },
@@ -459,7 +459,7 @@ enum Event {
 }
 
 impl BonusSource for Player {
-    fn bonus(self, amount) -> int {
+    fn bonus(self, amount) -> i64 {
         return self.level + amount;
     }
 }
@@ -486,8 +486,8 @@ fn runs_compiled_tuple_variant_field_method_id_dispatch() {
     let program = compile_program_source(
         SourceId::new(1),
         r#"
-trait BonusSource { fn bonus(self, amount) -> int; }
-struct Player { level: int }
+trait BonusSource { fn bonus(self, amount) -> i64; }
+struct Player { level: i64 }
 
 enum Event {
     Grant(player: Player),
@@ -495,7 +495,7 @@ enum Event {
 }
 
 impl BonusSource for Player {
-    fn bonus(self, amount) -> int {
+    fn bonus(self, amount) -> i64 {
         return self.level + amount;
     }
 }
@@ -523,12 +523,12 @@ fn explicit_impl_method_overrides_trait_default_dispatch() {
         SourceId::new(1),
         r#"
 trait BonusSource {
-    fn bonus(self, amount) -> int { return self.level + amount; }
+    fn bonus(self, amount) -> i64 { return self.level + amount; }
 }
-struct Player { level: int }
+struct Player { level: i64 }
 
 impl BonusSource for Player {
-    fn bonus(self, amount) -> int {
+    fn bonus(self, amount) -> i64 {
         return amount * 2;
     }
 }
@@ -553,11 +553,11 @@ fn runs_compiled_module_qualified_script_impl_method_dispatch() {
         SourceId::new(1),
         ModulePath::from_qualified("game::combat"),
         r#"
-trait BonusSource { fn bonus(self, amount) -> int; }
-struct Player { level: int }
+trait BonusSource { fn bonus(self, amount) -> i64; }
+struct Player { level: i64 }
 
 impl BonusSource for Player {
-    fn bonus(self, amount) -> int {
+    fn bonus(self, amount) -> i64 {
         return self.level + amount;
     }
 }
@@ -583,11 +583,11 @@ fn runs_compiled_module_typed_parameter_method_id_dispatch() {
             SourceId::new(1),
             ModulePath::from_qualified("game::model"),
             r#"
-pub trait BonusSource { fn bonus(self, amount) -> int; }
-pub struct Player { level: int }
+pub trait BonusSource { fn bonus(self, amount) -> i64; }
+pub struct Player { level: i64 }
 
 impl BonusSource for Player {
-    fn bonus(self, amount) -> int {
+    fn bonus(self, amount) -> i64 {
         return self.level + amount;
     }
 }

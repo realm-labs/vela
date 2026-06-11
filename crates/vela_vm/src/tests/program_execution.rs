@@ -151,11 +151,11 @@ fn managed_heap_execution_runs_script_impl_method_dispatch() {
     let program = compile_program_source(
         SourceId::new(1),
         r#"
-trait BonusSource { fn bonus(self, amount) -> int; }
-struct Player { level: int }
+trait BonusSource { fn bonus(self, amount) -> i64; }
+struct Player { level: i64 }
 
 impl BonusSource for Player {
-    fn bonus(self, amount) -> int {
+    fn bonus(self, amount) -> i64 {
         return self.level + amount;
     }
 }
@@ -182,10 +182,10 @@ fn managed_heap_execution_runs_trait_default_method_dispatch() {
         SourceId::new(1),
         r#"
 trait BonusSource {
-    fn bonus(self, amount) -> int { return self.level + amount; }
+    fn bonus(self, amount) -> i64 { return self.level + amount; }
     fn label(self) -> string { return self.name; }
 }
-struct Player { level: int, name: string }
+struct Player { level: i64, name: string }
 
 impl BonusSource for Player {}
 
@@ -213,8 +213,8 @@ fn runs_compiled_const_expression_source() {
     let code = compile_function_source(
         SourceId::new(1),
         r#"
-const BASE: int = 10;
-const BONUS: int = BASE + 5 * 2;
+const BASE: i64 = 10;
+const BONUS: i64 = BASE + 5 * 2;
 
 fn main() {
     return BONUS;

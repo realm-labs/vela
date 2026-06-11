@@ -672,7 +672,7 @@ fn runtime_stages_dir_added_trait_impl_until_safe_point() {
 #[test]
 fn runtime_stages_dir_removed_trait_rejection_until_safe_point() {
     let root = unique_test_dir("runtime_stage_dir_removed_trait_rejection");
-    let reward_file = write_trait_abi_modules(&root, 2, "int");
+    let reward_file = write_trait_abi_modules(&root, 2, "i64");
     let engine = Engine::builder()
         .execution_profile(ExecutionProfile::trusted())
         .build()
@@ -739,7 +739,7 @@ fn runtime_stages_dir_removed_trait_rejection_until_safe_point() {
 #[test]
 fn runtime_stages_dir_trait_method_return_rejection_until_safe_point() {
     let root = unique_test_dir("runtime_stage_dir_trait_method_return_rejection");
-    let reward_file = write_trait_abi_modules(&root, 2, "int");
+    let reward_file = write_trait_abi_modules(&root, 2, "i64");
     let engine = Engine::builder()
         .execution_profile(ExecutionProfile::trusted())
         .build()
@@ -762,7 +762,7 @@ fn runtime_stages_dir_trait_method_return_rejection_until_safe_point() {
         Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(2)))
     );
 
-    write_trait_abi_module(&reward_file, 6, "float");
+    write_trait_abi_module(&reward_file, 6, "f64");
     runtime
         .stage_hot_reload_update_dir(&root)
         .expect("runtime should be hot-reload enabled")
@@ -806,7 +806,7 @@ fn runtime_stages_dir_trait_method_return_rejection_until_safe_point() {
 #[test]
 fn runtime_stages_dir_required_trait_method_rejection_until_safe_point() {
     let root = unique_test_dir("runtime_stage_dir_required_trait_method_rejection");
-    let reward_file = write_trait_abi_modules(&root, 2, "int");
+    let reward_file = write_trait_abi_modules(&root, 2, "i64");
     let engine = Engine::builder()
         .execution_profile(ExecutionProfile::trusted())
         .build()
@@ -873,7 +873,7 @@ fn runtime_stages_dir_required_trait_method_rejection_until_safe_point() {
 #[test]
 fn runtime_stages_dir_defaulted_trait_method_addition_until_safe_point() {
     let root = unique_test_dir("runtime_stage_dir_defaulted_trait_method_addition");
-    let reward_file = write_trait_abi_modules(&root, 2, "int");
+    let reward_file = write_trait_abi_modules(&root, 2, "i64");
     let engine = Engine::builder()
         .execution_profile(ExecutionProfile::trusted())
         .build()
