@@ -1,7 +1,10 @@
+use vela_common::HostTypeId;
+use vela_def::FieldId;
+use vela_host::target::HostTargetPlan;
 use vela_registry::{DefinitionRegistry, FunctionDef, FunctionSignature};
 
 use super::*;
-use crate::Register;
+use crate::{CacheSiteKind, InstructionOffset, Register};
 
 #[test]
 fn linker_fails_on_unresolved_native_calls() {
@@ -307,4 +310,69 @@ fn linker_rejects_name_only_method_and_record_field_fallbacks() {
         .link_program(&field_program)
         .expect_err("name-only record field dispatch should not link");
     assert!(matches!(error, LinkError::UnresolvedRecordField { .. }));
+}
+
+#[test]
+fn linker_remaps_host_target_plans_and_host_methods_to_linked_handles() {
+    let method = HostMethodId::new(13);
+    let plan = HostTargetPlan::new(HostTypeId::new(7)).field(FieldId::new(11));
+    let mut code = UnlinkedCodeObject::new("main", 3).with_params(vec!["player".to_owned()]);
+    code.host_targets.push(plan.clone());
+    code.host_targets.push(plan.clone());
+    let read_site = code.push_cache_site(CacheSiteKind::HostPathRead, InstructionOffset(0));
+    let call_site = code.push_cache_site(CacheSiteKind::HostPathCall, InstructionOffset(1));
+    code.push_instruction(UnlinkedInstruction::new(
+        UnlinkedInstructionKind::HostRead {
+            dst: Register(1),
+            root: Register(0),
+            target: HostTargetPlanId::new(1),
+            dynamic_args: Vec::new(),
+            cache_site: read_site,
+        },
+    ));
+    code.push_instruction(UnlinkedInstruction::new(
+        UnlinkedInstructionKind::HostCall {
+            dst: Some(Register(2)),
+            root: Register(0),
+            target: HostTargetPlanId::new(1),
+            dynamic_args: Vec::new(),
+            method,
+            args: vec![Register(1)],
+            cache_site: call_site,
+        },
+    ));
+    code.push_instruction(UnlinkedInstruction::new(UnlinkedInstructionKind::Return {
+        src: Register(2),
+    }));
+    let mut program = UnlinkedProgram::new();
+    program.insert_function(code);
+
+    let linked = Linker::new()
+        .link_program(&program)
+        .expect("host targets should link");
+    let main = linked
+        .functions()
+        .find(|(_, code)| linked.debug_name(code.debug_name) == "main")
+        .map(|(_, code)| code)
+        .expect("main function should link");
+
+    assert_eq!(main.host_targets, vec![plan]);
+    assert!(matches!(
+        main.instructions[0].kind,
+        InstructionKind::HostRead {
+            target,
+            ..
+        } if target == HostTargetPlanId::new(0)
+    ));
+    assert!(matches!(
+        main.instructions[1].kind,
+        InstructionKind::HostCall {
+            target,
+            method: dispatch,
+            ..
+        } if target == HostTargetPlanId::new(0)
+            && linked.method_dispatch(dispatch).is_some_and(|dispatch| {
+                dispatch.kind == LinkedMethodDispatchKind::Host { method_id: method }
+            })
+    ));
 }

@@ -1665,7 +1665,7 @@ surface.
 - Host method/field IDs come from `DefPath` through registry.
 - Engine no longer reconstructs compiler identity maps from reflection-only descriptors.
 
-- [ ] **Task 8.2: Link host target plans**
+- [x] **Task 8.2: Link host target plans**
 
 **Objective:** Ensure host access instructions are linked to cache-ready targets.
 

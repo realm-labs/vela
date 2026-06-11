@@ -258,7 +258,12 @@ impl<'linker, 'registry> LinkContext<'linker, 'registry> {
         linked.frame = frame;
         linked.cache_sites = code.cache_sites.clone();
         linked.constants = code.constants.clone();
-        linked.host_targets = code.host_targets.clone();
+        let host_target_map = code
+            .host_targets
+            .iter()
+            .cloned()
+            .map(|target| linked.intern_host_target(target))
+            .collect::<Vec<_>>();
 
         let mut nested_handles = Vec::with_capacity(code.nested_functions.len());
         for nested in &code.nested_functions {
@@ -270,8 +275,14 @@ impl<'linker, 'registry> LinkContext<'linker, 'registry> {
         }
 
         for instruction in &code.instructions {
-            let instruction =
-                self.link_instruction(program, code, &nested_handles, &mut linked, instruction)?;
+            let instruction = self.link_instruction(
+                program,
+                code,
+                &nested_handles,
+                &host_target_map,
+                &mut linked,
+                instruction,
+            )?;
             linked.push_instruction(instruction);
         }
 
@@ -295,6 +306,7 @@ impl<'linker, 'registry> LinkContext<'linker, 'registry> {
         program: &UnlinkedProgram,
         code: &UnlinkedCodeObject,
         nested_handles: &[ScriptFunctionHandle],
+        host_target_map: &[HostTargetPlanId],
         linked_code: &mut LinkedCodeObject,
         instruction: &UnlinkedInstruction,
     ) -> Result<Instruction, LinkError> {
@@ -675,11 +687,11 @@ impl<'linker, 'registry> LinkContext<'linker, 'registry> {
                 dynamic_args,
                 cache_site,
             } => {
-                self.require_host_target(code, *target)?;
+                let target = self.link_host_target(code, host_target_map, *target)?;
                 InstructionKind::HostRead {
                     dst: *dst,
                     root: *root,
-                    target: *target,
+                    target,
                     dynamic_args: dynamic_args.clone(),
                     cache_site: *cache_site,
                 }
@@ -691,10 +703,10 @@ impl<'linker, 'registry> LinkContext<'linker, 'registry> {
                 src,
                 cache_site,
             } => {
-                self.require_host_target(code, *target)?;
+                let target = self.link_host_target(code, host_target_map, *target)?;
                 InstructionKind::HostWrite {
                     root: *root,
-                    target: *target,
+                    target,
                     dynamic_args: dynamic_args.clone(),
                     src: *src,
                     cache_site: *cache_site,
@@ -708,10 +720,10 @@ impl<'linker, 'registry> LinkContext<'linker, 'registry> {
                 rhs,
                 cache_site,
             } => {
-                self.require_host_target(code, *target)?;
+                let target = self.link_host_target(code, host_target_map, *target)?;
                 InstructionKind::HostMutate {
                     root: *root,
-                    target: *target,
+                    target,
                     dynamic_args: dynamic_args.clone(),
                     op: *op,
                     rhs: *rhs,
@@ -724,10 +736,10 @@ impl<'linker, 'registry> LinkContext<'linker, 'registry> {
                 dynamic_args,
                 cache_site,
             } => {
-                self.require_host_target(code, *target)?;
+                let target = self.link_host_target(code, host_target_map, *target)?;
                 InstructionKind::HostRemove {
                     root: *root,
-                    target: *target,
+                    target,
                     dynamic_args: dynamic_args.clone(),
                     cache_site: *cache_site,
                 }
@@ -741,14 +753,14 @@ impl<'linker, 'registry> LinkContext<'linker, 'registry> {
                 args,
                 cache_site,
             } => {
-                self.require_host_target(code, *target)?;
+                let target = self.link_host_target(code, host_target_map, *target)?;
                 let dispatch = self.link_host_method(*method);
                 let debug_text = format!("host_method::{}", method.get());
                 let debug_name = self.linked.intern_debug_name(debug_text);
                 InstructionKind::HostCall {
                     dst: *dst,
                     root: *root,
-                    target: *target,
+                    target,
                     dynamic_args: dynamic_args.clone(),
                     method: dispatch,
                     debug_name,
@@ -926,13 +938,15 @@ impl<'linker, 'registry> LinkContext<'linker, 'registry> {
         ))
     }
 
-    fn require_host_target(
+    fn link_host_target(
         &self,
         code: &UnlinkedCodeObject,
+        host_target_map: &[HostTargetPlanId],
         target: HostTargetPlanId,
-    ) -> Result<(), LinkError> {
-        code.host_target(target)
-            .map(|_| ())
+    ) -> Result<HostTargetPlanId, LinkError> {
+        host_target_map
+            .get(target.index())
+            .copied()
             .ok_or_else(|| LinkError::InvalidHostTarget {
                 function: code.name.clone(),
                 target,
