@@ -138,6 +138,12 @@ Embedding float conversions are exact: Rust `f32` maps to Vela `f32`, Rust
 `f64` maps to Vela `f64`, and the embedding layer does not silently convert
 between integer, `f32`, and `f64` values.
 
+Wrapping arithmetic and bit manipulation are explicit stdlib helper functions
+for the primitive refactor checkpoint. Bitwise syntax operators are deferred.
+The current representative shift helpers use `u32` shift counts, return zero
+when the count is greater than or equal to the left operand width, and rotate
+helpers use native modulo-width rotate semantics.
+
 ### Runtime And Heap
 
 The VM is a register bytecode interpreter. Execution budgets cover

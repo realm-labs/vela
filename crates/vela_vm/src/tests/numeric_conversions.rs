@@ -142,3 +142,79 @@ fn main() {
         error.kind()
     );
 }
+
+#[test]
+fn numeric_wrapping_helpers_wrap_without_operator_overflow() {
+    assert_eq!(
+        run_conversion_source(
+            r#"
+fn main() {
+    return [
+        u8::wrapping_add(255u8, 1u8),
+        u32::wrapping_mul(65536u32, 65536u32),
+        i8::wrapping_add(127i8, 1i8),
+    ];
+}
+"#
+        ),
+        Ok(OwnedValue::Array(vec![
+            OwnedValue::Scalar(ScalarValue::U8(0)),
+            OwnedValue::Scalar(ScalarValue::U32(0)),
+            OwnedValue::Scalar(ScalarValue::I8(-128)),
+        ]))
+    );
+}
+
+#[test]
+fn u8_bit_helpers_apply_explicit_protocol_operations() {
+    assert_eq!(
+        run_conversion_source(
+            r#"
+fn main() {
+    return [
+        u8::bit_and(10u8, 12u8),
+        u8::bit_or(10u8, 12u8),
+        u8::bit_xor(10u8, 12u8),
+        u8::shift_left(1u8, 3u32),
+        u8::shift_left(1u8, 8u32),
+        u8::shift_right(128u8, 7u32),
+        u8::rotate_left(129u8, 1u32),
+        u8::rotate_right(3u8, 1u32),
+    ];
+}
+"#
+        ),
+        Ok(OwnedValue::Array(vec![
+            OwnedValue::Scalar(ScalarValue::U8(8)),
+            OwnedValue::Scalar(ScalarValue::U8(14)),
+            OwnedValue::Scalar(ScalarValue::U8(6)),
+            OwnedValue::Scalar(ScalarValue::U8(8)),
+            OwnedValue::Scalar(ScalarValue::U8(0)),
+            OwnedValue::Scalar(ScalarValue::U8(1)),
+            OwnedValue::Scalar(ScalarValue::U8(3)),
+            OwnedValue::Scalar(ScalarValue::U8(129)),
+        ]))
+    );
+}
+
+#[test]
+fn numeric_bit_helpers_reject_wrong_source_scalar_tags() {
+    let error = run_conversion_source(
+        r#"
+fn mask(value) {
+    return u8::bit_and(value, 1u8);
+}
+
+fn main() {
+    return mask(1u32);
+}
+"#,
+    )
+    .expect_err("u8::bit_and requires u8 operands");
+
+    assert!(
+        matches!(error.kind(), VmErrorKind::TypeContractViolation { .. }),
+        "got {:?}",
+        error.kind()
+    );
+}

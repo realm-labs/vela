@@ -1493,23 +1493,27 @@ Representative conversion slice implemented:
 
 #### Task 8.2: Add wrapping/bit APIs
 
-- [ ] Add wrapping arithmetic:
-  - [ ] `u8::wrapping_add`
-  - [ ] `u32::wrapping_mul`
-  - [ ] representative signed variants.
-- [ ] Add bit helpers:
-  - [ ] `bit_and`
-  - [ ] `bit_or`
-  - [ ] `bit_xor`
-  - [ ] `shift_left`
-  - [ ] `shift_right`
-  - [ ] `rotate_left`
-  - [ ] `rotate_right`
-- [ ] Decide whether syntax operators follow now or later.
+Representative wrapping/bit slice implemented as manifest-driven stdlib
+functions:
+
+- [x] Add wrapping arithmetic:
+  - [x] `u8::wrapping_add`
+  - [x] `u32::wrapping_mul`
+  - [x] representative signed variant: `i8::wrapping_add`.
+- [x] Add representative `u8` bit helpers:
+  - [x] `bit_and`
+  - [x] `bit_or`
+  - [x] `bit_xor`
+  - [x] `shift_left`
+  - [x] `shift_right`
+  - [x] `rotate_left`
+  - [x] `rotate_right`
+- [x] Decide whether syntax operators follow now or later: defer syntax
+      operators; use explicit helper functions in this checkpoint.
 
 **Termination condition:**
 
-- [ ] Binary/protocol code can express wrapping and bit manipulation without relying on implicit overflow.
+- [x] Binary/protocol code can express wrapping and bit manipulation without relying on implicit overflow.
 
 ---
 

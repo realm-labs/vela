@@ -349,6 +349,43 @@ fn main() {
 }
 
 #[test]
+fn compiler_contextualizes_numeric_bit_helper_args_from_registry() {
+    let registry = vela_stdlib::standard_registry().expect("standard registry should build");
+    let program = compile_program_source_with_registry(
+        SourceId::new(1),
+        r#"
+fn main() {
+    return u8::shift_left(u8::wrapping_add(255, 1), 3);
+}
+"#,
+        registry.compile_view(),
+    )
+    .expect("numeric bit helper args should use registry type hints");
+    let main = program.function("main").expect("main function");
+
+    for expected in [
+        vela_common::ScalarValue::U8(255),
+        vela_common::ScalarValue::U8(1),
+        vela_common::ScalarValue::U32(3),
+    ] {
+        assert!(
+            main.constants.contains(&Constant::Scalar(expected)),
+            "missing scalar constant {expected}"
+        );
+    }
+    assert!(main.instructions.iter().any(|instruction| matches!(
+        &instruction.kind,
+        UnlinkedInstructionKind::CallNative { name, args, .. }
+            if name == "u8::wrapping_add" && args.len() == 2
+    )));
+    assert!(main.instructions.iter().any(|instruction| matches!(
+        &instruction.kind,
+        UnlinkedInstructionKind::CallNative { name, args, .. }
+            if name == "u8::shift_left" && args.len() == 2
+    )));
+}
+
+#[test]
 fn compiler_rejects_static_native_arg_contract_mismatches() {
     let registry = vela_stdlib::standard_registry().expect("standard registry should build");
     let error = compile_program_source_with_registry(

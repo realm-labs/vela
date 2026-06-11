@@ -140,6 +140,31 @@ range. `f32::try_from_f64` accepts finite values representable in the finite
 `f32` range and rounds to `f32`; non-finite or out-of-range values return
 `Result::Err`.
 
+### Numeric Wrapping And Bit Helpers
+
+Wrapping arithmetic and bit manipulation are explicit standard-library
+functions in the current checkpoint, not syntax operators and not implicit
+overflow behavior.
+
+```text
+u8::wrapping_add(lhs: u8, rhs: u8) -> u8
+u32::wrapping_mul(lhs: u32, rhs: u32) -> u32
+i8::wrapping_add(lhs: i8, rhs: i8) -> i8
+u8::bit_and(lhs: u8, rhs: u8) -> u8
+u8::bit_or(lhs: u8, rhs: u8) -> u8
+u8::bit_xor(lhs: u8, rhs: u8) -> u8
+u8::shift_left(value: u8, bits: u32) -> u8
+u8::shift_right(value: u8, bits: u32) -> u8
+u8::rotate_left(value: u8, bits: u32) -> u8
+u8::rotate_right(value: u8, bits: u32) -> u8
+```
+
+These helpers use exact primitive contracts from the stdlib manifest. Known
+literal arguments are context-typed by those contracts, static mismatches are
+compile errors, and dynamic mismatches are runtime guard errors. The `u8`
+shift helpers return zero when the shift count is greater than or equal to the
+bit width; rotate helpers use native modulo-width rotate semantics.
+
 ### Math And Time
 
 ```text

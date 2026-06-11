@@ -147,6 +147,18 @@ fn math_set_and_time_functions_expose_return_facts() {
         TypeFact::result(TypeFact::Float, TypeFact::String)
     );
     assert_eq!(
+        stdlib_function_fact("u8::wrapping_add", &[TypeFact::Int, TypeFact::Int])
+            .expect("u8::wrapping_add fact")
+            .returns,
+        TypeFact::Int
+    );
+    assert_eq!(
+        stdlib_function_fact("u8::rotate_right", &[TypeFact::Int, TypeFact::Int])
+            .expect("u8::rotate_right fact")
+            .returns,
+        TypeFact::Int
+    );
+    assert_eq!(
         stdlib_function_fact("time::now", &[])
             .expect("time::now fact")
             .returns,
@@ -205,6 +217,16 @@ fn function_completion_facts_enumerate_global_api_surface() {
         fact.name == "f32::try_from_f64"
             && fact.params == vec![TypeFact::Float]
             && fact.returns == TypeFact::result(TypeFact::Float, TypeFact::String)
+    }));
+    assert!(facts.iter().any(|fact| {
+        fact.name == "u8::bit_and"
+            && fact.params == vec![TypeFact::Int, TypeFact::Int]
+            && fact.returns == TypeFact::Int
+    }));
+    assert!(facts.iter().any(|fact| {
+        fact.name == "u8::shift_left"
+            && fact.params == vec![TypeFact::Int, TypeFact::Int]
+            && fact.returns == TypeFact::Int
     }));
     assert!(facts.iter().any(|fact| {
         fact.name == "result::to_error_option"

@@ -595,6 +595,106 @@ pub const STD_FUNCTIONS: &[StdFunctionSpec] = &[
         "Result",
         "Narrows a finite f64 value to f32 or returns an error string.",
     ),
+    StdFunctionSpec::new(
+        "u8",
+        "wrapping_add",
+        &[
+            StdParamSpec::new("lhs", "u8"),
+            StdParamSpec::new("rhs", "u8"),
+        ],
+        "u8",
+        "Adds two u8 values with wrapping overflow semantics.",
+    ),
+    StdFunctionSpec::new(
+        "u32",
+        "wrapping_mul",
+        &[
+            StdParamSpec::new("lhs", "u32"),
+            StdParamSpec::new("rhs", "u32"),
+        ],
+        "u32",
+        "Multiplies two u32 values with wrapping overflow semantics.",
+    ),
+    StdFunctionSpec::new(
+        "i8",
+        "wrapping_add",
+        &[
+            StdParamSpec::new("lhs", "i8"),
+            StdParamSpec::new("rhs", "i8"),
+        ],
+        "i8",
+        "Adds two i8 values with wrapping overflow semantics.",
+    ),
+    StdFunctionSpec::new(
+        "u8",
+        "bit_and",
+        &[
+            StdParamSpec::new("lhs", "u8"),
+            StdParamSpec::new("rhs", "u8"),
+        ],
+        "u8",
+        "Applies bitwise AND to two u8 values.",
+    ),
+    StdFunctionSpec::new(
+        "u8",
+        "bit_or",
+        &[
+            StdParamSpec::new("lhs", "u8"),
+            StdParamSpec::new("rhs", "u8"),
+        ],
+        "u8",
+        "Applies bitwise OR to two u8 values.",
+    ),
+    StdFunctionSpec::new(
+        "u8",
+        "bit_xor",
+        &[
+            StdParamSpec::new("lhs", "u8"),
+            StdParamSpec::new("rhs", "u8"),
+        ],
+        "u8",
+        "Applies bitwise XOR to two u8 values.",
+    ),
+    StdFunctionSpec::new(
+        "u8",
+        "shift_left",
+        &[
+            StdParamSpec::new("value", "u8"),
+            StdParamSpec::new("bits", "u32"),
+        ],
+        "u8",
+        "Shifts a u8 value left; shifts at or beyond the width return zero.",
+    ),
+    StdFunctionSpec::new(
+        "u8",
+        "shift_right",
+        &[
+            StdParamSpec::new("value", "u8"),
+            StdParamSpec::new("bits", "u32"),
+        ],
+        "u8",
+        "Shifts a u8 value right; shifts at or beyond the width return zero.",
+    ),
+    StdFunctionSpec::new(
+        "u8",
+        "rotate_left",
+        &[
+            StdParamSpec::new("value", "u8"),
+            StdParamSpec::new("bits", "u32"),
+        ],
+        "u8",
+        "Rotates a u8 value left.",
+    ),
+    StdFunctionSpec::new(
+        "u8",
+        "rotate_right",
+        &[
+            StdParamSpec::new("value", "u8"),
+            StdParamSpec::new("bits", "u32"),
+        ],
+        "u8",
+        "Rotates a u8 value right.",
+    ),
 ];
 
 #[cfg(test)]
@@ -612,7 +712,7 @@ mod tests {
         assert_eq!(STD_TYPES.len(), 22);
         assert_eq!(STD_VARIANTS.len(), 4);
         assert_eq!(STD_FIELDS.len(), 3);
-        assert_eq!(STD_FUNCTIONS.len(), 37);
+        assert_eq!(STD_FUNCTIONS.len(), 47);
         assert_eq!(STD_METHODS.len(), 120);
     }
 
@@ -642,6 +742,16 @@ mod tests {
             STD_FUNCTIONS
                 .iter()
                 .any(|spec| spec.module == "i8" && spec.name == "try_from_i64")
+        );
+        assert!(
+            STD_FUNCTIONS
+                .iter()
+                .any(|spec| spec.module == "u8" && spec.name == "wrapping_add")
+        );
+        assert!(
+            STD_FUNCTIONS
+                .iter()
+                .any(|spec| spec.module == "u8" && spec.name == "bit_and")
         );
         assert!(
             STD_METHODS

@@ -45,6 +45,16 @@ pub enum StdFunctionImplementation {
     I8TryFromI64,
     U8TryFromU64,
     F32TryFromF64,
+    U8WrappingAdd,
+    U32WrappingMul,
+    I8WrappingAdd,
+    U8BitAnd,
+    U8BitOr,
+    U8BitXor,
+    U8ShiftLeft,
+    U8ShiftRight,
+    U8RotateLeft,
+    U8RotateRight,
 }
 
 impl StdFunctionImplementation {
@@ -88,6 +98,16 @@ impl StdFunctionImplementation {
             (b"i8", b"try_from_i64") => Some(Self::I8TryFromI64),
             (b"u8", b"try_from_u64") => Some(Self::U8TryFromU64),
             (b"f32", b"try_from_f64") => Some(Self::F32TryFromF64),
+            (b"u8", b"wrapping_add") => Some(Self::U8WrappingAdd),
+            (b"u32", b"wrapping_mul") => Some(Self::U32WrappingMul),
+            (b"i8", b"wrapping_add") => Some(Self::I8WrappingAdd),
+            (b"u8", b"bit_and") => Some(Self::U8BitAnd),
+            (b"u8", b"bit_or") => Some(Self::U8BitOr),
+            (b"u8", b"bit_xor") => Some(Self::U8BitXor),
+            (b"u8", b"shift_left") => Some(Self::U8ShiftLeft),
+            (b"u8", b"shift_right") => Some(Self::U8ShiftRight),
+            (b"u8", b"rotate_left") => Some(Self::U8RotateLeft),
+            (b"u8", b"rotate_right") => Some(Self::U8RotateRight),
             _ => None,
         }
     }

@@ -60,6 +60,16 @@ fn native_function(implementation: StdFunctionImplementation) -> StdNativeFuncti
         StdFunctionImplementation::I8TryFromI64 => crate::numeric_conversions::i8_try_from_i64,
         StdFunctionImplementation::U8TryFromU64 => crate::numeric_conversions::u8_try_from_u64,
         StdFunctionImplementation::F32TryFromF64 => crate::numeric_conversions::f32_try_from_f64,
+        StdFunctionImplementation::U8WrappingAdd => crate::numeric_conversions::u8_wrapping_add,
+        StdFunctionImplementation::U32WrappingMul => crate::numeric_conversions::u32_wrapping_mul,
+        StdFunctionImplementation::I8WrappingAdd => crate::numeric_conversions::i8_wrapping_add,
+        StdFunctionImplementation::U8BitAnd => crate::numeric_conversions::u8_bit_and,
+        StdFunctionImplementation::U8BitOr => crate::numeric_conversions::u8_bit_or,
+        StdFunctionImplementation::U8BitXor => crate::numeric_conversions::u8_bit_xor,
+        StdFunctionImplementation::U8ShiftLeft => crate::numeric_conversions::u8_shift_left,
+        StdFunctionImplementation::U8ShiftRight => crate::numeric_conversions::u8_shift_right,
+        StdFunctionImplementation::U8RotateLeft => crate::numeric_conversions::u8_rotate_left,
+        StdFunctionImplementation::U8RotateRight => crate::numeric_conversions::u8_rotate_right,
     }
 }
 

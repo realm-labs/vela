@@ -190,6 +190,56 @@ pub(super) fn completion_facts() -> Vec<StdlibFunctionFact> {
             vec![TypeFact::Float],
             TypeFact::result(TypeFact::Float, TypeFact::String),
         ),
+        StdlibFunctionFact::new(
+            "u8::wrapping_add",
+            vec![TypeFact::Int, TypeFact::Int],
+            TypeFact::Int,
+        ),
+        StdlibFunctionFact::new(
+            "u32::wrapping_mul",
+            vec![TypeFact::Int, TypeFact::Int],
+            TypeFact::Int,
+        ),
+        StdlibFunctionFact::new(
+            "i8::wrapping_add",
+            vec![TypeFact::Int, TypeFact::Int],
+            TypeFact::Int,
+        ),
+        StdlibFunctionFact::new(
+            "u8::bit_and",
+            vec![TypeFact::Int, TypeFact::Int],
+            TypeFact::Int,
+        ),
+        StdlibFunctionFact::new(
+            "u8::bit_or",
+            vec![TypeFact::Int, TypeFact::Int],
+            TypeFact::Int,
+        ),
+        StdlibFunctionFact::new(
+            "u8::bit_xor",
+            vec![TypeFact::Int, TypeFact::Int],
+            TypeFact::Int,
+        ),
+        StdlibFunctionFact::new(
+            "u8::shift_left",
+            vec![TypeFact::Int, TypeFact::Int],
+            TypeFact::Int,
+        ),
+        StdlibFunctionFact::new(
+            "u8::shift_right",
+            vec![TypeFact::Int, TypeFact::Int],
+            TypeFact::Int,
+        ),
+        StdlibFunctionFact::new(
+            "u8::rotate_left",
+            vec![TypeFact::Int, TypeFact::Int],
+            TypeFact::Int,
+        ),
+        StdlibFunctionFact::new(
+            "u8::rotate_right",
+            vec![TypeFact::Int, TypeFact::Int],
+            TypeFact::Int,
+        ),
     ];
     facts.extend(super::reflect::completion_facts());
     facts
@@ -482,6 +532,16 @@ pub(super) fn function_fact(name: &str, args: &[TypeFact]) -> Option<StdlibFunct
                 TypeFact::result(TypeFact::Float, TypeFact::String),
             ))
         }
+        "u8::wrapping_add" | "u32::wrapping_mul" | "i8::wrapping_add" | "u8::bit_and"
+        | "u8::bit_or" | "u8::bit_xor" | "u8::shift_left" | "u8::shift_right"
+        | "u8::rotate_left" | "u8::rotate_right" => {
+            expect_len(args, 2)?;
+            Some(StdlibFunctionFact::new(
+                canonical_function_name(name)?,
+                args.to_vec(),
+                TypeFact::Int,
+            ))
+        }
         _ => None,
     }
 }
@@ -683,6 +743,16 @@ fn canonical_function_name(name: &str) -> Option<&'static str> {
         "u64::from_u32" => Some("u64::from_u32"),
         "i8::try_from_i64" => Some("i8::try_from_i64"),
         "u8::try_from_u64" => Some("u8::try_from_u64"),
+        "u8::wrapping_add" => Some("u8::wrapping_add"),
+        "u32::wrapping_mul" => Some("u32::wrapping_mul"),
+        "i8::wrapping_add" => Some("i8::wrapping_add"),
+        "u8::bit_and" => Some("u8::bit_and"),
+        "u8::bit_or" => Some("u8::bit_or"),
+        "u8::bit_xor" => Some("u8::bit_xor"),
+        "u8::shift_left" => Some("u8::shift_left"),
+        "u8::shift_right" => Some("u8::shift_right"),
+        "u8::rotate_left" => Some("u8::rotate_left"),
+        "u8::rotate_right" => Some("u8::rotate_right"),
         _ => None,
     }
 }
