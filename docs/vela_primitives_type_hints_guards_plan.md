@@ -1259,7 +1259,7 @@ then build registry, syntax, guards, and runtime behavior on the new model.
   - [x] later record field writes;
   - [x] enum payload construction;
   - [ ] later enum payload writes when supported;
-  - [ ] embedding-boundary global insertion/update checks.
+  - [x] embedding-boundary global insertion/update checks.
 - [x] API behavior:
   - [x] exact same type -> OK, no guard;
   - [x] exact mismatch -> compile error;

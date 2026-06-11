@@ -129,8 +129,8 @@ fn runtime_script_global_decl_persists_vm_owned_value_and_rust_updates() {
             SourceId::new(1),
             r#"
 struct ServerState {
-    level: Int,
-    name: String,
+    level: i64,
+    name: string,
 }
 
 global state: ServerState;
@@ -275,8 +275,8 @@ fn shared_runtime_image_keeps_script_globals_isolated() {
             SourceId::new(1),
             r#"
 struct ServerState {
-    level: Int,
-    name: String,
+    level: i64,
+    name: string,
 }
 
 global state: ServerState;
@@ -367,6 +367,91 @@ fn read_name() {
     );
 }
 
+#[test]
+fn runtime_insert_global_rejects_type_contract_mismatch() {
+    let engine = Engine::builder().build().expect("engine should build");
+    let program = engine
+        .compile_source(
+            SourceId::new(1),
+            r#"
+global amount: i64;
+
+fn read_amount() {
+    return amount;
+}
+"#,
+        )
+        .expect("program should compile");
+    let mut runtime = Runtime::new(engine, program);
+
+    let error = runtime
+        .insert_global("main::amount", OwnedValue::String("wrong".to_owned()))
+        .expect_err("typed global insertion should reject mismatched value");
+
+    assert_eq!(
+        error.kind(),
+        VmErrorKind::TypeContractViolation {
+            expected: "i64".to_owned(),
+            actual: "string".to_owned(),
+            debug_name: "main::amount".to_owned(),
+        }
+    );
+    assert_eq!(
+        runtime.global("main::amount"),
+        Ok(None),
+        "rejected value must not enter the script global store"
+    );
+}
+
+#[test]
+fn runtime_update_global_rejects_type_contract_mismatch_without_replacing_value() {
+    let engine = Engine::builder().build().expect("engine should build");
+    let program = engine
+        .compile_source(
+            SourceId::new(1),
+            r#"
+struct ServerState {
+    level: i64,
+}
+
+global state: ServerState;
+"#,
+        )
+        .expect("program should compile");
+    let mut runtime = Runtime::new(engine, program);
+    runtime
+        .insert_global(
+            "main::state",
+            OwnedValue::record("ServerState", [("level", OwnedValue::i64(3))]),
+        )
+        .expect("matching global should insert");
+
+    let error = runtime
+        .update_global("main::state", |value| {
+            *value = OwnedValue::String("wrong".to_owned());
+        })
+        .expect_err("typed global update should reject mismatched replacement");
+
+    assert_eq!(
+        error.kind(),
+        VmErrorKind::TypeContractViolation {
+            expected: "ServerState".to_owned(),
+            actual: "string".to_owned(),
+            debug_name: "main::state".to_owned(),
+        }
+    );
+    assert_eq!(
+        script_record_field(
+            &runtime
+                .global("main::state")
+                .expect("global should materialize")
+                .expect("original global should remain"),
+            "level",
+        ),
+        Some(&OwnedValue::i64(3))
+    );
+}
+
 #[cfg(feature = "serde")]
 #[derive(Debug, Eq, PartialEq, Serialize, Deserialize)]
 struct SerdeServerState {
@@ -383,8 +468,8 @@ fn runtime_insert_global_accepts_serde_struct_with_single_api() {
             SourceId::new(1),
             r#"
 struct SerdeServerState {
-    level: Int,
-    name: String,
+    level: i64,
+    name: string,
 }
 
 global state: SerdeServerState;
@@ -451,8 +536,8 @@ fn runtime_insert_global_accepts_runtime_managed_value_with_single_api() {
             SourceId::new(1),
             r#"
 struct ServerState {
-    level: Int,
-    name: String,
+    level: i64,
+    name: string,
 }
 
 global state: ServerState;
@@ -493,8 +578,8 @@ fn runtime_call_returns_runtime_managed_value_that_can_be_passed_back() {
             SourceId::new(1),
             r#"
 struct Reward {
-    gold: Int,
-    xp: Int,
+    gold: i64,
+    xp: i64,
 }
 
 fn make_reward() {
@@ -545,8 +630,8 @@ fn retained_runtime_value_survives_script_global_collection() {
             SourceId::new(1),
             r#"
 struct Reward {
-    gold: Int,
-    label: String,
+    gold: i64,
+    label: string,
 }
 
 global scratch: Reward;
@@ -616,7 +701,7 @@ fn runtime_call_rejects_values_from_another_runtime() {
     let engine = Engine::builder().build().expect("engine should build");
     let source = r#"
 struct Reward {
-    gold: Int,
+    gold: i64,
 }
 
 fn make_reward() {

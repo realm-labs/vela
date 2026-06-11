@@ -5,6 +5,7 @@ use std::sync::{Arc, Mutex};
 
 use vela_bytecode::{ProgramImage, UnlinkedProgram};
 use vela_common::SourceId;
+use vela_hir::module_graph::DeclarationKind;
 use vela_host::access::HostAccess;
 use vela_host::adapter::ScriptStateAdapter;
 use vela_host::error::HostErrorKind;
@@ -149,7 +150,13 @@ where
         name: &str,
         update: impl FnOnce(&mut OwnedValue),
     ) -> VmResult<()> {
-        self.state.script_globals.update(name, update)
+        let mut value = self.state.script_globals.value(name)?.ok_or_else(|| {
+            VmError::new(VmErrorKind::Host(HostErrorKind::MissingGlobal {
+                name: name.to_owned(),
+            }))
+        })?;
+        update(&mut value);
+        self.insert_owned_global(name.to_owned(), value)
     }
 
     #[must_use]
@@ -807,7 +814,7 @@ where
     where
         I: RuntimeImageStorage,
     {
-        runtime.state.script_globals.insert(name, self.into())
+        runtime.insert_owned_global(name, self.into())
     }
 }
 
@@ -817,7 +824,7 @@ impl IntoGlobalValue for OwnedValue {
     where
         I: RuntimeImageStorage,
     {
-        runtime.state.script_globals.insert(name, self)
+        runtime.insert_owned_global(name, self)
     }
 }
 
@@ -830,7 +837,7 @@ macro_rules! impl_owned_global_value {
                 where
                     I: RuntimeImageStorage,
                 {
-                    runtime.state.script_globals.insert(name, OwnedValue::from(self))
+                    runtime.insert_owned_global(name, OwnedValue::from(self))
                 }
             }
         )*
@@ -846,11 +853,8 @@ impl IntoGlobalValue for VelaValue {
         I: RuntimeImageStorage,
     {
         runtime.check_vela_value_runtime(&self)?;
-        runtime
-            .state
-            .script_globals
-            .insert_runtime_value(name, self.value);
-        Ok(())
+        let value = persistent_value_to_owned(&self.value, &mut runtime.state.script_globals.heap)?;
+        runtime.insert_owned_global(name, value)
     }
 }
 
@@ -860,11 +864,8 @@ impl IntoGlobalValue for &VelaValue {
         I: RuntimeImageStorage,
     {
         runtime.check_vela_value_runtime(self)?;
-        runtime
-            .state
-            .script_globals
-            .insert_runtime_value(name, self.value);
-        Ok(())
+        let value = persistent_value_to_owned(&self.value, &mut runtime.state.script_globals.heap)?;
+        runtime.insert_owned_global(name, value)
     }
 }
 
@@ -877,10 +878,7 @@ where
     where
         I: RuntimeImageStorage,
     {
-        runtime
-            .state
-            .script_globals
-            .insert(name, vela_vm::serde::to_owned_value(self)?)
+        runtime.insert_owned_global(name, vela_vm::serde::to_owned_value(self)?)
     }
 }
 
@@ -973,11 +971,6 @@ impl RuntimeScriptGlobalStore {
         Ok(())
     }
 
-    pub fn insert_runtime_value(&mut self, name: impl Into<String>, value: Value) {
-        self.values.insert(name.into(), value);
-        self.collect();
-    }
-
     pub fn value(&mut self, name: &str) -> VmResult<Option<OwnedValue>> {
         let Some(value) = self.values.get(name) else {
             return Ok(None);
@@ -994,16 +987,6 @@ impl RuntimeScriptGlobalStore {
             return Ok(None);
         };
         vela_vm::serde::from_runtime_value(&value, &self.heap).map(Some)
-    }
-
-    pub fn update(&mut self, name: &str, update: impl FnOnce(&mut OwnedValue)) -> VmResult<()> {
-        let mut value = self.value(name)?.ok_or_else(|| {
-            VmError::new(VmErrorKind::Host(HostErrorKind::MissingGlobal {
-                name: name.to_owned(),
-            }))
-        })?;
-        update(&mut value);
-        self.insert(name.to_owned(), value)
     }
 
     fn retain(&mut self, runtime_id: u64, value: Value) -> VelaValue {
@@ -1027,6 +1010,109 @@ impl RuntimeScriptGlobalStore {
             .into_iter()
             .for_each(|value| value.trace_heap_refs(&mut roots));
         self.heap.collect_full(&roots);
+    }
+}
+
+impl<I> RuntimeImpl<I>
+where
+    I: RuntimeImageStorage,
+{
+    fn insert_owned_global(&mut self, name: String, value: OwnedValue) -> VmResult<()> {
+        validate_global_contract(self.image.program_image(), &name, &value)?;
+        self.state.script_globals.insert(name, value)
+    }
+}
+
+fn validate_global_contract(image: &ProgramImage, name: &str, value: &OwnedValue) -> VmResult<()> {
+    let Some(expected) = global_contract_type(image, name) else {
+        return Ok(());
+    };
+    if expected == "any" || owned_value_matches_contract(value, &expected) {
+        return Ok(());
+    }
+    Err(VmError::new(VmErrorKind::TypeContractViolation {
+        expected,
+        actual: owned_value_contract_type_name(value),
+        debug_name: name.to_owned(),
+    }))
+}
+
+fn global_contract_type(image: &ProgramImage, name: &str) -> Option<String> {
+    let graph = image.script_metadata()?;
+    let leaf_name = name.rsplit("::").next().unwrap_or(name);
+    let mut leaf_match = None;
+    for module in graph.module_ids() {
+        let module_path = graph.module_path(module)?.join();
+        let declarations = graph.module(module)?;
+        for declaration_name in declarations.names() {
+            let declaration = declarations.get(declaration_name)?;
+            let metadata = graph.declaration(declaration)?;
+            if metadata.kind != DeclarationKind::Global {
+                continue;
+            }
+            let symbol = if module_path.is_empty() {
+                metadata.name.clone()
+            } else {
+                format!("{module_path}::{}", metadata.name)
+            };
+            if symbol == name {
+                return graph
+                    .global_metadata(declaration)
+                    .map(|metadata| metadata.type_hint.display());
+            }
+            if metadata.name == leaf_name {
+                let Some(metadata) = graph.global_metadata(declaration) else {
+                    continue;
+                };
+                if leaf_match.is_some() {
+                    return None;
+                }
+                leaf_match = Some(metadata.type_hint.display());
+            }
+        }
+    }
+    leaf_match
+}
+
+fn owned_value_matches_contract(value: &OwnedValue, expected: &str) -> bool {
+    match value {
+        OwnedValue::Null => expected == "null",
+        OwnedValue::Bool(_) => expected == "bool",
+        OwnedValue::Scalar(value) => value.primitive_tag().name() == expected,
+        OwnedValue::String(_) => expected == "string",
+        OwnedValue::Bytes(_) => expected == "bytes",
+        OwnedValue::Array(_) => expected == "array",
+        OwnedValue::Map(_) => expected == "map",
+        OwnedValue::Set(_) => expected == "set",
+        OwnedValue::Record { type_name, .. } => type_name == expected,
+        OwnedValue::Enum { enum_name, .. } => enum_name == expected,
+        OwnedValue::Closure(_) => expected == "closure",
+        OwnedValue::Range(_) => expected == "range",
+        OwnedValue::Missing
+        | OwnedValue::HostRef(_)
+        | OwnedValue::PathProxy(_)
+        | OwnedValue::Iterator(_) => false,
+    }
+}
+
+fn owned_value_contract_type_name(value: &OwnedValue) -> String {
+    match value {
+        OwnedValue::Missing => "missing".to_owned(),
+        OwnedValue::Null => "null".to_owned(),
+        OwnedValue::Bool(_) => "bool".to_owned(),
+        OwnedValue::Scalar(value) => value.primitive_tag().name().to_owned(),
+        OwnedValue::String(_) => "string".to_owned(),
+        OwnedValue::Bytes(_) => "bytes".to_owned(),
+        OwnedValue::Array(_) => "array".to_owned(),
+        OwnedValue::Map(_) => "map".to_owned(),
+        OwnedValue::Set(_) => "set".to_owned(),
+        OwnedValue::Record { type_name, .. } => type_name.clone(),
+        OwnedValue::Enum { enum_name, .. } => enum_name.clone(),
+        OwnedValue::Closure(_) => "closure".to_owned(),
+        OwnedValue::Range(_) => "range".to_owned(),
+        OwnedValue::HostRef(_) => "host_ref".to_owned(),
+        OwnedValue::PathProxy(_) => "path_proxy".to_owned(),
+        OwnedValue::Iterator(_) => "iterator".to_owned(),
     }
 }
 

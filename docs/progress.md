@@ -45,7 +45,7 @@ move hot dispatch operands from names to IDs, slots, or resolved targets
 split growing VM hot dispatch families behind focused boundaries
 prepare cache/JIT-facing invariants while keeping generic fallback behavior
 finish verified-bytecode, profile ownership, HostTargetPlan/HostAccess boundaries,
-typed global insertion/update contract validation, and callback/closure materialization prep before M20
+and callback/closure materialization prep before M20
 ```
 
 Post-MVP performance remains a separate track: measure first, then optimize the
