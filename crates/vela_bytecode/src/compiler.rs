@@ -1,6 +1,7 @@
 //! Minimal AST-to-bytecode compiler for the M2 VM loop.
 
 mod assignments;
+mod cache_sites;
 mod call_args;
 mod calls;
 mod const_eval;
@@ -40,10 +41,11 @@ use vela_registry::RegistryCompileView;
 use vela_syntax::ast::{Argument, Block, Expr, ExprKind, FunctionItem, Param};
 
 use crate::{
-    CacheSiteId, CacheSiteKind, Constant, FrameSlotInfo, FrameSlotKind, GuardKind, GuardLocation,
-    InstructionOffset, Register, UnlinkedCodeObject, UnlinkedGuardContext, UnlinkedInstruction,
-    UnlinkedInstructionKind, UnlinkedProgram, UnlinkedTypeGuard, UnlinkedTypeGuardPlan,
+    Constant, FrameSlotInfo, FrameSlotKind, GuardKind, GuardLocation, InstructionOffset, Register,
+    UnlinkedCodeObject, UnlinkedGuardContext, UnlinkedInstruction, UnlinkedInstructionKind,
+    UnlinkedProgram, UnlinkedTypeGuard, UnlinkedTypeGuardPlan,
 };
+use cache_sites::{attach_cache_site, cache_site_kind};
 use control_flow::LoopContext;
 use error::{CompileError, CompileErrorKind, CompileResult};
 use field_slots::ScriptFieldSlots;
@@ -1148,109 +1150,6 @@ fn reject_named_args(args: &[Argument], context: &'static str) -> CompileResult<
         )));
     }
     Ok(())
-}
-
-fn cache_site_kind(kind: &UnlinkedInstructionKind) -> Option<CacheSiteKind> {
-    match kind {
-        UnlinkedInstructionKind::LoadGlobal { .. } => Some(CacheSiteKind::GlobalRead),
-        UnlinkedInstructionKind::CallNative { .. } => Some(CacheSiteKind::NativeCall),
-        UnlinkedInstructionKind::CallMethod { .. }
-        | UnlinkedInstructionKind::CallMethodId { .. } => Some(CacheSiteKind::MethodCall),
-        UnlinkedInstructionKind::GetRecordSlot { .. } => Some(CacheSiteKind::RecordFieldRead),
-        UnlinkedInstructionKind::SetRecordSlot { .. } => Some(CacheSiteKind::RecordFieldWrite),
-        UnlinkedInstructionKind::HostRead { .. } => Some(CacheSiteKind::HostPathRead),
-        UnlinkedInstructionKind::HostWrite { .. } => Some(CacheSiteKind::HostPathWrite),
-        UnlinkedInstructionKind::HostMutate { .. } => Some(CacheSiteKind::HostPathMutate),
-        UnlinkedInstructionKind::HostRemove { .. } => Some(CacheSiteKind::HostPathRemove),
-        UnlinkedInstructionKind::HostCall { .. } => Some(CacheSiteKind::HostPathCall),
-        _ => None,
-    }
-}
-
-fn attach_cache_site(
-    kind: UnlinkedInstructionKind,
-    cache_site: CacheSiteId,
-) -> UnlinkedInstructionKind {
-    match kind {
-        UnlinkedInstructionKind::LoadGlobal {
-            dst, global, slot, ..
-        } => UnlinkedInstructionKind::LoadGlobal {
-            dst,
-            global,
-            slot,
-            cache_site: Some(cache_site),
-        },
-        UnlinkedInstructionKind::HostRead {
-            dst,
-            root,
-            target,
-            dynamic_args,
-            ..
-        } => UnlinkedInstructionKind::HostRead {
-            dst,
-            root,
-            target,
-            dynamic_args,
-            cache_site,
-        },
-        UnlinkedInstructionKind::HostWrite {
-            root,
-            target,
-            dynamic_args,
-            src,
-            ..
-        } => UnlinkedInstructionKind::HostWrite {
-            root,
-            target,
-            dynamic_args,
-            src,
-            cache_site,
-        },
-        UnlinkedInstructionKind::HostMutate {
-            root,
-            target,
-            dynamic_args,
-            op,
-            rhs,
-            ..
-        } => UnlinkedInstructionKind::HostMutate {
-            root,
-            target,
-            dynamic_args,
-            op,
-            rhs,
-            cache_site,
-        },
-        UnlinkedInstructionKind::HostRemove {
-            root,
-            target,
-            dynamic_args,
-            ..
-        } => UnlinkedInstructionKind::HostRemove {
-            root,
-            target,
-            dynamic_args,
-            cache_site,
-        },
-        UnlinkedInstructionKind::HostCall {
-            dst,
-            root,
-            target,
-            dynamic_args,
-            method,
-            args,
-            ..
-        } => UnlinkedInstructionKind::HostCall {
-            dst,
-            root,
-            target,
-            dynamic_args,
-            method,
-            args,
-            cache_site,
-        },
-        _ => kind,
-    }
 }
 
 #[cfg(test)]
