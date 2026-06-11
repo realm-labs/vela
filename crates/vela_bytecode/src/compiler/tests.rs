@@ -188,6 +188,7 @@ fn main(player: Player) {
     }
 }
 
+mod call_diagnostics;
 mod closures_and_bindings;
 mod diagnostics;
 mod expressions;
