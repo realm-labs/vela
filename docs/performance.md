@@ -56,30 +56,40 @@ external runtime versions when used
 
 ## Current Baseline
 
-Latest M19 exit checkpoint:
+Latest M19.5 prep checkpoint:
 
 ```text
-commit=10f03bf
+commit=7097d6b6
 rustc=1.96.0 (ac68faa20 2026-05-25)
 cargo=1.96.0 (30a34c682 2026-05-25)
 target=macos/aarch64
 profile=release
+runtime=linked interpreter, cache-disabled baseline
+warmup=10, repeats=7, iterations=100
 ```
 
 Representative default `baseline` means:
 
 | Benchmark | Mode | Mean ns | P95 ns |
 |---|---|---:|---:|
-| scalar_branch_loop | inline | 3490422 | 3898208 |
-| scalar_dispatch_mix | inline | 7359768 | 8184292 |
-| script_call_small_args | script_program | 9726273 | 9833666 |
-| stdlib_collections | inline | 1042910 | 1217416 |
-| callback_collections | inline | 78264411 | 81619084 |
-| managed_heap_option_result_helpers | managed_heap | 233396131 | 235194542 |
-| host_access | host_access | 350410 | 396791 |
-| managed_heap_host_read_conversion | host_managed_heap_read_conversion | 13977702 | 14445541 |
-| gameplay_monster_kill | gameplay_host | 943922 | 981417 |
-| gc_pacing | gc_pacing | 29055851 | 29898250 |
+| scalar_branch_loop | inline | 4468880 | 5594041 |
+| scalar_dispatch_mix | inline | 6217892 | 6281917 |
+| script_call_small_args | script_program | 8731958 | 8955292 |
+| native_call_wide_args | inline | 5194095 | 5246166 |
+| stdlib_collections | inline | 20019208 | 20191125 |
+| callback_collections | inline | 1340609249 | 1354016666 |
+| direct_closure_calls | inline | 12818005 | 13057083 |
+| managed_heap_callback_collections | managed_heap | 1339119952 | 1341697958 |
+| managed_heap_direct_closure_calls | managed_heap | 12785095 | 12963500 |
+| managed_heap_option_result_helpers | managed_heap | 8737640660 | 8775230083 |
+| host_access | host_access | 209940 | 212459 |
+| host_field_read_write | host_access | 1102642 | 1139542 |
+| host_nested_read_write | host_access | 1309750 | 1376375 |
+| host_dynamic_key_access | host_access | 2792363 | 2845875 |
+| managed_heap_host_read_conversion | host_managed_heap_read_conversion | 2353339 | 2464083 |
+| gameplay_monster_kill | gameplay_host | 872970 | 942958 |
+| managed_heap_record_quads | managed_heap | 28406773 | 41063791 |
+| gc_pacing | gc_pacing | 24438286 | 24635792 |
 
 External quick comparison per-iteration means:
 
@@ -112,9 +122,10 @@ cache-shaped, but M20 should wait until the hot operands are cache-ready:
 
 M19.5 reports interpreter-only before/after rows for each prep family. The
 baseline harness now splits callback rows into collection callbacks and direct
-closure calls, and splits host-boundary rows into field read/write, nested path
-read/write, RMW mutation, dynamic key access, and host method calls. M20 reports
-must separate interpreter-only and cache-enabled results.
+closure calls with default baseline data, and splits host-boundary rows into
+field read/write, nested path read/write, RMW mutation, dynamic key access, and
+host method calls. M20 reports must separate interpreter-only and cache-enabled
+results.
 
 ## Targets
 
