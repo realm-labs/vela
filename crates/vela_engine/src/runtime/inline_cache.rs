@@ -98,7 +98,9 @@ mod tests {
     use vela_host::access::HostAccess;
     use vela_host::mock::MockStateAdapter;
     use vela_host::path::{HostPath, HostRef};
-    use vela_host::resolved::{HostAccessOp, HostSchemaEpoch, ResolvedHostAccessKind};
+    use vela_host::resolved::{
+        HostAccessOp, HostMutationOp, HostSchemaEpoch, ResolvedHostAccessKind,
+    };
     use vela_host::value::HostValue;
     use vela_reflect::registry::{FieldDesc, TypeDesc, TypeKey};
     use vela_vm::owned_value::OwnedValue;
@@ -612,6 +614,100 @@ fn write_level(player: EpochWriteHostPlayer, value: i64) {
             .host_access(cache_site)
             .expect("host write should refresh cache");
         assert_eq!(entry.op, HostAccessOp::Write);
+        assert_eq!(entry.schema_epoch, HostSchemaEpoch::new(1));
+        assert_eq!(entry.resolved.schema_epoch, HostSchemaEpoch::new(1));
+    }
+
+    #[test]
+    fn host_mutate_inline_cache_refreshes_on_schema_epoch_change() {
+        let engine = Engine::builder()
+            .register_type(
+                TypeDesc::new(TypeKey::new(TypeId::new(1), "EpochMutateHostPlayer"))
+                    .host_type(HostTypeId::new(1))
+                    .field(FieldDesc::new(FieldId::new(1), "level").writable(true)),
+            )
+            .build()
+            .expect("engine should build");
+        let program = engine
+            .compile_source(
+                SourceId::new(1),
+                r#"
+fn gain_level(player: EpochMutateHostPlayer, amount: i64) {
+    player.level += amount;
+}
+"#,
+            )
+            .expect("program should compile");
+        let function = program
+            .function("gain_level")
+            .expect("gain_level should exist");
+        let cache_site = function
+            .cache_sites
+            .sites()
+            .iter()
+            .find(|site| site.kind == CacheSiteKind::HostPathMutate)
+            .expect("gain_level should have host mutate site")
+            .id;
+        let mut runtime = Runtime::new(engine, program);
+        let host_ref = HostRef::new(HostTypeId::new(1), HostObjectId::new(42), 1);
+        let host_path = HostPath::new(host_ref).field(FieldId::new(1));
+        let mut adapter = MockStateAdapter::new();
+        adapter.insert_diagnostic_path_value(
+            host_path.clone(),
+            HostValue::Scalar(vela_common::ScalarValue::I64(10)),
+        );
+        let mut access = HostAccess::new();
+
+        runtime
+            .call_raw(
+                "gain_level",
+                &[
+                    OwnedValue::HostRef(host_ref),
+                    OwnedValue::Scalar(vela_common::ScalarValue::I64(2)),
+                ],
+                CallOptions::unbounded(),
+                &mut adapter,
+                &mut access,
+            )
+            .expect("first gain_level should run");
+        assert_eq!(
+            adapter.read_diagnostic_path(&host_path),
+            Ok(HostValue::Scalar(vela_common::ScalarValue::I64(12)))
+        );
+        let entry = runtime
+            .state
+            .inline_caches
+            .host_access(cache_site)
+            .expect("host mutate should populate cache");
+        assert_eq!(entry.root_type, HostTypeId::new(1));
+        assert_eq!(entry.plan_id.index(), 0);
+        assert_eq!(entry.op, HostAccessOp::Mutate(HostMutationOp::Add));
+        assert_eq!(entry.schema_epoch, HostSchemaEpoch::new(0));
+
+        adapter.set_schema_epoch(HostSchemaEpoch::new(1));
+        runtime
+            .call_raw(
+                "gain_level",
+                &[
+                    OwnedValue::HostRef(host_ref),
+                    OwnedValue::Scalar(vela_common::ScalarValue::I64(3)),
+                ],
+                CallOptions::unbounded(),
+                &mut adapter,
+                &mut access,
+            )
+            .expect("second gain_level should run through refreshed cache");
+
+        assert_eq!(
+            adapter.read_diagnostic_path(&host_path),
+            Ok(HostValue::Scalar(vela_common::ScalarValue::I64(15)))
+        );
+        let entry = runtime
+            .state
+            .inline_caches
+            .host_access(cache_site)
+            .expect("host mutate should refresh cache");
+        assert_eq!(entry.op, HostAccessOp::Mutate(HostMutationOp::Add));
         assert_eq!(entry.schema_epoch, HostSchemaEpoch::new(1));
         assert_eq!(entry.resolved.schema_epoch, HostSchemaEpoch::new(1));
     }
