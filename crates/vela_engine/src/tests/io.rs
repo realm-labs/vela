@@ -1,7 +1,8 @@
 use std::path::PathBuf;
 
+use vela_bytecode::UnlinkedProgram;
 use vela_common::SourceId;
-use vela_vm::error::VmErrorKind;
+use vela_vm::error::{VmErrorKind, VmResult};
 use vela_vm::owned_value::OwnedValue;
 
 use crate::engine::Engine;
@@ -9,6 +10,15 @@ use crate::io::{
     FS_READ_TO_STRING_FUNCTION_ID, FS_WRITE_STRING_FUNCTION_ID, IO_PRINTLN_FUNCTION_ID,
 };
 use crate::permission::Capability;
+
+fn run_linked_program(engine: &Engine, program: &UnlinkedProgram) -> VmResult<OwnedValue> {
+    let linked = engine
+        .link_program(program)
+        .expect("engine io test program should link");
+    engine
+        .into_vm_for_program(program)
+        .run_linked_program(&linked, "main", &[])
+}
 
 #[test]
 fn fs_read_requires_io_read_capability() {
@@ -30,7 +40,7 @@ fn main() {
         .expect("program should compile");
 
     assert!(matches!(
-        engine.into_vm().run_program(&program, "main", &[]),
+        run_linked_program(&engine, &program),
         Err(error) if error.kind() == VmErrorKind::PermissionDenied {
             native: "fs::read_to_string".to_owned(),
             capability: "io_read".to_owned(),
@@ -61,7 +71,7 @@ fn main() {
         .expect("program should compile");
 
     assert_eq!(
-        engine.into_vm().run_program(&program, "main", &[]),
+        run_linked_program(&engine, &program),
         Ok(OwnedValue::String("score=7".to_owned()))
     );
 }
@@ -87,7 +97,7 @@ fn main() {
         .expect("program should compile");
 
     assert_eq!(
-        engine.into_vm().run_program(&program, "main", &[]),
+        run_linked_program(&engine, &program),
         Ok(OwnedValue::Bool(true))
     );
 }
