@@ -92,18 +92,18 @@ impl vela_vm::VmInlineCaches for InlineCaches {
 
 #[cfg(test)]
 mod tests {
-    use vela_bytecode::CacheSiteKind;
+    use vela_bytecode::{CacheSiteKind, HostTargetPlanId};
     use vela_common::{HostMethodId, HostObjectId, HostTypeId, SourceId};
     use vela_def::{FieldId, TypeId};
     use vela_host::access::HostAccess;
     use vela_host::mock::MockStateAdapter;
     use vela_host::path::{HostPath, HostRef};
     use vela_host::resolved::{
-        HostAccessOp, HostMutationOp, HostSchemaEpoch, ResolvedHostAccessKind,
+        HostAccessOp, HostMutationOp, HostSchemaEpoch, ResolvedHostAccess, ResolvedHostAccessKind,
     };
     use vela_host::value::HostValue;
     use vela_reflect::registry::{FieldDesc, MethodDesc, TypeDesc, TypeKey};
-    use vela_vm::owned_value::OwnedValue;
+    use vela_vm::{HostInlineCacheEntry, owned_value::OwnedValue};
 
     use crate::engine::Engine;
     use crate::runtime::{CallArgs, CallOptions, Runtime, RuntimeImage};
@@ -616,6 +616,82 @@ fn write_level(player: EpochWriteHostPlayer, value: i64) {
         assert_eq!(entry.op, HostAccessOp::Write);
         assert_eq!(entry.schema_epoch, HostSchemaEpoch::new(1));
         assert_eq!(entry.resolved.schema_epoch, HostSchemaEpoch::new(1));
+    }
+
+    #[test]
+    fn host_access_inline_cache_misses_wrong_operation_guard() {
+        let engine = Engine::builder()
+            .register_type(
+                TypeDesc::new(TypeKey::new(TypeId::new(1), "GuardedHostPlayer"))
+                    .host_type(HostTypeId::new(1))
+                    .field(FieldDesc::new(FieldId::new(1), "level").writable(true)),
+            )
+            .build()
+            .expect("engine should build");
+        let program = engine
+            .compile_source(
+                SourceId::new(1),
+                r#"
+fn write_level(player: GuardedHostPlayer, value: i64) {
+    player.level = value;
+}
+"#,
+            )
+            .expect("program should compile");
+        let function = program
+            .function("write_level")
+            .expect("write_level should exist");
+        let cache_site = function
+            .cache_sites
+            .sites()
+            .iter()
+            .find(|site| site.kind == CacheSiteKind::HostPathWrite)
+            .expect("write_level should have host write site")
+            .id;
+        let mut runtime = Runtime::new(engine, program);
+        runtime.state.inline_caches.set_host_access(
+            cache_site,
+            HostInlineCacheEntry {
+                root_type: HostTypeId::new(1),
+                plan_id: HostTargetPlanId::new(0),
+                op: HostAccessOp::Read,
+                schema_epoch: HostSchemaEpoch::new(0),
+                resolved: ResolvedHostAccess::generic_target(HostSchemaEpoch::new(0)),
+            },
+        );
+
+        let host_ref = HostRef::new(HostTypeId::new(1), HostObjectId::new(42), 1);
+        let host_path = HostPath::new(host_ref).field(FieldId::new(1));
+        let mut adapter = MockStateAdapter::new();
+        let mut access = HostAccess::new();
+
+        runtime
+            .call_raw(
+                "write_level",
+                &[
+                    OwnedValue::HostRef(host_ref),
+                    OwnedValue::Scalar(vela_common::ScalarValue::I64(12)),
+                ],
+                CallOptions::unbounded(),
+                &mut adapter,
+                &mut access,
+            )
+            .expect("write_level should miss wrong-op cache and run");
+
+        assert_eq!(
+            adapter.read_diagnostic_path(&host_path),
+            Ok(HostValue::Scalar(vela_common::ScalarValue::I64(12)))
+        );
+        let entry = runtime
+            .state
+            .inline_caches
+            .host_access(cache_site)
+            .expect("wrong-op cache entry should be replaced");
+        assert_eq!(entry.root_type, HostTypeId::new(1));
+        assert_eq!(entry.plan_id.index(), 0);
+        assert_eq!(entry.op, HostAccessOp::Write);
+        assert_eq!(entry.schema_epoch, HostSchemaEpoch::new(0));
+        assert_eq!(entry.resolved.schema_epoch, HostSchemaEpoch::new(0));
     }
 
     #[test]
