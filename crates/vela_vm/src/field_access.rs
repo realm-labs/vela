@@ -81,6 +81,18 @@ pub(crate) fn dispatch_get_enum_slot(
     frame.write(dst, value)
 }
 
+pub(crate) fn dispatch_enum_tag_equal(
+    frame: &mut CallFrame,
+    heap: Option<&HeapExecution<'_>>,
+    dst: Register,
+    value: Register,
+    enum_name: &str,
+    variant: &str,
+) -> VmResult<()> {
+    let matches = enum_tag_equal(frame.read(value)?, enum_name, variant, heap);
+    frame.write(dst, Value::Bool(matches))
+}
+
 pub(crate) fn dispatch_linked_enum_tag_equal(
     frame: &mut CallFrame,
     heap: Option<&HeapExecution<'_>>,

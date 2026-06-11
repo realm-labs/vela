@@ -668,13 +668,14 @@ impl Vm {
                     enum_name,
                     variant,
                 } => {
-                    let matches = field_access::enum_tag_equal(
-                        frame.read(*value)?,
+                    field_access::dispatch_enum_tag_equal(
+                        &mut frame,
+                        heap.as_deref(),
+                        *dst,
+                        *value,
                         enum_name,
                         variant,
-                        heap.as_deref(),
-                    );
-                    frame.write(*dst, Value::Bool(matches))?;
+                    )?;
                 }
                 UnlinkedInstructionKind::LoadGlobal {
                     dst,
