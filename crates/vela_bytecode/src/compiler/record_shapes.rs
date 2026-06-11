@@ -499,12 +499,14 @@ fn native_call_shape(
         ("reflect", "effects") => Some(reflect_effects_record_shape()),
         ("reflect", "field") => Some(reflect_field_record_shape()),
         ("reflect", "fields") => Some(ValueShape::Array(Box::new(reflect_field_record_shape()))),
+        ("reflect", "functions") => {
+            Some(ValueShape::Array(Box::new(reflect_function_record_shape())))
+        }
         ("reflect", "method") => Some(reflect_method_record_shape()),
         ("reflect", "methods") => Some(ValueShape::Array(Box::new(reflect_method_record_shape()))),
         (
             "reflect",
             "exports"
-            | "functions"
             | "modules"
             | "params"
             | "permissions"
@@ -581,6 +583,32 @@ fn reflect_field_record_shape() -> ValueShape {
         ("source_span".to_owned(), ValueShape::Unknown),
         ("type".to_owned(), ValueShape::Unknown),
         ("writable".to_owned(), ValueShape::Scalar("bool".to_owned())),
+    ]))
+}
+
+fn reflect_function_record_shape() -> ValueShape {
+    ValueShape::Record(RecordShape::from_field_shapes([
+        ("access".to_owned(), ValueShape::Unknown),
+        (
+            "attrs".to_owned(),
+            ValueShape::Map {
+                key: Box::new(ValueShape::Scalar("string".to_owned())),
+                value: Box::new(ValueShape::Unknown),
+            },
+        ),
+        ("docs".to_owned(), ValueShape::Unknown),
+        ("effects".to_owned(), reflect_effects_record_shape()),
+        ("id".to_owned(), ValueShape::Scalar("int".to_owned())),
+        ("module".to_owned(), ValueShape::Unknown),
+        ("name".to_owned(), ValueShape::Scalar("string".to_owned())),
+        ("origin".to_owned(), ValueShape::Scalar("string".to_owned())),
+        (
+            "params".to_owned(),
+            ValueShape::Array(Box::new(ValueShape::Unknown)),
+        ),
+        ("return".to_owned(), ValueShape::Unknown),
+        ("returns".to_owned(), ValueShape::Unknown),
+        ("source_span".to_owned(), ValueShape::Unknown),
     ]))
 }
 

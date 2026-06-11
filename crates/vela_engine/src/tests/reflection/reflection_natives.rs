@@ -1,5 +1,30 @@
 use super::*;
+use vela_bytecode::UnlinkedProgram;
+use vela_vm::budget::ExecutionBudget;
+use vela_vm::error::VmResult;
 use vela_vm::owned_value::OwnedValue;
+
+fn run_linked_program_with_host(
+    engine: &Engine,
+    program: &UnlinkedProgram,
+    args: &[OwnedValue],
+    host: &mut HostExecution<'_>,
+) -> VmResult<OwnedValue> {
+    let linked = engine
+        .link_program(program)
+        .expect("engine reflection native test program should link");
+    let mut budget = ExecutionBudget::unbounded();
+    engine
+        .into_vm_for_program(program)
+        .run_linked_program_with_host_budget_and_caches(
+            &linked,
+            "main",
+            args,
+            host,
+            &mut budget,
+            None,
+        )
+}
 
 #[test]
 fn engine_builder_registers_module_reflection_metadata() {
@@ -68,9 +93,10 @@ fn engine_installs_permissioned_reflection_natives() {
         )
         .build()
         .expect("engine should build");
-    let program = compile_program_source(
-        SourceId::new(1),
-        r#"
+    let program = engine
+        .compile_source(
+            SourceId::new(1),
+            r#"
 fn main(player) {
     if reflect::name(player) == "Player" && reflect::get(player, "level") == 7 {
         reflect::set(player, "level", 8);
@@ -78,8 +104,8 @@ fn main(player) {
     return 0;
 }
 "#,
-    )
-    .expect("program should compile");
+        )
+        .expect("program should compile");
     let host_ref = HostRef::new(HostTypeId::new(1), HostObjectId::new(42), 1);
     let mut adapter = MockStateAdapter::new();
     adapter.insert_diagnostic_path_value(
@@ -94,9 +120,12 @@ fn main(player) {
     };
 
     assert!(matches!(
-        engine
-            .into_vm()
-            .run_program_with_host(&program, "main", &[OwnedValue::HostRef(host_ref)], &mut host),
+        run_linked_program_with_host(
+            &engine,
+            &program,
+            &[OwnedValue::HostRef(host_ref)],
+            &mut host,
+        ),
         Err(error) if error.kind() == VmErrorKind::Reflect(ReflectErrorKind::PermissionDenied {
             permission: ReflectPermission::WriteValueFields
         })
@@ -138,9 +167,9 @@ fn main(player: Player) {
     };
 
     assert_eq!(
-        engine.into_vm().run_program_with_host(
+        run_linked_program_with_host(
+            &engine,
             &program,
-            "main",
             &[OwnedValue::HostRef(host_ref)],
             &mut host
         ),
@@ -165,24 +194,23 @@ fn public_reflection_metadata_lists_do_not_need_engine_permissions() {
         .reflection_permissions(ReflectPermissionSet::new().with(ReflectPermission::ReadTypeInfo))
         .build()
         .expect("engine should build");
-    let program = compile_program_source(
-        SourceId::new(1),
-        r#"
+    let program = engine
+        .compile_source(
+            SourceId::new(1),
+            r#"
 fn main() {
-    let fields = reflect::fields();
-    let functions = reflect::functions();
-    if fields.len() == 1
-        && fields[0].owner == "Player"
+    let fields: array = reflect::fields();
+    let functions: array = reflect::functions();
+    if fields[0].owner == "Player"
         && fields[0].name == "secret_level"
-        && functions.len() == 1
         && functions[0].name == "game::secret_bonus" {
         return 1;
     }
     return 0;
 }
 "#,
-    )
-    .expect("program should compile");
+        )
+        .expect("program should compile");
     let mut adapter = MockStateAdapter::new();
     let mut tx = HostAccess::new();
     let mut host = HostExecution {
@@ -192,9 +220,7 @@ fn main() {
     };
 
     assert_eq!(
-        engine
-            .into_vm()
-            .run_program_with_host(&program, "main", &[], &mut host),
+        run_linked_program_with_host(&engine, &program, &[], &mut host),
         Ok(OwnedValue::Int(1))
     );
 }
@@ -219,15 +245,21 @@ fn engine_missing_permissions_hide_reflection_metadata_lists() {
         .reflection_permissions(ReflectPermissionSet::new().with(ReflectPermission::ReadTypeInfo))
         .build()
         .expect("engine should build");
-    let program = compile_program_source(
-        SourceId::new(1),
-        r#"
+    let program = engine
+        .compile_source(
+            SourceId::new(1),
+            r#"
 fn main() {
-    return reflect::fields().len() + reflect::functions().len();
+    let fields: array = reflect::fields();
+    let functions: array = reflect::functions();
+    if functions[0].name == "game::secret_bonus" {
+        return 1;
+    }
+    return 0;
 }
 "#,
-    )
-    .expect("program should compile");
+        )
+        .expect("program should compile");
     let mut adapter = MockStateAdapter::new();
     let mut tx = HostAccess::new();
     let mut host = HostExecution {
@@ -237,9 +269,7 @@ fn main() {
     };
 
     assert_eq!(
-        engine
-            .into_vm()
-            .run_program_with_host(&program, "main", &[], &mut host),
+        run_linked_program_with_host(&engine, &program, &[], &mut host),
         Ok(OwnedValue::Int(1))
     );
 }

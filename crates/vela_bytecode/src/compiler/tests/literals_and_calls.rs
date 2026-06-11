@@ -506,6 +506,7 @@ fn compiler_lowers_value_method_ids_after_reflection_metadata_collections() {
     for (name, params) in [
         ("type_info", &["name"][..]),
         ("function", &["name"]),
+        ("functions", &[]),
         ("effects", &["target"]),
         ("fields", &["target"]),
         ("methods", &["target"]),
@@ -530,12 +531,14 @@ fn main() {
     let target = reflect::type_info("Context");
     let fields = reflect::fields(target);
     let methods = reflect::methods(target);
+    let functions = reflect::functions();
     let emit = reflect::method(target, "emit");
     let random = reflect::function("math::random");
     let effects = reflect::effects(random);
     return fields.len() > 0
         && methods.len() > 0
         && fields[0].name.len() > 0
+        && functions[0].name.len() > 0
         && emit.owner.len() > 0
         && effects.uses_random
         && !effects.reads_host;
