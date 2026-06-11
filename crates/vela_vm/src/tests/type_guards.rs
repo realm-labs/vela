@@ -60,6 +60,50 @@ fn main(value) {
 }
 
 #[test]
+fn linked_specialization_guard_mismatch_falls_back_without_language_error() {
+    let mut program = vela_bytecode::LinkedProgram::new();
+    let main_name = program.intern_debug_name("main");
+    let value_name = program.intern_debug_name("value");
+
+    let mut code = vela_bytecode::LinkedCodeObject::new(main_name, 1);
+    let value = code.push_constant(Constant::Scalar(vela_common::ScalarValue::I64(7)));
+    code.push_instruction(vela_bytecode::linked::Instruction::new(
+        vela_bytecode::linked::InstructionKind::LoadConst {
+            dst: Register(0),
+            constant: value,
+        },
+    ));
+    let guard = code.intern_type_guard(vela_bytecode::TypeGuard::new(
+        vela_bytecode::TypeGuardPlan::Primitive(vela_common::PrimitiveTag::String),
+        vela_bytecode::GuardContext::new(
+            vela_bytecode::GuardKind::Specialization,
+            vela_bytecode::GuardLocation::Local,
+            value_name,
+        ),
+    ));
+    code.push_instruction(vela_bytecode::linked::Instruction::new(
+        vela_bytecode::linked::InstructionKind::GuardType {
+            src: Register(0),
+            guard,
+        },
+    ));
+    code.push_instruction(vela_bytecode::linked::Instruction::new(
+        vela_bytecode::linked::InstructionKind::Return { src: Register(0) },
+    ));
+
+    let function = program.push_function(code);
+    program.set_entry_point(main_name, function);
+    program
+        .verify()
+        .expect("linked specialization guard fixture should verify");
+
+    assert_eq!(
+        Vm::new().run_linked_program(&program, "main", &[]),
+        Ok(OwnedValue::i64(7))
+    );
+}
+
+#[test]
 fn linked_parameter_guard_rejects_public_entry_mismatch() {
     let program = compile_program_source(
         SourceId::new(1),

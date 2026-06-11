@@ -1652,14 +1652,15 @@ Add fixtures for:
 
 Even before JIT exists, this refactor must preserve these invariants:
 
-- [ ] Contract guards and specialization guards are represented distinctly.
-- [ ] Contract guard failure is a language runtime error.
-- [ ] Specialization guard failure is fallback/deopt, not a language error.
-- [ ] Guard plans use `PrimitiveTag`, `TypeHandle`, `VariantHandle`, `ShapeId`, not strings.
-- [ ] Function param guards are metadata, not buried only as arbitrary bytecode instructions.
-- [ ] Static proven calls can be represented as unchecked calls.
-- [ ] Dynamic calls use checked calls.
-- [ ] Deferred literal operations are explicit bytecode forms, so JIT can specialize them.
+- [x] Contract guards and specialization guards are represented distinctly.
+- [x] Contract guard failure is a language runtime error.
+- [x] Specialization guard failure is fallback/deopt, not a language error.
+- [x] Linked guard plans use `PrimitiveTag`, `TypeHandle`, `VariantHandle`,
+  `ShapeId`, not strings.
+- [x] Function param guards are metadata, not buried only as arbitrary bytecode instructions.
+- [x] Static proven calls can be represented as unchecked calls.
+- [x] Dynamic calls use checked calls.
+- [x] Deferred literal operations are explicit bytecode forms, so JIT can specialize them.
 
 Future JIT lowering should be straightforward:
 
@@ -1705,7 +1706,7 @@ The refactor is complete when all of the following are true:
 - [ ] Bytes can represent binary data without `Array<i64>` or `Array<u8>`.
 - [ ] Guard metadata is linked and verifier-checked.
 - [ ] Static safe calls can avoid runtime guard execution.
-- [ ] JIT readiness invariants in Section 9 hold.
+- [x] JIT readiness invariants in Section 9 hold.
 - [ ] `cargo fmt --all -- --check` passes.
 - [ ] `cargo clippy --workspace --all-targets -- -D warnings` passes.
 - [ ] `cargo test --workspace` passes.

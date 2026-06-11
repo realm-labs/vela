@@ -1,5 +1,5 @@
 use vela_bytecode::{
-    LinkedProgram, TypeGuard, TypeGuardPlan, UnlinkedTypeGuard, UnlinkedTypeGuardPlan,
+    GuardKind, LinkedProgram, TypeGuard, TypeGuardPlan, UnlinkedTypeGuard, UnlinkedTypeGuardPlan,
 };
 use vela_common::PrimitiveTag;
 
@@ -11,6 +11,11 @@ pub(crate) fn execute_unlinked_guard(
     guard: &UnlinkedTypeGuard,
     heap: Option<&HeapExecution<'_>>,
 ) -> VmResult<()> {
+    // The interpreter is the generic fallback path for specialization misses.
+    if guard.context.kind == GuardKind::Specialization {
+        return Ok(());
+    }
+
     match guard.plan {
         UnlinkedTypeGuardPlan::Primitive(expected) => {
             execute_primitive_guard(value, expected, heap, &guard.context.debug_name)
@@ -49,6 +54,11 @@ pub(crate) fn execute_linked_guard(
     heap: Option<&HeapExecution<'_>>,
     debug_name: &str,
 ) -> VmResult<()> {
+    // The interpreter is the generic fallback path for specialization misses.
+    if guard.context.kind == GuardKind::Specialization {
+        return Ok(());
+    }
+
     match guard.plan {
         TypeGuardPlan::Primitive(expected) => {
             execute_primitive_guard(value, expected, heap, debug_name)
