@@ -1,4 +1,4 @@
-use vela_bytecode::compiler::compile_program_source;
+use vela_bytecode::UnlinkedProgram;
 use vela_common::{HostObjectId, HostTypeId, SourceId};
 use vela_def::{FieldId, TypeId};
 use vela_host::access::HostAccess;
@@ -8,6 +8,7 @@ use vela_host::path::{HostPath, HostRef};
 use vela_host::value::HostValue;
 use vela_reflect::registry::TypeKey;
 use vela_vm::HostExecution;
+use vela_vm::budget::ExecutionBudget;
 use vela_vm::error::{VmErrorKind, VmResult};
 use vela_vm::owned_value::OwnedValue;
 
@@ -15,6 +16,28 @@ use crate::context::NativeCallContext;
 use crate::engine::Engine;
 use crate::native::{EffectSet, FunctionAccess, NativeFunctionDesc, NativeFunctionId, TypeHint};
 use crate::permission::Capability;
+
+fn run_linked_program_with_host(
+    engine: &Engine,
+    program: &UnlinkedProgram,
+    args: &[OwnedValue],
+    host: &mut HostExecution<'_>,
+) -> VmResult<OwnedValue> {
+    let linked = engine
+        .link_program(program)
+        .expect("engine typed host test program should link");
+    let mut budget = ExecutionBudget::unbounded();
+    engine
+        .into_vm_for_program(program)
+        .run_linked_program_with_host_budget_and_caches(
+            &linked,
+            "main",
+            args,
+            host,
+            &mut budget,
+            None,
+        )
+}
 
 #[test]
 fn engine_registers_typed_host_native_functions() {
@@ -34,16 +57,17 @@ fn engine_registers_typed_host_native_functions() {
         )
         .build()
         .expect("engine should build");
-    let program = compile_program_source(
-        SourceId::new(1),
-        r#"
+    let program = engine
+        .compile_source(
+            SourceId::new(1),
+            r#"
 fn main(player) {
     game::typed_host_set_level(player, 19);
     return 1;
 }
 "#,
-    )
-    .expect("program should compile");
+        )
+        .expect("program should compile");
     let host_ref = HostRef::new(HostTypeId::new(1), HostObjectId::new(42), 1);
     let mut adapter = MockStateAdapter::new();
     let mut tx = HostAccess::new();
@@ -54,11 +78,11 @@ fn main(player) {
     };
 
     assert_eq!(
-        engine.into_vm().run_program_with_host(
+        run_linked_program_with_host(
+            &engine,
             &program,
-            "main",
             &[OwnedValue::HostRef(host_ref)],
-            &mut host,
+            &mut host
         ),
         Ok(OwnedValue::Int(1)),
     );
@@ -75,16 +99,17 @@ fn typed_host_native_conversion_errors_before_host_write() {
         )
         .build()
         .expect("engine should build");
-    let program = compile_program_source(
-        SourceId::new(1),
-        r#"
+    let program = engine
+        .compile_source(
+            SourceId::new(1),
+            r#"
 fn main() {
     game::typed_host_set_level("not a host", 19);
     return 1;
 }
 "#,
-    )
-    .expect("program should compile");
+        )
+        .expect("program should compile");
     let mut adapter = MockStateAdapter::new();
     let mut tx = HostAccess::new();
     let mut host = HostExecution {
@@ -94,9 +119,7 @@ fn main() {
     };
 
     assert!(matches!(
-        engine
-            .into_vm()
-            .run_program_with_host(&program, "main", &[], &mut host),
+        run_linked_program_with_host(&engine, &program, &[], &mut host),
         Err(error) if matches!(error.kind(), VmErrorKind::TypeMismatch {
                 operation: "host ref",
             })
@@ -121,15 +144,16 @@ fn typed_host_native_maps_host_result_errors() {
         )
         .build()
         .expect("engine should build");
-    let program = compile_program_source(
-        SourceId::new(1),
-        r#"
+    let program = engine
+        .compile_source(
+            SourceId::new(1),
+            r#"
 fn main(player) {
     return game::typed_host_require_write(player, false);
 }
 "#,
-    )
-    .expect("program should compile");
+        )
+        .expect("program should compile");
     let host_ref = HostRef::new(HostTypeId::new(1), HostObjectId::new(42), 1);
     let mut adapter = MockStateAdapter::new();
     let mut tx = HostAccess::new();
@@ -140,15 +164,13 @@ fn main(player) {
     };
 
     assert_eq!(
-        engine
-            .into_vm()
-            .run_program_with_host(
-                &program,
-                "main",
-                &[OwnedValue::HostRef(host_ref)],
-                &mut host
-            )
-            .map_err(|error| error.kind()),
+        run_linked_program_with_host(
+            &engine,
+            &program,
+            &[OwnedValue::HostRef(host_ref)],
+            &mut host
+        )
+        .map_err(|error| error.kind()),
         Err(VmErrorKind::Host(HostErrorKind::PermissionDenied {
             path: HostPath::new(host_ref),
             action: "write",
@@ -204,15 +226,16 @@ fn engine_registers_four_arg_typed_host_native_functions() {
         )
         .build()
         .expect("engine should build");
-    let program = compile_program_source(
-        SourceId::new(1),
-        r#"
+    let program = engine
+        .compile_source(
+            SourceId::new(1),
+            r#"
 fn main(player) {
     return game::typed_host_sum_level(player, 2, 3, 4);
 }
 "#,
-    )
-    .expect("program should compile");
+        )
+        .expect("program should compile");
     let player = HostRef::new(HostTypeId::new(1), HostObjectId::new(42), 1);
     let mut adapter = MockStateAdapter::new();
     let mut tx = HostAccess::new();
@@ -223,12 +246,7 @@ fn main(player) {
     };
 
     assert_eq!(
-        engine.into_vm().run_program_with_host(
-            &program,
-            "main",
-            &[OwnedValue::HostRef(player)],
-            &mut host
-        ),
+        run_linked_program_with_host(&engine, &program, &[OwnedValue::HostRef(player)], &mut host),
         Ok(OwnedValue::Int(9)),
     );
 }
@@ -254,15 +272,16 @@ fn engine_registers_five_arg_typed_host_native_functions() {
         )
         .build()
         .expect("engine should build");
-    let program = compile_program_source(
-        SourceId::new(1),
-        r#"
+    let program = engine
+        .compile_source(
+            SourceId::new(1),
+            r#"
 fn main(player) {
     return game::typed_host_sum5_level(player, 2, 3, 4, 5);
 }
 "#,
-    )
-    .expect("program should compile");
+        )
+        .expect("program should compile");
     let player = HostRef::new(HostTypeId::new(1), HostObjectId::new(42), 1);
     let mut adapter = MockStateAdapter::new();
     let mut tx = HostAccess::new();
@@ -273,12 +292,7 @@ fn main(player) {
     };
 
     assert_eq!(
-        engine.into_vm().run_program_with_host(
-            &program,
-            "main",
-            &[OwnedValue::HostRef(player)],
-            &mut host
-        ),
+        run_linked_program_with_host(&engine, &program, &[OwnedValue::HostRef(player)], &mut host),
         Ok(OwnedValue::Int(14)),
     );
 }
@@ -305,15 +319,16 @@ fn engine_registers_six_arg_typed_host_native_functions() {
         )
         .build()
         .expect("engine should build");
-    let program = compile_program_source(
-        SourceId::new(1),
-        r#"
+    let program = engine
+        .compile_source(
+            SourceId::new(1),
+            r#"
 fn main(player) {
     return game::typed_host_sum6_level(player, 2, 3, 4, 5, 6);
 }
 "#,
-    )
-    .expect("program should compile");
+        )
+        .expect("program should compile");
     let player = HostRef::new(HostTypeId::new(1), HostObjectId::new(42), 1);
     let mut adapter = MockStateAdapter::new();
     let mut tx = HostAccess::new();
@@ -324,12 +339,7 @@ fn main(player) {
     };
 
     assert_eq!(
-        engine.into_vm().run_program_with_host(
-            &program,
-            "main",
-            &[OwnedValue::HostRef(player)],
-            &mut host
-        ),
+        run_linked_program_with_host(&engine, &program, &[OwnedValue::HostRef(player)], &mut host),
         Ok(OwnedValue::Int(20)),
     );
 }
@@ -406,15 +416,16 @@ fn engine_registers_typed_context_host_native_functions() {
         )
         .build()
         .expect("engine should build");
-    let program = compile_program_source(
-        SourceId::new(1),
-        r#"
+    let program = engine
+        .compile_source(
+            SourceId::new(1),
+            r#"
 fn main(player) {
     return game::typed_set_level(player, 17);
 }
 "#,
-    )
-    .expect("program should compile");
+        )
+        .expect("program should compile");
     let host_ref = HostRef::new(HostTypeId::new(1), HostObjectId::new(42), 1);
     let mut adapter = MockStateAdapter::new();
     let mut tx = HostAccess::new();
@@ -425,11 +436,11 @@ fn main(player) {
     };
 
     assert_eq!(
-        engine.into_vm().run_program_with_host(
+        run_linked_program_with_host(
+            &engine,
             &program,
-            "main",
             &[OwnedValue::HostRef(host_ref)],
-            &mut host,
+            &mut host
         ),
         Ok(OwnedValue::Bool(true)),
     );
@@ -446,16 +457,17 @@ fn typed_context_host_native_conversion_errors_before_host_write() {
         )
         .build()
         .expect("engine should build");
-    let program = compile_program_source(
-        SourceId::new(1),
-        r#"
+    let program = engine
+        .compile_source(
+            SourceId::new(1),
+            r#"
 fn main() {
     game::typed_set_level("not a host", 17);
     return 1;
 }
 "#,
-    )
-    .expect("program should compile");
+        )
+        .expect("program should compile");
     let mut adapter = MockStateAdapter::new();
     let mut tx = HostAccess::new();
     let mut host = HostExecution {
@@ -465,9 +477,7 @@ fn main() {
     };
 
     assert!(matches!(
-        engine
-            .into_vm()
-            .run_program_with_host(&program, "main", &[], &mut host),
+        run_linked_program_with_host(&engine, &program, &[], &mut host),
         Err(error) if matches!(error.kind(), VmErrorKind::TypeMismatch {
                 operation: "host ref",
             })
@@ -495,15 +505,16 @@ fn typed_context_host_native_maps_host_result_errors() {
         )
         .build()
         .expect("engine should build");
-    let program = compile_program_source(
-        SourceId::new(1),
-        r#"
+    let program = engine
+        .compile_source(
+            SourceId::new(1),
+            r#"
 fn main(player) {
     return game::typed_context_require_write(player, false);
 }
 "#,
-    )
-    .expect("program should compile");
+        )
+        .expect("program should compile");
     let player = HostRef::new(HostTypeId::new(1), HostObjectId::new(42), 1);
     let mut adapter = MockStateAdapter::new();
     let mut tx = HostAccess::new();
@@ -514,9 +525,7 @@ fn main(player) {
     };
 
     assert_eq!(
-        engine
-            .into_vm()
-            .run_program_with_host(&program, "main", &[OwnedValue::HostRef(player)], &mut host)
+        run_linked_program_with_host(&engine, &program, &[OwnedValue::HostRef(player)], &mut host)
             .map_err(|error| error.kind()),
         Err(VmErrorKind::Host(HostErrorKind::PermissionDenied {
             path: HostPath::new(player),
@@ -578,15 +587,16 @@ fn engine_registers_four_arg_typed_context_host_native_functions() {
         )
         .build()
         .expect("engine should build");
-    let program = compile_program_source(
-        SourceId::new(1),
-        r#"
+    let program = engine
+        .compile_source(
+            SourceId::new(1),
+            r#"
 fn main(player) {
     return game::typed_context_sum_level(player, 5, 6, 7);
 }
 "#,
-    )
-    .expect("program should compile");
+        )
+        .expect("program should compile");
     let player = HostRef::new(HostTypeId::new(1), HostObjectId::new(42), 1);
     let mut adapter = MockStateAdapter::new();
     let mut tx = HostAccess::new();
@@ -597,12 +607,7 @@ fn main(player) {
     };
 
     assert_eq!(
-        engine.into_vm().run_program_with_host(
-            &program,
-            "main",
-            &[OwnedValue::HostRef(player)],
-            &mut host
-        ),
+        run_linked_program_with_host(&engine, &program, &[OwnedValue::HostRef(player)], &mut host),
         Ok(OwnedValue::Int(18)),
     );
 }
@@ -628,15 +633,16 @@ fn engine_registers_five_arg_typed_context_host_native_functions() {
         )
         .build()
         .expect("engine should build");
-    let program = compile_program_source(
-        SourceId::new(1),
-        r#"
+    let program = engine
+        .compile_source(
+            SourceId::new(1),
+            r#"
 fn main(player) {
     return game::typed_context_sum5_level(player, 5, 6, 7, 8);
 }
 "#,
-    )
-    .expect("program should compile");
+        )
+        .expect("program should compile");
     let player = HostRef::new(HostTypeId::new(1), HostObjectId::new(42), 1);
     let mut adapter = MockStateAdapter::new();
     let mut tx = HostAccess::new();
@@ -647,12 +653,7 @@ fn main(player) {
     };
 
     assert_eq!(
-        engine.into_vm().run_program_with_host(
-            &program,
-            "main",
-            &[OwnedValue::HostRef(player)],
-            &mut host
-        ),
+        run_linked_program_with_host(&engine, &program, &[OwnedValue::HostRef(player)], &mut host),
         Ok(OwnedValue::Int(26)),
     );
 }
@@ -679,15 +680,16 @@ fn engine_registers_six_arg_typed_context_host_native_functions() {
         )
         .build()
         .expect("engine should build");
-    let program = compile_program_source(
-        SourceId::new(1),
-        r#"
+    let program = engine
+        .compile_source(
+            SourceId::new(1),
+            r#"
 fn main(player) {
     return game::typed_context_sum6_level(player, 5, 6, 7, 8, 9);
 }
 "#,
-    )
-    .expect("program should compile");
+        )
+        .expect("program should compile");
     let player = HostRef::new(HostTypeId::new(1), HostObjectId::new(42), 1);
     let mut adapter = MockStateAdapter::new();
     let mut tx = HostAccess::new();
@@ -698,12 +700,7 @@ fn main(player) {
     };
 
     assert_eq!(
-        engine.into_vm().run_program_with_host(
-            &program,
-            "main",
-            &[OwnedValue::HostRef(player)],
-            &mut host
-        ),
+        run_linked_program_with_host(&engine, &program, &[OwnedValue::HostRef(player)], &mut host),
         Ok(OwnedValue::Int(35)),
     );
 }
