@@ -9,7 +9,7 @@ use vela_bytecode::compiler::{
     compile_function_source, compile_program_source,
     compile_program_source_with_options_and_registry,
 };
-use vela_bytecode::{UnlinkedCodeObject, UnlinkedProgram};
+use vela_bytecode::{LinkedProgram, Linker, UnlinkedCodeObject, UnlinkedProgram};
 use vela_common::{HostMethodId, HostObjectId, HostTypeId, SourceId};
 use vela_def::{DefPath, FieldId, TypeId};
 use vela_host::access::HostAccess;
@@ -124,9 +124,9 @@ struct BenchResult {
 }
 
 fn run_workload(workload: &Workload, params: BenchParams) -> Result<BenchResult, Box<dyn Error>> {
-    let compiled = compile_workload(workload)?;
     let mut vm = Vm::new().with_standard_natives();
     register_bench_natives(&mut vm);
+    let compiled = compile_workload(workload, &vm)?;
 
     for _ in 0..params.warmup {
         let value = run_once(&vm, &compiled)?;
@@ -169,19 +169,19 @@ enum CompiledWorkload {
         code: Box<UnlinkedCodeObject>,
     },
     ScriptProgram {
-        program: Box<UnlinkedProgram>,
+        program: Box<LinkedProgram>,
     },
     HostAccess {
-        program: Box<UnlinkedProgram>,
+        program: Box<LinkedProgram>,
     },
     HostManagedHeapReadConversion {
-        program: Box<UnlinkedProgram>,
+        program: Box<LinkedProgram>,
     },
     HostManagedHeapHostAccess {
-        program: Box<UnlinkedProgram>,
+        program: Box<LinkedProgram>,
     },
     GameplayHost {
-        program: Box<UnlinkedProgram>,
+        program: Box<LinkedProgram>,
     },
 }
 
@@ -191,7 +191,9 @@ fn run_once(vm: &Vm, workload: &CompiledWorkload) -> Result<OwnedValue, Box<dyn 
             mode: ExecutionMode::Inline,
             code,
         } => Ok(vm.run(code)?),
-        CompiledWorkload::ScriptProgram { program } => Ok(vm.run_program(program, "main", &[])?),
+        CompiledWorkload::ScriptProgram { program } => {
+            Ok(vm.run_linked_program(program, "main", &[])?)
+        }
         CompiledWorkload::Function {
             mode: ExecutionMode::ManagedHeap,
             code,
@@ -234,45 +236,42 @@ fn run_once(vm: &Vm, workload: &CompiledWorkload) -> Result<OwnedValue, Box<dyn 
     }
 }
 
-fn compile_workload(workload: &Workload) -> Result<CompiledWorkload, String> {
+fn compile_workload(workload: &Workload, vm: &Vm) -> Result<CompiledWorkload, String> {
     match workload.mode {
         ExecutionMode::HostAccess
         | ExecutionMode::HostManagedHeapReadConversion
         | ExecutionMode::HostManagedHeapHostAccess => {
-            compile_program_source_with_options_and_registry(
+            let program = compile_program_source_with_options_and_registry(
                 SourceId::new(1),
                 workload.source,
                 &host_access_compiler_options(),
                 host_access_definition_registry().compile_view(),
             )
-            .map(|program| match workload.mode {
-                ExecutionMode::HostAccess => CompiledWorkload::HostAccess {
-                    program: Box::new(program),
-                },
+            .map_err(|error| format!("{error:?}"))?;
+            let linked = Box::new(link_program_for_vm(vm, &program)?);
+            Ok(match workload.mode {
+                ExecutionMode::HostAccess => CompiledWorkload::HostAccess { program: linked },
                 ExecutionMode::HostManagedHeapHostAccess => {
-                    CompiledWorkload::HostManagedHeapHostAccess {
-                        program: Box::new(program),
-                    }
+                    CompiledWorkload::HostManagedHeapHostAccess { program: linked }
                 }
                 ExecutionMode::HostManagedHeapReadConversion => {
-                    CompiledWorkload::HostManagedHeapReadConversion {
-                        program: Box::new(program),
-                    }
+                    CompiledWorkload::HostManagedHeapReadConversion { program: linked }
                 }
                 _ => unreachable!("only host patch modes are handled here"),
             })
-            .map_err(|error| format!("{error:?}"))
         }
-        ExecutionMode::GameplayHost => compile_program_source_with_options_and_registry(
-            SourceId::new(1),
-            workload.source,
-            &host_access_compiler_options(),
-            gameplay_definition_registry().compile_view(),
-        )
-        .map(|program| CompiledWorkload::GameplayHost {
-            program: Box::new(program),
-        })
-        .map_err(|error| format!("{error:?}")),
+        ExecutionMode::GameplayHost => {
+            let program = compile_program_source_with_options_and_registry(
+                SourceId::new(1),
+                workload.source,
+                &host_access_compiler_options(),
+                gameplay_definition_registry().compile_view(),
+            )
+            .map_err(|error| format!("{error:?}"))?;
+            Ok(CompiledWorkload::GameplayHost {
+                program: Box::new(link_program_for_vm(vm, &program)?),
+            })
+        }
         ExecutionMode::ManagedHeap | ExecutionMode::GcPacing => {
             compile_function_source(SourceId::new(1), workload.source, "main")
                 .map(|code| CompiledWorkload::Function {
@@ -281,11 +280,13 @@ fn compile_workload(workload: &Workload) -> Result<CompiledWorkload, String> {
                 })
                 .map_err(|error| format!("{error:?}"))
         }
-        ExecutionMode::ScriptProgram => compile_program_source(SourceId::new(1), workload.source)
-            .map(|program| CompiledWorkload::ScriptProgram {
-                program: Box::new(program),
+        ExecutionMode::ScriptProgram => {
+            let program = compile_program_source(SourceId::new(1), workload.source)
+                .map_err(|error| format!("{error:?}"))?;
+            Ok(CompiledWorkload::ScriptProgram {
+                program: Box::new(link_program_for_vm(vm, &program)?),
             })
-            .map_err(|error| format!("{error:?}")),
+        }
         ExecutionMode::Inline => compile_function_source(SourceId::new(1), workload.source, "main")
             .map(|code| CompiledWorkload::Function {
                 mode: workload.mode,
@@ -293,6 +294,16 @@ fn compile_workload(workload: &Workload) -> Result<CompiledWorkload, String> {
             })
             .map_err(|error| format!("{error:?}")),
     }
+}
+
+fn link_program_for_vm(vm: &Vm, program: &UnlinkedProgram) -> Result<LinkedProgram, String> {
+    let mut linker = Linker::new();
+    for id in vm.native_implementation_ids() {
+        linker.add_native_implementation(id);
+    }
+    linker
+        .link_program(program)
+        .map_err(|error| format!("{error:?}"))
 }
 
 fn host_access_compiler_options() -> CompilerOptions {
@@ -539,7 +550,7 @@ fn seed_gc_garbage(heap: &mut ScriptHeap) {
     }
 }
 
-fn run_host_access(vm: &Vm, program: &UnlinkedProgram) -> Result<OwnedValue, Box<dyn Error>> {
+fn run_host_access(vm: &Vm, program: &LinkedProgram) -> Result<OwnedValue, Box<dyn Error>> {
     let player = HostRef::new(PLAYER_TYPE, PLAYER_OBJECT, PLAYER_GENERATION);
     let mut adapter = MockStateAdapter::new();
     adapter
@@ -568,19 +579,20 @@ fn run_host_access(vm: &Vm, program: &UnlinkedProgram) -> Result<OwnedValue, Box
         access: &mut tx,
         script_globals: None,
     };
-    let value = vm.run_program_with_host_and_budget(
+    let value = vm.run_linked_program_with_host_budget_and_caches(
         program,
         "main",
         &[OwnedValue::HostRef(player)],
         &mut host,
         &mut budget,
+        None,
     )?;
     Ok(OwnedValue::Int(value_checksum(&value) as i64))
 }
 
 fn run_managed_heap_host_conversion(
     vm: &Vm,
-    program: &UnlinkedProgram,
+    program: &LinkedProgram,
 ) -> Result<OwnedValue, Box<dyn Error>> {
     let player = HostRef::new(PLAYER_TYPE, PLAYER_OBJECT, PLAYER_GENERATION);
     let level_path = HostPath::new(player).field(LEVEL_FIELD);
@@ -600,12 +612,13 @@ fn run_managed_heap_host_conversion(
             access: &mut tx,
             script_globals: None,
         };
-        vm.run_program_with_host_and_budget(
+        vm.run_linked_program_with_host_budget_and_caches(
             program,
             "main",
             &[OwnedValue::HostRef(player)],
             &mut host,
             &mut budget,
+            None,
         )?
     };
     Ok(OwnedValue::Int(
@@ -618,7 +631,7 @@ fn run_managed_heap_host_conversion(
 
 fn run_managed_heap_host_read_conversion(
     vm: &Vm,
-    program: &UnlinkedProgram,
+    program: &LinkedProgram,
 ) -> Result<OwnedValue, Box<dyn Error>> {
     let player = HostRef::new(PLAYER_TYPE, PLAYER_OBJECT, PLAYER_GENERATION);
     let level_path = HostPath::new(player).field(LEVEL_FIELD);
@@ -638,12 +651,13 @@ fn run_managed_heap_host_read_conversion(
             access: &mut tx,
             script_globals: None,
         };
-        vm.run_program_with_host_managed_heap_and_budget(
+        vm.run_linked_program_with_host_budget_and_caches(
             program,
             "main",
             &[OwnedValue::HostRef(player)],
             &mut host,
             &mut budget,
+            None,
         )?
     };
     Ok(OwnedValue::Int(
@@ -656,7 +670,7 @@ fn run_managed_heap_host_read_conversion(
 
 fn run_gameplay_monster_kill(
     vm: &Vm,
-    program: &UnlinkedProgram,
+    program: &LinkedProgram,
 ) -> Result<OwnedValue, Box<dyn Error>> {
     let player = HostRef::new(PLAYER_TYPE, PLAYER_OBJECT, PLAYER_GENERATION);
     let ctx = HostRef::new(CTX_TYPE, CTX_OBJECT, 1);
@@ -707,7 +721,7 @@ fn run_gameplay_monster_kill(
             access: &mut tx,
             script_globals: None,
         };
-        vm.run_program_with_host_and_budget(
+        vm.run_linked_program_with_host_budget_and_caches(
             program,
             "main",
             &[
@@ -717,6 +731,7 @@ fn run_gameplay_monster_kill(
             ],
             &mut host,
             &mut budget,
+            None,
         )?
     };
     Ok(OwnedValue::Int(

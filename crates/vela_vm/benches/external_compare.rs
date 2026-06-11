@@ -4,8 +4,8 @@ use std::hint::black_box;
 use std::process::Command;
 use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 
-use vela_bytecode::UnlinkedProgram;
 use vela_bytecode::compiler::compile_program_source;
+use vela_bytecode::{LinkedProgram, Linker, UnlinkedProgram};
 use vela_common::SourceId;
 use vela_vm::Vm;
 use vela_vm::owned_value::OwnedValue;
@@ -641,6 +641,7 @@ fn run_vela(
 ) -> Result<BenchResult, Box<dyn Error>> {
     let program = compile_program_source(SourceId::new(1), workload.vela)
         .map_err(|error| format!("{error:?}"))?;
+    let program = link_program_for_vm(vm, &program)?;
 
     for _ in 0..params.warmup {
         let checksum = run_vela_iterations(vm, &program, params.iterations)?;
@@ -662,15 +663,28 @@ fn run_vela(
 
 fn run_vela_iterations(
     vm: &Vm,
-    program: &UnlinkedProgram,
+    program: &LinkedProgram,
     iterations: usize,
 ) -> Result<u64, Box<dyn Error>> {
     let mut checksum = 0_u64;
     for _ in 0..iterations {
-        let value = vm.run_program(program, "main", &[])?;
+        let value = vm.run_linked_program(program, "main", &[])?;
         checksum = checksum.wrapping_add(value_checksum(&value));
     }
     Ok(checksum)
+}
+
+fn link_program_for_vm(
+    vm: &Vm,
+    program: &UnlinkedProgram,
+) -> Result<LinkedProgram, Box<dyn Error>> {
+    let mut linker = Linker::new();
+    for id in vm.native_implementation_ids() {
+        linker.add_native_implementation(id);
+    }
+    linker
+        .link_program(program)
+        .map_err(|error| format!("{error:?}").into())
 }
 
 fn command_available(command: &str) -> bool {
