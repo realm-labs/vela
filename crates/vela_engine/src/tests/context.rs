@@ -1,12 +1,13 @@
-use vela_bytecode::compiler::compile_program_source;
+use vela_bytecode::UnlinkedProgram;
 use vela_common::{HostObjectId, SourceId};
 use vela_host::access::HostAccess;
 use vela_host::mock::MockStateAdapter;
 use vela_host::path::{HostPath, HostRef};
 use vela_host::value::HostValue;
-use vela_vm::HostExecution;
-use vela_vm::error::VmErrorKind;
+use vela_vm::budget::ExecutionBudget;
+use vela_vm::error::{VmErrorKind, VmResult};
 use vela_vm::owned_value::OwnedValue;
+use vela_vm::{HostExecution, Vm};
 
 use crate::clock::{TIME_ELAPSED_SINCE_FUNCTION_ID, TIME_NOW_FUNCTION_ID, TIME_TICK_FUNCTION_ID};
 use crate::context_schema::{
@@ -17,24 +18,54 @@ use crate::engine::Engine;
 use crate::permission::Capability;
 use vela_reflect::permissions::ReflectPermissionSet;
 
+fn linked_vm(engine: &Engine, program: &UnlinkedProgram) -> (Vm, vela_bytecode::LinkedProgram) {
+    let linked = engine
+        .link_program(program)
+        .expect("engine test program should link");
+    (engine.into_vm_for_program(program), linked)
+}
+
+fn run_linked_program(
+    engine: &Engine,
+    program: &UnlinkedProgram,
+    entry: &str,
+    args: &[OwnedValue],
+) -> VmResult<OwnedValue> {
+    let (vm, linked) = linked_vm(engine, program);
+    vm.run_linked_program(&linked, entry, args)
+}
+
+fn run_linked_program_with_host(
+    engine: &Engine,
+    program: &UnlinkedProgram,
+    entry: &str,
+    args: &[OwnedValue],
+    host: &mut HostExecution<'_>,
+) -> VmResult<OwnedValue> {
+    let (vm, linked) = linked_vm(engine, program);
+    let mut budget = ExecutionBudget::unbounded();
+    vm.run_linked_program_with_host_budget_and_caches(&linked, entry, args, host, &mut budget, None)
+}
+
 #[test]
 fn engine_time_clock_requires_time_capability() {
     let engine = Engine::builder()
         .with_time_clock(1_700_000_000, 42)
         .build()
         .expect("engine should build");
-    let program = compile_program_source(
-        SourceId::new(1),
-        r#"
+    let program = engine
+        .compile_source(
+            SourceId::new(1),
+            r#"
 fn main() {
     return time::now();
 }
 "#,
-    )
-    .expect("program should compile");
+        )
+        .expect("program should compile");
 
     assert!(matches!(
-        engine.into_vm().run_program(&program, "main", &[]),
+        run_linked_program(&engine, &program, "main", &[]),
         Err(error) if error.kind() == VmErrorKind::PermissionDenied {
             native: "time::now".to_owned(),
             capability: Capability::Time.as_str().to_owned(),
@@ -48,18 +79,19 @@ fn engine_time_elapsed_since_requires_time_capability() {
         .with_time_clock(1_700_000_000, 42)
         .build()
         .expect("engine should build");
-    let program = compile_program_source(
-        SourceId::new(1),
-        r#"
+    let program = engine
+        .compile_source(
+            SourceId::new(1),
+            r#"
 fn main() {
     return time::elapsed_since(1699999990);
 }
 "#,
-    )
-    .expect("program should compile");
+        )
+        .expect("program should compile");
 
     assert!(matches!(
-        engine.into_vm().run_program(&program, "main", &[]),
+        run_linked_program(&engine, &program, "main", &[]),
         Err(error) if error.kind() == VmErrorKind::PermissionDenied {
             native: "time::elapsed_since".to_owned(),
             capability: Capability::Time.as_str().to_owned(),
@@ -75,34 +107,33 @@ fn explicit_capabilities_allow_time_but_not_random() {
         .with_controlled_random(7)
         .build()
         .expect("engine should build");
-    let time_program = compile_program_source(
-        SourceId::new(1),
-        r#"
+    let time_program = engine
+        .compile_source(
+            SourceId::new(1),
+            r#"
 fn main() {
     return time::now() + time::tick();
 }
 "#,
-    )
-    .expect("time program should compile");
+        )
+        .expect("time program should compile");
     assert_eq!(
-        engine
-            .clone()
-            .into_vm()
-            .run_program(&time_program, "main", &[]),
+        run_linked_program(&engine, &time_program, "main", &[]),
         Ok(OwnedValue::Int(1_700_000_042))
     );
 
-    let random_program = compile_program_source(
-        SourceId::new(2),
-        r#"
+    let random_program = engine
+        .compile_source(
+            SourceId::new(2),
+            r#"
 fn main() {
     return math::random(1, 6);
 }
 "#,
-    )
-    .expect("random program should compile");
+        )
+        .expect("random program should compile");
     assert!(matches!(
-        engine.into_vm().run_program(&random_program, "main", &[]),
+        run_linked_program(&engine, &random_program, "main", &[]),
         Err(error) if error.kind() == VmErrorKind::PermissionDenied {
             native: "math::random".to_owned(),
             capability: Capability::Random.as_str().to_owned(),
@@ -117,18 +148,19 @@ fn engine_time_clock_returns_configured_values() {
         .with_time_clock(1_700_000_000, 42)
         .build()
         .expect("engine should build");
-    let program = compile_program_source(
-        SourceId::new(1),
-        r#"
+    let program = engine
+        .compile_source(
+            SourceId::new(1),
+            r#"
 fn main() {
     return time::elapsed_since(1699999990) + time::tick();
 }
 "#,
-    )
-    .expect("program should compile");
+        )
+        .expect("program should compile");
 
     assert_eq!(
-        engine.into_vm().run_program(&program, "main", &[]),
+        run_linked_program(&engine, &program, "main", &[]),
         Ok(OwnedValue::Int(52))
     );
 }
@@ -141,17 +173,18 @@ fn engine_reflect_call_invokes_capability_gated_time_clock_functions() {
         .reflection_permissions(ReflectPermissionSet::all())
         .build()
         .expect("engine should build");
-    let program = compile_program_source(
-        SourceId::new(1),
-        r#"
+    let program = engine
+        .compile_source(
+            SourceId::new(1),
+            r#"
 fn main() {
     let now = reflect::function("time::now");
     let elapsed = reflect::function("time::elapsed_since");
     return reflect::call(now) + reflect::call(elapsed, 1699999990);
 }
 "#,
-    )
-    .expect("program should compile");
+        )
+        .expect("program should compile");
     let mut adapter = MockStateAdapter::new();
     let mut tx = HostAccess::new();
     let mut host = HostExecution {
@@ -161,9 +194,7 @@ fn main() {
     };
 
     assert_eq!(
-        engine
-            .into_vm()
-            .run_program_with_host(&program, "main", &[], &mut host),
+        run_linked_program_with_host(&engine, &program, "main", &[], &mut host),
         Ok(OwnedValue::Int(1_700_000_010))
     );
 }
@@ -298,6 +329,7 @@ fn engine_context_host_schema_registers_metadata() {
 #[test]
 fn engine_context_host_schema_metadata_is_script_reflectable() {
     let engine = Engine::builder()
+        .with_standard_natives()
         .with_context_host_schema()
         .reflection_permissions(ReflectPermissionSet::all())
         .build()
@@ -342,9 +374,7 @@ fn main() {
     };
 
     assert_eq!(
-        engine
-            .into_vm()
-            .run_program_with_host(&program, "main", &[], &mut host),
+        run_linked_program_with_host(&engine, &program, "main", &[], &mut host),
         Ok(OwnedValue::Bool(true))
     );
 }
@@ -388,7 +418,8 @@ fn main(ctx: Context) {
     };
 
     assert_eq!(
-        engine.into_vm().run_program_with_host(
+        run_linked_program_with_host(
+            &engine,
             &program,
             "main",
             &[OwnedValue::HostRef(ctx)],

@@ -501,6 +501,57 @@ fn main() {
 }
 
 #[test]
+fn compiler_lowers_value_method_ids_after_reflection_metadata_collections() {
+    let mut registry = vela_stdlib::standard_registry().expect("standard registry should build");
+    for (name, params) in [
+        ("type_info", &["name"][..]),
+        ("fields", &["target"]),
+        ("methods", &["target"]),
+        ("method", &["target", "name"]),
+    ] {
+        registry
+            .register_function(vela_registry::FunctionDef::new(
+                vela_def::DefPath::function("host", ["reflect"], name),
+                vela_registry::FunctionSignature::new(
+                    params
+                        .iter()
+                        .map(|param| vela_registry::ParamDef::new(*param, None::<String>)),
+                    None::<String>,
+                ),
+            ))
+            .expect("test reflection native should register");
+    }
+    let program = compile_program_source_with_registry(
+        SourceId::new(1),
+        r#"
+fn main() {
+    let target = reflect::type_info("Context");
+    let fields = reflect::fields(target);
+    let methods = reflect::methods(target);
+    let emit = reflect::method(target, "emit");
+    return fields.len() + methods.len() + fields[0].name.len() + emit.owner.len();
+}
+"#,
+        registry.compile_view(),
+    )
+    .expect("reflection metadata collection value methods should compile");
+    let main = program.function("main").expect("main function");
+    let methods = nested_method_id_names(main);
+    let record_fields = main
+        .instructions
+        .iter()
+        .filter_map(|instruction| match &instruction.kind {
+            UnlinkedInstructionKind::GetRecordSlot { field, .. } => Some(field.as_str()),
+            _ => None,
+        })
+        .collect::<Vec<_>>();
+
+    assert!(methods.iter().any(|method| method == "len"));
+    assert!(record_fields.contains(&"name"));
+    assert!(record_fields.contains(&"owner"));
+}
+
+#[test]
 fn compiler_lowers_value_method_ids_in_option_result_callback_params() {
     let registry = vela_stdlib::standard_registry().expect("standard registry should build");
     let program = compile_program_source_with_registry(
