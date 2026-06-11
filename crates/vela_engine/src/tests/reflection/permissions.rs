@@ -1,5 +1,30 @@
 use super::*;
+use vela_bytecode::UnlinkedProgram;
+use vela_vm::budget::ExecutionBudget;
+use vela_vm::error::VmResult;
 use vela_vm::owned_value::OwnedValue;
+
+fn run_linked_program_with_host(
+    engine: &Engine,
+    program: &UnlinkedProgram,
+    args: &[OwnedValue],
+    host: &mut HostExecution<'_>,
+) -> VmResult<OwnedValue> {
+    let linked = engine
+        .link_program(program)
+        .expect("engine reflection permission test program should link");
+    let mut budget = ExecutionBudget::unbounded();
+    engine
+        .into_vm_for_program(program)
+        .run_linked_program_with_host_budget_and_caches(
+            &linked,
+            "main",
+            args,
+            host,
+            &mut budget,
+            None,
+        )
+}
 
 #[test]
 fn engine_installs_reflection_lookup_budget() {
@@ -8,17 +33,18 @@ fn engine_installs_reflection_lookup_budget() {
         .reflection_lookup_budget(1)
         .build()
         .expect("engine should build");
-    let program = compile_program_source(
-        SourceId::new(1),
-        r#"
+    let program = engine
+        .compile_source(
+            SourceId::new(1),
+            r#"
 fn main(player) {
     reflect::name(player);
     reflect::kind(player);
     return 1;
 }
 "#,
-    )
-    .expect("program should compile");
+        )
+        .expect("program should compile");
     let host_ref = HostRef::new(HostTypeId::new(1), HostObjectId::new(42), 1);
     let mut adapter = MockStateAdapter::new();
     let mut tx = HostAccess::new();
@@ -29,9 +55,12 @@ fn main(player) {
     };
 
     assert!(matches!(
-        engine
-            .into_vm()
-            .run_program_with_host(&program, "main", &[OwnedValue::HostRef(host_ref)], &mut host),
+        run_linked_program_with_host(
+            &engine,
+            &program,
+            &[OwnedValue::HostRef(host_ref)],
+            &mut host,
+        ),
         Err(error) if error.kind() == VmErrorKind::Reflect(ReflectErrorKind::LookupBudgetExceeded {
             limit: 1
         })
@@ -58,16 +87,17 @@ fn engine_reflect_call_denies_native_methods_without_effect_permission() {
         )
         .build()
         .expect("engine should build");
-    let program = compile_program_source(
-        SourceId::new(1),
-        r#"
+    let program = engine
+        .compile_source(
+            SourceId::new(1),
+            r#"
 fn main(player) {
     reflect::call(player, "grant_exp", 10);
     return 1;
 }
 "#,
-    )
-    .expect("program should compile");
+        )
+        .expect("program should compile");
     let host_ref = HostRef::new(HostTypeId::new(1), HostObjectId::new(42), 1);
     let mut adapter = MockStateAdapter::new();
     let mut tx = HostAccess::new();
@@ -78,9 +108,12 @@ fn main(player) {
     };
 
     assert!(matches!(
-        engine
-            .into_vm()
-            .run_program_with_host(&program, "main", &[OwnedValue::HostRef(host_ref)], &mut host),
+        run_linked_program_with_host(
+            &engine,
+            &program,
+            &[OwnedValue::HostRef(host_ref)],
+            &mut host,
+        ),
         Err(error) if error.kind() == VmErrorKind::Reflect(ReflectErrorKind::MethodEffectPermissionDenied {
             method: "grant_exp".to_owned(),
             permission: ReflectPermission::CallHostWriteMethods,
@@ -116,16 +149,17 @@ fn engine_reflect_call_records_approved_native_methods() {
         .expect("reflected method");
     assert!(reflected_method.access.reflect_callable);
     assert!(reflected_method.effects.writes_host);
-    let program = compile_program_source(
-        SourceId::new(1),
-        r#"
+    let program = engine
+        .compile_source(
+            SourceId::new(1),
+            r#"
 fn main(player) {
     reflect::call(player, "grant_exp", 10);
     return 1;
 }
 "#,
-    )
-    .expect("program should compile");
+        )
+        .expect("program should compile");
     let host_ref = HostRef::new(HostTypeId::new(1), HostObjectId::new(42), 1);
     let mut adapter = MockStateAdapter::new();
     let mut tx = HostAccess::new();
@@ -136,9 +170,9 @@ fn main(player) {
     };
 
     assert_eq!(
-        engine.into_vm().run_program_with_host(
+        run_linked_program_with_host(
+            &engine,
             &program,
-            "main",
             &[OwnedValue::HostRef(host_ref)],
             &mut host
         ),
