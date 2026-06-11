@@ -305,12 +305,16 @@ fn reflection_unknown_field_fixture_renders_candidates_and_source_span() {
         script_globals: None,
     };
 
+    let linked = link_fixture_program_with_vm(&program, &vm);
+    let mut budget = ExecutionBudget::unbounded();
     let error = vm
-        .run_program_with_host(
-            &program,
+        .run_linked_program_with_host_budget_and_caches(
+            &linked,
             "main",
             &[OwnedValue::HostRef(host_ref)],
             &mut host,
+            &mut budget,
+            None,
         )
         .expect_err("fixture should fail during reflection lookup");
 
@@ -329,6 +333,16 @@ fn diagnostic_source(name: &str, source: String) -> DiagnosticSource {
 
 fn link_fixture_program(program: &UnlinkedProgram) -> LinkedProgram {
     Linker::new()
+        .link_program(program)
+        .expect("diagnostic fixture program should link")
+}
+
+fn link_fixture_program_with_vm(program: &UnlinkedProgram, vm: &Vm) -> LinkedProgram {
+    let mut linker = Linker::new();
+    for id in vm.native_implementation_ids() {
+        linker.add_native_implementation(id);
+    }
+    linker
         .link_program(program)
         .expect("diagnostic fixture program should link")
 }

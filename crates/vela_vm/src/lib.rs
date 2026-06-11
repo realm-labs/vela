@@ -364,6 +364,13 @@ impl Vm {
         self.type_registry.as_deref()
     }
 
+    pub fn native_implementation_ids(&self) -> impl Iterator<Item = FunctionId> + '_ {
+        self.native_ids
+            .keys()
+            .chain(self.host_native_ids.keys())
+            .copied()
+    }
+
     pub fn run(&self, code: &UnlinkedCodeObject) -> VmResult<OwnedValue> {
         let mut budget = ExecutionBudget::unbounded();
         self.run_with_budget(code, &mut budget)
