@@ -3,9 +3,12 @@ use std::collections::{BTreeMap, BTreeSet};
 use vela_common::{Diagnostic, Span};
 use vela_hir::ids::{HirDeclId, ModuleId};
 use vela_hir::module_graph::ModuleGraph;
+use vela_hir::type_hint::HirTypeHint;
 use vela_syntax::ast::{Argument, EnumVariantFields, Expr, ItemKind, RecordField, SourceFile};
 
 use crate::Constant;
+
+use super::value_types::{RuntimeTypeFact, type_hint_value_type};
 
 #[derive(Clone, Debug, Default, PartialEq)]
 pub(super) struct ScriptSchemaDefaults {
@@ -62,6 +65,19 @@ impl ConstructorShape {
         self.fields.get(index).map(|field| field.name.as_str())
     }
 
+    pub(super) fn field_value_type_at(&self, index: usize) -> Option<RuntimeTypeFact> {
+        self.fields
+            .get(index)
+            .and_then(|field| field.value_type.clone())
+    }
+
+    pub(super) fn field_value_type(&self, name: &str) -> Option<RuntimeTypeFact> {
+        self.fields
+            .iter()
+            .find(|field| field.name == name)
+            .and_then(|field| field.value_type.clone())
+    }
+
     fn contains_field(&self, name: &str) -> bool {
         self.fields.iter().any(|field| field.name == name)
     }
@@ -99,6 +115,7 @@ impl ConstructorShape {
 struct ConstructorField {
     name: String,
     argument_name: String,
+    value_type: Option<RuntimeTypeFact>,
     default: Option<SchemaFieldDefault>,
 }
 
@@ -137,6 +154,10 @@ pub(super) fn source_schema_defaults(
                     .map(|field| ConstructorField {
                         name: field.name.clone(),
                         argument_name: field.name.clone(),
+                        value_type: field
+                            .type_hint
+                            .as_ref()
+                            .and_then(|hint| type_hint_value_type(&HirTypeHint::from_syntax(hint))),
                         default: field.default_value.clone().map(|value| SchemaFieldDefault {
                             name: field.name.clone(),
                             value,
@@ -417,6 +438,10 @@ fn enum_variant_fields(
             .map(|(index, field)| ConstructorField {
                 name: index.to_string(),
                 argument_name: field.name.clone(),
+                value_type: field
+                    .type_hint
+                    .as_ref()
+                    .and_then(|hint| type_hint_value_type(&HirTypeHint::from_syntax(hint))),
                 default: field.default_value.clone().map(|value| SchemaFieldDefault {
                     name: index.to_string(),
                     value,
@@ -429,6 +454,10 @@ fn enum_variant_fields(
             .map(|field| ConstructorField {
                 name: field.name.clone(),
                 argument_name: field.name.clone(),
+                value_type: field
+                    .type_hint
+                    .as_ref()
+                    .and_then(|hint| type_hint_value_type(&HirTypeHint::from_syntax(hint))),
                 default: field.default_value.clone().map(|value| SchemaFieldDefault {
                     name: field.name.clone(),
                     value,

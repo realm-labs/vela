@@ -173,7 +173,7 @@ impl Compiler<'_, '_> {
                         expr.span,
                     ))?;
                     let defaults = schema_default_fields(shape.as_ref());
-                    let fields = self.compile_record_fields(fields, defaults)?;
+                    let fields = self.compile_record_fields(fields, defaults, shape.as_ref())?;
                     self.emit(UnlinkedInstructionKind::MakeEnum {
                         dst,
                         enum_name,
@@ -192,7 +192,7 @@ impl Compiler<'_, '_> {
                         expr.span,
                     ))?;
                     let defaults = schema_default_fields(shape.as_ref());
-                    let fields = self.compile_record_fields(fields, defaults)?;
+                    let fields = self.compile_record_fields(fields, defaults, shape.as_ref())?;
                     self.emit(UnlinkedInstructionKind::MakeRecord {
                         dst,
                         type_name,

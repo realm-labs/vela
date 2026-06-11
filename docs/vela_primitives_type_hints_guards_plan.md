@@ -1255,12 +1255,12 @@ then build registry, syntax, guards, and runtime behavior on the new model.
   - [x] function calls;
   - [x] typed let;
   - [x] return values;
-  - [ ] record field construction;
+  - [x] record field construction;
   - [x] later record field writes;
-  - [ ] enum payload construction;
+  - [x] enum payload construction;
   - [ ] later enum payload writes when supported;
   - [ ] global writes.
-- [ ] API behavior:
+- [x] API behavior:
   - [x] exact same type -> OK, no guard;
   - [x] exact mismatch -> compile error;
   - [x] compatible unsuffixed literal -> contextualize;

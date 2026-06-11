@@ -11,6 +11,7 @@ use super::schema_defaults::{
     ConstructorShape, SchemaFieldDefault, resolve_tuple_constructor_arguments,
     tuple_constructor_diagnostics, unknown_enum_variant_diagnostic,
 };
+use super::value_types::{RuntimeTypeFact, TypeContractContext};
 use super::{CompileError, CompileErrorKind, CompileResult, Compiler};
 
 impl Compiler<'_, '_> {
@@ -52,7 +53,11 @@ impl Compiler<'_, '_> {
                     .field_name_at(index)
                     .map(str::to_owned)
                     .unwrap_or_else(|| tuple_variant_field_name(index));
-                let value = self.compile_expr(&arg.value)?;
+                let value = self.compile_constructor_value(
+                    &arg.value,
+                    &name,
+                    shape.field_value_type_at(index),
+                )?;
                 explicit_names.insert(name.clone());
                 fields.push((name, value));
             }
@@ -70,7 +75,7 @@ impl Compiler<'_, '_> {
             }
         }
         let defaults = schema_default_fields(shape.as_ref());
-        self.compile_schema_default_fields(&mut fields, &explicit_names, defaults)?;
+        self.compile_schema_default_fields(&mut fields, &explicit_names, defaults, shape.as_ref())?;
         Ok(fields)
     }
 
@@ -78,14 +83,18 @@ impl Compiler<'_, '_> {
         &mut self,
         fields: &[vela_syntax::ast::RecordField],
         defaults: Vec<SchemaFieldDefault>,
+        shape: Option<&ConstructorShape>,
     ) -> CompileResult<Vec<(String, Register)>> {
         let mut compiled = Vec::new();
         let mut explicit_names = BTreeSet::new();
         for field in fields {
             explicit_names.insert(field.name.clone());
-            compiled.push(self.compile_record_field(field)?);
+            compiled.push(self.compile_record_field(
+                field,
+                shape.and_then(|shape| shape.field_value_type(&field.name)),
+            )?);
         }
-        self.compile_schema_default_fields(&mut compiled, &explicit_names, defaults)?;
+        self.compile_schema_default_fields(&mut compiled, &explicit_names, defaults, shape)?;
         Ok(compiled)
     }
 
@@ -131,13 +140,32 @@ impl Compiler<'_, '_> {
     fn compile_record_field(
         &mut self,
         field: &vela_syntax::ast::RecordField,
+        expected: Option<RuntimeTypeFact>,
     ) -> CompileResult<(String, Register)> {
         let value = if let Some(value) = &field.value {
-            self.compile_expr(value)?
+            self.compile_constructor_value(value, &field.name, expected)?
         } else {
             self.local_register_at_span(field.span, &field.name)?
         };
         Ok((field.name.clone(), value))
+    }
+
+    fn compile_constructor_value(
+        &mut self,
+        value: &vela_syntax::ast::Expr,
+        field_name: &str,
+        expected: Option<RuntimeTypeFact>,
+    ) -> CompileResult<Register> {
+        match expected {
+            Some(expected) => self.compile_expr_with_expected_type(
+                value,
+                expected,
+                TypeContractContext::Field {
+                    name: field_name.to_owned(),
+                },
+            ),
+            None => self.compile_expr(value),
+        }
     }
 
     fn compile_schema_default_fields(
@@ -145,12 +173,16 @@ impl Compiler<'_, '_> {
         fields: &mut Vec<(String, Register)>,
         explicit_names: &BTreeSet<String>,
         defaults: Vec<SchemaFieldDefault>,
+        shape: Option<&ConstructorShape>,
     ) -> CompileResult<()> {
         for default in defaults {
             if explicit_names.contains(&default.name) {
                 continue;
             }
-            let value = self.compile_schema_field_default(&default)?;
+            let value = self.compile_schema_field_default(
+                &default,
+                shape.and_then(|shape| shape.field_value_type(&default.name)),
+            )?;
             fields.push((default.name, value));
         }
         Ok(())
@@ -159,7 +191,17 @@ impl Compiler<'_, '_> {
     fn compile_schema_field_default(
         &mut self,
         default: &SchemaFieldDefault,
+        expected: Option<RuntimeTypeFact>,
     ) -> CompileResult<Register> {
+        if let Some(expected) = expected {
+            return self.compile_expr_with_expected_type(
+                &default.value,
+                expected,
+                TypeContractContext::Field {
+                    name: default.name.clone(),
+                },
+            );
+        }
         if let Some(value) = evaluate_const_expr(&default.value, &default.constants)? {
             return self.emit_constant(value);
         }
