@@ -1,10 +1,11 @@
 use vela_bytecode::{
-    GuardKind, LinkedProgram, TypeGuard, TypeGuardPlan, UnlinkedTypeGuard, UnlinkedTypeGuardPlan,
+    GuardKind, LinkedCodeObject, LinkedProgram, Register, TypeGuard, TypeGuardPlan,
+    UnlinkedTypeGuard, UnlinkedTypeGuardPlan,
 };
 use vela_common::PrimitiveTag;
 
 use crate::heap::HeapValue;
-use crate::{HeapExecution, Value, VmError, VmErrorKind, VmResult};
+use crate::{CallFrame, HeapExecution, Value, VmError, VmErrorKind, VmResult};
 
 pub(crate) fn execute_unlinked_guard(
     value: &Value,
@@ -108,6 +109,69 @@ pub(crate) fn execute_linked_guard(
         }
         TypeGuardPlan::HostType(_) => Ok(()),
     }
+}
+
+pub(crate) fn execute_linked_param_guards(
+    code: &LinkedCodeObject,
+    program: &LinkedProgram,
+    frame: &CallFrame,
+    heap: Option<&HeapExecution<'_>>,
+) -> VmResult<()> {
+    let param_offset = usize::from(code.capture_count);
+    for param_guard in &code.param_guards {
+        let register = Register(
+            code.capture_count
+                .checked_add(param_guard.parameter)
+                .ok_or_else(|| {
+                    VmError::new(VmErrorKind::RegisterOutOfBounds {
+                        register: Register(u16::MAX),
+                    })
+                })?,
+        );
+        let value = frame.read(register)?;
+        if matches!(value, Value::Missing) {
+            continue;
+        }
+        let guard = code.type_guard(param_guard.guard).ok_or_else(|| {
+            VmError::new(VmErrorKind::UnsupportedLinkedInstruction {
+                opcode: "param_guard",
+            })
+        })?;
+        execute_linked_guard(
+            value,
+            guard,
+            program,
+            heap,
+            program.debug_name(guard.context.debug_name),
+        )?;
+        debug_assert!(usize::from(param_guard.parameter) < code.params.len());
+        debug_assert!(usize::from(register.0) >= param_offset);
+    }
+    Ok(())
+}
+
+pub(crate) fn execute_linked_return_guard(
+    code: &LinkedCodeObject,
+    program: &LinkedProgram,
+    value: Value,
+    heap: Option<&HeapExecution<'_>>,
+) -> VmResult<Value> {
+    let Some(guard_id) = code.return_guard else {
+        return Ok(value);
+    };
+    let guard = code.type_guard(guard_id).ok_or_else(|| {
+        VmError::new(VmErrorKind::UnsupportedLinkedInstruction {
+            opcode: "return_guard",
+        })
+    })?;
+    execute_linked_guard(
+        &value,
+        guard,
+        program,
+        heap,
+        program.debug_name(guard.context.debug_name),
+    )?;
+    Ok(value)
 }
 
 fn execute_primitive_guard(
