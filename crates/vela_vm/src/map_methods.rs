@@ -111,11 +111,52 @@ pub(super) fn type_error<T>(operation: &'static str) -> VmResult<T> {
 
 #[cfg(test)]
 mod tests {
-    use vela_bytecode::compiler::compile_function_source;
+    use vela_bytecode::compiler::compile_function_source_with_registry;
+    use vela_bytecode::compiler::error::CompileResult;
+    use vela_bytecode::{Linker, UnlinkedCodeObject, UnlinkedProgram};
     use vela_common::SourceId;
 
     use crate::owned_value::OwnedValue;
-    use crate::{ExecutionBudget, Vm};
+    use crate::{ExecutionBudget, Vm, VmResult};
+
+    fn compile_function_source(
+        source: SourceId,
+        text: &str,
+        function_name: &str,
+    ) -> CompileResult<UnlinkedCodeObject> {
+        let registry = vela_stdlib::standard_registry().expect("standard registry should build");
+        compile_function_source_with_registry(source, text, function_name, registry.compile_view())
+    }
+
+    fn run_linked_map_test_code(vm: &Vm, code: UnlinkedCodeObject) -> VmResult<OwnedValue> {
+        let mut budget = ExecutionBudget::unbounded();
+        run_linked_map_test_code_with_budget(vm, code, &mut budget)
+    }
+
+    fn run_linked_map_test_code_with_budget(
+        vm: &Vm,
+        code: UnlinkedCodeObject,
+        budget: &mut ExecutionBudget,
+    ) -> VmResult<OwnedValue> {
+        let entry = code.name.clone();
+        let mut program = UnlinkedProgram::new();
+        program.insert_function(code);
+
+        let mut linker = Linker::new();
+        for id in vm
+            .native_ids
+            .keys()
+            .chain(vm.host_native_ids.keys())
+            .copied()
+        {
+            linker.add_native_implementation(id);
+        }
+        let linked = linker
+            .link_program(&program)
+            .expect("map method test code should link");
+
+        vm.run_linked_program_with_budget(&linked, &entry, &[], budget)
+    }
 
     #[test]
     fn runs_compiled_map_higher_order_methods() {
@@ -140,8 +181,7 @@ fn main() {
         let code = compile_function_source(SourceId::new(1), source, "main")
             .expect("map higher-order methods should compile");
 
-        let result = Vm::new()
-            .run(&code)
+        let result = run_linked_map_test_code(&Vm::new(), code)
             .expect("map higher-order methods should run");
         assert_eq!(result, OwnedValue::Int(2));
     }
@@ -171,8 +211,7 @@ fn main() {
             .expect("heap map higher-order methods should compile");
         let mut budget = ExecutionBudget::unbounded();
 
-        let result = Vm::new()
-            .run_with_managed_heap_and_budget(&code, &mut budget)
+        let result = run_linked_map_test_code_with_budget(&Vm::new(), code, &mut budget)
             .expect("heap map higher-order methods should run");
         assert_eq!(result, OwnedValue::Bool(true));
     }
@@ -196,7 +235,7 @@ fn main() {
         let mut vm = Vm::new();
         vm.register_standard_natives();
 
-        let result = vm.run(&code).expect("map find should run");
+        let result = run_linked_map_test_code(&vm, code).expect("map find should run");
         assert_eq!(result, OwnedValue::Int(1));
     }
 
@@ -223,7 +262,8 @@ fn main() {
         let mut vm = Vm::new();
         vm.register_standard_natives();
 
-        let result = vm.run(&code).expect("map zero-arg callbacks should run");
+        let result =
+            run_linked_map_test_code(&vm, code).expect("map zero-arg callbacks should run");
         assert_eq!(result, OwnedValue::Int(2));
     }
 
@@ -247,8 +287,7 @@ fn main() {
         vm.register_standard_natives();
         let mut budget = ExecutionBudget::unbounded();
 
-        let result = vm
-            .run_with_managed_heap_and_budget(&code, &mut budget)
+        let result = run_linked_map_test_code_with_budget(&vm, code, &mut budget)
             .expect("heap map find should run");
         assert_eq!(result, OwnedValue::String("wyrm".to_owned()));
     }
@@ -280,7 +319,8 @@ fn main() {
         let mut vm = Vm::new();
         vm.register_standard_natives();
 
-        let result = vm.run(&code).expect("map introspection methods should run");
+        let result =
+            run_linked_map_test_code(&vm, code).expect("map introspection methods should run");
         assert_eq!(result, OwnedValue::Int(14));
     }
 
@@ -311,8 +351,7 @@ fn main() {
         vm.register_standard_natives();
         let mut budget = ExecutionBudget::unbounded();
 
-        let result = vm
-            .run_with_managed_heap_and_budget(&code, &mut budget)
+        let result = run_linked_map_test_code_with_budget(&vm, code, &mut budget)
             .expect("heap map introspection methods should run");
         assert_eq!(result, OwnedValue::String("done|active|open".to_owned()));
     }
@@ -341,8 +380,7 @@ fn main() {
         vm.register_standard_natives();
         let mut budget = ExecutionBudget::unbounded();
 
-        let result = vm
-            .run_with_managed_heap_and_budget(&code, &mut budget)
+        let result = run_linked_map_test_code_with_budget(&vm, code, &mut budget)
             .expect("heap map lookup methods should run");
         assert_eq!(result, OwnedValue::Int(6));
     }
@@ -369,7 +407,7 @@ fn main() {
         let mut vm = Vm::new();
         vm.register_standard_natives();
 
-        let result = vm.run(&code).expect("map merge should run");
+        let result = run_linked_map_test_code(&vm, code).expect("map merge should run");
         assert_eq!(result, OwnedValue::String("gold,quest,xp".to_owned()));
     }
 
@@ -396,8 +434,7 @@ fn main() {
         vm.register_standard_natives();
         let mut budget = ExecutionBudget::unbounded();
 
-        let result = vm
-            .run_with_managed_heap_and_budget(&code, &mut budget)
+        let result = run_linked_map_test_code_with_budget(&vm, code, &mut budget)
             .expect("heap map merge should run");
         assert_eq!(result, OwnedValue::String("wolf|gold|done".to_owned()));
     }
@@ -412,8 +449,7 @@ fn main() {
         let code = compile_function_source(SourceId::new(1), source, "main")
             .expect("merge type error source");
 
-        let error = Vm::new()
-            .run(&code)
+        let error = run_linked_map_test_code(&Vm::new(), code)
             .expect_err("map merge should reject non-map argument");
         assert_eq!(
             error.kind(),
@@ -439,7 +475,8 @@ fn main() {
         let code = compile_function_source(SourceId::new(1), source, "main")
             .expect("map clear method should compile");
 
-        let result = Vm::new().run(&code).expect("map clear method should run");
+        let result =
+            run_linked_map_test_code(&Vm::new(), code).expect("map clear method should run");
         assert_eq!(result, OwnedValue::Int(99));
     }
 
@@ -460,8 +497,7 @@ fn main() {
             .expect("heap map clear method should compile");
         let mut budget = ExecutionBudget::unbounded();
 
-        let result = Vm::new()
-            .run_with_managed_heap_and_budget(&code, &mut budget)
+        let result = run_linked_map_test_code_with_budget(&Vm::new(), code, &mut budget)
             .expect("heap map clear method should run");
         assert_eq!(result, OwnedValue::String("boss".to_owned()));
     }
@@ -487,7 +523,7 @@ fn main() {
         let mut vm = Vm::new();
         vm.register_standard_natives();
 
-        let result = vm.run(&code).expect("map extend method should run");
+        let result = run_linked_map_test_code(&vm, code).expect("map extend method should run");
         assert_eq!(result, OwnedValue::String("gold,quest,xp".to_owned()));
     }
 
@@ -510,8 +546,7 @@ fn main() {
         let mut vm = Vm::new();
         vm.register_standard_natives();
 
-        let result = vm
-            .run_with_managed_heap_and_budget(&code, &mut budget)
+        let result = run_linked_map_test_code_with_budget(&vm, code, &mut budget)
             .expect("heap map extend method should run");
         assert_eq!(result, OwnedValue::String("claimed|active".to_owned()));
     }
@@ -528,8 +563,7 @@ fn main() {
         let code = compile_function_source(SourceId::new(1), source, "main")
             .expect("map extend error source should compile");
 
-        let error = Vm::new()
-            .run(&code)
+        let error = run_linked_map_test_code(&Vm::new(), code)
             .expect_err("map extend should reject non-map args");
         assert_eq!(
             error.kind(),
