@@ -6,7 +6,7 @@ use vela_syntax::ast::{AssignOp, Expr, ExprKind};
 
 use crate::{Register, UnlinkedInstructionKind};
 
-use super::host_paths::HostPath;
+use super::host_paths::{HostIndexAccessKind, HostPath};
 use super::operators::compound_assignment_instruction;
 use super::record_shapes::RecordShape;
 use super::script_types::ScriptTypeFact;
@@ -64,11 +64,17 @@ impl Compiler<'_, '_> {
             return Ok(assigned);
         }
         self.reject_read_only_host_assignment(target)?;
-        if matches!(&target.kind, ExprKind::Index { .. })
-            && self.host_field_path(target).is_none()
-            && let ExprKind::Index { base, index } = &target.kind
-        {
-            return self.compile_index_assignment(*op, base, index, value);
+        if let ExprKind::Index { base, index } = &target.kind {
+            let access = match op {
+                AssignOp::Set => HostIndexAccessKind::Write,
+                AssignOp::Add | AssignOp::Sub | AssignOp::Mul | AssignOp::Div | AssignOp::Rem => {
+                    HostIndexAccessKind::Mutate
+                }
+            };
+            self.reject_invalid_host_index_access(target, base, index, access)?;
+            if self.host_field_path(target).is_none() {
+                return self.compile_index_assignment(*op, base, index, value);
+            }
         }
         if let Some(target) = self.indexed_record_field_assignment_target(target) {
             return self.compile_indexed_record_field_assignment(*op, target, value);

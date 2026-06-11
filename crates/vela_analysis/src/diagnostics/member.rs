@@ -1,10 +1,11 @@
 use vela_common::{Diagnostic, PrimitiveTag};
-use vela_syntax::ast::{Expr, ExprKind};
+use vela_syntax::ast::{AssignOp, Expr, ExprKind};
 
 use crate::completion::{CompletionKind, member_completions};
 use crate::expression::{ExprFactScope, type_fact_from_expr};
 use crate::registry::{
-    RegistryEffectFact, RegistryFacts, RegistryFieldAccessFact, RegistryMethodAccessFact,
+    RegistryEffectFact, RegistryFacts, RegistryFieldAccessFact, RegistryIndexCapabilityFact,
+    RegistryMethodAccessFact,
 };
 use crate::stdlib::stdlib_method_fact;
 use crate::type_fact::TypeFact;
@@ -37,7 +38,21 @@ fn collect_member_access_diagnostics(
         }
         ExprKind::Assign { target, value, .. } => {
             diagnose_assignment_target(target, scope, facts, diagnostics);
-            collect_member_access_diagnostics(target, scope, facts, diagnostics);
+            if let ExprKind::Index { base, index } = &target.kind {
+                collect_member_access_diagnostics(base, scope, facts, diagnostics);
+                collect_member_access_diagnostics(index, scope, facts, diagnostics);
+                diagnose_index_access(
+                    target,
+                    base,
+                    index,
+                    scope,
+                    facts,
+                    host_index_assignment_kind(expr),
+                    diagnostics,
+                );
+            } else {
+                collect_member_access_diagnostics(target, scope, facts, diagnostics);
+            }
             collect_member_access_diagnostics(value, scope, facts, diagnostics);
         }
         ExprKind::Field { base, name } => {
@@ -60,6 +75,15 @@ fn collect_member_access_diagnostics(
         ExprKind::Index { base, index } => {
             collect_member_access_diagnostics(base, scope, facts, diagnostics);
             collect_member_access_diagnostics(index, scope, facts, diagnostics);
+            diagnose_index_access(
+                expr,
+                base,
+                index,
+                scope,
+                facts,
+                HostIndexDiagnosticAccessKind::Read,
+                diagnostics,
+            );
         }
         ExprKind::Array(values) => {
             for value in values {
@@ -279,6 +303,123 @@ fn diagnose_assignment_target(
     );
 }
 
+fn diagnose_index_access(
+    expr: &Expr,
+    base: &Expr,
+    index: &Expr,
+    scope: &ExprFactScope,
+    facts: &RegistryFacts,
+    kind: HostIndexDiagnosticAccessKind,
+    diagnostics: &mut Vec<Diagnostic>,
+) {
+    let receiver = type_fact_from_expr(base, scope);
+    let TypeFact::Host { name } = receiver else {
+        return;
+    };
+    let index_fact = type_fact_from_expr(index, scope);
+    let Some(capability) = facts.index_capability_fact(&name) else {
+        diagnostics.push(
+            Diagnostic::error(format!(
+                "type `{name}` does not support host index {}",
+                kind.access_name()
+            ))
+            .with_code("analysis::host_index_not_supported")
+            .with_span(expr.span)
+            .with_label(
+                expr.span,
+                "host index access is not registered for this type",
+            )
+            .with_label(
+                base.span,
+                "register a host index capability or expose a field/method instead",
+            ),
+        );
+        return;
+    };
+    if !kind.allowed_by(capability) {
+        diagnostics.push(
+            Diagnostic::error(format!(
+                "type `{name}` does not allow host index {}",
+                kind.access_name()
+            ))
+            .with_code(kind.denied_code())
+            .with_span(expr.span)
+            .with_label(expr.span, kind.capability_label())
+            .with_label(base.span, kind.enable_label()),
+        );
+        return;
+    }
+    if !accepts_index_key(&index_fact, &capability.key) {
+        diagnostics.push(host_index_key_mismatch_diagnostic(
+            expr,
+            index,
+            capability,
+            &index_fact,
+        ));
+    }
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+enum HostIndexDiagnosticAccessKind {
+    Read,
+    Write,
+    Mutate,
+}
+
+impl HostIndexDiagnosticAccessKind {
+    fn allowed_by(self, capability: &RegistryIndexCapabilityFact) -> bool {
+        match self {
+            Self::Read => capability.readable,
+            Self::Write => capability.writable,
+            Self::Mutate => capability.addable,
+        }
+    }
+
+    const fn denied_code(self) -> &'static str {
+        match self {
+            Self::Read => "analysis::host_index_not_readable",
+            Self::Write => "analysis::host_index_not_writable",
+            Self::Mutate => "analysis::host_index_not_mutable",
+        }
+    }
+
+    const fn access_name(self) -> &'static str {
+        match self {
+            Self::Read => "reads",
+            Self::Write => "writes",
+            Self::Mutate => "mutations",
+        }
+    }
+
+    const fn capability_label(self) -> &'static str {
+        match self {
+            Self::Read => "host index capability is not readable",
+            Self::Write => "host index capability is not writable",
+            Self::Mutate => "host index capability is not addable",
+        }
+    }
+
+    const fn enable_label(self) -> &'static str {
+        match self {
+            Self::Read => "enable readable host index access for this type",
+            Self::Write => "enable writable host index access for this type",
+            Self::Mutate => "enable addable host index access for this type",
+        }
+    }
+}
+
+fn host_index_assignment_kind(expr: &Expr) -> HostIndexDiagnosticAccessKind {
+    let ExprKind::Assign { op, .. } = &expr.kind else {
+        return HostIndexDiagnosticAccessKind::Read;
+    };
+    match op {
+        AssignOp::Set => HostIndexDiagnosticAccessKind::Write,
+        AssignOp::Add | AssignOp::Sub | AssignOp::Mul | AssignOp::Div | AssignOp::Rem => {
+            HostIndexDiagnosticAccessKind::Mutate
+        }
+    }
+}
+
 fn member_receiver_and_name(expr: &Expr, scope: &ExprFactScope) -> Option<(TypeFact, String)> {
     match &expr.kind {
         ExprKind::Field { base, name } => Some((type_fact_from_expr(base, scope), name.clone())),
@@ -434,6 +575,34 @@ fn field_owner(receiver: &TypeFact) -> Option<String> {
     }
 }
 
+fn host_index_key_mismatch_diagnostic(
+    expr: &Expr,
+    index: &Expr,
+    capability: &RegistryIndexCapabilityFact,
+    actual: &TypeFact,
+) -> Diagnostic {
+    Diagnostic::error(format!(
+        "host index key for `{}` must be `{}`",
+        capability.owner,
+        capability.key.display_name()
+    ))
+    .with_code("analysis::host_index_key_mismatch")
+    .with_span(expr.span)
+    .with_label(
+        index.span,
+        format!("index expression has type `{}`", actual.display_name()),
+    )
+}
+
+fn accepts_index_key(index: &TypeFact, key: &TypeFact) -> bool {
+    match (index, key) {
+        (TypeFact::Any | TypeFact::Unknown, _) | (_, TypeFact::Any | TypeFact::Unknown) => true,
+        (TypeFact::Union(facts), key) => facts.iter().any(|fact| accepts_index_key(fact, key)),
+        (index, TypeFact::Union(facts)) => facts.iter().any(|fact| accepts_index_key(index, fact)),
+        _ => key == index,
+    }
+}
+
 fn method_exists(facts: &RegistryFacts, receiver: &TypeFact, method: &str) -> bool {
     if stdlib_method_fact(receiver, method, None).is_some() {
         return true;
@@ -496,7 +665,9 @@ mod tests {
     use vela_common::{HostMethodId, SourceId};
     use vela_def::{FieldId, TypeId};
     use vela_reflect::access::{MethodAccess, MethodEffectSet};
-    use vela_reflect::registry::{FieldDesc, MethodDesc, TypeDesc, TypeKey, TypeRegistry};
+    use vela_reflect::registry::{
+        FieldDesc, HostIndexCapability, MethodDesc, TypeDesc, TypeKey, TypeRegistry,
+    };
     use vela_syntax::ast::{ItemKind, StmtKind};
     use vela_syntax::parser::parse_source;
 
@@ -735,6 +906,68 @@ mod tests {
         }));
     }
 
+    #[test]
+    fn reports_host_index_capability_diagnostics() {
+        let exprs = function_exprs(
+            r#"
+            fn main(scores, write_only, unknown, read_only, frozen) {
+                scores[0];
+                scores["bad"];
+                write_only[0];
+                unknown[0];
+                read_only[0] = 1;
+                frozen[0] += 1;
+            }
+            "#,
+        );
+        let scope = ExprFactScope::new()
+            .with_path(["scores"], TypeFact::host("Scores"))
+            .with_path(["write_only"], TypeFact::host("WriteOnlyScores"))
+            .with_path(["unknown"], TypeFact::host("UnindexedScores"))
+            .with_path(["read_only"], TypeFact::host("ReadOnlyScores"))
+            .with_path(["frozen"], TypeFact::host("FrozenScores"));
+        let facts = host_index_registry_facts();
+
+        assert!(member_access_diagnostics(&exprs[0], &scope, &facts).is_empty());
+
+        let diagnostics = member_access_diagnostics(&exprs[1], &scope, &facts);
+        assert_eq!(diagnostics.len(), 1);
+        assert_eq!(
+            diagnostics[0].code.as_deref(),
+            Some("analysis::host_index_key_mismatch")
+        );
+        assert!(diagnostics[0].message.contains("Scores"));
+        assert!(diagnostics[0].message.contains("i64"));
+
+        let diagnostics = member_access_diagnostics(&exprs[2], &scope, &facts);
+        assert_eq!(diagnostics.len(), 1);
+        assert_eq!(
+            diagnostics[0].code.as_deref(),
+            Some("analysis::host_index_not_readable")
+        );
+
+        let diagnostics = member_access_diagnostics(&exprs[3], &scope, &facts);
+        assert_eq!(diagnostics.len(), 1);
+        assert_eq!(
+            diagnostics[0].code.as_deref(),
+            Some("analysis::host_index_not_supported")
+        );
+
+        let diagnostics = member_access_diagnostics(&exprs[4], &scope, &facts);
+        assert_eq!(diagnostics.len(), 1);
+        assert_eq!(
+            diagnostics[0].code.as_deref(),
+            Some("analysis::host_index_not_writable")
+        );
+
+        let diagnostics = member_access_diagnostics(&exprs[5], &scope, &facts);
+        assert_eq!(diagnostics.len(), 1);
+        assert_eq!(
+            diagnostics[0].code.as_deref(),
+            Some("analysis::host_index_not_mutable")
+        );
+    }
+
     fn registry_facts() -> RegistryFacts {
         let mut registry = TypeRegistry::new();
         registry.register(
@@ -750,6 +983,48 @@ mod tests {
                         .effects(MethodEffectSet::host_write())
                         .access(MethodAccess::new().require_permission("player.reward")),
                 ),
+        );
+        RegistryFacts::from_registry(&registry)
+    }
+
+    fn host_index_registry_facts() -> RegistryFacts {
+        let mut registry = TypeRegistry::new();
+        registry.register(
+            TypeDesc::new(TypeKey::new(TypeId::new(11), "Scores")).index_capability(
+                HostIndexCapability::new()
+                    .readable(true)
+                    .key_type("i64")
+                    .value_type("i64"),
+            ),
+        );
+        registry.register(
+            TypeDesc::new(TypeKey::new(TypeId::new(12), "WriteOnlyScores")).index_capability(
+                HostIndexCapability::new()
+                    .writable(true)
+                    .key_type("i64")
+                    .value_type("i64"),
+            ),
+        );
+        registry.register(TypeDesc::new(TypeKey::new(
+            TypeId::new(13),
+            "UnindexedScores",
+        )));
+        registry.register(
+            TypeDesc::new(TypeKey::new(TypeId::new(14), "ReadOnlyScores")).index_capability(
+                HostIndexCapability::new()
+                    .readable(true)
+                    .key_type("i64")
+                    .value_type("i64"),
+            ),
+        );
+        registry.register(
+            TypeDesc::new(TypeKey::new(TypeId::new(15), "FrozenScores")).index_capability(
+                HostIndexCapability::new()
+                    .readable(true)
+                    .writable(true)
+                    .key_type("i64")
+                    .value_type("i64"),
+            ),
         );
         RegistryFacts::from_registry(&registry)
     }

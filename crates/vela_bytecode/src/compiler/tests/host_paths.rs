@@ -757,6 +757,133 @@ fn main(scores: Scores, key) {
 }
 
 #[test]
+fn compiler_rejects_invalid_root_host_index_accesses() {
+    let mut registry = vela_registry::DefinitionRegistry::new();
+    register_registry_host_type(&mut registry, "Scores", HostTypeId::new(88));
+
+    let error = compile_function_source_with_registry(
+        SourceId::new(1),
+        r#"
+fn main(scores: Scores) {
+    return scores[0];
+}
+"#,
+        "main",
+        registry.compile_view(),
+    )
+    .expect_err("unindexed host type should fail");
+    assert_eq!(
+        semantic_diagnostic_codes(error),
+        ["analysis::host_index_not_supported"]
+    );
+
+    let error = compile_function_source_with_options_and_registry(
+        SourceId::new(2),
+        r#"
+fn main(scores: Scores) {
+    return scores[0];
+}
+"#,
+        "main",
+        &CompilerOptions::new().with_host_index_capability(
+            "Scores",
+            HostIndexCapabilityInfo {
+                readable: false,
+                key_type: Some("i64".to_owned()),
+                value_type: Some("i64".to_owned()),
+                ..HostIndexCapabilityInfo::default()
+            },
+        ),
+        registry.compile_view(),
+    )
+    .expect_err("non-readable host index should fail");
+    assert_eq!(
+        semantic_diagnostic_codes(error),
+        ["analysis::host_index_not_readable"]
+    );
+
+    let error = compile_function_source_with_options_and_registry(
+        SourceId::new(3),
+        r#"
+fn main(scores: Scores) {
+    return scores["bad"];
+}
+"#,
+        "main",
+        &CompilerOptions::new().with_host_index_capability(
+            "Scores",
+            HostIndexCapabilityInfo {
+                readable: true,
+                key_type: Some("i64".to_owned()),
+                value_type: Some("i64".to_owned()),
+                ..HostIndexCapabilityInfo::default()
+            },
+        ),
+        registry.compile_view(),
+    )
+    .expect_err("wrong host index key type should fail");
+    assert_eq!(
+        semantic_diagnostic_codes(error),
+        ["analysis::host_index_key_mismatch"]
+    );
+
+    let error = compile_function_source_with_options_and_registry(
+        SourceId::new(4),
+        r#"
+fn main(scores: Scores) {
+    scores[0] = 1;
+    return 1;
+}
+"#,
+        "main",
+        &CompilerOptions::new().with_host_index_capability(
+            "Scores",
+            HostIndexCapabilityInfo {
+                readable: true,
+                writable: false,
+                key_type: Some("i64".to_owned()),
+                value_type: Some("i64".to_owned()),
+                ..HostIndexCapabilityInfo::default()
+            },
+        ),
+        registry.compile_view(),
+    )
+    .expect_err("non-writable host index should fail");
+    assert_eq!(
+        semantic_diagnostic_codes(error),
+        ["analysis::host_index_not_writable"]
+    );
+
+    let error = compile_function_source_with_options_and_registry(
+        SourceId::new(5),
+        r#"
+fn main(scores: Scores) {
+    scores[0] += 1;
+    return 1;
+}
+"#,
+        "main",
+        &CompilerOptions::new().with_host_index_capability(
+            "Scores",
+            HostIndexCapabilityInfo {
+                readable: true,
+                writable: true,
+                addable: false,
+                key_type: Some("i64".to_owned()),
+                value_type: Some("i64".to_owned()),
+                ..HostIndexCapabilityInfo::default()
+            },
+        ),
+        registry.compile_view(),
+    )
+    .expect_err("non-addable host index mutation should fail");
+    assert_eq!(
+        semantic_diagnostic_codes(error),
+        ["analysis::host_index_not_mutable"]
+    );
+}
+
+#[test]
 fn compiler_lowers_host_variant_field_paths() {
     let quest_progress = FieldId::new(3);
     let count = FieldId::new(4);

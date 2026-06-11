@@ -324,9 +324,10 @@ Cranelift JIT.
     reason to defer the remaining conversions to M20/JIT work;
   - HostTargetPlan/HostAccess resolved targets and direct adapter-thunk boundaries are
     implemented enough for M20 host field/path caches;
-  - root host receiver index reads such as `scores[1]` lower for typed roots
-    with configured host index capability; missing or invalid index-capability
-    diagnostics still need completion before M20;
+  - root host receiver index reads and writes such as `scores[1]` lower for
+    typed roots with configured host index capability, and static diagnostics
+    reject missing, unreadable, unwritable, non-addable, or key-mismatched
+    host index access before fallback bytecode emission;
   - callback and closure allocation costs now have isolated quick and default
     baseline rows; M20 cache-enabled rows still need to separate cache work
     from later JIT work;

@@ -10,7 +10,7 @@ use super::const_eval::{
     compile_literal_constant, compile_literal_constant_for_type, compile_negated_literal_constant,
 };
 use super::constructors::schema_default_fields;
-use super::host_paths::HostPath;
+use super::host_paths::{HostIndexAccessKind, HostPath};
 use super::operators::{binary_literal_op, non_logical_binary_instruction};
 use super::patterns::enum_variant_path;
 use super::schema_defaults::{record_constructor_diagnostics, unknown_enum_variant_diagnostic};
@@ -111,11 +111,23 @@ impl Compiler<'_, '_> {
                 if let Some(path) = self.host_field_path(expr)
                     && !path.segments.is_empty()
                 {
+                    self.reject_invalid_host_index_access(
+                        expr,
+                        base,
+                        index,
+                        HostIndexAccessKind::Read,
+                    )?;
                     let root = self.compile_host_path_root(path.root)?;
                     let dst = self.alloc_register()?;
                     self.emit_host_read(dst, root, path, expr.span)?;
                     return Ok(dst);
                 }
+                self.reject_invalid_host_index_access(
+                    expr,
+                    base,
+                    index,
+                    HostIndexAccessKind::Read,
+                )?;
                 let base = self.compile_expr(base)?;
                 let index = self.compile_expr(index)?;
                 let dst = self.alloc_register()?;

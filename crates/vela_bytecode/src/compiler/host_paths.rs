@@ -1,5 +1,5 @@
-use vela_common::HostTypeId;
 use vela_common::Span;
+use vela_common::{Diagnostic, HostTypeId};
 use vela_def::FieldId;
 use vela_syntax::ast::{Argument, Expr, ExprKind};
 
@@ -439,6 +439,72 @@ impl Compiler<'_, '_> {
             .or_else(|| self.script_types.name(name))
             .or_else(|| self.global_type_named(name))
     }
+
+    pub(super) fn reject_invalid_host_index_access(
+        &self,
+        expr: &Expr,
+        base: &Expr,
+        index: &Expr,
+        kind: HostIndexAccessKind,
+    ) -> CompileResult<()> {
+        let Some(receiver_type) = self.script_type_for_expr(base) else {
+            return Ok(());
+        };
+        if self.host_runtime_type_id(&receiver_type).is_none() {
+            return Ok(());
+        }
+        let Some(capability) = self.facts.options.host_index_capability(&receiver_type) else {
+            return Err(host_index_diagnostic_error(
+                Diagnostic::error(format!(
+                    "type `{receiver_type}` does not support host index access"
+                ))
+                .with_code("analysis::host_index_not_supported")
+                .with_span(expr.span)
+                .with_label(
+                    expr.span,
+                    "host index access is not registered for this type",
+                )
+                .with_label(
+                    base.span,
+                    "register a host index capability or expose a field/method instead",
+                ),
+            ));
+        };
+        if !kind.allowed_by(capability) {
+            return Err(host_index_diagnostic_error(
+                Diagnostic::error(format!(
+                    "type `{receiver_type}` does not allow host index {}",
+                    kind.access_name()
+                ))
+                .with_code(kind.denied_code())
+                .with_span(expr.span)
+                .with_label(expr.span, kind.capability_label())
+                .with_label(base.span, kind.enable_label()),
+            ));
+        }
+        if let Some(expected) = capability.key_type.as_deref()
+            && let Some(actual) = self.value_type_for_expr(index)
+            && actual.source_type_name() != expected
+            && actual.std_type_name() != expected
+        {
+            return Err(host_index_diagnostic_error(
+                Diagnostic::error(format!(
+                    "host index key for `{receiver_type}` must be `{expected}`"
+                ))
+                .with_code("analysis::host_index_key_mismatch")
+                .with_span(expr.span)
+                .with_label(
+                    index.span,
+                    format!("index expression has type `{}`", actual.source_type_name()),
+                ),
+            ));
+        }
+        Ok(())
+    }
+}
+
+fn host_index_diagnostic_error(diagnostic: Diagnostic) -> CompileError {
+    CompileError::new(CompileErrorKind::SemanticDiagnostics(vec![diagnostic]))
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -463,6 +529,55 @@ pub(super) struct CompiledHostTarget {
 enum ConstHostPathArg {
     Index(u32),
     Key(String),
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub(super) enum HostIndexAccessKind {
+    Read,
+    Write,
+    Mutate,
+}
+
+impl HostIndexAccessKind {
+    fn allowed_by(self, capability: &crate::compiler::options::HostIndexCapabilityInfo) -> bool {
+        match self {
+            Self::Read => capability.readable,
+            Self::Write => capability.writable,
+            Self::Mutate => capability.addable,
+        }
+    }
+
+    const fn denied_code(self) -> &'static str {
+        match self {
+            Self::Read => "analysis::host_index_not_readable",
+            Self::Write => "analysis::host_index_not_writable",
+            Self::Mutate => "analysis::host_index_not_mutable",
+        }
+    }
+
+    const fn access_name(self) -> &'static str {
+        match self {
+            Self::Read => "reads",
+            Self::Write => "writes",
+            Self::Mutate => "mutations",
+        }
+    }
+
+    const fn capability_label(self) -> &'static str {
+        match self {
+            Self::Read => "host index capability is not readable",
+            Self::Write => "host index capability is not writable",
+            Self::Mutate => "host index capability is not addable",
+        }
+    }
+
+    const fn enable_label(self) -> &'static str {
+        match self {
+            Self::Read => "enable readable host index access for this type",
+            Self::Write => "enable writable host index access for this type",
+            Self::Mutate => "enable addable host index access for this type",
+        }
+    }
 }
 
 fn const_host_path_arg(expr: &Expr) -> Option<ConstHostPathArg> {

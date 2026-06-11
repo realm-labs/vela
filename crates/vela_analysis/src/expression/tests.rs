@@ -1,6 +1,8 @@
 use vela_common::SourceId;
 use vela_def::{FieldId, TypeId, VariantId};
-use vela_reflect::registry::{FieldDesc, TypeDesc, TypeKey, TypeKind, TypeRegistry, VariantDesc};
+use vela_reflect::registry::{
+    FieldDesc, HostIndexCapability, TypeDesc, TypeKey, TypeKind, TypeRegistry, VariantDesc,
+};
 use vela_syntax::ast::{ItemKind, StmtKind};
 use vela_syntax::parser::parse_source;
 
@@ -84,6 +86,38 @@ fn infers_index_read_facts_from_collection_receivers() {
     assert_eq!(type_fact_from_expr(&expressions[2], &scope), TypeFact::I64);
     assert_eq!(
         type_fact_from_expr(&expressions[3], &scope),
+        TypeFact::Unknown
+    );
+}
+
+#[test]
+fn infers_index_read_facts_from_host_index_capability() {
+    let expressions = function_exprs(
+        r#"
+            fn main() {
+                scores[0];
+                scores["bad"];
+            }
+            "#,
+    );
+    let scope = ExprFactScope::new().with_path(["scores"], TypeFact::host("Scores"));
+    let mut registry = TypeRegistry::new();
+    registry.register(
+        TypeDesc::new(TypeKey::new(TypeId::new(99), "Scores")).index_capability(
+            HostIndexCapability::new()
+                .readable(true)
+                .key_type("i64")
+                .value_type("string"),
+        ),
+    );
+    let facts = RegistryFacts::from_registry(&registry);
+
+    assert_eq!(
+        type_fact_from_expr_with_registry(&expressions[0], &scope, &facts),
+        TypeFact::STRING
+    );
+    assert_eq!(
+        type_fact_from_expr_with_registry(&expressions[1], &scope, &facts),
         TypeFact::Unknown
     );
 }

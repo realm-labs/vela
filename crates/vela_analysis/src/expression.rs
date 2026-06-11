@@ -109,6 +109,7 @@ fn type_fact_from_expr_impl(
         ExprKind::Index { base, index } => index_fact(
             type_fact_from_expr_impl(base, scope, facts),
             type_fact_from_expr_impl(index, scope, facts),
+            facts,
         ),
         ExprKind::Call { callee, args } => call_fact(callee, args, scope, facts),
         ExprKind::Array(values) => TypeFact::array(collection_fact(
@@ -304,14 +305,18 @@ fn registry_field_fact(
     }
 }
 
-fn index_fact(base: TypeFact, index: TypeFact) -> TypeFact {
+fn index_fact(base: TypeFact, index: TypeFact, facts: Option<&RegistryFacts>) -> TypeFact {
     match base {
         TypeFact::Array { element } if accepts_int_index(&index) => *element,
         TypeFact::Map { key, value } if accepts_map_key(&index, &key) => *value,
-        TypeFact::Union(facts) => TypeFact::union(
-            facts
+        TypeFact::Host { name } => facts
+            .and_then(|facts| facts.index_capability_fact(&name))
+            .filter(|capability| capability.readable && accepts_map_key(&index, &capability.key))
+            .map_or(TypeFact::Unknown, |capability| capability.value.clone()),
+        TypeFact::Union(members) => TypeFact::union(
+            members
                 .into_iter()
-                .map(|fact| index_fact(fact, index.clone()))
+                .map(|fact| index_fact(fact, index.clone(), facts))
                 .filter(|fact| !matches!(fact, TypeFact::Unknown)),
         ),
         _ => TypeFact::Unknown,

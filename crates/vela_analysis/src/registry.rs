@@ -73,6 +73,41 @@ impl RegistryMethodAccessFact {
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]
+pub struct RegistryIndexCapabilityFact {
+    pub owner: String,
+    pub readable: bool,
+    pub writable: bool,
+    pub addable: bool,
+    pub removable: bool,
+    pub key: TypeFact,
+    pub value: TypeFact,
+}
+
+impl RegistryIndexCapabilityFact {
+    fn new(
+        owner: impl Into<String>,
+        capability: &vela_reflect::registry::HostIndexCapability,
+        registry: &TypeRegistry,
+    ) -> Self {
+        Self {
+            owner: owner.into(),
+            readable: capability.readable,
+            writable: capability.writable,
+            addable: capability.addable,
+            removable: capability.removable,
+            key: capability
+                .key_type
+                .as_deref()
+                .map_or(TypeFact::Unknown, |hint| registry_hint_fact(registry, hint)),
+            value: capability
+                .value_type
+                .as_deref()
+                .map_or(TypeFact::Unknown, |hint| registry_hint_fact(registry, hint)),
+        }
+    }
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
 pub struct RegistryFunctionFact {
     pub name: String,
     pub fact: TypeFact,
@@ -215,6 +250,7 @@ pub struct RegistryFacts {
     methods: BTreeMap<(String, String), TypeFact>,
     trait_methods: BTreeMap<(String, String), TypeFact>,
     functions: BTreeMap<String, TypeFact>,
+    index_capabilities: BTreeMap<String, RegistryIndexCapabilityFact>,
     method_effects: BTreeMap<(String, String), RegistryEffectFact>,
     method_access: BTreeMap<(String, String), RegistryMethodAccessFact>,
     trait_method_effects: BTreeMap<(String, String), RegistryEffectFact>,
@@ -229,6 +265,12 @@ impl RegistryFacts {
         for desc in registry.types() {
             let type_fact = type_desc_fact(desc);
             facts.types.insert(desc.key.name.clone(), type_fact.clone());
+            if let Some(capability) = &desc.index_capability {
+                facts.index_capabilities.insert(
+                    desc.key.name.clone(),
+                    RegistryIndexCapabilityFact::new(&desc.key.name, capability, registry),
+                );
+            }
 
             for field in &desc.fields {
                 let key = (desc.key.name.clone(), field.name.clone());
@@ -353,6 +395,11 @@ impl RegistryFacts {
         self.fields
             .iter()
             .map(|((owner, name), fact)| RegistryMemberFact::new(owner, name, fact.clone()))
+    }
+
+    #[must_use]
+    pub fn index_capability_fact(&self, owner: &str) -> Option<&RegistryIndexCapabilityFact> {
+        self.index_capabilities.get(owner)
     }
 
     #[must_use]
