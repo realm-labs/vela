@@ -83,10 +83,11 @@ use small_storage::SmallStorage;
 use vela_bytecode::UnlinkedProgram;
 use vela_bytecode::{
     CacheSiteId, DebugNameId, FieldSlot, HostTargetPlanId, InstructionOffset, LinkedCodeObject,
-    LinkedProgram, Register, UnlinkedCodeObject, UnlinkedInstructionKind, UnlinkedProgramCode,
+    LinkedProgram, MethodDispatchHandle, Register, ScriptFunctionHandle, UnlinkedCodeObject,
+    UnlinkedInstructionKind, UnlinkedProgramCode,
 };
-use vela_common::{GlobalSlot, HostTypeId, ShapeId, Span};
-use vela_def::{DefPath, FunctionId, TypeId};
+use vela_common::{GlobalSlot, HostMethodId, HostTypeId, ShapeId, Span};
+use vela_def::{DefPath, FunctionId, MethodId, TypeId};
 use vela_host::adapter::ScriptStateAdapter;
 use vela_host::resolved::{HostAccessOp, HostSchemaEpoch, ResolvedHostAccess};
 #[cfg(test)]
@@ -246,6 +247,12 @@ pub trait VmInlineCaches {
     }
 
     fn set_record_field(&self, _site: CacheSiteId, _entry: RecordFieldInlineCacheEntry) {}
+
+    fn method_dispatch(&self, _site: CacheSiteId) -> Option<MethodInlineCacheEntry> {
+        None
+    }
+
+    fn set_method_dispatch(&self, _site: CacheSiteId, _entry: MethodInlineCacheEntry) {}
 }
 
 pub trait VmBytecodeProfiler {
@@ -283,6 +290,27 @@ pub struct RecordFieldInlineCacheEntry {
     pub type_id: TypeId,
     pub shape_id: ShapeId,
     pub field: FieldSlot,
+}
+
+#[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
+pub struct MethodInlineCacheEntry {
+    pub dispatch: MethodDispatchHandle,
+    pub debug_name: DebugNameId,
+    pub target: MethodInlineCacheTarget,
+}
+
+#[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
+pub enum MethodInlineCacheTarget {
+    Script {
+        method_id: MethodId,
+        function: ScriptFunctionHandle,
+    },
+    Value {
+        method_id: MethodId,
+    },
+    Host {
+        method_id: HostMethodId,
+    },
 }
 
 pub struct LinkedRuntimeCodeCall<'program, 'args, 'host, 'heap, 'roots, 'budget, 'caches> {

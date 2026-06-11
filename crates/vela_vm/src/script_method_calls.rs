@@ -1,7 +1,7 @@
 use vela_bytecode::linked::LinkedMethodDispatchKind;
 use vela_bytecode::{
-    CallArgument, DebugNameId, InstructionOffset, LinkedProgram, MethodDispatchHandle, Register,
-    UnlinkedProgramCode,
+    CacheSiteId, CallArgument, DebugNameId, InstructionOffset, LinkedProgram, MethodDispatchHandle,
+    Register, UnlinkedProgramCode,
 };
 use vela_common::Span;
 use vela_def::MethodId;
@@ -13,7 +13,8 @@ use crate::{
     store_value_in_heap_if_needed,
 };
 use crate::{
-    VmBytecodeProfiler, VmError, VmErrorKind, VmInlineCaches, host_access, script_function_calls,
+    MethodInlineCacheEntry, MethodInlineCacheTarget, VmBytecodeProfiler, VmError, VmErrorKind,
+    VmInlineCaches, host_access, script_function_calls,
 };
 
 use crate::script_methods::{
@@ -284,6 +285,7 @@ pub(crate) struct LinkedMethodRuntimeContext<'a> {
 pub(crate) struct LinkedScriptMethodCallContext<'a> {
     pub(crate) program: &'a LinkedProgram,
     pub(crate) inline_caches: Option<&'a dyn VmInlineCaches>,
+    pub(crate) cache_site: Option<CacheSiteId>,
     pub(crate) bytecode_profiler: Option<&'a dyn VmBytecodeProfiler>,
     pub(crate) call_site: Option<Span>,
     pub(crate) call_site_offset: Option<InstructionOffset>,
@@ -306,15 +308,7 @@ pub(crate) fn dispatch_linked_method_call(
     frame: &mut CallFrame,
     call: LinkedScriptMethodCall<'_>,
 ) -> VmResult<()> {
-    let dispatch = context
-        .program
-        .method_dispatch(call.dispatch)
-        .ok_or_else(|| {
-            VmError::new(VmErrorKind::UnknownMethod {
-                method: context.program.debug_name(call.debug_name).to_owned(),
-            })
-            .with_source_span_if_absent(context.call_site)
-        })?;
+    let dispatch = linked_method_dispatch_target(&context, call.dispatch, call.debug_name)?;
     let values_storage;
     let values = if call.args.is_empty() {
         &[]
@@ -323,8 +317,8 @@ pub(crate) fn dispatch_linked_method_call(
             script_function_calls::script_call_args_from_call_arguments(frame, call.args)?;
         values_storage.as_slice()
     };
-    match &dispatch.kind {
-        LinkedMethodDispatchKind::Script {
+    match dispatch.target {
+        MethodInlineCacheTarget::Script {
             method_id: _,
             function,
         } => dispatch_linked_script_method_call(
@@ -338,11 +332,11 @@ pub(crate) fn dispatch_linked_method_call(
                 dst: call.dst,
                 receiver: call.receiver,
                 debug_name: dispatch.debug_name,
-                function: *function,
+                function,
                 values,
             },
         ),
-        LinkedMethodDispatchKind::Value { method_id } => dispatch_linked_method_id_call(
+        MethodInlineCacheTarget::Value { method_id } => dispatch_linked_method_id_call(
             vm,
             LinkedMethodRuntimeContext {
                 program: context.program,
@@ -357,11 +351,11 @@ pub(crate) fn dispatch_linked_method_call(
                 dst: call.dst,
                 receiver: call.receiver,
                 method: context.program.debug_name(dispatch.debug_name),
-                method_id: *method_id,
+                method_id,
                 values,
             },
         ),
-        LinkedMethodDispatchKind::Host { method_id } => {
+        MethodInlineCacheTarget::Host { method_id } => {
             let return_value = host_access::execute_host_root_method_call(
                 host_access::HostAccessRuntime {
                     frame,
@@ -373,7 +367,7 @@ pub(crate) fn dispatch_linked_method_call(
                 },
                 call.receiver,
                 host_access::HostRootMethodCall {
-                    method: *method_id,
+                    method: method_id,
                     args: values,
                     wants_return: true,
                 },
@@ -383,6 +377,75 @@ pub(crate) fn dispatch_linked_method_call(
             }
             Ok(())
         }
+    }
+}
+
+#[derive(Clone, Copy)]
+struct LinkedMethodDispatchTarget {
+    debug_name: DebugNameId,
+    target: MethodInlineCacheTarget,
+}
+
+fn linked_method_dispatch_target(
+    context: &LinkedScriptMethodCallContext<'_>,
+    dispatch_handle: MethodDispatchHandle,
+    debug_name: DebugNameId,
+) -> VmResult<LinkedMethodDispatchTarget> {
+    if let Some(site) = context.cache_site
+        && let Some(entry) = context
+            .inline_caches
+            .and_then(|caches| caches.method_dispatch(site))
+        && entry.dispatch == dispatch_handle
+    {
+        return Ok(LinkedMethodDispatchTarget {
+            debug_name: entry.debug_name,
+            target: entry.target,
+        });
+    }
+
+    let dispatch = context
+        .program
+        .method_dispatch(dispatch_handle)
+        .ok_or_else(|| {
+            VmError::new(VmErrorKind::UnknownMethod {
+                method: context.program.debug_name(debug_name).to_owned(),
+            })
+            .with_source_span_if_absent(context.call_site)
+        })?;
+    let target = method_inline_cache_target(&dispatch.kind);
+    if let Some(site) = context.cache_site
+        && let Some(caches) = context.inline_caches
+    {
+        caches.set_method_dispatch(
+            site,
+            MethodInlineCacheEntry {
+                dispatch: dispatch_handle,
+                debug_name: dispatch.debug_name,
+                target,
+            },
+        );
+    }
+    Ok(LinkedMethodDispatchTarget {
+        debug_name: dispatch.debug_name,
+        target,
+    })
+}
+
+fn method_inline_cache_target(kind: &LinkedMethodDispatchKind) -> MethodInlineCacheTarget {
+    match kind {
+        LinkedMethodDispatchKind::Script {
+            method_id,
+            function,
+        } => MethodInlineCacheTarget::Script {
+            method_id: *method_id,
+            function: *function,
+        },
+        LinkedMethodDispatchKind::Value { method_id } => MethodInlineCacheTarget::Value {
+            method_id: *method_id,
+        },
+        LinkedMethodDispatchKind::Host { method_id } => MethodInlineCacheTarget::Host {
+            method_id: *method_id,
+        },
     }
 }
 

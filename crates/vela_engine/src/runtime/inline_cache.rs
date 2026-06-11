@@ -2,7 +2,7 @@ use std::cell::RefCell;
 
 use vela_bytecode::CacheSiteId;
 use vela_common::GlobalSlot;
-use vela_vm::{HostInlineCacheEntry, RecordFieldInlineCacheEntry};
+use vela_vm::{HostInlineCacheEntry, MethodInlineCacheEntry, RecordFieldInlineCacheEntry};
 
 use super::image::RuntimeImage;
 
@@ -17,6 +17,7 @@ pub(super) enum InlineCacheEntry {
     GlobalRead { slot: GlobalSlot },
     HostAccess(HostInlineCacheEntry),
     RecordField(RecordFieldInlineCacheEntry),
+    MethodDispatch(MethodInlineCacheEntry),
 }
 
 impl InlineCaches {
@@ -76,6 +77,19 @@ impl InlineCaches {
             *slot = InlineCacheEntry::RecordField(entry);
         }
     }
+
+    pub(super) fn method_dispatch(&self, site: CacheSiteId) -> Option<MethodInlineCacheEntry> {
+        match self.entries.borrow().get(site.index()) {
+            Some(InlineCacheEntry::MethodDispatch(entry)) => Some(*entry),
+            _ => None,
+        }
+    }
+
+    pub(super) fn set_method_dispatch(&self, site: CacheSiteId, entry: MethodInlineCacheEntry) {
+        if let Some(slot) = self.entries.borrow_mut().get_mut(site.index()) {
+            *slot = InlineCacheEntry::MethodDispatch(entry);
+        }
+    }
 }
 
 impl vela_vm::VmInlineCaches for InlineCaches {
@@ -110,11 +124,23 @@ impl vela_vm::VmInlineCaches for InlineCaches {
     fn set_record_field(&self, site: CacheSiteId, entry: RecordFieldInlineCacheEntry) {
         self.set_record_field(site, entry);
     }
+
+    fn method_dispatch(&self, site: CacheSiteId) -> Option<MethodInlineCacheEntry> {
+        self.method_dispatch(site)
+    }
+
+    fn set_method_dispatch(&self, site: CacheSiteId, entry: MethodInlineCacheEntry) {
+        self.set_method_dispatch(site, entry);
+    }
 }
 
 #[cfg(test)]
 #[path = "inline_cache_hot_reload_tests.rs"]
 mod hot_reload_tests;
+
+#[cfg(test)]
+#[path = "inline_cache_method_tests.rs"]
+mod method_tests;
 
 #[cfg(test)]
 mod tests {

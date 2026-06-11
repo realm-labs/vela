@@ -410,7 +410,7 @@ impl Vm {
                     receiver,
                     dispatch,
                     debug_name,
-                    cache_site: _,
+                    cache_site,
                     args,
                 } => {
                     script_method_calls::dispatch_linked_method_call(
@@ -418,6 +418,7 @@ impl Vm {
                         script_method_calls::LinkedScriptMethodCallContext {
                             program: call.program,
                             inline_caches: call.inline_caches,
+                            cache_site: *cache_site,
                             call_site: instruction.span,
                             call_site_offset: Some(instruction_offset),
                             bytecode_profiler: call.bytecode_profiler,
