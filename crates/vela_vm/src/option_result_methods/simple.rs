@@ -1,4 +1,4 @@
-use crate::option_result::{option_value, result_value};
+use crate::option_result::{StdEnumVariant, option_value, result_value};
 use crate::{ExecutionBudget, HeapExecution, Value, VmError, VmErrorKind, VmResult};
 
 use super::access::{
@@ -91,9 +91,11 @@ pub(crate) fn ok_or(
     match option_variant(receiver, heap.as_deref(), "method ok_or")? {
         EnumVariant::Some => {
             let payload = enum_payload(receiver, heap.as_deref(), "method ok_or")?;
-            result_result("Ok", payload, heap, budget, "method ok_or")
+            result_result(StdEnumVariant::Ok, payload, heap, budget, "method ok_or")
         }
-        EnumVariant::None => result_result("Err", args[0], heap, budget, "method ok_or"),
+        EnumVariant::None => {
+            result_result(StdEnumVariant::Err, args[0], heap, budget, "method ok_or")
+        }
         _ => type_error("method ok_or"),
     }
 }
@@ -159,7 +161,7 @@ pub(crate) fn flatten(
         }
         (EnumKind::Result, EnumVariant::Err) => {
             let payload = enum_payload(receiver, heap.as_deref(), "method flatten")?;
-            result_result("Err", payload, heap, budget, "method flatten")
+            result_result(StdEnumVariant::Err, payload, heap, budget, "method flatten")
         }
         _ => type_error("method flatten"),
     }
@@ -178,7 +180,7 @@ fn option_result(
 }
 
 fn result_result(
-    variant: &str,
+    variant: StdEnumVariant,
     payload: Value,
     heap: &mut Option<&mut HeapExecution<'_>>,
     budget: &mut Option<&mut ExecutionBudget>,

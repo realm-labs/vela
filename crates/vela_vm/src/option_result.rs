@@ -1,9 +1,106 @@
-use crate::heap::HeapValue;
+use crate::heap::{EnumIdentity, HeapValue};
 use crate::owned_value::OwnedValue;
 use crate::script_object::ScriptFields;
 use crate::{
     ExecutionBudget, HeapExecution, Value, VmError, VmErrorKind, VmResult, allocate_heap_value,
 };
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub(crate) enum StdEnumKind {
+    Option,
+    Result,
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub(crate) enum StdEnumVariant {
+    Some,
+    None,
+    Ok,
+    Err,
+}
+
+impl StdEnumVariant {
+    fn name(self) -> &'static str {
+        match self {
+            Self::Some => "Some",
+            Self::None => "None",
+            Self::Ok => "Ok",
+            Self::Err => "Err",
+        }
+    }
+
+    fn owner(self) -> &'static str {
+        match self {
+            Self::Some => "Option::Some",
+            Self::None => "Option::None",
+            Self::Ok => "Result::Ok",
+            Self::Err => "Result::Err",
+        }
+    }
+
+    fn kind(self) -> StdEnumKind {
+        match self {
+            Self::Some | Self::None => StdEnumKind::Option,
+            Self::Ok | Self::Err => StdEnumKind::Result,
+        }
+    }
+
+    pub(crate) fn has_payload(self) -> bool {
+        !matches!(self, Self::None)
+    }
+}
+
+pub(crate) fn std_enum_identity(variant: StdEnumVariant) -> EnumIdentity {
+    let type_name = match variant.kind() {
+        StdEnumKind::Option => "Option",
+        StdEnumKind::Result => "Result",
+    };
+    EnumIdentity::new(
+        vela_stdlib::std_type_id(type_name).expect("standard enum type should be declared"),
+        vela_stdlib::std_variant_id(type_name, variant.name())
+            .expect("standard enum variant should be declared"),
+        variant.has_payload().then(|| {
+            vela_stdlib::std_field_id(variant.owner(), "0")
+                .expect("standard enum payload field should be declared")
+        }),
+    )
+}
+
+pub(crate) fn std_enum_identity_for_names(enum_name: &str, variant: &str) -> Option<EnumIdentity> {
+    let variant = match (enum_name, variant) {
+        ("Option", "Some") => StdEnumVariant::Some,
+        ("Option", "None") => StdEnumVariant::None,
+        ("Result", "Ok") => StdEnumVariant::Ok,
+        ("Result", "Err") => StdEnumVariant::Err,
+        _ => return None,
+    };
+    Some(std_enum_identity(variant))
+}
+
+pub(crate) fn std_enum_tag(identity: EnumIdentity) -> Option<(StdEnumKind, StdEnumVariant)> {
+    let option_type = vela_stdlib::std_type_id("Option")?;
+    let result_type = vela_stdlib::std_type_id("Result")?;
+    let option_some = vela_stdlib::std_variant_id("Option", "Some")?;
+    let option_none = vela_stdlib::std_variant_id("Option", "None")?;
+    let result_ok = vela_stdlib::std_variant_id("Result", "Ok")?;
+    let result_err = vela_stdlib::std_variant_id("Result", "Err")?;
+
+    match (identity.type_id, identity.variant_id) {
+        (ty, variant) if ty == option_type && variant == option_some => {
+            Some((StdEnumKind::Option, StdEnumVariant::Some))
+        }
+        (ty, variant) if ty == option_type && variant == option_none => {
+            Some((StdEnumKind::Option, StdEnumVariant::None))
+        }
+        (ty, variant) if ty == result_type && variant == result_ok => {
+            Some((StdEnumKind::Result, StdEnumVariant::Ok))
+        }
+        (ty, variant) if ty == result_type && variant == result_err => {
+            Some((StdEnumKind::Result, StdEnumVariant::Err))
+        }
+        _ => None,
+    }
+}
 
 pub(crate) fn option_value(
     payload: Option<Value>,
@@ -11,9 +108,7 @@ pub(crate) fn option_value(
     budget: Option<&mut ExecutionBudget>,
 ) -> VmResult<Value> {
     match payload {
-        Some(payload) => {
-            enum_heap_payload_value("Option", "Some", "Option::Some", payload, heap, budget)
-        }
+        Some(payload) => enum_heap_payload_value(StdEnumVariant::Some, payload, heap, budget),
         None => option_none_value(heap, budget),
     }
 }
@@ -22,61 +117,58 @@ pub(crate) fn option_none_value(
     heap: &mut HeapExecution<'_>,
     budget: Option<&mut ExecutionBudget>,
 ) -> VmResult<Value> {
-    enum_heap_empty_value("Option", "None", "Option::None", heap, budget)
+    enum_heap_empty_value(StdEnumVariant::None, heap, budget)
 }
 
 pub(crate) fn result_value(
-    variant: &str,
+    variant: StdEnumVariant,
     payload: Value,
     heap: &mut HeapExecution<'_>,
     budget: Option<&mut ExecutionBudget>,
 ) -> VmResult<Value> {
-    let owner = match variant {
-        "Ok" => "Result::Ok",
-        "Err" => "Result::Err",
-        _ => return type_error("method result"),
-    };
-    enum_heap_payload_value("Result", variant, owner, payload, heap, budget)
+    if !matches!(variant, StdEnumVariant::Ok | StdEnumVariant::Err) {
+        return type_error("method result");
+    }
+    enum_heap_payload_value(variant, payload, heap, budget)
 }
 
 fn enum_heap_empty_value(
-    enum_name: &str,
-    variant: &str,
-    owner: &str,
+    variant: StdEnumVariant,
     heap: &mut HeapExecution<'_>,
     budget: Option<&mut ExecutionBudget>,
 ) -> VmResult<Value> {
-    enum_heap_value(enum_name, variant, ScriptFields::empty(owner), heap, budget)
+    enum_heap_value(variant, ScriptFields::empty(variant.owner()), heap, budget)
 }
 
 fn enum_heap_payload_value(
-    enum_name: &str,
-    variant: &str,
-    owner: &str,
+    variant: StdEnumVariant,
     payload: Value,
     heap: &mut HeapExecution<'_>,
     budget: Option<&mut ExecutionBudget>,
 ) -> VmResult<Value> {
     enum_heap_value(
-        enum_name,
         variant,
-        ScriptFields::single(owner, "0", payload),
+        ScriptFields::single(variant.owner(), "0", payload),
         heap,
         budget,
     )
 }
 
 fn enum_heap_value(
-    enum_name: &str,
-    variant: &str,
+    variant: StdEnumVariant,
     fields: ScriptFields<Value>,
     heap: &mut HeapExecution<'_>,
     budget: Option<&mut ExecutionBudget>,
 ) -> VmResult<Value> {
+    let enum_name = match variant.kind() {
+        StdEnumKind::Option => "Option",
+        StdEnumKind::Result => "Result",
+    };
     allocate_heap_value(
         HeapValue::Enum {
             enum_name: enum_name.to_owned(),
-            variant: variant.to_owned(),
+            variant: variant.name().to_owned(),
+            identity: Some(std_enum_identity(variant)),
             fields,
         },
         heap,

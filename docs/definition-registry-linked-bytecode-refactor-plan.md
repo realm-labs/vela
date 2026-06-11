@@ -1598,7 +1598,7 @@ surface.
 
 ### Phase 7: Replace runtime string identity for records/enums
 
-- [ ] **Task 7.1: Convert Option/Result runtime identity to TypeId/VariantId**
+- [x] **Task 7.1: Convert Option/Result runtime identity to TypeId/VariantId**
 
 **Objective:** Remove hardcoded string identity from built-in enum values.
 

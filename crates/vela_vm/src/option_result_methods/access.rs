@@ -1,4 +1,5 @@
 use crate::heap::HeapValue;
+use crate::option_result::{StdEnumKind, StdEnumVariant, std_enum_identity, std_enum_tag};
 use crate::{HeapExecution, Value, VmError, VmErrorKind, VmResult, stored_runtime_value};
 
 pub(super) struct EnumTag {
@@ -16,51 +17,24 @@ impl EnumTag {
     }
 }
 
-#[derive(Clone, Copy, Eq, PartialEq)]
-pub(super) enum EnumKind {
-    Option,
-    Result,
-}
+pub(super) type EnumKind = StdEnumKind;
 
-#[derive(Clone, Copy, Eq, PartialEq)]
-pub(super) enum EnumVariant {
-    Some,
-    None,
-    Ok,
-    Err,
-    Other,
-}
+pub(super) type EnumVariant = StdEnumVariant;
 
 pub(super) fn enum_tag(receiver: &Value, heap: Option<&HeapExecution<'_>>) -> Option<EnumTag> {
-    let (enum_name, variant) = match receiver {
+    let identity = match receiver {
         Value::HeapRef(reference) => match heap.and_then(|heap| heap.heap.get(*reference)) {
             Some(HeapValue::Enum {
-                enum_name, variant, ..
-            }) => (enum_name.as_str(), variant.as_str()),
+                identity: Some(identity),
+                ..
+            }) => *identity,
             _ => return None,
         },
         _ => return None,
     };
 
-    let kind = match enum_name.rsplit("::").next() {
-        Some("Option") => EnumKind::Option,
-        Some("Result") => EnumKind::Result,
-        _ => return None,
-    };
-    Some(EnumTag {
-        kind,
-        variant: enum_variant(variant),
-    })
-}
-
-fn enum_variant(variant: &str) -> EnumVariant {
-    match variant {
-        "Some" => EnumVariant::Some,
-        "None" => EnumVariant::None,
-        "Ok" => EnumVariant::Ok,
-        "Err" => EnumVariant::Err,
-        _ => EnumVariant::Other,
-    }
+    let (kind, variant) = std_enum_tag(identity)?;
+    Some(EnumTag { kind, variant })
 }
 
 pub(super) fn option_variant(
@@ -96,13 +70,24 @@ pub(super) fn enum_payload(
 ) -> VmResult<Value> {
     match receiver {
         Value::HeapRef(reference) => {
-            let Some(HeapValue::Enum { fields, .. }) =
-                heap.and_then(|heap| heap.heap.get(*reference))
+            let Some(HeapValue::Enum {
+                identity: Some(identity),
+                fields,
+                ..
+            }) = heap.and_then(|heap| heap.heap.get(*reference))
             else {
                 return type_error(operation);
             };
+            let Some((_, variant)) = std_enum_tag(*identity) else {
+                return type_error(operation);
+            };
+            if !variant.has_payload()
+                || identity.payload_field_id != std_enum_identity(variant).payload_field_id
+            {
+                return type_error(operation);
+            }
             fields
-                .get("0")
+                .get_slot(0, "0")
                 .map(stored_runtime_value)
                 .ok_or_else(|| VmError::new(VmErrorKind::TypeMismatch { operation }))
         }
@@ -139,4 +124,49 @@ pub(super) fn is_truthy(value: &Value) -> bool {
 
 pub(super) fn type_error<T>(operation: &'static str) -> VmResult<T> {
     Err(VmError::new(VmErrorKind::TypeMismatch { operation }))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::heap::{HeapValue, ScriptHeap};
+    use crate::script_object::ScriptFields;
+    use crate::{HeapExecution, Value};
+
+    #[test]
+    fn standard_enum_tag_uses_identity_not_debug_names() {
+        let mut heap = ScriptHeap::new();
+        let reference = heap.allocate(HeapValue::Enum {
+            enum_name: "NotOption".to_owned(),
+            variant: "Definitely".to_owned(),
+            identity: Some(std_enum_identity(EnumVariant::Some)),
+            fields: ScriptFields::single("NotOption::Definitely", "0", Value::Int(7)),
+        });
+        let execution = HeapExecution::new(&mut heap);
+        let value = Value::HeapRef(reference);
+
+        let tag = enum_tag(&value, Some(&execution)).expect("typed standard enum tag");
+        assert_eq!(tag.kind, EnumKind::Option);
+        assert_eq!(tag.variant, EnumVariant::Some);
+        assert_eq!(
+            enum_payload(&value, Some(&execution), "test payload").expect("typed payload"),
+            Value::Int(7)
+        );
+    }
+
+    #[test]
+    fn standard_enum_tag_rejects_name_only_values() {
+        let mut heap = ScriptHeap::new();
+        let reference = heap.allocate(HeapValue::Enum {
+            enum_name: "Option".to_owned(),
+            variant: "Some".to_owned(),
+            identity: None,
+            fields: ScriptFields::single("Option::Some", "0", Value::Int(7)),
+        });
+        let execution = HeapExecution::new(&mut heap);
+        let value = Value::HeapRef(reference);
+
+        assert!(enum_tag(&value, Some(&execution)).is_none());
+        assert!(enum_payload(&value, Some(&execution), "test payload").is_err());
+    }
 }

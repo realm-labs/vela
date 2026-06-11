@@ -8,6 +8,7 @@ use crate::budget::ExecutionBudget;
 use crate::error::{VmError, VmErrorKind, VmResult};
 use crate::heap::HeapValue;
 use crate::heap_execution::HeapExecution;
+use crate::option_result::std_enum_identity_for_names;
 use crate::owned_value::{OwnedClosureValue, OwnedIteratorState, OwnedValue};
 use crate::script_object::ScriptFields;
 use crate::value::{ClosureCode, ClosureValue, Value};
@@ -130,10 +131,12 @@ pub(crate) fn make_enum_value(
     let enum_name = enum_name.into();
     let variant = variant.into();
     let owner = enum_variant_owner(&enum_name, &variant);
+    let identity = std_enum_identity_for_names(&enum_name, &variant);
     allocate_heap_value(
         HeapValue::Enum {
             enum_name,
             variant,
+            identity,
             fields: ScriptFields::from_pairs(&owner, fields),
         },
         heap,
@@ -203,6 +206,7 @@ pub(crate) fn owned_to_value(
             fields,
         } => {
             let owner = enum_variant_owner(&enum_name, &variant);
+            let identity = std_enum_identity_for_names(&enum_name, &variant);
             let fields = fields
                 .into_pairs()
                 .map(|(key, value)| Ok((key, owned_to_value(value, heap, budget.as_deref_mut())?)))
@@ -212,6 +216,7 @@ pub(crate) fn owned_to_value(
                     fields: ScriptFields::from_pairs(&owner, fields),
                     enum_name,
                     variant,
+                    identity,
                 },
                 heap,
                 budget,
@@ -317,6 +322,7 @@ fn heap_value_to_owned(
             enum_name,
             variant,
             fields,
+            ..
         } => fields
             .iter()
             .map(|(key, value)| Ok((key.to_owned(), value_to_owned(value, heap)?)))

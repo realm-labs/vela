@@ -4,6 +4,7 @@ use std::collections::BTreeMap;
 use std::fmt;
 use std::mem;
 
+use vela_def::{FieldId, TypeId, VariantId};
 use vela_host::proxy::PathProxy;
 
 use crate::iteration::IteratorState;
@@ -47,11 +48,34 @@ pub enum HeapValue {
     Enum {
         enum_name: String,
         variant: String,
+        identity: Option<EnumIdentity>,
         fields: ScriptFields<Value>,
     },
     Closure(ClosureValue),
     Iterator(IteratorState),
     PathProxy(PathProxy),
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub struct EnumIdentity {
+    pub type_id: TypeId,
+    pub variant_id: VariantId,
+    pub payload_field_id: Option<FieldId>,
+}
+
+impl EnumIdentity {
+    #[must_use]
+    pub const fn new(
+        type_id: TypeId,
+        variant_id: VariantId,
+        payload_field_id: Option<FieldId>,
+    ) -> Self {
+        Self {
+            type_id,
+            variant_id,
+            payload_field_id,
+        }
+    }
 }
 
 impl HeapValue {
@@ -102,6 +126,7 @@ impl HeapValue {
                 enum_name,
                 variant,
                 fields,
+                ..
             } => {
                 mem::size_of::<Self>()
                     + enum_name.len()

@@ -280,7 +280,10 @@ Cranelift JIT.
   handles plus debug names separated from runtime dispatch. Linked method
   dispatch now uses dense method handles for script, host, and value method
   paths; linked value method execution calls standard methods by `MethodId`
-  only, with debug names reserved for error reporting.
+  only, with debug names reserved for error reporting. Runtime Option/Result
+  heap values now carry standard `TypeId`/`VariantId`/payload-field identity,
+  and standard method plus `try` propagation paths classify them through those
+  IDs and slot reads instead of string-name fallback.
 
 ### Remaining Gaps
 

@@ -1,4 +1,5 @@
-use crate::field_access::get_enum_field_value;
+use crate::option_result::{StdEnumKind, StdEnumVariant, std_enum_tag};
+use crate::stored_runtime_value;
 use crate::{HeapExecution, HeapValue, Value, VmError, VmErrorKind, VmResult};
 
 pub(crate) enum TryPropagation {
@@ -10,54 +11,80 @@ pub(crate) fn try_propagate_value(
     value: &Value,
     heap: Option<&HeapExecution<'_>>,
 ) -> VmResult<TryPropagation> {
-    let Some((enum_name, variant)) = enum_tag(value, heap) else {
+    let Value::HeapRef(reference) = value else {
+        return type_error();
+    };
+    let Some(HeapValue::Enum {
+        identity: Some(identity),
+        fields,
+        ..
+    }) = heap.and_then(|heap| heap.heap.get(*reference))
+    else {
         return type_error();
     };
 
-    if is_builtin_enum(enum_name, "Option") {
-        match variant {
-            "Some" => get_enum_field_value(value, tuple_variant_field_name(0).as_str(), heap)
-                .map(TryPropagation::Continue),
-            "None" => Ok(TryPropagation::Return(*value)),
-            _ => type_error(),
-        }
-    } else if is_builtin_enum(enum_name, "Result") {
-        match variant {
-            "Ok" => get_enum_field_value(value, tuple_variant_field_name(0).as_str(), heap)
-                .map(TryPropagation::Continue),
-            "Err" => Ok(TryPropagation::Return(*value)),
-            _ => type_error(),
-        }
-    } else {
-        type_error()
+    match std_enum_tag(*identity) {
+        Some((StdEnumKind::Option, StdEnumVariant::Some))
+        | Some((StdEnumKind::Result, StdEnumVariant::Ok)) => fields
+            .get_slot(0, "0")
+            .map(stored_runtime_value)
+            .map(TryPropagation::Continue)
+            .ok_or_else(|| {
+                VmError::new(VmErrorKind::TypeMismatch {
+                    operation: "try propagation",
+                })
+            }),
+        Some((StdEnumKind::Option, StdEnumVariant::None))
+        | Some((StdEnumKind::Result, StdEnumVariant::Err)) => Ok(TryPropagation::Return(*value)),
+        None => type_error(),
+        Some((StdEnumKind::Option, StdEnumVariant::Ok | StdEnumVariant::Err))
+        | Some((StdEnumKind::Result, StdEnumVariant::Some | StdEnumVariant::None)) => type_error(),
     }
-}
-
-fn enum_tag<'a>(
-    value: &'a Value,
-    heap: Option<&'a HeapExecution<'_>>,
-) -> Option<(&'a str, &'a str)> {
-    match value {
-        Value::HeapRef(reference) => match heap.and_then(|heap| heap.heap.get(*reference)) {
-            Some(HeapValue::Enum {
-                enum_name, variant, ..
-            }) => Some((enum_name.as_str(), variant.as_str())),
-            _ => None,
-        },
-        _ => None,
-    }
-}
-
-fn is_builtin_enum(enum_name: &str, expected: &str) -> bool {
-    enum_name == expected || enum_name.rsplit("::").next() == Some(expected)
-}
-
-fn tuple_variant_field_name(index: usize) -> String {
-    index.to_string()
 }
 
 fn type_error<T>() -> VmResult<T> {
     Err(VmError::new(VmErrorKind::TypeMismatch {
         operation: "try propagation",
     }))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::heap::{HeapValue, ScriptHeap};
+    use crate::option_result::{StdEnumVariant, std_enum_identity};
+    use crate::script_object::ScriptFields;
+
+    #[test]
+    fn try_propagation_uses_identity_not_debug_names() {
+        let mut heap = ScriptHeap::new();
+        let reference = heap.allocate(HeapValue::Enum {
+            enum_name: "NotResult".to_owned(),
+            variant: "Definitely".to_owned(),
+            identity: Some(std_enum_identity(StdEnumVariant::Ok)),
+            fields: ScriptFields::single("NotResult::Definitely", "0", Value::Int(9)),
+        });
+        let execution = HeapExecution::new(&mut heap);
+
+        match try_propagate_value(&Value::HeapRef(reference), Some(&execution))
+            .expect("typed try propagation")
+        {
+            TryPropagation::Continue(value) => assert_eq!(value, Value::Int(9)),
+            TryPropagation::Return(value) => panic!("expected continue, got return {value:?}"),
+        }
+    }
+
+    #[test]
+    fn try_propagation_rejects_name_only_values() {
+        let mut heap = ScriptHeap::new();
+        let reference = heap.allocate(HeapValue::Enum {
+            enum_name: "Result".to_owned(),
+            variant: "Ok".to_owned(),
+            identity: None,
+            fields: ScriptFields::single("Result::Ok", "0", Value::Int(9)),
+        });
+        let execution = HeapExecution::new(&mut heap);
+
+        assert!(try_propagate_value(&Value::HeapRef(reference), Some(&execution)).is_err());
+    }
 }

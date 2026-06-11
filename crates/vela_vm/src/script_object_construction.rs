@@ -1,4 +1,5 @@
 use crate::heap::HeapValue;
+use crate::option_result::std_enum_identity_for_names;
 use crate::script_object::ScriptFields;
 use crate::{
     CallFrame, ExecutionBudget, HeapExecution, Value, VmError, VmErrorKind, VmResult,
@@ -53,6 +54,7 @@ pub(crate) fn make_enum(
         HeapValue::Enum {
             enum_name: enum_name.to_owned(),
             variant: variant.to_owned(),
+            identity: std_enum_identity_for_names(enum_name, variant),
             fields: slots,
         },
         heap,

@@ -14,6 +14,7 @@ pub(crate) use transform::{distinct, join, reverse, slice};
 
 use crate::heap::HeapValue;
 use crate::method_runtime::{MethodRuntime, call_callback};
+use crate::option_result::{StdEnumVariant, std_enum_identity};
 use crate::script_object::ScriptFields;
 use crate::{
     ExecutionBudget, HeapExecution, Value, VmError, VmErrorKind, VmResult, allocate_heap_value,
@@ -109,10 +110,16 @@ pub(super) fn option_value(
         ("None", None) => ScriptFields::empty("Option.None"),
         _ => return type_error("Option"),
     };
+    let variant_id = match variant {
+        "Some" => StdEnumVariant::Some,
+        "None" => StdEnumVariant::None,
+        _ => return type_error("Option"),
+    };
     allocate_heap_value(
         HeapValue::Enum {
             enum_name: "Option".to_owned(),
             variant: variant.to_owned(),
+            identity: Some(std_enum_identity(variant_id)),
             fields,
         },
         heap,

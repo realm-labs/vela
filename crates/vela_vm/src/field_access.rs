@@ -141,6 +141,7 @@ pub(crate) fn get_enum_field_value(
                 enum_name,
                 variant,
                 fields,
+                ..
             }) = heap.and_then(|heap| heap.heap.get(*reference))
             else {
                 return type_error("enum field");
@@ -169,6 +170,7 @@ pub(crate) fn get_enum_slot_value(
                 enum_name,
                 variant,
                 fields,
+                ..
             }) = heap.and_then(|heap| heap.heap.get(*reference))
             else {
                 return type_error("enum slot");

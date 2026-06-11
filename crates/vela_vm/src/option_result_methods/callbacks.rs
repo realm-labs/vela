@@ -1,5 +1,5 @@
 use crate::method_runtime::{MethodRuntime, call_callback};
-use crate::option_result::{option_value, result_value};
+use crate::option_result::{StdEnumVariant, option_value, result_value};
 use crate::{Value, VmError, VmErrorKind, VmResult};
 
 use super::access::{
@@ -41,11 +41,11 @@ pub(crate) fn map(
                 &[payload],
                 std::slice::from_ref(receiver),
             )?;
-            result_result("Ok", mapped, &mut runtime)
+            result_result(StdEnumVariant::Ok, mapped, &mut runtime)
         }
         (EnumKind::Result, EnumVariant::Err) => {
             enum_payload(receiver, runtime.heap.as_deref(), "method map")
-                .and_then(|payload| result_result("Err", payload, &mut runtime))
+                .and_then(|payload| result_result(StdEnumVariant::Err, payload, &mut runtime))
         }
         _ => type_error("method map"),
     }
@@ -66,7 +66,7 @@ pub(crate) fn map_err(
     match (tag.kind, tag.variant) {
         (EnumKind::Result, EnumVariant::Ok) => {
             enum_payload(receiver, runtime.heap.as_deref(), "method map_err")
-                .and_then(|payload| result_result("Ok", payload, &mut runtime))
+                .and_then(|payload| result_result(StdEnumVariant::Ok, payload, &mut runtime))
         }
         (EnumKind::Result, EnumVariant::Err) => {
             let payload = enum_payload(receiver, runtime.heap.as_deref(), "method map_err")?;
@@ -77,7 +77,7 @@ pub(crate) fn map_err(
                 &[payload],
                 std::slice::from_ref(receiver),
             )?;
-            result_result("Err", mapped, &mut runtime)
+            result_result(StdEnumVariant::Err, mapped, &mut runtime)
         }
         _ => type_error("method map_err"),
     }
@@ -131,7 +131,7 @@ pub(crate) fn and_then(
         }
         (EnumKind::Result, EnumVariant::Err) => {
             enum_payload(receiver, runtime.heap.as_deref(), "method and_then")
-                .and_then(|payload| result_result("Err", payload, &mut runtime))
+                .and_then(|payload| result_result(StdEnumVariant::Err, payload, &mut runtime))
         }
         _ => type_error("method and_then"),
     }
@@ -171,7 +171,7 @@ pub(crate) fn or_else(
         }
         (EnumKind::Result, EnumVariant::Ok) => {
             enum_payload(receiver, runtime.heap.as_deref(), "method or_else")
-                .and_then(|payload| result_result("Ok", payload, &mut runtime))
+                .and_then(|payload| result_result(StdEnumVariant::Ok, payload, &mut runtime))
         }
         (EnumKind::Result, EnumVariant::Err) => {
             let payload = enum_payload(receiver, runtime.heap.as_deref(), "method or_else")?;
@@ -237,7 +237,7 @@ fn option_result(
 }
 
 fn result_result(
-    variant: &str,
+    variant: StdEnumVariant,
     payload: Value,
     runtime: &mut MethodRuntime<'_, '_, '_>,
 ) -> VmResult<Value> {
