@@ -675,13 +675,7 @@ impl Vm {
                     debug_name,
                     cache_site,
                 } => {
-                    let cached_slot = cache_site
-                        .and_then(|site| {
-                            call.inline_caches
-                                .and_then(|caches| caches.global_read_slot(site))
-                        })
-                        .or(Some(*slot));
-                    let value = host_access::load_host_global(
+                    let value = host_access::load_cached_host_global(
                         host_access::HostAccessRuntime {
                             frame: &frame,
                             heap: heap.as_deref_mut(),
@@ -691,13 +685,9 @@ impl Vm {
                             source_span: instruction.span,
                         },
                         call.program.debug_name(*debug_name),
-                        cached_slot,
+                        Some(*slot),
+                        *cache_site,
                     )?;
-                    if let (Some(caches), Some(cache_site)) = (call.inline_caches, *cache_site)
-                        && caches.global_read_slot(cache_site).is_none()
-                    {
-                        caches.set_global_read_slot(cache_site, *slot);
-                    }
                     frame.write(*dst, value)?;
                 }
                 InstructionKind::HostRead {

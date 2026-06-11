@@ -44,6 +44,25 @@ pub(crate) fn load_host_global(
     Ok(Value::HostRef(root))
 }
 
+pub(crate) fn load_cached_host_global(
+    runtime: HostAccessRuntime<'_, '_, '_>,
+    name: &str,
+    declared_slot: Option<GlobalSlot>,
+    cache_site: Option<CacheSiteId>,
+) -> VmResult<Value> {
+    let inline_caches = runtime.inline_caches;
+    let cached_slot = cache_site
+        .and_then(|site| inline_caches.and_then(|caches| caches.global_read_slot(site)))
+        .or(declared_slot);
+    let value = load_host_global(runtime, name, cached_slot)?;
+    if let (Some(caches), Some(cache_site), Some(slot)) = (inline_caches, cache_site, declared_slot)
+        && caches.global_read_slot(cache_site).is_none()
+    {
+        caches.set_global_read_slot(cache_site, slot);
+    }
+    Ok(value)
+}
+
 pub(crate) fn execute_host_read(
     runtime: HostAccessRuntime<'_, '_, '_>,
     root: Register,
