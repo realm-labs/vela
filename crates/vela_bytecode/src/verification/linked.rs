@@ -194,6 +194,11 @@ fn verify_linked_instruction(
             verify_linked_register(function, instruction_index, code, *lhs)?;
             verify_linked_register(function, instruction_index, code, *rhs)
         }
+        InstructionKind::BinaryIntLiteral { dst, value, .. }
+        | InstructionKind::BinaryFloatLiteral { dst, value, .. } => {
+            verify_linked_register(function, instruction_index, code, *dst)?;
+            verify_linked_register(function, instruction_index, code, *value)
+        }
         InstructionKind::GuardType { src, guard } => {
             verify_linked_register(function, instruction_index, code, *src)?;
             verify_linked_type_guard_id(function, code, *guard)

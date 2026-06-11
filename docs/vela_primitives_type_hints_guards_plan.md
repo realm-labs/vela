@@ -1335,16 +1335,16 @@ then build registry, syntax, guards, and runtime behavior on the new model.
 
 #### Task 5.4: Add deferred literal operator instructions
 
-- [ ] Add `BinaryIntLiteral` and `BinaryFloatLiteral` instruction forms.
-- [ ] Include literal side for non-commutative operations.
-- [ ] Include precomputed fit information for integer literals if useful.
-- [ ] Update verifier.
+- [x] Add `BinaryIntLiteral` and `BinaryFloatLiteral` instruction forms.
+- [x] Include literal side for non-commutative operations.
+- [x] Keep raw literal text; precomputed fit metadata is not useful before runtime contextualization.
+- [x] Update verifier.
 
 **Termination condition:**
 
-- [ ] `fn inc(x) { x + 1 }` compiles to a deferred int literal op.
-- [ ] `fn inc_i8(x: i8) { x + 1 }` compiles with literal contextualized to i8, not deferred.
-- [ ] Bound `let one = 1; x + one` uses concrete `i64`.
+- [x] `fn inc(x) { x + 1 }` compiles to a deferred int literal op.
+- [x] `fn inc_i8(x: i8) { x + 1 }` compiles with literal contextualized to i8, not deferred.
+- [x] Bound `let one = 1; x + one` uses concrete `i64`.
 
 ---
 
@@ -1401,19 +1401,19 @@ then build registry, syntax, guards, and runtime behavior on the new model.
 
 #### Task 6.4: Execute deferred literal operators
 
-- [ ] Runtime contextualizes deferred int literal from the other operand tag.
-- [ ] Runtime checks literal fits target tag.
-- [ ] Runtime does not convert integer literals to float.
-- [ ] Runtime contextualizes deferred float literal only for `f32`/`f64`.
-- [ ] Runtime does not convert float literals to integer.
+- [x] Runtime contextualizes deferred int literal from the other operand tag.
+- [x] Runtime checks literal fits target tag.
+- [x] Runtime does not convert integer literals to float.
+- [x] Runtime contextualizes deferred float literal only for `f32`/`f64`.
+- [x] Runtime does not convert float literals to integer.
 
 **Termination condition:**
 
-- [ ] `inc(1i8)` returns `2i8`.
-- [ ] `inc(1u32)` returns `2u32`.
-- [ ] `inc(1i64)` returns `2i64`.
-- [ ] `inc(1.0)` fails for `x + 1`.
-- [ ] `inc_float(1.0f32)` works for `x + 1.0`.
+- [x] `inc(1i8)` returns `2i8`.
+- [x] `inc(1u32)` returns `2u32`.
+- [x] `inc(1i64)` returns `2i64`.
+- [x] `inc(1.0)` fails for `x + 1`.
+- [x] `inc_float(1.0f32)` works for `x + 1.0`.
 
 ### Phase 7: Bytes vertical slice
 

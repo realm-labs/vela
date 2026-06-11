@@ -1,6 +1,26 @@
 use vela_syntax::ast::{AssignOp, BinaryOp};
 
-use crate::{Register, UnlinkedInstructionKind};
+use crate::{BinaryLiteralOp, Register, UnlinkedInstructionKind};
+
+pub(super) fn binary_literal_op(op: BinaryOp) -> Option<BinaryLiteralOp> {
+    match op {
+        BinaryOp::Add => Some(BinaryLiteralOp::Add),
+        BinaryOp::Sub => Some(BinaryLiteralOp::Sub),
+        BinaryOp::Mul => Some(BinaryLiteralOp::Mul),
+        BinaryOp::Div => Some(BinaryLiteralOp::Div),
+        BinaryOp::Rem => Some(BinaryLiteralOp::Rem),
+        BinaryOp::Less => Some(BinaryLiteralOp::Less),
+        BinaryOp::LessEqual => Some(BinaryLiteralOp::LessEqual),
+        BinaryOp::Greater => Some(BinaryLiteralOp::Greater),
+        BinaryOp::GreaterEqual => Some(BinaryLiteralOp::GreaterEqual),
+        BinaryOp::Equal
+        | BinaryOp::NotEqual
+        | BinaryOp::Range
+        | BinaryOp::RangeInclusive
+        | BinaryOp::Or
+        | BinaryOp::And => None,
+    }
+}
 
 pub(super) fn non_logical_binary_instruction(
     op: BinaryOp,

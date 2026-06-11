@@ -71,10 +71,17 @@ fn main() {
         code.constants
             .contains(&Constant::Scalar(vela_common::ScalarValue::I64(2)))
     );
-    assert!(
-        code.constants
-            .contains(&Constant::Scalar(vela_common::ScalarValue::F64(35.0)))
-    );
+    assert!(code.instructions.iter().any(|instruction| {
+        matches!(
+            instruction.kind,
+            UnlinkedInstructionKind::BinaryFloatLiteral {
+                op: crate::BinaryLiteralOp::Add,
+                ref literal,
+                side: crate::BinaryLiteralSide::Right,
+                ..
+            } if literal == "3.5e+1"
+        )
+    }));
 }
 
 #[test]

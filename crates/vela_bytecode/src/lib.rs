@@ -575,6 +575,25 @@ impl UnlinkedGuardContext {
     }
 }
 
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum BinaryLiteralOp {
+    Add,
+    Sub,
+    Mul,
+    Div,
+    Rem,
+    Less,
+    LessEqual,
+    Greater,
+    GreaterEqual,
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum BinaryLiteralSide {
+    Left,
+    Right,
+}
+
 #[derive(Clone, Debug, PartialEq)]
 pub struct UnlinkedInstruction {
     pub kind: UnlinkedInstructionKind,
@@ -670,6 +689,20 @@ pub enum UnlinkedInstructionKind {
         dst: Register,
         lhs: Register,
         rhs: Register,
+    },
+    BinaryIntLiteral {
+        dst: Register,
+        op: BinaryLiteralOp,
+        value: Register,
+        literal: String,
+        side: BinaryLiteralSide,
+    },
+    BinaryFloatLiteral {
+        dst: Register,
+        op: BinaryLiteralOp,
+        value: Register,
+        literal: String,
+        side: BinaryLiteralSide,
     },
     GuardType {
         src: Register,

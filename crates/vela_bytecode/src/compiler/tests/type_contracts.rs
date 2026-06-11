@@ -774,3 +774,168 @@ fn main() {
         assert!(error.contains("out of range"), "{error}");
     }
 }
+
+#[test]
+fn compiler_defers_inline_unsuffixed_int_literals_in_dynamic_binary_ops() {
+    let program = compile_program_source(
+        SourceId::new(1),
+        r#"
+fn inc(x) {
+    return x + 1;
+}
+fn from_one(x) {
+    return 1 - x;
+}
+"#,
+    )
+    .expect("dynamic inline int literals should compile as deferred binary ops");
+
+    let inc = program.function("inc").expect("inc function");
+    assert!(inc.instructions.iter().any(|instruction| {
+        matches!(
+            instruction.kind,
+            UnlinkedInstructionKind::BinaryIntLiteral {
+                op: crate::BinaryLiteralOp::Add,
+                ref literal,
+                side: crate::BinaryLiteralSide::Right,
+                ..
+            } if literal == "1"
+        )
+    }));
+    assert!(
+        !inc.constants
+            .contains(&Constant::Scalar(vela_common::ScalarValue::I64(1)))
+    );
+
+    let from_one = program.function("from_one").expect("from_one function");
+    assert!(from_one.instructions.iter().any(|instruction| {
+        matches!(
+            instruction.kind,
+            UnlinkedInstructionKind::BinaryIntLiteral {
+                op: crate::BinaryLiteralOp::Sub,
+                ref literal,
+                side: crate::BinaryLiteralSide::Left,
+                ..
+            } if literal == "1"
+        )
+    }));
+
+    let linked = crate::Linker::new()
+        .link_program(&program)
+        .expect("program should link");
+    linked
+        .verify()
+        .expect("linked deferred int ops should verify");
+    let linked_inc = linked
+        .entry_point_by_name("inc")
+        .and_then(|handle| linked.function(handle))
+        .expect("linked inc should exist");
+    assert!(linked_inc.instructions.iter().any(|instruction| {
+        matches!(
+            instruction.kind,
+            crate::linked::InstructionKind::BinaryIntLiteral {
+                op: crate::BinaryLiteralOp::Add,
+                ref literal,
+                side: crate::BinaryLiteralSide::Right,
+                ..
+            } if literal == "1"
+        )
+    }));
+}
+
+#[test]
+fn compiler_defers_inline_unsuffixed_float_literals_in_dynamic_binary_ops() {
+    let program = compile_program_source(
+        SourceId::new(1),
+        r#"
+fn scale(x) {
+    return x * 1.5;
+}
+"#,
+    )
+    .expect("dynamic inline float literals should compile as deferred binary ops");
+    let scale = program.function("scale").expect("scale function");
+
+    assert!(scale.instructions.iter().any(|instruction| {
+        matches!(
+            instruction.kind,
+            UnlinkedInstructionKind::BinaryFloatLiteral {
+                op: crate::BinaryLiteralOp::Mul,
+                ref literal,
+                side: crate::BinaryLiteralSide::Right,
+                ..
+            } if literal == "1.5"
+        )
+    }));
+    assert!(
+        !scale
+            .constants
+            .contains(&Constant::Scalar(vela_common::ScalarValue::F64(1.5)))
+    );
+
+    let linked = crate::Linker::new()
+        .link_program(&program)
+        .expect("program should link");
+    linked
+        .verify()
+        .expect("linked deferred float ops should verify");
+}
+
+#[test]
+fn compiler_contextualizes_inline_literals_for_known_numeric_operands() {
+    let code = compile_function_source(
+        SourceId::new(1),
+        r#"
+fn inc_i8(x: i8) {
+    return x + 1;
+}
+"#,
+        "inc_i8",
+    )
+    .expect("typed numeric operand should contextualize inline literal");
+
+    assert!(!code.instructions.iter().any(|instruction| matches!(
+        instruction.kind,
+        UnlinkedInstructionKind::BinaryIntLiteral { .. }
+            | UnlinkedInstructionKind::BinaryFloatLiteral { .. }
+    )));
+    assert!(
+        code.constants
+            .contains(&Constant::Scalar(vela_common::ScalarValue::I8(1)))
+    );
+    assert!(
+        code.instructions
+            .iter()
+            .any(|instruction| { matches!(instruction.kind, UnlinkedInstructionKind::Add { .. }) })
+    );
+}
+
+#[test]
+fn compiler_keeps_bound_unsuffixed_literals_concrete_in_binary_ops() {
+    let code = compile_function_source(
+        SourceId::new(1),
+        r#"
+fn inc_strict(x) {
+    let one = 1;
+    return x + one;
+}
+"#,
+        "inc_strict",
+    )
+    .expect("bound literal should compile as concrete constant");
+
+    assert!(!code.instructions.iter().any(|instruction| matches!(
+        instruction.kind,
+        UnlinkedInstructionKind::BinaryIntLiteral { .. }
+            | UnlinkedInstructionKind::BinaryFloatLiteral { .. }
+    )));
+    assert!(
+        code.constants
+            .contains(&Constant::Scalar(vela_common::ScalarValue::I64(1)))
+    );
+    assert!(
+        code.instructions
+            .iter()
+            .any(|instruction| { matches!(instruction.kind, UnlinkedInstructionKind::Add { .. }) })
+    );
+}

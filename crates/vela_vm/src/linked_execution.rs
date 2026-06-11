@@ -251,6 +251,38 @@ impl Vm {
                         .map_err(|error| error.with_source_span_if_absent(instruction.span))?;
                     frame.write(*dst, value)?;
                 }
+                InstructionKind::BinaryIntLiteral {
+                    dst,
+                    op,
+                    value,
+                    literal,
+                    side,
+                } => {
+                    let value = binary_int_literal_numeric(
+                        *op,
+                        frame.read(*value)?,
+                        literal.as_str(),
+                        *side,
+                    )
+                    .map_err(|error| error.with_source_span_if_absent(instruction.span))?;
+                    frame.write(*dst, value)?;
+                }
+                InstructionKind::BinaryFloatLiteral {
+                    dst,
+                    op,
+                    value,
+                    literal,
+                    side,
+                } => {
+                    let value = binary_float_literal_numeric(
+                        *op,
+                        frame.read(*value)?,
+                        literal.as_str(),
+                        *side,
+                    )
+                    .map_err(|error| error.with_source_span_if_absent(instruction.span))?;
+                    frame.write(*dst, value)?;
+                }
                 InstructionKind::Equal { dst, lhs, rhs } => {
                     let value = Value::Bool(values_equal(
                         frame.read(*lhs)?,

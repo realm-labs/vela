@@ -625,6 +625,20 @@ pub enum InstructionKind {
         lhs: Register,
         rhs: Register,
     },
+    BinaryIntLiteral {
+        dst: Register,
+        op: crate::BinaryLiteralOp,
+        value: Register,
+        literal: String,
+        side: crate::BinaryLiteralSide,
+    },
+    BinaryFloatLiteral {
+        dst: Register,
+        op: crate::BinaryLiteralOp,
+        value: Register,
+        literal: String,
+        side: crate::BinaryLiteralSide,
+    },
     GuardType {
         src: Register,
         guard: TypeGuardPlanId,

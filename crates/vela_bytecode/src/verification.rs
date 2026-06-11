@@ -389,6 +389,11 @@ fn verify_instruction(
             verify_register(function, instruction_index, code, *lhs)?;
             verify_register(function, instruction_index, code, *rhs)
         }
+        UnlinkedInstructionKind::BinaryIntLiteral { dst, value, .. }
+        | UnlinkedInstructionKind::BinaryFloatLiteral { dst, value, .. } => {
+            verify_register(function, instruction_index, code, *dst)?;
+            verify_register(function, instruction_index, code, *value)
+        }
         UnlinkedInstructionKind::GuardType { src, .. } => {
             verify_register(function, instruction_index, code, *src)
         }

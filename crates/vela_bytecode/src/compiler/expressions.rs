@@ -1,9 +1,9 @@
-use vela_common::Span;
+use vela_common::{PrimitiveTag, Span};
 use vela_syntax::ast::{BinaryOp, Expr, ExprKind, Literal, UnaryOp};
 
 use crate::{
-    GuardKind, GuardLocation, Register, UnlinkedGuardContext, UnlinkedInstructionKind,
-    UnlinkedTypeGuard, UnlinkedTypeGuardPlan,
+    BinaryLiteralSide, GuardKind, GuardLocation, Register, UnlinkedGuardContext,
+    UnlinkedInstructionKind, UnlinkedTypeGuard, UnlinkedTypeGuardPlan,
 };
 
 use super::const_eval::{
@@ -11,7 +11,7 @@ use super::const_eval::{
 };
 use super::constructors::schema_default_fields;
 use super::host_paths::HostPath;
-use super::operators::non_logical_binary_instruction;
+use super::operators::{binary_literal_op, non_logical_binary_instruction};
 use super::patterns::enum_variant_path;
 use super::schema_defaults::{record_constructor_diagnostics, unknown_enum_variant_diagnostic};
 use super::value_types::{ExpectedTypeOutcome, RuntimeTypeFact, TypeContractContext};
@@ -267,6 +267,10 @@ impl Compiler<'_, '_> {
             _ => {}
         }
 
+        if let Some(register) = self.compile_binary_with_inline_literal(op, span, left, right)? {
+            return Ok(register);
+        }
+
         let lhs = self.compile_expr(left)?;
         let rhs = self.compile_expr(right)?;
         let dst = self.alloc_register()?;
@@ -274,6 +278,118 @@ impl Compiler<'_, '_> {
             .expect("logical operators handled above");
         self.emit_spanned(instruction, span);
         Ok(dst)
+    }
+
+    fn compile_binary_with_inline_literal(
+        &mut self,
+        op: BinaryOp,
+        span: Span,
+        left: &Expr,
+        right: &Expr,
+    ) -> CompileResult<Option<Register>> {
+        if let Some(literal) = unsuffixed_numeric_literal(left) {
+            return self.compile_binary_literal_candidate(
+                op,
+                span,
+                right,
+                literal,
+                BinaryLiteralSide::Left,
+            );
+        }
+        if let Some(literal) = unsuffixed_numeric_literal(right) {
+            return self.compile_binary_literal_candidate(
+                op,
+                span,
+                left,
+                literal,
+                BinaryLiteralSide::Right,
+            );
+        }
+        Ok(None)
+    }
+
+    fn compile_binary_literal_candidate(
+        &mut self,
+        op: BinaryOp,
+        span: Span,
+        value_expr: &Expr,
+        literal: UnsuffixedNumericLiteral<'_>,
+        side: BinaryLiteralSide,
+    ) -> CompileResult<Option<Register>> {
+        let Some(literal_op) = binary_literal_op(op) else {
+            return Ok(None);
+        };
+        if let Some(RuntimeTypeFact::Primitive(tag)) = self.value_type_for_expr(value_expr)
+            && literal.matches_primitive_tag(tag)
+        {
+            let value = self.compile_expr(value_expr)?;
+            let literal = self.compile_inline_numeric_literal_as(literal, tag)?;
+            let rhs_or_lhs = self.emit_constant(literal)?;
+            let dst = self.alloc_register()?;
+            let instruction = match side {
+                BinaryLiteralSide::Left => {
+                    non_logical_binary_instruction(op, dst, rhs_or_lhs, value)
+                }
+                BinaryLiteralSide::Right => {
+                    non_logical_binary_instruction(op, dst, value, rhs_or_lhs)
+                }
+            }
+            .expect("literal op excludes logical and range operators");
+            self.emit_spanned(instruction, span);
+            return Ok(Some(dst));
+        }
+
+        if self.value_type_for_expr(value_expr).is_none() {
+            let value = self.compile_expr(value_expr)?;
+            let dst = self.alloc_register()?;
+            match literal {
+                UnsuffixedNumericLiteral::Integer(text) => {
+                    self.emit_spanned(
+                        UnlinkedInstructionKind::BinaryIntLiteral {
+                            dst,
+                            op: literal_op,
+                            value,
+                            literal: text.to_owned(),
+                            side,
+                        },
+                        span,
+                    );
+                }
+                UnsuffixedNumericLiteral::Float(text) => {
+                    self.emit_spanned(
+                        UnlinkedInstructionKind::BinaryFloatLiteral {
+                            dst,
+                            op: literal_op,
+                            value,
+                            literal: text.to_owned(),
+                            side,
+                        },
+                        span,
+                    );
+                }
+            }
+            return Ok(Some(dst));
+        }
+
+        Ok(None)
+    }
+
+    fn compile_inline_numeric_literal_as(
+        &self,
+        literal: UnsuffixedNumericLiteral<'_>,
+        tag: PrimitiveTag,
+    ) -> CompileResult<crate::Constant> {
+        match literal {
+            UnsuffixedNumericLiteral::Integer(text) => compile_literal_constant_for_type(
+                &Literal::Integer(vela_syntax::ast::IntegerLiteral::unsuffixed(text)),
+                tag,
+            ),
+            UnsuffixedNumericLiteral::Float(text) => compile_literal_constant_for_type(
+                &Literal::Float(vela_syntax::ast::FloatLiteral::unsuffixed(text)),
+                tag,
+            ),
+        }
+        .map(|constant| constant.expect("literal kind and primitive tag were checked by caller"))
     }
 
     fn compile_range(
@@ -459,4 +575,41 @@ fn logical_chain_operands(op: BinaryOp, expr: &Expr) -> Vec<&Expr> {
         operands.push(expr);
     }
     operands
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+enum UnsuffixedNumericLiteral<'a> {
+    Integer(&'a str),
+    Float(&'a str),
+}
+
+impl UnsuffixedNumericLiteral<'_> {
+    fn matches_primitive_tag(self, tag: PrimitiveTag) -> bool {
+        match self {
+            Self::Integer(_) => matches!(
+                tag,
+                PrimitiveTag::I8
+                    | PrimitiveTag::I16
+                    | PrimitiveTag::I32
+                    | PrimitiveTag::I64
+                    | PrimitiveTag::U8
+                    | PrimitiveTag::U16
+                    | PrimitiveTag::U32
+                    | PrimitiveTag::U64
+            ),
+            Self::Float(_) => matches!(tag, PrimitiveTag::F32 | PrimitiveTag::F64),
+        }
+    }
+}
+
+fn unsuffixed_numeric_literal(expr: &Expr) -> Option<UnsuffixedNumericLiteral<'_>> {
+    match &expr.kind {
+        ExprKind::Literal(Literal::Integer(value)) if value.suffix.is_none() => {
+            Some(UnsuffixedNumericLiteral::Integer(value.source_text()))
+        }
+        ExprKind::Literal(Literal::Float(value)) if value.suffix.is_none() => {
+            Some(UnsuffixedNumericLiteral::Float(value.source_text()))
+        }
+        _ => None,
+    }
 }

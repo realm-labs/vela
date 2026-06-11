@@ -597,6 +597,32 @@ fn rejects_out_of_bounds_registers() {
 }
 
 #[test]
+fn rejects_out_of_bounds_deferred_literal_operand_registers() {
+    let mut code = UnlinkedCodeObject::new("main", 1);
+    code.push_instruction(UnlinkedInstruction::new(
+        UnlinkedInstructionKind::BinaryIntLiteral {
+            dst: Register(0),
+            op: crate::BinaryLiteralOp::Add,
+            value: Register(1),
+            literal: "1".to_owned(),
+            side: crate::BinaryLiteralSide::Right,
+        },
+    ));
+
+    assert_eq!(
+        verify_code_object(&code),
+        Err(error(
+            "main",
+            Some(0),
+            VerificationErrorKind::RegisterOutOfBounds {
+                register: Register(1),
+                register_count: 1
+            }
+        ))
+    );
+}
+
+#[test]
 fn rejects_out_of_bounds_constants() {
     let mut code = UnlinkedCodeObject::new("main", 1);
     code.push_instruction(UnlinkedInstruction::new(

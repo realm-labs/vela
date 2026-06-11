@@ -43,6 +43,7 @@ fn value_runtime_slot_stays_compact() {
 
 mod consts;
 mod control_flow;
+mod deferred_literals;
 mod execution_core;
 mod heap_host;
 mod host_fields;

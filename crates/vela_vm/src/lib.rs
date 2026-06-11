@@ -63,8 +63,9 @@ use heap_values::{
     values_equal,
 };
 use numeric_ops::{
-    add_numeric, div_numeric, greater_equal_numeric, greater_numeric, less_equal_numeric,
-    less_numeric, mul_numeric, negate_numeric, rem_numeric, sub_numeric,
+    add_numeric, binary_float_literal_numeric, binary_int_literal_numeric, div_numeric,
+    greater_equal_numeric, greater_numeric, less_equal_numeric, less_numeric, mul_numeric,
+    negate_numeric, rem_numeric, sub_numeric,
 };
 use owned_value::OwnedValue;
 pub(crate) use reflection_values::{

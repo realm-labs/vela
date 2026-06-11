@@ -397,6 +397,32 @@ impl<'linker, 'registry> LinkContext<'linker, 'registry> {
                     rhs: *rhs,
                 }
             }
+            UnlinkedInstructionKind::BinaryIntLiteral {
+                dst,
+                op,
+                value,
+                literal,
+                side,
+            } => InstructionKind::BinaryIntLiteral {
+                dst: *dst,
+                op: *op,
+                value: *value,
+                literal: literal.clone(),
+                side: *side,
+            },
+            UnlinkedInstructionKind::BinaryFloatLiteral {
+                dst,
+                op,
+                value,
+                literal,
+                side,
+            } => InstructionKind::BinaryFloatLiteral {
+                dst: *dst,
+                op: *op,
+                value: *value,
+                literal: literal.clone(),
+                side: *side,
+            },
             UnlinkedInstructionKind::JumpIfFalse { condition, target } => {
                 InstructionKind::JumpIfFalse {
                     condition: *condition,

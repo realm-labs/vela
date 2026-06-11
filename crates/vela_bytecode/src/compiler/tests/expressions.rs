@@ -303,11 +303,14 @@ fn main() {
             .iter()
             .any(|instruction| matches!(instruction.kind, UnlinkedInstructionKind::Move { .. }))
     );
-    assert!(
-        code.instructions
-            .iter()
-            .any(|instruction| matches!(instruction.kind, UnlinkedInstructionKind::Add { .. }))
-    );
+    assert!(code.instructions.iter().any(|instruction| matches!(
+        instruction.kind,
+        UnlinkedInstructionKind::Add { .. }
+            | UnlinkedInstructionKind::BinaryIntLiteral {
+                op: crate::BinaryLiteralOp::Add,
+                ..
+            }
+    )));
 }
 #[test]
 fn compiler_lowers_match_guards() {
@@ -336,11 +339,14 @@ fn main() {
             .count()
             >= 2
     );
-    assert!(
-        code.instructions
-            .iter()
-            .any(|instruction| matches!(instruction.kind, UnlinkedInstructionKind::Less { .. }))
-    );
+    assert!(code.instructions.iter().any(|instruction| matches!(
+        instruction.kind,
+        UnlinkedInstructionKind::Less { .. }
+            | UnlinkedInstructionKind::BinaryIntLiteral {
+                op: crate::BinaryLiteralOp::Less,
+                ..
+            }
+    )));
 }
 #[test]
 fn compiler_lowers_record_variant_field_patterns() {
