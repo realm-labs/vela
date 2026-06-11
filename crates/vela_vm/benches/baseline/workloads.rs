@@ -59,6 +59,20 @@ fn main() {
 }
 "#;
 
+const DIRECT_CLOSURE_CALLS_SOURCE: &str = r#"
+fn main() {
+    let total = 0;
+    for tick in 0..180 {
+        let add = |value| value + tick;
+        let mix = |left, right| left * 3 + right + tick - tick;
+        total += add(tick);
+        total += add(total % 17);
+        total += mix(tick, total % 23);
+    }
+    return total;
+}
+"#;
+
 pub(crate) const WORKLOADS: &[Workload] = &[
     Workload {
         name: "scalar_branch_loop",
@@ -211,9 +225,19 @@ fn main() {
         source: CALLBACK_COLLECTIONS_SOURCE,
     },
     Workload {
+        name: "direct_closure_calls",
+        mode: ExecutionMode::Inline,
+        source: DIRECT_CLOSURE_CALLS_SOURCE,
+    },
+    Workload {
         name: "managed_heap_callback_collections",
         mode: ExecutionMode::ManagedHeap,
         source: CALLBACK_COLLECTIONS_SOURCE,
+    },
+    Workload {
+        name: "managed_heap_direct_closure_calls",
+        mode: ExecutionMode::ManagedHeap,
+        source: DIRECT_CLOSURE_CALLS_SOURCE,
     },
     Workload {
         name: "managed_heap_map_callbacks",
@@ -544,7 +568,7 @@ fn main() {
         name: "host_access",
         mode: ExecutionMode::HostAccess,
         source: r#"
-fn main(player) {
+fn main(player: Player) {
     player.level += 1;
     player.exp += 10;
     player.inventory.gold += 3;
@@ -556,7 +580,7 @@ fn main(player) {
         name: "host_field_read_write",
         mode: ExecutionMode::HostAccess,
         source: r#"
-fn main(player) {
+fn main(player: Player) {
     let total = 0;
     for tick in 0..32 {
         player.level = tick + 1;
@@ -570,7 +594,7 @@ fn main(player) {
         name: "host_nested_read_write",
         mode: ExecutionMode::HostAccess,
         source: r#"
-fn main(player) {
+fn main(player: Player) {
     let total = 0;
     for tick in 0..32 {
         player.inventory.gold = tick + 3;
@@ -584,7 +608,7 @@ fn main(player) {
         name: "host_rmw_mutation",
         mode: ExecutionMode::HostAccess,
         source: r#"
-fn main(player) {
+fn main(player: Player) {
     for tick in 0..32 {
         player.level += 1;
         player.exp += tick;
@@ -597,7 +621,7 @@ fn main(player) {
         name: "host_dynamic_key_access",
         mode: ExecutionMode::HostAccess,
         source: r#"
-fn main(player) {
+fn main(player: Player) {
     let item_id = "gold";
     let total = 0;
     for tick in 0..32 {
@@ -612,7 +636,7 @@ fn main(player) {
         name: "host_method_calls",
         mode: ExecutionMode::HostAccess,
         source: r#"
-fn main(player) {
+fn main(player: Player) {
     for tick in 0..32 {
         player.add_reward("gold", tick + 1);
     }
@@ -624,7 +648,7 @@ fn main(player) {
         name: "managed_heap_host_conversion",
         mode: ExecutionMode::HostManagedHeapHostAccess,
         source: r#"
-fn main(player) {
+fn main(player: Player) {
     let total = 0;
     for tick in 0..24 {
         player.level = tick + 3;
@@ -640,7 +664,7 @@ fn main(player) {
         name: "managed_heap_host_read_conversion",
         mode: ExecutionMode::HostManagedHeapReadConversion,
         source: r#"
-fn main(player) {
+fn main(player: Player) {
     let total = 0;
     for tick in 0..48 {
         total += player.level + player.exp + player.inventory.gold + tick - tick;
@@ -820,13 +844,13 @@ fn main() {
         mode: ExecutionMode::ManagedHeap,
         source: r#"
 struct Reward {
-    item_id,
-    count,
-    bonus,
+    item_id: string,
+    count: i64,
+    bonus: i64,
 }
 
 enum ResultState {
-    Scored { item_id, count, bonus }
+    Scored { item_id: string, count: i64, bonus: i64 }
 }
 
 fn main() {
@@ -865,14 +889,14 @@ fn main() {
         mode: ExecutionMode::ManagedHeap,
         source: r#"
 struct Reward {
-    item_id,
-    count,
-    bonus,
-    rarity,
+    item_id: string,
+    count: i64,
+    bonus: i64,
+    rarity: i64,
 }
 
 enum ResultState {
-    Scored { item_id, count, bonus, rarity }
+    Scored { item_id: string, count: i64, bonus: i64, rarity: i64 }
 }
 
 fn main() {
@@ -923,15 +947,15 @@ fn main() {
         mode: ExecutionMode::ManagedHeap,
         source: r#"
 struct Reward {
-    item_id,
-    count,
-    bonus,
-    rarity,
-    quality,
+    item_id: string,
+    count: i64,
+    bonus: i64,
+    rarity: i64,
+    quality: i64,
 }
 
 enum ResultState {
-    Scored { item_id, count, bonus, rarity, quality }
+    Scored { item_id: string, count: i64, bonus: i64, rarity: i64, quality: i64 }
 }
 
 fn main() {
@@ -986,16 +1010,23 @@ fn main() {
         mode: ExecutionMode::ManagedHeap,
         source: r#"
 struct Reward {
-    item_id,
-    count,
-    bonus,
-    rarity,
-    quality,
-    weight,
+    item_id: string,
+    count: i64,
+    bonus: i64,
+    rarity: i64,
+    quality: i64,
+    weight: i64,
 }
 
 enum ResultState {
-    Scored { item_id, count, bonus, rarity, quality, weight }
+    Scored {
+        item_id: string,
+        count: i64,
+        bonus: i64,
+        rarity: i64,
+        quality: i64,
+        weight: i64,
+    }
 }
 
 fn main() {

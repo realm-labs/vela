@@ -6,12 +6,12 @@ use std::time::{Duration, Instant};
 
 use vela_bytecode::compiler::options::CompilerOptions;
 use vela_bytecode::compiler::{
-    compile_function_source, compile_program_source,
-    compile_program_source_with_options_and_registry,
+    compile_function_source_with_registry, compile_program_source_with_options_and_registry,
+    compile_program_source_with_registry,
 };
 use vela_bytecode::{LinkedProgram, Linker, UnlinkedCodeObject, UnlinkedProgram};
 use vela_common::{HostMethodId, HostObjectId, HostTypeId, SourceId};
-use vela_def::{DefPath, FieldId, TypeId};
+use vela_def::{DefPath, FieldId, FunctionId, TypeId};
 use vela_host::access::HostAccess;
 use vela_host::mock::MockStateAdapter;
 use vela_host::path::{HostPath, HostRef};
@@ -275,29 +275,79 @@ fn compile_workload(workload: &Workload, vm: &Vm) -> Result<CompiledWorkload, St
             })
         }
         ExecutionMode::ManagedHeap | ExecutionMode::GcPacing => {
-            let code = compile_function_source(SourceId::new(1), workload.source, "main")
-                .map_err(|error| format!("{error:?}"))?;
+            let registry = bench_compile_registry()?;
+            let code = compile_function_source_with_registry(
+                SourceId::new(1),
+                workload.source,
+                "main",
+                registry.compile_view(),
+            )
+            .map_err(|error| format!("{error:?}"))?;
             Ok(CompiledWorkload::Function {
                 mode: workload.mode,
                 program: Box::new(link_single_function_for_vm(vm, code)?),
             })
         }
         ExecutionMode::ScriptProgram => {
-            let program = compile_program_source(SourceId::new(1), workload.source)
-                .map_err(|error| format!("{error:?}"))?;
+            let registry = bench_compile_registry()?;
+            let program = compile_program_source_with_registry(
+                SourceId::new(1),
+                workload.source,
+                registry.compile_view(),
+            )
+            .map_err(|error| format!("{error:?}"))?;
             Ok(CompiledWorkload::ScriptProgram {
                 program: Box::new(link_program_for_vm(vm, &program)?),
             })
         }
         ExecutionMode::Inline => {
-            let code = compile_function_source(SourceId::new(1), workload.source, "main")
-                .map_err(|error| format!("{error:?}"))?;
+            let registry = bench_compile_registry()?;
+            let code = compile_function_source_with_registry(
+                SourceId::new(1),
+                workload.source,
+                "main",
+                registry.compile_view(),
+            )
+            .map_err(|error| format!("{error:?}"))?;
             Ok(CompiledWorkload::Function {
                 mode: workload.mode,
                 program: Box::new(link_single_function_for_vm(vm, code)?),
             })
         }
     }
+}
+
+fn bench_compile_registry() -> Result<vela_registry::DefinitionRegistry, String> {
+    let mut registry = vela_stdlib::standard_registry().map_err(|error| format!("{error:?}"))?;
+    registry
+        .register_function(
+            vela_registry::FunctionDef::new(
+                DefPath::function("host", ["bench"], "mix4"),
+                vela_registry::FunctionSignature::new(
+                    [
+                        vela_registry::ParamDef::new("a", Some("i64")),
+                        vela_registry::ParamDef::new("b", Some("i64")),
+                        vela_registry::ParamDef::new("c", Some("i64")),
+                        vela_registry::ParamDef::new("d", Some("i64")),
+                    ],
+                    Some("i64".to_owned()),
+                ),
+            )
+            .with_id(function_id_for_native_name("bench::mix4")),
+        )
+        .map_err(|error| format!("{error:?}"))?;
+    Ok(registry)
+}
+
+fn function_id_for_native_name(name: &str) -> FunctionId {
+    if let Some((module, function)) = name.rsplit_once("::")
+        && let Some(id) = vela_stdlib::std_function_id(module, function)
+    {
+        return id;
+    }
+    let mut segments = name.split("::").collect::<Vec<_>>();
+    let function = segments.pop().unwrap_or(name);
+    FunctionId::from_def_id(DefPath::function("host", segments, function).id())
 }
 
 fn link_single_function_for_vm(vm: &Vm, code: UnlinkedCodeObject) -> Result<LinkedProgram, String> {

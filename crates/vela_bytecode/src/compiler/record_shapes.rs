@@ -319,13 +319,14 @@ pub(super) fn expression_value_shape(
                         local_type_at_span,
                         local_type_named,
                     )
+                    .unwrap_or(ValueShape::Unknown)
                 })
-                .collect::<Option<Vec<_>>>()?;
+                .collect::<Vec<_>>();
             let first = shapes.pop()?;
             if shapes.iter().all(|shape| shape == &first) {
                 Some(ValueShape::Array(Box::new(first)))
             } else {
-                None
+                Some(ValueShape::Array(Box::new(ValueShape::Unknown)))
             }
         }
         ExprKind::Map(entries) => {
@@ -524,9 +525,8 @@ fn native_call_shape(
         ("option", "none") => Some(ValueShape::Option(Box::new(ValueShape::Unknown))),
         ("option", "unwrap_or") => {
             let option = first??;
-            match option {
-                ValueShape::Option(value) => Some(*value),
-                _ => args.get(1).and_then(|arg| {
+            let fallback = || {
+                args.get(1).and_then(|arg| {
                     expression_value_shape(
                         &arg.value,
                         local_shape_at_span,
@@ -534,7 +534,14 @@ fn native_call_shape(
                         local_type_at_span,
                         local_type_named,
                     )
-                }),
+                })
+            };
+            match option {
+                ValueShape::Option(value) if !matches!(value.as_ref(), ValueShape::Unknown) => {
+                    Some(*value)
+                }
+                ValueShape::Option(_) => fallback(),
+                _ => fallback(),
             }
         }
         ("result", "ok") => Some(ValueShape::Result {
@@ -547,9 +554,8 @@ fn native_call_shape(
         }),
         ("result", "unwrap_or") => {
             let result = first??;
-            match result {
-                ValueShape::Result { ok: Some(ok), .. } => Some(*ok),
-                _ => args.get(1).and_then(|arg| {
+            let fallback = || {
+                args.get(1).and_then(|arg| {
                     expression_value_shape(
                         &arg.value,
                         local_shape_at_span,
@@ -557,7 +563,16 @@ fn native_call_shape(
                         local_type_at_span,
                         local_type_named,
                     )
-                }),
+                })
+            };
+            match result {
+                ValueShape::Result { ok: Some(ok), .. }
+                    if !matches!(ok.as_ref(), ValueShape::Unknown) =>
+                {
+                    Some(*ok)
+                }
+                ValueShape::Result { .. } => fallback(),
+                _ => fallback(),
             }
         }
         ("set", "from_array") => {
@@ -659,8 +674,32 @@ fn method_call_shape(
             })
         }),
         "unwrap_or" => match &receiver {
-            ValueShape::Option(value) => Some((**value).clone()),
-            ValueShape::Result { ok: Some(ok), .. } => Some((**ok).clone()),
+            ValueShape::Option(value) if !matches!(value.as_ref(), ValueShape::Unknown) => {
+                Some((**value).clone())
+            }
+            ValueShape::Option(_) => args.first().and_then(|arg| {
+                expression_value_shape(
+                    &arg.value,
+                    local_shape_at_span,
+                    local_shape_named,
+                    local_type_at_span,
+                    local_type_named,
+                )
+            }),
+            ValueShape::Result { ok: Some(ok), .. }
+                if !matches!(ok.as_ref(), ValueShape::Unknown) =>
+            {
+                Some((**ok).clone())
+            }
+            ValueShape::Result { .. } => args.first().and_then(|arg| {
+                expression_value_shape(
+                    &arg.value,
+                    local_shape_at_span,
+                    local_shape_named,
+                    local_type_at_span,
+                    local_type_named,
+                )
+            }),
             _ => None,
         },
         "or_else" => callback_return_shape(&receiver, method, args),
@@ -685,6 +724,12 @@ fn method_call_shape(
         "to_error_option" => match &receiver {
             ValueShape::Result { err, .. } => Some(ValueShape::Option(
                 err.clone().unwrap_or(Box::new(ValueShape::Unknown)),
+            )),
+            _ => None,
+        },
+        "to_option" => match &receiver {
+            ValueShape::Result { ok, .. } => Some(ValueShape::Option(
+                ok.clone().unwrap_or(Box::new(ValueShape::Unknown)),
             )),
             _ => None,
         },
@@ -720,9 +765,17 @@ fn method_call_shape(
             )),
             _ => None,
         },
+        "get" => receiver
+            .map_parts()
+            .map(|(_, value)| ValueShape::Option(Box::new(value.clone()))),
+        "get_or" => receiver.map_parts().map(|(_, value)| value.clone()),
         "index_of" | "last_index_of" => Some(ValueShape::Option(Box::new(ValueShape::Scalar(
             "i64".to_owned(),
         )))),
+        "first" | "last" => receiver
+            .array_element()
+            .cloned()
+            .map(|element| ValueShape::Option(Box::new(element))),
         "pop" | "remove_at" => receiver
             .array_element()
             .cloned()

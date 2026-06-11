@@ -199,3 +199,4 @@ mod module_resolution;
 mod script_methods;
 mod type_contract_constructors;
 mod type_contracts;
+mod value_method_shapes;
