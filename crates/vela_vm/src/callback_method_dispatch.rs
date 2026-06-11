@@ -150,51 +150,139 @@ pub(crate) fn call_by_id(
     dispatch: &mut CallbackMethodDispatch<'_, '_, '_>,
 ) -> Option<VmResult<Value>> {
     let ids = callback_method_ids();
-    if method_id == ids.array_map
-        || method_id == ids.set_map
-        || method_id == ids.option_map
-        || method_id == ids.result_map
+    if method_id == ids.array_map && array_methods::is_array(receiver, dispatch.heap_ref()) {
+        return Some(array_methods::map(receiver, args, dispatch.runtime()));
+    }
+    if method_id == ids.set_map && set_methods::is_set(receiver, dispatch.heap_ref()) {
+        return Some(set_methods::map(receiver, args, dispatch.runtime()));
+    }
+    if method_id == ids.option_map
+        && option_result_methods::is_option(receiver, dispatch.heap_ref())
     {
-        return Some(call_map(receiver, args, dispatch));
+        return Some(option_result_methods::map(
+            receiver,
+            args,
+            dispatch.runtime(),
+        ));
     }
-    if method_id == ids.result_map_err {
-        return Some(call_map_err(receiver, args, dispatch));
-    }
-    if method_id == ids.option_and_then || method_id == ids.result_and_then {
-        return Some(call_and_then(receiver, args, dispatch));
-    }
-    if method_id == ids.option_or_else || method_id == ids.result_or_else {
-        return Some(call_or_else(receiver, args, dispatch));
-    }
-    if method_id == ids.array_filter
-        || method_id == ids.map_filter
-        || method_id == ids.set_filter
-        || method_id == ids.option_filter
+    if method_id == ids.result_map
+        && option_result_methods::is_result(receiver, dispatch.heap_ref())
     {
-        return Some(call_filter(receiver, args, dispatch));
+        return Some(option_result_methods::map(
+            receiver,
+            args,
+            dispatch.runtime(),
+        ));
     }
-    if method_id == ids.array_find || method_id == ids.map_find || method_id == ids.set_find {
-        return Some(call_find(receiver, args, dispatch));
+    if method_id == ids.result_map_err
+        && option_result_methods::is_result(receiver, dispatch.heap_ref())
+    {
+        return Some(option_result_methods::map_err(
+            receiver,
+            args,
+            dispatch.runtime(),
+        ));
     }
-    if method_id == ids.array_any || method_id == ids.map_any || method_id == ids.set_any {
-        return Some(call_any(receiver, args, dispatch).map(Value::Bool));
+    if method_id == ids.option_and_then
+        && option_result_methods::is_option(receiver, dispatch.heap_ref())
+    {
+        return Some(option_result_methods::and_then(
+            receiver,
+            args,
+            dispatch.runtime(),
+        ));
     }
-    if method_id == ids.array_all || method_id == ids.map_all || method_id == ids.set_all {
-        return Some(call_all(receiver, args, dispatch).map(Value::Bool));
+    if method_id == ids.result_and_then
+        && option_result_methods::is_result(receiver, dispatch.heap_ref())
+    {
+        return Some(option_result_methods::and_then(
+            receiver,
+            args,
+            dispatch.runtime(),
+        ));
     }
-    if method_id == ids.array_count || method_id == ids.map_count || method_id == ids.set_count {
-        return Some(call_count(receiver, args, dispatch).map(Value::i64));
+    if method_id == ids.option_or_else
+        && option_result_methods::is_option(receiver, dispatch.heap_ref())
+    {
+        return Some(option_result_methods::or_else(
+            receiver,
+            args,
+            dispatch.runtime(),
+        ));
     }
-    if method_id == ids.array_sum {
+    if method_id == ids.result_or_else
+        && option_result_methods::is_result(receiver, dispatch.heap_ref())
+    {
+        return Some(option_result_methods::or_else(
+            receiver,
+            args,
+            dispatch.runtime(),
+        ));
+    }
+    if method_id == ids.array_filter && array_methods::is_array(receiver, dispatch.heap_ref()) {
+        return Some(array_methods::filter(receiver, args, dispatch.runtime()));
+    }
+    if method_id == ids.map_filter && map_methods::is_map(receiver, dispatch.heap_ref()) {
+        return Some(map_methods::filter(receiver, args, dispatch.runtime()));
+    }
+    if method_id == ids.set_filter && set_methods::is_set(receiver, dispatch.heap_ref()) {
+        return Some(set_methods::filter(receiver, args, dispatch.runtime()));
+    }
+    if method_id == ids.option_filter
+        && option_result_methods::is_option(receiver, dispatch.heap_ref())
+    {
+        return Some(option_result_methods::filter(
+            receiver,
+            args,
+            dispatch.runtime(),
+        ));
+    }
+    if method_id == ids.array_find && array_methods::is_array(receiver, dispatch.heap_ref()) {
+        return Some(array_methods::find(receiver, args, dispatch.runtime()));
+    }
+    if method_id == ids.map_find && map_methods::is_map(receiver, dispatch.heap_ref()) {
+        return Some(map_methods::find(receiver, args, dispatch.runtime()));
+    }
+    if method_id == ids.set_find && set_methods::is_set(receiver, dispatch.heap_ref()) {
+        return Some(set_methods::find(receiver, args, dispatch.runtime()));
+    }
+    if method_id == ids.array_any && array_methods::is_array(receiver, dispatch.heap_ref()) {
+        return Some(array_methods::any(receiver, args, dispatch.runtime()).map(Value::Bool));
+    }
+    if method_id == ids.map_any && map_methods::is_map(receiver, dispatch.heap_ref()) {
+        return Some(map_methods::any(receiver, args, dispatch.runtime()).map(Value::Bool));
+    }
+    if method_id == ids.set_any && set_methods::is_set(receiver, dispatch.heap_ref()) {
+        return Some(set_methods::any(receiver, args, dispatch.runtime()).map(Value::Bool));
+    }
+    if method_id == ids.array_all && array_methods::is_array(receiver, dispatch.heap_ref()) {
+        return Some(array_methods::all(receiver, args, dispatch.runtime()).map(Value::Bool));
+    }
+    if method_id == ids.map_all && map_methods::is_map(receiver, dispatch.heap_ref()) {
+        return Some(map_methods::all(receiver, args, dispatch.runtime()).map(Value::Bool));
+    }
+    if method_id == ids.set_all && set_methods::is_set(receiver, dispatch.heap_ref()) {
+        return Some(set_methods::all(receiver, args, dispatch.runtime()).map(Value::Bool));
+    }
+    if method_id == ids.array_count && array_methods::is_array(receiver, dispatch.heap_ref()) {
+        return Some(array_methods::count(receiver, args, dispatch.runtime()).map(Value::i64));
+    }
+    if method_id == ids.map_count && map_methods::is_map(receiver, dispatch.heap_ref()) {
+        return Some(map_methods::count(receiver, args, dispatch.runtime()).map(Value::i64));
+    }
+    if method_id == ids.set_count && set_methods::is_set(receiver, dispatch.heap_ref()) {
+        return Some(set_methods::count(receiver, args, dispatch.runtime()).map(Value::i64));
+    }
+    if method_id == ids.array_sum && array_methods::is_array(receiver, dispatch.heap_ref()) {
         return Some(array_methods::sum(receiver, args, dispatch.runtime()));
     }
-    if method_id == ids.array_group_by {
+    if method_id == ids.array_group_by && array_methods::is_array(receiver, dispatch.heap_ref()) {
         return Some(array_methods::group_by(receiver, args, dispatch.runtime()));
     }
-    if method_id == ids.array_sort_by {
+    if method_id == ids.array_sort_by && array_methods::is_array(receiver, dispatch.heap_ref()) {
         return Some(array_methods::sort_by(receiver, args, dispatch.runtime()));
     }
-    if method_id == ids.map_map_values {
+    if method_id == ids.map_map_values && map_methods::is_map(receiver, dispatch.heap_ref()) {
         return Some(map_methods::map_values(receiver, args, dispatch.runtime()));
     }
     None

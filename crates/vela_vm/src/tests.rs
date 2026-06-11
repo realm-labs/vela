@@ -64,6 +64,7 @@ mod reflection_values;
 mod scalar_numeric_ops;
 mod script_methods;
 mod standard_array_id_dispatch;
+mod standard_callback_id_dispatch;
 mod standard_id_dispatch;
 mod standard_map_set_id_dispatch;
 mod standard_option_result_id_dispatch;
