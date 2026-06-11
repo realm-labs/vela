@@ -1717,7 +1717,7 @@ place to discover missing architecture.
 - Linked bytecode has no optional identity fields.
 - Missing identity is impossible after linking.
 
-- [ ] **Task 9.3: Remove identity maps from `CompilerOptions`**
+- [x] **Task 9.3: Remove identity maps from `CompilerOptions`**
 
 **Delete:**
 
