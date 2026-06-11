@@ -5,6 +5,7 @@ license.workspace = true
 version.workspace = true
 
 [dependencies]
+vela_common.workspace = true
 vela_def.workspace = true
 vela_registry.workspace = true
 

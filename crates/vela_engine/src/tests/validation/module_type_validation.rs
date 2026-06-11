@@ -17,7 +17,7 @@ fn engine_rejects_type_names_that_shadow_standard_types() {
 
 #[test]
 fn engine_rejects_type_ids_that_collide_with_standard_types() {
-    let int_type_id = standard_type_id("Int");
+    let int_type_id = standard_type_id("I64");
     let result = Engine::builder()
         .with_standard_natives()
         .register_type(TypeDesc::new(TypeKey::new(int_type_id, "GameInt")))

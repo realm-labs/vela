@@ -22,7 +22,7 @@ pub fn std_method_id(owner: &str, name: &str) -> Option<MethodId> {
 pub fn std_type_id(name: &str) -> Option<TypeId> {
     STD_TYPES
         .iter()
-        .find(|spec| spec.name == name)
+        .find(|spec| spec.name == name || spec.source_name() == name)
         .map(|spec| spec.id())
 }
 
@@ -52,6 +52,10 @@ mod tests {
         assert_eq!(std_function_id("math", "max"), Some(STD_FUNCTIONS[0].id()));
         assert_eq!(std_method_id("String", "len"), Some(STD_METHODS[0].id()));
         assert_eq!(std_type_id("Null"), Some(STD_TYPES[0].id()));
+        assert_eq!(std_type_id("null"), Some(STD_TYPES[0].id()));
+        assert_eq!(std_type_id("i64"), Some(STD_TYPES[5].id()));
+        assert_eq!(std_type_id("f64"), Some(STD_TYPES[11].id()));
+        assert_eq!(std_type_id("bytes"), Some(STD_TYPES[13].id()));
         assert_eq!(std_variant_id("Option", "Some"), Some(STD_VARIANTS[0].id()));
         assert_eq!(std_field_id("Option::Some", "0"), Some(STD_FIELDS[0].id()));
     }
@@ -61,6 +65,8 @@ mod tests {
         assert_eq!(std_function_id("missing", "max"), None);
         assert_eq!(std_method_id("String", "missing"), None);
         assert_eq!(std_type_id("Missing"), None);
+        assert_eq!(std_type_id("int"), None);
+        assert_eq!(std_type_id("float"), None);
         assert_eq!(std_variant_id("Option", "Missing"), None);
         assert_eq!(std_field_id("Option::Some", "missing"), None);
     }

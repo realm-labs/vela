@@ -77,14 +77,7 @@ fn type_of_host_value<'a>(registry: &'a TypeRegistry, value: &HostValue) -> Opti
     match value {
         HostValue::Null => registry.type_by_name("null"),
         HostValue::Bool(_) => registry.type_by_name("bool"),
-        HostValue::Scalar(value) => {
-            let name = match value {
-                vela_common::ScalarValue::I64(_) => "int",
-                vela_common::ScalarValue::F64(_) => "float",
-                value => value.type_name(),
-            };
-            registry.type_by_name(name)
-        }
+        HostValue::Scalar(value) => registry.type_by_name(value.type_name()),
         HostValue::String(_) => registry.type_by_name("string"),
         HostValue::HostRef(host_ref) => registry.type_of_host(*host_ref),
     }

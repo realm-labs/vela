@@ -1092,34 +1092,34 @@ then build registry, syntax, guards, and runtime behavior on the new model.
 
 #### Task 2.2: Replace stdlib `Int` / `Float` types
 
-- [ ] Update `crates/vela_stdlib/src/manifest.rs`.
-- [ ] Remove `StdTypeSpec::new("Int")`.
-- [ ] Remove `StdTypeSpec::new("Float")`.
-- [ ] Add:
-  - [ ] `Null`
-  - [ ] `Bool`
-  - [ ] `I8`
-  - [ ] `I16`
-  - [ ] `I32`
-  - [ ] `I64`
-  - [ ] `U8`
-  - [ ] `U16`
-  - [ ] `U32`
-  - [ ] `U64`
-  - [ ] `F32`
-  - [ ] `F64`
-  - [ ] `String`
-  - [ ] `Bytes`
-- [ ] Decide and implement source names:
-  - [ ] source hint `i64` resolves to stdlib type `I64`;
-  - [ ] source hint `f64` resolves to stdlib type `F64`;
-  - [ ] source hint `bytes` resolves to stdlib type `Bytes`.
+- [x] Update `crates/vela_stdlib/src/manifest.rs`.
+- [x] Remove `StdTypeSpec::new("Int")`.
+- [x] Remove `StdTypeSpec::new("Float")`.
+- [x] Add:
+  - [x] `Null`
+  - [x] `Bool`
+  - [x] `I8`
+  - [x] `I16`
+  - [x] `I32`
+  - [x] `I64`
+  - [x] `U8`
+  - [x] `U16`
+  - [x] `U32`
+  - [x] `U64`
+  - [x] `F32`
+  - [x] `F64`
+  - [x] `String`
+  - [x] `Bytes`
+- [x] Decide and implement source names:
+  - [x] source hint `i64` resolves to stdlib type `I64`;
+  - [x] source hint `f64` resolves to stdlib type `F64`;
+  - [x] source hint `bytes` resolves to stdlib type `Bytes`.
 
 **Termination condition:**
 
-- [ ] `standard_registry()` resolves all primitive types.
-- [ ] `int` and `float` no longer resolve as valid stdlib types.
-- [ ] Stdlib registration tests pass after updates.
+- [x] `standard_registry()` resolves all primitive types.
+- [x] `int` and `float` no longer resolve as valid stdlib types.
+- [x] Stdlib registration tests pass after updates.
 
 #### Task 2.3: Replace embedding `TypeHint::Int` / `TypeHint::Float`
 

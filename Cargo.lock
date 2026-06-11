@@ -484,6 +484,7 @@ dependencies = [
 name = "vela_stdlib"
 version = "0.1.0"
 dependencies = [
+ "vela_common",
  "vela_def",
  "vela_registry",
 ]

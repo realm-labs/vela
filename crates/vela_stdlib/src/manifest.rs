@@ -1,3 +1,4 @@
+use vela_common::PrimitiveTag;
 use vela_def::{DefPath, FieldId, FunctionId, MethodId, TypeId, VariantId};
 use vela_registry::{
     FieldDef, FunctionDef, FunctionSignature, MethodDef, ParamDef, TypeDef, VariantDef,
@@ -145,12 +146,24 @@ impl StdMethodSpec {
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub struct StdTypeSpec {
     pub name: &'static str,
+    pub primitive: Option<PrimitiveTag>,
 }
 
 impl StdTypeSpec {
     #[must_use]
     pub const fn new(name: &'static str) -> Self {
-        Self { name }
+        Self {
+            name,
+            primitive: None,
+        }
+    }
+
+    #[must_use]
+    pub const fn primitive(name: &'static str, primitive: PrimitiveTag) -> Self {
+        Self {
+            name,
+            primitive: Some(primitive),
+        }
     }
 
     #[must_use]
@@ -165,7 +178,20 @@ impl StdTypeSpec {
 
     #[must_use]
     pub fn def(self) -> TypeDef {
-        TypeDef::new(self.path())
+        let def = TypeDef::new(self.path());
+        if let Some(primitive) = self.primitive {
+            def.primitive_tag(primitive)
+        } else {
+            def
+        }
+    }
+
+    #[must_use]
+    pub const fn source_name(self) -> &'static str {
+        match self.primitive {
+            Some(primitive) => primitive.name(),
+            None => self.name,
+        }
     }
 }
 
@@ -236,11 +262,20 @@ impl StdFieldSpec {
 }
 
 pub const STD_TYPES: &[StdTypeSpec] = &[
-    StdTypeSpec::new("Null"),
-    StdTypeSpec::new("Bool"),
-    StdTypeSpec::new("Int"),
-    StdTypeSpec::new("Float"),
-    StdTypeSpec::new("String"),
+    StdTypeSpec::primitive("Null", PrimitiveTag::Null),
+    StdTypeSpec::primitive("Bool", PrimitiveTag::Bool),
+    StdTypeSpec::primitive("I8", PrimitiveTag::I8),
+    StdTypeSpec::primitive("I16", PrimitiveTag::I16),
+    StdTypeSpec::primitive("I32", PrimitiveTag::I32),
+    StdTypeSpec::primitive("I64", PrimitiveTag::I64),
+    StdTypeSpec::primitive("U8", PrimitiveTag::U8),
+    StdTypeSpec::primitive("U16", PrimitiveTag::U16),
+    StdTypeSpec::primitive("U32", PrimitiveTag::U32),
+    StdTypeSpec::primitive("U64", PrimitiveTag::U64),
+    StdTypeSpec::primitive("F32", PrimitiveTag::F32),
+    StdTypeSpec::primitive("F64", PrimitiveTag::F64),
+    StdTypeSpec::primitive("String", PrimitiveTag::String),
+    StdTypeSpec::primitive("Bytes", PrimitiveTag::Bytes),
     StdTypeSpec::new("Array"),
     StdTypeSpec::new("Map"),
     StdTypeSpec::new("Set"),
@@ -525,7 +560,7 @@ mod tests {
 
     #[test]
     fn manifest_declares_current_stdlib_surface() {
-        assert_eq!(STD_TYPES.len(), 13);
+        assert_eq!(STD_TYPES.len(), 22);
         assert_eq!(STD_VARIANTS.len(), 4);
         assert_eq!(STD_FIELDS.len(), 3);
         assert_eq!(STD_FUNCTIONS.len(), 30);
@@ -608,6 +643,40 @@ mod tests {
     }
 
     #[test]
+    fn primitive_schema_types_are_declared_without_old_int_float_types() {
+        let primitive_types = STD_TYPES
+            .iter()
+            .filter_map(|spec| spec.primitive.map(|primitive| (spec.name, primitive)))
+            .collect::<BTreeSet<_>>();
+        let type_names = STD_TYPES
+            .iter()
+            .map(|spec| spec.name)
+            .collect::<BTreeSet<_>>();
+
+        assert_eq!(
+            primitive_types,
+            BTreeSet::from([
+                ("Null", PrimitiveTag::Null),
+                ("Bool", PrimitiveTag::Bool),
+                ("I8", PrimitiveTag::I8),
+                ("I16", PrimitiveTag::I16),
+                ("I32", PrimitiveTag::I32),
+                ("I64", PrimitiveTag::I64),
+                ("U8", PrimitiveTag::U8),
+                ("U16", PrimitiveTag::U16),
+                ("U32", PrimitiveTag::U32),
+                ("U64", PrimitiveTag::U64),
+                ("F32", PrimitiveTag::F32),
+                ("F64", PrimitiveTag::F64),
+                ("String", PrimitiveTag::String),
+                ("Bytes", PrimitiveTag::Bytes),
+            ])
+        );
+        assert!(!type_names.contains("Int"));
+        assert!(!type_names.contains("Float"));
+    }
+
+    #[test]
     fn standard_registry_resolves_manifest_definitions() {
         let registry = standard_registry().expect("standard registry should build");
         let view = registry.compile_view();
@@ -639,6 +708,19 @@ mod tests {
         assert_eq!(
             registry.id_for_path(&option_some_field.path()),
             Some(option_some_field.id().def_id())
+        );
+        for spec in STD_TYPES.iter().filter(|spec| spec.primitive.is_some()) {
+            let primitive = spec.primitive.expect("primitive spec should carry tag");
+            assert_eq!(registry.primitive_type_id(primitive), Some(spec.id()));
+            assert_eq!(view.type_primitive_kind(spec.id()), Some(primitive));
+        }
+        assert_eq!(
+            view.resolve_type(&DefPath::ty("std", std::iter::empty::<&str>(), "Int")),
+            None
+        );
+        assert_eq!(
+            view.resolve_type(&DefPath::ty("std", std::iter::empty::<&str>(), "Float")),
+            None
         );
     }
 
