@@ -78,22 +78,95 @@ fn main() {
 }
 
 #[test]
-fn compiler_rejects_suffixed_numeric_literals_until_scalar_lowering() {
-    let error = compile_function_source(
+fn compiler_lowers_suffixed_numeric_literals_to_scalar_constants() {
+    let code = compile_function_source(
         SourceId::new(1),
         r#"
 fn main() {
-    return 12i8;
+    let i8_value = 12i8;
+    let i16_value = 12i16;
+    let i32_value = 12i32;
+    let i64_value = 12i64;
+    let u8_value = 12u8;
+    let u16_value = 12u16;
+    let u32_value = 12u32;
+    let u64_value = 12u64;
+    let f32_value = 12.5f32;
+    let f64_value = 12.5f64;
+    return f64_value;
 }
 "#,
         "main",
     )
-    .expect_err("suffixed literals should not lower as default i64");
+    .expect("suffixed numeric literals should compile");
 
-    assert!(matches!(
-        error.kind,
-        CompileErrorKind::UnsupportedSyntax("suffixed integer literal")
-    ));
+    for expected in [
+        vela_common::ScalarValue::I8(12),
+        vela_common::ScalarValue::I16(12),
+        vela_common::ScalarValue::I32(12),
+        vela_common::ScalarValue::I64(12),
+        vela_common::ScalarValue::U8(12),
+        vela_common::ScalarValue::U16(12),
+        vela_common::ScalarValue::U32(12),
+        vela_common::ScalarValue::U64(12),
+        vela_common::ScalarValue::F32(12.5),
+        vela_common::ScalarValue::F64(12.5),
+    ] {
+        assert!(
+            code.constants.contains(&Constant::Scalar(expected)),
+            "missing scalar constant {expected}"
+        );
+    }
+}
+
+#[test]
+fn compiler_accepts_signed_min_suffixed_literals() {
+    let code = compile_function_source(
+        SourceId::new(1),
+        r#"
+fn main() {
+    let min_i8 = -128i8;
+    let min_i16 = -32768i16;
+    let min_i32 = -2147483648i32;
+    let min_i64 = -9223372036854775808i64;
+    return min_i64;
+}
+"#,
+        "main",
+    )
+    .expect("signed minimum literals should compile through unary-aware lowering");
+
+    for expected in [
+        vela_common::ScalarValue::I8(i8::MIN),
+        vela_common::ScalarValue::I16(i16::MIN),
+        vela_common::ScalarValue::I32(i32::MIN),
+        vela_common::ScalarValue::I64(i64::MIN),
+    ] {
+        assert!(
+            code.constants.contains(&Constant::Scalar(expected)),
+            "missing signed minimum constant {expected}"
+        );
+    }
+}
+
+#[test]
+fn compiler_rejects_out_of_range_suffixed_integer_literals() {
+    let error = compile_function_source(
+        SourceId::new(1),
+        r#"
+fn main() {
+    return 128i8;
+}
+"#,
+        "main",
+    )
+    .expect_err("out-of-range suffixed literal should fail");
+
+    let CompileErrorKind::InvalidIntLiteral { literal, error } = error.kind else {
+        panic!("expected invalid integer literal");
+    };
+    assert_eq!(literal, "128i8");
+    assert!(error.contains("out of range"), "{error}");
 }
 
 #[test]

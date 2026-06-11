@@ -1184,14 +1184,14 @@ then build registry, syntax, guards, and runtime behavior on the new model.
 
 #### Task 3.3: Add signed-min and contextual literal validation
 
-- [ ] Ensure `-128i8`, `-32768i16`, `-2147483648i32`, and `-9223372036854775808i64` are accepted through unary-minus-aware constant evaluation.
-- [ ] Reject positive suffixed literals that exceed their type.
+- [x] Ensure `-128i8`, `-32768i16`, `-2147483648i32`, and `-9223372036854775808i64` are accepted through unary-minus-aware constant evaluation.
+- [x] Reject positive suffixed literals that exceed their type.
 - [ ] Reject contextual unsuffixed integer literals that do not fit the expected type.
 - [ ] Reject contextual unsuffixed float literals that do not satisfy the expected float policy.
 
 **Termination condition:**
 
-- [ ] Signed-min tests pass for every signed integer primitive.
+- [x] Signed-min tests pass for every signed integer primitive.
 - [ ] Out-of-range literal tests report compile diagnostics with source spans.
 
 #### Task 3.4: Add byte string lexing

@@ -3,7 +3,7 @@ use vela_syntax::ast::{BinaryOp, Expr, ExprKind, Literal, UnaryOp};
 
 use crate::{Register, UnlinkedInstructionKind};
 
-use super::const_eval::compile_literal_constant;
+use super::const_eval::{compile_literal_constant, compile_negated_literal_constant};
 use super::constructors::schema_default_fields;
 use super::host_paths::HostPath;
 use super::operators::non_logical_binary_instruction;
@@ -327,6 +327,12 @@ impl Compiler<'_, '_> {
             && let Some(register) = self.compile_negated_equality(span, expr)?
         {
             return Ok(register);
+        }
+        if op == UnaryOp::Negate
+            && let ExprKind::Literal(literal) = &expr.kind
+            && let Some(constant) = compile_negated_literal_constant(literal)?
+        {
+            return self.emit_constant(constant);
         }
 
         let src = self.compile_expr(expr)?;

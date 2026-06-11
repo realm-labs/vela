@@ -6,7 +6,8 @@ fn compiler_lowers_unary_operators() {
         SourceId::new(1),
         r#"
 fn main() {
-    return !false == true && -5 < 0;
+    let value = 5;
+    return !false == true && -value < 0;
 }
 "#,
         "main",
