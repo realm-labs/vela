@@ -9,7 +9,7 @@ use vela_def::MethodId;
 use crate::heap::GcRef;
 use crate::linked_execution::LinkedExecutionCall;
 use crate::{
-    CallFrame, ExecutionBudget, HeapExecution, HostExecution, Value, Vm, VmResult,
+    CallFrame, ExecutionBudget, HeapExecution, HostExecution, SmallStorage, Value, Vm, VmResult,
     store_value_in_heap_if_needed,
 };
 use crate::{VmError, VmErrorKind, VmInlineCaches, host_access, script_function_calls};
@@ -388,9 +388,10 @@ fn dispatch_linked_script_method_call(
         .with_source_span_if_absent(context.call_site)
     })?;
     let receiver_value = *frame.read(call.receiver)?;
-    let mut method_args = Vec::with_capacity(call.values.len() + 1);
-    method_args.push(receiver_value);
-    method_args.extend(call.values.iter().copied());
+    let method_args =
+        SmallStorage::try_from_prefix_and_slice_map(receiver_value, call.values, 4, |value| {
+            Ok::<_, VmError>(*value)
+        })?;
     let protected_root_len = heap.as_deref_mut().map(|heap| heap.push_frame_roots(frame));
     let result = vm.execute_linked_call(
         LinkedExecutionCall {
