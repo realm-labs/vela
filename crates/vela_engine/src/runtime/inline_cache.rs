@@ -254,6 +254,119 @@ fn read_second() {
     }
 
     #[test]
+    fn accepted_hot_reload_clears_runtime_inline_caches() {
+        let engine = Engine::builder().build().expect("engine should build");
+        let initial = engine
+            .compile_hot_reload_initial(
+                SourceId::new(1),
+                r#"
+global first: i64;
+global second: i64;
+
+fn read_value() {
+    return first;
+}
+"#,
+            )
+            .expect("initial hot reload source should compile");
+        let first_slot = initial
+            .global_names()
+            .iter()
+            .position(|name| name == "main::first")
+            .map(vela_common::GlobalSlot)
+            .expect("first global should have a slot");
+        let second_slot = initial
+            .global_names()
+            .iter()
+            .position(|name| name == "main::second")
+            .map(vela_common::GlobalSlot)
+            .expect("second global should have a slot");
+        let mut runtime = Runtime::from_hot_reload_version(engine, initial);
+        let initial_site = runtime
+            .image
+            .program_image()
+            .function_by_name("read_value")
+            .expect("read_value should exist")
+            .cache_sites
+            .sites()
+            .iter()
+            .find(|site| site.kind == CacheSiteKind::GlobalRead)
+            .expect("read_value should have an initial global read site")
+            .id;
+        runtime
+            .insert_global(
+                "main::first",
+                OwnedValue::Scalar(vela_common::ScalarValue::I64(10)),
+            )
+            .expect("first global should insert");
+        runtime
+            .insert_global(
+                "main::second",
+                OwnedValue::Scalar(vela_common::ScalarValue::I64(20)),
+            )
+            .expect("second global should insert");
+
+        let first = runtime
+            .call("read_value", CallArgs::new(), CallOptions::unbounded())
+            .expect("initial read_value should run");
+        assert_eq!(
+            runtime.value_to_owned(&first),
+            Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(10)))
+        );
+        assert_eq!(
+            runtime.state.inline_caches.global_read_slot(initial_site),
+            Some(first_slot)
+        );
+
+        let update = runtime
+            .compile_hot_reload_update(
+                SourceId::new(2),
+                r#"
+global first: i64;
+global second: i64;
+
+fn read_value() {
+    return second;
+}
+"#,
+            )
+            .expect("runtime should compile hot reload update")
+            .expect("global read target change should be accepted");
+        let report = runtime
+            .apply_hot_update(update)
+            .expect("hot reload update should apply");
+
+        assert!(report.accepted);
+        let reloaded_site = runtime
+            .image
+            .program_image()
+            .function_by_name("read_value")
+            .expect("reloaded read_value should exist")
+            .cache_sites
+            .sites()
+            .iter()
+            .find(|site| site.kind == CacheSiteKind::GlobalRead)
+            .expect("reloaded read_value should have a global read site")
+            .id;
+        assert_eq!(
+            runtime.state.inline_caches.global_read_slot(reloaded_site),
+            None
+        );
+
+        let second = runtime
+            .call("read_value", CallArgs::new(), CallOptions::unbounded())
+            .expect("reloaded read_value should run");
+        assert_eq!(
+            runtime.value_to_owned(&second),
+            Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(20)))
+        );
+        assert_eq!(
+            runtime.state.inline_caches.global_read_slot(reloaded_site),
+            Some(second_slot)
+        );
+    }
+
+    #[test]
     fn host_access_inline_cache_records_resolved_target_guard() {
         let engine = Engine::builder()
             .register_type(

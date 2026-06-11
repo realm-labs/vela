@@ -194,7 +194,10 @@ Cranelift JIT.
   Runtime inline caches now have host access entries guarded by root type,
   target-plan ID, operation, and host schema epoch; collapsed host bytecode
   resolves through that cache boundary while adapter execution still validates
-  generations, permissions, and source-spanned slow paths.
+  generations, permissions, and source-spanned slow paths. Runtime inline
+  caches are scoped to the active runtime image, and accepted hot reloads clear
+  stale entries before reused cache-site indexes can repopulate from the new
+  bytecode.
   The HostPath/HostAccess M19.5 gap is complete: hot execution uses
   `HostTargetPlan`, `HostTargetInstance`, and `ResolvedHostAccess`, with
   `HostPath` reserved for diagnostics, reflection, embedding materialization,
