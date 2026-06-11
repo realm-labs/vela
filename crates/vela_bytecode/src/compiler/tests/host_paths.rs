@@ -176,6 +176,26 @@ fn has_host_read_target(
         })
 }
 
+fn has_host_write_target(
+    code: &UnlinkedCodeObject,
+    expected: &[HostPathPart],
+    dynamic_arg_count: usize,
+) -> bool {
+    code.instructions
+        .iter()
+        .any(|instruction| match &instruction.kind {
+            UnlinkedInstructionKind::HostWrite {
+                target,
+                dynamic_args,
+                ..
+            } => {
+                dynamic_args.len() == dynamic_arg_count
+                    && host_target_parts(code, *target) == expected
+            }
+            _ => false,
+        })
+}
+
 #[test]
 fn compiler_lowers_typed_host_target_root_type_id() {
     let player_type = HostTypeId::new(77);
@@ -720,6 +740,8 @@ fn compiler_lowers_root_host_index_receiver() {
         SourceId::new(1),
         r#"
 fn main(scores: Scores, key) {
+    scores[key] = 10;
+    scores[key] += 2;
     return scores[key];
 }
 "#,
@@ -728,6 +750,9 @@ fn main(scores: Scores, key) {
             "Scores",
             HostIndexCapabilityInfo {
                 readable: true,
+                writable: true,
+                addable: true,
+                key_type: Some("i64".to_owned()),
                 value_type: Some("i64".to_owned()),
                 ..HostIndexCapabilityInfo::default()
             },
@@ -748,10 +773,21 @@ fn main(scores: Scores, key) {
     };
     let plan = code.host_target(target).expect("host target should exist");
     assert_eq!(plan.root_type, scores_type);
-    assert_eq!(plan.parts.as_slice(), [HostPathPart::DynKey { arg: 0 }]);
+    assert_eq!(plan.parts.as_slice(), [HostPathPart::DynIndex { arg: 0 }]);
     assert!(has_host_read_target(
         &code,
-        &[HostPathPart::DynKey { arg: 0 }],
+        &[HostPathPart::DynIndex { arg: 0 }],
+        1
+    ));
+    assert!(has_host_write_target(
+        &code,
+        &[HostPathPart::DynIndex { arg: 0 }],
+        1
+    ));
+    assert!(has_host_mutate_target(
+        &code,
+        vela_host::resolved::HostMutationOp::Add,
+        &[HostPathPart::DynIndex { arg: 0 }],
         1
     ));
 }
@@ -1178,7 +1214,7 @@ fn main(scores: Scores, key) {
                     ..
                 } =>
                     dynamic_args.len() == 1
-                        && host_target_parts(&code, *target) == [HostPathPart::DynKey { arg: 0 }],
+                        && host_target_parts(&code, *target) == [HostPathPart::DynIndex { arg: 0 }],
                 _ => false,
             })
     );

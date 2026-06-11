@@ -25,7 +25,16 @@ pub(super) enum HostPathRoot<'ast> {
 pub(super) enum HostPathPart<'ast> {
     Field(FieldId),
     VariantField(FieldId),
-    Value(&'ast Expr),
+    Value {
+        expr: &'ast Expr,
+        dynamic_kind: DynamicHostPathPart,
+    },
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub(super) enum DynamicHostPathPart {
+    Index,
+    Key,
 }
 
 impl HostPath<'_> {
@@ -56,7 +65,16 @@ impl Compiler<'_, '_> {
             ExprKind::Path(path) => self.host_field_path_parts(expr.span, path),
             ExprKind::Index { base, index } => {
                 let mut receiver = self.resolve_host_path_index_receiver(base)?;
-                receiver.path.segments.push(HostPathPart::Value(index));
+                let dynamic_kind = receiver
+                    .type_name
+                    .as_deref()
+                    .and_then(|type_name| self.facts.options.host_index_capability(type_name))
+                    .and_then(|capability| capability.key_type.as_deref())
+                    .map_or(DynamicHostPathPart::Key, dynamic_host_path_part);
+                receiver.path.segments.push(HostPathPart::Value {
+                    expr: index,
+                    dynamic_kind,
+                });
                 let value_type = receiver.type_name.as_deref().and_then(|type_name| {
                     self.facts
                         .options
@@ -399,7 +417,7 @@ impl Compiler<'_, '_> {
                 HostPathPart::VariantField(field) => {
                     plan = plan.variant_field(field);
                 }
-                HostPathPart::Value(expr) => {
+                HostPathPart::Value { expr, dynamic_kind } => {
                     if let Some(arg) = const_host_path_arg(expr) {
                         plan = match arg {
                             ConstHostPathArg::Index(index) => plan.const_index(index),
@@ -414,7 +432,10 @@ impl Compiler<'_, '_> {
                     })?;
                     let register = self.compile_expr(expr)?;
                     dynamic_args.push(register);
-                    plan = plan.dyn_key(arg);
+                    plan = match dynamic_kind {
+                        DynamicHostPathPart::Index => plan.dyn_index(arg),
+                        DynamicHostPathPart::Key => plan.dyn_key(arg),
+                    };
                 }
             }
         }
@@ -621,5 +642,12 @@ fn const_host_path_arg(expr: &Expr) -> Option<ConstHostPathArg> {
             Some(ConstHostPathArg::Key(value.clone()))
         }
         _ => None,
+    }
+}
+
+fn dynamic_host_path_part(key_type: &str) -> DynamicHostPathPart {
+    match key_type {
+        "i64" => DynamicHostPathPart::Index,
+        _ => DynamicHostPathPart::Key,
     }
 }

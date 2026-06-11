@@ -307,7 +307,10 @@ Cranelift JIT.
   values share `ScalarValue` and bytes representations, type hints are
   contracts with compile-time and linked runtime guard enforcement, numeric
   operators require identical concrete scalar tags, byte strings and bytes APIs
-  are covered, and final validation passes.
+  are covered, and final validation passes. Root host receiver index reads,
+  writes, compound mutations, and removals lower for typed roots with
+  configured host index capabilities, and numeric key contracts emit dynamic
+  index target parts for cache-ready host access plans.
 
 ### Remaining Gaps
 
@@ -324,10 +327,6 @@ Cranelift JIT.
     reason to defer the remaining conversions to M20/JIT work;
   - HostTargetPlan/HostAccess resolved targets and direct adapter-thunk boundaries are
     implemented enough for M20 host field/path caches;
-  - root host receiver index reads and writes such as `scores[1]` lower for
-    typed roots with configured host index capability, and static diagnostics
-    reject missing, unreadable, unwritable, non-addable, non-removable, or
-    key-mismatched host index access before fallback bytecode emission;
   - callback and closure allocation costs now have isolated quick and default
     baseline rows; M20 cache-enabled rows still need to separate cache work
     from later JIT work;
