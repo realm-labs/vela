@@ -66,13 +66,24 @@ struct StdMethodIds {
     map_get_or: MethodId,
     map_set: MethodId,
     map_remove: MethodId,
+    map_extend: MethodId,
     map_clear: MethodId,
+    map_keys: MethodId,
+    map_values: MethodId,
+    map_entries: MethodId,
+    map_merge: MethodId,
     set_len: MethodId,
     set_is_empty: MethodId,
     set_has: MethodId,
     set_add: MethodId,
     set_remove: MethodId,
+    set_extend: MethodId,
     set_clear: MethodId,
+    set_values: MethodId,
+    set_union: MethodId,
+    set_intersection: MethodId,
+    set_difference: MethodId,
+    set_symmetric_difference: MethodId,
     set_is_subset: MethodId,
     set_is_superset: MethodId,
     set_is_disjoint: MethodId,
@@ -144,13 +155,24 @@ impl StdMethodIds {
             map_get_or: standard_method_id("Map", "get_or"),
             map_set: standard_method_id("Map", "set"),
             map_remove: standard_method_id("Map", "remove"),
+            map_extend: standard_method_id("Map", "extend"),
             map_clear: standard_method_id("Map", "clear"),
+            map_keys: standard_method_id("Map", "keys"),
+            map_values: standard_method_id("Map", "values"),
+            map_entries: standard_method_id("Map", "entries"),
+            map_merge: standard_method_id("Map", "merge"),
             set_len: standard_method_id("Set", "len"),
             set_is_empty: standard_method_id("Set", "is_empty"),
             set_has: standard_method_id("Set", "has"),
             set_add: standard_method_id("Set", "add"),
             set_remove: standard_method_id("Set", "remove"),
+            set_extend: standard_method_id("Set", "extend"),
             set_clear: standard_method_id("Set", "clear"),
+            set_values: standard_method_id("Set", "values"),
+            set_union: standard_method_id("Set", "union"),
+            set_intersection: standard_method_id("Set", "intersection"),
+            set_difference: standard_method_id("Set", "difference"),
+            set_symmetric_difference: standard_method_id("Set", "symmetric_difference"),
             set_is_subset: standard_method_id("Set", "is_subset"),
             set_is_superset: standard_method_id("Set", "is_superset"),
             set_is_disjoint: standard_method_id("Set", "is_disjoint"),
@@ -361,8 +383,28 @@ pub(crate) fn call_by_id(
             budget.as_deref_mut(),
         ));
     }
+    if method_id == ids.map_extend && map_methods::is_map(receiver, heap.as_deref()) {
+        return Some(map_methods::extend(
+            receiver,
+            args,
+            heap.as_deref_mut(),
+            budget.as_deref_mut(),
+        ));
+    }
     if method_id == ids.map_clear && map_methods::is_map(receiver, heap.as_deref()) {
         return Some(map_methods::clear(receiver, args, heap.as_deref_mut()));
+    }
+    if method_id == ids.map_keys && map_methods::is_map(receiver, heap.as_deref()) {
+        return Some(map_methods::keys(receiver, args, heap, budget));
+    }
+    if method_id == ids.map_values && map_methods::is_map(receiver, heap.as_deref()) {
+        return Some(map_methods::values(receiver, args, heap, budget));
+    }
+    if method_id == ids.map_entries && map_methods::is_map(receiver, heap.as_deref()) {
+        return Some(map_methods::entries(receiver, args, heap, budget));
+    }
+    if method_id == ids.map_merge && map_methods::is_map(receiver, heap.as_deref()) {
+        return Some(map_methods::merge(receiver, args, heap, budget));
     }
     if method_id == ids.set_add && set_methods::is_set(receiver, heap.as_deref()) {
         return Some(set_methods::add(
@@ -375,8 +417,33 @@ pub(crate) fn call_by_id(
     if method_id == ids.set_remove && set_methods::is_set(receiver, heap.as_deref()) {
         return Some(set_methods::remove(receiver, args, heap.as_deref_mut()));
     }
+    if method_id == ids.set_extend && set_methods::is_set(receiver, heap.as_deref()) {
+        return Some(set_methods::extend(
+            receiver,
+            args,
+            heap.as_deref_mut(),
+            budget.as_deref_mut(),
+        ));
+    }
     if method_id == ids.set_clear && set_methods::is_set(receiver, heap.as_deref()) {
         return Some(set_methods::clear(receiver, args, heap.as_deref_mut()));
+    }
+    if method_id == ids.set_values && set_methods::is_set(receiver, heap.as_deref()) {
+        return Some(set_methods::values(receiver, args, heap, budget));
+    }
+    if method_id == ids.set_union && set_methods::is_set(receiver, heap.as_deref()) {
+        return Some(set_methods::union(receiver, args, heap, budget));
+    }
+    if method_id == ids.set_intersection && set_methods::is_set(receiver, heap.as_deref()) {
+        return Some(set_methods::intersection(receiver, args, heap, budget));
+    }
+    if method_id == ids.set_difference && set_methods::is_set(receiver, heap.as_deref()) {
+        return Some(set_methods::difference(receiver, args, heap, budget));
+    }
+    if method_id == ids.set_symmetric_difference && set_methods::is_set(receiver, heap.as_deref()) {
+        return Some(set_methods::symmetric_difference(
+            receiver, args, heap, budget,
+        ));
     }
     if method_id == ids.string_to_upper
         && crate::string_methods::is_string(receiver, heap.as_deref())
