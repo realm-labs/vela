@@ -31,9 +31,9 @@ fn engine_reflect_call_invokes_reflect_callable_native_functions() {
     let engine = Engine::builder()
         .register_native_fn(
             NativeFunctionDesc::new("game::add", NativeFunctionId::new(91))
-                .param("lhs", TypeHint::Int)
-                .param("rhs", TypeHint::Int)
-                .returns(TypeHint::Int)
+                .param("lhs", TypeHint::i64())
+                .param("rhs", TypeHint::i64())
+                .returns(TypeHint::i64())
                 .access(FunctionAccess::public().reflect_callable(true)),
             |args| {
                 let [
@@ -79,9 +79,9 @@ fn engine_reflect_call_requires_call_permission_for_function_descriptors() {
     let engine = Engine::builder()
         .register_native_fn(
             NativeFunctionDesc::new("game::add", NativeFunctionId::new(95))
-                .param("lhs", TypeHint::Int)
-                .param("rhs", TypeHint::Int)
-                .returns(TypeHint::Int)
+                .param("lhs", TypeHint::i64())
+                .param("rhs", TypeHint::i64())
+                .returns(TypeHint::i64())
                 .access(FunctionAccess::public().reflect_callable(true)),
             |_| Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(0))),
         )
@@ -120,9 +120,9 @@ fn engine_reflect_call_rejects_non_callable_native_functions() {
     let engine = Engine::builder()
         .register_native_fn(
             NativeFunctionDesc::new("game::add", NativeFunctionId::new(92))
-                .param("lhs", TypeHint::Int)
-                .param("rhs", TypeHint::Int)
-                .returns(TypeHint::Int),
+                .param("lhs", TypeHint::i64())
+                .param("rhs", TypeHint::i64())
+                .returns(TypeHint::i64()),
             |_| Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(0))),
         )
         .reflection_permissions(ReflectPermissionSet::all())
@@ -168,8 +168,8 @@ fn engine_reflect_call_invokes_host_native_functions_through_host_access() {
                     "player",
                     TypeHint::Host(TypeKey::new(TypeId::new(1), "Player")),
                 )
-                .param("level", TypeHint::Int)
-                .returns(TypeHint::Null)
+                .param("level", TypeHint::i64())
+                .returns(TypeHint::null())
                 .effects(EffectSet::host_write())
                 .access(FunctionAccess::public().reflect_callable(true)),
             |args, host| {
@@ -234,8 +234,8 @@ fn engine_reflect_call_denies_effectful_native_functions_without_effect_permissi
                     "player",
                     TypeHint::Host(TypeKey::new(TypeId::new(1), "Player")),
                 )
-                .param("level", TypeHint::Int)
-                .returns(TypeHint::Null)
+                .param("level", TypeHint::i64())
+                .returns(TypeHint::null())
                 .effects(EffectSet::host_write())
                 .access(FunctionAccess::public().reflect_callable(true)),
             |args, host| {

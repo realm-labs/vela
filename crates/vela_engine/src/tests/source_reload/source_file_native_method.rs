@@ -126,7 +126,7 @@ fn runtime_stages_source_file_native_parameter_rejection_until_safe_point() {
         .execution_profile(ExecutionProfile::trusted())
         .register_native_fn(
             NativeFunctionDesc::new("game::reward::grant", NativeFunctionId::new(22))
-                .param("amount", TypeHint::Int),
+                .param("amount", TypeHint::i64()),
             |_| Ok(OwnedValue::Null),
         )
         .build()
@@ -136,7 +136,7 @@ fn runtime_stages_source_file_native_parameter_rejection_until_safe_point() {
         .execution_profile(ExecutionProfile::trusted())
         .register_native_fn(
             NativeFunctionDesc::new("game::reward::grant", NativeFunctionId::new(22))
-                .param("amount", TypeHint::Float),
+                .param("amount", TypeHint::f64()),
             |_| Ok(OwnedValue::Null),
         )
         .build()
@@ -175,10 +175,10 @@ fn runtime_stages_source_file_native_parameter_rejection_until_safe_point() {
     assert_eq!(function, "game::reward::grant");
     assert_eq!(old.len(), 1);
     assert_eq!(old[0].name, "amount");
-    assert_eq!(old[0].type_hint.as_deref(), Some("int"));
+    assert_eq!(old[0].type_hint.as_deref(), Some("i64"));
     assert_eq!(new.len(), 1);
     assert_eq!(new[0].name, "amount");
-    assert_eq!(new[0].type_hint.as_deref(), Some("float"));
+    assert_eq!(new[0].type_hint.as_deref(), Some("f64"));
     assert!(source_span.is_none());
     assert_eq!(
         runtime.call_raw("main", &[], CallOptions::unbounded(), &mut adapter, &mut tx),
@@ -192,7 +192,7 @@ fn runtime_stages_source_file_native_return_rejection_until_safe_point() {
         .execution_profile(ExecutionProfile::trusted())
         .register_native_fn(
             NativeFunctionDesc::new("game::reward::grant", NativeFunctionId::new(22))
-                .returns(TypeHint::Int),
+                .returns(TypeHint::i64()),
             |_| Ok(OwnedValue::Null),
         )
         .build()
@@ -202,7 +202,7 @@ fn runtime_stages_source_file_native_return_rejection_until_safe_point() {
         .execution_profile(ExecutionProfile::trusted())
         .register_native_fn(
             NativeFunctionDesc::new("game::reward::grant", NativeFunctionId::new(22))
-                .returns(TypeHint::Float),
+                .returns(TypeHint::f64()),
             |_| Ok(OwnedValue::Null),
         )
         .build()
@@ -236,8 +236,8 @@ fn runtime_stages_source_file_native_return_rejection_until_safe_point() {
         panic!("expected changed native function return ABI");
     };
     assert_eq!(function, "game::reward::grant");
-    assert_eq!(old.as_deref(), Some("int"));
-    assert_eq!(new.as_deref(), Some("float"));
+    assert_eq!(old.as_deref(), Some("i64"));
+    assert_eq!(new.as_deref(), Some("f64"));
     assert!(source_span.is_none());
     assert_eq!(
         runtime.call_raw("main", &[], CallOptions::unbounded(), &mut adapter, &mut tx),
@@ -364,7 +364,7 @@ fn runtime_stages_source_file_native_stable_id_rename_until_safe_point() {
         .execution_profile(ExecutionProfile::trusted())
         .register_native_fn(
             NativeFunctionDesc::new("game::native::grant_bonus", NativeFunctionId::new(22))
-                .returns(TypeHint::Int)
+                .returns(TypeHint::i64())
                 .effects(EffectSet::host_read()),
             |_| Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(5))),
         )
@@ -382,7 +382,7 @@ fn main() {
         .execution_profile(ExecutionProfile::trusted())
         .register_native_fn(
             NativeFunctionDesc::new("game::native::grant_bonus_v2", NativeFunctionId::new(22))
-                .returns(TypeHint::Int)
+                .returns(TypeHint::i64())
                 .effects(EffectSet::host_read()),
             |_| Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(5))),
         )
@@ -770,7 +770,7 @@ fn runtime_stages_source_file_method_parameter_rejection_until_safe_point() {
                 .host_type(HostTypeId::new(1))
                 .method(
                     MethodDesc::new(HostMethodId::new(9), "grant_exp")
-                        .param(MethodParamDesc::new("amount").type_hint("int")),
+                        .param(MethodParamDesc::new("amount").type_hint("i64")),
                 ),
         )
         .build()
@@ -783,7 +783,7 @@ fn runtime_stages_source_file_method_parameter_rejection_until_safe_point() {
                 .host_type(HostTypeId::new(1))
                 .method(
                     MethodDesc::new(HostMethodId::new(9), "grant_exp")
-                        .param(MethodParamDesc::new("amount").type_hint("float")),
+                        .param(MethodParamDesc::new("amount").type_hint("f64")),
                 ),
         )
         .build()
@@ -821,10 +821,10 @@ fn runtime_stages_source_file_method_parameter_rejection_until_safe_point() {
     assert_eq!(method, "grant_exp");
     assert_eq!(old.len(), 1);
     assert_eq!(old[0].name, "amount");
-    assert_eq!(old[0].type_hint.as_deref(), Some("int"));
+    assert_eq!(old[0].type_hint.as_deref(), Some("i64"));
     assert_eq!(new.len(), 1);
     assert_eq!(new[0].name, "amount");
-    assert_eq!(new[0].type_hint.as_deref(), Some("float"));
+    assert_eq!(new[0].type_hint.as_deref(), Some("f64"));
     assert!(source_span.is_none());
     assert_eq!(
         runtime.call_raw("main", &[], CallOptions::unbounded(), &mut adapter, &mut tx),
@@ -840,7 +840,7 @@ fn runtime_stages_source_file_method_return_rejection_until_safe_point() {
         .register_type(
             TypeDesc::new(player_key.clone())
                 .host_type(HostTypeId::new(1))
-                .method(MethodDesc::new(HostMethodId::new(9), "grant_exp").return_type("int")),
+                .method(MethodDesc::new(HostMethodId::new(9), "grant_exp").return_type("i64")),
         )
         .build()
         .expect("old engine should build");
@@ -885,7 +885,7 @@ fn runtime_stages_source_file_method_return_rejection_until_safe_point() {
     };
     assert_eq!(type_name, "Player");
     assert_eq!(method, "grant_exp");
-    assert_eq!(old.as_deref(), Some("int"));
+    assert_eq!(old.as_deref(), Some("i64"));
     assert_eq!(new.as_deref(), Some("null"));
     assert!(source_span.is_none());
     assert_eq!(

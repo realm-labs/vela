@@ -5,7 +5,7 @@ pub const STD_METHODS: &[StdMethodSpec] = &[
         "String",
         "len",
         &[],
-        "int",
+        "i64",
         "Returns the string length in characters.",
     ),
     StdMethodSpec::new(
@@ -105,7 +105,7 @@ pub const STD_METHODS: &[StdMethodSpec] = &[
     StdMethodSpec::new(
         "String",
         "repeat",
-        &[StdParamSpec::new("count", "int")],
+        &[StdParamSpec::new("count", "i64")],
         "string",
         "Returns the string repeated count times.",
     ),
@@ -113,8 +113,8 @@ pub const STD_METHODS: &[StdMethodSpec] = &[
         "String",
         "slice",
         &[
-            StdParamSpec::new("start", "int"),
-            StdParamSpec::new("end", "int"),
+            StdParamSpec::new("start", "i64"),
+            StdParamSpec::new("end", "i64"),
         ],
         "string",
         "Returns the substring in the character range.",
@@ -150,7 +150,7 @@ pub const STD_METHODS: &[StdMethodSpec] = &[
     StdMethodSpec::new(
         "String",
         "char_at",
-        &[StdParamSpec::new("index", "int")],
+        &[StdParamSpec::new("index", "i64")],
         "Option",
         "Returns the character at the character index, or Option::None.",
     ),
@@ -175,7 +175,7 @@ pub const STD_METHODS: &[StdMethodSpec] = &[
         "Option",
         "Parses the string as a boolean, or Option::None.",
     ),
-    StdMethodSpec::new("Array", "len", &[], "int", "Returns the array length."),
+    StdMethodSpec::new("Array", "len", &[], "i64", "Returns the array length."),
     StdMethodSpec::new(
         "Array",
         "is_empty",
@@ -201,7 +201,7 @@ pub const STD_METHODS: &[StdMethodSpec] = &[
         "Array",
         "insert",
         &[
-            StdParamSpec::new("index", "int"),
+            StdParamSpec::new("index", "i64"),
             StdParamSpec::new("value", "any"),
         ],
         "null",
@@ -220,7 +220,7 @@ pub const STD_METHODS: &[StdMethodSpec] = &[
     StdMethodSpec::new(
         "Array",
         "remove_at",
-        &[StdParamSpec::new("index", "int")],
+        &[StdParamSpec::new("index", "i64")],
         "Option",
         "Removes and returns the value at an index.",
     ),
@@ -257,8 +257,8 @@ pub const STD_METHODS: &[StdMethodSpec] = &[
         "Array",
         "slice",
         &[
-            StdParamSpec::new("start", "int"),
-            StdParamSpec::new("end", "int"),
+            StdParamSpec::new("start", "i64"),
+            StdParamSpec::new("end", "i64"),
         ],
         "array",
         "Returns values in the index range.",
@@ -302,7 +302,7 @@ pub const STD_METHODS: &[StdMethodSpec] = &[
         "Array",
         "count",
         &[StdParamSpec::new("callback", "function")],
-        "int",
+        "i64",
         "Counts values accepted by a callback.",
     ),
     StdMethodSpec::new(
@@ -329,7 +329,7 @@ pub const STD_METHODS: &[StdMethodSpec] = &[
         "array",
         "Returns values sorted by callback keys.",
     ),
-    StdMethodSpec::new("Map", "len", &[], "int", "Returns the map length."),
+    StdMethodSpec::new("Map", "len", &[], "i64", "Returns the map length."),
     StdMethodSpec::new(
         "Map",
         "is_empty",
@@ -441,10 +441,10 @@ pub const STD_METHODS: &[StdMethodSpec] = &[
         "Map",
         "count",
         &[StdParamSpec::new("callback", "function")],
-        "int",
+        "i64",
         "Counts entries accepted by a callback.",
     ),
-    StdMethodSpec::new("Set", "len", &[], "int", "Returns the set length."),
+    StdMethodSpec::new("Set", "len", &[], "i64", "Returns the set length."),
     StdMethodSpec::new(
         "Set",
         "is_empty",
@@ -521,7 +521,7 @@ pub const STD_METHODS: &[StdMethodSpec] = &[
         "Set",
         "count",
         &[StdParamSpec::new("callback", "function")],
-        "int",
+        "i64",
         "Counts values accepted by a callback.",
     ),
     StdMethodSpec::new(
@@ -706,7 +706,7 @@ pub const STD_METHODS: &[StdMethodSpec] = &[
         "Result",
         "Calls an error-aware fallback callback for Result::Err.",
     ),
-    StdMethodSpec::new("Range", "len", &[], "int", "Returns the range length."),
+    StdMethodSpec::new("Range", "len", &[], "i64", "Returns the range length."),
     StdMethodSpec::new(
         "Range",
         "is_empty",

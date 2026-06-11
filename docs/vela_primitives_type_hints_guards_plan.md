@@ -1123,29 +1123,29 @@ then build registry, syntax, guards, and runtime behavior on the new model.
 
 #### Task 2.3: Replace embedding `TypeHint::Int` / `TypeHint::Float`
 
-- [ ] Replace `TypeHint::Int` and `TypeHint::Float` with `TypeHint::Primitive(PrimitiveTag)`.
-- [ ] Add convenience constructors such as `TypeHint::i64()` and `TypeHint::f64()` if they improve call sites.
-- [ ] Update native function, host method, macro, reflection, and validation tests to use explicit primitive hints.
-- [ ] Ensure descriptor serialization and reflection metadata expose canonical lowercase names.
-- [ ] Do not keep old enum variants, aliases, or hidden conversions.
+- [x] Replace `TypeHint::Int` and `TypeHint::Float` with `TypeHint::Primitive(PrimitiveTag)`.
+- [x] Add convenience constructors such as `TypeHint::i64()` and `TypeHint::f64()` if they improve call sites.
+- [x] Update native function, host method, macro, reflection, and validation tests to use explicit primitive hints.
+- [x] Ensure descriptor serialization and reflection metadata expose canonical lowercase names.
+- [x] Do not keep old enum variants, aliases, or hidden conversions.
 
 **Termination condition:**
 
-- [ ] Public embedding APIs can declare every primitive scalar and `bytes`.
-- [ ] `TypeHint::Int` and `TypeHint::Float` no longer exist.
-- [ ] Native/host descriptor tests pass with explicit primitive names.
+- [x] Public embedding APIs can declare every primitive scalar and `bytes`.
+- [x] `TypeHint::Int` and `TypeHint::Float` no longer exist.
+- [x] Native/host descriptor tests pass with explicit primitive names.
 
 #### Task 2.4: Update stdlib signatures
 
-- [ ] Replace `"int"` return/param hints with `"i64"` where default integer semantics are intended.
-- [ ] Replace `"float"` return/param hints with `"f64"` where default float semantics are intended.
-- [ ] Keep `"any"` only where explicit erased dynamic metadata is intended.
-- [ ] Add `bytes` method specs if implementing bytes in this phase.
+- [x] Replace `"int"` return/param hints with `"i64"` where default integer semantics are intended.
+- [x] Replace `"float"` return/param hints with `"f64"` where default float semantics are intended.
+- [x] Keep `"any"` only where explicit erased dynamic metadata is intended.
+- [x] Leave `bytes` method specs for Phase 7.2; this phase did not add bytes stdlib APIs.
 
 **Termination condition:**
 
-- [ ] No stdlib manifest param or return type uses `"int"` or `"float"`.
-- [ ] Existing stdlib tests pass after expected updates.
+- [x] No stdlib manifest param or return type uses `"int"` or `"float"`.
+- [x] Existing stdlib tests pass after expected updates.
 
 ---
 

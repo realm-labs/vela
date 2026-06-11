@@ -193,11 +193,7 @@ fn assert_registered_method_matches_native_desc(
 fn type_hint_name(hint: &TypeHint) -> &str {
     match hint {
         TypeHint::Any => "any",
-        TypeHint::Null => "null",
-        TypeHint::Bool => "bool",
-        TypeHint::Int => "int",
-        TypeHint::Float => "float",
-        TypeHint::String => "string",
+        TypeHint::Primitive(tag) => tag.name(),
         TypeHint::Array => "array",
         TypeHint::Map => "map",
         TypeHint::Set => "set",

@@ -100,7 +100,7 @@ pub(crate) fn fs_functions(sandbox: FsSandbox) -> [NativeFunctionEntry; 2] {
     [
         NativeFunctionEntry::new(
             NativeFunctionDesc::new("fs::read_to_string", FS_READ_TO_STRING_FUNCTION_ID)
-                .param("path", TypeHint::String)
+                .param("path", TypeHint::string())
                 .returns(TypeHint::Any)
                 .effects(EffectSet::io_read())
                 .access(FunctionAccess::public().reflect_callable(true))
@@ -111,8 +111,8 @@ pub(crate) fn fs_functions(sandbox: FsSandbox) -> [NativeFunctionEntry; 2] {
         ),
         NativeFunctionEntry::new(
             NativeFunctionDesc::new("fs::write_string", FS_WRITE_STRING_FUNCTION_ID)
-                .param("path", TypeHint::String)
-                .param("text", TypeHint::String)
+                .param("path", TypeHint::string())
+                .param("text", TypeHint::string())
                 .returns(TypeHint::Any)
                 .effects(EffectSet::io_write())
                 .access(FunctionAccess::public().reflect_callable(true))

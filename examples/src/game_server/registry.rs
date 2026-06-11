@@ -63,8 +63,8 @@ fn demo_reward_grant_desc(ids: DemoIds) -> NativeFunctionDesc {
             "player",
             TypeHint::Host(TypeKey::new(Player::vela_type_id(), "Player")),
         )
-        .param("item_id", TypeHint::String)
-        .returns(TypeHint::Bool)
+        .param("item_id", TypeHint::string())
+        .returns(TypeHint::boolean())
         .effects(EffectSet::pure())
         .access(FunctionAccess::public().reflect_callable(true))
         .docs("Grant reward.")

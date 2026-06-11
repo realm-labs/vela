@@ -7,7 +7,7 @@ pub(crate) fn array_method_descs() -> Vec<MethodDesc> {
 }
 
 const ARRAY_METHODS: &[MethodSpec] = &[
-    MethodSpec::new("len", &[], "int", "Returns the array length."),
+    MethodSpec::new("len", &[], "i64", "Returns the array length."),
     MethodSpec::new(
         "is_empty",
         &[],
@@ -24,7 +24,7 @@ const ARRAY_METHODS: &[MethodSpec] = &[
     MethodSpec::new(
         "insert",
         &[
-            ParamSpec::new("index", "int"),
+            ParamSpec::new("index", "i64"),
             ParamSpec::new("value", "any"),
         ],
         "null",
@@ -41,7 +41,7 @@ const ARRAY_METHODS: &[MethodSpec] = &[
     MethodSpec::new("last", &[], "Option", "Returns the last value."),
     MethodSpec::new(
         "remove_at",
-        &[ParamSpec::new("index", "int")],
+        &[ParamSpec::new("index", "i64")],
         "Option",
         "Removes and returns the value at an index.",
     ),
@@ -67,7 +67,7 @@ const ARRAY_METHODS: &[MethodSpec] = &[
     MethodSpec::new("reverse", &[], "array", "Returns values in reverse order."),
     MethodSpec::new(
         "slice",
-        &[ParamSpec::new("start", "int"), ParamSpec::new("end", "int")],
+        &[ParamSpec::new("start", "i64"), ParamSpec::new("end", "i64")],
         "array",
         "Returns values in the index range.",
     ),
@@ -104,7 +104,7 @@ const ARRAY_METHODS: &[MethodSpec] = &[
     MethodSpec::new(
         "count",
         &[ParamSpec::new("callback", "function")],
-        "int",
+        "i64",
         "Counts values accepted by a callback.",
     ),
     MethodSpec::new(

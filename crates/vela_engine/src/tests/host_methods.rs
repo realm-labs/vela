@@ -339,8 +339,8 @@ fn engine_registers_callable_native_methods_for_host_paths() {
         .register_type(player_type(TypeId::new(1), HostTypeId::new(1)))
         .register_native_method_fn(
             NativeMethodDesc::new(owner, method, "grant_exp")
-                .param("amount", TypeHint::Int)
-                .returns(TypeHint::Null)
+                .param("amount", TypeHint::i64())
+                .returns(TypeHint::null())
                 .effects(EffectSet::host_write())
                 .access(FunctionAccess::public())
                 .docs("Grant player experience.")
@@ -377,7 +377,7 @@ fn engine_registers_callable_native_methods_for_host_paths() {
     );
     assert_eq!(reflected_method.params.len(), 1);
     assert_eq!(reflected_method.params[0].name, "amount");
-    assert_eq!(reflected_method.params[0].type_hint.as_deref(), Some("int"));
+    assert_eq!(reflected_method.params[0].type_hint.as_deref(), Some("i64"));
     assert_eq!(reflected_method.return_type.as_deref(), Some("null"));
     assert_eq!(reflected_method.attrs.get("domain"), Some("gameplay"));
     assert_eq!(reflected_method.attrs.get("effect"), Some("reward"));
@@ -438,8 +438,8 @@ fn engine_registers_typed_callable_native_methods_for_host_paths() {
         .register_type(player_type(TypeId::new(1), HostTypeId::new(1)))
         .register_typed_native_method_fn::<(i64,), _>(
             NativeMethodDesc::new(owner, method, "typed_grant_exp")
-                .param("amount", TypeHint::Int)
-                .returns(TypeHint::Int)
+                .param("amount", TypeHint::i64())
+                .returns(TypeHint::i64())
                 .effects(EffectSet::host_write())
                 .access(FunctionAccess::public()),
             typed_grant_exp,
@@ -509,8 +509,8 @@ fn typed_callable_native_method_maps_host_result_errors() {
         .register_type(player_type(TypeId::new(1), HostTypeId::new(1)))
         .register_typed_native_method_fn::<(bool,), _>(
             NativeMethodDesc::new(owner, method, "typed_require_grant")
-                .param("allowed", TypeHint::Bool)
-                .returns(TypeHint::Int)
+                .param("allowed", TypeHint::boolean())
+                .returns(TypeHint::i64())
                 .effects(EffectSet::host_write())
                 .access(FunctionAccess::public()),
             typed_require_grant,
@@ -552,8 +552,8 @@ fn callable_native_method_error_retains_written_mutation() {
         .register_type(player_type(TypeId::new(1), HostTypeId::new(1)))
         .register_native_method_fn(
             NativeMethodDesc::new(owner, method, "failing_method")
-                .param("amount", TypeHint::Int)
-                .returns(TypeHint::Null)
+                .param("amount", TypeHint::i64())
+                .returns(TypeHint::null())
                 .effects(EffectSet::host_write())
                 .access(FunctionAccess::public()),
             move |receiver, args, host| {
@@ -620,9 +620,9 @@ fn engine_registers_unified_host_type_spec_with_native_method_and_index_metadata
     )
     .native_method_fn(
         NativeMethodDesc::new(owner, method, "set")
-            .param("key", TypeHint::Int)
-            .param("value", TypeHint::Int)
-            .returns(TypeHint::Null)
+            .param("key", TypeHint::i64())
+            .param("value", TypeHint::i64())
+            .returns(TypeHint::null())
             .effects(EffectSet::host_write())
             .access(FunctionAccess::public()),
         move |receiver, args, host| {
@@ -707,8 +707,8 @@ fn typed_callable_native_method_accepts_typed_host_path_arguments() {
         .register_typed_native_method_fn::<(TypedHostMut<InventoryArg>, i64), _>(
             NativeMethodDesc::new(owner, method, "transfer_to")
                 .param("target", TypeHint::PathProxy)
-                .param("amount", TypeHint::Int)
-                .returns(TypeHint::Null)
+                .param("amount", TypeHint::i64())
+                .returns(TypeHint::null())
                 .effects(EffectSet::host_write())
                 .access(FunctionAccess::public()),
             typed_transfer_to,
@@ -756,7 +756,7 @@ fn typed_host_argument_rejects_mismatched_host_type() {
         .register_typed_native_method_fn::<(TypedHostRef<InventoryArg>,), _>(
             NativeMethodDesc::new(owner, method, "inspect_inventory")
                 .param("target", TypeHint::PathProxy)
-                .returns(TypeHint::Null)
+                .returns(TypeHint::null())
                 .effects(EffectSet::host_read())
                 .access(FunctionAccess::public()),
             typed_inspect_inventory,
@@ -857,11 +857,11 @@ fn engine_registers_four_arg_typed_callable_native_methods() {
         .register_type(player_type(TypeId::new(1), HostTypeId::new(1)))
         .register_typed_native_method_fn::<(i64, i64, i64, i64), _>(
             NativeMethodDesc::new(owner, method, "typed_sum4")
-                .param("a", TypeHint::Int)
-                .param("b", TypeHint::Int)
-                .param("c", TypeHint::Int)
-                .param("d", TypeHint::Int)
-                .returns(TypeHint::Int)
+                .param("a", TypeHint::i64())
+                .param("b", TypeHint::i64())
+                .param("c", TypeHint::i64())
+                .param("d", TypeHint::i64())
+                .returns(TypeHint::i64())
                 .effects(EffectSet::host_write())
                 .access(FunctionAccess::public()),
             typed_sum4,
@@ -902,12 +902,12 @@ fn engine_registers_five_arg_typed_callable_native_methods() {
         .register_type(player_type(TypeId::new(1), HostTypeId::new(1)))
         .register_typed_native_method_fn::<(i64, i64, i64, i64, i64), _>(
             NativeMethodDesc::new(owner, method, "typed_sum5")
-                .param("a", TypeHint::Int)
-                .param("b", TypeHint::Int)
-                .param("c", TypeHint::Int)
-                .param("d", TypeHint::Int)
-                .param("e", TypeHint::Int)
-                .returns(TypeHint::Int)
+                .param("a", TypeHint::i64())
+                .param("b", TypeHint::i64())
+                .param("c", TypeHint::i64())
+                .param("d", TypeHint::i64())
+                .param("e", TypeHint::i64())
+                .returns(TypeHint::i64())
                 .effects(EffectSet::host_write())
                 .access(FunctionAccess::public()),
             typed_sum5,
@@ -949,13 +949,13 @@ fn engine_registers_six_arg_typed_callable_native_methods() {
         .register_type(player_type(TypeId::new(1), HostTypeId::new(1)))
         .register_typed_native_method_fn::<(i64, i64, i64, i64, i64, i64), _>(
             NativeMethodDesc::new(owner, method, "typed_sum6")
-                .param("a", TypeHint::Int)
-                .param("b", TypeHint::Int)
-                .param("c", TypeHint::Int)
-                .param("d", TypeHint::Int)
-                .param("e", TypeHint::Int)
-                .param("f", TypeHint::Int)
-                .returns(TypeHint::Int)
+                .param("a", TypeHint::i64())
+                .param("b", TypeHint::i64())
+                .param("c", TypeHint::i64())
+                .param("d", TypeHint::i64())
+                .param("e", TypeHint::i64())
+                .param("f", TypeHint::i64())
+                .returns(TypeHint::i64())
                 .effects(EffectSet::host_write())
                 .access(FunctionAccess::public()),
             typed_sum6,

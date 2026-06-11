@@ -4,6 +4,7 @@ use syn::{
     Attribute, FnArg, ImplItem, ImplItemFn, ItemImpl, LitBool, LitStr, PatType, Receiver, Result,
     ReturnType, Type,
 };
+use vela_common::PrimitiveTag;
 
 use crate::attrs::{error, parse_key_value_attr, reject_duplicate_attr_keys, spanned_error};
 use crate::signature::{
@@ -53,11 +54,7 @@ pub(super) enum MethodEffect {
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub(super) enum HintKind {
     Any,
-    Null,
-    Bool,
-    Int,
-    Float,
-    String,
+    Primitive(PrimitiveTag),
     Array,
     Map,
     Set,
@@ -327,7 +324,7 @@ fn has_callable_native_boundary(method: &ImplItemFn) -> bool {
 
 fn return_hint(output: &ReturnType) -> HintKind {
     match output {
-        ReturnType::Default => HintKind::Null,
+        ReturnType::Default => HintKind::Primitive(PrimitiveTag::Null),
         ReturnType::Type(_, ty) => {
             return_wrapper_inner_hint(ty).unwrap_or_else(|| hint_for_type(ty))
         }
@@ -340,7 +337,7 @@ fn return_wrapper_inner_hint(ty: &Type) -> Option<HintKind> {
 
 fn hint_for_type(ty: &Type) -> HintKind {
     if is_unit_tuple(ty) {
-        return HintKind::Null;
+        return HintKind::Primitive(PrimitiveTag::Null);
     }
     if matches!(ty, Type::Array(_)) {
         return HintKind::Array;
@@ -349,10 +346,17 @@ fn hint_for_type(ty: &Type) -> HintKind {
         return hint_for_type(inner);
     }
     match type_ident(ty).as_deref() {
-        Some("bool") => HintKind::Bool,
-        Some("i8" | "i16" | "i32" | "i64" | "u8" | "u16" | "u32") => HintKind::Int,
-        Some("f32" | "f64") => HintKind::Float,
-        Some("String" | "str") => HintKind::String,
+        Some("bool") => HintKind::Primitive(PrimitiveTag::Bool),
+        Some("i8") => HintKind::Primitive(PrimitiveTag::I8),
+        Some("i16") => HintKind::Primitive(PrimitiveTag::I16),
+        Some("i32") => HintKind::Primitive(PrimitiveTag::I32),
+        Some("i64") => HintKind::Primitive(PrimitiveTag::I64),
+        Some("u8") => HintKind::Primitive(PrimitiveTag::U8),
+        Some("u16") => HintKind::Primitive(PrimitiveTag::U16),
+        Some("u32") => HintKind::Primitive(PrimitiveTag::U32),
+        Some("f32") => HintKind::Primitive(PrimitiveTag::F32),
+        Some("f64") => HintKind::Primitive(PrimitiveTag::F64),
+        Some("String" | "str") => HintKind::Primitive(PrimitiveTag::String),
         Some("Vec") => HintKind::Array,
         Some("BTreeMap" | "HashMap") => HintKind::Map,
         Some("BTreeSet" | "HashSet") => HintKind::Set,

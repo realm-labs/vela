@@ -16,9 +16,9 @@ pub(crate) fn controlled_math_random(seed: u64) -> NativeFunctionEntry {
     let rng = Arc::new(Mutex::new(SeededRandom::new(seed)));
     NativeFunctionEntry::new(
         NativeFunctionDesc::new("math::random", MATH_RANDOM_FUNCTION_ID)
-            .param("min", TypeHint::Int)
-            .param("max", TypeHint::Int)
-            .returns(TypeHint::Int)
+            .param("min", TypeHint::i64())
+            .param("max", TypeHint::i64())
+            .returns(TypeHint::i64())
             .effects(EffectSet::random())
             .access(FunctionAccess::public().reflect_callable(true))
             .attr("stdlib", "math")

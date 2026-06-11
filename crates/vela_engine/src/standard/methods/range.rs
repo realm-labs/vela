@@ -7,7 +7,7 @@ pub(crate) fn range_method_descs() -> Vec<MethodDesc> {
 }
 
 const RANGE_METHODS: &[MethodSpec] = &[
-    MethodSpec::new("len", &[], "int", "Returns the range length."),
+    MethodSpec::new("len", &[], "i64", "Returns the range length."),
     MethodSpec::new(
         "is_empty",
         &[],

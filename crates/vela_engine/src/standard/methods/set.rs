@@ -7,7 +7,7 @@ pub(crate) fn set_method_descs() -> Vec<MethodDesc> {
 }
 
 const SET_METHODS: &[MethodSpec] = &[
-    MethodSpec::new("len", &[], "int", "Returns the set length."),
+    MethodSpec::new("len", &[], "i64", "Returns the set length."),
     MethodSpec::new(
         "is_empty",
         &[],
@@ -73,7 +73,7 @@ const SET_METHODS: &[MethodSpec] = &[
     MethodSpec::new(
         "count",
         &[ParamSpec::new("callback", "function")],
-        "int",
+        "i64",
         "Counts values accepted by a callback.",
     ),
     MethodSpec::new(

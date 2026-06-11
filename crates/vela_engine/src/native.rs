@@ -1,5 +1,6 @@
 use std::sync::Arc;
 
+use vela_common::PrimitiveTag;
 use vela_common::Span;
 use vela_def::FunctionId;
 use vela_reflect::registry::{AttrMap, TypeKey};
@@ -307,11 +308,7 @@ impl Default for FunctionAccess {
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub enum TypeHint {
     Any,
-    Null,
-    Bool,
-    Int,
-    Float,
-    String,
+    Primitive(PrimitiveTag),
     Array,
     Map,
     Set,
@@ -321,6 +318,83 @@ pub enum TypeHint {
     Host(TypeKey),
     Trait(String),
     Function,
+}
+
+impl TypeHint {
+    #[must_use]
+    pub const fn primitive(tag: PrimitiveTag) -> Self {
+        Self::Primitive(tag)
+    }
+
+    #[must_use]
+    pub const fn null() -> Self {
+        Self::Primitive(PrimitiveTag::Null)
+    }
+
+    #[must_use]
+    pub const fn boolean() -> Self {
+        Self::Primitive(PrimitiveTag::Bool)
+    }
+
+    #[must_use]
+    pub const fn i8() -> Self {
+        Self::Primitive(PrimitiveTag::I8)
+    }
+
+    #[must_use]
+    pub const fn i16() -> Self {
+        Self::Primitive(PrimitiveTag::I16)
+    }
+
+    #[must_use]
+    pub const fn i32() -> Self {
+        Self::Primitive(PrimitiveTag::I32)
+    }
+
+    #[must_use]
+    pub const fn i64() -> Self {
+        Self::Primitive(PrimitiveTag::I64)
+    }
+
+    #[must_use]
+    pub const fn u8() -> Self {
+        Self::Primitive(PrimitiveTag::U8)
+    }
+
+    #[must_use]
+    pub const fn u16() -> Self {
+        Self::Primitive(PrimitiveTag::U16)
+    }
+
+    #[must_use]
+    pub const fn u32() -> Self {
+        Self::Primitive(PrimitiveTag::U32)
+    }
+
+    #[must_use]
+    pub const fn u64() -> Self {
+        Self::Primitive(PrimitiveTag::U64)
+    }
+
+    #[must_use]
+    pub const fn f32() -> Self {
+        Self::Primitive(PrimitiveTag::F32)
+    }
+
+    #[must_use]
+    pub const fn f64() -> Self {
+        Self::Primitive(PrimitiveTag::F64)
+    }
+
+    #[must_use]
+    pub const fn string() -> Self {
+        Self::Primitive(PrimitiveTag::String)
+    }
+
+    #[must_use]
+    pub const fn bytes() -> Self {
+        Self::Primitive(PrimitiveTag::Bytes)
+    }
 }
 
 pub type NativeFunction =

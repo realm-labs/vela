@@ -42,8 +42,8 @@ impl ScriptHostMethodMetadata for MetadataOnlyPlayerMethods {
                 HostMethodId::new(44),
                 "metadata_bonus",
             )
-            .param("amount", TypeHint::Int)
-            .returns(TypeHint::Int)
+            .param("amount", TypeHint::i64())
+            .returns(TypeHint::i64())
             .effects(EffectSet::host_read()),
         ]
     }

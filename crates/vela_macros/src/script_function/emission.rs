@@ -1,5 +1,6 @@
 use proc_macro2::TokenStream;
 use quote::quote;
+use vela_common::PrimitiveTag;
 
 use super::meta::{FunctionEffect, FunctionMeta, FunctionMode, HintKind, ParamMeta};
 
@@ -100,16 +101,31 @@ fn effect_tokens(effect: FunctionEffect) -> TokenStream {
 fn hint_tokens(hint: HintKind) -> TokenStream {
     match hint {
         HintKind::Any => quote! { ::vela_engine::native::TypeHint::Any },
-        HintKind::Null => quote! { ::vela_engine::native::TypeHint::Null },
-        HintKind::Bool => quote! { ::vela_engine::native::TypeHint::Bool },
-        HintKind::Int => quote! { ::vela_engine::native::TypeHint::Int },
-        HintKind::Float => quote! { ::vela_engine::native::TypeHint::Float },
-        HintKind::String => quote! { ::vela_engine::native::TypeHint::String },
+        HintKind::Primitive(tag) => primitive_hint_tokens(tag),
         HintKind::Array => quote! { ::vela_engine::native::TypeHint::Array },
         HintKind::Map => quote! { ::vela_engine::native::TypeHint::Map },
         HintKind::Set => quote! { ::vela_engine::native::TypeHint::Set },
         HintKind::PathProxy => quote! { ::vela_engine::native::TypeHint::PathProxy },
         HintKind::Function => quote! { ::vela_engine::native::TypeHint::Function },
+    }
+}
+
+fn primitive_hint_tokens(tag: PrimitiveTag) -> TokenStream {
+    match tag {
+        PrimitiveTag::Null => quote! { ::vela_engine::native::TypeHint::null() },
+        PrimitiveTag::Bool => quote! { ::vela_engine::native::TypeHint::boolean() },
+        PrimitiveTag::I8 => quote! { ::vela_engine::native::TypeHint::i8() },
+        PrimitiveTag::I16 => quote! { ::vela_engine::native::TypeHint::i16() },
+        PrimitiveTag::I32 => quote! { ::vela_engine::native::TypeHint::i32() },
+        PrimitiveTag::I64 => quote! { ::vela_engine::native::TypeHint::i64() },
+        PrimitiveTag::U8 => quote! { ::vela_engine::native::TypeHint::u8() },
+        PrimitiveTag::U16 => quote! { ::vela_engine::native::TypeHint::u16() },
+        PrimitiveTag::U32 => quote! { ::vela_engine::native::TypeHint::u32() },
+        PrimitiveTag::U64 => quote! { ::vela_engine::native::TypeHint::u64() },
+        PrimitiveTag::F32 => quote! { ::vela_engine::native::TypeHint::f32() },
+        PrimitiveTag::F64 => quote! { ::vela_engine::native::TypeHint::f64() },
+        PrimitiveTag::String => quote! { ::vela_engine::native::TypeHint::string() },
+        PrimitiveTag::Bytes => quote! { ::vela_engine::native::TypeHint::bytes() },
     }
 }
 

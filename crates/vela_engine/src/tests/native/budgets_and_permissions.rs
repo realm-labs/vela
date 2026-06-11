@@ -49,8 +49,8 @@ fn host_native_error_retains_written_mutations() {
                     "player",
                     TypeHint::Host(TypeKey::new(TypeId::new(1), "Player")),
                 )
-                .param("level", TypeHint::Int)
-                .returns(TypeHint::Null)
+                .param("level", TypeHint::i64())
+                .returns(TypeHint::null())
                 .effects(EffectSet::host_write())
                 .access(FunctionAccess::public()),
             |args, host| {
@@ -123,8 +123,8 @@ fn host_native_error_retains_mutations_without_call_options() {
                     "player",
                     TypeHint::Host(TypeKey::new(TypeId::new(1), "Player")),
                 )
-                .param("level", TypeHint::Int)
-                .returns(TypeHint::Null)
+                .param("level", TypeHint::i64())
+                .returns(TypeHint::null())
                 .effects(EffectSet::host_write())
                 .access(FunctionAccess::public()),
             |args, host| {
@@ -292,7 +292,7 @@ fn engine_allows_pure_native_calls_without_capabilities() {
     let engine = Engine::builder()
         .register_native_fn(
             NativeFunctionDesc::new("game::secret", NativeFunctionId::new(3))
-                .returns(TypeHint::Int)
+                .returns(TypeHint::i64())
                 .access(FunctionAccess::public()),
             |_| Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(99))),
         )
@@ -324,8 +324,8 @@ fn engine_denies_host_native_before_host_access() {
                     "player",
                     TypeHint::Host(TypeKey::new(TypeId::new(1), "Player")),
                 )
-                .param("level", TypeHint::Int)
-                .returns(TypeHint::Null)
+                .param("level", TypeHint::i64())
+                .returns(TypeHint::null())
                 .effects(EffectSet::host_write())
                 .access(FunctionAccess::public()),
             |args, host| {

@@ -209,7 +209,7 @@ fn main(ctx: Context, player: Player) {
         && reflect::returns(set_union) == "set"
         && reflect::attr(set_union, "stdlib") == "set"
         && range_len.params.is_empty()
-        && reflect::returns(range_len) == "int"
+        && reflect::returns(range_len) == "i64"
         && reflect::attr(range_len, "stdlib") == "range"
         && range_is_empty.params.is_empty()
         && reflect::returns(range_is_empty) == "bool"
@@ -371,7 +371,7 @@ fn main(ctx: Context, player: Player) {
         && reflect::origin(math_max) == "host"
         && reflect::attr(math_max, "stdlib") == "math"
         && reflect::returns(math_max) == "any"
-        && reflect::returns(math_sqrt) == "float"
+        && reflect::returns(math_sqrt) == "f64"
         && !math_max_effects.reads_host
         && !math_max_effects.writes_host
         && !math_max_effects.emits_events
@@ -439,9 +439,9 @@ fn main(ctx: Context, player: Player) {
         && reflect::name(time_now) == "time::now"
         && reflect::name(time_tick) == "time::tick"
         && reflect::name(time_elapsed) == "time::elapsed_since"
-        && reflect::returns(time_now) == "int"
-        && reflect::returns(time_tick) == "int"
-        && reflect::returns(time_elapsed) == "int"
+        && reflect::returns(time_now) == "i64"
+        && reflect::returns(time_tick) == "i64"
+        && reflect::returns(time_elapsed) == "i64"
         && time_now_access.required_permissions.len() == 0
         && time_now_permissions.len() == 0
         && time_now_effects.reads_time
@@ -452,7 +452,7 @@ fn main(ctx: Context, player: Player) {
         && reflected_elapsed == 10
         && time_elapsed_params.len() == 1
         && time_elapsed_params[0].name == "start"
-        && time_elapsed_params[0].type == "int"
+        && time_elapsed_params[0].type == "i64"
         && ctx_methods.len() == 2
         && ctx_fields.len() == 3
         && reflect::docs(context_type) == "Standard host context object for deterministic time, events, and logging."
@@ -494,9 +494,9 @@ fn main(ctx: Context, player: Player) {
         && functions.any(|function| reflect::name(function) == "main"
             && reflect::origin(function) == "script")
         && functions.any(|function| reflect::name(function) == "time::now"
-            && reflect::returns(function) == "int")
+            && reflect::returns(function) == "i64")
         && functions.any(|function| reflect::name(function) == "time::elapsed_since"
-            && reflect::returns(function) == "int")
+            && reflect::returns(function) == "i64")
         && functions.any(|function| reflect::name(function) == "math::max"
             && reflect::attr(function, "stdlib") == "math")
         && functions.any(|function| reflect::name(function) == "option::some"

@@ -29,9 +29,9 @@ fn engine_installs_registered_native_functions_into_vm() {
     let engine = Engine::builder()
         .register_native_fn(
             NativeFunctionDesc::new("game::add", NativeFunctionId::new(1))
-                .param("lhs", TypeHint::Int)
-                .param("rhs", TypeHint::Int)
-                .returns(TypeHint::Int)
+                .param("lhs", TypeHint::i64())
+                .param("rhs", TypeHint::i64())
+                .returns(TypeHint::i64())
                 .effects(EffectSet::pure())
                 .access(FunctionAccess::public())
                 .docs("Adds two integers."),
@@ -70,9 +70,9 @@ fn engine_compiler_options_lower_named_registered_native_arguments() {
     let engine = Engine::builder()
         .register_native_fn(
             NativeFunctionDesc::new("game::subtract", NativeFunctionId::new(27))
-                .param("lhs", TypeHint::Int)
-                .param("rhs", TypeHint::Int)
-                .returns(TypeHint::Int)
+                .param("lhs", TypeHint::i64())
+                .param("rhs", TypeHint::i64())
+                .returns(TypeHint::i64())
                 .effects(EffectSet::pure())
                 .access(FunctionAccess::public()),
             |args| {

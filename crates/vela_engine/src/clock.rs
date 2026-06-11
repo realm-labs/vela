@@ -26,7 +26,7 @@ pub(crate) fn time_clock_functions(now: i64, tick: i64) -> [NativeFunctionEntry;
     [
         NativeFunctionEntry::new(
             NativeFunctionDesc::new("time::now", TIME_NOW_FUNCTION_ID)
-                .returns(TypeHint::Int)
+                .returns(TypeHint::i64())
                 .effects(EffectSet::time())
                 .access(FunctionAccess::public().reflect_callable(true))
                 .docs("Returns the configured deterministic timestamp."),
@@ -34,7 +34,7 @@ pub(crate) fn time_clock_functions(now: i64, tick: i64) -> [NativeFunctionEntry;
         ),
         NativeFunctionEntry::new(
             NativeFunctionDesc::new("time::tick", TIME_TICK_FUNCTION_ID)
-                .returns(TypeHint::Int)
+                .returns(TypeHint::i64())
                 .effects(EffectSet::time())
                 .access(FunctionAccess::public().reflect_callable(true))
                 .docs("Returns the configured deterministic tick."),
@@ -42,8 +42,8 @@ pub(crate) fn time_clock_functions(now: i64, tick: i64) -> [NativeFunctionEntry;
         ),
         NativeFunctionEntry::new(
             NativeFunctionDesc::new("time::elapsed_since", TIME_ELAPSED_SINCE_FUNCTION_ID)
-                .param("start", TypeHint::Int)
-                .returns(TypeHint::Int)
+                .param("start", TypeHint::i64())
+                .returns(TypeHint::i64())
                 .effects(EffectSet::time())
                 .access(FunctionAccess::public().reflect_callable(true))
                 .docs("Returns deterministic time elapsed since start."),

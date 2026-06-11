@@ -469,8 +469,8 @@ fn engine_rejects_duplicate_native_method_param_names() {
         .register_type(player_type(player_key.id, HostTypeId::new(1)))
         .register_host_method_desc(
             NativeMethodDesc::new(player_key, HostMethodId::new(44), "grant_exp")
-                .param("amount", TypeHint::Int)
-                .param("amount", TypeHint::String),
+                .param("amount", TypeHint::i64())
+                .param("amount", TypeHint::string()),
         )
         .build();
 

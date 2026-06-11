@@ -250,14 +250,14 @@ fn engine_time_clock_registers_metadata() {
     assert_eq!(now.id, TIME_NOW_FUNCTION_ID);
     assert_eq!(now.module.as_deref(), Some("time"));
     assert!(now.params.is_empty());
-    assert_eq!(now.return_type.as_deref(), Some("int"));
+    assert_eq!(now.return_type.as_deref(), Some("i64"));
     assert!(now.access.reflect_visible);
     assert!(now.effects.reads_time);
     assert!(now.access.required_permissions().is_empty());
     assert_eq!(tick.id, TIME_TICK_FUNCTION_ID);
     assert_eq!(tick.module.as_deref(), Some("time"));
     assert!(tick.params.is_empty());
-    assert_eq!(tick.return_type.as_deref(), Some("int"));
+    assert_eq!(tick.return_type.as_deref(), Some("i64"));
     assert!(tick.access.reflect_visible);
     assert!(tick.effects.reads_time);
     assert!(tick.access.required_permissions().is_empty());
@@ -265,8 +265,8 @@ fn engine_time_clock_registers_metadata() {
     assert_eq!(elapsed.module.as_deref(), Some("time"));
     assert_eq!(elapsed.params.len(), 1);
     assert_eq!(elapsed.params[0].name, "start");
-    assert_eq!(elapsed.params[0].type_hint.as_deref(), Some("int"));
-    assert_eq!(elapsed.return_type.as_deref(), Some("int"));
+    assert_eq!(elapsed.params[0].type_hint.as_deref(), Some("i64"));
+    assert_eq!(elapsed.return_type.as_deref(), Some("i64"));
     assert!(elapsed.access.reflect_visible);
     assert!(elapsed.effects.reads_time);
     assert!(elapsed.access.required_permissions().is_empty());

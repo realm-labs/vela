@@ -180,8 +180,8 @@ fn engine_rejects_duplicate_native_function_param_names() {
     let result = Engine::builder()
         .register_native_fn(
             NativeFunctionDesc::new("game::grant_reward", NativeFunctionId::new(31))
-                .param("amount", TypeHint::Int)
-                .param("amount", TypeHint::String),
+                .param("amount", TypeHint::i64())
+                .param("amount", TypeHint::string()),
             |_| Ok(OwnedValue::Null),
         )
         .build();
@@ -236,7 +236,7 @@ fn engine_rejects_malformed_native_function_param_names() {
     let result = Engine::builder()
         .register_native_fn(
             NativeFunctionDesc::new("game::grant_reward", NativeFunctionId::new(33))
-                .param("", TypeHint::Int),
+                .param("", TypeHint::i64()),
             |_| Ok(OwnedValue::Null),
         )
         .build();

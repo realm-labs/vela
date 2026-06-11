@@ -7,7 +7,7 @@ pub(crate) fn map_method_descs() -> Vec<MethodDesc> {
 }
 
 const MAP_METHODS: &[MethodSpec] = &[
-    MethodSpec::new("len", &[], "int", "Returns the map length."),
+    MethodSpec::new("len", &[], "i64", "Returns the map length."),
     MethodSpec::new(
         "is_empty",
         &[],
@@ -99,7 +99,7 @@ const MAP_METHODS: &[MethodSpec] = &[
     MethodSpec::new(
         "count",
         &[ParamSpec::new("callback", "function")],
-        "int",
+        "i64",
         "Counts entries accepted by a callback.",
     ),
 ];

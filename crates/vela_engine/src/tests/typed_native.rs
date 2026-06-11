@@ -33,14 +33,14 @@ fn engine_registers_typed_native_functions() {
     let engine = Engine::builder()
         .register_typed_native_fn::<(i64, i64), _>(
             NativeFunctionDesc::new("game::add", NativeFunctionId::new(101))
-                .param("lhs", TypeHint::Int)
-                .param("rhs", TypeHint::Int)
-                .returns(TypeHint::Int),
+                .param("lhs", TypeHint::i64())
+                .param("rhs", TypeHint::i64())
+                .returns(TypeHint::i64()),
             |lhs: i64, rhs: i64| lhs + rhs,
         )
         .register_typed_native_fn::<(), _>(
             NativeFunctionDesc::new("game::label", NativeFunctionId::new(102))
-                .returns(TypeHint::String),
+                .returns(TypeHint::string()),
             || "typed",
         )
         .build()
@@ -70,13 +70,13 @@ fn typed_native_functions_accept_string_values() {
     let engine = Engine::builder()
         .register_typed_native_fn::<(String,), _>(
             NativeFunctionDesc::new("game::tag_len", NativeFunctionId::new(241))
-                .param("tag", TypeHint::String)
-                .returns(TypeHint::Int),
+                .param("tag", TypeHint::string())
+                .returns(TypeHint::i64()),
             |tag: String| i64::try_from(tag.len()).expect("tag length fits i64"),
         )
         .register_typed_native_fn::<(), _>(
             NativeFunctionDesc::new("game::default_tag", NativeFunctionId::new(242))
-                .returns(TypeHint::String),
+                .returns(TypeHint::string()),
             || "quest".to_owned(),
         )
         .build()
@@ -105,13 +105,13 @@ fn typed_native_functions_accept_host_refs() {
         .register_typed_native_fn::<(HostRef,), _>(
             NativeFunctionDesc::new("game::host_generation", NativeFunctionId::new(243))
                 .param("player", player_type.clone())
-                .returns(TypeHint::Int),
+                .returns(TypeHint::i64()),
             |player: HostRef| i64::from(player.generation),
         )
         .register_typed_native_fn::<(HostRef,), _>(
             NativeFunctionDesc::new("game::host_object_id", NativeFunctionId::new(244))
                 .param("player", player_type)
-                .returns(TypeHint::Int),
+                .returns(TypeHint::i64()),
             |player: HostRef| {
                 i64::try_from(player.object_id.get()).expect("host object id fits i64")
             },
@@ -142,7 +142,7 @@ fn typed_native_functions_accept_path_proxies() {
         .register_typed_native_fn::<(PathProxy,), _>(
             NativeFunctionDesc::new("game::path_depth", NativeFunctionId::new(247))
                 .param("path", TypeHint::PathProxy)
-                .returns(TypeHint::Int),
+                .returns(TypeHint::i64()),
             |path: PathProxy| {
                 i64::try_from(path.to_diagnostic_path().segments.len())
                     .expect("path depth fits i64")
@@ -180,11 +180,11 @@ fn typed_native_functions_accept_four_script_args() {
     let engine = Engine::builder()
         .register_typed_native_fn::<(i64, i64, i64, i64), _>(
             NativeFunctionDesc::new("game::sum4", NativeFunctionId::new(221))
-                .param("a", TypeHint::Int)
-                .param("b", TypeHint::Int)
-                .param("c", TypeHint::Int)
-                .param("d", TypeHint::Int)
-                .returns(TypeHint::Int),
+                .param("a", TypeHint::i64())
+                .param("b", TypeHint::i64())
+                .param("c", TypeHint::i64())
+                .param("d", TypeHint::i64())
+                .returns(TypeHint::i64()),
             |a: i64, b: i64, c: i64, d: i64| a + b + c + d,
         )
         .build()
@@ -211,12 +211,12 @@ fn typed_native_functions_accept_five_script_args() {
     let engine = Engine::builder()
         .register_typed_native_fn::<(i64, i64, i64, i64, i64), _>(
             NativeFunctionDesc::new("game::sum5", NativeFunctionId::new(229))
-                .param("a", TypeHint::Int)
-                .param("b", TypeHint::Int)
-                .param("c", TypeHint::Int)
-                .param("d", TypeHint::Int)
-                .param("e", TypeHint::Int)
-                .returns(TypeHint::Int),
+                .param("a", TypeHint::i64())
+                .param("b", TypeHint::i64())
+                .param("c", TypeHint::i64())
+                .param("d", TypeHint::i64())
+                .param("e", TypeHint::i64())
+                .returns(TypeHint::i64()),
             |a: i64, b: i64, c: i64, d: i64, e: i64| a + b + c + d + e,
         )
         .build()
@@ -243,13 +243,13 @@ fn typed_native_functions_accept_six_script_args() {
     let engine = Engine::builder()
         .register_typed_native_fn::<(i64, i64, i64, i64, i64, i64), _>(
             NativeFunctionDesc::new("game::sum6", NativeFunctionId::new(237))
-                .param("a", TypeHint::Int)
-                .param("b", TypeHint::Int)
-                .param("c", TypeHint::Int)
-                .param("d", TypeHint::Int)
-                .param("e", TypeHint::Int)
-                .param("f", TypeHint::Int)
-                .returns(TypeHint::Int),
+                .param("a", TypeHint::i64())
+                .param("b", TypeHint::i64())
+                .param("c", TypeHint::i64())
+                .param("d", TypeHint::i64())
+                .param("e", TypeHint::i64())
+                .param("f", TypeHint::i64())
+                .returns(TypeHint::i64()),
             |a: i64, b: i64, c: i64, d: i64, e: i64, f: i64| a + b + c + d + e + f,
         )
         .build()
@@ -278,7 +278,7 @@ fn typed_native_functions_accept_optional_values() {
         .register_typed_native_fn::<(Option<i64>,), _>(
             NativeFunctionDesc::new("game::option_bonus", NativeFunctionId::new(108))
                 .param("bonus", TypeHint::Any)
-                .returns(TypeHint::Int),
+                .returns(TypeHint::i64()),
             |bonus: Option<i64>| bonus.unwrap_or(7),
         )
         .build()
@@ -308,8 +308,8 @@ fn typed_native_functions_accept_f32_values() {
     let engine = Engine::builder()
         .register_typed_native_fn::<(f32,), _>(
             NativeFunctionDesc::new("game::scale_weight", NativeFunctionId::new(228))
-                .param("weight", TypeHint::Float)
-                .returns(TypeHint::Float),
+                .param("weight", TypeHint::f64())
+                .returns(TypeHint::f64()),
             |weight: f32| weight * 2.0,
         )
         .build()
@@ -337,7 +337,7 @@ fn typed_native_functions_accept_set_values() {
         .register_typed_native_fn::<(BTreeSet<String>,), _>(
             NativeFunctionDesc::new("game::count_tags", NativeFunctionId::new(224))
                 .param("tags", TypeHint::Set)
-                .returns(TypeHint::Int),
+                .returns(TypeHint::i64()),
             |tags: BTreeSet<String>| i64::try_from(tags.len()).expect("set length fits i64"),
         )
         .register_typed_native_fn::<(), _>(
@@ -378,7 +378,7 @@ fn typed_native_functions_accept_hash_set_values() {
         .register_typed_native_fn::<(HashSet<String>,), _>(
             NativeFunctionDesc::new("game::count_unordered_tags", NativeFunctionId::new(235))
                 .param("tags", TypeHint::Set)
-                .returns(TypeHint::Int),
+                .returns(TypeHint::i64()),
             |tags: HashSet<String>| i64::try_from(tags.len()).expect("set length fits i64"),
         )
         .register_typed_native_fn::<(), _>(
@@ -419,7 +419,7 @@ fn typed_native_functions_accept_fixed_array_values() {
         .register_typed_native_fn::<([i64; 3],), _>(
             NativeFunctionDesc::new("game::sum_weights", NativeFunctionId::new(237))
                 .param("weights", TypeHint::Array)
-                .returns(TypeHint::Int),
+                .returns(TypeHint::i64()),
             |weights: [i64; 3]| weights.iter().sum::<i64>(),
         )
         .register_typed_native_fn::<(), _>(
@@ -460,7 +460,7 @@ fn typed_native_functions_accept_vec_values() {
         .register_typed_native_fn::<(Vec<i64>,), _>(
             NativeFunctionDesc::new("game::sum_rewards", NativeFunctionId::new(239))
                 .param("rewards", TypeHint::Array)
-                .returns(TypeHint::Int),
+                .returns(TypeHint::i64()),
             |rewards: Vec<i64>| rewards.iter().sum::<i64>(),
         )
         .register_typed_native_fn::<(), _>(
@@ -501,7 +501,7 @@ fn typed_native_functions_accept_hash_map_values() {
         .register_typed_native_fn::<(HashMap<String, i64>,), _>(
             NativeFunctionDesc::new("game::sum_scores", NativeFunctionId::new(226))
                 .param("scores", TypeHint::Map)
-                .returns(TypeHint::Int),
+                .returns(TypeHint::i64()),
             |scores: HashMap<String, i64>| scores.values().sum::<i64>(),
         )
         .register_typed_native_fn::<(), _>(
@@ -551,7 +551,7 @@ fn typed_native_functions_accept_btree_map_values() {
         .register_typed_native_fn::<(BTreeMap<String, i64>,), _>(
             NativeFunctionDesc::new("game::sum_ordered_scores", NativeFunctionId::new(233))
                 .param("scores", TypeHint::Map)
-                .returns(TypeHint::Int),
+                .returns(TypeHint::i64()),
             |scores: BTreeMap<String, i64>| scores.values().sum::<i64>(),
         )
         .register_typed_native_fn::<(), _>(
@@ -600,7 +600,7 @@ fn typed_native_functions_return_dynamic_result_values() {
     let engine = Engine::builder()
         .register_typed_native_fn::<(bool,), _>(
             NativeFunctionDesc::new("game::checked_bonus", NativeFunctionId::new(109))
-                .param("ok", TypeHint::Bool)
+                .param("ok", TypeHint::boolean())
                 .returns(TypeHint::Any),
             |ok: bool| -> std::result::Result<i64, String> {
                 if ok { Ok(11) } else { Err("denied".to_owned()) }
@@ -634,8 +634,8 @@ fn typed_native_functions_propagate_vm_result_errors() {
     let engine = Engine::builder()
         .register_typed_native_fn::<(bool,), _>(
             NativeFunctionDesc::new("game::require_admin", NativeFunctionId::new(245))
-                .param("allowed", TypeHint::Bool)
-                .returns(TypeHint::Int),
+                .param("allowed", TypeHint::boolean())
+                .returns(TypeHint::i64()),
             |allowed: bool| -> vela_vm::error::VmResult<i64> {
                 if allowed {
                     Ok(17)
@@ -678,8 +678,8 @@ fn typed_native_functions_map_host_result_errors() {
     let engine = Engine::builder()
         .register_typed_native_fn::<(bool,), _>(
             NativeFunctionDesc::new("game::write_score", NativeFunctionId::new(246))
-                .param("allowed", TypeHint::Bool)
-                .returns(TypeHint::Int),
+                .param("allowed", TypeHint::boolean())
+                .returns(TypeHint::i64()),
             move |allowed: bool| -> HostResult<i64> {
                 if allowed {
                     Ok(21)

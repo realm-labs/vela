@@ -49,8 +49,8 @@ fn engine_registers_typed_host_native_functions() {
                     "player",
                     TypeHint::Host(TypeKey::new(TypeId::new(1), "Player")),
                 )
-                .param("level", TypeHint::Int)
-                .returns(TypeHint::Null)
+                .param("level", TypeHint::i64())
+                .returns(TypeHint::null())
                 .effects(EffectSet::host_write())
                 .access(FunctionAccess::public()),
             typed_host_set_level,
@@ -136,8 +136,8 @@ fn typed_host_native_maps_host_result_errors() {
                     "player",
                     TypeHint::Host(TypeKey::new(TypeId::new(1), "Player")),
                 )
-                .param("allowed", TypeHint::Bool)
-                .returns(TypeHint::Int)
+                .param("allowed", TypeHint::boolean())
+                .returns(TypeHint::i64())
                 .effects(EffectSet::host_write())
                 .access(FunctionAccess::public()),
             typed_host_require_write,
@@ -216,10 +216,10 @@ fn engine_registers_four_arg_typed_host_native_functions() {
                     "player",
                     TypeHint::Host(TypeKey::new(TypeId::new(1), "Player")),
                 )
-                .param("a", TypeHint::Int)
-                .param("b", TypeHint::Int)
-                .param("c", TypeHint::Int)
-                .returns(TypeHint::Int)
+                .param("a", TypeHint::i64())
+                .param("b", TypeHint::i64())
+                .param("c", TypeHint::i64())
+                .returns(TypeHint::i64())
                 .effects(EffectSet::host_write())
                 .access(FunctionAccess::public()),
             typed_host_sum_level,
@@ -261,11 +261,11 @@ fn engine_registers_five_arg_typed_host_native_functions() {
                     "player",
                     TypeHint::Host(TypeKey::new(TypeId::new(1), "Player")),
                 )
-                .param("a", TypeHint::Int)
-                .param("b", TypeHint::Int)
-                .param("c", TypeHint::Int)
-                .param("d", TypeHint::Int)
-                .returns(TypeHint::Int)
+                .param("a", TypeHint::i64())
+                .param("b", TypeHint::i64())
+                .param("c", TypeHint::i64())
+                .param("d", TypeHint::i64())
+                .returns(TypeHint::i64())
                 .effects(EffectSet::host_write())
                 .access(FunctionAccess::public()),
             typed_host_sum5_level,
@@ -307,12 +307,12 @@ fn engine_registers_six_arg_typed_host_native_functions() {
                     "player",
                     TypeHint::Host(TypeKey::new(TypeId::new(1), "Player")),
                 )
-                .param("a", TypeHint::Int)
-                .param("b", TypeHint::Int)
-                .param("c", TypeHint::Int)
-                .param("d", TypeHint::Int)
-                .param("e", TypeHint::Int)
-                .returns(TypeHint::Int)
+                .param("a", TypeHint::i64())
+                .param("b", TypeHint::i64())
+                .param("c", TypeHint::i64())
+                .param("d", TypeHint::i64())
+                .param("e", TypeHint::i64())
+                .returns(TypeHint::i64())
                 .effects(EffectSet::host_write())
                 .access(FunctionAccess::public()),
             typed_host_sum6_level,
@@ -408,8 +408,8 @@ fn engine_registers_typed_context_host_native_functions() {
                     "player",
                     TypeHint::Host(TypeKey::new(TypeId::new(1), "Player")),
                 )
-                .param("level", TypeHint::Int)
-                .returns(TypeHint::Bool)
+                .param("level", TypeHint::i64())
+                .returns(TypeHint::boolean())
                 .effects(EffectSet::host_write())
                 .access(FunctionAccess::public()),
             typed_set_level,
@@ -497,8 +497,8 @@ fn typed_context_host_native_maps_host_result_errors() {
                 "player",
                 TypeHint::Host(TypeKey::new(TypeId::new(1), "Player")),
             )
-            .param("allowed", TypeHint::Bool)
-            .returns(TypeHint::Int)
+            .param("allowed", TypeHint::boolean())
+            .returns(TypeHint::i64())
             .effects(EffectSet::host_write())
             .access(FunctionAccess::public()),
             typed_context_require_write,
@@ -577,10 +577,10 @@ fn engine_registers_four_arg_typed_context_host_native_functions() {
                     "player",
                     TypeHint::Host(TypeKey::new(TypeId::new(1), "Player")),
                 )
-                .param("a", TypeHint::Int)
-                .param("b", TypeHint::Int)
-                .param("c", TypeHint::Int)
-                .returns(TypeHint::Int)
+                .param("a", TypeHint::i64())
+                .param("b", TypeHint::i64())
+                .param("c", TypeHint::i64())
+                .returns(TypeHint::i64())
                 .effects(EffectSet::host_write())
                 .access(FunctionAccess::public()),
             typed_context_sum_level,
@@ -622,11 +622,11 @@ fn engine_registers_five_arg_typed_context_host_native_functions() {
                     "player",
                     TypeHint::Host(TypeKey::new(TypeId::new(1), "Player")),
                 )
-                .param("a", TypeHint::Int)
-                .param("b", TypeHint::Int)
-                .param("c", TypeHint::Int)
-                .param("d", TypeHint::Int)
-                .returns(TypeHint::Int)
+                .param("a", TypeHint::i64())
+                .param("b", TypeHint::i64())
+                .param("c", TypeHint::i64())
+                .param("d", TypeHint::i64())
+                .returns(TypeHint::i64())
                 .effects(EffectSet::host_write())
                 .access(FunctionAccess::public()),
             typed_context_sum5_level,
@@ -668,12 +668,12 @@ fn engine_registers_six_arg_typed_context_host_native_functions() {
                     "player",
                     TypeHint::Host(TypeKey::new(TypeId::new(1), "Player")),
                 )
-                .param("a", TypeHint::Int)
-                .param("b", TypeHint::Int)
-                .param("c", TypeHint::Int)
-                .param("d", TypeHint::Int)
-                .param("e", TypeHint::Int)
-                .returns(TypeHint::Int)
+                .param("a", TypeHint::i64())
+                .param("b", TypeHint::i64())
+                .param("c", TypeHint::i64())
+                .param("d", TypeHint::i64())
+                .param("e", TypeHint::i64())
+                .returns(TypeHint::i64())
                 .effects(EffectSet::host_write())
                 .access(FunctionAccess::public()),
             typed_context_sum6_level,

@@ -36,7 +36,7 @@ fn engine_builder_registers_module_reflection_metadata() {
         )
         .register_native_fn(
             NativeFunctionDesc::new("game::reward::grant", NativeFunctionId::new(221))
-                .returns(TypeHint::Bool),
+                .returns(TypeHint::boolean()),
             |_| Ok(OwnedValue::Bool(true)),
         )
         .build()
@@ -60,8 +60,8 @@ fn engine_registers_native_method_source_span_metadata() {
         .register_type(player_type(TypeId::new(1), HostTypeId::new(1)))
         .register_native_method_fn(
             NativeMethodDesc::new(owner, HostMethodId::new(51), "grant_exp")
-                .param("amount", TypeHint::Int)
-                .returns(TypeHint::Int)
+                .param("amount", TypeHint::i64())
+                .returns(TypeHint::i64())
                 .effects(EffectSet::host_write())
                 .source_span(source_span),
             |_, _, _| Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(0))),
@@ -187,7 +187,7 @@ fn public_reflection_metadata_lists_do_not_need_engine_permissions() {
         )
         .register_native_fn(
             NativeFunctionDesc::new("game::secret_bonus", NativeFunctionId::new(77))
-                .returns(TypeHint::Int)
+                .returns(TypeHint::i64())
                 .access(FunctionAccess::public().reflect_callable(true)),
             |_| Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(5))),
         )
@@ -238,7 +238,7 @@ fn engine_missing_permissions_hide_reflection_metadata_lists() {
         )
         .register_native_fn(
             NativeFunctionDesc::new("game::secret_bonus", NativeFunctionId::new(77))
-                .returns(TypeHint::Int)
+                .returns(TypeHint::i64())
                 .access(FunctionAccess::public().reflect_callable(true)),
             |_| Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(5))),
         )

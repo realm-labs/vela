@@ -10,7 +10,7 @@ const STRING_METHODS: &[MethodSpec] = &[
     MethodSpec::new(
         "len",
         &[],
-        "int",
+        "i64",
         "Returns the string length in characters.",
     ),
     MethodSpec::new(
@@ -86,13 +86,13 @@ const STRING_METHODS: &[MethodSpec] = &[
     ),
     MethodSpec::new(
         "repeat",
-        &[ParamSpec::new("count", "int")],
+        &[ParamSpec::new("count", "i64")],
         "string",
         "Returns the string repeated count times.",
     ),
     MethodSpec::new(
         "slice",
-        &[ParamSpec::new("start", "int"), ParamSpec::new("end", "int")],
+        &[ParamSpec::new("start", "i64"), ParamSpec::new("end", "i64")],
         "string",
         "Returns the substring in the character range.",
     ),
@@ -122,7 +122,7 @@ const STRING_METHODS: &[MethodSpec] = &[
     ),
     MethodSpec::new(
         "char_at",
-        &[ParamSpec::new("index", "int")],
+        &[ParamSpec::new("index", "i64")],
         "Option",
         "Returns the character at the character index, or Option::None.",
     ),

@@ -637,11 +637,7 @@ fn validate_type_hint(
             }
         }
         TypeHint::Any
-        | TypeHint::Null
-        | TypeHint::Bool
-        | TypeHint::Int
-        | TypeHint::Float
-        | TypeHint::String
+        | TypeHint::Primitive(_)
         | TypeHint::Array
         | TypeHint::Map
         | TypeHint::Set

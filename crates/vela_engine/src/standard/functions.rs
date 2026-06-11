@@ -24,11 +24,20 @@ pub(crate) fn standard_native_function_descs() -> Vec<NativeFunctionDesc> {
 fn type_hint(hint: &str) -> TypeHint {
     match hint {
         "any" => TypeHint::Any,
-        "null" => TypeHint::Null,
-        "bool" => TypeHint::Bool,
-        "int" => TypeHint::Int,
-        "float" => TypeHint::Float,
-        "string" => TypeHint::String,
+        "null" => TypeHint::null(),
+        "bool" => TypeHint::boolean(),
+        "i8" => TypeHint::i8(),
+        "i16" => TypeHint::i16(),
+        "i32" => TypeHint::i32(),
+        "i64" => TypeHint::i64(),
+        "u8" => TypeHint::u8(),
+        "u16" => TypeHint::u16(),
+        "u32" => TypeHint::u32(),
+        "u64" => TypeHint::u64(),
+        "f32" => TypeHint::f32(),
+        "f64" => TypeHint::f64(),
+        "string" => TypeHint::string(),
+        "bytes" => TypeHint::bytes(),
         "array" => TypeHint::Array,
         "map" => TypeHint::Map,
         "set" => TypeHint::Set,
@@ -71,7 +80,7 @@ mod tests {
             .find(|desc| desc.name == "set::from_array")
             .expect("set::from_array should be generated from the manifest");
 
-        assert_eq!(lerp.returns, TypeHint::Float);
+        assert_eq!(lerp.returns, TypeHint::f64());
         assert_eq!(lerp.params[2].name, "t");
         assert_eq!(lerp.params[2].hint, TypeHint::Any);
         assert_eq!(set_from_array.returns, TypeHint::Set);

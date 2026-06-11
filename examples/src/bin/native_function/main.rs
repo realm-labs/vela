@@ -16,9 +16,9 @@ fn main() -> Result<(), Box<dyn Error>> {
                 .register_script_host::<Player>()
                 .register_typed_native_fn::<(i64, i64), _>(
                     NativeFunctionDesc::new("game::bonus_manual", NativeFunctionId::new(10_001))
-                        .param("amount", TypeHint::Int)
-                        .param("multiplier", TypeHint::Int)
-                        .returns(TypeHint::Int)
+                        .param("amount", TypeHint::i64())
+                        .param("multiplier", TypeHint::i64())
+                        .returns(TypeHint::i64())
                         .effects(EffectSet::pure())
                         .access(FunctionAccess::public().reflect_callable(true)),
                     bonus_manual,

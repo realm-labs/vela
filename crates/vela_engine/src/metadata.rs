@@ -185,11 +185,7 @@ fn reflect_function_access(access: &crate::native::FunctionAccess) -> ReflectFun
 pub(crate) fn type_hint_display(hint: &TypeHint) -> String {
     match hint {
         TypeHint::Any => "any".to_owned(),
-        TypeHint::Null => "null".to_owned(),
-        TypeHint::Bool => "bool".to_owned(),
-        TypeHint::Int => "int".to_owned(),
-        TypeHint::Float => "float".to_owned(),
-        TypeHint::String => "string".to_owned(),
+        TypeHint::Primitive(tag) => tag.name().to_owned(),
         TypeHint::Array => "array".to_owned(),
         TypeHint::Map => "map".to_owned(),
         TypeHint::Set => "set".to_owned(),

@@ -99,9 +99,9 @@ pub const BASE: int = 10;
     let engine = Engine::builder()
         .register_native_fn(
             NativeFunctionDesc::new("game::grant_bonus", NativeFunctionId::new(44))
-                .param("base", TypeHint::Int)
-                .param("amount", TypeHint::Int)
-                .returns(TypeHint::Int)
+                .param("base", TypeHint::i64())
+                .param("amount", TypeHint::i64())
+                .returns(TypeHint::i64())
                 .effects(EffectSet::pure())
                 .access(FunctionAccess::public()),
             #[allow(clippy::result_large_err)]
@@ -126,10 +126,10 @@ pub const BASE: int = 10;
         .expect("native function metadata should register");
     assert_eq!(function.id, NativeFunctionId::new(44));
     assert_eq!(function.params[0].name, "base");
-    assert_eq!(function.params[0].type_hint.as_deref(), Some("int"));
+    assert_eq!(function.params[0].type_hint.as_deref(), Some("i64"));
     assert_eq!(function.params[1].name, "amount");
-    assert_eq!(function.params[1].type_hint.as_deref(), Some("int"));
-    assert_eq!(function.return_type.as_deref(), Some("int"));
+    assert_eq!(function.params[1].type_hint.as_deref(), Some("i64"));
+    assert_eq!(function.return_type.as_deref(), Some("i64"));
     assert!(function.access.required_permissions().is_empty());
 
     let program = engine

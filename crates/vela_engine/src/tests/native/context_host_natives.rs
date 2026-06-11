@@ -36,8 +36,8 @@ fn engine_installs_registered_host_native_functions_into_vm() {
                     "player",
                     TypeHint::Host(TypeKey::new(TypeId::new(1), "Player")),
                 )
-                .param("level", TypeHint::Int)
-                .returns(TypeHint::Null)
+                .param("level", TypeHint::i64())
+                .returns(TypeHint::null())
                 .effects(EffectSet::host_write())
                 .access(FunctionAccess::public()),
             |args, host| {
@@ -100,8 +100,8 @@ fn engine_installs_context_host_native_functions_into_vm() {
                     "player",
                     TypeHint::Host(TypeKey::new(TypeId::new(1), "Player")),
                 )
-                .param("level", TypeHint::Int)
-                .returns(TypeHint::Bool)
+                .param("level", TypeHint::i64())
+                .returns(TypeHint::boolean())
                 .effects(EffectSet::host_write())
                 .access(FunctionAccess::public()),
             |args, ctx| {
@@ -180,8 +180,8 @@ fn context_host_native_read_path_observes_write_through_state() {
                     "player",
                     TypeHint::Host(TypeKey::new(TypeId::new(1), "Player")),
                 )
-                .param("level", TypeHint::Int)
-                .returns(TypeHint::Int)
+                .param("level", TypeHint::i64())
+                .returns(TypeHint::i64())
                 .effects(EffectSet::host_write())
                 .access(FunctionAccess::public()),
             |args, ctx| {
@@ -255,7 +255,7 @@ fn context_host_native_returns_immediate_method_result() {
                     "player",
                     TypeHint::Host(TypeKey::new(TypeId::new(1), "Player")),
                 )
-                .returns(TypeHint::String)
+                .returns(TypeHint::string())
                 .effects(EffectSet::host_write())
                 .access(FunctionAccess::public()),
             move |args, ctx| {
@@ -323,8 +323,8 @@ fn context_host_native_can_charge_execution_budget_before_host_access() {
                     "player",
                     TypeHint::Host(TypeKey::new(TypeId::new(1), "Player")),
                 )
-                .param("level", TypeHint::Int)
-                .returns(TypeHint::Null)
+                .param("level", TypeHint::i64())
+                .returns(TypeHint::null())
                 .effects(EffectSet::host_write())
                 .access(FunctionAccess::public()),
             |args, ctx| {
@@ -386,8 +386,8 @@ fn context_host_native_can_charge_memory_budget_before_host_access() {
                     "player",
                     TypeHint::Host(TypeKey::new(TypeId::new(1), "Player")),
                 )
-                .param("level", TypeHint::Int)
-                .returns(TypeHint::Null)
+                .param("level", TypeHint::i64())
+                .returns(TypeHint::null())
                 .effects(EffectSet::host_write())
                 .access(FunctionAccess::public()),
             |args, ctx| {
@@ -454,8 +454,8 @@ fn context_host_native_set_path_writes_through() {
                     "player",
                     TypeHint::Host(TypeKey::new(TypeId::new(1), "Player")),
                 )
-                .param("level", TypeHint::Int)
-                .returns(TypeHint::Null)
+                .param("level", TypeHint::i64())
+                .returns(TypeHint::null())
                 .effects(EffectSet::host_write())
                 .access(FunctionAccess::public()),
             |args, ctx| {
@@ -514,7 +514,7 @@ fn context_host_native_patch_helpers_write_through() {
                     "player",
                     TypeHint::Host(TypeKey::new(TypeId::new(1), "Player")),
                 )
-                .returns(TypeHint::Null)
+                .returns(TypeHint::null())
                 .effects(EffectSet::host_write())
                 .access(FunctionAccess::public()),
             move |args, ctx| {
@@ -613,7 +613,7 @@ fn context_host_native_repeated_writes_write_through() {
                     "player",
                     TypeHint::Host(TypeKey::new(TypeId::new(1), "Player")),
                 )
-                .returns(TypeHint::Null)
+                .returns(TypeHint::null())
                 .effects(EffectSet::host_write())
                 .access(FunctionAccess::public()),
             |args, ctx| {

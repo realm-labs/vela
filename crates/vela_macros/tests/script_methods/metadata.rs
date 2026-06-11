@@ -9,8 +9,8 @@ fn script_methods_generates_native_method_metadata() {
     assert_eq!(
         descs[0],
         NativeMethodDesc::new(owner.clone(), method_id("grant_exp"), "grant_exp")
-            .param("amount", TypeHint::Int)
-            .returns(TypeHint::Null)
+            .param("amount", TypeHint::i64())
+            .returns(TypeHint::null())
             .effects(EffectSet::host_write())
             .access(FunctionAccess::public().reflect_callable(true),)
             .attr("domain", "player")
@@ -19,8 +19,8 @@ fn script_methods_generates_native_method_metadata() {
     assert_eq!(
         descs[1],
         NativeMethodDesc::new(owner.clone(), method_id("grant_score"), "grant_score")
-            .param("amount", TypeHint::Int)
-            .returns(TypeHint::Int)
+            .param("amount", TypeHint::i64())
+            .returns(TypeHint::i64())
             .effects(EffectSet::host_write())
             .access(FunctionAccess::public().reflect_callable(true),)
             .docs("Grants copied score through a callable native method."),
@@ -28,8 +28,8 @@ fn script_methods_generates_native_method_metadata() {
     assert_eq!(
         descs[2],
         NativeMethodDesc::new(owner.clone(), method_id("preview_bonus"), "preview_bonus")
-            .param("bonus", TypeHint::Int)
-            .returns(TypeHint::Int)
+            .param("bonus", TypeHint::i64())
+            .returns(TypeHint::i64())
             .effects(EffectSet::host_read())
             .access(FunctionAccess::public().reflect_callable(true))
             .docs("Previews an optional copied bonus through a callable native method."),
@@ -37,12 +37,12 @@ fn script_methods_generates_native_method_metadata() {
     assert_eq!(
         descs[3],
         NativeMethodDesc::new(owner.clone(), method_id("sum_score"), "sum_score")
-            .param("a", TypeHint::Int)
-            .param("b", TypeHint::Int)
-            .param("c", TypeHint::Int)
-            .param("d", TypeHint::Int)
-            .param("e", TypeHint::Int)
-            .returns(TypeHint::Int)
+            .param("a", TypeHint::i64())
+            .param("b", TypeHint::i64())
+            .param("c", TypeHint::i64())
+            .param("d", TypeHint::i64())
+            .param("e", TypeHint::i64())
+            .returns(TypeHint::i64())
             .effects(EffectSet::host_write())
             .access(FunctionAccess::public().reflect_callable(true),)
             .docs("Sums five copied method values through a callable native method."),
@@ -50,13 +50,13 @@ fn script_methods_generates_native_method_metadata() {
     assert_eq!(
         descs[4],
         NativeMethodDesc::new(owner.clone(), method_id("sum6_score"), "sum6_score")
-            .param("a", TypeHint::Int)
-            .param("b", TypeHint::Int)
-            .param("c", TypeHint::Int)
-            .param("d", TypeHint::Int)
-            .param("e", TypeHint::Int)
-            .param("f", TypeHint::Int)
-            .returns(TypeHint::Int)
+            .param("a", TypeHint::i64())
+            .param("b", TypeHint::i64())
+            .param("c", TypeHint::i64())
+            .param("d", TypeHint::i64())
+            .param("e", TypeHint::i64())
+            .param("f", TypeHint::i64())
+            .returns(TypeHint::i64())
             .effects(EffectSet::host_write())
             .access(FunctionAccess::public().reflect_callable(true),)
             .docs("Sums six copied method values through a callable native method."),
@@ -68,7 +68,7 @@ fn script_methods_generates_native_method_metadata() {
             method_id("checked_preview"),
             "checked_preview"
         )
-        .param("ok", TypeHint::Bool)
+        .param("ok", TypeHint::boolean())
         .returns(TypeHint::Any)
         .effects(EffectSet::host_read())
         .access(FunctionAccess::public().reflect_callable(true))
@@ -78,7 +78,7 @@ fn script_methods_generates_native_method_metadata() {
         descs[6],
         NativeMethodDesc::new(owner.clone(), method_id("inspect_path"), "inspect_path")
             .param("path", TypeHint::PathProxy)
-            .returns(TypeHint::Int)
+            .returns(TypeHint::i64())
             .effects(EffectSet::host_read())
             .access(FunctionAccess::public().reflect_callable(true))
             .docs("Measures an extra copied path proxy argument."),

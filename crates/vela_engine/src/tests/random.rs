@@ -117,9 +117,9 @@ fn engine_controlled_random_registers_metadata() {
     assert_eq!(function.id, MATH_RANDOM_FUNCTION_ID);
     assert_eq!(function.module.as_deref(), Some("math"));
     assert_eq!(function.params.len(), 2);
-    assert_eq!(function.params[0].type_hint.as_deref(), Some("int"));
-    assert_eq!(function.params[1].type_hint.as_deref(), Some("int"));
-    assert_eq!(function.return_type.as_deref(), Some("int"));
+    assert_eq!(function.params[0].type_hint.as_deref(), Some("i64"));
+    assert_eq!(function.params[1].type_hint.as_deref(), Some("i64"));
+    assert_eq!(function.return_type.as_deref(), Some("i64"));
     assert_eq!(function.attrs.get("stdlib"), Some("math"));
     assert!(function.access.required_permissions().is_empty());
     assert!(function.effects.uses_random);

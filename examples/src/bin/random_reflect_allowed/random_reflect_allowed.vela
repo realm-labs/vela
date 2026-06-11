@@ -18,13 +18,13 @@ fn main() {
         && reflect::origin(random) == "host"
         && reflect::docs(random) == "Returns a deterministic seeded integer in the inclusive range."
         && reflect::attr(random, "stdlib") == "math"
-        && reflect::returns(random) == "int"
+        && reflect::returns(random) == "i64"
         && random.module == "math"
         && params.len() == 2
         && params[0].name == "min"
-        && params[0].type == "int"
+        && params[0].type == "i64"
         && params[1].name == "max"
-        && params[1].type == "int"
+        && params[1].type == "i64"
         && access.reflect_visible
         && access.reflect_callable
         && access.required_permissions.len() == 0

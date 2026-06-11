@@ -59,7 +59,7 @@ fn engine_builder_registers_host_methods_from_metadata_trait() {
     assert_eq!(player.methods[0].name, "metadata_bonus");
     assert_eq!(
         player.methods[0].params[0].type_hint.as_deref(),
-        Some("int")
+        Some("i64")
     );
     assert!(player.methods[0].effects.reads_host);
 }
@@ -70,9 +70,9 @@ fn engine_registers_native_function_reflection_metadata() {
     let engine = Engine::builder()
         .register_native_fn(
             NativeFunctionDesc::new("game::add", NativeFunctionId::new(21))
-                .param("lhs", TypeHint::Int)
-                .param("rhs", TypeHint::Int)
-                .returns(TypeHint::Int)
+                .param("lhs", TypeHint::i64())
+                .param("rhs", TypeHint::i64())
+                .returns(TypeHint::i64())
                 .effects(EffectSet::host_read())
                 .access(FunctionAccess::public().reflect_callable(true))
                 .docs("Adds two integers.")
@@ -99,10 +99,10 @@ fn engine_registers_native_function_reflection_metadata() {
     assert!(function.public);
     assert_eq!(function.params.len(), 2);
     assert_eq!(function.params[0].name, "lhs");
-    assert_eq!(function.params[0].type_hint.as_deref(), Some("int"));
+    assert_eq!(function.params[0].type_hint.as_deref(), Some("i64"));
     assert_eq!(function.params[1].name, "rhs");
-    assert_eq!(function.params[1].type_hint.as_deref(), Some("int"));
-    assert_eq!(function.return_type.as_deref(), Some("int"));
+    assert_eq!(function.params[1].type_hint.as_deref(), Some("i64"));
+    assert_eq!(function.return_type.as_deref(), Some("i64"));
     assert!(function.effects.reads_host);
     assert!(!function.effects.writes_host);
     assert!(function.access.reflect_visible);
@@ -124,7 +124,7 @@ fn engine_native_private_functions_are_hidden_from_reflection() {
         .with_standard_natives()
         .register_native_fn(
             NativeFunctionDesc::new("game::private_roll", NativeFunctionId::new(22))
-                .returns(TypeHint::Int)
+                .returns(TypeHint::i64())
                 .access(FunctionAccess::private()),
             |_| Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(4))),
         )
@@ -171,7 +171,7 @@ fn engine_native_private_functions_can_remain_reflect_visible() {
     let engine = Engine::builder()
         .register_native_fn(
             NativeFunctionDesc::new("game::debug_probe", NativeFunctionId::new(23))
-                .returns(TypeHint::Bool)
+                .returns(TypeHint::boolean())
                 .access(
                     FunctionAccess::private()
                         .reflect_visible(true)
@@ -303,7 +303,7 @@ fn engine_standard_natives_register_reflection_metadata() {
         .find(|method| method.name == "len")
         .expect("range.len method metadata");
     assert!(range_len.params.is_empty());
-    assert_eq!(range_len.return_type.as_deref(), Some("int"));
+    assert_eq!(range_len.return_type.as_deref(), Some("i64"));
     let range_is_empty = range_type
         .methods
         .iter()
@@ -453,7 +453,7 @@ fn engine_standard_natives_register_reflection_metadata() {
     assert!(max.access.reflect_callable);
 
     let sqrt = registry.function_by_name("math::sqrt").expect("math::sqrt");
-    assert_eq!(sqrt.return_type.as_deref(), Some("float"));
+    assert_eq!(sqrt.return_type.as_deref(), Some("f64"));
     assert_eq!(
         sqrt.docs.as_deref(),
         Some("Returns the square root as a float.")
@@ -698,7 +698,7 @@ fn main() {
         && set_union.params[0].type == "set"
         && reflect::returns(set_union) == "set"
         && range_len.params.is_empty()
-        && reflect::returns(range_len) == "int"
+        && reflect::returns(range_len) == "i64"
         && reflect::attr(range_len, "stdlib") == "range"
         && range_is_empty.params.is_empty()
         && reflect::returns(range_is_empty) == "bool"
@@ -759,7 +759,7 @@ fn main() {
         && reflect::docs(ok) == "Wraps a success value in Result::Ok."
         && reflect::docs(set_from_array) == "Builds a set from array values."
         && reflect::returns(max) == "any"
-        && reflect::returns(sqrt) == "float"
+        && reflect::returns(sqrt) == "f64"
         && reflect::returns(some) == "any"
         && reflect::returns(ok) == "any"
         && reflect::returns(set_from_array) == "set"
