@@ -79,7 +79,7 @@ fn engine_registers_native_function_reflection_metadata() {
                 .attr("domain", "gameplay")
                 .attr("stable", "true")
                 .source_span(source_span),
-            |_| Ok(OwnedValue::Int(0)),
+            |_| Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(0))),
         )
         .build()
         .expect("engine should build");
@@ -126,7 +126,7 @@ fn engine_native_private_functions_are_hidden_from_reflection() {
             NativeFunctionDesc::new("game::private_roll", NativeFunctionId::new(22))
                 .returns(TypeHint::Int)
                 .access(FunctionAccess::private()),
-            |_| Ok(OwnedValue::Int(4)),
+            |_| Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(4))),
         )
         .reflection_permissions(ReflectPermissionSet::all())
         .build()

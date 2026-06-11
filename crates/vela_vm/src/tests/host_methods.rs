@@ -55,8 +55,11 @@ fn main(player: Player) {
         ),
     )
     .expect("compile host method source");
-    let mut adapter = host_adapter(host_ref, HostValue::Int(9));
-    adapter.insert_method_return(method, HostValue::Int(12));
+    let mut adapter = host_adapter(
+        host_ref,
+        HostValue::Scalar(vela_common::ScalarValue::I64(9)),
+    );
+    adapter.insert_method_return(method, HostValue::Scalar(vela_common::ScalarValue::I64(12)));
     let mut tx = HostAccess::new();
 
     let result = {
@@ -73,10 +76,17 @@ fn main(player: Player) {
         )
     };
 
-    assert_eq!(result, Ok(OwnedValue::Int(1)));
+    assert_eq!(
+        result,
+        Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(1)))
+    );
     assert_eq!(
         adapter.method_calls(),
-        &[(HostPath::new(host_ref), method, vec![HostValue::Int(20)])]
+        &[(
+            HostPath::new(host_ref),
+            method,
+            vec![HostValue::Scalar(vela_common::ScalarValue::I64(20))]
+        )]
     );
 }
 
@@ -108,8 +118,11 @@ fn main(player: Player) {
         ),
     )
     .expect("compile host field method source");
-    let mut adapter = host_adapter(host_ref, HostValue::Int(9));
-    adapter.insert_method_return(method, HostValue::Int(12));
+    let mut adapter = host_adapter(
+        host_ref,
+        HostValue::Scalar(vela_common::ScalarValue::I64(9)),
+    );
+    adapter.insert_method_return(method, HostValue::Scalar(vela_common::ScalarValue::I64(12)));
     let mut tx = HostAccess::new();
 
     let result = {
@@ -126,13 +139,19 @@ fn main(player: Player) {
         )
     };
 
-    assert_eq!(result, Ok(OwnedValue::Int(1)));
+    assert_eq!(
+        result,
+        Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(1)))
+    );
     assert_eq!(
         adapter.method_calls(),
         &[(
             HostPath::new(host_ref).field(inventory),
             method,
-            vec![HostValue::String("gold".into()), HostValue::Int(100)]
+            vec![
+                HostValue::String("gold".into()),
+                HostValue::Scalar(vela_common::ScalarValue::I64(100))
+            ]
         )]
     );
 }
@@ -180,7 +199,10 @@ fn main(player: Player) {
     )
     .expect("compile indexed host method source");
     let mut adapter = MockStateAdapter::new();
-    adapter.insert_diagnostic_path_value(item_path.clone(), HostValue::Int(0));
+    adapter.insert_diagnostic_path_value(
+        item_path.clone(),
+        HostValue::Scalar(vela_common::ScalarValue::I64(0)),
+    );
     adapter.insert_method_return(method, HostValue::Null);
     let mut tx = HostAccess::new();
 
@@ -198,10 +220,17 @@ fn main(player: Player) {
         )
     };
 
-    assert_eq!(result, Ok(OwnedValue::Int(1)));
+    assert_eq!(
+        result,
+        Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(1)))
+    );
     assert_eq!(
         adapter.method_calls(),
-        &[(item_path, method, vec![HostValue::Int(20)])]
+        &[(
+            item_path,
+            method,
+            vec![HostValue::Scalar(vela_common::ScalarValue::I64(20))]
+        )]
     );
 }
 
@@ -235,8 +264,11 @@ fn call_host_method_writes_through_and_updates_adapter() {
     }));
     let mut program = UnlinkedProgram::new();
     program.insert_function(code);
-    let mut adapter = host_adapter(host_ref, HostValue::Int(9));
-    adapter.insert_method_return(method, HostValue::Int(12));
+    let mut adapter = host_adapter(
+        host_ref,
+        HostValue::Scalar(vela_common::ScalarValue::I64(9)),
+    );
+    adapter.insert_method_return(method, HostValue::Scalar(vela_common::ScalarValue::I64(12)));
     let mut tx = HostAccess::new();
 
     let result = {
@@ -253,7 +285,10 @@ fn call_host_method_writes_through_and_updates_adapter() {
         )
     };
 
-    assert_eq!(result, Ok(OwnedValue::Int(12)));
+    assert_eq!(
+        result,
+        Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(12)))
+    );
     assert_eq!(
         adapter.method_calls(),
         &[(
@@ -294,7 +329,10 @@ fn heap_execution_converts_heap_string_for_host_method_call() {
     }));
     let mut program = UnlinkedProgram::new();
     program.insert_function(code);
-    let mut adapter = host_adapter(host_ref, HostValue::Int(9));
+    let mut adapter = host_adapter(
+        host_ref,
+        HostValue::Scalar(vela_common::ScalarValue::I64(9)),
+    );
     adapter.insert_method_return(method, HostValue::Null);
     let mut tx = HostAccess::new();
     let mut heap = ScriptHeap::new();
@@ -343,7 +381,10 @@ fn main(player: Player) {
         ),
     )
     .expect("compile host method return source");
-    let mut adapter = host_adapter(host_ref, HostValue::Int(9));
+    let mut adapter = host_adapter(
+        host_ref,
+        HostValue::Scalar(vela_common::ScalarValue::I64(9)),
+    );
     adapter.insert_method_return(method, HostValue::String("accepted".into()));
     let mut tx = HostAccess::new();
 

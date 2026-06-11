@@ -36,10 +36,14 @@ fn engine_installs_registered_native_functions_into_vm() {
                 .access(FunctionAccess::public())
                 .docs("Adds two integers."),
             |args| {
-                let [OwnedValue::Int(lhs), OwnedValue::Int(rhs)] = args else {
+                let [
+                    OwnedValue::Scalar(vela_common::ScalarValue::I64(lhs)),
+                    OwnedValue::Scalar(vela_common::ScalarValue::I64(rhs)),
+                ] = args
+                else {
                     return Ok(OwnedValue::Null);
                 };
-                Ok(OwnedValue::Int(lhs + rhs))
+                Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(lhs + rhs)))
             },
         )
         .build()
@@ -57,7 +61,7 @@ fn main() {
 
     assert_eq!(
         run_linked_program(&engine, &program, "main", &[]),
-        Ok(OwnedValue::Int(5))
+        Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(5)))
     );
 }
 
@@ -72,10 +76,14 @@ fn engine_compiler_options_lower_named_registered_native_arguments() {
                 .effects(EffectSet::pure())
                 .access(FunctionAccess::public()),
             |args| {
-                let [OwnedValue::Int(lhs), OwnedValue::Int(rhs)] = args else {
+                let [
+                    OwnedValue::Scalar(vela_common::ScalarValue::I64(lhs)),
+                    OwnedValue::Scalar(vela_common::ScalarValue::I64(rhs)),
+                ] = args
+                else {
                     return Ok(OwnedValue::Null);
                 };
-                Ok(OwnedValue::Int(lhs - rhs))
+                Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(lhs - rhs)))
             },
         )
         .build()
@@ -93,7 +101,7 @@ fn main() {
 
     assert_eq!(
         run_linked_program(&engine, &program, "main", &[]),
-        Ok(OwnedValue::Int(7))
+        Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(7)))
     );
 }
 
@@ -116,7 +124,7 @@ fn main() {
 
     assert_eq!(
         run_linked_program(&engine, &program, "main", &[]),
-        Ok(OwnedValue::Int(10))
+        Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(10)))
     );
 }
 
@@ -771,7 +779,7 @@ fn main() {
 
     assert_eq!(
         run_linked_program(&engine, &program, "main", &[]),
-        Ok(OwnedValue::Int(4))
+        Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(4)))
     );
 }
 
@@ -879,5 +887,8 @@ fn main() {
     let mut tx = HostAccess::new();
 
     let result = runtime.call_raw("main", &[], CallOptions::unbounded(), &mut adapter, &mut tx);
-    assert_eq!(result, Ok(OwnedValue::Int(44)),);
+    assert_eq!(
+        result,
+        Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(44))),
+    );
 }

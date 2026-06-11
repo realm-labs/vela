@@ -403,7 +403,7 @@ fn host_arg_from_value<'a>(
     operation: &'static str,
 ) -> VmResult<HostPathArg<'a>> {
     match value {
-        Value::Int(index) => {
+        Value::Scalar(vela_common::ScalarValue::I64(index)) => {
             let index = u32::try_from(*index).map_err(|_| {
                 VmError::new(VmErrorKind::TypeMismatch {
                     operation: "host path index",

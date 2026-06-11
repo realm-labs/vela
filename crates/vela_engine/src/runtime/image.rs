@@ -299,7 +299,7 @@ mod tests {
 
         let engine = Engine::builder()
             .register_native_fn(NativeFunctionDesc::new("test::answer", native_id), |_| {
-                Ok(OwnedValue::Int(42))
+                Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(42)))
             })
             .build()
             .expect("engine should build");

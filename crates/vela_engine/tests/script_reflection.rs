@@ -67,7 +67,7 @@ fn main() {
 
     assert_eq!(
         runtime.call_raw("main", &[], CallOptions::unbounded(), &mut adapter, &mut tx,),
-        Ok(OwnedValue::Int(1))
+        Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(1)))
     );
 }
 
@@ -136,7 +136,7 @@ fn main() {
             &mut adapter,
             &mut tx,
         ),
-        Ok(OwnedValue::Int(1))
+        Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(1)))
     );
 
     fs::remove_dir_all(root).expect("clean temp dir");

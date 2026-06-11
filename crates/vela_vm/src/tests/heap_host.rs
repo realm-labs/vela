@@ -74,7 +74,10 @@ fn main() {
     .expect("compile record return source");
     let mut budget = ExecutionBudget::new(u64::MAX, 4096, usize::MAX);
     let mut fields = BTreeMap::new();
-    fields.insert("count".into(), OwnedValue::Int(2));
+    fields.insert(
+        "count".into(),
+        OwnedValue::Scalar(vela_common::ScalarValue::I64(2)),
+    );
     fields.insert("item_id".into(), OwnedValue::String("gold".into()));
 
     let result =

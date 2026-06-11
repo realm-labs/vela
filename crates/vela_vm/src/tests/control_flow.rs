@@ -33,7 +33,10 @@ fn main() {
     )
     .expect("compile break and continue source");
 
-    assert_eq!(run_linked_test_code(code), Ok(OwnedValue::Int(8)));
+    assert_eq!(
+        run_linked_test_code(code),
+        Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(8)))
+    );
 }
 
 #[test]
@@ -58,7 +61,10 @@ fn main() {
     )
     .expect("compile block and if expression values");
 
-    assert_eq!(run_linked_test_code(code), Ok(OwnedValue::Int(5)));
+    assert_eq!(
+        run_linked_test_code(code),
+        Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(5)))
+    );
 }
 
 #[test]
@@ -83,7 +89,10 @@ fn main() {
     )
     .expect("compile no-else if expression");
 
-    assert_eq!(run_linked_test_code(code), Ok(OwnedValue::Int(7)));
+    assert_eq!(
+        run_linked_test_code(code),
+        Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(7)))
+    );
 }
 
 #[test]
@@ -105,7 +114,10 @@ fn main() {
     )
     .expect("compile no-else if expression");
 
-    assert_eq!(run_linked_test_code(code), Ok(OwnedValue::Int(1)));
+    assert_eq!(
+        run_linked_test_code(code),
+        Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(1)))
+    );
 }
 
 #[test]
@@ -124,7 +136,10 @@ fn main() {
     )
     .expect("compile returning block initializer");
 
-    assert_eq!(run_linked_test_code(code), Ok(OwnedValue::Int(7)));
+    assert_eq!(
+        run_linked_test_code(code),
+        Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(7)))
+    );
 }
 
 #[test]
@@ -163,23 +178,31 @@ fn match_value(value) {
 
     assert_eq!(
         run_control_program(&program, "block_arg", &[]),
-        Ok(OwnedValue::Int(7))
+        Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(7)))
     );
     assert_eq!(
         run_control_program(&program, "if_value", &[OwnedValue::Bool(true)]),
-        Ok(OwnedValue::Int(1))
+        Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(1)))
     );
     assert_eq!(
         run_control_program(&program, "if_value", &[OwnedValue::Bool(false)]),
-        Ok(OwnedValue::Int(2))
+        Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(2)))
     );
     assert_eq!(
-        run_control_program(&program, "match_value", &[OwnedValue::Int(1)]),
-        Ok(OwnedValue::Int(10))
+        run_control_program(
+            &program,
+            "match_value",
+            &[OwnedValue::Scalar(vela_common::ScalarValue::I64(1))]
+        ),
+        Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(10)))
     );
     assert_eq!(
-        run_control_program(&program, "match_value", &[OwnedValue::Int(9)]),
-        Ok(OwnedValue::Int(11))
+        run_control_program(
+            &program,
+            "match_value",
+            &[OwnedValue::Scalar(vela_common::ScalarValue::I64(9))]
+        ),
+        Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(11)))
     );
 }
 
@@ -210,19 +233,27 @@ fn match_case(value) {
 
     assert_eq!(
         run_control_program(&program, "if_case", &[OwnedValue::Bool(true)]),
-        Ok(OwnedValue::Int(7))
+        Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(7)))
     );
     assert_eq!(
         run_control_program(&program, "if_case", &[OwnedValue::Bool(false)]),
-        Ok(OwnedValue::Int(8))
+        Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(8)))
     );
     assert_eq!(
-        run_control_program(&program, "match_case", &[OwnedValue::Int(1)]),
-        Ok(OwnedValue::Int(10))
+        run_control_program(
+            &program,
+            "match_case",
+            &[OwnedValue::Scalar(vela_common::ScalarValue::I64(1))]
+        ),
+        Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(10)))
     );
     assert_eq!(
-        run_control_program(&program, "match_case", &[OwnedValue::Int(2)]),
-        Ok(OwnedValue::Int(11))
+        run_control_program(
+            &program,
+            "match_case",
+            &[OwnedValue::Scalar(vela_common::ScalarValue::I64(2))]
+        ),
+        Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(11)))
     );
 }
 
@@ -253,7 +284,7 @@ fn main() {
 
     assert_eq!(
         run_control_program(&program, "main", &[]),
-        Ok(OwnedValue::Int(8))
+        Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(8)))
     );
 }
 
@@ -275,7 +306,10 @@ fn main() {
     )
     .expect("compile literal match patterns");
 
-    assert_eq!(run_linked_test_code(code), Ok(OwnedValue::Int(20)));
+    assert_eq!(
+        run_linked_test_code(code),
+        Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(20)))
+    );
 }
 
 #[test]
@@ -299,7 +333,7 @@ fn main() {
     assert_eq!(
         run_linked_test_program_with_budget(&Vm::new(), &program, "main", &[], &mut budget)
             .expect("run heap string literal match patterns"),
-        OwnedValue::Int(2)
+        OwnedValue::Scalar(vela_common::ScalarValue::I64(2))
     );
     assert_eq!(budget.memory_bytes_allocated(), 0);
 }
@@ -320,7 +354,10 @@ fn main() {
     )
     .expect("compile binding match patterns");
 
-    assert_eq!(run_linked_test_code(code), Ok(OwnedValue::Int(8)));
+    assert_eq!(
+        run_linked_test_code(code),
+        Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(8)))
+    );
 }
 
 #[test]
@@ -342,7 +379,10 @@ fn main() {
     )
     .expect("compile binding match assignment");
 
-    assert_eq!(run_linked_test_code(code), Ok(OwnedValue::Int(7)));
+    assert_eq!(
+        run_linked_test_code(code),
+        Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(7)))
+    );
 }
 
 #[test]
@@ -363,7 +403,10 @@ fn main() {
     )
     .expect("compile match guards");
 
-    assert_eq!(run_linked_test_code(code), Ok(OwnedValue::Int(8)));
+    assert_eq!(
+        run_linked_test_code(code),
+        Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(8)))
+    );
 }
 
 #[test]
@@ -389,7 +432,7 @@ fn main() {
 
     assert_eq!(
         run_control_program(&program, "main", &[]),
-        Ok(OwnedValue::Int(8))
+        Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(8)))
     );
 }
 
@@ -415,7 +458,10 @@ fn main() {
     )
     .expect("compile record variant field patterns");
 
-    assert_eq!(run_linked_test_code(code), Ok(OwnedValue::Int(8)));
+    assert_eq!(
+        run_linked_test_code(code),
+        Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(8)))
+    );
 }
 
 #[test]
@@ -447,7 +493,7 @@ fn main() {
 
     assert_eq!(
         run_linked_test_program_with_budget(&Vm::new(), &program, "main", &[], &mut budget),
-        Ok(OwnedValue::Int(8))
+        Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(8)))
     );
 }
 
@@ -473,7 +519,10 @@ fn main() {
     )
     .expect("compile tuple variant constructor and pattern");
 
-    assert_eq!(run_linked_test_code(code), Ok(OwnedValue::Int(9)));
+    assert_eq!(
+        run_linked_test_code(code),
+        Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(9)))
+    );
 }
 
 #[test]
@@ -501,6 +550,6 @@ fn main() {
     let mut budget = ExecutionBudget::new(10_000, 32_000, 32);
     assert_eq!(
         run_linked_test_code_with_budget(code, &mut budget),
-        Ok(OwnedValue::Int(8))
+        Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(8)))
     );
 }

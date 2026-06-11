@@ -23,7 +23,7 @@ fn runtime_stages_dir_required_parameter_rejection_until_safe_point() {
             &mut adapter,
             &mut tx
         ),
-        Ok(OwnedValue::Int(2))
+        Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(2)))
     );
 
     write_reward_module_with_signature(&reward_file, "(amount: int) -> int", "amount");
@@ -39,7 +39,7 @@ fn runtime_stages_dir_required_parameter_rejection_until_safe_point() {
             &mut adapter,
             &mut tx
         ),
-        Ok(OwnedValue::Int(2))
+        Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(2)))
     );
 
     let report = runtime
@@ -69,7 +69,7 @@ fn runtime_stages_dir_required_parameter_rejection_until_safe_point() {
             &mut adapter,
             &mut tx
         ),
-        Ok(OwnedValue::Int(2))
+        Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(2)))
     );
 }
 
@@ -129,7 +129,7 @@ fn runtime_stages_dir_script_function_access_rejection_until_safe_point() {
             &mut adapter,
             &mut tx
         ),
-        Ok(OwnedValue::Int(2))
+        Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(2)))
     );
 
     std::fs::write(
@@ -162,7 +162,7 @@ fn grant() {
             &mut adapter,
             &mut tx
         ),
-        Ok(OwnedValue::Int(2))
+        Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(2)))
     );
 
     let report = runtime
@@ -182,7 +182,7 @@ fn grant() {
             &mut adapter,
             &mut tx
         ),
-        Ok(OwnedValue::Int(2))
+        Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(2)))
     );
 }
 
@@ -364,7 +364,7 @@ pub fn grant() {
             NativeFunctionDesc::new("game::native::grant_bonus", NativeFunctionId::new(22))
                 .returns(TypeHint::Int)
                 .effects(EffectSet::host_read()),
-            |_| Ok(OwnedValue::Int(5)),
+            |_| Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(5))),
         )
         .build()
         .expect("old engine should build");
@@ -377,7 +377,7 @@ pub fn grant() {
             NativeFunctionDesc::new("game::native::grant_bonus_v2", NativeFunctionId::new(22))
                 .returns(TypeHint::Int)
                 .effects(EffectSet::host_read()),
-            |_| Ok(OwnedValue::Int(5)),
+            |_| Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(5))),
         )
         .build()
         .expect("new engine should build");
@@ -393,7 +393,7 @@ pub fn grant() {
             &mut adapter,
             &mut tx
         ),
-        Ok(OwnedValue::Int(5))
+        Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(5)))
     );
 
     std::fs::write(
@@ -425,7 +425,7 @@ pub fn grant() {
             &mut adapter,
             &mut tx
         ),
-        Ok(OwnedValue::Int(5))
+        Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(5)))
     );
 }
 
@@ -489,7 +489,7 @@ pub fn grant(player: Player) {
             &mut adapter,
             &mut tx
         ),
-        Ok(OwnedValue::Int(1))
+        Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(1)))
     );
 
     std::fs::write(
@@ -516,7 +516,7 @@ pub fn grant(player: Player) {
             &mut adapter,
             &mut tx
         ),
-        Ok(OwnedValue::Int(1))
+        Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(1)))
     );
 
     let report = runtime
@@ -535,7 +535,7 @@ pub fn grant(player: Player) {
             &mut adapter,
             &mut tx
         ),
-        Ok(OwnedValue::Int(2))
+        Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(2)))
     );
 }
 

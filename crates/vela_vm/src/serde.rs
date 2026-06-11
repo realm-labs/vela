@@ -101,44 +101,44 @@ impl ser::Serializer for OwnedValueSerializer {
     }
 
     fn serialize_i8(self, v: i8) -> Result<Self::Ok> {
-        Ok(OwnedValue::Int(i64::from(v)))
+        Ok(OwnedValue::i64(i64::from(v)))
     }
 
     fn serialize_i16(self, v: i16) -> Result<Self::Ok> {
-        Ok(OwnedValue::Int(i64::from(v)))
+        Ok(OwnedValue::i64(i64::from(v)))
     }
 
     fn serialize_i32(self, v: i32) -> Result<Self::Ok> {
-        Ok(OwnedValue::Int(i64::from(v)))
+        Ok(OwnedValue::i64(i64::from(v)))
     }
 
     fn serialize_i64(self, v: i64) -> Result<Self::Ok> {
-        Ok(OwnedValue::Int(v))
+        Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(v)))
     }
 
     fn serialize_u8(self, v: u8) -> Result<Self::Ok> {
-        Ok(OwnedValue::Int(i64::from(v)))
+        Ok(OwnedValue::i64(i64::from(v)))
     }
 
     fn serialize_u16(self, v: u16) -> Result<Self::Ok> {
-        Ok(OwnedValue::Int(i64::from(v)))
+        Ok(OwnedValue::i64(i64::from(v)))
     }
 
     fn serialize_u32(self, v: u32) -> Result<Self::Ok> {
-        Ok(OwnedValue::Int(i64::from(v)))
+        Ok(OwnedValue::i64(i64::from(v)))
     }
 
     fn serialize_u64(self, v: u64) -> Result<Self::Ok> {
         let value = i64::try_from(v).map_err(|_| Error::custom("u64 does not fit in Vela Int"))?;
-        Ok(OwnedValue::Int(value))
+        Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(value)))
     }
 
     fn serialize_f32(self, v: f32) -> Result<Self::Ok> {
-        Ok(OwnedValue::Float(f64::from(v)))
+        Ok(OwnedValue::f64(f64::from(v)))
     }
 
     fn serialize_f64(self, v: f64) -> Result<Self::Ok> {
-        Ok(OwnedValue::Float(v))
+        Ok(OwnedValue::Scalar(vela_common::ScalarValue::F64(v)))
     }
 
     fn serialize_char(self, v: char) -> Result<Self::Ok> {
@@ -154,7 +154,7 @@ impl ser::Serializer for OwnedValueSerializer {
             v.iter()
                 .copied()
                 .map(i64::from)
-                .map(OwnedValue::Int)
+                .map(OwnedValue::i64)
                 .collect(),
         ))
     }
@@ -644,8 +644,16 @@ impl<'de> de::Deserializer<'de> for &'de OwnedValue {
         match self {
             OwnedValue::Missing | OwnedValue::Null => visitor.visit_unit(),
             OwnedValue::Bool(value) => visitor.visit_bool(*value),
-            OwnedValue::Int(value) => visitor.visit_i64(*value),
-            OwnedValue::Float(value) => visitor.visit_f64(*value),
+            OwnedValue::Scalar(vela_common::ScalarValue::I8(value)) => visitor.visit_i8(*value),
+            OwnedValue::Scalar(vela_common::ScalarValue::I16(value)) => visitor.visit_i16(*value),
+            OwnedValue::Scalar(vela_common::ScalarValue::I32(value)) => visitor.visit_i32(*value),
+            OwnedValue::Scalar(vela_common::ScalarValue::I64(value)) => visitor.visit_i64(*value),
+            OwnedValue::Scalar(vela_common::ScalarValue::U8(value)) => visitor.visit_u8(*value),
+            OwnedValue::Scalar(vela_common::ScalarValue::U16(value)) => visitor.visit_u16(*value),
+            OwnedValue::Scalar(vela_common::ScalarValue::U32(value)) => visitor.visit_u32(*value),
+            OwnedValue::Scalar(vela_common::ScalarValue::U64(value)) => visitor.visit_u64(*value),
+            OwnedValue::Scalar(vela_common::ScalarValue::F32(value)) => visitor.visit_f32(*value),
+            OwnedValue::Scalar(vela_common::ScalarValue::F64(value)) => visitor.visit_f64(*value),
             OwnedValue::String(value) => visitor.visit_str(value),
             OwnedValue::Array(values) | OwnedValue::Set(values) => {
                 visitor.visit_seq(ValueSeqAccess {
@@ -713,7 +721,7 @@ impl<'de> de::Deserializer<'de> for &'de OwnedValue {
         V: Visitor<'de>,
     {
         match self {
-            OwnedValue::Int(value) => visitor.visit_i64(*value),
+            OwnedValue::Scalar(vela_common::ScalarValue::I64(value)) => visitor.visit_i64(*value),
             _ => Err(Error::custom("expected int")),
         }
     }
@@ -744,7 +752,9 @@ impl<'de> de::Deserializer<'de> for &'de OwnedValue {
         V: Visitor<'de>,
     {
         match self {
-            OwnedValue::Int(value) if *value >= 0 => visitor.visit_u64(*value as u64),
+            OwnedValue::Scalar(vela_common::ScalarValue::I64(value)) if *value >= 0 => {
+                visitor.visit_u64(*value as u64)
+            }
             _ => Err(Error::custom("expected unsigned int")),
         }
     }
@@ -754,8 +764,12 @@ impl<'de> de::Deserializer<'de> for &'de OwnedValue {
         V: Visitor<'de>,
     {
         match self {
-            OwnedValue::Float(value) => visitor.visit_f32(*value as f32),
-            OwnedValue::Int(value) => visitor.visit_f32(*value as f32),
+            OwnedValue::Scalar(vela_common::ScalarValue::F64(value)) => {
+                visitor.visit_f32(*value as f32)
+            }
+            OwnedValue::Scalar(vela_common::ScalarValue::I64(value)) => {
+                visitor.visit_f32(*value as f32)
+            }
             _ => Err(Error::custom("expected float")),
         }
     }
@@ -765,8 +779,10 @@ impl<'de> de::Deserializer<'de> for &'de OwnedValue {
         V: Visitor<'de>,
     {
         match self {
-            OwnedValue::Float(value) => visitor.visit_f64(*value),
-            OwnedValue::Int(value) => visitor.visit_f64(*value as f64),
+            OwnedValue::Scalar(vela_common::ScalarValue::F64(value)) => visitor.visit_f64(*value),
+            OwnedValue::Scalar(vela_common::ScalarValue::I64(value)) => {
+                visitor.visit_f64(*value as f64)
+            }
             _ => Err(Error::custom("expected float")),
         }
     }
@@ -813,7 +829,7 @@ impl<'de> de::Deserializer<'de> for &'de OwnedValue {
                 let bytes = values
                     .iter()
                     .map(|value| match value {
-                        OwnedValue::Int(value) => {
+                        OwnedValue::Scalar(vela_common::ScalarValue::I64(value)) => {
                             u8::try_from(*value).map_err(|_| Error::custom("invalid byte"))
                         }
                         _ => Err(Error::custom("invalid byte")),

@@ -9,8 +9,8 @@ pub(crate) mod scalar;
 
 pub(super) fn expect_finite_float(value: &OwnedValue, operation: &'static str) -> VmResult<f64> {
     match value {
-        OwnedValue::Int(value) => Ok(*value as f64),
-        OwnedValue::Float(value) if value.is_finite() => Ok(*value),
+        OwnedValue::Scalar(vela_common::ScalarValue::I64(value)) => Ok(*value as f64),
+        OwnedValue::Scalar(vela_common::ScalarValue::F64(value)) if value.is_finite() => Ok(*value),
         _ => type_error(operation),
     }
 }
@@ -77,7 +77,7 @@ fn main() {
 
         let result =
             run_linked_math_code(&vm, code, &mut budget).expect("math distance2d should run");
-        assert_eq!(result, OwnedValue::Int(5));
+        assert_eq!(result, OwnedValue::Scalar(vela_common::ScalarValue::I64(5)));
     }
 
     #[test]
@@ -99,7 +99,7 @@ fn main() {
 
         let result =
             run_linked_math_code(&vm, code, &mut budget).expect("math distance3d should run");
-        assert_eq!(result, OwnedValue::Int(7));
+        assert_eq!(result, OwnedValue::Scalar(vela_common::ScalarValue::I64(7)));
     }
 
     #[test]
@@ -119,7 +119,7 @@ fn main() {
         let mut budget = ExecutionBudget::unbounded();
 
         let result = run_linked_math_code(&vm, code, &mut budget).expect("math pow should run");
-        assert_eq!(result, OwnedValue::Int(8));
+        assert_eq!(result, OwnedValue::Scalar(vela_common::ScalarValue::I64(8)));
     }
 
     #[test]
@@ -139,7 +139,7 @@ fn main() {
         let mut budget = ExecutionBudget::unbounded();
 
         let result = run_linked_math_code(&vm, code, &mut budget).expect("math sqrt should run");
-        assert_eq!(result, OwnedValue::Int(4));
+        assert_eq!(result, OwnedValue::Scalar(vela_common::ScalarValue::I64(4)));
     }
 
     #[test]
@@ -159,7 +159,7 @@ fn main() {
         let mut budget = ExecutionBudget::unbounded();
 
         let result = run_linked_math_code(&vm, code, &mut budget).expect("math sign should run");
-        assert_eq!(result, OwnedValue::Int(0));
+        assert_eq!(result, OwnedValue::Scalar(vela_common::ScalarValue::I64(0)));
     }
 
     #[test]
@@ -184,7 +184,10 @@ fn main() {
 
         let result =
             run_linked_math_code(&vm, code, &mut budget).expect("math move_towards should run");
-        assert_eq!(result, OwnedValue::Int(19));
+        assert_eq!(
+            result,
+            OwnedValue::Scalar(vela_common::ScalarValue::I64(19))
+        );
     }
 
     #[test]

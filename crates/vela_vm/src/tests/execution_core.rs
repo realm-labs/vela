@@ -5,9 +5,9 @@ use crate::value::Value as RuntimeValue;
 #[test]
 fn runs_basic_arithmetic() {
     let mut code = UnlinkedCodeObject::new("calc", 5);
-    let two = code.push_constant(Constant::Int(2));
-    let three = code.push_constant(Constant::Int(3));
-    let four = code.push_constant(Constant::Int(4));
+    let two = code.push_constant(Constant::Scalar(vela_common::ScalarValue::I64(2)));
+    let three = code.push_constant(Constant::Scalar(vela_common::ScalarValue::I64(3)));
+    let four = code.push_constant(Constant::Scalar(vela_common::ScalarValue::I64(4)));
     code.push_instruction(UnlinkedInstruction::new(
         UnlinkedInstructionKind::LoadConst {
             dst: Register(0),
@@ -40,13 +40,16 @@ fn runs_basic_arithmetic() {
         src: Register(4),
     }));
 
-    assert_eq!(run_linked_test_code(code), Ok(OwnedValue::Int(14)));
+    assert_eq!(
+        run_linked_test_code(code),
+        Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(14)))
+    );
 }
 
 #[test]
 fn linker_rejects_script_function_id_debug_name_mismatch() {
     let mut helper = UnlinkedCodeObject::new("helper", 1);
-    let value = helper.push_constant(Constant::Int(7));
+    let value = helper.push_constant(Constant::Scalar(vela_common::ScalarValue::I64(7)));
     helper.push_instruction(UnlinkedInstruction::new(
         UnlinkedInstructionKind::LoadConst {
             dst: Register(0),
@@ -90,9 +93,9 @@ fn runs_linked_program_basic_arithmetic_without_unlinked_code() {
     let mut program = vela_bytecode::LinkedProgram::new();
     let main_name = program.intern_debug_name("main");
     let mut code = vela_bytecode::LinkedCodeObject::new(main_name, 5);
-    let two = code.push_constant(Constant::Int(2));
-    let three = code.push_constant(Constant::Int(3));
-    let four = code.push_constant(Constant::Int(4));
+    let two = code.push_constant(Constant::Scalar(vela_common::ScalarValue::I64(2)));
+    let three = code.push_constant(Constant::Scalar(vela_common::ScalarValue::I64(3)));
+    let four = code.push_constant(Constant::Scalar(vela_common::ScalarValue::I64(4)));
     code.push_instruction(vela_bytecode::linked::Instruction::new(
         vela_bytecode::linked::InstructionKind::LoadConst {
             dst: Register(0),
@@ -133,14 +136,16 @@ fn runs_linked_program_basic_arithmetic_without_unlinked_code() {
 
     assert_eq!(
         Vm::new().run_linked_program(&program, "main", &[]),
-        Ok(OwnedValue::Int(14))
+        Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(14)))
     );
 }
 
 #[test]
 fn linked_native_dispatch_uses_id_not_debug_name_fallback() {
     let mut vm = Vm::new();
-    vm.register_native("legacy_name", |_| Ok(OwnedValue::Int(99)));
+    vm.register_native("legacy_name", |_| {
+        Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(99)))
+    });
 
     let mut program = vela_bytecode::LinkedProgram::new();
     let main_name = program.intern_debug_name("main");
@@ -181,7 +186,9 @@ fn linked_native_dispatch_uses_id_not_debug_name_fallback() {
 fn linked_program_calls_native_by_dense_handle() {
     let native_id = FunctionId::new(0x56);
     let mut vm = Vm::new();
-    vm.register_native_with_id(native_id, |_| Ok(OwnedValue::Int(7)));
+    vm.register_native_with_id(native_id, |_| {
+        Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(7)))
+    });
 
     let mut program = vela_bytecode::LinkedProgram::new();
     let main_name = program.intern_debug_name("main");
@@ -207,7 +214,7 @@ fn linked_program_calls_native_by_dense_handle() {
 
     assert_eq!(
         vm.run_linked_program(&program, "main", &[]),
-        Ok(OwnedValue::Int(7))
+        Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(7)))
     );
 }
 
@@ -247,7 +254,7 @@ fn linked_program_calls_value_method_by_dispatch_handle() {
 
     assert_eq!(
         Vm::new().run_linked_program(&program, "main", &[]),
-        Ok(OwnedValue::Int(4))
+        Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(4)))
     );
 }
 
@@ -314,7 +321,7 @@ fn linked_program_calls_script_method_by_dispatch_handle() {
             function: method_function,
         },
     ));
-    let value = main.push_constant(Constant::Int(41));
+    let value = main.push_constant(Constant::Scalar(vela_common::ScalarValue::I64(41)));
     main.push_instruction(vela_bytecode::linked::Instruction::new(
         vela_bytecode::linked::InstructionKind::LoadConst {
             dst: Register(0),
@@ -347,7 +354,7 @@ fn linked_program_calls_script_method_by_dispatch_handle() {
 
     assert_eq!(
         Vm::new().run_linked_program(&program, "main", &[]),
-        Ok(OwnedValue::Int(41))
+        Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(41)))
     );
 }
 
@@ -366,7 +373,7 @@ fn linked_program_calls_host_method_by_dispatch_handle() {
 
     let mut code =
         vela_bytecode::LinkedCodeObject::new(main_name, 3).with_params(vec![player_name]);
-    let amount = code.push_constant(Constant::Int(20));
+    let amount = code.push_constant(Constant::Scalar(vela_common::ScalarValue::I64(20)));
     code.push_instruction(vela_bytecode::linked::Instruction::new(
         vela_bytecode::linked::InstructionKind::LoadConst {
             dst: Register(1),
@@ -388,8 +395,14 @@ fn linked_program_calls_host_method_by_dispatch_handle() {
     let main = program.push_function(code);
     program.set_entry_point(main_name, main);
 
-    let mut adapter = host_adapter(host_ref, HostValue::Int(9));
-    adapter.insert_method_return(method_id, HostValue::Int(12));
+    let mut adapter = host_adapter(
+        host_ref,
+        HostValue::Scalar(vela_common::ScalarValue::I64(9)),
+    );
+    adapter.insert_method_return(
+        method_id,
+        HostValue::Scalar(vela_common::ScalarValue::I64(12)),
+    );
     let mut access = HostAccess::new();
     let mut budget = ExecutionBudget::unbounded();
     let result = {
@@ -415,10 +428,14 @@ fn linked_program_calls_host_method_by_dispatch_handle() {
         )
     };
 
-    assert_eq!(result, Ok(Value::Int(12)));
+    assert_eq!(result, Ok(Value::Scalar(vela_common::ScalarValue::I64(12))));
     assert_eq!(
         adapter.method_calls(),
-        &[(HostPath::new(host_ref), method_id, vec![HostValue::Int(20)])]
+        &[(
+            HostPath::new(host_ref),
+            method_id,
+            vec![HostValue::Scalar(vela_common::ScalarValue::I64(20))]
+        )]
     );
 }
 
@@ -443,7 +460,7 @@ fn linked_program_calls_script_function_by_dense_handle() {
     ));
 
     let mut helper_code = vela_bytecode::LinkedCodeObject::new(helper_name, 1);
-    let value = helper_code.push_constant(Constant::Int(11));
+    let value = helper_code.push_constant(Constant::Scalar(vela_common::ScalarValue::I64(11)));
     helper_code.push_instruction(vela_bytecode::linked::Instruction::new(
         vela_bytecode::linked::InstructionKind::LoadConst {
             dst: Register(0),
@@ -461,7 +478,7 @@ fn linked_program_calls_script_function_by_dense_handle() {
 
     assert_eq!(
         Vm::new().run_linked_program(&program, "main", &[]),
-        Ok(OwnedValue::Int(11))
+        Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(11)))
     );
 }
 
@@ -473,8 +490,8 @@ fn linked_program_executes_closure_creation_and_call() {
     let param_name = program.intern_debug_name("amount");
 
     let mut main = vela_bytecode::LinkedCodeObject::new(main_name, 4);
-    let captured = main.push_constant(Constant::Int(4));
-    let amount = main.push_constant(Constant::Int(5));
+    let captured = main.push_constant(Constant::Scalar(vela_common::ScalarValue::I64(4)));
+    let amount = main.push_constant(Constant::Scalar(vela_common::ScalarValue::I64(5)));
     let closure = vela_bytecode::ScriptFunctionHandle::new(1);
     main.push_instruction(vela_bytecode::linked::Instruction::new(
         vela_bytecode::linked::InstructionKind::LoadConst {
@@ -527,7 +544,7 @@ fn linked_program_executes_closure_creation_and_call() {
 
     assert_eq!(
         Vm::new().run_linked_program(&program, "main", &[]),
-        Ok(OwnedValue::Int(9))
+        Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(9)))
     );
 }
 
@@ -536,9 +553,9 @@ fn linked_program_executes_array_and_index_ops() {
     let mut program = vela_bytecode::LinkedProgram::new();
     let main_name = program.intern_debug_name("main");
     let mut code = vela_bytecode::LinkedCodeObject::new(main_name, 5);
-    let two = code.push_constant(Constant::Int(2));
-    let four = code.push_constant(Constant::Int(4));
-    let index = code.push_constant(Constant::Int(1));
+    let two = code.push_constant(Constant::Scalar(vela_common::ScalarValue::I64(2)));
+    let four = code.push_constant(Constant::Scalar(vela_common::ScalarValue::I64(4)));
+    let index = code.push_constant(Constant::Scalar(vela_common::ScalarValue::I64(1)));
     code.push_instruction(vela_bytecode::linked::Instruction::new(
         vela_bytecode::linked::InstructionKind::LoadConst {
             dst: Register(0),
@@ -578,7 +595,7 @@ fn linked_program_executes_array_and_index_ops() {
 
     assert_eq!(
         Vm::new().run_linked_program(&program, "main", &[]),
-        Ok(OwnedValue::Int(4))
+        Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(4)))
     );
 }
 
@@ -595,8 +612,8 @@ fn linked_program_executes_record_slot_reads_and_writes() {
     ));
 
     let mut code = vela_bytecode::LinkedCodeObject::new(main_name, 3);
-    let initial = code.push_constant(Constant::Int(2));
-    let updated = code.push_constant(Constant::Int(5));
+    let initial = code.push_constant(Constant::Scalar(vela_common::ScalarValue::I64(2)));
+    let updated = code.push_constant(Constant::Scalar(vela_common::ScalarValue::I64(5)));
     code.push_instruction(vela_bytecode::linked::Instruction::new(
         vela_bytecode::linked::InstructionKind::LoadConst {
             dst: Register(0),
@@ -643,7 +660,7 @@ fn linked_program_executes_record_slot_reads_and_writes() {
 
     assert_eq!(
         Vm::new().run_linked_program(&program, "main", &[]),
-        Ok(OwnedValue::Int(5))
+        Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(5)))
     );
 }
 
@@ -658,7 +675,7 @@ fn linked_record_construction_stores_type_and_shape_identity() {
         program.push_type(vela_bytecode::LinkedType::new(reward_type_id, reward_name));
 
     let mut code = vela_bytecode::LinkedCodeObject::new(main_name, 2);
-    let initial = code.push_constant(Constant::Int(3));
+    let initial = code.push_constant(Constant::Scalar(vela_common::ScalarValue::I64(3)));
     code.push_instruction(vela_bytecode::linked::Instruction::new(
         vela_bytecode::linked::InstructionKind::LoadConst {
             dst: Register(0),
@@ -718,7 +735,7 @@ fn linked_record_construction_stores_type_and_shape_identity() {
     assert_eq!(type_name, "Reward");
     assert_eq!(identity.type_id, reward_type_id);
     assert_eq!(identity.shape_id, fields.shape_id());
-    assert_eq!(fields.get_slot(0, "count"), Some(&RuntimeValue::Int(3)));
+    assert_eq!(fields.get_slot(0, "count"), Some(&RuntimeValue::i64(3)));
 }
 
 #[test]
@@ -739,8 +756,8 @@ fn linked_program_executes_enum_slot_reads_and_tag_checks() {
     ));
 
     let mut code = vela_bytecode::LinkedCodeObject::new(main_name, 5);
-    let amount = code.push_constant(Constant::Int(7));
-    let zero = code.push_constant(Constant::Int(0));
+    let amount = code.push_constant(Constant::Scalar(vela_common::ScalarValue::I64(7)));
+    let zero = code.push_constant(Constant::Scalar(vela_common::ScalarValue::I64(0)));
     code.push_instruction(vela_bytecode::linked::Instruction::new(
         vela_bytecode::linked::InstructionKind::LoadConst {
             dst: Register(0),
@@ -794,7 +811,7 @@ fn linked_program_executes_enum_slot_reads_and_tag_checks() {
 
     assert_eq!(
         Vm::new().run_linked_program(&program, "main", &[]),
-        Ok(OwnedValue::Int(7))
+        Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(7)))
     );
 }
 
@@ -822,8 +839,8 @@ fn linked_enum_tag_checks_use_ids_not_debug_names() {
     ));
 
     let mut code = vela_bytecode::LinkedCodeObject::new(main_name, 5);
-    let amount = code.push_constant(Constant::Int(7));
-    let zero = code.push_constant(Constant::Int(0));
+    let amount = code.push_constant(Constant::Scalar(vela_common::ScalarValue::I64(7)));
+    let zero = code.push_constant(Constant::Scalar(vela_common::ScalarValue::I64(0)));
     code.push_instruction(vela_bytecode::linked::Instruction::new(
         vela_bytecode::linked::InstructionKind::LoadConst {
             dst: Register(0),
@@ -877,7 +894,7 @@ fn linked_enum_tag_checks_use_ids_not_debug_names() {
 
     assert_eq!(
         Vm::new().run_linked_program(&program, "main", &[]),
-        Ok(OwnedValue::Int(7))
+        Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(7)))
     );
 }
 
@@ -885,8 +902,8 @@ fn linked_enum_tag_checks_use_ids_not_debug_names() {
 fn branches_on_false_conditions() {
     let mut code = UnlinkedCodeObject::new("branch", 3);
     let false_id = code.push_constant(Constant::Bool(false));
-    let one = code.push_constant(Constant::Int(1));
-    let two = code.push_constant(Constant::Int(2));
+    let one = code.push_constant(Constant::Scalar(vela_common::ScalarValue::I64(1)));
+    let two = code.push_constant(Constant::Scalar(vela_common::ScalarValue::I64(2)));
     code.push_instruction(UnlinkedInstruction::new(
         UnlinkedInstructionKind::LoadConst {
             dst: Register(0),
@@ -918,7 +935,10 @@ fn branches_on_false_conditions() {
         src: Register(1),
     }));
 
-    assert_eq!(run_linked_test_code(code), Ok(OwnedValue::Int(2)));
+    assert_eq!(
+        run_linked_test_code(code),
+        Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(2)))
+    );
 }
 
 #[test]
@@ -926,7 +946,7 @@ fn linked_program_execution_charges_instruction_budget() {
     let mut program = vela_bytecode::LinkedProgram::new();
     let main_name = program.intern_debug_name("main");
     let mut code = vela_bytecode::LinkedCodeObject::new(main_name, 1);
-    let value = code.push_constant(Constant::Int(1));
+    let value = code.push_constant(Constant::Scalar(vela_common::ScalarValue::I64(1)));
     code.push_instruction(vela_bytecode::linked::Instruction::new(
         vela_bytecode::linked::InstructionKind::LoadConst {
             dst: Register(0),
@@ -995,7 +1015,7 @@ fn calls_registered_native_functions() {
 #[test]
 fn instruction_budget_stops_dispatch_before_next_instruction() {
     let mut code = UnlinkedCodeObject::new("budgeted", 2);
-    let one = code.push_constant(Constant::Int(1));
+    let one = code.push_constant(Constant::Scalar(vela_common::ScalarValue::I64(1)));
     code.push_instruction(UnlinkedInstruction::new(
         UnlinkedInstructionKind::LoadConst {
             dst: Register(0),
@@ -1109,8 +1129,8 @@ fn nested_values_expose_heap_roots_for_gc() {
 #[test]
 fn record_slot_bytecode_reads_and_writes_by_slot() {
     let mut code = UnlinkedCodeObject::new("slot_record", 3);
-    let count = code.push_constant(Constant::Int(2));
-    let updated = code.push_constant(Constant::Int(5));
+    let count = code.push_constant(Constant::Scalar(vela_common::ScalarValue::I64(2)));
+    let updated = code.push_constant(Constant::Scalar(vela_common::ScalarValue::I64(5)));
     code.push_instruction(UnlinkedInstruction::new(
         UnlinkedInstructionKind::LoadConst {
             dst: Register(0),
@@ -1153,13 +1173,16 @@ fn record_slot_bytecode_reads_and_writes_by_slot() {
         src: Register(2),
     }));
 
-    assert_eq!(run_linked_test_code(code), Ok(OwnedValue::Int(5)));
+    assert_eq!(
+        run_linked_test_code(code),
+        Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(5)))
+    );
 }
 
 #[test]
 fn enum_slot_bytecode_reads_by_slot() {
     let mut code = UnlinkedCodeObject::new("slot_enum", 3);
-    let amount = code.push_constant(Constant::Int(7));
+    let amount = code.push_constant(Constant::Scalar(vela_common::ScalarValue::I64(7)));
     code.push_instruction(UnlinkedInstruction::new(
         UnlinkedInstructionKind::LoadConst {
             dst: Register(0),
@@ -1186,7 +1209,10 @@ fn enum_slot_bytecode_reads_by_slot() {
         src: Register(2),
     }));
 
-    assert_eq!(run_linked_test_code(code), Ok(OwnedValue::Int(7)));
+    assert_eq!(
+        run_linked_test_code(code),
+        Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(7)))
+    );
 }
 
 #[test]
@@ -1198,7 +1224,10 @@ fn runs_compiled_arithmetic_source() {
     )
     .expect("compile arithmetic source");
 
-    assert_eq!(run_linked_test_code(code), Ok(OwnedValue::Int(14)));
+    assert_eq!(
+        run_linked_test_code(code),
+        Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(14)))
+    );
 }
 
 #[test]
@@ -1219,7 +1248,10 @@ fn main() {
     )
     .expect("compile numeric literal source");
 
-    assert_eq!(run_linked_test_code(code), Ok(OwnedValue::Float(14.0)));
+    assert_eq!(
+        run_linked_test_code(code),
+        Ok(OwnedValue::Scalar(vela_common::ScalarValue::F64(14.0)))
+    );
 }
 
 #[test]
@@ -1240,7 +1272,10 @@ fn main() {
     )
     .expect("compile large int comparison source");
 
-    assert_eq!(run_linked_test_code(code), Ok(OwnedValue::Int(1)));
+    assert_eq!(
+        run_linked_test_code(code),
+        Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(1)))
+    );
 }
 
 #[test]
@@ -1268,7 +1303,10 @@ fn main() {
     )
     .expect("compile scalar equality source");
 
-    assert_eq!(run_linked_test_code(code), Ok(OwnedValue::Int(1)));
+    assert_eq!(
+        run_linked_test_code(code),
+        Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(1)))
+    );
 }
 
 #[test]
@@ -1280,7 +1318,10 @@ fn runs_compiled_shebang_source() {
     )
     .expect("compile shebang source");
 
-    assert_eq!(run_linked_test_code(code), Ok(OwnedValue::Int(7)));
+    assert_eq!(
+        run_linked_test_code(code),
+        Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(7)))
+    );
 }
 
 #[test]
@@ -1314,7 +1355,10 @@ fn main() {
     )
     .expect("compile unary operator source");
 
-    assert_eq!(run_linked_test_code(code), Ok(OwnedValue::Int(-5)));
+    assert_eq!(
+        run_linked_test_code(code),
+        Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(-5)))
+    );
 }
 
 #[test]
@@ -1411,7 +1455,10 @@ fn main() {
     )
     .expect("compile local assignment source");
 
-    assert_eq!(run_linked_test_code(code), Ok(OwnedValue::Int(20)));
+    assert_eq!(
+        run_linked_test_code(code),
+        Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(20)))
+    );
 }
 
 #[test]
@@ -1429,7 +1476,10 @@ fn main() {
     )
     .expect("compile index read source");
 
-    assert_eq!(run_linked_test_code(code), Ok(OwnedValue::Int(10)));
+    assert_eq!(
+        run_linked_test_code(code),
+        Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(10)))
+    );
 }
 
 #[test]
@@ -1462,7 +1512,7 @@ fn map_case() {
         Vm::new()
             .run_linked_program_with_budget(&linked, "map_case", &[], &mut budget)
             .expect("run heap map index"),
-        OwnedValue::Int(7)
+        OwnedValue::Scalar(vela_common::ScalarValue::I64(7))
     );
     assert_eq!(budget.memory_bytes_allocated(), 0);
 }
@@ -1487,7 +1537,10 @@ fn main() {
     )
     .expect("compile index write source");
 
-    assert_eq!(run_linked_test_code(code), Ok(OwnedValue::Int(45)));
+    assert_eq!(
+        run_linked_test_code(code),
+        Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(45)))
+    );
 }
 
 #[test]
@@ -1509,7 +1562,10 @@ fn main() {
     )
     .expect("compile record field write source");
 
-    assert_eq!(run_linked_test_code(code), Ok(OwnedValue::Int(5)));
+    assert_eq!(
+        run_linked_test_code(code),
+        Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(5)))
+    );
 }
 
 #[test]
@@ -1533,7 +1589,10 @@ fn main() {
     )
     .expect("compile nested record field write source");
 
-    assert_eq!(run_linked_test_code(code), Ok(OwnedValue::Int(11)));
+    assert_eq!(
+        run_linked_test_code(code),
+        Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(11)))
+    );
 }
 
 #[test]
@@ -1555,7 +1614,10 @@ fn main() {
     )
     .expect("compile indexed record field write source");
 
-    assert_eq!(run_linked_test_code(code), Ok(OwnedValue::Int(14)));
+    assert_eq!(
+        run_linked_test_code(code),
+        Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(14)))
+    );
 }
 
 #[test]
@@ -1591,7 +1653,7 @@ fn map_case() {
         Vm::new()
             .run_linked_program_with_budget(&linked, "map_case", &[], &mut budget)
             .expect("run heap map index write"),
-        OwnedValue::Int(15)
+        OwnedValue::Scalar(vela_common::ScalarValue::I64(15))
     );
     assert_eq!(budget.memory_bytes_allocated(), 0);
 }
@@ -1618,7 +1680,7 @@ fn main() {
 
     assert_eq!(
         Vm::new().run_linked_program_with_budget(&linked, "main", &[], &mut budget),
-        Ok(OwnedValue::Int(7))
+        Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(7)))
     );
     assert_eq!(budget.memory_bytes_allocated(), 0);
 }

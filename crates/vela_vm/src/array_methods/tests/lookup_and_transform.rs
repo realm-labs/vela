@@ -23,7 +23,7 @@ fn main() {
     vm.register_standard_natives();
 
     let result = run_linked_array_test_code(&vm, code).expect("array contains method should run");
-    assert_eq!(result, OwnedValue::Int(1));
+    assert_eq!(result, OwnedValue::Scalar(vela_common::ScalarValue::I64(1)));
 }
 
 #[test]
@@ -75,7 +75,7 @@ fn main() {
     vm.register_standard_natives();
 
     let result = run_linked_array_test_code(&vm, code).expect("array index_of method should run");
-    assert_eq!(result, OwnedValue::Int(1));
+    assert_eq!(result, OwnedValue::Scalar(vela_common::ScalarValue::I64(1)));
 }
 
 #[test]
@@ -127,7 +127,7 @@ fn main() {
 
     let result = run_linked_array_test_code_with_budget(&vm, code, &mut budget)
         .expect("heap array scalar lookup methods should run");
-    assert_eq!(result, OwnedValue::Int(6));
+    assert_eq!(result, OwnedValue::Scalar(vela_common::ScalarValue::I64(6)));
 }
 
 #[test]
@@ -190,7 +190,7 @@ fn main() {
 
     let result = run_linked_array_test_code_with_budget(&Vm::new(), code, &mut budget)
         .expect("heap array distinct should run");
-    assert_eq!(result, OwnedValue::Int(6));
+    assert_eq!(result, OwnedValue::Scalar(vela_common::ScalarValue::I64(6)));
 }
 
 #[test]
@@ -217,7 +217,7 @@ fn main() {
         .expect("array reverse source should compile");
 
     let result = run_linked_array_test_code(&Vm::new(), code).expect("array reverse should run");
-    assert_eq!(result, OwnedValue::Int(2));
+    assert_eq!(result, OwnedValue::Scalar(vela_common::ScalarValue::I64(2)));
 }
 
 #[test]
@@ -247,7 +247,10 @@ fn main() {
 
     let result = run_linked_array_test_code_with_budget(&Vm::new(), code, &mut budget)
         .expect("heap array reverse should run");
-    assert_eq!(result, OwnedValue::Int(26));
+    assert_eq!(
+        result,
+        OwnedValue::Scalar(vela_common::ScalarValue::I64(26))
+    );
 }
 
 #[test]
@@ -277,7 +280,7 @@ fn main() {
         .expect("array slice source should compile");
 
     let result = run_linked_array_test_code(&Vm::new(), code).expect("array slice should run");
-    assert_eq!(result, OwnedValue::Int(2));
+    assert_eq!(result, OwnedValue::Scalar(vela_common::ScalarValue::I64(2)));
 }
 
 #[test]
@@ -306,7 +309,7 @@ fn main() {
 
     let result = run_linked_array_test_code_with_budget(&Vm::new(), code, &mut budget)
         .expect("heap array slice should run");
-    assert_eq!(result, OwnedValue::Int(1));
+    assert_eq!(result, OwnedValue::Scalar(vela_common::ScalarValue::I64(1)));
 }
 
 #[test]

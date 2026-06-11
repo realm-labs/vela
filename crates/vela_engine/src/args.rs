@@ -277,7 +277,7 @@ macro_rules! int_arg {
         $(
             impl IntoScriptArg for $ty {
                 fn into_script_arg(self) -> OwnedValue {
-                    OwnedValue::Int(i64::from(self))
+                    OwnedValue::i64(i64::from(self))
                 }
             }
         )*
@@ -294,7 +294,7 @@ macro_rules! signed_from_arg {
 
                 fn from_script_arg(value: &OwnedValue) -> VmResult<Self> {
                     match value {
-                        OwnedValue::Int(value) => (*value)
+                        OwnedValue::Scalar(vela_common::ScalarValue::I64(value)) => (*value)
                             .try_into()
                             .map_err(|_| type_mismatch(Self::TYPE_NAME)),
                         _ => Err(type_mismatch(Self::TYPE_NAME)),
@@ -309,7 +309,7 @@ signed_from_arg!(i8, i16, i32, i64, u8, u16, u32);
 
 impl IntoScriptArg for f32 {
     fn into_script_arg(self) -> OwnedValue {
-        OwnedValue::Float(f64::from(self))
+        OwnedValue::f64(f64::from(self))
     }
 }
 
@@ -318,8 +318,8 @@ impl FromScriptArg for f32 {
 
     fn from_script_arg(value: &OwnedValue) -> VmResult<Self> {
         match value {
-            OwnedValue::Float(value) => f32_from_f64(*value),
-            OwnedValue::Int(value) => f32_from_f64(*value as f64),
+            OwnedValue::Scalar(vela_common::ScalarValue::F64(value)) => f32_from_f64(*value),
+            OwnedValue::Scalar(vela_common::ScalarValue::I64(value)) => f32_from_f64(*value as f64),
             _ => Err(type_mismatch(Self::TYPE_NAME)),
         }
     }
@@ -327,7 +327,7 @@ impl FromScriptArg for f32 {
 
 impl IntoScriptArg for f64 {
     fn into_script_arg(self) -> OwnedValue {
-        OwnedValue::Float(self)
+        OwnedValue::Scalar(vela_common::ScalarValue::F64(self))
     }
 }
 
@@ -336,8 +336,8 @@ impl FromScriptArg for f64 {
 
     fn from_script_arg(value: &OwnedValue) -> VmResult<Self> {
         match value {
-            OwnedValue::Float(value) => Ok(*value),
-            OwnedValue::Int(value) => Ok(*value as f64),
+            OwnedValue::Scalar(vela_common::ScalarValue::F64(value)) => Ok(*value),
+            OwnedValue::Scalar(vela_common::ScalarValue::I64(value)) => Ok(*value as f64),
             _ => Err(type_mismatch(Self::TYPE_NAME)),
         }
     }

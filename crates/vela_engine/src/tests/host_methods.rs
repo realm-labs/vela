@@ -89,7 +89,10 @@ fn main(player: Player) {
         HostPath::new(host_ref)
     );
     assert_eq!(adapter.method_calls()[0].method, method);
-    assert_eq!(adapter.method_calls()[0].args, vec![HostValue::Int(12)]);
+    assert_eq!(
+        adapter.method_calls()[0].args,
+        vec![HostValue::Scalar(vela_common::ScalarValue::I64(12))]
+    );
 }
 
 #[test]
@@ -129,7 +132,7 @@ fn main(player: Player) {
             &[OwnedValue::HostRef(host_ref)],
             &mut host
         ),
-        Ok(OwnedValue::Int(1))
+        Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(1)))
     );
 }
 
@@ -216,7 +219,7 @@ fn main(player: Player) {
             &[OwnedValue::HostRef(host_ref)],
             &mut host
         ),
-        Ok(OwnedValue::Int(1))
+        Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(1)))
     );
 }
 
@@ -256,7 +259,10 @@ fn main(player: Player) {
         .field(quest_progress)
         .variant_field(count);
     let mut adapter = MockStateAdapter::new();
-    adapter.insert_diagnostic_path_value(quest_count.clone(), HostValue::Int(4));
+    adapter.insert_diagnostic_path_value(
+        quest_count.clone(),
+        HostValue::Scalar(vela_common::ScalarValue::I64(4)),
+    );
     let mut tx = HostAccess::new();
     let mut host = HostExecution {
         adapter: &mut adapter,
@@ -271,7 +277,7 @@ fn main(player: Player) {
             &[OwnedValue::HostRef(host_ref)],
             &mut host
         ),
-        Ok(OwnedValue::Int(5))
+        Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(5)))
     );
 }
 
@@ -320,7 +326,7 @@ fn main(player: Player, monster: Monster) {
             &[OwnedValue::HostRef(player), OwnedValue::HostRef(monster)],
             &mut host,
         ),
-        Ok(OwnedValue::Int(1))
+        Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(1)))
     );
 }
 
@@ -341,14 +347,14 @@ fn engine_registers_callable_native_methods_for_host_paths() {
                 .attr("domain", "gameplay")
                 .attr("effect", "reward"),
             move |receiver, args, host| {
-                let [OwnedValue::Int(amount)] = args else {
+                let [OwnedValue::Scalar(vela_common::ScalarValue::I64(amount))] = args else {
                     return Ok(OwnedValue::Null);
                 };
                 host.access.call_diagnostic_path_method(
                     host.adapter,
                     receiver.clone(),
                     method,
-                    vec![HostValue::Int(*amount)],
+                    vec![HostValue::Scalar(vela_common::ScalarValue::I64(*amount))],
                     None,
                 )?;
                 Ok(OwnedValue::Null)
@@ -399,7 +405,7 @@ fn main(player: Player) {
         engine.call_native_method(
             method,
             &HostPath::new(host_ref),
-            &[OwnedValue::Int(10)],
+            &[OwnedValue::Scalar(vela_common::ScalarValue::I64(10))],
             &mut host,
         ),
         Ok(OwnedValue::Null)
@@ -419,7 +425,7 @@ fn main(player: Player) {
             &[OwnedValue::HostRef(host_ref)],
             &mut host
         ),
-        Ok(OwnedValue::Int(1))
+        Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(1)))
     );
 }
 
@@ -453,10 +459,10 @@ fn engine_registers_typed_callable_native_methods_for_host_paths() {
         engine.call_native_method(
             method,
             &HostPath::new(host_ref),
-            &[OwnedValue::Int(15)],
+            &[OwnedValue::Scalar(vela_common::ScalarValue::I64(15))],
             &mut host,
         ),
-        Ok(OwnedValue::Int(15))
+        Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(15)))
     );
 }
 
@@ -551,14 +557,14 @@ fn callable_native_method_error_retains_written_mutation() {
                 .effects(EffectSet::host_write())
                 .access(FunctionAccess::public()),
             move |receiver, args, host| {
-                let [OwnedValue::Int(amount)] = args else {
+                let [OwnedValue::Scalar(vela_common::ScalarValue::I64(amount))] = args else {
                     return Ok(OwnedValue::Null);
                 };
                 host.access.call_diagnostic_path_method(
                     host.adapter,
                     receiver.clone(),
                     method,
-                    vec![HostValue::Int(*amount)],
+                    vec![HostValue::Scalar(vela_common::ScalarValue::I64(*amount))],
                     None,
                 )?;
                 Err(VmError::new(VmErrorKind::TypeMismatch {
@@ -581,7 +587,7 @@ fn callable_native_method_error_retains_written_mutation() {
         .call_native_method(
             method,
             &HostPath::new(host_ref),
-            &[OwnedValue::Int(15)],
+            &[OwnedValue::Scalar(vela_common::ScalarValue::I64(15))],
             &mut host,
         )
         .expect_err("native method should fail");
@@ -620,13 +626,17 @@ fn engine_registers_unified_host_type_spec_with_native_method_and_index_metadata
             .effects(EffectSet::host_write())
             .access(FunctionAccess::public()),
         move |receiver, args, host| {
-            let [OwnedValue::Int(key), OwnedValue::Int(value)] = args else {
+            let [
+                OwnedValue::Scalar(vela_common::ScalarValue::I64(key)),
+                OwnedValue::Scalar(vela_common::ScalarValue::I64(value)),
+            ] = args
+            else {
                 return Ok(OwnedValue::Null);
             };
             host.access.write_diagnostic_path(
                 host.adapter,
                 receiver.clone().key(key.to_string()),
-                HostValue::Int(*value),
+                HostValue::Scalar(vela_common::ScalarValue::I64(*value)),
                 None,
             )?;
             Ok(OwnedValue::Null)
@@ -670,14 +680,17 @@ fn engine_registers_unified_host_type_spec_with_native_method_and_index_metadata
         engine.call_native_method(
             method,
             &HostPath::new(host_ref),
-            &[OwnedValue::Int(7), OwnedValue::Int(99)],
+            &[
+                OwnedValue::Scalar(vela_common::ScalarValue::I64(7)),
+                OwnedValue::Scalar(vela_common::ScalarValue::I64(99))
+            ],
             &mut host,
         ),
         Ok(OwnedValue::Null)
     );
     assert_eq!(
         adapter.read_diagnostic_path(&HostPath::new(host_ref).key("7")),
-        Ok(HostValue::Int(99))
+        Ok(HostValue::Scalar(vela_common::ScalarValue::I64(99)))
     );
 }
 
@@ -719,14 +732,17 @@ fn typed_callable_native_method_accepts_typed_host_path_arguments() {
         engine.call_native_method(
             method,
             &HostPath::new(player),
-            &[OwnedValue::HostRef(inventory), OwnedValue::Int(20)],
+            &[
+                OwnedValue::HostRef(inventory),
+                OwnedValue::Scalar(vela_common::ScalarValue::I64(20))
+            ],
             &mut host,
         ),
         Ok(OwnedValue::Null)
     );
     assert_eq!(
         adapter.read_diagnostic_path(&amount_path),
-        Ok(HostValue::Int(20))
+        Ok(HostValue::Scalar(vela_common::ScalarValue::I64(20)))
     );
 }
 
@@ -778,7 +794,7 @@ fn typed_grant_exp(
         host.adapter,
         receiver.clone(),
         HostMethodId::new(8),
-        vec![HostValue::Int(amount)],
+        vec![HostValue::Scalar(vela_common::ScalarValue::I64(amount))],
         None,
     )?;
     Ok(Some(amount))
@@ -818,7 +834,7 @@ fn typed_transfer_to(
     host.access.write_diagnostic_path(
         host.adapter,
         target.into_path().field(FieldId::new(77)),
-        HostValue::Int(amount),
+        HostValue::Scalar(vela_common::ScalarValue::I64(amount)),
         None,
     )?;
     Ok(())
@@ -866,14 +882,14 @@ fn engine_registers_four_arg_typed_callable_native_methods() {
             method,
             &HostPath::new(player),
             &[
-                OwnedValue::Int(1),
-                OwnedValue::Int(2),
-                OwnedValue::Int(3),
-                OwnedValue::Int(4)
+                OwnedValue::Scalar(vela_common::ScalarValue::I64(1)),
+                OwnedValue::Scalar(vela_common::ScalarValue::I64(2)),
+                OwnedValue::Scalar(vela_common::ScalarValue::I64(3)),
+                OwnedValue::Scalar(vela_common::ScalarValue::I64(4))
             ],
             &mut host,
         ),
-        Ok(OwnedValue::Int(10))
+        Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(10)))
     );
 }
 
@@ -912,15 +928,15 @@ fn engine_registers_five_arg_typed_callable_native_methods() {
             method,
             &HostPath::new(player),
             &[
-                OwnedValue::Int(1),
-                OwnedValue::Int(2),
-                OwnedValue::Int(3),
-                OwnedValue::Int(4),
-                OwnedValue::Int(5),
+                OwnedValue::Scalar(vela_common::ScalarValue::I64(1)),
+                OwnedValue::Scalar(vela_common::ScalarValue::I64(2)),
+                OwnedValue::Scalar(vela_common::ScalarValue::I64(3)),
+                OwnedValue::Scalar(vela_common::ScalarValue::I64(4)),
+                OwnedValue::Scalar(vela_common::ScalarValue::I64(5)),
             ],
             &mut host,
         ),
-        Ok(OwnedValue::Int(15))
+        Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(15)))
     );
 }
 
@@ -960,16 +976,16 @@ fn engine_registers_six_arg_typed_callable_native_methods() {
             method,
             &HostPath::new(player),
             &[
-                OwnedValue::Int(1),
-                OwnedValue::Int(2),
-                OwnedValue::Int(3),
-                OwnedValue::Int(4),
-                OwnedValue::Int(5),
-                OwnedValue::Int(6),
+                OwnedValue::Scalar(vela_common::ScalarValue::I64(1)),
+                OwnedValue::Scalar(vela_common::ScalarValue::I64(2)),
+                OwnedValue::Scalar(vela_common::ScalarValue::I64(3)),
+                OwnedValue::Scalar(vela_common::ScalarValue::I64(4)),
+                OwnedValue::Scalar(vela_common::ScalarValue::I64(5)),
+                OwnedValue::Scalar(vela_common::ScalarValue::I64(6)),
             ],
             &mut host,
         ),
-        Ok(OwnedValue::Int(21))
+        Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(21)))
     );
 }
 
@@ -986,7 +1002,7 @@ fn typed_sum4(
         host.adapter,
         receiver.clone(),
         HostMethodId::new(9),
-        vec![HostValue::Int(total)],
+        vec![HostValue::Scalar(vela_common::ScalarValue::I64(total))],
         None,
     )?;
     Ok(total)
@@ -1006,7 +1022,7 @@ fn typed_sum5(
         host.adapter,
         receiver.clone(),
         HostMethodId::new(10),
-        vec![HostValue::Int(total)],
+        vec![HostValue::Scalar(vela_common::ScalarValue::I64(total))],
         None,
     )?;
     Ok(total)
@@ -1028,7 +1044,7 @@ fn typed_sum6(
         host.adapter,
         receiver.clone(),
         HostMethodId::new(11),
-        vec![HostValue::Int(total)],
+        vec![HostValue::Scalar(vela_common::ScalarValue::I64(total))],
         None,
     )?;
     Ok(total)
@@ -1074,6 +1090,6 @@ fn main(player: Player) {
             &[OwnedValue::HostRef(host_ref)],
             &mut host
         ),
-        Ok(OwnedValue::Int(12))
+        Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(12)))
     );
 }

@@ -50,7 +50,7 @@ pub(crate) fn call(
         "find" => Some(call_find(receiver, args, dispatch)),
         "any" => Some(call_any(receiver, args, dispatch).map(Value::Bool)),
         "all" => Some(call_all(receiver, args, dispatch).map(Value::Bool)),
-        "count" => Some(call_count(receiver, args, dispatch).map(Value::Int)),
+        "count" => Some(call_count(receiver, args, dispatch).map(Value::i64)),
         "sum" => Some(array_methods::sum(receiver, args, dispatch.runtime())),
         "group_by" => Some(array_methods::group_by(receiver, args, dispatch.runtime())),
         "sort_by" => Some(array_methods::sort_by(receiver, args, dispatch.runtime())),

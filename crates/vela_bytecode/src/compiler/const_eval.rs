@@ -11,8 +11,8 @@ pub(super) fn compile_literal_constant(literal: &Literal) -> CompileResult<Const
     Ok(match literal {
         Literal::Null => Constant::Null,
         Literal::Bool(value) => Constant::Bool(*value),
-        Literal::Int(value) => Constant::Int(parse_int(value)?),
-        Literal::Float(value) => Constant::Float(parse_float(value)?),
+        Literal::Int(value) => Constant::i64(parse_int(value)?),
+        Literal::Float(value) => Constant::f64(parse_float(value)?),
         Literal::String(value) => Constant::String(value.clone()),
     })
 }
@@ -94,8 +94,12 @@ fn const_map_key_name(key: &Expr) -> CompileResult<Option<String>> {
 
 fn evaluate_unary_const(op: UnaryOp, value: Constant) -> Option<Constant> {
     match (op, value) {
-        (UnaryOp::Negate, Constant::Int(value)) => value.checked_neg().map(Constant::Int),
-        (UnaryOp::Negate, Constant::Float(value)) => Some(Constant::Float(-value)),
+        (UnaryOp::Negate, Constant::Scalar(vela_common::ScalarValue::I64(value))) => {
+            value.checked_neg().map(Constant::i64)
+        }
+        (UnaryOp::Negate, Constant::Scalar(vela_common::ScalarValue::F64(value))) => {
+            Some(Constant::Scalar(vela_common::ScalarValue::F64(-value)))
+        }
         (UnaryOp::Not, Constant::Bool(value)) => Some(Constant::Bool(!value)),
         _ => None,
     }
@@ -107,21 +111,45 @@ fn evaluate_binary_const(op: BinaryOp, left: Constant, right: Constant) -> Optio
         BinaryOp::Sub => evaluate_numeric_const(left, right, i64::checked_sub, |a, b| a - b),
         BinaryOp::Mul => evaluate_numeric_const(left, right, i64::checked_mul, |a, b| a * b),
         BinaryOp::Div => match (left, right) {
-            (Constant::Int(_), Constant::Int(0)) => None,
-            (Constant::Int(left), Constant::Int(right)) => {
-                left.checked_div(right).map(Constant::Int)
-            }
-            (Constant::Float(_), Constant::Float(0.0)) => None,
-            (Constant::Float(left), Constant::Float(right)) => Some(Constant::Float(left / right)),
+            (
+                Constant::Scalar(vela_common::ScalarValue::I64(_)),
+                Constant::Scalar(vela_common::ScalarValue::I64(0)),
+            ) => None,
+            (
+                Constant::Scalar(vela_common::ScalarValue::I64(left)),
+                Constant::Scalar(vela_common::ScalarValue::I64(right)),
+            ) => left.checked_div(right).map(Constant::i64),
+            (
+                Constant::Scalar(vela_common::ScalarValue::F64(_)),
+                Constant::Scalar(vela_common::ScalarValue::F64(0.0)),
+            ) => None,
+            (
+                Constant::Scalar(vela_common::ScalarValue::F64(left)),
+                Constant::Scalar(vela_common::ScalarValue::F64(right)),
+            ) => Some(Constant::Scalar(vela_common::ScalarValue::F64(
+                left / right,
+            ))),
             _ => None,
         },
         BinaryOp::Rem => match (left, right) {
-            (Constant::Int(_), Constant::Int(0)) => None,
-            (Constant::Int(left), Constant::Int(right)) => {
-                left.checked_rem(right).map(Constant::Int)
-            }
-            (Constant::Float(_), Constant::Float(0.0)) => None,
-            (Constant::Float(left), Constant::Float(right)) => Some(Constant::Float(left % right)),
+            (
+                Constant::Scalar(vela_common::ScalarValue::I64(_)),
+                Constant::Scalar(vela_common::ScalarValue::I64(0)),
+            ) => None,
+            (
+                Constant::Scalar(vela_common::ScalarValue::I64(left)),
+                Constant::Scalar(vela_common::ScalarValue::I64(right)),
+            ) => left.checked_rem(right).map(Constant::i64),
+            (
+                Constant::Scalar(vela_common::ScalarValue::F64(_)),
+                Constant::Scalar(vela_common::ScalarValue::F64(0.0)),
+            ) => None,
+            (
+                Constant::Scalar(vela_common::ScalarValue::F64(left)),
+                Constant::Scalar(vela_common::ScalarValue::F64(right)),
+            ) => Some(Constant::Scalar(vela_common::ScalarValue::F64(
+                left % right,
+            ))),
             _ => None,
         },
         BinaryOp::Equal => Some(Constant::Bool(left == right)),
@@ -141,10 +169,14 @@ fn evaluate_numeric_const(
     float_op: impl FnOnce(f64, f64) -> f64,
 ) -> Option<Constant> {
     match (left, right) {
-        (Constant::Int(left), Constant::Int(right)) => int_op(left, right).map(Constant::Int),
-        (Constant::Float(left), Constant::Float(right)) => {
-            Some(Constant::Float(float_op(left, right)))
-        }
+        (
+            Constant::Scalar(vela_common::ScalarValue::I64(left)),
+            Constant::Scalar(vela_common::ScalarValue::I64(right)),
+        ) => int_op(left, right).map(Constant::i64),
+        (
+            Constant::Scalar(vela_common::ScalarValue::F64(left)),
+            Constant::Scalar(vela_common::ScalarValue::F64(right)),
+        ) => Some(Constant::f64(float_op(left, right))),
         _ => None,
     }
 }
@@ -155,10 +187,14 @@ fn evaluate_numeric_compare_const(
     op: impl FnOnce(f64, f64) -> bool,
 ) -> Option<Constant> {
     match (left, right) {
-        (Constant::Int(left), Constant::Int(right)) => {
-            Some(Constant::Bool(op(left as f64, right as f64)))
-        }
-        (Constant::Float(left), Constant::Float(right)) => Some(Constant::Bool(op(left, right))),
+        (
+            Constant::Scalar(vela_common::ScalarValue::I64(left)),
+            Constant::Scalar(vela_common::ScalarValue::I64(right)),
+        ) => Some(Constant::Bool(op(left as f64, right as f64))),
+        (
+            Constant::Scalar(vela_common::ScalarValue::F64(left)),
+            Constant::Scalar(vela_common::ScalarValue::F64(right)),
+        ) => Some(Constant::Bool(op(left, right))),
         _ => None,
     }
 }

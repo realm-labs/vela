@@ -3,7 +3,7 @@ use super::*;
 #[test]
 fn reflect_call_rejects_non_host_args() {
     let registry = registry();
-    let mut adapter = adapter_with_level(HostValue::Int(9));
+    let mut adapter = adapter_with_level(HostValue::Scalar(vela_common::ScalarValue::I64(9)));
     let mut tx = HostAccess::new();
     let mut ctx = ReflectContext {
         registry: &registry,
@@ -37,7 +37,7 @@ fn reflect_call_with_policy_denies_unapproved_methods_before_host_access() {
                     .access(MethodAccess::new().require_permission("player.admin")),
             ),
     );
-    let mut adapter = adapter_with_level(HostValue::Int(9));
+    let mut adapter = adapter_with_level(HostValue::Scalar(vela_common::ScalarValue::I64(9)));
     let mut tx = HostAccess::new();
     let mut ctx = ReflectContext {
         registry: &registry,
@@ -49,7 +49,9 @@ fn reflect_call_with_policy_denies_unapproved_methods_before_host_access() {
         &mut ctx,
         &ReflectValue::HostRef(player_ref()),
         "grant_exp",
-        vec![ReflectValue::Host(HostValue::Int(20))],
+        vec![ReflectValue::Host(HostValue::Scalar(
+            vela_common::ScalarValue::I64(20),
+        ))],
         &ReflectPolicy::all(),
     )
     .expect_err("not reflect callable");
@@ -66,7 +68,9 @@ fn reflect_call_with_policy_denies_unapproved_methods_before_host_access() {
         &mut ctx,
         &ReflectValue::HostRef(player_ref()),
         "admin_grant",
-        vec![ReflectValue::Host(HostValue::Int(20))],
+        vec![ReflectValue::Host(HostValue::Scalar(
+            vela_common::ScalarValue::I64(20),
+        ))],
         &ReflectPolicy::all(),
     )
     .expect_err("missing method permission");
@@ -91,7 +95,7 @@ fn reflect_call_with_policy_requires_call_methods_permission() {
                     .access(MethodAccess::new().reflect_callable(true)),
             ),
     );
-    let mut adapter = adapter_with_level(HostValue::Int(9));
+    let mut adapter = adapter_with_level(HostValue::Scalar(vela_common::ScalarValue::I64(9)));
     let mut tx = HostAccess::new();
     let mut ctx = ReflectContext {
         registry: &registry,
@@ -103,7 +107,9 @@ fn reflect_call_with_policy_requires_call_methods_permission() {
         &mut ctx,
         &ReflectValue::HostRef(player_ref()),
         "grant_exp",
-        vec![ReflectValue::Host(HostValue::Int(20))],
+        vec![ReflectValue::Host(HostValue::Scalar(
+            vela_common::ScalarValue::I64(20),
+        ))],
         &ReflectPolicy::read_only(),
     )
     .expect_err("call methods permission should be required");
@@ -128,7 +134,7 @@ fn reflect_call_with_policy_denies_effectful_methods_without_effect_permission()
                     .access(MethodAccess::new().reflect_callable(true)),
             ),
     );
-    let mut adapter = adapter_with_level(HostValue::Int(9));
+    let mut adapter = adapter_with_level(HostValue::Scalar(vela_common::ScalarValue::I64(9)));
     let mut tx = HostAccess::new();
     let mut ctx = ReflectContext {
         registry: &registry,
@@ -146,7 +152,9 @@ fn reflect_call_with_policy_denies_effectful_methods_without_effect_permission()
         &mut ctx,
         &ReflectValue::HostRef(player_ref()),
         "grant_exp",
-        vec![ReflectValue::Host(HostValue::Int(20))],
+        vec![ReflectValue::Host(HostValue::Scalar(
+            vela_common::ScalarValue::I64(20),
+        ))],
         &policy,
     )
     .expect_err("host-write method should require effect permission");
@@ -166,7 +174,9 @@ fn reflect_call_with_policy_denies_effectful_methods_without_effect_permission()
         &mut ctx,
         &ReflectValue::HostRef(player_ref()),
         "grant_exp",
-        vec![ReflectValue::Host(HostValue::Int(20))],
+        vec![ReflectValue::Host(HostValue::Scalar(
+            vela_common::ScalarValue::I64(20),
+        ))],
         &policy,
     )
     .expect("effect permission should allow method call");
@@ -189,7 +199,7 @@ fn reflect_call_with_policy_denies_private_methods_without_permission() {
                 ),
             ),
     );
-    let mut adapter = adapter_with_level(HostValue::Int(9));
+    let mut adapter = adapter_with_level(HostValue::Scalar(vela_common::ScalarValue::I64(9)));
     let mut tx = HostAccess::new();
     let mut ctx = ReflectContext {
         registry: &registry,
@@ -207,7 +217,9 @@ fn reflect_call_with_policy_denies_private_methods_without_permission() {
         &mut ctx,
         &ReflectValue::HostRef(player_ref()),
         "admin_grant",
-        vec![ReflectValue::Host(HostValue::Int(20))],
+        vec![ReflectValue::Host(HostValue::Scalar(
+            vela_common::ScalarValue::I64(20),
+        ))],
         &policy,
     )
     .expect_err("private method should require AccessPrivate");
@@ -235,7 +247,7 @@ fn reflect_call_with_policy_allows_private_methods_with_permission() {
                 ),
             ),
     );
-    let mut adapter = adapter_with_level(HostValue::Int(9));
+    let mut adapter = adapter_with_level(HostValue::Scalar(vela_common::ScalarValue::I64(9)));
     let mut tx = HostAccess::new();
     let mut ctx = ReflectContext {
         registry: &registry,
@@ -254,7 +266,9 @@ fn reflect_call_with_policy_allows_private_methods_with_permission() {
         &mut ctx,
         &ReflectValue::HostRef(player_ref()),
         "admin_grant",
-        vec![ReflectValue::Host(HostValue::Int(20))],
+        vec![ReflectValue::Host(HostValue::Scalar(
+            vela_common::ScalarValue::I64(20),
+        ))],
         &policy,
     )
     .expect("private method call");
@@ -285,7 +299,7 @@ fn reflect_call_with_policy_filters_unknown_method_candidates() {
                     .access(MethodAccess::new().require_permission("player.admin")),
             ),
     );
-    let mut adapter = adapter_with_level(HostValue::Int(9));
+    let mut adapter = adapter_with_level(HostValue::Scalar(vela_common::ScalarValue::I64(9)));
     let mut tx = HostAccess::new();
     let mut ctx = ReflectContext {
         registry: &registry,
@@ -320,7 +334,7 @@ fn reflect_call_with_policy_filters_unknown_method_candidates() {
 #[test]
 fn unknown_methods_include_candidate_hints() {
     let registry = registry();
-    let mut adapter = adapter_with_level(HostValue::Int(9));
+    let mut adapter = adapter_with_level(HostValue::Scalar(vela_common::ScalarValue::I64(9)));
     let mut tx = HostAccess::new();
     let mut ctx = ReflectContext {
         registry: &registry,

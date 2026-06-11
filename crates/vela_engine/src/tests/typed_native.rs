@@ -61,7 +61,7 @@ fn main() {
 
     assert_eq!(
         run_linked_program(&engine, &program, &[]),
-        Ok(OwnedValue::Int(10)),
+        Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(10))),
     );
 }
 
@@ -94,7 +94,7 @@ fn main() {
 
     assert_eq!(
         run_linked_program(&engine, &program, &[]),
-        Ok(OwnedValue::Int(11)),
+        Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(11))),
     );
 }
 
@@ -132,7 +132,7 @@ fn main(player) {
 
     assert_eq!(
         run_linked_program(&engine, &program, &[OwnedValue::HostRef(player)]),
-        Ok(OwnedValue::Int(49)),
+        Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(49))),
     );
 }
 
@@ -171,7 +171,7 @@ fn main(path) {
 
     assert_eq!(
         run_linked_program(&engine, &program, &[OwnedValue::PathProxy(path)]),
-        Ok(OwnedValue::Int(2)),
+        Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(2))),
     );
 }
 
@@ -202,7 +202,7 @@ fn main() {
 
     assert_eq!(
         run_linked_program(&engine, &program, &[]),
-        Ok(OwnedValue::Int(10)),
+        Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(10))),
     );
 }
 
@@ -234,7 +234,7 @@ fn main() {
 
     assert_eq!(
         run_linked_program(&engine, &program, &[]),
-        Ok(OwnedValue::Int(15)),
+        Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(15))),
     );
 }
 
@@ -267,7 +267,7 @@ fn main() {
 
     assert_eq!(
         run_linked_program(&engine, &program, &[]),
-        Ok(OwnedValue::Int(21)),
+        Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(21))),
     );
 }
 
@@ -299,7 +299,7 @@ fn main() {
 
     assert_eq!(
         run_linked_program(&engine, &program, &[]),
-        Ok(OwnedValue::Int(28)),
+        Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(28))),
     );
 }
 
@@ -327,7 +327,7 @@ fn main() {
 
     assert_eq!(
         run_linked_program(&engine, &program, &[]),
-        Ok(OwnedValue::Float(3.0)),
+        Ok(OwnedValue::Scalar(vela_common::ScalarValue::F64(3.0))),
     );
 }
 
@@ -368,7 +368,7 @@ fn main(tags) {
                 OwnedValue::String("fire".to_owned()),
             ])],
         ),
-        Ok(OwnedValue::Int(4)),
+        Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(4))),
     );
 }
 
@@ -409,7 +409,7 @@ fn main(tags) {
                 OwnedValue::String("fire".to_owned()),
             ])],
         ),
-        Ok(OwnedValue::Int(4)),
+        Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(4))),
     );
 }
 
@@ -445,12 +445,12 @@ fn main(weights) {
             &engine,
             &program,
             &[OwnedValue::Array(vec![
-                OwnedValue::Int(3),
-                OwnedValue::Int(5),
-                OwnedValue::Int(7),
+                OwnedValue::Scalar(vela_common::ScalarValue::I64(3)),
+                OwnedValue::Scalar(vela_common::ScalarValue::I64(5)),
+                OwnedValue::Scalar(vela_common::ScalarValue::I64(7)),
             ])],
         ),
-        Ok(OwnedValue::Int(27)),
+        Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(27))),
     );
 }
 
@@ -486,12 +486,12 @@ fn main(rewards) {
             &engine,
             &program,
             &[OwnedValue::Array(vec![
-                OwnedValue::Int(3),
-                OwnedValue::Int(5),
-                OwnedValue::Int(7),
+                OwnedValue::Scalar(vela_common::ScalarValue::I64(3)),
+                OwnedValue::Scalar(vela_common::ScalarValue::I64(5)),
+                OwnedValue::Scalar(vela_common::ScalarValue::I64(7)),
             ])],
         ),
-        Ok(OwnedValue::Int(27)),
+        Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(27))),
     );
 }
 
@@ -529,13 +529,19 @@ fn main(scores) {
             &program,
             &[OwnedValue::Map(
                 [
-                    ("daily".to_owned(), OwnedValue::Int(2)),
-                    ("weekly".to_owned(), OwnedValue::Int(5)),
+                    (
+                        "daily".to_owned(),
+                        OwnedValue::Scalar(vela_common::ScalarValue::I64(2))
+                    ),
+                    (
+                        "weekly".to_owned(),
+                        OwnedValue::Scalar(vela_common::ScalarValue::I64(5))
+                    ),
                 ]
                 .into(),
             )],
         ),
-        Ok(OwnedValue::Int(17)),
+        Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(17))),
     );
 }
 
@@ -573,13 +579,19 @@ fn main(scores) {
             &program,
             &[OwnedValue::Map(
                 [
-                    ("daily".to_owned(), OwnedValue::Int(2)),
-                    ("weekly".to_owned(), OwnedValue::Int(5)),
+                    (
+                        "daily".to_owned(),
+                        OwnedValue::Scalar(vela_common::ScalarValue::I64(2))
+                    ),
+                    (
+                        "weekly".to_owned(),
+                        OwnedValue::Scalar(vela_common::ScalarValue::I64(5))
+                    ),
                 ]
                 .into(),
             )],
         ),
-        Ok(OwnedValue::Int(17)),
+        Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(17))),
     );
 }
 
@@ -719,7 +731,7 @@ fn typed_native_functions_report_arity_and_type_errors() {
         .expect("typed native should be registered");
 
     assert!(matches!(
-        (function.function)(&[OwnedValue::Int(1)]),
+        (function.function)(&[OwnedValue::Scalar(vela_common::ScalarValue::I64(1))]),
         Err(error) if matches!(error.kind(), VmErrorKind::ArityMismatch {
                 expected: 2,
                 actual: 1,
@@ -727,7 +739,7 @@ fn typed_native_functions_report_arity_and_type_errors() {
             })
     ));
     assert!(matches!(
-        (function.function)(&[OwnedValue::String("x".to_owned()), OwnedValue::Int(1)]),
+        (function.function)(&[OwnedValue::String("x".to_owned()), OwnedValue::Scalar(vela_common::ScalarValue::I64(1))]),
         Err(error) if matches!(error.kind(), VmErrorKind::TypeMismatch { operation: "int" })
     ));
 }

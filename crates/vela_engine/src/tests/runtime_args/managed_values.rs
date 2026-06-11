@@ -40,7 +40,10 @@ fn main() {
         .expect("runtime call should run");
 
     assert_eq!(runtime.host_global_ref("main::state"), Some(global));
-    assert_eq!(runtime.value_to_owned(&result), Ok(OwnedValue::Int(11)));
+    assert_eq!(
+        runtime.value_to_owned(&result),
+        Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(11)))
+    );
 }
 
 #[test]
@@ -78,7 +81,10 @@ fn main() {
         )
         .expect("runtime call should run");
 
-    assert_eq!(runtime.value_to_owned(&result), Ok(OwnedValue::Int(9)));
+    assert_eq!(
+        runtime.value_to_owned(&result),
+        Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(9)))
+    );
     assert_eq!(fallback.global_ref_by_slot_calls.get(), 0);
     assert_eq!(fallback.global_ref_calls.get(), 0);
 }
@@ -156,20 +162,26 @@ fn read_name() {
     let first = runtime
         .call(
             "bump",
-            CallArgs::from_positional([OwnedValue::Int(2)]),
+            CallArgs::from_positional([OwnedValue::Scalar(vela_common::ScalarValue::I64(2))]),
             CallOptions::unbounded(),
         )
         .expect("first bump should run");
     let second = runtime
         .call(
             "bump",
-            CallArgs::from_positional([OwnedValue::Int(3)]),
+            CallArgs::from_positional([OwnedValue::Scalar(vela_common::ScalarValue::I64(3))]),
             CallOptions::unbounded(),
         )
         .expect("second bump should run");
 
-    assert_eq!(runtime.value_to_owned(&first), Ok(OwnedValue::Int(7)));
-    assert_eq!(runtime.value_to_owned(&second), Ok(OwnedValue::Int(10)));
+    assert_eq!(
+        runtime.value_to_owned(&first),
+        Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(7)))
+    );
+    assert_eq!(
+        runtime.value_to_owned(&second),
+        Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(10)))
+    );
     assert_eq!(
         script_record_field(
             &runtime
@@ -178,7 +190,7 @@ fn read_name() {
                 .expect("script global should exist"),
             "level",
         ),
-        Some(&OwnedValue::Int(10))
+        Some(&OwnedValue::Scalar(vela_common::ScalarValue::I64(10)))
     );
 
     runtime
@@ -187,7 +199,10 @@ fn read_name() {
                 panic!("state should remain a record");
             };
             fields
-                .set_existing("level", OwnedValue::Int(40))
+                .set_existing(
+                    "level",
+                    OwnedValue::Scalar(vela_common::ScalarValue::I64(40)),
+                )
                 .expect("level field should exist");
         })
         .expect("rust update should replace persistent global");
@@ -195,7 +210,7 @@ fn read_name() {
     let after_rust_update = runtime
         .call(
             "bump",
-            CallArgs::from_positional([OwnedValue::Int(1)]),
+            CallArgs::from_positional([OwnedValue::Scalar(vela_common::ScalarValue::I64(1))]),
             CallOptions::unbounded(),
         )
         .expect("bump after rust update should run");
@@ -205,7 +220,7 @@ fn read_name() {
 
     assert_eq!(
         runtime.value_to_owned(&after_rust_update),
-        Ok(OwnedValue::Int(41))
+        Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(41)))
     );
     assert_eq!(
         runtime.value_to_owned(&name),
@@ -288,14 +303,20 @@ fn read_name() {
     let first_state = first
         .call(
             "make_state",
-            CallArgs::from_positional([OwnedValue::Int(5), OwnedValue::String("first".into())]),
+            CallArgs::from_positional([
+                OwnedValue::Scalar(vela_common::ScalarValue::I64(5)),
+                OwnedValue::String("first".into()),
+            ]),
             CallOptions::unbounded(),
         )
         .expect("first factory should run");
     let second_state = second
         .call(
             "make_state",
-            CallArgs::from_positional([OwnedValue::Int(40), OwnedValue::String("second".into())]),
+            CallArgs::from_positional([
+                OwnedValue::Scalar(vela_common::ScalarValue::I64(40)),
+                OwnedValue::String("second".into()),
+            ]),
             CallOptions::unbounded(),
         )
         .expect("second factory should run");
@@ -310,14 +331,14 @@ fn read_name() {
     let first_bumped = first
         .call(
             "bump",
-            CallArgs::from_positional([OwnedValue::Int(2)]),
+            CallArgs::from_positional([OwnedValue::Scalar(vela_common::ScalarValue::I64(2))]),
             CallOptions::unbounded(),
         )
         .expect("first bump should run");
     let second_bumped = second
         .call(
             "bump",
-            CallArgs::from_positional([OwnedValue::Int(3)]),
+            CallArgs::from_positional([OwnedValue::Scalar(vela_common::ScalarValue::I64(3))]),
             CallOptions::unbounded(),
         )
         .expect("second bump should run");
@@ -328,10 +349,13 @@ fn read_name() {
         .call("read_name", CallArgs::new(), CallOptions::unbounded())
         .expect("second name should read");
 
-    assert_eq!(first.value_to_owned(&first_bumped), Ok(OwnedValue::Int(7)));
+    assert_eq!(
+        first.value_to_owned(&first_bumped),
+        Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(7)))
+    );
     assert_eq!(
         second.value_to_owned(&second_bumped),
-        Ok(OwnedValue::Int(43))
+        Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(43)))
     );
     assert_eq!(
         first.value_to_owned(&first_name),
@@ -389,7 +413,7 @@ fn read_name() {
     let level_value = runtime
         .call(
             "bump",
-            CallArgs::from_positional([OwnedValue::Int(4)]),
+            CallArgs::from_positional([OwnedValue::Scalar(vela_common::ScalarValue::I64(4))]),
             CallOptions::unbounded(),
         )
         .expect("bump should run");
@@ -455,7 +479,10 @@ fn read_level() {
     let level = runtime
         .call("read_level", CallArgs::new(), CallOptions::unbounded())
         .expect("read level should run");
-    assert_eq!(runtime.value_to_owned(&level), Ok(OwnedValue::Int(11)));
+    assert_eq!(
+        runtime.value_to_owned(&level),
+        Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(11)))
+    );
 }
 
 #[test]
@@ -490,12 +517,15 @@ fn reward_score(reward: Reward, bonus) {
             "reward_score",
             CallArgs::new()
                 .with_vela_value(reward.clone())
-                .with(OwnedValue::Int(5)),
+                .with(OwnedValue::Scalar(vela_common::ScalarValue::I64(5))),
             CallOptions::unbounded(),
         )
         .expect("runtime value should pass back without owned materialization");
 
-    assert_eq!(runtime.value_to_owned(&score), Ok(OwnedValue::Int(15)));
+    assert_eq!(
+        runtime.value_to_owned(&score),
+        Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(15)))
+    );
     assert_eq!(
         script_record_field(
             &runtime
@@ -503,7 +533,7 @@ fn reward_score(reward: Reward, bonus) {
                 .expect("runtime value can materialize on demand"),
             "gold",
         ),
-        Some(&OwnedValue::Int(7))
+        Some(&OwnedValue::Scalar(vela_common::ScalarValue::I64(7)))
     );
 }
 
@@ -537,7 +567,7 @@ fn reward_score(reward: Reward) {
         .call(
             "make_reward",
             CallArgs::from_positional([
-                OwnedValue::Int(7),
+                OwnedValue::Scalar(vela_common::ScalarValue::I64(7)),
                 OwnedValue::String("retained".to_owned()),
             ]),
             CallOptions::unbounded(),
@@ -547,7 +577,7 @@ fn reward_score(reward: Reward) {
         .call(
             "make_reward",
             CallArgs::from_positional([
-                OwnedValue::Int(99),
+                OwnedValue::Scalar(vela_common::ScalarValue::I64(99)),
                 OwnedValue::String("scratch".to_owned()),
             ]),
             CallOptions::unbounded(),
@@ -566,7 +596,10 @@ fn reward_score(reward: Reward) {
         )
         .expect("retained runtime value should remain rooted after collection");
 
-    assert_eq!(runtime.value_to_owned(&score), Ok(OwnedValue::Int(7)));
+    assert_eq!(
+        runtime.value_to_owned(&score),
+        Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(7)))
+    );
     assert_eq!(
         script_record_field(
             &runtime

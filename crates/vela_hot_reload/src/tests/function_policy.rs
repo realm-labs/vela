@@ -92,7 +92,7 @@ fn main() {
     runtime.apply_hot_update(update).expect("apply update");
     assert_eq!(
         run_linked_version(&runtime.current(), "main", &[]),
-        Ok(OwnedValue::Int(1))
+        Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(1)))
     );
 }
 
@@ -136,7 +136,7 @@ fn main() {
     runtime.apply_hot_update(update).expect("apply update");
     assert_eq!(
         run_linked_version(&runtime.current(), "main", &[]),
-        Ok(OwnedValue::Int(2))
+        Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(2)))
     );
 }
 
@@ -233,7 +233,7 @@ fn main() {
     runtime.apply_hot_update(update).expect("apply update");
     assert_eq!(
         run_linked_version(&runtime.current(), "main", &[]),
-        Ok(OwnedValue::Int(2))
+        Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(2)))
     );
 }
 
@@ -489,6 +489,6 @@ fn main() {
 
     assert_eq!(
         run_linked_version(&runtime.current(), "main", &[]),
-        Ok(OwnedValue::Int(7))
+        Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(7)))
     );
 }

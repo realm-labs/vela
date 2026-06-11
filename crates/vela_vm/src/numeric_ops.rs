@@ -3,8 +3,14 @@ use crate::{Value, VmError, VmErrorKind, VmResult};
 #[inline]
 pub(crate) fn add_numeric(lhs: &Value, rhs: &Value) -> VmResult<Value> {
     match (lhs, rhs) {
-        (Value::Int(lhs), Value::Int(rhs)) => Ok(Value::Int(lhs + rhs)),
-        (Value::Float(lhs), Value::Float(rhs)) => Ok(Value::Float(lhs + rhs)),
+        (
+            Value::Scalar(vela_common::ScalarValue::I64(lhs)),
+            Value::Scalar(vela_common::ScalarValue::I64(rhs)),
+        ) => Ok(Value::Scalar(vela_common::ScalarValue::I64(lhs + rhs))),
+        (
+            Value::Scalar(vela_common::ScalarValue::F64(lhs)),
+            Value::Scalar(vela_common::ScalarValue::F64(rhs)),
+        ) => Ok(Value::Scalar(vela_common::ScalarValue::F64(lhs + rhs))),
         _ => type_mismatch("add"),
     }
 }
@@ -12,8 +18,14 @@ pub(crate) fn add_numeric(lhs: &Value, rhs: &Value) -> VmResult<Value> {
 #[inline]
 pub(crate) fn sub_numeric(lhs: &Value, rhs: &Value) -> VmResult<Value> {
     match (lhs, rhs) {
-        (Value::Int(lhs), Value::Int(rhs)) => Ok(Value::Int(lhs - rhs)),
-        (Value::Float(lhs), Value::Float(rhs)) => Ok(Value::Float(lhs - rhs)),
+        (
+            Value::Scalar(vela_common::ScalarValue::I64(lhs)),
+            Value::Scalar(vela_common::ScalarValue::I64(rhs)),
+        ) => Ok(Value::Scalar(vela_common::ScalarValue::I64(lhs - rhs))),
+        (
+            Value::Scalar(vela_common::ScalarValue::F64(lhs)),
+            Value::Scalar(vela_common::ScalarValue::F64(rhs)),
+        ) => Ok(Value::Scalar(vela_common::ScalarValue::F64(lhs - rhs))),
         _ => type_mismatch("sub"),
     }
 }
@@ -21,8 +33,14 @@ pub(crate) fn sub_numeric(lhs: &Value, rhs: &Value) -> VmResult<Value> {
 #[inline]
 pub(crate) fn mul_numeric(lhs: &Value, rhs: &Value) -> VmResult<Value> {
     match (lhs, rhs) {
-        (Value::Int(lhs), Value::Int(rhs)) => Ok(Value::Int(lhs * rhs)),
-        (Value::Float(lhs), Value::Float(rhs)) => Ok(Value::Float(lhs * rhs)),
+        (
+            Value::Scalar(vela_common::ScalarValue::I64(lhs)),
+            Value::Scalar(vela_common::ScalarValue::I64(rhs)),
+        ) => Ok(Value::Scalar(vela_common::ScalarValue::I64(lhs * rhs))),
+        (
+            Value::Scalar(vela_common::ScalarValue::F64(lhs)),
+            Value::Scalar(vela_common::ScalarValue::F64(rhs)),
+        ) => Ok(Value::Scalar(vela_common::ScalarValue::F64(lhs * rhs))),
         _ => type_mismatch("mul"),
     }
 }
@@ -30,12 +48,16 @@ pub(crate) fn mul_numeric(lhs: &Value, rhs: &Value) -> VmResult<Value> {
 #[inline]
 pub(crate) fn negate_numeric(value: &Value) -> VmResult<Value> {
     match value {
-        Value::Int(value) => value.checked_neg().map(Value::Int).ok_or_else(|| {
-            VmError::new(VmErrorKind::TypeMismatch {
-                operation: "negate",
+        Value::Scalar(vela_common::ScalarValue::I64(value)) => {
+            value.checked_neg().map(Value::i64).ok_or_else(|| {
+                VmError::new(VmErrorKind::TypeMismatch {
+                    operation: "negate",
+                })
             })
-        }),
-        Value::Float(value) => Ok(Value::Float(-value)),
+        }
+        Value::Scalar(vela_common::ScalarValue::F64(value)) => {
+            Ok(Value::Scalar(vela_common::ScalarValue::F64(-value)))
+        }
         _ => Err(VmError::new(VmErrorKind::TypeMismatch {
             operation: "negate",
         })),
@@ -45,12 +67,22 @@ pub(crate) fn negate_numeric(value: &Value) -> VmResult<Value> {
 #[inline]
 pub(crate) fn div_numeric(lhs: &Value, rhs: &Value) -> VmResult<Value> {
     match (lhs, rhs) {
-        (Value::Int(_), Value::Int(0)) => Err(VmError::new(VmErrorKind::DivisionByZero)),
-        (Value::Int(lhs), Value::Int(rhs)) => Ok(Value::Int(lhs / rhs)),
-        (Value::Float(_), Value::Float(rhs)) if *rhs == 0.0 => {
-            Err(VmError::new(VmErrorKind::DivisionByZero))
-        }
-        (Value::Float(lhs), Value::Float(rhs)) => Ok(Value::Float(lhs / rhs)),
+        (
+            Value::Scalar(vela_common::ScalarValue::I64(_)),
+            Value::Scalar(vela_common::ScalarValue::I64(0)),
+        ) => Err(VmError::new(VmErrorKind::DivisionByZero)),
+        (
+            Value::Scalar(vela_common::ScalarValue::I64(lhs)),
+            Value::Scalar(vela_common::ScalarValue::I64(rhs)),
+        ) => Ok(Value::Scalar(vela_common::ScalarValue::I64(lhs / rhs))),
+        (
+            Value::Scalar(vela_common::ScalarValue::F64(_)),
+            Value::Scalar(vela_common::ScalarValue::F64(rhs)),
+        ) if *rhs == 0.0 => Err(VmError::new(VmErrorKind::DivisionByZero)),
+        (
+            Value::Scalar(vela_common::ScalarValue::F64(lhs)),
+            Value::Scalar(vela_common::ScalarValue::F64(rhs)),
+        ) => Ok(Value::Scalar(vela_common::ScalarValue::F64(lhs / rhs))),
         _ => Err(VmError::new(VmErrorKind::TypeMismatch { operation: "div" })),
     }
 }
@@ -58,12 +90,22 @@ pub(crate) fn div_numeric(lhs: &Value, rhs: &Value) -> VmResult<Value> {
 #[inline]
 pub(crate) fn rem_numeric(lhs: &Value, rhs: &Value) -> VmResult<Value> {
     match (lhs, rhs) {
-        (Value::Int(_), Value::Int(0)) => Err(VmError::new(VmErrorKind::DivisionByZero)),
-        (Value::Int(lhs), Value::Int(rhs)) => Ok(Value::Int(lhs % rhs)),
-        (Value::Float(_), Value::Float(rhs)) if *rhs == 0.0 => {
-            Err(VmError::new(VmErrorKind::DivisionByZero))
-        }
-        (Value::Float(lhs), Value::Float(rhs)) => Ok(Value::Float(lhs % rhs)),
+        (
+            Value::Scalar(vela_common::ScalarValue::I64(_)),
+            Value::Scalar(vela_common::ScalarValue::I64(0)),
+        ) => Err(VmError::new(VmErrorKind::DivisionByZero)),
+        (
+            Value::Scalar(vela_common::ScalarValue::I64(lhs)),
+            Value::Scalar(vela_common::ScalarValue::I64(rhs)),
+        ) => Ok(Value::Scalar(vela_common::ScalarValue::I64(lhs % rhs))),
+        (
+            Value::Scalar(vela_common::ScalarValue::F64(_)),
+            Value::Scalar(vela_common::ScalarValue::F64(rhs)),
+        ) if *rhs == 0.0 => Err(VmError::new(VmErrorKind::DivisionByZero)),
+        (
+            Value::Scalar(vela_common::ScalarValue::F64(lhs)),
+            Value::Scalar(vela_common::ScalarValue::F64(rhs)),
+        ) => Ok(Value::Scalar(vela_common::ScalarValue::F64(lhs % rhs))),
         _ => Err(VmError::new(VmErrorKind::TypeMismatch { operation: "rem" })),
     }
 }
@@ -71,8 +113,14 @@ pub(crate) fn rem_numeric(lhs: &Value, rhs: &Value) -> VmResult<Value> {
 #[inline]
 pub(crate) fn less_numeric(lhs: &Value, rhs: &Value) -> VmResult<bool> {
     match (lhs, rhs) {
-        (Value::Int(lhs), Value::Int(rhs)) => Ok(lhs < rhs),
-        (Value::Float(lhs), Value::Float(rhs)) => Ok(lhs < rhs),
+        (
+            Value::Scalar(vela_common::ScalarValue::I64(lhs)),
+            Value::Scalar(vela_common::ScalarValue::I64(rhs)),
+        ) => Ok(lhs < rhs),
+        (
+            Value::Scalar(vela_common::ScalarValue::F64(lhs)),
+            Value::Scalar(vela_common::ScalarValue::F64(rhs)),
+        ) => Ok(lhs < rhs),
         _ => type_mismatch("less"),
     }
 }
@@ -80,8 +128,14 @@ pub(crate) fn less_numeric(lhs: &Value, rhs: &Value) -> VmResult<bool> {
 #[inline]
 pub(crate) fn less_equal_numeric(lhs: &Value, rhs: &Value) -> VmResult<bool> {
     match (lhs, rhs) {
-        (Value::Int(lhs), Value::Int(rhs)) => Ok(lhs <= rhs),
-        (Value::Float(lhs), Value::Float(rhs)) => Ok(lhs <= rhs),
+        (
+            Value::Scalar(vela_common::ScalarValue::I64(lhs)),
+            Value::Scalar(vela_common::ScalarValue::I64(rhs)),
+        ) => Ok(lhs <= rhs),
+        (
+            Value::Scalar(vela_common::ScalarValue::F64(lhs)),
+            Value::Scalar(vela_common::ScalarValue::F64(rhs)),
+        ) => Ok(lhs <= rhs),
         _ => type_mismatch("less_equal"),
     }
 }
@@ -89,8 +143,14 @@ pub(crate) fn less_equal_numeric(lhs: &Value, rhs: &Value) -> VmResult<bool> {
 #[inline]
 pub(crate) fn greater_numeric(lhs: &Value, rhs: &Value) -> VmResult<bool> {
     match (lhs, rhs) {
-        (Value::Int(lhs), Value::Int(rhs)) => Ok(lhs > rhs),
-        (Value::Float(lhs), Value::Float(rhs)) => Ok(lhs > rhs),
+        (
+            Value::Scalar(vela_common::ScalarValue::I64(lhs)),
+            Value::Scalar(vela_common::ScalarValue::I64(rhs)),
+        ) => Ok(lhs > rhs),
+        (
+            Value::Scalar(vela_common::ScalarValue::F64(lhs)),
+            Value::Scalar(vela_common::ScalarValue::F64(rhs)),
+        ) => Ok(lhs > rhs),
         _ => type_mismatch("greater"),
     }
 }
@@ -98,8 +158,14 @@ pub(crate) fn greater_numeric(lhs: &Value, rhs: &Value) -> VmResult<bool> {
 #[inline]
 pub(crate) fn greater_equal_numeric(lhs: &Value, rhs: &Value) -> VmResult<bool> {
     match (lhs, rhs) {
-        (Value::Int(lhs), Value::Int(rhs)) => Ok(lhs >= rhs),
-        (Value::Float(lhs), Value::Float(rhs)) => Ok(lhs >= rhs),
+        (
+            Value::Scalar(vela_common::ScalarValue::I64(lhs)),
+            Value::Scalar(vela_common::ScalarValue::I64(rhs)),
+        ) => Ok(lhs >= rhs),
+        (
+            Value::Scalar(vela_common::ScalarValue::F64(lhs)),
+            Value::Scalar(vela_common::ScalarValue::F64(rhs)),
+        ) => Ok(lhs >= rhs),
         _ => type_mismatch("greater_equal"),
     }
 }

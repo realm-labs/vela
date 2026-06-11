@@ -23,7 +23,7 @@ fn runtime_compiles_hot_reload_changed_file_from_active_version() {
             &mut adapter,
             &mut tx
         ),
-        Ok(OwnedValue::Int(2))
+        Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(2)))
     );
 
     write_reward_module(&reward_file, 6);
@@ -45,7 +45,7 @@ fn runtime_compiles_hot_reload_changed_file_from_active_version() {
             &mut adapter,
             &mut tx
         ),
-        Ok(OwnedValue::Int(6))
+        Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(6)))
     );
 }
 
@@ -72,7 +72,7 @@ fn runtime_stages_hot_reload_changed_file_until_check_reload_safe_point() {
             &mut adapter,
             &mut tx
         ),
-        Ok(OwnedValue::Int(2))
+        Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(2)))
     );
 
     write_reward_module(&reward_file, 6);
@@ -93,7 +93,7 @@ fn runtime_stages_hot_reload_changed_file_until_check_reload_safe_point() {
             &mut adapter,
             &mut tx
         ),
-        Ok(OwnedValue::Int(2))
+        Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(2)))
     );
 
     let report = runtime
@@ -121,7 +121,7 @@ fn runtime_stages_hot_reload_changed_file_until_check_reload_safe_point() {
             &mut adapter,
             &mut tx
         ),
-        Ok(OwnedValue::Int(6))
+        Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(6)))
     );
 }
 
@@ -170,7 +170,7 @@ fn runtime_stages_changed_file_hot_reload_rejection_until_safe_point() {
             &mut adapter,
             &mut tx
         ),
-        Ok(OwnedValue::Int(2))
+        Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(2)))
     );
 
     let report = runtime
@@ -193,7 +193,7 @@ fn runtime_stages_changed_file_hot_reload_rejection_until_safe_point() {
             &mut adapter,
             &mut tx
         ),
-        Ok(OwnedValue::Int(2))
+        Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(2)))
     );
 }
 
@@ -220,7 +220,7 @@ fn runtime_stages_changed_file_return_abi_rejection_until_safe_point() {
             &mut adapter,
             &mut tx
         ),
-        Ok(OwnedValue::Int(2))
+        Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(2)))
     );
 
     write_typed_reward_module(&reward_file, "float", "6.0");
@@ -236,7 +236,7 @@ fn runtime_stages_changed_file_return_abi_rejection_until_safe_point() {
             &mut adapter,
             &mut tx
         ),
-        Ok(OwnedValue::Int(2))
+        Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(2)))
     );
 
     let report = runtime
@@ -269,7 +269,7 @@ fn runtime_stages_changed_file_return_abi_rejection_until_safe_point() {
             &mut adapter,
             &mut tx
         ),
-        Ok(OwnedValue::Int(2))
+        Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(2)))
     );
 }
 
@@ -296,7 +296,7 @@ fn runtime_stages_changed_file_required_parameter_rejection_until_safe_point() {
             &mut adapter,
             &mut tx
         ),
-        Ok(OwnedValue::Int(2))
+        Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(2)))
     );
 
     write_reward_module_with_signature(&reward_file, "(amount: int) -> int", "amount");
@@ -312,7 +312,7 @@ fn runtime_stages_changed_file_required_parameter_rejection_until_safe_point() {
             &mut adapter,
             &mut tx
         ),
-        Ok(OwnedValue::Int(2))
+        Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(2)))
     );
 
     let report = runtime
@@ -342,7 +342,7 @@ fn runtime_stages_changed_file_required_parameter_rejection_until_safe_point() {
             &mut adapter,
             &mut tx
         ),
-        Ok(OwnedValue::Int(2))
+        Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(2)))
     );
 }
 
@@ -370,7 +370,7 @@ fn runtime_stages_changed_file_script_function_access_rejection_until_safe_point
             &mut adapter,
             &mut tx
         ),
-        Ok(OwnedValue::Int(2))
+        Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(2)))
     );
 
     std::fs::write(
@@ -403,7 +403,7 @@ fn grant() {
             &mut adapter,
             &mut tx
         ),
-        Ok(OwnedValue::Int(2))
+        Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(2)))
     );
 
     let report = runtime
@@ -423,7 +423,7 @@ fn grant() {
             &mut adapter,
             &mut tx
         ),
-        Ok(OwnedValue::Int(2))
+        Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(2)))
     );
 }
 

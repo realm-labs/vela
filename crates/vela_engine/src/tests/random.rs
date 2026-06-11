@@ -93,7 +93,7 @@ fn main() {
         run_linked_program(&second_engine, &program).expect("second random run should succeed");
 
     assert_eq!(first, second);
-    assert_ne!(first, OwnedValue::Int(0));
+    assert_ne!(first, OwnedValue::Scalar(vela_common::ScalarValue::I64(0)));
 }
 
 #[test]
@@ -257,5 +257,5 @@ fn main() {
         .expect("second reflected random run should succeed");
 
     assert_eq!(first, second);
-    assert_ne!(first, OwnedValue::Int(0));
+    assert_ne!(first, OwnedValue::Scalar(vela_common::ScalarValue::I64(0)));
 }

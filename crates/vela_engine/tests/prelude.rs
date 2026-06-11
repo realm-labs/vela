@@ -49,7 +49,10 @@ fn main(player: Player, amount: int) {
         )
         .expect("runtime call should run");
 
-    assert_eq!(result, OwnedValue::Int(12));
+    assert_eq!(
+        result,
+        OwnedValue::Scalar(vela_common::ScalarValue::I64(12))
+    );
 }
 
 #[test]
@@ -103,10 +106,16 @@ pub const BASE: int = 10;
                 .access(FunctionAccess::public()),
             #[allow(clippy::result_large_err)]
             |args| {
-                let [OwnedValue::Int(base), OwnedValue::Int(amount)] = args else {
+                let [
+                    OwnedValue::Scalar(vela_common::ScalarValue::I64(base)),
+                    OwnedValue::Scalar(vela_common::ScalarValue::I64(amount)),
+                ] = args
+                else {
                     return Ok(OwnedValue::Null);
                 };
-                Ok(OwnedValue::Int(base + amount))
+                Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(
+                    base + amount,
+                )))
             },
         )
         .build()
@@ -139,7 +148,7 @@ pub const BASE: int = 10;
             &mut adapter,
             &mut tx
         ),
-        Ok(OwnedValue::Int(15))
+        Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(15)))
     );
 }
 

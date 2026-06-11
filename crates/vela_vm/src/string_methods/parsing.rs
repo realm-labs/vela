@@ -11,7 +11,7 @@ pub(crate) fn parse_int(
 ) -> VmResult<Value> {
     expect_no_args("parse_int", args)?;
     let value = string_value(receiver, heap.as_deref(), "method parse_int")?;
-    let payload = value.parse::<i64>().ok().map(Value::Int);
+    let payload = value.parse::<i64>().ok().map(Value::i64);
     let Some(heap) = heap.as_deref_mut() else {
         return super::type_error("method parse_int");
     };
@@ -30,7 +30,7 @@ pub(crate) fn parse_float(
         .parse::<f64>()
         .ok()
         .filter(|value| value.is_finite())
-        .map(Value::Float);
+        .map(Value::f64);
     let Some(heap) = heap.as_deref_mut() else {
         return super::type_error("method parse_float");
     };

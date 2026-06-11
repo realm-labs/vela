@@ -222,7 +222,7 @@ fn module_function_queries_return_records_and_candidates() {
     );
     assert_eq!(
         function_list_item.get("id"),
-        Some(&ReflectValue::Host(HostValue::Int(
+        Some(&ReflectValue::Host(HostValue::i64(
             i64::try_from(function_id.get()).unwrap_or(i64::MAX)
         )))
     );
@@ -242,7 +242,7 @@ fn module_function_queries_return_records_and_candidates() {
     assert_eq!(type_name, "ReflectFunction");
     assert_eq!(
         function_metadata.get("id"),
-        Some(&ReflectValue::Host(HostValue::Int(
+        Some(&ReflectValue::Host(HostValue::i64(
             i64::try_from(function_id.get()).unwrap_or(i64::MAX)
         )))
     );

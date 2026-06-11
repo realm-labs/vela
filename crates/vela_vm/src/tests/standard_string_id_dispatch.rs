@@ -128,7 +128,7 @@ fn call_method_uses_standard_string_argument_transform_ids_before_name_fallback(
         run_string_transform_with_args_by_id(
             std_method_id("String", "repeat"),
             "xp",
-            &[Constant::Int(3)],
+            &[Constant::Scalar(vela_common::ScalarValue::I64(3))],
         ),
         Ok(OwnedValue::String("xpxpxp".to_owned()))
     );
@@ -136,7 +136,10 @@ fn call_method_uses_standard_string_argument_transform_ids_before_name_fallback(
         run_string_transform_with_args_by_id(
             std_method_id("String", "slice"),
             "reward",
-            &[Constant::Int(1), Constant::Int(5)],
+            &[
+                Constant::Scalar(vela_common::ScalarValue::I64(1)),
+                Constant::Scalar(vela_common::ScalarValue::I64(5))
+            ],
         ),
         Ok(OwnedValue::String("ewar".to_owned()))
     );
@@ -150,7 +153,9 @@ fn call_method_uses_standard_string_option_ids_before_name_fallback() {
             "reward:gold",
             &[Constant::String(":".to_owned())],
         ),
-        Ok(option_some(OwnedValue::Int(6)))
+        Ok(option_some(OwnedValue::Scalar(
+            vela_common::ScalarValue::I64(6)
+        )))
     );
     assert_eq!(
         run_string_transform_with_args_by_id(
@@ -172,7 +177,7 @@ fn call_method_uses_standard_string_option_ids_before_name_fallback() {
         run_string_transform_with_args_by_id(
             std_method_id("String", "char_at"),
             "reward:gold",
-            &[Constant::Int(6)],
+            &[Constant::Scalar(vela_common::ScalarValue::I64(6))],
         ),
         Ok(option_some(OwnedValue::String(":".to_owned())))
     );
@@ -218,11 +223,15 @@ fn call_method_uses_standard_string_split_ids_before_name_fallback() {
 fn call_method_uses_standard_string_parse_ids_before_name_fallback() {
     assert_eq!(
         run_string_transform_with_args_by_id(std_method_id("String", "parse_int"), "42", &[],),
-        Ok(option_some(OwnedValue::Int(42)))
+        Ok(option_some(OwnedValue::Scalar(
+            vela_common::ScalarValue::I64(42)
+        )))
     );
     assert_eq!(
         run_string_transform_with_args_by_id(std_method_id("String", "parse_float"), "1.5", &[],),
-        Ok(option_some(OwnedValue::Float(1.5)))
+        Ok(option_some(OwnedValue::Scalar(
+            vela_common::ScalarValue::F64(1.5)
+        )))
     );
     assert_eq!(
         run_string_transform_with_args_by_id(std_method_id("String", "parse_bool"), "true", &[],),

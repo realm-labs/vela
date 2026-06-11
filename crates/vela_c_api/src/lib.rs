@@ -256,12 +256,12 @@ fn value_to_c(value: OwnedValue) -> Result<VelaCValue, (VelaStatus, String)> {
             bool_value: u8::from(value),
             ..VelaCValue::missing()
         }),
-        OwnedValue::Int(value) => Ok(VelaCValue {
+        OwnedValue::Scalar(vela_common::ScalarValue::I64(value)) => Ok(VelaCValue {
             kind: VelaCValueKind::Int,
             int_value: value,
             ..VelaCValue::missing()
         }),
-        OwnedValue::Float(value) => Ok(VelaCValue {
+        OwnedValue::Scalar(vela_common::ScalarValue::F64(value)) => Ok(VelaCValue {
             kind: VelaCValueKind::Float,
             float_value: value,
             ..VelaCValue::missing()

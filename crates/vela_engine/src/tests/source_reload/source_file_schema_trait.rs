@@ -36,7 +36,7 @@ fn main() {
     );
     assert_eq!(
         runtime.call_raw("main", &[], CallOptions::unbounded(), &mut adapter, &mut tx),
-        Ok(OwnedValue::Int(1))
+        Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(1)))
     );
 
     let report = runtime
@@ -48,7 +48,7 @@ fn main() {
     assert_eq!(report.changed_functions, vec!["main"]);
     assert_eq!(
         runtime.call_raw("main", &[], CallOptions::unbounded(), &mut adapter, &mut tx),
-        Ok(OwnedValue::Int(2))
+        Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(2)))
     );
 }
 
@@ -105,7 +105,7 @@ fn main() {
     );
     assert_eq!(
         runtime.call_raw("main", &[], CallOptions::unbounded(), &mut adapter, &mut tx),
-        Ok(OwnedValue::Int(1))
+        Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(1)))
     );
 
     let report = runtime
@@ -117,7 +117,7 @@ fn main() {
     assert_eq!(report.changed_functions, vec!["main"]);
     assert_eq!(
         runtime.call_raw("main", &[], CallOptions::unbounded(), &mut adapter, &mut tx),
-        Ok(OwnedValue::Int(2))
+        Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(2)))
     );
 }
 
@@ -157,7 +157,7 @@ fn main() {
     );
     assert_eq!(
         runtime.call_raw("main", &[], CallOptions::unbounded(), &mut adapter, &mut tx),
-        Ok(OwnedValue::Int(1))
+        Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(1)))
     );
 
     let report = runtime
@@ -172,7 +172,7 @@ fn main() {
     assert_changed_schema_abi_repair_hint(&report);
     assert_eq!(
         runtime.call_raw("main", &[], CallOptions::unbounded(), &mut adapter, &mut tx),
-        Ok(OwnedValue::Int(1))
+        Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(1)))
     );
 }
 
@@ -208,7 +208,7 @@ fn main() {
     );
     assert_eq!(
         runtime.call_raw("main", &[], CallOptions::unbounded(), &mut adapter, &mut tx),
-        Ok(OwnedValue::Int(1))
+        Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(1)))
     );
 
     let report = runtime
@@ -234,7 +234,7 @@ fn main() {
     assert!(source_span.is_some());
     assert_eq!(
         runtime.call_raw("main", &[], CallOptions::unbounded(), &mut adapter, &mut tx),
-        Ok(OwnedValue::Int(1))
+        Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(1)))
     );
 }
 
@@ -275,7 +275,7 @@ fn main() {
     );
     assert_eq!(
         runtime.call_raw("main", &[], CallOptions::unbounded(), &mut adapter, &mut tx),
-        Ok(OwnedValue::Int(1))
+        Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(1)))
     );
 
     let report = runtime
@@ -290,7 +290,7 @@ fn main() {
     assert_changed_schema_abi_repair_hint(&report);
     assert_eq!(
         runtime.call_raw("main", &[], CallOptions::unbounded(), &mut adapter, &mut tx),
-        Ok(OwnedValue::Int(1))
+        Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(1)))
     );
 }
 
@@ -334,7 +334,7 @@ fn main() {
     );
     assert_eq!(
         runtime.call_raw("main", &[], CallOptions::unbounded(), &mut adapter, &mut tx),
-        Ok(OwnedValue::Int(1))
+        Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(1)))
     );
 
     let report = runtime
@@ -346,7 +346,7 @@ fn main() {
     assert_eq!(report.changed_functions, vec!["main"]);
     assert_eq!(
         runtime.call_raw("main", &[], CallOptions::unbounded(), &mut adapter, &mut tx),
-        Ok(OwnedValue::Int(2))
+        Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(2)))
     );
 }
 
@@ -390,7 +390,7 @@ fn main() {
     );
     assert_eq!(
         runtime.call_raw("main", &[], CallOptions::unbounded(), &mut adapter, &mut tx),
-        Ok(OwnedValue::Int(1))
+        Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(1)))
     );
 
     let report = runtime
@@ -405,7 +405,7 @@ fn main() {
     assert_changed_schema_abi_repair_hint(&report);
     assert_eq!(
         runtime.call_raw("main", &[], CallOptions::unbounded(), &mut adapter, &mut tx),
-        Ok(OwnedValue::Int(1))
+        Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(1)))
     );
 }
 
@@ -450,7 +450,7 @@ fn main() {
     );
     assert_eq!(
         runtime.call_raw("main", &[], CallOptions::unbounded(), &mut adapter, &mut tx),
-        Ok(OwnedValue::Int(1))
+        Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(1)))
     );
 
     let report = runtime
@@ -465,7 +465,7 @@ fn main() {
     assert_changed_schema_abi_repair_hint(&report);
     assert_eq!(
         runtime.call_raw("main", &[], CallOptions::unbounded(), &mut adapter, &mut tx),
-        Ok(OwnedValue::Int(1))
+        Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(1)))
     );
 }
 
@@ -514,7 +514,7 @@ fn main() {
     );
     assert_eq!(
         runtime.call_raw("main", &[], CallOptions::unbounded(), &mut adapter, &mut tx),
-        Ok(OwnedValue::Int(1))
+        Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(1)))
     );
 
     let report = runtime
@@ -529,7 +529,7 @@ fn main() {
     assert_changed_schema_abi_repair_hint(&report);
     assert_eq!(
         runtime.call_raw("main", &[], CallOptions::unbounded(), &mut adapter, &mut tx),
-        Ok(OwnedValue::Int(1))
+        Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(1)))
     );
 }
 
@@ -578,7 +578,7 @@ fn main() {
     );
     assert_eq!(
         runtime.call_raw("main", &[], CallOptions::unbounded(), &mut adapter, &mut tx),
-        Ok(OwnedValue::Int(1))
+        Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(1)))
     );
 
     let report = runtime
@@ -590,7 +590,7 @@ fn main() {
     assert!(report.changed_functions.contains(&"main".to_owned()));
     assert_eq!(
         runtime.call_raw("main", &[], CallOptions::unbounded(), &mut adapter, &mut tx),
-        Ok(OwnedValue::Int(2))
+        Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(2)))
     );
 }
 
@@ -625,7 +625,7 @@ fn main() {
     );
     assert_eq!(
         runtime.call_raw("main", &[], CallOptions::unbounded(), &mut adapter, &mut tx),
-        Ok(OwnedValue::Int(1))
+        Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(1)))
     );
 
     let report = runtime
@@ -640,7 +640,7 @@ fn main() {
     assert_removed_trait_abi_repair_hint(&report);
     assert_eq!(
         runtime.call_raw("main", &[], CallOptions::unbounded(), &mut adapter, &mut tx),
-        Ok(OwnedValue::Int(1))
+        Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(1)))
     );
 }
 
@@ -679,7 +679,7 @@ fn main() {
     );
     assert_eq!(
         runtime.call_raw("main", &[], CallOptions::unbounded(), &mut adapter, &mut tx),
-        Ok(OwnedValue::Int(1))
+        Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(1)))
     );
 
     let report = runtime
@@ -694,7 +694,7 @@ fn main() {
     assert_changed_trait_abi_repair_hint(&report);
     assert_eq!(
         runtime.call_raw("main", &[], CallOptions::unbounded(), &mut adapter, &mut tx),
-        Ok(OwnedValue::Int(1))
+        Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(1)))
     );
 }
 
@@ -734,7 +734,7 @@ fn main() {
     );
     assert_eq!(
         runtime.call_raw("main", &[], CallOptions::unbounded(), &mut adapter, &mut tx),
-        Ok(OwnedValue::Int(1))
+        Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(1)))
     );
 
     let report = runtime
@@ -749,7 +749,7 @@ fn main() {
     assert_changed_trait_abi_repair_hint(&report);
     assert_eq!(
         runtime.call_raw("main", &[], CallOptions::unbounded(), &mut adapter, &mut tx),
-        Ok(OwnedValue::Int(1))
+        Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(1)))
     );
 }
 
@@ -789,7 +789,7 @@ fn main() {
     );
     assert_eq!(
         runtime.call_raw("main", &[], CallOptions::unbounded(), &mut adapter, &mut tx),
-        Ok(OwnedValue::Int(1))
+        Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(1)))
     );
 
     let report = runtime
@@ -802,7 +802,7 @@ fn main() {
     assert!(report.changed_functions.contains(&"main".to_owned()));
     assert_eq!(
         runtime.call_raw("main", &[], CallOptions::unbounded(), &mut adapter, &mut tx),
-        Ok(OwnedValue::Int(2))
+        Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(2)))
     );
 }
 
@@ -836,12 +836,15 @@ fn on_kill(monster_id: int, player_id: int) {
     assert_eq!(
         runtime.call_raw(
             "on_kill",
-            &[OwnedValue::Int(7), OwnedValue::Int(11)],
+            &[
+                OwnedValue::Scalar(vela_common::ScalarValue::I64(7)),
+                OwnedValue::Scalar(vela_common::ScalarValue::I64(11))
+            ],
             CallOptions::unbounded(),
             &mut adapter,
             &mut tx
         ),
-        Ok(OwnedValue::Int(1))
+        Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(1)))
     );
 
     let report = runtime
@@ -863,12 +866,15 @@ fn on_kill(monster_id: int, player_id: int) {
     assert_eq!(
         runtime.call_raw(
             "on_kill",
-            &[OwnedValue::Int(7), OwnedValue::Int(11)],
+            &[
+                OwnedValue::Scalar(vela_common::ScalarValue::I64(7)),
+                OwnedValue::Scalar(vela_common::ScalarValue::I64(11))
+            ],
             CallOptions::unbounded(),
             &mut adapter,
             &mut tx
         ),
-        Ok(OwnedValue::Int(1))
+        Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(1)))
     );
 }
 
@@ -902,12 +908,15 @@ fn on_kill(player_id: int, monster_id: int) {
     assert_eq!(
         runtime.call_raw(
             "on_kill",
-            &[OwnedValue::Int(7), OwnedValue::Int(11)],
+            &[
+                OwnedValue::Scalar(vela_common::ScalarValue::I64(7)),
+                OwnedValue::Scalar(vela_common::ScalarValue::I64(11))
+            ],
             CallOptions::unbounded(),
             &mut adapter,
             &mut tx
         ),
-        Ok(OwnedValue::Int(1))
+        Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(1)))
     );
 
     let report = runtime
@@ -934,12 +943,15 @@ fn on_kill(player_id: int, monster_id: int) {
     assert_eq!(
         runtime.call_raw(
             "on_kill",
-            &[OwnedValue::Int(7), OwnedValue::Int(11)],
+            &[
+                OwnedValue::Scalar(vela_common::ScalarValue::I64(7)),
+                OwnedValue::Scalar(vela_common::ScalarValue::I64(11))
+            ],
             CallOptions::unbounded(),
             &mut adapter,
             &mut tx
         ),
-        Ok(OwnedValue::Int(1))
+        Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(1)))
     );
 }
 
@@ -970,7 +982,7 @@ fn main() -> float {
     );
     assert_eq!(
         runtime.call_raw("main", &[], CallOptions::unbounded(), &mut adapter, &mut tx),
-        Ok(OwnedValue::Int(1))
+        Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(1)))
     );
 
     let report = runtime
@@ -1001,7 +1013,7 @@ fn main() -> float {
     assert!(source_span.is_some());
     assert_eq!(
         runtime.call_raw("main", &[], CallOptions::unbounded(), &mut adapter, &mut tx),
-        Ok(OwnedValue::Int(1))
+        Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(1)))
     );
 }
 
@@ -1033,12 +1045,12 @@ fn main(player_id: int, amount: int) {
     assert_eq!(
         runtime.call_raw(
             "main",
-            &[OwnedValue::Int(7)],
+            &[OwnedValue::Scalar(vela_common::ScalarValue::I64(7))],
             CallOptions::unbounded(),
             &mut adapter,
             &mut tx
         ),
-        Ok(OwnedValue::Int(7))
+        Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(7)))
     );
 
     let report = runtime
@@ -1063,12 +1075,12 @@ fn main(player_id: int, amount: int) {
     assert_eq!(
         runtime.call_raw(
             "main",
-            &[OwnedValue::Int(7)],
+            &[OwnedValue::Scalar(vela_common::ScalarValue::I64(7))],
             CallOptions::unbounded(),
             &mut adapter,
             &mut tx
         ),
-        Ok(OwnedValue::Int(7))
+        Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(7)))
     );
 }
 
@@ -1095,7 +1107,7 @@ fn main() {
 
     assert_eq!(
         runtime.call_raw("main", &[], CallOptions::unbounded(), &mut adapter, &mut tx),
-        Ok(OwnedValue::Int(2))
+        Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(2)))
     );
 
     stage_source_update(
@@ -1112,7 +1124,7 @@ fn main() {
     );
     assert_eq!(
         runtime.call_raw("main", &[], CallOptions::unbounded(), &mut adapter, &mut tx),
-        Ok(OwnedValue::Int(2))
+        Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(2)))
     );
 
     let report = runtime
@@ -1126,6 +1138,6 @@ fn main() {
     assert_changed_function_access_rejection(&report, "grant");
     assert_eq!(
         runtime.call_raw("main", &[], CallOptions::unbounded(), &mut adapter, &mut tx),
-        Ok(OwnedValue::Int(2))
+        Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(2)))
     );
 }

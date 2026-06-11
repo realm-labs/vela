@@ -67,7 +67,10 @@ fn main(player) {
 "#,
     )
     .expect("compile reflection source");
-    let mut adapter = host_adapter(host_ref, HostValue::Int(9));
+    let mut adapter = host_adapter(
+        host_ref,
+        HostValue::Scalar(vela_common::ScalarValue::I64(9)),
+    );
     let mut tx = HostAccess::new();
     let mut vm = Vm::new();
     vm.register_reflection_natives(Arc::new(reflection_registry()));
@@ -86,14 +89,17 @@ fn main(player) {
         )
     };
 
-    assert_eq!(result, Ok(OwnedValue::Int(10)));
     assert_eq!(
-        adapter.read_diagnostic_path(&level_path(host_ref)),
-        Ok(HostValue::Int(10))
+        result,
+        Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(10)))
     );
     assert_eq!(
         adapter.read_diagnostic_path(&level_path(host_ref)),
-        Ok(HostValue::Int(10))
+        Ok(HostValue::Scalar(vela_common::ScalarValue::I64(10)))
+    );
+    assert_eq!(
+        adapter.read_diagnostic_path(&level_path(host_ref)),
+        Ok(HostValue::Scalar(vela_common::ScalarValue::I64(10)))
     );
 }
 
@@ -110,7 +116,10 @@ fn main(player) {
 "#,
     )
     .expect("compile denied reflection write source");
-    let mut adapter = host_adapter(host_ref, HostValue::Int(9));
+    let mut adapter = host_adapter(
+        host_ref,
+        HostValue::Scalar(vela_common::ScalarValue::I64(9)),
+    );
     let mut tx = HostAccess::new();
     let mut vm = Vm::new();
     vm.register_reflection_natives_with_permissions(
@@ -149,7 +158,10 @@ fn main(player) {
 "#,
     )
     .expect("compile denied reflection call source");
-    let mut adapter = host_adapter(host_ref, HostValue::Int(9));
+    let mut adapter = host_adapter(
+        host_ref,
+        HostValue::Scalar(vela_common::ScalarValue::I64(9)),
+    );
     adapter.insert_method_return(HostMethodId::new(5), HostValue::Null);
     let mut tx = HostAccess::new();
     let mut vm = Vm::new();
@@ -199,7 +211,10 @@ fn main(player) {
                     .access(MethodAccess::new().reflect_callable(true)),
             ),
     );
-    let mut adapter = host_adapter(host_ref, HostValue::Int(9));
+    let mut adapter = host_adapter(
+        host_ref,
+        HostValue::Scalar(vela_common::ScalarValue::I64(9)),
+    );
     let mut tx = HostAccess::new();
     let mut vm = Vm::new();
     vm.register_reflection_natives_with_policy(
@@ -246,7 +261,10 @@ fn main(player) {
 "#,
     )
     .expect("compile denied host-ref metadata source");
-    let mut adapter = host_adapter(host_ref, HostValue::Int(9));
+    let mut adapter = host_adapter(
+        host_ref,
+        HostValue::Scalar(vela_common::ScalarValue::I64(9)),
+    );
     let mut tx = HostAccess::new();
     let mut vm = Vm::new();
     vm.register_reflection_natives_with_permissions(
@@ -285,7 +303,10 @@ fn main(player) {
 "#,
     )
     .expect("compile denied host-ref trait metadata source");
-    let mut adapter = host_adapter(host_ref, HostValue::Int(9));
+    let mut adapter = host_adapter(
+        host_ref,
+        HostValue::Scalar(vela_common::ScalarValue::I64(9)),
+    );
     let mut tx = HostAccess::new();
     let mut vm = Vm::new();
     vm.register_reflection_natives_with_permissions(
@@ -324,7 +345,10 @@ fn main(player) {
 "#,
     )
     .expect("compile denied host-ref implements source");
-    let mut adapter = host_adapter(host_ref, HostValue::Int(9));
+    let mut adapter = host_adapter(
+        host_ref,
+        HostValue::Scalar(vela_common::ScalarValue::I64(9)),
+    );
     let mut tx = HostAccess::new();
     let mut vm = Vm::new();
     vm.register_reflection_natives_with_permissions(
@@ -567,7 +591,7 @@ fn main(player) {
     let mut adapter = MockStateAdapter::new();
     adapter.insert_diagnostic_path_value(
         HostPath::new(host_ref).field(secret_field),
-        HostValue::Int(99),
+        HostValue::Scalar(vela_common::ScalarValue::I64(99)),
     );
     let mut tx = HostAccess::new();
     let mut vm = Vm::new();
@@ -681,7 +705,7 @@ fn main(player) {
     let mut adapter = MockStateAdapter::new();
     adapter.insert_diagnostic_path_value(
         HostPath::new(host_ref).field(FieldId::new(1)),
-        HostValue::Int(9),
+        HostValue::Scalar(vela_common::ScalarValue::I64(9)),
     );
     let mut tx = HostAccess::new();
     let mut vm = Vm::new();
@@ -793,7 +817,10 @@ fn main(player) {
 "#,
     )
     .expect("compile budgeted reflection source");
-    let mut adapter = host_adapter(host_ref, HostValue::Int(9));
+    let mut adapter = host_adapter(
+        host_ref,
+        HostValue::Scalar(vela_common::ScalarValue::I64(9)),
+    );
     let mut tx = HostAccess::new();
     let mut vm = Vm::new();
     vm.register_reflection_natives_with_policy(
@@ -838,7 +865,10 @@ fn main(player) {
 "#,
     )
     .expect("compile reflection source");
-    let mut adapter = host_adapter(host_ref, HostValue::Int(9));
+    let mut adapter = host_adapter(
+        host_ref,
+        HostValue::Scalar(vela_common::ScalarValue::I64(9)),
+    );
     let mut tx = HostAccess::new();
     let mut vm = Vm::new();
     vm.register_reflection_natives(Arc::new(reflection_registry()));
@@ -862,5 +892,5 @@ fn main(player) {
         )
     };
 
-    assert_eq!(result, Ok(RuntimeValue::Int(10)));
+    assert_eq!(result, Ok(RuntimeValue::i64(10)));
 }

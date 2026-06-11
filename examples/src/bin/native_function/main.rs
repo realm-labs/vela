@@ -75,9 +75,13 @@ fn grant_level(
     amount: i64,
 ) -> vela_vm::error::VmResult<i64> {
     let path = Player::vela_field_path_level(player);
-    ctx.add_path(path.clone(), HostValue::Int(amount), None)?;
+    ctx.add_path(
+        path.clone(),
+        HostValue::Scalar(vela_common::ScalarValue::I64(amount)),
+        None,
+    )?;
     match ctx.read_path(&path, None)? {
-        HostValue::Int(level) => Ok(level),
+        HostValue::Scalar(vela_common::ScalarValue::I64(level)) => Ok(level),
         _ => Ok(0),
     }
 }

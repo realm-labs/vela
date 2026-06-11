@@ -24,8 +24,12 @@ fn double(OwnedValue) {
     .expect("compile program source");
 
     assert_eq!(
-        run_records_program(&program, "double", &[OwnedValue::Int(9)]),
-        Ok(OwnedValue::Int(18))
+        run_records_program(
+            &program,
+            "double",
+            &[OwnedValue::Scalar(vela_common::ScalarValue::I64(9))]
+        ),
+        Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(18)))
     );
 }
 
@@ -41,8 +45,8 @@ fn runs_compiled_array_literal_source() {
     assert_eq!(
         run_linked_test_code(code),
         Ok(OwnedValue::Array(vec![
-            OwnedValue::Int(1),
-            OwnedValue::Int(5),
+            OwnedValue::Scalar(vela_common::ScalarValue::I64(1)),
+            OwnedValue::Scalar(vela_common::ScalarValue::I64(5)),
             OwnedValue::String("gold".into())
         ]))
     );
@@ -78,8 +82,8 @@ fn heap_execution_allocates_array_and_string_literals() {
     let Some(HeapValue::Array(values)) = heap.get(array_ref) else {
         panic!("expected heap array object");
     };
-    assert_eq!(values[0], RuntimeValue::Int(1));
-    assert_eq!(values[1], RuntimeValue::Int(5));
+    assert_eq!(values[0], RuntimeValue::i64(1));
+    assert_eq!(values[1], RuntimeValue::i64(5));
     let RuntimeValue::HeapRef(string_ref) = values[2] else {
         panic!("expected heap string ref");
     };
@@ -99,8 +103,14 @@ fn runs_compiled_map_literal_source() {
     )
     .expect("compile map literal source");
     let mut expected = BTreeMap::new();
-    expected.insert("level".into(), OwnedValue::Int(2));
-    expected.insert("exp".into(), OwnedValue::Int(15));
+    expected.insert(
+        "level".into(),
+        OwnedValue::Scalar(vela_common::ScalarValue::I64(2)),
+    );
+    expected.insert(
+        "exp".into(),
+        OwnedValue::Scalar(vela_common::ScalarValue::I64(15)),
+    );
 
     assert_eq!(run_linked_test_code(code), Ok(OwnedValue::Map(expected)));
 }
@@ -123,7 +133,7 @@ fn main() {
 
     assert_eq!(
         run_records_program(&program, "main", &[]),
-        Ok(OwnedValue::Int(10))
+        Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(10)))
     );
 }
 
@@ -156,7 +166,10 @@ fn main() {
     )
     .expect("run heap-backed record source");
 
-    assert_eq!(result, OwnedValue::Int(10));
+    assert_eq!(
+        result,
+        OwnedValue::Scalar(vela_common::ScalarValue::I64(10))
+    );
     assert_eq!(heap.live_object_count(), 1);
 }
 
@@ -173,7 +186,10 @@ fn main() {
     )
     .expect("compile record source");
     let mut fields = BTreeMap::new();
-    fields.insert("count".into(), OwnedValue::Int(2));
+    fields.insert(
+        "count".into(),
+        OwnedValue::Scalar(vela_common::ScalarValue::I64(2)),
+    );
     fields.insert("item_id".into(), OwnedValue::String("gold".into()));
 
     assert_eq!(
@@ -211,7 +227,7 @@ fn main() {
 
     assert_eq!(
         run_records_program(&program, "main", &[]),
-        Ok(OwnedValue::Int(16))
+        Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(16)))
     );
 }
 
@@ -281,7 +297,7 @@ fn main() {
 
     assert_eq!(
         run_records_program(&program, "main", &[]),
-        Ok(OwnedValue::Int(9))
+        Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(9)))
     );
 }
 
@@ -309,7 +325,7 @@ fn main() {
 
     assert_eq!(
         run_records_program(&program, "main", &[]),
-        Ok(OwnedValue::Int(2))
+        Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(2)))
     );
 }
 
@@ -342,7 +358,7 @@ fn main() {
 
     assert_eq!(
         run_records_program(&program, "main", &[]),
-        Ok(OwnedValue::Int(7))
+        Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(7)))
     );
 }
 
@@ -369,7 +385,7 @@ fn main() {
 
     assert_eq!(
         run_records_program(&program, "main", &[]),
-        Ok(OwnedValue::Int(12))
+        Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(12)))
     );
 }
 
@@ -386,7 +402,10 @@ fn main() {
     )
     .expect("compile enum source");
     let mut fields = BTreeMap::new();
-    fields.insert("amount".into(), OwnedValue::Int(7));
+    fields.insert(
+        "amount".into(),
+        OwnedValue::Scalar(vela_common::ScalarValue::I64(7)),
+    );
 
     assert_eq!(
         run_linked_test_code(code),
@@ -427,7 +446,7 @@ fn main() {
 
     assert_eq!(
         run_records_program(&program, "main", &[]),
-        Ok(OwnedValue::Int(19))
+        Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(19)))
     );
 }
 
@@ -455,7 +474,7 @@ fn main() {
 
     assert_eq!(
         run_records_program(&program, "main", &[]),
-        Ok(OwnedValue::Int(8))
+        Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(8)))
     );
 }
 
@@ -494,6 +513,6 @@ fn main() {
     )
     .expect("run heap-backed enum source");
 
-    assert_eq!(result, OwnedValue::Int(8));
+    assert_eq!(result, OwnedValue::Scalar(vela_common::ScalarValue::I64(8)));
     assert_eq!(heap.live_object_count(), 1);
 }

@@ -61,7 +61,7 @@ impl Player {
         host.access.write_diagnostic_path(
             host.adapter,
             receiver.clone().field(Player::vela_field_id_level()),
-            HostValue::Int(amount),
+            HostValue::Scalar(vela_common::ScalarValue::I64(amount)),
             None,
         )?;
         Ok(amount)
@@ -92,7 +92,7 @@ impl Player {
         host.access.write_diagnostic_path(
             host.adapter,
             receiver.clone().field(Player::vela_field_id_level()),
-            HostValue::Int(total),
+            HostValue::Scalar(vela_common::ScalarValue::I64(total)),
             None,
         )?;
         Ok(total)
@@ -115,7 +115,7 @@ impl Player {
         host.access.write_diagnostic_path(
             host.adapter,
             receiver.clone().field(Player::vela_field_id_level()),
-            HostValue::Int(total),
+            HostValue::Scalar(vela_common::ScalarValue::I64(total)),
             None,
         )?;
         Ok(total)

@@ -7,8 +7,7 @@ pub(crate) fn value_from_host(value: HostValue) -> Value {
     match value {
         HostValue::Null => Value::Null,
         HostValue::Bool(value) => Value::Bool(value),
-        HostValue::Int(value) => Value::Int(value),
-        HostValue::Float(value) => Value::Float(value),
+        HostValue::Scalar(value) => Value::Scalar(value),
         HostValue::HostRef(value) => Value::HostRef(value),
         HostValue::String(_) => Value::Missing,
     }
@@ -22,8 +21,7 @@ pub(crate) fn value_to_host(
     match value {
         Value::Null => Ok(HostValue::Null),
         Value::Bool(value) => Ok(HostValue::Bool(*value)),
-        Value::Int(value) => Ok(HostValue::Int(*value)),
-        Value::Float(value) => Ok(HostValue::Float(*value)),
+        Value::Scalar(value) => Ok(HostValue::Scalar(*value)),
         Value::HostRef(value) => Ok(HostValue::HostRef(*value)),
         Value::HeapRef(reference) => match heap.and_then(|heap| heap.heap.get(*reference)) {
             Some(HeapValue::String(value)) => Ok(HostValue::String(value.clone())),

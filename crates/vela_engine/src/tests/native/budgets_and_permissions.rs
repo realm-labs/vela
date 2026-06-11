@@ -54,13 +54,17 @@ fn host_native_error_retains_written_mutations() {
                 .effects(EffectSet::host_write())
                 .access(FunctionAccess::public()),
             |args, host| {
-                let [OwnedValue::HostRef(player), OwnedValue::Int(level)] = args else {
+                let [
+                    OwnedValue::HostRef(player),
+                    OwnedValue::Scalar(vela_common::ScalarValue::I64(level)),
+                ] = args
+                else {
                     return Ok(OwnedValue::Null);
                 };
                 host.access.write_diagnostic_path(
                     host.adapter,
                     HostPath::new(*player).field(FieldId::new(1)),
-                    HostValue::Int(*level),
+                    HostValue::Scalar(vela_common::ScalarValue::I64(*level)),
                     None,
                 )?;
                 Err(VmError::new(VmErrorKind::TypeMismatch {
@@ -103,7 +107,10 @@ fn main(player) {
         }
     );
     let level = HostPath::new(host_ref).field(FieldId::new(1));
-    assert_eq!(adapter.read_diagnostic_path(&level), Ok(HostValue::Int(13)));
+    assert_eq!(
+        adapter.read_diagnostic_path(&level),
+        Ok(HostValue::Scalar(vela_common::ScalarValue::I64(13)))
+    );
 }
 
 #[test]
@@ -121,13 +128,17 @@ fn host_native_error_retains_mutations_without_call_options() {
                 .effects(EffectSet::host_write())
                 .access(FunctionAccess::public()),
             |args, host| {
-                let [OwnedValue::HostRef(player), OwnedValue::Int(level)] = args else {
+                let [
+                    OwnedValue::HostRef(player),
+                    OwnedValue::Scalar(vela_common::ScalarValue::I64(level)),
+                ] = args
+                else {
                     return Ok(OwnedValue::Null);
                 };
                 host.access.write_diagnostic_path(
                     host.adapter,
                     HostPath::new(*player).field(FieldId::new(1)),
-                    HostValue::Int(*level),
+                    HostValue::Scalar(vela_common::ScalarValue::I64(*level)),
                     None,
                 )?;
                 Err(VmError::new(VmErrorKind::TypeMismatch {
@@ -172,7 +183,10 @@ fn main(player) {
         }
     );
     let level = HostPath::new(host_ref).field(FieldId::new(1));
-    assert_eq!(adapter.read_diagnostic_path(&level), Ok(HostValue::Int(13)));
+    assert_eq!(
+        adapter.read_diagnostic_path(&level),
+        Ok(HostValue::Scalar(vela_common::ScalarValue::I64(13)))
+    );
 }
 
 #[test]
@@ -280,7 +294,7 @@ fn engine_allows_pure_native_calls_without_capabilities() {
             NativeFunctionDesc::new("game::secret", NativeFunctionId::new(3))
                 .returns(TypeHint::Int)
                 .access(FunctionAccess::public()),
-            |_| Ok(OwnedValue::Int(99)),
+            |_| Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(99))),
         )
         .build()
         .expect("engine should build");
@@ -297,7 +311,7 @@ fn main() {
 
     assert_eq!(
         run_linked_program(&engine, &program, &[]),
-        Ok(OwnedValue::Int(99))
+        Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(99)))
     );
 }
 
@@ -315,13 +329,17 @@ fn engine_denies_host_native_before_host_access() {
                 .effects(EffectSet::host_write())
                 .access(FunctionAccess::public()),
             |args, host| {
-                let [OwnedValue::HostRef(player), OwnedValue::Int(level)] = args else {
+                let [
+                    OwnedValue::HostRef(player),
+                    OwnedValue::Scalar(vela_common::ScalarValue::I64(level)),
+                ] = args
+                else {
                     return Ok(OwnedValue::Null);
                 };
                 host.access.write_diagnostic_path(
                     host.adapter,
                     HostPath::new(*player).field(FieldId::new(1)),
-                    HostValue::Int(*level),
+                    HostValue::Scalar(vela_common::ScalarValue::I64(*level)),
                     None,
                 )?;
                 Ok(OwnedValue::Null)

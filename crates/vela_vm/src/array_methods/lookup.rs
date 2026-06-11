@@ -147,5 +147,10 @@ fn index_option(
             operation: "method index_of",
         })
     })?;
-    option_value("Some", Some(Value::Int(index)), heap, budget)
+    option_value(
+        "Some",
+        Some(Value::Scalar(vela_common::ScalarValue::I64(index))),
+        heap,
+        budget,
+    )
 }

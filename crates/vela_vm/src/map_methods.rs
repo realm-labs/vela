@@ -184,7 +184,7 @@ fn main() {
 
         let result = run_linked_map_test_code(&Vm::new(), code)
             .expect("map higher-order methods should run");
-        assert_eq!(result, OwnedValue::Int(2));
+        assert_eq!(result, OwnedValue::Scalar(vela_common::ScalarValue::I64(2)));
     }
 
     #[test]
@@ -237,7 +237,7 @@ fn main() {
         vm.register_standard_natives();
 
         let result = run_linked_map_test_code(&vm, code).expect("map find should run");
-        assert_eq!(result, OwnedValue::Int(1));
+        assert_eq!(result, OwnedValue::Scalar(vela_common::ScalarValue::I64(1)));
     }
 
     #[test]
@@ -265,7 +265,7 @@ fn main() {
 
         let result =
             run_linked_map_test_code(&vm, code).expect("map zero-arg callbacks should run");
-        assert_eq!(result, OwnedValue::Int(2));
+        assert_eq!(result, OwnedValue::Scalar(vela_common::ScalarValue::I64(2)));
     }
 
     #[test]
@@ -322,7 +322,10 @@ fn main() {
 
         let result =
             run_linked_map_test_code(&vm, code).expect("map introspection methods should run");
-        assert_eq!(result, OwnedValue::Int(14));
+        assert_eq!(
+            result,
+            OwnedValue::Scalar(vela_common::ScalarValue::I64(14))
+        );
     }
 
     #[test]
@@ -383,7 +386,7 @@ fn main() {
 
         let result = run_linked_map_test_code_with_budget(&vm, code, &mut budget)
             .expect("heap map lookup methods should run");
-        assert_eq!(result, OwnedValue::Int(6));
+        assert_eq!(result, OwnedValue::Scalar(vela_common::ScalarValue::I64(6)));
     }
 
     #[test]
@@ -478,7 +481,10 @@ fn main() {
 
         let result =
             run_linked_map_test_code(&Vm::new(), code).expect("map clear method should run");
-        assert_eq!(result, OwnedValue::Int(99));
+        assert_eq!(
+            result,
+            OwnedValue::Scalar(vela_common::ScalarValue::I64(99))
+        );
     }
 
     #[test]

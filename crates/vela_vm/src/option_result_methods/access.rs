@@ -140,7 +140,11 @@ mod tests {
             enum_name: "NotOption".to_owned(),
             variant: "Definitely".to_owned(),
             identity: Some(std_enum_identity(EnumVariant::Some)),
-            fields: ScriptFields::single("NotOption::Definitely", "0", Value::Int(7)),
+            fields: ScriptFields::single(
+                "NotOption::Definitely",
+                "0",
+                Value::Scalar(vela_common::ScalarValue::I64(7)),
+            ),
         });
         let execution = HeapExecution::new(&mut heap);
         let value = Value::HeapRef(reference);
@@ -150,7 +154,7 @@ mod tests {
         assert_eq!(tag.variant, EnumVariant::Some);
         assert_eq!(
             enum_payload(&value, Some(&execution), "test payload").expect("typed payload"),
-            Value::Int(7)
+            Value::Scalar(vela_common::ScalarValue::I64(7))
         );
     }
 
@@ -161,7 +165,11 @@ mod tests {
             enum_name: "Option".to_owned(),
             variant: "Some".to_owned(),
             identity: None,
-            fields: ScriptFields::single("Option::Some", "0", Value::Int(7)),
+            fields: ScriptFields::single(
+                "Option::Some",
+                "0",
+                Value::Scalar(vela_common::ScalarValue::I64(7)),
+            ),
         });
         let execution = HeapExecution::new(&mut heap);
         let value = Value::HeapRef(reference);

@@ -11,7 +11,7 @@ pub(crate) fn math_lerp(args: &[OwnedValue]) -> VmResult<OwnedValue> {
     let t = expect_finite_float(&args[2], "math::lerp")?;
     let value = start + (end - start) * t;
     if value.is_finite() {
-        Ok(OwnedValue::Float(value))
+        Ok(OwnedValue::Scalar(vela_common::ScalarValue::F64(value)))
     } else {
         type_error("math::lerp")
     }
@@ -20,10 +20,12 @@ pub(crate) fn math_lerp(args: &[OwnedValue]) -> VmResult<OwnedValue> {
 pub(crate) fn math_move_towards(args: &[OwnedValue]) -> VmResult<OwnedValue> {
     expect_arity("math::move_towards", args, 3)?;
     match (&args[0], &args[1], &args[2]) {
-        (OwnedValue::Int(current), OwnedValue::Int(target), OwnedValue::Int(max_delta)) => {
-            int_move_towards(*current, *target, *max_delta).map(OwnedValue::Int)
-        }
-        _ => float_move_towards(args).map(OwnedValue::Float),
+        (
+            OwnedValue::Scalar(vela_common::ScalarValue::I64(current)),
+            OwnedValue::Scalar(vela_common::ScalarValue::I64(target)),
+            OwnedValue::Scalar(vela_common::ScalarValue::I64(max_delta)),
+        ) => int_move_towards(*current, *target, *max_delta).map(OwnedValue::i64),
+        _ => float_move_towards(args).map(OwnedValue::f64),
     }
 }
 

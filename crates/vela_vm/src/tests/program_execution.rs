@@ -33,7 +33,7 @@ fn last_name() {
     assert_eq!(
         run_linked_test_program_with_budget(&Vm::new(), &program, "sum", &[], &mut budget)
             .expect("run heap for-in sum"),
-        OwnedValue::Int(16)
+        OwnedValue::Scalar(vela_common::ScalarValue::I64(16))
     );
     assert_eq!(
         run_linked_test_program_with_budget(&Vm::new(), &program, "last_name", &[], &mut budget)
@@ -95,7 +95,7 @@ fn main() {
 
     assert_eq!(
         run_linked_test_program_with_budget(&Vm::new(), &program, "main", &[], &mut budget),
-        Ok(OwnedValue::Int(9))
+        Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(9)))
     );
     assert_eq!(budget.memory_bytes_allocated(), 0);
 }
@@ -141,7 +141,7 @@ fn main() {
 
     assert_eq!(
         run_linked_test_program_with_budget(&vm, &program, "main", &[], &mut budget),
-        Ok(OwnedValue::Int(4))
+        Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(4)))
     );
     assert_eq!(budget.memory_bytes_allocated(), 0);
 }
@@ -171,7 +171,7 @@ fn main() {
 
     assert_eq!(
         run_linked_test_program_with_budget(&Vm::new(), &program, "main", &[], &mut budget),
-        Ok(OwnedValue::Int(14))
+        Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(14)))
     );
     assert_eq!(budget.memory_bytes_allocated(), 0);
 }
@@ -203,7 +203,7 @@ fn main() {
 
     assert_eq!(
         run_linked_test_program_with_budget(&Vm::new(), &program, "main", &[], &mut budget),
-        Ok(OwnedValue::Int(18))
+        Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(18)))
     );
     assert_eq!(budget.memory_bytes_allocated(), 0);
 }
@@ -224,7 +224,10 @@ fn main() {
     )
     .expect("compile const expression source");
 
-    assert_eq!(run_linked_test_code(code), Ok(OwnedValue::Int(20)));
+    assert_eq!(
+        run_linked_test_code(code),
+        Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(20)))
+    );
 }
 
 #[test]
@@ -232,7 +235,7 @@ fn runs_compiled_native_call_source() {
     let mut vm = Vm::new();
     vm.register_native("log", |args| {
         assert_eq!(args, [OwnedValue::String("compiled".into())]);
-        Ok(OwnedValue::Int(7))
+        Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(7)))
     });
 
     let program = compile_standard_program_source_with_native_functions(
@@ -245,7 +248,7 @@ fn runs_compiled_native_call_source() {
 
     assert_eq!(
         run_linked_test_program_with_budget(&vm, &program, "main", &[], &mut budget),
-        Ok(OwnedValue::Int(7))
+        Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(7)))
     );
 }
 
@@ -305,7 +308,7 @@ fn main() {
 
     assert_eq!(
         run_linked_test_program_with_budget(&Vm::new(), &program, "main", &[], &mut budget),
-        Ok(OwnedValue::Int(30))
+        Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(30)))
     );
 }
 
@@ -331,7 +334,7 @@ fn main() {
 
     assert_eq!(
         Vm::new().run_linked_program(&linked, "main", &[]),
-        Ok(OwnedValue::Int(30))
+        Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(30)))
     );
 }
 
@@ -354,7 +357,7 @@ fn main() {
 
     assert_eq!(
         run_linked_test_program_with_budget(&Vm::new(), &program, "main", &[], &mut budget),
-        Ok(OwnedValue::Int(16))
+        Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(16)))
     );
 }
 
@@ -371,7 +374,10 @@ fn main(value = 7) {
     )
     .expect("compile entrypoint default");
 
-    assert_eq!(run_linked_test_code(code), Ok(OwnedValue::Int(8)));
+    assert_eq!(
+        run_linked_test_code(code),
+        Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(8)))
+    );
 }
 
 #[test]
@@ -394,7 +400,7 @@ fn main() {
 
     assert_eq!(
         run_linked_test_program_with_budget(&Vm::new(), &program, "main", &[], &mut budget),
-        Ok(OwnedValue::Int(15))
+        Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(15)))
     );
 }
 
@@ -442,7 +448,7 @@ fn main() {
 
     assert_eq!(
         Vm::new().run_linked_program(&linked, "main", &[]),
-        Ok(OwnedValue::Int(15))
+        Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(15)))
     );
 }
 
@@ -470,7 +476,7 @@ fn main() {
 
     assert_eq!(
         run_linked_test_program_with_budget(&Vm::new(), &program, "main", &[], &mut budget),
-        Ok(OwnedValue::Int(21))
+        Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(21)))
     );
 }
 
@@ -489,7 +495,10 @@ fn main() {
     )
     .expect("compile immediate lambda call");
 
-    assert_eq!(run_linked_test_code(code), Ok(OwnedValue::Int(11)));
+    assert_eq!(
+        run_linked_test_code(code),
+        Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(11)))
+    );
 }
 
 #[test]
@@ -528,7 +537,13 @@ fn missing() {
         Ok(OwnedValue::Enum {
             enum_name: "Option".into(),
             variant: "Some".into(),
-            fields: ScriptFields::from_pairs("Option::Some", [("0".into(), OwnedValue::Int(5))]),
+            fields: ScriptFields::from_pairs(
+                "Option::Some",
+                [(
+                    "0".into(),
+                    OwnedValue::Scalar(vela_common::ScalarValue::I64(5))
+                )]
+            ),
         })
     );
     assert_eq!(
@@ -577,7 +592,13 @@ fn err_case() {
         Ok(OwnedValue::Enum {
             enum_name: "Result".into(),
             variant: "Ok".into(),
-            fields: ScriptFields::from_pairs("Result::Ok", [("0".into(), OwnedValue::Int(10))]),
+            fields: ScriptFields::from_pairs(
+                "Result::Ok",
+                [(
+                    "0".into(),
+                    OwnedValue::Scalar(vela_common::ScalarValue::I64(10))
+                )]
+            ),
         })
     );
 

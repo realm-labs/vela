@@ -207,7 +207,7 @@ fn linker_rejects_script_call_with_matching_name_and_wrong_id() {
 #[test]
 fn linker_maps_globals_map_keys_and_field_slots_without_instruction_names() {
     let mut code = UnlinkedCodeObject::new("main", 4);
-    code.push_constant(Constant::Int(1));
+    code.push_constant(Constant::Scalar(vela_common::ScalarValue::I64(1)));
     code.push_instruction(UnlinkedInstruction::new(
         UnlinkedInstructionKind::LoadGlobal {
             dst: Register(0),

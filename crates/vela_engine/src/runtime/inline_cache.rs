@@ -193,10 +193,16 @@ fn read_second() {
             .id;
         assert_ne!(first_site, second_site);
         runtime
-            .insert_global("main::first", OwnedValue::Int(10))
+            .insert_global(
+                "main::first",
+                OwnedValue::Scalar(vela_common::ScalarValue::I64(10)),
+            )
             .expect("first global should insert");
         runtime
-            .insert_global("main::second", OwnedValue::Int(20))
+            .insert_global(
+                "main::second",
+                OwnedValue::Scalar(vela_common::ScalarValue::I64(20)),
+            )
             .expect("second global should insert");
 
         assert_eq!(
@@ -207,7 +213,10 @@ fn read_second() {
         let first = runtime
             .call("read_first", CallArgs::new(), CallOptions::unbounded())
             .expect("read_first should run");
-        assert_eq!(runtime.value_to_owned(&first), Ok(OwnedValue::Int(10)));
+        assert_eq!(
+            runtime.value_to_owned(&first),
+            Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(10)))
+        );
         assert_eq!(
             runtime.state.inline_caches.global_read_slot(first_site),
             Some(first_slot)
@@ -216,7 +225,10 @@ fn read_second() {
         let second = runtime
             .call("read_second", CallArgs::new(), CallOptions::unbounded())
             .expect("read_second should run");
-        assert_eq!(runtime.value_to_owned(&second), Ok(OwnedValue::Int(20)));
+        assert_eq!(
+            runtime.value_to_owned(&second),
+            Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(20)))
+        );
         assert_eq!(
             runtime.state.inline_caches.global_read_slot(second_site),
             Some(second_slot)
@@ -227,14 +239,17 @@ fn read_second() {
         );
 
         runtime
-            .insert_global("main::first", OwnedValue::Int(30))
+            .insert_global(
+                "main::first",
+                OwnedValue::Scalar(vela_common::ScalarValue::I64(30)),
+            )
             .expect("first global should update");
         let first_after_update = runtime
             .call("read_first", CallArgs::new(), CallOptions::unbounded())
             .expect("read_first should run after update");
         assert_eq!(
             runtime.value_to_owned(&first_after_update),
-            Ok(OwnedValue::Int(30))
+            Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(30)))
         );
     }
 
@@ -277,7 +292,10 @@ fn read_level(player: CachedHostPlayer) {
         let host_ref = HostRef::new(HostTypeId::new(1), HostObjectId::new(42), 1);
         let host_path = HostPath::new(host_ref).field(FieldId::new(1));
         let mut adapter = MockStateAdapter::new();
-        adapter.insert_diagnostic_path_value(host_path, HostValue::Int(12));
+        adapter.insert_diagnostic_path_value(
+            host_path,
+            HostValue::Scalar(vela_common::ScalarValue::I64(12)),
+        );
         let mut access = HostAccess::new();
 
         assert_eq!(runtime.state.inline_caches.host_access(cache_site), None);
@@ -292,7 +310,7 @@ fn read_level(player: CachedHostPlayer) {
             )
             .expect("read_level should run");
 
-        assert_eq!(value, OwnedValue::Int(12));
+        assert_eq!(value, OwnedValue::Scalar(vela_common::ScalarValue::I64(12)));
         let entry = runtime
             .state
             .inline_caches

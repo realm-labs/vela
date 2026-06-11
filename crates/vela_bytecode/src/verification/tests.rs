@@ -14,7 +14,7 @@ use super::*;
 #[test]
 fn accepts_valid_code_object() {
     let mut code = UnlinkedCodeObject::new("main", 2).with_params(vec!["value".to_owned()]);
-    let constant = code.push_constant(Constant::Int(42));
+    let constant = code.push_constant(Constant::Scalar(vela_common::ScalarValue::I64(42)));
     code.push_instruction(UnlinkedInstruction::new(
         UnlinkedInstructionKind::LoadConst {
             dst: Register(1),
@@ -56,7 +56,7 @@ fn linked_program_verify_accepts_valid_handles_and_debug_names() {
     ));
 
     let mut code = LinkedCodeObject::new(main_name, 3);
-    let constant = code.push_constant(Constant::Int(42));
+    let constant = code.push_constant(Constant::Scalar(vela_common::ScalarValue::I64(42)));
     code.push_instruction(Instruction::new(InstructionKind::LoadConst {
         dst: Register(0),
         constant,

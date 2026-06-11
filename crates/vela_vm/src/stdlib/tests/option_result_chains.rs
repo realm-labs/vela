@@ -31,7 +31,10 @@ fn main() {
     let result =
         run_linked_stdlib_test_program_with_budget(&vm, &program, "main", &[], &mut budget)
             .expect("option ok_or stdlib source should run");
-    assert_eq!(result, OwnedValue::Int(42));
+    assert_eq!(
+        result,
+        OwnedValue::Scalar(vela_common::ScalarValue::I64(42))
+    );
 }
 
 #[test]

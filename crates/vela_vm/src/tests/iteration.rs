@@ -22,7 +22,10 @@ fn main() {
     )
     .expect("compile for-in source");
 
-    assert_eq!(run_linked_test_code(code), Ok(OwnedValue::Int(16)));
+    assert_eq!(
+        run_linked_test_code(code),
+        Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(16)))
+    );
 }
 
 #[test]
@@ -54,7 +57,7 @@ fn main() {
 
     assert_eq!(
         run_linked_test_program_with_budget(&Vm::new(), &program, "main", &[], &mut budget),
-        Ok(OwnedValue::Int(7))
+        Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(7)))
     );
 }
 
@@ -75,7 +78,10 @@ fn main() {
     )
     .expect("compile indexed for-in source");
 
-    assert_eq!(run_linked_test_code(code), Ok(OwnedValue::Int(40)));
+    assert_eq!(
+        run_linked_test_code(code),
+        Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(40)))
+    );
 }
 
 #[test]
@@ -107,7 +113,7 @@ fn main() {
 
     assert_eq!(
         run_linked_test_program_with_budget(&Vm::new(), &program, "main", &[], &mut budget),
-        Ok(OwnedValue::Int(9))
+        Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(9)))
     );
 }
 
@@ -128,7 +134,10 @@ fn main() {
     )
     .expect("compile statement attributes");
 
-    assert_eq!(run_linked_test_code(code), Ok(OwnedValue::Int(3)));
+    assert_eq!(
+        run_linked_test_code(code),
+        Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(3)))
+    );
 }
 
 #[test]
@@ -151,16 +160,16 @@ fn main() {
     vm.register_standard_natives();
     vm.register_native("game::values", |_| {
         Ok(OwnedValue::Array(vec![
-            OwnedValue::Int(2),
-            OwnedValue::Int(3),
-            OwnedValue::Int(5),
+            OwnedValue::Scalar(vela_common::ScalarValue::I64(2)),
+            OwnedValue::Scalar(vela_common::ScalarValue::I64(3)),
+            OwnedValue::Scalar(vela_common::ScalarValue::I64(5)),
         ]))
     });
     let mut budget = ExecutionBudget::unbounded();
 
     assert_eq!(
         run_linked_test_program_with_budget(&vm, &program, "main", &[], &mut budget),
-        Ok(OwnedValue::Int(10))
+        Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(10)))
     );
 }
 
@@ -195,5 +204,8 @@ fn main() {
     )
     .expect("compile range for-in source");
 
-    assert_eq!(run_linked_test_code(code), Ok(OwnedValue::Int(16)));
+    assert_eq!(
+        run_linked_test_code(code),
+        Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(16)))
+    );
 }

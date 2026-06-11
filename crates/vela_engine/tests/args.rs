@@ -18,7 +18,11 @@ fn script_arg_conversions_support_optional_values() {
     let some_value = OwnedValue::Enum {
         enum_name: "Option".to_owned(),
         variant: "Some".to_owned(),
-        fields: [("0".to_owned(), OwnedValue::Int(3))].into(),
+        fields: [(
+            "0".to_owned(),
+            OwnedValue::Scalar(vela_common::ScalarValue::I64(3)),
+        )]
+        .into(),
     };
     let none_value = OwnedValue::Enum {
         enum_name: "game::std::Option".to_owned(),
@@ -28,7 +32,7 @@ fn script_arg_conversions_support_optional_values() {
 
     assert_eq!(Option::<i64>::from_script_arg(&OwnedValue::Null), Ok(None));
     assert_eq!(
-        Option::<i64>::from_script_arg(&OwnedValue::Int(3)),
+        Option::<i64>::from_script_arg(&OwnedValue::Scalar(vela_common::ScalarValue::I64(3))),
         Ok(Some(3))
     );
     assert_eq!(Option::<i64>::from_script_arg(&some_value), Ok(Some(3)));
@@ -40,7 +44,10 @@ fn script_arg_conversions_support_optional_values() {
     assert_eq!(Option::<i64>::None.into_script_arg(), OwnedValue::Null);
     assert_eq!(
         vela_engine::args![Some(2_i64), Option::<i64>::None],
-        vec![OwnedValue::Int(2), OwnedValue::Null],
+        vec![
+            OwnedValue::Scalar(vela_common::ScalarValue::I64(2)),
+            OwnedValue::Null
+        ],
     );
     assert!(matches!(
         Option::<i64>::from_script_arg(&OwnedValue::String("bad".to_owned())),
@@ -91,7 +98,7 @@ fn script_arg_conversions_support_result_values() {
         std::result::Result::<i64, String>::from_script_arg(&OwnedValue::Enum {
             enum_name: "Result".to_owned(),
             variant: "Unknown".to_owned(),
-            fields: [("0".to_owned(), OwnedValue::Int(1))].into(),
+            fields: [("0".to_owned(), OwnedValue::Scalar(vela_common::ScalarValue::I64(1)))].into(),
         }),
         Err(error) if matches!(error.kind(), VmErrorKind::TypeMismatch { operation: "result" })
     ));
@@ -123,18 +130,21 @@ fn script_arg_conversions_support_set_values() {
     hash.insert(1_i64);
     assert_eq!(
         hash.clone().into_script_arg(),
-        OwnedValue::Set(vec![OwnedValue::Int(1), OwnedValue::Int(2)]),
+        OwnedValue::Set(vec![
+            OwnedValue::Scalar(vela_common::ScalarValue::I64(1)),
+            OwnedValue::Scalar(vela_common::ScalarValue::I64(2))
+        ]),
     );
     assert_eq!(
         HashSet::<i64>::from_script_arg(&OwnedValue::Set(vec![
-            OwnedValue::Int(1),
-            OwnedValue::Int(2),
-            OwnedValue::Int(2),
+            OwnedValue::Scalar(vela_common::ScalarValue::I64(1)),
+            OwnedValue::Scalar(vela_common::ScalarValue::I64(2)),
+            OwnedValue::Scalar(vela_common::ScalarValue::I64(2)),
         ])),
         Ok(hash),
     );
     assert!(matches!(
-        BTreeSet::<i64>::from_script_arg(&OwnedValue::Array(vec![OwnedValue::Int(1)])),
+        BTreeSet::<i64>::from_script_arg(&OwnedValue::Array(vec![OwnedValue::Scalar(vela_common::ScalarValue::I64(1))])),
         Err(error) if matches!(error.kind(), VmErrorKind::TypeMismatch { operation: "set" })
     ));
 }
@@ -166,15 +176,27 @@ fn args_macro_converts_rust_values_and_host_refs() {
         vec![
             OwnedValue::Null,
             OwnedValue::Bool(true),
-            OwnedValue::Int(5),
-            OwnedValue::Float(2.5),
+            OwnedValue::Scalar(vela_common::ScalarValue::I64(5)),
+            OwnedValue::Scalar(vela_common::ScalarValue::F64(2.5)),
             OwnedValue::String("title".to_owned()),
             OwnedValue::Array(vec![
                 OwnedValue::String("a".to_owned()),
                 OwnedValue::String("b".to_owned())
             ]),
-            OwnedValue::Map([("key".to_owned(), OwnedValue::Int(9))].into()),
-            OwnedValue::Map([("hash".to_owned(), OwnedValue::Int(11))].into()),
+            OwnedValue::Map(
+                [(
+                    "key".to_owned(),
+                    OwnedValue::Scalar(vela_common::ScalarValue::I64(9))
+                )]
+                .into()
+            ),
+            OwnedValue::Map(
+                [(
+                    "hash".to_owned(),
+                    OwnedValue::Scalar(vela_common::ScalarValue::I64(11))
+                )]
+                .into()
+            ),
             OwnedValue::HostRef(host_ref),
             OwnedValue::PathProxy(proxy),
         ]
@@ -236,7 +258,7 @@ fn script_arg_conversions_extract_owned_rust_values() {
             && error.source_span.is_none()
     ));
     assert!(matches!(
-        f32::from_script_arg(&OwnedValue::Float(f64::MAX)),
+        f32::from_script_arg(&OwnedValue::Scalar(vela_common::ScalarValue::F64(f64::MAX))),
         Err(error) if matches!(error.kind(), VmErrorKind::TypeMismatch { operation: "float" })
             && error.source_span.is_none()
     ));
@@ -293,5 +315,8 @@ fn main(player: Player, amount: int) {
         )
         .expect("runtime call should run");
 
-    assert_eq!(result, OwnedValue::Int(12));
+    assert_eq!(
+        result,
+        OwnedValue::Scalar(vela_common::ScalarValue::I64(12))
+    );
 }

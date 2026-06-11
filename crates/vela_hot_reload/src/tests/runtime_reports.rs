@@ -27,7 +27,7 @@ fn new_calls_enter_new_code_after_update() {
 
     assert_eq!(
         run_linked_version(&runtime.current(), "main", &[]),
-        Ok(OwnedValue::Int(30))
+        Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(30)))
     );
 }
 
@@ -248,7 +248,7 @@ fn staged_update_waits_for_check_reload_safe_point() {
     assert!(runtime.has_pending_update());
     assert_eq!(
         run_linked_version(&runtime.current(), "main", &[]),
-        Ok(OwnedValue::Int(20))
+        Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(20)))
     );
 
     let report = runtime
@@ -260,7 +260,7 @@ fn staged_update_waits_for_check_reload_safe_point() {
     assert!(!runtime.has_pending_update());
     assert_eq!(
         run_linked_version(&runtime.current(), "main", &[]),
-        Ok(OwnedValue::Int(30))
+        Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(30)))
     );
 }
 
@@ -311,7 +311,7 @@ fn main() {
     assert_eq!(report.errors[0].code, "reload.function.new_denied");
     assert_eq!(
         run_linked_version(&runtime.current(), "main", &[]),
-        Ok(OwnedValue::Int(20))
+        Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(20)))
     );
 }
 
@@ -345,7 +345,7 @@ fn main() {
     let version = report.version().expect("accepted report version");
     assert_eq!(
         run_linked_version(&version, "main", &[]),
-        Ok(OwnedValue::Int(5))
+        Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(5)))
     );
 }
 
@@ -479,7 +479,7 @@ fn program_version_exposes_read_only_module_and_script_method_metadata() {
     assert!(metadata.module_source_hash(module).is_some());
     assert_eq!(
         run_linked_version(&current, "game::main::main", &[]),
-        Ok(OwnedValue::Int(12))
+        Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(12)))
     );
 }
 
@@ -514,7 +514,7 @@ fn program_version_exposes_inherent_script_method_metadata() {
     );
     assert_eq!(
         run_linked_version(&current, "game::main::main", &[]),
-        Ok(OwnedValue::Int(12))
+        Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(12)))
     );
 }
 
@@ -633,11 +633,11 @@ fn old_version_lifetime_preserves_old_code() {
 
     assert_eq!(
         run_linked_version(&old, "main", &[]),
-        Ok(OwnedValue::Int(20))
+        Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(20)))
     );
     assert_eq!(
         run_linked_version(&new, "main", &[]),
-        Ok(OwnedValue::Int(30))
+        Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(30)))
     );
 }
 
@@ -856,7 +856,7 @@ fn main() {
     );
     assert_eq!(
         run_linked_version(&runtime.current(), "main", &[]),
-        Ok(OwnedValue::Int(1))
+        Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(1)))
     );
 }
 

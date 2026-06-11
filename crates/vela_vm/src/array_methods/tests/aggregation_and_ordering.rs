@@ -19,7 +19,7 @@ fn main() {
 
     let result =
         run_linked_array_test_code(&Vm::new(), code).expect("array sum methods should run");
-    assert_eq!(result, OwnedValue::Int(1));
+    assert_eq!(result, OwnedValue::Scalar(vela_common::ScalarValue::I64(1)));
 }
 
 #[test]
@@ -41,7 +41,10 @@ fn main() {
 
     let result = run_linked_array_test_code_with_budget(&Vm::new(), code, &mut budget)
         .expect("heap array sum methods should run");
-    assert_eq!(result, OwnedValue::Int(30));
+    assert_eq!(
+        result,
+        OwnedValue::Scalar(vela_common::ScalarValue::I64(30))
+    );
 }
 
 #[test]
@@ -85,7 +88,7 @@ fn main() {
 
     let result =
         run_linked_array_test_code(&Vm::new(), code).expect("array group_by method should run");
-    assert_eq!(result, OwnedValue::Int(5));
+    assert_eq!(result, OwnedValue::Scalar(vela_common::ScalarValue::I64(5)));
 }
 
 #[test]
@@ -155,7 +158,10 @@ fn main() {
 
     let result =
         run_linked_array_test_code(&Vm::new(), code).expect("array sort_by method should run");
-    assert_eq!(result, OwnedValue::Int(11));
+    assert_eq!(
+        result,
+        OwnedValue::Scalar(vela_common::ScalarValue::I64(11))
+    );
 }
 
 #[test]
@@ -180,7 +186,7 @@ fn main() {
 
     let result =
         run_linked_array_test_code(&Vm::new(), code).expect("array sort method should run");
-    assert_eq!(result, OwnedValue::Int(3));
+    assert_eq!(result, OwnedValue::Scalar(vela_common::ScalarValue::I64(3)));
 }
 
 #[test]
@@ -204,7 +210,7 @@ fn main() {
 
     let result =
         run_linked_array_test_code(&Vm::new(), code).expect("array extrema methods should run");
-    assert_eq!(result, OwnedValue::Int(4));
+    assert_eq!(result, OwnedValue::Scalar(vela_common::ScalarValue::I64(4)));
 }
 
 #[test]
@@ -258,7 +264,7 @@ fn main() {
 
     let result = run_linked_array_test_code_with_budget(&Vm::new(), code, &mut budget)
         .expect("heap array sort method should run");
-    assert_eq!(result, OwnedValue::Int(9));
+    assert_eq!(result, OwnedValue::Scalar(vela_common::ScalarValue::I64(9)));
 }
 
 #[test]
@@ -283,7 +289,7 @@ fn main() {
 
     let result = run_linked_array_test_code_with_budget(&Vm::new(), code, &mut budget)
         .expect("heap array extrema methods should run");
-    assert_eq!(result, OwnedValue::Int(9));
+    assert_eq!(result, OwnedValue::Scalar(vela_common::ScalarValue::I64(9)));
 }
 
 #[test]

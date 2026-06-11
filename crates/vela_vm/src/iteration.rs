@@ -66,7 +66,7 @@ impl IteratorState {
                 *next = next.saturating_add(1);
                 Some(value)
             }
-            IteratorKind::Range(cursor) => cursor.next().map(Value::Int),
+            IteratorKind::Range(cursor) => cursor.next().map(Value::i64),
         }
     }
 
@@ -212,11 +212,17 @@ pub(crate) fn dispatch_range_next(
         current < end
     };
     if has_next {
-        frame.write(step.dst, Value::Int(current))?;
+        frame.write(
+            step.dst,
+            Value::Scalar(vela_common::ScalarValue::I64(current)),
+        )?;
         if current == i64::MAX {
             frame.write(step.done, Value::Bool(true))?;
         } else {
-            frame.write(step.cursor, Value::Int(current + 1))?;
+            frame.write(
+                step.cursor,
+                Value::Scalar(vela_common::ScalarValue::I64(current + 1)),
+            )?;
         }
         Ok(None)
     } else {

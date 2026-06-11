@@ -17,7 +17,7 @@ fn private_helper_addition_report(test_name: &str, workflow: ScriptFunctionReloa
             &mut adapter,
             &mut tx
         ),
-        Ok(OwnedValue::Int(2))
+        Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(2)))
     );
 
     write_reward_module_calling_helper(&reward_file, 6);
@@ -39,7 +39,7 @@ fn private_helper_addition_report(test_name: &str, workflow: ScriptFunctionReloa
             &mut adapter,
             &mut tx
         ),
-        Ok(OwnedValue::Int(2))
+        Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(2)))
     );
 
     let report = runtime
@@ -66,7 +66,7 @@ fn private_helper_addition_report(test_name: &str, workflow: ScriptFunctionReloa
             &mut adapter,
             &mut tx
         ),
-        Ok(OwnedValue::Int(6))
+        Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(6)))
     );
 }
 
@@ -89,7 +89,7 @@ fn public_function_addition_report(test_name: &str, workflow: ScriptFunctionRelo
             &mut adapter,
             &mut tx
         ),
-        Ok(OwnedValue::Int(2))
+        Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(2)))
     );
 
     write_reward_module_calling_public_helper(&reward_file, 6);
@@ -111,7 +111,7 @@ fn public_function_addition_report(test_name: &str, workflow: ScriptFunctionRelo
             &mut adapter,
             &mut tx
         ),
-        Ok(OwnedValue::Int(2))
+        Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(2)))
     );
     assert!(
         runtime
@@ -149,7 +149,7 @@ fn public_function_addition_report(test_name: &str, workflow: ScriptFunctionRelo
             &mut adapter,
             &mut tx
         ),
-        Ok(OwnedValue::Int(6))
+        Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(6)))
     );
     assert_eq!(
         runtime.call_raw(
@@ -159,7 +159,7 @@ fn public_function_addition_report(test_name: &str, workflow: ScriptFunctionRelo
             &mut adapter,
             &mut tx
         ),
-        Ok(OwnedValue::Int(6))
+        Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(6)))
     );
 }
 
@@ -194,12 +194,12 @@ fn on_kill(player_id: int, monster_id: int) {
     assert_eq!(
         runtime.call_raw(
             "game::events::on_kill",
-            &[OwnedValue::Int(7), OwnedValue::Int(11)],
+            &[OwnedValue::Scalar(vela_common::ScalarValue::I64(7)), OwnedValue::Scalar(vela_common::ScalarValue::I64(11))],
             CallOptions::unbounded(),
             &mut adapter,
             &mut tx
         ),
-        Ok(OwnedValue::Int(1))
+        Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(1)))
     );
 
     std::fs::write(
@@ -225,12 +225,12 @@ fn on_kill(monster_id: int, player_id: int) {
     assert_eq!(
         runtime.call_raw(
             "game::events::on_kill",
-            &[OwnedValue::Int(7), OwnedValue::Int(11)],
+            &[OwnedValue::Scalar(vela_common::ScalarValue::I64(7)), OwnedValue::Scalar(vela_common::ScalarValue::I64(11))],
             CallOptions::unbounded(),
             &mut adapter,
             &mut tx
         ),
-        Ok(OwnedValue::Int(1))
+        Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(1)))
     );
 
     let report = runtime
@@ -252,12 +252,12 @@ fn on_kill(monster_id: int, player_id: int) {
     assert_eq!(
         runtime.call_raw(
             "game::events::on_kill",
-            &[OwnedValue::Int(7), OwnedValue::Int(11)],
+            &[OwnedValue::Scalar(vela_common::ScalarValue::I64(7)), OwnedValue::Scalar(vela_common::ScalarValue::I64(11))],
             CallOptions::unbounded(),
             &mut adapter,
             &mut tx
         ),
-        Ok(OwnedValue::Int(1))
+        Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(1)))
     );
 }
 
@@ -287,12 +287,12 @@ fn on_kill(player_id: int, monster_id: int) {
     assert_eq!(
         runtime.call_raw(
             "game::events::on_kill",
-            &[OwnedValue::Int(7), OwnedValue::Int(11)],
+            &[OwnedValue::Scalar(vela_common::ScalarValue::I64(7)), OwnedValue::Scalar(vela_common::ScalarValue::I64(11))],
             CallOptions::unbounded(),
             &mut adapter,
             &mut tx
         ),
-        Ok(OwnedValue::Int(1))
+        Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(1)))
     );
 
     std::fs::write(
@@ -318,12 +318,12 @@ fn on_kill(player_id: int, monster_id: int) {
     assert_eq!(
         runtime.call_raw(
             "game::events::on_kill",
-            &[OwnedValue::Int(7), OwnedValue::Int(11)],
+            &[OwnedValue::Scalar(vela_common::ScalarValue::I64(7)), OwnedValue::Scalar(vela_common::ScalarValue::I64(11))],
             CallOptions::unbounded(),
             &mut adapter,
             &mut tx
         ),
-        Ok(OwnedValue::Int(1))
+        Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(1)))
     );
 
     let report = runtime
@@ -350,12 +350,12 @@ fn on_kill(player_id: int, monster_id: int) {
     assert_eq!(
         runtime.call_raw(
             "game::events::on_kill",
-            &[OwnedValue::Int(7), OwnedValue::Int(11)],
+            &[OwnedValue::Scalar(vela_common::ScalarValue::I64(7)), OwnedValue::Scalar(vela_common::ScalarValue::I64(11))],
             CallOptions::unbounded(),
             &mut adapter,
             &mut tx
         ),
-        Ok(OwnedValue::Int(1))
+        Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(1)))
     );
 }
 

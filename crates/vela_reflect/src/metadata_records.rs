@@ -294,7 +294,7 @@ fn is_string(value: &HostValue) -> bool {
 }
 
 fn is_int(value: &HostValue) -> bool {
-    matches!(value, HostValue::Int(_))
+    matches!(value, HostValue::Scalar(vela_common::ScalarValue::I64(_)))
 }
 
 fn is_bool(value: &HostValue) -> bool {

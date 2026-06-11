@@ -140,7 +140,7 @@ fn main() {
 
     assert_eq!(
         exec_reflection_member_program(&vm, &program, &[], &mut host),
-        Ok(OwnedValue::Int(22))
+        Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(22)))
     );
 }
 
@@ -212,7 +212,7 @@ fn main() {
 
     assert_eq!(
         exec_reflection_member_program(&vm, &program, &[], &mut host),
-        Ok(OwnedValue::Int(1))
+        Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(1)))
     );
 }
 
@@ -258,7 +258,7 @@ fn main() {
 
     assert_eq!(
         exec_reflection_member_program(&vm, &program, &[], &mut host),
-        Ok(OwnedValue::Int(1))
+        Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(1)))
     );
 }
 
@@ -306,7 +306,7 @@ fn main(player) {
 
     assert_eq!(
         exec_reflection_member_program(&vm, &program, &[OwnedValue::HostRef(host_ref)], &mut host),
-        Ok(OwnedValue::Int(11))
+        Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(11)))
     );
 }
 
@@ -475,6 +475,6 @@ fn main() {
 
     assert_eq!(
         exec_reflection_member_program(&vm, &program, &[], &mut host),
-        Ok(OwnedValue::Int(100))
+        Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(100)))
     );
 }

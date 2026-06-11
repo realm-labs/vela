@@ -21,8 +21,7 @@ pub(crate) fn value_from_constant(
     match constant {
         Constant::Null => Ok(Value::Null),
         Constant::Bool(value) => Ok(Value::Bool(*value)),
-        Constant::Int(value) => Ok(Value::Int(*value)),
-        Constant::Float(value) => Ok(Value::Float(*value)),
+        Constant::Scalar(value) => Ok(Value::Scalar(*value)),
         Constant::String(value) => {
             let Some(heap) = heap else {
                 return Err(type_error("constant string"));
@@ -158,8 +157,7 @@ pub(crate) fn owned_to_value(
         OwnedValue::Missing => Ok(Value::Missing),
         OwnedValue::Null => Ok(Value::Null),
         OwnedValue::Bool(value) => Ok(Value::Bool(value)),
-        OwnedValue::Int(value) => Ok(Value::Int(value)),
-        OwnedValue::Float(value) => Ok(Value::Float(value)),
+        OwnedValue::Scalar(value) => Ok(Value::Scalar(value)),
         OwnedValue::Range(value) => Ok(Value::Range(value)),
         OwnedValue::HostRef(value) => Ok(Value::HostRef(value)),
         OwnedValue::String(value) => {
@@ -269,8 +267,7 @@ pub(crate) fn value_to_owned(
         Value::Missing => Ok(OwnedValue::Missing),
         Value::Null => Ok(OwnedValue::Null),
         Value::Bool(value) => Ok(OwnedValue::Bool(*value)),
-        Value::Int(value) => Ok(OwnedValue::Int(*value)),
-        Value::Float(value) => Ok(OwnedValue::Float(*value)),
+        Value::Scalar(value) => Ok(OwnedValue::Scalar(*value)),
         Value::Range(value) => Ok(OwnedValue::Range(*value)),
         Value::HostRef(value) => Ok(OwnedValue::HostRef(*value)),
         Value::HeapRef(reference) => {
@@ -372,8 +369,7 @@ pub(crate) fn host_to_value(
     match value {
         HostValue::Null => Ok(Value::Null),
         HostValue::Bool(value) => Ok(Value::Bool(value)),
-        HostValue::Int(value) => Ok(Value::Int(value)),
-        HostValue::Float(value) => Ok(Value::Float(value)),
+        HostValue::Scalar(value) => Ok(Value::Scalar(value)),
         HostValue::String(value) => allocate_heap_value(HeapValue::String(value), heap, budget),
         HostValue::HostRef(value) => Ok(Value::HostRef(value)),
     }
@@ -388,8 +384,7 @@ pub(crate) fn value_to_host(
     match value {
         Value::Null => Ok(HostValue::Null),
         Value::Bool(value) => Ok(HostValue::Bool(*value)),
-        Value::Int(value) => Ok(HostValue::Int(*value)),
-        Value::Float(value) => Ok(HostValue::Float(*value)),
+        Value::Scalar(value) => Ok(HostValue::Scalar(*value)),
         Value::HostRef(value) => Ok(HostValue::HostRef(*value)),
         Value::HeapRef(reference) => match heap.and_then(|heap| heap.heap.get(*reference)) {
             Some(HeapValue::String(value)) => Ok(HostValue::String(value.clone())),
@@ -430,8 +425,7 @@ fn store_value_in_heap(
         Value::Missing => Err(type_error("missing value")),
         Value::Null
         | Value::Bool(_)
-        | Value::Int(_)
-        | Value::Float(_)
+        | Value::Scalar(_)
         | Value::Range(_)
         | Value::HostRef(_)
         | Value::HeapRef(_) => Ok(value),
@@ -458,11 +452,23 @@ fn scalar_values_equal(lhs: &Value, rhs: &Value) -> Option<bool> {
     match (lhs, rhs) {
         (Value::Null, Value::Null) => Some(true),
         (Value::Bool(lhs), Value::Bool(rhs)) => Some(lhs == rhs),
-        (Value::Int(lhs), Value::Int(rhs)) => Some(lhs == rhs),
-        (Value::Float(lhs), Value::Float(rhs)) => Some(lhs == rhs),
         (
-            Value::Null | Value::Bool(_) | Value::Int(_) | Value::Float(_),
-            Value::Null | Value::Bool(_) | Value::Int(_) | Value::Float(_),
+            Value::Scalar(vela_common::ScalarValue::I64(lhs)),
+            Value::Scalar(vela_common::ScalarValue::I64(rhs)),
+        ) => Some(lhs == rhs),
+        (
+            Value::Scalar(vela_common::ScalarValue::F64(lhs)),
+            Value::Scalar(vela_common::ScalarValue::F64(rhs)),
+        ) => Some(lhs == rhs),
+        (
+            Value::Null
+            | Value::Bool(_)
+            | Value::Scalar(vela_common::ScalarValue::I64(_))
+            | Value::Scalar(vela_common::ScalarValue::F64(_)),
+            Value::Null
+            | Value::Bool(_)
+            | Value::Scalar(vela_common::ScalarValue::I64(_))
+            | Value::Scalar(vela_common::ScalarValue::F64(_)),
         ) => Some(false),
         _ => None,
     }

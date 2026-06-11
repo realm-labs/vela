@@ -115,7 +115,10 @@ fn main() {
     )
     .expect("compile if source");
 
-    assert_eq!(run_linked_test_code(code), Ok(OwnedValue::Int(10)));
+    assert_eq!(
+        run_linked_test_code(code),
+        Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(10)))
+    );
 }
 
 #[test]
@@ -135,7 +138,10 @@ fn main() {
     )
     .expect("compile if source");
 
-    assert_eq!(run_linked_test_code(code), Ok(OwnedValue::Int(20)));
+    assert_eq!(
+        run_linked_test_code(code),
+        Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(20)))
+    );
 }
 
 #[test]
@@ -160,13 +166,19 @@ fn main() {
     )
     .expect("compile operator source");
 
-    assert_eq!(run_linked_test_code(code), Ok(OwnedValue::Int(1)));
+    assert_eq!(
+        run_linked_test_code(code),
+        Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(1)))
+    );
 }
 
 #[test]
 fn reads_host_field_through_host_access() {
     let (program, host_ref) = host_read_program();
-    let mut adapter = host_adapter(host_ref, HostValue::Int(9));
+    let mut adapter = host_adapter(
+        host_ref,
+        HostValue::Scalar(vela_common::ScalarValue::I64(9)),
+    );
     let mut tx = HostAccess::new();
     let mut host = HostExecution {
         adapter: &mut adapter,
@@ -181,14 +193,17 @@ fn reads_host_field_through_host_access() {
         &mut host,
     );
 
-    assert_eq!(result, Ok(OwnedValue::Int(9)));
+    assert_eq!(
+        result,
+        Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(9)))
+    );
 }
 
 #[test]
 fn set_host_field_writes_through_and_updates_adapter() {
     let host_ref = player_ref(3);
     let mut code = UnlinkedCodeObject::new("main", 3).with_params(vec!["player".into()]);
-    let ten = code.push_constant(Constant::Int(10));
+    let ten = code.push_constant(Constant::Scalar(vela_common::ScalarValue::I64(10)));
     let target = level_target(&mut code, host_ref);
     let write_cache = host_cache_site(&mut code, CacheSiteKind::HostPathWrite, 1);
     let read_cache = host_cache_site(&mut code, CacheSiteKind::HostPathRead, 2);
@@ -221,7 +236,10 @@ fn set_host_field_writes_through_and_updates_adapter() {
     }));
     let mut program = UnlinkedProgram::new();
     program.insert_function(code);
-    let mut adapter = host_adapter(host_ref, HostValue::Int(9));
+    let mut adapter = host_adapter(
+        host_ref,
+        HostValue::Scalar(vela_common::ScalarValue::I64(9)),
+    );
     let mut tx = HostAccess::new();
 
     let result = {
@@ -238,14 +256,17 @@ fn set_host_field_writes_through_and_updates_adapter() {
         )
     };
 
-    assert_eq!(result, Ok(OwnedValue::Int(10)));
     assert_eq!(
-        adapter.read_diagnostic_path(&level_path(host_ref)),
-        Ok(HostValue::Int(10))
+        result,
+        Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(10)))
     );
     assert_eq!(
         adapter.read_diagnostic_path(&level_path(host_ref)),
-        Ok(HostValue::Int(10))
+        Ok(HostValue::Scalar(vela_common::ScalarValue::I64(10)))
+    );
+    assert_eq!(
+        adapter.read_diagnostic_path(&level_path(host_ref)),
+        Ok(HostValue::Scalar(vela_common::ScalarValue::I64(10)))
     );
 }
 
@@ -253,7 +274,7 @@ fn set_host_field_writes_through_and_updates_adapter() {
 fn collapsed_host_mutate_and_read_execute_through_target_plan() {
     let host_ref = player_ref(3);
     let mut code = UnlinkedCodeObject::new("main", 3).with_params(vec!["player".into()]);
-    let one = code.push_constant(Constant::Int(1));
+    let one = code.push_constant(Constant::Scalar(vela_common::ScalarValue::I64(1)));
     let target = level_target(&mut code, host_ref);
     let mutate_cache = host_cache_site(&mut code, CacheSiteKind::HostPathMutate, 1);
     let read_cache = host_cache_site(&mut code, CacheSiteKind::HostPathRead, 2);
@@ -289,7 +310,10 @@ fn collapsed_host_mutate_and_read_execute_through_target_plan() {
 
     let mut program = UnlinkedProgram::new();
     program.insert_function(code);
-    let mut adapter = host_adapter(host_ref, HostValue::Int(9));
+    let mut adapter = host_adapter(
+        host_ref,
+        HostValue::Scalar(vela_common::ScalarValue::I64(9)),
+    );
     let mut tx = HostAccess::new();
 
     let result = {
@@ -306,10 +330,13 @@ fn collapsed_host_mutate_and_read_execute_through_target_plan() {
         )
     };
 
-    assert_eq!(result, Ok(OwnedValue::Int(10)));
+    assert_eq!(
+        result,
+        Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(10)))
+    );
     assert_eq!(
         adapter.read_diagnostic_path(&level_path(host_ref)),
-        Ok(HostValue::Int(10))
+        Ok(HostValue::Scalar(vela_common::ScalarValue::I64(10)))
     );
 }
 
@@ -369,8 +396,8 @@ fn heap_execution_converts_heap_string_for_host_field_write() {
 fn repeated_host_writes_write_through_without_mutation_budget() {
     let host_ref = player_ref(3);
     let mut code = UnlinkedCodeObject::new("main", 3).with_params(vec!["player".into()]);
-    let ten = code.push_constant(Constant::Int(10));
-    let eleven = code.push_constant(Constant::Int(11));
+    let ten = code.push_constant(Constant::Scalar(vela_common::ScalarValue::I64(10)));
+    let eleven = code.push_constant(Constant::Scalar(vela_common::ScalarValue::I64(11)));
     let target = level_target(&mut code, host_ref);
     let first_write_cache = host_cache_site(&mut code, CacheSiteKind::HostPathWrite, 1);
     let second_write_cache = host_cache_site(&mut code, CacheSiteKind::HostPathWrite, 3);
@@ -409,7 +436,10 @@ fn repeated_host_writes_write_through_without_mutation_budget() {
     }));
     let mut program = UnlinkedProgram::new();
     program.insert_function(code);
-    let mut adapter = host_adapter(host_ref, HostValue::Int(9));
+    let mut adapter = host_adapter(
+        host_ref,
+        HostValue::Scalar(vela_common::ScalarValue::I64(9)),
+    );
     let mut tx = HostAccess::new();
     let mut budget = ExecutionBudget::new(100, usize::MAX, usize::MAX);
 
@@ -429,10 +459,10 @@ fn repeated_host_writes_write_through_without_mutation_budget() {
         .expect("host writes should not have a host-write count budget")
     };
 
-    assert_eq!(value, OwnedValue::Int(11));
+    assert_eq!(value, OwnedValue::Scalar(vela_common::ScalarValue::I64(11)));
     assert_eq!(
         adapter.read_diagnostic_path(&level_path(host_ref)),
-        Ok(HostValue::Int(11))
+        Ok(HostValue::Scalar(vela_common::ScalarValue::I64(11)))
     );
 }
 
@@ -440,7 +470,7 @@ fn repeated_host_writes_write_through_without_mutation_budget() {
 fn add_host_field_writes_through_and_updates_adapter() {
     let host_ref = player_ref(3);
     let mut code = UnlinkedCodeObject::new("main", 3).with_params(vec!["player".into()]);
-    let one = code.push_constant(Constant::Int(1));
+    let one = code.push_constant(Constant::Scalar(vela_common::ScalarValue::I64(1)));
     let target = level_target(&mut code, host_ref);
     let mutate_cache = host_cache_site(&mut code, CacheSiteKind::HostPathMutate, 1);
     let read_cache = host_cache_site(&mut code, CacheSiteKind::HostPathRead, 2);
@@ -474,7 +504,10 @@ fn add_host_field_writes_through_and_updates_adapter() {
     }));
     let mut program = UnlinkedProgram::new();
     program.insert_function(code);
-    let mut adapter = host_adapter(host_ref, HostValue::Int(9));
+    let mut adapter = host_adapter(
+        host_ref,
+        HostValue::Scalar(vela_common::ScalarValue::I64(9)),
+    );
     let mut tx = HostAccess::new();
 
     let result = {
@@ -491,10 +524,13 @@ fn add_host_field_writes_through_and_updates_adapter() {
         )
     };
 
-    assert_eq!(result, Ok(OwnedValue::Int(10)));
+    assert_eq!(
+        result,
+        Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(10)))
+    );
     assert_eq!(
         adapter.read_diagnostic_path(&level_path(host_ref)),
-        Ok(HostValue::Int(10))
+        Ok(HostValue::Scalar(vela_common::ScalarValue::I64(10)))
     );
 }
 
@@ -503,7 +539,10 @@ fn host_field_read_rejects_stale_generation() {
     let (program, _host_ref) = host_read_program();
     let fresh_ref = player_ref(3);
     let stale_ref = player_ref(2);
-    let mut adapter = host_adapter(fresh_ref, HostValue::Int(9));
+    let mut adapter = host_adapter(
+        fresh_ref,
+        HostValue::Scalar(vela_common::ScalarValue::I64(9)),
+    );
     let mut tx = HostAccess::new();
     let mut host = HostExecution {
         adapter: &mut adapter,
@@ -550,7 +589,10 @@ fn host_field_read_error_keeps_instruction_source_span() {
     }));
     let mut program = UnlinkedProgram::new();
     program.insert_function(code);
-    let mut adapter = host_adapter(host_ref, HostValue::Int(9));
+    let mut adapter = host_adapter(
+        host_ref,
+        HostValue::Scalar(vela_common::ScalarValue::I64(9)),
+    );
     adapter.deny_diagnostic_path_read(level_path(host_ref));
     let mut tx = HostAccess::new();
     let mut host = HostExecution {
@@ -615,8 +657,8 @@ fn runtime_errors_include_script_call_stack() {
     program.insert_function(middle);
 
     let mut leaf = UnlinkedCodeObject::new("leaf", 3);
-    let ten = leaf.push_constant(Constant::Int(10));
-    let zero = leaf.push_constant(Constant::Int(0));
+    let ten = leaf.push_constant(Constant::Scalar(vela_common::ScalarValue::I64(10)));
+    let zero = leaf.push_constant(Constant::Scalar(vela_common::ScalarValue::I64(0)));
     leaf.push_instruction(UnlinkedInstruction::new(
         UnlinkedInstructionKind::LoadConst {
             dst: Register(0),

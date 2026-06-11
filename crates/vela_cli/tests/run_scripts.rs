@@ -58,7 +58,7 @@ fn main() {
     );
     assert_eq!(
         String::from_utf8(output.stdout).expect("stdout should be utf8"),
-        "Int(5)\n"
+        "Scalar(I64(5))\n"
     );
     fs::remove_dir_all(root).expect("clean temp dir");
 }
@@ -84,7 +84,7 @@ fn main() {
     );
     assert_eq!(
         String::from_utf8(output.stdout).expect("stdout should be utf8"),
-        "Int(13)\n"
+        "Scalar(I64(13))\n"
     );
     fs::remove_dir_all(root).expect("clean temp dir");
 }

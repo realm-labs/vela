@@ -28,7 +28,7 @@ fn runtime_stages_source_file_native_effect_rejection_until_safe_point() {
     stage_source_update(&mut runtime, "fn main() { return 2; }");
     assert_eq!(
         runtime.call_raw("main", &[], CallOptions::unbounded(), &mut adapter, &mut tx),
-        Ok(OwnedValue::Int(1))
+        Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(1)))
     );
 
     let report = runtime
@@ -57,7 +57,7 @@ fn runtime_stages_source_file_native_effect_rejection_until_safe_point() {
     assert!(source_span.is_none());
     assert_eq!(
         runtime.call_raw("main", &[], CallOptions::unbounded(), &mut adapter, &mut tx),
-        Ok(OwnedValue::Int(1))
+        Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(1)))
     );
 }
 
@@ -89,7 +89,7 @@ fn runtime_stages_source_file_native_access_rejection_until_safe_point() {
     stage_source_update(&mut runtime, "fn main() { return 2; }");
     assert_eq!(
         runtime.call_raw("main", &[], CallOptions::unbounded(), &mut adapter, &mut tx),
-        Ok(OwnedValue::Int(1))
+        Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(1)))
     );
 
     let report = runtime
@@ -116,7 +116,7 @@ fn runtime_stages_source_file_native_access_rejection_until_safe_point() {
     assert!(source_span.is_none());
     assert_eq!(
         runtime.call_raw("main", &[], CallOptions::unbounded(), &mut adapter, &mut tx),
-        Ok(OwnedValue::Int(1))
+        Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(1)))
     );
 }
 
@@ -148,7 +148,7 @@ fn runtime_stages_source_file_native_parameter_rejection_until_safe_point() {
     stage_source_update(&mut runtime, "fn main() { return 2; }");
     assert_eq!(
         runtime.call_raw("main", &[], CallOptions::unbounded(), &mut adapter, &mut tx),
-        Ok(OwnedValue::Int(1))
+        Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(1)))
     );
 
     let report = runtime
@@ -182,7 +182,7 @@ fn runtime_stages_source_file_native_parameter_rejection_until_safe_point() {
     assert!(source_span.is_none());
     assert_eq!(
         runtime.call_raw("main", &[], CallOptions::unbounded(), &mut adapter, &mut tx),
-        Ok(OwnedValue::Int(1))
+        Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(1)))
     );
 }
 
@@ -214,7 +214,7 @@ fn runtime_stages_source_file_native_return_rejection_until_safe_point() {
     stage_source_update(&mut runtime, "fn main() { return 2; }");
     assert_eq!(
         runtime.call_raw("main", &[], CallOptions::unbounded(), &mut adapter, &mut tx),
-        Ok(OwnedValue::Int(1))
+        Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(1)))
     );
 
     let report = runtime
@@ -241,7 +241,7 @@ fn runtime_stages_source_file_native_return_rejection_until_safe_point() {
     assert!(source_span.is_none());
     assert_eq!(
         runtime.call_raw("main", &[], CallOptions::unbounded(), &mut adapter, &mut tx),
-        Ok(OwnedValue::Int(1))
+        Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(1)))
     );
 }
 
@@ -268,7 +268,7 @@ fn runtime_stages_source_file_removed_native_function_rejection_until_safe_point
     stage_source_update(&mut runtime, "fn main() { return 2; }");
     assert_eq!(
         runtime.call_raw("main", &[], CallOptions::unbounded(), &mut adapter, &mut tx),
-        Ok(OwnedValue::Int(1))
+        Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(1)))
     );
 
     let report = runtime
@@ -295,7 +295,7 @@ fn runtime_stages_source_file_removed_native_function_rejection_until_safe_point
     assert!(source_span.is_none());
     assert_eq!(
         runtime.call_raw("main", &[], CallOptions::unbounded(), &mut adapter, &mut tx),
-        Ok(OwnedValue::Int(1))
+        Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(1)))
     );
 }
 
@@ -327,7 +327,7 @@ fn runtime_stages_source_file_native_stable_id_churn_rejection_until_safe_point(
     stage_source_update(&mut runtime, "fn main() { return 2; }");
     assert_eq!(
         runtime.call_raw("main", &[], CallOptions::unbounded(), &mut adapter, &mut tx),
-        Ok(OwnedValue::Int(1))
+        Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(1)))
     );
 
     let report = runtime
@@ -354,7 +354,7 @@ fn runtime_stages_source_file_native_stable_id_churn_rejection_until_safe_point(
     assert!(source_span.is_none());
     assert_eq!(
         runtime.call_raw("main", &[], CallOptions::unbounded(), &mut adapter, &mut tx),
-        Ok(OwnedValue::Int(1))
+        Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(1)))
     );
 }
 
@@ -366,7 +366,7 @@ fn runtime_stages_source_file_native_stable_id_rename_until_safe_point() {
             NativeFunctionDesc::new("game::native::grant_bonus", NativeFunctionId::new(22))
                 .returns(TypeHint::Int)
                 .effects(EffectSet::host_read()),
-            |_| Ok(OwnedValue::Int(5)),
+            |_| Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(5))),
         )
         .build()
         .expect("old engine should build");
@@ -384,7 +384,7 @@ fn main() {
             NativeFunctionDesc::new("game::native::grant_bonus_v2", NativeFunctionId::new(22))
                 .returns(TypeHint::Int)
                 .effects(EffectSet::host_read()),
-            |_| Ok(OwnedValue::Int(5)),
+            |_| Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(5))),
         )
         .build()
         .expect("new engine should build");
@@ -394,7 +394,7 @@ fn main() {
 
     assert_eq!(
         runtime.call_raw("main", &[], CallOptions::unbounded(), &mut adapter, &mut tx),
-        Ok(OwnedValue::Int(5))
+        Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(5)))
     );
 
     stage_source_update(
@@ -407,7 +407,7 @@ fn main() {
     );
     assert_eq!(
         runtime.call_raw("main", &[], CallOptions::unbounded(), &mut adapter, &mut tx),
-        Ok(OwnedValue::Int(5))
+        Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(5)))
     );
 
     let report = runtime
@@ -419,7 +419,7 @@ fn main() {
     assert!(report.errors.is_empty());
     assert_eq!(
         runtime.call_raw("main", &[], CallOptions::unbounded(), &mut adapter, &mut tx),
-        Ok(OwnedValue::Int(6))
+        Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(6)))
     );
 }
 
@@ -448,7 +448,7 @@ fn runtime_stages_source_file_removed_method_rejection_until_safe_point() {
     stage_source_update(&mut runtime, "fn main() { return 2; }");
     assert_eq!(
         runtime.call_raw("main", &[], CallOptions::unbounded(), &mut adapter, &mut tx),
-        Ok(OwnedValue::Int(1))
+        Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(1)))
     );
 
     let report = runtime
@@ -474,7 +474,7 @@ fn runtime_stages_source_file_removed_method_rejection_until_safe_point() {
     assert!(source_span.is_none());
     assert_eq!(
         runtime.call_raw("main", &[], CallOptions::unbounded(), &mut adapter, &mut tx),
-        Ok(OwnedValue::Int(1))
+        Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(1)))
     );
 }
 
@@ -504,7 +504,7 @@ fn runtime_stages_source_file_method_stable_id_churn_rejection_until_safe_point(
     stage_source_update(&mut runtime, "fn main() { return 2; }");
     assert_eq!(
         runtime.call_raw("main", &[], CallOptions::unbounded(), &mut adapter, &mut tx),
-        Ok(OwnedValue::Int(1))
+        Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(1)))
     );
 
     let report = runtime
@@ -530,7 +530,7 @@ fn runtime_stages_source_file_method_stable_id_churn_rejection_until_safe_point(
     assert!(source_span.is_none());
     assert_eq!(
         runtime.call_raw("main", &[], CallOptions::unbounded(), &mut adapter, &mut tx),
-        Ok(OwnedValue::Int(1))
+        Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(1)))
     );
 }
 
@@ -575,7 +575,7 @@ fn main(player: Player) {
             &mut adapter,
             &mut tx
         ),
-        Ok(OwnedValue::Int(1))
+        Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(1)))
     );
     assert_host_method_access(&tx, method, 7);
 
@@ -597,7 +597,7 @@ fn main(player: Player) {
             &mut adapter,
             &mut tx
         ),
-        Ok(OwnedValue::Int(1))
+        Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(1)))
     );
     assert_host_method_access(&tx, method, 7);
 
@@ -617,7 +617,7 @@ fn main(player: Player) {
             &mut adapter,
             &mut tx
         ),
-        Ok(OwnedValue::Int(2))
+        Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(2)))
     );
     assert_host_method_access(&tx, method, 7);
 }
@@ -657,7 +657,7 @@ fn runtime_stages_source_file_method_effect_rejection_until_safe_point() {
     stage_source_update(&mut runtime, "fn main() { return 2; }");
     assert_eq!(
         runtime.call_raw("main", &[], CallOptions::unbounded(), &mut adapter, &mut tx),
-        Ok(OwnedValue::Int(1))
+        Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(1)))
     );
 
     let report = runtime
@@ -688,7 +688,7 @@ fn runtime_stages_source_file_method_effect_rejection_until_safe_point() {
     assert!(source_span.is_none());
     assert_eq!(
         runtime.call_raw("main", &[], CallOptions::unbounded(), &mut adapter, &mut tx),
-        Ok(OwnedValue::Int(1))
+        Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(1)))
     );
 }
 
@@ -727,7 +727,7 @@ fn runtime_stages_source_file_method_access_rejection_until_safe_point() {
     stage_source_update(&mut runtime, "fn main() { return 2; }");
     assert_eq!(
         runtime.call_raw("main", &[], CallOptions::unbounded(), &mut adapter, &mut tx),
-        Ok(OwnedValue::Int(1))
+        Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(1)))
     );
 
     let report = runtime
@@ -756,7 +756,7 @@ fn runtime_stages_source_file_method_access_rejection_until_safe_point() {
     assert!(source_span.is_none());
     assert_eq!(
         runtime.call_raw("main", &[], CallOptions::unbounded(), &mut adapter, &mut tx),
-        Ok(OwnedValue::Int(1))
+        Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(1)))
     );
 }
 
@@ -795,7 +795,7 @@ fn runtime_stages_source_file_method_parameter_rejection_until_safe_point() {
     stage_source_update(&mut runtime, "fn main() { return 2; }");
     assert_eq!(
         runtime.call_raw("main", &[], CallOptions::unbounded(), &mut adapter, &mut tx),
-        Ok(OwnedValue::Int(1))
+        Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(1)))
     );
 
     let report = runtime
@@ -828,7 +828,7 @@ fn runtime_stages_source_file_method_parameter_rejection_until_safe_point() {
     assert!(source_span.is_none());
     assert_eq!(
         runtime.call_raw("main", &[], CallOptions::unbounded(), &mut adapter, &mut tx),
-        Ok(OwnedValue::Int(1))
+        Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(1)))
     );
 }
 
@@ -861,7 +861,7 @@ fn runtime_stages_source_file_method_return_rejection_until_safe_point() {
     stage_source_update(&mut runtime, "fn main() { return 2; }");
     assert_eq!(
         runtime.call_raw("main", &[], CallOptions::unbounded(), &mut adapter, &mut tx),
-        Ok(OwnedValue::Int(1))
+        Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(1)))
     );
 
     let report = runtime
@@ -890,7 +890,7 @@ fn runtime_stages_source_file_method_return_rejection_until_safe_point() {
     assert!(source_span.is_none());
     assert_eq!(
         runtime.call_raw("main", &[], CallOptions::unbounded(), &mut adapter, &mut tx),
-        Ok(OwnedValue::Int(1))
+        Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(1)))
     );
 }
 
@@ -919,7 +919,7 @@ fn main() {
     );
     assert_eq!(
         runtime.call_raw("main", &[], CallOptions::unbounded(), &mut adapter, &mut tx),
-        Ok(OwnedValue::Int(1))
+        Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(1)))
     );
 
     let report = runtime
@@ -936,7 +936,7 @@ fn main() {
     ));
     assert_eq!(
         runtime.call_raw("main", &[], CallOptions::unbounded(), &mut adapter, &mut tx),
-        Ok(OwnedValue::Int(1))
+        Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(1)))
     );
 }
 
@@ -962,7 +962,7 @@ fn main() {
     );
     assert_eq!(
         runtime.call_raw("main", &[], CallOptions::unbounded(), &mut adapter, &mut tx),
-        Ok(OwnedValue::Int(1))
+        Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(1)))
     );
 
     let report = runtime
@@ -982,7 +982,7 @@ fn main() {
     assert_top_level_side_effect_repair_label(&report);
     assert_eq!(
         runtime.call_raw("main", &[], CallOptions::unbounded(), &mut adapter, &mut tx),
-        Ok(OwnedValue::Int(1))
+        Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(1)))
     );
 }
 

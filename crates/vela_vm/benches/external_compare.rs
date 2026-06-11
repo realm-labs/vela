@@ -759,9 +759,9 @@ fn percentile_ns(samples: &[Duration], percentile: usize) -> u128 {
 
 fn value_checksum(value: &OwnedValue) -> u64 {
     match value {
-        OwnedValue::Int(value) => *value as u64,
+        OwnedValue::Scalar(vela_common::ScalarValue::I64(value)) => *value as u64,
         OwnedValue::Bool(value) => u64::from(*value),
-        OwnedValue::Float(value) => value.to_bits(),
+        OwnedValue::Scalar(vela_common::ScalarValue::F64(value)) => value.to_bits(),
         OwnedValue::String(value) => bytes_checksum(value.as_bytes()),
         _ => 0,
     }

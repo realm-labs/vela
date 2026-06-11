@@ -151,15 +151,17 @@ fn run_workload(workload: &Workload, params: BenchParams) -> Result<BenchResult,
 fn register_bench_natives(vm: &mut Vm) {
     vm.register_native("bench::mix4", |args| {
         let [
-            OwnedValue::Int(a),
-            OwnedValue::Int(b),
-            OwnedValue::Int(c),
-            OwnedValue::Int(d),
+            OwnedValue::Scalar(vela_common::ScalarValue::I64(a)),
+            OwnedValue::Scalar(vela_common::ScalarValue::I64(b)),
+            OwnedValue::Scalar(vela_common::ScalarValue::I64(c)),
+            OwnedValue::Scalar(vela_common::ScalarValue::I64(d)),
         ] = args
         else {
             return Ok(OwnedValue::Null);
         };
-        Ok(OwnedValue::Int(a * 3 + b * 2 - c + d))
+        Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(
+            a * 3 + b * 2 - c + d,
+        )))
     });
 }
 
@@ -550,7 +552,7 @@ fn run_gc_pacing(vm: &Vm, program: &LinkedProgram) -> Result<OwnedValue, Box<dyn
         (value, gc_checksum)
     };
 
-    Ok(OwnedValue::Int(
+    Ok(OwnedValue::i64(
         runtime_value_checksum(&value) as i64
             + gc_checksum as i64
             + heap.live_object_count() as i64
@@ -567,15 +569,19 @@ fn seed_gc_garbage(heap: &mut ScriptHeap) {
 fn run_host_access(vm: &Vm, program: &LinkedProgram) -> Result<OwnedValue, Box<dyn Error>> {
     let player = HostRef::new(PLAYER_TYPE, PLAYER_OBJECT, PLAYER_GENERATION);
     let mut adapter = MockStateAdapter::new();
-    adapter
-        .insert_diagnostic_path_value(HostPath::new(player).field(LEVEL_FIELD), HostValue::Int(10));
-    adapter
-        .insert_diagnostic_path_value(HostPath::new(player).field(EXP_FIELD), HostValue::Int(90));
+    adapter.insert_diagnostic_path_value(
+        HostPath::new(player).field(LEVEL_FIELD),
+        HostValue::Scalar(vela_common::ScalarValue::I64(10)),
+    );
+    adapter.insert_diagnostic_path_value(
+        HostPath::new(player).field(EXP_FIELD),
+        HostValue::Scalar(vela_common::ScalarValue::I64(90)),
+    );
     adapter.insert_diagnostic_path_value(
         HostPath::new(player)
             .field(INVENTORY_FIELD)
             .field(GOLD_FIELD),
-        HostValue::Int(5),
+        HostValue::Scalar(vela_common::ScalarValue::I64(5)),
     );
     adapter.insert_diagnostic_path_value(
         HostPath::new(player)
@@ -583,7 +589,7 @@ fn run_host_access(vm: &Vm, program: &LinkedProgram) -> Result<OwnedValue, Box<d
             .field(ITEMS_FIELD)
             .key("gold")
             .field(ITEM_COUNT_FIELD),
-        HostValue::Int(7),
+        HostValue::Scalar(vela_common::ScalarValue::I64(7)),
     );
     adapter.insert_method_return(ADD_REWARD_METHOD, HostValue::Null);
     let mut tx = HostAccess::new();
@@ -601,7 +607,7 @@ fn run_host_access(vm: &Vm, program: &LinkedProgram) -> Result<OwnedValue, Box<d
         &mut budget,
         None,
     )?;
-    Ok(OwnedValue::Int(value_checksum(&value) as i64))
+    Ok(OwnedValue::i64(value_checksum(&value) as i64))
 }
 
 fn run_managed_heap_host_conversion(
@@ -615,9 +621,18 @@ fn run_managed_heap_host_conversion(
         .field(INVENTORY_FIELD)
         .field(GOLD_FIELD);
     let mut adapter = MockStateAdapter::new();
-    adapter.insert_diagnostic_path_value(level_path.clone(), HostValue::Int(0));
-    adapter.insert_diagnostic_path_value(exp_path.clone(), HostValue::Int(0));
-    adapter.insert_diagnostic_path_value(damage_path.clone(), HostValue::Int(0));
+    adapter.insert_diagnostic_path_value(
+        level_path.clone(),
+        HostValue::Scalar(vela_common::ScalarValue::I64(0)),
+    );
+    adapter.insert_diagnostic_path_value(
+        exp_path.clone(),
+        HostValue::Scalar(vela_common::ScalarValue::I64(0)),
+    );
+    adapter.insert_diagnostic_path_value(
+        damage_path.clone(),
+        HostValue::Scalar(vela_common::ScalarValue::I64(0)),
+    );
     let mut tx = HostAccess::new();
     let mut budget = ExecutionBudget::unbounded();
     let value = {
@@ -635,7 +650,7 @@ fn run_managed_heap_host_conversion(
             None,
         )?
     };
-    Ok(OwnedValue::Int(
+    Ok(OwnedValue::i64(
         value_checksum(&value) as i64
             + host_int(&adapter, level_path)?
             + host_int(&adapter, exp_path)?
@@ -654,9 +669,18 @@ fn run_managed_heap_host_read_conversion(
         .field(INVENTORY_FIELD)
         .field(GOLD_FIELD);
     let mut adapter = MockStateAdapter::new();
-    adapter.insert_diagnostic_path_value(level_path.clone(), HostValue::Int(3));
-    adapter.insert_diagnostic_path_value(exp_path.clone(), HostValue::Int(5));
-    adapter.insert_diagnostic_path_value(damage_path.clone(), HostValue::Int(7));
+    adapter.insert_diagnostic_path_value(
+        level_path.clone(),
+        HostValue::Scalar(vela_common::ScalarValue::I64(3)),
+    );
+    adapter.insert_diagnostic_path_value(
+        exp_path.clone(),
+        HostValue::Scalar(vela_common::ScalarValue::I64(5)),
+    );
+    adapter.insert_diagnostic_path_value(
+        damage_path.clone(),
+        HostValue::Scalar(vela_common::ScalarValue::I64(7)),
+    );
     let mut tx = HostAccess::new();
     let mut budget = ExecutionBudget::unbounded();
     let value = {
@@ -674,7 +698,7 @@ fn run_managed_heap_host_read_conversion(
             None,
         )?
     };
-    Ok(OwnedValue::Int(
+    Ok(OwnedValue::i64(
         value_checksum(&value) as i64
             + host_int(&adapter, level_path)?
             + host_int(&adapter, exp_path)?
@@ -702,28 +726,45 @@ fn run_gameplay_monster_kill(
         .field(QUEST_DONE_FIELD);
 
     let mut adapter = MockStateAdapter::new();
-    adapter
-        .insert_diagnostic_path_value(HostPath::new(player).field(LEVEL_FIELD), HostValue::Int(1));
-    adapter
-        .insert_diagnostic_path_value(HostPath::new(player).field(EXP_FIELD), HostValue::Int(90));
-    adapter.insert_diagnostic_path_value(HostPath::new(player).field(ID_FIELD), HostValue::Int(7));
-    adapter.insert_diagnostic_path_value(quest_count_path.clone(), HostValue::Int(2));
+    adapter.insert_diagnostic_path_value(
+        HostPath::new(player).field(LEVEL_FIELD),
+        HostValue::Scalar(vela_common::ScalarValue::I64(1)),
+    );
+    adapter.insert_diagnostic_path_value(
+        HostPath::new(player).field(EXP_FIELD),
+        HostValue::Scalar(vela_common::ScalarValue::I64(90)),
+    );
+    adapter.insert_diagnostic_path_value(
+        HostPath::new(player).field(ID_FIELD),
+        HostValue::Scalar(vela_common::ScalarValue::I64(7)),
+    );
+    adapter.insert_diagnostic_path_value(
+        quest_count_path.clone(),
+        HostValue::Scalar(vela_common::ScalarValue::I64(2)),
+    );
     adapter.insert_diagnostic_path_value(
         HostPath::new(player).field(QUEST_GOAL_FIELD),
-        HostValue::Int(3),
+        HostValue::Scalar(vela_common::ScalarValue::I64(3)),
     );
     adapter.insert_diagnostic_path_value(quest_done_path.clone(), HostValue::Bool(false));
-    adapter.insert_diagnostic_path_value(inventory_gold_count_path.clone(), HostValue::Int(0));
+    adapter.insert_diagnostic_path_value(
+        inventory_gold_count_path.clone(),
+        HostValue::Scalar(vela_common::ScalarValue::I64(0)),
+    );
     adapter.insert_diagnostic_path_value(
         HostPath::new(ctx)
             .field(CONFIG_FIELD)
             .field(EXP_TO_NEXT_LEVEL_FIELD),
-        HostValue::Int(100),
+        HostValue::Scalar(vela_common::ScalarValue::I64(100)),
     );
-    adapter
-        .insert_diagnostic_path_value(HostPath::new(monster).field(EXP_FIELD), HostValue::Int(20));
-    adapter
-        .insert_diagnostic_path_value(HostPath::new(monster).field(ID_FIELD), HostValue::Int(11));
+    adapter.insert_diagnostic_path_value(
+        HostPath::new(monster).field(EXP_FIELD),
+        HostValue::Scalar(vela_common::ScalarValue::I64(20)),
+    );
+    adapter.insert_diagnostic_path_value(
+        HostPath::new(monster).field(ID_FIELD),
+        HostValue::Scalar(vela_common::ScalarValue::I64(11)),
+    );
     adapter.insert_method_return(EMIT_METHOD, HostValue::Null);
     adapter.insert_method_return(ADD_REWARD_METHOD, HostValue::Null);
 
@@ -748,7 +789,7 @@ fn run_gameplay_monster_kill(
             None,
         )?
     };
-    Ok(OwnedValue::Int(
+    Ok(OwnedValue::i64(
         value_checksum(&value) as i64
             + adapter.method_calls().len() as i64
             + host_int(&adapter, HostPath::new(player).field(LEVEL_FIELD))?
@@ -761,7 +802,7 @@ fn run_gameplay_monster_kill(
 
 fn host_int(adapter: &MockStateAdapter, path: HostPath) -> Result<i64, Box<dyn Error>> {
     match adapter.read_diagnostic_path(&path)? {
-        HostValue::Int(value) => Ok(value),
+        HostValue::Scalar(vela_common::ScalarValue::I64(value)) => Ok(value),
         value => Err(format!("expected int host value, got {value:?}").into()),
     }
 }
@@ -805,8 +846,7 @@ fn value_checksum(value: &OwnedValue) -> u64 {
         OwnedValue::Missing => 0x01,
         OwnedValue::Null => 0x02,
         OwnedValue::Bool(value) => u64::from(*value) ^ 0x03,
-        OwnedValue::Int(value) => *value as u64,
-        OwnedValue::Float(value) => value.to_bits(),
+        OwnedValue::Scalar(value) => scalar_checksum(*value),
         OwnedValue::String(value) => bytes_checksum(value.as_bytes()),
         OwnedValue::Array(values) | OwnedValue::Set(values) => values
             .iter()
@@ -843,10 +883,24 @@ fn runtime_value_checksum(value: &Value) -> u64 {
         Value::Missing => 0x01,
         Value::Null => 0x02,
         Value::Bool(value) => u64::from(*value) ^ 0x03,
-        Value::Int(value) => *value as u64,
-        Value::Float(value) => value.to_bits(),
+        Value::Scalar(value) => scalar_checksum(*value),
         Value::Range(_) => 0x09,
         Value::HeapRef(_) | Value::HostRef(_) => 0x0a,
+    }
+}
+
+fn scalar_checksum(value: vela_common::ScalarValue) -> u64 {
+    match value {
+        vela_common::ScalarValue::I8(value) => value as i64 as u64,
+        vela_common::ScalarValue::I16(value) => value as i64 as u64,
+        vela_common::ScalarValue::I32(value) => value as i64 as u64,
+        vela_common::ScalarValue::I64(value) => value as u64,
+        vela_common::ScalarValue::U8(value) => u64::from(value),
+        vela_common::ScalarValue::U16(value) => u64::from(value),
+        vela_common::ScalarValue::U32(value) => u64::from(value),
+        vela_common::ScalarValue::U64(value) => value,
+        vela_common::ScalarValue::F32(value) => u64::from(value.to_bits()),
+        vela_common::ScalarValue::F64(value) => value.to_bits(),
     }
 }
 

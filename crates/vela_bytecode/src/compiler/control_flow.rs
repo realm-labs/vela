@@ -236,8 +236,11 @@ impl Compiler<'_, '_> {
         let item_register = self.alloc_register()?;
         let loop_index = if index_pattern.is_some() {
             let counter = self.alloc_register()?;
-            self.emit_constant_to(counter, Constant::Int(0));
-            Some((counter, self.emit_constant(Constant::Int(1))?))
+            self.emit_constant_to(counter, Constant::Scalar(vela_common::ScalarValue::I64(0)));
+            Some((
+                counter,
+                self.emit_constant(Constant::Scalar(vela_common::ScalarValue::I64(1)))?,
+            ))
         } else {
             None
         };

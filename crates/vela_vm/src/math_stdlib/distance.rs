@@ -12,7 +12,7 @@ pub(crate) fn math_distance2d(args: &[OwnedValue]) -> VmResult<OwnedValue> {
     let y2 = expect_finite_float(&args[3], "math::distance2d")?;
     let distance = (x2 - x1).hypot(y2 - y1);
     if distance.is_finite() {
-        Ok(OwnedValue::Float(distance))
+        Ok(OwnedValue::Scalar(vela_common::ScalarValue::F64(distance)))
     } else {
         type_error("math::distance2d")
     }
@@ -28,7 +28,7 @@ pub(crate) fn math_distance3d(args: &[OwnedValue]) -> VmResult<OwnedValue> {
     let z2 = expect_finite_float(&args[5], "math::distance3d")?;
     let distance = (x2 - x1).hypot(y2 - y1).hypot(z2 - z1);
     if distance.is_finite() {
-        Ok(OwnedValue::Float(distance))
+        Ok(OwnedValue::Scalar(vela_common::ScalarValue::F64(distance)))
     } else {
         type_error("math::distance3d")
     }

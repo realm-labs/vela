@@ -25,7 +25,7 @@ fn main() {
 
     assert_eq!(
         run_linked_test_program_with_budget(&vm, &program, "main", &[], &mut budget),
-        Ok(OwnedValue::Int(274))
+        Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(274)))
     );
 }
 
@@ -54,7 +54,7 @@ fn main() {
 
     assert_eq!(
         run_linked_test_program_with_budget(&vm, &program, "main", &[], &mut budget),
-        Ok(OwnedValue::Int(1))
+        Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(1)))
     );
 }
 
@@ -77,9 +77,9 @@ fn main() {
     let code = program.function("main").expect("main function");
 
     assert!(code.constants.contains(&Constant::Array(vec![
-        Constant::Int(1),
-        Constant::Int(2),
-        Constant::Int(3),
+        Constant::Scalar(vela_common::ScalarValue::I64(1)),
+        Constant::Scalar(vela_common::ScalarValue::I64(2)),
+        Constant::Scalar(vela_common::ScalarValue::I64(3)),
     ])));
     assert!(code.constants.contains(&Constant::Map(vec![(
         "kind".to_owned(),
@@ -134,6 +134,6 @@ pub const BASE = 3;
 
     assert_eq!(
         run_linked_test_program_with_budget(&vm, &program, "game::main::main", &[], &mut budget),
-        Ok(OwnedValue::Int(374))
+        Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(374)))
     );
 }

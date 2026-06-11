@@ -17,7 +17,7 @@ fn identity(value) {
             "items".to_owned(),
             OwnedValue::Array(vec![
                 OwnedValue::String("gold".to_owned()),
-                OwnedValue::Int(3),
+                OwnedValue::Scalar(vela_common::ScalarValue::I64(3)),
             ]),
         ),
         ("enabled".to_owned(), OwnedValue::Bool(true)),

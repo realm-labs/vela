@@ -56,7 +56,7 @@ fn main() {
 
     assert_eq!(
         run_linked_program(&engine, &program, &[]),
-        Ok(OwnedValue::Int(42)),
+        Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(42))),
     );
 }
 
@@ -83,7 +83,7 @@ fn main() {
     assert_eq!(registered.id, function_id("game::grant_bonus"));
     assert_eq!(
         run_linked_program(&engine, &program, &[]),
-        Ok(OwnedValue::Int(7)),
+        Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(7))),
     );
 }
 
@@ -112,7 +112,7 @@ fn main(labels) {
                 OwnedValue::String("raid".to_owned()),
             ])],
         ),
-        Ok(OwnedValue::Int(2)),
+        Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(2))),
     );
 }
 
@@ -141,7 +141,7 @@ fn main(labels) {
                 OwnedValue::String("raid".to_owned()),
             ])],
         ),
-        Ok(OwnedValue::Int(2)),
+        Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(2))),
     );
 }
 
@@ -167,12 +167,12 @@ fn main(weights) {
             &engine,
             &program,
             &[OwnedValue::Array(vec![
-                OwnedValue::Int(3),
-                OwnedValue::Int(5),
-                OwnedValue::Int(7),
+                OwnedValue::Scalar(vela_common::ScalarValue::I64(3)),
+                OwnedValue::Scalar(vela_common::ScalarValue::I64(5)),
+                OwnedValue::Scalar(vela_common::ScalarValue::I64(7)),
             ])],
         ),
-        Ok(OwnedValue::Int(27)),
+        Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(27))),
     );
 }
 
@@ -197,13 +197,19 @@ fn main(scores) {
             &program,
             &[OwnedValue::Map(
                 [
-                    ("daily".to_owned(), OwnedValue::Int(3)),
-                    ("weekly".to_owned(), OwnedValue::Int(7)),
+                    (
+                        "daily".to_owned(),
+                        OwnedValue::Scalar(vela_common::ScalarValue::I64(3))
+                    ),
+                    (
+                        "weekly".to_owned(),
+                        OwnedValue::Scalar(vela_common::ScalarValue::I64(7))
+                    ),
                 ]
                 .into(),
             )],
         ),
-        Ok(OwnedValue::Int(10)),
+        Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(10))),
     );
 }
 
@@ -228,17 +234,32 @@ fn main(scores) {
             &program,
             &[OwnedValue::Map(
                 [
-                    ("daily".to_owned(), OwnedValue::Int(3)),
-                    ("weekly".to_owned(), OwnedValue::Int(7)),
+                    (
+                        "daily".to_owned(),
+                        OwnedValue::Scalar(vela_common::ScalarValue::I64(3))
+                    ),
+                    (
+                        "weekly".to_owned(),
+                        OwnedValue::Scalar(vela_common::ScalarValue::I64(7))
+                    ),
                 ]
                 .into(),
             )],
         ),
         Ok(OwnedValue::Map(
             [
-                ("daily".to_owned(), OwnedValue::Int(3)),
-                ("total".to_owned(), OwnedValue::Int(10)),
-                ("weekly".to_owned(), OwnedValue::Int(7)),
+                (
+                    "daily".to_owned(),
+                    OwnedValue::Scalar(vela_common::ScalarValue::I64(3))
+                ),
+                (
+                    "total".to_owned(),
+                    OwnedValue::Scalar(vela_common::ScalarValue::I64(10))
+                ),
+                (
+                    "weekly".to_owned(),
+                    OwnedValue::Scalar(vela_common::ScalarValue::I64(7))
+                ),
             ]
             .into(),
         )),
@@ -262,7 +283,7 @@ fn main() {
 
     assert_eq!(
         run_linked_program(&engine, &program, &[]),
-        Ok(OwnedValue::Float(3.0)),
+        Ok(OwnedValue::Scalar(vela_common::ScalarValue::F64(3.0))),
     );
 }
 
@@ -308,7 +329,7 @@ fn main() {
 
     assert_eq!(
         run_linked_program(&engine, &program, &[]),
-        Ok(OwnedValue::Int(15)),
+        Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(15))),
     );
 }
 
@@ -329,7 +350,7 @@ fn main() {
 
     assert_eq!(
         run_linked_program(&engine, &program, &[]),
-        Ok(OwnedValue::Int(21)),
+        Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(21))),
     );
 }
 
@@ -353,7 +374,7 @@ fn main() {
 
     assert_eq!(
         run_linked_program(&engine, &program, &[]),
-        Ok(OwnedValue::Int(13)),
+        Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(13))),
     );
 }
 
@@ -374,7 +395,7 @@ fn main() {
 
     assert_eq!(
         run_linked_program(&engine, &program, &[]),
-        Ok(OwnedValue::Int(11)),
+        Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(11))),
     );
 }
 
@@ -401,7 +422,7 @@ fn main(path) {
 
     assert_eq!(
         run_linked_program(&engine, &program, &[OwnedValue::PathProxy(path)]),
-        Ok(OwnedValue::Int(2)),
+        Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(2))),
     );
 }
 
@@ -503,7 +524,7 @@ fn main(player) {
 
     assert_eq!(
         run_linked_program_with_host(&engine, &program, &[OwnedValue::HostRef(player)], &mut host,),
-        Ok(OwnedValue::Int(11)),
+        Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(11))),
     );
 }
 
@@ -536,7 +557,7 @@ fn main(player, ok) {
             &mut adapter,
             &mut tx,
         ),
-        Ok(OwnedValue::Int(13)),
+        Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(13))),
     );
 
     let mut failed_tx = HostAccess::new();
@@ -663,7 +684,7 @@ fn main(player) {
 
     assert_eq!(
         run_linked_program_with_host(&engine, &program, &[OwnedValue::HostRef(player)], &mut host,),
-        Ok(OwnedValue::Int(12)),
+        Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(12))),
     );
 }
 
@@ -700,7 +721,7 @@ fn main(player) {
 
     assert_eq!(
         run_linked_program_with_host(&engine, &program, &[OwnedValue::HostRef(player)], &mut host,),
-        Ok(OwnedValue::Int(14)),
+        Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(14))),
     );
 }
 
@@ -733,7 +754,7 @@ fn main(player, ok) {
             &mut adapter,
             &mut tx,
         ),
-        Ok(OwnedValue::Int(15)),
+        Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(15))),
     );
 
     let mut failed_tx = HostAccess::new();

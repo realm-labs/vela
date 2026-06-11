@@ -58,7 +58,7 @@ pub(crate) fn expect_string<'a, T: StringArgument + ?Sized>(
 #[inline]
 pub(crate) fn expect_int(value: &Value, operation: &'static str) -> VmResult<i64> {
     match value {
-        Value::Int(value) => Ok(*value),
+        Value::Scalar(vela_common::ScalarValue::I64(value)) => Ok(*value),
         _ => Err(VmError::new(VmErrorKind::TypeMismatch { operation })),
     }
 }

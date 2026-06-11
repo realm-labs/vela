@@ -39,5 +39,8 @@ fn core_language_fixture_executes() {
         .run_linked_program(&linked, "conformance::core::main", &[])
         .expect("core language conformance fixture should run");
 
-    assert_eq!(result, OwnedValue::Int(609));
+    assert_eq!(
+        result,
+        OwnedValue::Scalar(vela_common::ScalarValue::I64(609))
+    );
 }

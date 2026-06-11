@@ -225,8 +225,7 @@ fn display_value(value: &OwnedValue) -> String {
         OwnedValue::Missing => "<missing>".to_owned(),
         OwnedValue::Null => "null".to_owned(),
         OwnedValue::Bool(value) => value.to_string(),
-        OwnedValue::Int(value) => value.to_string(),
-        OwnedValue::Float(value) => value.to_string(),
+        OwnedValue::Scalar(value) => value.to_string(),
         OwnedValue::String(value) => value.clone(),
         OwnedValue::Array(values) => {
             let values = values.iter().map(display_value).collect::<Vec<_>>();

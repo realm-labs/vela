@@ -248,5 +248,8 @@ pub const BONUS: int = 5;
         &instruction.kind,
         UnlinkedInstructionKind::CallFunction { name, .. } if name == "game::reward::grant"
     )));
-    assert!(main.constants.contains(&Constant::Int(5)));
+    assert!(
+        main.constants
+            .contains(&Constant::Scalar(vela_common::ScalarValue::I64(5)))
+    );
 }

@@ -64,13 +64,11 @@ pub(crate) fn value_to_reflect(
         OwnedValue::Missing | OwnedValue::PathProxy(_) | OwnedValue::Iterator(_) => {
             Err(type_error(operation))
         }
-        OwnedValue::Null
-        | OwnedValue::Bool(_)
-        | OwnedValue::Int(_)
-        | OwnedValue::Float(_)
-        | OwnedValue::String(_) => Ok(reflect::value::ReflectValue::Host(owned_to_host(
-            value, operation,
-        )?)),
+        OwnedValue::Null | OwnedValue::Bool(_) | OwnedValue::Scalar(_) | OwnedValue::String(_) => {
+            Ok(reflect::value::ReflectValue::Host(owned_to_host(
+                value, operation,
+            )?))
+        }
     }
 }
 
@@ -83,8 +81,9 @@ pub(crate) fn runtime_value_to_reflect(
         Value::Missing => Err(type_error(operation)),
         Value::Null => Ok(reflect::value::ReflectValue::Host(HostValue::Null)),
         Value::Bool(value) => Ok(reflect::value::ReflectValue::Host(HostValue::Bool(*value))),
-        Value::Int(value) => Ok(reflect::value::ReflectValue::Host(HostValue::Int(*value))),
-        Value::Float(value) => Ok(reflect::value::ReflectValue::Host(HostValue::Float(*value))),
+        Value::Scalar(value) => Ok(reflect::value::ReflectValue::Host(HostValue::Scalar(
+            *value,
+        ))),
         Value::Range(_) => Ok(reflect::value::ReflectValue::Range),
         Value::HostRef(host_ref) => Ok(reflect::value::ReflectValue::HostRef(*host_ref)),
         Value::HeapRef(reference) => match heap.heap.get(*reference) {
@@ -214,8 +213,7 @@ fn owned_to_host(value: &OwnedValue, operation: &'static str) -> VmResult<HostVa
     match value {
         OwnedValue::Null => Ok(HostValue::Null),
         OwnedValue::Bool(value) => Ok(HostValue::Bool(*value)),
-        OwnedValue::Int(value) => Ok(HostValue::Int(*value)),
-        OwnedValue::Float(value) => Ok(HostValue::Float(*value)),
+        OwnedValue::Scalar(value) => Ok(HostValue::Scalar(*value)),
         OwnedValue::String(value) => Ok(HostValue::String(value.clone())),
         OwnedValue::HostRef(value) => Ok(HostValue::HostRef(*value)),
         OwnedValue::Missing
@@ -235,8 +233,7 @@ fn host_to_owned(value: HostValue) -> OwnedValue {
     match value {
         HostValue::Null => OwnedValue::Null,
         HostValue::Bool(value) => OwnedValue::Bool(value),
-        HostValue::Int(value) => OwnedValue::Int(value),
-        HostValue::Float(value) => OwnedValue::Float(value),
+        HostValue::Scalar(value) => OwnedValue::Scalar(value),
         HostValue::String(value) => OwnedValue::String(value),
         HostValue::HostRef(value) => OwnedValue::HostRef(value),
     }

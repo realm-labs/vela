@@ -82,7 +82,7 @@ pub(super) fn expect_arity(method: &str, args: &[Value], expected: usize) -> VmR
 
 pub(super) fn index_value(value: &Value, operation: &'static str) -> VmResult<usize> {
     match value {
-        Value::Int(value) if *value >= 0 => Ok(*value as usize),
+        Value::Scalar(vela_common::ScalarValue::I64(value)) if *value >= 0 => Ok(*value as usize),
         _ => type_error(operation),
     }
 }
@@ -309,7 +309,7 @@ fn main() {
         vm.register_standard_natives();
 
         let result = run_linked_string_test_code(&vm, code).expect("string find should run");
-        assert_eq!(result, OwnedValue::Int(4));
+        assert_eq!(result, OwnedValue::Scalar(vela_common::ScalarValue::I64(4)));
     }
 
     #[test]
@@ -328,7 +328,7 @@ fn main() {
 
         let result = run_linked_string_test_code_with_budget(&vm, code, &mut budget)
             .expect("heap string find should run");
-        assert_eq!(result, OwnedValue::Int(8));
+        assert_eq!(result, OwnedValue::Scalar(vela_common::ScalarValue::I64(8)));
     }
 
     #[test]
@@ -543,7 +543,7 @@ fn main() {
 
         let result =
             run_linked_string_test_code(&Vm::new(), code).expect("string split_once should run");
-        assert_eq!(result, OwnedValue::Int(3));
+        assert_eq!(result, OwnedValue::Scalar(vela_common::ScalarValue::I64(3)));
     }
 
     #[test]
@@ -638,7 +638,7 @@ fn main() {
         vm.register_standard_natives();
 
         let result = run_linked_string_test_code(&vm, code).expect("string parse_int should run");
-        assert_eq!(result, OwnedValue::Int(0));
+        assert_eq!(result, OwnedValue::Scalar(vela_common::ScalarValue::I64(0)));
     }
 
     #[test]
@@ -658,7 +658,10 @@ fn main() {
 
         let result = run_linked_string_test_code_with_budget(&vm, code, &mut budget)
             .expect("heap string parse_int should run");
-        assert_eq!(result, OwnedValue::Int(12));
+        assert_eq!(
+            result,
+            OwnedValue::Scalar(vela_common::ScalarValue::I64(12))
+        );
     }
 
     #[test]
@@ -685,7 +688,10 @@ fn main() {
         vm.register_standard_natives();
 
         let result = run_linked_string_test_code(&vm, code).expect("string parse_float should run");
-        assert_eq!(result, OwnedValue::Float(-0.5));
+        assert_eq!(
+            result,
+            OwnedValue::Scalar(vela_common::ScalarValue::F64(-0.5))
+        );
     }
 
     #[test]
@@ -705,7 +711,7 @@ fn main() {
 
         let result = run_linked_string_test_code_with_budget(&vm, code, &mut budget)
             .expect("heap string parse_float should run");
-        assert_eq!(result, OwnedValue::Int(3));
+        assert_eq!(result, OwnedValue::Scalar(vela_common::ScalarValue::I64(3)));
     }
 
     #[test]

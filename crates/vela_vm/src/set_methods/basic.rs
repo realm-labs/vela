@@ -77,8 +77,10 @@ impl OwnedSetKey {
         match value {
             OwnedValue::Null => Ok(Self::Null),
             OwnedValue::Bool(value) => Ok(Self::Bool(*value)),
-            OwnedValue::Int(value) => Ok(Self::Int(*value)),
-            OwnedValue::Float(value) if value.is_finite() => Ok(Self::Float(value.to_bits())),
+            OwnedValue::Scalar(vela_common::ScalarValue::I64(value)) => Ok(Self::Int(*value)),
+            OwnedValue::Scalar(vela_common::ScalarValue::F64(value)) if value.is_finite() => {
+                Ok(Self::Float(value.to_bits()))
+            }
             OwnedValue::String(value) => Ok(Self::String(value.clone())),
             _ => owned_type_error(operation),
         }

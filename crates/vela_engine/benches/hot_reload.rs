@@ -175,7 +175,7 @@ fn run_abi_rejection(engine: &Engine, initial: &ProgramVersion) -> Result<u64, B
     Ok(report_checksum(
         report.accepted,
         Some(active_version),
-        OwnedValue::Int(report.errors.len() as i64),
+        OwnedValue::i64(report.errors.len() as i64),
     ))
 }
 
@@ -224,8 +224,7 @@ fn value_checksum(value: &OwnedValue) -> u64 {
         OwnedValue::Missing => 0x01,
         OwnedValue::Null => 0x02,
         OwnedValue::Bool(value) => u64::from(*value) ^ 0x03,
-        OwnedValue::Int(value) => *value as u64,
-        OwnedValue::Float(value) => value.to_bits(),
+        OwnedValue::Scalar(value) => scalar_checksum(*value),
         OwnedValue::String(value) => bytes_checksum(value.as_bytes()),
         OwnedValue::Array(values) | OwnedValue::Set(values) => values
             .iter()
@@ -254,6 +253,21 @@ fn value_checksum(value: &OwnedValue) -> u64 {
         OwnedValue::Range(_) => 0x09,
         OwnedValue::Closure(_) | OwnedValue::HostRef(_) | OwnedValue::PathProxy(_) => 0x0a,
         OwnedValue::Iterator(_) => 0x0b,
+    }
+}
+
+fn scalar_checksum(value: vela_common::ScalarValue) -> u64 {
+    match value {
+        vela_common::ScalarValue::I8(value) => value as i64 as u64,
+        vela_common::ScalarValue::I16(value) => value as i64 as u64,
+        vela_common::ScalarValue::I32(value) => value as i64 as u64,
+        vela_common::ScalarValue::I64(value) => value as u64,
+        vela_common::ScalarValue::U8(value) => u64::from(value),
+        vela_common::ScalarValue::U16(value) => u64::from(value),
+        vela_common::ScalarValue::U32(value) => u64::from(value),
+        vela_common::ScalarValue::U64(value) => value,
+        vela_common::ScalarValue::F32(value) => u64::from(value.to_bits()),
+        vela_common::ScalarValue::F64(value) => value.to_bits(),
     }
 }
 

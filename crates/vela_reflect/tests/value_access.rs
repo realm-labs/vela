@@ -34,7 +34,7 @@ fn adapter_with_level(value: HostValue) -> MockStateAdapter {
 #[test]
 fn reflect_set_host_ref_creates_patch() {
     let registry = registry();
-    let mut adapter = adapter_with_level(HostValue::Int(9));
+    let mut adapter = adapter_with_level(HostValue::Scalar(vela_common::ScalarValue::I64(9)));
     let mut tx = HostAccess::new();
     let mut ctx = ReflectContext {
         registry: &registry,
@@ -46,7 +46,7 @@ fn reflect_set_host_ref_creates_patch() {
         &mut ctx,
         &ReflectValue::HostRef(player_ref()),
         "level",
-        ReflectValue::Host(HostValue::Int(10)),
+        ReflectValue::Host(HostValue::Scalar(vela_common::ScalarValue::I64(10))),
     )
     .expect("reflect set");
 }
@@ -54,13 +54,13 @@ fn reflect_set_host_ref_creates_patch() {
 #[test]
 fn reflect_get_host_ref_reads_write_through_state() {
     let registry = registry();
-    let mut adapter = adapter_with_level(HostValue::Int(9));
+    let mut adapter = adapter_with_level(HostValue::Scalar(vela_common::ScalarValue::I64(9)));
     let mut tx = HostAccess::new();
     let plan = HostTargetPlan::new(player_ref().type_id).field(FieldId::new(2));
     tx.write(
         &mut adapter,
         HostTargetInstance::new(player_ref(), &plan, &[]),
-        HostValue::Int(12),
+        HostValue::Scalar(vela_common::ScalarValue::I64(12)),
         None,
     )
     .expect("set host target");
@@ -72,13 +72,16 @@ fn reflect_get_host_ref_reads_write_through_state() {
 
     let value = get(&mut ctx, &ReflectValue::HostRef(player_ref()), "level").expect("reflect get");
 
-    assert_eq!(value, ReflectValue::Host(HostValue::Int(12)));
+    assert_eq!(
+        value,
+        ReflectValue::Host(HostValue::Scalar(vela_common::ScalarValue::I64(12)))
+    );
 }
 
 #[test]
 fn reflect_set_read_only_host_field_fails_without_patch() {
     let registry = registry();
-    let mut adapter = adapter_with_level(HostValue::Int(9));
+    let mut adapter = adapter_with_level(HostValue::Scalar(vela_common::ScalarValue::I64(9)));
     let mut tx = HostAccess::new();
     let mut ctx = ReflectContext {
         registry: &registry,
@@ -90,7 +93,7 @@ fn reflect_set_read_only_host_field_fails_without_patch() {
         &mut ctx,
         &ReflectValue::HostRef(player_ref()),
         "id",
-        ReflectValue::Host(HostValue::Int(10)),
+        ReflectValue::Host(HostValue::Scalar(vela_common::ScalarValue::I64(10))),
     )
     .expect_err("read-only set");
 
@@ -107,7 +110,7 @@ fn reflect_set_read_only_host_field_fails_without_patch() {
 #[test]
 fn reflect_call_host_ref_writes_through_and_updates_adapter() {
     let registry = registry();
-    let mut adapter = adapter_with_level(HostValue::Int(9));
+    let mut adapter = adapter_with_level(HostValue::Scalar(vela_common::ScalarValue::I64(9)));
     adapter.insert_method_return(HostMethodId::new(5), HostValue::Null);
     let mut tx = HostAccess::new();
     {
@@ -121,7 +124,9 @@ fn reflect_call_host_ref_writes_through_and_updates_adapter() {
             &mut ctx,
             &ReflectValue::HostRef(player_ref()),
             "grant_exp",
-            vec![ReflectValue::Host(HostValue::Int(20))],
+            vec![ReflectValue::Host(HostValue::Scalar(
+                vela_common::ScalarValue::I64(20),
+            ))],
         )
         .expect("reflect call");
 
@@ -135,5 +140,8 @@ fn reflect_call_host_ref_writes_through_and_updates_adapter() {
         HostTargetPlan::new(player_ref().type_id)
     );
     assert_eq!(calls[0].method, HostMethodId::new(5));
-    assert_eq!(calls[0].args, vec![HostValue::Int(20)]);
+    assert_eq!(
+        calls[0].args,
+        vec![HostValue::Scalar(vela_common::ScalarValue::I64(20))]
+    );
 }

@@ -84,7 +84,7 @@ fn main(player) {
             &[OwnedValue::HostRef(host_ref)],
             &mut host
         ),
-        Ok(OwnedValue::Int(1)),
+        Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(1))),
     );
 }
 
@@ -182,7 +182,7 @@ fn typed_host_set_level(host: &mut HostExecution<'_>, player: HostRef, level: i6
     host.access.write_diagnostic_path(
         host.adapter,
         HostPath::new(player).field(FieldId::new(1)),
-        HostValue::Int(level),
+        HostValue::Scalar(vela_common::ScalarValue::I64(level)),
         None,
     )?;
     Ok(())
@@ -247,7 +247,7 @@ fn main(player) {
 
     assert_eq!(
         run_linked_program_with_host(&engine, &program, &[OwnedValue::HostRef(player)], &mut host),
-        Ok(OwnedValue::Int(9)),
+        Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(9))),
     );
 }
 
@@ -293,7 +293,7 @@ fn main(player) {
 
     assert_eq!(
         run_linked_program_with_host(&engine, &program, &[OwnedValue::HostRef(player)], &mut host),
-        Ok(OwnedValue::Int(14)),
+        Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(14))),
     );
 }
 
@@ -340,7 +340,7 @@ fn main(player) {
 
     assert_eq!(
         run_linked_program_with_host(&engine, &program, &[OwnedValue::HostRef(player)], &mut host),
-        Ok(OwnedValue::Int(20)),
+        Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(20))),
     );
 }
 
@@ -355,7 +355,7 @@ fn typed_host_sum_level(
     host.access.write_diagnostic_path(
         host.adapter,
         HostPath::new(player).field(FieldId::new(1)),
-        HostValue::Int(level),
+        HostValue::Scalar(vela_common::ScalarValue::I64(level)),
         None,
     )?;
     Ok(level)
@@ -373,7 +373,7 @@ fn typed_host_sum5_level(
     host.access.write_diagnostic_path(
         host.adapter,
         HostPath::new(player).field(FieldId::new(1)),
-        HostValue::Int(level),
+        HostValue::Scalar(vela_common::ScalarValue::I64(level)),
         None,
     )?;
     Ok(level)
@@ -392,7 +392,7 @@ fn typed_host_sum6_level(
     host.access.write_diagnostic_path(
         host.adapter,
         HostPath::new(player).field(FieldId::new(1)),
-        HostValue::Int(level),
+        HostValue::Scalar(vela_common::ScalarValue::I64(level)),
         None,
     )?;
     Ok(level)
@@ -543,7 +543,7 @@ fn typed_set_level(
     let has_permission = ctx.has_capability(Capability::HostWrite);
     ctx.set_path(
         HostPath::new(player).field(FieldId::new(1)),
-        HostValue::Int(level),
+        HostValue::Scalar(vela_common::ScalarValue::I64(level)),
         None,
     )?;
     Ok(has_permission)
@@ -608,7 +608,7 @@ fn main(player) {
 
     assert_eq!(
         run_linked_program_with_host(&engine, &program, &[OwnedValue::HostRef(player)], &mut host),
-        Ok(OwnedValue::Int(18)),
+        Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(18))),
     );
 }
 
@@ -654,7 +654,7 @@ fn main(player) {
 
     assert_eq!(
         run_linked_program_with_host(&engine, &program, &[OwnedValue::HostRef(player)], &mut host),
-        Ok(OwnedValue::Int(26)),
+        Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(26))),
     );
 }
 
@@ -701,7 +701,7 @@ fn main(player) {
 
     assert_eq!(
         run_linked_program_with_host(&engine, &program, &[OwnedValue::HostRef(player)], &mut host),
-        Ok(OwnedValue::Int(35)),
+        Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(35))),
     );
 }
 
@@ -716,7 +716,7 @@ fn typed_context_sum_level(
     let level = a + b + c;
     ctx.set_path(
         HostPath::new(player).field(FieldId::new(1)),
-        HostValue::Int(level),
+        HostValue::Scalar(vela_common::ScalarValue::I64(level)),
         None,
     )?;
     Ok(level)
@@ -734,7 +734,7 @@ fn typed_context_sum5_level(
     let level = a + b + c + d;
     ctx.set_path(
         HostPath::new(player).field(FieldId::new(1)),
-        HostValue::Int(level),
+        HostValue::Scalar(vela_common::ScalarValue::I64(level)),
         None,
     )?;
     Ok(level)
@@ -753,7 +753,7 @@ fn typed_context_sum6_level(
     let level = a + b + c + d + e;
     ctx.set_path(
         HostPath::new(player).field(FieldId::new(1)),
-        HostValue::Int(level),
+        HostValue::Scalar(vela_common::ScalarValue::I64(level)),
         None,
     )?;
     Ok(level)

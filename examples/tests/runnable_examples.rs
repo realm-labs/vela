@@ -16,60 +16,65 @@ fn game_server_examples_run() {
     let cases = [
         (
             env!("CARGO_BIN_EXE_level_up"),
-            "result=Int(10) level=Int(10)\n",
+            "result=Scalar(I64(10)) level=Scalar(I64(10))\n",
         ),
         (
             env!("CARGO_BIN_EXE_context_event"),
-            "result=Int(1700000042) level=Int(9) ctx_now=Int(1700000000) \
-             ctx_tick=Int(42) emits=1 logs=1\n",
+            "result=Scalar(I64(1700000042)) level=Scalar(I64(9)) \
+             ctx_now=Scalar(I64(1700000000)) ctx_tick=Scalar(I64(42)) emits=1 logs=1\n",
         ),
         (
             env!("CARGO_BIN_EXE_time_clock"),
-            "result=Int(52) level=Int(9)\n",
+            "result=Scalar(I64(52)) level=Scalar(I64(9))\n",
         ),
         (
             env!("CARGO_BIN_EXE_gameplay_helpers"),
-            "result=Int(9) level=Int(9)\n",
+            "result=Scalar(I64(9)) level=Scalar(I64(9))\n",
         ),
         (
             env!("CARGO_BIN_EXE_random_allowed"),
-            "result=Int(310) level=Int(9)\n",
+            "result=Scalar(I64(310)) level=Scalar(I64(9))\n",
         ),
         (
             env!("CARGO_BIN_EXE_random_reflect_allowed"),
-            "result=Int(310) level=Int(9)\n",
+            "result=Scalar(I64(310)) level=Scalar(I64(9))\n",
         ),
         (
             env!("CARGO_BIN_EXE_reward_preview"),
-            "result=Int(22) level=Int(1)\n",
+            "result=Scalar(I64(22)) level=Scalar(I64(1))\n",
         ),
         (
             env!("CARGO_BIN_EXE_monster_kill_reward"),
-            "result=Int(2) level=Int(2) exp=Int(0) quest_count=Int(3) \
-             quest_done=Bool(true) inventory_gold=Int(2) reward_calls=1 emits=3\n",
+            "result=Scalar(I64(2)) level=Scalar(I64(2)) exp=Scalar(I64(0)) \
+             quest_count=Scalar(I64(3)) quest_done=Bool(true) \
+             inventory_gold=Scalar(I64(2)) reward_calls=1 emits=3\n",
         ),
         (
             env!("CARGO_BIN_EXE_quest_progress"),
-            "result=Int(3) level=Int(1) exp=Int(90) quest_count=Int(3) \
-             quest_done=Bool(true) inventory_gold=Int(0) reward_calls=0 emits=1\n",
+            "result=Scalar(I64(3)) level=Scalar(I64(1)) exp=Scalar(I64(90)) \
+             quest_count=Scalar(I64(3)) quest_done=Bool(true) \
+             inventory_gold=Scalar(I64(0)) reward_calls=0 emits=1\n",
         ),
         (
             env!("CARGO_BIN_EXE_reflect_debug"),
-            "result=Int(22) level=Int(12) ctx_now=Int(1700000000) \
-             ctx_tick=Int(42) emits=1\n",
+            "result=Scalar(I64(22)) level=Scalar(I64(12)) \
+             ctx_now=Scalar(I64(1700000000)) ctx_tick=Scalar(I64(42)) emits=1\n",
         ),
         (
             env!("CARGO_BIN_EXE_host_type_methods"),
-            "script_result=Int(10) final_count=10 score=7 reward_calls=3\n",
+            "script_result=Scalar(I64(10)) final_count=10 score=7 reward_calls=3\n",
         ),
-        (env!("CARGO_BIN_EXE_modules"), "module_result=Int(16)\n"),
+        (
+            env!("CARGO_BIN_EXE_modules"),
+            "module_result=Scalar(I64(16))\n",
+        ),
         (
             env!("CARGO_BIN_EXE_native_function"),
-            "native_function_result=Int(45) final_level=16\n",
+            "native_function_result=Scalar(I64(45)) final_level=16\n",
         ),
         (
             env!("CARGO_BIN_EXE_io_stdlib"),
-            "hello from fs\nio_stdlib len=Int(13) output=done\n",
+            "hello from fs\nio_stdlib len=Scalar(I64(13)) output=done\n",
         ),
         (
             env!("CARGO_BIN_EXE_script_global"),
@@ -152,6 +157,7 @@ fn hot_reload_example_runs() {
         "hot reload accepted: v0 -> v1\n\
          changed functions: kill_exp\n\
          safe_point=tick_boundary abi=checked old_version=0 new_version=1 \
-         old_before=Int(20) old_after=Int(20) new_after=Int(30)\n"
+         old_before=Scalar(I64(20)) old_after=Scalar(I64(20)) \
+         new_after=Scalar(I64(30))\n"
     );
 }

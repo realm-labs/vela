@@ -65,7 +65,7 @@ fn set_level(ctx: &mut NativeCallContext<'_, '_>, player: HostRef, level: i64) -
     ctx.charge_instructions(3)?;
     ctx.set_path(
         HostPath::new(player).field(FieldId::new(1)),
-        HostValue::Int(level),
+        HostValue::Scalar(vela_common::ScalarValue::I64(level)),
         None,
     )?;
     Ok(ctx.has_capability(Capability::HostWrite))
@@ -81,7 +81,7 @@ fn set_level(ctx: &mut NativeCallContext<'_, '_>, player: HostRef, level: i64) -
 fn set_level_v2(ctx: &mut NativeCallContext<'_, '_>, player: HostRef, level: i64) -> VmResult<i64> {
     ctx.set_path(
         HostPath::new(player).field(FieldId::new(1)),
-        HostValue::Int(level),
+        HostValue::Scalar(vela_common::ScalarValue::I64(level)),
         None,
     )?;
     Ok(level)
@@ -103,7 +103,11 @@ fn checked_level(
         }
         .into());
     }
-    ctx.set_path(path, HostValue::Int(level), None)?;
+    ctx.set_path(
+        path,
+        HostValue::Scalar(vela_common::ScalarValue::I64(level)),
+        None,
+    )?;
     Ok(level)
 }
 
@@ -113,7 +117,7 @@ fn set_score(host: &mut HostExecution<'_>, player: HostRef, score: i64) -> VmRes
     host.access.write_diagnostic_path(
         host.adapter,
         HostPath::new(player).field(FieldId::new(2)),
-        HostValue::Int(score),
+        HostValue::Scalar(vela_common::ScalarValue::I64(score)),
         None,
     )?;
     Ok(score)
@@ -130,7 +134,7 @@ fn set_score_v2(host: &mut HostExecution<'_>, player: HostRef, score: i64) -> Vm
     host.access.write_diagnostic_path(
         host.adapter,
         HostPath::new(player).field(FieldId::new(2)),
-        HostValue::Int(score),
+        HostValue::Scalar(vela_common::ScalarValue::I64(score)),
         None,
     )?;
     Ok(score)
@@ -151,8 +155,12 @@ fn checked_score(
             source_span: None,
         });
     }
-    host.access
-        .write_diagnostic_path(host.adapter, path, HostValue::Int(score), None)?;
+    host.access.write_diagnostic_path(
+        host.adapter,
+        path,
+        HostValue::Scalar(vela_common::ScalarValue::I64(score)),
+        None,
+    )?;
     Ok(score)
 }
 

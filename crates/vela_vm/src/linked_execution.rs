@@ -170,8 +170,7 @@ impl Vm {
                     let value = match constant_value {
                         Constant::Null => Value::Null,
                         Constant::Bool(value) => Value::Bool(*value),
-                        Constant::Int(value) => Value::Int(*value),
-                        Constant::Float(value) => Value::Float(*value),
+                        Constant::Scalar(value) => Value::Scalar(*value),
                         Constant::String(value) => {
                             if let Some(value) = constant_loads::loaded_string_constant(
                                 frame.read(*dst).ok(),
@@ -1051,11 +1050,17 @@ fn linked_range_next(
         current < end
     };
     if has_next {
-        frame.write(step.dst, Value::Int(current))?;
+        frame.write(
+            step.dst,
+            Value::Scalar(vela_common::ScalarValue::I64(current)),
+        )?;
         if current == i64::MAX {
             frame.write(step.done, Value::Bool(true))?;
         } else {
-            frame.write(step.cursor, Value::Int(current + 1))?;
+            frame.write(
+                step.cursor,
+                Value::Scalar(vela_common::ScalarValue::I64(current + 1)),
+            )?;
         }
         Ok(None)
     } else {

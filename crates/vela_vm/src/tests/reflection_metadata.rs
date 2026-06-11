@@ -76,7 +76,10 @@ fn main(player) {
 "#,
     )
     .expect("compile reflection fields source");
-    let mut adapter = host_adapter(host_ref, HostValue::Int(9));
+    let mut adapter = host_adapter(
+        host_ref,
+        HostValue::Scalar(vela_common::ScalarValue::I64(9)),
+    );
     let mut tx = HostAccess::new();
     let mut vm = Vm::new();
     vm.register_reflection_natives(Arc::new(reflection_registry()));
@@ -151,7 +154,10 @@ fn main(player) {
 "#,
     )
     .expect("compile field reflection source");
-    let mut adapter = host_adapter(host_ref, HostValue::Int(9));
+    let mut adapter = host_adapter(
+        host_ref,
+        HostValue::Scalar(vela_common::ScalarValue::I64(9)),
+    );
     let mut tx = HostAccess::new();
     let mut vm = Vm::new();
     vm.register_reflection_natives(Arc::new(reflection_registry()));
@@ -169,7 +175,7 @@ fn main(player) {
             &[OwnedValue::HostRef(host_ref)],
             &mut host
         ),
-        Ok(OwnedValue::Int(1))
+        Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(1)))
     );
 }
 
@@ -234,7 +240,10 @@ fn main(player) {
 "#,
     )
     .expect("compile reflected effect metadata source");
-    let mut adapter = host_adapter(host_ref, HostValue::Int(9));
+    let mut adapter = host_adapter(
+        host_ref,
+        HostValue::Scalar(vela_common::ScalarValue::I64(9)),
+    );
     let mut tx = HostAccess::new();
     let mut vm = Vm::new();
     vm.register_reflection_natives(Arc::new(reflection_registry()));
@@ -337,7 +346,7 @@ fn main(player) {
             &[OwnedValue::HostRef(host_ref)],
             &mut host
         ),
-        Ok(OwnedValue::Int(11))
+        Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(11)))
     );
 }
 
@@ -436,7 +445,7 @@ fn main(player) {
             &[OwnedValue::HostRef(player_ref(3))],
             &mut host
         ),
-        Ok(OwnedValue::Int(1))
+        Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(1)))
     );
 }
 
@@ -476,7 +485,7 @@ fn main() {
 
     assert_eq!(
         exec_reflection_metadata_program(&vm, &program, &[], &mut host),
-        Ok(OwnedValue::Int(1))
+        Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(1)))
     );
 }
 

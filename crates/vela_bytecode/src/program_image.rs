@@ -314,14 +314,14 @@ mod tests {
     fn image_is_detached_from_later_program_mutation() {
         let mut program = UnlinkedProgram::new();
         let mut main = UnlinkedCodeObject::new("main", 0);
-        main.push_constant(Constant::Int(1));
+        main.push_constant(Constant::Scalar(vela_common::ScalarValue::I64(1)));
         program.insert_function(main);
 
         let image = ProgramImage::from_program(&program);
         program
             .function_mut("main")
             .expect("main function")
-            .push_constant(Constant::Int(2));
+            .push_constant(Constant::Scalar(vela_common::ScalarValue::I64(2)));
 
         assert_eq!(
             image

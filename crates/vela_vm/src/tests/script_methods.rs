@@ -81,7 +81,7 @@ fn main() {
 
     assert_eq!(
         run_script_method_program(&vm, &program, "main", &[]),
-        Ok(OwnedValue::Int(3))
+        Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(3)))
     );
 }
 
@@ -109,7 +109,7 @@ fn main() {
 
     assert_eq!(
         run_script_method_program(&Vm::new(), &program, "main", &[]),
-        Ok(OwnedValue::Int(12))
+        Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(12)))
     );
 }
 
@@ -136,7 +136,7 @@ fn main() {
 
     assert_eq!(
         run_script_method_program(&Vm::new(), &program, "main", &[]),
-        Ok(OwnedValue::Int(12))
+        Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(12)))
     );
 }
 
@@ -167,7 +167,7 @@ fn main() {
 
     assert_eq!(
         run_script_method_program(&Vm::new(), &program, "main", &[]),
-        Ok(OwnedValue::Int(29))
+        Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(29)))
     );
 }
 
@@ -193,12 +193,18 @@ fn main(player: Player) {
     .expect("compile typed parameter method id dispatch");
     let player = OwnedValue::Record {
         type_name: "Player".to_owned(),
-        fields: ScriptFields::from_pairs("Player", [("level".to_owned(), OwnedValue::Int(7))]),
+        fields: ScriptFields::from_pairs(
+            "Player",
+            [(
+                "level".to_owned(),
+                OwnedValue::Scalar(vela_common::ScalarValue::I64(7)),
+            )],
+        ),
     };
 
     assert_eq!(
         run_script_method_program(&Vm::new(), &program, "main", &[player]),
-        Ok(OwnedValue::Int(12))
+        Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(12)))
     );
 }
 
@@ -225,7 +231,7 @@ fn main() {
 
     assert_eq!(
         run_script_method_program(&Vm::new(), &program, "main", &[]),
-        Ok(OwnedValue::Int(12))
+        Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(12)))
     );
 }
 
@@ -255,7 +261,7 @@ fn main() {
 
     assert_eq!(
         run_script_method_program(&Vm::new(), &program, "main", &[]),
-        Ok(OwnedValue::Int(16))
+        Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(16)))
     );
 }
 
@@ -314,7 +320,7 @@ fn main() {
 
     assert_eq!(
         run_script_method_program(&Vm::new(), &program, "main", &[]),
-        Ok(OwnedValue::Int(12))
+        Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(12)))
     );
 }
 
@@ -344,7 +350,7 @@ fn main() {
 
     assert_eq!(
         run_script_method_program(&Vm::new(), &program, "main", &[]),
-        Ok(OwnedValue::Int(12))
+        Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(12)))
     );
 }
 
@@ -369,7 +375,10 @@ fn main(player: Player) {
         host_ref_script_method_registry(host_ref.type_id, &["reflect::get"]),
     )
     .expect("compile host ref script impl method dispatch");
-    let mut adapter = host_adapter(host_ref, HostValue::Int(7));
+    let mut adapter = host_adapter(
+        host_ref,
+        HostValue::Scalar(vela_common::ScalarValue::I64(7)),
+    );
     let mut tx = HostAccess::new();
     let mut vm = Vm::new();
     vm.register_reflection_natives(Arc::new(reflection_registry()));
@@ -387,7 +396,7 @@ fn main(player: Player) {
             &[OwnedValue::HostRef(host_ref)],
             &mut host
         ),
-        Ok(OwnedValue::Int(12))
+        Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(12)))
     );
 }
 
@@ -412,7 +421,10 @@ fn main(player: Player) {
         host_ref_script_method_registry(host_ref.type_id, &[]),
     )
     .expect("compile host ref script impl method dispatch");
-    let mut adapter = host_adapter(host_ref, HostValue::Int(7));
+    let mut adapter = host_adapter(
+        host_ref,
+        HostValue::Scalar(vela_common::ScalarValue::I64(7)),
+    );
     let mut tx = HostAccess::new();
     let vm = Vm::new().with_type_registry(Arc::new(reflection_registry()));
     let mut host = HostExecution {
@@ -429,7 +441,7 @@ fn main(player: Player) {
             &[OwnedValue::HostRef(host_ref)],
             &mut host
         ),
-        Ok(OwnedValue::Int(12))
+        Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(12)))
     );
 }
 
@@ -465,7 +477,7 @@ fn main() {
 
     assert_eq!(
         run_script_method_program(&Vm::new(), &program, "main", &[]),
-        Ok(OwnedValue::Int(12))
+        Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(12)))
     );
 }
 
@@ -501,7 +513,7 @@ fn main() {
 
     assert_eq!(
         run_script_method_program(&Vm::new(), &program, "main", &[]),
-        Ok(OwnedValue::Int(12))
+        Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(12)))
     );
 }
 
@@ -531,7 +543,7 @@ fn main() {
 
     assert_eq!(
         run_script_method_program(&Vm::new(), &program, "main", &[]),
-        Ok(OwnedValue::Int(10))
+        Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(10)))
     );
 }
 
@@ -560,7 +572,7 @@ pub fn main() {
 
     assert_eq!(
         run_script_method_program(&Vm::new(), &program, "game::combat::main", &[]),
-        Ok(OwnedValue::Int(14))
+        Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(14)))
     );
 }
 
@@ -598,12 +610,15 @@ pub fn main(player: Player) {
         type_name: "game::model::Player".to_owned(),
         fields: ScriptFields::from_pairs(
             "game::model::Player",
-            [("level".to_owned(), OwnedValue::Int(7))],
+            [(
+                "level".to_owned(),
+                OwnedValue::Scalar(vela_common::ScalarValue::I64(7)),
+            )],
         ),
     };
 
     assert_eq!(
         run_script_method_program(&Vm::new(), &program, "game::combat::main", &[player]),
-        Ok(OwnedValue::Int(12))
+        Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(12)))
     );
 }

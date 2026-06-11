@@ -4,35 +4,44 @@ use super::*;
 fn read_target_reads_current_adapter_state() {
     let mut adapter = MockStateAdapter::new();
     let path = level_path();
-    adapter.insert_diagnostic_path_value(path.clone(), HostValue::Int(9));
+    adapter.insert_diagnostic_path_value(
+        path.clone(),
+        HostValue::Scalar(vela_common::ScalarValue::I64(9)),
+    );
     let plan = target_plan(&path);
     let mut tx = HostAccess::new();
 
     assert_eq!(
         tx.read(&adapter, target_instance(&path, &plan), None),
-        Ok(HostValue::Int(9))
+        Ok(HostValue::Scalar(vela_common::ScalarValue::I64(9)))
     );
 
     tx.write(
         &mut adapter,
         target_instance(&path, &plan),
-        HostValue::Int(10),
+        HostValue::Scalar(vela_common::ScalarValue::I64(10)),
         None,
     )
     .expect("write target");
 
     assert_eq!(
         tx.read(&adapter, target_instance(&path, &plan), None),
-        Ok(HostValue::Int(10))
+        Ok(HostValue::Scalar(vela_common::ScalarValue::I64(10)))
     );
-    assert_eq!(adapter.read_diagnostic_path(&path), Ok(HostValue::Int(10)));
+    assert_eq!(
+        adapter.read_diagnostic_path(&path),
+        Ok(HostValue::Scalar(vela_common::ScalarValue::I64(10)))
+    );
 }
 
 #[test]
 fn compound_write_validates_against_current_adapter_value() {
     let mut adapter = MockStateAdapter::new();
     let path = level_path();
-    adapter.insert_diagnostic_path_value(path.clone(), HostValue::Int(9));
+    adapter.insert_diagnostic_path_value(
+        path.clone(),
+        HostValue::Scalar(vela_common::ScalarValue::I64(9)),
+    );
     let plan = target_plan(&path);
     let mut tx = HostAccess::new();
 
@@ -40,19 +49,25 @@ fn compound_write_validates_against_current_adapter_value() {
         &mut adapter,
         target_instance(&path, &plan),
         HostMutationOp::Add,
-        HostValue::Int(1),
+        HostValue::Scalar(vela_common::ScalarValue::I64(1)),
         None,
     )
     .expect("add target");
 
-    assert_eq!(adapter.read_diagnostic_path(&path), Ok(HostValue::Int(10)));
+    assert_eq!(
+        adapter.read_diagnostic_path(&path),
+        Ok(HostValue::Scalar(vela_common::ScalarValue::I64(10)))
+    );
 }
 
 #[test]
 fn repeated_alias_writes_read_current_host_state() {
     let mut adapter = MockStateAdapter::new();
     let path = level_path();
-    adapter.insert_diagnostic_path_value(path.clone(), HostValue::Int(1));
+    adapter.insert_diagnostic_path_value(
+        path.clone(),
+        HostValue::Scalar(vela_common::ScalarValue::I64(1)),
+    );
     let plan = target_plan(&path);
     let mut tx = HostAccess::new();
 
@@ -60,7 +75,7 @@ fn repeated_alias_writes_read_current_host_state() {
         &mut adapter,
         target_instance(&path, &plan),
         HostMutationOp::Add,
-        HostValue::Int(1),
+        HostValue::Scalar(vela_common::ScalarValue::I64(1)),
         None,
     )
     .expect("first alias add");
@@ -68,19 +83,25 @@ fn repeated_alias_writes_read_current_host_state() {
         &mut adapter,
         target_instance(&path, &plan),
         HostMutationOp::Add,
-        HostValue::Int(2),
+        HostValue::Scalar(vela_common::ScalarValue::I64(2)),
         None,
     )
     .expect("second alias add");
 
-    assert_eq!(adapter.read_diagnostic_path(&path), Ok(HostValue::Int(4)));
+    assert_eq!(
+        adapter.read_diagnostic_path(&path),
+        Ok(HostValue::Scalar(vela_common::ScalarValue::I64(4)))
+    );
 }
 
 #[test]
 fn variant_field_paths_write_through() {
     let path = quest_variant_count_path();
     let mut adapter = MockStateAdapter::new();
-    adapter.insert_diagnostic_path_value(path.clone(), HostValue::Int(2));
+    adapter.insert_diagnostic_path_value(
+        path.clone(),
+        HostValue::Scalar(vela_common::ScalarValue::I64(2)),
+    );
     let plan = target_plan(&path);
     let mut tx = HostAccess::new();
 
@@ -88,12 +109,15 @@ fn variant_field_paths_write_through() {
         &mut adapter,
         target_instance(&path, &plan),
         HostMutationOp::Add,
-        HostValue::Int(1),
+        HostValue::Scalar(vela_common::ScalarValue::I64(1)),
         None,
     )
     .expect("variant field add");
 
-    assert_eq!(adapter.read_diagnostic_path(&path), Ok(HostValue::Int(3)));
+    assert_eq!(
+        adapter.read_diagnostic_path(&path),
+        Ok(HostValue::Scalar(vela_common::ScalarValue::I64(3)))
+    );
 }
 
 #[test]
@@ -136,14 +160,17 @@ fn stale_generation_reports_error() {
 fn write_through_keeps_no_retained_journal() {
     let mut adapter = MockStateAdapter::new();
     let path = level_path();
-    adapter.insert_diagnostic_path_value(path.clone(), HostValue::Int(9));
+    adapter.insert_diagnostic_path_value(
+        path.clone(),
+        HostValue::Scalar(vela_common::ScalarValue::I64(9)),
+    );
     let plan = target_plan(&path);
     let mut tx = HostAccess::new();
 
     tx.write(
         &mut adapter,
         target_instance(&path, &plan),
-        HostValue::Int(10),
+        HostValue::Scalar(vela_common::ScalarValue::I64(10)),
         None,
     )
     .expect("write target");

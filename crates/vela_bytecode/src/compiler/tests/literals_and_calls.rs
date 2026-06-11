@@ -41,9 +41,18 @@ fn main() {
         "main",
     )
     .expect("numeric literal source should compile");
-    assert!(code.constants.contains(&Constant::Int(16)));
-    assert!(code.constants.contains(&Constant::Int(2)));
-    assert!(code.constants.contains(&Constant::Float(35.0)));
+    assert!(
+        code.constants
+            .contains(&Constant::Scalar(vela_common::ScalarValue::I64(16)))
+    );
+    assert!(
+        code.constants
+            .contains(&Constant::Scalar(vela_common::ScalarValue::I64(2)))
+    );
+    assert!(
+        code.constants
+            .contains(&Constant::Scalar(vela_common::ScalarValue::F64(35.0)))
+    );
 }
 #[test]
 fn compiler_rejects_uppercase_radix_prefixes_before_codegen() {
@@ -75,7 +84,10 @@ fn compiler_accepts_leading_shebang() {
         "main",
     )
     .expect("shebang source should compile");
-    assert!(code.constants.contains(&Constant::Int(7)));
+    assert!(
+        code.constants
+            .contains(&Constant::Scalar(vela_common::ScalarValue::I64(7)))
+    );
 }
 #[test]
 fn compiler_lowers_unicode_string_escapes() {

@@ -119,7 +119,9 @@ fn main() {
         .expect("time program should compile");
     assert_eq!(
         run_linked_program(&engine, &time_program, "main", &[]),
-        Ok(OwnedValue::Int(1_700_000_042))
+        Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(
+            1_700_000_042
+        )))
     );
 
     let random_program = engine
@@ -161,7 +163,7 @@ fn main() {
 
     assert_eq!(
         run_linked_program(&engine, &program, "main", &[]),
-        Ok(OwnedValue::Int(52))
+        Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(52)))
     );
 }
 
@@ -195,7 +197,9 @@ fn main() {
 
     assert_eq!(
         run_linked_program_with_host(&engine, &program, "main", &[], &mut host),
-        Ok(OwnedValue::Int(1_700_000_010))
+        Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(
+            1_700_000_010
+        )))
     );
 }
 
@@ -402,11 +406,11 @@ fn main(ctx: Context) {
     let mut adapter = MockStateAdapter::new();
     adapter.insert_diagnostic_path_value(
         HostPath::new(ctx).field(CONTEXT_NOW_FIELD_ID),
-        HostValue::Int(1_700_000_000),
+        HostValue::Scalar(vela_common::ScalarValue::I64(1_700_000_000)),
     );
     adapter.insert_diagnostic_path_value(
         HostPath::new(ctx).field(CONTEXT_TICK_FIELD_ID),
-        HostValue::Int(42),
+        HostValue::Scalar(vela_common::ScalarValue::I64(42)),
     );
     adapter.insert_method_return(CONTEXT_EMIT_METHOD_ID, HostValue::Null);
     adapter.insert_method_return(CONTEXT_LOG_METHOD_ID, HostValue::Null);
@@ -425,7 +429,9 @@ fn main(ctx: Context) {
             &[OwnedValue::HostRef(ctx)],
             &mut host
         ),
-        Ok(OwnedValue::Int(1_700_000_042))
+        Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(
+            1_700_000_042
+        )))
     );
     assert_eq!(adapter.method_calls().len(), 2);
     assert_eq!(
@@ -447,7 +453,7 @@ fn main(ctx: Context) {
         vec![
             HostValue::String("info".to_owned()),
             HostValue::String("player.level_checked".to_owned()),
-            HostValue::Int(1_700_000_042),
+            HostValue::Scalar(vela_common::ScalarValue::I64(1_700_000_042)),
         ]
     );
 }

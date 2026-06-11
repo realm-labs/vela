@@ -108,8 +108,7 @@ impl Vm {
                     let value = match constant_value {
                         Constant::Null => Value::Null,
                         Constant::Bool(value) => Value::Bool(*value),
-                        Constant::Int(value) => Value::Int(*value),
-                        Constant::Float(value) => Value::Float(*value),
+                        Constant::Scalar(value) => Value::Scalar(*value),
                         Constant::String(value) => {
                             if let Some(value) = constant_loads::loaded_string_constant(
                                 frame.read(*dst).ok(),

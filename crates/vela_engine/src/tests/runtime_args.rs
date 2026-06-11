@@ -86,7 +86,10 @@ fn main() {
         .call("main", CallArgs::new(), CallOptions::unbounded())
         .expect("runtime call should execute");
 
-    assert_eq!(runtime.value_to_owned(&value), Ok(OwnedValue::Int(16)));
+    assert_eq!(
+        runtime.value_to_owned(&value),
+        Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(16)))
+    );
 }
 
 fn direct_player_type() -> TypeDesc {
@@ -237,7 +240,7 @@ impl ScriptHostObject for DirectPlayer {
         match target.plan.parts.as_slice() {
             [HostPathPart::Field(field)] if *field == FieldId::new(1) => {
                 require_direct_field(access, 0)?;
-                Ok(HostValue::Int(self.level))
+                Ok(HostValue::Scalar(vela_common::ScalarValue::I64(self.level)))
             }
             [HostPathPart::Field(field)] if *field == FieldId::new(2) => {
                 require_direct_field(access, 1)?;
@@ -246,7 +249,7 @@ impl ScriptHostObject for DirectPlayer {
             [HostPathPart::Field(field), key_part] if *field == FieldId::new(2) => {
                 require_direct_field(access, 1)?;
                 let key = direct_target_key(target, key_part)?;
-                Ok(HostValue::Int(*self.inventory.get(key).unwrap_or(&0)))
+                Ok(HostValue::i64(*self.inventory.get(key).unwrap_or(&0)))
             }
             _ => Err(HostError {
                 kind: HostErrorKind::MissingPath {
@@ -264,14 +267,18 @@ impl ScriptHostObject for DirectPlayer {
         value: HostValue,
     ) -> HostResult<()> {
         match (target.plan.parts.as_slice(), value) {
-            ([HostPathPart::Field(field)], HostValue::Int(level)) if *field == FieldId::new(1) => {
+            (
+                [HostPathPart::Field(field)],
+                HostValue::Scalar(vela_common::ScalarValue::I64(level)),
+            ) if *field == FieldId::new(1) => {
                 require_direct_field(access, 0)?;
                 self.level = level;
                 Ok(())
             }
-            ([HostPathPart::Field(field), key_part], HostValue::Int(count))
-                if *field == FieldId::new(2) =>
-            {
+            (
+                [HostPathPart::Field(field), key_part],
+                HostValue::Scalar(vela_common::ScalarValue::I64(count)),
+            ) if *field == FieldId::new(2) => {
                 require_direct_field(access, 1)?;
                 let key = direct_target_key(target, key_part)?.to_owned();
                 self.inventory.insert(key, count);
@@ -294,15 +301,20 @@ impl ScriptHostObject for DirectPlayer {
         args: &[HostValue],
     ) -> HostResult<HostValue> {
         match (target.plan.parts.as_slice(), method, args) {
-            ([], method, [HostValue::Int(amount)]) if method == HostMethodId::new(10) => {
+            ([], method, [HostValue::Scalar(vela_common::ScalarValue::I64(amount))])
+                if method == HostMethodId::new(10) =>
+            {
                 require_direct_method(access, 0)?;
                 self.level += amount;
-                Ok(HostValue::Int(self.level))
+                Ok(HostValue::Scalar(vela_common::ScalarValue::I64(self.level)))
             }
             (
                 [HostPathPart::Field(field)],
                 method,
-                [HostValue::String(key), HostValue::Int(amount)],
+                [
+                    HostValue::String(key),
+                    HostValue::Scalar(vela_common::ScalarValue::I64(amount)),
+                ],
             ) if *field == FieldId::new(2) && method == HostMethodId::new(11) => {
                 require_direct_method(access, 1)?;
                 *self.inventory.entry(key.clone()).or_insert(0) += amount;
@@ -388,7 +400,10 @@ fn main(player: Player, amount, bonus = 1) {
     let player = HostRef::new(HostTypeId::new(1), HostObjectId::new(42), 1);
     let level = HostPath::new(player).field(super::FieldId::new(1));
     let mut adapter = MockStateAdapter::new();
-    adapter.insert_diagnostic_path_value(level.clone(), HostValue::Int(9));
+    adapter.insert_diagnostic_path_value(
+        level.clone(),
+        HostValue::Scalar(vela_common::ScalarValue::I64(9)),
+    );
     let mut tx = HostAccess::new();
     let mut args = CallArgs::new()
         .with_value("amount", 2_i64)
@@ -404,8 +419,14 @@ fn main(player: Player, amount, bonus = 1) {
         )
         .expect("runtime call args should run");
 
-    assert_eq!(result, OwnedValue::Int(12));
-    assert_eq!(adapter.read_diagnostic_path(&level), Ok(HostValue::Int(11)));
+    assert_eq!(
+        result,
+        OwnedValue::Scalar(vela_common::ScalarValue::I64(12))
+    );
+    assert_eq!(
+        adapter.read_diagnostic_path(&level),
+        Ok(HostValue::Scalar(vela_common::ScalarValue::I64(11)))
+    );
 }
 
 #[test]
@@ -424,7 +445,10 @@ fn main(left, right) {
     let mut runtime = Runtime::new(engine, program);
     let mut adapter = MockStateAdapter::new();
     let mut tx = HostAccess::new();
-    let mut args = CallArgs::from_positional([OwnedValue::Int(2), OwnedValue::Int(7)]);
+    let mut args = CallArgs::from_positional([
+        OwnedValue::Scalar(vela_common::ScalarValue::I64(2)),
+        OwnedValue::Scalar(vela_common::ScalarValue::I64(7)),
+    ]);
 
     let result = runtime
         .call_args_raw(
@@ -436,7 +460,10 @@ fn main(left, right) {
         )
         .expect("runtime call args should run");
 
-    assert_eq!(result, OwnedValue::Int(27));
+    assert_eq!(
+        result,
+        OwnedValue::Scalar(vela_common::ScalarValue::I64(27))
+    );
 }
 
 #[test]
@@ -557,7 +584,10 @@ fn main(player: Player, amount) {
         )
         .expect("runtime direct host args should run");
 
-    assert_eq!(runtime.value_to_owned(&output), Ok(OwnedValue::Int(13)));
+    assert_eq!(
+        runtime.value_to_owned(&output),
+        Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(13)))
+    );
     assert_eq!(player.level, 13);
 }
 
@@ -592,7 +622,10 @@ fn main(player: Player, amount) {
         )
         .expect("runtime direct map path should run");
 
-    assert_eq!(runtime.value_to_owned(&output), Ok(OwnedValue::Int(7)));
+    assert_eq!(
+        runtime.value_to_owned(&output),
+        Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(7)))
+    );
     assert_eq!(player.inventory.get("gold"), Some(&7));
 }
 
@@ -647,7 +680,10 @@ fn main(player: Player) {
         )
         .expect("runtime direct host methods should run");
 
-    assert_eq!(runtime.value_to_owned(&output), Ok(OwnedValue::Int(16)));
+    assert_eq!(
+        runtime.value_to_owned(&output),
+        Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(16)))
+    );
     assert_eq!(player.level, 11);
     assert_eq!(player.inventory.get("gold"), Some(&5));
 }
@@ -682,7 +718,10 @@ fn main(player: Player, amount) {
         )
         .expect("runtime direct call should run");
 
-    assert_eq!(runtime.value_to_owned(&output), Ok(OwnedValue::Int(13)));
+    assert_eq!(
+        runtime.value_to_owned(&output),
+        Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(13)))
+    );
     assert_eq!(player.level, 13);
 }
 
@@ -720,8 +759,14 @@ fn main(amount, multiplier = 2) {
         .expect("cached entry should run with named args");
 
     assert_eq!(main.name(), "main");
-    assert_eq!(runtime.value_to_owned(&first), Ok(OwnedValue::Int(14)));
-    assert_eq!(runtime.value_to_owned(&second), Ok(OwnedValue::Int(21)));
+    assert_eq!(
+        runtime.value_to_owned(&first),
+        Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(14)))
+    );
+    assert_eq!(
+        runtime.value_to_owned(&second),
+        Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(21)))
+    );
 }
 
 #[test]
@@ -745,7 +790,7 @@ fn main(amount) {
     let error = runtime_b
         .call(
             &main,
-            CallArgs::from_positional([OwnedValue::Int(7)]),
+            CallArgs::from_positional([OwnedValue::Scalar(vela_common::ScalarValue::I64(7))]),
             CallOptions::unbounded(),
         )
         .expect_err("cached entry from another runtime should fail");
@@ -815,11 +860,11 @@ fn make_reward() {
     assert_eq!(score_method.receiver_type(), "Reward");
     assert_eq!(
         runtime.value_to_owned(&score_by_name),
-        Ok(OwnedValue::Int(17))
+        Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(17)))
     );
     assert_eq!(
         runtime.value_to_owned(&score_by_cached_method),
-        Ok(OwnedValue::Int(19))
+        Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(19)))
     );
 }
 
@@ -856,14 +901,14 @@ fn make_reward(gold) {
     let reward_a = runtime_a
         .call(
             "make_reward",
-            CallArgs::from_positional([OwnedValue::Int(7)]),
+            CallArgs::from_positional([OwnedValue::Scalar(vela_common::ScalarValue::I64(7))]),
             CallOptions::unbounded(),
         )
         .expect("first factory should run");
     let reward_b = runtime_b
         .call(
             "make_reward",
-            CallArgs::from_positional([OwnedValue::Int(11)]),
+            CallArgs::from_positional([OwnedValue::Scalar(vela_common::ScalarValue::I64(11))]),
             CallOptions::unbounded(),
         )
         .expect("second factory should run");
@@ -875,7 +920,7 @@ fn make_reward(gold) {
         .call_method(
             &reward_b,
             &score,
-            CallArgs::from_positional([OwnedValue::Int(5)]),
+            CallArgs::from_positional([OwnedValue::Scalar(vela_common::ScalarValue::I64(5))]),
             CallOptions::unbounded(),
         )
         .expect_err("cached method from another runtime should fail");
@@ -921,7 +966,10 @@ fn main(player: Player) {
         )
         .expect("runtime safe-point direct host args should run");
 
-    assert_eq!(report.value, OwnedValue::Int(10));
+    assert_eq!(
+        report.value,
+        OwnedValue::Scalar(vela_common::ScalarValue::I64(10))
+    );
     assert_eq!(report.reload, None);
     drop(args);
     assert_eq!(player.level, 10);

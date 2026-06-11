@@ -21,7 +21,7 @@ fn removed_script_function_rejection_kind(
             &mut adapter,
             &mut tx
         ),
-        Ok(OwnedValue::Int(2))
+        Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(2)))
     );
 
     write_reward_module(&reward_file, 6);
@@ -43,7 +43,7 @@ fn removed_script_function_rejection_kind(
             &mut adapter,
             &mut tx
         ),
-        Ok(OwnedValue::Int(2))
+        Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(2)))
     );
 
     let report = runtime
@@ -66,7 +66,7 @@ fn removed_script_function_rejection_kind(
             &mut adapter,
             &mut tx
         ),
-        Ok(OwnedValue::Int(2))
+        Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(2)))
     );
     report.errors[0].error.kind.clone()
 }
@@ -106,7 +106,7 @@ fn removed_native_descriptor_rejection_kind(
             &mut adapter,
             &mut tx
         ),
-        Ok(OwnedValue::Int(2))
+        Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(2)))
     );
 
     write_reward_module(&reward_file, 6);
@@ -128,7 +128,7 @@ fn removed_native_descriptor_rejection_kind(
             &mut adapter,
             &mut tx
         ),
-        Ok(OwnedValue::Int(2))
+        Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(2)))
     );
 
     let report = runtime
@@ -152,7 +152,7 @@ fn removed_native_descriptor_rejection_kind(
             &mut adapter,
             &mut tx
         ),
-        Ok(OwnedValue::Int(2))
+        Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(2)))
     );
     report.errors[0].error.kind.clone()
 }
@@ -194,7 +194,7 @@ fn native_stable_id_churn_rejection_kind(
             &mut adapter,
             &mut tx
         ),
-        Ok(OwnedValue::Int(2))
+        Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(2)))
     );
 
     write_reward_module(&reward_file, 6);
@@ -216,7 +216,7 @@ fn native_stable_id_churn_rejection_kind(
             &mut adapter,
             &mut tx
         ),
-        Ok(OwnedValue::Int(2))
+        Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(2)))
     );
 
     let report = runtime
@@ -240,7 +240,7 @@ fn native_stable_id_churn_rejection_kind(
             &mut adapter,
             &mut tx
         ),
-        Ok(OwnedValue::Int(2))
+        Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(2)))
     );
     report.errors[0].error.kind.clone()
 }
@@ -276,7 +276,7 @@ fn dir_native_rejection_kind(
             &mut adapter,
             &mut tx
         ),
-        Ok(OwnedValue::Int(2))
+        Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(2)))
     );
 
     write_reward_module(&reward_file, 6);
@@ -292,7 +292,7 @@ fn dir_native_rejection_kind(
             &mut adapter,
             &mut tx
         ),
-        Ok(OwnedValue::Int(2))
+        Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(2)))
     );
 
     let report = runtime
@@ -323,7 +323,7 @@ fn dir_native_rejection_kind(
             &mut adapter,
             &mut tx
         ),
-        Ok(OwnedValue::Int(2))
+        Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(2)))
     );
     report.errors[0].error.kind.clone()
 }
@@ -367,7 +367,7 @@ fn removed_method_descriptor_rejection_kind(
             &mut adapter,
             &mut tx
         ),
-        Ok(OwnedValue::Int(2))
+        Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(2)))
     );
 
     write_reward_module(&reward_file, 6);
@@ -389,7 +389,7 @@ fn removed_method_descriptor_rejection_kind(
             &mut adapter,
             &mut tx
         ),
-        Ok(OwnedValue::Int(2))
+        Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(2)))
     );
 
     let report = runtime
@@ -410,7 +410,7 @@ fn removed_method_descriptor_rejection_kind(
             &mut adapter,
             &mut tx
         ),
-        Ok(OwnedValue::Int(2))
+        Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(2)))
     );
     report.errors[0].error.kind.clone()
 }
@@ -450,7 +450,7 @@ fn method_stable_id_churn_rejection_kind(
             &mut adapter,
             &mut tx
         ),
-        Ok(OwnedValue::Int(2))
+        Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(2)))
     );
 
     write_reward_module(&reward_file, 6);
@@ -472,7 +472,7 @@ fn method_stable_id_churn_rejection_kind(
             &mut adapter,
             &mut tx
         ),
-        Ok(OwnedValue::Int(2))
+        Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(2)))
     );
 
     let report = runtime
@@ -493,7 +493,7 @@ fn method_stable_id_churn_rejection_kind(
             &mut adapter,
             &mut tx
         ),
-        Ok(OwnedValue::Int(2))
+        Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(2)))
     );
     report.errors[0].error.kind.clone()
 }
@@ -529,7 +529,7 @@ fn dir_method_rejection_kind(
             &mut adapter,
             &mut tx
         ),
-        Ok(OwnedValue::Int(2))
+        Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(2)))
     );
 
     write_reward_module(&reward_file, 6);
@@ -545,7 +545,7 @@ fn dir_method_rejection_kind(
             &mut adapter,
             &mut tx
         ),
-        Ok(OwnedValue::Int(2))
+        Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(2)))
     );
 
     let report = runtime
@@ -576,7 +576,7 @@ fn dir_method_rejection_kind(
             &mut adapter,
             &mut tx
         ),
-        Ok(OwnedValue::Int(2))
+        Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(2)))
     );
     report.errors[0].error.kind.clone()
 }
@@ -612,7 +612,7 @@ fn changed_file_method_rejection_kind(
             &mut adapter,
             &mut tx
         ),
-        Ok(OwnedValue::Int(2))
+        Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(2)))
     );
 
     write_reward_module(&reward_file, 6);
@@ -628,7 +628,7 @@ fn changed_file_method_rejection_kind(
             &mut adapter,
             &mut tx
         ),
-        Ok(OwnedValue::Int(2))
+        Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(2)))
     );
 
     let report = runtime
@@ -659,7 +659,7 @@ fn changed_file_method_rejection_kind(
             &mut adapter,
             &mut tx
         ),
-        Ok(OwnedValue::Int(2))
+        Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(2)))
     );
     report.errors[0].error.kind.clone()
 }

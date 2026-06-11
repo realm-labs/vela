@@ -28,7 +28,10 @@ fn main() -> Result<(), Box<dyn Error>> {
 
     let first_tick = runtime.call(
         &handle_tick,
-        CallArgs::from_positional([OwnedValue::Int(2), OwnedValue::Int(5)]),
+        CallArgs::from_positional([
+            OwnedValue::Scalar(vela_common::ScalarValue::I64(2)),
+            OwnedValue::Scalar(vela_common::ScalarValue::I64(5)),
+        ]),
         CallOptions::unbounded(),
     )?;
 
@@ -42,7 +45,10 @@ fn main() -> Result<(), Box<dyn Error>> {
 
     let second_tick = runtime.call(
         &handle_tick,
-        CallArgs::from_positional([OwnedValue::Int(1), OwnedValue::Int(3)]),
+        CallArgs::from_positional([
+            OwnedValue::Scalar(vela_common::ScalarValue::I64(1)),
+            OwnedValue::Scalar(vela_common::ScalarValue::I64(3)),
+        ]),
         CallOptions::unbounded(),
     )?;
     let state_name = runtime.call(&state_name_fn, CallArgs::new(), CallOptions::unbounded())?;
@@ -53,7 +59,7 @@ fn main() -> Result<(), Box<dyn Error>> {
         &projected_score_fn,
         CallArgs::new()
             .with_vela_value(state_snapshot.clone())
-            .with(OwnedValue::Int(4)),
+            .with(OwnedValue::Scalar(vela_common::ScalarValue::I64(4))),
         CallOptions::unbounded(),
     )?;
     runtime.insert_global(STATE_GLOBAL, state_snapshot)?;

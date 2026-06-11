@@ -457,11 +457,22 @@ pub enum FrameSlotKind {
 pub enum Constant {
     Null,
     Bool(bool),
-    Int(i64),
-    Float(f64),
+    Scalar(vela_common::ScalarValue),
     String(String),
     Array(Vec<Constant>),
     Map(Vec<(String, Constant)>),
+}
+
+impl Constant {
+    #[must_use]
+    pub const fn i64(value: i64) -> Self {
+        Self::Scalar(vela_common::ScalarValue::I64(value))
+    }
+
+    #[must_use]
+    pub const fn f64(value: f64) -> Self {
+        Self::Scalar(vela_common::ScalarValue::F64(value))
+    }
 }
 
 #[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
@@ -798,7 +809,7 @@ mod tests {
     #[test]
     fn code_object_records_constants_and_instructions() {
         let mut code = UnlinkedCodeObject::new("answer", 2);
-        let constant = code.push_constant(Constant::Int(42));
+        let constant = code.push_constant(Constant::Scalar(vela_common::ScalarValue::I64(42)));
         code.push_instruction(UnlinkedInstruction::new(
             UnlinkedInstructionKind::LoadConst {
                 dst: Register(0),
@@ -813,7 +824,10 @@ mod tests {
         assert!(code.params.is_empty());
         assert_eq!(code.register_count, 2);
         assert!(code.cache_sites.is_empty());
-        assert_eq!(code.constants, [Constant::Int(42)]);
+        assert_eq!(
+            code.constants,
+            [Constant::Scalar(vela_common::ScalarValue::I64(42))]
+        );
         assert_eq!(code.instructions.len(), 2);
     }
 

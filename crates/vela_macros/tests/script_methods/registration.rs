@@ -71,10 +71,10 @@ fn script_methods_generate_callable_native_registration() {
         engine.call_native_method(
             method_id("grant_score"),
             &HostPath::new(player),
-            &[OwnedValue::Int(13)],
+            &[OwnedValue::Scalar(vela_common::ScalarValue::I64(13))],
             &mut host,
         ),
-        Ok(OwnedValue::Int(13)),
+        Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(13))),
     );
 }
 
@@ -119,15 +119,15 @@ fn script_methods_feed_stable_engine_registration_api() {
             method_id("sum_score"),
             &HostPath::new(player),
             &[
-                OwnedValue::Int(1),
-                OwnedValue::Int(2),
-                OwnedValue::Int(3),
-                OwnedValue::Int(4),
-                OwnedValue::Int(5),
+                OwnedValue::Scalar(vela_common::ScalarValue::I64(1)),
+                OwnedValue::Scalar(vela_common::ScalarValue::I64(2)),
+                OwnedValue::Scalar(vela_common::ScalarValue::I64(3)),
+                OwnedValue::Scalar(vela_common::ScalarValue::I64(4)),
+                OwnedValue::Scalar(vela_common::ScalarValue::I64(5)),
             ],
             &mut host,
         ),
-        Ok(OwnedValue::Int(15)),
+        Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(15))),
     );
 
     assert_eq!(
@@ -135,16 +135,16 @@ fn script_methods_feed_stable_engine_registration_api() {
             method_id("sum6_score"),
             &HostPath::new(player),
             &[
-                OwnedValue::Int(1),
-                OwnedValue::Int(2),
-                OwnedValue::Int(3),
-                OwnedValue::Int(4),
-                OwnedValue::Int(5),
-                OwnedValue::Int(6),
+                OwnedValue::Scalar(vela_common::ScalarValue::I64(1)),
+                OwnedValue::Scalar(vela_common::ScalarValue::I64(2)),
+                OwnedValue::Scalar(vela_common::ScalarValue::I64(3)),
+                OwnedValue::Scalar(vela_common::ScalarValue::I64(4)),
+                OwnedValue::Scalar(vela_common::ScalarValue::I64(5)),
+                OwnedValue::Scalar(vela_common::ScalarValue::I64(6)),
             ],
             &mut host,
         ),
-        Ok(OwnedValue::Int(21)),
+        Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(21))),
     );
 }
 
@@ -237,7 +237,11 @@ fn script_methods_generate_callable_result_native_registration() {
         Ok(OwnedValue::Enum {
             enum_name: "Result".to_owned(),
             variant: "Ok".to_owned(),
-            fields: [("0".to_owned(), OwnedValue::Int(17))].into(),
+            fields: [(
+                "0".to_owned(),
+                OwnedValue::Scalar(vela_common::ScalarValue::I64(17))
+            )]
+            .into(),
         }),
     );
     assert_eq!(
@@ -287,10 +291,10 @@ fn script_methods_generate_callable_option_native_registration() {
         engine.call_native_method(
             method_id("preview_bonus"),
             &HostPath::new(player),
-            &[OwnedValue::Int(4)],
+            &[OwnedValue::Scalar(vela_common::ScalarValue::I64(4))],
             &mut host,
         ),
-        Ok(OwnedValue::Int(5)),
+        Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(5))),
     );
 }
 
@@ -322,6 +326,6 @@ fn main(player: Player) {
 
     assert_eq!(
         run_linked_program_with_host(&engine, &program, &[OwnedValue::HostRef(player)], &mut host),
-        Ok(OwnedValue::Int(1)),
+        Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(1))),
     );
 }

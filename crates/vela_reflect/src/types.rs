@@ -195,7 +195,9 @@ mod tests {
         );
         assert_eq!(
             fields.get("field_count"),
-            Some(&ReflectValue::Host(HostValue::Int(1)))
+            Some(&ReflectValue::Host(HostValue::Scalar(
+                vela_common::ScalarValue::I64(1)
+            )))
         );
         assert_eq!(
             fields.get("docs"),
@@ -208,9 +210,18 @@ mod tests {
             Some(&ReflectValue::ScriptRecord {
                 type_name: "ReflectSourceSpan".to_owned(),
                 fields: BTreeMap::from([
-                    ("source".to_owned(), ReflectValue::Host(HostValue::Int(7))),
-                    ("start".to_owned(), ReflectValue::Host(HostValue::Int(10))),
-                    ("end".to_owned(), ReflectValue::Host(HostValue::Int(20))),
+                    (
+                        "source".to_owned(),
+                        ReflectValue::Host(HostValue::Scalar(vela_common::ScalarValue::I64(7)))
+                    ),
+                    (
+                        "start".to_owned(),
+                        ReflectValue::Host(HostValue::Scalar(vela_common::ScalarValue::I64(10)))
+                    ),
+                    (
+                        "end".to_owned(),
+                        ReflectValue::Host(HostValue::Scalar(vela_common::ScalarValue::I64(20)))
+                    ),
                 ])
             })
         );

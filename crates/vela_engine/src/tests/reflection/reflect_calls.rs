@@ -36,10 +36,14 @@ fn engine_reflect_call_invokes_reflect_callable_native_functions() {
                 .returns(TypeHint::Int)
                 .access(FunctionAccess::public().reflect_callable(true)),
             |args| {
-                let [OwnedValue::Int(lhs), OwnedValue::Int(rhs)] = args else {
+                let [
+                    OwnedValue::Scalar(vela_common::ScalarValue::I64(lhs)),
+                    OwnedValue::Scalar(vela_common::ScalarValue::I64(rhs)),
+                ] = args
+                else {
                     return Ok(OwnedValue::Null);
                 };
-                Ok(OwnedValue::Int(lhs + rhs))
+                Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(lhs + rhs)))
             },
         )
         .reflection_permissions(ReflectPermissionSet::all())
@@ -66,7 +70,7 @@ fn main() {
 
     assert_eq!(
         run_linked_program_with_host(&engine, &program, &[], &mut host),
-        Ok(OwnedValue::Int(5))
+        Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(5)))
     );
 }
 
@@ -79,7 +83,7 @@ fn engine_reflect_call_requires_call_permission_for_function_descriptors() {
                 .param("rhs", TypeHint::Int)
                 .returns(TypeHint::Int)
                 .access(FunctionAccess::public().reflect_callable(true)),
-            |_| Ok(OwnedValue::Int(0)),
+            |_| Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(0))),
         )
         .reflection_permissions(ReflectPermissionSet::new().with(ReflectPermission::ReadTypeInfo))
         .build()
@@ -119,7 +123,7 @@ fn engine_reflect_call_rejects_non_callable_native_functions() {
                 .param("lhs", TypeHint::Int)
                 .param("rhs", TypeHint::Int)
                 .returns(TypeHint::Int),
-            |_| Ok(OwnedValue::Int(0)),
+            |_| Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(0))),
         )
         .reflection_permissions(ReflectPermissionSet::all())
         .build()
@@ -169,13 +173,17 @@ fn engine_reflect_call_invokes_host_native_functions_through_host_access() {
                 .effects(EffectSet::host_write())
                 .access(FunctionAccess::public().reflect_callable(true)),
             |args, host| {
-                let [OwnedValue::HostRef(player), OwnedValue::Int(level)] = args else {
+                let [
+                    OwnedValue::HostRef(player),
+                    OwnedValue::Scalar(vela_common::ScalarValue::I64(level)),
+                ] = args
+                else {
                     return Ok(OwnedValue::Null);
                 };
                 host.access.write_diagnostic_path(
                     host.adapter,
                     HostPath::new(*player).field(FieldId::new(1)),
-                    HostValue::Int(*level),
+                    HostValue::Scalar(vela_common::ScalarValue::I64(*level)),
                     None,
                 )?;
                 Ok(OwnedValue::Null)
@@ -212,7 +220,7 @@ fn main(player) {
             &[OwnedValue::HostRef(host_ref)],
             &mut host
         ),
-        Ok(OwnedValue::Int(1))
+        Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(1)))
     );
 }
 
@@ -231,13 +239,17 @@ fn engine_reflect_call_denies_effectful_native_functions_without_effect_permissi
                 .effects(EffectSet::host_write())
                 .access(FunctionAccess::public().reflect_callable(true)),
             |args, host| {
-                let [OwnedValue::HostRef(player), OwnedValue::Int(level)] = args else {
+                let [
+                    OwnedValue::HostRef(player),
+                    OwnedValue::Scalar(vela_common::ScalarValue::I64(level)),
+                ] = args
+                else {
                     return Ok(OwnedValue::Null);
                 };
                 host.access.write_diagnostic_path(
                     host.adapter,
                     HostPath::new(*player).field(FieldId::new(1)),
-                    HostValue::Int(*level),
+                    HostValue::Scalar(vela_common::ScalarValue::I64(*level)),
                     None,
                 )?;
                 Ok(OwnedValue::Null)

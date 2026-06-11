@@ -27,7 +27,10 @@ fn main() {
     let result =
         run_linked_stdlib_test_program_with_budget(&vm, &program, "main", &[], &mut budget)
             .expect("math stdlib source should run");
-    assert_eq!(result, OwnedValue::Int(42));
+    assert_eq!(
+        result,
+        OwnedValue::Scalar(vela_common::ScalarValue::I64(42))
+    );
 }
 
 #[test]
@@ -88,7 +91,11 @@ fn main() {
         OwnedValue::Enum {
             enum_name: "Result".to_owned(),
             variant: "Ok".to_owned(),
-            fields: [("0".to_owned(), OwnedValue::Int(10))].into()
+            fields: [(
+                "0".to_owned(),
+                OwnedValue::Scalar(vela_common::ScalarValue::I64(10))
+            )]
+            .into()
         }
     );
 }
@@ -142,7 +149,10 @@ fn main() {
     let result =
         run_linked_stdlib_test_program_with_budget(&vm, &program, "main", &[], &mut budget)
             .expect("option/result helper stdlib source should run");
-    assert_eq!(result, OwnedValue::Int(40));
+    assert_eq!(
+        result,
+        OwnedValue::Scalar(vela_common::ScalarValue::I64(40))
+    );
 }
 
 #[test]
@@ -175,7 +185,7 @@ fn main() {
     let result =
         run_linked_stdlib_test_program_with_budget(&vm, &program, "main", &[], &mut budget)
             .expect("option/result map source should run");
-    assert_eq!(result, OwnedValue::Int(1));
+    assert_eq!(result, OwnedValue::Scalar(vela_common::ScalarValue::I64(1)));
 }
 
 #[test]
@@ -361,5 +371,8 @@ fn main() {
     let result =
         run_linked_stdlib_test_program_with_budget(&vm, &program, "main", &[], &mut budget)
             .expect("option/result helper method source should run");
-    assert_eq!(result, OwnedValue::Int(40));
+    assert_eq!(
+        result,
+        OwnedValue::Scalar(vela_common::ScalarValue::I64(40))
+    );
 }

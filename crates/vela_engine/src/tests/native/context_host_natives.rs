@@ -41,13 +41,17 @@ fn engine_installs_registered_host_native_functions_into_vm() {
                 .effects(EffectSet::host_write())
                 .access(FunctionAccess::public()),
             |args, host| {
-                let [OwnedValue::HostRef(player), OwnedValue::Int(level)] = args else {
+                let [
+                    OwnedValue::HostRef(player),
+                    OwnedValue::Scalar(vela_common::ScalarValue::I64(level)),
+                ] = args
+                else {
                     return Ok(OwnedValue::Null);
                 };
                 host.access.write_diagnostic_path(
                     host.adapter,
                     HostPath::new(*player).field(FieldId::new(1)),
-                    HostValue::Int(*level),
+                    HostValue::Scalar(vela_common::ScalarValue::I64(*level)),
                     None,
                 )?;
                 Ok(OwnedValue::Null)
@@ -82,7 +86,7 @@ fn main(player) {
             &[OwnedValue::HostRef(host_ref)],
             &mut host
         ),
-        Ok(OwnedValue::Int(1))
+        Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(1)))
     );
 }
 
@@ -101,7 +105,11 @@ fn engine_installs_context_host_native_functions_into_vm() {
                 .effects(EffectSet::host_write())
                 .access(FunctionAccess::public()),
             |args, ctx| {
-                let [OwnedValue::HostRef(player), OwnedValue::Int(level)] = args else {
+                let [
+                    OwnedValue::HostRef(player),
+                    OwnedValue::Scalar(vela_common::ScalarValue::I64(level)),
+                ] = args
+                else {
                     return Ok(OwnedValue::Bool(false));
                 };
                 assert!(ctx.has_capability(Capability::HostWrite));
@@ -117,7 +125,7 @@ fn engine_installs_context_host_native_functions_into_vm() {
                 );
                 ctx.set_path(
                     HostPath::new(*player).field(FieldId::new(1)),
-                    HostValue::Int(*level),
+                    HostValue::Scalar(vela_common::ScalarValue::I64(*level)),
                     None,
                 )?;
                 Ok(OwnedValue::Bool(true))
@@ -181,10 +189,19 @@ fn context_host_native_read_path_observes_write_through_state() {
                 let level = args.required::<i64>(1)?;
                 let path = HostPath::new(player).field(FieldId::new(1));
 
-                assert_eq!(ctx.read_path(&path, None)?, HostValue::Int(3));
-                ctx.set_path(path.clone(), HostValue::Int(level), None)?;
+                assert_eq!(
+                    ctx.read_path(&path, None)?,
+                    HostValue::Scalar(vela_common::ScalarValue::I64(3))
+                );
+                ctx.set_path(
+                    path.clone(),
+                    HostValue::Scalar(vela_common::ScalarValue::I64(level)),
+                    None,
+                )?;
                 match ctx.read_path(&path, None)? {
-                    HostValue::Int(value) => Ok(OwnedValue::Int(value)),
+                    HostValue::Scalar(vela_common::ScalarValue::I64(value)) => {
+                        Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(value)))
+                    }
                     _ => Ok(OwnedValue::Null),
                 }
             },
@@ -205,7 +222,10 @@ fn main(player) {
     let host_ref = HostRef::new(HostTypeId::new(1), HostObjectId::new(42), 1);
     let level = HostPath::new(host_ref).field(FieldId::new(1));
     let mut adapter = MockStateAdapter::new();
-    adapter.insert_diagnostic_path_value(level.clone(), HostValue::Int(3));
+    adapter.insert_diagnostic_path_value(
+        level.clone(),
+        HostValue::Scalar(vela_common::ScalarValue::I64(3)),
+    );
     let mut tx = HostAccess::new();
 
     assert_eq!(
@@ -216,9 +236,12 @@ fn main(player) {
             &mut adapter,
             &mut tx,
         ),
-        Ok(OwnedValue::Int(17))
+        Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(17)))
     );
-    assert_eq!(adapter.read_diagnostic_path(&level), Ok(HostValue::Int(17)));
+    assert_eq!(
+        adapter.read_diagnostic_path(&level),
+        Ok(HostValue::Scalar(vela_common::ScalarValue::I64(17)))
+    );
 }
 
 #[test]
@@ -238,7 +261,10 @@ fn context_host_native_returns_immediate_method_result() {
             move |args, ctx| {
                 let player = args.required::<HostRef>(0)?;
                 let inventory = HostPath::new(player).field(FieldId::new(3));
-                let method_args = vec![HostValue::String("gold".to_owned()), HostValue::Int(2)];
+                let method_args = vec![
+                    HostValue::String("gold".to_owned()),
+                    HostValue::Scalar(vela_common::ScalarValue::I64(2)),
+                ];
                 let result = ctx.call_method(inventory, method, method_args, None)?;
                 match result {
                     HostValue::String(value) => Ok(OwnedValue::String(value)),
@@ -280,7 +306,10 @@ fn main(player) {
     assert_eq!(adapter.method_calls()[0].method, method);
     assert_eq!(
         adapter.method_calls()[0].args,
-        vec![HostValue::String("gold".to_owned()), HostValue::Int(2)]
+        vec![
+            HostValue::String("gold".to_owned()),
+            HostValue::Scalar(vela_common::ScalarValue::I64(2))
+        ]
     );
 }
 
@@ -304,7 +333,7 @@ fn context_host_native_can_charge_execution_budget_before_host_access() {
                 let level = args.required::<i64>(1)?;
                 ctx.set_path(
                     HostPath::new(player).field(FieldId::new(1)),
-                    HostValue::Int(level),
+                    HostValue::Scalar(vela_common::ScalarValue::I64(level)),
                     None,
                 )?;
                 Ok(OwnedValue::Null)
@@ -367,7 +396,7 @@ fn context_host_native_can_charge_memory_budget_before_host_access() {
                 let level = args.required::<i64>(1)?;
                 ctx.set_path(
                     HostPath::new(player).field(FieldId::new(1)),
-                    HostValue::Int(level),
+                    HostValue::Scalar(vela_common::ScalarValue::I64(level)),
                     None,
                 )?;
                 Ok(OwnedValue::Null)
@@ -390,7 +419,10 @@ fn main(player) {
     let host_ref = HostRef::new(HostTypeId::new(1), HostObjectId::new(42), 1);
     let mut adapter = MockStateAdapter::new();
     let numeric = HostPath::new(host_ref).field(FieldId::new(1));
-    adapter.insert_diagnostic_path_value(numeric.clone(), HostValue::Int(10));
+    adapter.insert_diagnostic_path_value(
+        numeric.clone(),
+        HostValue::Scalar(vela_common::ScalarValue::I64(10)),
+    );
     let mut tx = HostAccess::new();
 
     let error = runtime
@@ -431,7 +463,7 @@ fn context_host_native_set_path_writes_through() {
                 let level = args.required::<i64>(1)?;
                 ctx.set_path(
                     HostPath::new(player).field(FieldId::new(1)),
-                    HostValue::Int(level),
+                    HostValue::Scalar(vela_common::ScalarValue::I64(level)),
                     None,
                 )?;
                 Ok(OwnedValue::Null)
@@ -463,11 +495,11 @@ fn main(player) {
             &mut adapter,
             &mut tx,
         ),
-        Ok(OwnedValue::Int(1))
+        Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(1)))
     );
     assert_eq!(
         adapter.read_diagnostic_path(&HostPath::new(host_ref).field(FieldId::new(1))),
-        Ok(HostValue::Int(13))
+        Ok(HostValue::Scalar(vela_common::ScalarValue::I64(13)))
     );
 }
 
@@ -490,13 +522,38 @@ fn context_host_native_patch_helpers_write_through() {
                 let numeric = HostPath::new(player).field(FieldId::new(1));
                 let scratch = HostPath::new(player).field(FieldId::new(2));
                 let inventory = HostPath::new(player).field(FieldId::new(3));
-                ctx.add_path(numeric.clone(), HostValue::Int(2), None)?;
-                ctx.sub_path(numeric.clone(), HostValue::Int(3), None)?;
-                ctx.mul_path(numeric.clone(), HostValue::Int(4), None)?;
-                ctx.div_path(numeric.clone(), HostValue::Int(2), None)?;
-                ctx.rem_path(numeric.clone(), HostValue::Int(5), None)?;
+                ctx.add_path(
+                    numeric.clone(),
+                    HostValue::Scalar(vela_common::ScalarValue::I64(2)),
+                    None,
+                )?;
+                ctx.sub_path(
+                    numeric.clone(),
+                    HostValue::Scalar(vela_common::ScalarValue::I64(3)),
+                    None,
+                )?;
+                ctx.mul_path(
+                    numeric.clone(),
+                    HostValue::Scalar(vela_common::ScalarValue::I64(4)),
+                    None,
+                )?;
+                ctx.div_path(
+                    numeric.clone(),
+                    HostValue::Scalar(vela_common::ScalarValue::I64(2)),
+                    None,
+                )?;
+                ctx.rem_path(
+                    numeric.clone(),
+                    HostValue::Scalar(vela_common::ScalarValue::I64(5)),
+                    None,
+                )?;
                 ctx.remove_path(scratch, None)?;
-                ctx.call_method(inventory, method, vec![HostValue::Int(4)], None)?;
+                ctx.call_method(
+                    inventory,
+                    method,
+                    vec![HostValue::Scalar(vela_common::ScalarValue::I64(4))],
+                    None,
+                )?;
                 Ok(OwnedValue::Null)
             },
         )
@@ -518,8 +575,14 @@ fn main(player) {
     let mut adapter = MockStateAdapter::new();
     let numeric = HostPath::new(host_ref).field(FieldId::new(1));
     let scratch = HostPath::new(host_ref).field(FieldId::new(2));
-    adapter.insert_diagnostic_path_value(numeric.clone(), HostValue::Int(10));
-    adapter.insert_diagnostic_path_value(scratch.clone(), HostValue::Int(0));
+    adapter.insert_diagnostic_path_value(
+        numeric.clone(),
+        HostValue::Scalar(vela_common::ScalarValue::I64(10)),
+    );
+    adapter.insert_diagnostic_path_value(
+        scratch.clone(),
+        HostValue::Scalar(vela_common::ScalarValue::I64(0)),
+    );
     let mut tx = HostAccess::new();
 
     assert_eq!(
@@ -530,11 +593,11 @@ fn main(player) {
             &mut adapter,
             &mut tx,
         ),
-        Ok(OwnedValue::Int(1))
+        Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(1)))
     );
     assert_eq!(
         adapter.read_diagnostic_path(&numeric),
-        Ok(HostValue::Int(3))
+        Ok(HostValue::Scalar(vela_common::ScalarValue::I64(3)))
     );
     assert!(adapter.read_diagnostic_path(&scratch).is_err());
     assert_eq!(adapter.method_calls().len(), 1);
@@ -556,8 +619,16 @@ fn context_host_native_repeated_writes_write_through() {
             |args, ctx| {
                 let player = args.required::<HostRef>(0)?;
                 let path = HostPath::new(player).field(FieldId::new(1));
-                ctx.set_path(path.clone(), HostValue::Int(12), None)?;
-                ctx.set_path(path, HostValue::Int(13), None)?;
+                ctx.set_path(
+                    path.clone(),
+                    HostValue::Scalar(vela_common::ScalarValue::I64(12)),
+                    None,
+                )?;
+                ctx.set_path(
+                    path,
+                    HostValue::Scalar(vela_common::ScalarValue::I64(13)),
+                    None,
+                )?;
                 Ok(OwnedValue::Null)
             },
         )
@@ -587,10 +658,10 @@ fn main(player) {
             &mut adapter,
             &mut tx,
         ),
-        Ok(OwnedValue::Int(1))
+        Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(1)))
     );
     assert_eq!(
         adapter.read_diagnostic_path(&HostPath::new(host_ref).field(FieldId::new(1))),
-        Ok(HostValue::Int(13))
+        Ok(HostValue::Scalar(vela_common::ScalarValue::I64(13)))
     );
 }

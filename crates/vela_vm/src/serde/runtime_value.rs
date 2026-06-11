@@ -47,8 +47,16 @@ impl<'de> de::Deserializer<'de> for RuntimeValueDeserializer<'de> {
         match self.value {
             Value::Missing | Value::Null => visitor.visit_unit(),
             Value::Bool(value) => visitor.visit_bool(*value),
-            Value::Int(value) => visitor.visit_i64(*value),
-            Value::Float(value) => visitor.visit_f64(*value),
+            Value::Scalar(vela_common::ScalarValue::I8(value)) => visitor.visit_i8(*value),
+            Value::Scalar(vela_common::ScalarValue::I16(value)) => visitor.visit_i16(*value),
+            Value::Scalar(vela_common::ScalarValue::I32(value)) => visitor.visit_i32(*value),
+            Value::Scalar(vela_common::ScalarValue::I64(value)) => visitor.visit_i64(*value),
+            Value::Scalar(vela_common::ScalarValue::U8(value)) => visitor.visit_u8(*value),
+            Value::Scalar(vela_common::ScalarValue::U16(value)) => visitor.visit_u16(*value),
+            Value::Scalar(vela_common::ScalarValue::U32(value)) => visitor.visit_u32(*value),
+            Value::Scalar(vela_common::ScalarValue::U64(value)) => visitor.visit_u64(*value),
+            Value::Scalar(vela_common::ScalarValue::F32(value)) => visitor.visit_f32(*value),
+            Value::Scalar(vela_common::ScalarValue::F64(value)) => visitor.visit_f64(*value),
             Value::HeapRef(_) => match self.heap_value()? {
                 HeapValue::String(value) => visitor.visit_str(value),
                 HeapValue::Array(values) | HeapValue::Set(values) => {
@@ -89,7 +97,7 @@ impl<'de> de::Deserializer<'de> for RuntimeValueDeserializer<'de> {
         V: Visitor<'de>,
     {
         match self.value {
-            Value::Int(value) => visitor.visit_i64(*value),
+            Value::Scalar(vela_common::ScalarValue::I64(value)) => visitor.visit_i64(*value),
             _ => Err(Error::custom("expected int")),
         }
     }
@@ -99,7 +107,9 @@ impl<'de> de::Deserializer<'de> for RuntimeValueDeserializer<'de> {
         V: Visitor<'de>,
     {
         match self.value {
-            Value::Int(value) if *value >= 0 => visitor.visit_u64(*value as u64),
+            Value::Scalar(vela_common::ScalarValue::I64(value)) if *value >= 0 => {
+                visitor.visit_u64(*value as u64)
+            }
             _ => Err(Error::custom("expected unsigned int")),
         }
     }
@@ -109,8 +119,8 @@ impl<'de> de::Deserializer<'de> for RuntimeValueDeserializer<'de> {
         V: Visitor<'de>,
     {
         match self.value {
-            Value::Float(value) => visitor.visit_f64(*value),
-            Value::Int(value) => visitor.visit_f64(*value as f64),
+            Value::Scalar(vela_common::ScalarValue::F64(value)) => visitor.visit_f64(*value),
+            Value::Scalar(vela_common::ScalarValue::I64(value)) => visitor.visit_f64(*value as f64),
             _ => Err(Error::custom("expected float")),
         }
     }

@@ -107,7 +107,7 @@ fn main() {
 
     assert_eq!(
         exec_reflection_value_program(&vm, &program, "main", &[], &mut host),
-        Ok(OwnedValue::Int(8))
+        Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(8)))
     );
 }
 
@@ -174,7 +174,7 @@ fn main() {
 
     assert_eq!(
         exec_reflection_value_program(&vm, &program, "main", &[], &mut host),
-        Ok(OwnedValue::Int(1))
+        Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(1)))
     );
 }
 
@@ -304,7 +304,10 @@ fn main(player) {
 "#,
     )
     .expect("compile reflection fields source");
-    let mut adapter = host_adapter(host_ref, HostValue::Int(9));
+    let mut adapter = host_adapter(
+        host_ref,
+        HostValue::Scalar(vela_common::ScalarValue::I64(9)),
+    );
     let mut tx = HostAccess::new();
     let mut vm = Vm::new();
     vm.register_reflection_natives(Arc::new(reflection_registry()));
@@ -375,7 +378,10 @@ fn main() {
         )
     };
 
-    assert_eq!(result, Ok(OwnedValue::Int(8)));
+    assert_eq!(
+        result,
+        Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(8)))
+    );
     assert_eq!(budget.memory_bytes_allocated(), 0);
 }
 
@@ -426,7 +432,7 @@ pub fn main() {
 
     assert_eq!(
         exec_reflection_value_program(&vm, &program, "game::main", &[], &mut host),
-        Ok(OwnedValue::Int(8))
+        Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(8)))
     );
 }
 
@@ -444,8 +450,11 @@ fn main(player) {
 "#,
     )
     .expect("compile reflection call source");
-    let mut adapter = host_adapter(host_ref, HostValue::Int(9));
-    adapter.insert_method_return(method, HostValue::Int(12));
+    let mut adapter = host_adapter(
+        host_ref,
+        HostValue::Scalar(vela_common::ScalarValue::I64(9)),
+    );
+    adapter.insert_method_return(method, HostValue::Scalar(vela_common::ScalarValue::I64(12)));
     let mut tx = HostAccess::new();
     let mut vm = Vm::new();
     vm.register_reflection_natives(Arc::new(reflection_registry()));
@@ -465,9 +474,16 @@ fn main(player) {
         )
     };
 
-    assert_eq!(result, Ok(OwnedValue::Int(1)));
+    assert_eq!(
+        result,
+        Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(1)))
+    );
     assert_eq!(
         adapter.method_calls(),
-        &[(HostPath::new(host_ref), method, vec![HostValue::Int(20)])]
+        &[(
+            HostPath::new(host_ref),
+            method,
+            vec![HostValue::Scalar(vela_common::ScalarValue::I64(20))]
+        )]
     );
 }

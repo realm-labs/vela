@@ -98,7 +98,7 @@ fn main() {
 
     assert_eq!(
         exec_reflection_module_program(&vm, &program, &mut host),
-        Ok(OwnedValue::Int(2))
+        Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(2)))
     );
 }
 
@@ -331,6 +331,6 @@ fn main() {
 
     assert_eq!(
         exec_reflection_module_program(&vm, &program, &mut host),
-        Ok(OwnedValue::Int(11111))
+        Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(11111)))
     );
 }

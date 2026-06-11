@@ -54,7 +54,7 @@ pub(crate) fn time_clock_functions(now: i64, tick: i64) -> [NativeFunctionEntry;
 
 fn time_value(name: &str, value: i64, args: &[OwnedValue]) -> VmResult<OwnedValue> {
     if args.is_empty() {
-        return Ok(OwnedValue::Int(value));
+        return Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(value)));
     }
     Err(VmError::new(VmErrorKind::ArityMismatch {
         name: name.to_owned(),
@@ -72,13 +72,13 @@ fn elapsed_since(now: i64, args: &[OwnedValue]) -> VmResult<OwnedValue> {
         }));
     }
 
-    let OwnedValue::Int(start) = args[0] else {
+    let OwnedValue::Scalar(vela_common::ScalarValue::I64(start)) = args[0] else {
         return Err(VmError::new(VmErrorKind::TypeMismatch {
             operation: "time::elapsed_since",
         }));
     };
 
-    now.checked_sub(start).map(OwnedValue::Int).ok_or_else(|| {
+    now.checked_sub(start).map(OwnedValue::i64).ok_or_else(|| {
         VmError::new(VmErrorKind::TypeMismatch {
             operation: "time::elapsed_since",
         })

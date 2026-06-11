@@ -13,7 +13,7 @@ pub(crate) fn math_sqrt(args: &[OwnedValue]) -> VmResult<OwnedValue> {
 
     let root = value.sqrt();
     if root.is_finite() {
-        Ok(OwnedValue::Float(root))
+        Ok(OwnedValue::Scalar(vela_common::ScalarValue::F64(root)))
     } else {
         type_error("math::sqrt")
     }

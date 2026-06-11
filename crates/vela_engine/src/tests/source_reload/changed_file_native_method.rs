@@ -37,7 +37,7 @@ fn runtime_stages_changed_file_native_effect_rejection_until_safe_point() {
             &mut adapter,
             &mut tx
         ),
-        Ok(OwnedValue::Int(2))
+        Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(2)))
     );
 
     write_reward_module(&reward_file, 6);
@@ -53,7 +53,7 @@ fn runtime_stages_changed_file_native_effect_rejection_until_safe_point() {
             &mut adapter,
             &mut tx
         ),
-        Ok(OwnedValue::Int(2))
+        Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(2)))
     );
 
     let report = runtime
@@ -88,7 +88,7 @@ fn runtime_stages_changed_file_native_effect_rejection_until_safe_point() {
             &mut adapter,
             &mut tx
         ),
-        Ok(OwnedValue::Int(2))
+        Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(2)))
     );
 }
 
@@ -129,7 +129,7 @@ fn runtime_stages_changed_file_native_access_rejection_until_safe_point() {
             &mut adapter,
             &mut tx
         ),
-        Ok(OwnedValue::Int(2))
+        Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(2)))
     );
 
     write_reward_module(&reward_file, 6);
@@ -145,7 +145,7 @@ fn runtime_stages_changed_file_native_access_rejection_until_safe_point() {
             &mut adapter,
             &mut tx
         ),
-        Ok(OwnedValue::Int(2))
+        Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(2)))
     );
 
     let report = runtime
@@ -178,7 +178,7 @@ fn runtime_stages_changed_file_native_access_rejection_until_safe_point() {
             &mut adapter,
             &mut tx
         ),
-        Ok(OwnedValue::Int(2))
+        Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(2)))
     );
 }
 
@@ -219,7 +219,7 @@ fn runtime_stages_changed_file_native_parameter_rejection_until_safe_point() {
             &mut adapter,
             &mut tx
         ),
-        Ok(OwnedValue::Int(2))
+        Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(2)))
     );
 
     write_reward_module(&reward_file, 6);
@@ -235,7 +235,7 @@ fn runtime_stages_changed_file_native_parameter_rejection_until_safe_point() {
             &mut adapter,
             &mut tx
         ),
-        Ok(OwnedValue::Int(2))
+        Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(2)))
     );
 
     let report = runtime
@@ -275,7 +275,7 @@ fn runtime_stages_changed_file_native_parameter_rejection_until_safe_point() {
             &mut adapter,
             &mut tx
         ),
-        Ok(OwnedValue::Int(2))
+        Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(2)))
     );
 }
 
@@ -316,7 +316,7 @@ fn runtime_stages_changed_file_native_path_proxy_parameter_rejection_until_safe_
             &mut adapter,
             &mut tx
         ),
-        Ok(OwnedValue::Int(2))
+        Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(2)))
     );
 
     write_reward_module(&reward_file, 6);
@@ -332,7 +332,7 @@ fn runtime_stages_changed_file_native_path_proxy_parameter_rejection_until_safe_
             &mut adapter,
             &mut tx
         ),
-        Ok(OwnedValue::Int(2))
+        Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(2)))
     );
 
     let report = runtime
@@ -372,7 +372,7 @@ fn runtime_stages_changed_file_native_path_proxy_parameter_rejection_until_safe_
             &mut adapter,
             &mut tx
         ),
-        Ok(OwnedValue::Int(2))
+        Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(2)))
     );
 }
 
@@ -413,7 +413,7 @@ fn runtime_stages_changed_file_native_return_rejection_until_safe_point() {
             &mut adapter,
             &mut tx
         ),
-        Ok(OwnedValue::Int(2))
+        Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(2)))
     );
 
     write_reward_module(&reward_file, 6);
@@ -429,7 +429,7 @@ fn runtime_stages_changed_file_native_return_rejection_until_safe_point() {
             &mut adapter,
             &mut tx
         ),
-        Ok(OwnedValue::Int(2))
+        Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(2)))
     );
 
     let report = runtime
@@ -462,7 +462,7 @@ fn runtime_stages_changed_file_native_return_rejection_until_safe_point() {
             &mut adapter,
             &mut tx
         ),
-        Ok(OwnedValue::Int(2))
+        Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(2)))
     );
 }
 
@@ -503,7 +503,7 @@ fn runtime_stages_changed_file_native_path_proxy_return_rejection_until_safe_poi
             &mut adapter,
             &mut tx
         ),
-        Ok(OwnedValue::Int(2))
+        Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(2)))
     );
 
     write_reward_module(&reward_file, 6);
@@ -519,7 +519,7 @@ fn runtime_stages_changed_file_native_path_proxy_return_rejection_until_safe_poi
             &mut adapter,
             &mut tx
         ),
-        Ok(OwnedValue::Int(2))
+        Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(2)))
     );
 
     let report = runtime
@@ -552,7 +552,7 @@ fn runtime_stages_changed_file_native_path_proxy_return_rejection_until_safe_poi
             &mut adapter,
             &mut tx
         ),
-        Ok(OwnedValue::Int(2))
+        Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(2)))
     );
 }
 
@@ -603,7 +603,7 @@ fn runtime_stages_changed_file_native_stable_id_rename_until_safe_point() {
             NativeFunctionDesc::new("game::native::grant_bonus", NativeFunctionId::new(22))
                 .returns(TypeHint::Int)
                 .effects(EffectSet::host_read()),
-            |_| Ok(OwnedValue::Int(5)),
+            |_| Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(5))),
         )
         .build()
         .expect("old engine should build");
@@ -616,7 +616,7 @@ fn runtime_stages_changed_file_native_stable_id_rename_until_safe_point() {
             NativeFunctionDesc::new("game::native::grant_bonus_v2", NativeFunctionId::new(22))
                 .returns(TypeHint::Int)
                 .effects(EffectSet::host_read()),
-            |_| Ok(OwnedValue::Int(5)),
+            |_| Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(5))),
         )
         .build()
         .expect("new engine should build");
@@ -632,7 +632,7 @@ fn runtime_stages_changed_file_native_stable_id_rename_until_safe_point() {
             &mut adapter,
             &mut tx
         ),
-        Ok(OwnedValue::Int(5))
+        Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(5)))
     );
 
     write_native_reward_module(&reward_file, "grant_bonus_v2", " + 1");
@@ -649,7 +649,7 @@ fn runtime_stages_changed_file_native_stable_id_rename_until_safe_point() {
             &mut adapter,
             &mut tx
         ),
-        Ok(OwnedValue::Int(5))
+        Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(5)))
     );
 
     let report = runtime
@@ -667,7 +667,7 @@ fn runtime_stages_changed_file_native_stable_id_rename_until_safe_point() {
             &mut adapter,
             &mut tx
         ),
-        Ok(OwnedValue::Int(6))
+        Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(6)))
     );
 }
 
@@ -862,7 +862,7 @@ fn runtime_stages_changed_file_method_stable_id_rename_until_safe_point() {
             &mut adapter,
             &mut tx
         ),
-        Ok(OwnedValue::Int(1))
+        Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(1)))
     );
     assert_host_method_access(&tx, method, 7);
 
@@ -881,7 +881,7 @@ fn runtime_stages_changed_file_method_stable_id_rename_until_safe_point() {
             &mut adapter,
             &mut tx
         ),
-        Ok(OwnedValue::Int(1))
+        Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(1)))
     );
     assert_host_method_access(&tx, method, 7);
 
@@ -901,7 +901,7 @@ fn runtime_stages_changed_file_method_stable_id_rename_until_safe_point() {
             &mut adapter,
             &mut tx
         ),
-        Ok(OwnedValue::Int(2))
+        Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(2)))
     );
     assert_host_method_access(&tx, method, 7);
 }

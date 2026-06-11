@@ -194,6 +194,31 @@ impl fmt::Display for ScalarValue {
     }
 }
 
+macro_rules! impl_scalar_from {
+    ($($ty:ty => $variant:ident),* $(,)?) => {
+        $(
+            impl From<$ty> for ScalarValue {
+                fn from(value: $ty) -> Self {
+                    Self::$variant(value)
+                }
+            }
+        )*
+    };
+}
+
+impl_scalar_from!(
+    i8 => I8,
+    i16 => I16,
+    i32 => I32,
+    i64 => I64,
+    u8 => U8,
+    u16 => U16,
+    u32 => U32,
+    u64 => U64,
+    f32 => F32,
+    f64 => F64,
+);
+
 #[cfg(test)]
 mod tests {
     use super::*;

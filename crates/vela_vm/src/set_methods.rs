@@ -197,7 +197,10 @@ fn main() {
 
         let result = run_linked_set_test_code_with_budget(&vm, code, &mut budget)
             .expect("heap set combination methods should run");
-        assert_eq!(result, OwnedValue::Int(34));
+        assert_eq!(
+            result,
+            OwnedValue::Scalar(vela_common::ScalarValue::I64(34))
+        );
     }
 
     #[test]
@@ -258,7 +261,7 @@ fn main() {
 
         let result = run_linked_set_test_code_with_budget(&vm, code, &mut budget)
             .expect("heap set has method should run");
-        assert_eq!(result, OwnedValue::Int(6));
+        assert_eq!(result, OwnedValue::Scalar(vela_common::ScalarValue::I64(6)));
     }
 
     #[test]
@@ -300,7 +303,10 @@ fn main() {
 
         let result = run_linked_set_test_code_with_budget(&vm, code, &mut budget)
             .expect("heap set filter should run");
-        assert_eq!(result, OwnedValue::Int(23));
+        assert_eq!(
+            result,
+            OwnedValue::Scalar(vela_common::ScalarValue::I64(23))
+        );
     }
 
     #[test]
@@ -343,7 +349,10 @@ fn main() {
 
         let result = run_linked_set_test_code_with_budget(&vm, code, &mut budget)
             .expect("heap set map should run");
-        assert_eq!(result, OwnedValue::Int(21));
+        assert_eq!(
+            result,
+            OwnedValue::Scalar(vela_common::ScalarValue::I64(21))
+        );
     }
 
     #[test]
@@ -394,7 +403,10 @@ fn main() {
 
         let result = run_linked_set_test_code_with_budget(&vm, code, &mut budget)
             .expect("heap set higher-order methods should run");
-        assert_eq!(result, OwnedValue::Int(27));
+        assert_eq!(
+            result,
+            OwnedValue::Scalar(vela_common::ScalarValue::I64(27))
+        );
     }
 
     #[test]
@@ -524,7 +536,7 @@ fn main() {
 
         let result = run_linked_set_test_code_with_budget(&vm, code, &mut budget)
             .expect("heap set clear method should run");
-        assert_eq!(result, OwnedValue::Int(9));
+        assert_eq!(result, OwnedValue::Scalar(vela_common::ScalarValue::I64(9)));
     }
 
     #[test]
@@ -569,7 +581,10 @@ fn main() {
 
         let result = run_linked_set_test_code_with_budget(&vm, code, &mut budget)
             .expect("heap set extend method should run");
-        assert_eq!(result, OwnedValue::Int(20));
+        assert_eq!(
+            result,
+            OwnedValue::Scalar(vela_common::ScalarValue::I64(20))
+        );
     }
 
     #[test]

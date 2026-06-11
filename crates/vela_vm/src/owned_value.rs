@@ -2,6 +2,7 @@ use std::collections::BTreeMap;
 use std::sync::Arc;
 
 use vela_bytecode::{Constant, UnlinkedCodeObject};
+use vela_common::ScalarValue;
 use vela_host::path::HostRef;
 use vela_host::proxy::PathProxy;
 
@@ -16,8 +17,7 @@ pub enum OwnedValue {
     Missing,
     Null,
     Bool(bool),
-    Int(i64),
-    Float(f64),
+    Scalar(ScalarValue),
     String(String),
     Array(Vec<OwnedValue>),
     Map(BTreeMap<String, OwnedValue>),
@@ -39,6 +39,16 @@ pub enum OwnedValue {
 }
 
 impl OwnedValue {
+    #[must_use]
+    pub const fn i64(value: i64) -> Self {
+        Self::Scalar(ScalarValue::I64(value))
+    }
+
+    #[must_use]
+    pub const fn f64(value: f64) -> Self {
+        Self::Scalar(ScalarValue::F64(value))
+    }
+
     #[must_use]
     pub fn array<T>(values: impl IntoIterator<Item = T>) -> Self
     where
@@ -236,8 +246,7 @@ impl From<&Constant> for OwnedValue {
         match value {
             Constant::Null => Self::Null,
             Constant::Bool(value) => Self::Bool(*value),
-            Constant::Int(value) => Self::Int(*value),
-            Constant::Float(value) => Self::Float(*value),
+            Constant::Scalar(value) => Self::Scalar(*value),
             Constant::String(value) => Self::String(value.clone()),
             Constant::Array(values) => Self::Array(values.iter().map(Self::from).collect()),
             Constant::Map(entries) => Self::Map(
@@ -258,19 +267,19 @@ impl From<bool> for OwnedValue {
 
 impl From<i32> for OwnedValue {
     fn from(value: i32) -> Self {
-        Self::Int(i64::from(value))
+        Self::Scalar(ScalarValue::I32(value))
     }
 }
 
 impl From<i64> for OwnedValue {
     fn from(value: i64) -> Self {
-        Self::Int(value)
+        Self::i64(value)
     }
 }
 
 impl From<f64> for OwnedValue {
     fn from(value: f64) -> Self {
-        Self::Float(value)
+        Self::f64(value)
     }
 }
 
@@ -297,8 +306,7 @@ pub fn owned_to_value_detached(value: OwnedValue) -> Value {
         OwnedValue::Missing => Value::Missing,
         OwnedValue::Null => Value::Null,
         OwnedValue::Bool(value) => Value::Bool(value),
-        OwnedValue::Int(value) => Value::Int(value),
-        OwnedValue::Float(value) => Value::Float(value),
+        OwnedValue::Scalar(value) => Value::Scalar(value),
         OwnedValue::Range(value) => Value::Range(value),
         OwnedValue::HostRef(value) => Value::HostRef(value),
         OwnedValue::String(_)
@@ -318,8 +326,7 @@ pub fn value_to_owned_detached(value: &Value) -> VmResult<OwnedValue> {
         Value::Missing => Ok(OwnedValue::Missing),
         Value::Null => Ok(OwnedValue::Null),
         Value::Bool(value) => Ok(OwnedValue::Bool(*value)),
-        Value::Int(value) => Ok(OwnedValue::Int(*value)),
-        Value::Float(value) => Ok(OwnedValue::Float(*value)),
+        Value::Scalar(value) => Ok(OwnedValue::Scalar(*value)),
         Value::Range(value) => Ok(OwnedValue::Range(*value)),
         Value::HostRef(value) => Ok(OwnedValue::HostRef(*value)),
         Value::HeapRef(_) => Ok(OwnedValue::Missing),
@@ -342,8 +349,7 @@ fn owned_value_eq_runtime(lhs: &OwnedValue, rhs: &Value) -> bool {
     match (lhs, rhs) {
         (OwnedValue::Missing, Value::Missing) | (OwnedValue::Null, Value::Null) => true,
         (OwnedValue::Bool(lhs), Value::Bool(rhs)) => lhs == rhs,
-        (OwnedValue::Int(lhs), Value::Int(rhs)) => lhs == rhs,
-        (OwnedValue::Float(lhs), Value::Float(rhs)) => lhs == rhs,
+        (OwnedValue::Scalar(lhs), Value::Scalar(rhs)) => lhs == rhs,
         (OwnedValue::Range(lhs), Value::Range(rhs)) => lhs == rhs,
         (OwnedValue::HostRef(lhs), Value::HostRef(rhs)) => lhs == rhs,
         _ => false,
@@ -353,6 +359,7 @@ fn owned_value_eq_runtime(lhs: &OwnedValue, rhs: &Value) -> bool {
 #[cfg(test)]
 mod tests {
     use super::OwnedValue;
+    use vela_common::ScalarValue;
 
     #[test]
     fn owned_value_constructors_build_complex_values() {
@@ -368,12 +375,15 @@ mod tests {
             ],
         );
 
-        assert_eq!(state.field("level"), Some(&OwnedValue::Int(1)));
+        assert_eq!(
+            state.field("level"),
+            Some(&OwnedValue::Scalar(ScalarValue::I32(1)))
+        );
         assert_eq!(
             state
                 .field("stats")
                 .and_then(|stats| stats.field("handled_ticks")),
-            Some(&OwnedValue::Int(0))
+            Some(&OwnedValue::Scalar(ScalarValue::I32(0)))
         );
     }
 
@@ -391,12 +401,15 @@ mod tests {
             ],
         });
 
-        assert_eq!(state.field("level"), Some(&OwnedValue::Int(10)));
+        assert_eq!(
+            state.field("level"),
+            Some(&OwnedValue::Scalar(ScalarValue::I32(10)))
+        );
         assert_eq!(
             state
                 .field("stats")
                 .and_then(|stats| stats.field("handled_ticks")),
-            Some(&OwnedValue::Int(7))
+            Some(&OwnedValue::Scalar(ScalarValue::I32(7)))
         );
     }
 
@@ -407,14 +420,17 @@ mod tests {
         });
 
         assert_eq!(state.set_existing_field("level", 2), Ok(()));
-        assert_eq!(state.field("level"), Some(&OwnedValue::Int(2)));
         assert_eq!(
-            state.set_existing_field("missing", 3),
-            Err(OwnedValue::Int(3))
+            state.field("level"),
+            Some(&OwnedValue::Scalar(ScalarValue::I32(2)))
         );
         assert_eq!(
-            OwnedValue::Int(1).set_existing_field("level", 2),
-            Err(OwnedValue::Int(2))
+            state.set_existing_field("missing", 3),
+            Err(OwnedValue::Scalar(ScalarValue::I32(3)))
+        );
+        assert_eq!(
+            OwnedValue::Scalar(ScalarValue::I32(1)).set_existing_field("level", 2),
+            Err(OwnedValue::Scalar(ScalarValue::I32(2)))
         );
         assert_eq!(crate::owned_record!("Empty", {}).field("missing"), None);
     }

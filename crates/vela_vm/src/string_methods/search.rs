@@ -59,7 +59,7 @@ pub(crate) fn find(
     let needle = string_value(&args[0], heap.as_deref(), "method find")?;
     let payload = value.find(needle).map(|byte_index| {
         let char_index = value[..byte_index].chars().count();
-        Value::Int(i64::try_from(char_index).unwrap_or(i64::MAX))
+        Value::i64(i64::try_from(char_index).unwrap_or(i64::MAX))
     });
     let Some(heap) = heap.as_deref_mut() else {
         return super::type_error("method find");

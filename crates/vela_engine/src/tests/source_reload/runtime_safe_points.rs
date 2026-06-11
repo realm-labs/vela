@@ -46,7 +46,7 @@ fn engine_compile_hot_reload_changed_file_reloads_module_root() {
             "game::main::main",
             &[]
         ),
-        Ok(OwnedValue::Int(10))
+        Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(10)))
     );
 }
 
@@ -81,7 +81,7 @@ fn engine_compile_hot_reload_changed_file_accepts_normalized_root_paths() {
             "game::main::main",
             &[]
         ),
-        Ok(OwnedValue::Int(8))
+        Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(8)))
     );
 }
 
@@ -247,7 +247,7 @@ fn main(player: Player) {
                 &mut budget,
                 None
             ),
-        Ok(OwnedValue::Int(2))
+        Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(2)))
     );
 }
 
@@ -271,7 +271,7 @@ fn runtime_applies_engine_hot_reload_updates() {
 
     assert_eq!(
         runtime.call_raw("main", &[], CallOptions::unbounded(), &mut adapter, &mut tx),
-        Ok(OwnedValue::Int(1))
+        Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(1)))
     );
 
     let report = runtime.apply_hot_update(update).expect("apply update");
@@ -286,7 +286,7 @@ fn runtime_applies_engine_hot_reload_updates() {
     );
     assert_eq!(
         runtime.call_raw("main", &[], CallOptions::unbounded(), &mut adapter, &mut tx),
-        Ok(OwnedValue::Int(2))
+        Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(2)))
     );
 }
 
@@ -365,12 +365,15 @@ fn bump(amount) {
     let bumped = runtime
         .call(
             "bump",
-            CallArgs::from_positional([OwnedValue::Int(2)]),
+            CallArgs::from_positional([OwnedValue::Scalar(vela_common::ScalarValue::I64(2))]),
             CallOptions::unbounded(),
         )
         .expect("bump after reload should run");
 
-    assert_eq!(runtime.value_to_owned(&bumped), Ok(OwnedValue::Int(107)));
+    assert_eq!(
+        runtime.value_to_owned(&bumped),
+        Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(107)))
+    );
     assert_eq!(
         script_record_field(
             &runtime
@@ -379,7 +382,7 @@ fn bump(amount) {
                 .expect("script global should exist"),
             "level",
         ),
-        Some(&OwnedValue::Int(7))
+        Some(&OwnedValue::Scalar(vela_common::ScalarValue::I64(7)))
     );
 }
 
@@ -419,7 +422,7 @@ fn runtime_stages_engine_hot_reload_until_check_reload_safe_point() {
     );
     assert_eq!(
         runtime.call_raw("main", &[], CallOptions::unbounded(), &mut adapter, &mut tx),
-        Ok(OwnedValue::Int(1))
+        Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(1)))
     );
 
     let report = runtime
@@ -443,7 +446,7 @@ fn runtime_stages_engine_hot_reload_until_check_reload_safe_point() {
     );
     assert_eq!(
         runtime.call_raw("main", &[], CallOptions::unbounded(), &mut adapter, &mut tx),
-        Ok(OwnedValue::Int(2))
+        Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(2)))
     );
 }
 
@@ -470,7 +473,7 @@ fn runtime_stages_source_text_hot_reload_until_check_reload_safe_point() {
     );
     assert_eq!(
         runtime.call_raw("main", &[], CallOptions::unbounded(), &mut adapter, &mut tx),
-        Ok(OwnedValue::Int(1))
+        Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(1)))
     );
 
     let report = runtime
@@ -482,7 +485,7 @@ fn runtime_stages_source_text_hot_reload_until_check_reload_safe_point() {
     assert_eq!(report.changed_functions, vec!["main".to_owned()]);
     assert_eq!(
         runtime.call_raw("main", &[], CallOptions::unbounded(), &mut adapter, &mut tx),
-        Ok(OwnedValue::Int(2))
+        Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(2)))
     );
 }
 
@@ -504,7 +507,7 @@ fn runtime_stages_source_text_hot_reload_rejection_until_check_reload_safe_point
         .expect("stage rejected source text update");
     assert_eq!(
         runtime.call_raw("main", &[], CallOptions::unbounded(), &mut adapter, &mut tx),
-        Ok(OwnedValue::Int(1))
+        Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(1)))
     );
 
     let report = runtime
@@ -528,7 +531,7 @@ fn runtime_stages_source_text_hot_reload_rejection_until_check_reload_safe_point
     assert!(source_span.is_some());
     assert_eq!(
         runtime.call_raw("main", &[], CallOptions::unbounded(), &mut adapter, &mut tx),
-        Ok(OwnedValue::Int(1))
+        Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(1)))
     );
 }
 
@@ -553,7 +556,7 @@ fn runtime_tick_boundary_safe_point_consumes_staged_reload() {
         .expect("stage pending update");
     assert_eq!(
         runtime.call_raw("main", &[], CallOptions::unbounded(), &mut adapter, &mut tx),
-        Ok(OwnedValue::Int(1))
+        Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(1)))
     );
 
     let report = runtime
@@ -570,7 +573,7 @@ fn runtime_tick_boundary_safe_point_consumes_staged_reload() {
     );
     assert_eq!(
         runtime.call_raw("main", &[], CallOptions::unbounded(), &mut adapter, &mut tx),
-        Ok(OwnedValue::Int(2))
+        Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(2)))
     );
     assert_eq!(
         runtime
@@ -629,7 +632,7 @@ fn runtime_tick_boundary_safe_point_reports_staged_reload_rejection() {
     );
     assert_eq!(
         runtime.call_raw("main", &[], CallOptions::unbounded(), &mut adapter, &mut tx),
-        Ok(OwnedValue::Int(1))
+        Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(1)))
     );
 }
 
@@ -663,7 +666,7 @@ fn runtime_tick_boundary_safe_point_reports_staged_module_export_rejection() {
 
     assert_eq!(
         runtime.call_raw("main", &[], CallOptions::unbounded(), &mut adapter, &mut tx),
-        Ok(OwnedValue::Int(1))
+        Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(1)))
     );
 
     let report = runtime
@@ -683,7 +686,7 @@ fn runtime_tick_boundary_safe_point_reports_staged_module_export_rejection() {
     assert_eq!(new, &Vec::<ModuleExportAbi>::new());
     assert_eq!(
         runtime.call_raw("main", &[], CallOptions::unbounded(), &mut adapter, &mut tx),
-        Ok(OwnedValue::Int(1))
+        Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(1)))
     );
 }
 
@@ -718,7 +721,7 @@ fn runtime_tick_boundary_safe_point_reports_staged_removed_function_abi_rejectio
 
     assert_eq!(
         runtime.call_raw("main", &[], CallOptions::unbounded(), &mut adapter, &mut tx),
-        Ok(OwnedValue::Int(1))
+        Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(1)))
     );
 
     let report = runtime
@@ -741,7 +744,7 @@ fn runtime_tick_boundary_safe_point_reports_staged_removed_function_abi_rejectio
     assert_eq!(function, "host::reward::grant");
     assert_eq!(
         runtime.call_raw("main", &[], CallOptions::unbounded(), &mut adapter, &mut tx),
-        Ok(OwnedValue::Int(1))
+        Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(1)))
     );
 }
 
@@ -777,7 +780,7 @@ fn runtime_tick_boundary_safe_point_reports_staged_removed_method_abi_rejection(
 
     assert_eq!(
         runtime.call_raw("main", &[], CallOptions::unbounded(), &mut adapter, &mut tx),
-        Ok(OwnedValue::Int(1))
+        Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(1)))
     );
 
     let report = runtime
@@ -800,7 +803,7 @@ fn runtime_tick_boundary_safe_point_reports_staged_removed_method_abi_rejection(
     assert_eq!(method, "grant_exp");
     assert_eq!(
         runtime.call_raw("main", &[], CallOptions::unbounded(), &mut adapter, &mut tx),
-        Ok(OwnedValue::Int(1))
+        Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(1)))
     );
 }
 
@@ -831,7 +834,7 @@ fn runtime_tick_boundary_safe_point_reports_staged_removed_module_rejection() {
 
     assert_eq!(
         runtime.call_raw("main", &[], CallOptions::unbounded(), &mut adapter, &mut tx),
-        Ok(OwnedValue::Int(1))
+        Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(1)))
     );
 
     let report = runtime
@@ -850,7 +853,7 @@ fn runtime_tick_boundary_safe_point_reports_staged_removed_module_rejection() {
     assert_eq!(module, "host::reward");
     assert_eq!(
         runtime.call_raw("main", &[], CallOptions::unbounded(), &mut adapter, &mut tx),
-        Ok(OwnedValue::Int(1))
+        Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(1)))
     );
 }
 
@@ -883,7 +886,10 @@ fn runtime_call_at_event_end_safe_point_consumes_staged_reload_after_call() {
         )
         .expect("event call should run");
 
-    assert_eq!(report.value, OwnedValue::Int(1));
+    assert_eq!(
+        report.value,
+        OwnedValue::Scalar(vela_common::ScalarValue::I64(1))
+    );
     let reload = report.reload.expect("staged reload should be consumed");
     assert!(reload.accepted);
     assert_eq!(reload.changed_functions, vec!["main".to_owned()]);
@@ -894,7 +900,7 @@ fn runtime_call_at_event_end_safe_point_consumes_staged_reload_after_call() {
     );
     assert_eq!(
         runtime.call_raw("main", &[], CallOptions::unbounded(), &mut adapter, &mut tx),
-        Ok(OwnedValue::Int(2))
+        Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(2)))
     );
 }
 
@@ -950,7 +956,10 @@ fn main() {
         )
         .expect("event call should run on the old version");
 
-    assert_eq!(report.value, OwnedValue::Int(1));
+    assert_eq!(
+        report.value,
+        OwnedValue::Scalar(vela_common::ScalarValue::I64(1))
+    );
     let reload = report.reload.expect("staged reload should be consumed");
     assert!(reload.accepted);
     assert_eq!(
@@ -964,7 +973,7 @@ fn main() {
     );
     assert_eq!(
         runtime.call_raw("main", &[], CallOptions::unbounded(), &mut adapter, &mut tx),
-        Ok(OwnedValue::Int(2))
+        Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(2)))
     );
 }
 
@@ -1001,7 +1010,10 @@ fn runtime_call_at_event_end_safe_point_reports_staged_reload_rejection() {
         )
         .expect("event call should run before reporting reload rejection");
 
-    assert_eq!(report.value, OwnedValue::Int(1));
+    assert_eq!(
+        report.value,
+        OwnedValue::Scalar(vela_common::ScalarValue::I64(1))
+    );
     let reload = report.reload.expect("staged rejection should be consumed");
     assert!(!reload.accepted);
     let HotReloadErrorKind::ChangedFunctionReturnAbi {
@@ -1024,7 +1036,7 @@ fn runtime_call_at_event_end_safe_point_reports_staged_reload_rejection() {
     );
     assert_eq!(
         runtime.call_raw("main", &[], CallOptions::unbounded(), &mut adapter, &mut tx),
-        Ok(OwnedValue::Int(1))
+        Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(1)))
     );
 }
 
@@ -1062,7 +1074,10 @@ fn main(player: Player) {
     let host_ref = HostRef::new(HostTypeId::new(1), HostObjectId::new(42), 1);
     let level_path = HostPath::new(host_ref).field(FieldId::new(1));
     let mut adapter = MockStateAdapter::new();
-    adapter.insert_diagnostic_path_value(level_path, HostValue::Int(10));
+    adapter.insert_diagnostic_path_value(
+        level_path,
+        HostValue::Scalar(vela_common::ScalarValue::I64(10)),
+    );
     let mut tx = HostAccess::new();
 
     assert_eq!(
@@ -1073,7 +1088,7 @@ fn main(player: Player) {
             &mut adapter,
             &mut tx,
         ),
-        Ok(OwnedValue::Int(11))
+        Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(11)))
     );
     runtime
         .stage_hot_update(update)
@@ -1095,7 +1110,7 @@ fn main(player: Player) {
             &mut adapter,
             &mut next_tx,
         ),
-        Ok(OwnedValue::Int(113))
+        Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(113)))
     );
 }
 
@@ -1133,7 +1148,10 @@ fn main(player: Player) {
     let host_ref = HostRef::new(HostTypeId::new(1), HostObjectId::new(42), 1);
     let level_path = HostPath::new(host_ref).field(FieldId::new(1));
     let mut adapter = MockStateAdapter::new();
-    adapter.insert_diagnostic_path_value(level_path.clone(), HostValue::Int(10));
+    adapter.insert_diagnostic_path_value(
+        level_path.clone(),
+        HostValue::Scalar(vela_common::ScalarValue::I64(10)),
+    );
     runtime
         .stage_hot_update(update)
         .expect("stage pending update");

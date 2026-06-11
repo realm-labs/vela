@@ -59,8 +59,12 @@ fn run_linked_standard_id_code_with_host(
 fn call_native_uses_resolved_id_even_when_debug_name_differs() {
     let native_id = vela_def::FunctionId::new(77);
     let mut vm = Vm::new();
-    vm.register_native("diagnostic_name", |_| Ok(OwnedValue::Int(1)));
-    vm.register_native_with_id(native_id, |_| Ok(OwnedValue::Int(2)));
+    vm.register_native("diagnostic_name", |_| {
+        Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(1)))
+    });
+    vm.register_native_with_id(native_id, |_| {
+        Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(2)))
+    });
 
     let mut code = UnlinkedCodeObject::new("native_id", 1);
     code.push_instruction(UnlinkedInstruction::new(
@@ -76,7 +80,7 @@ fn call_native_uses_resolved_id_even_when_debug_name_differs() {
     }));
     assert_eq!(
         run_linked_standard_id_code(&vm, code),
-        Ok(OwnedValue::Int(2))
+        Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(2)))
     );
 }
 
@@ -84,8 +88,12 @@ fn call_native_uses_resolved_id_even_when_debug_name_differs() {
 fn call_native_uses_resolved_host_id_even_when_debug_name_differs() {
     let native_id = FunctionId::new(78);
     let mut vm = Vm::new();
-    vm.register_native("diagnostic_name", |_| Ok(OwnedValue::Int(1)));
-    vm.register_host_native_with_id(native_id, |_, _| Ok(OwnedValue::Int(3)));
+    vm.register_native("diagnostic_name", |_| {
+        Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(1)))
+    });
+    vm.register_host_native_with_id(native_id, |_, _| {
+        Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(3)))
+    });
 
     let mut code = UnlinkedCodeObject::new("host_native_id", 1);
     code.push_instruction(UnlinkedInstruction::new(
@@ -109,7 +117,7 @@ fn call_native_uses_resolved_host_id_even_when_debug_name_differs() {
     };
     assert_eq!(
         run_linked_standard_id_code_with_host(&vm, code, &mut host),
-        Ok(OwnedValue::Int(3))
+        Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(3)))
     );
 }
 
@@ -119,7 +127,7 @@ fn call_native_uses_standard_native_id_even_when_debug_name_differs() {
     vm.register_standard_natives();
 
     let mut code = UnlinkedCodeObject::new("standard_native_id", 2);
-    let value = code.push_constant(Constant::Int(-4));
+    let value = code.push_constant(Constant::Scalar(vela_common::ScalarValue::I64(-4)));
     code.push_instruction(UnlinkedInstruction::new(
         UnlinkedInstructionKind::LoadConst {
             dst: Register(0),
@@ -139,7 +147,7 @@ fn call_native_uses_standard_native_id_even_when_debug_name_differs() {
     }));
     assert_eq!(
         run_linked_standard_id_code(&vm, code),
-        Ok(OwnedValue::Int(4))
+        Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(4)))
     );
 }
 
@@ -168,7 +176,7 @@ fn call_method_uses_standard_value_method_id_before_name_fallback() {
 
     assert_eq!(
         run_linked_standard_id_code(&Vm::new(), code),
-        Ok(OwnedValue::Int(4))
+        Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(4)))
     );
 }
 
@@ -179,8 +187,8 @@ fn option_some(value: OwnedValue) -> OwnedValue {
 #[test]
 fn call_method_uses_standard_range_method_id_before_name_fallback() {
     let mut code = UnlinkedCodeObject::new("standard_range_method_id", 4);
-    let start = code.push_constant(Constant::Int(2));
-    let end = code.push_constant(Constant::Int(5));
+    let start = code.push_constant(Constant::Scalar(vela_common::ScalarValue::I64(2)));
+    let end = code.push_constant(Constant::Scalar(vela_common::ScalarValue::I64(5)));
     code.push_instruction(UnlinkedInstruction::new(
         UnlinkedInstructionKind::LoadConst {
             dst: Register(0),
@@ -216,15 +224,15 @@ fn call_method_uses_standard_range_method_id_before_name_fallback() {
 
     assert_eq!(
         run_linked_standard_id_code(&Vm::new(), code),
-        Ok(OwnedValue::Int(3))
+        Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(3)))
     );
 }
 
 #[test]
 fn call_method_uses_standard_array_method_id_before_name_fallback() {
     let mut code = UnlinkedCodeObject::new("standard_array_method_id", 4);
-    let first = code.push_constant(Constant::Int(2));
-    let second = code.push_constant(Constant::Int(4));
+    let first = code.push_constant(Constant::Scalar(vela_common::ScalarValue::I64(2)));
+    let second = code.push_constant(Constant::Scalar(vela_common::ScalarValue::I64(4)));
     code.push_instruction(UnlinkedInstruction::new(
         UnlinkedInstructionKind::LoadConst {
             dst: Register(0),
@@ -258,7 +266,7 @@ fn call_method_uses_standard_array_method_id_before_name_fallback() {
 
     assert_eq!(
         run_linked_standard_id_code(&Vm::new(), code),
-        Ok(OwnedValue::Int(2))
+        Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(2)))
     );
 }
 
@@ -277,7 +285,9 @@ fn call_method_uses_standard_array_lookup_ids_before_name_fallback() {
             std_method_id("Array", "index_of"),
             &[Constant::String("xp".to_owned())],
         ),
-        Ok(option_some(OwnedValue::Int(1)))
+        Ok(option_some(OwnedValue::Scalar(
+            vela_common::ScalarValue::I64(1)
+        )))
     );
 }
 
@@ -368,7 +378,10 @@ fn call_method_uses_standard_array_transform_ids_before_name_fallback() {
         run_array_transform_with_args_by_id(
             std_method_id("Array", "slice"),
             &["gold", "xp", "bonus"],
-            &[Constant::Int(1), Constant::Int(3)],
+            &[
+                Constant::Scalar(vela_common::ScalarValue::I64(1)),
+                Constant::Scalar(vela_common::ScalarValue::I64(3))
+            ],
         ),
         Ok(OwnedValue::array(["xp", "bonus"]))
     );
@@ -435,8 +448,8 @@ fn run_array_transform_with_args_by_id(
 #[test]
 fn call_method_uses_standard_array_mutator_ids_before_name_fallback() {
     let mut push_code = UnlinkedCodeObject::new("standard_array_push_method_id", 5);
-    let first = push_code.push_constant(Constant::Int(2));
-    let second = push_code.push_constant(Constant::Int(4));
+    let first = push_code.push_constant(Constant::Scalar(vela_common::ScalarValue::I64(2)));
+    let second = push_code.push_constant(Constant::Scalar(vela_common::ScalarValue::I64(4)));
     push_code.push_instruction(UnlinkedInstruction::new(
         UnlinkedInstructionKind::LoadConst {
             dst: Register(0),
@@ -478,12 +491,12 @@ fn call_method_uses_standard_array_mutator_ids_before_name_fallback() {
     }));
     assert_eq!(
         run_linked_standard_id_code(&Vm::new(), push_code),
-        Ok(OwnedValue::Int(2))
+        Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(2)))
     );
 
     let mut pop_code = UnlinkedCodeObject::new("standard_array_pop_method_id", 5);
-    let first = pop_code.push_constant(Constant::Int(2));
-    let second = pop_code.push_constant(Constant::Int(4));
+    let first = pop_code.push_constant(Constant::Scalar(vela_common::ScalarValue::I64(2)));
+    let second = pop_code.push_constant(Constant::Scalar(vela_common::ScalarValue::I64(4)));
     pop_code.push_instruction(UnlinkedInstruction::new(
         UnlinkedInstructionKind::LoadConst {
             dst: Register(0),
@@ -525,12 +538,12 @@ fn call_method_uses_standard_array_mutator_ids_before_name_fallback() {
     }));
     assert_eq!(
         run_linked_standard_id_code(&Vm::new(), pop_code),
-        Ok(OwnedValue::Int(1))
+        Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(1)))
     );
 
     let mut clear_code = UnlinkedCodeObject::new("standard_array_clear_method_id", 5);
-    let first = clear_code.push_constant(Constant::Int(2));
-    let second = clear_code.push_constant(Constant::Int(4));
+    let first = clear_code.push_constant(Constant::Scalar(vela_common::ScalarValue::I64(2)));
+    let second = clear_code.push_constant(Constant::Scalar(vela_common::ScalarValue::I64(4)));
     clear_code.push_instruction(UnlinkedInstruction::new(
         UnlinkedInstructionKind::LoadConst {
             dst: Register(0),
@@ -572,14 +585,14 @@ fn call_method_uses_standard_array_mutator_ids_before_name_fallback() {
     }));
     assert_eq!(
         run_linked_standard_id_code(&Vm::new(), clear_code),
-        Ok(OwnedValue::Int(0))
+        Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(0)))
     );
 }
 
 #[test]
 fn call_method_uses_standard_map_method_id_before_name_fallback() {
     let mut code = UnlinkedCodeObject::new("standard_map_method_id", 3);
-    let value = code.push_constant(Constant::Int(6));
+    let value = code.push_constant(Constant::Scalar(vela_common::ScalarValue::I64(6)));
     code.push_instruction(UnlinkedInstruction::new(
         UnlinkedInstructionKind::LoadConst {
             dst: Register(0),
@@ -609,9 +622,9 @@ fn call_method_uses_standard_map_method_id_before_name_fallback() {
     );
 
     let mut get_or_code = UnlinkedCodeObject::new("standard_map_get_or_method_id", 5);
-    let value = get_or_code.push_constant(Constant::Int(6));
+    let value = get_or_code.push_constant(Constant::Scalar(vela_common::ScalarValue::I64(6)));
     let key = get_or_code.push_constant(Constant::String("xp".into()));
-    let default = get_or_code.push_constant(Constant::Int(0));
+    let default = get_or_code.push_constant(Constant::Scalar(vela_common::ScalarValue::I64(0)));
     get_or_code.push_instruction(UnlinkedInstruction::new(
         UnlinkedInstructionKind::LoadConst {
             dst: Register(0),
@@ -652,7 +665,7 @@ fn call_method_uses_standard_map_method_id_before_name_fallback() {
 
     assert_eq!(
         run_linked_standard_id_code(&Vm::new(), get_or_code),
-        Ok(OwnedValue::Int(6))
+        Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(6)))
     );
 }
 
@@ -660,7 +673,7 @@ fn call_method_uses_standard_map_method_id_before_name_fallback() {
 fn call_method_uses_standard_map_mutator_ids_before_name_fallback() {
     let mut set_code = UnlinkedCodeObject::new("standard_map_set_method_id", 6);
     let key = set_code.push_constant(Constant::String("xp".into()));
-    let value = set_code.push_constant(Constant::Int(6));
+    let value = set_code.push_constant(Constant::Scalar(vela_common::ScalarValue::I64(6)));
     set_code.push_instruction(UnlinkedInstruction::new(
         UnlinkedInstructionKind::LoadConst {
             dst: Register(0),
@@ -708,7 +721,7 @@ fn call_method_uses_standard_map_mutator_ids_before_name_fallback() {
 
     let mut remove_code = UnlinkedCodeObject::new("standard_map_remove_method_id", 5);
     let key = remove_code.push_constant(Constant::String("xp".into()));
-    let value = remove_code.push_constant(Constant::Int(6));
+    let value = remove_code.push_constant(Constant::Scalar(vela_common::ScalarValue::I64(6)));
     remove_code.push_instruction(UnlinkedInstruction::new(
         UnlinkedInstructionKind::LoadConst {
             dst: Register(0),
@@ -753,7 +766,7 @@ fn call_method_uses_standard_map_mutator_ids_before_name_fallback() {
 
     let mut clear_code = UnlinkedCodeObject::new("standard_map_clear_method_id", 5);
     let key = clear_code.push_constant(Constant::String("xp".into()));
-    let value = clear_code.push_constant(Constant::Int(6));
+    let value = clear_code.push_constant(Constant::Scalar(vela_common::ScalarValue::I64(6)));
     clear_code.push_instruction(UnlinkedInstruction::new(
         UnlinkedInstructionKind::LoadConst {
             dst: Register(0),
@@ -793,7 +806,7 @@ fn call_method_uses_standard_map_mutator_ids_before_name_fallback() {
     }));
     assert_eq!(
         run_linked_standard_id_code(&Vm::new(), clear_code),
-        Ok(OwnedValue::Int(0))
+        Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(0)))
     );
 }
 
@@ -803,8 +816,8 @@ fn call_method_uses_standard_set_method_id_before_name_fallback() {
     vm.register_standard_natives();
 
     let mut code = UnlinkedCodeObject::new("standard_set_method_id", 5);
-    let first = code.push_constant(Constant::Int(2));
-    let second = code.push_constant(Constant::Int(4));
+    let first = code.push_constant(Constant::Scalar(vela_common::ScalarValue::I64(2)));
+    let second = code.push_constant(Constant::Scalar(vela_common::ScalarValue::I64(4)));
     code.push_instruction(UnlinkedInstruction::new(
         UnlinkedInstructionKind::LoadConst {
             dst: Register(0),
@@ -846,15 +859,15 @@ fn call_method_uses_standard_set_method_id_before_name_fallback() {
 
     assert_eq!(
         run_linked_standard_id_code(&vm, code),
-        Ok(OwnedValue::Int(2))
+        Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(2)))
     );
 }
 
 #[test]
 fn call_method_uses_standard_set_mutator_ids_before_name_fallback() {
     let mut add_code = UnlinkedCodeObject::new("standard_set_add_method_id", 6);
-    let first = add_code.push_constant(Constant::Int(2));
-    let second = add_code.push_constant(Constant::Int(4));
+    let first = add_code.push_constant(Constant::Scalar(vela_common::ScalarValue::I64(2)));
+    let second = add_code.push_constant(Constant::Scalar(vela_common::ScalarValue::I64(4)));
     add_code.push_instruction(UnlinkedInstruction::new(
         UnlinkedInstructionKind::LoadConst {
             dst: Register(0),
@@ -910,8 +923,8 @@ fn call_method_uses_standard_set_mutator_ids_before_name_fallback() {
     );
 
     let mut remove_code = UnlinkedCodeObject::new("standard_set_remove_method_id", 6);
-    let first = remove_code.push_constant(Constant::Int(2));
-    let second = remove_code.push_constant(Constant::Int(4));
+    let first = remove_code.push_constant(Constant::Scalar(vela_common::ScalarValue::I64(2)));
+    let second = remove_code.push_constant(Constant::Scalar(vela_common::ScalarValue::I64(4)));
     remove_code.push_instruction(UnlinkedInstruction::new(
         UnlinkedInstructionKind::LoadConst {
             dst: Register(0),
@@ -967,8 +980,8 @@ fn call_method_uses_standard_set_mutator_ids_before_name_fallback() {
     );
 
     let mut clear_code = UnlinkedCodeObject::new("standard_set_clear_method_id", 6);
-    let first = clear_code.push_constant(Constant::Int(2));
-    let second = clear_code.push_constant(Constant::Int(4));
+    let first = clear_code.push_constant(Constant::Scalar(vela_common::ScalarValue::I64(2)));
+    let second = clear_code.push_constant(Constant::Scalar(vela_common::ScalarValue::I64(4)));
     clear_code.push_instruction(UnlinkedInstruction::new(
         UnlinkedInstructionKind::LoadConst {
             dst: Register(0),
@@ -1020,15 +1033,15 @@ fn call_method_uses_standard_set_mutator_ids_before_name_fallback() {
     vm.register_standard_natives();
     assert_eq!(
         run_linked_standard_id_code(&vm, clear_code),
-        Ok(OwnedValue::Int(0))
+        Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(0)))
     );
 }
 
 #[test]
 fn call_method_uses_standard_collection_predicate_ids_before_name_fallback() {
     let mut array_code = UnlinkedCodeObject::new("standard_array_contains_method_id", 4);
-    let first = array_code.push_constant(Constant::Int(2));
-    let second = array_code.push_constant(Constant::Int(4));
+    let first = array_code.push_constant(Constant::Scalar(vela_common::ScalarValue::I64(2)));
+    let second = array_code.push_constant(Constant::Scalar(vela_common::ScalarValue::I64(4)));
     array_code.push_instruction(UnlinkedInstruction::new(
         UnlinkedInstructionKind::LoadConst {
             dst: Register(0),
@@ -1065,7 +1078,7 @@ fn call_method_uses_standard_collection_predicate_ids_before_name_fallback() {
     );
 
     let mut map_code = UnlinkedCodeObject::new("standard_map_has_method_id", 4);
-    let value = map_code.push_constant(Constant::Int(6));
+    let value = map_code.push_constant(Constant::Scalar(vela_common::ScalarValue::I64(6)));
     let key = map_code.push_constant(Constant::String("xp".into()));
     map_code.push_instruction(UnlinkedInstruction::new(
         UnlinkedInstructionKind::LoadConst {
@@ -1101,8 +1114,8 @@ fn call_method_uses_standard_collection_predicate_ids_before_name_fallback() {
     );
 
     let mut set_code = UnlinkedCodeObject::new("standard_set_has_method_id", 5);
-    let first = set_code.push_constant(Constant::Int(2));
-    let second = set_code.push_constant(Constant::Int(4));
+    let first = set_code.push_constant(Constant::Scalar(vela_common::ScalarValue::I64(2)));
+    let second = set_code.push_constant(Constant::Scalar(vela_common::ScalarValue::I64(4)));
     set_code.push_instruction(UnlinkedInstruction::new(
         UnlinkedInstructionKind::LoadConst {
             dst: Register(0),
@@ -1176,7 +1189,7 @@ fn run_set_relation_by_id(
 
     let mut code = UnlinkedCodeObject::new("standard_set_relation_method_id", result.0 + 1);
     for (index, value) in receiver_values.iter().enumerate() {
-        let constant = code.push_constant(Constant::Int(*value));
+        let constant = code.push_constant(Constant::Scalar(vela_common::ScalarValue::I64(*value)));
         code.push_instruction(UnlinkedInstruction::new(
             UnlinkedInstructionKind::LoadConst {
                 dst: Register(index as u16),
@@ -1194,7 +1207,7 @@ fn run_set_relation_by_id(
     ));
     for (offset, value) in other_values.iter().enumerate() {
         let register = Register((other_start + offset) as u16);
-        let constant = code.push_constant(Constant::Int(*value));
+        let constant = code.push_constant(Constant::Scalar(vela_common::ScalarValue::I64(*value)));
         code.push_instruction(UnlinkedInstruction::new(
             UnlinkedInstructionKind::LoadConst {
                 dst: register,

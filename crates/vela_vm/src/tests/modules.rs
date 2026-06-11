@@ -39,7 +39,7 @@ pub fn grant(amount) {
 
     assert_eq!(
         run_module_program(&Vm::new(), &program, "game::main::main", &[]),
-        Ok(OwnedValue::Int(5))
+        Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(5)))
     );
 }
 
@@ -71,7 +71,7 @@ pub fn main() {
 
     assert_eq!(
         run_module_program(&Vm::new(), &program, "game::main::main", &[]),
-        Ok(OwnedValue::Int(7))
+        Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(7)))
     );
 }
 
@@ -110,7 +110,7 @@ pub const BASE: int = 4;
 
     assert_eq!(
         run_module_program(&Vm::new(), &program, "game::main::main", &[]),
-        Ok(OwnedValue::Int(6))
+        Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(6)))
     );
 }
 
@@ -150,9 +150,15 @@ pub enum Damage { Physical { amount: int } }
     ])
     .expect("compile imported cross-module type constructors");
     let mut reward_fields = BTreeMap::new();
-    reward_fields.insert("count".into(), OwnedValue::Int(2));
+    reward_fields.insert(
+        "count".into(),
+        OwnedValue::Scalar(vela_common::ScalarValue::I64(2)),
+    );
     let mut damage_fields = BTreeMap::new();
-    damage_fields.insert("amount".into(), OwnedValue::Int(7));
+    damage_fields.insert(
+        "amount".into(),
+        OwnedValue::Scalar(vela_common::ScalarValue::I64(7)),
+    );
 
     assert_eq!(
         run_module_program(&Vm::new(), &program, "game::main::make_reward", &[]),
@@ -206,7 +212,7 @@ pub struct Reward {
 
     assert_eq!(
         run_module_program(&Vm::new(), &program, "game::main::main", &[]),
-        Ok(OwnedValue::Int(11))
+        Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(11)))
     );
 }
 
@@ -244,7 +250,7 @@ pub enum Damage {
 
     assert_eq!(
         run_module_program(&Vm::new(), &program, "game::main::main", &[]),
-        Ok(OwnedValue::Int(7))
+        Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(7)))
     );
 }
 
@@ -281,6 +287,6 @@ pub const BONUS: int = 5;
 
     assert_eq!(
         run_module_program(&Vm::new(), &program, "game::main::main", &[]),
-        Ok(OwnedValue::Int(9))
+        Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(9)))
     );
 }

@@ -72,7 +72,7 @@ fn main(player: Player) {
     let mut adapter = MockStateAdapter::new();
     adapter.insert_diagnostic_path_value(
         HostPath::new(host_ref).field(FieldId::new(1)),
-        HostValue::Int(10),
+        HostValue::Scalar(vela_common::ScalarValue::I64(10)),
     );
     let mut tx = HostAccess::new();
     let mut host = HostExecution {
@@ -89,7 +89,7 @@ fn main(player: Player) {
             &[OwnedValue::HostRef(host_ref)],
             &mut host
         ),
-        Ok(OwnedValue::Int(11))
+        Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(11)))
     );
 }
 
@@ -136,7 +136,7 @@ pub const BONUS: int = 6;
 
     assert_eq!(
         run_linked_program(&engine, &program, "game::main::main", &[]),
-        Ok(OwnedValue::Int(10))
+        Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(10)))
     );
     assert!(program.function("ignored.main").is_none());
 }
@@ -185,7 +185,7 @@ pub fn grant() {
             &mut adapter,
             &mut tx
         ),
-        Ok(OwnedValue::Int(5))
+        Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(5)))
     );
 
     std::fs::write(
@@ -224,7 +224,7 @@ pub fn grant() {
             &mut adapter,
             &mut tx
         ),
-        Ok(OwnedValue::Int(8))
+        Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(8)))
     );
 }
 
@@ -251,7 +251,7 @@ fn runtime_stages_hot_reload_dir_until_check_reload_safe_point() {
             &mut adapter,
             &mut tx
         ),
-        Ok(OwnedValue::Int(2))
+        Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(2)))
     );
 
     write_reward_module(&reward_file, 6);
@@ -272,7 +272,7 @@ fn runtime_stages_hot_reload_dir_until_check_reload_safe_point() {
             &mut adapter,
             &mut tx
         ),
-        Ok(OwnedValue::Int(2))
+        Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(2)))
     );
 
     let report = runtime
@@ -300,7 +300,7 @@ fn runtime_stages_hot_reload_dir_until_check_reload_safe_point() {
             &mut adapter,
             &mut tx
         ),
-        Ok(OwnedValue::Int(6))
+        Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(6)))
     );
 }
 
@@ -333,7 +333,7 @@ fn runtime_stages_dir_hot_reload_rejection_until_safe_point() {
             &mut adapter,
             &mut tx
         ),
-        Ok(OwnedValue::Int(2))
+        Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(2)))
     );
 
     let report = runtime
@@ -356,7 +356,7 @@ fn runtime_stages_dir_hot_reload_rejection_until_safe_point() {
             &mut adapter,
             &mut tx
         ),
-        Ok(OwnedValue::Int(2))
+        Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(2)))
     );
 }
 
@@ -399,7 +399,7 @@ fn runtime_stages_dir_return_abi_rejection_until_safe_point() {
             &mut adapter,
             &mut tx
         ),
-        Ok(OwnedValue::Int(2))
+        Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(2)))
     );
 
     write_typed_reward_module(&reward_file, "float", "6.0");
@@ -415,7 +415,7 @@ fn runtime_stages_dir_return_abi_rejection_until_safe_point() {
             &mut adapter,
             &mut tx
         ),
-        Ok(OwnedValue::Int(2))
+        Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(2)))
     );
 
     let report = runtime
@@ -452,6 +452,6 @@ fn runtime_stages_dir_return_abi_rejection_until_safe_point() {
             &mut adapter,
             &mut tx
         ),
-        Ok(OwnedValue::Int(2))
+        Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(2)))
     );
 }

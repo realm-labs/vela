@@ -6,7 +6,11 @@ use super::{expect_finite_float, type_error};
 
 pub(crate) fn math_pow(args: &[OwnedValue]) -> VmResult<OwnedValue> {
     expect_arity("math::pow", args, 2)?;
-    if let (OwnedValue::Int(base), OwnedValue::Int(exponent)) = (&args[0], &args[1]) {
+    if let (
+        OwnedValue::Scalar(vela_common::ScalarValue::I64(base)),
+        OwnedValue::Scalar(vela_common::ScalarValue::I64(exponent)),
+    ) = (&args[0], &args[1])
+    {
         if *exponent < 0 {
             return numeric_pow(args);
         }
@@ -17,7 +21,7 @@ pub(crate) fn math_pow(args: &[OwnedValue]) -> VmResult<OwnedValue> {
         })?;
         return base
             .checked_pow(exponent)
-            .map(OwnedValue::Int)
+            .map(OwnedValue::i64)
             .ok_or_else(|| {
                 VmError::new(VmErrorKind::TypeMismatch {
                     operation: "math::pow",
@@ -33,7 +37,7 @@ fn numeric_pow(args: &[OwnedValue]) -> VmResult<OwnedValue> {
     let exponent = expect_finite_float(&args[1], "math::pow")?;
     let value = base.powf(exponent);
     if value.is_finite() {
-        Ok(OwnedValue::Float(value))
+        Ok(OwnedValue::Scalar(vela_common::ScalarValue::F64(value)))
     } else {
         type_error("math::pow")
     }

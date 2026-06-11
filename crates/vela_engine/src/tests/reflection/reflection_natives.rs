@@ -64,7 +64,7 @@ fn engine_registers_native_method_source_span_metadata() {
                 .returns(TypeHint::Int)
                 .effects(EffectSet::host_write())
                 .source_span(source_span),
-            |_, _, _| Ok(OwnedValue::Int(0)),
+            |_, _, _| Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(0))),
         )
         .build()
         .expect("engine should build");
@@ -110,7 +110,7 @@ fn main(player) {
     let mut adapter = MockStateAdapter::new();
     adapter.insert_diagnostic_path_value(
         HostPath::new(host_ref).field(FieldId::new(1)),
-        HostValue::Int(7),
+        HostValue::Scalar(vela_common::ScalarValue::I64(7)),
     );
     let mut tx = HostAccess::new();
     let mut host = HostExecution {
@@ -157,7 +157,7 @@ fn main(player: Player) {
     let mut adapter = MockStateAdapter::new();
     adapter.insert_diagnostic_path_value(
         HostPath::new(host_ref).field(FieldId::new(1)),
-        HostValue::Int(7),
+        HostValue::Scalar(vela_common::ScalarValue::I64(7)),
     );
     let mut tx = HostAccess::new();
     let mut host = HostExecution {
@@ -173,7 +173,7 @@ fn main(player: Player) {
             &[OwnedValue::HostRef(host_ref)],
             &mut host
         ),
-        Ok(OwnedValue::Int(12))
+        Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(12)))
     );
 }
 
@@ -189,7 +189,7 @@ fn public_reflection_metadata_lists_do_not_need_engine_permissions() {
             NativeFunctionDesc::new("game::secret_bonus", NativeFunctionId::new(77))
                 .returns(TypeHint::Int)
                 .access(FunctionAccess::public().reflect_callable(true)),
-            |_| Ok(OwnedValue::Int(5)),
+            |_| Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(5))),
         )
         .reflection_permissions(ReflectPermissionSet::new().with(ReflectPermission::ReadTypeInfo))
         .build()
@@ -221,7 +221,7 @@ fn main() {
 
     assert_eq!(
         run_linked_program_with_host(&engine, &program, &[], &mut host),
-        Ok(OwnedValue::Int(1))
+        Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(1)))
     );
 }
 
@@ -240,7 +240,7 @@ fn engine_missing_permissions_hide_reflection_metadata_lists() {
             NativeFunctionDesc::new("game::secret_bonus", NativeFunctionId::new(77))
                 .returns(TypeHint::Int)
                 .access(FunctionAccess::public().reflect_callable(true)),
-            |_| Ok(OwnedValue::Int(5)),
+            |_| Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(5))),
         )
         .reflection_permissions(ReflectPermissionSet::new().with(ReflectPermission::ReadTypeInfo))
         .build()
@@ -270,6 +270,6 @@ fn main() {
 
     assert_eq!(
         run_linked_program_with_host(&engine, &program, &[], &mut host),
-        Ok(OwnedValue::Int(1))
+        Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(1)))
     );
 }

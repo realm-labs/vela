@@ -144,7 +144,7 @@ fn set_heap_map_index(
 
 fn array_index(index: &Value) -> VmResult<usize> {
     match index {
-        Value::Int(index) if *index >= 0 => Ok(*index as usize),
+        Value::Scalar(vela_common::ScalarValue::I64(index)) if *index >= 0 => Ok(*index as usize),
         _ => Err(VmError::new(VmErrorKind::TypeMismatch {
             operation: "array index",
         })),

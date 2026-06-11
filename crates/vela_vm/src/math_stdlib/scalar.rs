@@ -15,11 +15,15 @@ pub(crate) fn math_min(args: &[OwnedValue]) -> VmResult<OwnedValue> {
 pub(crate) fn math_clamp(args: &[OwnedValue]) -> VmResult<OwnedValue> {
     expect_arity("math::clamp", args, 3)?;
     match (&args[0], &args[1], &args[2]) {
-        (OwnedValue::Int(value), OwnedValue::Int(min), OwnedValue::Int(max)) => {
+        (
+            OwnedValue::Scalar(vela_common::ScalarValue::I64(value)),
+            OwnedValue::Scalar(vela_common::ScalarValue::I64(min)),
+            OwnedValue::Scalar(vela_common::ScalarValue::I64(max)),
+        ) => {
             if min > max {
                 return type_error("math::clamp");
             }
-            Ok(OwnedValue::Int((*value).clamp(*min, *max)))
+            Ok(OwnedValue::i64((*value).clamp(*min, *max)))
         }
         _ => {
             let value = expect_finite_float(&args[0], "math::clamp")?;
@@ -28,7 +32,7 @@ pub(crate) fn math_clamp(args: &[OwnedValue]) -> VmResult<OwnedValue> {
             if min > max {
                 return type_error("math::clamp");
             }
-            Ok(OwnedValue::Float(value.clamp(min, max)))
+            Ok(OwnedValue::f64(value.clamp(min, max)))
         }
     }
 }
@@ -36,14 +40,18 @@ pub(crate) fn math_clamp(args: &[OwnedValue]) -> VmResult<OwnedValue> {
 pub(crate) fn math_sign(args: &[OwnedValue]) -> VmResult<OwnedValue> {
     expect_arity("math::sign", args, 1)?;
     match &args[0] {
-        OwnedValue::Int(value) => Ok(OwnedValue::Int(value.signum())),
-        OwnedValue::Float(value) if value.is_finite() => Ok(OwnedValue::Int(if *value > 0.0 {
-            1
-        } else if *value < 0.0 {
-            -1
-        } else {
-            0
-        })),
+        OwnedValue::Scalar(vela_common::ScalarValue::I64(value)) => {
+            Ok(OwnedValue::i64(value.signum()))
+        }
+        OwnedValue::Scalar(vela_common::ScalarValue::F64(value)) if value.is_finite() => {
+            Ok(OwnedValue::i64(if *value > 0.0 {
+                1
+            } else if *value < 0.0 {
+                -1
+            } else {
+                0
+            }))
+        }
         _ => type_error("math::sign"),
     }
 }
@@ -51,8 +59,12 @@ pub(crate) fn math_sign(args: &[OwnedValue]) -> VmResult<OwnedValue> {
 pub(crate) fn math_floor(args: &[OwnedValue]) -> VmResult<OwnedValue> {
     expect_arity("math::floor", args, 1)?;
     match &args[0] {
-        OwnedValue::Int(value) => Ok(OwnedValue::Int(*value)),
-        OwnedValue::Float(value) => float_to_int(value.floor(), "math::floor").map(OwnedValue::Int),
+        OwnedValue::Scalar(vela_common::ScalarValue::I64(value)) => {
+            Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(*value)))
+        }
+        OwnedValue::Scalar(vela_common::ScalarValue::F64(value)) => {
+            float_to_int(value.floor(), "math::floor").map(OwnedValue::i64)
+        }
         _ => type_error("math::floor"),
     }
 }
@@ -60,8 +72,12 @@ pub(crate) fn math_floor(args: &[OwnedValue]) -> VmResult<OwnedValue> {
 pub(crate) fn math_ceil(args: &[OwnedValue]) -> VmResult<OwnedValue> {
     expect_arity("math::ceil", args, 1)?;
     match &args[0] {
-        OwnedValue::Int(value) => Ok(OwnedValue::Int(*value)),
-        OwnedValue::Float(value) => float_to_int(value.ceil(), "math::ceil").map(OwnedValue::Int),
+        OwnedValue::Scalar(vela_common::ScalarValue::I64(value)) => {
+            Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(*value)))
+        }
+        OwnedValue::Scalar(vela_common::ScalarValue::F64(value)) => {
+            float_to_int(value.ceil(), "math::ceil").map(OwnedValue::i64)
+        }
         _ => type_error("math::ceil"),
     }
 }
@@ -69,8 +85,12 @@ pub(crate) fn math_ceil(args: &[OwnedValue]) -> VmResult<OwnedValue> {
 pub(crate) fn math_round(args: &[OwnedValue]) -> VmResult<OwnedValue> {
     expect_arity("math::round", args, 1)?;
     match &args[0] {
-        OwnedValue::Int(value) => Ok(OwnedValue::Int(*value)),
-        OwnedValue::Float(value) => float_to_int(value.round(), "math::round").map(OwnedValue::Int),
+        OwnedValue::Scalar(vela_common::ScalarValue::I64(value)) => {
+            Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(*value)))
+        }
+        OwnedValue::Scalar(vela_common::ScalarValue::F64(value)) => {
+            float_to_int(value.round(), "math::round").map(OwnedValue::i64)
+        }
         _ => type_error("math::round"),
     }
 }
@@ -78,12 +98,16 @@ pub(crate) fn math_round(args: &[OwnedValue]) -> VmResult<OwnedValue> {
 pub(crate) fn math_abs(args: &[OwnedValue]) -> VmResult<OwnedValue> {
     expect_arity("math::abs", args, 1)?;
     match &args[0] {
-        OwnedValue::Int(value) => value.checked_abs().map(OwnedValue::Int).ok_or_else(|| {
-            VmError::new(VmErrorKind::TypeMismatch {
-                operation: "math::abs",
+        OwnedValue::Scalar(vela_common::ScalarValue::I64(value)) => {
+            value.checked_abs().map(OwnedValue::i64).ok_or_else(|| {
+                VmError::new(VmErrorKind::TypeMismatch {
+                    operation: "math::abs",
+                })
             })
-        }),
-        OwnedValue::Float(value) if value.is_finite() => Ok(OwnedValue::Float(value.abs())),
+        }
+        OwnedValue::Scalar(vela_common::ScalarValue::F64(value)) if value.is_finite() => {
+            Ok(OwnedValue::f64(value.abs()))
+        }
         _ => type_error("math::abs"),
     }
 }
@@ -96,11 +120,14 @@ fn numeric_pair(
 ) -> VmResult<OwnedValue> {
     expect_arity(name, args, 2)?;
     match (&args[0], &args[1]) {
-        (OwnedValue::Int(lhs), OwnedValue::Int(rhs)) => Ok(OwnedValue::Int(int_op(*lhs, *rhs))),
+        (
+            OwnedValue::Scalar(vela_common::ScalarValue::I64(lhs)),
+            OwnedValue::Scalar(vela_common::ScalarValue::I64(rhs)),
+        ) => Ok(OwnedValue::i64(int_op(*lhs, *rhs))),
         _ => {
             let lhs = expect_finite_float(&args[0], name)?;
             let rhs = expect_finite_float(&args[1], name)?;
-            Ok(OwnedValue::Float(float_op(lhs, rhs)))
+            Ok(OwnedValue::f64(float_op(lhs, rhs)))
         }
     }
 }

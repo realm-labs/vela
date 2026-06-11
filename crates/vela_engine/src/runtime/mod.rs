@@ -1095,7 +1095,10 @@ mod tests {
 
             let result = runtime.call_raw("main", &[], options, &mut adapter, &mut access);
 
-            assert_eq!(result, Ok(OwnedValue::Int(7)));
+            assert_eq!(
+                result,
+                Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(7)))
+            );
         }
     }
 
@@ -1130,7 +1133,7 @@ mod tests {
         let mut linked_program = LinkedProgram::new();
         let main_name = linked_program.intern_debug_name("main");
         let mut code = LinkedCodeObject::new(main_name, 1);
-        let value = code.push_constant(Constant::Int(7));
+        let value = code.push_constant(Constant::Scalar(vela_common::ScalarValue::I64(7)));
         code.push_instruction(Instruction::new(InstructionKind::LoadConst {
             dst: Register(0),
             constant: value,

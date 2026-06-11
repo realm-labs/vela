@@ -5,22 +5,33 @@ fn path_proxy_routes_reads_and_writes_through_host_access() {
     let path = level_path();
     let proxy = PathProxy::from_diagnostic_path(path.clone());
     let mut adapter = MockStateAdapter::new();
-    adapter.insert_diagnostic_path_value(path.clone(), HostValue::Int(9));
+    adapter.insert_diagnostic_path_value(
+        path.clone(),
+        HostValue::Scalar(vela_common::ScalarValue::I64(9)),
+    );
     let mut tx = HostAccess::new();
 
     assert_eq!(
         proxy.read(&mut adapter, &tx, None).expect("read host path"),
-        HostValue::Int(9)
+        HostValue::Scalar(vela_common::ScalarValue::I64(9))
     );
 
     proxy
-        .set(&mut adapter, &mut tx, HostValue::Int(10), None)
+        .set(
+            &mut adapter,
+            &mut tx,
+            HostValue::Scalar(vela_common::ScalarValue::I64(10)),
+            None,
+        )
         .expect("set through proxy");
 
-    assert_eq!(adapter.read_diagnostic_path(&path), Ok(HostValue::Int(10)));
+    assert_eq!(
+        adapter.read_diagnostic_path(&path),
+        Ok(HostValue::Scalar(vela_common::ScalarValue::I64(10)))
+    );
     assert_eq!(
         proxy.read(&mut adapter, &tx, None).expect("read host path"),
-        HostValue::Int(10)
+        HostValue::Scalar(vela_common::ScalarValue::I64(10))
     );
 }
 
@@ -30,25 +41,56 @@ fn path_proxy_records_rmw_remove_and_calls() {
     let rewards = rewards_path();
     let method = HostMethodId::new(8);
     let mut adapter = MockStateAdapter::new();
-    adapter.insert_diagnostic_path_value(level.clone(), HostValue::Int(9));
-    adapter.insert_diagnostic_path_value(rewards.clone(), HostValue::Int(0));
+    adapter.insert_diagnostic_path_value(
+        level.clone(),
+        HostValue::Scalar(vela_common::ScalarValue::I64(9)),
+    );
+    adapter.insert_diagnostic_path_value(
+        rewards.clone(),
+        HostValue::Scalar(vela_common::ScalarValue::I64(0)),
+    );
     adapter.insert_method_return(method, HostValue::String("ok".into()));
     let mut tx = HostAccess::new();
 
     PathProxy::from_diagnostic_path(level.clone())
-        .add(&mut adapter, &mut tx, HostValue::Int(2), None)
+        .add(
+            &mut adapter,
+            &mut tx,
+            HostValue::Scalar(vela_common::ScalarValue::I64(2)),
+            None,
+        )
         .expect("add through proxy");
     PathProxy::from_diagnostic_path(level.clone())
-        .sub(&mut adapter, &mut tx, HostValue::Int(1), None)
+        .sub(
+            &mut adapter,
+            &mut tx,
+            HostValue::Scalar(vela_common::ScalarValue::I64(1)),
+            None,
+        )
         .expect("sub through proxy");
     PathProxy::from_diagnostic_path(level.clone())
-        .mul(&mut adapter, &mut tx, HostValue::Int(3), None)
+        .mul(
+            &mut adapter,
+            &mut tx,
+            HostValue::Scalar(vela_common::ScalarValue::I64(3)),
+            None,
+        )
         .expect("mul through proxy");
     PathProxy::from_diagnostic_path(level.clone())
-        .div(&mut adapter, &mut tx, HostValue::Int(2), None)
+        .div(
+            &mut adapter,
+            &mut tx,
+            HostValue::Scalar(vela_common::ScalarValue::I64(2)),
+            None,
+        )
         .expect("div through proxy");
     PathProxy::from_diagnostic_path(level.clone())
-        .rem(&mut adapter, &mut tx, HostValue::Int(5), None)
+        .rem(
+            &mut adapter,
+            &mut tx,
+            HostValue::Scalar(vela_common::ScalarValue::I64(5)),
+            None,
+        )
         .expect("rem through proxy");
     let push_error = PathProxy::from_diagnostic_path(rewards.clone())
         .push(
@@ -65,13 +107,22 @@ fn path_proxy_records_rmw_remove_and_calls() {
         }
     );
     let result = PathProxy::from_diagnostic_path(level.clone())
-        .call_method(&mut adapter, &mut tx, method, vec![HostValue::Int(5)], None)
+        .call_method(
+            &mut adapter,
+            &mut tx,
+            method,
+            vec![HostValue::Scalar(vela_common::ScalarValue::I64(5))],
+            None,
+        )
         .expect("method call through proxy");
     PathProxy::from_diagnostic_path(rewards.clone())
         .remove(&mut adapter, &mut tx, None)
         .expect("remove through proxy");
 
-    assert_eq!(adapter.read_diagnostic_path(&level), Ok(HostValue::Int(0)));
+    assert_eq!(
+        adapter.read_diagnostic_path(&level),
+        Ok(HostValue::Scalar(vela_common::ScalarValue::I64(0)))
+    );
     assert_eq!(
         adapter.read_diagnostic_path(&rewards),
         Err(HostError::new(HostErrorKind::MissingPath { path: rewards }))
@@ -93,12 +144,15 @@ fn path_proxy_uses_target_plan_and_owned_dynamic_args() {
     .index(2)
     .key("gold");
     let mut adapter = MockStateAdapter::new();
-    adapter.insert_diagnostic_path_value(static_path.clone(), HostValue::Int(11));
+    adapter.insert_diagnostic_path_value(
+        static_path.clone(),
+        HostValue::Scalar(vela_common::ScalarValue::I64(11)),
+    );
     let tx = HostAccess::new();
 
     assert_eq!(proxy.to_diagnostic_path(), static_path);
     assert_eq!(
         proxy.read(&mut adapter, &tx, None).expect("read proxy"),
-        HostValue::Int(11)
+        HostValue::Scalar(vela_common::ScalarValue::I64(11))
     );
 }

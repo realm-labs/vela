@@ -40,7 +40,10 @@ fn main(player: Player) {
         ),
     )
     .expect("compile host field source");
-    let mut adapter = host_adapter(host_ref, HostValue::Int(9));
+    let mut adapter = host_adapter(
+        host_ref,
+        HostValue::Scalar(vela_common::ScalarValue::I64(9)),
+    );
     let mut tx = HostAccess::new();
 
     let result = {
@@ -57,14 +60,17 @@ fn main(player: Player) {
         )
     };
 
-    assert_eq!(result, Ok(OwnedValue::Int(11)));
     assert_eq!(
-        adapter.read_diagnostic_path(&level_path(host_ref)),
-        Ok(HostValue::Int(11))
+        result,
+        Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(11)))
     );
     assert_eq!(
         adapter.read_diagnostic_path(&level_path(host_ref)),
-        Ok(HostValue::Int(11))
+        Ok(HostValue::Scalar(vela_common::ScalarValue::I64(11)))
+    );
+    assert_eq!(
+        adapter.read_diagnostic_path(&level_path(host_ref)),
+        Ok(HostValue::Scalar(vela_common::ScalarValue::I64(11)))
     );
 }
 
@@ -86,7 +92,10 @@ fn main(player: Player) {
         ),
     )
     .expect("compile host field source");
-    let mut adapter = host_adapter(host_ref, HostValue::Int(9));
+    let mut adapter = host_adapter(
+        host_ref,
+        HostValue::Scalar(vela_common::ScalarValue::I64(9)),
+    );
     adapter.deny_diagnostic_path_read(level_path(host_ref));
     let mut tx = HostAccess::new();
     let mut host = HostExecution {
@@ -136,7 +145,10 @@ fn main(player: Player) {
     )
     .expect("compile nested host field source");
     let mut adapter = MockStateAdapter::new();
-    adapter.insert_diagnostic_path_value(stats_level.clone(), HostValue::Int(9));
+    adapter.insert_diagnostic_path_value(
+        stats_level.clone(),
+        HostValue::Scalar(vela_common::ScalarValue::I64(9)),
+    );
     let mut tx = HostAccess::new();
 
     let result = {
@@ -153,14 +165,17 @@ fn main(player: Player) {
         )
     };
 
-    assert_eq!(result, Ok(OwnedValue::Int(11)));
     assert_eq!(
-        adapter.read_diagnostic_path(&stats_level),
-        Ok(HostValue::Int(11))
+        result,
+        Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(11)))
     );
     assert_eq!(
         adapter.read_diagnostic_path(&stats_level),
-        Ok(HostValue::Int(11))
+        Ok(HostValue::Scalar(vela_common::ScalarValue::I64(11)))
+    );
+    assert_eq!(
+        adapter.read_diagnostic_path(&stats_level),
+        Ok(HostValue::Scalar(vela_common::ScalarValue::I64(11)))
     );
 }
 
@@ -189,7 +204,10 @@ fn main(player: Player) {
     )
     .expect("compile nested host subtraction source");
     let mut adapter = MockStateAdapter::new();
-    adapter.insert_diagnostic_path_value(stats_level.clone(), HostValue::Int(9));
+    adapter.insert_diagnostic_path_value(
+        stats_level.clone(),
+        HostValue::Scalar(vela_common::ScalarValue::I64(9)),
+    );
     let mut tx = HostAccess::new();
 
     let result = {
@@ -206,14 +224,17 @@ fn main(player: Player) {
         )
     };
 
-    assert_eq!(result, Ok(OwnedValue::Int(7)));
     assert_eq!(
-        adapter.read_diagnostic_path(&stats_level),
-        Ok(HostValue::Int(7))
+        result,
+        Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(7)))
     );
     assert_eq!(
         adapter.read_diagnostic_path(&stats_level),
-        Ok(HostValue::Int(7))
+        Ok(HostValue::Scalar(vela_common::ScalarValue::I64(7)))
+    );
+    assert_eq!(
+        adapter.read_diagnostic_path(&stats_level),
+        Ok(HostValue::Scalar(vela_common::ScalarValue::I64(7)))
     );
 }
 
@@ -244,7 +265,10 @@ fn main(player: Player) {
     )
     .expect("compile nested host numeric compound source");
     let mut adapter = MockStateAdapter::new();
-    adapter.insert_diagnostic_path_value(stats_level.clone(), HostValue::Int(4));
+    adapter.insert_diagnostic_path_value(
+        stats_level.clone(),
+        HostValue::Scalar(vela_common::ScalarValue::I64(4)),
+    );
     let mut tx = HostAccess::new();
 
     let result = {
@@ -261,14 +285,17 @@ fn main(player: Player) {
         )
     };
 
-    assert_eq!(result, Ok(OwnedValue::Int(1)));
     assert_eq!(
-        adapter.read_diagnostic_path(&stats_level),
-        Ok(HostValue::Int(1))
+        result,
+        Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(1)))
     );
     assert_eq!(
         adapter.read_diagnostic_path(&stats_level),
-        Ok(HostValue::Int(1))
+        Ok(HostValue::Scalar(vela_common::ScalarValue::I64(1)))
+    );
+    assert_eq!(
+        adapter.read_diagnostic_path(&stats_level),
+        Ok(HostValue::Scalar(vela_common::ScalarValue::I64(1)))
     );
 }
 
@@ -300,7 +327,10 @@ fn main(player: Player) {
     )
     .expect("compile host path push source");
     let mut adapter = MockStateAdapter::new();
-    adapter.insert_diagnostic_path_value(reward_path.clone(), HostValue::Int(0));
+    adapter.insert_diagnostic_path_value(
+        reward_path.clone(),
+        HostValue::Scalar(vela_common::ScalarValue::I64(0)),
+    );
     let mut tx = HostAccess::new();
 
     let error = {
@@ -326,7 +356,7 @@ fn main(player: Player) {
     );
     assert_eq!(
         adapter.read_diagnostic_path(&reward_path),
-        Ok(HostValue::Int(0))
+        Ok(HostValue::Scalar(vela_common::ScalarValue::I64(0)))
     );
 }
 
@@ -379,7 +409,10 @@ fn main(player: Player) {
         )
     };
 
-    assert_eq!(result, Ok(OwnedValue::Int(1)));
+    assert_eq!(
+        result,
+        Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(1)))
+    );
     assert!(matches!(
         adapter.read_diagnostic_path(&item_path),
         Err(error)
@@ -434,7 +467,10 @@ fn main(player: Player) {
     )
     .expect("compile indexed host field source");
     let mut adapter = MockStateAdapter::new();
-    adapter.insert_diagnostic_path_value(item_count.clone(), HostValue::Int(4));
+    adapter.insert_diagnostic_path_value(
+        item_count.clone(),
+        HostValue::Scalar(vela_common::ScalarValue::I64(4)),
+    );
     let mut tx = HostAccess::new();
 
     let result = {
@@ -451,14 +487,17 @@ fn main(player: Player) {
         )
     };
 
-    assert_eq!(result, Ok(OwnedValue::Int(5)));
     assert_eq!(
-        adapter.read_diagnostic_path(&item_count),
-        Ok(HostValue::Int(5))
+        result,
+        Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(5)))
     );
     assert_eq!(
         adapter.read_diagnostic_path(&item_count),
-        Ok(HostValue::Int(5))
+        Ok(HostValue::Scalar(vela_common::ScalarValue::I64(5)))
+    );
+    assert_eq!(
+        adapter.read_diagnostic_path(&item_count),
+        Ok(HostValue::Scalar(vela_common::ScalarValue::I64(5)))
     );
 }
 
@@ -471,7 +510,7 @@ fn bytecode_mutates_host_variant_field_through_host_access() {
         .field(quest_progress)
         .variant_field(count);
     let mut code = UnlinkedCodeObject::new("main", 3).with_params(vec!["player".into()]);
-    let one = code.push_constant(Constant::Int(1));
+    let one = code.push_constant(Constant::Scalar(vela_common::ScalarValue::I64(1)));
     let target = code.intern_host_target(
         HostTargetPlan::new(host_ref.type_id)
             .field(quest_progress)
@@ -510,7 +549,10 @@ fn bytecode_mutates_host_variant_field_through_host_access() {
     let mut program = UnlinkedProgram::new();
     program.insert_function(code);
     let mut adapter = MockStateAdapter::new();
-    adapter.insert_diagnostic_path_value(quest_count.clone(), HostValue::Int(4));
+    adapter.insert_diagnostic_path_value(
+        quest_count.clone(),
+        HostValue::Scalar(vela_common::ScalarValue::I64(4)),
+    );
     let mut tx = HostAccess::new();
 
     let result = {
@@ -527,14 +569,17 @@ fn bytecode_mutates_host_variant_field_through_host_access() {
         )
     };
 
-    assert_eq!(result, Ok(OwnedValue::Int(5)));
     assert_eq!(
-        adapter.read_diagnostic_path(&quest_count),
-        Ok(HostValue::Int(5))
+        result,
+        Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(5)))
     );
     assert_eq!(
         adapter.read_diagnostic_path(&quest_count),
-        Ok(HostValue::Int(5))
+        Ok(HostValue::Scalar(vela_common::ScalarValue::I64(5)))
+    );
+    assert_eq!(
+        adapter.read_diagnostic_path(&quest_count),
+        Ok(HostValue::Scalar(vela_common::ScalarValue::I64(5)))
     );
 }
 
@@ -571,10 +616,12 @@ fn main(ctx: Ctx) {
     let mut adapter = MockStateAdapter::new();
     adapter.insert_diagnostic_path_value(
         HostPath::new(ctx_ref).field(now_field),
-        HostValue::Int(1000),
+        HostValue::Scalar(vela_common::ScalarValue::I64(1000)),
     );
-    adapter
-        .insert_diagnostic_path_value(HostPath::new(ctx_ref).field(tick_field), HostValue::Int(42));
+    adapter.insert_diagnostic_path_value(
+        HostPath::new(ctx_ref).field(tick_field),
+        HostValue::Scalar(vela_common::ScalarValue::I64(42)),
+    );
     adapter.insert_method_return(emit_method, HostValue::Null);
     adapter.insert_method_return(log_method, HostValue::Null);
     let mut tx = HostAccess::new();
@@ -595,7 +642,10 @@ fn main(ctx: Ctx) {
         )
     };
 
-    assert_eq!(result, Ok(OwnedValue::Int(1042)));
+    assert_eq!(
+        result,
+        Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(1042)))
+    );
     assert_eq!(
         adapter.method_calls(),
         &[
@@ -604,7 +654,7 @@ fn main(ctx: Ctx) {
                 emit_method,
                 vec![
                     HostValue::String("player.level_checked".into()),
-                    HostValue::Int(1042)
+                    HostValue::Scalar(vela_common::ScalarValue::I64(1042))
                 ]
             ),
             (
@@ -613,7 +663,7 @@ fn main(ctx: Ctx) {
                 vec![
                     HostValue::String("info".into()),
                     HostValue::String("player.level_checked".into()),
-                    HostValue::Int(1042)
+                    HostValue::Scalar(vela_common::ScalarValue::I64(1042))
                 ]
             )
         ]
@@ -639,7 +689,10 @@ fn main(player: Player) {
         ),
     )
     .expect("compile host closure write source");
-    let mut adapter = host_adapter(host_ref, HostValue::Int(9));
+    let mut adapter = host_adapter(
+        host_ref,
+        HostValue::Scalar(vela_common::ScalarValue::I64(9)),
+    );
     let mut tx = HostAccess::new();
     let mut budget = ExecutionBudget::new(10_000, 1024 * 1024, 64);
 
@@ -667,6 +720,6 @@ fn main(player: Player) {
     );
     assert_eq!(
         adapter.read_diagnostic_path(&level_path(host_ref)),
-        Ok(HostValue::Int(9))
+        Ok(HostValue::Scalar(vela_common::ScalarValue::I64(9)))
     );
 }

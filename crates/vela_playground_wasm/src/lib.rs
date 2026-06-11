@@ -213,8 +213,16 @@ fn owned_value_to_json(value: &OwnedValue) -> JsonValue {
         OwnedValue::Missing => json!({ "kind": "missing" }),
         OwnedValue::Null => JsonValue::Null,
         OwnedValue::Bool(value) => JsonValue::Bool(*value),
-        OwnedValue::Int(value) => json!(value),
-        OwnedValue::Float(value) => json!(value),
+        OwnedValue::Scalar(vela_common::ScalarValue::I8(value)) => json!(value),
+        OwnedValue::Scalar(vela_common::ScalarValue::I16(value)) => json!(value),
+        OwnedValue::Scalar(vela_common::ScalarValue::I32(value)) => json!(value),
+        OwnedValue::Scalar(vela_common::ScalarValue::I64(value)) => json!(value),
+        OwnedValue::Scalar(vela_common::ScalarValue::U8(value)) => json!(value),
+        OwnedValue::Scalar(vela_common::ScalarValue::U16(value)) => json!(value),
+        OwnedValue::Scalar(vela_common::ScalarValue::U32(value)) => json!(value),
+        OwnedValue::Scalar(vela_common::ScalarValue::U64(value)) => json!(value),
+        OwnedValue::Scalar(vela_common::ScalarValue::F32(value)) => json!(value),
+        OwnedValue::Scalar(vela_common::ScalarValue::F64(value)) => json!(value),
         OwnedValue::String(value) => json!(value),
         OwnedValue::Array(values) => {
             JsonValue::Array(values.iter().map(owned_value_to_json).collect())

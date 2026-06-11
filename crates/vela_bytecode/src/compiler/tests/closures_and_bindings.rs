@@ -230,7 +230,7 @@ fn main() {
     });
     assert_eq!(
         constant.map(|constant| &code.constants[constant.0]),
-        Some(&Constant::Int(5))
+        Some(&Constant::Scalar(vela_common::ScalarValue::I64(5)))
     );
 }
 #[test]
@@ -263,7 +263,7 @@ fn main() {
     });
     assert_eq!(
         constant.map(|constant| &code.constants[constant.0]),
-        Some(&Constant::Int(20))
+        Some(&Constant::Scalar(vela_common::ScalarValue::I64(20)))
     );
 }
 #[test]
@@ -299,7 +299,10 @@ pub const BASE: int = 4;
     let main = program
         .function("game::main::main")
         .expect("qualified main function");
-    assert!(main.constants.contains(&Constant::Int(5)));
+    assert!(
+        main.constants
+            .contains(&Constant::Scalar(vela_common::ScalarValue::I64(5)))
+    );
 }
 #[test]
 fn compiler_uses_hir_local_bindings_for_shadowed_registers() {

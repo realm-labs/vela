@@ -1020,40 +1020,40 @@ then build registry, syntax, guards, and runtime behavior on the new model.
 
 #### Task 1.1: Add shared primitive/scalar types
 
-- [ ] Add `PrimitiveTag`, `NumericTag`, and `ScalarValue` to `vela_common` or another dependency-light shared crate.
-- [ ] Include primitive tags for:
-  - [ ] `Null`
-  - [ ] `Bool`
-  - [ ] `I8/I16/I32/I64`
-  - [ ] `U8/U16/U32/U64`
-  - [ ] `F32/F64`
-  - [ ] `String`
-  - [ ] `Bytes`
-- [ ] Add helpers:
-  - [ ] `ScalarValue::numeric_tag()`
-  - [ ] `ScalarValue::primitive_tag()`
-  - [ ] display/debug names for diagnostics.
+- [x] Add `PrimitiveTag`, `NumericTag`, and `ScalarValue` to `vela_common` or another dependency-light shared crate.
+- [x] Include primitive tags for:
+  - [x] `Null`
+  - [x] `Bool`
+  - [x] `I8/I16/I32/I64`
+  - [x] `U8/U16/U32/U64`
+  - [x] `F32/F64`
+  - [x] `String`
+  - [x] `Bytes`
+- [x] Add helpers:
+  - [x] `ScalarValue::numeric_tag()`
+  - [x] `ScalarValue::primitive_tag()`
+  - [x] display/debug names for diagnostics.
 
 **Termination condition:**
 
-- [ ] Shared tags compile without depending on VM, host, registry, or engine crates.
-- [ ] Unit tests cover scalar tags and display names for all primitive scalar types.
+- [x] Shared tags compile without depending on VM, host, registry, or engine crates.
+- [x] Unit tests cover scalar tags and display names for all primitive scalar types.
 
 #### Task 1.2: Replace runtime and boundary numeric variants together
 
-- [ ] Replace `Value::Int` and `Value::Float` with `Value::Scalar`.
-- [ ] Replace `OwnedValue::Int` and `OwnedValue::Float` with `OwnedValue::Scalar`.
-- [ ] Replace `HostValue::Int` and `HostValue::Float` with `HostValue::Scalar`.
-- [ ] Replace `Constant::Int` and `Constant::Float` with `Constant::Scalar`.
-- [ ] Add `From<i8/i16/i32/i64/u8/u16/u32/u64/f32/f64>` implementations where boundary ergonomics need them.
-- [ ] Keep ergonomic test constructors if useful, but name them after explicit types (`i64_value`, `f64_value`) rather than old generic `int`/`float`.
-- [ ] Update owned-value macros and host test helpers.
+- [x] Replace `Value::Int` and `Value::Float` with `Value::Scalar`.
+- [x] Replace `OwnedValue::Int` and `OwnedValue::Float` with `OwnedValue::Scalar`.
+- [x] Replace `HostValue::Int` and `HostValue::Float` with `HostValue::Scalar`.
+- [x] Replace `Constant::Int` and `Constant::Float` with `Constant::Scalar`.
+- [x] Add `From<i8/i16/i32/i64/u8/u16/u32/u64/f32/f64>` implementations where boundary ergonomics need them.
+- [x] Keep ergonomic test constructors if useful, but name them after explicit types (`i64_value`, `f64_value`) rather than old generic `int`/`float`.
+- [x] Update owned-value macros and host test helpers.
 
 **Termination condition:**
 
-- [ ] VM, host, bytecode, and engine crates compile against the scalar representation.
-- [ ] Existing behavior is ported to explicit `I64`/`F64` defaults.
-- [ ] No public value enum keeps `Int` or `Float` compatibility variants.
+- [x] VM, host, bytecode, and engine crates compile against the scalar representation.
+- [x] Existing behavior is ported to explicit `I64`/`F64` defaults.
+- [x] No public value enum keeps `Int` or `Float` compatibility variants.
 
 #### Task 1.3: Add heap bytes after scalar boundaries compile
 

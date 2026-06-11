@@ -90,7 +90,10 @@ fn host_permission_denied_fixture_renders_source_span() {
     program.insert_function(code);
 
     let mut adapter = MockStateAdapter::new();
-    adapter.insert_diagnostic_path_value(level_path.clone(), HostValue::Int(9));
+    adapter.insert_diagnostic_path_value(
+        level_path.clone(),
+        HostValue::Scalar(vela_common::ScalarValue::I64(9)),
+    );
     adapter.deny_diagnostic_path_read(level_path);
     let mut tx = HostAccess::new();
     let mut host = HostExecution {
@@ -132,7 +135,7 @@ fn host_compound_write_denied_fixture_renders_source_span() {
     let source_span = Span::new(SourceId::new(1), 22, 34);
 
     let mut code = UnlinkedCodeObject::new("main", 2).with_params(vec!["player".to_owned()]);
-    let one = code.push_constant(Constant::Int(1));
+    let one = code.push_constant(Constant::Scalar(vela_common::ScalarValue::I64(1)));
     let target = code.intern_host_target(HostTargetPlan::new(host_ref.type_id).field(level_field));
     let mutate_cache = code.push_cache_site(CacheSiteKind::HostPathMutate, InstructionOffset(1));
     let read_cache = code.push_cache_site(CacheSiteKind::HostPathRead, InstructionOffset(2));
@@ -170,7 +173,10 @@ fn host_compound_write_denied_fixture_renders_source_span() {
     program.insert_function(code);
 
     let mut adapter = MockStateAdapter::new();
-    adapter.insert_diagnostic_path_value(level_path.clone(), HostValue::Int(9));
+    adapter.insert_diagnostic_path_value(
+        level_path.clone(),
+        HostValue::Scalar(vela_common::ScalarValue::I64(9)),
+    );
     adapter.deny_diagnostic_path_write(level_path.clone());
     let mut tx = HostAccess::new();
     let error = {
@@ -234,7 +240,10 @@ fn stale_host_ref_fixture_renders_source_span() {
     program.insert_function(code);
 
     let mut adapter = MockStateAdapter::new();
-    adapter.insert_diagnostic_path_value(level_path, HostValue::Int(9));
+    adapter.insert_diagnostic_path_value(
+        level_path,
+        HostValue::Scalar(vela_common::ScalarValue::I64(9)),
+    );
     let mut tx = HostAccess::new();
     let mut host = HostExecution {
         adapter: &mut adapter,
@@ -292,7 +301,10 @@ fn reflection_unknown_field_fixture_renders_candidates_and_source_span() {
     );
 
     let mut adapter = MockStateAdapter::new();
-    adapter.insert_diagnostic_path_value(level_path, HostValue::Int(9));
+    adapter.insert_diagnostic_path_value(
+        level_path,
+        HostValue::Scalar(vela_common::ScalarValue::I64(9)),
+    );
     let mut tx = HostAccess::new();
     let mut vm = Vm::new();
     vm.register_reflection_natives_with_permissions(

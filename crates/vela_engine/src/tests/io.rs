@@ -111,7 +111,10 @@ fn main() {
         .call("main", CallArgs::new(), CallOptions::unbounded())
         .expect("runtime call should execute linked image");
 
-    assert_eq!(runtime.value_to_owned(&output), Ok(OwnedValue::Int(13)));
+    assert_eq!(
+        runtime.value_to_owned(&output),
+        Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(13)))
+    );
     assert_eq!(
         std::fs::read_to_string(root.join("output.txt")).expect("output should exist"),
         "done"

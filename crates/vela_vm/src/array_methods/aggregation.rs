@@ -124,18 +124,18 @@ impl NumericTotal {
 
     fn add_value(&mut self, value: &Value, operation: &'static str) -> VmResult<()> {
         match (&mut *self, value) {
-            (NumericTotal::Int(total), Value::Int(value)) => {
+            (NumericTotal::Int(total), Value::Scalar(vela_common::ScalarValue::I64(value))) => {
                 *total = total
                     .checked_add(*value)
                     .ok_or_else(|| VmError::new(VmErrorKind::TypeMismatch { operation }))?;
             }
-            (NumericTotal::Int(total), Value::Float(value)) => {
+            (NumericTotal::Int(total), Value::Scalar(vela_common::ScalarValue::F64(value))) => {
                 *self = NumericTotal::Float(*total as f64 + *value);
             }
-            (NumericTotal::Float(total), Value::Int(value)) => {
+            (NumericTotal::Float(total), Value::Scalar(vela_common::ScalarValue::I64(value))) => {
                 *total += *value as f64;
             }
-            (NumericTotal::Float(total), Value::Float(value)) => {
+            (NumericTotal::Float(total), Value::Scalar(vela_common::ScalarValue::F64(value))) => {
                 *total += *value;
             }
             _ => return type_error(operation),
@@ -145,18 +145,18 @@ impl NumericTotal {
 
     fn add_runtime_value(&mut self, value: &Value, operation: &'static str) -> VmResult<()> {
         match (&mut *self, value) {
-            (NumericTotal::Int(total), Value::Int(value)) => {
+            (NumericTotal::Int(total), Value::Scalar(vela_common::ScalarValue::I64(value))) => {
                 *total = total
                     .checked_add(*value)
                     .ok_or_else(|| VmError::new(VmErrorKind::TypeMismatch { operation }))?;
             }
-            (NumericTotal::Int(total), Value::Float(value)) => {
+            (NumericTotal::Int(total), Value::Scalar(vela_common::ScalarValue::F64(value))) => {
                 *self = NumericTotal::Float(*total as f64 + *value);
             }
-            (NumericTotal::Float(total), Value::Int(value)) => {
+            (NumericTotal::Float(total), Value::Scalar(vela_common::ScalarValue::I64(value))) => {
                 *total += *value as f64;
             }
-            (NumericTotal::Float(total), Value::Float(value)) => {
+            (NumericTotal::Float(total), Value::Scalar(vela_common::ScalarValue::F64(value))) => {
                 *total += *value;
             }
             _ => return type_error(operation),
@@ -166,8 +166,8 @@ impl NumericTotal {
 
     fn into_value(self) -> Value {
         match self {
-            NumericTotal::Int(value) => Value::Int(value),
-            NumericTotal::Float(value) => Value::Float(value),
+            NumericTotal::Int(value) => Value::Scalar(vela_common::ScalarValue::I64(value)),
+            NumericTotal::Float(value) => Value::Scalar(vela_common::ScalarValue::F64(value)),
         }
     }
 }

@@ -28,7 +28,7 @@ fn main() {
 
     let result =
         run_linked_array_test_code(&vm, code).expect("array higher-order methods should run");
-    assert_eq!(result, OwnedValue::Int(3));
+    assert_eq!(result, OwnedValue::Scalar(vela_common::ScalarValue::I64(3)));
 }
 
 #[test]
@@ -60,7 +60,7 @@ fn main() {
 
     let result = run_linked_array_test_code_with_budget(&vm, code, &mut budget)
         .expect("heap array higher-order methods should run");
-    assert_eq!(result, OwnedValue::Int(2));
+    assert_eq!(result, OwnedValue::Scalar(vela_common::ScalarValue::I64(2)));
 }
 
 #[test]
@@ -85,7 +85,7 @@ fn main() {
     vm.register_standard_natives();
 
     let result = run_linked_array_test_code(&vm, code).expect("array endpoint methods should run");
-    assert_eq!(result, OwnedValue::Int(1));
+    assert_eq!(result, OwnedValue::Scalar(vela_common::ScalarValue::I64(1)));
 }
 
 #[test]
@@ -139,7 +139,10 @@ fn main() {
     vm.register_standard_natives();
 
     let result = run_linked_array_test_code(&vm, code).expect("array remove_at method should run");
-    assert_eq!(result, OwnedValue::Int(30));
+    assert_eq!(
+        result,
+        OwnedValue::Scalar(vela_common::ScalarValue::I64(30))
+    );
 }
 
 #[test]
@@ -193,7 +196,10 @@ fn main() {
     vm.register_standard_natives();
 
     let result = run_linked_array_test_code(&vm, code).expect("array insert method should run");
-    assert_eq!(result, OwnedValue::Int(20));
+    assert_eq!(
+        result,
+        OwnedValue::Scalar(vela_common::ScalarValue::I64(20))
+    );
 }
 
 #[test]
@@ -262,7 +268,10 @@ fn main() {
     vm.register_standard_natives();
 
     let result = run_linked_array_test_code(&vm, code).expect("array extend method should run");
-    assert_eq!(result, OwnedValue::Int(40));
+    assert_eq!(
+        result,
+        OwnedValue::Scalar(vela_common::ScalarValue::I64(40))
+    );
 }
 
 #[test]
@@ -326,7 +335,10 @@ fn main() {
     vm.register_standard_natives();
 
     let result = run_linked_array_test_code(&vm, code).expect("array clear method should run");
-    assert_eq!(result, OwnedValue::Int(40));
+    assert_eq!(
+        result,
+        OwnedValue::Scalar(vela_common::ScalarValue::I64(40))
+    );
 }
 
 #[test]

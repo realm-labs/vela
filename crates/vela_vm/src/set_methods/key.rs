@@ -21,8 +21,10 @@ impl SetKey {
         match value {
             Value::Null => Ok(Self::Null),
             Value::Bool(value) => Ok(Self::Bool(*value)),
-            Value::Int(value) => Ok(Self::Int(*value)),
-            Value::Float(value) if value.is_finite() => Ok(Self::Float(value.to_bits())),
+            Value::Scalar(vela_common::ScalarValue::I64(value)) => Ok(Self::Int(*value)),
+            Value::Scalar(vela_common::ScalarValue::F64(value)) if value.is_finite() => {
+                Ok(Self::Float(value.to_bits()))
+            }
             Value::HeapRef(reference) => match heap.and_then(|heap| heap.heap.get(*reference)) {
                 Some(HeapValue::String(value)) => Ok(Self::String(value.clone())),
                 _ => type_error(operation),
@@ -41,16 +43,24 @@ impl SetKey {
         match (self, value) {
             (Self::Null, Value::Null) => Ok(true),
             (Self::Bool(lhs), Value::Bool(rhs)) => Ok(*lhs == *rhs),
-            (Self::Int(lhs), Value::Int(rhs)) => Ok(*lhs == *rhs),
-            (Self::Float(lhs), Value::Float(rhs)) if rhs.is_finite() => Ok(*lhs == rhs.to_bits()),
+            (Self::Int(lhs), Value::Scalar(vela_common::ScalarValue::I64(rhs))) => Ok(*lhs == *rhs),
+            (Self::Float(lhs), Value::Scalar(vela_common::ScalarValue::F64(rhs)))
+                if rhs.is_finite() =>
+            {
+                Ok(*lhs == rhs.to_bits())
+            }
             (Self::String(lhs), Value::HeapRef(reference)) => {
                 match heap.and_then(|heap| heap.heap.get(*reference)) {
                     Some(HeapValue::String(rhs)) => Ok(lhs == rhs),
                     _ => type_error(operation),
                 }
             }
-            (_, Value::Null | Value::Bool(_) | Value::Int(_)) => Ok(false),
-            (_, Value::Float(value)) if value.is_finite() => Ok(false),
+            (_, Value::Null | Value::Bool(_) | Value::Scalar(vela_common::ScalarValue::I64(_))) => {
+                Ok(false)
+            }
+            (_, Value::Scalar(vela_common::ScalarValue::F64(value))) if value.is_finite() => {
+                Ok(false)
+            }
             _ => type_error(operation),
         }
     }
@@ -64,14 +74,22 @@ impl SetKey {
         match (self, slot) {
             (Self::Null, Value::Null) => Ok(true),
             (Self::Bool(lhs), Value::Bool(rhs)) => Ok(*lhs == *rhs),
-            (Self::Int(lhs), Value::Int(rhs)) => Ok(*lhs == *rhs),
-            (Self::Float(lhs), Value::Float(rhs)) if rhs.is_finite() => Ok(*lhs == rhs.to_bits()),
+            (Self::Int(lhs), Value::Scalar(vela_common::ScalarValue::I64(rhs))) => Ok(*lhs == *rhs),
+            (Self::Float(lhs), Value::Scalar(vela_common::ScalarValue::F64(rhs)))
+                if rhs.is_finite() =>
+            {
+                Ok(*lhs == rhs.to_bits())
+            }
             (Self::String(lhs), Value::HeapRef(reference)) => match heap.heap.get(*reference) {
                 Some(HeapValue::String(rhs)) => Ok(lhs == rhs),
                 _ => type_error(operation),
             },
-            (_, Value::Null | Value::Bool(_) | Value::Int(_)) => Ok(false),
-            (_, Value::Float(value)) if value.is_finite() => Ok(false),
+            (_, Value::Null | Value::Bool(_) | Value::Scalar(vela_common::ScalarValue::I64(_))) => {
+                Ok(false)
+            }
+            (_, Value::Scalar(vela_common::ScalarValue::F64(value))) if value.is_finite() => {
+                Ok(false)
+            }
             _ => type_error(operation),
         }
     }
@@ -92,13 +110,15 @@ pub(super) fn slot_key(slot: &Value, heap: &HeapExecution<'_>) -> VmResult<SetKe
     match slot {
         Value::Null => Ok(SetKey::Null),
         Value::Bool(value) => Ok(SetKey::Bool(*value)),
-        Value::Int(value) => Ok(SetKey::Int(*value)),
-        Value::Float(value) if value.is_finite() => Ok(SetKey::Float(value.to_bits())),
+        Value::Scalar(vela_common::ScalarValue::I64(value)) => Ok(SetKey::Int(*value)),
+        Value::Scalar(vela_common::ScalarValue::F64(value)) if value.is_finite() => {
+            Ok(SetKey::Float(value.to_bits()))
+        }
         Value::HeapRef(reference) => match heap.heap.get(*reference) {
             Some(HeapValue::String(value)) => Ok(SetKey::String(value.clone())),
             _ => type_error("method set"),
         },
-        Value::Missing | Value::Float(_) | Value::Range(_) | Value::HostRef(_) => {
+        Value::Missing | Value::Scalar(_) | Value::Range(_) | Value::HostRef(_) => {
             type_error("method set")
         }
     }

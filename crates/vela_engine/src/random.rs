@@ -29,7 +29,11 @@ pub(crate) fn controlled_math_random(seed: u64) -> NativeFunctionEntry {
 
 fn math_random(args: &[OwnedValue], rng: &Mutex<SeededRandom>) -> VmResult<OwnedValue> {
     expect_arity("math::random", args, 2)?;
-    let (OwnedValue::Int(min), OwnedValue::Int(max)) = (&args[0], &args[1]) else {
+    let (
+        OwnedValue::Scalar(vela_common::ScalarValue::I64(min)),
+        OwnedValue::Scalar(vela_common::ScalarValue::I64(max)),
+    ) = (&args[0], &args[1])
+    else {
         return type_error("math::random");
     };
     if min > max {
@@ -53,7 +57,7 @@ fn math_random(args: &[OwnedValue], rng: &Mutex<SeededRandom>) -> VmResult<Owned
                 operation: "math::random",
             })
         })?;
-    i64::try_from(value).map(OwnedValue::Int).map_err(|_| {
+    i64::try_from(value).map(OwnedValue::i64).map_err(|_| {
         VmError::new(VmErrorKind::TypeMismatch {
             operation: "math::random",
         })

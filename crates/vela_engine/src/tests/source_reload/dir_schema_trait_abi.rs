@@ -23,7 +23,7 @@ fn runtime_stages_dir_defaulted_schema_addition_until_safe_point() {
             &mut adapter,
             &mut tx
         ),
-        Ok(OwnedValue::Int(2))
+        Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(2)))
     );
 
     write_schema_reward_module(&reward_file, 6, StructCountField::Defaulted);
@@ -39,7 +39,7 @@ fn runtime_stages_dir_defaulted_schema_addition_until_safe_point() {
             &mut adapter,
             &mut tx
         ),
-        Ok(OwnedValue::Int(2))
+        Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(2)))
     );
 
     let report = runtime
@@ -57,7 +57,7 @@ fn runtime_stages_dir_defaulted_schema_addition_until_safe_point() {
             &mut adapter,
             &mut tx
         ),
-        Ok(OwnedValue::Int(6))
+        Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(6)))
     );
 }
 
@@ -84,7 +84,7 @@ fn runtime_stages_dir_stable_id_schema_renames_until_safe_point() {
             &mut adapter,
             &mut tx
         ),
-        Ok(OwnedValue::Int(2))
+        Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(2)))
     );
 
     write_stable_schema_rename_module(&reward_file, 6, true);
@@ -100,7 +100,7 @@ fn runtime_stages_dir_stable_id_schema_renames_until_safe_point() {
             &mut adapter,
             &mut tx
         ),
-        Ok(OwnedValue::Int(2))
+        Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(2)))
     );
 
     let report = runtime
@@ -118,7 +118,7 @@ fn runtime_stages_dir_stable_id_schema_renames_until_safe_point() {
             &mut adapter,
             &mut tx
         ),
-        Ok(OwnedValue::Int(6))
+        Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(6)))
     );
 }
 
@@ -145,7 +145,7 @@ fn runtime_stages_dir_required_schema_field_rejection_until_safe_point() {
             &mut adapter,
             &mut tx
         ),
-        Ok(OwnedValue::Int(2))
+        Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(2)))
     );
 
     write_schema_reward_module(&reward_file, 6, StructCountField::Required);
@@ -161,7 +161,7 @@ fn runtime_stages_dir_required_schema_field_rejection_until_safe_point() {
             &mut adapter,
             &mut tx
         ),
-        Ok(OwnedValue::Int(2))
+        Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(2)))
     );
 
     let report = runtime
@@ -185,7 +185,7 @@ fn runtime_stages_dir_required_schema_field_rejection_until_safe_point() {
             &mut adapter,
             &mut tx
         ),
-        Ok(OwnedValue::Int(2))
+        Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(2)))
     );
 }
 
@@ -212,7 +212,7 @@ fn runtime_stages_dir_removed_schema_rejection_until_safe_point() {
             &mut adapter,
             &mut tx
         ),
-        Ok(OwnedValue::Int(2))
+        Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(2)))
     );
 
     std::fs::write(
@@ -236,7 +236,7 @@ pub fn grant() {
             &mut adapter,
             &mut tx
         ),
-        Ok(OwnedValue::Int(2))
+        Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(2)))
     );
 
     let report = runtime
@@ -271,7 +271,7 @@ pub fn grant() {
             &mut adapter,
             &mut tx
         ),
-        Ok(OwnedValue::Int(2))
+        Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(2)))
     );
 }
 
@@ -298,7 +298,7 @@ fn runtime_stages_dir_schema_field_type_rejection_until_safe_point() {
             &mut adapter,
             &mut tx
         ),
-        Ok(OwnedValue::Int(2))
+        Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(2)))
     );
 
     write_schema_reward_module(&reward_file, 6, StructCountField::Float);
@@ -314,7 +314,7 @@ fn runtime_stages_dir_schema_field_type_rejection_until_safe_point() {
             &mut adapter,
             &mut tx
         ),
-        Ok(OwnedValue::Int(2))
+        Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(2)))
     );
 
     let report = runtime
@@ -338,7 +338,7 @@ fn runtime_stages_dir_schema_field_type_rejection_until_safe_point() {
             &mut adapter,
             &mut tx
         ),
-        Ok(OwnedValue::Int(2))
+        Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(2)))
     );
 }
 
@@ -365,7 +365,7 @@ fn runtime_stages_dir_defaulted_enum_variant_field_addition_until_safe_point() {
             &mut adapter,
             &mut tx
         ),
-        Ok(OwnedValue::Int(2))
+        Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(2)))
     );
 
     write_enum_reward_module(&reward_file, 6, EnumVariantCountField::Defaulted);
@@ -381,7 +381,7 @@ fn runtime_stages_dir_defaulted_enum_variant_field_addition_until_safe_point() {
             &mut adapter,
             &mut tx
         ),
-        Ok(OwnedValue::Int(2))
+        Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(2)))
     );
 
     let report = runtime
@@ -399,7 +399,7 @@ fn runtime_stages_dir_defaulted_enum_variant_field_addition_until_safe_point() {
             &mut adapter,
             &mut tx
         ),
-        Ok(OwnedValue::Int(6))
+        Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(6)))
     );
 }
 
@@ -426,7 +426,7 @@ fn runtime_stages_dir_required_enum_variant_field_rejection_until_safe_point() {
             &mut adapter,
             &mut tx
         ),
-        Ok(OwnedValue::Int(2))
+        Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(2)))
     );
 
     write_enum_reward_module(&reward_file, 6, EnumVariantCountField::Required);
@@ -442,7 +442,7 @@ fn runtime_stages_dir_required_enum_variant_field_rejection_until_safe_point() {
             &mut adapter,
             &mut tx
         ),
-        Ok(OwnedValue::Int(2))
+        Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(2)))
     );
 
     let report = runtime
@@ -466,7 +466,7 @@ fn runtime_stages_dir_required_enum_variant_field_rejection_until_safe_point() {
             &mut adapter,
             &mut tx
         ),
-        Ok(OwnedValue::Int(2))
+        Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(2)))
     );
 }
 
@@ -493,7 +493,7 @@ fn runtime_stages_dir_enum_variant_field_type_rejection_until_safe_point() {
             &mut adapter,
             &mut tx
         ),
-        Ok(OwnedValue::Int(2))
+        Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(2)))
     );
 
     write_enum_reward_module(&reward_file, 6, EnumVariantCountField::Float);
@@ -509,7 +509,7 @@ fn runtime_stages_dir_enum_variant_field_type_rejection_until_safe_point() {
             &mut adapter,
             &mut tx
         ),
-        Ok(OwnedValue::Int(2))
+        Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(2)))
     );
 
     let report = runtime
@@ -533,7 +533,7 @@ fn runtime_stages_dir_enum_variant_field_type_rejection_until_safe_point() {
             &mut adapter,
             &mut tx
         ),
-        Ok(OwnedValue::Int(2))
+        Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(2)))
     );
 }
 
@@ -560,7 +560,7 @@ fn runtime_stages_dir_removed_trait_impl_rejection_until_safe_point() {
             &mut adapter,
             &mut tx
         ),
-        Ok(OwnedValue::Int(2))
+        Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(2)))
     );
 
     write_trait_impl_module(&reward_file, 6, false);
@@ -576,7 +576,7 @@ fn runtime_stages_dir_removed_trait_impl_rejection_until_safe_point() {
             &mut adapter,
             &mut tx
         ),
-        Ok(OwnedValue::Int(2))
+        Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(2)))
     );
 
     let report = runtime
@@ -600,7 +600,7 @@ fn runtime_stages_dir_removed_trait_impl_rejection_until_safe_point() {
             &mut adapter,
             &mut tx
         ),
-        Ok(OwnedValue::Int(2))
+        Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(2)))
     );
 }
 
@@ -627,7 +627,7 @@ fn runtime_stages_dir_added_trait_impl_until_safe_point() {
             &mut adapter,
             &mut tx
         ),
-        Ok(OwnedValue::Int(2))
+        Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(2)))
     );
 
     write_trait_impl_module(&reward_file, 6, true);
@@ -643,7 +643,7 @@ fn runtime_stages_dir_added_trait_impl_until_safe_point() {
             &mut adapter,
             &mut tx
         ),
-        Ok(OwnedValue::Int(2))
+        Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(2)))
     );
 
     let report = runtime
@@ -665,7 +665,7 @@ fn runtime_stages_dir_added_trait_impl_until_safe_point() {
             &mut adapter,
             &mut tx
         ),
-        Ok(OwnedValue::Int(6))
+        Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(6)))
     );
 }
 
@@ -692,7 +692,7 @@ fn runtime_stages_dir_removed_trait_rejection_until_safe_point() {
             &mut adapter,
             &mut tx
         ),
-        Ok(OwnedValue::Int(2))
+        Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(2)))
     );
 
     write_reward_module(&reward_file, 6);
@@ -708,7 +708,7 @@ fn runtime_stages_dir_removed_trait_rejection_until_safe_point() {
             &mut adapter,
             &mut tx
         ),
-        Ok(OwnedValue::Int(2))
+        Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(2)))
     );
 
     let report = runtime
@@ -732,7 +732,7 @@ fn runtime_stages_dir_removed_trait_rejection_until_safe_point() {
             &mut adapter,
             &mut tx
         ),
-        Ok(OwnedValue::Int(2))
+        Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(2)))
     );
 }
 
@@ -759,7 +759,7 @@ fn runtime_stages_dir_trait_method_return_rejection_until_safe_point() {
             &mut adapter,
             &mut tx
         ),
-        Ok(OwnedValue::Int(2))
+        Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(2)))
     );
 
     write_trait_abi_module(&reward_file, 6, "float");
@@ -775,7 +775,7 @@ fn runtime_stages_dir_trait_method_return_rejection_until_safe_point() {
             &mut adapter,
             &mut tx
         ),
-        Ok(OwnedValue::Int(2))
+        Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(2)))
     );
 
     let report = runtime
@@ -799,7 +799,7 @@ fn runtime_stages_dir_trait_method_return_rejection_until_safe_point() {
             &mut adapter,
             &mut tx
         ),
-        Ok(OwnedValue::Int(2))
+        Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(2)))
     );
 }
 
@@ -826,7 +826,7 @@ fn runtime_stages_dir_required_trait_method_rejection_until_safe_point() {
             &mut adapter,
             &mut tx
         ),
-        Ok(OwnedValue::Int(2))
+        Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(2)))
     );
 
     write_trait_abi_module_with_required_method(&reward_file, 6);
@@ -842,7 +842,7 @@ fn runtime_stages_dir_required_trait_method_rejection_until_safe_point() {
             &mut adapter,
             &mut tx
         ),
-        Ok(OwnedValue::Int(2))
+        Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(2)))
     );
 
     let report = runtime
@@ -866,7 +866,7 @@ fn runtime_stages_dir_required_trait_method_rejection_until_safe_point() {
             &mut adapter,
             &mut tx
         ),
-        Ok(OwnedValue::Int(2))
+        Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(2)))
     );
 }
 
@@ -893,7 +893,7 @@ fn runtime_stages_dir_defaulted_trait_method_addition_until_safe_point() {
             &mut adapter,
             &mut tx
         ),
-        Ok(OwnedValue::Int(2))
+        Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(2)))
     );
 
     write_trait_abi_module_with_defaulted_method(&reward_file, 6);
@@ -909,7 +909,7 @@ fn runtime_stages_dir_defaulted_trait_method_addition_until_safe_point() {
             &mut adapter,
             &mut tx
         ),
-        Ok(OwnedValue::Int(2))
+        Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(2)))
     );
 
     let report = runtime
@@ -932,7 +932,7 @@ fn runtime_stages_dir_defaulted_trait_method_addition_until_safe_point() {
             &mut adapter,
             &mut tx
         ),
-        Ok(OwnedValue::Int(6))
+        Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(6)))
     );
 }
 
@@ -974,7 +974,7 @@ pub fn grant() {
             &mut adapter,
             &mut tx
         ),
-        Ok(OwnedValue::Int(2))
+        Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(2)))
     );
 
     let report = runtime
@@ -1000,7 +1000,7 @@ pub fn grant() {
             &mut adapter,
             &mut tx
         ),
-        Ok(OwnedValue::Int(2))
+        Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(2)))
     );
 }
 

@@ -18,7 +18,7 @@ pub(crate) fn bool_value(value: bool) -> ReflectValue {
 }
 
 pub(crate) fn int_value(value: i64) -> ReflectValue {
-    host(HostValue::Int(value))
+    host(HostValue::Scalar(vela_common::ScalarValue::I64(value)))
 }
 
 pub(crate) fn null_value() -> ReflectValue {

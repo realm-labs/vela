@@ -166,7 +166,7 @@ pub(crate) fn call(
 ) -> Option<VmResult<Value>> {
     let result = match method {
         "len" => expect_no_args(method, args)
-            .and_then(|()| len(receiver, heap.as_deref()).map(Value::Int)),
+            .and_then(|()| len(receiver, heap.as_deref()).map(Value::i64)),
         "is_empty" => expect_no_args(method, args)
             .and_then(|()| is_empty(receiver, heap.as_deref()).map(Value::Bool)),
         "contains" => array_methods::contains(receiver, args, heap.as_deref()).map(Value::Bool),
@@ -430,7 +430,7 @@ pub(crate) fn call_readonly(
     heap: Option<&HeapExecution<'_>>,
 ) -> Option<VmResult<Value>> {
     let result = match method {
-        "len" => expect_no_args(method, args).and_then(|()| len(receiver, heap).map(Value::Int)),
+        "len" => expect_no_args(method, args).and_then(|()| len(receiver, heap).map(Value::i64)),
         "is_empty" => {
             expect_no_args(method, args).and_then(|()| is_empty(receiver, heap).map(Value::Bool))
         }
@@ -459,7 +459,7 @@ pub(crate) fn call_readonly_by_id(
     let ids = std_method_ids();
     if method_id == ids.string_len && crate::string_methods::is_string(receiver, heap) {
         return Some(
-            expect_no_args("len", args).and_then(|()| len(receiver, heap).map(Value::Int)),
+            expect_no_args("len", args).and_then(|()| len(receiver, heap).map(Value::i64)),
         );
     }
     if method_id == ids.string_is_empty && crate::string_methods::is_string(receiver, heap) {
@@ -479,7 +479,7 @@ pub(crate) fn call_readonly_by_id(
     }
     if method_id == ids.range_len && matches!(receiver, Value::Range(_)) {
         return Some(
-            expect_no_args("len", args).and_then(|()| len(receiver, heap).map(Value::Int)),
+            expect_no_args("len", args).and_then(|()| len(receiver, heap).map(Value::i64)),
         );
     }
     if method_id == ids.range_is_empty && matches!(receiver, Value::Range(_)) {
@@ -490,7 +490,7 @@ pub(crate) fn call_readonly_by_id(
     }
     if method_id == ids.array_len && array_methods::is_array(receiver, heap) {
         return Some(
-            expect_no_args("len", args).and_then(|()| len(receiver, heap).map(Value::Int)),
+            expect_no_args("len", args).and_then(|()| len(receiver, heap).map(Value::i64)),
         );
     }
     if method_id == ids.array_is_empty && array_methods::is_array(receiver, heap) {
@@ -504,7 +504,7 @@ pub(crate) fn call_readonly_by_id(
     }
     if method_id == ids.map_len && map_methods::is_map(receiver, heap) {
         return Some(
-            expect_no_args("len", args).and_then(|()| len(receiver, heap).map(Value::Int)),
+            expect_no_args("len", args).and_then(|()| len(receiver, heap).map(Value::i64)),
         );
     }
     if method_id == ids.map_is_empty && map_methods::is_map(receiver, heap) {
@@ -521,7 +521,7 @@ pub(crate) fn call_readonly_by_id(
     }
     if method_id == ids.set_len && set_methods::is_set(receiver, heap) {
         return Some(
-            expect_no_args("len", args).and_then(|()| len(receiver, heap).map(Value::Int)),
+            expect_no_args("len", args).and_then(|()| len(receiver, heap).map(Value::i64)),
         );
     }
     if method_id == ids.set_is_empty && set_methods::is_set(receiver, heap) {
@@ -761,7 +761,10 @@ fn main() {
 
         let result =
             run_linked_builtin_test_code(code, &mut budget).expect("string len should run");
-        assert_eq!(result, OwnedValue::Int(502));
+        assert_eq!(
+            result,
+            OwnedValue::Scalar(vela_common::ScalarValue::I64(502))
+        );
     }
 
     #[test]
@@ -779,6 +782,9 @@ fn main() {
 
         let result = run_linked_builtin_test_code(code, &mut budget)
             .expect("managed heap string len should run");
-        assert_eq!(result, OwnedValue::Int(502));
+        assert_eq!(
+            result,
+            OwnedValue::Scalar(vela_common::ScalarValue::I64(502))
+        );
     }
 }
