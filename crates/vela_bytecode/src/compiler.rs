@@ -17,6 +17,7 @@ mod operators;
 pub mod options;
 mod paths;
 mod patterns;
+mod record_reflection_shapes;
 mod record_shapes;
 mod schema_defaults;
 mod script_impls;
