@@ -13,38 +13,22 @@ macro_rules! eval_int_literal_op {
             BinaryLiteralOp::Add => lhs
                 .checked_add(rhs)
                 .map(|value| Value::Scalar($ctor(value)))
-                .ok_or_else(|| {
-                    VmError::new(VmErrorKind::TypeMismatch {
-                        operation: $operation,
-                    })
-                }),
+                .ok_or_else(|| arithmetic_overflow($operation)),
             BinaryLiteralOp::Sub => lhs
                 .checked_sub(rhs)
                 .map(|value| Value::Scalar($ctor(value)))
-                .ok_or_else(|| {
-                    VmError::new(VmErrorKind::TypeMismatch {
-                        operation: $operation,
-                    })
-                }),
+                .ok_or_else(|| arithmetic_overflow($operation)),
             BinaryLiteralOp::Mul => lhs
                 .checked_mul(rhs)
                 .map(|value| Value::Scalar($ctor(value)))
-                .ok_or_else(|| {
-                    VmError::new(VmErrorKind::TypeMismatch {
-                        operation: $operation,
-                    })
-                }),
+                .ok_or_else(|| arithmetic_overflow($operation)),
             BinaryLiteralOp::Div => {
                 if rhs == 0 {
                     Err(VmError::new(VmErrorKind::DivisionByZero))
                 } else {
                     lhs.checked_div(rhs)
                         .map(|value| Value::Scalar($ctor(value)))
-                        .ok_or_else(|| {
-                            VmError::new(VmErrorKind::TypeMismatch {
-                                operation: $operation,
-                            })
-                        })
+                        .ok_or_else(|| arithmetic_overflow($operation))
                 }
             }
             BinaryLiteralOp::Rem => {
@@ -53,11 +37,7 @@ macro_rules! eval_int_literal_op {
                 } else {
                     lhs.checked_rem(rhs)
                         .map(|value| Value::Scalar($ctor(value)))
-                        .ok_or_else(|| {
-                            VmError::new(VmErrorKind::TypeMismatch {
-                                operation: $operation,
-                            })
-                        })
+                        .ok_or_else(|| arithmetic_overflow($operation))
                 }
             }
             BinaryLiteralOp::Less => Ok(Value::Bool(lhs < rhs)),
@@ -100,174 +80,200 @@ macro_rules! eval_float_literal_op {
     }};
 }
 
+macro_rules! scalar_checked_arithmetic {
+    ($lhs:expr, $rhs:expr, $operation:expr, $method:ident, $float_op:tt) => {{
+        match ($lhs, $rhs) {
+            (Value::Scalar(ScalarValue::I8(lhs)), Value::Scalar(ScalarValue::I8(rhs))) => lhs
+                .$method(*rhs)
+                .map(|value| Value::Scalar(ScalarValue::I8(value)))
+                .ok_or_else(|| arithmetic_overflow($operation)),
+            (Value::Scalar(ScalarValue::I16(lhs)), Value::Scalar(ScalarValue::I16(rhs))) => lhs
+                .$method(*rhs)
+                .map(|value| Value::Scalar(ScalarValue::I16(value)))
+                .ok_or_else(|| arithmetic_overflow($operation)),
+            (Value::Scalar(ScalarValue::I32(lhs)), Value::Scalar(ScalarValue::I32(rhs))) => lhs
+                .$method(*rhs)
+                .map(|value| Value::Scalar(ScalarValue::I32(value)))
+                .ok_or_else(|| arithmetic_overflow($operation)),
+            (Value::Scalar(ScalarValue::I64(lhs)), Value::Scalar(ScalarValue::I64(rhs))) => lhs
+                .$method(*rhs)
+                .map(|value| Value::Scalar(ScalarValue::I64(value)))
+                .ok_or_else(|| arithmetic_overflow($operation)),
+            (Value::Scalar(ScalarValue::U8(lhs)), Value::Scalar(ScalarValue::U8(rhs))) => lhs
+                .$method(*rhs)
+                .map(|value| Value::Scalar(ScalarValue::U8(value)))
+                .ok_or_else(|| arithmetic_overflow($operation)),
+            (Value::Scalar(ScalarValue::U16(lhs)), Value::Scalar(ScalarValue::U16(rhs))) => lhs
+                .$method(*rhs)
+                .map(|value| Value::Scalar(ScalarValue::U16(value)))
+                .ok_or_else(|| arithmetic_overflow($operation)),
+            (Value::Scalar(ScalarValue::U32(lhs)), Value::Scalar(ScalarValue::U32(rhs))) => lhs
+                .$method(*rhs)
+                .map(|value| Value::Scalar(ScalarValue::U32(value)))
+                .ok_or_else(|| arithmetic_overflow($operation)),
+            (Value::Scalar(ScalarValue::U64(lhs)), Value::Scalar(ScalarValue::U64(rhs))) => lhs
+                .$method(*rhs)
+                .map(|value| Value::Scalar(ScalarValue::U64(value)))
+                .ok_or_else(|| arithmetic_overflow($operation)),
+            (Value::Scalar(ScalarValue::F32(lhs)), Value::Scalar(ScalarValue::F32(rhs))) => {
+                Ok(Value::Scalar(ScalarValue::F32(*lhs $float_op *rhs)))
+            }
+            (Value::Scalar(ScalarValue::F64(lhs)), Value::Scalar(ScalarValue::F64(rhs))) => {
+                Ok(Value::Scalar(ScalarValue::F64(*lhs $float_op *rhs)))
+            }
+            _ => type_mismatch($operation),
+        }
+    }};
+}
+
+macro_rules! scalar_div_rem {
+    ($lhs:expr, $rhs:expr, $operation:expr, $method:ident, $float_op:tt) => {{
+        match ($lhs, $rhs) {
+            (Value::Scalar(ScalarValue::I8(lhs)), Value::Scalar(ScalarValue::I8(rhs))) => {
+                checked_div_rem(*lhs, *rhs, ScalarValue::I8, $operation, |lhs, rhs| {
+                    lhs.$method(rhs)
+                })
+            }
+            (Value::Scalar(ScalarValue::I16(lhs)), Value::Scalar(ScalarValue::I16(rhs))) => {
+                checked_div_rem(*lhs, *rhs, ScalarValue::I16, $operation, |lhs, rhs| {
+                    lhs.$method(rhs)
+                })
+            }
+            (Value::Scalar(ScalarValue::I32(lhs)), Value::Scalar(ScalarValue::I32(rhs))) => {
+                checked_div_rem(*lhs, *rhs, ScalarValue::I32, $operation, |lhs, rhs| {
+                    lhs.$method(rhs)
+                })
+            }
+            (Value::Scalar(ScalarValue::I64(lhs)), Value::Scalar(ScalarValue::I64(rhs))) => {
+                checked_div_rem(*lhs, *rhs, ScalarValue::I64, $operation, |lhs, rhs| {
+                    lhs.$method(rhs)
+                })
+            }
+            (Value::Scalar(ScalarValue::U8(lhs)), Value::Scalar(ScalarValue::U8(rhs))) => {
+                checked_div_rem(*lhs, *rhs, ScalarValue::U8, $operation, |lhs, rhs| {
+                    lhs.$method(rhs)
+                })
+            }
+            (Value::Scalar(ScalarValue::U16(lhs)), Value::Scalar(ScalarValue::U16(rhs))) => {
+                checked_div_rem(*lhs, *rhs, ScalarValue::U16, $operation, |lhs, rhs| {
+                    lhs.$method(rhs)
+                })
+            }
+            (Value::Scalar(ScalarValue::U32(lhs)), Value::Scalar(ScalarValue::U32(rhs))) => {
+                checked_div_rem(*lhs, *rhs, ScalarValue::U32, $operation, |lhs, rhs| {
+                    lhs.$method(rhs)
+                })
+            }
+            (Value::Scalar(ScalarValue::U64(lhs)), Value::Scalar(ScalarValue::U64(rhs))) => {
+                checked_div_rem(*lhs, *rhs, ScalarValue::U64, $operation, |lhs, rhs| {
+                    lhs.$method(rhs)
+                })
+            }
+            (Value::Scalar(ScalarValue::F32(lhs)), Value::Scalar(ScalarValue::F32(rhs))) => {
+                if *rhs == 0.0 {
+                    Err(VmError::new(VmErrorKind::DivisionByZero))
+                } else {
+                    Ok(Value::Scalar(ScalarValue::F32(*lhs $float_op *rhs)))
+                }
+            }
+            (Value::Scalar(ScalarValue::F64(lhs)), Value::Scalar(ScalarValue::F64(rhs))) => {
+                if *rhs == 0.0 {
+                    Err(VmError::new(VmErrorKind::DivisionByZero))
+                } else {
+                    Ok(Value::Scalar(ScalarValue::F64(*lhs $float_op *rhs)))
+                }
+            }
+            _ => type_mismatch($operation),
+        }
+    }};
+}
+
+macro_rules! scalar_comparison {
+    ($lhs:expr, $rhs:expr, $operation:expr, $op:tt) => {{
+        match ($lhs, $rhs) {
+            (Value::Scalar(ScalarValue::I8(lhs)), Value::Scalar(ScalarValue::I8(rhs))) => Ok(*lhs $op *rhs),
+            (Value::Scalar(ScalarValue::I16(lhs)), Value::Scalar(ScalarValue::I16(rhs))) => Ok(*lhs $op *rhs),
+            (Value::Scalar(ScalarValue::I32(lhs)), Value::Scalar(ScalarValue::I32(rhs))) => Ok(*lhs $op *rhs),
+            (Value::Scalar(ScalarValue::I64(lhs)), Value::Scalar(ScalarValue::I64(rhs))) => Ok(*lhs $op *rhs),
+            (Value::Scalar(ScalarValue::U8(lhs)), Value::Scalar(ScalarValue::U8(rhs))) => Ok(*lhs $op *rhs),
+            (Value::Scalar(ScalarValue::U16(lhs)), Value::Scalar(ScalarValue::U16(rhs))) => Ok(*lhs $op *rhs),
+            (Value::Scalar(ScalarValue::U32(lhs)), Value::Scalar(ScalarValue::U32(rhs))) => Ok(*lhs $op *rhs),
+            (Value::Scalar(ScalarValue::U64(lhs)), Value::Scalar(ScalarValue::U64(rhs))) => Ok(*lhs $op *rhs),
+            (Value::Scalar(ScalarValue::F32(lhs)), Value::Scalar(ScalarValue::F32(rhs))) => Ok(*lhs $op *rhs),
+            (Value::Scalar(ScalarValue::F64(lhs)), Value::Scalar(ScalarValue::F64(rhs))) => Ok(*lhs $op *rhs),
+            _ => type_mismatch($operation),
+        }
+    }};
+}
+
 #[inline]
 pub(crate) fn add_numeric(lhs: &Value, rhs: &Value) -> VmResult<Value> {
-    match (lhs, rhs) {
-        (
-            Value::Scalar(vela_common::ScalarValue::I64(lhs)),
-            Value::Scalar(vela_common::ScalarValue::I64(rhs)),
-        ) => Ok(Value::Scalar(vela_common::ScalarValue::I64(lhs + rhs))),
-        (
-            Value::Scalar(vela_common::ScalarValue::F64(lhs)),
-            Value::Scalar(vela_common::ScalarValue::F64(rhs)),
-        ) => Ok(Value::Scalar(vela_common::ScalarValue::F64(lhs + rhs))),
-        _ => type_mismatch("add"),
-    }
+    scalar_checked_arithmetic!(lhs, rhs, "add", checked_add, +)
 }
 
 #[inline]
 pub(crate) fn sub_numeric(lhs: &Value, rhs: &Value) -> VmResult<Value> {
-    match (lhs, rhs) {
-        (
-            Value::Scalar(vela_common::ScalarValue::I64(lhs)),
-            Value::Scalar(vela_common::ScalarValue::I64(rhs)),
-        ) => Ok(Value::Scalar(vela_common::ScalarValue::I64(lhs - rhs))),
-        (
-            Value::Scalar(vela_common::ScalarValue::F64(lhs)),
-            Value::Scalar(vela_common::ScalarValue::F64(rhs)),
-        ) => Ok(Value::Scalar(vela_common::ScalarValue::F64(lhs - rhs))),
-        _ => type_mismatch("sub"),
-    }
+    scalar_checked_arithmetic!(lhs, rhs, "sub", checked_sub, -)
 }
 
 #[inline]
 pub(crate) fn mul_numeric(lhs: &Value, rhs: &Value) -> VmResult<Value> {
-    match (lhs, rhs) {
-        (
-            Value::Scalar(vela_common::ScalarValue::I64(lhs)),
-            Value::Scalar(vela_common::ScalarValue::I64(rhs)),
-        ) => Ok(Value::Scalar(vela_common::ScalarValue::I64(lhs * rhs))),
-        (
-            Value::Scalar(vela_common::ScalarValue::F64(lhs)),
-            Value::Scalar(vela_common::ScalarValue::F64(rhs)),
-        ) => Ok(Value::Scalar(vela_common::ScalarValue::F64(lhs * rhs))),
-        _ => type_mismatch("mul"),
-    }
+    scalar_checked_arithmetic!(lhs, rhs, "mul", checked_mul, *)
 }
 
 #[inline]
 pub(crate) fn negate_numeric(value: &Value) -> VmResult<Value> {
     match value {
-        Value::Scalar(vela_common::ScalarValue::I64(value)) => {
-            value.checked_neg().map(Value::i64).ok_or_else(|| {
-                VmError::new(VmErrorKind::TypeMismatch {
-                    operation: "negate",
-                })
-            })
-        }
-        Value::Scalar(vela_common::ScalarValue::F64(value)) => {
-            Ok(Value::Scalar(vela_common::ScalarValue::F64(-value)))
-        }
-        _ => Err(VmError::new(VmErrorKind::TypeMismatch {
-            operation: "negate",
-        })),
+        Value::Scalar(ScalarValue::I8(value)) => value
+            .checked_neg()
+            .map(|value| Value::Scalar(ScalarValue::I8(value)))
+            .ok_or_else(|| arithmetic_overflow("negate")),
+        Value::Scalar(ScalarValue::I16(value)) => value
+            .checked_neg()
+            .map(|value| Value::Scalar(ScalarValue::I16(value)))
+            .ok_or_else(|| arithmetic_overflow("negate")),
+        Value::Scalar(ScalarValue::I32(value)) => value
+            .checked_neg()
+            .map(|value| Value::Scalar(ScalarValue::I32(value)))
+            .ok_or_else(|| arithmetic_overflow("negate")),
+        Value::Scalar(ScalarValue::I64(value)) => value
+            .checked_neg()
+            .map(|value| Value::Scalar(ScalarValue::I64(value)))
+            .ok_or_else(|| arithmetic_overflow("negate")),
+        Value::Scalar(ScalarValue::F32(value)) => Ok(Value::Scalar(ScalarValue::F32(-value))),
+        Value::Scalar(ScalarValue::F64(value)) => Ok(Value::Scalar(ScalarValue::F64(-value))),
+        _ => type_mismatch("negate"),
     }
 }
 
 #[inline]
 pub(crate) fn div_numeric(lhs: &Value, rhs: &Value) -> VmResult<Value> {
-    match (lhs, rhs) {
-        (
-            Value::Scalar(vela_common::ScalarValue::I64(_)),
-            Value::Scalar(vela_common::ScalarValue::I64(0)),
-        ) => Err(VmError::new(VmErrorKind::DivisionByZero)),
-        (
-            Value::Scalar(vela_common::ScalarValue::I64(lhs)),
-            Value::Scalar(vela_common::ScalarValue::I64(rhs)),
-        ) => Ok(Value::Scalar(vela_common::ScalarValue::I64(lhs / rhs))),
-        (
-            Value::Scalar(vela_common::ScalarValue::F64(_)),
-            Value::Scalar(vela_common::ScalarValue::F64(rhs)),
-        ) if *rhs == 0.0 => Err(VmError::new(VmErrorKind::DivisionByZero)),
-        (
-            Value::Scalar(vela_common::ScalarValue::F64(lhs)),
-            Value::Scalar(vela_common::ScalarValue::F64(rhs)),
-        ) => Ok(Value::Scalar(vela_common::ScalarValue::F64(lhs / rhs))),
-        _ => Err(VmError::new(VmErrorKind::TypeMismatch { operation: "div" })),
-    }
+    scalar_div_rem!(lhs, rhs, "div", checked_div, /)
 }
 
 #[inline]
 pub(crate) fn rem_numeric(lhs: &Value, rhs: &Value) -> VmResult<Value> {
-    match (lhs, rhs) {
-        (
-            Value::Scalar(vela_common::ScalarValue::I64(_)),
-            Value::Scalar(vela_common::ScalarValue::I64(0)),
-        ) => Err(VmError::new(VmErrorKind::DivisionByZero)),
-        (
-            Value::Scalar(vela_common::ScalarValue::I64(lhs)),
-            Value::Scalar(vela_common::ScalarValue::I64(rhs)),
-        ) => Ok(Value::Scalar(vela_common::ScalarValue::I64(lhs % rhs))),
-        (
-            Value::Scalar(vela_common::ScalarValue::F64(_)),
-            Value::Scalar(vela_common::ScalarValue::F64(rhs)),
-        ) if *rhs == 0.0 => Err(VmError::new(VmErrorKind::DivisionByZero)),
-        (
-            Value::Scalar(vela_common::ScalarValue::F64(lhs)),
-            Value::Scalar(vela_common::ScalarValue::F64(rhs)),
-        ) => Ok(Value::Scalar(vela_common::ScalarValue::F64(lhs % rhs))),
-        _ => Err(VmError::new(VmErrorKind::TypeMismatch { operation: "rem" })),
-    }
+    scalar_div_rem!(lhs, rhs, "rem", checked_rem, %)
 }
 
 #[inline]
 pub(crate) fn less_numeric(lhs: &Value, rhs: &Value) -> VmResult<bool> {
-    match (lhs, rhs) {
-        (
-            Value::Scalar(vela_common::ScalarValue::I64(lhs)),
-            Value::Scalar(vela_common::ScalarValue::I64(rhs)),
-        ) => Ok(lhs < rhs),
-        (
-            Value::Scalar(vela_common::ScalarValue::F64(lhs)),
-            Value::Scalar(vela_common::ScalarValue::F64(rhs)),
-        ) => Ok(lhs < rhs),
-        _ => type_mismatch("less"),
-    }
+    scalar_comparison!(lhs, rhs, "less", <)
 }
 
 #[inline]
 pub(crate) fn less_equal_numeric(lhs: &Value, rhs: &Value) -> VmResult<bool> {
-    match (lhs, rhs) {
-        (
-            Value::Scalar(vela_common::ScalarValue::I64(lhs)),
-            Value::Scalar(vela_common::ScalarValue::I64(rhs)),
-        ) => Ok(lhs <= rhs),
-        (
-            Value::Scalar(vela_common::ScalarValue::F64(lhs)),
-            Value::Scalar(vela_common::ScalarValue::F64(rhs)),
-        ) => Ok(lhs <= rhs),
-        _ => type_mismatch("less_equal"),
-    }
+    scalar_comparison!(lhs, rhs, "less_equal", <=)
 }
 
 #[inline]
 pub(crate) fn greater_numeric(lhs: &Value, rhs: &Value) -> VmResult<bool> {
-    match (lhs, rhs) {
-        (
-            Value::Scalar(vela_common::ScalarValue::I64(lhs)),
-            Value::Scalar(vela_common::ScalarValue::I64(rhs)),
-        ) => Ok(lhs > rhs),
-        (
-            Value::Scalar(vela_common::ScalarValue::F64(lhs)),
-            Value::Scalar(vela_common::ScalarValue::F64(rhs)),
-        ) => Ok(lhs > rhs),
-        _ => type_mismatch("greater"),
-    }
+    scalar_comparison!(lhs, rhs, "greater", >)
 }
 
 #[inline]
 pub(crate) fn greater_equal_numeric(lhs: &Value, rhs: &Value) -> VmResult<bool> {
-    match (lhs, rhs) {
-        (
-            Value::Scalar(vela_common::ScalarValue::I64(lhs)),
-            Value::Scalar(vela_common::ScalarValue::I64(rhs)),
-        ) => Ok(lhs >= rhs),
-        (
-            Value::Scalar(vela_common::ScalarValue::F64(lhs)),
-            Value::Scalar(vela_common::ScalarValue::F64(rhs)),
-        ) => Ok(lhs >= rhs),
-        _ => type_mismatch("greater_equal"),
-    }
+    scalar_comparison!(lhs, rhs, "greater_equal", >=)
 }
 
 pub(crate) fn binary_int_literal_numeric(
@@ -429,6 +435,29 @@ fn parse_integer_literal_as(literal: &str, max: u128) -> VmResult<u128> {
     } else {
         type_mismatch("binary_int_literal")
     }
+}
+
+fn checked_div_rem<T>(
+    lhs: T,
+    rhs: T,
+    ctor: impl FnOnce(T) -> ScalarValue,
+    operation: &'static str,
+    apply: impl FnOnce(T, T) -> Option<T>,
+) -> VmResult<Value>
+where
+    T: Default + PartialEq,
+{
+    if rhs == T::default() {
+        return Err(VmError::new(VmErrorKind::DivisionByZero));
+    }
+    apply(lhs, rhs)
+        .map(|value| Value::Scalar(ctor(value)))
+        .ok_or_else(|| arithmetic_overflow(operation))
+}
+
+#[inline]
+fn arithmetic_overflow(operation: &'static str) -> VmError {
+    VmError::new(VmErrorKind::ArithmeticOverflow { operation })
 }
 
 #[inline]

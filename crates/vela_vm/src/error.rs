@@ -137,6 +137,9 @@ pub enum VmErrorKind {
     TypeMismatch {
         operation: &'static str,
     },
+    ArithmeticOverflow {
+        operation: &'static str,
+    },
     TypeContractViolation {
         expected: String,
         actual: String,
@@ -197,6 +200,7 @@ impl VmErrorKind {
             Self::ConstantOutOfBounds { .. } => "vm::constant_out_of_bounds",
             Self::InstructionOutOfBounds { .. } => "vm::instruction_out_of_bounds",
             Self::TypeMismatch { .. } => "vm::type_mismatch",
+            Self::ArithmeticOverflow { .. } => "vm::arithmetic_overflow",
             Self::TypeContractViolation { .. } => "vm::type_contract_violation",
             Self::DivisionByZero => "vm::division_by_zero",
             Self::UnknownNative { .. } => "vm::unknown_native",
@@ -230,6 +234,9 @@ impl VmErrorKind {
             }
             Self::TypeMismatch { operation } => {
                 format!("type mismatch during `{operation}`")
+            }
+            Self::ArithmeticOverflow { operation } => {
+                format!("arithmetic overflow during `{operation}`")
             }
             Self::TypeContractViolation {
                 expected,

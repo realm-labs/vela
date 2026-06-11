@@ -1383,21 +1383,21 @@ then build registry, syntax, guards, and runtime behavior on the new model.
 
 #### Task 6.3: Rewrite numeric operations around `ScalarValue`
 
-- [ ] Replace `numeric_ops.rs` with scalar-aware ops.
-- [ ] Implement:
-  - [ ] add/sub/mul/div/rem;
-  - [ ] negation for signed ints/floats;
-  - [ ] comparisons;
-  - [ ] equality.
-- [ ] Enforce exact matching numeric tags.
-- [ ] Enforce checked overflow.
-- [ ] Preserve division-by-zero behavior.
+- [x] Replace `numeric_ops.rs` with scalar-aware ops.
+- [x] Implement:
+  - [x] add/sub/mul/div/rem;
+  - [x] negation for signed ints/floats;
+  - [x] comparisons;
+  - [x] equality.
+- [x] Enforce exact matching numeric tags.
+- [x] Enforce checked overflow.
+- [x] Preserve division-by-zero behavior.
 
 **Termination condition:**
 
-- [ ] All scalar types have arithmetic tests.
-- [ ] Mixed numeric types fail.
-- [ ] Overflow tests pass.
+- [x] All scalar types have arithmetic tests.
+- [x] Mixed numeric types fail.
+- [x] Overflow tests pass.
 
 #### Task 6.4: Execute deferred literal operators
 

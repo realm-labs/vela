@@ -466,23 +466,10 @@ fn scalar_values_equal(lhs: &Value, rhs: &Value) -> Option<bool> {
     match (lhs, rhs) {
         (Value::Null, Value::Null) => Some(true),
         (Value::Bool(lhs), Value::Bool(rhs)) => Some(lhs == rhs),
+        (Value::Scalar(lhs), Value::Scalar(rhs)) => Some(lhs == rhs),
         (
-            Value::Scalar(vela_common::ScalarValue::I64(lhs)),
-            Value::Scalar(vela_common::ScalarValue::I64(rhs)),
-        ) => Some(lhs == rhs),
-        (
-            Value::Scalar(vela_common::ScalarValue::F64(lhs)),
-            Value::Scalar(vela_common::ScalarValue::F64(rhs)),
-        ) => Some(lhs == rhs),
-        (
-            Value::Null
-            | Value::Bool(_)
-            | Value::Scalar(vela_common::ScalarValue::I64(_))
-            | Value::Scalar(vela_common::ScalarValue::F64(_)),
-            Value::Null
-            | Value::Bool(_)
-            | Value::Scalar(vela_common::ScalarValue::I64(_))
-            | Value::Scalar(vela_common::ScalarValue::F64(_)),
+            Value::Null | Value::Bool(_) | Value::Scalar(_),
+            Value::Null | Value::Bool(_) | Value::Scalar(_),
         ) => Some(false),
         _ => None,
     }
