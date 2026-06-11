@@ -3,7 +3,7 @@ use crate::{
     CallFrame, ExecutionBudget, HeapExecution, Value, VmError, VmErrorKind, VmResult,
     record_fields, stored_runtime_value,
 };
-use vela_bytecode::Register;
+use vela_bytecode::{LinkedProgram, Register, TypeHandle, VariantHandle};
 use vela_def::{TypeId, VariantId};
 
 pub(crate) fn dispatch_get_record_field(
@@ -79,6 +79,29 @@ pub(crate) fn dispatch_get_enum_slot(
 ) -> VmResult<()> {
     let value = get_enum_slot_value(frame.read(value)?, field, slot, heap.as_deref())?;
     frame.write(dst, value)
+}
+
+pub(crate) fn dispatch_linked_enum_tag_equal(
+    frame: &mut CallFrame,
+    heap: Option<&HeapExecution<'_>>,
+    program: &LinkedProgram,
+    dst: Register,
+    value: Register,
+    enum_ty: TypeHandle,
+    variant: VariantHandle,
+) -> VmResult<()> {
+    let enum_ty = program.ty(enum_ty).ok_or_else(|| {
+        VmError::new(VmErrorKind::UnsupportedLinkedInstruction {
+            opcode: "EnumTagEqual",
+        })
+    })?;
+    let variant = program.variant(variant).ok_or_else(|| {
+        VmError::new(VmErrorKind::UnsupportedLinkedInstruction {
+            opcode: "EnumTagEqual",
+        })
+    })?;
+    let matches = enum_tag_id_equal(frame.read(value)?, enum_ty.id, variant.id, heap);
+    frame.write(dst, Value::Bool(matches))
 }
 
 pub(crate) fn get_record_field_value(

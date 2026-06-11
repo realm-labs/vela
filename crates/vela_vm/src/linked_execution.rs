@@ -1,8 +1,5 @@
 use vela_bytecode::linked::{InstructionKind, LinkedMethodDispatchKind};
-use vela_bytecode::{
-    InstructionOffset, LinkedCodeObject, LinkedProgram, LinkedType, LinkedVariant, Register,
-    TypeHandle, VariantHandle,
-};
+use vela_bytecode::{InstructionOffset, LinkedCodeObject, LinkedProgram, Register};
 use vela_common::Span;
 
 use super::*;
@@ -668,15 +665,15 @@ impl Vm {
                     enum_ty,
                     variant,
                 } => {
-                    let enum_ty = linked_type(call.program, *enum_ty, "EnumTagEqual")?;
-                    let variant = linked_variant(call.program, *variant, "EnumTagEqual")?;
-                    let matches = field_access::enum_tag_id_equal(
-                        frame.read(*value)?,
-                        enum_ty.id,
-                        variant.id,
+                    field_access::dispatch_linked_enum_tag_equal(
+                        &mut frame,
                         heap.as_deref(),
-                    );
-                    frame.write(*dst, Value::Bool(matches))?;
+                        call.program,
+                        *dst,
+                        *value,
+                        *enum_ty,
+                        *variant,
+                    )?;
                 }
                 InstructionKind::LoadGlobal {
                     dst,
@@ -955,24 +952,4 @@ fn execute_linked_return_guard(
         program.debug_name(guard.context.debug_name),
     )?;
     Ok(value)
-}
-
-fn linked_type<'program>(
-    program: &'program LinkedProgram,
-    ty: TypeHandle,
-    opcode: &'static str,
-) -> VmResult<&'program LinkedType> {
-    program
-        .ty(ty)
-        .ok_or_else(|| VmError::new(VmErrorKind::UnsupportedLinkedInstruction { opcode }))
-}
-
-fn linked_variant<'program>(
-    program: &'program LinkedProgram,
-    variant: VariantHandle,
-    opcode: &'static str,
-) -> VmResult<&'program LinkedVariant> {
-    program
-        .variant(variant)
-        .ok_or_else(|| VmError::new(VmErrorKind::UnsupportedLinkedInstruction { opcode }))
 }
