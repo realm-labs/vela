@@ -11,12 +11,28 @@ pub(crate) fn i64_from_i32(args: &[OwnedValue]) -> VmResult<OwnedValue> {
     Ok(OwnedValue::Scalar(ScalarValue::I64(i64::from(*value))))
 }
 
+pub(crate) fn i32_from_i16(args: &[OwnedValue]) -> VmResult<OwnedValue> {
+    expect_arity("i32::from_i16", args, 1)?;
+    let OwnedValue::Scalar(ScalarValue::I16(value)) = &args[0] else {
+        return type_error("i32::from_i16");
+    };
+    Ok(OwnedValue::Scalar(ScalarValue::I32(i32::from(*value))))
+}
+
 pub(crate) fn u64_from_u32(args: &[OwnedValue]) -> VmResult<OwnedValue> {
     expect_arity("u64::from_u32", args, 1)?;
     let OwnedValue::Scalar(ScalarValue::U32(value)) = &args[0] else {
         return type_error("u64::from_u32");
     };
     Ok(OwnedValue::Scalar(ScalarValue::U64(u64::from(*value))))
+}
+
+pub(crate) fn u32_from_u16(args: &[OwnedValue]) -> VmResult<OwnedValue> {
+    expect_arity("u32::from_u16", args, 1)?;
+    let OwnedValue::Scalar(ScalarValue::U16(value)) = &args[0] else {
+        return type_error("u32::from_u16");
+    };
+    Ok(OwnedValue::Scalar(ScalarValue::U32(u32::from(*value))))
 }
 
 pub(crate) fn f64_from_f32(args: &[OwnedValue]) -> VmResult<OwnedValue> {
@@ -38,6 +54,17 @@ pub(crate) fn i8_try_from_i64(args: &[OwnedValue]) -> VmResult<OwnedValue> {
     }
 }
 
+pub(crate) fn i16_try_from_i64(args: &[OwnedValue]) -> VmResult<OwnedValue> {
+    expect_arity("i16::try_from_i64", args, 1)?;
+    let OwnedValue::Scalar(ScalarValue::I64(value)) = &args[0] else {
+        return type_error("i16::try_from_i64");
+    };
+    match i16::try_from(*value) {
+        Ok(value) => Ok(ok_scalar(ScalarValue::I16(value))),
+        Err(_) => Ok(err_string("i64 value is outside i16 range")),
+    }
+}
+
 pub(crate) fn u8_try_from_u64(args: &[OwnedValue]) -> VmResult<OwnedValue> {
     expect_arity("u8::try_from_u64", args, 1)?;
     let OwnedValue::Scalar(ScalarValue::U64(value)) = &args[0] else {
@@ -46,6 +73,17 @@ pub(crate) fn u8_try_from_u64(args: &[OwnedValue]) -> VmResult<OwnedValue> {
     match u8::try_from(*value) {
         Ok(value) => Ok(ok_scalar(ScalarValue::U8(value))),
         Err(_) => Ok(err_string("u64 value is outside u8 range")),
+    }
+}
+
+pub(crate) fn u16_try_from_u64(args: &[OwnedValue]) -> VmResult<OwnedValue> {
+    expect_arity("u16::try_from_u64", args, 1)?;
+    let OwnedValue::Scalar(ScalarValue::U64(value)) = &args[0] else {
+        return type_error("u16::try_from_u64");
+    };
+    match u16::try_from(*value) {
+        Ok(value) => Ok(ok_scalar(ScalarValue::U16(value))),
+        Err(_) => Ok(err_string("u64 value is outside u16 range")),
     }
 }
 

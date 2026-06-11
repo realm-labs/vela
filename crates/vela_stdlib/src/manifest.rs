@@ -554,11 +554,25 @@ pub const STD_FUNCTIONS: &[StdFunctionSpec] = &[
         "Decodes hexadecimal text to bytes or returns an error string.",
     ),
     StdFunctionSpec::new(
+        "i32",
+        "from_i16",
+        &[StdParamSpec::new("value", "i16")],
+        "i32",
+        "Widens an i16 value to i32.",
+    ),
+    StdFunctionSpec::new(
         "i64",
         "from_i32",
         &[StdParamSpec::new("value", "i32")],
         "i64",
         "Widens an i32 value to i64.",
+    ),
+    StdFunctionSpec::new(
+        "u32",
+        "from_u16",
+        &[StdParamSpec::new("value", "u16")],
+        "u32",
+        "Widens a u16 value to u32.",
     ),
     StdFunctionSpec::new(
         "u64",
@@ -575,11 +589,25 @@ pub const STD_FUNCTIONS: &[StdFunctionSpec] = &[
         "Widens an f32 value to f64.",
     ),
     StdFunctionSpec::new(
+        "i16",
+        "try_from_i64",
+        &[StdParamSpec::new("value", "i64")],
+        "Result",
+        "Narrows an i64 value to i16 or returns an error string.",
+    ),
+    StdFunctionSpec::new(
         "i8",
         "try_from_i64",
         &[StdParamSpec::new("value", "i64")],
         "Result",
         "Narrows an i64 value to i8 or returns an error string.",
+    ),
+    StdFunctionSpec::new(
+        "u16",
+        "try_from_u64",
+        &[StdParamSpec::new("value", "u64")],
+        "Result",
+        "Narrows a u64 value to u16 or returns an error string.",
     ),
     StdFunctionSpec::new(
         "u8",
@@ -736,7 +764,17 @@ mod tests {
         assert!(
             STD_FUNCTIONS
                 .iter()
+                .any(|spec| spec.module == "i32" && spec.name == "from_i16")
+        );
+        assert!(
+            STD_FUNCTIONS
+                .iter()
                 .any(|spec| spec.module == "i64" && spec.name == "from_i32")
+        );
+        assert!(
+            STD_FUNCTIONS
+                .iter()
+                .any(|spec| spec.module == "i16" && spec.name == "try_from_i64")
         );
         assert!(
             STD_FUNCTIONS

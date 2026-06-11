@@ -1468,21 +1468,27 @@ unless the implementation stays small.
 Representative conversion slice implemented:
 
 - [x] `i64::from_i32`
+- [x] `i32::from_i16`
 - [x] `u64::from_u32`
+- [x] `u32::from_u16`
 - [x] `f64::from_f32`
 - [x] `i8::try_from_i64`
+- [x] `i16::try_from_i64`
 - [x] `u8::try_from_u64`
+- [x] `u16::try_from_u64`
 - [x] `f32::try_from_f64` with finite-range narrowing policy
 - [x] Current slice is manifest-driven and registered in stdlib runtime.
 
-- [ ] Add infallible widening where truly safe:
+- [x] Add infallible widening where truly safe:
+  - [x] `i32::from_i16`
   - [x] `i64::from_i32`
+  - [x] `u32::from_u16`
   - [x] `u64::from_u32`
-  - [ ] etc.
-- [ ] Add fallible narrowing:
+- [x] Add fallible narrowing:
+  - [x] `i16::try_from_i64`
   - [x] `i8::try_from_i64`
+  - [x] `u16::try_from_u64`
   - [x] `u8::try_from_u64`
-  - [ ] etc.
 - [x] Add float conversions:
   - [x] `f64::from_f32`
   - [x] `f32::try_from_f64` or explicit policy.

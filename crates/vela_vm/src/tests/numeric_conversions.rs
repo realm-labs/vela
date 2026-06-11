@@ -25,11 +25,31 @@ fn numeric_widening_conversions_return_wider_scalar_tags() {
         run_conversion_source(
             r#"
 fn main() {
+    return i32::from_i16(-12i16);
+}
+"#
+        ),
+        Ok(OwnedValue::Scalar(ScalarValue::I32(-12)))
+    );
+    assert_eq!(
+        run_conversion_source(
+            r#"
+fn main() {
     return i64::from_i32(12);
 }
 "#
         ),
         Ok(OwnedValue::Scalar(ScalarValue::I64(12)))
+    );
+    assert_eq!(
+        run_conversion_source(
+            r#"
+fn main() {
+    return u32::from_u16(255u16);
+}
+"#
+        ),
+        Ok(OwnedValue::Scalar(ScalarValue::U32(255)))
     );
     assert_eq!(
         run_conversion_source(
@@ -83,11 +103,31 @@ fn numeric_try_conversions_return_result_ok_with_narrow_scalar_tags() {
         run_conversion_source(
             r#"
 fn main() {
+    return result::unwrap_or(i16::try_from_i64(-1024), 0i16);
+}
+"#
+        ),
+        Ok(OwnedValue::Scalar(ScalarValue::I16(-1024)))
+    );
+    assert_eq!(
+        run_conversion_source(
+            r#"
+fn main() {
     return result::unwrap_or(i8::try_from_i64(-12), 0i8);
 }
 "#
         ),
         Ok(OwnedValue::Scalar(ScalarValue::I8(-12)))
+    );
+    assert_eq!(
+        run_conversion_source(
+            r#"
+fn main() {
+    return result::unwrap_or(u16::try_from_u64(1024u64), 0u16);
+}
+"#
+        ),
+        Ok(OwnedValue::Scalar(ScalarValue::U16(1024)))
     );
     assert_eq!(
         run_conversion_source(
@@ -117,7 +157,27 @@ fn numeric_try_conversions_return_result_err_out_of_range() {
         run_conversion_source(
             r#"
 fn main() {
+    return result::is_err(i16::try_from_i64(32768));
+}
+"#
+        ),
+        Ok(OwnedValue::Bool(true))
+    );
+    assert_eq!(
+        run_conversion_source(
+            r#"
+fn main() {
     return result::is_err(i8::try_from_i64(128));
+}
+"#
+        ),
+        Ok(OwnedValue::Bool(true))
+    );
+    assert_eq!(
+        run_conversion_source(
+            r#"
+fn main() {
+    return result::is_err(u16::try_from_u64(65536u64));
 }
 "#
         ),
