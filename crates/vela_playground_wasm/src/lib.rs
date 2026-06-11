@@ -127,6 +127,10 @@ fn source_error_response(error: EngineSourceError) -> PlaygroundResponse {
 }
 
 fn compile_error_response(error: CompileError) -> PlaygroundResponse {
+    if let Some(diagnostic) = error.to_diagnostic() {
+        return diagnostic_response(diagnostic);
+    }
+
     match error.kind {
         CompileErrorKind::SyntaxDiagnostics(diagnostics)
         | CompileErrorKind::SemanticDiagnostics(diagnostics) => PlaygroundResponse {

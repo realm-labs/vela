@@ -271,7 +271,8 @@ impl HotReloadError {
     pub fn source_span(&self) -> Option<Span> {
         match &self.kind {
             HotReloadErrorKind::Compile(error) => compile_diagnostics(error)
-                .and_then(|diagnostics| diagnostics.iter().find_map(|diagnostic| diagnostic.span)),
+                .into_iter()
+                .find_map(|diagnostic| diagnostic.span),
             HotReloadErrorKind::RemovedSchema { source_span, .. }
             | HotReloadErrorKind::ChangedSchema { source_span, .. }
             | HotReloadErrorKind::ChangedSchemaAbi { source_span, .. }
@@ -312,8 +313,7 @@ impl HotReloadError {
         };
         compile_diagnostics(error)
             .into_iter()
-            .flat_map(|diagnostics| diagnostics.iter())
-            .flat_map(|diagnostic| diagnostic.labels.iter().cloned())
+            .flat_map(|diagnostic| diagnostic.labels.into_iter())
             .collect()
     }
 
@@ -322,21 +322,23 @@ impl HotReloadError {
         let HotReloadErrorKind::Compile(error) = &self.kind else {
             return Vec::new();
         };
-        compile_diagnostics(error).map_or_else(Vec::new, |diagnostics| diagnostics.to_vec())
+        compile_diagnostics(error)
     }
 }
 
-fn compile_diagnostics(error: &CompileError) -> Option<&[Diagnostic]> {
+fn compile_diagnostics(error: &CompileError) -> Vec<Diagnostic> {
     match &error.kind {
         CompileErrorKind::SyntaxDiagnostics(diagnostics)
-        | CompileErrorKind::SemanticDiagnostics(diagnostics) => Some(diagnostics),
+        | CompileErrorKind::SemanticDiagnostics(diagnostics) => diagnostics.clone(),
         CompileErrorKind::FunctionNotFound(_)
         | CompileErrorKind::UnknownLocal(_)
-        | CompileErrorKind::InvalidIntLiteral { .. }
-        | CompileErrorKind::InvalidFloatLiteral { .. }
         | CompileErrorKind::RegisterOverflow
         | CompileErrorKind::BytecodeVerification(_)
-        | CompileErrorKind::UnsupportedSyntax(_) => None,
+        | CompileErrorKind::UnsupportedSyntax(_) => Vec::new(),
+        CompileErrorKind::InvalidIntLiteral { .. }
+        | CompileErrorKind::InvalidFloatLiteral { .. } => {
+            error.to_diagnostic().into_iter().collect()
+        }
     }
 }
 

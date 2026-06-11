@@ -23,27 +23,30 @@ pub(crate) fn render_vm_error(path: &Path, error: &VmError) -> String {
 }
 
 fn render_compile_error(path: &Path, error: &CompileError) -> String {
-    let Some(diagnostics) = compile_diagnostics(error) else {
+    let diagnostics = compile_diagnostics(error);
+    if diagnostics.is_empty() {
         return format!("{error:?}");
-    };
+    }
 
     let source = std::fs::read_to_string(path)
         .ok()
         .map(|text| DiagnosticSource::new(SourceId::new(1), path.display().to_string(), text));
-    render_diagnostics(diagnostics, source)
+    render_diagnostics(&diagnostics, source)
 }
 
-fn compile_diagnostics(error: &CompileError) -> Option<&[Diagnostic]> {
+fn compile_diagnostics(error: &CompileError) -> Vec<Diagnostic> {
     match &error.kind {
         CompileErrorKind::SyntaxDiagnostics(diagnostics)
-        | CompileErrorKind::SemanticDiagnostics(diagnostics) => Some(diagnostics),
+        | CompileErrorKind::SemanticDiagnostics(diagnostics) => diagnostics.clone(),
         CompileErrorKind::FunctionNotFound(_)
         | CompileErrorKind::UnknownLocal(_)
-        | CompileErrorKind::InvalidIntLiteral { .. }
-        | CompileErrorKind::InvalidFloatLiteral { .. }
         | CompileErrorKind::RegisterOverflow
         | CompileErrorKind::BytecodeVerification(_)
-        | CompileErrorKind::UnsupportedSyntax(_) => None,
+        | CompileErrorKind::UnsupportedSyntax(_) => Vec::new(),
+        CompileErrorKind::InvalidIntLiteral { .. }
+        | CompileErrorKind::InvalidFloatLiteral { .. } => {
+            error.to_diagnostic().into_iter().collect()
+        }
     }
 }
 

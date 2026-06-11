@@ -1192,7 +1192,7 @@ then build registry, syntax, guards, and runtime behavior on the new model.
 **Termination condition:**
 
 - [x] Signed-min tests pass for every signed integer primitive.
-- [ ] Out-of-range literal tests report compile diagnostics with source spans.
+- [x] Out-of-range literal tests report compile diagnostics with source spans.
 
 #### Task 3.4: Add byte string lexing
 

@@ -192,11 +192,27 @@ fn main() {
     )
     .expect_err("out-of-range suffixed literal should fail");
 
+    assert_error_span_text(
+        r#"
+fn main() {
+    return 128i8;
+}
+"#,
+        error.span,
+        "128i8",
+    );
     let CompileErrorKind::InvalidIntLiteral { literal, error } = error.kind else {
         panic!("expected invalid integer literal");
     };
     assert_eq!(literal, "128i8");
     assert!(error.contains("out of range"), "{error}");
+}
+
+fn assert_error_span_text(source: &str, span: Option<vela_common::Span>, expected: &str) {
+    let span = span.expect("compile error should carry a source span");
+    assert_eq!(span.source, SourceId::new(1));
+    let actual = &source[span.start as usize..span.end as usize];
+    assert_eq!(actual, expected);
 }
 
 #[test]

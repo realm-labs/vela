@@ -82,7 +82,7 @@ impl Compiler<'_, '_> {
         match pattern {
             Pattern::Wildcard | Pattern::Binding(_) => Ok(Vec::new()),
             Pattern::Literal(literal) => {
-                let pattern = self.compile_literal(literal)?;
+                let pattern = self.compile_literal(None, literal)?;
                 let condition = self.alloc_register()?;
                 self.emit(UnlinkedInstructionKind::Equal {
                     dst: condition,

@@ -20,7 +20,7 @@ use super::{CompileError, CompileErrorKind, CompileResult, Compiler};
 impl Compiler<'_, '_> {
     pub(super) fn compile_expr(&mut self, expr: &Expr) -> CompileResult<Register> {
         match &expr.kind {
-            ExprKind::Literal(literal) => self.compile_literal(literal),
+            ExprKind::Literal(literal) => self.compile_literal(Some(expr.span), literal),
             ExprKind::Path(path) => self.compile_path_expr(expr.span, path),
             ExprKind::Binary { op, left, right } => {
                 if matches!(op, BinaryOp::And | BinaryOp::Or) {
@@ -219,8 +219,16 @@ impl Compiler<'_, '_> {
         }
     }
 
-    pub(super) fn compile_literal(&mut self, literal: &Literal) -> CompileResult<Register> {
-        self.emit_constant(compile_literal_constant(literal)?)
+    pub(super) fn compile_literal(
+        &mut self,
+        span: Option<Span>,
+        literal: &Literal,
+    ) -> CompileResult<Register> {
+        let constant = compile_literal_constant(literal).map_err(|error| match span {
+            Some(span) => error.with_span(span),
+            None => error,
+        })?;
+        self.emit_constant(constant)
     }
 
     pub(super) fn compile_expr_with_expected_type(
@@ -232,7 +240,8 @@ impl Compiler<'_, '_> {
         let outcome = self.expected_type_for_expr(expr, expected, context.clone())?;
         if let ExpectedTypeOutcome::Contextualized(RuntimeTypeFact::Primitive(tag)) = &outcome
             && let ExprKind::Literal(literal) = &expr.kind
-            && let Some(constant) = compile_literal_constant_for_type(literal, *tag)?
+            && let Some(constant) = compile_literal_constant_for_type(literal, *tag)
+                .map_err(|error| error.with_span(expr.span))?
         {
             return self.emit_constant(constant);
         }
@@ -323,7 +332,7 @@ impl Compiler<'_, '_> {
             && literal.matches_primitive_tag(tag)
         {
             let value = self.compile_expr(value_expr)?;
-            let literal = self.compile_inline_numeric_literal_as(literal, tag)?;
+            let literal = self.compile_inline_numeric_literal_as(literal, tag, span)?;
             let rhs_or_lhs = self.emit_constant(literal)?;
             let dst = self.alloc_register()?;
             let instruction = match side {
@@ -378,6 +387,7 @@ impl Compiler<'_, '_> {
         &self,
         literal: UnsuffixedNumericLiteral<'_>,
         tag: PrimitiveTag,
+        span: Span,
     ) -> CompileResult<crate::Constant> {
         match literal {
             UnsuffixedNumericLiteral::Integer(text) => compile_literal_constant_for_type(
@@ -389,6 +399,7 @@ impl Compiler<'_, '_> {
                 tag,
             ),
         }
+        .map_err(|error| error.with_span(span))
         .map(|constant| constant.expect("literal kind and primitive tag were checked by caller"))
     }
 
@@ -483,7 +494,8 @@ impl Compiler<'_, '_> {
         }
         if op == UnaryOp::Negate
             && let ExprKind::Literal(literal) = &expr.kind
-            && let Some(constant) = compile_negated_literal_constant(literal)?
+            && let Some(constant) = compile_negated_literal_constant(literal)
+                .map_err(|error| error.with_span(expr.span))?
         {
             return self.emit_constant(constant);
         }

@@ -56,7 +56,9 @@ pub(super) fn evaluate_const_expr(
     values_by_name: &BTreeMap<String, Constant>,
 ) -> CompileResult<Option<Constant>> {
     match &expr.kind {
-        ExprKind::Literal(literal) => compile_literal_constant(literal).map(Some),
+        ExprKind::Literal(literal) => compile_literal_constant(literal)
+            .map(Some)
+            .map_err(|error| error.with_span(expr.span)),
         ExprKind::Path(path) => {
             let [name] = path.as_slice() else {
                 return Ok(None);
@@ -66,7 +68,8 @@ pub(super) fn evaluate_const_expr(
         ExprKind::Unary { op, expr } => {
             if *op == UnaryOp::Negate
                 && let ExprKind::Literal(literal) = &expr.kind
-                && let Some(value) = compile_negated_literal_constant(literal)?
+                && let Some(value) = compile_negated_literal_constant(literal)
+                    .map_err(|error| error.with_span(expr.span))?
             {
                 return Ok(Some(value));
             }

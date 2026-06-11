@@ -860,6 +860,7 @@ fn main() {
     ] {
         let error = compile_program_source(SourceId::new(1), source)
             .expect_err("out-of-range contextual literal should fail");
+        assert_error_span_text(source, error.span, "300");
         let CompileErrorKind::InvalidIntLiteral { literal, error } = error.kind else {
             panic!("expected invalid integer literal");
         };
@@ -894,6 +895,7 @@ fn main() {
     ] {
         let error = compile_program_source(SourceId::new(1), source)
             .expect_err("out-of-range contextual float should fail");
+        assert_error_span_prefix(source, error.span, "1.0e");
         let CompileErrorKind::InvalidFloatLiteral { literal, error } = error.kind else {
             panic!("expected invalid float literal");
         };
@@ -1064,5 +1066,22 @@ fn inc_strict(x) {
         code.instructions
             .iter()
             .any(|instruction| { matches!(instruction.kind, UnlinkedInstructionKind::Add { .. }) })
+    );
+}
+
+fn assert_error_span_text(source: &str, span: Option<vela_common::Span>, expected: &str) {
+    let span = span.expect("compile error should carry a source span");
+    assert_eq!(span.source, SourceId::new(1));
+    let actual = &source[span.start as usize..span.end as usize];
+    assert_eq!(actual, expected);
+}
+
+fn assert_error_span_prefix(source: &str, span: Option<vela_common::Span>, expected: &str) {
+    let span = span.expect("compile error should carry a source span");
+    assert_eq!(span.source, SourceId::new(1));
+    let actual = &source[span.start as usize..span.end as usize];
+    assert!(
+        actual.starts_with(expected),
+        "expected span text starting with {expected:?}, got {actual:?}"
     );
 }
