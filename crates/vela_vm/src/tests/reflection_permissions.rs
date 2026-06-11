@@ -2,10 +2,56 @@ use super::*;
 use crate::owned_value::OwnedValue;
 use crate::value::Value as RuntimeValue;
 
+fn compile_reflection_permission_source(
+    source: SourceId,
+    text: &str,
+) -> vela_bytecode::compiler::error::CompileResult<UnlinkedProgram> {
+    compile_standard_program_source_with_native_functions(
+        source,
+        text,
+        &[
+            "reflect::call",
+            "reflect::function",
+            "reflect::get",
+            "reflect::has_permission",
+            "reflect::implements",
+            "reflect::kind",
+            "reflect::name",
+            "reflect::permissions",
+            "reflect::set",
+            "reflect::traits",
+            "reflect::type_of",
+        ],
+    )
+}
+
+fn exec_reflection_permission_program(
+    vm: &Vm,
+    program: &UnlinkedProgram,
+    args: &[OwnedValue],
+    host: &mut HostExecution<'_>,
+) -> VmResult<OwnedValue> {
+    let mut budget = ExecutionBudget::unbounded();
+    run_linked_test_program_with_host_budget(vm, program, "main", args, host, &mut budget)
+}
+
+fn exec_reflection_permission_runtime(
+    vm: &Vm,
+    program: &UnlinkedProgram,
+    args: &[RuntimeValue],
+    host: &mut HostExecution<'_>,
+    heap: &mut HeapExecution<'_>,
+    budget: &mut ExecutionBudget,
+) -> VmResult<RuntimeValue> {
+    run_linked_test_program_runtime_with_host_heap_and_budget(
+        vm, program, "main", args, host, heap, budget,
+    )
+}
+
 #[test]
 fn compiled_source_uses_reflection_natives_for_host_state() {
     let host_ref = player_ref(3);
-    let program = compile_program_source(
+    let program = compile_reflection_permission_source(
         SourceId::new(1),
         r#"
 fn main(player) {
@@ -32,9 +78,9 @@ fn main(player) {
             access: &mut tx,
             script_globals: None,
         };
-        vm.run_program_with_host(
+        exec_reflection_permission_program(
+            &vm,
             &program,
-            "main",
             &[OwnedValue::HostRef(host_ref)],
             &mut host,
         )
@@ -54,7 +100,7 @@ fn main(player) {
 #[test]
 fn reflection_permissions_deny_writes_before_host_access() {
     let host_ref = player_ref(3);
-    let program = compile_program_source(
+    let program = compile_reflection_permission_source(
         SourceId::new(1),
         r#"
 fn main(player) {
@@ -78,7 +124,12 @@ fn main(player) {
     };
 
     assert!(matches!(
-        vm.run_program_with_host(&program, "main", &[OwnedValue::HostRef(host_ref)], &mut host),
+        exec_reflection_permission_program(
+            &vm,
+            &program,
+            &[OwnedValue::HostRef(host_ref)],
+            &mut host
+        ),
         Err(error) if error.kind() == VmErrorKind::Reflect(ReflectErrorKind::PermissionDenied {
             permission: reflect::permissions::ReflectPermission::WriteValueFields
         })
@@ -88,7 +139,7 @@ fn main(player) {
 #[test]
 fn reflection_permissions_deny_calls_before_host_access() {
     let host_ref = player_ref(3);
-    let program = compile_program_source(
+    let program = compile_reflection_permission_source(
         SourceId::new(1),
         r#"
 fn main(player) {
@@ -113,7 +164,12 @@ fn main(player) {
     };
 
     assert!(matches!(
-        vm.run_program_with_host(&program, "main", &[OwnedValue::HostRef(host_ref)], &mut host),
+        exec_reflection_permission_program(
+            &vm,
+            &program,
+            &[OwnedValue::HostRef(host_ref)],
+            &mut host
+        ),
         Err(error) if error.kind() == VmErrorKind::Reflect(ReflectErrorKind::PermissionDenied {
             permission: reflect::permissions::ReflectPermission::CallMethods
         })
@@ -123,7 +179,7 @@ fn main(player) {
 #[test]
 fn reflection_permissions_deny_host_write_effect_calls_before_host_access() {
     let host_ref = player_ref(3);
-    let program = compile_program_source(
+    let program = compile_reflection_permission_source(
         SourceId::new(1),
         r#"
 fn main(player) {
@@ -162,7 +218,12 @@ fn main(player) {
     };
 
     assert!(matches!(
-        vm.run_program_with_host(&program, "main", &[OwnedValue::HostRef(host_ref)], &mut host),
+        exec_reflection_permission_program(
+            &vm,
+            &program,
+            &[OwnedValue::HostRef(host_ref)],
+            &mut host
+        ),
         Err(error) if error.kind() == VmErrorKind::Reflect(
             ReflectErrorKind::MethodEffectPermissionDenied {
                 method: "grant_exp".to_owned(),
@@ -176,7 +237,7 @@ fn main(player) {
 #[test]
 fn reflection_permissions_deny_host_ref_metadata_without_inspection() {
     let host_ref = player_ref(3);
-    let program = compile_program_source(
+    let program = compile_reflection_permission_source(
         SourceId::new(1),
         r#"
 fn main(player) {
@@ -200,7 +261,12 @@ fn main(player) {
     };
 
     assert!(matches!(
-        vm.run_program_with_host(&program, "main", &[OwnedValue::HostRef(host_ref)], &mut host),
+        exec_reflection_permission_program(
+            &vm,
+            &program,
+            &[OwnedValue::HostRef(host_ref)],
+            &mut host
+        ),
         Err(error) if error.kind() == VmErrorKind::Reflect(ReflectErrorKind::PermissionDenied {
             permission: reflect::permissions::ReflectPermission::InspectHostPath
         })
@@ -210,7 +276,7 @@ fn main(player) {
 #[test]
 fn reflection_permissions_deny_host_ref_trait_metadata_without_inspection() {
     let host_ref = player_ref(3);
-    let program = compile_program_source(
+    let program = compile_reflection_permission_source(
         SourceId::new(1),
         r#"
 fn main(player) {
@@ -234,7 +300,12 @@ fn main(player) {
     };
 
     assert!(matches!(
-        vm.run_program_with_host(&program, "main", &[OwnedValue::HostRef(host_ref)], &mut host),
+        exec_reflection_permission_program(
+            &vm,
+            &program,
+            &[OwnedValue::HostRef(host_ref)],
+            &mut host
+        ),
         Err(error) if error.kind() == VmErrorKind::Reflect(ReflectErrorKind::PermissionDenied {
             permission: reflect::permissions::ReflectPermission::InspectHostPath
         })
@@ -244,7 +315,7 @@ fn main(player) {
 #[test]
 fn reflection_permissions_deny_host_ref_implements_without_inspection() {
     let host_ref = player_ref(3);
-    let program = compile_program_source(
+    let program = compile_reflection_permission_source(
         SourceId::new(1),
         r#"
 fn main(player) {
@@ -268,7 +339,12 @@ fn main(player) {
     };
 
     assert!(matches!(
-        vm.run_program_with_host(&program, "main", &[OwnedValue::HostRef(host_ref)], &mut host),
+        exec_reflection_permission_program(
+            &vm,
+            &program,
+            &[OwnedValue::HostRef(host_ref)],
+            &mut host
+        ),
         Err(error) if error.kind() == VmErrorKind::Reflect(ReflectErrorKind::PermissionDenied {
             permission: reflect::permissions::ReflectPermission::InspectHostPath
         })
@@ -277,7 +353,7 @@ fn main(player) {
 
 #[test]
 fn reflection_permissions_allow_script_metadata_without_host_inspection() {
-    let program = compile_program_source(
+    let program = compile_reflection_permission_source(
         SourceId::new(1),
         r#"
 struct Player { level: int }
@@ -304,14 +380,14 @@ fn main() {
     };
 
     assert_eq!(
-        vm.run_program_with_host(&program, "main", &[], &mut host),
+        exec_reflection_permission_program(&vm, &program, &[], &mut host),
         Ok(OwnedValue::String("Player".into()))
     );
 }
 
 #[test]
 fn reflection_permissions_report_active_policy_metadata() {
-    let program = compile_program_source(
+    let program = compile_reflection_permission_source(
         SourceId::new(1),
         r#"
 fn main() {
@@ -341,7 +417,7 @@ fn main() {
     };
 
     assert_eq!(
-        vm.run_program_with_host(&program, "main", &[], &mut host),
+        exec_reflection_permission_program(&vm, &program, &[], &mut host),
         Ok(OwnedValue::Array(vec![
             OwnedValue::String("reflect::read_type_info".to_owned()),
             OwnedValue::String("reflect::read_value_fields".to_owned()),
@@ -352,7 +428,7 @@ fn main() {
 
 #[test]
 fn reflection_permissions_report_unknown_permission_candidates() {
-    let program = compile_program_source(
+    let program = compile_reflection_permission_source(
         SourceId::new(1),
         r#"
 fn main() {
@@ -374,8 +450,7 @@ fn main() {
         script_globals: None,
     };
 
-    let error = vm
-        .run_program_with_host(&program, "main", &[], &mut host)
+    let error = exec_reflection_permission_program(&vm, &program, &[], &mut host)
         .expect_err("unknown permission should diagnose");
     assert_eq!(
         error.kind(),
@@ -392,7 +467,7 @@ fn main() {
 
 #[test]
 fn reflection_permissions_deny_permission_metadata_without_type_read() {
-    let program = compile_program_source(
+    let program = compile_reflection_permission_source(
         SourceId::new(1),
         r#"
 fn main() {
@@ -415,7 +490,7 @@ fn main() {
     };
 
     assert!(matches!(
-        vm.run_program_with_host(&program, "main", &[], &mut host),
+        exec_reflection_permission_program(&vm, &program, &[], &mut host),
         Err(error) if error.kind() == VmErrorKind::Reflect(ReflectErrorKind::PermissionDenied {
             permission: reflect::permissions::ReflectPermission::ReadTypeInfo
         })
@@ -424,7 +499,7 @@ fn main() {
 
 #[test]
 fn reflection_permissions_deny_function_metadata_without_function_permission() {
-    let program = compile_program_source(
+    let program = compile_reflection_permission_source(
         SourceId::new(1),
         r#"
 fn main() {
@@ -455,8 +530,7 @@ fn main() {
         script_globals: None,
     };
 
-    let error = vm
-        .run_program_with_host(&program, "main", &[], &mut host)
+    let error = exec_reflection_permission_program(&vm, &program, &[], &mut host)
         .expect_err("function metadata permission should be denied");
     assert_eq!(
         error.kind(),
@@ -472,7 +546,7 @@ fn main() {
 fn reflection_field_access_denies_hidden_host_field_reads() {
     let host_ref = player_ref(3);
     let secret_field = FieldId::new(77);
-    let program = compile_program_source(
+    let program = compile_reflection_permission_source(
         SourceId::new(1),
         r#"
 fn main(player) {
@@ -504,14 +578,13 @@ fn main(player) {
         script_globals: None,
     };
 
-    let error = vm
-        .run_program_with_host(
-            &program,
-            "main",
-            &[OwnedValue::HostRef(host_ref)],
-            &mut host,
-        )
-        .expect_err("hidden field read should be denied");
+    let error = exec_reflection_permission_program(
+        &vm,
+        &program,
+        &[OwnedValue::HostRef(host_ref)],
+        &mut host,
+    )
+    .expect_err("hidden field read should be denied");
     assert_eq!(
         error.kind(),
         VmErrorKind::Reflect(ReflectErrorKind::FieldNotReflectReadable {
@@ -526,7 +599,7 @@ fn main(player) {
 fn reflection_field_permissions_deny_host_field_reads_before_host_access() {
     let host_ref = player_ref(3);
     let title_field = FieldId::new(78);
-    let program = compile_program_source(
+    let program = compile_reflection_permission_source(
         SourceId::new(1),
         r#"
 fn main(player) {
@@ -561,14 +634,13 @@ fn main(player) {
         script_globals: None,
     };
 
-    let error = vm
-        .run_program_with_host(
-            &program,
-            "main",
-            &[OwnedValue::HostRef(host_ref)],
-            &mut host,
-        )
-        .expect_err("field permission should be denied");
+    let error = exec_reflection_permission_program(
+        &vm,
+        &program,
+        &[OwnedValue::HostRef(host_ref)],
+        &mut host,
+    )
+    .expect_err("field permission should be denied");
     assert_eq!(
         error.kind(),
         VmErrorKind::Reflect(ReflectErrorKind::FieldPermissionDenied {
@@ -583,7 +655,7 @@ fn main(player) {
 #[test]
 fn reflection_unknown_host_field_candidates_respect_read_policy() {
     let host_ref = player_ref(3);
-    let program = compile_program_source(
+    let program = compile_reflection_permission_source(
         SourceId::new(1),
         r#"
 fn main(player) {
@@ -624,14 +696,13 @@ fn main(player) {
         script_globals: None,
     };
 
-    let error = vm
-        .run_program_with_host(
-            &program,
-            "main",
-            &[OwnedValue::HostRef(host_ref)],
-            &mut host,
-        )
-        .expect_err("unknown field should diagnose allowed candidates only");
+    let error = exec_reflection_permission_program(
+        &vm,
+        &program,
+        &[OwnedValue::HostRef(host_ref)],
+        &mut host,
+    )
+    .expect_err("unknown field should diagnose allowed candidates only");
     assert_eq!(
         error.kind(),
         VmErrorKind::Reflect(ReflectErrorKind::UnknownField {
@@ -646,7 +717,7 @@ fn main(player) {
 #[test]
 fn reflection_unknown_host_method_candidates_respect_call_policy() {
     let host_ref = player_ref(3);
-    let program = compile_program_source(
+    let program = compile_reflection_permission_source(
         SourceId::new(1),
         r#"
 fn main(player) {
@@ -690,14 +761,13 @@ fn main(player) {
         script_globals: None,
     };
 
-    let error = vm
-        .run_program_with_host(
-            &program,
-            "main",
-            &[OwnedValue::HostRef(host_ref)],
-            &mut host,
-        )
-        .expect_err("unknown method should diagnose allowed candidates only");
+    let error = exec_reflection_permission_program(
+        &vm,
+        &program,
+        &[OwnedValue::HostRef(host_ref)],
+        &mut host,
+    )
+    .expect_err("unknown method should diagnose allowed candidates only");
     assert_eq!(
         error.kind(),
         VmErrorKind::Reflect(ReflectErrorKind::UnknownMethod {
@@ -712,7 +782,7 @@ fn main(player) {
 #[test]
 fn reflection_lookup_budget_stops_after_limit() {
     let host_ref = player_ref(3);
-    let program = compile_program_source(
+    let program = compile_reflection_permission_source(
         SourceId::new(1),
         r#"
 fn main(player) {
@@ -737,7 +807,12 @@ fn main(player) {
     };
 
     assert!(matches!(
-        vm.run_program_with_host(&program, "main", &[OwnedValue::HostRef(host_ref)], &mut host),
+        exec_reflection_permission_program(
+            &vm,
+            &program,
+            &[OwnedValue::HostRef(host_ref)],
+            &mut host
+        ),
         Err(error) if error.kind() == VmErrorKind::Reflect(ReflectErrorKind::LookupBudgetExceeded {
             limit: 1
         })
@@ -747,7 +822,7 @@ fn main(player) {
 #[test]
 fn heap_execution_uses_reflection_natives_for_host_state() {
     let host_ref = player_ref(3);
-    let program = compile_program_source(
+    let program = compile_reflection_permission_source(
         SourceId::new(1),
         r#"
 fn main(player) {
@@ -777,9 +852,9 @@ fn main(player) {
             access: &mut tx,
             script_globals: None,
         };
-        vm.run_program_runtime_with_host_heap_and_budget(
+        exec_reflection_permission_runtime(
+            &vm,
             &program,
-            "main",
             &[RuntimeValue::HostRef(host_ref)],
             &mut host,
             &mut heap_execution,
