@@ -1,5 +1,30 @@
 use super::*;
+use vela_bytecode::UnlinkedProgram;
+use vela_vm::budget::ExecutionBudget;
+use vela_vm::error::VmResult;
 use vela_vm::owned_value::OwnedValue;
+
+fn run_linked_program_with_host(
+    engine: &Engine,
+    program: &UnlinkedProgram,
+    args: &[OwnedValue],
+    host: &mut HostExecution<'_>,
+) -> VmResult<OwnedValue> {
+    let linked = engine
+        .link_program(program)
+        .expect("engine reflection call test program should link");
+    let mut budget = ExecutionBudget::unbounded();
+    engine
+        .into_vm_for_program(program)
+        .run_linked_program_with_host_budget_and_caches(
+            &linked,
+            "main",
+            args,
+            host,
+            &mut budget,
+            None,
+        )
+}
 
 #[test]
 fn engine_reflect_call_invokes_reflect_callable_native_functions() {
@@ -20,16 +45,17 @@ fn engine_reflect_call_invokes_reflect_callable_native_functions() {
         .reflection_permissions(ReflectPermissionSet::all())
         .build()
         .expect("engine should build");
-    let program = compile_program_source(
-        SourceId::new(1),
-        r#"
+    let program = engine
+        .compile_source(
+            SourceId::new(1),
+            r#"
 fn main() {
     let add = reflect::function("game::add");
     return reflect::call(add, 2, 3);
 }
 "#,
-    )
-    .expect("program should compile");
+        )
+        .expect("program should compile");
     let mut adapter = MockStateAdapter::new();
     let mut tx = HostAccess::new();
     let mut host = HostExecution {
@@ -39,9 +65,7 @@ fn main() {
     };
 
     assert_eq!(
-        engine
-            .into_vm()
-            .run_program_with_host(&program, "main", &[], &mut host),
+        run_linked_program_with_host(&engine, &program, &[], &mut host),
         Ok(OwnedValue::Int(5))
     );
 }
@@ -60,16 +84,17 @@ fn engine_reflect_call_requires_call_permission_for_function_descriptors() {
         .reflection_permissions(ReflectPermissionSet::new().with(ReflectPermission::ReadTypeInfo))
         .build()
         .expect("engine should build");
-    let program = compile_program_source(
-        SourceId::new(1),
-        r#"
+    let program = engine
+        .compile_source(
+            SourceId::new(1),
+            r#"
 fn main() {
     let add = reflect::function("game::add");
     return reflect::call(add, 2, 3);
 }
 "#,
-    )
-    .expect("program should compile");
+        )
+        .expect("program should compile");
     let mut adapter = MockStateAdapter::new();
     let mut tx = HostAccess::new();
     let mut host = HostExecution {
@@ -79,9 +104,7 @@ fn main() {
     };
 
     assert!(matches!(
-        engine
-            .into_vm()
-            .run_program_with_host(&program, "main", &[], &mut host),
+        run_linked_program_with_host(&engine, &program, &[], &mut host),
         Err(error) if error.kind() == VmErrorKind::Reflect(ReflectErrorKind::PermissionDenied {
             permission: ReflectPermission::CallMethods,
         })
@@ -101,16 +124,17 @@ fn engine_reflect_call_rejects_non_callable_native_functions() {
         .reflection_permissions(ReflectPermissionSet::all())
         .build()
         .expect("engine should build");
-    let program = compile_program_source(
-        SourceId::new(1),
-        r#"
+    let program = engine
+        .compile_source(
+            SourceId::new(1),
+            r#"
 fn main() {
     let add = reflect::function("game::add");
     return reflect::call(add, 2, 3);
 }
 "#,
-    )
-    .expect("program should compile");
+        )
+        .expect("program should compile");
     let mut adapter = MockStateAdapter::new();
     let mut tx = HostAccess::new();
     let mut host = HostExecution {
@@ -120,9 +144,7 @@ fn main() {
     };
 
     assert!(matches!(
-        engine
-            .into_vm()
-            .run_program_with_host(&program, "main", &[], &mut host),
+        run_linked_program_with_host(&engine, &program, &[], &mut host),
         Err(error) if error.kind() == VmErrorKind::Reflect(
             ReflectErrorKind::FunctionNotReflectCallable {
                 function: "game::add".to_owned(),
@@ -162,17 +184,18 @@ fn engine_reflect_call_invokes_host_native_functions_through_host_access() {
         .reflection_permissions(ReflectPermissionSet::all())
         .build()
         .expect("engine should build");
-    let program = compile_program_source(
-        SourceId::new(1),
-        r#"
+    let program = engine
+        .compile_source(
+            SourceId::new(1),
+            r#"
 fn main(player) {
     let set_level = reflect::function("game::set_level");
     reflect::call(set_level, player, 12);
     return 1;
 }
 "#,
-    )
-    .expect("program should compile");
+        )
+        .expect("program should compile");
     let host_ref = HostRef::new(HostTypeId::new(1), HostObjectId::new(42), 1);
     let mut adapter = MockStateAdapter::new();
     let mut tx = HostAccess::new();
@@ -183,9 +206,9 @@ fn main(player) {
     };
 
     assert_eq!(
-        engine.into_vm().run_program_with_host(
+        run_linked_program_with_host(
+            &engine,
             &program,
-            "main",
             &[OwnedValue::HostRef(host_ref)],
             &mut host
         ),
@@ -227,17 +250,18 @@ fn engine_reflect_call_denies_effectful_native_functions_without_effect_permissi
         )
         .build()
         .expect("engine should build");
-    let program = compile_program_source(
-        SourceId::new(1),
-        r#"
+    let program = engine
+        .compile_source(
+            SourceId::new(1),
+            r#"
 fn main(player) {
     let set_level = reflect::function("game::set_level");
     reflect::call(set_level, player, 12);
     return 1;
 }
 "#,
-    )
-    .expect("program should compile");
+        )
+        .expect("program should compile");
     let host_ref = HostRef::new(HostTypeId::new(1), HostObjectId::new(42), 1);
     let mut adapter = MockStateAdapter::new();
     let mut tx = HostAccess::new();
@@ -248,9 +272,12 @@ fn main(player) {
     };
 
     assert!(matches!(
-        engine
-            .into_vm()
-            .run_program_with_host(&program, "main", &[OwnedValue::HostRef(host_ref)], &mut host),
+        run_linked_program_with_host(
+            &engine,
+            &program,
+            &[OwnedValue::HostRef(host_ref)],
+            &mut host,
+        ),
         Err(error) if error.kind() == VmErrorKind::Reflect(
             ReflectErrorKind::FunctionEffectPermissionDenied {
                 function: "game::set_level".to_owned(),
