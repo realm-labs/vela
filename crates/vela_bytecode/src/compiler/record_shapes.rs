@@ -172,13 +172,13 @@ fn scalar_shape_type_fact(type_name: &str) -> Option<RuntimeTypeFact> {
         "I8" | "i8" => Some(RuntimeTypeFact::primitive(PrimitiveTag::I8)),
         "I16" | "i16" => Some(RuntimeTypeFact::primitive(PrimitiveTag::I16)),
         "I32" | "i32" => Some(RuntimeTypeFact::primitive(PrimitiveTag::I32)),
-        "I64" | "i64" | "int" => Some(RuntimeTypeFact::primitive(PrimitiveTag::I64)),
+        "I64" | "i64" => Some(RuntimeTypeFact::primitive(PrimitiveTag::I64)),
         "U8" | "u8" => Some(RuntimeTypeFact::primitive(PrimitiveTag::U8)),
         "U16" | "u16" => Some(RuntimeTypeFact::primitive(PrimitiveTag::U16)),
         "U32" | "u32" => Some(RuntimeTypeFact::primitive(PrimitiveTag::U32)),
         "U64" | "u64" => Some(RuntimeTypeFact::primitive(PrimitiveTag::U64)),
         "F32" | "f32" => Some(RuntimeTypeFact::primitive(PrimitiveTag::F32)),
-        "F64" | "f64" | "float" => Some(RuntimeTypeFact::primitive(PrimitiveTag::F64)),
+        "F64" | "f64" => Some(RuntimeTypeFact::primitive(PrimitiveTag::F64)),
         "String" | "string" => Some(RuntimeTypeFact::primitive(PrimitiveTag::String)),
         "Bytes" | "bytes" => Some(RuntimeTypeFact::primitive(PrimitiveTag::Bytes)),
         _ => None,
@@ -429,9 +429,9 @@ fn arithmetic_shape(left: &Expr, right: &Expr) -> Option<String> {
     let left_float = matches!(left.kind, ExprKind::Literal(Literal::Float(_)));
     let right_float = matches!(right.kind, ExprKind::Literal(Literal::Float(_)));
     Some(if left_float || right_float {
-        "float".to_owned()
+        "f64".to_owned()
     } else {
-        "int".to_owned()
+        "i64".to_owned()
     })
 }
 
@@ -695,7 +695,7 @@ fn reflect_field_record_shape() -> ValueShape {
             ValueShape::Scalar("bool".to_owned()),
         ),
         ("docs".to_owned(), ValueShape::Unknown),
-        ("id".to_owned(), ValueShape::Scalar("int".to_owned())),
+        ("id".to_owned(), ValueShape::Scalar("i64".to_owned())),
         ("name".to_owned(), ValueShape::Scalar("string".to_owned())),
         ("origin".to_owned(), ValueShape::Scalar("string".to_owned())),
         ("owner".to_owned(), ValueShape::Scalar("string".to_owned())),
@@ -736,7 +736,7 @@ fn reflect_function_record_shape() -> ValueShape {
         ),
         ("docs".to_owned(), ValueShape::Unknown),
         ("effects".to_owned(), reflect_effects_record_shape()),
-        ("id".to_owned(), ValueShape::Scalar("int".to_owned())),
+        ("id".to_owned(), ValueShape::Scalar("i64".to_owned())),
         ("module".to_owned(), ValueShape::Unknown),
         ("name".to_owned(), ValueShape::Scalar("string".to_owned())),
         ("origin".to_owned(), ValueShape::Scalar("string".to_owned())),
@@ -781,7 +781,7 @@ fn reflect_method_record_shape() -> ValueShape {
         ),
         ("docs".to_owned(), ValueShape::Unknown),
         ("effects".to_owned(), reflect_effects_record_shape()),
-        ("id".to_owned(), ValueShape::Scalar("int".to_owned())),
+        ("id".to_owned(), ValueShape::Scalar("i64".to_owned())),
         ("name".to_owned(), ValueShape::Scalar("string".to_owned())),
         ("origin".to_owned(), ValueShape::Scalar("string".to_owned())),
         ("owner".to_owned(), ValueShape::Scalar("string".to_owned())),
@@ -822,9 +822,9 @@ fn reflect_param_record_shape() -> ValueShape {
 
 fn reflect_source_span_record_shape() -> ValueShape {
     ValueShape::Record(RecordShape::from_field_shapes([
-        ("end".to_owned(), ValueShape::Scalar("int".to_owned())),
-        ("source".to_owned(), ValueShape::Scalar("int".to_owned())),
-        ("start".to_owned(), ValueShape::Scalar("int".to_owned())),
+        ("end".to_owned(), ValueShape::Scalar("i64".to_owned())),
+        ("source".to_owned(), ValueShape::Scalar("i64".to_owned())),
+        ("start".to_owned(), ValueShape::Scalar("i64".to_owned())),
     ]))
 }
 
@@ -838,7 +838,7 @@ fn reflect_trait_record_shape() -> ValueShape {
             },
         ),
         ("docs".to_owned(), ValueShape::Unknown),
-        ("id".to_owned(), ValueShape::Scalar("int".to_owned())),
+        ("id".to_owned(), ValueShape::Scalar("i64".to_owned())),
         (
             "methods".to_owned(),
             ValueShape::Array(Box::new(reflect_method_record_shape())),
@@ -861,13 +861,13 @@ fn reflect_type_record_shape() -> ValueShape {
         ("docs".to_owned(), ValueShape::Unknown),
         (
             "field_count".to_owned(),
-            ValueShape::Scalar("int".to_owned()),
+            ValueShape::Scalar("i64".to_owned()),
         ),
-        ("id".to_owned(), ValueShape::Scalar("int".to_owned())),
+        ("id".to_owned(), ValueShape::Scalar("i64".to_owned())),
         ("kind".to_owned(), ValueShape::Scalar("string".to_owned())),
         (
             "method_count".to_owned(),
-            ValueShape::Scalar("int".to_owned()),
+            ValueShape::Scalar("i64".to_owned()),
         ),
         ("name".to_owned(), ValueShape::Scalar("string".to_owned())),
         ("origin".to_owned(), ValueShape::Scalar("string".to_owned())),
@@ -875,11 +875,11 @@ fn reflect_type_record_shape() -> ValueShape {
         ("source_span".to_owned(), reflect_source_span_record_shape()),
         (
             "trait_count".to_owned(),
-            ValueShape::Scalar("int".to_owned()),
+            ValueShape::Scalar("i64".to_owned()),
         ),
         (
             "variant_count".to_owned(),
-            ValueShape::Scalar("int".to_owned()),
+            ValueShape::Scalar("i64".to_owned()),
         ),
     ]))
 }
@@ -898,7 +898,7 @@ fn reflect_variant_record_shape() -> ValueShape {
             "fields".to_owned(),
             ValueShape::Array(Box::new(reflect_field_record_shape())),
         ),
-        ("id".to_owned(), ValueShape::Scalar("int".to_owned())),
+        ("id".to_owned(), ValueShape::Scalar("i64".to_owned())),
         ("name".to_owned(), ValueShape::Scalar("string".to_owned())),
         ("origin".to_owned(), ValueShape::Scalar("string".to_owned())),
         ("owner".to_owned(), ValueShape::Scalar("string".to_owned())),
@@ -927,7 +927,7 @@ fn method_call_shape(
             Some(ValueShape::Scalar("string".to_owned()))
         }
         "join" => Some(ValueShape::Scalar("string".to_owned())),
-        "len" | "count" | "sum" => Some(ValueShape::Scalar("int".to_owned())),
+        "len" | "count" | "sum" => Some(ValueShape::Scalar("i64".to_owned())),
         "has" | "contains" | "starts_with" | "ends_with" | "is_empty" | "is_none" | "is_some"
         | "is_ok" | "is_err" | "any" | "all" | "is_subset" | "is_superset" | "is_disjoint" => {
             Some(ValueShape::Scalar("bool".to_owned()))
@@ -940,10 +940,10 @@ fn method_call_shape(
             _ => None,
         },
         "parse_int" => Some(ValueShape::Option(Box::new(ValueShape::Scalar(
-            "int".to_owned(),
+            "i64".to_owned(),
         )))),
         "parse_float" => Some(ValueShape::Option(Box::new(ValueShape::Scalar(
-            "float".to_owned(),
+            "f64".to_owned(),
         )))),
         "parse_bool" => Some(ValueShape::Option(Box::new(ValueShape::Scalar(
             "bool".to_owned(),
@@ -1048,12 +1048,12 @@ fn method_call_shape(
                 ])),
             ))),
             ValueShape::Scalar(type_name) if type_name == "string" => Some(ValueShape::Option(
-                Box::new(ValueShape::Scalar("int".to_owned())),
+                Box::new(ValueShape::Scalar("i64".to_owned())),
             )),
             _ => None,
         },
         "index_of" | "last_index_of" => Some(ValueShape::Option(Box::new(ValueShape::Scalar(
-            "int".to_owned(),
+            "i64".to_owned(),
         )))),
         "pop" | "remove_at" => receiver
             .array_element()

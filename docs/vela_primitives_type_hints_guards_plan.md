@@ -1231,7 +1231,7 @@ then build registry, syntax, guards, and runtime behavior on the new model.
 **Termination condition:**
 
 - [x] Value type flow can represent exact `i8`, `i64`, `u32`, `f32`, `f64`, `string`, `bytes`.
-- [ ] No code path relies on `"int"` or `"float"` strings.
+- [x] No code path relies on `"int"` or `"float"` strings.
 
 #### Task 4.2: Add static expression classification
 

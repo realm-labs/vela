@@ -285,10 +285,10 @@ fn compiler_lowers_named_native_args_from_registry() {
                 vela_def::DefPath::function("host", ["game"], "add"),
                 vela_registry::FunctionSignature::new(
                     [
-                        vela_registry::ParamDef::new("lhs", Some("int")),
-                        vela_registry::ParamDef::new("rhs", Some("int")),
+                        vela_registry::ParamDef::new("lhs", Some("i64")),
+                        vela_registry::ParamDef::new("rhs", Some("i64")),
                     ],
-                    Some("int".to_owned()),
+                    Some("i64".to_owned()),
                 ),
             )
             .with_id(native_id),
@@ -914,10 +914,10 @@ fn compiler_reports_named_native_arg_diagnostics_from_registry() {
             vela_def::DefPath::function("host", ["game"], "add"),
             vela_registry::FunctionSignature::new(
                 [
-                    vela_registry::ParamDef::new("lhs", Some("int")),
-                    vela_registry::ParamDef::new("rhs", Some("int")),
+                    vela_registry::ParamDef::new("lhs", Some("i64")),
+                    vela_registry::ParamDef::new("rhs", Some("i64")),
                 ],
-                Some("int".to_owned()),
+                Some("i64".to_owned()),
             ),
         ))
         .expect("test native function should register");

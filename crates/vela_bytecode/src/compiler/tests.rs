@@ -119,7 +119,7 @@ fn compiler_records_cache_site_metadata_for_cacheable_instructions() {
             vela_registry::FunctionDef::new(
                 DefPath::function("host", std::iter::empty::<&str>(), "give_reward"),
                 vela_registry::FunctionSignature::new(
-                    [vela_registry::ParamDef::new("amount", Some("int"))],
+                    [vela_registry::ParamDef::new("amount", Some("i64"))],
                     None,
                 ),
             )

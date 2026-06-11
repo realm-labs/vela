@@ -284,7 +284,7 @@ fn compiler_lowers_configured_host_method_calls() {
         "Player",
         "grant_exp",
         method,
-        [vela_registry::ParamDef::new("amount", Some("int"))],
+        [vela_registry::ParamDef::new("amount", Some("i64"))],
     );
     let code = compile_function_source_with_registry(
         SourceId::new(1),
@@ -313,7 +313,7 @@ fn compiler_lowers_host_method_calls_and_args_from_registry() {
         "grant_exp",
         method,
         [
-            vela_registry::ParamDef::new("amount", Some("int")),
+            vela_registry::ParamDef::new("amount", Some("i64")),
             vela_registry::ParamDef::new("reason", Some("string")).defaulted(true),
         ],
     );
@@ -490,7 +490,7 @@ fn compiler_lowers_configured_host_method_calls_on_field_paths() {
         method,
         [
             vela_registry::ParamDef::new("kind", Some("string")),
-            vela_registry::ParamDef::new("amount", Some("int")),
+            vela_registry::ParamDef::new("amount", Some("i64")),
         ],
     );
     let code = compile_function_source_with_registry(
@@ -545,7 +545,7 @@ fn compiler_lowers_configured_host_method_calls_on_indexed_paths() {
         "Item",
         "grant",
         method,
-        [vela_registry::ParamDef::new("amount", Some("int"))],
+        [vela_registry::ParamDef::new("amount", Some("i64"))],
     );
     let code = compile_function_source_with_options_and_registry(
         SourceId::new(1),
