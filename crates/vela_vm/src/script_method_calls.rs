@@ -1,11 +1,18 @@
-use vela_bytecode::{LinkedProgram, Register, UnlinkedProgramCode};
+use vela_bytecode::linked::LinkedMethodDispatchKind;
+use vela_bytecode::{
+    CallArgument, DebugNameId, InstructionOffset, LinkedProgram, MethodDispatchHandle, Register,
+    UnlinkedProgramCode,
+};
+use vela_common::Span;
 use vela_def::MethodId;
 
 use crate::heap::GcRef;
+use crate::linked_execution::LinkedExecutionCall;
 use crate::{
     CallFrame, ExecutionBudget, HeapExecution, HostExecution, Value, Vm, VmResult,
     store_value_in_heap_if_needed,
 };
+use crate::{VmError, VmErrorKind, VmInlineCaches, host_access, script_function_calls};
 
 use crate::script_methods::{
     ScriptMethodDispatch, call_method, call_method_id, call_non_mutating_method,
@@ -153,6 +160,150 @@ pub(crate) fn dispatch_linked_method_id_call(
     )?;
     let result = store_value_in_heap_if_needed(result, heap.as_deref_mut(), budget.as_deref_mut())?;
     frame.write(call.receiver, receiver_value)?;
+    frame.write(call.dst, result)
+}
+
+pub(crate) struct LinkedScriptMethodCallContext<'a> {
+    pub(crate) program: &'a LinkedProgram,
+    pub(crate) inline_caches: Option<&'a dyn VmInlineCaches>,
+    pub(crate) call_site: Option<Span>,
+    pub(crate) call_site_offset: Option<InstructionOffset>,
+}
+
+pub(crate) struct LinkedScriptMethodCall<'a> {
+    pub(crate) dst: Register,
+    pub(crate) receiver: Register,
+    pub(crate) dispatch: MethodDispatchHandle,
+    pub(crate) debug_name: DebugNameId,
+    pub(crate) args: &'a [CallArgument],
+}
+
+pub(crate) fn dispatch_linked_method_call(
+    vm: &Vm,
+    context: LinkedScriptMethodCallContext<'_>,
+    host: &mut Option<&mut HostExecution<'_>>,
+    heap: &mut Option<&mut HeapExecution<'_>>,
+    budget: &mut Option<&mut ExecutionBudget>,
+    frame: &mut CallFrame,
+    call: LinkedScriptMethodCall<'_>,
+) -> VmResult<()> {
+    let dispatch = context
+        .program
+        .method_dispatch(call.dispatch)
+        .ok_or_else(|| {
+            VmError::new(VmErrorKind::UnknownMethod {
+                method: context.program.debug_name(call.debug_name).to_owned(),
+            })
+            .with_source_span_if_absent(context.call_site)
+        })?;
+    let values = script_function_calls::script_call_args_from_call_arguments(frame, call.args)?;
+    match &dispatch.kind {
+        LinkedMethodDispatchKind::Script {
+            method_id: _,
+            function,
+        } => dispatch_linked_script_method_call(
+            vm,
+            context,
+            host,
+            heap,
+            budget,
+            frame,
+            ScriptLinkedMethodCall {
+                dst: call.dst,
+                receiver: call.receiver,
+                debug_name: dispatch.debug_name,
+                function: *function,
+                values: values.as_slice(),
+            },
+        ),
+        LinkedMethodDispatchKind::Value { method_id } => dispatch_linked_method_id_call(
+            vm,
+            context.program,
+            host,
+            heap,
+            budget,
+            frame,
+            ScriptMethodIdCall {
+                dst: call.dst,
+                receiver: call.receiver,
+                method: context.program.debug_name(dispatch.debug_name),
+                method_id: *method_id,
+                values: values.as_slice(),
+            },
+        ),
+        LinkedMethodDispatchKind::Host { method_id } => {
+            let return_value = host_access::execute_host_root_method_call(
+                host_access::HostAccessRuntime {
+                    frame,
+                    heap: heap.as_deref_mut(),
+                    budget: budget.as_deref_mut(),
+                    host: host.as_deref_mut(),
+                    inline_caches: context.inline_caches,
+                    source_span: context.call_site,
+                },
+                call.receiver,
+                host_access::HostRootMethodCall {
+                    method: *method_id,
+                    args: values.as_slice(),
+                    wants_return: true,
+                },
+            )?;
+            if let Some(return_value) = return_value {
+                frame.write(call.dst, return_value)?;
+            }
+            Ok(())
+        }
+    }
+}
+
+struct ScriptLinkedMethodCall<'a> {
+    dst: Register,
+    receiver: Register,
+    debug_name: DebugNameId,
+    function: vela_bytecode::ScriptFunctionHandle,
+    values: &'a [Value],
+}
+
+fn dispatch_linked_script_method_call(
+    vm: &Vm,
+    context: LinkedScriptMethodCallContext<'_>,
+    host: &mut Option<&mut HostExecution<'_>>,
+    heap: &mut Option<&mut HeapExecution<'_>>,
+    budget: &mut Option<&mut ExecutionBudget>,
+    frame: &mut CallFrame,
+    call: ScriptLinkedMethodCall<'_>,
+) -> VmResult<()> {
+    let function_code = context.program.function(call.function).ok_or_else(|| {
+        VmError::new(VmErrorKind::UnknownMethod {
+            method: context.program.debug_name(call.debug_name).to_owned(),
+        })
+        .with_source_span_if_absent(context.call_site)
+    })?;
+    let receiver_value = *frame.read(call.receiver)?;
+    let mut method_args = Vec::with_capacity(call.values.len() + 1);
+    method_args.push(receiver_value);
+    method_args.extend(call.values.iter().copied());
+    let protected_root_len = heap.as_deref_mut().map(|heap| heap.push_frame_roots(frame));
+    let result = vm.execute_linked_call(
+        LinkedExecutionCall {
+            code: function_code,
+            program: context.program,
+            captures: &[],
+            args: method_args.as_slice(),
+            check_param_guards: true,
+            call_site: context.call_site,
+            call_site_offset: context.call_site_offset,
+            inline_caches: context.inline_caches,
+        },
+        host.as_deref_mut(),
+        heap.as_deref_mut(),
+        budget.as_deref_mut(),
+    );
+    if let (Some(heap), Some(protected_root_len)) = (heap.as_deref_mut(), protected_root_len) {
+        heap.truncate_protected_roots(protected_root_len);
+    }
+    let result =
+        store_value_in_heap_if_needed(result?, heap.as_deref_mut(), budget.as_deref_mut())?;
     frame.write(call.dst, result)
 }
 

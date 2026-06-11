@@ -518,102 +518,26 @@ impl Vm {
                     debug_name,
                     args,
                 } => {
-                    let dispatch = call.program.method_dispatch(*dispatch).ok_or_else(|| {
-                        VmError::new(VmErrorKind::UnknownMethod {
-                            method: call.program.debug_name(*debug_name).to_owned(),
-                        })
-                        .with_source_span_if_absent(instruction.span)
-                    })?;
-                    let values =
-                        script_function_calls::script_call_args_from_call_arguments(&frame, args)?;
-                    match &dispatch.kind {
-                        LinkedMethodDispatchKind::Script {
-                            method_id: _,
-                            function,
-                        } => {
-                            let function_code =
-                                call.program.function(*function).ok_or_else(|| {
-                                    VmError::new(VmErrorKind::UnknownMethod {
-                                        method: call
-                                            .program
-                                            .debug_name(dispatch.debug_name)
-                                            .to_owned(),
-                                    })
-                                    .with_source_span_if_absent(instruction.span)
-                                })?;
-                            let receiver_value = *frame.read(*receiver)?;
-                            let mut method_args = Vec::with_capacity(values.as_slice().len() + 1);
-                            method_args.push(receiver_value);
-                            method_args.extend(values.as_slice().iter().copied());
-                            let protected_root_len = heap
-                                .as_deref_mut()
-                                .map(|heap| heap.push_frame_roots(&frame));
-                            let result = self.execute_linked_call(
-                                LinkedExecutionCall {
-                                    code: function_code,
-                                    program: call.program,
-                                    captures: &[],
-                                    args: method_args.as_slice(),
-                                    check_param_guards: true,
-                                    call_site: instruction.span,
-                                    call_site_offset: Some(instruction_offset),
-                                    inline_caches: call.inline_caches,
-                                },
-                                host.as_deref_mut(),
-                                heap.as_deref_mut(),
-                                budget.as_deref_mut(),
-                            );
-                            if let (Some(heap), Some(protected_root_len)) =
-                                (heap.as_deref_mut(), protected_root_len)
-                            {
-                                heap.truncate_protected_roots(protected_root_len);
-                            }
-                            let result = store_value_in_heap_if_needed(
-                                result?,
-                                heap.as_deref_mut(),
-                                budget.as_deref_mut(),
-                            )?;
-                            frame.write(*dst, result)?;
-                        }
-                        LinkedMethodDispatchKind::Value { method_id } => {
-                            script_method_calls::dispatch_linked_method_id_call(
-                                self,
-                                call.program,
-                                &mut host,
-                                &mut heap,
-                                &mut budget,
-                                &mut frame,
-                                script_method_calls::ScriptMethodIdCall {
-                                    dst: *dst,
-                                    receiver: *receiver,
-                                    method: call.program.debug_name(dispatch.debug_name),
-                                    method_id: *method_id,
-                                    values: values.as_slice(),
-                                },
-                            )?;
-                        }
-                        LinkedMethodDispatchKind::Host { method_id } => {
-                            let return_value = host_access::execute_host_root_method_call(
-                                host_access::HostAccessRuntime {
-                                    frame: &frame,
-                                    heap: heap.as_deref_mut(),
-                                    budget: budget.as_deref_mut(),
-                                    host: host.as_deref_mut(),
-                                    inline_caches: call.inline_caches,
-                                    source_span: instruction.span,
-                                },
-                                *receiver,
-                                host_access::HostRootMethodCall {
-                                    method: *method_id,
-                                    args: values.as_slice(),
-                                    wants_return: true,
-                                },
-                            )?;
-                            if let Some(return_value) = return_value {
-                                frame.write(*dst, return_value)?;
-                            }
-                        }
-                    }
+                    script_method_calls::dispatch_linked_method_call(
+                        self,
+                        script_method_calls::LinkedScriptMethodCallContext {
+                            program: call.program,
+                            inline_caches: call.inline_caches,
+                            call_site: instruction.span,
+                            call_site_offset: Some(instruction_offset),
+                        },
+                        &mut host,
+                        &mut heap,
+                        &mut budget,
+                        &mut frame,
+                        script_method_calls::LinkedScriptMethodCall {
+                            dst: *dst,
+                            receiver: *receiver,
+                            dispatch: *dispatch,
+                            debug_name: *debug_name,
+                            args,
+                        },
+                    )?;
                 }
                 InstructionKind::TryPropagate { dst, src } => {
                     match try_propagate_value(frame.read(*src)?, heap.as_deref())? {
