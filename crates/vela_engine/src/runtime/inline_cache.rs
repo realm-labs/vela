@@ -98,7 +98,7 @@ mod tests {
     use vela_host::access::HostAccess;
     use vela_host::mock::MockStateAdapter;
     use vela_host::path::{HostPath, HostRef};
-    use vela_host::resolved::{HostAccessOp, ResolvedHostAccessKind};
+    use vela_host::resolved::{HostAccessOp, HostSchemaEpoch, ResolvedHostAccessKind};
     use vela_host::value::HostValue;
     use vela_reflect::registry::{FieldDesc, TypeDesc, TypeKey};
     use vela_vm::owned_value::OwnedValue;
@@ -439,5 +439,90 @@ fn read_level(player: CachedHostPlayer) {
         );
         assert_eq!(entry.resolved.schema_epoch.get(), 0);
         assert_eq!(host_target.root_type, HostTypeId::new(1));
+    }
+
+    #[test]
+    fn host_access_inline_cache_refreshes_on_schema_epoch_change() {
+        let engine = Engine::builder()
+            .register_type(
+                TypeDesc::new(TypeKey::new(TypeId::new(1), "EpochHostPlayer"))
+                    .host_type(HostTypeId::new(1))
+                    .field(FieldDesc::new(FieldId::new(1), "level")),
+            )
+            .build()
+            .expect("engine should build");
+        let program = engine
+            .compile_source(
+                SourceId::new(1),
+                r#"
+fn read_level(player: EpochHostPlayer) {
+    return player.level;
+}
+"#,
+            )
+            .expect("program should compile");
+        let function = program
+            .function("read_level")
+            .expect("read_level should exist");
+        let cache_site = function
+            .cache_sites
+            .sites()
+            .iter()
+            .find(|site| site.kind == CacheSiteKind::HostPathRead)
+            .expect("read_level should have host read site")
+            .id;
+        let mut runtime = Runtime::new(engine, program);
+        let host_ref = HostRef::new(HostTypeId::new(1), HostObjectId::new(42), 1);
+        let host_path = HostPath::new(host_ref).field(FieldId::new(1));
+        let mut adapter = MockStateAdapter::new();
+        adapter.insert_diagnostic_path_value(
+            host_path.clone(),
+            HostValue::Scalar(vela_common::ScalarValue::I64(12)),
+        );
+        let mut access = HostAccess::new();
+
+        let value = runtime
+            .call_raw(
+                "read_level",
+                &[OwnedValue::HostRef(host_ref)],
+                CallOptions::unbounded(),
+                &mut adapter,
+                &mut access,
+            )
+            .expect("first read_level should run");
+        assert_eq!(value, OwnedValue::Scalar(vela_common::ScalarValue::I64(12)));
+        assert_eq!(
+            runtime
+                .state
+                .inline_caches
+                .host_access(cache_site)
+                .expect("host read should populate cache")
+                .schema_epoch,
+            HostSchemaEpoch::new(0)
+        );
+
+        adapter.set_schema_epoch(HostSchemaEpoch::new(1));
+        adapter.insert_diagnostic_path_value(
+            host_path,
+            HostValue::Scalar(vela_common::ScalarValue::I64(21)),
+        );
+        let value = runtime
+            .call_raw(
+                "read_level",
+                &[OwnedValue::HostRef(host_ref)],
+                CallOptions::unbounded(),
+                &mut adapter,
+                &mut access,
+            )
+            .expect("second read_level should run through refreshed cache");
+
+        assert_eq!(value, OwnedValue::Scalar(vela_common::ScalarValue::I64(21)));
+        let entry = runtime
+            .state
+            .inline_caches
+            .host_access(cache_site)
+            .expect("host read should refresh cache");
+        assert_eq!(entry.schema_epoch, HostSchemaEpoch::new(1));
+        assert_eq!(entry.resolved.schema_epoch, HostSchemaEpoch::new(1));
     }
 }

@@ -5,7 +5,7 @@ use vela_host::adapter::{GlobalBinding, ScriptStateAdapter};
 use vela_host::error::{HostError, HostErrorKind, HostResult};
 use vela_host::object::ScriptHostObject;
 use vela_host::path::HostRef;
-use vela_host::resolved::{HostAccessSpec, HostMutationOp, ResolvedHostAccess};
+use vela_host::resolved::{HostAccessSpec, HostMutationOp, HostSchemaEpoch, ResolvedHostAccess};
 use vela_host::target::HostTargetInstance;
 use vela_host::value::HostValue;
 
@@ -126,6 +126,10 @@ impl<'call> GlobalStoreAdapter<'call> {
 }
 
 impl ScriptStateAdapter for GlobalStoreAdapter<'_> {
+    fn host_schema_epoch(&self) -> HostSchemaEpoch {
+        self.fallback.host_schema_epoch()
+    }
+
     fn global_ref(&self, global: GlobalBinding<'_>) -> HostResult<HostRef> {
         global
             .slot

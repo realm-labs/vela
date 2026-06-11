@@ -150,6 +150,10 @@ impl MockStateAdapter {
         self.method_returns.insert(method, value);
     }
 
+    pub fn set_schema_epoch(&mut self, schema_epoch: HostSchemaEpoch) {
+        self.schema_epoch = schema_epoch;
+    }
+
     pub fn deny_diagnostic_path_read(&mut self, path: HostPath) {
         self.denied_reads
             .insert(MockValueKey::from_diagnostic_path(&path));

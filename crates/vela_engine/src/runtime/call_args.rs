@@ -5,7 +5,7 @@ use vela_host::adapter::ScriptStateAdapter;
 use vela_host::error::{HostError, HostErrorKind, HostResult};
 use vela_host::object::ScriptHostObject;
 use vela_host::path::HostRef;
-use vela_host::resolved::{HostAccessSpec, HostMutationOp, ResolvedHostAccess};
+use vela_host::resolved::{HostAccessSpec, HostMutationOp, HostSchemaEpoch, ResolvedHostAccess};
 use vela_host::target::HostTargetInstance;
 use vela_host::value::HostValue;
 use vela_vm::budget::ExecutionBudget;
@@ -504,6 +504,10 @@ impl<'call, 'args> CallArgsAdapter<'call, 'args> {
 }
 
 impl ScriptStateAdapter for CallArgsAdapter<'_, '_> {
+    fn host_schema_epoch(&self) -> HostSchemaEpoch {
+        self.fallback.host_schema_epoch()
+    }
+
     fn resolve_host_access(&self, spec: HostAccessSpec<'_>) -> HostResult<ResolvedHostAccess> {
         match self.direct_binding_by_type(spec.plan.root_type) {
             Some(HostArgBinding::Shared(object)) => object.resolve_host_target(spec),
