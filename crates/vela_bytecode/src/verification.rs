@@ -78,6 +78,15 @@ pub enum VerificationErrorKind {
         expected: CacheSiteKind,
         actual: CacheSiteKind,
     },
+    CacheSiteIdMismatch {
+        expected: CacheSiteId,
+        actual: CacheSiteId,
+    },
+    CacheSiteInstructionKindMismatch {
+        site: CacheSiteId,
+        expected: CacheSiteKind,
+        actual: Option<CacheSiteKind>,
+    },
     HostTargetOutOfBounds {
         target: HostTargetPlanId,
         target_count: usize,
@@ -346,6 +355,7 @@ fn verify_code_object_with_scope(
             cache_scope,
         )?;
     }
+    verify_cache_site_layout(function, code, cache_scope)?;
     for nested in &code.nested_functions {
         verify_code_object_with_scope(nested, &nested.name, closure_scope, cache_scope)?;
     }
@@ -918,6 +928,70 @@ fn verify_cache_site(
         expected,
         cache_scope,
     )
+}
+
+fn verify_cache_site_layout(
+    function: &str,
+    code: &UnlinkedCodeObject,
+    cache_scope: CacheIndexScope<'_>,
+) -> Result<(), VerificationError> {
+    for (index, site) in code.cache_sites.sites().iter().enumerate() {
+        if matches!(cache_scope, CacheIndexScope::Local) {
+            let expected =
+                CacheSiteId::new(u32::try_from(index).expect("cache site count exceeds u32::MAX"));
+            if site.id != expected {
+                return Err(error(
+                    function,
+                    None,
+                    VerificationErrorKind::CacheSiteIdMismatch {
+                        expected,
+                        actual: site.id,
+                    },
+                ));
+            }
+        }
+
+        let Some(instruction) = code.instructions.get(site.instruction_offset.0) else {
+            return Err(error(
+                function,
+                None,
+                VerificationErrorKind::InstructionOutOfBounds {
+                    target: site.instruction_offset,
+                    instruction_count: code.instructions.len(),
+                },
+            ));
+        };
+        let actual = instruction_cache_site_kind(&instruction.kind);
+        if actual != Some(site.kind) {
+            return Err(error(
+                function,
+                Some(site.instruction_offset.0),
+                VerificationErrorKind::CacheSiteInstructionKindMismatch {
+                    site: site.id,
+                    expected: site.kind,
+                    actual,
+                },
+            ));
+        }
+    }
+    Ok(())
+}
+
+fn instruction_cache_site_kind(kind: &UnlinkedInstructionKind) -> Option<CacheSiteKind> {
+    match kind {
+        UnlinkedInstructionKind::LoadGlobal { .. } => Some(CacheSiteKind::GlobalRead),
+        UnlinkedInstructionKind::CallNative { .. } => Some(CacheSiteKind::NativeCall),
+        UnlinkedInstructionKind::CallMethod { .. }
+        | UnlinkedInstructionKind::CallMethodId { .. } => Some(CacheSiteKind::MethodCall),
+        UnlinkedInstructionKind::GetRecordSlot { .. } => Some(CacheSiteKind::RecordFieldRead),
+        UnlinkedInstructionKind::SetRecordSlot { .. } => Some(CacheSiteKind::RecordFieldWrite),
+        UnlinkedInstructionKind::HostRead { .. } => Some(CacheSiteKind::HostPathRead),
+        UnlinkedInstructionKind::HostWrite { .. } => Some(CacheSiteKind::HostPathWrite),
+        UnlinkedInstructionKind::HostMutate { .. } => Some(CacheSiteKind::HostPathMutate),
+        UnlinkedInstructionKind::HostRemove { .. } => Some(CacheSiteKind::HostPathRemove),
+        UnlinkedInstructionKind::HostCall { .. } => Some(CacheSiteKind::HostPathCall),
+        _ => None,
+    }
 }
 
 pub(super) fn error(

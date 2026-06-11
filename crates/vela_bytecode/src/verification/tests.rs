@@ -3,11 +3,12 @@ use vela_host::target::HostTargetPlan;
 use vela_registry::DebugNameId;
 
 use crate::{
-    Constant, FieldSlot, FrameSlotInfo, FrameSlotKind, GuardContext, GuardKind, GuardLocation,
-    Instruction, InstructionKind, LinkedCodeObject, LinkedMethodDispatch, LinkedMethodDispatchKind,
-    LinkedNativeFunction, LinkedProgram, LinkedType, LinkedVariant, MethodDispatchHandle,
-    NativeHandle, ScriptFunctionHandle, TypeGuard, TypeGuardPlan, TypeHandle, UnlinkedInstruction,
-    UnlinkedTypeGuard, UnlinkedTypeGuardPlan, VariantHandle,
+    CacheSiteDesc, CacheSiteLayout, Constant, FieldSlot, FrameSlotInfo, FrameSlotKind,
+    GuardContext, GuardKind, GuardLocation, Instruction, InstructionKind, LinkedCodeObject,
+    LinkedMethodDispatch, LinkedMethodDispatchKind, LinkedNativeFunction, LinkedProgram,
+    LinkedType, LinkedVariant, MethodDispatchHandle, NativeHandle, ScriptFunctionHandle, TypeGuard,
+    TypeGuardPlan, TypeHandle, UnlinkedInstruction, UnlinkedTypeGuard, UnlinkedTypeGuardPlan,
+    VariantHandle,
 };
 
 use super::*;
@@ -915,6 +916,100 @@ fn rejects_collapsed_host_cache_site_kind_mismatch() {
                 site: cache_site,
                 expected: CacheSiteKind::HostPathRead,
                 actual: CacheSiteKind::HostPathWrite
+            }
+        ))
+    );
+}
+
+#[test]
+fn rejects_cache_site_layout_id_mismatch() {
+    let mut code = UnlinkedCodeObject::new("main", 1);
+    code.push_instruction(UnlinkedInstruction::new(
+        UnlinkedInstructionKind::CallNative {
+            dst: None,
+            name: "native::grant".to_owned(),
+            native: vela_def::FunctionId::new(1),
+            args: Vec::new(),
+        },
+    ));
+    code.cache_sites = CacheSiteLayout::new(vec![CacheSiteDesc::new(
+        CacheSiteId::new(3),
+        CacheSiteKind::NativeCall,
+        "main",
+        InstructionOffset(0),
+    )]);
+
+    assert_eq!(
+        verify_code_object(&code),
+        Err(error(
+            "main",
+            None,
+            VerificationErrorKind::CacheSiteIdMismatch {
+                expected: CacheSiteId::new(0),
+                actual: CacheSiteId::new(3)
+            }
+        ))
+    );
+}
+
+#[test]
+fn rejects_cache_site_layout_instruction_offset_out_of_bounds() {
+    let mut code = UnlinkedCodeObject::new("main", 1);
+    code.push_instruction(UnlinkedInstruction::new(
+        UnlinkedInstructionKind::CallNative {
+            dst: None,
+            name: "native::grant".to_owned(),
+            native: vela_def::FunctionId::new(1),
+            args: Vec::new(),
+        },
+    ));
+    code.cache_sites = CacheSiteLayout::new(vec![CacheSiteDesc::new(
+        CacheSiteId::new(0),
+        CacheSiteKind::NativeCall,
+        "main",
+        InstructionOffset(9),
+    )]);
+
+    assert_eq!(
+        verify_code_object(&code),
+        Err(error(
+            "main",
+            None,
+            VerificationErrorKind::InstructionOutOfBounds {
+                target: InstructionOffset(9),
+                instruction_count: 1
+            }
+        ))
+    );
+}
+
+#[test]
+fn rejects_cache_site_layout_instruction_kind_mismatch_for_sidecar_only_sites() {
+    let mut code = UnlinkedCodeObject::new("main", 1);
+    code.push_instruction(UnlinkedInstruction::new(
+        UnlinkedInstructionKind::CallNative {
+            dst: None,
+            name: "native::grant".to_owned(),
+            native: vela_def::FunctionId::new(1),
+            args: Vec::new(),
+        },
+    ));
+    code.cache_sites = CacheSiteLayout::new(vec![CacheSiteDesc::new(
+        CacheSiteId::new(0),
+        CacheSiteKind::MethodCall,
+        "main",
+        InstructionOffset(0),
+    )]);
+
+    assert_eq!(
+        verify_code_object(&code),
+        Err(error(
+            "main",
+            Some(0),
+            VerificationErrorKind::CacheSiteInstructionKindMismatch {
+                site: CacheSiteId::new(0),
+                expected: CacheSiteKind::MethodCall,
+                actual: Some(CacheSiteKind::NativeCall)
             }
         ))
     );
