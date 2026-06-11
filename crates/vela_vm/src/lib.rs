@@ -46,6 +46,7 @@ pub mod serde;
 mod serde_tests;
 mod set_methods;
 mod small_storage;
+mod std_method_ids;
 mod stdlib;
 mod string_method_dispatch;
 mod string_methods;
