@@ -318,7 +318,8 @@ Cranelift JIT.
   rebasing coverage. Linked script record field reads and writes now populate
   guarded runtime inline-cache entries keyed by `TypeId`, `ShapeId`, and
   `FieldSlot`, and guard misses fall back to the existing slot slow path before
-  replacing stale entries. The
+  replacing stale entries; accepted hot reloads clear those record-field cache
+  entries before the new image repopulates them. The
   primitive scalar, bytes, type-hint contract, and guard-plan refactor is
   complete: source `int`/`float` hints are gone, runtime/owned/host/constant
   values share `ScalarValue` and bytes representations, type hints are

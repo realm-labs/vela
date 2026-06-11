@@ -113,6 +113,10 @@ impl vela_vm::VmInlineCaches for InlineCaches {
 }
 
 #[cfg(test)]
+#[path = "inline_cache_hot_reload_tests.rs"]
+mod hot_reload_tests;
+
+#[cfg(test)]
 mod tests {
     use vela_bytecode::{CacheSiteId, CacheSiteKind, FieldSlot, HostTargetPlanId};
     use vela_common::{HostMethodId, HostObjectId, HostTypeId, ShapeId, SourceId};
