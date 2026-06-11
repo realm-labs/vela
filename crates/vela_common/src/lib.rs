@@ -1,6 +1,9 @@
 //! Shared foundations for Vela crates.
 
 pub mod diagnostic_render;
+pub mod primitive;
+
+pub use primitive::{NumericTag, PrimitiveTag, ScalarValue};
 
 use std::collections::HashMap;
 use std::fmt;
