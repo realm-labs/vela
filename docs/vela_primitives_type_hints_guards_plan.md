@@ -1689,33 +1689,33 @@ Typed scalar op:
 
 The refactor is complete when all of the following are true:
 
-- [ ] `int` and `float` are no longer valid source type hints.
-- [ ] Active architecture docs describe the new primitive model and no longer document `int`/`float` as current value categories.
-- [ ] Stdlib manifest registers explicit primitive scalar types and `bytes`.
-- [ ] Runtime values use `ScalarValue`, not `Int(i64)` / `Float(f64)` variants.
-- [ ] `OwnedValue`, `HostValue`, and `Constant` use scalar/bytes representations.
-- [ ] Embedding descriptors use `TypeHint::Primitive(PrimitiveTag)`, not `TypeHint::Int` / `TypeHint::Float`.
-- [ ] `HeapValue::Bytes` exists and is covered by GC/conversion tests.
-- [ ] Numeric literal suffixes work.
-- [ ] Signed-min literals such as `-128i8` and `-9223372036854775808i64` work.
-- [ ] Byte string literals work.
-- [ ] Unsuffixed integer literal defaults to `i64` only when it escapes without context.
-- [ ] Unsuffixed float literal defaults to `f64` only when it escapes without context.
-- [ ] Inline unsuffixed numeric literals in dynamic operator contexts can be deferred.
-- [ ] Type hints are contracts, not conversions.
-- [ ] Statically known type contract violations are compile errors.
-- [ ] Dynamic unknown contract violations are runtime errors.
-- [ ] Typed field writes guard dynamic values and reject statically known mismatches.
-- [ ] Numeric operators require identical concrete numeric types.
-- [ ] Default arithmetic is checked.
-- [ ] Explicit conversion APIs exist for common numeric conversions.
-- [ ] Bytes can represent binary data without `Array<i64>` or `Array<u8>`.
-- [ ] Guard metadata is linked and verifier-checked.
-- [ ] Static safe calls can avoid runtime guard execution.
+- [x] `int` and `float` are no longer valid source type hints.
+- [x] Active architecture docs describe the new primitive model and no longer document `int`/`float` as current value categories.
+- [x] Stdlib manifest registers explicit primitive scalar types and `bytes`.
+- [x] Runtime values use `ScalarValue`, not `Int(i64)` / `Float(f64)` variants.
+- [x] `OwnedValue`, `HostValue`, and `Constant` use scalar/bytes representations.
+- [x] Embedding descriptors use `TypeHint::Primitive(PrimitiveTag)`, not `TypeHint::Int` / `TypeHint::Float`.
+- [x] `HeapValue::Bytes` exists and is covered by GC/conversion tests.
+- [x] Numeric literal suffixes work.
+- [x] Signed-min literals such as `-128i8` and `-9223372036854775808i64` work.
+- [x] Byte string literals work.
+- [x] Unsuffixed integer literal defaults to `i64` only when it escapes without context.
+- [x] Unsuffixed float literal defaults to `f64` only when it escapes without context.
+- [x] Inline unsuffixed numeric literals in dynamic operator contexts can be deferred.
+- [x] Type hints are contracts, not conversions.
+- [x] Statically known type contract violations are compile errors.
+- [x] Dynamic unknown contract violations are runtime errors.
+- [x] Typed field writes guard dynamic values and reject statically known mismatches.
+- [x] Numeric operators require identical concrete numeric types.
+- [x] Default arithmetic is checked.
+- [x] Explicit conversion APIs exist for common numeric conversions.
+- [x] Bytes can represent binary data without `Array<i64>` or `Array<u8>`.
+- [x] Guard metadata is linked and verifier-checked.
+- [x] Static safe calls can avoid runtime guard execution.
 - [x] JIT readiness invariants in Section 9 hold.
-- [ ] `cargo fmt --all -- --check` passes.
-- [ ] `cargo clippy --workspace --all-targets -- -D warnings` passes.
-- [ ] `cargo test --workspace` passes.
+- [x] `cargo fmt --all -- --check` passes.
+- [x] `cargo clippy --workspace --all-targets -- -D warnings` passes.
+- [x] `cargo test --workspace` passes.
 
 ---
 

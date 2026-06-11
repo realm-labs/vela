@@ -15,12 +15,14 @@ track. Old handwritten stdlib IDs, raw `0xff00_...` identity spaces, old
 bytecode shapes, old serialized `ProgramImage` assumptions, internal/public
 APIs kept only for the old implementation shape, runtime string fallback
 dispatch, and old internal `int`/`float` compatibility are not compatibility
-requirements. The current executable checklist is
-[vela_primitives_type_hints_guards_plan.md](vela_primitives_type_hints_guards_plan.md).
+requirements. The primitive scalar, bytes, type-hint contract, and guard-plan
+checklist in
+[vela_primitives_type_hints_guards_plan.md](vela_primitives_type_hints_guards_plan.md)
+is complete and validated through the default full workspace checks.
 The prior definition-registry and linked-bytecode checklist is complete and
 validated through the default full workspace checks; follow-on work should
-advance the primitive scalar, bytes, type-hint contract, and guard-plan
-checklist rather than restoring old compatibility paths.
+advance M20 cache/specialization prep rather than restoring old compatibility
+paths.
 
 This does not weaken product contracts: hot reload ABI/schema compatibility,
 HostAccess safety, reflection permissioning, execution budgets, GC roots,
@@ -32,15 +34,15 @@ required.
 M0-M19 are complete enough as a runnable prototype, embedding surface,
 production hot-reload workflow, diagnostics/tooling foundation, runnable
 embedding/conformance proof, measured performance baselines, and non-JIT
-interpreter/heap optimization checkpoint. Current work is centered on the
-primitive scalar, bytes, type-hint contract, and guard-plan refactor as a
-breaking M19.5 architecture continuation before M20 inline caches:
+interpreter/heap optimization checkpoint. The primitive scalar, bytes,
+type-hint contract, and guard-plan refactor is complete as a breaking M19.5
+architecture continuation. Current work should now move toward M20 inline-cache
+entry prep:
 
 ```text
 preserve all runtime, host, reflection, GC, and hot-reload semantics
-replace the old int/float implementation model with explicit scalar primitives
-and bytes
-make type hints contracts with static mismatch errors and linked runtime guards
+keep the explicit scalar primitive and bytes model without old int/float aliases
+preserve type-hint contracts with static mismatch errors and linked runtime guards
 move hot dispatch operands from names to IDs, slots, or resolved targets
 split growing VM hot dispatch families behind focused boundaries
 prepare cache/JIT-facing invariants while keeping generic fallback behavior
@@ -71,7 +73,7 @@ Cranelift JIT.
 | M17 | Complete enough | Game-server demos, negative workflows, conformance fixtures, and parser fuzz harness exist. |
 | M18 | Complete enough | Quick and full/default baseline captures exist with environment metadata and checksums. |
 | M19 | Complete enough | Non-JIT interpreter and heap optimization has a recorded exit checkpoint. Accepted work includes GC pacing, direct heap aggregate construction, argument materialization/storage cleanup, borrowed receiver/runtime views, stdlib collection/string/Option/Result fast paths, scalar/equality/constant/peephole/range-loop lowering, small script-field and short-array construction, and expanded benchmark coverage. Remaining Lua 5.x deltas are measured and belong to M20 cache/specialization families rather than more unguarded M19 micro-optimization. |
-| M19.5 | Active | Required M20 gate: finish the primitive scalar, bytes, type-hint contract, and guard-plan refactor while preserving ID/slot/target-ready dispatch, focused VM boundaries, HostTargetPlan/HostAccess safety, verified bytecode, profile ownership, and JIT-facing interpreter invariants before M20 cache state. |
+| M19.5 | Active | Primitive scalar, bytes, type-hint contract, and guard-plan checklist is complete and fully validated; remaining transition work is M20 cache-entry prep around measured dispatch/cache gaps. |
 | M20 | Not started | Inline caches and specialization start after M19.5, beginning with script record field, host field/path, method dispatch, stdlib method, and hot bytecode offset profiling guards. |
 | M21 | Not started | Debugger runtime hooks and DAP integration follow stable runtime/tooling contracts. |
 | M22 | Not started | Cranelift JIT follows interpreter/cache/debugger/conformance stability. |
@@ -299,11 +301,17 @@ Cranelift JIT.
   names remain side-table metadata. Engine definition registry construction now
   consumes registered host type, field, method, and native function inputs
   directly instead of rebuilding compiler identity from reflection-only
-  descriptors; reflection metadata remains a separate runtime view.
+  descriptors; reflection metadata remains a separate runtime view. The
+  primitive scalar, bytes, type-hint contract, and guard-plan refactor is
+  complete: source `int`/`float` hints are gone, runtime/owned/host/constant
+  values share `ScalarValue` and bytes representations, type hints are
+  contracts with compile-time and linked runtime guard enforcement, numeric
+  operators require identical concrete scalar tags, byte strings and bytes APIs
+  are covered, and final validation passes.
 
 ### Remaining Gaps
 
-- M19.5 exit checklist before M20:
+- Remaining M19.5/M20 cache-entry gaps after the primitive refactor:
   - hot script, native, stdlib, method, and host-boundary dispatch operands
     use IDs, slots, resolved targets, path keys, or an explicit remaining
     fallback reason;
@@ -348,19 +356,17 @@ cargo clippy --workspace --all-targets -- -D warnings
 cargo test --workspace
 ```
 
-For current M19.5 work, run focused correctness tests for touched bytecode,
-runtime dispatch, host-boundary, and stdlib/native call paths plus
-interpreter-only before/after benchmark rows. Preparatory fast paths must
+For remaining M19.5/M20 cache-entry work, run focused correctness tests for
+touched bytecode, runtime dispatch, host-boundary, and stdlib/native call paths
+plus interpreter-only before/after benchmark rows. Preparatory fast paths must
 preserve ExecutionBudget, HostAccess, reflection policy, GC roots, hot reload
 ownership, schema invalidation, and source-spanned diagnostics.
 
 ## Next Up
 
-- Continue the primitive scalar, bytes, type-hint contract, and guard-plan
-  refactor from [vela_primitives_type_hints_guards_plan.md](vela_primitives_type_hints_guards_plan.md).
-  Phase 0 updates the active architecture contract; Phase 1 starts the shared
-  primitive/value model used by runtime values, owned values, host values,
-  constants, type hints, C API tags, serde boundaries, and guard plans.
+- Use the completed primitive scalar, bytes, type-hint contract, and guard-plan
+  refactor as the baseline for M20 cache/specialization work; do not reintroduce
+  old `int`/`float` compatibility paths or string fallback dispatch.
 - Keep benchmark evidence ahead of M20 specialization work. M19.5 reports
   interpreter-only before/after rows; M20 reports interpreter-only versus
   cache-enabled rows.
