@@ -30,11 +30,7 @@ pub(crate) fn make_closure(
     frame: &mut CallFrame,
     closure: MakeClosure<'_>,
 ) -> VmResult<()> {
-    let captures = closure
-        .captures
-        .iter()
-        .map(|register| frame.read(*register).cloned())
-        .collect::<VmResult<Vec<_>>>()?;
+    let captures = captures_from_registers(frame, closure.captures)?;
     let heap = heap.as_deref_mut().ok_or_else(|| {
         VmError::new(VmErrorKind::TypeMismatch {
             operation: "closure heap",
@@ -56,6 +52,45 @@ pub(crate) fn make_closure(
         budget.as_deref_mut(),
     )?;
     frame.write(closure.dst, value)
+}
+
+pub(crate) struct LinkedMakeClosure<'a> {
+    pub(crate) dst: Register,
+    pub(crate) function: vela_bytecode::ScriptFunctionHandle,
+    pub(crate) captures: &'a [Register],
+    pub(crate) call_site: Option<Span>,
+}
+
+pub(crate) fn make_linked_closure(
+    heap: &mut Option<&mut HeapExecution<'_>>,
+    budget: &mut Option<&mut ExecutionBudget>,
+    frame: &mut CallFrame,
+    closure: LinkedMakeClosure<'_>,
+) -> VmResult<()> {
+    let captures = captures_from_registers(frame, closure.captures)?;
+    let heap = heap.as_deref_mut().ok_or_else(|| {
+        VmError::new(VmErrorKind::TypeMismatch {
+            operation: "closure heap",
+        })
+        .with_source_span_if_absent(closure.call_site)
+    })?;
+    let value = allocate_heap_value(
+        HeapValue::Closure(ClosureValue {
+            code: ClosureCode::Linked(closure.function),
+            captures,
+        }),
+        heap,
+        budget.as_deref_mut(),
+    )?;
+    frame.write(closure.dst, value)
+}
+
+fn captures_from_registers(frame: &CallFrame, captures: &[Register]) -> VmResult<Vec<Value>> {
+    let mut values = Vec::with_capacity(captures.len());
+    for register in captures {
+        values.push(*frame.read(*register)?);
+    }
+    Ok(values)
 }
 
 fn resolve_closure_code<'a>(

@@ -7,7 +7,6 @@ use vela_common::Span;
 
 use crate::heap::EnumIdentity;
 use crate::option_result::std_enum_identity_for_names;
-use crate::value::{ClosureCode, ClosureValue};
 
 use super::*;
 
@@ -415,25 +414,17 @@ impl Vm {
                     function,
                     captures,
                 } => {
-                    let captures = captures
-                        .iter()
-                        .map(|register| frame.read(*register).cloned())
-                        .collect::<VmResult<Vec<_>>>()?;
-                    let heap = heap.as_deref_mut().ok_or_else(|| {
-                        VmError::new(VmErrorKind::TypeMismatch {
-                            operation: "closure heap",
-                        })
-                        .with_source_span_if_absent(instruction.span)
-                    })?;
-                    let value = allocate_heap_value(
-                        HeapValue::Closure(ClosureValue {
-                            code: ClosureCode::Linked(*function),
+                    closure_calls::make_linked_closure(
+                        &mut heap,
+                        &mut budget,
+                        &mut frame,
+                        closure_calls::LinkedMakeClosure {
+                            dst: *dst,
+                            function: *function,
                             captures,
-                        }),
-                        heap,
-                        budget.as_deref_mut(),
+                            call_site: instruction.span,
+                        },
                     )?;
-                    frame.write(*dst, value)?;
                 }
                 InstructionKind::CallClosure { dst, callee, args } => {
                     closure_calls::dispatch_linked_closure_call(
