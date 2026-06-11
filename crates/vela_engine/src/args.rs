@@ -1,3 +1,4 @@
+use std::any::{Any, TypeId};
 use std::collections::{BTreeMap, BTreeSet, HashMap, HashSet};
 use std::hash::Hash;
 use std::marker::PhantomData;
@@ -415,9 +416,16 @@ where
 
 impl<T> IntoScriptArg for Vec<T>
 where
-    T: IntoScriptArg,
+    T: IntoScriptArg + 'static,
 {
     fn into_script_arg(self) -> OwnedValue {
+        if TypeId::of::<T>() == TypeId::of::<u8>() {
+            let value: Box<dyn Any> = Box::new(self);
+            let bytes = value
+                .downcast::<Vec<u8>>()
+                .expect("Vec<T> TypeId matched Vec<u8>");
+            return OwnedValue::Bytes(*bytes);
+        }
         OwnedValue::Array(
             self.into_iter()
                 .map(IntoScriptArg::into_script_arg)
@@ -426,13 +434,29 @@ where
     }
 }
 
+impl IntoScriptArg for &[u8] {
+    fn into_script_arg(self) -> OwnedValue {
+        OwnedValue::Bytes(self.to_vec())
+    }
+}
+
 impl<T> FromScriptArg for Vec<T>
 where
-    T: FromScriptArg,
+    T: FromScriptArg + 'static,
 {
     const TYPE_NAME: &'static str = "array";
 
     fn from_script_arg(value: &OwnedValue) -> VmResult<Self> {
+        if TypeId::of::<T>() == TypeId::of::<u8>() {
+            let OwnedValue::Bytes(bytes) = value else {
+                return Err(type_mismatch("bytes"));
+            };
+            let value: Box<dyn Any> = Box::new(bytes.clone());
+            let bytes = value
+                .downcast::<Vec<T>>()
+                .expect("Vec<T> TypeId matched Vec<u8>");
+            return Ok(*bytes);
+        }
         match value {
             OwnedValue::Array(values) => values.iter().map(T::from_script_arg).collect(),
             _ => Err(type_mismatch(Self::TYPE_NAME)),

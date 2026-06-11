@@ -10,7 +10,7 @@ use crate::{
     access::{HostAccess, HostObjectSnapshot},
     error::{HostError, HostErrorKind},
     mock::MockStateAdapter,
-    object::{HostValueFrom, HostValueInto},
+    object::{HostValueFrom, HostValueInto, ScriptHostFieldAccess},
     path::{HostPath, HostRef},
     proxy::PathProxy,
     resolved::HostMutationOp,

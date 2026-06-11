@@ -397,6 +397,47 @@ fn main() {
 }
 
 #[test]
+fn typed_native_functions_accept_and_return_byte_buffers() {
+    let engine = Engine::builder()
+        .register_typed_native_fn::<(Vec<u8>,), _>(
+            NativeFunctionDesc::new("game::append_marker", NativeFunctionId::new(263))
+                .param("payload", TypeHint::bytes())
+                .returns(TypeHint::bytes()),
+            |mut payload: Vec<u8>| {
+                payload.push(0xff);
+                payload
+            },
+        )
+        .build()
+        .expect("engine should build");
+    let program = engine
+        .compile_source(
+            SourceId::new(1),
+            r#"
+fn main() {
+    return game::append_marker(b"\x01\x02");
+}
+"#,
+        )
+        .expect("program should compile");
+
+    assert_eq!(
+        run_linked_program(&engine, &program, &[]),
+        Ok(OwnedValue::Bytes(vec![1, 2, 255])),
+    );
+
+    let function = engine
+        .native_function_by_name("game::append_marker")
+        .expect("typed bytes native should be registered");
+    assert!(matches!(
+        (function.function)(&[OwnedValue::Array(vec![OwnedValue::Scalar(
+            vela_common::ScalarValue::U8(1)
+        )])]),
+        Err(error) if matches!(error.kind(), VmErrorKind::TypeMismatch { operation: "bytes" })
+    ));
+}
+
+#[test]
 fn typed_native_functions_accept_set_values() {
     let engine = Engine::builder()
         .register_typed_native_fn::<(BTreeSet<String>,), _>(

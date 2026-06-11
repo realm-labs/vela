@@ -116,6 +116,61 @@ fn host_value_conversions_preserve_exact_scalar_tags() {
 }
 
 #[test]
+fn host_value_conversions_round_trip_byte_buffers_as_bytes() {
+    assert_eq!(
+        vec![0_u8, 1, 255].into_host_value(),
+        Ok(HostValue::Bytes(vec![0, 1, 255]))
+    );
+    assert_eq!(
+        (&[2_u8, 3, 4][..]).into_host_value(),
+        Ok(HostValue::Bytes(vec![2, 3, 4]))
+    );
+    assert_eq!(
+        Vec::<u8>::from_host_value(&HostValue::Bytes(vec![5, 6, 7])),
+        Ok(vec![5, 6, 7])
+    );
+    assert_eq!(
+        Vec::<u8>::from_host_value(&HostValue::Scalar(ScalarValue::U8(1)))
+            .expect_err("scalar u8 is not bytes")
+            .kind,
+        HostErrorKind::InvalidArgument { expected: "bytes" }
+    );
+}
+
+#[test]
+fn byte_vector_host_fields_read_and_write_leaf_bytes() {
+    let path = HostPath::new(player_ref(3));
+    let plan = target_plan(&path);
+    let mut bytes = vec![1_u8, 2, 3];
+
+    assert_eq!(
+        ScriptHostFieldAccess::read_host_target_from(&bytes, target_instance(&path, &plan), 0),
+        Ok(HostValue::Bytes(vec![1, 2, 3]))
+    );
+
+    ScriptHostFieldAccess::write_host_target_from(
+        &mut bytes,
+        target_instance(&path, &plan),
+        0,
+        HostValue::Bytes(vec![4, 5]),
+    )
+    .expect("leaf byte vector write should replace bytes");
+
+    assert_eq!(bytes, vec![4, 5]);
+
+    let indexed_path = path.index(1);
+    let indexed_plan = target_plan(&indexed_path);
+    assert_eq!(
+        ScriptHostFieldAccess::read_host_target_from(
+            &bytes,
+            target_instance(&indexed_path, &indexed_plan),
+            0,
+        ),
+        Ok(HostValue::Scalar(ScalarValue::U8(5)))
+    );
+}
+
+#[test]
 fn host_access_arithmetic_requires_matching_scalar_tags() {
     let mut adapter = MockStateAdapter::new();
     let path = level_path();

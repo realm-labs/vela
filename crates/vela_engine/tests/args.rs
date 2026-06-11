@@ -67,6 +67,35 @@ fn script_arg_conversions_preserve_exact_scalar_tags() {
 }
 
 #[test]
+fn script_arg_conversions_round_trip_byte_buffers_as_bytes() {
+    assert_eq!(
+        vec![0_u8, 1, 255].into_script_arg(),
+        OwnedValue::Bytes(vec![0, 1, 255])
+    );
+    assert_eq!(
+        (&[2_u8, 3, 4][..]).into_script_arg(),
+        OwnedValue::Bytes(vec![2, 3, 4])
+    );
+    assert_eq!(
+        Vec::<u8>::from_script_arg(&OwnedValue::Bytes(vec![5, 6, 7])),
+        Ok(vec![5, 6, 7])
+    );
+    assert!(matches!(
+        Vec::<u8>::from_script_arg(&OwnedValue::Array(vec![OwnedValue::Scalar(
+            vela_common::ScalarValue::U8(1)
+        )])),
+        Err(error) if matches!(error.kind(), VmErrorKind::TypeMismatch { operation: "bytes" })
+    ));
+    assert_eq!(
+        vec![1_i64, 2_i64].into_script_arg(),
+        OwnedValue::Array(vec![
+            OwnedValue::Scalar(vela_common::ScalarValue::I64(1)),
+            OwnedValue::Scalar(vela_common::ScalarValue::I64(2)),
+        ])
+    );
+}
+
+#[test]
 fn script_arg_conversions_support_optional_values() {
     let some_value = OwnedValue::Enum {
         enum_name: "Option".to_owned(),

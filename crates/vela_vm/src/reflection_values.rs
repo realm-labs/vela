@@ -238,6 +238,7 @@ fn host_to_owned(value: HostValue) -> OwnedValue {
         HostValue::Bool(value) => OwnedValue::Bool(value),
         HostValue::Scalar(value) => OwnedValue::Scalar(value),
         HostValue::String(value) => OwnedValue::String(value),
+        HostValue::Bytes(value) => OwnedValue::Bytes(value),
         HostValue::HostRef(value) => OwnedValue::HostRef(value),
     }
 }

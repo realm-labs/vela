@@ -8,6 +8,7 @@ pub enum HostValue {
     Bool(bool),
     Scalar(ScalarValue),
     String(String),
+    Bytes(Vec<u8>),
     HostRef(HostRef),
 }
 

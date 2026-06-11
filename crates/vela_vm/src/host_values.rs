@@ -9,7 +9,7 @@ pub(crate) fn value_from_host(value: HostValue) -> Value {
         HostValue::Bool(value) => Value::Bool(value),
         HostValue::Scalar(value) => Value::Scalar(value),
         HostValue::HostRef(value) => Value::HostRef(value),
-        HostValue::String(_) => Value::Missing,
+        HostValue::String(_) | HostValue::Bytes(_) => Value::Missing,
     }
 }
 
@@ -25,6 +25,7 @@ pub(crate) fn value_to_host(
         Value::HostRef(value) => Ok(HostValue::HostRef(*value)),
         Value::HeapRef(reference) => match heap.and_then(|heap| heap.heap.get(*reference)) {
             Some(HeapValue::String(value)) => Ok(HostValue::String(value.clone())),
+            Some(HeapValue::Bytes(value)) => Ok(HostValue::Bytes(value.clone())),
             Some(
                 HeapValue::Array(_)
                 | HeapValue::Map(_)

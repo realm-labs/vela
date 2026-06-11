@@ -1,3 +1,4 @@
+use std::any::{Any, TypeId};
 use std::collections::{BTreeMap, BTreeSet, HashMap, HashSet};
 use std::hash::Hash;
 
@@ -336,6 +337,27 @@ impl HostValueFrom for String {
     }
 }
 
+impl HostValueInto for Vec<u8> {
+    fn into_host_value(self) -> HostResult<HostValue> {
+        Ok(HostValue::Bytes(self))
+    }
+}
+
+impl HostValueInto for &[u8] {
+    fn into_host_value(self) -> HostResult<HostValue> {
+        Ok(HostValue::Bytes(self.to_vec()))
+    }
+}
+
+impl HostValueFrom for Vec<u8> {
+    fn from_host_value(value: &HostValue) -> HostResult<Self> {
+        match value {
+            HostValue::Bytes(value) => Ok(value.clone()),
+            _ => Err(invalid_arg("bytes")),
+        }
+    }
+}
+
 impl ScriptHostFieldAccess for String {
     fn script_host_type_id(&self) -> HostTypeId {
         HostTypeId::new(0)
@@ -504,7 +526,7 @@ impl_script_host_object_via_field!(<K, V> HashMap<K, V> where K: ScriptHostKey +
 
 impl<T> ScriptHostFieldAccess for Vec<T>
 where
-    T: ScriptHostFieldAccess,
+    T: ScriptHostFieldAccess + 'static,
 {
     fn script_host_type_id(&self) -> HostTypeId {
         HostTypeId::new(0)
@@ -515,6 +537,12 @@ where
         target: HostTargetInstance<'_>,
         offset: usize,
     ) -> HostResult<HostValue> {
+        if target_is_leaf(target, offset) && TypeId::of::<T>() == TypeId::of::<u8>() {
+            let bytes = (self as &dyn Any)
+                .downcast_ref::<Vec<u8>>()
+                .expect("Vec<T> TypeId matched Vec<u8>");
+            return Ok(HostValue::Bytes(bytes.clone()));
+        }
         let index = usize::try_from(target_index(target, offset)?)
             .map_err(|_| invalid_arg("array index"))?;
         self.get(index)
@@ -528,6 +556,14 @@ where
         offset: usize,
         value: HostValue,
     ) -> HostResult<()> {
+        if target_is_leaf(target, offset) && TypeId::of::<T>() == TypeId::of::<u8>() {
+            let bytes = Vec::<u8>::from_host_value(&value)?;
+            let target = (self as &mut dyn Any)
+                .downcast_mut::<Vec<u8>>()
+                .expect("Vec<T> TypeId matched Vec<u8>");
+            *target = bytes;
+            return Ok(());
+        }
         let index = usize::try_from(target_index(target, offset)?)
             .map_err(|_| invalid_arg("array index"))?;
         self.get_mut(index)
@@ -550,7 +586,7 @@ where
     }
 }
 
-impl_script_host_object_via_field!(<T> Vec<T> where T: ScriptHostFieldAccess);
+impl_script_host_object_via_field!(<T> Vec<T> where T: ScriptHostFieldAccess + 'static);
 
 impl<K> ScriptHostFieldAccess for BTreeSet<K>
 where

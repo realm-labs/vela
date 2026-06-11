@@ -381,6 +381,7 @@ pub(crate) fn host_to_value(
         HostValue::Bool(value) => Ok(Value::Bool(value)),
         HostValue::Scalar(value) => Ok(Value::Scalar(value)),
         HostValue::String(value) => allocate_heap_value(HeapValue::String(value), heap, budget),
+        HostValue::Bytes(value) => allocate_heap_value(HeapValue::Bytes(value), heap, budget),
         HostValue::HostRef(value) => Ok(Value::HostRef(value)),
     }
 }
@@ -398,9 +399,9 @@ pub(crate) fn value_to_host(
         Value::HostRef(value) => Ok(HostValue::HostRef(*value)),
         Value::HeapRef(reference) => match heap.and_then(|heap| heap.heap.get(*reference)) {
             Some(HeapValue::String(value)) => Ok(HostValue::String(value.clone())),
+            Some(HeapValue::Bytes(value)) => Ok(HostValue::Bytes(value.clone())),
             Some(
                 HeapValue::Array(_)
-                | HeapValue::Bytes(_)
                 | HeapValue::Map(_)
                 | HeapValue::Set(_)
                 | HeapValue::Record { .. }

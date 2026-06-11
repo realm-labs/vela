@@ -608,6 +608,11 @@ use the same exact-tag rule for host fields and methods. Callers that intend an
 `i64` contract must pass an explicit `i64` value, and HostAccess arithmetic
 rejects mixed scalar tags instead of widening or narrowing.
 
+Rust `Vec<u8>` and byte slices cross embedding and host boundaries as the
+`bytes` primitive. Other `Vec<T>` values remain arrays; `Vec<u8>` decode
+expects `OwnedValue::Bytes`/`HostValue::Bytes` instead of accepting an array of
+`u8` scalars as an implicit conversion.
+
 ## Validation Rules
 
 - Multi-level `super` scan must return no matches:
