@@ -491,13 +491,14 @@ impl Vm {
                     field,
                     debug_name,
                 } => {
-                    field_access::dispatch_get_record_slot(
+                    field_access::dispatch_linked_get_record_slot(
                         &mut frame,
                         heap.as_deref_mut(),
+                        call.program,
                         *dst,
                         *record,
-                        call.program.debug_name(*debug_name),
-                        field.index(),
+                        *field,
+                        *debug_name,
                     )?;
                 }
                 InstructionKind::SetRecordSlot {
@@ -506,14 +507,17 @@ impl Vm {
                     debug_name,
                     src,
                 } => {
-                    field_access::dispatch_set_record_slot(
+                    field_access::dispatch_linked_set_record_slot(
                         &mut frame,
                         heap.as_deref_mut(),
                         budget.as_deref_mut(),
-                        *record,
-                        call.program.debug_name(*debug_name),
-                        field.index(),
-                        *src,
+                        call.program,
+                        field_access::LinkedRecordSlotWrite {
+                            record: *record,
+                            field: *field,
+                            debug_name: *debug_name,
+                            src: *src,
+                        },
                     )?;
                 }
                 InstructionKind::MakeEnum {
@@ -541,13 +545,14 @@ impl Vm {
                     field,
                     debug_name,
                 } => {
-                    field_access::dispatch_get_enum_slot(
+                    field_access::dispatch_linked_get_enum_slot(
                         &mut frame,
                         heap.as_deref_mut(),
+                        call.program,
                         *dst,
                         *value,
-                        call.program.debug_name(*debug_name),
-                        field.index(),
+                        *field,
+                        *debug_name,
                     )?;
                 }
                 InstructionKind::GetIndex { dst, base, index } => {

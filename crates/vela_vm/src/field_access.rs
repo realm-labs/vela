@@ -3,7 +3,7 @@ use crate::{
     CallFrame, ExecutionBudget, HeapExecution, Value, VmError, VmErrorKind, VmResult,
     record_fields, stored_runtime_value,
 };
-use vela_bytecode::{LinkedProgram, Register, TypeHandle, VariantHandle};
+use vela_bytecode::{DebugNameId, FieldSlot, LinkedProgram, Register, TypeHandle, VariantHandle};
 use vela_def::{TypeId, VariantId};
 
 pub(crate) fn dispatch_get_record_field(
@@ -27,6 +27,25 @@ pub(crate) fn dispatch_get_record_slot(
 ) -> VmResult<()> {
     let value = get_record_slot_value(frame.read(record)?, field, slot, heap.as_deref())?;
     frame.write(dst, value)
+}
+
+pub(crate) fn dispatch_linked_get_record_slot(
+    frame: &mut CallFrame,
+    heap: Option<&mut HeapExecution<'_>>,
+    program: &LinkedProgram,
+    dst: Register,
+    record: Register,
+    field: FieldSlot,
+    debug_name: DebugNameId,
+) -> VmResult<()> {
+    dispatch_get_record_slot(
+        frame,
+        heap,
+        dst,
+        record,
+        program.debug_name(debug_name),
+        field.index(),
+    )
 }
 
 pub(crate) fn dispatch_set_record_field(
@@ -58,6 +77,31 @@ pub(crate) fn dispatch_set_record_slot(
     frame.write(record, record_value)
 }
 
+pub(crate) struct LinkedRecordSlotWrite {
+    pub(crate) record: Register,
+    pub(crate) field: FieldSlot,
+    pub(crate) debug_name: DebugNameId,
+    pub(crate) src: Register,
+}
+
+pub(crate) fn dispatch_linked_set_record_slot(
+    frame: &mut CallFrame,
+    heap: Option<&mut HeapExecution<'_>>,
+    budget: Option<&mut ExecutionBudget>,
+    program: &LinkedProgram,
+    write: LinkedRecordSlotWrite,
+) -> VmResult<()> {
+    dispatch_set_record_slot(
+        frame,
+        heap,
+        budget,
+        write.record,
+        program.debug_name(write.debug_name),
+        write.field.index(),
+        write.src,
+    )
+}
+
 pub(crate) fn dispatch_get_enum_field(
     frame: &mut CallFrame,
     heap: Option<&mut HeapExecution<'_>>,
@@ -79,6 +123,25 @@ pub(crate) fn dispatch_get_enum_slot(
 ) -> VmResult<()> {
     let value = get_enum_slot_value(frame.read(value)?, field, slot, heap.as_deref())?;
     frame.write(dst, value)
+}
+
+pub(crate) fn dispatch_linked_get_enum_slot(
+    frame: &mut CallFrame,
+    heap: Option<&mut HeapExecution<'_>>,
+    program: &LinkedProgram,
+    dst: Register,
+    value: Register,
+    field: FieldSlot,
+    debug_name: DebugNameId,
+) -> VmResult<()> {
+    dispatch_get_enum_slot(
+        frame,
+        heap,
+        dst,
+        value,
+        program.debug_name(debug_name),
+        field.index(),
+    )
 }
 
 pub(crate) fn dispatch_enum_tag_equal(
