@@ -4,11 +4,11 @@ pub const REWARD_TABLE = {"gold": BASE_REWARD, "gem": BASE_REWARD + 2}
 
 pub struct RewardConfig {
     item: string,
-    count: int = BASE_REWARD,
+    count: i64 = 4,
 }
 
 pub enum RewardOutcome {
-    Granted { item: string, count: int },
+    Granted { item: string, count: i64 },
     Skipped(reason: string),
 }
 

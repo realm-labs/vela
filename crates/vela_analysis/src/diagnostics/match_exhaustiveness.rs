@@ -354,10 +354,10 @@ mod tests {
             "#,
         );
         let scope = ExprFactScope::new()
-            .with_path(["maybe_reward"], TypeFact::option(TypeFact::String))
+            .with_path(["maybe_reward"], TypeFact::option(TypeFact::STRING))
             .with_path(
                 ["outcome"],
-                TypeFact::result(TypeFact::Int, TypeFact::String),
+                TypeFact::result(TypeFact::I64, TypeFact::STRING),
             );
         let facts = RegistryFacts::default();
 

@@ -4,6 +4,7 @@ mod try_propagation;
 
 use std::collections::BTreeMap;
 
+use vela_common::PrimitiveTag;
 use vela_syntax::ast::{
     BinaryOp, Block, ElseBranch, Expr, ExprKind, Literal, Param, Pattern, StmtKind, TypeHint,
     UnaryOp,
@@ -145,21 +146,21 @@ fn type_fact_from_expr_impl(
 
 fn literal_fact(literal: &Literal) -> TypeFact {
     match literal {
-        Literal::Null => TypeFact::Null,
-        Literal::Bool(_) => TypeFact::Bool,
-        Literal::Integer(_) => TypeFact::Int,
-        Literal::Float(_) => TypeFact::Float,
-        Literal::String(_) => TypeFact::String,
-        Literal::Bytes(_) => TypeFact::Bytes,
+        Literal::Null => TypeFact::NULL,
+        Literal::Bool(_) => TypeFact::BOOL,
+        Literal::Integer(_) => TypeFact::I64,
+        Literal::Float(_) => TypeFact::F64,
+        Literal::String(_) => TypeFact::STRING,
+        Literal::Bytes(_) => TypeFact::BYTES,
     }
 }
 
 fn unary_fact(op: UnaryOp, operand: TypeFact) -> TypeFact {
     match op {
-        UnaryOp::Not => TypeFact::Bool,
+        UnaryOp::Not => TypeFact::BOOL,
         UnaryOp::Negate => match operand {
-            TypeFact::Int | TypeFact::Float => operand,
-            _ => TypeFact::Union(vec![TypeFact::Int, TypeFact::Float]),
+            TypeFact::Primitive(PrimitiveTag::I64 | PrimitiveTag::F64) => operand,
+            _ => TypeFact::Union(vec![TypeFact::I64, TypeFact::F64]),
         },
     }
 }
@@ -173,7 +174,7 @@ fn binary_fact(op: BinaryOp, left: TypeFact, right: TypeFact) -> TypeFact {
         | BinaryOp::Less
         | BinaryOp::LessEqual
         | BinaryOp::Greater
-        | BinaryOp::GreaterEqual => TypeFact::Bool,
+        | BinaryOp::GreaterEqual => TypeFact::BOOL,
         BinaryOp::Add | BinaryOp::Sub | BinaryOp::Mul | BinaryOp::Div | BinaryOp::Rem => {
             numeric_result([left, right])
         }
@@ -183,15 +184,20 @@ fn binary_fact(op: BinaryOp, left: TypeFact, right: TypeFact) -> TypeFact {
 
 fn numeric_result(values: impl IntoIterator<Item = TypeFact>) -> TypeFact {
     let values = values.into_iter().collect::<Vec<_>>();
-    if values.iter().all(|value| matches!(value, TypeFact::Int)) {
-        TypeFact::Int
-    } else if values
+    if values
         .iter()
-        .all(|value| matches!(value, TypeFact::Int | TypeFact::Float))
+        .all(|value| matches!(value, TypeFact::Primitive(PrimitiveTag::I64)))
     {
-        TypeFact::Float
+        TypeFact::I64
+    } else if values.iter().all(|value| {
+        matches!(
+            value,
+            TypeFact::Primitive(PrimitiveTag::I64 | PrimitiveTag::F64)
+        )
+    }) {
+        TypeFact::F64
     } else {
-        TypeFact::Union(vec![TypeFact::Int, TypeFact::Float])
+        TypeFact::Union(vec![TypeFact::I64, TypeFact::F64])
     }
 }
 
@@ -314,7 +320,7 @@ fn index_fact(base: TypeFact, index: TypeFact) -> TypeFact {
 
 fn accepts_int_index(index: &TypeFact) -> bool {
     match index {
-        TypeFact::Int | TypeFact::Any | TypeFact::Unknown => true,
+        TypeFact::Primitive(PrimitiveTag::I64) | TypeFact::Any | TypeFact::Unknown => true,
         TypeFact::Union(facts) => facts.iter().any(accepts_int_index),
         _ => false,
     }
@@ -334,7 +340,7 @@ fn map_key_fact(key: &Expr, scope: &ExprFactScope, facts: Option<&RegistryFacts>
         ExprKind::Literal(Literal::String(_))
         | ExprKind::Literal(Literal::Integer(_))
         | ExprKind::Literal(Literal::Float(_))
-        | ExprKind::Path(_) => TypeFact::String,
+        | ExprKind::Path(_) => TypeFact::STRING,
         _ => type_fact_from_expr_impl(key, scope, facts),
     }
 }
@@ -402,7 +408,7 @@ fn block_fact(block: &Block, scope: &ExprFactScope, facts: Option<&RegistryFacts
             StmtKind::Block(block) => Some(block_fact(block, scope, facts)),
             _ => None,
         })
-        .unwrap_or(TypeFact::Null)
+        .unwrap_or(TypeFact::NULL)
 }
 
 fn if_expr_fact(
@@ -417,7 +423,7 @@ fn if_expr_fact(
         if_expr
             .else_branch
             .as_ref()
-            .map_or(TypeFact::Null, |else_branch| {
+            .map_or(TypeFact::NULL, |else_branch| {
                 else_branch_fact(else_branch, &else_scope, facts)
             }),
     );
@@ -441,21 +447,22 @@ fn collection_fact(facts: impl IntoIterator<Item = TypeFact>) -> TypeFact {
 
 fn type_fact_from_syntax_hint(hint: &TypeHint) -> TypeFact {
     match hint.path.as_slice() {
-        [name] => match name.as_str() {
-            "any" => TypeFact::Any,
-            "null" => TypeFact::Null,
-            "bool" => TypeFact::Bool,
-            "int" => TypeFact::Int,
-            "float" => TypeFact::Float,
-            "string" => TypeFact::String,
-            "array" => TypeFact::array(TypeFact::Unknown),
-            "map" => TypeFact::map(TypeFact::Unknown, TypeFact::Unknown),
-            "set" => TypeFact::set(TypeFact::Unknown),
-            "function" => TypeFact::function(Vec::new(), TypeFact::Unknown),
-            "Option" => TypeFact::option(TypeFact::Unknown),
-            "Result" => TypeFact::result(TypeFact::Unknown, TypeFact::Unknown),
-            name => TypeFact::record(name),
-        },
+        [name] => {
+            if let Some(tag) = PrimitiveTag::from_name(name) {
+                return TypeFact::primitive(tag);
+            }
+
+            match name.as_str() {
+                "any" => TypeFact::Any,
+                "array" => TypeFact::array(TypeFact::Unknown),
+                "map" => TypeFact::map(TypeFact::Unknown, TypeFact::Unknown),
+                "set" => TypeFact::set(TypeFact::Unknown),
+                "function" => TypeFact::function(Vec::new(), TypeFact::Unknown),
+                "Option" => TypeFact::option(TypeFact::Unknown),
+                "Result" => TypeFact::result(TypeFact::Unknown, TypeFact::Unknown),
+                name => TypeFact::record(name),
+            }
+        }
         path => TypeFact::record(path.join("::")),
     }
 }

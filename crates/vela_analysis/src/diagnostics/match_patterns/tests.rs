@@ -55,10 +55,10 @@ fn reports_unknown_dynamic_option_result_variants() {
         "#,
     );
     let scope = ExprFactScope::new()
-        .with_path(["maybe"], TypeFact::option(TypeFact::Int))
+        .with_path(["maybe"], TypeFact::option(TypeFact::I64))
         .with_path(
             ["result"],
-            TypeFact::result(TypeFact::Int, TypeFact::String),
+            TypeFact::result(TypeFact::I64, TypeFact::STRING),
         );
     let facts = RegistryFacts::default();
 

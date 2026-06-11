@@ -8,8 +8,8 @@ pub(super) fn type_detail(kind: TypeKind) -> String {
     match kind {
         TypeKind::Null => "kind: null".to_owned(),
         TypeKind::Bool => "kind: bool".to_owned(),
-        TypeKind::Int => "kind: int".to_owned(),
-        TypeKind::Float => "kind: float".to_owned(),
+        TypeKind::Int => "kind: i64".to_owned(),
+        TypeKind::Float => "kind: f64".to_owned(),
         TypeKind::String => "kind: string".to_owned(),
         TypeKind::Bytes => "kind: bytes".to_owned(),
         TypeKind::Array => "kind: array".to_owned(),

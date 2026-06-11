@@ -1,16 +1,13 @@
 use std::fmt;
 
+use vela_common::PrimitiveTag;
+
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub enum TypeFact {
     Unknown,
     Never,
     Any,
-    Null,
-    Bool,
-    Int,
-    Float,
-    String,
-    Bytes,
+    Primitive(PrimitiveTag),
     Range,
     Array {
         element: Box<TypeFact>,
@@ -63,6 +60,25 @@ pub enum TypeFact {
 }
 
 impl TypeFact {
+    pub const NULL: Self = Self::Primitive(PrimitiveTag::Null);
+    pub const BOOL: Self = Self::Primitive(PrimitiveTag::Bool);
+    pub const I8: Self = Self::Primitive(PrimitiveTag::I8);
+    pub const I16: Self = Self::Primitive(PrimitiveTag::I16);
+    pub const I32: Self = Self::Primitive(PrimitiveTag::I32);
+    pub const I64: Self = Self::Primitive(PrimitiveTag::I64);
+    pub const U8: Self = Self::Primitive(PrimitiveTag::U8);
+    pub const U16: Self = Self::Primitive(PrimitiveTag::U16);
+    pub const U32: Self = Self::Primitive(PrimitiveTag::U32);
+    pub const U64: Self = Self::Primitive(PrimitiveTag::U64);
+    pub const F32: Self = Self::Primitive(PrimitiveTag::F32);
+    pub const F64: Self = Self::Primitive(PrimitiveTag::F64);
+    pub const STRING: Self = Self::Primitive(PrimitiveTag::String);
+    pub const BYTES: Self = Self::Primitive(PrimitiveTag::Bytes);
+
+    pub const fn primitive(tag: PrimitiveTag) -> Self {
+        Self::Primitive(tag)
+    }
+
     pub fn array(element: TypeFact) -> Self {
         Self::Array {
             element: Box::new(element),
@@ -167,11 +183,11 @@ impl TypeFact {
 
     pub fn without_null(&self) -> Self {
         match self {
-            Self::Null => Self::Never,
+            Self::Primitive(PrimitiveTag::Null) => Self::Never,
             Self::Union(facts) => {
                 let narrowed = facts
                     .iter()
-                    .filter(|fact| !matches!(fact, Self::Null))
+                    .filter(|fact| !matches!(fact, Self::Primitive(PrimitiveTag::Null)))
                     .cloned()
                     .collect::<Vec<_>>();
                 if narrowed.is_empty() {
@@ -186,8 +202,14 @@ impl TypeFact {
 
     pub fn only_null(&self) -> Self {
         match self {
-            Self::Null | Self::Unknown | Self::Any => Self::Null,
-            Self::Union(facts) if facts.iter().any(|fact| matches!(fact, Self::Null)) => Self::Null,
+            Self::Primitive(PrimitiveTag::Null) | Self::Unknown | Self::Any => Self::NULL,
+            Self::Union(facts)
+                if facts
+                    .iter()
+                    .any(|fact| matches!(fact, Self::Primitive(PrimitiveTag::Null))) =>
+            {
+                Self::NULL
+            }
             _ => Self::Never,
         }
     }
@@ -197,12 +219,7 @@ impl TypeFact {
             Self::Unknown => "unknown".to_owned(),
             Self::Never => "never".to_owned(),
             Self::Any => "any".to_owned(),
-            Self::Null => "null".to_owned(),
-            Self::Bool => "bool".to_owned(),
-            Self::Int => "int".to_owned(),
-            Self::Float => "float".to_owned(),
-            Self::String => "string".to_owned(),
-            Self::Bytes => "bytes".to_owned(),
+            Self::Primitive(tag) => tag.name().to_owned(),
             Self::Range => "range".to_owned(),
             Self::Array { element } => format!("array({})", element.display_name()),
             Self::Map { key, value } => {
@@ -268,15 +285,15 @@ mod tests {
 
     #[test]
     fn display_names_avoid_script_generic_syntax() {
-        let fact = TypeFact::map(TypeFact::String, TypeFact::array(TypeFact::Int));
+        let fact = TypeFact::map(TypeFact::STRING, TypeFact::array(TypeFact::I64));
 
-        assert_eq!(fact.display_name(), "map(string, array(int))");
+        assert_eq!(fact.display_name(), "map(string, array(i64))");
         assert_eq!(
-            TypeFact::option_some(TypeFact::Int).display_name(),
-            "Option::Some(int)"
+            TypeFact::option_some(TypeFact::I64).display_name(),
+            "Option::Some(i64)"
         );
         assert_eq!(
-            TypeFact::result_err(TypeFact::String).display_name(),
+            TypeFact::result_err(TypeFact::STRING).display_name(),
             "Result::Err(string)"
         );
         assert!(!fact.display_name().contains('<'));
@@ -286,21 +303,21 @@ mod tests {
     #[test]
     fn union_flattens_and_deduplicates_facts() {
         let fact = TypeFact::union([
-            TypeFact::Int,
-            TypeFact::Union(vec![TypeFact::String, TypeFact::Int]),
+            TypeFact::I64,
+            TypeFact::Union(vec![TypeFact::STRING, TypeFact::I64]),
         ]);
 
-        assert_eq!(fact, TypeFact::Union(vec![TypeFact::Int, TypeFact::String]));
+        assert_eq!(fact, TypeFact::Union(vec![TypeFact::I64, TypeFact::STRING]));
     }
 
     #[test]
     fn null_narrowing_removes_or_selects_null_from_unions() {
-        let fact = TypeFact::Union(vec![TypeFact::Null, TypeFact::host("Player")]);
+        let fact = TypeFact::Union(vec![TypeFact::NULL, TypeFact::host("Player")]);
 
         assert_eq!(fact.without_null(), TypeFact::host("Player"));
-        assert_eq!(fact.only_null(), TypeFact::Null);
-        assert_eq!(TypeFact::Null.without_null(), TypeFact::Never);
-        assert_eq!(TypeFact::Int.only_null(), TypeFact::Never);
+        assert_eq!(fact.only_null(), TypeFact::NULL);
+        assert_eq!(TypeFact::NULL.without_null(), TypeFact::Never);
+        assert_eq!(TypeFact::I64.only_null(), TypeFact::Never);
     }
 
     #[test]

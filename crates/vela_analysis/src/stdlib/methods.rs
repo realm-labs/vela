@@ -1,5 +1,6 @@
 use crate::stdlib::StdlibMethodFact;
 use crate::type_fact::TypeFact;
+use vela_common::PrimitiveTag;
 
 mod collections;
 mod option_result;
@@ -162,8 +163,8 @@ pub(super) fn method_fact(
             lambda_param_count,
         ),
         TypeFact::Set { element } => set_method_fact((**element).clone(), method, lambda_return),
-        TypeFact::String => string_method_fact(method),
-        TypeFact::Bytes => bytes_method_fact(method),
+        TypeFact::Primitive(PrimitiveTag::String) => string_method_fact(method),
+        TypeFact::Primitive(PrimitiveTag::Bytes) => bytes_method_fact(method),
         TypeFact::Range => range_method_fact(method),
         TypeFact::Option { some } => {
             option_method_fact((**some).clone(), OptionShape::Maybe, method, lambda_return)
@@ -214,8 +215,8 @@ fn method_names(receiver: &TypeFact) -> &'static [&'static str] {
         TypeFact::Array { .. } => ARRAY_METHOD_NAMES,
         TypeFact::Map { .. } => MAP_METHOD_NAMES,
         TypeFact::Set { .. } => SET_METHOD_NAMES,
-        TypeFact::String => STRING_METHOD_NAMES,
-        TypeFact::Bytes => BYTES_METHOD_NAMES,
+        TypeFact::Primitive(PrimitiveTag::String) => STRING_METHOD_NAMES,
+        TypeFact::Primitive(PrimitiveTag::Bytes) => BYTES_METHOD_NAMES,
         TypeFact::Range => RANGE_METHOD_NAMES,
         TypeFact::Option { .. } | TypeFact::OptionSome { .. } | TypeFact::OptionNone => {
             OPTION_METHOD_NAMES
@@ -237,8 +238,8 @@ fn value_or_fallback(value: TypeFact, fallback: TypeFact) -> TypeFact {
 
 fn numeric_return(value: &TypeFact) -> TypeFact {
     match value {
-        TypeFact::Float => TypeFact::Float,
-        TypeFact::Int => TypeFact::Int,
-        _ => TypeFact::Union(vec![TypeFact::Int, TypeFact::Float]),
+        TypeFact::Primitive(PrimitiveTag::F64) => TypeFact::F64,
+        TypeFact::Primitive(PrimitiveTag::I64) => TypeFact::I64,
+        _ => TypeFact::Union(vec![TypeFact::I64, TypeFact::F64]),
     }
 }

@@ -3,184 +3,176 @@ use super::*;
 #[test]
 fn math_set_and_time_functions_expose_return_facts() {
     assert_eq!(
-        stdlib_function_fact("math::max", &[TypeFact::Int, TypeFact::Int])
+        stdlib_function_fact("math::max", &[TypeFact::I64, TypeFact::I64])
             .expect("max fact")
             .returns,
-        TypeFact::Int
+        TypeFact::I64
     );
     assert_eq!(
         stdlib_function_fact(
             "math::clamp",
-            &[TypeFact::Float, TypeFact::Int, TypeFact::Float],
+            &[TypeFact::F64, TypeFact::I64, TypeFact::F64],
         )
         .expect("clamp fact")
         .returns,
-        TypeFact::Float
+        TypeFact::F64
     );
     assert_eq!(
-        stdlib_function_fact(
-            "math::lerp",
-            &[TypeFact::Int, TypeFact::Int, TypeFact::Float]
-        )
-        .expect("lerp fact")
-        .returns,
-        TypeFact::Float
-    );
-    assert_eq!(
-        stdlib_function_fact(
-            "math::move_towards",
-            &[TypeFact::Int, TypeFact::Int, TypeFact::Int]
-        )
-        .expect("move_towards int fact")
-        .returns,
-        TypeFact::Int
+        stdlib_function_fact("math::lerp", &[TypeFact::I64, TypeFact::I64, TypeFact::F64])
+            .expect("lerp fact")
+            .returns,
+        TypeFact::F64
     );
     assert_eq!(
         stdlib_function_fact(
             "math::move_towards",
-            &[TypeFact::Int, TypeFact::Float, TypeFact::Int],
+            &[TypeFact::I64, TypeFact::I64, TypeFact::I64]
         )
-        .expect("move_towards float fact")
+        .expect("move_towards i64 fact")
         .returns,
-        TypeFact::Float
+        TypeFact::I64
+    );
+    assert_eq!(
+        stdlib_function_fact(
+            "math::move_towards",
+            &[TypeFact::I64, TypeFact::F64, TypeFact::I64],
+        )
+        .expect("move_towards f64 fact")
+        .returns,
+        TypeFact::F64
     );
     assert_eq!(
         stdlib_function_fact(
             "math::distance2d",
-            &[
-                TypeFact::Int,
-                TypeFact::Int,
-                TypeFact::Float,
-                TypeFact::Float,
-            ],
+            &[TypeFact::I64, TypeFact::I64, TypeFact::F64, TypeFact::F64,],
         )
         .expect("distance2d fact")
         .returns,
-        TypeFact::Float
+        TypeFact::F64
     );
     assert_eq!(
         stdlib_function_fact(
             "math::distance3d",
             &[
-                TypeFact::Int,
-                TypeFact::Int,
-                TypeFact::Int,
-                TypeFact::Float,
-                TypeFact::Float,
-                TypeFact::Float,
+                TypeFact::I64,
+                TypeFact::I64,
+                TypeFact::I64,
+                TypeFact::F64,
+                TypeFact::F64,
+                TypeFact::F64,
             ],
         )
         .expect("distance3d fact")
         .returns,
-        TypeFact::Float
+        TypeFact::F64
     );
     assert_eq!(
-        stdlib_function_fact("math::pow", &[TypeFact::Int, TypeFact::Float])
+        stdlib_function_fact("math::pow", &[TypeFact::I64, TypeFact::F64])
             .expect("pow fact")
             .returns,
-        TypeFact::Union(vec![TypeFact::Int, TypeFact::Float])
+        TypeFact::Union(vec![TypeFact::I64, TypeFact::F64])
     );
     assert_eq!(
-        stdlib_function_fact("math::sqrt", &[TypeFact::Int])
+        stdlib_function_fact("math::sqrt", &[TypeFact::I64])
             .expect("sqrt fact")
             .returns,
-        TypeFact::Float
+        TypeFact::F64
     );
     assert_eq!(
-        stdlib_function_fact("math::sign", &[TypeFact::Float])
+        stdlib_function_fact("math::sign", &[TypeFact::F64])
             .expect("sign fact")
             .returns,
-        TypeFact::Int
+        TypeFact::I64
     );
     assert_eq!(
-        stdlib_function_fact("math::floor", &[TypeFact::Float])
+        stdlib_function_fact("math::floor", &[TypeFact::F64])
             .expect("floor fact")
             .returns,
-        TypeFact::Int
+        TypeFact::I64
     );
     assert_eq!(
-        stdlib_function_fact("math::ceil", &[TypeFact::Float])
+        stdlib_function_fact("math::ceil", &[TypeFact::F64])
             .expect("ceil fact")
             .returns,
-        TypeFact::Int
+        TypeFact::I64
     );
     assert_eq!(
-        stdlib_function_fact("math::round", &[TypeFact::Float])
+        stdlib_function_fact("math::round", &[TypeFact::F64])
             .expect("round fact")
             .returns,
-        TypeFact::Int
+        TypeFact::I64
     );
     assert_eq!(
-        stdlib_function_fact("math::abs", &[TypeFact::Float])
+        stdlib_function_fact("math::abs", &[TypeFact::F64])
             .expect("abs fact")
             .returns,
-        TypeFact::Float
+        TypeFact::F64
     );
     assert_eq!(
-        stdlib_function_fact("set::from_array", &[TypeFact::array(TypeFact::String)])
+        stdlib_function_fact("set::from_array", &[TypeFact::array(TypeFact::STRING)])
             .expect("set::from_array fact")
             .returns,
-        TypeFact::set(TypeFact::String)
+        TypeFact::set(TypeFact::STRING)
     );
     assert_eq!(
-        stdlib_function_fact("bytes::from_hex", &[TypeFact::String])
+        stdlib_function_fact("bytes::from_hex", &[TypeFact::STRING])
             .expect("bytes::from_hex fact")
             .returns,
-        TypeFact::result(TypeFact::Bytes, TypeFact::String)
+        TypeFact::result(TypeFact::BYTES, TypeFact::STRING)
     );
     assert_eq!(
-        stdlib_function_fact("i64::from_i32", &[TypeFact::Int])
+        stdlib_function_fact("i64::from_i32", &[TypeFact::I64])
             .expect("i64::from_i32 fact")
             .returns,
-        TypeFact::Int
+        TypeFact::I64
     );
     assert_eq!(
-        stdlib_function_fact("i8::try_from_i64", &[TypeFact::Int])
+        stdlib_function_fact("i8::try_from_i64", &[TypeFact::I64])
             .expect("i8::try_from_i64 fact")
             .returns,
-        TypeFact::result(TypeFact::Int, TypeFact::String)
+        TypeFact::result(TypeFact::I64, TypeFact::STRING)
     );
     assert_eq!(
-        stdlib_function_fact("f32::try_from_f64", &[TypeFact::Float])
+        stdlib_function_fact("f32::try_from_f64", &[TypeFact::F64])
             .expect("f32::try_from_f64 fact")
             .returns,
-        TypeFact::result(TypeFact::Float, TypeFact::String)
+        TypeFact::result(TypeFact::F64, TypeFact::STRING)
     );
     assert_eq!(
-        stdlib_function_fact("u8::wrapping_add", &[TypeFact::Int, TypeFact::Int])
+        stdlib_function_fact("u8::wrapping_add", &[TypeFact::I64, TypeFact::I64])
             .expect("u8::wrapping_add fact")
             .returns,
-        TypeFact::Int
+        TypeFact::I64
     );
     assert_eq!(
-        stdlib_function_fact("u8::rotate_right", &[TypeFact::Int, TypeFact::Int])
+        stdlib_function_fact("u8::rotate_right", &[TypeFact::I64, TypeFact::I64])
             .expect("u8::rotate_right fact")
             .returns,
-        TypeFact::Int
+        TypeFact::I64
     );
     assert_eq!(
         stdlib_function_fact("time::now", &[])
             .expect("time::now fact")
             .returns,
-        TypeFact::Int
+        TypeFact::I64
     );
     assert_eq!(
         stdlib_function_fact("time::tick", &[])
             .expect("time::tick fact")
             .returns,
-        TypeFact::Int
+        TypeFact::I64
     );
     assert_eq!(
-        stdlib_function_fact("time::elapsed_since", &[TypeFact::Int])
+        stdlib_function_fact("time::elapsed_since", &[TypeFact::I64])
             .expect("time::elapsed_since fact")
             .returns,
-        TypeFact::Int
+        TypeFact::I64
     );
 }
 
 #[test]
 fn function_completion_facts_enumerate_global_api_surface() {
-    let number = TypeFact::Union(vec![TypeFact::Int, TypeFact::Float]);
+    let number = TypeFact::Union(vec![TypeFact::I64, TypeFact::F64]);
     let facts = stdlib_function_completion_facts();
 
     assert!(facts.iter().any(|fact| {
@@ -205,28 +197,28 @@ fn function_completion_facts_enumerate_global_api_surface() {
     }));
     assert!(facts.iter().any(|fact| {
         fact.name == "bytes::from_hex"
-            && fact.params == vec![TypeFact::String]
-            && fact.returns == TypeFact::result(TypeFact::Bytes, TypeFact::String)
+            && fact.params == vec![TypeFact::STRING]
+            && fact.returns == TypeFact::result(TypeFact::BYTES, TypeFact::STRING)
     }));
     assert!(facts.iter().any(|fact| {
         fact.name == "i64::from_i32"
-            && fact.params == vec![TypeFact::Int]
-            && fact.returns == TypeFact::Int
+            && fact.params == vec![TypeFact::I64]
+            && fact.returns == TypeFact::I64
     }));
     assert!(facts.iter().any(|fact| {
         fact.name == "f32::try_from_f64"
-            && fact.params == vec![TypeFact::Float]
-            && fact.returns == TypeFact::result(TypeFact::Float, TypeFact::String)
+            && fact.params == vec![TypeFact::F64]
+            && fact.returns == TypeFact::result(TypeFact::F64, TypeFact::STRING)
     }));
     assert!(facts.iter().any(|fact| {
         fact.name == "u8::bit_and"
-            && fact.params == vec![TypeFact::Int, TypeFact::Int]
-            && fact.returns == TypeFact::Int
+            && fact.params == vec![TypeFact::I64, TypeFact::I64]
+            && fact.returns == TypeFact::I64
     }));
     assert!(facts.iter().any(|fact| {
         fact.name == "u8::shift_left"
-            && fact.params == vec![TypeFact::Int, TypeFact::Int]
-            && fact.returns == TypeFact::Int
+            && fact.params == vec![TypeFact::I64, TypeFact::I64]
+            && fact.returns == TypeFact::I64
     }));
     assert!(facts.iter().any(|fact| {
         fact.name == "result::to_error_option"
@@ -246,34 +238,34 @@ fn function_completion_facts_enumerate_global_api_surface() {
         fact.name == "math::clamp" && fact.params.len() == 3 && fact.returns == number
     }));
     assert!(facts.iter().any(|fact| {
-        fact.name == "math::lerp" && fact.params.len() == 3 && fact.returns == TypeFact::Float
+        fact.name == "math::lerp" && fact.params.len() == 3 && fact.returns == TypeFact::F64
     }));
     assert!(facts.iter().any(|fact| {
         fact.name == "math::move_towards" && fact.params.len() == 3 && fact.returns == number
     }));
     assert!(facts.iter().any(|fact| {
-        fact.name == "math::distance2d" && fact.params.len() == 4 && fact.returns == TypeFact::Float
+        fact.name == "math::distance2d" && fact.params.len() == 4 && fact.returns == TypeFact::F64
     }));
     assert!(facts.iter().any(|fact| {
-        fact.name == "math::distance3d" && fact.params.len() == 6 && fact.returns == TypeFact::Float
+        fact.name == "math::distance3d" && fact.params.len() == 6 && fact.returns == TypeFact::F64
     }));
     assert!(facts.iter().any(|fact| {
         fact.name == "math::pow" && fact.params.len() == 2 && fact.returns == number
     }));
     assert!(facts.iter().any(|fact| {
-        fact.name == "math::sqrt" && fact.params.len() == 1 && fact.returns == TypeFact::Float
+        fact.name == "math::sqrt" && fact.params.len() == 1 && fact.returns == TypeFact::F64
     }));
     assert!(facts.iter().any(|fact| {
-        fact.name == "math::sign" && fact.params.len() == 1 && fact.returns == TypeFact::Int
+        fact.name == "math::sign" && fact.params.len() == 1 && fact.returns == TypeFact::I64
     }));
     assert!(facts.iter().any(|fact| {
-        fact.name == "math::floor" && fact.params.len() == 1 && fact.returns == TypeFact::Int
+        fact.name == "math::floor" && fact.params.len() == 1 && fact.returns == TypeFact::I64
     }));
     assert!(facts.iter().any(|fact| {
-        fact.name == "math::ceil" && fact.params.len() == 1 && fact.returns == TypeFact::Int
+        fact.name == "math::ceil" && fact.params.len() == 1 && fact.returns == TypeFact::I64
     }));
     assert!(facts.iter().any(|fact| {
-        fact.name == "math::round" && fact.params.len() == 1 && fact.returns == TypeFact::Int
+        fact.name == "math::round" && fact.params.len() == 1 && fact.returns == TypeFact::I64
     }));
     assert!(facts.iter().any(|fact| {
         fact.name == "math::abs" && fact.params.len() == 1 && fact.returns == number
@@ -284,17 +276,17 @@ fn function_completion_facts_enumerate_global_api_surface() {
     assert!(
         facts
             .iter()
-            .any(|fact| fact.name == "time::now" && fact.returns == TypeFact::Int)
+            .any(|fact| fact.name == "time::now" && fact.returns == TypeFact::I64)
     );
     assert!(
         facts
             .iter()
-            .any(|fact| fact.name == "time::tick" && fact.returns == TypeFact::Int)
+            .any(|fact| fact.name == "time::tick" && fact.returns == TypeFact::I64)
     );
     assert!(facts.iter().any(|fact| {
         fact.name == "time::elapsed_since"
-            && fact.params == [TypeFact::Int]
-            && fact.returns == TypeFact::Int
+            && fact.params == [TypeFact::I64]
+            && fact.returns == TypeFact::I64
     }));
     assert!(facts.iter().any(|fact| {
         fact.name == "reflect::types"
@@ -312,14 +304,14 @@ fn function_completion_facts_enumerate_global_api_surface() {
         fact.name == "reflect::exports"
             && fact.params
                 == vec![TypeFact::union([
-                    TypeFact::String,
+                    TypeFact::STRING,
                     TypeFact::record("ReflectModule"),
                 ])]
-            && fact.returns == TypeFact::array(TypeFact::String)
+            && fact.returns == TypeFact::array(TypeFact::STRING)
     }));
     assert!(facts.iter().any(|fact| {
         fact.name == "reflect::call"
-            && fact.params == vec![TypeFact::Any, TypeFact::String]
+            && fact.params == vec![TypeFact::Any, TypeFact::STRING]
             && fact.returns == TypeFact::Any
     }));
     assert!(facts.iter().any(|fact| {
@@ -332,8 +324,8 @@ fn function_completion_facts_enumerate_global_api_surface() {
             && fact.params
                 == vec![
                     TypeFact::Any,
-                    TypeFact::union([TypeFact::String, TypeFact::record("ReflectTrait")]),
+                    TypeFact::union([TypeFact::STRING, TypeFact::record("ReflectTrait")]),
                 ]
-            && fact.returns == TypeFact::Bool
+            && fact.returns == TypeFact::BOOL
     }));
 }

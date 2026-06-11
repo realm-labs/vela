@@ -87,7 +87,7 @@ fn core_language_fixture_resolves() {
             .type_hint
             .as_ref()
             .map(|hint| hint.display()),
-        Some("int".to_owned())
+        Some("i64".to_owned())
     );
 
     let quest = declaration(&graph, "QuestState");
@@ -128,7 +128,7 @@ fn core_language_fixture_resolves() {
             .return_type
             .as_ref()
             .map(|hint| hint.display()),
-        Some("int".to_owned())
+        Some("i64".to_owned())
     );
 
     let impl_decl = graph

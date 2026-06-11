@@ -1,3 +1,4 @@
+use vela_common::PrimitiveTag;
 use vela_hir::ids::ModuleId;
 use vela_hir::module_graph::{Declaration, DeclarationKind, ImportResolution, ModuleGraph};
 use vela_hir::type_hint::HirTypeHint;
@@ -59,13 +60,12 @@ pub(crate) fn declaration_schema_fact(
 }
 
 fn builtin_type_fact(name: &str) -> Option<TypeFact> {
+    if let Some(tag) = PrimitiveTag::from_name(name) {
+        return Some(TypeFact::primitive(tag));
+    }
+
     match name {
         "any" => Some(TypeFact::Any),
-        "null" => Some(TypeFact::Null),
-        "bool" => Some(TypeFact::Bool),
-        "int" => Some(TypeFact::Int),
-        "float" => Some(TypeFact::Float),
-        "string" => Some(TypeFact::String),
         "array" => Some(TypeFact::array(TypeFact::Unknown)),
         "map" => Some(TypeFact::map(TypeFact::Unknown, TypeFact::Unknown)),
         "set" => Some(TypeFact::set(TypeFact::Unknown)),
@@ -159,9 +159,9 @@ mod tests {
     fn schema_hints_map_to_qualified_record_enum_and_trait_facts() {
         let graph = graph(
             r#"
-            struct Player { level: int }
+            struct Player { level: i64 }
             enum QuestState { Active, Done }
-            trait Rewardable { fn reward(self) -> int; }
+            trait Rewardable { fn reward(self) -> i64; }
             "#,
         );
 
@@ -181,11 +181,11 @@ mod tests {
 
     #[test]
     fn ambiguous_schema_hint_degrades_to_unknown() {
-        let mut graph = graph("struct Player { level: int }");
+        let mut graph = graph("struct Player { level: i64 }");
         graph.add_source(ModuleSource::new(
             SourceId::new(2),
             ModulePath::from_qualified("arena"),
-            "struct Player { level: int }",
+            "struct Player { level: i64 }",
         ));
         graph.resolve_imports();
         assert_eq!(graph.diagnostics(), &[]);
@@ -216,7 +216,7 @@ mod tests {
         graph.add_source(ModuleSource::new(
             SourceId::new(2),
             ModulePath::from_qualified("game::reward"),
-            "pub struct Reward { count: int }",
+            "pub struct Reward { count: i64 }",
         ));
         graph.resolve_imports();
         assert_eq!(graph.diagnostics(), &[]);

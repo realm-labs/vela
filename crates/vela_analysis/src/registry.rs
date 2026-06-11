@@ -1,5 +1,6 @@
 use std::collections::BTreeMap;
 
+use vela_common::PrimitiveTag;
 use vela_reflect::access::{FunctionEffectSet, MethodAccess, MethodEffectSet};
 use vela_reflect::modules::FunctionDesc;
 use vela_reflect::registry::{
@@ -475,13 +476,17 @@ fn method_effect_fact(effects: &MethodEffectSet) -> RegistryEffectFact {
 }
 
 fn type_desc_fact(desc: &TypeDesc) -> TypeFact {
+    if let Some(tag) = PrimitiveTag::from_name(&desc.key.name) {
+        return TypeFact::primitive(tag);
+    }
+
     match desc.kind {
-        TypeKind::Null => TypeFact::Null,
-        TypeKind::Bool => TypeFact::Bool,
-        TypeKind::Int => TypeFact::Int,
-        TypeKind::Float => TypeFact::Float,
-        TypeKind::String => TypeFact::String,
-        TypeKind::Bytes => TypeFact::Bytes,
+        TypeKind::Null => TypeFact::NULL,
+        TypeKind::Bool => TypeFact::BOOL,
+        TypeKind::Int => TypeFact::I64,
+        TypeKind::Float => TypeFact::F64,
+        TypeKind::String => TypeFact::STRING,
+        TypeKind::Bytes => TypeFact::BYTES,
         TypeKind::Array => TypeFact::array(TypeFact::Any),
         TypeKind::Map => TypeFact::map(TypeFact::Any, TypeFact::Any),
         TypeKind::Set => TypeFact::set(TypeFact::Any),
@@ -548,13 +553,12 @@ fn trait_method_desc_fact(registry: &TypeRegistry, desc: &TraitMethodDesc) -> Ty
 }
 
 fn registry_hint_fact(registry: &TypeRegistry, hint: &str) -> TypeFact {
+    if let Some(tag) = PrimitiveTag::from_name(hint) {
+        return TypeFact::primitive(tag);
+    }
+
     match hint {
         "any" => TypeFact::Any,
-        "null" => TypeFact::Null,
-        "bool" => TypeFact::Bool,
-        "int" => TypeFact::Int,
-        "float" => TypeFact::Float,
-        "string" => TypeFact::String,
         "array" => TypeFact::array(TypeFact::Unknown),
         "map" => TypeFact::map(TypeFact::Unknown, TypeFact::Unknown),
         "set" => TypeFact::set(TypeFact::Unknown),
@@ -614,11 +618,11 @@ mod tests {
     fn registry_facts_cover_types_fields_methods_and_functions() {
         let player = TypeDesc::new(TypeKey::new(TypeId::new(1), "Player"))
             .host_type(HostTypeId::new(1))
-            .field(FieldDesc::new(FieldId::new(1), "level").type_hint("int"))
+            .field(FieldDesc::new(FieldId::new(1), "level").type_hint("i64"))
             .field(FieldDesc::new(FieldId::new(2), "inventory").type_hint("Inventory"))
             .method(
                 MethodDesc::new(HostMethodId::new(1), "grant_exp")
-                    .param(MethodParamDesc::new("amount").type_hint("int"))
+                    .param(MethodParamDesc::new("amount").type_hint("i64"))
                     .return_type("bool")
                     .effects(MethodEffectSet::host_write())
                     .access(MethodAccess::new().require_permission("player.reward")),
@@ -626,7 +630,7 @@ mod tests {
             .trait_impl(
                 TraitDesc::new("Damageable").method(
                     TraitMethodDesc::new(MethodId::new(1), "damage")
-                        .param(MethodParamDesc::new("amount").type_hint("int"))
+                        .param(MethodParamDesc::new("amount").type_hint("i64"))
                         .return_type("bool"),
                 ),
             );
@@ -647,7 +651,7 @@ mod tests {
         registry.register_function(
             FunctionDesc::new(FunctionId::new(1), "game::reward::grant")
                 .param(FunctionParamDesc::new("player").type_hint("Player"))
-                .param(FunctionParamDesc::new("amount").type_hint("int"))
+                .param(FunctionParamDesc::new("amount").type_hint("i64"))
                 .return_type("bool"),
         );
 
@@ -662,7 +666,7 @@ mod tests {
             facts.type_fact("QuestState"),
             Some(&TypeFact::enum_type("QuestState", None::<String>))
         );
-        assert_eq!(facts.field_fact("Player", "level"), Some(&TypeFact::Int));
+        assert_eq!(facts.field_fact("Player", "level"), Some(&TypeFact::I64));
         assert_eq!(
             facts.field_fact("Player", "inventory"),
             Some(&TypeFact::record("Inventory"))
@@ -674,11 +678,11 @@ mod tests {
         );
         assert_eq!(
             facts.field_fact("QuestState::Active", "quest_id"),
-            Some(&TypeFact::String)
+            Some(&TypeFact::STRING)
         );
         assert_eq!(
             facts.method_fact("Player", "grant_exp"),
-            Some(&TypeFact::function(vec![TypeFact::Int], TypeFact::Bool))
+            Some(&TypeFact::function(vec![TypeFact::I64], TypeFact::BOOL))
         );
         assert_eq!(
             facts.method_effect_fact("Player", "grant_exp"),
@@ -693,13 +697,13 @@ mod tests {
         assert_eq!(
             facts.function_fact("game::reward::grant"),
             Some(&TypeFact::function(
-                vec![TypeFact::host("Player"), TypeFact::Int],
-                TypeFact::Bool,
+                vec![TypeFact::host("Player"), TypeFact::I64],
+                TypeFact::BOOL,
             ))
         );
         assert_eq!(
             facts.trait_method_fact("Damageable", "damage"),
-            Some(&TypeFact::function(vec![TypeFact::Int], TypeFact::Bool))
+            Some(&TypeFact::function(vec![TypeFact::I64], TypeFact::BOOL))
         );
     }
 
@@ -725,8 +729,8 @@ mod tests {
         for (id, name, kind) in [
             (10, "null", TypeKind::Null),
             (11, "bool", TypeKind::Bool),
-            (12, "int", TypeKind::Int),
-            (13, "float", TypeKind::Float),
+            (12, "i64", TypeKind::Int),
+            (13, "f64", TypeKind::Float),
             (14, "string", TypeKind::String),
             (15, "array", TypeKind::Array),
             (16, "map", TypeKind::Map),
@@ -740,11 +744,11 @@ mod tests {
 
         let facts = RegistryFacts::from_registry(&registry);
 
-        assert_eq!(facts.type_fact("null"), Some(&TypeFact::Null));
-        assert_eq!(facts.type_fact("bool"), Some(&TypeFact::Bool));
-        assert_eq!(facts.type_fact("int"), Some(&TypeFact::Int));
-        assert_eq!(facts.type_fact("float"), Some(&TypeFact::Float));
-        assert_eq!(facts.type_fact("string"), Some(&TypeFact::String));
+        assert_eq!(facts.type_fact("null"), Some(&TypeFact::NULL));
+        assert_eq!(facts.type_fact("bool"), Some(&TypeFact::BOOL));
+        assert_eq!(facts.type_fact("i64"), Some(&TypeFact::I64));
+        assert_eq!(facts.type_fact("f64"), Some(&TypeFact::F64));
+        assert_eq!(facts.type_fact("string"), Some(&TypeFact::STRING));
         assert_eq!(
             facts.type_fact("array"),
             Some(&TypeFact::array(TypeFact::Any))
@@ -771,7 +775,7 @@ mod tests {
         registry.register_trait(
             TraitDesc::new("Rewardable").method(
                 TraitMethodDesc::new(MethodId::new(9), "reward")
-                    .param(MethodParamDesc::new("amount").type_hint("int"))
+                    .param(MethodParamDesc::new("amount").type_hint("i64"))
                     .return_type("Result"),
             ),
         );
@@ -785,7 +789,7 @@ mod tests {
         assert_eq!(
             facts.trait_method_fact("Rewardable", "reward"),
             Some(&TypeFact::function(
-                vec![TypeFact::Int],
+                vec![TypeFact::I64],
                 TypeFact::result(TypeFact::Unknown, TypeFact::Unknown),
             ))
         );

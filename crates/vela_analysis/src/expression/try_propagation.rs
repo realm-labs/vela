@@ -19,19 +19,16 @@ mod tests {
 
     #[test]
     fn unwraps_option_and_result_success_payloads() {
-        assert_eq!(try_fact(TypeFact::option(TypeFact::Int)), TypeFact::Int);
+        assert_eq!(try_fact(TypeFact::option(TypeFact::I64)), TypeFact::I64);
         assert_eq!(
-            try_fact(TypeFact::option_some(TypeFact::String)),
-            TypeFact::String
+            try_fact(TypeFact::option_some(TypeFact::STRING)),
+            TypeFact::STRING
         );
         assert_eq!(
-            try_fact(TypeFact::result(TypeFact::host("Reward"), TypeFact::String)),
+            try_fact(TypeFact::result(TypeFact::host("Reward"), TypeFact::STRING)),
             TypeFact::host("Reward")
         );
-        assert_eq!(
-            try_fact(TypeFact::result_ok(TypeFact::Float)),
-            TypeFact::Float
-        );
+        assert_eq!(try_fact(TypeFact::result_ok(TypeFact::F64)), TypeFact::F64);
     }
 
     #[test]
@@ -47,11 +44,11 @@ mod tests {
     fn unions_success_payloads_and_drops_early_return_only_paths() {
         assert_eq!(
             try_fact(TypeFact::union([
-                TypeFact::option(TypeFact::Int),
-                TypeFact::result_ok(TypeFact::String),
+                TypeFact::option(TypeFact::I64),
+                TypeFact::result_ok(TypeFact::STRING),
                 TypeFact::option_none(),
             ])),
-            TypeFact::union([TypeFact::Int, TypeFact::String])
+            TypeFact::union([TypeFact::I64, TypeFact::STRING])
         );
     }
 }

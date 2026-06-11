@@ -19,8 +19,8 @@ pub(super) fn option_method_fact(
         OptionShape::None => TypeFact::option_none(),
     };
     match method {
-        "is_some" => Some(StdlibMethodFact::new(receiver, "is_some", TypeFact::Bool)),
-        "is_none" => Some(StdlibMethodFact::new(receiver, "is_none", TypeFact::Bool)),
+        "is_some" => Some(StdlibMethodFact::new(receiver, "is_some", TypeFact::BOOL)),
+        "is_none" => Some(StdlibMethodFact::new(receiver, "is_none", TypeFact::BOOL)),
         "unwrap_or" => Some(
             StdlibMethodFact::new(
                 receiver,
@@ -68,7 +68,7 @@ pub(super) fn option_method_fact(
             };
             Some(
                 StdlibMethodFact::new(receiver, "filter", returns)
-                    .with_lambda(vec![some], TypeFact::Bool),
+                    .with_lambda(vec![some], TypeFact::BOOL),
             )
         }
         _ => None,
@@ -96,8 +96,8 @@ pub(super) fn result_method_fact(
         ResultShape::Err => TypeFact::result_err(err.clone()),
     };
     match method {
-        "is_ok" => Some(StdlibMethodFact::new(receiver, "is_ok", TypeFact::Bool)),
-        "is_err" => Some(StdlibMethodFact::new(receiver, "is_err", TypeFact::Bool)),
+        "is_ok" => Some(StdlibMethodFact::new(receiver, "is_ok", TypeFact::BOOL)),
+        "is_err" => Some(StdlibMethodFact::new(receiver, "is_err", TypeFact::BOOL)),
         "unwrap_or" => Some(
             StdlibMethodFact::new(
                 receiver,

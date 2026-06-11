@@ -44,7 +44,7 @@ fn semantic_unknown_host_field_fixture_renders_candidates_and_access_hints() {
 fn typefact_unknown_option_variant_fixture_renders_dynamic_candidates() {
     let source = normalized_fixture(TYPEFACT_UNKNOWN_OPTION_VARIANT);
     let expr = first_expression(&source);
-    let scope = ExprFactScope::new().with_path(["maybe"], TypeFact::option(TypeFact::Int));
+    let scope = ExprFactScope::new().with_path(["maybe"], TypeFact::option(TypeFact::I64));
     let diagnostics = match_pattern_diagnostics(&expr, &scope, &RegistryFacts::default());
 
     assert_eq!(diagnostics.len(), 1);
@@ -66,7 +66,7 @@ fn flow_narrowing_null_check_fixture_renders_member_diagnostic() {
     let expr = first_expression(&source);
     let scope = ExprFactScope::new().with_path(
         ["player"],
-        TypeFact::union([TypeFact::Null, TypeFact::host("Player")]),
+        TypeFact::union([TypeFact::NULL, TypeFact::host("Player")]),
     );
     let diagnostics = member_access_diagnostics(&expr, &scope, &registry_facts());
 
@@ -86,7 +86,7 @@ fn registry_facts() -> RegistryFacts {
         TypeDesc::new(TypeKey::new(TypeId::new(1), "Player"))
             .field(
                 FieldDesc::new(FieldId::new(1), "level")
-                    .type_hint("int")
+                    .type_hint("i64")
                     .writable(true),
             )
             .field(FieldDesc::new(FieldId::new(2), "inventory").type_hint("map")),

@@ -24,7 +24,7 @@ fn hovers_types_fields_methods_and_variants() {
 
     let field_info = field_hover(&registry, "Player", "level").expect("field hover");
     assert_eq!(field_info.kind, HoverKind::Field);
-    assert_eq!(field_info.fact, TypeFact::Int);
+    assert_eq!(field_info.fact, TypeFact::I64);
     assert!(
         field_info
             .detail
@@ -36,7 +36,7 @@ fn hovers_types_fields_methods_and_variants() {
     assert_eq!(method_info.kind, HoverKind::Method);
     assert_eq!(
         method_info.fact,
-        TypeFact::function(vec![TypeFact::Int], TypeFact::Bool)
+        TypeFact::function(vec![TypeFact::I64], TypeFact::BOOL)
     );
     assert!(
         method_info
@@ -54,7 +54,7 @@ fn hovers_types_fields_methods_and_variants() {
 
     let variant_field_info =
         field_hover(&registry, "QuestState::Active", "quest_id").expect("variant field hover");
-    assert_eq!(variant_field_info.fact, TypeFact::String);
+    assert_eq!(variant_field_info.fact, TypeFact::STRING);
 }
 
 #[test]
@@ -86,7 +86,7 @@ fn hovers_functions_traits_and_modules() {
     assert_eq!(function_info.kind, HoverKind::Function);
     assert_eq!(
         function_info.fact,
-        TypeFact::function(vec![TypeFact::host("Player")], TypeFact::Bool)
+        TypeFact::function(vec![TypeFact::host("Player")], TypeFact::BOOL)
     );
     assert!(
         function_info
@@ -109,7 +109,7 @@ fn hovers_functions_traits_and_modules() {
         trait_method_hover(&registry, "Damageable", "damage").expect("trait method hover");
     assert_eq!(
         trait_method_info.fact,
-        TypeFact::function(vec![TypeFact::Int], TypeFact::Null)
+        TypeFact::function(vec![TypeFact::I64], TypeFact::NULL)
     );
     assert_eq!(trait_method_info.detail.as_deref(), Some("defaulted: true"));
 
@@ -130,7 +130,7 @@ fn hover_registry() -> TypeRegistry {
             .attr("role", "actor")
             .field(
                 FieldDesc::new(FieldId::new(1), "level")
-                    .type_hint("int")
+                    .type_hint("i64")
                     .writable(true)
                     .access(
                         FieldAccess::new()
@@ -140,7 +140,7 @@ fn hover_registry() -> TypeRegistry {
             )
             .method(
                 MethodDesc::new(HostMethodId::new(1), "grant")
-                    .param(MethodParamDesc::new("amount").type_hint("int"))
+                    .param(MethodParamDesc::new("amount").type_hint("i64"))
                     .return_type("bool")
                     .effects(MethodEffectSet::host_write()),
             ),
@@ -163,7 +163,7 @@ fn hover_registry() -> TypeRegistry {
             .method(
                 TraitMethodDesc::new(vela_def::MethodId::new(1), "damage")
                     .defaulted(true)
-                    .param(MethodParamDesc::new("amount").type_hint("int"))
+                    .param(MethodParamDesc::new("amount").type_hint("i64"))
                     .return_type("null"),
             ),
     );

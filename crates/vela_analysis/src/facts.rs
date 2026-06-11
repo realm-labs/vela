@@ -138,8 +138,8 @@ mod tests {
             SourceId::new(1),
             ModulePath::from_qualified("game"),
             r#"
-            struct Player { level: int }
-            fn grant(player: Player, amount: int) -> bool {
+            struct Player { level: i64 }
+            fn grant(player: Player, amount: i64) -> bool {
                 let rewards: map = {};
                 let title: string = "hero";
                 return amount > 0;
@@ -158,8 +158,8 @@ mod tests {
         assert_eq!(
             facts.declaration(function.id),
             Some(&TypeFact::function(
-                vec![TypeFact::record("game::Player"), TypeFact::Int],
-                TypeFact::Bool,
+                vec![TypeFact::record("game::Player"), TypeFact::I64],
+                TypeFact::BOOL,
             ))
         );
 
@@ -177,7 +177,7 @@ mod tests {
             facts.local(rewards.id),
             Some(&TypeFact::map(TypeFact::Unknown, TypeFact::Unknown))
         );
-        assert_eq!(facts.local(title.id), Some(&TypeFact::String));
+        assert_eq!(facts.local(title.id), Some(&TypeFact::STRING));
     }
 
     #[test]
@@ -210,9 +210,9 @@ mod tests {
             SourceId::new(1),
             ModulePath::from_qualified("game"),
             r#"
-            const BONUS: int = 3
-            fn grant(amount: int) -> int {
-                let base: int = amount;
+            const BONUS: i64 = 3
+            fn grant(amount: i64) -> i64 {
+                let base: i64 = amount;
                 return BONUS + base;
             }
             "#,
@@ -236,18 +236,18 @@ mod tests {
                     let local = bindings.local(*local).expect("local binding");
                     if local.name == "amount" {
                         saw_amount = true;
-                        assert_eq!(facts.expression(expression), Some(&TypeFact::Int));
+                        assert_eq!(facts.expression(expression), Some(&TypeFact::I64));
                     }
                     if local.name == "base" {
                         saw_base = true;
-                        assert_eq!(facts.expression(expression), Some(&TypeFact::Int));
+                        assert_eq!(facts.expression(expression), Some(&TypeFact::I64));
                     }
                 }
                 BindingResolution::Declaration(declaration) => {
                     let declaration = graph.declaration(*declaration).expect("declaration");
                     if declaration.name == "BONUS" {
                         saw_bonus = true;
-                        assert_eq!(facts.expression(expression), Some(&TypeFact::Int));
+                        assert_eq!(facts.expression(expression), Some(&TypeFact::I64));
                     }
                 }
                 BindingResolution::Import(_) | BindingResolution::QualifiedPath(_) => {}

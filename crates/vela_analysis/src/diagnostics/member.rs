@@ -1,4 +1,4 @@
-use vela_common::Diagnostic;
+use vela_common::{Diagnostic, PrimitiveTag};
 use vela_syntax::ast::{Expr, ExprKind};
 
 use crate::completion::{CompletionKind, member_completions};
@@ -315,7 +315,7 @@ fn is_precise_receiver(receiver: &TypeFact) -> bool {
             | TypeFact::Array { .. }
             | TypeFact::Map { .. }
             | TypeFact::Set { .. }
-            | TypeFact::String
+            | TypeFact::Primitive(PrimitiveTag::String)
             | TypeFact::Trait { .. }
     )
 }
@@ -608,7 +608,7 @@ mod tests {
             }
             "#,
         );
-        let scope = ExprFactScope::new().with_path(["scores"], TypeFact::array(TypeFact::Int));
+        let scope = ExprFactScope::new().with_path(["scores"], TypeFact::array(TypeFact::I64));
         let facts = RegistryFacts::default();
 
         assert!(member_access_diagnostics(&exprs[0], &scope, &facts).is_empty());
@@ -628,7 +628,7 @@ mod tests {
         );
         let scope = ExprFactScope::new().with_path(
             ["player"],
-            TypeFact::Union(vec![TypeFact::Null, TypeFact::host("Player")]),
+            TypeFact::Union(vec![TypeFact::NULL, TypeFact::host("Player")]),
         );
         let facts = registry_facts();
 
@@ -741,7 +741,7 @@ mod tests {
             TypeDesc::new(TypeKey::new(TypeId::new(1), "Player"))
                 .field(
                     FieldDesc::new(FieldId::new(1), "level")
-                        .type_hint("int")
+                        .type_hint("i64")
                         .writable(true),
                 )
                 .field(FieldDesc::new(FieldId::new(2), "inventory").type_hint("map"))

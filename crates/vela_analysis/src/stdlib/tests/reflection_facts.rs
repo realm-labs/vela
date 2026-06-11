@@ -6,7 +6,7 @@ fn reflection_functions_expose_metadata_facts() {
         stdlib_function_fact("reflect::type_of", &[TypeFact::host("Player")])
             .expect("reflect::type_of fact")
             .returns,
-        TypeFact::union([TypeFact::record("ReflectType"), TypeFact::Null])
+        TypeFact::union([TypeFact::record("ReflectType"), TypeFact::NULL])
     );
     assert_eq!(
         stdlib_function_fact("reflect::types", &[])
@@ -18,25 +18,25 @@ fn reflection_functions_expose_metadata_facts() {
         stdlib_function_fact("reflect::attrs", &[TypeFact::host("Player")])
             .expect("reflect::attrs fact")
             .returns,
-        TypeFact::map(TypeFact::String, TypeFact::String)
+        TypeFact::map(TypeFact::STRING, TypeFact::STRING)
     );
     assert_eq!(
         stdlib_function_fact("reflect::id", &[TypeFact::host("Player")])
             .expect("reflect::id fact")
             .returns,
-        TypeFact::Int
+        TypeFact::I64
     );
     assert_eq!(
         stdlib_function_fact("reflect::source_span", &[TypeFact::host("Player")])
             .expect("reflect::source_span fact")
             .returns,
-        TypeFact::union([TypeFact::record("ReflectSourceSpan"), TypeFact::Null])
+        TypeFact::union([TypeFact::record("ReflectSourceSpan"), TypeFact::NULL])
     );
     assert_eq!(
         stdlib_function_fact("reflect::origin", &[TypeFact::record("ReflectFunction")])
             .expect("reflect::origin fact")
             .returns,
-        TypeFact::union([TypeFact::String, TypeFact::Null])
+        TypeFact::union([TypeFact::STRING, TypeFact::NULL])
     );
     assert_eq!(
         stdlib_function_fact(
@@ -45,7 +45,7 @@ fn reflection_functions_expose_metadata_facts() {
         )
         .expect("reflect::required_permissions fact")
         .returns,
-        TypeFact::array(TypeFact::String)
+        TypeFact::array(TypeFact::STRING)
     );
     assert_eq!(
         stdlib_function_fact("reflect::effects", &[TypeFact::record("ReflectFunction")])
@@ -57,7 +57,7 @@ fn reflection_functions_expose_metadata_facts() {
         stdlib_function_fact("reflect::owner", &[TypeFact::record("ReflectMethod")])
             .expect("reflect::owner fact")
             .returns,
-        TypeFact::String
+        TypeFact::STRING
     );
     assert_eq!(
         stdlib_function_fact("reflect::access", &[TypeFact::record("ReflectMethod")])
@@ -79,25 +79,25 @@ fn reflection_functions_expose_metadata_facts() {
         stdlib_function_fact("reflect::returns", &[TypeFact::record("ReflectFunction")])
             .expect("reflect::returns fact")
             .returns,
-        TypeFact::union([TypeFact::String, TypeFact::Null])
+        TypeFact::union([TypeFact::STRING, TypeFact::NULL])
     );
     assert_eq!(
         stdlib_function_fact(
             "reflect::attr",
-            &[TypeFact::host("Player"), TypeFact::String]
+            &[TypeFact::host("Player"), TypeFact::STRING]
         )
         .expect("reflect::attr fact")
         .returns,
-        TypeFact::union([TypeFact::String, TypeFact::Null])
+        TypeFact::union([TypeFact::STRING, TypeFact::NULL])
     );
     assert_eq!(
         stdlib_function_fact(
             "reflect::has_attr",
-            &[TypeFact::host("Player"), TypeFact::String]
+            &[TypeFact::host("Player"), TypeFact::STRING]
         )
         .expect("reflect::has_attr fact")
         .returns,
-        TypeFact::Bool
+        TypeFact::BOOL
     );
     assert_eq!(
         stdlib_function_fact("reflect::fields", &[])
@@ -114,7 +114,7 @@ fn reflection_functions_expose_metadata_facts() {
     assert_eq!(
         stdlib_function_fact(
             "reflect::method",
-            &[TypeFact::host("Player"), TypeFact::String]
+            &[TypeFact::host("Player"), TypeFact::STRING]
         )
         .expect("reflect::method fact")
         .returns,
@@ -130,12 +130,12 @@ fn reflection_functions_expose_metadata_facts() {
         stdlib_function_fact("reflect::exports", &[TypeFact::record("ReflectModule")])
             .expect("reflect::exports module fact")
             .returns,
-        TypeFact::array(TypeFact::String)
+        TypeFact::array(TypeFact::STRING)
     );
     assert_eq!(
         stdlib_function_fact(
             "reflect::call",
-            &[TypeFact::host("Player"), TypeFact::String, TypeFact::Int,]
+            &[TypeFact::host("Player"), TypeFact::STRING, TypeFact::I64,]
         )
         .expect("reflect::call fact")
         .returns,
@@ -152,8 +152,8 @@ fn reflection_functions_expose_metadata_facts() {
             "reflect::call",
             &[
                 TypeFact::record("ReflectFunction"),
-                TypeFact::Int,
-                TypeFact::String,
+                TypeFact::I64,
+                TypeFact::STRING,
             ]
         )
         .expect("reflect::call function descriptor args fact")
@@ -167,19 +167,19 @@ fn reflection_functions_expose_metadata_facts() {
         )
         .expect("reflect::implements trait descriptor fact")
         .returns,
-        TypeFact::Bool
+        TypeFact::BOOL
     );
     assert_eq!(
         stdlib_function_fact(
             "reflect::variant_is",
             &[
                 TypeFact::enum_type("QuestProgress", Some("Active")),
-                TypeFact::String,
+                TypeFact::STRING,
             ]
         )
         .expect("reflect::variant_is fact")
         .returns,
-        TypeFact::Bool
+        TypeFact::BOOL
     );
     assert!(stdlib_function_fact("reflect::call", &[TypeFact::host("Player")]).is_none());
     assert!(stdlib_function_fact("reflect::fields", &[TypeFact::Any, TypeFact::Any]).is_none());
@@ -188,17 +188,17 @@ fn reflection_functions_expose_metadata_facts() {
 #[test]
 fn stdlib_function_facts_reject_unknown_names_and_wrong_arity() {
     assert!(stdlib_function_fact("option::some", &[]).is_none());
-    assert!(stdlib_function_fact("game::spawn", &[TypeFact::String]).is_none());
+    assert!(stdlib_function_fact("game::spawn", &[TypeFact::STRING]).is_none());
 }
 
 #[test]
 fn stdlib_method_facts_enumerate_receiver_api_surface() {
-    let map = TypeFact::map(TypeFact::String, TypeFact::Int);
-    let facts = stdlib_method_facts(&map, Some(&TypeFact::Bool));
+    let map = TypeFact::map(TypeFact::STRING, TypeFact::I64);
+    let facts = stdlib_method_facts(&map, Some(&TypeFact::BOOL));
 
     assert!(facts.iter().any(|fact| {
         fact.method == "map_values"
-            && fact.returns == TypeFact::map(TypeFact::String, TypeFact::Bool)
+            && fact.returns == TypeFact::map(TypeFact::STRING, TypeFact::BOOL)
     }));
     assert!(facts.iter().any(|fact| {
         fact.method == "entries" && fact.returns == TypeFact::array(TypeFact::record("MapEntry"))
@@ -208,30 +208,30 @@ fn stdlib_method_facts_enumerate_receiver_api_surface() {
             && fact
                 .lambda
                 .as_ref()
-                .is_some_and(|lambda| lambda.params == vec![TypeFact::String, TypeFact::Int])
+                .is_some_and(|lambda| lambda.params == vec![TypeFact::STRING, TypeFact::I64])
     }));
-    let option_facts = stdlib_method_facts(&TypeFact::option(TypeFact::Int), None);
+    let option_facts = stdlib_method_facts(&TypeFact::option(TypeFact::I64), None);
     assert!(
         option_facts
             .iter()
             .any(|fact| fact.method == "unwrap_or" && fact.params == vec![TypeFact::Any])
     );
     assert!(option_facts.iter().any(|fact| fact.method == "ok_or"
-        && fact.returns == TypeFact::result(TypeFact::Int, TypeFact::Any)));
+        && fact.returns == TypeFact::result(TypeFact::I64, TypeFact::Any)));
     assert!(option_facts.iter().any(|fact| {
         fact.method == "map"
             && fact
                 .lambda
                 .as_ref()
-                .is_some_and(|lambda| lambda.params == vec![TypeFact::Int])
+                .is_some_and(|lambda| lambda.params == vec![TypeFact::I64])
     }));
     let nested_option_facts =
-        stdlib_method_facts(&TypeFact::option(TypeFact::option(TypeFact::Int)), None);
+        stdlib_method_facts(&TypeFact::option(TypeFact::option(TypeFact::I64)), None);
     assert!(nested_option_facts.iter().any(|fact| {
-        fact.method == "flatten" && fact.returns == TypeFact::option(TypeFact::Int)
+        fact.method == "flatten" && fact.returns == TypeFact::option(TypeFact::I64)
     }));
     let result_facts =
-        stdlib_method_facts(&TypeFact::result(TypeFact::Int, TypeFact::String), None);
+        stdlib_method_facts(&TypeFact::result(TypeFact::I64, TypeFact::STRING), None);
     assert!(
         result_facts
             .iter()
@@ -241,24 +241,24 @@ fn stdlib_method_facts_enumerate_receiver_api_surface() {
         result_facts
             .iter()
             .any(|fact| fact.method == "to_option"
-                && fact.returns == TypeFact::option(TypeFact::Int))
+                && fact.returns == TypeFact::option(TypeFact::I64))
     );
     assert!(
         result_facts
             .iter()
             .any(|fact| fact.method == "to_error_option"
-                && fact.returns == TypeFact::option(TypeFact::String))
+                && fact.returns == TypeFact::option(TypeFact::STRING))
     );
     assert!(result_facts.iter().any(|fact| {
         fact.method == "map_err"
             && fact
                 .lambda
                 .as_ref()
-                .is_some_and(|lambda| lambda.params == vec![TypeFact::String])
+                .is_some_and(|lambda| lambda.params == vec![TypeFact::STRING])
     }));
     let nested_result_facts = stdlib_method_facts(
         &TypeFact::result(
-            TypeFact::result(TypeFact::Int, TypeFact::String),
+            TypeFact::result(TypeFact::I64, TypeFact::STRING),
             TypeFact::record("OuterError"),
         ),
         None,
@@ -267,8 +267,8 @@ fn stdlib_method_facts_enumerate_receiver_api_surface() {
         fact.method == "flatten"
             && fact.returns
                 == TypeFact::result(
-                    TypeFact::Int,
-                    TypeFact::union([TypeFact::record("OuterError"), TypeFact::String]),
+                    TypeFact::I64,
+                    TypeFact::union([TypeFact::record("OuterError"), TypeFact::STRING]),
                 )
     }));
     assert!(

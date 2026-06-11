@@ -1,5 +1,6 @@
 use crate::stdlib::StdlibFunctionFact;
 use crate::type_fact::TypeFact;
+use vela_common::PrimitiveTag;
 
 pub(super) fn completion_facts() -> Vec<StdlibFunctionFact> {
     let number = number_fact();
@@ -13,12 +14,12 @@ pub(super) fn completion_facts() -> Vec<StdlibFunctionFact> {
         StdlibFunctionFact::new(
             "option::is_some",
             vec![TypeFact::option(TypeFact::Any)],
-            TypeFact::Bool,
+            TypeFact::BOOL,
         ),
         StdlibFunctionFact::new(
             "option::is_none",
             vec![TypeFact::option(TypeFact::Any)],
-            TypeFact::Bool,
+            TypeFact::BOOL,
         ),
         StdlibFunctionFact::new(
             "option::unwrap_or",
@@ -48,12 +49,12 @@ pub(super) fn completion_facts() -> Vec<StdlibFunctionFact> {
         StdlibFunctionFact::new(
             "result::is_ok",
             vec![TypeFact::result(TypeFact::Any, TypeFact::Any)],
-            TypeFact::Bool,
+            TypeFact::BOOL,
         ),
         StdlibFunctionFact::new(
             "result::is_err",
             vec![TypeFact::result(TypeFact::Any, TypeFact::Any)],
-            TypeFact::Bool,
+            TypeFact::BOOL,
         ),
         StdlibFunctionFact::new(
             "result::unwrap_or",
@@ -99,7 +100,7 @@ pub(super) fn completion_facts() -> Vec<StdlibFunctionFact> {
         StdlibFunctionFact::new(
             "math::lerp",
             vec![number.clone(), number.clone(), number.clone()],
-            TypeFact::Float,
+            TypeFact::F64,
         ),
         StdlibFunctionFact::new(
             "math::move_towards",
@@ -114,7 +115,7 @@ pub(super) fn completion_facts() -> Vec<StdlibFunctionFact> {
                 number.clone(),
                 number.clone(),
             ],
-            TypeFact::Float,
+            TypeFact::F64,
         ),
         StdlibFunctionFact::new(
             "math::distance3d",
@@ -126,41 +127,41 @@ pub(super) fn completion_facts() -> Vec<StdlibFunctionFact> {
                 number.clone(),
                 number.clone(),
             ],
-            TypeFact::Float,
+            TypeFact::F64,
         ),
         StdlibFunctionFact::new(
             "math::pow",
             vec![number.clone(), number.clone()],
             number.clone(),
         ),
-        StdlibFunctionFact::new("math::sqrt", vec![number.clone()], TypeFact::Float),
-        StdlibFunctionFact::new("math::sign", vec![number.clone()], TypeFact::Int),
-        StdlibFunctionFact::new("math::floor", vec![number.clone()], TypeFact::Int),
-        StdlibFunctionFact::new("math::ceil", vec![number.clone()], TypeFact::Int),
-        StdlibFunctionFact::new("math::round", vec![number.clone()], TypeFact::Int),
+        StdlibFunctionFact::new("math::sqrt", vec![number.clone()], TypeFact::F64),
+        StdlibFunctionFact::new("math::sign", vec![number.clone()], TypeFact::I64),
+        StdlibFunctionFact::new("math::floor", vec![number.clone()], TypeFact::I64),
+        StdlibFunctionFact::new("math::ceil", vec![number.clone()], TypeFact::I64),
+        StdlibFunctionFact::new("math::round", vec![number.clone()], TypeFact::I64),
         StdlibFunctionFact::new("math::abs", vec![number.clone()], number),
         StdlibFunctionFact::new(
             "math::random",
-            vec![TypeFact::Int, TypeFact::Int],
-            TypeFact::Int,
+            vec![TypeFact::I64, TypeFact::I64],
+            TypeFact::I64,
         ),
-        StdlibFunctionFact::new("time::now", Vec::new(), TypeFact::Int),
-        StdlibFunctionFact::new("time::tick", Vec::new(), TypeFact::Int),
-        StdlibFunctionFact::new("time::elapsed_since", vec![TypeFact::Int], TypeFact::Int),
+        StdlibFunctionFact::new("time::now", Vec::new(), TypeFact::I64),
+        StdlibFunctionFact::new("time::tick", Vec::new(), TypeFact::I64),
+        StdlibFunctionFact::new("time::elapsed_since", vec![TypeFact::I64], TypeFact::I64),
         StdlibFunctionFact::new(
             "io::println",
             vec![TypeFact::Any],
-            TypeFact::result(TypeFact::Null, TypeFact::record("IoError")),
+            TypeFact::result(TypeFact::NULL, TypeFact::record("IoError")),
         ),
         StdlibFunctionFact::new(
             "fs::read_to_string",
-            vec![TypeFact::String],
-            TypeFact::result(TypeFact::String, TypeFact::record("IoError")),
+            vec![TypeFact::STRING],
+            TypeFact::result(TypeFact::STRING, TypeFact::record("IoError")),
         ),
         StdlibFunctionFact::new(
             "fs::write_string",
-            vec![TypeFact::String, TypeFact::String],
-            TypeFact::result(TypeFact::Null, TypeFact::record("IoError")),
+            vec![TypeFact::STRING, TypeFact::STRING],
+            TypeFact::result(TypeFact::NULL, TypeFact::record("IoError")),
         ),
         StdlibFunctionFact::new(
             "set::from_array",
@@ -169,76 +170,76 @@ pub(super) fn completion_facts() -> Vec<StdlibFunctionFact> {
         ),
         StdlibFunctionFact::new(
             "bytes::from_hex",
-            vec![TypeFact::String],
-            TypeFact::result(TypeFact::Bytes, TypeFact::String),
+            vec![TypeFact::STRING],
+            TypeFact::result(TypeFact::BYTES, TypeFact::STRING),
         ),
-        StdlibFunctionFact::new("i64::from_i32", vec![TypeFact::Int], TypeFact::Int),
-        StdlibFunctionFact::new("u64::from_u32", vec![TypeFact::Int], TypeFact::Int),
-        StdlibFunctionFact::new("f64::from_f32", vec![TypeFact::Float], TypeFact::Float),
+        StdlibFunctionFact::new("i64::from_i32", vec![TypeFact::I64], TypeFact::I64),
+        StdlibFunctionFact::new("u64::from_u32", vec![TypeFact::I64], TypeFact::I64),
+        StdlibFunctionFact::new("f64::from_f32", vec![TypeFact::F64], TypeFact::F64),
         StdlibFunctionFact::new(
             "i8::try_from_i64",
-            vec![TypeFact::Int],
-            TypeFact::result(TypeFact::Int, TypeFact::String),
+            vec![TypeFact::I64],
+            TypeFact::result(TypeFact::I64, TypeFact::STRING),
         ),
         StdlibFunctionFact::new(
             "u8::try_from_u64",
-            vec![TypeFact::Int],
-            TypeFact::result(TypeFact::Int, TypeFact::String),
+            vec![TypeFact::I64],
+            TypeFact::result(TypeFact::I64, TypeFact::STRING),
         ),
         StdlibFunctionFact::new(
             "f32::try_from_f64",
-            vec![TypeFact::Float],
-            TypeFact::result(TypeFact::Float, TypeFact::String),
+            vec![TypeFact::F64],
+            TypeFact::result(TypeFact::F64, TypeFact::STRING),
         ),
         StdlibFunctionFact::new(
             "u8::wrapping_add",
-            vec![TypeFact::Int, TypeFact::Int],
-            TypeFact::Int,
+            vec![TypeFact::I64, TypeFact::I64],
+            TypeFact::I64,
         ),
         StdlibFunctionFact::new(
             "u32::wrapping_mul",
-            vec![TypeFact::Int, TypeFact::Int],
-            TypeFact::Int,
+            vec![TypeFact::I64, TypeFact::I64],
+            TypeFact::I64,
         ),
         StdlibFunctionFact::new(
             "i8::wrapping_add",
-            vec![TypeFact::Int, TypeFact::Int],
-            TypeFact::Int,
+            vec![TypeFact::I64, TypeFact::I64],
+            TypeFact::I64,
         ),
         StdlibFunctionFact::new(
             "u8::bit_and",
-            vec![TypeFact::Int, TypeFact::Int],
-            TypeFact::Int,
+            vec![TypeFact::I64, TypeFact::I64],
+            TypeFact::I64,
         ),
         StdlibFunctionFact::new(
             "u8::bit_or",
-            vec![TypeFact::Int, TypeFact::Int],
-            TypeFact::Int,
+            vec![TypeFact::I64, TypeFact::I64],
+            TypeFact::I64,
         ),
         StdlibFunctionFact::new(
             "u8::bit_xor",
-            vec![TypeFact::Int, TypeFact::Int],
-            TypeFact::Int,
+            vec![TypeFact::I64, TypeFact::I64],
+            TypeFact::I64,
         ),
         StdlibFunctionFact::new(
             "u8::shift_left",
-            vec![TypeFact::Int, TypeFact::Int],
-            TypeFact::Int,
+            vec![TypeFact::I64, TypeFact::I64],
+            TypeFact::I64,
         ),
         StdlibFunctionFact::new(
             "u8::shift_right",
-            vec![TypeFact::Int, TypeFact::Int],
-            TypeFact::Int,
+            vec![TypeFact::I64, TypeFact::I64],
+            TypeFact::I64,
         ),
         StdlibFunctionFact::new(
             "u8::rotate_left",
-            vec![TypeFact::Int, TypeFact::Int],
-            TypeFact::Int,
+            vec![TypeFact::I64, TypeFact::I64],
+            TypeFact::I64,
         ),
         StdlibFunctionFact::new(
             "u8::rotate_right",
-            vec![TypeFact::Int, TypeFact::Int],
-            TypeFact::Int,
+            vec![TypeFact::I64, TypeFact::I64],
+            TypeFact::I64,
         ),
     ];
     facts.extend(super::reflect::completion_facts());
@@ -272,7 +273,7 @@ pub(super) fn function_fact(name: &str, args: &[TypeFact]) -> Option<StdlibFunct
             Some(StdlibFunctionFact::new(
                 canonical_function_name(name)?,
                 args.to_vec(),
-                TypeFact::Bool,
+                TypeFact::BOOL,
             ))
         }
         "option::unwrap_or" => {
@@ -317,7 +318,7 @@ pub(super) fn function_fact(name: &str, args: &[TypeFact]) -> Option<StdlibFunct
             Some(StdlibFunctionFact::new(
                 canonical_function_name(name)?,
                 args.to_vec(),
-                TypeFact::Bool,
+                TypeFact::BOOL,
             ))
         }
         "result::unwrap_or" => {
@@ -370,7 +371,7 @@ pub(super) fn function_fact(name: &str, args: &[TypeFact]) -> Option<StdlibFunct
             Some(StdlibFunctionFact::new(
                 "math::lerp",
                 args.to_vec(),
-                TypeFact::Float,
+                TypeFact::F64,
             ))
         }
         "math::move_towards" => {
@@ -386,7 +387,7 @@ pub(super) fn function_fact(name: &str, args: &[TypeFact]) -> Option<StdlibFunct
             Some(StdlibFunctionFact::new(
                 "math::distance2d",
                 args.to_vec(),
-                TypeFact::Float,
+                TypeFact::F64,
             ))
         }
         "math::distance3d" => {
@@ -394,7 +395,7 @@ pub(super) fn function_fact(name: &str, args: &[TypeFact]) -> Option<StdlibFunct
             Some(StdlibFunctionFact::new(
                 "math::distance3d",
                 args.to_vec(),
-                TypeFact::Float,
+                TypeFact::F64,
             ))
         }
         "math::pow" => {
@@ -410,7 +411,7 @@ pub(super) fn function_fact(name: &str, args: &[TypeFact]) -> Option<StdlibFunct
             Some(StdlibFunctionFact::new(
                 "math::sqrt",
                 args.to_vec(),
-                TypeFact::Float,
+                TypeFact::F64,
             ))
         }
         "math::sign" | "math::floor" | "math::ceil" | "math::round" => {
@@ -418,7 +419,7 @@ pub(super) fn function_fact(name: &str, args: &[TypeFact]) -> Option<StdlibFunct
             Some(StdlibFunctionFact::new(
                 canonical_function_name(name)?,
                 args.to_vec(),
-                TypeFact::Int,
+                TypeFact::I64,
             ))
         }
         "math::abs" => {
@@ -434,7 +435,7 @@ pub(super) fn function_fact(name: &str, args: &[TypeFact]) -> Option<StdlibFunct
             Some(StdlibFunctionFact::new(
                 "math::random",
                 args.to_vec(),
-                TypeFact::Int,
+                TypeFact::I64,
             ))
         }
         "time::now" | "time::tick" => {
@@ -442,7 +443,7 @@ pub(super) fn function_fact(name: &str, args: &[TypeFact]) -> Option<StdlibFunct
             Some(StdlibFunctionFact::new(
                 canonical_function_name(name)?,
                 Vec::new(),
-                TypeFact::Int,
+                TypeFact::I64,
             ))
         }
         "time::elapsed_since" => {
@@ -450,7 +451,7 @@ pub(super) fn function_fact(name: &str, args: &[TypeFact]) -> Option<StdlibFunct
             Some(StdlibFunctionFact::new(
                 "time::elapsed_since",
                 args.to_vec(),
-                TypeFact::Int,
+                TypeFact::I64,
             ))
         }
         "io::println" => {
@@ -458,7 +459,7 @@ pub(super) fn function_fact(name: &str, args: &[TypeFact]) -> Option<StdlibFunct
             Some(StdlibFunctionFact::new(
                 "io::println",
                 args.to_vec(),
-                TypeFact::result(TypeFact::Null, TypeFact::record("IoError")),
+                TypeFact::result(TypeFact::NULL, TypeFact::record("IoError")),
             ))
         }
         "fs::read_to_string" => {
@@ -466,7 +467,7 @@ pub(super) fn function_fact(name: &str, args: &[TypeFact]) -> Option<StdlibFunct
             Some(StdlibFunctionFact::new(
                 "fs::read_to_string",
                 args.to_vec(),
-                TypeFact::result(TypeFact::String, TypeFact::record("IoError")),
+                TypeFact::result(TypeFact::STRING, TypeFact::record("IoError")),
             ))
         }
         "fs::write_string" => {
@@ -474,7 +475,7 @@ pub(super) fn function_fact(name: &str, args: &[TypeFact]) -> Option<StdlibFunct
             Some(StdlibFunctionFact::new(
                 "fs::write_string",
                 args.to_vec(),
-                TypeFact::result(TypeFact::Null, TypeFact::record("IoError")),
+                TypeFact::result(TypeFact::NULL, TypeFact::record("IoError")),
             ))
         }
         "set::from_array" => {
@@ -497,7 +498,7 @@ pub(super) fn function_fact(name: &str, args: &[TypeFact]) -> Option<StdlibFunct
             Some(StdlibFunctionFact::new(
                 "bytes::from_hex",
                 args.to_vec(),
-                TypeFact::result(TypeFact::Bytes, TypeFact::String),
+                TypeFact::result(TypeFact::BYTES, TypeFact::STRING),
             ))
         }
         "i64::from_i32" | "u64::from_u32" => {
@@ -505,7 +506,7 @@ pub(super) fn function_fact(name: &str, args: &[TypeFact]) -> Option<StdlibFunct
             Some(StdlibFunctionFact::new(
                 canonical_function_name(name)?,
                 args.to_vec(),
-                TypeFact::Int,
+                TypeFact::I64,
             ))
         }
         "f64::from_f32" => {
@@ -513,7 +514,7 @@ pub(super) fn function_fact(name: &str, args: &[TypeFact]) -> Option<StdlibFunct
             Some(StdlibFunctionFact::new(
                 "f64::from_f32",
                 args.to_vec(),
-                TypeFact::Float,
+                TypeFact::F64,
             ))
         }
         "i8::try_from_i64" | "u8::try_from_u64" => {
@@ -521,7 +522,7 @@ pub(super) fn function_fact(name: &str, args: &[TypeFact]) -> Option<StdlibFunct
             Some(StdlibFunctionFact::new(
                 canonical_function_name(name)?,
                 args.to_vec(),
-                TypeFact::result(TypeFact::Int, TypeFact::String),
+                TypeFact::result(TypeFact::I64, TypeFact::STRING),
             ))
         }
         "f32::try_from_f64" => {
@@ -529,7 +530,7 @@ pub(super) fn function_fact(name: &str, args: &[TypeFact]) -> Option<StdlibFunct
             Some(StdlibFunctionFact::new(
                 "f32::try_from_f64",
                 args.to_vec(),
-                TypeFact::result(TypeFact::Float, TypeFact::String),
+                TypeFact::result(TypeFact::F64, TypeFact::STRING),
             ))
         }
         "u8::wrapping_add" | "u32::wrapping_mul" | "i8::wrapping_add" | "u8::bit_and"
@@ -539,7 +540,7 @@ pub(super) fn function_fact(name: &str, args: &[TypeFact]) -> Option<StdlibFunct
             Some(StdlibFunctionFact::new(
                 canonical_function_name(name)?,
                 args.to_vec(),
-                TypeFact::Int,
+                TypeFact::I64,
             ))
         }
         _ => None,
@@ -696,27 +697,32 @@ fn value_or_fallback(value: TypeFact, fallback: TypeFact) -> TypeFact {
 
 fn numeric_return(value: &TypeFact) -> TypeFact {
     match value {
-        TypeFact::Float => TypeFact::Float,
-        TypeFact::Int => TypeFact::Int,
-        _ => TypeFact::Union(vec![TypeFact::Int, TypeFact::Float]),
+        TypeFact::Primitive(PrimitiveTag::F64) => TypeFact::F64,
+        TypeFact::Primitive(PrimitiveTag::I64) => TypeFact::I64,
+        _ => TypeFact::Union(vec![TypeFact::I64, TypeFact::F64]),
     }
 }
 
 fn numeric_result(values: &[TypeFact]) -> TypeFact {
-    if values.iter().all(|value| matches!(value, TypeFact::Int)) {
-        TypeFact::Int
-    } else if values
+    if values
         .iter()
-        .all(|value| matches!(value, TypeFact::Int | TypeFact::Float))
+        .all(|value| matches!(value, TypeFact::Primitive(PrimitiveTag::I64)))
     {
-        TypeFact::Float
+        TypeFact::I64
+    } else if values.iter().all(|value| {
+        matches!(
+            value,
+            TypeFact::Primitive(PrimitiveTag::I64 | PrimitiveTag::F64)
+        )
+    }) {
+        TypeFact::F64
     } else {
-        TypeFact::Union(vec![TypeFact::Int, TypeFact::Float])
+        TypeFact::Union(vec![TypeFact::I64, TypeFact::F64])
     }
 }
 
 fn number_fact() -> TypeFact {
-    TypeFact::Union(vec![TypeFact::Int, TypeFact::Float])
+    TypeFact::Union(vec![TypeFact::I64, TypeFact::F64])
 }
 
 fn canonical_function_name(name: &str) -> Option<&'static str> {

@@ -85,24 +85,24 @@ fn core_language_fixture_analyzes_schema_and_local_hints() {
     );
     assert_eq!(
         local_fact(bindings, &facts, "streak_score"),
-        Some(TypeFact::Int)
+        Some(TypeFact::I64)
     );
-    assert_eq!(local_fact(bindings, &facts, "total"), Some(TypeFact::Int));
+    assert_eq!(local_fact(bindings, &facts, "total"), Some(TypeFact::I64));
     assert_eq!(
         local_fact(bindings, &facts, "compound_score"),
-        Some(TypeFact::Int)
+        Some(TypeFact::I64)
     );
     assert_eq!(
         local_fact(bindings, &facts, "logical_score"),
-        Some(TypeFact::Int)
+        Some(TypeFact::I64)
     );
     assert_eq!(
         local_fact(bindings, &facts, "array_helper_score"),
-        Some(TypeFact::Int)
+        Some(TypeFact::I64)
     );
     assert_eq!(
         local_fact(bindings, &facts, "array_mutation_score"),
-        Some(TypeFact::Int)
+        Some(TypeFact::I64)
     );
     assert_eq!(
         local_fact(bindings, &facts, "mapped"),
@@ -110,51 +110,51 @@ fn core_language_fixture_analyzes_schema_and_local_hints() {
     );
     assert_eq!(
         local_fact(bindings, &facts, "map_score"),
-        Some(TypeFact::Int)
+        Some(TypeFact::I64)
     );
     assert_eq!(
         local_fact(bindings, &facts, "map_helper_score"),
-        Some(TypeFact::Int)
+        Some(TypeFact::I64)
     );
     assert_eq!(
         local_fact(bindings, &facts, "set_score"),
-        Some(TypeFact::Int)
+        Some(TypeFact::I64)
     );
     assert_eq!(
         local_fact(bindings, &facts, "set_helper_score"),
-        Some(TypeFact::Int)
+        Some(TypeFact::I64)
     );
     assert_eq!(
         local_fact(bindings, &facts, "no_else_score"),
-        Some(TypeFact::Int)
+        Some(TypeFact::I64)
     );
     assert_eq!(
         local_fact(bindings, &facts, "named_method_score"),
-        Some(TypeFact::Int)
+        Some(TypeFact::I64)
     );
     assert_eq!(
         local_fact(bindings, &facts, "nested_lambda_score"),
-        Some(TypeFact::Int)
+        Some(TypeFact::I64)
     );
     assert_eq!(
         local_fact(bindings, &facts, "zero_arg_lambda_score"),
-        Some(TypeFact::Int)
+        Some(TypeFact::I64)
     );
     assert_eq!(
         local_fact(bindings, &facts, "string_helper_score"),
-        Some(TypeFact::Int)
+        Some(TypeFact::I64)
     );
     assert_eq!(
         local_fact(bindings, &facts, "string_utility_score"),
-        Some(TypeFact::Int)
+        Some(TypeFact::I64)
     );
     assert_eq!(
         local_fact(bindings, &facts, "math_helper_score"),
-        Some(TypeFact::Int)
+        Some(TypeFact::I64)
     );
     assert_eq!(
         local_fact(bindings, &facts, "option_result_helper_score"),
-        Some(TypeFact::Int)
+        Some(TypeFact::I64)
     );
     assert_eq!(
         local_fact(bindings, &facts, "imported_reward"),
@@ -162,7 +162,7 @@ fn core_language_fixture_analyzes_schema_and_local_hints() {
     );
     assert_eq!(
         local_fact(bindings, &facts, "imported_bonus"),
-        Some(TypeFact::Int)
+        Some(TypeFact::I64)
     );
     assert_eq!(
         local_fact(bindings, &facts, "outcome"),
@@ -173,7 +173,7 @@ fn core_language_fixture_analyzes_schema_and_local_hints() {
     );
     assert_eq!(
         local_fact(bindings, &facts, "imported_match"),
-        Some(TypeFact::Int)
+        Some(TypeFact::I64)
     );
 }
 

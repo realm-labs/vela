@@ -10,7 +10,7 @@ use super::*;
 fn infers_literal_array_map_and_record_facts() {
     let expressions = function_exprs(
         r#"
-            struct Reward { count: int }
+            struct Reward { count: i64 }
             fn main() {
                 let values = [1, 2, 3];
                 let rewards = {"quest": 1, boss: 2.5, 10: 3};
@@ -22,13 +22,13 @@ fn infers_literal_array_map_and_record_facts() {
 
     assert_eq!(
         type_fact_from_expr(&expressions[0], &scope),
-        TypeFact::array(TypeFact::Int)
+        TypeFact::array(TypeFact::I64)
     );
     assert_eq!(
         type_fact_from_expr(&expressions[1], &scope),
         TypeFact::map(
-            TypeFact::String,
-            TypeFact::Union(vec![TypeFact::Int, TypeFact::Float])
+            TypeFact::STRING,
+            TypeFact::Union(vec![TypeFact::I64, TypeFact::F64])
         )
     );
     assert_eq!(
@@ -47,12 +47,12 @@ fn infers_path_and_branch_facts_from_scope() {
             "#,
     );
     let scope = ExprFactScope::new()
-        .with_path(["ok"], TypeFact::Bool)
-        .with_path(["score"], TypeFact::Int);
+        .with_path(["ok"], TypeFact::BOOL)
+        .with_path(["score"], TypeFact::I64);
 
     assert_eq!(
         type_fact_from_expr(&expressions[0], &scope),
-        TypeFact::Union(vec![TypeFact::Int, TypeFact::String])
+        TypeFact::Union(vec![TypeFact::I64, TypeFact::STRING])
     );
 }
 
@@ -69,25 +69,19 @@ fn infers_index_read_facts_from_collection_receivers() {
             "#,
     );
     let scope = ExprFactScope::new()
-        .with_path(["scores"], TypeFact::array(TypeFact::Int))
-        .with_path(
-            ["rewards"],
-            TypeFact::map(TypeFact::String, TypeFact::Float),
-        )
+        .with_path(["scores"], TypeFact::array(TypeFact::I64))
+        .with_path(["rewards"], TypeFact::map(TypeFact::STRING, TypeFact::F64))
         .with_path(
             ["either"],
             TypeFact::union([
-                TypeFact::array(TypeFact::Int),
-                TypeFact::map(TypeFact::String, TypeFact::Float),
+                TypeFact::array(TypeFact::I64),
+                TypeFact::map(TypeFact::STRING, TypeFact::F64),
             ]),
         );
 
-    assert_eq!(type_fact_from_expr(&expressions[0], &scope), TypeFact::Int);
-    assert_eq!(
-        type_fact_from_expr(&expressions[1], &scope),
-        TypeFact::Float
-    );
-    assert_eq!(type_fact_from_expr(&expressions[2], &scope), TypeFact::Int);
+    assert_eq!(type_fact_from_expr(&expressions[0], &scope), TypeFact::I64);
+    assert_eq!(type_fact_from_expr(&expressions[1], &scope), TypeFact::F64);
+    assert_eq!(type_fact_from_expr(&expressions[2], &scope), TypeFact::I64);
     assert_eq!(
         type_fact_from_expr(&expressions[3], &scope),
         TypeFact::Unknown
@@ -109,27 +103,27 @@ fn infers_try_propagation_payload_facts() {
             "#,
     );
     let scope = ExprFactScope::new()
-        .with_path(["maybe"], TypeFact::option(TypeFact::Int))
-        .with_path(["some"], TypeFact::option_some(TypeFact::String))
+        .with_path(["maybe"], TypeFact::option(TypeFact::I64))
+        .with_path(["some"], TypeFact::option_some(TypeFact::STRING))
         .with_path(["none"], TypeFact::option_none())
         .with_path(
             ["grant"],
-            TypeFact::result(TypeFact::host("Reward"), TypeFact::String),
+            TypeFact::result(TypeFact::host("Reward"), TypeFact::STRING),
         )
         .with_path(["failed"], TypeFact::result_err(TypeFact::record("Error")))
         .with_path(
             ["either"],
             TypeFact::union([
-                TypeFact::option(TypeFact::Int),
-                TypeFact::result_ok(TypeFact::String),
+                TypeFact::option(TypeFact::I64),
+                TypeFact::result_ok(TypeFact::STRING),
                 TypeFact::option_none(),
             ]),
         );
 
-    assert_eq!(type_fact_from_expr(&expressions[0], &scope), TypeFact::Int);
+    assert_eq!(type_fact_from_expr(&expressions[0], &scope), TypeFact::I64);
     assert_eq!(
         type_fact_from_expr(&expressions[1], &scope),
-        TypeFact::String
+        TypeFact::STRING
     );
     assert_eq!(
         type_fact_from_expr(&expressions[2], &scope),
@@ -145,7 +139,7 @@ fn infers_try_propagation_payload_facts() {
     );
     assert_eq!(
         type_fact_from_expr(&expressions[5], &scope),
-        TypeFact::union([TypeFact::Int, TypeFact::String])
+        TypeFact::union([TypeFact::I64, TypeFact::STRING])
     );
 }
 
@@ -160,12 +154,12 @@ fn narrows_null_checked_branch_facts() {
     );
     let scope = ExprFactScope::new().with_path(
         ["player"],
-        TypeFact::Union(vec![TypeFact::Null, TypeFact::host("Player")]),
+        TypeFact::Union(vec![TypeFact::NULL, TypeFact::host("Player")]),
     );
 
     assert_eq!(
         type_fact_from_expr(&expressions[0], &scope),
-        TypeFact::Union(vec![TypeFact::Int, TypeFact::host("Player")])
+        TypeFact::Union(vec![TypeFact::I64, TypeFact::host("Player")])
     );
 }
 
@@ -181,7 +175,7 @@ fn infers_null_fallback_for_if_expression_without_else() {
 
     assert_eq!(
         type_fact_from_expr(&expressions[0], &ExprFactScope::new()),
-        TypeFact::Union(vec![TypeFact::Int, TypeFact::Null])
+        TypeFact::Union(vec![TypeFact::I64, TypeFact::NULL])
     );
 }
 
@@ -201,7 +195,7 @@ fn option_result_predicates_narrow_branch_facts() {
         .with_path(["maybe_player"], TypeFact::option(TypeFact::host("Player")))
         .with_path(
             ["grant_result"],
-            TypeFact::result(TypeFact::Int, TypeFact::String),
+            TypeFact::result(TypeFact::I64, TypeFact::STRING),
         );
     let maybe_player = vec!["maybe_player".to_owned()];
     let grant_result = vec!["grant_result".to_owned()];
@@ -227,11 +221,11 @@ fn option_result_predicates_narrow_branch_facts() {
     let else_scope = scope.narrowed_by_condition(&result_if.condition, false);
     assert_eq!(
         then_scope.path_fact(&grant_result),
-        Some(&TypeFact::result_ok(TypeFact::Int))
+        Some(&TypeFact::result_ok(TypeFact::I64))
     );
     assert_eq!(
         else_scope.path_fact(&grant_result),
-        Some(&TypeFact::result_err(TypeFact::String))
+        Some(&TypeFact::result_err(TypeFact::STRING))
     );
 
     let ExprKind::If(option_method_if) = &expressions[2].kind else {
@@ -255,11 +249,11 @@ fn option_result_predicates_narrow_branch_facts() {
     let else_scope = scope.narrowed_by_condition(&result_method_if.condition, false);
     assert_eq!(
         then_scope.path_fact(&grant_result),
-        Some(&TypeFact::result_ok(TypeFact::Int))
+        Some(&TypeFact::result_ok(TypeFact::I64))
     );
     assert_eq!(
         else_scope.path_fact(&grant_result),
-        Some(&TypeFact::result_err(TypeFact::String))
+        Some(&TypeFact::result_err(TypeFact::STRING))
     );
 }
 
@@ -276,7 +270,7 @@ fn infers_stdlib_method_facts_with_lambda_parameters() {
     );
     let scope = ExprFactScope::new()
         .with_path(["rewards"], TypeFact::array(TypeFact::record("Reward")))
-        .with_path(["scores"], TypeFact::array(TypeFact::Int));
+        .with_path(["scores"], TypeFact::array(TypeFact::I64));
 
     assert_eq!(
         type_fact_from_expr(&expressions[0], &scope),
@@ -286,7 +280,7 @@ fn infers_stdlib_method_facts_with_lambda_parameters() {
         type_fact_from_expr(&expressions[1], &scope),
         TypeFact::option(TypeFact::record("Reward"))
     );
-    assert_eq!(type_fact_from_expr(&expressions[2], &scope), TypeFact::Int);
+    assert_eq!(type_fact_from_expr(&expressions[2], &scope), TypeFact::I64);
 }
 
 #[test]
@@ -302,21 +296,21 @@ fn infers_value_fact_for_single_arg_map_callbacks() {
             "#,
     );
     let scope =
-        ExprFactScope::new().with_path(["rewards"], TypeFact::map(TypeFact::String, TypeFact::Int));
+        ExprFactScope::new().with_path(["rewards"], TypeFact::map(TypeFact::STRING, TypeFact::I64));
 
     assert_eq!(
         type_fact_from_expr(&expressions[0], &scope),
-        TypeFact::map(TypeFact::String, TypeFact::Int)
+        TypeFact::map(TypeFact::STRING, TypeFact::I64)
     );
     assert_eq!(
         type_fact_from_expr(&expressions[1], &scope),
-        TypeFact::map(TypeFact::String, TypeFact::String)
+        TypeFact::map(TypeFact::STRING, TypeFact::STRING)
     );
     assert_eq!(
         type_fact_from_expr(&expressions[2], &scope),
-        TypeFact::map(TypeFact::String, TypeFact::Int)
+        TypeFact::map(TypeFact::STRING, TypeFact::I64)
     );
-    assert_eq!(type_fact_from_expr(&expressions[3], &scope), TypeFact::Int);
+    assert_eq!(type_fact_from_expr(&expressions[3], &scope), TypeFact::I64);
 }
 
 #[test]
@@ -349,20 +343,20 @@ fn infers_option_result_map_method_facts() {
             "#,
     );
     let scope = ExprFactScope::new()
-        .with_path(["maybe"], TypeFact::option(TypeFact::Int))
-        .with_path(["some"], TypeFact::option_some(TypeFact::String))
+        .with_path(["maybe"], TypeFact::option(TypeFact::I64))
+        .with_path(["some"], TypeFact::option_some(TypeFact::STRING))
         .with_path(["none"], TypeFact::option_none())
-        .with_path(["grant"], TypeFact::result(TypeFact::String, TypeFact::Int))
+        .with_path(["grant"], TypeFact::result(TypeFact::STRING, TypeFact::I64))
         .with_path(["failed"], TypeFact::result_err(TypeFact::record("Error")))
-        .with_path(["ok"], TypeFact::result_ok(TypeFact::String));
+        .with_path(["ok"], TypeFact::result_ok(TypeFact::STRING));
 
     assert_eq!(
         type_fact_from_expr(&expressions[0], &scope),
-        TypeFact::option(TypeFact::Int)
+        TypeFact::option(TypeFact::I64)
     );
     assert_eq!(
         type_fact_from_expr(&expressions[1], &scope),
-        TypeFact::option_some(TypeFact::String)
+        TypeFact::option_some(TypeFact::STRING)
     );
     assert_eq!(
         type_fact_from_expr(&expressions[2], &scope),
@@ -370,7 +364,7 @@ fn infers_option_result_map_method_facts() {
     );
     assert_eq!(
         type_fact_from_expr(&expressions[3], &scope),
-        TypeFact::result(TypeFact::String, TypeFact::Int)
+        TypeFact::result(TypeFact::STRING, TypeFact::I64)
     );
     assert_eq!(
         type_fact_from_expr(&expressions[4], &scope),
@@ -378,7 +372,7 @@ fn infers_option_result_map_method_facts() {
     );
     assert_eq!(
         type_fact_from_expr(&expressions[5], &scope),
-        TypeFact::result(TypeFact::String, TypeFact::Int)
+        TypeFact::result(TypeFact::STRING, TypeFact::I64)
     );
     assert_eq!(
         type_fact_from_expr(&expressions[6], &scope),
@@ -386,11 +380,11 @@ fn infers_option_result_map_method_facts() {
     );
     assert_eq!(
         type_fact_from_expr(&expressions[7], &scope),
-        TypeFact::result_ok(TypeFact::String)
+        TypeFact::result_ok(TypeFact::STRING)
     );
     assert_eq!(
         type_fact_from_expr(&expressions[8], &scope),
-        TypeFact::option(TypeFact::String)
+        TypeFact::option(TypeFact::STRING)
     );
     assert_eq!(
         type_fact_from_expr(&expressions[9], &scope),
@@ -398,7 +392,7 @@ fn infers_option_result_map_method_facts() {
     );
     assert_eq!(
         type_fact_from_expr(&expressions[10], &scope),
-        TypeFact::result(TypeFact::String, TypeFact::Int)
+        TypeFact::result(TypeFact::STRING, TypeFact::I64)
     );
     assert_eq!(
         type_fact_from_expr(&expressions[11], &scope),
@@ -410,31 +404,31 @@ fn infers_option_result_map_method_facts() {
     );
     assert_eq!(
         type_fact_from_expr(&expressions[13], &scope),
-        TypeFact::option(TypeFact::union([TypeFact::Int, TypeFact::String]))
+        TypeFact::option(TypeFact::union([TypeFact::I64, TypeFact::STRING]))
     );
     assert_eq!(
         type_fact_from_expr(&expressions[14], &scope),
-        TypeFact::option_some(TypeFact::String)
+        TypeFact::option_some(TypeFact::STRING)
     );
     assert_eq!(
         type_fact_from_expr(&expressions[15], &scope),
-        TypeFact::result_ok(TypeFact::String)
+        TypeFact::result_ok(TypeFact::STRING)
     );
     assert_eq!(
         type_fact_from_expr(&expressions[16], &scope),
-        TypeFact::result_ok(TypeFact::String)
+        TypeFact::result_ok(TypeFact::STRING)
     );
     assert_eq!(
         type_fact_from_expr(&expressions[17], &scope),
-        TypeFact::result_ok(TypeFact::String)
+        TypeFact::result_ok(TypeFact::STRING)
     );
     assert_eq!(
         type_fact_from_expr(&expressions[18], &scope),
-        TypeFact::option(TypeFact::Int)
+        TypeFact::option(TypeFact::I64)
     );
     assert_eq!(
         type_fact_from_expr(&expressions[19], &scope),
-        TypeFact::option(TypeFact::String)
+        TypeFact::option(TypeFact::STRING)
     );
     assert_eq!(
         type_fact_from_expr(&expressions[20], &scope),
@@ -454,17 +448,17 @@ fn infers_stdlib_function_facts() {
             "#,
     );
     let scope = ExprFactScope::new()
-        .with_path(["maybe"], TypeFact::option(TypeFact::Int))
-        .with_path(["names"], TypeFact::array(TypeFact::String));
+        .with_path(["maybe"], TypeFact::option(TypeFact::I64))
+        .with_path(["names"], TypeFact::array(TypeFact::STRING));
 
-    assert_eq!(type_fact_from_expr(&expressions[0], &scope), TypeFact::Int);
+    assert_eq!(type_fact_from_expr(&expressions[0], &scope), TypeFact::I64);
     assert_eq!(
         type_fact_from_expr(&expressions[1], &scope),
-        TypeFact::set(TypeFact::String)
+        TypeFact::set(TypeFact::STRING)
     );
     assert_eq!(
         type_fact_from_expr(&expressions[2], &scope),
-        TypeFact::Union(vec![TypeFact::Int, TypeFact::Float])
+        TypeFact::Union(vec![TypeFact::I64, TypeFact::F64])
     );
 }
 
@@ -490,8 +484,8 @@ fn infers_range_expression_facts() {
         type_fact_from_expr(&expressions[1], &scope),
         TypeFact::Range
     );
-    assert_eq!(type_fact_from_expr(&expressions[2], &scope), TypeFact::Int);
-    assert_eq!(type_fact_from_expr(&expressions[3], &scope), TypeFact::Bool);
+    assert_eq!(type_fact_from_expr(&expressions[2], &scope), TypeFact::I64);
+    assert_eq!(type_fact_from_expr(&expressions[3], &scope), TypeFact::BOOL);
 }
 
 #[test]
@@ -512,7 +506,7 @@ fn match_patterns_bind_variant_field_facts() {
 
     assert_eq!(
         type_fact_from_expr_with_registry(&expressions[0], &scope, &facts),
-        TypeFact::Int
+        TypeFact::I64
     );
 }
 
@@ -534,7 +528,7 @@ fn match_patterns_narrow_scrutinee_variant_facts() {
 
     assert_eq!(
         type_fact_from_expr_with_registry(&expressions[0], &scope, &facts),
-        TypeFact::String
+        TypeFact::STRING
     );
 }
 
@@ -556,7 +550,7 @@ fn option_match_patterns_bind_dynamic_payload_facts() {
 
     assert_eq!(
         type_fact_from_expr_with_registry(&expressions[0], &scope, &facts),
-        TypeFact::Int
+        TypeFact::I64
     );
 }
 
@@ -574,13 +568,13 @@ fn result_match_patterns_bind_dynamic_payload_facts() {
     );
     let scope = ExprFactScope::new().with_path(
         ["grant_result"],
-        TypeFact::result(TypeFact::host("Player"), TypeFact::String),
+        TypeFact::result(TypeFact::host("Player"), TypeFact::STRING),
     );
     let facts = player_registry_facts();
 
     assert_eq!(
         type_fact_from_expr_with_registry(&expressions[0], &scope, &facts),
-        TypeFact::Int
+        TypeFact::I64
     );
 }
 
@@ -602,7 +596,7 @@ fn player_registry_facts() -> RegistryFacts {
     let mut registry = TypeRegistry::new();
     registry.register(
         TypeDesc::new(TypeKey::new(TypeId::new(2), "Player"))
-            .field(FieldDesc::new(FieldId::new(1), "level").type_hint("int")),
+            .field(FieldDesc::new(FieldId::new(1), "level").type_hint("i64")),
     );
     RegistryFacts::from_registry(&registry)
 }
