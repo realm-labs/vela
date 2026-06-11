@@ -74,13 +74,14 @@ impl Compiler<'_, '_> {
 
         let dst = self.alloc_register()?;
         if let Some((declaration, name)) = self.script_function_call(callee) {
-            let args = self.compile_script_call_args(declaration, args, callee.span)?;
+            let call_args = self.compile_script_call_args(declaration, args, callee.span)?;
             self.emit_spanned(
                 UnlinkedInstructionKind::CallFunction {
                     dst,
                     target: function_id_for_script_name(&name),
                     name,
-                    args,
+                    mode: call_args.mode,
+                    args: call_args.args,
                 },
                 expr.span,
             );
@@ -309,7 +310,7 @@ impl Compiler<'_, '_> {
             .map(|(slot, param)| {
                 if let Some(arg) = slot {
                     self.compile_argument_for_param(&arg.value, &param)
-                        .map(CallArgument::Register)
+                        .map(|(register, _)| CallArgument::Register(register))
                 } else if param.default_value_span.is_some() {
                     Ok(CallArgument::Missing)
                 } else {
@@ -402,7 +403,7 @@ impl Compiler<'_, '_> {
         let mut registers = Vec::new();
         for (slot, param) in slots.into_iter().zip(params) {
             if let Some(arg) = slot {
-                registers.push(self.compile_argument_for_param(&arg.value, param)?);
+                registers.push(self.compile_argument_for_param(&arg.value, param)?.0);
             } else if param.default_value_span.is_none() {
                 unreachable!("call argument resolver rejects missing required arguments");
             }

@@ -5,10 +5,16 @@ use vela_hir::ids::HirDeclId;
 use vela_hir::type_hint::ParamHint;
 use vela_syntax::ast::Argument;
 
-use crate::CallArgument;
+use crate::{CallArgument, ScriptCallMode};
 
-use super::value_types::{TypeContractContext, type_hint_value_type};
+use super::value_types::{ExpectedTypeOutcome, TypeContractContext, type_hint_value_type};
 use super::{CompileError, CompileErrorKind, CompileResult, Compiler};
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub(super) struct ScriptCallArgs {
+    pub(super) args: Vec<CallArgument>,
+    pub(super) mode: ScriptCallMode,
+}
 
 impl Compiler<'_, '_> {
     pub(super) fn compile_script_call_args(
@@ -16,7 +22,7 @@ impl Compiler<'_, '_> {
         declaration: HirDeclId,
         args: &[Argument],
         call_span: Span,
-    ) -> CompileResult<Vec<CallArgument>> {
+    ) -> CompileResult<ScriptCallArgs> {
         let params = self
             .facts
             .script_function_signatures
@@ -28,37 +34,46 @@ impl Compiler<'_, '_> {
                 CompileError::new(CompileErrorKind::SemanticDiagnostics(diagnostics))
             })?;
 
-        slots
+        let mut mode = ScriptCallMode::Unchecked;
+        let args = slots
             .into_iter()
             .zip(params)
             .map(|(slot, param)| {
                 if let Some(arg) = slot {
-                    self.compile_argument_for_param(&arg.value, &param)
-                        .map(CallArgument::Register)
+                    let (register, requires_guard) =
+                        self.compile_argument_for_param(&arg.value, &param)?;
+                    if requires_guard {
+                        mode = ScriptCallMode::Checked;
+                    }
+                    Ok(CallArgument::Register(register))
                 } else if param.default_value_span.is_some() {
+                    if param.type_hint.is_some() {
+                        mode = ScriptCallMode::Checked;
+                    }
                     Ok(CallArgument::Missing)
                 } else {
                     unreachable!("call argument resolver rejects missing required arguments")
                 }
             })
-            .collect()
+            .collect::<CompileResult<Vec<_>>>()?;
+        Ok(ScriptCallArgs { args, mode })
     }
 
     pub(super) fn compile_argument_for_param(
         &mut self,
         value: &vela_syntax::ast::Expr,
         param: &ParamHint,
-    ) -> CompileResult<crate::Register> {
+    ) -> CompileResult<(crate::Register, bool)> {
         let Some(expected) = param.type_hint.as_ref().and_then(type_hint_value_type) else {
-            return self.compile_expr(value);
+            return self.compile_expr(value).map(|register| (register, false));
         };
-        self.compile_expr_with_expected_type(
-            value,
-            expected,
-            TypeContractContext::FunctionParameter {
-                name: param.name.clone(),
-            },
-        )
+        let context = TypeContractContext::FunctionParameter {
+            name: param.name.clone(),
+        };
+        let outcome = self.expected_type_for_expr(value, expected.clone(), context.clone())?;
+        let requires_guard = matches!(outcome, ExpectedTypeOutcome::RequiresRuntimeGuard(_));
+        self.compile_expr_with_expected_type(value, expected, context)
+            .map(|register| (register, requires_guard))
     }
 }
 

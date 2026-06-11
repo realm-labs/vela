@@ -128,6 +128,55 @@ fn main(value) {
 }
 
 #[test]
+fn linked_static_safe_script_call_uses_unchecked_entry() {
+    let program = compile_program_source(
+        SourceId::new(1),
+        r#"
+fn require_i64(value: i64) {
+    return value;
+}
+
+fn main() {
+    return require_i64(12);
+}
+"#,
+    )
+    .expect("program should compile");
+    let mut linked = Linker::new()
+        .link_program(&program)
+        .expect("program should link");
+    let helper_handle = linked
+        .entry_point_by_name("require_i64")
+        .expect("helper entry should exist");
+    let (_, helper) = linked
+        .functions_mut()
+        .find(|(handle, _)| *handle == helper_handle)
+        .expect("helper should exist");
+    let guard = helper.param_guards[0].guard;
+    helper.type_guards[guard.index()].plan =
+        vela_bytecode::TypeGuardPlan::Primitive(vela_common::PrimitiveTag::String);
+
+    let mut budget = ExecutionBudget::unbounded();
+    let value = Vm::new()
+        .run_linked_program_with_budget(&linked, "main", &[], &mut budget)
+        .expect("unchecked static-safe call should skip the poisoned param guard");
+    assert_eq!(value, OwnedValue::i64(12));
+
+    let mut budget = ExecutionBudget::unbounded();
+    let error = Vm::new()
+        .run_linked_program_with_budget(&linked, "require_i64", &[OwnedValue::i64(12)], &mut budget)
+        .expect_err("public entry should still execute the poisoned param guard");
+    assert_eq!(
+        error.kind(),
+        VmErrorKind::TypeContractViolation {
+            expected: "string".to_owned(),
+            actual: "i64".to_owned(),
+            debug_name: "value".to_owned(),
+        }
+    );
+}
+
+#[test]
 fn linked_parameter_guard_accepts_string_and_bytes_primitive_tags() {
     let program = compile_program_source(
         SourceId::new(1),

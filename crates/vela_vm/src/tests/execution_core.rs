@@ -86,6 +86,7 @@ fn linker_rejects_script_function_id_debug_name_mismatch() {
             dst: Register(0),
             target: FunctionId::new(0xDEAD),
             name: "helper".to_owned(),
+            mode: vela_bytecode::ScriptCallMode::Checked,
             args: Vec::new(),
         },
     ));
@@ -438,6 +439,7 @@ fn linked_program_calls_host_method_by_dispatch_handle() {
                 program: &program,
                 captures: &[],
                 args: &[Value::HostRef(host_ref)],
+                check_param_guards: true,
                 call_site: None,
                 call_site_offset: None,
                 inline_caches: None,
@@ -472,6 +474,7 @@ fn linked_program_calls_script_function_by_dense_handle() {
             dst: Register(0),
             function: helper,
             debug_name: helper_name,
+            mode: vela_bytecode::ScriptCallMode::Checked,
             args: Vec::new(),
         },
     ));
@@ -731,6 +734,7 @@ fn linked_record_construction_stores_type_and_shape_identity() {
                 program: &program,
                 captures: &[],
                 args: &[],
+                check_param_guards: true,
                 call_site: None,
                 call_site_offset: None,
                 inline_caches: None,

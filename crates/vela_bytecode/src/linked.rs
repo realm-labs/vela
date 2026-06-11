@@ -664,6 +664,7 @@ pub enum InstructionKind {
         dst: Register,
         function: ScriptFunctionHandle,
         debug_name: DebugNameId,
+        mode: crate::ScriptCallMode,
         args: Vec<CallArgument>,
     },
     MakeClosure {
@@ -861,6 +862,7 @@ mod tests {
             dst: Register(2),
             function: script,
             debug_name: script_name,
+            mode: crate::ScriptCallMode::Checked,
             args: vec![CallArgument::Register(Register(1))],
         };
         let method_call = InstructionKind::CallMethod {

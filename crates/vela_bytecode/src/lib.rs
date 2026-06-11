@@ -729,6 +729,7 @@ pub enum UnlinkedInstructionKind {
         dst: Register,
         target: FunctionId,
         name: String,
+        mode: ScriptCallMode,
         args: Vec<CallArgument>,
     },
     MakeClosure {
@@ -895,6 +896,12 @@ pub enum UnlinkedInstructionKind {
     Return {
         src: Register,
     },
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum ScriptCallMode {
+    Checked,
+    Unchecked,
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]

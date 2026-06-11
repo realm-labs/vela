@@ -190,8 +190,10 @@ fn main() {
     );
     assert!(main.instructions.iter().any(|instruction| matches!(
         &instruction.kind,
-        UnlinkedInstructionKind::CallFunction { args, .. }
-            if args.len() == 1 && matches!(args[0], CallArgument::Register(_))
+        UnlinkedInstructionKind::CallFunction { args, mode, .. }
+            if *mode == crate::ScriptCallMode::Unchecked
+                && args.len() == 1
+                && matches!(args[0], CallArgument::Register(_))
     )));
 }
 
@@ -300,6 +302,16 @@ fn main(value) {
 }
 "#,
     )
+    .map(|program| {
+        let main = program.function("main").expect("main function");
+        assert!(main.instructions.iter().any(|instruction| matches!(
+            instruction.kind,
+            UnlinkedInstructionKind::CallFunction {
+                mode: crate::ScriptCallMode::Checked,
+                ..
+            }
+        )));
+    })
     .expect("dynamic argument should compile for runtime contract guard");
 }
 

@@ -87,7 +87,9 @@ impl Vm {
                 }));
             }
         }
-        execute_unlinked_param_guards(code, &frame, heap.as_deref())?;
+        if call.check_param_guards {
+            execute_unlinked_param_guards(code, &frame, heap.as_deref())?;
+        }
         let mut ip = 0_usize;
 
         while ip < code.instructions.len() {
@@ -307,6 +309,7 @@ impl Vm {
                     dst,
                     target,
                     name,
+                    mode,
                     args,
                 } => {
                     script_function_calls::dispatch_script_function_call(
@@ -320,6 +323,7 @@ impl Vm {
                             dst: *dst,
                             target: *target,
                             name,
+                            mode: *mode,
                             args,
                             call_site: instruction.span,
                             call_site_offset: instruction_offset,

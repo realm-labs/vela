@@ -1,4 +1,6 @@
-use vela_bytecode::{CallArgument, InstructionOffset, Register, UnlinkedProgramCode};
+use vela_bytecode::{
+    CallArgument, InstructionOffset, Register, ScriptCallMode, UnlinkedProgramCode,
+};
 use vela_common::Span;
 use vela_def::FunctionId;
 
@@ -11,6 +13,7 @@ pub(crate) struct ScriptFunctionCall<'a> {
     pub(crate) dst: Register,
     pub(crate) target: FunctionId,
     pub(crate) name: &'a str,
+    pub(crate) mode: ScriptCallMode,
     pub(crate) args: &'a [CallArgument],
     pub(crate) call_site: Option<Span>,
     pub(crate) call_site_offset: InstructionOffset,
@@ -43,6 +46,7 @@ pub(crate) fn dispatch_script_function_call(
             program: Some(program),
             captures: &[],
             args: values.as_slice(),
+            check_param_guards: matches!(call.mode, ScriptCallMode::Checked),
             call_site: call.call_site,
             call_site_offset: Some(call.call_site_offset),
             inline_caches: None,

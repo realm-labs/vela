@@ -232,6 +232,7 @@ fn verify_linked_instruction(
             function: callee,
             debug_name,
             args,
+            mode: _,
         } => {
             verify_linked_register(function, instruction_index, code, *dst)?;
             verify_linked_function_handle(function, instruction_index, context, *callee)?;

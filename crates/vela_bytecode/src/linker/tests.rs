@@ -121,6 +121,7 @@ fn linker_maps_script_functions_and_methods_to_dense_handles() {
             dst: Register(0),
             target: function_id_for_script_name("helper"),
             name: "helper".to_owned(),
+            mode: crate::ScriptCallMode::Unchecked,
             args: Vec::new(),
         },
     ));
@@ -187,6 +188,7 @@ fn linker_rejects_script_call_with_matching_name_and_wrong_id() {
             dst: Register(0),
             target: wrong_id,
             name: "helper".to_owned(),
+            mode: crate::ScriptCallMode::Checked,
             args: Vec::new(),
         },
     ));

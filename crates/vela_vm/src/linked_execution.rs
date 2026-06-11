@@ -1,7 +1,7 @@
 use vela_bytecode::linked::{InstructionKind, LinkedMethodDispatchKind};
 use vela_bytecode::{
     DebugNameId, FieldSlot, InstructionOffset, LinkedCodeObject, LinkedProgram, LinkedType,
-    LinkedVariant, Register, TypeHandle, VariantHandle,
+    LinkedVariant, Register, ScriptCallMode, TypeHandle, VariantHandle,
 };
 use vela_common::Span;
 
@@ -16,6 +16,7 @@ pub(crate) struct LinkedExecutionCall<'a> {
     pub(crate) program: &'a LinkedProgram,
     pub(crate) captures: &'a [Value],
     pub(crate) args: &'a [Value],
+    pub(crate) check_param_guards: bool,
     pub(crate) call_site: Option<Span>,
     pub(crate) call_site_offset: Option<InstructionOffset>,
     pub(crate) inline_caches: Option<&'a dyn VmInlineCaches>,
@@ -149,7 +150,9 @@ impl Vm {
                 }));
             }
         }
-        execute_linked_param_guards(code, call.program, &frame, heap.as_deref())?;
+        if call.check_param_guards {
+            execute_linked_param_guards(code, call.program, &frame, heap.as_deref())?;
+        }
 
         let mut ip = 0_usize;
         while ip < code.instructions.len() {
@@ -383,6 +386,7 @@ impl Vm {
                     dst,
                     function,
                     debug_name,
+                    mode,
                     args,
                 } => {
                     let function_code = call.program.function(*function).ok_or_else(|| {
@@ -402,6 +406,7 @@ impl Vm {
                             program: call.program,
                             captures: &[],
                             args: values.as_slice(),
+                            check_param_guards: matches!(mode, ScriptCallMode::Checked),
                             call_site: instruction.span,
                             call_site_offset: Some(instruction_offset),
                             inline_caches: call.inline_caches,
@@ -485,6 +490,7 @@ impl Vm {
                             program: call.program,
                             captures: captures.as_slice(),
                             args: values.as_slice(),
+                            check_param_guards: true,
                             call_site: instruction.span,
                             call_site_offset: Some(instruction_offset),
                             inline_caches: call.inline_caches,
@@ -548,6 +554,7 @@ impl Vm {
                                     program: call.program,
                                     captures: &[],
                                     args: method_args.as_slice(),
+                                    check_param_guards: true,
                                     call_site: instruction.span,
                                     call_site_offset: Some(instruction_offset),
                                     inline_caches: call.inline_caches,

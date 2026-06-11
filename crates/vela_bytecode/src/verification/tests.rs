@@ -147,6 +147,7 @@ fn linked_program_verify_rejects_invalid_script_function_handles() {
         dst: Register(0),
         function: ScriptFunctionHandle::new(1),
         debug_name: helper_name,
+        mode: crate::ScriptCallMode::Checked,
         args: Vec::new(),
     }));
     program.push_function(code);

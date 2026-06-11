@@ -1369,17 +1369,17 @@ then build registry, syntax, guards, and runtime behavior on the new model.
 
 #### Task 6.2: Add checked/unchecked entry support
 
-- [ ] Add call metadata or instruction variants to distinguish:
-  - [ ] checked script call;
-  - [ ] unchecked script call.
-- [ ] Static known-safe calls use unchecked path.
-- [ ] Dynamic calls use checked path.
+- [x] Add call metadata or instruction variants to distinguish:
+  - [x] checked script call;
+  - [x] unchecked script call.
+- [x] Static known-safe calls use unchecked path.
+- [x] Dynamic calls use checked path.
 - [ ] Reflection/host/C API calls use checked path.
 
 **Termination condition:**
 
-- [ ] Tests prove statically safe call does not execute parameter guard.
-- [ ] Tests prove dynamic call does execute parameter guard.
+- [x] Tests prove statically safe call does not execute parameter guard.
+- [x] Tests prove dynamic call does execute parameter guard.
 
 #### Task 6.3: Rewrite numeric operations around `ScalarValue`
 

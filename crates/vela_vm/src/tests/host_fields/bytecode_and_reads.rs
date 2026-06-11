@@ -632,6 +632,7 @@ fn runtime_errors_include_script_call_stack() {
             dst: Register(0),
             target: script_function_id("middle"),
             name: "middle".to_owned(),
+            mode: vela_bytecode::ScriptCallMode::Checked,
             args: Vec::new(),
         })
         .with_span(middle_call_span),
@@ -647,6 +648,7 @@ fn runtime_errors_include_script_call_stack() {
             dst: Register(0),
             target: script_function_id("leaf"),
             name: "leaf".to_owned(),
+            mode: vela_bytecode::ScriptCallMode::Checked,
             args: Vec::new(),
         })
         .with_span(leaf_call_span),

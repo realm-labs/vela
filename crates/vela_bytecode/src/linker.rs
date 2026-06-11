@@ -455,6 +455,7 @@ impl<'linker, 'registry> LinkContext<'linker, 'registry> {
                 dst,
                 target,
                 name,
+                mode,
                 args,
             } => {
                 let function = self.resolve_script_function(*target, name)?;
@@ -463,6 +464,7 @@ impl<'linker, 'registry> LinkContext<'linker, 'registry> {
                     dst: *dst,
                     function,
                     debug_name,
+                    mode: *mode,
                     args: args.clone(),
                 }
             }

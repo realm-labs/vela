@@ -103,6 +103,7 @@ pub(crate) fn dispatch_closure_call(
             program,
             captures: captures.as_slice(),
             args: values.as_slice(),
+            check_param_guards: true,
             call_site: call.call_site,
             call_site_offset: Some(call.call_site_offset),
             inline_caches: None,
