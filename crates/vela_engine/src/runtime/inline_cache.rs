@@ -93,7 +93,7 @@ impl vela_vm::VmInlineCaches for InlineCaches {
 #[cfg(test)]
 mod tests {
     use vela_bytecode::CacheSiteKind;
-    use vela_common::{HostObjectId, HostTypeId, SourceId};
+    use vela_common::{HostMethodId, HostObjectId, HostTypeId, SourceId};
     use vela_def::{FieldId, TypeId};
     use vela_host::access::HostAccess;
     use vela_host::mock::MockStateAdapter;
@@ -102,7 +102,7 @@ mod tests {
         HostAccessOp, HostMutationOp, HostSchemaEpoch, ResolvedHostAccessKind,
     };
     use vela_host::value::HostValue;
-    use vela_reflect::registry::{FieldDesc, TypeDesc, TypeKey};
+    use vela_reflect::registry::{FieldDesc, MethodDesc, TypeDesc, TypeKey};
     use vela_vm::owned_value::OwnedValue;
 
     use crate::engine::Engine;
@@ -708,6 +708,106 @@ fn gain_level(player: EpochMutateHostPlayer, amount: i64) {
             .host_access(cache_site)
             .expect("host mutate should refresh cache");
         assert_eq!(entry.op, HostAccessOp::Mutate(HostMutationOp::Add));
+        assert_eq!(entry.schema_epoch, HostSchemaEpoch::new(1));
+        assert_eq!(entry.resolved.schema_epoch, HostSchemaEpoch::new(1));
+    }
+
+    #[test]
+    fn host_call_inline_cache_refreshes_on_schema_epoch_change() {
+        let method = HostMethodId::new(9);
+        let engine = Engine::builder()
+            .register_type(
+                TypeDesc::new(TypeKey::new(TypeId::new(1), "EpochCallHostPlayer"))
+                    .host_type(HostTypeId::new(1))
+                    .method(MethodDesc::new(method, "award")),
+            )
+            .build()
+            .expect("engine should build");
+        let program = engine
+            .compile_source(
+                SourceId::new(1),
+                r#"
+fn award(player: EpochCallHostPlayer, amount: i64) {
+    return player.award(amount);
+}
+"#,
+            )
+            .expect("program should compile");
+        let function = program.function("award").expect("award should exist");
+        let cache_site = function
+            .cache_sites
+            .sites()
+            .iter()
+            .find(|site| site.kind == CacheSiteKind::HostPathCall)
+            .expect("award should have host call site")
+            .id;
+        let mut runtime = Runtime::new(engine, program);
+        let host_ref = HostRef::new(HostTypeId::new(1), HostObjectId::new(42), 1);
+        let mut adapter = MockStateAdapter::new();
+        adapter.insert_method_return(method, HostValue::Scalar(vela_common::ScalarValue::I64(12)));
+        let mut access = HostAccess::new();
+
+        let value = runtime
+            .call_raw(
+                "award",
+                &[
+                    OwnedValue::HostRef(host_ref),
+                    OwnedValue::Scalar(vela_common::ScalarValue::I64(2)),
+                ],
+                CallOptions::unbounded(),
+                &mut adapter,
+                &mut access,
+            )
+            .expect("first award should run");
+        assert_eq!(value, OwnedValue::Scalar(vela_common::ScalarValue::I64(12)));
+        assert_eq!(
+            adapter.method_calls(),
+            &[(
+                HostPath::new(host_ref),
+                method,
+                vec![HostValue::Scalar(vela_common::ScalarValue::I64(2))]
+            )]
+        );
+        let entry = runtime
+            .state
+            .inline_caches
+            .host_access(cache_site)
+            .expect("host call should populate cache");
+        assert_eq!(entry.root_type, HostTypeId::new(1));
+        assert_eq!(entry.plan_id.index(), 0);
+        assert_eq!(entry.op, HostAccessOp::Call(method));
+        assert_eq!(entry.schema_epoch, HostSchemaEpoch::new(0));
+
+        adapter.set_schema_epoch(HostSchemaEpoch::new(1));
+        adapter.insert_method_return(method, HostValue::Scalar(vela_common::ScalarValue::I64(21)));
+        let value = runtime
+            .call_raw(
+                "award",
+                &[
+                    OwnedValue::HostRef(host_ref),
+                    OwnedValue::Scalar(vela_common::ScalarValue::I64(3)),
+                ],
+                CallOptions::unbounded(),
+                &mut adapter,
+                &mut access,
+            )
+            .expect("second award should run through refreshed cache");
+
+        assert_eq!(value, OwnedValue::Scalar(vela_common::ScalarValue::I64(21)));
+        assert_eq!(
+            adapter.method_calls()[1],
+            (
+                HostPath::new(host_ref),
+                method,
+                vec![HostValue::Scalar(vela_common::ScalarValue::I64(3))]
+            )
+        );
+        let entry = runtime
+            .state
+            .inline_caches
+            .host_access(cache_site)
+            .expect("host call should refresh cache");
+        assert_eq!(entry.op, HostAccessOp::Call(method));
         assert_eq!(entry.schema_epoch, HostSchemaEpoch::new(1));
         assert_eq!(entry.resolved.schema_epoch, HostSchemaEpoch::new(1));
     }
