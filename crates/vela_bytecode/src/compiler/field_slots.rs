@@ -5,16 +5,16 @@ use vela_hir::module_graph::ModuleGraph;
 use vela_hir::type_hint::{EnumVariantFieldsHint, HirTypeHint};
 
 use super::script_types::{ScriptTypeFact, type_hint_script_type};
-use super::value_types::type_hint_value_type;
+use super::value_types::{RuntimeTypeFact, type_hint_value_type};
 
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
 pub(super) struct ScriptFieldSlots {
     record_slots: BTreeMap<(String, String), usize>,
     record_field_facts: BTreeMap<(String, String), ScriptTypeFact>,
-    record_field_value_types: BTreeMap<(String, String), String>,
+    record_field_value_types: BTreeMap<(String, String), RuntimeTypeFact>,
     enum_slots: BTreeMap<(String, String, String), usize>,
     enum_field_facts: BTreeMap<(String, String, String), ScriptTypeFact>,
-    enum_field_value_types: BTreeMap<(String, String, String), String>,
+    enum_field_value_types: BTreeMap<(String, String, String), RuntimeTypeFact>,
 }
 
 impl ScriptFieldSlots {
@@ -103,7 +103,7 @@ impl ScriptFieldSlots {
     pub(super) fn record_fields(
         &self,
         type_name: &str,
-    ) -> Vec<(String, Option<ScriptTypeFact>, Option<String>)> {
+    ) -> Vec<(String, Option<ScriptTypeFact>, Option<RuntimeTypeFact>)> {
         let Some(type_name) = self.resolve_record_type_name(type_name) else {
             return Vec::new();
         };
@@ -177,7 +177,7 @@ impl ScriptFieldSlots {
         type_name: &str,
         variant: &str,
         field: &str,
-    ) -> Option<String> {
+    ) -> Option<RuntimeTypeFact> {
         self.enum_field_value_types
             .get(&(type_name.to_owned(), variant.to_owned(), field.to_owned()))
             .cloned()

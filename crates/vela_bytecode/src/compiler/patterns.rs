@@ -6,6 +6,7 @@ use crate::{Register, UnlinkedInstructionKind};
 
 use super::record_shapes::ValueShape;
 use super::script_types::ScriptTypeFact;
+use super::value_types::RuntimeTypeFact;
 use super::{CompileError, CompileErrorKind, CompileResult, Compiler, frame_slot_kind};
 
 pub(crate) fn enum_variant_path(path: &[String]) -> Option<(String, String)> {
@@ -45,7 +46,7 @@ pub(crate) fn pattern_declares_locals(pattern: &Pattern) -> bool {
 #[derive(Clone, Debug, Default)]
 pub(super) struct PatternBindingFacts {
     script: Option<ScriptTypeFact>,
-    value_type: Option<String>,
+    value_type: Option<RuntimeTypeFact>,
     value_shape: Option<ValueShape>,
 }
 
@@ -58,10 +59,10 @@ impl PatternBindingFacts {
         }
     }
 
-    fn value(value_type: Option<String>) -> Self {
+    fn value(value_type: Option<RuntimeTypeFact>) -> Self {
         Self {
             script: None,
-            value_shape: value_type.clone().map(ValueShape::Scalar),
+            value_shape: value_type.clone().map(ValueShape::from_runtime_type),
             value_type,
         }
     }
@@ -246,7 +247,11 @@ impl Compiler<'_, '_> {
             .enum_variant_field_fact(&enum_name, &variant, field)
     }
 
-    fn enum_variant_field_value_type(&self, path: &[String], field: &str) -> Option<String> {
+    fn enum_variant_field_value_type(
+        &self,
+        path: &[String],
+        field: &str,
+    ) -> Option<RuntimeTypeFact> {
         let (_, variant) = enum_variant_path(path)?;
         let enum_name = self.type_symbol_for_pattern(path)?;
         self.facts

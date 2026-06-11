@@ -1,11 +1,11 @@
 use std::collections::{BTreeMap, BTreeSet, HashMap};
 
-use vela_common::Span;
+use vela_common::{PrimitiveTag, Span};
 use vela_hir::binding::{BindingMap, BindingResolution};
 use vela_hir::ids::HirLocalId;
 use vela_syntax::ast::{BinaryOp, Expr, ExprKind, Literal, RecordField};
 
-use super::value_types::expression_value_type;
+use super::value_types::{RuntimeTypeFact, StandardRuntimeType, expression_value_type};
 
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
 pub(super) struct ValueShapeFlow {
@@ -39,7 +39,7 @@ pub(super) struct RecordShape {
 #[derive(Clone, Debug, PartialEq, Eq)]
 struct RecordFieldShape {
     slot: usize,
-    value_type: Option<String>,
+    value_type: Option<RuntimeTypeFact>,
     value: Option<ValueShape>,
 }
 
@@ -105,17 +105,45 @@ impl ValueShape {
         }
     }
 
-    pub(super) fn value_type(&self) -> Option<String> {
+    pub(super) fn value_type(&self) -> Option<RuntimeTypeFact> {
         match self {
             Self::Unknown => None,
-            Self::Scalar(type_name) => Some(type_name.clone()),
+            Self::Scalar(type_name) => scalar_shape_type_fact(type_name),
             Self::Record(_) => None,
-            Self::Array(_) => Some("array".to_owned()),
-            Self::Map { .. } => Some("map".to_owned()),
-            Self::Set(_) => Some("set".to_owned()),
-            Self::Option(_) => Some("Option".to_owned()),
-            Self::Result { .. } => Some("Result".to_owned()),
+            Self::Array(_) => Some(RuntimeTypeFact::standard(StandardRuntimeType::Array)),
+            Self::Map { .. } => Some(RuntimeTypeFact::standard(StandardRuntimeType::Map)),
+            Self::Set(_) => Some(RuntimeTypeFact::standard(StandardRuntimeType::Set)),
+            Self::Option(_) => Some(RuntimeTypeFact::standard(StandardRuntimeType::Option)),
+            Self::Result { .. } => Some(RuntimeTypeFact::standard(StandardRuntimeType::Result)),
         }
+    }
+
+    pub(super) fn from_runtime_type(fact: RuntimeTypeFact) -> Self {
+        let type_name = match fact {
+            RuntimeTypeFact::Primitive(PrimitiveTag::Null) => "null",
+            RuntimeTypeFact::Primitive(PrimitiveTag::Bool) => "bool",
+            RuntimeTypeFact::Primitive(PrimitiveTag::I8) => "i8",
+            RuntimeTypeFact::Primitive(PrimitiveTag::I16) => "i16",
+            RuntimeTypeFact::Primitive(PrimitiveTag::I32) => "i32",
+            RuntimeTypeFact::Primitive(PrimitiveTag::I64) => "i64",
+            RuntimeTypeFact::Primitive(PrimitiveTag::U8) => "u8",
+            RuntimeTypeFact::Primitive(PrimitiveTag::U16) => "u16",
+            RuntimeTypeFact::Primitive(PrimitiveTag::U32) => "u32",
+            RuntimeTypeFact::Primitive(PrimitiveTag::U64) => "u64",
+            RuntimeTypeFact::Primitive(PrimitiveTag::F32) => "f32",
+            RuntimeTypeFact::Primitive(PrimitiveTag::F64) => "f64",
+            RuntimeTypeFact::Primitive(PrimitiveTag::String) => "string",
+            RuntimeTypeFact::Primitive(PrimitiveTag::Bytes) => "bytes",
+            RuntimeTypeFact::Standard(StandardRuntimeType::Array) => "array",
+            RuntimeTypeFact::Standard(StandardRuntimeType::Map) => "map",
+            RuntimeTypeFact::Standard(StandardRuntimeType::Set) => "set",
+            RuntimeTypeFact::Standard(StandardRuntimeType::Range) => "range",
+            RuntimeTypeFact::Standard(StandardRuntimeType::Function) => "function",
+            RuntimeTypeFact::Standard(StandardRuntimeType::Closure) => "closure",
+            RuntimeTypeFact::Standard(StandardRuntimeType::Option) => "Option",
+            RuntimeTypeFact::Standard(StandardRuntimeType::Result) => "Result",
+        };
+        Self::Scalar(type_name.to_owned())
     }
 
     pub(super) fn array_element(&self) -> Option<&ValueShape> {
@@ -134,6 +162,26 @@ impl ValueShape {
             Self::Map { key, value } => Some((key, value)),
             _ => None,
         }
+    }
+}
+
+fn scalar_shape_type_fact(type_name: &str) -> Option<RuntimeTypeFact> {
+    match type_name {
+        "Null" | "null" => Some(RuntimeTypeFact::primitive(PrimitiveTag::Null)),
+        "Bool" | "bool" => Some(RuntimeTypeFact::primitive(PrimitiveTag::Bool)),
+        "I8" | "i8" => Some(RuntimeTypeFact::primitive(PrimitiveTag::I8)),
+        "I16" | "i16" => Some(RuntimeTypeFact::primitive(PrimitiveTag::I16)),
+        "I32" | "i32" => Some(RuntimeTypeFact::primitive(PrimitiveTag::I32)),
+        "I64" | "i64" | "int" => Some(RuntimeTypeFact::primitive(PrimitiveTag::I64)),
+        "U8" | "u8" => Some(RuntimeTypeFact::primitive(PrimitiveTag::U8)),
+        "U16" | "u16" => Some(RuntimeTypeFact::primitive(PrimitiveTag::U16)),
+        "U32" | "u32" => Some(RuntimeTypeFact::primitive(PrimitiveTag::U32)),
+        "U64" | "u64" => Some(RuntimeTypeFact::primitive(PrimitiveTag::U64)),
+        "F32" | "f32" => Some(RuntimeTypeFact::primitive(PrimitiveTag::F32)),
+        "F64" | "f64" | "float" => Some(RuntimeTypeFact::primitive(PrimitiveTag::F64)),
+        "String" | "string" => Some(RuntimeTypeFact::primitive(PrimitiveTag::String)),
+        "Bytes" | "bytes" => Some(RuntimeTypeFact::primitive(PrimitiveTag::Bytes)),
+        _ => None,
     }
 }
 
@@ -174,7 +222,7 @@ impl RecordShape {
             .and_then(|shape| shape.value.as_ref())
     }
 
-    pub(super) fn field_value_type(&self, field: &str) -> Option<String> {
+    pub(super) fn field_value_type(&self, field: &str) -> Option<RuntimeTypeFact> {
         self.fields
             .get(field)
             .and_then(|shape| shape.value_type.clone())
@@ -183,7 +231,7 @@ impl RecordShape {
     fn from_fields(
         fields: &[RecordField],
         expression_shape: &impl Fn(&Expr) -> Option<ValueShape>,
-        expression_type: &impl Fn(&Expr) -> Option<String>,
+        expression_type: &impl Fn(&Expr) -> Option<RuntimeTypeFact>,
     ) -> Option<Self> {
         let mut field_names = fields
             .iter()
@@ -224,16 +272,12 @@ pub(super) fn expression_value_shape(
     expr: &Expr,
     local_shape_at_span: &impl Fn(Span) -> Option<ValueShape>,
     local_shape_named: &impl Fn(&str) -> Option<ValueShape>,
-    local_type_at_span: &impl Fn(Span) -> Option<String>,
-    local_type_named: &impl Fn(&str) -> Option<String>,
+    local_type_at_span: &impl Fn(Span) -> Option<RuntimeTypeFact>,
+    local_type_named: &impl Fn(&str) -> Option<RuntimeTypeFact>,
 ) -> Option<ValueShape> {
     match &expr.kind {
-        ExprKind::Literal(Literal::Null) => Some(ValueShape::Scalar("null".to_owned())),
-        ExprKind::Literal(Literal::Bool(_)) => Some(ValueShape::Scalar("bool".to_owned())),
-        ExprKind::Literal(Literal::Integer(_)) => Some(ValueShape::Scalar("int".to_owned())),
-        ExprKind::Literal(Literal::Float(_)) => Some(ValueShape::Scalar("float".to_owned())),
-        ExprKind::Literal(Literal::String(_)) => Some(ValueShape::Scalar("string".to_owned())),
-        ExprKind::Literal(Literal::Bytes(_)) => Some(ValueShape::Scalar("bytes".to_owned())),
+        ExprKind::Literal(_) => expression_value_type(expr, local_type_at_span, local_type_named)
+            .map(ValueShape::from_runtime_type),
         ExprKind::Binary {
             op: BinaryOp::Range | BinaryOp::RangeInclusive,
             ..
@@ -401,8 +445,8 @@ fn call_shape(
     args: &[vela_syntax::ast::Argument],
     local_shape_at_span: &impl Fn(Span) -> Option<ValueShape>,
     local_shape_named: &impl Fn(&str) -> Option<ValueShape>,
-    local_type_at_span: &impl Fn(Span) -> Option<String>,
-    local_type_named: &impl Fn(&str) -> Option<String>,
+    local_type_at_span: &impl Fn(Span) -> Option<RuntimeTypeFact>,
+    local_type_named: &impl Fn(&str) -> Option<RuntimeTypeFact>,
 ) -> Option<ValueShape> {
     match &callee.kind {
         ExprKind::Path(path) => native_call_shape(
@@ -431,8 +475,8 @@ fn native_call_shape(
     args: &[vela_syntax::ast::Argument],
     local_shape_at_span: &impl Fn(Span) -> Option<ValueShape>,
     local_shape_named: &impl Fn(&str) -> Option<ValueShape>,
-    local_type_at_span: &impl Fn(Span) -> Option<String>,
-    local_type_named: &impl Fn(&str) -> Option<String>,
+    local_type_at_span: &impl Fn(Span) -> Option<RuntimeTypeFact>,
+    local_type_named: &impl Fn(&str) -> Option<RuntimeTypeFact>,
 ) -> Option<ValueShape> {
     let [module, function] = path else {
         return None;
@@ -868,8 +912,8 @@ fn method_call_shape(
     args: &[vela_syntax::ast::Argument],
     local_shape_at_span: &impl Fn(Span) -> Option<ValueShape>,
     local_shape_named: &impl Fn(&str) -> Option<ValueShape>,
-    local_type_at_span: &impl Fn(Span) -> Option<String>,
-    local_type_named: &impl Fn(&str) -> Option<String>,
+    local_type_at_span: &impl Fn(Span) -> Option<RuntimeTypeFact>,
+    local_type_named: &impl Fn(&str) -> Option<RuntimeTypeFact>,
 ) -> Option<ValueShape> {
     let receiver = expression_value_shape(
         base,
@@ -888,9 +932,11 @@ fn method_call_shape(
         | "is_ok" | "is_err" | "any" | "all" | "is_subset" | "is_superset" | "is_disjoint" => {
             Some(ValueShape::Scalar("bool".to_owned()))
         }
-        "slice" => match receiver.value_type().as_deref() {
-            Some("string") => Some(ValueShape::Scalar("string".to_owned())),
-            Some("array") => Some(receiver),
+        "slice" => match receiver.value_type() {
+            Some(RuntimeTypeFact::Primitive(PrimitiveTag::String)) => {
+                Some(ValueShape::Scalar("string".to_owned()))
+            }
+            Some(RuntimeTypeFact::Standard(StandardRuntimeType::Array)) => Some(receiver),
             _ => None,
         },
         "parse_int" => Some(ValueShape::Option(Box::new(ValueShape::Scalar(
@@ -1171,7 +1217,7 @@ impl super::Compiler<'_, '_> {
         self.record_shape_for_expr(receiver)?.field_slot(field)
     }
 
-    pub(super) fn record_field_value_type_for_expr(&self, expr: &Expr) -> Option<String> {
+    pub(super) fn record_field_value_type_for_expr(&self, expr: &Expr) -> Option<RuntimeTypeFact> {
         let ExprKind::Field { base, name } = &expr.kind else {
             return None;
         };
@@ -1234,7 +1280,7 @@ impl super::Compiler<'_, '_> {
                         self.record_shape_for_type_inner(&fact.type_name, visiting)
                             .map(ValueShape::Record)
                     })
-                    .or_else(|| value_type.map(ValueShape::Scalar))
+                    .or_else(|| value_type.map(ValueShape::from_runtime_type))
                     .unwrap_or(ValueShape::Unknown);
                 (field, value)
             })

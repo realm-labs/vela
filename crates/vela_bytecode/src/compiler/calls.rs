@@ -5,6 +5,7 @@ use crate::{CallArgument, UnlinkedInstructionKind};
 use super::call_args::resolve_script_call_arguments;
 use super::methods::host_method_call;
 use super::record_shapes::{ValueShape, callback_param_shapes};
+use super::value_types::RuntimeTypeFact;
 use super::{CompileError, CompileErrorKind, CompileResult, Compiler, reject_named_args};
 use vela_common::{Diagnostic, HostMethodId, Span};
 use vela_def::{DefPath, FunctionId, MethodId, TypeId};
@@ -157,14 +158,14 @@ impl Compiler<'_, '_> {
             .and_then(|type_name| self.script_method_id_for_type(type_name, name));
         let arg_registers = self.compile_script_method_call_args(
             receiver_type.as_deref(),
-            value_receiver_type.as_deref(),
+            value_receiver_type.as_ref(),
             receiver_shape.as_ref(),
             name,
             args,
             expr.span,
         )?;
         let value_method_id = value_receiver_type
-            .as_deref()
+            .as_ref()
             .and_then(|type_name| self.value_method_id_for_type(type_name, name));
         let receiver = self.compile_expr(base)?;
         let dst = self.alloc_register()?;
@@ -222,14 +223,14 @@ impl Compiler<'_, '_> {
             .and_then(|type_name| self.script_method_id_for_type(type_name, method));
         let arg_registers = self.compile_script_method_call_args(
             receiver_type.as_deref(),
-            value_receiver_type.as_deref().or(receiver_type.as_deref()),
+            value_receiver_type.as_ref(),
             receiver_shape.as_ref(),
             method,
             args,
             expr.span,
         )?;
         let value_method_id = value_receiver_type
-            .as_deref()
+            .as_ref()
             .and_then(|type_name| self.value_method_id_for_type(type_name, method));
         let receiver = self.compile_path_expr(callee.span, receiver_path)?;
         let dst = self.alloc_register()?;
@@ -272,7 +273,7 @@ impl Compiler<'_, '_> {
     fn compile_script_method_call_args(
         &mut self,
         receiver_type: Option<&str>,
-        value_receiver_type: Option<&str>,
+        value_receiver_type: Option<&RuntimeTypeFact>,
         receiver_shape: Option<&ValueShape>,
         method: &str,
         args: &[Argument],
@@ -289,7 +290,7 @@ impl Compiler<'_, '_> {
         };
         let Some(params) = self.script_method_params(receiver_type, method) else {
             return self.compile_value_method_call_args(
-                value_receiver_type.or(Some(receiver_type)),
+                value_receiver_type,
                 receiver_shape,
                 method,
                 args,
@@ -319,7 +320,7 @@ impl Compiler<'_, '_> {
 
     fn compile_value_method_call_args(
         &mut self,
-        receiver_type: Option<&str>,
+        receiver_type: Option<&RuntimeTypeFact>,
         receiver_shape: Option<&ValueShape>,
         method: &str,
         args: &[Argument],
@@ -463,7 +464,11 @@ impl Compiler<'_, '_> {
         )))
     }
 
-    fn value_method_id_for_type(&self, receiver_type: &str, method: &str) -> Option<MethodId> {
+    fn value_method_id_for_type(
+        &self,
+        receiver_type: &RuntimeTypeFact,
+        method: &str,
+    ) -> Option<MethodId> {
         if let Some(registry) = self.facts.registry {
             let owner = self.registry_value_type_id(receiver_type)?;
             return registry.resolve_value_method(owner, method);
@@ -473,7 +478,7 @@ impl Compiler<'_, '_> {
 
     fn registry_value_method_params(
         &self,
-        receiver_type: Option<&str>,
+        receiver_type: Option<&RuntimeTypeFact>,
         method: &str,
     ) -> Option<&[ParamDef]> {
         let registry = self.facts.registry?;
@@ -482,9 +487,14 @@ impl Compiler<'_, '_> {
         registry.method_params(method)
     }
 
-    fn registry_value_type_id(&self, receiver_type: &str) -> Option<TypeId> {
+    fn registry_value_type_id(&self, receiver_type: &RuntimeTypeFact) -> Option<TypeId> {
         let registry = self.facts.registry?;
-        let type_name = standard_value_type_name(receiver_type)?;
+        if let RuntimeTypeFact::Primitive(primitive) = receiver_type
+            && let Some(id) = registry.primitive_type_id(*primitive)
+        {
+            return Some(id);
+        }
+        let type_name = receiver_type.std_type_name();
         registry.resolve_type(&DefPath::ty("std", std::iter::empty::<&str>(), type_name))
     }
 }
@@ -518,25 +528,6 @@ fn registry_param_hints(params: &[ParamDef], call_span: Span) -> Vec<ParamHint> 
             default_value_span: param.has_default.then_some(call_span),
         })
         .collect()
-}
-
-fn standard_value_type_name(receiver_type: &str) -> Option<&'static str> {
-    match receiver_type {
-        "null" => Some("Null"),
-        "bool" => Some("Bool"),
-        "int" => Some("Int"),
-        "float" => Some("Float"),
-        "string" => Some("String"),
-        "array" => Some("Array"),
-        "map" => Some("Map"),
-        "set" => Some("Set"),
-        "function" => Some("Function"),
-        "closure" => Some("Closure"),
-        "range" => Some("Range"),
-        "Option" => Some("Option"),
-        "Result" => Some("Result"),
-        _ => None,
-    }
 }
 
 fn local_path_method_call<'expr>(

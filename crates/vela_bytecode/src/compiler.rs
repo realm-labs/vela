@@ -52,7 +52,7 @@ use record_shapes::ValueShapeFlow;
 use schema_defaults::ScriptSchemaDefaults;
 use script_types::{ScriptTypeFlow, type_hint_script_type};
 use semantic::{parse_semantic_modules, parse_semantic_source};
-use value_types::{ValueTypeFlow, type_hint_value_type};
+use value_types::{RuntimeTypeFact, ValueTypeFlow, type_hint_value_type};
 
 #[derive(Clone, Debug)]
 struct CompilerFacts<'registry> {
@@ -809,7 +809,7 @@ impl<'ast, 'registry> Compiler<'ast, 'registry> {
         self.script_types.name(receiver)
     }
 
-    fn value_type_for_receiver_path(&self, receiver_path: &[String]) -> Option<String> {
+    fn value_type_for_receiver_path(&self, receiver_path: &[String]) -> Option<RuntimeTypeFact> {
         let [receiver] = receiver_path else {
             let (field, prefix) = receiver_path.split_last()?;
             let root = prefix.first()?;

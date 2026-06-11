@@ -5,12 +5,14 @@ fn value_method_registry(specs: &[(&str, &str, &[&str])]) -> vela_registry::Defi
     let mut types = std::collections::BTreeMap::new();
     for (type_name, method, params) in specs {
         let owner = *types.entry(*type_name).or_insert_with(|| {
+            let path = vela_def::DefPath::ty("std", std::iter::empty::<&str>(), *type_name);
+            let def = if let Some(primitive) = primitive_for_std_type_name(type_name) {
+                vela_registry::TypeDef::primitive(path, primitive)
+            } else {
+                vela_registry::TypeDef::new(path)
+            };
             registry
-                .register_type(vela_registry::TypeDef::new(vela_def::DefPath::ty(
-                    "std",
-                    std::iter::empty::<&str>(),
-                    *type_name,
-                )))
+                .register_type(def)
                 .expect("test value method type should register")
         });
         registry
@@ -27,6 +29,26 @@ fn value_method_registry(specs: &[(&str, &str, &[&str])]) -> vela_registry::Defi
             .expect("test value method should register");
     }
     registry
+}
+
+fn primitive_for_std_type_name(type_name: &str) -> Option<vela_common::PrimitiveTag> {
+    match type_name {
+        "Null" => Some(vela_common::PrimitiveTag::Null),
+        "Bool" => Some(vela_common::PrimitiveTag::Bool),
+        "I8" => Some(vela_common::PrimitiveTag::I8),
+        "I16" => Some(vela_common::PrimitiveTag::I16),
+        "I32" => Some(vela_common::PrimitiveTag::I32),
+        "I64" => Some(vela_common::PrimitiveTag::I64),
+        "U8" => Some(vela_common::PrimitiveTag::U8),
+        "U16" => Some(vela_common::PrimitiveTag::U16),
+        "U32" => Some(vela_common::PrimitiveTag::U32),
+        "U64" => Some(vela_common::PrimitiveTag::U64),
+        "F32" => Some(vela_common::PrimitiveTag::F32),
+        "F64" => Some(vela_common::PrimitiveTag::F64),
+        "String" => Some(vela_common::PrimitiveTag::String),
+        "Bytes" => Some(vela_common::PrimitiveTag::Bytes),
+        _ => None,
+    }
 }
 
 #[test]
@@ -474,6 +496,52 @@ fn main(text: string) {
 }
 
 #[test]
+fn compiler_tracks_exact_primitive_value_type_flow() {
+    let registry = value_method_registry(&[
+        ("I8", "touch", &["arg"]),
+        ("I64", "touch", &["arg"]),
+        ("U32", "touch", &["arg"]),
+        ("F32", "touch", &["arg"]),
+        ("F64", "touch", &["arg"]),
+        ("String", "touch", &["arg"]),
+        ("Bytes", "touch", &["arg"]),
+    ]);
+    let program = compile_program_source_with_registry(
+        SourceId::new(1),
+        r#"
+fn main(i64_arg: i64, text: string, blob: bytes) {
+    let i8_value = 1i8;
+    let u32_value = 1u32;
+    let f32_value = 1.0f32;
+    let f64_value = 1.0f64;
+    return i8_value.touch(arg = 0)
+        && i64_arg.touch(arg = 0)
+        && u32_value.touch(arg = 0)
+        && f32_value.touch(arg = 0)
+        && f64_value.touch(arg = 0)
+        && text.touch(arg = "")
+        && blob.touch(arg = b"");
+}
+"#,
+        registry.compile_view(),
+    )
+    .expect("exact primitive value receiver facts should compile");
+    let main = program.function("main").expect("main function");
+
+    assert_eq!(
+        main.instructions
+            .iter()
+            .filter(|instruction| matches!(
+                &instruction.kind,
+                UnlinkedInstructionKind::CallMethodId { method, args, .. }
+                    if method == "touch" && args.len() == 1
+            ))
+            .count(),
+        7
+    );
+}
+
+#[test]
 fn compiler_lowers_named_value_method_args_from_captured_value_type_flow() {
     let registry = value_method_registry(&[("String", "contains", &["needle"])]);
     let program = compile_program_source_with_registry(
@@ -583,6 +651,30 @@ fn main() {
     assert!(methods.iter().any(|method| method == "sort_by"));
     assert!(methods.iter().any(|method| method == "join"));
     assert!(methods.iter().any(|method| method == "len"));
+}
+
+#[test]
+fn compiler_lowers_set_method_ids_after_mixed_string_shapes() {
+    let registry = vela_stdlib::standard_registry().expect("standard registry should build");
+    let program = compile_program_source_with_registry(
+        SourceId::new(1),
+        r#"
+fn main() {
+    let reward_pair = "reward:gold".split_once(":").unwrap_or(["reward", ""]);
+    let item = reward_pair[1];
+    let tags = set::from_array(["reward", item, "daily", item]);
+    return tags.has("gold");
+}
+"#,
+        registry.compile_view(),
+    )
+    .expect("mixed literal and indexed string set methods should compile");
+    let main = program.function("main").expect("main function");
+    let methods = nested_method_id_names(main);
+
+    assert!(methods.iter().any(|method| method == "split_once"));
+    assert!(methods.iter().any(|method| method == "unwrap_or"));
+    assert!(methods.iter().any(|method| method == "has"));
 }
 
 #[test]

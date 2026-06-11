@@ -1219,18 +1219,18 @@ then build registry, syntax, guards, and runtime behavior on the new model.
 
 #### Task 4.1: Replace string value type facts
 
-- [ ] Replace `ValueTypeFlow` string type names with a typed representation:
-  - [ ] `RuntimeTypeFact`
-  - [ ] `PrimitiveTag`
+- [x] Replace `ValueTypeFlow` string type names with a typed representation:
+  - [x] `RuntimeTypeFact`
+  - [x] `PrimitiveTag`
   - [ ] `TypeId`
-  - [ ] or equivalent.
-- [ ] Remove `"int"` and `"float"` from `type_hint_value_type`.
-- [ ] Add primitive type resolution through `RegistryCompileView`.
-- [ ] Preserve dynamic/unknown state explicitly.
+  - [x] or equivalent.
+- [x] Remove `"int"` and `"float"` from `type_hint_value_type`.
+- [x] Add primitive type resolution through `RegistryCompileView`.
+- [x] Preserve dynamic/unknown state explicitly.
 
 **Termination condition:**
 
-- [ ] Value type flow can represent exact `i8`, `i64`, `u32`, `f32`, `f64`, `string`, `bytes`.
+- [x] Value type flow can represent exact `i8`, `i64`, `u32`, `f32`, `f64`, `string`, `bytes`.
 - [ ] No code path relies on `"int"` or `"float"` strings.
 
 #### Task 4.2: Add static expression classification

@@ -1,38 +1,97 @@
 use std::collections::HashMap;
 
-use vela_common::Span;
+use vela_common::{PrimitiveTag, Span};
 use vela_hir::binding::{BindingMap, BindingResolution};
 use vela_hir::ids::HirLocalId;
 use vela_hir::type_hint::HirTypeHint;
 use vela_syntax::ast::{BinaryOp, Expr, ExprKind, Literal};
 
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub(super) enum RuntimeTypeFact {
+    Primitive(PrimitiveTag),
+    Standard(StandardRuntimeType),
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub(super) enum StandardRuntimeType {
+    Array,
+    Map,
+    Set,
+    Range,
+    Function,
+    Closure,
+    Option,
+    Result,
+}
+
+impl RuntimeTypeFact {
+    pub(super) const fn primitive(tag: PrimitiveTag) -> Self {
+        Self::Primitive(tag)
+    }
+
+    pub(super) const fn standard(ty: StandardRuntimeType) -> Self {
+        Self::Standard(ty)
+    }
+
+    pub(super) const fn std_type_name(&self) -> &'static str {
+        match self {
+            Self::Primitive(PrimitiveTag::Null) => "Null",
+            Self::Primitive(PrimitiveTag::Bool) => "Bool",
+            Self::Primitive(PrimitiveTag::I8) => "I8",
+            Self::Primitive(PrimitiveTag::I16) => "I16",
+            Self::Primitive(PrimitiveTag::I32) => "I32",
+            Self::Primitive(PrimitiveTag::I64) => "I64",
+            Self::Primitive(PrimitiveTag::U8) => "U8",
+            Self::Primitive(PrimitiveTag::U16) => "U16",
+            Self::Primitive(PrimitiveTag::U32) => "U32",
+            Self::Primitive(PrimitiveTag::U64) => "U64",
+            Self::Primitive(PrimitiveTag::F32) => "F32",
+            Self::Primitive(PrimitiveTag::F64) => "F64",
+            Self::Primitive(PrimitiveTag::String) => "String",
+            Self::Primitive(PrimitiveTag::Bytes) => "Bytes",
+            Self::Standard(StandardRuntimeType::Array) => "Array",
+            Self::Standard(StandardRuntimeType::Map) => "Map",
+            Self::Standard(StandardRuntimeType::Set) => "Set",
+            Self::Standard(StandardRuntimeType::Range) => "Range",
+            Self::Standard(StandardRuntimeType::Function) => "Function",
+            Self::Standard(StandardRuntimeType::Closure) => "Closure",
+            Self::Standard(StandardRuntimeType::Option) => "Option",
+            Self::Standard(StandardRuntimeType::Result) => "Result",
+        }
+    }
+}
+
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
 pub(super) struct ValueTypeFlow {
-    locals: HashMap<HirLocalId, String>,
-    names: HashMap<String, String>,
+    locals: HashMap<HirLocalId, RuntimeTypeFact>,
+    names: HashMap<String, RuntimeTypeFact>,
 }
 
 impl ValueTypeFlow {
-    pub(super) fn local_at_span(&self, bindings: &BindingMap, span: Span) -> Option<String> {
+    pub(super) fn local_at_span(
+        &self,
+        bindings: &BindingMap,
+        span: Span,
+    ) -> Option<RuntimeTypeFact> {
         let BindingResolution::Local(local) = bindings.resolution_at_span(span)? else {
             return None;
         };
         self.local(*local)
     }
 
-    pub(super) fn local(&self, local: HirLocalId) -> Option<String> {
+    pub(super) fn local(&self, local: HirLocalId) -> Option<RuntimeTypeFact> {
         self.locals.get(&local).cloned()
     }
 
-    pub(super) fn name(&self, name: &str) -> Option<String> {
+    pub(super) fn name(&self, name: &str) -> Option<RuntimeTypeFact> {
         self.names.get(name).cloned()
     }
 
-    pub(super) fn set_name(&mut self, name: impl Into<String>, type_name: Option<String>) {
+    pub(super) fn set_name(&mut self, name: impl Into<String>, fact: Option<RuntimeTypeFact>) {
         let name = name.into();
-        match type_name {
-            Some(type_name) => {
-                self.names.insert(name, type_name);
+        match fact {
+            Some(fact) => {
+                self.names.insert(name, fact);
             }
             None => {
                 self.names.remove(&name);
@@ -44,13 +103,13 @@ impl ValueTypeFlow {
         &mut self,
         local: HirLocalId,
         name: impl Into<String>,
-        type_name: Option<String>,
+        fact: Option<RuntimeTypeFact>,
     ) {
         let name = name.into();
-        match type_name {
-            Some(type_name) => {
-                self.locals.insert(local, type_name.clone());
-                self.names.insert(name, type_name);
+        match fact {
+            Some(fact) => {
+                self.locals.insert(local, fact.clone());
+                self.names.insert(name, fact);
             }
             None => {
                 self.locals.remove(&local);
@@ -62,23 +121,31 @@ impl ValueTypeFlow {
 
 pub(super) fn expression_value_type(
     expr: &Expr,
-    local_type_at_span: impl Fn(Span) -> Option<String>,
-    local_type_named: impl Fn(&str) -> Option<String>,
-) -> Option<String> {
+    local_type_at_span: impl Fn(Span) -> Option<RuntimeTypeFact>,
+    local_type_named: impl Fn(&str) -> Option<RuntimeTypeFact>,
+) -> Option<RuntimeTypeFact> {
     match &expr.kind {
-        ExprKind::Literal(Literal::Null) => Some("null".to_owned()),
-        ExprKind::Literal(Literal::Bool(_)) => Some("bool".to_owned()),
-        ExprKind::Literal(Literal::Integer(_)) => Some("int".to_owned()),
-        ExprKind::Literal(Literal::Float(_)) => Some("float".to_owned()),
-        ExprKind::Literal(Literal::String(_)) => Some("string".to_owned()),
-        ExprKind::Literal(Literal::Bytes(_)) => Some("bytes".to_owned()),
-        ExprKind::Array(_) => Some("array".to_owned()),
-        ExprKind::Map(_) => Some("map".to_owned()),
-        ExprKind::Lambda { .. } => Some("closure".to_owned()),
+        ExprKind::Literal(Literal::Null) => Some(RuntimeTypeFact::primitive(PrimitiveTag::Null)),
+        ExprKind::Literal(Literal::Bool(_)) => Some(RuntimeTypeFact::primitive(PrimitiveTag::Bool)),
+        ExprKind::Literal(Literal::Integer(value)) => {
+            Some(RuntimeTypeFact::primitive(integer_literal_tag(value)))
+        }
+        ExprKind::Literal(Literal::Float(value)) => {
+            Some(RuntimeTypeFact::primitive(float_literal_tag(value)))
+        }
+        ExprKind::Literal(Literal::String(_)) => {
+            Some(RuntimeTypeFact::primitive(PrimitiveTag::String))
+        }
+        ExprKind::Literal(Literal::Bytes(_)) => {
+            Some(RuntimeTypeFact::primitive(PrimitiveTag::Bytes))
+        }
+        ExprKind::Array(_) => Some(RuntimeTypeFact::standard(StandardRuntimeType::Array)),
+        ExprKind::Map(_) => Some(RuntimeTypeFact::standard(StandardRuntimeType::Map)),
+        ExprKind::Lambda { .. } => Some(RuntimeTypeFact::standard(StandardRuntimeType::Closure)),
         ExprKind::Binary {
             op: BinaryOp::Range,
             ..
-        } => Some("range".to_owned()),
+        } => Some(RuntimeTypeFact::standard(StandardRuntimeType::Range)),
         ExprKind::Path(path) => local_type_at_span(expr.span).or_else(|| {
             path.as_slice()
                 .first()
@@ -89,16 +156,56 @@ pub(super) fn expression_value_type(
     }
 }
 
-pub(super) fn type_hint_value_type(hint: &HirTypeHint) -> Option<String> {
+pub(super) fn type_hint_value_type(hint: &HirTypeHint) -> Option<RuntimeTypeFact> {
     match hint.display().as_str() {
-        "null" | "bool" | "int" | "float" | "string" | "array" | "map" | "set" | "range"
-        | "function" | "closure" | "Option" | "Result" => Some(hint.display()),
+        "null" => Some(RuntimeTypeFact::primitive(PrimitiveTag::Null)),
+        "bool" => Some(RuntimeTypeFact::primitive(PrimitiveTag::Bool)),
+        "i8" => Some(RuntimeTypeFact::primitive(PrimitiveTag::I8)),
+        "i16" => Some(RuntimeTypeFact::primitive(PrimitiveTag::I16)),
+        "i32" => Some(RuntimeTypeFact::primitive(PrimitiveTag::I32)),
+        "i64" => Some(RuntimeTypeFact::primitive(PrimitiveTag::I64)),
+        "u8" => Some(RuntimeTypeFact::primitive(PrimitiveTag::U8)),
+        "u16" => Some(RuntimeTypeFact::primitive(PrimitiveTag::U16)),
+        "u32" => Some(RuntimeTypeFact::primitive(PrimitiveTag::U32)),
+        "u64" => Some(RuntimeTypeFact::primitive(PrimitiveTag::U64)),
+        "f32" => Some(RuntimeTypeFact::primitive(PrimitiveTag::F32)),
+        "f64" => Some(RuntimeTypeFact::primitive(PrimitiveTag::F64)),
+        "string" => Some(RuntimeTypeFact::primitive(PrimitiveTag::String)),
+        "bytes" => Some(RuntimeTypeFact::primitive(PrimitiveTag::Bytes)),
+        "array" => Some(RuntimeTypeFact::standard(StandardRuntimeType::Array)),
+        "map" => Some(RuntimeTypeFact::standard(StandardRuntimeType::Map)),
+        "set" => Some(RuntimeTypeFact::standard(StandardRuntimeType::Set)),
+        "range" => Some(RuntimeTypeFact::standard(StandardRuntimeType::Range)),
+        "function" => Some(RuntimeTypeFact::standard(StandardRuntimeType::Function)),
+        "closure" => Some(RuntimeTypeFact::standard(StandardRuntimeType::Closure)),
+        "Option" => Some(RuntimeTypeFact::standard(StandardRuntimeType::Option)),
+        "Result" => Some(RuntimeTypeFact::standard(StandardRuntimeType::Result)),
         _ => None,
     }
 }
 
+fn integer_literal_tag(value: &vela_syntax::ast::IntegerLiteral) -> PrimitiveTag {
+    match value.suffix {
+        Some(vela_syntax::ast::IntegerSuffix::I8) => PrimitiveTag::I8,
+        Some(vela_syntax::ast::IntegerSuffix::I16) => PrimitiveTag::I16,
+        Some(vela_syntax::ast::IntegerSuffix::I32) => PrimitiveTag::I32,
+        None | Some(vela_syntax::ast::IntegerSuffix::I64) => PrimitiveTag::I64,
+        Some(vela_syntax::ast::IntegerSuffix::U8) => PrimitiveTag::U8,
+        Some(vela_syntax::ast::IntegerSuffix::U16) => PrimitiveTag::U16,
+        Some(vela_syntax::ast::IntegerSuffix::U32) => PrimitiveTag::U32,
+        Some(vela_syntax::ast::IntegerSuffix::U64) => PrimitiveTag::U64,
+    }
+}
+
+fn float_literal_tag(value: &vela_syntax::ast::FloatLiteral) -> PrimitiveTag {
+    match value.suffix {
+        Some(vela_syntax::ast::FloatSuffix::F32) => PrimitiveTag::F32,
+        None | Some(vela_syntax::ast::FloatSuffix::F64) => PrimitiveTag::F64,
+    }
+}
+
 impl super::Compiler<'_, '_> {
-    pub(super) fn value_type_for_expr(&self, expr: &Expr) -> Option<String> {
+    pub(super) fn value_type_for_expr(&self, expr: &Expr) -> Option<RuntimeTypeFact> {
         expression_value_type(
             expr,
             |span| self.value_types.local_at_span(self.bindings, span),

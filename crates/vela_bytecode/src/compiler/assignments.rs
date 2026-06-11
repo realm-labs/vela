@@ -10,6 +10,7 @@ use super::host_paths::HostPath;
 use super::operators::compound_assignment_instruction;
 use super::record_shapes::RecordShape;
 use super::script_types::ScriptTypeFact;
+use super::value_types::RuntimeTypeFact;
 use super::{CompileError, CompileErrorKind, CompileResult, Compiler};
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -31,7 +32,7 @@ struct IndexedRecordFieldAssignmentTarget<'expr> {
 #[derive(Clone, Debug, PartialEq, Eq)]
 struct LocalAssignmentFacts {
     script: Option<ScriptTypeFact>,
-    value_type: Option<String>,
+    value_type: Option<RuntimeTypeFact>,
     value_shape: Option<super::record_shapes::ValueShape>,
 }
 
