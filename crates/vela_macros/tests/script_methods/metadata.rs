@@ -110,7 +110,7 @@ fn script_methods_coexists_with_host_schema_metadata() {
                             .reflect_writable(true),
                     )
                     .attr("rust_name", "level")
-                    .type_hint("int"),
+                    .type_hint("u32"),
             ),
     );
 }

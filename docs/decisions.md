@@ -641,6 +641,13 @@ product compatibility rule is added. Report rendering may still use hint text
 for diagnostics, but compatibility decisions must not depend on old `int` or
 `float` names.
 
+Host schema derive inference emits exact supported primitive hint names from
+Rust field types (`i8` through `u64`, `f32`, and `f64`). Platform-sized or
+unsupported wide Rust integer fields such as `usize`, `isize`, `i128`, and
+`u128` do not receive an inferred primitive hint; callers must provide an
+explicit supported contract instead of relying on an alias or hidden
+conversion.
+
 ## Validation Rules
 
 - Multi-level `super` scan must return no matches:

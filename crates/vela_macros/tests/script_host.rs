@@ -17,7 +17,7 @@ use vela_reflect::registry::{FieldDesc, TraitDesc, TypeDesc, TypeKey, TypeKind, 
     implements = "Damageable"
 )]
 struct Player {
-    #[script(get, set, hint = "int", docs = "Current level.", attr = "unit=level")]
+    #[script(get, set, hint = "u32", docs = "Current level.", attr = "unit=level")]
     level: u32,
     #[script(get, name = "display_name", permission = "player.profile")]
     name: String,
@@ -31,7 +31,7 @@ struct Player {
 struct RewardConfigA {
     #[script(get, hint = "string")]
     item_id: String,
-    #[script(get, hint = "int")]
+    #[script(get, hint = "i64")]
     count: i64,
 }
 
@@ -39,7 +39,7 @@ struct RewardConfigA {
 #[derive(ScriptHost)]
 #[script(module = "game::reward", name = "RewardConfig")]
 struct RewardConfigB {
-    #[script(get, hint = "int")]
+    #[script(get, hint = "i64")]
     count: i64,
     #[script(get, hint = "string")]
     item_id: String,
@@ -54,7 +54,7 @@ struct RewardConfigB {
 struct RewardConfigRenamed {
     #[script(get, hint = "string", alias = "item_id")]
     item_key: String,
-    #[script(get, hint = "int")]
+    #[script(get, hint = "i64")]
     count: i64,
 }
 
@@ -64,7 +64,7 @@ struct RewardConfigRenamed {
 enum HostQuestProgress {
     #[script(docs = "Active quest progress.")]
     Active {
-        #[script(get, set, hint = "int")]
+        #[script(get, set, hint = "i64")]
         quest_count: i64,
         #[script(get, set, hint = "bool")]
         quest_done: bool,
@@ -76,7 +76,7 @@ enum HostQuestProgress {
 #[derive(ScriptHost)]
 #[script(path = "game::monster::Monster", docs = "Monster host schema.")]
 struct Monster {
-    #[script(get, hint = "int")]
+    #[script(get, hint = "i64")]
     exp: i64,
     #[script(get, hint = "string")]
     species: String,
@@ -86,9 +86,9 @@ struct Monster {
 #[derive(ScriptHost)]
 #[script(path = "game::inventory::Inventory", docs = "Inventory host schema.")]
 struct Inventory {
-    #[script(get, set, hint = "int")]
+    #[script(get, set, hint = "i64")]
     gold: i64,
-    #[script(get, hint = "int")]
+    #[script(get, hint = "u32")]
     capacity: u32,
 }
 
@@ -96,9 +96,9 @@ struct Inventory {
 #[derive(ScriptHost)]
 #[script(path = "game::config::Config", docs = "Config host schema.")]
 struct GameConfig {
-    #[script(get, hint = "int")]
+    #[script(get, hint = "i64")]
     exp_to_next_level: i64,
-    #[script(get, hint = "int")]
+    #[script(get, hint = "u32")]
     max_inventory_slots: u32,
 }
 
@@ -124,7 +124,7 @@ fn script_host_derive_generates_type_metadata() {
                 )
                 .attr("rust_name", "level")
                 .attr("unit", "level")
-                .type_hint("int")
+                .type_hint("u32")
                 .docs("Current level."),
         )
         .field(
@@ -196,7 +196,7 @@ fn script_reflect_derive_generates_enum_variant_metadata() {
                 .reflect_writable(true),
         )
         .attr("rust_name", "quest_count")
-        .type_hint("int"),
+        .type_hint("i64"),
     )
     .field(
         FieldDesc::new(
