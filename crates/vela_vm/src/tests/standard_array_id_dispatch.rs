@@ -163,6 +163,30 @@ fn call_method_uses_standard_array_transform_ids_before_name_fallback() {
         ),
         Ok(OwnedValue::array(["xp", "bonus"]))
     );
+    assert_eq!(
+        run_array_transform_with_args_by_id(
+            std_method_id("Array", "sort"),
+            &["xp", "bonus", "gold"],
+            &[],
+        ),
+        Ok(OwnedValue::array(["bonus", "gold", "xp"]))
+    );
+    assert_eq!(
+        run_array_transform_with_args_by_id(
+            std_method_id("Array", "min"),
+            &["xp", "bonus", "gold"],
+            &[],
+        ),
+        Ok(option_some(OwnedValue::String("bonus".to_owned())))
+    );
+    assert_eq!(
+        run_array_transform_with_args_by_id(
+            std_method_id("Array", "max"),
+            &["xp", "bonus", "gold"],
+            &[],
+        ),
+        Ok(option_some(OwnedValue::String("xp".to_owned())))
+    );
 }
 
 fn run_array_transform_with_args_by_id(
@@ -365,4 +389,131 @@ fn call_method_uses_standard_array_mutator_ids_before_name_fallback() {
         run_linked_standard_id_code(&Vm::new(), clear_code),
         Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(0)))
     );
+
+    assert_eq!(
+        run_array_mutator_returns_receiver_by_id(
+            std_method_id("Array", "insert"),
+            &["gold", "bonus"],
+            &[ArrayCallArg::I64(1), ArrayCallArg::String("xp"),],
+        ),
+        Ok(OwnedValue::array(["gold", "xp", "bonus"]))
+    );
+    assert_eq!(
+        run_array_mutator_returns_receiver_by_id(
+            std_method_id("Array", "extend"),
+            &["gold"],
+            &[ArrayCallArg::Array(&["xp", "bonus"])],
+        ),
+        Ok(OwnedValue::array(["gold", "xp", "bonus"]))
+    );
+    assert_eq!(
+        run_array_mutator_returns_receiver_by_id(
+            std_method_id("Array", "remove_at"),
+            &["gold", "xp", "bonus"],
+            &[ArrayCallArg::I64(1)],
+        ),
+        Ok(OwnedValue::array(["gold", "bonus"]))
+    );
+}
+
+enum ArrayCallArg<'a> {
+    String(&'a str),
+    I64(i64),
+    Array(&'a [&'a str]),
+}
+
+fn run_array_mutator_returns_receiver_by_id(
+    method_id: vela_def::MethodId,
+    receiver: &[&str],
+    args: &[ArrayCallArg<'_>],
+) -> VmResult<OwnedValue> {
+    let mut code = UnlinkedCodeObject::new("standard_array_mutator_method_id", 32);
+    let mut next_register = 0u16;
+    let mut receiver_elements = Vec::with_capacity(receiver.len());
+    for value in receiver {
+        receiver_elements.push(load_string(&mut code, &mut next_register, value));
+    }
+    let receiver_register = Register(next_register);
+    next_register += 1;
+    code.push_instruction(UnlinkedInstruction::new(
+        UnlinkedInstructionKind::MakeArray {
+            dst: receiver_register,
+            elements: receiver_elements,
+        },
+    ));
+
+    let mut arg_registers = Vec::with_capacity(args.len());
+    for arg in args {
+        arg_registers.push(load_array_call_arg(&mut code, &mut next_register, arg));
+    }
+    let result = Register(next_register);
+    code.push_instruction(UnlinkedInstruction::new(
+        UnlinkedInstructionKind::CallMethodId {
+            dst: result,
+            receiver: receiver_register,
+            method: "missing_array_mutator".into(),
+            method_id,
+            args: arg_registers
+                .into_iter()
+                .map(vela_bytecode::CallArgument::Register)
+                .collect(),
+        },
+    ));
+    code.push_instruction(UnlinkedInstruction::new(UnlinkedInstructionKind::Return {
+        src: receiver_register,
+    }));
+
+    run_linked_standard_id_code(&Vm::new(), code)
+}
+
+fn load_array_call_arg(
+    code: &mut UnlinkedCodeObject,
+    next_register: &mut u16,
+    arg: &ArrayCallArg<'_>,
+) -> Register {
+    match arg {
+        ArrayCallArg::String(value) => load_string(code, next_register, value),
+        ArrayCallArg::I64(value) => load_i64(code, next_register, *value),
+        ArrayCallArg::Array(values) => {
+            let mut elements = Vec::with_capacity(values.len());
+            for value in *values {
+                elements.push(load_string(code, next_register, value));
+            }
+            let register = Register(*next_register);
+            *next_register += 1;
+            code.push_instruction(UnlinkedInstruction::new(
+                UnlinkedInstructionKind::MakeArray {
+                    dst: register,
+                    elements,
+                },
+            ));
+            register
+        }
+    }
+}
+
+fn load_string(code: &mut UnlinkedCodeObject, next_register: &mut u16, value: &str) -> Register {
+    let register = Register(*next_register);
+    *next_register += 1;
+    let constant = code.push_constant(Constant::String(value.to_owned()));
+    code.push_instruction(UnlinkedInstruction::new(
+        UnlinkedInstructionKind::LoadConst {
+            dst: register,
+            constant,
+        },
+    ));
+    register
+}
+
+fn load_i64(code: &mut UnlinkedCodeObject, next_register: &mut u16, value: i64) -> Register {
+    let register = Register(*next_register);
+    *next_register += 1;
+    let constant = code.push_constant(Constant::Scalar(vela_common::ScalarValue::I64(value)));
+    code.push_instruction(UnlinkedInstruction::new(
+        UnlinkedInstructionKind::LoadConst {
+            dst: register,
+            constant,
+        },
+    ));
+    register
 }

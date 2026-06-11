@@ -44,15 +44,21 @@ struct StdMethodIds {
     array_is_empty: MethodId,
     array_push: MethodId,
     array_pop: MethodId,
+    array_insert: MethodId,
+    array_extend: MethodId,
     array_clear: MethodId,
     array_first: MethodId,
     array_last: MethodId,
+    array_remove_at: MethodId,
     array_join: MethodId,
     array_contains: MethodId,
     array_index_of: MethodId,
     array_distinct: MethodId,
     array_reverse: MethodId,
     array_slice: MethodId,
+    array_sort: MethodId,
+    array_min: MethodId,
+    array_max: MethodId,
     map_len: MethodId,
     map_is_empty: MethodId,
     map_has: MethodId,
@@ -116,15 +122,21 @@ impl StdMethodIds {
             array_is_empty: standard_method_id("Array", "is_empty"),
             array_push: standard_method_id("Array", "push"),
             array_pop: standard_method_id("Array", "pop"),
+            array_insert: standard_method_id("Array", "insert"),
+            array_extend: standard_method_id("Array", "extend"),
             array_clear: standard_method_id("Array", "clear"),
             array_first: standard_method_id("Array", "first"),
             array_last: standard_method_id("Array", "last"),
+            array_remove_at: standard_method_id("Array", "remove_at"),
             array_join: standard_method_id("Array", "join"),
             array_contains: standard_method_id("Array", "contains"),
             array_index_of: standard_method_id("Array", "index_of"),
             array_distinct: standard_method_id("Array", "distinct"),
             array_reverse: standard_method_id("Array", "reverse"),
             array_slice: standard_method_id("Array", "slice"),
+            array_sort: standard_method_id("Array", "sort"),
+            array_min: standard_method_id("Array", "min"),
+            array_max: standard_method_id("Array", "max"),
             map_len: standard_method_id("Map", "len"),
             map_is_empty: standard_method_id("Map", "is_empty"),
             map_has: standard_method_id("Map", "has"),
@@ -267,6 +279,22 @@ pub(crate) fn call_by_id(
             budget.as_deref_mut(),
         ));
     }
+    if method_id == ids.array_insert && array_methods::is_array(receiver, heap.as_deref()) {
+        return Some(array_methods::insert(
+            receiver,
+            args,
+            heap.as_deref_mut(),
+            budget.as_deref_mut(),
+        ));
+    }
+    if method_id == ids.array_extend && array_methods::is_array(receiver, heap.as_deref()) {
+        return Some(array_methods::extend(
+            receiver,
+            args,
+            heap.as_deref_mut(),
+            budget.as_deref_mut(),
+        ));
+    }
     if method_id == ids.array_clear && array_methods::is_array(receiver, heap.as_deref()) {
         return Some(array_methods::clear(receiver, args, heap.as_deref_mut()));
     }
@@ -275,6 +303,14 @@ pub(crate) fn call_by_id(
     }
     if method_id == ids.array_last && array_methods::is_array(receiver, heap.as_deref()) {
         return Some(array_methods::last(receiver, args, heap, budget));
+    }
+    if method_id == ids.array_remove_at && array_methods::is_array(receiver, heap.as_deref()) {
+        return Some(array_methods::remove_at(
+            receiver,
+            args,
+            heap.as_deref_mut(),
+            budget.as_deref_mut(),
+        ));
     }
     if method_id == ids.array_index_of && array_methods::is_array(receiver, heap.as_deref()) {
         return Some(array_methods::index_of(receiver, args, heap, budget));
@@ -290,6 +326,15 @@ pub(crate) fn call_by_id(
     }
     if method_id == ids.array_slice && array_methods::is_array(receiver, heap.as_deref()) {
         return Some(array_methods::slice(receiver, args, heap, budget));
+    }
+    if method_id == ids.array_sort && array_methods::is_array(receiver, heap.as_deref()) {
+        return Some(array_methods::sort(receiver, args, heap, budget));
+    }
+    if method_id == ids.array_min && array_methods::is_array(receiver, heap.as_deref()) {
+        return Some(array_methods::min(receiver, args, heap, budget));
+    }
+    if method_id == ids.array_max && array_methods::is_array(receiver, heap.as_deref()) {
+        return Some(array_methods::max(receiver, args, heap, budget));
     }
     if method_id == ids.bytes_slice && bytes_methods::is_bytes(receiver, heap.as_deref()) {
         return Some(bytes_methods::slice(receiver, args, heap, budget));
