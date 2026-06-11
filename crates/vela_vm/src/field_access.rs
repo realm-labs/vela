@@ -88,8 +88,9 @@ pub(crate) fn get_record_field_value(
 ) -> VmResult<Value> {
     match value {
         Value::HeapRef(reference) => {
-            let Some(HeapValue::Record { type_name, fields }) =
-                heap.and_then(|heap| heap.heap.get(*reference))
+            let Some(HeapValue::Record {
+                type_name, fields, ..
+            }) = heap.and_then(|heap| heap.heap.get(*reference))
             else {
                 return type_error("record field");
             };
@@ -112,8 +113,9 @@ pub(crate) fn get_record_slot_value(
 ) -> VmResult<Value> {
     match value {
         Value::HeapRef(reference) => {
-            let Some(HeapValue::Record { type_name, fields }) =
-                heap.and_then(|heap| heap.heap.get(*reference))
+            let Some(HeapValue::Record {
+                type_name, fields, ..
+            }) = heap.and_then(|heap| heap.heap.get(*reference))
             else {
                 return type_error("record slot");
             };

@@ -1631,7 +1631,7 @@ surface.
 - Enum field access uses `FieldId`/slot.
 - Reflection still shows source names.
 
-- [ ] **Task 7.3: Convert records to TypeId/ShapeId/FieldSlot**
+- [x] **Task 7.3: Convert records to TypeId/ShapeId/FieldSlot**
 
 **Objective:** Move record field hot paths to slots.
 

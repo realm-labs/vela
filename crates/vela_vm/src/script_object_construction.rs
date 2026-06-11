@@ -1,4 +1,4 @@
-use crate::heap::{EnumIdentity, HeapValue};
+use crate::heap::{EnumIdentity, HeapValue, RecordIdentity};
 use crate::option_result::std_enum_identity_for_names;
 use crate::script_object::ScriptFields;
 use crate::{
@@ -14,14 +14,45 @@ pub(crate) struct EnumConstruction<'a> {
     pub(crate) fields: &'a [(String, Register)],
 }
 
+pub(crate) struct RecordConstruction<'a> {
+    pub(crate) type_name: &'a str,
+    pub(crate) type_id: Option<vela_def::TypeId>,
+    pub(crate) fields: &'a [(String, Register)],
+}
+
 pub(crate) fn make_record(
     frame: &mut CallFrame,
     heap: Option<&mut HeapExecution<'_>>,
-    mut budget: Option<&mut ExecutionBudget>,
+    budget: Option<&mut ExecutionBudget>,
     dst: Register,
     type_name: &str,
     fields: &[(String, Register)],
 ) -> VmResult<()> {
+    make_record_with_identity(
+        frame,
+        heap,
+        budget,
+        dst,
+        RecordConstruction {
+            type_name,
+            type_id: None,
+            fields,
+        },
+    )
+}
+
+pub(crate) fn make_record_with_identity(
+    frame: &mut CallFrame,
+    heap: Option<&mut HeapExecution<'_>>,
+    mut budget: Option<&mut ExecutionBudget>,
+    dst: Register,
+    construction: RecordConstruction<'_>,
+) -> VmResult<()> {
+    let RecordConstruction {
+        type_name,
+        type_id,
+        fields,
+    } = construction;
     let Some(heap) = heap else {
         return Err(VmError::new(VmErrorKind::TypeMismatch {
             operation: "record heap",
@@ -29,9 +60,11 @@ pub(crate) fn make_record(
     };
     let slots =
         runtime_fields_from_registers(type_name, frame, fields, heap, budget_ref(&mut budget))?;
+    let identity = type_id.map(|type_id| RecordIdentity::new(type_id, slots.shape_id()));
     let value = allocate_heap_value(
         HeapValue::Record {
             type_name: type_name.to_owned(),
+            identity,
             fields: slots,
         },
         heap,

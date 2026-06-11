@@ -286,7 +286,10 @@ Cranelift JIT.
   IDs and slot reads instead of string-name fallback. Linked script enum
   construction now stores `TypeId`/`VariantId` identity in heap enum values,
   and linked enum tag checks compare those IDs while retaining names for
-  diagnostics and reflection.
+  diagnostics and reflection. Linked record construction now stores
+  `TypeId` plus `ShapeId` identity in heap record values, while linked record
+  field reads/writes continue through `FieldSlot` operands and diagnostic
+  names remain side-table metadata.
 
 ### Remaining Gaps
 

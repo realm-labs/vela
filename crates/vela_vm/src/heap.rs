@@ -4,6 +4,7 @@ use std::collections::BTreeMap;
 use std::fmt;
 use std::mem;
 
+use vela_common::ShapeId;
 use vela_def::{FieldId, TypeId, VariantId};
 use vela_host::proxy::PathProxy;
 
@@ -43,6 +44,7 @@ pub enum HeapValue {
     Set(Vec<Value>),
     Record {
         type_name: String,
+        identity: Option<RecordIdentity>,
         fields: ScriptFields<Value>,
     },
     Enum {
@@ -54,6 +56,19 @@ pub enum HeapValue {
     Closure(ClosureValue),
     Iterator(IteratorState),
     PathProxy(PathProxy),
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub struct RecordIdentity {
+    pub type_id: TypeId,
+    pub shape_id: ShapeId,
+}
+
+impl RecordIdentity {
+    #[must_use]
+    pub const fn new(type_id: TypeId, shape_id: ShapeId) -> Self {
+        Self { type_id, shape_id }
+    }
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -114,7 +129,9 @@ impl HeapValue {
                         .map(|key| key.len() + mem::size_of::<Value>())
                         .sum::<usize>()
             }
-            Self::Record { type_name, fields } => {
+            Self::Record {
+                type_name, fields, ..
+            } => {
                 mem::size_of::<Self>()
                     + type_name.len()
                     + fields

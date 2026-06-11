@@ -79,6 +79,7 @@ pub(super) fn map_entry(
     allocate_heap_value(
         HeapValue::Record {
             type_name: "MapEntry".to_owned(),
+            identity: None,
             fields: ScriptFields::two("MapEntry", "key", key, "value", value),
         },
         heap_ref,

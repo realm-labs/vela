@@ -648,6 +648,80 @@ fn linked_program_executes_record_slot_reads_and_writes() {
 }
 
 #[test]
+fn linked_record_construction_stores_type_and_shape_identity() {
+    let mut program = vela_bytecode::LinkedProgram::new();
+    let main_name = program.intern_debug_name("main");
+    let reward_name = program.intern_debug_name("Reward");
+    let count_name = program.intern_debug_name("count");
+    let reward_type_id = vela_def::TypeId::new(0x177);
+    let reward_type =
+        program.push_type(vela_bytecode::LinkedType::new(reward_type_id, reward_name));
+
+    let mut code = vela_bytecode::LinkedCodeObject::new(main_name, 2);
+    let initial = code.push_constant(Constant::Int(3));
+    code.push_instruction(vela_bytecode::linked::Instruction::new(
+        vela_bytecode::linked::InstructionKind::LoadConst {
+            dst: Register(0),
+            constant: initial,
+        },
+    ));
+    code.push_instruction(vela_bytecode::linked::Instruction::new(
+        vela_bytecode::linked::InstructionKind::MakeRecord {
+            dst: Register(1),
+            ty: reward_type,
+            fields: vec![(vela_bytecode::FieldSlot::new(0), count_name, Register(0))],
+        },
+    ));
+    code.push_instruction(vela_bytecode::linked::Instruction::new(
+        vela_bytecode::linked::InstructionKind::Return { src: Register(1) },
+    ));
+    let function = program.push_function(code);
+    program.set_entry_point(main_name, function);
+    program
+        .verify()
+        .expect("linked record identity fixture should verify");
+
+    let code = program
+        .function(function)
+        .expect("linked function should exist");
+    let mut heap = ScriptHeap::new();
+    let mut heap = HeapExecution::new(&mut heap);
+    let mut budget = ExecutionBudget::unbounded();
+    let result = Vm::new()
+        .execute_linked_call(
+            crate::linked_execution::LinkedExecutionCall {
+                code,
+                program: &program,
+                captures: &[],
+                args: &[],
+                call_site: None,
+                call_site_offset: None,
+                inline_caches: None,
+            },
+            None,
+            Some(&mut heap),
+            Some(&mut budget),
+        )
+        .expect("linked record construction should run");
+
+    let RuntimeValue::HeapRef(record) = result else {
+        panic!("expected record heap ref");
+    };
+    let Some(HeapValue::Record {
+        type_name,
+        identity: Some(identity),
+        fields,
+    }) = heap.heap.get(record)
+    else {
+        panic!("expected typed record heap value");
+    };
+    assert_eq!(type_name, "Reward");
+    assert_eq!(identity.type_id, reward_type_id);
+    assert_eq!(identity.shape_id, fields.shape_id());
+    assert_eq!(fields.get_slot(0, "count"), Some(&RuntimeValue::Int(3)));
+}
+
+#[test]
 fn linked_program_executes_enum_slot_reads_and_tag_checks() {
     let mut program = vela_bytecode::LinkedProgram::new();
     let main_name = program.intern_debug_name("main");
@@ -1016,6 +1090,7 @@ fn nested_values_expose_heap_roots_for_gc() {
     fields.insert("item".into(), RuntimeValue::HeapRef(rooted));
     let record = heap.allocate(HeapValue::Record {
         type_name: "Reward".into(),
+        identity: None,
         fields: ScriptFields::from_pairs("Reward", fields),
     });
     let mut frame = CallFrame::new(1);

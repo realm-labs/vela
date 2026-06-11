@@ -194,6 +194,7 @@ pub(crate) fn owned_to_value(
             allocate_heap_value(
                 HeapValue::Record {
                     fields: ScriptFields::from_pairs(&type_name, fields),
+                    identity: None,
                     type_name,
                 },
                 heap,
@@ -310,7 +311,9 @@ fn heap_value_to_owned(
             .map(|value| value_to_owned(value, heap))
             .collect::<VmResult<Vec<_>>>()
             .map(OwnedValue::Set),
-        HeapValue::Record { type_name, fields } => fields
+        HeapValue::Record {
+            type_name, fields, ..
+        } => fields
             .iter()
             .map(|(key, value)| Ok((key.to_owned(), value_to_owned(value, heap)?)))
             .collect::<VmResult<Vec<_>>>()

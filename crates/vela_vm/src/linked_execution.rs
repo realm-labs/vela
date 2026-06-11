@@ -592,15 +592,19 @@ impl Vm {
                     )?;
                 }
                 InstructionKind::MakeRecord { dst, ty, fields } => {
-                    let type_name = linked_type_name(call.program, *ty, "MakeRecord")?;
+                    let linked_ty = linked_type(call.program, *ty, "MakeRecord")?;
+                    let type_name = call.program.debug_name(linked_ty.debug_name);
                     let fields = linked_object_fields(call.program, fields);
-                    script_object_construction::make_record(
+                    script_object_construction::make_record_with_identity(
                         &mut frame,
                         heap.as_deref_mut(),
                         budget.as_deref_mut(),
                         *dst,
-                        type_name,
-                        &fields,
+                        script_object_construction::RecordConstruction {
+                            type_name,
+                            type_id: Some(linked_ty.id),
+                            fields: &fields,
+                        },
                     )?;
                 }
                 InstructionKind::GetRecordSlot {
@@ -1059,15 +1063,6 @@ fn linked_range_next(
         validate_linked_jump(code, step.jump_if_done.0)?;
         Ok(Some(step.jump_if_done.0))
     }
-}
-
-fn linked_type_name<'program>(
-    program: &'program LinkedProgram,
-    ty: TypeHandle,
-    opcode: &'static str,
-) -> VmResult<&'program str> {
-    let ty = linked_type(program, ty, opcode)?;
-    Ok(program.debug_name(ty.debug_name))
 }
 
 fn linked_type<'program>(
