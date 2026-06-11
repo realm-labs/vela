@@ -73,7 +73,7 @@ impl Compiler<'_, '_> {
         Ok(false)
     }
 
-    fn compile_statement(&mut self, stmt: &Stmt) -> CompileResult<bool> {
+    pub(super) fn compile_statement(&mut self, stmt: &Stmt) -> CompileResult<bool> {
         match &stmt.kind {
             StmtKind::Let {
                 name,

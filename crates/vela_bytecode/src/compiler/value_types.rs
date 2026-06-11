@@ -12,6 +12,16 @@ pub(super) enum RuntimeTypeFact {
     Standard(StandardRuntimeType),
 }
 
+pub(super) type TypeRef = RuntimeTypeFact;
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub(super) enum StaticExprType {
+    Exact(TypeRef),
+    UnsuffixedIntegerLiteral,
+    UnsuffixedFloatLiteral,
+    Dynamic,
+}
+
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub(super) enum StandardRuntimeType {
     Array,
@@ -124,35 +134,74 @@ pub(super) fn expression_value_type(
     local_type_at_span: impl Fn(Span) -> Option<RuntimeTypeFact>,
     local_type_named: impl Fn(&str) -> Option<RuntimeTypeFact>,
 ) -> Option<RuntimeTypeFact> {
+    match static_expr_type(expr, local_type_at_span, local_type_named) {
+        StaticExprType::Exact(fact) => Some(fact),
+        StaticExprType::UnsuffixedIntegerLiteral => {
+            Some(RuntimeTypeFact::primitive(PrimitiveTag::I64))
+        }
+        StaticExprType::UnsuffixedFloatLiteral => {
+            Some(RuntimeTypeFact::primitive(PrimitiveTag::F64))
+        }
+        StaticExprType::Dynamic => None,
+    }
+}
+
+pub(super) fn static_expr_type(
+    expr: &Expr,
+    local_type_at_span: impl Fn(Span) -> Option<RuntimeTypeFact>,
+    local_type_named: impl Fn(&str) -> Option<RuntimeTypeFact>,
+) -> StaticExprType {
     match &expr.kind {
-        ExprKind::Literal(Literal::Null) => Some(RuntimeTypeFact::primitive(PrimitiveTag::Null)),
-        ExprKind::Literal(Literal::Bool(_)) => Some(RuntimeTypeFact::primitive(PrimitiveTag::Bool)),
+        ExprKind::Literal(Literal::Integer(value)) if value.suffix.is_none() => {
+            StaticExprType::UnsuffixedIntegerLiteral
+        }
+        ExprKind::Literal(Literal::Float(value)) if value.suffix.is_none() => {
+            StaticExprType::UnsuffixedFloatLiteral
+        }
+        ExprKind::Literal(Literal::Null) => {
+            StaticExprType::Exact(RuntimeTypeFact::primitive(PrimitiveTag::Null))
+        }
+        ExprKind::Literal(Literal::Bool(_)) => {
+            StaticExprType::Exact(RuntimeTypeFact::primitive(PrimitiveTag::Bool))
+        }
         ExprKind::Literal(Literal::Integer(value)) => {
-            Some(RuntimeTypeFact::primitive(integer_literal_tag(value)))
+            StaticExprType::Exact(RuntimeTypeFact::primitive(integer_literal_tag(value)))
         }
         ExprKind::Literal(Literal::Float(value)) => {
-            Some(RuntimeTypeFact::primitive(float_literal_tag(value)))
+            StaticExprType::Exact(RuntimeTypeFact::primitive(float_literal_tag(value)))
         }
         ExprKind::Literal(Literal::String(_)) => {
-            Some(RuntimeTypeFact::primitive(PrimitiveTag::String))
+            StaticExprType::Exact(RuntimeTypeFact::primitive(PrimitiveTag::String))
         }
         ExprKind::Literal(Literal::Bytes(_)) => {
-            Some(RuntimeTypeFact::primitive(PrimitiveTag::Bytes))
+            StaticExprType::Exact(RuntimeTypeFact::primitive(PrimitiveTag::Bytes))
         }
-        ExprKind::Array(_) => Some(RuntimeTypeFact::standard(StandardRuntimeType::Array)),
-        ExprKind::Map(_) => Some(RuntimeTypeFact::standard(StandardRuntimeType::Map)),
-        ExprKind::Lambda { .. } => Some(RuntimeTypeFact::standard(StandardRuntimeType::Closure)),
+        ExprKind::Array(_) => {
+            StaticExprType::Exact(RuntimeTypeFact::standard(StandardRuntimeType::Array))
+        }
+        ExprKind::Map(_) => {
+            StaticExprType::Exact(RuntimeTypeFact::standard(StandardRuntimeType::Map))
+        }
+        ExprKind::Lambda { .. } => {
+            StaticExprType::Exact(RuntimeTypeFact::standard(StandardRuntimeType::Closure))
+        }
         ExprKind::Binary {
             op: BinaryOp::Range,
             ..
-        } => Some(RuntimeTypeFact::standard(StandardRuntimeType::Range)),
-        ExprKind::Path(path) => local_type_at_span(expr.span).or_else(|| {
-            path.as_slice()
-                .first()
-                .and_then(|name| (path.len() == 1).then(|| local_type_named(name)).flatten())
-        }),
-        ExprKind::SelfValue => local_type_at_span(expr.span).or_else(|| local_type_named("self")),
-        _ => None,
+        } => StaticExprType::Exact(RuntimeTypeFact::standard(StandardRuntimeType::Range)),
+        ExprKind::Path(path) => local_type_at_span(expr.span)
+            .or_else(|| {
+                path.as_slice()
+                    .first()
+                    .and_then(|name| (path.len() == 1).then(|| local_type_named(name)).flatten())
+            })
+            .map(StaticExprType::Exact)
+            .unwrap_or(StaticExprType::Dynamic),
+        ExprKind::SelfValue => local_type_at_span(expr.span)
+            .or_else(|| local_type_named("self"))
+            .map(StaticExprType::Exact)
+            .unwrap_or(StaticExprType::Dynamic),
+        _ => StaticExprType::Dynamic,
     }
 }
 
@@ -206,11 +255,29 @@ fn float_literal_tag(value: &vela_syntax::ast::FloatLiteral) -> PrimitiveTag {
 
 impl super::Compiler<'_, '_> {
     pub(super) fn value_type_for_expr(&self, expr: &Expr) -> Option<RuntimeTypeFact> {
-        expression_value_type(
+        match self.static_type_for_expr(expr) {
+            StaticExprType::Exact(fact) => Some(fact),
+            StaticExprType::UnsuffixedIntegerLiteral => {
+                Some(RuntimeTypeFact::primitive(PrimitiveTag::I64))
+            }
+            StaticExprType::UnsuffixedFloatLiteral => {
+                Some(RuntimeTypeFact::primitive(PrimitiveTag::F64))
+            }
+            StaticExprType::Dynamic => None,
+        }
+    }
+
+    pub(super) fn static_type_for_expr(&self, expr: &Expr) -> StaticExprType {
+        match static_expr_type(
             expr,
             |span| self.value_types.local_at_span(self.bindings, span),
             |name| self.value_types.name(name),
-        )
-        .or_else(|| self.record_field_value_type_for_expr(expr))
+        ) {
+            StaticExprType::Dynamic => self
+                .record_field_value_type_for_expr(expr)
+                .map(StaticExprType::Exact)
+                .unwrap_or(StaticExprType::Dynamic),
+            known => known,
+        }
     }
 }

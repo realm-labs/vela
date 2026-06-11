@@ -1235,19 +1235,19 @@ then build registry, syntax, guards, and runtime behavior on the new model.
 
 #### Task 4.2: Add static expression classification
 
-- [ ] Implement:
-  - [ ] `StaticExprType::Exact(TypeRef)`
-  - [ ] `StaticExprType::UnsuffixedIntegerLiteral`
-  - [ ] `StaticExprType::UnsuffixedFloatLiteral`
-  - [ ] `StaticExprType::Dynamic`
-- [ ] Classify literals without prematurely defaulting them.
-- [ ] Classify unhinted params as dynamic.
-- [ ] Classify hinted params as exact after guard.
-- [ ] Classify local bindings based on known type facts.
+- [x] Implement:
+  - [x] `StaticExprType::Exact(TypeRef)`
+  - [x] `StaticExprType::UnsuffixedIntegerLiteral`
+  - [x] `StaticExprType::UnsuffixedFloatLiteral`
+  - [x] `StaticExprType::Dynamic`
+- [x] Classify literals without prematurely defaulting them.
+- [x] Classify unhinted params as dynamic.
+- [x] Classify hinted params as exact after guard.
+- [x] Classify local bindings based on known type facts.
 
 **Termination condition:**
 
-- [ ] Tests cover literal classification and unhinted param dynamic classification.
+- [x] Tests cover literal classification and unhinted param dynamic classification.
 
 #### Task 4.3: Add expected-type check API
 
