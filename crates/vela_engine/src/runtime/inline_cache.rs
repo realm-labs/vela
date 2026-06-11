@@ -2,7 +2,7 @@ use std::cell::RefCell;
 
 use vela_bytecode::CacheSiteId;
 use vela_common::GlobalSlot;
-use vela_vm::HostInlineCacheEntry;
+use vela_vm::{HostInlineCacheEntry, RecordFieldInlineCacheEntry};
 
 use super::image::RuntimeImage;
 
@@ -16,6 +16,7 @@ pub(super) enum InlineCacheEntry {
     Empty,
     GlobalRead { slot: GlobalSlot },
     HostAccess(HostInlineCacheEntry),
+    RecordField(RecordFieldInlineCacheEntry),
 }
 
 impl InlineCaches {
@@ -62,6 +63,19 @@ impl InlineCaches {
             *slot = InlineCacheEntry::HostAccess(entry);
         }
     }
+
+    pub(super) fn record_field(&self, site: CacheSiteId) -> Option<RecordFieldInlineCacheEntry> {
+        match self.entries.borrow().get(site.index()) {
+            Some(InlineCacheEntry::RecordField(entry)) => Some(*entry),
+            _ => None,
+        }
+    }
+
+    pub(super) fn set_record_field(&self, site: CacheSiteId, entry: RecordFieldInlineCacheEntry) {
+        if let Some(slot) = self.entries.borrow_mut().get_mut(site.index()) {
+            *slot = InlineCacheEntry::RecordField(entry);
+        }
+    }
 }
 
 impl vela_vm::VmInlineCaches for InlineCaches {
@@ -88,12 +102,20 @@ impl vela_vm::VmInlineCaches for InlineCaches {
     fn set_host_access(&self, site: CacheSiteId, entry: HostInlineCacheEntry) {
         self.set_host_access(site, entry);
     }
+
+    fn record_field(&self, site: CacheSiteId) -> Option<RecordFieldInlineCacheEntry> {
+        self.record_field(site)
+    }
+
+    fn set_record_field(&self, site: CacheSiteId, entry: RecordFieldInlineCacheEntry) {
+        self.set_record_field(site, entry);
+    }
 }
 
 #[cfg(test)]
 mod tests {
-    use vela_bytecode::{CacheSiteKind, HostTargetPlanId};
-    use vela_common::{HostMethodId, HostObjectId, HostTypeId, SourceId};
+    use vela_bytecode::{CacheSiteId, CacheSiteKind, FieldSlot, HostTargetPlanId};
+    use vela_common::{HostMethodId, HostObjectId, HostTypeId, ShapeId, SourceId};
     use vela_def::{FieldId, TypeId};
     use vela_host::access::HostAccess;
     use vela_host::mock::MockStateAdapter;
@@ -103,7 +125,7 @@ mod tests {
     };
     use vela_host::value::HostValue;
     use vela_reflect::registry::{FieldDesc, MethodDesc, TypeDesc, TypeKey};
-    use vela_vm::{HostInlineCacheEntry, owned_value::OwnedValue};
+    use vela_vm::{HostInlineCacheEntry, RecordFieldInlineCacheEntry, owned_value::OwnedValue};
 
     use crate::engine::Engine;
     use crate::runtime::{CallArgs, CallOptions, Runtime, RuntimeImage};
@@ -253,6 +275,35 @@ fn read_second() {
             runtime.value_to_owned(&first_after_update),
             Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(30)))
         );
+    }
+
+    #[test]
+    fn record_field_inline_cache_is_site_indexed() {
+        let engine = Engine::builder().build().expect("engine should build");
+        let program = engine
+            .compile_source(
+                SourceId::new(1),
+                r#"
+global value: i64;
+
+fn main() {
+    return value;
+}
+"#,
+            )
+            .expect("program should compile");
+        let image = RuntimeImage::new(engine, program);
+        let caches = InlineCaches::for_image(&image);
+        let site = CacheSiteId::new(0);
+        let entry = RecordFieldInlineCacheEntry {
+            type_id: TypeId::new(1),
+            shape_id: ShapeId::new(2),
+            field: FieldSlot::new(3),
+        };
+
+        assert_eq!(caches.record_field(site), None);
+        caches.set_record_field(site, entry);
+        assert_eq!(caches.record_field(site), Some(entry));
     }
 
     #[test]

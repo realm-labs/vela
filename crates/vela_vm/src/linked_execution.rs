@@ -489,23 +489,27 @@ impl Vm {
                     record,
                     field,
                     debug_name,
-                    cache_site: _,
+                    cache_site,
                 } => {
                     field_access::dispatch_linked_get_record_slot(
                         &mut frame,
                         heap.as_deref_mut(),
                         call.program,
-                        *dst,
-                        *record,
-                        *field,
-                        *debug_name,
+                        field_access::LinkedRecordSlotRead {
+                            dst: *dst,
+                            record: *record,
+                            field: *field,
+                            debug_name: *debug_name,
+                        },
+                        call.inline_caches,
+                        *cache_site,
                     )?;
                 }
                 InstructionKind::SetRecordSlot {
                     record,
                     field,
                     debug_name,
-                    cache_site: _,
+                    cache_site,
                     src,
                 } => {
                     field_access::dispatch_linked_set_record_slot(
@@ -519,6 +523,8 @@ impl Vm {
                             debug_name: *debug_name,
                             src: *src,
                         },
+                        call.inline_caches,
+                        *cache_site,
                     )?;
                 }
                 InstructionKind::MakeEnum {

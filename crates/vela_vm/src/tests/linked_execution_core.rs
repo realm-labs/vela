@@ -1,6 +1,7 @@
 use super::*;
 use crate::owned_value::OwnedValue;
 use crate::value::Value as RuntimeValue;
+use std::cell::{Cell, RefCell};
 
 #[test]
 fn runs_linked_program_basic_arithmetic_without_unlinked_code() {
@@ -640,6 +641,242 @@ fn linked_program_executes_record_slot_reads_and_writes() {
         Vm::new().run_linked_program(&program, "main", &[]),
         Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(5)))
     );
+}
+
+#[test]
+fn linked_record_slot_reads_and_writes_populate_inline_caches() {
+    let (program, write_site, read_site, reward_type_id) = linked_record_cache_program();
+    let caches = RecordingRecordFieldCaches::new(2);
+
+    assert_eq!(
+        run_linked_record_cache_program(&program, &caches),
+        Ok(Value::Scalar(vela_common::ScalarValue::I64(5)))
+    );
+    assert_eq!(caches.set_count(), 2);
+    assert_eq!(
+        caches.entry(write_site).map(|entry| entry.type_id),
+        Some(reward_type_id)
+    );
+    assert_eq!(
+        caches.entry(read_site).map(|entry| entry.type_id),
+        Some(reward_type_id)
+    );
+
+    assert_eq!(
+        run_linked_record_cache_program(&program, &caches),
+        Ok(Value::Scalar(vela_common::ScalarValue::I64(5)))
+    );
+    assert_eq!(caches.set_count(), 2);
+}
+
+#[test]
+fn linked_record_slot_inline_cache_miss_replaces_wrong_guards() {
+    let (program, write_site, read_site, reward_type_id) = linked_record_cache_program();
+    let caches = RecordingRecordFieldCaches::new(2);
+    let wrong_entry = RecordFieldInlineCacheEntry {
+        type_id: vela_def::TypeId::new(0xdead),
+        shape_id: vela_common::ShapeId::new(0xbeef),
+        field: vela_bytecode::FieldSlot::new(0),
+    };
+    caches.prime(write_site, wrong_entry);
+    caches.prime(read_site, wrong_entry);
+
+    assert_eq!(
+        run_linked_record_cache_program(&program, &caches),
+        Ok(Value::Scalar(vela_common::ScalarValue::I64(5)))
+    );
+    assert_eq!(caches.set_count(), 2);
+    assert_eq!(
+        caches.entry(write_site).map(|entry| entry.type_id),
+        Some(reward_type_id)
+    );
+    assert_eq!(
+        caches.entry(read_site).map(|entry| entry.type_id),
+        Some(reward_type_id)
+    );
+}
+
+#[test]
+fn linked_record_slot_inline_cache_miss_replaces_wrong_slot() {
+    let (program, write_site, read_site, _) = linked_record_cache_program();
+    let caches = RecordingRecordFieldCaches::new(2);
+
+    assert_eq!(
+        run_linked_record_cache_program(&program, &caches),
+        Ok(Value::Scalar(vela_common::ScalarValue::I64(5)))
+    );
+    let write_entry = caches
+        .entry(write_site)
+        .expect("write cache should be populated");
+    let read_entry = caches
+        .entry(read_site)
+        .expect("read cache should be populated");
+    caches.prime(
+        write_site,
+        RecordFieldInlineCacheEntry {
+            field: vela_bytecode::FieldSlot::new(1),
+            ..write_entry
+        },
+    );
+    caches.prime(
+        read_site,
+        RecordFieldInlineCacheEntry {
+            field: vela_bytecode::FieldSlot::new(1),
+            ..read_entry
+        },
+    );
+
+    assert_eq!(
+        run_linked_record_cache_program(&program, &caches),
+        Ok(Value::Scalar(vela_common::ScalarValue::I64(5)))
+    );
+    assert_eq!(caches.set_count(), 4);
+    assert_eq!(
+        caches.entry(write_site).map(|entry| entry.field),
+        Some(vela_bytecode::FieldSlot::new(0))
+    );
+    assert_eq!(
+        caches.entry(read_site).map(|entry| entry.field),
+        Some(vela_bytecode::FieldSlot::new(0))
+    );
+}
+
+fn linked_record_cache_program() -> (
+    vela_bytecode::LinkedProgram,
+    CacheSiteId,
+    CacheSiteId,
+    vela_def::TypeId,
+) {
+    let mut program = vela_bytecode::LinkedProgram::new();
+    let main_name = program.intern_debug_name("main");
+    let reward_name = program.intern_debug_name("Reward");
+    let count_name = program.intern_debug_name("count");
+    let item_name = program.intern_debug_name("item_id");
+    let reward_type_id = vela_def::TypeId::new(0x177);
+    let reward_type =
+        program.push_type(vela_bytecode::LinkedType::new(reward_type_id, reward_name));
+
+    let mut code = vela_bytecode::LinkedCodeObject::new(main_name, 3);
+    let initial = code.push_constant(Constant::Scalar(vela_common::ScalarValue::I64(2)));
+    let updated = code.push_constant(Constant::Scalar(vela_common::ScalarValue::I64(5)));
+    code.push_instruction(vela_bytecode::linked::Instruction::new(
+        vela_bytecode::linked::InstructionKind::LoadConst {
+            dst: Register(0),
+            constant: initial,
+        },
+    ));
+    code.push_instruction(vela_bytecode::linked::Instruction::new(
+        vela_bytecode::linked::InstructionKind::MakeRecord {
+            dst: Register(1),
+            ty: reward_type,
+            fields: vec![
+                (vela_bytecode::FieldSlot::new(1), item_name, Register(0)),
+                (vela_bytecode::FieldSlot::new(0), count_name, Register(0)),
+            ],
+        },
+    ));
+    code.push_instruction(vela_bytecode::linked::Instruction::new(
+        vela_bytecode::linked::InstructionKind::LoadConst {
+            dst: Register(0),
+            constant: updated,
+        },
+    ));
+    let write_site = code.push_cache_site(CacheSiteKind::RecordFieldWrite, InstructionOffset(3));
+    code.push_instruction(vela_bytecode::linked::Instruction::new(
+        vela_bytecode::linked::InstructionKind::SetRecordSlot {
+            record: Register(1),
+            field: vela_bytecode::FieldSlot::new(0),
+            debug_name: count_name,
+            cache_site: Some(write_site),
+            src: Register(0),
+        },
+    ));
+    let read_site = code.push_cache_site(CacheSiteKind::RecordFieldRead, InstructionOffset(4));
+    code.push_instruction(vela_bytecode::linked::Instruction::new(
+        vela_bytecode::linked::InstructionKind::GetRecordSlot {
+            dst: Register(2),
+            record: Register(1),
+            field: vela_bytecode::FieldSlot::new(0),
+            debug_name: count_name,
+            cache_site: Some(read_site),
+        },
+    ));
+    code.push_instruction(vela_bytecode::linked::Instruction::new(
+        vela_bytecode::linked::InstructionKind::Return { src: Register(2) },
+    ));
+    let function = program.push_function(code);
+    program.set_entry_point(main_name, function);
+    (program, write_site, read_site, reward_type_id)
+}
+
+fn run_linked_record_cache_program(
+    program: &vela_bytecode::LinkedProgram,
+    caches: &RecordingRecordFieldCaches,
+) -> VmResult<Value> {
+    let code = program
+        .functions()
+        .find(|(_, code)| program.debug_name(code.debug_name) == "main")
+        .map(|(_, code)| code)
+        .expect("linked record cache fixture should have main");
+    let mut heap = ScriptHeap::new();
+    let mut heap_execution = HeapExecution::new(&mut heap);
+    let mut budget = ExecutionBudget::unbounded();
+    Vm::new().execute_linked_call(
+        crate::linked_execution::LinkedExecutionCall {
+            code,
+            program,
+            captures: &[],
+            args: &[],
+            check_param_guards: true,
+            call_site: None,
+            call_site_offset: None,
+            inline_caches: Some(caches),
+        },
+        None,
+        Some(&mut heap_execution),
+        Some(&mut budget),
+    )
+}
+
+struct RecordingRecordFieldCaches {
+    entries: RefCell<Vec<Option<RecordFieldInlineCacheEntry>>>,
+    set_count: Cell<usize>,
+}
+
+impl RecordingRecordFieldCaches {
+    fn new(len: usize) -> Self {
+        Self {
+            entries: RefCell::new(vec![None; len]),
+            set_count: Cell::new(0),
+        }
+    }
+
+    fn entry(&self, site: CacheSiteId) -> Option<RecordFieldInlineCacheEntry> {
+        self.entries.borrow().get(site.index()).copied().flatten()
+    }
+
+    fn prime(&self, site: CacheSiteId, entry: RecordFieldInlineCacheEntry) {
+        self.entries.borrow_mut()[site.index()] = Some(entry);
+    }
+
+    fn set_count(&self) -> usize {
+        self.set_count.get()
+    }
+}
+
+impl VmInlineCaches for RecordingRecordFieldCaches {
+    fn len(&self) -> usize {
+        self.entries.borrow().len()
+    }
+
+    fn record_field(&self, site: CacheSiteId) -> Option<RecordFieldInlineCacheEntry> {
+        self.entry(site)
+    }
+
+    fn set_record_field(&self, site: CacheSiteId, entry: RecordFieldInlineCacheEntry) {
+        self.entries.borrow_mut()[site.index()] = Some(entry);
+        self.set_count.set(self.set_count.get() + 1);
+    }
 }
 
 #[test]

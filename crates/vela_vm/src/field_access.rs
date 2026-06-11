@@ -1,9 +1,11 @@
 use crate::heap::HeapValue;
 use crate::{
-    CallFrame, ExecutionBudget, HeapExecution, Value, VmError, VmErrorKind, VmResult,
-    record_fields, stored_runtime_value,
+    CallFrame, ExecutionBudget, HeapExecution, RecordFieldInlineCacheEntry, Value, VmError,
+    VmErrorKind, VmInlineCaches, VmResult, record_fields, stored_runtime_value,
 };
-use vela_bytecode::{DebugNameId, FieldSlot, LinkedProgram, Register, TypeHandle, VariantHandle};
+use vela_bytecode::{
+    CacheSiteId, DebugNameId, FieldSlot, LinkedProgram, Register, TypeHandle, VariantHandle,
+};
 use vela_def::{TypeId, VariantId};
 
 pub(crate) fn dispatch_get_record_field(
@@ -33,19 +35,21 @@ pub(crate) fn dispatch_linked_get_record_slot(
     frame: &mut CallFrame,
     heap: Option<&mut HeapExecution<'_>>,
     program: &LinkedProgram,
-    dst: Register,
-    record: Register,
-    field: FieldSlot,
-    debug_name: DebugNameId,
+    read: LinkedRecordSlotRead,
+    inline_caches: Option<&dyn VmInlineCaches>,
+    cache_site: Option<CacheSiteId>,
 ) -> VmResult<()> {
-    dispatch_get_record_slot(
-        frame,
-        heap,
-        dst,
-        record,
-        program.debug_name(debug_name),
-        field.index(),
-    )
+    let field_name = program.debug_name(read.debug_name);
+    let record_value = frame.read(read.record)?;
+    let value = get_linked_record_slot_value(
+        record_value,
+        field_name,
+        read.field,
+        heap.as_deref(),
+        inline_caches,
+        cache_site,
+    )?;
+    frame.write(read.dst, value)
 }
 
 pub(crate) fn dispatch_set_record_field(
@@ -77,6 +81,13 @@ pub(crate) fn dispatch_set_record_slot(
     frame.write(record, record_value)
 }
 
+pub(crate) struct LinkedRecordSlotRead {
+    pub(crate) dst: Register,
+    pub(crate) record: Register,
+    pub(crate) field: FieldSlot,
+    pub(crate) debug_name: DebugNameId,
+}
+
 pub(crate) struct LinkedRecordSlotWrite {
     pub(crate) record: Register,
     pub(crate) field: FieldSlot,
@@ -90,16 +101,41 @@ pub(crate) fn dispatch_linked_set_record_slot(
     budget: Option<&mut ExecutionBudget>,
     program: &LinkedProgram,
     write: LinkedRecordSlotWrite,
+    inline_caches: Option<&dyn VmInlineCaches>,
+    cache_site: Option<CacheSiteId>,
 ) -> VmResult<()> {
-    dispatch_set_record_slot(
-        frame,
-        heap,
-        budget,
-        write.record,
-        program.debug_name(write.debug_name),
-        write.field.index(),
-        write.src,
-    )
+    let mut heap = heap;
+    let mut budget = budget;
+    let mut record_value = *frame.read(write.record)?;
+    let src = *frame.read(write.src)?;
+    let field_name = program.debug_name(write.debug_name);
+    if !set_linked_record_slot_value(
+        &mut record_value,
+        field_name,
+        &src,
+        heap.as_deref_mut(),
+        budget.as_deref_mut(),
+        inline_caches,
+        cache_site,
+    )? {
+        record_fields::set_record_slot_value(
+            &mut record_value,
+            field_name,
+            write.field.index(),
+            &src,
+            heap.as_deref_mut(),
+            budget,
+        )?;
+        populate_record_field_cache(
+            &record_value,
+            field_name,
+            write.field,
+            heap.as_deref(),
+            inline_caches,
+            cache_site,
+        );
+    }
+    frame.write(write.record, record_value)
 }
 
 pub(crate) fn dispatch_get_enum_field(
@@ -229,6 +265,159 @@ pub(crate) fn get_record_slot_value(
         }
         _ => type_error("record slot"),
     }
+}
+
+fn get_linked_record_slot_value(
+    value: &Value,
+    field_name: &str,
+    field: FieldSlot,
+    heap: Option<&HeapExecution<'_>>,
+    inline_caches: Option<&dyn VmInlineCaches>,
+    cache_site: Option<CacheSiteId>,
+) -> VmResult<Value> {
+    if let Some(value) =
+        cached_record_slot_value(value, field_name, heap, inline_caches, cache_site)
+    {
+        return Ok(value);
+    }
+    let result = get_record_slot_value(value, field_name, field.index(), heap)?;
+    populate_record_field_cache(value, field_name, field, heap, inline_caches, cache_site);
+    Ok(result)
+}
+
+fn set_linked_record_slot_value(
+    value: &mut Value,
+    field_name: &str,
+    src: &Value,
+    heap: Option<&mut HeapExecution<'_>>,
+    budget: Option<&mut ExecutionBudget>,
+    inline_caches: Option<&dyn VmInlineCaches>,
+    cache_site: Option<CacheSiteId>,
+) -> VmResult<bool> {
+    let Some(cache_site) = cache_site else {
+        return Ok(false);
+    };
+    let Some(inline_caches) = inline_caches else {
+        return Ok(false);
+    };
+    let Some(entry) = inline_caches.record_field(cache_site) else {
+        return Ok(false);
+    };
+    let Some(heap) = heap else {
+        return Ok(false);
+    };
+    let Value::HeapRef(reference) = value else {
+        return Ok(false);
+    };
+    let Some((type_name, true)) = heap
+        .heap
+        .get(*reference)
+        .map(|heap_value| match heap_value {
+            HeapValue::Record {
+                type_name,
+                identity: Some(identity),
+                fields,
+            } => (
+                type_name.clone(),
+                identity.type_id == entry.type_id
+                    && identity.shape_id == entry.shape_id
+                    && fields.get_slot(entry.field.index(), field_name).is_some(),
+            ),
+            _ => (String::new(), false),
+        })
+    else {
+        return Ok(false);
+    };
+    let stored_value = crate::store_runtime_value(src, heap, budget)?;
+    let HeapValue::Record { fields, .. } = heap.heap.get_mut(*reference).map_err(|_| {
+        VmError::new(VmErrorKind::UnknownRecordField {
+            type_name: type_name.clone(),
+            field: field_name.to_owned(),
+        })
+    })?
+    else {
+        return type_error("record slot assignment");
+    };
+    fields
+        .set_slot_existing(entry.field.index(), field_name, stored_value)
+        .map_err(|_| {
+            VmError::new(VmErrorKind::UnknownRecordField {
+                type_name,
+                field: field_name.to_owned(),
+            })
+        })?;
+    Ok(true)
+}
+
+fn cached_record_slot_value(
+    value: &Value,
+    field_name: &str,
+    heap: Option<&HeapExecution<'_>>,
+    inline_caches: Option<&dyn VmInlineCaches>,
+    cache_site: Option<CacheSiteId>,
+) -> Option<Value> {
+    let entry = inline_caches?.record_field(cache_site?)?;
+    let Value::HeapRef(reference) = value else {
+        return None;
+    };
+    let HeapValue::Record {
+        identity: Some(identity),
+        fields,
+        ..
+    } = heap?.heap.get(*reference)?
+    else {
+        return None;
+    };
+    (identity.type_id == entry.type_id && identity.shape_id == entry.shape_id).then(|| {
+        fields
+            .get_slot(entry.field.index(), field_name)
+            .map(stored_runtime_value)
+    })?
+}
+
+fn populate_record_field_cache(
+    value: &Value,
+    field_name: &str,
+    field: FieldSlot,
+    heap: Option<&HeapExecution<'_>>,
+    inline_caches: Option<&dyn VmInlineCaches>,
+    cache_site: Option<CacheSiteId>,
+) {
+    let Some(cache_site) = cache_site else {
+        return;
+    };
+    let Some(inline_caches) = inline_caches else {
+        return;
+    };
+    let Some(entry) = record_field_cache_entry(value, field_name, field, heap) else {
+        return;
+    };
+    inline_caches.set_record_field(cache_site, entry);
+}
+
+fn record_field_cache_entry(
+    value: &Value,
+    field_name: &str,
+    field: FieldSlot,
+    heap: Option<&HeapExecution<'_>>,
+) -> Option<RecordFieldInlineCacheEntry> {
+    let Value::HeapRef(reference) = value else {
+        return None;
+    };
+    let HeapValue::Record {
+        identity: Some(identity),
+        fields,
+        ..
+    } = heap?.heap.get(*reference)?
+    else {
+        return None;
+    };
+    fields.get_slot(field.index(), field_name)?;
+    Some(RecordFieldInlineCacheEntry {
+        type_id: identity.type_id,
+        shape_id: identity.shape_id,
+        field,
+    })
 }
 
 pub(crate) fn get_enum_field_value(

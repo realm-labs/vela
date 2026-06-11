@@ -82,11 +82,11 @@ use small_storage::SmallStorage;
 #[cfg(test)]
 use vela_bytecode::UnlinkedProgram;
 use vela_bytecode::{
-    CacheSiteId, HostTargetPlanId, InstructionOffset, LinkedCodeObject, LinkedProgram, Register,
-    UnlinkedCodeObject, UnlinkedInstructionKind, UnlinkedProgramCode,
+    CacheSiteId, FieldSlot, HostTargetPlanId, InstructionOffset, LinkedCodeObject, LinkedProgram,
+    Register, UnlinkedCodeObject, UnlinkedInstructionKind, UnlinkedProgramCode,
 };
-use vela_common::{GlobalSlot, HostTypeId, Span};
-use vela_def::{DefPath, FunctionId};
+use vela_common::{GlobalSlot, HostTypeId, ShapeId, Span};
+use vela_def::{DefPath, FunctionId, TypeId};
 use vela_host::adapter::ScriptStateAdapter;
 use vela_host::resolved::{HostAccessOp, HostSchemaEpoch, ResolvedHostAccess};
 #[cfg(test)]
@@ -240,6 +240,12 @@ pub trait VmInlineCaches {
     }
 
     fn set_host_access(&self, _site: CacheSiteId, _entry: HostInlineCacheEntry) {}
+
+    fn record_field(&self, _site: CacheSiteId) -> Option<RecordFieldInlineCacheEntry> {
+        None
+    }
+
+    fn set_record_field(&self, _site: CacheSiteId, _entry: RecordFieldInlineCacheEntry) {}
 }
 
 pub(crate) fn validate_inline_cache_layout(
@@ -266,6 +272,13 @@ pub struct HostInlineCacheEntry {
     pub op: HostAccessOp,
     pub schema_epoch: HostSchemaEpoch,
     pub resolved: ResolvedHostAccess,
+}
+
+#[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
+pub struct RecordFieldInlineCacheEntry {
+    pub type_id: TypeId,
+    pub shape_id: ShapeId,
+    pub field: FieldSlot,
 }
 
 pub struct LinkedRuntimeCodeCall<'program, 'args, 'host, 'heap, 'roots, 'budget, 'caches> {

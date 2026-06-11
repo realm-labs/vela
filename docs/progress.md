@@ -36,8 +36,9 @@ production hot-reload workflow, diagnostics/tooling foundation, runnable
 embedding/conformance proof, measured performance baselines, and non-JIT
 interpreter/heap optimization checkpoint. The primitive scalar, bytes,
 type-hint contract, and guard-plan refactor is complete as a breaking M19.5
-architecture continuation. Current work should now move toward M20 inline-cache
-entry prep:
+architecture continuation. M20 inline-cache work has started with script record
+field cache entries while remaining M19.5 prep continues around the other cache
+families:
 
 ```text
 preserve all runtime, host, reflection, GC, and hot-reload semantics
@@ -74,7 +75,7 @@ Cranelift JIT.
 | M18 | Complete enough | Quick and full/default baseline captures exist with environment metadata and checksums. |
 | M19 | Complete enough | Non-JIT interpreter and heap optimization has a recorded exit checkpoint. Accepted work includes GC pacing, direct heap aggregate construction, argument materialization/storage cleanup, borrowed receiver/runtime views, stdlib collection/string/Option/Result fast paths, scalar/equality/constant/peephole/range-loop lowering, small script-field and short-array construction, and expanded benchmark coverage. Remaining Lua 5.x deltas are measured and belong to M20 cache/specialization families rather than more unguarded M19 micro-optimization. |
 | M19.5 | Active | Primitive scalar, bytes, type-hint contract, and guard-plan checklist is complete and fully validated; remaining transition work is M20 cache-entry prep around measured dispatch/cache gaps. |
-| M20 | Not started | Inline caches and specialization start after M19.5, beginning with script record field, host field/path, method dispatch, stdlib method, and hot bytecode offset profiling guards. |
+| M20 | Active | First script record field read/write cache entries are guarded by record type, shape, and slot; host field/path, method dispatch, stdlib method, and hot bytecode offset profiling caches remain. |
 | M21 | Not started | Debugger runtime hooks and DAP integration follow stable runtime/tooling contracts. |
 | M22 | Not started | Cranelift JIT follows interpreter/cache/debugger/conformance stability. |
 | M23 | Not started | Release hardening, public docs, validation gates, and performance targets. |
@@ -314,7 +315,10 @@ Cranelift JIT.
   descriptors; reflection metadata remains a separate runtime view. Linked
   method-call and record field read/write instructions now preserve cache-site
   operands from cache-site sidecars, with linked verifier and runtime image
-  rebasing coverage for future M20 dispatch and record-field caches. The
+  rebasing coverage. Linked script record field reads and writes now populate
+  guarded runtime inline-cache entries keyed by `TypeId`, `ShapeId`, and
+  `FieldSlot`, and guard misses fall back to the existing slot slow path before
+  replacing stale entries. The
   primitive scalar, bytes, type-hint contract, and guard-plan refactor is
   complete: source `int`/`float` hints are gone, runtime/owned/host/constant
   values share `ScalarValue` and bytes representations, type hints are
@@ -349,11 +353,11 @@ Cranelift JIT.
     hot-reload/schema invalidation tests;
   - interpreter-only benchmark rows identify which remaining costs belong to
     M20 cache work versus later JIT work.
-- M20: after M19.5, implement guarded inline caches and specialization for
-  script record fields, host field/path reads and writes, method dispatch,
-  stdlib value methods, and hot bytecode offsets. Cache misses, guard failures,
-  hot reload, and schema ABI changes must fall back or invalidate without
-  changing semantics.
+- M20: continue guarded inline caches and specialization for host field/path
+  reads and writes, method dispatch, stdlib value methods, and hot bytecode
+  offsets, then extend script record field cache measurements. Cache misses,
+  guard failures, hot reload, and schema ABI changes must fall back or
+  invalidate without changing semantics.
 - Lua 5.x comparable performance remains a measured target for cache-enabled
   non-JIT host-boundary workloads; scalar, array, string, function-call, and
   callback deltas should be tracked separately from host-boundary benchmarks.
