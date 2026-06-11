@@ -1732,7 +1732,7 @@ place to discover missing architecture.
 - Compiler identity lookup depends on registry.
 - `CompilerOptions` contains only actual compiler settings.
 
-- [ ] **Task 9.4: Remove runtime name maps**
+- [x] **Task 9.4: Remove runtime name maps**
 
 **Delete from VM:**
 

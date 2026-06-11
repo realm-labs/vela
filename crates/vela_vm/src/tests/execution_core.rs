@@ -181,7 +181,7 @@ fn linked_native_dispatch_uses_id_not_debug_name_fallback() {
 fn linked_program_calls_native_by_dense_handle() {
     let native_id = FunctionId::new(0x56);
     let mut vm = Vm::new();
-    vm.register_native_with_id(native_id, "actual_name", |_| Ok(OwnedValue::Int(7)));
+    vm.register_native_with_id(native_id, |_| Ok(OwnedValue::Int(7)));
 
     let mut program = vela_bytecode::LinkedProgram::new();
     let main_name = program.intern_debug_name("main");

@@ -264,16 +264,14 @@ impl Vm {
         function: impl Fn(&[OwnedValue]) -> VmResult<OwnedValue> + Send + Sync + 'static,
     ) {
         let name = name.into();
-        self.register_native_with_id(function_id_for_native_name(&name), name, function);
+        self.register_native_with_id(function_id_for_native_name(&name), function);
     }
 
     pub fn register_native_with_id(
         &mut self,
         id: FunctionId,
-        name: impl Into<String>,
         function: impl Fn(&[OwnedValue]) -> VmResult<OwnedValue> + Send + Sync + 'static,
     ) {
-        let _debug_name = name.into();
         self.native_ids.insert(id, Arc::new(function));
     }
 
@@ -286,19 +284,17 @@ impl Vm {
         + 'static,
     ) {
         let name = name.into();
-        self.register_host_native_with_id(function_id_for_native_name(&name), name, function);
+        self.register_host_native_with_id(function_id_for_native_name(&name), function);
     }
 
     pub fn register_host_native_with_id(
         &mut self,
         id: FunctionId,
-        name: impl Into<String>,
         function: impl for<'host> Fn(&[OwnedValue], &mut HostExecution<'host>) -> VmResult<OwnedValue>
         + Send
         + Sync
         + 'static,
     ) {
-        let _debug_name = name.into();
         self.host_native_ids.insert(
             id,
             Arc::new(move |args, host, _budget| function(args, host)),
@@ -318,17 +314,12 @@ impl Vm {
         + 'static,
     ) {
         let name = name.into();
-        self.register_budgeted_host_native_with_id(
-            function_id_for_native_name(&name),
-            name,
-            function,
-        );
+        self.register_budgeted_host_native_with_id(function_id_for_native_name(&name), function);
     }
 
     pub fn register_budgeted_host_native_with_id(
         &mut self,
         id: FunctionId,
-        name: impl Into<String>,
         function: impl for<'host, 'budget> Fn(
             &[OwnedValue],
             &mut HostExecution<'host>,
@@ -338,7 +329,6 @@ impl Vm {
         + Sync
         + 'static,
     ) {
-        let _debug_name = name.into();
         self.host_native_ids.insert(id, Arc::new(function));
     }
 

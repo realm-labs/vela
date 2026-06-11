@@ -14,11 +14,7 @@ pub(crate) fn register(vm: &mut Vm) {
 }
 
 fn register_binding(vm: &mut Vm, binding: StdFunctionRuntimeBinding) {
-    vm.register_native_with_id(
-        binding.id,
-        binding.debug_name,
-        native_function(binding.implementation),
-    );
+    vm.register_native_with_id(binding.id, native_function(binding.implementation));
 }
 
 fn native_function(implementation: StdFunctionImplementation) -> StdNativeFunction {

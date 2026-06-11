@@ -60,7 +60,7 @@ fn call_native_uses_resolved_id_even_when_debug_name_differs() {
     let native_id = vela_def::FunctionId::new(77);
     let mut vm = Vm::new();
     vm.register_native("diagnostic_name", |_| Ok(OwnedValue::Int(1)));
-    vm.register_native_with_id(native_id, "resolved_name", |_| Ok(OwnedValue::Int(2)));
+    vm.register_native_with_id(native_id, |_| Ok(OwnedValue::Int(2)));
 
     let mut code = UnlinkedCodeObject::new("native_id", 1);
     code.push_instruction(UnlinkedInstruction::new(
@@ -85,7 +85,7 @@ fn call_native_uses_resolved_host_id_even_when_debug_name_differs() {
     let native_id = FunctionId::new(78);
     let mut vm = Vm::new();
     vm.register_native("diagnostic_name", |_| Ok(OwnedValue::Int(1)));
-    vm.register_host_native_with_id(native_id, "resolved_host", |_, _| Ok(OwnedValue::Int(3)));
+    vm.register_host_native_with_id(native_id, |_, _| Ok(OwnedValue::Int(3)));
 
     let mut code = UnlinkedCodeObject::new("host_native_id", 1);
     code.push_instruction(UnlinkedInstruction::new(
