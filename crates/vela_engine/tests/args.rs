@@ -237,7 +237,10 @@ fn script_arg_conversions_extract_owned_rust_values() {
     assert!(args.required::<bool>(0).expect("bool arg"));
     assert_eq!(args.required::<i64>(1), Ok(5));
     assert_eq!(args.required::<f64>(2), Ok(2.5));
-    assert_eq!(args.required::<f32>(2), Ok(2.5_f32));
+    assert_eq!(
+        f32::from_script_arg(&OwnedValue::Scalar(vela_common::ScalarValue::F32(2.5))),
+        Ok(2.5_f32)
+    );
     assert_eq!(args.required::<String>(3), Ok("title".to_owned()));
     assert_eq!(args.required::<Vec<i64>>(4), Ok(vec![1, 2, 3]));
     assert_eq!(args.required::<[i64; 3]>(4), Ok([1, 2, 3]));
@@ -259,7 +262,7 @@ fn script_arg_conversions_extract_owned_rust_values() {
     ));
     assert!(matches!(
         f32::from_script_arg(&OwnedValue::Scalar(vela_common::ScalarValue::F64(f64::MAX))),
-        Err(error) if matches!(error.kind(), VmErrorKind::TypeMismatch { operation: "float" })
+        Err(error) if matches!(error.kind(), VmErrorKind::TypeMismatch { operation: "f32" })
             && error.source_span.is_none()
     ));
     assert!(matches!(

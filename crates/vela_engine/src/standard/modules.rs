@@ -1,6 +1,6 @@
 use vela_reflect::modules::ModuleDesc;
 
-pub(crate) fn standard_module_descs() -> [ModuleDesc; 5] {
+pub(crate) fn standard_module_descs() -> [ModuleDesc; 11] {
     [
         stdlib_module(
             "math",
@@ -23,6 +23,12 @@ pub(crate) fn standard_module_descs() -> [ModuleDesc; 5] {
             "Bytes standard-library conversion helpers.",
             "bytes",
         ),
+        stdlib_module("i64", "i64 primitive conversion helpers.", "i64"),
+        stdlib_module("u64", "u64 primitive conversion helpers.", "u64"),
+        stdlib_module("f64", "f64 primitive conversion helpers.", "f64"),
+        stdlib_module("i8", "i8 primitive conversion helpers.", "i8"),
+        stdlib_module("u8", "u8 primitive conversion helpers.", "u8"),
+        stdlib_module("f32", "f32 primitive conversion helpers.", "f32"),
     ]
 }
 

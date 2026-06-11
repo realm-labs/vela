@@ -120,6 +120,24 @@ hints, such as host index capability metadata and native module roots. It must
 not store native function IDs, value method IDs, host type IDs, host field IDs,
 host method IDs, or method parameter metadata.
 
+### Primitive Native Contracts
+
+Native parameter type hints are contracts, not conversion requests. Known
+primitive parameters are checked by the compiler or by linked runtime guards;
+positional native calls may still pass optional or variadic arguments after the
+known metadata prefix until the registry has first-class optional/variadic
+metadata.
+
+Macro-generated descriptors for Rust `Option<T>` parameters and returns use
+`TypeHint::Any` for now. The script-visible value is `null` or the dynamic
+standard `Option` enum, and Vela has no script-language generics to express
+`Option<T>` as a precise public contract. Typed native conversion still decodes
+the `Option<T>` value at the Rust boundary.
+
+Embedding float conversions are exact: Rust `f32` maps to Vela `f32`, Rust
+`f64` maps to Vela `f64`, and the embedding layer does not silently convert
+between integer, `f32`, and `f64` values.
+
 ### Runtime And Heap
 
 The VM is a register bytecode interpreter. Execution budgets cover

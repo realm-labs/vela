@@ -172,6 +172,24 @@ pub(super) fn completion_facts() -> Vec<StdlibFunctionFact> {
             vec![TypeFact::String],
             TypeFact::result(TypeFact::Bytes, TypeFact::String),
         ),
+        StdlibFunctionFact::new("i64::from_i32", vec![TypeFact::Int], TypeFact::Int),
+        StdlibFunctionFact::new("u64::from_u32", vec![TypeFact::Int], TypeFact::Int),
+        StdlibFunctionFact::new("f64::from_f32", vec![TypeFact::Float], TypeFact::Float),
+        StdlibFunctionFact::new(
+            "i8::try_from_i64",
+            vec![TypeFact::Int],
+            TypeFact::result(TypeFact::Int, TypeFact::String),
+        ),
+        StdlibFunctionFact::new(
+            "u8::try_from_u64",
+            vec![TypeFact::Int],
+            TypeFact::result(TypeFact::Int, TypeFact::String),
+        ),
+        StdlibFunctionFact::new(
+            "f32::try_from_f64",
+            vec![TypeFact::Float],
+            TypeFact::result(TypeFact::Float, TypeFact::String),
+        ),
     ];
     facts.extend(super::reflect::completion_facts());
     facts
@@ -432,6 +450,38 @@ pub(super) fn function_fact(name: &str, args: &[TypeFact]) -> Option<StdlibFunct
                 TypeFact::result(TypeFact::Bytes, TypeFact::String),
             ))
         }
+        "i64::from_i32" | "u64::from_u32" => {
+            expect_len(args, 1)?;
+            Some(StdlibFunctionFact::new(
+                canonical_function_name(name)?,
+                args.to_vec(),
+                TypeFact::Int,
+            ))
+        }
+        "f64::from_f32" => {
+            expect_len(args, 1)?;
+            Some(StdlibFunctionFact::new(
+                "f64::from_f32",
+                args.to_vec(),
+                TypeFact::Float,
+            ))
+        }
+        "i8::try_from_i64" | "u8::try_from_u64" => {
+            expect_len(args, 1)?;
+            Some(StdlibFunctionFact::new(
+                canonical_function_name(name)?,
+                args.to_vec(),
+                TypeFact::result(TypeFact::Int, TypeFact::String),
+            ))
+        }
+        "f32::try_from_f64" => {
+            expect_len(args, 1)?;
+            Some(StdlibFunctionFact::new(
+                "f32::try_from_f64",
+                args.to_vec(),
+                TypeFact::result(TypeFact::Float, TypeFact::String),
+            ))
+        }
         _ => None,
     }
 }
@@ -629,6 +679,10 @@ fn canonical_function_name(name: &str) -> Option<&'static str> {
         "time::now" => Some("time::now"),
         "time::tick" => Some("time::tick"),
         "time::elapsed_since" => Some("time::elapsed_since"),
+        "i64::from_i32" => Some("i64::from_i32"),
+        "u64::from_u32" => Some("u64::from_u32"),
+        "i8::try_from_i64" => Some("i8::try_from_i64"),
+        "u8::try_from_u64" => Some("u8::try_from_u64"),
         _ => None,
     }
 }

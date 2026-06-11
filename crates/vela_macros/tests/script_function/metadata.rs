@@ -129,8 +129,8 @@ fn script_function_generates_option_signature_metadata() {
     assert_eq!(
         vela_native_function_desc_optional_bonus(),
         NativeFunctionDesc::new("game::optional_bonus", function_id("game::optional_bonus"))
-            .param("bonus", TypeHint::i64())
-            .returns(TypeHint::i64())
+            .param("bonus", TypeHint::Any)
+            .returns(TypeHint::Any)
             .effects(EffectSet::pure())
             .access(FunctionAccess::public().reflect_callable(true))
             .docs("Applies an optional copied bonus."),

@@ -275,7 +275,7 @@ fn script_function_registers_typed_f32_native_with_engine() {
         engine,
         r#"
 fn main() {
-    return game::scale_weight(2.0);
+    return game::scale_weight(2.0f32);
 }
 "#,
         "source should compile with macro registered f32 native"
@@ -283,7 +283,7 @@ fn main() {
 
     assert_eq!(
         run_linked_program(&engine, &program, &[]),
-        Ok(OwnedValue::Scalar(vela_common::ScalarValue::F64(3.0))),
+        Ok(OwnedValue::Scalar(vela_common::ScalarValue::F32(3.0))),
     );
 }
 
@@ -298,7 +298,6 @@ fn script_function_registers_typed_option_native_with_engine() {
         r#"
 fn main() {
     return game::optional_bonus(null) == null
-        && game::optional_bonus(4) == 5
         && game::optional_bonus(option::none()) == null
         && game::optional_bonus(option::some(8)) == 9;
 }

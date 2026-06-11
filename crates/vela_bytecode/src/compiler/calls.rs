@@ -5,7 +5,7 @@ use crate::{CallArgument, UnlinkedInstructionKind};
 use super::call_args::resolve_script_call_arguments;
 use super::methods::host_method_call;
 use super::record_shapes::{ValueShape, callback_param_shapes};
-use super::value_types::RuntimeTypeFact;
+use super::value_types::{RuntimeTypeFact, TypeContractContext, type_hint_value_type};
 use super::{CompileError, CompileErrorKind, CompileResult, Compiler, reject_named_args};
 use vela_common::{Diagnostic, HostMethodId, Span};
 use vela_def::{DefPath, FunctionId, MethodId, TypeId};
@@ -413,12 +413,11 @@ impl Compiler<'_, '_> {
 
     fn compile_native_call_args(
         &mut self,
-        _name: &str,
+        name: &str,
         native: FunctionId,
         args: &[Argument],
         call_span: vela_common::Span,
     ) -> CompileResult<Vec<crate::Register>> {
-        let has_named_args = args.iter().any(|arg| arg.name.is_some());
         let registry_params = self
             .facts
             .registry
@@ -430,12 +429,6 @@ impl Compiler<'_, '_> {
                 .map(|arg| self.compile_expr(&arg.value))
                 .collect();
         };
-        if !has_named_args {
-            return args
-                .iter()
-                .map(|arg| self.compile_expr(&arg.value))
-                .collect();
-        }
         let params = params
             .iter()
             .map(|param| ParamHint {
@@ -448,7 +441,65 @@ impl Compiler<'_, '_> {
                 default_value_span: None,
             })
             .collect::<Vec<_>>();
-        self.compile_metadata_register_args(&params, args, call_span)
+        if !args.iter().any(|arg| arg.name.is_some()) {
+            return args
+                .iter()
+                .enumerate()
+                .map(|(index, arg)| {
+                    if let Some(param) = params.get(index) {
+                        self.compile_native_argument_for_param(
+                            name,
+                            u16::try_from(index).unwrap_or(u16::MAX),
+                            &arg.value,
+                            param,
+                        )
+                    } else {
+                        self.compile_expr(&arg.value)
+                    }
+                })
+                .collect();
+        }
+
+        let slots =
+            resolve_script_call_arguments(&params, args, call_span).map_err(|diagnostics| {
+                CompileError::new(CompileErrorKind::SemanticDiagnostics(diagnostics))
+            })?;
+
+        let mut registers = Vec::new();
+        for (index, (slot, param)) in slots.into_iter().zip(params.iter()).enumerate() {
+            if let Some(arg) = slot {
+                registers.push(self.compile_native_argument_for_param(
+                    name,
+                    u16::try_from(index).unwrap_or(u16::MAX),
+                    &arg.value,
+                    param,
+                )?);
+            } else {
+                unreachable!("native call argument resolver rejects missing required arguments");
+            }
+        }
+        Ok(registers)
+    }
+
+    fn compile_native_argument_for_param(
+        &mut self,
+        function: &str,
+        index: u16,
+        value: &Expr,
+        param: &ParamHint,
+    ) -> CompileResult<crate::Register> {
+        let Some(expected) = param.type_hint.as_ref().and_then(type_hint_value_type) else {
+            return self.compile_expr(value);
+        };
+        self.compile_expr_with_expected_type(
+            value,
+            expected,
+            TypeContractContext::NativeParameter {
+                function: function.to_owned(),
+                name: param.name.clone(),
+                index,
+            },
+        )
     }
 
     fn resolve_native_function_id(&self, name: &str, call_span: Span) -> CompileResult<FunctionId> {

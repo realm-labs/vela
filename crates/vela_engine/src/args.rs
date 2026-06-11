@@ -309,17 +309,16 @@ signed_from_arg!(i8, i16, i32, i64, u8, u16, u32);
 
 impl IntoScriptArg for f32 {
     fn into_script_arg(self) -> OwnedValue {
-        OwnedValue::f64(f64::from(self))
+        OwnedValue::Scalar(vela_common::ScalarValue::F32(self))
     }
 }
 
 impl FromScriptArg for f32 {
-    const TYPE_NAME: &'static str = "float";
+    const TYPE_NAME: &'static str = "f32";
 
     fn from_script_arg(value: &OwnedValue) -> VmResult<Self> {
         match value {
-            OwnedValue::Scalar(vela_common::ScalarValue::F64(value)) => f32_from_f64(*value),
-            OwnedValue::Scalar(vela_common::ScalarValue::I64(value)) => f32_from_f64(*value as f64),
+            OwnedValue::Scalar(vela_common::ScalarValue::F32(value)) => Ok(*value),
             _ => Err(type_mismatch(Self::TYPE_NAME)),
         }
     }
@@ -332,23 +331,14 @@ impl IntoScriptArg for f64 {
 }
 
 impl FromScriptArg for f64 {
-    const TYPE_NAME: &'static str = "float";
+    const TYPE_NAME: &'static str = "f64";
 
     fn from_script_arg(value: &OwnedValue) -> VmResult<Self> {
         match value {
             OwnedValue::Scalar(vela_common::ScalarValue::F64(value)) => Ok(*value),
-            OwnedValue::Scalar(vela_common::ScalarValue::I64(value)) => Ok(*value as f64),
             _ => Err(type_mismatch(Self::TYPE_NAME)),
         }
     }
-}
-
-fn f32_from_f64(value: f64) -> VmResult<f32> {
-    let converted = value as f32;
-    if value.is_finite() && !converted.is_finite() {
-        return Err(type_mismatch(<f32 as FromScriptArg>::TYPE_NAME));
-    }
-    Ok(converted)
 }
 
 impl IntoScriptArg for String {

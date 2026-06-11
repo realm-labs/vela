@@ -28,8 +28,8 @@ fn script_methods_generates_native_method_metadata() {
     assert_eq!(
         descs[2],
         NativeMethodDesc::new(owner.clone(), method_id("preview_bonus"), "preview_bonus")
-            .param("bonus", TypeHint::i64())
-            .returns(TypeHint::i64())
+            .param("bonus", TypeHint::Any)
+            .returns(TypeHint::Any)
             .effects(EffectSet::host_read())
             .access(FunctionAccess::public().reflect_callable(true))
             .docs("Previews an optional copied bonus through a callable native method."),

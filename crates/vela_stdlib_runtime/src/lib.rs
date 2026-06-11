@@ -39,6 +39,12 @@ pub enum StdFunctionImplementation {
     ResultFlatten,
     SetFromArray,
     BytesFromHex,
+    I64FromI32,
+    U64FromU32,
+    F64FromF32,
+    I8TryFromI64,
+    U8TryFromU64,
+    F32TryFromF64,
 }
 
 impl StdFunctionImplementation {
@@ -76,6 +82,12 @@ impl StdFunctionImplementation {
             (b"result", b"flatten") => Some(Self::ResultFlatten),
             (b"set", b"from_array") => Some(Self::SetFromArray),
             (b"bytes", b"from_hex") => Some(Self::BytesFromHex),
+            (b"i64", b"from_i32") => Some(Self::I64FromI32),
+            (b"u64", b"from_u32") => Some(Self::U64FromU32),
+            (b"f64", b"from_f32") => Some(Self::F64FromF32),
+            (b"i8", b"try_from_i64") => Some(Self::I8TryFromI64),
+            (b"u8", b"try_from_u64") => Some(Self::U8TryFromU64),
+            (b"f32", b"try_from_f64") => Some(Self::F32TryFromF64),
             _ => None,
         }
     }

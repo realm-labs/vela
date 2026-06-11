@@ -1463,18 +1463,28 @@ unless the implementation stays small.
 
 #### Task 8.1: Add explicit numeric conversion APIs
 
+Representative conversion slice implemented:
+
+- [x] `i64::from_i32`
+- [x] `u64::from_u32`
+- [x] `f64::from_f32`
+- [x] `i8::try_from_i64`
+- [x] `u8::try_from_u64`
+- [x] `f32::try_from_f64` with finite-range narrowing policy
+- [x] Current slice is manifest-driven and registered in stdlib runtime.
+
 - [ ] Add infallible widening where truly safe:
-  - [ ] `i64::from_i32`
-  - [ ] `u64::from_u32`
+  - [x] `i64::from_i32`
+  - [x] `u64::from_u32`
   - [ ] etc.
 - [ ] Add fallible narrowing:
-  - [ ] `i8::try_from_i64`
-  - [ ] `u8::try_from_u64`
+  - [x] `i8::try_from_i64`
+  - [x] `u8::try_from_u64`
   - [ ] etc.
 - [ ] Add float conversions:
-  - [ ] `f64::from_f32`
-  - [ ] `f32::try_from_f64` or explicit policy.
-- [ ] Do not add implicit conversion.
+  - [x] `f64::from_f32`
+  - [x] `f32::try_from_f64` or explicit policy.
+- [x] Do not add implicit conversion.
 
 **Termination condition:**
 

@@ -51,6 +51,7 @@ mod host_fields;
 mod host_methods;
 mod iteration;
 mod modules;
+mod numeric_conversions;
 mod owned_boundary;
 mod program_execution;
 mod records_enums;

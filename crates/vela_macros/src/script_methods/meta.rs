@@ -326,13 +326,17 @@ fn return_hint(output: &ReturnType) -> HintKind {
     match output {
         ReturnType::Default => HintKind::Primitive(PrimitiveTag::Null),
         ReturnType::Type(_, ty) => {
-            return_wrapper_inner_hint(ty).unwrap_or_else(|| hint_for_type(ty))
+            if wrapper_inner_type(ty, &["Option"]).is_some() {
+                HintKind::Any
+            } else {
+                return_wrapper_inner_hint(ty).unwrap_or_else(|| hint_for_type(ty))
+            }
         }
     }
 }
 
 fn return_wrapper_inner_hint(ty: &Type) -> Option<HintKind> {
-    wrapper_inner_type(ty, &["Option", "VmResult", "HostResult"]).map(hint_for_type)
+    wrapper_inner_type(ty, &["VmResult", "HostResult"]).map(hint_for_type)
 }
 
 fn hint_for_type(ty: &Type) -> HintKind {
@@ -342,8 +346,8 @@ fn hint_for_type(ty: &Type) -> HintKind {
     if matches!(ty, Type::Array(_)) {
         return HintKind::Array;
     }
-    if let Some(inner) = wrapper_inner_type(ty, &["Option"]) {
-        return hint_for_type(inner);
+    if wrapper_inner_type(ty, &["Option"]).is_some() {
+        return HintKind::Any;
     }
     match type_ident(ty).as_deref() {
         Some("bool") => HintKind::Primitive(PrimitiveTag::Bool),

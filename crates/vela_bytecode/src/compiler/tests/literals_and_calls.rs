@@ -323,6 +323,151 @@ fn main() {
 }
 
 #[test]
+fn compiler_contextualizes_positional_native_args_from_registry() {
+    let registry = vela_stdlib::standard_registry().expect("standard registry should build");
+    let program = compile_program_source_with_registry(
+        SourceId::new(1),
+        r#"
+fn main() {
+    return i64::from_i32(12);
+}
+"#,
+        registry.compile_view(),
+    )
+    .expect("positional native args should use registry type hints");
+    let main = program.function("main").expect("main function");
+
+    assert!(
+        main.constants
+            .contains(&Constant::Scalar(vela_common::ScalarValue::I32(12)))
+    );
+    assert!(main.instructions.iter().any(|instruction| matches!(
+        &instruction.kind,
+        UnlinkedInstructionKind::CallNative { name, args, .. }
+            if name == "i64::from_i32" && args.len() == 1
+    )));
+}
+
+#[test]
+fn compiler_rejects_static_native_arg_contract_mismatches() {
+    let registry = vela_stdlib::standard_registry().expect("standard registry should build");
+    let error = compile_program_source_with_registry(
+        SourceId::new(1),
+        r#"
+fn main() {
+    return i64::from_i32(12i64);
+}
+"#,
+        registry.compile_view(),
+    )
+    .expect_err("static native arg mismatch should fail before bytecode emission");
+
+    assert_eq!(
+        semantic_diagnostic_codes(error),
+        ["compiler::type_contract_mismatch"]
+    );
+}
+
+#[test]
+fn compiler_emits_dynamic_native_arg_contract_guards() {
+    let registry = vela_stdlib::standard_registry().expect("standard registry should build");
+    let program = compile_program_source_with_registry(
+        SourceId::new(1),
+        r#"
+fn main(value) {
+    return i64::from_i32(value);
+}
+"#,
+        registry.compile_view(),
+    )
+    .expect("dynamic native arg should compile with a runtime guard");
+    let main = program.function("main").expect("main function");
+    let guard = main
+        .instructions
+        .iter()
+        .find_map(|instruction| match &instruction.kind {
+            UnlinkedInstructionKind::GuardType { guard, .. } => Some(guard),
+            _ => None,
+        })
+        .expect("dynamic native arg should emit GuardType");
+
+    assert_eq!(
+        guard.plan,
+        UnlinkedTypeGuardPlan::Primitive(vela_common::PrimitiveTag::I32)
+    );
+    assert_eq!(
+        guard.context.location,
+        crate::GuardLocation::Parameter { index: 0 }
+    );
+}
+
+#[test]
+fn compiler_allows_extra_positional_native_args_after_known_prefix() {
+    let mut registry = vela_registry::DefinitionRegistry::new();
+    registry
+        .register_function(vela_registry::FunctionDef::new(
+            vela_def::DefPath::function("host", ["game"], "invoke"),
+            vela_registry::FunctionSignature::new(
+                [vela_registry::ParamDef::new("target", Some("i64"))],
+                None::<String>,
+            ),
+        ))
+        .expect("test native function should register");
+    let program = compile_program_source_with_registry(
+        SourceId::new(1),
+        r#"
+fn main() {
+    return game::invoke(1, "extra");
+}
+"#,
+        registry.compile_view(),
+    )
+    .expect("positional native calls may pass runtime variadic args after known params");
+    let main = program.function("main").expect("main function");
+
+    assert!(
+        main.constants
+            .contains(&Constant::Scalar(vela_common::ScalarValue::I64(1)))
+    );
+    assert!(main.instructions.iter().any(|instruction| matches!(
+        &instruction.kind,
+        UnlinkedInstructionKind::CallNative { name, args, .. }
+            if name == "game::invoke" && args.len() == 2
+    )));
+}
+
+#[test]
+fn compiler_allows_omitted_positional_native_prefix_args() {
+    let mut registry = vela_registry::DefinitionRegistry::new();
+    registry
+        .register_function(vela_registry::FunctionDef::new(
+            vela_def::DefPath::function("host", ["reflect"], "variants"),
+            vela_registry::FunctionSignature::new(
+                [vela_registry::ParamDef::new("target", None::<String>)],
+                None::<String>,
+            ),
+        ))
+        .expect("test native function should register");
+    let program = compile_program_source_with_registry(
+        SourceId::new(1),
+        r#"
+fn main() {
+    return reflect::variants();
+}
+"#,
+        registry.compile_view(),
+    )
+    .expect("positional native prefix params may be optional at runtime");
+    let main = program.function("main").expect("main function");
+
+    assert!(main.instructions.iter().any(|instruction| matches!(
+        &instruction.kind,
+        UnlinkedInstructionKind::CallNative { name, args, .. }
+            if name == "reflect::variants" && args.is_empty()
+    )));
+}
+
+#[test]
 fn compiler_reports_unresolved_native_from_registry() {
     let registry = vela_registry::DefinitionRegistry::new();
     let error = compile_program_source_with_options_and_registry(

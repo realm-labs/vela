@@ -69,6 +69,7 @@ fn main(ctx: Context, player: Player) {
     let result_module = reflect::module("result");
     let set_module = reflect::module("set");
     let bytes_module = reflect::module("bytes");
+    let i64_module = reflect::module("i64");
     let reward_function = reflect::function("game::reward::grant");
     let main_function = reflect::function("main");
     let time_now = reflect::function("time::now");
@@ -80,6 +81,7 @@ fn main(ctx: Context, player: Player) {
     let result_ok = reflect::function("result::ok");
     let set_from_array = reflect::function("set::from_array");
     let bytes_from_hex = reflect::function("bytes::from_hex");
+    let i64_from_i32 = reflect::function("i64::from_i32");
     let reward_params = reflect::params(reward_function);
     let main_params = reflect::params(main_function);
     let math_max_params = reflect::params(math_max);
@@ -87,6 +89,7 @@ fn main(ctx: Context, player: Player) {
     let result_ok_params = reflect::params(result_ok);
     let set_from_array_params = reflect::params(set_from_array);
     let bytes_from_hex_params = reflect::params(bytes_from_hex);
+    let i64_from_i32_params = reflect::params(i64_from_i32);
     let reward_access = reflect::access(reward_function);
     let reward_attrs = reflect::attrs(reward_module);
     let reward_effects = reflect::effects(reward_function);
@@ -124,6 +127,7 @@ fn main(ctx: Context, player: Player) {
     let result_exports = reflect::exports(result_module);
     let set_exports = reflect::exports(set_module);
     let bytes_exports = reflect::exports(bytes_module);
+    let i64_exports = reflect::exports(i64_module);
     let permissions = reflect::permissions();
     let player_type_of = reflect::type_of(player);
 
@@ -324,6 +328,7 @@ fn main(ctx: Context, player: Player) {
         && reflect::has_module("result")
         && reflect::has_module("set")
         && reflect::has_module("bytes")
+        && reflect::has_module("i64")
         && !reflect::has_module("game::missing")
         && reflect::has_function("math::random")
         && reflect::name(reward_module) == "game::reward"
@@ -359,7 +364,11 @@ fn main(ctx: Context, player: Player) {
         && reflect::kind(bytes_module) == "module"
         && reflect::docs(bytes_module) == "Bytes standard-library conversion helpers."
         && reflect::attr(bytes_module, "stdlib") == "bytes"
-        && modules.len() == 7
+        && reflect::name(i64_module) == "i64"
+        && reflect::kind(i64_module) == "module"
+        && reflect::docs(i64_module) == "i64 primitive conversion helpers."
+        && reflect::attr(i64_module, "stdlib") == "i64"
+        && modules.len() == 13
         && reflect::has_function("game::reward::grant")
         && reflect::has_function("main")
         && reflect::has_function("time::now")
@@ -371,6 +380,7 @@ fn main(ctx: Context, player: Player) {
         && reflect::has_function("result::ok")
         && reflect::has_function("set::from_array")
         && reflect::has_function("bytes::from_hex")
+        && reflect::has_function("i64::from_i32")
         && !reflect::has_function("game::reward::missing")
         && reflect::name(reward_function) == "game::reward::grant"
         && reflect::kind(reward_function) == "function"
@@ -437,6 +447,8 @@ fn main(ctx: Context, player: Player) {
         && set_exports.contains("set::from_array")
         && bytes_exports.len() == 1
         && bytes_exports.contains("bytes::from_hex")
+        && i64_exports.len() == 1
+        && i64_exports.contains("i64::from_i32")
         && reflect::name(option_some) == "option::some"
         && reflect::kind(option_some) == "function"
         && reflect::origin(option_some) == "host"
@@ -470,6 +482,14 @@ fn main(ctx: Context, player: Player) {
         && bytes_from_hex_params.len() == 1
         && bytes_from_hex_params[0].name == "text"
         && bytes_from_hex_params[0].type == "string"
+        && reflect::name(i64_from_i32) == "i64::from_i32"
+        && reflect::kind(i64_from_i32) == "function"
+        && reflect::origin(i64_from_i32) == "host"
+        && reflect::attr(i64_from_i32, "stdlib") == "i64"
+        && reflect::returns(i64_from_i32) == "i64"
+        && i64_from_i32_params.len() == 1
+        && i64_from_i32_params[0].name == "value"
+        && i64_from_i32_params[0].type == "i32"
         && reflect::name(time_now) == "time::now"
         && reflect::name(time_tick) == "time::tick"
         && reflect::name(time_elapsed) == "time::elapsed_since"
@@ -523,7 +543,7 @@ fn main(ctx: Context, player: Player) {
         && ctx_log_params[0].name == "level"
         && ctx_log_params[1].name == "message"
         && ctx_log_params[2].defaulted
-        && functions.len() == 37
+        && functions.len() == 43
         && functions.any(|function| reflect::id(function) == reflect::id(reward_function))
         && functions.any(|function| reflect::name(function) == "main"
             && reflect::origin(function) == "script")
@@ -540,7 +560,9 @@ fn main(ctx: Context, player: Player) {
         && functions.any(|function| reflect::name(function) == "set::from_array"
             && reflect::attr(function, "stdlib") == "set")
         && functions.any(|function| reflect::name(function) == "bytes::from_hex"
-            && reflect::attr(function, "stdlib") == "bytes") {
+            && reflect::attr(function, "stdlib") == "bytes")
+        && functions.any(|function| reflect::name(function) == "i64::from_i32"
+            && reflect::attr(function, "stdlib") == "i64") {
         reflect::set(player, "level", 12);
         reflect::call(ctx, "emit", "reflect::player", reflect::get(player, "level"), fields.len());
         let metadata_score = reflect::get(player, "level") + fields.len() + reward_params.len();

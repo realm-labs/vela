@@ -308,8 +308,8 @@ fn typed_native_functions_accept_f32_values() {
     let engine = Engine::builder()
         .register_typed_native_fn::<(f32,), _>(
             NativeFunctionDesc::new("game::scale_weight", NativeFunctionId::new(228))
-                .param("weight", TypeHint::f64())
-                .returns(TypeHint::f64()),
+                .param("weight", TypeHint::f32())
+                .returns(TypeHint::f32()),
             |weight: f32| weight * 2.0,
         )
         .build()
@@ -319,7 +319,7 @@ fn typed_native_functions_accept_f32_values() {
             SourceId::new(1),
             r#"
 fn main() {
-    return game::scale_weight(1.5);
+    return game::scale_weight(1.5f32);
 }
 "#,
         )
@@ -327,7 +327,7 @@ fn main() {
 
     assert_eq!(
         run_linked_program(&engine, &program, &[]),
-        Ok(OwnedValue::Scalar(vela_common::ScalarValue::F64(3.0))),
+        Ok(OwnedValue::Scalar(vela_common::ScalarValue::F32(3.0))),
     );
 }
 

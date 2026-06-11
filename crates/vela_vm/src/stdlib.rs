@@ -54,6 +54,12 @@ fn native_function(implementation: StdFunctionImplementation) -> StdNativeFuncti
         StdFunctionImplementation::ResultFlatten => crate::option_result::result_flatten,
         StdFunctionImplementation::SetFromArray => crate::set_methods::from_array,
         StdFunctionImplementation::BytesFromHex => crate::bytes_methods::from_hex,
+        StdFunctionImplementation::I64FromI32 => crate::numeric_conversions::i64_from_i32,
+        StdFunctionImplementation::U64FromU32 => crate::numeric_conversions::u64_from_u32,
+        StdFunctionImplementation::F64FromF32 => crate::numeric_conversions::f64_from_f32,
+        StdFunctionImplementation::I8TryFromI64 => crate::numeric_conversions::i8_try_from_i64,
+        StdFunctionImplementation::U8TryFromU64 => crate::numeric_conversions::u8_try_from_u64,
+        StdFunctionImplementation::F32TryFromF64 => crate::numeric_conversions::f32_try_from_f64,
     }
 }
 

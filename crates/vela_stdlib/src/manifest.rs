@@ -553,6 +553,48 @@ pub const STD_FUNCTIONS: &[StdFunctionSpec] = &[
         "Result",
         "Decodes hexadecimal text to bytes or returns an error string.",
     ),
+    StdFunctionSpec::new(
+        "i64",
+        "from_i32",
+        &[StdParamSpec::new("value", "i32")],
+        "i64",
+        "Widens an i32 value to i64.",
+    ),
+    StdFunctionSpec::new(
+        "u64",
+        "from_u32",
+        &[StdParamSpec::new("value", "u32")],
+        "u64",
+        "Widens a u32 value to u64.",
+    ),
+    StdFunctionSpec::new(
+        "f64",
+        "from_f32",
+        &[StdParamSpec::new("value", "f32")],
+        "f64",
+        "Widens an f32 value to f64.",
+    ),
+    StdFunctionSpec::new(
+        "i8",
+        "try_from_i64",
+        &[StdParamSpec::new("value", "i64")],
+        "Result",
+        "Narrows an i64 value to i8 or returns an error string.",
+    ),
+    StdFunctionSpec::new(
+        "u8",
+        "try_from_u64",
+        &[StdParamSpec::new("value", "u64")],
+        "Result",
+        "Narrows a u64 value to u8 or returns an error string.",
+    ),
+    StdFunctionSpec::new(
+        "f32",
+        "try_from_f64",
+        &[StdParamSpec::new("value", "f64")],
+        "Result",
+        "Narrows a finite f64 value to f32 or returns an error string.",
+    ),
 ];
 
 #[cfg(test)]
@@ -570,7 +612,7 @@ mod tests {
         assert_eq!(STD_TYPES.len(), 22);
         assert_eq!(STD_VARIANTS.len(), 4);
         assert_eq!(STD_FIELDS.len(), 3);
-        assert_eq!(STD_FUNCTIONS.len(), 31);
+        assert_eq!(STD_FUNCTIONS.len(), 37);
         assert_eq!(STD_METHODS.len(), 120);
     }
 
@@ -590,6 +632,16 @@ mod tests {
             STD_FUNCTIONS
                 .iter()
                 .any(|spec| spec.module == "bytes" && spec.name == "from_hex")
+        );
+        assert!(
+            STD_FUNCTIONS
+                .iter()
+                .any(|spec| spec.module == "i64" && spec.name == "from_i32")
+        );
+        assert!(
+            STD_FUNCTIONS
+                .iter()
+                .any(|spec| spec.module == "i8" && spec.name == "try_from_i64")
         );
         assert!(
             STD_METHODS
