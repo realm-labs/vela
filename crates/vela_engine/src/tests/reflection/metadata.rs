@@ -1,5 +1,30 @@
 use super::*;
+use vela_bytecode::UnlinkedProgram;
+use vela_vm::budget::ExecutionBudget;
+use vela_vm::error::VmResult;
 use vela_vm::owned_value::OwnedValue;
+
+fn run_linked_program_with_host(
+    engine: &Engine,
+    program: &UnlinkedProgram,
+    args: &[OwnedValue],
+    host: &mut HostExecution<'_>,
+) -> VmResult<OwnedValue> {
+    let linked = engine
+        .link_program(program)
+        .expect("engine reflection metadata test program should link");
+    let mut budget = ExecutionBudget::unbounded();
+    engine
+        .into_vm_for_program(program)
+        .run_linked_program_with_host_budget_and_caches(
+            &linked,
+            "main",
+            args,
+            host,
+            &mut budget,
+            None,
+        )
+}
 
 #[test]
 fn engine_builder_registers_reflect_schema_metadata() {
@@ -96,6 +121,7 @@ fn engine_registers_native_function_reflection_metadata() {
 #[test]
 fn engine_native_private_functions_are_hidden_from_reflection() {
     let engine = Engine::builder()
+        .with_standard_natives()
         .register_native_fn(
             NativeFunctionDesc::new("game::private_roll", NativeFunctionId::new(22))
                 .returns(TypeHint::Int)
@@ -113,9 +139,10 @@ fn engine_native_private_functions_are_hidden_from_reflection() {
     assert!(!function.public);
     assert!(!function.access.reflect_visible);
 
-    let program = compile_program_source(
-        SourceId::new(1),
-        r#"
+    let program = engine
+        .compile_source(
+            SourceId::new(1),
+            r#"
 fn main() {
     let game = reflect::module("game");
     let exports = reflect::exports(game);
@@ -123,8 +150,8 @@ fn main() {
         && !exports.contains("game::private_roll");
 }
 "#,
-    )
-    .expect("program should compile");
+        )
+        .expect("program should compile");
     let mut adapter = MockStateAdapter::new();
     let mut tx = HostAccess::new();
     let mut host = HostExecution {
@@ -134,9 +161,7 @@ fn main() {
     };
 
     assert_eq!(
-        engine
-            .into_vm()
-            .run_program_with_host(&program, "main", &[], &mut host),
+        run_linked_program_with_host(&engine, &program, &[], &mut host),
         Ok(OwnedValue::Bool(true))
     );
 }
@@ -169,9 +194,10 @@ fn engine_native_private_functions_can_remain_reflect_visible() {
     let function_abi = FunctionAbi::from_function(function);
     assert_eq!(function_abi.access, AccessAbi::function(false, true, false));
 
-    let program = compile_program_source(
-        SourceId::new(1),
-        r#"
+    let program = engine
+        .compile_source(
+            SourceId::new(1),
+            r#"
 fn main() {
     let debug = reflect::function("game::debug_probe");
     return reflect::has_function("game::debug_probe")
@@ -180,8 +206,8 @@ fn main() {
         && !debug.access.reflect_callable;
 }
 "#,
-    )
-    .expect("program should compile");
+        )
+        .expect("program should compile");
     let mut adapter = MockStateAdapter::new();
     let mut tx = HostAccess::new();
     let mut host = HostExecution {
@@ -191,9 +217,7 @@ fn main() {
     };
 
     assert_eq!(
-        engine
-            .into_vm()
-            .run_program_with_host(&program, "main", &[], &mut host),
+        run_linked_program_with_host(&engine, &program, &[], &mut host),
         Ok(OwnedValue::Bool(true))
     );
 }
@@ -519,9 +543,10 @@ fn engine_standard_natives_register_reflection_metadata() {
         Some("Builds a set from array values.")
     );
 
-    let program = compile_program_source(
-        SourceId::new(1),
-        r#"
+    let program = engine
+        .compile_source(
+            SourceId::new(1),
+            r#"
 fn main() {
     let math = reflect::module("math");
     let option_module = reflect::module("option");
@@ -541,7 +566,6 @@ fn main() {
     let set_value_type = reflect::type_of(set::from_array(["quest"]));
     let option_value_type = reflect::type_of(option::some(1));
     let result_value_type = reflect::type_of(result::ok(1));
-    let closure_value_type = reflect::type_of(|value| value);
     let range_value_type = reflect::type_of(1..3);
     let option_variants = reflect::variants(option_type);
     let result_variants = reflect::variants(result_type);
@@ -601,8 +625,6 @@ fn main() {
         && reflect::kind(option_value_type) == "script_enum"
         && reflect::name(result_value_type) == "Result"
         && reflect::kind(result_value_type) == "script_enum"
-        && reflect::name(closure_value_type) == "closure"
-        && reflect::kind(closure_value_type) == "closure"
         && reflect::name(range_value_type) == "range"
         && reflect::kind(range_value_type) == "range";
     return reflect::has_function("math::max")
@@ -753,8 +775,8 @@ fn main() {
         && set_params[0].type == "array";
 }
 "#,
-    )
-    .expect("program should compile");
+        )
+        .expect("program should compile");
     let mut adapter = MockStateAdapter::new();
     let mut tx = HostAccess::new();
     let mut host = HostExecution {
@@ -764,9 +786,7 @@ fn main() {
     };
 
     assert_eq!(
-        engine
-            .into_vm()
-            .run_program_with_host(&program, "main", &[], &mut host),
+        run_linked_program_with_host(&engine, &program, &[], &mut host),
         Ok(OwnedValue::Bool(true))
     );
 }

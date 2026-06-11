@@ -1,4 +1,3 @@
-use vela_bytecode::compiler::compile_program_source;
 use vela_common::{HostMethodId, HostObjectId, HostTypeId, SourceId, Span};
 use vela_def::{FieldId, TypeId};
 use vela_host::access::HostAccess;

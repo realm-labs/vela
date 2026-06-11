@@ -499,21 +499,19 @@ fn native_call_shape(
         ("reflect", "effects") => Some(reflect_effects_record_shape()),
         ("reflect", "field") => Some(reflect_field_record_shape()),
         ("reflect", "fields") => Some(ValueShape::Array(Box::new(reflect_field_record_shape()))),
+        ("reflect", "function") => Some(reflect_function_record_shape()),
         ("reflect", "functions") => {
             Some(ValueShape::Array(Box::new(reflect_function_record_shape())))
         }
         ("reflect", "method") => Some(reflect_method_record_shape()),
         ("reflect", "methods") => Some(ValueShape::Array(Box::new(reflect_method_record_shape()))),
+        ("reflect", "params") => Some(ValueShape::Array(Box::new(reflect_param_record_shape()))),
+        ("reflect", "variants") => {
+            Some(ValueShape::Array(Box::new(reflect_variant_record_shape())))
+        }
         (
             "reflect",
-            "exports"
-            | "modules"
-            | "params"
-            | "permissions"
-            | "required_permissions"
-            | "traits"
-            | "types"
-            | "variants",
+            "exports" | "modules" | "permissions" | "required_permissions" | "traits" | "types",
         ) => Some(ValueShape::Array(Box::new(ValueShape::Unknown))),
         _ => None,
     }
@@ -563,7 +561,7 @@ fn reflect_effects_record_shape() -> ValueShape {
 
 fn reflect_field_record_shape() -> ValueShape {
     ValueShape::Record(RecordShape::from_field_shapes([
-        ("access".to_owned(), ValueShape::Unknown),
+        ("access".to_owned(), reflect_field_access_record_shape()),
         (
             "attrs".to_owned(),
             ValueShape::Map {
@@ -586,9 +584,28 @@ fn reflect_field_record_shape() -> ValueShape {
     ]))
 }
 
+fn reflect_field_access_record_shape() -> ValueShape {
+    ValueShape::Record(RecordShape::from_field_shapes([
+        ("readable".to_owned(), ValueShape::Scalar("bool".to_owned())),
+        (
+            "reflect_readable".to_owned(),
+            ValueShape::Scalar("bool".to_owned()),
+        ),
+        (
+            "reflect_writable".to_owned(),
+            ValueShape::Scalar("bool".to_owned()),
+        ),
+        (
+            "required_permissions".to_owned(),
+            ValueShape::Array(Box::new(ValueShape::Scalar("string".to_owned()))),
+        ),
+        ("writable".to_owned(), ValueShape::Scalar("bool".to_owned())),
+    ]))
+}
+
 fn reflect_function_record_shape() -> ValueShape {
     ValueShape::Record(RecordShape::from_field_shapes([
-        ("access".to_owned(), ValueShape::Unknown),
+        ("access".to_owned(), reflect_function_access_record_shape()),
         (
             "attrs".to_owned(),
             ValueShape::Map {
@@ -604,17 +621,36 @@ fn reflect_function_record_shape() -> ValueShape {
         ("origin".to_owned(), ValueShape::Scalar("string".to_owned())),
         (
             "params".to_owned(),
-            ValueShape::Array(Box::new(ValueShape::Unknown)),
+            ValueShape::Array(Box::new(reflect_param_record_shape())),
         ),
+        ("public".to_owned(), ValueShape::Scalar("bool".to_owned())),
         ("return".to_owned(), ValueShape::Unknown),
         ("returns".to_owned(), ValueShape::Unknown),
         ("source_span".to_owned(), ValueShape::Unknown),
     ]))
 }
 
+fn reflect_function_access_record_shape() -> ValueShape {
+    ValueShape::Record(RecordShape::from_field_shapes([
+        ("public".to_owned(), ValueShape::Scalar("bool".to_owned())),
+        (
+            "reflect_callable".to_owned(),
+            ValueShape::Scalar("bool".to_owned()),
+        ),
+        (
+            "reflect_visible".to_owned(),
+            ValueShape::Scalar("bool".to_owned()),
+        ),
+        (
+            "required_permissions".to_owned(),
+            ValueShape::Array(Box::new(ValueShape::Scalar("string".to_owned()))),
+        ),
+    ]))
+}
+
 fn reflect_method_record_shape() -> ValueShape {
     ValueShape::Record(RecordShape::from_field_shapes([
-        ("access".to_owned(), ValueShape::Unknown),
+        ("access".to_owned(), reflect_method_access_record_shape()),
         (
             "attrs".to_owned(),
             ValueShape::Map {
@@ -630,10 +666,57 @@ fn reflect_method_record_shape() -> ValueShape {
         ("owner".to_owned(), ValueShape::Scalar("string".to_owned())),
         (
             "params".to_owned(),
-            ValueShape::Array(Box::new(ValueShape::Unknown)),
+            ValueShape::Array(Box::new(reflect_param_record_shape())),
         ),
         ("return".to_owned(), ValueShape::Unknown),
         ("returns".to_owned(), ValueShape::Unknown),
+        ("source_span".to_owned(), ValueShape::Unknown),
+    ]))
+}
+
+fn reflect_method_access_record_shape() -> ValueShape {
+    ValueShape::Record(RecordShape::from_field_shapes([
+        ("public".to_owned(), ValueShape::Scalar("bool".to_owned())),
+        (
+            "reflect_callable".to_owned(),
+            ValueShape::Scalar("bool".to_owned()),
+        ),
+        (
+            "required_permissions".to_owned(),
+            ValueShape::Array(Box::new(ValueShape::Scalar("string".to_owned()))),
+        ),
+    ]))
+}
+
+fn reflect_param_record_shape() -> ValueShape {
+    ValueShape::Record(RecordShape::from_field_shapes([
+        (
+            "defaulted".to_owned(),
+            ValueShape::Scalar("bool".to_owned()),
+        ),
+        ("name".to_owned(), ValueShape::Scalar("string".to_owned())),
+        ("type".to_owned(), ValueShape::Unknown),
+    ]))
+}
+
+fn reflect_variant_record_shape() -> ValueShape {
+    ValueShape::Record(RecordShape::from_field_shapes([
+        (
+            "attrs".to_owned(),
+            ValueShape::Map {
+                key: Box::new(ValueShape::Scalar("string".to_owned())),
+                value: Box::new(ValueShape::Unknown),
+            },
+        ),
+        ("docs".to_owned(), ValueShape::Unknown),
+        (
+            "fields".to_owned(),
+            ValueShape::Array(Box::new(reflect_field_record_shape())),
+        ),
+        ("id".to_owned(), ValueShape::Scalar("int".to_owned())),
+        ("name".to_owned(), ValueShape::Scalar("string".to_owned())),
+        ("origin".to_owned(), ValueShape::Scalar("string".to_owned())),
+        ("owner".to_owned(), ValueShape::Scalar("string".to_owned())),
         ("source_span".to_owned(), ValueShape::Unknown),
     ]))
 }

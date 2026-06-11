@@ -509,8 +509,10 @@ fn compiler_lowers_value_method_ids_after_reflection_metadata_collections() {
         ("functions", &[]),
         ("effects", &["target"]),
         ("fields", &["target"]),
+        ("params", &["target"]),
         ("methods", &["target"]),
         ("method", &["target", "name"]),
+        ("variants", &["target"]),
     ] {
         registry
             .register_function(vela_registry::FunctionDef::new(
@@ -529,17 +531,30 @@ fn compiler_lowers_value_method_ids_after_reflection_metadata_collections() {
         r#"
 fn main() {
     let target = reflect::type_info("Context");
+    let option_type = reflect::type_info("Option");
     let fields = reflect::fields(target);
     let methods = reflect::methods(target);
     let functions = reflect::functions();
+    let variants = reflect::variants(option_type);
     let emit = reflect::method(target, "emit");
     let random = reflect::function("math::random");
+    let random_params = reflect::params(random);
     let effects = reflect::effects(random);
     return fields.len() > 0
         && methods.len() > 0
         && fields[0].name.len() > 0
+        && fields[0].access.reflect_readable
         && functions[0].name.len() > 0
+        && random.public
+        && random.access.reflect_visible
+        && random.access.required_permissions.len() == 0
+        && random_params.len() == 0
         && emit.owner.len() > 0
+        && emit.access.reflect_callable
+        && emit.params[0].name.len() > 0
+        && emit.params[0].defaulted == false
+        && variants[0].name.len() > 0
+        && variants[0].fields[0].name.len() > 0
         && effects.uses_random
         && !effects.reads_host;
 }
@@ -561,6 +576,12 @@ fn main() {
     assert!(methods.iter().any(|method| method == "len"));
     assert!(record_fields.contains(&"name"));
     assert!(record_fields.contains(&"owner"));
+    assert!(record_fields.contains(&"public"));
+    assert!(record_fields.contains(&"reflect_callable"));
+    assert!(record_fields.contains(&"reflect_readable"));
+    assert!(record_fields.contains(&"reflect_visible"));
+    assert!(record_fields.contains(&"required_permissions"));
+    assert!(record_fields.contains(&"defaulted"));
     assert!(record_fields.contains(&"uses_random"));
     assert!(record_fields.contains(&"reads_host"));
 }
