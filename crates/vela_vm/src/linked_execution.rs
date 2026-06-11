@@ -497,24 +497,14 @@ impl Vm {
                     )?;
                 }
                 InstructionKind::MakeMap { dst, entries } => {
-                    let entries = entries
-                        .iter()
-                        .map(|(key, register)| {
-                            let Some(Constant::String(key)) = code.constants.get(key.0) else {
-                                return Err(VmError::new(VmErrorKind::ConstantOutOfBounds {
-                                    constant: key.0,
-                                })
-                                .with_source_span(instruction.span));
-                            };
-                            Ok((key.clone(), *register))
-                        })
-                        .collect::<VmResult<Vec<_>>>()?;
-                    script_aggregate_construction::make_map(
+                    script_aggregate_construction::make_linked_map(
                         &mut frame,
                         heap.as_deref_mut(),
                         budget.as_deref_mut(),
                         *dst,
-                        &entries,
+                        code,
+                        entries,
+                        instruction.span,
                     )?;
                 }
                 InstructionKind::MakeRange {

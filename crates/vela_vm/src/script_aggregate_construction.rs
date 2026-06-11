@@ -5,7 +5,8 @@ use crate::{
     CallFrame, ExecutionBudget, HeapExecution, SmallStorage, Value, VmError, VmErrorKind, VmResult,
     allocate_heap_value, expect_int, store_runtime_value,
 };
-use vela_bytecode::Register;
+use vela_bytecode::{Constant, ConstantId, LinkedCodeObject, Register};
+use vela_common::Span;
 
 pub(crate) fn make_array(
     frame: &mut CallFrame,
@@ -37,6 +38,32 @@ pub(crate) fn make_map(
         }));
     };
     let slots = runtime_map_from_registers(frame, entries, heap, budget_ref(&mut budget))?;
+    let value = allocate_heap_value(HeapValue::Map(slots), heap, budget_ref(&mut budget))?;
+    frame.write(dst, value)
+}
+
+pub(crate) fn make_linked_map(
+    frame: &mut CallFrame,
+    heap: Option<&mut HeapExecution<'_>>,
+    mut budget: Option<&mut ExecutionBudget>,
+    dst: Register,
+    code: &LinkedCodeObject,
+    entries: &[(ConstantId, Register)],
+    source_span: Option<Span>,
+) -> VmResult<()> {
+    let Some(heap) = heap else {
+        return Err(VmError::new(VmErrorKind::TypeMismatch {
+            operation: "map heap",
+        }));
+    };
+    let slots = runtime_linked_map_from_registers(
+        frame,
+        code,
+        entries,
+        source_span,
+        heap,
+        budget_ref(&mut budget),
+    )?;
     let value = allocate_heap_value(HeapValue::Map(slots), heap, budget_ref(&mut budget))?;
     frame.write(dst, value)
 }
@@ -88,6 +115,31 @@ fn runtime_map_from_registers(
     entries
         .iter()
         .map(|(key, register)| {
+            Ok((
+                key.clone(),
+                store_runtime_value(frame.read(*register)?, heap, budget.as_deref_mut())?,
+            ))
+        })
+        .collect()
+}
+
+fn runtime_linked_map_from_registers(
+    frame: &CallFrame,
+    code: &LinkedCodeObject,
+    entries: &[(ConstantId, Register)],
+    source_span: Option<Span>,
+    heap: &mut HeapExecution<'_>,
+    mut budget: Option<&mut ExecutionBudget>,
+) -> VmResult<BTreeMap<String, Value>> {
+    entries
+        .iter()
+        .map(|(key, register)| {
+            let Some(Constant::String(key)) = code.constants.get(key.0) else {
+                return Err(
+                    VmError::new(VmErrorKind::ConstantOutOfBounds { constant: key.0 })
+                        .with_source_span_if_absent(source_span),
+                );
+            };
             Ok((
                 key.clone(),
                 store_runtime_value(frame.read(*register)?, heap, budget.as_deref_mut())?,
