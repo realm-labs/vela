@@ -13,6 +13,7 @@ pub(crate) struct LinkedExecutionCall<'a> {
     pub(crate) call_site: Option<Span>,
     pub(crate) call_site_offset: Option<InstructionOffset>,
     pub(crate) inline_caches: Option<&'a dyn VmInlineCaches>,
+    pub(crate) bytecode_profiler: Option<&'a dyn VmBytecodeProfiler>,
 }
 
 impl LinkedExecutionCall<'_> {
@@ -156,6 +157,9 @@ impl Vm {
             let instruction = &code.instructions[ip];
             if let Some(budget) = budget.as_deref_mut() {
                 budget.charge_instruction()?;
+            }
+            if let Some(profiler) = call.bytecode_profiler {
+                profiler.record_instruction(code.debug_name, instruction_offset);
             }
             ip = ip.saturating_add(1);
 
@@ -348,6 +352,7 @@ impl Vm {
                             inline_caches: call.inline_caches,
                             call_site: instruction.span,
                             call_site_offset: Some(instruction_offset),
+                            bytecode_profiler: call.bytecode_profiler,
                         },
                         &mut host,
                         &mut heap,
@@ -387,6 +392,7 @@ impl Vm {
                             inline_caches: call.inline_caches,
                             call_site: instruction.span,
                             call_site_offset: instruction_offset,
+                            bytecode_profiler: call.bytecode_profiler,
                         },
                         &mut host,
                         &mut heap,
@@ -414,6 +420,7 @@ impl Vm {
                             inline_caches: call.inline_caches,
                             call_site: instruction.span,
                             call_site_offset: Some(instruction_offset),
+                            bytecode_profiler: call.bytecode_profiler,
                         },
                         &mut host,
                         &mut heap,

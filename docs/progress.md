@@ -75,7 +75,7 @@ Cranelift JIT.
 | M18 | Complete enough | Quick and full/default baseline captures exist with environment metadata and checksums. |
 | M19 | Complete enough | Non-JIT interpreter and heap optimization has a recorded exit checkpoint. Accepted work includes GC pacing, direct heap aggregate construction, argument materialization/storage cleanup, borrowed receiver/runtime views, stdlib collection/string/Option/Result fast paths, scalar/equality/constant/peephole/range-loop lowering, small script-field and short-array construction, and expanded benchmark coverage. Remaining Lua 5.x deltas are measured and belong to M20 cache/specialization families rather than more unguarded M19 micro-optimization. |
 | M19.5 | Active | Primitive scalar, bytes, type-hint contract, and guard-plan checklist is complete and fully validated; remaining transition work is M20 cache-entry prep around measured dispatch/cache gaps. |
-| M20 | Active | First script record field read/write cache entries are guarded by record type, shape, and slot; host field/path, method dispatch, stdlib method, and hot bytecode offset profiling caches remain. |
+| M20 | Active | First script record field read/write cache entries are guarded by record type, shape, and slot, and runtime bytecode offset counters are scoped to the active image; host field/path, method dispatch, and stdlib method caches remain. |
 | M21 | Not started | Debugger runtime hooks and DAP integration follow stable runtime/tooling contracts. |
 | M22 | Not started | Cranelift JIT follows interpreter/cache/debugger/conformance stability. |
 | M23 | Not started | Release hardening, public docs, validation gates, and performance targets. |
@@ -233,7 +233,9 @@ Cranelift JIT.
   function and rebuilds that sidecar when hot reload creates a new version, so
   future counters, cache state, or JIT decisions can be version-scoped and
   invalidated with the version; rejected reloads keep the previous version
-  profile unchanged.
+  profile unchanged. Runtime-owned bytecode profile counters now record linked
+  instruction-offset hits through nested script, method, closure, and callback
+  calls, and accepted hot reload resets the counter sidecar for the new image.
   The VM now has linked-program execution for scalar, comparison, branch,
   return, budget-charged instructions, script/native/value/script-method calls,
   array/map/range/index/iterator/global/host operations, and record slot
@@ -350,8 +352,9 @@ Cranelift JIT.
     from later JIT work;
   - verified-bytecode and runtime tests cover the invariants needed by later
     unchecked register, operand, and cache fast paths;
-  - ProgramVersion-owned profile metadata covers hot bytecode offsets and has
-    hot-reload/schema invalidation tests;
+  - runtime bytecode offset counters cover linked hot offsets and hot-reload
+    invalidation; follow-on M20 work still needs cache-enabled benchmark rows
+    that consume those counters;
   - interpreter-only benchmark rows identify which remaining costs belong to
     M20 cache work versus later JIT work.
 - M20: continue guarded inline caches and specialization for host field/path

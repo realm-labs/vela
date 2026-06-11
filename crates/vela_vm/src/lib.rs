@@ -82,8 +82,8 @@ use small_storage::SmallStorage;
 #[cfg(test)]
 use vela_bytecode::UnlinkedProgram;
 use vela_bytecode::{
-    CacheSiteId, FieldSlot, HostTargetPlanId, InstructionOffset, LinkedCodeObject, LinkedProgram,
-    Register, UnlinkedCodeObject, UnlinkedInstructionKind, UnlinkedProgramCode,
+    CacheSiteId, DebugNameId, FieldSlot, HostTargetPlanId, InstructionOffset, LinkedCodeObject,
+    LinkedProgram, Register, UnlinkedCodeObject, UnlinkedInstructionKind, UnlinkedProgramCode,
 };
 use vela_common::{GlobalSlot, HostTypeId, ShapeId, Span};
 use vela_def::{DefPath, FunctionId, TypeId};
@@ -248,6 +248,10 @@ pub trait VmInlineCaches {
     fn set_record_field(&self, _site: CacheSiteId, _entry: RecordFieldInlineCacheEntry) {}
 }
 
+pub trait VmBytecodeProfiler {
+    fn record_instruction(&self, _function: DebugNameId, _offset: InstructionOffset) {}
+}
+
 pub(crate) fn validate_inline_cache_layout(
     inline_caches: Option<&dyn VmInlineCaches>,
     required: usize,
@@ -289,6 +293,7 @@ pub struct LinkedRuntimeCodeCall<'program, 'args, 'host, 'heap, 'roots, 'budget,
     pub persistent: PersistentHeapExecution<'heap, 'roots>,
     pub budget: &'budget mut ExecutionBudget,
     pub inline_caches: Option<&'caches dyn VmInlineCaches>,
+    pub bytecode_profiler: Option<&'caches dyn VmBytecodeProfiler>,
 }
 
 pub struct LinkedProgramHostCall<'program, 'entry, 'args, 'host, 'heap, 'roots, 'budget, 'caches> {
@@ -299,6 +304,17 @@ pub struct LinkedProgramHostCall<'program, 'entry, 'args, 'host, 'heap, 'roots, 
     pub persistent: PersistentHeapExecution<'heap, 'roots>,
     pub budget: &'budget mut ExecutionBudget,
     pub inline_caches: Option<&'caches dyn VmInlineCaches>,
+    pub bytecode_profiler: Option<&'caches dyn VmBytecodeProfiler>,
+}
+
+pub struct LinkedProgramHostBudgetCall<'program, 'entry, 'args, 'host, 'budget, 'caches> {
+    pub program: &'program LinkedProgram,
+    pub entry: &'entry str,
+    pub args: &'args [OwnedValue],
+    pub host: &'host mut HostExecution<'host>,
+    pub budget: &'budget mut ExecutionBudget,
+    pub inline_caches: Option<&'caches dyn VmInlineCaches>,
+    pub bytecode_profiler: Option<&'caches dyn VmBytecodeProfiler>,
 }
 
 impl Vm {
@@ -461,6 +477,7 @@ impl Vm {
                 call_site: None,
                 call_site_offset: None,
                 inline_caches: None,
+                bytecode_profiler: None,
             },
             None,
             Some(&mut heap_execution),
@@ -488,6 +505,7 @@ impl Vm {
                 call_site: None,
                 call_site_offset: None,
                 inline_caches: None,
+                bytecode_profiler: None,
             },
             None,
             Some(heap),
@@ -518,12 +536,40 @@ impl Vm {
                 call_site: None,
                 call_site_offset: None,
                 inline_caches,
+                bytecode_profiler: None,
             },
             Some(host),
             Some(&mut heap_execution),
             Some(budget),
         );
         owned_heap_result(result, &mut heap_execution, budget)
+    }
+
+    pub fn run_linked_program_host_budget_call(
+        &self,
+        call: LinkedProgramHostBudgetCall<'_, '_, '_, '_, '_, '_>,
+    ) -> VmResult<OwnedValue> {
+        let code = linked_program_entry(call.program, call.entry)?;
+        let mut heap = ScriptHeap::new();
+        let mut heap_execution = HeapExecution::new(&mut heap);
+        let args = owned_args_to_runtime(call.args, &mut heap_execution, Some(call.budget))?;
+        let result = self.execute_linked_call(
+            linked_execution::LinkedExecutionCall {
+                code,
+                program: call.program,
+                captures: &[],
+                args: &args,
+                check_param_guards: true,
+                call_site: None,
+                call_site_offset: None,
+                inline_caches: call.inline_caches,
+                bytecode_profiler: call.bytecode_profiler,
+            },
+            Some(call.host),
+            Some(&mut heap_execution),
+            Some(call.budget),
+        );
+        owned_heap_result(result, &mut heap_execution, call.budget)
     }
 
     pub fn run_linked_program_host_call(
@@ -544,6 +590,7 @@ impl Vm {
                 call_site: None,
                 call_site_offset: None,
                 inline_caches: call.inline_caches,
+                bytecode_profiler: call.bytecode_profiler,
             },
             Some(call.host),
             Some(&mut heap_execution),
@@ -578,6 +625,7 @@ impl Vm {
                 call_site: None,
                 call_site_offset: None,
                 inline_caches: call.inline_caches,
+                bytecode_profiler: call.bytecode_profiler,
             },
             Some(call.host),
             Some(&mut heap_execution),

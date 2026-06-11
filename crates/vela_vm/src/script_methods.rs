@@ -7,8 +7,8 @@ use crate::heap::{GcRef, HeapValue};
 use crate::script_builtin_methods;
 use crate::string_method_dispatch;
 use crate::{
-    ExecutionBudget, HeapExecution, HostExecution, SmallStorage, Value, Vm, VmError, VmErrorKind,
-    VmInlineCaches, VmResult,
+    ExecutionBudget, HeapExecution, HostExecution, SmallStorage, Value, Vm, VmBytecodeProfiler,
+    VmError, VmErrorKind, VmInlineCaches, VmResult,
 };
 
 pub(crate) struct ScriptMethodDispatch<'a, 'host, 'heap> {
@@ -20,6 +20,7 @@ pub(crate) struct ScriptMethodDispatch<'a, 'host, 'heap> {
     pub(crate) budget: Option<&'a mut ExecutionBudget>,
     pub(crate) caller_roots: Vec<GcRef>,
     pub(crate) inline_caches: Option<&'a dyn VmInlineCaches>,
+    pub(crate) bytecode_profiler: Option<&'a dyn VmBytecodeProfiler>,
 }
 
 pub(crate) fn call_method(
@@ -59,6 +60,7 @@ pub(crate) fn call_method(
             budget: dispatch.budget.as_deref_mut(),
             caller_roots: &dispatch.caller_roots,
             inline_caches: dispatch.inline_caches,
+            bytecode_profiler: dispatch.bytecode_profiler,
         };
         if let Some(result) =
             callback_method_dispatch::call(method, receiver, args, &mut callback_dispatch)
@@ -112,6 +114,7 @@ pub(crate) fn call_method_id(
             budget: dispatch.budget.as_deref_mut(),
             caller_roots: &dispatch.caller_roots,
             inline_caches: dispatch.inline_caches,
+            bytecode_profiler: dispatch.bytecode_profiler,
         };
         if let Some(result) =
             callback_method_dispatch::call_by_id(method_id, receiver, args, &mut callback_dispatch)
@@ -183,6 +186,7 @@ pub(crate) fn call_non_mutating_method(
             budget: dispatch.budget.as_deref_mut(),
             caller_roots: &dispatch.caller_roots,
             inline_caches: dispatch.inline_caches,
+            bytecode_profiler: dispatch.bytecode_profiler,
         };
         if let Some(result) =
             callback_method_dispatch::call(method, receiver, args, &mut callback_dispatch)

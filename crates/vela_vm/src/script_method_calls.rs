@@ -12,7 +12,9 @@ use crate::{
     CallFrame, ExecutionBudget, HeapExecution, HostExecution, SmallStorage, Value, Vm, VmResult,
     store_value_in_heap_if_needed,
 };
-use crate::{VmError, VmErrorKind, VmInlineCaches, host_access, script_function_calls};
+use crate::{
+    VmBytecodeProfiler, VmError, VmErrorKind, VmInlineCaches, host_access, script_function_calls,
+};
 
 use crate::script_methods::{
     ScriptMethodDispatch, call_method, call_method_id, call_non_mutating_method,
@@ -112,6 +114,7 @@ pub(crate) fn dispatch_script_method_call(
             budget: budget.as_deref_mut(),
             caller_roots,
             inline_caches: None,
+            bytecode_profiler: None,
         },
     ) {
         let result =
@@ -134,6 +137,7 @@ pub(crate) fn dispatch_script_method_call(
                 budget: budget.as_deref_mut(),
                 caller_roots,
                 inline_caches: None,
+                bytecode_profiler: None,
             },
         )?;
         let result =
@@ -229,6 +233,7 @@ pub(crate) fn dispatch_script_method_id_call(
             budget: budget.as_deref_mut(),
             caller_roots,
             inline_caches: None,
+            bytecode_profiler: None,
         },
     )?;
     let result = store_value_in_heap_if_needed(result, heap.as_deref_mut(), budget.as_deref_mut())?;
@@ -261,6 +266,7 @@ pub(crate) fn dispatch_linked_method_id_call(
             budget: budget.as_deref_mut(),
             caller_roots,
             inline_caches: context.inline_caches,
+            bytecode_profiler: context.bytecode_profiler,
         },
     )?;
     let result = store_value_in_heap_if_needed(result, heap.as_deref_mut(), budget.as_deref_mut())?;
@@ -272,11 +278,13 @@ pub(crate) fn dispatch_linked_method_id_call(
 pub(crate) struct LinkedMethodRuntimeContext<'a> {
     pub(crate) program: &'a LinkedProgram,
     pub(crate) inline_caches: Option<&'a dyn VmInlineCaches>,
+    pub(crate) bytecode_profiler: Option<&'a dyn VmBytecodeProfiler>,
 }
 
 pub(crate) struct LinkedScriptMethodCallContext<'a> {
     pub(crate) program: &'a LinkedProgram,
     pub(crate) inline_caches: Option<&'a dyn VmInlineCaches>,
+    pub(crate) bytecode_profiler: Option<&'a dyn VmBytecodeProfiler>,
     pub(crate) call_site: Option<Span>,
     pub(crate) call_site_offset: Option<InstructionOffset>,
 }
@@ -339,6 +347,7 @@ pub(crate) fn dispatch_linked_method_call(
             LinkedMethodRuntimeContext {
                 program: context.program,
                 inline_caches: context.inline_caches,
+                bytecode_profiler: context.bytecode_profiler,
             },
             host,
             heap,
@@ -416,6 +425,7 @@ fn dispatch_linked_script_method_call(
             call_site: context.call_site,
             call_site_offset: context.call_site_offset,
             inline_caches: context.inline_caches,
+            bytecode_profiler: context.bytecode_profiler,
         },
         host.as_deref_mut(),
         heap.as_deref_mut(),

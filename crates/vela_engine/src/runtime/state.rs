@@ -1,6 +1,6 @@
 use super::{
-    RuntimeGlobalStore, RuntimeScriptGlobalStore, image::RuntimeImage, inline_cache::InlineCaches,
-    next_runtime_id,
+    RuntimeGlobalStore, RuntimeScriptGlobalStore, bytecode_profile::RuntimeBytecodeProfile,
+    image::RuntimeImage, inline_cache::InlineCaches, next_runtime_id,
 };
 
 pub(super) struct RuntimeState {
@@ -8,6 +8,7 @@ pub(super) struct RuntimeState {
     pub(super) globals: RuntimeGlobalStore,
     pub(super) script_globals: RuntimeScriptGlobalStore,
     pub(super) inline_caches: InlineCaches,
+    pub(super) bytecode_profile: RuntimeBytecodeProfile,
 }
 
 impl RuntimeState {
@@ -17,6 +18,7 @@ impl RuntimeState {
             globals: RuntimeGlobalStore::with_global_layout(image.global_names()),
             script_globals: RuntimeScriptGlobalStore::with_global_layout(image.global_names()),
             inline_caches: InlineCaches::for_image(image),
+            bytecode_profile: RuntimeBytecodeProfile::for_image(image),
         }
     }
 
@@ -28,5 +30,6 @@ impl RuntimeState {
     pub(super) fn rebind_to_image(&mut self, image: &RuntimeImage) {
         self.set_global_layout(image.global_names());
         self.inline_caches.clear_for_image(image);
+        self.bytecode_profile.clear_for_image(image);
     }
 }

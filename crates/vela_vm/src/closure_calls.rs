@@ -12,7 +12,7 @@ use crate::runtime_checks::expect_closure_ref;
 use crate::value::{ClosureCode, ClosureValue};
 use crate::{
     CallFrame, ExecutionBudget, ExecutionCall, HeapExecution, HostExecution, SmallStorage, Value,
-    Vm, VmError, VmErrorKind, VmInlineCaches, VmResult, allocate_heap_value,
+    Vm, VmBytecodeProfiler, VmError, VmErrorKind, VmInlineCaches, VmResult, allocate_heap_value,
     store_value_in_heap_if_needed,
 };
 
@@ -158,6 +158,7 @@ pub(crate) fn dispatch_closure_call(
 pub(crate) struct LinkedClosureCallContext<'a> {
     pub(crate) program: &'a LinkedProgram,
     pub(crate) inline_caches: Option<&'a dyn VmInlineCaches>,
+    pub(crate) bytecode_profiler: Option<&'a dyn VmBytecodeProfiler>,
     pub(crate) call_site: Option<Span>,
     pub(crate) call_site_offset: InstructionOffset,
 }
@@ -208,6 +209,7 @@ pub(crate) fn dispatch_linked_closure_call(
             call_site: context.call_site,
             call_site_offset: Some(context.call_site_offset),
             inline_caches: context.inline_caches,
+            bytecode_profiler: context.bytecode_profiler,
         },
         host.as_deref_mut(),
         heap.as_deref_mut(),

@@ -21,8 +21,8 @@ use vela_vm::heap::{HeapValue, ScriptHeap};
 use vela_vm::owned_value::OwnedValue;
 use vela_vm::value::Value;
 use vela_vm::{
-    LinkedProgramHostCall, LinkedRuntimeCodeCall, PersistentHeapExecution,
-    persistent_value_to_owned,
+    LinkedProgramHostBudgetCall, LinkedProgramHostCall, LinkedRuntimeCodeCall,
+    PersistentHeapExecution, persistent_value_to_owned,
 };
 
 use crate::engine::Engine;
@@ -31,6 +31,10 @@ use crate::reload::{
     EngineHotReloadSourceError, EngineHotReloadSourceErrorKind, EngineHotReloadSourceResult,
 };
 
+mod bytecode_profile;
+#[cfg(test)]
+#[path = "bytecode_profile_tests.rs"]
+mod bytecode_profile_tests;
 mod call_args;
 mod global_store;
 mod handles;
@@ -461,6 +465,7 @@ where
             globals: &mut state.globals,
             script_globals: &mut state.script_globals,
             inline_caches: &state.inline_caches,
+            bytecode_profile: &state.bytecode_profile,
             target,
             args: &mut args,
             options,
@@ -533,6 +538,7 @@ where
             },
             budget: &mut budget,
             inline_caches: Some(&state.inline_caches),
+            bytecode_profiler: Some(&state.bytecode_profile),
         })?;
         Ok(state.script_globals.retain(state.id, result))
     }
@@ -601,16 +607,18 @@ where
                 },
                 budget: &mut budget,
                 inline_caches: Some(&self.state.inline_caches),
+                bytecode_profiler: Some(&self.state.bytecode_profile),
             })
         } else {
-            vm.run_linked_program_with_host_budget_and_caches(
-                linked_program,
+            vm.run_linked_program_host_budget_call(LinkedProgramHostBudgetCall {
+                program: linked_program,
                 entry,
                 args,
-                &mut host,
-                &mut budget,
-                Some(&self.state.inline_caches),
-            )
+                host: &mut host,
+                budget: &mut budget,
+                inline_caches: Some(&self.state.inline_caches),
+                bytecode_profiler: Some(&self.state.bytecode_profile),
+            })
         }
     }
 
@@ -657,6 +665,7 @@ where
             },
             budget: &mut budget,
             inline_caches: Some(call.inline_caches),
+            bytecode_profiler: Some(call.bytecode_profile),
         })?;
         Ok(call.script_globals.retain(call.runtime_id, result))
     }
