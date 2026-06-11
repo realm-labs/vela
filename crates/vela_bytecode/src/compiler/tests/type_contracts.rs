@@ -529,6 +529,81 @@ fn main(value) {
 }
 
 #[test]
+fn compiler_emits_field_guard_for_dynamic_nested_typed_record_write() {
+    let program = compile_program_source(
+        SourceId::new(1),
+        r#"
+struct Stats {
+    level: i64,
+}
+struct Player {
+    stats: Stats,
+}
+fn make_player() {
+    return Player { stats: Stats { level: 1 } };
+}
+fn main(value) {
+    let player: Player = make_player();
+    player.stats.level = value;
+    return player.stats.level;
+}
+"#,
+    )
+    .expect("dynamic nested typed record write should compile with runtime guard");
+    let main = program.function("main").expect("main function");
+    let guard_index = main
+        .instructions
+        .iter()
+        .position(|instruction| {
+            matches!(instruction.kind, UnlinkedInstructionKind::GuardType { .. })
+        })
+        .expect("dynamic nested typed record write should emit GuardType");
+    let set_index = main
+        .instructions
+        .iter()
+        .position(|instruction| {
+            matches!(
+                instruction.kind,
+                UnlinkedInstructionKind::SetRecordSlot {
+                    ref field,
+                    slot: 0,
+                    ..
+                } if field == "level"
+            )
+        })
+        .expect("nested typed record write should use a leaf slot write");
+
+    assert!(guard_index < set_index);
+    let UnlinkedInstructionKind::GuardType {
+        src: guard_src,
+        guard,
+    } = &main.instructions[guard_index].kind
+    else {
+        panic!("expected GuardType");
+    };
+    let UnlinkedInstructionKind::SetRecordSlot { src: set_src, .. } =
+        &main.instructions[set_index].kind
+    else {
+        panic!("expected SetRecordSlot");
+    };
+
+    assert_eq!(guard_src, set_src);
+    assert_eq!(guard.context.location, crate::GuardLocation::Field);
+    assert_eq!(guard.context.debug_name, "level");
+    assert!(matches!(
+        guard.plan,
+        crate::UnlinkedTypeGuardPlan::Primitive(vela_common::PrimitiveTag::I64)
+    ));
+
+    let linked = crate::Linker::new()
+        .link_program(&program)
+        .expect("program should link");
+    linked
+        .verify()
+        .expect("linked nested field guard should verify");
+}
+
+#[test]
 fn compiler_contextualizes_typed_record_field_literals_without_guard() {
     let program = compile_program_source(
         SourceId::new(1),
@@ -562,6 +637,42 @@ fn main() {
 }
 
 #[test]
+fn compiler_contextualizes_nested_typed_record_field_literals_without_guard() {
+    let program = compile_program_source(
+        SourceId::new(1),
+        r#"
+struct Stats {
+    level: u8,
+}
+struct Player {
+    stats: Stats,
+}
+fn make_player() {
+    return Player { stats: Stats { level: 1 } };
+}
+fn main() {
+    let player: Player = make_player();
+    player.stats.level = 12;
+    return player.stats.level;
+}
+"#,
+    )
+    .expect("nested typed record write literal should compile without runtime guard");
+    let main = program.function("main").expect("main function");
+
+    assert!(
+        !main.instructions.iter().any(|instruction| matches!(
+            instruction.kind,
+            UnlinkedInstructionKind::GuardType { .. }
+        ))
+    );
+    assert!(
+        main.constants
+            .contains(&Constant::Scalar(vela_common::ScalarValue::U8(12)))
+    );
+}
+
+#[test]
 fn compiler_rejects_static_typed_record_field_contract_mismatches() {
     let error = compile_program_source(
         SourceId::new(1),
@@ -580,6 +691,35 @@ fn main() {
 "#,
     )
     .expect_err("static typed record write mismatch should fail before bytecode emission");
+
+    assert_eq!(
+        semantic_diagnostic_codes(error),
+        ["compiler::type_contract_mismatch"]
+    );
+}
+
+#[test]
+fn compiler_rejects_static_nested_typed_record_field_contract_mismatches() {
+    let error = compile_program_source(
+        SourceId::new(1),
+        r#"
+struct Stats {
+    level: i64,
+}
+struct Player {
+    stats: Stats,
+}
+fn make_player() {
+    return Player { stats: Stats { level: 1 } };
+}
+fn main() {
+    let player: Player = make_player();
+    player.stats.level = "x";
+    return player.stats.level;
+}
+"#,
+    )
+    .expect_err("static nested typed record write mismatch should fail before bytecode emission");
 
     assert_eq!(
         semantic_diagnostic_codes(error),

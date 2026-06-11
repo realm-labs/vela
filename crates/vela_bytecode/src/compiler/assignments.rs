@@ -202,6 +202,13 @@ impl Compiler<'_, '_> {
                     return Ok(None);
                 }
                 let root_type = self.script_type_for_path_root(target.span, record);
+                let shape = self
+                    .record_shape_for_path_root(target.span, record)
+                    .or_else(|| {
+                        root_type
+                            .as_deref()
+                            .and_then(|type_name| self.record_shape_for_type(type_name))
+                    });
                 let slot = match fields.as_slice() {
                     [field] => self
                         .script_record_field_slot_for_path_root(target.span, record, field.as_str())
@@ -211,18 +218,11 @@ impl Compiler<'_, '_> {
                         }),
                     _ => None,
                 };
-                let value_type = match fields.as_slice() {
-                    [field] => root_type.as_deref().and_then(|type_name| {
-                        self.facts
-                            .script_field_slots
-                            .record_field_value_type(type_name, field)
-                    }),
-                    _ => None,
-                };
+                let value_type = self.schema_record_field_value_type(root_type.as_deref(), &fields);
                 Ok(Some(RecordFieldAssignmentTarget {
                     root: self.local_register_at_span(target.span, record)?,
                     fields,
-                    shape: self.record_shape_for_path_root(target.span, record),
+                    shape,
                     slot,
                     value_type,
                 }))
@@ -236,25 +236,25 @@ impl Compiler<'_, '_> {
                         "record field assignment target",
                     )));
                 };
+                let root_type = self.script_type_for_path_root(target.span, record);
+                let shape = self
+                    .record_shape_for_path_root(target.span, record)
+                    .or_else(|| {
+                        root_type
+                            .as_deref()
+                            .and_then(|type_name| self.record_shape_for_type(type_name))
+                    });
                 let slot = (fields.len() == 1)
                     .then(|| {
                         self.script_record_field_slot_for_receiver(base, name)
                             .or_else(|| self.record_field_shape_slot_for_receiver(base, name))
                     })
                     .flatten();
-                let value_type = (fields.len() == 1)
-                    .then(|| {
-                        self.script_type_for_expr(base).and_then(|type_name| {
-                            self.facts
-                                .script_field_slots
-                                .record_field_value_type(&type_name, name)
-                        })
-                    })
-                    .flatten();
+                let value_type = self.schema_record_field_value_type(root_type.as_deref(), &fields);
                 Ok(Some(RecordFieldAssignmentTarget {
                     root: self.local_register_at_span(target.span, record)?,
                     fields,
-                    shape: self.record_shape_for_path_root(target.span, record),
+                    shape,
                     slot,
                     value_type,
                 }))
@@ -275,6 +275,7 @@ impl Compiler<'_, '_> {
                 target.root,
                 target.fields,
                 target.shape,
+                target.value_type,
                 value,
             );
         }
@@ -378,6 +379,7 @@ impl Compiler<'_, '_> {
                 record,
                 target.fields,
                 target.element_shape,
+                None,
                 value,
             )?
         } else {
@@ -407,6 +409,7 @@ impl Compiler<'_, '_> {
         root: Register,
         fields: Vec<String>,
         shape: Option<RecordShape>,
+        value_type: Option<RuntimeTypeFact>,
         value: &Expr,
     ) -> CompileResult<Register> {
         let mut records = vec![root];
@@ -447,7 +450,19 @@ impl Compiler<'_, '_> {
             .expect("nested record assignment has at least one field")
             .clone();
         let assigned = match op {
-            AssignOp::Set => self.compile_expr(value)?,
+            AssignOp::Set => {
+                if let Some(expected) = value_type {
+                    self.compile_expr_with_expected_type(
+                        value,
+                        expected,
+                        TypeContractContext::Field {
+                            name: leaf_field.clone(),
+                        },
+                    )?
+                } else {
+                    self.compile_expr(value)?
+                }
+            }
             AssignOp::Add | AssignOp::Sub | AssignOp::Mul | AssignOp::Div | AssignOp::Rem => {
                 let current = self.alloc_register()?;
                 let leaf_slot = shapes
@@ -520,6 +535,25 @@ impl Compiler<'_, '_> {
             }
         }
         Ok(assigned)
+    }
+
+    fn schema_record_field_value_type(
+        &self,
+        root_type: Option<&str>,
+        fields: &[String],
+    ) -> Option<RuntimeTypeFact> {
+        let mut current_type = root_type?.to_owned();
+        let (leaf, parents) = fields.split_last()?;
+        for field in parents {
+            current_type = self
+                .facts
+                .script_field_slots
+                .record_field_fact(&current_type, field)?
+                .type_name;
+        }
+        self.facts
+            .script_field_slots
+            .record_field_value_type(&current_type, leaf)
     }
 
     fn compile_host_assignment(

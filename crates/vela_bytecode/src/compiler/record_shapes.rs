@@ -1256,7 +1256,7 @@ impl super::Compiler<'_, '_> {
         })
     }
 
-    fn record_shape_for_type(&self, type_name: &str) -> Option<RecordShape> {
+    pub(super) fn record_shape_for_type(&self, type_name: &str) -> Option<RecordShape> {
         self.record_shape_for_type_inner(type_name, &mut BTreeSet::new())
     }
 
