@@ -1,4 +1,6 @@
-use vela_bytecode::{TypeGuard, TypeGuardPlan, UnlinkedTypeGuard, UnlinkedTypeGuardPlan};
+use vela_bytecode::{
+    LinkedProgram, TypeGuard, TypeGuardPlan, UnlinkedTypeGuard, UnlinkedTypeGuardPlan,
+};
 use vela_common::PrimitiveTag;
 
 use crate::heap::HeapValue;
@@ -13,16 +15,37 @@ pub(crate) fn execute_unlinked_guard(
         UnlinkedTypeGuardPlan::Primitive(expected) => {
             execute_primitive_guard(value, expected, heap, &guard.context.debug_name)
         }
-        UnlinkedTypeGuardPlan::Type(_)
-        | UnlinkedTypeGuardPlan::Variant { .. }
-        | UnlinkedTypeGuardPlan::Shape { .. }
-        | UnlinkedTypeGuardPlan::HostType(_) => Ok(()),
+        UnlinkedTypeGuardPlan::Type(ref expected) => {
+            execute_unlinked_type_guard(value, expected, heap, &guard.context.debug_name)
+        }
+        UnlinkedTypeGuardPlan::Variant {
+            ref enum_name,
+            ref variant,
+        } => execute_unlinked_variant_guard(
+            value,
+            enum_name,
+            variant,
+            heap,
+            &guard.context.debug_name,
+        ),
+        UnlinkedTypeGuardPlan::Shape {
+            ref type_name,
+            shape_id,
+        } => execute_unlinked_shape_guard(
+            value,
+            type_name,
+            shape_id,
+            heap,
+            &guard.context.debug_name,
+        ),
+        UnlinkedTypeGuardPlan::HostType(_) => Ok(()),
     }
 }
 
 pub(crate) fn execute_linked_guard(
     value: &Value,
     guard: &TypeGuard,
+    program: &LinkedProgram,
     heap: Option<&HeapExecution<'_>>,
     debug_name: &str,
 ) -> VmResult<()> {
@@ -30,10 +53,50 @@ pub(crate) fn execute_linked_guard(
         TypeGuardPlan::Primitive(expected) => {
             execute_primitive_guard(value, expected, heap, debug_name)
         }
-        TypeGuardPlan::Type(_)
-        | TypeGuardPlan::Variant(_)
-        | TypeGuardPlan::Shape { .. }
-        | TypeGuardPlan::HostType(_) => Ok(()),
+        TypeGuardPlan::Type(expected) => {
+            let expected = program.ty(expected).ok_or_else(|| {
+                VmError::new(VmErrorKind::UnsupportedLinkedInstruction {
+                    opcode: "type_guard",
+                })
+            })?;
+            execute_type_id_guard(
+                value,
+                expected.id,
+                program.debug_name(expected.debug_name),
+                heap,
+                debug_name,
+            )
+        }
+        TypeGuardPlan::Variant(expected) => {
+            let expected = program.variant(expected).ok_or_else(|| {
+                VmError::new(VmErrorKind::UnsupportedLinkedInstruction {
+                    opcode: "variant_guard",
+                })
+            })?;
+            execute_variant_id_guard(
+                value,
+                expected.id,
+                program.debug_name(expected.debug_name),
+                heap,
+                debug_name,
+            )
+        }
+        TypeGuardPlan::Shape { ty, shape_id } => {
+            let expected = program.ty(ty).ok_or_else(|| {
+                VmError::new(VmErrorKind::UnsupportedLinkedInstruction {
+                    opcode: "shape_guard",
+                })
+            })?;
+            execute_shape_id_guard(
+                value,
+                expected.id,
+                shape_id,
+                program.debug_name(expected.debug_name),
+                heap,
+                debug_name,
+            )
+        }
+        TypeGuardPlan::HostType(_) => Ok(()),
     }
 }
 
@@ -53,6 +116,98 @@ fn execute_primitive_guard(
     }))
 }
 
+fn execute_type_id_guard(
+    value: &Value,
+    expected: vela_def::TypeId,
+    expected_name: &str,
+    heap: Option<&HeapExecution<'_>>,
+    debug_name: &str,
+) -> VmResult<()> {
+    if runtime_type_id(value, heap) == Some(expected) {
+        return Ok(());
+    }
+    Err(type_contract_error(value, expected_name, heap, debug_name))
+}
+
+fn execute_variant_id_guard(
+    value: &Value,
+    expected: vela_def::VariantId,
+    expected_name: &str,
+    heap: Option<&HeapExecution<'_>>,
+    debug_name: &str,
+) -> VmResult<()> {
+    if runtime_variant_id(value, heap) == Some(expected) {
+        return Ok(());
+    }
+    Err(type_contract_error(value, expected_name, heap, debug_name))
+}
+
+fn execute_shape_id_guard(
+    value: &Value,
+    expected_type: vela_def::TypeId,
+    expected_shape: vela_common::ShapeId,
+    expected_name: &str,
+    heap: Option<&HeapExecution<'_>>,
+    debug_name: &str,
+) -> VmResult<()> {
+    if runtime_record_shape(value, heap) == Some((expected_type, expected_shape)) {
+        return Ok(());
+    }
+    Err(type_contract_error(value, expected_name, heap, debug_name))
+}
+
+fn execute_unlinked_type_guard(
+    value: &Value,
+    expected: &str,
+    heap: Option<&HeapExecution<'_>>,
+    debug_name: &str,
+) -> VmResult<()> {
+    if runtime_type_debug_name(value, heap) == Some(expected) {
+        return Ok(());
+    }
+    Err(type_contract_error(value, expected, heap, debug_name))
+}
+
+fn execute_unlinked_variant_guard(
+    value: &Value,
+    expected_enum: &str,
+    expected_variant: &str,
+    heap: Option<&HeapExecution<'_>>,
+    debug_name: &str,
+) -> VmResult<()> {
+    let expected = format!("{expected_enum}::{expected_variant}");
+    if runtime_variant_debug_name(value, heap) == Some((expected_enum, expected_variant)) {
+        return Ok(());
+    }
+    Err(type_contract_error(value, &expected, heap, debug_name))
+}
+
+fn execute_unlinked_shape_guard(
+    value: &Value,
+    expected_type: &str,
+    expected_shape: vela_common::ShapeId,
+    heap: Option<&HeapExecution<'_>>,
+    debug_name: &str,
+) -> VmResult<()> {
+    if runtime_record_debug_shape(value, heap) == Some((expected_type, expected_shape)) {
+        return Ok(());
+    }
+    Err(type_contract_error(value, expected_type, heap, debug_name))
+}
+
+fn type_contract_error(
+    value: &Value,
+    expected: &str,
+    heap: Option<&HeapExecution<'_>>,
+    debug_name: &str,
+) -> VmError {
+    VmError::new(VmErrorKind::TypeContractViolation {
+        expected: expected.to_owned(),
+        actual: runtime_type_name(value, heap).to_owned(),
+        debug_name: debug_name.to_owned(),
+    })
+}
+
 fn runtime_primitive_tag(value: &Value, heap: Option<&HeapExecution<'_>>) -> Option<PrimitiveTag> {
     match value {
         Value::Null => Some(PrimitiveTag::Null),
@@ -64,6 +219,104 @@ fn runtime_primitive_tag(value: &Value, heap: Option<&HeapExecution<'_>>) -> Opt
             _ => None,
         },
         Value::Missing | Value::Range(_) | Value::HostRef(_) => None,
+    }
+}
+
+fn runtime_type_id(value: &Value, heap: Option<&HeapExecution<'_>>) -> Option<vela_def::TypeId> {
+    match value {
+        Value::HeapRef(reference) => match heap.and_then(|heap| heap.heap.get(*reference)) {
+            Some(HeapValue::Record {
+                identity: Some(identity),
+                ..
+            }) => Some(identity.type_id),
+            Some(HeapValue::Enum {
+                identity: Some(identity),
+                ..
+            }) => Some(identity.type_id),
+            _ => None,
+        },
+        _ => None,
+    }
+}
+
+fn runtime_variant_id(
+    value: &Value,
+    heap: Option<&HeapExecution<'_>>,
+) -> Option<vela_def::VariantId> {
+    match value {
+        Value::HeapRef(reference) => match heap.and_then(|heap| heap.heap.get(*reference)) {
+            Some(HeapValue::Enum {
+                identity: Some(identity),
+                ..
+            }) => Some(identity.variant_id),
+            _ => None,
+        },
+        _ => None,
+    }
+}
+
+fn runtime_record_shape(
+    value: &Value,
+    heap: Option<&HeapExecution<'_>>,
+) -> Option<(vela_def::TypeId, vela_common::ShapeId)> {
+    match value {
+        Value::HeapRef(reference) => match heap.and_then(|heap| heap.heap.get(*reference)) {
+            Some(HeapValue::Record {
+                identity: Some(identity),
+                ..
+            }) => Some((identity.type_id, identity.shape_id)),
+            _ => None,
+        },
+        _ => None,
+    }
+}
+
+fn runtime_type_debug_name<'a>(
+    value: &Value,
+    heap: Option<&'a HeapExecution<'_>>,
+) -> Option<&'a str> {
+    match value {
+        Value::HeapRef(reference) => match heap.and_then(|heap| heap.heap.get(*reference)) {
+            Some(HeapValue::Record { type_name, .. }) => Some(type_name),
+            Some(HeapValue::Enum { enum_name, .. }) => Some(enum_name),
+            _ => None,
+        },
+        _ => None,
+    }
+}
+
+fn runtime_variant_debug_name<'a>(
+    value: &Value,
+    heap: Option<&'a HeapExecution<'_>>,
+) -> Option<(&'a str, &'a str)> {
+    match value {
+        Value::HeapRef(reference) => match heap.and_then(|heap| heap.heap.get(*reference)) {
+            Some(HeapValue::Enum {
+                enum_name, variant, ..
+            }) => Some((enum_name, variant)),
+            _ => None,
+        },
+        _ => None,
+    }
+}
+
+fn runtime_record_debug_shape<'a>(
+    value: &Value,
+    heap: Option<&'a HeapExecution<'_>>,
+) -> Option<(&'a str, vela_common::ShapeId)> {
+    match value {
+        Value::HeapRef(reference) => match heap.and_then(|heap| heap.heap.get(*reference)) {
+            Some(HeapValue::Record {
+                type_name,
+                identity: Some(identity),
+                ..
+            }) => Some((type_name, identity.shape_id)),
+            Some(HeapValue::Record {
+                type_name, fields, ..
+            }) => Some((type_name, fields.shape_id())),
+            _ => None,
+        },
+        _ => None,
     }
 }
 

@@ -1352,9 +1352,9 @@ then build registry, syntax, guards, and runtime behavior on the new model.
 
 #### Task 6.1: Execute contract guards
 
-- [ ] Add runtime type extraction:
+- [x] Add runtime type extraction:
   - [x] primitive tag;
-  - [ ] type handle for records/enums if available;
+  - [x] type handle for records/enums if available;
   - [x] bytes/string tags.
 - [x] Execute parameter guards at checked entry.
 - [x] Execute return guards before returning from a function.

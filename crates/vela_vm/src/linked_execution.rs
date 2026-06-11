@@ -330,6 +330,7 @@ impl Vm {
                     runtime_type_guards::execute_linked_guard(
                         frame.read(*src)?,
                         guard,
+                        call.program,
                         heap.as_deref(),
                         call.program.debug_name(guard.context.debug_name),
                     )
@@ -1081,6 +1082,7 @@ fn execute_linked_param_guards(
         runtime_type_guards::execute_linked_guard(
             value,
             guard,
+            program,
             heap,
             program.debug_name(guard.context.debug_name),
         )?;
@@ -1107,6 +1109,7 @@ fn execute_linked_return_guard(
     runtime_type_guards::execute_linked_guard(
         &value,
         guard,
+        program,
         heap,
         program.debug_name(guard.context.debug_name),
     )?;
