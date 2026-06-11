@@ -205,6 +205,14 @@ fn rewrite_linked_instruction_cache_sites(
             InstructionKind::LoadGlobal {
                 cache_site: Some(site),
                 ..
+            }
+            | InstructionKind::GetRecordSlot {
+                cache_site: Some(site),
+                ..
+            }
+            | InstructionKind::SetRecordSlot {
+                cache_site: Some(site),
+                ..
             } => remap_cache_site(site, remapped),
             InstructionKind::HostRead { cache_site, .. }
             | InstructionKind::HostWrite { cache_site, .. }
@@ -229,6 +237,7 @@ fn remap_cache_site(
 
 #[cfg(test)]
 mod tests {
+    use vela_bytecode::linked::InstructionKind;
     use vela_bytecode::{
         CacheSiteKind, InstructionOffset, Register, UnlinkedCodeObject, UnlinkedInstruction,
         UnlinkedInstructionKind, UnlinkedProgram,
@@ -280,6 +289,56 @@ mod tests {
     }
 
     #[test]
+    fn runtime_image_rebases_linked_record_cache_site_operands() {
+        let mut first = UnlinkedCodeObject::new("first", 2);
+        first.push_cache_site(CacheSiteKind::RecordFieldRead, InstructionOffset(0));
+        first.push_instruction(UnlinkedInstruction::new(
+            UnlinkedInstructionKind::GetRecordSlot {
+                dst: Register(0),
+                record: Register(1),
+                field: "score".to_owned(),
+                slot: 0,
+            },
+        ));
+        let mut second = UnlinkedCodeObject::new("second", 2);
+        second.push_cache_site(CacheSiteKind::RecordFieldRead, InstructionOffset(0));
+        second.push_instruction(UnlinkedInstruction::new(
+            UnlinkedInstructionKind::GetRecordSlot {
+                dst: Register(0),
+                record: Register(1),
+                field: "score".to_owned(),
+                slot: 0,
+            },
+        ));
+        second.push_cache_site(CacheSiteKind::RecordFieldWrite, InstructionOffset(1));
+        second.push_instruction(UnlinkedInstruction::new(
+            UnlinkedInstructionKind::SetRecordSlot {
+                record: Register(1),
+                field: "score".to_owned(),
+                slot: 0,
+                src: Register(0),
+            },
+        ));
+        let mut program = UnlinkedProgram::new();
+        program.insert_function(first);
+        program.insert_function(second);
+
+        let engine = Engine::builder().build().expect("engine should build");
+        let image = RuntimeImage::new(engine, program);
+        let linked = image
+            .linked_program()
+            .expect("record field cache program should link");
+        let first_site = record_read_site(linked, "first");
+        let second_site = record_read_site(linked, "second");
+        let second_write_site = record_write_site(linked, "second");
+
+        assert_eq!(image.cache_site_count(), 3);
+        assert_eq!(first_site, Some(vela_bytecode::CacheSiteId::new(0)));
+        assert_eq!(second_site, Some(vela_bytecode::CacheSiteId::new(1)));
+        assert_eq!(second_write_site, Some(vela_bytecode::CacheSiteId::new(2)));
+    }
+
+    #[test]
     fn runtime_image_links_with_engine_native_implementations() {
         let native_id = NativeFunctionId::new(91);
         let mut main = UnlinkedCodeObject::new("main", 1);
@@ -317,5 +376,37 @@ mod tests {
             .next()
             .map(|(_, native)| native.id);
         assert_eq!(linked_native, Some(FunctionId::new(91)));
+    }
+
+    fn record_read_site(
+        linked: &vela_bytecode::LinkedProgram,
+        function_name: &str,
+    ) -> Option<vela_bytecode::CacheSiteId> {
+        let code = linked
+            .functions()
+            .find(|(_, code)| linked.debug_name(code.debug_name) == function_name)
+            .map(|(_, code)| code)?;
+        code.instructions
+            .iter()
+            .find_map(|instruction| match instruction.kind {
+                InstructionKind::GetRecordSlot { cache_site, .. } => cache_site,
+                _ => None,
+            })
+    }
+
+    fn record_write_site(
+        linked: &vela_bytecode::LinkedProgram,
+        function_name: &str,
+    ) -> Option<vela_bytecode::CacheSiteId> {
+        let code = linked
+            .functions()
+            .find(|(_, code)| linked.debug_name(code.debug_name) == function_name)
+            .map(|(_, code)| code)?;
+        code.instructions
+            .iter()
+            .find_map(|instruction| match instruction.kind {
+                InstructionKind::SetRecordSlot { cache_site, .. } => cache_site,
+                _ => None,
+            })
     }
 }

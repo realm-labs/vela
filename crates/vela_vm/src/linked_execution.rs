@@ -489,6 +489,7 @@ impl Vm {
                     record,
                     field,
                     debug_name,
+                    cache_site: _,
                 } => {
                     field_access::dispatch_linked_get_record_slot(
                         &mut frame,
@@ -504,6 +505,7 @@ impl Vm {
                     record,
                     field,
                     debug_name,
+                    cache_site: _,
                     src,
                 } => {
                     field_access::dispatch_linked_set_record_slot(

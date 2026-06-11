@@ -1,8 +1,8 @@
 use vela_registry::DebugNameId;
 
 use crate::{
-    CacheSiteDesc, CacheSiteId, CacheSiteKind, CacheSiteLayout, Instruction, InstructionKind,
-    InstructionOffset, LinkedCodeObject, NativeHandle, Register,
+    CacheSiteDesc, CacheSiteId, CacheSiteKind, CacheSiteLayout, FieldSlot, Instruction,
+    InstructionKind, InstructionOffset, LinkedCodeObject, NativeHandle, Register,
 };
 
 use super::*;
@@ -110,6 +110,55 @@ fn linked_code_rejects_cache_site_layout_on_uncacheable_instruction() {
                 site: CacheSiteId::new(0),
                 expected: CacheSiteKind::NativeCall,
                 actual: None
+            }
+        ))
+    );
+}
+
+#[test]
+fn linked_code_rejects_invalid_record_cache_site_operands() {
+    let mut read_code = LinkedCodeObject::new(DebugNameId::new(0), 2);
+    let read_site =
+        read_code.push_cache_site(CacheSiteKind::RecordFieldWrite, InstructionOffset(0));
+    read_code.push_instruction(Instruction::new(InstructionKind::GetRecordSlot {
+        dst: Register(0),
+        record: Register(1),
+        field: FieldSlot::new(0),
+        debug_name: DebugNameId::new(0),
+        cache_site: Some(read_site),
+    }));
+    assert_eq!(
+        verify_linked_code_object(&read_code),
+        Err(error(
+            "<linked code>",
+            Some(0),
+            VerificationErrorKind::CacheSiteKindMismatch {
+                site: read_site,
+                expected: CacheSiteKind::RecordFieldRead,
+                actual: CacheSiteKind::RecordFieldWrite,
+            }
+        ))
+    );
+
+    let mut write_code = LinkedCodeObject::new(DebugNameId::new(0), 2);
+    let write_site =
+        write_code.push_cache_site(CacheSiteKind::RecordFieldRead, InstructionOffset(0));
+    write_code.push_instruction(Instruction::new(InstructionKind::SetRecordSlot {
+        record: Register(0),
+        field: FieldSlot::new(0),
+        debug_name: DebugNameId::new(0),
+        cache_site: Some(write_site),
+        src: Register(1),
+    }));
+    assert_eq!(
+        verify_linked_code_object(&write_code),
+        Err(error(
+            "<linked code>",
+            Some(0),
+            VerificationErrorKind::CacheSiteKindMismatch {
+                site: write_site,
+                expected: CacheSiteKind::RecordFieldWrite,
+                actual: CacheSiteKind::RecordFieldRead,
             }
         ))
     );

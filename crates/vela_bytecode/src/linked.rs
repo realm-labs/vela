@@ -719,11 +719,13 @@ pub enum InstructionKind {
         record: Register,
         field: FieldSlot,
         debug_name: DebugNameId,
+        cache_site: Option<CacheSiteId>,
     },
     SetRecordSlot {
         record: Register,
         field: FieldSlot,
         debug_name: DebugNameId,
+        cache_site: Option<CacheSiteId>,
         src: Register,
     },
     GetEnumSlot {

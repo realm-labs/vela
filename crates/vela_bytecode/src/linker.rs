@@ -624,6 +624,7 @@ impl<'linker, 'registry> LinkContext<'linker, 'registry> {
                 record: *record,
                 field: FieldSlot::new(*slot),
                 debug_name: self.linked.intern_debug_name(field.clone()),
+                cache_site: cache_site_at(code, instruction_offset, CacheSiteKind::RecordFieldRead),
             },
             UnlinkedInstructionKind::SetRecordField { field, .. } => {
                 return Err(LinkError::UnresolvedRecordField {
@@ -640,6 +641,11 @@ impl<'linker, 'registry> LinkContext<'linker, 'registry> {
                 record: *record,
                 field: FieldSlot::new(*slot),
                 debug_name: self.linked.intern_debug_name(field.clone()),
+                cache_site: cache_site_at(
+                    code,
+                    instruction_offset,
+                    CacheSiteKind::RecordFieldWrite,
+                ),
                 src: *src,
             },
             UnlinkedInstructionKind::GetEnumField { field, .. } => {

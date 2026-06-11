@@ -271,12 +271,22 @@ fn linker_maps_globals_map_keys_and_field_slots_without_instruction_names() {
             ],
         },
     ));
+    let read_site = code.push_cache_site(CacheSiteKind::RecordFieldRead, InstructionOffset(3));
     code.push_instruction(UnlinkedInstruction::new(
         UnlinkedInstructionKind::GetRecordSlot {
             dst: Register(3),
             record: Register(2),
             field: "score".to_owned(),
             slot: 1,
+        },
+    ));
+    let write_site = code.push_cache_site(CacheSiteKind::RecordFieldWrite, InstructionOffset(4));
+    code.push_instruction(UnlinkedInstruction::new(
+        UnlinkedInstructionKind::SetRecordSlot {
+            record: Register(2),
+            field: "level".to_owned(),
+            slot: 0,
+            src: Register(0),
         },
     ));
     let mut program = UnlinkedProgram::new();
@@ -312,8 +322,13 @@ fn linker_maps_globals_map_keys_and_field_slots_without_instruction_names() {
     ));
     assert!(matches!(
         main.instructions[3].kind,
-        InstructionKind::GetRecordSlot { field, debug_name, .. }
-            if field == FieldSlot::new(1) && linked.debug_name(debug_name) == "score"
+        InstructionKind::GetRecordSlot { field, debug_name, cache_site: Some(site), .. }
+            if field == FieldSlot::new(1) && linked.debug_name(debug_name) == "score" && site == read_site
+    ));
+    assert!(matches!(
+        main.instructions[4].kind,
+        InstructionKind::SetRecordSlot { field, debug_name, cache_site: Some(site), .. }
+            if field == FieldSlot::new(0) && linked.debug_name(debug_name) == "level" && site == write_site
     ));
 }
 

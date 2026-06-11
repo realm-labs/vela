@@ -314,21 +314,37 @@ fn verify_linked_instruction(
             dst,
             record,
             debug_name,
+            cache_site,
             ..
         } => {
             verify_linked_register(function, instruction_index, code, *dst)?;
             verify_linked_register(function, instruction_index, code, *record)?;
-            verify_linked_debug_name(function, instruction_index, context, *debug_name)
+            verify_linked_debug_name(function, instruction_index, context, *debug_name)?;
+            verify_linked_optional_cache_site(
+                function,
+                instruction_index,
+                code,
+                *cache_site,
+                CacheSiteKind::RecordFieldRead,
+            )
         }
         InstructionKind::SetRecordSlot {
             record,
             debug_name,
+            cache_site,
             src,
             ..
         } => {
             verify_linked_register(function, instruction_index, code, *record)?;
             verify_linked_debug_name(function, instruction_index, context, *debug_name)?;
-            verify_linked_register(function, instruction_index, code, *src)
+            verify_linked_register(function, instruction_index, code, *src)?;
+            verify_linked_optional_cache_site(
+                function,
+                instruction_index,
+                code,
+                *cache_site,
+                CacheSiteKind::RecordFieldWrite,
+            )
         }
         InstructionKind::GetEnumSlot {
             dst,

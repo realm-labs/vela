@@ -617,6 +617,7 @@ fn linked_program_executes_record_slot_reads_and_writes() {
             record: Register(1),
             field: vela_bytecode::FieldSlot::new(0),
             debug_name: count_name,
+            cache_site: None,
             src: Register(0),
         },
     ));
@@ -626,6 +627,7 @@ fn linked_program_executes_record_slot_reads_and_writes() {
             record: Register(1),
             field: vela_bytecode::FieldSlot::new(0),
             debug_name: count_name,
+            cache_site: None,
         },
     ));
     code.push_instruction(vela_bytecode::linked::Instruction::new(
