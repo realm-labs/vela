@@ -1196,22 +1196,22 @@ then build registry, syntax, guards, and runtime behavior on the new model.
 
 #### Task 3.4: Add byte string lexing
 
-- [ ] Lex `b"..."` as byte string, not identifier `b` followed by string.
+- [x] Lex `b"..."` as byte string, not identifier `b` followed by string.
 - [ ] Support escapes:
-  - [ ] `\n`
-  - [ ] `\r`
-  - [ ] `\t`
-  - [ ] `\0`
-  - [ ] `\"`
-  - [ ] `\\`
-  - [ ] `\xNN`
-- [ ] Reject invalid byte escapes.
-- [ ] Reject Unicode escapes in byte strings unless explicitly supported.
+  - [x] `\n`
+  - [x] `\r`
+  - [x] `\t`
+  - [x] `\0`
+  - [x] `\"`
+  - [x] `\\`
+  - [x] `\xNN`
+- [x] Reject invalid byte escapes.
+- [x] Reject Unicode escapes in byte strings unless explicitly supported.
 
 **Termination condition:**
 
-- [ ] Lexer/parser tests cover valid and invalid byte strings.
-- [ ] `b"\xff"` produces bytes `[255]`.
+- [x] Lexer/parser tests cover valid and invalid byte strings.
+- [x] `b"\xff"` produces bytes `[255]`.
 
 ---
 

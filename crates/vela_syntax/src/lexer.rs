@@ -44,6 +44,7 @@ impl<'src> Lexer<'src> {
                 '/' if self.peek_next_char() == Some('/') => self.skip_line_comment(),
                 '/' if self.peek_next_char() == Some('*') => self.skip_block_comment(),
                 '"' => self.lex_string(),
+                'b' if self.peek_next_char() == Some('"') => self.lex_byte_string(),
                 '0'..='9' => self.lex_number(),
                 '_' | 'a'..='z' | 'A'..='Z' => self.lex_ident_or_keyword(),
                 _ => self.lex_symbol_or_error(),
@@ -181,6 +182,100 @@ impl<'src> Lexer<'src> {
         );
     }
 
+    fn lex_byte_string(&mut self) {
+        let start = self.offset;
+        self.bump_char();
+        self.bump_char();
+        let mut value = Vec::new();
+
+        while let Some(ch) = self.peek_char() {
+            match ch {
+                '"' => {
+                    self.bump_char();
+                    self.push_token(TokenKind::Bytes(value), start, self.offset);
+                    return;
+                }
+                '\\' => self.lex_byte_escape(&mut value),
+                '\n' => {
+                    break;
+                }
+                other if other.is_ascii() => {
+                    self.bump_char();
+                    value.push(other as u8);
+                }
+                _ => {
+                    let char_start = self.offset;
+                    self.bump_char();
+                    self.push_byte_character_diagnostic(char_start);
+                }
+            }
+        }
+
+        self.diagnostics.push(
+            Diagnostic::error("unterminated byte string literal")
+                .with_code("E_LEX_BYTE_STRING")
+                .with_span(self.span(start, self.offset)),
+        );
+    }
+
+    fn lex_byte_escape(&mut self, value: &mut Vec<u8>) {
+        let escape_start = self.offset;
+        self.bump_char();
+        let Some(escaped) = self.peek_char() else {
+            self.push_byte_escape_diagnostic(escape_start);
+            return;
+        };
+
+        if escaped == 'u' && self.peek_next_char() == Some('{') {
+            self.skip_invalid_unicode_escape();
+            self.push_byte_escape_diagnostic(escape_start);
+            return;
+        }
+
+        self.bump_char();
+        match escaped {
+            'n' => value.push(b'\n'),
+            'r' => value.push(b'\r'),
+            't' => value.push(b'\t'),
+            '0' => value.push(b'\0'),
+            '"' => value.push(b'"'),
+            '\\' => value.push(b'\\'),
+            'x' => {
+                if let Some(byte) = self.consume_byte_hex_escape(escape_start) {
+                    value.push(byte);
+                }
+            }
+            other => {
+                self.push_byte_escape_diagnostic(escape_start);
+                if other.is_ascii() {
+                    value.push(other as u8);
+                }
+            }
+        }
+    }
+
+    fn consume_byte_hex_escape(&mut self, escape_start: usize) -> Option<u8> {
+        let mut byte = 0_u8;
+        for _ in 0..2 {
+            let Some(ch) = self.peek_char() else {
+                self.push_byte_escape_diagnostic(escape_start);
+                return None;
+            };
+            if ch == '"' || ch == '\n' {
+                self.push_byte_escape_diagnostic(escape_start);
+                return None;
+            }
+            let Some(digit) = ch.to_digit(16) else {
+                self.bump_char();
+                self.push_byte_escape_diagnostic(escape_start);
+                return None;
+            };
+            self.bump_char();
+            byte = (byte << 4) | digit as u8;
+        }
+        Some(byte)
+    }
+
     fn consume_unicode_escape(&mut self) -> Option<char> {
         let start = self.offset;
         self.bump_char();
@@ -246,6 +341,22 @@ impl<'src> Lexer<'src> {
         self.diagnostics.push(
             Diagnostic::error("invalid string escape")
                 .with_code("E_LEX_STRING_ESCAPE")
+                .with_span(self.span(start, self.offset)),
+        );
+    }
+
+    fn push_byte_escape_diagnostic(&mut self, start: usize) {
+        self.diagnostics.push(
+            Diagnostic::error("invalid byte string escape")
+                .with_code("E_LEX_BYTE_ESCAPE")
+                .with_span(self.span(start, self.offset)),
+        );
+    }
+
+    fn push_byte_character_diagnostic(&mut self, start: usize) {
+        self.diagnostics.push(
+            Diagnostic::error("invalid byte string character")
+                .with_code("E_LEX_BYTE_CHAR")
                 .with_span(self.span(start, self.offset)),
         );
     }

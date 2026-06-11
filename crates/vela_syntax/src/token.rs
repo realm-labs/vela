@@ -14,6 +14,7 @@ pub enum TokenKind {
     Int(IntegerLiteral),
     Float(FloatLiteral),
     String(String),
+    Bytes(Vec<u8>),
     Keyword(Keyword),
     Symbol(Symbol),
     Eof,

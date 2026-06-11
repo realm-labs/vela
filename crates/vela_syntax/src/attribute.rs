@@ -3,6 +3,7 @@ use crate::token::{Keyword, Symbol, TokenKind};
 pub(crate) fn normalize_attribute_value(tokens: &[TokenKind]) -> String {
     match tokens {
         [TokenKind::String(value)] | [TokenKind::Ident(value)] => return value.clone(),
+        [TokenKind::Bytes(value)] => return quoted_attribute_bytes(value),
         [TokenKind::Int(value)] => return value.source_text_with_suffix(),
         [TokenKind::Float(value)] => return value.source_text_with_suffix(),
         [TokenKind::Keyword(keyword)] => return keyword_text(*keyword).to_owned(),
@@ -22,6 +23,7 @@ fn attribute_token_text(token: &TokenKind) -> String {
         TokenKind::Int(value) => value.source_text_with_suffix(),
         TokenKind::Float(value) => value.source_text_with_suffix(),
         TokenKind::String(value) => quoted_attribute_string(value),
+        TokenKind::Bytes(value) => quoted_attribute_bytes(value),
         TokenKind::Keyword(keyword) => keyword_text(*keyword).to_owned(),
         TokenKind::Symbol(symbol) => symbol_text(*symbol).to_owned(),
         TokenKind::Eof => String::new(),
@@ -40,6 +42,15 @@ fn quoted_attribute_string(value: &str) -> String {
             '\0' => quoted.push_str("\\0"),
             _ => quoted.push(ch),
         }
+    }
+    quoted.push('"');
+    quoted
+}
+
+fn quoted_attribute_bytes(value: &[u8]) -> String {
+    let mut quoted = String::from("b\"");
+    for byte in value {
+        quoted.push_str(&format!("\\x{byte:02x}"));
     }
     quoted.push('"');
     quoted

@@ -215,3 +215,58 @@ fn diagnoses_invalid_string_escapes() {
         Some(Span::new(source_id(), 6, 8))
     );
 }
+
+#[test]
+fn lexes_byte_strings_with_allowed_escapes() {
+    let lexed = lex(source_id(), r#"b"az\n\r\t\0\"\\\x00\xff" b"plain""#);
+
+    assert!(lexed.diagnostics.is_empty(), "{:?}", lexed.diagnostics);
+    assert_eq!(
+        lexed.tokens[0].kind,
+        TokenKind::Bytes(vec![
+            b'a', b'z', b'\n', b'\r', b'\t', b'\0', b'"', b'\\', 0, 255
+        ])
+    );
+    assert_eq!(
+        lexed.tokens[0].span,
+        Span::new(source_id(), 0, r#"b"az\n\r\t\0\"\\\x00\xff""#.len() as u32)
+    );
+    assert_eq!(lexed.tokens[1].kind, TokenKind::Bytes(b"plain".to_vec()));
+}
+
+#[test]
+fn diagnoses_invalid_byte_string_escapes() {
+    let lexed = lex(source_id(), r#"b"\q" b"\xg0" b"\x0" "#);
+
+    assert_eq!(lexed.tokens[0].kind, TokenKind::Bytes(vec![b'q']));
+    assert_eq!(lexed.tokens[1].kind, TokenKind::Bytes(vec![b'0']));
+    assert_eq!(lexed.tokens[2].kind, TokenKind::Bytes(Vec::new()));
+    assert_eq!(
+        lexed
+            .diagnostics
+            .iter()
+            .map(|diagnostic| diagnostic.code.as_deref())
+            .collect::<Vec<_>>(),
+        vec![
+            Some("E_LEX_BYTE_ESCAPE"),
+            Some("E_LEX_BYTE_ESCAPE"),
+            Some("E_LEX_BYTE_ESCAPE"),
+        ]
+    );
+}
+
+#[test]
+fn diagnoses_unicode_byte_strings() {
+    let lexed = lex(source_id(), r#"b"\u{41}" b"é""#);
+
+    assert_eq!(lexed.tokens[0].kind, TokenKind::Bytes(Vec::new()));
+    assert_eq!(lexed.tokens[1].kind, TokenKind::Bytes(Vec::new()));
+    assert_eq!(
+        lexed
+            .diagnostics
+            .iter()
+            .map(|diagnostic| diagnostic.code.as_deref())
+            .collect::<Vec<_>>(),
+        vec![Some("E_LEX_BYTE_ESCAPE"), Some("E_LEX_BYTE_CHAR")]
+    );
+}

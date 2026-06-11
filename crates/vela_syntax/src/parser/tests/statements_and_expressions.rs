@@ -340,6 +340,20 @@ fn parses_numeric_literal_suffix_metadata() {
 }
 
 #[test]
+fn parses_byte_literal_metadata() {
+    let parsed = parse_source(source_id(), r#"fn bytes() { return b"\x00\xff"; }"#);
+
+    assert!(parsed.diagnostics.is_empty(), "{:?}", parsed.diagnostics);
+    let ItemKind::Function(function) = &parsed.items[0].kind else {
+        panic!("expected function item");
+    };
+    let StmtKind::Return(Some(value)) = &function.body.statements[0].kind else {
+        panic!("expected return value");
+    };
+    assert_eq!(value.kind, ExprKind::Literal(Literal::Bytes(vec![0, 255])));
+}
+
+#[test]
 fn parses_range_expressions() {
     let parsed = parse_source(
         source_id(),
