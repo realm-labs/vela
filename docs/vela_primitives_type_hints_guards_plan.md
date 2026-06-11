@@ -1522,17 +1522,17 @@ functions:
 #### Task 9.1: Host/native typed conversions
 
 - [ ] Add host conversion for:
-  - [ ] `i8/i16/i32/i64`
-  - [ ] `u8/u16/u32/u64`
-  - [ ] `f32/f64`
+  - [x] `i8/i16/i32/i64`
+  - [x] `u8/u16/u32/u64`
+  - [x] `f32/f64`
   - [ ] `Vec<u8>` / byte slices to `bytes`.
-- [ ] Ensure wrong runtime type produces contract/conversion error.
-- [ ] Ensure numeric conversions are explicit, not automatic.
-- [ ] Ensure `HostAccess` arithmetic requires matching concrete scalar tags.
+- [x] Ensure wrong runtime type produces contract/conversion error.
+- [x] Ensure numeric conversions are explicit, not automatic.
+- [x] Ensure `HostAccess` arithmetic requires matching concrete scalar tags.
 
 **Termination condition:**
 
-- [ ] Host/native tests cover every primitive scalar type.
+- [x] Host/native tests cover every primitive scalar type.
 - [ ] `Vec<u8>` round-trips as `bytes`.
 
 #### Task 9.2: Serde policy

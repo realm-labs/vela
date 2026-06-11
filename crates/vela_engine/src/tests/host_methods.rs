@@ -496,7 +496,7 @@ fn typed_callable_native_method_conversion_errors_before_host_access() {
             &[OwnedValue::String("bad".to_owned())],
             &mut host,
         ),
-        Err(error) if matches!(error.kind(), VmErrorKind::TypeMismatch { operation: "int" })
+        Err(error) if matches!(error.kind(), VmErrorKind::TypeMismatch { operation: "i64" })
     ));
 }
 

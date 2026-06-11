@@ -600,6 +600,14 @@ linked nested functions are appended to the linked program side table. Recursive
 linking must not reserve handles before recursively appending child functions,
 because transitive closures would otherwise point at the wrong code object.
 
+### Primitive Embedding Conversions
+
+Rust embedding conversions preserve concrete scalar tags exactly. A Rust
+`i32` argument becomes Vela `i32`, not `i64`; `HostValueInto`/`HostValueFrom`
+use the same exact-tag rule for host fields and methods. Callers that intend an
+`i64` contract must pass an explicit `i64` value, and HostAccess arithmetic
+rejects mixed scalar tags instead of widening or narrowing.
+
 ## Validation Rules
 
 - Multi-level `super` scan must return no matches:

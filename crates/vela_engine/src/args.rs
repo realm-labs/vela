@@ -272,31 +272,21 @@ impl FromScriptArg for bool {
     }
 }
 
-macro_rules! int_arg {
-    ($($ty:ty),* $(,)?) => {
+macro_rules! scalar_arg {
+    ($($ty:ty => $variant:ident),* $(,)?) => {
         $(
             impl IntoScriptArg for $ty {
                 fn into_script_arg(self) -> OwnedValue {
-                    OwnedValue::i64(i64::from(self))
+                    OwnedValue::Scalar(vela_common::ScalarValue::$variant(self))
                 }
             }
-        )*
-    };
-}
 
-int_arg!(i8, i16, i32, i64, u8, u16, u32);
-
-macro_rules! signed_from_arg {
-    ($($ty:ty),* $(,)?) => {
-        $(
             impl FromScriptArg for $ty {
-                const TYPE_NAME: &'static str = "int";
+                const TYPE_NAME: &'static str = stringify!($ty);
 
                 fn from_script_arg(value: &OwnedValue) -> VmResult<Self> {
                     match value {
-                        OwnedValue::Scalar(vela_common::ScalarValue::I64(value)) => (*value)
-                            .try_into()
-                            .map_err(|_| type_mismatch(Self::TYPE_NAME)),
+                        OwnedValue::Scalar(vela_common::ScalarValue::$variant(value)) => Ok(*value),
                         _ => Err(type_mismatch(Self::TYPE_NAME)),
                     }
                 }
@@ -305,41 +295,18 @@ macro_rules! signed_from_arg {
     };
 }
 
-signed_from_arg!(i8, i16, i32, i64, u8, u16, u32);
-
-impl IntoScriptArg for f32 {
-    fn into_script_arg(self) -> OwnedValue {
-        OwnedValue::Scalar(vela_common::ScalarValue::F32(self))
-    }
-}
-
-impl FromScriptArg for f32 {
-    const TYPE_NAME: &'static str = "f32";
-
-    fn from_script_arg(value: &OwnedValue) -> VmResult<Self> {
-        match value {
-            OwnedValue::Scalar(vela_common::ScalarValue::F32(value)) => Ok(*value),
-            _ => Err(type_mismatch(Self::TYPE_NAME)),
-        }
-    }
-}
-
-impl IntoScriptArg for f64 {
-    fn into_script_arg(self) -> OwnedValue {
-        OwnedValue::Scalar(vela_common::ScalarValue::F64(self))
-    }
-}
-
-impl FromScriptArg for f64 {
-    const TYPE_NAME: &'static str = "f64";
-
-    fn from_script_arg(value: &OwnedValue) -> VmResult<Self> {
-        match value {
-            OwnedValue::Scalar(vela_common::ScalarValue::F64(value)) => Ok(*value),
-            _ => Err(type_mismatch(Self::TYPE_NAME)),
-        }
-    }
-}
+scalar_arg!(
+    i8 => I8,
+    i16 => I16,
+    i32 => I32,
+    i64 => I64,
+    u8 => U8,
+    u16 => U16,
+    u32 => U32,
+    u64 => U64,
+    f32 => F32,
+    f64 => F64,
+);
 
 impl IntoScriptArg for String {
     fn into_script_arg(self) -> OwnedValue {

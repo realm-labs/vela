@@ -23,7 +23,7 @@ fn prelude_imports_cover_runtime_embedding_flow() {
     fs::write(
         &source,
         r#"
-fn main(player: Player, amount: int) {
+fn main(player: Player, amount: i64) {
     player.grant_exp(amount);
     return amount;
 }
@@ -37,7 +37,7 @@ fn main(player: Player, amount: int) {
     let mut adapter = MockStateAdapter::new();
     let mut tx = HostAccess::new();
     let player = HostRef::new(HostTypeId::new(1), HostObjectId::new(42), 1);
-    let args = args![host(player), 12];
+    let args = args![host(player), 12_i64];
 
     let result = runtime
         .call_raw(
@@ -80,7 +80,7 @@ fn prelude_imports_cover_compile_dir_runtime_call_embedding_flow() {
     fs::write(
         game_dir.join("main.vela"),
         r#"
-fn main(amount: int) {
+fn main(amount: i64) {
     return game::grant_bonus(amount = amount, base = game::config::BASE);
 }
 "#,
@@ -89,7 +89,7 @@ fn main(amount: int) {
     fs::write(
         game_dir.join("config.vela"),
         r#"
-pub const BASE: int = 10;
+pub const BASE: i64 = 10;
 "#,
     )
     .expect("write config module");
@@ -143,7 +143,7 @@ pub const BASE: int = 10;
     assert_eq!(
         runtime.call_raw(
             "game::main::main",
-            &args![5],
+            &args![5_i64],
             CallOptions::unbounded(),
             &mut adapter,
             &mut tx

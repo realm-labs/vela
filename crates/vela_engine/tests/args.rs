@@ -14,6 +14,59 @@ use vela_vm::error::VmErrorKind;
 use vela_vm::owned_value::OwnedValue;
 
 #[test]
+fn script_arg_conversions_preserve_exact_scalar_tags() {
+    assert_eq!(
+        1_i8.into_script_arg(),
+        OwnedValue::Scalar(vela_common::ScalarValue::I8(1))
+    );
+    assert_eq!(
+        2_i16.into_script_arg(),
+        OwnedValue::Scalar(vela_common::ScalarValue::I16(2))
+    );
+    assert_eq!(
+        3_i32.into_script_arg(),
+        OwnedValue::Scalar(vela_common::ScalarValue::I32(3))
+    );
+    assert_eq!(
+        4_i64.into_script_arg(),
+        OwnedValue::Scalar(vela_common::ScalarValue::I64(4))
+    );
+    assert_eq!(
+        5_u8.into_script_arg(),
+        OwnedValue::Scalar(vela_common::ScalarValue::U8(5))
+    );
+    assert_eq!(
+        6_u16.into_script_arg(),
+        OwnedValue::Scalar(vela_common::ScalarValue::U16(6))
+    );
+    assert_eq!(
+        7_u32.into_script_arg(),
+        OwnedValue::Scalar(vela_common::ScalarValue::U32(7))
+    );
+    assert_eq!(
+        8_u64.into_script_arg(),
+        OwnedValue::Scalar(vela_common::ScalarValue::U64(8))
+    );
+    assert_eq!(
+        1.5_f32.into_script_arg(),
+        OwnedValue::Scalar(vela_common::ScalarValue::F32(1.5))
+    );
+    assert_eq!(
+        2.5_f64.into_script_arg(),
+        OwnedValue::Scalar(vela_common::ScalarValue::F64(2.5))
+    );
+
+    assert_eq!(
+        u64::from_script_arg(&OwnedValue::Scalar(vela_common::ScalarValue::U64(9))),
+        Ok(9)
+    );
+    assert!(matches!(
+        i64::from_script_arg(&OwnedValue::Scalar(vela_common::ScalarValue::I32(9))),
+        Err(error) if matches!(error.kind(), VmErrorKind::TypeMismatch { operation: "i64" })
+    ));
+}
+
+#[test]
 fn script_arg_conversions_support_optional_values() {
     let some_value = OwnedValue::Enum {
         enum_name: "Option".to_owned(),
@@ -51,7 +104,7 @@ fn script_arg_conversions_support_optional_values() {
     );
     assert!(matches!(
         Option::<i64>::from_script_arg(&OwnedValue::String("bad".to_owned())),
-        Err(error) if matches!(error.kind(), VmErrorKind::TypeMismatch { operation: "int" })
+        Err(error) if matches!(error.kind(), VmErrorKind::TypeMismatch { operation: "i64" })
     ));
     assert!(matches!(
         Option::<i64>::from_script_arg(&OwnedValue::Enum {
@@ -92,7 +145,7 @@ fn script_arg_conversions_support_result_values() {
             variant: "Ok".to_owned(),
             fields: [("0".to_owned(), OwnedValue::String("bad".to_owned()))].into(),
         }),
-        Err(error) if matches!(error.kind(), VmErrorKind::TypeMismatch { operation: "int" })
+        Err(error) if matches!(error.kind(), VmErrorKind::TypeMismatch { operation: "i64" })
     ));
     assert!(matches!(
         std::result::Result::<i64, String>::from_script_arg(&OwnedValue::Enum {
@@ -154,14 +207,14 @@ fn args_macro_converts_rust_values_and_host_refs() {
     let host_ref = HostRef::new(HostTypeId::new(1), HostObjectId::new(42), 7);
     let proxy = PathProxy::from_diagnostic_path(HostPath::new(host_ref).field(FieldId::new(9)));
     let mut map = BTreeMap::new();
-    map.insert("key", 9);
+    map.insert("key", 9_i64);
     let mut hash_map = HashMap::new();
-    hash_map.insert("hash", 11);
+    hash_map.insert("hash", 11_i64);
 
     let args = vela_engine::args![
         (),
         true,
-        5,
+        5_i64,
         2.5_f64,
         "title",
         ["a", "b"],
@@ -224,10 +277,10 @@ fn script_arg_conversions_extract_owned_rust_values() {
     let proxy = PathProxy::from_diagnostic_path(HostPath::new(host_ref).field(FieldId::new(9)));
     let args = vela_engine::args![
         true,
-        5,
+        5_i64,
         2.5_f64,
         "title",
-        [1, 2, 3],
+        [1_i64, 2_i64, 3_i64],
         BTreeMap::from([("key", "value")]),
         HashMap::from([("hash", "map")]),
         host_ref,
@@ -296,7 +349,7 @@ fn runtime_call_accepts_args_and_host_macros() {
         .compile_source(
             SourceId::new(1),
             r#"
-fn main(player: Player, amount: int) {
+fn main(player: Player, amount: i64) {
     player.grant_exp(amount);
     return amount;
 }
@@ -306,7 +359,7 @@ fn main(player: Player, amount: int) {
     let mut runtime = vela_engine::runtime::Runtime::new(engine, program);
     let mut adapter = MockStateAdapter::new();
     let mut tx = HostAccess::new();
-    let args = vela_engine::args![vela_engine::host!(1, 42, 1), 12];
+    let args = vela_engine::args![vela_engine::host!(1, 42, 1), 12_i64];
 
     let result = runtime
         .call_raw(

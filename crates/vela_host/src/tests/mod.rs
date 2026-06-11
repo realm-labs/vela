@@ -3,13 +3,14 @@ mod permissions;
 mod proxy;
 mod write_through;
 
-use vela_common::{HostMethodId, HostObjectId, HostTypeId, SourceId, Span};
+use vela_common::{HostMethodId, HostObjectId, HostTypeId, ScalarValue, SourceId, Span};
 use vela_def::FieldId;
 
 use crate::{
     access::{HostAccess, HostObjectSnapshot},
     error::{HostError, HostErrorKind},
     mock::MockStateAdapter,
+    object::{HostValueFrom, HostValueInto},
     path::{HostPath, HostRef},
     proxy::PathProxy,
     resolved::HostMutationOp,

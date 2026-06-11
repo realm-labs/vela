@@ -66,6 +66,71 @@ fn main() {
 }
 
 #[test]
+fn typed_native_functions_preserve_exact_primitive_scalars() {
+    let engine = Engine::builder()
+        .register_typed_native_fn::<(i8, i16, i32, i64), _>(
+            NativeFunctionDesc::new("game::signed_sum", NativeFunctionId::new(260)),
+            |a: i8, b: i16, c: i32, d: i64| i64::from(a) + i64::from(b) + i64::from(c) + d,
+        )
+        .register_typed_native_fn::<(u8, u16, u32, u64), _>(
+            NativeFunctionDesc::new("game::unsigned_sum", NativeFunctionId::new(261)),
+            |a: u8, b: u16, c: u32, d: u64| u64::from(a) + u64::from(b) + u64::from(c) + d,
+        )
+        .register_typed_native_fn::<(f32, f64), _>(
+            NativeFunctionDesc::new("game::float_pair", NativeFunctionId::new(262)),
+            |a: f32, b: f64| (f64::from(a) + b) as f32,
+        )
+        .build()
+        .expect("engine should build");
+
+    let signed = engine
+        .native_function_by_name("game::signed_sum")
+        .expect("signed native should exist");
+    assert_eq!(
+        (signed.function)(&[
+            OwnedValue::Scalar(vela_common::ScalarValue::I8(1)),
+            OwnedValue::Scalar(vela_common::ScalarValue::I16(2)),
+            OwnedValue::Scalar(vela_common::ScalarValue::I32(3)),
+            OwnedValue::Scalar(vela_common::ScalarValue::I64(4)),
+        ]),
+        Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(10)))
+    );
+
+    let unsigned = engine
+        .native_function_by_name("game::unsigned_sum")
+        .expect("unsigned native should exist");
+    assert_eq!(
+        (unsigned.function)(&[
+            OwnedValue::Scalar(vela_common::ScalarValue::U8(1)),
+            OwnedValue::Scalar(vela_common::ScalarValue::U16(2)),
+            OwnedValue::Scalar(vela_common::ScalarValue::U32(3)),
+            OwnedValue::Scalar(vela_common::ScalarValue::U64(4)),
+        ]),
+        Ok(OwnedValue::Scalar(vela_common::ScalarValue::U64(10)))
+    );
+
+    let floats = engine
+        .native_function_by_name("game::float_pair")
+        .expect("float native should exist");
+    assert_eq!(
+        (floats.function)(&[
+            OwnedValue::Scalar(vela_common::ScalarValue::F32(1.5)),
+            OwnedValue::Scalar(vela_common::ScalarValue::F64(2.5)),
+        ]),
+        Ok(OwnedValue::Scalar(vela_common::ScalarValue::F32(4.0)))
+    );
+    assert!(matches!(
+        (signed.function)(&[
+            OwnedValue::Scalar(vela_common::ScalarValue::I64(1)),
+            OwnedValue::Scalar(vela_common::ScalarValue::I16(2)),
+            OwnedValue::Scalar(vela_common::ScalarValue::I32(3)),
+            OwnedValue::Scalar(vela_common::ScalarValue::I64(4)),
+        ]),
+        Err(error) if matches!(error.kind(), VmErrorKind::TypeMismatch { operation: "i8" })
+    ));
+}
+
+#[test]
 fn typed_native_functions_accept_string_values() {
     let engine = Engine::builder()
         .register_typed_native_fn::<(String,), _>(
@@ -740,6 +805,6 @@ fn typed_native_functions_report_arity_and_type_errors() {
     ));
     assert!(matches!(
         (function.function)(&[OwnedValue::String("x".to_owned()), OwnedValue::Scalar(vela_common::ScalarValue::I64(1))]),
-        Err(error) if matches!(error.kind(), VmErrorKind::TypeMismatch { operation: "int" })
+        Err(error) if matches!(error.kind(), VmErrorKind::TypeMismatch { operation: "i64" })
     ));
 }

@@ -1,13 +1,13 @@
 use std::collections::{BTreeMap, BTreeSet, HashMap, HashSet};
 use std::hash::Hash;
 
-use vela_common::{HostMethodId, HostTypeId};
+use vela_common::{HostMethodId, HostTypeId, ScalarValue};
 
 use crate::{
     error::{HostError, HostErrorKind, HostResult},
     resolved::{HostAccessOp, HostAccessSpec, HostMutationOp, HostSchemaEpoch, ResolvedHostAccess},
     target::{HostPathArg, HostPathPart, HostTargetInstance},
-    value::HostValue,
+    value::{HostValue, add_values, div_values, mul_values, rem_values, sub_values},
 };
 
 pub trait ScriptHostObject {
@@ -198,20 +198,20 @@ macro_rules! impl_script_host_object_via_field {
     };
 }
 
-macro_rules! impl_signed_int_host_value {
-    ($($ty:ty),* $(,)?) => {
+macro_rules! impl_scalar_host_value {
+    ($($ty:ty => $variant:ident),* $(,)?) => {
         $(
             impl HostValueInto for $ty {
                 fn into_host_value(self) -> HostResult<HostValue> {
-                    Ok(HostValue::i64(i64::from(self)))
+                    Ok(HostValue::Scalar(ScalarValue::$variant(self)))
                 }
             }
 
             impl HostValueFrom for $ty {
                 fn from_host_value(value: &HostValue) -> HostResult<Self> {
                     match value {
-                        HostValue::Scalar(vela_common::ScalarValue::I64(value)) => <$ty>::try_from(*value).map_err(|_| invalid_arg("int value")),
-                        _ => Err(invalid_arg("int value")),
+                        HostValue::Scalar(ScalarValue::$variant(value)) => Ok(*value),
+                        _ => Err(invalid_arg(stringify!($ty))),
                     }
                 }
             }
@@ -253,63 +253,18 @@ macro_rules! impl_signed_int_host_value {
     };
 }
 
-macro_rules! impl_unsigned_int_host_value {
-    ($($ty:ty),* $(,)?) => {
-        $(
-            impl HostValueInto for $ty {
-                fn into_host_value(self) -> HostResult<HostValue> {
-                    Ok(HostValue::i64(i64::from(self)))
-                }
-            }
-
-            impl HostValueFrom for $ty {
-                fn from_host_value(value: &HostValue) -> HostResult<Self> {
-                    match value {
-                        HostValue::Scalar(vela_common::ScalarValue::I64(value)) => <$ty>::try_from(*value).map_err(|_| invalid_arg("int value")),
-                        _ => Err(invalid_arg("int value")),
-                    }
-                }
-            }
-
-            impl ScriptHostFieldAccess for $ty {
-                fn script_host_type_id(&self) -> HostTypeId {
-                    HostTypeId::new(0)
-                }
-
-                fn read_host_target_from(
-                    &self,
-                    target: HostTargetInstance<'_>,
-                    offset: usize,
-                ) -> HostResult<HostValue> {
-                    if target_is_leaf(target, offset) {
-                        (*self).into_host_value()
-                    } else {
-                        Err(missing_target(target))
-                    }
-                }
-
-                fn write_host_target_from(
-                    &mut self,
-                    target: HostTargetInstance<'_>,
-                    offset: usize,
-                    value: HostValue,
-                ) -> HostResult<()> {
-                    if target_is_leaf(target, offset) {
-                        *self = <$ty as HostValueFrom>::from_host_value(&value)?;
-                        Ok(())
-                    } else {
-                        Err(missing_target(target))
-                    }
-                }
-            }
-
-            impl_script_host_object_via_field!($ty);
-        )*
-    };
-}
-
-impl_signed_int_host_value!(i8, i16, i32, i64);
-impl_unsigned_int_host_value!(u8, u16, u32);
+impl_scalar_host_value!(
+    i8 => I8,
+    i16 => I16,
+    i32 => I32,
+    i64 => I64,
+    u8 => U8,
+    u16 => U16,
+    u32 => U32,
+    u64 => U64,
+    f32 => F32,
+    f64 => F64,
+);
 
 impl HostValueInto for bool {
     fn into_host_value(self) -> HostResult<HostValue> {
@@ -737,11 +692,11 @@ pub fn mutate_host_value(
     target: HostTargetInstance<'_>,
 ) -> HostResult<HostValue> {
     let next = match op {
-        HostMutationOp::Add => host_add_values(current, rhs),
-        HostMutationOp::Sub => host_sub_values(current, rhs),
-        HostMutationOp::Mul => host_mul_values(current, rhs),
-        HostMutationOp::Div => host_div_values(current, rhs),
-        HostMutationOp::Rem => host_rem_values(current, rhs),
+        HostMutationOp::Add => add_values(current, rhs),
+        HostMutationOp::Sub => sub_values(current, rhs),
+        HostMutationOp::Mul => mul_values(current, rhs),
+        HostMutationOp::Div => div_values(current, rhs),
+        HostMutationOp::Rem => rem_values(current, rhs),
         HostMutationOp::Push => None,
     };
     next.ok_or_else(|| invalid_mutation_error(op, target))
@@ -759,87 +714,6 @@ fn invalid_mutation_error(op: HostMutationOp, target: HostTargetInstance<'_>) ->
             HostMutationOp::Push => HostErrorKind::InvalidPush { path },
         },
         source_span: None,
-    }
-}
-
-fn host_add_values(lhs: &HostValue, rhs: &HostValue) -> Option<HostValue> {
-    match (lhs, rhs) {
-        (
-            HostValue::Scalar(vela_common::ScalarValue::I64(lhs)),
-            HostValue::Scalar(vela_common::ScalarValue::I64(rhs)),
-        ) => lhs.checked_add(*rhs).map(HostValue::i64),
-        (
-            HostValue::Scalar(vela_common::ScalarValue::F64(lhs)),
-            HostValue::Scalar(vela_common::ScalarValue::F64(rhs)),
-        ) => Some(HostValue::Scalar(vela_common::ScalarValue::F64(lhs + rhs))),
-        (HostValue::String(lhs), HostValue::String(rhs)) => {
-            Some(HostValue::String(format!("{lhs}{rhs}")))
-        }
-        _ => None,
-    }
-}
-
-fn host_sub_values(lhs: &HostValue, rhs: &HostValue) -> Option<HostValue> {
-    match (lhs, rhs) {
-        (
-            HostValue::Scalar(vela_common::ScalarValue::I64(lhs)),
-            HostValue::Scalar(vela_common::ScalarValue::I64(rhs)),
-        ) => lhs.checked_sub(*rhs).map(HostValue::i64),
-        (
-            HostValue::Scalar(vela_common::ScalarValue::F64(lhs)),
-            HostValue::Scalar(vela_common::ScalarValue::F64(rhs)),
-        ) => Some(HostValue::Scalar(vela_common::ScalarValue::F64(lhs - rhs))),
-        _ => None,
-    }
-}
-
-fn host_mul_values(lhs: &HostValue, rhs: &HostValue) -> Option<HostValue> {
-    match (lhs, rhs) {
-        (
-            HostValue::Scalar(vela_common::ScalarValue::I64(lhs)),
-            HostValue::Scalar(vela_common::ScalarValue::I64(rhs)),
-        ) => lhs.checked_mul(*rhs).map(HostValue::i64),
-        (
-            HostValue::Scalar(vela_common::ScalarValue::F64(lhs)),
-            HostValue::Scalar(vela_common::ScalarValue::F64(rhs)),
-        ) => Some(HostValue::Scalar(vela_common::ScalarValue::F64(lhs * rhs))),
-        _ => None,
-    }
-}
-
-fn host_div_values(lhs: &HostValue, rhs: &HostValue) -> Option<HostValue> {
-    match (lhs, rhs) {
-        (
-            HostValue::Scalar(vela_common::ScalarValue::I64(_)),
-            HostValue::Scalar(vela_common::ScalarValue::I64(0)),
-        ) => None,
-        (
-            HostValue::Scalar(vela_common::ScalarValue::I64(lhs)),
-            HostValue::Scalar(vela_common::ScalarValue::I64(rhs)),
-        ) => lhs.checked_div(*rhs).map(HostValue::i64),
-        (
-            HostValue::Scalar(vela_common::ScalarValue::F64(lhs)),
-            HostValue::Scalar(vela_common::ScalarValue::F64(rhs)),
-        ) if *rhs != 0.0 => Some(HostValue::Scalar(vela_common::ScalarValue::F64(lhs / rhs))),
-        _ => None,
-    }
-}
-
-fn host_rem_values(lhs: &HostValue, rhs: &HostValue) -> Option<HostValue> {
-    match (lhs, rhs) {
-        (
-            HostValue::Scalar(vela_common::ScalarValue::I64(_)),
-            HostValue::Scalar(vela_common::ScalarValue::I64(0)),
-        ) => None,
-        (
-            HostValue::Scalar(vela_common::ScalarValue::I64(lhs)),
-            HostValue::Scalar(vela_common::ScalarValue::I64(rhs)),
-        ) => lhs.checked_rem(*rhs).map(HostValue::i64),
-        (
-            HostValue::Scalar(vela_common::ScalarValue::F64(lhs)),
-            HostValue::Scalar(vela_common::ScalarValue::F64(rhs)),
-        ) if *rhs != 0.0 => Some(HostValue::Scalar(vela_common::ScalarValue::F64(lhs % rhs))),
-        _ => None,
     }
 }
 

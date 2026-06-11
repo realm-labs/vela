@@ -61,6 +61,100 @@ fn compound_write_validates_against_current_adapter_value() {
 }
 
 #[test]
+fn host_value_conversions_preserve_exact_scalar_tags() {
+    assert_eq!(
+        1_i8.into_host_value(),
+        Ok(HostValue::Scalar(ScalarValue::I8(1)))
+    );
+    assert_eq!(
+        2_i16.into_host_value(),
+        Ok(HostValue::Scalar(ScalarValue::I16(2)))
+    );
+    assert_eq!(
+        3_i32.into_host_value(),
+        Ok(HostValue::Scalar(ScalarValue::I32(3)))
+    );
+    assert_eq!(
+        4_i64.into_host_value(),
+        Ok(HostValue::Scalar(ScalarValue::I64(4)))
+    );
+    assert_eq!(
+        5_u8.into_host_value(),
+        Ok(HostValue::Scalar(ScalarValue::U8(5)))
+    );
+    assert_eq!(
+        6_u16.into_host_value(),
+        Ok(HostValue::Scalar(ScalarValue::U16(6)))
+    );
+    assert_eq!(
+        7_u32.into_host_value(),
+        Ok(HostValue::Scalar(ScalarValue::U32(7)))
+    );
+    assert_eq!(
+        8_u64.into_host_value(),
+        Ok(HostValue::Scalar(ScalarValue::U64(8)))
+    );
+    assert_eq!(
+        1.5_f32.into_host_value(),
+        Ok(HostValue::Scalar(ScalarValue::F32(1.5)))
+    );
+    assert_eq!(
+        2.5_f64.into_host_value(),
+        Ok(HostValue::Scalar(ScalarValue::F64(2.5)))
+    );
+
+    assert_eq!(
+        u64::from_host_value(&HostValue::Scalar(ScalarValue::U64(9))),
+        Ok(9)
+    );
+    assert_eq!(
+        i64::from_host_value(&HostValue::Scalar(ScalarValue::I32(9)))
+            .expect_err("i32 is not an i64 host value")
+            .kind,
+        HostErrorKind::InvalidArgument { expected: "i64" }
+    );
+}
+
+#[test]
+fn host_access_arithmetic_requires_matching_scalar_tags() {
+    let mut adapter = MockStateAdapter::new();
+    let path = level_path();
+    adapter.insert_diagnostic_path_value(path.clone(), HostValue::Scalar(ScalarValue::U8(9)));
+    let plan = target_plan(&path);
+    let mut tx = HostAccess::new();
+
+    tx.mutate(
+        &mut adapter,
+        target_instance(&path, &plan),
+        HostMutationOp::Add,
+        HostValue::Scalar(ScalarValue::U8(1)),
+        None,
+    )
+    .expect("matching u8 add should mutate");
+
+    assert_eq!(
+        adapter.read_diagnostic_path(&path),
+        Ok(HostValue::Scalar(ScalarValue::U8(10)))
+    );
+
+    let error = tx
+        .mutate(
+            &mut adapter,
+            target_instance(&path, &plan),
+            HostMutationOp::Add,
+            HostValue::Scalar(ScalarValue::I64(1)),
+            None,
+        )
+        .expect_err("mixed scalar tags should reject");
+
+    assert_eq!(error.kind, HostErrorKind::InvalidAdd { path: path.clone() });
+    assert_eq!(
+        adapter.read_diagnostic_path(&path),
+        Ok(HostValue::Scalar(ScalarValue::U8(10)))
+    );
+}
+
+#[test]
 fn repeated_alias_writes_read_current_host_state() {
     let mut adapter = MockStateAdapter::new();
     let path = level_path();
