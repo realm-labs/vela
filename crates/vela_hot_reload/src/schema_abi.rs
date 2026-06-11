@@ -4,7 +4,7 @@ use vela_common::Span;
 use vela_reflect::access::FieldAccess;
 use vela_reflect::registry::{FieldDesc, SchemaHash, TraitDesc, TypeDesc, TypeKind, VariantDesc};
 
-use crate::abi::TraitMethodAbi;
+use crate::abi::{TraitMethodAbi, trait_methods_compatible, type_hints_compatible};
 use crate::error::{HotReloadError, HotReloadErrorKind, HotReloadResult};
 
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -360,7 +360,7 @@ fn fields_compatible(old: &[SchemaFieldAbi], new: &[SchemaFieldAbi]) -> bool {
 
 fn existing_field_compatible(old: &SchemaFieldAbi, new: &SchemaFieldAbi) -> bool {
     old.id == new.id
-        && old.type_hint == new.type_hint
+        && type_hints_compatible(old.type_hint.as_deref(), new.type_hint.as_deref())
         && old.has_default == new.has_default
         && old.writable == new.writable
         && old.access == new.access
@@ -386,6 +386,17 @@ fn trait_impls_compatible(old: &[SchemaTraitImplAbi], new: &[SchemaTraitImplAbi]
     old.iter().all(|old_trait| {
         new_traits
             .get(old_trait.name.as_str())
-            .is_some_and(|new_trait| *new_trait == old_trait)
+            .is_some_and(|new_trait| schema_trait_impl_compatible(old_trait, new_trait))
     })
+}
+
+fn schema_trait_impl_compatible(old: &SchemaTraitImplAbi, new: &SchemaTraitImplAbi) -> bool {
+    old.id == new.id
+        && old.name == new.name
+        && old.methods.len() == new.methods.len()
+        && old
+            .methods
+            .iter()
+            .zip(&new.methods)
+            .all(|(old, new)| trait_methods_compatible(old, new))
 }

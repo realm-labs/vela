@@ -71,7 +71,7 @@ fn method_descriptor_parameter_abi_changes_are_rejected() {
             EffectAbi::host_write(),
             AccessAbi::public(),
         )
-        .param(ParamAbi::new("amount").type_hint("int")),
+        .param(ParamAbi::new("amount").type_hint("i64")),
     );
     let changed_param = HotReloadAbi::empty().method(
         MethodAbi::new(
@@ -80,7 +80,7 @@ fn method_descriptor_parameter_abi_changes_are_rejected() {
             EffectAbi::host_write(),
             AccessAbi::public(),
         )
-        .param(ParamAbi::new("amount").type_hint("float"))
+        .param(ParamAbi::new("amount").type_hint("f64"))
         .source_span(span),
     );
     let initial =
@@ -99,8 +99,8 @@ fn method_descriptor_parameter_abi_changes_are_rejected() {
         HotReloadErrorKind::ChangedMethodParameterAbi {
             type_name: "Player".to_owned(),
             method: "grant_exp".to_owned(),
-            old: vec![ParamAbi::new("amount").type_hint("int")],
-            new: vec![ParamAbi::new("amount").type_hint("float")],
+            old: vec![ParamAbi::new("amount").type_hint("i64")],
+            new: vec![ParamAbi::new("amount").type_hint("f64")],
             source_span: Some(Box::new(span)),
         }
     );
@@ -109,15 +109,16 @@ fn method_descriptor_parameter_abi_changes_are_rejected() {
     assert_eq!(
         report.errors[0].detail,
         Some(HotReloadDiagnosticDetail::MethodParameterAbiList {
-            old: vec![ParamAbi::new("amount").type_hint("int")],
-            new: vec![ParamAbi::new("amount").type_hint("float")],
+            old: vec![ParamAbi::new("amount").type_hint("i64")],
+            new: vec![ParamAbi::new("amount").type_hint("f64")],
         })
     );
     assert_eq!(report.errors[0].source_span, Some(span));
     assert!(
-        report.render_lines().iter().any(|line| {
-            line.text == "method parameter ABI: old=(amount:int) new=(amount:float)"
-        })
+        report
+            .render_lines()
+            .iter()
+            .any(|line| { line.text == "method parameter ABI: old=(amount:i64) new=(amount:f64)" })
     );
 
     let added_required = HotReloadAbi::empty().method(
@@ -127,7 +128,7 @@ fn method_descriptor_parameter_abi_changes_are_rejected() {
             EffectAbi::host_write(),
             AccessAbi::public(),
         )
-        .param(ParamAbi::new("amount").type_hint("int"))
+        .param(ParamAbi::new("amount").type_hint("i64"))
         .param(ParamAbi::new("reason").type_hint("string")),
     );
     let error = compile_update_with_abi(
@@ -146,7 +147,7 @@ fn method_descriptor_parameter_abi_changes_are_rejected() {
             EffectAbi::host_write(),
             AccessAbi::public(),
         )
-        .param(ParamAbi::new("amount").type_hint("int"))
+        .param(ParamAbi::new("amount").type_hint("i64"))
         .param(ParamAbi::new("reason").type_hint("string").defaulted(true)),
     );
     compile_update_with_abi(
@@ -168,7 +169,7 @@ fn method_descriptor_return_abi_changes_are_rejected() {
             EffectAbi::host_write(),
             AccessAbi::public(),
         )
-        .return_type("int"),
+        .return_type("i64"),
     );
     let changed_return = HotReloadAbi::empty().method(
         MethodAbi::new(
@@ -195,7 +196,7 @@ fn method_descriptor_return_abi_changes_are_rejected() {
         HotReloadErrorKind::ChangedMethodReturnAbi {
             type_name: "Player".to_owned(),
             method: "grant_exp".to_owned(),
-            old: Some("int".to_owned()),
+            old: Some("i64".to_owned()),
             new: Some("null".to_owned()),
             source_span: Some(Box::new(span)),
         }
@@ -205,7 +206,7 @@ fn method_descriptor_return_abi_changes_are_rejected() {
     assert_eq!(
         report.errors[0].detail,
         Some(HotReloadDiagnosticDetail::MethodReturnAbi {
-            old: Some("int".to_owned()),
+            old: Some("i64".to_owned()),
             new: Some("null".to_owned()),
         })
     );
@@ -214,6 +215,6 @@ fn method_descriptor_return_abi_changes_are_rejected() {
         report
             .render_lines()
             .iter()
-            .any(|line| line.text == "method return ABI: old=int new=null")
+            .any(|line| line.text == "method return ABI: old=i64 new=null")
     );
 }

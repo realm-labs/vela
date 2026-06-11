@@ -633,6 +633,14 @@ ABI-owned buffers that callers must release with `vela_value_free`, or with
 the specific `vela_string_free` / `vela_bytes_free` helper when they own the
 raw pointer directly.
 
+Hot-reload function, method, trait, and schema compatibility checks normalize
+primitive type hints through `PrimitiveTag` before comparing contracts.
+Changing any primitive contract, such as `i32 -> i64`, `i64 -> u64`,
+`f32 -> f64`, or `bytes -> string`, is incompatible unless a future explicit
+product compatibility rule is added. Report rendering may still use hint text
+for diagnostics, but compatibility decisions must not depend on old `int` or
+`float` names.
+
 ## Validation Rules
 
 - Multi-level `super` scan must return no matches:

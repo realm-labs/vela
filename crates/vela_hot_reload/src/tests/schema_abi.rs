@@ -58,7 +58,7 @@ fn registry_schema_abi_accepts_defaulted_field_additions() {
             .kind(TypeKind::ScriptStruct)
             .schema_hash(SchemaHash::new(0x1111))
             .field(FieldDesc::new(FieldId::new(1), "item_id").type_hint("string"))
-            .field(FieldDesc::new(FieldId::new(2), "count").type_hint("int")),
+            .field(FieldDesc::new(FieldId::new(2), "count").type_hint("i64")),
     );
 
     let mut new_registry = TypeRegistry::new();
@@ -71,7 +71,7 @@ fn registry_schema_abi_accepts_defaulted_field_additions() {
                     .type_hint("string")
                     .defaulted(true),
             )
-            .field(FieldDesc::new(FieldId::new(2), "count").type_hint("int"))
+            .field(FieldDesc::new(FieldId::new(2), "count").type_hint("i64"))
             .field(FieldDesc::new(FieldId::new(1), "item_id").type_hint("string")),
     );
 
@@ -88,7 +88,7 @@ fn registry_schema_abi_accepts_stable_id_field_and_variant_renames() {
             .kind(TypeKind::ScriptStruct)
             .schema_hash(SchemaHash::new(0x1111))
             .field(FieldDesc::new(FieldId::new(1), "item_id").type_hint("string"))
-            .field(FieldDesc::new(FieldId::new(2), "count").type_hint("int")),
+            .field(FieldDesc::new(FieldId::new(2), "count").type_hint("i64")),
     );
     old_registry.register(
         TypeDesc::new(TypeKey::new(TypeId::new(2), "QuestProgress"))
@@ -106,7 +106,7 @@ fn registry_schema_abi_accepts_stable_id_field_and_variant_renames() {
             .kind(TypeKind::ScriptStruct)
             .schema_hash(SchemaHash::new(0x2222))
             .field(FieldDesc::new(FieldId::new(1), "item").type_hint("string"))
-            .field(FieldDesc::new(FieldId::new(2), "quantity").type_hint("int")),
+            .field(FieldDesc::new(FieldId::new(2), "quantity").type_hint("i64")),
     );
     new_registry.register(
         TypeDesc::new(TypeKey::new(TypeId::new(2), "QuestProgress"))
@@ -186,7 +186,7 @@ fn registry_schema_abi_rejects_required_field_additions() {
             .kind(TypeKind::ScriptStruct)
             .schema_hash(SchemaHash::new(0x2222))
             .field(FieldDesc::new(FieldId::new(1), "item_id").type_hint("string"))
-            .field(FieldDesc::new(FieldId::new(2), "count").type_hint("int"))
+            .field(FieldDesc::new(FieldId::new(2), "count").type_hint("i64"))
             .source_span(span),
     );
 
@@ -216,7 +216,7 @@ fn registry_schema_abi_rejects_existing_member_changes() {
             .schema_hash(SchemaHash::new(0xaaaa))
             .variant(
                 VariantDesc::new(VariantId::new(1), "Active")
-                    .field(FieldDesc::new(FieldId::new(1), "count").type_hint("int")),
+                    .field(FieldDesc::new(FieldId::new(1), "count").type_hint("i64")),
             ),
     );
 
@@ -227,7 +227,7 @@ fn registry_schema_abi_rejects_existing_member_changes() {
             .schema_hash(SchemaHash::new(0xbbbb))
             .variant(
                 VariantDesc::new(VariantId::new(1), "Active")
-                    .field(FieldDesc::new(FieldId::new(1), "count").type_hint("float")),
+                    .field(FieldDesc::new(FieldId::new(1), "count").type_hint("f64")),
             ),
     );
 
@@ -240,8 +240,50 @@ fn registry_schema_abi_rejects_existing_member_changes() {
         report
             .render_lines()
             .iter()
-            .any(|line| line.text.contains("variants=[Active#1(count#1:int)]"))
+            .any(|line| line.text.contains("variants=[Active#1(count#1:i64)]"))
     );
+}
+
+#[test]
+fn registry_schema_abi_rejects_primitive_field_changes_by_tag() {
+    let cases = [
+        ("i32", "i64"),
+        ("i64", "u64"),
+        ("f32", "f64"),
+        ("bytes", "string"),
+    ];
+
+    for (index, (old_hint, new_hint)) in cases.into_iter().enumerate() {
+        let span = Span::new(SourceId::new(90 + index as u32), 20, 80);
+        let mut old_registry = TypeRegistry::new();
+        old_registry.register(
+            TypeDesc::new(TypeKey::new(TypeId::new(1), "Reward"))
+                .kind(TypeKind::ScriptStruct)
+                .schema_hash(SchemaHash::new(0x1111))
+                .field(FieldDesc::new(FieldId::new(1), "payload").type_hint(old_hint)),
+        );
+
+        let mut new_registry = TypeRegistry::new();
+        new_registry.register(
+            TypeDesc::new(TypeKey::new(TypeId::new(1), "Reward"))
+                .kind(TypeKind::ScriptStruct)
+                .schema_hash(SchemaHash::new(0x2222))
+                .field(FieldDesc::new(FieldId::new(1), "payload").type_hint(new_hint))
+                .source_span(span),
+        );
+
+        let error = HotReloadAbi::from_registry(&old_registry)
+            .ensure_compatible_update(&HotReloadAbi::from_registry(&new_registry))
+            .expect_err("primitive field type change should fail");
+        assert_eq!(error.code(), "reload.schema.abi_changed");
+        assert_eq!(error.source_span(), Some(span));
+        let report = HotReloadReport::rejected(ProgramVersionId(90 + index as u64), error);
+        assert_eq!(report.errors[0].source_span, Some(span));
+        assert!(report.render_lines().iter().any(|line| {
+            line.text
+                .contains(&format!("fields=[payload#1:{old_hint}]"))
+        }));
+    }
 }
 
 #[test]
@@ -251,11 +293,11 @@ fn registry_schema_abi_tracks_trait_impls_even_with_stable_hashes() {
         TypeDesc::new(TypeKey::new(TypeId::new(3), "Player"))
             .kind(TypeKind::ScriptStruct)
             .schema_hash(SchemaHash::new(0x3333))
-            .field(FieldDesc::new(FieldId::new(1), "level").type_hint("int"))
+            .field(FieldDesc::new(FieldId::new(1), "level").type_hint("i64"))
             .trait_impl(
                 TraitDesc::new("Damageable").method(
                     TraitMethodDesc::new(MethodId::new(1), "damage")
-                        .param(MethodParamDesc::new("amount").type_hint("int")),
+                        .param(MethodParamDesc::new("amount").type_hint("i64")),
                 ),
             ),
     );
@@ -265,7 +307,7 @@ fn registry_schema_abi_tracks_trait_impls_even_with_stable_hashes() {
         TypeDesc::new(TypeKey::new(TypeId::new(3), "Player"))
             .kind(TypeKind::ScriptStruct)
             .schema_hash(SchemaHash::new(0x3333))
-            .field(FieldDesc::new(FieldId::new(1), "level").type_hint("int")),
+            .field(FieldDesc::new(FieldId::new(1), "level").type_hint("i64")),
     );
     let error = HotReloadAbi::from_registry(&old_registry)
         .ensure_compatible_update(&HotReloadAbi::from_registry(&removed_impl_registry))
@@ -284,11 +326,11 @@ fn registry_schema_abi_tracks_trait_impls_even_with_stable_hashes() {
         TypeDesc::new(TypeKey::new(TypeId::new(3), "Player"))
             .kind(TypeKind::ScriptStruct)
             .schema_hash(SchemaHash::new(0x3333))
-            .field(FieldDesc::new(FieldId::new(1), "level").type_hint("int"))
+            .field(FieldDesc::new(FieldId::new(1), "level").type_hint("i64"))
             .trait_impl(
                 TraitDesc::new("Damageable").method(
                     TraitMethodDesc::new(MethodId::new(1), "damage")
-                        .param(MethodParamDesc::new("amount").type_hint("int")),
+                        .param(MethodParamDesc::new("amount").type_hint("i64")),
                 ),
             )
             .trait_impl(TraitDesc::new("Trackable")),

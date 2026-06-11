@@ -6,16 +6,16 @@ fn trait_descriptor_abi_changes_are_rejected() {
     let old_abi = HotReloadAbi::empty().trait_abi(
         TraitAbi::new("Damageable").method(
             TraitMethodAbi::new(1, "damage")
-                .param(ParamAbi::new("amount").type_hint("int"))
-                .return_type("int"),
+                .param(ParamAbi::new("amount").type_hint("i64"))
+                .return_type("i64"),
         ),
     );
     let changed_return = HotReloadAbi::empty().trait_abi(
         TraitAbi::new("Damageable")
             .method(
                 TraitMethodAbi::new(1, "damage")
-                    .param(ParamAbi::new("amount").type_hint("int"))
-                    .return_type("float"),
+                    .param(ParamAbi::new("amount").type_hint("i64"))
+                    .return_type("f64"),
             )
             .source_span(span),
     );
@@ -29,13 +29,13 @@ fn trait_descriptor_abi_changes_are_rejected() {
             trait_name: "Damageable".to_owned(),
             old: vec![
                 TraitMethodAbi::new(1, "damage")
-                    .param(ParamAbi::new("amount").type_hint("int"))
-                    .return_type("int"),
+                    .param(ParamAbi::new("amount").type_hint("i64"))
+                    .return_type("i64"),
             ],
             new: vec![
                 TraitMethodAbi::new(1, "damage")
-                    .param(ParamAbi::new("amount").type_hint("int"))
-                    .return_type("float"),
+                    .param(ParamAbi::new("amount").type_hint("i64"))
+                    .return_type("f64"),
             ],
             source_span: Some(Box::new(span)),
         }
@@ -47,33 +47,33 @@ fn trait_descriptor_abi_changes_are_rejected() {
         Some(HotReloadDiagnosticDetail::TraitMethodAbiList {
             old: vec![
                 TraitMethodAbi::new(1, "damage")
-                    .param(ParamAbi::new("amount").type_hint("int"))
-                    .return_type("int"),
+                    .param(ParamAbi::new("amount").type_hint("i64"))
+                    .return_type("i64"),
             ],
             new: vec![
                 TraitMethodAbi::new(1, "damage")
-                    .param(ParamAbi::new("amount").type_hint("int"))
-                    .return_type("float"),
+                    .param(ParamAbi::new("amount").type_hint("i64"))
+                    .return_type("f64"),
             ],
         })
     );
     assert_eq!(report.errors[0].source_span, Some(span));
     assert!(report.render_lines().iter().any(|line| {
         line.text
-            == "trait method ABI: old=(damage#1(amount:int)->int) new=(damage#1(amount:int)->float)"
+            == "trait method ABI: old=(damage#1(amount:i64)->i64) new=(damage#1(amount:i64)->f64)"
     }));
 
     let added_required = HotReloadAbi::empty().trait_abi(
         TraitAbi::new("Damageable")
             .method(
                 TraitMethodAbi::new(1, "damage")
-                    .param(ParamAbi::new("amount").type_hint("int"))
-                    .return_type("int"),
+                    .param(ParamAbi::new("amount").type_hint("i64"))
+                    .return_type("i64"),
             )
             .method(
                 TraitMethodAbi::new(2, "heal")
-                    .param(ParamAbi::new("amount").type_hint("int"))
-                    .return_type("int"),
+                    .param(ParamAbi::new("amount").type_hint("i64"))
+                    .return_type("i64"),
             ),
     );
     let error = old_abi
@@ -85,13 +85,13 @@ fn trait_descriptor_abi_changes_are_rejected() {
         TraitAbi::new("Damageable")
             .method(
                 TraitMethodAbi::new(1, "damage")
-                    .param(ParamAbi::new("amount").type_hint("int"))
-                    .return_type("int"),
+                    .param(ParamAbi::new("amount").type_hint("i64"))
+                    .return_type("i64"),
             )
             .method(
                 TraitMethodAbi::new(2, "heal")
-                    .param(ParamAbi::new("amount").type_hint("int"))
-                    .return_type("int")
+                    .param(ParamAbi::new("amount").type_hint("i64"))
+                    .return_type("i64")
                     .defaulted(true),
             ),
     );

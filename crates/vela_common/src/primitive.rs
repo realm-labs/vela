@@ -58,6 +58,27 @@ impl PrimitiveTag {
             | PrimitiveTag::Bytes => None,
         }
     }
+
+    #[must_use]
+    pub const fn from_name(name: &str) -> Option<Self> {
+        match name.as_bytes() {
+            b"null" => Some(PrimitiveTag::Null),
+            b"bool" => Some(PrimitiveTag::Bool),
+            b"i8" => Some(PrimitiveTag::I8),
+            b"i16" => Some(PrimitiveTag::I16),
+            b"i32" => Some(PrimitiveTag::I32),
+            b"i64" => Some(PrimitiveTag::I64),
+            b"u8" => Some(PrimitiveTag::U8),
+            b"u16" => Some(PrimitiveTag::U16),
+            b"u32" => Some(PrimitiveTag::U32),
+            b"u64" => Some(PrimitiveTag::U64),
+            b"f32" => Some(PrimitiveTag::F32),
+            b"f64" => Some(PrimitiveTag::F64),
+            b"string" => Some(PrimitiveTag::String),
+            b"bytes" => Some(PrimitiveTag::Bytes),
+            _ => None,
+        }
+    }
 }
 
 impl fmt::Display for PrimitiveTag {
@@ -258,7 +279,10 @@ mod tests {
         for (tag, name) in PRIMITIVE_NAMES {
             assert_eq!(tag.name(), *name);
             assert_eq!(tag.to_string(), *name);
+            assert_eq!(PrimitiveTag::from_name(name), Some(*tag));
         }
+        assert_eq!(PrimitiveTag::from_name("int"), None);
+        assert_eq!(PrimitiveTag::from_name("float"), None);
     }
 
     #[test]

@@ -77,8 +77,8 @@ fn trait_abi_manifest_can_be_built_from_type_registry() {
     old_registry.register_trait(
         TraitDesc::new("Damageable").method(
             TraitMethodDesc::new(MethodId::new(1), "damage")
-                .param(MethodParamDesc::new("amount").type_hint("int"))
-                .return_type("int"),
+                .param(MethodParamDesc::new("amount").type_hint("i64"))
+                .return_type("i64"),
         ),
     );
 
@@ -87,14 +87,14 @@ fn trait_abi_manifest_can_be_built_from_type_registry() {
         TraitDesc::new("Damageable")
             .method(
                 TraitMethodDesc::new(MethodId::new(2), "heal")
-                    .param(MethodParamDesc::new("amount").type_hint("int"))
-                    .return_type("int")
+                    .param(MethodParamDesc::new("amount").type_hint("i64"))
+                    .return_type("i64")
                     .defaulted(true),
             )
             .method(
                 TraitMethodDesc::new(MethodId::new(1), "damage")
-                    .param(MethodParamDesc::new("amount").type_hint("int"))
-                    .return_type("int"),
+                    .param(MethodParamDesc::new("amount").type_hint("i64"))
+                    .return_type("i64"),
             ),
     );
 
@@ -106,8 +106,8 @@ fn trait_abi_manifest_can_be_built_from_type_registry() {
     changed_registry.register_trait(
         TraitDesc::new("Damageable").method(
             TraitMethodDesc::new(MethodId::new(1), "damage")
-                .param(MethodParamDesc::new("amount").type_hint("float"))
-                .return_type("int"),
+                .param(MethodParamDesc::new("amount").type_hint("f64"))
+                .return_type("i64"),
         ),
     );
     let error = HotReloadAbi::from_registry(&old_registry)
@@ -123,8 +123,8 @@ fn registry_function_abi_accepts_host_stable_id_renames() {
     old_registry.register_function(
         FunctionDesc::new(FunctionId::new(22), "game::native::grant_bonus")
             .module("game::native")
-            .param(FunctionParamDesc::new("amount").type_hint("int"))
-            .return_type("int")
+            .param(FunctionParamDesc::new("amount").type_hint("i64"))
+            .return_type("i64")
             .effects(FunctionEffectSet::host_read())
             .access(FunctionAccess::new().reflect_visible(true)),
     );
@@ -134,8 +134,8 @@ fn registry_function_abi_accepts_host_stable_id_renames() {
     renamed_registry.register_function(
         FunctionDesc::new(FunctionId::new(22), "game::native::grant_bonus_v2")
             .module("game::native")
-            .param(FunctionParamDesc::new("amount").type_hint("int"))
-            .return_type("int")
+            .param(FunctionParamDesc::new("amount").type_hint("i64"))
+            .return_type("i64")
             .effects(FunctionEffectSet::host_read())
             .access(FunctionAccess::new().reflect_visible(true)),
     );
@@ -149,8 +149,8 @@ fn registry_function_abi_accepts_host_stable_id_renames() {
     changed_id_registry.register_function(
         FunctionDesc::new(FunctionId::new(23), "game::native::grant_bonus")
             .module("game::native")
-            .param(FunctionParamDesc::new("amount").type_hint("int"))
-            .return_type("int")
+            .param(FunctionParamDesc::new("amount").type_hint("i64"))
+            .return_type("i64")
             .effects(FunctionEffectSet::host_read())
             .access(FunctionAccess::new().reflect_visible(true)),
     );
@@ -168,14 +168,14 @@ fn registry_function_abi_keeps_script_function_renames_name_based() {
     old_registry.register_function(
         FunctionDesc::new(FunctionId::new(31), "game::reward::grant")
             .origin(DeclOrigin::Script)
-            .return_type("int"),
+            .return_type("i64"),
     );
 
     let mut renamed_registry = TypeRegistry::new();
     renamed_registry.register_function(
         FunctionDesc::new(FunctionId::new(31), "game::reward::grant_v2")
             .origin(DeclOrigin::Script)
-            .return_type("int"),
+            .return_type("i64"),
     );
 
     let error = HotReloadAbi::from_registry(&old_registry)
@@ -191,8 +191,8 @@ fn registry_method_abi_accepts_host_stable_id_renames() {
     old_registry.register(
         TypeDesc::new(TypeKey::new(TypeId::new(1), "Player")).method(
             MethodDesc::new(HostMethodId::new(9), "grant_exp")
-                .param(MethodParamDesc::new("amount").type_hint("int"))
-                .return_type("int")
+                .param(MethodParamDesc::new("amount").type_hint("i64"))
+                .return_type("i64")
                 .effects(MethodEffectSet::host_write())
                 .access(MethodAccess::new().reflect_callable(true)),
         ),
@@ -202,8 +202,8 @@ fn registry_method_abi_accepts_host_stable_id_renames() {
     renamed_registry.register(
         TypeDesc::new(TypeKey::new(TypeId::new(1), "Player")).method(
             MethodDesc::new(HostMethodId::new(9), "award_exp")
-                .param(MethodParamDesc::new("amount").type_hint("int"))
-                .return_type("int")
+                .param(MethodParamDesc::new("amount").type_hint("i64"))
+                .return_type("i64")
                 .effects(MethodEffectSet::host_write())
                 .access(MethodAccess::new().reflect_callable(true)),
         ),
@@ -217,8 +217,8 @@ fn registry_method_abi_accepts_host_stable_id_renames() {
     changed_id_registry.register(
         TypeDesc::new(TypeKey::new(TypeId::new(1), "Player")).method(
             MethodDesc::new(HostMethodId::new(10), "grant_exp")
-                .param(MethodParamDesc::new("amount").type_hint("int"))
-                .return_type("int")
+                .param(MethodParamDesc::new("amount").type_hint("i64"))
+                .return_type("i64")
                 .effects(MethodEffectSet::host_write())
                 .access(MethodAccess::new().reflect_callable(true)),
         ),
@@ -237,8 +237,8 @@ fn abi_manifest_can_be_built_from_type_registry() {
         .schema_hash(SchemaHash::new(0xfeed))
         .method(
             MethodDesc::new(HostMethodId::new(9), "grant_exp")
-                .param(MethodParamDesc::new("amount").type_hint("int"))
-                .return_type("int")
+                .param(MethodParamDesc::new("amount").type_hint("i64"))
+                .return_type("i64")
                 .effects(MethodEffectSet::host_write())
                 .access(
                     MethodAccess::new()
@@ -251,8 +251,8 @@ fn abi_manifest_can_be_built_from_type_registry() {
     registry.register_function(
         FunctionDesc::new(FunctionId::new(11), "game::reward::grant")
             .param(FunctionParamDesc::new("player").type_hint("Player"))
-            .param(FunctionParamDesc::new("amount").type_hint("int"))
-            .return_type("int")
+            .param(FunctionParamDesc::new("amount").type_hint("i64"))
+            .return_type("i64")
             .effects(FunctionEffectSet::event_emit())
             .access(
                 FunctionAccess::new()
@@ -276,8 +276,8 @@ fn abi_manifest_can_be_built_from_type_registry() {
             .schema_hash(SchemaHash::new(0xfeed))
             .method(
                 MethodDesc::new(HostMethodId::new(9), "grant_exp")
-                    .param(MethodParamDesc::new("amount").type_hint("int"))
-                    .return_type("int")
+                    .param(MethodParamDesc::new("amount").type_hint("i64"))
+                    .return_type("i64")
                     .effects(MethodEffectSet::host_write())
                     .access(
                         MethodAccess::new()
@@ -289,8 +289,8 @@ fn abi_manifest_can_be_built_from_type_registry() {
     changed_registry.register_function(
         FunctionDesc::new(FunctionId::new(11), "game::reward::grant")
             .param(FunctionParamDesc::new("player").type_hint("Player"))
-            .param(FunctionParamDesc::new("amount").type_hint("int"))
-            .return_type("int")
+            .param(FunctionParamDesc::new("amount").type_hint("i64"))
+            .return_type("i64")
             .effects(FunctionEffectSet::event_emit())
             .access(
                 FunctionAccess::new()
@@ -315,8 +315,8 @@ fn abi_manifest_can_be_built_from_type_registry() {
             .schema_hash(SchemaHash::new(0xfeed))
             .method(
                 MethodDesc::new(HostMethodId::new(9), "grant_exp")
-                    .param(MethodParamDesc::new("amount").type_hint("int"))
-                    .return_type("int")
+                    .param(MethodParamDesc::new("amount").type_hint("i64"))
+                    .return_type("i64")
                     .effects(MethodEffectSet::host_write())
                     .access(
                         MethodAccess::new()
@@ -328,8 +328,8 @@ fn abi_manifest_can_be_built_from_type_registry() {
     changed_param_registry.register_function(
         FunctionDesc::new(FunctionId::new(11), "game::reward::grant")
             .param(FunctionParamDesc::new("player").type_hint("Player"))
-            .param(FunctionParamDesc::new("amount").type_hint("float"))
-            .return_type("int")
+            .param(FunctionParamDesc::new("amount").type_hint("f64"))
+            .return_type("i64")
             .effects(FunctionEffectSet::event_emit())
             .access(
                 FunctionAccess::new()
@@ -354,8 +354,8 @@ fn abi_manifest_can_be_built_from_type_registry() {
             .schema_hash(SchemaHash::new(0xfeed))
             .method(
                 MethodDesc::new(HostMethodId::new(9), "grant_exp")
-                    .param(MethodParamDesc::new("amount").type_hint("float"))
-                    .return_type("int")
+                    .param(MethodParamDesc::new("amount").type_hint("f64"))
+                    .return_type("i64")
                     .effects(MethodEffectSet::host_write())
                     .access(
                         MethodAccess::new()
@@ -367,8 +367,8 @@ fn abi_manifest_can_be_built_from_type_registry() {
     changed_method_param_registry.register_function(
         FunctionDesc::new(FunctionId::new(11), "game::reward::grant")
             .param(FunctionParamDesc::new("player").type_hint("Player"))
-            .param(FunctionParamDesc::new("amount").type_hint("int"))
-            .return_type("int")
+            .param(FunctionParamDesc::new("amount").type_hint("i64"))
+            .return_type("i64")
             .effects(FunctionEffectSet::event_emit())
             .access(
                 FunctionAccess::new()
@@ -393,8 +393,8 @@ fn abi_manifest_can_be_built_from_type_registry() {
             .schema_hash(SchemaHash::new(0xfeed))
             .method(
                 MethodDesc::new(HostMethodId::new(9), "grant_exp")
-                    .param(MethodParamDesc::new("amount").type_hint("int"))
-                    .return_type("int")
+                    .param(MethodParamDesc::new("amount").type_hint("i64"))
+                    .return_type("i64")
                     .effects(MethodEffectSet::host_write())
                     .access(
                         MethodAccess::new()
@@ -406,8 +406,8 @@ fn abi_manifest_can_be_built_from_type_registry() {
     changed_function_return_registry.register_function(
         FunctionDesc::new(FunctionId::new(11), "game::reward::grant")
             .param(FunctionParamDesc::new("player").type_hint("Player"))
-            .param(FunctionParamDesc::new("amount").type_hint("int"))
-            .return_type("float")
+            .param(FunctionParamDesc::new("amount").type_hint("i64"))
+            .return_type("f64")
             .effects(FunctionEffectSet::event_emit())
             .access(
                 FunctionAccess::new()
@@ -432,8 +432,8 @@ fn abi_manifest_can_be_built_from_type_registry() {
             .schema_hash(SchemaHash::new(0xfeed))
             .method(
                 MethodDesc::new(HostMethodId::new(9), "grant_exp")
-                    .param(MethodParamDesc::new("amount").type_hint("int"))
-                    .return_type("float")
+                    .param(MethodParamDesc::new("amount").type_hint("i64"))
+                    .return_type("f64")
                     .effects(MethodEffectSet::host_write())
                     .access(
                         MethodAccess::new()
@@ -445,8 +445,8 @@ fn abi_manifest_can_be_built_from_type_registry() {
     changed_method_return_registry.register_function(
         FunctionDesc::new(FunctionId::new(11), "game::reward::grant")
             .param(FunctionParamDesc::new("player").type_hint("Player"))
-            .param(FunctionParamDesc::new("amount").type_hint("int"))
-            .return_type("int")
+            .param(FunctionParamDesc::new("amount").type_hint("i64"))
+            .return_type("i64")
             .effects(FunctionEffectSet::event_emit())
             .access(
                 FunctionAccess::new()

@@ -26,7 +26,7 @@ fn script_schema_abi_changes_are_rejected_during_compile_update() {
         r#"
 struct Reward {
     item_id: string
-    count: int
+    count: i64
 }
 
 fn main() {
@@ -42,7 +42,7 @@ fn main() {
         r#"
 struct Reward {
     item_id: string
-    count: float
+    count: f64
 }
 
 fn main() {
@@ -78,7 +78,7 @@ fn main() {
         r#"
 struct Reward {
     item_id: string
-    count: int = 1
+    count: i64 = 1
 }
 
 fn main() {
@@ -121,7 +121,7 @@ fn main() {
 enum QuestProgress {
     Active {
         quest_id: string
-        count: int = 0
+        count: i64 = 0
     }
 }
 
@@ -165,7 +165,7 @@ fn main() {
 enum QuestProgress {
     Active {
         quest_id: string
-        count: int
+        count: i64
     }
 }
 
@@ -189,7 +189,7 @@ struct Reward {
     #[id(101)]
     item_id: string
     #[id(102)]
-    count: int
+    count: i64
 }
 
 enum QuestProgress {
@@ -212,7 +212,7 @@ struct Reward {
     #[id(101)]
     item: string
     #[id(102)]
-    quantity: int
+    quantity: i64
 }
 
 enum QuestProgress {
@@ -262,7 +262,7 @@ struct Reward {
     #[id(101)]
     item_id: string
     #[id(101)]
-    count: int
+    count: i64
 }
 
 fn main() {
@@ -286,7 +286,7 @@ fn script_function_return_abi_changes_are_rejected_during_compile_update() {
     let initial = compile_initial(
         SourceId::new(1),
         r#"
-fn main() -> int {
+fn main() -> i64 {
     return 1;
 }
 "#,
@@ -297,8 +297,8 @@ fn main() -> int {
         &initial,
         SourceId::new(2),
         r#"
-fn main() -> float {
-    return 1;
+fn main() -> f64 {
+    return 1.0;
 }
 "#,
     )

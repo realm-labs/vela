@@ -1,6 +1,6 @@
 use std::collections::BTreeMap;
 
-use vela_common::Span;
+use vela_common::{PrimitiveTag, Span};
 use vela_hir::module_graph::ModuleGraph;
 use vela_reflect::modules::{DeclOrigin, FunctionDesc, FunctionParamDesc};
 use vela_reflect::registry::{
@@ -332,7 +332,7 @@ impl FunctionAbi {
             ));
         }
         ensure_function_params_compatible(self, next)?;
-        if self.return_type != next.return_type {
+        if !type_hints_compatible(self.return_type.as_deref(), next.return_type.as_deref()) {
             return Err(HotReloadError::new(
                 HotReloadErrorKind::ChangedFunctionReturnAbi {
                     function: self.name.clone(),
@@ -442,7 +442,7 @@ fn ensure_function_params_compatible(
         .params
         .iter()
         .zip(&new_function.params)
-        .any(|(old, new)| old != new);
+        .any(|(old, new)| !params_compatible(old, new));
     if changed {
         return Err(HotReloadError::new(
             HotReloadErrorKind::ChangedFunctionParameterAbi {
@@ -588,7 +588,7 @@ impl MethodAbi {
             }));
         }
         ensure_method_params_compatible(self, next)?;
-        if self.return_type != next.return_type {
+        if !type_hints_compatible(self.return_type.as_deref(), next.return_type.as_deref()) {
             return Err(HotReloadError::new(
                 HotReloadErrorKind::ChangedMethodReturnAbi {
                     type_name: self.type_name.clone(),
@@ -634,7 +634,7 @@ fn ensure_method_params_compatible(
             .params
             .iter()
             .zip(&new_method.params)
-            .any(|(old, new)| old != new);
+            .any(|(old, new)| !params_compatible(old, new));
     if changed_existing {
         return Err(HotReloadError::new(
             HotReloadErrorKind::ChangedMethodParameterAbi {
@@ -717,7 +717,7 @@ impl TraitAbi {
         let changed_existing = self.methods.iter().any(|old| {
             next_methods
                 .get(old.name.as_str())
-                .is_none_or(|new| *new != old)
+                .is_none_or(|new| !trait_methods_compatible(old, new))
         });
         let old_methods = self
             .methods
@@ -739,6 +739,46 @@ impl TraitAbi {
         }
         Ok(())
     }
+}
+
+fn params_compatible(old: &ParamAbi, new: &ParamAbi) -> bool {
+    old.name == new.name
+        && type_hints_compatible(old.type_hint.as_deref(), new.type_hint.as_deref())
+        && old.has_default == new.has_default
+}
+
+pub(crate) fn trait_methods_compatible(old: &TraitMethodAbi, new: &TraitMethodAbi) -> bool {
+    old.id == new.id
+        && old.name == new.name
+        && old.params.len() == new.params.len()
+        && old
+            .params
+            .iter()
+            .zip(&new.params)
+            .all(|(old, new)| params_compatible(old, new))
+        && type_hints_compatible(old.return_type.as_deref(), new.return_type.as_deref())
+        && old.has_default == new.has_default
+}
+
+pub(crate) fn type_hints_compatible(old: Option<&str>, new: Option<&str>) -> bool {
+    match (old.map(type_hint_key), new.map(type_hint_key)) {
+        (None, None) => true,
+        (Some(TypeHintKey::Primitive(old)), Some(TypeHintKey::Primitive(new))) => old == new,
+        (Some(TypeHintKey::Named(old)), Some(TypeHintKey::Named(new))) => old == new,
+        _ => false,
+    }
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+enum TypeHintKey<'a> {
+    Primitive(PrimitiveTag),
+    Named(&'a str),
+}
+
+fn type_hint_key(type_hint: &str) -> TypeHintKey<'_> {
+    PrimitiveTag::from_name(type_hint)
+        .map(TypeHintKey::Primitive)
+        .unwrap_or(TypeHintKey::Named(type_hint))
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]

@@ -1564,15 +1564,15 @@ functions:
 
 #### Task 9.4: Hot-reload ABI/schema primitive diffs
 
-- [ ] Normalize primitive hints through IDs/tags, not strings, before ABI/schema comparison.
-- [ ] Reject `i32 -> i64`, `i64 -> u64`, `f32 -> f64`, `bytes -> string`, and all other primitive changes unless a future explicit compatibility rule is added.
-- [ ] Update function, method, trait, and schema ABI tests from `int`/`float` to explicit primitive pairs.
-- [ ] Preserve product-level hot reload ABI/schema compatibility checks while removing old internal compatibility names.
+- [x] Normalize primitive hints through IDs/tags, not strings, before ABI/schema comparison.
+- [x] Reject `i32 -> i64`, `i64 -> u64`, `f32 -> f64`, `bytes -> string`, and all other primitive changes unless a future explicit compatibility rule is added.
+- [x] Update function, method, trait, and schema ABI tests from `int`/`float` to explicit primitive pairs.
+- [x] Preserve product-level hot reload ABI/schema compatibility checks while removing old internal compatibility names.
 
 **Termination condition:**
 
-- [ ] Hot-reload ABI/schema tests reject primitive contract changes with source-spanned diagnostics.
-- [ ] No ABI comparison path relies on raw `"int"` or `"float"` strings.
+- [x] Hot-reload ABI/schema tests reject primitive contract changes with source-spanned diagnostics.
+- [x] No ABI comparison path relies on raw `"int"` or `"float"` strings.
 
 ---
 

@@ -166,7 +166,7 @@ fn function_descriptor_parameter_abi_changes_are_rejected() {
             AccessAbi::public(),
         )
         .param(ParamAbi::new("player").type_hint("Player"))
-        .param(ParamAbi::new("amount").type_hint("int")),
+        .param(ParamAbi::new("amount").type_hint("i64")),
     );
     let changed_param = HotReloadAbi::empty().function(
         FunctionAbi::new(
@@ -175,7 +175,7 @@ fn function_descriptor_parameter_abi_changes_are_rejected() {
             AccessAbi::public(),
         )
         .param(ParamAbi::new("player").type_hint("Player"))
-        .param(ParamAbi::new("amount").type_hint("float"))
+        .param(ParamAbi::new("amount").type_hint("f64"))
         .source_span(span),
     );
     let initial =
@@ -195,11 +195,11 @@ fn function_descriptor_parameter_abi_changes_are_rejected() {
             function: "game::reward::grant".to_owned(),
             old: vec![
                 ParamAbi::new("player").type_hint("Player"),
-                ParamAbi::new("amount").type_hint("int"),
+                ParamAbi::new("amount").type_hint("i64"),
             ],
             new: vec![
                 ParamAbi::new("player").type_hint("Player"),
-                ParamAbi::new("amount").type_hint("float"),
+                ParamAbi::new("amount").type_hint("f64"),
             ],
             source_span: Some(Box::new(span)),
         }
@@ -214,18 +214,18 @@ fn function_descriptor_parameter_abi_changes_are_rejected() {
         Some(HotReloadDiagnosticDetail::FunctionParameterAbiList {
             old: vec![
                 ParamAbi::new("player").type_hint("Player"),
-                ParamAbi::new("amount").type_hint("int"),
+                ParamAbi::new("amount").type_hint("i64"),
             ],
             new: vec![
                 ParamAbi::new("player").type_hint("Player"),
-                ParamAbi::new("amount").type_hint("float"),
+                ParamAbi::new("amount").type_hint("f64"),
             ],
         })
     );
     assert_eq!(report.errors[0].source_span, Some(span));
     assert!(report.render_lines().iter().any(|line| {
         line.text
-            == "parameter ABI: old=(player:Player, amount:int) new=(player:Player, amount:float)"
+            == "parameter ABI: old=(player:Player, amount:i64) new=(player:Player, amount:f64)"
     }));
 
     let added_required = HotReloadAbi::empty().function(
@@ -235,7 +235,7 @@ fn function_descriptor_parameter_abi_changes_are_rejected() {
             AccessAbi::public(),
         )
         .param(ParamAbi::new("player").type_hint("Player"))
-        .param(ParamAbi::new("amount").type_hint("int"))
+        .param(ParamAbi::new("amount").type_hint("i64"))
         .param(ParamAbi::new("reason").type_hint("string")),
     );
     let error = compile_update_with_abi(
@@ -260,7 +260,7 @@ fn function_descriptor_parameter_abi_changes_are_rejected() {
             AccessAbi::public(),
         )
         .param(ParamAbi::new("player").type_hint("Player"))
-        .param(ParamAbi::new("amount").type_hint("int"))
+        .param(ParamAbi::new("amount").type_hint("i64"))
         .param(ParamAbi::new("reason").type_hint("string").defaulted(true)),
     );
     compile_update_with_abi(
@@ -273,6 +273,48 @@ fn function_descriptor_parameter_abi_changes_are_rejected() {
 }
 
 #[test]
+fn function_descriptor_primitive_parameter_changes_are_rejected_by_tag() {
+    let cases = [
+        ("i32", "i64"),
+        ("i64", "u64"),
+        ("f32", "f64"),
+        ("bytes", "string"),
+    ];
+
+    for (index, (old_hint, new_hint)) in cases.into_iter().enumerate() {
+        let span = Span::new(SourceId::new(80 + index as u32), 20, 45);
+        let old_abi = HotReloadAbi::empty().function(
+            FunctionAbi::new(
+                "game::reward::grant",
+                EffectAbi::host_read(),
+                AccessAbi::public(),
+            )
+            .param(ParamAbi::new("amount").type_hint(old_hint)),
+        );
+        let changed_param = HotReloadAbi::empty().function(
+            FunctionAbi::new(
+                "game::reward::grant",
+                EffectAbi::host_read(),
+                AccessAbi::public(),
+            )
+            .param(ParamAbi::new("amount").type_hint(new_hint))
+            .source_span(span),
+        );
+
+        let error = old_abi
+            .ensure_compatible_update(&changed_param)
+            .expect_err("primitive parameter ABI change should fail");
+        assert_eq!(error.code(), "reload.function.parameter_abi_changed");
+        assert_eq!(error.source_span(), Some(span));
+        let report = HotReloadReport::rejected(ProgramVersionId(80 + index as u64), error);
+        assert_eq!(report.errors[0].source_span, Some(span));
+        assert!(report.render_lines().iter().any(|line| {
+            line.text == format!("parameter ABI: old=(amount:{old_hint}) new=(amount:{new_hint})")
+        }));
+    }
+}
+
+#[test]
 fn function_descriptor_return_abi_changes_are_rejected() {
     let span = Span::new(SourceId::new(13), 15, 35);
     let old_abi = HotReloadAbi::empty().function(
@@ -281,7 +323,7 @@ fn function_descriptor_return_abi_changes_are_rejected() {
             EffectAbi::host_read(),
             AccessAbi::public(),
         )
-        .return_type("int"),
+        .return_type("i64"),
     );
     let changed_return = HotReloadAbi::empty().function(
         FunctionAbi::new(
@@ -289,7 +331,7 @@ fn function_descriptor_return_abi_changes_are_rejected() {
             EffectAbi::host_read(),
             AccessAbi::public(),
         )
-        .return_type("float")
+        .return_type("f64")
         .source_span(span),
     );
     let initial = compile_initial_with_abi(SourceId::new(1), "fn main() { return 1; }", old_abi)
@@ -306,8 +348,8 @@ fn function_descriptor_return_abi_changes_are_rejected() {
         error.kind,
         HotReloadErrorKind::ChangedFunctionReturnAbi {
             function: "game::reward::grant".to_owned(),
-            old: Some("int".to_owned()),
-            new: Some("float".to_owned()),
+            old: Some("i64".to_owned()),
+            new: Some("f64".to_owned()),
             source_span: Some(Box::new(span)),
         }
     );
@@ -316,8 +358,8 @@ fn function_descriptor_return_abi_changes_are_rejected() {
     assert_eq!(
         report.errors[0].detail,
         Some(HotReloadDiagnosticDetail::FunctionReturnAbi {
-            old: Some("int".to_owned()),
-            new: Some("float".to_owned()),
+            old: Some("i64".to_owned()),
+            new: Some("f64".to_owned()),
         })
     );
     assert_eq!(report.errors[0].source_span, Some(span));
@@ -325,7 +367,7 @@ fn function_descriptor_return_abi_changes_are_rejected() {
         report
             .render_lines()
             .iter()
-            .any(|line| line.text == "function return ABI: old=int new=float")
+            .any(|line| line.text == "function return ABI: old=i64 new=f64")
     );
 }
 

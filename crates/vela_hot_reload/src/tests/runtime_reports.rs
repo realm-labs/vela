@@ -869,7 +869,7 @@ fn rejected_compile_report_carries_source_span_and_labels() {
     let report = runtime.apply_hot_update_result_report(compile_update(
         &runtime.current(),
         SourceId::new(2),
-        "fn main(value: Array<int>) { return value; }",
+        "fn main(value: Array<i64>) { return value; }",
     ));
 
     assert!(!report.accepted);
@@ -994,11 +994,11 @@ fn script_method_module_sources_with_bonus(bonus_expression: &str) -> Vec<Module
         ModulePath::from_qualified("game::main"),
         format!(
             r#"
-trait BonusSource {{ fn bonus(self, amount) -> int; }}
-struct Player {{ level: int }}
+trait BonusSource {{ fn bonus(self, amount) -> i64; }}
+struct Player {{ level: i64 }}
 
 impl BonusSource for Player {{
-    fn bonus(self, amount) -> int {{
+    fn bonus(self, amount) -> i64 {{
         return {bonus_expression};
     }}
 }}
@@ -1022,10 +1022,10 @@ fn inherent_script_method_module_sources_with_bonus(bonus_expression: &str) -> V
         ModulePath::from_qualified("game::main"),
         format!(
             r#"
-struct Player {{ level: int }}
+struct Player {{ level: i64 }}
 
 impl Player {{
-    fn bonus(self, amount) -> int {{
+    fn bonus(self, amount) -> i64 {{
         return {bonus_expression};
     }}
 }}
