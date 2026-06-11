@@ -50,6 +50,7 @@ mod heap_host;
 mod host_fields;
 mod host_methods;
 mod iteration;
+mod linked_execution_core;
 mod modules;
 mod numeric_conversions;
 mod owned_boundary;
