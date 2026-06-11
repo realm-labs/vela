@@ -1,15 +1,39 @@
-use vela_bytecode::compiler::compile_program_source;
+use vela_bytecode::UnlinkedProgram;
 use vela_common::SourceId;
 use vela_host::access::HostAccess;
 use vela_host::mock::MockStateAdapter;
 use vela_reflect::permissions::ReflectPermissionSet;
 use vela_vm::HostExecution;
-use vela_vm::error::VmErrorKind;
+use vela_vm::Vm;
+use vela_vm::budget::ExecutionBudget;
+use vela_vm::error::{VmErrorKind, VmResult};
 use vela_vm::owned_value::OwnedValue;
 
 use crate::engine::Engine;
 use crate::permission::Capability;
 use crate::random::MATH_RANDOM_FUNCTION_ID;
+
+fn linked_vm(engine: &Engine, program: &UnlinkedProgram) -> (Vm, vela_bytecode::LinkedProgram) {
+    let linked = engine
+        .link_program(program)
+        .expect("engine random test program should link");
+    (engine.into_vm_for_program(program), linked)
+}
+
+fn run_linked_program(engine: &Engine, program: &UnlinkedProgram) -> VmResult<OwnedValue> {
+    let (vm, linked) = linked_vm(engine, program);
+    vm.run_linked_program(&linked, "main", &[])
+}
+
+fn run_linked_program_with_host(
+    engine: &Engine,
+    program: &UnlinkedProgram,
+    host: &mut HostExecution<'_>,
+) -> VmResult<OwnedValue> {
+    let (vm, linked) = linked_vm(engine, program);
+    let mut budget = ExecutionBudget::unbounded();
+    vm.run_linked_program_with_host_budget_and_caches(&linked, "main", &[], host, &mut budget, None)
+}
 
 #[test]
 fn engine_controlled_random_requires_permission() {
@@ -17,18 +41,19 @@ fn engine_controlled_random_requires_permission() {
         .with_controlled_random(7)
         .build()
         .expect("engine should build");
-    let program = compile_program_source(
-        SourceId::new(1),
-        r#"
+    let program = engine
+        .compile_source(
+            SourceId::new(1),
+            r#"
 fn main() {
     return math::random(1, 6);
 }
 "#,
-    )
-    .expect("program should compile");
+        )
+        .expect("program should compile");
 
     assert!(matches!(
-        engine.into_vm().run_program(&program, "main", &[]),
+        run_linked_program(&engine, &program),
         Err(error) if error.kind() == VmErrorKind::PermissionDenied {
             native: "math::random".to_owned(),
             capability: Capability::Random.as_str().to_owned(),
@@ -48,7 +73,6 @@ fn main() {
     return 0;
 }
 "#;
-    let program = compile_program_source(SourceId::new(1), source).expect("program should compile");
     let first_engine = Engine::builder()
         .capability(Capability::Random)
         .with_controlled_random(42)
@@ -59,15 +83,14 @@ fn main() {
         .with_controlled_random(42)
         .build()
         .expect("second engine should build");
+    let program = first_engine
+        .compile_source(SourceId::new(1), source)
+        .expect("program should compile");
 
-    let first = first_engine
-        .into_vm()
-        .run_program(&program, "main", &[])
-        .expect("first random run should succeed");
-    let second = second_engine
-        .into_vm()
-        .run_program(&program, "main", &[])
-        .expect("second random run should succeed");
+    let first =
+        run_linked_program(&first_engine, &program).expect("first random run should succeed");
+    let second =
+        run_linked_program(&second_engine, &program).expect("second random run should succeed");
 
     assert_eq!(first, second);
     assert_ne!(first, OwnedValue::Int(0));
@@ -147,9 +170,10 @@ fn engine_controlled_random_extends_standard_math_metadata() {
     assert!(!random.effects.emits_events);
     assert!(random.effects.uses_random);
 
-    let program = compile_program_source(
-        SourceId::new(2),
-        r#"
+    let program = engine
+        .compile_source(
+            SourceId::new(2),
+            r#"
 fn main() {
     let math_exports = reflect::exports("math");
     let random = reflect::function("math::random");
@@ -168,8 +192,8 @@ fn main() {
         && effects.uses_random;
 }
 "#,
-    )
-    .expect("program should compile");
+        )
+        .expect("program should compile");
     let mut adapter = MockStateAdapter::new();
     let mut tx = HostAccess::new();
     let mut host = HostExecution {
@@ -179,9 +203,7 @@ fn main() {
     };
 
     assert_eq!(
-        engine
-            .into_vm()
-            .run_program_with_host(&program, "main", &[], &mut host),
+        run_linked_program_with_host(&engine, &program, &mut host),
         Ok(OwnedValue::Bool(true))
     );
 }
@@ -199,7 +221,6 @@ fn main() {
     return 0;
 }
 "#;
-    let program = compile_program_source(SourceId::new(1), source).expect("program should compile");
     let first_engine = Engine::builder()
         .capability(Capability::Random)
         .reflection_permissions(ReflectPermissionSet::all())
@@ -212,6 +233,9 @@ fn main() {
         .with_controlled_random(42)
         .build()
         .expect("second engine should build");
+    let program = first_engine
+        .compile_source(SourceId::new(1), source)
+        .expect("program should compile");
     let mut first_adapter = MockStateAdapter::new();
     let mut first_tx = HostAccess::new();
     let mut first_host = HostExecution {
@@ -227,13 +251,9 @@ fn main() {
         script_globals: None,
     };
 
-    let first = first_engine
-        .into_vm()
-        .run_program_with_host(&program, "main", &[], &mut first_host)
+    let first = run_linked_program_with_host(&first_engine, &program, &mut first_host)
         .expect("first reflected random run should succeed");
-    let second = second_engine
-        .into_vm()
-        .run_program_with_host(&program, "main", &[], &mut second_host)
+    let second = run_linked_program_with_host(&second_engine, &program, &mut second_host)
         .expect("second reflected random run should succeed");
 
     assert_eq!(first, second);

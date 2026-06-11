@@ -505,6 +505,8 @@ fn compiler_lowers_value_method_ids_after_reflection_metadata_collections() {
     let mut registry = vela_stdlib::standard_registry().expect("standard registry should build");
     for (name, params) in [
         ("type_info", &["name"][..]),
+        ("function", &["name"]),
+        ("effects", &["target"]),
         ("fields", &["target"]),
         ("methods", &["target"]),
         ("method", &["target", "name"]),
@@ -529,7 +531,14 @@ fn main() {
     let fields = reflect::fields(target);
     let methods = reflect::methods(target);
     let emit = reflect::method(target, "emit");
-    return fields.len() + methods.len() + fields[0].name.len() + emit.owner.len();
+    let random = reflect::function("math::random");
+    let effects = reflect::effects(random);
+    return fields.len() > 0
+        && methods.len() > 0
+        && fields[0].name.len() > 0
+        && emit.owner.len() > 0
+        && effects.uses_random
+        && !effects.reads_host;
 }
 "#,
         registry.compile_view(),
@@ -549,6 +558,8 @@ fn main() {
     assert!(methods.iter().any(|method| method == "len"));
     assert!(record_fields.contains(&"name"));
     assert!(record_fields.contains(&"owner"));
+    assert!(record_fields.contains(&"uses_random"));
+    assert!(record_fields.contains(&"reads_host"));
 }
 
 #[test]

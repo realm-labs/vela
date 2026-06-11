@@ -492,10 +492,11 @@ fn native_call_shape(
                 .cloned()
                 .map(|element| ValueShape::Set(Box::new(element)))
         }
-        ("reflect", "attrs") | ("reflect", "effects") => Some(ValueShape::Map {
+        ("reflect", "attrs") => Some(ValueShape::Map {
             key: Box::new(ValueShape::Scalar("string".to_owned())),
             value: Box::new(ValueShape::Unknown),
         }),
+        ("reflect", "effects") => Some(reflect_effects_record_shape()),
         ("reflect", "field") => Some(reflect_field_record_shape()),
         ("reflect", "fields") => Some(ValueShape::Array(Box::new(reflect_field_record_shape()))),
         ("reflect", "method") => Some(reflect_method_record_shape()),
@@ -514,6 +515,48 @@ fn native_call_shape(
         ) => Some(ValueShape::Array(Box::new(ValueShape::Unknown))),
         _ => None,
     }
+}
+
+fn reflect_effects_record_shape() -> ValueShape {
+    ValueShape::Record(RecordShape::from_field_shapes([
+        (
+            "calls_reflection".to_owned(),
+            ValueShape::Scalar("bool".to_owned()),
+        ),
+        (
+            "emits_events".to_owned(),
+            ValueShape::Scalar("bool".to_owned()),
+        ),
+        (
+            "reads_host".to_owned(),
+            ValueShape::Scalar("bool".to_owned()),
+        ),
+        (
+            "reads_reflection".to_owned(),
+            ValueShape::Scalar("bool".to_owned()),
+        ),
+        (
+            "reads_time".to_owned(),
+            ValueShape::Scalar("bool".to_owned()),
+        ),
+        ("reads_io".to_owned(), ValueShape::Scalar("bool".to_owned())),
+        (
+            "uses_random".to_owned(),
+            ValueShape::Scalar("bool".to_owned()),
+        ),
+        (
+            "writes_host".to_owned(),
+            ValueShape::Scalar("bool".to_owned()),
+        ),
+        (
+            "writes_reflection".to_owned(),
+            ValueShape::Scalar("bool".to_owned()),
+        ),
+        (
+            "writes_io".to_owned(),
+            ValueShape::Scalar("bool".to_owned()),
+        ),
+    ]))
 }
 
 fn reflect_field_record_shape() -> ValueShape {
@@ -552,7 +595,7 @@ fn reflect_method_record_shape() -> ValueShape {
             },
         ),
         ("docs".to_owned(), ValueShape::Unknown),
-        ("effects".to_owned(), ValueShape::Unknown),
+        ("effects".to_owned(), reflect_effects_record_shape()),
         ("id".to_owned(), ValueShape::Scalar("int".to_owned())),
         ("name".to_owned(), ValueShape::Scalar("string".to_owned())),
         ("origin".to_owned(), ValueShape::Scalar("string".to_owned())),
