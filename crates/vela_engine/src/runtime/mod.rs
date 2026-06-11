@@ -3,7 +3,7 @@ use std::path::Path;
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::{Arc, Mutex};
 
-use vela_bytecode::{ProgramImage, UnlinkedProgram, UnlinkedProgramCode};
+use vela_bytecode::{ProgramImage, UnlinkedProgram};
 use vela_common::SourceId;
 use vela_host::access::HostAccess;
 use vela_host::adapter::ScriptStateAdapter;
@@ -22,8 +22,8 @@ use vela_vm::heap::{HeapValue, ScriptHeap};
 use vela_vm::owned_value::OwnedValue;
 use vela_vm::value::Value;
 use vela_vm::{
-    LinkedProgramHostCall, PersistentHeapExecution, RuntimeCodeCall, RuntimeMethodCall,
-    ScriptGlobalValues, owned_to_persistent_value, persistent_value_to_owned,
+    LinkedProgramHostCall, LinkedRuntimeCodeCall, PersistentHeapExecution, ScriptGlobalValues,
+    owned_to_persistent_value, persistent_value_to_owned,
 };
 
 use crate::engine::Engine;
@@ -46,7 +46,7 @@ pub use image::{OwnedImage, RuntimeImage, RuntimeImageStorage, SharedImage};
 
 use call_args::{CallArgsAdapter, EmptyStateAdapter, call_args_type_error};
 use global_store::GlobalStoreAdapter;
-use handles::RuntimeCallExecution;
+use handles::{RuntimeCallExecution, RuntimeMethodResolveContext};
 use state::RuntimeState;
 
 pub type Runtime = RuntimeImpl<OwnedImage>;
@@ -347,16 +347,25 @@ where
 
     pub fn entry(&self, name: impl Into<String>) -> VmResult<VelaFunction> {
         let name = name.into();
-        let code = self
+        let linked_program = self
             .image
-            .program_image()
-            .function_by_name(&name)
+            .linked_program()
+            .ok_or_else(|| VmError::new(VmErrorKind::ProgramNotLinked))?;
+        let function = linked_program
+            .entry_point_by_name(&name)
+            .ok_or_else(|| unknown_function(name.clone()))?;
+        let code = linked_program
+            .function(function)
             .ok_or_else(|| unknown_function(name.clone()))?;
         Ok(VelaFunction {
             runtime_id: self.state.id,
             name,
             version_id: self.current_program_version_id(),
-            params: code.params.clone(),
+            params: code
+                .params
+                .iter()
+                .map(|param| linked_program.debug_name(*param).to_owned())
+                .collect(),
             param_defaults: code.param_defaults.clone(),
         })
     }
@@ -370,20 +379,37 @@ where
         let method_id = self
             .image
             .program_image()
-            .script_method_id(&receiver_type, &method)
+            .script_methods()
+            .get(&receiver_type, &method)
+            .map(|method| method.id)
             .ok_or_else(|| unknown_method(method.clone()))?;
         let code = self
             .image
             .program_image()
-            .script_method_by_id(&receiver_type, method_id)
+            .script_methods()
+            .get_by_id(&receiver_type, method_id)
+            .and_then(|method| {
+                let linked_program = self.image.linked_program()?;
+                let function = linked_program.entry_point_by_name(&method.function)?;
+                linked_program.function(function)
+            })
             .ok_or_else(|| unknown_method(method.clone()))?;
+        let linked_program = self
+            .image
+            .linked_program()
+            .ok_or_else(|| VmError::new(VmErrorKind::ProgramNotLinked))?;
         Ok(VelaMethod {
             runtime_id: self.state.id,
             receiver_type,
             name: method,
             method_id,
             version_id: self.current_program_version_id(),
-            params: code.params.iter().skip(1).cloned().collect(),
+            params: code
+                .params
+                .iter()
+                .skip(1)
+                .map(|param| linked_program.debug_name(*param).to_owned())
+                .collect(),
             param_defaults: code.param_defaults.iter().skip(1).copied().collect(),
         })
     }
@@ -413,13 +439,17 @@ where
     {
         let version_id = self.current_program_version_id();
         let state = &mut self.state;
-        let target = entry.resolve(state.id, self.image.program_image(), version_id)?;
+        let linked_program = self
+            .image
+            .linked_program()
+            .ok_or_else(|| VmError::new(VmErrorKind::ProgramNotLinked))?;
+        let target = entry.resolve(state.id, linked_program, version_id)?;
         let mut access = HostAccess::new();
         Self::call_runtime_args(RuntimeCallExecution {
             runtime_id: state.id,
             engine: self.image.engine(),
             registry_image: self.image.program_image(),
-            program: self.image.program_image(),
+            program: linked_program,
             hot_reload: self.hot_reload.as_ref(),
             globals: &mut state.globals,
             script_globals: &mut state.script_globals,
@@ -445,14 +475,19 @@ where
         self.check_vela_value_runtime(receiver)?;
         let version_id = self.current_program_version_id();
         let state = &mut self.state;
-        let target = method.resolve(
-            state.id,
-            self.image.program_image(),
-            version_id,
+        let linked_program = self
+            .image
+            .linked_program()
+            .ok_or_else(|| VmError::new(VmErrorKind::ProgramNotLinked))?;
+        let target = method.resolve(RuntimeMethodResolveContext {
+            runtime_id: state.id,
+            program_image: self.image.program_image(),
+            linked_program,
             receiver,
-            &state.script_globals,
-            self.image.engine(),
-        )?;
+            version_id,
+            script_globals: &state.script_globals,
+            engine: self.image.engine(),
+        })?;
         let mut budget = options.budget();
         let resolved = args.resolve_values(
             &target.name,
@@ -477,18 +512,20 @@ where
             self.hot_reload.as_ref(),
         );
         let roots = state.script_globals.roots();
-        let result = vm.call_runtime_method(RuntimeMethodCall {
-            program: self.image.program_image(),
-            receiver: receiver.value,
-            method: &target.name,
-            method_id: Some(target.method_id),
-            args: &resolved,
+        let mut method_args = Vec::with_capacity(resolved.len().saturating_add(1));
+        method_args.push(receiver.value);
+        method_args.extend_from_slice(&resolved);
+        let result = vm.run_linked_runtime_code_call(LinkedRuntimeCodeCall {
+            program: linked_program,
+            code: target.code,
+            args: &method_args,
             host: &mut host,
             persistent: PersistentHeapExecution {
                 heap: &mut state.script_globals.heap,
                 roots: &roots,
             },
             budget: &mut budget,
+            inline_caches: Some(&state.inline_caches),
         })?;
         Ok(state.script_globals.retain(state.id, result))
     }
@@ -602,7 +639,7 @@ where
         };
         let vm = runtime_vm(call.engine, call.registry_image, call.hot_reload);
         let roots = call.script_globals.roots();
-        let result = vm.run_runtime_code_call(RuntimeCodeCall {
+        let result = vm.run_linked_runtime_code_call(LinkedRuntimeCodeCall {
             program: call.program,
             code: call.target.code,
             args: &resolved,

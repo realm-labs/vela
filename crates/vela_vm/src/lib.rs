@@ -69,7 +69,6 @@ use owned_value::OwnedValue;
 pub(crate) use reflection_values::{value_from_reflect, value_to_reflect};
 pub(crate) use runtime_checks::{expect_arity, expect_host_ref, expect_string};
 use runtime_checks::{expect_int, is_truthy, validate_jump};
-use script_methods::{ScriptMethodDispatch, call_method, call_method_id};
 #[cfg(test)]
 pub(crate) use script_object::ScriptFields;
 use small_storage::SmallStorage;
@@ -231,20 +230,9 @@ pub struct HostInlineCacheEntry {
     pub resolved: ResolvedHostAccess,
 }
 
-pub struct RuntimeMethodCall<'program, 'args, 'host, 'heap, 'roots, 'budget> {
-    pub program: &'program dyn UnlinkedProgramCode,
-    pub receiver: Value,
-    pub method: &'args str,
-    pub method_id: Option<vela_def::MethodId>,
-    pub args: &'args [Value],
-    pub host: &'host mut HostExecution<'host>,
-    pub persistent: PersistentHeapExecution<'heap, 'roots>,
-    pub budget: &'budget mut ExecutionBudget,
-}
-
-pub struct RuntimeCodeCall<'program, 'args, 'host, 'heap, 'roots, 'budget, 'caches> {
-    pub program: &'program dyn UnlinkedProgramCode,
-    pub code: &'program UnlinkedCodeObject,
+pub struct LinkedRuntimeCodeCall<'program, 'args, 'host, 'heap, 'roots, 'budget, 'caches> {
+    pub program: &'program LinkedProgram,
+    pub code: &'program LinkedCodeObject,
     pub args: &'args [Value],
     pub host: &'host mut HostExecution<'host>,
     pub persistent: PersistentHeapExecution<'heap, 'roots>,
@@ -701,37 +689,17 @@ impl Vm {
         Ok(result)
     }
 
-    pub fn run_code_runtime_with_host_persistent_heap_and_budget<'host>(
+    pub fn run_linked_runtime_code_call(
         &self,
-        program: &UnlinkedProgram,
-        code: &UnlinkedCodeObject,
-        args: &[Value],
-        host: &'host mut HostExecution<'host>,
-        persistent: PersistentHeapExecution<'_, '_>,
-        budget: &mut ExecutionBudget,
-    ) -> VmResult<Value> {
-        self.run_runtime_code_call(RuntimeCodeCall {
-            program,
-            code,
-            args,
-            host,
-            persistent,
-            budget,
-            inline_caches: None,
-        })
-    }
-
-    pub fn run_runtime_code_call(
-        &self,
-        call: RuntimeCodeCall<'_, '_, '_, '_, '_, '_, '_>,
+        call: LinkedRuntimeCodeCall<'_, '_, '_, '_, '_, '_, '_>,
     ) -> VmResult<Value> {
         let mut heap_execution = HeapExecution::new(call.persistent.heap);
         heap_execution.protect_values(call.persistent.roots);
         heap_execution.protect_values(call.args);
-        let result = self.execute_call(
-            ExecutionCall {
+        let result = self.execute_linked_call(
+            linked_execution::LinkedExecutionCall {
                 code: call.code,
-                program: Some(call.program),
+                program: call.program,
                 captures: &[],
                 args: call.args,
                 call_site: None,
@@ -747,45 +715,6 @@ impl Vm {
             .roots
             .iter()
             .for_each(|value| value.trace_heap_refs(&mut roots));
-        result.trace_heap_refs(&mut roots);
-        heap_execution
-            .heap
-            .collect_full_with_budget(&roots, Some(call.budget));
-        Ok(result)
-    }
-
-    pub fn call_runtime_method(
-        &self,
-        call: RuntimeMethodCall<'_, '_, '_, '_, '_, '_>,
-    ) -> VmResult<Value> {
-        let mut heap_execution = HeapExecution::new(call.persistent.heap);
-        heap_execution.protect_values(call.persistent.roots);
-        heap_execution.protect_values(&[call.receiver]);
-        heap_execution.protect_values(call.args);
-        let caller_roots = Vec::new();
-        let dispatch = ScriptMethodDispatch {
-            vm: self,
-            program: Some(call.program),
-            linked_program: None,
-            host: Some(call.host),
-            heap: Some(&mut heap_execution),
-            budget: Some(call.budget),
-            caller_roots,
-        };
-        let mut receiver = call.receiver;
-        let result = if let Some(method_id) = call.method_id {
-            call_method_id(&mut receiver, call.method, method_id, call.args, dispatch)
-        } else {
-            call_method(&mut receiver, call.method, None, call.args, dispatch)
-        }?;
-        let result =
-            store_value_in_heap_if_needed(result, Some(&mut heap_execution), Some(call.budget))?;
-        let mut roots = Vec::new();
-        call.persistent
-            .roots
-            .iter()
-            .for_each(|value| value.trace_heap_refs(&mut roots));
-        receiver.trace_heap_refs(&mut roots);
         result.trace_heap_refs(&mut roots);
         heap_execution
             .heap

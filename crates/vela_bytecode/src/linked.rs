@@ -189,6 +189,15 @@ impl LinkedProgram {
             .map(|(index, function)| (ScriptFunctionHandle::new(index), function))
     }
 
+    pub fn functions_mut(
+        &mut self,
+    ) -> impl Iterator<Item = (ScriptFunctionHandle, &mut LinkedCodeObject)> {
+        self.functions
+            .iter_mut()
+            .enumerate()
+            .map(|(index, function)| (ScriptFunctionHandle::new(index), function))
+    }
+
     #[must_use]
     pub fn function_count(&self) -> usize {
         self.functions.len()

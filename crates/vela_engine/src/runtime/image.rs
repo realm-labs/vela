@@ -1,6 +1,7 @@
 use std::ops::Deref;
 use std::sync::Arc;
 
+use vela_bytecode::linked::InstructionKind;
 use vela_bytecode::{LinkedProgram, ProgramImage, UnlinkedProgram};
 use vela_hot_reload::profile::ProgramProfile;
 use vela_hot_reload::symbol::ProgramVersionId;
@@ -81,8 +82,11 @@ impl RuntimeImageStorage for SharedImage {
 impl RuntimeImage {
     #[must_use]
     pub fn new(engine: Engine, program: UnlinkedProgram) -> Self {
-        let linked_program = engine.link_program(&program).ok();
         let program_image = ProgramImage::from_program(&program);
+        let mut linked_program = engine.link_program(&program).ok();
+        if let Some(linked_program) = linked_program.as_mut() {
+            rebase_linked_cache_sites(linked_program, &program_image);
+        }
         let layout = RuntimeImageLayout::from_global_names(program_image.global_names());
         Self {
             engine,
@@ -167,6 +171,59 @@ impl RuntimeImageLayout {
 
     fn global_names(&self) -> &[String] {
         &self.global_names
+    }
+}
+
+fn rebase_linked_cache_sites(linked_program: &mut LinkedProgram, image: &ProgramImage) {
+    let function_names = linked_program
+        .functions()
+        .map(|(_, code)| linked_program.debug_name(code.debug_name).to_owned())
+        .collect::<Vec<_>>();
+    for ((_, linked_code), function_name) in linked_program.functions_mut().zip(function_names) {
+        let Some(image_code) = image.function_by_name(&function_name) else {
+            continue;
+        };
+        let local_sites = linked_code.cache_sites.sites().to_vec();
+        let image_sites = image_code.cache_sites.sites().to_vec();
+        let mut remapped = vec![None; local_sites.len()];
+        for (local, image) in local_sites.iter().zip(image_sites.iter()) {
+            if let Some(slot) = remapped.get_mut(local.id.index()) {
+                *slot = Some(image.id);
+            }
+        }
+        rewrite_linked_instruction_cache_sites(linked_code, &remapped);
+        linked_code.cache_sites = image_code.cache_sites.clone();
+    }
+}
+
+fn rewrite_linked_instruction_cache_sites(
+    code: &mut vela_bytecode::LinkedCodeObject,
+    remapped: &[Option<vela_bytecode::CacheSiteId>],
+) {
+    for instruction in &mut code.instructions {
+        match &mut instruction.kind {
+            InstructionKind::LoadGlobal {
+                cache_site: Some(site),
+                ..
+            } => remap_cache_site(site, remapped),
+            InstructionKind::HostRead { cache_site, .. }
+            | InstructionKind::HostWrite { cache_site, .. }
+            | InstructionKind::HostMutate { cache_site, .. }
+            | InstructionKind::HostRemove { cache_site, .. }
+            | InstructionKind::HostCall { cache_site, .. } => {
+                remap_cache_site(cache_site, remapped);
+            }
+            _ => {}
+        }
+    }
+}
+
+fn remap_cache_site(
+    site: &mut vela_bytecode::CacheSiteId,
+    remapped: &[Option<vela_bytecode::CacheSiteId>],
+) {
+    if let Some(Some(rebased)) = remapped.get(site.index()) {
+        *site = *rebased;
     }
 }
 
