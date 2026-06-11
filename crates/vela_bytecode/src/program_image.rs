@@ -247,17 +247,33 @@ fn rewrite_instruction_cache_sites(
             cache_site: Some(site),
             ..
         } = &mut instruction.kind
-            && let Some(Some(id)) = remapped.get(site.index())
         {
-            *site = *id;
+            remap_cache_site(site, remapped);
         }
+        match &mut instruction.kind {
+            UnlinkedInstructionKind::HostRead { cache_site, .. }
+            | UnlinkedInstructionKind::HostWrite { cache_site, .. }
+            | UnlinkedInstructionKind::HostMutate { cache_site, .. }
+            | UnlinkedInstructionKind::HostRemove { cache_site, .. }
+            | UnlinkedInstructionKind::HostCall { cache_site, .. } => {
+                remap_cache_site(cache_site, remapped);
+            }
+            _ => {}
+        }
+    }
+}
+
+fn remap_cache_site(site: &mut CacheSiteId, remapped: &[Option<CacheSiteId>]) {
+    if let Some(Some(id)) = remapped.get(site.index()) {
+        *site = *id;
     }
 }
 
 #[cfg(test)]
 mod tests {
-    use vela_common::GlobalSlot;
-    use vela_def::MethodId;
+    use vela_common::{GlobalSlot, HostTypeId};
+    use vela_def::{FieldId, MethodId};
+    use vela_host::target::HostTargetPlan;
 
     use crate::{
         CacheSiteId, CacheSiteKind, Constant, InstructionOffset, Register, UnlinkedCodeObject,
@@ -416,6 +432,64 @@ mod tests {
         );
     }
 
+    #[test]
+    fn image_rewrites_host_cache_site_ids_to_image_global_indexes() {
+        let mut first = UnlinkedCodeObject::new("read_first_host", 2);
+        let first_target = first
+            .intern_host_target(HostTargetPlan::new(HostTypeId::new(1)).field(FieldId::new(1)));
+        let first_local = first.push_cache_site(CacheSiteKind::HostPathRead, InstructionOffset(0));
+        first.push_instruction(UnlinkedInstruction::new(
+            UnlinkedInstructionKind::HostRead {
+                dst: Register(1),
+                root: Register(0),
+                target: first_target,
+                dynamic_args: Vec::new(),
+                cache_site: first_local,
+            },
+        ));
+
+        let mut second = UnlinkedCodeObject::new("read_second_host", 2);
+        let second_target = second
+            .intern_host_target(HostTargetPlan::new(HostTypeId::new(1)).field(FieldId::new(1)));
+        let second_local =
+            second.push_cache_site(CacheSiteKind::HostPathRead, InstructionOffset(0));
+        second.push_instruction(UnlinkedInstruction::new(
+            UnlinkedInstructionKind::HostRead {
+                dst: Register(1),
+                root: Register(0),
+                target: second_target,
+                dynamic_args: Vec::new(),
+                cache_site: second_local,
+            },
+        ));
+        assert_eq!(first_local, second_local);
+
+        let mut program = UnlinkedProgram::new();
+        program.insert_function(first);
+        program.insert_function(second);
+        let image = ProgramImage::from_program(&program);
+        let first = image
+            .function_by_name("read_first_host")
+            .expect("first host function");
+        let second = image
+            .function_by_name("read_second_host")
+            .expect("second host function");
+        let first_site = host_read_cache_site(first);
+        let second_site = host_read_cache_site(second);
+
+        assert_eq!(image.cache_site_count(), 2);
+        assert_ne!(first_site, second_site);
+        assert_eq!(
+            image.cache_site(first_site).expect("first host site").id,
+            first_site
+        );
+        assert_eq!(
+            image.cache_site(second_site).expect("second host site").id,
+            second_site
+        );
+        assert_eq!(image.verify(), Ok(()));
+    }
+
     fn load_global_cache_site(function: &UnlinkedCodeObject) -> CacheSiteId {
         function
             .instructions
@@ -428,5 +502,16 @@ mod tests {
                 _ => None,
             })
             .expect("function should have global read cache site")
+    }
+
+    fn host_read_cache_site(function: &UnlinkedCodeObject) -> CacheSiteId {
+        function
+            .instructions
+            .iter()
+            .find_map(|instruction| match &instruction.kind {
+                UnlinkedInstructionKind::HostRead { cache_site, .. } => Some(*cache_site),
+                _ => None,
+            })
+            .expect("function should have host read cache site")
     }
 }
