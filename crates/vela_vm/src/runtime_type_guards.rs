@@ -1,6 +1,6 @@
 use vela_bytecode::{
     GuardKind, LinkedCodeObject, LinkedProgram, Register, TypeGuard, TypeGuardPlan,
-    UnlinkedTypeGuard, UnlinkedTypeGuardPlan,
+    TypeGuardPlanId, UnlinkedTypeGuard, UnlinkedTypeGuardPlan,
 };
 use vela_common::PrimitiveTag;
 
@@ -148,6 +148,29 @@ pub(crate) fn execute_linked_param_guards(
         debug_assert!(usize::from(register.0) >= param_offset);
     }
     Ok(())
+}
+
+pub(crate) fn execute_linked_register_guard(
+    code: &LinkedCodeObject,
+    program: &LinkedProgram,
+    frame: &CallFrame,
+    register: Register,
+    guard_id: TypeGuardPlanId,
+    heap: Option<&HeapExecution<'_>>,
+) -> VmResult<()> {
+    let value = frame.read(register)?;
+    let guard = code.type_guard(guard_id).ok_or_else(|| {
+        VmError::new(VmErrorKind::UnsupportedLinkedInstruction {
+            opcode: "GuardType",
+        })
+    })?;
+    execute_linked_guard(
+        value,
+        guard,
+        program,
+        heap,
+        program.debug_name(guard.context.debug_name),
+    )
 }
 
 pub(crate) fn execute_linked_return_guard(
