@@ -1275,18 +1275,18 @@ then build registry, syntax, guards, and runtime behavior on the new model.
 
 #### Task 4.4: Add compile errors for static type contract violations
 
-- [ ] Add `CompileErrorKind::TypeContractMismatch` or diagnostics equivalent.
-- [ ] Include:
-  - [ ] expected type;
-  - [ ] actual type;
-  - [ ] source span;
-  - [ ] context.
-- [ ] Add literal out-of-range errors for contextual/suffixed literals.
+- [x] Add `CompileErrorKind::TypeContractMismatch` or diagnostics equivalent.
+- [x] Include:
+  - [x] expected type;
+  - [x] actual type;
+  - [x] source span;
+  - [x] context.
+- [x] Add literal out-of-range errors for contextual/suffixed literals.
 
 **Termination condition:**
 
-- [ ] Error messages are clear enough for tests.
-- [ ] Compile-time mismatch tests assert error kind.
+- [x] Error messages are clear enough for tests.
+- [x] Compile-time mismatch tests assert error kind.
 
 ---
 

@@ -227,6 +227,41 @@ fn main() {
 }
 
 #[test]
+fn compiler_reports_type_contract_mismatch_details() {
+    let error = compile_function_source(
+        SourceId::new(1),
+        r##"
+fn main() {
+    let amount: i64 = "12";
+    return amount;
+}
+"##,
+        "main",
+    )
+    .expect_err("typed let static mismatch should fail before bytecode emission");
+    let CompileErrorKind::SemanticDiagnostics(diagnostics) = error.kind else {
+        panic!("expected semantic diagnostics");
+    };
+    assert_eq!(diagnostics.len(), 1);
+    let diagnostic = &diagnostics[0];
+
+    assert_eq!(
+        diagnostic.code.as_deref(),
+        Some("compiler::type_contract_mismatch")
+    );
+    assert!(
+        diagnostic
+            .message
+            .contains("type contract mismatch for let binding `amount`"),
+        "{diagnostic:?}"
+    );
+    assert!(diagnostic.span.is_some(), "{diagnostic:?}");
+    assert!(diagnostic.labels.iter().any(|label| {
+        label.message.contains("expected `i64`") && label.message.contains("found `string`")
+    }));
+}
+
+#[test]
 fn compiler_marks_dynamic_script_call_contracts_for_runtime_guards() {
     with_static_type_compiler(
         r#"
@@ -306,4 +341,32 @@ fn main() {
         semantic_diagnostic_codes(error),
         ["compiler::type_contract_mismatch"]
     );
+}
+
+#[test]
+fn compiler_rejects_out_of_range_contextual_integer_literals() {
+    for source in [
+        r#"
+fn f(x: u8) {
+    return x;
+}
+fn main() {
+    return f(300);
+}
+"#,
+        r#"
+fn main() {
+    let amount: u8 = 300;
+    return amount;
+}
+"#,
+    ] {
+        let error = compile_program_source(SourceId::new(1), source)
+            .expect_err("out-of-range contextual literal should fail");
+        let CompileErrorKind::InvalidIntLiteral { literal, error } = error.kind else {
+            panic!("expected invalid integer literal");
+        };
+        assert_eq!(literal, "300");
+        assert!(error.contains("out of range"), "{error}");
+    }
 }
