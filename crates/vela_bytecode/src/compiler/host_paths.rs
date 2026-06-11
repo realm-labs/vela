@@ -112,9 +112,31 @@ impl Compiler<'_, '_> {
     ) -> Option<ResolvedHostPath<'ast>> {
         match &receiver.kind {
             ExprKind::Field { .. } | ExprKind::Index { .. } => self.resolve_host_path(receiver),
-            ExprKind::Path(path) => self.host_field_path_parts(receiver.span, path),
+            ExprKind::Path(path) => self
+                .host_field_path_parts(receiver.span, path)
+                .or_else(|| self.host_index_root_path(receiver.span, path)),
             _ => None,
         }
+    }
+
+    fn host_index_root_path<'ast>(
+        &self,
+        span: Span,
+        path: &'ast [String],
+    ) -> Option<ResolvedHostPath<'ast>> {
+        if path.len() != 1 {
+            return None;
+        }
+        let root = path.first()?;
+        let type_name = self.host_local_type_name(root, span)?;
+        self.facts.options.host_index_capability(&type_name)?;
+        Some(ResolvedHostPath {
+            path: HostPath {
+                root: HostPathRoot::LocalPath { name: root, span },
+                segments: Vec::new(),
+            },
+            type_name: Some(type_name),
+        })
     }
 
     pub(super) fn host_field_path_parts<'ast>(

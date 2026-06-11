@@ -710,6 +710,52 @@ fn main(player: Player, item_id) {
     ));
     assert!(has_host_read_target(&code, &target, 1));
 }
+
+#[test]
+fn compiler_lowers_root_host_index_receiver() {
+    let scores_type = HostTypeId::new(88);
+    let mut registry = vela_registry::DefinitionRegistry::new();
+    register_registry_host_type(&mut registry, "Scores", scores_type);
+    let code = compile_function_source_with_options_and_registry(
+        SourceId::new(1),
+        r#"
+fn main(scores: Scores, key) {
+    return scores[key];
+}
+"#,
+        "main",
+        &CompilerOptions::new().with_host_index_capability(
+            "Scores",
+            HostIndexCapabilityInfo {
+                readable: true,
+                value_type: Some("i64".to_owned()),
+                ..HostIndexCapabilityInfo::default()
+            },
+        ),
+        registry.compile_view(),
+    )
+    .expect("root host index receiver should compile");
+
+    let Some(target) = code
+        .instructions
+        .iter()
+        .find_map(|instruction| match instruction.kind {
+            UnlinkedInstructionKind::HostRead { target, .. } => Some(target),
+            _ => None,
+        })
+    else {
+        panic!("expected HostRead");
+    };
+    let plan = code.host_target(target).expect("host target should exist");
+    assert_eq!(plan.root_type, scores_type);
+    assert_eq!(plan.parts.as_slice(), [HostPathPart::DynKey { arg: 0 }]);
+    assert!(has_host_read_target(
+        &code,
+        &[HostPathPart::DynKey { arg: 0 }],
+        1
+    ));
+}
+
 #[test]
 fn compiler_lowers_host_variant_field_paths() {
     let quest_progress = FieldId::new(3);
