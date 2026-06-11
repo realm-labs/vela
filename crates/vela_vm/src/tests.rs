@@ -62,6 +62,7 @@ mod reflection_permissions;
 mod reflection_values;
 mod scalar_numeric_ops;
 mod script_methods;
+mod standard_array_id_dispatch;
 mod standard_id_dispatch;
 mod standard_string_id_dispatch;
 mod type_guards;
