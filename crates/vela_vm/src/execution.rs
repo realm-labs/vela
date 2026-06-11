@@ -225,6 +225,14 @@ impl Vm {
                         .map_err(|error| error.with_source_span_if_absent(instruction.span))?;
                     frame.write(*dst, Value::Bool(value))?;
                 }
+                UnlinkedInstructionKind::GuardType { src, guard } => {
+                    runtime_type_guards::execute_unlinked_guard(
+                        frame.read(*src)?,
+                        guard,
+                        heap.as_deref(),
+                    )
+                    .map_err(|error| error.with_source_span_if_absent(instruction.span))?;
+                }
                 UnlinkedInstructionKind::JumpIfFalse { condition, target } => {
                     if !is_truthy(frame.read(*condition)?) {
                         validate_jump(code, target.0)?;

@@ -1320,17 +1320,17 @@ then build registry, syntax, guards, and runtime behavior on the new model.
 
 #### Task 5.3: Add guard instruction for local/global/field contracts
 
-- [ ] Add unlinked guard instruction or compiler marker.
-- [ ] Link to `InstructionKind::GuardType`.
-- [ ] VM can execute it.
-- [ ] Compiler emits it only for dynamic unknown values.
+- [x] Add unlinked guard instruction or compiler marker.
+- [x] Link to `InstructionKind::GuardType`.
+- [x] VM can execute it for primitive contract guards.
+- [ ] Compiler emits it for all local/global/field dynamic unknown values.
 
 **Termination condition:**
 
-- [ ] `let x: i64 = dynamic_value;` emits a guard.
+- [x] `let x: i64 = dynamic_value;` emits a guard.
 - [ ] `typed_record.amount = dynamic_value;` emits a guard.
-- [ ] `let x: i64 = 12;` emits no guard.
-- [ ] `let x: i64 = "x";` compile-errors.
+- [x] `let x: i64 = 12;` emits no guard.
+- [x] `let x: i64 = "x";` compile-errors.
 
 #### Task 5.4: Add deferred literal operator instructions
 

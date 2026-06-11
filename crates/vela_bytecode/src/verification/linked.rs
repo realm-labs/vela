@@ -194,6 +194,10 @@ fn verify_linked_instruction(
             verify_linked_register(function, instruction_index, code, *lhs)?;
             verify_linked_register(function, instruction_index, code, *rhs)
         }
+        InstructionKind::GuardType { src, guard } => {
+            verify_linked_register(function, instruction_index, code, *src)?;
+            verify_linked_type_guard_id(function, code, *guard)
+        }
         InstructionKind::JumpIfFalse { condition, target } => {
             verify_linked_register(function, instruction_index, code, *condition)?;
             verify_linked_jump(function, instruction_index, code, *target)

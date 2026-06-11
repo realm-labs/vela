@@ -671,6 +671,10 @@ pub enum UnlinkedInstructionKind {
         lhs: Register,
         rhs: Register,
     },
+    GuardType {
+        src: Register,
+        guard: UnlinkedTypeGuard,
+    },
     JumpIfFalse {
         condition: Register,
         target: InstructionOffset,

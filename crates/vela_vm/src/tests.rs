@@ -60,6 +60,7 @@ mod reflection_values;
 mod script_methods;
 mod standard_id_dispatch;
 mod standard_string_id_dispatch;
+mod type_guards;
 
 fn link_test_program(program: &UnlinkedProgram) -> LinkedProgram {
     Linker::new()

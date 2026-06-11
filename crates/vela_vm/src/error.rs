@@ -137,6 +137,11 @@ pub enum VmErrorKind {
     TypeMismatch {
         operation: &'static str,
     },
+    TypeContractViolation {
+        expected: String,
+        actual: String,
+        debug_name: String,
+    },
     DivisionByZero,
     UnknownNative {
         name: String,
@@ -192,6 +197,7 @@ impl VmErrorKind {
             Self::ConstantOutOfBounds { .. } => "vm::constant_out_of_bounds",
             Self::InstructionOutOfBounds { .. } => "vm::instruction_out_of_bounds",
             Self::TypeMismatch { .. } => "vm::type_mismatch",
+            Self::TypeContractViolation { .. } => "vm::type_contract_violation",
             Self::DivisionByZero => "vm::division_by_zero",
             Self::UnknownNative { .. } => "vm::unknown_native",
             Self::PermissionDenied { .. } => "vm::permission_denied",
@@ -224,6 +230,13 @@ impl VmErrorKind {
             }
             Self::TypeMismatch { operation } => {
                 format!("type mismatch during `{operation}`")
+            }
+            Self::TypeContractViolation {
+                expected,
+                actual,
+                debug_name,
+            } => {
+                format!("type contract `{debug_name}` expected `{expected}`, found `{actual}`")
             }
             Self::DivisionByZero => "division by zero".to_owned(),
             Self::UnknownNative { name } => format!("unknown native function `{name}`"),

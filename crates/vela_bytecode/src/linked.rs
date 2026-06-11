@@ -625,6 +625,10 @@ pub enum InstructionKind {
         lhs: Register,
         rhs: Register,
     },
+    GuardType {
+        src: Register,
+        guard: TypeGuardPlanId,
+    },
     JumpIfFalse {
         condition: Register,
         target: InstructionOffset,

@@ -389,6 +389,9 @@ fn verify_instruction(
             verify_register(function, instruction_index, code, *lhs)?;
             verify_register(function, instruction_index, code, *rhs)
         }
+        UnlinkedInstructionKind::GuardType { src, .. } => {
+            verify_register(function, instruction_index, code, *src)
+        }
         UnlinkedInstructionKind::JumpIfFalse { condition, target } => {
             verify_register(function, instruction_index, code, *condition)?;
             verify_jump(function, instruction_index, code, *target)

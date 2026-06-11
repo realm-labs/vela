@@ -1,7 +1,10 @@
 use vela_common::Span;
 use vela_syntax::ast::{BinaryOp, Expr, ExprKind, Literal, UnaryOp};
 
-use crate::{Register, UnlinkedInstructionKind};
+use crate::{
+    GuardKind, GuardLocation, Register, UnlinkedGuardContext, UnlinkedInstructionKind,
+    UnlinkedTypeGuard, UnlinkedTypeGuardPlan,
+};
 
 use super::const_eval::{
     compile_literal_constant, compile_literal_constant_for_type, compile_negated_literal_constant,
@@ -226,14 +229,29 @@ impl Compiler<'_, '_> {
         expected: RuntimeTypeFact,
         context: TypeContractContext,
     ) -> CompileResult<Register> {
-        let outcome = self.expected_type_for_expr(expr, expected, context)?;
-        if let ExpectedTypeOutcome::Contextualized(RuntimeTypeFact::Primitive(tag)) = outcome
+        let outcome = self.expected_type_for_expr(expr, expected, context.clone())?;
+        if let ExpectedTypeOutcome::Contextualized(RuntimeTypeFact::Primitive(tag)) = &outcome
             && let ExprKind::Literal(literal) = &expr.kind
-            && let Some(constant) = compile_literal_constant_for_type(literal, tag)?
+            && let Some(constant) = compile_literal_constant_for_type(literal, *tag)?
         {
             return self.emit_constant(constant);
         }
-        self.compile_expr(expr)
+        let register = self.compile_expr(expr)?;
+        if let ExpectedTypeOutcome::RequiresRuntimeGuard(RuntimeTypeFact::Primitive(tag)) = &outcome
+            && let TypeContractContext::TypedLet { name } = context
+        {
+            self.emit_spanned(
+                UnlinkedInstructionKind::GuardType {
+                    src: register,
+                    guard: UnlinkedTypeGuard::new(
+                        UnlinkedTypeGuardPlan::Primitive(*tag),
+                        UnlinkedGuardContext::new(GuardKind::Contract, GuardLocation::Local, name),
+                    ),
+                },
+                expr.span,
+            );
+        }
+        Ok(register)
     }
 
     fn compile_binary(

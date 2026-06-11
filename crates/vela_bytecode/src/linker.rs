@@ -777,6 +777,10 @@ impl<'linker, 'registry> LinkContext<'linker, 'registry> {
                     cache_site: *cache_site,
                 }
             }
+            UnlinkedInstructionKind::GuardType { src, guard } => {
+                let guard = self.link_type_guard(guard.clone(), linked_code)?;
+                InstructionKind::GuardType { src: *src, guard }
+            }
             UnlinkedInstructionKind::Return { src } => InstructionKind::Return { src: *src },
         };
 

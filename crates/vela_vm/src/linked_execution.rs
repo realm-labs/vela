@@ -287,6 +287,21 @@ impl Vm {
                         .map_err(|error| error.with_source_span_if_absent(instruction.span))?;
                     frame.write(*dst, Value::Bool(value))?;
                 }
+                InstructionKind::GuardType { src, guard } => {
+                    let guard = code.type_guard(*guard).ok_or_else(|| {
+                        VmError::new(VmErrorKind::UnsupportedLinkedInstruction {
+                            opcode: "GuardType",
+                        })
+                        .with_source_span_if_absent(instruction.span)
+                    })?;
+                    runtime_type_guards::execute_linked_guard(
+                        frame.read(*src)?,
+                        guard,
+                        heap.as_deref(),
+                        call.program.debug_name(guard.context.debug_name),
+                    )
+                    .map_err(|error| error.with_source_span_if_absent(instruction.span))?;
+                }
                 InstructionKind::JumpIfFalse { condition, target } => {
                     if !is_truthy(frame.read(*condition)?) {
                         validate_linked_jump(code, target.0)?;

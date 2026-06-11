@@ -405,6 +405,57 @@ fn main() {
         code.constants
             .contains(&Constant::Scalar(vela_common::ScalarValue::U8(12)))
     );
+    assert!(
+        !code.instructions.iter().any(|instruction| matches!(
+            instruction.kind,
+            UnlinkedInstructionKind::GuardType { .. }
+        ))
+    );
+}
+
+#[test]
+fn compiler_emits_local_guard_for_dynamic_typed_let() {
+    let program = compile_program_source(
+        SourceId::new(1),
+        r#"
+fn main(value) {
+    let amount: i64 = value;
+    return amount;
+}
+"#,
+    )
+    .expect("dynamic typed let should compile with runtime guard");
+    let main = program.function("main").expect("main function");
+    let guard = main
+        .instructions
+        .iter()
+        .find_map(|instruction| match &instruction.kind {
+            UnlinkedInstructionKind::GuardType { guard, .. } => Some(guard),
+            _ => None,
+        })
+        .expect("dynamic typed let should emit GuardType");
+
+    assert!(matches!(
+        guard.plan,
+        crate::UnlinkedTypeGuardPlan::Primitive(vela_common::PrimitiveTag::I64)
+    ));
+    assert_eq!(guard.context.location, crate::GuardLocation::Local);
+    assert_eq!(guard.context.debug_name, "amount");
+
+    let linked = crate::Linker::new()
+        .link_program(&program)
+        .expect("program should link");
+    linked.verify().expect("linked local guard should verify");
+    let main = linked
+        .entry_point_by_name("main")
+        .and_then(|handle| linked.function(handle))
+        .expect("linked main should exist");
+    assert!(
+        main.instructions.iter().any(|instruction| matches!(
+            instruction.kind,
+            crate::InstructionKind::GuardType { .. }
+        ))
+    );
 }
 
 #[test]
