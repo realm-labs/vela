@@ -2,7 +2,8 @@ use vela_registry::DebugNameId;
 
 use crate::linked::{
     Instruction, InstructionKind, LinkedCodeObject, LinkedMethodDispatchKind, LinkedProgram,
-    MethodDispatchHandle, NativeHandle, ScriptFunctionHandle, TypeHandle, VariantHandle,
+    MethodDispatchHandle, NativeHandle, ScriptFunctionHandle, TypeGuard, TypeGuardPlan, TypeHandle,
+    VariantHandle,
 };
 use crate::{
     CacheSiteId, CacheSiteKind, CallArgument, ConstantId, HostTargetPlanId, InstructionOffset,
@@ -140,6 +141,9 @@ fn verify_linked_code_object_with_context(
     for slot in &code.frame.slots {
         verify_linked_debug_name(function, None, context, slot.name)?;
         verify_register_count(function, None, code.register_count, slot.register)?;
+    }
+    for guard in &code.type_guards {
+        verify_linked_type_guard(function, context, guard)?;
     }
     for (index, instruction) in code.instructions.iter().enumerate() {
         verify_linked_instruction(function, code, index, instruction, context)?;
@@ -633,6 +637,24 @@ fn verify_linked_variant_handle(
                 variant_count: context.variant_count,
             },
         ))
+    }
+}
+
+fn verify_linked_type_guard(
+    function: &str,
+    context: &LinkedVerificationContext<'_>,
+    guard: &TypeGuard,
+) -> Result<(), VerificationError> {
+    verify_linked_debug_name(function, None, context, guard.context.debug_name)?;
+    match guard.plan {
+        TypeGuardPlan::Primitive(_) => Ok(()),
+        TypeGuardPlan::Type(handle) | TypeGuardPlan::HostType(handle) => {
+            verify_linked_type_handle(function, None, context, handle)
+        }
+        TypeGuardPlan::Variant(handle) => {
+            verify_linked_variant_handle(function, None, context, handle)
+        }
+        TypeGuardPlan::Shape { ty, .. } => verify_linked_type_handle(function, None, context, ty),
     }
 }
 

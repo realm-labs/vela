@@ -3,10 +3,11 @@ use vela_host::target::HostTargetPlan;
 use vela_registry::DebugNameId;
 
 use crate::{
-    Constant, FieldSlot, FrameSlotInfo, FrameSlotKind, Instruction, InstructionKind,
-    LinkedCodeObject, LinkedMethodDispatch, LinkedMethodDispatchKind, LinkedNativeFunction,
-    LinkedProgram, LinkedType, LinkedVariant, MethodDispatchHandle, NativeHandle,
-    ScriptFunctionHandle, TypeHandle, UnlinkedInstruction, VariantHandle,
+    Constant, FieldSlot, FrameSlotInfo, FrameSlotKind, GuardContext, GuardKind, GuardLocation,
+    Instruction, InstructionKind, LinkedCodeObject, LinkedMethodDispatch, LinkedMethodDispatchKind,
+    LinkedNativeFunction, LinkedProgram, LinkedType, LinkedVariant, MethodDispatchHandle,
+    NativeHandle, ScriptFunctionHandle, TypeGuard, TypeGuardPlan, TypeHandle, UnlinkedInstruction,
+    VariantHandle,
 };
 
 use super::*;
@@ -230,6 +231,110 @@ fn linked_program_verify_rejects_invalid_method_type_and_variant_handles() {
         Err(error(
             "main",
             Some(0),
+            VerificationErrorKind::VariantHandleOutOfBounds {
+                handle: VariantHandle::new(0),
+                variant_count: 0,
+            }
+        ))
+    );
+}
+
+#[test]
+fn linked_program_verify_accepts_guard_plans_and_keeps_debug_context() {
+    let mut program = LinkedProgram::new();
+    let main_name = program.intern_debug_name("main");
+    let param_name = program.intern_debug_name("amount");
+    let type_name = program.intern_debug_name("Invoice");
+    let variant_name = program.intern_debug_name("Invoice::Paid");
+
+    let ty = program.push_type(LinkedType::new(vela_def::TypeId::new(1), type_name));
+    let variant = program.push_variant(LinkedVariant::new(
+        vela_def::VariantId::new(2),
+        ty,
+        variant_name,
+    ));
+
+    let mut code = LinkedCodeObject::new(main_name, 1);
+    let primitive = code.intern_type_guard(TypeGuard::new(
+        TypeGuardPlan::Primitive(vela_common::PrimitiveTag::I64),
+        GuardContext::new(
+            GuardKind::Contract,
+            GuardLocation::Parameter { index: 0 },
+            param_name,
+        ),
+    ));
+    let shape = code.intern_type_guard(TypeGuard::new(
+        TypeGuardPlan::Shape {
+            ty,
+            shape_id: vela_common::ShapeId::new(7),
+        },
+        GuardContext::new(GuardKind::Specialization, GuardLocation::Local, type_name),
+    ));
+    code.intern_type_guard(TypeGuard::new(
+        TypeGuardPlan::Variant(variant),
+        GuardContext::new(GuardKind::Contract, GuardLocation::Return, variant_name),
+    ));
+    code.push_instruction(Instruction::new(InstructionKind::Return {
+        src: Register(0),
+    }));
+
+    assert_eq!(
+        code.type_guard(primitive)
+            .map(|guard| guard.context.debug_name),
+        Some(param_name)
+    );
+    assert_eq!(
+        code.type_guard(shape).map(|guard| &guard.plan),
+        Some(&TypeGuardPlan::Shape {
+            ty,
+            shape_id: vela_common::ShapeId::new(7),
+        })
+    );
+
+    program.push_function(code);
+
+    assert_eq!(program.verify(), Ok(()));
+}
+
+#[test]
+fn linked_program_verify_rejects_invalid_guard_type_and_variant_handles() {
+    let mut type_program = LinkedProgram::new();
+    let main_name = type_program.intern_debug_name("main");
+    let guard_name = type_program.intern_debug_name("amount");
+    let mut type_code = LinkedCodeObject::new(main_name, 1);
+    type_code.intern_type_guard(TypeGuard::new(
+        TypeGuardPlan::Type(TypeHandle::new(0)),
+        GuardContext::new(GuardKind::Contract, GuardLocation::Field, guard_name),
+    ));
+    type_program.push_function(type_code);
+
+    assert_eq!(
+        verify_linked_program(&type_program),
+        Err(error(
+            "main",
+            None,
+            VerificationErrorKind::TypeHandleOutOfBounds {
+                handle: TypeHandle::new(0),
+                type_count: 0,
+            }
+        ))
+    );
+
+    let mut variant_program = LinkedProgram::new();
+    let main_name = variant_program.intern_debug_name("main");
+    let guard_name = variant_program.intern_debug_name("status");
+    let mut variant_code = LinkedCodeObject::new(main_name, 1);
+    variant_code.intern_type_guard(TypeGuard::new(
+        TypeGuardPlan::Variant(VariantHandle::new(0)),
+        GuardContext::new(GuardKind::Contract, GuardLocation::Return, guard_name),
+    ));
+    variant_program.push_function(variant_code);
+
+    assert_eq!(
+        verify_linked_program(&variant_program),
+        Err(error(
+            "main",
+            None,
             VerificationErrorKind::VariantHandleOutOfBounds {
                 handle: VariantHandle::new(0),
                 variant_count: 0,

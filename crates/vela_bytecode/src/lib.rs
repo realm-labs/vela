@@ -19,10 +19,11 @@ use vela_host::target::HostTargetPlan;
 
 pub use cache_site::{CacheSiteDesc, CacheSiteId, CacheSiteKind, CacheSiteLayout};
 pub use linked::{
-    FieldSlot, Instruction, InstructionKind, LinkedCodeObject, LinkedFrameDebugInfo,
-    LinkedFrameSlotInfo, LinkedMethodDispatch, LinkedMethodDispatchKind, LinkedNativeFunction,
-    LinkedProgram, LinkedType, LinkedVariant, MethodDispatchHandle, NativeHandle,
-    ScriptFunctionHandle, TypeHandle, VariantHandle,
+    FieldSlot, GuardContext, GuardKind, GuardLocation, Instruction, InstructionKind,
+    LinkedCodeObject, LinkedFrameDebugInfo, LinkedFrameSlotInfo, LinkedMethodDispatch,
+    LinkedMethodDispatchKind, LinkedNativeFunction, LinkedProgram, LinkedType, LinkedVariant,
+    MethodDispatchHandle, NativeHandle, ScriptFunctionHandle, TypeGuard, TypeGuardPlan,
+    TypeGuardPlanId, TypeHandle, VariantHandle,
 };
 pub use linker::{LinkError, Linker};
 pub use program_image::ProgramImage;

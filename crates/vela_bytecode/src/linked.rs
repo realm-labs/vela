@@ -1,6 +1,6 @@
 use std::collections::BTreeMap;
 
-use vela_common::{GlobalSlot, HostMethodId, Span};
+use vela_common::{GlobalSlot, HostMethodId, PrimitiveTag, ShapeId, Span};
 use vela_def::{FunctionId, MethodId, TypeId, VariantId};
 use vela_host::resolved::HostMutationOp;
 use vela_host::target::HostTargetPlan;
@@ -45,6 +45,7 @@ dense_handle!(MethodDispatchHandle);
 dense_handle!(TypeHandle);
 dense_handle!(VariantHandle);
 dense_handle!(FieldSlot);
+dense_handle!(TypeGuardPlanId);
 
 #[derive(Clone, Debug, Default, PartialEq)]
 pub struct LinkedProgram {
@@ -306,6 +307,61 @@ impl LinkedVariant {
     }
 }
 
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum GuardKind {
+    Contract,
+    Specialization,
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub enum TypeGuardPlan {
+    Primitive(PrimitiveTag),
+    Type(TypeHandle),
+    Variant(VariantHandle),
+    Shape { ty: TypeHandle, shape_id: ShapeId },
+    HostType(TypeHandle),
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct TypeGuard {
+    pub plan: TypeGuardPlan,
+    pub context: GuardContext,
+}
+
+impl TypeGuard {
+    #[must_use]
+    pub const fn new(plan: TypeGuardPlan, context: GuardContext) -> Self {
+        Self { plan, context }
+    }
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct GuardContext {
+    pub kind: GuardKind,
+    pub location: GuardLocation,
+    pub debug_name: DebugNameId,
+}
+
+impl GuardContext {
+    #[must_use]
+    pub const fn new(kind: GuardKind, location: GuardLocation, debug_name: DebugNameId) -> Self {
+        Self {
+            kind,
+            location,
+            debug_name,
+        }
+    }
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum GuardLocation {
+    Parameter { index: u16 },
+    Return,
+    Local,
+    Global,
+    Field,
+}
+
 #[derive(Clone, Debug, PartialEq)]
 pub struct LinkedCodeObject {
     pub debug_name: DebugNameId,
@@ -317,6 +373,7 @@ pub struct LinkedCodeObject {
     pub cache_sites: CacheSiteLayout,
     pub constants: Vec<Constant>,
     pub host_targets: Vec<HostTargetPlan>,
+    pub type_guards: Vec<TypeGuard>,
     pub instructions: Vec<Instruction>,
 }
 
@@ -333,6 +390,7 @@ impl LinkedCodeObject {
             cache_sites: CacheSiteLayout::default(),
             constants: Vec::new(),
             host_targets: Vec::new(),
+            type_guards: Vec::new(),
             instructions: Vec::new(),
         }
     }
@@ -378,6 +436,24 @@ impl LinkedCodeObject {
     #[must_use]
     pub fn host_target(&self, id: HostTargetPlanId) -> Option<&HostTargetPlan> {
         self.host_targets.get(id.index())
+    }
+
+    pub fn intern_type_guard(&mut self, guard: TypeGuard) -> TypeGuardPlanId {
+        if let Some(index) = self
+            .type_guards
+            .iter()
+            .position(|existing| existing == &guard)
+        {
+            return TypeGuardPlanId::new(index);
+        }
+        let id = TypeGuardPlanId::new(self.type_guards.len());
+        self.type_guards.push(guard);
+        id
+    }
+
+    #[must_use]
+    pub fn type_guard(&self, id: TypeGuardPlanId) -> Option<&TypeGuard> {
+        self.type_guards.get(id.index())
     }
 
     pub fn push_instruction(&mut self, instruction: Instruction) {

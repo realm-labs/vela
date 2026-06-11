@@ -1294,16 +1294,16 @@ then build registry, syntax, guards, and runtime behavior on the new model.
 
 #### Task 5.1: Add guard plan types
 
-- [ ] Add `PrimitiveTag`.
-- [ ] Add `TypeGuardPlan`.
-- [ ] Add `GuardContext`.
-- [ ] Make guard plans linked, not registry/string based.
-- [ ] Ensure guard plans can be verified.
+- [x] Add `PrimitiveTag`.
+- [x] Add `TypeGuardPlan`.
+- [x] Add `GuardContext`.
+- [x] Make guard plans linked, not registry/string based.
+- [x] Ensure guard plans can be verified.
 
 **Termination condition:**
 
-- [ ] Linked verifier rejects invalid type/variant handles in guards.
-- [ ] Guard plan debug names are available for diagnostics.
+- [x] Linked verifier rejects invalid type/variant handles in guards.
+- [x] Guard plan debug names are available for diagnostics.
 
 #### Task 5.2: Add parameter and return guard metadata
 
