@@ -1254,9 +1254,9 @@ then build registry, syntax, guards, and runtime behavior on the new model.
 - [x] Implement a single API used by:
   - [x] function calls;
   - [x] typed let;
-  - [ ] return values;
+  - [x] return values;
   - [ ] record field construction;
-  - [ ] later record field writes;
+  - [x] later record field writes;
   - [ ] enum payload construction;
   - [ ] later enum payload writes when supported;
   - [ ] global writes.
@@ -1264,14 +1264,14 @@ then build registry, syntax, guards, and runtime behavior on the new model.
   - [x] exact same type -> OK, no guard;
   - [x] exact mismatch -> compile error;
   - [x] compatible unsuffixed literal -> contextualize;
-  - [ ] dynamic -> emit guard;
+  - [x] dynamic -> emit guard;
   - [x] suffix mismatch -> compile error.
 
 **Termination condition:**
 
 - [x] `fn f(x: i64) {}` with `f(12)` passes.
 - [x] `f(12i8)`, `f(12.0)`, `f("12")` fail at compile time.
-- [ ] `fn g(x) { f(x); }` compiles and emits a guard path.
+- [x] `fn g(x) { f(x); }` compiles and emits a guard path.
 
 #### Task 4.4: Add compile errors for static type contract violations
 

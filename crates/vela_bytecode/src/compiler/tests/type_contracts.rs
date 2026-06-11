@@ -388,6 +388,87 @@ fn f(x) {
 }
 
 #[test]
+fn compiler_contextualizes_typed_return_literals_without_guard_instruction() {
+    let program = compile_program_source(
+        SourceId::new(1),
+        r#"
+fn main() -> i8 {
+    return 12;
+}
+"#,
+    )
+    .expect("return literal should be contextualized by return type");
+    let function = program.function("main").expect("main function");
+
+    assert!(
+        function
+            .constants
+            .contains(&Constant::Scalar(vela_common::ScalarValue::I8(12)))
+    );
+    assert!(
+        !function.instructions.iter().any(|instruction| matches!(
+            instruction.kind,
+            UnlinkedInstructionKind::GuardType { .. }
+        ))
+    );
+}
+
+#[test]
+fn compiler_rejects_static_return_contract_mismatches() {
+    for source in [
+        r#"
+fn main() -> i64 {
+    return "x";
+}
+"#,
+        r#"
+fn main() -> i64 {
+    return;
+}
+"#,
+        r#"
+fn main() -> i64 {
+    return 1.0;
+}
+"#,
+    ] {
+        let error = compile_program_source(SourceId::new(1), source)
+            .expect_err("static return mismatch should fail before bytecode emission");
+        assert_eq!(
+            semantic_diagnostic_codes(error),
+            ["compiler::type_contract_mismatch"]
+        );
+    }
+}
+
+#[test]
+fn compiler_keeps_dynamic_return_contracts_for_runtime_guards() {
+    let program = compile_program_source(
+        SourceId::new(1),
+        r#"
+fn main(value) -> i64 {
+    return value;
+}
+"#,
+    )
+    .expect("dynamic return should compile for runtime return guard");
+    let function = program.function("main").expect("main function");
+
+    assert!(matches!(
+        function.return_guard.as_ref().map(|guard| &guard.plan),
+        Some(crate::UnlinkedTypeGuardPlan::Primitive(
+            vela_common::PrimitiveTag::I64
+        ))
+    ));
+    assert!(
+        !function.instructions.iter().any(|instruction| matches!(
+            instruction.kind,
+            UnlinkedInstructionKind::GuardType { .. }
+        ))
+    );
+}
+
+#[test]
 fn compiler_contextualizes_typed_let_literals() {
     let code = compile_function_source(
         SourceId::new(1),

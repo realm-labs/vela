@@ -10,7 +10,9 @@ use crate::{Constant, InstructionOffset, Register, UnlinkedInstructionKind};
 use super::patterns::PatternBindingFacts;
 use super::script_types::{ScriptTypeFact, type_hint_script_type};
 use super::value_flow::{BlockValue, block_value};
-use super::value_types::{TypeContractContext, type_hint_value_type};
+use super::value_types::{
+    RuntimeTypeFact, StaticExprType, TypeContractContext, check_expected_type, type_hint_value_type,
+};
 use super::{CompileError, CompileErrorKind, CompileResult, Compiler, frame_slot_kind};
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -140,11 +142,7 @@ impl Compiler<'_, '_> {
                 Ok(returned)
             }
             StmtKind::Return(value) => {
-                let register = if let Some(value) = value {
-                    self.compile_expr(value)?
-                } else {
-                    self.emit_constant(Constant::Null)?
-                };
+                let register = self.compile_return_value(stmt.span, value.as_ref())?;
                 self.emit(UnlinkedInstructionKind::Return { src: register });
                 Ok(true)
             }
@@ -211,6 +209,31 @@ impl Compiler<'_, '_> {
                     .map(|register| (register, false)),
                 None => self.compile_expr(value).map(|register| (register, false)),
             },
+        }
+    }
+
+    fn compile_return_value(
+        &mut self,
+        span: Span,
+        value: Option<&Expr>,
+    ) -> CompileResult<Register> {
+        match (value, self.return_type.clone()) {
+            (Some(value), Some(expected)) => {
+                self.compile_expr_with_expected_type(value, expected, TypeContractContext::Return)
+            }
+            (Some(value), None) => self.compile_expr(value),
+            (None, Some(expected)) => {
+                check_expected_type(
+                    StaticExprType::Exact(RuntimeTypeFact::primitive(
+                        vela_common::PrimitiveTag::Null,
+                    )),
+                    expected,
+                    span,
+                    TypeContractContext::Return,
+                )?;
+                self.emit_constant(Constant::Null)
+            }
+            (None, None) => self.emit_constant(Constant::Null),
         }
     }
 

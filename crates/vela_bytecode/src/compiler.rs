@@ -455,6 +455,7 @@ struct Compiler<'ast, 'registry> {
     bindings: &'ast BindingMap,
     next_register: u16,
     param_defaults: Vec<Option<Expr>>,
+    return_type: Option<RuntimeTypeFact>,
     body: &'ast Block,
     facts: CompilerFacts<'registry>,
     loop_stack: Vec<LoopContext>,
@@ -497,6 +498,10 @@ impl<'ast, 'registry> Compiler<'ast, 'registry> {
             .iter()
             .map(|param| param.default_value.is_some())
             .collect::<Vec<_>>();
+        let return_type = signature
+            .return_type
+            .as_ref()
+            .and_then(type_hint_value_type);
         let mut code = UnlinkedCodeObject::new(code_name, 0)
             .with_params(param_names)
             .with_param_defaults(param_defaults);
@@ -572,6 +577,7 @@ impl<'ast, 'registry> Compiler<'ast, 'registry> {
                 .iter()
                 .map(|param| param.default_value.clone())
                 .collect(),
+            return_type,
             body,
             facts,
             loop_stack: Vec::new(),
@@ -711,6 +717,7 @@ impl<'ast, 'registry> Compiler<'ast, 'registry> {
                 .checked_add(param_count)
                 .ok_or_else(|| CompileError::new(CompileErrorKind::RegisterOverflow))?,
             param_defaults: vec![None; params.len()],
+            return_type: None,
             body: fallback_body,
             facts,
             loop_stack: Vec::new(),
