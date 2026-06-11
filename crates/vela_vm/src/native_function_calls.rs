@@ -1,4 +1,4 @@
-use vela_bytecode::Register;
+use vela_bytecode::{DebugNameId, LinkedProgram, NativeHandle, Register};
 use vela_common::Span;
 use vela_def::FunctionId;
 
@@ -12,6 +12,15 @@ pub(crate) struct NativeFunctionCall<'a> {
     pub(crate) dst: Option<Register>,
     pub(crate) name: &'a str,
     pub(crate) native: FunctionId,
+    pub(crate) args: &'a [Register],
+    pub(crate) call_site: Option<Span>,
+}
+
+pub(crate) struct LinkedNativeFunctionCall<'a> {
+    pub(crate) dst: Option<Register>,
+    pub(crate) program: &'a LinkedProgram,
+    pub(crate) native: NativeHandle,
+    pub(crate) debug_name: DebugNameId,
     pub(crate) args: &'a [Register],
     pub(crate) call_site: Option<Span>,
 }
@@ -74,8 +83,21 @@ pub(crate) fn dispatch_linked_native_function_call(
     heap: &mut Option<&mut HeapExecution<'_>>,
     budget: &mut Option<&mut ExecutionBudget>,
     frame: &mut CallFrame,
-    call: NativeFunctionCall<'_>,
+    call: LinkedNativeFunctionCall<'_>,
 ) -> VmResult<()> {
+    let target = call.program.native_function(call.native).ok_or_else(|| {
+        VmError::new(VmErrorKind::UnknownNative {
+            name: call.program.debug_name(call.debug_name).to_owned(),
+        })
+        .with_source_span_if_absent(call.call_site)
+    })?;
+    let call = NativeFunctionCall {
+        dst: call.dst,
+        name: call.program.debug_name(target.debug_name),
+        native: target.id,
+        args: call.args,
+        call_site: call.call_site,
+    };
     if dispatch_borrowed_host_native_function_call(vm, host, heap, budget, frame, &call)? {
         return Ok(());
     }

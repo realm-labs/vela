@@ -320,22 +320,17 @@ impl Vm {
                     debug_name,
                     args,
                 } => {
-                    let target = call.program.native_function(*native).ok_or_else(|| {
-                        VmError::new(VmErrorKind::UnknownNative {
-                            name: call.program.debug_name(*debug_name).to_owned(),
-                        })
-                        .with_source_span_if_absent(instruction.span)
-                    })?;
                     native_function_calls::dispatch_linked_native_function_call(
                         self,
                         &mut host,
                         &mut heap,
                         &mut budget,
                         &mut frame,
-                        native_function_calls::NativeFunctionCall {
+                        native_function_calls::LinkedNativeFunctionCall {
                             dst: *dst,
-                            name: call.program.debug_name(target.debug_name),
-                            native: target.id,
+                            program: call.program,
+                            native: *native,
+                            debug_name: *debug_name,
                             args,
                             call_site: instruction.span,
                         },
