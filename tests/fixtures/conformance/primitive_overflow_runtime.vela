@@ -1,0 +1,4 @@
+fn main() {
+    let value: i8 = 127i8;
+    return value + 1i8;
+}

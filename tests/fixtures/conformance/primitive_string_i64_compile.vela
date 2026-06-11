@@ -1,0 +1,4 @@
+fn main() {
+    let value: i64 = "12";
+    return value;
+}

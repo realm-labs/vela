@@ -1624,25 +1624,25 @@ rg 'TypeHint::Float'
 
 Add fixtures for:
 
-- [ ] default integer literal -> `i64`;
-- [ ] default float literal -> `f64`;
-- [ ] type hinted integer literal contextualization;
-- [ ] suffix mismatch compile error;
-- [ ] string-to-i64 compile error;
-- [ ] dynamic-to-i64 runtime guard success/failure;
-- [ ] typed field assignment guard success/failure;
-- [ ] `fn inc(x) { x + 1 }` with `i8/u32/i64`;
-- [ ] bound literal no longer deferred;
-- [ ] mixed numeric runtime error;
-- [ ] checked overflow;
-- [ ] signed-min literals;
-- [ ] bytes literal and indexing;
-- [ ] endian reads.
+- [x] default integer literal -> `i64`;
+- [x] default float literal -> `f64`;
+- [x] type hinted integer literal contextualization;
+- [x] suffix mismatch compile error;
+- [x] string-to-i64 compile error;
+- [x] dynamic-to-i64 runtime guard success/failure;
+- [x] typed field assignment guard success/failure;
+- [x] `fn inc(x) { x + 1 }` with `i8/u32/i64`;
+- [x] bound literal no longer deferred;
+- [x] mixed numeric runtime error;
+- [x] checked overflow;
+- [x] signed-min literals;
+- [x] bytes literal and indexing;
+- [x] endian reads.
 
 **Termination condition:**
 
-- [ ] Conformance suite passes.
-- [ ] Negative compile/runtime fixtures assert the expected phase: compile error vs runtime error.
+- [x] Conformance suite passes.
+- [x] Negative compile/runtime fixtures assert the expected phase: compile error vs runtime error.
 
 ---
 

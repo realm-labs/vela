@@ -1,0 +1,11 @@
+fn expect_i64(value: i64) {
+    return value;
+}
+
+fn call_dynamic(value) {
+    return expect_i64(value);
+}
+
+fn main() {
+    return call_dynamic("12");
+}

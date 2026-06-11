@@ -1,0 +1,13 @@
+struct Cell {
+    value: i64,
+}
+
+fn assign_cell(cell: Cell, value) {
+    cell.value = value;
+    return cell.value;
+}
+
+fn main() {
+    let cell: Cell = Cell { value: 1 };
+    return assign_cell(cell, "bad");
+}

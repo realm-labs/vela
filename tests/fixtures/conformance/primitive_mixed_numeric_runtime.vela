@@ -1,0 +1,7 @@
+fn add_mixed(value) {
+    return value + 1i8;
+}
+
+fn main() {
+    return add_mixed(1);
+}

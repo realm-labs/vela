@@ -1,0 +1,8 @@
+fn inc_strict(value) {
+    let one = 1;
+    return value + one;
+}
+
+fn main() {
+    return inc_strict(1i8);
+}
