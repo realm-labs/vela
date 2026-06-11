@@ -69,7 +69,10 @@ fn main(ctx: Context, player: Player) {
     let result_module = reflect::module("result");
     let set_module = reflect::module("set");
     let bytes_module = reflect::module("bytes");
+    let i32_module = reflect::module("i32");
     let i64_module = reflect::module("i64");
+    let i16_module = reflect::module("i16");
+    let u16_module = reflect::module("u16");
     let u8_module = reflect::module("u8");
     let u32_module = reflect::module("u32");
     let i8_module = reflect::module("i8");
@@ -84,7 +87,10 @@ fn main(ctx: Context, player: Player) {
     let result_ok = reflect::function("result::ok");
     let set_from_array = reflect::function("set::from_array");
     let bytes_from_hex = reflect::function("bytes::from_hex");
+    let i32_from_i16 = reflect::function("i32::from_i16");
     let i64_from_i32 = reflect::function("i64::from_i32");
+    let i16_try_from_i64 = reflect::function("i16::try_from_i64");
+    let u16_try_from_u64 = reflect::function("u16::try_from_u64");
     let u8_wrapping_add = reflect::function("u8::wrapping_add");
     let u8_shift_left = reflect::function("u8::shift_left");
     let u32_wrapping_mul = reflect::function("u32::wrapping_mul");
@@ -96,7 +102,10 @@ fn main(ctx: Context, player: Player) {
     let result_ok_params = reflect::params(result_ok);
     let set_from_array_params = reflect::params(set_from_array);
     let bytes_from_hex_params = reflect::params(bytes_from_hex);
+    let i32_from_i16_params = reflect::params(i32_from_i16);
     let i64_from_i32_params = reflect::params(i64_from_i32);
+    let i16_try_from_i64_params = reflect::params(i16_try_from_i64);
+    let u16_try_from_u64_params = reflect::params(u16_try_from_u64);
     let u8_wrapping_add_params = reflect::params(u8_wrapping_add);
     let u8_shift_left_params = reflect::params(u8_shift_left);
     let u32_wrapping_mul_params = reflect::params(u32_wrapping_mul);
@@ -339,7 +348,10 @@ fn main(ctx: Context, player: Player) {
         && reflect::has_module("result")
         && reflect::has_module("set")
         && reflect::has_module("bytes")
+        && reflect::has_module("i32")
         && reflect::has_module("i64")
+        && reflect::has_module("i16")
+        && reflect::has_module("u16")
         && reflect::has_module("u8")
         && reflect::has_module("u32")
         && reflect::has_module("i8")
@@ -378,10 +390,22 @@ fn main(ctx: Context, player: Player) {
         && reflect::kind(bytes_module) == "module"
         && reflect::docs(bytes_module) == "Bytes standard-library conversion helpers."
         && reflect::attr(bytes_module, "stdlib") == "bytes"
+        && reflect::name(i32_module) == "i32"
+        && reflect::kind(i32_module) == "module"
+        && reflect::docs(i32_module) == "i32 primitive conversion helpers."
+        && reflect::attr(i32_module, "stdlib") == "i32"
         && reflect::name(i64_module) == "i64"
         && reflect::kind(i64_module) == "module"
         && reflect::docs(i64_module) == "i64 primitive conversion helpers."
         && reflect::attr(i64_module, "stdlib") == "i64"
+        && reflect::name(i16_module) == "i16"
+        && reflect::kind(i16_module) == "module"
+        && reflect::docs(i16_module) == "i16 primitive conversion helpers."
+        && reflect::attr(i16_module, "stdlib") == "i16"
+        && reflect::name(u16_module) == "u16"
+        && reflect::kind(u16_module) == "module"
+        && reflect::docs(u16_module) == "u16 primitive conversion helpers."
+        && reflect::attr(u16_module, "stdlib") == "u16"
         && reflect::name(u8_module) == "u8"
         && reflect::kind(u8_module) == "module"
         && reflect::docs(u8_module) == "u8 primitive conversion helpers."
@@ -394,7 +418,7 @@ fn main(ctx: Context, player: Player) {
         && reflect::kind(i8_module) == "module"
         && reflect::docs(i8_module) == "i8 primitive conversion helpers."
         && reflect::attr(i8_module, "stdlib") == "i8"
-        && modules.len() == 14
+        && modules.len() == 17
         && reflect::has_function("game::reward::grant")
         && reflect::has_function("main")
         && reflect::has_function("time::now")
@@ -406,7 +430,10 @@ fn main(ctx: Context, player: Player) {
         && reflect::has_function("result::ok")
         && reflect::has_function("set::from_array")
         && reflect::has_function("bytes::from_hex")
+        && reflect::has_function("i32::from_i16")
         && reflect::has_function("i64::from_i32")
+        && reflect::has_function("i16::try_from_i64")
+        && reflect::has_function("u16::try_from_u64")
         && reflect::has_function("u8::wrapping_add")
         && reflect::has_function("u8::shift_left")
         && reflect::has_function("u32::wrapping_mul")
@@ -477,15 +504,22 @@ fn main(ctx: Context, player: Player) {
         && set_exports.contains("set::from_array")
         && bytes_exports.len() == 1
         && bytes_exports.contains("bytes::from_hex")
+        && reflect::exports(i32_module).len() == 1
+        && reflect::exports(i32_module).contains("i32::from_i16")
         && i64_exports.len() == 1
         && i64_exports.contains("i64::from_i32")
+        && reflect::exports(i16_module).len() == 1
+        && reflect::exports(i16_module).contains("i16::try_from_i64")
+        && reflect::exports(u16_module).len() == 1
+        && reflect::exports(u16_module).contains("u16::try_from_u64")
         && reflect::exports(u8_module).len() == 9
         && reflect::exports(u8_module).contains("u8::try_from_u64")
         && reflect::exports(u8_module).contains("u8::wrapping_add")
         && reflect::exports(u8_module).contains("u8::bit_and")
         && reflect::exports(u8_module).contains("u8::shift_left")
         && reflect::exports(u8_module).contains("u8::rotate_right")
-        && reflect::exports(u32_module).len() == 1
+        && reflect::exports(u32_module).len() == 2
+        && reflect::exports(u32_module).contains("u32::from_u16")
         && reflect::exports(u32_module).contains("u32::wrapping_mul")
         && reflect::exports(i8_module).len() == 2
         && reflect::exports(i8_module).contains("i8::try_from_i64")
@@ -523,6 +557,14 @@ fn main(ctx: Context, player: Player) {
         && bytes_from_hex_params.len() == 1
         && bytes_from_hex_params[0].name == "text"
         && bytes_from_hex_params[0].type == "string"
+        && reflect::name(i32_from_i16) == "i32::from_i16"
+        && reflect::kind(i32_from_i16) == "function"
+        && reflect::origin(i32_from_i16) == "host"
+        && reflect::attr(i32_from_i16, "stdlib") == "i32"
+        && reflect::returns(i32_from_i16) == "i32"
+        && i32_from_i16_params.len() == 1
+        && i32_from_i16_params[0].name == "value"
+        && i32_from_i16_params[0].type == "i16"
         && reflect::name(i64_from_i32) == "i64::from_i32"
         && reflect::kind(i64_from_i32) == "function"
         && reflect::origin(i64_from_i32) == "host"
@@ -531,6 +573,16 @@ fn main(ctx: Context, player: Player) {
         && i64_from_i32_params.len() == 1
         && i64_from_i32_params[0].name == "value"
         && i64_from_i32_params[0].type == "i32"
+        && reflect::name(i16_try_from_i64) == "i16::try_from_i64"
+        && reflect::attr(i16_try_from_i64, "stdlib") == "i16"
+        && reflect::returns(i16_try_from_i64) == "Result"
+        && i16_try_from_i64_params.len() == 1
+        && i16_try_from_i64_params[0].type == "i64"
+        && reflect::name(u16_try_from_u64) == "u16::try_from_u64"
+        && reflect::attr(u16_try_from_u64, "stdlib") == "u16"
+        && reflect::returns(u16_try_from_u64) == "Result"
+        && u16_try_from_u64_params.len() == 1
+        && u16_try_from_u64_params[0].type == "u64"
         && reflect::name(u8_wrapping_add) == "u8::wrapping_add"
         && reflect::kind(u8_wrapping_add) == "function"
         && reflect::origin(u8_wrapping_add) == "host"
@@ -611,7 +663,7 @@ fn main(ctx: Context, player: Player) {
         && ctx_log_params[0].name == "level"
         && ctx_log_params[1].name == "message"
         && ctx_log_params[2].defaulted
-        && functions.len() == 53
+        && functions.len() == 57
         && functions.any(|function| reflect::id(function) == reflect::id(reward_function))
         && functions.any(|function| reflect::name(function) == "main"
             && reflect::origin(function) == "script")
@@ -629,8 +681,14 @@ fn main(ctx: Context, player: Player) {
             && reflect::attr(function, "stdlib") == "set")
         && functions.any(|function| reflect::name(function) == "bytes::from_hex"
             && reflect::attr(function, "stdlib") == "bytes")
+        && functions.any(|function| reflect::name(function) == "i32::from_i16"
+            && reflect::attr(function, "stdlib") == "i32")
         && functions.any(|function| reflect::name(function) == "i64::from_i32"
             && reflect::attr(function, "stdlib") == "i64")
+        && functions.any(|function| reflect::name(function) == "i16::try_from_i64"
+            && reflect::attr(function, "stdlib") == "i16")
+        && functions.any(|function| reflect::name(function) == "u16::try_from_u64"
+            && reflect::attr(function, "stdlib") == "u16")
         && functions.any(|function| reflect::name(function) == "u8::wrapping_add"
             && reflect::attr(function, "stdlib") == "u8")
         && functions.any(|function| reflect::name(function) == "u32::wrapping_mul"
