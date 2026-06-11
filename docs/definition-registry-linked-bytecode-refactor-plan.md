@@ -1702,7 +1702,7 @@ place to discover missing architecture.
 - Grep for `0xff00_` finds no stdlib ID declarations.
 - Grep for old constants such as `MATH_MAX_FUNCTION_ID` returns none, unless generated aliases are deliberately retained for internal tests. Prefer none.
 
-- [ ] **Task 9.2: Remove name fallback fields from bytecode**
+- [x] **Task 9.2: Remove name fallback fields from bytecode**
 
 **Delete from linked bytecode:**
 
