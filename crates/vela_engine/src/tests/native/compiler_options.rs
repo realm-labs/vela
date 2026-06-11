@@ -420,6 +420,39 @@ fn main() {
 }
 
 #[test]
+fn engine_links_standard_methods_after_indexed_collection_shapes() {
+    let engine = Engine::builder()
+        .with_standard_natives()
+        .reflection_policy(vela_reflect::permissions::ReflectPolicy::all())
+        .build()
+        .expect("engine should build with standard natives");
+    for (source, text) in [
+        (
+            SourceId::new(1),
+            include_str!("../../../../../examples/src/bin/gameplay_helpers/gameplay_helpers.vela"),
+        ),
+        (
+            SourceId::new(2),
+            include_str!(
+                "../../../../../examples/src/bin/random_reflect_allowed/random_reflect_allowed.vela"
+            ),
+        ),
+        (
+            SourceId::new(3),
+            include_str!("../../../../../examples/src/bin/reflect_debug/reflect_debug.vela"),
+        ),
+    ] {
+        let program = engine
+            .compile_source(source, text)
+            .expect("example stdlib method chain should compile");
+
+        engine
+            .link_program(&program)
+            .expect("example stdlib method chain should link");
+    }
+}
+
+#[test]
 fn engine_compiler_options_emit_standard_string_parse_method_ids() {
     let engine = Engine::builder()
         .with_standard_natives()

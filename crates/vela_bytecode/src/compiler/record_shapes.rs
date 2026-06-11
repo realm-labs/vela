@@ -1,4 +1,4 @@
-use std::collections::{BTreeMap, HashMap};
+use std::collections::{BTreeMap, BTreeSet, HashMap};
 
 use vela_common::Span;
 use vela_hir::binding::{BindingMap, BindingResolution};
@@ -139,6 +139,7 @@ impl ValueShape {
 
 impl RecordShape {
     fn from_field_shapes(fields: impl IntoIterator<Item = (String, ValueShape)>) -> Self {
+        let fields = fields.into_iter().collect::<BTreeMap<_, _>>();
         let fields = fields
             .into_iter()
             .enumerate()
@@ -445,6 +446,32 @@ fn native_call_shape(
         )
     });
     match (module.as_str(), function.as_str()) {
+        ("fs", "read_to_string") => Some(ValueShape::Result {
+            ok: Some(Box::new(ValueShape::Scalar("string".to_owned()))),
+            err: Some(Box::new(ValueShape::Record(
+                RecordShape::from_field_shapes([
+                    ("kind".to_owned(), ValueShape::Scalar("string".to_owned())),
+                    (
+                        "message".to_owned(),
+                        ValueShape::Scalar("string".to_owned()),
+                    ),
+                    ("path".to_owned(), ValueShape::Scalar("string".to_owned())),
+                ]),
+            ))),
+        }),
+        ("fs", "write_string") | ("io", "println") => Some(ValueShape::Result {
+            ok: Some(Box::new(ValueShape::Scalar("null".to_owned()))),
+            err: Some(Box::new(ValueShape::Record(
+                RecordShape::from_field_shapes([
+                    ("kind".to_owned(), ValueShape::Scalar("string".to_owned())),
+                    (
+                        "message".to_owned(),
+                        ValueShape::Scalar("string".to_owned()),
+                    ),
+                    ("path".to_owned(), ValueShape::Scalar("string".to_owned())),
+                ]),
+            ))),
+        }),
         ("option", "some") => Some(ValueShape::Option(Box::new(first??))),
         ("option", "none") => Some(ValueShape::Option(Box::new(ValueShape::Unknown))),
         ("option", "unwrap_or") => {
@@ -496,6 +523,7 @@ fn native_call_shape(
             key: Box::new(ValueShape::Scalar("string".to_owned())),
             value: Box::new(ValueShape::Unknown),
         }),
+        ("reflect", "access") => reflect_access_shape(first??),
         ("reflect", "effects") => Some(reflect_effects_record_shape()),
         ("reflect", "field") => Some(reflect_field_record_shape()),
         ("reflect", "fields") => Some(ValueShape::Array(Box::new(reflect_field_record_shape()))),
@@ -503,18 +531,46 @@ fn native_call_shape(
         ("reflect", "functions") => {
             Some(ValueShape::Array(Box::new(reflect_function_record_shape())))
         }
+        ("reflect", "module") => Some(reflect_module_record_shape()),
+        ("reflect", "modules") => Some(ValueShape::Array(Box::new(reflect_module_record_shape()))),
         ("reflect", "method") => Some(reflect_method_record_shape()),
         ("reflect", "methods") => Some(ValueShape::Array(Box::new(reflect_method_record_shape()))),
         ("reflect", "params") => Some(ValueShape::Array(Box::new(reflect_param_record_shape()))),
+        ("reflect", "source_span") => Some(reflect_source_span_record_shape()),
+        ("reflect", "trait_info") => Some(reflect_trait_record_shape()),
+        ("reflect", "traits") => Some(ValueShape::Array(Box::new(reflect_trait_record_shape()))),
+        ("reflect", "type_info" | "type_of") => Some(reflect_type_record_shape()),
+        ("reflect", "types") => Some(ValueShape::Array(Box::new(reflect_type_record_shape()))),
+        ("reflect", "variant_info") => Some(reflect_variant_record_shape()),
         ("reflect", "variants") => {
             Some(ValueShape::Array(Box::new(reflect_variant_record_shape())))
         }
-        (
-            "reflect",
-            "exports" | "modules" | "permissions" | "required_permissions" | "traits" | "types",
-        ) => Some(ValueShape::Array(Box::new(ValueShape::Unknown))),
+        ("reflect", "exports" | "permissions" | "required_permissions") => Some(ValueShape::Array(
+            Box::new(ValueShape::Scalar("string".to_owned())),
+        )),
         _ => None,
     }
+}
+
+fn reflect_access_shape(target: ValueShape) -> Option<ValueShape> {
+    if let Some(access) = target
+        .as_record()
+        .and_then(|record| record.field_value_shape("access"))
+        .cloned()
+    {
+        return Some(access);
+    }
+    let record = target.as_record()?;
+    let has_required_permissions = record.field_slot("required_permissions").is_some();
+    let has_access_flag = [
+        "reflect_callable",
+        "reflect_readable",
+        "reflect_visible",
+        "reflect_writable",
+    ]
+    .iter()
+    .any(|field| record.field_slot(field).is_some());
+    (has_required_permissions && has_access_flag).then_some(target)
 }
 
 fn reflect_effects_record_shape() -> ValueShape {
@@ -556,6 +612,26 @@ fn reflect_effects_record_shape() -> ValueShape {
             "writes_io".to_owned(),
             ValueShape::Scalar("bool".to_owned()),
         ),
+    ]))
+}
+
+fn reflect_module_record_shape() -> ValueShape {
+    ValueShape::Record(RecordShape::from_field_shapes([
+        (
+            "attrs".to_owned(),
+            ValueShape::Map {
+                key: Box::new(ValueShape::Scalar("string".to_owned())),
+                value: Box::new(ValueShape::Unknown),
+            },
+        ),
+        ("docs".to_owned(), ValueShape::Unknown),
+        (
+            "exports".to_owned(),
+            ValueShape::Array(Box::new(ValueShape::Scalar("string".to_owned()))),
+        ),
+        ("name".to_owned(), ValueShape::Scalar("string".to_owned())),
+        ("origin".to_owned(), ValueShape::Scalar("string".to_owned())),
+        ("source_span".to_owned(), reflect_source_span_record_shape()),
     ]))
 }
 
@@ -699,6 +775,70 @@ fn reflect_param_record_shape() -> ValueShape {
     ]))
 }
 
+fn reflect_source_span_record_shape() -> ValueShape {
+    ValueShape::Record(RecordShape::from_field_shapes([
+        ("end".to_owned(), ValueShape::Scalar("int".to_owned())),
+        ("source".to_owned(), ValueShape::Scalar("int".to_owned())),
+        ("start".to_owned(), ValueShape::Scalar("int".to_owned())),
+    ]))
+}
+
+fn reflect_trait_record_shape() -> ValueShape {
+    ValueShape::Record(RecordShape::from_field_shapes([
+        (
+            "attrs".to_owned(),
+            ValueShape::Map {
+                key: Box::new(ValueShape::Scalar("string".to_owned())),
+                value: Box::new(ValueShape::Unknown),
+            },
+        ),
+        ("docs".to_owned(), ValueShape::Unknown),
+        ("id".to_owned(), ValueShape::Scalar("int".to_owned())),
+        (
+            "methods".to_owned(),
+            ValueShape::Array(Box::new(reflect_method_record_shape())),
+        ),
+        ("name".to_owned(), ValueShape::Scalar("string".to_owned())),
+        ("origin".to_owned(), ValueShape::Scalar("string".to_owned())),
+        ("source_span".to_owned(), reflect_source_span_record_shape()),
+    ]))
+}
+
+fn reflect_type_record_shape() -> ValueShape {
+    ValueShape::Record(RecordShape::from_field_shapes([
+        (
+            "attrs".to_owned(),
+            ValueShape::Map {
+                key: Box::new(ValueShape::Scalar("string".to_owned())),
+                value: Box::new(ValueShape::Unknown),
+            },
+        ),
+        ("docs".to_owned(), ValueShape::Unknown),
+        (
+            "field_count".to_owned(),
+            ValueShape::Scalar("int".to_owned()),
+        ),
+        ("id".to_owned(), ValueShape::Scalar("int".to_owned())),
+        ("kind".to_owned(), ValueShape::Scalar("string".to_owned())),
+        (
+            "method_count".to_owned(),
+            ValueShape::Scalar("int".to_owned()),
+        ),
+        ("name".to_owned(), ValueShape::Scalar("string".to_owned())),
+        ("origin".to_owned(), ValueShape::Scalar("string".to_owned())),
+        ("schema_hash".to_owned(), ValueShape::Unknown),
+        ("source_span".to_owned(), reflect_source_span_record_shape()),
+        (
+            "trait_count".to_owned(),
+            ValueShape::Scalar("int".to_owned()),
+        ),
+        (
+            "variant_count".to_owned(),
+            ValueShape::Scalar("int".to_owned()),
+        ),
+    ]))
+}
+
 fn reflect_variant_record_shape() -> ValueShape {
     ValueShape::Record(RecordShape::from_field_shapes([
         (
@@ -757,6 +897,9 @@ fn method_call_shape(
         )))),
         "parse_float" => Some(ValueShape::Option(Box::new(ValueShape::Scalar(
             "float".to_owned(),
+        )))),
+        "parse_bool" => Some(ValueShape::Option(Box::new(ValueShape::Scalar(
+            "bool".to_owned(),
         )))),
         "split" | "split_whitespace" | "split_lines" => Some(ValueShape::Array(Box::new(
             ValueShape::Scalar("string".to_owned()),
@@ -970,8 +1113,25 @@ impl super::Compiler<'_, '_> {
     pub(super) fn value_shape_for_expr(&self, expr: &Expr) -> Option<ValueShape> {
         expression_value_shape(
             expr,
-            &|span| self.value_shapes.local_at_span(self.bindings, span),
-            &|name| self.value_shapes.name(name),
+            &|span| {
+                self.value_shapes
+                    .local_at_span(self.bindings, span)
+                    .or_else(|| {
+                        self.script_types
+                            .local_at_span(self.bindings, span)
+                            .and_then(|type_name| self.record_shape_for_type(&type_name))
+                            .map(ValueShape::Record)
+                    })
+            },
+            &|name| {
+                self.value_shapes.name(name).or_else(|| {
+                    self.script_types
+                        .name(name)
+                        .or_else(|| self.global_type_named(name))
+                        .and_then(|type_name| self.record_shape_for_type(&type_name))
+                        .map(ValueShape::Record)
+                })
+            },
             &|span| self.value_types.local_at_span(self.bindings, span),
             &|name| self.value_types.name(name),
         )
@@ -984,9 +1144,13 @@ impl super::Compiler<'_, '_> {
     pub(super) fn record_shape_for_path_root(&self, span: Span, root: &str) -> Option<RecordShape> {
         self.value_shapes
             .local_at_span(self.bindings, span)
-            .or_else(|| self.value_shapes.name(root))?
-            .as_record()
-            .cloned()
+            .or_else(|| self.value_shapes.name(root))
+            .and_then(|shape| shape.as_record().cloned())
+            .or_else(|| {
+                self.global_type_at_span(span)
+                    .or_else(|| self.global_type_named(root))
+                    .and_then(|type_name| self.record_shape_for_type(&type_name))
+            })
     }
 
     pub(super) fn record_shape_for_index_collection(
@@ -1038,6 +1202,43 @@ impl super::Compiler<'_, '_> {
                 _ => None,
             };
         };
-        self.value_shapes.name(receiver)
+        self.value_shapes.name(receiver).or_else(|| {
+            self.global_type_named(receiver)
+                .and_then(|type_name| self.record_shape_for_type(&type_name))
+                .map(ValueShape::Record)
+        })
+    }
+
+    fn record_shape_for_type(&self, type_name: &str) -> Option<RecordShape> {
+        self.record_shape_for_type_inner(type_name, &mut BTreeSet::new())
+    }
+
+    fn record_shape_for_type_inner(
+        &self,
+        type_name: &str,
+        visiting: &mut BTreeSet<String>,
+    ) -> Option<RecordShape> {
+        if !visiting.insert(type_name.to_owned()) {
+            return None;
+        }
+        let fields = self
+            .facts
+            .script_field_slots
+            .record_fields(type_name)
+            .into_iter()
+            .map(|(field, script_fact, value_type)| {
+                let value = script_fact
+                    .as_ref()
+                    .and_then(|fact| {
+                        self.record_shape_for_type_inner(&fact.type_name, visiting)
+                            .map(ValueShape::Record)
+                    })
+                    .or_else(|| value_type.map(ValueShape::Scalar))
+                    .unwrap_or(ValueShape::Unknown);
+                (field, value)
+            })
+            .collect::<Vec<_>>();
+        visiting.remove(type_name);
+        (!fields.is_empty()).then(|| RecordShape::from_field_shapes(fields))
     }
 }

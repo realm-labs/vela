@@ -19,6 +19,9 @@ current executable checklist is
 [definition-registry-linked-bytecode-refactor-plan.md](definition-registry-linked-bytecode-refactor-plan.md),
 with supporting runtime ownership context in
 [runtime-image-state-refactor-plan.md](runtime-image-state-refactor-plan.md).
+The checklist is currently complete and validated through the default full
+workspace checks; follow-on M19.5 work should start from the remaining
+cache/JIT-prep gaps below rather than restoring old compatibility paths.
 
 This does not weaken product contracts: hot reload ABI/schema compatibility,
 HostAccess safety, reflection permissioning, execution budgets, GC roots,

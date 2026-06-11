@@ -112,6 +112,36 @@ fn main() {
 }
 
 #[test]
+fn linked_reflect_type_of_classifies_closure_without_owned_materialization() {
+    let program = compile_reflection_value_source(
+        SourceId::new(1),
+        r#"
+fn main() {
+    return reflect::name(reflect::type_of(|value| value)) == "closure";
+}
+"#,
+    )
+    .expect("compile closure reflection source");
+    let mut adapter = MockStateAdapter::new();
+    let mut tx = HostAccess::new();
+    let mut vm = Vm::new();
+    let mut registry = script_reflection_registry();
+    registry
+        .register(TypeDesc::new(TypeKey::new(TypeId::new(201), "closure")).kind(TypeKind::Closure));
+    vm.register_reflection_natives(Arc::new(registry));
+    let mut host = HostExecution {
+        adapter: &mut adapter,
+        access: &mut tx,
+        script_globals: None,
+    };
+
+    assert_eq!(
+        exec_reflection_value_program(&vm, &program, "main", &[], &mut host),
+        Ok(OwnedValue::Bool(true))
+    );
+}
+
+#[test]
 fn compiled_source_reflect_set_returns_updated_script_record() {
     let program = compile_reflection_value_source(
         SourceId::new(1),

@@ -10,6 +10,8 @@ use super::value_types::type_hint_value_type;
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
 pub(super) struct ScriptFieldSlots {
     record_slots: BTreeMap<(String, String), usize>,
+    record_field_facts: BTreeMap<(String, String), ScriptTypeFact>,
+    record_field_value_types: BTreeMap<(String, String), String>,
     enum_slots: BTreeMap<(String, String, String), usize>,
     enum_field_facts: BTreeMap<(String, String, String), ScriptTypeFact>,
     enum_field_value_types: BTreeMap<(String, String, String), String>,
@@ -21,6 +23,8 @@ impl ScriptFieldSlots {
         type_symbols: &BTreeMap<HirDeclId, String>,
     ) -> Self {
         let mut record_slots = BTreeMap::new();
+        let mut record_field_facts = BTreeMap::new();
+        let mut record_field_value_types = BTreeMap::new();
         let mut enum_slots = BTreeMap::new();
         let mut enum_field_facts = BTreeMap::new();
         let mut enum_field_value_types = BTreeMap::new();
@@ -32,6 +36,22 @@ impl ScriptFieldSlots {
                     sorted_slots(shape.fields.iter().map(|field| field.name.clone()))
                 {
                     record_slots.insert((type_name.clone(), field), slot);
+                }
+                for field in &shape.fields {
+                    if let Some(hint) = field.type_hint.as_ref() {
+                        if let Some(type_name_hint) =
+                            type_hint_script_type(hint, type_names.clone())
+                        {
+                            record_field_facts.insert(
+                                (type_name.clone(), field.name.clone()),
+                                ScriptTypeFact::new(type_name_hint),
+                            );
+                        }
+                        if let Some(value_type) = type_hint_value_type(hint) {
+                            record_field_value_types
+                                .insert((type_name.clone(), field.name.clone()), value_type);
+                        }
+                    }
                 }
             }
 
@@ -65,6 +85,8 @@ impl ScriptFieldSlots {
 
         Self {
             record_slots,
+            record_field_facts,
+            record_field_value_types,
             enum_slots,
             enum_field_facts,
             enum_field_value_types,
@@ -72,9 +94,60 @@ impl ScriptFieldSlots {
     }
 
     pub(super) fn record(&self, type_name: &str, field: &str) -> Option<usize> {
+        let type_name = self.resolve_record_type_name(type_name)?;
         self.record_slots
-            .get(&(type_name.to_owned(), field.to_owned()))
+            .get(&(type_name, field.to_owned()))
             .copied()
+    }
+
+    pub(super) fn record_fields(
+        &self,
+        type_name: &str,
+    ) -> Vec<(String, Option<ScriptTypeFact>, Option<String>)> {
+        let Some(type_name) = self.resolve_record_type_name(type_name) else {
+            return Vec::new();
+        };
+        let fields = self
+            .record_slots
+            .keys()
+            .filter_map(|(owner, field)| (owner == &type_name).then_some(field.clone()))
+            .collect::<Vec<_>>();
+        fields
+            .into_iter()
+            .map(move |field| {
+                (
+                    field.clone(),
+                    self.record_field_facts
+                        .get(&(type_name.clone(), field.clone()))
+                        .cloned(),
+                    self.record_field_value_types
+                        .get(&(type_name.clone(), field.clone()))
+                        .cloned(),
+                )
+            })
+            .collect()
+    }
+
+    fn resolve_record_type_name(&self, type_name: &str) -> Option<String> {
+        if self
+            .record_slots
+            .keys()
+            .any(|(owner, _)| owner == type_name)
+        {
+            return Some(type_name.to_owned());
+        }
+        let suffix = format!("::{type_name}");
+        let mut matches = self
+            .record_slots
+            .keys()
+            .filter_map(|(owner, _)| owner.ends_with(&suffix).then_some(owner.clone()))
+            .collect::<Vec<_>>();
+        matches.sort();
+        matches.dedup();
+        match matches.as_slice() {
+            [only] => Some(only.clone()),
+            _ => None,
+        }
     }
 
     pub(super) fn enum_variant(

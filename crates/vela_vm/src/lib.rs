@@ -66,7 +66,9 @@ use numeric_ops::{
     less_numeric, mul_numeric, negate_numeric, rem_numeric, sub_numeric,
 };
 use owned_value::OwnedValue;
-pub(crate) use reflection_values::{value_from_reflect, value_to_reflect};
+pub(crate) use reflection_values::{
+    runtime_value_to_reflect, value_from_reflect, value_to_reflect,
+};
 pub(crate) use runtime_checks::{expect_arity, expect_host_ref, expect_string};
 use runtime_checks::{expect_int, is_truthy, validate_jump};
 #[cfg(test)]
@@ -119,11 +121,23 @@ pub type HostNativeFunction = Arc<
         + Sync
         + 'static,
 >;
+pub(crate) type BorrowedHostNativeFunction = Arc<
+    dyn for<'host, 'heap, 'budget> Fn(
+            &[Value],
+            &HeapExecution<'heap>,
+            &mut HostExecution<'host>,
+            Option<&'budget mut ExecutionBudget>,
+        ) -> VmResult<OwnedValue>
+        + Send
+        + Sync
+        + 'static,
+>;
 
 #[derive(Clone, Default)]
 pub struct Vm {
     native_ids: HashMap<FunctionId, NativeFunction>,
     host_native_ids: HashMap<FunctionId, HostNativeFunction>,
+    borrowed_host_native_ids: HashMap<FunctionId, BorrowedHostNativeFunction>,
     type_registry: Option<Arc<TypeRegistry>>,
 }
 
@@ -330,6 +344,24 @@ impl Vm {
         + 'static,
     ) {
         self.host_native_ids.insert(id, Arc::new(function));
+    }
+
+    pub(crate) fn register_borrowed_host_native(
+        &mut self,
+        name: impl Into<String>,
+        function: impl for<'host, 'heap, 'budget> Fn(
+            &[Value],
+            &HeapExecution<'heap>,
+            &mut HostExecution<'host>,
+            Option<&'budget mut ExecutionBudget>,
+        ) -> VmResult<OwnedValue>
+        + Send
+        + Sync
+        + 'static,
+    ) {
+        let name = name.into();
+        self.borrowed_host_native_ids
+            .insert(function_id_for_native_name(&name), Arc::new(function));
     }
 
     pub fn register_standard_natives(&mut self) {

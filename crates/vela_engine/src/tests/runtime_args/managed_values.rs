@@ -214,6 +214,45 @@ fn read_name() {
 }
 
 #[test]
+fn runtime_script_global_nested_record_program_links() {
+    let engine = Engine::builder().build().expect("engine should build");
+    let program = engine
+        .compile_source(
+            SourceId::new(1),
+            r#"
+struct ServerStats {
+    handled_ticks: int,
+}
+
+struct ServerState {
+    level: int,
+    name: string,
+    total_gold: int,
+    stats: ServerStats,
+}
+
+global state: ServerState;
+
+fn handle_tick(level_gain, gold_gain) {
+    state.level += level_gain;
+    state.total_gold += gold_gain;
+    state.stats.handled_ticks += 1;
+    return state.level + state.total_gold + state.stats.handled_ticks;
+}
+
+fn projected_score(snapshot: ServerState, bonus) {
+    return snapshot.level + snapshot.total_gold + snapshot.stats.handled_ticks + bonus;
+}
+"#,
+        )
+        .expect("program should compile");
+
+    engine
+        .link_program(&program)
+        .expect("nested script global program should link");
+}
+
+#[test]
 fn shared_runtime_image_keeps_script_globals_isolated() {
     let engine = Engine::builder().build().expect("engine should build");
     let program = engine

@@ -191,7 +191,11 @@ impl super::Compiler<'_, '_> {
                     .local_at_span(self.bindings, span)
                     .or_else(|| self.global_type_at_span(span))
             },
-            |name| self.script_types.name(name),
+            |name| {
+                self.script_types
+                    .name(name)
+                    .or_else(|| self.global_type_named(name))
+            },
         )
     }
 
@@ -204,7 +208,11 @@ impl super::Compiler<'_, '_> {
                     .local_fact_at_span(self.bindings, span)
                     .or_else(|| self.global_type_at_span(span).map(ScriptTypeFact::new))
             },
-            |name| self.script_types.name_fact(name),
+            |name| {
+                self.script_types
+                    .name_fact(name)
+                    .or_else(|| self.global_type_named(name).map(ScriptTypeFact::new))
+            },
         )
     }
 }

@@ -759,7 +759,15 @@ impl<'ast, 'registry> Compiler<'ast, 'registry> {
     }
 
     fn global_type_named(&self, name: &str) -> Option<String> {
-        unique_symbol_with_short_name(self.facts.global_type_symbols.values(), name)
+        let global = self.global_symbol_named(name)?;
+        self.facts
+            .global_symbols
+            .iter()
+            .find_map(|(declaration, symbol)| {
+                (symbol == &global)
+                    .then(|| self.facts.global_type_symbols.get(declaration).cloned())
+                    .flatten()
+            })
     }
 
     fn host_method_receiver_type(&self, callee: &Expr) -> Option<String> {

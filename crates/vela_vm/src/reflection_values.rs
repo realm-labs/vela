@@ -3,9 +3,10 @@ use std::collections::BTreeMap;
 use vela_host::value::HostValue;
 use vela_reflect as reflect;
 
+use crate::heap::HeapValue;
 use crate::owned_value::OwnedValue;
 use crate::script_object::ScriptFields;
-use crate::{VmError, VmErrorKind, VmResult};
+use crate::{HeapExecution, Value, VmError, VmErrorKind, VmResult};
 
 pub(crate) fn value_to_reflect(
     value: &OwnedValue,
@@ -70,6 +71,91 @@ pub(crate) fn value_to_reflect(
         | OwnedValue::String(_) => Ok(reflect::value::ReflectValue::Host(owned_to_host(
             value, operation,
         )?)),
+    }
+}
+
+pub(crate) fn runtime_value_to_reflect(
+    value: &Value,
+    heap: &HeapExecution<'_>,
+    operation: &'static str,
+) -> VmResult<reflect::value::ReflectValue> {
+    match value {
+        Value::Missing => Err(type_error(operation)),
+        Value::Null => Ok(reflect::value::ReflectValue::Host(HostValue::Null)),
+        Value::Bool(value) => Ok(reflect::value::ReflectValue::Host(HostValue::Bool(*value))),
+        Value::Int(value) => Ok(reflect::value::ReflectValue::Host(HostValue::Int(*value))),
+        Value::Float(value) => Ok(reflect::value::ReflectValue::Host(HostValue::Float(*value))),
+        Value::Range(_) => Ok(reflect::value::ReflectValue::Range),
+        Value::HostRef(host_ref) => Ok(reflect::value::ReflectValue::HostRef(*host_ref)),
+        Value::HeapRef(reference) => match heap.heap.get(*reference) {
+            Some(HeapValue::String(value)) => Ok(reflect::value::ReflectValue::Host(
+                HostValue::String(value.clone()),
+            )),
+            Some(HeapValue::Array(values)) => values
+                .iter()
+                .map(|value| runtime_value_to_reflect(value, heap, operation))
+                .collect::<VmResult<Vec<_>>>()
+                .map(reflect::value::ReflectValue::Array),
+            Some(HeapValue::Map(values)) => {
+                let values = values
+                    .iter()
+                    .map(|(key, value)| {
+                        Ok((
+                            key.clone(),
+                            runtime_value_to_reflect(value, heap, operation)?,
+                        ))
+                    })
+                    .collect::<VmResult<BTreeMap<_, _>>>()?;
+                Ok(reflect::value::ReflectValue::Record(values))
+            }
+            Some(HeapValue::Set(values)) => values
+                .iter()
+                .map(|value| runtime_value_to_reflect(value, heap, operation))
+                .collect::<VmResult<Vec<_>>>()
+                .map(reflect::value::ReflectValue::Set),
+            Some(HeapValue::Record {
+                type_name, fields, ..
+            }) => {
+                let fields = fields
+                    .iter()
+                    .map(|(key, value)| {
+                        Ok((
+                            key.to_owned(),
+                            runtime_value_to_reflect(value, heap, operation)?,
+                        ))
+                    })
+                    .collect::<VmResult<BTreeMap<_, _>>>()?;
+                Ok(reflect::value::ReflectValue::ScriptRecord {
+                    type_name: type_name.clone(),
+                    fields,
+                })
+            }
+            Some(HeapValue::Enum {
+                enum_name,
+                variant,
+                fields,
+                ..
+            }) => {
+                let fields = fields
+                    .iter()
+                    .map(|(key, value)| {
+                        Ok((
+                            key.to_owned(),
+                            runtime_value_to_reflect(value, heap, operation)?,
+                        ))
+                    })
+                    .collect::<VmResult<BTreeMap<_, _>>>()?;
+                Ok(reflect::value::ReflectValue::ScriptEnum {
+                    enum_name: enum_name.clone(),
+                    variant: variant.clone(),
+                    fields,
+                })
+            }
+            Some(HeapValue::Closure(_)) => Ok(reflect::value::ReflectValue::Closure),
+            Some(HeapValue::Iterator(_) | HeapValue::PathProxy(_)) | None => {
+                Err(type_error(operation))
+            }
+        },
     }
 }
 

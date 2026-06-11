@@ -4,7 +4,9 @@ use vela_reflect::registry::TypeRegistry;
 use vela_reflect::{self as reflect};
 
 use crate::owned_value::OwnedValue;
-use crate::{Vm, expect_arity, expect_string, value_from_reflect, value_to_reflect};
+use crate::{
+    Vm, expect_arity, expect_string, runtime_value_to_reflect, value_from_reflect, value_to_reflect,
+};
 
 use super::common::{check_host_ref_inspection, check_reflect_policy};
 
@@ -27,6 +29,29 @@ pub(super) fn register(
         let target = value_to_reflect(&args[0], "reflect::type_of")?;
         check_host_ref_inspection(&type_of_policy, &target)?;
         value_from_reflect(reflect::types::type_of_value(&type_of_registry, &target))
+    });
+    let borrowed_type_of_registry = Arc::clone(registry);
+    let borrowed_type_of_policy = policy.clone();
+    let borrowed_type_of_budget = Arc::clone(lookup_budget);
+    vm.register_borrowed_host_native("reflect::type_of", move |args, heap, _host, _budget| {
+        check_reflect_policy(
+            &borrowed_type_of_policy,
+            &borrowed_type_of_budget,
+            reflect::permissions::ReflectPermission::ReadTypeInfo,
+        )?;
+        if args.len() != 1 {
+            return Err(crate::VmError::new(crate::VmErrorKind::ArityMismatch {
+                name: "reflect::type_of".to_owned(),
+                expected: 1,
+                actual: args.len(),
+            }));
+        }
+        let target = runtime_value_to_reflect(&args[0], heap, "reflect::type_of")?;
+        check_host_ref_inspection(&borrowed_type_of_policy, &target)?;
+        value_from_reflect(reflect::types::type_of_value(
+            &borrowed_type_of_registry,
+            &target,
+        ))
     });
 
     let types_registry = Arc::clone(registry);

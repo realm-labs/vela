@@ -10,6 +10,7 @@ use crate::io::{
     FS_READ_TO_STRING_FUNCTION_ID, FS_WRITE_STRING_FUNCTION_ID, IO_PRINTLN_FUNCTION_ID,
 };
 use crate::permission::Capability;
+use crate::runtime::{CallArgs, CallOptions, Runtime};
 
 fn run_linked_program(engine: &Engine, program: &UnlinkedProgram) -> VmResult<OwnedValue> {
     let linked = engine
@@ -73,6 +74,47 @@ fn main() {
     assert_eq!(
         run_linked_program(&engine, &program),
         Ok(OwnedValue::String("score=7".to_owned()))
+    );
+}
+
+#[test]
+fn runtime_new_links_stdio_and_fs_io_programs() {
+    let root = temp_root("runtime_new_links_stdio_and_fs_io_programs");
+    std::fs::write(root.join("input.txt"), "hello from fs").expect("input fixture should write");
+    let engine = Engine::builder()
+        .with_standard_natives()
+        .capability(Capability::IoRead)
+        .capability(Capability::IoWrite)
+        .with_stdio()
+        .with_fs_io(&root)
+        .build()
+        .expect("engine should build");
+    let program = engine
+        .compile_source(
+            SourceId::new(1),
+            r#"
+fn main() {
+    let input = result::unwrap_or(fs::read_to_string("input.txt"), "missing");
+    io::println(input);
+    fs::write_string("output.txt", "done");
+    return input.len();
+}
+"#,
+        )
+        .expect("program should compile");
+    engine
+        .link_program(&program)
+        .expect("stdio plus fs program should link");
+    let mut runtime = Runtime::new(engine, program);
+
+    let output = runtime
+        .call("main", CallArgs::new(), CallOptions::unbounded())
+        .expect("runtime call should execute linked image");
+
+    assert_eq!(runtime.value_to_owned(&output), Ok(OwnedValue::Int(13)));
+    assert_eq!(
+        std::fs::read_to_string(root.join("output.txt")).expect("output should exist"),
+        "done"
     );
 }
 
