@@ -82,8 +82,8 @@ use small_storage::SmallStorage;
 #[cfg(test)]
 use vela_bytecode::UnlinkedProgram;
 use vela_bytecode::{
-    CacheSiteId, Constant, HostTargetPlanId, InstructionOffset, LinkedCodeObject, LinkedProgram,
-    Register, UnlinkedCodeObject, UnlinkedInstructionKind, UnlinkedProgramCode,
+    CacheSiteId, HostTargetPlanId, InstructionOffset, LinkedCodeObject, LinkedProgram, Register,
+    UnlinkedCodeObject, UnlinkedInstructionKind, UnlinkedProgramCode,
 };
 use vela_common::{GlobalSlot, HostTypeId, Span};
 use vela_def::{DefPath, FunctionId};

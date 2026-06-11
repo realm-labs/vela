@@ -1,5 +1,39 @@
 use crate::heap::HeapValue;
-use crate::{HeapExecution, Value};
+use crate::{CallFrame, ExecutionBudget, HeapExecution, Value, VmResult, value_from_constant};
+use vela_bytecode::{Constant, Register};
+
+pub(crate) fn dispatch_load_const(
+    frame: &mut CallFrame,
+    mut heap: Option<&mut HeapExecution<'_>>,
+    mut budget: Option<&mut ExecutionBudget>,
+    dst: Register,
+    constant: &Constant,
+) -> VmResult<()> {
+    let value = match constant {
+        Constant::Null => Value::Null,
+        Constant::Bool(value) => Value::Bool(*value),
+        Constant::Scalar(value) => Value::Scalar(*value),
+        Constant::String(value) => {
+            if let Some(value) =
+                loaded_string_constant(frame.read(dst).ok(), value, heap.as_deref())
+            {
+                value
+            } else {
+                value_from_constant(constant, heap.as_deref_mut(), budget.as_deref_mut())?
+            }
+        }
+        Constant::Bytes(value) => {
+            if let Some(value) = loaded_bytes_constant(frame.read(dst).ok(), value, heap.as_deref())
+            {
+                value
+            } else {
+                value_from_constant(constant, heap.as_deref_mut(), budget.as_deref_mut())?
+            }
+        }
+        Constant::Array(_) | Constant::Map(_) => value_from_constant(constant, heap, budget)?,
+    };
+    frame.write(dst, value)
+}
 
 pub(crate) fn loaded_string_constant(
     current: Option<&Value>,

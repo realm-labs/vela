@@ -164,47 +164,13 @@ impl Vm {
                         })
                         .with_source_span(instruction.span)
                     })?;
-                    let value = match constant_value {
-                        Constant::Null => Value::Null,
-                        Constant::Bool(value) => Value::Bool(*value),
-                        Constant::Scalar(value) => Value::Scalar(*value),
-                        Constant::String(value) => {
-                            if let Some(value) = constant_loads::loaded_string_constant(
-                                frame.read(*dst).ok(),
-                                value,
-                                heap.as_deref(),
-                            ) {
-                                value
-                            } else {
-                                value_from_constant(
-                                    constant_value,
-                                    heap.as_deref_mut(),
-                                    budget.as_deref_mut(),
-                                )?
-                            }
-                        }
-                        Constant::Bytes(value) => {
-                            if let Some(value) = constant_loads::loaded_bytes_constant(
-                                frame.read(*dst).ok(),
-                                value,
-                                heap.as_deref(),
-                            ) {
-                                value
-                            } else {
-                                value_from_constant(
-                                    constant_value,
-                                    heap.as_deref_mut(),
-                                    budget.as_deref_mut(),
-                                )?
-                            }
-                        }
-                        Constant::Array(_) | Constant::Map(_) => value_from_constant(
-                            constant_value,
-                            heap.as_deref_mut(),
-                            budget.as_deref_mut(),
-                        )?,
-                    };
-                    frame.write(*dst, value)?;
+                    constant_loads::dispatch_load_const(
+                        &mut frame,
+                        heap.as_deref_mut(),
+                        budget.as_deref_mut(),
+                        *dst,
+                        constant_value,
+                    )?;
                 }
                 InstructionKind::Move { dst, src } => {
                     let value = *frame.read(*src)?;
