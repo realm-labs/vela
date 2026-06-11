@@ -50,6 +50,7 @@ pub enum TypeKind {
     Int,
     Float,
     String,
+    Bytes,
     Array,
     Map,
     Set,

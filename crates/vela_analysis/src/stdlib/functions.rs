@@ -167,6 +167,11 @@ pub(super) fn completion_facts() -> Vec<StdlibFunctionFact> {
             vec![TypeFact::array(TypeFact::Any)],
             TypeFact::set(TypeFact::Any),
         ),
+        StdlibFunctionFact::new(
+            "bytes::from_hex",
+            vec![TypeFact::String],
+            TypeFact::result(TypeFact::Bytes, TypeFact::String),
+        ),
     ];
     facts.extend(super::reflect::completion_facts());
     facts
@@ -417,6 +422,14 @@ pub(super) fn function_fact(name: &str, args: &[TypeFact]) -> Option<StdlibFunct
                 "set::from_array",
                 args.to_vec(),
                 TypeFact::set((**element).clone()),
+            ))
+        }
+        "bytes::from_hex" => {
+            expect_len(args, 1)?;
+            Some(StdlibFunctionFact::new(
+                "bytes::from_hex",
+                args.to_vec(),
+                TypeFact::result(TypeFact::Bytes, TypeFact::String),
             ))
         }
         _ => None,

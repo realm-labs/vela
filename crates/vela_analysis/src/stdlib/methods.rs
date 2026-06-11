@@ -5,7 +5,8 @@ mod collections;
 mod option_result;
 
 use collections::{
-    array_method_fact, map_method_fact, range_method_fact, set_method_fact, string_method_fact,
+    array_method_fact, bytes_method_fact, map_method_fact, range_method_fact, set_method_fact,
+    string_method_fact,
 };
 use option_result::{OptionShape, ResultShape, option_method_fact, result_method_fact};
 
@@ -109,6 +110,15 @@ const STRING_METHOD_NAMES: &[&str] = &[
     "parse_float",
     "parse_bool",
 ];
+const BYTES_METHOD_NAMES: &[&str] = &[
+    "len",
+    "is_empty",
+    "slice",
+    "get",
+    "read_u32_le",
+    "read_u32_be",
+    "to_hex",
+];
 const RANGE_METHOD_NAMES: &[&str] = &["len", "is_empty"];
 const OPTION_METHOD_NAMES: &[&str] = &[
     "is_some",
@@ -153,6 +163,7 @@ pub(super) fn method_fact(
         ),
         TypeFact::Set { element } => set_method_fact((**element).clone(), method, lambda_return),
         TypeFact::String => string_method_fact(method),
+        TypeFact::Bytes => bytes_method_fact(method),
         TypeFact::Range => range_method_fact(method),
         TypeFact::Option { some } => {
             option_method_fact((**some).clone(), OptionShape::Maybe, method, lambda_return)
@@ -204,6 +215,7 @@ fn method_names(receiver: &TypeFact) -> &'static [&'static str] {
         TypeFact::Map { .. } => MAP_METHOD_NAMES,
         TypeFact::Set { .. } => SET_METHOD_NAMES,
         TypeFact::String => STRING_METHOD_NAMES,
+        TypeFact::Bytes => BYTES_METHOD_NAMES,
         TypeFact::Range => RANGE_METHOD_NAMES,
         TypeFact::Option { .. } | TypeFact::OptionSome { .. } | TypeFact::OptionNone => {
             OPTION_METHOD_NAMES

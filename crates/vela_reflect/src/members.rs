@@ -63,6 +63,7 @@ pub fn kind(registry: &TypeRegistry, target: &ReflectValue) -> ReflectResult<Ref
                 TypeKind::Int => "int",
                 TypeKind::Float => "float",
                 TypeKind::String => "string",
+                TypeKind::Bytes => "bytes",
                 TypeKind::Array => "array",
                 TypeKind::Map => "map",
                 TypeKind::Set => "set",

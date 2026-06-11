@@ -1,4 +1,5 @@
 use crate::native::{EffectSet, FunctionAccess, NativeFunctionDesc, TypeHint};
+use vela_reflect::registry::TypeKey;
 
 pub(crate) fn standard_native_function_descs() -> Vec<NativeFunctionDesc> {
     vela_stdlib::STD_FUNCTIONS
@@ -42,6 +43,11 @@ fn type_hint(hint: &str) -> TypeHint {
         "map" => TypeHint::Map,
         "set" => TypeHint::Set,
         "function" => TypeHint::Function,
+        "Option" | "Result" => {
+            let id = vela_stdlib::std_type_id(hint)
+                .unwrap_or_else(|| panic!("missing standard enum type identity for {hint}"));
+            TypeHint::Enum(TypeKey::new(id, hint))
+        }
         _ => TypeHint::Any,
     }
 }

@@ -238,12 +238,20 @@ pub(crate) fn option_flatten(args: &[OwnedValue]) -> VmResult<OwnedValue> {
 
 pub(crate) fn result_ok(args: &[OwnedValue]) -> VmResult<OwnedValue> {
     expect_arity("result::ok", args, 1)?;
-    Ok(owned_result_value("Ok", args[0].clone()))
+    Ok(owned_result_ok(args[0].clone()))
 }
 
 pub(crate) fn result_err(args: &[OwnedValue]) -> VmResult<OwnedValue> {
     expect_arity("result::err", args, 1)?;
-    Ok(owned_result_value("Err", args[0].clone()))
+    Ok(owned_result_err(args[0].clone()))
+}
+
+pub(crate) fn owned_result_ok(payload: OwnedValue) -> OwnedValue {
+    owned_result_value("Ok", payload)
+}
+
+pub(crate) fn owned_result_err(payload: OwnedValue) -> OwnedValue {
+    owned_result_value("Err", payload)
 }
 
 pub(crate) fn result_is_ok(args: &[OwnedValue]) -> VmResult<OwnedValue> {

@@ -546,6 +546,13 @@ pub const STD_FUNCTIONS: &[StdFunctionSpec] = &[
         "set",
         "Builds a set from array values.",
     ),
+    StdFunctionSpec::new(
+        "bytes",
+        "from_hex",
+        &[StdParamSpec::new("text", "string")],
+        "Result",
+        "Decodes hexadecimal text to bytes or returns an error string.",
+    ),
 ];
 
 #[cfg(test)]
@@ -563,8 +570,8 @@ mod tests {
         assert_eq!(STD_TYPES.len(), 22);
         assert_eq!(STD_VARIANTS.len(), 4);
         assert_eq!(STD_FIELDS.len(), 3);
-        assert_eq!(STD_FUNCTIONS.len(), 30);
-        assert_eq!(STD_METHODS.len(), 113);
+        assert_eq!(STD_FUNCTIONS.len(), 31);
+        assert_eq!(STD_METHODS.len(), 120);
     }
 
     #[test]
@@ -578,6 +585,11 @@ mod tests {
             STD_FUNCTIONS
                 .iter()
                 .any(|spec| spec.module == "set" && spec.name == "from_array")
+        );
+        assert!(
+            STD_FUNCTIONS
+                .iter()
+                .any(|spec| spec.module == "bytes" && spec.name == "from_hex")
         );
         assert!(
             STD_METHODS
@@ -598,6 +610,16 @@ mod tests {
             STD_METHODS
                 .iter()
                 .any(|spec| spec.owner == "String" && spec.name == "parse_bool")
+        );
+        assert!(
+            STD_METHODS
+                .iter()
+                .any(|spec| spec.owner == "Bytes" && spec.name == "read_u32_le")
+        );
+        assert!(
+            STD_METHODS
+                .iter()
+                .any(|spec| spec.owner == "Bytes" && spec.name == "to_hex")
         );
         assert!(
             STD_METHODS

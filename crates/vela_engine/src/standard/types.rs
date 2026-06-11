@@ -3,8 +3,8 @@ use vela_reflect::modules::DeclOrigin;
 use vela_reflect::registry::{FieldDesc, SchemaHash, TypeDesc, TypeKey, TypeKind, VariantDesc};
 
 use super::methods::{
-    array_method_descs, map_method_descs, option_method_descs, range_method_descs,
-    result_method_descs, set_method_descs, string_method_descs,
+    array_method_descs, bytes_method_descs, map_method_descs, option_method_descs,
+    range_method_descs, result_method_descs, set_method_descs, string_method_descs,
 };
 
 pub(crate) fn standard_type_descs() -> Vec<TypeDesc> {
@@ -34,6 +34,7 @@ pub(crate) fn standard_type_descs() -> Vec<TypeDesc> {
             "Default floating-point scalar value type.",
         ),
         string_type_desc(),
+        bytes_type_desc(),
         array_type_desc(),
         map_type_desc(),
         set_type_desc(),
@@ -77,6 +78,19 @@ fn string_type_desc() -> TypeDesc {
         "String value type.",
     );
     for method in string_method_descs() {
+        desc = desc.method(method);
+    }
+    desc
+}
+
+fn bytes_type_desc() -> TypeDesc {
+    let mut desc = builtin_type(
+        "bytes",
+        required_std_type_id("Bytes"),
+        TypeKind::Bytes,
+        "Immutable binary data value type.",
+    );
+    for method in bytes_method_descs() {
         desc = desc.method(method);
     }
     desc

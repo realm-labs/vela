@@ -2,6 +2,7 @@
 
 mod array_methods;
 pub mod budget;
+mod bytes_methods;
 mod callback_method_dispatch;
 mod closure_calls;
 mod constant_loads;

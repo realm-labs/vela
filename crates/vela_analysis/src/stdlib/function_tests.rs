@@ -123,6 +123,12 @@ fn math_set_and_time_functions_expose_return_facts() {
         TypeFact::set(TypeFact::String)
     );
     assert_eq!(
+        stdlib_function_fact("bytes::from_hex", &[TypeFact::String])
+            .expect("bytes::from_hex fact")
+            .returns,
+        TypeFact::result(TypeFact::Bytes, TypeFact::String)
+    );
+    assert_eq!(
         stdlib_function_fact("time::now", &[])
             .expect("time::now fact")
             .returns,
@@ -166,6 +172,11 @@ fn function_completion_facts_enumerate_global_api_surface() {
         fact.name == "result::to_option"
             && fact.params == vec![TypeFact::result(TypeFact::Any, TypeFact::Any)]
             && fact.returns == TypeFact::option(TypeFact::Any)
+    }));
+    assert!(facts.iter().any(|fact| {
+        fact.name == "bytes::from_hex"
+            && fact.params == vec![TypeFact::String]
+            && fact.returns == TypeFact::result(TypeFact::Bytes, TypeFact::String)
     }));
     assert!(facts.iter().any(|fact| {
         fact.name == "result::to_error_option"

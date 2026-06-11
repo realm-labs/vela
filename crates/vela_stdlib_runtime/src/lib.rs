@@ -38,6 +38,7 @@ pub enum StdFunctionImplementation {
     ResultToErrorOption,
     ResultFlatten,
     SetFromArray,
+    BytesFromHex,
 }
 
 impl StdFunctionImplementation {
@@ -74,6 +75,7 @@ impl StdFunctionImplementation {
             (b"result", b"to_error_option") => Some(Self::ResultToErrorOption),
             (b"result", b"flatten") => Some(Self::ResultFlatten),
             (b"set", b"from_array") => Some(Self::SetFromArray),
+            (b"bytes", b"from_hex") => Some(Self::BytesFromHex),
             _ => None,
         }
     }

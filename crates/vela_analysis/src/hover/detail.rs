@@ -11,6 +11,7 @@ pub(super) fn type_detail(kind: TypeKind) -> String {
         TypeKind::Int => "kind: int".to_owned(),
         TypeKind::Float => "kind: float".to_owned(),
         TypeKind::String => "kind: string".to_owned(),
+        TypeKind::Bytes => "kind: bytes".to_owned(),
         TypeKind::Array => "kind: array".to_owned(),
         TypeKind::Map => "kind: map".to_owned(),
         TypeKind::Set => "kind: set".to_owned(),

@@ -98,6 +98,7 @@ fn kind_name(kind: TypeKind) -> String {
         TypeKind::Int => "int",
         TypeKind::Float => "float",
         TypeKind::String => "string",
+        TypeKind::Bytes => "bytes",
         TypeKind::Array => "array",
         TypeKind::Map => "map",
         TypeKind::Set => "set",

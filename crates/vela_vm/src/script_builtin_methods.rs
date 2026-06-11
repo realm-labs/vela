@@ -3,7 +3,7 @@ use std::sync::OnceLock;
 use crate::heap::HeapValue;
 use crate::{
     ExecutionBudget, HeapExecution, Value, VmError, VmErrorKind, VmResult, array_methods,
-    map_methods, option_result_methods, set_methods,
+    bytes_methods, map_methods, option_result_methods, set_methods,
 };
 use vela_def::MethodId;
 
@@ -33,6 +33,13 @@ struct StdMethodIds {
     string_parse_int: MethodId,
     string_parse_float: MethodId,
     string_parse_bool: MethodId,
+    bytes_len: MethodId,
+    bytes_is_empty: MethodId,
+    bytes_slice: MethodId,
+    bytes_get: MethodId,
+    bytes_read_u32_le: MethodId,
+    bytes_read_u32_be: MethodId,
+    bytes_to_hex: MethodId,
     array_len: MethodId,
     array_is_empty: MethodId,
     array_push: MethodId,
@@ -98,6 +105,13 @@ impl StdMethodIds {
             string_parse_int: standard_method_id("String", "parse_int"),
             string_parse_float: standard_method_id("String", "parse_float"),
             string_parse_bool: standard_method_id("String", "parse_bool"),
+            bytes_len: standard_method_id("Bytes", "len"),
+            bytes_is_empty: standard_method_id("Bytes", "is_empty"),
+            bytes_slice: standard_method_id("Bytes", "slice"),
+            bytes_get: standard_method_id("Bytes", "get"),
+            bytes_read_u32_le: standard_method_id("Bytes", "read_u32_le"),
+            bytes_read_u32_be: standard_method_id("Bytes", "read_u32_be"),
+            bytes_to_hex: standard_method_id("Bytes", "to_hex"),
             array_len: standard_method_id("Array", "len"),
             array_is_empty: standard_method_id("Array", "is_empty"),
             array_push: standard_method_id("Array", "push"),
@@ -164,6 +178,11 @@ pub(crate) fn call(
     heap: &mut Option<&mut HeapExecution<'_>>,
     budget: &mut Option<&mut ExecutionBudget>,
 ) -> Option<VmResult<Value>> {
+    if bytes_methods::is_bytes(receiver, heap.as_deref())
+        && let Some(result) = call_bytes_by_name(receiver, method, args, heap, budget)
+    {
+        return Some(result);
+    }
     let result = match method {
         "len" => expect_no_args(method, args)
             .and_then(|()| len(receiver, heap.as_deref()).map(Value::i64)),
@@ -271,6 +290,12 @@ pub(crate) fn call_by_id(
     }
     if method_id == ids.array_slice && array_methods::is_array(receiver, heap.as_deref()) {
         return Some(array_methods::slice(receiver, args, heap, budget));
+    }
+    if method_id == ids.bytes_slice && bytes_methods::is_bytes(receiver, heap.as_deref()) {
+        return Some(bytes_methods::slice(receiver, args, heap, budget));
+    }
+    if method_id == ids.bytes_to_hex && bytes_methods::is_bytes(receiver, heap.as_deref()) {
+        return Some(bytes_methods::to_hex(receiver, args, heap, budget));
     }
     if method_id == ids.map_get && map_methods::is_map(receiver, heap.as_deref()) {
         return Some(map_methods::get(receiver, args, heap, budget));
@@ -429,6 +454,11 @@ pub(crate) fn call_readonly(
     args: &[Value],
     heap: Option<&HeapExecution<'_>>,
 ) -> Option<VmResult<Value>> {
+    if bytes_methods::is_bytes(receiver, heap)
+        && let Some(result) = call_readonly_bytes_by_name(receiver, method, args, heap)
+    {
+        return Some(result);
+    }
     let result = match method {
         "len" => expect_no_args(method, args).and_then(|()| len(receiver, heap).map(Value::i64)),
         "is_empty" => {
@@ -476,6 +506,21 @@ pub(crate) fn call_readonly_by_id(
     }
     if method_id == ids.string_ends_with && crate::string_methods::is_string(receiver, heap) {
         return Some(crate::string_methods::ends_with(receiver, args, heap).map(Value::Bool));
+    }
+    if method_id == ids.bytes_len && bytes_methods::is_bytes(receiver, heap) {
+        return Some(bytes_methods::len(receiver, args, heap));
+    }
+    if method_id == ids.bytes_is_empty && bytes_methods::is_bytes(receiver, heap) {
+        return Some(bytes_methods::is_empty(receiver, args, heap));
+    }
+    if method_id == ids.bytes_get && bytes_methods::is_bytes(receiver, heap) {
+        return Some(bytes_methods::get(receiver, args, heap));
+    }
+    if method_id == ids.bytes_read_u32_le && bytes_methods::is_bytes(receiver, heap) {
+        return Some(bytes_methods::read_u32_le(receiver, args, heap));
+    }
+    if method_id == ids.bytes_read_u32_be && bytes_methods::is_bytes(receiver, heap) {
+        return Some(bytes_methods::read_u32_be(receiver, args, heap));
     }
     if method_id == ids.range_len && matches!(receiver, Value::Range(_)) {
         return Some(
@@ -555,6 +600,39 @@ pub(crate) fn call_readonly_by_id(
         return Some(option_result_methods::is_err(receiver, args, heap));
     }
     None
+}
+
+fn call_bytes_by_name(
+    receiver: &Value,
+    method: &str,
+    args: &[Value],
+    heap: &mut Option<&mut HeapExecution<'_>>,
+    budget: &mut Option<&mut ExecutionBudget>,
+) -> Option<VmResult<Value>> {
+    match method {
+        "len" | "is_empty" | "get" | "read_u32_le" | "read_u32_be" => {
+            call_readonly_bytes_by_name(receiver, method, args, heap.as_deref())
+        }
+        "slice" => Some(bytes_methods::slice(receiver, args, heap, budget)),
+        "to_hex" => Some(bytes_methods::to_hex(receiver, args, heap, budget)),
+        _ => None,
+    }
+}
+
+fn call_readonly_bytes_by_name(
+    receiver: &Value,
+    method: &str,
+    args: &[Value],
+    heap: Option<&HeapExecution<'_>>,
+) -> Option<VmResult<Value>> {
+    match method {
+        "len" => Some(bytes_methods::len(receiver, args, heap)),
+        "is_empty" => Some(bytes_methods::is_empty(receiver, args, heap)),
+        "get" => Some(bytes_methods::get(receiver, args, heap)),
+        "read_u32_le" => Some(bytes_methods::read_u32_le(receiver, args, heap)),
+        "read_u32_be" => Some(bytes_methods::read_u32_be(receiver, args, heap)),
+        _ => None,
+    }
 }
 
 fn extend(

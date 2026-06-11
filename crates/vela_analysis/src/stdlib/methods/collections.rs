@@ -446,6 +446,31 @@ pub(super) fn string_method_fact(method: &str) -> Option<StdlibMethodFact> {
     }
 }
 
+pub(super) fn bytes_method_fact(method: &str) -> Option<StdlibMethodFact> {
+    let receiver = TypeFact::Bytes;
+    match method {
+        "len" => Some(StdlibMethodFact::new(receiver, "len", TypeFact::Int)),
+        "is_empty" => Some(StdlibMethodFact::new(receiver, "is_empty", TypeFact::Bool)),
+        "slice" => Some(
+            StdlibMethodFact::new(receiver, "slice", TypeFact::Bytes)
+                .with_params(vec![TypeFact::Int, TypeFact::Int]),
+        ),
+        "get" => Some(
+            StdlibMethodFact::new(receiver, "get", TypeFact::Int).with_params(vec![TypeFact::Int]),
+        ),
+        "read_u32_le" => Some(
+            StdlibMethodFact::new(receiver, "read_u32_le", TypeFact::Int)
+                .with_params(vec![TypeFact::Int]),
+        ),
+        "read_u32_be" => Some(
+            StdlibMethodFact::new(receiver, "read_u32_be", TypeFact::Int)
+                .with_params(vec![TypeFact::Int]),
+        ),
+        "to_hex" => Some(StdlibMethodFact::new(receiver, "to_hex", TypeFact::String)),
+        _ => None,
+    }
+}
+
 pub(super) fn range_method_fact(method: &str) -> Option<StdlibMethodFact> {
     let receiver = TypeFact::Range;
     match method {

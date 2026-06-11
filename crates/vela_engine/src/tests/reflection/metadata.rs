@@ -542,6 +542,17 @@ fn engine_standard_natives_register_reflection_metadata() {
         set_from_array.docs.as_deref(),
         Some("Builds a set from array values.")
     );
+    let bytes_from_hex = registry
+        .function_by_name("bytes::from_hex")
+        .expect("bytes::from_hex");
+    assert_eq!(bytes_from_hex.module.as_deref(), Some("bytes"));
+    assert_eq!(bytes_from_hex.params[0].name, "text");
+    assert_eq!(
+        bytes_from_hex.params[0].type_hint.as_deref(),
+        Some("string")
+    );
+    assert_eq!(bytes_from_hex.return_type.as_deref(), Some("Result"));
+    assert_eq!(bytes_from_hex.attrs.get("stdlib"), Some("bytes"));
 
     let program = engine
         .compile_source(
@@ -552,7 +563,9 @@ fn main() {
     let option_module = reflect::module("option");
     let result_module = reflect::module("result");
     let set_module = reflect::module("set");
+    let bytes_module = reflect::module("bytes");
     let string_type = reflect::type_info("string");
+    let bytes_type = reflect::type_info("bytes");
     let array_type = reflect::type_info("array");
     let option_type = reflect::type_info("Option");
     let result_type = reflect::type_info("Result");
@@ -570,6 +583,7 @@ fn main() {
     let option_variants = reflect::variants(option_type);
     let result_variants = reflect::variants(result_type);
     let string_methods = reflect::methods(string_type);
+    let bytes_methods = reflect::methods(bytes_type);
     let array_methods = reflect::methods(array_type);
     let option_methods = reflect::methods(option_type);
     let result_methods = reflect::methods(result_type);
@@ -582,6 +596,8 @@ fn main() {
     let trim = reflect::method(string_type, "trim");
     let split_once = reflect::method(string_type, "split_once");
     let parse_int = reflect::method(string_type, "parse_int");
+    let bytes_read_u32_le = reflect::method(bytes_type, "read_u32_le");
+    let bytes_to_hex = reflect::method(bytes_type, "to_hex");
     let array_push = reflect::method(array_type, "push");
     let array_map = reflect::method(array_type, "map");
     let map_get = reflect::method(map_type, "get");
@@ -597,14 +613,17 @@ fn main() {
     let some = reflect::function("option::some");
     let ok = reflect::function("result::ok");
     let set_from_array = reflect::function("set::from_array");
+    let bytes_from_hex = reflect::function("bytes::from_hex");
     let params = reflect::params(max);
     let some_params = reflect::params(some);
     let ok_params = reflect::params(ok);
     let set_params = reflect::params(set_from_array);
+    let bytes_params = reflect::params(bytes_from_hex);
     let math_exports = reflect::exports(math);
     let option_exports = reflect::exports(option_module);
     let result_exports = reflect::exports(result_module);
     let set_exports = reflect::exports(set_module);
+    let bytes_exports = reflect::exports(bytes_module);
     let type_of_checks = reflect::name(null_value_type) == "null"
         && reflect::kind(null_value_type) == "null"
         && reflect::name(bool_value_type) == "bool"
@@ -632,7 +651,9 @@ fn main() {
         && reflect::has_function("option::some")
         && reflect::has_function("result::ok")
         && reflect::has_function("set::from_array")
+        && reflect::has_function("bytes::from_hex")
         && reflect::has_type("string")
+        && reflect::has_type("bytes")
         && reflect::has_type("array")
         && reflect::has_type("map")
         && reflect::has_type("set")
@@ -640,6 +661,7 @@ fn main() {
         && reflect::has_type("Option")
         && reflect::has_type("Result")
         && reflect::kind(string_type) == "string"
+        && reflect::kind(bytes_type) == "bytes"
         && reflect::kind(array_type) == "array"
         && reflect::kind(map_type) == "map"
         && reflect::kind(set_type) == "set"
@@ -651,17 +673,23 @@ fn main() {
         && reflect::docs(option_module) == "Option standard-library propagation helpers."
         && reflect::docs(result_module) == "Result standard-library propagation helpers."
         && reflect::docs(set_module) == "Set standard-library construction helpers."
+        && reflect::docs(bytes_module) == "Bytes standard-library conversion helpers."
         && reflect::attr(math, "stdlib") == "math"
         && reflect::attr(option_module, "stdlib") == "option"
         && reflect::attr(result_module, "stdlib") == "result"
         && reflect::attr(set_module, "stdlib") == "set"
+        && reflect::attr(bytes_module, "stdlib") == "bytes"
         && reflect::attr(string_type, "stdlib") == "builtin"
+        && reflect::attr(bytes_type, "stdlib") == "builtin"
         && reflect::attr(option_type, "stdlib") == "option"
         && reflect::attr(result_type, "stdlib") == "result"
         && string_methods.len() >= 22
+        && bytes_methods.len() == 7
         && reflect::has_method(string_type, "trim")
         && reflect::has_method(string_type, "split_once")
         && reflect::has_method(string_type, "parse_int")
+        && reflect::has_method(bytes_type, "read_u32_le")
+        && reflect::has_method(bytes_type, "to_hex")
         && trim.owner == "string"
         && reflect::returns(trim) == "string"
         && reflect::attr(trim, "stdlib") == "string"
@@ -670,6 +698,11 @@ fn main() {
         && split_once.params[0].type == "string"
         && reflect::returns(split_once) == "Option"
         && reflect::returns(parse_int) == "Option"
+        && bytes_read_u32_le.params[0].type == "i64"
+        && reflect::returns(bytes_read_u32_le) == "u32"
+        && reflect::attr(bytes_read_u32_le, "stdlib") == "bytes"
+        && reflect::returns(bytes_to_hex) == "string"
+        && reflect::attr(bytes_to_hex, "stdlib") == "bytes"
         && array_methods.len() >= 28
         && map_methods.len() >= 19
         && set_methods.len() >= 21
@@ -749,20 +782,25 @@ fn main() {
         && result_exports.contains("result::to_option")
         && set_exports.len() == 1
         && set_exports.contains("set::from_array")
+        && bytes_exports.len() == 1
+        && bytes_exports.contains("bytes::from_hex")
         && reflect::attr(max, "stdlib") == "math"
         && reflect::attr(some, "stdlib") == "option"
         && reflect::attr(ok, "stdlib") == "result"
         && reflect::attr(set_from_array, "stdlib") == "set"
+        && reflect::attr(bytes_from_hex, "stdlib") == "bytes"
         && reflect::docs(max) == "Returns the larger numeric value."
         && reflect::docs(sqrt) == "Returns the square root as a float."
         && reflect::docs(some) == "Wraps a value in Option::Some."
         && reflect::docs(ok) == "Wraps a success value in Result::Ok."
         && reflect::docs(set_from_array) == "Builds a set from array values."
+        && reflect::docs(bytes_from_hex) == "Decodes hexadecimal text to bytes or returns an error string."
         && reflect::returns(max) == "any"
         && reflect::returns(sqrt) == "f64"
         && reflect::returns(some) == "any"
         && reflect::returns(ok) == "any"
         && reflect::returns(set_from_array) == "set"
+        && reflect::returns(bytes_from_hex) == "Result"
         && params.len() == 2
         && params[0].name == "left"
         && params[1].name == "right"
@@ -772,7 +810,10 @@ fn main() {
         && ok_params[0].name == "value"
         && set_params.len() == 1
         && set_params[0].name == "values"
-        && set_params[0].type == "array";
+        && set_params[0].type == "array"
+        && bytes_params.len() == 1
+        && bytes_params[0].name == "text"
+        && bytes_params[0].type == "string";
 }
 "#,
         )

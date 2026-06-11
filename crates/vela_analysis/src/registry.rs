@@ -481,6 +481,7 @@ fn type_desc_fact(desc: &TypeDesc) -> TypeFact {
         TypeKind::Int => TypeFact::Int,
         TypeKind::Float => TypeFact::Float,
         TypeKind::String => TypeFact::String,
+        TypeKind::Bytes => TypeFact::Bytes,
         TypeKind::Array => TypeFact::array(TypeFact::Any),
         TypeKind::Map => TypeFact::map(TypeFact::Any, TypeFact::Any),
         TypeKind::Set => TypeFact::set(TypeFact::Any),

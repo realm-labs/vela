@@ -1,6 +1,6 @@
 use vela_reflect::modules::ModuleDesc;
 
-pub(crate) fn standard_module_descs() -> [ModuleDesc; 4] {
+pub(crate) fn standard_module_descs() -> [ModuleDesc; 5] {
     [
         stdlib_module(
             "math",
@@ -18,6 +18,11 @@ pub(crate) fn standard_module_descs() -> [ModuleDesc; 4] {
             "result",
         ),
         stdlib_module("set", "Set standard-library construction helpers.", "set"),
+        stdlib_module(
+            "bytes",
+            "Bytes standard-library conversion helpers.",
+            "bytes",
+        ),
     ]
 }
 

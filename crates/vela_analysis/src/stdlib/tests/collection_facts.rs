@@ -400,3 +400,26 @@ fn string_methods_expose_replacement_and_split_facts() {
     assert_eq!(parse_bool.params, Vec::<TypeFact>::new());
     assert_eq!(parse_bool.returns, TypeFact::option(TypeFact::Bool));
 }
+
+#[test]
+fn bytes_methods_expose_binary_api_facts() {
+    let len = stdlib_method_fact(&TypeFact::Bytes, "len", None).expect("bytes len fact");
+    assert_eq!(len.params, Vec::<TypeFact>::new());
+    assert_eq!(len.returns, TypeFact::Int);
+
+    let slice = stdlib_method_fact(&TypeFact::Bytes, "slice", None).expect("bytes slice fact");
+    assert_eq!(slice.params, vec![TypeFact::Int, TypeFact::Int]);
+    assert_eq!(slice.returns, TypeFact::Bytes);
+
+    let get = stdlib_method_fact(&TypeFact::Bytes, "get", None).expect("bytes get fact");
+    assert_eq!(get.params, vec![TypeFact::Int]);
+    assert_eq!(get.returns, TypeFact::Int);
+
+    let read_le =
+        stdlib_method_fact(&TypeFact::Bytes, "read_u32_le", None).expect("bytes read fact");
+    assert_eq!(read_le.params, vec![TypeFact::Int]);
+    assert_eq!(read_le.returns, TypeFact::Int);
+
+    let hex = stdlib_method_fact(&TypeFact::Bytes, "to_hex", None).expect("bytes hex fact");
+    assert_eq!(hex.returns, TypeFact::String);
+}

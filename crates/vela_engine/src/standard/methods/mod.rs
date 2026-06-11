@@ -1,4 +1,5 @@
 mod array;
+mod bytes;
 mod map;
 mod option;
 mod range;
@@ -10,6 +11,7 @@ use vela_common::HostMethodId;
 use vela_reflect::registry::{MethodDesc, MethodParamDesc};
 
 pub(crate) use array::array_method_descs;
+pub(crate) use bytes::bytes_method_descs;
 pub(crate) use map::map_method_descs;
 pub(crate) use option::option_method_descs;
 pub(crate) use range::range_method_descs;

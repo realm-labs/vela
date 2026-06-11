@@ -1430,7 +1430,7 @@ unless the implementation stays small.
 - [x] Load bytes constants into heap.
 - [x] Convert bytes owned/runtime values.
 - [x] Implement bytes indexing to `u8`.
-- [ ] Implement bytes stdlib methods.
+- [x] Implement bytes stdlib methods.
 - [x] Keep bytes immutable.
 - [x] Use `i64` indexes for bytes indexing; counts for remaining bytes APIs stay with Phase 7.2.
 
@@ -1438,24 +1438,24 @@ unless the implementation stays small.
 
 - [x] `b"abc"[0]` returns `97u8`.
 - [x] Negative and out-of-bounds indexes produce the chosen runtime error.
-- [ ] `read_u32_le` and `read_u32_be` tests pass.
+- [x] `read_u32_le` and `read_u32_be` tests pass.
 
 #### Task 7.2: Add bytes stdlib and conversion APIs
 
-- [ ] Add:
-  - [ ] `bytes.len() -> i64`
-  - [ ] `bytes.is_empty() -> bool`
-  - [ ] `bytes.slice(start: i64, end: i64) -> bytes`
-  - [ ] `bytes.get(index: i64) -> u8` or an explicitly optional/result-returning variant if chosen
-  - [ ] endian-specific scalar reads.
-- [ ] Add `bytes.to_hex() -> string`.
-- [ ] Add `bytes::from_hex(text: string) -> Result`.
-- [ ] Never use host-endian reads.
+- [x] Add:
+  - [x] `bytes.len() -> i64`
+  - [x] `bytes.is_empty() -> bool`
+  - [x] `bytes.slice(start: i64, end: i64) -> bytes`
+  - [x] `bytes.get(index: i64) -> u8` or an explicitly optional/result-returning variant if chosen
+  - [x] endian-specific scalar reads.
+- [x] Add `bytes.to_hex() -> string`.
+- [x] Add `bytes::from_hex(text: string) -> Result`.
+- [x] Never use host-endian reads.
 
 **Termination condition:**
 
-- [ ] Bytes APIs are manifest-driven and implemented in stdlib runtime.
-- [ ] Tests cover indexing, slicing, endian reads, and hex conversion.
+- [x] Bytes APIs are manifest-driven and implemented in stdlib runtime.
+- [x] Tests cover indexing, slicing, endian reads, and hex conversion.
 
 ---
 

@@ -53,6 +53,7 @@ fn native_function(implementation: StdFunctionImplementation) -> StdNativeFuncti
         }
         StdFunctionImplementation::ResultFlatten => crate::option_result::result_flatten,
         StdFunctionImplementation::SetFromArray => crate::set_methods::from_array,
+        StdFunctionImplementation::BytesFromHex => crate::bytes_methods::from_hex,
     }
 }
 
