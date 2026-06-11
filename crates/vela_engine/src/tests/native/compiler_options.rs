@@ -1,5 +1,22 @@
 use super::*;
 
+use vela_bytecode::UnlinkedProgram;
+use vela_vm::error::VmResult;
+
+fn run_linked_program(
+    engine: &Engine,
+    program: &UnlinkedProgram,
+    entry: &str,
+    args: &[OwnedValue],
+) -> VmResult<OwnedValue> {
+    let linked = engine
+        .link_program(program)
+        .expect("engine compiler options test program should link");
+    engine
+        .into_vm_for_program(program)
+        .run_linked_program(&linked, entry, args)
+}
+
 fn std_method_id(owner: &str, name: &str) -> vela_def::MethodId {
     let Some(id) = vela_stdlib::std_method_id(owner, name) else {
         panic!("missing standard method identity for {owner}::{name}");
@@ -39,7 +56,7 @@ fn main() {
         .expect("program should compile");
 
     assert_eq!(
-        engine.into_vm().run_program(&program, "main", &[]),
+        run_linked_program(&engine, &program, "main", &[]),
         Ok(OwnedValue::Int(5))
     );
 }
@@ -75,7 +92,7 @@ fn main() {
         .expect("named registered native arguments should compile");
 
     assert_eq!(
-        engine.into_vm().run_program(&program, "main", &[]),
+        run_linked_program(&engine, &program, "main", &[]),
         Ok(OwnedValue::Int(7))
     );
 }
@@ -98,7 +115,7 @@ fn main() {
         .expect("named stdlib native arguments should compile");
 
     assert_eq!(
-        engine.into_vm().run_program(&program, "main", &[]),
+        run_linked_program(&engine, &program, "main", &[]),
         Ok(OwnedValue::Int(10))
     );
 }
@@ -720,7 +737,7 @@ fn main() {
         .expect("named stdlib value method arguments should compile");
 
     assert_eq!(
-        engine.into_vm().run_program(&program, "main", &[]),
+        run_linked_program(&engine, &program, "main", &[]),
         Ok(OwnedValue::Int(4))
     );
 }
@@ -743,7 +760,7 @@ fn main() {
         .expect("receiver-specific named stdlib value method arguments should compile");
 
     assert_eq!(
-        engine.into_vm().run_program(&program, "main", &[]),
+        run_linked_program(&engine, &program, "main", &[]),
         Ok(OwnedValue::Bool(true))
     );
 }
@@ -770,7 +787,8 @@ fn main(text: string) {
         .expect("local receiver named stdlib value method arguments should compile");
 
     assert_eq!(
-        engine.into_vm().run_program(
+        run_linked_program(
+            &engine,
             &program,
             "main",
             &[OwnedValue::String("loot:xp".to_owned())]
