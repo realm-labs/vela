@@ -1,4 +1,7 @@
+use std::sync::OnceLock;
+
 use vela_bytecode::{LinkedProgram, UnlinkedProgramCode};
+use vela_def::MethodId;
 
 use crate::heap::GcRef;
 use crate::method_runtime::MethodRuntime;
@@ -15,6 +18,87 @@ pub(crate) struct CallbackMethodDispatch<'a, 'host, 'heap> {
     pub(crate) heap: Option<&'a mut HeapExecution<'heap>>,
     pub(crate) budget: Option<&'a mut ExecutionBudget>,
     pub(crate) caller_roots: &'a [GcRef],
+}
+
+#[derive(Clone, Copy)]
+struct CallbackMethodIds {
+    array_map: MethodId,
+    array_filter: MethodId,
+    array_find: MethodId,
+    array_any: MethodId,
+    array_all: MethodId,
+    array_count: MethodId,
+    array_sum: MethodId,
+    array_group_by: MethodId,
+    array_sort_by: MethodId,
+    map_filter: MethodId,
+    map_find: MethodId,
+    map_any: MethodId,
+    map_all: MethodId,
+    map_count: MethodId,
+    map_map_values: MethodId,
+    set_map: MethodId,
+    set_filter: MethodId,
+    set_find: MethodId,
+    set_any: MethodId,
+    set_all: MethodId,
+    set_count: MethodId,
+    option_map: MethodId,
+    option_and_then: MethodId,
+    option_or_else: MethodId,
+    option_filter: MethodId,
+    result_map: MethodId,
+    result_map_err: MethodId,
+    result_and_then: MethodId,
+    result_or_else: MethodId,
+}
+
+impl CallbackMethodIds {
+    fn new() -> Self {
+        Self {
+            array_map: standard_method_id("Array", "map"),
+            array_filter: standard_method_id("Array", "filter"),
+            array_find: standard_method_id("Array", "find"),
+            array_any: standard_method_id("Array", "any"),
+            array_all: standard_method_id("Array", "all"),
+            array_count: standard_method_id("Array", "count"),
+            array_sum: standard_method_id("Array", "sum"),
+            array_group_by: standard_method_id("Array", "group_by"),
+            array_sort_by: standard_method_id("Array", "sort_by"),
+            map_filter: standard_method_id("Map", "filter"),
+            map_find: standard_method_id("Map", "find"),
+            map_any: standard_method_id("Map", "any"),
+            map_all: standard_method_id("Map", "all"),
+            map_count: standard_method_id("Map", "count"),
+            map_map_values: standard_method_id("Map", "map_values"),
+            set_map: standard_method_id("Set", "map"),
+            set_filter: standard_method_id("Set", "filter"),
+            set_find: standard_method_id("Set", "find"),
+            set_any: standard_method_id("Set", "any"),
+            set_all: standard_method_id("Set", "all"),
+            set_count: standard_method_id("Set", "count"),
+            option_map: standard_method_id("Option", "map"),
+            option_and_then: standard_method_id("Option", "and_then"),
+            option_or_else: standard_method_id("Option", "or_else"),
+            option_filter: standard_method_id("Option", "filter"),
+            result_map: standard_method_id("Result", "map"),
+            result_map_err: standard_method_id("Result", "map_err"),
+            result_and_then: standard_method_id("Result", "and_then"),
+            result_or_else: standard_method_id("Result", "or_else"),
+        }
+    }
+}
+
+fn callback_method_ids() -> &'static CallbackMethodIds {
+    static IDS: OnceLock<CallbackMethodIds> = OnceLock::new();
+    IDS.get_or_init(CallbackMethodIds::new)
+}
+
+fn standard_method_id(owner: &str, name: &str) -> MethodId {
+    let Some(id) = vela_stdlib::std_method_id(owner, name) else {
+        panic!("missing standard method identity for {owner}::{name}");
+    };
+    id
 }
 
 impl<'a, 'host, 'heap> CallbackMethodDispatch<'a, 'host, 'heap> {
@@ -57,6 +141,63 @@ pub(crate) fn call(
         "map_values" => Some(map_methods::map_values(receiver, args, dispatch.runtime())),
         _ => None,
     }
+}
+
+pub(crate) fn call_by_id(
+    method_id: MethodId,
+    receiver: &Value,
+    args: &[Value],
+    dispatch: &mut CallbackMethodDispatch<'_, '_, '_>,
+) -> Option<VmResult<Value>> {
+    let ids = callback_method_ids();
+    if method_id == ids.array_map
+        || method_id == ids.set_map
+        || method_id == ids.option_map
+        || method_id == ids.result_map
+    {
+        return Some(call_map(receiver, args, dispatch));
+    }
+    if method_id == ids.result_map_err {
+        return Some(call_map_err(receiver, args, dispatch));
+    }
+    if method_id == ids.option_and_then || method_id == ids.result_and_then {
+        return Some(call_and_then(receiver, args, dispatch));
+    }
+    if method_id == ids.option_or_else || method_id == ids.result_or_else {
+        return Some(call_or_else(receiver, args, dispatch));
+    }
+    if method_id == ids.array_filter
+        || method_id == ids.map_filter
+        || method_id == ids.set_filter
+        || method_id == ids.option_filter
+    {
+        return Some(call_filter(receiver, args, dispatch));
+    }
+    if method_id == ids.array_find || method_id == ids.map_find || method_id == ids.set_find {
+        return Some(call_find(receiver, args, dispatch));
+    }
+    if method_id == ids.array_any || method_id == ids.map_any || method_id == ids.set_any {
+        return Some(call_any(receiver, args, dispatch).map(Value::Bool));
+    }
+    if method_id == ids.array_all || method_id == ids.map_all || method_id == ids.set_all {
+        return Some(call_all(receiver, args, dispatch).map(Value::Bool));
+    }
+    if method_id == ids.array_count || method_id == ids.map_count || method_id == ids.set_count {
+        return Some(call_count(receiver, args, dispatch).map(Value::i64));
+    }
+    if method_id == ids.array_sum {
+        return Some(array_methods::sum(receiver, args, dispatch.runtime()));
+    }
+    if method_id == ids.array_group_by {
+        return Some(array_methods::group_by(receiver, args, dispatch.runtime()));
+    }
+    if method_id == ids.array_sort_by {
+        return Some(array_methods::sort_by(receiver, args, dispatch.runtime()));
+    }
+    if method_id == ids.map_map_values {
+        return Some(map_methods::map_values(receiver, args, dispatch.runtime()));
+    }
+    None
 }
 
 fn call_map(

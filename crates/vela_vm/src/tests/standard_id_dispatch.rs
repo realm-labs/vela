@@ -155,6 +155,54 @@ fn call_native_uses_standard_native_id_even_when_debug_name_differs() {
 }
 
 #[test]
+fn call_method_uses_standard_callback_method_id_before_debug_name() {
+    let mut program = compile_standard_program_source(
+        SourceId::new(1),
+        r#"
+fn main() {
+    let mapped = [1, 2, 3].map(|value| value + 1);
+    return mapped[0] + mapped[2];
+}
+"#,
+    )
+    .expect("standard callback method source should compile");
+    replace_call_method_debug_name(
+        &mut program,
+        "main",
+        std_method_id("Array", "map"),
+        "missing_array_map",
+    );
+
+    let mut budget = ExecutionBudget::unbounded();
+    assert_eq!(
+        run_linked_test_program_with_budget(&Vm::new(), &program, "main", &[], &mut budget),
+        Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(6)))
+    );
+}
+
+fn replace_call_method_debug_name(
+    program: &mut UnlinkedProgram,
+    function: &str,
+    expected_method: MethodId,
+    replacement: &str,
+) {
+    let code = program
+        .function_mut(function)
+        .expect("test function should exist");
+    for instruction in &mut code.instructions {
+        if let UnlinkedInstructionKind::CallMethodId {
+            method, method_id, ..
+        } = &mut instruction.kind
+            && *method_id == expected_method
+        {
+            *method = replacement.to_owned();
+            return;
+        }
+    }
+    panic!("test method call should exist");
+}
+
+#[test]
 fn call_method_uses_standard_value_method_id_before_name_fallback() {
     let mut code = UnlinkedCodeObject::new("standard_value_method_id", 2);
     let value = code.push_constant(Constant::String("gold".into()));

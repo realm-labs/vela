@@ -100,6 +100,22 @@ pub(crate) fn call_method_id(
     ) {
         return result;
     }
+    {
+        let mut callback_dispatch = CallbackMethodDispatch {
+            vm: dispatch.vm,
+            program: dispatch.program,
+            linked_program: dispatch.linked_program,
+            host: dispatch.host.as_deref_mut(),
+            heap: dispatch.heap.as_deref_mut(),
+            budget: dispatch.budget.as_deref_mut(),
+            caller_roots: &dispatch.caller_roots,
+        };
+        if let Some(result) =
+            callback_method_dispatch::call_by_id(method_id, receiver, args, &mut callback_dispatch)
+        {
+            return result;
+        }
+    }
     if let Some(std_method) = script_builtin_methods::standard_method_name_by_id(method_id) {
         if let Some(result) = string_method_dispatch::call(
             std_method,
@@ -109,22 +125,6 @@ pub(crate) fn call_method_id(
             &mut dispatch.budget,
         ) {
             return result;
-        }
-        {
-            let mut callback_dispatch = CallbackMethodDispatch {
-                vm: dispatch.vm,
-                program: dispatch.program,
-                linked_program: dispatch.linked_program,
-                host: dispatch.host.as_deref_mut(),
-                heap: dispatch.heap.as_deref_mut(),
-                budget: dispatch.budget.as_deref_mut(),
-                caller_roots: &dispatch.caller_roots,
-            };
-            if let Some(result) =
-                callback_method_dispatch::call(std_method, receiver, args, &mut callback_dispatch)
-            {
-                return result;
-            }
         }
         if let Some(result) = script_builtin_methods::call(
             receiver,
