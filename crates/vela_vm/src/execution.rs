@@ -337,40 +337,20 @@ impl Vm {
                     method,
                     args,
                 } => {
-                    if args.is_empty() {
-                        script_method_calls::dispatch_script_method_call(
-                            self,
-                            program,
-                            &mut host,
-                            &mut heap,
-                            &mut budget,
-                            &mut frame,
-                            script_method_calls::ScriptMethodCall {
-                                dst: *dst,
-                                receiver: *receiver,
-                                method,
-                                values: &[],
-                            },
-                        )?;
-                    } else {
-                        let values = script_function_calls::script_call_args_from_call_arguments(
-                            &frame, args,
-                        )?;
-                        script_method_calls::dispatch_script_method_call(
-                            self,
-                            program,
-                            &mut host,
-                            &mut heap,
-                            &mut budget,
-                            &mut frame,
-                            script_method_calls::ScriptMethodCall {
-                                dst: *dst,
-                                receiver: *receiver,
-                                method,
-                                values: values.as_slice(),
-                            },
-                        )?;
-                    }
+                    script_method_calls::dispatch_script_method_register_call(
+                        self,
+                        program,
+                        &mut host,
+                        &mut heap,
+                        &mut budget,
+                        &mut frame,
+                        script_method_calls::ScriptMethodRegisterCall {
+                            dst: *dst,
+                            receiver: *receiver,
+                            method,
+                            args,
+                        },
+                    )?;
                 }
                 UnlinkedInstructionKind::CallMethodId {
                     dst,
@@ -379,42 +359,21 @@ impl Vm {
                     method_id,
                     args,
                 } => {
-                    if args.is_empty() {
-                        script_method_calls::dispatch_script_method_id_call(
-                            self,
-                            program,
-                            &mut host,
-                            &mut heap,
-                            &mut budget,
-                            &mut frame,
-                            script_method_calls::ScriptMethodIdCall {
-                                dst: *dst,
-                                receiver: *receiver,
-                                method,
-                                method_id: *method_id,
-                                values: &[],
-                            },
-                        )?;
-                    } else {
-                        let values = script_function_calls::script_call_args_from_call_arguments(
-                            &frame, args,
-                        )?;
-                        script_method_calls::dispatch_script_method_id_call(
-                            self,
-                            program,
-                            &mut host,
-                            &mut heap,
-                            &mut budget,
-                            &mut frame,
-                            script_method_calls::ScriptMethodIdCall {
-                                dst: *dst,
-                                receiver: *receiver,
-                                method,
-                                method_id: *method_id,
-                                values: values.as_slice(),
-                            },
-                        )?;
-                    }
+                    script_method_calls::dispatch_script_method_id_register_call(
+                        self,
+                        program,
+                        &mut host,
+                        &mut heap,
+                        &mut budget,
+                        &mut frame,
+                        script_method_calls::ScriptMethodIdRegisterCall {
+                            dst: *dst,
+                            receiver: *receiver,
+                            method,
+                            method_id: *method_id,
+                            args,
+                        },
+                    )?;
                 }
                 UnlinkedInstructionKind::TryPropagate { dst, src } => {
                     if let Some(value) = try_propagation::dispatch_try_propagate(

@@ -26,6 +26,55 @@ pub(crate) struct ScriptMethodCall<'a> {
     pub(crate) values: &'a [Value],
 }
 
+pub(crate) struct ScriptMethodRegisterCall<'a> {
+    pub(crate) dst: Register,
+    pub(crate) receiver: Register,
+    pub(crate) method: &'a str,
+    pub(crate) args: &'a [CallArgument],
+}
+
+pub(crate) fn dispatch_script_method_register_call(
+    vm: &Vm,
+    program: Option<&dyn UnlinkedProgramCode>,
+    host: &mut Option<&mut HostExecution<'_>>,
+    heap: &mut Option<&mut HeapExecution<'_>>,
+    budget: &mut Option<&mut ExecutionBudget>,
+    frame: &mut CallFrame,
+    call: ScriptMethodRegisterCall<'_>,
+) -> VmResult<()> {
+    if call.args.is_empty() {
+        return dispatch_script_method_call(
+            vm,
+            program,
+            host,
+            heap,
+            budget,
+            frame,
+            ScriptMethodCall {
+                dst: call.dst,
+                receiver: call.receiver,
+                method: call.method,
+                values: &[],
+            },
+        );
+    }
+    let values = script_function_calls::script_call_args_from_call_arguments(frame, call.args)?;
+    dispatch_script_method_call(
+        vm,
+        program,
+        host,
+        heap,
+        budget,
+        frame,
+        ScriptMethodCall {
+            dst: call.dst,
+            receiver: call.receiver,
+            method: call.method,
+            values: values.as_slice(),
+        },
+    )
+}
+
 pub(crate) fn dispatch_script_method_call(
     vm: &Vm,
     program: Option<&dyn UnlinkedProgramCode>,
@@ -99,6 +148,58 @@ pub(crate) struct ScriptMethodIdCall<'a> {
     pub(crate) method: &'a str,
     pub(crate) method_id: MethodId,
     pub(crate) values: &'a [Value],
+}
+
+pub(crate) struct ScriptMethodIdRegisterCall<'a> {
+    pub(crate) dst: Register,
+    pub(crate) receiver: Register,
+    pub(crate) method: &'a str,
+    pub(crate) method_id: MethodId,
+    pub(crate) args: &'a [CallArgument],
+}
+
+pub(crate) fn dispatch_script_method_id_register_call(
+    vm: &Vm,
+    program: Option<&dyn UnlinkedProgramCode>,
+    host: &mut Option<&mut HostExecution<'_>>,
+    heap: &mut Option<&mut HeapExecution<'_>>,
+    budget: &mut Option<&mut ExecutionBudget>,
+    frame: &mut CallFrame,
+    call: ScriptMethodIdRegisterCall<'_>,
+) -> VmResult<()> {
+    if call.args.is_empty() {
+        return dispatch_script_method_id_call(
+            vm,
+            program,
+            host,
+            heap,
+            budget,
+            frame,
+            ScriptMethodIdCall {
+                dst: call.dst,
+                receiver: call.receiver,
+                method: call.method,
+                method_id: call.method_id,
+                values: &[],
+            },
+        );
+    }
+    let values = script_function_calls::script_call_args_from_call_arguments(frame, call.args)?;
+    dispatch_script_method_id_call(
+        vm,
+        program,
+        host,
+        heap,
+        budget,
+        frame,
+        ScriptMethodIdCall {
+            dst: call.dst,
+            receiver: call.receiver,
+            method: call.method,
+            method_id: call.method_id,
+            values: values.as_slice(),
+        },
+    )
 }
 
 pub(crate) fn dispatch_script_method_id_call(
