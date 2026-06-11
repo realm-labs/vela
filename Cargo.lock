@@ -509,6 +509,7 @@ name = "vela_vm"
 version = "0.1.0"
 dependencies = [
  "serde",
+ "serde_json",
  "vela_bytecode",
  "vela_common",
  "vela_def",

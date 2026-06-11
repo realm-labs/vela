@@ -1537,18 +1537,18 @@ functions:
 
 #### Task 9.2: Serde policy
 
-- [ ] Decide bytes representation:
+- [x] Decide bytes representation:
   - [ ] base64;
   - [ ] hex;
-  - [ ] or explicit serde config.
-- [ ] Decide large unsigned integer JSON behavior.
-- [ ] Ensure `u64` is not silently lossy through JSON.
-- [ ] Add tests for `u64::MAX` if JSON serialization is supported.
+  - [x] or explicit serde config.
+- [x] Decide large unsigned integer JSON behavior.
+- [x] Ensure `u64` is not silently lossy through JSON.
+- [x] Add tests for `u64::MAX` if JSON serialization is supported.
 
 **Termination condition:**
 
-- [ ] Serde tests document bytes and unsigned integer behavior.
-- [ ] No silent precision loss is introduced.
+- [x] Serde tests document bytes and unsigned integer behavior.
+- [x] No silent precision loss is introduced.
 
 #### Task 9.3: C API tags
 

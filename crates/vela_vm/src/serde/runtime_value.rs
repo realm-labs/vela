@@ -108,9 +108,7 @@ impl<'de> de::Deserializer<'de> for RuntimeValueDeserializer<'de> {
         V: Visitor<'de>,
     {
         match self.value {
-            Value::Scalar(vela_common::ScalarValue::I64(value)) if *value >= 0 => {
-                visitor.visit_u64(*value as u64)
-            }
+            Value::Scalar(vela_common::ScalarValue::U64(value)) => visitor.visit_u64(*value),
             _ => Err(Error::custom("expected unsigned int")),
         }
     }

@@ -613,6 +613,19 @@ Rust `Vec<u8>` and byte slices cross embedding and host boundaries as the
 expects `OwnedValue::Bytes`/`HostValue::Bytes` instead of accepting an array of
 `u8` scalars as an implicit conversion.
 
+Serde owned-value conversion preserves primitive tags exactly. Rust `i8`,
+`u32`, `u64`, `f32`, and the other scalar primitives become matching
+`ScalarValue` variants, and deserialization expects the same concrete tag
+rather than widening, narrowing, or integer-float conversion. `u64::MAX` is a
+supported exact boundary value.
+
+Serde byte buffers use the explicit Serde bytes hook (`serialize_bytes` /
+`deserialize_byte_buf`) to cross as `OwnedValue::Bytes`. With `serde_json`,
+that hook is represented as a JSON byte array, not base64 or hex. Large
+unsigned integers use JSON integer text and must round-trip through Rust
+`serde_json` as `u64` without precision loss; JavaScript-number-safe encodings
+would require an explicit future config rather than a hidden conversion.
+
 ## Validation Rules
 
 - Multi-level `super` scan must return no matches:

@@ -14,6 +14,7 @@ use ::serde::ser::{
 use crate::error::{VmError, VmErrorKind, VmResult};
 use crate::owned_value::OwnedValue;
 use crate::script_object::ScriptFields;
+use vela_common::ScalarValue;
 
 mod runtime_value;
 pub use runtime_value::from_runtime_value;
@@ -101,44 +102,43 @@ impl ser::Serializer for OwnedValueSerializer {
     }
 
     fn serialize_i8(self, v: i8) -> Result<Self::Ok> {
-        Ok(OwnedValue::i64(i64::from(v)))
+        Ok(OwnedValue::Scalar(ScalarValue::I8(v)))
     }
 
     fn serialize_i16(self, v: i16) -> Result<Self::Ok> {
-        Ok(OwnedValue::i64(i64::from(v)))
+        Ok(OwnedValue::Scalar(ScalarValue::I16(v)))
     }
 
     fn serialize_i32(self, v: i32) -> Result<Self::Ok> {
-        Ok(OwnedValue::i64(i64::from(v)))
+        Ok(OwnedValue::Scalar(ScalarValue::I32(v)))
     }
 
     fn serialize_i64(self, v: i64) -> Result<Self::Ok> {
-        Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(v)))
+        Ok(OwnedValue::Scalar(ScalarValue::I64(v)))
     }
 
     fn serialize_u8(self, v: u8) -> Result<Self::Ok> {
-        Ok(OwnedValue::i64(i64::from(v)))
+        Ok(OwnedValue::Scalar(ScalarValue::U8(v)))
     }
 
     fn serialize_u16(self, v: u16) -> Result<Self::Ok> {
-        Ok(OwnedValue::i64(i64::from(v)))
+        Ok(OwnedValue::Scalar(ScalarValue::U16(v)))
     }
 
     fn serialize_u32(self, v: u32) -> Result<Self::Ok> {
-        Ok(OwnedValue::i64(i64::from(v)))
+        Ok(OwnedValue::Scalar(ScalarValue::U32(v)))
     }
 
     fn serialize_u64(self, v: u64) -> Result<Self::Ok> {
-        let value = i64::try_from(v).map_err(|_| Error::custom("u64 does not fit in Vela Int"))?;
-        Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(value)))
+        Ok(OwnedValue::Scalar(ScalarValue::U64(v)))
     }
 
     fn serialize_f32(self, v: f32) -> Result<Self::Ok> {
-        Ok(OwnedValue::f64(f64::from(v)))
+        Ok(OwnedValue::Scalar(ScalarValue::F32(v)))
     }
 
     fn serialize_f64(self, v: f64) -> Result<Self::Ok> {
-        Ok(OwnedValue::Scalar(vela_common::ScalarValue::F64(v)))
+        Ok(OwnedValue::Scalar(ScalarValue::F64(v)))
     }
 
     fn serialize_char(self, v: char) -> Result<Self::Ok> {
@@ -150,13 +150,7 @@ impl ser::Serializer for OwnedValueSerializer {
     }
 
     fn serialize_bytes(self, v: &[u8]) -> Result<Self::Ok> {
-        Ok(OwnedValue::Array(
-            v.iter()
-                .copied()
-                .map(i64::from)
-                .map(OwnedValue::i64)
-                .collect(),
-        ))
+        Ok(OwnedValue::Bytes(v.to_vec()))
     }
 
     fn serialize_none(self) -> Result<Self::Ok> {
@@ -644,16 +638,16 @@ impl<'de> de::Deserializer<'de> for &'de OwnedValue {
         match self {
             OwnedValue::Missing | OwnedValue::Null => visitor.visit_unit(),
             OwnedValue::Bool(value) => visitor.visit_bool(*value),
-            OwnedValue::Scalar(vela_common::ScalarValue::I8(value)) => visitor.visit_i8(*value),
-            OwnedValue::Scalar(vela_common::ScalarValue::I16(value)) => visitor.visit_i16(*value),
-            OwnedValue::Scalar(vela_common::ScalarValue::I32(value)) => visitor.visit_i32(*value),
-            OwnedValue::Scalar(vela_common::ScalarValue::I64(value)) => visitor.visit_i64(*value),
-            OwnedValue::Scalar(vela_common::ScalarValue::U8(value)) => visitor.visit_u8(*value),
-            OwnedValue::Scalar(vela_common::ScalarValue::U16(value)) => visitor.visit_u16(*value),
-            OwnedValue::Scalar(vela_common::ScalarValue::U32(value)) => visitor.visit_u32(*value),
-            OwnedValue::Scalar(vela_common::ScalarValue::U64(value)) => visitor.visit_u64(*value),
-            OwnedValue::Scalar(vela_common::ScalarValue::F32(value)) => visitor.visit_f32(*value),
-            OwnedValue::Scalar(vela_common::ScalarValue::F64(value)) => visitor.visit_f64(*value),
+            OwnedValue::Scalar(ScalarValue::I8(value)) => visitor.visit_i8(*value),
+            OwnedValue::Scalar(ScalarValue::I16(value)) => visitor.visit_i16(*value),
+            OwnedValue::Scalar(ScalarValue::I32(value)) => visitor.visit_i32(*value),
+            OwnedValue::Scalar(ScalarValue::I64(value)) => visitor.visit_i64(*value),
+            OwnedValue::Scalar(ScalarValue::U8(value)) => visitor.visit_u8(*value),
+            OwnedValue::Scalar(ScalarValue::U16(value)) => visitor.visit_u16(*value),
+            OwnedValue::Scalar(ScalarValue::U32(value)) => visitor.visit_u32(*value),
+            OwnedValue::Scalar(ScalarValue::U64(value)) => visitor.visit_u64(*value),
+            OwnedValue::Scalar(ScalarValue::F32(value)) => visitor.visit_f32(*value),
+            OwnedValue::Scalar(ScalarValue::F64(value)) => visitor.visit_f64(*value),
             OwnedValue::String(value) => visitor.visit_str(value),
             OwnedValue::Bytes(value) => visitor.visit_bytes(value),
             OwnedValue::Array(values) | OwnedValue::Set(values) => {
@@ -688,33 +682,30 @@ impl<'de> de::Deserializer<'de> for &'de OwnedValue {
     where
         V: Visitor<'de>,
     {
-        self.deserialize_i64(I64RangeVisitor::new(
-            visitor,
-            i64::from(i8::MIN),
-            i64::from(i8::MAX),
-        ))
+        match self {
+            OwnedValue::Scalar(ScalarValue::I8(value)) => visitor.visit_i8(*value),
+            _ => Err(Error::custom("expected i8")),
+        }
     }
 
     fn deserialize_i16<V>(self, visitor: V) -> Result<V::Value>
     where
         V: Visitor<'de>,
     {
-        self.deserialize_i64(I64RangeVisitor::new(
-            visitor,
-            i64::from(i16::MIN),
-            i64::from(i16::MAX),
-        ))
+        match self {
+            OwnedValue::Scalar(ScalarValue::I16(value)) => visitor.visit_i16(*value),
+            _ => Err(Error::custom("expected i16")),
+        }
     }
 
     fn deserialize_i32<V>(self, visitor: V) -> Result<V::Value>
     where
         V: Visitor<'de>,
     {
-        self.deserialize_i64(I64RangeVisitor::new(
-            visitor,
-            i64::from(i32::MIN),
-            i64::from(i32::MAX),
-        ))
+        match self {
+            OwnedValue::Scalar(ScalarValue::I32(value)) => visitor.visit_i32(*value),
+            _ => Err(Error::custom("expected i32")),
+        }
     }
 
     fn deserialize_i64<V>(self, visitor: V) -> Result<V::Value>
@@ -722,7 +713,7 @@ impl<'de> de::Deserializer<'de> for &'de OwnedValue {
         V: Visitor<'de>,
     {
         match self {
-            OwnedValue::Scalar(vela_common::ScalarValue::I64(value)) => visitor.visit_i64(*value),
+            OwnedValue::Scalar(ScalarValue::I64(value)) => visitor.visit_i64(*value),
             _ => Err(Error::custom("expected int")),
         }
     }
@@ -731,21 +722,30 @@ impl<'de> de::Deserializer<'de> for &'de OwnedValue {
     where
         V: Visitor<'de>,
     {
-        self.deserialize_u64(U64RangeVisitor::new(visitor, u64::from(u8::MAX)))
+        match self {
+            OwnedValue::Scalar(ScalarValue::U8(value)) => visitor.visit_u8(*value),
+            _ => Err(Error::custom("expected u8")),
+        }
     }
 
     fn deserialize_u16<V>(self, visitor: V) -> Result<V::Value>
     where
         V: Visitor<'de>,
     {
-        self.deserialize_u64(U64RangeVisitor::new(visitor, u64::from(u16::MAX)))
+        match self {
+            OwnedValue::Scalar(ScalarValue::U16(value)) => visitor.visit_u16(*value),
+            _ => Err(Error::custom("expected u16")),
+        }
     }
 
     fn deserialize_u32<V>(self, visitor: V) -> Result<V::Value>
     where
         V: Visitor<'de>,
     {
-        self.deserialize_u64(U64RangeVisitor::new(visitor, u64::from(u32::MAX)))
+        match self {
+            OwnedValue::Scalar(ScalarValue::U32(value)) => visitor.visit_u32(*value),
+            _ => Err(Error::custom("expected u32")),
+        }
     }
 
     fn deserialize_u64<V>(self, visitor: V) -> Result<V::Value>
@@ -753,9 +753,7 @@ impl<'de> de::Deserializer<'de> for &'de OwnedValue {
         V: Visitor<'de>,
     {
         match self {
-            OwnedValue::Scalar(vela_common::ScalarValue::I64(value)) if *value >= 0 => {
-                visitor.visit_u64(*value as u64)
-            }
+            OwnedValue::Scalar(ScalarValue::U64(value)) => visitor.visit_u64(*value),
             _ => Err(Error::custom("expected unsigned int")),
         }
     }
@@ -765,13 +763,8 @@ impl<'de> de::Deserializer<'de> for &'de OwnedValue {
         V: Visitor<'de>,
     {
         match self {
-            OwnedValue::Scalar(vela_common::ScalarValue::F64(value)) => {
-                visitor.visit_f32(*value as f32)
-            }
-            OwnedValue::Scalar(vela_common::ScalarValue::I64(value)) => {
-                visitor.visit_f32(*value as f32)
-            }
-            _ => Err(Error::custom("expected float")),
+            OwnedValue::Scalar(ScalarValue::F32(value)) => visitor.visit_f32(*value),
+            _ => Err(Error::custom("expected f32")),
         }
     }
 
@@ -780,11 +773,8 @@ impl<'de> de::Deserializer<'de> for &'de OwnedValue {
         V: Visitor<'de>,
     {
         match self {
-            OwnedValue::Scalar(vela_common::ScalarValue::F64(value)) => visitor.visit_f64(*value),
-            OwnedValue::Scalar(vela_common::ScalarValue::I64(value)) => {
-                visitor.visit_f64(*value as f64)
-            }
-            _ => Err(Error::custom("expected float")),
+            OwnedValue::Scalar(ScalarValue::F64(value)) => visitor.visit_f64(*value),
+            _ => Err(Error::custom("expected f64")),
         }
     }
 
@@ -826,18 +816,7 @@ impl<'de> de::Deserializer<'de> for &'de OwnedValue {
         V: Visitor<'de>,
     {
         match self {
-            OwnedValue::Array(values) => {
-                let bytes = values
-                    .iter()
-                    .map(|value| match value {
-                        OwnedValue::Scalar(vela_common::ScalarValue::I64(value)) => {
-                            u8::try_from(*value).map_err(|_| Error::custom("invalid byte"))
-                        }
-                        _ => Err(Error::custom("invalid byte")),
-                    })
-                    .collect::<Result<Vec<_>>>()?;
-                visitor.visit_byte_buf(bytes)
-            }
+            OwnedValue::Bytes(values) => visitor.visit_byte_buf(values.clone()),
             _ => Err(Error::custom("expected bytes")),
         }
     }
@@ -977,73 +956,6 @@ impl<'de> de::Deserializer<'de> for &'de OwnedValue {
         V: Visitor<'de>,
     {
         visitor.visit_unit()
-    }
-}
-
-struct I64RangeVisitor<V> {
-    inner: V,
-    min: i64,
-    max: i64,
-}
-
-impl<V> I64RangeVisitor<V> {
-    fn new(inner: V, min: i64, max: i64) -> Self {
-        Self { inner, min, max }
-    }
-}
-
-impl<'de, V> Visitor<'de> for I64RangeVisitor<V>
-where
-    V: Visitor<'de>,
-{
-    type Value = V::Value;
-
-    fn expecting(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
-        self.inner.expecting(formatter)
-    }
-
-    fn visit_i64<E>(self, value: i64) -> std::result::Result<Self::Value, E>
-    where
-        E: de::Error,
-    {
-        if (self.min..=self.max).contains(&value) {
-            self.inner.visit_i64(value)
-        } else {
-            Err(E::custom("integer out of range"))
-        }
-    }
-}
-
-struct U64RangeVisitor<V> {
-    inner: V,
-    max: u64,
-}
-
-impl<V> U64RangeVisitor<V> {
-    fn new(inner: V, max: u64) -> Self {
-        Self { inner, max }
-    }
-}
-
-impl<'de, V> Visitor<'de> for U64RangeVisitor<V>
-where
-    V: Visitor<'de>,
-{
-    type Value = V::Value;
-
-    fn expecting(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
-        self.inner.expecting(formatter)
-    }
-
-    fn visit_u64<E>(self, value: u64) -> std::result::Result<Self::Value, E>
-    where
-        E: de::Error,
-    {
-        if value <= self.max {
-            self.inner.visit_u64(value)
-        } else {
-            Err(E::custom("integer out of range"))
-        }
     }
 }
 
