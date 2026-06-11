@@ -73,9 +73,11 @@ use runtime_checks::{expect_int, is_truthy, validate_jump};
 pub(crate) use script_object::ScriptFields;
 use small_storage::SmallStorage;
 use try_propagation::{TryPropagation, try_propagate_value};
+#[cfg(test)]
+use vela_bytecode::UnlinkedProgram;
 use vela_bytecode::{
     CacheSiteId, Constant, HostTargetPlanId, InstructionOffset, LinkedCodeObject, LinkedProgram,
-    Register, UnlinkedCodeObject, UnlinkedInstructionKind, UnlinkedProgram, UnlinkedProgramCode,
+    Register, UnlinkedCodeObject, UnlinkedInstructionKind, UnlinkedProgramCode,
 };
 use vela_common::{GlobalSlot, HostTypeId, Span};
 use vela_def::{DefPath, FunctionId};
@@ -411,27 +413,6 @@ impl Vm {
         self.run_with_budget(code, budget)
     }
 
-    pub fn run_program(
-        &self,
-        program: &UnlinkedProgram,
-        entry: &str,
-        args: &[OwnedValue],
-    ) -> VmResult<OwnedValue> {
-        let code = program_entry(program, entry)?;
-        let mut heap = ScriptHeap::new();
-        let mut heap_execution = HeapExecution::new(&mut heap);
-        let args = owned_args_to_runtime(args, &mut heap_execution, None)?;
-        let result = self.execute(
-            code,
-            Some(program),
-            &args,
-            None,
-            Some(&mut heap_execution),
-            None,
-        )?;
-        value_to_owned(&result, Some(&heap_execution))
-    }
-
     pub fn run_linked_program(
         &self,
         program: &LinkedProgram,
@@ -500,18 +481,6 @@ impl Vm {
         owned_heap_result(result, &mut heap_execution, budget)
     }
 
-    pub fn run_program_runtime_with_heap_and_budget(
-        &self,
-        program: &UnlinkedProgram,
-        entry: &str,
-        args: &[Value],
-        heap: &mut HeapExecution<'_>,
-        budget: &mut ExecutionBudget,
-    ) -> VmResult<Value> {
-        let code = program_entry(program, entry)?;
-        self.execute(code, Some(program), args, None, Some(heap), Some(budget))
-    }
-
     pub fn run_with_host(
         &self,
         code: &UnlinkedCodeObject,
@@ -550,84 +519,6 @@ impl Vm {
         self.execute(code, None, &[], Some(host), Some(heap), Some(budget))
     }
 
-    pub fn run_program_with_host(
-        &self,
-        program: &UnlinkedProgram,
-        entry: &str,
-        args: &[OwnedValue],
-        host: &mut HostExecution<'_>,
-    ) -> VmResult<OwnedValue> {
-        let code = program_entry(program, entry)?;
-        let mut heap = ScriptHeap::new();
-        let mut heap_execution = HeapExecution::new(&mut heap);
-        let args = owned_args_to_runtime(args, &mut heap_execution, None)?;
-        let result = self.execute(
-            code,
-            Some(program),
-            &args,
-            Some(host),
-            Some(&mut heap_execution),
-            None,
-        )?;
-        value_to_owned(&result, Some(&heap_execution))
-    }
-
-    pub fn run_program_with_host_and_budget(
-        &self,
-        program: &UnlinkedProgram,
-        entry: &str,
-        args: &[OwnedValue],
-        host: &mut HostExecution<'_>,
-        budget: &mut ExecutionBudget,
-    ) -> VmResult<OwnedValue> {
-        let code = program_entry(program, entry)?;
-        let mut heap = ScriptHeap::new();
-        let mut heap_execution = HeapExecution::new(&mut heap);
-        let args = owned_args_to_runtime(args, &mut heap_execution, Some(budget))?;
-        let result = self.execute(
-            code,
-            Some(program),
-            &args,
-            Some(host),
-            Some(&mut heap_execution),
-            Some(budget),
-        );
-        owned_heap_result(result, &mut heap_execution, budget)
-    }
-
-    pub fn run_program_with_host_persistent_heap_and_budget(
-        &self,
-        program: &UnlinkedProgram,
-        entry: &str,
-        args: &[OwnedValue],
-        host: &mut HostExecution<'_>,
-        persistent: PersistentHeapExecution<'_, '_>,
-        budget: &mut ExecutionBudget,
-    ) -> VmResult<OwnedValue> {
-        let code = program_entry(program, entry)?;
-        let mut heap_execution = HeapExecution::new(persistent.heap);
-        let args = owned_args_to_runtime(args, &mut heap_execution, Some(budget))?;
-        heap_execution.protect_values(persistent.roots);
-        let result = self.execute(
-            code,
-            Some(program),
-            &args,
-            Some(host),
-            Some(&mut heap_execution),
-            Some(budget),
-        );
-        let result = result.and_then(|value| value_to_owned(&value, Some(&heap_execution)));
-        let mut roots = Vec::new();
-        persistent
-            .roots
-            .iter()
-            .for_each(|value| value.trace_heap_refs(&mut roots));
-        heap_execution
-            .heap
-            .collect_full_with_budget(&roots, Some(budget));
-        result
-    }
-
     pub fn run_linked_program_host_call(
         &self,
         call: LinkedProgramHostCall<'_, '_, '_, '_, '_, '_, '_, '_>,
@@ -662,40 +553,6 @@ impl Vm {
         result
     }
 
-    pub fn run_program_runtime_with_host_persistent_heap_and_budget(
-        &self,
-        program: &UnlinkedProgram,
-        entry: &str,
-        args: &[Value],
-        host: &mut HostExecution<'_>,
-        persistent: PersistentHeapExecution<'_, '_>,
-        budget: &mut ExecutionBudget,
-    ) -> VmResult<Value> {
-        let code = program_entry(program, entry)?;
-        let mut heap_execution = HeapExecution::new(persistent.heap);
-        heap_execution.protect_values(persistent.roots);
-        heap_execution.protect_values(args);
-        let result = self.execute(
-            code,
-            Some(program),
-            args,
-            Some(host),
-            Some(&mut heap_execution),
-            Some(budget),
-        );
-        let result = result?;
-        let mut roots = Vec::new();
-        persistent
-            .roots
-            .iter()
-            .for_each(|value| value.trace_heap_refs(&mut roots));
-        result.trace_heap_refs(&mut roots);
-        heap_execution
-            .heap
-            .collect_full_with_budget(&roots, Some(budget));
-        Ok(result)
-    }
-
     pub fn run_linked_runtime_code_call(
         &self,
         call: LinkedRuntimeCodeCall<'_, '_, '_, '_, '_, '_, '_>,
@@ -727,37 +584,6 @@ impl Vm {
             .heap
             .collect_full_with_budget(&roots, Some(call.budget));
         Ok(result)
-    }
-
-    pub fn run_program_with_host_managed_heap_and_budget(
-        &self,
-        program: &UnlinkedProgram,
-        entry: &str,
-        args: &[OwnedValue],
-        host: &mut HostExecution<'_>,
-        budget: &mut ExecutionBudget,
-    ) -> VmResult<OwnedValue> {
-        self.run_program_with_host_and_budget(program, entry, args, host, budget)
-    }
-
-    pub fn run_program_runtime_with_host_heap_and_budget(
-        &self,
-        program: &UnlinkedProgram,
-        entry: &str,
-        args: &[Value],
-        host: &mut HostExecution<'_>,
-        heap: &mut HeapExecution<'_>,
-        budget: &mut ExecutionBudget,
-    ) -> VmResult<Value> {
-        let code = program_entry(program, entry)?;
-        self.execute(
-            code,
-            Some(program),
-            args,
-            Some(host),
-            Some(heap),
-            Some(budget),
-        )
     }
 
     fn execute(
@@ -863,17 +689,6 @@ pub fn owned_to_persistent_value(
 pub fn persistent_value_to_owned(value: &Value, heap: &mut ScriptHeap) -> VmResult<OwnedValue> {
     let heap_execution = HeapExecution::new(heap);
     value_to_owned(value, Some(&heap_execution))
-}
-
-fn program_entry<'program>(
-    program: &'program (impl UnlinkedProgramCode + ?Sized),
-    entry: &str,
-) -> VmResult<&'program UnlinkedCodeObject> {
-    program.function(entry).ok_or_else(|| {
-        VmError::new(VmErrorKind::UnknownFunction {
-            name: entry.to_owned(),
-        })
-    })
 }
 
 fn linked_program_entry<'program>(
