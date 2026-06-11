@@ -99,23 +99,37 @@ The runtime slot stays compact and is guarded by tests to remain at or below
 32 bytes on 64-bit targets:
 
 ```rust
+pub enum ScalarValue {
+    I8(i8),
+    I16(i16),
+    I32(i32),
+    I64(i64),
+    U8(u8),
+    U16(u16),
+    U32(u32),
+    U64(u64),
+    F32(f32),
+    F64(f64),
+}
+
 pub enum Value {
     Missing,
     Null,
     Bool(bool),
-    Int(i64),
-    Float(f64),
+    Scalar(ScalarValue),
     Range(RangeValue),
     HeapRef(GcRef),
     HostRef(HostRef),
 }
 ```
 
-All non-scalar script objects live in `HeapValue`:
+`OwnedValue`, `HostValue`, and bytecode constants use the same `ScalarValue`
+model at their boundaries. All non-scalar script objects live in `HeapValue`:
 
 ```rust
 pub enum HeapValue {
     String(String),
+    Bytes(Vec<u8>),
     Array(Vec<Value>),
     Map(BTreeMap<String, Value>),
     Set(Vec<Value>),

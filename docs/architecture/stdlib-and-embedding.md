@@ -26,7 +26,7 @@ parameter facts without adding script generics. For example, if `arr` has
 arr.filter(|x| predicate) gives x: E and returns Array(element = E)
 arr.map(|x| value) gives x: E and returns Array(element = TypeFact(value))
 arr.find(|x| predicate) gives x: E and returns Option-like enum containing E
-arr.sum(|x| value) gives x: E and returns int or float depending on value
+arr.sum(|x| value) gives x: E and returns the concrete scalar type produced by value
 ```
 
 ### Map
@@ -98,9 +98,26 @@ text.split(separator)
 text.split_once(separator)
 text.split_lines()
 text.split_whitespace()
-text.parse_int()
-text.parse_float()
+text.parse_i64()
+text.parse_f64()
 text.parse_bool()
+```
+
+Additional explicit parse helpers such as `parse_i32`, `parse_u64`, or
+`parse_f32` may be registered when the corresponding primitive conversion API
+is implemented. Parsing never performs implicit numeric conversion.
+
+### Bytes
+
+```rust
+bytes.len()
+bytes.is_empty()
+bytes.slice(start, end)
+bytes.get(index)
+bytes.read_u32_le(index)
+bytes.read_u32_be(index)
+bytes.to_hex()
+bytes::from_hex(text)
 ```
 
 ### Math And Time

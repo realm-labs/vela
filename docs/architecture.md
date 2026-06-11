@@ -168,6 +168,7 @@ The active architecture contract is split by responsibility. Read the relevant
 contract before changing that subsystem:
 
 - [Language semantics](architecture/language.md)
+- [Primitive types, type hints, and guards](architecture/primitives-type-hints-and-guards.md)
 - [Host bridge and registration](architecture/host-and-registration.md)
 - [Reflection](architecture/reflection.md)
 - [Runtime, bytecode, threading, and GC](architecture/runtime.md)

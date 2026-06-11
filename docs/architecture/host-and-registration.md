@@ -107,8 +107,9 @@ Host handles are call-scope references to Rust-owned state. Complex Rust
 objects stay behind `HostRef` roots and compiled `HostTargetPlan` shapes; child
 field access extends the target plan instead of cloning parent structures. Host
 field reads and writes use scalar `HostValue` conversion at the boundary: null,
-bool, int, float, string, and handles. Complex script-owned records, arrays,
-maps, and enums cross via the explicit owned-value serialization path, not the
+bool, explicit scalar primitives such as `i64`, `u32`, `f32`, and `f64`,
+string, bytes, and handles. Complex script-owned records, arrays, maps, and
+enums cross via the explicit owned-value serialization path, not the
 high-frequency host handle path.
 
 Scripts observe writes made earlier in the same call because writes mutate the
@@ -359,7 +360,7 @@ impl Account {
     ) -> HostResult<()> {
         ctx.add_path(
             HostPath::new(account).field(FieldId(1)),
-            HostValue::Int(amount),
+            HostValue::Scalar(ScalarValue::I64(amount)),
             None,
         )
     }
@@ -509,10 +510,10 @@ let engine = Engine::builder()
     )
     .register_native_fn(
         NativeFunctionDesc::new("math::clamp", NativeFunctionId(20_001))
-            .param("value", TypeHint::Float)
-            .param("min", TypeHint::Float)
-            .param("max", TypeHint::Float)
-            .returns(TypeHint::Float)
+            .param("value", TypeHint::Primitive(PrimitiveTag::F64))
+            .param("min", TypeHint::Primitive(PrimitiveTag::F64))
+            .param("max", TypeHint::Primitive(PrimitiveTag::F64))
+            .returns(TypeHint::Primitive(PrimitiveTag::F64))
             .effects(EffectSet::pure()),
         math_clamp,
     )
@@ -543,7 +544,8 @@ let engine = Engine::builder()
 Native functions should use narrow conversion rules:
 
 ```text
-Rust bool/i64/f64/String          <-> Vela bool/int/float/string
+Rust bool/i8..i64/u8..u64/f32/f64/String/Vec<u8>
+                                     <-> Vela bool/scalars/string/bytes
 Option<T> in Rust API             <-> nullable argument or return value
 Vec<T> / HashMap<K, V> copies      <-> script array/map values
 HostRef<T>                         <-> host object reference
@@ -594,7 +596,10 @@ impl Ledger {
         ctx.call_method(
             HostPath::new(ledger),
             HostMethodId(1),
-            vec![HostValue::String(code), HostValue::Int(amount)],
+            vec![
+                HostValue::String(code),
+                HostValue::Scalar(ScalarValue::I64(amount)),
+            ],
             None,
         )?;
         Ok(())

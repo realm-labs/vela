@@ -104,6 +104,11 @@ such as `game::main::main`.
 ### Dynamic Type Boundary
 
 The language is dynamically typed, with lightweight hints and metadata.
+Primitive type hints, numeric literal typing, and contract guard rules are
+defined in
+[Primitive types, type hints, and guards](primitives-type-hints-and-guards.md).
+Source type names `int` and `float` are removed; use explicit scalar names such
+as `i64`, `u32`, `f32`, and `f64`.
 
 Function overloading is not part of the language. A module may contain only one
 function for a given name, and a type or trait may contain only one method for a
@@ -120,9 +125,11 @@ Supported value categories:
 ```text
 null
 bool
-int
-float
+i8 / i16 / i32 / i64
+u8 / u16 / u32 / u64
+f32 / f64
 string
+bytes
 array
 map
 set
