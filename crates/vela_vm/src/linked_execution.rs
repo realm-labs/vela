@@ -643,7 +643,7 @@ impl Vm {
                     debug_name,
                     cache_site,
                 } => {
-                    let value = host_access::load_cached_host_global(
+                    let value = host_access::load_linked_cached_host_global(
                         host_access::HostAccessRuntime {
                             frame: &frame,
                             heap: heap.as_deref_mut(),
@@ -652,7 +652,8 @@ impl Vm {
                             inline_caches: call.inline_caches,
                             source_span: instruction.span,
                         },
-                        call.program.debug_name(*debug_name),
+                        call.program,
+                        *debug_name,
                         Some(*slot),
                         *cache_site,
                     )?;

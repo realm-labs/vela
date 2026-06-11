@@ -1,5 +1,7 @@
 use vela_bytecode::linked::LinkedMethodDispatchKind;
-use vela_bytecode::{CacheSiteId, HostTargetPlanId, LinkedProgram, MethodDispatchHandle, Register};
+use vela_bytecode::{
+    CacheSiteId, DebugNameId, HostTargetPlanId, LinkedProgram, MethodDispatchHandle, Register,
+};
 use vela_common::{GlobalSlot, HostMethodId, Span};
 use vela_host::adapter::GlobalBinding;
 use vela_host::resolved::{HostAccessOp, HostAccessSpec, HostMutationOp, ResolvedHostAccess};
@@ -69,6 +71,21 @@ pub(crate) fn load_cached_host_global(
         caches.set_global_read_slot(cache_site, slot);
     }
     Ok(value)
+}
+
+pub(crate) fn load_linked_cached_host_global(
+    runtime: HostAccessRuntime<'_, '_, '_>,
+    program: &LinkedProgram,
+    debug_name: DebugNameId,
+    declared_slot: Option<GlobalSlot>,
+    cache_site: Option<CacheSiteId>,
+) -> VmResult<Value> {
+    load_cached_host_global(
+        runtime,
+        program.debug_name(debug_name),
+        declared_slot,
+        cache_site,
+    )
 }
 
 pub(crate) fn execute_host_read(
