@@ -995,24 +995,24 @@ then build registry, syntax, guards, and runtime behavior on the new model.
 
 #### Task 0.1: Add primitive/type-hint architecture document and wire it in
 
-- [ ] Add `docs/architecture/primitives-type-hints-and-guards.md`.
-- [ ] Include the decisions from Sections 1-7 of this document.
-- [ ] State clearly that `int` and `float` are removed.
-- [ ] State clearly that type hints are contracts, not conversions.
-- [ ] State clearly that static known mismatches are compile errors and dynamic unknown mismatches are runtime guard errors.
-- [ ] State clearly that `any` is explicit erased dynamic metadata and creates no contract by itself.
-- [ ] Add examples for `f(12)`, `f(12i8)`, `f(12.0)`, `f(x)`.
-- [ ] Add examples for `fn inc(x) { x + 1 }`.
-- [ ] Reference the new document from `docs/architecture.md`.
-- [ ] Update `docs/architecture/language.md` so supported value categories use `i64`/`f64` defaults and explicit primitive scalar names, not `int`/`float`.
-- [ ] Update `docs/architecture/runtime.md` so the documented value layout uses `ScalarValue`.
-- [ ] Update `docs/architecture/stdlib-and-embedding.md` examples that mention `int`, `float`, `parse_int`, or `parse_float`.
+- [x] Add `docs/architecture/primitives-type-hints-and-guards.md`.
+- [x] Include the decisions from Sections 1-7 of this document.
+- [x] State clearly that `int` and `float` are removed.
+- [x] State clearly that type hints are contracts, not conversions.
+- [x] State clearly that static known mismatches are compile errors and dynamic unknown mismatches are runtime guard errors.
+- [x] State clearly that `any` is explicit erased dynamic metadata and creates no contract by itself.
+- [x] Add examples for `f(12)`, `f(12i8)`, `f(12.0)`, `f(x)`.
+- [x] Add examples for `fn inc(x) { x + 1 }`.
+- [x] Reference the new document from `docs/architecture.md`.
+- [x] Update `docs/architecture/language.md` so supported value categories use `i64`/`f64` defaults and explicit primitive scalar names, not `int`/`float`.
+- [x] Update `docs/architecture/runtime.md` so the documented value layout uses `ScalarValue`.
+- [x] Update `docs/architecture/stdlib-and-embedding.md` examples that mention `int`, `float`, `parse_int`, or `parse_float`.
 
 **Termination condition:**
 
-- [ ] The document exists and is referenced from current architecture docs.
-- [ ] No active architecture page contradicts the `int`/`float` removal.
-- [ ] No implementation changes are required in this phase.
+- [x] The document exists and is referenced from current architecture docs.
+- [x] No active architecture page contradicts the `int`/`float` removal.
+- [x] No implementation changes are required in this phase.
 
 ---
 
