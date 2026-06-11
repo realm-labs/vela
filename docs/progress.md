@@ -225,7 +225,8 @@ Cranelift JIT.
   operands shaped as dense handles or slots and debug names stored in a side
   table. Linked bytecode verification now rejects invalid debug-name
   references, out-of-bounds dense handles, and invalid local register,
-  constant, jump, cache-site, and host-target operands before execution.
+  constant, jump, cache-site, and host-target operands before execution, and
+  validates linked cache-site sidecar IDs, offsets, and instruction kinds.
   ProgramVersion now owns bytecode-offset profile layout metadata for each
   function and rebuilds that sidecar when hot reload creates a new version, so
   future counters, cache state, or JIT decisions can be version-scoped and

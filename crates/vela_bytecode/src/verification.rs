@@ -1008,3 +1008,6 @@ pub(super) fn error(
 
 #[cfg(test)]
 mod tests;
+
+#[cfg(test)]
+mod linked_tests;

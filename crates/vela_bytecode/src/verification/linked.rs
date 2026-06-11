@@ -155,6 +155,7 @@ fn verify_linked_code_object_with_context(
     for (index, instruction) in code.instructions.iter().enumerate() {
         verify_linked_instruction(function, code, index, instruction, context)?;
     }
+    verify_linked_cache_site_layout(function, code)?;
     Ok(())
 }
 
@@ -865,6 +866,66 @@ fn verify_linked_cache_site(
         ));
     }
     Ok(())
+}
+
+fn verify_linked_cache_site_layout(
+    function: &str,
+    code: &LinkedCodeObject,
+) -> Result<(), VerificationError> {
+    for (index, site) in code.cache_sites.sites().iter().enumerate() {
+        let expected =
+            CacheSiteId::new(u32::try_from(index).expect("cache site count exceeds u32::MAX"));
+        if site.id != expected {
+            return Err(error(
+                function,
+                None,
+                VerificationErrorKind::CacheSiteIdMismatch {
+                    expected,
+                    actual: site.id,
+                },
+            ));
+        }
+
+        let Some(instruction) = code.instructions.get(site.instruction_offset.0) else {
+            return Err(error(
+                function,
+                None,
+                VerificationErrorKind::InstructionOutOfBounds {
+                    target: site.instruction_offset,
+                    instruction_count: code.instructions.len(),
+                },
+            ));
+        };
+        let actual = linked_instruction_cache_site_kind(&instruction.kind);
+        if actual != Some(site.kind) {
+            return Err(error(
+                function,
+                Some(site.instruction_offset.0),
+                VerificationErrorKind::CacheSiteInstructionKindMismatch {
+                    site: site.id,
+                    expected: site.kind,
+                    actual,
+                },
+            ));
+        }
+    }
+    Ok(())
+}
+
+fn linked_instruction_cache_site_kind(kind: &InstructionKind) -> Option<CacheSiteKind> {
+    match kind {
+        InstructionKind::LoadGlobal { .. } => Some(CacheSiteKind::GlobalRead),
+        InstructionKind::CallNative { .. } => Some(CacheSiteKind::NativeCall),
+        InstructionKind::CallMethod { .. } => Some(CacheSiteKind::MethodCall),
+        InstructionKind::GetRecordSlot { .. } => Some(CacheSiteKind::RecordFieldRead),
+        InstructionKind::SetRecordSlot { .. } => Some(CacheSiteKind::RecordFieldWrite),
+        InstructionKind::HostRead { .. } => Some(CacheSiteKind::HostPathRead),
+        InstructionKind::HostWrite { .. } => Some(CacheSiteKind::HostPathWrite),
+        InstructionKind::HostMutate { .. } => Some(CacheSiteKind::HostPathMutate),
+        InstructionKind::HostRemove { .. } => Some(CacheSiteKind::HostPathRemove),
+        InstructionKind::HostCall { .. } => Some(CacheSiteKind::HostPathCall),
+        _ => None,
+    }
 }
 
 fn verify_linked_host_target(
