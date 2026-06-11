@@ -93,11 +93,57 @@ fn type_error<T>(operation: &'static str) -> VmResult<T> {
 
 #[cfg(test)]
 mod tests {
-    use vela_bytecode::compiler::compile_function_source;
+    use vela_bytecode::compiler::compile_function_source_with_registry;
+    use vela_bytecode::compiler::error::CompileResult;
+    use vela_bytecode::{LinkError, LinkedProgram, Linker, UnlinkedCodeObject, UnlinkedProgram};
     use vela_common::SourceId;
 
     use crate::owned_value::OwnedValue;
-    use crate::{ExecutionBudget, Vm};
+    use crate::{ExecutionBudget, Vm, VmResult};
+
+    fn compile_function_source(
+        source: SourceId,
+        text: &str,
+        function_name: &str,
+    ) -> CompileResult<UnlinkedCodeObject> {
+        let registry = vela_stdlib::standard_registry().expect("standard registry should build");
+        compile_function_source_with_registry(source, text, function_name, registry.compile_view())
+    }
+
+    fn run_linked_string_test_code(vm: &Vm, code: UnlinkedCodeObject) -> VmResult<OwnedValue> {
+        let mut budget = ExecutionBudget::unbounded();
+        run_linked_string_test_code_with_budget(vm, code, &mut budget)
+    }
+
+    fn run_linked_string_test_code_with_budget(
+        vm: &Vm,
+        code: UnlinkedCodeObject,
+        budget: &mut ExecutionBudget,
+    ) -> VmResult<OwnedValue> {
+        let entry = code.name.clone();
+        let linked = link_string_test_code(vm, code).expect("string method test code should link");
+
+        vm.run_linked_program_with_budget(&linked, &entry, &[], budget)
+    }
+
+    fn link_string_test_code(
+        vm: &Vm,
+        code: UnlinkedCodeObject,
+    ) -> Result<LinkedProgram, LinkError> {
+        let mut program = UnlinkedProgram::new();
+        program.insert_function(code);
+
+        let mut linker = Linker::new();
+        for id in vm
+            .native_ids
+            .keys()
+            .chain(vm.host_native_ids.keys())
+            .copied()
+        {
+            linker.add_native_implementation(id);
+        }
+        linker.link_program(&program)
+    }
 
     #[test]
     fn runs_compiled_string_utility_methods() {
@@ -119,8 +165,7 @@ fn main() {
         let code = compile_function_source(SourceId::new(1), source, "main")
             .expect("string utility method source should compile");
 
-        let result = Vm::new()
-            .run(&code)
+        let result = run_linked_string_test_code(&Vm::new(), code)
             .expect("string utility methods should run");
         assert_eq!(result, OwnedValue::String("quest".to_owned()));
     }
@@ -146,15 +191,14 @@ fn main() {
             .expect("heap string utility method source should compile");
         let mut budget = ExecutionBudget::unbounded();
 
-        let result = Vm::new()
-            .run_with_managed_heap_and_budget(&code, &mut budget)
+        let result = run_linked_string_test_code_with_budget(&Vm::new(), code, &mut budget)
             .expect("heap string utility methods should run");
         assert_eq!(result, OwnedValue::String("levelup".to_owned()));
         assert_eq!(budget.memory_bytes_allocated(), 0);
     }
 
     #[test]
-    fn string_utility_methods_reject_non_string_receivers() {
+    fn string_utility_methods_reject_non_string_receivers_before_execution() {
         let source = r#"
 fn main() {
     return 42.trim();
@@ -163,15 +207,12 @@ fn main() {
         let code = compile_function_source(SourceId::new(1), source, "main")
             .expect("string utility type error source should compile");
 
-        let error = Vm::new()
-            .run(&code)
-            .expect_err("string utility should reject non-string receiver");
-        assert_eq!(
-            error.kind(),
-            crate::VmErrorKind::TypeMismatch {
-                operation: "method trim"
-            }
-        );
+        let error = link_string_test_code(&Vm::new(), code)
+            .expect_err("unresolved string utility call should not link");
+        assert!(matches!(
+            error,
+            LinkError::UnresolvedMethodName { method, .. } if method == "trim"
+        ));
     }
 
     #[test]
@@ -189,7 +230,8 @@ fn main() {
         let code = compile_function_source(SourceId::new(1), source, "main")
             .expect("string repeat source should compile");
 
-        let result = Vm::new().run(&code).expect("string repeat should run");
+        let result =
+            run_linked_string_test_code(&Vm::new(), code).expect("string repeat should run");
         assert_eq!(result, OwnedValue::String("--".to_owned()));
     }
 
@@ -203,8 +245,7 @@ fn main() {
         let code = compile_function_source(SourceId::new(1), source, "main")
             .expect("string repeat type error source should compile");
 
-        let error = Vm::new()
-            .run(&code)
+        let error = run_linked_string_test_code(&Vm::new(), code)
             .expect_err("string repeat should reject negative counts");
         assert_eq!(
             error.kind(),
@@ -224,9 +265,8 @@ fn main() {
         let code = compile_function_source(SourceId::new(1), source, "main")
             .expect("unicode string slice source should compile");
 
-        let result = Vm::new()
-            .run(&code)
-            .expect("unicode string slice should run");
+        let result =
+            run_linked_string_test_code(&Vm::new(), code).expect("unicode string slice should run");
         assert_eq!(result, OwnedValue::String("奖励".to_owned()));
     }
 
@@ -240,8 +280,7 @@ fn main() {
         let code = compile_function_source(SourceId::new(1), source, "main")
             .expect("out of bounds string slice source should compile");
 
-        let error = Vm::new()
-            .run(&code)
+        let error = run_linked_string_test_code(&Vm::new(), code)
             .expect_err("string slice should reject out of bounds index");
         assert_eq!(
             error.kind(),
@@ -269,7 +308,7 @@ fn main() {
         let mut vm = Vm::new();
         vm.register_standard_natives();
 
-        let result = vm.run(&code).expect("string find should run");
+        let result = run_linked_string_test_code(&vm, code).expect("string find should run");
         assert_eq!(result, OwnedValue::Int(4));
     }
 
@@ -287,8 +326,7 @@ fn main() {
         vm.register_standard_natives();
         let mut budget = ExecutionBudget::unbounded();
 
-        let result = vm
-            .run_with_managed_heap_and_budget(&code, &mut budget)
+        let result = run_linked_string_test_code_with_budget(&vm, code, &mut budget)
             .expect("heap string find should run");
         assert_eq!(result, OwnedValue::Int(8));
     }
@@ -303,8 +341,7 @@ fn main() {
         let code = compile_function_source(SourceId::new(1), source, "main")
             .expect("string find type error source should compile");
 
-        let error = Vm::new()
-            .run(&code)
+        let error = run_linked_string_test_code(&Vm::new(), code)
             .expect_err("string find should reject non-string needles");
         assert_eq!(
             error.kind(),
@@ -336,7 +373,7 @@ fn main() {
         let mut vm = Vm::new();
         vm.register_standard_natives();
 
-        let result = vm.run(&code).expect("string char_at should run");
+        let result = run_linked_string_test_code(&vm, code).expect("string char_at should run");
         assert_eq!(result, OwnedValue::String("励".to_owned()));
     }
 
@@ -351,10 +388,9 @@ fn main() {
         let code = compile_function_source(SourceId::new(1), source, "main")
             .expect("heap string char_at source should compile");
         let mut budget = ExecutionBudget::unbounded();
+        let vm = Vm::new().with_standard_natives();
 
-        let result = Vm::new()
-            .with_standard_natives()
-            .run_with_managed_heap_and_budget(&code, &mut budget)
+        let result = run_linked_string_test_code_with_budget(&vm, code, &mut budget)
             .expect("heap string char_at should run");
         assert_eq!(result, OwnedValue::String(".".to_owned()));
     }
@@ -369,8 +405,7 @@ fn main() {
         let code = compile_function_source(SourceId::new(1), source, "main")
             .expect("string char_at type error source should compile");
 
-        let error = Vm::new()
-            .run(&code)
+        let error = run_linked_string_test_code(&Vm::new(), code)
             .expect_err("string char_at should reject negative indexes");
         assert_eq!(
             error.kind(),
@@ -401,7 +436,7 @@ fn main() {
         let mut vm = Vm::new();
         vm.register_standard_natives();
 
-        let result = vm.run(&code).expect("string strip affix should run");
+        let result = run_linked_string_test_code(&vm, code).expect("string strip affix should run");
         assert_eq!(result, OwnedValue::String("奖励".to_owned()));
     }
 
@@ -420,8 +455,7 @@ fn main() {
         vm.register_standard_natives();
         let mut budget = ExecutionBudget::unbounded();
 
-        let result = vm
-            .run_with_managed_heap_and_budget(&code, &mut budget)
+        let result = run_linked_string_test_code_with_budget(&vm, code, &mut budget)
             .expect("heap string strip affix should run");
         assert_eq!(result, OwnedValue::String("wolf".to_owned()));
     }
@@ -436,8 +470,7 @@ fn main() {
         let code = compile_function_source(SourceId::new(1), source, "main")
             .expect("string strip affix type error source should compile");
 
-        let error = Vm::new()
-            .run(&code)
+        let error = run_linked_string_test_code(&Vm::new(), code)
             .expect_err("string strip affix should reject non-string affixes");
         assert_eq!(
             error.kind(),
@@ -466,7 +499,8 @@ fn main() {
         let code = compile_function_source(SourceId::new(1), source, "main")
             .expect("string split_lines source should compile");
 
-        let result = Vm::new().run(&code).expect("string split_lines should run");
+        let result =
+            run_linked_string_test_code(&Vm::new(), code).expect("string split_lines should run");
         assert_eq!(result, OwnedValue::String("reward".to_owned()));
     }
 
@@ -486,8 +520,7 @@ fn main() {
             .expect("heap string split_lines source should compile");
         let mut budget = ExecutionBudget::unbounded();
 
-        let result = Vm::new()
-            .run_with_managed_heap_and_budget(&code, &mut budget)
+        let result = run_linked_string_test_code_with_budget(&Vm::new(), code, &mut budget)
             .expect("heap string split_lines should run");
         assert_eq!(result, OwnedValue::String("commit".to_owned()));
         assert_eq!(budget.memory_bytes_allocated(), 0);
@@ -508,7 +541,8 @@ fn main() {
         let code = compile_function_source(SourceId::new(1), source, "main")
             .expect("string split_once source should compile");
 
-        let result = Vm::new().run(&code).expect("string split_once should run");
+        let result =
+            run_linked_string_test_code(&Vm::new(), code).expect("string split_once should run");
         assert_eq!(result, OwnedValue::Int(3));
     }
 
@@ -524,8 +558,7 @@ fn main() {
             .expect("heap string split_once source should compile");
         let mut budget = ExecutionBudget::unbounded();
 
-        let result = Vm::new()
-            .run_with_managed_heap_and_budget(&code, &mut budget)
+        let result = run_linked_string_test_code_with_budget(&Vm::new(), code, &mut budget)
             .expect("heap string split_once should run");
         assert_eq!(result, OwnedValue::Bool(true));
         assert_eq!(budget.memory_bytes_allocated(), 0);
@@ -551,7 +584,8 @@ fn main() {
 
         let mut vm = Vm::new();
         vm.register_standard_natives();
-        let result = vm.run(&code).expect("string split_whitespace should run");
+        let result =
+            run_linked_string_test_code(&vm, code).expect("string split_whitespace should run");
         assert_eq!(
             result,
             OwnedValue::String("player.level_up.reward".to_owned())
@@ -574,8 +608,7 @@ fn main() {
             .expect("heap string split_whitespace source should compile");
         let mut budget = ExecutionBudget::unbounded();
 
-        let result = Vm::new()
-            .run_with_managed_heap_and_budget(&code, &mut budget)
+        let result = run_linked_string_test_code_with_budget(&Vm::new(), code, &mut budget)
             .expect("heap string split_whitespace should run");
         assert_eq!(result, OwnedValue::String("xp:42".to_owned()));
         assert_eq!(budget.memory_bytes_allocated(), 0);
@@ -604,7 +637,7 @@ fn main() {
         let mut vm = Vm::new();
         vm.register_standard_natives();
 
-        let result = vm.run(&code).expect("string parse_int should run");
+        let result = run_linked_string_test_code(&vm, code).expect("string parse_int should run");
         assert_eq!(result, OwnedValue::Int(0));
     }
 
@@ -623,8 +656,7 @@ fn main() {
         vm.register_standard_natives();
         let mut budget = ExecutionBudget::unbounded();
 
-        let result = vm
-            .run_with_managed_heap_and_budget(&code, &mut budget)
+        let result = run_linked_string_test_code_with_budget(&vm, code, &mut budget)
             .expect("heap string parse_int should run");
         assert_eq!(result, OwnedValue::Int(12));
     }
@@ -652,7 +684,7 @@ fn main() {
         let mut vm = Vm::new();
         vm.register_standard_natives();
 
-        let result = vm.run(&code).expect("string parse_float should run");
+        let result = run_linked_string_test_code(&vm, code).expect("string parse_float should run");
         assert_eq!(result, OwnedValue::Float(-0.5));
     }
 
@@ -671,8 +703,7 @@ fn main() {
         vm.register_standard_natives();
         let mut budget = ExecutionBudget::unbounded();
 
-        let result = vm
-            .run_with_managed_heap_and_budget(&code, &mut budget)
+        let result = run_linked_string_test_code_with_budget(&vm, code, &mut budget)
             .expect("heap string parse_float should run");
         assert_eq!(result, OwnedValue::Int(3));
     }
@@ -700,7 +731,7 @@ fn main() {
         let mut vm = Vm::new();
         vm.register_standard_natives();
 
-        let result = vm.run(&code).expect("string parse_bool should run");
+        let result = run_linked_string_test_code(&vm, code).expect("string parse_bool should run");
         assert_eq!(result, OwnedValue::Bool(false));
     }
 
@@ -719,8 +750,7 @@ fn main() {
         vm.register_standard_natives();
         let mut budget = ExecutionBudget::unbounded();
 
-        let result = vm
-            .run_with_managed_heap_and_budget(&code, &mut budget)
+        let result = run_linked_string_test_code_with_budget(&vm, code, &mut budget)
             .expect("heap string parse_bool should run");
         assert_eq!(result, OwnedValue::Bool(true));
     }
