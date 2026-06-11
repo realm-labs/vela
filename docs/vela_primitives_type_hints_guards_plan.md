@@ -1251,9 +1251,9 @@ then build registry, syntax, guards, and runtime behavior on the new model.
 
 #### Task 4.3: Add expected-type check API
 
-- [ ] Implement a single API used by:
-  - [ ] function calls;
-  - [ ] typed let;
+- [x] Implement a single API used by:
+  - [x] function calls;
+  - [x] typed let;
   - [ ] return values;
   - [ ] record field construction;
   - [ ] later record field writes;
@@ -1261,16 +1261,16 @@ then build registry, syntax, guards, and runtime behavior on the new model.
   - [ ] later enum payload writes when supported;
   - [ ] global writes.
 - [ ] API behavior:
-  - [ ] exact same type -> OK, no guard;
-  - [ ] exact mismatch -> compile error;
-  - [ ] compatible unsuffixed literal -> contextualize;
+  - [x] exact same type -> OK, no guard;
+  - [x] exact mismatch -> compile error;
+  - [x] compatible unsuffixed literal -> contextualize;
   - [ ] dynamic -> emit guard;
-  - [ ] suffix mismatch -> compile error.
+  - [x] suffix mismatch -> compile error.
 
 **Termination condition:**
 
-- [ ] `fn f(x: i64) {}` with `f(12)` passes.
-- [ ] `f(12i8)`, `f(12.0)`, `f("12")` fail at compile time.
+- [x] `fn f(x: i64) {}` with `f(12)` passes.
+- [x] `f(12i8)`, `f(12.0)`, `f("12")` fail at compile time.
 - [ ] `fn g(x) { f(x); }` compiles and emits a guard path.
 
 #### Task 4.4: Add compile errors for static type contract violations

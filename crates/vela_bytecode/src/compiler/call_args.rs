@@ -7,6 +7,7 @@ use vela_syntax::ast::Argument;
 
 use crate::CallArgument;
 
+use super::value_types::{TypeContractContext, type_hint_value_type};
 use super::{CompileError, CompileErrorKind, CompileResult, Compiler};
 
 impl Compiler<'_, '_> {
@@ -32,7 +33,8 @@ impl Compiler<'_, '_> {
             .zip(params)
             .map(|(slot, param)| {
                 if let Some(arg) = slot {
-                    self.compile_expr(&arg.value).map(CallArgument::Register)
+                    self.compile_argument_for_param(&arg.value, &param)
+                        .map(CallArgument::Register)
                 } else if param.default_value_span.is_some() {
                     Ok(CallArgument::Missing)
                 } else {
@@ -40,6 +42,23 @@ impl Compiler<'_, '_> {
                 }
             })
             .collect()
+    }
+
+    pub(super) fn compile_argument_for_param(
+        &mut self,
+        value: &vela_syntax::ast::Expr,
+        param: &ParamHint,
+    ) -> CompileResult<crate::Register> {
+        let Some(expected) = param.type_hint.as_ref().and_then(type_hint_value_type) else {
+            return self.compile_expr(value);
+        };
+        self.compile_expr_with_expected_type(
+            value,
+            expected,
+            TypeContractContext::FunctionParameter {
+                name: param.name.clone(),
+            },
+        )
     }
 }
 

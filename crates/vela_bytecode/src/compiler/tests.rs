@@ -196,3 +196,4 @@ mod literals_and_calls;
 mod loops_and_errors;
 mod module_resolution;
 mod script_methods;
+mod type_contracts;

@@ -3,12 +3,15 @@ use vela_syntax::ast::{BinaryOp, Expr, ExprKind, Literal, UnaryOp};
 
 use crate::{Register, UnlinkedInstructionKind};
 
-use super::const_eval::{compile_literal_constant, compile_negated_literal_constant};
+use super::const_eval::{
+    compile_literal_constant, compile_literal_constant_for_type, compile_negated_literal_constant,
+};
 use super::constructors::schema_default_fields;
 use super::host_paths::HostPath;
 use super::operators::non_logical_binary_instruction;
 use super::patterns::enum_variant_path;
 use super::schema_defaults::{record_constructor_diagnostics, unknown_enum_variant_diagnostic};
+use super::value_types::{ExpectedTypeOutcome, RuntimeTypeFact, TypeContractContext};
 use super::{CompileError, CompileErrorKind, CompileResult, Compiler};
 
 impl Compiler<'_, '_> {
@@ -215,6 +218,22 @@ impl Compiler<'_, '_> {
 
     pub(super) fn compile_literal(&mut self, literal: &Literal) -> CompileResult<Register> {
         self.emit_constant(compile_literal_constant(literal)?)
+    }
+
+    pub(super) fn compile_expr_with_expected_type(
+        &mut self,
+        expr: &Expr,
+        expected: RuntimeTypeFact,
+        context: TypeContractContext,
+    ) -> CompileResult<Register> {
+        let outcome = self.expected_type_for_expr(expr, expected, context)?;
+        if let ExpectedTypeOutcome::Contextualized(RuntimeTypeFact::Primitive(tag)) = outcome
+            && let ExprKind::Literal(literal) = &expr.kind
+            && let Some(constant) = compile_literal_constant_for_type(literal, tag)?
+        {
+            return self.emit_constant(constant);
+        }
+        self.compile_expr(expr)
     }
 
     fn compile_binary(

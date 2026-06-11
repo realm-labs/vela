@@ -22,6 +22,19 @@ pub(super) enum StaticExprType {
     Dynamic,
 }
 
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub(super) enum ExpectedTypeOutcome {
+    Proven,
+    Contextualized(TypeRef),
+    RequiresRuntimeGuard(TypeRef),
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub(super) enum TypeContractContext {
+    FunctionParameter { name: String },
+    TypedLet { name: String },
+}
+
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub(super) enum StandardRuntimeType {
     Array,
@@ -65,6 +78,33 @@ impl RuntimeTypeFact {
             Self::Standard(StandardRuntimeType::Range) => "Range",
             Self::Standard(StandardRuntimeType::Function) => "Function",
             Self::Standard(StandardRuntimeType::Closure) => "Closure",
+            Self::Standard(StandardRuntimeType::Option) => "Option",
+            Self::Standard(StandardRuntimeType::Result) => "Result",
+        }
+    }
+
+    pub(super) const fn source_type_name(&self) -> &'static str {
+        match self {
+            Self::Primitive(PrimitiveTag::Null) => "null",
+            Self::Primitive(PrimitiveTag::Bool) => "bool",
+            Self::Primitive(PrimitiveTag::I8) => "i8",
+            Self::Primitive(PrimitiveTag::I16) => "i16",
+            Self::Primitive(PrimitiveTag::I32) => "i32",
+            Self::Primitive(PrimitiveTag::I64) => "i64",
+            Self::Primitive(PrimitiveTag::U8) => "u8",
+            Self::Primitive(PrimitiveTag::U16) => "u16",
+            Self::Primitive(PrimitiveTag::U32) => "u32",
+            Self::Primitive(PrimitiveTag::U64) => "u64",
+            Self::Primitive(PrimitiveTag::F32) => "f32",
+            Self::Primitive(PrimitiveTag::F64) => "f64",
+            Self::Primitive(PrimitiveTag::String) => "string",
+            Self::Primitive(PrimitiveTag::Bytes) => "bytes",
+            Self::Standard(StandardRuntimeType::Array) => "array",
+            Self::Standard(StandardRuntimeType::Map) => "map",
+            Self::Standard(StandardRuntimeType::Set) => "set",
+            Self::Standard(StandardRuntimeType::Range) => "range",
+            Self::Standard(StandardRuntimeType::Function) => "function",
+            Self::Standard(StandardRuntimeType::Closure) => "closure",
             Self::Standard(StandardRuntimeType::Option) => "Option",
             Self::Standard(StandardRuntimeType::Result) => "Result",
         }
@@ -233,6 +273,121 @@ pub(super) fn type_hint_value_type(hint: &HirTypeHint) -> Option<RuntimeTypeFact
     }
 }
 
+pub(super) fn check_expected_type(
+    actual: StaticExprType,
+    expected: RuntimeTypeFact,
+    span: Span,
+    context: TypeContractContext,
+) -> super::CompileResult<ExpectedTypeOutcome> {
+    match actual {
+        StaticExprType::Exact(actual) if actual == expected => Ok(ExpectedTypeOutcome::Proven),
+        StaticExprType::Exact(actual) => Err(type_contract_mismatch(
+            expected,
+            ActualContractType::Exact(actual),
+            span,
+            context,
+        )),
+        StaticExprType::UnsuffixedIntegerLiteral
+            if expected_primitive_tag(&expected).is_some_and(is_integer_tag) =>
+        {
+            Ok(ExpectedTypeOutcome::Contextualized(expected))
+        }
+        StaticExprType::UnsuffixedIntegerLiteral => Err(type_contract_mismatch(
+            expected,
+            ActualContractType::UnsuffixedIntegerLiteral,
+            span,
+            context,
+        )),
+        StaticExprType::UnsuffixedFloatLiteral
+            if expected_primitive_tag(&expected).is_some_and(is_float_tag) =>
+        {
+            Ok(ExpectedTypeOutcome::Contextualized(expected))
+        }
+        StaticExprType::UnsuffixedFloatLiteral => Err(type_contract_mismatch(
+            expected,
+            ActualContractType::UnsuffixedFloatLiteral,
+            span,
+            context,
+        )),
+        StaticExprType::Dynamic => Ok(ExpectedTypeOutcome::RequiresRuntimeGuard(expected)),
+    }
+}
+
+fn expected_primitive_tag(expected: &RuntimeTypeFact) -> Option<PrimitiveTag> {
+    match expected {
+        RuntimeTypeFact::Primitive(tag) => Some(*tag),
+        RuntimeTypeFact::Standard(_) => None,
+    }
+}
+
+fn is_integer_tag(tag: PrimitiveTag) -> bool {
+    matches!(
+        tag,
+        PrimitiveTag::I8
+            | PrimitiveTag::I16
+            | PrimitiveTag::I32
+            | PrimitiveTag::I64
+            | PrimitiveTag::U8
+            | PrimitiveTag::U16
+            | PrimitiveTag::U32
+            | PrimitiveTag::U64
+    )
+}
+
+fn is_float_tag(tag: PrimitiveTag) -> bool {
+    matches!(tag, PrimitiveTag::F32 | PrimitiveTag::F64)
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+enum ActualContractType {
+    Exact(RuntimeTypeFact),
+    UnsuffixedIntegerLiteral,
+    UnsuffixedFloatLiteral,
+}
+
+fn type_contract_mismatch(
+    expected: RuntimeTypeFact,
+    actual: ActualContractType,
+    span: Span,
+    context: TypeContractContext,
+) -> super::CompileError {
+    super::CompileError::new(super::CompileErrorKind::SemanticDiagnostics(vec![
+        vela_common::Diagnostic::error(format!(
+            "type contract mismatch for {}",
+            context.description()
+        ))
+        .with_code("compiler::type_contract_mismatch")
+        .with_span(span)
+        .with_label(
+            span,
+            format!(
+                "expected `{}`, found {}",
+                expected.source_type_name(),
+                actual.description()
+            ),
+        ),
+    ]))
+}
+
+impl TypeContractContext {
+    fn description(&self) -> String {
+        match self {
+            Self::FunctionParameter { name } => format!("parameter `{name}`"),
+            Self::TypedLet { name } => format!("let binding `{name}`"),
+        }
+    }
+}
+
+impl ActualContractType {
+    fn description(&self) -> String {
+        match self {
+            Self::Exact(actual) => format!("`{}`", actual.source_type_name()),
+            Self::UnsuffixedIntegerLiteral => "unsuffixed integer literal".to_owned(),
+            Self::UnsuffixedFloatLiteral => "unsuffixed float literal".to_owned(),
+        }
+    }
+}
+
 fn integer_literal_tag(value: &vela_syntax::ast::IntegerLiteral) -> PrimitiveTag {
     match value.suffix {
         Some(vela_syntax::ast::IntegerSuffix::I8) => PrimitiveTag::I8,
@@ -279,5 +434,19 @@ impl super::Compiler<'_, '_> {
                 .unwrap_or(StaticExprType::Dynamic),
             known => known,
         }
+    }
+
+    pub(super) fn expected_type_for_expr(
+        &self,
+        expr: &Expr,
+        expected: RuntimeTypeFact,
+        context: TypeContractContext,
+    ) -> super::CompileResult<ExpectedTypeOutcome> {
+        check_expected_type(
+            self.static_type_for_expr(expr),
+            expected,
+            expr.span,
+            context,
+        )
     }
 }

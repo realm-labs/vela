@@ -1,7 +1,7 @@
 use std::collections::BTreeMap;
 use std::num::{ParseFloatError, ParseIntError};
 
-use vela_common::ScalarValue;
+use vela_common::{PrimitiveTag, ScalarValue};
 use vela_syntax::ast::{
     BinaryOp, Expr, ExprKind, FloatLiteral, FloatSuffix, IntRadix, IntegerLiteral, IntegerSuffix,
     Literal, MapEntry, UnaryOp,
@@ -20,6 +20,21 @@ pub(super) fn compile_literal_constant(literal: &Literal) -> CompileResult<Const
         Literal::String(value) => Constant::String(value.clone()),
         Literal::Bytes(value) => Constant::Bytes(value.clone()),
     })
+}
+
+pub(super) fn compile_literal_constant_for_type(
+    literal: &Literal,
+    expected: PrimitiveTag,
+) -> CompileResult<Option<Constant>> {
+    match literal {
+        Literal::Integer(value) if value.suffix.is_none() && is_integer_tag(expected) => {
+            parse_integer_scalar_as(value, expected).map(|value| Some(Constant::Scalar(value)))
+        }
+        Literal::Float(value) if value.suffix.is_none() && is_float_tag(expected) => {
+            parse_float_scalar_as(value, expected).map(|value| Some(Constant::Scalar(value)))
+        }
+        _ => Ok(None),
+    }
 }
 
 pub(super) fn compile_negated_literal_constant(
@@ -267,6 +282,41 @@ fn parse_integer_scalar(value: &IntegerLiteral) -> CompileResult<ScalarValue> {
     Ok(scalar)
 }
 
+fn parse_integer_scalar_as(
+    value: &IntegerLiteral,
+    expected: PrimitiveTag,
+) -> CompileResult<ScalarValue> {
+    let magnitude = parse_integer_magnitude(value)?;
+    let scalar = match expected {
+        PrimitiveTag::I8 => {
+            ScalarValue::I8(checked_signed_positive(value, magnitude, i8::MAX as u128)? as i8)
+        }
+        PrimitiveTag::I16 => {
+            ScalarValue::I16(checked_signed_positive(value, magnitude, i16::MAX as u128)? as i16)
+        }
+        PrimitiveTag::I32 => {
+            ScalarValue::I32(checked_signed_positive(value, magnitude, i32::MAX as u128)? as i32)
+        }
+        PrimitiveTag::I64 => {
+            ScalarValue::I64(checked_signed_positive(value, magnitude, i64::MAX as u128)? as i64)
+        }
+        PrimitiveTag::U8 => {
+            ScalarValue::U8(checked_unsigned_positive(value, magnitude, u8::MAX as u128)? as u8)
+        }
+        PrimitiveTag::U16 => {
+            ScalarValue::U16(checked_unsigned_positive(value, magnitude, u16::MAX as u128)? as u16)
+        }
+        PrimitiveTag::U32 => {
+            ScalarValue::U32(checked_unsigned_positive(value, magnitude, u32::MAX as u128)? as u32)
+        }
+        PrimitiveTag::U64 => {
+            ScalarValue::U64(checked_unsigned_positive(value, magnitude, u64::MAX as u128)? as u64)
+        }
+        _ => unreachable!("caller only passes integer primitive tags"),
+    };
+    Ok(scalar)
+}
+
 fn parse_negated_integer_scalar(value: &IntegerLiteral) -> CompileResult<Option<ScalarValue>> {
     let magnitude = parse_integer_magnitude(value)?;
     let scalar = match value.suffix {
@@ -351,6 +401,35 @@ fn parse_float_scalar(value: &FloatLiteral) -> CompileResult<ScalarValue> {
         Some(FloatSuffix::F32) => parse_float::<f32>(value).map(ScalarValue::F32),
         None | Some(FloatSuffix::F64) => parse_float::<f64>(value).map(ScalarValue::F64),
     }
+}
+
+fn parse_float_scalar_as(
+    value: &FloatLiteral,
+    expected: PrimitiveTag,
+) -> CompileResult<ScalarValue> {
+    match expected {
+        PrimitiveTag::F32 => parse_float::<f32>(value).map(ScalarValue::F32),
+        PrimitiveTag::F64 => parse_float::<f64>(value).map(ScalarValue::F64),
+        _ => unreachable!("caller only passes float primitive tags"),
+    }
+}
+
+fn is_integer_tag(tag: PrimitiveTag) -> bool {
+    matches!(
+        tag,
+        PrimitiveTag::I8
+            | PrimitiveTag::I16
+            | PrimitiveTag::I32
+            | PrimitiveTag::I64
+            | PrimitiveTag::U8
+            | PrimitiveTag::U16
+            | PrimitiveTag::U32
+            | PrimitiveTag::U64
+    )
+}
+
+fn is_float_tag(tag: PrimitiveTag) -> bool {
+    matches!(tag, PrimitiveTag::F32 | PrimitiveTag::F64)
 }
 
 fn parse_float<T>(value: &FloatLiteral) -> CompileResult<T>

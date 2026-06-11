@@ -308,7 +308,8 @@ impl Compiler<'_, '_> {
             .zip(params)
             .map(|(slot, param)| {
                 if let Some(arg) = slot {
-                    self.compile_expr(&arg.value).map(CallArgument::Register)
+                    self.compile_argument_for_param(&arg.value, &param)
+                        .map(CallArgument::Register)
                 } else if param.default_value_span.is_some() {
                     Ok(CallArgument::Missing)
                 } else {
@@ -401,7 +402,7 @@ impl Compiler<'_, '_> {
         let mut registers = Vec::new();
         for (slot, param) in slots.into_iter().zip(params) {
             if let Some(arg) = slot {
-                registers.push(self.compile_expr(&arg.value)?);
+                registers.push(self.compile_argument_for_param(&arg.value, param)?);
             } else if param.default_value_span.is_none() {
                 unreachable!("call argument resolver rejects missing required arguments");
             }
@@ -439,7 +440,10 @@ impl Compiler<'_, '_> {
             .map(|param| ParamHint {
                 name: param.name.clone(),
                 span: call_span,
-                type_hint: None,
+                type_hint: param
+                    .type_hint
+                    .as_ref()
+                    .map(|hint| registry_type_hint(hint, call_span)),
                 default_value_span: None,
             })
             .collect::<Vec<_>>();
@@ -524,10 +528,20 @@ fn registry_param_hints(params: &[ParamDef], call_span: Span) -> Vec<ParamHint> 
         .map(|param| ParamHint {
             name: param.name.clone(),
             span: call_span,
-            type_hint: None,
+            type_hint: param
+                .type_hint
+                .as_ref()
+                .map(|hint| registry_type_hint(hint, call_span)),
             default_value_span: param.has_default.then_some(call_span),
         })
         .collect()
+}
+
+fn registry_type_hint(hint: &str, span: Span) -> vela_hir::type_hint::HirTypeHint {
+    vela_hir::type_hint::HirTypeHint {
+        path: hint.split("::").map(str::to_owned).collect(),
+        span,
+    }
 }
 
 fn local_path_method_call<'expr>(

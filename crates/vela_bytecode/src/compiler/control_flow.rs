@@ -10,7 +10,7 @@ use crate::{Constant, InstructionOffset, Register, UnlinkedInstructionKind};
 use super::patterns::PatternBindingFacts;
 use super::script_types::{ScriptTypeFact, type_hint_script_type};
 use super::value_flow::{BlockValue, block_value};
-use super::value_types::type_hint_value_type;
+use super::value_types::{TypeContractContext, type_hint_value_type};
 use super::{CompileError, CompileErrorKind, CompileResult, Compiler, frame_slot_kind};
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -96,12 +96,16 @@ impl Compiler<'_, '_> {
                 let value_type = value
                     .as_ref()
                     .and_then(|value| self.value_type_for_expr(value));
-                let value_type = hinted_value_type.or(value_type);
+                let value_type = hinted_value_type.clone().or(value_type);
                 let value_shape = value
                     .as_ref()
                     .and_then(|value| self.value_shape_for_expr(value));
                 let (register, returned) = if let Some(value) = value {
-                    self.compile_let_initializer(value)?
+                    self.compile_let_initializer(
+                        value,
+                        hinted_value_type.clone(),
+                        TypeContractContext::TypedLet { name: name.clone() },
+                    )?
                 } else {
                     (self.emit_constant(Constant::Null)?, false)
                 };
@@ -170,24 +174,43 @@ impl Compiler<'_, '_> {
         }
     }
 
-    fn compile_let_initializer(&mut self, value: &Expr) -> CompileResult<(Register, bool)> {
+    fn compile_let_initializer(
+        &mut self,
+        value: &Expr,
+        expected: Option<super::value_types::RuntimeTypeFact>,
+        context: TypeContractContext,
+    ) -> CompileResult<(Register, bool)> {
         match &value.kind {
             ExprKind::Block(block) => {
+                if let Some(expected) = expected {
+                    self.expected_type_for_expr(value, expected, context)?;
+                }
                 let dst = self.alloc_register()?;
                 let returned = self.compile_block_value_to(block, dst)?;
                 Ok((dst, returned))
             }
             ExprKind::If(if_expr) => {
+                if let Some(expected) = expected {
+                    self.expected_type_for_expr(value, expected, context)?;
+                }
                 let dst = self.alloc_register()?;
                 let returned = self.compile_if_value_to(if_expr, dst)?;
                 Ok((dst, returned))
             }
             ExprKind::Match(match_expr) => {
+                if let Some(expected) = expected {
+                    self.expected_type_for_expr(value, expected, context)?;
+                }
                 let dst = self.alloc_register()?;
                 let returned = self.compile_match_value_to(match_expr, dst)?;
                 Ok((dst, returned))
             }
-            _ => self.compile_expr(value).map(|register| (register, false)),
+            _ => match expected {
+                Some(expected) => self
+                    .compile_expr_with_expected_type(value, expected, context)
+                    .map(|register| (register, false)),
+                None => self.compile_expr(value).map(|register| (register, false)),
+            },
         }
     }
 
