@@ -247,7 +247,7 @@ Source of truth for language semantics:
 - function parameter type hints;
 - return type hints;
 - typed let binding;
-- typed global write;
+- typed global binding insertion/update at embedding boundaries;
 - typed record/enum field construction;
 - later writes to typed record/enum fields;
 - host/native boundary contracts.
@@ -729,7 +729,7 @@ Then clean it later.
 
 ### 5.2 Add guard instructions for non-boundary checks
 
-Use explicit instructions for local/global/field dynamic guards:
+Use explicit instructions for local/field dynamic guards:
 
 ```rust
 InstructionKind::GuardType {
@@ -1259,7 +1259,7 @@ then build registry, syntax, guards, and runtime behavior on the new model.
   - [x] later record field writes;
   - [x] enum payload construction;
   - [ ] later enum payload writes when supported;
-  - [ ] global writes.
+  - [ ] embedding-boundary global insertion/update checks.
 - [x] API behavior:
   - [x] exact same type -> OK, no guard;
   - [x] exact mismatch -> compile error;
@@ -1318,12 +1318,12 @@ then build registry, syntax, guards, and runtime behavior on the new model.
 - [x] A function with `-> i64` has a linked return guard.
 - [x] A function with no hints has no guards.
 
-#### Task 5.3: Add guard instruction for local/global/field contracts
+#### Task 5.3: Add guard instruction for local/field contracts
 
 - [x] Add unlinked guard instruction or compiler marker.
 - [x] Link to `InstructionKind::GuardType`.
 - [x] VM can execute it for primitive contract guards.
-- [ ] Compiler emits it for all local/global/field dynamic unknown values.
+- [x] Compiler emits it for all source-level local/field dynamic unknown values.
 
 **Termination condition:**
 
@@ -1332,6 +1332,8 @@ then build registry, syntax, guards, and runtime behavior on the new model.
 - [x] `typed_record.nested.amount = dynamic_value;` emits a schema-derived field guard.
 - [x] `let x: i64 = 12;` emits no guard.
 - [x] `let x: i64 = "x";` compile-errors.
+- [x] `global` declarations have no direct script write opcode; runtime
+  insertion/update checks are tracked as an embedding-boundary gap.
 
 #### Task 5.4: Add deferred literal operator instructions
 
