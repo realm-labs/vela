@@ -328,8 +328,8 @@ Cranelift JIT.
     receiver-type plumbing before compile-time index capability diagnostics can
     be complete; field-derived host paths such as `player.scores[1]` continue
     to lower through HostPath;
-  - callback and closure materialization uses inline/small storage on common
-    arities, with remaining allocation costs measured;
+  - remaining callback and closure allocation costs need measurement now that
+    common capture and argument materialization uses inline/small storage;
   - verified-bytecode and runtime tests cover the invariants needed by later
     unchecked register, operand, and cache fast paths;
   - ProgramVersion-owned profile metadata covers hot bytecode offsets and has

@@ -110,6 +110,7 @@ impl HeapValue {
             Self::Closure(closure) => {
                 closure
                     .captures
+                    .as_slice()
                     .iter()
                     .for_each(|value| value.trace_refs(refs));
             }
@@ -119,13 +120,13 @@ impl HeapValue {
 
     fn shallow_size_bytes(&self) -> usize {
         match self {
-            Self::String(value) => mem::size_of::<Self>() + value.len(),
-            Self::Bytes(value) => mem::size_of::<Self>() + value.len(),
+            Self::String(value) => mem::size_of::<String>() + value.len(),
+            Self::Bytes(value) => mem::size_of::<Vec<u8>>() + value.len(),
             Self::Array(values) | Self::Set(values) => {
-                mem::size_of::<Self>() + values.capacity() * mem::size_of::<Value>()
+                mem::size_of::<Vec<Value>>() + values.capacity() * mem::size_of::<Value>()
             }
             Self::Map(values) => {
-                mem::size_of::<Self>()
+                mem::size_of::<BTreeMap<String, Value>>()
                     + values
                         .keys()
                         .map(|key| key.len() + mem::size_of::<Value>())
@@ -134,7 +135,9 @@ impl HeapValue {
             Self::Record {
                 type_name, fields, ..
             } => {
-                mem::size_of::<Self>()
+                mem::size_of::<String>()
+                    + mem::size_of::<Option<RecordIdentity>>()
+                    + mem::size_of::<ScriptFields<Value>>()
                     + type_name.len()
                     + fields
                         .iter()
@@ -147,7 +150,9 @@ impl HeapValue {
                 fields,
                 ..
             } => {
-                mem::size_of::<Self>()
+                mem::size_of::<String>() * 2
+                    + mem::size_of::<Option<EnumIdentity>>()
+                    + mem::size_of::<ScriptFields<Value>>()
                     + enum_name.len()
                     + variant.len()
                     + fields
@@ -156,12 +161,13 @@ impl HeapValue {
                         .sum::<usize>()
             }
             Self::Closure(closure) => {
-                mem::size_of::<Self>() + closure.captures.capacity() * mem::size_of::<Value>()
+                mem::size_of::<ClosureValue>()
+                    + closure.captures.spilled_capacity() * mem::size_of::<Value>()
             }
             Self::Iterator(iterator) => {
-                mem::size_of::<Self>() + mem::size_of_val(iterator.values())
+                mem::size_of::<IteratorState>() + mem::size_of_val(iterator.values())
             }
-            Self::PathProxy(_) => mem::size_of::<Self>(),
+            Self::PathProxy(_) => mem::size_of::<PathProxy>(),
         }
     }
 }

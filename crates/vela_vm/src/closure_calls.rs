@@ -85,12 +85,11 @@ pub(crate) fn make_linked_closure(
     frame.write(closure.dst, value)
 }
 
-fn captures_from_registers(frame: &CallFrame, captures: &[Register]) -> VmResult<Vec<Value>> {
-    let mut values = Vec::with_capacity(captures.len());
-    for register in captures {
-        values.push(*frame.read(*register)?);
-    }
-    Ok(values)
+fn captures_from_registers(
+    frame: &CallFrame,
+    captures: &[Register],
+) -> VmResult<SmallStorage<Value>> {
+    SmallStorage::try_from_slice_map(captures, 4, |register| Ok(*frame.read(*register)?))
 }
 
 fn resolve_closure_code<'a>(
@@ -128,9 +127,7 @@ pub(crate) fn dispatch_closure_call(
                 operation: "closure call",
             }));
         };
-        let captures = SmallStorage::try_from_slice_map(&closure.captures, 4, |value| {
-            Ok::<_, VmError>(*value)
-        })?;
+        let captures = closure.captures.clone();
         (Arc::clone(code), captures)
     };
     let values = script_call_args_from_registers(frame, call.args)?;
@@ -190,9 +187,7 @@ pub(crate) fn dispatch_linked_closure_call(
             .with_source_span_if_absent(context.call_site));
         };
         let function = *function;
-        let captures = SmallStorage::try_from_slice_map(&closure.captures, 4, |value| {
-            Ok::<_, VmError>(*value)
-        })?;
+        let captures = closure.captures.clone();
         (function, captures)
     };
     let function_code = context.program.function(function).ok_or_else(|| {
@@ -232,4 +227,29 @@ fn script_call_args_from_registers(
     registers: &[Register],
 ) -> VmResult<SmallStorage<Value>> {
     SmallStorage::try_from_slice_map(registers, 4, |register| Ok(*frame.read(*register)?))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::captures_from_registers;
+    use crate::{CallFrame, SmallStorage, Value};
+    use vela_bytecode::Register;
+
+    #[test]
+    fn captures_from_registers_uses_inline_storage_for_common_arity() {
+        let mut frame = CallFrame::new(4);
+        for index in 0..4 {
+            frame
+                .write(Register(index), Value::i64(i64::from(index)))
+                .expect("register write");
+        }
+
+        let captures = captures_from_registers(
+            &frame,
+            &[Register(0), Register(1), Register(2), Register(3)],
+        )
+        .expect("captures");
+
+        assert!(matches!(captures, SmallStorage::Four(_)));
+    }
 }

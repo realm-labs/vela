@@ -6,6 +6,7 @@ use vela_host::path::HostRef;
 
 use crate::heap::GcRef;
 use crate::ranges::RangeValue;
+use crate::small_storage::SmallStorage;
 
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub enum Value {
@@ -39,7 +40,7 @@ impl Value {
 #[derive(Clone, Debug, PartialEq)]
 pub struct ClosureValue {
     pub(crate) code: ClosureCode,
-    pub(crate) captures: Vec<Value>,
+    pub(crate) captures: SmallStorage<Value>,
 }
 
 #[derive(Clone, Debug, PartialEq)]

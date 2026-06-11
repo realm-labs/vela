@@ -5,8 +5,8 @@ use crate::linked_execution::LinkedExecutionCall;
 use crate::runtime_checks::expect_closure_ref;
 use crate::value::ClosureCode;
 use crate::{
-    ExecutionBudget, ExecutionCall, HeapExecution, HostExecution, SmallStorage, Value, Vm, VmError,
-    VmErrorKind, VmResult,
+    ExecutionBudget, ExecutionCall, HeapExecution, HostExecution, Value, Vm, VmError, VmErrorKind,
+    VmResult,
 };
 
 pub(crate) struct MethodRuntime<'a, 'host, 'heap> {
@@ -60,9 +60,7 @@ pub(crate) fn call_callback_with_protected_values<'value>(
 ) -> VmResult<Value> {
     let (code, captures) = {
         let closure = expect_closure_ref(callback, runtime.heap.as_deref(), operation)?;
-        let captures = SmallStorage::try_from_slice_map(&closure.captures, 4, |value| {
-            Ok::<_, VmError>(*value)
-        })?;
+        let captures = closure.captures.clone();
         (closure.code.clone(), captures)
     };
     let protected_root_len = runtime.heap.as_deref_mut().map(|heap| {

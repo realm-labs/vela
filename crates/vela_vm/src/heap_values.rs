@@ -4,6 +4,7 @@ use std::sync::Arc;
 use vela_bytecode::Constant;
 use vela_host::value::HostValue;
 
+use crate::SmallStorage;
 use crate::budget::ExecutionBudget;
 use crate::error::{VmError, VmErrorKind, VmResult};
 use crate::heap::HeapValue;
@@ -231,11 +232,9 @@ pub(crate) fn owned_to_value(
             )
         }
         OwnedValue::Closure(closure) => {
-            let captures = closure
-                .captures
-                .into_iter()
-                .map(|capture| owned_to_value(capture, heap, budget.as_deref_mut()))
-                .collect::<VmResult<Vec<_>>>()?;
+            let captures = SmallStorage::try_from_slice_map(&closure.captures, 4, |capture| {
+                owned_to_value(capture.clone(), heap, budget.as_deref_mut())
+            })?;
             allocate_heap_value(
                 HeapValue::Closure(ClosureValue {
                     code: ClosureCode::Unlinked(Arc::clone(&closure.code)),
@@ -350,6 +349,7 @@ fn heap_value_to_owned(
             };
             closure
                 .captures
+                .as_slice()
                 .iter()
                 .map(|capture| value_to_owned(capture, heap))
                 .collect::<VmResult<Vec<_>>>()

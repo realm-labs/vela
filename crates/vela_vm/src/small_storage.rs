@@ -1,3 +1,4 @@
+#[derive(Clone, Debug, PartialEq)]
 pub(crate) enum SmallStorage<T> {
     Empty,
     One([T; 1]),
@@ -173,6 +174,22 @@ impl<T> SmallStorage<T> {
             Self::Many(values) => values,
         }
     }
+
+    #[inline]
+    pub(crate) fn spilled_capacity(&self) -> usize {
+        match self {
+            Self::Many(values) => values.capacity(),
+            Self::Empty
+            | Self::One(_)
+            | Self::Two(_)
+            | Self::Three(_)
+            | Self::Four(_)
+            | Self::Five(_)
+            | Self::Six(_)
+            | Self::Seven(_)
+            | Self::Eight(_) => 0,
+        }
+    }
 }
 
 #[cfg(test)]
@@ -196,6 +213,19 @@ mod tests {
 
         assert_eq!(storage.as_slice(), &[2, 4, 6, 8, 10]);
         assert_eq!(storage.into_vec(), vec![2, 4, 6, 8, 10]);
+    }
+
+    #[test]
+    fn spilled_capacity_reports_only_vec_storage() {
+        let inline =
+            SmallStorage::try_from_slice_map(&[1, 2, 3, 4], 4, |value| Ok::<_, ()>(*value))
+                .expect("inline storage");
+        let spilled =
+            SmallStorage::try_from_slice_map(&[1, 2, 3, 4, 5], 4, |value| Ok::<_, ()>(*value))
+                .expect("vec storage");
+
+        assert_eq!(inline.spilled_capacity(), 0);
+        assert!(spilled.spilled_capacity() >= 5);
     }
 
     #[test]
