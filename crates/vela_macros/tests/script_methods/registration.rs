@@ -1,5 +1,29 @@
 use super::*;
+use vela_bytecode::UnlinkedProgram;
+use vela_vm::budget::ExecutionBudget;
 use vela_vm::owned_value::OwnedValue;
+
+fn run_linked_program_with_host(
+    engine: &Engine,
+    program: &UnlinkedProgram,
+    args: &[OwnedValue],
+    host: &mut HostExecution<'_>,
+) -> VmResult<OwnedValue> {
+    let linked = engine
+        .link_program(program)
+        .expect("script method metadata program should link");
+    let mut budget = ExecutionBudget::unbounded();
+    engine
+        .into_vm_for_program(program)
+        .run_linked_program_with_host_budget_and_caches(
+            &linked,
+            "main",
+            args,
+            host,
+            &mut budget,
+            None,
+        )
+}
 
 #[test]
 fn script_macros_feed_engine_builder_registration() {
@@ -297,12 +321,7 @@ fn main(player: Player) {
     };
 
     assert_eq!(
-        engine.into_vm().run_program_with_host(
-            &program,
-            "main",
-            &[OwnedValue::HostRef(player)],
-            &mut host
-        ),
+        run_linked_program_with_host(&engine, &program, &[OwnedValue::HostRef(player)], &mut host),
         Ok(OwnedValue::Int(1)),
     );
 }
