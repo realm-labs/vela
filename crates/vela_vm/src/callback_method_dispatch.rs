@@ -6,8 +6,8 @@ use vela_def::MethodId;
 use crate::heap::GcRef;
 use crate::method_runtime::MethodRuntime;
 use crate::{
-    ExecutionBudget, HeapExecution, HostExecution, Value, Vm, VmError, VmErrorKind, VmResult,
-    array_methods, map_methods, option_result_methods, set_methods,
+    ExecutionBudget, HeapExecution, HostExecution, Value, Vm, VmError, VmErrorKind, VmInlineCaches,
+    VmResult, array_methods, map_methods, option_result_methods, set_methods,
 };
 
 pub(crate) struct CallbackMethodDispatch<'a, 'host, 'heap> {
@@ -18,6 +18,7 @@ pub(crate) struct CallbackMethodDispatch<'a, 'host, 'heap> {
     pub(crate) heap: Option<&'a mut HeapExecution<'heap>>,
     pub(crate) budget: Option<&'a mut ExecutionBudget>,
     pub(crate) caller_roots: &'a [GcRef],
+    pub(crate) inline_caches: Option<&'a dyn VmInlineCaches>,
 }
 
 #[derive(Clone, Copy)]
@@ -111,6 +112,7 @@ impl<'a, 'host, 'heap> CallbackMethodDispatch<'a, 'host, 'heap> {
             heap: self.heap.as_deref_mut(),
             budget: self.budget.as_deref_mut(),
             caller_roots: self.caller_roots,
+            inline_caches: self.inline_caches,
         }
     }
 

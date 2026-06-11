@@ -111,6 +111,7 @@ pub(crate) fn dispatch_script_method_call(
             heap: heap.as_deref_mut(),
             budget: budget.as_deref_mut(),
             caller_roots,
+            inline_caches: None,
         },
     ) {
         let result =
@@ -132,6 +133,7 @@ pub(crate) fn dispatch_script_method_call(
                 heap: heap.as_deref_mut(),
                 budget: budget.as_deref_mut(),
                 caller_roots,
+                inline_caches: None,
             },
         )?;
         let result =
@@ -226,6 +228,7 @@ pub(crate) fn dispatch_script_method_id_call(
             heap: heap.as_deref_mut(),
             budget: budget.as_deref_mut(),
             caller_roots,
+            inline_caches: None,
         },
     )?;
     let result = store_value_in_heap_if_needed(result, heap.as_deref_mut(), budget.as_deref_mut())?;
@@ -235,7 +238,7 @@ pub(crate) fn dispatch_script_method_id_call(
 
 pub(crate) fn dispatch_linked_method_id_call(
     vm: &Vm,
-    program: &LinkedProgram,
+    context: LinkedMethodRuntimeContext<'_>,
     host: &mut Option<&mut HostExecution<'_>>,
     heap: &mut Option<&mut HeapExecution<'_>>,
     budget: &mut Option<&mut ExecutionBudget>,
@@ -252,16 +255,23 @@ pub(crate) fn dispatch_linked_method_id_call(
         ScriptMethodDispatch {
             vm,
             program: None,
-            linked_program: Some(program),
+            linked_program: Some(context.program),
             host: host.as_deref_mut(),
             heap: heap.as_deref_mut(),
             budget: budget.as_deref_mut(),
             caller_roots,
+            inline_caches: context.inline_caches,
         },
     )?;
     let result = store_value_in_heap_if_needed(result, heap.as_deref_mut(), budget.as_deref_mut())?;
     frame.write(call.receiver, receiver_value)?;
     frame.write(call.dst, result)
+}
+
+#[derive(Clone, Copy)]
+pub(crate) struct LinkedMethodRuntimeContext<'a> {
+    pub(crate) program: &'a LinkedProgram,
+    pub(crate) inline_caches: Option<&'a dyn VmInlineCaches>,
 }
 
 pub(crate) struct LinkedScriptMethodCallContext<'a> {
@@ -326,7 +336,10 @@ pub(crate) fn dispatch_linked_method_call(
         ),
         LinkedMethodDispatchKind::Value { method_id } => dispatch_linked_method_id_call(
             vm,
-            context.program,
+            LinkedMethodRuntimeContext {
+                program: context.program,
+                inline_caches: context.inline_caches,
+            },
             host,
             heap,
             budget,

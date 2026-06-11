@@ -268,7 +268,8 @@ Cranelift JIT.
   while materializing common capture counts through inline small storage.
   Higher-order callback dispatch now reuses the shared execution-call
   descriptor and borrows closure metadata instead of cloning the full closure
-  value for each callback.
+  value for each callback, and linked stdlib callback bodies receive the active
+  inline-cache provider for cacheable nested operations.
   Persistent runtime-managed `VelaValue` handles are now included in
   script-global collection roots, so retained call results survive later
   `insert_global`/`update_global` heap collections.

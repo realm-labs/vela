@@ -6,7 +6,7 @@ use crate::runtime_checks::expect_closure_ref;
 use crate::value::ClosureCode;
 use crate::{
     ExecutionBudget, ExecutionCall, HeapExecution, HostExecution, Value, Vm, VmError, VmErrorKind,
-    VmResult,
+    VmInlineCaches, VmResult,
 };
 
 pub(crate) struct MethodRuntime<'a, 'host, 'heap> {
@@ -17,6 +17,7 @@ pub(crate) struct MethodRuntime<'a, 'host, 'heap> {
     pub(crate) heap: Option<&'a mut HeapExecution<'heap>>,
     pub(crate) budget: Option<&'a mut ExecutionBudget>,
     pub(crate) caller_roots: &'a [GcRef],
+    pub(crate) inline_caches: Option<&'a dyn VmInlineCaches>,
 }
 
 pub(crate) fn call_callback(
@@ -79,7 +80,7 @@ pub(crate) fn call_callback_with_protected_values<'value>(
                 check_param_guards: true,
                 call_site: None,
                 call_site_offset: None,
-                inline_caches: None,
+                inline_caches: runtime.inline_caches,
             },
             runtime.host.as_deref_mut(),
             runtime.heap.as_deref_mut(),
@@ -103,7 +104,7 @@ pub(crate) fn call_callback_with_protected_values<'value>(
                     check_param_guards: true,
                     call_site: None,
                     call_site_offset: None,
-                    inline_caches: None,
+                    inline_caches: runtime.inline_caches,
                 },
                 runtime.host.as_deref_mut(),
                 runtime.heap.as_deref_mut(),
