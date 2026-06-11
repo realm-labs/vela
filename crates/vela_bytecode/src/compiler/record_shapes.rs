@@ -230,9 +230,10 @@ pub(super) fn expression_value_shape(
     match &expr.kind {
         ExprKind::Literal(Literal::Null) => Some(ValueShape::Scalar("null".to_owned())),
         ExprKind::Literal(Literal::Bool(_)) => Some(ValueShape::Scalar("bool".to_owned())),
-        ExprKind::Literal(Literal::Int(_)) => Some(ValueShape::Scalar("int".to_owned())),
+        ExprKind::Literal(Literal::Integer(_)) => Some(ValueShape::Scalar("int".to_owned())),
         ExprKind::Literal(Literal::Float(_)) => Some(ValueShape::Scalar("float".to_owned())),
         ExprKind::Literal(Literal::String(_)) => Some(ValueShape::Scalar("string".to_owned())),
+        ExprKind::Literal(Literal::Bytes(_)) => Some(ValueShape::Scalar("bytes".to_owned())),
         ExprKind::Binary {
             op: BinaryOp::Range | BinaryOp::RangeInclusive,
             ..

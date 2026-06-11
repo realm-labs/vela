@@ -147,9 +147,10 @@ fn literal_fact(literal: &Literal) -> TypeFact {
     match literal {
         Literal::Null => TypeFact::Null,
         Literal::Bool(_) => TypeFact::Bool,
-        Literal::Int(_) => TypeFact::Int,
+        Literal::Integer(_) => TypeFact::Int,
         Literal::Float(_) => TypeFact::Float,
         Literal::String(_) => TypeFact::String,
+        Literal::Bytes(_) => TypeFact::Bytes,
     }
 }
 
@@ -331,7 +332,7 @@ fn accepts_map_key(index: &TypeFact, key: &TypeFact) -> bool {
 fn map_key_fact(key: &Expr, scope: &ExprFactScope, facts: Option<&RegistryFacts>) -> TypeFact {
     match &key.kind {
         ExprKind::Literal(Literal::String(_))
-        | ExprKind::Literal(Literal::Int(_))
+        | ExprKind::Literal(Literal::Integer(_))
         | ExprKind::Literal(Literal::Float(_))
         | ExprKind::Path(_) => TypeFact::String,
         _ => type_fact_from_expr_impl(key, scope, facts),

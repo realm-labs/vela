@@ -227,11 +227,11 @@ impl Parser {
             TokenKind::Keyword(Keyword::Match) => self.parse_match_expression(),
             TokenKind::Int(value) => {
                 self.advance();
-                self.literal_expr(Literal::Int(value), span)
+                self.literal_expr(Literal::integer(value), span)
             }
             TokenKind::Float(value) => {
                 self.advance();
-                self.literal_expr(Literal::Float(value), span)
+                self.literal_expr(Literal::float(value), span)
             }
             TokenKind::String(value) => {
                 self.advance();
@@ -331,11 +331,11 @@ impl Parser {
             }
             TokenKind::Int(value) => {
                 let span = self.advance().span;
-                self.literal_expr(Literal::Int(value), span)
+                self.literal_expr(Literal::integer(value), span)
             }
             TokenKind::Float(value) => {
                 let span = self.advance().span;
-                self.literal_expr(Literal::Float(value), span)
+                self.literal_expr(Literal::float(value), span)
             }
             _ => {
                 self.error_here("expected map key");
@@ -551,11 +551,11 @@ impl Parser {
             }
             TokenKind::Int(value) => {
                 self.advance();
-                Pattern::Literal(Literal::Int(value))
+                Pattern::Literal(Literal::integer(value))
             }
             TokenKind::Float(value) => {
                 self.advance();
-                Pattern::Literal(Literal::Float(value))
+                Pattern::Literal(Literal::float(value))
             }
             TokenKind::Ident(_) => self.parse_path_pattern(),
             _ => {

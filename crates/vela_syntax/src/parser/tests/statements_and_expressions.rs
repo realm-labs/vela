@@ -261,7 +261,45 @@ fn parses_literal_return() {
     let StmtKind::Return(Some(value)) = &function.body.statements[0].kind else {
         panic!("expected return value");
     };
-    assert_eq!(value.kind, ExprKind::Literal(Literal::Int("42".into())));
+    assert_eq!(value.kind, ExprKind::Literal(Literal::integer("42")));
+}
+
+#[test]
+fn parses_integer_literal_radix_metadata() {
+    let parsed = parse_source(
+        source_id(),
+        "fn numbers() { let hex = 0x2a; let binary = 0b1010; }",
+    );
+
+    assert!(parsed.diagnostics.is_empty(), "{:?}", parsed.diagnostics);
+    let ItemKind::Function(function) = &parsed.items[0].kind else {
+        panic!("expected function item");
+    };
+
+    let StmtKind::Let {
+        value: Some(hex), ..
+    } = &function.body.statements[0].kind
+    else {
+        panic!("expected hex binding");
+    };
+    assert!(matches!(
+        &hex.kind,
+        ExprKind::Literal(Literal::Integer(value))
+            if value.source_text() == "0x2a" && value.radix == IntRadix::Hex
+    ));
+
+    let StmtKind::Let {
+        value: Some(binary),
+        ..
+    } = &function.body.statements[1].kind
+    else {
+        panic!("expected binary binding");
+    };
+    assert!(matches!(
+        &binary.kind,
+        ExprKind::Literal(Literal::Integer(value))
+            if value.source_text() == "0b1010" && value.radix == IntRadix::Binary
+    ));
 }
 
 #[test]

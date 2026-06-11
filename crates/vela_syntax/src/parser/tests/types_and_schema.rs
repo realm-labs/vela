@@ -167,7 +167,7 @@ enum QuestProgress {
             .default_value
             .as_ref()
             .map(|expr| &expr.kind),
-        Some(ExprKind::Literal(Literal::Int(value))) if value == "1"
+        Some(ExprKind::Literal(Literal::Integer(value))) if value.source_text() == "1"
     ));
 
     let ItemKind::Enum(enumeration) = &parsed.items[1].kind else {
@@ -178,7 +178,7 @@ enum QuestProgress {
     };
     assert!(matches!(
         fields[1].default_value.as_ref().map(|expr| &expr.kind),
-        Some(ExprKind::Literal(Literal::Int(value))) if value == "0"
+        Some(ExprKind::Literal(Literal::Integer(value))) if value.source_text() == "0"
     ));
 }
 
@@ -247,7 +247,7 @@ fn grant(player, amount = 10, reason: string = "quest") {
             .default_value
             .as_ref()
             .map(|expr| &expr.kind),
-        Some(ExprKind::Literal(Literal::Int(value))) if value == "10"
+        Some(ExprKind::Literal(Literal::Integer(value))) if value.source_text() == "10"
     ));
     assert!(matches!(
         function.params[2]

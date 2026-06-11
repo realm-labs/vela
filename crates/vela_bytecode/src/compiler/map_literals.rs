@@ -17,9 +17,9 @@ impl Compiler<'_, '_> {
 
 fn map_key_name(key: &Expr) -> CompileResult<String> {
     match &key.kind {
-        ExprKind::Literal(Literal::String(value))
-        | ExprKind::Literal(Literal::Int(value))
-        | ExprKind::Literal(Literal::Float(value)) => Ok(value.clone()),
+        ExprKind::Literal(Literal::String(value)) => Ok(value.clone()),
+        ExprKind::Literal(Literal::Integer(value)) => Ok(value.source_text().to_owned()),
+        ExprKind::Literal(Literal::Float(value)) => Ok(value.source_text().to_owned()),
         ExprKind::Path(path) => Ok(path.join("::")),
         _ => Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(
             "map key",

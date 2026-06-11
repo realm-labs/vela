@@ -10,6 +10,7 @@ pub enum TypeFact {
     Int,
     Float,
     String,
+    Bytes,
     Range,
     Array {
         element: Box<TypeFact>,
@@ -201,6 +202,7 @@ impl TypeFact {
             Self::Int => "int".to_owned(),
             Self::Float => "float".to_owned(),
             Self::String => "string".to_owned(),
+            Self::Bytes => "bytes".to_owned(),
             Self::Range => "range".to_owned(),
             Self::Array { element } => format!("array({})", element.display_name()),
             Self::Map { key, value } => {

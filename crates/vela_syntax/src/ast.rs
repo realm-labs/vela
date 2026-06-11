@@ -310,9 +310,115 @@ pub struct RecordPatternField {
 pub enum Literal {
     Null,
     Bool(bool),
-    Int(String),
-    Float(String),
+    Integer(IntegerLiteral),
+    Float(FloatLiteral),
     String(String),
+    Bytes(Vec<u8>),
+}
+
+impl Literal {
+    #[must_use]
+    pub fn integer(text: impl Into<String>) -> Self {
+        Self::Integer(IntegerLiteral::unsuffixed(text))
+    }
+
+    #[must_use]
+    pub fn float(text: impl Into<String>) -> Self {
+        Self::Float(FloatLiteral::unsuffixed(text))
+    }
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct IntegerLiteral {
+    pub text: String,
+    pub radix: IntRadix,
+    pub suffix: Option<IntegerSuffix>,
+}
+
+impl IntegerLiteral {
+    #[must_use]
+    pub fn unsuffixed(text: impl Into<String>) -> Self {
+        let text = text.into();
+        let radix = IntRadix::from_literal_text(&text);
+        Self {
+            text,
+            radix,
+            suffix: None,
+        }
+    }
+
+    #[must_use]
+    pub fn source_text(&self) -> &str {
+        &self.text
+    }
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum IntRadix {
+    Binary,
+    Decimal,
+    Hex,
+}
+
+impl IntRadix {
+    #[must_use]
+    pub fn from_literal_text(text: &str) -> Self {
+        if text.starts_with("0x") || text.starts_with("0X") {
+            Self::Hex
+        } else if text.starts_with("0b") || text.starts_with("0B") {
+            Self::Binary
+        } else {
+            Self::Decimal
+        }
+    }
+
+    #[must_use]
+    pub const fn base(self) -> u32 {
+        match self {
+            Self::Binary => 2,
+            Self::Decimal => 10,
+            Self::Hex => 16,
+        }
+    }
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum IntegerSuffix {
+    I8,
+    I16,
+    I32,
+    I64,
+    U8,
+    U16,
+    U32,
+    U64,
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct FloatLiteral {
+    pub text: String,
+    pub suffix: Option<FloatSuffix>,
+}
+
+impl FloatLiteral {
+    #[must_use]
+    pub fn unsuffixed(text: impl Into<String>) -> Self {
+        Self {
+            text: text.into(),
+            suffix: None,
+        }
+    }
+
+    #[must_use]
+    pub fn source_text(&self) -> &str {
+        &self.text
+    }
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum FloatSuffix {
+    F32,
+    F64,
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]

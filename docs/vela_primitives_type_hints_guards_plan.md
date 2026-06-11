@@ -1153,18 +1153,18 @@ then build registry, syntax, guards, and runtime behavior on the new model.
 
 #### Task 3.1: Update AST literal model
 
-- [ ] Replace `Literal::Int(String)` with `Literal::Integer(IntegerLiteral)`.
-- [ ] Replace `Literal::Float(String)` with `Literal::Float(FloatLiteral)`.
-- [ ] Add `Literal::Bytes(Vec<u8>)` or `Literal::Bytes(ByteLiteral)`.
-- [ ] Add suffix enums:
-  - [ ] `IntegerSuffix`
-  - [ ] `FloatSuffix`
-- [ ] Update pattern literals accordingly.
+- [x] Replace `Literal::Int(String)` with `Literal::Integer(IntegerLiteral)`.
+- [x] Replace `Literal::Float(String)` with `Literal::Float(FloatLiteral)`.
+- [x] Add `Literal::Bytes(Vec<u8>)` or `Literal::Bytes(ByteLiteral)`.
+- [x] Add suffix enums:
+  - [x] `IntegerSuffix`
+  - [x] `FloatSuffix`
+- [x] Update pattern literals accordingly.
 
 **Termination condition:**
 
-- [ ] Parser tests compile after AST updates.
-- [ ] Existing integer/float/string literal tests are updated.
+- [x] Parser tests compile after AST updates.
+- [x] Existing integer/float/string literal tests are updated.
 
 #### Task 3.2: Extend lexer for numeric suffixes
 

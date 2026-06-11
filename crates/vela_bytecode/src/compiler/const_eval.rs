@@ -1,7 +1,9 @@
 use std::collections::BTreeMap;
 use std::num::{ParseFloatError, ParseIntError};
 
-use vela_syntax::ast::{BinaryOp, Expr, ExprKind, Literal, MapEntry, UnaryOp};
+use vela_syntax::ast::{
+    BinaryOp, Expr, ExprKind, FloatLiteral, IntRadix, IntegerLiteral, Literal, MapEntry, UnaryOp,
+};
 
 use crate::Constant;
 
@@ -11,9 +13,10 @@ pub(super) fn compile_literal_constant(literal: &Literal) -> CompileResult<Const
     Ok(match literal {
         Literal::Null => Constant::Null,
         Literal::Bool(value) => Constant::Bool(*value),
-        Literal::Int(value) => Constant::i64(parse_int(value)?),
+        Literal::Integer(value) => Constant::i64(parse_int(value)?),
         Literal::Float(value) => Constant::f64(parse_float(value)?),
         Literal::String(value) => Constant::String(value.clone()),
+        Literal::Bytes(value) => Constant::Bytes(value.clone()),
     })
 }
 
@@ -84,9 +87,9 @@ fn evaluate_map_entry(
 
 fn const_map_key_name(key: &Expr) -> CompileResult<Option<String>> {
     match &key.kind {
-        ExprKind::Literal(Literal::String(value))
-        | ExprKind::Literal(Literal::Int(value))
-        | ExprKind::Literal(Literal::Float(value)) => Ok(Some(value.clone())),
+        ExprKind::Literal(Literal::String(value)) => Ok(Some(value.clone())),
+        ExprKind::Literal(Literal::Integer(value)) => Ok(Some(value.source_text().to_owned())),
+        ExprKind::Literal(Literal::Float(value)) => Ok(Some(value.source_text().to_owned())),
         ExprKind::Path(path) => Ok(Some(path.join("::"))),
         _ => Ok(None),
     }
@@ -199,30 +202,28 @@ fn evaluate_numeric_compare_const(
     }
 }
 
-fn parse_int(value: &str) -> CompileResult<i64> {
-    let value_without_separators = value.replace('_', "");
-    let (radix, digits) = if let Some(digits) = value_without_separators.strip_prefix("0x") {
-        (16, digits)
-    } else if let Some(digits) = value_without_separators.strip_prefix("0b") {
-        (2, digits)
-    } else {
-        (10, value_without_separators.as_str())
+fn parse_int(value: &IntegerLiteral) -> CompileResult<i64> {
+    let value_without_separators = value.source_text().replace('_', "");
+    let digits = match value.radix {
+        IntRadix::Binary | IntRadix::Hex => &value_without_separators[2..],
+        IntRadix::Decimal => value_without_separators.as_str(),
     };
-    i64::from_str_radix(digits, radix).map_err(|error: ParseIntError| {
+    i64::from_str_radix(digits, value.radix.base()).map_err(|error: ParseIntError| {
         CompileError::new(CompileErrorKind::InvalidIntLiteral {
-            literal: value.to_owned(),
+            literal: value.source_text().to_owned(),
             error: error.to_string(),
         })
     })
 }
 
-fn parse_float(value: &str) -> CompileResult<f64> {
+fn parse_float(value: &FloatLiteral) -> CompileResult<f64> {
     value
+        .source_text()
         .replace('_', "")
         .parse()
         .map_err(|error: ParseFloatError| {
             CompileError::new(CompileErrorKind::InvalidFloatLiteral {
-                literal: value.to_owned(),
+                literal: value.source_text().to_owned(),
                 error: error.to_string(),
             })
         })

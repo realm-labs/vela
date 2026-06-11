@@ -68,9 +68,10 @@ pub(super) fn expression_value_type(
     match &expr.kind {
         ExprKind::Literal(Literal::Null) => Some("null".to_owned()),
         ExprKind::Literal(Literal::Bool(_)) => Some("bool".to_owned()),
-        ExprKind::Literal(Literal::Int(_)) => Some("int".to_owned()),
+        ExprKind::Literal(Literal::Integer(_)) => Some("int".to_owned()),
         ExprKind::Literal(Literal::Float(_)) => Some("float".to_owned()),
         ExprKind::Literal(Literal::String(_)) => Some("string".to_owned()),
+        ExprKind::Literal(Literal::Bytes(_)) => Some("bytes".to_owned()),
         ExprKind::Array(_) => Some("array".to_owned()),
         ExprKind::Map(_) => Some("map".to_owned()),
         ExprKind::Lambda { .. } => Some("closure".to_owned()),

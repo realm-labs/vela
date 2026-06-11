@@ -445,9 +445,11 @@ enum ConstHostPathArg {
 
 fn const_host_path_arg(expr: &Expr) -> Option<ConstHostPathArg> {
     match &expr.kind {
-        ExprKind::Literal(vela_syntax::ast::Literal::Int(value)) => {
-            value.parse::<u32>().ok().map(ConstHostPathArg::Index)
-        }
+        ExprKind::Literal(vela_syntax::ast::Literal::Integer(value)) => value
+            .source_text()
+            .parse::<u32>()
+            .ok()
+            .map(ConstHostPathArg::Index),
         ExprKind::Literal(vela_syntax::ast::Literal::String(value)) => {
             Some(ConstHostPathArg::Key(value.clone()))
         }
