@@ -1197,7 +1197,7 @@ then build registry, syntax, guards, and runtime behavior on the new model.
 #### Task 3.4: Add byte string lexing
 
 - [x] Lex `b"..."` as byte string, not identifier `b` followed by string.
-- [ ] Support escapes:
+- [x] Support escapes:
   - [x] `\n`
   - [x] `\r`
   - [x] `\t`
