@@ -39,7 +39,7 @@ pub(crate) fn print(records: &[Record]) {
             "no_activity"
         };
         println!(
-            "cache_delta bench={} base={} mean_delta_ns={} min_delta_ns={} median_delta_ns={} p95_delta_ns={} mean_ratio_ppm={} checksum_match={} delta_kind={} cache_hits={} profile_hits={}",
+            "cache_delta bench={} base={} mean_delta_ns={} min_delta_ns={} median_delta_ns={} p95_delta_ns={} mean_ratio_ppm={} checksum_match={} delta_kind={} cache_hits={} profile_hits={} base_profile_hits={} profile_hits_match={}",
             record.name,
             base.name,
             signed_delta(record.mean_ns, base.mean_ns),
@@ -50,7 +50,9 @@ pub(crate) fn print(records: &[Record]) {
             record.checksum == base.checksum,
             delta_kind,
             record.cache_hits,
-            record.profile_hits
+            record.profile_hits,
+            base.profile_hits,
+            record.profile_hits == base.profile_hits
         );
     }
 }
