@@ -4,7 +4,7 @@ use crate::heap::HeapValue;
 use crate::option_result::option_value;
 use crate::{
     ExecutionBudget, HeapExecution, StandardMethodInlineCacheTarget, Value, VmError, VmErrorKind,
-    VmResult, store_runtime_value, stored_runtime_value,
+    VmResult, store_runtime_value,
 };
 
 pub(in crate::standard_method_cache) fn call_cached_map_mutation(
@@ -59,9 +59,7 @@ fn call_cached_map_remove(
     let Some(heap) = heap.as_deref_mut() else {
         return type_error("method remove");
     };
-    let payload = map_slots_mut(heap, reference, "method remove")?
-        .remove(&key)
-        .map(|slot| stored_runtime_value(&slot));
+    let payload = map_slots_mut(heap, reference, "method remove")?.remove(&key);
     option_value(payload, heap, budget.as_deref_mut())
 }
 

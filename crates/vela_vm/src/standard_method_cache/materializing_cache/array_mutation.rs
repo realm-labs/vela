@@ -2,7 +2,7 @@ use crate::heap::HeapValue;
 use crate::option_result::option_value;
 use crate::{
     ExecutionBudget, HeapExecution, StandardMethodInlineCacheTarget, Value, VmError, VmErrorKind,
-    VmResult, store_runtime_value, stored_runtime_value,
+    VmResult, store_runtime_value,
 };
 
 pub(in crate::standard_method_cache) fn call_cached_array_mutation(
@@ -62,9 +62,7 @@ fn call_cached_array_pop(
     let Some(heap) = heap.as_deref_mut() else {
         return type_error("method pop");
     };
-    let payload = array_slots_mut(heap, reference, "method pop")?
-        .pop()
-        .map(|slot| stored_runtime_value(&slot));
+    let payload = array_slots_mut(heap, reference, "method pop")?.pop();
     option_value(payload, heap, budget.as_deref_mut())
 }
 
@@ -104,8 +102,7 @@ fn call_cached_array_remove_at(
     if index >= array_slots(heap, reference, "method remove_at")?.len() {
         return option_value(None, heap, budget.as_deref_mut());
     }
-    let payload =
-        stored_runtime_value(&array_slots_mut(heap, reference, "method remove_at")?.remove(index));
+    let payload = array_slots_mut(heap, reference, "method remove_at")?.remove(index);
     option_value(Some(payload), heap, budget.as_deref_mut())
 }
 
