@@ -33,7 +33,9 @@ mod workload_sources;
 #[path = "baseline/workloads.rs"]
 mod workloads;
 
-use cache_support::{BenchBytecodeProfiler, BenchInlineCaches, rebase_linked_cache_sites};
+use cache_support::{
+    BenchBytecodeProfiler, BenchCacheStats, BenchInlineCaches, rebase_linked_cache_sites,
+};
 use config::{BenchConfig, BenchParams};
 use workloads::{ExecutionMode, WORKLOADS, Workload};
 
@@ -85,8 +87,9 @@ fn main() -> Result<(), Box<dyn Error>> {
         }
         let result = run_workload(workload, params)?;
         ran += 1;
+        let cache = result.cache_stats;
         println!(
-            "bench={} mode={} min_ns={} mean_ns={} median_ns={} p95_ns={} checksum={} cache_sets={} cache_hits={} profile_hits={}",
+            "bench={} mode={} min_ns={} mean_ns={} median_ns={} p95_ns={} checksum={} cache_sets={} cache_hits={} cache_global_sets={} cache_global_hits={} cache_host_sets={} cache_host_hits={} cache_record_sets={} cache_record_hits={} cache_method_sets={} cache_method_hits={} cache_native_sets={} cache_native_hits={} profile_hits={}",
             workload.name,
             workload.mode.as_str(),
             result.min_ns,
@@ -94,8 +97,18 @@ fn main() -> Result<(), Box<dyn Error>> {
             result.median_ns,
             result.p95_ns,
             result.checksum,
-            result.cache_sets,
-            result.cache_hits,
+            cache.total_sets(),
+            cache.total_hits(),
+            cache.global_read_sets,
+            cache.global_read_hits,
+            cache.host_access_sets,
+            cache.host_access_hits,
+            cache.record_field_sets,
+            cache.record_field_hits,
+            cache.method_dispatch_sets,
+            cache.method_dispatch_hits,
+            cache.native_call_sets,
+            cache.native_call_hits,
             result.profile_hits
         );
     }
@@ -112,8 +125,7 @@ struct BenchResult {
     median_ns: u128,
     p95_ns: u128,
     checksum: u64,
-    cache_sets: usize,
-    cache_hits: usize,
+    cache_stats: BenchCacheStats,
     profile_hits: u64,
 }
 
@@ -388,19 +400,11 @@ impl CompiledWorkload {
         }
     }
 
-    fn cache_set_count(&self) -> usize {
+    fn cache_stats(&self) -> BenchCacheStats {
         match self {
             Self::CacheEnabledFunction { caches, .. }
-            | Self::CacheEnabledHostAccess { caches, .. } => caches.set_count(),
-            _ => 0,
-        }
-    }
-
-    fn cache_hit_count(&self) -> usize {
-        match self {
-            Self::CacheEnabledFunction { caches, .. }
-            | Self::CacheEnabledHostAccess { caches, .. } => caches.hit_count(),
-            _ => 0,
+            | Self::CacheEnabledHostAccess { caches, .. } => caches.stats(),
+            _ => BenchCacheStats::default(),
         }
     }
 
@@ -1025,8 +1029,7 @@ fn summarize(
         median_ns,
         p95_ns,
         checksum,
-        cache_sets: workload.cache_set_count(),
-        cache_hits: workload.cache_hit_count(),
+        cache_stats: workload.cache_stats(),
         profile_hits: workload.profile_hit_count(),
     }
 }
