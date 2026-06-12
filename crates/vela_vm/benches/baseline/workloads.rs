@@ -684,6 +684,11 @@ fn main() {
         source: MAP_MERGE_SOURCE,
     },
     Workload {
+        name: "map_merge_hot_offsets",
+        mode: ExecutionMode::ProfileOnly,
+        source: MAP_MERGE_SOURCE,
+    },
+    Workload {
         name: "map_merge_cache_hot_offsets",
         mode: ExecutionMode::CacheEnabled,
         source: MAP_MERGE_SOURCE,
