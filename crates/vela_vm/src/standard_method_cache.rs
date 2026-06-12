@@ -388,6 +388,7 @@ pub(crate) fn call_standard_cached(
         | StandardMethodInlineCacheTarget::Trim
         | StandardMethodInlineCacheTarget::TrimStart
         | StandardMethodInlineCacheTarget::TrimEnd
+        | StandardMethodInlineCacheTarget::Repeat
             if cache.receiver == StandardMethodReceiver::String =>
         {
             return call_cached_string_transform(receiver, cache.target, args, heap, budget);

@@ -220,6 +220,13 @@ pub(super) fn call_cached_string_transform(
     budget: &mut Option<&mut ExecutionBudget>,
 ) -> Option<VmResult<Value>> {
     let value = string_receiver(receiver, heap.as_deref())?;
+    if target == StandardMethodInlineCacheTarget::Repeat {
+        let payload = match repeat_payload(value, args) {
+            Ok(payload) => payload,
+            Err(error) => return Some(Err(error)),
+        };
+        return Some(make_string(payload, heap, budget, "method repeat"));
+    }
     let (method, operation, transform): (&str, &'static str, fn(&str) -> String) = match target {
         StandardMethodInlineCacheTarget::ToUpper => {
             ("to_upper", "method to_upper", str::to_uppercase)
@@ -385,12 +392,25 @@ fn trim_end_payload(value: &str) -> String {
     value.trim_end().to_owned()
 }
 
+fn repeat_payload(value: &str, args: &[Value]) -> VmResult<String> {
+    crate::runtime_checks::expect_arity("repeat", args, 1)?;
+    let count = char_index_value_with_operation(&args[0], "method repeat")?;
+    value.len().checked_mul(count).ok_or_else(|| {
+        VmError::new(VmErrorKind::TypeMismatch {
+            operation: "method repeat",
+        })
+    })?;
+    Ok(value.repeat(count))
+}
+
 fn char_index_value(value: &Value) -> VmResult<usize> {
+    char_index_value_with_operation(value, "method char_at")
+}
+
+fn char_index_value_with_operation(value: &Value, operation: &'static str) -> VmResult<usize> {
     match value {
         Value::Scalar(ScalarValue::I64(value)) if *value >= 0 => Ok(*value as usize),
-        _ => Err(VmError::new(VmErrorKind::TypeMismatch {
-            operation: "method char_at",
-        })),
+        _ => Err(VmError::new(VmErrorKind::TypeMismatch { operation })),
     }
 }
 
