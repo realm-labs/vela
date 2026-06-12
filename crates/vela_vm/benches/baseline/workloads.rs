@@ -227,6 +227,11 @@ fn main() {
         source: CALLBACK_COLLECTIONS_SOURCE,
     },
     Workload {
+        name: "callback_collections_cache_hot_offsets",
+        mode: ExecutionMode::CacheEnabled,
+        source: CALLBACK_COLLECTIONS_SOURCE,
+    },
+    Workload {
         name: "direct_closure_calls",
         mode: ExecutionMode::Inline,
         source: DIRECT_CLOSURE_CALLS_SOURCE,
