@@ -155,6 +155,174 @@ fn main() {
 }
 
 #[test]
+fn linked_callback_value_method_caches_map_targets() {
+    assert_callback_value_method_cache(
+        r#"
+fn main() {
+    let mapped = {"gold": 4}.map_values(|value| value + 1);
+    return mapped["gold"];
+}
+"#,
+        "map_values",
+        "Map",
+        "map_values",
+        StandardMethodReceiver::Map,
+        CallbackMethodInlineCacheTarget::MapValues,
+        Value::i64(5),
+    );
+    assert_callback_value_method_cache(
+        r#"
+fn main() {
+    let filtered = {"gold": 4, "xp": 6}.filter(|key, value| key == "xp" && value == 6);
+    return filtered["xp"];
+}
+"#,
+        "filter",
+        "Map",
+        "filter",
+        StandardMethodReceiver::Map,
+        CallbackMethodInlineCacheTarget::Filter,
+        Value::i64(6),
+    );
+    assert_callback_value_method_cache(
+        r#"
+fn main() {
+    let found = {"gold": 4, "xp": 6}.find(|key, value| key == "xp" && value == 6);
+    let entry = option::unwrap_or(found, MapEntry { key: "", value: 0 });
+    return entry.value;
+}
+"#,
+        "find",
+        "Map",
+        "find",
+        StandardMethodReceiver::Map,
+        CallbackMethodInlineCacheTarget::Find,
+        Value::i64(6),
+    );
+    assert_callback_value_method_cache(
+        r#"
+fn main() {
+    return {"gold": 4, "xp": 6}.any(|key, value| key == "gold" && value == 4);
+}
+"#,
+        "any",
+        "Map",
+        "any",
+        StandardMethodReceiver::Map,
+        CallbackMethodInlineCacheTarget::Any,
+        Value::Bool(true),
+    );
+    assert_callback_value_method_cache(
+        r#"
+fn main() {
+    return {"gold": 4, "xp": 6}.all(|key, value| key != "" && value >= 4);
+}
+"#,
+        "all",
+        "Map",
+        "all",
+        StandardMethodReceiver::Map,
+        CallbackMethodInlineCacheTarget::All,
+        Value::Bool(true),
+    );
+    assert_callback_value_method_cache(
+        r#"
+fn main() {
+    return {"gold": 4, "xp": 6, "quest": 8}.count(|key, value| key != "gold" && value > 4);
+}
+"#,
+        "count",
+        "Map",
+        "count",
+        StandardMethodReceiver::Map,
+        CallbackMethodInlineCacheTarget::Count,
+        Value::i64(2),
+    );
+}
+
+#[test]
+fn linked_callback_value_method_caches_set_targets() {
+    assert_callback_value_method_cache(
+        r#"
+fn main() {
+    return set::from_array([1, 2, 3]).map(|value| value + 1).values().sum();
+}
+"#,
+        "map",
+        "Set",
+        "map",
+        StandardMethodReceiver::Set,
+        CallbackMethodInlineCacheTarget::Map,
+        Value::i64(9),
+    );
+    assert_callback_value_method_cache(
+        r#"
+fn main() {
+    return set::from_array([1, 2, 3]).filter(|value| value > 1).values().sum();
+}
+"#,
+        "filter",
+        "Set",
+        "filter",
+        StandardMethodReceiver::Set,
+        CallbackMethodInlineCacheTarget::Filter,
+        Value::i64(5),
+    );
+    assert_callback_value_method_cache(
+        r#"
+fn main() {
+    return option::unwrap_or(set::from_array([1, 2, 3]).find(|value| value == 2), 0);
+}
+"#,
+        "find",
+        "Set",
+        "find",
+        StandardMethodReceiver::Set,
+        CallbackMethodInlineCacheTarget::Find,
+        Value::i64(2),
+    );
+    assert_callback_value_method_cache(
+        r#"
+fn main() {
+    return set::from_array([1, 2, 3]).any(|value| value == 3);
+}
+"#,
+        "any",
+        "Set",
+        "any",
+        StandardMethodReceiver::Set,
+        CallbackMethodInlineCacheTarget::Any,
+        Value::Bool(true),
+    );
+    assert_callback_value_method_cache(
+        r#"
+fn main() {
+    return set::from_array([1, 2, 3]).all(|value| value > 0);
+}
+"#,
+        "all",
+        "Set",
+        "all",
+        StandardMethodReceiver::Set,
+        CallbackMethodInlineCacheTarget::All,
+        Value::Bool(true),
+    );
+    assert_callback_value_method_cache(
+        r#"
+fn main() {
+    return set::from_array([1, 2, 3]).count(|value| value > 1);
+}
+"#,
+        "count",
+        "Set",
+        "count",
+        StandardMethodReceiver::Set,
+        CallbackMethodInlineCacheTarget::Count,
+        Value::i64(2),
+    );
+}
+
+#[test]
 fn linked_callback_value_method_caches_option_targets() {
     assert_callback_value_method_cache(
         r#"
@@ -308,13 +476,20 @@ fn assert_callback_value_method_cache(
         receiver,
         target,
     );
-    let warmed_set_count = caches.set_count();
+    let warmed_site_set_count = caches.set_count_for(site);
 
     assert_eq!(
         run_linked_method_cache_program_with_standard_natives(&linked, &caches),
         Ok(expected)
     );
-    assert_eq!(caches.set_count(), warmed_set_count);
+    assert_callback_cache_entry(
+        &caches,
+        site,
+        std_method_id(method_owner, method_name),
+        receiver,
+        target,
+    );
+    assert_eq!(caches.set_count_for(site), warmed_site_set_count);
 }
 
 fn assert_callback_cache_entry(
