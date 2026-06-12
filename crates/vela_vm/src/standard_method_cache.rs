@@ -620,8 +620,8 @@ fn call_readonly_cached(
         StandardMethodInlineCacheTarget::GetOr => {
             return call_cached_map_get_or(receiver, cache.receiver, args, heap);
         }
-        StandardMethodInlineCacheTarget::Has if cache.receiver == StandardMethodReceiver::Map => {
-            return call_cached_map_has(receiver, args, heap);
+        StandardMethodInlineCacheTarget::Has => {
+            return call_cached_collection_has(receiver, cache.receiver, args, heap);
         }
         _ => {}
     }
@@ -923,20 +923,38 @@ fn call_cached_map_get_or(
     )
 }
 
-fn call_cached_map_has(
+fn call_cached_collection_has(
     receiver: &Value,
+    cached: StandardMethodReceiver,
     args: &[Value],
     heap: Option<&HeapExecution<'_>>,
 ) -> Option<VmResult<Value>> {
-    let HeapValue::Map(values) = cached_heap_value(receiver, heap)? else {
-        return None;
-    };
-    Some(
-        crate::runtime_checks::expect_arity("has", args, 1).and_then(|()| {
-            let key = crate::string_methods::string_value(&args[0], heap, "map key")?;
-            Ok(Value::Bool(values.contains_key(key)))
-        }),
-    )
+    match cached {
+        StandardMethodReceiver::Map => {
+            let HeapValue::Map(values) = cached_heap_value(receiver, heap)? else {
+                return None;
+            };
+            Some(
+                crate::runtime_checks::expect_arity("has", args, 1).and_then(|()| {
+                    let key = crate::string_methods::string_value(&args[0], heap, "map key")?;
+                    Ok(Value::Bool(values.contains_key(key)))
+                }),
+            )
+        }
+        StandardMethodReceiver::Set => {
+            let heap = heap?;
+            let HeapValue::Set(values) = cached_heap_value(receiver, Some(heap))? else {
+                return None;
+            };
+            Some(
+                crate::runtime_checks::expect_arity("has", args, 1).and_then(|()| {
+                    set_methods::contains_value(values, &args[0], heap, "method has")
+                        .map(Value::Bool)
+                }),
+            )
+        }
+        _ => None,
+    }
 }
 
 fn cached_heap_value<'a>(

@@ -27,6 +27,21 @@ pub(crate) fn is_set(receiver: &Value, heap: Option<&HeapExecution<'_>>) -> bool
     }
 }
 
+pub(crate) fn contains_value(
+    values: &[Value],
+    candidate: &Value,
+    heap: &HeapExecution<'_>,
+    operation: &'static str,
+) -> VmResult<bool> {
+    let key = SetKey::from_value(candidate, Some(heap), operation)?;
+    for value in values {
+        if key.matches_slot(value, heap, operation)? {
+            return Ok(true);
+        }
+    }
+    Ok(false)
+}
+
 pub(super) fn push_unique(
     values: &mut Vec<Value>,
     value: Value,

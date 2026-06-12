@@ -3,7 +3,7 @@ use crate::heap_values::make_array_value;
 use crate::owned_value::OwnedValue;
 use crate::{ExecutionBudget, HeapExecution, Value, VmError, VmErrorKind, VmResult};
 
-use super::{SetKey, expect_arity, set_values, type_error};
+use super::{contains_value, expect_arity, set_values, type_error};
 
 pub(crate) fn from_array(args: &[OwnedValue]) -> VmResult<OwnedValue> {
     expect_arity("set::from_array", args, 1)?;
@@ -29,7 +29,6 @@ pub(crate) fn has(
     heap: Option<&HeapExecution<'_>>,
 ) -> VmResult<bool> {
     expect_arity("has", args, 1)?;
-    let key = SetKey::from_value(&args[0], heap, "method has")?;
     match receiver {
         Value::HeapRef(reference) => {
             let Some(heap) = heap else {
@@ -38,12 +37,7 @@ pub(crate) fn has(
             let Some(HeapValue::Set(values)) = heap.heap.get(*reference) else {
                 return type_error("method has");
             };
-            for value in values {
-                if key.matches_slot(value, heap, "method has")? {
-                    return Ok(true);
-                }
-            }
-            Ok(false)
+            contains_value(values, &args[0], heap, "method has")
         }
         _ => type_error("method has"),
     }
