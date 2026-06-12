@@ -116,6 +116,7 @@ fn main() -> Result<(), Box<dyn Error>> {
         );
         records.push(cache_delta::Record {
             name: workload.name,
+            mode: workload.mode.as_str(),
             cache_enabled: workload.mode.is_cache_enabled(),
             min_ns: result.min_ns,
             mean_ns: result.mean_ns,

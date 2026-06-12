@@ -61,10 +61,11 @@ runtime options: heap, cache, debugger, JIT
 warmup, repeats, iterations, and input size
 min, mean, median, p95, checksum
 cache_sets, cache_hits, cache-family set/hit counters, profile_hits, and
-cache_delta rows with checksum_match, delta_kind, base_profile_hits, and
-profile_hits_match when the harness emits paired cache-enabled rows; delta_kind
-separates true cache-hit rows from profile-only hot-offset rows, and
-native-call cache-enabled rows count resolved target-cache population
+cache_delta rows with mode, base_mode, checksum_match, delta_kind,
+base_profile_hits, and profile_hits_match when the harness emits paired
+cache-enabled rows; delta_kind separates true cache-hit rows from profile-only
+hot-offset rows, and native-call cache-enabled rows count resolved
+target-cache population
 external runtime versions when used
 ```
 

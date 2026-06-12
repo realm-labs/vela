@@ -2,6 +2,7 @@ use std::collections::BTreeMap;
 
 pub(crate) struct Record {
     pub(crate) name: &'static str,
+    pub(crate) mode: &'static str,
     pub(crate) cache_enabled: bool,
     pub(crate) min_ns: u128,
     pub(crate) mean_ns: u128,
@@ -39,9 +40,11 @@ pub(crate) fn print(records: &[Record]) {
             "no_activity"
         };
         println!(
-            "cache_delta bench={} base={} mean_delta_ns={} min_delta_ns={} median_delta_ns={} p95_delta_ns={} mean_ratio_ppm={} checksum_match={} delta_kind={} cache_hits={} profile_hits={} base_profile_hits={} profile_hits_match={}",
+            "cache_delta bench={} mode={} base={} base_mode={} mean_delta_ns={} min_delta_ns={} median_delta_ns={} p95_delta_ns={} mean_ratio_ppm={} checksum_match={} delta_kind={} cache_hits={} profile_hits={} base_profile_hits={} profile_hits_match={}",
             record.name,
+            record.mode,
             base.name,
+            base.mode,
             signed_delta(record.mean_ns, base.mean_ns),
             signed_delta(record.min_ns, base.min_ns),
             signed_delta(record.median_ns, base.median_ns),
