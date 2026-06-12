@@ -514,6 +514,35 @@ fn main() {
 }
 "#;
 
+pub(crate) const STRING_SPLITTING_SOURCE: &str = r#"
+fn main() {
+    let total = 0;
+    for tick in 0..96 {
+        let parts = "alpha,beta,gamma,delta".split(",");
+        let pair = "count=42".split_once("=").unwrap_or(["", ""]);
+        let lines = "alpha\nbeta\r\ngamma".split_lines();
+        let words = " alpha\tbeta\ngamma ".split_whitespace();
+
+        if parts.len() != 4
+            || parts[2] != "gamma"
+            || pair[0] != "count"
+            || pair[1] != "42"
+            || lines.len() != 3
+            || words.join("|") != "alpha|beta|gamma"
+        {
+            return 0;
+        }
+
+        total += parts.join("").len()
+            + pair.join("").len()
+            + lines.join("").len()
+            + words.join("").len()
+            + tick - tick;
+    }
+    return total;
+}
+"#;
+
 pub(crate) const BYTES_METHODS_SOURCE: &str = r#"
 fn main() {
     let total = 0;
