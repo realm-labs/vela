@@ -620,6 +620,9 @@ fn call_readonly_cached(
         StandardMethodInlineCacheTarget::GetOr => {
             return call_cached_map_get_or(receiver, cache.receiver, args, heap);
         }
+        StandardMethodInlineCacheTarget::Has if cache.receiver == StandardMethodReceiver::Map => {
+            return call_cached_map_has(receiver, args, heap);
+        }
         _ => {}
     }
     if !receiver_matches_cache(receiver, cache.receiver, heap) {
@@ -916,6 +919,22 @@ fn call_cached_map_get_or(
             Ok(values
                 .get(key)
                 .map_or_else(|| args[1], stored_runtime_value))
+        }),
+    )
+}
+
+fn call_cached_map_has(
+    receiver: &Value,
+    args: &[Value],
+    heap: Option<&HeapExecution<'_>>,
+) -> Option<VmResult<Value>> {
+    let HeapValue::Map(values) = cached_heap_value(receiver, heap)? else {
+        return None;
+    };
+    Some(
+        crate::runtime_checks::expect_arity("has", args, 1).and_then(|()| {
+            let key = crate::string_methods::string_value(&args[0], heap, "map key")?;
+            Ok(Value::Bool(values.contains_key(key)))
         }),
     )
 }
