@@ -344,6 +344,7 @@ pub enum StandardMethodInlineCacheTarget {
     IsSuperset,
     IsDisjoint,
     Get,
+    GetOr,
     ReadU32Le,
     ReadU32Be,
     IsSome,

@@ -213,6 +213,41 @@ fn linked_standard_value_method_caches_result_unwrap_or_target() {
     assert_eq!(caches.set_count(), 2);
 }
 
+#[test]
+fn linked_standard_value_method_caches_map_get_or_target() {
+    let (program, site, dispatch, method_id) = linked_map_get_or_cache_program();
+    let caches = RecordingMethodCaches::new(1);
+
+    assert_eq!(
+        run_linked_method_cache_program(&program, &caches),
+        Ok(RuntimeValue::i64(8))
+    );
+    let entry = caches
+        .entry(site)
+        .expect("standard map get_or cache should populate");
+    assert_eq!(entry.dispatch, dispatch);
+    let MethodInlineCacheTarget::Value {
+        method_id: cached_method,
+        standard_method: Some(standard_method),
+    } = entry.target
+    else {
+        panic!("standard map get_or cache should store value target");
+    };
+    assert_eq!(cached_method, method_id);
+    assert_eq!(standard_method.receiver, StandardMethodReceiver::Map);
+    assert_eq!(
+        standard_method.target,
+        StandardMethodInlineCacheTarget::GetOr
+    );
+    assert_eq!(caches.set_count(), 2);
+
+    assert_eq!(
+        run_linked_method_cache_program(&program, &caches),
+        Ok(RuntimeValue::i64(8))
+    );
+    assert_eq!(caches.set_count(), 2);
+}
+
 fn linked_standard_len_cache_program() -> (
     vela_bytecode::LinkedProgram,
     CacheSiteId,
@@ -249,6 +284,71 @@ fn linked_standard_len_cache_program() -> (
     ));
     code.push_instruction(vela_bytecode::linked::Instruction::new(
         vela_bytecode::linked::InstructionKind::Return { src: Register(1) },
+    ));
+    let function = program.push_function(code);
+    program.set_entry_point(main_name, function);
+    (program, site, dispatch, method_id)
+}
+
+fn linked_map_get_or_cache_program() -> (
+    vela_bytecode::LinkedProgram,
+    CacheSiteId,
+    vela_bytecode::MethodDispatchHandle,
+    vela_def::MethodId,
+) {
+    let method_id = vela_stdlib::std_method_id("Map", "get_or").expect("Map::get_or method id");
+    let mut program = vela_bytecode::LinkedProgram::new();
+    let main_name = program.intern_debug_name("main");
+    let method_name = program.intern_debug_name("get_or");
+    let dispatch = program.push_method_dispatch(vela_bytecode::LinkedMethodDispatch::new(
+        method_name,
+        vela_bytecode::LinkedMethodDispatchKind::Value { method_id },
+    ));
+
+    let mut code = vela_bytecode::LinkedCodeObject::new(main_name, 5);
+    let key = code.push_constant(Constant::String("xp".into()));
+    let value = code.push_constant(Constant::Scalar(vela_common::ScalarValue::I64(8)));
+    let fallback = code.push_constant(Constant::Scalar(vela_common::ScalarValue::I64(99)));
+    code.push_instruction(vela_bytecode::linked::Instruction::new(
+        vela_bytecode::linked::InstructionKind::LoadConst {
+            dst: Register(0),
+            constant: value,
+        },
+    ));
+    code.push_instruction(vela_bytecode::linked::Instruction::new(
+        vela_bytecode::linked::InstructionKind::MakeMap {
+            dst: Register(1),
+            entries: vec![(key, Register(0))],
+        },
+    ));
+    code.push_instruction(vela_bytecode::linked::Instruction::new(
+        vela_bytecode::linked::InstructionKind::LoadConst {
+            dst: Register(2),
+            constant: key,
+        },
+    ));
+    code.push_instruction(vela_bytecode::linked::Instruction::new(
+        vela_bytecode::linked::InstructionKind::LoadConst {
+            dst: Register(3),
+            constant: fallback,
+        },
+    ));
+    let site = code.push_cache_site(CacheSiteKind::MethodCall, InstructionOffset(4));
+    code.push_instruction(vela_bytecode::linked::Instruction::new(
+        vela_bytecode::linked::InstructionKind::CallMethod {
+            dst: Register(4),
+            receiver: Register(1),
+            dispatch,
+            debug_name: method_name,
+            cache_site: Some(site),
+            args: vec![
+                vela_bytecode::CallArgument::Register(Register(2)),
+                vela_bytecode::CallArgument::Register(Register(3)),
+            ],
+        },
+    ));
+    code.push_instruction(vela_bytecode::linked::Instruction::new(
+        vela_bytecode::linked::InstructionKind::Return { src: Register(4) },
     ));
     let function = program.push_function(code);
     program.set_entry_point(main_name, function);

@@ -630,6 +630,9 @@ pub(crate) fn readonly_cache_entry(
         (StandardMethodReceiver::Map, id) if id == ids.map_has => {
             StandardMethodInlineCacheTarget::Has
         }
+        (StandardMethodReceiver::Map, id) if id == ids.map_get_or => {
+            StandardMethodInlineCacheTarget::GetOr
+        }
         (StandardMethodReceiver::Set, id) if id == ids.set_len => {
             StandardMethodInlineCacheTarget::Len
         }
@@ -702,6 +705,9 @@ pub(crate) fn call_readonly_cached(
             StandardMethodReceiver::Map | StandardMethodReceiver::Set,
             StandardMethodInlineCacheTarget::Has,
         ) => has(receiver, args, heap).map(Value::Bool),
+        (StandardMethodReceiver::Map, StandardMethodInlineCacheTarget::GetOr) => {
+            map_methods::get_or(receiver, args, heap)
+        }
         (StandardMethodReceiver::Set, StandardMethodInlineCacheTarget::IsSubset) => {
             set_methods::is_subset(receiver, args, heap).map(Value::Bool)
         }
