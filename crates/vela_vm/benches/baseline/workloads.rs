@@ -1,7 +1,8 @@
 use crate::workload_sources::{
-    ARRAY_DISTINCT_SOURCE, ARRAY_EXTEND_SOURCE, ARRAY_EXTREMA_SOURCE, ARRAY_JOIN_SOURCE,
-    ARRAY_LOOKUP_SOURCE, ARRAY_REVERSE_SOURCE, ARRAY_SLICE_SOURCE, ARRAY_SORT_SOURCE,
-    CALLBACK_COLLECTIONS_SOURCE, DIRECT_CLOSURE_CALLS_SOURCE, MAP_EXTEND_SOURCE, MAP_LOOKUP_SOURCE,
+    ARRAY_DISTINCT_SOURCE, ARRAY_EXTEND_SOURCE, ARRAY_EXTREMA_SOURCE, ARRAY_GROUP_BY_SOURCE,
+    ARRAY_JOIN_SOURCE, ARRAY_LOOKUP_SOURCE, ARRAY_REVERSE_SOURCE, ARRAY_SLICE_SOURCE,
+    ARRAY_SORT_SOURCE, CALLBACK_COLLECTIONS_SOURCE, DIRECT_CLOSURE_CALLS_SOURCE,
+    MAP_CALLBACKS_SOURCE, MAP_EXTEND_SOURCE, MAP_FIND_ENTRIES_SOURCE, MAP_LOOKUP_SOURCE,
     MAP_MERGE_SOURCE, METHOD_DISPATCH_SOURCE, NATIVE_CALL_WIDE_ARGS_SOURCE,
     OPTION_RESULT_HELPERS_SOURCE, RECORD_TRIPLETS_SOURCE, SCRIPT_CALL_SMALL_ARGS_SOURCE,
     SET_COMBINATION_SOURCE, SET_LOOKUP_SOURCE, STDLIB_COLLECTIONS_SOURCE,
@@ -190,73 +191,32 @@ fn main() {
     Workload {
         name: "managed_heap_map_callbacks",
         mode: ExecutionMode::ManagedHeap,
-        source: r#"
-fn main() {
-    let total = 0;
-    for tick in 0..48 {
-        let rewards = {
-            "r01": 1, "r02": 2, "r03": 3, "r04": 4,
-            "r05": 5, "r06": 6, "r07": 7, "r08": 8,
-            "r09": 9, "r10": 10, "r11": 11, "r12": 12,
-        };
-        let keyed = rewards.map_values(|key, value| key.len() + value + tick - tick);
-        let filtered = keyed.filter(|key, value| key.starts_with("r") && value % 3 == 0);
-        if filtered.len() != 4 || filtered.get_or("r12", 0) != 15 {
-            return 0;
-        }
-        total += keyed.values().sum() + filtered.values().sum();
-    }
-    return total;
-}
-"#,
+        source: MAP_CALLBACKS_SOURCE,
+    },
+    Workload {
+        name: "map_callbacks_cache_hot_offsets",
+        mode: ExecutionMode::CacheEnabled,
+        source: MAP_CALLBACKS_SOURCE,
     },
     Workload {
         name: "managed_heap_map_find_entries",
         mode: ExecutionMode::ManagedHeap,
-        source: r#"
-fn main() {
-    let total = 0;
-    for tick in 0..72 {
-        let rewards = {
-            "r01": 1, "r02": 2, "r03": 3, "r04": 4,
-            "r05": 5, "r06": 6, "r07": 7, "r08": 8,
-            "r09": 9, "r10": 10, "r11": 11, "r12": 12,
-        };
-        let found = rewards.find(|key, value| key == "r08" && value == 8 + tick - tick);
-        let missing = rewards.find(|key, value| key == "missing" && value > 0);
-        let entry = option::unwrap_or(found, MapEntry { key: "", value: 0 });
-        if entry.key != "r08" || entry.value != 8 || !option::is_none(missing) {
-            return 0;
-        }
-        total += entry.key.len() + entry.value;
-    }
-    return total;
-}
-"#,
+        source: MAP_FIND_ENTRIES_SOURCE,
+    },
+    Workload {
+        name: "map_find_entries_cache_hot_offsets",
+        mode: ExecutionMode::CacheEnabled,
+        source: MAP_FIND_ENTRIES_SOURCE,
     },
     Workload {
         name: "managed_heap_array_group_by",
         mode: ExecutionMode::ManagedHeap,
-        source: r#"
-fn main() {
-    let total = 0;
-    for tick in 0..64 {
-        let names = ["boar", "bat", "wolf", "wyrm", "bear", "wasp", "boss", "wisp"];
-        let groups = names.group_by(|name| if name.starts_with("w") { "w" } else { "b" });
-        if groups.len() != 2
-            || groups["w"].len() != 4
-            || groups["b"].len() != 4
-            || groups["w"][0] != "wolf"
-            || groups["w"][3] != "wisp"
-            || groups["b"][1] != "bat"
-        {
-            return 0;
-        }
-        total += groups["w"].join("").len() + groups["b"].join("").len() + tick - tick;
-    }
-    return total;
-}
-"#,
+        source: ARRAY_GROUP_BY_SOURCE,
+    },
+    Workload {
+        name: "array_group_by_cache_hot_offsets",
+        mode: ExecutionMode::CacheEnabled,
+        source: ARRAY_GROUP_BY_SOURCE,
     },
     Workload {
         name: "managed_heap_option_result_helpers",
