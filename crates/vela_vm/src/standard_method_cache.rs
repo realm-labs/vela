@@ -206,6 +206,21 @@ pub(crate) fn standard_cache_entry(
         (StandardMethodReceiver::Set, id) if id == ids.set_has => {
             StandardMethodInlineCacheTarget::Has
         }
+        (StandardMethodReceiver::Set, id) if id == ids.set_values => {
+            StandardMethodInlineCacheTarget::Values
+        }
+        (StandardMethodReceiver::Set, id) if id == ids.set_union => {
+            StandardMethodInlineCacheTarget::Union
+        }
+        (StandardMethodReceiver::Set, id) if id == ids.set_intersection => {
+            StandardMethodInlineCacheTarget::Intersection
+        }
+        (StandardMethodReceiver::Set, id) if id == ids.set_difference => {
+            StandardMethodInlineCacheTarget::Difference
+        }
+        (StandardMethodReceiver::Set, id) if id == ids.set_symmetric_difference => {
+            StandardMethodInlineCacheTarget::SymmetricDifference
+        }
         (StandardMethodReceiver::Set, id) if id == ids.set_is_subset => {
             StandardMethodInlineCacheTarget::IsSubset
         }
@@ -359,6 +374,21 @@ pub(crate) fn call_standard_cached(
         }
         (StandardMethodReceiver::Map, StandardMethodInlineCacheTarget::Merge) => {
             map_methods::merge(receiver, args, heap, budget)
+        }
+        (StandardMethodReceiver::Set, StandardMethodInlineCacheTarget::Values) => {
+            set_methods::values(receiver, args, heap, budget)
+        }
+        (StandardMethodReceiver::Set, StandardMethodInlineCacheTarget::Union) => {
+            set_methods::union(receiver, args, heap, budget)
+        }
+        (StandardMethodReceiver::Set, StandardMethodInlineCacheTarget::Intersection) => {
+            set_methods::intersection(receiver, args, heap, budget)
+        }
+        (StandardMethodReceiver::Set, StandardMethodInlineCacheTarget::Difference) => {
+            set_methods::difference(receiver, args, heap, budget)
+        }
+        (StandardMethodReceiver::Set, StandardMethodInlineCacheTarget::SymmetricDifference) => {
+            set_methods::symmetric_difference(receiver, args, heap, budget)
         }
         _ => return None,
     };

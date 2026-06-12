@@ -53,6 +53,7 @@ mod iteration;
 mod linked_array_standard_method_cache;
 mod linked_execution_core;
 mod linked_map_standard_method_cache;
+mod linked_set_standard_method_cache;
 mod linked_standard_method_cache;
 mod linked_standard_method_cache_fixtures;
 mod linked_standard_method_cache_support;
