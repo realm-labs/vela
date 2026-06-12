@@ -84,6 +84,16 @@ pub(super) fn call_cached_array_materialization(
             };
             Some(make_array(payload, heap, budget, "method slice"))
         }
+        StandardMethodInlineCacheTarget::Reverse => {
+            let payload = {
+                let slots = array_slots(receiver, heap.as_deref(), "method reverse")?;
+                match array_reverse_payload(slots, args) {
+                    Ok(payload) => payload,
+                    Err(error) => return Some(Err(error)),
+                }
+            };
+            Some(make_array(payload, heap, budget, "method reverse"))
+        }
         _ => None,
     }
 }
@@ -397,6 +407,11 @@ fn array_slice_payload(values: &[Value], args: &[Value]) -> VmResult<Vec<Value>>
         .iter()
         .map(stored_runtime_value)
         .collect())
+}
+
+fn array_reverse_payload(values: &[Value], args: &[Value]) -> VmResult<Vec<Value>> {
+    crate::runtime_checks::expect_arity("reverse", args, 0)?;
+    Ok(values.iter().rev().map(stored_runtime_value).collect())
 }
 
 fn array_index_value(value: &Value, operation: &'static str) -> VmResult<usize> {
