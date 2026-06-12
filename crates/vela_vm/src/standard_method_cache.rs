@@ -4,8 +4,8 @@ mod readonly_cache;
 use materializing_cache::{
     call_cached_array_lookup_option, call_cached_array_materialization,
     call_cached_bytes_materialization, call_cached_map_get_option, call_cached_map_materialization,
-    call_cached_string_array, call_cached_string_option, call_cached_string_parse_option,
-    call_cached_string_transform,
+    call_cached_set_materialization, call_cached_string_array, call_cached_string_option,
+    call_cached_string_parse_option, call_cached_string_transform,
 };
 use readonly_cache::{
     call_cached_array_contains, call_cached_bytes_accessor, call_cached_collection_has,
@@ -369,6 +369,15 @@ pub(crate) fn call_standard_cached(
             if cache.receiver == StandardMethodReceiver::Map =>
         {
             return call_cached_map_materialization(receiver, cache.target, args, heap, budget);
+        }
+        StandardMethodInlineCacheTarget::Values
+        | StandardMethodInlineCacheTarget::Union
+        | StandardMethodInlineCacheTarget::Intersection
+        | StandardMethodInlineCacheTarget::Difference
+        | StandardMethodInlineCacheTarget::SymmetricDifference
+            if cache.receiver == StandardMethodReceiver::Set =>
+        {
+            return call_cached_set_materialization(receiver, cache.target, args, heap, budget);
         }
         StandardMethodInlineCacheTarget::ParseInt
         | StandardMethodInlineCacheTarget::ParseFloat
