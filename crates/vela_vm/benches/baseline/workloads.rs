@@ -9,6 +9,7 @@ pub(crate) enum ExecutionMode {
     Inline,
     CacheEnabled,
     ScriptProgram,
+    ScriptProgramCacheEnabled,
     ManagedHeap,
     HostAccess,
     HostAccessCacheEnabled,
@@ -136,6 +137,25 @@ fn main() {
 }
 "#;
 
+const SCRIPT_CALL_SMALL_ARGS_SOURCE: &str = r#"
+fn add_one(value) {
+    return value + 1;
+}
+
+fn mix_pair(left, right) {
+    return left * 3 + right;
+}
+
+fn main() {
+    let total = 0;
+    for tick in 0..240 {
+        total += add_one(tick);
+        total += mix_pair(tick, total % 17);
+    }
+    return total;
+}
+"#;
+
 pub(crate) const WORKLOADS: &[Workload] = &[
     Workload {
         name: "scalar_branch_loop",
@@ -206,24 +226,12 @@ fn main() {
     Workload {
         name: "script_call_small_args",
         mode: ExecutionMode::ScriptProgram,
-        source: r#"
-fn add_one(value) {
-    return value + 1;
-}
-
-fn mix_pair(left, right) {
-    return left * 3 + right;
-}
-
-fn main() {
-    let total = 0;
-    for tick in 0..240 {
-        total += add_one(tick);
-        total += mix_pair(tick, total % 17);
-    }
-    return total;
-}
-"#,
+        source: SCRIPT_CALL_SMALL_ARGS_SOURCE,
+    },
+    Workload {
+        name: "script_call_small_args_cache_hot_offsets",
+        mode: ExecutionMode::ScriptProgramCacheEnabled,
+        source: SCRIPT_CALL_SMALL_ARGS_SOURCE,
     },
     Workload {
         name: "script_call_wide_args",

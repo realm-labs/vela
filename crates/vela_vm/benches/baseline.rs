@@ -257,6 +257,10 @@ fn run_once(vm: &Vm, workload: &CompiledWorkload) -> Result<OwnedValue, Box<dyn 
         | CompiledWorkload::Function {
             mode: ExecutionMode::ScriptProgram,
             ..
+        }
+        | CompiledWorkload::Function {
+            mode: ExecutionMode::ScriptProgramCacheEnabled,
+            ..
         } => unreachable!("host workloads compile to programs"),
         CompiledWorkload::HostAccess { program } => run_host_access(vm, program, None, None),
         CompiledWorkload::CacheEnabledHostAccess {
@@ -335,7 +339,7 @@ fn compile_workload(workload: &Workload, vm: &Vm) -> Result<CompiledWorkload, St
                 program: Box::new(link_single_function_for_vm(vm, code)?),
             })
         }
-        ExecutionMode::ScriptProgram => {
+        ExecutionMode::ScriptProgram | ExecutionMode::ScriptProgramCacheEnabled => {
             let registry = bench_compile_registry()?;
             let program = compile_program_source_with_registry(
                 SourceId::new(1),
@@ -343,6 +347,16 @@ fn compile_workload(workload: &Workload, vm: &Vm) -> Result<CompiledWorkload, St
                 registry.compile_view(),
             )
             .map_err(|error| format!("{error:?}"))?;
+            if matches!(workload.mode, ExecutionMode::ScriptProgramCacheEnabled) {
+                let image = ProgramImage::from_program(&program);
+                let mut linked = link_program_for_vm(vm, &program)?;
+                rebase_linked_cache_sites(&mut linked, &image);
+                return Ok(CompiledWorkload::CacheEnabledFunction {
+                    caches: BenchInlineCaches::new(image.cache_site_count()),
+                    profiler: BenchBytecodeProfiler::default(),
+                    program: Box::new(linked),
+                });
+            }
             Ok(CompiledWorkload::ScriptProgram {
                 program: Box::new(link_program_for_vm(vm, &program)?),
             })
@@ -1117,6 +1131,7 @@ impl ExecutionMode {
             Self::Inline => "inline",
             Self::CacheEnabled => "cache_enabled",
             Self::ScriptProgram => "script_program",
+            Self::ScriptProgramCacheEnabled => "script_program_cache_enabled",
             Self::ManagedHeap => "managed_heap",
             Self::HostAccess => "host_access",
             Self::HostAccessCacheEnabled => "host_access_cache_enabled",
