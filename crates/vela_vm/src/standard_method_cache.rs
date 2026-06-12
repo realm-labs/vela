@@ -155,6 +155,9 @@ pub(crate) fn standard_cache_entry(
         (StandardMethodReceiver::Array, id) if id == ids.array_reverse => {
             StandardMethodInlineCacheTarget::Reverse
         }
+        (StandardMethodReceiver::Array, id) if id == ids.array_distinct => {
+            StandardMethodInlineCacheTarget::Distinct
+        }
         (StandardMethodReceiver::Map, id) if id == ids.map_len => {
             StandardMethodInlineCacheTarget::Len
         }
@@ -302,6 +305,9 @@ pub(crate) fn call_standard_cached(
         }
         (StandardMethodReceiver::Array, StandardMethodInlineCacheTarget::Reverse) => {
             array_methods::reverse(receiver, args, heap, budget)
+        }
+        (StandardMethodReceiver::Array, StandardMethodInlineCacheTarget::Distinct) => {
+            array_methods::distinct(receiver, args, heap, budget)
         }
         (StandardMethodReceiver::Map, StandardMethodInlineCacheTarget::Get) => {
             map_methods::get(receiver, args, heap, budget)

@@ -249,6 +249,10 @@ pub(super) fn linked_array_reverse_cache_program() -> LinkedMethodCacheFixture {
     linked_array_i64_call_cache_program("reverse", &[2, 4, 6], 3, &[])
 }
 
+pub(super) fn linked_array_distinct_cache_program() -> LinkedMethodCacheFixture {
+    linked_array_i64_call_cache_program("distinct", &[2, 4, 2], 3, &[])
+}
+
 fn linked_array_i64_call_cache_program(
     method: &str,
     values: &[i64],
