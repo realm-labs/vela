@@ -239,6 +239,11 @@ pub(crate) const COLLECTION_FAMILY_WORKLOADS: &[Workload] = &[
         source: ARRAY_MUTATION_SOURCE,
     },
     Workload {
+        name: "array_mutation_hot_offsets",
+        mode: ExecutionMode::ProfileOnly,
+        source: ARRAY_MUTATION_SOURCE,
+    },
+    Workload {
         name: "array_mutation_cache_hot_offsets",
         mode: ExecutionMode::CacheEnabled,
         source: ARRAY_MUTATION_SOURCE,
