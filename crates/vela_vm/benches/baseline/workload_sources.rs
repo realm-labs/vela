@@ -704,6 +704,45 @@ fn main() {
 }
 "#;
 
+pub(crate) const ARRAY_MUTATION_SOURCE: &str = r#"
+fn main() {
+    let total = 0;
+    for tick in 0..96 {
+        let tags = ["daily", "quest"];
+        tags.push("raid");
+        tags.insert(1, "bonus");
+        let removed = tags.remove_at(2);
+        let popped = tags.pop();
+        tags.extend(["event", "boss"]);
+        let label = tags.join("|");
+        tags.clear();
+
+        let scores = [1, 2, 3];
+        scores.push(5);
+        scores.insert(1, 8);
+        let removed_score = scores.remove_at(2);
+        let popped_score = scores.pop();
+        scores.extend([13, 21]);
+        let score_total = scores.sum();
+        scores.clear();
+
+        if option::unwrap_or(removed, "") != "quest"
+            || option::unwrap_or(popped, "") != "raid"
+            || label != "daily|bonus|event|boss"
+            || !tags.is_empty()
+            || option::unwrap_or(removed_score, 0) != 2
+            || option::unwrap_or(popped_score, 0) != 5
+            || score_total != 46
+            || !scores.is_empty()
+        {
+            return 0;
+        }
+        total += label.len() + score_total + tags.len() + scores.len() + tick - tick;
+    }
+    return total;
+}
+"#;
+
 pub(crate) const ARRAY_EXTREMA_SOURCE: &str = r#"
 fn main() {
     let total = 0;
