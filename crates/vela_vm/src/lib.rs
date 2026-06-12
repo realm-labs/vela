@@ -392,6 +392,8 @@ pub enum StandardMethodInlineCacheTarget {
     IsDisjoint,
     Get,
     GetOr,
+    Set,
+    Remove,
     Keys,
     Values,
     Entries,
