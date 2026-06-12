@@ -9,24 +9,27 @@ use vela_bytecode::compiler::{
     compile_function_source_with_registry, compile_program_source_with_options_and_registry,
     compile_program_source_with_registry,
 };
-use vela_bytecode::{LinkedProgram, Linker, UnlinkedCodeObject, UnlinkedProgram};
+use vela_bytecode::{LinkedProgram, Linker, ProgramImage, UnlinkedCodeObject, UnlinkedProgram};
 use vela_common::{HostMethodId, HostObjectId, HostTypeId, SourceId};
 use vela_def::{DefPath, FieldId, FunctionId, TypeId};
 use vela_host::access::HostAccess;
 use vela_host::mock::MockStateAdapter;
 use vela_host::path::{HostPath, HostRef};
 use vela_host::value::HostValue;
-use vela_vm::HostExecution;
 use vela_vm::Vm;
 use vela_vm::budget::ExecutionBudget;
 use vela_vm::heap::{GcBudget, GcConfig, HeapValue, ScriptHeap};
 use vela_vm::heap_execution::HeapExecution;
 use vela_vm::owned_value::OwnedValue;
 use vela_vm::value::Value;
+use vela_vm::{HostExecution, LinkedProgramHostBudgetCall};
 
+#[path = "baseline/cache_support.rs"]
+mod cache_support;
 #[path = "baseline/workloads.rs"]
 mod workloads;
 
+use cache_support::{BenchBytecodeProfiler, BenchInlineCaches, rebase_linked_cache_sites};
 use workloads::{ExecutionMode, WORKLOADS, Workload};
 
 const QUICK_REPEATS: usize = 2;
@@ -77,14 +80,16 @@ fn main() -> Result<(), Box<dyn Error>> {
     for workload in WORKLOADS {
         let result = run_workload(workload, params)?;
         println!(
-            "bench={} mode={} min_ns={} mean_ns={} median_ns={} p95_ns={} checksum={}",
+            "bench={} mode={} min_ns={} mean_ns={} median_ns={} p95_ns={} checksum={} cache_sets={} profile_hits={}",
             workload.name,
             workload.mode.as_str(),
             result.min_ns,
             result.mean_ns,
             result.median_ns,
             result.p95_ns,
-            result.checksum
+            result.checksum,
+            result.cache_sets,
+            result.profile_hits
         );
     }
 
@@ -121,6 +126,8 @@ struct BenchResult {
     median_ns: u128,
     p95_ns: u128,
     checksum: u64,
+    cache_sets: usize,
+    profile_hits: u64,
 }
 
 fn run_workload(workload: &Workload, params: BenchParams) -> Result<BenchResult, Box<dyn Error>> {
@@ -132,6 +139,7 @@ fn run_workload(workload: &Workload, params: BenchParams) -> Result<BenchResult,
         let value = run_once(&vm, &compiled)?;
         black_box(value);
     }
+    compiled.reset_measurement_stats();
 
     let mut samples = Vec::with_capacity(params.repeats);
     let mut checksum = 0;
@@ -145,7 +153,7 @@ fn run_workload(workload: &Workload, params: BenchParams) -> Result<BenchResult,
         samples.push(started.elapsed());
     }
 
-    Ok(summarize(samples, checksum))
+    Ok(summarize(samples, checksum, &compiled))
 }
 
 fn register_bench_natives(vm: &mut Vm) {
@@ -170,6 +178,11 @@ enum CompiledWorkload {
         mode: ExecutionMode,
         program: Box<LinkedProgram>,
     },
+    CacheEnabledFunction {
+        program: Box<LinkedProgram>,
+        caches: BenchInlineCaches,
+        profiler: BenchBytecodeProfiler,
+    },
     ScriptProgram {
         program: Box<LinkedProgram>,
     },
@@ -193,6 +206,15 @@ fn run_once(vm: &Vm, workload: &CompiledWorkload) -> Result<OwnedValue, Box<dyn 
             mode: ExecutionMode::Inline,
             program,
         } => Ok(vm.run_linked_program(program, "main", &[])?),
+        CompiledWorkload::Function {
+            mode: ExecutionMode::CacheEnabled,
+            ..
+        } => unreachable!("cache-enabled workloads compile to cache-enabled functions"),
+        CompiledWorkload::CacheEnabledFunction {
+            program,
+            caches,
+            profiler,
+        } => run_cache_enabled_function(vm, program, caches, profiler),
         CompiledWorkload::ScriptProgram { program } => {
             Ok(vm.run_linked_program(program, "main", &[])?)
         }
@@ -300,7 +322,7 @@ fn compile_workload(workload: &Workload, vm: &Vm) -> Result<CompiledWorkload, St
                 program: Box::new(link_program_for_vm(vm, &program)?),
             })
         }
-        ExecutionMode::Inline => {
+        ExecutionMode::Inline | ExecutionMode::CacheEnabled => {
             let registry = bench_compile_registry()?;
             let code = compile_function_source_with_registry(
                 SourceId::new(1),
@@ -309,12 +331,74 @@ fn compile_workload(workload: &Workload, vm: &Vm) -> Result<CompiledWorkload, St
                 registry.compile_view(),
             )
             .map_err(|error| format!("{error:?}"))?;
+            if matches!(workload.mode, ExecutionMode::CacheEnabled) {
+                let (program, cache_site_count) = link_single_function_image_for_vm(vm, code)?;
+                return Ok(CompiledWorkload::CacheEnabledFunction {
+                    caches: BenchInlineCaches::new(cache_site_count),
+                    profiler: BenchBytecodeProfiler::default(),
+                    program: Box::new(program),
+                });
+            }
+            let program = Box::new(link_single_function_for_vm(vm, code)?);
             Ok(CompiledWorkload::Function {
                 mode: workload.mode,
-                program: Box::new(link_single_function_for_vm(vm, code)?),
+                program,
             })
         }
     }
+}
+
+impl CompiledWorkload {
+    fn reset_measurement_stats(&self) {
+        if let Self::CacheEnabledFunction {
+            caches, profiler, ..
+        } = self
+        {
+            caches.reset_set_count();
+            profiler.reset();
+        }
+    }
+
+    fn cache_set_count(&self) -> usize {
+        match self {
+            Self::CacheEnabledFunction { caches, .. } => caches.set_count(),
+            _ => 0,
+        }
+    }
+
+    fn profile_hit_count(&self) -> u64 {
+        match self {
+            Self::CacheEnabledFunction { profiler, .. } => profiler.hit_count(),
+            _ => 0,
+        }
+    }
+}
+
+fn run_cache_enabled_function(
+    vm: &Vm,
+    program: &LinkedProgram,
+    caches: &BenchInlineCaches,
+    profiler: &BenchBytecodeProfiler,
+) -> Result<OwnedValue, Box<dyn Error>> {
+    let mut adapter = MockStateAdapter::default();
+    let mut access = HostAccess;
+    let mut host = HostExecution {
+        adapter: &mut adapter,
+        access: &mut access,
+        script_globals: None,
+    };
+    let mut budget = ExecutionBudget::unbounded();
+    Ok(
+        vm.run_linked_program_host_budget_call(LinkedProgramHostBudgetCall {
+            program,
+            entry: "main",
+            args: &[],
+            host: &mut host,
+            budget: &mut budget,
+            inline_caches: Some(caches),
+            bytecode_profiler: Some(profiler),
+        })?,
+    )
 }
 
 fn bench_compile_registry() -> Result<vela_registry::DefinitionRegistry, String> {
@@ -354,6 +438,18 @@ fn link_single_function_for_vm(vm: &Vm, code: UnlinkedCodeObject) -> Result<Link
     let mut program = UnlinkedProgram::new();
     program.insert_function(code);
     link_program_for_vm(vm, &program)
+}
+
+fn link_single_function_image_for_vm(
+    vm: &Vm,
+    code: UnlinkedCodeObject,
+) -> Result<(LinkedProgram, usize), String> {
+    let mut program = UnlinkedProgram::new();
+    program.insert_function(code);
+    let image = ProgramImage::from_program(&program);
+    let mut linked = link_program_for_vm(vm, &program)?;
+    rebase_linked_cache_sites(&mut linked, &image);
+    Ok((linked, image.cache_site_count()))
 }
 
 fn link_program_for_vm(vm: &Vm, program: &UnlinkedProgram) -> Result<LinkedProgram, String> {
@@ -864,7 +960,11 @@ fn host_bool(adapter: &MockStateAdapter, path: HostPath) -> Result<bool, Box<dyn
     }
 }
 
-fn summarize(mut samples: Vec<Duration>, checksum: u64) -> BenchResult {
+fn summarize(
+    mut samples: Vec<Duration>,
+    checksum: u64,
+    workload: &CompiledWorkload,
+) -> BenchResult {
     samples.sort_unstable();
     let min_ns = samples.first().map_or(0, Duration::as_nanos);
     let median_ns = percentile_ns(&samples, 50);
@@ -880,6 +980,8 @@ fn summarize(mut samples: Vec<Duration>, checksum: u64) -> BenchResult {
         median_ns,
         p95_ns,
         checksum,
+        cache_sets: workload.cache_set_count(),
+        profile_hits: workload.profile_hit_count(),
     }
 }
 
@@ -977,6 +1079,7 @@ impl ExecutionMode {
     fn as_str(self) -> &'static str {
         match self {
             Self::Inline => "inline",
+            Self::CacheEnabled => "cache_enabled",
             Self::ScriptProgram => "script_program",
             Self::ManagedHeap => "managed_heap",
             Self::HostAccess => "host_access",

@@ -7,6 +7,7 @@ pub(crate) struct Workload {
 #[derive(Clone, Copy)]
 pub(crate) enum ExecutionMode {
     Inline,
+    CacheEnabled,
     ScriptProgram,
     ManagedHeap,
     HostAccess,
@@ -228,6 +229,32 @@ fn main() {
         name: "direct_closure_calls",
         mode: ExecutionMode::Inline,
         source: DIRECT_CLOSURE_CALLS_SOURCE,
+    },
+    Workload {
+        name: "method_cache_hot_offsets",
+        mode: ExecutionMode::CacheEnabled,
+        source: r#"
+fn main() {
+    let total = 0;
+    for tick in 0..96 {
+        let tags = ["daily", "quest", "raid", "bonus", "event", "boss"];
+        let scores = {
+            "daily": 3,
+            "raid": 8,
+            "boss": 13,
+            "event": 5,
+        };
+        if tags.contains("raid")
+            && scores.has("boss")
+            && tags.any(|tag| tag.starts_with("q"))
+            && scores.get_or("missing", tick - tick) == 0
+        {
+            total += tags.len() + scores.get_or("daily", 0);
+        }
+    }
+    return total;
+}
+"#,
     },
     Workload {
         name: "managed_heap_callback_collections",

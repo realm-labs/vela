@@ -34,6 +34,7 @@ scalar/range dispatch
 script/native function calls
 array, map, set, string, Option, and Result stdlib methods
 callbacks, direct closure calls, and higher-order collection methods
+cache-enabled stdlib method rows with warmed inline caches and bytecode profile counters
 record and enum construction and field access
 managed heap allocation and materialization
 host field reads, nested path reads/writes, RMW mutations, dynamic key access, and method calls
@@ -51,6 +52,7 @@ commit, rustc, cargo, target, profile
 runtime options: heap, cache, debugger, JIT
 warmup, repeats, iterations, and input size
 min, mean, median, p95, checksum
+cache_sets and profile_hits when the harness emits cache-enabled rows
 external runtime versions when used
 ```
 
