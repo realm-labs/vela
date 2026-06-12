@@ -88,17 +88,22 @@ fn call_cached_map_extend(
     let Some(heap) = heap.as_deref_mut() else {
         return type_error("method extend");
     };
-    let slots = map_slot_entries(heap, &args[0], "method extend")?;
+    let extension_reference = map_reference(&args[0], "method extend")?;
+    if reference == extension_reference {
+        map_slots(receiver, Some(&*heap), "method extend")?;
+        return Ok(Value::Null);
+    }
+    let slots = map_slot_entries(heap, extension_reference, "method extend")?;
     map_slots_mut(heap, reference, "method extend")?.extend(slots);
     Ok(Value::Null)
 }
 
 fn map_slot_entries(
     heap: &HeapExecution<'_>,
-    receiver: &Value,
+    reference: crate::heap::GcRef,
     operation: &'static str,
 ) -> VmResult<Vec<(String, Value)>> {
-    let values = map_slots(receiver, Some(heap), operation)?;
+    let values = map_slots_by_reference(heap, reference, operation)?;
     if values.values().any(|value| matches!(value, Value::Missing)) {
         return type_error("missing value");
     }
@@ -114,7 +119,18 @@ fn map_slots<'a>(
     operation: &'static str,
 ) -> VmResult<&'a BTreeMap<String, Value>> {
     let reference = map_reference(receiver, operation)?;
-    let Some(HeapValue::Map(values)) = heap.and_then(|heap| heap.heap.get(reference)) else {
+    let Some(heap) = heap else {
+        return type_error(operation);
+    };
+    map_slots_by_reference(heap, reference, operation)
+}
+
+fn map_slots_by_reference<'a>(
+    heap: &'a HeapExecution<'_>,
+    reference: crate::heap::GcRef,
+    operation: &'static str,
+) -> VmResult<&'a BTreeMap<String, Value>> {
+    let Some(HeapValue::Map(values)) = heap.heap.get(reference) else {
         return type_error(operation);
     };
     Ok(values)
