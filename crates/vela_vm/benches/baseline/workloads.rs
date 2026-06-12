@@ -664,6 +664,11 @@ fn main() {
         source: MAP_MUTATION_SOURCE,
     },
     Workload {
+        name: "map_mutation_hot_offsets",
+        mode: ExecutionMode::ProfileOnly,
+        source: MAP_MUTATION_SOURCE,
+    },
+    Workload {
         name: "map_mutation_cache_hot_offsets",
         mode: ExecutionMode::CacheEnabled,
         source: MAP_MUTATION_SOURCE,
