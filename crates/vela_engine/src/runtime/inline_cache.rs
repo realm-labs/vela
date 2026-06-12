@@ -139,6 +139,10 @@ impl vela_vm::VmInlineCaches for InlineCaches {
 mod hot_reload_tests;
 
 #[cfg(test)]
+#[path = "inline_cache_host_tests.rs"]
+mod host_tests;
+
+#[cfg(test)]
 #[path = "inline_cache_method_tests.rs"]
 mod method_tests;
 
