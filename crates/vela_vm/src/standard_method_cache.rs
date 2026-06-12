@@ -1,9 +1,10 @@
 mod readonly_cache;
 
 use readonly_cache::{
-    call_cached_array_contains, call_cached_collection_has, call_cached_is_empty, call_cached_len,
-    call_cached_map_get_or, call_cached_option_result_predicate,
-    call_cached_option_result_unwrap_or, call_cached_set_relation, call_cached_string_predicate,
+    call_cached_array_contains, call_cached_bytes_accessor, call_cached_collection_has,
+    call_cached_is_empty, call_cached_len, call_cached_map_get_or,
+    call_cached_option_result_predicate, call_cached_option_result_unwrap_or,
+    call_cached_set_relation, call_cached_string_predicate,
 };
 
 use crate::std_method_ids::std_method_ids;
@@ -644,6 +645,13 @@ fn call_readonly_cached(
             if cache.receiver == StandardMethodReceiver::Array =>
         {
             return call_cached_array_contains(receiver, args, heap);
+        }
+        StandardMethodInlineCacheTarget::Get
+        | StandardMethodInlineCacheTarget::ReadU32Le
+        | StandardMethodInlineCacheTarget::ReadU32Be
+            if cache.receiver == StandardMethodReceiver::Bytes =>
+        {
+            return call_cached_bytes_accessor(receiver, cache.target, args, heap);
         }
         _ => {}
     }
