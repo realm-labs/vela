@@ -78,7 +78,25 @@ fn linked_standard_value_method_refreshes_wrong_receiver_guard() {
 
 #[test]
 fn linked_standard_value_method_caches_predicate_target() {
-    let (program, site, dispatch, method_id) = linked_string_contains_cache_program();
+    assert_string_predicate_cache(
+        linked_string_contains_cache_program(),
+        StandardMethodInlineCacheTarget::Contains,
+    );
+    assert_string_predicate_cache(
+        linked_string_one_arg_cache_program("starts_with", "event:quest", "event:"),
+        StandardMethodInlineCacheTarget::StartsWith,
+    );
+    assert_string_predicate_cache(
+        linked_string_one_arg_cache_program("ends_with", "quest.done", ".done"),
+        StandardMethodInlineCacheTarget::EndsWith,
+    );
+}
+
+fn assert_string_predicate_cache(
+    fixture: LinkedMethodCacheFixture,
+    target: StandardMethodInlineCacheTarget,
+) {
+    let (program, site, dispatch, method_id) = fixture;
     let caches = RecordingMethodCaches::new(1);
 
     assert_eq!(
@@ -98,10 +116,7 @@ fn linked_standard_value_method_caches_predicate_target() {
     };
     assert_eq!(cached_method, method_id);
     assert_eq!(standard_method.receiver, StandardMethodReceiver::String);
-    assert_eq!(
-        standard_method.target,
-        StandardMethodInlineCacheTarget::Contains
-    );
+    assert_eq!(standard_method.target, target);
     assert_eq!(caches.set_count(), 2);
 
     assert_eq!(
