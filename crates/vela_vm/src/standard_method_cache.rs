@@ -230,6 +230,15 @@ pub(crate) fn standard_cache_entry(
         (StandardMethodReceiver::Set, id) if id == ids.set_has => {
             StandardMethodInlineCacheTarget::Has
         }
+        (StandardMethodReceiver::Set, id) if id == ids.set_add => {
+            StandardMethodInlineCacheTarget::Add
+        }
+        (StandardMethodReceiver::Set, id) if id == ids.set_remove => {
+            StandardMethodInlineCacheTarget::Remove
+        }
+        (StandardMethodReceiver::Set, id) if id == ids.set_clear => {
+            StandardMethodInlineCacheTarget::Clear
+        }
         (StandardMethodReceiver::Set, id) if id == ids.set_values => {
             StandardMethodInlineCacheTarget::Values
         }
@@ -478,6 +487,23 @@ pub(crate) fn call_standard_cached(
         }
         (StandardMethodReceiver::Set, StandardMethodInlineCacheTarget::Values) => {
             set_methods::values(receiver, args, heap, budget)
+        }
+        (StandardMethodReceiver::Set, StandardMethodInlineCacheTarget::Add) => {
+            let mut receiver = *receiver;
+            set_methods::add(
+                &mut receiver,
+                args,
+                heap.as_deref_mut(),
+                budget.as_deref_mut(),
+            )
+        }
+        (StandardMethodReceiver::Set, StandardMethodInlineCacheTarget::Remove) => {
+            let mut receiver = *receiver;
+            set_methods::remove(&mut receiver, args, heap.as_deref_mut())
+        }
+        (StandardMethodReceiver::Set, StandardMethodInlineCacheTarget::Clear) => {
+            let mut receiver = *receiver;
+            set_methods::clear(&mut receiver, args, heap.as_deref_mut())
         }
         (StandardMethodReceiver::Set, StandardMethodInlineCacheTarget::Union) => {
             set_methods::union(receiver, args, heap, budget)
