@@ -227,6 +227,13 @@ pub(super) fn call_cached_string_transform(
         };
         return Some(make_string(payload, heap, budget, "method repeat"));
     }
+    if target == StandardMethodInlineCacheTarget::Replace {
+        let payload = match replace_payload(value, args, heap.as_deref()) {
+            Ok(payload) => payload,
+            Err(error) => return Some(Err(error)),
+        };
+        return Some(make_string(payload, heap, budget, "method replace"));
+    }
     let (method, operation, transform): (&str, &'static str, fn(&str) -> String) = match target {
         StandardMethodInlineCacheTarget::ToUpper => {
             ("to_upper", "method to_upper", str::to_uppercase)
@@ -401,6 +408,17 @@ fn repeat_payload(value: &str, args: &[Value]) -> VmResult<String> {
         })
     })?;
     Ok(value.repeat(count))
+}
+
+fn replace_payload(
+    value: &str,
+    args: &[Value],
+    heap: Option<&HeapExecution<'_>>,
+) -> VmResult<String> {
+    crate::runtime_checks::expect_arity("replace", args, 2)?;
+    let from = crate::string_methods::string_value(&args[0], heap, "method replace")?;
+    let to = crate::string_methods::string_value(&args[1], heap, "method replace")?;
+    Ok(value.replace(from, to))
 }
 
 fn char_index_value(value: &Value) -> VmResult<usize> {
