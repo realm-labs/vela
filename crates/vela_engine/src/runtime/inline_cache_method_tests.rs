@@ -269,6 +269,93 @@ fn read_bonus() {
 }
 
 #[test]
+fn rejected_hot_reload_preserves_linked_method_dispatch_inline_caches() {
+    let engine = Engine::builder().build().expect("engine should build");
+    let initial = engine
+        .compile_hot_reload_initial(
+            SourceId::new(1),
+            r#"
+struct Counter { amount: i64 }
+
+impl Counter {
+    fn add(self, bonus) -> i64 {
+        return self.amount + bonus;
+    }
+}
+
+pub fn read_bonus() -> i64 {
+    return Counter { amount: 3 }.add(4);
+}
+"#,
+        )
+        .expect("initial source should compile");
+    let mut runtime = Runtime::from_hot_reload_version(engine, initial);
+    let initial_call = method_call_site(&runtime, "read_bonus");
+
+    let first = runtime
+        .call("read_bonus", CallArgs::new(), CallOptions::unbounded())
+        .expect("initial read_bonus should run");
+    assert_eq!(
+        runtime.value_to_owned(&first),
+        Ok(OwnedValue::Scalar(ScalarValue::I64(7)))
+    );
+    let initial_entry = runtime
+        .state
+        .inline_caches
+        .method_dispatch(initial_call.cache_site)
+        .expect("initial method call should populate its inline cache");
+
+    let update = runtime
+        .compile_hot_reload_update(
+            SourceId::new(2),
+            r#"
+struct Counter { amount: i64 }
+
+impl Counter {
+    fn add(self, bonus) -> i64 {
+        return self.amount + bonus;
+    }
+}
+
+pub fn read_bonus() -> f64 {
+    return 9.0;
+}
+"#,
+        )
+        .expect("runtime should compile rejected method hot reload update");
+    let report = runtime
+        .apply_hot_update_result_report(update)
+        .expect("rejected method hot reload update should report");
+    assert!(!report.accepted);
+    assert_eq!(report.to_version, None);
+
+    let active_call = method_call_site(&runtime, "read_bonus");
+    assert_eq!(active_call.cache_site, initial_call.cache_site);
+    assert_eq!(
+        runtime
+            .state
+            .inline_caches
+            .method_dispatch(active_call.cache_site),
+        Some(initial_entry)
+    );
+
+    let second = runtime
+        .call("read_bonus", CallArgs::new(), CallOptions::unbounded())
+        .expect("active read_bonus should keep running after rejected reload");
+    assert_eq!(
+        runtime.value_to_owned(&second),
+        Ok(OwnedValue::Scalar(ScalarValue::I64(7)))
+    );
+    assert_eq!(
+        runtime
+            .state
+            .inline_caches
+            .method_dispatch(active_call.cache_site),
+        Some(initial_entry)
+    );
+}
+
+#[test]
 fn accepted_hot_reload_clears_callback_value_method_inline_caches() {
     let engine = Engine::builder()
         .with_standard_natives()
