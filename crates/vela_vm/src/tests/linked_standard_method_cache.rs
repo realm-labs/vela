@@ -144,6 +144,55 @@ fn linked_standard_value_method_caches_bytes_accessor_target() {
 }
 
 #[test]
+fn linked_standard_value_method_caches_bytes_endian_read_targets() {
+    assert_bytes_read_cache(
+        "read_u32_le",
+        StandardMethodInlineCacheTarget::ReadU32Le,
+        0x0403_0201,
+    );
+    assert_bytes_read_cache(
+        "read_u32_be",
+        StandardMethodInlineCacheTarget::ReadU32Be,
+        0x0102_0304,
+    );
+}
+
+fn assert_bytes_read_cache(method: &str, target: StandardMethodInlineCacheTarget, expected: u32) {
+    let (program, site, dispatch, method_id) = linked_bytes_read_u32_cache_program(method);
+    let caches = RecordingMethodCaches::new(1);
+
+    assert_eq!(
+        run_linked_method_cache_program(&program, &caches),
+        Ok(RuntimeValue::Scalar(vela_common::ScalarValue::U32(
+            expected
+        )))
+    );
+    let entry = caches
+        .entry(site)
+        .expect("standard bytes endian read cache should populate");
+    assert_eq!(entry.dispatch, dispatch);
+    let MethodInlineCacheTarget::Value {
+        method_id: cached_method,
+        standard_method: Some(standard_method),
+    } = entry.target
+    else {
+        panic!("standard bytes endian read cache should store value target");
+    };
+    assert_eq!(cached_method, method_id);
+    assert_eq!(standard_method.receiver, StandardMethodReceiver::Bytes);
+    assert_eq!(standard_method.target, target);
+    assert_eq!(caches.set_count(), 2);
+
+    assert_eq!(
+        run_linked_method_cache_program(&program, &caches),
+        Ok(RuntimeValue::Scalar(vela_common::ScalarValue::U32(
+            expected
+        )))
+    );
+    assert_eq!(caches.set_count(), 2);
+}
+
+#[test]
 fn linked_standard_value_method_caches_bytes_slice_target() {
     let (program, site, dispatch, method_id) = linked_bytes_slice_cache_program();
     let caches = RecordingMethodCaches::new(1);
