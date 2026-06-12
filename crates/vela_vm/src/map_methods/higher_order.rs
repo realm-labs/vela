@@ -26,7 +26,7 @@ pub(crate) fn map_values(
                 "method map_values",
                 &args[0],
                 param_len,
-                key.clone(),
+                &key,
                 value,
                 mapped.values(),
             )?
@@ -36,7 +36,7 @@ pub(crate) fn map_values(
                 "method map_values",
                 &args[0],
                 param_len,
-                key.clone(),
+                &key,
                 value,
                 &[],
             )?
@@ -67,7 +67,7 @@ pub(crate) fn filter(
                 "method filter",
                 &args[0],
                 param_len,
-                key.clone(),
+                &key,
                 value,
                 filtered.values(),
             )?
@@ -77,7 +77,7 @@ pub(crate) fn filter(
                 "method filter",
                 &args[0],
                 param_len,
-                key.clone(),
+                &key,
                 value,
                 &[],
             )?
@@ -108,7 +108,7 @@ pub(crate) fn find(
             "method find",
             &args[0],
             param_len,
-            key.clone(),
+            &key,
             value,
             &[],
         )?;
@@ -140,7 +140,7 @@ pub(crate) fn any(
             "method any",
             &args[0],
             param_len,
-            key,
+            &key,
             value,
             &[],
         )?;
@@ -165,7 +165,7 @@ pub(crate) fn all(
             "method all",
             &args[0],
             param_len,
-            key,
+            &key,
             value,
             &[],
         )?;
@@ -191,7 +191,7 @@ pub(crate) fn count(
             "method count",
             &args[0],
             param_len,
-            key,
+            &key,
             value,
             &[],
         )?;
@@ -228,7 +228,7 @@ fn call_map_callback(
     operation: &'static str,
     callback: &Value,
     param_len: usize,
-    key: String,
+    key: &str,
     value: Value,
     protected_values: &[Value],
 ) -> VmResult<Value> {
@@ -242,7 +242,12 @@ fn call_map_callback(
             protected_values,
         ),
         _ => {
-            let key = make_string_value(key, &mut runtime.heap, &mut runtime.budget, operation)?;
+            let key = make_string_value(
+                key.to_owned(),
+                &mut runtime.heap,
+                &mut runtime.budget,
+                operation,
+            )?;
             let callback_args = [key, value];
             call_callback(
                 runtime,
@@ -260,7 +265,7 @@ fn call_map_callback_with_protected_values<'value>(
     operation: &'static str,
     callback: &Value,
     param_len: usize,
-    key: String,
+    key: &str,
     value: Value,
     protected_values: impl IntoIterator<Item = &'value Value>,
 ) -> VmResult<Value> {
@@ -276,7 +281,12 @@ fn call_map_callback_with_protected_values<'value>(
             protected_values,
         ),
         _ => {
-            let key = make_string_value(key, &mut runtime.heap, &mut runtime.budget, operation)?;
+            let key = make_string_value(
+                key.to_owned(),
+                &mut runtime.heap,
+                &mut runtime.budget,
+                operation,
+            )?;
             let callback_args = [key, value];
             call_callback_with_protected_values(
                 runtime,
