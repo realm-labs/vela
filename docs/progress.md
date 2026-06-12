@@ -353,7 +353,7 @@ Cranelift JIT.
     reason to defer the remaining conversions to M20/JIT work;
   - callback and closure allocation costs now have isolated quick and default
     baseline rows; M20 cache-enabled stdlib method, script-call, native-call,
-    script record-field aggregate/detail, method-dispatch,
+    script record-field aggregate/detail, method-dispatch aggregate/detail,
     collection lookup/combination/mutation/materialization, string/bytes
     method, Option/Result helper, callback collection/detail, direct-closure,
     and host-boundary aggregate/detail rows separate warmed cache hits from
@@ -362,7 +362,7 @@ Cranelift JIT.
     unchecked register, operand, and cache fast paths;
   - runtime bytecode offset counters cover linked hot offsets and hot-reload
     invalidation; cache-enabled stdlib, script-call, native-call, script
-    record-field aggregate/detail, method-dispatch,
+    record-field aggregate/detail, method-dispatch aggregate/detail,
     collection lookup/combination/mutation/materialization, string/bytes
     method, Option/Result helper, callback collection/detail, direct-closure,
     and host-boundary aggregate/detail rows now consume those counters, and
@@ -370,9 +370,9 @@ Cranelift JIT.
   - interpreter-only benchmark rows identify which remaining costs belong to
     M20 cache work versus later JIT work.
 - M20: continue guarded inline caches and specialization for broader stdlib
-  value methods and hot bytecode offsets, then extend method dispatch cache
-  measurements. Cache misses, guard failures, hot reload, and schema ABI
-  changes must fall back or invalidate without changing semantics.
+  value methods and hot bytecode offsets. Cache misses, guard failures, hot
+  reload, and schema ABI changes must fall back or invalidate without changing
+  semantics.
 - Lua 5.x comparable performance remains a measured target for cache-enabled
   non-JIT host-boundary workloads; scalar, array, string, function-call, and
   callback deltas should be tracked separately from host-boundary benchmarks.

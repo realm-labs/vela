@@ -7,8 +7,9 @@ use crate::workload_sources::{
     MAP_CALLBACKS_SOURCE, MAP_EXTEND_SOURCE, MAP_FIND_ENTRIES_SOURCE, MAP_LOOKUP_SOURCE,
     MAP_MERGE_SOURCE, METHOD_DISPATCH_SOURCE, NATIVE_CALL_WIDE_ARGS_SOURCE,
     OPTION_RESULT_HELPERS_SOURCE, RECORD_QUADS_SOURCE, RECORD_QUINTS_SOURCE, RECORD_SEXTETS_SOURCE,
-    RECORD_TRIPLETS_SOURCE, SCRIPT_CALL_SMALL_ARGS_SOURCE, SET_COMBINATION_SOURCE,
-    SET_LOOKUP_SOURCE, STDLIB_COLLECTIONS_SOURCE, STRING_METHODS_SOURCE,
+    RECORD_TRIPLETS_SOURCE, SCRIPT_CALL_SMALL_ARGS_SOURCE, SCRIPT_METHOD_DISPATCH_SOURCE,
+    SET_COMBINATION_SOURCE, SET_LOOKUP_SOURCE, STDLIB_COLLECTIONS_SOURCE, STRING_METHODS_SOURCE,
+    TRAIT_METHOD_DISPATCH_SOURCE,
 };
 
 pub(crate) struct Workload {
@@ -200,6 +201,26 @@ fn main() {
         name: "method_cache_hot_offsets",
         mode: ExecutionMode::CacheEnabled,
         source: METHOD_DISPATCH_SOURCE,
+    },
+    Workload {
+        name: "script_method_dispatch",
+        mode: ExecutionMode::ScriptProgram,
+        source: SCRIPT_METHOD_DISPATCH_SOURCE,
+    },
+    Workload {
+        name: "script_method_cache_hot_offsets",
+        mode: ExecutionMode::ScriptProgramCacheEnabled,
+        source: SCRIPT_METHOD_DISPATCH_SOURCE,
+    },
+    Workload {
+        name: "trait_method_dispatch",
+        mode: ExecutionMode::ScriptProgram,
+        source: TRAIT_METHOD_DISPATCH_SOURCE,
+    },
+    Workload {
+        name: "trait_method_cache_hot_offsets",
+        mode: ExecutionMode::ScriptProgramCacheEnabled,
+        source: TRAIT_METHOD_DISPATCH_SOURCE,
     },
     Workload {
         name: "managed_heap_callback_collections",

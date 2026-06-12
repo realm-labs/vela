@@ -550,6 +550,73 @@ fn main() {
 }
 "#;
 
+pub(crate) const SCRIPT_METHOD_DISPATCH_SOURCE: &str = r#"
+struct Account {
+    balance: i64,
+    tier: i64,
+}
+
+impl Account {
+    fn score(self, bonus) -> i64 {
+        return self.balance + self.tier + bonus;
+    }
+
+    fn boosted(self, bonus, multiplier) -> i64 {
+        return self.score(bonus) * multiplier;
+    }
+}
+
+fn main() {
+    let total = 0;
+    for tick in 0..96 {
+        let account = Account {
+            balance: tick + 10,
+            tier: tick % 5,
+        };
+        total += account.score(3) + account.boosted(1, 2);
+    }
+    return total;
+}
+"#;
+
+pub(crate) const TRAIT_METHOD_DISPATCH_SOURCE: &str = r#"
+trait AccountScoring {
+    fn score(self, bonus) -> i64;
+    fn label(self) -> string { return self.name; }
+    fn boosted(self, bonus, multiplier) -> i64 {
+        return self.score(bonus) * multiplier;
+    }
+}
+
+struct Account {
+    balance: i64,
+    tier: i64,
+    name: string,
+}
+
+impl AccountScoring for Account {
+    fn score(self, bonus) -> i64 {
+        return self.balance + self.tier + bonus;
+    }
+}
+
+fn main() {
+    let total = 0;
+    for tick in 0..80 {
+        let account = Account {
+            balance: tick + 10,
+            tier: tick % 7,
+            name: "primary",
+        };
+        if account.label() != "primary" {
+            return 0;
+        }
+        total += account.score(2) + account.boosted(1, 3);
+    }
+    return total;
+}
+"#;
+
 pub(crate) const ARRAY_LOOKUP_SOURCE: &str = r#"
 fn main() {
     let total = 0;
