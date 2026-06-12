@@ -366,6 +366,7 @@ pub enum StandardMethodInlineCacheTarget {
     Get,
     GetOr,
     Slice,
+    Reverse,
     Repeat,
     Replace,
     ToHex,
