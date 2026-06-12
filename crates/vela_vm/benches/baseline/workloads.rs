@@ -444,6 +444,11 @@ fn main() {
         source: SCRIPT_METHOD_DISPATCH_SOURCE,
     },
     Workload {
+        name: "script_method_hot_offsets",
+        mode: ExecutionMode::ScriptProgramProfileOnly,
+        source: SCRIPT_METHOD_DISPATCH_SOURCE,
+    },
+    Workload {
         name: "script_method_cache_hot_offsets",
         mode: ExecutionMode::ScriptProgramCacheEnabled,
         source: SCRIPT_METHOD_DISPATCH_SOURCE,
