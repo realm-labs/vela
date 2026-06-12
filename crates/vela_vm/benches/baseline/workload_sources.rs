@@ -207,6 +207,86 @@ fn main() {
 }
 "#;
 
+pub(crate) const STRING_METHODS_SOURCE: &str = r#"
+fn main() {
+    let total = 0;
+    for tick in 0..80 {
+        let label = "quest.done";
+        let upper = label.to_upper();
+        let replaced = label.replace(".", "_");
+        let repeated = "ab".repeat(3);
+        let parts = "alpha,beta".split(",");
+        let pair = "count=3".split_once("=").unwrap_or([]);
+        let lines = "alpha\nbeta".split_lines();
+        let words = "alpha beta".split_whitespace();
+        let sliced = "hello".slice(1, 4);
+        let ch = "quest".char_at(1).unwrap_or("");
+        let found = "daily_quest".find("quest").unwrap_or(-1);
+        let stripped_prefix = "event:quest".strip_prefix("event:").unwrap_or("");
+        let stripped_suffix = "quest.done".strip_suffix(".done").unwrap_or("");
+        let parsed = "42".parse_int().unwrap_or(0);
+        let parsed_bool = "true".parse_bool().unwrap_or(false);
+
+        if upper != "QUEST.DONE"
+            || replaced != "quest_done"
+            || repeated != "ababab"
+            || parts.len() != 2
+            || pair.len() != 2
+            || lines.len() != 2
+            || words.len() != 2
+            || sliced != "ell"
+            || ch != "u"
+            || found != 6
+            || stripped_prefix != "quest"
+            || stripped_suffix != "quest"
+            || parsed != 42
+            || !parsed_bool
+        {
+            return 0;
+        }
+
+        total += upper.len()
+            + replaced.len()
+            + repeated.len()
+            + parts.join("").len()
+            + pair.join("").len()
+            + lines.join("").len()
+            + words.join("").len()
+            + sliced.len()
+            + ch.len()
+            + found
+            + parsed
+            + tick - tick;
+    }
+    return total;
+}
+"#;
+
+pub(crate) const BYTES_METHODS_SOURCE: &str = r#"
+fn main() {
+    let total = 0;
+    for tick in 0..96 {
+        let data = b"\x01\x02\x03\x04\xff";
+        let middle = data.slice(1, 4);
+        let decoded = result::unwrap_or(bytes::from_hex("00ff"), b"bad");
+        let hex = data.to_hex();
+
+        if data.get(4) != 255u8
+            || data.read_u32_le(0) != 0x04030201u32
+            || data.read_u32_be(0) != 0x01020304u32
+            || middle != b"\x02\x03\x04"
+            || decoded != b"\x00\xff"
+            || hex != "01020304ff"
+        {
+            return 0;
+        }
+
+        total += 10 + tick - tick;
+    }
+    return total;
+}
+"#;
+
 pub(crate) const METHOD_DISPATCH_SOURCE: &str = r#"
 fn main() {
     let total = 0;

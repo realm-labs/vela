@@ -1,11 +1,11 @@
 use crate::workload_sources::{
     ARRAY_DISTINCT_SOURCE, ARRAY_EXTEND_SOURCE, ARRAY_EXTREMA_SOURCE, ARRAY_GROUP_BY_SOURCE,
     ARRAY_JOIN_SOURCE, ARRAY_LOOKUP_SOURCE, ARRAY_REVERSE_SOURCE, ARRAY_SLICE_SOURCE,
-    ARRAY_SORT_SOURCE, CALLBACK_COLLECTIONS_SOURCE, DIRECT_CLOSURE_CALLS_SOURCE,
-    MAP_CALLBACKS_SOURCE, MAP_EXTEND_SOURCE, MAP_FIND_ENTRIES_SOURCE, MAP_LOOKUP_SOURCE,
-    MAP_MERGE_SOURCE, METHOD_DISPATCH_SOURCE, NATIVE_CALL_WIDE_ARGS_SOURCE,
+    ARRAY_SORT_SOURCE, BYTES_METHODS_SOURCE, CALLBACK_COLLECTIONS_SOURCE,
+    DIRECT_CLOSURE_CALLS_SOURCE, MAP_CALLBACKS_SOURCE, MAP_EXTEND_SOURCE, MAP_FIND_ENTRIES_SOURCE,
+    MAP_LOOKUP_SOURCE, MAP_MERGE_SOURCE, METHOD_DISPATCH_SOURCE, NATIVE_CALL_WIDE_ARGS_SOURCE,
     OPTION_RESULT_HELPERS_SOURCE, RECORD_TRIPLETS_SOURCE, SCRIPT_CALL_SMALL_ARGS_SOURCE,
-    SET_COMBINATION_SOURCE, SET_LOOKUP_SOURCE, STDLIB_COLLECTIONS_SOURCE,
+    SET_COMBINATION_SOURCE, SET_LOOKUP_SOURCE, STDLIB_COLLECTIONS_SOURCE, STRING_METHODS_SOURCE,
 };
 
 pub(crate) struct Workload {
@@ -147,6 +147,26 @@ fn main() {
         name: "stdlib_collections_cache_hot_offsets",
         mode: ExecutionMode::CacheEnabled,
         source: STDLIB_COLLECTIONS_SOURCE,
+    },
+    Workload {
+        name: "managed_heap_string_methods",
+        mode: ExecutionMode::ManagedHeap,
+        source: STRING_METHODS_SOURCE,
+    },
+    Workload {
+        name: "string_methods_cache_hot_offsets",
+        mode: ExecutionMode::CacheEnabled,
+        source: STRING_METHODS_SOURCE,
+    },
+    Workload {
+        name: "managed_heap_bytes_methods",
+        mode: ExecutionMode::ManagedHeap,
+        source: BYTES_METHODS_SOURCE,
+    },
+    Workload {
+        name: "bytes_methods_cache_hot_offsets",
+        mode: ExecutionMode::CacheEnabled,
+        source: BYTES_METHODS_SOURCE,
     },
     Workload {
         name: "callback_collections",
