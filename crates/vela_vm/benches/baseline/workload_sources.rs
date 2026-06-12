@@ -484,6 +484,25 @@ fn main() {
 }
 "#;
 
+pub(crate) const SCRIPT_CALL_WIDE_ARGS_SOURCE: &str = r#"
+fn mix_three(left, middle, right) {
+    return left * 2 + middle - right;
+}
+
+fn mix_four(first, second, third, fourth) {
+    return first + second * 3 - third + fourth;
+}
+
+fn main() {
+    let total = 0;
+    for tick in 0..240 {
+        total += mix_three(tick, total % 19, tick % 7);
+        total += mix_four(tick, total % 23, tick % 11, 5);
+    }
+    return total;
+}
+"#;
+
 pub(crate) const NATIVE_CALL_WIDE_ARGS_SOURCE: &str = r#"
 fn main() {
     let total = 0;

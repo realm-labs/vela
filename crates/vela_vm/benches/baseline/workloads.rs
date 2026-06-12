@@ -11,10 +11,10 @@ use crate::workload_sources::{
     OPTION_RESULT_CALLBACKS_SOURCE, OPTION_RESULT_CONVERSIONS_SOURCE, OPTION_RESULT_HELPERS_SOURCE,
     OPTION_RESULT_PREDICATES_SOURCE, RECORD_QUADS_SOURCE, RECORD_QUINTS_SOURCE,
     RECORD_SEXTETS_SOURCE, RECORD_TRIPLETS_SOURCE, SCRIPT_CALL_SMALL_ARGS_SOURCE,
-    SCRIPT_METHOD_DISPATCH_SOURCE, SET_CALLBACK_PREDICATES_SOURCE, SET_COMBINATION_SOURCE,
-    SET_LOOKUP_SOURCE, SET_MUTATION_SOURCE, SET_VALUES_SOURCE, STDLIB_COLLECTIONS_SOURCE,
-    STRING_METHODS_SOURCE, STRING_OPTIONS_SOURCE, STRING_PARSING_SOURCE, STRING_SPLITTING_SOURCE,
-    TRAIT_METHOD_DISPATCH_SOURCE,
+    SCRIPT_CALL_WIDE_ARGS_SOURCE, SCRIPT_METHOD_DISPATCH_SOURCE, SET_CALLBACK_PREDICATES_SOURCE,
+    SET_COMBINATION_SOURCE, SET_LOOKUP_SOURCE, SET_MUTATION_SOURCE, SET_VALUES_SOURCE,
+    STDLIB_COLLECTIONS_SOURCE, STRING_METHODS_SOURCE, STRING_OPTIONS_SOURCE, STRING_PARSING_SOURCE,
+    STRING_SPLITTING_SOURCE, TRAIT_METHOD_DISPATCH_SOURCE,
 };
 
 pub(crate) struct Workload {
@@ -118,24 +118,12 @@ fn main() {
     Workload {
         name: "script_call_wide_args",
         mode: ExecutionMode::ScriptProgram,
-        source: r#"
-fn mix_three(left, middle, right) {
-    return left * 2 + middle - right;
-}
-
-fn mix_four(first, second, third, fourth) {
-    return first + second * 3 - third + fourth;
-}
-
-fn main() {
-    let total = 0;
-    for tick in 0..240 {
-        total += mix_three(tick, total % 19, tick % 7);
-        total += mix_four(tick, total % 23, tick % 11, 5);
-    }
-    return total;
-}
-"#,
+        source: SCRIPT_CALL_WIDE_ARGS_SOURCE,
+    },
+    Workload {
+        name: "script_call_wide_args_cache_hot_offsets",
+        mode: ExecutionMode::ScriptProgramCacheEnabled,
+        source: SCRIPT_CALL_WIDE_ARGS_SOURCE,
     },
     Workload {
         name: "native_call_wide_args",
