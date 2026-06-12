@@ -37,7 +37,7 @@ embedding/conformance proof, measured performance baselines, and non-JIT
 interpreter/heap optimization checkpoint. The primitive scalar, bytes,
 type-hint contract, and guard-plan refactor is complete as a breaking M19.5
 architecture continuation. M20 inline-cache work has started with script record
-field, host-access, linked method-dispatch cache entries, and guarded stdlib
+field, host-access, native-call, linked method-dispatch cache entries, and guarded stdlib
 length/emptiness/predicate/bytes-accessor/bytes-materialization/Option/Result/map-fallback/string-option/string-transform
 targets while remaining M19.5 prep continues around the other cache families:
 
@@ -76,7 +76,7 @@ Cranelift JIT.
 | M18 | Complete enough | Quick and full/default baseline captures exist with environment metadata and checksums. |
 | M19 | Complete enough | Non-JIT interpreter and heap optimization has a recorded exit checkpoint. Accepted work includes GC pacing, direct heap aggregate construction, argument materialization/storage cleanup, borrowed receiver/runtime views, stdlib collection/string/Option/Result fast paths, scalar/equality/constant/peephole/range-loop lowering, small script-field and short-array construction, and expanded benchmark coverage. Remaining Lua 5.x deltas are measured and belong to M20 cache/specialization families rather than more unguarded M19 micro-optimization. |
 | M19.5 | Active | Primitive scalar, bytes, type-hint contract, and guard-plan checklist is complete and fully validated; remaining transition work is M20 cache-entry prep around measured dispatch/cache gaps. |
-| M20 | Active | Script record field read/write cache entries are guarded by record type, shape, and slot, host access caches resolved target plans by operation/schema epoch, linked method dispatch caches resolved targets by dispatch handle, stdlib length/emptiness/predicate/bytes-accessor/bytes-materialization/Option/Result/map-fallback/string-option/string-transform targets cache receiver guards, and runtime bytecode offset counters are scoped to the active image; broader stdlib method caches and cache-enabled measurements remain. |
+| M20 | Active | Script record field read/write cache entries are guarded by record type, shape, and slot, host access caches resolved target plans by operation/schema epoch, native calls cache resolved pure/host/borrowed targets by function ID, linked method dispatch caches resolved targets by dispatch handle, stdlib length/emptiness/predicate/bytes-accessor/bytes-materialization/Option/Result/map-fallback/string-option/string-transform targets cache receiver guards, and runtime bytecode offset counters are scoped to the active image; broader stdlib method caches and cache-enabled measurements remain. |
 | M21 | Not started | Debugger runtime hooks and DAP integration follow stable runtime/tooling contracts. |
 | M22 | Not started | Cranelift JIT follows interpreter/cache/debugger/conformance stability. |
 | M23 | Not started | Release hardening, public docs, validation gates, and performance targets. |
@@ -304,8 +304,9 @@ Cranelift JIT.
   calls resolve callable descriptors to IDs, and linked bytecode keeps native
   handles plus debug names separated from runtime dispatch. Native-call
   cache-site operands are preserved from compiler output through linked
-  bytecode verification and benchmark cache-site rebasing, preparing native
-  dispatch for M20 cache entries without changing current runtime behavior.
+  bytecode verification and benchmark cache-site rebasing, and linked native
+  dispatch now caches resolved pure, host, and borrowed-host targets behind a
+  `FunctionId` guard while retaining current slow-path behavior on misses.
   Linked method
   dispatch now uses dense method handles for script, host, and value method
   paths; linked value method execution calls standard methods by `MethodId`
@@ -345,7 +346,7 @@ Cranelift JIT.
 ### Remaining Gaps
 
 - Remaining M19.5/M20 cache-entry gaps after the primitive refactor:
-  - hot script, native, stdlib, method, and host-boundary dispatch operands
+  - hot script, stdlib, method, and host-boundary dispatch operands
     use IDs, slots, resolved targets, path keys, or an explicit remaining
     fallback reason;
   - diagnostic names are split from hot operands where practical and remain

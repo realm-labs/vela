@@ -1,5 +1,7 @@
 use super::*;
 use crate::owned_value::OwnedValue;
+use std::cell::{Cell, RefCell};
+use std::sync::Arc;
 use vela_stdlib_runtime::{StdFunctionImplementation, stdlib_function_runtime_bindings};
 
 fn std_function_id(implementation: StdFunctionImplementation) -> vela_def::FunctionId {
@@ -58,6 +60,102 @@ fn run_linked_standard_id_code_with_host(
     vm.run_linked_program_with_host_budget_and_caches(&linked, &entry, &[], host, &mut budget, None)
 }
 
+fn run_linked_standard_id_code_with_caches(
+    vm: &Vm,
+    code: UnlinkedCodeObject,
+    caches: &RecordingNativeCaches,
+) -> VmResult<OwnedValue> {
+    let entry = code.name.clone();
+    let mut program = UnlinkedProgram::new();
+    program.insert_function(code);
+    let mut linker = Linker::new();
+    vm.native_implementation_ids()
+        .for_each(|id| linker.add_native_implementation(id));
+    let linked = linker
+        .link_program(&program)
+        .expect("standard native cache test program should link");
+    let code = linked_program_entry(&linked, &entry).expect("entry should exist");
+    let mut heap = ScriptHeap::new();
+    let mut heap_execution = HeapExecution::new(&mut heap);
+    let mut budget = ExecutionBudget::unbounded();
+    let result = vm.execute_linked_call(
+        crate::linked_execution::LinkedExecutionCall {
+            code,
+            program: &linked,
+            captures: &[],
+            args: &[],
+            check_param_guards: true,
+            call_site: None,
+            call_site_offset: None,
+            inline_caches: Some(caches),
+            bytecode_profiler: None,
+        },
+        None,
+        Some(&mut heap_execution),
+        Some(&mut budget),
+    )?;
+    crate::heap_values::value_to_owned(&result, Some(&heap_execution))
+}
+
+struct RecordingNativeCaches {
+    entries: RefCell<Vec<Option<NativeInlineCacheEntry>>>,
+    set_count: Cell<usize>,
+}
+
+impl RecordingNativeCaches {
+    fn new(len: usize) -> Self {
+        Self {
+            entries: RefCell::new(vec![None; len]),
+            set_count: Cell::new(0),
+        }
+    }
+
+    fn entry(&self, site: CacheSiteId) -> Option<NativeInlineCacheEntry> {
+        self.entries.borrow().get(site.index()).cloned().flatten()
+    }
+
+    fn prime(&self, site: CacheSiteId, entry: NativeInlineCacheEntry) {
+        self.entries.borrow_mut()[site.index()] = Some(entry);
+    }
+
+    fn set_count(&self) -> usize {
+        self.set_count.get()
+    }
+}
+
+impl VmInlineCaches for RecordingNativeCaches {
+    fn len(&self) -> usize {
+        self.entries.borrow().len()
+    }
+
+    fn native_call(&self, site: CacheSiteId) -> Option<NativeInlineCacheEntry> {
+        self.entry(site)
+    }
+
+    fn set_native_call(&self, site: CacheSiteId, entry: NativeInlineCacheEntry) {
+        self.entries.borrow_mut()[site.index()] = Some(entry);
+        self.set_count.set(self.set_count.get() + 1);
+    }
+}
+
+fn native_cache_code(name: &str, native_id: FunctionId) -> (UnlinkedCodeObject, CacheSiteId) {
+    let mut code = UnlinkedCodeObject::new(name, 1);
+    let cache_site = code.push_cache_site(CacheSiteKind::NativeCall, InstructionOffset(0));
+    code.push_instruction(UnlinkedInstruction::new(
+        UnlinkedInstructionKind::CallNative {
+            dst: Some(Register(0)),
+            name: "diagnostic_name".into(),
+            native: native_id,
+            cache_site: Some(cache_site),
+            args: Vec::new(),
+        },
+    ));
+    code.push_instruction(UnlinkedInstruction::new(UnlinkedInstructionKind::Return {
+        src: Register(0),
+    }));
+    (code, cache_site)
+}
+
 #[test]
 fn call_native_uses_resolved_id_even_when_debug_name_differs() {
     let native_id = vela_def::FunctionId::new(77);
@@ -85,6 +183,70 @@ fn call_native_uses_resolved_id_even_when_debug_name_differs() {
     assert_eq!(
         run_linked_standard_id_code(&vm, code),
         Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(2)))
+    );
+}
+
+#[test]
+fn linked_native_call_inline_cache_populates_and_reuses_resolved_target() {
+    let native_id = vela_def::FunctionId::new(77);
+    let mut vm = Vm::new();
+    vm.register_native_with_id(native_id, |_| {
+        Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(2)))
+    });
+    let (code, cache_site) = native_cache_code("native_cache", native_id);
+    let caches = RecordingNativeCaches::new(1);
+
+    assert_eq!(
+        run_linked_standard_id_code_with_caches(&vm, code.clone(), &caches),
+        Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(2)))
+    );
+    assert_eq!(caches.set_count(), 1);
+    assert_eq!(
+        caches
+            .entry(cache_site)
+            .expect("native cache should populate")
+            .native_id(),
+        native_id
+    );
+
+    assert_eq!(
+        run_linked_standard_id_code_with_caches(&vm, code, &caches),
+        Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(2)))
+    );
+    assert_eq!(caches.set_count(), 1);
+}
+
+#[test]
+fn linked_native_call_inline_cache_misses_wrong_native_guard() {
+    let native_id = vela_def::FunctionId::new(77);
+    let stale_id = vela_def::FunctionId::new(88);
+    let mut vm = Vm::new();
+    vm.register_native_with_id(native_id, |_| {
+        Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(2)))
+    });
+    let (code, cache_site) = native_cache_code("native_cache_guard", native_id);
+    let caches = RecordingNativeCaches::new(1);
+    caches.prime(
+        cache_site,
+        NativeInlineCacheEntry::new(
+            stale_id,
+            crate::native_function_calls::NativeCallTarget::Pure(Arc::new(|_| {
+                Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(99)))
+            })),
+        ),
+    );
+
+    assert_eq!(
+        run_linked_standard_id_code_with_caches(&vm, code, &caches),
+        Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(2)))
+    );
+    assert_eq!(caches.set_count(), 1);
+    assert_eq!(
+        caches
+            .entry(cache_site)
+            .expect("native cache should refresh")
+            .native_id(),
+        native_id
     );
 }
 

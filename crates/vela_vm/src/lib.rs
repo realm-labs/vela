@@ -55,6 +55,7 @@ mod try_propagation;
 pub mod value;
 
 use std::collections::{BTreeMap, HashMap};
+use std::fmt;
 use std::sync::Arc;
 
 use error::{VmError, VmErrorKind, VmResult, VmStackFrame};
@@ -254,6 +255,12 @@ pub trait VmInlineCaches {
     }
 
     fn set_method_dispatch(&self, _site: CacheSiteId, _entry: MethodInlineCacheEntry) {}
+
+    fn native_call(&self, _site: CacheSiteId) -> Option<NativeInlineCacheEntry> {
+        None
+    }
+
+    fn set_native_call(&self, _site: CacheSiteId, _entry: NativeInlineCacheEntry) {}
 }
 
 pub trait VmBytecodeProfiler {
@@ -298,6 +305,44 @@ pub struct MethodInlineCacheEntry {
     pub dispatch: MethodDispatchHandle,
     pub debug_name: DebugNameId,
     pub target: MethodInlineCacheTarget,
+}
+
+#[derive(Clone)]
+pub struct NativeInlineCacheEntry {
+    native: FunctionId,
+    target: native_function_calls::NativeCallTarget,
+}
+
+impl NativeInlineCacheEntry {
+    pub(crate) const fn new(
+        native: FunctionId,
+        target: native_function_calls::NativeCallTarget,
+    ) -> Self {
+        Self { native, target }
+    }
+
+    #[must_use]
+    pub const fn native_id(&self) -> FunctionId {
+        self.native
+    }
+
+    pub(crate) fn matches(&self, native: FunctionId) -> bool {
+        self.native == native
+    }
+
+    pub(crate) fn target(&self) -> native_function_calls::NativeCallTarget {
+        self.target.clone()
+    }
+}
+
+impl fmt::Debug for NativeInlineCacheEntry {
+    fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
+        formatter
+            .debug_struct("NativeInlineCacheEntry")
+            .field("native", &self.native)
+            .field("target", &self.target.kind())
+            .finish()
+    }
 }
 
 #[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]

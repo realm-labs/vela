@@ -7,8 +7,8 @@ use vela_bytecode::{
 };
 use vela_common::GlobalSlot;
 use vela_vm::{
-    HostInlineCacheEntry, MethodInlineCacheEntry, RecordFieldInlineCacheEntry, VmBytecodeProfiler,
-    VmInlineCaches,
+    HostInlineCacheEntry, MethodInlineCacheEntry, NativeInlineCacheEntry,
+    RecordFieldInlineCacheEntry, VmBytecodeProfiler, VmInlineCaches,
 };
 
 #[derive(Debug, Default)]
@@ -17,7 +17,7 @@ pub(crate) struct BenchInlineCaches {
     set_count: Cell<usize>,
 }
 
-#[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]
+#[derive(Clone, Debug, Default)]
 enum BenchInlineCacheEntry {
     #[default]
     Empty,
@@ -25,6 +25,7 @@ enum BenchInlineCacheEntry {
     HostAccess(HostInlineCacheEntry),
     RecordField(RecordFieldInlineCacheEntry),
     MethodDispatch(MethodInlineCacheEntry),
+    NativeCall(NativeInlineCacheEntry),
 }
 
 impl BenchInlineCaches {
@@ -98,6 +99,17 @@ impl VmInlineCaches for BenchInlineCaches {
 
     fn set_method_dispatch(&self, site: CacheSiteId, entry: MethodInlineCacheEntry) {
         self.update(site, BenchInlineCacheEntry::MethodDispatch(entry));
+    }
+
+    fn native_call(&self, site: CacheSiteId) -> Option<NativeInlineCacheEntry> {
+        match self.entries.borrow().get(site.index()) {
+            Some(BenchInlineCacheEntry::NativeCall(entry)) => Some(entry.clone()),
+            _ => None,
+        }
+    }
+
+    fn set_native_call(&self, site: CacheSiteId, entry: NativeInlineCacheEntry) {
+        self.update(site, BenchInlineCacheEntry::NativeCall(entry));
     }
 }
 

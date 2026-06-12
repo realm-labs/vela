@@ -354,6 +354,7 @@ mod tests {
                 dst: Some(Register(0)),
                 name: "test::answer".to_owned(),
                 native: native_id,
+                cache_site: None,
                 args: Vec::new(),
             },
         ));

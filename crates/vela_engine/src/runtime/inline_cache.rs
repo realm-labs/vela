@@ -2,7 +2,10 @@ use std::cell::RefCell;
 
 use vela_bytecode::CacheSiteId;
 use vela_common::GlobalSlot;
-use vela_vm::{HostInlineCacheEntry, MethodInlineCacheEntry, RecordFieldInlineCacheEntry};
+use vela_vm::{
+    HostInlineCacheEntry, MethodInlineCacheEntry, NativeInlineCacheEntry,
+    RecordFieldInlineCacheEntry,
+};
 
 use super::image::RuntimeImage;
 
@@ -11,13 +14,14 @@ pub(super) struct InlineCaches {
     entries: RefCell<Vec<InlineCacheEntry>>,
 }
 
-#[derive(Clone, Debug, Eq, PartialEq)]
+#[derive(Clone, Debug)]
 pub(super) enum InlineCacheEntry {
     Empty,
     GlobalRead { slot: GlobalSlot },
     HostAccess(HostInlineCacheEntry),
     RecordField(RecordFieldInlineCacheEntry),
     MethodDispatch(MethodInlineCacheEntry),
+    NativeCall(NativeInlineCacheEntry),
 }
 
 impl InlineCaches {
@@ -131,6 +135,19 @@ impl vela_vm::VmInlineCaches for InlineCaches {
 
     fn set_method_dispatch(&self, site: CacheSiteId, entry: MethodInlineCacheEntry) {
         self.set_method_dispatch(site, entry);
+    }
+
+    fn native_call(&self, site: CacheSiteId) -> Option<NativeInlineCacheEntry> {
+        match self.entries.borrow().get(site.index()) {
+            Some(InlineCacheEntry::NativeCall(entry)) => Some(entry.clone()),
+            _ => None,
+        }
+    }
+
+    fn set_native_call(&self, site: CacheSiteId, entry: NativeInlineCacheEntry) {
+        if let Some(slot) = self.entries.borrow_mut().get_mut(site.index()) {
+            *slot = InlineCacheEntry::NativeCall(entry);
+        }
     }
 }
 

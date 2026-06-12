@@ -320,7 +320,7 @@ impl Vm {
                     dst,
                     native,
                     debug_name,
-                    cache_site: _,
+                    cache_site,
                     args,
                 } => {
                     native_function_calls::dispatch_linked_native_function_call(
@@ -334,6 +334,8 @@ impl Vm {
                             program: call.program,
                             native: *native,
                             debug_name: *debug_name,
+                            cache_site: *cache_site,
+                            inline_caches: call.inline_caches,
                             args,
                             call_site: instruction.span,
                         },

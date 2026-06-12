@@ -1,11 +1,11 @@
-use vela_bytecode::{DebugNameId, LinkedProgram, NativeHandle, Register};
+use vela_bytecode::{CacheSiteId, DebugNameId, LinkedProgram, NativeHandle, Register};
 use vela_common::Span;
 use vela_def::FunctionId;
 
 use crate::{
     CallFrame, ExecutionBudget, HeapExecution, HostExecution, HostNativeFunction, NativeFunction,
-    OwnedValue, SmallStorage, Vm, VmError, VmErrorKind, VmResult, owned_to_value, value::Value,
-    value_to_owned,
+    NativeInlineCacheEntry, OwnedValue, SmallStorage, Vm, VmError, VmErrorKind, VmInlineCaches,
+    VmResult, owned_to_value, value::Value, value_to_owned,
 };
 
 pub(crate) struct NativeFunctionCall<'a> {
@@ -21,13 +21,27 @@ pub(crate) struct LinkedNativeFunctionCall<'a> {
     pub(crate) program: &'a LinkedProgram,
     pub(crate) native: NativeHandle,
     pub(crate) debug_name: DebugNameId,
+    pub(crate) cache_site: Option<CacheSiteId>,
+    pub(crate) inline_caches: Option<&'a dyn VmInlineCaches>,
     pub(crate) args: &'a [Register],
     pub(crate) call_site: Option<Span>,
 }
 
-enum NativeCallTarget<'a> {
-    Pure(&'a NativeFunction),
-    Host(&'a HostNativeFunction),
+#[derive(Clone)]
+pub(crate) enum NativeCallTarget {
+    Pure(NativeFunction),
+    Host(HostNativeFunction),
+    BorrowedHost(crate::BorrowedHostNativeFunction),
+}
+
+impl NativeCallTarget {
+    pub(crate) const fn kind(&self) -> &'static str {
+        match self {
+            Self::Pure(_) => "pure",
+            Self::Host(_) => "host",
+            Self::BorrowedHost(_) => "borrowed_host",
+        }
+    }
 }
 
 pub(crate) fn dispatch_native_function_call(
@@ -38,43 +52,13 @@ pub(crate) fn dispatch_native_function_call(
     frame: &mut CallFrame,
     call: NativeFunctionCall<'_>,
 ) -> VmResult<()> {
-    if dispatch_borrowed_host_native_function_call(vm, host, heap, budget, frame, &call)? {
-        return Ok(());
-    }
-    let values = native_call_args_from_registers(frame, call.args, heap.as_deref())?;
-    let target = resolve_native_call_target_by_id(vm, call.native);
-    let result = match target {
-        Some(NativeCallTarget::Pure(native)) => native(values.as_slice())
-            .map_err(|error| error.with_source_span_if_absent(call.call_site))?,
-        Some(NativeCallTarget::Host(native)) => {
-            let host = host.as_deref_mut().ok_or_else(|| {
-                VmError::new(VmErrorKind::TypeMismatch {
-                    operation: "host context",
-                })
-            })?;
-            native(values.as_slice(), host, budget.as_deref_mut())
-                .map_err(|error| error.with_source_span_if_absent(call.call_site))?
-        }
-        None => {
-            return Err(VmError::new(VmErrorKind::UnknownNative {
-                name: call.name.to_owned(),
-            })
-            .with_source_span_if_absent(call.call_site));
-        }
+    let Some(target) = resolve_native_call_target_by_id(vm, call.native) else {
+        return Err(VmError::new(VmErrorKind::UnknownNative {
+            name: call.name.to_owned(),
+        })
+        .with_source_span_if_absent(call.call_site));
     };
-    if let Some(dst) = call.dst {
-        let result = owned_to_value(
-            result,
-            heap.as_deref_mut().ok_or_else(|| {
-                VmError::new(VmErrorKind::TypeMismatch {
-                    operation: "native heap",
-                })
-            })?,
-            budget.as_deref_mut(),
-        )?;
-        frame.write(dst, result)?;
-    }
-    Ok(())
+    dispatch_resolved_native_function_call(host, heap, budget, frame, &call, target)
 }
 
 pub(crate) fn dispatch_linked_native_function_call(
@@ -91,6 +75,8 @@ pub(crate) fn dispatch_linked_native_function_call(
         })
         .with_source_span_if_absent(call.call_site)
     })?;
+    let cache_site = call.cache_site;
+    let inline_caches = call.inline_caches;
     let call = NativeFunctionCall {
         dst: call.dst,
         name: call.program.debug_name(target.debug_name),
@@ -98,15 +84,33 @@ pub(crate) fn dispatch_linked_native_function_call(
         args: call.args,
         call_site: call.call_site,
     };
-    if dispatch_borrowed_host_native_function_call(vm, host, heap, budget, frame, &call)? {
-        return Ok(());
-    }
-    let values = native_call_args_from_registers(frame, call.args, heap.as_deref())?;
-    let target = resolve_native_call_target_by_id(vm, call.native);
+    let Some(target) =
+        resolve_cached_native_call_target(vm, call.native, cache_site, inline_caches)
+    else {
+        return Err(VmError::new(VmErrorKind::UnknownNative {
+            name: call.name.to_owned(),
+        })
+        .with_source_span_if_absent(call.call_site));
+    };
+    dispatch_resolved_native_function_call(host, heap, budget, frame, &call, target)
+}
+
+fn dispatch_resolved_native_function_call(
+    host: &mut Option<&mut HostExecution<'_>>,
+    heap: &mut Option<&mut HeapExecution<'_>>,
+    budget: &mut Option<&mut ExecutionBudget>,
+    frame: &mut CallFrame,
+    call: &NativeFunctionCall<'_>,
+    target: NativeCallTarget,
+) -> VmResult<()> {
     let result = match target {
-        Some(NativeCallTarget::Pure(native)) => native(values.as_slice())
-            .map_err(|error| error.with_source_span_if_absent(call.call_site))?,
-        Some(NativeCallTarget::Host(native)) => {
+        NativeCallTarget::Pure(native) => {
+            let values = native_call_args_from_registers(frame, call.args, heap.as_deref())?;
+            native(values.as_slice())
+                .map_err(|error| error.with_source_span_if_absent(call.call_site))?
+        }
+        NativeCallTarget::Host(native) => {
+            let values = native_call_args_from_registers(frame, call.args, heap.as_deref())?;
             let host = host.as_deref_mut().ok_or_else(|| {
                 VmError::new(VmErrorKind::TypeMismatch {
                     operation: "host context",
@@ -115,11 +119,22 @@ pub(crate) fn dispatch_linked_native_function_call(
             native(values.as_slice(), host, budget.as_deref_mut())
                 .map_err(|error| error.with_source_span_if_absent(call.call_site))?
         }
-        None => {
-            return Err(VmError::new(VmErrorKind::UnknownNative {
-                name: call.name.to_owned(),
-            })
-            .with_source_span_if_absent(call.call_site));
+        NativeCallTarget::BorrowedHost(native) => {
+            let values = native_borrowed_call_args_from_registers(frame, call.args)?;
+            let heap = heap.as_deref().ok_or_else(|| {
+                VmError::new(VmErrorKind::TypeMismatch {
+                    operation: "native heap",
+                })
+                .with_source_span_if_absent(call.call_site)
+            })?;
+            let host = host.as_deref_mut().ok_or_else(|| {
+                VmError::new(VmErrorKind::TypeMismatch {
+                    operation: "host context",
+                })
+                .with_source_span_if_absent(call.call_site)
+            })?;
+            native(values.as_slice(), heap, host, budget.as_deref_mut())
+                .map_err(|error| error.with_source_span_if_absent(call.call_site))?
         }
     };
     if let Some(dst) = call.dst {
@@ -137,55 +152,43 @@ pub(crate) fn dispatch_linked_native_function_call(
     Ok(())
 }
 
-fn dispatch_borrowed_host_native_function_call(
+fn resolve_cached_native_call_target(
     vm: &Vm,
-    host: &mut Option<&mut HostExecution<'_>>,
-    heap: &mut Option<&mut HeapExecution<'_>>,
-    budget: &mut Option<&mut ExecutionBudget>,
-    frame: &mut CallFrame,
-    call: &NativeFunctionCall<'_>,
-) -> VmResult<bool> {
-    let Some(native) = vm.borrowed_host_native_ids.get(&call.native) else {
-        return Ok(false);
-    };
-    let values = native_borrowed_call_args_from_registers(frame, call.args)?;
-    let result = {
-        let heap = heap.as_deref().ok_or_else(|| {
-            VmError::new(VmErrorKind::TypeMismatch {
-                operation: "native heap",
-            })
-            .with_source_span_if_absent(call.call_site)
-        })?;
-        let host = host.as_deref_mut().ok_or_else(|| {
-            VmError::new(VmErrorKind::TypeMismatch {
-                operation: "host context",
-            })
-            .with_source_span_if_absent(call.call_site)
-        })?;
-        native(values.as_slice(), heap, host, budget.as_deref_mut())
-            .map_err(|error| error.with_source_span_if_absent(call.call_site))?
-    };
-    if let Some(dst) = call.dst {
-        let result = owned_to_value(
-            result,
-            heap.as_deref_mut().ok_or_else(|| {
-                VmError::new(VmErrorKind::TypeMismatch {
-                    operation: "native heap",
-                })
-                .with_source_span_if_absent(call.call_site)
-            })?,
-            budget.as_deref_mut(),
-        )?;
-        frame.write(dst, result)?;
+    native: FunctionId,
+    cache_site: Option<CacheSiteId>,
+    inline_caches: Option<&dyn VmInlineCaches>,
+) -> Option<NativeCallTarget> {
+    let cache = cache_site.zip(inline_caches);
+    if let Some((site, caches)) = cache
+        && let Some(entry) = caches.native_call(site)
+        && entry.matches(native)
+    {
+        return Some(entry.target());
     }
-    Ok(true)
+    let target = resolve_native_call_target_by_id(vm, native)?;
+    if let Some((site, caches)) = cache {
+        caches.set_native_call(site, NativeInlineCacheEntry::new(native, target.clone()));
+    }
+    Some(target)
 }
 
-fn resolve_native_call_target_by_id(vm: &Vm, native: FunctionId) -> Option<NativeCallTarget<'_>> {
-    vm.native_ids
+fn resolve_native_call_target_by_id(vm: &Vm, native: FunctionId) -> Option<NativeCallTarget> {
+    vm.borrowed_host_native_ids
         .get(&native)
-        .map(NativeCallTarget::Pure)
-        .or_else(|| vm.host_native_ids.get(&native).map(NativeCallTarget::Host))
+        .cloned()
+        .map(NativeCallTarget::BorrowedHost)
+        .or_else(|| {
+            vm.native_ids
+                .get(&native)
+                .cloned()
+                .map(NativeCallTarget::Pure)
+        })
+        .or_else(|| {
+            vm.host_native_ids
+                .get(&native)
+                .cloned()
+                .map(NativeCallTarget::Host)
+        })
 }
 
 #[inline]
