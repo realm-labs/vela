@@ -674,6 +674,10 @@ fn linked_callback_value_method_result(
         bytecode_profiler: context.bytecode_profiler,
     };
     if let Some(callback_method) = call.callback_method
+        && callback_method_dispatch::callback_cache_entry_matches_method_id(
+            call.method_id,
+            callback_method,
+        )
         && let Some(result) = callback_method_dispatch::call_cached(
             receiver,
             callback_method,

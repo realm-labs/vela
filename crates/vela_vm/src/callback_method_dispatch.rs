@@ -299,7 +299,6 @@ pub(crate) fn callback_cache_entry(
     receiver: &Value,
     heap: Option<&HeapExecution<'_>>,
 ) -> Option<CallbackMethodInlineCacheEntry> {
-    let ids = callback_method_ids();
     let receiver = if array_methods::is_array(receiver, heap) {
         StandardMethodReceiver::Array
     } else if map_methods::is_map(receiver, heap) {
@@ -313,6 +312,22 @@ pub(crate) fn callback_cache_entry(
     } else {
         return None;
     };
+    let target = callback_method_target(receiver, method_id)?;
+    Some(CallbackMethodInlineCacheEntry { receiver, target })
+}
+
+pub(crate) fn callback_cache_entry_matches_method_id(
+    method_id: MethodId,
+    cache: CallbackMethodInlineCacheEntry,
+) -> bool {
+    callback_method_target(cache.receiver, method_id) == Some(cache.target)
+}
+
+fn callback_method_target(
+    receiver: StandardMethodReceiver,
+    method_id: MethodId,
+) -> Option<CallbackMethodInlineCacheTarget> {
+    let ids = callback_method_ids();
     let target = match (receiver, method_id) {
         (StandardMethodReceiver::Array, id) if id == ids.array_map => {
             CallbackMethodInlineCacheTarget::Map
@@ -403,7 +418,7 @@ pub(crate) fn callback_cache_entry(
         }
         _ => return None,
     };
-    Some(CallbackMethodInlineCacheEntry { receiver, target })
+    Some(target)
 }
 
 pub(crate) fn call_cached(
