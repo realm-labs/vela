@@ -112,11 +112,12 @@ fn set_union_payload(
     operation: &'static str,
 ) -> VmResult<Vec<Value>> {
     let mut combined = Vec::new();
+    let mut combined_keys = Vec::new();
     for value in left {
-        push_unique(&mut combined, *value, heap, operation)?;
+        push_unique(&mut combined, &mut combined_keys, *value, heap, operation)?;
     }
     for value in right {
-        push_unique(&mut combined, *value, heap, operation)?;
+        push_unique(&mut combined, &mut combined_keys, *value, heap, operation)?;
     }
     Ok(combined)
 }
@@ -129,10 +130,11 @@ fn set_intersection_payload(
 ) -> VmResult<Vec<Value>> {
     let right_keys = set_keys(right, heap, operation)?;
     let mut result = Vec::new();
+    let mut result_keys = Vec::new();
     for value in left {
         let key = SetKey::from_value(value, heap, operation)?;
         if right_keys.contains(&key) {
-            push_unique(&mut result, *value, heap, operation)?;
+            push_unique_with_key(&mut result, &mut result_keys, *value, key);
         }
     }
     Ok(result)
@@ -146,10 +148,11 @@ fn set_difference_payload(
 ) -> VmResult<Vec<Value>> {
     let right_keys = set_keys(right, heap, operation)?;
     let mut result = Vec::new();
+    let mut result_keys = Vec::new();
     for value in left {
         let key = SetKey::from_value(value, heap, operation)?;
         if !right_keys.contains(&key) {
-            push_unique(&mut result, *value, heap, operation)?;
+            push_unique_with_key(&mut result, &mut result_keys, *value, key);
         }
     }
     Ok(result)
@@ -164,14 +167,15 @@ fn set_symmetric_difference_payload(
     let left_keys = set_keys(left, heap, operation)?;
     let right_keys = set_keys(right, heap, operation)?;
     let mut result = Vec::new();
+    let mut result_keys = Vec::new();
     for (value, key) in left.iter().zip(left_keys.iter()) {
         if !right_keys.contains(key) {
-            push_unique(&mut result, *value, heap, operation)?;
+            push_unique_with_key(&mut result, &mut result_keys, *value, key.clone());
         }
     }
     for (value, key) in right.iter().zip(right_keys.iter()) {
         if !left_keys.contains(key) {
-            push_unique(&mut result, *value, heap, operation)?;
+            push_unique_with_key(&mut result, &mut result_keys, *value, key.clone());
         }
     }
     Ok(result)
@@ -179,19 +183,27 @@ fn set_symmetric_difference_payload(
 
 fn push_unique(
     values: &mut Vec<Value>,
+    keys: &mut Vec<SetKey>,
     value: Value,
     heap: Option<&HeapExecution<'_>>,
     operation: &'static str,
 ) -> VmResult<()> {
     let key = SetKey::from_value(&value, heap, operation)?;
-    if values
-        .iter()
-        .any(|value| SetKey::from_value(value, heap, operation).as_ref() == Ok(&key))
-    {
-        return Ok(());
-    }
-    values.push(stored_runtime_value(&value));
+    push_unique_with_key(values, keys, value, key);
     Ok(())
+}
+
+fn push_unique_with_key(
+    values: &mut Vec<Value>,
+    keys: &mut Vec<SetKey>,
+    value: Value,
+    key: SetKey,
+) {
+    if keys.contains(&key) {
+        return;
+    }
+    keys.push(key);
+    values.push(stored_runtime_value(&value));
 }
 
 fn set_keys(
