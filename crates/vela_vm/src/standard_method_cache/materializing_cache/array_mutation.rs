@@ -127,32 +127,31 @@ fn call_cached_array_extend(
     receiver: &Value,
     args: &[Value],
     heap: &mut Option<&mut HeapExecution<'_>>,
-    budget: &mut Option<&mut ExecutionBudget>,
+    _budget: &mut Option<&mut ExecutionBudget>,
 ) -> VmResult<Value> {
     crate::runtime_checks::expect_arity("extend", args, 1)?;
-    let extension = array_values(&args[0], heap.as_deref(), "method extend")?;
     let reference = array_reference(receiver, "method extend")?;
     let Some(heap) = heap.as_deref_mut() else {
         return type_error("method extend");
     };
-    let mut slots = Vec::with_capacity(extension.len());
-    for value in &extension {
-        slots.push(store_runtime_value(value, heap, budget.as_deref_mut())?);
-    }
+    let slots = array_slot_values(heap, &args[0], "method extend")?;
     array_slots_mut(heap, reference, "method extend")?.extend(slots);
     Ok(Value::Null)
 }
 
-fn array_values(
+fn array_slot_values(
+    heap: &HeapExecution<'_>,
     receiver: &Value,
-    heap: Option<&HeapExecution<'_>>,
     operation: &'static str,
 ) -> VmResult<Vec<Value>> {
     let reference = array_reference(receiver, operation)?;
-    let Some(HeapValue::Array(values)) = heap.and_then(|heap| heap.heap.get(reference)) else {
+    let Some(HeapValue::Array(values)) = heap.heap.get(reference) else {
         return type_error(operation);
     };
-    Ok(values.iter().map(stored_runtime_value).collect())
+    if values.iter().any(|value| matches!(value, Value::Missing)) {
+        return type_error("missing value");
+    }
+    Ok(values.clone())
 }
 
 fn array_slots<'a>(
