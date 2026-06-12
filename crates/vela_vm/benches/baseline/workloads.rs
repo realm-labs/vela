@@ -791,6 +791,11 @@ fn main(player: Player) {
         source: HOST_METHOD_CALLS_SOURCE,
     },
     Workload {
+        name: "host_method_calls_hot_offsets",
+        mode: ExecutionMode::HostAccess,
+        source: HOST_METHOD_CALLS_SOURCE,
+    },
+    Workload {
         name: "host_method_calls_cache_hot_offsets",
         mode: ExecutionMode::HostAccessCacheEnabled,
         source: HOST_METHOD_CALLS_SOURCE,
