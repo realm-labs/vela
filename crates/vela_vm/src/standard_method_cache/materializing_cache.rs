@@ -9,7 +9,7 @@ use crate::heap::HeapValue;
 use crate::option_result::option_value;
 use crate::{
     ExecutionBudget, HeapExecution, StandardMethodInlineCacheTarget, Value, VmError, VmErrorKind,
-    VmResult, allocate_heap_value, stored_runtime_value,
+    VmResult, allocate_heap_value,
 };
 pub(super) use array_mutation::call_cached_array_mutation;
 pub(super) use map::call_cached_map_materialization;
@@ -40,14 +40,14 @@ pub(super) fn call_cached_array_lookup_option(
                     Ok(()) => {}
                     Err(error) => return Some(Err(error)),
                 }
-                slots.first().map(stored_runtime_value)
+                slots.first().copied()
             }
             StandardMethodInlineCacheTarget::Last => {
                 match crate::runtime_checks::expect_arity(method, args, 0) {
                     Ok(()) => {}
                     Err(error) => return Some(Err(error)),
                 }
-                slots.last().map(stored_runtime_value)
+                slots.last().copied()
             }
             StandardMethodInlineCacheTarget::IndexOf => {
                 match crate::runtime_checks::expect_arity(method, args, 1) {
@@ -55,11 +55,7 @@ pub(super) fn call_cached_array_lookup_option(
                     Err(error) => return Some(Err(error)),
                 }
                 let index = match slots.iter().enumerate().find_map(|(index, value)| {
-                    match crate::values_equal(
-                        &stored_runtime_value(value),
-                        &args[0],
-                        heap.as_deref(),
-                    ) {
+                    match crate::values_equal(value, &args[0], heap.as_deref()) {
                         Ok(true) => Some(Ok(index)),
                         Ok(false) => None,
                         Err(error) => Some(Err(error)),
@@ -173,7 +169,7 @@ pub(super) fn call_cached_map_get_option(
     let values = map::map_values(receiver, heap.as_deref())?;
     let payload = match crate::runtime_checks::expect_arity("get", args, 1).and_then(|()| {
         let key = crate::string_methods::string_value(&args[0], heap.as_deref(), "map key")?;
-        Ok(values.get(key).map(stored_runtime_value))
+        Ok(values.get(key).copied())
     }) {
         Ok(payload) => payload,
         Err(error) => return Some(Err(error)),
