@@ -2,6 +2,7 @@ mod map;
 mod map_mutation;
 mod option_result;
 mod set;
+mod set_mutation;
 
 use crate::heap::HeapValue;
 use crate::option_result::option_value;
@@ -13,6 +14,7 @@ pub(super) use map::call_cached_map_materialization;
 pub(super) use map_mutation::call_cached_map_mutation;
 pub(super) use option_result::call_cached_option_result_materialization;
 pub(super) use set::call_cached_set_materialization;
+pub(super) use set_mutation::call_cached_set_mutation;
 use vela_common::ScalarValue;
 
 pub(super) fn call_cached_array_lookup_option(
