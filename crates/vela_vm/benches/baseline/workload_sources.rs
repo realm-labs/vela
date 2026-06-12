@@ -514,6 +514,30 @@ fn main() {
 }
 "#;
 
+pub(crate) const BYTES_MATERIALIZATION_SOURCE: &str = r#"
+fn main() {
+    let total = 0;
+    for tick in 0..96 {
+        let data = b"\x0a\x0b\x0c\x0d\x0e\x0f";
+        let head = data.slice(0, 3);
+        let tail = data.slice(3, 6);
+        let encoded = data.to_hex();
+        let decoded = result::unwrap_or(bytes::from_hex(encoded), b"bad");
+
+        if head != b"\x0a\x0b\x0c"
+            || tail != b"\x0d\x0e\x0f"
+            || encoded != "0a0b0c0d0e0f"
+            || decoded != data
+        {
+            return 0;
+        }
+
+        total += 6 + tick - tick;
+    }
+    return total;
+}
+"#;
+
 pub(crate) const METHOD_DISPATCH_SOURCE: &str = r#"
 fn main() {
     let total = 0;
