@@ -332,8 +332,9 @@ Cranelift JIT.
   inline-cache entries keyed by `MethodDispatchHandle`, caching resolved
   script, value, or host targets before falling back to linked method-dispatch
   lookup on misses; accepted hot reloads clear those record-field and
-  method-dispatch cache entries before the new image repopulates them. The
-  primitive scalar, bytes, type-hint contract, and guard-plan refactor is
+  method-dispatch cache entries before the new image repopulates them. Native
+  call cache entries now have the same accepted-hot-reload clearing coverage.
+  The primitive scalar, bytes, type-hint contract, and guard-plan refactor is
   complete: source `int`/`float` hints are gone, runtime/owned/host/constant
   values share `ScalarValue` and bytes representations, type hints are
   contracts with compile-time and linked runtime guard enforcement, numeric
