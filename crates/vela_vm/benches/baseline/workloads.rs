@@ -746,6 +746,11 @@ fn main(player: Player) {
         source: HOST_NESTED_READ_WRITE_SOURCE,
     },
     Workload {
+        name: "host_nested_read_write_hot_offsets",
+        mode: ExecutionMode::HostAccess,
+        source: HOST_NESTED_READ_WRITE_SOURCE,
+    },
+    Workload {
         name: "host_nested_read_write_cache_hot_offsets",
         mode: ExecutionMode::HostAccessCacheEnabled,
         source: HOST_NESTED_READ_WRITE_SOURCE,
