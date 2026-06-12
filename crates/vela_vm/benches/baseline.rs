@@ -252,34 +252,9 @@ fn run_once(vm: &Vm, workload: &CompiledWorkload) -> Result<OwnedValue, Box<dyn 
             mode: ExecutionMode::GcPacing,
             program,
         } => run_gc_pacing(vm, program),
-        CompiledWorkload::Function {
-            mode: ExecutionMode::HostAccess,
-            ..
+        CompiledWorkload::Function { .. } => {
+            unreachable!("non-function workloads compile to programs")
         }
-        | CompiledWorkload::Function {
-            mode: ExecutionMode::HostAccessCacheEnabled,
-            ..
-        }
-        | CompiledWorkload::Function {
-            mode: ExecutionMode::HostManagedHeapHostAccess,
-            ..
-        }
-        | CompiledWorkload::Function {
-            mode: ExecutionMode::HostManagedHeapReadConversion,
-            ..
-        }
-        | CompiledWorkload::Function {
-            mode: ExecutionMode::GameplayHost,
-            ..
-        }
-        | CompiledWorkload::Function {
-            mode: ExecutionMode::ScriptProgram,
-            ..
-        }
-        | CompiledWorkload::Function {
-            mode: ExecutionMode::ScriptProgramCacheEnabled,
-            ..
-        } => unreachable!("host workloads compile to programs"),
         CompiledWorkload::HostAccess { program } => run_host_access(vm, program, None, None),
         CompiledWorkload::CacheEnabledHostAccess {
             program,
@@ -357,7 +332,9 @@ fn compile_workload(workload: &Workload, vm: &Vm) -> Result<CompiledWorkload, St
                 program: Box::new(link_single_function_for_vm(vm, code)?),
             })
         }
-        ExecutionMode::ScriptProgram | ExecutionMode::ScriptProgramCacheEnabled => {
+        ExecutionMode::ScriptProgram
+        | ExecutionMode::ScriptProgramProfileOnly
+        | ExecutionMode::ScriptProgramCacheEnabled => {
             let registry = bench_compile_registry()?;
             let program = compile_program_source_with_registry(
                 SourceId::new(1),
@@ -365,6 +342,16 @@ fn compile_workload(workload: &Workload, vm: &Vm) -> Result<CompiledWorkload, St
                 registry.compile_view(),
             )
             .map_err(|error| format!("{error:?}"))?;
+            if matches!(workload.mode, ExecutionMode::ScriptProgramProfileOnly) {
+                let image = ProgramImage::from_program(&program);
+                let mut linked = link_program_for_vm(vm, &program)?;
+                rebase_linked_cache_sites(&mut linked, &image);
+                return Ok(CompiledWorkload::CacheEnabledFunction {
+                    caches: None,
+                    profiler: BenchBytecodeProfiler::default(),
+                    program: Box::new(linked),
+                });
+            }
             if matches!(workload.mode, ExecutionMode::ScriptProgramCacheEnabled) {
                 let image = ProgramImage::from_program(&program);
                 let mut linked = link_program_for_vm(vm, &program)?;
@@ -1172,6 +1159,7 @@ impl ExecutionMode {
             Self::ProfileOnly => "profile_only",
             Self::CacheEnabled => "cache_enabled",
             Self::ScriptProgram => "script_program",
+            Self::ScriptProgramProfileOnly => "script_program_profile_only",
             Self::ScriptProgramCacheEnabled => "script_program_cache_enabled",
             Self::ManagedHeap => "managed_heap",
             Self::HostAccess => "host_access",

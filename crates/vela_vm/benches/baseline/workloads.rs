@@ -31,6 +31,7 @@ pub(crate) enum ExecutionMode {
     ProfileOnly,
     CacheEnabled,
     ScriptProgram,
+    ScriptProgramProfileOnly,
     ScriptProgramCacheEnabled,
     ManagedHeap,
     HostAccess,
@@ -131,6 +132,11 @@ fn main() {
     Workload {
         name: "script_call_small_args",
         mode: ExecutionMode::ScriptProgram,
+        source: SCRIPT_CALL_SMALL_ARGS_SOURCE,
+    },
+    Workload {
+        name: "script_call_small_args_hot_offsets",
+        mode: ExecutionMode::ScriptProgramProfileOnly,
         source: SCRIPT_CALL_SMALL_ARGS_SOURCE,
     },
     Workload {
