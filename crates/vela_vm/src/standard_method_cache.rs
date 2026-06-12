@@ -55,6 +55,30 @@ pub(crate) fn standard_cache_entry_matches_method_id(
     method_id: MethodId,
     cache: StandardMethodInlineCacheEntry,
 ) -> bool {
+    match (cache.receiver, cache.target) {
+        (StandardMethodReceiver::Range, StandardMethodInlineCacheTarget::Len) => {
+            return method_id == std_method_ids().range_len;
+        }
+        (StandardMethodReceiver::Range, StandardMethodInlineCacheTarget::IsEmpty) => {
+            return method_id == std_method_ids().range_is_empty;
+        }
+        (StandardMethodReceiver::Bytes, StandardMethodInlineCacheTarget::Len) => {
+            return method_id == std_method_ids().bytes_len;
+        }
+        (StandardMethodReceiver::Bytes, StandardMethodInlineCacheTarget::IsEmpty) => {
+            return method_id == std_method_ids().bytes_is_empty;
+        }
+        (StandardMethodReceiver::Bytes, StandardMethodInlineCacheTarget::Get) => {
+            return method_id == std_method_ids().bytes_get;
+        }
+        (StandardMethodReceiver::Bytes, StandardMethodInlineCacheTarget::ReadU32Le) => {
+            return method_id == std_method_ids().bytes_read_u32_le;
+        }
+        (StandardMethodReceiver::Bytes, StandardMethodInlineCacheTarget::ReadU32Be) => {
+            return method_id == std_method_ids().bytes_read_u32_be;
+        }
+        _ => {}
+    }
     standard_method_target(cache.receiver, method_id) == Some(cache.target)
 }
 
