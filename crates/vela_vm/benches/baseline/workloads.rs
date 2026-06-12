@@ -300,6 +300,11 @@ fn main() {
         source: BYTES_METHODS_SOURCE,
     },
     Workload {
+        name: "bytes_methods_hot_offsets",
+        mode: ExecutionMode::ProfileOnly,
+        source: BYTES_METHODS_SOURCE,
+    },
+    Workload {
         name: "bytes_methods_cache_hot_offsets",
         mode: ExecutionMode::CacheEnabled,
         source: BYTES_METHODS_SOURCE,
