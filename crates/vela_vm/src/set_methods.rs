@@ -15,6 +15,13 @@ pub(crate) use higher_order::{all, any, count, filter, find, map};
 use key::{SetKey, set_keys, slot_key};
 pub(crate) use mutation::{add, clear, extend, remove};
 
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub(crate) enum SetRelation {
+    Subset,
+    Superset,
+    Disjoint,
+}
+
 pub(crate) fn is_set(receiver: &Value, heap: Option<&HeapExecution<'_>>) -> bool {
     match receiver {
         Value::HeapRef(reference) => {
@@ -40,6 +47,21 @@ pub(crate) fn contains_value(
         }
     }
     Ok(false)
+}
+
+pub(crate) fn relation_matches(
+    receiver_values: &[Value],
+    other: &Value,
+    heap: &HeapExecution<'_>,
+    relation: SetRelation,
+    operation: &'static str,
+) -> VmResult<bool> {
+    let other_values = set_slots(other, Some(heap), operation)?;
+    match relation {
+        SetRelation::Subset => slots_contain_all(receiver_values, other_values, heap, operation),
+        SetRelation::Superset => slots_contain_all(other_values, receiver_values, heap, operation),
+        SetRelation::Disjoint => slots_are_disjoint(receiver_values, other_values, heap, operation),
+    }
 }
 
 pub(super) fn push_unique(
@@ -82,6 +104,38 @@ pub(super) fn set_slots<'a>(
         }
         _ => type_error(operation),
     }
+}
+
+fn slots_contain_all(
+    subset: &[Value],
+    superset: &[Value],
+    heap: &HeapExecution<'_>,
+    operation: &'static str,
+) -> VmResult<bool> {
+    let superset = set_keys(superset, Some(heap), operation)?;
+    for value in subset {
+        let key = SetKey::from_value(value, Some(heap), operation)?;
+        if !superset.contains(&key) {
+            return Ok(false);
+        }
+    }
+    Ok(true)
+}
+
+fn slots_are_disjoint(
+    left: &[Value],
+    right: &[Value],
+    heap: &HeapExecution<'_>,
+    operation: &'static str,
+) -> VmResult<bool> {
+    let right = set_keys(right, Some(heap), operation)?;
+    for value in left {
+        let key = SetKey::from_value(value, Some(heap), operation)?;
+        if right.contains(&key) {
+            return Ok(false);
+        }
+    }
+    Ok(true)
 }
 
 pub(super) fn expect_arity<T>(name: &str, args: &[T], expected: usize) -> VmResult<()> {

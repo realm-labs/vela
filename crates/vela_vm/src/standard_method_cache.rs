@@ -623,6 +623,11 @@ fn call_readonly_cached(
         StandardMethodInlineCacheTarget::Has => {
             return call_cached_collection_has(receiver, cache.receiver, args, heap);
         }
+        StandardMethodInlineCacheTarget::IsSubset
+        | StandardMethodInlineCacheTarget::IsSuperset
+        | StandardMethodInlineCacheTarget::IsDisjoint => {
+            return call_cached_set_relation(receiver, cache.receiver, cache.target, args, heap);
+        }
         _ => {}
     }
     if !receiver_matches_cache(receiver, cache.receiver, heap) {
@@ -955,6 +960,46 @@ fn call_cached_collection_has(
         }
         _ => None,
     }
+}
+
+fn call_cached_set_relation(
+    receiver: &Value,
+    cached: StandardMethodReceiver,
+    target: StandardMethodInlineCacheTarget,
+    args: &[Value],
+    heap: Option<&HeapExecution<'_>>,
+) -> Option<VmResult<Value>> {
+    if cached != StandardMethodReceiver::Set {
+        return None;
+    }
+    let heap = heap?;
+    let HeapValue::Set(values) = cached_heap_value(receiver, Some(heap))? else {
+        return None;
+    };
+    let (name, operation, relation) = match target {
+        StandardMethodInlineCacheTarget::IsSubset => (
+            "is_subset",
+            "method is_subset",
+            set_methods::SetRelation::Subset,
+        ),
+        StandardMethodInlineCacheTarget::IsSuperset => (
+            "is_superset",
+            "method is_superset",
+            set_methods::SetRelation::Superset,
+        ),
+        StandardMethodInlineCacheTarget::IsDisjoint => (
+            "is_disjoint",
+            "method is_disjoint",
+            set_methods::SetRelation::Disjoint,
+        ),
+        _ => return None,
+    };
+    Some(
+        crate::runtime_checks::expect_arity(name, args, 1).and_then(|()| {
+            set_methods::relation_matches(values, &args[0], heap, relation, operation)
+                .map(Value::Bool)
+        }),
+    )
 }
 
 fn cached_heap_value<'a>(

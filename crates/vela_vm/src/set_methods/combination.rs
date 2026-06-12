@@ -1,7 +1,9 @@
 use crate::heap_values::make_set_value;
 use crate::{ExecutionBudget, HeapExecution, Value, VmResult};
 
-use super::{SetKey, expect_arity, push_unique, set_keys, set_slots};
+use super::{
+    SetKey, SetRelation, expect_arity, push_unique, relation_matches, set_keys, set_slots,
+};
 
 pub(crate) fn union(
     receiver: &Value,
@@ -106,7 +108,18 @@ pub(crate) fn is_subset(
     heap: Option<&HeapExecution<'_>>,
 ) -> VmResult<bool> {
     expect_arity("is_subset", args, 1)?;
-    set_contains_all(receiver, &args[0], heap, "method is_subset")
+    let operation = "method is_subset";
+    let Some(heap) = heap else {
+        return super::type_error(operation);
+    };
+    let receiver_values = set_slots(receiver, Some(heap), operation)?;
+    relation_matches(
+        receiver_values,
+        &args[0],
+        heap,
+        SetRelation::Subset,
+        operation,
+    )
 }
 
 pub(crate) fn is_superset(
@@ -115,7 +128,18 @@ pub(crate) fn is_superset(
     heap: Option<&HeapExecution<'_>>,
 ) -> VmResult<bool> {
     expect_arity("is_superset", args, 1)?;
-    set_contains_all(&args[0], receiver, heap, "method is_superset")
+    let operation = "method is_superset";
+    let Some(heap) = heap else {
+        return super::type_error(operation);
+    };
+    let receiver_values = set_slots(receiver, Some(heap), operation)?;
+    relation_matches(
+        receiver_values,
+        &args[0],
+        heap,
+        SetRelation::Superset,
+        operation,
+    )
 }
 
 pub(crate) fn is_disjoint(
@@ -124,34 +148,18 @@ pub(crate) fn is_disjoint(
     heap: Option<&HeapExecution<'_>>,
 ) -> VmResult<bool> {
     expect_arity("is_disjoint", args, 1)?;
-    let right = set_keys(
-        set_slots(&args[0], heap, "method is_disjoint")?,
+    let operation = "method is_disjoint";
+    let Some(heap) = heap else {
+        return super::type_error(operation);
+    };
+    let receiver_values = set_slots(receiver, Some(heap), operation)?;
+    relation_matches(
+        receiver_values,
+        &args[0],
         heap,
-        "method is_disjoint",
-    )?;
-    for value in set_slots(receiver, heap, "method is_disjoint")? {
-        let key = SetKey::from_value(value, heap, "method is_disjoint")?;
-        if right.contains(&key) {
-            return Ok(false);
-        }
-    }
-    Ok(true)
-}
-
-fn set_contains_all(
-    subset: &Value,
-    superset: &Value,
-    heap: Option<&HeapExecution<'_>>,
-    operation: &'static str,
-) -> VmResult<bool> {
-    let superset = set_keys(set_slots(superset, heap, operation)?, heap, operation)?;
-    for value in set_slots(subset, heap, operation)? {
-        let key = SetKey::from_value(value, heap, operation)?;
-        if !superset.contains(&key) {
-            return Ok(false);
-        }
-    }
-    Ok(true)
+        SetRelation::Disjoint,
+        operation,
+    )
 }
 
 fn make_result_set(
