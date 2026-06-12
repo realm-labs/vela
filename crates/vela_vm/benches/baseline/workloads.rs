@@ -891,6 +891,11 @@ fn main(player: Player) {
         source: MATERIALIZATION_SOURCE,
     },
     Workload {
+        name: "materialization",
+        mode: ExecutionMode::Inline,
+        source: MATERIALIZATION_SOURCE,
+    },
+    Workload {
         name: "materialization_cache_hot_offsets",
         mode: ExecutionMode::CacheEnabled,
         source: MATERIALIZATION_SOURCE,
@@ -898,6 +903,11 @@ fn main(player: Player) {
     Workload {
         name: "managed_heap_record_triplets",
         mode: ExecutionMode::ManagedHeap,
+        source: RECORD_TRIPLETS_SOURCE,
+    },
+    Workload {
+        name: "record_fields",
+        mode: ExecutionMode::Inline,
         source: RECORD_TRIPLETS_SOURCE,
     },
     Workload {
@@ -911,6 +921,11 @@ fn main(player: Player) {
         source: RECORD_QUADS_SOURCE,
     },
     Workload {
+        name: "record_quads",
+        mode: ExecutionMode::Inline,
+        source: RECORD_QUADS_SOURCE,
+    },
+    Workload {
         name: "record_quads_cache_hot_offsets",
         mode: ExecutionMode::CacheEnabled,
         source: RECORD_QUADS_SOURCE,
@@ -921,6 +936,11 @@ fn main(player: Player) {
         source: RECORD_QUINTS_SOURCE,
     },
     Workload {
+        name: "record_quints",
+        mode: ExecutionMode::Inline,
+        source: RECORD_QUINTS_SOURCE,
+    },
+    Workload {
         name: "record_quints_cache_hot_offsets",
         mode: ExecutionMode::CacheEnabled,
         source: RECORD_QUINTS_SOURCE,
@@ -928,6 +948,11 @@ fn main(player: Player) {
     Workload {
         name: "managed_heap_record_sextets",
         mode: ExecutionMode::ManagedHeap,
+        source: RECORD_SEXTETS_SOURCE,
+    },
+    Workload {
+        name: "record_sextets",
+        mode: ExecutionMode::Inline,
         source: RECORD_SEXTETS_SOURCE,
     },
     Workload {
