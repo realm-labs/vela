@@ -1,3 +1,4 @@
+use crate::option_result::{StdEnumKind, StdEnumVariant, std_enum_tag};
 use crate::std_method_ids::std_method_ids;
 use crate::{
     ExecutionBudget, HeapExecution, StandardMethodInlineCacheEntry,
@@ -600,6 +601,18 @@ fn call_readonly_cached(
         StandardMethodInlineCacheTarget::IsEmpty => {
             return call_cached_is_empty(receiver, cache.receiver, args, heap);
         }
+        StandardMethodInlineCacheTarget::IsSome
+        | StandardMethodInlineCacheTarget::IsNone
+        | StandardMethodInlineCacheTarget::IsOk
+        | StandardMethodInlineCacheTarget::IsErr => {
+            return call_cached_option_result_predicate(
+                receiver,
+                cache.receiver,
+                cache.target,
+                args,
+                heap,
+            );
+        }
         _ => {}
     }
     if !receiver_matches_cache(receiver, cache.receiver, heap) {
@@ -773,6 +786,61 @@ fn call_cached_is_empty(
         }
     };
     Some(script_builtin_methods::expect_no_args("is_empty", args).map(|()| Value::Bool(is_empty)))
+}
+
+fn call_cached_option_result_predicate(
+    receiver: &Value,
+    cached: StandardMethodReceiver,
+    target: StandardMethodInlineCacheTarget,
+    args: &[Value],
+    heap: Option<&HeapExecution<'_>>,
+) -> Option<VmResult<Value>> {
+    let (kind, variant) = cached_standard_enum_tag(receiver, heap)?;
+    let (expected_receiver, expected_kind, method, result) = match target {
+        StandardMethodInlineCacheTarget::IsSome => (
+            StandardMethodReceiver::Option,
+            StdEnumKind::Option,
+            "is_some",
+            variant == StdEnumVariant::Some,
+        ),
+        StandardMethodInlineCacheTarget::IsNone => (
+            StandardMethodReceiver::Option,
+            StdEnumKind::Option,
+            "is_none",
+            variant == StdEnumVariant::None,
+        ),
+        StandardMethodInlineCacheTarget::IsOk => (
+            StandardMethodReceiver::Result,
+            StdEnumKind::Result,
+            "is_ok",
+            variant == StdEnumVariant::Ok,
+        ),
+        StandardMethodInlineCacheTarget::IsErr => (
+            StandardMethodReceiver::Result,
+            StdEnumKind::Result,
+            "is_err",
+            variant == StdEnumVariant::Err,
+        ),
+        _ => return None,
+    };
+    if cached != expected_receiver || kind != expected_kind {
+        return None;
+    }
+    Some(script_builtin_methods::expect_no_args(method, args).map(|()| Value::Bool(result)))
+}
+
+fn cached_standard_enum_tag(
+    receiver: &Value,
+    heap: Option<&HeapExecution<'_>>,
+) -> Option<(StdEnumKind, StdEnumVariant)> {
+    let HeapValue::Enum {
+        identity: Some(identity),
+        ..
+    } = cached_heap_value(receiver, heap)?
+    else {
+        return None;
+    };
+    std_enum_tag(*identity)
 }
 
 fn cached_heap_value<'a>(
