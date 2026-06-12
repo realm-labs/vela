@@ -200,6 +200,11 @@ fn main() {
         source: STRING_METHODS_SOURCE,
     },
     Workload {
+        name: "string_methods_hot_offsets",
+        mode: ExecutionMode::ProfileOnly,
+        source: STRING_METHODS_SOURCE,
+    },
+    Workload {
         name: "string_methods_cache_hot_offsets",
         mode: ExecutionMode::CacheEnabled,
         source: STRING_METHODS_SOURCE,
