@@ -334,6 +334,13 @@ pub enum StandardMethodReceiver {
 pub enum StandardMethodInlineCacheTarget {
     Len,
     IsEmpty,
+    Contains,
+    StartsWith,
+    EndsWith,
+    Has,
+    IsSubset,
+    IsSuperset,
+    IsDisjoint,
 }
 
 pub struct LinkedRuntimeCodeCall<'program, 'args, 'host, 'heap, 'roots, 'budget, 'caches> {

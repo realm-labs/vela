@@ -578,6 +578,15 @@ pub(crate) fn readonly_cache_entry(
         (StandardMethodReceiver::String, id) if id == ids.string_is_empty => {
             StandardMethodInlineCacheTarget::IsEmpty
         }
+        (StandardMethodReceiver::String, id) if id == ids.string_contains => {
+            StandardMethodInlineCacheTarget::Contains
+        }
+        (StandardMethodReceiver::String, id) if id == ids.string_starts_with => {
+            StandardMethodInlineCacheTarget::StartsWith
+        }
+        (StandardMethodReceiver::String, id) if id == ids.string_ends_with => {
+            StandardMethodInlineCacheTarget::EndsWith
+        }
         (StandardMethodReceiver::Bytes, id) if id == ids.bytes_len => {
             StandardMethodInlineCacheTarget::Len
         }
@@ -596,17 +605,35 @@ pub(crate) fn readonly_cache_entry(
         (StandardMethodReceiver::Array, id) if id == ids.array_is_empty => {
             StandardMethodInlineCacheTarget::IsEmpty
         }
+        (StandardMethodReceiver::Array, id) if id == ids.array_contains => {
+            StandardMethodInlineCacheTarget::Contains
+        }
         (StandardMethodReceiver::Map, id) if id == ids.map_len => {
             StandardMethodInlineCacheTarget::Len
         }
         (StandardMethodReceiver::Map, id) if id == ids.map_is_empty => {
             StandardMethodInlineCacheTarget::IsEmpty
         }
+        (StandardMethodReceiver::Map, id) if id == ids.map_has => {
+            StandardMethodInlineCacheTarget::Has
+        }
         (StandardMethodReceiver::Set, id) if id == ids.set_len => {
             StandardMethodInlineCacheTarget::Len
         }
         (StandardMethodReceiver::Set, id) if id == ids.set_is_empty => {
             StandardMethodInlineCacheTarget::IsEmpty
+        }
+        (StandardMethodReceiver::Set, id) if id == ids.set_has => {
+            StandardMethodInlineCacheTarget::Has
+        }
+        (StandardMethodReceiver::Set, id) if id == ids.set_is_subset => {
+            StandardMethodInlineCacheTarget::IsSubset
+        }
+        (StandardMethodReceiver::Set, id) if id == ids.set_is_superset => {
+            StandardMethodInlineCacheTarget::IsSuperset
+        }
+        (StandardMethodReceiver::Set, id) if id == ids.set_is_disjoint => {
+            StandardMethodInlineCacheTarget::IsDisjoint
         }
         _ => return None,
     };
@@ -622,12 +649,38 @@ pub(crate) fn call_readonly_cached(
     if !receiver_matches_cache(receiver, cache.receiver, heap) {
         return None;
     }
-    let result = match cache.target {
-        StandardMethodInlineCacheTarget::Len => {
+    let result = match (cache.receiver, cache.target) {
+        (_, StandardMethodInlineCacheTarget::Len) => {
             expect_no_args("len", args).and_then(|()| len(receiver, heap).map(Value::i64))
         }
-        StandardMethodInlineCacheTarget::IsEmpty => expect_no_args("is_empty", args)
+        (_, StandardMethodInlineCacheTarget::IsEmpty) => expect_no_args("is_empty", args)
             .and_then(|()| is_empty(receiver, heap).map(Value::Bool)),
+        (StandardMethodReceiver::String, StandardMethodInlineCacheTarget::Contains) => {
+            crate::string_methods::contains(receiver, args, heap).map(Value::Bool)
+        }
+        (StandardMethodReceiver::Array, StandardMethodInlineCacheTarget::Contains) => {
+            array_methods::contains(receiver, args, heap).map(Value::Bool)
+        }
+        (StandardMethodReceiver::String, StandardMethodInlineCacheTarget::StartsWith) => {
+            crate::string_methods::starts_with(receiver, args, heap).map(Value::Bool)
+        }
+        (StandardMethodReceiver::String, StandardMethodInlineCacheTarget::EndsWith) => {
+            crate::string_methods::ends_with(receiver, args, heap).map(Value::Bool)
+        }
+        (
+            StandardMethodReceiver::Map | StandardMethodReceiver::Set,
+            StandardMethodInlineCacheTarget::Has,
+        ) => has(receiver, args, heap).map(Value::Bool),
+        (StandardMethodReceiver::Set, StandardMethodInlineCacheTarget::IsSubset) => {
+            set_methods::is_subset(receiver, args, heap).map(Value::Bool)
+        }
+        (StandardMethodReceiver::Set, StandardMethodInlineCacheTarget::IsSuperset) => {
+            set_methods::is_superset(receiver, args, heap).map(Value::Bool)
+        }
+        (StandardMethodReceiver::Set, StandardMethodInlineCacheTarget::IsDisjoint) => {
+            set_methods::is_disjoint(receiver, args, heap).map(Value::Bool)
+        }
+        _ => return None,
     };
     Some(result)
 }
