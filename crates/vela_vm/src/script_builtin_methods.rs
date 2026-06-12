@@ -603,6 +603,9 @@ pub(crate) fn standard_cache_entry(
         (StandardMethodReceiver::String, id) if id == ids.string_char_at => {
             StandardMethodInlineCacheTarget::CharAt
         }
+        (StandardMethodReceiver::String, id) if id == ids.string_split => {
+            StandardMethodInlineCacheTarget::Split
+        }
         (StandardMethodReceiver::String, id) if id == ids.string_split_once => {
             StandardMethodInlineCacheTarget::SplitOnce
         }
@@ -765,6 +768,9 @@ pub(crate) fn call_standard_cached(
         }
         (StandardMethodReceiver::String, StandardMethodInlineCacheTarget::CharAt) => {
             crate::string_methods::char_at(receiver, args, heap, budget)
+        }
+        (StandardMethodReceiver::String, StandardMethodInlineCacheTarget::Split) => {
+            crate::string_methods::split(receiver, args, heap, budget)
         }
         (StandardMethodReceiver::String, StandardMethodInlineCacheTarget::SplitOnce) => {
             crate::string_methods::split_once(receiver, args, heap, budget)

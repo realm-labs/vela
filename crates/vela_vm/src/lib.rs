@@ -343,6 +343,7 @@ pub enum StandardMethodInlineCacheTarget {
     StripPrefix,
     StripSuffix,
     CharAt,
+    Split,
     SplitOnce,
     SplitLines,
     SplitWhitespace,
