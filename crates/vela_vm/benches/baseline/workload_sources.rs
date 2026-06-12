@@ -1,3 +1,8 @@
+#[path = "workload_sources/strings.rs"]
+mod strings;
+
+pub(crate) use strings::{STRING_METHODS_SOURCE, STRING_PARSING_SOURCE, STRING_SPLITTING_SOURCE};
+
 pub(crate) const STDLIB_COLLECTIONS_SOURCE: &str = r#"
 fn main() {
     let values = [9, 2, 5, 2, 8, 1, 9, 3];
@@ -454,118 +459,6 @@ fn main() {
     let total = 0;
     for tick in 0..240 {
         total += bench::mix4(tick, total % 17, tick % 5, 3);
-    }
-    return total;
-}
-"#;
-
-pub(crate) const STRING_METHODS_SOURCE: &str = r#"
-fn main() {
-    let total = 0;
-    for tick in 0..80 {
-        let label = "quest.done";
-        let upper = label.to_upper();
-        let replaced = label.replace(".", "_");
-        let repeated = "ab".repeat(3);
-        let parts = "alpha,beta".split(",");
-        let pair = "count=3".split_once("=").unwrap_or([]);
-        let lines = "alpha\nbeta".split_lines();
-        let words = "alpha beta".split_whitespace();
-        let sliced = "hello".slice(1, 4);
-        let ch = "quest".char_at(1).unwrap_or("");
-        let found = "daily_quest".find("quest").unwrap_or(-1);
-        let stripped_prefix = "event:quest".strip_prefix("event:").unwrap_or("");
-        let stripped_suffix = "quest.done".strip_suffix(".done").unwrap_or("");
-        let parsed = "42".parse_int().unwrap_or(0);
-        let parsed_bool = "true".parse_bool().unwrap_or(false);
-
-        if upper != "QUEST.DONE"
-            || replaced != "quest_done"
-            || repeated != "ababab"
-            || parts.len() != 2
-            || pair.len() != 2
-            || lines.len() != 2
-            || words.len() != 2
-            || sliced != "ell"
-            || ch != "u"
-            || found != 6
-            || stripped_prefix != "quest"
-            || stripped_suffix != "quest"
-            || parsed != 42
-            || !parsed_bool
-        {
-            return 0;
-        }
-
-        total += upper.len()
-            + replaced.len()
-            + repeated.len()
-            + parts.join("").len()
-            + pair.join("").len()
-            + lines.join("").len()
-            + words.join("").len()
-            + sliced.len()
-            + ch.len()
-            + found
-            + parsed
-            + tick - tick;
-    }
-    return total;
-}
-"#;
-
-pub(crate) const STRING_SPLITTING_SOURCE: &str = r#"
-fn main() {
-    let total = 0;
-    for tick in 0..96 {
-        let parts = "alpha,beta,gamma,delta".split(",");
-        let pair = "count=42".split_once("=").unwrap_or(["", ""]);
-        let lines = "alpha\nbeta\r\ngamma".split_lines();
-        let words = " alpha\tbeta\ngamma ".split_whitespace();
-
-        if parts.len() != 4
-            || parts[2] != "gamma"
-            || pair[0] != "count"
-            || pair[1] != "42"
-            || lines.len() != 3
-            || words.join("|") != "alpha|beta|gamma"
-        {
-            return 0;
-        }
-
-        total += parts.join("").len()
-            + pair.join("").len()
-            + lines.join("").len()
-            + words.join("").len()
-            + tick - tick;
-    }
-    return total;
-}
-"#;
-
-pub(crate) const STRING_PARSING_SOURCE: &str = r#"
-fn main() {
-    let total = 0;
-    for tick in 0..96 {
-        let parsed = "42".parse_int().unwrap_or(0);
-        let negative = "-7".parse_int().unwrap_or(0);
-        let rate = "1.5".parse_float().unwrap_or(0.0);
-        let exponent = "2.5e1".parse_float().unwrap_or(0.0);
-        let enabled = "true".parse_bool().unwrap_or(false);
-        let disabled = "false".parse_bool().unwrap_or(true);
-
-        if parsed != 42
-            || negative != -7
-            || rate != 1.5
-            || exponent != 25.0
-            || !enabled
-            || disabled
-            || !option::is_none("bad".parse_int())
-            || !option::is_none("yes".parse_bool())
-        {
-            return 0;
-        }
-        total += parsed + negative + tick - tick;
     }
     return total;
 }
