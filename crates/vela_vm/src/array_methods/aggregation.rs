@@ -29,8 +29,18 @@ pub(crate) fn sum(
             total.add_value(&mapped, "method sum")?;
         }
     } else {
-        total.add_receiver(receiver, runtime.heap.as_deref(), "method sum")?;
+        return sum_values(receiver, runtime.heap.as_deref(), "method sum");
     }
+    Ok(total.into_value())
+}
+
+pub(crate) fn sum_values(
+    receiver: &Value,
+    heap: Option<&HeapExecution<'_>>,
+    operation: &'static str,
+) -> VmResult<Value> {
+    let mut total = NumericTotal::default();
+    total.add_receiver(receiver, heap, operation)?;
     Ok(total.into_value())
 }
 

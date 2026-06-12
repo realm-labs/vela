@@ -121,6 +121,10 @@ pub(in crate::tests) fn linked_array_max_cache_program() -> LinkedMethodCacheFix
     linked_array_i64_call_cache_program("max", &[4, 2, 6], 3, &[])
 }
 
+pub(in crate::tests) fn linked_array_sum_cache_program() -> LinkedMethodCacheFixture {
+    linked_array_i64_call_cache_program("sum", &[4, 2, 6], 3, &[])
+}
+
 fn linked_array_i64_call_cache_program(
     method: &str,
     values: &[i64],

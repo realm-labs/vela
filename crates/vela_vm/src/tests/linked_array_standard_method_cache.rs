@@ -223,6 +223,15 @@ fn linked_standard_value_method_caches_array_extrema_targets() {
     );
 }
 
+#[test]
+fn linked_standard_value_method_caches_array_sum_target() {
+    assert_array_scalar_cache(
+        linked_array_sum_cache_program(),
+        StandardMethodInlineCacheTarget::Sum,
+        12,
+    );
+}
+
 fn assert_array_bool_cache(
     fixture: LinkedMethodCacheFixture,
     target: StandardMethodInlineCacheTarget,
@@ -231,6 +240,23 @@ fn assert_array_bool_cache(
     let (program, site, dispatch, method_id) = fixture;
     let caches = RecordingMethodCaches::new(1);
     let expected = Ok(RuntimeValue::Bool(expected));
+
+    assert_eq!(run_linked_method_cache_program(&program, &caches), expected);
+    assert_array_cache_entry(&caches, site, dispatch, method_id, target);
+    assert_eq!(caches.set_count(), 2);
+
+    assert_eq!(run_linked_method_cache_program(&program, &caches), expected);
+    assert_eq!(caches.set_count(), 2);
+}
+
+fn assert_array_scalar_cache(
+    fixture: LinkedMethodCacheFixture,
+    target: StandardMethodInlineCacheTarget,
+    expected: i64,
+) {
+    let (program, site, dispatch, method_id) = fixture;
+    let caches = RecordingMethodCaches::new(1);
+    let expected = Ok(RuntimeValue::i64(expected));
 
     assert_eq!(run_linked_method_cache_program(&program, &caches), expected);
     assert_array_cache_entry(&caches, site, dispatch, method_id, target);

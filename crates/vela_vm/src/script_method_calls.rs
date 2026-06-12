@@ -620,8 +620,7 @@ fn linked_standard_value_method_result(
         call.values,
         heap,
         budget,
-    )
-    .expect("resolved standard method cache entry should match receiver");
+    )?;
     if let Some(site) = context.cache_site
         && let Some(caches) = context.inline_caches
     {

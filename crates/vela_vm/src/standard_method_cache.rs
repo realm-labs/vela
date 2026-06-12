@@ -220,6 +220,9 @@ fn standard_method_target(
         (StandardMethodReceiver::Array, id) if id == ids.array_max => {
             StandardMethodInlineCacheTarget::Max
         }
+        (StandardMethodReceiver::Array, id) if id == ids.array_sum => {
+            StandardMethodInlineCacheTarget::Sum
+        }
         (StandardMethodReceiver::Map, id) if id == ids.map_len => {
             StandardMethodInlineCacheTarget::Len
         }
@@ -458,8 +461,12 @@ pub(crate) fn call_standard_cached(
         | StandardMethodInlineCacheTarget::Sort
         | StandardMethodInlineCacheTarget::Min
         | StandardMethodInlineCacheTarget::Max
+        | StandardMethodInlineCacheTarget::Sum
             if cache.receiver == StandardMethodReceiver::Array =>
         {
+            if cache.target == StandardMethodInlineCacheTarget::Sum {
+                return call_cached_array_sum(receiver, args, heap.as_deref());
+            }
             return call_cached_array_materialization(receiver, cache.target, args, heap, budget);
         }
         StandardMethodInlineCacheTarget::Push
@@ -623,6 +630,9 @@ pub(crate) fn call_standard_cached(
         (StandardMethodReceiver::Array, StandardMethodInlineCacheTarget::Max) => {
             array_methods::max(receiver, args, heap, budget)
         }
+        (StandardMethodReceiver::Array, StandardMethodInlineCacheTarget::Sum) => {
+            array_methods::sum_values(receiver, heap.as_deref(), "method sum")
+        }
         (StandardMethodReceiver::Map, StandardMethodInlineCacheTarget::Get) => {
             map_methods::get(receiver, args, heap, budget)
         }
@@ -726,6 +736,17 @@ pub(crate) fn call_standard_cached(
         _ => return None,
     };
     Some(result)
+}
+
+fn call_cached_array_sum(
+    receiver: &Value,
+    args: &[Value],
+    heap: Option<&HeapExecution<'_>>,
+) -> Option<VmResult<Value>> {
+    if !args.is_empty() || !array_methods::is_array(receiver, heap) {
+        return None;
+    }
+    Some(array_methods::sum_values(receiver, heap, "method sum"))
 }
 
 fn call_readonly_cached(

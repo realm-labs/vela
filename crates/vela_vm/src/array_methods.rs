@@ -5,7 +5,7 @@ mod mutation;
 mod ordering;
 mod transform;
 
-pub(crate) use aggregation::{group_by, sum};
+pub(crate) use aggregation::{group_by, sum, sum_values};
 pub(crate) use higher_order::{all, any, count, filter, find, map};
 pub(crate) use lookup::{contains, first, index_of, last};
 pub(crate) use mutation::{clear, extend, insert, pop, push, remove_at};

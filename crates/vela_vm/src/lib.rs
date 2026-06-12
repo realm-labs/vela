@@ -467,6 +467,7 @@ pub enum StandardMethodInlineCacheTarget {
     Sort,
     Min,
     Max,
+    Sum,
     Repeat,
     Replace,
     ToHex,
