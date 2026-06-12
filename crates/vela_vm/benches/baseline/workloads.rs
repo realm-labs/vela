@@ -260,6 +260,11 @@ fn main() {
         source: STRING_PARSING_SOURCE,
     },
     Workload {
+        name: "string_parsing_hot_offsets",
+        mode: ExecutionMode::ProfileOnly,
+        source: STRING_PARSING_SOURCE,
+    },
+    Workload {
         name: "string_parsing_cache_hot_offsets",
         mode: ExecutionMode::CacheEnabled,
         source: STRING_PARSING_SOURCE,
