@@ -19,6 +19,11 @@ pub(crate) const COLLECTION_FAMILY_WORKLOADS: &[Workload] = &[
         source: OPTION_RESULT_HELPERS_SOURCE,
     },
     Workload {
+        name: "option_result_helpers_hot_offsets",
+        mode: ExecutionMode::ProfileOnly,
+        source: OPTION_RESULT_HELPERS_SOURCE,
+    },
+    Workload {
         name: "option_result_helpers_cache_hot_offsets",
         mode: ExecutionMode::CacheEnabled,
         source: OPTION_RESULT_HELPERS_SOURCE,
