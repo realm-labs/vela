@@ -1077,6 +1077,11 @@ fn main(player: Player) {
         source: RECORD_SEXTETS_SOURCE,
     },
     Workload {
+        name: "record_sextets_hot_offsets",
+        mode: ExecutionMode::ProfileOnly,
+        source: RECORD_SEXTETS_SOURCE,
+    },
+    Workload {
         name: "record_sextets_cache_hot_offsets",
         mode: ExecutionMode::CacheEnabled,
         source: RECORD_SEXTETS_SOURCE,
