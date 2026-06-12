@@ -34,7 +34,7 @@ scalar/range dispatch
 script/native function calls
 array, map, set, string, Option, and Result stdlib methods
 callbacks, direct closure calls, and higher-order collection methods
-cache-enabled stdlib, callback collection, and host-boundary rows with warmed inline caches and bytecode profile counters
+cache-enabled stdlib, script/native call, callback collection, and host-boundary rows with warmed inline caches and bytecode profile counters
 record and enum construction and field access
 managed heap allocation and materialization
 host field reads, nested path reads/writes, RMW mutations, dynamic key access, and method calls
@@ -125,11 +125,11 @@ cache-shaped, but M20 should wait until the hot operands are cache-ready:
 M19.5 reports interpreter-only before/after rows for each prep family. The
 baseline harness now splits callback rows into collection callbacks and direct
 closure calls with default baseline data, includes cache-enabled stdlib
-collection, script-call, script record-field, callback collection, and
-direct-closure rows with warmed inline caches and bytecode profile counters,
-and splits host-boundary rows into field read/write, nested path read/write,
-RMW mutation, dynamic key access, and host method calls. M20 reports must
-separate interpreter-only and cache-enabled results.
+collection, script-call, native-call, script record-field, callback
+collection, and direct-closure rows with warmed inline caches and bytecode
+profile counters, and splits host-boundary rows into field read/write, nested
+path read/write, RMW mutation, dynamic key access, and host method calls. M20
+reports must separate interpreter-only and cache-enabled results.
 
 ## Targets
 

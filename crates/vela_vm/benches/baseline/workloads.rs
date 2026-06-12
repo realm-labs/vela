@@ -156,6 +156,16 @@ fn main() {
 }
 "#;
 
+const NATIVE_CALL_WIDE_ARGS_SOURCE: &str = r#"
+fn main() {
+    let total = 0;
+    for tick in 0..240 {
+        total += bench::mix4(tick, total % 17, tick % 5, 3);
+    }
+    return total;
+}
+"#;
+
 pub(crate) const WORKLOADS: &[Workload] = &[
     Workload {
         name: "scalar_branch_loop",
@@ -258,15 +268,12 @@ fn main() {
     Workload {
         name: "native_call_wide_args",
         mode: ExecutionMode::Inline,
-        source: r#"
-fn main() {
-    let total = 0;
-    for tick in 0..240 {
-        total += bench::mix4(tick, total % 17, tick % 5, 3);
-    }
-    return total;
-}
-"#,
+        source: NATIVE_CALL_WIDE_ARGS_SOURCE,
+    },
+    Workload {
+        name: "native_call_wide_args_cache_hot_offsets",
+        mode: ExecutionMode::CacheEnabled,
+        source: NATIVE_CALL_WIDE_ARGS_SOURCE,
     },
     Workload {
         name: "stdlib_collections",
