@@ -490,6 +490,11 @@ fn main() {
         source: MAP_FIND_ENTRIES_SOURCE,
     },
     Workload {
+        name: "map_find_entries_hot_offsets",
+        mode: ExecutionMode::ProfileOnly,
+        source: MAP_FIND_ENTRIES_SOURCE,
+    },
+    Workload {
         name: "map_find_entries_cache_hot_offsets",
         mode: ExecutionMode::CacheEnabled,
         source: MAP_FIND_ENTRIES_SOURCE,
