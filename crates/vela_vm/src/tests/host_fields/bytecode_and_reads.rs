@@ -1,7 +1,8 @@
 use super::*;
 use crate::value::Value as RuntimeValue;
+use std::cell::{Cell, RefCell};
 use vela_bytecode::{CacheSiteId, CacheSiteKind, HostTargetPlanId};
-use vela_host::resolved::HostMutationOp;
+use vela_host::resolved::{HostMutationOp, HostSchemaEpoch};
 use vela_host::target::HostTargetPlan;
 
 fn level_target(code: &mut UnlinkedCodeObject, host_ref: HostRef) -> HostTargetPlanId {
@@ -61,6 +62,45 @@ fn exec_host_field_runtime(
         heap,
         budget,
     )
+}
+
+struct RecordingHostAccessCaches {
+    len: usize,
+    entry: RefCell<Option<HostInlineCacheEntry>>,
+    set_count: Cell<usize>,
+}
+
+impl RecordingHostAccessCaches {
+    fn new(len: usize) -> Self {
+        Self {
+            len,
+            entry: RefCell::new(None),
+            set_count: Cell::new(0),
+        }
+    }
+
+    fn recorded_entry(&self) -> Option<HostInlineCacheEntry> {
+        *self.entry.borrow()
+    }
+
+    fn set_count(&self) -> usize {
+        self.set_count.get()
+    }
+}
+
+impl VmInlineCaches for RecordingHostAccessCaches {
+    fn len(&self) -> usize {
+        self.len
+    }
+
+    fn host_access(&self, _site: CacheSiteId) -> Option<HostInlineCacheEntry> {
+        *self.entry.borrow()
+    }
+
+    fn set_host_access(&self, _site: CacheSiteId, entry: HostInlineCacheEntry) {
+        *self.entry.borrow_mut() = Some(entry);
+        self.set_count.set(self.set_count.get() + 1);
+    }
 }
 
 #[test]
@@ -196,6 +236,75 @@ fn reads_host_field_through_host_access() {
     assert_eq!(
         result,
         Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(9)))
+    );
+}
+
+#[test]
+fn host_access_cache_refreshes_when_schema_epoch_changes() {
+    let (program, host_ref) = host_read_program();
+    let linked = link_test_program(&program);
+    let caches = RecordingHostAccessCaches::new(1);
+    let vm = Vm::new();
+    let mut adapter = host_adapter(
+        host_ref,
+        HostValue::Scalar(vela_common::ScalarValue::I64(9)),
+    );
+    adapter.set_schema_epoch(HostSchemaEpoch::new(1));
+    let mut tx = HostAccess::new();
+    let mut budget = ExecutionBudget::unbounded();
+
+    let first = {
+        let mut host = HostExecution {
+            adapter: &mut adapter,
+            access: &mut tx,
+            script_globals: None,
+        };
+        vm.run_linked_program_with_host_budget_and_caches(
+            &linked,
+            "main",
+            &[OwnedValue::HostRef(host_ref)],
+            &mut host,
+            &mut budget,
+            Some(&caches),
+        )
+    };
+
+    assert_eq!(
+        first,
+        Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(9)))
+    );
+    assert_eq!(caches.set_count(), 1);
+    assert_eq!(
+        caches.recorded_entry().map(|entry| entry.schema_epoch),
+        Some(HostSchemaEpoch::new(1))
+    );
+
+    adapter.set_schema_epoch(HostSchemaEpoch::new(2));
+    let mut budget = ExecutionBudget::unbounded();
+    let second = {
+        let mut host = HostExecution {
+            adapter: &mut adapter,
+            access: &mut tx,
+            script_globals: None,
+        };
+        vm.run_linked_program_with_host_budget_and_caches(
+            &linked,
+            "main",
+            &[OwnedValue::HostRef(host_ref)],
+            &mut host,
+            &mut budget,
+            Some(&caches),
+        )
+    };
+
+    assert_eq!(
+        second,
+        Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(9)))
+    );
+    assert_eq!(caches.set_count(), 2);
+    assert_eq!(
+        caches.recorded_entry().map(|entry| entry.schema_epoch),
+        Some(HostSchemaEpoch::new(2))
     );
 }
 
