@@ -84,6 +84,33 @@ fn linked_standard_value_method_caches_array_join_target() {
     );
 }
 
+#[test]
+fn linked_standard_value_method_caches_array_sort_target() {
+    assert_array_owned_cache(
+        linked_array_sort_cache_program(),
+        StandardMethodInlineCacheTarget::Sort,
+        OwnedValue::Array(vec![
+            OwnedValue::Scalar(vela_common::ScalarValue::I64(2)),
+            OwnedValue::Scalar(vela_common::ScalarValue::I64(4)),
+            OwnedValue::Scalar(vela_common::ScalarValue::I64(6)),
+        ]),
+    );
+}
+
+#[test]
+fn linked_standard_value_method_caches_array_extrema_targets() {
+    assert_array_option_scalar_cache(
+        linked_array_min_cache_program(),
+        StandardMethodInlineCacheTarget::Min,
+        2,
+    );
+    assert_array_option_scalar_cache(
+        linked_array_max_cache_program(),
+        StandardMethodInlineCacheTarget::Max,
+        6,
+    );
+}
+
 fn assert_array_bool_cache(
     fixture: LinkedMethodCacheFixture,
     target: StandardMethodInlineCacheTarget,

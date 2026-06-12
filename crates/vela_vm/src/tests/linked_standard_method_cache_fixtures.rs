@@ -310,6 +310,18 @@ pub(super) fn linked_array_join_cache_program() -> LinkedMethodCacheFixture {
     (program, site, dispatch, method_id)
 }
 
+pub(super) fn linked_array_sort_cache_program() -> LinkedMethodCacheFixture {
+    linked_array_i64_call_cache_program("sort", &[4, 2, 6], 3, &[])
+}
+
+pub(super) fn linked_array_min_cache_program() -> LinkedMethodCacheFixture {
+    linked_array_i64_call_cache_program("min", &[4, 2, 6], 3, &[])
+}
+
+pub(super) fn linked_array_max_cache_program() -> LinkedMethodCacheFixture {
+    linked_array_i64_call_cache_program("max", &[4, 2, 6], 3, &[])
+}
+
 fn linked_array_i64_call_cache_program(
     method: &str,
     values: &[i64],
