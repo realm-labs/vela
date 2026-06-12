@@ -147,6 +147,7 @@ fn linked_execution_rejects_missing_native_before_heap_execution() {
             dst: Some(Register(1)),
             name: "missing".into(),
             native,
+            cache_site: None,
             args: Vec::new(),
         },
     ));

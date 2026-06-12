@@ -438,6 +438,7 @@ pub(super) fn linked_set_has_cache_program() -> LinkedMethodCacheFixture {
             dst: Some(Register(3)),
             native: set_from_array,
             debug_name: set_from_array_name,
+            cache_site: None,
             args: vec![Register(2)],
         },
     ));
@@ -518,6 +519,7 @@ pub(super) fn linked_set_relation_cache_program(
             dst: Some(receiver_set),
             native: set_from_array,
             debug_name: set_from_array_name,
+            cache_site: None,
             args: vec![receiver_array],
         },
     ));
@@ -526,6 +528,7 @@ pub(super) fn linked_set_relation_cache_program(
             dst: Some(other_set),
             native: set_from_array,
             debug_name: set_from_array_name,
+            cache_site: None,
             args: vec![other_array],
         },
     ));

@@ -106,6 +106,7 @@ impl Compiler<'_, '_> {
                     dst: Some(dst),
                     name: fallback_name,
                     native,
+                    cache_site: None,
                     args: arg_registers,
                 },
                 expr.span,

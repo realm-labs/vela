@@ -84,6 +84,7 @@ fn linked_program_verify_accepts_valid_handles_and_debug_names() {
         dst: Some(Register(1)),
         native,
         debug_name: native_name,
+        cache_site: None,
         args: vec![Register(0)],
     }));
     code.push_instruction(Instruction::new(InstructionKind::CallMethod {
@@ -139,6 +140,7 @@ fn linked_program_verify_rejects_invalid_native_handles() {
         dst: None,
         native: NativeHandle::new(0),
         debug_name: native_name,
+        cache_site: None,
         args: Vec::new(),
     }));
     program.push_function(code);
@@ -968,6 +970,7 @@ fn rejects_cache_site_layout_id_mismatch() {
             dst: None,
             name: "native::grant".to_owned(),
             native: vela_def::FunctionId::new(1),
+            cache_site: None,
             args: Vec::new(),
         },
     ));
@@ -999,6 +1002,7 @@ fn rejects_cache_site_layout_instruction_offset_out_of_bounds() {
             dst: None,
             name: "native::grant".to_owned(),
             native: vela_def::FunctionId::new(1),
+            cache_site: None,
             args: Vec::new(),
         },
     ));
@@ -1030,6 +1034,7 @@ fn rejects_cache_site_layout_instruction_kind_mismatch_for_sidecar_only_sites() 
             dst: None,
             name: "native::grant".to_owned(),
             native: vela_def::FunctionId::new(1),
+            cache_site: None,
             args: Vec::new(),
         },
     ));

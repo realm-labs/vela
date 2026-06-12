@@ -133,6 +133,7 @@ fn linked_native_dispatch_uses_id_not_debug_name_fallback() {
             dst: Some(Register(0)),
             native,
             debug_name: native_name,
+            cache_site: None,
             args: Vec::new(),
         },
     ));
@@ -175,6 +176,7 @@ fn linked_program_calls_native_by_dense_handle() {
             dst: Some(Register(0)),
             native,
             debug_name: native_name,
+            cache_site: None,
             args: Vec::new(),
         },
     ));

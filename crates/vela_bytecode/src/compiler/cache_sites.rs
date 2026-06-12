@@ -30,6 +30,19 @@ pub(super) fn attach_cache_site(
             slot,
             cache_site: Some(cache_site),
         },
+        UnlinkedInstructionKind::CallNative {
+            dst,
+            name,
+            native,
+            args,
+            ..
+        } => UnlinkedInstructionKind::CallNative {
+            dst,
+            name,
+            native,
+            cache_site: Some(cache_site),
+            args,
+        },
         UnlinkedInstructionKind::HostRead {
             dst,
             root,

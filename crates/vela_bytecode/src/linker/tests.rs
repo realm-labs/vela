@@ -15,6 +15,7 @@ fn linker_fails_on_unresolved_native_calls() {
             dst: None,
             name: "missing".to_owned(),
             native,
+            cache_site: None,
             args: Vec::new(),
         },
     ));
@@ -42,11 +43,13 @@ fn linker_fails_on_missing_native_implementation() {
         .register_function(FunctionDef::new(path, FunctionSignature::default()))
         .expect("native definition registration should succeed");
     let mut code = UnlinkedCodeObject::new("main", 1);
+    let cache_site = code.push_cache_site(CacheSiteKind::NativeCall, InstructionOffset(0));
     code.push_instruction(UnlinkedInstruction::new(
         UnlinkedInstructionKind::CallNative {
             dst: None,
             name: "award".to_owned(),
             native,
+            cache_site: Some(cache_site),
             args: Vec::new(),
         },
     ));
@@ -73,11 +76,13 @@ fn linker_maps_native_functions_to_dense_handles() {
         .register_function(FunctionDef::new(path, FunctionSignature::default()))
         .expect("native definition registration should succeed");
     let mut code = UnlinkedCodeObject::new("main", 1);
+    let native_cache_site = code.push_cache_site(CacheSiteKind::NativeCall, InstructionOffset(0));
     code.push_instruction(UnlinkedInstruction::new(
         UnlinkedInstructionKind::CallNative {
             dst: None,
             name: "award".to_owned(),
             native,
+            cache_site: Some(native_cache_site),
             args: Vec::new(),
         },
     ));
@@ -99,8 +104,9 @@ fn linker_maps_native_functions_to_dense_handles() {
         main.instructions[0].kind,
         InstructionKind::CallNative {
             native: handle,
+            cache_site: Some(site),
             ..
-        } if handle.index() == 0
+        } if handle.index() == 0 && site == native_cache_site
     ));
     let linked_native = linked
         .native_function(NativeHandle::new(0))

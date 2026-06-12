@@ -252,6 +252,7 @@ impl Vm {
                     dst,
                     name,
                     native,
+                    cache_site: _,
                     args,
                 } => {
                     native_function_calls::dispatch_native_function_call(

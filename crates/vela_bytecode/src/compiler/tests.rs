@@ -181,6 +181,21 @@ fn main(player: Player) {
             .kind,
         CacheSiteKind::GlobalRead
     );
+    let native_call_site = main
+        .instructions
+        .iter()
+        .find_map(|instruction| match &instruction.kind {
+            UnlinkedInstructionKind::CallNative { cache_site, .. } => *cache_site,
+            _ => None,
+        })
+        .expect("native call should carry cache site");
+    assert_eq!(
+        main.cache_sites
+            .get(native_call_site)
+            .expect("native call cache site should exist")
+            .kind,
+        CacheSiteKind::NativeCall
+    );
     for (index, site) in main.cache_sites.sites().iter().enumerate() {
         assert_eq!(site.id.index(), index);
         assert_eq!(site.function, "main");

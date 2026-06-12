@@ -165,6 +165,10 @@ fn rewrite_linked_instruction_cache_sites(
                 cache_site: Some(site),
                 ..
             }
+            | InstructionKind::CallNative {
+                cache_site: Some(site),
+                ..
+            }
             | InstructionKind::GetRecordSlot {
                 cache_site: Some(site),
                 ..

@@ -207,6 +207,7 @@ fn linked_set_no_arg_cache_program(method: &str, receiver_values: &[i64]) -> Lin
             dst: Some(receiver_set),
             native: set_from_array,
             debug_name: set_from_array_name,
+            cache_site: None,
             args: vec![receiver_array],
         },
     ));
@@ -260,6 +261,7 @@ fn linked_set_values_cache_program() -> LinkedSetCacheFixture {
             dst: Some(Register(3)),
             native: set_from_array,
             debug_name: set_from_array_name,
+            cache_site: None,
             args: vec![Register(2)],
         },
     ));
@@ -325,6 +327,7 @@ fn linked_set_mutator_cache_program(
             dst: Some(receiver_set),
             native: set_from_array,
             debug_name: set_from_array_name,
+            cache_site: None,
             args: vec![receiver_array],
         },
     ));
@@ -402,6 +405,7 @@ fn linked_set_combination_cache_program(
             dst: Some(receiver_set),
             native: set_from_array,
             debug_name: set_from_array_name,
+            cache_site: None,
             args: vec![receiver_array],
         },
     ));
@@ -410,6 +414,7 @@ fn linked_set_combination_cache_program(
             dst: Some(other_set),
             native: set_from_array,
             debug_name: set_from_array_name,
+            cache_site: None,
             args: vec![other_array],
         },
     ));

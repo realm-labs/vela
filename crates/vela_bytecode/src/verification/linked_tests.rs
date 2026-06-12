@@ -13,6 +13,7 @@ fn linked_native_call_code() -> LinkedCodeObject {
         dst: None,
         native: NativeHandle::new(0),
         debug_name: DebugNameId::new(0),
+        cache_site: None,
         args: Vec::new(),
     }));
     code
@@ -117,6 +118,24 @@ fn linked_code_rejects_cache_site_layout_on_uncacheable_instruction() {
 
 #[test]
 fn linked_code_rejects_invalid_record_cache_site_operands() {
+    let mut native_code = linked_native_call_code();
+    let native_site = native_code.push_cache_site(CacheSiteKind::MethodCall, InstructionOffset(0));
+    if let InstructionKind::CallNative { cache_site, .. } = &mut native_code.instructions[0].kind {
+        *cache_site = Some(native_site);
+    }
+    assert_eq!(
+        verify_linked_code_object(&native_code),
+        Err(error(
+            "<linked code>",
+            Some(0),
+            VerificationErrorKind::CacheSiteKindMismatch {
+                site: native_site,
+                expected: CacheSiteKind::NativeCall,
+                actual: CacheSiteKind::MethodCall,
+            }
+        ))
+    );
+
     let mut read_code = LinkedCodeObject::new(DebugNameId::new(0), 2);
     let read_site =
         read_code.push_cache_site(CacheSiteKind::RecordFieldWrite, InstructionOffset(0));

@@ -418,11 +418,24 @@ fn verify_instruction(
         UnlinkedInstructionKind::Jump { target } => {
             verify_jump(function, instruction_index, code, *target)
         }
-        UnlinkedInstructionKind::CallNative { dst, args, .. } => {
+        UnlinkedInstructionKind::CallNative {
+            dst,
+            cache_site,
+            args,
+            ..
+        } => {
             if let Some(dst) = dst {
                 verify_register(function, instruction_index, code, *dst)?;
             }
-            verify_registers(function, instruction_index, code, args)
+            verify_registers(function, instruction_index, code, args)?;
+            verify_optional_cache_site(
+                function,
+                instruction_index,
+                code,
+                *cache_site,
+                CacheSiteKind::NativeCall,
+                cache_scope,
+            )
         }
         UnlinkedInstructionKind::CallFunction { dst, args, .. } => {
             verify_register(function, instruction_index, code, *dst)?;

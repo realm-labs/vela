@@ -723,6 +723,7 @@ pub enum UnlinkedInstructionKind {
         dst: Option<Register>,
         name: String,
         native: FunctionId,
+        cache_site: Option<CacheSiteId>,
         args: Vec<Register>,
     },
     CallFunction {

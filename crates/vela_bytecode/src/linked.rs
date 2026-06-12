@@ -658,6 +658,7 @@ pub enum InstructionKind {
         dst: Option<Register>,
         native: NativeHandle,
         debug_name: DebugNameId,
+        cache_site: Option<CacheSiteId>,
         args: Vec<Register>,
     },
     CallFunction {
@@ -859,6 +860,7 @@ mod tests {
             dst: Some(Register(0)),
             native,
             debug_name: native_name,
+            cache_site: None,
             args: vec![Register(1)],
         };
         let script_call = InstructionKind::CallFunction {

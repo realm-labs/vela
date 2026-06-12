@@ -75,6 +75,7 @@ fn call_native_uses_resolved_id_even_when_debug_name_differs() {
             dst: Some(Register(0)),
             name: "diagnostic_name".into(),
             native: native_id,
+            cache_site: None,
             args: Vec::new(),
         },
     ));
@@ -104,6 +105,7 @@ fn call_native_uses_resolved_host_id_even_when_debug_name_differs() {
             dst: Some(Register(0)),
             name: "diagnostic_name".into(),
             native: native_id,
+            cache_site: None,
             args: Vec::new(),
         },
     ));
@@ -142,6 +144,7 @@ fn call_native_uses_standard_native_id_even_when_debug_name_differs() {
             dst: Some(Register(1)),
             name: "missing::abs".into(),
             native: std_function_id(StdFunctionImplementation::MathAbs),
+            cache_site: None,
             args: vec![Register(0)],
         },
     ));
@@ -527,6 +530,7 @@ fn call_method_uses_standard_set_method_id_before_name_fallback() {
             dst: Some(Register(3)),
             name: "missing::set_from_array".into(),
             native: std_function_id(StdFunctionImplementation::SetFromArray),
+            cache_site: None,
             args: vec![Register(2)],
         },
     ));
@@ -577,6 +581,7 @@ fn call_method_uses_standard_set_mutator_ids_before_name_fallback() {
             dst: Some(Register(3)),
             name: "missing::set_from_array".into(),
             native: std_function_id(StdFunctionImplementation::SetFromArray),
+            cache_site: None,
             args: vec![Register(2)],
         },
     ));
@@ -634,6 +639,7 @@ fn call_method_uses_standard_set_mutator_ids_before_name_fallback() {
             dst: Some(Register(3)),
             name: "missing::set_from_array".into(),
             native: std_function_id(StdFunctionImplementation::SetFromArray),
+            cache_site: None,
             args: vec![Register(2)],
         },
     ));
@@ -691,6 +697,7 @@ fn call_method_uses_standard_set_mutator_ids_before_name_fallback() {
             dst: Some(Register(3)),
             name: "missing::set_from_array".into(),
             native: std_function_id(StdFunctionImplementation::SetFromArray),
+            cache_site: None,
             args: vec![Register(2)],
         },
     ));
@@ -825,6 +832,7 @@ fn call_method_uses_standard_collection_predicate_ids_before_name_fallback() {
             dst: Some(Register(3)),
             name: "missing::set_from_array".into(),
             native: std_function_id(StdFunctionImplementation::SetFromArray),
+            cache_site: None,
             args: vec![Register(2)],
         },
     ));
@@ -914,6 +922,7 @@ fn run_set_relation_by_id(
             dst: Some(receiver_set),
             name: "missing::set_from_array".into(),
             native: std_function_id(StdFunctionImplementation::SetFromArray),
+            cache_site: None,
             args: vec![receiver_array],
         },
     ));
@@ -922,6 +931,7 @@ fn run_set_relation_by_id(
             dst: Some(other_set),
             name: "missing::set_from_array".into(),
             native: std_function_id(StdFunctionImplementation::SetFromArray),
+            cache_site: None,
             args: vec![other_array],
         },
     ));

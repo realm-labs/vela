@@ -454,6 +454,7 @@ impl<'linker, 'registry> LinkContext<'linker, 'registry> {
                 dst,
                 name,
                 native,
+                cache_site,
                 args,
             } => {
                 let native = self.link_native(name, *native)?;
@@ -462,6 +463,7 @@ impl<'linker, 'registry> LinkContext<'linker, 'registry> {
                     dst: *dst,
                     native,
                     debug_name,
+                    cache_site: *cache_site,
                     args: args.clone(),
                 }
             }

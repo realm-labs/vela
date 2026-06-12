@@ -279,6 +279,7 @@ fn linked_set_len_cache_program() -> LinkedMethodCacheFixture {
             dst: Some(Register(3)),
             native: set_from_array,
             debug_name: set_from_array_name,
+            cache_site: None,
             args: vec![Register(2)],
         },
     ));

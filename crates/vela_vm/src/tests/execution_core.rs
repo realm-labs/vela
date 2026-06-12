@@ -206,6 +206,7 @@ fn calls_registered_native_functions() {
             dst: Some(Register(1)),
             name: "log".into(),
             native: native_id,
+            cache_site: None,
             args: vec![Register(0)],
         },
     ));

@@ -219,6 +219,7 @@ fn verify_linked_instruction(
             dst,
             native,
             debug_name,
+            cache_site,
             args,
         } => {
             if let Some(dst) = dst {
@@ -226,7 +227,14 @@ fn verify_linked_instruction(
             }
             verify_linked_native_handle(function, instruction_index, context, *native)?;
             verify_linked_debug_name(function, instruction_index, context, *debug_name)?;
-            verify_linked_registers(function, instruction_index, code, args)
+            verify_linked_registers(function, instruction_index, code, args)?;
+            verify_linked_optional_cache_site(
+                function,
+                instruction_index,
+                code,
+                *cache_site,
+                CacheSiteKind::NativeCall,
+            )
         }
         InstructionKind::CallFunction {
             dst,
