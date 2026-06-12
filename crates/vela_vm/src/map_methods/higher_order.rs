@@ -17,12 +17,15 @@ pub(crate) fn map_values(
     expect_arity("map_values", args, 1)?;
     let entries = map_entries(receiver, runtime.heap.as_deref(), "method map_values")?;
     let mut mapped = BTreeMap::new();
+    let param_len =
+        callback_param_len_for_entries(&runtime, "method map_values", &args[0], &entries)?;
     for (key, value) in entries {
         let value = if runtime.heap.is_some() {
             call_map_callback_with_protected_values(
                 &mut runtime,
                 "method map_values",
                 &args[0],
+                param_len,
                 key.clone(),
                 value,
                 mapped.values(),
@@ -32,6 +35,7 @@ pub(crate) fn map_values(
                 &mut runtime,
                 "method map_values",
                 &args[0],
+                param_len,
                 key.clone(),
                 value,
                 &[],
@@ -55,12 +59,14 @@ pub(crate) fn filter(
     expect_arity("filter", args, 1)?;
     let entries = map_entries(receiver, runtime.heap.as_deref(), "method filter")?;
     let mut filtered = BTreeMap::new();
+    let param_len = callback_param_len_for_entries(&runtime, "method filter", &args[0], &entries)?;
     for (key, value) in entries {
         let predicate = if runtime.heap.is_some() {
             call_map_callback_with_protected_values(
                 &mut runtime,
                 "method filter",
                 &args[0],
+                param_len,
                 key.clone(),
                 value,
                 filtered.values(),
@@ -70,6 +76,7 @@ pub(crate) fn filter(
                 &mut runtime,
                 "method filter",
                 &args[0],
+                param_len,
                 key.clone(),
                 value,
                 &[],
@@ -94,11 +101,13 @@ pub(crate) fn find(
 ) -> VmResult<Value> {
     expect_arity("find", args, 1)?;
     let entries = map_entries(receiver, runtime.heap.as_deref(), "method find")?;
+    let param_len = callback_param_len_for_entries(&runtime, "method find", &args[0], &entries)?;
     for (key, value) in entries {
         let predicate = call_map_callback(
             &mut runtime,
             "method find",
             &args[0],
+            param_len,
             key.clone(),
             value,
             &[],
@@ -124,8 +133,17 @@ pub(crate) fn any(
 ) -> VmResult<bool> {
     expect_arity("any", args, 1)?;
     let entries = map_entries(receiver, runtime.heap.as_deref(), "method any")?;
+    let param_len = callback_param_len_for_entries(&runtime, "method any", &args[0], &entries)?;
     for (key, value) in entries {
-        let predicate = call_map_callback(&mut runtime, "method any", &args[0], key, value, &[])?;
+        let predicate = call_map_callback(
+            &mut runtime,
+            "method any",
+            &args[0],
+            param_len,
+            key,
+            value,
+            &[],
+        )?;
         if is_truthy(&predicate) {
             return Ok(true);
         }
@@ -140,8 +158,17 @@ pub(crate) fn all(
 ) -> VmResult<bool> {
     expect_arity("all", args, 1)?;
     let entries = map_entries(receiver, runtime.heap.as_deref(), "method all")?;
+    let param_len = callback_param_len_for_entries(&runtime, "method all", &args[0], &entries)?;
     for (key, value) in entries {
-        let predicate = call_map_callback(&mut runtime, "method all", &args[0], key, value, &[])?;
+        let predicate = call_map_callback(
+            &mut runtime,
+            "method all",
+            &args[0],
+            param_len,
+            key,
+            value,
+            &[],
+        )?;
         if !is_truthy(&predicate) {
             return Ok(false);
         }
@@ -157,8 +184,17 @@ pub(crate) fn count(
     expect_arity("count", args, 1)?;
     let entries = map_entries(receiver, runtime.heap.as_deref(), "method count")?;
     let mut count = 0_i64;
+    let param_len = callback_param_len_for_entries(&runtime, "method count", &args[0], &entries)?;
     for (key, value) in entries {
-        let predicate = call_map_callback(&mut runtime, "method count", &args[0], key, value, &[])?;
+        let predicate = call_map_callback(
+            &mut runtime,
+            "method count",
+            &args[0],
+            param_len,
+            key,
+            value,
+            &[],
+        )?;
         if is_truthy(&predicate) {
             count = checked_count_increment(count)?;
         }
@@ -174,15 +210,28 @@ fn checked_count_increment(count: i64) -> VmResult<i64> {
     })
 }
 
+fn callback_param_len_for_entries(
+    runtime: &MethodRuntime<'_, '_, '_>,
+    operation: &'static str,
+    callback: &Value,
+    entries: &[(String, Value)],
+) -> VmResult<usize> {
+    if entries.is_empty() {
+        Ok(0)
+    } else {
+        callback_param_len(runtime, operation, callback)
+    }
+}
+
 fn call_map_callback(
     runtime: &mut MethodRuntime<'_, '_, '_>,
     operation: &'static str,
     callback: &Value,
+    param_len: usize,
     key: String,
     value: Value,
     protected_values: &[Value],
 ) -> VmResult<Value> {
-    let param_len = callback_param_len(runtime, operation, callback)?;
     match param_len {
         0 => call_callback(runtime, operation, callback, &[], protected_values),
         1 => call_callback(
@@ -210,11 +259,11 @@ fn call_map_callback_with_protected_values<'value>(
     runtime: &mut MethodRuntime<'_, '_, '_>,
     operation: &'static str,
     callback: &Value,
+    param_len: usize,
     key: String,
     value: Value,
     protected_values: impl IntoIterator<Item = &'value Value>,
 ) -> VmResult<Value> {
-    let param_len = callback_param_len(runtime, operation, callback)?;
     match param_len {
         0 => {
             call_callback_with_protected_values(runtime, operation, callback, &[], protected_values)
