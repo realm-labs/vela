@@ -456,15 +456,12 @@ fn array_slice_payload(values: &[Value], args: &[Value]) -> VmResult<Vec<Value>>
     if end > values.len() {
         return Err(index_out_of_bounds(end, values.len()));
     }
-    Ok(values[start..end]
-        .iter()
-        .map(stored_runtime_value)
-        .collect())
+    Ok(values[start..end].to_vec())
 }
 
 fn array_reverse_payload(values: &[Value], args: &[Value]) -> VmResult<Vec<Value>> {
     crate::runtime_checks::expect_arity("reverse", args, 0)?;
-    Ok(values.iter().rev().map(stored_runtime_value).collect())
+    Ok(values.iter().rev().copied().collect())
 }
 
 fn array_distinct_payload(
@@ -475,7 +472,7 @@ fn array_distinct_payload(
     crate::runtime_checks::expect_arity("distinct", args, 0)?;
     let mut distinct = Vec::new();
     'values: for value in values {
-        let value = stored_runtime_value(value);
+        let value = *value;
         for existing in &distinct {
             if crate::values_equal(existing, &value, heap)? {
                 continue 'values;
@@ -557,10 +554,7 @@ fn array_sort_payload(
             .compare(&right.key)
             .then_with(|| left.index.cmp(&right.index))
     });
-    Ok(entries
-        .into_iter()
-        .map(|entry| stored_runtime_value(&entry.value))
-        .collect())
+    Ok(entries.into_iter().map(|entry| entry.value).collect())
 }
 
 fn array_extremum_payload(
@@ -593,7 +587,7 @@ fn array_extremum_payload(
             best_key = key;
         }
     }
-    Ok(Some(stored_runtime_value(best)))
+    Ok(Some(*best))
 }
 
 #[derive(Clone, Copy)]
