@@ -349,9 +349,6 @@ pub(crate) fn call_standard_cached(
     heap: &mut Option<&mut HeapExecution<'_>>,
     budget: &mut Option<&mut ExecutionBudget>,
 ) -> Option<VmResult<Value>> {
-    if let Some(result) = call_readonly_cached(receiver, cache, args, heap.as_deref()) {
-        return Some(result);
-    }
     match cache.target {
         StandardMethodInlineCacheTarget::First
         | StandardMethodInlineCacheTarget::Last
@@ -476,6 +473,9 @@ pub(crate) fn call_standard_cached(
             return call_cached_array_mutation(receiver, cache.target, args, heap, budget);
         }
         _ => {}
+    }
+    if let Some(result) = call_readonly_cached(receiver, cache, args, heap.as_deref()) {
+        return Some(result);
     }
     if !receiver_matches_cache(receiver, cache.receiver, heap.as_deref()) {
         return None;
