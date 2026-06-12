@@ -1,7 +1,8 @@
 use crate::workload_sources::{
     ARRAY_LOOKUP_SOURCE, CALLBACK_COLLECTIONS_SOURCE, DIRECT_CLOSURE_CALLS_SOURCE,
     MAP_LOOKUP_SOURCE, METHOD_DISPATCH_SOURCE, NATIVE_CALL_WIDE_ARGS_SOURCE,
-    RECORD_TRIPLETS_SOURCE, SCRIPT_CALL_SMALL_ARGS_SOURCE, STDLIB_COLLECTIONS_SOURCE,
+    RECORD_TRIPLETS_SOURCE, SCRIPT_CALL_SMALL_ARGS_SOURCE, SET_LOOKUP_SOURCE,
+    STDLIB_COLLECTIONS_SOURCE,
 };
 
 pub(crate) struct Workload {
@@ -304,20 +305,12 @@ fn main() {
     Workload {
         name: "managed_heap_set_lookup",
         mode: ExecutionMode::ManagedHeap,
-        source: r#"
-fn main() {
-    let total = 0;
-    for tick in 0..96 {
-        let tags = set::from_array(["daily", "quest", "raid", "bonus", "event", "boss"]);
-        let tiers = set::from_array([1, 2, 3, 5, 8, 13]);
-        if !tags.has("raid") || tags.has("missing") || !tiers.has(8) || tiers.has(tick + 20) {
-            return 0;
-        }
-        total += tags.len() + tiers.len() + tick - tick;
-    }
-    return total;
-}
-"#,
+        source: SET_LOOKUP_SOURCE,
+    },
+    Workload {
+        name: "set_lookup_cache_hot_offsets",
+        mode: ExecutionMode::CacheEnabled,
+        source: SET_LOOKUP_SOURCE,
     },
     Workload {
         name: "managed_heap_set_combination",
