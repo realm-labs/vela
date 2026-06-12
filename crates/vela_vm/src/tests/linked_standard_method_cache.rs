@@ -1,4 +1,5 @@
 use super::linked_standard_method_cache_fixtures::*;
+use super::linked_standard_method_cache_support::*;
 use super::*;
 use crate::value::Value as RuntimeValue;
 
