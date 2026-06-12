@@ -354,17 +354,19 @@ Cranelift JIT.
   - callback and closure allocation costs now have isolated quick and default
     baseline rows; M20 cache-enabled stdlib method, script-call, native-call,
     script record-field, method-dispatch,
-    collection lookup/combination/mutation, Option/Result helper, callback
-    collection, direct-closure, and host-boundary rows separate warmed cache
-    hits from later JIT work, and broader cache-enabled rows remain;
+    collection lookup/combination/mutation/materialization, Option/Result
+    helper, callback collection, direct-closure, and host-boundary rows
+    separate warmed cache hits from later JIT work, and broader cache-enabled
+    rows remain;
   - verified-bytecode and runtime tests cover the invariants needed by later
     unchecked register, operand, and cache fast paths;
   - runtime bytecode offset counters cover linked hot offsets and hot-reload
     invalidation; cache-enabled stdlib, script-call, native-call, script
-    record-field, method-dispatch, collection lookup/combination/mutation,
-    Option/Result helper, callback collection, direct-closure, and
-    host-boundary rows now consume those counters, and follow-on M20 work
-    needs broader cache-enabled benchmark rows;
+    record-field, method-dispatch,
+    collection lookup/combination/mutation/materialization, Option/Result
+    helper, callback collection, direct-closure, and host-boundary rows now
+    consume those counters, and follow-on M20 work needs broader cache-enabled
+    benchmark rows;
   - interpreter-only benchmark rows identify which remaining costs belong to
     M20 cache work versus later JIT work.
 - M20: continue guarded inline caches and specialization for broader stdlib

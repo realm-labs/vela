@@ -1,9 +1,10 @@
 use crate::workload_sources::{
-    ARRAY_EXTEND_SOURCE, ARRAY_LOOKUP_SOURCE, CALLBACK_COLLECTIONS_SOURCE,
-    DIRECT_CLOSURE_CALLS_SOURCE, MAP_EXTEND_SOURCE, MAP_LOOKUP_SOURCE, MAP_MERGE_SOURCE,
-    METHOD_DISPATCH_SOURCE, NATIVE_CALL_WIDE_ARGS_SOURCE, OPTION_RESULT_HELPERS_SOURCE,
-    RECORD_TRIPLETS_SOURCE, SCRIPT_CALL_SMALL_ARGS_SOURCE, SET_COMBINATION_SOURCE,
-    SET_LOOKUP_SOURCE, STDLIB_COLLECTIONS_SOURCE,
+    ARRAY_DISTINCT_SOURCE, ARRAY_EXTEND_SOURCE, ARRAY_EXTREMA_SOURCE, ARRAY_JOIN_SOURCE,
+    ARRAY_LOOKUP_SOURCE, ARRAY_REVERSE_SOURCE, ARRAY_SLICE_SOURCE, ARRAY_SORT_SOURCE,
+    CALLBACK_COLLECTIONS_SOURCE, DIRECT_CLOSURE_CALLS_SOURCE, MAP_EXTEND_SOURCE, MAP_LOOKUP_SOURCE,
+    MAP_MERGE_SOURCE, METHOD_DISPATCH_SOURCE, NATIVE_CALL_WIDE_ARGS_SOURCE,
+    OPTION_RESULT_HELPERS_SOURCE, RECORD_TRIPLETS_SOURCE, SCRIPT_CALL_SMALL_ARGS_SOURCE,
+    SET_COMBINATION_SOURCE, SET_LOOKUP_SOURCE, STDLIB_COLLECTIONS_SOURCE,
 };
 
 pub(crate) struct Workload {
@@ -487,116 +488,62 @@ fn main() {
     Workload {
         name: "managed_heap_array_extrema",
         mode: ExecutionMode::ManagedHeap,
-        source: r#"
-fn main() {
-    let total = 0;
-    for tick in 0..64 {
-        let base = [9, 2, 5, 2, 8, 1, 9, 3];
-        let scaled = [tick + 4, tick + 1, tick + 8, tick + 2];
-        total += base.min().unwrap_or(0)
-            + base.max().unwrap_or(0)
-            + scaled.min().unwrap_or(0)
-            + scaled.max().unwrap_or(0);
-    }
-    return total;
-}
-"#,
+        source: ARRAY_EXTREMA_SOURCE,
+    },
+    Workload {
+        name: "array_extrema_cache_hot_offsets",
+        mode: ExecutionMode::CacheEnabled,
+        source: ARRAY_EXTREMA_SOURCE,
     },
     Workload {
         name: "managed_heap_array_sort",
         mode: ExecutionMode::ManagedHeap,
-        source: r#"
-fn main() {
-    let total = 0;
-    for tick in 0..48 {
-        let base = [9, 2, 5, 2, 8, 1, 9, 3];
-        let scaled = [tick + 4, tick + 1, tick + 8, tick + 2];
-        let sorted = base.sort();
-        let scaled_sorted = scaled.sort();
-        total += sorted[0] + sorted[7] + scaled_sorted[0] + scaled_sorted[3];
-    }
-    return total;
-}
-"#,
+        source: ARRAY_SORT_SOURCE,
+    },
+    Workload {
+        name: "array_sort_cache_hot_offsets",
+        mode: ExecutionMode::CacheEnabled,
+        source: ARRAY_SORT_SOURCE,
     },
     Workload {
         name: "managed_heap_array_slice",
         mode: ExecutionMode::ManagedHeap,
-        source: r#"
-fn main() {
-    let total = 0;
-    for tick in 0..64 {
-        let values = [
-            tick, tick + 1, tick + 2, tick + 3,
-            tick + 4, tick + 5, tick + 6, tick + 7,
-            tick + 8, tick + 9, tick + 10, tick + 11,
-        ];
-        let middle = values.slice(3, 7);
-        let tail = values.slice(8, 12);
-        total += middle.sum() + tail.sum();
-    }
-    return total;
-}
-"#,
+        source: ARRAY_SLICE_SOURCE,
+    },
+    Workload {
+        name: "array_slice_cache_hot_offsets",
+        mode: ExecutionMode::CacheEnabled,
+        source: ARRAY_SLICE_SOURCE,
     },
     Workload {
         name: "managed_heap_array_reverse",
         mode: ExecutionMode::ManagedHeap,
-        source: r#"
-fn main() {
-    let total = 0;
-    for tick in 0..64 {
-        let values = [
-            tick, tick + 1, tick + 2, tick + 3,
-            tick + 4, tick + 5, tick + 6, tick + 7,
-        ];
-        let labels = ["daily", "quest", "raid", "bonus"];
-        let reversed = values.reverse();
-        let reversed_labels = labels.reverse();
-        total += reversed[0] + reversed[7] + reversed_labels.join("|").len();
-    }
-    return total;
-}
-"#,
+        source: ARRAY_REVERSE_SOURCE,
+    },
+    Workload {
+        name: "array_reverse_cache_hot_offsets",
+        mode: ExecutionMode::CacheEnabled,
+        source: ARRAY_REVERSE_SOURCE,
     },
     Workload {
         name: "managed_heap_array_distinct",
         mode: ExecutionMode::ManagedHeap,
-        source: r#"
-fn main() {
-    let total = 0;
-    for tick in 0..48 {
-        let values = [
-            tick, tick + 1, tick, tick + 2,
-            tick + 1, tick + 3, tick + 2, tick + 4,
-        ];
-        let tags = ["raid", "quest", "raid", "daily", "quest", "bonus"];
-        let nested = [["daily", "quest"], ["daily", "quest"], ["raid"], ["raid"]];
-        let unique = values.distinct();
-        let unique_tags = tags.distinct();
-        let unique_nested = nested.distinct();
-        total += unique.sum() + unique_tags.join("|").len() + unique_nested.len();
-    }
-    return total;
-}
-"#,
+        source: ARRAY_DISTINCT_SOURCE,
+    },
+    Workload {
+        name: "array_distinct_cache_hot_offsets",
+        mode: ExecutionMode::CacheEnabled,
+        source: ARRAY_DISTINCT_SOURCE,
     },
     Workload {
         name: "managed_heap_array_join",
         mode: ExecutionMode::ManagedHeap,
-        source: r#"
-fn main() {
-    let total = 0;
-    for tick in 0..64 {
-        let tags = ["daily", "quest", "raid", "bonus", "boss", "event"];
-        let route = ["zone", "shard", "tick", "phase"];
-        let label = tags.join("|");
-        let path = route.join(".");
-        total += label.len() + path.len() + tick - tick;
-    }
-    return total;
-}
-"#,
+        source: ARRAY_JOIN_SOURCE,
+    },
+    Workload {
+        name: "array_join_cache_hot_offsets",
+        mode: ExecutionMode::CacheEnabled,
+        source: ARRAY_JOIN_SOURCE,
     },
     Workload {
         name: "managed_heap_materialization",

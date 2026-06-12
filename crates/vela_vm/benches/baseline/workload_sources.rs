@@ -217,6 +217,102 @@ fn main() {
 }
 "#;
 
+pub(crate) const ARRAY_EXTREMA_SOURCE: &str = r#"
+fn main() {
+    let total = 0;
+    for tick in 0..64 {
+        let base = [9, 2, 5, 2, 8, 1, 9, 3];
+        let scaled = [tick + 4, tick + 1, tick + 8, tick + 2];
+        total += base.min().unwrap_or(0)
+            + base.max().unwrap_or(0)
+            + scaled.min().unwrap_or(0)
+            + scaled.max().unwrap_or(0);
+    }
+    return total;
+}
+"#;
+
+pub(crate) const ARRAY_SORT_SOURCE: &str = r#"
+fn main() {
+    let total = 0;
+    for tick in 0..48 {
+        let base = [9, 2, 5, 2, 8, 1, 9, 3];
+        let scaled = [tick + 4, tick + 1, tick + 8, tick + 2];
+        let sorted = base.sort();
+        let scaled_sorted = scaled.sort();
+        total += sorted[0] + sorted[7] + scaled_sorted[0] + scaled_sorted[3];
+    }
+    return total;
+}
+"#;
+
+pub(crate) const ARRAY_SLICE_SOURCE: &str = r#"
+fn main() {
+    let total = 0;
+    for tick in 0..64 {
+        let values = [
+            tick, tick + 1, tick + 2, tick + 3,
+            tick + 4, tick + 5, tick + 6, tick + 7,
+            tick + 8, tick + 9, tick + 10, tick + 11,
+        ];
+        let middle = values.slice(3, 7);
+        let tail = values.slice(8, 12);
+        total += middle.sum() + tail.sum();
+    }
+    return total;
+}
+"#;
+
+pub(crate) const ARRAY_REVERSE_SOURCE: &str = r#"
+fn main() {
+    let total = 0;
+    for tick in 0..64 {
+        let values = [
+            tick, tick + 1, tick + 2, tick + 3,
+            tick + 4, tick + 5, tick + 6, tick + 7,
+        ];
+        let labels = ["daily", "quest", "raid", "bonus"];
+        let reversed = values.reverse();
+        let reversed_labels = labels.reverse();
+        total += reversed[0] + reversed[7] + reversed_labels.join("|").len();
+    }
+    return total;
+}
+"#;
+
+pub(crate) const ARRAY_DISTINCT_SOURCE: &str = r#"
+fn main() {
+    let total = 0;
+    for tick in 0..48 {
+        let values = [
+            tick, tick + 1, tick, tick + 2,
+            tick + 1, tick + 3, tick + 2, tick + 4,
+        ];
+        let tags = ["raid", "quest", "raid", "daily", "quest", "bonus"];
+        let nested = [["daily", "quest"], ["daily", "quest"], ["raid"], ["raid"]];
+        let unique = values.distinct();
+        let unique_tags = tags.distinct();
+        let unique_nested = nested.distinct();
+        total += unique.sum() + unique_tags.join("|").len() + unique_nested.len();
+    }
+    return total;
+}
+"#;
+
+pub(crate) const ARRAY_JOIN_SOURCE: &str = r#"
+fn main() {
+    let total = 0;
+    for tick in 0..64 {
+        let tags = ["daily", "quest", "raid", "bonus", "boss", "event"];
+        let route = ["zone", "shard", "tick", "phase"];
+        let label = tags.join("|");
+        let path = route.join(".");
+        total += label.len() + path.len() + tick - tick;
+    }
+    return total;
+}
+"#;
+
 pub(crate) const MAP_LOOKUP_SOURCE: &str = r#"
 fn main() {
     let total = 0;
