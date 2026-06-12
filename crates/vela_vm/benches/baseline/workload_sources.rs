@@ -1120,3 +1120,31 @@ fn main() {
     return total;
 }
 "#;
+
+pub(crate) const OPTION_RESULT_CALLBACKS_SOURCE: &str = r#"
+fn main() {
+    let total = 0;
+    for tick in 0..96 {
+        let option_chain = option::some("quest")
+            .map(|value| value.to_upper())
+            .filter(|value| value.starts_with("Q"));
+        let option_fallback = option::none().or_else(| | option::some("fallback"));
+        let result_chain = result::ok(["gold", "xp"])
+            .and_then(|values| result::ok(values.join(".")));
+        let mapped_err = result::err(["bad", "level"]).map_err(|errors| errors.join("."));
+        let recovered = result::err("missing").or_else(|error| result::ok("fallback"));
+
+        if option::unwrap_or(option_chain, "") != "QUEST"
+            || option::unwrap_or(option_fallback, "") != "fallback"
+            || result::unwrap_or(result_chain, "") != "gold.xp"
+            || option::unwrap_or(mapped_err.to_error_option(), "") != "bad.level"
+            || result::unwrap_or(recovered, "") != "fallback"
+        {
+            return 0;
+        }
+
+        total += 37 + tick - tick;
+    }
+    return total;
+}
+"#;
