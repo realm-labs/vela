@@ -93,9 +93,47 @@ fn call_cached_map_extend(
         map_slots(receiver, Some(&*heap), "method extend")?;
         return Ok(Value::Null);
     }
+    match map_slot_entry(heap, extension_reference, "method extend")? {
+        MapSlotEntry::Empty => {
+            map_slots_by_reference(heap, reference, "method extend")?;
+            return Ok(Value::Null);
+        }
+        MapSlotEntry::Single(key, value) => {
+            map_slots_mut(heap, reference, "method extend")?.insert(key, value);
+            return Ok(Value::Null);
+        }
+        MapSlotEntry::Many => {}
+    }
     let slots = map_slot_entries(heap, extension_reference, "method extend")?;
     map_slots_mut(heap, reference, "method extend")?.extend(slots);
     Ok(Value::Null)
+}
+
+enum MapSlotEntry {
+    Empty,
+    Single(String, Value),
+    Many,
+}
+
+fn map_slot_entry(
+    heap: &HeapExecution<'_>,
+    reference: crate::heap::GcRef,
+    operation: &'static str,
+) -> VmResult<MapSlotEntry> {
+    let values = map_slots_by_reference(heap, reference, operation)?;
+    if values.is_empty() {
+        return Ok(MapSlotEntry::Empty);
+    }
+    if values.len() != 1 {
+        return Ok(MapSlotEntry::Many);
+    }
+    let Some((key, value)) = values.first_key_value() else {
+        return Ok(MapSlotEntry::Empty);
+    };
+    if matches!(value, Value::Missing) {
+        return type_error("missing value");
+    }
+    Ok(MapSlotEntry::Single(key.clone(), *value))
 }
 
 fn map_slot_entries(

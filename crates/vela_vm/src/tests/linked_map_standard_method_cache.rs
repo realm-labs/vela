@@ -109,6 +109,29 @@ fn linked_standard_value_method_caches_map_extend_target() {
 }
 
 #[test]
+fn linked_standard_value_method_caches_map_single_extend_target() {
+    let (program, site, dispatch, method_id) = linked_map_extend_return_receiver_cache_program();
+    let caches = RecordingMethodCaches::new(1);
+    let expected = Ok(OwnedValue::map([
+        ("gold", OwnedValue::i64(4)),
+        ("xp", OwnedValue::i64(8)),
+    ]));
+
+    assert_eq!(
+        run_linked_method_cache_owned_program(&program, &caches),
+        expected
+    );
+    assert_map_cache_entry(
+        &caches,
+        site,
+        dispatch,
+        method_id,
+        StandardMethodInlineCacheTarget::Extend,
+    );
+    assert_eq!(caches.set_count(), 2);
+}
+
+#[test]
 fn linked_standard_value_method_caches_map_self_extend_target() {
     let (program, site, dispatch, method_id) = linked_map_self_extend_cache_program();
     let caches = RecordingMethodCaches::new(1);
@@ -374,6 +397,14 @@ fn linked_map_remove_cache_program() -> LinkedMapCacheFixture {
 }
 
 fn linked_map_extend_cache_program() -> LinkedMapCacheFixture {
+    linked_map_extend_cache_program_with_return(false)
+}
+
+fn linked_map_extend_return_receiver_cache_program() -> LinkedMapCacheFixture {
+    linked_map_extend_cache_program_with_return(true)
+}
+
+fn linked_map_extend_cache_program_with_return(return_receiver: bool) -> LinkedMapCacheFixture {
     let method_id = vela_stdlib::std_method_id("Map", "extend").expect("Map::extend method id");
     let mut program = vela_bytecode::LinkedProgram::new();
     let main_name = program.intern_debug_name("main");
@@ -411,8 +442,15 @@ fn linked_map_extend_cache_program() -> LinkedMapCacheFixture {
             args: vec![vela_bytecode::CallArgument::Register(Register(3))],
         },
     ));
+    let return_register = if return_receiver {
+        Register(2)
+    } else {
+        Register(4)
+    };
     code.push_instruction(vela_bytecode::linked::Instruction::new(
-        vela_bytecode::linked::InstructionKind::Return { src: Register(4) },
+        vela_bytecode::linked::InstructionKind::Return {
+            src: return_register,
+        },
     ));
     let function = program.push_function(code);
     program.set_entry_point(main_name, function);
