@@ -4,7 +4,10 @@ use vela_bytecode::{
 };
 use vela_common::{ScalarValue, SourceId};
 use vela_def::MethodId;
-use vela_vm::{MethodInlineCacheEntry, MethodInlineCacheTarget, owned_value::OwnedValue};
+use vela_vm::{
+    CallbackMethodInlineCacheTarget, MethodInlineCacheEntry, MethodInlineCacheTarget,
+    StandardMethodReceiver, owned_value::OwnedValue,
+};
 
 use crate::engine::Engine;
 use crate::runtime::{CallArgs, CallOptions, Runtime};
@@ -265,6 +268,63 @@ fn read_bonus() {
     );
 }
 
+#[test]
+fn accepted_hot_reload_clears_callback_value_method_inline_caches() {
+    let engine = Engine::builder()
+        .with_standard_natives()
+        .build()
+        .expect("engine should build");
+    let initial = engine
+        .compile_hot_reload_initial(
+            SourceId::new(1),
+            r#"
+fn read_match() {
+    return [1, 2, 3].any(|value| value == 2);
+}
+"#,
+        )
+        .expect("initial source should compile");
+    let mut runtime = Runtime::from_hot_reload_version(engine, initial);
+    let initial_call = method_call_site(&runtime, "read_match");
+
+    let first = runtime
+        .call("read_match", CallArgs::new(), CallOptions::unbounded())
+        .expect("initial read_match should run");
+    assert_eq!(runtime.value_to_owned(&first), Ok(OwnedValue::Bool(true)));
+    assert_callback_value_method_cache(&runtime, initial_call.cache_site);
+
+    let update = runtime
+        .compile_hot_reload_update(
+            SourceId::new(2),
+            r#"
+fn read_match() {
+    return [1, 2, 3].any(|value| value == 4);
+}
+"#,
+        )
+        .expect("runtime should compile callback hot reload update")
+        .expect("callback body update should be accepted");
+    let report = runtime
+        .apply_hot_update(update)
+        .expect("callback hot reload update should apply");
+    assert!(report.accepted);
+
+    let reloaded_call = method_call_site(&runtime, "read_match");
+    assert_eq!(
+        runtime
+            .state
+            .inline_caches
+            .method_dispatch(reloaded_call.cache_site),
+        None
+    );
+
+    let second = runtime
+        .call("read_match", CallArgs::new(), CallOptions::unbounded())
+        .expect("reloaded read_match should run");
+    assert_eq!(runtime.value_to_owned(&second), Ok(OwnedValue::Bool(false)));
+    assert_callback_value_method_cache(&runtime, reloaded_call.cache_site);
+}
+
 #[derive(Clone, Copy)]
 struct LinkedMethodCallSite {
     cache_site: CacheSiteId,
@@ -291,6 +351,22 @@ fn script_method_target(
         panic!("linked method dispatch should target a script method");
     };
     (*method_id, *function)
+}
+
+fn assert_callback_value_method_cache(runtime: &Runtime, site: CacheSiteId) {
+    let entry = runtime
+        .state
+        .inline_caches
+        .method_dispatch(site)
+        .expect("callback value method call should populate inline cache");
+    let MethodInlineCacheTarget::CallbackValue {
+        callback_method, ..
+    } = entry.target
+    else {
+        panic!("method cache should store a callback value target");
+    };
+    assert_eq!(callback_method.receiver, StandardMethodReceiver::Array);
+    assert_eq!(callback_method.target, CallbackMethodInlineCacheTarget::Any);
 }
 
 fn method_call_site(runtime: &Runtime, function_name: &str) -> LinkedMethodCallSite {
