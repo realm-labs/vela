@@ -91,49 +91,44 @@ fn call_cached_set_extend(
     receiver: &Value,
     args: &[Value],
     heap: &mut Option<&mut HeapExecution<'_>>,
-    budget: &mut Option<&mut ExecutionBudget>,
+    _budget: &mut Option<&mut ExecutionBudget>,
 ) -> VmResult<Value> {
     crate::runtime_checks::expect_arity("extend", args, 1)?;
-    let extension = set_values(&args[0], heap.as_deref(), "method extend")?;
     let reference = set_reference(receiver, "method extend")?;
     let Some(heap) = heap.as_deref_mut() else {
         return type_error("method extend");
     };
+    let extension = set_slot_values(heap, &args[0], "method extend")?;
     let mut keys = set_slots(heap, reference, "method extend")?
         .iter()
         .map(|slot| slot_key(slot, heap))
         .collect::<VmResult<Vec<_>>>()?;
     let mut slots = Vec::new();
-    for value in extension {
-        let key = SetKey::from_value(&value, Some(&*heap), "method extend")?;
+    for slot in extension {
+        let key = SetKey::from_value(&slot, Some(&*heap), "method extend")?;
         if keys.contains(&key) {
             continue;
         }
         keys.push(key);
-        slots.push(store_runtime_value(&value, heap, budget.as_deref_mut())?);
+        slots.push(slot);
     }
     set_slots_mut(heap, reference, "method extend")?.extend(slots);
     Ok(Value::Null)
 }
 
-fn set_values(
+fn set_slot_values(
+    heap: &HeapExecution<'_>,
     receiver: &Value,
-    heap: Option<&HeapExecution<'_>>,
     operation: &'static str,
 ) -> VmResult<Vec<Value>> {
-    set_slots_read(receiver, heap, operation).map(<[Value]>::to_vec)
-}
-
-fn set_slots_read<'a>(
-    receiver: &Value,
-    heap: Option<&'a HeapExecution<'_>>,
-    operation: &'static str,
-) -> VmResult<&'a [Value]> {
     let reference = set_reference(receiver, operation)?;
-    let Some(HeapValue::Set(values)) = heap.and_then(|heap| heap.heap.get(reference)) else {
+    let Some(HeapValue::Set(values)) = heap.heap.get(reference) else {
         return type_error(operation);
     };
-    Ok(values)
+    if values.iter().any(|value| matches!(value, Value::Missing)) {
+        return type_error("missing value");
+    }
+    Ok(values.clone())
 }
 
 fn set_slots<'a>(
