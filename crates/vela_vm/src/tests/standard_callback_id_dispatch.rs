@@ -505,10 +505,49 @@ fn main() {
         CallbackMethodInlineCacheTarget::Filter,
         Value::i64(4),
     );
+    assert_callback_value_method_cache(
+        r#"
+fn main() {
+    return option::some(4).and_then(|value| option::some(value + 1)).unwrap_or(0);
+}
+"#,
+        "and_then",
+        "Option",
+        "and_then",
+        StandardMethodReceiver::Option,
+        CallbackMethodInlineCacheTarget::AndThen,
+        Value::i64(5),
+    );
+    assert_callback_value_method_cache(
+        r#"
+fn main() {
+    return option::none().or_else(| | option::some(7)).unwrap_or(0);
+}
+"#,
+        "or_else",
+        "Option",
+        "or_else",
+        StandardMethodReceiver::Option,
+        CallbackMethodInlineCacheTarget::OrElse,
+        Value::i64(7),
+    );
 }
 
 #[test]
 fn linked_callback_value_method_caches_result_targets() {
+    assert_callback_value_method_cache(
+        r#"
+fn main() {
+    return result::unwrap_or(result::ok(4).map(|value| value + 1), 0);
+}
+"#,
+        "map",
+        "Result",
+        "map",
+        StandardMethodReceiver::Result,
+        CallbackMethodInlineCacheTarget::Map,
+        Value::i64(5),
+    );
     assert_callback_value_method_cache(
         r#"
 fn main() {
