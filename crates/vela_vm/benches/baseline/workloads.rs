@@ -624,6 +624,11 @@ fn main() {
         source: MAP_LOOKUP_SOURCE,
     },
     Workload {
+        name: "map_lookup_hot_offsets",
+        mode: ExecutionMode::ProfileOnly,
+        source: MAP_LOOKUP_SOURCE,
+    },
+    Workload {
         name: "map_lookup_cache_hot_offsets",
         mode: ExecutionMode::CacheEnabled,
         source: MAP_LOOKUP_SOURCE,
