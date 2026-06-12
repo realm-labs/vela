@@ -833,6 +833,36 @@ fn main() {
 }
 "#;
 
+pub(crate) const MAP_MUTATION_SOURCE: &str = r#"
+fn main() {
+    let total = 0;
+    for tick in 0..96 {
+        let scores = {
+            "daily": 3,
+            "raid": 8,
+        };
+        scores.set("boss", 13);
+        scores.set("raid", 21);
+        let removed = scores.remove("daily");
+        let missing = scores.remove("missing");
+        scores.extend({"event": 5, "bonus": 34});
+        let keys = scores.keys().sort().join("|");
+        let values = scores.values().sum();
+        scores.clear();
+        if option::unwrap_or(removed, 0) != 3
+            || !option::is_none(missing)
+            || keys != "bonus|boss|event|raid"
+            || values != 73
+            || !scores.is_empty()
+        {
+            return 0;
+        }
+        total += keys.len() + values + scores.len() + tick - tick;
+    }
+    return total;
+}
+"#;
+
 pub(crate) const MAP_MERGE_SOURCE: &str = r#"
 fn main() {
     let total = 0;
