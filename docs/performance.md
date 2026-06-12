@@ -55,7 +55,9 @@ commit, rustc, cargo, target, profile
 runtime options: heap, cache, debugger, JIT
 warmup, repeats, iterations, and input size
 min, mean, median, p95, checksum
-cache_sets, cache_hits, cache-family set/hit counters, and profile_hits when the harness emits cache-enabled rows; native-call cache-enabled rows count resolved target-cache population
+cache_sets, cache_hits, cache-family set/hit counters, profile_hits, and
+cache_delta rows when the harness emits paired cache-enabled rows; native-call
+cache-enabled rows count resolved target-cache population
 external runtime versions when used
 ```
 

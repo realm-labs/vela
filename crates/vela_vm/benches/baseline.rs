@@ -24,6 +24,8 @@ use vela_vm::owned_value::OwnedValue;
 use vela_vm::value::Value;
 use vela_vm::{HostExecution, LinkedProgramHostBudgetCall};
 
+#[path = "baseline/cache_delta.rs"]
+mod cache_delta;
 #[path = "baseline/cache_support.rs"]
 mod cache_support;
 #[path = "baseline/config.rs"]
@@ -81,6 +83,7 @@ fn main() -> Result<(), Box<dyn Error>> {
     );
 
     let mut ran = 0;
+    let mut records = Vec::new();
     for workload in WORKLOADS {
         if !config.should_run(workload.name) {
             continue;
@@ -111,10 +114,21 @@ fn main() -> Result<(), Box<dyn Error>> {
             cache.native_call_hits,
             result.profile_hits
         );
+        records.push(cache_delta::Record {
+            name: workload.name,
+            cache_enabled: workload.mode.is_cache_enabled(),
+            min_ns: result.min_ns,
+            mean_ns: result.mean_ns,
+            median_ns: result.median_ns,
+            p95_ns: result.p95_ns,
+            cache_hits: result.cache_stats.total_hits(),
+            profile_hits: result.profile_hits,
+        });
     }
     if ran == 0 {
         return Err(format!("no baseline workloads matched {}", config.filters_label()).into());
     }
+    cache_delta::print(&records);
 
     Ok(())
 }
@@ -1125,6 +1139,13 @@ fn profile() -> &'static str {
 }
 
 impl ExecutionMode {
+    fn is_cache_enabled(self) -> bool {
+        matches!(
+            self,
+            Self::CacheEnabled | Self::ScriptProgramCacheEnabled | Self::HostAccessCacheEnabled
+        )
+    }
+
     fn as_str(self) -> &'static str {
         match self {
             Self::Inline => "inline",
