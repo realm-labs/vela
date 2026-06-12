@@ -286,6 +286,11 @@ fn main() {
         source: DIRECT_CLOSURE_CALLS_SOURCE,
     },
     Workload {
+        name: "direct_closure_calls_cache_hot_offsets",
+        mode: ExecutionMode::CacheEnabled,
+        source: DIRECT_CLOSURE_CALLS_SOURCE,
+    },
+    Workload {
         name: "method_cache_hot_offsets",
         mode: ExecutionMode::CacheEnabled,
         source: r#"

@@ -125,11 +125,11 @@ cache-shaped, but M20 should wait until the hot operands are cache-ready:
 M19.5 reports interpreter-only before/after rows for each prep family. The
 baseline harness now splits callback rows into collection callbacks and direct
 closure calls with default baseline data, includes cache-enabled stdlib
-collection, script record-field, and callback collection rows with warmed inline
-caches and bytecode profile counters, and splits host-boundary rows into field
-read/write, nested path read/write, RMW mutation, dynamic key access, and host
-method calls. M20 reports must separate interpreter-only and cache-enabled
-results.
+collection, script record-field, callback collection, and direct-closure rows
+with warmed inline caches and bytecode profile counters, and splits
+host-boundary rows into field read/write, nested path read/write, RMW mutation,
+dynamic key access, and host method calls. M20 reports must separate
+interpreter-only and cache-enabled results.
 
 ## Targets
 
