@@ -423,6 +423,11 @@ fn main() {
         source: OPTION_RESULT_HELPERS_SOURCE,
     },
     Workload {
+        name: "option_result_helpers",
+        mode: ExecutionMode::Inline,
+        source: OPTION_RESULT_HELPERS_SOURCE,
+    },
+    Workload {
         name: "option_result_helpers_cache_hot_offsets",
         mode: ExecutionMode::CacheEnabled,
         source: OPTION_RESULT_HELPERS_SOURCE,
@@ -433,6 +438,11 @@ fn main() {
         source: OPTION_RESULT_PREDICATES_SOURCE,
     },
     Workload {
+        name: "option_result_predicates",
+        mode: ExecutionMode::Inline,
+        source: OPTION_RESULT_PREDICATES_SOURCE,
+    },
+    Workload {
         name: "option_result_predicates_cache_hot_offsets",
         mode: ExecutionMode::CacheEnabled,
         source: OPTION_RESULT_PREDICATES_SOURCE,
@@ -440,6 +450,11 @@ fn main() {
     Workload {
         name: "managed_heap_option_result_conversions",
         mode: ExecutionMode::ManagedHeap,
+        source: OPTION_RESULT_CONVERSIONS_SOURCE,
+    },
+    Workload {
+        name: "option_result_conversions",
+        mode: ExecutionMode::Inline,
         source: OPTION_RESULT_CONVERSIONS_SOURCE,
     },
     Workload {
