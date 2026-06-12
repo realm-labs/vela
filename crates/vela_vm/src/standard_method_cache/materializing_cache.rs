@@ -66,6 +66,23 @@ pub(super) fn call_cached_array_lookup_option(
     Some(make_option(payload, heap, budget))
 }
 
+pub(super) fn call_cached_map_get_option(
+    receiver: &Value,
+    args: &[Value],
+    heap: &mut Option<&mut HeapExecution<'_>>,
+    budget: &mut Option<&mut ExecutionBudget>,
+) -> Option<VmResult<Value>> {
+    let values = map_values(receiver, heap.as_deref())?;
+    let payload = match crate::runtime_checks::expect_arity("get", args, 1).and_then(|()| {
+        let key = crate::string_methods::string_value(&args[0], heap.as_deref(), "map key")?;
+        Ok(values.get(key).map(stored_runtime_value))
+    }) {
+        Ok(payload) => payload,
+        Err(error) => return Some(Err(error)),
+    };
+    Some(make_option(payload, heap, budget))
+}
+
 fn array_slots<'a>(
     receiver: &Value,
     heap: Option<&'a HeapExecution<'_>>,
@@ -75,6 +92,19 @@ fn array_slots<'a>(
         return None;
     };
     let Some(HeapValue::Array(values)) = heap.and_then(|heap| heap.heap.get(*reference)) else {
+        return None;
+    };
+    Some(values)
+}
+
+fn map_values<'a>(
+    receiver: &Value,
+    heap: Option<&'a HeapExecution<'_>>,
+) -> Option<&'a std::collections::BTreeMap<String, Value>> {
+    let Value::HeapRef(reference) = receiver else {
+        return None;
+    };
+    let Some(HeapValue::Map(values)) = heap.and_then(|heap| heap.heap.get(*reference)) else {
         return None;
     };
     Some(values)
