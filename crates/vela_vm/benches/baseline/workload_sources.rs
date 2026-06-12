@@ -188,3 +188,35 @@ fn main() {
     return total;
 }
 "#;
+
+pub(crate) const MAP_LOOKUP_SOURCE: &str = r#"
+fn main() {
+    let total = 0;
+    for tick in 0..96 {
+        let states = {
+            "daily": "done",
+            "raid": "active",
+            "boss": "ready",
+            "event": "open",
+        };
+        let scores = {
+            "daily": 3,
+            "raid": 8,
+            "boss": 13,
+            "event": 5,
+        };
+        if !states.has("raid")
+            || states.has("missing")
+            || option::unwrap_or(states.get("boss"), "") != "ready"
+            || states.get_or("missing", "fallback") != "fallback"
+            || !scores.has("boss")
+            || scores.get_or("raid", 0) != 8
+            || option::unwrap_or(scores.get("missing"), -1) != -1
+        {
+            return 0;
+        }
+        total += states.len() + scores.get_or("daily", 0) + tick - tick;
+    }
+    return total;
+}
+"#;
