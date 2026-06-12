@@ -103,7 +103,7 @@ pub(crate) fn execute_host_read(
         runtime.heap.as_deref(),
         "host_read",
     )?;
-    let instance = HostTargetInstance::new(root, target, &args);
+    let instance = HostTargetInstance::new(root, target, args.as_slice());
     let host = runtime.host.ok_or_else(|| {
         VmError::new(VmErrorKind::TypeMismatch {
             operation: "host context",
@@ -161,7 +161,7 @@ pub(crate) fn execute_host_write(
         runtime.heap.as_deref(),
         "host_write",
     )?;
-    let instance = HostTargetInstance::new(root, target, &args);
+    let instance = HostTargetInstance::new(root, target, args.as_slice());
     let host = runtime.host.ok_or_else(|| {
         VmError::new(VmErrorKind::TypeMismatch {
             operation: "host context",
@@ -221,7 +221,7 @@ pub(crate) fn execute_host_mutate(
         runtime.heap.as_deref(),
         "host_mutate",
     )?;
-    let instance = HostTargetInstance::new(root, mutation.target, &args);
+    let instance = HostTargetInstance::new(root, mutation.target, args.as_slice());
     let host = runtime.host.ok_or_else(|| {
         VmError::new(VmErrorKind::TypeMismatch {
             operation: "host context",
@@ -301,7 +301,7 @@ pub(crate) fn execute_host_remove(
         runtime.heap.as_deref(),
         "host_remove",
     )?;
-    let instance = HostTargetInstance::new(root, target, &args);
+    let instance = HostTargetInstance::new(root, target, args.as_slice());
     let host = runtime.host.ok_or_else(|| {
         VmError::new(VmErrorKind::TypeMismatch {
             operation: "host context",
@@ -392,7 +392,7 @@ pub(crate) fn execute_host_call(
             )
         })
         .collect::<VmResult<Vec<_>>>()?;
-    let instance = HostTargetInstance::new(root, call.target, &dynamic_args);
+    let instance = HostTargetInstance::new(root, call.target, dynamic_args.as_slice());
     let host = runtime.host.ok_or_else(|| {
         VmError::new(VmErrorKind::TypeMismatch {
             operation: "host context",
@@ -585,16 +585,34 @@ fn runtime_value_from_host(
     }
 }
 
+enum MaterializedHostArgs<'a> {
+    Empty,
+    Values(Vec<HostPathArg<'a>>),
+}
+
+impl<'a> MaterializedHostArgs<'a> {
+    fn as_slice(&'a self) -> &'a [HostPathArg<'a>] {
+        match self {
+            Self::Empty => &[],
+            Self::Values(args) => args,
+        }
+    }
+}
+
 fn materialize_host_args<'a>(
     frame: &CallFrame,
     registers: &[Register],
     heap: Option<&'a HeapExecution<'a>>,
     operation: &'static str,
-) -> VmResult<Vec<HostPathArg<'a>>> {
+) -> VmResult<MaterializedHostArgs<'a>> {
+    if registers.is_empty() {
+        return Ok(MaterializedHostArgs::Empty);
+    }
     registers
         .iter()
         .map(|register| host_arg_from_value(frame.read(*register)?, heap, operation))
-        .collect()
+        .collect::<VmResult<Vec<_>>>()
+        .map(MaterializedHostArgs::Values)
 }
 
 fn host_arg_from_value<'a>(
