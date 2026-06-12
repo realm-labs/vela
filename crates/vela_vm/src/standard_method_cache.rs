@@ -635,6 +635,11 @@ fn call_readonly_cached(
         {
             return call_cached_string_predicate(receiver, cache.target, args, heap);
         }
+        StandardMethodInlineCacheTarget::Contains
+            if cache.receiver == StandardMethodReceiver::Array =>
+        {
+            return call_cached_array_contains(receiver, args, heap);
+        }
         _ => {}
     }
     if !receiver_matches_cache(receiver, cache.receiver, heap) {
@@ -1034,6 +1039,26 @@ fn call_cached_string_predicate(
                 _ => unreachable!("string predicate target was validated above"),
             };
             Ok(Value::Bool(result))
+        }),
+    )
+}
+
+fn call_cached_array_contains(
+    receiver: &Value,
+    args: &[Value],
+    heap: Option<&HeapExecution<'_>>,
+) -> Option<VmResult<Value>> {
+    let HeapValue::Array(values) = cached_heap_value(receiver, heap)? else {
+        return None;
+    };
+    Some(
+        crate::runtime_checks::expect_arity("contains", args, 1).and_then(|()| {
+            for value in values {
+                if crate::values_equal(&stored_runtime_value(value), &args[0], heap)? {
+                    return Ok(Value::Bool(true));
+                }
+            }
+            Ok(Value::Bool(false))
         }),
     )
 }
