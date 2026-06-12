@@ -4,6 +4,7 @@ use crate::{
     StandardMethodInlineCacheTarget, StandardMethodReceiver, Value, VmResult, array_methods,
     bytes_methods, map_methods, option_result_methods, script_builtin_methods, set_methods,
 };
+use crate::{VmError, VmErrorKind, heap::HeapValue};
 use vela_def::MethodId;
 
 pub(crate) fn standard_cache_entry(
@@ -592,18 +593,19 @@ fn call_readonly_cached(
     args: &[Value],
     heap: Option<&HeapExecution<'_>>,
 ) -> Option<VmResult<Value>> {
+    match cache.target {
+        StandardMethodInlineCacheTarget::Len => {
+            return call_cached_len(receiver, cache.receiver, args, heap);
+        }
+        StandardMethodInlineCacheTarget::IsEmpty => {
+            return call_cached_is_empty(receiver, cache.receiver, args, heap);
+        }
+        _ => {}
+    }
     if !receiver_matches_cache(receiver, cache.receiver, heap) {
         return None;
     }
     let result = match (cache.receiver, cache.target) {
-        (_, StandardMethodInlineCacheTarget::Len) => {
-            script_builtin_methods::expect_no_args("len", args)
-                .and_then(|()| script_builtin_methods::len(receiver, heap).map(Value::i64))
-        }
-        (_, StandardMethodInlineCacheTarget::IsEmpty) => {
-            script_builtin_methods::expect_no_args("is_empty", args)
-                .and_then(|()| script_builtin_methods::is_empty(receiver, heap).map(Value::Bool))
-        }
         (StandardMethodReceiver::String, StandardMethodInlineCacheTarget::Contains) => {
             crate::string_methods::contains(receiver, args, heap).map(Value::Bool)
         }
@@ -660,6 +662,143 @@ fn call_readonly_cached(
         _ => return None,
     };
     Some(result)
+}
+
+fn call_cached_len(
+    receiver: &Value,
+    cached: StandardMethodReceiver,
+    args: &[Value],
+    heap: Option<&HeapExecution<'_>>,
+) -> Option<VmResult<Value>> {
+    let len = match cached {
+        StandardMethodReceiver::String => {
+            let HeapValue::String(value) = cached_heap_value(receiver, heap)? else {
+                return None;
+            };
+            string_char_len(value)
+        }
+        StandardMethodReceiver::Bytes => {
+            let HeapValue::Bytes(value) = cached_heap_value(receiver, heap)? else {
+                return None;
+            };
+            value.len()
+        }
+        StandardMethodReceiver::Range => {
+            let Value::Range(range) = receiver else {
+                return None;
+            };
+            return Some(
+                script_builtin_methods::expect_no_args("len", args).and_then(|()| {
+                    range.len().map(Value::i64).ok_or_else(|| {
+                        VmError::new(VmErrorKind::TypeMismatch {
+                            operation: "method len",
+                        })
+                    })
+                }),
+            );
+        }
+        StandardMethodReceiver::Array => {
+            let HeapValue::Array(values) = cached_heap_value(receiver, heap)? else {
+                return None;
+            };
+            values.len()
+        }
+        StandardMethodReceiver::Map => {
+            let HeapValue::Map(values) = cached_heap_value(receiver, heap)? else {
+                return None;
+            };
+            values.len()
+        }
+        StandardMethodReceiver::Set => {
+            let HeapValue::Set(values) = cached_heap_value(receiver, heap)? else {
+                return None;
+            };
+            values.len()
+        }
+        StandardMethodReceiver::Option | StandardMethodReceiver::Result => {
+            return Some(type_error("method len"));
+        }
+    };
+    Some(
+        script_builtin_methods::expect_no_args("len", args)
+            .and_then(|()| usize_to_i64(len, "method len").map(Value::i64)),
+    )
+}
+
+fn call_cached_is_empty(
+    receiver: &Value,
+    cached: StandardMethodReceiver,
+    args: &[Value],
+    heap: Option<&HeapExecution<'_>>,
+) -> Option<VmResult<Value>> {
+    let is_empty = match cached {
+        StandardMethodReceiver::String => {
+            let HeapValue::String(value) = cached_heap_value(receiver, heap)? else {
+                return None;
+            };
+            value.is_empty()
+        }
+        StandardMethodReceiver::Bytes => {
+            let HeapValue::Bytes(value) = cached_heap_value(receiver, heap)? else {
+                return None;
+            };
+            value.is_empty()
+        }
+        StandardMethodReceiver::Range => {
+            let Value::Range(range) = receiver else {
+                return None;
+            };
+            range.is_empty()
+        }
+        StandardMethodReceiver::Array => {
+            let HeapValue::Array(values) = cached_heap_value(receiver, heap)? else {
+                return None;
+            };
+            values.is_empty()
+        }
+        StandardMethodReceiver::Map => {
+            let HeapValue::Map(values) = cached_heap_value(receiver, heap)? else {
+                return None;
+            };
+            values.is_empty()
+        }
+        StandardMethodReceiver::Set => {
+            let HeapValue::Set(values) = cached_heap_value(receiver, heap)? else {
+                return None;
+            };
+            values.is_empty()
+        }
+        StandardMethodReceiver::Option | StandardMethodReceiver::Result => {
+            return Some(type_error("method is_empty"));
+        }
+    };
+    Some(script_builtin_methods::expect_no_args("is_empty", args).map(|()| Value::Bool(is_empty)))
+}
+
+fn cached_heap_value<'a>(
+    receiver: &Value,
+    heap: Option<&'a HeapExecution<'_>>,
+) -> Option<&'a HeapValue> {
+    let Value::HeapRef(reference) = receiver else {
+        return None;
+    };
+    heap.and_then(|heap| heap.heap.get(*reference))
+}
+
+fn string_char_len(value: &str) -> usize {
+    if value.is_ascii() {
+        value.len()
+    } else {
+        value.chars().count()
+    }
+}
+
+fn usize_to_i64(value: usize, operation: &'static str) -> VmResult<i64> {
+    i64::try_from(value).map_err(|_| VmError::new(VmErrorKind::TypeMismatch { operation }))
+}
+
+fn type_error<T>(operation: &'static str) -> VmResult<T> {
+    Err(VmError::new(VmErrorKind::TypeMismatch { operation }))
 }
 
 fn receiver_matches_cache(
