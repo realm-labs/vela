@@ -212,6 +212,37 @@ pub(super) fn call_cached_string_array(
     )
 }
 
+pub(super) fn call_cached_string_transform(
+    receiver: &Value,
+    target: StandardMethodInlineCacheTarget,
+    args: &[Value],
+    heap: &mut Option<&mut HeapExecution<'_>>,
+    budget: &mut Option<&mut ExecutionBudget>,
+) -> Option<VmResult<Value>> {
+    let value = string_receiver(receiver, heap.as_deref())?;
+    let (method, operation, transform): (&str, &'static str, fn(&str) -> String) = match target {
+        StandardMethodInlineCacheTarget::ToUpper => {
+            ("to_upper", "method to_upper", str::to_uppercase)
+        }
+        StandardMethodInlineCacheTarget::ToLower => {
+            ("to_lower", "method to_lower", str::to_lowercase)
+        }
+        StandardMethodInlineCacheTarget::Trim => ("trim", "method trim", trim_payload),
+        StandardMethodInlineCacheTarget::TrimStart => {
+            ("trim_start", "method trim_start", trim_start_payload)
+        }
+        StandardMethodInlineCacheTarget::TrimEnd => {
+            ("trim_end", "method trim_end", trim_end_payload)
+        }
+        _ => return None,
+    };
+    let payload = match crate::runtime_checks::expect_arity(method, args, 0) {
+        Ok(()) => transform(value),
+        Err(error) => return Some(Err(error)),
+    };
+    Some(make_string(payload, heap, budget, operation))
+}
+
 fn array_slots<'a>(
     receiver: &Value,
     heap: Option<&'a HeapExecution<'_>>,
@@ -340,6 +371,18 @@ fn split_operation(target: StandardMethodInlineCacheTarget) -> &'static str {
         StandardMethodInlineCacheTarget::SplitWhitespace => "method split_whitespace",
         _ => "method split",
     }
+}
+
+fn trim_payload(value: &str) -> String {
+    value.trim().to_owned()
+}
+
+fn trim_start_payload(value: &str) -> String {
+    value.trim_start().to_owned()
+}
+
+fn trim_end_payload(value: &str) -> String {
+    value.trim_end().to_owned()
 }
 
 fn char_index_value(value: &Value) -> VmResult<usize> {
