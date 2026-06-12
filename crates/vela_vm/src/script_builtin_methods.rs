@@ -6,7 +6,9 @@ use crate::{
 };
 use vela_def::MethodId;
 
-pub(crate) use crate::standard_method_cache::{call_standard_cached, standard_cache_entry};
+pub(crate) use crate::standard_method_cache::{
+    call_standard_cached, standard_cache_entry, standard_cache_entry_matches_method,
+};
 
 pub(crate) fn call(
     receiver: &mut Value,

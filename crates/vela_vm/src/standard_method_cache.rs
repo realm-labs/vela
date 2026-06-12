@@ -310,6 +310,15 @@ pub(crate) fn standard_cache_entry(
     Some(StandardMethodInlineCacheEntry { receiver, target })
 }
 
+pub(crate) fn standard_cache_entry_matches_method(
+    method_id: MethodId,
+    receiver: &Value,
+    heap: Option<&HeapExecution<'_>>,
+    cache: StandardMethodInlineCacheEntry,
+) -> bool {
+    standard_cache_entry(method_id, receiver, heap) == Some(cache)
+}
+
 pub(crate) fn call_standard_cached(
     receiver: &Value,
     cache: StandardMethodInlineCacheEntry,
