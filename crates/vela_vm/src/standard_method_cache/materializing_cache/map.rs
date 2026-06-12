@@ -4,7 +4,7 @@ use crate::heap::HeapValue;
 use crate::script_object::ScriptFields;
 use crate::{
     ExecutionBudget, HeapExecution, StandardMethodInlineCacheTarget, Value, VmError, VmErrorKind,
-    VmResult, allocate_heap_value, stored_runtime_value,
+    VmResult, allocate_heap_value,
 };
 
 pub(in crate::standard_method_cache) fn call_cached_map_materialization(
@@ -89,7 +89,7 @@ fn map_keys_payload(values: &BTreeMap<String, Value>, args: &[Value]) -> VmResul
 
 fn map_values_payload(values: &BTreeMap<String, Value>, args: &[Value]) -> VmResult<Vec<Value>> {
     crate::runtime_checks::expect_arity("values", args, 0)?;
-    Ok(values.values().map(stored_runtime_value).collect())
+    Ok(values.values().copied().collect())
 }
 
 fn map_entries_payload(
@@ -99,7 +99,7 @@ fn map_entries_payload(
     crate::runtime_checks::expect_arity("entries", args, 0)?;
     Ok(values
         .iter()
-        .map(|(key, value)| (key.clone(), stored_runtime_value(value)))
+        .map(|(key, value)| (key.clone(), *value))
         .collect())
 }
 
