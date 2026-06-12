@@ -131,17 +131,21 @@ fn call_cached_array_extend(
     let Some(heap) = heap.as_deref_mut() else {
         return type_error("method extend");
     };
-    let slots = array_slot_values(heap, &args[0], "method extend")?;
+    let extension_reference = array_reference(&args[0], "method extend")?;
+    if array_slots(heap, extension_reference, "method extend")?.is_empty() {
+        array_slots(heap, reference, "method extend")?;
+        return Ok(Value::Null);
+    }
+    let slots = array_slot_values(heap, extension_reference, "method extend")?;
     array_slots_mut(heap, reference, "method extend")?.extend(slots);
     Ok(Value::Null)
 }
 
 fn array_slot_values(
     heap: &HeapExecution<'_>,
-    receiver: &Value,
+    reference: crate::heap::GcRef,
     operation: &'static str,
 ) -> VmResult<Vec<Value>> {
-    let reference = array_reference(receiver, operation)?;
     let Some(HeapValue::Array(values)) = heap.heap.get(reference) else {
         return type_error(operation);
     };
