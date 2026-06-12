@@ -1,8 +1,9 @@
 use crate::workload_sources::{
-    ARRAY_LOOKUP_SOURCE, CALLBACK_COLLECTIONS_SOURCE, DIRECT_CLOSURE_CALLS_SOURCE,
-    MAP_LOOKUP_SOURCE, METHOD_DISPATCH_SOURCE, NATIVE_CALL_WIDE_ARGS_SOURCE,
-    OPTION_RESULT_HELPERS_SOURCE, RECORD_TRIPLETS_SOURCE, SCRIPT_CALL_SMALL_ARGS_SOURCE,
-    SET_COMBINATION_SOURCE, SET_LOOKUP_SOURCE, STDLIB_COLLECTIONS_SOURCE,
+    ARRAY_EXTEND_SOURCE, ARRAY_LOOKUP_SOURCE, CALLBACK_COLLECTIONS_SOURCE,
+    DIRECT_CLOSURE_CALLS_SOURCE, MAP_EXTEND_SOURCE, MAP_LOOKUP_SOURCE, MAP_MERGE_SOURCE,
+    METHOD_DISPATCH_SOURCE, NATIVE_CALL_WIDE_ARGS_SOURCE, OPTION_RESULT_HELPERS_SOURCE,
+    RECORD_TRIPLETS_SOURCE, SCRIPT_CALL_SMALL_ARGS_SOURCE, SET_COMBINATION_SOURCE,
+    SET_LOOKUP_SOURCE, STDLIB_COLLECTIONS_SOURCE,
 };
 
 pub(crate) struct Workload {
@@ -299,33 +300,12 @@ fn main() {
     Workload {
         name: "managed_heap_array_extend",
         mode: ExecutionMode::ManagedHeap,
-        source: r#"
-fn main() {
-    let total = 0;
-    for tick in 0..96 {
-        let tags = ["daily", "quest"];
-        tags.extend(["raid", "event", "boss"]);
-        tags.extend(["bonus"]);
-
-        let scores = [1, 2, 3];
-        scores.extend([5, 8, 13]);
-        scores.extend([]);
-
-        if tags.len() != 6
-            || tags[0] != "daily"
-            || tags[5] != "bonus"
-            || tags.join("|") != "daily|quest|raid|event|boss|bonus"
-            || scores.len() != 6
-            || scores[5] != 13
-            || scores.sum() != 32
-        {
-            return 0;
-        }
-        total += tags.len() + scores.sum() + tick - tick;
-    }
-    return total;
-}
-"#,
+        source: ARRAY_EXTEND_SOURCE,
+    },
+    Workload {
+        name: "array_extend_cache_hot_offsets",
+        mode: ExecutionMode::CacheEnabled,
+        source: ARRAY_EXTEND_SOURCE,
     },
     Workload {
         name: "managed_heap_map_lookup",
@@ -340,68 +320,22 @@ fn main() {
     Workload {
         name: "managed_heap_map_merge",
         mode: ExecutionMode::ManagedHeap,
-        source: r#"
-fn main() {
-    let total = 0;
-    for tick in 0..96 {
-        let base = {
-            "daily": 3,
-            "raid": 8,
-            "boss": 13,
-            "event": 5,
-        };
-        let patch = {
-            "raid": 21,
-            "bonus": 34,
-            "season": 55,
-        };
-        let merged = base.merge(patch);
-        if merged.len() != 6
-            || merged["daily"] != 3
-            || merged["raid"] != 21
-            || merged["bonus"] != 34
-            || merged["season"] != 55
-        {
-            return 0;
-        }
-        total += merged.len() + merged["raid"] + tick - tick;
-    }
-    return total;
-}
-"#,
+        source: MAP_MERGE_SOURCE,
+    },
+    Workload {
+        name: "map_merge_cache_hot_offsets",
+        mode: ExecutionMode::CacheEnabled,
+        source: MAP_MERGE_SOURCE,
     },
     Workload {
         name: "managed_heap_map_extend",
         mode: ExecutionMode::ManagedHeap,
-        source: r#"
-fn main() {
-    let total = 0;
-    for tick in 0..96 {
-        let scores = {
-            "daily": 3,
-            "raid": 8,
-        };
-        let patch = {
-            "raid": 21,
-            "boss": 13,
-            "event": 5,
-        };
-        scores.extend(patch);
-        scores.extend({"bonus": 34});
-
-        if scores.len() != 5
-            || scores["daily"] != 3
-            || scores["raid"] != 21
-            || scores["event"] != 5
-            || scores["bonus"] != 34
-        {
-            return 0;
-        }
-        total += scores.len() + scores["raid"] + tick - tick;
-    }
-    return total;
-}
-"#,
+        source: MAP_EXTEND_SOURCE,
+    },
+    Workload {
+        name: "map_extend_cache_hot_offsets",
+        mode: ExecutionMode::CacheEnabled,
+        source: MAP_EXTEND_SOURCE,
     },
     Workload {
         name: "host_access",
