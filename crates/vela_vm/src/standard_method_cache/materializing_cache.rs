@@ -2,7 +2,7 @@ use crate::heap::HeapValue;
 use crate::option_result::option_value;
 use crate::{
     ExecutionBudget, HeapExecution, StandardMethodInlineCacheTarget, Value, VmError, VmErrorKind,
-    VmResult, stored_runtime_value,
+    VmResult, allocate_heap_value, stored_runtime_value,
 };
 use vela_common::ScalarValue;
 
@@ -104,6 +104,75 @@ pub(super) fn call_cached_string_parse_option(
     Some(make_option(payload, heap, budget))
 }
 
+pub(super) fn call_cached_string_option(
+    receiver: &Value,
+    target: StandardMethodInlineCacheTarget,
+    args: &[Value],
+    heap: &mut Option<&mut HeapExecution<'_>>,
+    budget: &mut Option<&mut ExecutionBudget>,
+) -> Option<VmResult<Value>> {
+    let value = string_receiver(receiver, heap.as_deref())?;
+    match target {
+        StandardMethodInlineCacheTarget::Find => {
+            let payload =
+                match crate::runtime_checks::expect_arity("find", args, 1).and_then(|()| {
+                    let needle = crate::string_methods::string_value(
+                        &args[0],
+                        heap.as_deref(),
+                        "method find",
+                    )?;
+                    Ok(value.find(needle).map(|byte_index| {
+                        let char_index = value[..byte_index].chars().count();
+                        Value::i64(i64::try_from(char_index).unwrap_or(i64::MAX))
+                    }))
+                }) {
+                    Ok(payload) => payload,
+                    Err(error) => return Some(Err(error)),
+                };
+            Some(make_option(payload, heap, budget))
+        }
+        StandardMethodInlineCacheTarget::StripPrefix => {
+            let payload = match strip_affix_payload(
+                value,
+                args,
+                heap.as_deref(),
+                "strip_prefix",
+                "method strip_prefix",
+                AffixKind::Prefix,
+            ) {
+                Ok(payload) => payload,
+                Err(error) => return Some(Err(error)),
+            };
+            Some(make_string_option(
+                payload,
+                heap,
+                budget,
+                "method strip_prefix",
+            ))
+        }
+        StandardMethodInlineCacheTarget::StripSuffix => {
+            let payload = match strip_affix_payload(
+                value,
+                args,
+                heap.as_deref(),
+                "strip_suffix",
+                "method strip_suffix",
+                AffixKind::Suffix,
+            ) {
+                Ok(payload) => payload,
+                Err(error) => return Some(Err(error)),
+            };
+            Some(make_string_option(
+                payload,
+                heap,
+                budget,
+                "method strip_suffix",
+            ))
+        }
+        _ => None,
+    }
+}
+
 fn array_slots<'a>(
     receiver: &Value,
     heap: Option<&'a HeapExecution<'_>>,
@@ -168,6 +237,53 @@ fn parse_bool_payload(value: &str) -> Option<Value> {
         "false" => Some(Value::Bool(false)),
         _ => None,
     }
+}
+
+fn strip_affix_payload(
+    value: &str,
+    args: &[Value],
+    heap: Option<&HeapExecution<'_>>,
+    method: &str,
+    operation: &'static str,
+    affix_kind: AffixKind,
+) -> VmResult<Option<String>> {
+    crate::runtime_checks::expect_arity(method, args, 1)?;
+    let affix = crate::string_methods::string_value(&args[0], heap, operation)?;
+    let stripped = match affix_kind {
+        AffixKind::Prefix => value.strip_prefix(affix),
+        AffixKind::Suffix => value.strip_suffix(affix),
+    };
+    Ok(stripped.map(str::to_owned))
+}
+
+#[derive(Clone, Copy)]
+enum AffixKind {
+    Prefix,
+    Suffix,
+}
+
+fn make_string_option(
+    payload: Option<String>,
+    heap: &mut Option<&mut HeapExecution<'_>>,
+    budget: &mut Option<&mut ExecutionBudget>,
+    operation: &'static str,
+) -> VmResult<Value> {
+    let payload = payload
+        .map(|value| make_string(value, heap, budget, operation))
+        .transpose()?;
+    make_option(payload, heap, budget)
+}
+
+fn make_string(
+    value: String,
+    heap: &mut Option<&mut HeapExecution<'_>>,
+    budget: &mut Option<&mut ExecutionBudget>,
+    operation: &'static str,
+) -> VmResult<Value> {
+    let Some(heap) = heap.as_deref_mut() else {
+        return Err(VmError::new(VmErrorKind::TypeMismatch { operation }));
+    };
+    allocate_heap_value(HeapValue::String(value), heap, budget.as_deref_mut())
 }
 
 fn make_option(
