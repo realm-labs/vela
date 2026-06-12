@@ -510,6 +510,11 @@ fn main() {
         source: ARRAY_GROUP_BY_SOURCE,
     },
     Workload {
+        name: "array_group_by_hot_offsets",
+        mode: ExecutionMode::ProfileOnly,
+        source: ARRAY_GROUP_BY_SOURCE,
+    },
+    Workload {
         name: "array_group_by_cache_hot_offsets",
         mode: ExecutionMode::CacheEnabled,
         source: ARRAY_GROUP_BY_SOURCE,
