@@ -1057,6 +1057,11 @@ fn main(player: Player) {
         source: RECORD_QUINTS_SOURCE,
     },
     Workload {
+        name: "record_quints_hot_offsets",
+        mode: ExecutionMode::ProfileOnly,
+        source: RECORD_QUINTS_SOURCE,
+    },
+    Workload {
         name: "record_quints_cache_hot_offsets",
         mode: ExecutionMode::CacheEnabled,
         source: RECORD_QUINTS_SOURCE,
