@@ -115,7 +115,7 @@ fn map_merge_payload(
         })
     })?;
     let mut merged = values.clone();
-    merged.extend(other.clone());
+    merged.extend(other.iter().map(|(key, value)| (key.clone(), *value)));
     Ok(merged)
 }
 
