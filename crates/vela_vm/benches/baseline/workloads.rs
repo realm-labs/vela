@@ -877,6 +877,11 @@ fn main(player: Player) {
         source: ARRAY_EXTREMA_SOURCE,
     },
     Workload {
+        name: "array_extrema_hot_offsets",
+        mode: ExecutionMode::ProfileOnly,
+        source: ARRAY_EXTREMA_SOURCE,
+    },
+    Workload {
         name: "array_extrema_cache_hot_offsets",
         mode: ExecutionMode::CacheEnabled,
         source: ARRAY_EXTREMA_SOURCE,
