@@ -240,6 +240,11 @@ fn main() {
         source: STRING_SPLITTING_SOURCE,
     },
     Workload {
+        name: "string_splitting_hot_offsets",
+        mode: ExecutionMode::ProfileOnly,
+        source: STRING_SPLITTING_SOURCE,
+    },
+    Workload {
         name: "string_splitting_cache_hot_offsets",
         mode: ExecutionMode::CacheEnabled,
         source: STRING_SPLITTING_SOURCE,
