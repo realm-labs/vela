@@ -219,6 +219,11 @@ pub(crate) const COLLECTION_FAMILY_WORKLOADS: &[Workload] = &[
         source: ARRAY_EXTEND_SOURCE,
     },
     Workload {
+        name: "array_extend_hot_offsets",
+        mode: ExecutionMode::ProfileOnly,
+        source: ARRAY_EXTEND_SOURCE,
+    },
+    Workload {
         name: "array_extend_cache_hot_offsets",
         mode: ExecutionMode::CacheEnabled,
         source: ARRAY_EXTEND_SOURCE,
