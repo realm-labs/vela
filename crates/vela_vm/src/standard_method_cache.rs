@@ -404,6 +404,7 @@ pub(crate) fn call_standard_cached(
         StandardMethodInlineCacheTarget::Slice
         | StandardMethodInlineCacheTarget::Reverse
         | StandardMethodInlineCacheTarget::Distinct
+        | StandardMethodInlineCacheTarget::Join
             if cache.receiver == StandardMethodReceiver::Array =>
         {
             return call_cached_array_materialization(receiver, cache.target, args, heap, budget);

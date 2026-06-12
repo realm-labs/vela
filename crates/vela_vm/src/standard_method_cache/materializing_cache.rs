@@ -105,6 +105,17 @@ pub(super) fn call_cached_array_materialization(
             };
             Some(make_array(payload, heap, budget, "method distinct"))
         }
+        StandardMethodInlineCacheTarget::Join => {
+            let payload = {
+                let heap_ref = heap.as_deref();
+                let slots = array_slots(receiver, heap_ref, "method join")?;
+                match array_join_payload(slots, args, heap_ref) {
+                    Ok(payload) => payload,
+                    Err(error) => return Some(Err(error)),
+                }
+            };
+            Some(make_string(payload, heap, budget, "method join"))
+        }
         _ => None,
     }
 }
@@ -442,6 +453,47 @@ fn array_distinct_payload(
         distinct.push(value);
     }
     Ok(distinct)
+}
+
+fn array_join_payload(
+    values: &[Value],
+    args: &[Value],
+    heap: Option<&HeapExecution<'_>>,
+) -> VmResult<String> {
+    crate::runtime_checks::expect_arity("join", args, 1)?;
+    let separator = crate::string_methods::string_value(&args[0], heap, "method join")?;
+    let mut capacity = separator
+        .len()
+        .saturating_mul(values.len().saturating_sub(1));
+    for value in values {
+        capacity = capacity.saturating_add(array_join_string(value, heap)?.len());
+    }
+
+    let mut joined = String::with_capacity(capacity);
+    for (index, value) in values.iter().enumerate() {
+        if index > 0 {
+            joined.push_str(separator);
+        }
+        joined.push_str(array_join_string(value, heap)?);
+    }
+    Ok(joined)
+}
+
+fn array_join_string<'a>(
+    value: &'a Value,
+    heap: Option<&'a HeapExecution<'_>>,
+) -> VmResult<&'a str> {
+    match value {
+        Value::HeapRef(reference) => match heap.and_then(|heap| heap.heap.get(*reference)) {
+            Some(HeapValue::String(value)) => Ok(value),
+            _ => Err(VmError::new(VmErrorKind::TypeMismatch {
+                operation: "method join",
+            })),
+        },
+        _ => Err(VmError::new(VmErrorKind::TypeMismatch {
+            operation: "method join",
+        })),
+    }
 }
 
 fn array_index_value(value: &Value, operation: &'static str) -> VmResult<usize> {
