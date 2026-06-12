@@ -550,7 +550,7 @@ pub(crate) fn call_readonly_by_id(
     None
 }
 
-pub(crate) fn readonly_cache_entry(
+pub(crate) fn standard_cache_entry(
     method_id: MethodId,
     receiver: &Value,
     heap: Option<&HeapExecution<'_>>,
@@ -590,6 +590,21 @@ pub(crate) fn readonly_cache_entry(
         }
         (StandardMethodReceiver::String, id) if id == ids.string_ends_with => {
             StandardMethodInlineCacheTarget::EndsWith
+        }
+        (StandardMethodReceiver::String, id) if id == ids.string_to_upper => {
+            StandardMethodInlineCacheTarget::ToUpper
+        }
+        (StandardMethodReceiver::String, id) if id == ids.string_to_lower => {
+            StandardMethodInlineCacheTarget::ToLower
+        }
+        (StandardMethodReceiver::String, id) if id == ids.string_trim => {
+            StandardMethodInlineCacheTarget::Trim
+        }
+        (StandardMethodReceiver::String, id) if id == ids.string_trim_start => {
+            StandardMethodInlineCacheTarget::TrimStart
+        }
+        (StandardMethodReceiver::String, id) if id == ids.string_trim_end => {
+            StandardMethodInlineCacheTarget::TrimEnd
         }
         (StandardMethodReceiver::Bytes, id) if id == ids.bytes_len => {
             StandardMethodInlineCacheTarget::Len
@@ -672,6 +687,40 @@ pub(crate) fn readonly_cache_entry(
         _ => return None,
     };
     Some(StandardMethodInlineCacheEntry { receiver, target })
+}
+
+pub(crate) fn call_standard_cached(
+    receiver: &Value,
+    cache: StandardMethodInlineCacheEntry,
+    args: &[Value],
+    heap: &mut Option<&mut HeapExecution<'_>>,
+    budget: &mut Option<&mut ExecutionBudget>,
+) -> Option<VmResult<Value>> {
+    if let Some(result) = call_readonly_cached(receiver, cache, args, heap.as_deref()) {
+        return Some(result);
+    }
+    if !receiver_matches_cache(receiver, cache.receiver, heap.as_deref()) {
+        return None;
+    }
+    let result = match (cache.receiver, cache.target) {
+        (StandardMethodReceiver::String, StandardMethodInlineCacheTarget::ToUpper) => {
+            crate::string_methods::to_upper(receiver, args, heap, budget)
+        }
+        (StandardMethodReceiver::String, StandardMethodInlineCacheTarget::ToLower) => {
+            crate::string_methods::to_lower(receiver, args, heap, budget)
+        }
+        (StandardMethodReceiver::String, StandardMethodInlineCacheTarget::Trim) => {
+            crate::string_methods::trim(receiver, args, heap, budget)
+        }
+        (StandardMethodReceiver::String, StandardMethodInlineCacheTarget::TrimStart) => {
+            crate::string_methods::trim_start(receiver, args, heap, budget)
+        }
+        (StandardMethodReceiver::String, StandardMethodInlineCacheTarget::TrimEnd) => {
+            crate::string_methods::trim_end(receiver, args, heap, budget)
+        }
+        _ => return None,
+    };
+    Some(result)
 }
 
 pub(crate) fn call_readonly_cached(

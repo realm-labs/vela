@@ -343,7 +343,8 @@ pub(crate) fn dispatch_linked_method_call(
             if let Some(result) = linked_standard_value_method_result(
                 &context,
                 frame,
-                heap.as_deref(),
+                heap,
+                budget,
                 LinkedStandardValueMethodCall {
                     dispatch: call.dispatch,
                     debug_name: dispatch.debug_name,
@@ -484,7 +485,8 @@ struct LinkedStandardValueMethodCall<'a> {
 fn linked_standard_value_method_result(
     context: &LinkedScriptMethodCallContext<'_>,
     frame: &CallFrame,
-    heap: Option<&HeapExecution<'_>>,
+    heap: &mut Option<&mut HeapExecution<'_>>,
+    budget: &mut Option<&mut ExecutionBudget>,
     call: LinkedStandardValueMethodCall<'_>,
 ) -> Option<VmResult<Value>> {
     let receiver = match frame.read(call.receiver) {
@@ -492,20 +494,26 @@ fn linked_standard_value_method_result(
         Err(error) => return Some(Err(error)),
     };
     if let Some(standard_method) = call.standard_method
-        && let Some(result) = script_builtin_methods::call_readonly_cached(
+        && let Some(result) = script_builtin_methods::call_standard_cached(
             receiver,
             standard_method,
             call.values,
             heap,
+            budget,
         )
     {
         return Some(result);
     }
     let standard_method =
-        script_builtin_methods::readonly_cache_entry(call.method_id, receiver, heap)?;
-    let result =
-        script_builtin_methods::call_readonly_cached(receiver, standard_method, call.values, heap)
-            .expect("resolved standard method cache entry should match receiver");
+        script_builtin_methods::standard_cache_entry(call.method_id, receiver, heap.as_deref())?;
+    let result = script_builtin_methods::call_standard_cached(
+        receiver,
+        standard_method,
+        call.values,
+        heap,
+        budget,
+    )
+    .expect("resolved standard method cache entry should match receiver");
     if let Some(site) = context.cache_site
         && let Some(caches) = context.inline_caches
     {

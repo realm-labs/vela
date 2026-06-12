@@ -248,6 +248,41 @@ fn linked_standard_value_method_caches_map_get_or_target() {
     assert_eq!(caches.set_count(), 2);
 }
 
+#[test]
+fn linked_standard_value_method_caches_string_transform_target() {
+    let (program, site, dispatch, method_id) = linked_string_to_upper_cache_program();
+    let caches = RecordingMethodCaches::new(1);
+
+    assert_eq!(
+        run_linked_method_cache_owned_program(&program, &caches),
+        Ok(OwnedValue::String("WOLF".to_owned()))
+    );
+    let entry = caches
+        .entry(site)
+        .expect("standard string transform cache should populate");
+    assert_eq!(entry.dispatch, dispatch);
+    let MethodInlineCacheTarget::Value {
+        method_id: cached_method,
+        standard_method: Some(standard_method),
+    } = entry.target
+    else {
+        panic!("standard string transform cache should store value target");
+    };
+    assert_eq!(cached_method, method_id);
+    assert_eq!(standard_method.receiver, StandardMethodReceiver::String);
+    assert_eq!(
+        standard_method.target,
+        StandardMethodInlineCacheTarget::ToUpper
+    );
+    assert_eq!(caches.set_count(), 2);
+
+    assert_eq!(
+        run_linked_method_cache_owned_program(&program, &caches),
+        Ok(OwnedValue::String("WOLF".to_owned()))
+    );
+    assert_eq!(caches.set_count(), 2);
+}
+
 fn linked_standard_len_cache_program() -> (
     vela_bytecode::LinkedProgram,
     CacheSiteId,
@@ -269,6 +304,49 @@ fn linked_standard_len_cache_program() -> (
         vela_bytecode::linked::InstructionKind::LoadConst {
             dst: Register(0),
             constant: value,
+        },
+    ));
+    let site = code.push_cache_site(CacheSiteKind::MethodCall, InstructionOffset(1));
+    code.push_instruction(vela_bytecode::linked::Instruction::new(
+        vela_bytecode::linked::InstructionKind::CallMethod {
+            dst: Register(1),
+            receiver: Register(0),
+            dispatch,
+            debug_name: method_name,
+            cache_site: Some(site),
+            args: Vec::new(),
+        },
+    ));
+    code.push_instruction(vela_bytecode::linked::Instruction::new(
+        vela_bytecode::linked::InstructionKind::Return { src: Register(1) },
+    ));
+    let function = program.push_function(code);
+    program.set_entry_point(main_name, function);
+    (program, site, dispatch, method_id)
+}
+
+fn linked_string_to_upper_cache_program() -> (
+    vela_bytecode::LinkedProgram,
+    CacheSiteId,
+    vela_bytecode::MethodDispatchHandle,
+    vela_def::MethodId,
+) {
+    let method_id =
+        vela_stdlib::std_method_id("String", "to_upper").expect("String::to_upper method id");
+    let mut program = vela_bytecode::LinkedProgram::new();
+    let main_name = program.intern_debug_name("main");
+    let method_name = program.intern_debug_name("to_upper");
+    let dispatch = program.push_method_dispatch(vela_bytecode::LinkedMethodDispatch::new(
+        method_name,
+        vela_bytecode::LinkedMethodDispatchKind::Value { method_id },
+    ));
+
+    let mut code = vela_bytecode::LinkedCodeObject::new(main_name, 2);
+    let receiver = code.push_constant(Constant::String("wolf".into()));
+    code.push_instruction(vela_bytecode::linked::Instruction::new(
+        vela_bytecode::linked::InstructionKind::LoadConst {
+            dst: Register(0),
+            constant: receiver,
         },
     ));
     let site = code.push_cache_site(CacheSiteKind::MethodCall, InstructionOffset(1));
@@ -596,13 +674,38 @@ fn run_linked_method_cache_program(
     program: &vela_bytecode::LinkedProgram,
     caches: &RecordingMethodCaches,
 ) -> VmResult<RuntimeValue> {
+    run_linked_method_cache_runtime_value(program, caches)
+}
+
+fn run_linked_method_cache_owned_program(
+    program: &vela_bytecode::LinkedProgram,
+    caches: &RecordingMethodCaches,
+) -> VmResult<OwnedValue> {
+    let mut heap = ScriptHeap::new();
+    let mut heap_execution = HeapExecution::new(&mut heap);
+    let result = run_linked_method_cache_with_heap(program, caches, &mut heap_execution)?;
+    crate::heap_values::value_to_owned(&result, Some(&heap_execution))
+}
+
+fn run_linked_method_cache_runtime_value(
+    program: &vela_bytecode::LinkedProgram,
+    caches: &RecordingMethodCaches,
+) -> VmResult<RuntimeValue> {
+    let mut heap = ScriptHeap::new();
+    let mut heap_execution = HeapExecution::new(&mut heap);
+    run_linked_method_cache_with_heap(program, caches, &mut heap_execution)
+}
+
+fn run_linked_method_cache_with_heap(
+    program: &vela_bytecode::LinkedProgram,
+    caches: &RecordingMethodCaches,
+    heap_execution: &mut HeapExecution<'_>,
+) -> VmResult<RuntimeValue> {
     let code = program
         .functions()
         .find(|(_, code)| program.debug_name(code.debug_name) == "main")
         .map(|(_, code)| code)
         .expect("linked method cache fixture should have main");
-    let mut heap = ScriptHeap::new();
-    let mut heap_execution = HeapExecution::new(&mut heap);
     let mut budget = ExecutionBudget::unbounded();
     Vm::new().execute_linked_call(
         crate::linked_execution::LinkedExecutionCall {
@@ -617,7 +720,7 @@ fn run_linked_method_cache_program(
             bytecode_profiler: None,
         },
         None,
-        Some(&mut heap_execution),
+        Some(heap_execution),
         Some(&mut budget),
     )
 }
