@@ -644,6 +644,11 @@ fn main() {
         source: MAP_VIEWS_SOURCE,
     },
     Workload {
+        name: "map_views_hot_offsets",
+        mode: ExecutionMode::ProfileOnly,
+        source: MAP_VIEWS_SOURCE,
+    },
+    Workload {
         name: "map_views_cache_hot_offsets",
         mode: ExecutionMode::CacheEnabled,
         source: MAP_VIEWS_SOURCE,
