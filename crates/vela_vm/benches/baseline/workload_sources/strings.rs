@@ -109,3 +109,30 @@ fn main() {
     return total;
 }
 "#;
+
+pub(crate) const STRING_OPTIONS_SOURCE: &str = r#"
+fn main() {
+    let total = 0;
+    for tick in 0..96 {
+        let text = "event:alpha.done";
+        let found = text.find("alpha").unwrap_or(-1);
+        let ch = text.char_at(6).unwrap_or("");
+        let prefix = text.strip_prefix("event:").unwrap_or("");
+        let suffix = text.strip_suffix(".done").unwrap_or("");
+
+        if found != 6
+            || ch != "a"
+            || prefix != "alpha.done"
+            || suffix != "event:alpha"
+            || !option::is_none(text.find("missing"))
+            || !option::is_none(text.char_at(99))
+            || !option::is_none(text.strip_prefix("wrong:"))
+            || !option::is_none(text.strip_suffix(".miss"))
+        {
+            return 0;
+        }
+        total += found + ch.len() + prefix.len() + suffix.len() + tick - tick;
+    }
+    return total;
+}
+"#;

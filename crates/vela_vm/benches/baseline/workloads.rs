@@ -10,7 +10,7 @@ use crate::workload_sources::{
     OPTION_RESULT_HELPERS_SOURCE, RECORD_QUADS_SOURCE, RECORD_QUINTS_SOURCE, RECORD_SEXTETS_SOURCE,
     RECORD_TRIPLETS_SOURCE, SCRIPT_CALL_SMALL_ARGS_SOURCE, SCRIPT_METHOD_DISPATCH_SOURCE,
     SET_COMBINATION_SOURCE, SET_LOOKUP_SOURCE, SET_MUTATION_SOURCE, SET_VALUES_SOURCE,
-    STDLIB_COLLECTIONS_SOURCE, STRING_METHODS_SOURCE, STRING_PARSING_SOURCE,
+    STDLIB_COLLECTIONS_SOURCE, STRING_METHODS_SOURCE, STRING_OPTIONS_SOURCE, STRING_PARSING_SOURCE,
     STRING_SPLITTING_SOURCE, TRAIT_METHOD_DISPATCH_SOURCE,
 };
 
@@ -183,6 +183,16 @@ fn main() {
         name: "string_parsing_cache_hot_offsets",
         mode: ExecutionMode::CacheEnabled,
         source: STRING_PARSING_SOURCE,
+    },
+    Workload {
+        name: "managed_heap_string_options",
+        mode: ExecutionMode::ManagedHeap,
+        source: STRING_OPTIONS_SOURCE,
+    },
+    Workload {
+        name: "string_options_cache_hot_offsets",
+        mode: ExecutionMode::CacheEnabled,
+        source: STRING_OPTIONS_SOURCE,
     },
     Workload {
         name: "managed_heap_bytes_methods",
