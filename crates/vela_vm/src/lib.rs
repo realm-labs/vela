@@ -362,6 +362,7 @@ pub enum StandardMethodInlineCacheTarget {
     Get,
     GetOr,
     Slice,
+    Repeat,
     ToHex,
     ReadU32Le,
     ReadU32Be,
