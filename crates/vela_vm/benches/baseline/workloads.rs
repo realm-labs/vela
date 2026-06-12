@@ -543,6 +543,11 @@ fn main() {
         source: ARRAY_LOOKUP_SOURCE,
     },
     Workload {
+        name: "array_lookup",
+        mode: ExecutionMode::Inline,
+        source: ARRAY_LOOKUP_SOURCE,
+    },
+    Workload {
         name: "array_lookup_cache_hot_offsets",
         mode: ExecutionMode::CacheEnabled,
         source: ARRAY_LOOKUP_SOURCE,
@@ -550,6 +555,11 @@ fn main() {
     Workload {
         name: "managed_heap_array_edges",
         mode: ExecutionMode::ManagedHeap,
+        source: ARRAY_EDGE_SOURCE,
+    },
+    Workload {
+        name: "array_edges",
+        mode: ExecutionMode::Inline,
         source: ARRAY_EDGE_SOURCE,
     },
     Workload {
@@ -563,6 +573,11 @@ fn main() {
         source: ARRAY_EXTEND_SOURCE,
     },
     Workload {
+        name: "array_extend",
+        mode: ExecutionMode::Inline,
+        source: ARRAY_EXTEND_SOURCE,
+    },
+    Workload {
         name: "array_extend_cache_hot_offsets",
         mode: ExecutionMode::CacheEnabled,
         source: ARRAY_EXTEND_SOURCE,
@@ -570,6 +585,11 @@ fn main() {
     Workload {
         name: "managed_heap_array_mutation",
         mode: ExecutionMode::ManagedHeap,
+        source: ARRAY_MUTATION_SOURCE,
+    },
+    Workload {
+        name: "array_mutation",
+        mode: ExecutionMode::Inline,
         source: ARRAY_MUTATION_SOURCE,
     },
     Workload {
