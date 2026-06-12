@@ -977,6 +977,11 @@ fn main(player: Player) {
         source: ARRAY_JOIN_SOURCE,
     },
     Workload {
+        name: "array_join_hot_offsets",
+        mode: ExecutionMode::ProfileOnly,
+        source: ARRAY_JOIN_SOURCE,
+    },
+    Workload {
         name: "array_join_cache_hot_offsets",
         mode: ExecutionMode::CacheEnabled,
         source: ARRAY_JOIN_SOURCE,
