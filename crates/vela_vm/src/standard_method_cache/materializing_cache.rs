@@ -116,6 +116,17 @@ pub(super) fn call_cached_array_materialization(
             };
             Some(make_string(payload, heap, budget, "method join"))
         }
+        StandardMethodInlineCacheTarget::Sort => {
+            let payload = {
+                let heap_ref = heap.as_deref();
+                let slots = array_slots(receiver, heap_ref, "method sort")?;
+                match array_sort_payload(slots, args, heap_ref) {
+                    Ok(payload) => payload,
+                    Err(error) => return Some(Err(error)),
+                }
+            };
+            Some(make_array(payload, heap, budget, "method sort"))
+        }
         StandardMethodInlineCacheTarget::Min | StandardMethodInlineCacheTarget::Max => {
             let (method, operation, extremum) = match target {
                 StandardMethodInlineCacheTarget::Min => {
@@ -516,6 +527,42 @@ fn array_join_string<'a>(
     }
 }
 
+fn array_sort_payload(
+    values: &[Value],
+    args: &[Value],
+    heap: Option<&HeapExecution<'_>>,
+) -> VmResult<Vec<Value>> {
+    crate::runtime_checks::expect_arity("sort", args, 0)?;
+    let mut entries = Vec::with_capacity(values.len());
+    let mut key_kind = None;
+    for value in values {
+        let key = cached_sort_key(value, heap, "method sort")?;
+        if let Some(expected) = key_kind {
+            if key.kind() != expected {
+                return Err(VmError::new(VmErrorKind::TypeMismatch {
+                    operation: "method sort",
+                }));
+            }
+        } else {
+            key_kind = Some(key.kind());
+        }
+        entries.push(CachedSortEntry {
+            key,
+            value: *value,
+            index: entries.len(),
+        });
+    }
+    entries.sort_by(|left, right| {
+        left.key
+            .compare(&right.key)
+            .then_with(|| left.index.cmp(&right.index))
+    });
+    Ok(entries
+        .into_iter()
+        .map(|entry| stored_runtime_value(&entry.value))
+        .collect())
+}
+
 fn array_extremum_payload(
     values: &[Value],
     args: &[Value],
@@ -565,6 +612,12 @@ enum CachedSortKey {
     Int(i64),
     Float(f64),
     String(String),
+}
+
+struct CachedSortEntry {
+    key: CachedSortKey,
+    value: Value,
+    index: usize,
 }
 
 impl CachedSortKey {
