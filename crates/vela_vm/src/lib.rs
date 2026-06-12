@@ -340,6 +340,7 @@ pub enum StandardMethodInlineCacheTarget {
     Contains,
     First,
     Last,
+    IndexOf,
     StartsWith,
     EndsWith,
     Find,

@@ -346,6 +346,47 @@ pub(super) fn linked_array_last_cache_program() -> LinkedMethodCacheFixture {
     (program, site, dispatch, method_id)
 }
 
+pub(super) fn linked_array_index_of_cache_program() -> LinkedMethodCacheFixture {
+    let method_id =
+        vela_stdlib::std_method_id("Array", "index_of").expect("Array::index_of method id");
+    let mut program = vela_bytecode::LinkedProgram::new();
+    let main_name = program.intern_debug_name("main");
+    let method_name = program.intern_debug_name("index_of");
+    let dispatch = program.push_method_dispatch(vela_bytecode::LinkedMethodDispatch::new(
+        method_name,
+        vela_bytecode::LinkedMethodDispatchKind::Value { method_id },
+    ));
+
+    let mut code = vela_bytecode::LinkedCodeObject::new(main_name, 5);
+    push_i64_constants(&mut code, &[2, 4, 4], 0);
+    code.push_instruction(vela_bytecode::linked::Instruction::new(
+        vela_bytecode::linked::InstructionKind::MakeArray {
+            dst: Register(3),
+            elements: vec![Register(0), Register(1)],
+        },
+    ));
+    let site = code.push_cache_site(
+        CacheSiteKind::MethodCall,
+        InstructionOffset(code.instructions.len()),
+    );
+    code.push_instruction(vela_bytecode::linked::Instruction::new(
+        vela_bytecode::linked::InstructionKind::CallMethod {
+            dst: Register(4),
+            receiver: Register(3),
+            dispatch,
+            debug_name: method_name,
+            cache_site: Some(site),
+            args: vec![vela_bytecode::CallArgument::Register(Register(2))],
+        },
+    ));
+    code.push_instruction(vela_bytecode::linked::Instruction::new(
+        vela_bytecode::linked::InstructionKind::Return { src: Register(4) },
+    ));
+    let function = program.push_function(code);
+    program.set_entry_point(main_name, function);
+    (program, site, dispatch, method_id)
+}
+
 pub(super) fn linked_map_get_or_cache_program() -> (
     vela_bytecode::LinkedProgram,
     CacheSiteId,
