@@ -130,11 +130,6 @@ fn assert_string_predicate_cache(
 #[test]
 fn linked_standard_value_method_caches_collection_membership_targets() {
     assert_membership_cache(
-        linked_array_contains_cache_program(),
-        StandardMethodReceiver::Array,
-        StandardMethodInlineCacheTarget::Contains,
-    );
-    assert_membership_cache(
         linked_map_has_cache_program(),
         StandardMethodReceiver::Map,
         StandardMethodInlineCacheTarget::Has,
@@ -144,119 +139,6 @@ fn linked_standard_value_method_caches_collection_membership_targets() {
         StandardMethodReceiver::Set,
         StandardMethodInlineCacheTarget::Has,
     );
-}
-
-#[test]
-fn linked_standard_value_method_caches_array_first_target() {
-    assert_array_option_scalar_cache(
-        linked_array_first_cache_program(),
-        StandardMethodInlineCacheTarget::First,
-        2,
-    );
-}
-
-#[test]
-fn linked_standard_value_method_caches_array_last_target() {
-    assert_array_option_scalar_cache(
-        linked_array_last_cache_program(),
-        StandardMethodInlineCacheTarget::Last,
-        4,
-    );
-}
-
-#[test]
-fn linked_standard_value_method_caches_array_index_of_target() {
-    assert_array_option_scalar_cache(
-        linked_array_index_of_cache_program(),
-        StandardMethodInlineCacheTarget::IndexOf,
-        1,
-    );
-}
-
-#[test]
-fn linked_standard_value_method_caches_array_slice_target() {
-    assert_array_owned_cache(
-        linked_array_slice_cache_program(),
-        StandardMethodInlineCacheTarget::Slice,
-        OwnedValue::Array(vec![
-            OwnedValue::Scalar(vela_common::ScalarValue::I64(4)),
-            OwnedValue::Scalar(vela_common::ScalarValue::I64(6)),
-        ]),
-    );
-}
-
-fn assert_array_option_scalar_cache(
-    fixture: LinkedMethodCacheFixture,
-    target: StandardMethodInlineCacheTarget,
-    expected: i64,
-) {
-    let (program, site, dispatch, method_id) = fixture;
-    let caches = RecordingMethodCaches::new(1);
-    let expected = Ok(owned_option_some(OwnedValue::Scalar(
-        vela_common::ScalarValue::I64(expected),
-    )));
-
-    assert_eq!(
-        run_linked_method_cache_owned_program(&program, &caches),
-        expected
-    );
-    let entry = caches
-        .entry(site)
-        .expect("standard array option-scalar cache should populate");
-    assert_eq!(entry.dispatch, dispatch);
-    let MethodInlineCacheTarget::Value {
-        method_id: cached_method,
-        standard_method: Some(standard_method),
-    } = entry.target
-    else {
-        panic!("standard array option-scalar cache should store value target");
-    };
-    assert_eq!(cached_method, method_id);
-    assert_eq!(standard_method.receiver, StandardMethodReceiver::Array);
-    assert_eq!(standard_method.target, target);
-    assert_eq!(caches.set_count(), 2);
-
-    assert_eq!(
-        run_linked_method_cache_owned_program(&program, &caches),
-        expected
-    );
-    assert_eq!(caches.set_count(), 2);
-}
-
-fn assert_array_owned_cache(
-    fixture: LinkedMethodCacheFixture,
-    target: StandardMethodInlineCacheTarget,
-    expected: OwnedValue,
-) {
-    let (program, site, dispatch, method_id) = fixture;
-    let caches = RecordingMethodCaches::new(1);
-    let expected = Ok(expected);
-
-    assert_eq!(
-        run_linked_method_cache_owned_program(&program, &caches),
-        expected
-    );
-    let entry = caches
-        .entry(site)
-        .expect("standard array owned-value cache should populate");
-    assert_eq!(entry.dispatch, dispatch);
-    let MethodInlineCacheTarget::Value {
-        method_id: cached_method,
-        standard_method: Some(standard_method),
-    } = entry.target
-    else {
-        panic!("standard array owned-value cache should store value target");
-    };
-    assert_eq!(cached_method, method_id);
-    assert_eq!(standard_method.receiver, StandardMethodReceiver::Array);
-    assert_eq!(standard_method.target, target);
-    assert_eq!(caches.set_count(), 2);
-
-    assert_eq!(
-        run_linked_method_cache_owned_program(&program, &caches),
-        expected
-    );
-    assert_eq!(caches.set_count(), 2);
 }
 
 fn assert_membership_cache(

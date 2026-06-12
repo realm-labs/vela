@@ -50,6 +50,7 @@ mod heap_host;
 mod host_fields;
 mod host_methods;
 mod iteration;
+mod linked_array_standard_method_cache;
 mod linked_execution_core;
 mod linked_standard_method_cache;
 mod linked_standard_method_cache_fixtures;
