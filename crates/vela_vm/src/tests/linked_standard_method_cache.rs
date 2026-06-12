@@ -145,6 +145,45 @@ fn linked_standard_value_method_caches_collection_membership_targets() {
     );
 }
 
+#[test]
+fn linked_standard_value_method_caches_array_first_target() {
+    let (program, site, dispatch, method_id) = linked_array_first_cache_program();
+    let caches = RecordingMethodCaches::new(1);
+
+    assert_eq!(
+        run_linked_method_cache_owned_program(&program, &caches),
+        Ok(owned_option_some(OwnedValue::Scalar(
+            vela_common::ScalarValue::I64(2)
+        )))
+    );
+    let entry = caches
+        .entry(site)
+        .expect("standard array first cache should populate");
+    assert_eq!(entry.dispatch, dispatch);
+    let MethodInlineCacheTarget::Value {
+        method_id: cached_method,
+        standard_method: Some(standard_method),
+    } = entry.target
+    else {
+        panic!("standard array first cache should store value target");
+    };
+    assert_eq!(cached_method, method_id);
+    assert_eq!(standard_method.receiver, StandardMethodReceiver::Array);
+    assert_eq!(
+        standard_method.target,
+        StandardMethodInlineCacheTarget::First
+    );
+    assert_eq!(caches.set_count(), 2);
+
+    assert_eq!(
+        run_linked_method_cache_owned_program(&program, &caches),
+        Ok(owned_option_some(OwnedValue::Scalar(
+            vela_common::ScalarValue::I64(2)
+        )))
+    );
+    assert_eq!(caches.set_count(), 2);
+}
+
 fn assert_membership_cache(
     fixture: LinkedMethodCacheFixture,
     receiver: StandardMethodReceiver,
