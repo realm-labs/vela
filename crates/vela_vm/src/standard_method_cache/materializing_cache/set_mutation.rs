@@ -98,7 +98,12 @@ fn call_cached_set_extend(
     let Some(heap) = heap.as_deref_mut() else {
         return type_error("method extend");
     };
-    let extension = set_slot_values(heap, &args[0], "method extend")?;
+    let extension_reference = set_reference(&args[0], "method extend")?;
+    if reference == extension_reference {
+        set_slots(heap, reference, "method extend")?;
+        return Ok(Value::Null);
+    }
+    let extension = set_slot_values(heap, extension_reference, "method extend")?;
     let mut keys = set_slots(heap, reference, "method extend")?
         .iter()
         .map(|slot| slot_key(slot, heap))
@@ -118,10 +123,9 @@ fn call_cached_set_extend(
 
 fn set_slot_values(
     heap: &HeapExecution<'_>,
-    receiver: &Value,
+    reference: crate::heap::GcRef,
     operation: &'static str,
 ) -> VmResult<Vec<Value>> {
-    let reference = set_reference(receiver, operation)?;
     let Some(HeapValue::Set(values)) = heap.heap.get(reference) else {
         return type_error(operation);
     };
