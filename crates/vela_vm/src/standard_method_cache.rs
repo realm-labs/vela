@@ -143,6 +143,9 @@ pub(crate) fn standard_cache_entry(
         (StandardMethodReceiver::Array, id) if id == ids.array_first => {
             StandardMethodInlineCacheTarget::First
         }
+        (StandardMethodReceiver::Array, id) if id == ids.array_last => {
+            StandardMethodInlineCacheTarget::Last
+        }
         (StandardMethodReceiver::Map, id) if id == ids.map_len => {
             StandardMethodInlineCacheTarget::Len
         }
@@ -278,6 +281,9 @@ pub(crate) fn call_standard_cached(
         }
         (StandardMethodReceiver::Array, StandardMethodInlineCacheTarget::First) => {
             array_methods::first(receiver, args, heap, budget)
+        }
+        (StandardMethodReceiver::Array, StandardMethodInlineCacheTarget::Last) => {
+            array_methods::last(receiver, args, heap, budget)
         }
         (StandardMethodReceiver::Map, StandardMethodInlineCacheTarget::Get) => {
             map_methods::get(receiver, args, heap, budget)
