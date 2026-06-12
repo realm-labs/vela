@@ -155,6 +155,118 @@ fn main() {
 }
 
 #[test]
+fn linked_callback_value_method_caches_array_targets() {
+    assert_callback_value_method_cache(
+        r#"
+fn main() {
+    let mapped = [1, 2, 3].map(|value| value + 1);
+    return mapped[1];
+}
+"#,
+        "map",
+        "Array",
+        "map",
+        StandardMethodReceiver::Array,
+        CallbackMethodInlineCacheTarget::Map,
+        Value::i64(3),
+    );
+    assert_callback_value_method_cache(
+        r#"
+fn main() {
+    let filtered = [1, 2, 3].filter(|value| value > 1);
+    return filtered[0];
+}
+"#,
+        "filter",
+        "Array",
+        "filter",
+        StandardMethodReceiver::Array,
+        CallbackMethodInlineCacheTarget::Filter,
+        Value::i64(2),
+    );
+    assert_callback_value_method_cache(
+        r#"
+fn main() {
+    return option::unwrap_or([1, 2, 3].find(|value| value == 2), 0);
+}
+"#,
+        "find",
+        "Array",
+        "find",
+        StandardMethodReceiver::Array,
+        CallbackMethodInlineCacheTarget::Find,
+        Value::i64(2),
+    );
+    assert_callback_value_method_cache(
+        r#"
+fn main() {
+    return [1, 2, 3].all(|value| value > 0);
+}
+"#,
+        "all",
+        "Array",
+        "all",
+        StandardMethodReceiver::Array,
+        CallbackMethodInlineCacheTarget::All,
+        Value::Bool(true),
+    );
+    assert_callback_value_method_cache(
+        r#"
+fn main() {
+    return [1, 2, 3].count(|value| value > 1);
+}
+"#,
+        "count",
+        "Array",
+        "count",
+        StandardMethodReceiver::Array,
+        CallbackMethodInlineCacheTarget::Count,
+        Value::i64(2),
+    );
+    assert_callback_value_method_cache(
+        r#"
+fn main() {
+    return [1, 2, 3].sum(|value| value + 1);
+}
+"#,
+        "sum",
+        "Array",
+        "sum",
+        StandardMethodReceiver::Array,
+        CallbackMethodInlineCacheTarget::Sum,
+        Value::i64(9),
+    );
+    assert_callback_value_method_cache(
+        r#"
+fn main() {
+    let groups = [1, 2, 3, 4].group_by(|value| if value % 2 == 0 { "even" } else { "odd" });
+    return groups["even"][1];
+}
+"#,
+        "group_by",
+        "Array",
+        "group_by",
+        StandardMethodReceiver::Array,
+        CallbackMethodInlineCacheTarget::GroupBy,
+        Value::i64(4),
+    );
+    assert_callback_value_method_cache(
+        r#"
+fn main() {
+    let sorted = [21, 11, 10, 12].sort_by(|value| value % 10);
+    return sorted[2];
+}
+"#,
+        "sort_by",
+        "Array",
+        "sort_by",
+        StandardMethodReceiver::Array,
+        CallbackMethodInlineCacheTarget::SortBy,
+        Value::i64(11),
+    );
+}
+
+#[test]
 fn linked_callback_value_method_caches_map_targets() {
     assert_callback_value_method_cache(
         r#"
