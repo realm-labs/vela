@@ -1030,6 +1030,36 @@ fn main() {
 }
 "#;
 
+pub(crate) const OPTION_RESULT_PREDICATES_SOURCE: &str = r#"
+fn main() {
+    let total = 0;
+    for tick in 0..96 {
+        let some = option::some(["quest", "done"]);
+        let none = option::none();
+        let ok = result::ok(["done"]);
+        let err = result::err(["blocked"]);
+
+        if !some.is_some()
+            || some.is_none()
+            || !none.is_none()
+            || !ok.is_ok()
+            || ok.is_err()
+            || err.is_ok()
+            || !err.is_err()
+        {
+            return 0;
+        }
+
+        total += some.unwrap_or([]).len()
+            + none.unwrap_or(["fallback"]).len()
+            + ok.unwrap_or([]).len()
+            + err.unwrap_or(["fallback"]).len()
+            + tick - tick;
+    }
+    return total;
+}
+"#;
+
 pub(crate) const SET_LOOKUP_SOURCE: &str = r#"
 fn main() {
     let total = 0;
