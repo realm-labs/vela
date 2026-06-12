@@ -612,6 +612,19 @@ fn main() {
     assert_callback_value_method_cache(
         r#"
 fn main() {
+    return option::none().map(|value| value + 1).unwrap_or(9);
+}
+"#,
+        "map",
+        "Option",
+        "map",
+        StandardMethodReceiver::Option,
+        CallbackMethodInlineCacheTarget::Map,
+        Value::i64(9),
+    );
+    assert_callback_value_method_cache(
+        r#"
+fn main() {
     return option::some(4).filter(|value| value > 3).unwrap_or(0);
 }
 "#,
@@ -621,6 +634,19 @@ fn main() {
         StandardMethodReceiver::Option,
         CallbackMethodInlineCacheTarget::Filter,
         Value::i64(4),
+    );
+    assert_callback_value_method_cache(
+        r#"
+fn main() {
+    return option::none().filter(|value| value > 3).unwrap_or(8);
+}
+"#,
+        "filter",
+        "Option",
+        "filter",
+        StandardMethodReceiver::Option,
+        CallbackMethodInlineCacheTarget::Filter,
+        Value::i64(8),
     );
     assert_callback_value_method_cache(
         r#"
@@ -638,6 +664,19 @@ fn main() {
     assert_callback_value_method_cache(
         r#"
 fn main() {
+    return option::none().and_then(|value| option::some(value + 1)).unwrap_or(8);
+}
+"#,
+        "and_then",
+        "Option",
+        "and_then",
+        StandardMethodReceiver::Option,
+        CallbackMethodInlineCacheTarget::AndThen,
+        Value::i64(8),
+    );
+    assert_callback_value_method_cache(
+        r#"
+fn main() {
     return option::none().or_else(| | option::some(7)).unwrap_or(0);
 }
 "#,
@@ -647,6 +686,19 @@ fn main() {
         StandardMethodReceiver::Option,
         CallbackMethodInlineCacheTarget::OrElse,
         Value::i64(7),
+    );
+    assert_callback_value_method_cache(
+        r#"
+fn main() {
+    return option::some(4).or_else(| | option::some(7)).unwrap_or(0);
+}
+"#,
+        "or_else",
+        "Option",
+        "or_else",
+        StandardMethodReceiver::Option,
+        CallbackMethodInlineCacheTarget::OrElse,
+        Value::i64(4),
     );
 }
 
@@ -668,6 +720,19 @@ fn main() {
     assert_callback_value_method_cache(
         r#"
 fn main() {
+    return option::unwrap_or(result::err(8).map(|value| value + 1).to_error_option(), 0);
+}
+"#,
+        "map",
+        "Result",
+        "map",
+        StandardMethodReceiver::Result,
+        CallbackMethodInlineCacheTarget::Map,
+        Value::i64(8),
+    );
+    assert_callback_value_method_cache(
+        r#"
+fn main() {
     return option::unwrap_or(result::err(4).map_err(|error| error + 1).to_error_option(), 0);
 }
 "#,
@@ -677,6 +742,19 @@ fn main() {
         StandardMethodReceiver::Result,
         CallbackMethodInlineCacheTarget::MapErr,
         Value::i64(5),
+    );
+    assert_callback_value_method_cache(
+        r#"
+fn main() {
+    return result::unwrap_or(result::ok(4).map_err(|error| error + 1), 0);
+}
+"#,
+        "map_err",
+        "Result",
+        "map_err",
+        StandardMethodReceiver::Result,
+        CallbackMethodInlineCacheTarget::MapErr,
+        Value::i64(4),
     );
     assert_callback_value_method_cache(
         r#"
@@ -694,6 +772,19 @@ fn main() {
     assert_callback_value_method_cache(
         r#"
 fn main() {
+    return option::unwrap_or(result::err(8).and_then(|value| result::ok(value + 1)).to_error_option(), 0);
+}
+"#,
+        "and_then",
+        "Result",
+        "and_then",
+        StandardMethodReceiver::Result,
+        CallbackMethodInlineCacheTarget::AndThen,
+        Value::i64(8),
+    );
+    assert_callback_value_method_cache(
+        r#"
+fn main() {
     return result::unwrap_or(result::err(4).or_else(|error| result::ok(error + 1)), 0);
 }
 "#,
@@ -703,6 +794,19 @@ fn main() {
         StandardMethodReceiver::Result,
         CallbackMethodInlineCacheTarget::OrElse,
         Value::i64(5),
+    );
+    assert_callback_value_method_cache(
+        r#"
+fn main() {
+    return result::unwrap_or(result::ok(4).or_else(|error| result::ok(error + 1)), 0);
+}
+"#,
+        "or_else",
+        "Result",
+        "or_else",
+        StandardMethodReceiver::Result,
+        CallbackMethodInlineCacheTarget::OrElse,
+        Value::i64(4),
     );
 }
 
