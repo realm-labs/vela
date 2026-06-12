@@ -342,6 +342,8 @@ pub enum StandardMethodInlineCacheTarget {
     Find,
     StripPrefix,
     StripSuffix,
+    ParseInt,
+    ParseFloat,
     ParseBool,
     ToUpper,
     ToLower,

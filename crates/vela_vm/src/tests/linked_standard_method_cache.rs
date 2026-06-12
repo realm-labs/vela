@@ -355,37 +355,60 @@ fn linked_standard_value_method_caches_string_transform_target() {
 }
 
 #[test]
-fn linked_standard_value_method_caches_string_parse_bool_target() {
-    let (program, site, dispatch, method_id) =
-        linked_string_no_arg_cache_program("parse_bool", "true");
+fn linked_standard_value_method_caches_string_parse_targets() {
+    assert_string_no_arg_option_cache(
+        "parse_int",
+        "42",
+        StandardMethodInlineCacheTarget::ParseInt,
+        OwnedValue::Scalar(vela_common::ScalarValue::I64(42)),
+    );
+    assert_string_no_arg_option_cache(
+        "parse_float",
+        "1.5",
+        StandardMethodInlineCacheTarget::ParseFloat,
+        OwnedValue::Scalar(vela_common::ScalarValue::F64(1.5)),
+    );
+    assert_string_no_arg_option_cache(
+        "parse_bool",
+        "true",
+        StandardMethodInlineCacheTarget::ParseBool,
+        OwnedValue::Bool(true),
+    );
+}
+
+fn assert_string_no_arg_option_cache(
+    method: &str,
+    receiver: &str,
+    target: StandardMethodInlineCacheTarget,
+    expected_payload: OwnedValue,
+) {
+    let (program, site, dispatch, method_id) = linked_string_no_arg_cache_program(method, receiver);
     let caches = RecordingMethodCaches::new(1);
+    let expected = owned_option_some(expected_payload);
 
     assert_eq!(
         run_linked_method_cache_owned_program(&program, &caches),
-        Ok(owned_option_some(OwnedValue::Bool(true)))
+        Ok(expected.clone())
     );
     let entry = caches
         .entry(site)
-        .expect("standard string parse_bool cache should populate");
+        .expect("standard string parse cache should populate");
     assert_eq!(entry.dispatch, dispatch);
     let MethodInlineCacheTarget::Value {
         method_id: cached_method,
         standard_method: Some(standard_method),
     } = entry.target
     else {
-        panic!("standard string parse_bool cache should store value target");
+        panic!("standard string parse cache should store value target");
     };
     assert_eq!(cached_method, method_id);
     assert_eq!(standard_method.receiver, StandardMethodReceiver::String);
-    assert_eq!(
-        standard_method.target,
-        StandardMethodInlineCacheTarget::ParseBool
-    );
+    assert_eq!(standard_method.target, target);
     assert_eq!(caches.set_count(), 2);
 
     assert_eq!(
         run_linked_method_cache_owned_program(&program, &caches),
-        Ok(owned_option_some(OwnedValue::Bool(true)))
+        Ok(expected)
     );
     assert_eq!(caches.set_count(), 2);
 }
