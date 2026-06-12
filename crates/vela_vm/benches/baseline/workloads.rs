@@ -704,6 +704,11 @@ fn main() {
         source: MAP_EXTEND_SOURCE,
     },
     Workload {
+        name: "map_extend_hot_offsets",
+        mode: ExecutionMode::ProfileOnly,
+        source: MAP_EXTEND_SOURCE,
+    },
+    Workload {
         name: "map_extend_cache_hot_offsets",
         mode: ExecutionMode::CacheEnabled,
         source: MAP_EXTEND_SOURCE,
