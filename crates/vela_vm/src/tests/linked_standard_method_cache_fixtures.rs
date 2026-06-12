@@ -550,27 +550,38 @@ fn std_function_id(implementation: StdFunctionImplementation) -> vela_def::Funct
         .expect("standard function implementation should have a manifest id")
 }
 
-pub(super) fn linked_option_is_some_cache_program() -> (
-    vela_bytecode::LinkedProgram,
-    CacheSiteId,
-    vela_bytecode::MethodDispatchHandle,
-    vela_def::MethodId,
-) {
-    let method_id =
-        vela_stdlib::std_method_id("Option", "is_some").expect("Option::is_some method id");
+pub(super) fn linked_option_is_some_cache_program() -> LinkedMethodCacheFixture {
+    linked_option_predicate_cache_program("is_some")
+}
+
+pub(super) fn linked_option_predicate_cache_program(method: &str) -> LinkedMethodCacheFixture {
+    linked_standard_enum_no_arg_cache_program("Option", "Some", method, 4)
+}
+
+pub(super) fn linked_result_predicate_cache_program(method: &str) -> LinkedMethodCacheFixture {
+    linked_standard_enum_no_arg_cache_program("Result", "Err", method, 404)
+}
+
+fn linked_standard_enum_no_arg_cache_program(
+    enum_name: &str,
+    variant_name: &str,
+    method: &str,
+    payload: i64,
+) -> LinkedMethodCacheFixture {
+    let method_id = vela_stdlib::std_method_id(enum_name, method).expect("standard method id");
     let mut program = vela_bytecode::LinkedProgram::new();
     let main_name = program.intern_debug_name("main");
-    let method_name = program.intern_debug_name("is_some");
+    let method_name = program.intern_debug_name(method);
     let field_name = program.intern_debug_name("0");
-    let option_type = push_standard_type(&mut program, "Option");
-    let some_variant = push_standard_variant(&mut program, option_type, "Option", "Some");
+    let enum_type = push_standard_type(&mut program, enum_name);
+    let variant = push_standard_variant(&mut program, enum_type, enum_name, variant_name);
     let dispatch = program.push_method_dispatch(vela_bytecode::LinkedMethodDispatch::new(
         method_name,
         vela_bytecode::LinkedMethodDispatchKind::Value { method_id },
     ));
 
     let mut code = vela_bytecode::LinkedCodeObject::new(main_name, 3);
-    let payload = code.push_constant(Constant::Scalar(vela_common::ScalarValue::I64(4)));
+    let payload = code.push_constant(Constant::Scalar(vela_common::ScalarValue::I64(payload)));
     code.push_instruction(vela_bytecode::linked::Instruction::new(
         vela_bytecode::linked::InstructionKind::LoadConst {
             dst: Register(0),
@@ -580,12 +591,15 @@ pub(super) fn linked_option_is_some_cache_program() -> (
     code.push_instruction(vela_bytecode::linked::Instruction::new(
         vela_bytecode::linked::InstructionKind::MakeEnum {
             dst: Register(1),
-            enum_ty: option_type,
-            variant: some_variant,
+            enum_ty: enum_type,
+            variant,
             fields: vec![(vela_bytecode::FieldSlot::new(0), field_name, Register(0))],
         },
     ));
-    let site = code.push_cache_site(CacheSiteKind::MethodCall, InstructionOffset(2));
+    let site = code.push_cache_site(
+        CacheSiteKind::MethodCall,
+        InstructionOffset(code.instructions.len()),
+    );
     code.push_instruction(vela_bytecode::linked::Instruction::new(
         vela_bytecode::linked::InstructionKind::CallMethod {
             dst: Register(2),

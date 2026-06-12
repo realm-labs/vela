@@ -333,35 +333,68 @@ fn linked_standard_value_method_caches_bytes_to_hex_target() {
 
 #[test]
 fn linked_standard_value_method_caches_option_predicate_target() {
-    let (program, site, dispatch, method_id) = linked_option_is_some_cache_program();
+    assert_enum_predicate_cache(
+        linked_option_is_some_cache_program(),
+        StandardMethodReceiver::Option,
+        StandardMethodInlineCacheTarget::IsSome,
+        true,
+    );
+    assert_enum_predicate_cache(
+        linked_option_predicate_cache_program("is_none"),
+        StandardMethodReceiver::Option,
+        StandardMethodInlineCacheTarget::IsNone,
+        false,
+    );
+}
+
+#[test]
+fn linked_standard_value_method_caches_result_predicate_targets() {
+    assert_enum_predicate_cache(
+        linked_result_predicate_cache_program("is_ok"),
+        StandardMethodReceiver::Result,
+        StandardMethodInlineCacheTarget::IsOk,
+        false,
+    );
+    assert_enum_predicate_cache(
+        linked_result_predicate_cache_program("is_err"),
+        StandardMethodReceiver::Result,
+        StandardMethodInlineCacheTarget::IsErr,
+        true,
+    );
+}
+
+fn assert_enum_predicate_cache(
+    fixture: LinkedMethodCacheFixture,
+    receiver: StandardMethodReceiver,
+    target: StandardMethodInlineCacheTarget,
+    expected: bool,
+) {
+    let (program, site, dispatch, method_id) = fixture;
     let caches = RecordingMethodCaches::new(1);
 
     assert_eq!(
         run_linked_method_cache_program(&program, &caches),
-        Ok(RuntimeValue::Bool(true))
+        Ok(RuntimeValue::Bool(expected))
     );
     let entry = caches
         .entry(site)
-        .expect("standard option cache should populate");
+        .expect("standard enum predicate cache should populate");
     assert_eq!(entry.dispatch, dispatch);
     let MethodInlineCacheTarget::Value {
         method_id: cached_method,
         standard_method: Some(standard_method),
     } = entry.target
     else {
-        panic!("standard option cache should store value target");
+        panic!("standard enum predicate cache should store value target");
     };
     assert_eq!(cached_method, method_id);
-    assert_eq!(standard_method.receiver, StandardMethodReceiver::Option);
-    assert_eq!(
-        standard_method.target,
-        StandardMethodInlineCacheTarget::IsSome
-    );
+    assert_eq!(standard_method.receiver, receiver);
+    assert_eq!(standard_method.target, target);
     assert_eq!(caches.set_count(), 2);
 
     assert_eq!(
         run_linked_method_cache_program(&program, &caches),
-        Ok(RuntimeValue::Bool(true))
+        Ok(RuntimeValue::Bool(expected))
     );
     assert_eq!(caches.set_count(), 2);
 }
