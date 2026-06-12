@@ -99,6 +99,11 @@ pub(crate) const COLLECTION_FAMILY_WORKLOADS: &[Workload] = &[
         source: SET_LOOKUP_SOURCE,
     },
     Workload {
+        name: "set_lookup_hot_offsets",
+        mode: ExecutionMode::ProfileOnly,
+        source: SET_LOOKUP_SOURCE,
+    },
+    Workload {
         name: "set_lookup_cache_hot_offsets",
         mode: ExecutionMode::CacheEnabled,
         source: SET_LOOKUP_SOURCE,
