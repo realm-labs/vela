@@ -6,7 +6,8 @@ use vela_def::MethodId;
 use crate::heap::GcRef;
 use crate::method_runtime::MethodRuntime;
 use crate::{
-    ExecutionBudget, HeapExecution, HostExecution, Value, Vm, VmBytecodeProfiler, VmError,
+    CallbackMethodInlineCacheEntry, CallbackMethodInlineCacheTarget, ExecutionBudget,
+    HeapExecution, HostExecution, StandardMethodReceiver, Value, Vm, VmBytecodeProfiler, VmError,
     VmErrorKind, VmInlineCaches, VmResult, array_methods, map_methods, option_result_methods,
     set_methods,
 };
@@ -119,7 +120,7 @@ impl<'a, 'host, 'heap> CallbackMethodDispatch<'a, 'host, 'heap> {
         }
     }
 
-    fn heap_ref(&self) -> Option<&HeapExecution<'heap>> {
+    pub(crate) fn heap_ref(&self) -> Option<&HeapExecution<'heap>> {
         self.heap.as_deref()
     }
 }
@@ -291,6 +292,231 @@ pub(crate) fn call_by_id(
         return Some(map_methods::map_values(receiver, args, dispatch.runtime()));
     }
     None
+}
+
+pub(crate) fn callback_cache_entry(
+    method_id: MethodId,
+    receiver: &Value,
+    heap: Option<&HeapExecution<'_>>,
+) -> Option<CallbackMethodInlineCacheEntry> {
+    let ids = callback_method_ids();
+    let receiver = if array_methods::is_array(receiver, heap) {
+        StandardMethodReceiver::Array
+    } else if map_methods::is_map(receiver, heap) {
+        StandardMethodReceiver::Map
+    } else if set_methods::is_set(receiver, heap) {
+        StandardMethodReceiver::Set
+    } else if option_result_methods::is_option(receiver, heap) {
+        StandardMethodReceiver::Option
+    } else if option_result_methods::is_result(receiver, heap) {
+        StandardMethodReceiver::Result
+    } else {
+        return None;
+    };
+    let target = match (receiver, method_id) {
+        (StandardMethodReceiver::Array, id) if id == ids.array_map => {
+            CallbackMethodInlineCacheTarget::Map
+        }
+        (StandardMethodReceiver::Array, id) if id == ids.array_filter => {
+            CallbackMethodInlineCacheTarget::Filter
+        }
+        (StandardMethodReceiver::Array, id) if id == ids.array_find => {
+            CallbackMethodInlineCacheTarget::Find
+        }
+        (StandardMethodReceiver::Array, id) if id == ids.array_any => {
+            CallbackMethodInlineCacheTarget::Any
+        }
+        (StandardMethodReceiver::Array, id) if id == ids.array_all => {
+            CallbackMethodInlineCacheTarget::All
+        }
+        (StandardMethodReceiver::Array, id) if id == ids.array_count => {
+            CallbackMethodInlineCacheTarget::Count
+        }
+        (StandardMethodReceiver::Array, id) if id == ids.array_sum => {
+            CallbackMethodInlineCacheTarget::Sum
+        }
+        (StandardMethodReceiver::Array, id) if id == ids.array_group_by => {
+            CallbackMethodInlineCacheTarget::GroupBy
+        }
+        (StandardMethodReceiver::Array, id) if id == ids.array_sort_by => {
+            CallbackMethodInlineCacheTarget::SortBy
+        }
+        (StandardMethodReceiver::Map, id) if id == ids.map_filter => {
+            CallbackMethodInlineCacheTarget::Filter
+        }
+        (StandardMethodReceiver::Map, id) if id == ids.map_find => {
+            CallbackMethodInlineCacheTarget::Find
+        }
+        (StandardMethodReceiver::Map, id) if id == ids.map_any => {
+            CallbackMethodInlineCacheTarget::Any
+        }
+        (StandardMethodReceiver::Map, id) if id == ids.map_all => {
+            CallbackMethodInlineCacheTarget::All
+        }
+        (StandardMethodReceiver::Map, id) if id == ids.map_count => {
+            CallbackMethodInlineCacheTarget::Count
+        }
+        (StandardMethodReceiver::Map, id) if id == ids.map_map_values => {
+            CallbackMethodInlineCacheTarget::MapValues
+        }
+        (StandardMethodReceiver::Set, id) if id == ids.set_map => {
+            CallbackMethodInlineCacheTarget::Map
+        }
+        (StandardMethodReceiver::Set, id) if id == ids.set_filter => {
+            CallbackMethodInlineCacheTarget::Filter
+        }
+        (StandardMethodReceiver::Set, id) if id == ids.set_find => {
+            CallbackMethodInlineCacheTarget::Find
+        }
+        (StandardMethodReceiver::Set, id) if id == ids.set_any => {
+            CallbackMethodInlineCacheTarget::Any
+        }
+        (StandardMethodReceiver::Set, id) if id == ids.set_all => {
+            CallbackMethodInlineCacheTarget::All
+        }
+        (StandardMethodReceiver::Set, id) if id == ids.set_count => {
+            CallbackMethodInlineCacheTarget::Count
+        }
+        (StandardMethodReceiver::Option, id) if id == ids.option_map => {
+            CallbackMethodInlineCacheTarget::Map
+        }
+        (StandardMethodReceiver::Option, id) if id == ids.option_and_then => {
+            CallbackMethodInlineCacheTarget::AndThen
+        }
+        (StandardMethodReceiver::Option, id) if id == ids.option_or_else => {
+            CallbackMethodInlineCacheTarget::OrElse
+        }
+        (StandardMethodReceiver::Option, id) if id == ids.option_filter => {
+            CallbackMethodInlineCacheTarget::Filter
+        }
+        (StandardMethodReceiver::Result, id) if id == ids.result_map => {
+            CallbackMethodInlineCacheTarget::Map
+        }
+        (StandardMethodReceiver::Result, id) if id == ids.result_map_err => {
+            CallbackMethodInlineCacheTarget::MapErr
+        }
+        (StandardMethodReceiver::Result, id) if id == ids.result_and_then => {
+            CallbackMethodInlineCacheTarget::AndThen
+        }
+        (StandardMethodReceiver::Result, id) if id == ids.result_or_else => {
+            CallbackMethodInlineCacheTarget::OrElse
+        }
+        _ => return None,
+    };
+    Some(CallbackMethodInlineCacheEntry { receiver, target })
+}
+
+pub(crate) fn call_cached(
+    receiver: &Value,
+    cache: CallbackMethodInlineCacheEntry,
+    args: &[Value],
+    dispatch: &mut CallbackMethodDispatch<'_, '_, '_>,
+) -> Option<VmResult<Value>> {
+    if !receiver_matches_cache(receiver, cache.receiver, dispatch.heap_ref()) {
+        return None;
+    }
+    let result = match (cache.receiver, cache.target) {
+        (StandardMethodReceiver::Array, CallbackMethodInlineCacheTarget::Map) => {
+            array_methods::map(receiver, args, dispatch.runtime())
+        }
+        (StandardMethodReceiver::Set, CallbackMethodInlineCacheTarget::Map) => {
+            set_methods::map(receiver, args, dispatch.runtime())
+        }
+        (
+            StandardMethodReceiver::Option | StandardMethodReceiver::Result,
+            CallbackMethodInlineCacheTarget::Map,
+        ) => option_result_methods::map(receiver, args, dispatch.runtime()),
+        (StandardMethodReceiver::Result, CallbackMethodInlineCacheTarget::MapErr) => {
+            option_result_methods::map_err(receiver, args, dispatch.runtime())
+        }
+        (
+            StandardMethodReceiver::Option | StandardMethodReceiver::Result,
+            CallbackMethodInlineCacheTarget::AndThen,
+        ) => option_result_methods::and_then(receiver, args, dispatch.runtime()),
+        (
+            StandardMethodReceiver::Option | StandardMethodReceiver::Result,
+            CallbackMethodInlineCacheTarget::OrElse,
+        ) => option_result_methods::or_else(receiver, args, dispatch.runtime()),
+        (StandardMethodReceiver::Array, CallbackMethodInlineCacheTarget::Filter) => {
+            array_methods::filter(receiver, args, dispatch.runtime())
+        }
+        (StandardMethodReceiver::Map, CallbackMethodInlineCacheTarget::Filter) => {
+            map_methods::filter(receiver, args, dispatch.runtime())
+        }
+        (StandardMethodReceiver::Set, CallbackMethodInlineCacheTarget::Filter) => {
+            set_methods::filter(receiver, args, dispatch.runtime())
+        }
+        (StandardMethodReceiver::Option, CallbackMethodInlineCacheTarget::Filter) => {
+            option_result_methods::filter(receiver, args, dispatch.runtime())
+        }
+        (StandardMethodReceiver::Array, CallbackMethodInlineCacheTarget::Find) => {
+            array_methods::find(receiver, args, dispatch.runtime())
+        }
+        (StandardMethodReceiver::Map, CallbackMethodInlineCacheTarget::Find) => {
+            map_methods::find(receiver, args, dispatch.runtime())
+        }
+        (StandardMethodReceiver::Set, CallbackMethodInlineCacheTarget::Find) => {
+            set_methods::find(receiver, args, dispatch.runtime())
+        }
+        (StandardMethodReceiver::Array, CallbackMethodInlineCacheTarget::Any) => {
+            array_methods::any(receiver, args, dispatch.runtime()).map(Value::Bool)
+        }
+        (StandardMethodReceiver::Map, CallbackMethodInlineCacheTarget::Any) => {
+            map_methods::any(receiver, args, dispatch.runtime()).map(Value::Bool)
+        }
+        (StandardMethodReceiver::Set, CallbackMethodInlineCacheTarget::Any) => {
+            set_methods::any(receiver, args, dispatch.runtime()).map(Value::Bool)
+        }
+        (StandardMethodReceiver::Array, CallbackMethodInlineCacheTarget::All) => {
+            array_methods::all(receiver, args, dispatch.runtime()).map(Value::Bool)
+        }
+        (StandardMethodReceiver::Map, CallbackMethodInlineCacheTarget::All) => {
+            map_methods::all(receiver, args, dispatch.runtime()).map(Value::Bool)
+        }
+        (StandardMethodReceiver::Set, CallbackMethodInlineCacheTarget::All) => {
+            set_methods::all(receiver, args, dispatch.runtime()).map(Value::Bool)
+        }
+        (StandardMethodReceiver::Array, CallbackMethodInlineCacheTarget::Count) => {
+            array_methods::count(receiver, args, dispatch.runtime()).map(Value::i64)
+        }
+        (StandardMethodReceiver::Map, CallbackMethodInlineCacheTarget::Count) => {
+            map_methods::count(receiver, args, dispatch.runtime()).map(Value::i64)
+        }
+        (StandardMethodReceiver::Set, CallbackMethodInlineCacheTarget::Count) => {
+            set_methods::count(receiver, args, dispatch.runtime()).map(Value::i64)
+        }
+        (StandardMethodReceiver::Array, CallbackMethodInlineCacheTarget::Sum) => {
+            array_methods::sum(receiver, args, dispatch.runtime())
+        }
+        (StandardMethodReceiver::Array, CallbackMethodInlineCacheTarget::GroupBy) => {
+            array_methods::group_by(receiver, args, dispatch.runtime())
+        }
+        (StandardMethodReceiver::Array, CallbackMethodInlineCacheTarget::SortBy) => {
+            array_methods::sort_by(receiver, args, dispatch.runtime())
+        }
+        (StandardMethodReceiver::Map, CallbackMethodInlineCacheTarget::MapValues) => {
+            map_methods::map_values(receiver, args, dispatch.runtime())
+        }
+        _ => return None,
+    };
+    Some(result)
+}
+
+fn receiver_matches_cache(
+    receiver: &Value,
+    cached: StandardMethodReceiver,
+    heap: Option<&HeapExecution<'_>>,
+) -> bool {
+    match cached {
+        StandardMethodReceiver::Array => array_methods::is_array(receiver, heap),
+        StandardMethodReceiver::Map => map_methods::is_map(receiver, heap),
+        StandardMethodReceiver::Set => set_methods::is_set(receiver, heap),
+        StandardMethodReceiver::Option => option_result_methods::is_option(receiver, heap),
+        StandardMethodReceiver::Result => option_result_methods::is_result(receiver, heap),
+        StandardMethodReceiver::String
+        | StandardMethodReceiver::Bytes
+        | StandardMethodReceiver::Range => false,
+    }
 }
 
 fn call_map(

@@ -14,7 +14,8 @@ use crate::{
 };
 use crate::{
     MethodInlineCacheEntry, MethodInlineCacheTarget, VmBytecodeProfiler, VmError, VmErrorKind,
-    VmInlineCaches, host_access, script_builtin_methods, script_function_calls,
+    VmInlineCaches, callback_method_dispatch, host_access, script_builtin_methods,
+    script_function_calls,
 };
 
 use crate::script_methods::{
@@ -358,6 +359,70 @@ pub(crate) fn dispatch_linked_method_call(
                 frame.write(call.dst, result)?;
                 return Ok(());
             }
+            if let Some(result) = linked_callback_value_method_result(
+                vm,
+                &context,
+                host,
+                heap,
+                budget,
+                frame,
+                LinkedCallbackValueMethodCall {
+                    dispatch: call.dispatch,
+                    debug_name: dispatch.debug_name,
+                    receiver: call.receiver,
+                    method_id,
+                    callback_method: None,
+                    values,
+                },
+            ) {
+                let result = result?;
+                frame.write(call.dst, result)?;
+                return Ok(());
+            }
+            dispatch_linked_method_id_call(
+                vm,
+                LinkedMethodRuntimeContext {
+                    program: context.program,
+                    inline_caches: context.inline_caches,
+                    bytecode_profiler: context.bytecode_profiler,
+                },
+                host,
+                heap,
+                budget,
+                frame,
+                ScriptMethodIdCall {
+                    dst: call.dst,
+                    receiver: call.receiver,
+                    method: context.program.debug_name(dispatch.debug_name),
+                    method_id,
+                    values,
+                },
+            )
+        }
+        MethodInlineCacheTarget::CallbackValue {
+            method_id,
+            callback_method,
+        } => {
+            if let Some(result) = linked_callback_value_method_result(
+                vm,
+                &context,
+                host,
+                heap,
+                budget,
+                frame,
+                LinkedCallbackValueMethodCall {
+                    dispatch: call.dispatch,
+                    debug_name: dispatch.debug_name,
+                    receiver: call.receiver,
+                    method_id,
+                    callback_method: Some(callback_method),
+                    values,
+                },
+            ) {
+                let result = result?;
+                frame.write(call.dst, result)?;
+                return Ok(());
+            }
             dispatch_linked_method_id_call(
                 vm,
                 LinkedMethodRuntimeContext {
@@ -525,6 +590,78 @@ fn linked_standard_value_method_result(
                 target: MethodInlineCacheTarget::Value {
                     method_id: call.method_id,
                     standard_method: Some(standard_method),
+                },
+            },
+        );
+    }
+    Some(result)
+}
+
+struct LinkedCallbackValueMethodCall<'a> {
+    dispatch: MethodDispatchHandle,
+    debug_name: DebugNameId,
+    receiver: Register,
+    method_id: MethodId,
+    callback_method: Option<crate::CallbackMethodInlineCacheEntry>,
+    values: &'a [Value],
+}
+
+fn linked_callback_value_method_result(
+    vm: &Vm,
+    context: &LinkedScriptMethodCallContext<'_>,
+    host: &mut Option<&mut HostExecution<'_>>,
+    heap: &mut Option<&mut HeapExecution<'_>>,
+    budget: &mut Option<&mut ExecutionBudget>,
+    frame: &CallFrame,
+    call: LinkedCallbackValueMethodCall<'_>,
+) -> Option<VmResult<Value>> {
+    let receiver = match frame.read(call.receiver) {
+        Ok(receiver) => receiver,
+        Err(error) => return Some(Err(error)),
+    };
+    let caller_roots = caller_roots_for_heap(frame, heap.as_deref());
+    let mut dispatch = callback_method_dispatch::CallbackMethodDispatch {
+        vm,
+        program: None,
+        linked_program: Some(context.program),
+        host: host.as_deref_mut(),
+        heap: heap.as_deref_mut(),
+        budget: budget.as_deref_mut(),
+        caller_roots: &caller_roots,
+        inline_caches: context.inline_caches,
+        bytecode_profiler: context.bytecode_profiler,
+    };
+    if let Some(callback_method) = call.callback_method {
+        return callback_method_dispatch::call_cached(
+            receiver,
+            callback_method,
+            call.values,
+            &mut dispatch,
+        );
+    }
+    let callback_method = callback_method_dispatch::callback_cache_entry(
+        call.method_id,
+        receiver,
+        dispatch.heap_ref(),
+    )?;
+    let result = callback_method_dispatch::call_cached(
+        receiver,
+        callback_method,
+        call.values,
+        &mut dispatch,
+    )
+    .expect("resolved callback method cache entry should match receiver");
+    if let Some(site) = context.cache_site
+        && let Some(caches) = context.inline_caches
+    {
+        caches.set_method_dispatch(
+            site,
+            MethodInlineCacheEntry {
+                dispatch: call.dispatch,
+                debug_name: call.debug_name,
+                target: MethodInlineCacheTarget::CallbackValue {
+                    method_id: call.method_id,
+                    callback_method,
                 },
             },
         );

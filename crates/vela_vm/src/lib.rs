@@ -310,6 +310,10 @@ pub enum MethodInlineCacheTarget {
         method_id: MethodId,
         standard_method: Option<StandardMethodInlineCacheEntry>,
     },
+    CallbackValue {
+        method_id: MethodId,
+        callback_method: CallbackMethodInlineCacheEntry,
+    },
     Host {
         method_id: HostMethodId,
     },
@@ -331,6 +335,29 @@ pub enum StandardMethodReceiver {
     Set,
     Option,
     Result,
+}
+
+#[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
+pub struct CallbackMethodInlineCacheEntry {
+    pub receiver: StandardMethodReceiver,
+    pub target: CallbackMethodInlineCacheTarget,
+}
+
+#[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
+pub enum CallbackMethodInlineCacheTarget {
+    Map,
+    MapErr,
+    AndThen,
+    OrElse,
+    Filter,
+    Find,
+    Any,
+    All,
+    Count,
+    Sum,
+    GroupBy,
+    SortBy,
+    MapValues,
 }
 
 #[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]

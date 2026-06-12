@@ -1,3 +1,6 @@
+use super::linked_standard_method_cache_support::{
+    RecordingMethodCaches, run_linked_method_cache_program,
+};
 use super::standard_id_dispatch::std_method_id;
 use super::*;
 use std::cell::RefCell;
@@ -109,6 +112,47 @@ fn main(player: Player) {
     );
 }
 
+#[test]
+fn linked_callback_value_method_caches_array_any_target() {
+    let program = compile_standard_program_source(
+        SourceId::new(1),
+        r#"
+fn main() {
+    return [1, 2, 3].any(|value| value == 2);
+}
+"#,
+    )
+    .expect("standard callback method source should compile");
+    let linked = link_test_program(&program);
+    let site = linked_method_cache_site(&linked, "main", "any");
+    let caches = RecordingMethodCaches::new(max_cache_site_len(&linked));
+
+    assert_eq!(
+        run_linked_method_cache_program(&linked, &caches),
+        Ok(Value::Bool(true))
+    );
+    let entry = caches
+        .entry(site)
+        .expect("standard callback method cache should populate");
+    let MethodInlineCacheTarget::CallbackValue {
+        method_id,
+        callback_method,
+    } = entry.target
+    else {
+        panic!("standard callback method should store callback target");
+    };
+    assert_eq!(method_id, std_method_id("Array", "any"));
+    assert_eq!(callback_method.receiver, StandardMethodReceiver::Array);
+    assert_eq!(callback_method.target, CallbackMethodInlineCacheTarget::Any);
+    assert_eq!(caches.set_count(), 2);
+
+    assert_eq!(
+        run_linked_method_cache_program(&linked, &caches),
+        Ok(Value::Bool(true))
+    );
+    assert_eq!(caches.set_count(), 2);
+}
+
 struct RecordingHostAccessCaches {
     len: usize,
     entry: RefCell<Option<HostInlineCacheEntry>>,
@@ -125,6 +169,43 @@ impl RecordingHostAccessCaches {
     fn recorded_entry(&self) -> Option<HostInlineCacheEntry> {
         *self.entry.borrow()
     }
+}
+
+fn linked_method_cache_site(
+    program: &vela_bytecode::LinkedProgram,
+    function: &str,
+    method: &str,
+) -> CacheSiteId {
+    let (_, code) = program
+        .functions()
+        .find(|(_, code)| program.debug_name(code.debug_name) == function)
+        .expect("linked function should exist");
+    code.instructions
+        .iter()
+        .find_map(|instruction| {
+            let vela_bytecode::linked::InstructionKind::CallMethod {
+                debug_name,
+                cache_site,
+                ..
+            } = instruction.kind
+            else {
+                return None;
+            };
+            if program.debug_name(debug_name) == method {
+                cache_site
+            } else {
+                None
+            }
+        })
+        .expect("linked method call should have cache site")
+}
+
+fn max_cache_site_len(program: &vela_bytecode::LinkedProgram) -> usize {
+    program
+        .functions()
+        .map(|(_, code)| code.cache_sites.len())
+        .max()
+        .unwrap_or(0)
 }
 
 impl VmInlineCaches for RecordingHostAccessCaches {
