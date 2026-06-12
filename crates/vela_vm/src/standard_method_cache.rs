@@ -149,6 +149,9 @@ pub(crate) fn standard_cache_entry(
         (StandardMethodReceiver::Map, id) if id == ids.map_has => {
             StandardMethodInlineCacheTarget::Has
         }
+        (StandardMethodReceiver::Map, id) if id == ids.map_get => {
+            StandardMethodInlineCacheTarget::Get
+        }
         (StandardMethodReceiver::Map, id) if id == ids.map_get_or => {
             StandardMethodInlineCacheTarget::GetOr
         }
@@ -269,6 +272,9 @@ pub(crate) fn call_standard_cached(
         }
         (StandardMethodReceiver::Bytes, StandardMethodInlineCacheTarget::ToHex) => {
             bytes_methods::to_hex(receiver, args, heap, budget)
+        }
+        (StandardMethodReceiver::Map, StandardMethodInlineCacheTarget::Get) => {
+            map_methods::get(receiver, args, heap, budget)
         }
         _ => return None,
     };

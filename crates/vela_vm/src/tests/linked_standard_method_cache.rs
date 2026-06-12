@@ -470,6 +470,42 @@ fn linked_standard_value_method_caches_map_get_or_target() {
 }
 
 #[test]
+fn linked_standard_value_method_caches_map_get_target() {
+    let (program, site, dispatch, method_id) = linked_map_get_cache_program();
+    let caches = RecordingMethodCaches::new(1);
+
+    assert_eq!(
+        run_linked_method_cache_owned_program(&program, &caches),
+        Ok(owned_option_some(OwnedValue::Scalar(
+            vela_common::ScalarValue::I64(8)
+        )))
+    );
+    let entry = caches
+        .entry(site)
+        .expect("standard map get cache should populate");
+    assert_eq!(entry.dispatch, dispatch);
+    let MethodInlineCacheTarget::Value {
+        method_id: cached_method,
+        standard_method: Some(standard_method),
+    } = entry.target
+    else {
+        panic!("standard map get cache should store value target");
+    };
+    assert_eq!(cached_method, method_id);
+    assert_eq!(standard_method.receiver, StandardMethodReceiver::Map);
+    assert_eq!(standard_method.target, StandardMethodInlineCacheTarget::Get);
+    assert_eq!(caches.set_count(), 2);
+
+    assert_eq!(
+        run_linked_method_cache_owned_program(&program, &caches),
+        Ok(owned_option_some(OwnedValue::Scalar(
+            vela_common::ScalarValue::I64(8)
+        )))
+    );
+    assert_eq!(caches.set_count(), 2);
+}
+
+#[test]
 fn linked_standard_value_method_caches_set_relation_targets() {
     assert_set_relation_cache(
         "is_subset",
