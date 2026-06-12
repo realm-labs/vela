@@ -353,6 +353,82 @@ fn linked_standard_value_method_caches_string_transform_target() {
     assert_eq!(caches.set_count(), 2);
 }
 
+#[test]
+fn linked_standard_value_method_caches_string_find_target() {
+    let (program, site, dispatch, method_id) =
+        linked_string_one_arg_cache_program("find", "daily_quest", "quest");
+    let caches = RecordingMethodCaches::new(1);
+
+    assert_eq!(
+        run_linked_method_cache_owned_program(&program, &caches),
+        Ok(owned_option_some(OwnedValue::Scalar(
+            vela_common::ScalarValue::I64(6)
+        )))
+    );
+    let entry = caches
+        .entry(site)
+        .expect("standard string find cache should populate");
+    assert_eq!(entry.dispatch, dispatch);
+    let MethodInlineCacheTarget::Value {
+        method_id: cached_method,
+        standard_method: Some(standard_method),
+    } = entry.target
+    else {
+        panic!("standard string find cache should store value target");
+    };
+    assert_eq!(cached_method, method_id);
+    assert_eq!(standard_method.receiver, StandardMethodReceiver::String);
+    assert_eq!(
+        standard_method.target,
+        StandardMethodInlineCacheTarget::Find
+    );
+    assert_eq!(caches.set_count(), 2);
+
+    assert_eq!(
+        run_linked_method_cache_owned_program(&program, &caches),
+        Ok(owned_option_some(OwnedValue::Scalar(
+            vela_common::ScalarValue::I64(6)
+        )))
+    );
+    assert_eq!(caches.set_count(), 2);
+}
+
+#[test]
+fn linked_standard_value_method_caches_string_strip_prefix_target() {
+    let (program, site, dispatch, method_id) =
+        linked_string_one_arg_cache_program("strip_prefix", "event:quest", "event:");
+    let caches = RecordingMethodCaches::new(1);
+
+    assert_eq!(
+        run_linked_method_cache_owned_program(&program, &caches),
+        Ok(owned_option_some(OwnedValue::String("quest".to_owned())))
+    );
+    let entry = caches
+        .entry(site)
+        .expect("standard string strip_prefix cache should populate");
+    assert_eq!(entry.dispatch, dispatch);
+    let MethodInlineCacheTarget::Value {
+        method_id: cached_method,
+        standard_method: Some(standard_method),
+    } = entry.target
+    else {
+        panic!("standard string strip_prefix cache should store value target");
+    };
+    assert_eq!(cached_method, method_id);
+    assert_eq!(standard_method.receiver, StandardMethodReceiver::String);
+    assert_eq!(
+        standard_method.target,
+        StandardMethodInlineCacheTarget::StripPrefix
+    );
+    assert_eq!(caches.set_count(), 2);
+
+    assert_eq!(
+        run_linked_method_cache_owned_program(&program, &caches),
+        Ok(owned_option_some(OwnedValue::String("quest".to_owned())))
+    );
+    assert_eq!(caches.set_count(), 2);
+}
+
 fn linked_standard_len_cache_program() -> (
     vela_bytecode::LinkedProgram,
     CacheSiteId,
@@ -432,6 +508,59 @@ fn linked_string_to_upper_cache_program() -> (
     ));
     code.push_instruction(vela_bytecode::linked::Instruction::new(
         vela_bytecode::linked::InstructionKind::Return { src: Register(1) },
+    ));
+    let function = program.push_function(code);
+    program.set_entry_point(main_name, function);
+    (program, site, dispatch, method_id)
+}
+
+fn linked_string_one_arg_cache_program(
+    method: &str,
+    receiver: &str,
+    arg: &str,
+) -> (
+    vela_bytecode::LinkedProgram,
+    CacheSiteId,
+    vela_bytecode::MethodDispatchHandle,
+    vela_def::MethodId,
+) {
+    let method_id = vela_stdlib::std_method_id("String", method).expect("String method id");
+    let mut program = vela_bytecode::LinkedProgram::new();
+    let main_name = program.intern_debug_name("main");
+    let method_name = program.intern_debug_name(method);
+    let dispatch = program.push_method_dispatch(vela_bytecode::LinkedMethodDispatch::new(
+        method_name,
+        vela_bytecode::LinkedMethodDispatchKind::Value { method_id },
+    ));
+
+    let mut code = vela_bytecode::LinkedCodeObject::new(main_name, 3);
+    let receiver = code.push_constant(Constant::String(receiver.to_owned()));
+    let arg = code.push_constant(Constant::String(arg.to_owned()));
+    code.push_instruction(vela_bytecode::linked::Instruction::new(
+        vela_bytecode::linked::InstructionKind::LoadConst {
+            dst: Register(0),
+            constant: receiver,
+        },
+    ));
+    code.push_instruction(vela_bytecode::linked::Instruction::new(
+        vela_bytecode::linked::InstructionKind::LoadConst {
+            dst: Register(1),
+            constant: arg,
+        },
+    ));
+    let site = code.push_cache_site(CacheSiteKind::MethodCall, InstructionOffset(2));
+    code.push_instruction(vela_bytecode::linked::Instruction::new(
+        vela_bytecode::linked::InstructionKind::CallMethod {
+            dst: Register(2),
+            receiver: Register(0),
+            dispatch,
+            debug_name: method_name,
+            cache_site: Some(site),
+            args: vec![vela_bytecode::CallArgument::Register(Register(1))],
+        },
+    ));
+    code.push_instruction(vela_bytecode::linked::Instruction::new(
+        vela_bytecode::linked::InstructionKind::Return { src: Register(2) },
     ));
     let function = program.push_function(code);
     program.set_entry_point(main_name, function);
@@ -919,6 +1048,14 @@ impl RecordingMethodCaches {
 
     fn set_count(&self) -> usize {
         self.set_count.get()
+    }
+}
+
+fn owned_option_some(value: OwnedValue) -> OwnedValue {
+    OwnedValue::Enum {
+        enum_name: "Option".to_owned(),
+        variant: "Some".to_owned(),
+        fields: ScriptFields::single("Option::Some", "0", value),
     }
 }
 

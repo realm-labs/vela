@@ -591,6 +591,12 @@ pub(crate) fn standard_cache_entry(
         (StandardMethodReceiver::String, id) if id == ids.string_ends_with => {
             StandardMethodInlineCacheTarget::EndsWith
         }
+        (StandardMethodReceiver::String, id) if id == ids.string_find => {
+            StandardMethodInlineCacheTarget::Find
+        }
+        (StandardMethodReceiver::String, id) if id == ids.string_strip_prefix => {
+            StandardMethodInlineCacheTarget::StripPrefix
+        }
         (StandardMethodReceiver::String, id) if id == ids.string_to_upper => {
             StandardMethodInlineCacheTarget::ToUpper
         }
@@ -723,6 +729,12 @@ pub(crate) fn call_standard_cached(
         }
         (StandardMethodReceiver::String, StandardMethodInlineCacheTarget::TrimEnd) => {
             crate::string_methods::trim_end(receiver, args, heap, budget)
+        }
+        (StandardMethodReceiver::String, StandardMethodInlineCacheTarget::Find) => {
+            crate::string_methods::find(receiver, args, heap, budget)
+        }
+        (StandardMethodReceiver::String, StandardMethodInlineCacheTarget::StripPrefix) => {
+            crate::string_methods::strip_prefix(receiver, args, heap, budget)
         }
         (StandardMethodReceiver::Bytes, StandardMethodInlineCacheTarget::Slice) => {
             bytes_methods::slice(receiver, args, heap, budget)

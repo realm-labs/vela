@@ -339,6 +339,8 @@ pub enum StandardMethodInlineCacheTarget {
     Contains,
     StartsWith,
     EndsWith,
+    Find,
+    StripPrefix,
     ToUpper,
     ToLower,
     Trim,
