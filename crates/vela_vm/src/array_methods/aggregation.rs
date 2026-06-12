@@ -1,7 +1,7 @@
 use std::collections::BTreeMap;
 
 use crate::heap::HeapValue;
-use crate::method_runtime::MethodRuntime;
+use crate::method_runtime::{MethodRuntime, call_callback_with_protected_values};
 use crate::{HeapExecution, Value, VmError, VmErrorKind, VmResult};
 
 use super::{
@@ -43,23 +43,17 @@ pub(crate) fn group_by(
     let values = array_values(receiver, runtime.heap.as_deref(), "method group_by")?;
     let mut groups = BTreeMap::<String, Vec<Value>>::new();
     for value in values {
-        let protected;
-        let protected_values = if runtime.heap.is_some() {
-            protected = groups
-                .values()
-                .flat_map(|values| values.iter().copied())
-                .collect::<Vec<_>>();
-            protected.as_slice()
+        let key_value = if runtime.heap.is_some() {
+            call_callback_with_protected_values(
+                &mut runtime,
+                "method group_by",
+                &args[0],
+                std::slice::from_ref(&value),
+                groups.values().flat_map(|values| values.iter()),
+            )?
         } else {
-            &[]
+            call_unary_callback(&mut runtime, "method group_by", &args[0], value, &[])?
         };
-        let key_value = call_unary_callback(
-            &mut runtime,
-            "method group_by",
-            &args[0],
-            value,
-            protected_values,
-        )?;
         let key = group_key(&key_value, runtime.heap.as_deref())?;
         match groups.entry(key) {
             std::collections::btree_map::Entry::Vacant(entry) => {

@@ -1,7 +1,7 @@
 use std::cmp::Ordering;
 
 use crate::heap::HeapValue;
-use crate::method_runtime::MethodRuntime;
+use crate::method_runtime::{MethodRuntime, call_callback_with_protected_values};
 use crate::{ExecutionBudget, HeapExecution, Value, VmResult, stored_runtime_value};
 
 use super::{
@@ -61,20 +61,17 @@ pub(crate) fn sort_by(
     let mut entries = Vec::<SortEntry>::with_capacity(values.len());
     let mut key_kind = None;
     for value in values {
-        let protected;
-        let protected_values = if runtime.heap.is_some() {
-            protected = entries.iter().map(|entry| entry.value).collect::<Vec<_>>();
-            protected.as_slice()
+        let key_value = if runtime.heap.is_some() {
+            call_callback_with_protected_values(
+                &mut runtime,
+                "method sort_by",
+                &args[0],
+                std::slice::from_ref(&value),
+                entries.iter().map(|entry| &entry.value),
+            )?
         } else {
-            &[]
+            call_unary_callback(&mut runtime, "method sort_by", &args[0], value, &[])?
         };
-        let key_value = call_unary_callback(
-            &mut runtime,
-            "method sort_by",
-            &args[0],
-            value,
-            protected_values,
-        )?;
         push_sort_entry(
             &mut entries,
             &mut key_kind,
