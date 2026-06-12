@@ -33,45 +33,48 @@ pub(super) fn call_cached_array_lookup_option(
         _ => return None,
     };
     let slots = array_slots(receiver, heap.as_deref(), operation)?;
-    let payload =
-        match target {
-            StandardMethodInlineCacheTarget::First => {
-                match crate::runtime_checks::expect_arity(method, args, 0) {
-                    Ok(()) => {}
-                    Err(error) => return Some(Err(error)),
-                }
-                slots.first().copied()
+    let payload = match target {
+        StandardMethodInlineCacheTarget::First => {
+            match crate::runtime_checks::expect_arity(method, args, 0) {
+                Ok(()) => {}
+                Err(error) => return Some(Err(error)),
             }
-            StandardMethodInlineCacheTarget::Last => {
-                match crate::runtime_checks::expect_arity(method, args, 0) {
-                    Ok(()) => {}
-                    Err(error) => return Some(Err(error)),
-                }
-                slots.last().copied()
+            slots.first().copied()
+        }
+        StandardMethodInlineCacheTarget::Last => {
+            match crate::runtime_checks::expect_arity(method, args, 0) {
+                Ok(()) => {}
+                Err(error) => return Some(Err(error)),
             }
-            StandardMethodInlineCacheTarget::IndexOf => {
-                match crate::runtime_checks::expect_arity(method, args, 1) {
-                    Ok(()) => {}
-                    Err(error) => return Some(Err(error)),
-                }
-                let index = match slots.iter().enumerate().find_map(|(index, value)| {
-                    match crate::values_equal(value, &args[0], heap.as_deref()) {
-                        Ok(true) => Some(Ok(index)),
-                        Ok(false) => None,
-                        Err(error) => Some(Err(error)),
-                    }
-                }) {
-                    Some(Ok(index)) => Some(index),
-                    Some(Err(error)) => return Some(Err(error)),
-                    None => None,
-                };
-                match index.map(index_value).transpose() {
-                    Ok(payload) => payload,
-                    Err(error) => return Some(Err(error)),
-                }
+            slots.last().copied()
+        }
+        StandardMethodInlineCacheTarget::IndexOf => {
+            match crate::runtime_checks::expect_arity(method, args, 1) {
+                Ok(()) => {}
+                Err(error) => return Some(Err(error)),
             }
-            _ => return None,
-        };
+            let heap_ref = heap.as_deref();
+            let index = match slots.iter().enumerate().find_map(|(index, value)| {
+                match crate::heap_values::simple_values_equal(value, &args[0], heap_ref)
+                    .map(Ok)
+                    .unwrap_or_else(|| crate::values_equal(value, &args[0], heap_ref))
+                {
+                    Ok(true) => Some(Ok(index)),
+                    Ok(false) => None,
+                    Err(error) => Some(Err(error)),
+                }
+            }) {
+                Some(Ok(index)) => Some(index),
+                Some(Err(error)) => return Some(Err(error)),
+                None => None,
+            };
+            match index.map(index_value).transpose() {
+                Ok(payload) => payload,
+                Err(error) => return Some(Err(error)),
+            }
+        }
+        _ => return None,
+    };
     Some(make_option(payload, heap, budget))
 }
 

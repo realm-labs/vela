@@ -449,18 +449,22 @@ pub(crate) fn values_equal(
     rhs: &Value,
     heap: Option<&HeapExecution<'_>>,
 ) -> VmResult<bool> {
-    if let Some(equal) = scalar_values_equal(lhs, rhs) {
-        return Ok(equal);
-    }
-    if let Some(equal) = heap_string_values_equal(lhs, rhs, heap) {
-        return Ok(equal);
-    }
-    if let Some(equal) = heap_bytes_values_equal(lhs, rhs, heap) {
+    if let Some(equal) = simple_values_equal(lhs, rhs, heap) {
         return Ok(equal);
     }
     let lhs = materialize_value(lhs, heap)?;
     let rhs = materialize_value(rhs, heap)?;
     Ok(lhs == rhs)
+}
+
+pub(crate) fn simple_values_equal(
+    lhs: &Value,
+    rhs: &Value,
+    heap: Option<&HeapExecution<'_>>,
+) -> Option<bool> {
+    scalar_values_equal(lhs, rhs)
+        .or_else(|| heap_string_values_equal(lhs, rhs, heap))
+        .or_else(|| heap_bytes_values_equal(lhs, rhs, heap))
 }
 
 fn scalar_values_equal(lhs: &Value, rhs: &Value) -> Option<bool> {

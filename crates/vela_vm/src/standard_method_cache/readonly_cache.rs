@@ -317,6 +317,13 @@ pub(super) fn call_cached_array_contains(
     Some(
         crate::runtime_checks::expect_arity("contains", args, 1).and_then(|()| {
             for value in values {
+                if let Some(equal) = crate::heap_values::simple_values_equal(value, &args[0], heap)
+                {
+                    if equal {
+                        return Ok(Value::Bool(true));
+                    }
+                    continue;
+                }
                 if crate::values_equal(value, &args[0], heap)? {
                     return Ok(Value::Bool(true));
                 }
