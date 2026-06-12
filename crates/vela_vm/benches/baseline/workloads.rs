@@ -1017,6 +1017,11 @@ fn main(player: Player) {
         source: RECORD_TRIPLETS_SOURCE,
     },
     Workload {
+        name: "record_fields_hot_offsets",
+        mode: ExecutionMode::ProfileOnly,
+        source: RECORD_TRIPLETS_SOURCE,
+    },
+    Workload {
         name: "record_fields_cache_hot_offsets",
         mode: ExecutionMode::CacheEnabled,
         source: RECORD_TRIPLETS_SOURCE,
