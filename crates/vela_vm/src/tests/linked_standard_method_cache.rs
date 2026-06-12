@@ -429,6 +429,42 @@ fn linked_standard_value_method_caches_string_strip_prefix_target() {
     assert_eq!(caches.set_count(), 2);
 }
 
+#[test]
+fn linked_standard_value_method_caches_string_strip_suffix_target() {
+    let (program, site, dispatch, method_id) =
+        linked_string_one_arg_cache_program("strip_suffix", "quest.done", ".done");
+    let caches = RecordingMethodCaches::new(1);
+
+    assert_eq!(
+        run_linked_method_cache_owned_program(&program, &caches),
+        Ok(owned_option_some(OwnedValue::String("quest".to_owned())))
+    );
+    let entry = caches
+        .entry(site)
+        .expect("standard string strip_suffix cache should populate");
+    assert_eq!(entry.dispatch, dispatch);
+    let MethodInlineCacheTarget::Value {
+        method_id: cached_method,
+        standard_method: Some(standard_method),
+    } = entry.target
+    else {
+        panic!("standard string strip_suffix cache should store value target");
+    };
+    assert_eq!(cached_method, method_id);
+    assert_eq!(standard_method.receiver, StandardMethodReceiver::String);
+    assert_eq!(
+        standard_method.target,
+        StandardMethodInlineCacheTarget::StripSuffix
+    );
+    assert_eq!(caches.set_count(), 2);
+
+    assert_eq!(
+        run_linked_method_cache_owned_program(&program, &caches),
+        Ok(owned_option_some(OwnedValue::String("quest".to_owned())))
+    );
+    assert_eq!(caches.set_count(), 2);
+}
+
 fn linked_standard_len_cache_program() -> (
     vela_bytecode::LinkedProgram,
     CacheSiteId,
