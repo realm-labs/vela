@@ -189,6 +189,11 @@ enum CompiledWorkload {
     HostAccess {
         program: Box<LinkedProgram>,
     },
+    CacheEnabledHostAccess {
+        program: Box<LinkedProgram>,
+        caches: BenchInlineCaches,
+        profiler: BenchBytecodeProfiler,
+    },
     HostManagedHeapReadConversion {
         program: Box<LinkedProgram>,
     },
@@ -234,6 +239,10 @@ fn run_once(vm: &Vm, workload: &CompiledWorkload) -> Result<OwnedValue, Box<dyn 
             ..
         }
         | CompiledWorkload::Function {
+            mode: ExecutionMode::HostAccessCacheEnabled,
+            ..
+        }
+        | CompiledWorkload::Function {
             mode: ExecutionMode::HostManagedHeapHostAccess,
             ..
         }
@@ -249,7 +258,12 @@ fn run_once(vm: &Vm, workload: &CompiledWorkload) -> Result<OwnedValue, Box<dyn 
             mode: ExecutionMode::ScriptProgram,
             ..
         } => unreachable!("host workloads compile to programs"),
-        CompiledWorkload::HostAccess { program } => run_host_access(vm, program),
+        CompiledWorkload::HostAccess { program } => run_host_access(vm, program, None, None),
+        CompiledWorkload::CacheEnabledHostAccess {
+            program,
+            caches,
+            profiler,
+        } => run_host_access(vm, program, Some(caches), Some(profiler)),
         CompiledWorkload::HostManagedHeapReadConversion { program } => {
             run_managed_heap_host_read_conversion(vm, program)
         }
@@ -263,6 +277,7 @@ fn run_once(vm: &Vm, workload: &CompiledWorkload) -> Result<OwnedValue, Box<dyn 
 fn compile_workload(workload: &Workload, vm: &Vm) -> Result<CompiledWorkload, String> {
     match workload.mode {
         ExecutionMode::HostAccess
+        | ExecutionMode::HostAccessCacheEnabled
         | ExecutionMode::HostManagedHeapReadConversion
         | ExecutionMode::HostManagedHeapHostAccess => {
             let program = compile_program_source_with_options_and_registry(
@@ -272,6 +287,16 @@ fn compile_workload(workload: &Workload, vm: &Vm) -> Result<CompiledWorkload, St
                 host_access_definition_registry().compile_view(),
             )
             .map_err(|error| format!("{error:?}"))?;
+            if matches!(workload.mode, ExecutionMode::HostAccessCacheEnabled) {
+                let image = ProgramImage::from_program(&program);
+                let mut linked = link_program_for_vm(vm, &program)?;
+                rebase_linked_cache_sites(&mut linked, &image);
+                return Ok(CompiledWorkload::CacheEnabledHostAccess {
+                    caches: BenchInlineCaches::new(image.cache_site_count()),
+                    profiler: BenchBytecodeProfiler::default(),
+                    program: Box::new(linked),
+                });
+            }
             let linked = Box::new(link_program_for_vm(vm, &program)?);
             Ok(match workload.mode {
                 ExecutionMode::HostAccess => CompiledWorkload::HostAccess { program: linked },
@@ -352,6 +377,9 @@ impl CompiledWorkload {
     fn reset_measurement_stats(&self) {
         if let Self::CacheEnabledFunction {
             caches, profiler, ..
+        }
+        | Self::CacheEnabledHostAccess {
+            caches, profiler, ..
         } = self
         {
             caches.reset_set_count();
@@ -361,14 +389,16 @@ impl CompiledWorkload {
 
     fn cache_set_count(&self) -> usize {
         match self {
-            Self::CacheEnabledFunction { caches, .. } => caches.set_count(),
+            Self::CacheEnabledFunction { caches, .. }
+            | Self::CacheEnabledHostAccess { caches, .. } => caches.set_count(),
             _ => 0,
         }
     }
 
     fn profile_hit_count(&self) -> u64 {
         match self {
-            Self::CacheEnabledFunction { profiler, .. } => profiler.hit_count(),
+            Self::CacheEnabledFunction { profiler, .. }
+            | Self::CacheEnabledHostAccess { profiler, .. } => profiler.hit_count(),
             _ => 0,
         }
     }
@@ -712,7 +742,12 @@ fn seed_gc_garbage(heap: &mut ScriptHeap) {
     }
 }
 
-fn run_host_access(vm: &Vm, program: &LinkedProgram) -> Result<OwnedValue, Box<dyn Error>> {
+fn run_host_access(
+    vm: &Vm,
+    program: &LinkedProgram,
+    caches: Option<&BenchInlineCaches>,
+    profiler: Option<&BenchBytecodeProfiler>,
+) -> Result<OwnedValue, Box<dyn Error>> {
     let player = HostRef::new(PLAYER_TYPE, PLAYER_OBJECT, PLAYER_GENERATION);
     let mut adapter = MockStateAdapter::new();
     adapter.insert_diagnostic_path_value(
@@ -745,14 +780,15 @@ fn run_host_access(vm: &Vm, program: &LinkedProgram) -> Result<OwnedValue, Box<d
         access: &mut tx,
         script_globals: None,
     };
-    let value = vm.run_linked_program_with_host_budget_and_caches(
+    let value = vm.run_linked_program_host_budget_call(LinkedProgramHostBudgetCall {
         program,
-        "main",
-        &[OwnedValue::HostRef(player)],
-        &mut host,
-        &mut budget,
-        None,
-    )?;
+        entry: "main",
+        args: &[OwnedValue::HostRef(player)],
+        host: &mut host,
+        budget: &mut budget,
+        inline_caches: caches.map(|caches| caches as &dyn vela_vm::VmInlineCaches),
+        bytecode_profiler: profiler.map(|profiler| profiler as &dyn vela_vm::VmBytecodeProfiler),
+    })?;
     Ok(OwnedValue::i64(value_checksum(&value) as i64))
 }
 
@@ -1083,6 +1119,7 @@ impl ExecutionMode {
             Self::ScriptProgram => "script_program",
             Self::ManagedHeap => "managed_heap",
             Self::HostAccess => "host_access",
+            Self::HostAccessCacheEnabled => "host_access_cache_enabled",
             Self::HostManagedHeapReadConversion => "host_managed_heap_read_conversion",
             Self::HostManagedHeapHostAccess => "host_managed_heap_access",
             Self::GameplayHost => "gameplay_host",

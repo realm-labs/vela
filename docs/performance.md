@@ -34,7 +34,7 @@ scalar/range dispatch
 script/native function calls
 array, map, set, string, Option, and Result stdlib methods
 callbacks, direct closure calls, and higher-order collection methods
-cache-enabled stdlib method rows with warmed inline caches and bytecode profile counters
+cache-enabled stdlib and host-boundary rows with warmed inline caches and bytecode profile counters
 record and enum construction and field access
 managed heap allocation and materialization
 host field reads, nested path reads/writes, RMW mutations, dynamic key access, and method calls

@@ -11,6 +11,7 @@ pub(crate) enum ExecutionMode {
     ScriptProgram,
     ManagedHeap,
     HostAccess,
+    HostAccessCacheEnabled,
     HostManagedHeapReadConversion,
     HostManagedHeapHostAccess,
     GameplayHost,
@@ -668,6 +669,22 @@ fn main(player: Player) {
         player.add_reward("gold", tick + 1);
     }
     return player.level;
+}
+"#,
+    },
+    Workload {
+        name: "host_access_cache_hot_offsets",
+        mode: ExecutionMode::HostAccessCacheEnabled,
+        source: r#"
+fn main(player: Player) {
+    let total = 0;
+    for tick in 0..48 {
+        player.level = tick + 1;
+        player.exp += tick;
+        player.inventory.gold += 1;
+        total += player.level + player.exp + player.inventory.gold;
+    }
+    return total;
 }
 "#,
     },
