@@ -1060,6 +1060,39 @@ fn main() {
 }
 "#;
 
+pub(crate) const OPTION_RESULT_CONVERSIONS_SOURCE: &str = r#"
+fn main() {
+    let total = 0;
+    for tick in 0..72 {
+        let some = option::some(["quest", "done"]);
+        let none = option::none();
+        let converted_ok = some.ok_or(["missing"]);
+        let converted_err = none.ok_or(["missing"]);
+        let flattened_some = option::some(option::some(["quest", "done"])).flatten();
+        let flattened_none = option::some(option::none()).flatten();
+        let flattened_ok = result::ok(result::ok(["done"])).flatten();
+        let flattened_err = result::ok(result::err(["nested"])).flatten();
+
+        if !converted_ok.is_ok()
+            || !converted_err.is_err()
+            || converted_ok.to_option().unwrap_or([]).join(".") != "quest.done"
+            || converted_err.to_option().unwrap_or(["fallback"]).join(".") != "fallback"
+            || !converted_ok.to_error_option().is_none()
+            || converted_err.to_error_option().unwrap_or(["fallback"]).join(".") != "missing"
+            || flattened_some.unwrap_or([]).join(".") != "quest.done"
+            || !flattened_none.is_none()
+            || flattened_ok.unwrap_or([]).join(".") != "done"
+            || flattened_err.to_error_option().unwrap_or([]).join(".") != "nested"
+        {
+            return 0;
+        }
+
+        total += tick + flattened_some.unwrap_or([]).len() + flattened_ok.unwrap_or([]).len();
+    }
+    return total;
+}
+"#;
+
 pub(crate) const SET_LOOKUP_SOURCE: &str = r#"
 fn main() {
     let total = 0;
