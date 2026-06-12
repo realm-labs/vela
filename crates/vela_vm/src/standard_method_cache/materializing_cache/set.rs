@@ -1,7 +1,7 @@
 use crate::heap::HeapValue;
 use crate::{
     ExecutionBudget, HeapExecution, StandardMethodInlineCacheTarget, Value, VmError, VmErrorKind,
-    VmResult, allocate_heap_value, stored_runtime_value,
+    VmResult, allocate_heap_value,
 };
 
 pub(in crate::standard_method_cache) fn call_cached_set_materialization(
@@ -203,7 +203,7 @@ fn push_unique_with_key(
         return;
     }
     keys.push(key);
-    values.push(stored_runtime_value(&value));
+    values.push(value);
 }
 
 fn set_keys(
