@@ -75,6 +75,15 @@ fn linked_standard_value_method_caches_array_distinct_target() {
     );
 }
 
+#[test]
+fn linked_standard_value_method_caches_array_join_target() {
+    assert_array_owned_cache(
+        linked_array_join_cache_program(),
+        StandardMethodInlineCacheTarget::Join,
+        OwnedValue::String("raid,quest".to_owned()),
+    );
+}
+
 fn assert_array_bool_cache(
     fixture: LinkedMethodCacheFixture,
     target: StandardMethodInlineCacheTarget,

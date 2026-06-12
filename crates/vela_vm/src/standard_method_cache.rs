@@ -158,6 +158,9 @@ pub(crate) fn standard_cache_entry(
         (StandardMethodReceiver::Array, id) if id == ids.array_distinct => {
             StandardMethodInlineCacheTarget::Distinct
         }
+        (StandardMethodReceiver::Array, id) if id == ids.array_join => {
+            StandardMethodInlineCacheTarget::Join
+        }
         (StandardMethodReceiver::Map, id) if id == ids.map_len => {
             StandardMethodInlineCacheTarget::Len
         }
@@ -308,6 +311,9 @@ pub(crate) fn call_standard_cached(
         }
         (StandardMethodReceiver::Array, StandardMethodInlineCacheTarget::Distinct) => {
             array_methods::distinct(receiver, args, heap, budget)
+        }
+        (StandardMethodReceiver::Array, StandardMethodInlineCacheTarget::Join) => {
+            array_methods::join(receiver, args, heap, budget)
         }
         (StandardMethodReceiver::Map, StandardMethodInlineCacheTarget::Get) => {
             map_methods::get(receiver, args, heap, budget)
