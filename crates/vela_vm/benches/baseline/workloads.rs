@@ -897,6 +897,11 @@ fn main(player: Player) {
         source: ARRAY_SORT_SOURCE,
     },
     Workload {
+        name: "array_sort_hot_offsets",
+        mode: ExecutionMode::ProfileOnly,
+        source: ARRAY_SORT_SOURCE,
+    },
+    Workload {
         name: "array_sort_cache_hot_offsets",
         mode: ExecutionMode::CacheEnabled,
         source: ARRAY_SORT_SOURCE,
