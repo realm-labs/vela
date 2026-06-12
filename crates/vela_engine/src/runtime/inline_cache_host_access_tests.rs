@@ -9,7 +9,7 @@ use vela_host::resolved::{
 };
 use vela_host::value::HostValue;
 use vela_reflect::registry::{FieldDesc, MethodDesc, TypeDesc, TypeKey};
-use vela_vm::{HostInlineCacheEntry, owned_value::OwnedValue};
+use vela_vm::{HostInlineCacheEntry, HostInlineCacheTarget, owned_value::OwnedValue};
 
 use crate::engine::Engine;
 use crate::runtime::{CallOptions, Runtime};
@@ -78,7 +78,10 @@ fn read_level(player: CachedHostPlayer) {
         .host_access(cache_site)
         .expect("host read should populate cache");
     assert_eq!(entry.root_type, HostTypeId::new(1));
-    assert_eq!(entry.plan_id.index(), 0);
+    assert_eq!(
+        entry.target,
+        HostInlineCacheTarget::TargetPlan(HostTargetPlanId::new(0))
+    );
     assert_eq!(entry.op, HostAccessOp::Read);
     assert_eq!(entry.schema_epoch.get(), 0);
     assert_eq!(
@@ -232,7 +235,10 @@ fn write_level(player: EpochWriteHostPlayer, value: i64) {
         .host_access(cache_site)
         .expect("host write should populate cache");
     assert_eq!(entry.root_type, HostTypeId::new(1));
-    assert_eq!(entry.plan_id.index(), 0);
+    assert_eq!(
+        entry.target,
+        HostInlineCacheTarget::TargetPlan(HostTargetPlanId::new(0))
+    );
     assert_eq!(entry.op, HostAccessOp::Write);
     assert_eq!(entry.schema_epoch, HostSchemaEpoch::new(0));
 
@@ -299,7 +305,7 @@ fn write_level(player: GuardedHostPlayer, value: i64) {
         cache_site,
         HostInlineCacheEntry {
             root_type: HostTypeId::new(1),
-            plan_id: HostTargetPlanId::new(0),
+            target: HostInlineCacheTarget::TargetPlan(HostTargetPlanId::new(0)),
             op: HostAccessOp::Read,
             schema_epoch: HostSchemaEpoch::new(0),
             resolved: ResolvedHostAccess::generic_target(HostSchemaEpoch::new(0)),
@@ -334,7 +340,10 @@ fn write_level(player: GuardedHostPlayer, value: i64) {
         .host_access(cache_site)
         .expect("wrong-op cache entry should be replaced");
     assert_eq!(entry.root_type, HostTypeId::new(1));
-    assert_eq!(entry.plan_id.index(), 0);
+    assert_eq!(
+        entry.target,
+        HostInlineCacheTarget::TargetPlan(HostTargetPlanId::new(0))
+    );
     assert_eq!(entry.op, HostAccessOp::Write);
     assert_eq!(entry.schema_epoch, HostSchemaEpoch::new(0));
     assert_eq!(entry.resolved.schema_epoch, HostSchemaEpoch::new(0));
@@ -380,7 +389,7 @@ fn write_level(player: TargetGuardHostPlayer, value: i64) {
         cache_site,
         HostInlineCacheEntry {
             root_type: HostTypeId::new(2),
-            plan_id: HostTargetPlanId::new(0),
+            target: HostInlineCacheTarget::TargetPlan(HostTargetPlanId::new(0)),
             op: HostAccessOp::Write,
             schema_epoch: HostSchemaEpoch::new(0),
             resolved: ResolvedHostAccess::generic_target(HostSchemaEpoch::new(0)),
@@ -408,14 +417,17 @@ fn write_level(player: TargetGuardHostPlayer, value: i64) {
         .host_access(cache_site)
         .expect("wrong-root cache entry should be replaced");
     assert_eq!(entry.root_type, HostTypeId::new(1));
-    assert_eq!(entry.plan_id.index(), 0);
+    assert_eq!(
+        entry.target,
+        HostInlineCacheTarget::TargetPlan(HostTargetPlanId::new(0))
+    );
     assert_eq!(entry.op, HostAccessOp::Write);
 
     runtime.state.inline_caches.set_host_access(
         cache_site,
         HostInlineCacheEntry {
             root_type: HostTypeId::new(1),
-            plan_id: HostTargetPlanId::new(1),
+            target: HostInlineCacheTarget::TargetPlan(HostTargetPlanId::new(1)),
             op: HostAccessOp::Write,
             schema_epoch: HostSchemaEpoch::new(0),
             resolved: ResolvedHostAccess::generic_target(HostSchemaEpoch::new(0)),
@@ -444,7 +456,10 @@ fn write_level(player: TargetGuardHostPlayer, value: i64) {
         .host_access(cache_site)
         .expect("wrong-plan cache entry should be replaced");
     assert_eq!(entry.root_type, HostTypeId::new(1));
-    assert_eq!(entry.plan_id.index(), 0);
+    assert_eq!(
+        entry.target,
+        HostInlineCacheTarget::TargetPlan(HostTargetPlanId::new(0))
+    );
     assert_eq!(entry.op, HostAccessOp::Write);
     assert_eq!(entry.schema_epoch, HostSchemaEpoch::new(0));
     assert_eq!(entry.resolved.schema_epoch, HostSchemaEpoch::new(0));
@@ -512,7 +527,10 @@ fn gain_level(player: EpochMutateHostPlayer, amount: i64) {
         .host_access(cache_site)
         .expect("host mutate should populate cache");
     assert_eq!(entry.root_type, HostTypeId::new(1));
-    assert_eq!(entry.plan_id.index(), 0);
+    assert_eq!(
+        entry.target,
+        HostInlineCacheTarget::TargetPlan(HostTargetPlanId::new(0))
+    );
     assert_eq!(entry.op, HostAccessOp::Mutate(HostMutationOp::Add));
     assert_eq!(entry.schema_epoch, HostSchemaEpoch::new(0));
 
@@ -606,7 +624,10 @@ fn award(player: EpochCallHostPlayer, amount: i64) {
         .host_access(cache_site)
         .expect("host call should populate cache");
     assert_eq!(entry.root_type, HostTypeId::new(1));
-    assert_eq!(entry.plan_id.index(), 0);
+    assert_eq!(
+        entry.target,
+        HostInlineCacheTarget::TargetPlan(HostTargetPlanId::new(0))
+    );
     assert_eq!(entry.op, HostAccessOp::Call(method));
     assert_eq!(entry.schema_epoch, HostSchemaEpoch::new(0));
 
@@ -710,7 +731,10 @@ fn remove_item(player: EpochRemoveHostPlayer, item_id: string) {
         .host_access(cache_site)
         .expect("host remove should populate cache");
     assert_eq!(entry.root_type, HostTypeId::new(1));
-    assert_eq!(entry.plan_id.index(), 0);
+    assert_eq!(
+        entry.target,
+        HostInlineCacheTarget::TargetPlan(HostTargetPlanId::new(0))
+    );
     assert_eq!(entry.op, HostAccessOp::Remove);
     assert_eq!(entry.schema_epoch, HostSchemaEpoch::new(0));
 

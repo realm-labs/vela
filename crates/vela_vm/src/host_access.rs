@@ -12,8 +12,8 @@ use crate::heap::HeapValue;
 use crate::heap_values::host_to_value;
 use crate::host_values::{value_from_host, value_to_host};
 use crate::{
-    CallFrame, ExecutionBudget, HeapExecution, HostExecution, HostInlineCacheEntry, Value, VmError,
-    VmErrorKind, VmInlineCaches, VmResult, expect_host_ref,
+    CallFrame, ExecutionBudget, HeapExecution, HostExecution, HostInlineCacheEntry,
+    HostInlineCacheTarget, Value, VmError, VmErrorKind, VmInlineCaches, VmResult, expect_host_ref,
 };
 
 pub(crate) struct HostAccessRuntime<'a, 'host, 'heap> {
@@ -113,7 +113,7 @@ pub(crate) fn execute_host_read(
         host.adapter,
         runtime.inline_caches,
         cache_site,
-        target_id,
+        HostInlineCacheTarget::TargetPlan(target_id),
         instance,
         HostAccessOp::Read,
         runtime.source_span,
@@ -171,7 +171,7 @@ pub(crate) fn execute_host_write(
         host.adapter,
         runtime.inline_caches,
         cache_site,
-        target_id,
+        HostInlineCacheTarget::TargetPlan(target_id),
         instance,
         HostAccessOp::Write,
         runtime.source_span,
@@ -231,7 +231,7 @@ pub(crate) fn execute_host_mutate(
         host.adapter,
         runtime.inline_caches,
         mutation.cache_site,
-        mutation.target_id,
+        HostInlineCacheTarget::TargetPlan(mutation.target_id),
         instance,
         HostAccessOp::Mutate(mutation.op),
         runtime.source_span,
@@ -311,7 +311,7 @@ pub(crate) fn execute_host_remove(
         host.adapter,
         runtime.inline_caches,
         cache_site,
-        target_id,
+        HostInlineCacheTarget::TargetPlan(target_id),
         instance,
         HostAccessOp::Remove,
         runtime.source_span,
@@ -366,6 +366,7 @@ pub(crate) struct HostRootMethodCall<'a> {
     pub(crate) method: HostMethodId,
     pub(crate) args: &'a [Value],
     pub(crate) wants_return: bool,
+    pub(crate) cache_site: Option<CacheSiteId>,
 }
 
 pub(crate) fn execute_host_call(
@@ -401,7 +402,7 @@ pub(crate) fn execute_host_call(
         host.adapter,
         runtime.inline_caches,
         call.cache_site,
-        call.target_id,
+        HostInlineCacheTarget::TargetPlan(call.target_id),
         instance,
         HostAccessOp::Call(call.method),
         runtime.source_span,
@@ -491,13 +492,22 @@ pub(crate) fn execute_host_root_method_call(
             operation: "host context",
         })
     })?;
-    let resolved = host
-        .adapter
-        .resolve_host_access(HostAccessSpec::new(
-            HostAccessOp::Call(call.method),
-            &target,
-        ))
-        .map_err(|error| error.with_source_span_if_absent(runtime.source_span))?;
+    let op = HostAccessOp::Call(call.method);
+    let resolved = if let Some(cache_site) = call.cache_site {
+        resolve_cached_access(
+            host.adapter,
+            runtime.inline_caches,
+            cache_site,
+            HostInlineCacheTarget::RootObject,
+            instance,
+            op,
+            runtime.source_span,
+        )?
+    } else {
+        host.adapter
+            .resolve_host_access(HostAccessSpec::new(op, &target))
+            .map_err(|error| error.with_source_span_if_absent(runtime.source_span))?
+    };
     let value = host.access.call_resolved(
         host.adapter,
         resolved,
@@ -517,7 +527,7 @@ fn resolve_cached_access(
     adapter: &dyn vela_host::adapter::ScriptStateAdapter,
     inline_caches: Option<&dyn VmInlineCaches>,
     cache_site: CacheSiteId,
-    target_id: HostTargetPlanId,
+    target_key: HostInlineCacheTarget,
     target: HostTargetInstance<'_>,
     op: HostAccessOp,
     source_span: Option<Span>,
@@ -526,7 +536,7 @@ fn resolve_cached_access(
     if let Some(cache) = inline_caches
         && let Some(entry) = cache.host_access(cache_site)
         && entry.root_type == target.root.type_id
-        && entry.plan_id == target_id
+        && entry.target == target_key
         && entry.op == op
         && entry.schema_epoch == schema_epoch
     {
@@ -540,7 +550,7 @@ fn resolve_cached_access(
             cache_site,
             HostInlineCacheEntry {
                 root_type: target.root.type_id,
-                plan_id: target_id,
+                target: target_key,
                 op,
                 schema_epoch: resolved.schema_epoch,
                 resolved,

@@ -287,10 +287,16 @@ pub(crate) fn validate_inline_cache_layout(
 #[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
 pub struct HostInlineCacheEntry {
     pub root_type: HostTypeId,
-    pub plan_id: HostTargetPlanId,
+    pub target: HostInlineCacheTarget,
     pub op: HostAccessOp,
     pub schema_epoch: HostSchemaEpoch,
     pub resolved: ResolvedHostAccess,
+}
+
+#[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
+pub enum HostInlineCacheTarget {
+    TargetPlan(HostTargetPlanId),
+    RootObject,
 }
 
 #[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]

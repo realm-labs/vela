@@ -109,4 +109,86 @@ fn linked_host_method_cache_misses_wrong_method_target_guard() {
             target: MethodInlineCacheTarget::Host { method_id },
         })
     );
+    let host_entry = caches
+        .host_entry(cache_site)
+        .expect("host method should populate root host-access cache");
+    assert_eq!(host_entry.root_type, host_ref.type_id);
+    assert_eq!(host_entry.target, HostInlineCacheTarget::RootObject);
+    assert_eq!(
+        host_entry.op,
+        vela_host::resolved::HostAccessOp::Call(method_id)
+    );
+    assert_eq!(
+        host_entry.schema_epoch,
+        vela_host::resolved::HostSchemaEpoch::new(0)
+    );
+    assert_eq!(caches.host_set_count_for(cache_site), 1);
+
+    let mut budget = ExecutionBudget::unbounded();
+    let second = {
+        let mut host = HostExecution {
+            adapter: &mut adapter,
+            access: &mut access,
+            script_globals: None,
+        };
+        let code = program.function(main).expect("main linked code exists");
+        Vm::new().execute_linked_call(
+            crate::linked_execution::LinkedExecutionCall {
+                code,
+                program: &program,
+                captures: &[],
+                args: &[Value::HostRef(host_ref)],
+                check_param_guards: true,
+                call_site: None,
+                call_site_offset: None,
+                inline_caches: Some(&caches),
+                bytecode_profiler: None,
+            },
+            Some(&mut host),
+            None,
+            Some(&mut budget),
+        )
+    };
+
+    assert_eq!(second, Ok(Value::Scalar(vela_common::ScalarValue::I64(12))));
+    assert_eq!(caches.set_count_for(cache_site), 1);
+    assert_eq!(caches.host_set_count_for(cache_site), 1);
+
+    adapter.set_schema_epoch(vela_host::resolved::HostSchemaEpoch::new(1));
+    let mut budget = ExecutionBudget::unbounded();
+    let third = {
+        let mut host = HostExecution {
+            adapter: &mut adapter,
+            access: &mut access,
+            script_globals: None,
+        };
+        let code = program.function(main).expect("main linked code exists");
+        Vm::new().execute_linked_call(
+            crate::linked_execution::LinkedExecutionCall {
+                code,
+                program: &program,
+                captures: &[],
+                args: &[Value::HostRef(host_ref)],
+                check_param_guards: true,
+                call_site: None,
+                call_site_offset: None,
+                inline_caches: Some(&caches),
+                bytecode_profiler: None,
+            },
+            Some(&mut host),
+            None,
+            Some(&mut budget),
+        )
+    };
+
+    assert_eq!(third, Ok(Value::Scalar(vela_common::ScalarValue::I64(12))));
+    assert_eq!(caches.set_count_for(cache_site), 1);
+    assert_eq!(caches.host_set_count_for(cache_site), 2);
+    assert_eq!(
+        caches
+            .host_entry(cache_site)
+            .expect("host method cache should refresh")
+            .schema_epoch,
+        vela_host::resolved::HostSchemaEpoch::new(1)
+    );
 }

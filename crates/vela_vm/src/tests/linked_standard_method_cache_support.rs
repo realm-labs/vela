@@ -90,7 +90,10 @@ fn main_code(program: &vela_bytecode::LinkedProgram) -> &vela_bytecode::LinkedCo
 pub(super) struct RecordingMethodCaches {
     entries: RefCell<Vec<Option<MethodInlineCacheEntry>>>,
     site_set_counts: RefCell<Vec<usize>>,
+    host_entries: RefCell<Vec<Option<HostInlineCacheEntry>>>,
+    host_site_set_counts: RefCell<Vec<usize>>,
     set_count: Cell<usize>,
+    host_set_count: Cell<usize>,
 }
 
 impl RecordingMethodCaches {
@@ -98,7 +101,10 @@ impl RecordingMethodCaches {
         Self {
             entries: RefCell::new(vec![None; len]),
             site_set_counts: RefCell::new(vec![0; len]),
+            host_entries: RefCell::new(vec![None; len]),
+            host_site_set_counts: RefCell::new(vec![0; len]),
             set_count: Cell::new(0),
+            host_set_count: Cell::new(0),
         }
     }
 
@@ -116,6 +122,18 @@ impl RecordingMethodCaches {
 
     pub(super) fn set_count_for(&self, site: CacheSiteId) -> usize {
         self.site_set_counts.borrow()[site.index()]
+    }
+
+    pub(super) fn host_entry(&self, site: CacheSiteId) -> Option<HostInlineCacheEntry> {
+        self.host_entries
+            .borrow()
+            .get(site.index())
+            .copied()
+            .flatten()
+    }
+
+    pub(super) fn host_set_count_for(&self, site: CacheSiteId) -> usize {
+        self.host_site_set_counts.borrow()[site.index()]
     }
 }
 
@@ -140,5 +158,15 @@ impl VmInlineCaches for RecordingMethodCaches {
         self.entries.borrow_mut()[site.index()] = Some(entry);
         self.site_set_counts.borrow_mut()[site.index()] += 1;
         self.set_count.set(self.set_count.get() + 1);
+    }
+
+    fn host_access(&self, site: CacheSiteId) -> Option<HostInlineCacheEntry> {
+        self.host_entry(site)
+    }
+
+    fn set_host_access(&self, site: CacheSiteId, entry: HostInlineCacheEntry) {
+        self.host_entries.borrow_mut()[site.index()] = Some(entry);
+        self.host_site_set_counts.borrow_mut()[site.index()] += 1;
+        self.host_set_count.set(self.host_set_count.get() + 1);
     }
 }

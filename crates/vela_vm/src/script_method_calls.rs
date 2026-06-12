@@ -458,6 +458,7 @@ pub(crate) fn dispatch_linked_method_call(
                     method: method_id,
                     args: values,
                     wants_return: true,
+                    cache_site: context.cache_site,
                 },
             )?;
             if let Some(return_value) = return_value {
