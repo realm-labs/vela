@@ -1,6 +1,6 @@
 use vela_bytecode::{CacheSiteId, CacheSiteKind};
 use vela_common::{ScalarValue, SourceId};
-use vela_vm::{VmInlineCaches, owned_value::OwnedValue};
+use vela_vm::owned_value::OwnedValue;
 
 use crate::engine::Engine;
 use crate::native::{NativeFunctionDesc, NativeFunctionId, TypeHint};

@@ -11,23 +11,22 @@ use super::image::RuntimeImage;
 
 #[derive(Debug, Default)]
 pub(super) struct InlineCaches {
-    entries: RefCell<Vec<InlineCacheEntry>>,
-}
-
-#[derive(Clone, Debug)]
-pub(super) enum InlineCacheEntry {
-    Empty,
-    GlobalRead { slot: GlobalSlot },
-    HostAccess(HostInlineCacheEntry),
-    RecordField(RecordFieldInlineCacheEntry),
-    MethodDispatch(MethodInlineCacheEntry),
-    NativeCall(NativeInlineCacheEntry),
+    global_reads: RefCell<Vec<Option<GlobalSlot>>>,
+    host_accesses: RefCell<Vec<Option<HostInlineCacheEntry>>>,
+    record_fields: RefCell<Vec<Option<RecordFieldInlineCacheEntry>>>,
+    method_dispatches: RefCell<Vec<Option<MethodInlineCacheEntry>>>,
+    native_calls: RefCell<Vec<Option<NativeInlineCacheEntry>>>,
 }
 
 impl InlineCaches {
     pub(super) fn for_image(image: &RuntimeImage) -> Self {
+        let len = image.cache_site_count();
         Self {
-            entries: RefCell::new(vec![InlineCacheEntry::Empty; image.cache_site_count()]),
+            global_reads: RefCell::new(vec![None; len]),
+            host_accesses: RefCell::new(vec![None; len]),
+            record_fields: RefCell::new(vec![None; len]),
+            method_dispatches: RefCell::new(vec![None; len]),
+            native_calls: RefCell::new(vec![None; len]),
         }
     }
 
@@ -36,62 +35,80 @@ impl InlineCaches {
     }
 
     pub(super) fn len(&self) -> usize {
-        self.entries.borrow().len()
+        self.global_reads.borrow().len()
     }
 
     pub(super) fn is_empty(&self) -> bool {
-        self.entries.borrow().is_empty()
+        self.global_reads.borrow().is_empty()
     }
 
     pub(super) fn global_read_slot(&self, site: CacheSiteId) -> Option<GlobalSlot> {
-        match self.entries.borrow().get(site.index()) {
-            Some(InlineCacheEntry::GlobalRead { slot }) => Some(*slot),
-            _ => None,
-        }
+        self.global_reads
+            .borrow()
+            .get(site.index())
+            .copied()
+            .flatten()
     }
 
     pub(super) fn set_global_read_slot(&self, site: CacheSiteId, slot: GlobalSlot) {
-        if let Some(entry) = self.entries.borrow_mut().get_mut(site.index()) {
-            *entry = InlineCacheEntry::GlobalRead { slot };
+        if let Some(entry) = self.global_reads.borrow_mut().get_mut(site.index()) {
+            *entry = Some(slot);
         }
     }
 
     pub(super) fn host_access(&self, site: CacheSiteId) -> Option<HostInlineCacheEntry> {
-        match self.entries.borrow().get(site.index()) {
-            Some(InlineCacheEntry::HostAccess(entry)) => Some(*entry),
-            _ => None,
-        }
+        self.host_accesses
+            .borrow()
+            .get(site.index())
+            .copied()
+            .flatten()
     }
 
     pub(super) fn set_host_access(&self, site: CacheSiteId, entry: HostInlineCacheEntry) {
-        if let Some(slot) = self.entries.borrow_mut().get_mut(site.index()) {
-            *slot = InlineCacheEntry::HostAccess(entry);
+        if let Some(slot) = self.host_accesses.borrow_mut().get_mut(site.index()) {
+            *slot = Some(entry);
         }
     }
 
     pub(super) fn record_field(&self, site: CacheSiteId) -> Option<RecordFieldInlineCacheEntry> {
-        match self.entries.borrow().get(site.index()) {
-            Some(InlineCacheEntry::RecordField(entry)) => Some(*entry),
-            _ => None,
-        }
+        self.record_fields
+            .borrow()
+            .get(site.index())
+            .copied()
+            .flatten()
     }
 
     pub(super) fn set_record_field(&self, site: CacheSiteId, entry: RecordFieldInlineCacheEntry) {
-        if let Some(slot) = self.entries.borrow_mut().get_mut(site.index()) {
-            *slot = InlineCacheEntry::RecordField(entry);
+        if let Some(slot) = self.record_fields.borrow_mut().get_mut(site.index()) {
+            *slot = Some(entry);
         }
     }
 
     pub(super) fn method_dispatch(&self, site: CacheSiteId) -> Option<MethodInlineCacheEntry> {
-        match self.entries.borrow().get(site.index()) {
-            Some(InlineCacheEntry::MethodDispatch(entry)) => Some(*entry),
-            _ => None,
-        }
+        self.method_dispatches
+            .borrow()
+            .get(site.index())
+            .copied()
+            .flatten()
     }
 
     pub(super) fn set_method_dispatch(&self, site: CacheSiteId, entry: MethodInlineCacheEntry) {
-        if let Some(slot) = self.entries.borrow_mut().get_mut(site.index()) {
-            *slot = InlineCacheEntry::MethodDispatch(entry);
+        if let Some(slot) = self.method_dispatches.borrow_mut().get_mut(site.index()) {
+            *slot = Some(entry);
+        }
+    }
+
+    pub(super) fn native_call(&self, site: CacheSiteId) -> Option<NativeInlineCacheEntry> {
+        self.native_calls
+            .borrow()
+            .get(site.index())
+            .cloned()
+            .flatten()
+    }
+
+    pub(super) fn set_native_call(&self, site: CacheSiteId, entry: NativeInlineCacheEntry) {
+        if let Some(slot) = self.native_calls.borrow_mut().get_mut(site.index()) {
+            *slot = Some(entry);
         }
     }
 }
@@ -138,16 +155,11 @@ impl vela_vm::VmInlineCaches for InlineCaches {
     }
 
     fn native_call(&self, site: CacheSiteId) -> Option<NativeInlineCacheEntry> {
-        match self.entries.borrow().get(site.index()) {
-            Some(InlineCacheEntry::NativeCall(entry)) => Some(entry.clone()),
-            _ => None,
-        }
+        self.native_call(site)
     }
 
     fn set_native_call(&self, site: CacheSiteId, entry: NativeInlineCacheEntry) {
-        if let Some(slot) = self.entries.borrow_mut().get_mut(site.index()) {
-            *slot = InlineCacheEntry::NativeCall(entry);
-        }
+        self.set_native_call(site, entry);
     }
 }
 

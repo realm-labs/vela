@@ -1,7 +1,11 @@
-use vela_bytecode::{CacheSiteId, CacheSiteKind, FieldSlot};
-use vela_common::{GlobalSlot, ShapeId, SourceId};
+use vela_bytecode::{CacheSiteId, CacheSiteKind, DebugNameId, FieldSlot, MethodDispatchHandle};
+use vela_common::{GlobalSlot, HostMethodId, HostTypeId, ShapeId, SourceId};
 use vela_def::TypeId;
-use vela_vm::{RecordFieldInlineCacheEntry, owned_value::OwnedValue};
+use vela_host::resolved::{HostAccessOp, HostSchemaEpoch, ResolvedHostAccess};
+use vela_vm::{
+    HostInlineCacheEntry, HostInlineCacheTarget, MethodInlineCacheEntry, MethodInlineCacheTarget,
+    RecordFieldInlineCacheEntry, owned_value::OwnedValue,
+};
 
 use crate::engine::Engine;
 use crate::runtime::{CallArgs, CallOptions, Runtime, RuntimeImage};
@@ -180,6 +184,45 @@ fn main() {
     assert_eq!(caches.record_field(site), None);
     caches.set_record_field(site, entry);
     assert_eq!(caches.record_field(site), Some(entry));
+}
+
+#[test]
+fn inline_cache_families_do_not_evict_same_site_entries() {
+    let engine = Engine::builder().build().expect("engine should build");
+    let program = engine
+        .compile_source(
+            SourceId::new(1),
+            r#"
+global value: i64;
+
+fn main() {
+    return value;
+}
+"#,
+        )
+        .expect("program should compile");
+    let image = RuntimeImage::new(engine, program);
+    let caches = InlineCaches::for_image(&image);
+    let site = CacheSiteId::new(0);
+    let method_id = HostMethodId::new(7);
+    let method_entry = MethodInlineCacheEntry {
+        dispatch: MethodDispatchHandle::new(0),
+        debug_name: DebugNameId::new(0),
+        target: MethodInlineCacheTarget::Host { method_id },
+    };
+    let host_entry = HostInlineCacheEntry {
+        root_type: HostTypeId::new(1),
+        target: HostInlineCacheTarget::RootObject,
+        op: HostAccessOp::Call(method_id),
+        schema_epoch: HostSchemaEpoch::new(0),
+        resolved: ResolvedHostAccess::generic_target(HostSchemaEpoch::new(0)),
+    };
+
+    caches.set_method_dispatch(site, method_entry);
+    caches.set_host_access(site, host_entry);
+
+    assert_eq!(caches.method_dispatch(site), Some(method_entry));
+    assert_eq!(caches.host_access(site), Some(host_entry));
 }
 
 #[test]
