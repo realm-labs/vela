@@ -650,6 +650,32 @@ fn main() {
 }
 "#;
 
+pub(crate) const ARRAY_EDGE_SOURCE: &str = r#"
+fn main() {
+    let total = 0;
+    for tick in 0..96 {
+        let tags = ["daily", "quest", "raid", "bonus", "event", "boss"];
+        let tiers = [1, 2, 3, 5, 8, 13];
+        let empty = [];
+        if option::unwrap_or(tags.first(), "") != "daily"
+            || option::unwrap_or(tags.last(), "") != "boss"
+            || option::unwrap_or(tiers.first(), 0) != 1
+            || option::unwrap_or(tiers.last(), 0) != 13
+            || !option::is_none(empty.first())
+            || !option::is_none(empty.last())
+        {
+            return 0;
+        }
+        total += tags.first().unwrap_or("").len()
+            + tags.last().unwrap_or("").len()
+            + tiers.first().unwrap_or(0)
+            + tiers.last().unwrap_or(0)
+            + tick - tick;
+    }
+    return total;
+}
+"#;
+
 pub(crate) const ARRAY_EXTEND_SOURCE: &str = r#"
 fn main() {
     let total = 0;
