@@ -1,4 +1,5 @@
 mod map;
+mod option_result;
 mod set;
 
 use crate::heap::HeapValue;
@@ -8,6 +9,7 @@ use crate::{
     VmResult, allocate_heap_value, stored_runtime_value,
 };
 pub(super) use map::call_cached_map_materialization;
+pub(super) use option_result::call_cached_option_result_materialization;
 pub(super) use set::call_cached_set_materialization;
 use vela_common::ScalarValue;
 
