@@ -37,9 +37,11 @@ embedding/conformance proof, measured performance baselines, and non-JIT
 interpreter/heap optimization checkpoint. The primitive scalar, bytes,
 type-hint contract, and guard-plan refactor is complete as a breaking M19.5
 architecture continuation. M20 inline-cache work has started with script record
-field, host-access, native-call, linked method-dispatch cache entries, and guarded stdlib
+field, host-access, native-call, linked method-dispatch cache entries, guarded stdlib
 length/emptiness/predicate/bytes-accessor/bytes-materialization/Option/Result/map-fallback/string-option/string-transform
-targets while remaining M19.5 prep continues around the other cache families:
+targets, and paired interpreter-only versus cache-enabled benchmark rows for
+the current cache families. Remaining work is guarded specialization and
+interpreting measured cache deltas:
 
 ```text
 preserve all runtime, host, reflection, GC, and hot-reload semantics
@@ -76,7 +78,7 @@ Cranelift JIT.
 | M18 | Complete enough | Quick and full/default baseline captures exist with environment metadata and checksums. |
 | M19 | Complete enough | Non-JIT interpreter and heap optimization has a recorded exit checkpoint. Accepted work includes GC pacing, direct heap aggregate construction, argument materialization/storage cleanup, borrowed receiver/runtime views, stdlib collection/string/Option/Result fast paths, scalar/equality/constant/peephole/range-loop lowering, small script-field and short-array construction, and expanded benchmark coverage. Remaining Lua 5.x deltas are measured and belong to M20 cache/specialization families rather than more unguarded M19 micro-optimization. |
 | M19.5 | Active | Primitive scalar, bytes, type-hint contract, and guard-plan checklist is complete and fully validated; remaining transition work is M20 cache-entry prep around measured dispatch/cache gaps. |
-| M20 | Active | Script record field read/write cache entries are guarded by record type, shape, and slot, host access caches resolved target plans by operation/schema epoch, native calls cache resolved pure/host/borrowed targets by function ID, linked method dispatch caches resolved targets by dispatch handle, broader stdlib value-method and callback targets cache receiver guards, runtime bytecode offset counters are scoped to the active image, and cache-enabled benchmark rows cover the current cache families with family-level counters; specialization and interpreter-vs-cache measurement remain. |
+| M20 | Active | Script record field read/write cache entries are guarded by record type, shape, and slot, host access caches resolved target plans by operation/schema epoch, native calls cache resolved pure/host/borrowed targets by function ID, linked method dispatch caches resolved targets by dispatch handle, broader stdlib value-method and callback targets cache receiver guards, runtime bytecode offset counters are scoped to the active image, and paired interpreter-only/cache-enabled benchmark rows cover the current cache families with family-level counters; specialization and measured delta interpretation remain. |
 | M21 | Not started | Debugger runtime hooks and DAP integration follow stable runtime/tooling contracts. |
 | M22 | Not started | Cranelift JIT follows interpreter/cache/debugger/conformance stability. |
 | M23 | Not started | Release hardening, public docs, validation gates, and performance targets. |
@@ -345,7 +347,7 @@ Cranelift JIT.
 
 ### Remaining Gaps
 
-- Remaining M19.5/M20 cache-entry gaps after the primitive refactor:
+- Current M19.5/M20 cache-entry status and remaining gaps after the primitive refactor:
   - hot script, stdlib, method, and host-boundary dispatch operands
     use IDs, slots, resolved targets, path keys, or an explicit remaining
     fallback reason;
@@ -372,10 +374,10 @@ Cranelift JIT.
     string/bytes method, Option/Result helper, callback collection/detail,
     direct-closure, and host-boundary aggregate/detail rows now consume those
     counters;
-  - interpreter-only benchmark rows identify which remaining costs belong to
-    M20 cache work versus later JIT work.
-- M20: continue guarded inline-cache specialization and interpreter-vs-cache
-  measurements for hot stdlib, callback, method, record, host-boundary, and
+  - paired interpreter-only and cache-enabled benchmark rows now identify which
+    remaining costs belong to M20 cache work versus later JIT work.
+- M20: continue guarded inline-cache specialization and measured delta
+  interpretation for hot stdlib, callback, method, record, host-boundary, and
   bytecode-offset paths. Cache misses, guard failures, hot reload, and schema
   ABI changes must fall back or invalidate without changing semantics.
 - Lua 5.x comparable performance remains a measured target for cache-enabled
