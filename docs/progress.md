@@ -76,7 +76,7 @@ Cranelift JIT.
 | M18 | Complete enough | Quick and full/default baseline captures exist with environment metadata and checksums. |
 | M19 | Complete enough | Non-JIT interpreter and heap optimization has a recorded exit checkpoint. Accepted work includes GC pacing, direct heap aggregate construction, argument materialization/storage cleanup, borrowed receiver/runtime views, stdlib collection/string/Option/Result fast paths, scalar/equality/constant/peephole/range-loop lowering, small script-field and short-array construction, and expanded benchmark coverage. Remaining Lua 5.x deltas are measured and belong to M20 cache/specialization families rather than more unguarded M19 micro-optimization. |
 | M19.5 | Active | Primitive scalar, bytes, type-hint contract, and guard-plan checklist is complete and fully validated; remaining transition work is M20 cache-entry prep around measured dispatch/cache gaps. |
-| M20 | Active | Script record field read/write cache entries are guarded by record type, shape, and slot, host access caches resolved target plans by operation/schema epoch, native calls cache resolved pure/host/borrowed targets by function ID, linked method dispatch caches resolved targets by dispatch handle, stdlib length/emptiness/predicate/bytes-accessor/bytes-materialization/Option/Result/map-fallback/string-option/string-transform targets cache receiver guards, and runtime bytecode offset counters are scoped to the active image; broader stdlib method caches and cache-enabled measurements remain. |
+| M20 | Active | Script record field read/write cache entries are guarded by record type, shape, and slot, host access caches resolved target plans by operation/schema epoch, native calls cache resolved pure/host/borrowed targets by function ID, linked method dispatch caches resolved targets by dispatch handle, broader stdlib value-method and callback targets cache receiver guards, runtime bytecode offset counters are scoped to the active image, and cache-enabled benchmark rows cover the current cache families; specialization and interpreter-vs-cache measurement remain. |
 | M21 | Not started | Debugger runtime hooks and DAP integration follow stable runtime/tooling contracts. |
 | M22 | Not started | Cranelift JIT follows interpreter/cache/debugger/conformance stability. |
 | M23 | Not started | Release hardening, public docs, validation gates, and performance targets. |
@@ -157,11 +157,10 @@ Cranelift JIT.
 - The remaining Lua 5.x deltas are concentrated in cache-shaped paths:
   script record fields use shape/slot representations, host field/path reads
   and writes use `HostTargetPlan` and resolved access boundaries, method
-  dispatch uses resolved targets, stdlib
-  length/emptiness/predicate/bytes-accessor/bytes-materialization/Option/Result/map-fallback/string-option/string-transform
-  dispatch has receiver-guarded targets, broader stdlib dispatch still needs
-  cache specialization, callback and closure calls need lower materialization
-  overhead, and hot bytecode offsets need cache-enabled measurement rows.
+  dispatch uses resolved targets, broader stdlib and callback dispatch has
+  receiver-guarded targets, callback and closure calls need lower
+  materialization overhead, and hot bytecode offsets need interpreter-vs-cache
+  measurement.
 - M19.5 has started with native call operands: compiled native calls can carry
   stable `FunctionId` metadata while preserving names for diagnostics and
   fallback, and Engine-installed plus standard native functions register ID
@@ -360,25 +359,25 @@ Cranelift JIT.
   - callback and closure allocation costs now have isolated quick and default
     baseline rows; M20 cache-enabled stdlib method, script-call, native-call,
     script record-field aggregate/detail, method-dispatch aggregate/detail,
-    collection lookup/view/aggregation/combination/mutation/materialization, string/bytes
-    method, Option/Result helper, callback collection/detail, direct-closure,
-    and host-boundary aggregate/detail rows separate warmed cache hits from
-    later JIT work, and broader cache-enabled rows remain;
+    collection lookup/view/aggregation/combination/mutation/materialization,
+    string/bytes method, Option/Result helper, callback collection/detail,
+    direct-closure, and host-boundary aggregate/detail rows separate warmed
+    cache hits from later JIT work;
   - verified-bytecode and runtime tests cover the invariants needed by later
     unchecked register, operand, and cache fast paths;
   - runtime bytecode offset counters cover linked hot offsets and hot-reload
     invalidation; cache-enabled stdlib, script-call, native-call, script
     record-field aggregate/detail, method-dispatch aggregate/detail,
-    collection lookup/view/aggregation/combination/mutation/materialization, string/bytes
-    method, Option/Result helper, callback collection/detail, direct-closure,
-    and host-boundary aggregate/detail rows now consume those counters, and
-    follow-on M20 work needs broader cache-enabled benchmark rows;
+    collection lookup/view/aggregation/combination/mutation/materialization,
+    string/bytes method, Option/Result helper, callback collection/detail,
+    direct-closure, and host-boundary aggregate/detail rows now consume those
+    counters;
   - interpreter-only benchmark rows identify which remaining costs belong to
     M20 cache work versus later JIT work.
-- M20: continue guarded inline caches and specialization for broader stdlib
-  value methods and hot bytecode offsets. Cache misses, guard failures, hot
-  reload, and schema ABI changes must fall back or invalidate without changing
-  semantics.
+- M20: continue guarded inline-cache specialization and interpreter-vs-cache
+  measurements for hot stdlib, callback, method, record, host-boundary, and
+  bytecode-offset paths. Cache misses, guard failures, hot reload, and schema
+  ABI changes must fall back or invalidate without changing semantics.
 - Lua 5.x comparable performance remains a measured target for cache-enabled
   non-JIT host-boundary workloads; scalar, array, string, function-call, and
   callback deltas should be tracked separately from host-boundary benchmarks.
