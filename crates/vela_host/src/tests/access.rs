@@ -35,6 +35,33 @@ fn read_target_reads_current_adapter_state() {
 }
 
 #[test]
+fn mock_adapter_resolves_named_global_refs() {
+    let host_ref = player_ref(3);
+    let mut adapter = MockStateAdapter::new();
+    adapter.insert_global_ref("main::state", host_ref);
+
+    assert_eq!(
+        adapter.global_ref(GlobalBinding {
+            name: "main::state",
+            slot: None,
+        }),
+        Ok(host_ref)
+    );
+    assert_eq!(
+        adapter
+            .global_ref(GlobalBinding {
+                name: "main::missing",
+                slot: None,
+            })
+            .expect_err("missing global should fail")
+            .kind,
+        HostErrorKind::MissingGlobal {
+            name: "main::missing".to_owned()
+        }
+    );
+}
+
+#[test]
 fn compound_write_validates_against_current_adapter_value() {
     let mut adapter = MockStateAdapter::new();
     let path = level_path();

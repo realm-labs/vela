@@ -784,6 +784,7 @@ fn run_host_access(
 ) -> Result<OwnedValue, Box<dyn Error>> {
     let player = HostRef::new(PLAYER_TYPE, PLAYER_OBJECT, PLAYER_GENERATION);
     let mut adapter = MockStateAdapter::new();
+    adapter.insert_global_ref("main::state", player);
     adapter.insert_diagnostic_path_value(
         HostPath::new(player).field(LEVEL_FIELD),
         HostValue::Scalar(vela_common::ScalarValue::I64(10)),

@@ -55,6 +55,19 @@ fn main(player: Player) {
 }
 "#;
 
+pub(crate) const HOST_GLOBAL_READ_WRITE_SOURCE: &str = r#"
+global state: Player;
+
+fn main(player: Player) {
+    let total = 0;
+    for tick in 0..32 {
+        state.level = tick + 1;
+        total += state.level + player.exp - player.exp;
+    }
+    return total;
+}
+"#;
+
 pub(crate) const HOST_NESTED_READ_WRITE_SOURCE: &str = r#"
 fn main(player: Player) {
     let total = 0;

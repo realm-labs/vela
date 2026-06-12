@@ -4,6 +4,7 @@ use vela_common::{HostMethodId, HostObjectId, HostTypeId};
 
 use crate::{
     access::{HostAccess, HostObjectSnapshot},
+    adapter::GlobalBinding,
     adapter::ScriptStateAdapter,
     add_values, div_values,
     error::{HostError, HostErrorKind, HostResult},
@@ -101,6 +102,7 @@ impl PartialEq<(HostPath, HostMethodId, Vec<HostValue>)> for MockMethodCall {
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct MockStateAdapter {
+    globals: BTreeMap<String, HostRef>,
     objects: BTreeMap<HostObjectKey, u32>,
     values: BTreeMap<MockValueKey, HostValue>,
     method_returns: BTreeMap<HostMethodId, HostValue>,
@@ -114,6 +116,7 @@ pub struct MockStateAdapter {
 impl Default for MockStateAdapter {
     fn default() -> Self {
         Self {
+            globals: BTreeMap::new(),
             objects: BTreeMap::new(),
             values: BTreeMap::new(),
             method_returns: BTreeMap::new(),
@@ -134,6 +137,11 @@ impl MockStateAdapter {
 
     pub fn insert_diagnostic_path_value(&mut self, path: HostPath, value: HostValue) {
         self.insert_value_key(MockValueKey::from_diagnostic_path(&path), value);
+    }
+
+    pub fn insert_global_ref(&mut self, name: impl Into<String>, host_ref: HostRef) {
+        self.insert_object(host_ref);
+        self.globals.insert(name.into(), host_ref);
     }
 
     pub fn insert_value_key(&mut self, key: MockValueKey, value: HostValue) {
@@ -245,6 +253,14 @@ impl MockStateAdapter {
 impl ScriptStateAdapter for MockStateAdapter {
     fn host_schema_epoch(&self) -> HostSchemaEpoch {
         self.schema_epoch
+    }
+
+    fn global_ref(&self, global: GlobalBinding<'_>) -> HostResult<HostRef> {
+        self.globals.get(global.name).copied().ok_or_else(|| {
+            HostError::new(HostErrorKind::MissingGlobal {
+                name: global.name.to_owned(),
+            })
+        })
     }
 
     fn resolve_host_access(&self, _spec: HostAccessSpec<'_>) -> HostResult<ResolvedHostAccess> {
