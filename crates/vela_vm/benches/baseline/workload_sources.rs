@@ -18,6 +18,7 @@ pub(crate) use sets::{
 };
 pub(crate) use strings::{
     STRING_METHODS_SOURCE, STRING_OPTIONS_SOURCE, STRING_PARSING_SOURCE, STRING_SPLITTING_SOURCE,
+    STRING_TRANSFORMS_SOURCE,
 };
 
 pub(crate) const STDLIB_COLLECTIONS_SOURCE: &str = r#"

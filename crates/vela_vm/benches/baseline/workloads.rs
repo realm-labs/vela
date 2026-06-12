@@ -14,7 +14,8 @@ use crate::workload_sources::{
     SCRIPT_CALL_SMALL_ARGS_SOURCE, SCRIPT_CALL_WIDE_ARGS_SOURCE, SCRIPT_METHOD_DISPATCH_SOURCE,
     SET_CALLBACK_PREDICATES_SOURCE, SET_COMBINATION_SOURCE, SET_LOOKUP_SOURCE, SET_MUTATION_SOURCE,
     SET_VALUES_SOURCE, STDLIB_COLLECTIONS_SOURCE, STRING_METHODS_SOURCE, STRING_OPTIONS_SOURCE,
-    STRING_PARSING_SOURCE, STRING_SPLITTING_SOURCE, TRAIT_METHOD_DISPATCH_SOURCE,
+    STRING_PARSING_SOURCE, STRING_SPLITTING_SOURCE, STRING_TRANSFORMS_SOURCE,
+    TRAIT_METHOD_DISPATCH_SOURCE,
 };
 
 pub(crate) struct Workload {
@@ -154,6 +155,16 @@ fn main() {
         name: "string_methods_cache_hot_offsets",
         mode: ExecutionMode::CacheEnabled,
         source: STRING_METHODS_SOURCE,
+    },
+    Workload {
+        name: "managed_heap_string_transforms",
+        mode: ExecutionMode::ManagedHeap,
+        source: STRING_TRANSFORMS_SOURCE,
+    },
+    Workload {
+        name: "string_transforms_cache_hot_offsets",
+        mode: ExecutionMode::CacheEnabled,
+        source: STRING_TRANSFORMS_SOURCE,
     },
     Workload {
         name: "managed_heap_string_splitting",

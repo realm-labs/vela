@@ -53,6 +53,36 @@ fn main() {
 }
 "#;
 
+pub(crate) const STRING_TRANSFORMS_SOURCE: &str = r#"
+fn main() {
+    let total = 0;
+    for tick in 0..96 {
+        let lower = "ALPHA.beta".to_lower();
+        let upper = "alpha.beta".to_upper();
+        let trimmed = "  signal.ready  ".trim();
+        let trimmed_start = "  signal.ready".trim_start();
+        let trimmed_end = "signal.ready  ".trim_end();
+
+        if lower != "alpha.beta"
+            || upper != "ALPHA.BETA"
+            || trimmed != "signal.ready"
+            || trimmed_start != "signal.ready"
+            || trimmed_end != "signal.ready"
+        {
+            return 0;
+        }
+
+        total += lower.len()
+            + upper.len()
+            + trimmed.len()
+            + trimmed_start.len()
+            + trimmed_end.len()
+            + tick - tick;
+    }
+    return total;
+}
+"#;
+
 pub(crate) const STRING_SPLITTING_SOURCE: &str = r#"
 fn main() {
     let total = 0;
