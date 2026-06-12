@@ -158,6 +158,15 @@ pub(crate) fn standard_cache_entry(
         (StandardMethodReceiver::Array, id) if id == ids.array_pop => {
             StandardMethodInlineCacheTarget::Pop
         }
+        (StandardMethodReceiver::Array, id) if id == ids.array_insert => {
+            StandardMethodInlineCacheTarget::Insert
+        }
+        (StandardMethodReceiver::Array, id) if id == ids.array_remove_at => {
+            StandardMethodInlineCacheTarget::RemoveAt
+        }
+        (StandardMethodReceiver::Array, id) if id == ids.array_clear => {
+            StandardMethodInlineCacheTarget::Clear
+        }
         (StandardMethodReceiver::Array, id) if id == ids.array_reverse => {
             StandardMethodInlineCacheTarget::Reverse
         }
@@ -380,6 +389,28 @@ pub(crate) fn call_standard_cached(
                 heap.as_deref_mut(),
                 budget.as_deref_mut(),
             )
+        }
+        (StandardMethodReceiver::Array, StandardMethodInlineCacheTarget::Insert) => {
+            let mut receiver = *receiver;
+            array_methods::insert(
+                &mut receiver,
+                args,
+                heap.as_deref_mut(),
+                budget.as_deref_mut(),
+            )
+        }
+        (StandardMethodReceiver::Array, StandardMethodInlineCacheTarget::RemoveAt) => {
+            let mut receiver = *receiver;
+            array_methods::remove_at(
+                &mut receiver,
+                args,
+                heap.as_deref_mut(),
+                budget.as_deref_mut(),
+            )
+        }
+        (StandardMethodReceiver::Array, StandardMethodInlineCacheTarget::Clear) => {
+            let mut receiver = *receiver;
+            array_methods::clear(&mut receiver, args, heap.as_deref_mut())
         }
         (StandardMethodReceiver::Array, StandardMethodInlineCacheTarget::Reverse) => {
             array_methods::reverse(receiver, args, heap, budget)

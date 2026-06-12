@@ -253,6 +253,18 @@ pub(super) fn linked_array_pop_cache_program() -> LinkedMethodCacheFixture {
     linked_array_i64_call_cache_program("pop", &[2, 4], 2, &[])
 }
 
+pub(super) fn linked_array_insert_cache_program() -> LinkedMethodCacheFixture {
+    linked_array_i64_call_cache_program("insert", &[2, 1, 9], 1, &[1, 2])
+}
+
+pub(super) fn linked_array_remove_at_cache_program() -> LinkedMethodCacheFixture {
+    linked_array_i64_call_cache_program("remove_at", &[2, 4, 1], 2, &[2])
+}
+
+pub(super) fn linked_array_clear_cache_program() -> LinkedMethodCacheFixture {
+    linked_array_i64_call_cache_program("clear", &[2, 4], 2, &[])
+}
+
 pub(super) fn linked_array_reverse_cache_program() -> LinkedMethodCacheFixture {
     linked_array_i64_call_cache_program("reverse", &[2, 4, 6], 3, &[])
 }
