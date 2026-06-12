@@ -103,6 +103,10 @@ fn call_cached_set_extend(
         set_slots(heap, reference, "method extend")?;
         return Ok(Value::Null);
     }
+    if set_slots(heap, extension_reference, "method extend")?.is_empty() {
+        set_slots(heap, reference, "method extend")?;
+        return Ok(Value::Null);
+    }
     let extension = set_slot_values(heap, extension_reference, "method extend")?;
     let mut keys = set_slots(heap, reference, "method extend")?
         .iter()

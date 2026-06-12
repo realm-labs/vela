@@ -85,6 +85,27 @@ fn linked_standard_value_method_caches_set_self_extend_target() {
 }
 
 #[test]
+fn linked_standard_value_method_caches_set_empty_extend_target() {
+    let (program, site, dispatch, method_id) =
+        linked_set_extend_return_receiver_cache_program(&[2, 4], &[]);
+    let caches = RecordingMethodCaches::new(1);
+    let expected = Ok(OwnedValue::set([OwnedValue::i64(2), OwnedValue::i64(4)]));
+
+    assert_eq!(
+        run_linked_set_cache_owned_program(&program, &caches),
+        expected
+    );
+    assert_set_cache_entry(
+        &caches,
+        site,
+        dispatch,
+        method_id,
+        StandardMethodInlineCacheTarget::Extend,
+    );
+    assert_eq!(caches.set_count(), 2);
+}
+
+#[test]
 fn linked_standard_value_method_caches_set_union_target() {
     assert_set_owned_cache(
         linked_set_combination_cache_program("union", &[2, 4], &[4, 6]),
@@ -380,6 +401,22 @@ fn linked_set_combination_cache_program(
     receiver_values: &[i64],
     other_values: &[i64],
 ) -> LinkedSetCacheFixture {
+    linked_set_combination_cache_program_with_return(method, receiver_values, other_values, false)
+}
+
+fn linked_set_extend_return_receiver_cache_program(
+    receiver_values: &[i64],
+    other_values: &[i64],
+) -> LinkedSetCacheFixture {
+    linked_set_combination_cache_program_with_return("extend", receiver_values, other_values, true)
+}
+
+fn linked_set_combination_cache_program_with_return(
+    method: &str,
+    receiver_values: &[i64],
+    other_values: &[i64],
+    return_receiver: bool,
+) -> LinkedSetCacheFixture {
     let method_id = vela_stdlib::std_method_id("Set", method).expect("Set method id");
     let mut program = vela_bytecode::LinkedProgram::new();
     let main_name = program.intern_debug_name("main");
@@ -452,8 +489,15 @@ fn linked_set_combination_cache_program(
             args: vec![vela_bytecode::CallArgument::Register(other_set)],
         },
     ));
+    let return_register = if return_receiver {
+        receiver_set
+    } else {
+        result
+    };
     code.push_instruction(vela_bytecode::linked::Instruction::new(
-        vela_bytecode::linked::InstructionKind::Return { src: result },
+        vela_bytecode::linked::InstructionKind::Return {
+            src: return_register,
+        },
     ));
     let function = program.push_function(code);
     program.set_entry_point(main_name, function);
