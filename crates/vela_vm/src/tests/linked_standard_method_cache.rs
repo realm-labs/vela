@@ -327,6 +327,29 @@ fn linked_standard_value_method_caches_bytes_slice_target() {
 }
 
 #[test]
+fn linked_standard_value_method_cached_bytes_slice_rejects_out_of_bounds() {
+    let (program, site, _, _) = linked_bytes_slice_oob_cache_program();
+    let caches = RecordingMethodCaches::new(1);
+
+    let error = run_linked_method_cache_owned_program(&program, &caches)
+        .expect_err("out-of-bounds bytes slice should fail");
+    assert_eq!(
+        error.kind(),
+        VmErrorKind::IndexOutOfBounds { index: 5, len: 4 }
+    );
+    assert!(caches.entry(site).is_some());
+    let populated_set_count = caches.set_count();
+
+    let error = run_linked_method_cache_owned_program(&program, &caches)
+        .expect_err("cached out-of-bounds bytes slice should fail");
+    assert_eq!(
+        error.kind(),
+        VmErrorKind::IndexOutOfBounds { index: 5, len: 4 }
+    );
+    assert_eq!(caches.set_count(), populated_set_count);
+}
+
+#[test]
 fn linked_standard_value_method_caches_bytes_to_hex_target() {
     let (program, site, dispatch, method_id) = linked_bytes_to_hex_cache_program();
     let caches = RecordingMethodCaches::new(1);

@@ -862,6 +862,27 @@ pub(super) fn linked_bytes_slice_cache_program() -> (
     vela_bytecode::MethodDispatchHandle,
     vela_def::MethodId,
 ) {
+    linked_bytes_slice_cache_program_with_bounds(1, 3)
+}
+
+pub(super) fn linked_bytes_slice_oob_cache_program() -> (
+    vela_bytecode::LinkedProgram,
+    CacheSiteId,
+    vela_bytecode::MethodDispatchHandle,
+    vela_def::MethodId,
+) {
+    linked_bytes_slice_cache_program_with_bounds(1, 5)
+}
+
+fn linked_bytes_slice_cache_program_with_bounds(
+    start_index: i64,
+    end_index: i64,
+) -> (
+    vela_bytecode::LinkedProgram,
+    CacheSiteId,
+    vela_bytecode::MethodDispatchHandle,
+    vela_def::MethodId,
+) {
     let method_id = vela_stdlib::std_method_id("Bytes", "slice").expect("Bytes::slice method id");
     let mut program = vela_bytecode::LinkedProgram::new();
     let main_name = program.intern_debug_name("main");
@@ -873,8 +894,8 @@ pub(super) fn linked_bytes_slice_cache_program() -> (
 
     let mut code = vela_bytecode::LinkedCodeObject::new(main_name, 4);
     let receiver = code.push_constant(Constant::Bytes(vec![13, 21, 34, 55]));
-    let start = code.push_constant(Constant::Scalar(vela_common::ScalarValue::I64(1)));
-    let end = code.push_constant(Constant::Scalar(vela_common::ScalarValue::I64(3)));
+    let start = code.push_constant(Constant::Scalar(vela_common::ScalarValue::I64(start_index)));
+    let end = code.push_constant(Constant::Scalar(vela_common::ScalarValue::I64(end_index)));
     code.push_instruction(vela_bytecode::linked::Instruction::new(
         vela_bytecode::linked::InstructionKind::LoadConst {
             dst: Register(0),

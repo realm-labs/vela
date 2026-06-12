@@ -212,6 +212,52 @@ pub(super) fn call_cached_string_array(
     )
 }
 
+pub(super) fn call_cached_bytes_materialization(
+    receiver: &Value,
+    target: StandardMethodInlineCacheTarget,
+    args: &[Value],
+    heap: &mut Option<&mut HeapExecution<'_>>,
+    budget: &mut Option<&mut ExecutionBudget>,
+) -> Option<VmResult<Value>> {
+    match target {
+        StandardMethodInlineCacheTarget::Slice => {
+            let payload = {
+                let value = match crate::bytes_methods::bytes_value(
+                    receiver,
+                    heap.as_deref(),
+                    "method slice",
+                ) {
+                    Ok(value) => value,
+                    Err(error) => return Some(Err(error)),
+                };
+                match crate::bytes_methods::slice_payload(value, args) {
+                    Ok(payload) => payload,
+                    Err(error) => return Some(Err(error)),
+                }
+            };
+            Some(make_bytes(payload, heap, budget, "method slice"))
+        }
+        StandardMethodInlineCacheTarget::ToHex => {
+            let payload = {
+                let value = match crate::bytes_methods::bytes_value(
+                    receiver,
+                    heap.as_deref(),
+                    "method to_hex",
+                ) {
+                    Ok(value) => value,
+                    Err(error) => return Some(Err(error)),
+                };
+                match crate::bytes_methods::to_hex_payload(value, args) {
+                    Ok(payload) => payload,
+                    Err(error) => return Some(Err(error)),
+                }
+            };
+            Some(make_string(payload, heap, budget, "method to_hex"))
+        }
+        _ => None,
+    }
+}
+
 pub(super) fn call_cached_string_transform(
     receiver: &Value,
     target: StandardMethodInlineCacheTarget,
@@ -531,6 +577,18 @@ fn make_array(
         return Err(VmError::new(VmErrorKind::TypeMismatch { operation }));
     };
     allocate_heap_value(HeapValue::Array(value), heap, budget.as_deref_mut())
+}
+
+fn make_bytes(
+    value: Vec<u8>,
+    heap: &mut Option<&mut HeapExecution<'_>>,
+    budget: &mut Option<&mut ExecutionBudget>,
+    operation: &'static str,
+) -> VmResult<Value> {
+    let Some(heap) = heap.as_deref_mut() else {
+        return Err(VmError::new(VmErrorKind::TypeMismatch { operation }));
+    };
+    allocate_heap_value(HeapValue::Bytes(value), heap, budget.as_deref_mut())
 }
 
 fn make_string(

@@ -57,14 +57,8 @@ pub(crate) fn slice(
     heap: &mut Option<&mut HeapExecution<'_>>,
     budget: &mut Option<&mut ExecutionBudget>,
 ) -> VmResult<Value> {
-    expect_arity("slice", args, 2)?;
     let value = bytes_value(receiver, heap.as_deref(), "method slice")?;
-    let start = byte_index(&args[0], value.len(), "method slice")?;
-    let end = byte_index(&args[1], value.len(), "method slice")?;
-    if start > end {
-        return type_error("method slice range");
-    }
-    let value = value[start..end].to_vec();
+    let value = slice_payload(value, args)?;
     make_bytes(value, heap, budget, "method slice")
 }
 
@@ -90,14 +84,35 @@ pub(crate) fn to_hex(
     heap: &mut Option<&mut HeapExecution<'_>>,
     budget: &mut Option<&mut ExecutionBudget>,
 ) -> VmResult<Value> {
-    expect_arity("to_hex", args, 0)?;
     let value = bytes_value(receiver, heap.as_deref(), "method to_hex")?;
+    let text = to_hex_payload(value, args)?;
+    make_string(text, heap, budget, "method to_hex")
+}
+
+pub(crate) fn slice_payload(value: &[u8], args: &[Value]) -> VmResult<Vec<u8>> {
+    expect_arity("slice", args, 2)?;
+    let start = byte_index(&args[0], value.len(), "method slice")?;
+    let end = byte_index(&args[1], value.len(), "method slice")?;
+    if start > end {
+        return type_error("method slice range");
+    }
+    if start > value.len() {
+        return Err(index_out_of_bounds(start, value.len()));
+    }
+    if end > value.len() {
+        return Err(index_out_of_bounds(end, value.len()));
+    }
+    Ok(value[start..end].to_vec())
+}
+
+pub(crate) fn to_hex_payload(value: &[u8], args: &[Value]) -> VmResult<String> {
+    expect_arity("to_hex", args, 0)?;
     let mut text = String::with_capacity(value.len() * 2);
     for byte in value {
         use std::fmt::Write as _;
         write!(&mut text, "{byte:02x}").expect("writing to String cannot fail");
     }
-    make_string(text, heap, budget, "method to_hex")
+    Ok(text)
 }
 
 pub(crate) fn from_hex(args: &[OwnedValue]) -> VmResult<OwnedValue> {
@@ -139,7 +154,7 @@ fn read_u32(
     Ok(Value::Scalar(ScalarValue::U32(read(bytes))))
 }
 
-fn bytes_value<'a>(
+pub(crate) fn bytes_value<'a>(
     value: &'a Value,
     heap: Option<&'a HeapExecution<'_>>,
     operation: &'static str,
