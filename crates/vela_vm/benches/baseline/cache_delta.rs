@@ -21,10 +21,13 @@ pub(crate) fn print(records: &[Record]) {
         if !record.cache_enabled {
             continue;
         }
-        let Some(base_name) = record.name.strip_suffix("_cache_hot_offsets") else {
+        let Some(base_name) = cache_delta_base_name(record.name, &by_name) else {
             continue;
         };
-        let Some(base) = by_name.get(base_name).and_then(|index| records.get(*index)) else {
+        let Some(base) = by_name
+            .get(base_name.as_str())
+            .and_then(|index| records.get(*index))
+        else {
             continue;
         };
         println!(
@@ -40,6 +43,15 @@ pub(crate) fn print(records: &[Record]) {
             record.profile_hits
         );
     }
+}
+
+fn cache_delta_base_name(name: &str, by_name: &BTreeMap<&'static str, usize>) -> Option<String> {
+    let base = name.strip_suffix("_cache_hot_offsets")?;
+    let explicit_hot_offsets = format!("{base}_hot_offsets");
+    if by_name.contains_key(explicit_hot_offsets.as_str()) {
+        return Some(explicit_hot_offsets);
+    }
+    Some(base.to_owned())
 }
 
 fn signed_delta(value: u128, base: u128) -> i128 {
