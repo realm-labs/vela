@@ -31,8 +31,15 @@ pub(crate) fn print(records: &[Record]) {
         else {
             continue;
         };
+        let delta_kind = if record.cache_hits > 0 {
+            "cache"
+        } else if record.profile_hits > 0 {
+            "profile_only"
+        } else {
+            "no_activity"
+        };
         println!(
-            "cache_delta bench={} base={} mean_delta_ns={} min_delta_ns={} median_delta_ns={} p95_delta_ns={} mean_ratio_ppm={} checksum_match={} cache_hits={} profile_hits={}",
+            "cache_delta bench={} base={} mean_delta_ns={} min_delta_ns={} median_delta_ns={} p95_delta_ns={} mean_ratio_ppm={} checksum_match={} delta_kind={} cache_hits={} profile_hits={}",
             record.name,
             base.name,
             signed_delta(record.mean_ns, base.mean_ns),
@@ -41,6 +48,7 @@ pub(crate) fn print(records: &[Record]) {
             signed_delta(record.p95_ns, base.p95_ns),
             ratio_ppm(record.mean_ns, base.mean_ns),
             record.checksum == base.checksum,
+            delta_kind,
             record.cache_hits,
             record.profile_hits
         );
