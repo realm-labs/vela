@@ -307,10 +307,33 @@ pub enum MethodInlineCacheTarget {
     },
     Value {
         method_id: MethodId,
+        standard_method: Option<StandardMethodInlineCacheEntry>,
     },
     Host {
         method_id: HostMethodId,
     },
+}
+
+#[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
+pub struct StandardMethodInlineCacheEntry {
+    pub receiver: StandardMethodReceiver,
+    pub target: StandardMethodInlineCacheTarget,
+}
+
+#[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
+pub enum StandardMethodReceiver {
+    String,
+    Bytes,
+    Range,
+    Array,
+    Map,
+    Set,
+}
+
+#[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
+pub enum StandardMethodInlineCacheTarget {
+    Len,
+    IsEmpty,
 }
 
 pub struct LinkedRuntimeCodeCall<'program, 'args, 'host, 'heap, 'roots, 'budget, 'caches> {

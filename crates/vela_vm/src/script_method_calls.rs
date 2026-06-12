@@ -14,7 +14,7 @@ use crate::{
 };
 use crate::{
     MethodInlineCacheEntry, MethodInlineCacheTarget, VmBytecodeProfiler, VmError, VmErrorKind,
-    VmInlineCaches, host_access, script_function_calls,
+    VmInlineCaches, host_access, script_builtin_methods, script_function_calls,
 };
 
 use crate::script_methods::{
@@ -336,25 +336,47 @@ pub(crate) fn dispatch_linked_method_call(
                 values,
             },
         ),
-        MethodInlineCacheTarget::Value { method_id } => dispatch_linked_method_id_call(
-            vm,
-            LinkedMethodRuntimeContext {
-                program: context.program,
-                inline_caches: context.inline_caches,
-                bytecode_profiler: context.bytecode_profiler,
-            },
-            host,
-            heap,
-            budget,
-            frame,
-            ScriptMethodIdCall {
-                dst: call.dst,
-                receiver: call.receiver,
-                method: context.program.debug_name(dispatch.debug_name),
-                method_id,
-                values,
-            },
-        ),
+        MethodInlineCacheTarget::Value {
+            method_id,
+            standard_method,
+        } => {
+            if let Some(result) = linked_standard_value_method_result(
+                &context,
+                frame,
+                heap.as_deref(),
+                LinkedStandardValueMethodCall {
+                    dispatch: call.dispatch,
+                    debug_name: dispatch.debug_name,
+                    receiver: call.receiver,
+                    method_id,
+                    standard_method,
+                    values,
+                },
+            ) {
+                let result = result?;
+                frame.write(call.dst, result)?;
+                return Ok(());
+            }
+            dispatch_linked_method_id_call(
+                vm,
+                LinkedMethodRuntimeContext {
+                    program: context.program,
+                    inline_caches: context.inline_caches,
+                    bytecode_profiler: context.bytecode_profiler,
+                },
+                host,
+                heap,
+                budget,
+                frame,
+                ScriptMethodIdCall {
+                    dst: call.dst,
+                    receiver: call.receiver,
+                    method: context.program.debug_name(dispatch.debug_name),
+                    method_id,
+                    values,
+                },
+            )
+        }
         MethodInlineCacheTarget::Host { method_id } => {
             let return_value = host_access::execute_host_root_method_call(
                 host_access::HostAccessRuntime {
@@ -442,11 +464,64 @@ fn method_inline_cache_target(kind: &LinkedMethodDispatchKind) -> MethodInlineCa
         },
         LinkedMethodDispatchKind::Value { method_id } => MethodInlineCacheTarget::Value {
             method_id: *method_id,
+            standard_method: None,
         },
         LinkedMethodDispatchKind::Host { method_id } => MethodInlineCacheTarget::Host {
             method_id: *method_id,
         },
     }
+}
+
+struct LinkedStandardValueMethodCall<'a> {
+    dispatch: MethodDispatchHandle,
+    debug_name: DebugNameId,
+    receiver: Register,
+    method_id: MethodId,
+    standard_method: Option<crate::StandardMethodInlineCacheEntry>,
+    values: &'a [Value],
+}
+
+fn linked_standard_value_method_result(
+    context: &LinkedScriptMethodCallContext<'_>,
+    frame: &CallFrame,
+    heap: Option<&HeapExecution<'_>>,
+    call: LinkedStandardValueMethodCall<'_>,
+) -> Option<VmResult<Value>> {
+    let receiver = match frame.read(call.receiver) {
+        Ok(receiver) => receiver,
+        Err(error) => return Some(Err(error)),
+    };
+    if let Some(standard_method) = call.standard_method
+        && let Some(result) = script_builtin_methods::call_readonly_cached(
+            receiver,
+            standard_method,
+            call.values,
+            heap,
+        )
+    {
+        return Some(result);
+    }
+    let standard_method =
+        script_builtin_methods::readonly_cache_entry(call.method_id, receiver, heap)?;
+    let result =
+        script_builtin_methods::call_readonly_cached(receiver, standard_method, call.values, heap)
+            .expect("resolved standard method cache entry should match receiver");
+    if let Some(site) = context.cache_site
+        && let Some(caches) = context.inline_caches
+    {
+        caches.set_method_dispatch(
+            site,
+            MethodInlineCacheEntry {
+                dispatch: call.dispatch,
+                debug_name: call.debug_name,
+                target: MethodInlineCacheTarget::Value {
+                    method_id: call.method_id,
+                    standard_method: Some(standard_method),
+                },
+            },
+        );
+    }
+    Some(result)
 }
 
 struct ScriptLinkedMethodCall<'a> {

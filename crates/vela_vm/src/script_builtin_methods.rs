@@ -1,8 +1,9 @@
 use crate::heap::HeapValue;
 use crate::std_method_ids::std_method_ids;
 use crate::{
-    ExecutionBudget, HeapExecution, Value, VmError, VmErrorKind, VmResult, array_methods,
-    bytes_methods, map_methods, option_result_methods, set_methods,
+    ExecutionBudget, HeapExecution, StandardMethodInlineCacheEntry,
+    StandardMethodInlineCacheTarget, StandardMethodReceiver, Value, VmError, VmErrorKind, VmResult,
+    array_methods, bytes_methods, map_methods, option_result_methods, set_methods,
 };
 use vela_def::MethodId;
 
@@ -547,6 +548,103 @@ pub(crate) fn call_readonly_by_id(
         return Some(option_result_methods::unwrap_or(receiver, args, heap));
     }
     None
+}
+
+pub(crate) fn readonly_cache_entry(
+    method_id: MethodId,
+    receiver: &Value,
+    heap: Option<&HeapExecution<'_>>,
+) -> Option<StandardMethodInlineCacheEntry> {
+    let ids = std_method_ids();
+    let receiver = if crate::string_methods::is_string(receiver, heap) {
+        StandardMethodReceiver::String
+    } else if bytes_methods::is_bytes(receiver, heap) {
+        StandardMethodReceiver::Bytes
+    } else if matches!(receiver, Value::Range(_)) {
+        StandardMethodReceiver::Range
+    } else if array_methods::is_array(receiver, heap) {
+        StandardMethodReceiver::Array
+    } else if map_methods::is_map(receiver, heap) {
+        StandardMethodReceiver::Map
+    } else if set_methods::is_set(receiver, heap) {
+        StandardMethodReceiver::Set
+    } else {
+        return None;
+    };
+    let target = match (receiver, method_id) {
+        (StandardMethodReceiver::String, id) if id == ids.string_len => {
+            StandardMethodInlineCacheTarget::Len
+        }
+        (StandardMethodReceiver::String, id) if id == ids.string_is_empty => {
+            StandardMethodInlineCacheTarget::IsEmpty
+        }
+        (StandardMethodReceiver::Bytes, id) if id == ids.bytes_len => {
+            StandardMethodInlineCacheTarget::Len
+        }
+        (StandardMethodReceiver::Bytes, id) if id == ids.bytes_is_empty => {
+            StandardMethodInlineCacheTarget::IsEmpty
+        }
+        (StandardMethodReceiver::Range, id) if id == ids.range_len => {
+            StandardMethodInlineCacheTarget::Len
+        }
+        (StandardMethodReceiver::Range, id) if id == ids.range_is_empty => {
+            StandardMethodInlineCacheTarget::IsEmpty
+        }
+        (StandardMethodReceiver::Array, id) if id == ids.array_len => {
+            StandardMethodInlineCacheTarget::Len
+        }
+        (StandardMethodReceiver::Array, id) if id == ids.array_is_empty => {
+            StandardMethodInlineCacheTarget::IsEmpty
+        }
+        (StandardMethodReceiver::Map, id) if id == ids.map_len => {
+            StandardMethodInlineCacheTarget::Len
+        }
+        (StandardMethodReceiver::Map, id) if id == ids.map_is_empty => {
+            StandardMethodInlineCacheTarget::IsEmpty
+        }
+        (StandardMethodReceiver::Set, id) if id == ids.set_len => {
+            StandardMethodInlineCacheTarget::Len
+        }
+        (StandardMethodReceiver::Set, id) if id == ids.set_is_empty => {
+            StandardMethodInlineCacheTarget::IsEmpty
+        }
+        _ => return None,
+    };
+    Some(StandardMethodInlineCacheEntry { receiver, target })
+}
+
+pub(crate) fn call_readonly_cached(
+    receiver: &Value,
+    cache: StandardMethodInlineCacheEntry,
+    args: &[Value],
+    heap: Option<&HeapExecution<'_>>,
+) -> Option<VmResult<Value>> {
+    if !receiver_matches_cache(receiver, cache.receiver, heap) {
+        return None;
+    }
+    let result = match cache.target {
+        StandardMethodInlineCacheTarget::Len => {
+            expect_no_args("len", args).and_then(|()| len(receiver, heap).map(Value::i64))
+        }
+        StandardMethodInlineCacheTarget::IsEmpty => expect_no_args("is_empty", args)
+            .and_then(|()| is_empty(receiver, heap).map(Value::Bool)),
+    };
+    Some(result)
+}
+
+fn receiver_matches_cache(
+    receiver: &Value,
+    cached: StandardMethodReceiver,
+    heap: Option<&HeapExecution<'_>>,
+) -> bool {
+    match cached {
+        StandardMethodReceiver::String => crate::string_methods::is_string(receiver, heap),
+        StandardMethodReceiver::Bytes => bytes_methods::is_bytes(receiver, heap),
+        StandardMethodReceiver::Range => matches!(receiver, Value::Range(_)),
+        StandardMethodReceiver::Array => array_methods::is_array(receiver, heap),
+        StandardMethodReceiver::Map => map_methods::is_map(receiver, heap),
+        StandardMethodReceiver::Set => set_methods::is_set(receiver, heap),
+    }
 }
 
 fn call_bytes_by_name(

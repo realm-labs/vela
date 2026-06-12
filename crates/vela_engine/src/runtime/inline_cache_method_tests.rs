@@ -89,6 +89,7 @@ fn read_bonus() {
             debug_name: call.debug_name,
             target: MethodInlineCacheTarget::Value {
                 method_id: MethodId::new(0),
+                standard_method: None,
             },
         },
     );
