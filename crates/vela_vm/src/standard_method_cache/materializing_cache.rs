@@ -66,6 +66,28 @@ pub(super) fn call_cached_array_lookup_option(
     Some(make_option(payload, heap, budget))
 }
 
+pub(super) fn call_cached_array_materialization(
+    receiver: &Value,
+    target: StandardMethodInlineCacheTarget,
+    args: &[Value],
+    heap: &mut Option<&mut HeapExecution<'_>>,
+    budget: &mut Option<&mut ExecutionBudget>,
+) -> Option<VmResult<Value>> {
+    match target {
+        StandardMethodInlineCacheTarget::Slice => {
+            let payload = {
+                let slots = array_slots(receiver, heap.as_deref(), "method slice")?;
+                match array_slice_payload(slots, args) {
+                    Ok(payload) => payload,
+                    Err(error) => return Some(Err(error)),
+                }
+            };
+            Some(make_array(payload, heap, budget, "method slice"))
+        }
+        _ => None,
+    }
+}
+
 pub(super) fn call_cached_map_get_option(
     receiver: &Value,
     args: &[Value],
@@ -354,6 +376,34 @@ fn index_value(index: usize) -> VmResult<Value> {
         })
     })?;
     Ok(Value::Scalar(ScalarValue::I64(index)))
+}
+
+fn array_slice_payload(values: &[Value], args: &[Value]) -> VmResult<Vec<Value>> {
+    crate::runtime_checks::expect_arity("slice", args, 2)?;
+    let start = array_index_value(&args[0], "method slice")?;
+    let end = array_index_value(&args[1], "method slice")?;
+    if start > end {
+        return Err(VmError::new(VmErrorKind::TypeMismatch {
+            operation: "method slice",
+        }));
+    }
+    if start > values.len() {
+        return Err(index_out_of_bounds(start, values.len()));
+    }
+    if end > values.len() {
+        return Err(index_out_of_bounds(end, values.len()));
+    }
+    Ok(values[start..end]
+        .iter()
+        .map(stored_runtime_value)
+        .collect())
+}
+
+fn array_index_value(value: &Value, operation: &'static str) -> VmResult<usize> {
+    match value {
+        Value::Scalar(ScalarValue::I64(value)) if *value >= 0 => Ok(*value as usize),
+        _ => Err(VmError::new(VmErrorKind::TypeMismatch { operation })),
+    }
 }
 
 fn parse_int_payload(value: &str) -> Option<Value> {
