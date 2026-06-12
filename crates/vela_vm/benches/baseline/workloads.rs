@@ -603,6 +603,11 @@ fn main() {
         source: MAP_LOOKUP_SOURCE,
     },
     Workload {
+        name: "map_lookup",
+        mode: ExecutionMode::Inline,
+        source: MAP_LOOKUP_SOURCE,
+    },
+    Workload {
         name: "map_lookup_cache_hot_offsets",
         mode: ExecutionMode::CacheEnabled,
         source: MAP_LOOKUP_SOURCE,
@@ -610,6 +615,11 @@ fn main() {
     Workload {
         name: "managed_heap_map_views",
         mode: ExecutionMode::ManagedHeap,
+        source: MAP_VIEWS_SOURCE,
+    },
+    Workload {
+        name: "map_views",
+        mode: ExecutionMode::Inline,
         source: MAP_VIEWS_SOURCE,
     },
     Workload {
@@ -623,6 +633,11 @@ fn main() {
         source: MAP_MUTATION_SOURCE,
     },
     Workload {
+        name: "map_mutation",
+        mode: ExecutionMode::Inline,
+        source: MAP_MUTATION_SOURCE,
+    },
+    Workload {
         name: "map_mutation_cache_hot_offsets",
         mode: ExecutionMode::CacheEnabled,
         source: MAP_MUTATION_SOURCE,
@@ -633,6 +648,11 @@ fn main() {
         source: MAP_MERGE_SOURCE,
     },
     Workload {
+        name: "map_merge",
+        mode: ExecutionMode::Inline,
+        source: MAP_MERGE_SOURCE,
+    },
+    Workload {
         name: "map_merge_cache_hot_offsets",
         mode: ExecutionMode::CacheEnabled,
         source: MAP_MERGE_SOURCE,
@@ -640,6 +660,11 @@ fn main() {
     Workload {
         name: "managed_heap_map_extend",
         mode: ExecutionMode::ManagedHeap,
+        source: MAP_EXTEND_SOURCE,
+    },
+    Workload {
+        name: "map_extend",
+        mode: ExecutionMode::Inline,
         source: MAP_EXTEND_SOURCE,
     },
     Workload {
