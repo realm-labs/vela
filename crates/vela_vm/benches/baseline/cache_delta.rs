@@ -1,5 +1,8 @@
 use std::collections::BTreeMap;
 
+const DELTA_BAND_TOLERANCE_PPM: u128 = 10_000;
+const PARITY_PPM: u128 = 1_000_000;
+
 pub(crate) struct Record {
     pub(crate) name: &'static str,
     pub(crate) mode: &'static str,
@@ -37,9 +40,11 @@ pub(crate) fn print(records: &[Record]) {
             continue;
         };
         let mean_delta = signed_delta(record.mean_ns, base.mean_ns);
-        summary.record(record, base, mean_delta);
+        let mean_ratio = ratio_ppm(record.mean_ns, base.mean_ns);
+        let delta_band = delta_band(mean_ratio);
+        summary.record(record, base, mean_delta, delta_band);
         println!(
-            "cache_delta bench={} mode={} base={} base_mode={} mean_delta_ns={} min_delta_ns={} median_delta_ns={} p95_delta_ns={} mean_ratio_ppm={} checksum_match={} delta_kind={} cache_hits={} profile_hits={} base_profile_hits={} profile_hits_match={}",
+            "cache_delta bench={} mode={} base={} base_mode={} mean_delta_ns={} min_delta_ns={} median_delta_ns={} p95_delta_ns={} mean_ratio_ppm={} delta_band={} checksum_match={} delta_kind={} cache_hits={} profile_hits={} base_profile_hits={} profile_hits_match={}",
             record.name,
             record.mode,
             base.name,
@@ -48,7 +53,8 @@ pub(crate) fn print(records: &[Record]) {
             signed_delta(record.min_ns, base.min_ns),
             signed_delta(record.median_ns, base.median_ns),
             signed_delta(record.p95_ns, base.p95_ns),
-            ratio_ppm(record.mean_ns, base.mean_ns),
+            mean_ratio,
+            delta_band,
             record.checksum == base.checksum,
             record.measurement_kind,
             record.cache_hits,
@@ -117,12 +123,15 @@ struct DeltaSummary {
     improved_rows: usize,
     regressed_rows: usize,
     neutral_rows: usize,
+    faster_rows: usize,
+    slower_rows: usize,
+    flat_rows: usize,
     checksum_mismatches: usize,
     profile_mismatches: usize,
 }
 
 impl DeltaSummary {
-    fn record(&mut self, record: &Record, base: &Record, mean_delta: i128) {
+    fn record(&mut self, record: &Record, base: &Record, mean_delta: i128, delta_band: &str) {
         self.paired_rows += 1;
         match record.measurement_kind {
             "cache" => self.cache_rows += 1,
@@ -135,6 +144,12 @@ impl DeltaSummary {
             std::cmp::Ordering::Greater => self.regressed_rows += 1,
             std::cmp::Ordering::Equal => self.neutral_rows += 1,
         }
+        match delta_band {
+            "faster" => self.faster_rows += 1,
+            "slower" => self.slower_rows += 1,
+            "flat" => self.flat_rows += 1,
+            _ => {}
+        }
         if record.checksum != base.checksum {
             self.checksum_mismatches += 1;
         }
@@ -145,7 +160,7 @@ impl DeltaSummary {
 
     fn print(&self) {
         println!(
-            "cache_delta_summary paired_rows={} cache_rows={} profile_only_rows={} cache_no_activity_rows={} improved_rows={} regressed_rows={} neutral_rows={} checksum_mismatches={} profile_mismatches={}",
+            "cache_delta_summary paired_rows={} cache_rows={} profile_only_rows={} cache_no_activity_rows={} improved_rows={} regressed_rows={} neutral_rows={} faster_rows={} slower_rows={} flat_rows={} checksum_mismatches={} profile_mismatches={}",
             self.paired_rows,
             self.cache_rows,
             self.profile_only_rows,
@@ -153,6 +168,9 @@ impl DeltaSummary {
             self.improved_rows,
             self.regressed_rows,
             self.neutral_rows,
+            self.faster_rows,
+            self.slower_rows,
+            self.flat_rows,
             self.checksum_mismatches,
             self.profile_mismatches,
         );
@@ -193,4 +211,14 @@ fn ratio_ppm(value: u128, base: u128) -> u128 {
         return 0;
     }
     value.saturating_mul(1_000_000) / base
+}
+
+fn delta_band(mean_ratio_ppm: u128) -> &'static str {
+    if mean_ratio_ppm + DELTA_BAND_TOLERANCE_PPM < PARITY_PPM {
+        "faster"
+    } else if mean_ratio_ppm > PARITY_PPM + DELTA_BAND_TOLERANCE_PPM {
+        "slower"
+    } else {
+        "flat"
+    }
 }
