@@ -456,6 +456,46 @@ fn linked_standard_value_method_caches_string_split_target() {
 }
 
 #[test]
+fn linked_standard_value_method_caches_string_slice_target() {
+    let (program, site, dispatch, method_id) = linked_string_two_constant_arg_cache_program(
+        "slice",
+        "hello",
+        Constant::Scalar(vela_common::ScalarValue::I64(1)),
+        Constant::Scalar(vela_common::ScalarValue::I64(4)),
+    );
+    let caches = RecordingMethodCaches::new(1);
+
+    assert_eq!(
+        run_linked_method_cache_owned_program(&program, &caches),
+        Ok(OwnedValue::String("ell".to_owned()))
+    );
+    let entry = caches
+        .entry(site)
+        .expect("standard string slice cache should populate");
+    assert_eq!(entry.dispatch, dispatch);
+    let MethodInlineCacheTarget::Value {
+        method_id: cached_method,
+        standard_method: Some(standard_method),
+    } = entry.target
+    else {
+        panic!("standard string slice cache should store value target");
+    };
+    assert_eq!(cached_method, method_id);
+    assert_eq!(standard_method.receiver, StandardMethodReceiver::String);
+    assert_eq!(
+        standard_method.target,
+        StandardMethodInlineCacheTarget::Slice
+    );
+    assert_eq!(caches.set_count(), 2);
+
+    assert_eq!(
+        run_linked_method_cache_owned_program(&program, &caches),
+        Ok(OwnedValue::String("ell".to_owned()))
+    );
+    assert_eq!(caches.set_count(), 2);
+}
+
+#[test]
 fn linked_standard_value_method_caches_string_split_once_target() {
     let (program, site, dispatch, method_id) =
         linked_string_one_arg_cache_program("split_once", "count=3", "=");
