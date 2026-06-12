@@ -320,7 +320,8 @@ fn linked_standard_value_method_caches_map_get_or_target() {
 
 #[test]
 fn linked_standard_value_method_caches_string_transform_target() {
-    let (program, site, dispatch, method_id) = linked_string_to_upper_cache_program();
+    let (program, site, dispatch, method_id) =
+        linked_string_no_arg_cache_program("to_upper", "wolf");
     let caches = RecordingMethodCaches::new(1);
 
     assert_eq!(
@@ -349,6 +350,42 @@ fn linked_standard_value_method_caches_string_transform_target() {
     assert_eq!(
         run_linked_method_cache_owned_program(&program, &caches),
         Ok(OwnedValue::String("WOLF".to_owned()))
+    );
+    assert_eq!(caches.set_count(), 2);
+}
+
+#[test]
+fn linked_standard_value_method_caches_string_parse_bool_target() {
+    let (program, site, dispatch, method_id) =
+        linked_string_no_arg_cache_program("parse_bool", "true");
+    let caches = RecordingMethodCaches::new(1);
+
+    assert_eq!(
+        run_linked_method_cache_owned_program(&program, &caches),
+        Ok(owned_option_some(OwnedValue::Bool(true)))
+    );
+    let entry = caches
+        .entry(site)
+        .expect("standard string parse_bool cache should populate");
+    assert_eq!(entry.dispatch, dispatch);
+    let MethodInlineCacheTarget::Value {
+        method_id: cached_method,
+        standard_method: Some(standard_method),
+    } = entry.target
+    else {
+        panic!("standard string parse_bool cache should store value target");
+    };
+    assert_eq!(cached_method, method_id);
+    assert_eq!(standard_method.receiver, StandardMethodReceiver::String);
+    assert_eq!(
+        standard_method.target,
+        StandardMethodInlineCacheTarget::ParseBool
+    );
+    assert_eq!(caches.set_count(), 2);
+
+    assert_eq!(
+        run_linked_method_cache_owned_program(&program, &caches),
+        Ok(owned_option_some(OwnedValue::Bool(true)))
     );
     assert_eq!(caches.set_count(), 2);
 }
@@ -507,24 +544,26 @@ fn linked_standard_len_cache_program() -> (
     (program, site, dispatch, method_id)
 }
 
-fn linked_string_to_upper_cache_program() -> (
+fn linked_string_no_arg_cache_program(
+    method: &str,
+    receiver: &str,
+) -> (
     vela_bytecode::LinkedProgram,
     CacheSiteId,
     vela_bytecode::MethodDispatchHandle,
     vela_def::MethodId,
 ) {
-    let method_id =
-        vela_stdlib::std_method_id("String", "to_upper").expect("String::to_upper method id");
+    let method_id = vela_stdlib::std_method_id("String", method).expect("String method id");
     let mut program = vela_bytecode::LinkedProgram::new();
     let main_name = program.intern_debug_name("main");
-    let method_name = program.intern_debug_name("to_upper");
+    let method_name = program.intern_debug_name(method);
     let dispatch = program.push_method_dispatch(vela_bytecode::LinkedMethodDispatch::new(
         method_name,
         vela_bytecode::LinkedMethodDispatchKind::Value { method_id },
     ));
 
     let mut code = vela_bytecode::LinkedCodeObject::new(main_name, 2);
-    let receiver = code.push_constant(Constant::String("wolf".into()));
+    let receiver = code.push_constant(Constant::String(receiver.to_owned()));
     code.push_instruction(vela_bytecode::linked::Instruction::new(
         vela_bytecode::linked::InstructionKind::LoadConst {
             dst: Register(0),

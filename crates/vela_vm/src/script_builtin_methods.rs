@@ -600,6 +600,9 @@ pub(crate) fn standard_cache_entry(
         (StandardMethodReceiver::String, id) if id == ids.string_strip_suffix => {
             StandardMethodInlineCacheTarget::StripSuffix
         }
+        (StandardMethodReceiver::String, id) if id == ids.string_parse_bool => {
+            StandardMethodInlineCacheTarget::ParseBool
+        }
         (StandardMethodReceiver::String, id) if id == ids.string_to_upper => {
             StandardMethodInlineCacheTarget::ToUpper
         }
@@ -741,6 +744,9 @@ pub(crate) fn call_standard_cached(
         }
         (StandardMethodReceiver::String, StandardMethodInlineCacheTarget::StripSuffix) => {
             crate::string_methods::strip_suffix(receiver, args, heap, budget)
+        }
+        (StandardMethodReceiver::String, StandardMethodInlineCacheTarget::ParseBool) => {
+            crate::string_methods::parse_bool(receiver, args, heap, budget)
         }
         (StandardMethodReceiver::Bytes, StandardMethodInlineCacheTarget::Slice) => {
             bytes_methods::slice(receiver, args, heap, budget)
