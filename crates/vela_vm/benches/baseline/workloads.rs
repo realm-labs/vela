@@ -8,8 +8,8 @@ use crate::workload_sources::{
     MAP_MERGE_SOURCE, MAP_VIEWS_SOURCE, METHOD_DISPATCH_SOURCE, NATIVE_CALL_WIDE_ARGS_SOURCE,
     OPTION_RESULT_HELPERS_SOURCE, RECORD_QUADS_SOURCE, RECORD_QUINTS_SOURCE, RECORD_SEXTETS_SOURCE,
     RECORD_TRIPLETS_SOURCE, SCRIPT_CALL_SMALL_ARGS_SOURCE, SCRIPT_METHOD_DISPATCH_SOURCE,
-    SET_COMBINATION_SOURCE, SET_LOOKUP_SOURCE, STDLIB_COLLECTIONS_SOURCE, STRING_METHODS_SOURCE,
-    TRAIT_METHOD_DISPATCH_SOURCE,
+    SET_COMBINATION_SOURCE, SET_LOOKUP_SOURCE, SET_VALUES_SOURCE, STDLIB_COLLECTIONS_SOURCE,
+    STRING_METHODS_SOURCE, TRAIT_METHOD_DISPATCH_SOURCE,
 };
 
 pub(crate) struct Workload {
@@ -281,6 +281,16 @@ fn main() {
         name: "set_lookup_cache_hot_offsets",
         mode: ExecutionMode::CacheEnabled,
         source: SET_LOOKUP_SOURCE,
+    },
+    Workload {
+        name: "managed_heap_set_values",
+        mode: ExecutionMode::ManagedHeap,
+        source: SET_VALUES_SOURCE,
+    },
+    Workload {
+        name: "set_values_cache_hot_offsets",
+        mode: ExecutionMode::CacheEnabled,
+        source: SET_VALUES_SOURCE,
     },
     Workload {
         name: "managed_heap_set_combination",

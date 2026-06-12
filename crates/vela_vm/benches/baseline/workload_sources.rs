@@ -951,6 +951,25 @@ fn main() {
 }
 "#;
 
+pub(crate) const SET_VALUES_SOURCE: &str = r#"
+fn main() {
+    let total = 0;
+    for tick in 0..96 {
+        let tags = set::from_array(["daily", "quest", "raid", "bonus", "event", "boss"]);
+        let tiers = set::from_array([1, 2, 3, 5, 8, 13]);
+        let tag_values = tags.values().sort();
+        let tier_values = tiers.values().sort();
+        if tag_values.join("|") != "bonus|boss|daily|event|quest|raid"
+            || tier_values.sum() != 32
+        {
+            return 0;
+        }
+        total += tag_values.join("").len() + tier_values.sum() + tick - tick;
+    }
+    return total;
+}
+"#;
+
 pub(crate) const SET_COMBINATION_SOURCE: &str = r#"
 fn main() {
     let total = 0;
