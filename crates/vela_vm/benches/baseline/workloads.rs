@@ -91,6 +91,11 @@ fn main() {
         source: RANGE_METHODS_SOURCE,
     },
     Workload {
+        name: "range_methods_hot_offsets",
+        mode: ExecutionMode::ProfileOnly,
+        source: RANGE_METHODS_SOURCE,
+    },
+    Workload {
         name: "range_methods_cache_hot_offsets",
         mode: ExecutionMode::CacheEnabled,
         source: RANGE_METHODS_SOURCE,
