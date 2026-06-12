@@ -776,6 +776,11 @@ fn main(player: Player) {
         source: HOST_DYNAMIC_KEY_ACCESS_SOURCE,
     },
     Workload {
+        name: "host_dynamic_key_access_hot_offsets",
+        mode: ExecutionMode::HostAccess,
+        source: HOST_DYNAMIC_KEY_ACCESS_SOURCE,
+    },
+    Workload {
         name: "host_dynamic_key_access_cache_hot_offsets",
         mode: ExecutionMode::HostAccessCacheEnabled,
         source: HOST_DYNAMIC_KEY_ACCESS_SOURCE,
