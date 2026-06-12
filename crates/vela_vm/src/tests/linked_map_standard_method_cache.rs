@@ -108,6 +108,26 @@ fn linked_standard_value_method_caches_map_extend_target() {
     );
 }
 
+#[test]
+fn linked_standard_value_method_caches_map_self_extend_target() {
+    let (program, site, dispatch, method_id) = linked_map_self_extend_cache_program();
+    let caches = RecordingMethodCaches::new(1);
+    let expected = Ok(OwnedValue::map([("gold", OwnedValue::i64(4))]));
+
+    assert_eq!(
+        run_linked_method_cache_owned_program(&program, &caches),
+        expected
+    );
+    assert_map_cache_entry(
+        &caches,
+        site,
+        dispatch,
+        method_id,
+        StandardMethodInlineCacheTarget::Extend,
+    );
+    assert_eq!(caches.set_count(), 2);
+}
+
 fn assert_map_owned_cache(
     fixture: LinkedMapCacheFixture,
     target: StandardMethodInlineCacheTarget,
@@ -393,6 +413,44 @@ fn linked_map_extend_cache_program() -> LinkedMapCacheFixture {
     ));
     code.push_instruction(vela_bytecode::linked::Instruction::new(
         vela_bytecode::linked::InstructionKind::Return { src: Register(4) },
+    ));
+    let function = program.push_function(code);
+    program.set_entry_point(main_name, function);
+    (program, site, dispatch, method_id)
+}
+
+fn linked_map_self_extend_cache_program() -> LinkedMapCacheFixture {
+    let method_id = vela_stdlib::std_method_id("Map", "extend").expect("Map::extend method id");
+    let mut program = vela_bytecode::LinkedProgram::new();
+    let main_name = program.intern_debug_name("main");
+    let method_name = program.intern_debug_name("extend");
+    let dispatch = program.push_method_dispatch(vela_bytecode::LinkedMethodDispatch::new(
+        method_name,
+        vela_bytecode::LinkedMethodDispatchKind::Value { method_id },
+    ));
+
+    let mut code = vela_bytecode::LinkedCodeObject::new(main_name, 4);
+    let gold = code.push_constant(Constant::String("gold".into()));
+    load_i64(&mut code, Register(0), 4);
+    code.push_instruction(vela_bytecode::linked::Instruction::new(
+        vela_bytecode::linked::InstructionKind::MakeMap {
+            dst: Register(1),
+            entries: vec![(gold, Register(0))],
+        },
+    ));
+    let site = code.push_cache_site(CacheSiteKind::MethodCall, InstructionOffset(2));
+    code.push_instruction(vela_bytecode::linked::Instruction::new(
+        vela_bytecode::linked::InstructionKind::CallMethod {
+            dst: Register(2),
+            receiver: Register(1),
+            dispatch,
+            debug_name: method_name,
+            cache_site: Some(site),
+            args: vec![vela_bytecode::CallArgument::Register(Register(1))],
+        },
+    ));
+    code.push_instruction(vela_bytecode::linked::Instruction::new(
+        vela_bytecode::linked::InstructionKind::Return { src: Register(1) },
     ));
     let function = program.push_function(code);
     program.set_entry_point(main_name, function);

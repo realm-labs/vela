@@ -83,35 +83,28 @@ fn call_cached_map_extend(
     receiver: &Value,
     args: &[Value],
     heap: &mut Option<&mut HeapExecution<'_>>,
-    budget: &mut Option<&mut ExecutionBudget>,
+    _budget: &mut Option<&mut ExecutionBudget>,
 ) -> VmResult<Value> {
     crate::runtime_checks::expect_arity("extend", args, 1)?;
-    let entries = map_entries(&args[0], heap.as_deref(), "method extend")?;
     let reference = map_reference(receiver, "method extend")?;
     let Some(heap) = heap.as_deref_mut() else {
         return type_error("method extend");
     };
-    let mut slots = Vec::with_capacity(entries.len());
-    for (key, value) in entries {
-        slots.push((
-            key,
-            store_runtime_value(&value, heap, budget.as_deref_mut())?,
-        ));
-    }
+    let slots = map_slot_entries(heap, &args[0], "method extend")?;
     map_slots_mut(heap, reference, "method extend")?.extend(slots);
     Ok(Value::Null)
 }
 
-fn map_entries(
+fn map_slot_entries(
+    heap: &HeapExecution<'_>,
     receiver: &Value,
-    heap: Option<&HeapExecution<'_>>,
     operation: &'static str,
-) -> VmResult<Vec<(String, Value)>> {
-    let values = map_slots(receiver, heap, operation)?;
-    Ok(values
-        .iter()
-        .map(|(key, value)| (key.clone(), stored_runtime_value(value)))
-        .collect())
+) -> VmResult<BTreeMap<String, Value>> {
+    let values = map_slots(receiver, Some(heap), operation)?;
+    if values.values().any(|value| matches!(value, Value::Missing)) {
+        return type_error("missing value");
+    }
+    Ok(values.clone())
 }
 
 fn map_slots<'a>(
