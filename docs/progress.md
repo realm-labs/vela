@@ -359,8 +359,9 @@ Cranelift JIT.
   - native and stdlib hot paths have borrowed `Value` view coverage or a named
     reason to defer the remaining conversions to M20/JIT work;
   - callback and closure allocation costs now have isolated quick and default
-    baseline rows; M20 cache-enabled stdlib method, script-call, native-call,
-    script record-field aggregate/detail, method-dispatch aggregate/detail,
+    baseline rows; direct script-call and direct-closure rows are profile-only
+    where linked operands already avoid runtime lookup; M20 cache-enabled stdlib
+    method, native-call, script record-field aggregate/detail, method-dispatch aggregate/detail,
     collection lookup/view/aggregation/combination/mutation/materialization,
     string/bytes method, Option/Result helper, callback collection/detail,
     direct-closure, and host-boundary aggregate/detail rows separate warmed
@@ -368,7 +369,8 @@ Cranelift JIT.
   - verified-bytecode and runtime tests cover the invariants needed by later
     unchecked register, operand, and cache fast paths;
   - runtime bytecode offset counters cover linked hot offsets and hot-reload
-    invalidation; cache-enabled stdlib, script-call, native-call, script
+    invalidation; profile-only direct script-call and direct-closure rows plus
+    cache-enabled stdlib, native-call, script
     record-field aggregate/detail, method-dispatch aggregate/detail,
     collection lookup/view/aggregation/combination/mutation/materialization,
     string/bytes method, Option/Result helper, callback collection/detail,

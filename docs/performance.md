@@ -42,7 +42,7 @@ scalar/range dispatch
 script/native function calls
 array, map, set, string, Option, and Result stdlib methods
 callbacks, direct closure calls, and higher-order collection methods
-cache-enabled stdlib, script/native call, method-dispatch aggregate/detail, script record-field aggregate/detail, range-method detail, collection lookup/view/aggregation/combination/mutation/materialization, string/bytes method and string-transform detail, Option/Result helper, callback collection/detail, and host-boundary aggregate/detail rows with warmed inline caches and bytecode profile counters
+cache-enabled stdlib/native call, method-dispatch aggregate/detail, script record-field aggregate/detail, range-method detail, collection lookup/view/aggregation/combination/mutation/materialization, string/bytes method and string-transform detail, Option/Result helper, callback collection/detail, host-boundary aggregate/detail, plus linked script-call and direct-closure profile rows with bytecode profile counters
 record and enum construction and field access
 managed heap allocation and materialization
 declared host globals, host field reads, nested path reads/writes, RMW mutations, dynamic key access, and method calls
@@ -148,8 +148,10 @@ warmed inline caches and bytecode profile counters. The record-field detail
 rows cover triplet, quad, quint, and sextet shapes; the host-boundary detail
 rows cover declared global read/write, field read/write, nested path read/write,
 RMW mutation, dynamic key access, and host method calls; the method-dispatch detail rows cover script
-inherent and trait/default method calls. M20 reports must separate
-interpreter-only and cache-enabled results.
+inherent and trait/default method calls. Direct script-call and direct-closure
+rows are profile-only when their linked operands already avoid runtime lookup
+and no inline-cache family exists. M20 reports must separate interpreter-only,
+profile-only, and cache-enabled results.
 
 ## Targets
 
