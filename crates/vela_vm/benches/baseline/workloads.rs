@@ -483,6 +483,11 @@ fn main() {
         source: SET_LOOKUP_SOURCE,
     },
     Workload {
+        name: "set_lookup",
+        mode: ExecutionMode::Inline,
+        source: SET_LOOKUP_SOURCE,
+    },
+    Workload {
         name: "set_lookup_cache_hot_offsets",
         mode: ExecutionMode::CacheEnabled,
         source: SET_LOOKUP_SOURCE,
@@ -490,6 +495,11 @@ fn main() {
     Workload {
         name: "managed_heap_set_values",
         mode: ExecutionMode::ManagedHeap,
+        source: SET_VALUES_SOURCE,
+    },
+    Workload {
+        name: "set_values",
+        mode: ExecutionMode::Inline,
         source: SET_VALUES_SOURCE,
     },
     Workload {
@@ -503,6 +513,11 @@ fn main() {
         source: SET_MUTATION_SOURCE,
     },
     Workload {
+        name: "set_mutation",
+        mode: ExecutionMode::Inline,
+        source: SET_MUTATION_SOURCE,
+    },
+    Workload {
         name: "set_mutation_cache_hot_offsets",
         mode: ExecutionMode::CacheEnabled,
         source: SET_MUTATION_SOURCE,
@@ -510,6 +525,11 @@ fn main() {
     Workload {
         name: "managed_heap_set_combination",
         mode: ExecutionMode::ManagedHeap,
+        source: SET_COMBINATION_SOURCE,
+    },
+    Workload {
+        name: "set_combination",
+        mode: ExecutionMode::Inline,
         source: SET_COMBINATION_SOURCE,
     },
     Workload {
