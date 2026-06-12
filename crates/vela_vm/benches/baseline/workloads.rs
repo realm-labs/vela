@@ -395,6 +395,11 @@ fn main() {
         source: SET_CALLBACK_PREDICATES_SOURCE,
     },
     Workload {
+        name: "set_callback_predicates_hot_offsets",
+        mode: ExecutionMode::ProfileOnly,
+        source: SET_CALLBACK_PREDICATES_SOURCE,
+    },
+    Workload {
         name: "set_callback_predicates_cache_hot_offsets",
         mode: ExecutionMode::CacheEnabled,
         source: SET_CALLBACK_PREDICATES_SOURCE,
