@@ -112,6 +112,60 @@ fn linked_standard_value_method_caches_predicate_target() {
 }
 
 #[test]
+fn linked_standard_value_method_caches_collection_membership_targets() {
+    assert_membership_cache(
+        linked_array_contains_cache_program(),
+        StandardMethodReceiver::Array,
+        StandardMethodInlineCacheTarget::Contains,
+    );
+    assert_membership_cache(
+        linked_map_has_cache_program(),
+        StandardMethodReceiver::Map,
+        StandardMethodInlineCacheTarget::Has,
+    );
+    assert_membership_cache(
+        linked_set_has_cache_program(),
+        StandardMethodReceiver::Set,
+        StandardMethodInlineCacheTarget::Has,
+    );
+}
+
+fn assert_membership_cache(
+    fixture: LinkedMethodCacheFixture,
+    receiver: StandardMethodReceiver,
+    target: StandardMethodInlineCacheTarget,
+) {
+    let (program, site, dispatch, method_id) = fixture;
+    let caches = RecordingMethodCaches::new(1);
+
+    assert_eq!(
+        run_linked_method_cache_program_with_standard_natives(&program, &caches),
+        Ok(RuntimeValue::Bool(true))
+    );
+    let entry = caches
+        .entry(site)
+        .expect("standard collection membership cache should populate");
+    assert_eq!(entry.dispatch, dispatch);
+    let MethodInlineCacheTarget::Value {
+        method_id: cached_method,
+        standard_method: Some(standard_method),
+    } = entry.target
+    else {
+        panic!("standard collection membership cache should store value target");
+    };
+    assert_eq!(cached_method, method_id);
+    assert_eq!(standard_method.receiver, receiver);
+    assert_eq!(standard_method.target, target);
+    assert_eq!(caches.set_count(), 2);
+
+    assert_eq!(
+        run_linked_method_cache_program_with_standard_natives(&program, &caches),
+        Ok(RuntimeValue::Bool(true))
+    );
+    assert_eq!(caches.set_count(), 2);
+}
+
+#[test]
 fn linked_standard_value_method_caches_bytes_accessor_target() {
     let (program, site, dispatch, method_id) = linked_bytes_get_cache_program();
     let caches = RecordingMethodCaches::new(1);
