@@ -112,6 +112,193 @@ fn main() {
 }
 "#;
 
+pub(crate) const RECORD_QUADS_SOURCE: &str = r#"
+struct Reward {
+    item_id: string,
+    count: i64,
+    bonus: i64,
+    rarity: i64,
+}
+
+enum ResultState {
+    Scored { item_id: string, count: i64, bonus: i64, rarity: i64 }
+}
+
+fn main() {
+    let total = 0;
+    for tick in 0..80 {
+        let gold = Reward {
+            item_id: "gold",
+            count: tick + 1,
+            bonus: tick % 7,
+            rarity: 3,
+        };
+        let gold_state = ResultState::Scored {
+            item_id: gold.item_id,
+            count: gold.count,
+            bonus: gold.bonus,
+            rarity: gold.rarity,
+        };
+        match gold_state {
+            ResultState::Scored { item_id, count, bonus, rarity } => {
+                total += item_id.len() + count + bonus + rarity;
+            }
+        }
+
+        let xp = Reward {
+            item_id: "xp",
+            count: tick + 2,
+            bonus: tick % 5,
+            rarity: 1,
+        };
+        let xp_state = ResultState::Scored {
+            item_id: xp.item_id,
+            count: xp.count,
+            bonus: xp.bonus,
+            rarity: xp.rarity,
+        };
+        match xp_state {
+            ResultState::Scored { item_id, count, bonus, rarity } => {
+                total += item_id.len() + count + bonus + rarity;
+            }
+        }
+    }
+    return total;
+}
+"#;
+
+pub(crate) const RECORD_QUINTS_SOURCE: &str = r#"
+struct Reward {
+    item_id: string,
+    count: i64,
+    bonus: i64,
+    rarity: i64,
+    quality: i64,
+}
+
+enum ResultState {
+    Scored { item_id: string, count: i64, bonus: i64, rarity: i64, quality: i64 }
+}
+
+fn main() {
+    let total = 0;
+    for tick in 0..72 {
+        let gold = Reward {
+            item_id: "gold",
+            count: tick + 1,
+            bonus: tick % 7,
+            rarity: 3,
+            quality: tick % 11,
+        };
+        let gold_state = ResultState::Scored {
+            item_id: gold.item_id,
+            count: gold.count,
+            bonus: gold.bonus,
+            rarity: gold.rarity,
+            quality: gold.quality,
+        };
+        match gold_state {
+            ResultState::Scored { item_id, count, bonus, rarity, quality } => {
+                total += item_id.len() + count + bonus + rarity + quality;
+            }
+        }
+
+        let xp = Reward {
+            item_id: "xp",
+            count: tick + 2,
+            bonus: tick % 5,
+            rarity: 1,
+            quality: tick % 13,
+        };
+        let xp_state = ResultState::Scored {
+            item_id: xp.item_id,
+            count: xp.count,
+            bonus: xp.bonus,
+            rarity: xp.rarity,
+            quality: xp.quality,
+        };
+        match xp_state {
+            ResultState::Scored { item_id, count, bonus, rarity, quality } => {
+                total += item_id.len() + count + bonus + rarity + quality;
+            }
+        }
+    }
+    return total;
+}
+"#;
+
+pub(crate) const RECORD_SEXTETS_SOURCE: &str = r#"
+struct Reward {
+    item_id: string,
+    count: i64,
+    bonus: i64,
+    rarity: i64,
+    quality: i64,
+    weight: i64,
+}
+
+enum ResultState {
+    Scored {
+        item_id: string,
+        count: i64,
+        bonus: i64,
+        rarity: i64,
+        quality: i64,
+        weight: i64,
+    }
+}
+
+fn main() {
+    let total = 0;
+    for tick in 0..64 {
+        let gold = Reward {
+            item_id: "gold",
+            count: tick + 1,
+            bonus: tick % 7,
+            rarity: 3,
+            quality: tick % 11,
+            weight: 2,
+        };
+        let gold_state = ResultState::Scored {
+            item_id: gold.item_id,
+            count: gold.count,
+            bonus: gold.bonus,
+            rarity: gold.rarity,
+            quality: gold.quality,
+            weight: gold.weight,
+        };
+        match gold_state {
+            ResultState::Scored { item_id, count, bonus, rarity, quality, weight } => {
+                total += item_id.len() + count + bonus + rarity + quality + weight;
+            }
+        }
+
+        let xp = Reward {
+            item_id: "xp",
+            count: tick + 2,
+            bonus: tick % 5,
+            rarity: 1,
+            quality: tick % 13,
+            weight: 1,
+        };
+        let xp_state = ResultState::Scored {
+            item_id: xp.item_id,
+            count: xp.count,
+            bonus: xp.bonus,
+            rarity: xp.rarity,
+            quality: xp.quality,
+            weight: xp.weight,
+        };
+        match xp_state {
+            ResultState::Scored { item_id, count, bonus, rarity, quality, weight } => {
+                total += item_id.len() + count + bonus + rarity + quality + weight;
+            }
+        }
+    }
+    return total;
+}
+"#;
+
 pub(crate) const CALLBACK_COLLECTIONS_SOURCE: &str = r#"
 fn main() {
     let total = 0;

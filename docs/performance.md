@@ -34,7 +34,7 @@ scalar/range dispatch
 script/native function calls
 array, map, set, string, Option, and Result stdlib methods
 callbacks, direct closure calls, and higher-order collection methods
-cache-enabled stdlib, script/native call, method-dispatch, collection lookup/combination/mutation/materialization, string/bytes method, Option/Result helper, callback collection/detail, and host-boundary aggregate/detail rows with warmed inline caches and bytecode profile counters
+cache-enabled stdlib, script/native call, method-dispatch, script record-field aggregate/detail, collection lookup/combination/mutation/materialization, string/bytes method, Option/Result helper, callback collection/detail, and host-boundary aggregate/detail rows with warmed inline caches and bytecode profile counters
 record and enum construction and field access
 managed heap allocation and materialization
 host field reads, nested path reads/writes, RMW mutations, dynamic key access, and method calls
@@ -111,9 +111,10 @@ Result helpers, scalar equality/constant loads, peephole lowering, range-loop
 lowering, small record/enum fields, and short array construction.
 
 The Lua 5.x target is not met across all microbenchmarks. Remaining gaps are
-cache-shaped, but M20 should wait until the hot operands are cache-ready:
+cache-shaped, and M20 measurement should stay tied to cache-ready operands:
 
-- script record field slot reads and writes need shape/slot-ready operands
+- script record field slot reads and writes now have shape/slot-ready operands
+  and detail benchmark rows
 - host field/path reads, writes, and RMW operations now have `HostTargetPlan`
   operands and resolved access boundaries ready for M20 caches
 - method and stdlib dispatch need ID or resolved-target lookup
@@ -125,13 +126,15 @@ cache-shaped, but M20 should wait until the hot operands are cache-ready:
 M19.5 reports interpreter-only before/after rows for each prep family. The
 baseline harness now splits callback rows into collection callbacks and direct
 closure calls with default baseline data, includes cache-enabled stdlib
-collection, script-call, native-call, script record-field, method-dispatch,
-collection lookup/combination/mutation/materialization, string/bytes method,
-Option/Result helper, callback collection/detail, direct-closure, and
-host-boundary aggregate/detail rows with warmed inline caches and bytecode
-profile counters. The host-boundary detail rows cover field read/write, nested
-path read/write, RMW mutation, dynamic key access, and host method calls. M20
-reports must separate interpreter-only and cache-enabled results.
+collection, script-call, native-call, script record-field aggregate/detail,
+method-dispatch, collection lookup/combination/mutation/materialization,
+string/bytes method, Option/Result helper, callback
+collection/detail, direct-closure, and host-boundary aggregate/detail rows with
+warmed inline caches and bytecode profile counters. The record-field detail
+rows cover triplet, quad, quint, and sextet shapes; the host-boundary detail
+rows cover field read/write, nested path read/write, RMW mutation, dynamic key
+access, and host method calls. M20 reports must separate interpreter-only and
+cache-enabled results.
 
 ## Targets
 

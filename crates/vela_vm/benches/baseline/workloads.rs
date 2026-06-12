@@ -6,8 +6,9 @@ use crate::workload_sources::{
     HOST_METHOD_CALLS_SOURCE, HOST_NESTED_READ_WRITE_SOURCE, HOST_RMW_MUTATION_SOURCE,
     MAP_CALLBACKS_SOURCE, MAP_EXTEND_SOURCE, MAP_FIND_ENTRIES_SOURCE, MAP_LOOKUP_SOURCE,
     MAP_MERGE_SOURCE, METHOD_DISPATCH_SOURCE, NATIVE_CALL_WIDE_ARGS_SOURCE,
-    OPTION_RESULT_HELPERS_SOURCE, RECORD_TRIPLETS_SOURCE, SCRIPT_CALL_SMALL_ARGS_SOURCE,
-    SET_COMBINATION_SOURCE, SET_LOOKUP_SOURCE, STDLIB_COLLECTIONS_SOURCE, STRING_METHODS_SOURCE,
+    OPTION_RESULT_HELPERS_SOURCE, RECORD_QUADS_SOURCE, RECORD_QUINTS_SOURCE, RECORD_SEXTETS_SOURCE,
+    RECORD_TRIPLETS_SOURCE, SCRIPT_CALL_SMALL_ARGS_SOURCE, SET_COMBINATION_SOURCE,
+    SET_LOOKUP_SOURCE, STDLIB_COLLECTIONS_SOURCE, STRING_METHODS_SOURCE,
 };
 
 pub(crate) struct Workload {
@@ -552,198 +553,32 @@ fn main() {
     Workload {
         name: "managed_heap_record_quads",
         mode: ExecutionMode::ManagedHeap,
-        source: r#"
-struct Reward {
-    item_id: string,
-    count: i64,
-    bonus: i64,
-    rarity: i64,
-}
-
-enum ResultState {
-    Scored { item_id: string, count: i64, bonus: i64, rarity: i64 }
-}
-
-fn main() {
-    let total = 0;
-    for tick in 0..80 {
-        let gold = Reward {
-            item_id: "gold",
-            count: tick + 1,
-            bonus: tick % 7,
-            rarity: 3,
-        };
-        let gold_state = ResultState::Scored {
-            item_id: gold.item_id,
-            count: gold.count,
-            bonus: gold.bonus,
-            rarity: gold.rarity,
-        };
-        match gold_state {
-            ResultState::Scored { item_id, count, bonus, rarity } => {
-                total += item_id.len() + count + bonus + rarity;
-            }
-        }
-
-        let xp = Reward {
-            item_id: "xp",
-            count: tick + 2,
-            bonus: tick % 5,
-            rarity: 1,
-        };
-        let xp_state = ResultState::Scored {
-            item_id: xp.item_id,
-            count: xp.count,
-            bonus: xp.bonus,
-            rarity: xp.rarity,
-        };
-        match xp_state {
-            ResultState::Scored { item_id, count, bonus, rarity } => {
-                total += item_id.len() + count + bonus + rarity;
-            }
-        }
-    }
-    return total;
-}
-"#,
+        source: RECORD_QUADS_SOURCE,
+    },
+    Workload {
+        name: "record_quads_cache_hot_offsets",
+        mode: ExecutionMode::CacheEnabled,
+        source: RECORD_QUADS_SOURCE,
     },
     Workload {
         name: "managed_heap_record_quints",
         mode: ExecutionMode::ManagedHeap,
-        source: r#"
-struct Reward {
-    item_id: string,
-    count: i64,
-    bonus: i64,
-    rarity: i64,
-    quality: i64,
-}
-
-enum ResultState {
-    Scored { item_id: string, count: i64, bonus: i64, rarity: i64, quality: i64 }
-}
-
-fn main() {
-    let total = 0;
-    for tick in 0..72 {
-        let gold = Reward {
-            item_id: "gold",
-            count: tick + 1,
-            bonus: tick % 7,
-            rarity: 3,
-            quality: tick % 11,
-        };
-        let gold_state = ResultState::Scored {
-            item_id: gold.item_id,
-            count: gold.count,
-            bonus: gold.bonus,
-            rarity: gold.rarity,
-            quality: gold.quality,
-        };
-        match gold_state {
-            ResultState::Scored { item_id, count, bonus, rarity, quality } => {
-                total += item_id.len() + count + bonus + rarity + quality;
-            }
-        }
-
-        let xp = Reward {
-            item_id: "xp",
-            count: tick + 2,
-            bonus: tick % 5,
-            rarity: 1,
-            quality: tick % 13,
-        };
-        let xp_state = ResultState::Scored {
-            item_id: xp.item_id,
-            count: xp.count,
-            bonus: xp.bonus,
-            rarity: xp.rarity,
-            quality: xp.quality,
-        };
-        match xp_state {
-            ResultState::Scored { item_id, count, bonus, rarity, quality } => {
-                total += item_id.len() + count + bonus + rarity + quality;
-            }
-        }
-    }
-    return total;
-}
-"#,
+        source: RECORD_QUINTS_SOURCE,
+    },
+    Workload {
+        name: "record_quints_cache_hot_offsets",
+        mode: ExecutionMode::CacheEnabled,
+        source: RECORD_QUINTS_SOURCE,
     },
     Workload {
         name: "managed_heap_record_sextets",
         mode: ExecutionMode::ManagedHeap,
-        source: r#"
-struct Reward {
-    item_id: string,
-    count: i64,
-    bonus: i64,
-    rarity: i64,
-    quality: i64,
-    weight: i64,
-}
-
-enum ResultState {
-    Scored {
-        item_id: string,
-        count: i64,
-        bonus: i64,
-        rarity: i64,
-        quality: i64,
-        weight: i64,
-    }
-}
-
-fn main() {
-    let total = 0;
-    for tick in 0..64 {
-        let gold = Reward {
-            item_id: "gold",
-            count: tick + 1,
-            bonus: tick % 7,
-            rarity: 3,
-            quality: tick % 11,
-            weight: 2,
-        };
-        let gold_state = ResultState::Scored {
-            item_id: gold.item_id,
-            count: gold.count,
-            bonus: gold.bonus,
-            rarity: gold.rarity,
-            quality: gold.quality,
-            weight: gold.weight,
-        };
-        match gold_state {
-            ResultState::Scored { item_id, count, bonus, rarity, quality, weight } => {
-                total += item_id.len() + count + bonus + rarity + quality + weight;
-            }
-        }
-
-        let xp = Reward {
-            item_id: "xp",
-            count: tick + 2,
-            bonus: tick % 5,
-            rarity: 1,
-            quality: tick % 13,
-            weight: 1,
-        };
-        let xp_state = ResultState::Scored {
-            item_id: xp.item_id,
-            count: xp.count,
-            bonus: xp.bonus,
-            rarity: xp.rarity,
-            quality: xp.quality,
-            weight: xp.weight,
-        };
-        match xp_state {
-            ResultState::Scored { item_id, count, bonus, rarity, quality, weight } => {
-                total += item_id.len() + count + bonus + rarity + quality + weight;
-            }
-        }
-    }
-    return total;
-}
-"#,
+        source: RECORD_SEXTETS_SOURCE,
+    },
+    Workload {
+        name: "record_sextets_cache_hot_offsets",
+        mode: ExecutionMode::CacheEnabled,
+        source: RECORD_SEXTETS_SOURCE,
     },
     Workload {
         name: "gc_pacing",
