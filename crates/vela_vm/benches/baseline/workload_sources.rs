@@ -543,6 +543,34 @@ fn main() {
 }
 "#;
 
+pub(crate) const STRING_PARSING_SOURCE: &str = r#"
+fn main() {
+    let total = 0;
+    for tick in 0..96 {
+        let parsed = "42".parse_int().unwrap_or(0);
+        let negative = "-7".parse_int().unwrap_or(0);
+        let rate = "1.5".parse_float().unwrap_or(0.0);
+        let exponent = "2.5e1".parse_float().unwrap_or(0.0);
+        let enabled = "true".parse_bool().unwrap_or(false);
+        let disabled = "false".parse_bool().unwrap_or(true);
+
+        if parsed != 42
+            || negative != -7
+            || rate != 1.5
+            || exponent != 25.0
+            || !enabled
+            || disabled
+            || !option::is_none("bad".parse_int())
+            || !option::is_none("yes".parse_bool())
+        {
+            return 0;
+        }
+        total += parsed + negative + tick - tick;
+    }
+    return total;
+}
+"#;
+
 pub(crate) const BYTES_METHODS_SOURCE: &str = r#"
 fn main() {
     let total = 0;
