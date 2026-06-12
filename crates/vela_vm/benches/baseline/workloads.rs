@@ -37,6 +37,48 @@ fn main() {
 }
 "#;
 
+const RECORD_TRIPLETS_SOURCE: &str = r#"
+struct Reward {
+    item_id: string,
+    count: i64,
+    bonus: i64,
+}
+
+enum ResultState {
+    Scored { item_id: string, count: i64, bonus: i64 }
+}
+
+fn main() {
+    let total = 0;
+    for tick in 0..96 {
+        let gold = Reward { item_id: "gold", count: tick + 1, bonus: tick % 7 };
+        let gold_state = ResultState::Scored {
+            item_id: gold.item_id,
+            count: gold.count,
+            bonus: gold.bonus,
+        };
+        match gold_state {
+            ResultState::Scored { item_id, count, bonus } => {
+                total += item_id.len() + count + bonus;
+            }
+        }
+
+        let xp = Reward { item_id: "xp", count: tick + 2, bonus: tick % 5 };
+        let xp_state = ResultState::Scored {
+            item_id: xp.item_id,
+            count: xp.count,
+            bonus: xp.bonus,
+        };
+        match xp_state {
+            ResultState::Scored { item_id, count, bonus } => {
+                total += item_id.len() + count + bonus;
+            }
+        }
+    }
+    return total;
+}
+"#;
+
 const CALLBACK_COLLECTIONS_SOURCE: &str = r#"
 fn main() {
     let total = 0;
@@ -898,47 +940,12 @@ fn main() {
     Workload {
         name: "managed_heap_record_triplets",
         mode: ExecutionMode::ManagedHeap,
-        source: r#"
-struct Reward {
-    item_id: string,
-    count: i64,
-    bonus: i64,
-}
-
-enum ResultState {
-    Scored { item_id: string, count: i64, bonus: i64 }
-}
-
-fn main() {
-    let total = 0;
-    for tick in 0..96 {
-        let gold = Reward { item_id: "gold", count: tick + 1, bonus: tick % 7 };
-        let gold_state = ResultState::Scored {
-            item_id: gold.item_id,
-            count: gold.count,
-            bonus: gold.bonus,
-        };
-        match gold_state {
-            ResultState::Scored { item_id, count, bonus } => {
-                total += item_id.len() + count + bonus;
-            }
-        }
-
-        let xp = Reward { item_id: "xp", count: tick + 2, bonus: tick % 5 };
-        let xp_state = ResultState::Scored {
-            item_id: xp.item_id,
-            count: xp.count,
-            bonus: xp.bonus,
-        };
-        match xp_state {
-            ResultState::Scored { item_id, count, bonus } => {
-                total += item_id.len() + count + bonus;
-            }
-        }
-    }
-    return total;
-}
-"#,
+        source: RECORD_TRIPLETS_SOURCE,
+    },
+    Workload {
+        name: "record_fields_cache_hot_offsets",
+        mode: ExecutionMode::CacheEnabled,
+        source: RECORD_TRIPLETS_SOURCE,
     },
     Workload {
         name: "managed_heap_record_quads",
