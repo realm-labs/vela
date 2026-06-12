@@ -617,6 +617,9 @@ fn call_readonly_cached(
         StandardMethodInlineCacheTarget::UnwrapOr => {
             return call_cached_option_result_unwrap_or(receiver, cache.receiver, args, heap);
         }
+        StandardMethodInlineCacheTarget::GetOr => {
+            return call_cached_map_get_or(receiver, cache.receiver, args, heap);
+        }
         _ => {}
     }
     if !receiver_matches_cache(receiver, cache.receiver, heap) {
@@ -893,6 +896,28 @@ fn cached_standard_enum_payload(
         .get_slot(0, "0")
         .map(stored_runtime_value)
         .ok_or_else(|| VmError::new(VmErrorKind::TypeMismatch { operation }))
+}
+
+fn call_cached_map_get_or(
+    receiver: &Value,
+    cached: StandardMethodReceiver,
+    args: &[Value],
+    heap: Option<&HeapExecution<'_>>,
+) -> Option<VmResult<Value>> {
+    if cached != StandardMethodReceiver::Map {
+        return None;
+    }
+    let HeapValue::Map(values) = cached_heap_value(receiver, heap)? else {
+        return None;
+    };
+    Some(
+        crate::runtime_checks::expect_arity("get_or", args, 2).and_then(|()| {
+            let key = crate::string_methods::string_value(&args[0], heap, "map key")?;
+            Ok(values
+                .get(key)
+                .map_or_else(|| args[1], stored_runtime_value))
+        }),
+    )
 }
 
 fn cached_heap_value<'a>(
