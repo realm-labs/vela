@@ -486,19 +486,23 @@ fn array_join_payload(
 ) -> VmResult<String> {
     crate::runtime_checks::expect_arity("join", args, 1)?;
     let separator = crate::string_methods::string_value(&args[0], heap, "method join")?;
+    let parts = values
+        .iter()
+        .map(|value| array_join_string(value, heap))
+        .collect::<VmResult<Vec<_>>>()?;
     let mut capacity = separator
         .len()
         .saturating_mul(values.len().saturating_sub(1));
-    for value in values {
-        capacity = capacity.saturating_add(array_join_string(value, heap)?.len());
+    for part in &parts {
+        capacity = capacity.saturating_add(part.len());
     }
 
     let mut joined = String::with_capacity(capacity);
-    for (index, value) in values.iter().enumerate() {
+    for (index, part) in parts.into_iter().enumerate() {
         if index > 0 {
             joined.push_str(separator);
         }
-        joined.push_str(array_join_string(value, heap)?);
+        joined.push_str(part);
     }
     Ok(joined)
 }
