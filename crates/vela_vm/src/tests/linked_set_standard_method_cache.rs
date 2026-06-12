@@ -20,6 +20,15 @@ fn linked_standard_value_method_caches_set_values_target() {
 }
 
 #[test]
+fn linked_standard_value_method_caches_set_is_empty_target() {
+    assert_set_runtime_cache(
+        linked_set_no_arg_cache_program("is_empty", &[2, 4]),
+        StandardMethodInlineCacheTarget::IsEmpty,
+        RuntimeValue::Bool(false),
+    );
+}
+
+#[test]
 fn linked_standard_value_method_caches_set_add_target() {
     assert_set_runtime_cache(
         linked_set_mutator_cache_program("add", &[2], &[4]),

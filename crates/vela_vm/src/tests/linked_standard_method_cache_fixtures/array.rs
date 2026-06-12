@@ -4,6 +4,10 @@ pub(in crate::tests) fn linked_array_contains_cache_program() -> LinkedMethodCac
     linked_array_i64_call_cache_program("contains", &[2, 4], 2, &[1])
 }
 
+pub(in crate::tests) fn linked_array_is_empty_cache_program() -> LinkedMethodCacheFixture {
+    linked_array_i64_call_cache_program("is_empty", &[2, 4], 2, &[])
+}
+
 pub(in crate::tests) fn linked_array_first_cache_program() -> LinkedMethodCacheFixture {
     linked_array_i64_call_cache_program("first", &[2, 4], 2, &[])
 }

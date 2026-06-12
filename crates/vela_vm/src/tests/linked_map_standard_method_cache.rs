@@ -18,6 +18,15 @@ fn linked_standard_value_method_caches_map_keys_target() {
 }
 
 #[test]
+fn linked_standard_value_method_caches_map_is_empty_target() {
+    assert_map_bool_cache(
+        linked_map_no_arg_cache_program("is_empty"),
+        StandardMethodInlineCacheTarget::IsEmpty,
+        false,
+    );
+}
+
+#[test]
 fn linked_standard_value_method_caches_map_values_target() {
     assert_map_owned_cache(
         linked_map_no_arg_cache_program("values"),
@@ -119,6 +128,23 @@ fn assert_map_owned_cache(
         run_linked_method_cache_owned_program(&program, &caches),
         expected
     );
+    assert_eq!(caches.set_count(), 2);
+}
+
+fn assert_map_bool_cache(
+    fixture: LinkedMapCacheFixture,
+    target: StandardMethodInlineCacheTarget,
+    expected: bool,
+) {
+    let (program, site, dispatch, method_id) = fixture;
+    let caches = RecordingMethodCaches::new(1);
+    let expected = Ok(crate::value::Value::Bool(expected));
+
+    assert_eq!(run_linked_method_cache_program(&program, &caches), expected);
+    assert_map_cache_entry(&caches, site, dispatch, method_id, target);
+    assert_eq!(caches.set_count(), 2);
+
+    assert_eq!(run_linked_method_cache_program(&program, &caches), expected);
     assert_eq!(caches.set_count(), 2);
 }
 

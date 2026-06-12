@@ -8,6 +8,16 @@ fn linked_standard_value_method_caches_array_contains_target() {
     assert_array_bool_cache(
         linked_array_contains_cache_program(),
         StandardMethodInlineCacheTarget::Contains,
+        true,
+    );
+}
+
+#[test]
+fn linked_standard_value_method_caches_array_is_empty_target() {
+    assert_array_bool_cache(
+        linked_array_is_empty_cache_program(),
+        StandardMethodInlineCacheTarget::IsEmpty,
+        false,
     );
 }
 
@@ -168,21 +178,17 @@ fn linked_standard_value_method_caches_array_extrema_targets() {
 fn assert_array_bool_cache(
     fixture: LinkedMethodCacheFixture,
     target: StandardMethodInlineCacheTarget,
+    expected: bool,
 ) {
     let (program, site, dispatch, method_id) = fixture;
     let caches = RecordingMethodCaches::new(1);
+    let expected = Ok(RuntimeValue::Bool(expected));
 
-    assert_eq!(
-        run_linked_method_cache_program(&program, &caches),
-        Ok(RuntimeValue::Bool(true))
-    );
+    assert_eq!(run_linked_method_cache_program(&program, &caches), expected);
     assert_array_cache_entry(&caches, site, dispatch, method_id, target);
     assert_eq!(caches.set_count(), 2);
 
-    assert_eq!(
-        run_linked_method_cache_program(&program, &caches),
-        Ok(RuntimeValue::Bool(true))
-    );
+    assert_eq!(run_linked_method_cache_program(&program, &caches), expected);
     assert_eq!(caches.set_count(), 2);
 }
 
