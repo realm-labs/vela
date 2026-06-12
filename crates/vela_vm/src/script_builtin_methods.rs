@@ -593,6 +593,15 @@ pub(crate) fn readonly_cache_entry(
         (StandardMethodReceiver::Bytes, id) if id == ids.bytes_is_empty => {
             StandardMethodInlineCacheTarget::IsEmpty
         }
+        (StandardMethodReceiver::Bytes, id) if id == ids.bytes_get => {
+            StandardMethodInlineCacheTarget::Get
+        }
+        (StandardMethodReceiver::Bytes, id) if id == ids.bytes_read_u32_le => {
+            StandardMethodInlineCacheTarget::ReadU32Le
+        }
+        (StandardMethodReceiver::Bytes, id) if id == ids.bytes_read_u32_be => {
+            StandardMethodInlineCacheTarget::ReadU32Be
+        }
         (StandardMethodReceiver::Range, id) if id == ids.range_len => {
             StandardMethodInlineCacheTarget::Len
         }
@@ -679,6 +688,15 @@ pub(crate) fn call_readonly_cached(
         }
         (StandardMethodReceiver::Set, StandardMethodInlineCacheTarget::IsDisjoint) => {
             set_methods::is_disjoint(receiver, args, heap).map(Value::Bool)
+        }
+        (StandardMethodReceiver::Bytes, StandardMethodInlineCacheTarget::Get) => {
+            bytes_methods::get(receiver, args, heap)
+        }
+        (StandardMethodReceiver::Bytes, StandardMethodInlineCacheTarget::ReadU32Le) => {
+            bytes_methods::read_u32_le(receiver, args, heap)
+        }
+        (StandardMethodReceiver::Bytes, StandardMethodInlineCacheTarget::ReadU32Be) => {
+            bytes_methods::read_u32_be(receiver, args, heap)
         }
         _ => return None,
     };

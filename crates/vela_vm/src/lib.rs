@@ -341,6 +341,9 @@ pub enum StandardMethodInlineCacheTarget {
     IsSubset,
     IsSuperset,
     IsDisjoint,
+    Get,
+    ReadU32Le,
+    ReadU32Be,
 }
 
 pub struct LinkedRuntimeCodeCall<'program, 'args, 'host, 'heap, 'roots, 'budget, 'caches> {
