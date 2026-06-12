@@ -597,10 +597,8 @@ fn linked_standard_value_method_result(
         Err(error) => return Some(Err(error)),
     };
     if let Some(standard_method) = call.standard_method
-        && script_builtin_methods::standard_cache_entry_matches_method(
+        && script_builtin_methods::standard_cache_entry_matches_method_id(
             call.method_id,
-            receiver,
-            heap.as_deref(),
             standard_method,
         )
         && let Some(result) = script_builtin_methods::call_standard_cached(

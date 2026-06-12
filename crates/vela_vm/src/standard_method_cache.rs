@@ -11,7 +11,6 @@ pub(crate) fn standard_cache_entry(
     receiver: &Value,
     heap: Option<&HeapExecution<'_>>,
 ) -> Option<StandardMethodInlineCacheEntry> {
-    let ids = std_method_ids();
     let receiver = if crate::string_methods::is_string(receiver, heap) {
         StandardMethodReceiver::String
     } else if bytes_methods::is_bytes(receiver, heap) {
@@ -31,6 +30,22 @@ pub(crate) fn standard_cache_entry(
     } else {
         return None;
     };
+    let target = standard_method_target(receiver, method_id)?;
+    Some(StandardMethodInlineCacheEntry { receiver, target })
+}
+
+pub(crate) fn standard_cache_entry_matches_method_id(
+    method_id: MethodId,
+    cache: StandardMethodInlineCacheEntry,
+) -> bool {
+    standard_method_target(cache.receiver, method_id) == Some(cache.target)
+}
+
+fn standard_method_target(
+    receiver: StandardMethodReceiver,
+    method_id: MethodId,
+) -> Option<StandardMethodInlineCacheTarget> {
+    let ids = std_method_ids();
     let target = match (receiver, method_id) {
         (StandardMethodReceiver::String, id) if id == ids.string_len => {
             StandardMethodInlineCacheTarget::Len
@@ -307,16 +322,7 @@ pub(crate) fn standard_cache_entry(
         }
         _ => return None,
     };
-    Some(StandardMethodInlineCacheEntry { receiver, target })
-}
-
-pub(crate) fn standard_cache_entry_matches_method(
-    method_id: MethodId,
-    receiver: &Value,
-    heap: Option<&HeapExecution<'_>>,
-    cache: StandardMethodInlineCacheEntry,
-) -> bool {
-    standard_cache_entry(method_id, receiver, heap) == Some(cache)
+    Some(target)
 }
 
 pub(crate) fn call_standard_cached(

@@ -7,7 +7,7 @@ use crate::{
 use vela_def::MethodId;
 
 pub(crate) use crate::standard_method_cache::{
-    call_standard_cached, standard_cache_entry, standard_cache_entry_matches_method,
+    call_standard_cached, standard_cache_entry, standard_cache_entry_matches_method_id,
 };
 
 pub(crate) fn call(
