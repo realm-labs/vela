@@ -14,6 +14,7 @@ use vela_vm::{
 #[derive(Debug, Default)]
 pub(crate) struct BenchInlineCaches {
     entries: RefCell<Vec<BenchInlineCacheEntry>>,
+    hit_count: Cell<usize>,
     set_count: Cell<usize>,
 }
 
@@ -32,16 +33,26 @@ impl BenchInlineCaches {
     pub(crate) fn new(len: usize) -> Self {
         Self {
             entries: RefCell::new(vec![BenchInlineCacheEntry::Empty; len]),
+            hit_count: Cell::new(0),
             set_count: Cell::new(0),
         }
     }
 
-    pub(crate) fn reset_set_count(&self) {
+    pub(crate) fn reset_measurement_counts(&self) {
+        self.hit_count.set(0);
         self.set_count.set(0);
+    }
+
+    pub(crate) fn hit_count(&self) -> usize {
+        self.hit_count.get()
     }
 
     pub(crate) fn set_count(&self) -> usize {
         self.set_count.get()
+    }
+
+    fn record_hit(&self) {
+        self.hit_count.set(self.hit_count.get() + 1);
     }
 
     fn update(&self, site: CacheSiteId, entry: BenchInlineCacheEntry) {
@@ -58,10 +69,14 @@ impl VmInlineCaches for BenchInlineCaches {
     }
 
     fn global_read_slot(&self, site: CacheSiteId) -> Option<GlobalSlot> {
-        match self.entries.borrow().get(site.index()) {
+        let entry = match self.entries.borrow().get(site.index()) {
             Some(BenchInlineCacheEntry::GlobalRead(slot)) => Some(*slot),
             _ => None,
+        };
+        if entry.is_some() {
+            self.record_hit();
         }
+        entry
     }
 
     fn set_global_read_slot(&self, site: CacheSiteId, slot: GlobalSlot) {
@@ -69,10 +84,14 @@ impl VmInlineCaches for BenchInlineCaches {
     }
 
     fn host_access(&self, site: CacheSiteId) -> Option<HostInlineCacheEntry> {
-        match self.entries.borrow().get(site.index()) {
+        let entry = match self.entries.borrow().get(site.index()) {
             Some(BenchInlineCacheEntry::HostAccess(entry)) => Some(*entry),
             _ => None,
+        };
+        if entry.is_some() {
+            self.record_hit();
         }
+        entry
     }
 
     fn set_host_access(&self, site: CacheSiteId, entry: HostInlineCacheEntry) {
@@ -80,10 +99,14 @@ impl VmInlineCaches for BenchInlineCaches {
     }
 
     fn record_field(&self, site: CacheSiteId) -> Option<RecordFieldInlineCacheEntry> {
-        match self.entries.borrow().get(site.index()) {
+        let entry = match self.entries.borrow().get(site.index()) {
             Some(BenchInlineCacheEntry::RecordField(entry)) => Some(*entry),
             _ => None,
+        };
+        if entry.is_some() {
+            self.record_hit();
         }
+        entry
     }
 
     fn set_record_field(&self, site: CacheSiteId, entry: RecordFieldInlineCacheEntry) {
@@ -91,10 +114,14 @@ impl VmInlineCaches for BenchInlineCaches {
     }
 
     fn method_dispatch(&self, site: CacheSiteId) -> Option<MethodInlineCacheEntry> {
-        match self.entries.borrow().get(site.index()) {
+        let entry = match self.entries.borrow().get(site.index()) {
             Some(BenchInlineCacheEntry::MethodDispatch(entry)) => Some(*entry),
             _ => None,
+        };
+        if entry.is_some() {
+            self.record_hit();
         }
+        entry
     }
 
     fn set_method_dispatch(&self, site: CacheSiteId, entry: MethodInlineCacheEntry) {
@@ -102,10 +129,14 @@ impl VmInlineCaches for BenchInlineCaches {
     }
 
     fn native_call(&self, site: CacheSiteId) -> Option<NativeInlineCacheEntry> {
-        match self.entries.borrow().get(site.index()) {
+        let entry = match self.entries.borrow().get(site.index()) {
             Some(BenchInlineCacheEntry::NativeCall(entry)) => Some(entry.clone()),
             _ => None,
+        };
+        if entry.is_some() {
+            self.record_hit();
         }
+        entry
     }
 
     fn set_native_call(&self, site: CacheSiteId, entry: NativeInlineCacheEntry) {

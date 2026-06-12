@@ -82,7 +82,7 @@ fn main() -> Result<(), Box<dyn Error>> {
     for workload in WORKLOADS {
         let result = run_workload(workload, params)?;
         println!(
-            "bench={} mode={} min_ns={} mean_ns={} median_ns={} p95_ns={} checksum={} cache_sets={} profile_hits={}",
+            "bench={} mode={} min_ns={} mean_ns={} median_ns={} p95_ns={} checksum={} cache_sets={} cache_hits={} profile_hits={}",
             workload.name,
             workload.mode.as_str(),
             result.min_ns,
@@ -91,6 +91,7 @@ fn main() -> Result<(), Box<dyn Error>> {
             result.p95_ns,
             result.checksum,
             result.cache_sets,
+            result.cache_hits,
             result.profile_hits
         );
     }
@@ -129,6 +130,7 @@ struct BenchResult {
     p95_ns: u128,
     checksum: u64,
     cache_sets: usize,
+    cache_hits: usize,
     profile_hits: u64,
 }
 
@@ -398,7 +400,7 @@ impl CompiledWorkload {
             caches, profiler, ..
         } = self
         {
-            caches.reset_set_count();
+            caches.reset_measurement_counts();
             profiler.reset();
         }
     }
@@ -407,6 +409,14 @@ impl CompiledWorkload {
         match self {
             Self::CacheEnabledFunction { caches, .. }
             | Self::CacheEnabledHostAccess { caches, .. } => caches.set_count(),
+            _ => 0,
+        }
+    }
+
+    fn cache_hit_count(&self) -> usize {
+        match self {
+            Self::CacheEnabledFunction { caches, .. }
+            | Self::CacheEnabledHostAccess { caches, .. } => caches.hit_count(),
             _ => 0,
         }
     }
@@ -1033,6 +1043,7 @@ fn summarize(
         p95_ns,
         checksum,
         cache_sets: workload.cache_set_count(),
+        cache_hits: workload.cache_hit_count(),
         profile_hits: workload.profile_hit_count(),
     }
 }
