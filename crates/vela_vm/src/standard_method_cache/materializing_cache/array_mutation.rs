@@ -141,6 +141,12 @@ fn call_cached_array_extend(
             array_slots_mut(heap, reference, "method extend")?.push(slot);
             return Ok(Value::Null);
         }
+        ArraySlotEntry::Pair(first, second) => {
+            let values = array_slots_mut(heap, reference, "method extend")?;
+            values.push(first);
+            values.push(second);
+            return Ok(Value::Null);
+        }
         ArraySlotEntry::Many => {}
     }
     let slots = array_slot_values(heap, extension_reference, "method extend")?;
@@ -151,6 +157,7 @@ fn call_cached_array_extend(
 enum ArraySlotEntry {
     Empty,
     Single(Value),
+    Pair(Value, Value),
     Many,
 }
 
@@ -164,6 +171,8 @@ fn array_slot_entry(
         [] => Ok(ArraySlotEntry::Empty),
         [Value::Missing] => type_error("missing value"),
         [value] => Ok(ArraySlotEntry::Single(*value)),
+        [Value::Missing, _] | [_, Value::Missing] => type_error("missing value"),
+        [first, second] => Ok(ArraySlotEntry::Pair(*first, *second)),
         _ => Ok(ArraySlotEntry::Many),
     }
 }
