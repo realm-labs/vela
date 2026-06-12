@@ -1,7 +1,7 @@
 use crate::workload_sources::{
     ARRAY_DISTINCT_SOURCE, ARRAY_EXTEND_SOURCE, ARRAY_EXTREMA_SOURCE, ARRAY_GROUP_BY_SOURCE,
     ARRAY_JOIN_SOURCE, ARRAY_LOOKUP_SOURCE, ARRAY_REVERSE_SOURCE, ARRAY_SLICE_SOURCE,
-    ARRAY_SORT_SOURCE, BYTES_METHODS_SOURCE, CALLBACK_COLLECTIONS_SOURCE,
+    ARRAY_SORT_SOURCE, ARRAY_SUM_SOURCE, BYTES_METHODS_SOURCE, CALLBACK_COLLECTIONS_SOURCE,
     DIRECT_CLOSURE_CALLS_SOURCE, HOST_DYNAMIC_KEY_ACCESS_SOURCE, HOST_FIELD_READ_WRITE_SOURCE,
     HOST_METHOD_CALLS_SOURCE, HOST_NESTED_READ_WRITE_SOURCE, HOST_RMW_MUTATION_SOURCE,
     MAP_CALLBACKS_SOURCE, MAP_EXTEND_SOURCE, MAP_FIND_ENTRIES_SOURCE, MAP_LOOKUP_SOURCE,
@@ -459,17 +459,12 @@ fn main(player: Player) {
     Workload {
         name: "managed_heap_array_sum",
         mode: ExecutionMode::ManagedHeap,
-        source: r#"
-fn main() {
-    let total = 0;
-    for tick in 0..64 {
-        let base = [1, 2, 3, 4, 5, 6, 7, 8];
-        let scaled = [tick, tick + 1, tick + 2, tick + 3];
-        total += base.sum() + scaled.sum();
-    }
-    return total;
-}
-"#,
+        source: ARRAY_SUM_SOURCE,
+    },
+    Workload {
+        name: "array_sum_cache_hot_offsets",
+        mode: ExecutionMode::CacheEnabled,
+        source: ARRAY_SUM_SOURCE,
     },
     Workload {
         name: "managed_heap_array_extrema",

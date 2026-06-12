@@ -34,7 +34,7 @@ scalar/range dispatch
 script/native function calls
 array, map, set, string, Option, and Result stdlib methods
 callbacks, direct closure calls, and higher-order collection methods
-cache-enabled stdlib, script/native call, method-dispatch aggregate/detail, script record-field aggregate/detail, collection lookup/combination/mutation/materialization, string/bytes method, Option/Result helper, callback collection/detail, and host-boundary aggregate/detail rows with warmed inline caches and bytecode profile counters
+cache-enabled stdlib, script/native call, method-dispatch aggregate/detail, script record-field aggregate/detail, collection lookup/aggregation/combination/mutation/materialization, string/bytes method, Option/Result helper, callback collection/detail, and host-boundary aggregate/detail rows with warmed inline caches and bytecode profile counters
 record and enum construction and field access
 managed heap allocation and materialization
 host field reads, nested path reads/writes, RMW mutations, dynamic key access, and method calls
@@ -127,8 +127,8 @@ M19.5 reports interpreter-only before/after rows for each prep family. The
 baseline harness now splits callback rows into collection callbacks and direct
 closure calls with default baseline data, includes cache-enabled stdlib
 collection, script-call, native-call, script record-field aggregate/detail,
-method-dispatch aggregate/detail, collection lookup/combination/mutation/
-materialization, string/bytes method, Option/Result helper, callback
+method-dispatch aggregate/detail, collection lookup/aggregation/combination/
+mutation/materialization, string/bytes method, Option/Result helper, callback
 collection/detail, direct-closure, and host-boundary aggregate/detail rows with
 warmed inline caches and bytecode profile counters. The record-field detail
 rows cover triplet, quad, quint, and sextet shapes; the host-boundary detail
