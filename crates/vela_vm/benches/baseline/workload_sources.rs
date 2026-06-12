@@ -1,6 +1,9 @@
 #[path = "workload_sources/calls.rs"]
 mod calls;
 
+#[path = "workload_sources/ranges.rs"]
+mod ranges;
+
 #[path = "workload_sources/strings.rs"]
 mod strings;
 
@@ -12,6 +15,7 @@ pub(crate) use calls::{
     SCRIPT_CALL_SMALL_ARGS_SOURCE, SCRIPT_CALL_WIDE_ARGS_SOURCE, SCRIPT_METHOD_DISPATCH_SOURCE,
     TRAIT_METHOD_DISPATCH_SOURCE,
 };
+pub(crate) use ranges::RANGE_METHODS_SOURCE;
 pub(crate) use sets::{
     SET_CALLBACK_PREDICATES_SOURCE, SET_COMBINATION_SOURCE, SET_LOOKUP_SOURCE, SET_MUTATION_SOURCE,
     SET_VALUES_SOURCE,
