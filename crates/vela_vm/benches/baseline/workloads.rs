@@ -997,6 +997,11 @@ fn main(player: Player) {
         source: MATERIALIZATION_SOURCE,
     },
     Workload {
+        name: "materialization_hot_offsets",
+        mode: ExecutionMode::ProfileOnly,
+        source: MATERIALIZATION_SOURCE,
+    },
+    Workload {
         name: "materialization_cache_hot_offsets",
         mode: ExecutionMode::CacheEnabled,
         source: MATERIALIZATION_SOURCE,
