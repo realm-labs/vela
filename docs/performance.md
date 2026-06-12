@@ -27,8 +27,8 @@ cargo bench -p vela_vm --bench external_compare -- --quick
 cargo bench -p vela_engine --bench hot_reload -- --quick
 ```
 
-`baseline` accepts optional workload-name substring filters before `--`, for
-example `cargo bench -p vela_vm --bench baseline host_field -- --quick`.
+`baseline` accepts optional workload-name substring filters after `--`, for
+example `cargo bench -p vela_vm --bench baseline -- --quick host_field`.
 
 Tracked workload groups:
 

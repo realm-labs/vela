@@ -97,6 +97,19 @@ fn main(player: Player) {
 }
 "#;
 
+pub(crate) const HOST_ACCESS_HOT_OFFSETS_SOURCE: &str = r#"
+fn main(player: Player) {
+    let total = 0;
+    for tick in 0..48 {
+        player.level = tick + 1;
+        player.exp += tick;
+        player.inventory.gold += 1;
+        total += player.level + player.exp + player.inventory.gold;
+    }
+    return total;
+}
+"#;
+
 pub(crate) const MATERIALIZATION_SOURCE: &str = r#"
 struct Reward {
     item_id: string
