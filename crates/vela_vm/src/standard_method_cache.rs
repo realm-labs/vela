@@ -2,7 +2,7 @@ mod materializing_cache;
 mod readonly_cache;
 
 use materializing_cache::{
-    call_cached_array_lookup_option, call_cached_array_materialization,
+    call_cached_array_lookup_option, call_cached_array_materialization, call_cached_array_mutation,
     call_cached_bytes_materialization, call_cached_map_get_option, call_cached_map_materialization,
     call_cached_map_mutation, call_cached_option_result_materialization,
     call_cached_set_materialization, call_cached_set_mutation, call_cached_string_array,
@@ -464,6 +464,16 @@ pub(crate) fn call_standard_cached(
             if cache.receiver == StandardMethodReceiver::Array =>
         {
             return call_cached_array_materialization(receiver, cache.target, args, heap, budget);
+        }
+        StandardMethodInlineCacheTarget::Push
+        | StandardMethodInlineCacheTarget::Pop
+        | StandardMethodInlineCacheTarget::Insert
+        | StandardMethodInlineCacheTarget::RemoveAt
+        | StandardMethodInlineCacheTarget::Clear
+        | StandardMethodInlineCacheTarget::Extend
+            if cache.receiver == StandardMethodReceiver::Array =>
+        {
+            return call_cached_array_mutation(receiver, cache.target, args, heap, budget);
         }
         _ => {}
     }

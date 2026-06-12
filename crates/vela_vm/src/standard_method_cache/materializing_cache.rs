@@ -1,3 +1,4 @@
+mod array_mutation;
 mod map;
 mod map_mutation;
 mod option_result;
@@ -10,6 +11,7 @@ use crate::{
     ExecutionBudget, HeapExecution, StandardMethodInlineCacheTarget, Value, VmError, VmErrorKind,
     VmResult, allocate_heap_value, stored_runtime_value,
 };
+pub(super) use array_mutation::call_cached_array_mutation;
 pub(super) use map::call_cached_map_materialization;
 pub(super) use map_mutation::call_cached_map_mutation;
 pub(super) use option_result::call_cached_option_result_materialization;
