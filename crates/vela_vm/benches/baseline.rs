@@ -1160,31 +1160,3 @@ fn profile() -> &'static str {
         "release"
     }
 }
-
-impl ExecutionMode {
-    fn is_cache_enabled(self) -> bool {
-        matches!(
-            self,
-            Self::CacheEnabled | Self::ScriptProgramCacheEnabled | Self::HostAccessCacheEnabled
-        )
-    }
-
-    fn as_str(self) -> &'static str {
-        match self {
-            Self::Inline => "inline",
-            Self::ProfileOnly => "profile_only",
-            Self::CacheEnabled => "cache_enabled",
-            Self::ScriptProgram => "script_program",
-            Self::ScriptProgramProfileOnly => "script_program_profile_only",
-            Self::ScriptProgramCacheEnabled => "script_program_cache_enabled",
-            Self::ManagedHeap => "managed_heap",
-            Self::HostAccess => "host_access",
-            Self::HostAccessProfileOnly => "host_access_profile_only",
-            Self::HostAccessCacheEnabled => "host_access_cache_enabled",
-            Self::HostManagedHeapReadConversion => "host_managed_heap_read_conversion",
-            Self::HostManagedHeapHostAccess => "host_managed_heap_access",
-            Self::GameplayHost => "gameplay_host",
-            Self::GcPacing => "gc_pacing",
-        }
-    }
-}
