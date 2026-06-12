@@ -225,6 +225,9 @@ pub(super) fn call_cached_collection_has(
             };
             Some(
                 crate::runtime_checks::expect_arity("has", args, 1).and_then(|()| {
+                    if let Some(result) = cached_set_contains_immediate(values, &args[0]) {
+                        return Ok(Value::Bool(result));
+                    }
                     set_methods::contains_value(values, &args[0], heap, "method has")
                         .map(Value::Bool)
                 }),
@@ -456,4 +459,41 @@ fn index_out_of_bounds(index: usize, len: usize) -> VmError {
 
 fn type_error<T>(operation: &'static str) -> VmResult<T> {
     Err(VmError::new(VmErrorKind::TypeMismatch { operation }))
+}
+
+fn cached_set_contains_immediate(values: &[Value], candidate: &Value) -> Option<bool> {
+    for value in values {
+        match (candidate, value) {
+            (Value::Null, Value::Null) => return Some(true),
+            (Value::Bool(lhs), Value::Bool(rhs)) if lhs == rhs => return Some(true),
+            (Value::Scalar(ScalarValue::I64(lhs)), Value::Scalar(ScalarValue::I64(rhs)))
+                if lhs == rhs =>
+            {
+                return Some(true);
+            }
+            (Value::Scalar(ScalarValue::F64(lhs)), Value::Scalar(ScalarValue::F64(rhs)))
+                if lhs.is_finite() && rhs.is_finite() && lhs.to_bits() == rhs.to_bits() =>
+            {
+                return Some(true);
+            }
+            (
+                Value::Null | Value::Bool(_) | Value::Scalar(ScalarValue::I64(_)),
+                Value::Null | Value::Bool(_) | Value::Scalar(ScalarValue::I64(_)),
+            ) => {}
+            (
+                Value::Null | Value::Bool(_) | Value::Scalar(ScalarValue::I64(_)),
+                Value::Scalar(ScalarValue::F64(value)),
+            ) if value.is_finite() => {}
+            (
+                Value::Scalar(ScalarValue::F64(candidate)),
+                Value::Null | Value::Bool(_) | Value::Scalar(ScalarValue::I64(_)),
+            ) if candidate.is_finite() => {}
+            (
+                Value::Scalar(ScalarValue::F64(candidate)),
+                Value::Scalar(ScalarValue::F64(value)),
+            ) if candidate.is_finite() && value.is_finite() => {}
+            _ => return None,
+        }
+    }
+    Some(false)
 }
