@@ -220,6 +220,11 @@ fn main() {
         source: STRING_TRANSFORMS_SOURCE,
     },
     Workload {
+        name: "string_transforms_hot_offsets",
+        mode: ExecutionMode::ProfileOnly,
+        source: STRING_TRANSFORMS_SOURCE,
+    },
+    Workload {
         name: "string_transforms_cache_hot_offsets",
         mode: ExecutionMode::CacheEnabled,
         source: STRING_TRANSFORMS_SOURCE,
