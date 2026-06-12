@@ -401,6 +401,8 @@ pub enum StandardMethodInlineCacheTarget {
     Difference,
     SymmetricDifference,
     Slice,
+    Push,
+    Pop,
     Reverse,
     Distinct,
     Join,

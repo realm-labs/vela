@@ -152,6 +152,12 @@ pub(crate) fn standard_cache_entry(
         (StandardMethodReceiver::Array, id) if id == ids.array_slice => {
             StandardMethodInlineCacheTarget::Slice
         }
+        (StandardMethodReceiver::Array, id) if id == ids.array_push => {
+            StandardMethodInlineCacheTarget::Push
+        }
+        (StandardMethodReceiver::Array, id) if id == ids.array_pop => {
+            StandardMethodInlineCacheTarget::Pop
+        }
         (StandardMethodReceiver::Array, id) if id == ids.array_reverse => {
             StandardMethodInlineCacheTarget::Reverse
         }
@@ -356,6 +362,24 @@ pub(crate) fn call_standard_cached(
         }
         (StandardMethodReceiver::Array, StandardMethodInlineCacheTarget::Slice) => {
             array_methods::slice(receiver, args, heap, budget)
+        }
+        (StandardMethodReceiver::Array, StandardMethodInlineCacheTarget::Push) => {
+            let mut receiver = *receiver;
+            array_methods::push(
+                &mut receiver,
+                args,
+                heap.as_deref_mut(),
+                budget.as_deref_mut(),
+            )
+        }
+        (StandardMethodReceiver::Array, StandardMethodInlineCacheTarget::Pop) => {
+            let mut receiver = *receiver;
+            array_methods::pop(
+                &mut receiver,
+                args,
+                heap.as_deref_mut(),
+                budget.as_deref_mut(),
+            )
         }
         (StandardMethodReceiver::Array, StandardMethodInlineCacheTarget::Reverse) => {
             array_methods::reverse(receiver, args, heap, budget)

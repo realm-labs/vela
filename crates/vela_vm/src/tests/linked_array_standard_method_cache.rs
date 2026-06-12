@@ -51,6 +51,24 @@ fn linked_standard_value_method_caches_array_slice_target() {
 }
 
 #[test]
+fn linked_standard_value_method_caches_array_push_target() {
+    assert_array_owned_cache(
+        linked_array_push_cache_program(),
+        StandardMethodInlineCacheTarget::Push,
+        OwnedValue::Null,
+    );
+}
+
+#[test]
+fn linked_standard_value_method_caches_array_pop_target() {
+    assert_array_option_scalar_cache(
+        linked_array_pop_cache_program(),
+        StandardMethodInlineCacheTarget::Pop,
+        4,
+    );
+}
+
+#[test]
 fn linked_standard_value_method_caches_array_reverse_target() {
     assert_array_owned_cache(
         linked_array_reverse_cache_program(),
