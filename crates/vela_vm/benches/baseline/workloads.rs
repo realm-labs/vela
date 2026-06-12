@@ -375,6 +375,11 @@ fn main() {
         source: ARRAY_CALLBACK_PREDICATES_SOURCE,
     },
     Workload {
+        name: "array_callback_predicates_hot_offsets",
+        mode: ExecutionMode::ProfileOnly,
+        source: ARRAY_CALLBACK_PREDICATES_SOURCE,
+    },
+    Workload {
         name: "array_callback_predicates_cache_hot_offsets",
         mode: ExecutionMode::CacheEnabled,
         source: ARRAY_CALLBACK_PREDICATES_SOURCE,
