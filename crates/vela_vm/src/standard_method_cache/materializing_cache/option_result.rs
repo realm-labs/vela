@@ -4,7 +4,7 @@ use crate::option_result::{
 };
 use crate::{
     ExecutionBudget, HeapExecution, StandardMethodInlineCacheTarget, StandardMethodReceiver, Value,
-    VmError, VmErrorKind, VmResult, stored_runtime_value,
+    VmError, VmErrorKind, VmResult,
 };
 
 pub(in crate::standard_method_cache) fn call_cached_option_result_materialization(
@@ -217,7 +217,7 @@ fn cached_standard_enum_payload(
     }
     fields
         .get_slot(0, "0")
-        .map(stored_runtime_value)
+        .copied()
         .ok_or_else(|| VmError::new(VmErrorKind::TypeMismatch { operation }))
 }
 
