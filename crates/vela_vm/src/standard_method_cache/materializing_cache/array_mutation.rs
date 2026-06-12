@@ -132,13 +132,40 @@ fn call_cached_array_extend(
         return type_error("method extend");
     };
     let extension_reference = array_reference(&args[0], "method extend")?;
-    if array_slots(heap, extension_reference, "method extend")?.is_empty() {
-        array_slots(heap, reference, "method extend")?;
-        return Ok(Value::Null);
+    match array_slot_entry(heap, extension_reference, "method extend")? {
+        ArraySlotEntry::Empty => {
+            array_slots(heap, reference, "method extend")?;
+            return Ok(Value::Null);
+        }
+        ArraySlotEntry::Single(slot) => {
+            array_slots_mut(heap, reference, "method extend")?.push(slot);
+            return Ok(Value::Null);
+        }
+        ArraySlotEntry::Many => {}
     }
     let slots = array_slot_values(heap, extension_reference, "method extend")?;
     array_slots_mut(heap, reference, "method extend")?.extend(slots);
     Ok(Value::Null)
+}
+
+enum ArraySlotEntry {
+    Empty,
+    Single(Value),
+    Many,
+}
+
+fn array_slot_entry(
+    heap: &HeapExecution<'_>,
+    reference: crate::heap::GcRef,
+    operation: &'static str,
+) -> VmResult<ArraySlotEntry> {
+    let values = array_slots(heap, reference, operation)?;
+    match values {
+        [] => Ok(ArraySlotEntry::Empty),
+        [Value::Missing] => type_error("missing value"),
+        [value] => Ok(ArraySlotEntry::Single(*value)),
+        _ => Ok(ArraySlotEntry::Many),
+    }
 }
 
 fn array_slot_values(

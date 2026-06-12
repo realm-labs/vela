@@ -115,6 +115,29 @@ fn linked_standard_value_method_caches_array_extend_target() {
 }
 
 #[test]
+fn linked_standard_value_method_caches_array_single_extend_target() {
+    let (program, site, dispatch, method_id) = linked_array_single_extend_cache_program();
+    let caches = RecordingMethodCaches::new(1);
+    let expected = Ok(OwnedValue::Array(vec![
+        OwnedValue::Scalar(vela_common::ScalarValue::I64(2)),
+        OwnedValue::Scalar(vela_common::ScalarValue::I64(4)),
+    ]));
+
+    assert_eq!(
+        run_linked_method_cache_owned_program(&program, &caches),
+        expected
+    );
+    assert_array_cache_entry(
+        &caches,
+        site,
+        dispatch,
+        method_id,
+        StandardMethodInlineCacheTarget::Extend,
+    );
+    assert_eq!(caches.set_count(), 2);
+}
+
+#[test]
 fn linked_standard_value_method_caches_array_self_extend_target() {
     let (program, site, dispatch, method_id) = linked_array_self_extend_cache_program();
     let caches = RecordingMethodCaches::new(1);
@@ -289,6 +312,17 @@ fn assert_array_cache_entry(
 }
 
 fn linked_array_extend_cache_program() -> LinkedMethodCacheFixture {
+    linked_array_extend_cache_program_with_options(false, false)
+}
+
+fn linked_array_single_extend_cache_program() -> LinkedMethodCacheFixture {
+    linked_array_extend_cache_program_with_options(true, true)
+}
+
+fn linked_array_extend_cache_program_with_options(
+    single_extension: bool,
+    return_receiver: bool,
+) -> LinkedMethodCacheFixture {
     let method_id = vela_stdlib::std_method_id("Array", "extend").expect("Array::extend method id");
     let mut program = vela_bytecode::LinkedProgram::new();
     let main_name = program.intern_debug_name("main");
@@ -319,7 +353,11 @@ fn linked_array_extend_cache_program() -> LinkedMethodCacheFixture {
     code.push_instruction(vela_bytecode::linked::Instruction::new(
         vela_bytecode::linked::InstructionKind::MakeArray {
             dst: Register(4),
-            elements: vec![Register(1), Register(2)],
+            elements: if single_extension {
+                vec![Register(1)]
+            } else {
+                vec![Register(1), Register(2)]
+            },
         },
     ));
     let site = code.push_cache_site(
@@ -336,8 +374,15 @@ fn linked_array_extend_cache_program() -> LinkedMethodCacheFixture {
             args: vec![vela_bytecode::CallArgument::Register(Register(4))],
         },
     ));
+    let return_register = if return_receiver {
+        Register(3)
+    } else {
+        Register(5)
+    };
     code.push_instruction(vela_bytecode::linked::Instruction::new(
-        vela_bytecode::linked::InstructionKind::Return { src: Register(5) },
+        vela_bytecode::linked::InstructionKind::Return {
+            src: return_register,
+        },
     ));
     let function = program.push_function(code);
     program.set_entry_point(main_name, function);
