@@ -350,6 +350,8 @@ pub enum StandardMethodInlineCacheTarget {
     IsDisjoint,
     Get,
     GetOr,
+    Slice,
+    ToHex,
     ReadU32Le,
     ReadU32Be,
     IsSome,

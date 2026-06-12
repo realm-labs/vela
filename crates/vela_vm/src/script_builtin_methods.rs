@@ -615,6 +615,12 @@ pub(crate) fn standard_cache_entry(
         (StandardMethodReceiver::Bytes, id) if id == ids.bytes_get => {
             StandardMethodInlineCacheTarget::Get
         }
+        (StandardMethodReceiver::Bytes, id) if id == ids.bytes_slice => {
+            StandardMethodInlineCacheTarget::Slice
+        }
+        (StandardMethodReceiver::Bytes, id) if id == ids.bytes_to_hex => {
+            StandardMethodInlineCacheTarget::ToHex
+        }
         (StandardMethodReceiver::Bytes, id) if id == ids.bytes_read_u32_le => {
             StandardMethodInlineCacheTarget::ReadU32Le
         }
@@ -717,6 +723,12 @@ pub(crate) fn call_standard_cached(
         }
         (StandardMethodReceiver::String, StandardMethodInlineCacheTarget::TrimEnd) => {
             crate::string_methods::trim_end(receiver, args, heap, budget)
+        }
+        (StandardMethodReceiver::Bytes, StandardMethodInlineCacheTarget::Slice) => {
+            bytes_methods::slice(receiver, args, heap, budget)
+        }
+        (StandardMethodReceiver::Bytes, StandardMethodInlineCacheTarget::ToHex) => {
+            bytes_methods::to_hex(receiver, args, heap, budget)
         }
         _ => return None,
     };

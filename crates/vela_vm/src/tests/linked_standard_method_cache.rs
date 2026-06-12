@@ -144,6 +144,76 @@ fn linked_standard_value_method_caches_bytes_accessor_target() {
 }
 
 #[test]
+fn linked_standard_value_method_caches_bytes_slice_target() {
+    let (program, site, dispatch, method_id) = linked_bytes_slice_cache_program();
+    let caches = RecordingMethodCaches::new(1);
+
+    assert_eq!(
+        run_linked_method_cache_owned_program(&program, &caches),
+        Ok(OwnedValue::Bytes(vec![21, 34]))
+    );
+    let entry = caches
+        .entry(site)
+        .expect("standard bytes slice cache should populate");
+    assert_eq!(entry.dispatch, dispatch);
+    let MethodInlineCacheTarget::Value {
+        method_id: cached_method,
+        standard_method: Some(standard_method),
+    } = entry.target
+    else {
+        panic!("standard bytes slice cache should store value target");
+    };
+    assert_eq!(cached_method, method_id);
+    assert_eq!(standard_method.receiver, StandardMethodReceiver::Bytes);
+    assert_eq!(
+        standard_method.target,
+        StandardMethodInlineCacheTarget::Slice
+    );
+    assert_eq!(caches.set_count(), 2);
+
+    assert_eq!(
+        run_linked_method_cache_owned_program(&program, &caches),
+        Ok(OwnedValue::Bytes(vec![21, 34]))
+    );
+    assert_eq!(caches.set_count(), 2);
+}
+
+#[test]
+fn linked_standard_value_method_caches_bytes_to_hex_target() {
+    let (program, site, dispatch, method_id) = linked_bytes_to_hex_cache_program();
+    let caches = RecordingMethodCaches::new(1);
+
+    assert_eq!(
+        run_linked_method_cache_owned_program(&program, &caches),
+        Ok(OwnedValue::String("0d1522".to_owned()))
+    );
+    let entry = caches
+        .entry(site)
+        .expect("standard bytes to_hex cache should populate");
+    assert_eq!(entry.dispatch, dispatch);
+    let MethodInlineCacheTarget::Value {
+        method_id: cached_method,
+        standard_method: Some(standard_method),
+    } = entry.target
+    else {
+        panic!("standard bytes to_hex cache should store value target");
+    };
+    assert_eq!(cached_method, method_id);
+    assert_eq!(standard_method.receiver, StandardMethodReceiver::Bytes);
+    assert_eq!(
+        standard_method.target,
+        StandardMethodInlineCacheTarget::ToHex
+    );
+    assert_eq!(caches.set_count(), 2);
+
+    assert_eq!(
+        run_linked_method_cache_owned_program(&program, &caches),
+        Ok(OwnedValue::String("0d1522".to_owned()))
+    );
+    assert_eq!(caches.set_count(), 2);
+}
+
+#[test]
 fn linked_standard_value_method_caches_option_predicate_target() {
     let (program, site, dispatch, method_id) = linked_option_is_some_cache_program();
     let caches = RecordingMethodCaches::new(1);
@@ -614,6 +684,107 @@ fn linked_bytes_get_cache_program() -> (
     ));
     code.push_instruction(vela_bytecode::linked::Instruction::new(
         vela_bytecode::linked::InstructionKind::Return { src: Register(2) },
+    ));
+    let function = program.push_function(code);
+    program.set_entry_point(main_name, function);
+    (program, site, dispatch, method_id)
+}
+
+fn linked_bytes_slice_cache_program() -> (
+    vela_bytecode::LinkedProgram,
+    CacheSiteId,
+    vela_bytecode::MethodDispatchHandle,
+    vela_def::MethodId,
+) {
+    let method_id = vela_stdlib::std_method_id("Bytes", "slice").expect("Bytes::slice method id");
+    let mut program = vela_bytecode::LinkedProgram::new();
+    let main_name = program.intern_debug_name("main");
+    let method_name = program.intern_debug_name("slice");
+    let dispatch = program.push_method_dispatch(vela_bytecode::LinkedMethodDispatch::new(
+        method_name,
+        vela_bytecode::LinkedMethodDispatchKind::Value { method_id },
+    ));
+
+    let mut code = vela_bytecode::LinkedCodeObject::new(main_name, 4);
+    let receiver = code.push_constant(Constant::Bytes(vec![13, 21, 34, 55]));
+    let start = code.push_constant(Constant::Scalar(vela_common::ScalarValue::I64(1)));
+    let end = code.push_constant(Constant::Scalar(vela_common::ScalarValue::I64(3)));
+    code.push_instruction(vela_bytecode::linked::Instruction::new(
+        vela_bytecode::linked::InstructionKind::LoadConst {
+            dst: Register(0),
+            constant: receiver,
+        },
+    ));
+    code.push_instruction(vela_bytecode::linked::Instruction::new(
+        vela_bytecode::linked::InstructionKind::LoadConst {
+            dst: Register(1),
+            constant: start,
+        },
+    ));
+    code.push_instruction(vela_bytecode::linked::Instruction::new(
+        vela_bytecode::linked::InstructionKind::LoadConst {
+            dst: Register(2),
+            constant: end,
+        },
+    ));
+    let site = code.push_cache_site(CacheSiteKind::MethodCall, InstructionOffset(3));
+    code.push_instruction(vela_bytecode::linked::Instruction::new(
+        vela_bytecode::linked::InstructionKind::CallMethod {
+            dst: Register(3),
+            receiver: Register(0),
+            dispatch,
+            debug_name: method_name,
+            cache_site: Some(site),
+            args: vec![
+                vela_bytecode::CallArgument::Register(Register(1)),
+                vela_bytecode::CallArgument::Register(Register(2)),
+            ],
+        },
+    ));
+    code.push_instruction(vela_bytecode::linked::Instruction::new(
+        vela_bytecode::linked::InstructionKind::Return { src: Register(3) },
+    ));
+    let function = program.push_function(code);
+    program.set_entry_point(main_name, function);
+    (program, site, dispatch, method_id)
+}
+
+fn linked_bytes_to_hex_cache_program() -> (
+    vela_bytecode::LinkedProgram,
+    CacheSiteId,
+    vela_bytecode::MethodDispatchHandle,
+    vela_def::MethodId,
+) {
+    let method_id = vela_stdlib::std_method_id("Bytes", "to_hex").expect("Bytes::to_hex method id");
+    let mut program = vela_bytecode::LinkedProgram::new();
+    let main_name = program.intern_debug_name("main");
+    let method_name = program.intern_debug_name("to_hex");
+    let dispatch = program.push_method_dispatch(vela_bytecode::LinkedMethodDispatch::new(
+        method_name,
+        vela_bytecode::LinkedMethodDispatchKind::Value { method_id },
+    ));
+
+    let mut code = vela_bytecode::LinkedCodeObject::new(main_name, 2);
+    let receiver = code.push_constant(Constant::Bytes(vec![13, 21, 34]));
+    code.push_instruction(vela_bytecode::linked::Instruction::new(
+        vela_bytecode::linked::InstructionKind::LoadConst {
+            dst: Register(0),
+            constant: receiver,
+        },
+    ));
+    let site = code.push_cache_site(CacheSiteKind::MethodCall, InstructionOffset(1));
+    code.push_instruction(vela_bytecode::linked::Instruction::new(
+        vela_bytecode::linked::InstructionKind::CallMethod {
+            dst: Register(1),
+            receiver: Register(0),
+            dispatch,
+            debug_name: method_name,
+            cache_site: Some(site),
+            args: Vec::new(),
+        },
+    ));
+    code.push_instruction(vela_bytecode::linked::Instruction::new(
+        vela_bytecode::linked::InstructionKind::Return { src: Register(1) },
     ));
     let function = program.push_function(code);
     program.set_entry_point(main_name, function);
