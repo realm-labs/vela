@@ -280,6 +280,11 @@ fn main() {
         source: STRING_OPTIONS_SOURCE,
     },
     Workload {
+        name: "string_options_hot_offsets",
+        mode: ExecutionMode::ProfileOnly,
+        source: STRING_OPTIONS_SOURCE,
+    },
+    Workload {
         name: "string_options_cache_hot_offsets",
         mode: ExecutionMode::CacheEnabled,
         source: STRING_OPTIONS_SOURCE,
