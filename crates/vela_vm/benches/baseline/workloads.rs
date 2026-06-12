@@ -761,6 +761,11 @@ fn main(player: Player) {
         source: HOST_RMW_MUTATION_SOURCE,
     },
     Workload {
+        name: "host_rmw_mutation_hot_offsets",
+        mode: ExecutionMode::HostAccess,
+        source: HOST_RMW_MUTATION_SOURCE,
+    },
+    Workload {
         name: "host_rmw_mutation_cache_hot_offsets",
         mode: ExecutionMode::HostAccessCacheEnabled,
         source: HOST_RMW_MUTATION_SOURCE,
