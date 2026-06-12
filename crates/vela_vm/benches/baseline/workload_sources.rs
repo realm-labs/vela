@@ -970,6 +970,30 @@ fn main() {
 }
 "#;
 
+pub(crate) const SET_MUTATION_SOURCE: &str = r#"
+fn main() {
+    let total = 0;
+    for tick in 0..96 {
+        let active = set::from_array(["quest", "raid"]);
+        let added = active.add("event");
+        let duplicate = active.add("quest");
+        let removed = active.remove("raid");
+        let missing = active.remove("missing");
+        active.extend(set::from_array(["bonus", "boss"]));
+        let before_clear = active.values().sort().join("|");
+        active.clear();
+        if !added || duplicate || !removed || missing
+            || before_clear != "bonus|boss|event|quest"
+            || !active.is_empty()
+        {
+            return 0;
+        }
+        total += before_clear.len() + active.len() + tick - tick;
+    }
+    return total;
+}
+"#;
+
 pub(crate) const SET_COMBINATION_SOURCE: &str = r#"
 fn main() {
     let total = 0;
