@@ -22,6 +22,7 @@ pub(crate) fn print(records: &[Record]) {
         .enumerate()
         .map(|(index, record)| (record.name, index))
         .collect::<BTreeMap<_, _>>();
+    let mut summary = DeltaSummary::default();
     for record in records {
         if !record.cache_enabled {
             continue;
@@ -35,13 +36,15 @@ pub(crate) fn print(records: &[Record]) {
         else {
             continue;
         };
+        let mean_delta = signed_delta(record.mean_ns, base.mean_ns);
+        summary.record(record, base, mean_delta);
         println!(
             "cache_delta bench={} mode={} base={} base_mode={} mean_delta_ns={} min_delta_ns={} median_delta_ns={} p95_delta_ns={} mean_ratio_ppm={} checksum_match={} delta_kind={} cache_hits={} profile_hits={} base_profile_hits={} profile_hits_match={}",
             record.name,
             record.mode,
             base.name,
             base.mode,
-            signed_delta(record.mean_ns, base.mean_ns),
+            mean_delta,
             signed_delta(record.min_ns, base.min_ns),
             signed_delta(record.median_ns, base.median_ns),
             signed_delta(record.p95_ns, base.p95_ns),
@@ -54,6 +57,7 @@ pub(crate) fn print(records: &[Record]) {
             record.profile_hits == base.profile_hits
         );
     }
+    summary.print();
 }
 
 fn print_measurement_summary(records: &[Record]) {
@@ -101,6 +105,57 @@ impl MeasurementSummary {
             }
             _ => {}
         }
+    }
+}
+
+#[derive(Default)]
+struct DeltaSummary {
+    paired_rows: usize,
+    cache_rows: usize,
+    profile_only_rows: usize,
+    cache_no_activity_rows: usize,
+    improved_rows: usize,
+    regressed_rows: usize,
+    neutral_rows: usize,
+    checksum_mismatches: usize,
+    profile_mismatches: usize,
+}
+
+impl DeltaSummary {
+    fn record(&mut self, record: &Record, base: &Record, mean_delta: i128) {
+        self.paired_rows += 1;
+        match record.measurement_kind {
+            "cache" => self.cache_rows += 1,
+            "profile_only" => self.profile_only_rows += 1,
+            "cache_no_activity" => self.cache_no_activity_rows += 1,
+            _ => {}
+        }
+        match mean_delta.cmp(&0) {
+            std::cmp::Ordering::Less => self.improved_rows += 1,
+            std::cmp::Ordering::Greater => self.regressed_rows += 1,
+            std::cmp::Ordering::Equal => self.neutral_rows += 1,
+        }
+        if record.checksum != base.checksum {
+            self.checksum_mismatches += 1;
+        }
+        if record.profile_hits != base.profile_hits {
+            self.profile_mismatches += 1;
+        }
+    }
+
+    fn print(&self) {
+        println!(
+            "cache_delta_summary paired_rows={} cache_rows={} profile_only_rows={} cache_no_activity_rows={} improved_rows={} regressed_rows={} neutral_rows={} checksum_mismatches={} profile_mismatches={}",
+            self.paired_rows,
+            self.cache_rows,
+            self.profile_only_rows,
+            self.cache_no_activity_rows,
+            self.improved_rows,
+            self.regressed_rows,
+            self.neutral_rows,
+            self.checksum_mismatches,
+            self.profile_mismatches,
+        );
     }
 }
 

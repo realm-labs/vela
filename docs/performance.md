@@ -66,7 +66,8 @@ delta_kind, base_profile_hits, and profile_hits_match when the harness emits
 paired cache-enabled rows; measurement_kind/delta_kind separate true cache-hit
 rows from profile-only hot-offset rows, and native-call cache-enabled rows
 count resolved target-cache population; measurement_summary rows should count
-interpreter, profile-only, cache, and cache-no-activity rows for the run
+interpreter, profile-only, cache, and cache-no-activity rows for the run, and
+cache_delta_summary rows should count paired-row outcomes and mismatches
 external runtime versions when used
 ```
 
