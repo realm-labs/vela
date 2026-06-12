@@ -349,6 +349,27 @@ fn main() {
 }
 "#;
 
+pub(crate) const ARRAY_CALLBACK_PREDICATES_SOURCE: &str = r#"
+fn main() {
+    let total = 0;
+    for tick in 0..96 {
+        let values = [tick + 1, tick + 2, tick + 3, tick + 4, tick + 5, tick + 6];
+        let found = values.find(|value| value % 5 == 0).unwrap_or(0);
+
+        if found == 0
+            || !values.any(|value| value == found)
+            || !values.all(|value| value > tick)
+            || values.count(|value| value % 2 == 0) != 3
+        {
+            return 0;
+        }
+
+        total += found + values.count(|value| value >= tick + 4) + tick - tick;
+    }
+    return total;
+}
+"#;
+
 pub(crate) const MAP_CALLBACKS_SOURCE: &str = r#"
 fn main() {
     let total = 0;
