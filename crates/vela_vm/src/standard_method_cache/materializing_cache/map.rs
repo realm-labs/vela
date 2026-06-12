@@ -114,13 +114,8 @@ fn map_merge_payload(
             operation: "method merge",
         })
     })?;
-    let mut merged = BTreeMap::new();
-    for (key, value) in values {
-        merged.insert(key.clone(), stored_runtime_value(value));
-    }
-    for (key, value) in other {
-        merged.insert(key.clone(), stored_runtime_value(value));
-    }
+    let mut merged = values.clone();
+    merged.extend(other.clone());
     Ok(merged)
 }
 
