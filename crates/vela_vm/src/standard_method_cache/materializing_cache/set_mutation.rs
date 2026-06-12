@@ -103,26 +103,70 @@ fn call_cached_set_extend(
         set_slots(heap, reference, "method extend")?;
         return Ok(Value::Null);
     }
-    if set_slots(heap, extension_reference, "method extend")?.is_empty() {
-        set_slots(heap, reference, "method extend")?;
-        return Ok(Value::Null);
+    match set_slot_entry(heap, extension_reference, "method extend")? {
+        SetSlotEntry::Empty => {
+            set_slots(heap, reference, "method extend")?;
+            return Ok(Value::Null);
+        }
+        SetSlotEntry::Single(slot) => {
+            extend_set_slots(heap, reference, &[slot], "method extend")?;
+            return Ok(Value::Null);
+        }
+        SetSlotEntry::Pair(first, second) => {
+            extend_set_slots(heap, reference, &[first, second], "method extend")?;
+            return Ok(Value::Null);
+        }
+        SetSlotEntry::Many => {}
     }
     let extension = set_slot_values(heap, extension_reference, "method extend")?;
-    let mut keys = set_slots(heap, reference, "method extend")?
+    extend_set_slots(heap, reference, &extension, "method extend")?;
+    Ok(Value::Null)
+}
+
+enum SetSlotEntry {
+    Empty,
+    Single(Value),
+    Pair(Value, Value),
+    Many,
+}
+
+fn set_slot_entry(
+    heap: &HeapExecution<'_>,
+    reference: crate::heap::GcRef,
+    operation: &'static str,
+) -> VmResult<SetSlotEntry> {
+    let values = set_slots(heap, reference, operation)?;
+    match values {
+        [] => Ok(SetSlotEntry::Empty),
+        [Value::Missing] => type_error("missing value"),
+        [value] => Ok(SetSlotEntry::Single(*value)),
+        [Value::Missing, _] | [_, Value::Missing] => type_error("missing value"),
+        [first, second] => Ok(SetSlotEntry::Pair(*first, *second)),
+        _ => Ok(SetSlotEntry::Many),
+    }
+}
+
+fn extend_set_slots(
+    heap: &mut HeapExecution<'_>,
+    reference: crate::heap::GcRef,
+    extension: &[Value],
+    operation: &'static str,
+) -> VmResult<()> {
+    let mut keys = set_slots(heap, reference, operation)?
         .iter()
         .map(|slot| slot_key(slot, heap))
         .collect::<VmResult<Vec<_>>>()?;
     let mut slots = Vec::new();
     for slot in extension {
-        let key = SetKey::from_value(&slot, Some(&*heap), "method extend")?;
+        let key = SetKey::from_value(slot, Some(&*heap), operation)?;
         if keys.contains(&key) {
             continue;
         }
         keys.push(key);
-        slots.push(slot);
+        slots.push(*slot);
     }
-    set_slots_mut(heap, reference, "method extend")?.extend(slots);
-    Ok(Value::Null)
+    set_slots_mut(heap, reference, operation)?.extend(slots);
+    Ok(())
 }
 
 fn set_slot_values(
