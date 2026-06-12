@@ -284,6 +284,11 @@ fn main() {
         source: BYTES_MATERIALIZATION_SOURCE,
     },
     Workload {
+        name: "bytes_materialization_hot_offsets",
+        mode: ExecutionMode::ProfileOnly,
+        source: BYTES_MATERIALIZATION_SOURCE,
+    },
+    Workload {
         name: "bytes_materialization_cache_hot_offsets",
         mode: ExecutionMode::CacheEnabled,
         source: BYTES_MATERIALIZATION_SOURCE,
