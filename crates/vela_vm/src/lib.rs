@@ -344,6 +344,8 @@ pub enum StandardMethodInlineCacheTarget {
     StripSuffix,
     CharAt,
     SplitOnce,
+    SplitLines,
+    SplitWhitespace,
     ParseInt,
     ParseFloat,
     ParseBool,

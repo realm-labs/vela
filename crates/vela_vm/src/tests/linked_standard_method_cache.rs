@@ -455,6 +455,64 @@ fn linked_standard_value_method_caches_string_split_once_target() {
     assert_eq!(caches.set_count(), 2);
 }
 
+#[test]
+fn linked_standard_value_method_caches_string_split_materialization_targets() {
+    assert_string_no_arg_owned_cache(
+        "split_lines",
+        "alpha\nbeta",
+        StandardMethodInlineCacheTarget::SplitLines,
+        OwnedValue::Array(vec![
+            OwnedValue::String("alpha".to_owned()),
+            OwnedValue::String("beta".to_owned()),
+        ]),
+    );
+    assert_string_no_arg_owned_cache(
+        "split_whitespace",
+        "alpha beta",
+        StandardMethodInlineCacheTarget::SplitWhitespace,
+        OwnedValue::Array(vec![
+            OwnedValue::String("alpha".to_owned()),
+            OwnedValue::String("beta".to_owned()),
+        ]),
+    );
+}
+
+fn assert_string_no_arg_owned_cache(
+    method: &str,
+    receiver: &str,
+    target: StandardMethodInlineCacheTarget,
+    expected: OwnedValue,
+) {
+    let (program, site, dispatch, method_id) = linked_string_no_arg_cache_program(method, receiver);
+    let caches = RecordingMethodCaches::new(1);
+
+    assert_eq!(
+        run_linked_method_cache_owned_program(&program, &caches),
+        Ok(expected.clone())
+    );
+    let entry = caches
+        .entry(site)
+        .expect("standard string materialization cache should populate");
+    assert_eq!(entry.dispatch, dispatch);
+    let MethodInlineCacheTarget::Value {
+        method_id: cached_method,
+        standard_method: Some(standard_method),
+    } = entry.target
+    else {
+        panic!("standard string materialization cache should store value target");
+    };
+    assert_eq!(cached_method, method_id);
+    assert_eq!(standard_method.receiver, StandardMethodReceiver::String);
+    assert_eq!(standard_method.target, target);
+    assert_eq!(caches.set_count(), 2);
+
+    assert_eq!(
+        run_linked_method_cache_owned_program(&program, &caches),
+        Ok(expected)
+    );
+    assert_eq!(caches.set_count(), 2);
+}
+
 fn assert_string_no_arg_option_cache(
     method: &str,
     receiver: &str,
