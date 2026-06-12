@@ -731,6 +731,11 @@ fn main(player: Player) {
         source: HOST_FIELD_READ_WRITE_SOURCE,
     },
     Workload {
+        name: "host_field_read_write_hot_offsets",
+        mode: ExecutionMode::HostAccess,
+        source: HOST_FIELD_READ_WRITE_SOURCE,
+    },
+    Workload {
         name: "host_field_read_write_cache_hot_offsets",
         mode: ExecutionMode::HostAccessCacheEnabled,
         source: HOST_FIELD_READ_WRITE_SOURCE,
