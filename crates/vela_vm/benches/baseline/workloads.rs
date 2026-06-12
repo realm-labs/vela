@@ -429,6 +429,11 @@ fn main() {
         source: METHOD_DISPATCH_SOURCE,
     },
     Workload {
+        name: "method_hot_offsets",
+        mode: ExecutionMode::ProfileOnly,
+        source: METHOD_DISPATCH_SOURCE,
+    },
+    Workload {
         name: "method_cache_hot_offsets",
         mode: ExecutionMode::CacheEnabled,
         source: METHOD_DISPATCH_SOURCE,
