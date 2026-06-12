@@ -194,7 +194,7 @@ enum CompiledWorkload {
     },
     CacheEnabledFunction {
         program: Box<LinkedProgram>,
-        caches: BenchInlineCaches,
+        caches: Option<BenchInlineCaches>,
         profiler: BenchBytecodeProfiler,
     },
     ScriptProgram {
@@ -229,11 +229,15 @@ fn run_once(vm: &Vm, workload: &CompiledWorkload) -> Result<OwnedValue, Box<dyn 
             mode: ExecutionMode::CacheEnabled,
             ..
         } => unreachable!("cache-enabled workloads compile to cache-enabled functions"),
+        CompiledWorkload::Function {
+            mode: ExecutionMode::ProfileOnly,
+            ..
+        } => unreachable!("profile-only workloads compile to instrumented functions"),
         CompiledWorkload::CacheEnabledFunction {
             program,
             caches,
             profiler,
-        } => run_cache_enabled_function(vm, program, caches, profiler),
+        } => run_instrumented_function(vm, program, caches.as_ref(), profiler),
         CompiledWorkload::ScriptProgram { program } => {
             Ok(vm.run_linked_program(program, "main", &[])?)
         }
@@ -366,7 +370,7 @@ fn compile_workload(workload: &Workload, vm: &Vm) -> Result<CompiledWorkload, St
                 let mut linked = link_program_for_vm(vm, &program)?;
                 rebase_linked_cache_sites(&mut linked, &image);
                 return Ok(CompiledWorkload::CacheEnabledFunction {
-                    caches: BenchInlineCaches::new(image.cache_site_count()),
+                    caches: Some(BenchInlineCaches::new(image.cache_site_count())),
                     profiler: BenchBytecodeProfiler::default(),
                     program: Box::new(linked),
                 });
@@ -375,7 +379,7 @@ fn compile_workload(workload: &Workload, vm: &Vm) -> Result<CompiledWorkload, St
                 program: Box::new(link_program_for_vm(vm, &program)?),
             })
         }
-        ExecutionMode::Inline | ExecutionMode::CacheEnabled => {
+        ExecutionMode::Inline | ExecutionMode::ProfileOnly | ExecutionMode::CacheEnabled => {
             let registry = bench_compile_registry()?;
             let code = compile_function_source_with_registry(
                 SourceId::new(1),
@@ -387,7 +391,15 @@ fn compile_workload(workload: &Workload, vm: &Vm) -> Result<CompiledWorkload, St
             if matches!(workload.mode, ExecutionMode::CacheEnabled) {
                 let (program, cache_site_count) = link_single_function_image_for_vm(vm, code)?;
                 return Ok(CompiledWorkload::CacheEnabledFunction {
-                    caches: BenchInlineCaches::new(cache_site_count),
+                    caches: Some(BenchInlineCaches::new(cache_site_count)),
+                    profiler: BenchBytecodeProfiler::default(),
+                    program: Box::new(program),
+                });
+            }
+            if matches!(workload.mode, ExecutionMode::ProfileOnly) {
+                let (program, _) = link_single_function_image_for_vm(vm, code)?;
+                return Ok(CompiledWorkload::CacheEnabledFunction {
+                    caches: None,
                     profiler: BenchBytecodeProfiler::default(),
                     program: Box::new(program),
                 });
@@ -405,8 +417,13 @@ impl CompiledWorkload {
     fn reset_measurement_stats(&self) {
         if let Self::CacheEnabledFunction {
             caches, profiler, ..
-        }
-        | Self::CacheEnabledHostAccess {
+        } = self
+        {
+            if let Some(caches) = caches {
+                caches.reset_measurement_counts();
+            }
+            profiler.reset();
+        } else if let Self::CacheEnabledHostAccess {
             caches, profiler, ..
         } = self
         {
@@ -417,8 +434,10 @@ impl CompiledWorkload {
 
     fn cache_stats(&self) -> BenchCacheStats {
         match self {
-            Self::CacheEnabledFunction { caches, .. }
-            | Self::CacheEnabledHostAccess { caches, .. } => caches.stats(),
+            Self::CacheEnabledFunction { caches, .. } => caches
+                .as_ref()
+                .map_or_else(BenchCacheStats::default, BenchInlineCaches::stats),
+            Self::CacheEnabledHostAccess { caches, .. } => caches.stats(),
             _ => BenchCacheStats::default(),
         }
     }
@@ -432,10 +451,10 @@ impl CompiledWorkload {
     }
 }
 
-fn run_cache_enabled_function(
+fn run_instrumented_function(
     vm: &Vm,
     program: &LinkedProgram,
-    caches: &BenchInlineCaches,
+    caches: Option<&BenchInlineCaches>,
     profiler: &BenchBytecodeProfiler,
 ) -> Result<OwnedValue, Box<dyn Error>> {
     let mut adapter = MockStateAdapter::default();
@@ -453,7 +472,7 @@ fn run_cache_enabled_function(
             args: &[],
             host: &mut host,
             budget: &mut budget,
-            inline_caches: Some(caches),
+            inline_caches: caches.map(|caches| caches as &dyn vela_vm::VmInlineCaches),
             bytecode_profiler: Some(profiler),
         })?,
     )
@@ -1150,6 +1169,7 @@ impl ExecutionMode {
     fn as_str(self) -> &'static str {
         match self {
             Self::Inline => "inline",
+            Self::ProfileOnly => "profile_only",
             Self::CacheEnabled => "cache_enabled",
             Self::ScriptProgram => "script_program",
             Self::ScriptProgramCacheEnabled => "script_program_cache_enabled",

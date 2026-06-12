@@ -28,6 +28,7 @@ pub(crate) struct Workload {
 #[derive(Clone, Copy)]
 pub(crate) enum ExecutionMode {
     Inline,
+    ProfileOnly,
     CacheEnabled,
     ScriptProgram,
     ScriptProgramCacheEnabled,
@@ -260,6 +261,11 @@ fn main() {
     Workload {
         name: "bytes_access",
         mode: ExecutionMode::Inline,
+        source: BYTES_ACCESS_SOURCE,
+    },
+    Workload {
+        name: "bytes_access_hot_offsets",
+        mode: ExecutionMode::ProfileOnly,
         source: BYTES_ACCESS_SOURCE,
     },
     Workload {

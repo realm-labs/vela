@@ -29,6 +29,9 @@ cargo bench -p vela_engine --bench hot_reload -- --quick
 
 `baseline` accepts optional workload-name substring filters after `--`, for
 example `cargo bench -p vela_vm --bench baseline -- --quick host_field`.
+When a cache family has an explicit non-cache `_hot_offsets` row, `cache_delta`
+pairs the cache-enabled row against that base to isolate cache overhead from
+bytecode-profiler overhead.
 
 Tracked workload groups:
 
