@@ -60,12 +60,12 @@ commit, rustc, cargo, target, profile
 runtime options: heap, cache, debugger, JIT
 warmup, repeats, iterations, and input size
 min, mean, median, p95, checksum
-cache_sets, cache_hits, cache-family set/hit counters, profile_hits, and
-cache_delta rows with mode, base_mode, checksum_match, delta_kind,
-base_profile_hits, and profile_hits_match when the harness emits paired
-cache-enabled rows; delta_kind separates true cache-hit rows from profile-only
-hot-offset rows, and native-call cache-enabled rows count resolved
-target-cache population
+measurement_kind, cache_sets, cache_hits, cache-family set/hit counters,
+profile_hits, and cache_delta rows with mode, base_mode, checksum_match,
+delta_kind, base_profile_hits, and profile_hits_match when the harness emits
+paired cache-enabled rows; measurement_kind/delta_kind separate true cache-hit
+rows from profile-only hot-offset rows, and native-call cache-enabled rows
+count resolved target-cache population
 external runtime versions when used
 ```
 
@@ -150,8 +150,10 @@ rows cover declared global read/write, field read/write, nested path read/write,
 RMW mutation, dynamic key access, and host method calls; the method-dispatch detail rows cover script
 inherent and trait/default method calls. Direct script-call and direct-closure
 rows are profile-only when their linked operands already avoid runtime lookup
-and no inline-cache family exists. M20 reports must separate interpreter-only,
-profile-only, and cache-enabled results.
+and no inline-cache family exists. Baseline `bench=` rows now emit
+`measurement_kind` and paired rows emit `delta_kind`, so M20 reports must
+separate interpreter-only, profile-only, and cache-enabled results by those
+fields instead of row names alone.
 
 ## Targets
 

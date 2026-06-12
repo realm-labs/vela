@@ -3,6 +3,7 @@ use std::collections::BTreeMap;
 pub(crate) struct Record {
     pub(crate) name: &'static str,
     pub(crate) mode: &'static str,
+    pub(crate) measurement_kind: &'static str,
     pub(crate) cache_enabled: bool,
     pub(crate) min_ns: u128,
     pub(crate) mean_ns: u128,
@@ -32,13 +33,6 @@ pub(crate) fn print(records: &[Record]) {
         else {
             continue;
         };
-        let delta_kind = if record.cache_hits > 0 {
-            "cache"
-        } else if record.profile_hits > 0 {
-            "profile_only"
-        } else {
-            "no_activity"
-        };
         println!(
             "cache_delta bench={} mode={} base={} base_mode={} mean_delta_ns={} min_delta_ns={} median_delta_ns={} p95_delta_ns={} mean_ratio_ppm={} checksum_match={} delta_kind={} cache_hits={} profile_hits={} base_profile_hits={} profile_hits_match={}",
             record.name,
@@ -51,12 +45,28 @@ pub(crate) fn print(records: &[Record]) {
             signed_delta(record.p95_ns, base.p95_ns),
             ratio_ppm(record.mean_ns, base.mean_ns),
             record.checksum == base.checksum,
-            delta_kind,
+            record.measurement_kind,
             record.cache_hits,
             record.profile_hits,
             base.profile_hits,
             record.profile_hits == base.profile_hits
         );
+    }
+}
+
+pub(crate) fn measurement_kind(
+    cache_enabled: bool,
+    cache_hits: usize,
+    profile_hits: u64,
+) -> &'static str {
+    if cache_hits > 0 {
+        "cache"
+    } else if profile_hits > 0 {
+        "profile_only"
+    } else if cache_enabled {
+        "cache_no_activity"
+    } else {
+        "interpreter"
     }
 }
 

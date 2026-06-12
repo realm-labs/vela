@@ -91,10 +91,16 @@ fn main() -> Result<(), Box<dyn Error>> {
         let result = run_workload(workload, params)?;
         ran += 1;
         let cache = result.cache_stats;
+        let measurement_kind = cache_delta::measurement_kind(
+            workload.mode.is_cache_enabled(),
+            cache.total_hits(),
+            result.profile_hits,
+        );
         println!(
-            "bench={} mode={} min_ns={} mean_ns={} median_ns={} p95_ns={} checksum={} cache_sets={} cache_hits={} cache_global_sets={} cache_global_hits={} cache_host_sets={} cache_host_hits={} cache_record_sets={} cache_record_hits={} cache_method_sets={} cache_method_hits={} cache_native_sets={} cache_native_hits={} profile_hits={}",
+            "bench={} mode={} measurement_kind={} min_ns={} mean_ns={} median_ns={} p95_ns={} checksum={} cache_sets={} cache_hits={} cache_global_sets={} cache_global_hits={} cache_host_sets={} cache_host_hits={} cache_record_sets={} cache_record_hits={} cache_method_sets={} cache_method_hits={} cache_native_sets={} cache_native_hits={} profile_hits={}",
             workload.name,
             workload.mode.as_str(),
+            measurement_kind,
             result.min_ns,
             result.mean_ns,
             result.median_ns,
@@ -117,6 +123,7 @@ fn main() -> Result<(), Box<dyn Error>> {
         records.push(cache_delta::Record {
             name: workload.name,
             mode: workload.mode.as_str(),
+            measurement_kind,
             cache_enabled: workload.mode.is_cache_enabled(),
             min_ns: result.min_ns,
             mean_ns: result.mean_ns,

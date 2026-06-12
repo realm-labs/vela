@@ -376,8 +376,10 @@ Cranelift JIT.
     string/bytes method, Option/Result helper, callback collection/detail,
     direct-closure, and host-boundary aggregate/detail rows now consume those
     counters;
-  - paired interpreter-only and cache-enabled benchmark rows now identify which
-    remaining costs belong to M20 cache work versus later JIT work.
+  - paired benchmark rows now emit explicit `measurement_kind`/`delta_kind`
+    fields so interpreter-only, profile-only, and cache-enabled costs can be
+    separated before assigning remaining deltas to M20 cache work or later JIT
+    work.
 - M20: continue guarded inline-cache specialization and measured delta
   interpretation for hot stdlib, callback, method, record, host-boundary, and
   bytecode-offset paths. Cache misses, guard failures, hot reload, and schema
