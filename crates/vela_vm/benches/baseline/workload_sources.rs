@@ -806,6 +806,33 @@ fn main() {
 }
 "#;
 
+pub(crate) const MAP_VIEWS_SOURCE: &str = r#"
+fn main() {
+    let total = 0;
+    for tick in 0..96 {
+        let scores = {
+            "daily": 3,
+            "raid": 8,
+            "boss": 13,
+            "event": 5,
+        };
+        let keys = scores.keys();
+        let values = scores.values();
+        let entries = scores.entries();
+        let entry_total = entries[0].key.len()
+            + entries[0].value
+            + entries[1].key.len()
+            + entries[1].value
+            + entries[2].key.len()
+            + entries[2].value
+            + entries[3].key.len()
+            + entries[3].value;
+        total += keys.join("|").len() + values.sum() + entry_total + tick - tick;
+    }
+    return total;
+}
+"#;
+
 pub(crate) const MAP_MERGE_SOURCE: &str = r#"
 fn main() {
     let total = 0;

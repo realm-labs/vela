@@ -5,7 +5,7 @@ use crate::workload_sources::{
     DIRECT_CLOSURE_CALLS_SOURCE, HOST_DYNAMIC_KEY_ACCESS_SOURCE, HOST_FIELD_READ_WRITE_SOURCE,
     HOST_METHOD_CALLS_SOURCE, HOST_NESTED_READ_WRITE_SOURCE, HOST_RMW_MUTATION_SOURCE,
     MAP_CALLBACKS_SOURCE, MAP_EXTEND_SOURCE, MAP_FIND_ENTRIES_SOURCE, MAP_LOOKUP_SOURCE,
-    MAP_MERGE_SOURCE, METHOD_DISPATCH_SOURCE, NATIVE_CALL_WIDE_ARGS_SOURCE,
+    MAP_MERGE_SOURCE, MAP_VIEWS_SOURCE, METHOD_DISPATCH_SOURCE, NATIVE_CALL_WIDE_ARGS_SOURCE,
     OPTION_RESULT_HELPERS_SOURCE, RECORD_QUADS_SOURCE, RECORD_QUINTS_SOURCE, RECORD_SEXTETS_SOURCE,
     RECORD_TRIPLETS_SOURCE, SCRIPT_CALL_SMALL_ARGS_SOURCE, SCRIPT_METHOD_DISPATCH_SOURCE,
     SET_COMBINATION_SOURCE, SET_LOOKUP_SOURCE, STDLIB_COLLECTIONS_SOURCE, STRING_METHODS_SOURCE,
@@ -321,6 +321,16 @@ fn main() {
         name: "map_lookup_cache_hot_offsets",
         mode: ExecutionMode::CacheEnabled,
         source: MAP_LOOKUP_SOURCE,
+    },
+    Workload {
+        name: "managed_heap_map_views",
+        mode: ExecutionMode::ManagedHeap,
+        source: MAP_VIEWS_SOURCE,
+    },
+    Workload {
+        name: "map_views_cache_hot_offsets",
+        mode: ExecutionMode::CacheEnabled,
+        source: MAP_VIEWS_SOURCE,
     },
     Workload {
         name: "managed_heap_map_merge",

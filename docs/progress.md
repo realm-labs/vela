@@ -354,7 +354,7 @@ Cranelift JIT.
   - callback and closure allocation costs now have isolated quick and default
     baseline rows; M20 cache-enabled stdlib method, script-call, native-call,
     script record-field aggregate/detail, method-dispatch aggregate/detail,
-    collection lookup/aggregation/combination/mutation/materialization, string/bytes
+    collection lookup/view/aggregation/combination/mutation/materialization, string/bytes
     method, Option/Result helper, callback collection/detail, direct-closure,
     and host-boundary aggregate/detail rows separate warmed cache hits from
     later JIT work, and broader cache-enabled rows remain;
@@ -363,7 +363,7 @@ Cranelift JIT.
   - runtime bytecode offset counters cover linked hot offsets and hot-reload
     invalidation; cache-enabled stdlib, script-call, native-call, script
     record-field aggregate/detail, method-dispatch aggregate/detail,
-    collection lookup/aggregation/combination/mutation/materialization, string/bytes
+    collection lookup/view/aggregation/combination/mutation/materialization, string/bytes
     method, Option/Result helper, callback collection/detail, direct-closure,
     and host-boundary aggregate/detail rows now consume those counters, and
     follow-on M20 work needs broader cache-enabled benchmark rows;
