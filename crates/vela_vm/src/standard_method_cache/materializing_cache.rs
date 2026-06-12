@@ -94,6 +94,17 @@ pub(super) fn call_cached_array_materialization(
             };
             Some(make_array(payload, heap, budget, "method reverse"))
         }
+        StandardMethodInlineCacheTarget::Distinct => {
+            let payload = {
+                let heap_ref = heap.as_deref();
+                let slots = array_slots(receiver, heap_ref, "method distinct")?;
+                match array_distinct_payload(slots, args, heap_ref) {
+                    Ok(payload) => payload,
+                    Err(error) => return Some(Err(error)),
+                }
+            };
+            Some(make_array(payload, heap, budget, "method distinct"))
+        }
         _ => None,
     }
 }
@@ -412,6 +423,25 @@ fn array_slice_payload(values: &[Value], args: &[Value]) -> VmResult<Vec<Value>>
 fn array_reverse_payload(values: &[Value], args: &[Value]) -> VmResult<Vec<Value>> {
     crate::runtime_checks::expect_arity("reverse", args, 0)?;
     Ok(values.iter().rev().map(stored_runtime_value).collect())
+}
+
+fn array_distinct_payload(
+    values: &[Value],
+    args: &[Value],
+    heap: Option<&HeapExecution<'_>>,
+) -> VmResult<Vec<Value>> {
+    crate::runtime_checks::expect_arity("distinct", args, 0)?;
+    let mut distinct = Vec::new();
+    'values: for value in values {
+        let value = stored_runtime_value(value);
+        for existing in &distinct {
+            if crate::values_equal(existing, &value, heap)? {
+                continue 'values;
+            }
+        }
+        distinct.push(value);
+    }
+    Ok(distinct)
 }
 
 fn array_index_value(value: &Value, operation: &'static str) -> VmResult<usize> {

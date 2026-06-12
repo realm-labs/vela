@@ -401,7 +401,9 @@ pub(crate) fn call_standard_cached(
         {
             return call_cached_bytes_materialization(receiver, cache.target, args, heap, budget);
         }
-        StandardMethodInlineCacheTarget::Slice | StandardMethodInlineCacheTarget::Reverse
+        StandardMethodInlineCacheTarget::Slice
+        | StandardMethodInlineCacheTarget::Reverse
+        | StandardMethodInlineCacheTarget::Distinct
             if cache.receiver == StandardMethodReceiver::Array =>
         {
             return call_cached_array_materialization(receiver, cache.target, args, heap, budget);
