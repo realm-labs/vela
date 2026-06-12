@@ -131,6 +131,13 @@ pub(super) fn call_cached_string_option(
                 };
             Some(make_option(payload, heap, budget))
         }
+        StandardMethodInlineCacheTarget::CharAt => {
+            let payload = match char_at_payload(value, args) {
+                Ok(payload) => payload,
+                Err(error) => return Some(Err(error)),
+            };
+            Some(make_string_option(payload, heap, budget, "method char_at"))
+        }
         StandardMethodInlineCacheTarget::StripPrefix => {
             let payload = match strip_affix_payload(
                 value,
@@ -254,6 +261,21 @@ fn strip_affix_payload(
         AffixKind::Suffix => value.strip_suffix(affix),
     };
     Ok(stripped.map(str::to_owned))
+}
+
+fn char_at_payload(value: &str, args: &[Value]) -> VmResult<Option<String>> {
+    crate::runtime_checks::expect_arity("char_at", args, 1)?;
+    let index = char_index_value(&args[0])?;
+    Ok(value.chars().nth(index).map(|ch| ch.to_string()))
+}
+
+fn char_index_value(value: &Value) -> VmResult<usize> {
+    match value {
+        Value::Scalar(ScalarValue::I64(value)) if *value >= 0 => Ok(*value as usize),
+        _ => Err(VmError::new(VmErrorKind::TypeMismatch {
+            operation: "method char_at",
+        })),
+    }
 }
 
 #[derive(Clone, Copy)]

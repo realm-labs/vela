@@ -368,6 +368,7 @@ pub(crate) fn call_standard_cached(
             return call_cached_string_parse_option(receiver, cache.target, args, heap, budget);
         }
         StandardMethodInlineCacheTarget::Find
+        | StandardMethodInlineCacheTarget::CharAt
         | StandardMethodInlineCacheTarget::StripPrefix
         | StandardMethodInlineCacheTarget::StripSuffix
             if cache.receiver == StandardMethodReceiver::String =>
