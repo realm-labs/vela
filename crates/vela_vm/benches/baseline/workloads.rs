@@ -470,6 +470,11 @@ fn main() {
         source: MAP_CALLBACKS_SOURCE,
     },
     Workload {
+        name: "map_callbacks_hot_offsets",
+        mode: ExecutionMode::ProfileOnly,
+        source: MAP_CALLBACKS_SOURCE,
+    },
+    Workload {
         name: "map_callbacks_cache_hot_offsets",
         mode: ExecutionMode::CacheEnabled,
         source: MAP_CALLBACKS_SOURCE,
