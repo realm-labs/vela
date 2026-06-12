@@ -234,6 +234,13 @@ pub(super) fn call_cached_string_transform(
         };
         return Some(make_string(payload, heap, budget, "method replace"));
     }
+    if target == StandardMethodInlineCacheTarget::Slice {
+        let payload = match slice_payload(value, args) {
+            Ok(payload) => payload,
+            Err(error) => return Some(Err(error)),
+        };
+        return Some(make_string(payload, heap, budget, "method slice"));
+    }
     let (method, operation, transform): (&str, &'static str, fn(&str) -> String) = match target {
         StandardMethodInlineCacheTarget::ToUpper => {
             ("to_upper", "method to_upper", str::to_uppercase)
@@ -419,6 +426,45 @@ fn replace_payload(
     let from = crate::string_methods::string_value(&args[0], heap, "method replace")?;
     let to = crate::string_methods::string_value(&args[1], heap, "method replace")?;
     Ok(value.replace(from, to))
+}
+
+fn slice_payload(value: &str, args: &[Value]) -> VmResult<String> {
+    crate::runtime_checks::expect_arity("slice", args, 2)?;
+    let start = char_index_value_with_operation(&args[0], "method slice")?;
+    let end = char_index_value_with_operation(&args[1], "method slice")?;
+    let char_len = value.chars().count();
+    if start > end {
+        return Err(VmError::new(VmErrorKind::TypeMismatch {
+            operation: "method slice range",
+        }));
+    }
+    if start > char_len {
+        return Err(index_out_of_bounds(start, char_len));
+    }
+    if end > char_len {
+        return Err(index_out_of_bounds(end, char_len));
+    }
+
+    let start_byte = char_byte_index(value, start);
+    let end_byte = char_byte_index(value, end);
+    Ok(value[start_byte..end_byte].to_owned())
+}
+
+fn char_byte_index(value: &str, index: usize) -> usize {
+    if index == 0 {
+        return 0;
+    }
+    value
+        .char_indices()
+        .nth(index)
+        .map_or(value.len(), |(byte, _)| byte)
+}
+
+fn index_out_of_bounds(index: usize, len: usize) -> VmError {
+    VmError::new(VmErrorKind::IndexOutOfBounds {
+        index: i64::try_from(index).unwrap_or(i64::MAX),
+        len,
+    })
 }
 
 fn char_index_value(value: &Value) -> VmResult<usize> {
