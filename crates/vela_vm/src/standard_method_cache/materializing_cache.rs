@@ -83,6 +83,27 @@ pub(super) fn call_cached_map_get_option(
     Some(make_option(payload, heap, budget))
 }
 
+pub(super) fn call_cached_string_parse_option(
+    receiver: &Value,
+    target: StandardMethodInlineCacheTarget,
+    args: &[Value],
+    heap: &mut Option<&mut HeapExecution<'_>>,
+    budget: &mut Option<&mut ExecutionBudget>,
+) -> Option<VmResult<Value>> {
+    let (method, payload): (&str, fn(&str) -> Option<Value>) = match target {
+        StandardMethodInlineCacheTarget::ParseInt => ("parse_int", parse_int_payload),
+        StandardMethodInlineCacheTarget::ParseFloat => ("parse_float", parse_float_payload),
+        StandardMethodInlineCacheTarget::ParseBool => ("parse_bool", parse_bool_payload),
+        _ => return None,
+    };
+    let value = string_receiver(receiver, heap.as_deref())?;
+    let payload = match crate::runtime_checks::expect_arity(method, args, 0) {
+        Ok(()) => payload(value),
+        Err(error) => return Some(Err(error)),
+    };
+    Some(make_option(payload, heap, budget))
+}
+
 fn array_slots<'a>(
     receiver: &Value,
     heap: Option<&'a HeapExecution<'_>>,
@@ -95,6 +116,16 @@ fn array_slots<'a>(
         return None;
     };
     Some(values)
+}
+
+fn string_receiver<'a>(receiver: &Value, heap: Option<&'a HeapExecution<'_>>) -> Option<&'a str> {
+    let Value::HeapRef(reference) = receiver else {
+        return None;
+    };
+    let Some(HeapValue::String(value)) = heap.and_then(|heap| heap.heap.get(*reference)) else {
+        return None;
+    };
+    Some(value)
 }
 
 fn map_values<'a>(
@@ -117,6 +148,26 @@ fn index_value(index: usize) -> VmResult<Value> {
         })
     })?;
     Ok(Value::Scalar(ScalarValue::I64(index)))
+}
+
+fn parse_int_payload(value: &str) -> Option<Value> {
+    value.parse::<i64>().ok().map(Value::i64)
+}
+
+fn parse_float_payload(value: &str) -> Option<Value> {
+    value
+        .parse::<f64>()
+        .ok()
+        .filter(|value| value.is_finite())
+        .map(Value::f64)
+}
+
+fn parse_bool_payload(value: &str) -> Option<Value> {
+    match value {
+        "true" => Some(Value::Bool(true)),
+        "false" => Some(Value::Bool(false)),
+        _ => None,
+    }
 }
 
 fn make_option(

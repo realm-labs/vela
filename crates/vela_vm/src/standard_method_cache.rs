@@ -1,7 +1,9 @@
 mod materializing_cache;
 mod readonly_cache;
 
-use materializing_cache::{call_cached_array_lookup_option, call_cached_map_get_option};
+use materializing_cache::{
+    call_cached_array_lookup_option, call_cached_map_get_option, call_cached_string_parse_option,
+};
 use readonly_cache::{
     call_cached_array_contains, call_cached_bytes_accessor, call_cached_collection_has,
     call_cached_is_empty, call_cached_len, call_cached_map_get_or,
@@ -356,6 +358,13 @@ pub(crate) fn call_standard_cached(
         }
         StandardMethodInlineCacheTarget::Get if cache.receiver == StandardMethodReceiver::Map => {
             return call_cached_map_get_option(receiver, args, heap, budget);
+        }
+        StandardMethodInlineCacheTarget::ParseInt
+        | StandardMethodInlineCacheTarget::ParseFloat
+        | StandardMethodInlineCacheTarget::ParseBool
+            if cache.receiver == StandardMethodReceiver::String =>
+        {
+            return call_cached_string_parse_option(receiver, cache.target, args, heap, budget);
         }
         _ => {}
     }
