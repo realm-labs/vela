@@ -628,6 +628,13 @@ fn call_readonly_cached(
         | StandardMethodInlineCacheTarget::IsDisjoint => {
             return call_cached_set_relation(receiver, cache.receiver, cache.target, args, heap);
         }
+        StandardMethodInlineCacheTarget::Contains
+        | StandardMethodInlineCacheTarget::StartsWith
+        | StandardMethodInlineCacheTarget::EndsWith
+            if cache.receiver == StandardMethodReceiver::String =>
+        {
+            return call_cached_string_predicate(receiver, cache.target, args, heap);
+        }
         _ => {}
     }
     if !receiver_matches_cache(receiver, cache.receiver, heap) {
@@ -998,6 +1005,35 @@ fn call_cached_set_relation(
         crate::runtime_checks::expect_arity(name, args, 1).and_then(|()| {
             set_methods::relation_matches(values, &args[0], heap, relation, operation)
                 .map(Value::Bool)
+        }),
+    )
+}
+
+fn call_cached_string_predicate(
+    receiver: &Value,
+    target: StandardMethodInlineCacheTarget,
+    args: &[Value],
+    heap: Option<&HeapExecution<'_>>,
+) -> Option<VmResult<Value>> {
+    let HeapValue::String(value) = cached_heap_value(receiver, heap)? else {
+        return None;
+    };
+    let (name, operation) = match target {
+        StandardMethodInlineCacheTarget::Contains => ("contains", "method contains"),
+        StandardMethodInlineCacheTarget::StartsWith => ("starts_with", "method starts_with"),
+        StandardMethodInlineCacheTarget::EndsWith => ("ends_with", "method ends_with"),
+        _ => return None,
+    };
+    Some(
+        crate::runtime_checks::expect_arity(name, args, 1).and_then(|()| {
+            let needle = crate::string_methods::string_value(&args[0], heap, operation)?;
+            let result = match target {
+                StandardMethodInlineCacheTarget::Contains => value.contains(needle),
+                StandardMethodInlineCacheTarget::StartsWith => value.starts_with(needle),
+                StandardMethodInlineCacheTarget::EndsWith => value.ends_with(needle),
+                _ => unreachable!("string predicate target was validated above"),
+            };
+            Ok(Value::Bool(result))
         }),
     )
 }
