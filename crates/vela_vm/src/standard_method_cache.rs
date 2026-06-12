@@ -185,6 +185,18 @@ pub(crate) fn standard_cache_entry(
         (StandardMethodReceiver::Map, id) if id == ids.map_get_or => {
             StandardMethodInlineCacheTarget::GetOr
         }
+        (StandardMethodReceiver::Map, id) if id == ids.map_keys => {
+            StandardMethodInlineCacheTarget::Keys
+        }
+        (StandardMethodReceiver::Map, id) if id == ids.map_values => {
+            StandardMethodInlineCacheTarget::Values
+        }
+        (StandardMethodReceiver::Map, id) if id == ids.map_entries => {
+            StandardMethodInlineCacheTarget::Entries
+        }
+        (StandardMethodReceiver::Map, id) if id == ids.map_merge => {
+            StandardMethodInlineCacheTarget::Merge
+        }
         (StandardMethodReceiver::Set, id) if id == ids.set_len => {
             StandardMethodInlineCacheTarget::Len
         }
@@ -335,6 +347,18 @@ pub(crate) fn call_standard_cached(
         }
         (StandardMethodReceiver::Map, StandardMethodInlineCacheTarget::Get) => {
             map_methods::get(receiver, args, heap, budget)
+        }
+        (StandardMethodReceiver::Map, StandardMethodInlineCacheTarget::Keys) => {
+            map_methods::keys(receiver, args, heap, budget)
+        }
+        (StandardMethodReceiver::Map, StandardMethodInlineCacheTarget::Values) => {
+            map_methods::values(receiver, args, heap, budget)
+        }
+        (StandardMethodReceiver::Map, StandardMethodInlineCacheTarget::Entries) => {
+            map_methods::entries(receiver, args, heap, budget)
+        }
+        (StandardMethodReceiver::Map, StandardMethodInlineCacheTarget::Merge) => {
+            map_methods::merge(receiver, args, heap, budget)
         }
         _ => return None,
     };
