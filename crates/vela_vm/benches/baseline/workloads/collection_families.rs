@@ -179,6 +179,11 @@ pub(crate) const COLLECTION_FAMILY_WORKLOADS: &[Workload] = &[
         source: ARRAY_LOOKUP_SOURCE,
     },
     Workload {
+        name: "array_lookup_hot_offsets",
+        mode: ExecutionMode::ProfileOnly,
+        source: ARRAY_LOOKUP_SOURCE,
+    },
+    Workload {
         name: "array_lookup_cache_hot_offsets",
         mode: ExecutionMode::CacheEnabled,
         source: ARRAY_LOOKUP_SOURCE,
