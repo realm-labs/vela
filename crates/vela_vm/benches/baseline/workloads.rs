@@ -937,6 +937,11 @@ fn main(player: Player) {
         source: ARRAY_REVERSE_SOURCE,
     },
     Workload {
+        name: "array_reverse_hot_offsets",
+        mode: ExecutionMode::ProfileOnly,
+        source: ARRAY_REVERSE_SOURCE,
+    },
+    Workload {
         name: "array_reverse_cache_hot_offsets",
         mode: ExecutionMode::CacheEnabled,
         source: ARRAY_REVERSE_SOURCE,
