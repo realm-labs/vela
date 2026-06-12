@@ -355,6 +355,11 @@ fn main() {
         source: CALLBACK_COLLECTIONS_SOURCE,
     },
     Workload {
+        name: "callback_collections_hot_offsets",
+        mode: ExecutionMode::ProfileOnly,
+        source: CALLBACK_COLLECTIONS_SOURCE,
+    },
+    Workload {
         name: "callback_collections_cache_hot_offsets",
         mode: ExecutionMode::CacheEnabled,
         source: CALLBACK_COLLECTIONS_SOURCE,
