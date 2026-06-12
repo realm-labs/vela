@@ -150,6 +150,11 @@ fn main() {
         source: SCRIPT_CALL_WIDE_ARGS_SOURCE,
     },
     Workload {
+        name: "script_call_wide_args_hot_offsets",
+        mode: ExecutionMode::ScriptProgramProfileOnly,
+        source: SCRIPT_CALL_WIDE_ARGS_SOURCE,
+    },
+    Workload {
         name: "script_call_wide_args_cache_hot_offsets",
         mode: ExecutionMode::ScriptProgramCacheEnabled,
         source: SCRIPT_CALL_WIDE_ARGS_SOURCE,
