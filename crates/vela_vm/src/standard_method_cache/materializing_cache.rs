@@ -116,6 +116,26 @@ pub(super) fn call_cached_array_materialization(
             };
             Some(make_string(payload, heap, budget, "method join"))
         }
+        StandardMethodInlineCacheTarget::Min | StandardMethodInlineCacheTarget::Max => {
+            let (method, operation, extremum) = match target {
+                StandardMethodInlineCacheTarget::Min => {
+                    ("min", "method min", CachedArrayExtremum::Min)
+                }
+                StandardMethodInlineCacheTarget::Max => {
+                    ("max", "method max", CachedArrayExtremum::Max)
+                }
+                _ => unreachable!("array extrema target was validated above"),
+            };
+            let payload = {
+                let heap_ref = heap.as_deref();
+                let slots = array_slots(receiver, heap_ref, operation)?;
+                match array_extremum_payload(slots, args, heap_ref, method, operation, extremum) {
+                    Ok(payload) => payload,
+                    Err(error) => return Some(Err(error)),
+                }
+            };
+            Some(make_option(payload, heap, budget))
+        }
         _ => None,
     }
 }
@@ -493,6 +513,102 @@ fn array_join_string<'a>(
         _ => Err(VmError::new(VmErrorKind::TypeMismatch {
             operation: "method join",
         })),
+    }
+}
+
+fn array_extremum_payload(
+    values: &[Value],
+    args: &[Value],
+    heap: Option<&HeapExecution<'_>>,
+    method: &str,
+    operation: &'static str,
+    extremum: CachedArrayExtremum,
+) -> VmResult<Option<Value>> {
+    crate::runtime_checks::expect_arity(method, args, 0)?;
+    let Some((first, rest)) = values.split_first() else {
+        return Ok(None);
+    };
+    let mut best = first;
+    let mut best_key = cached_sort_key(first, heap, operation)?;
+    let key_kind = best_key.kind();
+    for value in rest {
+        let key = cached_sort_key(value, heap, operation)?;
+        if key.kind() != key_kind {
+            return Err(VmError::new(VmErrorKind::TypeMismatch { operation }));
+        }
+        let ordering = key.compare(&best_key);
+        let replace = match extremum {
+            CachedArrayExtremum::Min => ordering.is_lt(),
+            CachedArrayExtremum::Max => ordering.is_gt(),
+        };
+        if replace {
+            best = value;
+            best_key = key;
+        }
+    }
+    Ok(Some(stored_runtime_value(best)))
+}
+
+#[derive(Clone, Copy)]
+enum CachedArrayExtremum {
+    Min,
+    Max,
+}
+
+#[derive(Clone, Copy, Eq, PartialEq)]
+enum CachedSortKeyKind {
+    Numeric,
+    String,
+}
+
+enum CachedSortKey {
+    Int(i64),
+    Float(f64),
+    String(String),
+}
+
+impl CachedSortKey {
+    fn kind(&self) -> CachedSortKeyKind {
+        match self {
+            Self::Int(_) | Self::Float(_) => CachedSortKeyKind::Numeric,
+            Self::String(_) => CachedSortKeyKind::String,
+        }
+    }
+
+    fn compare(&self, other: &Self) -> std::cmp::Ordering {
+        match (self, other) {
+            (Self::Int(left), Self::Int(right)) => left.cmp(right),
+            (Self::Int(left), Self::Float(right)) => (*left as f64)
+                .partial_cmp(right)
+                .unwrap_or(std::cmp::Ordering::Equal),
+            (Self::Float(left), Self::Int(right)) => left
+                .partial_cmp(&(*right as f64))
+                .unwrap_or(std::cmp::Ordering::Equal),
+            (Self::Float(left), Self::Float(right)) => {
+                left.partial_cmp(right).unwrap_or(std::cmp::Ordering::Equal)
+            }
+            (Self::String(left), Self::String(right)) => left.cmp(right),
+            (Self::Int(_) | Self::Float(_), Self::String(_))
+            | (Self::String(_), Self::Int(_) | Self::Float(_)) => std::cmp::Ordering::Equal,
+        }
+    }
+}
+
+fn cached_sort_key(
+    value: &Value,
+    heap: Option<&HeapExecution<'_>>,
+    operation: &'static str,
+) -> VmResult<CachedSortKey> {
+    match value {
+        Value::Scalar(ScalarValue::I64(value)) => Ok(CachedSortKey::Int(*value)),
+        Value::Scalar(ScalarValue::F64(value)) if value.is_finite() => {
+            Ok(CachedSortKey::Float(*value))
+        }
+        Value::HeapRef(reference) => match heap.and_then(|heap| heap.heap.get(*reference)) {
+            Some(HeapValue::String(value)) => Ok(CachedSortKey::String(value.clone())),
+            _ => Err(VmError::new(VmErrorKind::TypeMismatch { operation })),
+        },
+        _ => Err(VmError::new(VmErrorKind::TypeMismatch { operation })),
     }
 }
 
