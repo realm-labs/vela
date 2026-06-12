@@ -1,9 +1,10 @@
 use std::sync::OnceLock;
 
 use vela_bytecode::{LinkedProgram, UnlinkedProgramCode};
+use vela_common::ScalarValue;
 use vela_def::MethodId;
 
-use crate::heap::GcRef;
+use crate::heap::{GcRef, HeapValue};
 use crate::method_runtime::MethodRuntime;
 use crate::{
     CallbackMethodInlineCacheEntry, CallbackMethodInlineCacheTarget, ExecutionBudget,
@@ -366,7 +367,11 @@ pub(crate) fn call_cached(
             set_methods::count(receiver, args, dispatch.runtime()).map(Value::i64)
         }
         (StandardMethodReceiver::Array, CallbackMethodInlineCacheTarget::Sum) => {
-            array_methods::sum(receiver, args, dispatch.runtime())
+            if args.is_empty() {
+                call_cached_array_sum(receiver, dispatch.heap_ref())
+            } else {
+                array_methods::sum(receiver, args, dispatch.runtime())
+            }
         }
         (StandardMethodReceiver::Array, CallbackMethodInlineCacheTarget::GroupBy) => {
             array_methods::group_by(receiver, args, dispatch.runtime())
@@ -396,6 +401,61 @@ fn receiver_matches_cache(
         StandardMethodReceiver::String
         | StandardMethodReceiver::Bytes
         | StandardMethodReceiver::Range => false,
+    }
+}
+
+fn call_cached_array_sum(receiver: &Value, heap: Option<&HeapExecution<'_>>) -> VmResult<Value> {
+    let Value::HeapRef(reference) = receiver else {
+        return type_error("method sum");
+    };
+    let Some(HeapValue::Array(values)) = heap.and_then(|heap| heap.heap.get(*reference)) else {
+        return type_error("method sum");
+    };
+    let mut total = CachedNumericTotal::default();
+    for value in values {
+        total.add_value(value, "method sum")?;
+    }
+    Ok(total.into_value())
+}
+
+enum CachedNumericTotal {
+    Int(i64),
+    Float(f64),
+}
+
+impl Default for CachedNumericTotal {
+    fn default() -> Self {
+        Self::Int(0)
+    }
+}
+
+impl CachedNumericTotal {
+    fn add_value(&mut self, value: &Value, operation: &'static str) -> VmResult<()> {
+        match (&mut *self, value) {
+            (Self::Int(total), Value::Scalar(ScalarValue::I64(value))) => {
+                *total = total
+                    .checked_add(*value)
+                    .ok_or_else(|| VmError::new(VmErrorKind::TypeMismatch { operation }))?;
+            }
+            (Self::Int(total), Value::Scalar(ScalarValue::F64(value))) => {
+                *self = Self::Float(*total as f64 + *value);
+            }
+            (Self::Float(total), Value::Scalar(ScalarValue::I64(value))) => {
+                *total += *value as f64;
+            }
+            (Self::Float(total), Value::Scalar(ScalarValue::F64(value))) => {
+                *total += *value;
+            }
+            _ => return type_error(operation),
+        }
+        Ok(())
+    }
+
+    fn into_value(self) -> Value {
+        match self {
+            Self::Int(value) => Value::Scalar(ScalarValue::I64(value)),
+            Self::Float(value) => Value::Scalar(ScalarValue::F64(value)),
+        }
     }
 }
 

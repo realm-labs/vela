@@ -373,6 +373,19 @@ fn main() {
     assert_callback_value_method_cache(
         r#"
 fn main() {
+    return [1, 2, 3].sum();
+}
+"#,
+        "sum",
+        "Array",
+        "sum",
+        StandardMethodReceiver::Array,
+        CallbackMethodInlineCacheTarget::Sum,
+        Value::i64(6),
+    );
+    assert_callback_value_method_cache(
+        r#"
+fn main() {
     return [1, 2, 3].sum(|value| value + 1);
 }
 "#,
