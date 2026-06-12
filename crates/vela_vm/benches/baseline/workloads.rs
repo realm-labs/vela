@@ -18,6 +18,25 @@ pub(crate) enum ExecutionMode {
     GcPacing,
 }
 
+const STDLIB_COLLECTIONS_SOURCE: &str = r#"
+fn main() {
+    let values = [9, 2, 5, 2, 8, 1, 9, 3];
+    let unique = values.distinct().sort();
+    let grouped = values.group_by(|value| if value % 2 == 0 { "even" } else { "odd" });
+    let scores = {"quest": 3, "raid": 8}.merge({"quest": 5, "daily": 2});
+    let tags = set::from_array(["quest", "raid", "daily", "quest"]);
+    if unique.first().unwrap_or(0) == 1
+        && unique.last().unwrap_or(0) == 9
+        && grouped.get_or("even", []).len() == 3
+        && scores.get_or("quest", 0) == 5
+        && tags.has("raid")
+    {
+        return values.sum() + unique.len() + tags.len();
+    }
+    return 0;
+}
+"#;
+
 const CALLBACK_COLLECTIONS_SOURCE: &str = r#"
 fn main() {
     let total = 0;
@@ -202,24 +221,12 @@ fn main() {
     Workload {
         name: "stdlib_collections",
         mode: ExecutionMode::Inline,
-        source: r#"
-fn main() {
-    let values = [9, 2, 5, 2, 8, 1, 9, 3];
-    let unique = values.distinct().sort();
-    let grouped = values.group_by(|value| if value % 2 == 0 { "even" } else { "odd" });
-    let scores = {"quest": 3, "raid": 8}.merge({"quest": 5, "daily": 2});
-    let tags = set::from_array(["quest", "raid", "daily", "quest"]);
-    if unique.first().unwrap_or(0) == 1
-        && unique.last().unwrap_or(0) == 9
-        && grouped.get_or("even", []).len() == 3
-        && scores.get_or("quest", 0) == 5
-        && tags.has("raid")
-    {
-        return values.sum() + unique.len() + tags.len();
-    }
-    return 0;
-}
-"#,
+        source: STDLIB_COLLECTIONS_SOURCE,
+    },
+    Workload {
+        name: "stdlib_collections_cache_hot_offsets",
+        mode: ExecutionMode::CacheEnabled,
+        source: STDLIB_COLLECTIONS_SOURCE,
     },
     Workload {
         name: "callback_collections",
