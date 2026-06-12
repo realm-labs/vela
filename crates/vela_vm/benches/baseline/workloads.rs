@@ -1037,6 +1037,11 @@ fn main(player: Player) {
         source: RECORD_QUADS_SOURCE,
     },
     Workload {
+        name: "record_quads_hot_offsets",
+        mode: ExecutionMode::ProfileOnly,
+        source: RECORD_QUADS_SOURCE,
+    },
+    Workload {
         name: "record_quads_cache_hot_offsets",
         mode: ExecutionMode::CacheEnabled,
         source: RECORD_QUADS_SOURCE,
