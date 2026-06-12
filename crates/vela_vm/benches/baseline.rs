@@ -205,7 +205,7 @@ enum CompiledWorkload {
     },
     CacheEnabledHostAccess {
         program: Box<LinkedProgram>,
-        caches: BenchInlineCaches,
+        caches: Option<BenchInlineCaches>,
         profiler: BenchBytecodeProfiler,
     },
     HostManagedHeapReadConversion {
@@ -260,7 +260,7 @@ fn run_once(vm: &Vm, workload: &CompiledWorkload) -> Result<OwnedValue, Box<dyn 
             program,
             caches,
             profiler,
-        } => run_host_access(vm, program, Some(caches), Some(profiler)),
+        } => run_host_access(vm, program, caches.as_ref(), Some(profiler)),
         CompiledWorkload::HostManagedHeapReadConversion { program } => {
             run_managed_heap_host_read_conversion(vm, program)
         }
@@ -274,6 +274,7 @@ fn run_once(vm: &Vm, workload: &CompiledWorkload) -> Result<OwnedValue, Box<dyn 
 fn compile_workload(workload: &Workload, vm: &Vm) -> Result<CompiledWorkload, String> {
     match workload.mode {
         ExecutionMode::HostAccess
+        | ExecutionMode::HostAccessProfileOnly
         | ExecutionMode::HostAccessCacheEnabled
         | ExecutionMode::HostManagedHeapReadConversion
         | ExecutionMode::HostManagedHeapHostAccess => {
@@ -289,7 +290,17 @@ fn compile_workload(workload: &Workload, vm: &Vm) -> Result<CompiledWorkload, St
                 let mut linked = link_program_for_vm(vm, &program)?;
                 rebase_linked_cache_sites(&mut linked, &image);
                 return Ok(CompiledWorkload::CacheEnabledHostAccess {
-                    caches: BenchInlineCaches::new(image.cache_site_count()),
+                    caches: Some(BenchInlineCaches::new(image.cache_site_count())),
+                    profiler: BenchBytecodeProfiler::default(),
+                    program: Box::new(linked),
+                });
+            }
+            if matches!(workload.mode, ExecutionMode::HostAccessProfileOnly) {
+                let image = ProgramImage::from_program(&program);
+                let mut linked = link_program_for_vm(vm, &program)?;
+                rebase_linked_cache_sites(&mut linked, &image);
+                return Ok(CompiledWorkload::CacheEnabledHostAccess {
+                    caches: None,
                     profiler: BenchBytecodeProfiler::default(),
                     program: Box::new(linked),
                 });
@@ -414,7 +425,9 @@ impl CompiledWorkload {
             caches, profiler, ..
         } = self
         {
-            caches.reset_measurement_counts();
+            if let Some(caches) = caches {
+                caches.reset_measurement_counts();
+            }
             profiler.reset();
         }
     }
@@ -424,7 +437,9 @@ impl CompiledWorkload {
             Self::CacheEnabledFunction { caches, .. } => caches
                 .as_ref()
                 .map_or_else(BenchCacheStats::default, BenchInlineCaches::stats),
-            Self::CacheEnabledHostAccess { caches, .. } => caches.stats(),
+            Self::CacheEnabledHostAccess { caches, .. } => caches
+                .as_ref()
+                .map_or_else(BenchCacheStats::default, BenchInlineCaches::stats),
             _ => BenchCacheStats::default(),
         }
     }
@@ -1164,6 +1179,7 @@ impl ExecutionMode {
             Self::ScriptProgramCacheEnabled => "script_program_cache_enabled",
             Self::ManagedHeap => "managed_heap",
             Self::HostAccess => "host_access",
+            Self::HostAccessProfileOnly => "host_access_profile_only",
             Self::HostAccessCacheEnabled => "host_access_cache_enabled",
             Self::HostManagedHeapReadConversion => "host_managed_heap_read_conversion",
             Self::HostManagedHeapHostAccess => "host_managed_heap_access",

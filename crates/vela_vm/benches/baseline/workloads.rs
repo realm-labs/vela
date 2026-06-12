@@ -33,6 +33,7 @@ pub(crate) enum ExecutionMode {
     ScriptProgramCacheEnabled,
     ManagedHeap,
     HostAccess,
+    HostAccessProfileOnly,
     HostAccessCacheEnabled,
     HostManagedHeapReadConversion,
     HostManagedHeapHostAccess,
@@ -561,7 +562,7 @@ fn main(player: Player) {
     },
     Workload {
         name: "host_field_read_write_hot_offsets",
-        mode: ExecutionMode::HostAccess,
+        mode: ExecutionMode::HostAccessProfileOnly,
         source: HOST_FIELD_READ_WRITE_SOURCE,
     },
     Workload {
@@ -571,7 +572,7 @@ fn main(player: Player) {
     },
     Workload {
         name: "host_global_read_write_hot_offsets",
-        mode: ExecutionMode::HostAccess,
+        mode: ExecutionMode::HostAccessProfileOnly,
         source: HOST_GLOBAL_READ_WRITE_SOURCE,
     },
     Workload {
@@ -586,7 +587,7 @@ fn main(player: Player) {
     },
     Workload {
         name: "host_nested_read_write_hot_offsets",
-        mode: ExecutionMode::HostAccess,
+        mode: ExecutionMode::HostAccessProfileOnly,
         source: HOST_NESTED_READ_WRITE_SOURCE,
     },
     Workload {
@@ -601,7 +602,7 @@ fn main(player: Player) {
     },
     Workload {
         name: "host_rmw_mutation_hot_offsets",
-        mode: ExecutionMode::HostAccess,
+        mode: ExecutionMode::HostAccessProfileOnly,
         source: HOST_RMW_MUTATION_SOURCE,
     },
     Workload {
@@ -616,7 +617,7 @@ fn main(player: Player) {
     },
     Workload {
         name: "host_dynamic_key_access_hot_offsets",
-        mode: ExecutionMode::HostAccess,
+        mode: ExecutionMode::HostAccessProfileOnly,
         source: HOST_DYNAMIC_KEY_ACCESS_SOURCE,
     },
     Workload {
@@ -631,7 +632,7 @@ fn main(player: Player) {
     },
     Workload {
         name: "host_method_calls_hot_offsets",
-        mode: ExecutionMode::HostAccess,
+        mode: ExecutionMode::HostAccessProfileOnly,
         source: HOST_METHOD_CALLS_SOURCE,
     },
     Workload {
@@ -641,7 +642,7 @@ fn main(player: Player) {
     },
     Workload {
         name: "host_access_hot_offsets",
-        mode: ExecutionMode::HostAccess,
+        mode: ExecutionMode::HostAccessProfileOnly,
         source: HOST_ACCESS_HOT_OFFSETS_SOURCE,
     },
     Workload {

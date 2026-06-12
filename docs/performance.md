@@ -31,7 +31,9 @@ cargo bench -p vela_engine --bench hot_reload -- --quick
 example `cargo bench -p vela_vm --bench baseline -- --quick host_field`.
 When a cache family has an explicit non-cache `_hot_offsets` row, `cache_delta`
 pairs the cache-enabled row against that base to isolate cache overhead from
-bytecode-profiler overhead.
+bytecode-profiler overhead. Host-boundary `_hot_offsets` rows run in
+`host_access_profile_only` mode so interpreter-only host measurements still
+carry bytecode profile counters without enabling inline caches.
 
 Tracked workload groups:
 
@@ -43,7 +45,7 @@ callbacks, direct closure calls, and higher-order collection methods
 cache-enabled stdlib, script/native call, method-dispatch aggregate/detail, script record-field aggregate/detail, range-method detail, collection lookup/view/aggregation/combination/mutation/materialization, string/bytes method and string-transform detail, Option/Result helper, callback collection/detail, and host-boundary aggregate/detail rows with warmed inline caches and bytecode profile counters
 record and enum construction and field access
 managed heap allocation and materialization
-host field reads, nested path reads/writes, RMW mutations, dynamic key access, and method calls
+declared host globals, host field reads, nested path reads/writes, RMW mutations, dynamic key access, and method calls
 reflection reads, writes, and calls
 hot reload compile/apply/reject workflow
 GC pacing and pause-budget scenarios
@@ -143,8 +145,8 @@ string/bytes method plus string-transform detail, Option/Result helper, callback
 collection/detail, direct-closure, and host-boundary aggregate/detail rows with
 warmed inline caches and bytecode profile counters. The record-field detail
 rows cover triplet, quad, quint, and sextet shapes; the host-boundary detail
-rows cover field read/write, nested path read/write, RMW mutation, dynamic key
-access, and host method calls; the method-dispatch detail rows cover script
+rows cover declared global read/write, field read/write, nested path read/write,
+RMW mutation, dynamic key access, and host method calls; the method-dispatch detail rows cover script
 inherent and trait/default method calls. M20 reports must separate
 interpreter-only and cache-enabled results.
 
