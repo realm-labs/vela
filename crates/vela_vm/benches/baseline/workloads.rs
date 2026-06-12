@@ -1,8 +1,8 @@
 use crate::workload_sources::{
     ARRAY_LOOKUP_SOURCE, CALLBACK_COLLECTIONS_SOURCE, DIRECT_CLOSURE_CALLS_SOURCE,
     MAP_LOOKUP_SOURCE, METHOD_DISPATCH_SOURCE, NATIVE_CALL_WIDE_ARGS_SOURCE,
-    RECORD_TRIPLETS_SOURCE, SCRIPT_CALL_SMALL_ARGS_SOURCE, SET_LOOKUP_SOURCE,
-    STDLIB_COLLECTIONS_SOURCE,
+    OPTION_RESULT_HELPERS_SOURCE, RECORD_TRIPLETS_SOURCE, SCRIPT_CALL_SMALL_ARGS_SOURCE,
+    SET_LOOKUP_SOURCE, STDLIB_COLLECTIONS_SOURCE,
 };
 
 pub(crate) struct Workload {
@@ -259,48 +259,12 @@ fn main() {
     Workload {
         name: "managed_heap_option_result_helpers",
         mode: ExecutionMode::ManagedHeap,
-        source: r#"
-fn main() {
-    let total = 0;
-    for tick in 0..72 {
-        let some = option::some(["quest", "done"]);
-        let none = option::none();
-        let ok = result::ok(["done"]);
-        let err = result::err(["blocked"]);
-        let converted_ok = some.ok_or(["missing"]);
-        let converted_err = none.ok_or(["missing"]);
-        let flattened_some = option::some(option::some(["quest", "done"])).flatten();
-        let flattened_none = option::some(option::none()).flatten();
-        let flattened_ok = result::ok(result::ok(["done"])).flatten();
-        let flattened_err = result::ok(result::err(["nested"])).flatten();
-
-        if !some.is_some()
-            || !none.is_none()
-            || !ok.is_ok()
-            || !err.is_err()
-            || !converted_ok.is_ok()
-            || !converted_err.is_err()
-            || some.unwrap_or([]).join(".") != "quest.done"
-            || none.unwrap_or(["fallback"]).join(".") != "fallback"
-            || ok.unwrap_or([]).join(".") != "done"
-            || err.unwrap_or(["fallback"]).join(".") != "fallback"
-            || converted_ok.to_option().unwrap_or([]).join(".") != "quest.done"
-            || converted_err.to_option().unwrap_or(["fallback"]).join(".") != "fallback"
-            || !converted_ok.to_error_option().is_none()
-            || converted_err.to_error_option().unwrap_or(["fallback"]).join(".") != "missing"
-            || flattened_some.unwrap_or([]).join(".") != "quest.done"
-            || !flattened_none.is_none()
-            || flattened_ok.unwrap_or([]).join(".") != "done"
-            || flattened_err.to_error_option().unwrap_or([]).join(".") != "nested"
-        {
-            return 0;
-        }
-
-        total += tick + some.unwrap_or([]).len() + ok.unwrap_or([]).len();
-    }
-    return total;
-}
-"#,
+        source: OPTION_RESULT_HELPERS_SOURCE,
+    },
+    Workload {
+        name: "option_result_helpers_cache_hot_offsets",
+        mode: ExecutionMode::CacheEnabled,
+        source: OPTION_RESULT_HELPERS_SOURCE,
     },
     Workload {
         name: "managed_heap_set_lookup",
