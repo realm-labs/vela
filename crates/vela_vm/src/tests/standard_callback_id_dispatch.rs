@@ -5,7 +5,7 @@ use super::linked_standard_method_cache_support::{
 use super::standard_id_dispatch::std_method_id;
 use super::*;
 use std::cell::RefCell;
-use vela_bytecode::{CacheSiteId, LinkedProgram, Linker};
+use vela_bytecode::{CacheSiteId, DebugNameId, LinkedProgram, Linker, MethodDispatchHandle};
 
 #[test]
 fn linked_callback_method_id_rejects_receiver_owner_mismatch() {
@@ -152,6 +152,49 @@ fn main() {
         Ok(Value::Bool(true))
     );
     assert_eq!(caches.set_count(), 2);
+}
+
+#[test]
+fn linked_callback_value_method_refreshes_wrong_method_guard() {
+    let program = compile_standard_program_source(
+        SourceId::new(1),
+        r#"
+fn main() {
+    return [1, 2, 3].any(|value| value == 2);
+}
+"#,
+    )
+    .expect("standard callback method source should compile");
+    let linked = link_test_program(&program);
+    let call = linked_method_cache_call(&linked, "main", "any");
+    let caches = RecordingMethodCaches::new(max_cache_site_len(&linked));
+    caches.prime(
+        call.cache_site,
+        MethodInlineCacheEntry {
+            dispatch: call.dispatch,
+            debug_name: call.debug_name,
+            target: MethodInlineCacheTarget::CallbackValue {
+                method_id: std_method_id("Set", "any"),
+                callback_method: CallbackMethodInlineCacheEntry {
+                    receiver: StandardMethodReceiver::Array,
+                    target: CallbackMethodInlineCacheTarget::Any,
+                },
+            },
+        },
+    );
+
+    assert_eq!(
+        run_linked_method_cache_program(&linked, &caches),
+        Ok(Value::Bool(true))
+    );
+    assert_callback_cache_entry(
+        &caches,
+        call.cache_site,
+        std_method_id("Array", "any"),
+        StandardMethodReceiver::Array,
+        CallbackMethodInlineCacheTarget::Any,
+    );
+    assert_eq!(caches.set_count_for(call.cache_site), 2);
 }
 
 #[test]
@@ -530,6 +573,21 @@ fn linked_method_cache_site(
     function: &str,
     method: &str,
 ) -> CacheSiteId {
+    linked_method_cache_call(program, function, method).cache_site
+}
+
+#[derive(Clone, Copy)]
+struct LinkedMethodCacheCall {
+    cache_site: CacheSiteId,
+    dispatch: MethodDispatchHandle,
+    debug_name: DebugNameId,
+}
+
+fn linked_method_cache_call(
+    program: &vela_bytecode::LinkedProgram,
+    function: &str,
+    method: &str,
+) -> LinkedMethodCacheCall {
     let (_, code) = program
         .functions()
         .find(|(_, code)| program.debug_name(code.debug_name) == function)
@@ -540,13 +598,18 @@ fn linked_method_cache_site(
             let vela_bytecode::linked::InstructionKind::CallMethod {
                 debug_name,
                 cache_site,
+                dispatch,
                 ..
             } = instruction.kind
             else {
                 return None;
             };
             if program.debug_name(debug_name) == method {
-                cache_site
+                cache_site.map(|cache_site| LinkedMethodCacheCall {
+                    cache_site,
+                    dispatch,
+                    debug_name,
+                })
             } else {
                 None
             }

@@ -78,6 +78,47 @@ fn linked_standard_value_method_refreshes_wrong_receiver_guard() {
 }
 
 #[test]
+fn linked_standard_value_method_refreshes_wrong_method_guard() {
+    let (program, site, dispatch, method_id) = linked_standard_len_cache_program();
+    let caches = RecordingMethodCaches::new(1);
+    let debug_name = program
+        .method_dispatch(dispatch)
+        .expect("dispatch should exist")
+        .debug_name;
+    caches.prime(
+        site,
+        MethodInlineCacheEntry {
+            dispatch,
+            debug_name,
+            target: MethodInlineCacheTarget::Value {
+                method_id: vela_stdlib::std_method_id("Map", "get_or")
+                    .expect("Map::get_or method id"),
+                standard_method: None,
+            },
+        },
+    );
+
+    assert_eq!(
+        run_linked_method_cache_program(&program, &caches),
+        Ok(RuntimeValue::i64(4))
+    );
+    let entry = caches
+        .entry(site)
+        .expect("wrong method cache should refresh");
+    let MethodInlineCacheTarget::Value {
+        method_id: cached_method,
+        standard_method: Some(standard_method),
+    } = entry.target
+    else {
+        panic!("standard method cache should store refreshed value target");
+    };
+    assert_eq!(cached_method, method_id);
+    assert_eq!(standard_method.receiver, StandardMethodReceiver::String);
+    assert_eq!(standard_method.target, StandardMethodInlineCacheTarget::Len);
+    assert_eq!(caches.set_count(), 2);
+}
+
+#[test]
 fn linked_standard_value_method_caches_predicate_target() {
     assert_string_predicate_cache(
         linked_string_contains_cache_program(),

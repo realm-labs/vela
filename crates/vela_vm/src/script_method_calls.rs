@@ -484,6 +484,12 @@ fn linked_method_dispatch_target(
             .inline_caches
             .and_then(|caches| caches.method_dispatch(site))
         && entry.dispatch == dispatch_handle
+        && context
+            .program
+            .method_dispatch(dispatch_handle)
+            .is_some_and(|dispatch| {
+                cached_method_target_matches_dispatch(&entry.target, &dispatch.kind)
+            })
     {
         return Ok(LinkedMethodDispatchTarget {
             debug_name: entry.debug_name,
@@ -535,6 +541,38 @@ fn method_inline_cache_target(kind: &LinkedMethodDispatchKind) -> MethodInlineCa
         LinkedMethodDispatchKind::Host { method_id } => MethodInlineCacheTarget::Host {
             method_id: *method_id,
         },
+    }
+}
+
+fn cached_method_target_matches_dispatch(
+    target: &MethodInlineCacheTarget,
+    kind: &LinkedMethodDispatchKind,
+) -> bool {
+    match (target, kind) {
+        (
+            MethodInlineCacheTarget::Script {
+                method_id,
+                function,
+            },
+            LinkedMethodDispatchKind::Script {
+                method_id: dispatch_method,
+                function: dispatch_function,
+            },
+        ) => *method_id == *dispatch_method && *function == *dispatch_function,
+        (
+            MethodInlineCacheTarget::Value { method_id, .. }
+            | MethodInlineCacheTarget::CallbackValue { method_id, .. },
+            LinkedMethodDispatchKind::Value {
+                method_id: dispatch_method,
+            },
+        ) => *method_id == *dispatch_method,
+        (
+            MethodInlineCacheTarget::Host { method_id },
+            LinkedMethodDispatchKind::Host {
+                method_id: dispatch_method,
+            },
+        ) => *method_id == *dispatch_method,
+        _ => false,
     }
 }
 
