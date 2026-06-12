@@ -491,6 +491,29 @@ fn main() {
 }
 "#;
 
+pub(crate) const BYTES_ACCESS_SOURCE: &str = r#"
+fn main() {
+    let total = 0;
+    for tick in 0..96 {
+        let data = b"\x01\x02\x03\x04\xff\x10";
+
+        if data.len() != 6
+            || data.is_empty()
+            || data.get(0) != 1u8
+            || data.get(4) != 255u8
+            || data.get(5) != 16u8
+            || data.read_u32_le(0) != 0x04030201u32
+            || data.read_u32_be(0) != 0x01020304u32
+        {
+            return 0;
+        }
+
+        total += data.len() + 16 + tick - tick;
+    }
+    return total;
+}
+"#;
+
 pub(crate) const METHOD_DISPATCH_SOURCE: &str = r#"
 fn main() {
     let total = 0;
