@@ -7,14 +7,14 @@ use crate::workload_sources::{
     HOST_DYNAMIC_KEY_ACCESS_SOURCE, HOST_FIELD_READ_WRITE_SOURCE, HOST_METHOD_CALLS_SOURCE,
     HOST_NESTED_READ_WRITE_SOURCE, HOST_RMW_MUTATION_SOURCE, MAP_CALLBACKS_SOURCE,
     MAP_EXTEND_SOURCE, MAP_FIND_ENTRIES_SOURCE, MAP_LOOKUP_SOURCE, MAP_MERGE_SOURCE,
-    MAP_MUTATION_SOURCE, MAP_VIEWS_SOURCE, METHOD_DISPATCH_SOURCE, NATIVE_CALL_WIDE_ARGS_SOURCE,
-    OPTION_RESULT_CALLBACKS_SOURCE, OPTION_RESULT_CONVERSIONS_SOURCE, OPTION_RESULT_HELPERS_SOURCE,
-    OPTION_RESULT_PREDICATES_SOURCE, RECORD_QUADS_SOURCE, RECORD_QUINTS_SOURCE,
-    RECORD_SEXTETS_SOURCE, RECORD_TRIPLETS_SOURCE, SCRIPT_CALL_SMALL_ARGS_SOURCE,
-    SCRIPT_CALL_WIDE_ARGS_SOURCE, SCRIPT_METHOD_DISPATCH_SOURCE, SET_CALLBACK_PREDICATES_SOURCE,
-    SET_COMBINATION_SOURCE, SET_LOOKUP_SOURCE, SET_MUTATION_SOURCE, SET_VALUES_SOURCE,
-    STDLIB_COLLECTIONS_SOURCE, STRING_METHODS_SOURCE, STRING_OPTIONS_SOURCE, STRING_PARSING_SOURCE,
-    STRING_SPLITTING_SOURCE, TRAIT_METHOD_DISPATCH_SOURCE,
+    MAP_MUTATION_SOURCE, MAP_VIEWS_SOURCE, MATERIALIZATION_SOURCE, METHOD_DISPATCH_SOURCE,
+    NATIVE_CALL_WIDE_ARGS_SOURCE, OPTION_RESULT_CALLBACKS_SOURCE, OPTION_RESULT_CONVERSIONS_SOURCE,
+    OPTION_RESULT_HELPERS_SOURCE, OPTION_RESULT_PREDICATES_SOURCE, RECORD_QUADS_SOURCE,
+    RECORD_QUINTS_SOURCE, RECORD_SEXTETS_SOURCE, RECORD_TRIPLETS_SOURCE,
+    SCRIPT_CALL_SMALL_ARGS_SOURCE, SCRIPT_CALL_WIDE_ARGS_SOURCE, SCRIPT_METHOD_DISPATCH_SOURCE,
+    SET_CALLBACK_PREDICATES_SOURCE, SET_COMBINATION_SOURCE, SET_LOOKUP_SOURCE, SET_MUTATION_SOURCE,
+    SET_VALUES_SOURCE, STDLIB_COLLECTIONS_SOURCE, STRING_METHODS_SOURCE, STRING_OPTIONS_SOURCE,
+    STRING_PARSING_SOURCE, STRING_SPLITTING_SOURCE, TRAIT_METHOD_DISPATCH_SOURCE,
 };
 
 pub(crate) struct Workload {
@@ -682,32 +682,12 @@ fn main(player: Player) {
     Workload {
         name: "managed_heap_materialization",
         mode: ExecutionMode::ManagedHeap,
-        source: r#"
-struct Reward {
-    item_id: string
-    count: i64
-}
-
-enum ResultState {
-    Done { score: i64 }
-    Blocked(reason: string)
-}
-
-fn main() {
-    let command = " reward:gold count=3 enabled=true ".trim();
-    let parts = command.replace(":", " ").split_whitespace();
-    let item = parts[1];
-    let count = parts[2].strip_prefix("count=").unwrap_or("0").parse_int().unwrap_or(0);
-    let reward = Reward { item_id: item, count };
-    let outcome = ResultState::Done { score: reward.count + item.len() };
-    let label = "quest.reward.done".strip_suffix(".done").unwrap_or("");
-    match outcome {
-        ResultState::Done { score } if label.starts_with("quest") => score + label.len(),
-        ResultState::Blocked(reason) => reason.len(),
-        _ => 0,
-    }
-}
-"#,
+        source: MATERIALIZATION_SOURCE,
+    },
+    Workload {
+        name: "materialization_cache_hot_offsets",
+        mode: ExecutionMode::CacheEnabled,
+        source: MATERIALIZATION_SOURCE,
     },
     Workload {
         name: "managed_heap_record_triplets",

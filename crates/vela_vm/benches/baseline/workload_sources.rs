@@ -92,6 +92,33 @@ fn main(player: Player) {
 }
 "#;
 
+pub(crate) const MATERIALIZATION_SOURCE: &str = r#"
+struct Reward {
+    item_id: string
+    count: i64
+}
+
+enum ResultState {
+    Done { score: i64 }
+    Blocked(reason: string)
+}
+
+fn main() {
+    let command = " reward:gold count=3 enabled=true ".trim();
+    let parts = command.replace(":", " ").split_whitespace();
+    let item = parts[1];
+    let count = parts[2].strip_prefix("count=").unwrap_or("0").parse_int().unwrap_or(0);
+    let reward = Reward { item_id: item, count };
+    let outcome = ResultState::Done { score: reward.count + item.len() };
+    let label = "quest.reward.done".strip_suffix(".done").unwrap_or("");
+    match outcome {
+        ResultState::Done { score } if label.starts_with("quest") => score + label.len(),
+        ResultState::Blocked(reason) => reason.len(),
+        _ => 0,
+    }
+}
+"#;
+
 pub(crate) const RECORD_TRIPLETS_SOURCE: &str = r#"
 struct Reward {
     item_id: string,
