@@ -26,6 +26,8 @@ use vela_vm::{HostExecution, LinkedProgramHostBudgetCall};
 
 #[path = "baseline/cache_support.rs"]
 mod cache_support;
+#[path = "baseline/workload_sources.rs"]
+mod workload_sources;
 #[path = "baseline/workloads.rs"]
 mod workloads;
 
