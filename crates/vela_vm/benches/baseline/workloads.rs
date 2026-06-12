@@ -180,6 +180,11 @@ fn main() {
         source: STDLIB_COLLECTIONS_SOURCE,
     },
     Workload {
+        name: "stdlib_collections_hot_offsets",
+        mode: ExecutionMode::ProfileOnly,
+        source: STDLIB_COLLECTIONS_SOURCE,
+    },
+    Workload {
         name: "stdlib_collections_cache_hot_offsets",
         mode: ExecutionMode::CacheEnabled,
         source: STDLIB_COLLECTIONS_SOURCE,
