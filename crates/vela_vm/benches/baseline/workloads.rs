@@ -2,8 +2,10 @@ use crate::workload_sources::{
     ARRAY_DISTINCT_SOURCE, ARRAY_EXTEND_SOURCE, ARRAY_EXTREMA_SOURCE, ARRAY_GROUP_BY_SOURCE,
     ARRAY_JOIN_SOURCE, ARRAY_LOOKUP_SOURCE, ARRAY_REVERSE_SOURCE, ARRAY_SLICE_SOURCE,
     ARRAY_SORT_SOURCE, BYTES_METHODS_SOURCE, CALLBACK_COLLECTIONS_SOURCE,
-    DIRECT_CLOSURE_CALLS_SOURCE, MAP_CALLBACKS_SOURCE, MAP_EXTEND_SOURCE, MAP_FIND_ENTRIES_SOURCE,
-    MAP_LOOKUP_SOURCE, MAP_MERGE_SOURCE, METHOD_DISPATCH_SOURCE, NATIVE_CALL_WIDE_ARGS_SOURCE,
+    DIRECT_CLOSURE_CALLS_SOURCE, HOST_DYNAMIC_KEY_ACCESS_SOURCE, HOST_FIELD_READ_WRITE_SOURCE,
+    HOST_METHOD_CALLS_SOURCE, HOST_NESTED_READ_WRITE_SOURCE, HOST_RMW_MUTATION_SOURCE,
+    MAP_CALLBACKS_SOURCE, MAP_EXTEND_SOURCE, MAP_FIND_ENTRIES_SOURCE, MAP_LOOKUP_SOURCE,
+    MAP_MERGE_SOURCE, METHOD_DISPATCH_SOURCE, NATIVE_CALL_WIDE_ARGS_SOURCE,
     OPTION_RESULT_HELPERS_SOURCE, RECORD_TRIPLETS_SOURCE, SCRIPT_CALL_SMALL_ARGS_SOURCE,
     SET_COMBINATION_SOURCE, SET_LOOKUP_SOURCE, STDLIB_COLLECTIONS_SOURCE, STRING_METHODS_SOURCE,
 };
@@ -333,70 +335,52 @@ fn main(player: Player) {
     Workload {
         name: "host_field_read_write",
         mode: ExecutionMode::HostAccess,
-        source: r#"
-fn main(player: Player) {
-    let total = 0;
-    for tick in 0..32 {
-        player.level = tick + 1;
-        total += player.level;
-    }
-    return total;
-}
-"#,
+        source: HOST_FIELD_READ_WRITE_SOURCE,
+    },
+    Workload {
+        name: "host_field_read_write_cache_hot_offsets",
+        mode: ExecutionMode::HostAccessCacheEnabled,
+        source: HOST_FIELD_READ_WRITE_SOURCE,
     },
     Workload {
         name: "host_nested_read_write",
         mode: ExecutionMode::HostAccess,
-        source: r#"
-fn main(player: Player) {
-    let total = 0;
-    for tick in 0..32 {
-        player.inventory.gold = tick + 3;
-        total += player.inventory.gold;
-    }
-    return total;
-}
-"#,
+        source: HOST_NESTED_READ_WRITE_SOURCE,
+    },
+    Workload {
+        name: "host_nested_read_write_cache_hot_offsets",
+        mode: ExecutionMode::HostAccessCacheEnabled,
+        source: HOST_NESTED_READ_WRITE_SOURCE,
     },
     Workload {
         name: "host_rmw_mutation",
         mode: ExecutionMode::HostAccess,
-        source: r#"
-fn main(player: Player) {
-    for tick in 0..32 {
-        player.level += 1;
-        player.exp += tick;
-    }
-    return player.level + player.exp;
-}
-"#,
+        source: HOST_RMW_MUTATION_SOURCE,
+    },
+    Workload {
+        name: "host_rmw_mutation_cache_hot_offsets",
+        mode: ExecutionMode::HostAccessCacheEnabled,
+        source: HOST_RMW_MUTATION_SOURCE,
     },
     Workload {
         name: "host_dynamic_key_access",
         mode: ExecutionMode::HostAccess,
-        source: r#"
-fn main(player: Player) {
-    let item_id = "gold";
-    let total = 0;
-    for tick in 0..32 {
-        player.inventory.items[item_id].count += 1;
-        total += player.inventory.items[item_id].count + tick - tick;
-    }
-    return total;
-}
-"#,
+        source: HOST_DYNAMIC_KEY_ACCESS_SOURCE,
+    },
+    Workload {
+        name: "host_dynamic_key_access_cache_hot_offsets",
+        mode: ExecutionMode::HostAccessCacheEnabled,
+        source: HOST_DYNAMIC_KEY_ACCESS_SOURCE,
     },
     Workload {
         name: "host_method_calls",
         mode: ExecutionMode::HostAccess,
-        source: r#"
-fn main(player: Player) {
-    for tick in 0..32 {
-        player.add_reward("gold", tick + 1);
-    }
-    return player.level;
-}
-"#,
+        source: HOST_METHOD_CALLS_SOURCE,
+    },
+    Workload {
+        name: "host_method_calls_cache_hot_offsets",
+        mode: ExecutionMode::HostAccessCacheEnabled,
+        source: HOST_METHOD_CALLS_SOURCE,
     },
     Workload {
         name: "host_access_cache_hot_offsets",

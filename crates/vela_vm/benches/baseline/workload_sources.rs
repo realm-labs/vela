@@ -17,6 +17,59 @@ fn main() {
 }
 "#;
 
+pub(crate) const HOST_FIELD_READ_WRITE_SOURCE: &str = r#"
+fn main(player: Player) {
+    let total = 0;
+    for tick in 0..32 {
+        player.level = tick + 1;
+        total += player.level;
+    }
+    return total;
+}
+"#;
+
+pub(crate) const HOST_NESTED_READ_WRITE_SOURCE: &str = r#"
+fn main(player: Player) {
+    let total = 0;
+    for tick in 0..32 {
+        player.inventory.gold = tick + 3;
+        total += player.inventory.gold;
+    }
+    return total;
+}
+"#;
+
+pub(crate) const HOST_RMW_MUTATION_SOURCE: &str = r#"
+fn main(player: Player) {
+    for tick in 0..32 {
+        player.level += 1;
+        player.exp += tick;
+    }
+    return player.level + player.exp;
+}
+"#;
+
+pub(crate) const HOST_DYNAMIC_KEY_ACCESS_SOURCE: &str = r#"
+fn main(player: Player) {
+    let item_id = "gold";
+    let total = 0;
+    for tick in 0..32 {
+        player.inventory.items[item_id].count += 1;
+        total += player.inventory.items[item_id].count + tick - tick;
+    }
+    return total;
+}
+"#;
+
+pub(crate) const HOST_METHOD_CALLS_SOURCE: &str = r#"
+fn main(player: Player) {
+    for tick in 0..32 {
+        player.add_reward("gold", tick + 1);
+    }
+    return player.level;
+}
+"#;
+
 pub(crate) const RECORD_TRIPLETS_SOURCE: &str = r#"
 struct Reward {
     item_id: string,

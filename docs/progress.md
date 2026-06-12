@@ -356,8 +356,8 @@ Cranelift JIT.
     script record-field, method-dispatch,
     collection lookup/combination/mutation/materialization, string/bytes
     method, Option/Result helper, callback collection/detail, direct-closure,
-    and host-boundary rows separate warmed cache hits from later JIT work, and
-    broader cache-enabled rows remain;
+    and host-boundary aggregate/detail rows separate warmed cache hits from
+    later JIT work, and broader cache-enabled rows remain;
   - verified-bytecode and runtime tests cover the invariants needed by later
     unchecked register, operand, and cache fast paths;
   - runtime bytecode offset counters cover linked hot offsets and hot-reload
@@ -365,15 +365,15 @@ Cranelift JIT.
     record-field, method-dispatch,
     collection lookup/combination/mutation/materialization, string/bytes
     method, Option/Result helper, callback collection/detail, direct-closure,
-    and host-boundary rows now consume those counters, and follow-on M20 work
-    needs broader cache-enabled benchmark rows;
+    and host-boundary aggregate/detail rows now consume those counters, and
+    follow-on M20 work needs broader cache-enabled benchmark rows;
   - interpreter-only benchmark rows identify which remaining costs belong to
     M20 cache work versus later JIT work.
 - M20: continue guarded inline caches and specialization for broader stdlib
-  value methods and hot bytecode offsets, then extend script record field,
-  host access, and method dispatch cache measurements. Cache misses,
-  guard failures, hot reload, and schema ABI changes must fall back or
-  invalidate without changing semantics.
+  value methods and hot bytecode offsets, then extend script record field and
+  method dispatch cache measurements. Cache misses, guard failures, hot
+  reload, and schema ABI changes must fall back or invalidate without changing
+  semantics.
 - Lua 5.x comparable performance remains a measured target for cache-enabled
   non-JIT host-boundary workloads; scalar, array, string, function-call, and
   callback deltas should be tracked separately from host-boundary benchmarks.
