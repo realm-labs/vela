@@ -568,6 +568,10 @@ pub(crate) fn readonly_cache_entry(
         StandardMethodReceiver::Map
     } else if set_methods::is_set(receiver, heap) {
         StandardMethodReceiver::Set
+    } else if option_result_methods::is_option(receiver, heap) {
+        StandardMethodReceiver::Option
+    } else if option_result_methods::is_result(receiver, heap) {
+        StandardMethodReceiver::Result
     } else {
         return None;
     };
@@ -644,6 +648,24 @@ pub(crate) fn readonly_cache_entry(
         (StandardMethodReceiver::Set, id) if id == ids.set_is_disjoint => {
             StandardMethodInlineCacheTarget::IsDisjoint
         }
+        (StandardMethodReceiver::Option, id) if id == ids.option_is_some => {
+            StandardMethodInlineCacheTarget::IsSome
+        }
+        (StandardMethodReceiver::Option, id) if id == ids.option_is_none => {
+            StandardMethodInlineCacheTarget::IsNone
+        }
+        (StandardMethodReceiver::Option, id) if id == ids.option_unwrap_or => {
+            StandardMethodInlineCacheTarget::UnwrapOr
+        }
+        (StandardMethodReceiver::Result, id) if id == ids.result_is_ok => {
+            StandardMethodInlineCacheTarget::IsOk
+        }
+        (StandardMethodReceiver::Result, id) if id == ids.result_is_err => {
+            StandardMethodInlineCacheTarget::IsErr
+        }
+        (StandardMethodReceiver::Result, id) if id == ids.result_unwrap_or => {
+            StandardMethodInlineCacheTarget::UnwrapOr
+        }
         _ => return None,
     };
     Some(StandardMethodInlineCacheEntry { receiver, target })
@@ -698,6 +720,22 @@ pub(crate) fn call_readonly_cached(
         (StandardMethodReceiver::Bytes, StandardMethodInlineCacheTarget::ReadU32Be) => {
             bytes_methods::read_u32_be(receiver, args, heap)
         }
+        (StandardMethodReceiver::Option, StandardMethodInlineCacheTarget::IsSome) => {
+            option_result_methods::is_some(receiver, args, heap)
+        }
+        (StandardMethodReceiver::Option, StandardMethodInlineCacheTarget::IsNone) => {
+            option_result_methods::is_none(receiver, args, heap)
+        }
+        (
+            StandardMethodReceiver::Option | StandardMethodReceiver::Result,
+            StandardMethodInlineCacheTarget::UnwrapOr,
+        ) => option_result_methods::unwrap_or(receiver, args, heap),
+        (StandardMethodReceiver::Result, StandardMethodInlineCacheTarget::IsOk) => {
+            option_result_methods::is_ok(receiver, args, heap)
+        }
+        (StandardMethodReceiver::Result, StandardMethodInlineCacheTarget::IsErr) => {
+            option_result_methods::is_err(receiver, args, heap)
+        }
         _ => return None,
     };
     Some(result)
@@ -715,6 +753,8 @@ fn receiver_matches_cache(
         StandardMethodReceiver::Array => array_methods::is_array(receiver, heap),
         StandardMethodReceiver::Map => map_methods::is_map(receiver, heap),
         StandardMethodReceiver::Set => set_methods::is_set(receiver, heap),
+        StandardMethodReceiver::Option => option_result_methods::is_option(receiver, heap),
+        StandardMethodReceiver::Result => option_result_methods::is_result(receiver, heap),
     }
 }
 

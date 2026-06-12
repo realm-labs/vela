@@ -328,6 +328,8 @@ pub enum StandardMethodReceiver {
     Array,
     Map,
     Set,
+    Option,
+    Result,
 }
 
 #[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
@@ -344,6 +346,11 @@ pub enum StandardMethodInlineCacheTarget {
     Get,
     ReadU32Le,
     ReadU32Be,
+    IsSome,
+    IsNone,
+    IsOk,
+    IsErr,
+    UnwrapOr,
 }
 
 pub struct LinkedRuntimeCodeCall<'program, 'args, 'host, 'heap, 'roots, 'budget, 'caches> {
