@@ -957,6 +957,11 @@ fn main(player: Player) {
         source: ARRAY_DISTINCT_SOURCE,
     },
     Workload {
+        name: "array_distinct_hot_offsets",
+        mode: ExecutionMode::ProfileOnly,
+        source: ARRAY_DISTINCT_SOURCE,
+    },
+    Workload {
         name: "array_distinct_cache_hot_offsets",
         mode: ExecutionMode::CacheEnabled,
         source: ARRAY_DISTINCT_SOURCE,
