@@ -368,6 +368,65 @@ fn linked_standard_value_method_caches_map_get_or_target() {
 }
 
 #[test]
+fn linked_standard_value_method_caches_set_relation_targets() {
+    assert_set_relation_cache(
+        "is_subset",
+        &[2],
+        &[2, 4],
+        StandardMethodInlineCacheTarget::IsSubset,
+    );
+    assert_set_relation_cache(
+        "is_superset",
+        &[2, 4],
+        &[2],
+        StandardMethodInlineCacheTarget::IsSuperset,
+    );
+    assert_set_relation_cache(
+        "is_disjoint",
+        &[2],
+        &[4],
+        StandardMethodInlineCacheTarget::IsDisjoint,
+    );
+}
+
+fn assert_set_relation_cache(
+    method: &str,
+    receiver_values: &[i64],
+    other_values: &[i64],
+    target: StandardMethodInlineCacheTarget,
+) {
+    let (program, site, dispatch, method_id) =
+        linked_set_relation_cache_program(method, receiver_values, other_values);
+    let caches = RecordingMethodCaches::new(1);
+
+    assert_eq!(
+        run_linked_method_cache_program_with_standard_natives(&program, &caches),
+        Ok(RuntimeValue::Bool(true))
+    );
+    let entry = caches
+        .entry(site)
+        .expect("standard set relation cache should populate");
+    assert_eq!(entry.dispatch, dispatch);
+    let MethodInlineCacheTarget::Value {
+        method_id: cached_method,
+        standard_method: Some(standard_method),
+    } = entry.target
+    else {
+        panic!("standard set relation cache should store value target");
+    };
+    assert_eq!(cached_method, method_id);
+    assert_eq!(standard_method.receiver, StandardMethodReceiver::Set);
+    assert_eq!(standard_method.target, target);
+    assert_eq!(caches.set_count(), 2);
+
+    assert_eq!(
+        run_linked_method_cache_program_with_standard_natives(&program, &caches),
+        Ok(RuntimeValue::Bool(true))
+    );
+    assert_eq!(caches.set_count(), 2);
+}
+
+#[test]
 fn linked_standard_value_method_caches_string_transform_target() {
     let (program, site, dispatch, method_id) =
         linked_string_no_arg_cache_program("to_upper", "wolf");

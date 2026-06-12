@@ -1,6 +1,7 @@
 use super::*;
 use crate::value::Value as RuntimeValue;
 use std::cell::{Cell, RefCell};
+use vela_stdlib_runtime::{StdFunctionImplementation, stdlib_function_runtime_bindings};
 
 pub(super) fn linked_standard_len_cache_program() -> (
     vela_bytecode::LinkedProgram,
@@ -282,6 +283,117 @@ pub(super) fn linked_map_get_or_cache_program() -> (
     let function = program.push_function(code);
     program.set_entry_point(main_name, function);
     (program, site, dispatch, method_id)
+}
+
+pub(super) fn linked_set_relation_cache_program(
+    method: &str,
+    receiver_values: &[i64],
+    other_values: &[i64],
+) -> (
+    vela_bytecode::LinkedProgram,
+    CacheSiteId,
+    vela_bytecode::MethodDispatchHandle,
+    vela_def::MethodId,
+) {
+    let method_id = vela_stdlib::std_method_id("Set", method).expect("Set method id");
+    let mut program = vela_bytecode::LinkedProgram::new();
+    let main_name = program.intern_debug_name("main");
+    let method_name = program.intern_debug_name(method);
+    let set_from_array_name = program.intern_debug_name("set::from_array");
+    let set_from_array = program.push_native_function(vela_bytecode::LinkedNativeFunction::new(
+        std_function_id(StdFunctionImplementation::SetFromArray),
+        set_from_array_name,
+    ));
+    let dispatch = program.push_method_dispatch(vela_bytecode::LinkedMethodDispatch::new(
+        method_name,
+        vela_bytecode::LinkedMethodDispatchKind::Value { method_id },
+    ));
+
+    let receiver_array = Register(receiver_values.len() as u16);
+    let other_start = receiver_values.len() + 1;
+    let other_array = Register((other_start + other_values.len()) as u16);
+    let receiver_set = Register(other_array.0 + 1);
+    let other_set = Register(receiver_set.0 + 1);
+    let result = Register(other_set.0 + 1);
+    let mut code = vela_bytecode::LinkedCodeObject::new(main_name, result.0 + 1);
+
+    push_i64_constants(&mut code, receiver_values, 0);
+    code.push_instruction(vela_bytecode::linked::Instruction::new(
+        vela_bytecode::linked::InstructionKind::MakeArray {
+            dst: receiver_array,
+            elements: (0..receiver_values.len())
+                .map(|index| Register(index as u16))
+                .collect(),
+        },
+    ));
+    push_i64_constants(&mut code, other_values, other_start);
+    code.push_instruction(vela_bytecode::linked::Instruction::new(
+        vela_bytecode::linked::InstructionKind::MakeArray {
+            dst: other_array,
+            elements: (other_start..other_start + other_values.len())
+                .map(|index| Register(index as u16))
+                .collect(),
+        },
+    ));
+    code.push_instruction(vela_bytecode::linked::Instruction::new(
+        vela_bytecode::linked::InstructionKind::CallNative {
+            dst: Some(receiver_set),
+            native: set_from_array,
+            debug_name: set_from_array_name,
+            args: vec![receiver_array],
+        },
+    ));
+    code.push_instruction(vela_bytecode::linked::Instruction::new(
+        vela_bytecode::linked::InstructionKind::CallNative {
+            dst: Some(other_set),
+            native: set_from_array,
+            debug_name: set_from_array_name,
+            args: vec![other_array],
+        },
+    ));
+    let site = code.push_cache_site(
+        CacheSiteKind::MethodCall,
+        InstructionOffset(code.instructions.len()),
+    );
+    code.push_instruction(vela_bytecode::linked::Instruction::new(
+        vela_bytecode::linked::InstructionKind::CallMethod {
+            dst: result,
+            receiver: receiver_set,
+            dispatch,
+            debug_name: method_name,
+            cache_site: Some(site),
+            args: vec![vela_bytecode::CallArgument::Register(other_set)],
+        },
+    ));
+    code.push_instruction(vela_bytecode::linked::Instruction::new(
+        vela_bytecode::linked::InstructionKind::Return { src: result },
+    ));
+    let function = program.push_function(code);
+    program.set_entry_point(main_name, function);
+    (program, site, dispatch, method_id)
+}
+
+fn push_i64_constants(
+    code: &mut vela_bytecode::LinkedCodeObject,
+    values: &[i64],
+    register_start: usize,
+) {
+    for (offset, value) in values.iter().enumerate() {
+        let constant = code.push_constant(Constant::Scalar(vela_common::ScalarValue::I64(*value)));
+        code.push_instruction(vela_bytecode::linked::Instruction::new(
+            vela_bytecode::linked::InstructionKind::LoadConst {
+                dst: Register((register_start + offset) as u16),
+                constant,
+            },
+        ));
+    }
+}
+
+fn std_function_id(implementation: StdFunctionImplementation) -> vela_def::FunctionId {
+    stdlib_function_runtime_bindings()
+        .into_iter()
+        .find_map(|binding| (binding.implementation == implementation).then_some(binding.id))
+        .expect("standard function implementation should have a manifest id")
 }
 
 pub(super) fn linked_option_is_some_cache_program() -> (
@@ -688,6 +800,36 @@ pub(super) fn run_linked_method_cache_owned_program(
     let mut heap_execution = HeapExecution::new(&mut heap);
     let result = run_linked_method_cache_with_heap(program, caches, &mut heap_execution)?;
     crate::heap_values::value_to_owned(&result, Some(&heap_execution))
+}
+
+pub(super) fn run_linked_method_cache_program_with_standard_natives(
+    program: &vela_bytecode::LinkedProgram,
+    caches: &RecordingMethodCaches,
+) -> VmResult<RuntimeValue> {
+    let mut heap = ScriptHeap::new();
+    let mut heap_execution = HeapExecution::new(&mut heap);
+    let code = program
+        .functions()
+        .find(|(_, code)| program.debug_name(code.debug_name) == "main")
+        .map(|(_, code)| code)
+        .expect("linked method cache fixture should have main");
+    let mut budget = ExecutionBudget::unbounded();
+    Vm::new().with_standard_natives().execute_linked_call(
+        crate::linked_execution::LinkedExecutionCall {
+            code,
+            program,
+            captures: &[],
+            args: &[],
+            check_param_guards: true,
+            call_site: None,
+            call_site_offset: None,
+            inline_caches: Some(caches),
+            bytecode_profiler: None,
+        },
+        None,
+        Some(&mut heap_execution),
+        Some(&mut budget),
+    )
 }
 
 fn run_linked_method_cache_runtime_value(
