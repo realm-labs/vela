@@ -173,6 +173,18 @@ fn linked_standard_value_method_caches_array_index_of_target() {
     );
 }
 
+#[test]
+fn linked_standard_value_method_caches_array_slice_target() {
+    assert_array_owned_cache(
+        linked_array_slice_cache_program(),
+        StandardMethodInlineCacheTarget::Slice,
+        OwnedValue::Array(vec![
+            OwnedValue::Scalar(vela_common::ScalarValue::I64(4)),
+            OwnedValue::Scalar(vela_common::ScalarValue::I64(6)),
+        ]),
+    );
+}
+
 fn assert_array_option_scalar_cache(
     fixture: LinkedMethodCacheFixture,
     target: StandardMethodInlineCacheTarget,
@@ -198,6 +210,42 @@ fn assert_array_option_scalar_cache(
     } = entry.target
     else {
         panic!("standard array option-scalar cache should store value target");
+    };
+    assert_eq!(cached_method, method_id);
+    assert_eq!(standard_method.receiver, StandardMethodReceiver::Array);
+    assert_eq!(standard_method.target, target);
+    assert_eq!(caches.set_count(), 2);
+
+    assert_eq!(
+        run_linked_method_cache_owned_program(&program, &caches),
+        expected
+    );
+    assert_eq!(caches.set_count(), 2);
+}
+
+fn assert_array_owned_cache(
+    fixture: LinkedMethodCacheFixture,
+    target: StandardMethodInlineCacheTarget,
+    expected: OwnedValue,
+) {
+    let (program, site, dispatch, method_id) = fixture;
+    let caches = RecordingMethodCaches::new(1);
+    let expected = Ok(expected);
+
+    assert_eq!(
+        run_linked_method_cache_owned_program(&program, &caches),
+        expected
+    );
+    let entry = caches
+        .entry(site)
+        .expect("standard array owned-value cache should populate");
+    assert_eq!(entry.dispatch, dispatch);
+    let MethodInlineCacheTarget::Value {
+        method_id: cached_method,
+        standard_method: Some(standard_method),
+    } = entry.target
+    else {
+        panic!("standard array owned-value cache should store value target");
     };
     assert_eq!(cached_method, method_id);
     assert_eq!(standard_method.receiver, StandardMethodReceiver::Array);
