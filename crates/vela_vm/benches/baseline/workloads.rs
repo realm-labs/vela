@@ -786,6 +786,11 @@ fn main(player: Player) {
         source: ARRAY_SUM_SOURCE,
     },
     Workload {
+        name: "array_sum",
+        mode: ExecutionMode::Inline,
+        source: ARRAY_SUM_SOURCE,
+    },
+    Workload {
         name: "array_sum_cache_hot_offsets",
         mode: ExecutionMode::CacheEnabled,
         source: ARRAY_SUM_SOURCE,
@@ -793,6 +798,11 @@ fn main(player: Player) {
     Workload {
         name: "managed_heap_array_extrema",
         mode: ExecutionMode::ManagedHeap,
+        source: ARRAY_EXTREMA_SOURCE,
+    },
+    Workload {
+        name: "array_extrema",
+        mode: ExecutionMode::Inline,
         source: ARRAY_EXTREMA_SOURCE,
     },
     Workload {
@@ -806,6 +816,11 @@ fn main(player: Player) {
         source: ARRAY_SORT_SOURCE,
     },
     Workload {
+        name: "array_sort",
+        mode: ExecutionMode::Inline,
+        source: ARRAY_SORT_SOURCE,
+    },
+    Workload {
         name: "array_sort_cache_hot_offsets",
         mode: ExecutionMode::CacheEnabled,
         source: ARRAY_SORT_SOURCE,
@@ -813,6 +828,11 @@ fn main(player: Player) {
     Workload {
         name: "managed_heap_array_slice",
         mode: ExecutionMode::ManagedHeap,
+        source: ARRAY_SLICE_SOURCE,
+    },
+    Workload {
+        name: "array_slice",
+        mode: ExecutionMode::Inline,
         source: ARRAY_SLICE_SOURCE,
     },
     Workload {
@@ -826,6 +846,11 @@ fn main(player: Player) {
         source: ARRAY_REVERSE_SOURCE,
     },
     Workload {
+        name: "array_reverse",
+        mode: ExecutionMode::Inline,
+        source: ARRAY_REVERSE_SOURCE,
+    },
+    Workload {
         name: "array_reverse_cache_hot_offsets",
         mode: ExecutionMode::CacheEnabled,
         source: ARRAY_REVERSE_SOURCE,
@@ -836,6 +861,11 @@ fn main(player: Player) {
         source: ARRAY_DISTINCT_SOURCE,
     },
     Workload {
+        name: "array_distinct",
+        mode: ExecutionMode::Inline,
+        source: ARRAY_DISTINCT_SOURCE,
+    },
+    Workload {
         name: "array_distinct_cache_hot_offsets",
         mode: ExecutionMode::CacheEnabled,
         source: ARRAY_DISTINCT_SOURCE,
@@ -843,6 +873,11 @@ fn main(player: Player) {
     Workload {
         name: "managed_heap_array_join",
         mode: ExecutionMode::ManagedHeap,
+        source: ARRAY_JOIN_SOURCE,
+    },
+    Workload {
+        name: "array_join",
+        mode: ExecutionMode::Inline,
         source: ARRAY_JOIN_SOURCE,
     },
     Workload {
