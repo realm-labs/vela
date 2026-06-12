@@ -165,6 +165,11 @@ fn main() {
         source: NATIVE_CALL_WIDE_ARGS_SOURCE,
     },
     Workload {
+        name: "native_call_wide_args_hot_offsets",
+        mode: ExecutionMode::ProfileOnly,
+        source: NATIVE_CALL_WIDE_ARGS_SOURCE,
+    },
+    Workload {
         name: "native_call_wide_args_cache_hot_offsets",
         mode: ExecutionMode::CacheEnabled,
         source: NATIVE_CALL_WIDE_ARGS_SOURCE,
