@@ -168,6 +168,11 @@ fn main() {
         source: STRING_METHODS_SOURCE,
     },
     Workload {
+        name: "string_methods",
+        mode: ExecutionMode::Inline,
+        source: STRING_METHODS_SOURCE,
+    },
+    Workload {
         name: "string_methods_cache_hot_offsets",
         mode: ExecutionMode::CacheEnabled,
         source: STRING_METHODS_SOURCE,
@@ -175,6 +180,11 @@ fn main() {
     Workload {
         name: "managed_heap_string_transforms",
         mode: ExecutionMode::ManagedHeap,
+        source: STRING_TRANSFORMS_SOURCE,
+    },
+    Workload {
+        name: "string_transforms",
+        mode: ExecutionMode::Inline,
         source: STRING_TRANSFORMS_SOURCE,
     },
     Workload {
@@ -188,6 +198,11 @@ fn main() {
         source: STRING_SPLITTING_SOURCE,
     },
     Workload {
+        name: "string_splitting",
+        mode: ExecutionMode::Inline,
+        source: STRING_SPLITTING_SOURCE,
+    },
+    Workload {
         name: "string_splitting_cache_hot_offsets",
         mode: ExecutionMode::CacheEnabled,
         source: STRING_SPLITTING_SOURCE,
@@ -195,6 +210,11 @@ fn main() {
     Workload {
         name: "managed_heap_string_parsing",
         mode: ExecutionMode::ManagedHeap,
+        source: STRING_PARSING_SOURCE,
+    },
+    Workload {
+        name: "string_parsing",
+        mode: ExecutionMode::Inline,
         source: STRING_PARSING_SOURCE,
     },
     Workload {
@@ -208,6 +228,11 @@ fn main() {
         source: STRING_OPTIONS_SOURCE,
     },
     Workload {
+        name: "string_options",
+        mode: ExecutionMode::Inline,
+        source: STRING_OPTIONS_SOURCE,
+    },
+    Workload {
         name: "string_options_cache_hot_offsets",
         mode: ExecutionMode::CacheEnabled,
         source: STRING_OPTIONS_SOURCE,
@@ -215,6 +240,11 @@ fn main() {
     Workload {
         name: "managed_heap_bytes_methods",
         mode: ExecutionMode::ManagedHeap,
+        source: BYTES_METHODS_SOURCE,
+    },
+    Workload {
+        name: "bytes_methods",
+        mode: ExecutionMode::Inline,
         source: BYTES_METHODS_SOURCE,
     },
     Workload {
@@ -228,6 +258,11 @@ fn main() {
         source: BYTES_ACCESS_SOURCE,
     },
     Workload {
+        name: "bytes_access",
+        mode: ExecutionMode::Inline,
+        source: BYTES_ACCESS_SOURCE,
+    },
+    Workload {
         name: "bytes_access_cache_hot_offsets",
         mode: ExecutionMode::CacheEnabled,
         source: BYTES_ACCESS_SOURCE,
@@ -235,6 +270,11 @@ fn main() {
     Workload {
         name: "managed_heap_bytes_materialization",
         mode: ExecutionMode::ManagedHeap,
+        source: BYTES_MATERIALIZATION_SOURCE,
+    },
+    Workload {
+        name: "bytes_materialization",
+        mode: ExecutionMode::Inline,
         source: BYTES_MATERIALIZATION_SOURCE,
     },
     Workload {
