@@ -2,7 +2,7 @@ use crate::heap::HeapValue;
 use crate::option_result::{StdEnumKind, StdEnumVariant, std_enum_identity, std_enum_tag};
 use crate::{
     HeapExecution, StandardMethodInlineCacheTarget, StandardMethodReceiver, Value, VmError,
-    VmErrorKind, VmResult, script_builtin_methods, set_methods, stored_runtime_value,
+    VmErrorKind, VmResult, script_builtin_methods, set_methods,
 };
 use vela_common::ScalarValue;
 
@@ -195,9 +195,7 @@ pub(super) fn call_cached_map_get_or(
     Some(
         crate::runtime_checks::expect_arity("get_or", args, 2).and_then(|()| {
             let key = crate::string_methods::string_value(&args[0], heap, "map key")?;
-            Ok(values
-                .get(key)
-                .map_or_else(|| args[1], stored_runtime_value))
+            Ok(values.get(key).map_or(args[1], |value| *value))
         }),
     )
 }
@@ -316,7 +314,7 @@ pub(super) fn call_cached_array_contains(
     Some(
         crate::runtime_checks::expect_arity("contains", args, 1).and_then(|()| {
             for value in values {
-                if crate::values_equal(&stored_runtime_value(value), &args[0], heap)? {
+                if crate::values_equal(value, &args[0], heap)? {
                     return Ok(Value::Bool(true));
                 }
             }
@@ -410,7 +408,7 @@ fn cached_standard_enum_payload(
     }
     fields
         .get_slot(0, "0")
-        .map(stored_runtime_value)
+        .copied()
         .ok_or_else(|| VmError::new(VmErrorKind::TypeMismatch { operation }))
 }
 
