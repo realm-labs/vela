@@ -119,6 +119,11 @@ pub(crate) const COLLECTION_FAMILY_WORKLOADS: &[Workload] = &[
         source: SET_VALUES_SOURCE,
     },
     Workload {
+        name: "set_values_hot_offsets",
+        mode: ExecutionMode::ProfileOnly,
+        source: SET_VALUES_SOURCE,
+    },
+    Workload {
         name: "set_values_cache_hot_offsets",
         mode: ExecutionMode::CacheEnabled,
         source: SET_VALUES_SOURCE,
