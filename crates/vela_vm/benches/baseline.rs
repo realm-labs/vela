@@ -121,6 +121,7 @@ fn main() -> Result<(), Box<dyn Error>> {
             mean_ns: result.mean_ns,
             median_ns: result.median_ns,
             p95_ns: result.p95_ns,
+            checksum: result.checksum,
             cache_hits: result.cache_stats.total_hits(),
             profile_hits: result.profile_hits,
         });

@@ -7,6 +7,7 @@ pub(crate) struct Record {
     pub(crate) mean_ns: u128,
     pub(crate) median_ns: u128,
     pub(crate) p95_ns: u128,
+    pub(crate) checksum: u64,
     pub(crate) cache_hits: usize,
     pub(crate) profile_hits: u64,
 }
@@ -31,7 +32,7 @@ pub(crate) fn print(records: &[Record]) {
             continue;
         };
         println!(
-            "cache_delta bench={} base={} mean_delta_ns={} min_delta_ns={} median_delta_ns={} p95_delta_ns={} mean_ratio_ppm={} cache_hits={} profile_hits={}",
+            "cache_delta bench={} base={} mean_delta_ns={} min_delta_ns={} median_delta_ns={} p95_delta_ns={} mean_ratio_ppm={} checksum_match={} cache_hits={} profile_hits={}",
             record.name,
             base.name,
             signed_delta(record.mean_ns, base.mean_ns),
@@ -39,6 +40,7 @@ pub(crate) fn print(records: &[Record]) {
             signed_delta(record.median_ns, base.median_ns),
             signed_delta(record.p95_ns, base.p95_ns),
             ratio_ppm(record.mean_ns, base.mean_ns),
+            record.checksum == base.checksum,
             record.cache_hits,
             record.profile_hits
         );
