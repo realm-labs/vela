@@ -1,9 +1,10 @@
-use crate::option_result::{StdEnumKind, StdEnumVariant, std_enum_tag};
+use crate::option_result::{StdEnumKind, StdEnumVariant, std_enum_identity, std_enum_tag};
 use crate::std_method_ids::std_method_ids;
 use crate::{
     ExecutionBudget, HeapExecution, StandardMethodInlineCacheEntry,
     StandardMethodInlineCacheTarget, StandardMethodReceiver, Value, VmResult, array_methods,
     bytes_methods, map_methods, option_result_methods, script_builtin_methods, set_methods,
+    stored_runtime_value,
 };
 use crate::{VmError, VmErrorKind, heap::HeapValue};
 use vela_def::MethodId;
@@ -613,6 +614,9 @@ fn call_readonly_cached(
                 heap,
             );
         }
+        StandardMethodInlineCacheTarget::UnwrapOr => {
+            return call_cached_option_result_unwrap_or(receiver, cache.receiver, args, heap);
+        }
         _ => {}
     }
     if !receiver_matches_cache(receiver, cache.receiver, heap) {
@@ -829,6 +833,28 @@ fn call_cached_option_result_predicate(
     Some(script_builtin_methods::expect_no_args(method, args).map(|()| Value::Bool(result)))
 }
 
+fn call_cached_option_result_unwrap_or(
+    receiver: &Value,
+    cached: StandardMethodReceiver,
+    args: &[Value],
+    heap: Option<&HeapExecution<'_>>,
+) -> Option<VmResult<Value>> {
+    let (kind, variant) = cached_standard_enum_tag(receiver, heap)?;
+    match (cached, kind, variant) {
+        (StandardMethodReceiver::Option, StdEnumKind::Option, StdEnumVariant::Some)
+        | (StandardMethodReceiver::Result, StdEnumKind::Result, StdEnumVariant::Ok) => Some(
+            crate::runtime_checks::expect_arity("unwrap_or", args, 1).and_then(|()| {
+                cached_standard_enum_payload(receiver, heap, variant, "method unwrap_or")
+            }),
+        ),
+        (StandardMethodReceiver::Option, StdEnumKind::Option, StdEnumVariant::None)
+        | (StandardMethodReceiver::Result, StdEnumKind::Result, StdEnumVariant::Err) => {
+            Some(crate::runtime_checks::expect_arity("unwrap_or", args, 1).map(|()| args[0]))
+        }
+        _ => None,
+    }
+}
+
 fn cached_standard_enum_tag(
     receiver: &Value,
     heap: Option<&HeapExecution<'_>>,
@@ -841,6 +867,32 @@ fn cached_standard_enum_tag(
         return None;
     };
     std_enum_tag(*identity)
+}
+
+fn cached_standard_enum_payload(
+    receiver: &Value,
+    heap: Option<&HeapExecution<'_>>,
+    variant: StdEnumVariant,
+    operation: &'static str,
+) -> VmResult<Value> {
+    let HeapValue::Enum {
+        identity: Some(identity),
+        fields,
+        ..
+    } = cached_heap_value(receiver, heap)
+        .ok_or_else(|| VmError::new(VmErrorKind::TypeMismatch { operation }))?
+    else {
+        return type_error(operation);
+    };
+    if !variant.has_payload()
+        || identity.payload_field_id != std_enum_identity(variant).payload_field_id
+    {
+        return type_error(operation);
+    }
+    fields
+        .get_slot(0, "0")
+        .map(stored_runtime_value)
+        .ok_or_else(|| VmError::new(VmErrorKind::TypeMismatch { operation }))
 }
 
 fn cached_heap_value<'a>(

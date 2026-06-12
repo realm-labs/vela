@@ -651,22 +651,49 @@ pub(super) fn linked_result_unwrap_or_cache_program() -> (
     vela_bytecode::MethodDispatchHandle,
     vela_def::MethodId,
 ) {
+    linked_enum_unwrap_or_cache_program("Result", "Err", 404, 17)
+}
+
+pub(super) fn linked_option_unwrap_or_cache_program() -> (
+    vela_bytecode::LinkedProgram,
+    CacheSiteId,
+    vela_bytecode::MethodDispatchHandle,
+    vela_def::MethodId,
+) {
+    linked_enum_unwrap_or_cache_program("Option", "Some", 23, 17)
+}
+
+fn linked_enum_unwrap_or_cache_program(
+    enum_name: &str,
+    variant_name: &str,
+    payload_value: i64,
+    fallback_value: i64,
+) -> (
+    vela_bytecode::LinkedProgram,
+    CacheSiteId,
+    vela_bytecode::MethodDispatchHandle,
+    vela_def::MethodId,
+) {
     let method_id =
-        vela_stdlib::std_method_id("Result", "unwrap_or").expect("Result::unwrap_or method id");
+        vela_stdlib::std_method_id(enum_name, "unwrap_or").expect("standard unwrap_or method id");
     let mut program = vela_bytecode::LinkedProgram::new();
     let main_name = program.intern_debug_name("main");
     let method_name = program.intern_debug_name("unwrap_or");
     let field_name = program.intern_debug_name("0");
-    let result_type = push_standard_type(&mut program, "Result");
-    let err_variant = push_standard_variant(&mut program, result_type, "Result", "Err");
+    let enum_type = push_standard_type(&mut program, enum_name);
+    let variant = push_standard_variant(&mut program, enum_type, enum_name, variant_name);
     let dispatch = program.push_method_dispatch(vela_bytecode::LinkedMethodDispatch::new(
         method_name,
         vela_bytecode::LinkedMethodDispatchKind::Value { method_id },
     ));
 
     let mut code = vela_bytecode::LinkedCodeObject::new(main_name, 4);
-    let payload = code.push_constant(Constant::Scalar(vela_common::ScalarValue::I64(404)));
-    let fallback = code.push_constant(Constant::Scalar(vela_common::ScalarValue::I64(17)));
+    let payload = code.push_constant(Constant::Scalar(vela_common::ScalarValue::I64(
+        payload_value,
+    )));
+    let fallback = code.push_constant(Constant::Scalar(vela_common::ScalarValue::I64(
+        fallback_value,
+    )));
     code.push_instruction(vela_bytecode::linked::Instruction::new(
         vela_bytecode::linked::InstructionKind::LoadConst {
             dst: Register(0),
@@ -682,8 +709,8 @@ pub(super) fn linked_result_unwrap_or_cache_program() -> (
     code.push_instruction(vela_bytecode::linked::Instruction::new(
         vela_bytecode::linked::InstructionKind::MakeEnum {
             dst: Register(2),
-            enum_ty: result_type,
-            variant: err_variant,
+            enum_ty: enum_type,
+            variant,
             fields: vec![(vela_bytecode::FieldSlot::new(0), field_name, Register(0))],
         },
     ));

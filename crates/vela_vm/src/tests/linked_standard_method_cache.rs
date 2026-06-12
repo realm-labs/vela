@@ -431,12 +431,38 @@ fn assert_enum_predicate_cache(
 
 #[test]
 fn linked_standard_value_method_caches_result_unwrap_or_target() {
-    let (program, site, dispatch, method_id) = linked_result_unwrap_or_cache_program();
+    assert_unwrap_or_cache(
+        linked_result_unwrap_or_cache_program(),
+        StandardMethodReceiver::Result,
+        RuntimeValue::i64(17),
+    );
+}
+
+#[test]
+fn linked_standard_value_method_caches_option_unwrap_or_target() {
+    assert_unwrap_or_cache(
+        linked_option_unwrap_or_cache_program(),
+        StandardMethodReceiver::Option,
+        RuntimeValue::i64(23),
+    );
+}
+
+fn assert_unwrap_or_cache(
+    fixture: (
+        vela_bytecode::LinkedProgram,
+        CacheSiteId,
+        vela_bytecode::MethodDispatchHandle,
+        MethodId,
+    ),
+    receiver: StandardMethodReceiver,
+    expected: RuntimeValue,
+) {
+    let (program, site, dispatch, method_id) = fixture;
     let caches = RecordingMethodCaches::new(1);
 
     assert_eq!(
         run_linked_method_cache_program(&program, &caches),
-        Ok(RuntimeValue::i64(17))
+        Ok(expected)
     );
     let entry = caches
         .entry(site)
@@ -450,7 +476,7 @@ fn linked_standard_value_method_caches_result_unwrap_or_target() {
         panic!("standard result cache should store value target");
     };
     assert_eq!(cached_method, method_id);
-    assert_eq!(standard_method.receiver, StandardMethodReceiver::Result);
+    assert_eq!(standard_method.receiver, receiver);
     assert_eq!(
         standard_method.target,
         StandardMethodInlineCacheTarget::UnwrapOr
@@ -459,7 +485,7 @@ fn linked_standard_value_method_caches_result_unwrap_or_target() {
 
     assert_eq!(
         run_linked_method_cache_program(&program, &caches),
-        Ok(RuntimeValue::i64(17))
+        Ok(expected)
     );
     assert_eq!(caches.set_count(), 2);
 }
