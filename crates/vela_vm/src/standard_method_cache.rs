@@ -239,6 +239,12 @@ pub(crate) fn standard_cache_entry(
         (StandardMethodReceiver::Option, id) if id == ids.option_unwrap_or => {
             StandardMethodInlineCacheTarget::UnwrapOr
         }
+        (StandardMethodReceiver::Option, id) if id == ids.option_ok_or => {
+            StandardMethodInlineCacheTarget::OkOr
+        }
+        (StandardMethodReceiver::Option, id) if id == ids.option_flatten => {
+            StandardMethodInlineCacheTarget::Flatten
+        }
         (StandardMethodReceiver::Result, id) if id == ids.result_is_ok => {
             StandardMethodInlineCacheTarget::IsOk
         }
@@ -247,6 +253,15 @@ pub(crate) fn standard_cache_entry(
         }
         (StandardMethodReceiver::Result, id) if id == ids.result_unwrap_or => {
             StandardMethodInlineCacheTarget::UnwrapOr
+        }
+        (StandardMethodReceiver::Result, id) if id == ids.result_to_option => {
+            StandardMethodInlineCacheTarget::ToOption
+        }
+        (StandardMethodReceiver::Result, id) if id == ids.result_to_error_option => {
+            StandardMethodInlineCacheTarget::ToErrorOption
+        }
+        (StandardMethodReceiver::Result, id) if id == ids.result_flatten => {
+            StandardMethodInlineCacheTarget::Flatten
         }
         _ => return None,
     };
@@ -389,6 +404,19 @@ pub(crate) fn call_standard_cached(
         }
         (StandardMethodReceiver::Set, StandardMethodInlineCacheTarget::SymmetricDifference) => {
             set_methods::symmetric_difference(receiver, args, heap, budget)
+        }
+        (StandardMethodReceiver::Option, StandardMethodInlineCacheTarget::OkOr) => {
+            option_result_methods::ok_or(receiver, args, heap, budget)
+        }
+        (
+            StandardMethodReceiver::Option | StandardMethodReceiver::Result,
+            StandardMethodInlineCacheTarget::Flatten,
+        ) => option_result_methods::flatten(receiver, args, heap, budget),
+        (StandardMethodReceiver::Result, StandardMethodInlineCacheTarget::ToOption) => {
+            option_result_methods::to_option(receiver, args, heap, budget)
+        }
+        (StandardMethodReceiver::Result, StandardMethodInlineCacheTarget::ToErrorOption) => {
+            option_result_methods::to_error_option(receiver, args, heap, budget)
         }
         _ => return None,
     };

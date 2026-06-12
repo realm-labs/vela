@@ -59,6 +59,7 @@ mod linked_standard_method_cache_fixtures;
 mod linked_standard_method_cache_support;
 mod modules;
 mod numeric_conversions;
+mod option_result_standard_method_cache;
 mod owned_boundary;
 mod program_execution;
 mod records_enums;

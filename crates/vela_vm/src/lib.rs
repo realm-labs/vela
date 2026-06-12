@@ -390,6 +390,10 @@ pub enum StandardMethodInlineCacheTarget {
     IsOk,
     IsErr,
     UnwrapOr,
+    OkOr,
+    ToOption,
+    ToErrorOption,
+    Flatten,
 }
 
 pub struct LinkedRuntimeCodeCall<'program, 'args, 'host, 'heap, 'roots, 'budget, 'caches> {
