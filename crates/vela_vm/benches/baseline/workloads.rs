@@ -917,6 +917,11 @@ fn main(player: Player) {
         source: ARRAY_SLICE_SOURCE,
     },
     Workload {
+        name: "array_slice_hot_offsets",
+        mode: ExecutionMode::ProfileOnly,
+        source: ARRAY_SLICE_SOURCE,
+    },
+    Workload {
         name: "array_slice_cache_hot_offsets",
         mode: ExecutionMode::CacheEnabled,
         source: ARRAY_SLICE_SOURCE,
