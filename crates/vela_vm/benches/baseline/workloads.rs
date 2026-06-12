@@ -1,23 +1,20 @@
 use crate::workload_sources::{
-    ARRAY_CALLBACK_PREDICATES_SOURCE, ARRAY_DISTINCT_SOURCE, ARRAY_EDGE_SOURCE,
-    ARRAY_EXTEND_SOURCE, ARRAY_EXTREMA_SOURCE, ARRAY_GROUP_BY_SOURCE, ARRAY_JOIN_SOURCE,
-    ARRAY_LOOKUP_SOURCE, ARRAY_MUTATION_SOURCE, ARRAY_REVERSE_SOURCE, ARRAY_SLICE_SOURCE,
+    ARRAY_CALLBACK_PREDICATES_SOURCE, ARRAY_DISTINCT_SOURCE, ARRAY_EXTREMA_SOURCE,
+    ARRAY_GROUP_BY_SOURCE, ARRAY_JOIN_SOURCE, ARRAY_REVERSE_SOURCE, ARRAY_SLICE_SOURCE,
     ARRAY_SORT_SOURCE, ARRAY_SUM_SOURCE, BYTES_ACCESS_SOURCE, BYTES_MATERIALIZATION_SOURCE,
     BYTES_METHODS_SOURCE, CALLBACK_COLLECTIONS_SOURCE, DIRECT_CLOSURE_CALLS_SOURCE,
     HOST_ACCESS_HOT_OFFSETS_SOURCE, HOST_DYNAMIC_KEY_ACCESS_SOURCE, HOST_FIELD_READ_WRITE_SOURCE,
     HOST_METHOD_CALLS_SOURCE, HOST_NESTED_READ_WRITE_SOURCE, HOST_RMW_MUTATION_SOURCE,
-    MAP_CALLBACKS_SOURCE, MAP_EXTEND_SOURCE, MAP_FIND_ENTRIES_SOURCE, MAP_LOOKUP_SOURCE,
-    MAP_MERGE_SOURCE, MAP_MUTATION_SOURCE, MAP_VIEWS_SOURCE, MATERIALIZATION_SOURCE,
-    METHOD_DISPATCH_SOURCE, NATIVE_CALL_WIDE_ARGS_SOURCE, OPTION_RESULT_CALLBACKS_SOURCE,
-    OPTION_RESULT_CONVERSIONS_SOURCE, OPTION_RESULT_HELPERS_SOURCE,
-    OPTION_RESULT_PREDICATES_SOURCE, RANGE_METHODS_SOURCE, RECORD_QUADS_SOURCE,
-    RECORD_QUINTS_SOURCE, RECORD_SEXTETS_SOURCE, RECORD_TRIPLETS_SOURCE,
-    SCRIPT_CALL_SMALL_ARGS_SOURCE, SCRIPT_CALL_WIDE_ARGS_SOURCE, SCRIPT_METHOD_DISPATCH_SOURCE,
-    SET_CALLBACK_PREDICATES_SOURCE, SET_COMBINATION_SOURCE, SET_LOOKUP_SOURCE, SET_MUTATION_SOURCE,
-    SET_VALUES_SOURCE, STDLIB_COLLECTIONS_SOURCE, STRING_METHODS_SOURCE, STRING_OPTIONS_SOURCE,
-    STRING_PARSING_SOURCE, STRING_SPLITTING_SOURCE, STRING_TRANSFORMS_SOURCE,
-    TRAIT_METHOD_DISPATCH_SOURCE,
+    MAP_CALLBACKS_SOURCE, MAP_FIND_ENTRIES_SOURCE, MATERIALIZATION_SOURCE, METHOD_DISPATCH_SOURCE,
+    NATIVE_CALL_WIDE_ARGS_SOURCE, RANGE_METHODS_SOURCE, RECORD_QUADS_SOURCE, RECORD_QUINTS_SOURCE,
+    RECORD_SEXTETS_SOURCE, RECORD_TRIPLETS_SOURCE, SCRIPT_CALL_SMALL_ARGS_SOURCE,
+    SCRIPT_CALL_WIDE_ARGS_SOURCE, SCRIPT_METHOD_DISPATCH_SOURCE, SET_CALLBACK_PREDICATES_SOURCE,
+    STDLIB_COLLECTIONS_SOURCE, STRING_METHODS_SOURCE, STRING_OPTIONS_SOURCE, STRING_PARSING_SOURCE,
+    STRING_SPLITTING_SOURCE, STRING_TRANSFORMS_SOURCE, TRAIT_METHOD_DISPATCH_SOURCE,
 };
+
+#[path = "workloads/collection_families.rs"]
+mod collection_families;
 
 pub(crate) struct Workload {
     pub(crate) name: &'static str,
@@ -42,7 +39,14 @@ pub(crate) enum ExecutionMode {
     GcPacing,
 }
 
-pub(crate) const WORKLOADS: &[Workload] = &[
+pub(crate) fn workloads() -> impl Iterator<Item = &'static Workload> {
+    PRE_COLLECTION_WORKLOADS
+        .iter()
+        .chain(collection_families::COLLECTION_FAMILY_WORKLOADS)
+        .chain(POST_COLLECTION_WORKLOADS)
+}
+
+const PRE_COLLECTION_WORKLOADS: &[Workload] = &[
     Workload {
         name: "scalar_branch_loop",
         mode: ExecutionMode::Inline,
@@ -519,286 +523,9 @@ fn main() {
         mode: ExecutionMode::CacheEnabled,
         source: ARRAY_GROUP_BY_SOURCE,
     },
-    Workload {
-        name: "managed_heap_option_result_helpers",
-        mode: ExecutionMode::ManagedHeap,
-        source: OPTION_RESULT_HELPERS_SOURCE,
-    },
-    Workload {
-        name: "option_result_helpers",
-        mode: ExecutionMode::Inline,
-        source: OPTION_RESULT_HELPERS_SOURCE,
-    },
-    Workload {
-        name: "option_result_helpers_cache_hot_offsets",
-        mode: ExecutionMode::CacheEnabled,
-        source: OPTION_RESULT_HELPERS_SOURCE,
-    },
-    Workload {
-        name: "managed_heap_option_result_predicates",
-        mode: ExecutionMode::ManagedHeap,
-        source: OPTION_RESULT_PREDICATES_SOURCE,
-    },
-    Workload {
-        name: "option_result_predicates",
-        mode: ExecutionMode::Inline,
-        source: OPTION_RESULT_PREDICATES_SOURCE,
-    },
-    Workload {
-        name: "option_result_predicates_cache_hot_offsets",
-        mode: ExecutionMode::CacheEnabled,
-        source: OPTION_RESULT_PREDICATES_SOURCE,
-    },
-    Workload {
-        name: "managed_heap_option_result_conversions",
-        mode: ExecutionMode::ManagedHeap,
-        source: OPTION_RESULT_CONVERSIONS_SOURCE,
-    },
-    Workload {
-        name: "option_result_conversions",
-        mode: ExecutionMode::Inline,
-        source: OPTION_RESULT_CONVERSIONS_SOURCE,
-    },
-    Workload {
-        name: "option_result_conversions_cache_hot_offsets",
-        mode: ExecutionMode::CacheEnabled,
-        source: OPTION_RESULT_CONVERSIONS_SOURCE,
-    },
-    Workload {
-        name: "managed_heap_option_result_callbacks",
-        mode: ExecutionMode::ManagedHeap,
-        source: OPTION_RESULT_CALLBACKS_SOURCE,
-    },
-    Workload {
-        name: "option_result_callbacks",
-        mode: ExecutionMode::Inline,
-        source: OPTION_RESULT_CALLBACKS_SOURCE,
-    },
-    Workload {
-        name: "option_result_callbacks_cache_hot_offsets",
-        mode: ExecutionMode::CacheEnabled,
-        source: OPTION_RESULT_CALLBACKS_SOURCE,
-    },
-    Workload {
-        name: "managed_heap_set_lookup",
-        mode: ExecutionMode::ManagedHeap,
-        source: SET_LOOKUP_SOURCE,
-    },
-    Workload {
-        name: "set_lookup",
-        mode: ExecutionMode::Inline,
-        source: SET_LOOKUP_SOURCE,
-    },
-    Workload {
-        name: "set_lookup_cache_hot_offsets",
-        mode: ExecutionMode::CacheEnabled,
-        source: SET_LOOKUP_SOURCE,
-    },
-    Workload {
-        name: "managed_heap_set_values",
-        mode: ExecutionMode::ManagedHeap,
-        source: SET_VALUES_SOURCE,
-    },
-    Workload {
-        name: "set_values",
-        mode: ExecutionMode::Inline,
-        source: SET_VALUES_SOURCE,
-    },
-    Workload {
-        name: "set_values_cache_hot_offsets",
-        mode: ExecutionMode::CacheEnabled,
-        source: SET_VALUES_SOURCE,
-    },
-    Workload {
-        name: "managed_heap_set_mutation",
-        mode: ExecutionMode::ManagedHeap,
-        source: SET_MUTATION_SOURCE,
-    },
-    Workload {
-        name: "set_mutation",
-        mode: ExecutionMode::Inline,
-        source: SET_MUTATION_SOURCE,
-    },
-    Workload {
-        name: "set_mutation_cache_hot_offsets",
-        mode: ExecutionMode::CacheEnabled,
-        source: SET_MUTATION_SOURCE,
-    },
-    Workload {
-        name: "managed_heap_set_combination",
-        mode: ExecutionMode::ManagedHeap,
-        source: SET_COMBINATION_SOURCE,
-    },
-    Workload {
-        name: "set_combination",
-        mode: ExecutionMode::Inline,
-        source: SET_COMBINATION_SOURCE,
-    },
-    Workload {
-        name: "set_combination_cache_hot_offsets",
-        mode: ExecutionMode::CacheEnabled,
-        source: SET_COMBINATION_SOURCE,
-    },
-    Workload {
-        name: "managed_heap_array_lookup",
-        mode: ExecutionMode::ManagedHeap,
-        source: ARRAY_LOOKUP_SOURCE,
-    },
-    Workload {
-        name: "array_lookup",
-        mode: ExecutionMode::Inline,
-        source: ARRAY_LOOKUP_SOURCE,
-    },
-    Workload {
-        name: "array_lookup_cache_hot_offsets",
-        mode: ExecutionMode::CacheEnabled,
-        source: ARRAY_LOOKUP_SOURCE,
-    },
-    Workload {
-        name: "managed_heap_array_edges",
-        mode: ExecutionMode::ManagedHeap,
-        source: ARRAY_EDGE_SOURCE,
-    },
-    Workload {
-        name: "array_edges",
-        mode: ExecutionMode::Inline,
-        source: ARRAY_EDGE_SOURCE,
-    },
-    Workload {
-        name: "array_edges_cache_hot_offsets",
-        mode: ExecutionMode::CacheEnabled,
-        source: ARRAY_EDGE_SOURCE,
-    },
-    Workload {
-        name: "managed_heap_array_extend",
-        mode: ExecutionMode::ManagedHeap,
-        source: ARRAY_EXTEND_SOURCE,
-    },
-    Workload {
-        name: "array_extend",
-        mode: ExecutionMode::Inline,
-        source: ARRAY_EXTEND_SOURCE,
-    },
-    Workload {
-        name: "array_extend_cache_hot_offsets",
-        mode: ExecutionMode::CacheEnabled,
-        source: ARRAY_EXTEND_SOURCE,
-    },
-    Workload {
-        name: "managed_heap_array_mutation",
-        mode: ExecutionMode::ManagedHeap,
-        source: ARRAY_MUTATION_SOURCE,
-    },
-    Workload {
-        name: "array_mutation",
-        mode: ExecutionMode::Inline,
-        source: ARRAY_MUTATION_SOURCE,
-    },
-    Workload {
-        name: "array_mutation_cache_hot_offsets",
-        mode: ExecutionMode::CacheEnabled,
-        source: ARRAY_MUTATION_SOURCE,
-    },
-    Workload {
-        name: "managed_heap_map_lookup",
-        mode: ExecutionMode::ManagedHeap,
-        source: MAP_LOOKUP_SOURCE,
-    },
-    Workload {
-        name: "map_lookup",
-        mode: ExecutionMode::Inline,
-        source: MAP_LOOKUP_SOURCE,
-    },
-    Workload {
-        name: "map_lookup_hot_offsets",
-        mode: ExecutionMode::ProfileOnly,
-        source: MAP_LOOKUP_SOURCE,
-    },
-    Workload {
-        name: "map_lookup_cache_hot_offsets",
-        mode: ExecutionMode::CacheEnabled,
-        source: MAP_LOOKUP_SOURCE,
-    },
-    Workload {
-        name: "managed_heap_map_views",
-        mode: ExecutionMode::ManagedHeap,
-        source: MAP_VIEWS_SOURCE,
-    },
-    Workload {
-        name: "map_views",
-        mode: ExecutionMode::Inline,
-        source: MAP_VIEWS_SOURCE,
-    },
-    Workload {
-        name: "map_views_hot_offsets",
-        mode: ExecutionMode::ProfileOnly,
-        source: MAP_VIEWS_SOURCE,
-    },
-    Workload {
-        name: "map_views_cache_hot_offsets",
-        mode: ExecutionMode::CacheEnabled,
-        source: MAP_VIEWS_SOURCE,
-    },
-    Workload {
-        name: "managed_heap_map_mutation",
-        mode: ExecutionMode::ManagedHeap,
-        source: MAP_MUTATION_SOURCE,
-    },
-    Workload {
-        name: "map_mutation",
-        mode: ExecutionMode::Inline,
-        source: MAP_MUTATION_SOURCE,
-    },
-    Workload {
-        name: "map_mutation_hot_offsets",
-        mode: ExecutionMode::ProfileOnly,
-        source: MAP_MUTATION_SOURCE,
-    },
-    Workload {
-        name: "map_mutation_cache_hot_offsets",
-        mode: ExecutionMode::CacheEnabled,
-        source: MAP_MUTATION_SOURCE,
-    },
-    Workload {
-        name: "managed_heap_map_merge",
-        mode: ExecutionMode::ManagedHeap,
-        source: MAP_MERGE_SOURCE,
-    },
-    Workload {
-        name: "map_merge",
-        mode: ExecutionMode::Inline,
-        source: MAP_MERGE_SOURCE,
-    },
-    Workload {
-        name: "map_merge_hot_offsets",
-        mode: ExecutionMode::ProfileOnly,
-        source: MAP_MERGE_SOURCE,
-    },
-    Workload {
-        name: "map_merge_cache_hot_offsets",
-        mode: ExecutionMode::CacheEnabled,
-        source: MAP_MERGE_SOURCE,
-    },
-    Workload {
-        name: "managed_heap_map_extend",
-        mode: ExecutionMode::ManagedHeap,
-        source: MAP_EXTEND_SOURCE,
-    },
-    Workload {
-        name: "map_extend",
-        mode: ExecutionMode::Inline,
-        source: MAP_EXTEND_SOURCE,
-    },
-    Workload {
-        name: "map_extend_hot_offsets",
-        mode: ExecutionMode::ProfileOnly,
-        source: MAP_EXTEND_SOURCE,
-    },
-    Workload {
-        name: "map_extend_cache_hot_offsets",
-        mode: ExecutionMode::CacheEnabled,
-        source: MAP_EXTEND_SOURCE,
-    },
+];
+
+const POST_COLLECTION_WORKLOADS: &[Workload] = &[
     Workload {
         name: "host_access",
         mode: ExecutionMode::HostAccess,

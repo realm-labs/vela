@@ -39,7 +39,7 @@ use cache_support::{
     BenchBytecodeProfiler, BenchCacheStats, BenchInlineCaches, rebase_linked_cache_sites,
 };
 use config::{BenchConfig, BenchParams};
-use workloads::{ExecutionMode, WORKLOADS, Workload};
+use workloads::{ExecutionMode, Workload, workloads};
 
 const PLAYER_TYPE: HostTypeId = HostTypeId::new(1);
 const PLAYER_OBJECT: HostObjectId = HostObjectId::new(42);
@@ -84,7 +84,7 @@ fn main() -> Result<(), Box<dyn Error>> {
 
     let mut ran = 0;
     let mut records = Vec::new();
-    for workload in WORKLOADS {
+    for workload in workloads() {
         if !config.should_run(workload.name) {
             continue;
         }
