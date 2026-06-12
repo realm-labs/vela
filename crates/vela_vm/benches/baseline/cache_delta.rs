@@ -15,6 +15,8 @@ pub(crate) struct Record {
 }
 
 pub(crate) fn print(records: &[Record]) {
+    print_measurement_summary(records);
+
     let by_name = records
         .iter()
         .enumerate()
@@ -51,6 +53,54 @@ pub(crate) fn print(records: &[Record]) {
             base.profile_hits,
             record.profile_hits == base.profile_hits
         );
+    }
+}
+
+fn print_measurement_summary(records: &[Record]) {
+    let mut summary = MeasurementSummary::default();
+    for record in records {
+        summary.record(record);
+    }
+    println!(
+        "measurement_summary interpreter_rows={} profile_only_rows={} cache_rows={} cache_no_activity_rows={} cache_mode_profile_only_rows={} cache_mode_no_activity_rows={}",
+        summary.interpreter_rows,
+        summary.profile_only_rows,
+        summary.cache_rows,
+        summary.cache_no_activity_rows,
+        summary.cache_mode_profile_only_rows,
+        summary.cache_mode_no_activity_rows,
+    );
+}
+
+#[derive(Default)]
+struct MeasurementSummary {
+    interpreter_rows: usize,
+    profile_only_rows: usize,
+    cache_rows: usize,
+    cache_no_activity_rows: usize,
+    cache_mode_profile_only_rows: usize,
+    cache_mode_no_activity_rows: usize,
+}
+
+impl MeasurementSummary {
+    fn record(&mut self, record: &Record) {
+        match record.measurement_kind {
+            "interpreter" => self.interpreter_rows += 1,
+            "profile_only" => {
+                self.profile_only_rows += 1;
+                if record.cache_enabled {
+                    self.cache_mode_profile_only_rows += 1;
+                }
+            }
+            "cache" => self.cache_rows += 1,
+            "cache_no_activity" => {
+                self.cache_no_activity_rows += 1;
+                if record.cache_enabled {
+                    self.cache_mode_no_activity_rows += 1;
+                }
+            }
+            _ => {}
+        }
     }
 }
 

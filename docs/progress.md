@@ -379,7 +379,8 @@ Cranelift JIT.
   - paired benchmark rows now emit explicit `measurement_kind`/`delta_kind`
     fields so interpreter-only, profile-only, and cache-enabled costs can be
     separated before assigning remaining deltas to M20 cache work or later JIT
-    work.
+    work, and each quick/full run now emits a `measurement_summary` line for
+    row-kind and cache-mode profile-only/no-activity audits.
 - M20: continue guarded inline-cache specialization and measured delta
   interpretation for hot stdlib, callback, method, record, host-boundary, and
   bytecode-offset paths. Cache misses, guard failures, hot reload, and schema
