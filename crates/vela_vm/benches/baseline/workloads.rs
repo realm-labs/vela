@@ -298,6 +298,11 @@ fn main() {
         source: ARRAY_CALLBACK_PREDICATES_SOURCE,
     },
     Workload {
+        name: "array_callback_predicates",
+        mode: ExecutionMode::Inline,
+        source: ARRAY_CALLBACK_PREDICATES_SOURCE,
+    },
+    Workload {
         name: "array_callback_predicates_cache_hot_offsets",
         mode: ExecutionMode::CacheEnabled,
         source: ARRAY_CALLBACK_PREDICATES_SOURCE,
@@ -305,6 +310,11 @@ fn main() {
     Workload {
         name: "managed_heap_set_callback_predicates",
         mode: ExecutionMode::ManagedHeap,
+        source: SET_CALLBACK_PREDICATES_SOURCE,
+    },
+    Workload {
+        name: "set_callback_predicates",
+        mode: ExecutionMode::Inline,
         source: SET_CALLBACK_PREDICATES_SOURCE,
     },
     Workload {
@@ -368,6 +378,11 @@ fn main() {
         source: MAP_CALLBACKS_SOURCE,
     },
     Workload {
+        name: "map_callbacks",
+        mode: ExecutionMode::Inline,
+        source: MAP_CALLBACKS_SOURCE,
+    },
+    Workload {
         name: "map_callbacks_cache_hot_offsets",
         mode: ExecutionMode::CacheEnabled,
         source: MAP_CALLBACKS_SOURCE,
@@ -378,6 +393,11 @@ fn main() {
         source: MAP_FIND_ENTRIES_SOURCE,
     },
     Workload {
+        name: "map_find_entries",
+        mode: ExecutionMode::Inline,
+        source: MAP_FIND_ENTRIES_SOURCE,
+    },
+    Workload {
         name: "map_find_entries_cache_hot_offsets",
         mode: ExecutionMode::CacheEnabled,
         source: MAP_FIND_ENTRIES_SOURCE,
@@ -385,6 +405,11 @@ fn main() {
     Workload {
         name: "managed_heap_array_group_by",
         mode: ExecutionMode::ManagedHeap,
+        source: ARRAY_GROUP_BY_SOURCE,
+    },
+    Workload {
+        name: "array_group_by",
+        mode: ExecutionMode::Inline,
         source: ARRAY_GROUP_BY_SOURCE,
     },
     Workload {
@@ -425,6 +450,11 @@ fn main() {
     Workload {
         name: "managed_heap_option_result_callbacks",
         mode: ExecutionMode::ManagedHeap,
+        source: OPTION_RESULT_CALLBACKS_SOURCE,
+    },
+    Workload {
+        name: "option_result_callbacks",
+        mode: ExecutionMode::Inline,
         source: OPTION_RESULT_CALLBACKS_SOURCE,
     },
     Workload {
