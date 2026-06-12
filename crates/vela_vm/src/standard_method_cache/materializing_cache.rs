@@ -192,6 +192,26 @@ pub(super) fn call_cached_string_option(
     }
 }
 
+pub(super) fn call_cached_string_array(
+    receiver: &Value,
+    target: StandardMethodInlineCacheTarget,
+    args: &[Value],
+    heap: &mut Option<&mut HeapExecution<'_>>,
+    budget: &mut Option<&mut ExecutionBudget>,
+) -> Option<VmResult<Value>> {
+    let value = string_receiver(receiver, heap.as_deref())?;
+    let payload = match target {
+        StandardMethodInlineCacheTarget::Split => split_payload(value, args, heap.as_deref()),
+        StandardMethodInlineCacheTarget::SplitLines => split_lines_payload(value, args),
+        StandardMethodInlineCacheTarget::SplitWhitespace => split_whitespace_payload(value, args),
+        _ => return None,
+    };
+    Some(
+        payload
+            .and_then(|payload| make_string_array(payload, heap, budget, split_operation(target))),
+    )
+}
+
 fn array_slots<'a>(
     receiver: &Value,
     heap: Option<&'a HeapExecution<'_>>,
@@ -291,6 +311,35 @@ fn split_once_payload(
     Ok(value
         .split_once(separator)
         .map(|(before, after)| vec![before.to_owned(), after.to_owned()]))
+}
+
+fn split_payload(
+    value: &str,
+    args: &[Value],
+    heap: Option<&HeapExecution<'_>>,
+) -> VmResult<Vec<String>> {
+    crate::runtime_checks::expect_arity("split", args, 1)?;
+    let separator = crate::string_methods::string_value(&args[0], heap, "method split")?;
+    Ok(value.split(separator).map(str::to_owned).collect())
+}
+
+fn split_lines_payload(value: &str, args: &[Value]) -> VmResult<Vec<String>> {
+    crate::runtime_checks::expect_arity("split_lines", args, 0)?;
+    Ok(value.lines().map(str::to_owned).collect())
+}
+
+fn split_whitespace_payload(value: &str, args: &[Value]) -> VmResult<Vec<String>> {
+    crate::runtime_checks::expect_arity("split_whitespace", args, 0)?;
+    Ok(value.split_whitespace().map(str::to_owned).collect())
+}
+
+fn split_operation(target: StandardMethodInlineCacheTarget) -> &'static str {
+    match target {
+        StandardMethodInlineCacheTarget::Split => "method split",
+        StandardMethodInlineCacheTarget::SplitLines => "method split_lines",
+        StandardMethodInlineCacheTarget::SplitWhitespace => "method split_whitespace",
+        _ => "method split",
+    }
 }
 
 fn char_index_value(value: &Value) -> VmResult<usize> {
