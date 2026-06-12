@@ -26,20 +26,17 @@ use vela_vm::{HostExecution, LinkedProgramHostBudgetCall};
 
 #[path = "baseline/cache_support.rs"]
 mod cache_support;
+#[path = "baseline/config.rs"]
+mod config;
 #[path = "baseline/workload_sources.rs"]
 mod workload_sources;
 #[path = "baseline/workloads.rs"]
 mod workloads;
 
 use cache_support::{BenchBytecodeProfiler, BenchInlineCaches, rebase_linked_cache_sites};
+use config::{BenchConfig, BenchParams};
 use workloads::{ExecutionMode, WORKLOADS, Workload};
 
-const QUICK_REPEATS: usize = 2;
-const QUICK_ITERATIONS: usize = 8;
-const QUICK_WARMUP: usize = 2;
-const DEFAULT_REPEATS: usize = 7;
-const DEFAULT_ITERATIONS: usize = 100;
-const DEFAULT_WARMUP: usize = 10;
 const PLAYER_TYPE: HostTypeId = HostTypeId::new(1);
 const PLAYER_OBJECT: HostObjectId = HostObjectId::new(42);
 const PLAYER_GENERATION: u32 = 1;
@@ -68,19 +65,26 @@ const GC_SEEDED_GARBAGE_OBJECTS: usize = 128;
 const GC_SAFE_POINT_SWEEP_SLOTS: usize = 16;
 
 fn main() -> Result<(), Box<dyn Error>> {
-    let params = BenchParams::from_args();
+    let config = BenchConfig::from_args();
+    let params = config.params;
     println!(
-        "vela_vm_baseline profile={} target={}/{} repeats={} iterations={} warmup={}",
+        "vela_vm_baseline profile={} target={}/{} repeats={} iterations={} warmup={} filters={}",
         profile(),
         std::env::consts::OS,
         std::env::consts::ARCH,
         params.repeats,
         params.iterations,
-        params.warmup
+        params.warmup,
+        config.filters_label()
     );
 
+    let mut ran = 0;
     for workload in WORKLOADS {
+        if !config.should_run(workload.name) {
+            continue;
+        }
         let result = run_workload(workload, params)?;
+        ran += 1;
         println!(
             "bench={} mode={} min_ns={} mean_ns={} median_ns={} p95_ns={} checksum={} cache_sets={} cache_hits={} profile_hits={}",
             workload.name,
@@ -95,32 +99,11 @@ fn main() -> Result<(), Box<dyn Error>> {
             result.profile_hits
         );
     }
+    if ran == 0 {
+        return Err(format!("no baseline workloads matched {}", config.filters_label()).into());
+    }
 
     Ok(())
-}
-
-#[derive(Clone, Copy)]
-struct BenchParams {
-    repeats: usize,
-    iterations: usize,
-    warmup: usize,
-}
-
-impl BenchParams {
-    fn from_args() -> Self {
-        if std::env::args().skip(1).any(|arg| arg == "--quick") {
-            return Self {
-                repeats: QUICK_REPEATS,
-                iterations: QUICK_ITERATIONS,
-                warmup: QUICK_WARMUP,
-            };
-        }
-        Self {
-            repeats: DEFAULT_REPEATS,
-            iterations: DEFAULT_ITERATIONS,
-            warmup: DEFAULT_WARMUP,
-        }
-    }
 }
 
 struct BenchResult {
