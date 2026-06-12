@@ -1,10 +1,11 @@
 use super::linked_standard_method_cache_support::{
     RecordingMethodCaches, run_linked_method_cache_program,
+    run_linked_method_cache_program_with_standard_natives,
 };
 use super::standard_id_dispatch::std_method_id;
 use super::*;
 use std::cell::RefCell;
-use vela_bytecode::CacheSiteId;
+use vela_bytecode::{CacheSiteId, LinkedProgram, Linker};
 
 #[test]
 fn linked_callback_method_id_rejects_receiver_owner_mismatch() {
@@ -153,6 +154,79 @@ fn main() {
     assert_eq!(caches.set_count(), 2);
 }
 
+#[test]
+fn linked_callback_value_method_caches_option_targets() {
+    assert_callback_value_method_cache(
+        r#"
+fn main() {
+    return option::some(4).map(|value| value + 1).unwrap_or(0);
+}
+"#,
+        "map",
+        "Option",
+        "map",
+        StandardMethodReceiver::Option,
+        CallbackMethodInlineCacheTarget::Map,
+        Value::i64(5),
+    );
+    assert_callback_value_method_cache(
+        r#"
+fn main() {
+    return option::some(4).filter(|value| value > 3).unwrap_or(0);
+}
+"#,
+        "filter",
+        "Option",
+        "filter",
+        StandardMethodReceiver::Option,
+        CallbackMethodInlineCacheTarget::Filter,
+        Value::i64(4),
+    );
+}
+
+#[test]
+fn linked_callback_value_method_caches_result_targets() {
+    assert_callback_value_method_cache(
+        r#"
+fn main() {
+    return option::unwrap_or(result::err(4).map_err(|error| error + 1).to_error_option(), 0);
+}
+"#,
+        "map_err",
+        "Result",
+        "map_err",
+        StandardMethodReceiver::Result,
+        CallbackMethodInlineCacheTarget::MapErr,
+        Value::i64(5),
+    );
+    assert_callback_value_method_cache(
+        r#"
+fn main() {
+    return result::unwrap_or(result::ok(4).and_then(|value| result::ok(value + 1)), 0);
+}
+"#,
+        "and_then",
+        "Result",
+        "and_then",
+        StandardMethodReceiver::Result,
+        CallbackMethodInlineCacheTarget::AndThen,
+        Value::i64(5),
+    );
+    assert_callback_value_method_cache(
+        r#"
+fn main() {
+    return result::unwrap_or(result::err(4).or_else(|error| result::ok(error + 1)), 0);
+}
+"#,
+        "or_else",
+        "Result",
+        "or_else",
+        StandardMethodReceiver::Result,
+        CallbackMethodInlineCacheTarget::OrElse,
+        Value::i64(5),
+    );
+}
+
 struct RecordingHostAccessCaches {
     len: usize,
     entry: RefCell<Option<HostInlineCacheEntry>>,
@@ -206,6 +280,74 @@ fn max_cache_site_len(program: &vela_bytecode::LinkedProgram) -> usize {
         .map(|(_, code)| code.cache_sites.len())
         .max()
         .unwrap_or(0)
+}
+
+fn assert_callback_value_method_cache(
+    source: &str,
+    site_method: &str,
+    method_owner: &str,
+    method_name: &str,
+    receiver: StandardMethodReceiver,
+    target: CallbackMethodInlineCacheTarget,
+    expected: Value,
+) {
+    let program = compile_standard_program_source(SourceId::new(1), source)
+        .expect("standard callback method source should compile");
+    let linked = link_standard_native_test_program(&program);
+    let site = linked_method_cache_site(&linked, "main", site_method);
+    let caches = RecordingMethodCaches::new(max_cache_site_len(&linked));
+
+    assert_eq!(
+        run_linked_method_cache_program_with_standard_natives(&linked, &caches),
+        Ok(expected)
+    );
+    assert_callback_cache_entry(
+        &caches,
+        site,
+        std_method_id(method_owner, method_name),
+        receiver,
+        target,
+    );
+    let warmed_set_count = caches.set_count();
+
+    assert_eq!(
+        run_linked_method_cache_program_with_standard_natives(&linked, &caches),
+        Ok(expected)
+    );
+    assert_eq!(caches.set_count(), warmed_set_count);
+}
+
+fn assert_callback_cache_entry(
+    caches: &RecordingMethodCaches,
+    site: CacheSiteId,
+    expected_method_id: MethodId,
+    expected_receiver: StandardMethodReceiver,
+    expected_target: CallbackMethodInlineCacheTarget,
+) {
+    let entry = caches
+        .entry(site)
+        .expect("standard callback method cache should populate");
+    let MethodInlineCacheTarget::CallbackValue {
+        method_id,
+        callback_method,
+    } = entry.target
+    else {
+        panic!("standard callback method should store callback target");
+    };
+    assert_eq!(method_id, expected_method_id);
+    assert_eq!(callback_method.receiver, expected_receiver);
+    assert_eq!(callback_method.target, expected_target);
+}
+
+fn link_standard_native_test_program(program: &UnlinkedProgram) -> LinkedProgram {
+    let vm = Vm::new().with_standard_natives();
+    let mut linker = Linker::new();
+    for id in vm.native_implementation_ids() {
+        linker.add_native_implementation(id);
+    }
+    linker
+        .link_program(program)
+        .expect("standard native test program should link")
 }
 
 impl VmInlineCaches for RecordingHostAccessCaches {
