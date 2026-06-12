@@ -166,6 +166,29 @@ fn main() {
 }
 "#;
 
+const METHOD_DISPATCH_SOURCE: &str = r#"
+fn main() {
+    let total = 0;
+    for tick in 0..96 {
+        let tags = ["daily", "quest", "raid", "bonus", "event", "boss"];
+        let scores = {
+            "daily": 3,
+            "raid": 8,
+            "boss": 13,
+            "event": 5,
+        };
+        if tags.contains("raid")
+            && scores.has("boss")
+            && tags.any(|tag| tag.starts_with("q"))
+            && scores.get_or("missing", tick - tick) == 0
+        {
+            total += tags.len() + scores.get_or("daily", 0);
+        }
+    }
+    return total;
+}
+"#;
+
 pub(crate) const WORKLOADS: &[Workload] = &[
     Workload {
         name: "scalar_branch_loop",
@@ -306,30 +329,14 @@ fn main() {
         source: DIRECT_CLOSURE_CALLS_SOURCE,
     },
     Workload {
+        name: "method_dispatch",
+        mode: ExecutionMode::Inline,
+        source: METHOD_DISPATCH_SOURCE,
+    },
+    Workload {
         name: "method_cache_hot_offsets",
         mode: ExecutionMode::CacheEnabled,
-        source: r#"
-fn main() {
-    let total = 0;
-    for tick in 0..96 {
-        let tags = ["daily", "quest", "raid", "bonus", "event", "boss"];
-        let scores = {
-            "daily": 3,
-            "raid": 8,
-            "boss": 13,
-            "event": 5,
-        };
-        if tags.contains("raid")
-            && scores.has("boss")
-            && tags.any(|tag| tag.starts_with("q"))
-            && scores.get_or("missing", tick - tick) == 0
-        {
-            total += tags.len() + scores.get_or("daily", 0);
-        }
-    }
-    return total;
-}
-"#,
+        source: METHOD_DISPATCH_SOURCE,
     },
     Workload {
         name: "managed_heap_callback_collections",
