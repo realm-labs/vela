@@ -96,6 +96,15 @@ fn linked_standard_value_method_caches_array_clear_target() {
 }
 
 #[test]
+fn linked_standard_value_method_caches_array_extend_target() {
+    assert_array_owned_cache(
+        linked_array_extend_cache_program(),
+        StandardMethodInlineCacheTarget::Extend,
+        OwnedValue::Null,
+    );
+}
+
+#[test]
 fn linked_standard_value_method_caches_array_reverse_target() {
     assert_array_owned_cache(
         linked_array_reverse_cache_program(),
@@ -246,4 +255,60 @@ fn assert_array_cache_entry(
     assert_eq!(cached_method, method_id);
     assert_eq!(standard_method.receiver, StandardMethodReceiver::Array);
     assert_eq!(standard_method.target, target);
+}
+
+fn linked_array_extend_cache_program() -> LinkedMethodCacheFixture {
+    let method_id = vela_stdlib::std_method_id("Array", "extend").expect("Array::extend method id");
+    let mut program = vela_bytecode::LinkedProgram::new();
+    let main_name = program.intern_debug_name("main");
+    let method_name = program.intern_debug_name("extend");
+    let dispatch = program.push_method_dispatch(vela_bytecode::LinkedMethodDispatch::new(
+        method_name,
+        vela_bytecode::LinkedMethodDispatchKind::Value { method_id },
+    ));
+
+    let mut code = vela_bytecode::LinkedCodeObject::new(main_name, 6);
+    let first = code.push_constant(Constant::Scalar(vela_common::ScalarValue::I64(2)));
+    let second = code.push_constant(Constant::Scalar(vela_common::ScalarValue::I64(4)));
+    let third = code.push_constant(Constant::Scalar(vela_common::ScalarValue::I64(6)));
+    for (index, constant) in [first, second, third].into_iter().enumerate() {
+        code.push_instruction(vela_bytecode::linked::Instruction::new(
+            vela_bytecode::linked::InstructionKind::LoadConst {
+                dst: Register(index as u16),
+                constant,
+            },
+        ));
+    }
+    code.push_instruction(vela_bytecode::linked::Instruction::new(
+        vela_bytecode::linked::InstructionKind::MakeArray {
+            dst: Register(3),
+            elements: vec![Register(0)],
+        },
+    ));
+    code.push_instruction(vela_bytecode::linked::Instruction::new(
+        vela_bytecode::linked::InstructionKind::MakeArray {
+            dst: Register(4),
+            elements: vec![Register(1), Register(2)],
+        },
+    ));
+    let site = code.push_cache_site(
+        CacheSiteKind::MethodCall,
+        InstructionOffset(code.instructions.len()),
+    );
+    code.push_instruction(vela_bytecode::linked::Instruction::new(
+        vela_bytecode::linked::InstructionKind::CallMethod {
+            dst: Register(5),
+            receiver: Register(3),
+            dispatch,
+            debug_name: method_name,
+            cache_site: Some(site),
+            args: vec![vela_bytecode::CallArgument::Register(Register(4))],
+        },
+    ));
+    code.push_instruction(vela_bytecode::linked::Instruction::new(
+        vela_bytecode::linked::InstructionKind::Return { src: Register(5) },
+    ));
+    let function = program.push_function(code);
+    program.set_entry_point(main_name, function);
+    (program, site, dispatch, method_id)
 }

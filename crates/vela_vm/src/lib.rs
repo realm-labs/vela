@@ -395,6 +395,7 @@ pub enum StandardMethodInlineCacheTarget {
     Add,
     Set,
     Remove,
+    Extend,
     Keys,
     Values,
     Entries,

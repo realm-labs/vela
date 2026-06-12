@@ -47,6 +47,15 @@ fn linked_standard_value_method_caches_set_clear_target() {
 }
 
 #[test]
+fn linked_standard_value_method_caches_set_extend_target() {
+    assert_set_owned_cache(
+        linked_set_combination_cache_program("extend", &[2], &[4, 6]),
+        StandardMethodInlineCacheTarget::Extend,
+        OwnedValue::Null,
+    );
+}
+
+#[test]
 fn linked_standard_value_method_caches_set_union_target() {
     assert_set_owned_cache(
         linked_set_combination_cache_program("union", &[2, 4], &[4, 6]),
