@@ -675,13 +675,15 @@ fn linked_callback_value_method_result(
         inline_caches: context.inline_caches,
         bytecode_profiler: context.bytecode_profiler,
     };
-    if let Some(callback_method) = call.callback_method {
-        return callback_method_dispatch::call_cached(
+    if let Some(callback_method) = call.callback_method
+        && let Some(result) = callback_method_dispatch::call_cached(
             receiver,
             callback_method,
             call.values,
             &mut dispatch,
-        );
+        )
+    {
+        return Some(result);
     }
     let callback_method = callback_method_dispatch::callback_cache_entry(
         call.method_id,

@@ -195,6 +195,61 @@ fn main() {
         CallbackMethodInlineCacheTarget::Any,
     );
     assert_eq!(caches.set_count_for(call.cache_site), 2);
+
+    assert_eq!(
+        run_linked_method_cache_program(&linked, &caches),
+        Ok(Value::Bool(true))
+    );
+    assert_eq!(caches.set_count_for(call.cache_site), 2);
+}
+
+#[test]
+fn linked_callback_value_method_refreshes_wrong_receiver_guard() {
+    let program = compile_standard_program_source(
+        SourceId::new(1),
+        r#"
+fn main() {
+    return [1, 2, 3].any(|value| value == 2);
+}
+"#,
+    )
+    .expect("standard callback method source should compile");
+    let linked = link_test_program(&program);
+    let call = linked_method_cache_call(&linked, "main", "any");
+    let caches = RecordingMethodCaches::new(max_cache_site_len(&linked));
+    caches.prime(
+        call.cache_site,
+        MethodInlineCacheEntry {
+            dispatch: call.dispatch,
+            debug_name: call.debug_name,
+            target: MethodInlineCacheTarget::CallbackValue {
+                method_id: std_method_id("Array", "any"),
+                callback_method: CallbackMethodInlineCacheEntry {
+                    receiver: StandardMethodReceiver::Set,
+                    target: CallbackMethodInlineCacheTarget::Any,
+                },
+            },
+        },
+    );
+
+    assert_eq!(
+        run_linked_method_cache_program(&linked, &caches),
+        Ok(Value::Bool(true))
+    );
+    assert_callback_cache_entry(
+        &caches,
+        call.cache_site,
+        std_method_id("Array", "any"),
+        StandardMethodReceiver::Array,
+        CallbackMethodInlineCacheTarget::Any,
+    );
+    assert_eq!(caches.set_count_for(call.cache_site), 1);
+
+    assert_eq!(
+        run_linked_method_cache_program(&linked, &caches),
+        Ok(Value::Bool(true))
+    );
+    assert_eq!(caches.set_count_for(call.cache_site), 1);
 }
 
 #[test]
