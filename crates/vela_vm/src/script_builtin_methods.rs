@@ -645,6 +645,9 @@ pub(crate) fn standard_cache_entry(
         (StandardMethodReceiver::String, id) if id == ids.string_repeat => {
             StandardMethodInlineCacheTarget::Repeat
         }
+        (StandardMethodReceiver::String, id) if id == ids.string_replace => {
+            StandardMethodInlineCacheTarget::Replace
+        }
         (StandardMethodReceiver::Bytes, id) if id == ids.bytes_len => {
             StandardMethodInlineCacheTarget::Len
         }
@@ -801,6 +804,9 @@ pub(crate) fn call_standard_cached(
         }
         (StandardMethodReceiver::String, StandardMethodInlineCacheTarget::Repeat) => {
             crate::string_methods::repeat(receiver, args, heap, budget)
+        }
+        (StandardMethodReceiver::String, StandardMethodInlineCacheTarget::Replace) => {
+            crate::string_methods::replace(receiver, args, heap, budget)
         }
         (StandardMethodReceiver::Bytes, StandardMethodInlineCacheTarget::Slice) => {
             bytes_methods::slice(receiver, args, heap, budget)

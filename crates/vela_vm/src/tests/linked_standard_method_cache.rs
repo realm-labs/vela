@@ -535,6 +535,46 @@ fn linked_standard_value_method_caches_string_repeat_target() {
 }
 
 #[test]
+fn linked_standard_value_method_caches_string_replace_target() {
+    let (program, site, dispatch, method_id) = linked_string_two_constant_arg_cache_program(
+        "replace",
+        "event.done",
+        Constant::String(".".to_owned()),
+        Constant::String("_".to_owned()),
+    );
+    let caches = RecordingMethodCaches::new(1);
+
+    assert_eq!(
+        run_linked_method_cache_owned_program(&program, &caches),
+        Ok(OwnedValue::String("event_done".to_owned()))
+    );
+    let entry = caches
+        .entry(site)
+        .expect("standard string replace cache should populate");
+    assert_eq!(entry.dispatch, dispatch);
+    let MethodInlineCacheTarget::Value {
+        method_id: cached_method,
+        standard_method: Some(standard_method),
+    } = entry.target
+    else {
+        panic!("standard string replace cache should store value target");
+    };
+    assert_eq!(cached_method, method_id);
+    assert_eq!(standard_method.receiver, StandardMethodReceiver::String);
+    assert_eq!(
+        standard_method.target,
+        StandardMethodInlineCacheTarget::Replace
+    );
+    assert_eq!(caches.set_count(), 2);
+
+    assert_eq!(
+        run_linked_method_cache_owned_program(&program, &caches),
+        Ok(OwnedValue::String("event_done".to_owned()))
+    );
+    assert_eq!(caches.set_count(), 2);
+}
+
+#[test]
 fn linked_standard_value_method_caches_string_split_once_target() {
     let (program, site, dispatch, method_id) =
         linked_string_one_arg_cache_program("split_once", "count=3", "=");
