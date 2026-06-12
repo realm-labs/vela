@@ -1,5 +1,7 @@
+mod materializing_cache;
 mod readonly_cache;
 
+use materializing_cache::call_cached_array_lookup_option;
 use readonly_cache::{
     call_cached_array_contains, call_cached_bytes_accessor, call_cached_collection_has,
     call_cached_is_empty, call_cached_len, call_cached_map_get_or,
@@ -343,6 +345,16 @@ pub(crate) fn call_standard_cached(
 ) -> Option<VmResult<Value>> {
     if let Some(result) = call_readonly_cached(receiver, cache, args, heap.as_deref()) {
         return Some(result);
+    }
+    match cache.target {
+        StandardMethodInlineCacheTarget::First
+        | StandardMethodInlineCacheTarget::Last
+        | StandardMethodInlineCacheTarget::IndexOf
+            if cache.receiver == StandardMethodReceiver::Array =>
+        {
+            return call_cached_array_lookup_option(receiver, cache.target, args, heap, budget);
+        }
+        _ => {}
     }
     if !receiver_matches_cache(receiver, cache.receiver, heap.as_deref()) {
         return None;
