@@ -1,7 +1,7 @@
 use crate::workload_sources::{
-    CALLBACK_COLLECTIONS_SOURCE, DIRECT_CLOSURE_CALLS_SOURCE, METHOD_DISPATCH_SOURCE,
-    NATIVE_CALL_WIDE_ARGS_SOURCE, RECORD_TRIPLETS_SOURCE, SCRIPT_CALL_SMALL_ARGS_SOURCE,
-    STDLIB_COLLECTIONS_SOURCE,
+    ARRAY_LOOKUP_SOURCE, CALLBACK_COLLECTIONS_SOURCE, DIRECT_CLOSURE_CALLS_SOURCE,
+    METHOD_DISPATCH_SOURCE, NATIVE_CALL_WIDE_ARGS_SOURCE, RECORD_TRIPLETS_SOURCE,
+    SCRIPT_CALL_SMALL_ARGS_SOURCE, STDLIB_COLLECTIONS_SOURCE,
 };
 
 pub(crate) struct Workload {
@@ -356,26 +356,12 @@ fn main() {
     Workload {
         name: "managed_heap_array_lookup",
         mode: ExecutionMode::ManagedHeap,
-        source: r#"
-fn main() {
-    let total = 0;
-    for tick in 0..96 {
-        let tags = ["daily", "quest", "raid", "bonus", "event", "boss"];
-        let tiers = [1, 2, 3, 5, 8, 13];
-        if !tags.contains("raid")
-            || tags.contains("missing")
-            || option::unwrap_or(tags.index_of("boss"), -1) != 5
-            || !tiers.contains(8)
-            || tiers.contains(tick + 20)
-            || option::unwrap_or(tiers.index_of(13), -1) != 5
-        {
-            return 0;
-        }
-        total += tags.len() + tiers.len() + tick - tick;
-    }
-    return total;
-}
-"#,
+        source: ARRAY_LOOKUP_SOURCE,
+    },
+    Workload {
+        name: "array_lookup_cache_hot_offsets",
+        mode: ExecutionMode::CacheEnabled,
+        source: ARRAY_LOOKUP_SOURCE,
     },
     Workload {
         name: "managed_heap_array_extend",
