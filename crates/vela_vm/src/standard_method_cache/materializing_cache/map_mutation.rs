@@ -97,12 +97,15 @@ fn map_slot_entries(
     heap: &HeapExecution<'_>,
     receiver: &Value,
     operation: &'static str,
-) -> VmResult<BTreeMap<String, Value>> {
+) -> VmResult<Vec<(String, Value)>> {
     let values = map_slots(receiver, Some(heap), operation)?;
     if values.values().any(|value| matches!(value, Value::Missing)) {
         return type_error("missing value");
     }
-    Ok(values.clone())
+    Ok(values
+        .iter()
+        .map(|(key, value)| (key.clone(), *value))
+        .collect())
 }
 
 fn map_slots<'a>(
