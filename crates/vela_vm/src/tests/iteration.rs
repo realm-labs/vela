@@ -496,6 +496,30 @@ fn main() {
 }
 
 #[test]
+fn for_in_over_iterator_consumes_original_cursor() {
+    let code = compile_function_source(
+        SourceId::new(1),
+        r#"
+fn main() {
+    let iter = [2, 3, 5].iter();
+    let total = 0;
+    for value in iter {
+        total += value;
+    }
+    return total * 10 + iter.next().unwrap_or(7);
+}
+"#,
+        "main",
+    )
+    .expect("compile iterator for-in consumption source");
+
+    assert_eq!(
+        run_linked_test_code(code),
+        Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(107)))
+    );
+}
+
+#[test]
 fn iterator_callback_terminals_short_circuit_and_leave_remainder() {
     let code = compile_function_source(
         SourceId::new(1),

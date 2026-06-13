@@ -44,7 +44,12 @@ pub(crate) fn dispatch_iter_init(
     dst: Register,
     iterable: Register,
 ) -> VmResult<()> {
-    let iterator = make_iterator(&runtime.frame.read(iterable)?, runtime.heap.as_deref())?;
+    let iterable = runtime.frame.read(iterable)?;
+    let iterator = if is_iterator(&iterable, runtime.heap.as_deref()) {
+        methods::take_iterator_from_heap(&iterable, &mut runtime.heap, "for in")?
+    } else {
+        make_iterator(&iterable, runtime.heap.as_deref())?
+    };
     let Some(heap) = heap_ref(&mut runtime.heap) else {
         return Err(VmError::new(VmErrorKind::TypeMismatch {
             operation: "iterator heap",
