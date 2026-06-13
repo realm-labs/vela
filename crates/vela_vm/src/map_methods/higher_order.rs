@@ -1,10 +1,11 @@
 use std::collections::BTreeMap;
 
+use crate::iteration;
 use crate::method_runtime::{
     MethodRuntime, call_callback, call_callback_with_protected_values, callback_param_len,
 };
 use crate::option_result::option_value;
-use crate::{Value, VmError, VmErrorKind, VmResult};
+use crate::{Value, VmResult};
 
 use super::{expect_arity, map_entries, map_entry};
 use crate::array_methods::{make_map_value, make_string_value};
@@ -102,23 +103,28 @@ pub(crate) fn find(
     expect_arity("find", args, 1)?;
     let entries = map_entries(receiver, runtime.heap.as_deref(), "method find")?;
     let param_len = callback_param_len_for_entries(&runtime, "method find", &args[0], &entries)?;
-    for (key, value) in entries {
-        let predicate = call_map_callback(
-            &mut runtime,
-            "method find",
-            &args[0],
-            param_len,
-            &key,
-            value,
-            &[],
-        )?;
-        if is_truthy(&predicate) {
-            let entry = map_entry(&key, value, &mut runtime.heap, &mut runtime.budget)?;
-            let Some(heap) = runtime.heap.as_deref_mut() else {
-                return super::type_error("method find");
-            };
-            return option_value(Some(entry), heap, runtime.budget.as_deref_mut());
-        }
+    let found = iteration::callback_find_over(
+        entries,
+        &mut runtime,
+        "method find",
+        |runtime, (key, value)| {
+            call_map_callback(
+                runtime,
+                "method find",
+                &args[0],
+                param_len,
+                key,
+                *value,
+                &[],
+            )
+        },
+    )?;
+    if let Some((key, value)) = found {
+        let entry = map_entry(&key, value, &mut runtime.heap, &mut runtime.budget)?;
+        let Some(heap) = runtime.heap.as_deref_mut() else {
+            return super::type_error("method find");
+        };
+        return option_value(Some(entry), heap, runtime.budget.as_deref_mut());
     }
     let Some(heap) = runtime.heap.as_deref_mut() else {
         return super::type_error("method find");
@@ -134,21 +140,14 @@ pub(crate) fn any(
     expect_arity("any", args, 1)?;
     let entries = map_entries(receiver, runtime.heap.as_deref(), "method any")?;
     let param_len = callback_param_len_for_entries(&runtime, "method any", &args[0], &entries)?;
-    for (key, value) in entries {
-        let predicate = call_map_callback(
-            &mut runtime,
-            "method any",
-            &args[0],
-            param_len,
-            &key,
-            value,
-            &[],
-        )?;
-        if is_truthy(&predicate) {
-            return Ok(true);
-        }
-    }
-    Ok(false)
+    iteration::callback_any_over(
+        entries,
+        &mut runtime,
+        "method any",
+        |runtime, (key, value)| {
+            call_map_callback(runtime, "method any", &args[0], param_len, key, *value, &[])
+        },
+    )
 }
 
 pub(crate) fn all(
@@ -159,21 +158,14 @@ pub(crate) fn all(
     expect_arity("all", args, 1)?;
     let entries = map_entries(receiver, runtime.heap.as_deref(), "method all")?;
     let param_len = callback_param_len_for_entries(&runtime, "method all", &args[0], &entries)?;
-    for (key, value) in entries {
-        let predicate = call_map_callback(
-            &mut runtime,
-            "method all",
-            &args[0],
-            param_len,
-            &key,
-            value,
-            &[],
-        )?;
-        if !is_truthy(&predicate) {
-            return Ok(false);
-        }
-    }
-    Ok(true)
+    iteration::callback_all_over(
+        entries,
+        &mut runtime,
+        "method all",
+        |runtime, (key, value)| {
+            call_map_callback(runtime, "method all", &args[0], param_len, key, *value, &[])
+        },
+    )
 }
 
 pub(crate) fn count(
@@ -183,31 +175,23 @@ pub(crate) fn count(
 ) -> VmResult<i64> {
     expect_arity("count", args, 1)?;
     let entries = map_entries(receiver, runtime.heap.as_deref(), "method count")?;
-    let mut count = 0_i64;
     let param_len = callback_param_len_for_entries(&runtime, "method count", &args[0], &entries)?;
-    for (key, value) in entries {
-        let predicate = call_map_callback(
-            &mut runtime,
-            "method count",
-            &args[0],
-            param_len,
-            &key,
-            value,
-            &[],
-        )?;
-        if is_truthy(&predicate) {
-            count = checked_count_increment(count)?;
-        }
-    }
-    Ok(count)
-}
-
-fn checked_count_increment(count: i64) -> VmResult<i64> {
-    count.checked_add(1).ok_or_else(|| {
-        VmError::new(VmErrorKind::TypeMismatch {
-            operation: "method count",
-        })
-    })
+    iteration::callback_count_over(
+        entries,
+        &mut runtime,
+        "method count",
+        |runtime, (key, value)| {
+            call_map_callback(
+                runtime,
+                "method count",
+                &args[0],
+                param_len,
+                key,
+                *value,
+                &[],
+            )
+        },
+    )
 }
 
 fn callback_param_len_for_entries(

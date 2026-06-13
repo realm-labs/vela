@@ -429,6 +429,65 @@ pub(crate) fn callback_count(
     Ok(count)
 }
 
+pub(crate) fn callback_any_over<T>(
+    items: impl IntoIterator<Item = T>,
+    runtime: &mut MethodRuntime<'_, '_, '_>,
+    _operation: &'static str,
+    mut callback: impl FnMut(&mut MethodRuntime<'_, '_, '_>, &T) -> VmResult<Value>,
+) -> VmResult<bool> {
+    for item in items {
+        if is_truthy(&callback(runtime, &item)?) {
+            return Ok(true);
+        }
+    }
+    Ok(false)
+}
+
+pub(crate) fn callback_all_over<T>(
+    items: impl IntoIterator<Item = T>,
+    runtime: &mut MethodRuntime<'_, '_, '_>,
+    _operation: &'static str,
+    mut callback: impl FnMut(&mut MethodRuntime<'_, '_, '_>, &T) -> VmResult<Value>,
+) -> VmResult<bool> {
+    for item in items {
+        if !is_truthy(&callback(runtime, &item)?) {
+            return Ok(false);
+        }
+    }
+    Ok(true)
+}
+
+pub(crate) fn callback_find_over<T>(
+    items: impl IntoIterator<Item = T>,
+    runtime: &mut MethodRuntime<'_, '_, '_>,
+    _operation: &'static str,
+    mut callback: impl FnMut(&mut MethodRuntime<'_, '_, '_>, &T) -> VmResult<Value>,
+) -> VmResult<Option<T>> {
+    for item in items {
+        if is_truthy(&callback(runtime, &item)?) {
+            return Ok(Some(item));
+        }
+    }
+    Ok(None)
+}
+
+pub(crate) fn callback_count_over<T>(
+    items: impl IntoIterator<Item = T>,
+    runtime: &mut MethodRuntime<'_, '_, '_>,
+    operation: &'static str,
+    mut callback: impl FnMut(&mut MethodRuntime<'_, '_, '_>, &T) -> VmResult<Value>,
+) -> VmResult<i64> {
+    let mut count = 0_i64;
+    for item in items {
+        if is_truthy(&callback(runtime, &item)?) {
+            count = count
+                .checked_add(1)
+                .ok_or_else(|| VmError::new(VmErrorKind::TypeMismatch { operation }))?;
+        }
+    }
+    Ok(count)
+}
+
 fn with_iterator_mut<T>(
     receiver: &Value,
     heap: &mut Option<&mut HeapExecution<'_>>,
