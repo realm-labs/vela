@@ -205,6 +205,126 @@ fn main() {
 }
 
 #[test]
+fn host_iterable_items_mutate_through_host_access() {
+    let host_ref = player_ref(3);
+    let mut registry = host_definition_registry(
+        &[("Player", host_ref.type_id)],
+        &[TestHostField::new("Player", "level", level_field())],
+        &[],
+    );
+    registry
+        .register_function(vela_registry::FunctionDef::new(
+            vela_def::DefPath::function("host", ["game"], "players"),
+            vela_registry::FunctionSignature::default(),
+        ))
+        .expect("test native function should register");
+    let program = compile_host_program_source(
+        SourceId::new(1),
+        r#"
+fn main() {
+    for player in game::players() {
+        let typed: Player = player;
+        typed.level += 2;
+    }
+    return 0;
+}
+"#,
+        registry,
+    )
+    .expect("compile host iterable mutation source");
+    let mut vm = Vm::new();
+    vm.register_native("game::players", move |_| {
+        Ok(OwnedValue::iterator([OwnedValue::HostRef(host_ref)]))
+    });
+    let mut adapter = host_adapter(
+        host_ref,
+        HostValue::Scalar(vela_common::ScalarValue::I64(9)),
+    );
+    let mut tx = HostAccess::new();
+    let mut budget = ExecutionBudget::unbounded();
+
+    let result = {
+        let mut host = HostExecution {
+            adapter: &mut adapter,
+            access: &mut tx,
+            script_globals: None,
+        };
+        run_linked_test_program_with_host_budget(&vm, &program, "main", &[], &mut host, &mut budget)
+    };
+
+    assert_eq!(
+        result,
+        Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(0)))
+    );
+    assert_eq!(
+        adapter.read_diagnostic_path(&level_path(host_ref)),
+        Ok(HostValue::Scalar(vela_common::ScalarValue::I64(11)))
+    );
+}
+
+#[test]
+fn stale_host_iterable_items_report_source_spanned_errors() {
+    let source = r#"
+fn main() {
+    for player in game::players() {
+        let typed: Player = player;
+        return typed.level;
+    }
+    return 0;
+}
+"#;
+    let fresh_ref = player_ref(3);
+    let stale_ref = player_ref(2);
+    let mut registry = host_definition_registry(
+        &[("Player", fresh_ref.type_id)],
+        &[TestHostField::new("Player", "level", level_field())],
+        &[],
+    );
+    registry
+        .register_function(vela_registry::FunctionDef::new(
+            vela_def::DefPath::function("host", ["game"], "players"),
+            vela_registry::FunctionSignature::default(),
+        ))
+        .expect("test native function should register");
+    let program = compile_host_program_source(SourceId::new(1), source, registry)
+        .expect("compile stale host iterable source");
+    let mut vm = Vm::new();
+    vm.register_native("game::players", move |_| {
+        Ok(OwnedValue::iterator([OwnedValue::HostRef(stale_ref)]))
+    });
+    let mut adapter = host_adapter(
+        fresh_ref,
+        HostValue::Scalar(vela_common::ScalarValue::I64(9)),
+    );
+    let mut tx = HostAccess::new();
+    let mut budget = ExecutionBudget::unbounded();
+
+    let error = {
+        let mut host = HostExecution {
+            adapter: &mut adapter,
+            access: &mut tx,
+            script_globals: None,
+        };
+        run_linked_test_program_with_host_budget(&vm, &program, "main", &[], &mut host, &mut budget)
+            .expect_err("stale host iterable item read should fail")
+    };
+
+    assert_eq!(
+        error.kind(),
+        VmErrorKind::Host(vela_host::error::HostErrorKind::StaleGeneration {
+            expected: 2,
+            actual: 3,
+        })
+    );
+    let span = error.source_span.expect("stale host item source span");
+    assert_eq!(span.source, SourceId::new(1));
+    assert_eq!(
+        &source[span.start as usize..span.end as usize],
+        "typed.level"
+    );
+}
+
+#[test]
 fn runs_compiled_range_for_in_source() {
     let code = compile_function_source(
         SourceId::new(1),
