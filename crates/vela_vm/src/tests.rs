@@ -45,6 +45,7 @@ mod bytes;
 mod consts;
 mod control_flow;
 mod deferred_literals;
+mod dynamic_method_dispatch;
 mod execution_core;
 mod heap_host;
 mod host_fields;
@@ -89,6 +90,35 @@ fn link_test_program(program: &UnlinkedProgram) -> LinkedProgram {
         .expect("test program should link")
 }
 
+fn linked_dynamic_method_site(program: &LinkedProgram, entry: &str) -> CacheSiteId {
+    linked_entry_code(program, entry)
+        .cache_sites
+        .sites()
+        .iter()
+        .find(|site| site.kind == CacheSiteKind::MethodCall)
+        .map(|site| site.id)
+        .expect("dynamic method fixture should have a method cache site")
+}
+
+fn linked_cache_len(program: &LinkedProgram) -> usize {
+    program
+        .functions()
+        .map(|(_, code)| code.cache_sites.len())
+        .max()
+        .unwrap_or(0)
+}
+
+fn linked_entry_code<'program>(
+    program: &'program LinkedProgram,
+    entry: &str,
+) -> &'program vela_bytecode::LinkedCodeObject {
+    program
+        .functions()
+        .find(|(_, code)| program.debug_name(code.debug_name) == entry)
+        .map(|(_, code)| code)
+        .expect("linked fixture should have entry")
+}
+
 fn run_linked_test_code(code: UnlinkedCodeObject) -> VmResult<OwnedValue> {
     run_linked_test_code_with_linker(&Vm::new(), code, Linker::new())
 }
@@ -118,6 +148,69 @@ fn run_linked_test_program_with_budget(
         .link_program(program)
         .expect("test program should link");
     vm.run_linked_program_with_budget(&linked, entry, args, budget)
+}
+
+fn run_linked_test_entry_with_caches(
+    vm: &Vm,
+    linked: &LinkedProgram,
+    entry: &str,
+    args: &[OwnedValue],
+    budget: &mut ExecutionBudget,
+    inline_caches: &dyn VmInlineCaches,
+) -> VmResult<OwnedValue> {
+    let code = linked_program_entry(linked, entry)?;
+    let mut heap = ScriptHeap::new();
+    let mut heap_execution = HeapExecution::new(&mut heap);
+    let args = owned_args_to_runtime(args, &mut heap_execution, Some(budget))?;
+    let result = vm.execute_linked_call(
+        crate::linked_execution::LinkedExecutionCall {
+            code,
+            program: linked,
+            captures: &[],
+            args: &args,
+            check_param_guards: true,
+            call_site: None,
+            call_site_offset: None,
+            inline_caches: Some(inline_caches),
+            bytecode_profiler: None,
+        },
+        None,
+        Some(&mut heap_execution),
+        Some(budget),
+    );
+    owned_heap_result(result, &mut heap_execution, budget)
+}
+
+fn run_linked_test_entry_with_host_and_caches(
+    vm: &Vm,
+    linked: &LinkedProgram,
+    entry: &str,
+    args: &[OwnedValue],
+    host: &mut HostExecution<'_>,
+    budget: &mut ExecutionBudget,
+    inline_caches: &dyn VmInlineCaches,
+) -> VmResult<OwnedValue> {
+    let code = linked_program_entry(linked, entry)?;
+    let mut heap = ScriptHeap::new();
+    let mut heap_execution = HeapExecution::new(&mut heap);
+    let args = owned_args_to_runtime(args, &mut heap_execution, Some(budget))?;
+    let result = vm.execute_linked_call(
+        crate::linked_execution::LinkedExecutionCall {
+            code,
+            program: linked,
+            captures: &[],
+            args: &args,
+            check_param_guards: true,
+            call_site: None,
+            call_site_offset: None,
+            inline_caches: Some(inline_caches),
+            bytecode_profiler: None,
+        },
+        Some(host),
+        Some(&mut heap_execution),
+        Some(budget),
+    );
+    owned_heap_result(result, &mut heap_execution, budget)
 }
 
 fn run_linked_test_program_with_host_budget(

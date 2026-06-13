@@ -573,7 +573,7 @@ After commit, change this checkbox to `[x]`.
 
 ---
 
-## [ ] Phase 7 — Add guarded dynamic method inline cache
+## [x] Phase 7 — Add guarded dynamic method inline cache
 
 Do not reuse the existing resolved method cache without adding receiver guards. Dynamic dispatch needs its own guarded entry or a clearly extended cache entry.
 The first M20 implementation should be monomorphic: one guarded target per

@@ -7,6 +7,7 @@ use vela_common::Span;
 use vela_def::MethodId;
 
 use crate::dynamic_method_resolution::{self, DynamicMethodTarget};
+use crate::heap::HeapValue;
 use crate::linked_execution::LinkedExecutionCall;
 use crate::method_runtime::CallerRoots;
 use crate::{
@@ -14,9 +15,10 @@ use crate::{
     store_value_in_heap_if_needed,
 };
 use crate::{
-    MethodInlineCacheEntry, MethodInlineCacheTarget, VmBytecodeProfiler, VmError, VmErrorKind,
-    VmInlineCaches, callback_method_dispatch, host_access, script_builtin_methods,
-    script_function_calls,
+    DynamicMethodInlineCacheEntry, DynamicMethodInlineCacheTarget, DynamicReceiverGuard,
+    MethodInlineCacheEntry, MethodInlineCacheTarget, StandardMethodReceiver, VmBytecodeProfiler,
+    VmError, VmErrorKind, VmInlineCaches, callback_method_dispatch, host_access,
+    script_builtin_methods, script_function_calls,
 };
 
 use crate::script_methods::{
@@ -502,20 +504,17 @@ fn dispatch_linked_dynamic_method_call_inner(
 ) -> VmResult<()> {
     let method = context.program.debug_name(call.method_name);
     let receiver = *frame.read(call.receiver)?;
-    let target = dynamic_method_resolution::resolve_linked_dynamic_method(
+    let target = linked_dynamic_method_dispatch_target(
+        vm,
+        &context,
         &receiver,
         method,
-        context.program,
+        call.method_name,
         heap.as_deref(),
-        vm.type_registry(),
-    )
-    .ok_or_else(|| {
-        VmError::new(VmErrorKind::UnknownMethod {
-            method: method.to_owned(),
-        })
-    })?;
+        host.as_deref(),
+    )?;
     match target {
-        DynamicMethodTarget::Script { dispatch, function } => {
+        DynamicMethodInlineCacheTarget::Script { dispatch, function } => {
             let script_args = dynamic_script_call_args_from_linked_arguments(
                 context.program,
                 function,
@@ -537,7 +536,7 @@ fn dispatch_linked_dynamic_method_call_inner(
                 },
             )
         }
-        DynamicMethodTarget::Host { method_id } => {
+        DynamicMethodInlineCacheTarget::Host { method_id } => {
             let values_storage = dynamic_value_args_from_linked_arguments(frame, call.args)?;
             let return_value = host_access::execute_host_root_method_call(
                 host_access::HostAccessRuntime {
@@ -561,15 +560,24 @@ fn dispatch_linked_dynamic_method_call_inner(
             }
             Ok(())
         }
-        DynamicMethodTarget::StandardValue { method_id } => {
+        DynamicMethodInlineCacheTarget::StandardValue {
+            method_id,
+            standard_method,
+        } => {
             let values_storage = dynamic_value_args_from_linked_arguments(frame, call.args)?;
-            let standard_method =
-                script_builtin_methods::standard_cache_entry(method_id, &receiver, heap.as_deref())
-                    .ok_or_else(|| {
-                        VmError::new(VmErrorKind::UnknownMethod {
-                            method: method.to_owned(),
-                        })
-                    })?;
+            let standard_method = standard_method
+                .or_else(|| {
+                    script_builtin_methods::standard_cache_entry(
+                        method_id,
+                        &receiver,
+                        heap.as_deref(),
+                    )
+                })
+                .ok_or_else(|| {
+                    VmError::new(VmErrorKind::UnknownMethod {
+                        method: method.to_owned(),
+                    })
+                })?;
             let result = script_builtin_methods::call_standard_cached(
                 &receiver,
                 standard_method,
@@ -585,6 +593,202 @@ fn dispatch_linked_dynamic_method_call_inner(
             frame.write(call.dst, result)
         }
     }
+}
+
+fn linked_dynamic_method_dispatch_target(
+    vm: &Vm,
+    context: &LinkedScriptMethodCallContext<'_>,
+    receiver: &Value,
+    method: &str,
+    method_name: DebugNameId,
+    heap: Option<&HeapExecution<'_>>,
+    host: Option<&HostExecution<'_>>,
+) -> VmResult<DynamicMethodInlineCacheTarget> {
+    if let Some(site) = context.cache_site
+        && let Some(entry) = context
+            .inline_caches
+            .and_then(|caches| caches.dynamic_method_dispatch(site))
+        && entry.method_name == method_name
+        && dynamic_receiver_guard_matches(&entry.receiver_guard, receiver, heap, host)
+    {
+        return Ok(entry.target);
+    }
+
+    let target = dynamic_method_resolution::resolve_linked_dynamic_method(
+        receiver,
+        method,
+        context.program,
+        heap,
+        vm.type_registry(),
+    )
+    .ok_or_else(|| {
+        VmError::new(VmErrorKind::UnknownMethod {
+            method: method.to_owned(),
+        })
+    })?;
+    let cache_target = dynamic_cache_target_from_resolved(target, receiver, heap);
+    if let Some(site) = context.cache_site
+        && let Some(caches) = context.inline_caches
+        && let Some(receiver_guard) =
+            dynamic_receiver_guard_for_target(&cache_target, receiver, heap, host)
+    {
+        caches.set_dynamic_method_dispatch(
+            site,
+            DynamicMethodInlineCacheEntry {
+                method_name,
+                receiver_guard,
+                target: cache_target,
+            },
+        );
+    }
+    Ok(cache_target)
+}
+
+fn dynamic_cache_target_from_resolved(
+    target: DynamicMethodTarget,
+    receiver: &Value,
+    heap: Option<&HeapExecution<'_>>,
+) -> DynamicMethodInlineCacheTarget {
+    match target {
+        DynamicMethodTarget::Script { dispatch, function } => {
+            DynamicMethodInlineCacheTarget::Script { dispatch, function }
+        }
+        DynamicMethodTarget::Host { method_id } => {
+            DynamicMethodInlineCacheTarget::Host { method_id }
+        }
+        DynamicMethodTarget::StandardValue { method_id } => {
+            DynamicMethodInlineCacheTarget::StandardValue {
+                method_id,
+                standard_method: script_builtin_methods::standard_cache_entry(
+                    method_id, receiver, heap,
+                ),
+            }
+        }
+    }
+}
+
+fn dynamic_receiver_guard_for_target(
+    target: &DynamicMethodInlineCacheTarget,
+    receiver: &Value,
+    heap: Option<&HeapExecution<'_>>,
+    host: Option<&HostExecution<'_>>,
+) -> Option<DynamicReceiverGuard> {
+    match target {
+        DynamicMethodInlineCacheTarget::StandardValue { .. } => {
+            standard_receiver_guard(receiver, heap)
+        }
+        DynamicMethodInlineCacheTarget::Script { .. } => script_receiver_guard(receiver, heap),
+        DynamicMethodInlineCacheTarget::Host { .. } => host_receiver_guard(receiver, host),
+    }
+}
+
+fn dynamic_receiver_guard_matches(
+    guard: &DynamicReceiverGuard,
+    receiver: &Value,
+    heap: Option<&HeapExecution<'_>>,
+    host: Option<&HostExecution<'_>>,
+) -> bool {
+    match guard {
+        DynamicReceiverGuard::StdValue { receiver: expected } => {
+            standard_receiver_guard(receiver, heap).is_some_and(|actual| {
+                matches!(actual, DynamicReceiverGuard::StdValue { receiver } if receiver == *expected)
+            })
+        }
+        DynamicReceiverGuard::ScriptType {
+            type_name,
+            shape_id,
+        } => script_receiver_guard(receiver, heap).is_some_and(|actual| {
+            matches!(
+                actual,
+                DynamicReceiverGuard::ScriptType {
+                    type_name: actual_type,
+                    shape_id: actual_shape,
+                } if actual_type == *type_name && actual_shape == *shape_id
+            )
+        }),
+        DynamicReceiverGuard::HostType {
+            type_id,
+            schema_epoch,
+        } => host_receiver_guard(receiver, host).is_some_and(|actual| {
+            matches!(
+                actual,
+                DynamicReceiverGuard::HostType {
+                    type_id: actual_type,
+                    schema_epoch: actual_epoch,
+                } if actual_type == *type_id && actual_epoch == *schema_epoch
+            )
+        }),
+    }
+}
+
+fn standard_receiver_guard(
+    receiver: &Value,
+    heap: Option<&HeapExecution<'_>>,
+) -> Option<DynamicReceiverGuard> {
+    let receiver = match dynamic_method_resolution::classify_dynamic_receiver(receiver, heap, None)
+    {
+        dynamic_method_resolution::DynamicReceiverKind::String => StandardMethodReceiver::String,
+        dynamic_method_resolution::DynamicReceiverKind::Bytes => StandardMethodReceiver::Bytes,
+        dynamic_method_resolution::DynamicReceiverKind::Array => StandardMethodReceiver::Array,
+        dynamic_method_resolution::DynamicReceiverKind::Map => StandardMethodReceiver::Map,
+        dynamic_method_resolution::DynamicReceiverKind::Set => StandardMethodReceiver::Set,
+        dynamic_method_resolution::DynamicReceiverKind::Option => StandardMethodReceiver::Option,
+        dynamic_method_resolution::DynamicReceiverKind::Result => StandardMethodReceiver::Result,
+        dynamic_method_resolution::DynamicReceiverKind::Range => StandardMethodReceiver::Range,
+        dynamic_method_resolution::DynamicReceiverKind::ScriptRecord { .. }
+        | dynamic_method_resolution::DynamicReceiverKind::ScriptEnum { .. }
+        | dynamic_method_resolution::DynamicReceiverKind::Host { .. }
+        | dynamic_method_resolution::DynamicReceiverKind::Unsupported => return None,
+    };
+    Some(DynamicReceiverGuard::StdValue { receiver })
+}
+
+fn script_receiver_guard(
+    receiver: &Value,
+    heap: Option<&HeapExecution<'_>>,
+) -> Option<DynamicReceiverGuard> {
+    let Value::HeapRef(reference) = receiver else {
+        return None;
+    };
+    match heap.and_then(|heap| heap.heap.get(*reference)) {
+        Some(HeapValue::Record {
+            type_name,
+            identity,
+            fields,
+        }) => Some(DynamicReceiverGuard::ScriptType {
+            type_name: type_name.clone(),
+            shape_id: identity.map_or_else(
+                || Some(fields.shape_id()),
+                |identity| Some(identity.shape_id),
+            ),
+        }),
+        Some(HeapValue::Enum {
+            enum_name,
+            identity,
+            fields,
+            ..
+        }) => Some(DynamicReceiverGuard::ScriptType {
+            type_name: enum_name.clone(),
+            shape_id: identity
+                .map(|_| None)
+                .unwrap_or_else(|| Some(fields.shape_id())),
+        }),
+        _ => None,
+    }
+}
+
+fn host_receiver_guard(
+    receiver: &Value,
+    host: Option<&HostExecution<'_>>,
+) -> Option<DynamicReceiverGuard> {
+    let Value::HostRef(reference) = receiver else {
+        return None;
+    };
+    let schema_epoch = host?.adapter.host_schema_epoch();
+    Some(DynamicReceiverGuard::HostType {
+        type_id: reference.type_id,
+        schema_epoch,
+    })
 }
 
 fn dynamic_script_call_args_from_linked_arguments(

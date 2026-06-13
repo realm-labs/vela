@@ -88,6 +88,82 @@ fn read_value() {
     );
 }
 
+#[test]
+fn accepted_hot_reload_clears_dynamic_method_inline_caches() {
+    let engine = Engine::builder().build().expect("engine should build");
+    let initial = engine
+        .compile_hot_reload_initial(
+            SourceId::new(1),
+            r#"
+fn call_dynamic(value) {
+    return value.starts_with("q");
+}
+"#,
+        )
+        .expect("initial dynamic method source should compile");
+    let mut runtime = Runtime::from_hot_reload_version(engine, initial);
+    let initial_site = method_call_site(&runtime, "call_dynamic");
+
+    let first = runtime
+        .call(
+            "call_dynamic",
+            CallArgs::from_positional([OwnedValue::String("quest".to_owned())]),
+            CallOptions::unbounded(),
+        )
+        .expect("initial dynamic call should run");
+    assert_eq!(runtime.value_to_owned(&first), Ok(OwnedValue::Bool(true)));
+    assert!(
+        runtime
+            .state
+            .inline_caches
+            .dynamic_method_dispatch(initial_site)
+            .is_some(),
+        "initial dynamic method call should populate its inline cache"
+    );
+
+    let update = runtime
+        .compile_hot_reload_update(
+            SourceId::new(2),
+            r#"
+fn call_dynamic(value) {
+    return value.ends_with("t");
+}
+"#,
+        )
+        .expect("runtime should compile dynamic method hot reload update")
+        .expect("dynamic method body update should be accepted");
+    let report = runtime
+        .apply_hot_update(update)
+        .expect("dynamic method hot reload update should apply");
+    assert!(report.accepted);
+
+    let reloaded_site = method_call_site(&runtime, "call_dynamic");
+    assert_eq!(
+        runtime
+            .state
+            .inline_caches
+            .dynamic_method_dispatch(reloaded_site),
+        None
+    );
+
+    let second = runtime
+        .call(
+            "call_dynamic",
+            CallArgs::from_positional([OwnedValue::String("quest".to_owned())]),
+            CallOptions::unbounded(),
+        )
+        .expect("reloaded dynamic call should run");
+    assert_eq!(runtime.value_to_owned(&second), Ok(OwnedValue::Bool(true)));
+    assert!(
+        runtime
+            .state
+            .inline_caches
+            .dynamic_method_dispatch(reloaded_site)
+            .is_some(),
+        "reloaded dynamic method call should repopulate its inline cache"
+    );
+}
+
 fn record_field_read_site(runtime: &Runtime, function_name: &str) -> CacheSiteId {
     runtime
         .image
@@ -99,5 +175,19 @@ fn record_field_read_site(runtime: &Runtime, function_name: &str) -> CacheSiteId
         .iter()
         .find(|site| site.kind == CacheSiteKind::RecordFieldRead)
         .unwrap_or_else(|| panic!("{function_name} should have a record field read site"))
+        .id
+}
+
+fn method_call_site(runtime: &Runtime, function_name: &str) -> CacheSiteId {
+    runtime
+        .image
+        .program_image()
+        .function_by_name(function_name)
+        .unwrap_or_else(|| panic!("{function_name} should exist"))
+        .cache_sites
+        .sites()
+        .iter()
+        .find(|site| site.kind == CacheSiteKind::MethodCall)
+        .unwrap_or_else(|| panic!("{function_name} should have a method call site"))
         .id
 }

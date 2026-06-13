@@ -3,8 +3,8 @@ use std::cell::{Cell, RefCell};
 use vela_bytecode::CacheSiteId;
 use vela_common::GlobalSlot;
 use vela_vm::{
-    HostInlineCacheEntry, MethodInlineCacheEntry, NativeInlineCacheEntry,
-    RecordFieldInlineCacheEntry,
+    DynamicMethodInlineCacheEntry, HostInlineCacheEntry, MethodInlineCacheEntry,
+    NativeInlineCacheEntry, RecordFieldInlineCacheEntry,
 };
 
 use super::image::RuntimeImage;
@@ -15,6 +15,7 @@ pub(super) struct InlineCaches {
     host_accesses: Vec<Cell<Option<HostInlineCacheEntry>>>,
     record_fields: Vec<Cell<Option<RecordFieldInlineCacheEntry>>>,
     method_dispatches: Vec<Cell<Option<MethodInlineCacheEntry>>>,
+    dynamic_method_dispatches: RefCell<Vec<Option<DynamicMethodInlineCacheEntry>>>,
     native_calls: RefCell<Vec<Option<NativeInlineCacheEntry>>>,
 }
 
@@ -26,6 +27,7 @@ impl InlineCaches {
             host_accesses: empty_cell_cache(len),
             record_fields: empty_cell_cache(len),
             method_dispatches: empty_cell_cache(len),
+            dynamic_method_dispatches: RefCell::new(vec![None; len]),
             native_calls: RefCell::new(vec![None; len]),
         }
     }
@@ -79,6 +81,31 @@ impl InlineCaches {
     pub(super) fn set_method_dispatch(&self, site: CacheSiteId, entry: MethodInlineCacheEntry) {
         if let Some(slot) = self.method_dispatches.get(site.index()) {
             slot.set(Some(entry));
+        }
+    }
+
+    pub(super) fn dynamic_method_dispatch(
+        &self,
+        site: CacheSiteId,
+    ) -> Option<DynamicMethodInlineCacheEntry> {
+        self.dynamic_method_dispatches
+            .borrow()
+            .get(site.index())
+            .cloned()
+            .flatten()
+    }
+
+    pub(super) fn set_dynamic_method_dispatch(
+        &self,
+        site: CacheSiteId,
+        entry: DynamicMethodInlineCacheEntry,
+    ) {
+        if let Some(slot) = self
+            .dynamic_method_dispatches
+            .borrow_mut()
+            .get_mut(site.index())
+        {
+            *slot = Some(entry);
         }
     }
 
@@ -140,6 +167,14 @@ impl vela_vm::VmInlineCaches for InlineCaches {
 
     fn set_method_dispatch(&self, site: CacheSiteId, entry: MethodInlineCacheEntry) {
         self.set_method_dispatch(site, entry);
+    }
+
+    fn dynamic_method_dispatch(&self, site: CacheSiteId) -> Option<DynamicMethodInlineCacheEntry> {
+        self.dynamic_method_dispatch(site)
+    }
+
+    fn set_dynamic_method_dispatch(&self, site: CacheSiteId, entry: DynamicMethodInlineCacheEntry) {
+        self.set_dynamic_method_dispatch(site, entry);
     }
 
     fn native_call(&self, site: CacheSiteId) -> Option<NativeInlineCacheEntry> {

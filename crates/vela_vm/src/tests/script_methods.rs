@@ -1,3 +1,4 @@
+use super::linked_standard_method_cache_support::RecordingMethodCaches;
 use super::*;
 use crate::owned_value::OwnedValue;
 
@@ -497,6 +498,100 @@ fn main(player) {
             vec![HostValue::Scalar(vela_common::ScalarValue::I64(20))]
         )]
     );
+}
+
+#[test]
+fn dynamic_host_method_cache_refreshes_when_schema_epoch_changes() {
+    let host_ref = player_ref(3);
+    let method = HostMethodId::new(5);
+    let program = compile_host_program_source(
+        SourceId::new(1),
+        r#"
+fn main(player) {
+    return player.grant_exp(20);
+}
+"#,
+        host_definition_registry(
+            &[("Player", host_ref.type_id)],
+            &[],
+            &[TestHostMethod::new(
+                "Player",
+                "grant_exp",
+                method,
+                &["amount"],
+            )],
+        ),
+    )
+    .expect("dynamic host cache source should compile");
+    let linked = link_test_program(&program);
+    let site = linked_dynamic_method_site(&linked, "main");
+    let caches = RecordingMethodCaches::new(linked_cache_len(&linked));
+    let vm = Vm::new().with_type_registry(Arc::new(reflection_registry()));
+    let mut budget = ExecutionBudget::unbounded();
+    let mut adapter = host_adapter(host_ref, HostValue::Null);
+    adapter.insert_method_return(method, HostValue::i64(1));
+    adapter.set_schema_epoch(vela_host::resolved::HostSchemaEpoch::new(1));
+    let mut tx = HostAccess::new();
+
+    {
+        let mut host = HostExecution {
+            adapter: &mut adapter,
+            access: &mut tx,
+            script_globals: None,
+        };
+        assert_eq!(
+            run_linked_test_entry_with_host_and_caches(
+                &vm,
+                &linked,
+                "main",
+                &[OwnedValue::HostRef(host_ref)],
+                &mut host,
+                &mut budget,
+                &caches,
+            ),
+            Ok(OwnedValue::i64(1))
+        );
+    }
+    assert!(matches!(
+        caches.dynamic_entry(site).map(|entry| entry.receiver_guard),
+        Some(DynamicReceiverGuard::HostType {
+            type_id,
+            schema_epoch,
+        }) if type_id == host_ref.type_id
+            && schema_epoch == vela_host::resolved::HostSchemaEpoch::new(1)
+    ));
+
+    adapter.insert_method_return(method, HostValue::i64(2));
+    adapter.set_schema_epoch(vela_host::resolved::HostSchemaEpoch::new(2));
+    {
+        let mut host = HostExecution {
+            adapter: &mut adapter,
+            access: &mut tx,
+            script_globals: None,
+        };
+        assert_eq!(
+            run_linked_test_entry_with_host_and_caches(
+                &vm,
+                &linked,
+                "main",
+                &[OwnedValue::HostRef(host_ref)],
+                &mut host,
+                &mut budget,
+                &caches,
+            ),
+            Ok(OwnedValue::i64(2))
+        );
+    }
+
+    assert_eq!(caches.dynamic_set_count_for(site), 2);
+    assert!(matches!(
+        caches.dynamic_entry(site).map(|entry| entry.receiver_guard),
+        Some(DynamicReceiverGuard::HostType {
+            type_id,
+            schema_epoch,
+        }) if type_id == host_ref.type_id
+            && schema_epoch == vela_host::resolved::HostSchemaEpoch::new(2)
+    ));
 }
 
 #[test]

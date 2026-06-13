@@ -90,9 +90,13 @@ fn main_code(program: &vela_bytecode::LinkedProgram) -> &vela_bytecode::LinkedCo
 pub(super) struct RecordingMethodCaches {
     entries: RefCell<Vec<Option<MethodInlineCacheEntry>>>,
     site_set_counts: RefCell<Vec<usize>>,
+    dynamic_entries: RefCell<Vec<Option<DynamicMethodInlineCacheEntry>>>,
+    dynamic_site_get_counts: RefCell<Vec<usize>>,
+    dynamic_site_set_counts: RefCell<Vec<usize>>,
     host_entries: RefCell<Vec<Option<HostInlineCacheEntry>>>,
     host_site_set_counts: RefCell<Vec<usize>>,
     set_count: Cell<usize>,
+    dynamic_set_count: Cell<usize>,
     host_set_count: Cell<usize>,
 }
 
@@ -101,9 +105,13 @@ impl RecordingMethodCaches {
         Self {
             entries: RefCell::new(vec![None; len]),
             site_set_counts: RefCell::new(vec![0; len]),
+            dynamic_entries: RefCell::new(vec![None; len]),
+            dynamic_site_get_counts: RefCell::new(vec![0; len]),
+            dynamic_site_set_counts: RefCell::new(vec![0; len]),
             host_entries: RefCell::new(vec![None; len]),
             host_site_set_counts: RefCell::new(vec![0; len]),
             set_count: Cell::new(0),
+            dynamic_set_count: Cell::new(0),
             host_set_count: Cell::new(0),
         }
     }
@@ -122,6 +130,26 @@ impl RecordingMethodCaches {
 
     pub(super) fn set_count_for(&self, site: CacheSiteId) -> usize {
         self.site_set_counts.borrow()[site.index()]
+    }
+
+    pub(super) fn dynamic_entry(&self, site: CacheSiteId) -> Option<DynamicMethodInlineCacheEntry> {
+        self.dynamic_entries
+            .borrow()
+            .get(site.index())
+            .cloned()
+            .flatten()
+    }
+
+    pub(super) fn dynamic_set_count(&self) -> usize {
+        self.dynamic_set_count.get()
+    }
+
+    pub(super) fn dynamic_get_count_for(&self, site: CacheSiteId) -> usize {
+        self.dynamic_site_get_counts.borrow()[site.index()]
+    }
+
+    pub(super) fn dynamic_set_count_for(&self, site: CacheSiteId) -> usize {
+        self.dynamic_site_set_counts.borrow()[site.index()]
     }
 
     pub(super) fn host_entry(&self, site: CacheSiteId) -> Option<HostInlineCacheEntry> {
@@ -158,6 +186,17 @@ impl VmInlineCaches for RecordingMethodCaches {
         self.entries.borrow_mut()[site.index()] = Some(entry);
         self.site_set_counts.borrow_mut()[site.index()] += 1;
         self.set_count.set(self.set_count.get() + 1);
+    }
+
+    fn dynamic_method_dispatch(&self, site: CacheSiteId) -> Option<DynamicMethodInlineCacheEntry> {
+        self.dynamic_site_get_counts.borrow_mut()[site.index()] += 1;
+        self.dynamic_entry(site)
+    }
+
+    fn set_dynamic_method_dispatch(&self, site: CacheSiteId, entry: DynamicMethodInlineCacheEntry) {
+        self.dynamic_entries.borrow_mut()[site.index()] = Some(entry);
+        self.dynamic_site_set_counts.borrow_mut()[site.index()] += 1;
+        self.dynamic_set_count.set(self.dynamic_set_count.get() + 1);
     }
 
     fn host_access(&self, site: CacheSiteId) -> Option<HostInlineCacheEntry> {

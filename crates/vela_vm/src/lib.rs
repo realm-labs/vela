@@ -268,6 +268,17 @@ pub trait VmInlineCaches {
 
     fn set_method_dispatch(&self, _site: CacheSiteId, _entry: MethodInlineCacheEntry) {}
 
+    fn dynamic_method_dispatch(&self, _site: CacheSiteId) -> Option<DynamicMethodInlineCacheEntry> {
+        None
+    }
+
+    fn set_dynamic_method_dispatch(
+        &self,
+        _site: CacheSiteId,
+        _entry: DynamicMethodInlineCacheEntry,
+    ) {
+    }
+
     fn native_call(&self, _site: CacheSiteId) -> Option<NativeInlineCacheEntry> {
         None
     }
@@ -323,6 +334,43 @@ pub struct MethodInlineCacheEntry {
     pub dispatch: MethodDispatchHandle,
     pub debug_name: DebugNameId,
     pub target: MethodInlineCacheTarget,
+}
+
+#[derive(Clone, Debug, Eq, Hash, PartialEq)]
+pub struct DynamicMethodInlineCacheEntry {
+    pub method_name: DebugNameId,
+    pub receiver_guard: DynamicReceiverGuard,
+    pub target: DynamicMethodInlineCacheTarget,
+}
+
+#[derive(Clone, Debug, Eq, Hash, PartialEq)]
+pub enum DynamicReceiverGuard {
+    StdValue {
+        receiver: StandardMethodReceiver,
+    },
+    ScriptType {
+        type_name: String,
+        shape_id: Option<ShapeId>,
+    },
+    HostType {
+        type_id: HostTypeId,
+        schema_epoch: HostSchemaEpoch,
+    },
+}
+
+#[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
+pub enum DynamicMethodInlineCacheTarget {
+    Script {
+        dispatch: MethodDispatchHandle,
+        function: ScriptFunctionHandle,
+    },
+    Host {
+        method_id: HostMethodId,
+    },
+    StandardValue {
+        method_id: MethodId,
+        standard_method: Option<StandardMethodInlineCacheEntry>,
+    },
 }
 
 #[derive(Clone)]
