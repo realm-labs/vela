@@ -430,6 +430,14 @@ pub(crate) fn call_standard_cached(
     heap: &mut Option<&mut HeapExecution<'_>>,
     budget: &mut Option<&mut ExecutionBudget>,
 ) -> Option<VmResult<Value>> {
+    if cache.receiver == StandardMethodReceiver::Range
+        && matches!(
+            cache.target,
+            StandardMethodInlineCacheTarget::Len | StandardMethodInlineCacheTarget::IsEmpty
+        )
+    {
+        return call_readonly_cached(receiver, cache, args, heap.as_deref());
+    }
     match cache.target {
         StandardMethodInlineCacheTarget::First
         | StandardMethodInlineCacheTarget::Last

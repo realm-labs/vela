@@ -29,15 +29,14 @@ pub(super) fn call_cached_len(
             let Value::Range(range) = receiver else {
                 return None;
             };
-            return Some(
-                script_builtin_methods::expect_no_args("len", args).and_then(|()| {
-                    range.len().map(Value::i64).ok_or_else(|| {
-                        VmError::new(VmErrorKind::TypeMismatch {
-                            operation: "method len",
-                        })
-                    })
-                }),
-            );
+            if let Err(error) = script_builtin_methods::expect_no_args("len", args) {
+                return Some(Err(error));
+            }
+            return Some(range.len().map(Value::i64).ok_or_else(|| {
+                VmError::new(VmErrorKind::TypeMismatch {
+                    operation: "method len",
+                })
+            }));
         }
         StandardMethodReceiver::Array => {
             let HeapValue::Array(values) = cached_heap_value(receiver, heap)? else {
@@ -90,7 +89,10 @@ pub(super) fn call_cached_is_empty(
             let Value::Range(range) = receiver else {
                 return None;
             };
-            range.is_empty()
+            if let Err(error) = script_builtin_methods::expect_no_args("is_empty", args) {
+                return Some(Err(error));
+            }
+            return Some(Ok(Value::Bool(range.is_empty())));
         }
         StandardMethodReceiver::Array => {
             let HeapValue::Array(values) = cached_heap_value(receiver, heap)? else {
