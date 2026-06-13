@@ -255,6 +255,12 @@ fn engine_standard_natives_register_reflection_metadata() {
         .find(|method| method.name == "parse_i64")
         .expect("string.parse_i64 method metadata");
     assert_eq!(parse_i64.return_type.as_deref(), Some("Option"));
+    let parse_char = string_type
+        .methods
+        .iter()
+        .find(|method| method.name == "parse_char")
+        .expect("string.parse_char method metadata");
+    assert_eq!(parse_char.return_type.as_deref(), Some("Option"));
 
     let array_type = registry.type_by_name("array").expect("array type");
     assert_eq!(array_type.kind, vela_reflect::registry::TypeKind::Array);
@@ -609,6 +615,7 @@ fn main() {
     let trim = reflect::method(string_type, "trim");
     let split_once = reflect::method(string_type, "split_once");
     let parse_i64 = reflect::method(string_type, "parse_i64");
+    let parse_char = reflect::method(string_type, "parse_char");
     let bytes_read_u32_le = reflect::method(bytes_type, "read_u32_le");
     let bytes_to_hex = reflect::method(bytes_type, "to_hex");
     let bytes_values = reflect::method(bytes_type, "values");
@@ -739,12 +746,13 @@ fn main() {
         && reflect::attr(char_type, "stdlib") == "builtin"
         && reflect::attr(option_type, "stdlib") == "option"
         && reflect::attr(result_type, "stdlib") == "result"
-        && string_methods.len() >= 24
+        && string_methods.len() >= 33
         && bytes_methods.len() == 9
         && char_methods.len() == 4
         && reflect::has_method(string_type, "trim")
         && reflect::has_method(string_type, "split_once")
         && reflect::has_method(string_type, "parse_i64")
+        && reflect::has_method(string_type, "parse_char")
         && reflect::has_method(bytes_type, "read_u32_le")
         && reflect::has_method(bytes_type, "to_hex")
         && reflect::has_method(bytes_type, "values")
@@ -758,6 +766,7 @@ fn main() {
         && split_once.params[0].type == "string"
         && reflect::returns(split_once) == "Option"
         && reflect::returns(parse_i64) == "Option"
+        && reflect::returns(parse_char) == "Option"
         && bytes_read_u32_le.params[0].type == "i64"
         && reflect::returns(bytes_read_u32_le) == "u32"
         && reflect::attr(bytes_read_u32_le, "stdlib") == "bytes"

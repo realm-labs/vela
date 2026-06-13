@@ -773,6 +773,16 @@ boundaries. Character-level traversal uses `for ch in text`, yielding
 first-class `char` values. Vela does not expose a `char_at` random-access API
 because UTF-8 character indexing is O(n) and would misrepresent performance.
 
+### String Parse Surface
+
+String parsing methods use exact primitive names:
+`parse_i8`, `parse_i16`, `parse_i32`, `parse_i64`, `parse_u8`, `parse_u16`,
+`parse_u32`, `parse_u64`, `parse_f32`, `parse_f64`, `parse_bool`, and
+`parse_char`. Each returns `Option<T>`. Integer parsers reject invalid or
+out-of-range text, float parsers reject invalid, `NaN`, and infinite values,
+`parse_bool` accepts only `true` and `false`, and `parse_char` accepts exactly
+one Unicode scalar value.
+
 ### Iterator View Naming
 
 Explicit one-shot iterator creation uses `values()` / `iter()` for arrays,

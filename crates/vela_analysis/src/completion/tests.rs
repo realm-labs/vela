@@ -354,9 +354,49 @@ fn receiver_completions_include_stdlib_collection_and_string_methods() {
         TypeFact::function(Vec::new(), TypeFact::array(TypeFact::STRING)),
     )));
     assert!(string.contains(&CompletionItem::new(
+        "parse_i8",
+        CompletionKind::Method,
+        TypeFact::function(Vec::new(), TypeFact::option(TypeFact::I8)),
+    )));
+    assert!(string.contains(&CompletionItem::new(
+        "parse_i16",
+        CompletionKind::Method,
+        TypeFact::function(Vec::new(), TypeFact::option(TypeFact::I16)),
+    )));
+    assert!(string.contains(&CompletionItem::new(
+        "parse_i32",
+        CompletionKind::Method,
+        TypeFact::function(Vec::new(), TypeFact::option(TypeFact::I32)),
+    )));
+    assert!(string.contains(&CompletionItem::new(
         "parse_i64",
         CompletionKind::Method,
         TypeFact::function(Vec::new(), TypeFact::option(TypeFact::I64)),
+    )));
+    assert!(string.contains(&CompletionItem::new(
+        "parse_u8",
+        CompletionKind::Method,
+        TypeFact::function(Vec::new(), TypeFact::option(TypeFact::U8)),
+    )));
+    assert!(string.contains(&CompletionItem::new(
+        "parse_u16",
+        CompletionKind::Method,
+        TypeFact::function(Vec::new(), TypeFact::option(TypeFact::U16)),
+    )));
+    assert!(string.contains(&CompletionItem::new(
+        "parse_u32",
+        CompletionKind::Method,
+        TypeFact::function(Vec::new(), TypeFact::option(TypeFact::U32)),
+    )));
+    assert!(string.contains(&CompletionItem::new(
+        "parse_u64",
+        CompletionKind::Method,
+        TypeFact::function(Vec::new(), TypeFact::option(TypeFact::U64)),
+    )));
+    assert!(string.contains(&CompletionItem::new(
+        "parse_f32",
+        CompletionKind::Method,
+        TypeFact::function(Vec::new(), TypeFact::option(TypeFact::F32)),
     )));
     assert!(string.contains(&CompletionItem::new(
         "parse_f64",
@@ -367,6 +407,11 @@ fn receiver_completions_include_stdlib_collection_and_string_methods() {
         "parse_bool",
         CompletionKind::Method,
         TypeFact::function(Vec::new(), TypeFact::option(TypeFact::BOOL)),
+    )));
+    assert!(string.contains(&CompletionItem::new(
+        "parse_char",
+        CompletionKind::Method,
+        TypeFact::function(Vec::new(), TypeFact::option(TypeFact::CHAR)),
     )));
 
     let option = member_completions(&facts, &TypeFact::option(TypeFact::I64));

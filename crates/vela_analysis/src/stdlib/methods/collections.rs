@@ -443,21 +443,18 @@ pub(super) fn string_method_fact(method: &str) -> Option<StdlibMethodFact> {
             "split_whitespace",
             TypeFact::array(TypeFact::STRING),
         )),
-        "parse_i64" => Some(StdlibMethodFact::new(
-            receiver,
-            "parse_i64",
-            TypeFact::option(TypeFact::I64),
-        )),
-        "parse_f64" => Some(StdlibMethodFact::new(
-            receiver,
-            "parse_f64",
-            TypeFact::option(TypeFact::F64),
-        )),
-        "parse_bool" => Some(StdlibMethodFact::new(
-            receiver,
-            "parse_bool",
-            TypeFact::option(TypeFact::BOOL),
-        )),
+        "parse_i8" => Some(parse_fact(receiver, "parse_i8", TypeFact::I8)),
+        "parse_i16" => Some(parse_fact(receiver, "parse_i16", TypeFact::I16)),
+        "parse_i32" => Some(parse_fact(receiver, "parse_i32", TypeFact::I32)),
+        "parse_i64" => Some(parse_fact(receiver, "parse_i64", TypeFact::I64)),
+        "parse_u8" => Some(parse_fact(receiver, "parse_u8", TypeFact::U8)),
+        "parse_u16" => Some(parse_fact(receiver, "parse_u16", TypeFact::U16)),
+        "parse_u32" => Some(parse_fact(receiver, "parse_u32", TypeFact::U32)),
+        "parse_u64" => Some(parse_fact(receiver, "parse_u64", TypeFact::U64)),
+        "parse_f32" => Some(parse_fact(receiver, "parse_f32", TypeFact::F32)),
+        "parse_f64" => Some(parse_fact(receiver, "parse_f64", TypeFact::F64)),
+        "parse_bool" => Some(parse_fact(receiver, "parse_bool", TypeFact::BOOL)),
+        "parse_char" => Some(parse_fact(receiver, "parse_char", TypeFact::CHAR)),
         "chars" => Some(StdlibMethodFact::new(
             receiver,
             "chars",
@@ -470,6 +467,10 @@ pub(super) fn string_method_fact(method: &str) -> Option<StdlibMethodFact> {
         )),
         _ => None,
     }
+}
+
+fn parse_fact(receiver: TypeFact, name: &'static str, returns: TypeFact) -> StdlibMethodFact {
+    StdlibMethodFact::new(receiver, name, TypeFact::option(returns))
 }
 
 pub(super) fn bytes_method_fact(method: &str) -> Option<StdlibMethodFact> {

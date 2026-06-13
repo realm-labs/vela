@@ -161,16 +161,27 @@ text.split(separator)
 text.split_once(separator)
 text.split_lines()
 text.split_whitespace()
+text.parse_i8()
+text.parse_i16()
+text.parse_i32()
 text.parse_i64()
+text.parse_u8()
+text.parse_u16()
+text.parse_u32()
+text.parse_u64()
+text.parse_f32()
 text.parse_f64()
 text.parse_bool()
+text.parse_char()
 text.chars() // Iterator over char values
 text.bytes() // Iterator over UTF-8 bytes as u8
 ```
 
-Additional explicit parse helpers such as `parse_i32`, `parse_u64`, or
-`parse_f32` may be registered when the corresponding primitive conversion API
-is implemented. Parsing never performs implicit numeric conversion.
+Parsing uses exact primitive names and never performs implicit numeric
+conversion. Integer parsers return `Option.None` for invalid text or
+out-of-range values. Float parsers return `Option.None` for invalid, `NaN`, or
+infinite values. `parse_bool()` accepts only `true` and `false`.
+`parse_char()` accepts exactly one Unicode scalar value.
 
 Vela strings follow Rust `str` indexing semantics: `len()` returns byte length,
 `find()` returns byte indexes, and `slice(start, end)` uses byte ranges. Strings

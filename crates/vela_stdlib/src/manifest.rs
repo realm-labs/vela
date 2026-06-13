@@ -743,7 +743,7 @@ mod tests {
         assert_eq!(STD_VARIANTS.len(), 4);
         assert_eq!(STD_FIELDS.len(), 3);
         assert_eq!(STD_FUNCTIONS.len(), 51);
-        assert_eq!(STD_METHODS.len(), 144);
+        assert_eq!(STD_METHODS.len(), 153);
     }
 
     #[test]
@@ -817,6 +817,21 @@ mod tests {
             STD_METHODS
                 .iter()
                 .any(|spec| spec.owner == "String" && spec.name == "parse_i64")
+        );
+        assert!(
+            STD_METHODS
+                .iter()
+                .any(|spec| spec.owner == "String" && spec.name == "parse_u8")
+        );
+        assert!(
+            STD_METHODS
+                .iter()
+                .any(|spec| spec.owner == "String" && spec.name == "parse_f32")
+        );
+        assert!(
+            STD_METHODS
+                .iter()
+                .any(|spec| spec.owner == "String" && spec.name == "parse_char")
         );
         assert!(
             STD_METHODS

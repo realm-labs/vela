@@ -187,9 +187,18 @@ pub(super) fn call_cached_string_parse_option(
     budget: &mut Option<&mut ExecutionBudget>,
 ) -> Option<VmResult<Value>> {
     let (method, payload): (&str, fn(&str) -> Option<Value>) = match target {
+        StandardMethodInlineCacheTarget::ParseI8 => ("parse_i8", parse_i8_payload),
+        StandardMethodInlineCacheTarget::ParseI16 => ("parse_i16", parse_i16_payload),
+        StandardMethodInlineCacheTarget::ParseI32 => ("parse_i32", parse_i32_payload),
         StandardMethodInlineCacheTarget::ParseI64 => ("parse_i64", parse_i64_payload),
+        StandardMethodInlineCacheTarget::ParseU8 => ("parse_u8", parse_u8_payload),
+        StandardMethodInlineCacheTarget::ParseU16 => ("parse_u16", parse_u16_payload),
+        StandardMethodInlineCacheTarget::ParseU32 => ("parse_u32", parse_u32_payload),
+        StandardMethodInlineCacheTarget::ParseU64 => ("parse_u64", parse_u64_payload),
+        StandardMethodInlineCacheTarget::ParseF32 => ("parse_f32", parse_f32_payload),
         StandardMethodInlineCacheTarget::ParseF64 => ("parse_f64", parse_f64_payload),
         StandardMethodInlineCacheTarget::ParseBool => ("parse_bool", parse_bool_payload),
+        StandardMethodInlineCacheTarget::ParseChar => ("parse_char", parse_char_payload),
         _ => return None,
     };
     let value = string_receiver(receiver, heap.as_deref())?;
@@ -658,8 +667,44 @@ fn array_index_value(value: &Value, operation: &'static str) -> VmResult<usize> 
     }
 }
 
+fn parse_i8_payload(value: &str) -> Option<Value> {
+    value.parse::<i8>().ok().map(Value::I8)
+}
+
+fn parse_i16_payload(value: &str) -> Option<Value> {
+    value.parse::<i16>().ok().map(Value::I16)
+}
+
+fn parse_i32_payload(value: &str) -> Option<Value> {
+    value.parse::<i32>().ok().map(Value::I32)
+}
+
 fn parse_i64_payload(value: &str) -> Option<Value> {
-    value.parse::<i64>().ok().map(Value::i64)
+    value.parse::<i64>().ok().map(Value::I64)
+}
+
+fn parse_u8_payload(value: &str) -> Option<Value> {
+    value.parse::<u8>().ok().map(Value::U8)
+}
+
+fn parse_u16_payload(value: &str) -> Option<Value> {
+    value.parse::<u16>().ok().map(Value::U16)
+}
+
+fn parse_u32_payload(value: &str) -> Option<Value> {
+    value.parse::<u32>().ok().map(Value::U32)
+}
+
+fn parse_u64_payload(value: &str) -> Option<Value> {
+    value.parse::<u64>().ok().map(Value::U64)
+}
+
+fn parse_f32_payload(value: &str) -> Option<Value> {
+    value
+        .parse::<f32>()
+        .ok()
+        .filter(|value| value.is_finite())
+        .map(Value::F32)
 }
 
 fn parse_f64_payload(value: &str) -> Option<Value> {
@@ -667,7 +712,7 @@ fn parse_f64_payload(value: &str) -> Option<Value> {
         .parse::<f64>()
         .ok()
         .filter(|value| value.is_finite())
-        .map(Value::f64)
+        .map(Value::F64)
 }
 
 fn parse_bool_payload(value: &str) -> Option<Value> {
@@ -675,6 +720,16 @@ fn parse_bool_payload(value: &str) -> Option<Value> {
         "true" => Some(Value::Bool(true)),
         "false" => Some(Value::Bool(false)),
         _ => None,
+    }
+}
+
+fn parse_char_payload(value: &str) -> Option<Value> {
+    let mut chars = value.chars();
+    let first = chars.next()?;
+    if chars.next().is_none() {
+        Some(Value::Char(first))
+    } else {
+        None
     }
 }
 

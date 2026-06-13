@@ -470,8 +470,11 @@ fn engine_compiler_options_emit_standard_string_parse_method_ids() {
             r#"
 fn main() {
     return "42".parse_i64().unwrap_or(0) == 42
+        && "255".parse_u8().unwrap_or(0u8) == 255u8
+        && "1.5".parse_f32().unwrap_or(0.0f32) == 1.5f32
         && "1.5".parse_f64().unwrap_or(0.0) == 1.5
-        && "true".parse_bool().unwrap_or(false);
+        && "true".parse_bool().unwrap_or(false)
+        && "x".parse_char().unwrap_or(' ') == 'x';
 }
 "#,
         )
@@ -490,8 +493,11 @@ fn main() {
         .collect::<Vec<_>>();
 
     assert!(value_methods.contains(&("parse_i64", Some(std_method_id("String", "parse_i64")))));
+    assert!(value_methods.contains(&("parse_u8", Some(std_method_id("String", "parse_u8")))));
+    assert!(value_methods.contains(&("parse_f32", Some(std_method_id("String", "parse_f32")))));
     assert!(value_methods.contains(&("parse_f64", Some(std_method_id("String", "parse_f64")))));
     assert!(value_methods.contains(&("parse_bool", Some(std_method_id("String", "parse_bool")))));
+    assert!(value_methods.contains(&("parse_char", Some(std_method_id("String", "parse_char")))));
 }
 
 #[test]

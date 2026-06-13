@@ -214,9 +214,57 @@ fn call_method_uses_standard_string_split_ids_before_name_fallback() {
 #[test]
 fn call_method_uses_standard_string_parse_ids_before_name_fallback() {
     assert_eq!(
+        run_string_transform_with_args_by_id(std_method_id("String", "parse_i8"), "42", &[],),
+        Ok(option_some(OwnedValue::Scalar(
+            vela_common::ScalarValue::I8(42)
+        )))
+    );
+    assert_eq!(
+        run_string_transform_with_args_by_id(std_method_id("String", "parse_i16"), "42", &[],),
+        Ok(option_some(OwnedValue::Scalar(
+            vela_common::ScalarValue::I16(42)
+        )))
+    );
+    assert_eq!(
+        run_string_transform_with_args_by_id(std_method_id("String", "parse_i32"), "42", &[],),
+        Ok(option_some(OwnedValue::Scalar(
+            vela_common::ScalarValue::I32(42)
+        )))
+    );
+    assert_eq!(
         run_string_transform_with_args_by_id(std_method_id("String", "parse_i64"), "42", &[],),
         Ok(option_some(OwnedValue::Scalar(
             vela_common::ScalarValue::I64(42)
+        )))
+    );
+    assert_eq!(
+        run_string_transform_with_args_by_id(std_method_id("String", "parse_u8"), "42", &[],),
+        Ok(option_some(OwnedValue::Scalar(
+            vela_common::ScalarValue::U8(42)
+        )))
+    );
+    assert_eq!(
+        run_string_transform_with_args_by_id(std_method_id("String", "parse_u16"), "42", &[],),
+        Ok(option_some(OwnedValue::Scalar(
+            vela_common::ScalarValue::U16(42)
+        )))
+    );
+    assert_eq!(
+        run_string_transform_with_args_by_id(std_method_id("String", "parse_u32"), "42", &[],),
+        Ok(option_some(OwnedValue::Scalar(
+            vela_common::ScalarValue::U32(42)
+        )))
+    );
+    assert_eq!(
+        run_string_transform_with_args_by_id(std_method_id("String", "parse_u64"), "42", &[],),
+        Ok(option_some(OwnedValue::Scalar(
+            vela_common::ScalarValue::U64(42)
+        )))
+    );
+    assert_eq!(
+        run_string_transform_with_args_by_id(std_method_id("String", "parse_f32"), "1.5", &[],),
+        Ok(option_some(OwnedValue::Scalar(
+            vela_common::ScalarValue::F32(1.5)
         )))
     );
     assert_eq!(
@@ -228,6 +276,10 @@ fn call_method_uses_standard_string_parse_ids_before_name_fallback() {
     assert_eq!(
         run_string_transform_with_args_by_id(std_method_id("String", "parse_bool"), "true", &[],),
         Ok(option_some(OwnedValue::Bool(true)))
+    );
+    assert_eq!(
+        run_string_transform_with_args_by_id(std_method_id("String", "parse_char"), "奖", &[],),
+        Ok(option_some(OwnedValue::Char('奖')))
     );
 }
 

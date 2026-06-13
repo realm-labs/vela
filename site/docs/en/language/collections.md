@@ -64,6 +64,7 @@ let rest = iter.collect_array();
 Core lazy adapters are `map`, `filter`, `take`, and `skip`. Terminal methods include `next`, `count`, `any`, `all`, `find`, `collect_array`, `collect_set`, and `collect_map`.
 
 Strings are UTF-8 strings. `text.len()` and `text.slice(start, end)` use byte indexes. Use `text.chars()` for `char` values and `text.bytes()` for UTF-8 bytes as `u8`.
+String parsing methods are exact primitive APIs: `parse_i8`, `parse_i16`, `parse_i32`, `parse_i64`, `parse_u8`, `parse_u16`, `parse_u32`, `parse_u64`, `parse_f32`, `parse_f64`, `parse_bool`, and `parse_char`. Each returns `Option<T>`.
 
 ```vela
 let chars = "a奖励".chars().collect_array();

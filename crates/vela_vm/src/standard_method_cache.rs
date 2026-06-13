@@ -1,5 +1,6 @@
 mod materializing_cache;
 mod readonly_cache;
+mod string_parse_cache;
 
 use materializing_cache::{
     call_cached_array_lookup_option, call_cached_array_materialization, call_cached_array_mutation,
@@ -83,6 +84,11 @@ pub(crate) fn standard_cache_entry_matches_method_id(
         }
         (StandardMethodReceiver::String, StandardMethodInlineCacheTarget::TrimEnd) => {
             return method_id == std_method_ids().string_trim_end;
+        }
+        (StandardMethodReceiver::String, target)
+            if string_parse_cache::target_matches_method_id(target, method_id) =>
+        {
+            return true;
         }
         (StandardMethodReceiver::Range, StandardMethodInlineCacheTarget::Len) => {
             return method_id == std_method_ids().range_len;
@@ -190,6 +196,11 @@ fn standard_method_target(
     method_id: MethodId,
 ) -> Option<StandardMethodInlineCacheTarget> {
     let ids = std_method_ids();
+    if receiver == StandardMethodReceiver::String
+        && let Some(target) = string_parse_cache::target_for_method_id(method_id, ids)
+    {
+        return Some(target);
+    }
     let target = match (receiver, method_id) {
         (StandardMethodReceiver::String, id) if id == ids.string_len => {
             StandardMethodInlineCacheTarget::Len
@@ -226,15 +237,6 @@ fn standard_method_target(
         }
         (StandardMethodReceiver::String, id) if id == ids.string_split_whitespace => {
             StandardMethodInlineCacheTarget::SplitWhitespace
-        }
-        (StandardMethodReceiver::String, id) if id == ids.string_parse_i64 => {
-            StandardMethodInlineCacheTarget::ParseI64
-        }
-        (StandardMethodReceiver::String, id) if id == ids.string_parse_f64 => {
-            StandardMethodInlineCacheTarget::ParseF64
-        }
-        (StandardMethodReceiver::String, id) if id == ids.string_parse_bool => {
-            StandardMethodInlineCacheTarget::ParseBool
         }
         (StandardMethodReceiver::String, id) if id == ids.string_chars => {
             StandardMethodInlineCacheTarget::Chars
@@ -585,10 +587,9 @@ pub(crate) fn call_standard_cached(
                 budget,
             );
         }
-        StandardMethodInlineCacheTarget::ParseI64
-        | StandardMethodInlineCacheTarget::ParseF64
-        | StandardMethodInlineCacheTarget::ParseBool
-            if cache.receiver == StandardMethodReceiver::String =>
+        target
+            if cache.receiver == StandardMethodReceiver::String
+                && string_parse_cache::is_parse_target(target) =>
         {
             return call_cached_string_parse_option(receiver, cache.target, args, heap, budget);
         }
@@ -745,14 +746,9 @@ pub(crate) fn call_standard_cached(
         (StandardMethodReceiver::String, StandardMethodInlineCacheTarget::SplitWhitespace) => {
             crate::string_methods::split_whitespace(receiver, args, heap, budget)
         }
-        (StandardMethodReceiver::String, StandardMethodInlineCacheTarget::ParseI64) => {
-            crate::string_methods::parse_i64(receiver, args, heap, budget)
-        }
-        (StandardMethodReceiver::String, StandardMethodInlineCacheTarget::ParseF64) => {
-            crate::string_methods::parse_f64(receiver, args, heap, budget)
-        }
-        (StandardMethodReceiver::String, StandardMethodInlineCacheTarget::ParseBool) => {
-            crate::string_methods::parse_bool(receiver, args, heap, budget)
+        (StandardMethodReceiver::String, target) if string_parse_cache::is_parse_target(target) => {
+            string_parse_cache::call_parse_method(target, receiver, args, heap, budget)
+                .expect("parse target should be handled")
         }
         (StandardMethodReceiver::String, StandardMethodInlineCacheTarget::Slice) => {
             crate::string_methods::slice(receiver, args, heap, budget)

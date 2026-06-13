@@ -479,20 +479,24 @@ fn string_methods_expose_replacement_and_split_facts() {
     assert_eq!(split_lines.params, Vec::<TypeFact>::new());
     assert_eq!(split_lines.returns, TypeFact::array(TypeFact::STRING));
 
-    let parse_i64 =
-        stdlib_method_fact(&TypeFact::STRING, "parse_i64", None).expect("parse_i64 fact");
-    assert_eq!(parse_i64.params, Vec::<TypeFact>::new());
-    assert_eq!(parse_i64.returns, TypeFact::option(TypeFact::I64));
-
-    let parse_f64 =
-        stdlib_method_fact(&TypeFact::STRING, "parse_f64", None).expect("parse_f64 fact");
-    assert_eq!(parse_f64.params, Vec::<TypeFact>::new());
-    assert_eq!(parse_f64.returns, TypeFact::option(TypeFact::F64));
-
-    let parse_bool =
-        stdlib_method_fact(&TypeFact::STRING, "parse_bool", None).expect("parse_bool fact");
-    assert_eq!(parse_bool.params, Vec::<TypeFact>::new());
-    assert_eq!(parse_bool.returns, TypeFact::option(TypeFact::BOOL));
+    for (method, returns) in [
+        ("parse_i8", TypeFact::I8),
+        ("parse_i16", TypeFact::I16),
+        ("parse_i32", TypeFact::I32),
+        ("parse_i64", TypeFact::I64),
+        ("parse_u8", TypeFact::U8),
+        ("parse_u16", TypeFact::U16),
+        ("parse_u32", TypeFact::U32),
+        ("parse_u64", TypeFact::U64),
+        ("parse_f32", TypeFact::F32),
+        ("parse_f64", TypeFact::F64),
+        ("parse_bool", TypeFact::BOOL),
+        ("parse_char", TypeFact::CHAR),
+    ] {
+        let fact = stdlib_method_fact(&TypeFact::STRING, method, None).expect("parse fact");
+        assert_eq!(fact.params, Vec::<TypeFact>::new());
+        assert_eq!(fact.returns, TypeFact::option(returns));
+    }
 }
 
 #[test]

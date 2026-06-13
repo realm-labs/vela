@@ -64,6 +64,7 @@ let rest = iter.collect_array();
 核心 lazy adapter 是 `map`、`filter`、`take` 和 `skip`。Terminal method 包括 `next`、`count`、`any`、`all`、`find`、`collect_array`、`collect_set` 和 `collect_map`。
 
 String 是 UTF-8 字符串。`text.len()` 和 `text.slice(start, end)` 使用 byte index。用 `text.chars()` 遍历 `char`，用 `text.bytes()` 遍历 UTF-8 byte，结果是 `u8`。
+String 解析方法使用精确 primitive API：`parse_i8`、`parse_i16`、`parse_i32`、`parse_i64`、`parse_u8`、`parse_u16`、`parse_u32`、`parse_u64`、`parse_f32`、`parse_f64`、`parse_bool` 和 `parse_char`。每个方法都返回 `Option<T>`。
 
 ```vela
 let chars = "a奖励".chars().collect_array();

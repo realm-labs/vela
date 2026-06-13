@@ -42,9 +42,18 @@ pub(crate) fn call(
         "split_whitespace" => Some(string_methods::split_whitespace(
             receiver, args, heap, budget,
         )),
+        "parse_i8" => Some(string_methods::parse_i8(receiver, args, heap, budget)),
+        "parse_i16" => Some(string_methods::parse_i16(receiver, args, heap, budget)),
+        "parse_i32" => Some(string_methods::parse_i32(receiver, args, heap, budget)),
         "parse_i64" => Some(string_methods::parse_i64(receiver, args, heap, budget)),
+        "parse_u8" => Some(string_methods::parse_u8(receiver, args, heap, budget)),
+        "parse_u16" => Some(string_methods::parse_u16(receiver, args, heap, budget)),
+        "parse_u32" => Some(string_methods::parse_u32(receiver, args, heap, budget)),
+        "parse_u64" => Some(string_methods::parse_u64(receiver, args, heap, budget)),
+        "parse_f32" => Some(string_methods::parse_f32(receiver, args, heap, budget)),
         "parse_f64" => Some(string_methods::parse_f64(receiver, args, heap, budget)),
         "parse_bool" => Some(string_methods::parse_bool(receiver, args, heap, budget)),
+        "parse_char" => Some(string_methods::parse_char(receiver, args, heap, budget)),
         _ => None,
     }
 }

@@ -11,7 +11,10 @@ mod splitting;
 mod transform;
 
 pub(crate) use affix::{strip_prefix, strip_suffix};
-pub(crate) use parsing::{parse_bool, parse_f64, parse_i64};
+pub(crate) use parsing::{
+    parse_bool, parse_char, parse_f32, parse_f64, parse_i8, parse_i16, parse_i32, parse_i64,
+    parse_u8, parse_u16, parse_u32, parse_u64,
+};
 pub(crate) use search::{contains, ends_with, find, starts_with};
 pub(crate) use slicing::slice;
 pub(crate) use splitting::{split, split_lines, split_once, split_whitespace};
@@ -590,6 +593,42 @@ fn main() {
 
         let result = run_linked_string_test_code(&vm, code).expect("string parse_i64 should run");
         assert_eq!(result, OwnedValue::Scalar(vela_common::ScalarValue::I64(0)));
+    }
+
+    #[test]
+    fn string_parse_scalar_widths_and_char_return_options() {
+        let source = r#"
+fn main() {
+    let ok = option::unwrap_or("127".parse_i8(), 0i8) == 127i8
+        && option::is_none("128".parse_i8())
+        && option::unwrap_or("-32768".parse_i16(), 0i16) == -32768i16
+        && option::is_none("-32769".parse_i16())
+        && option::unwrap_or("2147483647".parse_i32(), 0i32) == 2147483647i32
+        && option::is_none("2147483648".parse_i32())
+        && option::unwrap_or("255".parse_u8(), 0u8) == 255u8
+        && option::is_none("256".parse_u8())
+        && option::unwrap_or("65535".parse_u16(), 0u16) == 65535u16
+        && option::is_none("-1".parse_u16())
+        && option::unwrap_or("4294967295".parse_u32(), 0u32) == 4294967295u32
+        && option::is_none("4294967296".parse_u32())
+        && option::unwrap_or("42".parse_u64(), 0u64) == 42u64
+        && option::is_none("-1".parse_u64())
+        && option::unwrap_or("1.5".parse_f32(), 0.0f32) == 1.5f32
+        && option::is_none("1e40".parse_f32())
+        && option::unwrap_or("奖".parse_char(), 'x') == '奖'
+        && option::is_none("".parse_char())
+        && option::is_none("ab".parse_char());
+    return ok;
+}
+"#;
+        let code = compile_function_source(SourceId::new(1), source, "main")
+            .expect("string parse scalar source should compile");
+        let mut vm = Vm::new();
+        vm.register_standard_natives();
+
+        let result =
+            run_linked_string_test_code(&vm, code).expect("string parse scalar widths should run");
+        assert_eq!(result, OwnedValue::Bool(true));
     }
 
     #[test]

@@ -200,10 +200,58 @@ fn linked_standard_value_method_caches_string_transform_target() {
 #[test]
 fn linked_standard_value_method_caches_string_parse_targets() {
     assert_string_no_arg_option_cache(
+        "parse_i8",
+        "42",
+        StandardMethodInlineCacheTarget::ParseI8,
+        OwnedValue::Scalar(vela_common::ScalarValue::I8(42)),
+    );
+    assert_string_no_arg_option_cache(
+        "parse_i16",
+        "42",
+        StandardMethodInlineCacheTarget::ParseI16,
+        OwnedValue::Scalar(vela_common::ScalarValue::I16(42)),
+    );
+    assert_string_no_arg_option_cache(
+        "parse_i32",
+        "42",
+        StandardMethodInlineCacheTarget::ParseI32,
+        OwnedValue::Scalar(vela_common::ScalarValue::I32(42)),
+    );
+    assert_string_no_arg_option_cache(
         "parse_i64",
         "42",
         StandardMethodInlineCacheTarget::ParseI64,
         OwnedValue::Scalar(vela_common::ScalarValue::I64(42)),
+    );
+    assert_string_no_arg_option_cache(
+        "parse_u8",
+        "42",
+        StandardMethodInlineCacheTarget::ParseU8,
+        OwnedValue::Scalar(vela_common::ScalarValue::U8(42)),
+    );
+    assert_string_no_arg_option_cache(
+        "parse_u16",
+        "42",
+        StandardMethodInlineCacheTarget::ParseU16,
+        OwnedValue::Scalar(vela_common::ScalarValue::U16(42)),
+    );
+    assert_string_no_arg_option_cache(
+        "parse_u32",
+        "42",
+        StandardMethodInlineCacheTarget::ParseU32,
+        OwnedValue::Scalar(vela_common::ScalarValue::U32(42)),
+    );
+    assert_string_no_arg_option_cache(
+        "parse_u64",
+        "42",
+        StandardMethodInlineCacheTarget::ParseU64,
+        OwnedValue::Scalar(vela_common::ScalarValue::U64(42)),
+    );
+    assert_string_no_arg_option_cache(
+        "parse_f32",
+        "1.5",
+        StandardMethodInlineCacheTarget::ParseF32,
+        OwnedValue::Scalar(vela_common::ScalarValue::F32(1.5)),
     );
     assert_string_no_arg_option_cache(
         "parse_f64",
@@ -216,6 +264,12 @@ fn linked_standard_value_method_caches_string_parse_targets() {
         "true",
         StandardMethodInlineCacheTarget::ParseBool,
         OwnedValue::Bool(true),
+    );
+    assert_string_no_arg_option_cache(
+        "parse_char",
+        "奖",
+        StandardMethodInlineCacheTarget::ParseChar,
+        OwnedValue::Char('奖'),
     );
 }
 
