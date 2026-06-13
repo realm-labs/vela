@@ -489,7 +489,8 @@ fn linked_method_dispatch_target(
             .program
             .method_dispatch(dispatch_handle)
             .is_some_and(|dispatch| {
-                cached_method_target_matches_dispatch(&entry.target, &dispatch.kind)
+                entry.debug_name == dispatch.debug_name
+                    && cached_method_target_matches_dispatch(&entry.target, &dispatch.kind)
             })
     {
         return Ok(LinkedMethodDispatchTarget {

@@ -119,6 +119,46 @@ fn linked_standard_value_method_refreshes_wrong_method_guard() {
 }
 
 #[test]
+fn linked_standard_value_method_refreshes_wrong_debug_name_guard() {
+    let (program, site, dispatch, method_id) = linked_standard_len_cache_program();
+    let caches = RecordingMethodCaches::new(1);
+    let debug_name = program
+        .method_dispatch(dispatch)
+        .expect("dispatch should exist")
+        .debug_name;
+    let stale_debug_name = program
+        .functions()
+        .find(|(_, code)| program.debug_name(code.debug_name) == "main")
+        .map(|(_, code)| code.debug_name)
+        .expect("main function should exist");
+    assert_ne!(stale_debug_name, debug_name);
+    caches.prime(
+        site,
+        MethodInlineCacheEntry {
+            dispatch,
+            debug_name: stale_debug_name,
+            target: MethodInlineCacheTarget::Value {
+                method_id,
+                standard_method: Some(StandardMethodInlineCacheEntry {
+                    receiver: StandardMethodReceiver::String,
+                    target: StandardMethodInlineCacheTarget::Len,
+                }),
+            },
+        },
+    );
+
+    assert_eq!(
+        run_linked_method_cache_program(&program, &caches),
+        Ok(RuntimeValue::i64(4))
+    );
+    let entry = caches
+        .entry(site)
+        .expect("wrong debug-name cache should refresh");
+    assert_eq!(entry.debug_name, debug_name);
+    assert_eq!(caches.set_count(), 2);
+}
+
+#[test]
 fn linked_standard_value_method_refreshes_wrong_standard_target_guard() {
     let (program, site, dispatch, method_id) = linked_standard_len_cache_program();
     let caches = RecordingMethodCaches::new(1);
