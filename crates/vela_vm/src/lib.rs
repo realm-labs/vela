@@ -5,6 +5,7 @@ pub mod budget;
 mod bytes_methods;
 mod callback_method_dispatch;
 mod closure_calls;
+mod collection_mutation;
 mod constant_loads;
 mod dynamic_method_resolution;
 pub mod error;

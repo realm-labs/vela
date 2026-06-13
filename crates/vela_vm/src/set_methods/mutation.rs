@@ -1,3 +1,4 @@
+use crate::collection_mutation;
 use crate::heap::HeapValue;
 use crate::{ExecutionBudget, HeapExecution, Value, VmResult, store_runtime_value};
 
@@ -7,7 +8,7 @@ pub(crate) fn add(
     receiver: &mut Value,
     args: &[Value],
     heap: Option<&mut HeapExecution<'_>>,
-    budget: Option<&mut ExecutionBudget>,
+    mut budget: Option<&mut ExecutionBudget>,
 ) -> VmResult<Value> {
     expect_arity("add", args, 1)?;
     match receiver {
@@ -25,11 +26,8 @@ pub(crate) fn add(
             {
                 return Ok(Value::Bool(false));
             }
-            let slot = store_runtime_value(&args[0], heap, budget)?;
-            let Some(HeapValue::Set(values)) = heap.heap.get_mut(*reference).ok() else {
-                return type_error("method add");
-            };
-            values.push(slot);
+            let slot = store_runtime_value(&args[0], heap, budget.as_deref_mut())?;
+            collection_mutation::push_set_slot(heap, *reference, slot, budget, "method add")?;
             Ok(Value::Bool(true))
         }
         _ => type_error("method add"),
@@ -58,14 +56,14 @@ pub(crate) fn remove(
                     (slot_key(value, &*heap).as_ref() == Ok(&key)).then_some(index)
                 })
                 .collect::<Vec<_>>();
-            let Some(HeapValue::Set(values)) = heap.heap.get_mut(*reference).ok() else {
-                return type_error("method remove");
-            };
-            let before = values.len();
-            for index in indexes.into_iter().rev() {
-                values.remove(index);
-            }
-            Ok(Value::Bool(values.len() != before))
+            let changed = collection_mutation::remove_set_slots(
+                heap,
+                *reference,
+                indexes.into_iter().rev(),
+                None,
+                "method remove",
+            )?;
+            Ok(Value::Bool(changed))
         }
         _ => type_error("method remove"),
     }
@@ -82,10 +80,7 @@ pub(crate) fn clear(
             let Some(heap) = heap else {
                 return type_error("method clear");
             };
-            let Some(HeapValue::Set(values)) = heap.heap.get_mut(*reference).ok() else {
-                return type_error("method clear");
-            };
-            values.clear();
+            collection_mutation::clear_set(heap, *reference, None, "method clear")?;
             Ok(Value::Null)
         }
         _ => type_error("method clear"),
@@ -121,10 +116,13 @@ pub(crate) fn extend(
                 keys.push(key);
                 slots.push(store_runtime_value(&value, heap, budget.as_deref_mut())?);
             }
-            let Some(HeapValue::Set(values)) = heap.heap.get_mut(*reference).ok() else {
-                return type_error("method extend");
-            };
-            values.extend(slots);
+            collection_mutation::extend_set_slots(
+                heap,
+                *reference,
+                slots,
+                budget,
+                "method extend",
+            )?;
             Ok(Value::Null)
         }
         _ => type_error("method extend"),

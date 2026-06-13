@@ -11,7 +11,7 @@ use vela_host::proxy::PathProxy;
 use crate::iteration::IteratorState;
 use crate::script_object::ScriptFields;
 use crate::value::{ClosureValue, Value};
-use crate::{ExecutionBudget, VmResult};
+use crate::{ExecutionBudget, VmError, VmErrorKind, VmResult};
 
 #[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
 pub struct GcRef {
@@ -123,7 +123,7 @@ impl HeapValue {
             Self::String(value) => mem::size_of::<String>() + value.len(),
             Self::Bytes(value) => mem::size_of::<Vec<u8>>() + value.len(),
             Self::Array(values) | Self::Set(values) => {
-                mem::size_of::<Vec<Value>>() + values.capacity() * mem::size_of::<Value>()
+                mem::size_of::<Vec<Value>>() + values.len() * mem::size_of::<Value>()
             }
             Self::Map(values) => {
                 mem::size_of::<BTreeMap<String, Value>>()
@@ -343,6 +343,53 @@ impl ScriptHeap {
             .and_then(|entry| entry.object.as_mut())
             .map(|object| &mut object.value)
             .ok_or_else(|| HeapError::new(HeapErrorKind::InvalidRef { reference }))
+    }
+
+    pub(crate) fn adjust_object_size_after_mutation(
+        &mut self,
+        reference: GcRef,
+        budget: Option<&mut ExecutionBudget>,
+        precharged_growth: usize,
+    ) -> VmResult<()> {
+        let object = self
+            .entry_mut(reference)
+            .and_then(|entry| entry.object.as_mut())
+            .ok_or_else(|| {
+                VmError::new(VmErrorKind::TypeMismatch {
+                    operation: "heap mutation",
+                })
+            })?;
+        let previous_size = object.size_bytes;
+        let next_size = object.value.shallow_size_bytes();
+        object.size_bytes = next_size;
+
+        match next_size.cmp(&previous_size) {
+            std::cmp::Ordering::Greater => {
+                let growth = next_size - previous_size;
+                if growth > precharged_growth {
+                    let extra_growth = growth - precharged_growth;
+                    if let Some(budget) = budget {
+                        budget.charge_memory(extra_growth)?;
+                    }
+                } else if let Some(budget) = budget {
+                    budget.release_memory(precharged_growth - growth);
+                }
+                self.allocated_bytes = self.allocated_bytes.saturating_add(growth);
+            }
+            std::cmp::Ordering::Less => {
+                let shrink = previous_size - next_size;
+                if let Some(budget) = budget {
+                    budget.release_memory(shrink.saturating_add(precharged_growth));
+                }
+                self.allocated_bytes = self.allocated_bytes.saturating_sub(shrink);
+            }
+            std::cmp::Ordering::Equal => {
+                if let Some(budget) = budget {
+                    budget.release_memory(precharged_growth);
+                }
+            }
+        }
+        Ok(())
     }
 
     #[must_use]

@@ -1,5 +1,6 @@
 use std::collections::BTreeMap;
 
+use crate::collection_mutation;
 use crate::heap::HeapValue;
 use crate::option_result::option_value;
 use crate::{
@@ -42,8 +43,14 @@ fn call_cached_map_set(
         return type_error("method set");
     };
     let slot = store_runtime_value(&args[1], heap, budget.as_deref_mut())?;
-    let values = map_slots_mut(heap, reference, "method set")?;
-    values.insert(key, slot);
+    collection_mutation::insert_map_slot(
+        heap,
+        reference,
+        key,
+        slot,
+        budget.as_deref_mut(),
+        "method set",
+    )?;
     Ok(args[1])
 }
 
@@ -59,7 +66,13 @@ fn call_cached_map_remove(
     let Some(heap) = heap.as_deref_mut() else {
         return type_error("method remove");
     };
-    let payload = map_slots_mut(heap, reference, "method remove")?.remove(&key);
+    let payload = collection_mutation::remove_map_slot(
+        heap,
+        reference,
+        &key,
+        budget.as_deref_mut(),
+        "method remove",
+    )?;
     option_value(payload, heap, budget.as_deref_mut())
 }
 
@@ -73,7 +86,7 @@ fn call_cached_map_clear(
     let Some(heap) = heap.as_deref_mut() else {
         return type_error("method clear");
     };
-    map_slots_mut(heap, reference, "method clear")?.clear();
+    collection_mutation::clear_map(heap, reference, None, "method clear")?;
     Ok(Value::Null)
 }
 
@@ -81,7 +94,7 @@ fn call_cached_map_extend(
     receiver: &Value,
     args: &[Value],
     heap: &mut Option<&mut HeapExecution<'_>>,
-    _budget: &mut Option<&mut ExecutionBudget>,
+    budget: &mut Option<&mut ExecutionBudget>,
 ) -> VmResult<Value> {
     crate::runtime_checks::expect_arity("extend", args, 1)?;
     let reference = map_reference(receiver, "method extend")?;
@@ -99,13 +112,26 @@ fn call_cached_map_extend(
             return Ok(Value::Null);
         }
         MapSlotEntry::Single(key, value) => {
-            map_slots_mut(heap, reference, "method extend")?.insert(key, value);
+            collection_mutation::insert_map_slot(
+                heap,
+                reference,
+                key,
+                value,
+                budget.as_deref_mut(),
+                "method extend",
+            )?;
             return Ok(Value::Null);
         }
         MapSlotEntry::Many => {}
     }
     let slots = map_slot_entries(heap, extension_reference, "method extend")?;
-    map_slots_mut(heap, reference, "method extend")?.extend(slots);
+    collection_mutation::extend_map_slots(
+        heap,
+        reference,
+        slots,
+        budget.as_deref_mut(),
+        "method extend",
+    )?;
     Ok(Value::Null)
 }
 
@@ -169,17 +195,6 @@ fn map_slots_by_reference<'a>(
     operation: &'static str,
 ) -> VmResult<&'a BTreeMap<String, Value>> {
     let Some(HeapValue::Map(values)) = heap.heap.get(reference) else {
-        return type_error(operation);
-    };
-    Ok(values)
-}
-
-fn map_slots_mut<'a>(
-    heap: &'a mut HeapExecution<'_>,
-    reference: crate::heap::GcRef,
-    operation: &'static str,
-) -> VmResult<&'a mut BTreeMap<String, Value>> {
-    let Some(HeapValue::Map(values)) = heap.heap.get_mut(reference).ok() else {
         return type_error(operation);
     };
     Ok(values)

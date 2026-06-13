@@ -1,7 +1,6 @@
+use crate::collection_mutation;
 use crate::heap::HeapValue;
-use crate::{
-    ExecutionBudget, HeapExecution, Value, VmResult, store_runtime_value, stored_runtime_value,
-};
+use crate::{ExecutionBudget, HeapExecution, Value, VmResult, store_runtime_value};
 
 use super::{
     array_values, expect_arity, index_out_of_bounds, index_value, option_value, type_error,
@@ -11,7 +10,7 @@ pub(crate) fn push(
     receiver: &mut Value,
     args: &[Value],
     heap: Option<&mut HeapExecution<'_>>,
-    budget: Option<&mut ExecutionBudget>,
+    mut budget: Option<&mut ExecutionBudget>,
 ) -> VmResult<Value> {
     expect_arity("push", args, 1)?;
     match receiver {
@@ -19,11 +18,8 @@ pub(crate) fn push(
             let Some(heap) = heap else {
                 return type_error("method push");
             };
-            let slot = store_runtime_value(&args[0], heap, budget)?;
-            let Some(HeapValue::Array(values)) = heap.heap.get_mut(*reference).ok() else {
-                return type_error("method push");
-            };
-            values.push(slot);
+            let slot = store_runtime_value(&args[0], heap, budget.as_deref_mut())?;
+            collection_mutation::push_array_slot(heap, *reference, slot, budget, "method push")?;
             Ok(Value::Null)
         }
         _ => type_error("method push"),
@@ -44,10 +40,12 @@ pub(crate) fn pop(
             let Some(heap_ref) = heap.as_deref_mut() else {
                 return type_error("method pop");
             };
-            let Some(HeapValue::Array(values)) = heap_ref.heap.get_mut(*reference).ok() else {
-                return type_error("method pop");
-            };
-            let payload = values.pop().map(|slot| stored_runtime_value(&slot));
+            let payload = collection_mutation::pop_array_slot(
+                heap_ref,
+                *reference,
+                budget.as_deref_mut(),
+                "method pop",
+            )?;
             if payload.is_some() {
                 option_value("Some", payload, &mut heap, &mut budget)
             } else {
@@ -73,13 +71,19 @@ pub(crate) fn remove_at(
             let Some(heap_ref) = heap.as_deref_mut() else {
                 return type_error("method remove_at");
             };
-            let Some(HeapValue::Array(values)) = heap_ref.heap.get_mut(*reference).ok() else {
+            let Some(HeapValue::Array(values)) = heap_ref.heap.get(*reference) else {
                 return type_error("method remove_at");
             };
             if index >= values.len() {
                 return option_value("None", None, &mut heap, &mut budget);
             }
-            let value = stored_runtime_value(&values.remove(index));
+            let value = collection_mutation::remove_array_slot(
+                heap_ref,
+                *reference,
+                index,
+                budget.as_deref_mut(),
+                "method remove_at",
+            )?;
             option_value("Some", Some(value), &mut heap, &mut budget)
         }
         _ => type_error("method remove_at"),
@@ -90,7 +94,7 @@ pub(crate) fn insert(
     receiver: &mut Value,
     args: &[Value],
     heap: Option<&mut HeapExecution<'_>>,
-    budget: Option<&mut ExecutionBudget>,
+    mut budget: Option<&mut ExecutionBudget>,
 ) -> VmResult<Value> {
     expect_arity("insert", args, 2)?;
     let index = index_value(&args[0], "method insert")?;
@@ -106,11 +110,15 @@ pub(crate) fn insert(
             if index > len {
                 return Err(index_out_of_bounds(index, len));
             }
-            let slot = store_runtime_value(&args[1], heap, budget)?;
-            let Some(HeapValue::Array(values)) = heap.heap.get_mut(*reference).ok() else {
-                return type_error("method insert");
-            };
-            values.insert(index, slot);
+            let slot = store_runtime_value(&args[1], heap, budget.as_deref_mut())?;
+            collection_mutation::insert_array_slot(
+                heap,
+                *reference,
+                index,
+                slot,
+                budget,
+                "method insert",
+            )?;
             Ok(Value::Null)
         }
         _ => type_error("method insert"),
@@ -134,10 +142,13 @@ pub(crate) fn extend(
             for value in &extension {
                 slots.push(store_runtime_value(value, heap, budget.as_deref_mut())?);
             }
-            let Some(HeapValue::Array(values)) = heap.heap.get_mut(*reference).ok() else {
-                return type_error("method extend");
-            };
-            values.extend(slots);
+            collection_mutation::extend_array_slots(
+                heap,
+                *reference,
+                slots,
+                budget,
+                "method extend",
+            )?;
             Ok(Value::Null)
         }
         _ => type_error("method extend"),
@@ -155,10 +166,7 @@ pub(crate) fn clear(
             let Some(heap) = heap else {
                 return type_error("method clear");
             };
-            let Some(HeapValue::Array(values)) = heap.heap.get_mut(*reference).ok() else {
-                return type_error("method clear");
-            };
-            values.clear();
+            collection_mutation::clear_array(heap, *reference, None, "method clear")?;
             Ok(Value::Null)
         }
         _ => type_error("method clear"),

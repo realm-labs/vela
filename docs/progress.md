@@ -83,7 +83,8 @@ Cranelift JIT.
 ### Available Now
 
 - `.vela` source parsing, HIR lowering, bytecode compilation, VM execution
-  with ordinary and indexed `for-in`, inherent `impl Type` methods, trait
+  with instruction, memory, call-depth, and collection growth budgets,
+  ordinary and indexed `for-in`, inherent `impl Type` methods, trait
   `impl Trait for Type` methods, single-line and multiline strings, explicit
   `f"..."` and `f"""..."""` string interpolation,
   managed heap entrypoints, execution budgets, and non-moving GC foundations.

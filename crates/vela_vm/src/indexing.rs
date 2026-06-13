@@ -1,3 +1,4 @@
+use crate::collection_mutation;
 use crate::heap::HeapValue;
 use crate::{
     CallFrame, ExecutionBudget, HeapExecution, Value, VmError, VmErrorKind, VmResult,
@@ -263,21 +264,11 @@ fn set_heap_map_index(
     index: &Value,
     src: &Value,
     heap: &mut HeapExecution<'_>,
-    budget: Option<&mut ExecutionBudget>,
+    mut budget: Option<&mut ExecutionBudget>,
 ) -> VmResult<()> {
     let key = map_key(index, Some(&*heap))?;
-    let slot = store_runtime_value(src, heap, budget)?;
-    let HeapValue::Map(values) = heap.heap.get_mut(reference).map_err(|_| {
-        VmError::new(VmErrorKind::TypeMismatch {
-            operation: "index assignment",
-        })
-    })?
-    else {
-        return Err(VmError::new(VmErrorKind::TypeMismatch {
-            operation: "index assignment",
-        }));
-    };
-    values.insert(key, slot);
+    let slot = store_runtime_value(src, heap, budget.as_deref_mut())?;
+    collection_mutation::insert_map_slot(heap, reference, key, slot, budget, "index assignment")?;
     Ok(())
 }
 
@@ -286,24 +277,17 @@ fn set_heap_map_string_key_index(
     key: &str,
     src: &Value,
     heap: &mut HeapExecution<'_>,
-    budget: Option<&mut ExecutionBudget>,
+    mut budget: Option<&mut ExecutionBudget>,
 ) -> VmResult<()> {
-    let slot = store_runtime_value(src, heap, budget)?;
-    let HeapValue::Map(values) = heap.heap.get_mut(reference).map_err(|_| {
-        VmError::new(VmErrorKind::TypeMismatch {
-            operation: "index assignment",
-        })
-    })?
-    else {
-        return Err(VmError::new(VmErrorKind::TypeMismatch {
-            operation: "index assignment",
-        }));
-    };
-    if let Some(existing) = values.get_mut(key) {
-        *existing = slot;
-    } else {
-        values.insert(key.to_owned(), slot);
-    }
+    let slot = store_runtime_value(src, heap, budget.as_deref_mut())?;
+    collection_mutation::insert_map_slot(
+        heap,
+        reference,
+        key.to_owned(),
+        slot,
+        budget,
+        "index assignment",
+    )?;
     Ok(())
 }
 

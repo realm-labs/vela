@@ -7,11 +7,30 @@ pub enum ExecutionBudgetKind {
     CallDepth,
 }
 
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub struct CollectionLimits {
+    pub max_array_len: usize,
+    pub max_map_entries: usize,
+    pub max_set_len: usize,
+}
+
+impl CollectionLimits {
+    #[must_use]
+    pub const fn unbounded() -> Self {
+        Self {
+            max_array_len: usize::MAX,
+            max_map_entries: usize::MAX,
+            max_set_len: usize::MAX,
+        }
+    }
+}
+
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct ExecutionBudget {
     pub instruction_limit: u64,
     pub memory_limit_bytes: usize,
     pub max_call_depth: usize,
+    collection_limits: CollectionLimits,
     instructions_executed: u64,
     memory_bytes_allocated: usize,
     current_call_depth: usize,
@@ -24,6 +43,7 @@ impl ExecutionBudget {
             instruction_limit,
             memory_limit_bytes,
             max_call_depth,
+            collection_limits: CollectionLimits::unbounded(),
             instructions_executed: 0,
             memory_bytes_allocated: 0,
             current_call_depth: 0,
@@ -48,6 +68,17 @@ impl ExecutionBudget {
     #[must_use]
     pub fn current_call_depth(&self) -> usize {
         self.current_call_depth
+    }
+
+    #[must_use]
+    pub fn collection_limits(&self) -> CollectionLimits {
+        self.collection_limits
+    }
+
+    #[must_use]
+    pub fn with_collection_limits(mut self, limits: CollectionLimits) -> Self {
+        self.collection_limits = limits;
+        self
     }
 
     pub fn charge_instructions(&mut self, instructions: u64) -> VmResult<()> {

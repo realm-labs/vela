@@ -166,6 +166,7 @@ pub struct ExecutionBudget {
     pub instruction_limit: u64,
     pub memory_limit_bytes: usize,
     pub max_call_depth: usize,
+    collection_limits: CollectionLimits,
 }
 ```
 
@@ -175,8 +176,15 @@ Budgets prevent:
 infinite loops
 unbounded memory growth
 recursive stack overflow
+unbounded array/map/set growth
 too many state writes in a single event
 ```
+
+Heap allocation and in-place heap collection growth both charge the memory
+budget. Arrays and sets charge collection memory by script-visible element
+count, and maps charge by script-visible entry keys plus stored values. Hosts
+can set collection length limits in addition to the byte budget when a script
+should not be allowed to build arbitrarily large arrays, maps, or sets.
 
 ## Threading Model
 

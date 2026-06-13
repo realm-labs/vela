@@ -1,3 +1,4 @@
+use crate::collection_mutation;
 use crate::heap::HeapValue;
 use crate::{
     ExecutionBudget, HeapExecution, StandardMethodInlineCacheTarget, Value, VmError, VmErrorKind,
@@ -45,7 +46,7 @@ fn call_cached_set_add(
         return Ok(Value::Bool(false));
     }
     let slot = store_runtime_value(&args[0], heap, budget.as_deref_mut())?;
-    set_slots_mut(heap, reference, "method add")?.push(slot);
+    collection_mutation::push_set_slot(heap, reference, slot, budget.as_deref_mut(), "method add")?;
     Ok(Value::Bool(true))
 }
 
@@ -65,12 +66,14 @@ fn call_cached_set_remove(
         .enumerate()
         .filter_map(|(index, slot)| (slot_key(slot, heap).as_ref() == Ok(&key)).then_some(index))
         .collect::<Vec<_>>();
-    let values = set_slots_mut(heap, reference, "method remove")?;
-    let before = values.len();
-    for index in indexes.into_iter().rev() {
-        values.remove(index);
-    }
-    Ok(Value::Bool(values.len() != before))
+    let changed = collection_mutation::remove_set_slots(
+        heap,
+        reference,
+        indexes.into_iter().rev(),
+        None,
+        "method remove",
+    )?;
+    Ok(Value::Bool(changed))
 }
 
 fn call_cached_set_clear(
@@ -83,7 +86,7 @@ fn call_cached_set_clear(
     let Some(heap) = heap.as_deref_mut() else {
         return type_error("method clear");
     };
-    set_slots_mut(heap, reference, "method clear")?.clear();
+    collection_mutation::clear_set(heap, reference, None, "method clear")?;
     Ok(Value::Null)
 }
 
@@ -91,7 +94,7 @@ fn call_cached_set_extend(
     receiver: &Value,
     args: &[Value],
     heap: &mut Option<&mut HeapExecution<'_>>,
-    _budget: &mut Option<&mut ExecutionBudget>,
+    budget: &mut Option<&mut ExecutionBudget>,
 ) -> VmResult<Value> {
     crate::runtime_checks::expect_arity("extend", args, 1)?;
     let reference = set_reference(receiver, "method extend")?;
@@ -109,17 +112,35 @@ fn call_cached_set_extend(
             return Ok(Value::Null);
         }
         SetSlotEntry::Single(slot) => {
-            extend_set_slots(heap, reference, &[slot], "method extend")?;
+            extend_set_slots(
+                heap,
+                reference,
+                &[slot],
+                budget.as_deref_mut(),
+                "method extend",
+            )?;
             return Ok(Value::Null);
         }
         SetSlotEntry::Pair(first, second) => {
-            extend_set_slots(heap, reference, &[first, second], "method extend")?;
+            extend_set_slots(
+                heap,
+                reference,
+                &[first, second],
+                budget.as_deref_mut(),
+                "method extend",
+            )?;
             return Ok(Value::Null);
         }
         SetSlotEntry::Many => {}
     }
     let extension = set_slot_values(heap, extension_reference, "method extend")?;
-    extend_set_slots(heap, reference, &extension, "method extend")?;
+    extend_set_slots(
+        heap,
+        reference,
+        &extension,
+        budget.as_deref_mut(),
+        "method extend",
+    )?;
     Ok(Value::Null)
 }
 
@@ -150,6 +171,7 @@ fn extend_set_slots(
     heap: &mut HeapExecution<'_>,
     reference: crate::heap::GcRef,
     extension: &[Value],
+    budget: Option<&mut ExecutionBudget>,
     operation: &'static str,
 ) -> VmResult<()> {
     let mut keys = set_slots(heap, reference, operation)?
@@ -165,8 +187,7 @@ fn extend_set_slots(
         keys.push(key);
         slots.push(*slot);
     }
-    set_slots_mut(heap, reference, operation)?.extend(slots);
-    Ok(())
+    collection_mutation::extend_set_slots(heap, reference, slots, budget, operation)
 }
 
 fn set_slot_values(
@@ -189,17 +210,6 @@ fn set_slots<'a>(
     operation: &'static str,
 ) -> VmResult<&'a [Value]> {
     let Some(HeapValue::Set(values)) = heap.heap.get(reference) else {
-        return type_error(operation);
-    };
-    Ok(values)
-}
-
-fn set_slots_mut<'a>(
-    heap: &'a mut HeapExecution<'_>,
-    reference: crate::heap::GcRef,
-    operation: &'static str,
-) -> VmResult<&'a mut Vec<Value>> {
-    let Some(HeapValue::Set(values)) = heap.heap.get_mut(reference).ok() else {
         return type_error(operation);
     };
     Ok(values)
