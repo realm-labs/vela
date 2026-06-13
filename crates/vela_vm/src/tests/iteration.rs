@@ -29,6 +29,31 @@ fn main() {
 }
 
 #[test]
+fn for_in_evaluates_iterable_expression_once() {
+    let code = compile_function_source(
+        SourceId::new(1),
+        r#"
+fn main() {
+    let sources = [[1, 2, 3], [10, 20, 30]];
+    let total = 0;
+    for value in sources.pop().unwrap_or([]) {
+        total += value;
+        sources.push([99]);
+    }
+    return total * 10 + sources.len();
+}
+"#,
+        "main",
+    )
+    .expect("compile single-evaluation for-in source");
+
+    assert_eq!(
+        run_linked_test_code(code),
+        Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(604)))
+    );
+}
+
+#[test]
 fn runs_compiled_for_in_string_chars() {
     let code = compile_function_source(
         SourceId::new(1),
