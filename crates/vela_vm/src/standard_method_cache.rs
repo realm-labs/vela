@@ -817,6 +817,15 @@ pub(crate) fn call_standard_cached(
     Some(result)
 }
 
+pub(crate) fn call_standard_readonly_cached(
+    receiver: &Value,
+    cache: StandardMethodInlineCacheEntry,
+    args: &[Value],
+    heap: Option<&HeapExecution<'_>>,
+) -> Option<VmResult<Value>> {
+    call_readonly_cached(receiver, cache, args, heap)
+}
+
 fn call_cached_array_sum(
     receiver: &Value,
     args: &[Value],
