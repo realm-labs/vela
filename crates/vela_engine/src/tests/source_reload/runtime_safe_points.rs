@@ -5,7 +5,7 @@ fn link_test_version(
     version: vela_hot_reload::version::ProgramVersion,
 ) -> vela_hot_reload::version::ProgramVersion {
     assert!(
-        version.linked_program().is_some(),
+        version.linked_program().function_count() > 0,
         "test version should own linked bytecode"
     );
     version
@@ -39,13 +39,9 @@ fn engine_compile_hot_reload_changed_file_reloads_module_root() {
     );
     let current = runtime.current();
     assert_eq!(
-        engine.into_vm().run_linked_program(
-            current
-                .linked_program()
-                .expect("current version should own linked bytecode"),
-            "game::main::main",
-            &[]
-        ),
+        engine
+            .into_vm()
+            .run_linked_program(current.linked_program(), "game::main::main", &[]),
         Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(10)))
     );
 }
@@ -74,13 +70,9 @@ fn engine_compile_hot_reload_changed_file_accepts_normalized_root_paths() {
     assert_eq!(report.changed_functions, vec!["game::reward::grant"]);
     let current = runtime.current();
     assert_eq!(
-        engine.into_vm().run_linked_program(
-            current
-                .linked_program()
-                .expect("current version should own linked bytecode"),
-            "game::main::main",
-            &[]
-        ),
+        engine
+            .into_vm()
+            .run_linked_program(current.linked_program(), "game::main::main", &[]),
         Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(8)))
     );
 }
@@ -238,9 +230,7 @@ fn main(player: Player) {
         engine
             .into_vm()
             .run_linked_program_with_host_budget_and_caches(
-                version
-                    .linked_program()
-                    .expect("accepted version should own linked bytecode"),
+                version.linked_program(),
                 "main",
                 &[OwnedValue::HostRef(host_ref)],
                 &mut host,
@@ -260,11 +250,11 @@ fn runtime_applies_engine_hot_reload_updates() {
     let initial = engine
         .compile_hot_reload_initial(SourceId::new(1), "fn main() { return 1; }")
         .expect("initial hot reload compile");
-    assert!(initial.linked_program().is_some());
+    assert!(initial.linked_program().function_count() > 0);
     let update = engine
         .compile_hot_reload_update(&initial, SourceId::new(2), "fn main() { return 2; }")
         .expect("compatible update should compile");
-    assert!(update.linked_program().is_some());
+    assert!(update.linked_program().function_count() > 0);
     let mut runtime = Runtime::from_hot_reload_version(engine, initial);
     let mut adapter = MockStateAdapter::new();
     let mut tx = HostAccess::new();
@@ -436,7 +426,8 @@ fn runtime_stages_engine_hot_reload_until_check_reload_safe_point() {
             .version()
             .expect("accepted report should carry version")
             .linked_program()
-            .is_some()
+            .function_count()
+            > 0
     );
     assert_eq!(report.changed_functions, vec!["main".to_owned()]);
     assert!(

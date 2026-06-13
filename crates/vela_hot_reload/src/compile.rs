@@ -53,7 +53,7 @@ pub fn compile_initial_with_abi_and_options(
 ) -> HotReloadResult<ProgramVersion> {
     let program = compile_program_source_with_options(source, text, options)
         .map_err(|error| HotReloadError::new(HotReloadErrorKind::Compile(error)))?;
-    Ok(initial_version_from_program(program, abi))
+    initial_version_from_program(program, abi)
 }
 
 pub fn compile_initial_with_abi_options_and_registry(
@@ -65,7 +65,7 @@ pub fn compile_initial_with_abi_options_and_registry(
 ) -> HotReloadResult<ProgramVersion> {
     let program = compile_program_source_with_options_and_registry(source, text, options, registry)
         .map_err(|error| HotReloadError::new(HotReloadErrorKind::Compile(error)))?;
-    Ok(initial_version_from_program(program, abi))
+    initial_version_from_program(program, abi)
 }
 
 pub fn compile_initial_modules_with_abi_and_options(
@@ -75,7 +75,7 @@ pub fn compile_initial_modules_with_abi_and_options(
 ) -> HotReloadResult<ProgramVersion> {
     let program = compile_module_sources_with_options(sources, options)
         .map_err(|error| HotReloadError::new(HotReloadErrorKind::Compile(error)))?;
-    Ok(initial_version_from_program(program, abi))
+    initial_version_from_program(program, abi)
 }
 
 pub fn compile_initial_modules_with_abi_options_and_registry(
@@ -86,7 +86,7 @@ pub fn compile_initial_modules_with_abi_options_and_registry(
 ) -> HotReloadResult<ProgramVersion> {
     let program = compile_module_sources_with_options_and_registry(sources, options, registry)
         .map_err(|error| HotReloadError::new(HotReloadErrorKind::Compile(error)))?;
-    Ok(initial_version_from_program(program, abi))
+    initial_version_from_program(program, abi)
 }
 
 pub fn compile_update(
@@ -224,15 +224,28 @@ pub fn compile_update_modules_with_abi_options_registry_and_policy(
     update_from_program(previous, program, abi, policy)
 }
 
-fn initial_version_from_program(program: UnlinkedProgram, abi: HotReloadAbi) -> ProgramVersion {
+fn initial_version_from_program(
+    program: UnlinkedProgram,
+    abi: HotReloadAbi,
+) -> HotReloadResult<ProgramVersion> {
     let abi = abi_with_script_metadata(abi, &program);
-    let linked_program = link_standalone_program(&program);
-    let version = ProgramVersion::from_program_with_abi(ProgramVersionId(0), program, abi);
-    if let Some(linked_program) = linked_program {
-        version.with_linked_program(linked_program)
-    } else {
-        version
-    }
+    let linked_program = link_standalone_program(&program)
+        .map_err(|error| HotReloadError::new(HotReloadErrorKind::Link(error)))?;
+    Ok(initial_version_from_linked_program(
+        program,
+        abi,
+        linked_program,
+    ))
+}
+
+#[must_use]
+pub fn initial_version_from_linked_program(
+    program: UnlinkedProgram,
+    abi: HotReloadAbi,
+    linked_program: LinkedProgram,
+) -> ProgramVersion {
+    let abi = abi_with_script_metadata(abi, &program);
+    ProgramVersion::from_linked_program_with_abi(ProgramVersionId(0), program, abi, linked_program)
 }
 
 fn abi_with_script_metadata(abi: HotReloadAbi, program: &UnlinkedProgram) -> HotReloadAbi {
@@ -250,10 +263,22 @@ fn update_from_program(
     policy: &HotReloadPolicy,
 ) -> HotReloadResult<HotUpdate> {
     let abi = abi_with_script_metadata(abi, &program);
+    let linked_program = link_standalone_program(&program)
+        .map_err(|error| HotReloadError::new(HotReloadErrorKind::Link(error)))?;
+    update_from_linked_program(previous, program, abi, policy, linked_program)
+}
+
+pub fn update_from_linked_program(
+    previous: &ProgramVersion,
+    program: UnlinkedProgram,
+    abi: HotReloadAbi,
+    policy: &HotReloadPolicy,
+    linked_program: LinkedProgram,
+) -> HotReloadResult<HotUpdate> {
+    let abi = abi_with_script_metadata(abi, &program);
     let global_names = program.global_names().to_vec();
     let script_methods = program.script_methods().clone();
     let script_metadata = program.script_metadata().cloned();
-    let linked_program = link_standalone_program(&program);
     let mut functions = BTreeMap::new();
     let mut changed_functions = Vec::new();
     for (name, code) in program.into_functions() {
@@ -298,16 +323,15 @@ fn update_from_program(
         script_metadata,
         abi,
         changes,
+        linked_program,
     );
-    Ok(if let Some(linked_program) = linked_program {
-        update.with_linked_program(linked_program)
-    } else {
-        update
-    })
+    Ok(update)
 }
 
-fn link_standalone_program(program: &UnlinkedProgram) -> Option<LinkedProgram> {
-    Linker::new().link_program(program).ok()
+fn link_standalone_program(
+    program: &UnlinkedProgram,
+) -> Result<LinkedProgram, vela_bytecode::linker::LinkError> {
+    Linker::new().link_program(program)
 }
 
 fn module_changes(

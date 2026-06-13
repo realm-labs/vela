@@ -129,10 +129,7 @@ fn main() {
 }
 
 fn linked_function<'runtime>(runtime: &'runtime Runtime, name: &str) -> &'runtime LinkedCodeObject {
-    let program = runtime
-        .image
-        .linked_program()
-        .expect("runtime image should have linked program");
+    let program = runtime.image.linked_program();
     let debug_name = debug_name_id(program, name);
     let function = program
         .entry_point(debug_name)

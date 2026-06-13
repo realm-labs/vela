@@ -2,6 +2,7 @@ use std::ops::Deref;
 use std::sync::Arc;
 
 use vela_bytecode::linked::InstructionKind;
+use vela_bytecode::linker::LinkError;
 use vela_bytecode::{LinkedProgram, ProgramImage, UnlinkedProgram};
 use vela_hot_reload::profile::ProgramProfile;
 use vela_hot_reload::symbol::ProgramVersionId;
@@ -12,7 +13,7 @@ use crate::engine::Engine;
 pub struct RuntimeImage {
     engine: Engine,
     program_image: ProgramImage,
-    linked_program: Option<LinkedProgram>,
+    linked_program: LinkedProgram,
     version_id: Option<ProgramVersionId>,
     layout: RuntimeImageLayout,
     #[allow(dead_code)]
@@ -82,20 +83,22 @@ impl RuntimeImageStorage for SharedImage {
 impl RuntimeImage {
     #[must_use]
     pub fn new(engine: Engine, program: UnlinkedProgram) -> Self {
+        Self::try_new(engine, program).expect("runtime image should link verified bytecode")
+    }
+
+    pub fn try_new(engine: Engine, program: UnlinkedProgram) -> Result<Self, LinkError> {
         let program_image = ProgramImage::from_program(&program);
-        let mut linked_program = engine.link_program(&program).ok();
-        if let Some(linked_program) = linked_program.as_mut() {
-            rebase_linked_cache_sites(linked_program, &program_image);
-        }
+        let mut linked_program = engine.link_program(&program)?;
+        rebase_linked_cache_sites(&mut linked_program, &program_image);
         let layout = RuntimeImageLayout::from_global_names(program_image.global_names());
-        Self {
+        Ok(Self {
             engine,
             program_image,
             linked_program,
             version_id: None,
             layout,
             profile: None,
-        }
+        })
     }
 
     #[must_use]
@@ -103,10 +106,8 @@ impl RuntimeImage {
         let version_id = Some(version.id);
         let profile = Some(version.profile().clone());
         let program_image = version.program_image().clone();
-        let mut linked_program = version.linked_program().cloned();
-        if let Some(linked_program) = linked_program.as_mut() {
-            rebase_linked_cache_sites(linked_program, &program_image);
-        }
+        let mut linked_program = version.linked_program().clone();
+        rebase_linked_cache_sites(&mut linked_program, &program_image);
         let layout = RuntimeImageLayout::from_global_names(program_image.global_names());
         Self {
             engine,
@@ -126,8 +127,8 @@ impl RuntimeImage {
         &self.program_image
     }
 
-    pub const fn linked_program(&self) -> Option<&LinkedProgram> {
-        self.linked_program.as_ref()
+    pub const fn linked_program(&self) -> &LinkedProgram {
+        &self.linked_program
     }
 
     pub(super) fn global_names(&self) -> &[String] {
@@ -146,7 +147,7 @@ impl RuntimeImage {
     pub(super) fn from_parts_for_test(
         engine: Engine,
         program_image: ProgramImage,
-        linked_program: Option<LinkedProgram>,
+        linked_program: LinkedProgram,
     ) -> Self {
         let layout = RuntimeImageLayout::from_global_names(program_image.global_names());
         Self {
@@ -217,6 +218,10 @@ fn rewrite_linked_instruction_cache_sites(
                 cache_site: Some(site),
                 ..
             }
+            | InstructionKind::CallDynamicMethod {
+                cache_site: Some(site),
+                ..
+            }
             | InstructionKind::CallMethod {
                 cache_site: Some(site),
                 ..
@@ -274,13 +279,7 @@ mod tests {
 
         assert_eq!(image.global_names(), &["main::state".to_owned()]);
         assert_eq!(image.cache_site_count(), 2);
-        assert_eq!(
-            image
-                .linked_program()
-                .expect("pure script image should link")
-                .function_count(),
-            2
-        );
+        assert_eq!(image.linked_program().function_count(), 2);
         let main_index = image
             .program_image
             .function_index("main")
@@ -332,9 +331,7 @@ mod tests {
 
         let engine = Engine::builder().build().expect("engine should build");
         let image = RuntimeImage::new(engine, program);
-        let linked = image
-            .linked_program()
-            .expect("record field cache program should link");
+        let linked = image.linked_program();
         let first_site = record_read_site(linked, "first");
         let second_site = record_read_site(linked, "second");
         let second_write_site = record_write_site(linked, "second");
@@ -372,14 +369,11 @@ mod tests {
             .expect("engine should build");
         let image = RuntimeImage::new(engine, program);
 
-        let linked = image
-            .linked_program()
-            .expect("registered native program should link");
+        let linked = image.linked_program();
         assert_eq!(linked.function_count(), 1);
         assert_eq!(linked.native_function_count(), 1);
         let linked_native = image
             .linked_program()
-            .expect("registered native program should link")
             .native_functions()
             .next()
             .map(|(_, native)| native.id);

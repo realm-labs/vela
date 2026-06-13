@@ -9,7 +9,7 @@ fn runtime_compiles_hot_reload_update_from_active_version() {
     let initial = engine
         .compile_hot_reload_initial(SourceId::new(1), "fn main() { return 1; }")
         .expect("initial hot reload compile");
-    assert!(initial.linked_program().is_some());
+    assert!(initial.linked_program().function_count() > 0);
     let mut runtime = Runtime::from_hot_reload_version(engine, initial);
     let mut adapter = MockStateAdapter::new();
     let mut tx = HostAccess::new();
@@ -29,7 +29,7 @@ fn main() {
         )
         .expect("runtime should be hot-reload enabled")
         .expect("compatible update should compile");
-    assert!(first_update.linked_program().is_some());
+    assert!(first_update.linked_program().function_count() > 0);
     let first_report = runtime
         .apply_hot_update(first_update)
         .expect("runtime should apply first update");
@@ -39,7 +39,8 @@ fn main() {
             .version()
             .expect("accepted report should carry version")
             .linked_program()
-            .is_some()
+            .function_count()
+            > 0
     );
     assert_eq!(
         runtime.call_raw("main", &[], CallOptions::unbounded(), &mut adapter, &mut tx),

@@ -1,14 +1,13 @@
 use std::path::Path;
 
+use vela_bytecode::compiler::{
+    compile_module_sources_with_options_and_registry,
+    compile_program_source_with_options_and_registry,
+};
 use vela_common::SourceId;
 use vela_hot_reload::abi::HotReloadAbi;
-use vela_hot_reload::compile::{
-    compile_initial_modules_with_abi_options_and_registry,
-    compile_initial_with_abi_options_and_registry,
-    compile_update_modules_with_abi_options_registry_and_policy,
-    compile_update_with_abi_options_registry_and_policy,
-};
-use vela_hot_reload::error::HotReloadResult;
+use vela_hot_reload::compile::{initial_version_from_linked_program, update_from_linked_program};
+use vela_hot_reload::error::{HotReloadError, HotReloadErrorKind, HotReloadResult};
 use vela_hot_reload::version::{HotUpdate, ProgramVersion};
 
 pub use source_error::{
@@ -31,14 +30,21 @@ impl Engine {
         source: SourceId,
         text: &str,
     ) -> HotReloadResult<ProgramVersion> {
-        compile_initial_with_abi_options_and_registry(
+        let program = compile_program_source_with_options_and_registry(
             source,
             text,
-            self.hot_reload_abi(),
             &self.compiler_options(),
             self.compiler_registry(),
         )
-        .map(|version| self.attach_linked_program_to_version(version))
+        .map_err(|error| HotReloadError {
+            kind: HotReloadErrorKind::Compile(error),
+        })?;
+        let linked_program = self.link_program(&program).map_err(HotReloadError::from)?;
+        Ok(initial_version_from_linked_program(
+            program,
+            self.hot_reload_abi(),
+            linked_program,
+        ))
     }
 
     pub fn compile_hot_reload_update(
@@ -47,16 +53,23 @@ impl Engine {
         source: SourceId,
         text: &str,
     ) -> HotReloadResult<HotUpdate> {
-        compile_update_with_abi_options_registry_and_policy(
-            previous,
+        let program = compile_program_source_with_options_and_registry(
             source,
             text,
-            self.hot_reload_abi(),
             &self.compiler_options(),
             self.compiler_registry(),
-            self.hot_reload_policy(),
         )
-        .map(|update| self.attach_linked_program_to_update(previous, update))
+        .map_err(|error| HotReloadError {
+            kind: HotReloadErrorKind::Compile(error),
+        })?;
+        let linked_program = self.link_program(&program).map_err(HotReloadError::from)?;
+        update_from_linked_program(
+            previous,
+            program,
+            self.hot_reload_abi(),
+            self.hot_reload_policy(),
+            linked_program,
+        )
     }
 
     pub fn compile_hot_reload_initial_file(
@@ -84,14 +97,25 @@ impl Engine {
     ) -> EngineHotReloadSourceResult<ProgramVersion> {
         let sources =
             load_module_sources(root.as_ref()).map_err(EngineHotReloadSourceError::source)?;
-        compile_initial_modules_with_abi_options_and_registry(
+        let program = compile_module_sources_with_options_and_registry(
             &sources,
-            self.hot_reload_abi(),
             &self.compiler_options(),
             self.compiler_registry(),
         )
-        .map(|version| self.attach_linked_program_to_version(version))
-        .map_err(EngineHotReloadSourceError::hot_reload)
+        .map_err(|error| {
+            EngineHotReloadSourceError::hot_reload(HotReloadError {
+                kind: HotReloadErrorKind::Compile(error),
+            })
+        })?;
+        let linked_program = self
+            .link_program(&program)
+            .map_err(HotReloadError::from)
+            .map_err(EngineHotReloadSourceError::hot_reload)?;
+        Ok(initial_version_from_linked_program(
+            program,
+            self.hot_reload_abi(),
+            linked_program,
+        ))
     }
 
     pub fn compile_hot_reload_update_dir(
@@ -101,15 +125,27 @@ impl Engine {
     ) -> EngineHotReloadSourceResult<HotUpdate> {
         let sources =
             load_module_sources(root.as_ref()).map_err(EngineHotReloadSourceError::source)?;
-        compile_update_modules_with_abi_options_registry_and_policy(
-            previous,
+        let program = compile_module_sources_with_options_and_registry(
             &sources,
-            self.hot_reload_abi(),
             &self.compiler_options(),
             self.compiler_registry(),
-            self.hot_reload_policy(),
         )
-        .map(|update| self.attach_linked_program_to_update(previous, update))
+        .map_err(|error| {
+            EngineHotReloadSourceError::hot_reload(HotReloadError {
+                kind: HotReloadErrorKind::Compile(error),
+            })
+        })?;
+        let linked_program = self
+            .link_program(&program)
+            .map_err(HotReloadError::from)
+            .map_err(EngineHotReloadSourceError::hot_reload)?;
+        update_from_linked_program(
+            previous,
+            program,
+            self.hot_reload_abi(),
+            self.hot_reload_policy(),
+            linked_program,
+        )
         .map_err(EngineHotReloadSourceError::hot_reload)
     }
 
@@ -121,34 +157,27 @@ impl Engine {
     ) -> EngineHotReloadSourceResult<HotUpdate> {
         let sources = load_module_sources_for_changed_file(root.as_ref(), changed_file.as_ref())
             .map_err(EngineHotReloadSourceError::source)?;
-        compile_update_modules_with_abi_options_registry_and_policy(
-            previous,
+        let program = compile_module_sources_with_options_and_registry(
             &sources,
-            self.hot_reload_abi(),
             &self.compiler_options(),
             self.compiler_registry(),
-            self.hot_reload_policy(),
         )
-        .map(|update| self.attach_linked_program_to_update(previous, update))
+        .map_err(|error| {
+            EngineHotReloadSourceError::hot_reload(HotReloadError {
+                kind: HotReloadErrorKind::Compile(error),
+            })
+        })?;
+        let linked_program = self
+            .link_program(&program)
+            .map_err(HotReloadError::from)
+            .map_err(EngineHotReloadSourceError::hot_reload)?;
+        update_from_linked_program(
+            previous,
+            program,
+            self.hot_reload_abi(),
+            self.hot_reload_policy(),
+            linked_program,
+        )
         .map_err(EngineHotReloadSourceError::hot_reload)
-    }
-
-    fn attach_linked_program_to_version(&self, version: ProgramVersion) -> ProgramVersion {
-        let Ok(linked_program) = self.link_program(&version.to_unlinked_program()) else {
-            return version;
-        };
-        version.with_linked_program(linked_program)
-    }
-
-    fn attach_linked_program_to_update(
-        &self,
-        previous: &ProgramVersion,
-        update: HotUpdate,
-    ) -> HotUpdate {
-        let program = update.to_unlinked_program_with_previous(previous);
-        let Ok(linked_program) = self.link_program(&program) else {
-            return update;
-        };
-        update.with_linked_program(linked_program)
     }
 }

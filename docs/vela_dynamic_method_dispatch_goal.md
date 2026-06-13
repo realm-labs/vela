@@ -639,7 +639,7 @@ After commit, change this checkbox to `[x]`.
 
 ---
 
-## [ ] Phase 8 — Remove legacy fallback and tighten link/runtime API
+## [x] Phase 8 — Remove legacy fallback and tighten link/runtime API
 
 Now remove architecture debt.
 

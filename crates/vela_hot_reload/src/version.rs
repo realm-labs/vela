@@ -20,20 +20,25 @@ pub struct ProgramVersion {
     pub(crate) abi: HotReloadAbi,
     pub(crate) profile: ProgramProfile,
     pub(crate) program_image: ProgramImage,
-    pub(crate) linked_program: Option<LinkedProgram>,
+    pub(crate) linked_program: LinkedProgram,
 }
 
 impl ProgramVersion {
     #[must_use]
-    pub fn from_program(id: ProgramVersionId, program: UnlinkedProgram) -> Self {
-        Self::from_program_with_abi(id, program, HotReloadAbi::empty())
+    pub fn from_linked_program(
+        id: ProgramVersionId,
+        program: UnlinkedProgram,
+        linked_program: LinkedProgram,
+    ) -> Self {
+        Self::from_linked_program_with_abi(id, program, HotReloadAbi::empty(), linked_program)
     }
 
     #[must_use]
-    pub fn from_program_with_abi(
+    pub fn from_linked_program_with_abi(
         id: ProgramVersionId,
         program: UnlinkedProgram,
         abi: HotReloadAbi,
+        linked_program: LinkedProgram,
     ) -> Self {
         let program_image = ProgramImage::from_program(&program);
         let functions = program
@@ -47,14 +52,8 @@ impl ProgramVersion {
             abi,
             profile,
             program_image,
-            linked_program: None,
+            linked_program,
         }
-    }
-
-    #[must_use]
-    pub fn with_linked_program(mut self, linked_program: LinkedProgram) -> Self {
-        self.linked_program = Some(linked_program);
-        self
     }
 
     #[must_use]
@@ -133,8 +132,8 @@ impl ProgramVersion {
     }
 
     #[must_use]
-    pub fn linked_program(&self) -> Option<&LinkedProgram> {
-        self.linked_program.as_ref()
+    pub const fn linked_program(&self) -> &LinkedProgram {
+        &self.linked_program
     }
 
     #[must_use]
@@ -165,7 +164,7 @@ pub struct HotUpdate {
     pub(crate) script_metadata: Option<ModuleGraph>,
     pub(crate) abi: HotReloadAbi,
     pub(crate) changes: AcceptedHotReloadChanges,
-    pub(crate) linked_program: Option<LinkedProgram>,
+    pub(crate) linked_program: LinkedProgram,
 }
 
 impl HotUpdate {
@@ -176,6 +175,7 @@ impl HotUpdate {
         script_metadata: Option<ModuleGraph>,
         abi: HotReloadAbi,
         changes: AcceptedHotReloadChanges,
+        linked_program: LinkedProgram,
     ) -> Self {
         Self {
             functions,
@@ -184,14 +184,8 @@ impl HotUpdate {
             script_metadata,
             abi,
             changes,
-            linked_program: None,
+            linked_program,
         }
-    }
-
-    #[must_use]
-    pub fn with_linked_program(mut self, linked_program: LinkedProgram) -> Self {
-        self.linked_program = Some(linked_program);
-        self
     }
 
     #[must_use]
@@ -211,8 +205,8 @@ impl HotUpdate {
     }
 
     #[must_use]
-    pub fn linked_program(&self) -> Option<&LinkedProgram> {
-        self.linked_program.as_ref()
+    pub const fn linked_program(&self) -> &LinkedProgram {
+        &self.linked_program
     }
 
     #[must_use]

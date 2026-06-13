@@ -35,8 +35,6 @@ fn run_linked_version(
     entry: &str,
     args: &[OwnedValue],
 ) -> vela_vm::error::VmResult<OwnedValue> {
-    let linked = version
-        .linked_program()
-        .expect("hot-reload version should own linked bytecode");
+    let linked = version.linked_program();
     Vm::new().run_linked_program(linked, entry, args)
 }

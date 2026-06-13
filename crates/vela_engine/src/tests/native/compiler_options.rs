@@ -1,7 +1,7 @@
 use super::*;
 
 use vela_bytecode::UnlinkedProgram;
-use vela_vm::error::VmResult;
+use vela_vm::error::{VmErrorKind, VmResult};
 
 fn run_linked_program(
     engine: &Engine,
@@ -839,12 +839,12 @@ fn main(text: string) {
 }
 
 #[test]
-fn engine_compiler_options_reject_ambiguous_named_standard_value_method_arguments() {
+fn engine_compiler_options_preserve_unknown_receiver_named_method_arguments() {
     let engine = Engine::builder()
         .with_standard_natives()
         .build()
         .expect("engine should build with standard natives");
-    engine
+    let program = engine
         .compile_source(
             SourceId::new(1),
             r#"
@@ -853,7 +853,22 @@ fn main(value) {
 }
 "#,
         )
-        .expect_err("ambiguous stdlib value method names should not accept named args");
+        .expect("unknown receiver named method arguments should compile dynamically");
+
+    let error = run_linked_program(
+        &engine,
+        &program,
+        "main",
+        &[OwnedValue::String("loot:xp".to_owned())],
+    )
+    .expect_err("standard dynamic named args should fail at runtime until resolved metadata lands");
+    assert!(matches!(
+        error.kind(),
+        VmErrorKind::TypeMismatch {
+            operation: "dynamic method named arguments"
+        }
+    ));
+    assert!(error.source_span.is_some());
 }
 
 #[test]

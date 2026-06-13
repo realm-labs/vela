@@ -423,10 +423,7 @@ fn script_method_target(
     runtime: &Runtime,
     dispatch: MethodDispatchHandle,
 ) -> (MethodId, ScriptFunctionHandle) {
-    let program = runtime
-        .image
-        .linked_program()
-        .expect("runtime image should have a linked program");
+    let program = runtime.image.linked_program();
     let dispatch = program
         .method_dispatch(dispatch)
         .expect("linked method dispatch should exist");
@@ -457,10 +454,7 @@ fn assert_callback_value_method_cache(runtime: &Runtime, site: CacheSiteId) {
 }
 
 fn method_call_site(runtime: &Runtime, function_name: &str) -> LinkedMethodCallSite {
-    let program = runtime
-        .image
-        .linked_program()
-        .expect("runtime image should have a linked program");
+    let program = runtime.image.linked_program();
     let function = program
         .entry_point_by_name(function_name)
         .and_then(|handle| program.function(handle))

@@ -180,19 +180,11 @@ where
         &mut self,
         update: HotReloadResult<HotUpdate>,
     ) -> EngineResult<()> {
-        let previous = self.current_hot_reload_version()?;
         let Some(hot_reload) = self.hot_reload.as_mut() else {
             return Err(EngineError::new(
                 EngineErrorKind::RuntimeNotHotReloadEnabled,
             ));
         };
-        let update = update.map(|update| {
-            let program = update.to_unlinked_program_with_previous(&previous);
-            match self.image.engine().link_program(&program) {
-                Ok(linked) => update.with_linked_program(linked),
-                Err(_) => update,
-            }
-        });
         let _replaced = hot_reload.stage_hot_update_result(update);
         Ok(())
     }
@@ -235,14 +227,6 @@ where
                 EngineErrorKind::RuntimeNotHotReloadEnabled,
             ));
         };
-        let current = hot_reload.current();
-        let update = update.map(|update| {
-            let program = update.to_unlinked_program_with_previous(&current);
-            match self.image.engine().link_program(&program) {
-                Ok(linked) => update.with_linked_program(linked),
-                Err(_) => update,
-            }
-        });
         let report = hot_reload.apply_hot_update_result_report(update);
         self.rebind_image_from_reload_report(Some(&report));
         Ok(report)
@@ -358,10 +342,7 @@ where
 
     pub fn entry(&self, name: impl Into<String>) -> VmResult<VelaFunction> {
         let name = name.into();
-        let linked_program = self
-            .image
-            .linked_program()
-            .ok_or_else(|| VmError::new(VmErrorKind::ProgramNotLinked))?;
+        let linked_program = self.image.linked_program();
         let function = linked_program
             .entry_point_by_name(&name)
             .ok_or_else(|| unknown_function(name.clone()))?;
@@ -400,15 +381,12 @@ where
             .script_methods()
             .get_by_id(&receiver_type, method_id)
             .and_then(|method| {
-                let linked_program = self.image.linked_program()?;
+                let linked_program = self.image.linked_program();
                 let function = linked_program.entry_point_by_name(&method.function)?;
                 linked_program.function(function)
             })
             .ok_or_else(|| unknown_method(method.clone()))?;
-        let linked_program = self
-            .image
-            .linked_program()
-            .ok_or_else(|| VmError::new(VmErrorKind::ProgramNotLinked))?;
+        let linked_program = self.image.linked_program();
         Ok(VelaMethod {
             runtime_id: self.state.id,
             receiver_type,
@@ -450,10 +428,7 @@ where
     {
         let version_id = self.current_program_version_id();
         let state = &mut self.state;
-        let linked_program = self
-            .image
-            .linked_program()
-            .ok_or_else(|| VmError::new(VmErrorKind::ProgramNotLinked))?;
+        let linked_program = self.image.linked_program();
         let target = entry.resolve(state.id, linked_program, version_id)?;
         let mut access = HostAccess::new();
         Self::call_runtime_args(RuntimeCallExecution {
@@ -487,10 +462,7 @@ where
         self.check_vela_value_runtime(receiver)?;
         let version_id = self.current_program_version_id();
         let state = &mut self.state;
-        let linked_program = self
-            .image
-            .linked_program()
-            .ok_or_else(|| VmError::new(VmErrorKind::ProgramNotLinked))?;
+        let linked_program = self.image.linked_program();
         let target = method.resolve(RuntimeMethodResolveContext {
             runtime_id: state.id,
             program_image: self.image.program_image(),
@@ -590,10 +562,7 @@ where
                 .engine()
                 .into_vm_for_program_image(self.image.program_image())
         };
-        let linked_program = self
-            .image
-            .linked_program()
-            .ok_or_else(|| VmError::new(VmErrorKind::ProgramNotLinked))?;
+        let linked_program = self.image.linked_program();
         if options.managed_heap || !self.state.script_globals.is_empty() {
             let roots = self.state.script_globals.roots();
             vm.run_linked_program_host_call(LinkedProgramHostCall {
@@ -898,13 +867,16 @@ fn unknown_method(method: String) -> VmError {
 mod tests {
     use vela_bytecode::linked::{Instruction, InstructionKind};
     use vela_bytecode::script_methods::ScriptMethodTable;
-    use vela_bytecode::{Constant, LinkedCodeObject, LinkedProgram, ProgramImage, Register};
+    use vela_bytecode::{
+        Constant, LinkedCodeObject, LinkedProgram, ProgramImage, Register, UnlinkedCodeObject,
+        UnlinkedInstruction, UnlinkedInstructionKind, UnlinkedProgram,
+    };
     use vela_host::access::HostAccess;
     use vela_host::mock::MockStateAdapter;
-    use vela_vm::error::VmErrorKind;
     use vela_vm::owned_value::OwnedValue;
 
     use crate::engine::Engine;
+    use crate::native::NativeFunctionId;
 
     use super::{CallOptions, OwnedImage, RuntimeImage, RuntimeImpl, RuntimeState};
 
@@ -928,23 +900,32 @@ mod tests {
     }
 
     #[test]
-    fn call_raw_rejects_runtime_image_without_linked_program() {
-        let mut runtime = runtime_without_linked_program();
-        let mut adapter = MockStateAdapter::new();
-        let mut access = HostAccess::new();
+    fn runtime_image_try_new_rejects_link_errors_before_execution() {
+        let native_id = NativeFunctionId::new(91);
+        let mut main = UnlinkedCodeObject::new("main", 1);
+        main.push_instruction(UnlinkedInstruction::new(
+            UnlinkedInstructionKind::CallNative {
+                dst: Some(Register(0)),
+                name: "test::answer".to_owned(),
+                native: native_id,
+                cache_site: None,
+                args: Vec::new(),
+            },
+        ));
+        main.push_instruction(UnlinkedInstruction::new(UnlinkedInstructionKind::Return {
+            src: Register(0),
+        }));
+        let mut program = UnlinkedProgram::new();
+        program.insert_function(main);
 
-        let result = runtime.call_raw(
-            "main",
-            &[],
-            CallOptions::unbounded(),
-            &mut adapter,
-            &mut access,
-        );
+        let engine = Engine::builder().build().expect("engine should build");
+        let result = RuntimeImage::try_new(engine, program);
 
-        assert_eq!(
-            result.map_err(|error| error.kind()),
-            Err(VmErrorKind::ProgramNotLinked)
-        );
+        assert!(matches!(
+            result,
+            Err(vela_bytecode::linker::LinkError::UnresolvedNative { name, .. })
+                if name == "test::answer"
+        ));
     }
 
     fn linked_only_runtime() -> RuntimeImpl<OwnedImage> {
@@ -969,25 +950,7 @@ mod tests {
         let main = linked_program.push_function(code);
         linked_program.set_entry_point(main_name, main);
 
-        let image = RuntimeImage::from_parts_for_test(engine, program_image, Some(linked_program));
-        let image = OwnedImage::from_image(image);
-        let state = RuntimeState::for_image(&image);
-        RuntimeImpl {
-            image,
-            hot_reload: None,
-            state,
-        }
-    }
-
-    fn runtime_without_linked_program() -> RuntimeImpl<OwnedImage> {
-        let engine = Engine::builder().build().expect("engine should build");
-        let program_image = ProgramImage::from_parts(
-            std::iter::empty::<vela_bytecode::UnlinkedCodeObject>(),
-            std::iter::empty::<String>(),
-            ScriptMethodTable::new(),
-            None,
-        );
-        let image = RuntimeImage::from_parts_for_test(engine, program_image, None);
+        let image = RuntimeImage::from_parts_for_test(engine, program_image, linked_program);
         let image = OwnedImage::from_image(image);
         let state = RuntimeState::for_image(&image);
         RuntimeImpl {

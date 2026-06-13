@@ -19,9 +19,7 @@ struct FunctionCounters {
 
 impl RuntimeBytecodeProfile {
     pub(super) fn for_image(image: &RuntimeImage) -> Self {
-        let Some(program) = image.linked_program() else {
-            return Self::default();
-        };
+        let program = image.linked_program();
         let functions = program
             .functions()
             .map(|(_, code)| {

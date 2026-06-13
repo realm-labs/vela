@@ -1,6 +1,7 @@
 use std::fmt;
 
 use vela_bytecode::compiler::error::{CompileError, CompileErrorKind};
+use vela_bytecode::linker::LinkError;
 use vela_common::{Diagnostic, Label, Span};
 
 use crate::abi::{AccessAbi, EffectAbi, ParamAbi, TraitMethodAbi};
@@ -21,6 +22,7 @@ impl HotReloadError {
     pub const fn code(&self) -> &'static str {
         match &self.kind {
             HotReloadErrorKind::Compile(_) => "reload.compile",
+            HotReloadErrorKind::Link(_) => "reload.link",
             HotReloadErrorKind::DeletedFunctionParameters { .. } => {
                 "reload.function.deleted_parameters"
             }
@@ -66,6 +68,7 @@ impl HotReloadError {
     pub fn target(&self) -> Option<String> {
         match &self.kind {
             HotReloadErrorKind::Compile(_) => None,
+            HotReloadErrorKind::Link(_) => None,
             HotReloadErrorKind::DeletedFunctionParameters { function, .. }
             | HotReloadErrorKind::ChangedFunctionParameters { function, .. }
             | HotReloadErrorKind::ChangedFunctionParameterAbi { function, .. }
@@ -107,6 +110,7 @@ impl HotReloadError {
     pub fn reason(&self) -> String {
         match &self.kind {
             HotReloadErrorKind::Compile(_) => "updated source failed to compile".to_owned(),
+            HotReloadErrorKind::Link(error) => format!("updated bytecode failed to link: {error}"),
             HotReloadErrorKind::DeletedFunctionParameters { function, .. } => {
                 format!("function `{function}` deleted existing parameters")
             }
@@ -196,6 +200,9 @@ impl HotReloadError {
     pub fn repair_hint(&self) -> Option<String> {
         match &self.kind {
             HotReloadErrorKind::Compile(_) => Some("fix compile diagnostics and retry".to_owned()),
+            HotReloadErrorKind::Link(_) => {
+                Some("fix link diagnostics or register the required native implementation".to_owned())
+            }
             HotReloadErrorKind::DeletedFunctionParameters { .. } => {
                 Some("restore the previous parameter prefix or add a compatibility wrapper".to_owned())
             }
@@ -273,6 +280,7 @@ impl HotReloadError {
             HotReloadErrorKind::Compile(error) => compile_diagnostics(error)
                 .into_iter()
                 .find_map(|diagnostic| diagnostic.span),
+            HotReloadErrorKind::Link(_) => None,
             HotReloadErrorKind::RemovedSchema { source_span, .. }
             | HotReloadErrorKind::ChangedSchema { source_span, .. }
             | HotReloadErrorKind::ChangedSchemaAbi { source_span, .. }
@@ -350,9 +358,18 @@ impl fmt::Display for HotReloadError {
 
 impl std::error::Error for HotReloadError {}
 
+impl From<LinkError> for HotReloadError {
+    fn from(error: LinkError) -> Self {
+        Self {
+            kind: HotReloadErrorKind::Link(error),
+        }
+    }
+}
+
 #[derive(Clone, Debug, PartialEq)]
 pub enum HotReloadErrorKind {
     Compile(CompileError),
+    Link(LinkError),
     DeletedFunctionParameters {
         function: String,
         old: Vec<String>,
