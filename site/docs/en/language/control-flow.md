@@ -38,4 +38,8 @@ fn total(values) {
 }
 ```
 
+`for value in source` evaluates `source` once, creates an iterator, and advances it until the iterator is exhausted. Arrays, sets, maps, strings, and ranges are repeatable sources. Existing iterator values are one-shot cursors, so looping over one consumes it.
+
+String `for in` yields UTF-8 `char` values, matching `text.chars()`. Use `text.bytes()` when byte traversal is required. Indexed `for index, value in source` is syntax-level loop lowering; it does not allocate an eager `enumerate()` collection.
+
 Loop variables are scoped per iteration, so closures do not all capture the final loop value.
