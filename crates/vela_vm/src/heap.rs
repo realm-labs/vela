@@ -662,6 +662,26 @@ mod tests {
     }
 
     #[test]
+    fn iterator_source_roots_keep_backing_heap_values_alive() {
+        let mut heap = ScriptHeap::new();
+        let child = heap.allocate(HeapValue::String("gold".into()));
+        let source = heap.allocate(HeapValue::Array(vec![Value::HeapRef(child)]));
+        let root = heap.allocate(HeapValue::Iterator(IteratorState::from_array_source(
+            source, 1,
+        )));
+        let garbage = heap.allocate(HeapValue::String("unused".into()));
+
+        let stats = heap.collect_full(&[root]);
+
+        assert_eq!(stats.marked, 3);
+        assert_eq!(stats.swept, 1);
+        assert!(heap.contains(root));
+        assert!(heap.contains(source));
+        assert!(heap.contains(child));
+        assert!(!heap.contains(garbage));
+    }
+
+    #[test]
     fn cyclic_script_objects_are_reclaimed_without_roots() {
         let mut heap = ScriptHeap::new();
         let first = heap.allocate(HeapValue::Array(Vec::new()));

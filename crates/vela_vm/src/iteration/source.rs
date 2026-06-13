@@ -1,6 +1,6 @@
+use crate::heap::GcRef;
 use crate::heap::HeapValue;
 use crate::heap_execution::HeapExecution;
-use crate::heap_values::stored_runtime_value;
 use crate::ranges::RangeCursor;
 use crate::{Value, VmError, VmErrorKind, VmResult};
 
@@ -23,14 +23,20 @@ impl IterableSource {
 
 #[derive(Clone, Debug, PartialEq)]
 pub(crate) enum SequenceSource {
-    Values(Vec<Value>),
+    Array { source: GcRef, len: usize },
+    Set { source: GcRef, len: usize },
+    MapValues { source: GcRef, keys: Vec<String> },
+    StringChars { source: GcRef },
     Range(RangeCursor),
 }
 
 impl SequenceSource {
     fn into_iterator(self) -> IteratorState {
         match self {
-            Self::Values(values) => IteratorState::from_values(values),
+            Self::Array { source, len } => IteratorState::from_array_source(source, len),
+            Self::Set { source, len } => IteratorState::from_set_source(source, len),
+            Self::MapValues { source, keys } => IteratorState::from_map_values_source(source, keys),
+            Self::StringChars { source } => IteratorState::from_string_chars_source(source),
             Self::Range(cursor) => IteratorState::from_range_cursor(cursor),
         }
     }
@@ -55,24 +61,30 @@ fn classify_iterable(
             let Some(heap_value) = heap.and_then(|heap| heap.heap.get(*reference)) else {
                 return Err(not_iterable());
             };
-            heap_iterable_source(heap_value)
+            heap_iterable_source(*reference, heap_value)
         }
         _ => Err(not_iterable()),
     }
 }
 
-fn heap_iterable_source(value: &HeapValue) -> VmResult<IterableSource> {
+fn heap_iterable_source(reference: GcRef, value: &HeapValue) -> VmResult<IterableSource> {
     match value {
-        HeapValue::Array(values) | HeapValue::Set(values) => Ok(IterableSource::Sequence(
-            SequenceSource::Values(values.iter().map(stored_runtime_value).collect()),
-        )),
-        HeapValue::Map(values) => Ok(IterableSource::Sequence(SequenceSource::Values(
-            values.values().map(stored_runtime_value).collect(),
-        ))),
+        HeapValue::Array(values) => Ok(IterableSource::Sequence(SequenceSource::Array {
+            source: reference,
+            len: values.len(),
+        })),
+        HeapValue::Set(values) => Ok(IterableSource::Sequence(SequenceSource::Set {
+            source: reference,
+            len: values.len(),
+        })),
+        HeapValue::Map(values) => Ok(IterableSource::Sequence(SequenceSource::MapValues {
+            source: reference,
+            keys: values.keys().cloned().collect(),
+        })),
         HeapValue::Iterator(iterator) => Ok(IterableSource::Iterator(iterator.clone())),
-        HeapValue::String(value) => Ok(IterableSource::Sequence(SequenceSource::Values(
-            value.chars().map(Value::Char).collect(),
-        ))),
+        HeapValue::String(_) => Ok(IterableSource::Sequence(SequenceSource::StringChars {
+            source: reference,
+        })),
         HeapValue::Bytes(_)
         | HeapValue::Record { .. }
         | HeapValue::Enum { .. }

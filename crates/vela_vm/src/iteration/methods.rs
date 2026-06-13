@@ -1,5 +1,5 @@
 use crate::heap::HeapValue;
-use crate::heap_values::{allocate_heap_value, stored_runtime_value};
+use crate::heap_values::allocate_heap_value;
 use crate::method_runtime::MethodRuntime;
 use crate::option_result::option_value;
 use crate::runtime_checks::is_truthy;
@@ -30,12 +30,16 @@ pub(crate) fn iter_method(
         Value::Range(range) => IteratorState::from_range_cursor(range.cursor()),
         Value::HeapRef(reference) => {
             match heap.as_deref().and_then(|heap| heap.heap.get(*reference)) {
-                Some(HeapValue::Array(values) | HeapValue::Set(values)) => {
-                    IteratorState::from_values(values.iter().map(stored_runtime_value).collect())
+                Some(HeapValue::Array(values)) => {
+                    IteratorState::from_array_source(*reference, values.len())
                 }
-                Some(HeapValue::Map(values)) => {
-                    IteratorState::from_values(values.values().map(stored_runtime_value).collect())
+                Some(HeapValue::Set(values)) => {
+                    IteratorState::from_set_source(*reference, values.len())
                 }
+                Some(HeapValue::Map(values)) => IteratorState::from_map_values_source(
+                    *reference,
+                    values.keys().cloned().collect(),
+                ),
                 _ => return type_error("method iter"),
             }
         }
@@ -51,12 +55,17 @@ pub(crate) fn chars_method(
     budget: &mut Option<&mut ExecutionBudget>,
 ) -> VmResult<Value> {
     runtime_checks::expect_arity("chars", args, 0)?;
-    let values = string_value(receiver, heap.as_deref(), "method chars")?
-        .chars()
-        .map(Value::Char)
-        .collect();
+    let Value::HeapRef(reference) = receiver else {
+        return type_error("method chars");
+    };
+    if !matches!(
+        heap.as_deref().and_then(|heap| heap.heap.get(*reference)),
+        Some(HeapValue::String(_))
+    ) {
+        return type_error("method chars");
+    }
     allocate_iterator(
-        IteratorState::from_values(values),
+        IteratorState::from_string_chars_source(*reference),
         heap,
         budget,
         "method chars",
@@ -70,12 +79,17 @@ pub(crate) fn string_bytes_method(
     budget: &mut Option<&mut ExecutionBudget>,
 ) -> VmResult<Value> {
     runtime_checks::expect_arity("bytes", args, 0)?;
-    let values = string_value(receiver, heap.as_deref(), "method bytes")?
-        .bytes()
-        .map(Value::U8)
-        .collect();
+    let Value::HeapRef(reference) = receiver else {
+        return type_error("method bytes");
+    };
+    if !matches!(
+        heap.as_deref().and_then(|heap| heap.heap.get(*reference)),
+        Some(HeapValue::String(_))
+    ) {
+        return type_error("method bytes");
+    }
     allocate_iterator(
-        IteratorState::from_values(values),
+        IteratorState::from_string_bytes_source(*reference),
         heap,
         budget,
         "method bytes",
@@ -446,20 +460,6 @@ fn with_taken_iterator<T>(
 fn count_arg(value: Value, operation: &'static str) -> VmResult<usize> {
     match value {
         Value::I64(value) if value >= 0 => Ok(value as usize),
-        _ => type_error(operation),
-    }
-}
-
-fn string_value<'a>(
-    value: &'a Value,
-    heap: Option<&'a HeapExecution<'_>>,
-    operation: &'static str,
-) -> VmResult<&'a str> {
-    match value {
-        Value::HeapRef(reference) => match heap.and_then(|heap| heap.heap.get(*reference)) {
-            Some(HeapValue::String(value)) => Ok(value),
-            _ => type_error(operation),
-        },
         _ => type_error(operation),
     }
 }

@@ -789,6 +789,13 @@ iterator state and leave the original iterator exhausted. Adapter stepping,
 `map`, `filter`, `any`, `all`, `find`, and `collect_array` share callback
 dispatch, heap-root protection, budget, and host-access behavior.
 
+### Iterator Source Bounds
+
+Collection-backed iterators read source heap slots lazily instead of copying
+the full collection at creation. Arrays and sets snapshot traversal length, and
+maps snapshot traversal keys, so later writes to existing items are observed
+while later growth does not extend the iterator.
+
 ## Validation Rules
 
 - Multi-level `super` scan must return no matches:

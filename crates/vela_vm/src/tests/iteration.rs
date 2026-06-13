@@ -334,6 +334,58 @@ fn main() {
 }
 
 #[test]
+fn iterator_array_sources_read_current_values_without_growth_snapshot() {
+    let code = compile_function_source(
+        SourceId::new(1),
+        r#"
+fn main() {
+    let values = [1, 2];
+    let iter = values.iter();
+    values[0] = 9;
+    values.push(100);
+    let first = iter.next().unwrap_or(0);
+    let second = iter.next().unwrap_or(0);
+    let third = iter.next().unwrap_or(77);
+    return first * 100 + second * 10 + third;
+}
+"#,
+        "main",
+    )
+    .expect("compile lazy array source iterator");
+
+    assert_eq!(
+        run_linked_test_code(code),
+        Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(997)))
+    );
+}
+
+#[test]
+fn iterator_map_sources_snapshot_keys_but_read_current_values() {
+    let code = compile_function_source(
+        SourceId::new(1),
+        r#"
+fn main() {
+    let rewards = { "a": 1, "b": 2 };
+    let iter = rewards.iter();
+    rewards.set("a", 9);
+    rewards.set("c", 100);
+    let first = iter.next().unwrap_or(0);
+    let second = iter.next().unwrap_or(0);
+    let third = iter.next().unwrap_or(77);
+    return first * 100 + second * 10 + third;
+}
+"#,
+        "main",
+    )
+    .expect("compile lazy map source iterator");
+
+    assert_eq!(
+        run_linked_test_code(code),
+        Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(997)))
+    );
+}
+
+#[test]
 fn iterator_lazy_adapters_drive_for_in_and_consume_source() {
     let code = compile_function_source(
         SourceId::new(1),

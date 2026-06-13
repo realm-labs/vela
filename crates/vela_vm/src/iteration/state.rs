@@ -1,8 +1,10 @@
 use crate::heap::GcRef;
+use crate::heap::HeapValue;
+use crate::heap_values::stored_runtime_value;
 use crate::method_runtime::{MethodRuntime, call_callback};
 use crate::ranges::RangeCursor;
 use crate::runtime_checks::is_truthy;
-use crate::{Value, VmResult};
+use crate::{Value, VmError, VmErrorKind, VmResult};
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct IteratorState {
@@ -13,6 +15,29 @@ pub struct IteratorState {
 enum IteratorCursor {
     Values {
         values: Vec<Value>,
+        next: usize,
+    },
+    Array {
+        source: GcRef,
+        next: usize,
+        len: usize,
+    },
+    Set {
+        source: GcRef,
+        next: usize,
+        len: usize,
+    },
+    MapValues {
+        source: GcRef,
+        keys: Vec<String>,
+        next: usize,
+    },
+    StringChars {
+        source: GcRef,
+        byte_next: usize,
+    },
+    StringBytes {
+        source: GcRef,
         next: usize,
     },
     Range(RangeCursor),
@@ -53,6 +78,51 @@ impl IteratorState {
     pub(crate) fn from_range_cursor(cursor: RangeCursor) -> Self {
         Self {
             cursor: IteratorCursor::Range(cursor),
+        }
+    }
+
+    pub(crate) fn from_array_source(source: GcRef, len: usize) -> Self {
+        Self {
+            cursor: IteratorCursor::Array {
+                source,
+                next: 0,
+                len,
+            },
+        }
+    }
+
+    pub(crate) fn from_set_source(source: GcRef, len: usize) -> Self {
+        Self {
+            cursor: IteratorCursor::Set {
+                source,
+                next: 0,
+                len,
+            },
+        }
+    }
+
+    pub(crate) fn from_map_values_source(source: GcRef, keys: Vec<String>) -> Self {
+        Self {
+            cursor: IteratorCursor::MapValues {
+                source,
+                keys,
+                next: 0,
+            },
+        }
+    }
+
+    pub(crate) fn from_string_chars_source(source: GcRef) -> Self {
+        Self {
+            cursor: IteratorCursor::StringChars {
+                source,
+                byte_next: 0,
+            },
+        }
+    }
+
+    pub(crate) fn from_string_bytes_source(source: GcRef) -> Self {
+        Self {
+            cursor: IteratorCursor::StringBytes { source, next: 0 },
         }
     }
 
@@ -120,7 +190,13 @@ impl IteratorState {
                 }
                 source.next()
             }
-            IteratorCursor::Map { .. } | IteratorCursor::Filter { .. } => None,
+            IteratorCursor::Array { .. }
+            | IteratorCursor::Set { .. }
+            | IteratorCursor::MapValues { .. }
+            | IteratorCursor::StringChars { .. }
+            | IteratorCursor::StringBytes { .. }
+            | IteratorCursor::Map { .. }
+            | IteratorCursor::Filter { .. } => None,
         }
     }
 
@@ -132,6 +208,31 @@ impl IteratorState {
     ) -> VmResult<Option<Value>> {
         match &mut self.cursor {
             IteratorCursor::Values { .. } | IteratorCursor::Range(_) => Ok(self.next()),
+            IteratorCursor::Array { source, next, len } => next_indexed_heap_value(
+                *source,
+                next,
+                *len,
+                runtime,
+                operation,
+                HeapSequenceKind::Array,
+            ),
+            IteratorCursor::Set { source, next, len } => next_indexed_heap_value(
+                *source,
+                next,
+                *len,
+                runtime,
+                operation,
+                HeapSequenceKind::Set,
+            ),
+            IteratorCursor::MapValues { source, keys, next } => {
+                next_map_value(*source, keys, next, runtime, operation)
+            }
+            IteratorCursor::StringChars { source, byte_next } => {
+                next_string_char(*source, byte_next, runtime, operation)
+            }
+            IteratorCursor::StringBytes { source, next } => {
+                next_string_byte(*source, next, runtime, operation)
+            }
             IteratorCursor::Take { source, remaining } => {
                 if *remaining == 0 {
                     return Ok(None);
@@ -178,6 +279,11 @@ impl IteratorState {
             IteratorCursor::Values { values, .. } => {
                 values.iter().for_each(|value| value.trace_heap_refs(refs))
             }
+            IteratorCursor::Array { source, .. }
+            | IteratorCursor::Set { source, .. }
+            | IteratorCursor::MapValues { source, .. }
+            | IteratorCursor::StringChars { source, .. }
+            | IteratorCursor::StringBytes { source, .. } => refs.push(*source),
             IteratorCursor::Range(_) => {}
             IteratorCursor::Map { source, callback }
             | IteratorCursor::Filter { source, callback } => {
@@ -199,6 +305,11 @@ impl IteratorState {
     fn push_protected_values(&self, protected: &mut Vec<Value>) {
         match &self.cursor {
             IteratorCursor::Values { values, .. } => protected.extend(values.iter().copied()),
+            IteratorCursor::Array { source, .. }
+            | IteratorCursor::Set { source, .. }
+            | IteratorCursor::MapValues { source, .. }
+            | IteratorCursor::StringChars { source, .. }
+            | IteratorCursor::StringBytes { source, .. } => protected.push(Value::HeapRef(*source)),
             IteratorCursor::Range(_) => {}
             IteratorCursor::Map { source, callback }
             | IteratorCursor::Filter { source, callback } => {
@@ -215,6 +326,11 @@ impl IteratorState {
         match &self.cursor {
             IteratorCursor::Values { values, .. } => values,
             IteratorCursor::Range(_)
+            | IteratorCursor::Array { .. }
+            | IteratorCursor::Set { .. }
+            | IteratorCursor::MapValues { .. }
+            | IteratorCursor::StringChars { .. }
+            | IteratorCursor::StringBytes { .. }
             | IteratorCursor::Map { .. }
             | IteratorCursor::Filter { .. }
             | IteratorCursor::Take { .. }
@@ -226,12 +342,117 @@ impl IteratorState {
         match &self.cursor {
             IteratorCursor::Values { next, .. } => *next,
             IteratorCursor::Range(_)
+            | IteratorCursor::Array { .. }
+            | IteratorCursor::Set { .. }
+            | IteratorCursor::MapValues { .. }
+            | IteratorCursor::StringChars { .. }
+            | IteratorCursor::StringBytes { .. }
             | IteratorCursor::Map { .. }
             | IteratorCursor::Filter { .. }
             | IteratorCursor::Take { .. }
             | IteratorCursor::Skip { .. } => 0,
         }
     }
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+enum HeapSequenceKind {
+    Array,
+    Set,
+}
+
+fn next_indexed_heap_value(
+    source: GcRef,
+    next: &mut usize,
+    len: usize,
+    runtime: &MethodRuntime<'_, '_, '_>,
+    operation: &'static str,
+    kind: HeapSequenceKind,
+) -> VmResult<Option<Value>> {
+    if *next >= len {
+        return Ok(None);
+    }
+    let index = *next;
+    *next = next.saturating_add(1);
+    let Some(heap) = runtime.heap.as_deref() else {
+        return type_error(operation);
+    };
+    let Some(value) = heap.heap.get(source) else {
+        return type_error(operation);
+    };
+    let values = match (kind, value) {
+        (HeapSequenceKind::Array, HeapValue::Array(values))
+        | (HeapSequenceKind::Set, HeapValue::Set(values)) => values,
+        _ => return type_error(operation),
+    };
+    Ok(values.get(index).map(stored_runtime_value))
+}
+
+fn next_map_value(
+    source: GcRef,
+    keys: &[String],
+    next: &mut usize,
+    runtime: &MethodRuntime<'_, '_, '_>,
+    operation: &'static str,
+) -> VmResult<Option<Value>> {
+    let Some(heap) = runtime.heap.as_deref() else {
+        return type_error(operation);
+    };
+    let Some(HeapValue::Map(values)) = heap.heap.get(source) else {
+        return type_error(operation);
+    };
+    while let Some(key) = keys.get(*next) {
+        *next = next.saturating_add(1);
+        if let Some(value) = values.get(key) {
+            return Ok(Some(stored_runtime_value(value)));
+        }
+    }
+    Ok(None)
+}
+
+fn next_string_char(
+    source: GcRef,
+    byte_next: &mut usize,
+    runtime: &MethodRuntime<'_, '_, '_>,
+    operation: &'static str,
+) -> VmResult<Option<Value>> {
+    let Some(heap) = runtime.heap.as_deref() else {
+        return type_error(operation);
+    };
+    let Some(HeapValue::String(value)) = heap.heap.get(source) else {
+        return type_error(operation);
+    };
+    let Some(rest) = value.get(*byte_next..) else {
+        return type_error(operation);
+    };
+    let Some(ch) = rest.chars().next() else {
+        return Ok(None);
+    };
+    *byte_next = byte_next.saturating_add(ch.len_utf8());
+    Ok(Some(Value::Char(ch)))
+}
+
+fn next_string_byte(
+    source: GcRef,
+    next: &mut usize,
+    runtime: &MethodRuntime<'_, '_, '_>,
+    operation: &'static str,
+) -> VmResult<Option<Value>> {
+    let Some(heap) = runtime.heap.as_deref() else {
+        return type_error(operation);
+    };
+    let Some(HeapValue::String(value)) = heap.heap.get(source) else {
+        return type_error(operation);
+    };
+    let Some(byte) = value.as_bytes().get(*next) else {
+        return Ok(None);
+    };
+    *next = next.saturating_add(1);
+    Ok(Some(Value::U8(*byte)))
+}
+
+fn type_error<T>(operation: &'static str) -> VmResult<T> {
+    Err(VmError::new(VmErrorKind::TypeMismatch { operation }))
 }
 
 fn callback_protected_values(
