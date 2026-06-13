@@ -131,13 +131,7 @@ fn run_workload(workload: &Workload, params: BenchParams) -> Result<BenchResult,
 
 fn register_bench_natives(vm: &mut Vm) {
     vm.register_borrowed_native("bench::mix4", |args, _heap, _budget| {
-        let [
-            Value::Scalar(vela_common::ScalarValue::I64(a)),
-            Value::Scalar(vela_common::ScalarValue::I64(b)),
-            Value::Scalar(vela_common::ScalarValue::I64(c)),
-            Value::Scalar(vela_common::ScalarValue::I64(d)),
-        ] = args
-        else {
+        let [Value::I64(a), Value::I64(b), Value::I64(c), Value::I64(d)] = args else {
             return Ok(OwnedValue::Null);
         };
         Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(
@@ -1077,13 +1071,16 @@ fn value_checksum(value: &OwnedValue) -> u64 {
 }
 
 fn runtime_value_checksum(value: &Value) -> u64 {
+    if let Some(value) = value.as_scalar() {
+        return scalar_checksum(value);
+    }
     match value {
         Value::Missing => 0x01,
         Value::Null => 0x02,
         Value::Bool(value) => u64::from(*value) ^ 0x03,
-        Value::Scalar(value) => scalar_checksum(*value),
         Value::Range(_) => 0x09,
         Value::HeapRef(_) | Value::HostRef(_) => 0x0a,
+        _ => unreachable!("scalar values return before checksum match"),
     }
 }
 

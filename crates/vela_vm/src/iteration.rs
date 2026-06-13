@@ -308,17 +308,11 @@ fn dispatch_range_next_with(
         current < end
     };
     if has_next {
-        frame.write(
-            step.dst,
-            Value::Scalar(vela_common::ScalarValue::I64(current)),
-        )?;
+        frame.write(step.dst, Value::I64(current))?;
         if current == i64::MAX {
             frame.write(step.done, Value::Bool(true))?;
         } else {
-            frame.write(
-                step.cursor,
-                Value::Scalar(vela_common::ScalarValue::I64(current + 1)),
-            )?;
+            frame.write(step.cursor, Value::I64(current + 1))?;
         }
         Ok(None)
     } else {

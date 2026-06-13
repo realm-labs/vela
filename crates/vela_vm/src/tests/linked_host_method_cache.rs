@@ -91,7 +91,7 @@ fn linked_host_method_cache_misses_wrong_method_target_guard() {
         )
     };
 
-    assert_eq!(result, Ok(Value::Scalar(vela_common::ScalarValue::I64(12))));
+    assert_eq!(result, Ok(Value::I64(12)));
     assert_eq!(
         adapter.method_calls(),
         &[(
@@ -150,7 +150,7 @@ fn linked_host_method_cache_misses_wrong_method_target_guard() {
         )
     };
 
-    assert_eq!(second, Ok(Value::Scalar(vela_common::ScalarValue::I64(12))));
+    assert_eq!(second, Ok(Value::I64(12)));
     assert_eq!(caches.set_count_for(cache_site), 1);
     assert_eq!(caches.host_set_count_for(cache_site), 1);
 
@@ -181,7 +181,7 @@ fn linked_host_method_cache_misses_wrong_method_target_guard() {
         )
     };
 
-    assert_eq!(third, Ok(Value::Scalar(vela_common::ScalarValue::I64(12))));
+    assert_eq!(third, Ok(Value::I64(12)));
     assert_eq!(caches.set_count_for(cache_site), 1);
     assert_eq!(caches.host_set_count_for(cache_site), 2);
     assert_eq!(

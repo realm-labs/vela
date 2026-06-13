@@ -408,7 +408,7 @@ fn linked_program_calls_host_method_by_dispatch_handle() {
         )
     };
 
-    assert_eq!(result, Ok(Value::Scalar(vela_common::ScalarValue::I64(12))));
+    assert_eq!(result, Ok(Value::I64(12)));
     assert_eq!(
         adapter.method_calls(),
         &[(
@@ -654,7 +654,7 @@ fn linked_record_slot_reads_and_writes_populate_inline_caches() {
 
     assert_eq!(
         run_linked_record_cache_program(&program, &caches),
-        Ok(Value::Scalar(vela_common::ScalarValue::I64(5)))
+        Ok(Value::I64(5))
     );
     assert_eq!(caches.set_count(), 2);
     assert_eq!(
@@ -668,7 +668,7 @@ fn linked_record_slot_reads_and_writes_populate_inline_caches() {
 
     assert_eq!(
         run_linked_record_cache_program(&program, &caches),
-        Ok(Value::Scalar(vela_common::ScalarValue::I64(5)))
+        Ok(Value::I64(5))
     );
     assert_eq!(caches.set_count(), 2);
 }
@@ -687,7 +687,7 @@ fn linked_record_slot_inline_cache_miss_replaces_wrong_guards() {
 
     assert_eq!(
         run_linked_record_cache_program(&program, &caches),
-        Ok(Value::Scalar(vela_common::ScalarValue::I64(5)))
+        Ok(Value::I64(5))
     );
     assert_eq!(caches.set_count(), 2);
     assert_eq!(
@@ -707,7 +707,7 @@ fn linked_record_slot_inline_cache_miss_replaces_wrong_slot() {
 
     assert_eq!(
         run_linked_record_cache_program(&program, &caches),
-        Ok(Value::Scalar(vela_common::ScalarValue::I64(5)))
+        Ok(Value::I64(5))
     );
     let write_entry = caches
         .entry(write_site)
@@ -732,7 +732,7 @@ fn linked_record_slot_inline_cache_miss_replaces_wrong_slot() {
 
     assert_eq!(
         run_linked_record_cache_program(&program, &caches),
-        Ok(Value::Scalar(vela_common::ScalarValue::I64(5)))
+        Ok(Value::I64(5))
     );
     assert_eq!(caches.set_count(), 4);
     assert_eq!(

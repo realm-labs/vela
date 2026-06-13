@@ -306,16 +306,19 @@ fn type_contract_error(
 }
 
 fn runtime_primitive_tag(value: &Value, heap: Option<&HeapExecution<'_>>) -> Option<PrimitiveTag> {
+    if let Some(value) = value.as_scalar() {
+        return Some(value.primitive_tag());
+    }
     match value {
         Value::Null => Some(PrimitiveTag::Null),
         Value::Bool(_) => Some(PrimitiveTag::Bool),
-        Value::Scalar(value) => Some(value.primitive_tag()),
         Value::HeapRef(reference) => match heap.and_then(|heap| heap.heap.get(*reference)) {
             Some(HeapValue::String(_)) => Some(PrimitiveTag::String),
             Some(HeapValue::Bytes(_)) => Some(PrimitiveTag::Bytes),
             _ => None,
         },
         Value::Missing | Value::Range(_) | Value::HostRef(_) => None,
+        _ => unreachable!("scalar values return before primitive tag match"),
     }
 }
 
@@ -418,11 +421,13 @@ fn runtime_record_debug_shape<'a>(
 }
 
 fn runtime_type_name<'a>(value: &Value, heap: Option<&'a HeapExecution<'_>>) -> &'a str {
+    if let Some(value) = value.as_scalar() {
+        return value.type_name();
+    }
     match value {
         Value::Missing => "missing",
         Value::Null => PrimitiveTag::Null.name(),
         Value::Bool(_) => PrimitiveTag::Bool.name(),
-        Value::Scalar(value) => value.type_name(),
         Value::Range(_) => "range",
         Value::HostRef(_) => "host",
         Value::HeapRef(reference) => match heap.and_then(|heap| heap.heap.get(*reference)) {
@@ -438,5 +443,6 @@ fn runtime_type_name<'a>(value: &Value, heap: Option<&'a HeapExecution<'_>>) -> 
             Some(HeapValue::Iterator(_)) => "iterator",
             None => "heap",
         },
+        _ => unreachable!("scalar values return before runtime type-name match"),
     }
 }

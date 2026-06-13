@@ -4,7 +4,6 @@ use crate::{
     HeapExecution, StandardMethodInlineCacheTarget, StandardMethodReceiver, Value, VmError,
     VmErrorKind, VmResult, script_builtin_methods, set_methods,
 };
-use vela_common::ScalarValue;
 
 pub(super) fn call_cached_len(
     receiver: &Value,
@@ -359,7 +358,7 @@ pub(super) fn call_cached_bytes_accessor(
                         .get(index)
                         .copied()
                         .ok_or_else(|| index_out_of_bounds(index, bytes.len()))?;
-                    Ok(Value::Scalar(ScalarValue::U8(byte)))
+                    Ok(Value::U8(byte))
                 }
                 StandardMethodInlineCacheTarget::ReadU32Le
                 | StandardMethodInlineCacheTarget::ReadU32Be => {
@@ -376,7 +375,7 @@ pub(super) fn call_cached_bytes_accessor(
                         StandardMethodInlineCacheTarget::ReadU32Be => u32::from_be_bytes(word),
                         _ => unreachable!("bytes read target was validated above"),
                     };
-                    Ok(Value::Scalar(ScalarValue::U32(value)))
+                    Ok(Value::U32(value))
                 }
                 _ => unreachable!("bytes accessor target was validated above"),
             }
@@ -448,13 +447,11 @@ fn usize_to_i64(value: usize, operation: &'static str) -> VmResult<i64> {
 
 fn byte_index(value: &Value, len: usize, operation: &'static str) -> VmResult<usize> {
     match value {
-        Value::Scalar(ScalarValue::I64(index)) if *index >= 0 => Ok(*index as usize),
-        Value::Scalar(ScalarValue::I64(index)) => {
-            Err(VmError::new(VmErrorKind::IndexOutOfBounds {
-                index: *index,
-                len,
-            }))
-        }
+        Value::I64(index) if *index >= 0 => Ok(*index as usize),
+        Value::I64(index) => Err(VmError::new(VmErrorKind::IndexOutOfBounds {
+            index: *index,
+            len,
+        })),
         _ => type_error(operation),
     }
 }
@@ -475,32 +472,24 @@ fn cached_set_contains_immediate(values: &[Value], candidate: &Value) -> Option<
         match (candidate, value) {
             (Value::Null, Value::Null) => return Some(true),
             (Value::Bool(lhs), Value::Bool(rhs)) if lhs == rhs => return Some(true),
-            (Value::Scalar(ScalarValue::I64(lhs)), Value::Scalar(ScalarValue::I64(rhs)))
-                if lhs == rhs =>
-            {
+            (Value::I64(lhs), Value::I64(rhs)) if lhs == rhs => {
                 return Some(true);
             }
-            (Value::Scalar(ScalarValue::F64(lhs)), Value::Scalar(ScalarValue::F64(rhs)))
+            (Value::F64(lhs), Value::F64(rhs))
                 if lhs.is_finite() && rhs.is_finite() && lhs.to_bits() == rhs.to_bits() =>
             {
                 return Some(true);
             }
             (
-                Value::Null | Value::Bool(_) | Value::Scalar(ScalarValue::I64(_)),
-                Value::Null | Value::Bool(_) | Value::Scalar(ScalarValue::I64(_)),
+                Value::Null | Value::Bool(_) | Value::I64(_),
+                Value::Null | Value::Bool(_) | Value::I64(_),
             ) => {}
-            (
-                Value::Null | Value::Bool(_) | Value::Scalar(ScalarValue::I64(_)),
-                Value::Scalar(ScalarValue::F64(value)),
-            ) if value.is_finite() => {}
-            (
-                Value::Scalar(ScalarValue::F64(candidate)),
-                Value::Null | Value::Bool(_) | Value::Scalar(ScalarValue::I64(_)),
-            ) if candidate.is_finite() => {}
-            (
-                Value::Scalar(ScalarValue::F64(candidate)),
-                Value::Scalar(ScalarValue::F64(value)),
-            ) if candidate.is_finite() && value.is_finite() => {}
+            (Value::Null | Value::Bool(_) | Value::I64(_), Value::F64(value))
+                if value.is_finite() => {}
+            (Value::F64(candidate), Value::Null | Value::Bool(_) | Value::I64(_))
+                if candidate.is_finite() => {}
+            (Value::F64(candidate), Value::F64(value))
+                if candidate.is_finite() && value.is_finite() => {}
             _ => return None,
         }
     }

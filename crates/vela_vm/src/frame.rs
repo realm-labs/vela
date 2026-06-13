@@ -11,40 +11,13 @@ pub(crate) struct FrameHeapRoot {
 
 #[derive(Clone, Debug)]
 pub(crate) struct CallFrame {
-    registers: Vec<FrameSlot>,
-}
-
-#[derive(Clone, Copy, Debug, PartialEq)]
-enum FrameSlot {
-    Value(Value),
-    I64(i64),
-    Bool(bool),
-}
-
-impl FrameSlot {
-    #[inline]
-    fn value(self) -> Value {
-        match self {
-            Self::Value(value) => value,
-            Self::I64(value) => Value::i64(value),
-            Self::Bool(value) => Value::Bool(value),
-        }
-    }
-
-    #[inline]
-    fn from_value(value: Value) -> Self {
-        match value {
-            Value::Scalar(vela_common::ScalarValue::I64(value)) => Self::I64(value),
-            Value::Bool(value) => Self::Bool(value),
-            value => Self::Value(value),
-        }
-    }
+    registers: Vec<Value>,
 }
 
 impl CallFrame {
     pub(crate) fn new(register_count: u16) -> Self {
         Self {
-            registers: vec![FrameSlot::Value(Value::Null); usize::from(register_count)],
+            registers: vec![Value::Null; usize::from(register_count)],
         }
     }
 
@@ -52,7 +25,6 @@ impl CallFrame {
         self.registers
             .get(usize::from(register.0))
             .copied()
-            .map(FrameSlot::value)
             .ok_or_else(|| VmError::new(VmErrorKind::RegisterOutOfBounds { register }))
     }
 
@@ -61,7 +33,7 @@ impl CallFrame {
             .registers
             .get_mut(usize::from(register.0))
             .ok_or_else(|| VmError::new(VmErrorKind::RegisterOutOfBounds { register }))?;
-        *slot = FrameSlot::from_value(value);
+        *slot = value;
         Ok(())
     }
 
@@ -71,8 +43,7 @@ impl CallFrame {
             .get(usize::from(register.0))
             .ok_or_else(|| VmError::new(VmErrorKind::RegisterOutOfBounds { register }))?
         {
-            FrameSlot::I64(value) => Ok(*value),
-            FrameSlot::Value(Value::Scalar(vela_common::ScalarValue::I64(value))) => Ok(*value),
+            Value::I64(value) => Ok(*value),
             _ => Err(VmError::new(VmErrorKind::TypeMismatch { operation })),
         }
     }
@@ -82,7 +53,7 @@ impl CallFrame {
             .registers
             .get_mut(usize::from(register.0))
             .ok_or_else(|| VmError::new(VmErrorKind::RegisterOutOfBounds { register }))?;
-        *slot = FrameSlot::I64(value);
+        *slot = Value::I64(value);
         Ok(())
     }
 
@@ -92,7 +63,7 @@ impl CallFrame {
             .get(usize::from(register.0))
             .ok_or_else(|| VmError::new(VmErrorKind::RegisterOutOfBounds { register }))?
         {
-            FrameSlot::Bool(value) | FrameSlot::Value(Value::Bool(value)) => Ok(*value),
+            Value::Bool(value) => Ok(*value),
             _ => Err(VmError::new(VmErrorKind::TypeMismatch { operation })),
         }
     }
@@ -103,7 +74,7 @@ impl CallFrame {
             .get(usize::from(register.0))
             .ok_or_else(|| VmError::new(VmErrorKind::RegisterOutOfBounds { register }))?
         {
-            FrameSlot::Bool(value) => Ok(Some(*value)),
+            Value::Bool(value) => Ok(Some(*value)),
             _ => Ok(None),
         }
     }
@@ -113,7 +84,7 @@ impl CallFrame {
             .registers
             .get_mut(usize::from(register.0))
             .ok_or_else(|| VmError::new(VmErrorKind::RegisterOutOfBounds { register }))?;
-        *slot = FrameSlot::Bool(value);
+        *slot = Value::Bool(value);
         Ok(())
     }
 
@@ -125,11 +96,9 @@ impl CallFrame {
     }
 
     pub(crate) fn extend_heap_roots(&self, roots: &mut Vec<GcRef>) {
-        self.registers.iter().for_each(|slot| {
-            if let FrameSlot::Value(value) = slot {
-                value.trace_heap_refs(roots);
-            }
-        });
+        self.registers
+            .iter()
+            .for_each(|value| value.trace_heap_refs(roots));
     }
 
     #[allow(dead_code)]
@@ -138,12 +107,7 @@ impl CallFrame {
         self.registers
             .iter()
             .enumerate()
-            .filter_map(|(index, slot)| {
-                let FrameSlot::Value(value) = slot else {
-                    return None;
-                };
-                Some((Register(u16::try_from(index).ok()?), value))
-            })
+            .filter_map(|(index, value)| Some((Register(u16::try_from(index).ok()?), value)))
             .for_each(|(register, value)| {
                 let mut references = Vec::new();
                 value.trace_heap_refs(&mut references);

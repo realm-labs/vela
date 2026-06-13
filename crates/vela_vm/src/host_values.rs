@@ -7,7 +7,7 @@ pub(crate) fn value_from_host(value: HostValue) -> Value {
     match value {
         HostValue::Null => Value::Null,
         HostValue::Bool(value) => Value::Bool(value),
-        HostValue::Scalar(value) => Value::Scalar(value),
+        HostValue::Scalar(value) => Value::from_scalar(value),
         HostValue::HostRef(value) => Value::HostRef(value),
         HostValue::String(_) | HostValue::Bytes(_) => Value::Missing,
     }
@@ -18,10 +18,12 @@ pub(crate) fn value_to_host(
     operation: &'static str,
     heap: Option<&HeapExecution<'_>>,
 ) -> VmResult<HostValue> {
+    if let Some(value) = value.as_scalar() {
+        return Ok(HostValue::Scalar(value));
+    }
     match value {
         Value::Null => Ok(HostValue::Null),
         Value::Bool(value) => Ok(HostValue::Bool(*value)),
-        Value::Scalar(value) => Ok(HostValue::Scalar(*value)),
         Value::HostRef(value) => Ok(HostValue::HostRef(*value)),
         Value::HeapRef(reference) => match heap.and_then(|heap| heap.heap.get(*reference)) {
             Some(HeapValue::String(value)) => Ok(HostValue::String(value.clone())),
@@ -38,5 +40,6 @@ pub(crate) fn value_to_host(
         Value::Range(_) | Value::Missing => {
             Err(VmError::new(VmErrorKind::TypeMismatch { operation }))
         }
+        _ => unreachable!("scalar values return before host conversion match"),
     }
 }

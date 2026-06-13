@@ -78,11 +78,7 @@ mod tests {
             enum_name: "NotResult".to_owned(),
             variant: "Definitely".to_owned(),
             identity: Some(std_enum_identity(StdEnumVariant::Ok)),
-            fields: ScriptFields::single(
-                "NotResult::Definitely",
-                "0",
-                Value::Scalar(vela_common::ScalarValue::I64(9)),
-            ),
+            fields: ScriptFields::single("NotResult::Definitely", "0", Value::I64(9)),
         });
         let execution = HeapExecution::new(&mut heap);
 
@@ -90,7 +86,7 @@ mod tests {
             .expect("typed try propagation")
         {
             TryPropagation::Continue(value) => {
-                assert_eq!(value, Value::Scalar(vela_common::ScalarValue::I64(9)))
+                assert_eq!(value, Value::I64(9))
             }
             TryPropagation::Return(value) => panic!("expected continue, got return {value:?}"),
         }
@@ -103,11 +99,7 @@ mod tests {
             enum_name: "Result".to_owned(),
             variant: "Ok".to_owned(),
             identity: None,
-            fields: ScriptFields::single(
-                "Result::Ok",
-                "0",
-                Value::Scalar(vela_common::ScalarValue::I64(9)),
-            ),
+            fields: ScriptFields::single("Result::Ok", "0", Value::I64(9)),
         });
         let execution = HeapExecution::new(&mut heap);
 

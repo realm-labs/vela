@@ -101,7 +101,7 @@ fn linked_bytecode_profiler_records_direct_closure_body_offsets() {
         )
         .expect("linked closure should execute");
 
-    assert_eq!(result, Value::Scalar(vela_common::ScalarValue::I64(42)));
+    assert_eq!(result, Value::I64(42));
     assert_eq!(profiler.hit_count(main_name, InstructionOffset(0)), 1);
     assert_eq!(profiler.hit_count(main_name, InstructionOffset(1)), 1);
     assert_eq!(profiler.hit_count(closure_name, InstructionOffset(0)), 1);
@@ -151,7 +151,7 @@ fn main() {
         )
         .expect("linked callback method should execute");
 
-    assert_eq!(result, Value::Scalar(vela_common::ScalarValue::I64(2)));
+    assert_eq!(result, Value::I64(2));
     assert!(
         profiler.function_hit_count(callback_function) > 0,
         "callback body should report linked bytecode hits"

@@ -82,7 +82,7 @@ pub(super) fn expect_arity(method: &str, args: &[Value], expected: usize) -> VmR
 
 pub(super) fn index_value(value: &Value, operation: &'static str) -> VmResult<usize> {
     match value {
-        Value::Scalar(vela_common::ScalarValue::I64(value)) if *value >= 0 => Ok(*value as usize),
+        Value::I64(value) if *value >= 0 => Ok(*value as usize),
         _ => type_error(operation),
     }
 }

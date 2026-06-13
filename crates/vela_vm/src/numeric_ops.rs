@@ -1,5 +1,4 @@
 use vela_bytecode::{BinaryLiteralOp, BinaryLiteralSide};
-use vela_common::ScalarValue;
 
 use crate::{Value, VmError, VmErrorKind, VmResult};
 
@@ -12,22 +11,22 @@ macro_rules! eval_int_literal_op {
         match $op {
             BinaryLiteralOp::Add => lhs
                 .checked_add(rhs)
-                .map(|value| Value::Scalar($ctor(value)))
+                .map($ctor)
                 .ok_or_else(|| arithmetic_overflow($operation)),
             BinaryLiteralOp::Sub => lhs
                 .checked_sub(rhs)
-                .map(|value| Value::Scalar($ctor(value)))
+                .map($ctor)
                 .ok_or_else(|| arithmetic_overflow($operation)),
             BinaryLiteralOp::Mul => lhs
                 .checked_mul(rhs)
-                .map(|value| Value::Scalar($ctor(value)))
+                .map($ctor)
                 .ok_or_else(|| arithmetic_overflow($operation)),
             BinaryLiteralOp::Div => {
                 if rhs == 0 {
                     Err(VmError::new(VmErrorKind::DivisionByZero))
                 } else {
                     lhs.checked_div(rhs)
-                        .map(|value| Value::Scalar($ctor(value)))
+                        .map($ctor)
                         .ok_or_else(|| arithmetic_overflow($operation))
                 }
             }
@@ -36,7 +35,7 @@ macro_rules! eval_int_literal_op {
                     Err(VmError::new(VmErrorKind::DivisionByZero))
                 } else {
                     lhs.checked_rem(rhs)
-                        .map(|value| Value::Scalar($ctor(value)))
+                        .map($ctor)
                         .ok_or_else(|| arithmetic_overflow($operation))
                 }
             }
@@ -49,27 +48,27 @@ macro_rules! eval_int_literal_op {
 }
 
 macro_rules! eval_float_literal_op {
-    ($op:expr, $value:expr, $literal:expr, $side:expr, $ctor:path, $operation:expr) => {{
+    ($op:expr, $value:expr, $literal:expr, $side:expr, $ctor:path) => {{
         let (lhs, rhs) = match $side {
             BinaryLiteralSide::Left => ($literal, $value),
             BinaryLiteralSide::Right => ($value, $literal),
         };
         match $op {
-            BinaryLiteralOp::Add => Ok(Value::Scalar($ctor(lhs + rhs))),
-            BinaryLiteralOp::Sub => Ok(Value::Scalar($ctor(lhs - rhs))),
-            BinaryLiteralOp::Mul => Ok(Value::Scalar($ctor(lhs * rhs))),
+            BinaryLiteralOp::Add => Ok($ctor(lhs + rhs)),
+            BinaryLiteralOp::Sub => Ok($ctor(lhs - rhs)),
+            BinaryLiteralOp::Mul => Ok($ctor(lhs * rhs)),
             BinaryLiteralOp::Div => {
                 if rhs == 0.0 {
                     Err(VmError::new(VmErrorKind::DivisionByZero))
                 } else {
-                    Ok(Value::Scalar($ctor(lhs / rhs)))
+                    Ok($ctor(lhs / rhs))
                 }
             }
             BinaryLiteralOp::Rem => {
                 if rhs == 0.0 {
                     Err(VmError::new(VmErrorKind::DivisionByZero))
                 } else {
-                    Ok(Value::Scalar($ctor(lhs % rhs)))
+                    Ok($ctor(lhs % rhs))
                 }
             }
             BinaryLiteralOp::Less => Ok(Value::Bool(lhs < rhs)),
@@ -83,44 +82,40 @@ macro_rules! eval_float_literal_op {
 macro_rules! scalar_checked_arithmetic {
     ($lhs:expr, $rhs:expr, $operation:expr, $method:ident, $float_op:tt) => {{
         match ($lhs, $rhs) {
-            (Value::Scalar(ScalarValue::I8(lhs)), Value::Scalar(ScalarValue::I8(rhs))) => lhs
+            (Value::I8(lhs), Value::I8(rhs)) => lhs
                 .$method(*rhs)
-                .map(|value| Value::Scalar(ScalarValue::I8(value)))
+                .map(Value::I8)
                 .ok_or_else(|| arithmetic_overflow($operation)),
-            (Value::Scalar(ScalarValue::I16(lhs)), Value::Scalar(ScalarValue::I16(rhs))) => lhs
+            (Value::I16(lhs), Value::I16(rhs)) => lhs
                 .$method(*rhs)
-                .map(|value| Value::Scalar(ScalarValue::I16(value)))
+                .map(Value::I16)
                 .ok_or_else(|| arithmetic_overflow($operation)),
-            (Value::Scalar(ScalarValue::I32(lhs)), Value::Scalar(ScalarValue::I32(rhs))) => lhs
+            (Value::I32(lhs), Value::I32(rhs)) => lhs
                 .$method(*rhs)
-                .map(|value| Value::Scalar(ScalarValue::I32(value)))
+                .map(Value::I32)
                 .ok_or_else(|| arithmetic_overflow($operation)),
-            (Value::Scalar(ScalarValue::I64(lhs)), Value::Scalar(ScalarValue::I64(rhs))) => lhs
+            (Value::I64(lhs), Value::I64(rhs)) => lhs
                 .$method(*rhs)
-                .map(|value| Value::Scalar(ScalarValue::I64(value)))
+                .map(Value::I64)
                 .ok_or_else(|| arithmetic_overflow($operation)),
-            (Value::Scalar(ScalarValue::U8(lhs)), Value::Scalar(ScalarValue::U8(rhs))) => lhs
+            (Value::U8(lhs), Value::U8(rhs)) => lhs
                 .$method(*rhs)
-                .map(|value| Value::Scalar(ScalarValue::U8(value)))
+                .map(Value::U8)
                 .ok_or_else(|| arithmetic_overflow($operation)),
-            (Value::Scalar(ScalarValue::U16(lhs)), Value::Scalar(ScalarValue::U16(rhs))) => lhs
+            (Value::U16(lhs), Value::U16(rhs)) => lhs
                 .$method(*rhs)
-                .map(|value| Value::Scalar(ScalarValue::U16(value)))
+                .map(Value::U16)
                 .ok_or_else(|| arithmetic_overflow($operation)),
-            (Value::Scalar(ScalarValue::U32(lhs)), Value::Scalar(ScalarValue::U32(rhs))) => lhs
+            (Value::U32(lhs), Value::U32(rhs)) => lhs
                 .$method(*rhs)
-                .map(|value| Value::Scalar(ScalarValue::U32(value)))
+                .map(Value::U32)
                 .ok_or_else(|| arithmetic_overflow($operation)),
-            (Value::Scalar(ScalarValue::U64(lhs)), Value::Scalar(ScalarValue::U64(rhs))) => lhs
+            (Value::U64(lhs), Value::U64(rhs)) => lhs
                 .$method(*rhs)
-                .map(|value| Value::Scalar(ScalarValue::U64(value)))
+                .map(Value::U64)
                 .ok_or_else(|| arithmetic_overflow($operation)),
-            (Value::Scalar(ScalarValue::F32(lhs)), Value::Scalar(ScalarValue::F32(rhs))) => {
-                Ok(Value::Scalar(ScalarValue::F32(*lhs $float_op *rhs)))
-            }
-            (Value::Scalar(ScalarValue::F64(lhs)), Value::Scalar(ScalarValue::F64(rhs))) => {
-                Ok(Value::Scalar(ScalarValue::F64(*lhs $float_op *rhs)))
-            }
+            (Value::F32(lhs), Value::F32(rhs)) => Ok(Value::F32(*lhs $float_op *rhs)),
+            (Value::F64(lhs), Value::F64(rhs)) => Ok(Value::F64(*lhs $float_op *rhs)),
             _ => type_mismatch($operation),
         }
     }};
@@ -129,58 +124,58 @@ macro_rules! scalar_checked_arithmetic {
 macro_rules! scalar_div_rem {
     ($lhs:expr, $rhs:expr, $operation:expr, $method:ident, $float_op:tt) => {{
         match ($lhs, $rhs) {
-            (Value::Scalar(ScalarValue::I8(lhs)), Value::Scalar(ScalarValue::I8(rhs))) => {
-                checked_div_rem(*lhs, *rhs, ScalarValue::I8, $operation, |lhs, rhs| {
+            (Value::I8(lhs), Value::I8(rhs)) => {
+                checked_div_rem(*lhs, *rhs, Value::I8, $operation, |lhs, rhs| {
                     lhs.$method(rhs)
                 })
             }
-            (Value::Scalar(ScalarValue::I16(lhs)), Value::Scalar(ScalarValue::I16(rhs))) => {
-                checked_div_rem(*lhs, *rhs, ScalarValue::I16, $operation, |lhs, rhs| {
+            (Value::I16(lhs), Value::I16(rhs)) => {
+                checked_div_rem(*lhs, *rhs, Value::I16, $operation, |lhs, rhs| {
                     lhs.$method(rhs)
                 })
             }
-            (Value::Scalar(ScalarValue::I32(lhs)), Value::Scalar(ScalarValue::I32(rhs))) => {
-                checked_div_rem(*lhs, *rhs, ScalarValue::I32, $operation, |lhs, rhs| {
+            (Value::I32(lhs), Value::I32(rhs)) => {
+                checked_div_rem(*lhs, *rhs, Value::I32, $operation, |lhs, rhs| {
                     lhs.$method(rhs)
                 })
             }
-            (Value::Scalar(ScalarValue::I64(lhs)), Value::Scalar(ScalarValue::I64(rhs))) => {
-                checked_div_rem(*lhs, *rhs, ScalarValue::I64, $operation, |lhs, rhs| {
+            (Value::I64(lhs), Value::I64(rhs)) => {
+                checked_div_rem(*lhs, *rhs, Value::I64, $operation, |lhs, rhs| {
                     lhs.$method(rhs)
                 })
             }
-            (Value::Scalar(ScalarValue::U8(lhs)), Value::Scalar(ScalarValue::U8(rhs))) => {
-                checked_div_rem(*lhs, *rhs, ScalarValue::U8, $operation, |lhs, rhs| {
+            (Value::U8(lhs), Value::U8(rhs)) => {
+                checked_div_rem(*lhs, *rhs, Value::U8, $operation, |lhs, rhs| {
                     lhs.$method(rhs)
                 })
             }
-            (Value::Scalar(ScalarValue::U16(lhs)), Value::Scalar(ScalarValue::U16(rhs))) => {
-                checked_div_rem(*lhs, *rhs, ScalarValue::U16, $operation, |lhs, rhs| {
+            (Value::U16(lhs), Value::U16(rhs)) => {
+                checked_div_rem(*lhs, *rhs, Value::U16, $operation, |lhs, rhs| {
                     lhs.$method(rhs)
                 })
             }
-            (Value::Scalar(ScalarValue::U32(lhs)), Value::Scalar(ScalarValue::U32(rhs))) => {
-                checked_div_rem(*lhs, *rhs, ScalarValue::U32, $operation, |lhs, rhs| {
+            (Value::U32(lhs), Value::U32(rhs)) => {
+                checked_div_rem(*lhs, *rhs, Value::U32, $operation, |lhs, rhs| {
                     lhs.$method(rhs)
                 })
             }
-            (Value::Scalar(ScalarValue::U64(lhs)), Value::Scalar(ScalarValue::U64(rhs))) => {
-                checked_div_rem(*lhs, *rhs, ScalarValue::U64, $operation, |lhs, rhs| {
+            (Value::U64(lhs), Value::U64(rhs)) => {
+                checked_div_rem(*lhs, *rhs, Value::U64, $operation, |lhs, rhs| {
                     lhs.$method(rhs)
                 })
             }
-            (Value::Scalar(ScalarValue::F32(lhs)), Value::Scalar(ScalarValue::F32(rhs))) => {
+            (Value::F32(lhs), Value::F32(rhs)) => {
                 if *rhs == 0.0 {
                     Err(VmError::new(VmErrorKind::DivisionByZero))
                 } else {
-                    Ok(Value::Scalar(ScalarValue::F32(*lhs $float_op *rhs)))
+                    Ok(Value::F32(*lhs $float_op *rhs))
                 }
             }
-            (Value::Scalar(ScalarValue::F64(lhs)), Value::Scalar(ScalarValue::F64(rhs))) => {
+            (Value::F64(lhs), Value::F64(rhs)) => {
                 if *rhs == 0.0 {
                     Err(VmError::new(VmErrorKind::DivisionByZero))
                 } else {
-                    Ok(Value::Scalar(ScalarValue::F64(*lhs $float_op *rhs)))
+                    Ok(Value::F64(*lhs $float_op *rhs))
                 }
             }
             _ => type_mismatch($operation),
@@ -191,16 +186,16 @@ macro_rules! scalar_div_rem {
 macro_rules! scalar_comparison {
     ($lhs:expr, $rhs:expr, $operation:expr, $op:tt) => {{
         match ($lhs, $rhs) {
-            (Value::Scalar(ScalarValue::I8(lhs)), Value::Scalar(ScalarValue::I8(rhs))) => Ok(*lhs $op *rhs),
-            (Value::Scalar(ScalarValue::I16(lhs)), Value::Scalar(ScalarValue::I16(rhs))) => Ok(*lhs $op *rhs),
-            (Value::Scalar(ScalarValue::I32(lhs)), Value::Scalar(ScalarValue::I32(rhs))) => Ok(*lhs $op *rhs),
-            (Value::Scalar(ScalarValue::I64(lhs)), Value::Scalar(ScalarValue::I64(rhs))) => Ok(*lhs $op *rhs),
-            (Value::Scalar(ScalarValue::U8(lhs)), Value::Scalar(ScalarValue::U8(rhs))) => Ok(*lhs $op *rhs),
-            (Value::Scalar(ScalarValue::U16(lhs)), Value::Scalar(ScalarValue::U16(rhs))) => Ok(*lhs $op *rhs),
-            (Value::Scalar(ScalarValue::U32(lhs)), Value::Scalar(ScalarValue::U32(rhs))) => Ok(*lhs $op *rhs),
-            (Value::Scalar(ScalarValue::U64(lhs)), Value::Scalar(ScalarValue::U64(rhs))) => Ok(*lhs $op *rhs),
-            (Value::Scalar(ScalarValue::F32(lhs)), Value::Scalar(ScalarValue::F32(rhs))) => Ok(*lhs $op *rhs),
-            (Value::Scalar(ScalarValue::F64(lhs)), Value::Scalar(ScalarValue::F64(rhs))) => Ok(*lhs $op *rhs),
+            (Value::I8(lhs), Value::I8(rhs)) => Ok(*lhs $op *rhs),
+            (Value::I16(lhs), Value::I16(rhs)) => Ok(*lhs $op *rhs),
+            (Value::I32(lhs), Value::I32(rhs)) => Ok(*lhs $op *rhs),
+            (Value::I64(lhs), Value::I64(rhs)) => Ok(*lhs $op *rhs),
+            (Value::U8(lhs), Value::U8(rhs)) => Ok(*lhs $op *rhs),
+            (Value::U16(lhs), Value::U16(rhs)) => Ok(*lhs $op *rhs),
+            (Value::U32(lhs), Value::U32(rhs)) => Ok(*lhs $op *rhs),
+            (Value::U64(lhs), Value::U64(rhs)) => Ok(*lhs $op *rhs),
+            (Value::F32(lhs), Value::F32(rhs)) => Ok(*lhs $op *rhs),
+            (Value::F64(lhs), Value::F64(rhs)) => Ok(*lhs $op *rhs),
             _ => type_mismatch($operation),
         }
     }};
@@ -224,24 +219,24 @@ pub(crate) fn mul_numeric(lhs: &Value, rhs: &Value) -> VmResult<Value> {
 #[inline]
 pub(crate) fn negate_numeric(value: &Value) -> VmResult<Value> {
     match value {
-        Value::Scalar(ScalarValue::I8(value)) => value
+        Value::I8(value) => value
             .checked_neg()
-            .map(|value| Value::Scalar(ScalarValue::I8(value)))
+            .map(Value::I8)
             .ok_or_else(|| arithmetic_overflow("negate")),
-        Value::Scalar(ScalarValue::I16(value)) => value
+        Value::I16(value) => value
             .checked_neg()
-            .map(|value| Value::Scalar(ScalarValue::I16(value)))
+            .map(Value::I16)
             .ok_or_else(|| arithmetic_overflow("negate")),
-        Value::Scalar(ScalarValue::I32(value)) => value
+        Value::I32(value) => value
             .checked_neg()
-            .map(|value| Value::Scalar(ScalarValue::I32(value)))
+            .map(Value::I32)
             .ok_or_else(|| arithmetic_overflow("negate")),
-        Value::Scalar(ScalarValue::I64(value)) => value
+        Value::I64(value) => value
             .checked_neg()
-            .map(|value| Value::Scalar(ScalarValue::I64(value)))
+            .map(Value::I64)
             .ok_or_else(|| arithmetic_overflow("negate")),
-        Value::Scalar(ScalarValue::F32(value)) => Ok(Value::Scalar(ScalarValue::F32(-value))),
-        Value::Scalar(ScalarValue::F64(value)) => Ok(Value::Scalar(ScalarValue::F64(-value))),
+        Value::F32(value) => Ok(Value::F32(-value)),
+        Value::F64(value) => Ok(Value::F64(-value)),
         _ => type_mismatch("negate"),
     }
 }
@@ -283,93 +278,37 @@ pub(crate) fn binary_int_literal_numeric(
     side: BinaryLiteralSide,
 ) -> VmResult<Value> {
     match value {
-        Value::Scalar(ScalarValue::I8(value)) => {
+        Value::I8(value) => {
             let literal = parse_integer_literal_as(literal, i8::MAX as u128)? as i8;
-            eval_int_literal_op!(
-                op,
-                *value,
-                literal,
-                side,
-                ScalarValue::I8,
-                "binary_int_literal"
-            )
+            eval_int_literal_op!(op, *value, literal, side, Value::I8, "binary_int_literal")
         }
-        Value::Scalar(ScalarValue::I16(value)) => {
+        Value::I16(value) => {
             let literal = parse_integer_literal_as(literal, i16::MAX as u128)? as i16;
-            eval_int_literal_op!(
-                op,
-                *value,
-                literal,
-                side,
-                ScalarValue::I16,
-                "binary_int_literal"
-            )
+            eval_int_literal_op!(op, *value, literal, side, Value::I16, "binary_int_literal")
         }
-        Value::Scalar(ScalarValue::I32(value)) => {
+        Value::I32(value) => {
             let literal = parse_integer_literal_as(literal, i32::MAX as u128)? as i32;
-            eval_int_literal_op!(
-                op,
-                *value,
-                literal,
-                side,
-                ScalarValue::I32,
-                "binary_int_literal"
-            )
+            eval_int_literal_op!(op, *value, literal, side, Value::I32, "binary_int_literal")
         }
-        Value::Scalar(ScalarValue::I64(value)) => {
+        Value::I64(value) => {
             let literal = parse_integer_literal_as(literal, i64::MAX as u128)? as i64;
-            eval_int_literal_op!(
-                op,
-                *value,
-                literal,
-                side,
-                ScalarValue::I64,
-                "binary_int_literal"
-            )
+            eval_int_literal_op!(op, *value, literal, side, Value::I64, "binary_int_literal")
         }
-        Value::Scalar(ScalarValue::U8(value)) => {
+        Value::U8(value) => {
             let literal = parse_integer_literal_as(literal, u8::MAX as u128)? as u8;
-            eval_int_literal_op!(
-                op,
-                *value,
-                literal,
-                side,
-                ScalarValue::U8,
-                "binary_int_literal"
-            )
+            eval_int_literal_op!(op, *value, literal, side, Value::U8, "binary_int_literal")
         }
-        Value::Scalar(ScalarValue::U16(value)) => {
+        Value::U16(value) => {
             let literal = parse_integer_literal_as(literal, u16::MAX as u128)? as u16;
-            eval_int_literal_op!(
-                op,
-                *value,
-                literal,
-                side,
-                ScalarValue::U16,
-                "binary_int_literal"
-            )
+            eval_int_literal_op!(op, *value, literal, side, Value::U16, "binary_int_literal")
         }
-        Value::Scalar(ScalarValue::U32(value)) => {
+        Value::U32(value) => {
             let literal = parse_integer_literal_as(literal, u32::MAX as u128)? as u32;
-            eval_int_literal_op!(
-                op,
-                *value,
-                literal,
-                side,
-                ScalarValue::U32,
-                "binary_int_literal"
-            )
+            eval_int_literal_op!(op, *value, literal, side, Value::U32, "binary_int_literal")
         }
-        Value::Scalar(ScalarValue::U64(value)) => {
+        Value::U64(value) => {
             let literal = parse_integer_literal_as(literal, u64::MAX as u128)? as u64;
-            eval_int_literal_op!(
-                op,
-                *value,
-                literal,
-                side,
-                ScalarValue::U64,
-                "binary_int_literal"
-            )
+            eval_int_literal_op!(op, *value, literal, side, Value::U64, "binary_int_literal")
         }
         _ => type_mismatch("binary_int_literal"),
     }
@@ -382,35 +321,21 @@ pub(crate) fn binary_float_literal_numeric(
     side: BinaryLiteralSide,
 ) -> VmResult<Value> {
     match value {
-        Value::Scalar(ScalarValue::F32(value)) => {
+        Value::F32(value) => {
             let literal = literal.parse::<f32>().map_err(|_| {
                 VmError::new(VmErrorKind::TypeMismatch {
                     operation: "binary_float_literal",
                 })
             })?;
-            eval_float_literal_op!(
-                op,
-                *value,
-                literal,
-                side,
-                ScalarValue::F32,
-                "binary_float_literal"
-            )
+            eval_float_literal_op!(op, *value, literal, side, Value::F32)
         }
-        Value::Scalar(ScalarValue::F64(value)) => {
+        Value::F64(value) => {
             let literal = literal.parse::<f64>().map_err(|_| {
                 VmError::new(VmErrorKind::TypeMismatch {
                     operation: "binary_float_literal",
                 })
             })?;
-            eval_float_literal_op!(
-                op,
-                *value,
-                literal,
-                side,
-                ScalarValue::F64,
-                "binary_float_literal"
-            )
+            eval_float_literal_op!(op, *value, literal, side, Value::F64)
         }
         _ => type_mismatch("binary_float_literal"),
     }
@@ -440,7 +365,7 @@ fn parse_integer_literal_as(literal: &str, max: u128) -> VmResult<u128> {
 fn checked_div_rem<T>(
     lhs: T,
     rhs: T,
-    ctor: impl FnOnce(T) -> ScalarValue,
+    ctor: impl FnOnce(T) -> Value,
     operation: &'static str,
     apply: impl FnOnce(T, T) -> Option<T>,
 ) -> VmResult<Value>
@@ -451,7 +376,7 @@ where
         return Err(VmError::new(VmErrorKind::DivisionByZero));
     }
     apply(lhs, rhs)
-        .map(|value| Value::Scalar(ctor(value)))
+        .map(ctor)
         .ok_or_else(|| arithmetic_overflow(operation))
 }
 

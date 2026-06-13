@@ -17,7 +17,6 @@ pub(super) use map_mutation::call_cached_map_mutation;
 pub(super) use option_result::call_cached_option_result_materialization;
 pub(super) use set::call_cached_set_materialization;
 pub(super) use set_mutation::call_cached_set_mutation;
-use vela_common::ScalarValue;
 
 pub(super) fn call_cached_array_lookup_option(
     receiver: &Value,
@@ -437,7 +436,7 @@ fn index_value(index: usize) -> VmResult<Value> {
             operation: "method index_of",
         })
     })?;
-    Ok(Value::Scalar(ScalarValue::I64(index)))
+    Ok(Value::I64(index))
 }
 
 fn array_slice_payload(values: &[Value], args: &[Value]) -> VmResult<Vec<Value>> {
@@ -650,10 +649,8 @@ fn cached_sort_key(
     operation: &'static str,
 ) -> VmResult<CachedSortKey> {
     match value {
-        Value::Scalar(ScalarValue::I64(value)) => Ok(CachedSortKey::Int(*value)),
-        Value::Scalar(ScalarValue::F64(value)) if value.is_finite() => {
-            Ok(CachedSortKey::Float(*value))
-        }
+        Value::I64(value) => Ok(CachedSortKey::Int(*value)),
+        Value::F64(value) if value.is_finite() => Ok(CachedSortKey::Float(*value)),
         Value::HeapRef(reference) => match heap.and_then(|heap| heap.heap.get(*reference)) {
             Some(HeapValue::String(value)) => Ok(CachedSortKey::String(value.clone())),
             _ => Err(VmError::new(VmErrorKind::TypeMismatch { operation })),
@@ -664,7 +661,7 @@ fn cached_sort_key(
 
 fn array_index_value(value: &Value, operation: &'static str) -> VmResult<usize> {
     match value {
-        Value::Scalar(ScalarValue::I64(value)) if *value >= 0 => Ok(*value as usize),
+        Value::I64(value) if *value >= 0 => Ok(*value as usize),
         _ => Err(VmError::new(VmErrorKind::TypeMismatch { operation })),
     }
 }
@@ -832,7 +829,7 @@ fn char_index_value(value: &Value) -> VmResult<usize> {
 
 fn char_index_value_with_operation(value: &Value, operation: &'static str) -> VmResult<usize> {
     match value {
-        Value::Scalar(ScalarValue::I64(value)) if *value >= 0 => Ok(*value as usize),
+        Value::I64(value) if *value >= 0 => Ok(*value as usize),
         _ => Err(VmError::new(VmErrorKind::TypeMismatch { operation })),
     }
 }

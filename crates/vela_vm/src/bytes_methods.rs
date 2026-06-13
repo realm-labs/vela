@@ -4,7 +4,6 @@ use crate::{
     ExecutionBudget, HeapExecution, Value, VmError, VmErrorKind, VmResult, allocate_heap_value,
     expect_arity, option_result,
 };
-use vela_common::ScalarValue;
 
 pub(crate) fn is_bytes(value: &Value, heap: Option<&HeapExecution<'_>>) -> bool {
     match value {
@@ -48,7 +47,7 @@ pub(crate) fn get(
         .get(index)
         .copied()
         .ok_or_else(|| index_out_of_bounds(index, value.len()))?;
-    Ok(Value::Scalar(ScalarValue::U8(byte)))
+    Ok(Value::U8(byte))
 }
 
 pub(crate) fn slice(
@@ -151,7 +150,7 @@ fn read_u32(
     }
     let bytes = <[u8; 4]>::try_from(&value[index..end])
         .map_err(|_| VmError::new(VmErrorKind::TypeMismatch { operation }))?;
-    Ok(Value::Scalar(ScalarValue::U32(read(bytes))))
+    Ok(Value::U32(read(bytes)))
 }
 
 pub(crate) fn bytes_value<'a>(
@@ -170,13 +169,11 @@ pub(crate) fn bytes_value<'a>(
 
 fn byte_index(value: &Value, len: usize, operation: &'static str) -> VmResult<usize> {
     match value {
-        Value::Scalar(ScalarValue::I64(index)) if *index >= 0 => Ok(*index as usize),
-        Value::Scalar(ScalarValue::I64(index)) => {
-            Err(VmError::new(VmErrorKind::IndexOutOfBounds {
-                index: *index,
-                len,
-            }))
-        }
+        Value::I64(index) if *index >= 0 => Ok(*index as usize),
+        Value::I64(index) => Err(VmError::new(VmErrorKind::IndexOutOfBounds {
+            index: *index,
+            len,
+        })),
         _ => type_error(operation),
     }
 }

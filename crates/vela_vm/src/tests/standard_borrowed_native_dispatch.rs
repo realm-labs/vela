@@ -33,7 +33,7 @@ fn linked_borrowed_native_call_receives_runtime_values() {
     let native_id = vela_def::FunctionId::new(79);
     let mut vm = Vm::new();
     vm.register_borrowed_native_with_id(native_id, |args, _heap, _budget| {
-        let [Value::Scalar(vela_common::ScalarValue::I64(value))] = args else {
+        let [Value::I64(value)] = args else {
             return Ok(OwnedValue::Null);
         };
         Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(

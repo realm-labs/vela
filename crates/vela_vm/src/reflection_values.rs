@@ -78,13 +78,13 @@ pub(crate) fn runtime_value_to_reflect(
     heap: &HeapExecution<'_>,
     operation: &'static str,
 ) -> VmResult<reflect::value::ReflectValue> {
+    if let Some(value) = value.as_scalar() {
+        return Ok(reflect::value::ReflectValue::Host(HostValue::Scalar(value)));
+    }
     match value {
         Value::Missing => Err(type_error(operation)),
         Value::Null => Ok(reflect::value::ReflectValue::Host(HostValue::Null)),
         Value::Bool(value) => Ok(reflect::value::ReflectValue::Host(HostValue::Bool(*value))),
-        Value::Scalar(value) => Ok(reflect::value::ReflectValue::Host(HostValue::Scalar(
-            *value,
-        ))),
         Value::Range(_) => Ok(reflect::value::ReflectValue::Range),
         Value::HostRef(host_ref) => Ok(reflect::value::ReflectValue::HostRef(*host_ref)),
         Value::HeapRef(reference) => match heap.heap.get(*reference) {
@@ -157,6 +157,7 @@ pub(crate) fn runtime_value_to_reflect(
                 Err(type_error(operation))
             }
         },
+        _ => unreachable!("scalar values return before reflection conversion match"),
     }
 }
 

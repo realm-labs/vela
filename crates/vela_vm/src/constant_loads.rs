@@ -12,7 +12,7 @@ pub(crate) fn dispatch_load_const(
     let value = match constant {
         Constant::Null => Value::Null,
         Constant::Bool(value) => Value::Bool(*value),
-        Constant::Scalar(value) => Value::Scalar(*value),
+        Constant::Scalar(value) => Value::from_scalar(*value),
         Constant::String(value) => {
             if let Some(value) =
                 loaded_string_constant(frame.read(dst).ok().as_ref(), value, heap.as_deref())

@@ -695,6 +695,16 @@ Superinstructions must be lowered only when the compiler can prove the fused
 condition shape directly or prove that removed temporary registers are not
 observable. Do not add post-compile fused rewrites from adjacent opcodes alone.
 
+### Runtime Scalar Value Layout
+
+The VM runtime `Value` enum stores primitive scalar tags as direct variants
+(`I8` through `U64`, `F32`, and `F64`) instead of wrapping a nested
+`ScalarValue`. `ScalarValue` remains the boundary representation for
+`OwnedValue`, `HostValue`, constants, reflection, serde, C/API-facing values,
+and diagnostics. Runtime-to-boundary conversion must go through
+`Value::from_scalar` and `Value::as_scalar` rather than reintroducing a nested
+runtime scalar variant.
+
 ## Validation Rules
 
 - Multi-level `super` scan must return no matches:

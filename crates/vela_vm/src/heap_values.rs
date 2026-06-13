@@ -22,7 +22,7 @@ pub(crate) fn value_from_constant(
     match constant {
         Constant::Null => Ok(Value::Null),
         Constant::Bool(value) => Ok(Value::Bool(*value)),
-        Constant::Scalar(value) => Ok(Value::Scalar(*value)),
+        Constant::Scalar(value) => Ok(Value::from_scalar(*value)),
         Constant::String(value) => {
             let Some(heap) = heap else {
                 return Err(type_error("constant string"));
@@ -164,7 +164,7 @@ pub(crate) fn owned_to_value(
         OwnedValue::Missing => Ok(Value::Missing),
         OwnedValue::Null => Ok(Value::Null),
         OwnedValue::Bool(value) => Ok(Value::Bool(value)),
-        OwnedValue::Scalar(value) => Ok(Value::Scalar(value)),
+        OwnedValue::Scalar(value) => Ok(Value::from_scalar(value)),
         OwnedValue::Range(value) => Ok(Value::Range(value)),
         OwnedValue::HostRef(value) => Ok(Value::HostRef(value)),
         OwnedValue::String(value) => {
@@ -266,16 +266,17 @@ pub(crate) fn owned_to_value(
     }
 }
 
-#[allow(dead_code)]
 pub(crate) fn value_to_owned(
     value: &Value,
     heap: Option<&HeapExecution<'_>>,
 ) -> VmResult<OwnedValue> {
+    if let Some(value) = value.as_scalar() {
+        return Ok(OwnedValue::Scalar(value));
+    }
     match value {
         Value::Missing => Ok(OwnedValue::Missing),
         Value::Null => Ok(OwnedValue::Null),
         Value::Bool(value) => Ok(OwnedValue::Bool(*value)),
-        Value::Scalar(value) => Ok(OwnedValue::Scalar(*value)),
         Value::Range(value) => Ok(OwnedValue::Range(*value)),
         Value::HostRef(value) => Ok(OwnedValue::HostRef(*value)),
         Value::HeapRef(reference) => {
@@ -284,6 +285,7 @@ pub(crate) fn value_to_owned(
             };
             heap_value_to_owned(heap_value, heap)
         }
+        _ => unreachable!("scalar values return before owned conversion match"),
     }
 }
 
@@ -379,7 +381,7 @@ pub(crate) fn host_to_value(
     match value {
         HostValue::Null => Ok(Value::Null),
         HostValue::Bool(value) => Ok(Value::Bool(value)),
-        HostValue::Scalar(value) => Ok(Value::Scalar(value)),
+        HostValue::Scalar(value) => Ok(Value::from_scalar(value)),
         HostValue::String(value) => allocate_heap_value(HeapValue::String(value), heap, budget),
         HostValue::Bytes(value) => allocate_heap_value(HeapValue::Bytes(value), heap, budget),
         HostValue::HostRef(value) => Ok(Value::HostRef(value)),
@@ -392,10 +394,12 @@ pub(crate) fn value_to_host(
     operation: &'static str,
     heap: Option<&HeapExecution<'_>>,
 ) -> VmResult<HostValue> {
+    if let Some(value) = value.as_scalar() {
+        return Ok(HostValue::Scalar(value));
+    }
     match value {
         Value::Null => Ok(HostValue::Null),
         Value::Bool(value) => Ok(HostValue::Bool(*value)),
-        Value::Scalar(value) => Ok(HostValue::Scalar(*value)),
         Value::HostRef(value) => Ok(HostValue::HostRef(*value)),
         Value::HeapRef(reference) => match heap.and_then(|heap| heap.heap.get(*reference)) {
             Some(HeapValue::String(value)) => Ok(HostValue::String(value.clone())),
@@ -410,6 +414,7 @@ pub(crate) fn value_to_host(
             _ => Err(type_error(operation)),
         },
         Value::Missing | Value::Range(_) => Err(type_error(operation)),
+        _ => unreachable!("scalar values return before host conversion match"),
     }
 }
 
@@ -437,7 +442,16 @@ fn store_value_in_heap(
         Value::Missing => Err(type_error("missing value")),
         Value::Null
         | Value::Bool(_)
-        | Value::Scalar(_)
+        | Value::I8(_)
+        | Value::I16(_)
+        | Value::I32(_)
+        | Value::I64(_)
+        | Value::U8(_)
+        | Value::U16(_)
+        | Value::U32(_)
+        | Value::U64(_)
+        | Value::F32(_)
+        | Value::F64(_)
         | Value::Range(_)
         | Value::HostRef(_)
         | Value::HeapRef(_) => Ok(value),
@@ -471,10 +485,34 @@ fn scalar_values_equal(lhs: &Value, rhs: &Value) -> Option<bool> {
     match (lhs, rhs) {
         (Value::Null, Value::Null) => Some(true),
         (Value::Bool(lhs), Value::Bool(rhs)) => Some(lhs == rhs),
-        (Value::Scalar(lhs), Value::Scalar(rhs)) => Some(lhs == rhs),
+        (lhs, rhs) if lhs.is_scalar() && rhs.is_scalar() => {
+            Some(lhs.as_scalar() == rhs.as_scalar())
+        }
         (
-            Value::Null | Value::Bool(_) | Value::Scalar(_),
-            Value::Null | Value::Bool(_) | Value::Scalar(_),
+            Value::Null
+            | Value::Bool(_)
+            | Value::I8(_)
+            | Value::I16(_)
+            | Value::I32(_)
+            | Value::I64(_)
+            | Value::U8(_)
+            | Value::U16(_)
+            | Value::U32(_)
+            | Value::U64(_)
+            | Value::F32(_)
+            | Value::F64(_),
+            Value::Null
+            | Value::Bool(_)
+            | Value::I8(_)
+            | Value::I16(_)
+            | Value::I32(_)
+            | Value::I64(_)
+            | Value::U8(_)
+            | Value::U16(_)
+            | Value::U32(_)
+            | Value::U64(_)
+            | Value::F32(_)
+            | Value::F64(_),
         ) => Some(false),
         _ => None,
     }

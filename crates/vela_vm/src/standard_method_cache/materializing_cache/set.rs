@@ -255,10 +255,8 @@ impl SetKey {
         match value {
             Value::Null => Ok(Self::Null),
             Value::Bool(value) => Ok(Self::Bool(*value)),
-            Value::Scalar(vela_common::ScalarValue::I64(value)) => Ok(Self::Int(*value)),
-            Value::Scalar(vela_common::ScalarValue::F64(value)) if value.is_finite() => {
-                Ok(Self::Float(value.to_bits()))
-            }
+            Value::I64(value) => Ok(Self::Int(*value)),
+            Value::F64(value) if value.is_finite() => Ok(Self::Float(value.to_bits())),
             Value::HeapRef(reference) => match heap.and_then(|heap| heap.heap.get(*reference)) {
                 Some(HeapValue::String(value)) => Ok(Self::String(value.clone())),
                 _ => Err(VmError::new(VmErrorKind::TypeMismatch { operation })),

@@ -257,7 +257,7 @@ fn linked_standard_value_method_caches_bytes_accessor_target() {
 
     assert_eq!(
         run_linked_method_cache_program(&program, &caches),
-        Ok(RuntimeValue::Scalar(vela_common::ScalarValue::U8(21)))
+        Ok(RuntimeValue::U8(21))
     );
     let entry = caches
         .entry(site)
@@ -277,7 +277,7 @@ fn linked_standard_value_method_caches_bytes_accessor_target() {
 
     assert_eq!(
         run_linked_method_cache_program(&program, &caches),
-        Ok(RuntimeValue::Scalar(vela_common::ScalarValue::U8(21)))
+        Ok(RuntimeValue::U8(21))
     );
     assert_eq!(caches.set_count(), 2);
 }
@@ -302,9 +302,7 @@ fn assert_bytes_read_cache(method: &str, target: StandardMethodInlineCacheTarget
 
     assert_eq!(
         run_linked_method_cache_program(&program, &caches),
-        Ok(RuntimeValue::Scalar(vela_common::ScalarValue::U32(
-            expected
-        )))
+        Ok(RuntimeValue::U32(expected))
     );
     let entry = caches
         .entry(site)
@@ -324,9 +322,7 @@ fn assert_bytes_read_cache(method: &str, target: StandardMethodInlineCacheTarget
 
     assert_eq!(
         run_linked_method_cache_program(&program, &caches),
-        Ok(RuntimeValue::Scalar(vela_common::ScalarValue::U32(
-            expected
-        )))
+        Ok(RuntimeValue::U32(expected))
     );
     assert_eq!(caches.set_count(), 2);
 }

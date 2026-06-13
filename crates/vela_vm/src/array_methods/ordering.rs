@@ -296,10 +296,8 @@ fn sort_key(
     operation: &'static str,
 ) -> VmResult<SortKey> {
     match value {
-        Value::Scalar(vela_common::ScalarValue::I64(value)) => Ok(SortKey::Int(*value)),
-        Value::Scalar(vela_common::ScalarValue::F64(value)) if value.is_finite() => {
-            Ok(SortKey::Float(*value))
-        }
+        Value::I64(value) => Ok(SortKey::Int(*value)),
+        Value::F64(value) if value.is_finite() => Ok(SortKey::Float(*value)),
         Value::HeapRef(reference) => match heap.and_then(|heap| heap.heap.get(*reference)) {
             Some(HeapValue::String(value)) => Ok(SortKey::String(value.clone())),
             _ => type_error(operation),
@@ -314,10 +312,8 @@ fn sort_key_from_runtime_value(
     operation: &'static str,
 ) -> VmResult<SortKey> {
     match value {
-        Value::Scalar(vela_common::ScalarValue::I64(value)) => Ok(SortKey::Int(*value)),
-        Value::Scalar(vela_common::ScalarValue::F64(value)) if value.is_finite() => {
-            Ok(SortKey::Float(*value))
-        }
+        Value::I64(value) => Ok(SortKey::Int(*value)),
+        Value::F64(value) if value.is_finite() => Ok(SortKey::Float(*value)),
         Value::HeapRef(reference) => match heap.and_then(|heap| heap.heap.get(*reference)) {
             Some(HeapValue::String(value)) => Ok(SortKey::String(value.clone())),
             _ => type_error(operation),
