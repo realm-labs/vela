@@ -598,9 +598,11 @@ fn main() {
     let map_type = reflect::type_info("map");
     let set_type = reflect::type_info("set");
     let range_type = reflect::type_info("range");
+    let iterator_type = reflect::type_info("iterator");
     let map_methods = reflect::methods(map_type);
     let set_methods = reflect::methods(set_type);
     let range_methods = reflect::methods(range_type);
+    let iterator_methods = reflect::methods(iterator_type);
     let trim = reflect::method(string_type, "trim");
     let split_once = reflect::method(string_type, "split_once");
     let parse_int = reflect::method(string_type, "parse_int");
@@ -612,6 +614,9 @@ fn main() {
     let set_union = reflect::method(set_type, "union");
     let range_len = reflect::method(range_type, "len");
     let range_is_empty = reflect::method(range_type, "is_empty");
+    let range_iter = reflect::method(range_type, "iter");
+    let iterator_next = reflect::method(iterator_type, "next");
+    let iterator_collect_array = reflect::method(iterator_type, "collect_array");
     let option_map = reflect::method(option_type, "map");
     let option_ok_or = reflect::method(option_type, "ok_or");
     let result_map_err = reflect::method(result_type, "map_err");
@@ -692,6 +697,7 @@ fn main() {
         && reflect::has_type("map")
         && reflect::has_type("set")
         && reflect::has_type("range")
+        && reflect::has_type("iterator")
         && reflect::has_type("Option")
         && reflect::has_type("Result")
         && reflect::kind(string_type) == "string"
@@ -700,6 +706,7 @@ fn main() {
         && reflect::kind(map_type) == "map"
         && reflect::kind(set_type) == "set"
         && reflect::kind(range_type) == "range"
+        && reflect::kind(iterator_type) == "host"
         && reflect::kind(option_type) == "script_enum"
         && reflect::kind(result_type) == "script_enum"
         && type_of_checks
@@ -717,7 +724,7 @@ fn main() {
         && reflect::attr(bytes_type, "stdlib") == "builtin"
         && reflect::attr(option_type, "stdlib") == "option"
         && reflect::attr(result_type, "stdlib") == "result"
-        && string_methods.len() >= 22
+        && string_methods.len() >= 24
         && bytes_methods.len() == 7
         && reflect::has_method(string_type, "trim")
         && reflect::has_method(string_type, "split_once")
@@ -740,7 +747,8 @@ fn main() {
         && array_methods.len() >= 28
         && map_methods.len() >= 19
         && set_methods.len() >= 21
-        && range_methods.len() == 2
+        && range_methods.len() == 3
+        && iterator_methods.len() == 3
         && option_methods.len() >= 9
         && result_methods.len() >= 10
         && reflect::has_method(array_type, "push")
@@ -751,6 +759,9 @@ fn main() {
         && reflect::has_method(set_type, "is_subset")
         && reflect::has_method(range_type, "len")
         && reflect::has_method(range_type, "is_empty")
+        && reflect::has_method(range_type, "iter")
+        && reflect::has_method(iterator_type, "next")
+        && reflect::has_method(iterator_type, "collect_array")
         && reflect::has_method(option_type, "map")
         && reflect::has_method(option_type, "ok_or")
         && reflect::has_method(result_type, "map_err")
@@ -769,6 +780,12 @@ fn main() {
         && reflect::attr(range_len, "stdlib") == "range"
         && range_is_empty.params.is_empty()
         && reflect::returns(range_is_empty) == "bool"
+        && range_iter.params.is_empty()
+        && reflect::returns(range_iter) == "iterator"
+        && iterator_next.params.is_empty()
+        && reflect::returns(iterator_next) == "Option"
+        && iterator_collect_array.params.is_empty()
+        && reflect::returns(iterator_collect_array) == "array"
         && option_map.params[0].name == "callback"
         && option_map.params[0].type == "function"
         && reflect::returns(option_map) == "Option"

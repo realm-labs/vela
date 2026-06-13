@@ -735,6 +735,9 @@ fn standard_receiver_guard(
         dynamic_method_resolution::DynamicReceiverKind::Option => StandardMethodReceiver::Option,
         dynamic_method_resolution::DynamicReceiverKind::Result => StandardMethodReceiver::Result,
         dynamic_method_resolution::DynamicReceiverKind::Range => StandardMethodReceiver::Range,
+        dynamic_method_resolution::DynamicReceiverKind::Iterator => {
+            StandardMethodReceiver::Iterator
+        }
         dynamic_method_resolution::DynamicReceiverKind::ScriptRecord { .. }
         | dynamic_method_resolution::DynamicReceiverKind::ScriptEnum { .. }
         | dynamic_method_resolution::DynamicReceiverKind::Host { .. }

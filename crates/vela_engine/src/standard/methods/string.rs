@@ -133,4 +133,16 @@ const STRING_METHODS: &[MethodSpec] = &[
         "Option",
         "Parses the string as a boolean, or Option::None.",
     ),
+    MethodSpec::new(
+        "chars",
+        &[],
+        "iterator",
+        "Returns a character iterator over the string.",
+    ),
+    MethodSpec::new(
+        "bytes",
+        &[],
+        "iterator",
+        "Returns a UTF-8 byte iterator over the string.",
+    ),
 ];

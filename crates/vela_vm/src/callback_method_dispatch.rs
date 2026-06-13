@@ -456,7 +456,8 @@ fn receiver_matches_cache(
         StandardMethodReceiver::Result => option_result_methods::is_result(receiver, heap),
         StandardMethodReceiver::String
         | StandardMethodReceiver::Bytes
-        | StandardMethodReceiver::Range => false,
+        | StandardMethodReceiver::Range
+        | StandardMethodReceiver::Iterator => false,
     }
 }
 

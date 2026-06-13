@@ -3,8 +3,9 @@ use vela_reflect::modules::DeclOrigin;
 use vela_reflect::registry::{FieldDesc, SchemaHash, TypeDesc, TypeKey, TypeKind, VariantDesc};
 
 use super::methods::{
-    array_method_descs, bytes_method_descs, map_method_descs, option_method_descs,
-    range_method_descs, result_method_descs, set_method_descs, string_method_descs,
+    array_method_descs, bytes_method_descs, iterator_method_descs, map_method_descs,
+    option_method_descs, range_method_descs, result_method_descs, set_method_descs,
+    string_method_descs,
 };
 
 pub(crate) fn standard_type_descs() -> Vec<TypeDesc> {
@@ -87,6 +88,7 @@ pub(crate) fn standard_type_descs() -> Vec<TypeDesc> {
         map_type_desc(),
         set_type_desc(),
         range_type_desc(),
+        iterator_type_desc(),
         builtin_type(
             "function",
             required_std_type_id("Function"),
@@ -191,6 +193,19 @@ fn range_type_desc() -> TypeDesc {
         "Range value type.",
     );
     for method in range_method_descs() {
+        desc = desc.method(method);
+    }
+    desc
+}
+
+fn iterator_type_desc() -> TypeDesc {
+    let mut desc = builtin_type(
+        "iterator",
+        required_std_type_id("Iterator"),
+        TypeKind::Host,
+        "One-shot iterator value type.",
+    );
+    for method in iterator_method_descs() {
         desc = desc.method(method);
     }
     desc

@@ -1,4 +1,4 @@
-use crate::{ExecutionBudget, HeapExecution, Value, VmResult, string_methods};
+use crate::{ExecutionBudget, HeapExecution, Value, VmResult, iteration, string_methods};
 
 pub(crate) fn call(
     method: &str,
@@ -31,6 +31,10 @@ pub(crate) fn call(
         "repeat" => Some(string_methods::repeat(receiver, args, heap, budget)),
         "slice" if string_methods::is_string(receiver, heap.as_deref()) => {
             Some(string_methods::slice(receiver, args, heap, budget))
+        }
+        "chars" => Some(iteration::chars_method(receiver, args, heap, budget)),
+        "bytes" if string_methods::is_string(receiver, heap.as_deref()) => {
+            Some(iteration::string_bytes_method(receiver, args, heap, budget))
         }
         "split" => Some(string_methods::split(receiver, args, heap, budget)),
         "split_once" => Some(string_methods::split_once(receiver, args, heap, budget)),

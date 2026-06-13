@@ -168,6 +168,20 @@ pub const STD_METHODS: &[StdMethodSpec] = &[
         "Option",
         "Parses the string as a boolean, or Option::None.",
     ),
+    StdMethodSpec::new(
+        "String",
+        "chars",
+        &[],
+        "iterator",
+        "Returns a character iterator over the string.",
+    ),
+    StdMethodSpec::new(
+        "String",
+        "bytes",
+        &[],
+        "iterator",
+        "Returns a UTF-8 byte iterator over the string.",
+    ),
     StdMethodSpec::new("Bytes", "len", &[], "i64", "Returns the byte length."),
     StdMethodSpec::new(
         "Bytes",
@@ -368,6 +382,13 @@ pub const STD_METHODS: &[StdMethodSpec] = &[
         "array",
         "Returns values sorted by callback keys.",
     ),
+    StdMethodSpec::new(
+        "Array",
+        "iter",
+        &[],
+        "iterator",
+        "Returns a one-shot iterator over array values.",
+    ),
     StdMethodSpec::new("Map", "len", &[], "i64", "Returns the map length."),
     StdMethodSpec::new(
         "Map",
@@ -482,6 +503,13 @@ pub const STD_METHODS: &[StdMethodSpec] = &[
         &[StdParamSpec::new("callback", "function")],
         "i64",
         "Counts entries accepted by a callback.",
+    ),
+    StdMethodSpec::new(
+        "Map",
+        "iter",
+        &[],
+        "iterator",
+        "Returns a one-shot iterator over map values in key order.",
     ),
     StdMethodSpec::new("Set", "len", &[], "i64", "Returns the set length."),
     StdMethodSpec::new(
@@ -611,6 +639,13 @@ pub const STD_METHODS: &[StdMethodSpec] = &[
         &[StdParamSpec::new("other", "set")],
         "bool",
         "Returns true when two sets share no values.",
+    ),
+    StdMethodSpec::new(
+        "Set",
+        "iter",
+        &[],
+        "iterator",
+        "Returns a one-shot iterator over set values.",
     ),
     StdMethodSpec::new(
         "Option",
@@ -752,5 +787,33 @@ pub const STD_METHODS: &[StdMethodSpec] = &[
         &[],
         "bool",
         "Returns true when the range contains no values.",
+    ),
+    StdMethodSpec::new(
+        "Range",
+        "iter",
+        &[],
+        "iterator",
+        "Returns a one-shot iterator over range values.",
+    ),
+    StdMethodSpec::new(
+        "Iterator",
+        "next",
+        &[],
+        "Option",
+        "Advances the iterator and returns the next value.",
+    ),
+    StdMethodSpec::new(
+        "Iterator",
+        "count",
+        &[],
+        "i64",
+        "Consumes the iterator and returns the remaining item count.",
+    ),
+    StdMethodSpec::new(
+        "Iterator",
+        "collect_array",
+        &[],
+        "array",
+        "Consumes the iterator and collects remaining values into an array.",
     ),
 ];

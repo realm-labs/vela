@@ -118,4 +118,10 @@ const SET_METHODS: &[MethodSpec] = &[
         "bool",
         "Returns true when two sets share no values.",
     ),
+    MethodSpec::new(
+        "iter",
+        &[],
+        "iterator",
+        "Returns a one-shot iterator over set values.",
+    ),
 ];

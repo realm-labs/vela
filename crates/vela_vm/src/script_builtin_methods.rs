@@ -1,7 +1,7 @@
 use crate::heap::HeapValue;
 use crate::{
     ExecutionBudget, HeapExecution, Value, VmError, VmErrorKind, VmResult, array_methods,
-    bytes_methods, map_methods, option_result_methods, set_methods,
+    bytes_methods, iteration, map_methods, option_result_methods, set_methods,
 };
 use vela_def::MethodId;
 
@@ -27,6 +27,7 @@ pub(crate) fn call(
             .and_then(|()| len(receiver, heap.as_deref()).map(Value::i64)),
         "is_empty" => expect_no_args(method, args)
             .and_then(|()| is_empty(receiver, heap.as_deref()).map(Value::Bool)),
+        "iter" => iteration::iter_method(receiver, args, heap, budget),
         "contains" => array_methods::contains(receiver, args, heap.as_deref()).map(Value::Bool),
         "slice" => array_methods::slice(receiver, args, heap, budget),
         "push" => array_methods::push(receiver, args, heap.as_deref_mut(), budget.as_deref_mut()),
@@ -74,6 +75,11 @@ pub(crate) fn call(
         "is_superset" => set_methods::is_superset(receiver, args, heap.as_deref()).map(Value::Bool),
         "is_disjoint" => set_methods::is_disjoint(receiver, args, heap.as_deref()).map(Value::Bool),
         "entries" => map_methods::entries(receiver, args, heap, budget),
+        "next" => iteration::next_method(receiver, args, heap, budget),
+        "count" if iteration::is_iterator(receiver, heap.as_deref()) => {
+            iteration::count_method(receiver, args, heap)
+        }
+        "collect_array" => iteration::collect_array_method(receiver, args, heap, budget),
         _ => return None,
     };
     Some(result)

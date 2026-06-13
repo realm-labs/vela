@@ -14,4 +14,10 @@ const RANGE_METHODS: &[MethodSpec] = &[
         "bool",
         "Returns true when the range contains no values.",
     ),
+    MethodSpec::new(
+        "iter",
+        &[],
+        "iterator",
+        "Returns a one-shot iterator over range values.",
+    ),
 ];

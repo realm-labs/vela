@@ -9,7 +9,7 @@ use vela_reflect::registry::TypeRegistry;
 use crate::heap::HeapValue;
 use crate::std_method_ids::{StdMethodIds, std_method_ids};
 use crate::{
-    HeapExecution, HostExecution, Value, array_methods, bytes_methods, map_methods,
+    HeapExecution, HostExecution, Value, array_methods, bytes_methods, iteration, map_methods,
     option_result_methods, set_methods,
 };
 
@@ -20,6 +20,7 @@ pub(crate) enum DynamicReceiverKind {
     Array,
     Map,
     Set,
+    Iterator,
     Option,
     Result,
     Range,
@@ -79,6 +80,8 @@ pub(crate) fn classify_dynamic_receiver(
         DynamicReceiverKind::Map
     } else if set_methods::is_set(receiver, heap) {
         DynamicReceiverKind::Set
+    } else if iteration::is_iterator(receiver, heap) {
+        DynamicReceiverKind::Iterator
     } else if option_result_methods::is_option(receiver, heap) {
         DynamicReceiverKind::Option
     } else if option_result_methods::is_result(receiver, heap) {
@@ -167,6 +170,7 @@ fn standard_method_id_for_receiver(
         DynamicReceiverKind::Array => array_method_id(ids, method),
         DynamicReceiverKind::Map => map_method_id(ids, method),
         DynamicReceiverKind::Set => set_method_id(ids, method),
+        DynamicReceiverKind::Iterator => iterator_method_id(ids, method),
         DynamicReceiverKind::Option => option_method_id(ids, method),
         DynamicReceiverKind::Result => result_method_id(ids, method),
         DynamicReceiverKind::Range => range_method_id(ids, method),
@@ -202,6 +206,8 @@ fn string_method_id(ids: &StdMethodIds, method: &str) -> Option<MethodId> {
         "parse_int" => ids.string_parse_int,
         "parse_float" => ids.string_parse_float,
         "parse_bool" => ids.string_parse_bool,
+        "chars" => ids.string_chars,
+        "bytes" => ids.string_bytes,
         _ => return None,
     })
 }
@@ -241,6 +247,7 @@ fn array_method_id(ids: &StdMethodIds, method: &str) -> Option<MethodId> {
         "min" => ids.array_min,
         "max" => ids.array_max,
         "sum" => ids.array_sum,
+        "iter" => ids.array_iter,
         _ => return None,
     })
 }
@@ -260,6 +267,7 @@ fn map_method_id(ids: &StdMethodIds, method: &str) -> Option<MethodId> {
         "values" => ids.map_values,
         "entries" => ids.map_entries,
         "merge" => ids.map_merge,
+        "iter" => ids.map_iter,
         _ => return None,
     })
 }
@@ -281,6 +289,7 @@ fn set_method_id(ids: &StdMethodIds, method: &str) -> Option<MethodId> {
         "is_subset" => ids.set_is_subset,
         "is_superset" => ids.set_is_superset,
         "is_disjoint" => ids.set_is_disjoint,
+        "iter" => ids.set_iter,
         _ => return None,
     })
 }
@@ -312,6 +321,16 @@ fn range_method_id(ids: &StdMethodIds, method: &str) -> Option<MethodId> {
     Some(match method {
         "len" => ids.range_len,
         "is_empty" => ids.range_is_empty,
+        "iter" => ids.range_iter,
+        _ => return None,
+    })
+}
+
+fn iterator_method_id(ids: &StdMethodIds, method: &str) -> Option<MethodId> {
+    Some(match method {
+        "next" => ids.iterator_next,
+        "count" => ids.iterator_count,
+        "collect_array" => ids.iterator_collect_array,
         _ => return None,
     })
 }

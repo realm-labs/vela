@@ -282,6 +282,7 @@ pub const STD_TYPES: &[StdTypeSpec] = &[
     StdTypeSpec::new("Set"),
     StdTypeSpec::new("Function"),
     StdTypeSpec::new("Closure"),
+    StdTypeSpec::new("Iterator"),
     StdTypeSpec::new("Range"),
     StdTypeSpec::new("Option"),
     StdTypeSpec::new("Result"),
@@ -738,11 +739,11 @@ mod tests {
 
     #[test]
     fn manifest_declares_current_stdlib_surface() {
-        assert_eq!(STD_TYPES.len(), 23);
+        assert_eq!(STD_TYPES.len(), 24);
         assert_eq!(STD_VARIANTS.len(), 4);
         assert_eq!(STD_FIELDS.len(), 3);
         assert_eq!(STD_FUNCTIONS.len(), 51);
-        assert_eq!(STD_METHODS.len(), 119);
+        assert_eq!(STD_METHODS.len(), 128);
     }
 
     #[test]

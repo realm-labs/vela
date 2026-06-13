@@ -240,3 +240,70 @@ fn main() {
         Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(16)))
     );
 }
+
+#[test]
+fn explicit_sequence_methods_create_iterators() {
+    let code = compile_function_source(
+        SourceId::new(1),
+        r##"
+fn main() {
+    let total = 0;
+    for value in [2, 3, 5].iter() {
+        total += value;
+    }
+    for value in {"gold": 7, "xp": 11}.iter() {
+        total += value;
+    }
+    for value in (1..4).iter() {
+        total += value;
+    }
+    for ch in "a奖励".chars() {
+        if ch == 'a' {
+            total += 100;
+        }
+        if ch == '奖' {
+            total += 1000;
+        }
+        if ch == '励' {
+            total += 10000;
+        }
+    }
+    for byte in "AZ".bytes() {
+        total += 1;
+    }
+    return total;
+}
+"##,
+        "main",
+    )
+    .expect("compile explicit iterator source");
+
+    assert_eq!(
+        run_linked_test_code(code),
+        Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(11136)))
+    );
+}
+
+#[test]
+fn iterator_terminal_methods_consume_cursor() {
+    let code = compile_function_source(
+        SourceId::new(1),
+        r#"
+fn main() {
+    let iter = [2, 3, 5].iter();
+    let first = iter.next().unwrap_or(0);
+    let remaining = iter.collect_array();
+    let exhausted = iter.next().unwrap_or(99);
+    let range_count = (1..=4).iter().count();
+    return first * 1000 + remaining.len() * 100 + exhausted + range_count;
+}
+"#,
+        "main",
+    )
+    .expect("compile iterator terminal source");
+
+    assert_eq!(
+        run_linked_test_code(code),
+        Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(2303)))
+    );
+}

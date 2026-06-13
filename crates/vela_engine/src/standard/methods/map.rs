@@ -102,4 +102,10 @@ const MAP_METHODS: &[MethodSpec] = &[
         "i64",
         "Counts entries accepted by a callback.",
     ),
+    MethodSpec::new(
+        "iter",
+        &[],
+        "iterator",
+        "Returns a one-shot iterator over map values in key order.",
+    ),
 ];

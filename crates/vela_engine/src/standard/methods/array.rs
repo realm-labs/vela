@@ -128,4 +128,10 @@ const ARRAY_METHODS: &[MethodSpec] = &[
         "array",
         "Returns values sorted by callback keys.",
     ),
+    MethodSpec::new(
+        "iter",
+        &[],
+        "iterator",
+        "Returns a one-shot iterator over array values.",
+    ),
 ];

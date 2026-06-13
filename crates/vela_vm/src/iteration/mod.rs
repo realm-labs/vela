@@ -1,7 +1,12 @@
+mod methods;
 mod source;
 mod state;
 mod step;
 
+pub(crate) use methods::{
+    chars_method, collect_array_method, count_method, is_iterator, iter_method, next_method,
+    string_bytes_method,
+};
 pub(crate) use source::make_iterator;
 pub use state::IteratorState;
 pub(crate) use step::{
@@ -117,4 +122,16 @@ fn budget_ref<'a>(budget: &'a mut Option<&mut ExecutionBudget>) -> Option<&'a mu
         Some(budget) => Some(&mut **budget),
         None => None,
     }
+}
+
+pub(super) fn allocate_iterator(
+    iterator: IteratorState,
+    heap: &mut Option<&mut HeapExecution<'_>>,
+    budget: &mut Option<&mut ExecutionBudget>,
+    operation: &'static str,
+) -> VmResult<Value> {
+    let Some(heap) = heap.as_deref_mut() else {
+        return Err(VmError::new(VmErrorKind::TypeMismatch { operation }));
+    };
+    allocate_heap_value(HeapValue::Iterator(iterator), heap, budget.as_deref_mut())
 }

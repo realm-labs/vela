@@ -447,6 +447,7 @@ pub enum StandardMethodReceiver {
     Array,
     Map,
     Set,
+    Iterator,
     Option,
     Result,
 }
@@ -544,6 +545,12 @@ pub enum StandardMethodInlineCacheTarget {
     ToOption,
     ToErrorOption,
     Flatten,
+    Iter,
+    Chars,
+    Bytes,
+    Next,
+    Count,
+    CollectArray,
 }
 
 pub struct LinkedRuntimeCodeCall<'program, 'args, 'host, 'heap, 'roots, 'budget, 'caches> {

@@ -55,7 +55,9 @@ pub(super) fn call_cached_len(
             };
             values.len()
         }
-        StandardMethodReceiver::Option | StandardMethodReceiver::Result => {
+        StandardMethodReceiver::Iterator
+        | StandardMethodReceiver::Option
+        | StandardMethodReceiver::Result => {
             return Some(type_error("method len"));
         }
     };
@@ -111,7 +113,9 @@ pub(super) fn call_cached_is_empty(
             };
             values.is_empty()
         }
-        StandardMethodReceiver::Option | StandardMethodReceiver::Result => {
+        StandardMethodReceiver::Iterator
+        | StandardMethodReceiver::Option
+        | StandardMethodReceiver::Result => {
             return Some(type_error("method is_empty"));
         }
     };

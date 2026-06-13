@@ -40,6 +40,8 @@ pub(crate) fn standard_cache_entry(
         StandardMethodReceiver::Map
     } else if set_methods::is_set(receiver, heap) {
         StandardMethodReceiver::Set
+    } else if crate::iteration::is_iterator(receiver, heap) {
+        StandardMethodReceiver::Iterator
     } else if option_result_methods::is_option(receiver, heap) {
         StandardMethodReceiver::Option
     } else if option_result_methods::is_result(receiver, heap) {
@@ -64,6 +66,12 @@ pub(crate) fn standard_cache_entry_matches_method_id(
         }
         (StandardMethodReceiver::String, StandardMethodInlineCacheTarget::ToLower) => {
             return method_id == std_method_ids().string_to_lower;
+        }
+        (StandardMethodReceiver::String, StandardMethodInlineCacheTarget::Chars) => {
+            return method_id == std_method_ids().string_chars;
+        }
+        (StandardMethodReceiver::String, StandardMethodInlineCacheTarget::Bytes) => {
+            return method_id == std_method_ids().string_bytes;
         }
         (StandardMethodReceiver::String, StandardMethodInlineCacheTarget::Trim) => {
             return method_id == std_method_ids().string_trim;
@@ -119,6 +127,9 @@ pub(crate) fn standard_cache_entry_matches_method_id(
         (StandardMethodReceiver::Array, StandardMethodInlineCacheTarget::Sum) => {
             return method_id == std_method_ids().array_sum;
         }
+        (StandardMethodReceiver::Array, StandardMethodInlineCacheTarget::Iter) => {
+            return method_id == std_method_ids().array_iter;
+        }
         (StandardMethodReceiver::Map, StandardMethodInlineCacheTarget::Keys) => {
             return method_id == std_method_ids().map_keys;
         }
@@ -128,8 +139,26 @@ pub(crate) fn standard_cache_entry_matches_method_id(
         (StandardMethodReceiver::Map, StandardMethodInlineCacheTarget::Entries) => {
             return method_id == std_method_ids().map_entries;
         }
+        (StandardMethodReceiver::Map, StandardMethodInlineCacheTarget::Iter) => {
+            return method_id == std_method_ids().map_iter;
+        }
         (StandardMethodReceiver::Set, StandardMethodInlineCacheTarget::Values) => {
             return method_id == std_method_ids().set_values;
+        }
+        (StandardMethodReceiver::Set, StandardMethodInlineCacheTarget::Iter) => {
+            return method_id == std_method_ids().set_iter;
+        }
+        (StandardMethodReceiver::Range, StandardMethodInlineCacheTarget::Iter) => {
+            return method_id == std_method_ids().range_iter;
+        }
+        (StandardMethodReceiver::Iterator, StandardMethodInlineCacheTarget::Next) => {
+            return method_id == std_method_ids().iterator_next;
+        }
+        (StandardMethodReceiver::Iterator, StandardMethodInlineCacheTarget::Count) => {
+            return method_id == std_method_ids().iterator_count;
+        }
+        (StandardMethodReceiver::Iterator, StandardMethodInlineCacheTarget::CollectArray) => {
+            return method_id == std_method_ids().iterator_collect_array;
         }
         _ => {}
     }
@@ -186,6 +215,12 @@ fn standard_method_target(
         }
         (StandardMethodReceiver::String, id) if id == ids.string_parse_bool => {
             StandardMethodInlineCacheTarget::ParseBool
+        }
+        (StandardMethodReceiver::String, id) if id == ids.string_chars => {
+            StandardMethodInlineCacheTarget::Chars
+        }
+        (StandardMethodReceiver::String, id) if id == ids.string_bytes => {
+            StandardMethodInlineCacheTarget::Bytes
         }
         (StandardMethodReceiver::String, id) if id == ids.string_to_upper => {
             StandardMethodInlineCacheTarget::ToUpper
@@ -298,6 +333,9 @@ fn standard_method_target(
         (StandardMethodReceiver::Array, id) if id == ids.array_sum => {
             StandardMethodInlineCacheTarget::Sum
         }
+        (StandardMethodReceiver::Array, id) if id == ids.array_iter => {
+            StandardMethodInlineCacheTarget::Iter
+        }
         (StandardMethodReceiver::Map, id) if id == ids.map_len => {
             StandardMethodInlineCacheTarget::Len
         }
@@ -336,6 +374,9 @@ fn standard_method_target(
         }
         (StandardMethodReceiver::Map, id) if id == ids.map_merge => {
             StandardMethodInlineCacheTarget::Merge
+        }
+        (StandardMethodReceiver::Map, id) if id == ids.map_iter => {
+            StandardMethodInlineCacheTarget::Iter
         }
         (StandardMethodReceiver::Set, id) if id == ids.set_len => {
             StandardMethodInlineCacheTarget::Len
@@ -382,6 +423,9 @@ fn standard_method_target(
         (StandardMethodReceiver::Set, id) if id == ids.set_is_disjoint => {
             StandardMethodInlineCacheTarget::IsDisjoint
         }
+        (StandardMethodReceiver::Set, id) if id == ids.set_iter => {
+            StandardMethodInlineCacheTarget::Iter
+        }
         (StandardMethodReceiver::Option, id) if id == ids.option_is_some => {
             StandardMethodInlineCacheTarget::IsSome
         }
@@ -414,6 +458,18 @@ fn standard_method_target(
         }
         (StandardMethodReceiver::Result, id) if id == ids.result_flatten => {
             StandardMethodInlineCacheTarget::Flatten
+        }
+        (StandardMethodReceiver::Range, id) if id == ids.range_iter => {
+            StandardMethodInlineCacheTarget::Iter
+        }
+        (StandardMethodReceiver::Iterator, id) if id == ids.iterator_next => {
+            StandardMethodInlineCacheTarget::Next
+        }
+        (StandardMethodReceiver::Iterator, id) if id == ids.iterator_count => {
+            StandardMethodInlineCacheTarget::Count
+        }
+        (StandardMethodReceiver::Iterator, id) if id == ids.iterator_collect_array => {
+            StandardMethodInlineCacheTarget::CollectArray
         }
         _ => return None,
     };
@@ -535,6 +591,47 @@ pub(crate) fn call_standard_cached(
             if cache.receiver == StandardMethodReceiver::Bytes =>
         {
             return call_cached_bytes_materialization(receiver, cache.target, args, heap, budget);
+        }
+        StandardMethodInlineCacheTarget::Iter
+            if matches!(
+                cache.receiver,
+                StandardMethodReceiver::Array
+                    | StandardMethodReceiver::Map
+                    | StandardMethodReceiver::Set
+                    | StandardMethodReceiver::Range
+            ) =>
+        {
+            return Some(crate::iteration::iter_method(receiver, args, heap, budget));
+        }
+        StandardMethodInlineCacheTarget::Chars
+            if cache.receiver == StandardMethodReceiver::String =>
+        {
+            return Some(crate::iteration::chars_method(receiver, args, heap, budget));
+        }
+        StandardMethodInlineCacheTarget::Bytes
+            if cache.receiver == StandardMethodReceiver::String =>
+        {
+            return Some(crate::iteration::string_bytes_method(
+                receiver, args, heap, budget,
+            ));
+        }
+        StandardMethodInlineCacheTarget::Next | StandardMethodInlineCacheTarget::CollectArray
+            if cache.receiver == StandardMethodReceiver::Iterator =>
+        {
+            return match cache.target {
+                StandardMethodInlineCacheTarget::Next => {
+                    Some(crate::iteration::next_method(receiver, args, heap, budget))
+                }
+                StandardMethodInlineCacheTarget::CollectArray => Some(
+                    crate::iteration::collect_array_method(receiver, args, heap, budget),
+                ),
+                _ => None,
+            };
+        }
+        StandardMethodInlineCacheTarget::Count
+            if cache.receiver == StandardMethodReceiver::Iterator =>
+        {
+            return Some(crate::iteration::count_method(receiver, args, heap));
         }
         StandardMethodInlineCacheTarget::Slice
         | StandardMethodInlineCacheTarget::Reverse
@@ -971,6 +1068,7 @@ fn receiver_matches_cache(
         StandardMethodReceiver::Array => array_methods::is_array(receiver, heap),
         StandardMethodReceiver::Map => map_methods::is_map(receiver, heap),
         StandardMethodReceiver::Set => set_methods::is_set(receiver, heap),
+        StandardMethodReceiver::Iterator => crate::iteration::is_iterator(receiver, heap),
         StandardMethodReceiver::Option => option_result_methods::is_option(receiver, heap),
         StandardMethodReceiver::Result => option_result_methods::is_result(receiver, heap),
     }
