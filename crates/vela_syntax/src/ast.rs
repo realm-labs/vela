@@ -319,6 +319,7 @@ pub enum Literal {
     Bool(bool),
     Integer(IntegerLiteral),
     Float(FloatLiteral),
+    Char(char),
     String(String),
     Bytes(Vec<u8>),
 }

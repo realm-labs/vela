@@ -112,7 +112,7 @@ macro_rules! impl_owned_global_value {
 }
 
 #[cfg(feature = "serde")]
-impl_owned_global_value!(bool, i32, i64, f64, String, vela_host::path::HostRef);
+impl_owned_global_value!(bool, char, i32, i64, f64, String, vela_host::path::HostRef);
 
 impl IntoGlobalValue for VelaValue {
     fn insert_global<I>(self, runtime: &mut RuntimeImpl<I>, name: String) -> VmResult<()>

@@ -753,6 +753,16 @@ and diagnostics. Runtime-to-boundary conversion must go through
 `Value::from_scalar` and `Value::as_scalar` rather than reintroducing a nested
 runtime scalar variant.
 
+### First-Class Char Primitive
+
+`char` is a first-class primitive with Rust `char` semantics: one Unicode
+scalar value, not a byte and not a one-character string. Vela uses single-quote
+char literals such as `'x'` and `'\u{5956}'`; double-quote literals remain
+strings. String iteration yields `char` values, and `string.char_at(index)`
+returns `Option<char>`. The pre-release implementation does not preserve the
+old internal behavior where `char_at` returned `Option<string>` or serde
+decoded single-character strings as Rust `char`.
+
 ## Validation Rules
 
 - Multi-level `super` scan must return no matches:

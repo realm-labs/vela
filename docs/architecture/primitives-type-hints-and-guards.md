@@ -11,6 +11,7 @@ Vela is dynamic by default, but primitive values use explicit concrete names:
 ```text
 null
 bool
+char
 i8 i16 i32 i64
 u8 u16 u32 u64
 f32 f64
@@ -30,6 +31,7 @@ when they escape without a more specific expected type.
 12.0     // f64 if unconstrained
 12.0f32  // exactly f32
 b"abc"   // bytes
+'x'      // char
 ```
 
 The shared low-level vocabulary is:
@@ -38,6 +40,7 @@ The shared low-level vocabulary is:
 pub enum PrimitiveTag {
     Null,
     Bool,
+    Char,
     I8,
     I16,
     I32,

@@ -47,6 +47,7 @@ impl<'de> de::Deserializer<'de> for RuntimeValueDeserializer<'de> {
         match self.value {
             Value::Missing | Value::Null => visitor.visit_unit(),
             Value::Bool(value) => visitor.visit_bool(*value),
+            Value::Char(value) => visitor.visit_char(*value),
             Value::I8(value) => visitor.visit_i8(*value),
             Value::I16(value) => visitor.visit_i16(*value),
             Value::I32(value) => visitor.visit_i32(*value),
@@ -90,6 +91,16 @@ impl<'de> de::Deserializer<'de> for RuntimeValueDeserializer<'de> {
         match self.value {
             Value::Bool(value) => visitor.visit_bool(*value),
             _ => Err(Error::custom("expected bool")),
+        }
+    }
+
+    fn deserialize_char<V>(self, visitor: V) -> Result<V::Value>
+    where
+        V: Visitor<'de>,
+    {
+        match self.value {
+            Value::Char(value) => visitor.visit_char(*value),
+            _ => Err(Error::custom("expected char")),
         }
     }
 
@@ -284,7 +295,7 @@ impl<'de> de::Deserializer<'de> for RuntimeValueDeserializer<'de> {
     }
 
     forward_to_deserialize_any! {
-        i8 i16 i32 u8 u16 u32 f32 char bytes byte_buf
+        i8 i16 i32 u8 u16 u32 f32 bytes byte_buf
     }
 }
 

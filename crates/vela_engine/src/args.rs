@@ -273,6 +273,23 @@ impl FromScriptArg for bool {
     }
 }
 
+impl IntoScriptArg for char {
+    fn into_script_arg(self) -> OwnedValue {
+        OwnedValue::Char(self)
+    }
+}
+
+impl FromScriptArg for char {
+    const TYPE_NAME: &'static str = "char";
+
+    fn from_script_arg(value: &OwnedValue) -> VmResult<Self> {
+        match value {
+            OwnedValue::Char(value) => Ok(*value),
+            _ => Err(type_mismatch(Self::TYPE_NAME)),
+        }
+    }
+}
+
 macro_rules! scalar_arg {
     ($($ty:ty => $variant:ident),* $(,)?) => {
         $(

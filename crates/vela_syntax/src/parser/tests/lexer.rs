@@ -201,6 +201,39 @@ fn lexes_unicode_string_escapes() {
 }
 
 #[test]
+fn lexes_char_literals() {
+    let lexed = lex(source_id(), r#"'a' '\n' '\'' '\u{5956}'"#);
+
+    assert!(lexed.diagnostics.is_empty(), "{:?}", lexed.diagnostics);
+    assert_eq!(lexed.tokens[0].kind, TokenKind::Char('a'));
+    assert_eq!(lexed.tokens[1].kind, TokenKind::Char('\n'));
+    assert_eq!(lexed.tokens[2].kind, TokenKind::Char('\''));
+    assert_eq!(lexed.tokens[3].kind, TokenKind::Char('奖'));
+}
+
+#[test]
+fn diagnoses_invalid_char_literals() {
+    let lexed = lex(source_id(), r#"'ab' ''"#);
+
+    assert_eq!(
+        lexed
+            .tokens
+            .iter()
+            .map(|token| token.kind.clone())
+            .collect::<Vec<_>>(),
+        vec![TokenKind::Eof]
+    );
+    assert_eq!(
+        lexed
+            .diagnostics
+            .iter()
+            .map(|diagnostic| diagnostic.code.as_deref())
+            .collect::<Vec<_>>(),
+        vec![Some("E_LEX_CHAR_LITERAL"), Some("E_LEX_CHAR_LITERAL")]
+    );
+}
+
+#[test]
 fn lexes_multiline_strings() {
     let source = "\"\"\"line1\nline2\"\"\"";
     let lexed = lex(source_id(), source);

@@ -17,6 +17,7 @@ pub enum OwnedValue {
     Missing,
     Null,
     Bool(bool),
+    Char(char),
     Scalar(ScalarValue),
     String(String),
     Bytes(Vec<u8>),
@@ -149,6 +150,7 @@ impl OwnedValue {
             Self::Missing => "<missing>".to_owned(),
             Self::Null => "null".to_owned(),
             Self::Bool(value) => value.to_string(),
+            Self::Char(value) => value.to_string(),
             Self::Scalar(value) => scalar_display_text(*value),
             Self::String(value) => value.clone(),
             Self::Bytes(value) => format!("{value:?}"),
@@ -318,6 +320,7 @@ impl From<&Constant> for OwnedValue {
         match value {
             Constant::Null => Self::Null,
             Constant::Bool(value) => Self::Bool(*value),
+            Constant::Char(value) => Self::Char(*value),
             Constant::Scalar(value) => Self::Scalar(*value),
             Constant::String(value) => Self::String(value.clone()),
             Constant::Bytes(value) => Self::Bytes(value.clone()),
@@ -335,6 +338,12 @@ impl From<&Constant> for OwnedValue {
 impl From<bool> for OwnedValue {
     fn from(value: bool) -> Self {
         Self::Bool(value)
+    }
+}
+
+impl From<char> for OwnedValue {
+    fn from(value: char) -> Self {
+        Self::Char(value)
     }
 }
 
@@ -385,6 +394,7 @@ pub fn owned_to_value_detached(value: OwnedValue) -> Value {
         OwnedValue::Missing => Value::Missing,
         OwnedValue::Null => Value::Null,
         OwnedValue::Bool(value) => Value::Bool(value),
+        OwnedValue::Char(value) => Value::Char(value),
         OwnedValue::Scalar(value) => Value::from_scalar(value),
         OwnedValue::Range(value) => Value::Range(value),
         OwnedValue::HostRef(value) => Value::HostRef(value),
@@ -406,6 +416,7 @@ pub fn value_to_owned_detached(value: &Value) -> VmResult<OwnedValue> {
         Value::Missing => Ok(OwnedValue::Missing),
         Value::Null => Ok(OwnedValue::Null),
         Value::Bool(value) => Ok(OwnedValue::Bool(*value)),
+        Value::Char(value) => Ok(OwnedValue::Char(*value)),
         Value::I8(value) => Ok(OwnedValue::Scalar(ScalarValue::I8(*value))),
         Value::I16(value) => Ok(OwnedValue::Scalar(ScalarValue::I16(*value))),
         Value::I32(value) => Ok(OwnedValue::Scalar(ScalarValue::I32(*value))),
@@ -438,6 +449,7 @@ fn owned_value_eq_runtime(lhs: &OwnedValue, rhs: &Value) -> bool {
     match (lhs, rhs) {
         (OwnedValue::Missing, Value::Missing) | (OwnedValue::Null, Value::Null) => true,
         (OwnedValue::Bool(lhs), Value::Bool(rhs)) => lhs == rhs,
+        (OwnedValue::Char(lhs), Value::Char(rhs)) => lhs == rhs,
         (OwnedValue::Scalar(lhs), rhs) => rhs.as_scalar().as_ref() == Some(lhs),
         (OwnedValue::Range(lhs), Value::Range(rhs)) => lhs == rhs,
         (OwnedValue::HostRef(lhs), Value::HostRef(rhs)) => lhs == rhs,

@@ -13,6 +13,7 @@ pub enum TokenKind {
     Ident(String),
     Int(IntegerLiteral),
     Float(FloatLiteral),
+    Char(char),
     String(String),
     InterpolatedString(Vec<InterpolatedStringTokenPart>),
     Bytes(Vec<u8>),

@@ -222,7 +222,7 @@ fn main() {
         && lines[1] == "apply"
         && option::unwrap_or("true".parse_bool(), false)
         && option::unwrap_or("2.5".parse_float(), 0.0) == 2.5
-        && option::unwrap_or("xp奖励".char_at(2), "") == "奖"
+        && option::unwrap_or("xp奖励".char_at(2), '\0') == '奖'
         && "xp奖励".slice(2, 4) == "奖励"
     {
         30

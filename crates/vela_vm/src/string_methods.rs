@@ -354,13 +354,13 @@ fn main() {
     let first = label.char_at(0);
     let reward = label.char_at(2);
     let missing = label.char_at(99);
-    if option::unwrap_or(first, "") == "x"
-        && option::unwrap_or(reward, "") == "奖"
+    if option::unwrap_or(first, '\0') == 'x'
+        && option::unwrap_or(reward, '\0') == '奖'
         && option::is_none(missing)
     {
-        return option::unwrap_or(label.char_at(3), "");
+        return option::unwrap_or(label.char_at(3), '\0');
     }
-    return "";
+    return '\0';
 }
 "#;
         let code = compile_function_source(SourceId::new(1), source, "main")
@@ -369,7 +369,7 @@ fn main() {
         vm.register_standard_natives();
 
         let result = run_linked_string_test_code(&vm, code).expect("string char_at should run");
-        assert_eq!(result, OwnedValue::String("励".to_owned()));
+        assert_eq!(result, OwnedValue::Char('励'));
     }
 
     #[test]
@@ -377,7 +377,7 @@ fn main() {
         let source = r#"
 fn main() {
     let event = "level.up";
-    return event.char_at(5).unwrap_or("");
+    return event.char_at(5).unwrap_or('\0');
 }
 "#;
         let code = compile_function_source(SourceId::new(1), source, "main")
@@ -387,7 +387,7 @@ fn main() {
 
         let result = run_linked_string_test_code_with_budget(&vm, code, &mut budget)
             .expect("heap string char_at should run");
-        assert_eq!(result, OwnedValue::String(".".to_owned()));
+        assert_eq!(result, OwnedValue::Char('.'));
     }
 
     #[test]

@@ -3,6 +3,7 @@ use crate::token::{InterpolatedStringTokenPart, Keyword, Symbol, TokenKind};
 pub(crate) fn normalize_attribute_value(tokens: &[TokenKind]) -> String {
     match tokens {
         [TokenKind::String(value)] | [TokenKind::Ident(value)] => return value.clone(),
+        [TokenKind::Char(value)] => return value.to_string(),
         [TokenKind::Bytes(value)] => return quoted_attribute_bytes(value),
         [TokenKind::Int(value)] => return value.source_text_with_suffix(),
         [TokenKind::Float(value)] => return value.source_text_with_suffix(),
@@ -22,6 +23,7 @@ fn attribute_token_text(token: &TokenKind) -> String {
         TokenKind::Ident(value) => value.clone(),
         TokenKind::Int(value) => value.source_text_with_suffix(),
         TokenKind::Float(value) => value.source_text_with_suffix(),
+        TokenKind::Char(value) => quoted_attribute_char(*value),
         TokenKind::String(value) => quoted_attribute_string(value),
         TokenKind::InterpolatedString(parts) => quoted_interpolated_attribute_string(parts),
         TokenKind::Bytes(value) => quoted_attribute_bytes(value),
@@ -29,6 +31,21 @@ fn attribute_token_text(token: &TokenKind) -> String {
         TokenKind::Symbol(symbol) => symbol_text(*symbol).to_owned(),
         TokenKind::Eof => String::new(),
     }
+}
+
+fn quoted_attribute_char(value: char) -> String {
+    let mut quoted = String::from("'");
+    match value {
+        '\'' => quoted.push_str("\\'"),
+        '\\' => quoted.push_str("\\\\"),
+        '\n' => quoted.push_str("\\n"),
+        '\r' => quoted.push_str("\\r"),
+        '\t' => quoted.push_str("\\t"),
+        '\0' => quoted.push_str("\\0"),
+        ch => quoted.push(ch),
+    }
+    quoted.push('\'');
+    quoted
 }
 
 fn quoted_interpolated_attribute_string(parts: &[InterpolatedStringTokenPart]) -> String {

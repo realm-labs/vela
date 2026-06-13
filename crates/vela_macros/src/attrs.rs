@@ -215,7 +215,9 @@ pub(crate) fn inferred_type_hint(ty: &Type) -> Option<String> {
     let ident = segment.ident.to_string();
     Some(match ident.as_str() {
         "bool" => "bool".to_owned(),
-        "i8" | "i16" | "i32" | "i64" | "u8" | "u16" | "u32" | "u64" | "f32" | "f64" => ident,
+        "char" | "i8" | "i16" | "i32" | "i64" | "u8" | "u16" | "u32" | "u64" | "f32" | "f64" => {
+            ident
+        }
         "i128" | "isize" | "u128" | "usize" => return None,
         "String" => "string".to_owned(),
         "Vec" => "array".to_owned(),

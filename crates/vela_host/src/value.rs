@@ -6,6 +6,7 @@ use crate::path::HostRef;
 pub enum HostValue {
     Null,
     Bool(bool),
+    Char(char),
     Scalar(ScalarValue),
     String(String),
     Bytes(Vec<u8>),

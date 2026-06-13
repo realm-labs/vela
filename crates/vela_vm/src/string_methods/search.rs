@@ -1,7 +1,7 @@
 use crate::option_result::option_value;
 use crate::{ExecutionBudget, HeapExecution, Value, VmResult};
 
-use super::{expect_arity, index_value, make_string, string_value};
+use super::{expect_arity, index_value, string_value};
 
 pub(crate) fn contains(
     receiver: &Value,
@@ -76,11 +76,7 @@ pub(crate) fn char_at(
     expect_arity("char_at", args, 1)?;
     let value = string_value(receiver, heap.as_deref(), "method char_at")?;
     let index = index_value(&args[0], "method char_at")?;
-    let payload = value
-        .chars()
-        .nth(index)
-        .map(|ch| make_string(ch.to_string(), heap, budget, "method char_at"))
-        .transpose()?;
+    let payload = value.chars().nth(index).map(Value::Char);
     let Some(heap) = heap.as_deref_mut() else {
         return super::type_error("method char_at");
     };

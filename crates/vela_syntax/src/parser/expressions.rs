@@ -233,6 +233,10 @@ impl Parser {
                 self.advance();
                 self.literal_expr(Literal::Float(value), span)
             }
+            TokenKind::Char(value) => {
+                self.advance();
+                self.literal_expr(Literal::Char(value), span)
+            }
             TokenKind::String(value) => {
                 self.advance();
                 self.literal_expr(Literal::String(value), span)
@@ -359,6 +363,10 @@ impl Parser {
             TokenKind::String(value) => {
                 let span = self.advance().span;
                 self.literal_expr(Literal::String(value), span)
+            }
+            TokenKind::Char(value) => {
+                let span = self.advance().span;
+                self.literal_expr(Literal::Char(value), span)
             }
             TokenKind::Bytes(value) => {
                 let span = self.advance().span;
@@ -583,6 +591,10 @@ impl Parser {
             TokenKind::String(value) => {
                 self.advance();
                 Pattern::Literal(Literal::String(value))
+            }
+            TokenKind::Char(value) => {
+                self.advance();
+                Pattern::Literal(Literal::Char(value))
             }
             TokenKind::Bytes(value) => {
                 self.advance();

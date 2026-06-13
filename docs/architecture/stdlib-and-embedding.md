@@ -93,7 +93,7 @@ text.trim_end()
 text.replace(old, new)
 text.repeat(count)
 text.slice(start, end)
-text.char_at(index)
+text.char_at(index) // Option<char>
 text.split(separator)
 text.split_once(separator)
 text.split_lines()

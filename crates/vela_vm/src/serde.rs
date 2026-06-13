@@ -142,7 +142,7 @@ impl ser::Serializer for OwnedValueSerializer {
     }
 
     fn serialize_char(self, v: char) -> Result<Self::Ok> {
-        Ok(OwnedValue::String(v.to_string()))
+        Ok(OwnedValue::Char(v))
     }
 
     fn serialize_str(self, v: &str) -> Result<Self::Ok> {
@@ -638,6 +638,7 @@ impl<'de> de::Deserializer<'de> for &'de OwnedValue {
         match self {
             OwnedValue::Missing | OwnedValue::Null => visitor.visit_unit(),
             OwnedValue::Bool(value) => visitor.visit_bool(*value),
+            OwnedValue::Char(value) => visitor.visit_char(*value),
             OwnedValue::Scalar(ScalarValue::I8(value)) => visitor.visit_i8(*value),
             OwnedValue::Scalar(ScalarValue::I16(value)) => visitor.visit_i16(*value),
             OwnedValue::Scalar(ScalarValue::I32(value)) => visitor.visit_i32(*value),
@@ -783,13 +784,7 @@ impl<'de> de::Deserializer<'de> for &'de OwnedValue {
         V: Visitor<'de>,
     {
         match self {
-            OwnedValue::String(value) => {
-                let mut chars = value.chars();
-                match (chars.next(), chars.next()) {
-                    (Some(value), None) => visitor.visit_char(value),
-                    _ => Err(Error::custom("expected char")),
-                }
-            }
+            OwnedValue::Char(value) => visitor.visit_char(*value),
             _ => Err(Error::custom("expected char")),
         }
     }

@@ -355,7 +355,7 @@ fn main() {
     return label.find(":").unwrap_or(-1) == 6
         && label.strip_prefix("reward:").unwrap_or("") == "gold"
         && label.strip_suffix(":gold").unwrap_or("") == "reward"
-        && label.char_at(6).unwrap_or("") == ":";
+        && label.char_at(6).unwrap_or('\0') == ':';
 }
 "#,
         )

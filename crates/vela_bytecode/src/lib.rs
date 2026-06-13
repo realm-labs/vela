@@ -471,6 +471,7 @@ pub enum FrameSlotKind {
 pub enum Constant {
     Null,
     Bool(bool),
+    Char(char),
     Scalar(vela_common::ScalarValue),
     String(String),
     Bytes(Vec<u8>),
@@ -493,6 +494,11 @@ impl Constant {
     #[must_use]
     pub const fn f64(value: f64) -> Self {
         Self::Scalar(vela_common::ScalarValue::F64(value))
+    }
+
+    #[must_use]
+    pub const fn char(value: char) -> Self {
+        Self::Char(value)
     }
 }
 

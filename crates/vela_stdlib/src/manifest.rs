@@ -264,6 +264,7 @@ impl StdFieldSpec {
 pub const STD_TYPES: &[StdTypeSpec] = &[
     StdTypeSpec::primitive("Null", PrimitiveTag::Null),
     StdTypeSpec::primitive("Bool", PrimitiveTag::Bool),
+    StdTypeSpec::primitive("Char", PrimitiveTag::Char),
     StdTypeSpec::primitive("I8", PrimitiveTag::I8),
     StdTypeSpec::primitive("I16", PrimitiveTag::I16),
     StdTypeSpec::primitive("I32", PrimitiveTag::I32),
@@ -737,7 +738,7 @@ mod tests {
 
     #[test]
     fn manifest_declares_current_stdlib_surface() {
-        assert_eq!(STD_TYPES.len(), 22);
+        assert_eq!(STD_TYPES.len(), 23);
         assert_eq!(STD_VARIANTS.len(), 4);
         assert_eq!(STD_FIELDS.len(), 3);
         assert_eq!(STD_FUNCTIONS.len(), 51);
@@ -880,6 +881,7 @@ mod tests {
             BTreeSet::from([
                 ("Null", PrimitiveTag::Null),
                 ("Bool", PrimitiveTag::Bool),
+                ("Char", PrimitiveTag::Char),
                 ("I8", PrimitiveTag::I8),
                 ("I16", PrimitiveTag::I16),
                 ("I32", PrimitiveTag::I32),

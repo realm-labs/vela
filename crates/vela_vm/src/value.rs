@@ -13,6 +13,7 @@ pub enum Value {
     Missing,
     Null,
     Bool(bool),
+    Char(char),
     I8(i8),
     I16(i16),
     I32(i32),

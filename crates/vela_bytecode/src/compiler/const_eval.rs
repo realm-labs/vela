@@ -15,6 +15,7 @@ pub(super) fn compile_literal_constant(literal: &Literal) -> CompileResult<Const
     Ok(match literal {
         Literal::Null => Constant::Null,
         Literal::Bool(value) => Constant::Bool(*value),
+        Literal::Char(value) => Constant::Char(*value),
         Literal::Integer(value) => Constant::Scalar(parse_integer_scalar(value)?),
         Literal::Float(value) => Constant::Scalar(parse_float_scalar(value)?),
         Literal::String(value) => Constant::String(value.clone()),

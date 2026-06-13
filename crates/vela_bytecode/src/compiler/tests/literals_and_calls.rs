@@ -47,6 +47,7 @@ fn primitive_for_std_type_name(type_name: &str) -> Option<vela_common::Primitive
         "F32" => Some(vela_common::PrimitiveTag::F32),
         "F64" => Some(vela_common::PrimitiveTag::F64),
         "String" => Some(vela_common::PrimitiveTag::String),
+        "Char" => Some(vela_common::PrimitiveTag::Char),
         "Bytes" => Some(vela_common::PrimitiveTag::Bytes),
         _ => None,
     }
@@ -236,6 +237,18 @@ fn compiler_lowers_unicode_string_escapes() {
     )
     .expect("unicode escaped string source should compile");
     assert!(code.constants.contains(&Constant::String("Az".into())));
+}
+
+#[test]
+fn compiler_lowers_char_literals() {
+    let code = compile_function_source(
+        SourceId::new(1),
+        r#"fn main() { return '\u{5956}'; }"#,
+        "main",
+    )
+    .expect("char literal source should compile");
+
+    assert!(code.constants.contains(&Constant::Char('奖')));
 }
 #[test]
 fn compiler_lowers_script_value_method_calls() {
@@ -980,7 +993,7 @@ fn compiler_lowers_value_method_ids_after_string_char_at_method() {
         SourceId::new(1),
         r#"
 fn main() {
-    return "level.up".char_at(5).unwrap_or("");
+    return "level.up".char_at(5).unwrap_or('\0');
 }
 "#,
         registry.compile_view(),

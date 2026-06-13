@@ -62,6 +62,7 @@ pub enum TypeFact {
 impl TypeFact {
     pub const NULL: Self = Self::Primitive(PrimitiveTag::Null);
     pub const BOOL: Self = Self::Primitive(PrimitiveTag::Bool);
+    pub const CHAR: Self = Self::Primitive(PrimitiveTag::Char);
     pub const I8: Self = Self::Primitive(PrimitiveTag::I8);
     pub const I16: Self = Self::Primitive(PrimitiveTag::I16);
     pub const I32: Self = Self::Primitive(PrimitiveTag::I32);

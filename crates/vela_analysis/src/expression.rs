@@ -150,6 +150,7 @@ fn literal_fact(literal: &Literal) -> TypeFact {
     match literal {
         Literal::Null => TypeFact::NULL,
         Literal::Bool(_) => TypeFact::BOOL,
+        Literal::Char(_) => TypeFact::CHAR,
         Literal::Integer(_) => TypeFact::I64,
         Literal::Float(_) => TypeFact::F64,
         Literal::String(_) => TypeFact::STRING,

@@ -265,6 +265,20 @@ fn parses_literal_return() {
 }
 
 #[test]
+fn parses_char_literal_return() {
+    let parsed = parse_source(source_id(), "fn marker() { return '奖'; }");
+
+    assert!(parsed.diagnostics.is_empty(), "{:?}", parsed.diagnostics);
+    let ItemKind::Function(function) = &parsed.items[0].kind else {
+        panic!("expected function item");
+    };
+    let StmtKind::Return(Some(value)) = &function.body.statements[0].kind else {
+        panic!("expected return value");
+    };
+    assert_eq!(value.kind, ExprKind::Literal(Literal::Char('奖')));
+}
+
+#[test]
 fn parses_interpolated_string_return() {
     let parsed = parse_source(
         source_id(),

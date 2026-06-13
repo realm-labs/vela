@@ -232,7 +232,7 @@ pub(super) fn call_cached_string_option(
                 Ok(payload) => payload,
                 Err(error) => return Some(Err(error)),
             };
-            Some(make_string_option(payload, heap, budget, "method char_at"))
+            Some(make_option(payload, heap, budget))
         }
         StandardMethodInlineCacheTarget::SplitOnce => {
             let payload = match split_once_payload(value, args, heap.as_deref()) {
@@ -703,10 +703,10 @@ fn strip_affix_payload(
     Ok(stripped.map(str::to_owned))
 }
 
-fn char_at_payload(value: &str, args: &[Value]) -> VmResult<Option<String>> {
+fn char_at_payload(value: &str, args: &[Value]) -> VmResult<Option<Value>> {
     crate::runtime_checks::expect_arity("char_at", args, 1)?;
     let index = char_index_value(&args[0])?;
-    Ok(value.chars().nth(index).map(|ch| ch.to_string()))
+    Ok(value.chars().nth(index).map(Value::Char))
 }
 
 fn split_once_payload(

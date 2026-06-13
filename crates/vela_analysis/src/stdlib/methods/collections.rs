@@ -424,7 +424,7 @@ pub(super) fn string_method_fact(method: &str) -> Option<StdlibMethodFact> {
             TypeFact::array(TypeFact::STRING),
         )),
         "char_at" => Some(
-            StdlibMethodFact::new(receiver, "char_at", TypeFact::option(TypeFact::STRING))
+            StdlibMethodFact::new(receiver, "char_at", TypeFact::option(TypeFact::CHAR))
                 .with_params(vec![TypeFact::I64]),
         ),
         "parse_int" => Some(StdlibMethodFact::new(

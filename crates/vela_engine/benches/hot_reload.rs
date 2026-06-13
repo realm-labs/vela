@@ -224,6 +224,7 @@ fn value_checksum(value: &OwnedValue) -> u64 {
         OwnedValue::Missing => 0x01,
         OwnedValue::Null => 0x02,
         OwnedValue::Bool(value) => u64::from(*value) ^ 0x03,
+        OwnedValue::Char(value) => u64::from(*value as u32) ^ 0x04,
         OwnedValue::Scalar(value) => scalar_checksum(*value),
         OwnedValue::String(value) => bytes_checksum(value.as_bytes()),
         OwnedValue::Bytes(value) => bytes_checksum(value),

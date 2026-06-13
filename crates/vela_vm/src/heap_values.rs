@@ -22,6 +22,7 @@ pub(crate) fn value_from_constant(
     match constant {
         Constant::Null => Ok(Value::Null),
         Constant::Bool(value) => Ok(Value::Bool(*value)),
+        Constant::Char(value) => Ok(Value::Char(*value)),
         Constant::Scalar(value) => Ok(Value::from_scalar(*value)),
         Constant::String(value) => {
             let Some(heap) = heap else {
@@ -164,6 +165,7 @@ pub(crate) fn owned_to_value(
         OwnedValue::Missing => Ok(Value::Missing),
         OwnedValue::Null => Ok(Value::Null),
         OwnedValue::Bool(value) => Ok(Value::Bool(value)),
+        OwnedValue::Char(value) => Ok(Value::Char(value)),
         OwnedValue::Scalar(value) => Ok(Value::from_scalar(value)),
         OwnedValue::Range(value) => Ok(Value::Range(value)),
         OwnedValue::HostRef(value) => Ok(Value::HostRef(value)),
@@ -277,6 +279,7 @@ pub(crate) fn value_to_owned(
         Value::Missing => Ok(OwnedValue::Missing),
         Value::Null => Ok(OwnedValue::Null),
         Value::Bool(value) => Ok(OwnedValue::Bool(*value)),
+        Value::Char(value) => Ok(OwnedValue::Char(*value)),
         Value::Range(value) => Ok(OwnedValue::Range(*value)),
         Value::HostRef(value) => Ok(OwnedValue::HostRef(*value)),
         Value::HeapRef(reference) => {
@@ -381,6 +384,7 @@ pub(crate) fn host_to_value(
     match value {
         HostValue::Null => Ok(Value::Null),
         HostValue::Bool(value) => Ok(Value::Bool(value)),
+        HostValue::Char(value) => Ok(Value::Char(value)),
         HostValue::Scalar(value) => Ok(Value::from_scalar(value)),
         HostValue::String(value) => allocate_heap_value(HeapValue::String(value), heap, budget),
         HostValue::Bytes(value) => allocate_heap_value(HeapValue::Bytes(value), heap, budget),
@@ -400,6 +404,7 @@ pub(crate) fn value_to_host(
     match value {
         Value::Null => Ok(HostValue::Null),
         Value::Bool(value) => Ok(HostValue::Bool(*value)),
+        Value::Char(value) => Ok(HostValue::Char(*value)),
         Value::HostRef(value) => Ok(HostValue::HostRef(*value)),
         Value::HeapRef(reference) => match heap.and_then(|heap| heap.heap.get(*reference)) {
             Some(HeapValue::String(value)) => Ok(HostValue::String(value.clone())),
@@ -442,6 +447,7 @@ fn store_value_in_heap(
         Value::Missing => Err(type_error("missing value")),
         Value::Null
         | Value::Bool(_)
+        | Value::Char(_)
         | Value::I8(_)
         | Value::I16(_)
         | Value::I32(_)

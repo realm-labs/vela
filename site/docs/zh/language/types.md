@@ -8,15 +8,20 @@ Vela 在运行时是动态类型，类型元数据主要用于分析、诊断和
 
 - `null`
 - `bool`
-- `int`
-- `float`
+- `char`
+- `i8`、`i16`、`i32`、`i64`
+- `u8`、`u16`、`u32`、`u64`
+- `f32`、`f64`
 - `string`
+- `bytes`
 
 ```vela
 let enabled = true;
-let level = 12;
-let ratio = 1.5;
+let marker = '!';
+let level = 12i64;
+let ratio = 1.5f64;
 let name = "knight";
+let payload = b"ok";
 ```
 
 ## Record 和 Enum
@@ -25,12 +30,12 @@ let name = "knight";
 
 ```vela
 struct Damage {
-    amount: int,
+    amount: i64,
     source: string,
 }
 
 enum Check {
-    Pass { score: int },
+    Pass { score: i64 },
     Fail { reason: string },
 }
 ```

@@ -799,6 +799,7 @@ fn owned_value_matches_contract(value: &OwnedValue, expected: &str) -> bool {
     match value {
         OwnedValue::Null => expected == "null",
         OwnedValue::Bool(_) => expected == "bool",
+        OwnedValue::Char(_) => expected == "char",
         OwnedValue::Scalar(value) => value.primitive_tag().name() == expected,
         OwnedValue::String(_) => expected == "string",
         OwnedValue::Bytes(_) => expected == "bytes",
@@ -821,6 +822,7 @@ fn owned_value_contract_type_name(value: &OwnedValue) -> String {
         OwnedValue::Missing => "missing".to_owned(),
         OwnedValue::Null => "null".to_owned(),
         OwnedValue::Bool(_) => "bool".to_owned(),
+        OwnedValue::Char(_) => "char".to_owned(),
         OwnedValue::Scalar(value) => value.primitive_tag().name().to_owned(),
         OwnedValue::String(_) => "string".to_owned(),
         OwnedValue::Bytes(_) => "bytes".to_owned(),

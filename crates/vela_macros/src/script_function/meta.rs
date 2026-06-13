@@ -314,6 +314,7 @@ fn hint_for_type(ty: &Type) -> HintKind {
     }
     match type_ident(ty).as_deref() {
         Some("bool") => HintKind::Primitive(PrimitiveTag::Bool),
+        Some("char") => HintKind::Primitive(PrimitiveTag::Char),
         Some("i8") => HintKind::Primitive(PrimitiveTag::I8),
         Some("i16") => HintKind::Primitive(PrimitiveTag::I16),
         Some("i32") => HintKind::Primitive(PrimitiveTag::I32),

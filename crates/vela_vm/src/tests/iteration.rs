@@ -29,6 +29,37 @@ fn main() {
 }
 
 #[test]
+fn runs_compiled_for_in_string_chars() {
+    let code = compile_function_source(
+        SourceId::new(1),
+        r##"
+fn main() {
+    let total = 0;
+    for ch in "a奖励" {
+        if ch == 'a' {
+            total += 1;
+        }
+        if ch == '奖' {
+            total += 10;
+        }
+        if ch == '励' {
+            total += 100;
+        }
+    }
+    return total;
+}
+"##,
+        "main",
+    )
+    .expect("compile string for-in source");
+
+    assert_eq!(
+        run_linked_test_code(code),
+        Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(111)))
+    );
+}
+
+#[test]
 fn runs_compiled_for_in_variant_patterns() {
     let program = compile_program_source(
         SourceId::new(1),

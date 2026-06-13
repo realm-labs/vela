@@ -88,6 +88,7 @@ struct PrimitiveSerdeSnapshot {
     u64_value: u64,
     f32_value: f32,
     f64_value: f64,
+    char_value: char,
     bytes: ExplicitBytes,
 }
 
@@ -150,6 +151,7 @@ fn serde_preserves_exact_scalar_tags_and_explicit_bytes() {
         u64_value: u64::MAX,
         f32_value: 1.5,
         f64_value: 2.5,
+        char_value: '奖',
         bytes: ExplicitBytes(vec![0, 1, 255]),
     };
 
@@ -198,6 +200,7 @@ fn serde_preserves_exact_scalar_tags_and_explicit_bytes() {
         fields.get("f64_value"),
         Some(&OwnedValue::Scalar(ScalarValue::F64(2.5)))
     );
+    assert_eq!(fields.get("char_value"), Some(&OwnedValue::Char('奖')));
     assert_eq!(
         fields.get("bytes"),
         Some(&OwnedValue::Bytes(vec![0, 1, 255]))
@@ -229,6 +232,7 @@ fn json_policy_uses_byte_arrays_and_exact_u64_numbers() {
         u64_value: u64::MAX,
         f32_value: 1.25,
         f64_value: 2.5,
+        char_value: 'j',
         bytes: ExplicitBytes(vec![0, 1, 255]),
     };
 

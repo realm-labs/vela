@@ -383,7 +383,7 @@ fn string_methods_expose_replacement_and_split_facts() {
 
     let char_at = stdlib_method_fact(&TypeFact::STRING, "char_at", None).expect("char_at fact");
     assert_eq!(char_at.params, vec![TypeFact::I64]);
-    assert_eq!(char_at.returns, TypeFact::option(TypeFact::STRING));
+    assert_eq!(char_at.returns, TypeFact::option(TypeFact::CHAR));
 
     let parse_int =
         stdlib_method_fact(&TypeFact::STRING, "parse_int", None).expect("parse_i64 fact");

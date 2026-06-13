@@ -114,6 +114,7 @@ fn primitive_hint_tokens(tag: PrimitiveTag) -> TokenStream {
     match tag {
         PrimitiveTag::Null => quote! { ::vela_engine::native::TypeHint::null() },
         PrimitiveTag::Bool => quote! { ::vela_engine::native::TypeHint::boolean() },
+        PrimitiveTag::Char => quote! { ::vela_engine::native::TypeHint::char() },
         PrimitiveTag::I8 => quote! { ::vela_engine::native::TypeHint::i8() },
         PrimitiveTag::I16 => quote! { ::vela_engine::native::TypeHint::i16() },
         PrimitiveTag::I32 => quote! { ::vela_engine::native::TypeHint::i32() },

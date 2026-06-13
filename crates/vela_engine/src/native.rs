@@ -337,6 +337,11 @@ impl TypeHint {
     }
 
     #[must_use]
+    pub const fn char() -> Self {
+        Self::Primitive(PrimitiveTag::Char)
+    }
+
+    #[must_use]
     pub const fn i8() -> Self {
         Self::Primitive(PrimitiveTag::I8)
     }

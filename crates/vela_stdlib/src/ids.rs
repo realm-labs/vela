@@ -53,9 +53,9 @@ mod tests {
         assert_eq!(std_method_id("String", "len"), Some(STD_METHODS[0].id()));
         assert_eq!(std_type_id("Null"), Some(STD_TYPES[0].id()));
         assert_eq!(std_type_id("null"), Some(STD_TYPES[0].id()));
-        assert_eq!(std_type_id("i64"), Some(STD_TYPES[5].id()));
-        assert_eq!(std_type_id("f64"), Some(STD_TYPES[11].id()));
-        assert_eq!(std_type_id("bytes"), Some(STD_TYPES[13].id()));
+        assert_eq!(std_type_id("i64"), Some(STD_TYPES[6].id()));
+        assert_eq!(std_type_id("f64"), Some(STD_TYPES[12].id()));
+        assert_eq!(std_type_id("bytes"), Some(STD_TYPES[14].id()));
         assert_eq!(std_variant_id("Option", "Some"), Some(STD_VARIANTS[0].id()));
         assert_eq!(std_field_id("Option::Some", "0"), Some(STD_FIELDS[0].id()));
     }

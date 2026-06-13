@@ -915,6 +915,7 @@ fn constant_kind(constant: &crate::Constant) -> &'static str {
     match constant {
         crate::Constant::Null => "null",
         crate::Constant::Bool(_) => "bool",
+        crate::Constant::Char(_) => "char",
         crate::Constant::Scalar(_) => "scalar",
         crate::Constant::String(_) => "string",
         crate::Constant::Bytes(_) => "bytes",

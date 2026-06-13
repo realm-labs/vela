@@ -70,6 +70,9 @@ pub(crate) fn value_to_reflect(
                 value, operation,
             )?))
         }
+        OwnedValue::Char(_) => Ok(reflect::value::ReflectValue::Host(owned_to_host(
+            value, operation,
+        )?)),
     }
 }
 
@@ -85,6 +88,7 @@ pub(crate) fn runtime_value_to_reflect(
         Value::Missing => Err(type_error(operation)),
         Value::Null => Ok(reflect::value::ReflectValue::Host(HostValue::Null)),
         Value::Bool(value) => Ok(reflect::value::ReflectValue::Host(HostValue::Bool(*value))),
+        Value::Char(value) => Ok(reflect::value::ReflectValue::Host(HostValue::Char(*value))),
         Value::Range(_) => Ok(reflect::value::ReflectValue::Range),
         Value::HostRef(host_ref) => Ok(reflect::value::ReflectValue::HostRef(*host_ref)),
         Value::HeapRef(reference) => match heap.heap.get(*reference) {
@@ -216,6 +220,7 @@ fn owned_to_host(value: &OwnedValue, operation: &'static str) -> VmResult<HostVa
     match value {
         OwnedValue::Null => Ok(HostValue::Null),
         OwnedValue::Bool(value) => Ok(HostValue::Bool(*value)),
+        OwnedValue::Char(value) => Ok(HostValue::Char(*value)),
         OwnedValue::Scalar(value) => Ok(HostValue::Scalar(*value)),
         OwnedValue::String(value) => Ok(HostValue::String(value.clone())),
         OwnedValue::HostRef(value) => Ok(HostValue::HostRef(*value)),
@@ -237,6 +242,7 @@ fn host_to_owned(value: HostValue) -> OwnedValue {
     match value {
         HostValue::Null => OwnedValue::Null,
         HostValue::Bool(value) => OwnedValue::Bool(value),
+        HostValue::Char(value) => OwnedValue::Char(value),
         HostValue::Scalar(value) => OwnedValue::Scalar(value),
         HostValue::String(value) => OwnedValue::String(value),
         HostValue::Bytes(value) => OwnedValue::Bytes(value),

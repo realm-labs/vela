@@ -12,6 +12,7 @@ pub(crate) fn dispatch_load_const(
     let value = match constant {
         Constant::Null => Value::Null,
         Constant::Bool(value) => Value::Bool(*value),
+        Constant::Char(value) => Value::Char(*value),
         Constant::Scalar(value) => Value::from_scalar(*value),
         Constant::String(value) => {
             if let Some(value) =

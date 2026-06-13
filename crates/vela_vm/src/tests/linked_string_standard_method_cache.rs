@@ -230,7 +230,7 @@ fn linked_standard_value_method_caches_string_char_at_target() {
 
     assert_eq!(
         run_linked_method_cache_owned_program(&program, &caches),
-        Ok(owned_option_some(OwnedValue::String("u".to_owned())))
+        Ok(owned_option_some(OwnedValue::Char('u')))
     );
     let entry = caches
         .entry(site)
@@ -253,7 +253,7 @@ fn linked_standard_value_method_caches_string_char_at_target() {
 
     assert_eq!(
         run_linked_method_cache_owned_program(&program, &caches),
-        Ok(owned_option_some(OwnedValue::String("u".to_owned())))
+        Ok(owned_option_some(OwnedValue::Char('u')))
     );
     assert_eq!(caches.set_count(), 2);
 }

@@ -55,6 +55,7 @@ pub enum VelaCValueKind {
     F64 = 12,
     String = 13,
     Bytes = 14,
+    Char = 15,
 }
 
 #[repr(C)]
@@ -75,6 +76,7 @@ pub struct VelaCValue {
     pub string_value: *mut c_char,
     pub bytes_data: *mut u8,
     pub bytes_len: usize,
+    pub char_value: u32,
 }
 
 impl VelaCValue {
@@ -95,6 +97,7 @@ impl VelaCValue {
             string_value: ptr::null_mut(),
             bytes_data: ptr::null_mut(),
             bytes_len: 0,
+            char_value: 0,
         }
     }
 }
@@ -346,6 +349,11 @@ fn value_to_c(value: OwnedValue) -> Result<VelaCValue, (VelaStatus, String)> {
             bool_value: u8::from(value),
             ..VelaCValue::missing()
         }),
+        OwnedValue::Char(value) => Ok(VelaCValue {
+            kind: VelaCValueKind::Char,
+            char_value: value as u32,
+            ..VelaCValue::missing()
+        }),
         OwnedValue::Scalar(ScalarValue::I8(value)) => Ok(VelaCValue {
             kind: VelaCValueKind::I8,
             i8_value: value,
@@ -438,6 +446,15 @@ fn c_value_to_owned(value: &VelaCValue) -> Result<OwnedValue, (VelaStatus, Strin
         VelaCValueKind::Missing => Ok(OwnedValue::Missing),
         VelaCValueKind::Null => Ok(OwnedValue::Null),
         VelaCValueKind::Bool => Ok(OwnedValue::Bool(value.bool_value != 0)),
+        VelaCValueKind::Char => {
+            let Some(value) = char::from_u32(value.char_value) else {
+                return Err((
+                    VelaStatus::UnsupportedValue,
+                    "char value is not a Unicode scalar".to_owned(),
+                ));
+            };
+            Ok(OwnedValue::Char(value))
+        }
         VelaCValueKind::I8 => Ok(OwnedValue::Scalar(ScalarValue::I8(value.i8_value))),
         VelaCValueKind::I16 => Ok(OwnedValue::Scalar(ScalarValue::I16(value.i16_value))),
         VelaCValueKind::I32 => Ok(OwnedValue::Scalar(ScalarValue::I32(value.i32_value))),
@@ -614,6 +631,14 @@ mod tests {
         }
     }
 
+    fn input_char(value: char) -> VelaCValue {
+        VelaCValue {
+            kind: VelaCValueKind::Char,
+            char_value: value as u32,
+            ..VelaCValue::default()
+        }
+    }
+
     fn input_bytes(bytes: &mut [u8]) -> VelaCValue {
         VelaCValue {
             kind: VelaCValueKind::Bytes,
@@ -664,6 +689,7 @@ fn u32_value() -> u32 { return 32u32; }
 fn u64_value() -> u64 { return 64u64; }
 fn f32_value() -> f32 { return 1.5f32; }
 fn f64_value() -> f64 { return 2.5f64; }
+fn char_value() -> char { return '奖'; }
 fn bytes_value() -> bytes { return b"\x00\xff"; }
 "#,
         );
@@ -740,6 +766,13 @@ fn bytes_value() -> bytes { return b"\x00\xff"; }
         assert_eq!(result.f64_value, 2.5);
         unsafe { vela_value_free(&mut result) };
 
+        let entry = c_string("char_value");
+        let status = unsafe { vela_runtime_call(runtime, entry.as_ptr(), &mut result, &mut error) };
+        assert_eq!(status, VelaStatus::Ok);
+        assert_eq!(result.kind, VelaCValueKind::Char);
+        assert_eq!(char::from_u32(result.char_value), Some('奖'));
+        unsafe { vela_value_free(&mut result) };
+
         let entry = c_string("bytes_value");
         let status = unsafe { vela_runtime_call(runtime, entry.as_ptr(), &mut result, &mut error) };
         assert_eq!(status, VelaStatus::Ok);
@@ -764,6 +797,7 @@ fn id_i32(value: i32) -> i32 { return value; }
 fn id_u32(value: u32) -> u32 { return value; }
 fn id_f32(value: f32) -> f32 { return value; }
 fn id_f64(value: f64) -> f64 { return value; }
+fn id_char(value: char) -> char { return value; }
 fn id_bytes(value: bytes) -> bytes { return value; }
 "#,
         );
@@ -836,6 +870,23 @@ fn id_bytes(value: bytes) -> bytes { return value; }
         assert_eq!(status, VelaStatus::Ok);
         assert_eq!(result.kind, VelaCValueKind::F64);
         assert_eq!(result.f64_value, 2.5);
+        unsafe { vela_value_free(&mut result) };
+
+        let entry = c_string("id_char");
+        let args = [input_char('励')];
+        let status = unsafe {
+            vela_runtime_call_with_args(
+                runtime,
+                entry.as_ptr(),
+                args.as_ptr(),
+                args.len(),
+                &mut result,
+                &mut error,
+            )
+        };
+        assert_eq!(status, VelaStatus::Ok);
+        assert_eq!(result.kind, VelaCValueKind::Char);
+        assert_eq!(char::from_u32(result.char_value), Some('励'));
         unsafe { vela_value_free(&mut result) };
 
         let entry = c_string("id_bytes");

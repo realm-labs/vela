@@ -45,6 +45,7 @@ exponent        = ( "e" | "E" ), [ "+" | "-" ], ASCII_DIGIT,
                   { "_" | ASCII_DIGIT } ;
 
 STRING          = single_line_string | multiline_string ;
+CHAR            = "'", ( char_char | escape ), "'" ;
 single_line_string
                 = '"', { string_char | escape }, '"' ;
 multiline_string
@@ -62,6 +63,7 @@ interpolated_text
                 = "{{" | "}}" | ? any text not starting an interpolation
                   boundary ? ;
 string_char     = ? any non-quote, non-backslash, non-newline character ? ;
+char_char       = ? any non-quote, non-backslash, non-newline character ? ;
 multiline_string_char
                 = ? any text not ending the triple-quote delimiter ? ;
 escape          = "\\", ( '"' | "\\" | "/" | "n" | "r" | "t" | "0"
@@ -253,7 +255,7 @@ array_literal   = "[", line_ws, [ expr, { ws, ",", line_ws, expr },
                   [ ws, "," ] ], line_ws, "]" ;
 map_literal     = "{", line_ws, [ map_entry, { ws, ",", line_ws, map_entry },
                   [ ws, "," ] ], line_ws, "}" ;
-map_entry       = ( IDENT | STRING | INT | FLOAT | path ), ws, ":", ws, expr ;
+map_entry       = ( IDENT | STRING | CHAR | INT | FLOAT | path ), ws, ":", ws, expr ;
 
 record_literal_body
                 = "{", line_ws, [ record_field_value,
@@ -277,7 +279,7 @@ arm_term        = ws, ( "," | ";" | newline ), ws ;
 
 block_expr      = block ;
 
-literal         = "true" | "false" | "null" | INT | FLOAT | STRING ;
+literal         = "true" | "false" | "null" | INT | FLOAT | STRING | CHAR ;
 
 (* ========================================================================= *)
 (* Patterns                                                                  *)
@@ -292,7 +294,7 @@ pattern         = wildcard_pattern
 
 wildcard_pattern
                 = "_" ;
-literal_pattern = "true" | "false" | "null" | INT | FLOAT | STRING ;
+literal_pattern = "true" | "false" | "null" | INT | FLOAT | STRING | CHAR ;
 binding_pattern = IDENT ;
 path_pattern    = path ;
 

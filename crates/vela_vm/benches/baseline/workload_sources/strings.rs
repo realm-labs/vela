@@ -11,7 +11,7 @@ fn main() {
         let lines = "alpha\nbeta".split_lines();
         let words = "alpha beta".split_whitespace();
         let sliced = "hello".slice(1, 4);
-        let ch = "quest".char_at(1).unwrap_or("");
+        let ch = "quest".char_at(1).unwrap_or('\0');
         let found = "daily_quest".find("quest").unwrap_or(-1);
         let stripped_prefix = "event:quest".strip_prefix("event:").unwrap_or("");
         let stripped_suffix = "quest.done".strip_suffix(".done").unwrap_or("");
@@ -26,7 +26,7 @@ fn main() {
             || lines.len() != 2
             || words.len() != 2
             || sliced != "ell"
-            || ch != "u"
+            || ch != 'u'
             || found != 6
             || stripped_prefix != "quest"
             || stripped_suffix != "quest"
@@ -146,12 +146,12 @@ fn main() {
     for tick in 0..96 {
         let text = "event:alpha.done";
         let found = text.find("alpha").unwrap_or(-1);
-        let ch = text.char_at(6).unwrap_or("");
+        let ch = text.char_at(6).unwrap_or('\0');
         let prefix = text.strip_prefix("event:").unwrap_or("");
         let suffix = text.strip_suffix(".done").unwrap_or("");
 
         if found != 6
-            || ch != "a"
+            || ch != 'a'
             || prefix != "alpha.done"
             || suffix != "event:alpha"
             || !option::is_none(text.find("missing"))
@@ -161,7 +161,7 @@ fn main() {
         {
             return 0;
         }
-        total += found + ch.len() + prefix.len() + suffix.len() + tick - tick;
+        total += found + prefix.len() + suffix.len() + if ch == 'a' { 1 } else { 0 } + tick - tick;
     }
     return total;
 }

@@ -27,6 +27,7 @@ fn type_hint(hint: &str) -> TypeHint {
         "any" => TypeHint::Any,
         "null" => TypeHint::null(),
         "bool" => TypeHint::boolean(),
+        "char" => TypeHint::char(),
         "i8" => TypeHint::i8(),
         "i16" => TypeHint::i16(),
         "i32" => TypeHint::i32(),

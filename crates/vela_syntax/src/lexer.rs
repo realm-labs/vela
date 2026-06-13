@@ -65,6 +65,7 @@ impl<'src> Lexer<'src> {
                 '"' => self.lex_string(),
                 'f' if self.peek_next_char() == Some('"') => self.lex_interpolated_string(),
                 'b' if self.peek_next_char() == Some('"') => self.lex_byte_string(),
+                '\'' => self.lex_char(),
                 '0'..='9' => self.lex_number(),
                 '_' | 'a'..='z' | 'A'..='Z' => self.lex_ident_or_keyword(),
                 _ => self.lex_symbol_or_error(),
@@ -214,6 +215,71 @@ impl<'src> Lexer<'src> {
         );
     }
 
+    fn lex_char(&mut self) {
+        let start = self.offset;
+        self.bump_char();
+
+        let Some(value) = self.consume_char_literal_value(start) else {
+            self.finish_invalid_char_literal(start);
+            return;
+        };
+
+        match self.peek_char() {
+            Some('\'') => {
+                self.bump_char();
+                self.push_token(TokenKind::Char(value), start, self.offset);
+            }
+            _ => self.finish_invalid_char_literal(start),
+        }
+    }
+
+    fn consume_char_literal_value(&mut self, start: usize) -> Option<char> {
+        let ch = self.peek_char()?;
+        match ch {
+            '\'' | '\n' => None,
+            '\\' => {
+                self.bump_char();
+                let escape_start = self.offset.saturating_sub(1);
+                let escaped = self.peek_char()?;
+                if escaped == 'u' && self.peek_next_char() == Some('{') {
+                    return self.consume_unicode_escape();
+                }
+                self.bump_char();
+                Some(match escaped {
+                    'n' => '\n',
+                    'r' => '\r',
+                    't' => '\t',
+                    '0' => '\0',
+                    '\'' => '\'',
+                    '"' => '"',
+                    '\\' => '\\',
+                    '/' => '/',
+                    other => {
+                        self.push_char_escape_diagnostic(escape_start);
+                        other
+                    }
+                })
+            }
+            other => {
+                self.bump_char();
+                if other == '\0' {
+                    self.push_char_literal_diagnostic(start);
+                }
+                Some(other)
+            }
+        }
+    }
+
+    fn finish_invalid_char_literal(&mut self, start: usize) {
+        while let Some(ch) = self.peek_char() {
+            self.bump_char();
+            if ch == '\'' || ch == '\n' {
+                break;
+            }
+        }
+        self.push_char_literal_diagnostic(start);
+    }
+
     fn lex_multiline_string(&mut self) {
         let start = self.offset;
         self.bump_chars(3);
@@ -353,6 +419,7 @@ impl<'src> Lexer<'src> {
         while let Some(ch) = self.peek_char() {
             match ch {
                 '"' => self.skip_quoted_source_string(),
+                '\'' => self.skip_quoted_source_char(),
                 'b' | 'f' if self.peek_next_char() == Some('"') => {
                     self.bump_char();
                     self.skip_quoted_source_string();
@@ -405,6 +472,25 @@ impl<'src> Lexer<'src> {
         while let Some(ch) = self.peek_char() {
             match ch {
                 '"' => {
+                    self.bump_char();
+                    return;
+                }
+                '\\' => {
+                    self.bump_char();
+                    self.bump_char();
+                }
+                _ => {
+                    self.bump_char();
+                }
+            }
+        }
+    }
+
+    fn skip_quoted_source_char(&mut self) {
+        self.bump_char();
+        while let Some(ch) = self.peek_char() {
+            match ch {
+                '\'' => {
                     self.bump_char();
                     return;
                 }
@@ -588,6 +674,22 @@ impl<'src> Lexer<'src> {
         self.diagnostics.push(
             Diagnostic::error("invalid string escape")
                 .with_code("E_LEX_STRING_ESCAPE")
+                .with_span(self.span(start, self.offset)),
+        );
+    }
+
+    fn push_char_escape_diagnostic(&mut self, start: usize) {
+        self.diagnostics.push(
+            Diagnostic::error("invalid char escape")
+                .with_code("E_LEX_CHAR_ESCAPE")
+                .with_span(self.span(start, self.offset)),
+        );
+    }
+
+    fn push_char_literal_diagnostic(&mut self, start: usize) {
+        self.diagnostics.push(
+            Diagnostic::error("invalid char literal")
+                .with_code("E_LEX_CHAR_LITERAL")
                 .with_span(self.span(start, self.offset)),
         );
     }

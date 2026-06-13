@@ -175,7 +175,7 @@ pub enum TypeHint {
 
 `TypeHint` is public metadata and syntax-facing documentation. Primitive hints
 use the shared `PrimitiveTag` set: `null`, `bool`, `i8`, `i16`, `i32`, `i64`,
-`u8`, `u16`, `u32`, `u64`, `f32`, `f64`, `string`, and `bytes`. Script-local
+`u8`, `u16`, `u32`, `u64`, `f32`, `f64`, `char`, `string`, and `bytes`. Script-local
 parameter, local, field, and return annotations are contracts, not conversions:
 statically known mismatches are compile errors, and dynamic or externally
 supplied mismatches are runtime guard errors.

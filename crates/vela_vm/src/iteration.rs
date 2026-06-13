@@ -114,8 +114,10 @@ pub(crate) fn make_iterator(
                     values.values().map(stored_runtime_value).collect(),
                 )),
                 HeapValue::Iterator(iterator) => Ok(iterator.clone()),
-                HeapValue::String(_)
-                | HeapValue::Bytes(_)
+                HeapValue::String(value) => {
+                    Ok(IteratorState::new(value.chars().map(Value::Char).collect()))
+                }
+                HeapValue::Bytes(_)
                 | HeapValue::Record { .. }
                 | HeapValue::Enum { .. }
                 | HeapValue::Closure(_)

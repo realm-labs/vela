@@ -73,6 +73,7 @@ impl RuntimeTypeFact {
         match self {
             Self::Primitive(PrimitiveTag::Null) => "Null",
             Self::Primitive(PrimitiveTag::Bool) => "Bool",
+            Self::Primitive(PrimitiveTag::Char) => "Char",
             Self::Primitive(PrimitiveTag::I8) => "I8",
             Self::Primitive(PrimitiveTag::I16) => "I16",
             Self::Primitive(PrimitiveTag::I32) => "I32",
@@ -100,6 +101,7 @@ impl RuntimeTypeFact {
         match self {
             Self::Primitive(PrimitiveTag::Null) => "null",
             Self::Primitive(PrimitiveTag::Bool) => "bool",
+            Self::Primitive(PrimitiveTag::Char) => "char",
             Self::Primitive(PrimitiveTag::I8) => "i8",
             Self::Primitive(PrimitiveTag::I16) => "i16",
             Self::Primitive(PrimitiveTag::I32) => "i32",
@@ -233,6 +235,9 @@ fn static_expr_type_with(
         ExprKind::Literal(Literal::Bool(_)) => {
             StaticExprType::Exact(RuntimeTypeFact::primitive(PrimitiveTag::Bool))
         }
+        ExprKind::Literal(Literal::Char(_)) => {
+            StaticExprType::Exact(RuntimeTypeFact::primitive(PrimitiveTag::Char))
+        }
         ExprKind::Literal(Literal::Integer(value)) => {
             StaticExprType::Exact(RuntimeTypeFact::primitive(integer_literal_tag(value)))
         }
@@ -317,6 +322,7 @@ pub(super) fn type_hint_value_type(hint: &HirTypeHint) -> Option<RuntimeTypeFact
     match hint.display().as_str() {
         "null" => Some(RuntimeTypeFact::primitive(PrimitiveTag::Null)),
         "bool" => Some(RuntimeTypeFact::primitive(PrimitiveTag::Bool)),
+        "char" => Some(RuntimeTypeFact::primitive(PrimitiveTag::Char)),
         "i8" => Some(RuntimeTypeFact::primitive(PrimitiveTag::I8)),
         "i16" => Some(RuntimeTypeFact::primitive(PrimitiveTag::I16)),
         "i32" => Some(RuntimeTypeFact::primitive(PrimitiveTag::I32)),

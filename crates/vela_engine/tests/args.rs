@@ -55,14 +55,20 @@ fn script_arg_conversions_preserve_exact_scalar_tags() {
         2.5_f64.into_script_arg(),
         OwnedValue::Scalar(vela_common::ScalarValue::F64(2.5))
     );
+    assert_eq!('奖'.into_script_arg(), OwnedValue::Char('奖'));
 
     assert_eq!(
         u64::from_script_arg(&OwnedValue::Scalar(vela_common::ScalarValue::U64(9))),
         Ok(9)
     );
+    assert_eq!(char::from_script_arg(&OwnedValue::Char('奖')), Ok('奖'));
     assert!(matches!(
         i64::from_script_arg(&OwnedValue::Scalar(vela_common::ScalarValue::I32(9))),
         Err(error) if matches!(error.kind(), VmErrorKind::TypeMismatch { operation: "i64" })
+    ));
+    assert!(matches!(
+        char::from_script_arg(&OwnedValue::String("奖".to_owned())),
+        Err(error) if matches!(error.kind(), VmErrorKind::TypeMismatch { operation: "char" })
     ));
 }
 

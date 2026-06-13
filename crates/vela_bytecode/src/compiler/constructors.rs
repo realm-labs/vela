@@ -238,6 +238,9 @@ fn runtime_type_for_constant(value: &crate::Constant) -> Option<RuntimeTypeFact>
         crate::Constant::Bool(_) => {
             Some(RuntimeTypeFact::primitive(vela_common::PrimitiveTag::Bool))
         }
+        crate::Constant::Char(_) => {
+            Some(RuntimeTypeFact::primitive(vela_common::PrimitiveTag::Char))
+        }
         crate::Constant::Scalar(value) => Some(RuntimeTypeFact::primitive(value.primitive_tag())),
         crate::Constant::String(_) => Some(RuntimeTypeFact::primitive(
             vela_common::PrimitiveTag::String,

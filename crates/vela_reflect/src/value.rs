@@ -77,6 +77,7 @@ fn type_of_host_value<'a>(registry: &'a TypeRegistry, value: &HostValue) -> Opti
     match value {
         HostValue::Null => registry.type_by_name("null"),
         HostValue::Bool(_) => registry.type_by_name("bool"),
+        HostValue::Char(_) => registry.type_by_name("char"),
         HostValue::Scalar(value) => registry.type_by_name(value.type_name()),
         HostValue::String(_) => registry.type_by_name("string"),
         HostValue::Bytes(_) => registry.type_by_name("bytes"),

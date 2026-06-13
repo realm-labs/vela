@@ -123,6 +123,7 @@ impl ValueShape {
         let type_name = match fact {
             RuntimeTypeFact::Primitive(PrimitiveTag::Null) => "null",
             RuntimeTypeFact::Primitive(PrimitiveTag::Bool) => "bool",
+            RuntimeTypeFact::Primitive(PrimitiveTag::Char) => "char",
             RuntimeTypeFact::Primitive(PrimitiveTag::I8) => "i8",
             RuntimeTypeFact::Primitive(PrimitiveTag::I16) => "i16",
             RuntimeTypeFact::Primitive(PrimitiveTag::I32) => "i32",
@@ -639,7 +640,7 @@ fn method_call_shape(
             ValueShape::Scalar("string".to_owned()),
         ))))),
         "char_at" => Some(ValueShape::Option(Box::new(ValueShape::Scalar(
-            "string".to_owned(),
+            "char".to_owned(),
         )))),
         "strip_prefix" | "strip_suffix" => Some(ValueShape::Option(Box::new(ValueShape::Scalar(
             "string".to_owned(),

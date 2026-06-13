@@ -179,7 +179,7 @@ fn call_method_uses_standard_string_option_ids_before_name_fallback() {
             "reward:gold",
             &[Constant::Scalar(vela_common::ScalarValue::I64(6))],
         ),
-        Ok(option_some(OwnedValue::String(":".to_owned())))
+        Ok(option_some(OwnedValue::Char(':')))
     );
 }
 

@@ -4,6 +4,7 @@ use std::fmt;
 pub enum PrimitiveTag {
     Null,
     Bool,
+    Char,
     I8,
     I16,
     I32,
@@ -24,6 +25,7 @@ impl PrimitiveTag {
         match self {
             PrimitiveTag::Null => "null",
             PrimitiveTag::Bool => "bool",
+            PrimitiveTag::Char => "char",
             PrimitiveTag::I8 => "i8",
             PrimitiveTag::I16 => "i16",
             PrimitiveTag::I32 => "i32",
@@ -54,6 +56,7 @@ impl PrimitiveTag {
             PrimitiveTag::F64 => Some(NumericTag::F64),
             PrimitiveTag::Null
             | PrimitiveTag::Bool
+            | PrimitiveTag::Char
             | PrimitiveTag::String
             | PrimitiveTag::Bytes => None,
         }
@@ -64,6 +67,7 @@ impl PrimitiveTag {
         match name.as_bytes() {
             b"null" => Some(PrimitiveTag::Null),
             b"bool" => Some(PrimitiveTag::Bool),
+            b"char" => Some(PrimitiveTag::Char),
             b"i8" => Some(PrimitiveTag::I8),
             b"i16" => Some(PrimitiveTag::I16),
             b"i32" => Some(PrimitiveTag::I32),

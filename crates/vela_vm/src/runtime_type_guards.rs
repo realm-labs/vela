@@ -314,6 +314,7 @@ macro_rules! define_runtime_type_helpers {
             match value {
                 Value::Null => Some(PrimitiveTag::Null),
                 Value::Bool(_) => Some(PrimitiveTag::Bool),
+                Value::Char(_) => Some(PrimitiveTag::Char),
                 $(
                     Value::$value_variant(_) => Some(PrimitiveTag::$primitive_tag),
                 )*
@@ -334,6 +335,7 @@ macro_rules! define_runtime_type_helpers {
                 Value::Missing => "missing",
                 Value::Null => PrimitiveTag::Null.name(),
                 Value::Bool(_) => PrimitiveTag::Bool.name(),
+                Value::Char(_) => PrimitiveTag::Char.name(),
                 $(
                     Value::$value_variant(_) => PrimitiveTag::$primitive_tag.name(),
                 )*
