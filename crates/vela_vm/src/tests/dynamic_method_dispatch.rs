@@ -462,6 +462,20 @@ fn main(value) {
 }
 
 #[test]
+fn linked_dynamic_method_cache_resolves_iterator_adapter_targets() {
+    assert_dynamic_iterator_adapter_cache(
+        "take",
+        StandardMethodInlineCacheTarget::Take,
+        OwnedValue::array([OwnedValue::i64(1), OwnedValue::i64(2)]),
+    );
+    assert_dynamic_iterator_adapter_cache(
+        "skip",
+        StandardMethodInlineCacheTarget::Skip,
+        OwnedValue::array([OwnedValue::i64(3), OwnedValue::i64(4)]),
+    );
+}
+
+#[test]
 fn linked_dynamic_method_cache_guard_miss_resolves_script_after_standard_receiver() {
     let program = compile_standard_program_source(
         SourceId::new(1),
@@ -653,4 +667,61 @@ fn run_dynamic_method_source(source: &str, args: &[OwnedValue]) -> VmResult<Owne
 fn run_dynamic_entry(program: &UnlinkedProgram, entry: &str) -> VmResult<OwnedValue> {
     let mut budget = ExecutionBudget::unbounded();
     run_linked_test_program_with_budget(&Vm::new(), program, entry, &[], &mut budget)
+}
+
+fn assert_dynamic_iterator_adapter_cache(
+    method: &str,
+    target: StandardMethodInlineCacheTarget,
+    expected: OwnedValue,
+) {
+    let source = format!(
+        r#"
+fn adapt(value) {{
+    return value.{method}(2);
+}}
+
+fn main() {{
+    return adapt([1, 2, 3, 4].iter()).collect_array();
+}}
+"#
+    );
+    let program = compile_standard_program_source(SourceId::new(1), &source)
+        .expect("dynamic iterator adapter source should compile");
+    let linked = link_test_program(&program);
+    let site = linked_dynamic_method_site(&linked, "adapt");
+    let caches = RecordingMethodCaches::new(linked_cache_len(&linked));
+    let mut budget = ExecutionBudget::unbounded();
+
+    let actual =
+        run_linked_test_entry_with_caches(&Vm::new(), &linked, "main", &[], &mut budget, &caches);
+    assert_eq!(actual, Ok(expected.clone()));
+    let entry = caches
+        .dynamic_entry(site)
+        .expect("dynamic iterator adapter cache should populate");
+    assert!(matches!(
+        entry.receiver_guard,
+        DynamicReceiverGuard::StdValue {
+            receiver: StandardMethodReceiver::Iterator,
+        }
+    ));
+    let DynamicMethodInlineCacheTarget::StandardValue {
+        method_id,
+        standard_method: Some(standard_method),
+    } = entry.target
+    else {
+        panic!("dynamic iterator adapter should resolve to a standard value target");
+    };
+    assert_eq!(
+        method_id,
+        vela_stdlib::std_method_id("Iterator", method).expect("Iterator adapter method id")
+    );
+    assert_eq!(standard_method.receiver, StandardMethodReceiver::Iterator);
+    assert_eq!(standard_method.target, target);
+    assert_eq!(caches.dynamic_set_count_for(site), 1);
+
+    let actual =
+        run_linked_test_entry_with_caches(&Vm::new(), &linked, "main", &[], &mut budget, &caches);
+    assert_eq!(actual, Ok(expected));
+    assert_eq!(caches.dynamic_get_count_for(site), 2);
+    assert_eq!(caches.dynamic_set_count_for(site), 1);
 }
