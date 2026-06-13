@@ -19,6 +19,8 @@ vela_stdlib_runtime = { workspace = true }
 serde = ["dep:serde"]
 
 [dev-dependencies]
+mlua = { version = "0.11.4", features = ["lua54", "vendored"] }
+rhai = "1.25.1"
 serde_json = { workspace = true }
 vela_hir = { workspace = true }
 vela_registry = { workspace = true }

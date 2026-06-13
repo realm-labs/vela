@@ -659,6 +659,14 @@ source argument names until target lookup, reports source-spanned runtime
 errors, and guards inline caches by receiver identity plus schema/hot-reload
 epochs where applicable.
 
+### Benchmark Comparison Modes
+
+External language comparison rows must report their execution mode. Vela uses
+`internal_hot_loop`, embedded Lua 5.4 and Rhai use `embedded_hot_loop`, and
+Node.js/Python 3 use `process_hot_loop`. Mixed-mode benchmark rows are
+directional references and must not be collapsed into one fairness ranking or
+mixed with VM cache-delta rows.
+
 ## Validation Rules
 
 - Multi-level `super` scan must return no matches:

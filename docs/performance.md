@@ -29,9 +29,27 @@ cargo bench -p vela_engine --bench hot_reload -- --quick
 
 `baseline` accepts optional workload-name substring filters after `--`, for
 example `cargo bench -p vela_vm --bench baseline -- --quick host_field`.
-`external_compare` compiles Vela workloads with the standard registry, then
-links once and measures repeated in-process VM calls; external runtimes remain
-process-backed comparison rows.
+`external_compare` accepts the same kind of workload-name substring filters,
+for example `cargo bench -p vela_vm --bench external_compare -- --quick string`.
+It is a mixed-mode language comparison harness:
+
+```text
+runtime=vela    mode=internal_hot_loop
+runtime=lua54   mode=embedded_hot_loop
+runtime=rhai    mode=embedded_hot_loop
+runtime=node    mode=process_hot_loop
+runtime=python3 mode=process_hot_loop
+```
+
+Vela compiles and links with the standard registry outside the timed section.
+Lua 5.4 runs through vendored `mlua`, and Rhai runs through the `rhai` crate,
+also loading scripts outside the timed section. Node.js and Python 3 remain
+optional process-backed rows; missing commands are reported as `status=missing`
+instead of failing the benchmark. Each workload entrypoint receives
+`iterations` and performs its hot loop inside the runtime. Compare rows within
+the same `mode` first; `embedded_hot_loop` is closer to Vela's in-process hot
+path than `process_hot_loop`, while process rows still include process startup
+and script loading costs that are only amortized by the iteration count.
 When a cache family has an explicit non-cache `_hot_offsets` row, `cache_delta`
 pairs the cache-enabled row against that base to isolate cache overhead from
 bytecode-profiler overhead. Host-boundary `_hot_offsets` rows run in
@@ -60,7 +78,7 @@ reflection reads, writes, and calls
 hot reload compile/apply/reject workflow
 GC pacing and pause-budget scenarios
 domain-demo workflows from examples/src/bin game-server examples
-external_compare against available Lua 5.x, LuaJIT, Node.js, and Rhai
+external_compare mixed-mode pure-language rows for scalar branch loops, range iteration, function calls, array scanning, map lookup/update, set lookup/mutation, string methods, and closure/callback-style calls across Vela, embedded Lua 5.4, embedded Rhai, optional process-backed Node.js, and optional process-backed Python 3
 ```
 
 Every durable benchmark report should include:
@@ -83,6 +101,8 @@ for the run, and cache_delta_summary rows should count paired-row outcomes and
 mismatches, including kind-specific faster/slower/flat counts so true cache-hit
 deltas can be separated from profile-only hot-offset deltas
 external runtime versions when used
+external comparison mode (`internal_hot_loop`, `embedded_hot_loop`, or
+`process_hot_loop`) when used
 ```
 
 ## Current Baseline
@@ -121,6 +141,10 @@ Representative default `baseline` means:
 | gameplay_monster_kill | gameplay_host | 872970 | 942958 |
 | managed_heap_record_quads | managed_heap | 28406773 | 41063791 |
 | gc_pacing | gc_pacing | 24438286 | 24635792 |
+
+The last recorded external quick comparison below predates the mixed-mode
+`external_compare` harness. Keep it as historical context until a full
+non-quick mixed-mode capture replaces it.
 
 External quick comparison per-iteration means:
 
