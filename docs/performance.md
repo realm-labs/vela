@@ -229,6 +229,46 @@ External quick comparison per-iteration means:
 | luajit | 8059 | 9394 | 13160 | 16549 |
 | node | 77891 | 80074 | 83395 | 87523 |
 
+### Focused M20 Guardrail: Collection Mutation Budgets
+
+The collection-growth budget change was accepted with a focused mutation
+benchmark checkpoint against its parent commit:
+
+```text
+before=e4d939b6
+after=f17ede9f
+rustc=1.96.0 (ac68faa20 2026-05-25)
+cargo=1.96.0 (30a34c682 2026-05-25)
+target=macos/aarch64
+profile=release
+command=cargo bench -p vela_vm --bench baseline -- mutation
+warmup=10, repeats=7, iterations=100
+```
+
+Checksums matched for every compared row. The accepted cost is concentrated in
+array/map mutation paths, where in-place heap growth now performs collection
+limit checks, memory-budget charging, allocator reserve checks, and heap-size
+accounting. Set interpreter rows were flat to slightly faster in this sample.
+
+| Benchmark | Mode | Mean Before ns | Mean After ns | Delta | P95 After ns |
+|---|---|---:|---:|---:|---:|
+| managed_heap_set_mutation | managed_heap | 29194738 | 28914904 | -0.96% | 29408250 |
+| set_mutation | inline | 29191339 | 28827351 | -1.25% | 29395458 |
+| set_mutation_cache_hot_offsets | cache_enabled | 28876434 | 32845779 | +13.75% | 37833416 |
+| managed_heap_array_mutation | managed_heap | 87970535 | 90379106 | +2.74% | 91181291 |
+| array_mutation | inline | 87498553 | 89817803 | +2.65% | 90207334 |
+| array_mutation_cache_hot_offsets | cache_enabled | 87810910 | 89517976 | +1.94% | 89907167 |
+| managed_heap_map_mutation | managed_heap | 52848244 | 54131410 | +2.43% | 54425792 |
+| map_mutation | inline | 52686250 | 54207744 | +2.89% | 54423333 |
+| map_mutation_cache_hot_offsets | cache_enabled | 52352470 | 54491898 | +4.09% | 56054042 |
+
+The `set_mutation_cache_hot_offsets` row should be rechecked before treating it
+as a cache-regression target: the paired profile-only row also showed a large
+tail sample in this capture. Future budget or collection-mutation changes must
+rerun the same filtered benchmark before landing; a regression above roughly
+5% on array/map interpreter or cache-enabled rows needs either an explicit
+safety rationale or a follow-up performance task.
+
 ## Current Conclusions
 
 M19 is complete enough for M19.5. The interpreter/heap phase delivered measured
