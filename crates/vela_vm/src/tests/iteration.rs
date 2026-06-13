@@ -190,7 +190,7 @@ fn main() {
     let mut vm = Vm::new();
     vm.register_standard_natives();
     vm.register_native("game::values", |_| {
-        Ok(OwnedValue::Array(vec![
+        Ok(OwnedValue::iterator([
             OwnedValue::Scalar(vela_common::ScalarValue::I64(2)),
             OwnedValue::Scalar(vela_common::ScalarValue::I64(3)),
             OwnedValue::Scalar(vela_common::ScalarValue::I64(5)),

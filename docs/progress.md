@@ -105,7 +105,8 @@ Cranelift JIT.
   `CallArgs`, direct call-boundary `&T`/`&mut T` host object bindings,
   module-level `global` declarations backed by persistent Rust-defined host objects
   or Runtime-owned script values with unified `insert_global` support for
-  `OwnedValue`, serde snapshots, and same-runtime `VelaValue` handles,
+  `OwnedValue`, `OwnedValue::iterator` snapshot iterables, serde snapshots, and
+  same-runtime `VelaValue` handles,
   feature-gated serde conversion between Rust structs/enums and script-owned
   `OwnedValue` records/enums for snapshot-style arguments and results, direct
   serde decoding from runtime-managed `VelaValue` and globals without

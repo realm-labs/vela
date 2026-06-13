@@ -82,6 +82,14 @@ impl OwnedValue {
     }
 
     #[must_use]
+    pub fn iterator<T>(values: impl IntoIterator<Item = T>) -> Self
+    where
+        T: Into<Self>,
+    {
+        Self::Iterator(OwnedIteratorState::from_values(values))
+    }
+
+    #[must_use]
     pub fn record<K, V>(
         type_name: impl Into<String>,
         fields: impl IntoIterator<Item = (K, V)>,
@@ -296,6 +304,28 @@ pub struct OwnedIteratorState {
 }
 
 impl OwnedIteratorState {
+    #[must_use]
+    pub fn from_values<T>(values: impl IntoIterator<Item = T>) -> Self
+    where
+        T: Into<OwnedValue>,
+    {
+        Self {
+            values: values.into_iter().map(Into::into).collect(),
+            next: 0,
+        }
+    }
+
+    #[must_use]
+    pub fn from_values_at<T>(values: impl IntoIterator<Item = T>, next: usize) -> Self
+    where
+        T: Into<OwnedValue>,
+    {
+        Self {
+            values: values.into_iter().map(Into::into).collect(),
+            next,
+        }
+    }
+
     #[allow(dead_code)]
     pub(crate) fn from_runtime(iterator: &IteratorState, values: Vec<OwnedValue>) -> Self {
         Self {
@@ -486,6 +516,27 @@ mod tests {
                 .and_then(|stats| stats.field("handled_ticks")),
             Some(&OwnedValue::Scalar(ScalarValue::I32(0)))
         );
+    }
+
+    #[test]
+    fn owned_value_iterator_constructor_builds_snapshot_state() {
+        let value = OwnedValue::iterator([1_i64, 2, 3]);
+        let OwnedValue::Iterator(iterator) = value else {
+            panic!("expected iterator value");
+        };
+
+        assert_eq!(
+            iterator.values(),
+            &[
+                OwnedValue::Scalar(ScalarValue::I64(1)),
+                OwnedValue::Scalar(ScalarValue::I64(2)),
+                OwnedValue::Scalar(ScalarValue::I64(3)),
+            ]
+        );
+        assert_eq!(iterator.next_index(), 0);
+
+        let iterator = super::OwnedIteratorState::from_values_at([1_i64, 2, 3], 2);
+        assert_eq!(iterator.next_index(), 2);
     }
 
     #[test]
