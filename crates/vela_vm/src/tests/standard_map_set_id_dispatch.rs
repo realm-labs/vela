@@ -11,9 +11,9 @@ fn main() {
     let patch = {"bonus": 3, "xp": 9};
     base.extend({"rank": 1});
     let merged = base.merge(patch);
-    let keys = merged.keys().join(",");
-    let total = merged.values().sum();
-    let entries = merged.entries();
+    let keys = merged.keys().collect_array().join(",");
+    let total = merged.values().collect_array().sum();
+    let entries = merged.entries().collect_array();
     if keys == "bonus,gold,rank,xp" && total == 15 && entries.len() == 4 {
         return merged.get_or("xp", 0);
     }

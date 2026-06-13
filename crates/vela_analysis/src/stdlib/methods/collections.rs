@@ -175,17 +175,17 @@ pub(super) fn map_method_fact(
         "keys" => Some(StdlibMethodFact::new(
             receiver,
             "keys",
-            TypeFact::array(key.clone()),
+            TypeFact::iterator(key.clone()),
         )),
         "values" => Some(StdlibMethodFact::new(
             receiver,
             "values",
-            TypeFact::array(value.clone()),
+            TypeFact::iterator(value.clone()),
         )),
         "entries" => Some(StdlibMethodFact::new(
             receiver,
             "entries",
-            TypeFact::array(TypeFact::record("MapEntry")),
+            TypeFact::iterator(TypeFact::record("MapEntry")),
         )),
         "merge" => Some(
             StdlibMethodFact::new(receiver, "merge", TypeFact::map(key.clone(), value.clone()))

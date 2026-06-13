@@ -20,6 +20,7 @@ pub(super) enum ValueShape {
     Scalar(String),
     Record(RecordShape),
     Array(Box<ValueShape>),
+    Iterator(Box<ValueShape>),
     Map {
         key: Box<ValueShape>,
         value: Box<ValueShape>,
@@ -99,6 +100,7 @@ impl ValueShape {
             Self::Unknown
             | Self::Scalar(_)
             | Self::Array(_)
+            | Self::Iterator(_)
             | Self::Map { .. }
             | Self::Set(_)
             | Self::Option(_)
@@ -112,6 +114,7 @@ impl ValueShape {
             Self::Scalar(type_name) => scalar_shape_type_fact(type_name),
             Self::Record(_) => None,
             Self::Array(_) => Some(RuntimeTypeFact::standard(StandardRuntimeType::Array)),
+            Self::Iterator(_) => Some(RuntimeTypeFact::standard(StandardRuntimeType::Iterator)),
             Self::Map { .. } => Some(RuntimeTypeFact::standard(StandardRuntimeType::Map)),
             Self::Set(_) => Some(RuntimeTypeFact::standard(StandardRuntimeType::Set)),
             Self::Option(_) => Some(RuntimeTypeFact::standard(StandardRuntimeType::Option)),
@@ -142,6 +145,9 @@ impl ValueShape {
             RuntimeTypeFact::Standard(StandardRuntimeType::Range) => "range",
             RuntimeTypeFact::Standard(StandardRuntimeType::Function) => "function",
             RuntimeTypeFact::Standard(StandardRuntimeType::Closure) => "closure",
+            RuntimeTypeFact::Standard(StandardRuntimeType::Iterator) => {
+                return Self::Iterator(Box::new(Self::Unknown));
+            }
             RuntimeTypeFact::Standard(StandardRuntimeType::Option) => "Option",
             RuntimeTypeFact::Standard(StandardRuntimeType::Result) => "Result",
         };
@@ -157,6 +163,13 @@ impl ValueShape {
 
     pub(super) fn array_element_record(&self) -> Option<&RecordShape> {
         self.array_element().and_then(ValueShape::as_record)
+    }
+
+    fn iterator_item(&self) -> Option<&ValueShape> {
+        match self {
+            Self::Iterator(item) => Some(item),
+            _ => None,
+        }
     }
 
     pub(super) fn map_parts(&self) -> Option<(&ValueShape, &ValueShape)> {
@@ -183,6 +196,7 @@ fn scalar_shape_type_fact(type_name: &str) -> Option<RuntimeTypeFact> {
         "F64" | "f64" => Some(RuntimeTypeFact::primitive(PrimitiveTag::F64)),
         "String" | "string" => Some(RuntimeTypeFact::primitive(PrimitiveTag::String)),
         "Bytes" | "bytes" => Some(RuntimeTypeFact::primitive(PrimitiveTag::Bytes)),
+        "Iterator" | "iterator" => Some(RuntimeTypeFact::standard(StandardRuntimeType::Iterator)),
         _ => None,
     }
 }
@@ -644,12 +658,14 @@ fn method_call_shape(
         )))),
         "filter" => match &receiver {
             ValueShape::Array(_) | ValueShape::Map { .. } | ValueShape::Set(_) => Some(receiver),
+            ValueShape::Iterator(item) => Some(ValueShape::Iterator(item.clone())),
             ValueShape::Option(value) => Some(ValueShape::Option(value.clone())),
             _ => None,
         },
         "map" => callback_return_shape(&receiver, method, args).map(|value| match receiver {
             ValueShape::Array(_) => ValueShape::Array(Box::new(value)),
             ValueShape::Set(_) => ValueShape::Set(Box::new(value)),
+            ValueShape::Iterator(_) => ValueShape::Iterator(Box::new(value)),
             ValueShape::Option(_) => ValueShape::Option(Box::new(value)),
             ValueShape::Result { err, .. } => ValueShape::Result {
                 ok: Some(Box::new(value)),
@@ -786,6 +802,14 @@ fn method_call_shape(
         "merge" => Some(receiver),
         "union" | "intersection" | "difference" | "symmetric_difference" => Some(receiver),
         "clear" | "set" | "remove" => None,
+        "take" | "skip" => receiver
+            .iterator_item()
+            .cloned()
+            .map(|item| ValueShape::Iterator(Box::new(item))),
+        "collect_array" => receiver
+            .iterator_item()
+            .cloned()
+            .map(|item| ValueShape::Array(Box::new(item))),
         "group_by" => receiver
             .array_element()
             .cloned()
@@ -794,16 +818,16 @@ fn method_call_shape(
                 value: Box::new(ValueShape::Array(Box::new(element))),
             }),
         "sort" | "sort_by" | "reverse" | "distinct" => Some(receiver),
-        "keys" => Some(ValueShape::Array(Box::new(ValueShape::Scalar(
-            "string".to_owned(),
-        )))),
+        "keys" => receiver
+            .map_parts()
+            .map(|(key, _)| ValueShape::Iterator(Box::new(key.clone()))),
         "values" => match &receiver {
-            ValueShape::Map { value, .. } => Some(ValueShape::Array(value.clone())),
+            ValueShape::Map { value, .. } => Some(ValueShape::Iterator(value.clone())),
             ValueShape::Set(element) => Some(ValueShape::Array(element.clone())),
             _ => None,
         },
         "entries" => receiver.map_parts().map(|(key, value)| {
-            ValueShape::Array(Box::new(ValueShape::Record(
+            ValueShape::Iterator(Box::new(ValueShape::Record(
                 RecordShape::from_field_shapes([
                     ("key".to_owned(), key.clone()),
                     ("value".to_owned(), value.clone()),

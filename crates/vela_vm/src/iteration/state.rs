@@ -32,6 +32,16 @@ enum IteratorCursor {
         keys: Vec<String>,
         next: usize,
     },
+    MapKeys {
+        source: GcRef,
+        keys: Vec<String>,
+        next: usize,
+    },
+    MapEntries {
+        source: GcRef,
+        keys: Vec<String>,
+        next: usize,
+    },
     StringChars {
         source: GcRef,
         byte_next: usize,
@@ -104,6 +114,26 @@ impl IteratorState {
     pub(crate) fn from_map_values_source(source: GcRef, keys: Vec<String>) -> Self {
         Self {
             cursor: IteratorCursor::MapValues {
+                source,
+                keys,
+                next: 0,
+            },
+        }
+    }
+
+    pub(crate) fn from_map_keys_source(source: GcRef, keys: Vec<String>) -> Self {
+        Self {
+            cursor: IteratorCursor::MapKeys {
+                source,
+                keys,
+                next: 0,
+            },
+        }
+    }
+
+    pub(crate) fn from_map_entries_source(source: GcRef, keys: Vec<String>) -> Self {
+        Self {
+            cursor: IteratorCursor::MapEntries {
                 source,
                 keys,
                 next: 0,
@@ -193,6 +223,8 @@ impl IteratorState {
             IteratorCursor::Array { .. }
             | IteratorCursor::Set { .. }
             | IteratorCursor::MapValues { .. }
+            | IteratorCursor::MapKeys { .. }
+            | IteratorCursor::MapEntries { .. }
             | IteratorCursor::StringChars { .. }
             | IteratorCursor::StringBytes { .. }
             | IteratorCursor::Map { .. }
@@ -226,6 +258,12 @@ impl IteratorState {
             ),
             IteratorCursor::MapValues { source, keys, next } => {
                 next_map_value(*source, keys, next, runtime, operation)
+            }
+            IteratorCursor::MapKeys { source, keys, next } => {
+                next_map_key(*source, keys, next, runtime, operation)
+            }
+            IteratorCursor::MapEntries { source, keys, next } => {
+                next_map_entry(*source, keys, next, runtime, operation)
             }
             IteratorCursor::StringChars { source, byte_next } => {
                 next_string_char(*source, byte_next, runtime, operation)
@@ -282,6 +320,8 @@ impl IteratorState {
             IteratorCursor::Array { source, .. }
             | IteratorCursor::Set { source, .. }
             | IteratorCursor::MapValues { source, .. }
+            | IteratorCursor::MapKeys { source, .. }
+            | IteratorCursor::MapEntries { source, .. }
             | IteratorCursor::StringChars { source, .. }
             | IteratorCursor::StringBytes { source, .. } => refs.push(*source),
             IteratorCursor::Range(_) => {}
@@ -308,6 +348,8 @@ impl IteratorState {
             IteratorCursor::Array { source, .. }
             | IteratorCursor::Set { source, .. }
             | IteratorCursor::MapValues { source, .. }
+            | IteratorCursor::MapKeys { source, .. }
+            | IteratorCursor::MapEntries { source, .. }
             | IteratorCursor::StringChars { source, .. }
             | IteratorCursor::StringBytes { source, .. } => protected.push(Value::HeapRef(*source)),
             IteratorCursor::Range(_) => {}
@@ -329,6 +371,8 @@ impl IteratorState {
             | IteratorCursor::Array { .. }
             | IteratorCursor::Set { .. }
             | IteratorCursor::MapValues { .. }
+            | IteratorCursor::MapKeys { .. }
+            | IteratorCursor::MapEntries { .. }
             | IteratorCursor::StringChars { .. }
             | IteratorCursor::StringBytes { .. }
             | IteratorCursor::Map { .. }
@@ -345,6 +389,8 @@ impl IteratorState {
             | IteratorCursor::Array { .. }
             | IteratorCursor::Set { .. }
             | IteratorCursor::MapValues { .. }
+            | IteratorCursor::MapKeys { .. }
+            | IteratorCursor::MapEntries { .. }
             | IteratorCursor::StringChars { .. }
             | IteratorCursor::StringBytes { .. }
             | IteratorCursor::Map { .. }
@@ -405,6 +451,58 @@ fn next_map_value(
         *next = next.saturating_add(1);
         if let Some(value) = values.get(key) {
             return Ok(Some(stored_runtime_value(value)));
+        }
+    }
+    Ok(None)
+}
+
+fn next_map_key(
+    source: GcRef,
+    keys: &[String],
+    next: &mut usize,
+    runtime: &mut MethodRuntime<'_, '_, '_>,
+    operation: &'static str,
+) -> VmResult<Option<Value>> {
+    let Some(heap) = runtime.heap.as_deref() else {
+        return type_error(operation);
+    };
+    let Some(HeapValue::Map(_)) = heap.heap.get(source) else {
+        return type_error(operation);
+    };
+    let Some(key) = keys.get(*next) else {
+        return Ok(None);
+    };
+    *next = next.saturating_add(1);
+    let Some(heap) = runtime.heap.as_deref_mut() else {
+        return type_error(operation);
+    };
+    crate::heap_values::allocate_heap_value(
+        HeapValue::String(key.clone()),
+        heap,
+        runtime.budget.as_deref_mut(),
+    )
+    .map(Some)
+}
+
+fn next_map_entry(
+    source: GcRef,
+    keys: &[String],
+    next: &mut usize,
+    runtime: &mut MethodRuntime<'_, '_, '_>,
+    operation: &'static str,
+) -> VmResult<Option<Value>> {
+    let Some(heap) = runtime.heap.as_deref() else {
+        return type_error(operation);
+    };
+    let Some(HeapValue::Map(values)) = heap.heap.get(source) else {
+        return type_error(operation);
+    };
+    while let Some(key) = keys.get(*next) {
+        *next = next.saturating_add(1);
+        if let Some(value) = values.get(key).map(stored_runtime_value) {
+            let mut heap = runtime.heap.as_deref_mut();
+            return crate::map_methods::map_entry(key, value, &mut heap, &mut runtime.budget)
+                .map(Some);
         }
     }
     Ok(None)

@@ -392,7 +392,7 @@ fn main() {
         };
         let keyed = rewards.map_values(|key, value| key.len() + value + tick - tick);
         let filtered = keyed.filter(|key, value| key.starts_with("r") && value % 3 == 0);
-        let sorted = filtered.values().sort_by(|value| 20 - value);
+        let sorted = filtered.values().collect_array().sort_by(|value| 20 - value);
         let tags = set::from_array(["daily", "quest", "raid", "bonus", "daily"]);
         let active = tags.filter(|tag| tag.contains("a") || tag.starts_with("q"));
         let lengths = active.map(|tag| tag.len());
@@ -459,7 +459,7 @@ fn main() {
         if filtered.len() != 4 || filtered.get_or("r12", 0) != 15 {
             return 0;
         }
-        total += keyed.values().sum() + filtered.values().sum();
+        total += keyed.values().collect_array().sum() + filtered.values().collect_array().sum();
     }
     return total;
 }
@@ -843,9 +843,9 @@ fn main() {
             "boss": 13,
             "event": 5,
         };
-        let keys = scores.keys();
-        let values = scores.values();
-        let entries = scores.entries();
+        let keys = scores.keys().collect_array();
+        let values = scores.values().collect_array();
+        let entries = scores.entries().collect_array();
         let entry_total = entries[0].key.len()
             + entries[0].value
             + entries[1].key.len()
@@ -873,8 +873,8 @@ fn main() {
         let removed = scores.remove("daily");
         let missing = scores.remove("missing");
         scores.extend({"event": 5, "bonus": 34});
-        let keys = scores.keys().sort().join("|");
-        let values = scores.values().sum();
+        let keys = scores.keys().collect_array().sort().join("|");
+        let values = scores.values().collect_array().sum();
         scores.clear();
         if option::unwrap_or(removed, 0) != 3
             || !option::is_none(missing)

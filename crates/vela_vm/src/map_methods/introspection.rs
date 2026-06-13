@@ -1,8 +1,9 @@
 use crate::heap::HeapValue;
-use crate::{ExecutionBudget, HeapExecution, Value, VmResult, stored_runtime_value};
+use crate::heap_values::allocate_heap_value;
+use crate::iteration::IteratorState;
+use crate::{ExecutionBudget, HeapExecution, Value, VmResult};
 
-use super::{expect_no_args, map_entry, type_error};
-use crate::array_methods::{make_array_value, make_string_value};
+use super::{expect_no_args, type_error};
 
 pub(crate) fn keys(
     receiver: &Value,
@@ -21,11 +22,12 @@ pub(crate) fn keys(
                 };
                 values.keys().cloned().collect::<Vec<_>>()
             };
-            let values = keys
-                .into_iter()
-                .map(|key| make_string_value(key, heap, budget, "method keys"))
-                .collect::<VmResult<Vec<_>>>()?;
-            make_array_value(values, heap, budget, "method keys")
+            allocate_iterator(
+                IteratorState::from_map_keys_source(*reference, keys),
+                heap,
+                budget,
+                "method keys",
+            )
         }
         _ => type_error("method keys"),
     }
@@ -40,18 +42,20 @@ pub(crate) fn values(
     expect_no_args("values", args)?;
     match receiver {
         Value::HeapRef(reference) => {
-            let values = {
+            let keys = {
                 let Some(HeapValue::Map(values)) =
                     heap.as_deref().and_then(|heap| heap.heap.get(*reference))
                 else {
                     return type_error("method values");
                 };
-                values
-                    .values()
-                    .map(stored_runtime_value)
-                    .collect::<Vec<_>>()
+                values.keys().cloned().collect::<Vec<_>>()
             };
-            make_array_value(values, heap, budget, "method values")
+            allocate_iterator(
+                IteratorState::from_map_values_source(*reference, keys),
+                heap,
+                budget,
+                "method values",
+            )
         }
         _ => type_error("method values"),
     }
@@ -66,23 +70,33 @@ pub(crate) fn entries(
     expect_no_args("entries", args)?;
     match receiver {
         Value::HeapRef(reference) => {
-            let entries = {
+            let keys = {
                 let Some(HeapValue::Map(values)) =
                     heap.as_deref().and_then(|heap| heap.heap.get(*reference))
                 else {
                     return type_error("method entries");
                 };
-                values
-                    .iter()
-                    .map(|(key, value)| (key.clone(), stored_runtime_value(value)))
-                    .collect::<Vec<_>>()
+                values.keys().cloned().collect::<Vec<_>>()
             };
-            let entries = entries
-                .into_iter()
-                .map(|(key, value)| map_entry(&key, value, heap, budget))
-                .collect::<VmResult<Vec<_>>>()?;
-            make_array_value(entries, heap, budget, "method entries")
+            allocate_iterator(
+                IteratorState::from_map_entries_source(*reference, keys),
+                heap,
+                budget,
+                "method entries",
+            )
         }
         _ => type_error("method entries"),
     }
+}
+
+fn allocate_iterator(
+    iterator: IteratorState,
+    heap: &mut Option<&mut HeapExecution<'_>>,
+    budget: &mut Option<&mut ExecutionBudget>,
+    operation: &'static str,
+) -> VmResult<Value> {
+    let Some(heap) = heap.as_deref_mut() else {
+        return type_error(operation);
+    };
+    allocate_heap_value(HeapValue::Iterator(iterator), heap, budget.as_deref_mut())
 }

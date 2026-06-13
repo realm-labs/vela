@@ -127,13 +127,13 @@ fn scalar_collection_methods_return_non_generic_facts() {
         stdlib_method_fact(&map, "keys", None)
             .expect("keys fact")
             .returns,
-        TypeFact::array(TypeFact::STRING)
+        TypeFact::iterator(TypeFact::STRING)
     );
     assert_eq!(
         stdlib_method_fact(&map, "values", None)
             .expect("values fact")
             .returns,
-        TypeFact::array(TypeFact::I64)
+        TypeFact::iterator(TypeFact::I64)
     );
     assert_eq!(
         stdlib_method_fact(&map, "iter", None)
@@ -145,7 +145,7 @@ fn scalar_collection_methods_return_non_generic_facts() {
         stdlib_method_fact(&map, "entries", None)
             .expect("entries fact")
             .returns,
-        TypeFact::array(TypeFact::record("MapEntry"))
+        TypeFact::iterator(TypeFact::record("MapEntry"))
     );
     assert_eq!(
         stdlib_method_fact(&map, "clear", None)

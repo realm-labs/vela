@@ -11,7 +11,7 @@ type LinkedMapCacheFixture = (
 #[test]
 fn linked_standard_value_method_caches_map_keys_target() {
     assert_map_owned_cache(
-        linked_map_no_arg_cache_program("keys"),
+        linked_map_view_collect_cache_program("keys"),
         StandardMethodInlineCacheTarget::Keys,
         OwnedValue::array(["gold", "xp"]),
     );
@@ -29,7 +29,7 @@ fn linked_standard_value_method_caches_map_is_empty_target() {
 #[test]
 fn linked_standard_value_method_caches_map_values_target() {
     assert_map_owned_cache(
-        linked_map_no_arg_cache_program("values"),
+        linked_map_view_collect_cache_program("values"),
         StandardMethodInlineCacheTarget::Values,
         OwnedValue::Array(vec![OwnedValue::i64(4), OwnedValue::i64(8)]),
     );
@@ -38,7 +38,7 @@ fn linked_standard_value_method_caches_map_values_target() {
 #[test]
 fn linked_standard_value_method_caches_map_entries_target() {
     assert_map_owned_cache(
-        linked_map_no_arg_cache_program("entries"),
+        linked_map_view_collect_cache_program("entries"),
         StandardMethodInlineCacheTarget::Entries,
         OwnedValue::Array(vec![
             OwnedValue::record(
@@ -248,6 +248,65 @@ fn linked_map_no_arg_cache_program(method: &str) -> LinkedMapCacheFixture {
     ));
     code.push_instruction(vela_bytecode::linked::Instruction::new(
         vela_bytecode::linked::InstructionKind::Return { src: Register(3) },
+    ));
+    let function = program.push_function(code);
+    program.set_entry_point(main_name, function);
+    (program, site, dispatch, method_id)
+}
+
+fn linked_map_view_collect_cache_program(method: &str) -> LinkedMapCacheFixture {
+    let method_id = vela_stdlib::std_method_id("Map", method).expect("Map view method id");
+    let collect_method_id = vela_stdlib::std_method_id("Iterator", "collect_array")
+        .expect("Iterator::collect_array method id");
+    let mut program = vela_bytecode::LinkedProgram::new();
+    let main_name = program.intern_debug_name("main");
+    let method_name = program.intern_debug_name(method);
+    let collect_name = program.intern_debug_name("collect_array");
+    let dispatch = program.push_method_dispatch(vela_bytecode::LinkedMethodDispatch::new(
+        method_name,
+        vela_bytecode::LinkedMethodDispatchKind::Value { method_id },
+    ));
+    let collect_dispatch = program.push_method_dispatch(vela_bytecode::LinkedMethodDispatch::new(
+        collect_name,
+        vela_bytecode::LinkedMethodDispatchKind::Value {
+            method_id: collect_method_id,
+        },
+    ));
+
+    let mut code = vela_bytecode::LinkedCodeObject::new(main_name, 5);
+    let gold = code.push_constant(Constant::String("gold".into()));
+    let xp = code.push_constant(Constant::String("xp".into()));
+    load_i64(&mut code, Register(0), 4);
+    load_i64(&mut code, Register(1), 8);
+    code.push_instruction(vela_bytecode::linked::Instruction::new(
+        vela_bytecode::linked::InstructionKind::MakeMap {
+            dst: Register(2),
+            entries: vec![(gold, Register(0)), (xp, Register(1))],
+        },
+    ));
+    let site = code.push_cache_site(CacheSiteKind::MethodCall, InstructionOffset(3));
+    code.push_instruction(vela_bytecode::linked::Instruction::new(
+        vela_bytecode::linked::InstructionKind::CallMethod {
+            dst: Register(3),
+            receiver: Register(2),
+            dispatch,
+            debug_name: method_name,
+            cache_site: Some(site),
+            args: Vec::new(),
+        },
+    ));
+    code.push_instruction(vela_bytecode::linked::Instruction::new(
+        vela_bytecode::linked::InstructionKind::CallMethod {
+            dst: Register(4),
+            receiver: Register(3),
+            dispatch: collect_dispatch,
+            debug_name: collect_name,
+            cache_site: None,
+            args: Vec::new(),
+        },
+    ));
+    code.push_instruction(vela_bytecode::linked::Instruction::new(
+        vela_bytecode::linked::InstructionKind::Return { src: Register(4) },
     ));
     let function = program.push_function(code);
     program.set_entry_point(main_name, function);

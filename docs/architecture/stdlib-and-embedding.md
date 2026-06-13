@@ -38,9 +38,9 @@ map.get(key)
 map.get_or(key, default)
 map.set(key, value)
 map.remove(key)
-map.keys()
-map.values()
-map.entries()
+map.keys()      // Iterator over keys
+map.values()    // Iterator over values
+map.entries()   // Iterator over MapEntry records
 map.map_values(|v| ...)
 map.filter(|k, v| ...)
 ```

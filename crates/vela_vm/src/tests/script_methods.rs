@@ -57,9 +57,9 @@ fn main() {
     let missing_get = rewards.get("missing_before");
     let removed = rewards.remove("gold");
     let missing_remove = rewards.remove("missing_after");
-    let keys = rewards.keys();
-    let amounts = rewards.values();
-    let entries = rewards.entries();
+    let keys = rewards.keys().collect_array();
+    let amounts = rewards.values().collect_array();
+    let entries = rewards.entries().collect_array();
     if empty.is_empty() && values.len() == 3 && option::unwrap_or(popped, 0) == 4 && rewards.len() == 2 && ("gold").len() == 4
         && ("gold").contains("ol") && ("quest").starts_with("que") && ("quest").ends_with("st")
         && option::is_none(missing_pop)

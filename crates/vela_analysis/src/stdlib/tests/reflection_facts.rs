@@ -201,7 +201,7 @@ fn stdlib_method_facts_enumerate_receiver_api_surface() {
             && fact.returns == TypeFact::map(TypeFact::STRING, TypeFact::BOOL)
     }));
     assert!(facts.iter().any(|fact| {
-        fact.method == "entries" && fact.returns == TypeFact::array(TypeFact::record("MapEntry"))
+        fact.method == "entries" && fact.returns == TypeFact::iterator(TypeFact::record("MapEntry"))
     }));
     assert!(facts.iter().any(|fact| {
         fact.method == "filter"

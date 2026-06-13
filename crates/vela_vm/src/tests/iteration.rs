@@ -386,6 +386,59 @@ fn main() {
 }
 
 #[test]
+fn map_key_views_snapshot_keys_without_growth() {
+    let code = compile_function_source(
+        SourceId::new(1),
+        r#"
+fn main() {
+    let rewards = { "a": 1, "b": 2 };
+    let keys = rewards.keys();
+    rewards.set("c", 3);
+    let collected = keys.collect_array();
+    if collected.len() == 2 && collected[0] == "a" && collected[1] == "b" {
+        return 1;
+    }
+    return 0;
+}
+"#,
+        "main",
+    )
+    .expect("compile lazy map key view");
+
+    assert_eq!(
+        run_linked_test_code(code),
+        Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(1)))
+    );
+}
+
+#[test]
+fn map_entry_views_snapshot_keys_but_read_current_values() {
+    let code = compile_function_source(
+        SourceId::new(1),
+        r#"
+fn main() {
+    let rewards = { "a": 1, "b": 2 };
+    let entries = rewards.entries();
+    rewards.set("a", 9);
+    rewards.set("c", 100);
+    let collected = entries.collect_array();
+    if collected.len() == 2 && collected[0].key == "a" && collected[1].key == "b" {
+        return collected[0].value * 100 + collected[1].value * 10 + 77;
+    }
+    return 0;
+}
+"#,
+        "main",
+    )
+    .expect("compile lazy map entry view");
+
+    assert_eq!(
+        run_linked_test_code(code),
+        Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(997)))
+    );
+}
+
+#[test]
 fn iterator_lazy_adapters_drive_for_in_and_consume_source() {
     let code = compile_function_source(
         SourceId::new(1),

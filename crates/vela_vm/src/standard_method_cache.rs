@@ -496,12 +496,7 @@ pub(crate) fn call_standard_cached(
         StandardMethodInlineCacheTarget::Get if cache.receiver == StandardMethodReceiver::Map => {
             return call_cached_map_get_option(receiver, args, heap, budget);
         }
-        StandardMethodInlineCacheTarget::Keys
-        | StandardMethodInlineCacheTarget::Values
-        | StandardMethodInlineCacheTarget::Entries
-        | StandardMethodInlineCacheTarget::Merge
-            if cache.receiver == StandardMethodReceiver::Map =>
-        {
+        StandardMethodInlineCacheTarget::Merge if cache.receiver == StandardMethodReceiver::Map => {
             return call_cached_map_materialization(receiver, cache.target, args, heap, budget);
         }
         StandardMethodInlineCacheTarget::Set

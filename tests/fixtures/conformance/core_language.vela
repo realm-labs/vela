@@ -300,9 +300,9 @@ fn main() {
         + merged_rewards["gold"]
         + merged_rewards["gem"]
         + merged_rewards.len();
-    let reward_entries = merged_rewards.entries();
-    let reward_keys = merged_rewards.keys();
-    let reward_values = merged_rewards.values();
+    let reward_entries = merged_rewards.entries().collect_array();
+    let reward_keys = merged_rewards.keys().collect_array();
+    let reward_values = merged_rewards.values().collect_array();
     let found_reward = merged_rewards.find(|key, value| key == "gem" && value == 6);
     let found_entry = found_reward.unwrap_or(MapEntry { key: "", value: 0 });
     let filtered_rewards = merged_rewards.filter(|key, value| key.len() >= 3 && value >= 5);

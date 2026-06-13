@@ -56,6 +56,7 @@ pub(super) enum StandardRuntimeType {
     Range,
     Function,
     Closure,
+    Iterator,
     Option,
     Result,
 }
@@ -92,6 +93,7 @@ impl RuntimeTypeFact {
             Self::Standard(StandardRuntimeType::Range) => "Range",
             Self::Standard(StandardRuntimeType::Function) => "Function",
             Self::Standard(StandardRuntimeType::Closure) => "Closure",
+            Self::Standard(StandardRuntimeType::Iterator) => "Iterator",
             Self::Standard(StandardRuntimeType::Option) => "Option",
             Self::Standard(StandardRuntimeType::Result) => "Result",
         }
@@ -120,6 +122,7 @@ impl RuntimeTypeFact {
             Self::Standard(StandardRuntimeType::Range) => "range",
             Self::Standard(StandardRuntimeType::Function) => "function",
             Self::Standard(StandardRuntimeType::Closure) => "closure",
+            Self::Standard(StandardRuntimeType::Iterator) => "iterator",
             Self::Standard(StandardRuntimeType::Option) => "Option",
             Self::Standard(StandardRuntimeType::Result) => "Result",
         }
@@ -341,6 +344,7 @@ pub(super) fn type_hint_value_type(hint: &HirTypeHint) -> Option<RuntimeTypeFact
         "range" => Some(RuntimeTypeFact::standard(StandardRuntimeType::Range)),
         "function" => Some(RuntimeTypeFact::standard(StandardRuntimeType::Function)),
         "closure" => Some(RuntimeTypeFact::standard(StandardRuntimeType::Closure)),
+        "iterator" => Some(RuntimeTypeFact::standard(StandardRuntimeType::Iterator)),
         "Option" => Some(RuntimeTypeFact::standard(StandardRuntimeType::Option)),
         "Result" => Some(RuntimeTypeFact::standard(StandardRuntimeType::Result)),
         _ => None,

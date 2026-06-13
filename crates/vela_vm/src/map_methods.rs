@@ -62,7 +62,7 @@ pub(super) fn map_slots<'a>(
     }
 }
 
-pub(super) fn map_entry(
+pub(crate) fn map_entry(
     key: &str,
     value: Value,
     heap: &mut Option<&mut HeapExecution<'_>>,
@@ -293,9 +293,9 @@ fn main() {
         let source = r#"
 fn main() {
     let rewards = {"xp": 6, "gold": 4, "quest": 8};
-    let keys = rewards.keys();
-    let values = rewards.values();
-    let entries = rewards.entries();
+    let keys = rewards.keys().collect_array();
+    let values = rewards.values().collect_array();
+    let entries = rewards.entries().collect_array();
     if keys.join(",") == "gold,quest,xp"
         && values[0] == 4
         && values[1] == 8
@@ -328,9 +328,9 @@ fn main() {
         let source = r#"
 fn main() {
     let quests = {"raid": "active", "daily": "done", "world": "open"};
-    let keys = quests.keys();
-    let values = quests.values();
-    let entries = quests.entries();
+    let keys = quests.keys().collect_array();
+    let values = quests.values().collect_array();
+    let entries = quests.entries().collect_array();
     if keys.join(",") == "daily,raid,world"
         && entries[0].key == "daily"
         && entries[0].value == "done"
@@ -397,7 +397,7 @@ fn main() {
         && merged["quest"] == 8
         && merged["xp"] == 10
     {
-        return merged.keys().join(",");
+        return merged.keys().collect_array().join(",");
     }
     return "";
 }
@@ -422,7 +422,7 @@ fn main() {
         && merged["owner"] == "wolf"
         && merged["reward"] == "gold"
     {
-        return merged.values().join("|");
+        return merged.values().collect_array().join("|");
     }
     return "";
 }
@@ -490,7 +490,7 @@ fn main() {
     quests.clear();
     quests.set("boss", "ready");
     if quests.len() == 1 && quests["boss"] == "ready" {
-        return quests.keys().join("|");
+        return quests.keys().collect_array().join("|");
     }
     return "";
 }
@@ -515,7 +515,7 @@ fn main() {
         && rewards["xp"] == 10
         && rewards["quest"] == 8
     {
-        return rewards.keys().join(",");
+        return rewards.keys().collect_array().join(",");
     }
     return "";
 }
@@ -537,7 +537,7 @@ fn main() {
     let patch = {"raid": "active", "daily": "claimed"};
     quests.extend(patch);
     if quests.len() == 2 && quests["daily"] == "claimed" {
-        return quests.values().join("|");
+        return quests.values().collect_array().join("|");
     }
     return "";
 }

@@ -143,9 +143,9 @@ fn main() {
     let missing_get = rewards.get("missing_before");
     let removed = rewards.remove("gold");
     let missing_remove = rewards.remove("missing_after");
-    let keys = rewards.keys();
-    let amounts = rewards.values();
-    let entries = rewards.entries();
+    let keys = rewards.keys().collect_array();
+    let amounts = rewards.values().collect_array();
+    let entries = rewards.entries().collect_array();
     let popped_name = option::unwrap_or(popped, "");
     if names.len() == 2 && popped_name == "quest" && popped_name.contains("ue") && popped_name.starts_with("que")
         && popped_name.ends_with("st") && option::is_none(missing_pop) && option::unwrap_or(removed, 0) == 4 && rewards.is_empty() == false && ("quest").len() == 5
