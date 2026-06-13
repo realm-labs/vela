@@ -664,6 +664,33 @@ impl Vm {
                         ip = target;
                     }
                 }
+                UnlinkedInstructionKind::I64RangeNext {
+                    cursor,
+                    end,
+                    done,
+                    inclusive,
+                    dst,
+                    jump_if_done,
+                } => {
+                    if let Some(target) = iteration::dispatch_i64_range_next(
+                        iteration::IterRuntime {
+                            frame: &mut frame,
+                            heap: heap.as_deref_mut(),
+                            budget: budget.as_deref_mut(),
+                        },
+                        code,
+                        iteration::RangeNextStep {
+                            cursor: *cursor,
+                            end: *end,
+                            done: *done,
+                            inclusive: *inclusive,
+                            dst: *dst,
+                            jump_if_done: *jump_if_done,
+                        },
+                    )? {
+                        ip = target;
+                    }
+                }
                 UnlinkedInstructionKind::EnumTagEqual {
                     dst,
                     value,

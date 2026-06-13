@@ -208,6 +208,25 @@ pub(crate) fn dispatch_linked_range_next(
     })
 }
 
+pub(crate) fn dispatch_i64_range_next(
+    runtime: IterRuntime<'_, '_>,
+    code: &UnlinkedCodeObject,
+    step: RangeNextStep,
+) -> VmResult<Option<usize>> {
+    dispatch_i64_range_next_with(runtime.frame, step, |offset| validate_jump(code, offset))
+}
+
+pub(crate) fn dispatch_linked_i64_range_next(
+    runtime: IterRuntime<'_, '_>,
+    code: &LinkedCodeObject,
+    step: RangeNextStep,
+) -> VmResult<Option<usize>> {
+    dispatch_i64_range_next_with(runtime.frame, step, |offset| {
+        debug_assert!(offset <= code.instructions.len());
+        Ok(())
+    })
+}
+
 fn next_iterator_value(
     runtime: &mut IterRuntime<'_, '_>,
     iterator: Register,
@@ -227,6 +246,51 @@ fn next_iterator_value(
         _ => Err(VmError::new(VmErrorKind::TypeMismatch {
             operation: "iterator",
         })),
+    }
+}
+
+fn dispatch_i64_range_next_with(
+    frame: &mut CallFrame,
+    step: RangeNextStep,
+    mut validate: impl FnMut(usize) -> VmResult<()>,
+) -> VmResult<Option<usize>> {
+    let Value::Bool(is_done) = *frame.read(step.done)? else {
+        return Err(VmError::new(VmErrorKind::TypeMismatch {
+            operation: "range",
+        }));
+    };
+    if is_done {
+        validate(step.jump_if_done.0)?;
+        return Ok(Some(step.jump_if_done.0));
+    }
+
+    let Value::Scalar(vela_common::ScalarValue::I64(current)) = *frame.read(step.cursor)? else {
+        return Err(VmError::new(VmErrorKind::TypeMismatch {
+            operation: "range",
+        }));
+    };
+    let Value::Scalar(vela_common::ScalarValue::I64(end)) = *frame.read(step.end)? else {
+        return Err(VmError::new(VmErrorKind::TypeMismatch {
+            operation: "range",
+        }));
+    };
+    let has_next = if step.inclusive {
+        current <= end
+    } else {
+        current < end
+    };
+    if has_next {
+        frame.write(step.dst, Value::i64(current))?;
+        if current == i64::MAX {
+            frame.write(step.done, Value::Bool(true))?;
+        } else {
+            frame.write(step.cursor, Value::i64(current + 1))?;
+        }
+        Ok(None)
+    } else {
+        frame.write(step.done, Value::Bool(true))?;
+        validate(step.jump_if_done.0)?;
+        Ok(Some(step.jump_if_done.0))
     }
 }
 

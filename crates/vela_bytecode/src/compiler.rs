@@ -1046,7 +1046,7 @@ impl<'ast, 'registry> Compiler<'ast, 'registry> {
         dst: Register,
     ) -> usize {
         let offset = self.current_offset();
-        self.emit(UnlinkedInstructionKind::RangeNext {
+        self.emit(UnlinkedInstructionKind::I64RangeNext {
             cursor,
             end,
             done,
@@ -1079,6 +1079,10 @@ impl<'ast, 'registry> Compiler<'ast, 'registry> {
                 ..
             }
             | UnlinkedInstructionKind::RangeNext {
+                jump_if_done: jump_target,
+                ..
+            }
+            | UnlinkedInstructionKind::I64RangeNext {
                 jump_if_done: jump_target,
                 ..
             } => {

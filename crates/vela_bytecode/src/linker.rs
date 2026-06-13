@@ -784,6 +784,21 @@ impl<'linker, 'registry> LinkContext<'linker, 'registry> {
                 dst: *dst,
                 jump_if_done: *jump_if_done,
             },
+            UnlinkedInstructionKind::I64RangeNext {
+                cursor,
+                end,
+                done,
+                inclusive,
+                dst,
+                jump_if_done,
+            } => InstructionKind::I64RangeNext {
+                cursor: *cursor,
+                end: *end,
+                done: *done,
+                inclusive: *inclusive,
+                dst: *dst,
+                jump_if_done: *jump_if_done,
+            },
             UnlinkedInstructionKind::EnumTagEqual {
                 dst,
                 value,

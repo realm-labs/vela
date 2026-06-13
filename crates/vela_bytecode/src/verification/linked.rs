@@ -430,6 +430,14 @@ fn verify_linked_instruction(
             dst,
             jump_if_done,
             ..
+        }
+        | InstructionKind::I64RangeNext {
+            cursor,
+            end,
+            done,
+            dst,
+            jump_if_done,
+            ..
         } => {
             verify_linked_register(function, instruction_index, code, *cursor)?;
             verify_linked_register(function, instruction_index, code, *end)?;

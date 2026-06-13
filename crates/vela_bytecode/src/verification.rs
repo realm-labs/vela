@@ -564,6 +564,14 @@ fn verify_instruction(
             dst,
             jump_if_done,
             ..
+        }
+        | UnlinkedInstructionKind::I64RangeNext {
+            cursor,
+            end,
+            done,
+            dst,
+            jump_if_done,
+            ..
         } => {
             verify_register(function, instruction_index, code, *cursor)?;
             verify_register(function, instruction_index, code, *end)?;

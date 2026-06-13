@@ -88,10 +88,10 @@ fn scalar_workloads_have_reproducible_opcode_count_reports() {
     assert_has_opcode(&scalar, "I64Add");
     assert_has_opcode(&scalar, "JumpIfFalse");
     assert_has_opcode(&scalar, "Jump");
-    assert_has_opcode(&scalar, "RangeNext");
+    assert_has_opcode(&scalar, "I64RangeNext");
 
     let range = opcode_count_report(&vm, registry.compile_view(), "range_iteration");
-    assert_has_opcode(&range, "RangeNext");
+    assert_has_opcode(&range, "I64RangeNext");
     assert_has_opcode(&range, "I64Add");
     assert_has_opcode(&range, "I64Sub");
 
@@ -317,6 +317,7 @@ fn opcode_label(kind: &InstructionKind) -> &'static str {
         InstructionKind::IterInit { .. } => "IterInit",
         InstructionKind::IterNext { .. } => "IterNext",
         InstructionKind::RangeNext { .. } => "RangeNext",
+        InstructionKind::I64RangeNext { .. } => "I64RangeNext",
         InstructionKind::EnumTagEqual { .. } => "EnumTagEqual",
         InstructionKind::LoadGlobal { .. } => "LoadGlobal",
         InstructionKind::HostRead { .. } => "HostRead",

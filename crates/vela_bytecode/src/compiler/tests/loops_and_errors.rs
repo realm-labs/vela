@@ -31,7 +31,7 @@ fn main() {
 }
 
 #[test]
-fn compiler_lowers_direct_range_for_in_to_range_next() {
+fn compiler_lowers_direct_range_for_in_to_i64_range_next() {
     let code = compile_function_source(
         SourceId::new(1),
         r#"
@@ -49,12 +49,10 @@ fn main() {
         "main",
     )
     .expect("range for-in loop should compile");
-    assert!(
-        code.instructions.iter().any(|instruction| matches!(
-            instruction.kind,
-            UnlinkedInstructionKind::RangeNext { .. }
-        ))
-    );
+    assert!(code.instructions.iter().any(|instruction| matches!(
+        instruction.kind,
+        UnlinkedInstructionKind::I64RangeNext { .. }
+    )));
     assert!(
         !code.instructions.iter().any(|instruction| matches!(
             instruction.kind,

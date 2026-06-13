@@ -895,6 +895,14 @@ pub enum UnlinkedInstructionKind {
         dst: Register,
         jump_if_done: InstructionOffset,
     },
+    I64RangeNext {
+        cursor: Register,
+        end: Register,
+        done: Register,
+        inclusive: bool,
+        dst: Register,
+        jump_if_done: InstructionOffset,
+    },
     EnumTagEqual {
         dst: Register,
         value: Register,
