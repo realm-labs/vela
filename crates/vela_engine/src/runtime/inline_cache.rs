@@ -1,4 +1,4 @@
-use std::cell::RefCell;
+use std::cell::{Cell, RefCell};
 
 use vela_bytecode::CacheSiteId;
 use vela_common::GlobalSlot;
@@ -11,10 +11,10 @@ use super::image::RuntimeImage;
 
 #[derive(Debug, Default)]
 pub(super) struct InlineCaches {
-    global_reads: RefCell<Vec<Option<GlobalSlot>>>,
-    host_accesses: RefCell<Vec<Option<HostInlineCacheEntry>>>,
-    record_fields: RefCell<Vec<Option<RecordFieldInlineCacheEntry>>>,
-    method_dispatches: RefCell<Vec<Option<MethodInlineCacheEntry>>>,
+    global_reads: Vec<Cell<Option<GlobalSlot>>>,
+    host_accesses: Vec<Cell<Option<HostInlineCacheEntry>>>,
+    record_fields: Vec<Cell<Option<RecordFieldInlineCacheEntry>>>,
+    method_dispatches: Vec<Cell<Option<MethodInlineCacheEntry>>>,
     native_calls: RefCell<Vec<Option<NativeInlineCacheEntry>>>,
 }
 
@@ -22,10 +22,10 @@ impl InlineCaches {
     pub(super) fn for_image(image: &RuntimeImage) -> Self {
         let len = image.cache_site_count();
         Self {
-            global_reads: RefCell::new(vec![None; len]),
-            host_accesses: RefCell::new(vec![None; len]),
-            record_fields: RefCell::new(vec![None; len]),
-            method_dispatches: RefCell::new(vec![None; len]),
+            global_reads: empty_cell_cache(len),
+            host_accesses: empty_cell_cache(len),
+            record_fields: empty_cell_cache(len),
+            method_dispatches: empty_cell_cache(len),
             native_calls: RefCell::new(vec![None; len]),
         }
     }
@@ -35,66 +35,50 @@ impl InlineCaches {
     }
 
     pub(super) fn len(&self) -> usize {
-        self.global_reads.borrow().len()
+        self.global_reads.len()
     }
 
     pub(super) fn is_empty(&self) -> bool {
-        self.global_reads.borrow().is_empty()
+        self.global_reads.is_empty()
     }
 
     pub(super) fn global_read_slot(&self, site: CacheSiteId) -> Option<GlobalSlot> {
-        self.global_reads
-            .borrow()
-            .get(site.index())
-            .copied()
-            .flatten()
+        self.global_reads.get(site.index()).and_then(Cell::get)
     }
 
     pub(super) fn set_global_read_slot(&self, site: CacheSiteId, slot: GlobalSlot) {
-        if let Some(entry) = self.global_reads.borrow_mut().get_mut(site.index()) {
-            *entry = Some(slot);
+        if let Some(entry) = self.global_reads.get(site.index()) {
+            entry.set(Some(slot));
         }
     }
 
     pub(super) fn host_access(&self, site: CacheSiteId) -> Option<HostInlineCacheEntry> {
-        self.host_accesses
-            .borrow()
-            .get(site.index())
-            .copied()
-            .flatten()
+        self.host_accesses.get(site.index()).and_then(Cell::get)
     }
 
     pub(super) fn set_host_access(&self, site: CacheSiteId, entry: HostInlineCacheEntry) {
-        if let Some(slot) = self.host_accesses.borrow_mut().get_mut(site.index()) {
-            *slot = Some(entry);
+        if let Some(slot) = self.host_accesses.get(site.index()) {
+            slot.set(Some(entry));
         }
     }
 
     pub(super) fn record_field(&self, site: CacheSiteId) -> Option<RecordFieldInlineCacheEntry> {
-        self.record_fields
-            .borrow()
-            .get(site.index())
-            .copied()
-            .flatten()
+        self.record_fields.get(site.index()).and_then(Cell::get)
     }
 
     pub(super) fn set_record_field(&self, site: CacheSiteId, entry: RecordFieldInlineCacheEntry) {
-        if let Some(slot) = self.record_fields.borrow_mut().get_mut(site.index()) {
-            *slot = Some(entry);
+        if let Some(slot) = self.record_fields.get(site.index()) {
+            slot.set(Some(entry));
         }
     }
 
     pub(super) fn method_dispatch(&self, site: CacheSiteId) -> Option<MethodInlineCacheEntry> {
-        self.method_dispatches
-            .borrow()
-            .get(site.index())
-            .copied()
-            .flatten()
+        self.method_dispatches.get(site.index()).and_then(Cell::get)
     }
 
     pub(super) fn set_method_dispatch(&self, site: CacheSiteId, entry: MethodInlineCacheEntry) {
-        if let Some(slot) = self.method_dispatches.borrow_mut().get_mut(site.index()) {
-            *slot = Some(entry);
+        if let Some(slot) = self.method_dispatches.get(site.index()) {
+            slot.set(Some(entry));
         }
     }
 
@@ -111,6 +95,10 @@ impl InlineCaches {
             *slot = Some(entry);
         }
     }
+}
+
+fn empty_cell_cache<T: Copy>(len: usize) -> Vec<Cell<Option<T>>> {
+    (0..len).map(|_| Cell::new(None)).collect()
 }
 
 impl vela_vm::VmInlineCaches for InlineCaches {
