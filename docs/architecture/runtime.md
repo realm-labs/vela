@@ -77,6 +77,13 @@ field and method access can be specialized
 good fit for later inline caches
 ```
 
+Method calls have two linked bytecode shapes. Statically known receivers keep
+the resolved `CallMethodId`/`MethodDispatchHandle` fast path. Unknown receivers
+with a source-static method name link as `CallDynamicMethod`, then resolve at
+runtime through guarded standard-value, script-method, or host-method targets.
+Dynamic method failures are runtime errors with the original call span, not
+link-time rejection of ordinary source code.
+
 ### Value Layout
 
 Runtime execution uses four explicit value layers:

@@ -27,6 +27,8 @@ const PRIMITIVE_MIXED_NUMERIC_RUNTIME: &str =
     include_str!("../../../tests/fixtures/conformance/primitive_mixed_numeric_runtime.vela");
 const PRIMITIVE_OVERFLOW_RUNTIME: &str =
     include_str!("../../../tests/fixtures/conformance/primitive_overflow_runtime.vela");
+const DYNAMIC_METHOD_DISPATCH: &str =
+    include_str!("../../../tests/fixtures/conformance/dynamic_method_dispatch.vela");
 
 #[test]
 fn core_language_fixture_executes() {
@@ -128,6 +130,52 @@ fn primitive_negative_fixtures_fail_in_expected_phase() {
             .expect_err("dynamic primitive conformance fixture should fail at runtime");
         assert_eq!(error.kind(), expected);
     }
+}
+
+#[test]
+fn dynamic_method_dispatch_fixture_executes_final_semantics() {
+    let result = run_standard_fixture(DYNAMIC_METHOD_DISPATCH)
+        .expect("dynamic method conformance fixture should run");
+
+    assert_eq!(result, OwnedValue::i64(33));
+}
+
+#[test]
+fn dynamic_method_dispatch_negative_entries_are_runtime_errors() {
+    let linked = link_standard_fixture(DYNAMIC_METHOD_DISPATCH);
+    let mut vm = Vm::new();
+    vm.register_standard_natives();
+
+    let missing = vm
+        .run_linked_program(
+            &linked,
+            "missing_method",
+            &[OwnedValue::record(
+                "Label",
+                [("text", OwnedValue::String("quest".to_owned()))],
+            )],
+        )
+        .expect_err("missing dynamic method should fail at runtime");
+    assert!(matches!(
+        missing.kind(),
+        VmErrorKind::UnknownMethod { method } if method == "no_such_method"
+    ));
+    assert!(
+        missing.source_span.is_some(),
+        "missing dynamic method should keep the call span"
+    );
+
+    let wrong_receiver = vm
+        .run_linked_program(&linked, "wrong_receiver", &[OwnedValue::i64(42)])
+        .expect_err("wrong dynamic receiver should fail at runtime");
+    assert!(matches!(
+        wrong_receiver.kind(),
+        VmErrorKind::UnknownMethod { method } if method == "starts_with"
+    ));
+    assert!(
+        wrong_receiver.source_span.is_some(),
+        "wrong dynamic receiver should keep the call span"
+    );
 }
 
 fn compile_standard_fixture(

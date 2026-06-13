@@ -677,7 +677,7 @@ After commit, change this checkbox to `[x]`.
 
 ---
 
-## [ ] Phase 9 — Update conformance, docs, progress, and benchmarks
+## [x] Phase 9 — Update conformance, docs, progress, and benchmarks
 
 Add conformance coverage for final dynamic method semantics:
 
@@ -739,23 +739,23 @@ After commit, change this checkbox to `[x]`.
 
 All of these must be true before the goal is complete:
 
-- [ ] Static known receiver calls still compile to resolved `CallMethodId`.
-- [ ] Static known receiver calls to provably missing methods may remain compile-time errors.
-- [ ] Unknown receiver calls compile to explicit dynamic method bytecode.
-- [ ] Linked bytecode accepts dynamic method calls.
-- [ ] Dynamic std/value methods work at runtime.
-- [ ] Dynamic script impl methods work at runtime.
-- [ ] Dynamic host methods work through registered IDs and HostAccess.
-- [ ] Dynamic method coverage audit shows no registered std/value, script, or
+- [x] Static known receiver calls still compile to resolved `CallMethodId`.
+- [x] Static known receiver calls to provably missing methods may remain compile-time errors.
+- [x] Unknown receiver calls compile to explicit dynamic method bytecode.
+- [x] Linked bytecode accepts dynamic method calls.
+- [x] Dynamic std/value methods work at runtime.
+- [x] Dynamic script impl methods work at runtime.
+- [x] Dynamic host methods work through registered IDs and HostAccess.
+- [x] Dynamic method coverage audit shows no registered std/value, script, or
       host method family is accidentally omitted.
-- [ ] Missing methods produce source-spanned runtime errors.
-- [ ] Wrong receiver types produce source-spanned runtime errors.
-- [ ] Named/default args work after dynamic method target resolution.
-- [ ] Dynamic dispatch cache is guarded by receiver type/shape/schema epoch as applicable.
-- [ ] Hot reload invalidates stale dynamic method cache entries.
-- [ ] No normal source-level dynamic method call can cause `ProgramNotLinked`.
-- [ ] No test relies on link-time rejection of unknown receiver method calls.
-- [ ] Full workspace fmt, clippy, and tests pass.
+- [x] Missing methods produce source-spanned runtime errors.
+- [x] Wrong receiver types produce source-spanned runtime errors.
+- [x] Named/default args work after dynamic method target resolution.
+- [x] Dynamic dispatch cache is guarded by receiver type/shape/schema epoch as applicable.
+- [x] Hot reload invalidates stale dynamic method cache entries.
+- [x] No normal source-level dynamic method call can cause `ProgramNotLinked`.
+- [x] No test relies on link-time rejection of unknown receiver method calls.
+- [x] Full workspace fmt, clippy, and tests pass.
 
 ## Final expected examples
 

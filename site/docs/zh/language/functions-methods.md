@@ -47,3 +47,27 @@ player.inventory.grant("gold", 10);
 ```
 
 VM 会解析 receiver 类型和 method ID，然后通过 `HostAccess` 路由调用。
+
+## 动态 Receiver 调用
+
+如果编译器知道 receiver 类型，已存在的方法会使用 linked stable ID 快路径，
+可证明不存在的方法仍然可以是编译期错误。如果 receiver 类型未知，源码中静态
+写出的 method call 仍然会编译并 link：
+
+```vela
+fn starts_with_q(value) {
+    return value.starts_with("q");
+}
+```
+
+运行时 VM 会根据实际 receiver 解析方法。字符串、脚本值和已注册的 host ref
+都可以通过这个路径派发。不支持该方法的 receiver 会产生带源码 span 的运行时
+错误。
+
+动态 script method 会在目标解析后处理 named argument 和默认参数：
+
+```vela
+fn wrapped(value) {
+    return value.wrap(suffix = "}", prefix = "{");
+}
+```

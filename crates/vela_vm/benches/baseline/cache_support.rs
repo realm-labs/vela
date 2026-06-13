@@ -7,8 +7,8 @@ use vela_bytecode::{
 };
 use vela_common::GlobalSlot;
 use vela_vm::{
-    HostInlineCacheEntry, MethodInlineCacheEntry, NativeInlineCacheEntry,
-    RecordFieldInlineCacheEntry, VmBytecodeProfiler, VmInlineCaches,
+    DynamicMethodInlineCacheEntry, HostInlineCacheEntry, MethodInlineCacheEntry,
+    NativeInlineCacheEntry, RecordFieldInlineCacheEntry, VmBytecodeProfiler, VmInlineCaches,
 };
 
 #[derive(Debug, Default)]
@@ -17,6 +17,7 @@ pub(crate) struct BenchInlineCaches {
     host_accesses: Vec<Cell<Option<HostInlineCacheEntry>>>,
     record_fields: Vec<Cell<Option<RecordFieldInlineCacheEntry>>>,
     method_dispatches: Vec<Cell<Option<MethodInlineCacheEntry>>>,
+    dynamic_method_dispatches: RefCell<Vec<Option<DynamicMethodInlineCacheEntry>>>,
     native_calls: RefCell<Vec<Option<NativeInlineCacheEntry>>>,
     stats: Cell<BenchCacheStats>,
 }
@@ -31,6 +32,8 @@ pub(crate) struct BenchCacheStats {
     pub(crate) record_field_hits: usize,
     pub(crate) method_dispatch_sets: usize,
     pub(crate) method_dispatch_hits: usize,
+    pub(crate) dynamic_method_dispatch_sets: usize,
+    pub(crate) dynamic_method_dispatch_hits: usize,
     pub(crate) native_call_sets: usize,
     pub(crate) native_call_hits: usize,
 }
@@ -41,6 +44,7 @@ impl BenchCacheStats {
             + self.host_access_sets
             + self.record_field_sets
             + self.method_dispatch_sets
+            + self.dynamic_method_dispatch_sets
             + self.native_call_sets
     }
 
@@ -49,6 +53,7 @@ impl BenchCacheStats {
             + self.host_access_hits
             + self.record_field_hits
             + self.method_dispatch_hits
+            + self.dynamic_method_dispatch_hits
             + self.native_call_hits
     }
 }
@@ -59,6 +64,7 @@ enum BenchCacheFamily {
     HostAccess,
     RecordField,
     MethodDispatch,
+    DynamicMethodDispatch,
     NativeCall,
 }
 
@@ -69,6 +75,7 @@ impl BenchInlineCaches {
             host_accesses: empty_cell_cache(len),
             record_fields: empty_cell_cache(len),
             method_dispatches: empty_cell_cache(len),
+            dynamic_method_dispatches: RefCell::new(vec![None; len]),
             native_calls: RefCell::new(vec![None; len]),
             stats: Cell::new(BenchCacheStats::default()),
         }
@@ -89,6 +96,9 @@ impl BenchInlineCaches {
             BenchCacheFamily::HostAccess => stats.host_access_hits += 1,
             BenchCacheFamily::RecordField => stats.record_field_hits += 1,
             BenchCacheFamily::MethodDispatch => stats.method_dispatch_hits += 1,
+            BenchCacheFamily::DynamicMethodDispatch => {
+                stats.dynamic_method_dispatch_hits += 1;
+            }
             BenchCacheFamily::NativeCall => stats.native_call_hits += 1,
         }
         self.stats.set(stats);
@@ -114,6 +124,17 @@ impl BenchInlineCaches {
         }
     }
 
+    fn record_dynamic_method_set(&self, site: CacheSiteId, entry: DynamicMethodInlineCacheEntry) {
+        if let Some(slot) = self
+            .dynamic_method_dispatches
+            .borrow_mut()
+            .get_mut(site.index())
+        {
+            *slot = Some(entry);
+            self.record_set(BenchCacheFamily::DynamicMethodDispatch);
+        }
+    }
+
     fn record_set(&self, family: BenchCacheFamily) {
         let mut stats = self.stats.get();
         match family {
@@ -121,6 +142,9 @@ impl BenchInlineCaches {
             BenchCacheFamily::HostAccess => stats.host_access_sets += 1,
             BenchCacheFamily::RecordField => stats.record_field_sets += 1,
             BenchCacheFamily::MethodDispatch => stats.method_dispatch_sets += 1,
+            BenchCacheFamily::DynamicMethodDispatch => {
+                stats.dynamic_method_dispatch_sets += 1;
+            }
             BenchCacheFamily::NativeCall => stats.native_call_sets += 1,
         }
         self.stats.set(stats);
@@ -193,6 +217,23 @@ impl VmInlineCaches for BenchInlineCaches {
             site,
             entry,
         );
+    }
+
+    fn dynamic_method_dispatch(&self, site: CacheSiteId) -> Option<DynamicMethodInlineCacheEntry> {
+        let entry = self
+            .dynamic_method_dispatches
+            .borrow()
+            .get(site.index())
+            .cloned()
+            .flatten();
+        if entry.is_some() {
+            self.record_hit(BenchCacheFamily::DynamicMethodDispatch);
+        }
+        entry
+    }
+
+    fn set_dynamic_method_dispatch(&self, site: CacheSiteId, entry: DynamicMethodInlineCacheEntry) {
+        self.record_dynamic_method_set(site, entry);
     }
 
     fn native_call(&self, site: CacheSiteId) -> Option<NativeInlineCacheEntry> {
@@ -294,6 +335,10 @@ fn rewrite_linked_instruction_cache_sites(
                 ..
             }
             | InstructionKind::CallMethod {
+                cache_site: Some(site),
+                ..
+            }
+            | InstructionKind::CallDynamicMethod {
                 cache_site: Some(site),
                 ..
             } => remap_cache_site(site, remapped),

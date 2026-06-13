@@ -129,6 +129,13 @@ type guards and host conversions run after materialization
 Until a target is known, dynamic calls must not erase argument names or
 prematurely transform them into signature-specific call slots.
 
+Current argument support is complete for linked script impl methods, including
+named argument reordering and default values after dynamic target resolution.
+Standard value methods and host methods currently accept dynamic positional
+arguments only; dynamic named/default metadata for those families is an
+explicit follow-up until their registry signatures expose the same
+materialization data as script methods.
+
 ## Cache Guards
 
 Dynamic method inline caches are guarded by both the source method name and the
@@ -205,3 +212,24 @@ Accepted hot reloads must invalidate stale dynamic method cache entries before
 new calls can reuse a cache-site index. Reused dynamic cache sites repopulate
 from the new linked program and current host schema metadata. Rejected reloads
 leave the active linked program and its runtime caches unchanged.
+
+## Coverage Audit
+
+Standard value dynamic dispatch is table-driven in
+`crates/vela_vm/src/dynamic_method_resolution.rs`. Every standard value method
+family with a resolved `CallMethodId` path is represented there by stable
+`MethodId`: string, bytes, array, map, set, Option, Result, and range. The
+current exclusions are not omitted dispatch families; they are argument
+metadata exclusions for standard named/default dynamic arguments as noted
+above.
+
+Linked script method dynamic lookup uses the linked program's
+`script_method_dispatches_by_type_and_name` table. The linker populates this
+from every script impl method in the program, so lookup is not limited to a
+single fixture method name or type.
+
+Host dynamic lookup uses the active type registry to map the receiver host type
+and source method name to a stable `HostMethodId`. Execution then goes through
+the host method boundary, preserving HostAccess permission/capability checks,
+generation checks, and schema epoch guards. Only registered host methods
+visible in the current runtime registry are dynamically callable.

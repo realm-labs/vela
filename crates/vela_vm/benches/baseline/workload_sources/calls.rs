@@ -112,6 +112,129 @@ fn main() {
 }
 "#;
 
+pub(crate) const DYNAMIC_STRING_METHOD_MONOMORPHIC_SOURCE: &str = r#"
+fn matches_prefix(value) {
+    return value.starts_with("q");
+}
+
+fn main() {
+    let total = 0;
+    for tick in 0..160 {
+        if matches_prefix("quest") {
+            total += tick + 1;
+        }
+    }
+    return total;
+}
+"#;
+
+pub(crate) const DYNAMIC_SCRIPT_METHOD_MONOMORPHIC_SOURCE: &str = r#"
+struct Label {
+    text: string,
+}
+
+impl Label {
+    fn starts_with(self, prefix: string) -> bool {
+        return self.text.starts_with(prefix);
+    }
+}
+
+fn matches_prefix(value) {
+    return value.starts_with("q");
+}
+
+fn main() {
+    let total = 0;
+    for tick in 0..128 {
+        let label = Label { text: "quest" };
+        if matches_prefix(label) {
+            total += tick + 1;
+        }
+    }
+    return total;
+}
+"#;
+
+pub(crate) const DYNAMIC_METHOD_POLYMORPHIC_SOURCE: &str = r#"
+struct Label {
+    text: string,
+}
+
+impl Label {
+    fn starts_with(self, prefix: string) -> bool {
+        return self.text.starts_with(prefix);
+    }
+}
+
+fn matches_prefix(value) {
+    return value.starts_with("q");
+}
+
+fn main() {
+    let total = 0;
+    for tick in 0..96 {
+        let quick = Label { text: "quick" };
+        let raid = Label { text: "raid" };
+        if matches_prefix("quest") {
+            total += 1;
+        }
+        if matches_prefix(quick) {
+            total += 1;
+        }
+        if matches_prefix(raid) {
+            total += 10;
+        }
+        total += tick - tick;
+    }
+    return total;
+}
+"#;
+
+pub(crate) const DYNAMIC_METHOD_CACHE_MISS_SOURCE: &str = r#"
+struct LabelA {
+    text: string,
+}
+
+struct LabelB {
+    text: string,
+}
+
+impl LabelA {
+    fn starts_with(self, prefix: string) -> bool {
+        return self.text.starts_with(prefix);
+    }
+}
+
+impl LabelB {
+    fn starts_with(self, prefix: string) -> bool {
+        return self.text.starts_with(prefix);
+    }
+}
+
+fn matches_prefix(value) {
+    return value.starts_with("q");
+}
+
+fn main() {
+    let total = 0;
+    for tick in 0..80 {
+        let first = LabelA { text: "quest" };
+        let second = LabelB { text: "quick" };
+        if matches_prefix(first) {
+            total += 1;
+        }
+        if matches_prefix(second) {
+            total += 1;
+        }
+        if matches_prefix("q-string") {
+            total += 1;
+        }
+        total += tick - tick;
+    }
+    return total;
+}
+"#;
+
 pub(crate) const TRAIT_METHOD_DISPATCH_SOURCE: &str = r#"
 trait AccountScoring {
     fn score(self, bonus) -> i64;

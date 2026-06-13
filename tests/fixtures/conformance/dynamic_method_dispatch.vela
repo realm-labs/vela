@@ -1,0 +1,89 @@
+struct Label {
+    text: string,
+}
+
+struct Badge {
+    code: string,
+}
+
+impl Label {
+    fn starts_with(self, prefix: string) -> bool {
+        return self.text.starts_with(prefix);
+    }
+
+    fn wrap(self, prefix: string = "[", suffix: string = "]") -> string {
+        return [prefix, self.text, suffix].join("");
+    }
+}
+
+impl Badge {
+    fn render(self, suffix: string = "!") -> string {
+        return [self.code, suffix].join("");
+    }
+}
+
+fn dynamic_std(value) {
+    return value.starts_with("q");
+}
+
+fn dynamic_script(value) {
+    return value.starts_with("q");
+}
+
+fn dynamic_named(value) {
+    return value.wrap(suffix = "}", prefix = "{");
+}
+
+fn dynamic_defaulted(value) {
+    return value.wrap();
+}
+
+fn dynamic_other_script(value) {
+    return value.render();
+}
+
+fn heterogeneous_count() {
+    let values = [
+        Label { text: "quest" },
+        Label { text: "raid" },
+        "quick",
+    ];
+
+    let count = 0;
+    for value in values {
+        if value.starts_with("q") {
+            count += 1;
+        }
+    }
+    return count;
+}
+
+fn missing_method(value) {
+    return value.no_such_method();
+}
+
+fn wrong_receiver(value) {
+    return value.starts_with("q");
+}
+
+fn main() {
+    let total = 0;
+    let label = Label { text: "quest" };
+    let badge = Badge { code: "q42" };
+    if dynamic_std("quest") {
+        total += 1;
+    }
+    if dynamic_script(label) {
+        total += 2;
+    }
+    if dynamic_named(label) == "{quest}" {
+        total += 4;
+    }
+    if dynamic_defaulted(label) == "[quest]" {
+        total += 8;
+    }
+    if dynamic_other_script(badge) == "q42!" {
+        total += 16;
+    }
+    return total + heterogeneous_count();
+}

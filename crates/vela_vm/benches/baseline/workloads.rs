@@ -3,6 +3,8 @@ use crate::workload_sources::{
     ARRAY_GROUP_BY_SOURCE, ARRAY_JOIN_SOURCE, ARRAY_REVERSE_SOURCE, ARRAY_SLICE_SOURCE,
     ARRAY_SORT_SOURCE, ARRAY_SUM_SOURCE, BYTES_ACCESS_SOURCE, BYTES_MATERIALIZATION_SOURCE,
     BYTES_METHODS_SOURCE, CALLBACK_COLLECTIONS_SOURCE, DIRECT_CLOSURE_CALLS_SOURCE,
+    DYNAMIC_METHOD_CACHE_MISS_SOURCE, DYNAMIC_METHOD_POLYMORPHIC_SOURCE,
+    DYNAMIC_SCRIPT_METHOD_MONOMORPHIC_SOURCE, DYNAMIC_STRING_METHOD_MONOMORPHIC_SOURCE,
     HOST_ACCESS_HOT_OFFSETS_SOURCE, HOST_DYNAMIC_KEY_ACCESS_SOURCE, HOST_FIELD_READ_WRITE_SOURCE,
     HOST_GLOBAL_READ_WRITE_SOURCE, HOST_METHOD_CALLS_SOURCE, HOST_NESTED_READ_WRITE_SOURCE,
     HOST_RMW_MUTATION_SOURCE, MAP_CALLBACKS_SOURCE, MAP_FIND_ENTRIES_SOURCE,
@@ -482,6 +484,66 @@ fn main() {
         name: "script_method_dispatch_cache_hot_offsets",
         mode: ExecutionMode::ScriptProgramCacheEnabled,
         source: SCRIPT_METHOD_DISPATCH_SOURCE,
+    },
+    Workload {
+        name: "dynamic_string_method_monomorphic",
+        mode: ExecutionMode::ScriptProgram,
+        source: DYNAMIC_STRING_METHOD_MONOMORPHIC_SOURCE,
+    },
+    Workload {
+        name: "dynamic_string_method_monomorphic_hot_offsets",
+        mode: ExecutionMode::ScriptProgramProfileOnly,
+        source: DYNAMIC_STRING_METHOD_MONOMORPHIC_SOURCE,
+    },
+    Workload {
+        name: "dynamic_string_method_monomorphic_cache_hot_offsets",
+        mode: ExecutionMode::ScriptProgramCacheEnabled,
+        source: DYNAMIC_STRING_METHOD_MONOMORPHIC_SOURCE,
+    },
+    Workload {
+        name: "dynamic_script_method_monomorphic",
+        mode: ExecutionMode::ScriptProgram,
+        source: DYNAMIC_SCRIPT_METHOD_MONOMORPHIC_SOURCE,
+    },
+    Workload {
+        name: "dynamic_script_method_monomorphic_hot_offsets",
+        mode: ExecutionMode::ScriptProgramProfileOnly,
+        source: DYNAMIC_SCRIPT_METHOD_MONOMORPHIC_SOURCE,
+    },
+    Workload {
+        name: "dynamic_script_method_monomorphic_cache_hot_offsets",
+        mode: ExecutionMode::ScriptProgramCacheEnabled,
+        source: DYNAMIC_SCRIPT_METHOD_MONOMORPHIC_SOURCE,
+    },
+    Workload {
+        name: "dynamic_method_polymorphic",
+        mode: ExecutionMode::ScriptProgram,
+        source: DYNAMIC_METHOD_POLYMORPHIC_SOURCE,
+    },
+    Workload {
+        name: "dynamic_method_polymorphic_hot_offsets",
+        mode: ExecutionMode::ScriptProgramProfileOnly,
+        source: DYNAMIC_METHOD_POLYMORPHIC_SOURCE,
+    },
+    Workload {
+        name: "dynamic_method_polymorphic_cache_hot_offsets",
+        mode: ExecutionMode::ScriptProgramCacheEnabled,
+        source: DYNAMIC_METHOD_POLYMORPHIC_SOURCE,
+    },
+    Workload {
+        name: "dynamic_method_cache_miss",
+        mode: ExecutionMode::ScriptProgram,
+        source: DYNAMIC_METHOD_CACHE_MISS_SOURCE,
+    },
+    Workload {
+        name: "dynamic_method_cache_miss_hot_offsets",
+        mode: ExecutionMode::ScriptProgramProfileOnly,
+        source: DYNAMIC_METHOD_CACHE_MISS_SOURCE,
+    },
+    Workload {
+        name: "dynamic_method_cache_miss_cache_hot_offsets",
+        mode: ExecutionMode::ScriptProgramCacheEnabled,
+        source: DYNAMIC_METHOD_CACHE_MISS_SOURCE,
     },
     Workload {
         name: "trait_method_dispatch",

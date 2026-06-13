@@ -41,7 +41,8 @@ Method-dispatch aggregate rows use the `method_dispatch` prefix so filtered
 quick runs include interpreter, profile-only, and cache-enabled rows together.
 Cache-enabled benchmark rows use the same `Cell`-backed storage shape as the
 engine runtime for copyable global-read, host-access, record-field, and
-method-dispatch entries; native-call entries still use cloneable target storage.
+resolved method-dispatch entries. Dynamic method-dispatch and native-call
+entries use cloneable target storage.
 
 Tracked workload groups:
 
@@ -51,6 +52,7 @@ script/native function calls
 array, map, set, string, Option, and Result stdlib methods
 callbacks, direct closure calls, and higher-order collection methods
 cache-enabled stdlib/native call, method-dispatch aggregate/detail, script record-field aggregate/detail, range-method detail, collection lookup/view/aggregation/combination/mutation/materialization, string/bytes method and string-transform detail, Option/Result helper, callback collection/detail, host-boundary aggregate/detail, plus linked script-call and direct-closure profile rows with bytecode profile counters
+dynamic method dispatch rows for monomorphic string receivers, monomorphic script receivers, polymorphic standard/script receivers, and deliberate guard-miss pressure, plus the existing static CallMethodId method-dispatch rows for comparison
 record and enum construction and field access
 managed heap allocation and materialization
 declared host globals, host field reads, nested path reads/writes, RMW mutations, dynamic key access, and method calls
@@ -69,6 +71,7 @@ runtime options: heap, cache, debugger, JIT
 warmup, repeats, iterations, and input size
 min, mean, median, p95, checksum
 measurement_kind, cache_sets, cache_hits, cache-family set/hit counters,
+including `cache_dynamic_method_sets` and `cache_dynamic_method_hits`,
 profile_hits, and cache_delta rows with mode, base_mode, checksum_match,
 delta_kind, delta_band, base_profile_hits, and profile_hits_match when the
 harness emits paired cache-enabled rows; measurement_kind/delta_kind separate
