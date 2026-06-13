@@ -59,6 +59,21 @@ pub(crate) fn standard_cache_entry_matches_method_id(
         (StandardMethodReceiver::String, StandardMethodInlineCacheTarget::Len) => {
             return method_id == std_method_ids().string_len;
         }
+        (StandardMethodReceiver::String, StandardMethodInlineCacheTarget::ToUpper) => {
+            return method_id == std_method_ids().string_to_upper;
+        }
+        (StandardMethodReceiver::String, StandardMethodInlineCacheTarget::ToLower) => {
+            return method_id == std_method_ids().string_to_lower;
+        }
+        (StandardMethodReceiver::String, StandardMethodInlineCacheTarget::Trim) => {
+            return method_id == std_method_ids().string_trim;
+        }
+        (StandardMethodReceiver::String, StandardMethodInlineCacheTarget::TrimStart) => {
+            return method_id == std_method_ids().string_trim_start;
+        }
+        (StandardMethodReceiver::String, StandardMethodInlineCacheTarget::TrimEnd) => {
+            return method_id == std_method_ids().string_trim_end;
+        }
         (StandardMethodReceiver::Range, StandardMethodInlineCacheTarget::Len) => {
             return method_id == std_method_ids().range_len;
         }
@@ -79,6 +94,21 @@ pub(crate) fn standard_cache_entry_matches_method_id(
         }
         (StandardMethodReceiver::Bytes, StandardMethodInlineCacheTarget::ReadU32Be) => {
             return method_id == std_method_ids().bytes_read_u32_be;
+        }
+        (StandardMethodReceiver::Bytes, StandardMethodInlineCacheTarget::Slice) => {
+            return method_id == std_method_ids().bytes_slice;
+        }
+        (StandardMethodReceiver::Bytes, StandardMethodInlineCacheTarget::ToHex) => {
+            return method_id == std_method_ids().bytes_to_hex;
+        }
+        (StandardMethodReceiver::Array, StandardMethodInlineCacheTarget::Len) => {
+            return method_id == std_method_ids().array_len;
+        }
+        (StandardMethodReceiver::Array, StandardMethodInlineCacheTarget::Contains) => {
+            return method_id == std_method_ids().array_contains;
+        }
+        (StandardMethodReceiver::Array, StandardMethodInlineCacheTarget::IndexOf) => {
+            return method_id == std_method_ids().array_index_of;
         }
         (StandardMethodReceiver::Array, StandardMethodInlineCacheTarget::Join) => {
             return method_id == std_method_ids().array_join;
