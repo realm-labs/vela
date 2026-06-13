@@ -18,14 +18,11 @@ mod version;
 mod workloads;
 
 use config::BenchConfig;
-use workloads::WORKLOADS;
-
 fn main() -> Result<(), Box<dyn Error>> {
     let config = BenchConfig::from_args();
     report::print_header(&config);
 
-    let workloads = WORKLOADS
-        .iter()
+    let workloads = workloads::all_workloads()
         .filter(|workload| config.should_run(workload.name))
         .collect::<Vec<_>>();
     if workloads.is_empty() {

@@ -50,9 +50,10 @@ pub(crate) struct RhaiRuntime {
 
 impl RhaiRuntime {
     pub(crate) fn new() -> Self {
-        Self {
-            engine: Engine::new(),
-        }
+        let mut engine = Engine::new();
+        engine.set_max_call_levels(256);
+        engine.set_max_expr_depths(256, 256);
+        Self { engine }
     }
 
     pub(crate) fn run(
