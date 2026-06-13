@@ -75,6 +75,47 @@ fn main() {
 }
 
 #[test]
+fn engine_reflect_call_preserves_native_iterator_returns() {
+    let engine = Engine::builder()
+        .register_native_fn(
+            NativeFunctionDesc::new("game::scores", NativeFunctionId::new(97))
+                .returns(TypeHint::iterator())
+                .access(FunctionAccess::public().reflect_callable(true)),
+            |_| Ok(OwnedValue::iterator([2_i64, 3, 5])),
+        )
+        .reflection_permissions(ReflectPermissionSet::all())
+        .build()
+        .expect("engine should build");
+    let program = engine
+        .compile_source(
+            SourceId::new(1),
+            r#"
+fn main() {
+    let scores = reflect::function("game::scores");
+    let total = 0;
+    for score in reflect::call(scores) {
+        total += score;
+    }
+    return reflect::returns(scores) == "iterator" && total == 10;
+}
+"#,
+        )
+        .expect("program should compile");
+    let mut adapter = MockStateAdapter::new();
+    let mut tx = HostAccess::new();
+    let mut host = HostExecution {
+        adapter: &mut adapter,
+        access: &mut tx,
+        script_globals: None,
+    };
+
+    assert_eq!(
+        run_linked_program_with_host(&engine, &program, &[], &mut host),
+        Ok(OwnedValue::Bool(true))
+    );
+}
+
+#[test]
 fn engine_reflect_call_checks_typed_native_parameter_contracts() {
     let engine = Engine::builder()
         .register_typed_native_fn::<(i64,), _>(
