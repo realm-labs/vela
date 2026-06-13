@@ -2,7 +2,7 @@ use super::*;
 use crate::value::Value as RuntimeValue;
 use std::cell::{Cell, RefCell};
 use vela_bytecode::{CacheSiteId, CacheSiteKind, HostTargetPlanId};
-use vela_host::resolved::{HostMutationOp, HostSchemaEpoch};
+use vela_host::resolved::{HostAccessOp, HostMutationOp, HostSchemaEpoch, ResolvedHostAccess};
 use vela_host::target::HostTargetPlan;
 
 fn level_target(code: &mut UnlinkedCodeObject, host_ref: HostRef) -> HostTargetPlanId {
@@ -81,6 +81,10 @@ impl RecordingHostAccessCaches {
 
     fn recorded_entry(&self) -> Option<HostInlineCacheEntry> {
         *self.entry.borrow()
+    }
+
+    fn seed_entry(&self, entry: HostInlineCacheEntry) {
+        *self.entry.borrow_mut() = Some(entry);
     }
 
     fn set_count(&self) -> usize {
@@ -305,6 +309,142 @@ fn host_access_cache_refreshes_when_schema_epoch_changes() {
     assert_eq!(
         caches.recorded_entry().map(|entry| entry.schema_epoch),
         Some(HostSchemaEpoch::new(2))
+    );
+}
+
+fn stale_host_cache_entry(
+    host_ref: HostRef,
+    target: HostInlineCacheTarget,
+    op: HostAccessOp,
+) -> HostInlineCacheEntry {
+    HostInlineCacheEntry {
+        root_type: host_ref.type_id,
+        target,
+        op,
+        schema_epoch: HostSchemaEpoch::new(0),
+        resolved: ResolvedHostAccess::generic_target(HostSchemaEpoch::new(0)),
+    }
+}
+
+fn run_host_read_with_caches(
+    linked: &LinkedProgram,
+    caches: &RecordingHostAccessCaches,
+    host_ref: HostRef,
+    adapter: &mut MockStateAdapter,
+) -> VmResult<OwnedValue> {
+    let vm = Vm::new();
+    let mut tx = HostAccess::new();
+    let mut budget = ExecutionBudget::unbounded();
+    let mut host = HostExecution {
+        adapter,
+        access: &mut tx,
+        script_globals: None,
+    };
+    vm.run_linked_program_with_host_budget_and_caches(
+        linked,
+        "main",
+        &[OwnedValue::HostRef(host_ref)],
+        &mut host,
+        &mut budget,
+        Some(caches),
+    )
+}
+
+#[test]
+fn host_access_cache_miss_on_wrong_root_type_repopulates_entry() {
+    let (program, host_ref) = host_read_program();
+    let linked = link_test_program(&program);
+    let caches = RecordingHostAccessCaches::new(1);
+    let mut entry = stale_host_cache_entry(
+        host_ref,
+        HostInlineCacheTarget::TargetPlan(HostTargetPlanId::new(0)),
+        HostAccessOp::Read,
+    );
+    entry.root_type = HostTypeId::new(99);
+    caches.seed_entry(entry);
+    let mut adapter = host_adapter(
+        host_ref,
+        HostValue::Scalar(vela_common::ScalarValue::I64(9)),
+    );
+
+    let result = run_host_read_with_caches(&linked, &caches, host_ref, &mut adapter);
+
+    assert_eq!(
+        result,
+        Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(9)))
+    );
+    assert_eq!(caches.set_count(), 1);
+    assert_eq!(
+        caches.recorded_entry(),
+        Some(stale_host_cache_entry(
+            host_ref,
+            HostInlineCacheTarget::TargetPlan(HostTargetPlanId::new(0)),
+            HostAccessOp::Read,
+        ))
+    );
+}
+
+#[test]
+fn host_access_cache_miss_on_wrong_target_repopulates_entry() {
+    let (program, host_ref) = host_read_program();
+    let linked = link_test_program(&program);
+    let caches = RecordingHostAccessCaches::new(1);
+    caches.seed_entry(stale_host_cache_entry(
+        host_ref,
+        HostInlineCacheTarget::RootObject,
+        HostAccessOp::Read,
+    ));
+    let mut adapter = host_adapter(
+        host_ref,
+        HostValue::Scalar(vela_common::ScalarValue::I64(9)),
+    );
+
+    let result = run_host_read_with_caches(&linked, &caches, host_ref, &mut adapter);
+
+    assert_eq!(
+        result,
+        Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(9)))
+    );
+    assert_eq!(caches.set_count(), 1);
+    assert_eq!(
+        caches.recorded_entry(),
+        Some(stale_host_cache_entry(
+            host_ref,
+            HostInlineCacheTarget::TargetPlan(HostTargetPlanId::new(0)),
+            HostAccessOp::Read,
+        ))
+    );
+}
+
+#[test]
+fn host_access_cache_miss_on_wrong_operation_repopulates_entry() {
+    let (program, host_ref) = host_read_program();
+    let linked = link_test_program(&program);
+    let caches = RecordingHostAccessCaches::new(1);
+    caches.seed_entry(stale_host_cache_entry(
+        host_ref,
+        HostInlineCacheTarget::TargetPlan(HostTargetPlanId::new(0)),
+        HostAccessOp::Write,
+    ));
+    let mut adapter = host_adapter(
+        host_ref,
+        HostValue::Scalar(vela_common::ScalarValue::I64(9)),
+    );
+
+    let result = run_host_read_with_caches(&linked, &caches, host_ref, &mut adapter);
+
+    assert_eq!(
+        result,
+        Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(9)))
+    );
+    assert_eq!(caches.set_count(), 1);
+    assert_eq!(
+        caches.recorded_entry(),
+        Some(stale_host_cache_entry(
+            host_ref,
+            HostInlineCacheTarget::TargetPlan(HostTargetPlanId::new(0)),
+            HostAccessOp::Read,
+        ))
     );
 }
 
