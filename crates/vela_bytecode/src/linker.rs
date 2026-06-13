@@ -224,6 +224,7 @@ impl<'linker, 'registry> LinkContext<'linker, 'registry> {
         for code in top_level {
             self.linked.push_function(code);
         }
+        self.link_script_method_dispatches(program)?;
         for code in self.extra_functions {
             self.linked.push_function(code);
         }
@@ -236,6 +237,25 @@ impl<'linker, 'registry> LinkContext<'linker, 'registry> {
         }
 
         Ok(self.linked)
+    }
+
+    fn link_script_method_dispatches(
+        &mut self,
+        program: &UnlinkedProgram,
+    ) -> Result<(), LinkError> {
+        for (type_name, method_name, method) in program.script_methods().methods() {
+            let Some(function) = self.script_functions_by_name.get(&method.function).copied()
+            else {
+                continue;
+            };
+            let dispatch = self.intern_method_dispatch(
+                MethodDispatchKey::Script(method.id, function),
+                method_name.to_owned(),
+            )?;
+            self.linked
+                .insert_script_method_dispatch(type_name, method_name, dispatch);
+        }
+        Ok(())
     }
 
     fn link_code(

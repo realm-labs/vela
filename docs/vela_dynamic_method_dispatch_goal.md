@@ -372,7 +372,7 @@ After commit, change this checkbox to `[x]`.
 
 ---
 
-## [ ] Phase 4 — Add linked script method dynamic resolution
+## [x] Phase 4 — Add linked script method dynamic resolution
 
 Linked bytecode needs a script method lookup table.
 

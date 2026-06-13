@@ -279,6 +279,104 @@ fn main(value) {
 }
 
 #[test]
+fn linked_dynamic_script_method_resolves_by_runtime_receiver_type() {
+    let program = compile_standard_program_source(
+        SourceId::new(1),
+        r#"
+struct Label {
+    text: string,
+}
+
+impl Label {
+    fn starts_with(self, prefix: string) -> bool {
+        return self.text.starts_with(prefix);
+    }
+}
+
+fn f(x) {
+    return x.starts_with("q");
+}
+
+fn quest() {
+    return f(Label { text: "quest" });
+}
+
+fn raid() {
+    return f(Label { text: "raid" });
+}
+
+fn bad() {
+    return f(42);
+}
+"#,
+    )
+    .expect("dynamic script method source should compile");
+
+    assert_eq!(
+        run_dynamic_entry(&program, "quest"),
+        Ok(OwnedValue::Bool(true))
+    );
+    assert_eq!(
+        run_dynamic_entry(&program, "raid"),
+        Ok(OwnedValue::Bool(false))
+    );
+
+    let error = run_dynamic_entry(&program, "bad")
+        .expect_err("unsupported dynamic script method receiver should fail");
+    assert!(matches!(
+        error.kind(),
+        VmErrorKind::UnknownMethod { method } if method == "starts_with"
+    ));
+    assert!(
+        error.source_span.is_some(),
+        "dynamic script method failure should keep the call span"
+    );
+}
+
+#[test]
+fn linked_dynamic_script_method_handles_heterogeneous_receivers() {
+    let program = compile_standard_program_source(
+        SourceId::new(1),
+        r#"
+struct Label {
+    text: string,
+}
+
+impl Label {
+    fn starts_with(self, prefix: string) -> bool {
+        return self.text.starts_with(prefix);
+    }
+}
+
+fn main() {
+    let values = [
+        Label { text: "quest" },
+        Label { text: "raid" },
+        "quick",
+    ];
+
+    let count = 0;
+    for value in values {
+        if value.starts_with("q") {
+            count += 1;
+        }
+    }
+
+    return count;
+}
+"#,
+    )
+    .expect("heterogeneous dynamic script method source should compile");
+
+    assert_eq!(run_dynamic_entry(&program, "main"), Ok(OwnedValue::i64(2)));
+}
+
+fn run_dynamic_entry(program: &UnlinkedProgram, entry: &str) -> VmResult<OwnedValue> {
+    let mut budget = ExecutionBudget::unbounded();
+    run_linked_test_program_with_budget(&Vm::new(), program, entry, &[], &mut budget)
+}
+
+#[test]
 fn managed_heap_execution_runs_for_in_string_value_methods() {
     let program = compile_standard_program_source(
         SourceId::new(1),

@@ -1,6 +1,8 @@
 use vela_common::HostTypeId;
 use vela_def::MethodId;
 
+use vela_bytecode::{LinkedProgram, MethodDispatchHandle};
+
 use crate::heap::HeapValue;
 use crate::std_method_ids::{StdMethodIds, std_method_ids};
 use crate::{
@@ -33,7 +35,18 @@ pub(crate) enum DynamicReceiverKind {
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub(crate) enum DynamicMethodTarget {
+    Script { dispatch: MethodDispatchHandle },
     StandardValue { method_id: MethodId },
+}
+
+pub(crate) fn resolve_linked_dynamic_method(
+    receiver: &Value,
+    method: &str,
+    program: &LinkedProgram,
+    heap: Option<&HeapExecution<'_>>,
+) -> Option<DynamicMethodTarget> {
+    resolve_script_dynamic_method(receiver, method, program, heap)
+        .or_else(|| resolve_standard_dynamic_method(receiver, method, heap))
 }
 
 pub(crate) fn classify_dynamic_receiver(
@@ -89,6 +102,22 @@ pub(crate) fn resolve_standard_dynamic_method(
     let method_id =
         standard_method_id_for_receiver(classify_dynamic_receiver(receiver, heap, None), method)?;
     Some(DynamicMethodTarget::StandardValue { method_id })
+}
+
+fn resolve_script_dynamic_method(
+    receiver: &Value,
+    method: &str,
+    program: &LinkedProgram,
+    heap: Option<&HeapExecution<'_>>,
+) -> Option<DynamicMethodTarget> {
+    let type_name = match classify_dynamic_receiver(receiver, heap, None) {
+        DynamicReceiverKind::ScriptRecord { type_name }
+        | DynamicReceiverKind::ScriptEnum { type_name } => type_name,
+        _ => return None,
+    };
+    program
+        .script_method_dispatch(&type_name, method)
+        .map(|dispatch| DynamicMethodTarget::Script { dispatch })
 }
 
 fn standard_method_id_for_receiver(

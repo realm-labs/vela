@@ -447,6 +447,7 @@ impl Vm {
                     args,
                 } => {
                     script_method_calls::dispatch_linked_dynamic_method_call(
+                        self,
                         script_method_calls::LinkedScriptMethodCallContext {
                             program: call.program,
                             inline_caches: call.inline_caches,
@@ -455,6 +456,7 @@ impl Vm {
                             call_site_offset: Some(instruction_offset),
                             bytecode_profiler: call.bytecode_profiler,
                         },
+                        &mut host,
                         &mut heap,
                         &mut budget,
                         &mut frame,

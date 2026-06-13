@@ -478,19 +478,23 @@ pub(crate) fn dispatch_linked_method_call(
 }
 
 pub(crate) fn dispatch_linked_dynamic_method_call(
+    vm: &Vm,
     context: LinkedScriptMethodCallContext<'_>,
+    host: &mut Option<&mut HostExecution<'_>>,
     heap: &mut Option<&mut HeapExecution<'_>>,
     budget: &mut Option<&mut ExecutionBudget>,
     frame: &mut CallFrame,
     call: LinkedDynamicMethodCall<'_>,
 ) -> VmResult<()> {
     let call_site = context.call_site;
-    dispatch_linked_dynamic_method_call_inner(context, heap, budget, frame, call)
+    dispatch_linked_dynamic_method_call_inner(vm, context, host, heap, budget, frame, call)
         .map_err(|error| error.with_source_span_if_absent(call_site))
 }
 
 fn dispatch_linked_dynamic_method_call_inner(
+    vm: &Vm,
     context: LinkedScriptMethodCallContext<'_>,
+    host: &mut Option<&mut HostExecution<'_>>,
     heap: &mut Option<&mut HeapExecution<'_>>,
     budget: &mut Option<&mut ExecutionBudget>,
     frame: &mut CallFrame,
@@ -505,9 +509,10 @@ fn dispatch_linked_dynamic_method_call_inner(
         values_storage = dynamic_call_args_from_linked_arguments(frame, call.args)?;
         values_storage.as_slice()
     };
-    let target = dynamic_method_resolution::resolve_standard_dynamic_method(
+    let target = dynamic_method_resolution::resolve_linked_dynamic_method(
         &receiver,
         method,
+        context.program,
         heap.as_deref(),
     )
     .ok_or_else(|| {
@@ -516,6 +521,24 @@ fn dispatch_linked_dynamic_method_call_inner(
         })
     })?;
     match target {
+        DynamicMethodTarget::Script { dispatch } => {
+            let script_args = dynamic_call_args_to_call_arguments(call.args)?;
+            dispatch_linked_method_call(
+                vm,
+                context,
+                host,
+                heap,
+                budget,
+                frame,
+                LinkedScriptMethodCall {
+                    dst: call.dst,
+                    receiver: call.receiver,
+                    dispatch,
+                    debug_name: call.method_name,
+                    args: script_args.as_slice(),
+                },
+            )
+        }
         DynamicMethodTarget::StandardValue { method_id } => {
             let standard_method =
                 script_builtin_methods::standard_cache_entry(method_id, &receiver, heap.as_deref())
@@ -539,6 +562,21 @@ fn dispatch_linked_dynamic_method_call_inner(
             frame.write(call.dst, result)
         }
     }
+}
+
+fn dynamic_call_args_to_call_arguments(
+    args: &[DynamicCallArgumentLinked],
+) -> VmResult<Vec<CallArgument>> {
+    let mut values = Vec::with_capacity(args.len());
+    for arg in args {
+        if arg.name.is_some() {
+            return Err(VmError::new(VmErrorKind::TypeMismatch {
+                operation: "dynamic method named arguments",
+            }));
+        }
+        values.push(CallArgument::Register(arg.value));
+    }
+    Ok(values)
 }
 
 fn dynamic_call_args_from_linked_arguments(

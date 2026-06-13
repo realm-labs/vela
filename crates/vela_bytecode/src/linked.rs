@@ -56,6 +56,7 @@ pub struct LinkedProgram {
     variants: Vec<LinkedVariant>,
     functions: Vec<LinkedCodeObject>,
     entry_points: BTreeMap<DebugNameId, ScriptFunctionHandle>,
+    script_method_dispatches_by_type_and_name: BTreeMap<(String, String), MethodDispatchHandle>,
 }
 
 impl LinkedProgram {
@@ -124,6 +125,27 @@ impl LinkedProgram {
             .iter()
             .enumerate()
             .map(|(index, dispatch)| (MethodDispatchHandle::new(index), dispatch))
+    }
+
+    pub fn insert_script_method_dispatch(
+        &mut self,
+        type_name: impl Into<String>,
+        method_name: impl Into<String>,
+        dispatch: MethodDispatchHandle,
+    ) {
+        self.script_method_dispatches_by_type_and_name
+            .insert((type_name.into(), method_name.into()), dispatch);
+    }
+
+    #[must_use]
+    pub fn script_method_dispatch(
+        &self,
+        type_name: &str,
+        method_name: &str,
+    ) -> Option<MethodDispatchHandle> {
+        self.script_method_dispatches_by_type_and_name
+            .get(&(type_name.to_owned(), method_name.to_owned()))
+            .copied()
     }
 
     pub fn push_type(&mut self, ty: LinkedType) -> TypeHandle {

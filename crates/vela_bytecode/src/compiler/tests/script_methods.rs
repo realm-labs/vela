@@ -42,6 +42,39 @@ fn main() {
 }
 
 #[test]
+fn compiler_keeps_static_script_receiver_on_method_id_path() {
+    let program = compile_program_source(
+        SourceId::new(1),
+        r#"
+struct Label { text: string }
+impl Label {
+    fn starts_with(self, prefix: string) -> bool {
+        return self.text.starts_with(prefix);
+    }
+}
+fn main() {
+    let label = Label { text: "quest" };
+    return label.starts_with("q");
+}
+"#,
+    )
+    .expect("static script receiver method should compile");
+    let method_id = stable_test_inherent_method_id("main::Label", "starts_with");
+    let main = program.function("main").expect("main function");
+    assert!(main.instructions.iter().any(|instruction| matches!(
+        instruction.kind,
+        UnlinkedInstructionKind::CallMethodId {
+            method_id: lowered,
+            ..
+        } if lowered == method_id
+    )));
+    assert!(!main.instructions.iter().any(|instruction| matches!(
+        &instruction.kind,
+        UnlinkedInstructionKind::CallDynamicMethod { method, .. } if method == "starts_with"
+    )));
+}
+
+#[test]
 fn compiler_registers_impl_methods_as_script_dispatch_targets() {
     let program = compile_program_source(
         SourceId::new(1),
