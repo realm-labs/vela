@@ -201,6 +201,7 @@ fn type_hint_name(hint: &TypeHint) -> &str {
         TypeHint::Record(key) | TypeHint::Enum(key) | TypeHint::Host(key) => &key.name,
         TypeHint::Trait(name) => name,
         TypeHint::Function => "function",
+        TypeHint::Iterator => "iterator",
     }
 }
 
