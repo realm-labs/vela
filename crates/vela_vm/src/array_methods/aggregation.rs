@@ -54,17 +54,17 @@ pub(crate) fn group_by(
     expect_arity("group_by", args, 1)?;
     let values = array_values(receiver, runtime.heap.as_deref(), "method group_by")?;
     let mut groups = BTreeMap::<String, Vec<Value>>::new();
-    for value in values {
+    iteration::try_for_each_over(values, &mut runtime, "method group_by", |runtime, value| {
         let key_value = if runtime.heap.is_some() {
             call_callback_with_protected_values(
-                &mut runtime,
+                runtime,
                 "method group_by",
                 &args[0],
                 std::slice::from_ref(&value),
                 groups.values().flat_map(|values| values.iter()),
             )?
         } else {
-            call_unary_callback(&mut runtime, "method group_by", &args[0], value, &[])?
+            call_unary_callback(runtime, "method group_by", &args[0], value, &[])?
         };
         let key = group_key(&key_value, runtime.heap.as_deref())?;
         match groups.entry(key) {
@@ -75,7 +75,8 @@ pub(crate) fn group_by(
                 entry.get_mut().push(value);
             }
         }
-    }
+        Ok(())
+    })?;
     let mut heap_groups = BTreeMap::new();
     for (key, values) in groups {
         let value = make_array_value(
