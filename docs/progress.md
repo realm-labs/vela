@@ -17,7 +17,7 @@ APIs kept only for the old implementation shape, runtime string fallback
 dispatch, and old internal `int`/`float` compatibility are not compatibility
 requirements. The primitive scalar, bytes, type-hint contract, and guard-plan
 checklist in
-[vela_primitives_type_hints_guards_plan.md](vela_primitives_type_hints_guards_plan.md)
+[archive/vela_primitives_type_hints_guards_plan.md](archive/vela_primitives_type_hints_guards_plan.md)
 is complete and validated through the default full workspace checks.
 The prior definition-registry and linked-bytecode checklist is complete and
 validated through the default full workspace checks; follow-on work should

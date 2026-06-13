@@ -2,7 +2,7 @@
 
 This document is the architecture entrypoint for the breaking definition
 registry and linked-bytecode refactor. The executable checklist lives in
-[definition-registry-linked-bytecode-refactor-plan.md](../definition-registry-linked-bytecode-refactor-plan.md).
+[definition-registry-linked-bytecode-refactor-plan.md](../archive/definition-registry-linked-bytecode-refactor-plan.md).
 
 ## Policy
 
