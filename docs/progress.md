@@ -40,7 +40,10 @@ architecture continuation. M20 inline-cache work is now in close-out mode, not
 open-ended cache expansion. Declared global reads, script record fields,
 host access, native calls, linked method dispatch, broad stdlib value methods,
 callbacks, string/bytes, Option/Result, and selected map/set/array targets have
-guarded cache entries or explicit benchmark rows. Remaining M20 work should
+guarded cache entries or explicit benchmark rows. Iterator/Sequence benchmark
+rows now cover string chars/bytes, lazy array pipelines, iterator
+short-circuit terminals, map views, range loops, and native-returned host
+iterables. Remaining M20 work should
 start from a cache-family audit and then do exactly one of these:
 
 ```text

@@ -138,6 +138,12 @@ fn register_bench_natives(vm: &mut Vm) {
             *a * 3 + *b * 2 - *c + *d,
         )))
     });
+    vm.register_borrowed_native("bench::scores", |args, _heap, _budget| {
+        if !args.is_empty() {
+            return Ok(OwnedValue::Null);
+        }
+        Ok(OwnedValue::iterator([2_i64, 3, 5, 8, 13]))
+    });
 }
 
 enum CompiledWorkload {
@@ -450,6 +456,15 @@ fn bench_compile_registry() -> Result<vela_registry::DefinitionRegistry, String>
                 ),
             )
             .with_id(function_id_for_native_name("bench::mix4")),
+        )
+        .map_err(|error| format!("{error:?}"))?;
+    registry
+        .register_function(
+            vela_registry::FunctionDef::new(
+                DefPath::function("host", ["bench"], "scores"),
+                vela_registry::FunctionSignature::new([], Some("iterator".to_owned())),
+            )
+            .with_id(function_id_for_native_name("bench::scores")),
         )
         .map_err(|error| format!("{error:?}"))?;
     Ok(registry)

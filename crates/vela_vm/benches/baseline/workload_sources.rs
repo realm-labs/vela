@@ -7,6 +7,9 @@ mod ranges;
 #[path = "workload_sources/strings.rs"]
 mod strings;
 
+#[path = "workload_sources/iterators.rs"]
+mod iterators;
+
 #[path = "workload_sources/sets.rs"]
 mod sets;
 
@@ -16,6 +19,11 @@ pub(crate) use calls::{
     DYNAMIC_STRING_METHOD_MONOMORPHIC_SOURCE, METHOD_DISPATCH_SOURCE, NATIVE_CALL_WIDE_ARGS_SOURCE,
     SCRIPT_CALL_SMALL_ARGS_SOURCE, SCRIPT_CALL_WIDE_ARGS_SOURCE, SCRIPT_METHOD_DISPATCH_SOURCE,
     TRAIT_METHOD_DISPATCH_SOURCE,
+};
+pub(crate) use iterators::{
+    ITERATOR_ARRAY_PIPELINE_SOURCE, ITERATOR_ARRAY_SHORT_CIRCUIT_SOURCE,
+    ITERATOR_HOST_ITERABLE_SOURCE, ITERATOR_MAP_VIEWS_SOURCE, ITERATOR_RANGE_FAST_PATH_SOURCE,
+    ITERATOR_STRING_BYTES_SOURCE, ITERATOR_STRING_CHARS_SOURCE,
 };
 pub(crate) use ranges::RANGE_METHODS_SOURCE;
 pub(crate) use sets::{

@@ -18,6 +18,8 @@ use crate::workload_sources::{
 
 #[path = "workloads/collection_families.rs"]
 mod collection_families;
+#[path = "workloads/iterator_sequence.rs"]
+mod iterator_sequence;
 
 pub(crate) struct Workload {
     pub(crate) name: &'static str,
@@ -75,6 +77,7 @@ pub(crate) fn workloads() -> impl Iterator<Item = &'static Workload> {
     PRE_COLLECTION_WORKLOADS
         .iter()
         .chain(collection_families::COLLECTION_FAMILY_WORKLOADS)
+        .chain(iterator_sequence::ITERATOR_SEQUENCE_WORKLOADS)
         .chain(POST_COLLECTION_WORKLOADS)
 }
 

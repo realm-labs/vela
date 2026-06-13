@@ -51,7 +51,7 @@ fn main() {
             + lines.join("").len()
             + words.join("").len()
             + sliced.len()
-            + ch.len()
+            + if ch == 'u' { 1 } else { 0 }
             + found
             + parsed
             + tick - tick;
