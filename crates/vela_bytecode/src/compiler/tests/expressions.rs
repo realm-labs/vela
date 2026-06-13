@@ -452,12 +452,12 @@ fn main() {
     assert!(
         code.instructions
             .iter()
-            .any(|instruction| matches!(instruction.kind, UnlinkedInstructionKind::Sub { .. }))
+            .any(|instruction| matches!(instruction.kind, UnlinkedInstructionKind::I64Sub { .. }))
     );
     assert!(
         code.instructions
             .iter()
-            .any(|instruction| matches!(instruction.kind, UnlinkedInstructionKind::Mul { .. }))
+            .any(|instruction| matches!(instruction.kind, UnlinkedInstructionKind::I64Mul { .. }))
     );
     assert!(
         code.instructions

@@ -7,7 +7,7 @@ use vela_syntax::ast::{AssignOp, Expr, ExprKind};
 use crate::{Register, UnlinkedInstructionKind};
 
 use super::host_paths::{HostIndexAccessKind, HostPath};
-use super::operators::compound_assignment_instruction;
+use super::operators::{compound_assignment_instruction, i64_compound_assignment_instruction};
 use super::record_shapes::RecordShape;
 use super::script_types::ScriptTypeFact;
 use super::value_types::{RuntimeTypeFact, TypeContractContext};
@@ -45,18 +45,29 @@ impl Compiler<'_, '_> {
             )));
         };
         if let Some((name, local)) = self.local_assignment_target(target) {
+            let target_value_type = self.value_type_for_expr(target);
+            let assigned_value_type = match op {
+                AssignOp::Set => self.value_type_for_expr(value),
+                AssignOp::Add | AssignOp::Sub | AssignOp::Mul | AssignOp::Rem
+                    if expressions_are_i64(
+                        target_value_type.clone(),
+                        self.value_type_for_expr(value),
+                    ) =>
+                {
+                    Some(RuntimeTypeFact::Primitive(vela_common::PrimitiveTag::I64))
+                }
+                AssignOp::Div => None,
+                AssignOp::Add | AssignOp::Sub | AssignOp::Mul | AssignOp::Rem => None,
+            };
             let script_fact = (*op == AssignOp::Set)
                 .then(|| self.script_fact_for_expr(value))
-                .flatten();
-            let value_type = (*op == AssignOp::Set)
-                .then(|| self.value_type_for_expr(value))
                 .flatten();
             let value_shape = (*op == AssignOp::Set)
                 .then(|| self.value_shape_for_expr(value))
                 .flatten();
             let facts = LocalAssignmentFacts {
                 script: script_fact,
-                value_type,
+                value_type: assigned_value_type,
                 value_shape,
             };
             let assigned =
@@ -115,12 +126,13 @@ impl Compiler<'_, '_> {
             self.script_types
                 .set_local_fact(local, name.clone(), facts.script);
             self.value_types
-                .set_local(local, name.clone(), facts.value_type);
+                .set_local(local, name.clone(), facts.value_type.clone());
             self.value_shapes
                 .set_local(local, name.clone(), facts.value_shape);
         } else {
             self.script_types.set_name_fact(name.clone(), facts.script);
-            self.value_types.set_name(name.clone(), facts.value_type);
+            self.value_types
+                .set_name(name.clone(), facts.value_type.clone());
             self.value_shapes.set_name(name.clone(), facts.value_shape);
         }
         let assigned = match op {
@@ -132,9 +144,17 @@ impl Compiler<'_, '_> {
             AssignOp::Add | AssignOp::Sub | AssignOp::Mul | AssignOp::Div | AssignOp::Rem => {
                 let rhs = self.compile_expr(value)?;
                 let dst = self.alloc_register()?;
-                self.emit(compound_assignment_instruction_or_error(
+                let instruction = if facts.value_type
+                    == Some(RuntimeTypeFact::Primitive(vela_common::PrimitiveTag::I64))
+                {
+                    i64_compound_assignment_instruction(op, dst, target, rhs)
+                } else {
+                    None
+                }
+                .unwrap_or(compound_assignment_instruction_or_error(
                     op, dst, target, rhs,
                 )?);
+                self.emit(instruction);
                 self.emit(UnlinkedInstructionKind::Move {
                     dst: target,
                     src: dst,
@@ -656,6 +676,16 @@ impl Compiler<'_, '_> {
             _ => None,
         }
     }
+}
+
+fn expressions_are_i64(left: Option<RuntimeTypeFact>, right: Option<RuntimeTypeFact>) -> bool {
+    matches!(
+        (left, right),
+        (
+            Some(RuntimeTypeFact::Primitive(vela_common::PrimitiveTag::I64)),
+            Some(RuntimeTypeFact::Primitive(vela_common::PrimitiveTag::I64))
+        )
+    )
 }
 
 fn record_path_parts(path: &[String]) -> Option<(&str, Vec<String>)> {

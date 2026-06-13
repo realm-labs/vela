@@ -64,6 +64,79 @@ fn main() {
 }
 
 #[test]
+fn compiler_lowers_proven_i64_scalar_loop_ops_to_typed_bytecode() {
+    let code = compile_function_source(
+        SourceId::new(1),
+        r#"
+fn main() {
+    let total = 0;
+    for value in 0..200 {
+        if value % 3 == 0 {
+            total += value * 2;
+            continue;
+        }
+        if value > 180 {
+            break;
+        }
+        total += (value * 5) % 17;
+    }
+    return total;
+}
+"#,
+        "main",
+    )
+    .expect("proven i64 scalar loop should compile");
+
+    assert!(code.instructions.iter().any(|instruction| matches!(
+        instruction.kind,
+        UnlinkedInstructionKind::I64RemImm { imm: 3, .. }
+    )));
+    assert!(code.instructions.iter().any(|instruction| matches!(
+        instruction.kind,
+        UnlinkedInstructionKind::I64EqImm { imm: 0, .. }
+    )));
+    assert!(code.instructions.iter().any(|instruction| matches!(
+        instruction.kind,
+        UnlinkedInstructionKind::I64MulImm { imm: 2, .. }
+    )));
+    assert!(code.instructions.iter().any(|instruction| matches!(
+        instruction.kind,
+        UnlinkedInstructionKind::I64GtImm { imm: 180, .. }
+    )));
+    assert!(
+        code.instructions
+            .iter()
+            .any(|instruction| matches!(instruction.kind, UnlinkedInstructionKind::I64Add { .. }))
+    );
+}
+
+#[test]
+fn compiler_keeps_dynamic_numeric_ops_generic() {
+    let code = compile_function_source(
+        SourceId::new(1),
+        r#"
+fn add(left, right) {
+    return left + right;
+}
+"#,
+        "add",
+    )
+    .expect("dynamic add should compile");
+
+    assert!(
+        code.instructions
+            .iter()
+            .any(|instruction| { matches!(instruction.kind, UnlinkedInstructionKind::Add { .. }) })
+    );
+    assert!(!code.instructions.iter().any(|instruction| {
+        matches!(
+            instruction.kind,
+            UnlinkedInstructionKind::I64Add { .. } | UnlinkedInstructionKind::I64AddImm { .. }
+        )
+    }));
+}
+
+#[test]
 fn compiler_lowers_for_in_patterns() {
     let program = compile_program_source(
         SourceId::new(1),

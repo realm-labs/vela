@@ -187,7 +187,15 @@ pub(super) fn expression_value_type(
     local_type_at_span: impl Fn(Span) -> Option<RuntimeTypeFact>,
     local_type_named: impl Fn(&str) -> Option<RuntimeTypeFact>,
 ) -> Option<RuntimeTypeFact> {
-    match static_expr_type(expr, local_type_at_span, local_type_named) {
+    expression_value_type_with(expr, &local_type_at_span, &local_type_named)
+}
+
+fn expression_value_type_with(
+    expr: &Expr,
+    local_type_at_span: &dyn Fn(Span) -> Option<RuntimeTypeFact>,
+    local_type_named: &dyn Fn(&str) -> Option<RuntimeTypeFact>,
+) -> Option<RuntimeTypeFact> {
+    match static_expr_type_with(expr, local_type_at_span, local_type_named) {
         StaticExprType::Exact(fact) => Some(fact),
         StaticExprType::UnsuffixedIntegerLiteral => {
             Some(RuntimeTypeFact::primitive(PrimitiveTag::I64))
@@ -203,6 +211,14 @@ pub(super) fn static_expr_type(
     expr: &Expr,
     local_type_at_span: impl Fn(Span) -> Option<RuntimeTypeFact>,
     local_type_named: impl Fn(&str) -> Option<RuntimeTypeFact>,
+) -> StaticExprType {
+    static_expr_type_with(expr, &local_type_at_span, &local_type_named)
+}
+
+fn static_expr_type_with(
+    expr: &Expr,
+    local_type_at_span: &dyn Fn(Span) -> Option<RuntimeTypeFact>,
+    local_type_named: &dyn Fn(&str) -> Option<RuntimeTypeFact>,
 ) -> StaticExprType {
     match &expr.kind {
         ExprKind::Literal(Literal::Integer(value)) if value.suffix.is_none() => {
@@ -242,6 +258,13 @@ pub(super) fn static_expr_type(
             op: BinaryOp::Range,
             ..
         } => StaticExprType::Exact(RuntimeTypeFact::standard(StandardRuntimeType::Range)),
+        ExprKind::Binary { op, left, right } => {
+            let left = expression_value_type_with(left, local_type_at_span, local_type_named);
+            let right = expression_value_type_with(right, local_type_at_span, local_type_named);
+            i64_binary_result_type(*op, left.as_ref(), right.as_ref())
+                .map(StaticExprType::Exact)
+                .unwrap_or(StaticExprType::Dynamic)
+        }
         ExprKind::Path(path) => local_type_at_span(expr.span)
             .or_else(|| {
                 path.as_slice()
@@ -255,6 +278,35 @@ pub(super) fn static_expr_type(
             .map(StaticExprType::Exact)
             .unwrap_or(StaticExprType::Dynamic),
         _ => StaticExprType::Dynamic,
+    }
+}
+
+fn i64_binary_result_type(
+    op: BinaryOp,
+    left: Option<&RuntimeTypeFact>,
+    right: Option<&RuntimeTypeFact>,
+) -> Option<RuntimeTypeFact> {
+    let both_i64 = matches!(
+        (left, right),
+        (
+            Some(RuntimeTypeFact::Primitive(PrimitiveTag::I64)),
+            Some(RuntimeTypeFact::Primitive(PrimitiveTag::I64))
+        )
+    );
+    if !both_i64 {
+        return None;
+    }
+    match op {
+        BinaryOp::Add | BinaryOp::Sub | BinaryOp::Mul | BinaryOp::Div | BinaryOp::Rem => {
+            Some(RuntimeTypeFact::primitive(PrimitiveTag::I64))
+        }
+        BinaryOp::Equal
+        | BinaryOp::NotEqual
+        | BinaryOp::Less
+        | BinaryOp::LessEqual
+        | BinaryOp::Greater
+        | BinaryOp::GreaterEqual => Some(RuntimeTypeFact::primitive(PrimitiveTag::Bool)),
+        BinaryOp::Range | BinaryOp::RangeInclusive | BinaryOp::Or | BinaryOp::And => None,
     }
 }
 

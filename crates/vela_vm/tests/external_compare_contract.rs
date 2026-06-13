@@ -81,19 +81,19 @@ fn scalar_workloads_have_reproducible_opcode_count_reports() {
     let registry = vela_stdlib::standard_registry().expect("standard registry should build");
 
     let scalar = opcode_count_report(&vm, registry.compile_view(), "scalar_branch_loop");
-    assert_has_opcode(&scalar, "BinaryIntLiteral::Rem::Right");
-    assert_has_opcode(&scalar, "Mul");
-    assert_has_opcode(&scalar, "Greater");
-    assert_has_opcode(&scalar, "Equal");
-    assert_has_opcode(&scalar, "Add");
+    assert_has_opcode(&scalar, "I64RemImm");
+    assert_has_opcode(&scalar, "I64MulImm");
+    assert_has_opcode(&scalar, "I64EqImm");
+    assert_has_opcode(&scalar, "I64GtImm");
+    assert_has_opcode(&scalar, "I64Add");
     assert_has_opcode(&scalar, "JumpIfFalse");
     assert_has_opcode(&scalar, "Jump");
     assert_has_opcode(&scalar, "RangeNext");
 
     let range = opcode_count_report(&vm, registry.compile_view(), "range_iteration");
     assert_has_opcode(&range, "RangeNext");
-    assert_has_opcode(&range, "Add");
-    assert_has_opcode(&range, "Sub");
+    assert_has_opcode(&range, "I64Add");
+    assert_has_opcode(&range, "I64Sub");
 
     let function_calls = opcode_count_report(&vm, registry.compile_view(), "function_calls");
     assert_has_opcode(&function_calls, "CallFunction");

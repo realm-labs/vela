@@ -11,7 +11,10 @@ use super::const_eval::{
 };
 use super::constructors::schema_default_fields;
 use super::host_paths::{HostIndexAccessKind, HostPath};
-use super::operators::{binary_literal_op, non_logical_binary_instruction};
+use super::operators::{
+    binary_literal_op, i64_binary_instruction, i64_immediate_instruction,
+    i64_immediate_op_supported, non_logical_binary_instruction,
+};
 use super::patterns::enum_variant_path;
 use super::schema_defaults::{record_constructor_diagnostics, unknown_enum_variant_diagnostic};
 use super::value_types::{ExpectedTypeOutcome, RuntimeTypeFact, TypeContractContext};
@@ -295,8 +298,16 @@ impl Compiler<'_, '_> {
         let lhs = self.compile_expr(left)?;
         let rhs = self.compile_expr(right)?;
         let dst = self.alloc_register()?;
-        let instruction = non_logical_binary_instruction(op, dst, lhs, rhs)
-            .expect("logical operators handled above");
+        let instruction = if expressions_are_i64(
+            self.value_type_for_expr(left),
+            self.value_type_for_expr(right),
+        ) {
+            i64_binary_instruction(op, dst, lhs, rhs)
+        } else {
+            None
+        }
+        .or_else(|| non_logical_binary_instruction(op, dst, lhs, rhs))
+        .expect("logical operators handled above");
         self.emit_spanned(instruction, span);
         Ok(dst)
     }
@@ -337,6 +348,20 @@ impl Compiler<'_, '_> {
         literal: UnsuffixedNumericLiteral<'_>,
         side: BinaryLiteralSide,
     ) -> CompileResult<Option<Register>> {
+        if side == BinaryLiteralSide::Right
+            && self.value_type_for_expr(value_expr)
+                == Some(RuntimeTypeFact::Primitive(PrimitiveTag::I64))
+            && let Some(imm) = self.i64_immediate_literal(literal, span)?
+            && i64_immediate_op_supported(op, imm)
+        {
+            let value = self.compile_expr(value_expr)?;
+            let dst = self.alloc_register()?;
+            let instruction = i64_immediate_instruction(op, dst, value, imm)
+                .expect("support was checked before compiling the value expression");
+            self.emit_spanned(instruction, span);
+            return Ok(Some(dst));
+        }
+
         let Some(literal_op) = binary_literal_op(op) else {
             return Ok(None);
         };
@@ -393,6 +418,21 @@ impl Compiler<'_, '_> {
         }
 
         Ok(None)
+    }
+
+    fn i64_immediate_literal(
+        &self,
+        literal: UnsuffixedNumericLiteral<'_>,
+        span: Span,
+    ) -> CompileResult<Option<i64>> {
+        let UnsuffixedNumericLiteral::Integer(_) = literal else {
+            return Ok(None);
+        };
+        let constant = self.compile_inline_numeric_literal_as(literal, PrimitiveTag::I64, span)?;
+        let crate::Constant::Scalar(vela_common::ScalarValue::I64(value)) = constant else {
+            return Ok(None);
+        };
+        Ok(Some(value))
     }
 
     fn compile_inline_numeric_literal_as(
@@ -639,4 +679,14 @@ fn unsuffixed_numeric_literal(expr: &Expr) -> Option<UnsuffixedNumericLiteral<'_
         }
         _ => None,
     }
+}
+
+fn expressions_are_i64(left: Option<RuntimeTypeFact>, right: Option<RuntimeTypeFact>) -> bool {
+    matches!(
+        (left, right),
+        (
+            Some(RuntimeTypeFact::Primitive(PrimitiveTag::I64)),
+            Some(RuntimeTypeFact::Primitive(PrimitiveTag::I64))
+        )
+    )
 }
