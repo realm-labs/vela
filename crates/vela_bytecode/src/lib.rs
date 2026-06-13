@@ -743,11 +743,11 @@ pub enum UnlinkedInstructionKind {
         callee: Register,
         args: Vec<Register>,
     },
-    CallMethod {
+    CallDynamicMethod {
         dst: Register,
         receiver: Register,
         method: String,
-        args: Vec<CallArgument>,
+        args: Vec<DynamicCallArgument>,
     },
     CallMethodId {
         dst: Register,
@@ -909,6 +909,12 @@ pub enum ScriptCallMode {
 pub enum CallArgument {
     Register(Register),
     Missing,
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct DynamicCallArgument {
+    pub name: Option<String>,
+    pub value: Register,
 }
 
 #[cfg(test)]

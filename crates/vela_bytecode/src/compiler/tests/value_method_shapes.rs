@@ -210,7 +210,7 @@ fn nested_method_names(code: &UnlinkedCodeObject) -> Vec<String> {
 
 fn collect_nested_method_names(code: &UnlinkedCodeObject, methods: &mut Vec<String>) {
     for instruction in &code.instructions {
-        if let UnlinkedInstructionKind::CallMethod { method, .. } = &instruction.kind {
+        if let UnlinkedInstructionKind::CallDynamicMethod { method, .. } = &instruction.kind {
             methods.push(method.clone());
         }
     }

@@ -6,9 +6,9 @@ use crate::linked::{
     MethodDispatchHandle, NativeHandle, ScriptFunctionHandle, TypeHandle, VariantHandle,
 };
 use crate::{
-    CacheSiteId, CacheSiteKind, CallArgument, ConstantId, HostTargetPlanId, InstructionOffset,
-    ProgramImage, Register, TypeGuardPlanId, UnlinkedCodeObject, UnlinkedInstruction,
-    UnlinkedInstructionKind, UnlinkedProgram,
+    CacheSiteId, CacheSiteKind, CallArgument, ConstantId, DynamicCallArgument, HostTargetPlanId,
+    InstructionOffset, ProgramImage, Register, TypeGuardPlanId, UnlinkedCodeObject,
+    UnlinkedInstruction, UnlinkedInstructionKind, UnlinkedProgram,
 };
 
 mod linked;
@@ -455,7 +455,7 @@ fn verify_instruction(
             verify_register(function, instruction_index, code, *callee)?;
             verify_registers(function, instruction_index, code, args)
         }
-        UnlinkedInstructionKind::CallMethod {
+        UnlinkedInstructionKind::CallDynamicMethod {
             dst,
             receiver,
             args,
@@ -463,7 +463,7 @@ fn verify_instruction(
         } => {
             verify_register(function, instruction_index, code, *dst)?;
             verify_register(function, instruction_index, code, *receiver)?;
-            verify_call_arguments(function, instruction_index, code, args)
+            verify_dynamic_call_arguments(function, instruction_index, code, args)
         }
         UnlinkedInstructionKind::CallMethodId {
             dst,
@@ -745,6 +745,18 @@ fn verify_call_arguments(
     Ok(())
 }
 
+fn verify_dynamic_call_arguments(
+    function: &str,
+    instruction: Option<usize>,
+    code: &UnlinkedCodeObject,
+    args: &[DynamicCallArgument],
+) -> Result<(), VerificationError> {
+    for arg in args {
+        verify_register(function, instruction, code, arg.value)?;
+    }
+    Ok(())
+}
+
 fn verify_register(
     function: &str,
     instruction: Option<usize>,
@@ -994,7 +1006,7 @@ fn instruction_cache_site_kind(kind: &UnlinkedInstructionKind) -> Option<CacheSi
     match kind {
         UnlinkedInstructionKind::LoadGlobal { .. } => Some(CacheSiteKind::GlobalRead),
         UnlinkedInstructionKind::CallNative { .. } => Some(CacheSiteKind::NativeCall),
-        UnlinkedInstructionKind::CallMethod { .. }
+        UnlinkedInstructionKind::CallDynamicMethod { .. }
         | UnlinkedInstructionKind::CallMethodId { .. } => Some(CacheSiteKind::MethodCall),
         UnlinkedInstructionKind::GetRecordSlot { .. } => Some(CacheSiteKind::RecordFieldRead),
         UnlinkedInstructionKind::SetRecordSlot { .. } => Some(CacheSiteKind::RecordFieldWrite),

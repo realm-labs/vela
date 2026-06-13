@@ -330,12 +330,16 @@ impl Vm {
                         },
                     )?;
                 }
-                UnlinkedInstructionKind::CallMethod {
+                UnlinkedInstructionKind::CallDynamicMethod {
                     dst,
                     receiver,
                     method,
                     args,
                 } => {
+                    let positional_args = args
+                        .iter()
+                        .map(|arg| vela_bytecode::CallArgument::Register(arg.value))
+                        .collect::<Vec<_>>();
                     script_method_calls::dispatch_script_method_register_call(
                         self,
                         program,
@@ -347,7 +351,7 @@ impl Vm {
                             dst: *dst,
                             receiver: *receiver,
                             method,
-                            args,
+                            args: &positional_args,
                         },
                     )?;
                 }

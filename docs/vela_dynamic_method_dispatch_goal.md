@@ -152,7 +152,7 @@ After commit, change this checkbox to `[x]`.
 
 ---
 
-## [ ] Phase 1 — Make dynamic method bytecode explicit
+## [x] Phase 1 — Make dynamic method bytecode explicit
 
 Refactor bytecode naming so unknown-receiver method calls are not represented as ambiguous “unresolved methods”.
 

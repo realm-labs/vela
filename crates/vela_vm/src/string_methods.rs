@@ -94,7 +94,7 @@ fn type_error<T>(operation: &'static str) -> VmResult<T> {
 #[cfg(test)]
 mod tests {
     use vela_bytecode::compiler::compile_function_source_with_registry;
-    use vela_bytecode::compiler::error::CompileResult;
+    use vela_bytecode::compiler::error::{CompileErrorKind, CompileResult};
     use vela_bytecode::{LinkError, LinkedProgram, Linker, UnlinkedCodeObject, UnlinkedProgram};
     use vela_common::SourceId;
 
@@ -199,15 +199,15 @@ fn main() {
     return 42.trim();
 }
 "#;
-        let code = compile_function_source(SourceId::new(1), source, "main")
-            .expect("string utility type error source should compile");
-
-        let error = link_string_test_code(&Vm::new(), code)
-            .expect_err("unresolved string utility call should not link");
-        assert!(matches!(
-            error,
-            LinkError::UnresolvedMethodName { method, .. } if method == "trim"
-        ));
+        let error = compile_function_source(SourceId::new(1), source, "main")
+            .expect_err("known non-string receiver should fail before execution");
+        let CompileErrorKind::SemanticDiagnostics(diagnostics) = error.kind else {
+            panic!("expected semantic diagnostics");
+        };
+        assert!(diagnostics.iter().any(|diagnostic| {
+            diagnostic.code.as_deref() == Some("compiler::unresolved_method")
+                && diagnostic.message.contains("trim")
+        }));
     }
 
     #[test]

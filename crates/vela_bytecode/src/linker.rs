@@ -508,7 +508,7 @@ impl<'linker, 'registry> LinkContext<'linker, 'registry> {
                     args: args.clone(),
                 }
             }
-            UnlinkedInstructionKind::CallMethod { method, .. } => {
+            UnlinkedInstructionKind::CallDynamicMethod { method, .. } => {
                 return Err(LinkError::UnresolvedMethodName {
                     function: code.name.clone(),
                     method: method.clone(),

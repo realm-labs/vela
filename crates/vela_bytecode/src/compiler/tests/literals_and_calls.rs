@@ -1,4 +1,5 @@
 use super::*;
+use crate::DynamicCallArgument;
 
 fn value_method_registry(specs: &[(&str, &str, &[&str])]) -> vela_registry::DefinitionRegistry {
     let mut registry = vela_registry::DefinitionRegistry::new();
@@ -254,8 +255,72 @@ fn main() {
     .expect("script value method call should compile");
     assert!(code.instructions.iter().any(|instruction| matches!(
         &instruction.kind,
-        UnlinkedInstructionKind::CallMethod { method, .. } if method == "len"
+        UnlinkedInstructionKind::CallDynamicMethod { method, .. } if method == "len"
     )));
+}
+
+#[test]
+fn compiler_lowers_unknown_receiver_method_to_dynamic_bytecode() {
+    let registry = vela_stdlib::standard_registry().expect("standard registry should build");
+    let code = compile_function_source_with_registry(
+        SourceId::new(1),
+        r#"
+fn f(value) {
+    return value.starts_with("q");
+}
+"#,
+        "f",
+        registry.compile_view(),
+    )
+    .expect("unknown receiver method call should compile dynamically");
+    let args = dynamic_method_args(&code, "starts_with").expect("dynamic starts_with call");
+    assert_eq!(args.len(), 1);
+    assert_eq!(args[0].name, None);
+}
+
+#[test]
+fn compiler_keeps_static_string_method_on_method_id_path() {
+    let registry = vela_stdlib::standard_registry().expect("standard registry should build");
+    let code = compile_function_source_with_registry(
+        SourceId::new(1),
+        r#"
+fn f() {
+    return "quest".starts_with("q");
+}
+"#,
+        "f",
+        registry.compile_view(),
+    )
+    .expect("static string method call should compile by method id");
+    assert!(code.instructions.iter().any(|instruction| matches!(
+        &instruction.kind,
+        UnlinkedInstructionKind::CallMethodId { method, .. } if method == "starts_with"
+    )));
+    assert!(dynamic_method_args(&code, "starts_with").is_none());
+}
+
+#[test]
+fn compiler_rejects_static_known_receiver_missing_method() {
+    let registry = vela_stdlib::standard_registry().expect("standard registry should build");
+    let error = compile_function_source_with_registry(
+        SourceId::new(1),
+        r#"
+fn f() {
+    return 42.trim();
+}
+"#,
+        "f",
+        registry.compile_view(),
+    )
+    .expect_err("known receiver with absent method should fail at compile time");
+    let CompileErrorKind::SemanticDiagnostics(diagnostics) = error.kind else {
+        panic!("expected semantic diagnostics");
+    };
+    assert!(
+        diagnostics.iter().any(|diagnostic| {
+            diagnostic.code.as_deref() == Some("compiler::unresolved_method")
+        })
+    );
 }
 #[test]
 fn compiler_uses_hir_signatures_for_code_object_params() {
@@ -1048,12 +1113,12 @@ fn main() {
 }
 
 #[test]
-fn compiler_does_not_leak_named_value_method_receiver_facts_from_for_body() {
+fn compiler_preserves_named_dynamic_method_args_after_for_body_receiver_fact_expires() {
     let registry = value_method_registry(&[
         ("String", "contains", &["needle"]),
         ("Array", "contains", &["value"]),
     ]);
-    let err = compile_program_source_with_registry(
+    let program = compile_program_source_with_registry(
         SourceId::new(1),
         r#"
 fn main() {
@@ -1066,12 +1131,11 @@ fn main() {
 "#,
         registry.compile_view(),
     )
-    .expect_err("for body value receiver facts must not leak after loop scope");
-
-    assert_eq!(
-        err.kind,
-        CompileErrorKind::UnsupportedSyntax("script method call")
-    );
+    .expect("expired receiver facts should compile to dynamic method dispatch");
+    let main = program.function("main").expect("main function");
+    let args = dynamic_method_args(main, "contains").expect("dynamic contains call");
+    assert_eq!(args.len(), 1);
+    assert_eq!(args[0].name.as_deref(), Some("needle"));
 }
 
 fn nested_method_id_names(code: &UnlinkedCodeObject) -> Vec<String> {
@@ -1092,12 +1156,12 @@ fn collect_nested_method_id_names(code: &UnlinkedCodeObject, methods: &mut Vec<S
 }
 
 #[test]
-fn compiler_does_not_leak_named_value_method_receiver_facts_from_match_arm() {
+fn compiler_preserves_named_dynamic_method_args_after_match_arm_receiver_fact_expires() {
     let registry = value_method_registry(&[
         ("String", "contains", &["needle"]),
         ("Array", "contains", &["value"]),
     ]);
-    let err = compile_program_source_with_registry(
+    let program = compile_program_source_with_registry(
         SourceId::new(1),
         r#"
 fn main() {
@@ -1113,21 +1177,20 @@ fn main() {
 "#,
         registry.compile_view(),
     )
-    .expect_err("match arm value receiver facts must not leak after match scope");
-
-    assert_eq!(
-        err.kind,
-        CompileErrorKind::UnsupportedSyntax("script method call")
-    );
+    .expect("expired receiver facts should compile to dynamic method dispatch");
+    let main = program.function("main").expect("main function");
+    let args = dynamic_method_args(main, "contains").expect("dynamic contains call");
+    assert_eq!(args.len(), 1);
+    assert_eq!(args[0].name.as_deref(), Some("needle"));
 }
 
 #[test]
-fn compiler_rejects_ambiguous_named_value_method_args_without_receiver_type() {
+fn compiler_preserves_named_dynamic_method_args_without_receiver_type() {
     let registry = value_method_registry(&[
         ("String", "contains", &["needle"]),
         ("Array", "contains", &["value"]),
     ]);
-    compile_program_source_with_registry(
+    let program = compile_program_source_with_registry(
         SourceId::new(1),
         r#"
 fn main(value) {
@@ -1136,5 +1199,23 @@ fn main(value) {
 "#,
         registry.compile_view(),
     )
-    .expect_err("ambiguous named method args should require receiver type evidence");
+    .expect("unknown receiver named method args should compile dynamically");
+    let main = program.function("main").expect("main function");
+    let args = dynamic_method_args(main, "contains").expect("dynamic contains call");
+    assert_eq!(args.len(), 1);
+    assert_eq!(args[0].name.as_deref(), Some("needle"));
+}
+
+fn dynamic_method_args<'a>(
+    code: &'a UnlinkedCodeObject,
+    name: &str,
+) -> Option<&'a [DynamicCallArgument]> {
+    for instruction in &code.instructions {
+        if let UnlinkedInstructionKind::CallDynamicMethod { method, args, .. } = &instruction.kind
+            && method == name
+        {
+            return Some(args);
+        }
+    }
+    None
 }

@@ -339,10 +339,10 @@ fn linker_maps_globals_map_keys_and_field_slots_without_instruction_names() {
 }
 
 #[test]
-fn linker_rejects_name_only_method_and_record_field_fallbacks() {
+fn linker_rejects_dynamic_method_until_linked_ir_lands_and_record_field_fallbacks() {
     let mut method_code = UnlinkedCodeObject::new("method", 2);
     method_code.push_instruction(UnlinkedInstruction::new(
-        UnlinkedInstructionKind::CallMethod {
+        UnlinkedInstructionKind::CallDynamicMethod {
             dst: Register(0),
             receiver: Register(1),
             method: "score".to_owned(),
@@ -354,7 +354,7 @@ fn linker_rejects_name_only_method_and_record_field_fallbacks() {
 
     let error = Linker::new()
         .link_program(&method_program)
-        .expect_err("name-only method dispatch should not link");
+        .expect_err("dynamic method dispatch links in a later phase");
     assert!(matches!(error, LinkError::UnresolvedMethodName { .. }));
 
     let mut field_code = UnlinkedCodeObject::new("field", 2);

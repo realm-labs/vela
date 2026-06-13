@@ -1,6 +1,6 @@
 use vela_syntax::ast::{Argument, Expr, ExprKind};
 
-use crate::{CallArgument, UnlinkedInstructionKind};
+use crate::{CallArgument, DynamicCallArgument, UnlinkedInstructionKind};
 
 use super::call_args::resolve_script_call_arguments;
 use super::methods::host_method_call;
@@ -158,20 +158,23 @@ impl Compiler<'_, '_> {
         let method_id = receiver_type
             .as_deref()
             .and_then(|type_name| self.script_method_id_for_type(type_name, name));
-        let arg_registers = self.compile_script_method_call_args(
-            receiver_type.as_deref(),
-            value_receiver_type.as_ref(),
-            receiver_shape.as_ref(),
-            name,
-            args,
-            expr.span,
-        )?;
         let value_method_id = value_receiver_type
             .as_ref()
             .and_then(|type_name| self.value_method_id_for_type(type_name, name));
+        let value_receiver_methods_known = value_receiver_type
+            .as_ref()
+            .is_some_and(|receiver_type| self.registry_value_type_id(receiver_type).is_some());
         let receiver = self.compile_expr(base)?;
         let dst = self.alloc_register()?;
         if let Some(method_id) = method_id {
+            let arg_registers = self.compile_script_method_call_args(
+                receiver_type.as_deref(),
+                value_receiver_type.as_ref(),
+                receiver_shape.as_ref(),
+                name,
+                args,
+                expr.span,
+            )?;
             self.emit_spanned(
                 UnlinkedInstructionKind::CallMethodId {
                     dst,
@@ -183,6 +186,14 @@ impl Compiler<'_, '_> {
                 expr.span,
             );
         } else if let Some(method_id) = value_method_id {
+            let arg_registers = self.compile_script_method_call_args(
+                receiver_type.as_deref(),
+                value_receiver_type.as_ref(),
+                receiver_shape.as_ref(),
+                name,
+                args,
+                expr.span,
+            )?;
             self.emit_spanned(
                 UnlinkedInstructionKind::CallMethodId {
                     dst,
@@ -193,13 +204,16 @@ impl Compiler<'_, '_> {
                 },
                 expr.span,
             );
+        } else if receiver_type.is_some() || value_receiver_methods_known {
+            return Err(unresolved_static_method_error(name, expr.span));
         } else {
+            let args = self.compile_dynamic_method_call_args(args)?;
             self.emit_spanned(
-                UnlinkedInstructionKind::CallMethod {
+                UnlinkedInstructionKind::CallDynamicMethod {
                     dst,
                     receiver,
                     method: name.to_owned(),
-                    args: arg_registers,
+                    args,
                 },
                 expr.span,
             );
@@ -223,20 +237,23 @@ impl Compiler<'_, '_> {
         let method_id = receiver_type
             .as_deref()
             .and_then(|type_name| self.script_method_id_for_type(type_name, method));
-        let arg_registers = self.compile_script_method_call_args(
-            receiver_type.as_deref(),
-            value_receiver_type.as_ref(),
-            receiver_shape.as_ref(),
-            method,
-            args,
-            expr.span,
-        )?;
         let value_method_id = value_receiver_type
             .as_ref()
             .and_then(|type_name| self.value_method_id_for_type(type_name, method));
+        let value_receiver_methods_known = value_receiver_type
+            .as_ref()
+            .is_some_and(|receiver_type| self.registry_value_type_id(receiver_type).is_some());
         let receiver = self.compile_path_expr(callee.span, receiver_path)?;
         let dst = self.alloc_register()?;
         if let Some(method_id) = method_id {
+            let arg_registers = self.compile_script_method_call_args(
+                receiver_type.as_deref(),
+                value_receiver_type.as_ref(),
+                receiver_shape.as_ref(),
+                method,
+                args,
+                expr.span,
+            )?;
             self.emit_spanned(
                 UnlinkedInstructionKind::CallMethodId {
                     dst,
@@ -248,6 +265,14 @@ impl Compiler<'_, '_> {
                 expr.span,
             );
         } else if let Some(method_id) = value_method_id {
+            let arg_registers = self.compile_script_method_call_args(
+                receiver_type.as_deref(),
+                value_receiver_type.as_ref(),
+                receiver_shape.as_ref(),
+                method,
+                args,
+                expr.span,
+            )?;
             self.emit_spanned(
                 UnlinkedInstructionKind::CallMethodId {
                     dst,
@@ -258,13 +283,16 @@ impl Compiler<'_, '_> {
                 },
                 expr.span,
             );
+        } else if receiver_type.is_some() || value_receiver_methods_known {
+            return Err(unresolved_static_method_error(method, expr.span));
         } else {
+            let args = self.compile_dynamic_method_call_args(args)?;
             self.emit_spanned(
-                UnlinkedInstructionKind::CallMethod {
+                UnlinkedInstructionKind::CallDynamicMethod {
                     dst,
                     receiver,
                     method: method.to_owned(),
-                    args: arg_registers,
+                    args,
                 },
                 expr.span,
             );
@@ -317,6 +345,20 @@ impl Compiler<'_, '_> {
                 } else {
                     unreachable!("call argument resolver rejects missing required arguments")
                 }
+            })
+            .collect()
+    }
+
+    fn compile_dynamic_method_call_args(
+        &mut self,
+        args: &[Argument],
+    ) -> CompileResult<Vec<DynamicCallArgument>> {
+        args.iter()
+            .map(|arg| {
+                Ok(DynamicCallArgument {
+                    name: arg.name.clone(),
+                    value: self.compile_expr(&arg.value)?,
+                })
             })
             .collect()
     }
@@ -626,4 +668,13 @@ fn callable_name(callee: &Expr) -> CompileResult<String> {
             "callable expression",
         ))),
     }
+}
+
+fn unresolved_static_method_error(method: &str, span: Span) -> CompileError {
+    CompileError::new(CompileErrorKind::SemanticDiagnostics(vec![
+        Diagnostic::error(format!("unresolved method `{method}`"))
+            .with_code("compiler::unresolved_method")
+            .with_span(span)
+            .with_label(span, "method is not defined for the known receiver type"),
+    ]))
 }

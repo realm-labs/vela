@@ -4,7 +4,7 @@ pub(super) fn cache_site_kind(kind: &UnlinkedInstructionKind) -> Option<CacheSit
     match kind {
         UnlinkedInstructionKind::LoadGlobal { .. } => Some(CacheSiteKind::GlobalRead),
         UnlinkedInstructionKind::CallNative { .. } => Some(CacheSiteKind::NativeCall),
-        UnlinkedInstructionKind::CallMethod { .. }
+        UnlinkedInstructionKind::CallDynamicMethod { .. }
         | UnlinkedInstructionKind::CallMethodId { .. } => Some(CacheSiteKind::MethodCall),
         UnlinkedInstructionKind::GetRecordSlot { .. } => Some(CacheSiteKind::RecordFieldRead),
         UnlinkedInstructionKind::SetRecordSlot { .. } => Some(CacheSiteKind::RecordFieldWrite),
