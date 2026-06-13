@@ -1074,6 +1074,18 @@ impl<'ast, 'registry> Compiler<'ast, 'registry> {
             | UnlinkedInstructionKind::Jump {
                 target: jump_target,
             }
+            | UnlinkedInstructionKind::I64EqImmJumpIfFalse {
+                target: jump_target,
+                ..
+            }
+            | UnlinkedInstructionKind::I64GtImmJumpIfFalse {
+                target: jump_target,
+                ..
+            }
+            | UnlinkedInstructionKind::I64RemImmEqImmJumpIfFalse {
+                target: jump_target,
+                ..
+            }
             | UnlinkedInstructionKind::IterNext {
                 jump_if_done: jump_target,
                 ..

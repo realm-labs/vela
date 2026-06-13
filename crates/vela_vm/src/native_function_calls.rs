@@ -217,7 +217,7 @@ fn native_call_args_from_registers(
     heap: Option<&HeapExecution<'_>>,
 ) -> VmResult<SmallStorage<OwnedValue>> {
     SmallStorage::try_from_slice_map(registers, 4, |register| {
-        value_to_owned(frame.read(*register)?, heap)
+        value_to_owned(&frame.read(*register)?, heap)
     })
 }
 
@@ -226,5 +226,5 @@ fn native_borrowed_call_args_from_registers(
     frame: &CallFrame,
     registers: &[Register],
 ) -> VmResult<SmallStorage<Value>> {
-    SmallStorage::try_from_slice_map(registers, 4, |register| Ok(*frame.read(*register)?))
+    SmallStorage::try_from_slice_map(registers, 4, |register| frame.read(*register))
 }

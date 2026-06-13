@@ -82,11 +82,10 @@ fn scalar_workloads_have_reproducible_opcode_count_reports() {
 
     let scalar = opcode_count_report(&vm, registry.compile_view(), "scalar_branch_loop");
     assert_has_opcode(&scalar, "I64RemImm");
+    assert_has_opcode(&scalar, "I64RemImmEqImmJumpIfFalse");
     assert_has_opcode(&scalar, "I64MulImm");
-    assert_has_opcode(&scalar, "I64EqImm");
-    assert_has_opcode(&scalar, "I64GtImm");
+    assert_has_opcode(&scalar, "I64GtImmJumpIfFalse");
     assert_has_opcode(&scalar, "I64Add");
-    assert_has_opcode(&scalar, "JumpIfFalse");
     assert_has_opcode(&scalar, "Jump");
     assert_has_opcode(&scalar, "I64RangeNext");
 
@@ -289,6 +288,9 @@ fn opcode_label(kind: &InstructionKind) -> &'static str {
         InstructionKind::I64RemImm { .. } => "I64RemImm",
         InstructionKind::I64EqImm { .. } => "I64EqImm",
         InstructionKind::I64GtImm { .. } => "I64GtImm",
+        InstructionKind::I64EqImmJumpIfFalse { .. } => "I64EqImmJumpIfFalse",
+        InstructionKind::I64GtImmJumpIfFalse { .. } => "I64GtImmJumpIfFalse",
+        InstructionKind::I64RemImmEqImmJumpIfFalse { .. } => "I64RemImmEqImmJumpIfFalse",
         InstructionKind::BinaryIntLiteral { op, side, .. } => binary_int_literal_label(*op, *side),
         InstructionKind::BinaryFloatLiteral { op, side, .. } => {
             binary_float_literal_label(*op, *side)

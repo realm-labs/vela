@@ -15,7 +15,7 @@ pub(crate) fn dispatch_load_const(
         Constant::Scalar(value) => Value::Scalar(*value),
         Constant::String(value) => {
             if let Some(value) =
-                loaded_string_constant(frame.read(dst).ok(), value, heap.as_deref())
+                loaded_string_constant(frame.read(dst).ok().as_ref(), value, heap.as_deref())
             {
                 value
             } else {
@@ -23,7 +23,8 @@ pub(crate) fn dispatch_load_const(
             }
         }
         Constant::Bytes(value) => {
-            if let Some(value) = loaded_bytes_constant(frame.read(dst).ok(), value, heap.as_deref())
+            if let Some(value) =
+                loaded_bytes_constant(frame.read(dst).ok().as_ref(), value, heap.as_deref())
             {
                 value
             } else {

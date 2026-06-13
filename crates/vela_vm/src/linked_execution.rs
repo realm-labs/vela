@@ -199,44 +199,44 @@ impl Vm {
                     )?;
                 }
                 InstructionKind::Move { dst, src } => {
-                    let value = *frame.read(*src)?;
+                    let value = frame.read(*src)?;
                     frame.write(*dst, value)?;
                 }
                 InstructionKind::Not { dst, src } => {
-                    let value = Value::Bool(!is_truthy(frame.read(*src)?));
+                    let value = Value::Bool(!is_truthy(&frame.read(*src)?));
                     frame.write(*dst, value)?;
                 }
                 InstructionKind::Truthy { dst, src } => {
-                    let value = Value::Bool(is_truthy(frame.read(*src)?));
+                    let value = Value::Bool(is_truthy(&frame.read(*src)?));
                     frame.write(*dst, value)?;
                 }
                 InstructionKind::Negate { dst, src } => {
-                    let value = negate_numeric(frame.read(*src)?)
+                    let value = negate_numeric(&frame.read(*src)?)
                         .map_err(|error| error.with_source_span_if_absent(instruction.span))?;
                     frame.write(*dst, value)?;
                 }
                 InstructionKind::Add { dst, lhs, rhs } => {
-                    let value = add_numeric(frame.read(*lhs)?, frame.read(*rhs)?)
+                    let value = add_numeric(&frame.read(*lhs)?, &frame.read(*rhs)?)
                         .map_err(|error| error.with_source_span_if_absent(instruction.span))?;
                     frame.write(*dst, value)?;
                 }
                 InstructionKind::Sub { dst, lhs, rhs } => {
-                    let value = sub_numeric(frame.read(*lhs)?, frame.read(*rhs)?)
+                    let value = sub_numeric(&frame.read(*lhs)?, &frame.read(*rhs)?)
                         .map_err(|error| error.with_source_span_if_absent(instruction.span))?;
                     frame.write(*dst, value)?;
                 }
                 InstructionKind::Mul { dst, lhs, rhs } => {
-                    let value = mul_numeric(frame.read(*lhs)?, frame.read(*rhs)?)
+                    let value = mul_numeric(&frame.read(*lhs)?, &frame.read(*rhs)?)
                         .map_err(|error| error.with_source_span_if_absent(instruction.span))?;
                     frame.write(*dst, value)?;
                 }
                 InstructionKind::Div { dst, lhs, rhs } => {
-                    let value = div_numeric(frame.read(*lhs)?, frame.read(*rhs)?)
+                    let value = div_numeric(&frame.read(*lhs)?, &frame.read(*rhs)?)
                         .map_err(|error| error.with_source_span_if_absent(instruction.span))?;
                     frame.write(*dst, value)?;
                 }
                 InstructionKind::Rem { dst, lhs, rhs } => {
-                    let value = rem_numeric(frame.read(*lhs)?, frame.read(*rhs)?)
+                    let value = rem_numeric(&frame.read(*lhs)?, &frame.read(*rhs)?)
                         .map_err(|error| error.with_source_span_if_absent(instruction.span))?;
                     frame.write(*dst, value)?;
                 }
@@ -249,7 +249,7 @@ impl Vm {
                 } => {
                     let value = binary_int_literal_numeric(
                         *op,
-                        frame.read(*value)?,
+                        &frame.read(*value)?,
                         literal.as_str(),
                         *side,
                     )
@@ -265,7 +265,7 @@ impl Vm {
                 } => {
                     let value = binary_float_literal_numeric(
                         *op,
-                        frame.read(*value)?,
+                        &frame.read(*value)?,
                         literal.as_str(),
                         *side,
                     )
@@ -274,113 +274,161 @@ impl Vm {
                 }
                 InstructionKind::Equal { dst, lhs, rhs } => {
                     let value = Value::Bool(values_equal(
-                        frame.read(*lhs)?,
-                        frame.read(*rhs)?,
+                        &frame.read(*lhs)?,
+                        &frame.read(*rhs)?,
                         heap.as_deref(),
                     )?);
                     frame.write(*dst, value)?;
                 }
                 InstructionKind::NotEqual { dst, lhs, rhs } => {
                     let value = Value::Bool(!values_equal(
-                        frame.read(*lhs)?,
-                        frame.read(*rhs)?,
+                        &frame.read(*lhs)?,
+                        &frame.read(*rhs)?,
                         heap.as_deref(),
                     )?);
                     frame.write(*dst, value)?;
                 }
                 InstructionKind::Less { dst, lhs, rhs } => {
-                    let value = less_numeric(frame.read(*lhs)?, frame.read(*rhs)?)
+                    let value = less_numeric(&frame.read(*lhs)?, &frame.read(*rhs)?)
                         .map_err(|error| error.with_source_span_if_absent(instruction.span))?;
                     frame.write(*dst, Value::Bool(value))?;
                 }
                 InstructionKind::LessEqual { dst, lhs, rhs } => {
-                    let value = less_equal_numeric(frame.read(*lhs)?, frame.read(*rhs)?)
+                    let value = less_equal_numeric(&frame.read(*lhs)?, &frame.read(*rhs)?)
                         .map_err(|error| error.with_source_span_if_absent(instruction.span))?;
                     frame.write(*dst, Value::Bool(value))?;
                 }
                 InstructionKind::Greater { dst, lhs, rhs } => {
-                    let value = greater_numeric(frame.read(*lhs)?, frame.read(*rhs)?)
+                    let value = greater_numeric(&frame.read(*lhs)?, &frame.read(*rhs)?)
                         .map_err(|error| error.with_source_span_if_absent(instruction.span))?;
                     frame.write(*dst, Value::Bool(value))?;
                 }
                 InstructionKind::GreaterEqual { dst, lhs, rhs } => {
-                    let value = greater_equal_numeric(frame.read(*lhs)?, frame.read(*rhs)?)
+                    let value = greater_equal_numeric(&frame.read(*lhs)?, &frame.read(*rhs)?)
                         .map_err(|error| error.with_source_span_if_absent(instruction.span))?;
                     frame.write(*dst, Value::Bool(value))?;
                 }
                 InstructionKind::I64Add { dst, lhs, rhs } => {
-                    let lhs = i64_ops::read(frame.read(*lhs)?, "add")
+                    let lhs = frame
+                        .read_i64(*lhs, "add")
                         .map_err(|error| error.with_source_span_if_absent(instruction.span))?;
-                    let rhs = i64_ops::read(frame.read(*rhs)?, "add")
+                    let rhs = frame
+                        .read_i64(*rhs, "add")
                         .map_err(|error| error.with_source_span_if_absent(instruction.span))?;
-                    let value = i64_ops::add(lhs, rhs)
+                    let value = i64_ops::add_raw(lhs, rhs)
                         .map_err(|error| error.with_source_span_if_absent(instruction.span))?;
-                    frame.write(*dst, value)?;
+                    frame.write_i64(*dst, value)?;
                 }
                 InstructionKind::I64Sub { dst, lhs, rhs } => {
-                    let lhs = i64_ops::read(frame.read(*lhs)?, "sub")
+                    let lhs = frame
+                        .read_i64(*lhs, "sub")
                         .map_err(|error| error.with_source_span_if_absent(instruction.span))?;
-                    let rhs = i64_ops::read(frame.read(*rhs)?, "sub")
+                    let rhs = frame
+                        .read_i64(*rhs, "sub")
                         .map_err(|error| error.with_source_span_if_absent(instruction.span))?;
-                    let value = i64_ops::sub(lhs, rhs)
+                    let value = i64_ops::sub_raw(lhs, rhs)
                         .map_err(|error| error.with_source_span_if_absent(instruction.span))?;
-                    frame.write(*dst, value)?;
+                    frame.write_i64(*dst, value)?;
                 }
                 InstructionKind::I64Mul { dst, lhs, rhs } => {
-                    let lhs = i64_ops::read(frame.read(*lhs)?, "mul")
+                    let lhs = frame
+                        .read_i64(*lhs, "mul")
                         .map_err(|error| error.with_source_span_if_absent(instruction.span))?;
-                    let rhs = i64_ops::read(frame.read(*rhs)?, "mul")
+                    let rhs = frame
+                        .read_i64(*rhs, "mul")
                         .map_err(|error| error.with_source_span_if_absent(instruction.span))?;
-                    let value = i64_ops::mul(lhs, rhs)
+                    let value = i64_ops::mul_raw(lhs, rhs)
                         .map_err(|error| error.with_source_span_if_absent(instruction.span))?;
-                    frame.write(*dst, value)?;
+                    frame.write_i64(*dst, value)?;
                 }
                 InstructionKind::I64Rem { dst, lhs, rhs } => {
-                    let lhs = i64_ops::read(frame.read(*lhs)?, "rem")
+                    let lhs = frame
+                        .read_i64(*lhs, "rem")
                         .map_err(|error| error.with_source_span_if_absent(instruction.span))?;
-                    let rhs = i64_ops::read(frame.read(*rhs)?, "rem")
+                    let rhs = frame
+                        .read_i64(*rhs, "rem")
                         .map_err(|error| error.with_source_span_if_absent(instruction.span))?;
-                    let value = i64_ops::rem(lhs, rhs)
+                    let value = i64_ops::rem_raw(lhs, rhs)
                         .map_err(|error| error.with_source_span_if_absent(instruction.span))?;
-                    frame.write(*dst, value)?;
+                    frame.write_i64(*dst, value)?;
                 }
                 InstructionKind::I64AddImm { dst, lhs, imm } => {
-                    let lhs = i64_ops::read(frame.read(*lhs)?, "add")
+                    let lhs = frame
+                        .read_i64(*lhs, "add")
                         .map_err(|error| error.with_source_span_if_absent(instruction.span))?;
-                    let value = i64_ops::add(lhs, *imm)
+                    let value = i64_ops::add_raw(lhs, *imm)
                         .map_err(|error| error.with_source_span_if_absent(instruction.span))?;
-                    frame.write(*dst, value)?;
+                    frame.write_i64(*dst, value)?;
                 }
                 InstructionKind::I64SubImm { dst, lhs, imm } => {
-                    let lhs = i64_ops::read(frame.read(*lhs)?, "sub")
+                    let lhs = frame
+                        .read_i64(*lhs, "sub")
                         .map_err(|error| error.with_source_span_if_absent(instruction.span))?;
-                    let value = i64_ops::sub(lhs, *imm)
+                    let value = i64_ops::sub_raw(lhs, *imm)
                         .map_err(|error| error.with_source_span_if_absent(instruction.span))?;
-                    frame.write(*dst, value)?;
+                    frame.write_i64(*dst, value)?;
                 }
                 InstructionKind::I64MulImm { dst, lhs, imm } => {
-                    let lhs = i64_ops::read(frame.read(*lhs)?, "mul")
+                    let lhs = frame
+                        .read_i64(*lhs, "mul")
                         .map_err(|error| error.with_source_span_if_absent(instruction.span))?;
-                    let value = i64_ops::mul(lhs, *imm)
+                    let value = i64_ops::mul_raw(lhs, *imm)
                         .map_err(|error| error.with_source_span_if_absent(instruction.span))?;
-                    frame.write(*dst, value)?;
+                    frame.write_i64(*dst, value)?;
                 }
                 InstructionKind::I64RemImm { dst, lhs, imm } => {
-                    let lhs = i64_ops::read(frame.read(*lhs)?, "rem")
+                    let lhs = frame
+                        .read_i64(*lhs, "rem")
                         .map_err(|error| error.with_source_span_if_absent(instruction.span))?;
-                    let value = i64_ops::rem(lhs, *imm)
+                    let value = i64_ops::rem_raw(lhs, *imm)
                         .map_err(|error| error.with_source_span_if_absent(instruction.span))?;
-                    frame.write(*dst, value)?;
+                    frame.write_i64(*dst, value)?;
                 }
                 InstructionKind::I64EqImm { dst, lhs, imm } => {
-                    let lhs = i64_ops::read(frame.read(*lhs)?, "equal")
+                    let lhs = frame
+                        .read_i64(*lhs, "equal")
                         .map_err(|error| error.with_source_span_if_absent(instruction.span))?;
-                    frame.write(*dst, i64_ops::eq_imm(lhs, *imm))?;
+                    frame.write_bool(*dst, lhs == *imm)?;
                 }
                 InstructionKind::I64GtImm { dst, lhs, imm } => {
-                    let lhs = i64_ops::read(frame.read(*lhs)?, "greater")
+                    let lhs = frame
+                        .read_i64(*lhs, "greater")
                         .map_err(|error| error.with_source_span_if_absent(instruction.span))?;
-                    frame.write(*dst, i64_ops::gt_imm(lhs, *imm))?;
+                    frame.write_bool(*dst, lhs > *imm)?;
+                }
+                InstructionKind::I64EqImmJumpIfFalse { lhs, imm, target } => {
+                    let lhs = frame
+                        .read_i64(*lhs, "equal")
+                        .map_err(|error| error.with_source_span_if_absent(instruction.span))?;
+                    if lhs != *imm {
+                        debug_assert!(target.0 <= code.instructions.len());
+                        ip = target.0;
+                    }
+                }
+                InstructionKind::I64GtImmJumpIfFalse { lhs, imm, target } => {
+                    let lhs = frame
+                        .read_i64(*lhs, "greater")
+                        .map_err(|error| error.with_source_span_if_absent(instruction.span))?;
+                    if lhs <= *imm {
+                        debug_assert!(target.0 <= code.instructions.len());
+                        ip = target.0;
+                    }
+                }
+                InstructionKind::I64RemImmEqImmJumpIfFalse {
+                    lhs,
+                    rem_imm,
+                    eq_imm,
+                    target,
+                } => {
+                    let lhs = frame
+                        .read_i64(*lhs, "rem")
+                        .map_err(|error| error.with_source_span_if_absent(instruction.span))?;
+                    let value = i64_ops::rem_raw(lhs, *rem_imm)
+                        .map_err(|error| error.with_source_span_if_absent(instruction.span))?;
+                    if value != *eq_imm {
+                        debug_assert!(target.0 <= code.instructions.len());
+                        ip = target.0;
+                    }
                 }
                 InstructionKind::GuardType { src, guard } => {
                     runtime_type_guards::execute_linked_register_guard(
@@ -394,7 +442,11 @@ impl Vm {
                     .map_err(|error| error.with_source_span_if_absent(instruction.span))?;
                 }
                 InstructionKind::JumpIfFalse { condition, target } => {
-                    if !is_truthy(frame.read(*condition)?) {
+                    let jump = match frame.read_bool_lane(*condition)? {
+                        Some(condition) => !condition,
+                        None => !is_truthy(&frame.read(*condition)?),
+                    };
+                    if jump {
                         debug_assert!(target.0 <= code.instructions.len());
                         ip = target.0;
                     }
@@ -977,7 +1029,7 @@ impl Vm {
                     return runtime_type_guards::execute_linked_return_guard(
                         code,
                         call.program,
-                        *frame.read(*src)?,
+                        frame.read(*src)?,
                         heap.as_deref(),
                     );
                 }

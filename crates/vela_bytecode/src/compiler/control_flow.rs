@@ -2,11 +2,13 @@ use vela_common::{PrimitiveTag, Span};
 use vela_hir::binding::LocalBindingKind;
 use vela_hir::type_hint::HirTypeHint;
 use vela_syntax::ast::{
-    BinaryOp, Block, ElseBranch, Expr, ExprKind, IfExpr, MatchExpr, Pattern, Stmt, StmtKind,
+    BinaryOp, Block, ElseBranch, Expr, ExprKind, IfExpr, Literal, MatchExpr, Pattern, Stmt,
+    StmtKind,
 };
 
 use crate::{Constant, InstructionOffset, Register, UnlinkedInstructionKind};
 
+use super::const_eval::compile_literal_constant_for_type;
 use super::patterns::PatternBindingFacts;
 use super::record_shapes::ValueShape;
 use super::script_types::{ScriptTypeFact, type_hint_script_type};
@@ -441,8 +443,7 @@ impl Compiler<'_, '_> {
     }
 
     fn compile_if(&mut self, if_expr: &IfExpr) -> CompileResult<bool> {
-        let condition = self.compile_expr(&if_expr.condition)?;
-        let jump_to_else = self.emit_jump_if_false(condition);
+        let jump_to_else = self.emit_condition_jump_if_false(&if_expr.condition)?;
 
         let then_returned = self.compile_statements(&if_expr.then_branch.statements)?;
         let jump_to_end = if then_returned {
@@ -471,8 +472,7 @@ impl Compiler<'_, '_> {
         if_expr: &IfExpr,
         dst: Register,
     ) -> CompileResult<bool> {
-        let condition = self.compile_expr(&if_expr.condition)?;
-        let jump_to_else = self.emit_jump_if_false(condition);
+        let jump_to_else = self.emit_condition_jump_if_false(&if_expr.condition)?;
 
         let then_returned = self.compile_block_value_to(&if_expr.then_branch, dst)?;
         let jump_to_end = if then_returned {
@@ -497,6 +497,105 @@ impl Compiler<'_, '_> {
         }
 
         Ok(then_returned && else_returned)
+    }
+
+    fn emit_condition_jump_if_false(&mut self, condition: &Expr) -> CompileResult<usize> {
+        if let Some(jump) = self.try_emit_i64_immediate_jump_if_false(condition)? {
+            return Ok(jump);
+        }
+        let condition = self.compile_expr(condition)?;
+        Ok(self.emit_jump_if_false(condition))
+    }
+
+    fn try_emit_i64_immediate_jump_if_false(
+        &mut self,
+        condition: &Expr,
+    ) -> CompileResult<Option<usize>> {
+        let ExprKind::Binary { op, left, right } = &condition.kind else {
+            return Ok(None);
+        };
+        if !matches!(op, BinaryOp::Equal | BinaryOp::Greater) {
+            return Ok(None);
+        }
+        if *op == BinaryOp::Equal
+            && let Some(jump) = self.try_emit_i64_rem_eq_immediate_jump_if_false(left, right)?
+        {
+            return Ok(Some(jump));
+        }
+        if self.value_type_for_expr(left)
+            != Some(RuntimeTypeFact::Primitive(vela_common::PrimitiveTag::I64))
+        {
+            return Ok(None);
+        }
+        let Some(imm) = self.i64_literal_value(right)? else {
+            return Ok(None);
+        };
+        let lhs = self.compile_expr(left)?;
+        let offset = self.current_offset();
+        let target = InstructionOffset(usize::MAX);
+        match op {
+            BinaryOp::Equal => {
+                self.emit(UnlinkedInstructionKind::I64EqImmJumpIfFalse { lhs, imm, target })
+            }
+            BinaryOp::Greater => {
+                self.emit(UnlinkedInstructionKind::I64GtImmJumpIfFalse { lhs, imm, target })
+            }
+            _ => unreachable!("operator filtered above"),
+        }
+        Ok(Some(offset))
+    }
+
+    fn try_emit_i64_rem_eq_immediate_jump_if_false(
+        &mut self,
+        left: &Expr,
+        right: &Expr,
+    ) -> CompileResult<Option<usize>> {
+        let ExprKind::Binary {
+            op: BinaryOp::Rem,
+            left: rem_lhs,
+            right: rem_rhs,
+        } = &left.kind
+        else {
+            return Ok(None);
+        };
+        if self.value_type_for_expr(rem_lhs)
+            != Some(RuntimeTypeFact::Primitive(vela_common::PrimitiveTag::I64))
+        {
+            return Ok(None);
+        }
+        let Some(rem_imm) = self.i64_literal_value(rem_rhs)? else {
+            return Ok(None);
+        };
+        if rem_imm == 0 {
+            return Ok(None);
+        }
+        let Some(eq_imm) = self.i64_literal_value(right)? else {
+            return Ok(None);
+        };
+        let lhs = self.compile_expr(rem_lhs)?;
+        let offset = self.current_offset();
+        self.emit(UnlinkedInstructionKind::I64RemImmEqImmJumpIfFalse {
+            lhs,
+            rem_imm,
+            eq_imm,
+            target: InstructionOffset(usize::MAX),
+        });
+        Ok(Some(offset))
+    }
+
+    fn i64_literal_value(&self, expr: &Expr) -> CompileResult<Option<i64>> {
+        let ExprKind::Literal(Literal::Integer(value)) = &expr.kind else {
+            return Ok(None);
+        };
+        let Some(Constant::Scalar(vela_common::ScalarValue::I64(value))) =
+            compile_literal_constant_for_type(
+                &Literal::Integer(value.clone()),
+                vela_common::PrimitiveTag::I64,
+            )?
+        else {
+            return Ok(None);
+        };
+        Ok(Some(value))
     }
 
     fn compile_match(&mut self, match_expr: &MatchExpr) -> CompileResult<bool> {

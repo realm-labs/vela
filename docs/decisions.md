@@ -151,6 +151,14 @@ instructions, memory, call depth, and patches. Script heap values use stable,
 generation-checked non-moving handles; host refs and path proxies remain
 external handles and are not traced as Rust-owned state.
 
+Typed scalar fast paths are interpreter specializations, not alternate
+language semantics. Proven `i64` hot paths may use typed frame slots and fused
+typed branch bytecode such as immediate compare or remainder-compare jumps, but
+they must preserve the same checked arithmetic, division-by-zero, source-span,
+budget, and hot-reload behavior as the generic bytecode path. These
+specializations replace pre-release bytecode shapes instead of preserving
+compatibility aliases.
+
 `OwnedValue` is the Rust boundary/materialized value name. `Value` is the VM
 runtime slot and is `Copy`, containing only scalars or handles. `HeapValue`
 stores script heap objects, and heap containers store runtime `Value` entries

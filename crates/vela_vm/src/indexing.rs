@@ -12,7 +12,7 @@ pub(crate) fn dispatch_get_index(
     base: Register,
     index: Register,
 ) -> VmResult<()> {
-    let value = get_index(frame.read(base)?, frame.read(index)?, heap)?;
+    let value = get_index(&frame.read(base)?, &frame.read(index)?, heap)?;
     frame.write(dst, value)
 }
 
@@ -24,11 +24,11 @@ pub(crate) fn dispatch_set_index(
     index: Register,
     src: Register,
 ) -> VmResult<()> {
-    let mut base_value = *frame.read(base)?;
+    let mut base_value = frame.read(base)?;
     set_index(
         &mut base_value,
-        frame.read(index)?,
-        frame.read(src)?,
+        &frame.read(index)?,
+        &frame.read(src)?,
         heap,
         budget,
     )?;

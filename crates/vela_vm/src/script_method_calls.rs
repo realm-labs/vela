@@ -92,7 +92,7 @@ pub(crate) fn dispatch_script_method_call(
     call: ScriptMethodCall<'_>,
 ) -> VmResult<()> {
     if let Some(result) = call_readonly_method_without_callbacks(
-        frame.read(call.receiver)?,
+        &frame.read(call.receiver)?,
         call.method,
         None,
         call.values,
@@ -106,7 +106,7 @@ pub(crate) fn dispatch_script_method_call(
 
     let caller_roots = CallerRoots::for_frame(frame, heap.as_deref());
     if let Some(result) = call_non_mutating_method(
-        frame.read(call.receiver)?,
+        &frame.read(call.receiver)?,
         call.method,
         None,
         call.values,
@@ -126,7 +126,7 @@ pub(crate) fn dispatch_script_method_call(
             store_value_in_heap_if_needed(result?, heap.as_deref_mut(), budget.as_deref_mut())?;
         frame.write(call.dst, result)?;
     } else {
-        let mut receiver_value = *frame.read(call.receiver)?;
+        let mut receiver_value = frame.read(call.receiver)?;
         let caller_roots = CallerRoots::for_frame(frame, heap.as_deref());
         let result = call_method(
             &mut receiver_value,
@@ -222,7 +222,7 @@ pub(crate) fn dispatch_script_method_id_call(
     frame: &mut CallFrame,
     call: ScriptMethodIdCall<'_>,
 ) -> VmResult<()> {
-    let mut receiver_value = *frame.read(call.receiver)?;
+    let mut receiver_value = frame.read(call.receiver)?;
     let caller_roots = CallerRoots::for_frame(frame, heap.as_deref());
     let result = call_method_id(
         &mut receiver_value,
@@ -255,7 +255,7 @@ pub(crate) fn dispatch_linked_method_id_call(
     frame: &mut CallFrame,
     call: ScriptMethodIdCall<'_>,
 ) -> VmResult<()> {
-    let mut receiver_value = *frame.read(call.receiver)?;
+    let mut receiver_value = frame.read(call.receiver)?;
     let caller_roots = CallerRoots::for_frame(frame, heap.as_deref());
     let result = call_method_id(
         &mut receiver_value,
@@ -503,7 +503,7 @@ fn dispatch_linked_dynamic_method_call_inner(
     call: LinkedDynamicMethodCall<'_>,
 ) -> VmResult<()> {
     let method = context.program.debug_name(call.method_name);
-    let receiver = *frame.read(call.receiver)?;
+    let receiver = frame.read(call.receiver)?;
     let target = linked_dynamic_method_dispatch_target(
         vm,
         &context,
@@ -872,7 +872,7 @@ fn dynamic_value_args_from_linked_arguments(
                 operation: "dynamic method named arguments",
             }));
         }
-        values.push(*frame.read(arg.value)?);
+        values.push(frame.read(arg.value)?);
     }
     Ok(values)
 }
@@ -1012,7 +1012,7 @@ fn linked_standard_value_method_result(
             standard_method,
         )
         && let Some(result) = script_builtin_methods::call_standard_cached(
-            receiver,
+            &receiver,
             standard_method,
             call.values,
             heap,
@@ -1022,9 +1022,9 @@ fn linked_standard_value_method_result(
         return Some(result);
     }
     let standard_method =
-        script_builtin_methods::standard_cache_entry(call.method_id, receiver, heap.as_deref())?;
+        script_builtin_methods::standard_cache_entry(call.method_id, &receiver, heap.as_deref())?;
     let result = script_builtin_methods::call_standard_cached(
-        receiver,
+        &receiver,
         standard_method,
         call.values,
         heap,
@@ -1088,7 +1088,7 @@ fn linked_callback_value_method_result(
             callback_method,
         )
         && let Some(result) = callback_method_dispatch::call_cached(
-            receiver,
+            &receiver,
             callback_method,
             call.values,
             &mut dispatch,
@@ -1098,11 +1098,11 @@ fn linked_callback_value_method_result(
     }
     let callback_method = callback_method_dispatch::callback_cache_entry(
         call.method_id,
-        receiver,
+        &receiver,
         dispatch.heap_ref(),
     )?;
     let result = callback_method_dispatch::call_cached(
-        receiver,
+        &receiver,
         callback_method,
         call.values,
         &mut dispatch,
@@ -1149,7 +1149,7 @@ fn dispatch_linked_script_method_call(
         })
         .with_source_span_if_absent(context.call_site)
     })?;
-    let receiver_value = *frame.read(call.receiver)?;
+    let receiver_value = frame.read(call.receiver)?;
     let method_args =
         SmallStorage::try_from_prefix_and_slice_map(receiver_value, call.values, 4, |value| {
             Ok::<_, VmError>(*value)

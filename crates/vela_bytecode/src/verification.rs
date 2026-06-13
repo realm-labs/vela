@@ -420,6 +420,21 @@ fn verify_instruction(
             verify_register(function, instruction_index, code, *lhs)?;
             verify_i64_rem_imm(function, instruction_index, *imm)
         }
+        UnlinkedInstructionKind::I64EqImmJumpIfFalse { lhs, target, .. }
+        | UnlinkedInstructionKind::I64GtImmJumpIfFalse { lhs, target, .. } => {
+            verify_register(function, instruction_index, code, *lhs)?;
+            verify_jump(function, instruction_index, code, *target)
+        }
+        UnlinkedInstructionKind::I64RemImmEqImmJumpIfFalse {
+            lhs,
+            rem_imm,
+            target,
+            ..
+        } => {
+            verify_register(function, instruction_index, code, *lhs)?;
+            verify_i64_rem_imm(function, instruction_index, *rem_imm)?;
+            verify_jump(function, instruction_index, code, *target)
+        }
         UnlinkedInstructionKind::BinaryIntLiteral { dst, value, .. }
         | UnlinkedInstructionKind::BinaryFloatLiteral { dst, value, .. } => {
             verify_register(function, instruction_index, code, *dst)?;

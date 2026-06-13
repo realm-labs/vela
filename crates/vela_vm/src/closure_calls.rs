@@ -89,7 +89,7 @@ fn captures_from_registers(
     frame: &CallFrame,
     captures: &[Register],
 ) -> VmResult<SmallStorage<Value>> {
-    SmallStorage::try_from_slice_map(captures, 4, |register| Ok(*frame.read(*register)?))
+    SmallStorage::try_from_slice_map(captures, 4, |register| frame.read(*register))
 }
 
 fn resolve_closure_code<'a>(
@@ -121,7 +121,7 @@ pub(crate) fn dispatch_closure_call(
 ) -> VmResult<()> {
     let (code, captures) = {
         let closure =
-            expect_closure_ref(frame.read(call.callee)?, heap.as_deref(), "closure call")?;
+            expect_closure_ref(&frame.read(call.callee)?, heap.as_deref(), "closure call")?;
         let ClosureCode::Unlinked(code) = &closure.code else {
             return Err(VmError::new(VmErrorKind::TypeMismatch {
                 operation: "closure call",
@@ -180,7 +180,7 @@ pub(crate) fn dispatch_linked_closure_call(
 ) -> VmResult<()> {
     let (function, captures) = {
         let closure =
-            expect_closure_ref(frame.read(call.callee)?, heap.as_deref(), "closure call")?;
+            expect_closure_ref(&frame.read(call.callee)?, heap.as_deref(), "closure call")?;
         let ClosureCode::Linked(function) = &closure.code else {
             return Err(VmError::new(VmErrorKind::TypeMismatch {
                 operation: "closure call",
@@ -228,7 +228,7 @@ fn script_call_args_from_registers(
     frame: &CallFrame,
     registers: &[Register],
 ) -> VmResult<SmallStorage<Value>> {
-    SmallStorage::try_from_slice_map(registers, 4, |register| Ok(*frame.read(*register)?))
+    SmallStorage::try_from_slice_map(registers, 4, |register| frame.read(*register))
 }
 
 #[cfg(test)]

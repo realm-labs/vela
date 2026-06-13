@@ -15,7 +15,7 @@ pub(crate) fn dispatch_get_record_field(
     record: Register,
     field: &str,
 ) -> VmResult<()> {
-    let value = get_record_field_value(frame.read(record)?, field, heap.as_deref())?;
+    let value = get_record_field_value(&frame.read(record)?, field, heap.as_deref())?;
     frame.write(dst, value)
 }
 
@@ -27,7 +27,7 @@ pub(crate) fn dispatch_get_record_slot(
     field: &str,
     slot: usize,
 ) -> VmResult<()> {
-    let value = get_record_slot_value(frame.read(record)?, field, slot, heap.as_deref())?;
+    let value = get_record_slot_value(&frame.read(record)?, field, slot, heap.as_deref())?;
     frame.write(dst, value)
 }
 
@@ -42,7 +42,7 @@ pub(crate) fn dispatch_linked_get_record_slot(
     let field_name = program.debug_name(read.debug_name);
     let record_value = frame.read(read.record)?;
     let value = get_linked_record_slot_value(
-        record_value,
+        &record_value,
         field_name,
         read.field,
         heap.as_deref(),
@@ -60,8 +60,8 @@ pub(crate) fn dispatch_set_record_field(
     field: &str,
     src: Register,
 ) -> VmResult<()> {
-    let mut record_value = *frame.read(record)?;
-    let src = *frame.read(src)?;
+    let mut record_value = frame.read(record)?;
+    let src = frame.read(src)?;
     record_fields::set_record_field_value(&mut record_value, field, &src, heap, budget)?;
     frame.write(record, record_value)
 }
@@ -75,8 +75,8 @@ pub(crate) fn dispatch_set_record_slot(
     slot: usize,
     src: Register,
 ) -> VmResult<()> {
-    let mut record_value = *frame.read(record)?;
-    let src = *frame.read(src)?;
+    let mut record_value = frame.read(record)?;
+    let src = frame.read(src)?;
     record_fields::set_record_slot_value(&mut record_value, field, slot, &src, heap, budget)?;
     frame.write(record, record_value)
 }
@@ -106,8 +106,8 @@ pub(crate) fn dispatch_linked_set_record_slot(
 ) -> VmResult<()> {
     let mut heap = heap;
     let mut budget = budget;
-    let mut record_value = *frame.read(write.record)?;
-    let src = *frame.read(write.src)?;
+    let mut record_value = frame.read(write.record)?;
+    let src = frame.read(write.src)?;
     let field_name = program.debug_name(write.debug_name);
     if !set_linked_record_slot_value(
         &mut record_value,
@@ -145,7 +145,7 @@ pub(crate) fn dispatch_get_enum_field(
     value: Register,
     field: &str,
 ) -> VmResult<()> {
-    let value = get_enum_field_value(frame.read(value)?, field, heap.as_deref())?;
+    let value = get_enum_field_value(&frame.read(value)?, field, heap.as_deref())?;
     frame.write(dst, value)
 }
 
@@ -157,7 +157,7 @@ pub(crate) fn dispatch_get_enum_slot(
     field: &str,
     slot: usize,
 ) -> VmResult<()> {
-    let value = get_enum_slot_value(frame.read(value)?, field, slot, heap.as_deref())?;
+    let value = get_enum_slot_value(&frame.read(value)?, field, slot, heap.as_deref())?;
     frame.write(dst, value)
 }
 
@@ -188,7 +188,7 @@ pub(crate) fn dispatch_enum_tag_equal(
     enum_name: &str,
     variant: &str,
 ) -> VmResult<()> {
-    let matches = enum_tag_equal(frame.read(value)?, enum_name, variant, heap);
+    let matches = enum_tag_equal(&frame.read(value)?, enum_name, variant, heap);
     frame.write(dst, Value::Bool(matches))
 }
 
@@ -211,7 +211,7 @@ pub(crate) fn dispatch_linked_enum_tag_equal(
             opcode: "EnumTagEqual",
         })
     })?;
-    let matches = enum_tag_id_equal(frame.read(value)?, enum_ty.id, variant.id, heap);
+    let matches = enum_tag_id_equal(&frame.read(value)?, enum_ty.id, variant.id, heap);
     frame.write(dst, Value::Bool(matches))
 }
 

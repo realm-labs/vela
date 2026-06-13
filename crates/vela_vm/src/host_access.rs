@@ -96,7 +96,7 @@ pub(crate) fn execute_host_read(
     dynamic_args: &[Register],
     cache_site: CacheSiteId,
 ) -> VmResult<Value> {
-    let root = expect_host_ref(runtime.frame.read(root)?, "host_read")?;
+    let root = expect_host_ref(&runtime.frame.read(root)?, "host_read")?;
     let args = materialize_host_args(
         runtime.frame,
         dynamic_args,
@@ -149,9 +149,9 @@ pub(crate) fn execute_host_write(
     src: Register,
     cache_site: CacheSiteId,
 ) -> VmResult<()> {
-    let root = expect_host_ref(runtime.frame.read(root)?, "host_write")?;
+    let root = expect_host_ref(&runtime.frame.read(root)?, "host_write")?;
     let value = value_to_host(
-        runtime.frame.read(src)?,
+        &runtime.frame.read(src)?,
         "set_host_field",
         runtime.heap.as_deref(),
     )?;
@@ -209,9 +209,9 @@ pub(crate) fn execute_host_mutate(
     root: Register,
     mutation: HostMutationPlan<'_>,
 ) -> VmResult<()> {
-    let root = expect_host_ref(runtime.frame.read(root)?, "host_mutate")?;
+    let root = expect_host_ref(&runtime.frame.read(root)?, "host_mutate")?;
     let value = value_to_host(
-        runtime.frame.read(mutation.rhs)?,
+        &runtime.frame.read(mutation.rhs)?,
         "host_mutate",
         runtime.heap.as_deref(),
     )?;
@@ -294,7 +294,7 @@ pub(crate) fn execute_host_remove(
     dynamic_args: &[Register],
     cache_site: CacheSiteId,
 ) -> VmResult<()> {
-    let root = expect_host_ref(runtime.frame.read(root)?, "host_remove")?;
+    let root = expect_host_ref(&runtime.frame.read(root)?, "host_remove")?;
     let args = materialize_host_args(
         runtime.frame,
         dynamic_args,
@@ -374,7 +374,7 @@ pub(crate) fn execute_host_call(
     root: Register,
     call: HostCallPlan<'_>,
 ) -> VmResult<Option<Value>> {
-    let root = expect_host_ref(runtime.frame.read(root)?, "host_call")?;
+    let root = expect_host_ref(&runtime.frame.read(root)?, "host_call")?;
     let dynamic_args = materialize_host_args(
         runtime.frame,
         call.dynamic_args,
@@ -386,7 +386,7 @@ pub(crate) fn execute_host_call(
         .iter()
         .map(|register| {
             value_to_host(
-                runtime.frame.read(*register)?,
+                &runtime.frame.read(*register)?,
                 "host_call",
                 runtime.heap.as_deref(),
             )
@@ -478,7 +478,7 @@ pub(crate) fn execute_host_root_method_call(
     receiver: Register,
     call: HostRootMethodCall<'_>,
 ) -> VmResult<Option<Value>> {
-    let root = expect_host_ref(runtime.frame.read(receiver)?, "host_call")?;
+    let root = expect_host_ref(&runtime.frame.read(receiver)?, "host_call")?;
     let values = call
         .args
         .iter()
@@ -610,7 +610,7 @@ fn materialize_host_args<'a>(
     }
     registers
         .iter()
-        .map(|register| host_arg_from_value(frame.read(*register)?, heap, operation))
+        .map(|register| host_arg_from_value(&frame.read(*register)?, heap, operation))
         .collect::<VmResult<Vec<_>>>()
         .map(MaterializedHostArgs::Values)
 }

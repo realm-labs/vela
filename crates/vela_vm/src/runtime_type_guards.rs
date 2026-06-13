@@ -138,7 +138,7 @@ pub(crate) fn execute_linked_param_guards(
             })
         })?;
         execute_linked_guard(
-            value,
+            &value,
             guard,
             program,
             heap,
@@ -165,7 +165,7 @@ pub(crate) fn execute_linked_register_guard(
         })
     })?;
     execute_linked_guard(
-        value,
+        &value,
         guard,
         program,
         heap,

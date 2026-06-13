@@ -740,6 +740,22 @@ pub enum UnlinkedInstructionKind {
         lhs: Register,
         imm: i64,
     },
+    I64EqImmJumpIfFalse {
+        lhs: Register,
+        imm: i64,
+        target: InstructionOffset,
+    },
+    I64GtImmJumpIfFalse {
+        lhs: Register,
+        imm: i64,
+        target: InstructionOffset,
+    },
+    I64RemImmEqImmJumpIfFalse {
+        lhs: Register,
+        rem_imm: i64,
+        eq_imm: i64,
+        target: InstructionOffset,
+    },
     BinaryIntLiteral {
         dst: Register,
         op: BinaryLiteralOp,

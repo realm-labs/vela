@@ -135,7 +135,7 @@ pub(crate) fn dispatch_iter_init(
     dst: Register,
     iterable: Register,
 ) -> VmResult<()> {
-    let iterator = make_iterator(runtime.frame.read(iterable)?, runtime.heap.as_deref())?;
+    let iterator = make_iterator(&runtime.frame.read(iterable)?, runtime.heap.as_deref())?;
     let Some(heap) = heap_ref(&mut runtime.heap) else {
         return Err(VmError::new(VmErrorKind::TypeMismatch {
             operation: "iterator heap",
@@ -231,7 +231,7 @@ fn next_iterator_value(
     runtime: &mut IterRuntime<'_, '_>,
     iterator: Register,
 ) -> VmResult<Option<Value>> {
-    let value = *runtime.frame.read(iterator)?;
+    let value = runtime.frame.read(iterator)?;
     match value {
         Value::HeapRef(reference) => {
             let Some(HeapValue::Iterator(iterator_state)) =
@@ -254,41 +254,29 @@ fn dispatch_i64_range_next_with(
     step: RangeNextStep,
     mut validate: impl FnMut(usize) -> VmResult<()>,
 ) -> VmResult<Option<usize>> {
-    let Value::Bool(is_done) = *frame.read(step.done)? else {
-        return Err(VmError::new(VmErrorKind::TypeMismatch {
-            operation: "range",
-        }));
-    };
+    let is_done = frame.read_bool(step.done, "range")?;
     if is_done {
         validate(step.jump_if_done.0)?;
         return Ok(Some(step.jump_if_done.0));
     }
 
-    let Value::Scalar(vela_common::ScalarValue::I64(current)) = *frame.read(step.cursor)? else {
-        return Err(VmError::new(VmErrorKind::TypeMismatch {
-            operation: "range",
-        }));
-    };
-    let Value::Scalar(vela_common::ScalarValue::I64(end)) = *frame.read(step.end)? else {
-        return Err(VmError::new(VmErrorKind::TypeMismatch {
-            operation: "range",
-        }));
-    };
+    let current = frame.read_i64(step.cursor, "range")?;
+    let end = frame.read_i64(step.end, "range")?;
     let has_next = if step.inclusive {
         current <= end
     } else {
         current < end
     };
     if has_next {
-        frame.write(step.dst, Value::i64(current))?;
+        frame.write_i64(step.dst, current)?;
         if current == i64::MAX {
-            frame.write(step.done, Value::Bool(true))?;
+            frame.write_bool(step.done, true)?;
         } else {
-            frame.write(step.cursor, Value::i64(current + 1))?;
+            frame.write_i64(step.cursor, current + 1)?;
         }
         Ok(None)
     } else {
-        frame.write(step.done, Value::Bool(true))?;
+        frame.write_bool(step.done, true)?;
         validate(step.jump_if_done.0)?;
         Ok(Some(step.jump_if_done.0))
     }
@@ -300,7 +288,7 @@ fn dispatch_range_next_with(
     mut validate: impl FnMut(usize) -> VmResult<()>,
 ) -> VmResult<Option<usize>> {
     let is_done = match frame.read(step.done)? {
-        Value::Bool(value) => *value,
+        Value::Bool(value) => value,
         _ => {
             return Err(VmError::new(VmErrorKind::TypeMismatch {
                 operation: "range",
@@ -312,8 +300,8 @@ fn dispatch_range_next_with(
         return Ok(Some(step.jump_if_done.0));
     }
 
-    let current = expect_int(frame.read(step.cursor)?, "range")?;
-    let end = expect_int(frame.read(step.end)?, "range")?;
+    let current = expect_int(&frame.read(step.cursor)?, "range")?;
+    let end = expect_int(&frame.read(step.end)?, "range")?;
     let has_next = if step.inclusive {
         current <= end
     } else {

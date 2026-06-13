@@ -87,11 +87,11 @@ fn main() {
 
     assert!(code.instructions.iter().any(|instruction| matches!(
         instruction.kind,
-        UnlinkedInstructionKind::I64RemImm { imm: 3, .. }
-    )));
-    assert!(code.instructions.iter().any(|instruction| matches!(
-        instruction.kind,
-        UnlinkedInstructionKind::I64EqImm { imm: 0, .. }
+        UnlinkedInstructionKind::I64RemImmEqImmJumpIfFalse {
+            rem_imm: 3,
+            eq_imm: 0,
+            ..
+        }
     )));
     assert!(code.instructions.iter().any(|instruction| matches!(
         instruction.kind,
@@ -99,7 +99,7 @@ fn main() {
     )));
     assert!(code.instructions.iter().any(|instruction| matches!(
         instruction.kind,
-        UnlinkedInstructionKind::I64GtImm { imm: 180, .. }
+        UnlinkedInstructionKind::I64GtImmJumpIfFalse { imm: 180, .. }
     )));
     assert!(
         code.instructions

@@ -216,14 +216,14 @@ fn runtime_fields_from_registers(
     match fields {
         [] => Ok(ScriptFields::empty(owner)),
         [(name, register)] => {
-            let value = store_runtime_value(frame.read(*register)?, heap, budget.as_deref_mut())?;
+            let value = store_runtime_value(&frame.read(*register)?, heap, budget.as_deref_mut())?;
             Ok(ScriptFields::single(owner, name.clone(), value))
         }
         [(first_name, first_register), (second_name, second_register)] => {
             let first_value =
-                store_runtime_value(frame.read(*first_register)?, heap, budget.as_deref_mut())?;
+                store_runtime_value(&frame.read(*first_register)?, heap, budget.as_deref_mut())?;
             let second_value =
-                store_runtime_value(frame.read(*second_register)?, heap, budget.as_deref_mut())?;
+                store_runtime_value(&frame.read(*second_register)?, heap, budget.as_deref_mut())?;
             Ok(ScriptFields::two(
                 owner,
                 first_name.clone(),
@@ -238,11 +238,11 @@ fn runtime_fields_from_registers(
             (third_name, third_register),
         ] => {
             let first_value =
-                store_runtime_value(frame.read(*first_register)?, heap, budget.as_deref_mut())?;
+                store_runtime_value(&frame.read(*first_register)?, heap, budget.as_deref_mut())?;
             let second_value =
-                store_runtime_value(frame.read(*second_register)?, heap, budget.as_deref_mut())?;
+                store_runtime_value(&frame.read(*second_register)?, heap, budget.as_deref_mut())?;
             let third_value =
-                store_runtime_value(frame.read(*third_register)?, heap, budget.as_deref_mut())?;
+                store_runtime_value(&frame.read(*third_register)?, heap, budget.as_deref_mut())?;
             Ok(ScriptFields::three(
                 owner,
                 first_name.clone(),
@@ -260,13 +260,13 @@ fn runtime_fields_from_registers(
             (fourth_name, fourth_register),
         ] => {
             let first_value =
-                store_runtime_value(frame.read(*first_register)?, heap, budget.as_deref_mut())?;
+                store_runtime_value(&frame.read(*first_register)?, heap, budget.as_deref_mut())?;
             let second_value =
-                store_runtime_value(frame.read(*second_register)?, heap, budget.as_deref_mut())?;
+                store_runtime_value(&frame.read(*second_register)?, heap, budget.as_deref_mut())?;
             let third_value =
-                store_runtime_value(frame.read(*third_register)?, heap, budget.as_deref_mut())?;
+                store_runtime_value(&frame.read(*third_register)?, heap, budget.as_deref_mut())?;
             let fourth_value =
-                store_runtime_value(frame.read(*fourth_register)?, heap, budget.as_deref_mut())?;
+                store_runtime_value(&frame.read(*fourth_register)?, heap, budget.as_deref_mut())?;
             Ok(ScriptFields::four(
                 owner,
                 [
@@ -285,15 +285,15 @@ fn runtime_fields_from_registers(
             (fifth_name, fifth_register),
         ] => {
             let first_value =
-                store_runtime_value(frame.read(*first_register)?, heap, budget.as_deref_mut())?;
+                store_runtime_value(&frame.read(*first_register)?, heap, budget.as_deref_mut())?;
             let second_value =
-                store_runtime_value(frame.read(*second_register)?, heap, budget.as_deref_mut())?;
+                store_runtime_value(&frame.read(*second_register)?, heap, budget.as_deref_mut())?;
             let third_value =
-                store_runtime_value(frame.read(*third_register)?, heap, budget.as_deref_mut())?;
+                store_runtime_value(&frame.read(*third_register)?, heap, budget.as_deref_mut())?;
             let fourth_value =
-                store_runtime_value(frame.read(*fourth_register)?, heap, budget.as_deref_mut())?;
+                store_runtime_value(&frame.read(*fourth_register)?, heap, budget.as_deref_mut())?;
             let fifth_value =
-                store_runtime_value(frame.read(*fifth_register)?, heap, budget.as_deref_mut())?;
+                store_runtime_value(&frame.read(*fifth_register)?, heap, budget.as_deref_mut())?;
             Ok(ScriptFields::five(
                 owner,
                 [
@@ -314,17 +314,17 @@ fn runtime_fields_from_registers(
             (sixth_name, sixth_register),
         ] => {
             let first_value =
-                store_runtime_value(frame.read(*first_register)?, heap, budget.as_deref_mut())?;
+                store_runtime_value(&frame.read(*first_register)?, heap, budget.as_deref_mut())?;
             let second_value =
-                store_runtime_value(frame.read(*second_register)?, heap, budget.as_deref_mut())?;
+                store_runtime_value(&frame.read(*second_register)?, heap, budget.as_deref_mut())?;
             let third_value =
-                store_runtime_value(frame.read(*third_register)?, heap, budget.as_deref_mut())?;
+                store_runtime_value(&frame.read(*third_register)?, heap, budget.as_deref_mut())?;
             let fourth_value =
-                store_runtime_value(frame.read(*fourth_register)?, heap, budget.as_deref_mut())?;
+                store_runtime_value(&frame.read(*fourth_register)?, heap, budget.as_deref_mut())?;
             let fifth_value =
-                store_runtime_value(frame.read(*fifth_register)?, heap, budget.as_deref_mut())?;
+                store_runtime_value(&frame.read(*fifth_register)?, heap, budget.as_deref_mut())?;
             let sixth_value =
-                store_runtime_value(frame.read(*sixth_register)?, heap, budget.as_deref_mut())?;
+                store_runtime_value(&frame.read(*sixth_register)?, heap, budget.as_deref_mut())?;
             Ok(ScriptFields::six(
                 owner,
                 [
@@ -342,7 +342,7 @@ fn runtime_fields_from_registers(
             .map(|(name, register)| {
                 Ok((
                     name.clone(),
-                    store_runtime_value(frame.read(*register)?, heap, budget.as_deref_mut())?,
+                    store_runtime_value(&frame.read(*register)?, heap, budget.as_deref_mut())?,
                 ))
             })
             .collect::<VmResult<Vec<_>>>()

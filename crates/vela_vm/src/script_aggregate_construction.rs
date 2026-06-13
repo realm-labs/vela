@@ -75,8 +75,8 @@ pub(crate) fn make_range(
     end: Register,
     inclusive: bool,
 ) -> VmResult<()> {
-    let start = expect_int(frame.read(start)?, "range")?;
-    let end = expect_int(frame.read(end)?, "range")?;
+    let start = expect_int(&frame.read(start)?, "range")?;
+    let end = expect_int(&frame.read(end)?, "range")?;
     frame.write(
         dst,
         Value::Range(crate::ranges::RangeValue::new(start, end, inclusive)),
@@ -103,7 +103,7 @@ fn runtime_value_from_register(
     heap: &mut HeapExecution<'_>,
     budget: Option<&mut ExecutionBudget>,
 ) -> VmResult<Value> {
-    store_runtime_value(frame.read(register)?, heap, budget)
+    store_runtime_value(&frame.read(register)?, heap, budget)
 }
 
 fn runtime_map_from_registers(
@@ -117,7 +117,7 @@ fn runtime_map_from_registers(
         .map(|(key, register)| {
             Ok((
                 key.clone(),
-                store_runtime_value(frame.read(*register)?, heap, budget.as_deref_mut())?,
+                store_runtime_value(&frame.read(*register)?, heap, budget.as_deref_mut())?,
             ))
         })
         .collect()
@@ -142,7 +142,7 @@ fn runtime_linked_map_from_registers(
             };
             Ok((
                 key.clone(),
-                store_runtime_value(frame.read(*register)?, heap, budget.as_deref_mut())?,
+                store_runtime_value(&frame.read(*register)?, heap, budget.as_deref_mut())?,
             ))
         })
         .collect()

@@ -14,7 +14,7 @@ pub(crate) fn dispatch_try_propagate(
     dst: Register,
     src: Register,
 ) -> VmResult<Option<Value>> {
-    match try_propagate_value(frame.read(src)?, heap)? {
+    match try_propagate_value(&frame.read(src)?, heap)? {
         TryPropagation::Continue(value) => {
             frame.write(dst, value)?;
             Ok(None)

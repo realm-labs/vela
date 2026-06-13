@@ -471,6 +471,31 @@ impl<'linker, 'registry> LinkContext<'linker, 'registry> {
                 lhs: *lhs,
                 imm: *imm,
             },
+            UnlinkedInstructionKind::I64EqImmJumpIfFalse { lhs, imm, target } => {
+                InstructionKind::I64EqImmJumpIfFalse {
+                    lhs: *lhs,
+                    imm: *imm,
+                    target: *target,
+                }
+            }
+            UnlinkedInstructionKind::I64GtImmJumpIfFalse { lhs, imm, target } => {
+                InstructionKind::I64GtImmJumpIfFalse {
+                    lhs: *lhs,
+                    imm: *imm,
+                    target: *target,
+                }
+            }
+            UnlinkedInstructionKind::I64RemImmEqImmJumpIfFalse {
+                lhs,
+                rem_imm,
+                eq_imm,
+                target,
+            } => InstructionKind::I64RemImmEqImmJumpIfFalse {
+                lhs: *lhs,
+                rem_imm: *rem_imm,
+                eq_imm: *eq_imm,
+                target: *target,
+            },
             UnlinkedInstructionKind::BinaryIntLiteral {
                 dst,
                 op,
