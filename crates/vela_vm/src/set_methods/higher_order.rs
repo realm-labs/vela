@@ -1,6 +1,6 @@
 use crate::heap_values::make_set_value;
 use crate::iteration::{self, IteratorState};
-use crate::method_runtime::{MethodRuntime, call_callback};
+use crate::method_runtime::MethodRuntime;
 use crate::option_result::option_value;
 use crate::{Value, VmResult};
 
@@ -13,22 +13,8 @@ pub(crate) fn map(
 ) -> VmResult<Value> {
     expect_arity("map", args, 1)?;
     let values = set_values(receiver, runtime.heap.as_deref(), "method map")?;
-    let mut mapped = Vec::new();
-    for value in values {
-        let mapped_value = call_callback(
-            &mut runtime,
-            "method map",
-            &args[0],
-            std::slice::from_ref(&value),
-            &mapped,
-        )?;
-        push_unique(
-            &mut mapped,
-            mapped_value,
-            runtime.heap.as_deref(),
-            "method map",
-        )?;
-    }
+    let mut iterator = IteratorState::map(IteratorState::from_values(values), args[0]);
+    let mapped = collect_unique_values(&mut iterator, &mut runtime, "method map")?;
     make_result_set(mapped, &mut runtime, "method map")
 }
 
@@ -39,24 +25,8 @@ pub(crate) fn filter(
 ) -> VmResult<Value> {
     expect_arity("filter", args, 1)?;
     let values = set_values(receiver, runtime.heap.as_deref(), "method filter")?;
-    let mut filtered = Vec::new();
-    for value in values {
-        let predicate = call_callback(
-            &mut runtime,
-            "method filter",
-            &args[0],
-            std::slice::from_ref(&value),
-            &filtered,
-        )?;
-        if is_truthy(&predicate) {
-            push_unique(
-                &mut filtered,
-                value,
-                runtime.heap.as_deref(),
-                "method filter",
-            )?;
-        }
-    }
+    let mut iterator = IteratorState::filter(IteratorState::from_values(values), args[0]);
+    let filtered = collect_unique_values(&mut iterator, &mut runtime, "method filter")?;
     make_result_set(filtered, &mut runtime, "method filter")
 }
 
@@ -121,10 +91,6 @@ pub(crate) fn count(
     )
 }
 
-fn is_truthy(value: &Value) -> bool {
-    !matches!(value, Value::Bool(false) | Value::Null)
-}
-
 fn make_result_set(
     values: Vec<Value>,
     runtime: &mut MethodRuntime<'_, '_, '_>,
@@ -145,4 +111,16 @@ fn option_result(
         return type_error(operation);
     };
     option_value(payload, heap, runtime.budget.as_deref_mut())
+}
+
+fn collect_unique_values(
+    iterator: &mut IteratorState,
+    runtime: &mut MethodRuntime<'_, '_, '_>,
+    operation: &'static str,
+) -> VmResult<Vec<Value>> {
+    let mut values = Vec::new();
+    while let Some(value) = iterator.next_with_runtime(runtime, operation, &values)? {
+        push_unique(&mut values, value, runtime.heap.as_deref(), operation)?;
+    }
+    Ok(values)
 }
