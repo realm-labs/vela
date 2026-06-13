@@ -69,7 +69,8 @@ mean-ratio tolerance to classify faster/slower/flat pairs, and native-call
 cache-enabled rows count resolved target-cache population; measurement_summary
 rows should count interpreter, profile-only, cache, and cache-no-activity rows
 for the run, and cache_delta_summary rows should count paired-row outcomes and
-mismatches
+mismatches, including kind-specific faster/slower/flat counts so true cache-hit
+deltas can be separated from profile-only hot-offset deltas
 external runtime versions when used
 ```
 

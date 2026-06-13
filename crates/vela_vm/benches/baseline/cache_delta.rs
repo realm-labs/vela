@@ -126,6 +126,9 @@ struct DeltaSummary {
     faster_rows: usize,
     slower_rows: usize,
     flat_rows: usize,
+    cache_bands: BandCounts,
+    profile_only_bands: BandCounts,
+    cache_no_activity_bands: BandCounts,
     checksum_mismatches: usize,
     profile_mismatches: usize,
 }
@@ -150,6 +153,12 @@ impl DeltaSummary {
             "flat" => self.flat_rows += 1,
             _ => {}
         }
+        match record.measurement_kind {
+            "cache" => self.cache_bands.record(delta_band),
+            "profile_only" => self.profile_only_bands.record(delta_band),
+            "cache_no_activity" => self.cache_no_activity_bands.record(delta_band),
+            _ => {}
+        }
         if record.checksum != base.checksum {
             self.checksum_mismatches += 1;
         }
@@ -160,7 +169,7 @@ impl DeltaSummary {
 
     fn print(&self) {
         println!(
-            "cache_delta_summary paired_rows={} cache_rows={} profile_only_rows={} cache_no_activity_rows={} improved_rows={} regressed_rows={} neutral_rows={} faster_rows={} slower_rows={} flat_rows={} checksum_mismatches={} profile_mismatches={}",
+            "cache_delta_summary paired_rows={} cache_rows={} profile_only_rows={} cache_no_activity_rows={} improved_rows={} regressed_rows={} neutral_rows={} faster_rows={} slower_rows={} flat_rows={} cache_faster_rows={} cache_slower_rows={} cache_flat_rows={} profile_only_faster_rows={} profile_only_slower_rows={} profile_only_flat_rows={} cache_no_activity_faster_rows={} cache_no_activity_slower_rows={} cache_no_activity_flat_rows={} checksum_mismatches={} profile_mismatches={}",
             self.paired_rows,
             self.cache_rows,
             self.profile_only_rows,
@@ -171,9 +180,36 @@ impl DeltaSummary {
             self.faster_rows,
             self.slower_rows,
             self.flat_rows,
+            self.cache_bands.faster,
+            self.cache_bands.slower,
+            self.cache_bands.flat,
+            self.profile_only_bands.faster,
+            self.profile_only_bands.slower,
+            self.profile_only_bands.flat,
+            self.cache_no_activity_bands.faster,
+            self.cache_no_activity_bands.slower,
+            self.cache_no_activity_bands.flat,
             self.checksum_mismatches,
             self.profile_mismatches,
         );
+    }
+}
+
+#[derive(Default)]
+struct BandCounts {
+    faster: usize,
+    slower: usize,
+    flat: usize,
+}
+
+impl BandCounts {
+    fn record(&mut self, delta_band: &str) {
+        match delta_band {
+            "faster" => self.faster += 1,
+            "slower" => self.slower += 1,
+            "flat" => self.flat += 1,
+            _ => {}
+        }
     }
 }
 
