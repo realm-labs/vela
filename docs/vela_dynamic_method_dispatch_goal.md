@@ -98,6 +98,17 @@ starts_with_q(42)      => runtime method/type error with source span
 
 The same call site may see different receiver runtime types over time. The dynamic dispatch cache must guard against receiver type/shape/schema mismatches and safely fall back to resolution on miss.
 
+## Phase Completion Rules
+
+Each phase lists minimum exit tests. Those tests prove that phase's architecture
+path and are not the full final method surface. The final feature surface is
+defined by the final acceptance criteria and Phase 9 conformance, docs, and
+benchmark coverage.
+
+When a phase proves a mechanism with a representative subset, any remaining
+standard, script, or host method families must either be covered by Phase 9 or
+recorded as explicit follow-up gaps before this goal can be marked complete.
+
 ---
 
 # Execution plan
@@ -341,9 +352,12 @@ fn f(x) {
 
 Verification tests:
 
-- dynamic string predicate
-- dynamic string transform
-- dynamic array/map/set/option/result method where applicable
+- dynamic string predicate: `String.starts_with`
+- dynamic string transform: `String.trim`
+- dynamic array method: `Array.len`
+- dynamic map method: `Map.get`
+- dynamic option method: `Option.is_some`
+- dynamic result method: `Result.is_ok`
 - wrong receiver runtime type
 - wrong argument arity/type
 - source span is attached
@@ -476,7 +490,8 @@ Verification tests:
 - missing host method gives source-spanned `UnknownMethod`
 - permission/capability denial still works
 - stale host ref/generation checks still work
-- host schema epoch invalidates dynamic method cache
+- host dynamic resolution records the schema epoch or equivalent guard metadata
+  needed by Phase 7 cache invalidation tests
 
 Commit message:
 
@@ -502,11 +517,15 @@ Implement runtime argument resolution for dynamic calls:
 - Reject missing required args with source-spanned diagnostics.
 - Apply existing type guards/contracts after argument materialization.
 
-This should work for:
+Phase 6 minimum support must cover script dynamic methods first, because script
+method signatures and defaults are fully controlled by linked bytecode. Standard
+and host dynamic named/default arguments should be included when their existing
+metadata path can be reused without expanding this phase; otherwise they remain
+Phase 9/follow-up coverage items.
 
-- std/value methods with registered metadata
+This phase must work for:
+
 - script impl methods
-- host methods
 
 Verification tests:
 
@@ -537,8 +556,12 @@ Also test:
 - omitted default args
 - missing required arg
 - unknown named arg
-- named args on std method where metadata exists
 - named args on unsupported dynamic receiver
+- named args on one std/value method where registry metadata already exists, if
+  this can reuse the same argument materialization path without broadening the
+  phase
+- named args on one host method, if this can reuse the same argument
+  materialization path without broadening the phase
 
 Commit message:
 
@@ -596,9 +619,12 @@ Runtime behavior:
 
 Verification tests:
 
+- Use the existing inline-cache test provider/counters or add a small test-only
+  cache observer so cache hits and guard misses are directly asserted.
 - same call site sees `String` then `String`: second call hits cache
 - same call site sees `String` then `Label`: guard miss, resolves script method
-- same call site sees `LabelA` then `LabelB`: guard miss or polymorphic behavior, but correct result
+- same call site sees `LabelA` then `LabelB`: guard miss with correct result;
+  polymorphic caching is not required in this phase
 - host schema epoch change invalidates host dynamic cache
 - hot reload clears stale dynamic method cache entries
 - undersized cache providers are rejected before execution, same as existing cache families
@@ -629,7 +655,9 @@ Required cleanup:
 - Update tests that expected link-time rejection of unknown-receiver method calls
   to expect runtime errors instead. Statically provable missing methods such as
   `42.trim()` may remain compile-time diagnostics.
-- Replace scattered string-dispatch helpers with centralized dynamic resolution where practical.
+- Do not refactor unrelated legacy helpers unless a dynamic method test still
+  depends on them. Centralize only the dispatch paths needed by the final
+  dynamic method architecture.
 
 Verification tests:
 
@@ -663,6 +691,16 @@ Add conformance coverage for final dynamic method semantics:
 - cache guard miss correctness
 - hot reload cache invalidation
 
+Add a dynamic method coverage audit:
+
+- every standard value method that has a resolved `CallMethodId` path must
+  either resolve through dynamic dispatch or be listed as an explicit,
+  documented exclusion
+- linked script method lookup must cover all script impl methods in the linked
+  program, not just the `Label.starts_with` fixture
+- host dynamic lookup must cover all registered host methods visible to the
+  current runtime/registry, subject to HostAccess permissions and capabilities
+
 Update docs:
 
 - language method-call docs
@@ -672,11 +710,12 @@ Update docs:
 
 Add or update benchmark rows:
 
-- static `CallMethodId` fast path unchanged
-- monomorphic dynamic std method
-- monomorphic dynamic script method
-- polymorphic dynamic method call site
-- dynamic call with cache miss
+- `dynamic_string_method_monomorphic`
+- `dynamic_script_method_monomorphic`
+- `dynamic_method_polymorphic`
+- `dynamic_method_cache_miss`
+- keep an existing static `CallMethodId` benchmark row so the fast path remains
+  comparable
 
 Verification:
 
@@ -707,6 +746,8 @@ All of these must be true before the goal is complete:
 - [ ] Dynamic std/value methods work at runtime.
 - [ ] Dynamic script impl methods work at runtime.
 - [ ] Dynamic host methods work through registered IDs and HostAccess.
+- [ ] Dynamic method coverage audit shows no registered std/value, script, or
+      host method family is accidentally omitted.
 - [ ] Missing methods produce source-spanned runtime errors.
 - [ ] Wrong receiver types produce source-spanned runtime errors.
 - [ ] Named/default args work after dynamic method target resolution.
