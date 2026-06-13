@@ -1,6 +1,6 @@
 use vela_bytecode::{LinkedProgram, UnlinkedProgramCode};
 
-use crate::heap::GcRef;
+use crate::CallFrame;
 use crate::linked_execution::LinkedExecutionCall;
 use crate::runtime_checks::expect_closure_ref;
 use crate::value::ClosureCode;
@@ -9,6 +9,29 @@ use crate::{
     VmError, VmErrorKind, VmInlineCaches, VmResult,
 };
 
+#[derive(Clone, Copy)]
+pub(crate) enum CallerRoots<'a> {
+    Frame(&'a CallFrame),
+    Empty,
+}
+
+impl<'a> CallerRoots<'a> {
+    pub(crate) fn for_frame(frame: &'a CallFrame, heap: Option<&HeapExecution<'_>>) -> Self {
+        if heap.is_some() {
+            Self::Frame(frame)
+        } else {
+            Self::Empty
+        }
+    }
+
+    pub(crate) fn push_to_heap(self, heap: &mut HeapExecution<'_>) -> usize {
+        match self {
+            Self::Frame(frame) => heap.push_frame_roots(frame),
+            Self::Empty => heap.push_protected_roots(&[]),
+        }
+    }
+}
+
 pub(crate) struct MethodRuntime<'a, 'host, 'heap> {
     pub(crate) vm: &'a Vm,
     pub(crate) program: Option<&'a dyn UnlinkedProgramCode>,
@@ -16,7 +39,7 @@ pub(crate) struct MethodRuntime<'a, 'host, 'heap> {
     pub(crate) host: Option<&'a mut HostExecution<'host>>,
     pub(crate) heap: Option<&'a mut HeapExecution<'heap>>,
     pub(crate) budget: Option<&'a mut ExecutionBudget>,
-    pub(crate) caller_roots: &'a [GcRef],
+    pub(crate) caller_roots: CallerRoots<'a>,
     pub(crate) inline_caches: Option<&'a dyn VmInlineCaches>,
     pub(crate) bytecode_profiler: Option<&'a dyn VmBytecodeProfiler>,
 }
@@ -66,7 +89,7 @@ pub(crate) fn call_callback_with_protected_values<'value>(
         (closure.code.clone(), captures)
     };
     let protected_root_len = runtime.heap.as_deref_mut().map(|heap| {
-        let protected_root_len = heap.push_protected_roots(runtime.caller_roots);
+        let protected_root_len = runtime.caller_roots.push_to_heap(heap);
         heap.protect_values(args);
         heap.protect_value_refs(protected_values);
         protected_root_len

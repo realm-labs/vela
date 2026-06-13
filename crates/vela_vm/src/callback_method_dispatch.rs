@@ -5,8 +5,7 @@ use std::sync::OnceLock;
 use vela_bytecode::{LinkedProgram, UnlinkedProgramCode};
 use vela_def::MethodId;
 
-use crate::heap::GcRef;
-use crate::method_runtime::MethodRuntime;
+use crate::method_runtime::{CallerRoots, MethodRuntime};
 use crate::{
     CallbackMethodInlineCacheEntry, CallbackMethodInlineCacheTarget, ExecutionBudget,
     HeapExecution, HostExecution, StandardMethodReceiver, Value, Vm, VmBytecodeProfiler, VmError,
@@ -21,7 +20,7 @@ pub(crate) struct CallbackMethodDispatch<'a, 'host, 'heap> {
     pub(crate) host: Option<&'a mut HostExecution<'host>>,
     pub(crate) heap: Option<&'a mut HeapExecution<'heap>>,
     pub(crate) budget: Option<&'a mut ExecutionBudget>,
-    pub(crate) caller_roots: &'a [GcRef],
+    pub(crate) caller_roots: CallerRoots<'a>,
     pub(crate) inline_caches: Option<&'a dyn VmInlineCaches>,
     pub(crate) bytecode_profiler: Option<&'a dyn VmBytecodeProfiler>,
 }

@@ -3,7 +3,8 @@ use vela_def::MethodId;
 use vela_reflect::registry::TypeRegistry;
 
 use crate::callback_method_dispatch::{self, CallbackMethodDispatch};
-use crate::heap::{GcRef, HeapValue};
+use crate::heap::HeapValue;
+use crate::method_runtime::CallerRoots;
 use crate::script_builtin_methods;
 use crate::string_method_dispatch;
 use crate::{
@@ -18,7 +19,7 @@ pub(crate) struct ScriptMethodDispatch<'a, 'host, 'heap> {
     pub(crate) host: Option<&'a mut HostExecution<'host>>,
     pub(crate) heap: Option<&'a mut HeapExecution<'heap>>,
     pub(crate) budget: Option<&'a mut ExecutionBudget>,
-    pub(crate) caller_roots: Vec<GcRef>,
+    pub(crate) caller_roots: CallerRoots<'a>,
     pub(crate) inline_caches: Option<&'a dyn VmInlineCaches>,
     pub(crate) bytecode_profiler: Option<&'a dyn VmBytecodeProfiler>,
 }
@@ -58,7 +59,7 @@ pub(crate) fn call_method(
             host: dispatch.host.as_deref_mut(),
             heap: dispatch.heap.as_deref_mut(),
             budget: dispatch.budget.as_deref_mut(),
-            caller_roots: &dispatch.caller_roots,
+            caller_roots: dispatch.caller_roots,
             inline_caches: dispatch.inline_caches,
             bytecode_profiler: dispatch.bytecode_profiler,
         };
@@ -112,7 +113,7 @@ pub(crate) fn call_method_id(
             host: dispatch.host.as_deref_mut(),
             heap: dispatch.heap.as_deref_mut(),
             budget: dispatch.budget.as_deref_mut(),
-            caller_roots: &dispatch.caller_roots,
+            caller_roots: dispatch.caller_roots,
             inline_caches: dispatch.inline_caches,
             bytecode_profiler: dispatch.bytecode_profiler,
         };
@@ -184,7 +185,7 @@ pub(crate) fn call_non_mutating_method(
             host: dispatch.host.as_deref_mut(),
             heap: dispatch.heap.as_deref_mut(),
             budget: dispatch.budget.as_deref_mut(),
-            caller_roots: &dispatch.caller_roots,
+            caller_roots: dispatch.caller_roots,
             inline_caches: dispatch.inline_caches,
             bytecode_profiler: dispatch.bytecode_profiler,
         };
@@ -233,7 +234,7 @@ fn call_script_impl_method(
     let protected_root_len = dispatch
         .heap
         .as_deref_mut()
-        .map(|heap| heap.push_protected_roots(&dispatch.caller_roots));
+        .map(|heap| dispatch.caller_roots.push_to_heap(heap));
     let result = dispatch.vm.execute_code_object(
         function,
         dispatch.program,

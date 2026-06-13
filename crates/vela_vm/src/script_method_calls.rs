@@ -6,8 +6,8 @@ use vela_bytecode::{
 use vela_common::Span;
 use vela_def::MethodId;
 
-use crate::heap::GcRef;
 use crate::linked_execution::LinkedExecutionCall;
+use crate::method_runtime::CallerRoots;
 use crate::{
     CallFrame, ExecutionBudget, HeapExecution, HostExecution, SmallStorage, Value, Vm, VmResult,
     store_value_in_heap_if_needed,
@@ -101,7 +101,7 @@ pub(crate) fn dispatch_script_method_call(
         return Ok(());
     }
 
-    let caller_roots = caller_roots_for_heap(frame, heap.as_deref());
+    let caller_roots = CallerRoots::for_frame(frame, heap.as_deref());
     if let Some(result) = call_non_mutating_method(
         frame.read(call.receiver)?,
         call.method,
@@ -124,7 +124,7 @@ pub(crate) fn dispatch_script_method_call(
         frame.write(call.dst, result)?;
     } else {
         let mut receiver_value = *frame.read(call.receiver)?;
-        let caller_roots = caller_roots_for_heap(frame, heap.as_deref());
+        let caller_roots = CallerRoots::for_frame(frame, heap.as_deref());
         let result = call_method(
             &mut receiver_value,
             call.method,
@@ -220,7 +220,7 @@ pub(crate) fn dispatch_script_method_id_call(
     call: ScriptMethodIdCall<'_>,
 ) -> VmResult<()> {
     let mut receiver_value = *frame.read(call.receiver)?;
-    let caller_roots = caller_roots_for_heap(frame, heap.as_deref());
+    let caller_roots = CallerRoots::for_frame(frame, heap.as_deref());
     let result = call_method_id(
         &mut receiver_value,
         call.method,
@@ -253,7 +253,7 @@ pub(crate) fn dispatch_linked_method_id_call(
     call: ScriptMethodIdCall<'_>,
 ) -> VmResult<()> {
     let mut receiver_value = *frame.read(call.receiver)?;
-    let caller_roots = caller_roots_for_heap(frame, heap.as_deref());
+    let caller_roots = CallerRoots::for_frame(frame, heap.as_deref());
     let result = call_method_id(
         &mut receiver_value,
         call.method,
@@ -661,7 +661,7 @@ fn linked_callback_value_method_result(
         Ok(receiver) => receiver,
         Err(error) => return Some(Err(error)),
     };
-    let caller_roots = caller_roots_for_heap(frame, heap.as_deref());
+    let caller_roots = CallerRoots::for_frame(frame, heap.as_deref());
     let mut dispatch = callback_method_dispatch::CallbackMethodDispatch {
         vm,
         program: None,
@@ -669,7 +669,7 @@ fn linked_callback_value_method_result(
         host: host.as_deref_mut(),
         heap: heap.as_deref_mut(),
         budget: budget.as_deref_mut(),
-        caller_roots: &caller_roots,
+        caller_roots,
         inline_caches: context.inline_caches,
         bytecode_profiler: context.bytecode_profiler,
     };
@@ -768,12 +768,4 @@ fn dispatch_linked_script_method_call(
     let result =
         store_value_in_heap_if_needed(result?, heap.as_deref_mut(), budget.as_deref_mut())?;
     frame.write(call.dst, result)
-}
-
-fn caller_roots_for_heap(frame: &CallFrame, heap: Option<&HeapExecution<'_>>) -> Vec<GcRef> {
-    if heap.is_some() {
-        frame.heap_roots()
-    } else {
-        Vec::new()
-    }
 }
