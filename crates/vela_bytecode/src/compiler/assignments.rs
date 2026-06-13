@@ -32,6 +32,12 @@ struct IndexedRecordFieldAssignmentTarget<'expr> {
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
+struct RecordFieldExprParts<'expr> {
+    root: &'expr Expr,
+    fields: Vec<String>,
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
 struct LocalAssignmentFacts {
     script: Option<ScriptTypeFact>,
     value_type: Option<RuntimeTypeFact>,
@@ -296,29 +302,29 @@ impl Compiler<'_, '_> {
                 if self.host_field_path(target).is_some() {
                     return Ok(None);
                 }
-                let Some((record, fields)) = record_field_expr_parts(target) else {
+                let Some(parts) = record_field_expr_parts(target) else {
                     return Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(
                         "record field assignment target",
                     )));
                 };
-                let root_type = self.script_type_for_path_root(target.span, record);
-                let shape = self
-                    .record_shape_for_path_root(target.span, record)
-                    .or_else(|| {
-                        root_type
-                            .as_deref()
-                            .and_then(|type_name| self.record_shape_for_type(type_name))
-                    });
-                let slot = (fields.len() == 1)
+                let root_type = self.script_type_for_expr(parts.root);
+                let shape = self.record_shape_for_expr(parts.root).or_else(|| {
+                    root_type
+                        .as_deref()
+                        .and_then(|type_name| self.record_shape_for_type(type_name))
+                });
+                let slot = (parts.fields.len() == 1)
                     .then(|| {
                         self.script_record_field_slot_for_receiver(base, name)
                             .or_else(|| self.record_field_shape_slot_for_receiver(base, name))
                     })
                     .flatten();
-                let value_type = self.schema_record_field_value_type(root_type.as_deref(), &fields);
+                let value_type =
+                    self.schema_record_field_value_type(root_type.as_deref(), &parts.fields);
+                let root = self.compile_expr(parts.root)?;
                 Ok(Some(RecordFieldAssignmentTarget {
-                    root: self.local_register_at_span(target.span, record)?,
-                    fields,
+                    root,
+                    fields: parts.fields,
                     shape,
                     slot,
                     value_type,
@@ -739,16 +745,15 @@ fn record_field_base_parts(path: &[String]) -> Option<(&str, Vec<String>)> {
     Some((root.as_str(), path[1..].to_vec()))
 }
 
-fn record_field_expr_parts(expr: &Expr) -> Option<(&str, Vec<String>)> {
+fn record_field_expr_parts(expr: &Expr) -> Option<RecordFieldExprParts<'_>> {
     match &expr.kind {
-        ExprKind::Path(path) => {
-            let root = path.first()?;
-            Some((root.as_str(), path[1..].to_vec()))
-        }
         ExprKind::Field { base, name } => {
-            let (root, mut fields) = record_field_expr_parts(base)?;
-            fields.push(name.clone());
-            Some((root, fields))
+            let mut parts = record_field_expr_parts(base).unwrap_or_else(|| RecordFieldExprParts {
+                root: base,
+                fields: Vec::new(),
+            });
+            parts.fields.push(name.clone());
+            Some(parts)
         }
         _ => None,
     }

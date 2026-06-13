@@ -57,6 +57,15 @@ compatibility, while `vela_c_api` owns opaque C handles, C-compatible value
 layouts, and future host adapter vtables. The C ABI must not expose Rust
 references or place Rust host state under script GC.
 
+### Record Field Assignment Roots
+
+Script record field assignment targets use the leftmost receiver expression as
+the root and evaluate that root exactly once. This allows `self.field += value`
+and expression receivers such as `get_or_put(key).field += value` without
+special-casing `self` or requiring a local path root. Host field assignments
+still resolve through HostAccess first; non-host record writes mutate script
+heap records through record field or slot bytecode.
+
 ### Module Imports And Exports
 
 Vela has no source-level `module` declaration. `compile_file(path)` is a

@@ -87,6 +87,32 @@ fn main() {
 }
 
 #[test]
+fn runs_script_method_self_record_compound_assignment() {
+    let program = compile_program_source(
+        SourceId::new(1),
+        r#"
+struct Counter { counter: i64 }
+impl Counter {
+    fn inc(self) {
+        self.counter += 1;
+    }
+}
+fn main() {
+    let counter = Counter { counter: 1 };
+    counter.inc();
+    return counter.counter;
+}
+"#,
+    )
+    .expect("compile self record compound assignment");
+
+    assert_eq!(
+        run_script_method_program(&Vm::new(), &program, "main", &[]),
+        Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(2)))
+    );
+}
+
+#[test]
 fn runs_compiled_script_impl_method_dispatch() {
     let program = compile_program_source(
         SourceId::new(1),

@@ -42,6 +42,59 @@ fn main() {
 }
 
 #[test]
+fn compiler_lowers_self_record_compound_assignment_in_script_method() {
+    let program = compile_program_source(
+        SourceId::new(1),
+        r#"
+struct Counter { counter: i64 }
+impl Counter {
+    fn inc(self) {
+        self.counter += 1;
+    }
+}
+fn main() {
+    let counter = Counter { counter: 1 };
+    counter.inc();
+    return counter.counter;
+}
+"#,
+    )
+    .expect("self record compound assignment should compile");
+    let method = program
+        .script_method("Counter", "inc")
+        .expect("script method dispatch target");
+    assert!(method.instructions.iter().any(|instruction| matches!(
+        &instruction.kind,
+        UnlinkedInstructionKind::SetRecordSlot { field, .. }
+            | UnlinkedInstructionKind::SetRecordField { field, .. } if field == "counter"
+    )));
+}
+
+#[test]
+fn compiler_lowers_expression_receiver_record_compound_assignment() {
+    let program = compile_program_source(
+        SourceId::new(1),
+        r#"
+struct Counter { counter: i64 }
+fn make_counter() -> Counter {
+    return Counter { counter: 1 };
+}
+fn main() {
+    make_counter().counter += 1;
+    return 0;
+}
+"#,
+    )
+    .expect("expression receiver record compound assignment should compile");
+    let main = program.function("main").expect("main function");
+    assert!(main.instructions.iter().any(|instruction| matches!(
+        &instruction.kind,
+        UnlinkedInstructionKind::SetRecordSlot { field, .. }
+            | UnlinkedInstructionKind::SetRecordField { field, .. } if field == "counter"
+    )));
+}
+
+#[test]
 fn compiler_keeps_static_script_receiver_on_method_id_path() {
     let program = compile_program_source(
         SourceId::new(1),
