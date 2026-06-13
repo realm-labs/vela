@@ -771,6 +771,16 @@ boundaries. Character-level traversal uses `for ch in text`, yielding
 first-class `char` values. Vela does not expose a `char_at` random-access API
 because UTF-8 character indexing is O(n) and would misrepresent performance.
 
+### Iterator View Naming
+
+Explicit one-shot iterator creation uses `iter()` for arrays, sets, maps, and
+ranges, and `chars()` / `bytes()` for string traversal. Direct map `iter()`
+yields values in key order, matching current direct map `for-in` behavior.
+Existing eager pre-release view methods such as `map.keys()`, `map.values()`,
+`map.entries()`, and `set.values()` remain eager in the initial iterator slice;
+renaming or replacing them requires a separate deliberate cleanup with tests
+and docs.
+
 ## Validation Rules
 
 - Multi-level `super` scan must return no matches:
