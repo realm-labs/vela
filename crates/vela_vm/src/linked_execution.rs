@@ -302,18 +302,18 @@ impl Vm {
                 }
                 InstructionKind::JumpIfFalse { condition, target } => {
                     if !is_truthy(frame.read(*condition)?) {
-                        iteration::validate_linked_jump(code, target.0)?;
+                        debug_assert!(target.0 <= code.instructions.len());
                         ip = target.0;
                     }
                 }
                 InstructionKind::JumpIfNotMissing { value, target } => {
                     if !matches!(frame.read(*value)?, Value::Missing) {
-                        iteration::validate_linked_jump(code, target.0)?;
+                        debug_assert!(target.0 <= code.instructions.len());
                         ip = target.0;
                     }
                 }
                 InstructionKind::Jump { target } => {
-                    iteration::validate_linked_jump(code, target.0)?;
+                    debug_assert!(target.0 <= code.instructions.len());
                     ip = target.0;
                 }
                 InstructionKind::CallNative {

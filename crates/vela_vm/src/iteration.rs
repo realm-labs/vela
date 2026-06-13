@@ -183,7 +183,7 @@ pub(crate) fn dispatch_linked_iter_next(
             Ok(None)
         }
         None => {
-            validate_linked_jump(code, jump_if_done.0)?;
+            debug_assert!(jump_if_done.0 <= code.instructions.len());
             Ok(Some(jump_if_done.0))
         }
     }
@@ -203,16 +203,9 @@ pub(crate) fn dispatch_linked_range_next(
     step: RangeNextStep,
 ) -> VmResult<Option<usize>> {
     dispatch_range_next_with(runtime.frame, step, |offset| {
-        validate_linked_jump(code, offset)
-    })
-}
-
-pub(crate) fn validate_linked_jump(code: &LinkedCodeObject, offset: usize) -> VmResult<()> {
-    if offset <= code.instructions.len() {
+        debug_assert!(offset <= code.instructions.len());
         Ok(())
-    } else {
-        Err(VmError::new(VmErrorKind::InstructionOutOfBounds { offset }))
-    }
+    })
 }
 
 fn next_iterator_value(
