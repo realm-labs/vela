@@ -69,6 +69,7 @@ fn builtin_type_fact(name: &str) -> Option<TypeFact> {
         "array" => Some(TypeFact::array(TypeFact::Unknown)),
         "map" => Some(TypeFact::map(TypeFact::Unknown, TypeFact::Unknown)),
         "set" => Some(TypeFact::set(TypeFact::Unknown)),
+        "iterator" => Some(TypeFact::iterator(TypeFact::Unknown)),
         "function" => Some(TypeFact::function(Vec::new(), TypeFact::Unknown)),
         "Option" => Some(TypeFact::option(TypeFact::Unknown)),
         "Result" => Some(TypeFact::result(TypeFact::Unknown, TypeFact::Unknown)),
@@ -148,6 +149,10 @@ mod tests {
         assert_eq!(
             type_fact_from_path(&graph, &["map".to_owned()]),
             TypeFact::map(TypeFact::Unknown, TypeFact::Unknown)
+        );
+        assert_eq!(
+            type_fact_from_path(&graph, &["iterator".to_owned()]),
+            TypeFact::iterator(TypeFact::Unknown)
         );
         assert_eq!(
             type_fact_from_path(&graph, &["Option".to_owned()]),

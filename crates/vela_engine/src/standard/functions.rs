@@ -43,6 +43,7 @@ fn type_hint(hint: &str) -> TypeHint {
         "array" => TypeHint::Array,
         "map" => TypeHint::Map,
         "set" => TypeHint::Set,
+        "iterator" => TypeHint::Iterator,
         "function" => TypeHint::Function,
         "Option" | "Result" => {
             let id = vela_stdlib::std_type_id(hint)

@@ -312,6 +312,7 @@ pub enum TypeHint {
     Array,
     Map,
     Set,
+    Iterator,
     PathProxy,
     Record(TypeKey),
     Enum(TypeKey),
@@ -399,6 +400,11 @@ impl TypeHint {
     #[must_use]
     pub const fn bytes() -> Self {
         Self::Primitive(PrimitiveTag::Bytes)
+    }
+
+    #[must_use]
+    pub const fn iterator() -> Self {
+        Self::Iterator
     }
 }
 

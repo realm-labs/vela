@@ -1,0 +1,14 @@
+fn main() {
+    let total = 0;
+    for score in game::scores() {
+        total += score;
+    }
+
+    let boosted = game::scores()
+        .map(|score| score + 1)
+        .filter(|score| score > 3)
+        .collect_array()
+        .sum();
+
+    return total + boosted;
+}

@@ -641,6 +641,7 @@ fn validate_type_hint(
         | TypeHint::Array
         | TypeHint::Map
         | TypeHint::Set
+        | TypeHint::Iterator
         | TypeHint::PathProxy
         | TypeHint::Host(_)
         | TypeHint::Function => Ok(()),

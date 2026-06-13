@@ -134,9 +134,12 @@ Cranelift JIT.
   rejection, host read/write/call capability denial, stale host ref generation
   rejection, host write/call denial diagnostics, reflection candidate
   diagnostics, bad schema diagnostics, generic type hint rejection, and
-  tick-boundary hot reload. A standalone host type method example covers
-  concrete host type specs, receiver-path methods, keyed host paths, child
-  receiver method calls, and typed host path arguments. A standalone script
+  tick-boundary hot reload. A standalone host iterable example covers
+  native-returned `OwnedValue::iterator` snapshot traversal through `for-in`
+  and lazy iterator adapters without first returning a script array. A
+  standalone host type method example covers concrete host type specs,
+  receiver-path methods, keyed host paths, child receiver method calls, and
+  typed host path arguments. A standalone script
   global example covers VM-owned global initialization, script mutation, Rust
   `OwnedValue` constructor/macro updates, and later script reads of the same
   persistent value. A standalone I/O stdlib example covers stdout plus

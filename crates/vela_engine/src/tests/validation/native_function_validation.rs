@@ -307,10 +307,28 @@ fn engine_accepts_registered_native_function_record_type_hints() {
 }
 
 #[test]
+fn engine_accepts_native_function_iterator_type_hints() {
+    let engine = Engine::builder()
+        .register_native_fn(
+            NativeFunctionDesc::new("game::scores", NativeFunctionId::new(37))
+                .returns(TypeHint::iterator()),
+            |_| Ok(OwnedValue::iterator([1_i64, 2, 3])),
+        )
+        .build()
+        .expect("iterator return type hint should be accepted");
+
+    let registry = engine.registry();
+    let function = registry
+        .function_by_name("game::scores")
+        .expect("native function should be reflected");
+    assert_eq!(function.return_type.as_deref(), Some("iterator"));
+}
+
+#[test]
 fn engine_rejects_unknown_native_function_trait_type_hints() {
     let result = Engine::builder()
         .register_native_fn(
-            NativeFunctionDesc::new("game::inspect_damageable", NativeFunctionId::new(37))
+            NativeFunctionDesc::new("game::inspect_damageable", NativeFunctionId::new(38))
                 .param("target", TypeHint::Trait("Damageable".to_owned())),
             |_| Ok(OwnedValue::Null),
         )

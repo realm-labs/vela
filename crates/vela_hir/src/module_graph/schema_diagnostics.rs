@@ -351,6 +351,7 @@ fn is_builtin_type_hint(path: &[String]) -> bool {
             | "array"
             | "map"
             | "set"
+            | "iterator"
             | "function"
             | "Option"
             | "Result"
