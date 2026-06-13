@@ -9,52 +9,78 @@ use vela_macros::{ScriptHost, ScriptReflect, script_methods};
 use vela_reflect::modules::ModuleDesc;
 use vela_reflect::permissions::ReflectPolicy;
 use vela_reflect::registry::HostIndexCapability;
-use vela_reflect::registry::{FieldDesc, TypeDesc, TypeKey, TypeRegistry};
+use vela_reflect::registry::{FieldDesc, TypeDesc, TypeKey};
 use vela_vm::owned_value::OwnedValue;
 
 use super::GameEngineOptions;
 use super::ids;
 
 pub(crate) fn build_gameplay_engine(options: GameEngineOptions) -> EngineResult<Engine> {
-    let registry = gameplay_support_type_registry();
-    let mut builder = Engine::builder()
-        .with_standard_natives()
-        .capability(Capability::HostRead)
-        .capability(Capability::HostWrite)
-        .capability(Capability::EventEmit)
-        .capability(Capability::Time)
-        .with_time_clock(1_700_000_000, 42)
-        .with_controlled_random(7)
-        .reflection_policy(ReflectPolicy::all())
-        .register_script_host::<Player>()
-        .register_host_type::<Monster>()
-        .register_host_type::<Inventory>()
-        .register_host_type::<ItemStack>()
-        .register_host_type_spec(string_item_map_type())
-        .register_host_type::<Config>()
-        .register_reflect_schema::<HostQuestProgress>()
-        .register_module(
-            ModuleDesc::new("game::reward")
-                .docs("Demo reward helper module.")
-                .attr("domain", "gameplay"),
-        );
+    let mut builder = Engine::builder().with_standard_natives();
+
+    if options.host_read {
+        builder = builder.capability(Capability::HostRead);
+    }
+    if options.host_write {
+        builder = builder.capability(Capability::HostWrite);
+    }
+    if options.event_emit {
+        builder = builder.capability(Capability::EventEmit);
+    }
+    if options.time {
+        builder = builder
+            .capability(Capability::Time)
+            .with_time_clock(1_700_000_000, 42);
+    }
+    if options.random_function || options.allow_random {
+        builder = builder.with_controlled_random(7);
+    }
     if options.allow_random {
         builder = builder.capability(Capability::Random);
     }
-    for desc in registry.types() {
-        builder = builder.register_type(desc.clone());
+    if options.reflection {
+        builder = builder.reflection_policy(ReflectPolicy::all());
     }
-    builder = builder.register_typed_native_fn(gameplay_reward_grant_desc(), gameplay_reward_grant);
+
+    if options.schema.context {
+        builder = builder.register_type(context_type_desc(options.schema.config));
+    }
+    if options.schema.player {
+        builder = builder.register_script_host::<Player>();
+    }
+    if options.schema.monster {
+        builder = builder.register_host_type::<Monster>();
+    }
+    if options.schema.inventory {
+        builder = builder
+            .register_host_type::<Inventory>()
+            .register_host_type::<ItemStack>()
+            .register_host_type_spec(string_item_map_type());
+    }
+    if options.schema.quest {
+        builder = builder.register_reflect_schema::<HostQuestProgress>();
+    }
+    if options.schema.config {
+        builder = builder.register_host_type::<Config>();
+    }
+    if options.schema.reward {
+        builder = builder
+            .register_module(
+                ModuleDesc::new("game::reward")
+                    .docs("Demo reward helper module.")
+                    .attr("domain", "gameplay"),
+            )
+            .register_typed_native_fn(gameplay_reward_grant_desc(), gameplay_reward_grant);
+    }
     builder.build()
 }
 
-fn gameplay_support_type_registry() -> TypeRegistry {
-    let mut registry = TypeRegistry::new();
-    registry.register(
-        context_host_type_desc()
-            .field(FieldDesc::new(ids::config_field(), "config").type_hint("Config")),
-    );
-    registry
+fn context_type_desc(with_config: bool) -> TypeDesc {
+    let mut desc = context_host_type_desc();
+    if with_config {
+        desc = desc.field(FieldDesc::new(ids::config_field(), "config").type_hint("Config"));
+    }
+    desc
 }
 
 fn gameplay_reward_grant_desc() -> NativeFunctionDesc {
