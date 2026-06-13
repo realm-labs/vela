@@ -6,11 +6,7 @@ use vela_hot_reload::error::{HotReloadError, HotReloadErrorKind};
 use vela_hot_reload::report::HotReloadReport;
 use vela_vm::error::VmError;
 
-pub(crate) fn render_engine_source_error(
-    label: &str,
-    source: &str,
-    error: &EngineSourceError,
-) -> String {
+pub fn render_engine_source_error(label: &str, source: &str, error: &EngineSourceError) -> String {
     match &error.kind {
         EngineSourceErrorKind::Compile(error) => render_compile_error(label, source, error),
         EngineSourceErrorKind::Io { .. }
@@ -19,16 +15,12 @@ pub(crate) fn render_engine_source_error(
     }
 }
 
-pub(crate) fn render_vm_error(label: &str, source: &str, error: &VmError) -> String {
+pub fn render_vm_error(label: &str, source: &str, error: &VmError) -> String {
     let source = DiagnosticSource::new(SourceId::new(1), label.to_owned(), source.to_owned());
     render_diagnostics(&[error.to_diagnostic()], source)
 }
 
-pub(crate) fn render_hot_reload_report(
-    label: &str,
-    source: &str,
-    report: &HotReloadReport,
-) -> String {
+pub fn render_hot_reload_report(label: &str, source: &str, report: &HotReloadReport) -> String {
     let source = DiagnosticSource::new(SourceId::new(1), label.to_owned(), source.to_owned());
     let mut lines = report
         .render_lines()
@@ -43,7 +35,7 @@ pub(crate) fn render_hot_reload_report(
     lines.join("\n")
 }
 
-pub(crate) fn render_hot_reload_error(label: &str, source: &str, error: &HotReloadError) -> String {
+pub fn render_hot_reload_error(label: &str, source: &str, error: &HotReloadError) -> String {
     match &error.kind {
         HotReloadErrorKind::Compile(error) => render_compile_error(label, source, error),
         _ => format!("{error:?}"),

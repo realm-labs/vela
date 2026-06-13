@@ -1,7 +1,36 @@
 use std::error::Error;
 
-use vela_examples::game_server;
+use vela_engine::prelude::*;
+use vela_examples::gameplay::{self, GameEngineOptions, GameHostFixture, GameHostOptions};
+
+const SOURCE_LABEL: &str = "level_up.vela";
+const SOURCE: &str = include_str!("level_up.vela");
 
 fn main() -> Result<(), Box<dyn Error>> {
-    game_server::run_script("level_up.vela", include_str!("level_up.vela"))
+    let engine = gameplay::build_engine(GameEngineOptions::default())
+        .map_err(|error| format!("{error:?}"))?;
+    let program = engine
+        .compile_source(SourceId::new(1), SOURCE)
+        .map_err(|error| {
+            vela_examples::diagnostics::render_engine_source_error(SOURCE_LABEL, SOURCE, &error)
+        })?;
+    let main = program
+        .function("main")
+        .ok_or("script must define fn main(...)")?;
+    let mut host = GameHostFixture::for_main(main, GameHostOptions::default());
+    let args = host.main_args(main)?;
+
+    let mut runtime = Runtime::new(engine, program);
+    let output = runtime
+        .call_with_adapter(
+            "main",
+            args,
+            CallOptions::new(10_000, 1024 * 1024, 64),
+            host.adapter_mut(),
+        )
+        .map_err(|error| {
+            vela_examples::diagnostics::render_vm_error(SOURCE_LABEL, SOURCE, &error)
+        })?;
+    let output = runtime.value_to_owned(&output)?;
+    host.print_result(output)
 }

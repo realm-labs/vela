@@ -12,7 +12,7 @@ fn run_bin(path: &str) -> String {
 }
 
 #[test]
-fn game_server_examples_run() {
+fn gameplay_examples_run() {
     let cases = [
         (
             env!("CARGO_BIN_EXE_level_up"),

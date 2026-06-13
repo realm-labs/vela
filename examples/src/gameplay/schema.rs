@@ -12,11 +12,11 @@ use vela_reflect::registry::HostIndexCapability;
 use vela_reflect::registry::{FieldDesc, TypeDesc, TypeKey, TypeRegistry};
 use vela_vm::owned_value::OwnedValue;
 
-use super::DemoEngineOptions;
-use super::ids::DemoIds;
+use super::GameEngineOptions;
+use super::ids;
 
-pub(crate) fn demo_engine(ids: DemoIds, options: DemoEngineOptions) -> EngineResult<Engine> {
-    let registry = demo_support_type_registry(ids);
+pub(crate) fn build_gameplay_engine(options: GameEngineOptions) -> EngineResult<Engine> {
+    let registry = gameplay_support_type_registry();
     let mut builder = Engine::builder()
         .with_standard_natives()
         .capability(Capability::HostRead)
@@ -44,21 +44,21 @@ pub(crate) fn demo_engine(ids: DemoIds, options: DemoEngineOptions) -> EngineRes
     for desc in registry.types() {
         builder = builder.register_type(desc.clone());
     }
-    builder = builder.register_typed_native_fn(demo_reward_grant_desc(ids), demo_reward_grant);
+    builder = builder.register_typed_native_fn(gameplay_reward_grant_desc(), gameplay_reward_grant);
     builder.build()
 }
 
-pub(crate) fn demo_support_type_registry(ids: DemoIds) -> TypeRegistry {
+fn gameplay_support_type_registry() -> TypeRegistry {
     let mut registry = TypeRegistry::new();
     registry.register(
         context_host_type_desc()
-            .field(FieldDesc::new(ids.config_field, "config").type_hint("Config")),
+            .field(FieldDesc::new(ids::config_field(), "config").type_hint("Config")),
     );
     registry
 }
 
-fn demo_reward_grant_desc(ids: DemoIds) -> NativeFunctionDesc {
-    NativeFunctionDesc::new("game::reward::grant", ids.reward_grant_function)
+fn gameplay_reward_grant_desc() -> NativeFunctionDesc {
+    NativeFunctionDesc::new("game::reward::grant", ids::reward_grant_function())
         .param(
             "player",
             TypeHint::Host(TypeKey::new(Player::vela_type_id(), "Player")),
@@ -71,7 +71,7 @@ fn demo_reward_grant_desc(ids: DemoIds) -> NativeFunctionDesc {
         .attr("event", "reward")
 }
 
-fn demo_reward_grant(_: OwnedValue, _: String) -> bool {
+fn gameplay_reward_grant(_: OwnedValue, _: String) -> bool {
     true
 }
 

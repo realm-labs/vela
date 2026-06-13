@@ -2,7 +2,7 @@ use std::error::Error;
 use std::path::{Path, PathBuf};
 
 pub mod diagnostics;
-pub mod game_server;
+pub mod gameplay;
 pub mod hot_reload_demo;
 
 pub fn example_dir(example: &str) -> PathBuf {

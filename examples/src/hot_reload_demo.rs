@@ -15,7 +15,8 @@ pub fn run(
     updated_label: &str,
     updated_source: &str,
 ) -> Result<(), Box<dyn Error>> {
-    let engine = crate::game_server::hot_reload_engine().map_err(|error| format!("{error:?}"))?;
+    let engine = crate::gameplay::build_engine(crate::gameplay::GameEngineOptions::default())
+        .map_err(|error| format!("{error:?}"))?;
     let initial = engine
         .compile_hot_reload_initial(SourceId::new(1), initial_source)
         .map_err(|error| {
