@@ -151,6 +151,12 @@ impl<T> ScriptFields<T> {
     }
 
     #[must_use]
+    #[inline]
+    pub fn get_slot_at(&self, slot: usize) -> Option<&T> {
+        self.slots.get(slot).map(|field| &field.value)
+    }
+
+    #[must_use]
     pub fn get_mut(&mut self, field: &str) -> Option<&mut T> {
         self.slots
             .iter_mut()

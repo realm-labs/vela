@@ -275,9 +275,7 @@ fn get_linked_record_slot_value(
     inline_caches: Option<&dyn VmInlineCaches>,
     cache_site: Option<CacheSiteId>,
 ) -> VmResult<Value> {
-    if let Some(value) =
-        cached_record_slot_value(value, field_name, heap, inline_caches, cache_site)
-    {
+    if let Some(value) = cached_record_slot_value(value, field, heap, inline_caches, cache_site) {
         return Ok(value);
     }
     let result = get_record_slot_value(value, field_name, field.index(), heap)?;
@@ -351,7 +349,7 @@ fn set_linked_record_slot_value(
 
 fn cached_record_slot_value(
     value: &Value,
-    field_name: &str,
+    field: FieldSlot,
     heap: Option<&HeapExecution<'_>>,
     inline_caches: Option<&dyn VmInlineCaches>,
     cache_site: Option<CacheSiteId>,
@@ -368,11 +366,14 @@ fn cached_record_slot_value(
     else {
         return None;
     };
-    (identity.type_id == entry.type_id && identity.shape_id == entry.shape_id).then(|| {
-        fields
-            .get_slot(entry.field.index(), field_name)
-            .map(stored_runtime_value)
-    })?
+    (identity.type_id == entry.type_id
+        && identity.shape_id == entry.shape_id
+        && field == entry.field)
+        .then(|| {
+            fields
+                .get_slot_at(entry.field.index())
+                .map(stored_runtime_value)
+        })?
 }
 
 fn populate_record_field_cache(
