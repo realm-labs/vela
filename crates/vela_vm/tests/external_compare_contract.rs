@@ -82,9 +82,8 @@ fn scalar_workloads_have_reproducible_opcode_count_reports() {
 
     let scalar = opcode_count_report(&vm, registry.compile_view(), "scalar_branch_loop");
     assert_has_opcode(&scalar, "I64RemImm");
-    assert_has_opcode(&scalar, "I64RemImmEqImmJumpIfFalse");
     assert_has_opcode(&scalar, "I64MulImm");
-    assert_has_opcode(&scalar, "I64GtImmJumpIfFalse");
+    assert_has_opcode(&scalar, "I64CmpImmJumpIfFalse");
     assert_has_opcode(&scalar, "I64Add");
     assert_has_opcode(&scalar, "Jump");
     assert_has_opcode(&scalar, "I64RangeNext");
@@ -286,11 +285,8 @@ fn opcode_label(kind: &InstructionKind) -> &'static str {
         InstructionKind::I64SubImm { .. } => "I64SubImm",
         InstructionKind::I64MulImm { .. } => "I64MulImm",
         InstructionKind::I64RemImm { .. } => "I64RemImm",
-        InstructionKind::I64EqImm { .. } => "I64EqImm",
-        InstructionKind::I64GtImm { .. } => "I64GtImm",
-        InstructionKind::I64EqImmJumpIfFalse { .. } => "I64EqImmJumpIfFalse",
-        InstructionKind::I64GtImmJumpIfFalse { .. } => "I64GtImmJumpIfFalse",
-        InstructionKind::I64RemImmEqImmJumpIfFalse { .. } => "I64RemImmEqImmJumpIfFalse",
+        InstructionKind::I64CmpImm { .. } => "I64CmpImm",
+        InstructionKind::I64CmpImmJumpIfFalse { .. } => "I64CmpImmJumpIfFalse",
         InstructionKind::BinaryIntLiteral { op, side, .. } => binary_int_literal_label(*op, *side),
         InstructionKind::BinaryFloatLiteral { op, side, .. } => {
             binary_float_literal_label(*op, *side)

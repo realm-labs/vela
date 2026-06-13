@@ -461,39 +461,23 @@ impl<'linker, 'registry> LinkContext<'linker, 'registry> {
                 lhs: *lhs,
                 imm: *imm,
             },
-            UnlinkedInstructionKind::I64EqImm { dst, lhs, imm } => InstructionKind::I64EqImm {
-                dst: *dst,
-                lhs: *lhs,
-                imm: *imm,
-            },
-            UnlinkedInstructionKind::I64GtImm { dst, lhs, imm } => InstructionKind::I64GtImm {
-                dst: *dst,
-                lhs: *lhs,
-                imm: *imm,
-            },
-            UnlinkedInstructionKind::I64EqImmJumpIfFalse { lhs, imm, target } => {
-                InstructionKind::I64EqImmJumpIfFalse {
+            UnlinkedInstructionKind::I64CmpImm { dst, op, lhs, imm } => {
+                InstructionKind::I64CmpImm {
+                    dst: *dst,
+                    op: *op,
                     lhs: *lhs,
                     imm: *imm,
-                    target: *target,
                 }
             }
-            UnlinkedInstructionKind::I64GtImmJumpIfFalse { lhs, imm, target } => {
-                InstructionKind::I64GtImmJumpIfFalse {
-                    lhs: *lhs,
-                    imm: *imm,
-                    target: *target,
-                }
-            }
-            UnlinkedInstructionKind::I64RemImmEqImmJumpIfFalse {
+            UnlinkedInstructionKind::I64CmpImmJumpIfFalse {
+                op,
                 lhs,
-                rem_imm,
-                eq_imm,
+                imm,
                 target,
-            } => InstructionKind::I64RemImmEqImmJumpIfFalse {
+            } => InstructionKind::I64CmpImmJumpIfFalse {
+                op: *op,
                 lhs: *lhs,
-                rem_imm: *rem_imm,
-                eq_imm: *eq_imm,
+                imm: *imm,
                 target: *target,
             },
             UnlinkedInstructionKind::BinaryIntLiteral {

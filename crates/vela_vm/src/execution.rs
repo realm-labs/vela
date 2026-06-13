@@ -300,48 +300,22 @@ impl Vm {
                         .map_err(|error| error.with_source_span_if_absent(instruction.span))?;
                     frame.write_i64(*dst, value)?;
                 }
-                UnlinkedInstructionKind::I64EqImm { dst, lhs, imm } => {
+                UnlinkedInstructionKind::I64CmpImm { dst, op, lhs, imm } => {
                     let lhs = frame
-                        .read_i64(*lhs, "equal")
+                        .read_i64(*lhs, "compare")
                         .map_err(|error| error.with_source_span_if_absent(instruction.span))?;
-                    frame.write_bool(*dst, lhs == *imm)?;
+                    frame.write_bool(*dst, i64_ops::compare(lhs, *op, *imm))?;
                 }
-                UnlinkedInstructionKind::I64GtImm { dst, lhs, imm } => {
-                    let lhs = frame
-                        .read_i64(*lhs, "greater")
-                        .map_err(|error| error.with_source_span_if_absent(instruction.span))?;
-                    frame.write_bool(*dst, lhs > *imm)?;
-                }
-                UnlinkedInstructionKind::I64EqImmJumpIfFalse { lhs, imm, target } => {
-                    let lhs = frame
-                        .read_i64(*lhs, "equal")
-                        .map_err(|error| error.with_source_span_if_absent(instruction.span))?;
-                    if lhs != *imm {
-                        validate_jump(code, target.0)?;
-                        ip = target.0;
-                    }
-                }
-                UnlinkedInstructionKind::I64GtImmJumpIfFalse { lhs, imm, target } => {
-                    let lhs = frame
-                        .read_i64(*lhs, "greater")
-                        .map_err(|error| error.with_source_span_if_absent(instruction.span))?;
-                    if lhs <= *imm {
-                        validate_jump(code, target.0)?;
-                        ip = target.0;
-                    }
-                }
-                UnlinkedInstructionKind::I64RemImmEqImmJumpIfFalse {
+                UnlinkedInstructionKind::I64CmpImmJumpIfFalse {
+                    op,
                     lhs,
-                    rem_imm,
-                    eq_imm,
+                    imm,
                     target,
                 } => {
                     let lhs = frame
-                        .read_i64(*lhs, "rem")
+                        .read_i64(*lhs, "compare")
                         .map_err(|error| error.with_source_span_if_absent(instruction.span))?;
-                    let value = i64_ops::rem_raw(lhs, *rem_imm)
-                        .map_err(|error| error.with_source_span_if_absent(instruction.span))?;
-                    if value != *eq_imm {
+                    if !i64_ops::compare(lhs, *op, *imm) {
                         validate_jump(code, target.0)?;
                         ip = target.0;
                     }

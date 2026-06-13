@@ -8,7 +8,7 @@ use vela_registry::{DebugNameId, DebugNameTable};
 
 use crate::{
     CacheSiteId, CacheSiteKind, CacheSiteLayout, CallArgument, Constant, ConstantId,
-    HostTargetPlanId, InstructionOffset, Register,
+    HostTargetPlanId, I64CompareOp, InstructionOffset, Register,
 };
 
 macro_rules! dense_handle {
@@ -687,30 +687,16 @@ pub enum InstructionKind {
         lhs: Register,
         imm: i64,
     },
-    I64EqImm {
+    I64CmpImm {
         dst: Register,
+        op: I64CompareOp,
         lhs: Register,
         imm: i64,
     },
-    I64GtImm {
-        dst: Register,
+    I64CmpImmJumpIfFalse {
+        op: I64CompareOp,
         lhs: Register,
         imm: i64,
-    },
-    I64EqImmJumpIfFalse {
-        lhs: Register,
-        imm: i64,
-        target: InstructionOffset,
-    },
-    I64GtImmJumpIfFalse {
-        lhs: Register,
-        imm: i64,
-        target: InstructionOffset,
-    },
-    I64RemImmEqImmJumpIfFalse {
-        lhs: Register,
-        rem_imm: i64,
-        eq_imm: i64,
         target: InstructionOffset,
     },
     BinaryIntLiteral {

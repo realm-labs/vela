@@ -594,6 +594,16 @@ pub enum BinaryLiteralSide {
     Right,
 }
 
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum I64CompareOp {
+    Equal,
+    NotEqual,
+    Less,
+    LessEqual,
+    Greater,
+    GreaterEqual,
+}
+
 #[derive(Clone, Debug, PartialEq)]
 pub struct UnlinkedInstruction {
     pub kind: UnlinkedInstructionKind,
@@ -730,30 +740,16 @@ pub enum UnlinkedInstructionKind {
         lhs: Register,
         imm: i64,
     },
-    I64EqImm {
+    I64CmpImm {
         dst: Register,
+        op: I64CompareOp,
         lhs: Register,
         imm: i64,
     },
-    I64GtImm {
-        dst: Register,
+    I64CmpImmJumpIfFalse {
+        op: I64CompareOp,
         lhs: Register,
         imm: i64,
-    },
-    I64EqImmJumpIfFalse {
-        lhs: Register,
-        imm: i64,
-        target: InstructionOffset,
-    },
-    I64GtImmJumpIfFalse {
-        lhs: Register,
-        imm: i64,
-        target: InstructionOffset,
-    },
-    I64RemImmEqImmJumpIfFalse {
-        lhs: Register,
-        rem_imm: i64,
-        eq_imm: i64,
         target: InstructionOffset,
     },
     BinaryIntLiteral {

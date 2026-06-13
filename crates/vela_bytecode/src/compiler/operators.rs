@@ -1,6 +1,6 @@
 use vela_syntax::ast::{AssignOp, BinaryOp};
 
-use crate::{BinaryLiteralOp, Register, UnlinkedInstructionKind};
+use crate::{BinaryLiteralOp, I64CompareOp, Register, UnlinkedInstructionKind};
 
 pub(super) fn binary_literal_op(op: BinaryOp) -> Option<BinaryLiteralOp> {
     match op {
@@ -73,8 +73,17 @@ pub(super) fn i64_immediate_instruction(
         BinaryOp::Sub => Some(UnlinkedInstructionKind::I64SubImm { dst, lhs, imm }),
         BinaryOp::Mul => Some(UnlinkedInstructionKind::I64MulImm { dst, lhs, imm }),
         BinaryOp::Rem => Some(UnlinkedInstructionKind::I64RemImm { dst, lhs, imm }),
-        BinaryOp::Equal => Some(UnlinkedInstructionKind::I64EqImm { dst, lhs, imm }),
-        BinaryOp::Greater => Some(UnlinkedInstructionKind::I64GtImm { dst, lhs, imm }),
+        BinaryOp::Equal
+        | BinaryOp::NotEqual
+        | BinaryOp::Less
+        | BinaryOp::LessEqual
+        | BinaryOp::Greater
+        | BinaryOp::GreaterEqual => Some(UnlinkedInstructionKind::I64CmpImm {
+            dst,
+            op: i64_compare_op(op)?,
+            lhs,
+            imm,
+        }),
         _ => None,
     }
 }
@@ -82,8 +91,28 @@ pub(super) fn i64_immediate_instruction(
 pub(super) fn i64_immediate_op_supported(op: BinaryOp, imm: i64) -> bool {
     matches!(
         op,
-        BinaryOp::Add | BinaryOp::Sub | BinaryOp::Mul | BinaryOp::Equal | BinaryOp::Greater
+        BinaryOp::Add
+            | BinaryOp::Sub
+            | BinaryOp::Mul
+            | BinaryOp::Equal
+            | BinaryOp::NotEqual
+            | BinaryOp::Less
+            | BinaryOp::LessEqual
+            | BinaryOp::Greater
+            | BinaryOp::GreaterEqual
     ) || matches!(op, BinaryOp::Rem if imm != 0)
+}
+
+pub(super) fn i64_compare_op(op: BinaryOp) -> Option<I64CompareOp> {
+    match op {
+        BinaryOp::Equal => Some(I64CompareOp::Equal),
+        BinaryOp::NotEqual => Some(I64CompareOp::NotEqual),
+        BinaryOp::Less => Some(I64CompareOp::Less),
+        BinaryOp::LessEqual => Some(I64CompareOp::LessEqual),
+        BinaryOp::Greater => Some(I64CompareOp::Greater),
+        BinaryOp::GreaterEqual => Some(I64CompareOp::GreaterEqual),
+        _ => None,
+    }
 }
 
 pub(super) fn compound_assignment_instruction(

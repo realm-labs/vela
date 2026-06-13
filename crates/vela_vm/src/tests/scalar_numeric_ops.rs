@@ -377,15 +377,17 @@ fn linked_i64_typed_immediate_comparisons_execute() {
         },
     ));
     code.push_instruction(vela_bytecode::linked::Instruction::new(
-        vela_bytecode::linked::InstructionKind::I64EqImm {
+        vela_bytecode::linked::InstructionKind::I64CmpImm {
             dst: Register(1),
+            op: vela_bytecode::I64CompareOp::Equal,
             lhs: Register(0),
             imm: 10,
         },
     ));
     code.push_instruction(vela_bytecode::linked::Instruction::new(
-        vela_bytecode::linked::InstructionKind::I64GtImm {
+        vela_bytecode::linked::InstructionKind::I64CmpImm {
             dst: Register(2),
+            op: vela_bytecode::I64CompareOp::Greater,
             lhs: Register(0),
             imm: 9,
         },

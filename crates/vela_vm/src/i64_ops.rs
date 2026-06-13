@@ -1,3 +1,5 @@
+use vela_bytecode::I64CompareOp;
+
 use crate::{VmError, VmErrorKind, VmResult};
 
 #[inline]
@@ -21,6 +23,18 @@ pub(crate) fn rem_raw(lhs: i64, rhs: i64) -> VmResult<i64> {
         return Err(VmError::new(VmErrorKind::DivisionByZero));
     }
     lhs.checked_rem(rhs).ok_or_else(|| overflow("rem"))
+}
+
+#[inline]
+pub(crate) fn compare(lhs: i64, op: I64CompareOp, rhs: i64) -> bool {
+    match op {
+        I64CompareOp::Equal => lhs == rhs,
+        I64CompareOp::NotEqual => lhs != rhs,
+        I64CompareOp::Less => lhs < rhs,
+        I64CompareOp::LessEqual => lhs <= rhs,
+        I64CompareOp::Greater => lhs > rhs,
+        I64CompareOp::GreaterEqual => lhs >= rhs,
+    }
 }
 
 #[inline]

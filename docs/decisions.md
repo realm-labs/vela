@@ -684,6 +684,13 @@ source spans, hot-reload compatibility, and HostAccess boundaries. Direct
 integer range loops may use `I64RangeNext`; broader numeric matrices and
 superinstructions require separate measured justification.
 
+I64 immediate comparisons use a single comparison opcode carrying the compare
+operator. Arithmetic-with-immediate bytecode, such as remainder by a constant,
+must stay separate from compare/jump bytecode unless a future profiling pass
+justifies a broadly reusable superinstruction family. Do not add
+benchmark-shaped fused opcodes such as remainder-by-immediate plus equality
+plus jump.
+
 Superinstructions must be lowered only when the compiler can prove the fused
 condition shape directly or prove that removed temporary registers are not
 observable. Do not add post-compile fused rewrites from adjacent opcodes alone.

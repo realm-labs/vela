@@ -9,6 +9,7 @@ use vela_syntax::ast::{
 use crate::{Constant, InstructionOffset, Register, UnlinkedInstructionKind};
 
 use super::const_eval::compile_literal_constant_for_type;
+use super::operators::i64_compare_op;
 use super::patterns::PatternBindingFacts;
 use super::record_shapes::ValueShape;
 use super::script_types::{ScriptTypeFact, type_hint_script_type};
@@ -514,14 +515,9 @@ impl Compiler<'_, '_> {
         let ExprKind::Binary { op, left, right } = &condition.kind else {
             return Ok(None);
         };
-        if !matches!(op, BinaryOp::Equal | BinaryOp::Greater) {
+        let Some(op) = i64_compare_op(*op) else {
             return Ok(None);
-        }
-        if *op == BinaryOp::Equal
-            && let Some(jump) = self.try_emit_i64_rem_eq_immediate_jump_if_false(left, right)?
-        {
-            return Ok(Some(jump));
-        }
+        };
         if self.value_type_for_expr(left)
             != Some(RuntimeTypeFact::Primitive(vela_common::PrimitiveTag::I64))
         {
@@ -532,52 +528,10 @@ impl Compiler<'_, '_> {
         };
         let lhs = self.compile_expr(left)?;
         let offset = self.current_offset();
-        let target = InstructionOffset(usize::MAX);
-        match op {
-            BinaryOp::Equal => {
-                self.emit(UnlinkedInstructionKind::I64EqImmJumpIfFalse { lhs, imm, target })
-            }
-            BinaryOp::Greater => {
-                self.emit(UnlinkedInstructionKind::I64GtImmJumpIfFalse { lhs, imm, target })
-            }
-            _ => unreachable!("operator filtered above"),
-        }
-        Ok(Some(offset))
-    }
-
-    fn try_emit_i64_rem_eq_immediate_jump_if_false(
-        &mut self,
-        left: &Expr,
-        right: &Expr,
-    ) -> CompileResult<Option<usize>> {
-        let ExprKind::Binary {
-            op: BinaryOp::Rem,
-            left: rem_lhs,
-            right: rem_rhs,
-        } = &left.kind
-        else {
-            return Ok(None);
-        };
-        if self.value_type_for_expr(rem_lhs)
-            != Some(RuntimeTypeFact::Primitive(vela_common::PrimitiveTag::I64))
-        {
-            return Ok(None);
-        }
-        let Some(rem_imm) = self.i64_literal_value(rem_rhs)? else {
-            return Ok(None);
-        };
-        if rem_imm == 0 {
-            return Ok(None);
-        }
-        let Some(eq_imm) = self.i64_literal_value(right)? else {
-            return Ok(None);
-        };
-        let lhs = self.compile_expr(rem_lhs)?;
-        let offset = self.current_offset();
-        self.emit(UnlinkedInstructionKind::I64RemImmEqImmJumpIfFalse {
+        self.emit(UnlinkedInstructionKind::I64CmpImmJumpIfFalse {
+            op,
             lhs,
-            rem_imm,
-            eq_imm,
+            imm,
             target: InstructionOffset(usize::MAX),
         });
         Ok(Some(offset))

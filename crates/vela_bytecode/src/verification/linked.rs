@@ -202,8 +202,7 @@ fn verify_linked_instruction(
         InstructionKind::I64AddImm { dst, lhs, .. }
         | InstructionKind::I64SubImm { dst, lhs, .. }
         | InstructionKind::I64MulImm { dst, lhs, .. }
-        | InstructionKind::I64EqImm { dst, lhs, .. }
-        | InstructionKind::I64GtImm { dst, lhs, .. } => {
+        | InstructionKind::I64CmpImm { dst, lhs, .. } => {
             verify_linked_register(function, instruction_index, code, *dst)?;
             verify_linked_register(function, instruction_index, code, *lhs)
         }
@@ -212,19 +211,8 @@ fn verify_linked_instruction(
             verify_linked_register(function, instruction_index, code, *lhs)?;
             verify_linked_i64_rem_imm(function, instruction_index, *imm)
         }
-        InstructionKind::I64EqImmJumpIfFalse { lhs, target, .. }
-        | InstructionKind::I64GtImmJumpIfFalse { lhs, target, .. } => {
+        InstructionKind::I64CmpImmJumpIfFalse { lhs, target, .. } => {
             verify_linked_register(function, instruction_index, code, *lhs)?;
-            verify_linked_jump(function, instruction_index, code, *target)
-        }
-        InstructionKind::I64RemImmEqImmJumpIfFalse {
-            lhs,
-            rem_imm,
-            target,
-            ..
-        } => {
-            verify_linked_register(function, instruction_index, code, *lhs)?;
-            verify_linked_i64_rem_imm(function, instruction_index, *rem_imm)?;
             verify_linked_jump(function, instruction_index, code, *target)
         }
         InstructionKind::BinaryIntLiteral { dst, value, .. }

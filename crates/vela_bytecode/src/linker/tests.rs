@@ -127,8 +127,9 @@ fn linker_preserves_i64_typed_instructions() {
         },
     ));
     code.push_instruction(UnlinkedInstruction::new(
-        UnlinkedInstructionKind::I64GtImm {
+        UnlinkedInstructionKind::I64CmpImm {
             dst: Register(2),
+            op: crate::I64CompareOp::Greater,
             lhs: Register(1),
             imm: 10,
         },
@@ -158,8 +159,9 @@ fn linker_preserves_i64_typed_instructions() {
     ));
     assert!(matches!(
         main.instructions[1].kind,
-        InstructionKind::I64GtImm {
+        InstructionKind::I64CmpImm {
             dst: Register(2),
+            op: crate::I64CompareOp::Greater,
             lhs: Register(1),
             imm: 10
         }
