@@ -77,6 +77,34 @@ fn main() {
 }
 
 #[test]
+fn managed_heap_execution_runs_for_in_string_value_methods() {
+    let program = compile_standard_program_source(
+        SourceId::new(1),
+        r#"
+fn main() {
+    let total = 0;
+    for label in ["quest", "raid", "daily", "bonus"] {
+        if label.starts_with("q") || label.contains("i") {
+            total += label.len();
+        }
+    }
+    return total;
+}
+"#,
+    )
+    .expect("compile for-in string value methods");
+    let mut vm = Vm::new();
+    vm.register_standard_natives();
+    let mut budget = ExecutionBudget::unbounded();
+
+    assert_eq!(
+        run_linked_test_program_with_budget(&vm, &program, "main", &[], &mut budget),
+        Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(14)))
+    );
+    assert_eq!(budget.memory_bytes_allocated(), 0);
+}
+
+#[test]
 fn managed_heap_execution_runs_range_for_in_source() {
     let program = compile_program_source(
         SourceId::new(1),

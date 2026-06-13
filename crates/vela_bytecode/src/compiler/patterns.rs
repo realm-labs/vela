@@ -59,11 +59,19 @@ impl PatternBindingFacts {
         }
     }
 
-    fn value(value_type: Option<RuntimeTypeFact>) -> Self {
+    pub(super) fn value(value_type: Option<RuntimeTypeFact>) -> Self {
         Self {
             script: None,
             value_shape: value_type.clone().map(ValueShape::from_runtime_type),
             value_type,
+        }
+    }
+
+    pub(super) fn value_shape(value_shape: Option<ValueShape>) -> Self {
+        Self {
+            script: None,
+            value_type: value_shape.as_ref().and_then(ValueShape::value_type),
+            value_shape,
         }
     }
 

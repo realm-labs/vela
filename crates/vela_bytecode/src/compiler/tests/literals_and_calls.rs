@@ -807,6 +807,33 @@ fn main() {
 }
 
 #[test]
+fn compiler_lowers_value_method_ids_in_for_in_array_bindings() {
+    let registry = vela_stdlib::standard_registry().expect("standard registry should build");
+    let program = compile_program_source_with_registry(
+        SourceId::new(1),
+        r#"
+fn main() {
+    let total = 0;
+    for label in ["quest", "raid", "daily", "bonus"] {
+        if label.starts_with("q") || label.contains("i") {
+            total += label.len();
+        }
+    }
+    return total;
+}
+"#,
+        registry.compile_view(),
+    )
+    .expect("for-in element value methods should compile");
+    let main = program.function("main").expect("main function");
+    let methods = nested_method_id_names(main);
+
+    assert!(methods.iter().any(|method| method == "starts_with"));
+    assert!(methods.iter().any(|method| method == "contains"));
+    assert!(methods.iter().any(|method| method == "len"));
+}
+
+#[test]
 fn compiler_lowers_value_method_ids_after_array_extrema_methods() {
     let registry = vela_stdlib::standard_registry().expect("standard registry should build");
     let program = compile_program_source_with_registry(

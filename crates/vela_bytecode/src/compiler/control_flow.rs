@@ -1,4 +1,4 @@
-use vela_common::Span;
+use vela_common::{PrimitiveTag, Span};
 use vela_hir::binding::LocalBindingKind;
 use vela_hir::type_hint::HirTypeHint;
 use vela_syntax::ast::{
@@ -8,6 +8,7 @@ use vela_syntax::ast::{
 use crate::{Constant, InstructionOffset, Register, UnlinkedInstructionKind};
 
 use super::patterns::PatternBindingFacts;
+use super::record_shapes::ValueShape;
 use super::script_types::{ScriptTypeFact, type_hint_script_type};
 use super::value_flow::{BlockValue, block_value};
 use super::value_types::{
@@ -258,6 +259,14 @@ impl Compiler<'_, '_> {
             } => Some((left.as_ref(), right.as_ref(), true)),
             _ => None,
         };
+        let item_facts = if range_iterable.is_some() {
+            i64_pattern_facts()
+        } else {
+            PatternBindingFacts::value_shape(
+                self.value_shape_for_expr(iterable)
+                    .and_then(iterable_item_shape),
+            )
+        };
         let loop_iterable = if let Some((start, end, inclusive)) = range_iterable {
             let cursor = self.compile_expr(start)?;
             let end = self.compile_expr(end)?;
@@ -299,6 +308,7 @@ impl Compiler<'_, '_> {
         let previous_hir_locals = self.hir_locals.clone();
         let previous_script_types = self.script_types.clone();
         let previous_value_types = self.value_types.clone();
+        let previous_value_shapes = self.value_shapes.clone();
 
         let loop_start = self.current_offset();
         let done_jump = match loop_iterable {
@@ -328,7 +338,7 @@ impl Compiler<'_, '_> {
                 index_register,
                 index_pattern,
                 stmt_span,
-                PatternBindingFacts::default(),
+                i64_pattern_facts(),
                 LocalBindingKind::For,
             )?;
         }
@@ -337,7 +347,7 @@ impl Compiler<'_, '_> {
             item_register,
             pattern,
             stmt_span,
-            PatternBindingFacts::default(),
+            item_facts,
             LocalBindingKind::For,
         )?;
         self.loop_stack.push(LoopContext::new(loop_start));
@@ -367,6 +377,7 @@ impl Compiler<'_, '_> {
         self.hir_locals = previous_hir_locals;
         self.script_types = previous_script_types;
         self.value_types = previous_value_types;
+        self.value_shapes = previous_value_shapes;
 
         Ok(false)
     }
@@ -619,6 +630,18 @@ impl Compiler<'_, '_> {
             }
         }
     }
+}
+
+fn iterable_item_shape(shape: ValueShape) -> Option<ValueShape> {
+    match shape {
+        ValueShape::Array(element) | ValueShape::Set(element) => Some(*element),
+        ValueShape::Map { value, .. } => Some(*value),
+        _ => None,
+    }
+}
+
+fn i64_pattern_facts() -> PatternBindingFacts {
+    PatternBindingFacts::value(Some(RuntimeTypeFact::primitive(PrimitiveTag::I64)))
 }
 
 fn merge_type_hint_and_value_fact(

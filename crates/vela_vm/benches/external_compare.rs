@@ -297,30 +297,13 @@ print(checksum);
         vela: r#"
 fn main() {
     let total = 0;
-    for tick in 0..200 {
-        if tick % 4 == 0 {
-            if "quest".starts_with("q") || "quest".contains("i") {
-                total += "quest".len() + tick % 7;
+    let labels = ["quest", "raid", "daily", "bonus"];
+    for tick in 0..50 {
+        for label in labels {
+            if label.starts_with("q") || label.contains("i") {
+                total += label.len() + tick % 7;
             } else {
-                total += "quest".len();
-            }
-        } else if tick % 4 == 1 {
-            if "raid".starts_with("q") || "raid".contains("i") {
-                total += "raid".len() + tick % 7;
-            } else {
-                total += "raid".len();
-            }
-        } else if tick % 4 == 2 {
-            if "daily".starts_with("q") || "daily".contains("i") {
-                total += "daily".len() + tick % 7;
-            } else {
-                total += "daily".len();
-            }
-        } else {
-            if "bonus".starts_with("q") || "bonus".contains("i") {
-                total += "bonus".len() + tick % 7;
-            } else {
-                total += "bonus".len();
+                total += label.len();
             }
         }
     }
@@ -332,31 +315,13 @@ local iterations = tonumber(os.getenv("VELA_BENCH_ITERATIONS") or "1")
 local checksum = 0
 local function run()
     local total = 0
-    for tick = 0, 199 do
-        local remainder = tick % 4
-        if remainder == 0 then
-            if string.sub("quest", 1, 1) == "q" or string.find("quest", "i", 1, true) ~= nil then
-                total = total + #"quest" + tick % 7
+    local labels = {"quest", "raid", "daily", "bonus"}
+    for tick = 0, 49 do
+        for _, label in ipairs(labels) do
+            if string.sub(label, 1, 1) == "q" or string.find(label, "i", 1, true) ~= nil then
+                total = total + #label + tick % 7
             else
-                total = total + #"quest"
-            end
-        elseif remainder == 1 then
-            if string.sub("raid", 1, 1) == "q" or string.find("raid", "i", 1, true) ~= nil then
-                total = total + #"raid" + tick % 7
-            else
-                total = total + #"raid"
-            end
-        elseif remainder == 2 then
-            if string.sub("daily", 1, 1) == "q" or string.find("daily", "i", 1, true) ~= nil then
-                total = total + #"daily" + tick % 7
-            else
-                total = total + #"daily"
-            end
-        else
-            if string.sub("bonus", 1, 1) == "q" or string.find("bonus", "i", 1, true) ~= nil then
-                total = total + #"bonus" + tick % 7
-            else
-                total = total + #"bonus"
+                total = total + #label
             end
         end
     end
@@ -372,31 +337,13 @@ const iterations = Number(process.env.VELA_BENCH_ITERATIONS || "1");
 let checksum = 0;
 function run() {
     let total = 0;
-    for (let tick = 0; tick < 200; tick += 1) {
-        const remainder = tick % 4;
-        if (remainder === 0) {
-            if ("quest".startsWith("q") || "quest".includes("i")) {
-                total += "quest".length + tick % 7;
+    const labels = ["quest", "raid", "daily", "bonus"];
+    for (let tick = 0; tick < 50; tick += 1) {
+        for (const label of labels) {
+            if (label.startsWith("q") || label.includes("i")) {
+                total += label.length + tick % 7;
             } else {
-                total += "quest".length;
-            }
-        } else if (remainder === 1) {
-            if ("raid".startsWith("q") || "raid".includes("i")) {
-                total += "raid".length + tick % 7;
-            } else {
-                total += "raid".length;
-            }
-        } else if (remainder === 2) {
-            if ("daily".startsWith("q") || "daily".includes("i")) {
-                total += "daily".length + tick % 7;
-            } else {
-                total += "daily".length;
-            }
-        } else {
-            if ("bonus".startsWith("q") || "bonus".includes("i")) {
-                total += "bonus".length + tick % 7;
-            } else {
-                total += "bonus".length;
+                total += label.length;
             }
         }
     }
@@ -413,31 +360,13 @@ let checksum = 0;
 
 fn run() {
     let total = 0;
-    for tick in 0..200 {
-        let remainder = tick % 4;
-        if remainder == 0 {
-            if "quest".starts_with("q") || "quest".contains("i") {
-                total += "quest".len() + tick % 7;
+    let labels = ["quest", "raid", "daily", "bonus"];
+    for tick in 0..50 {
+        for label in labels {
+            if label.starts_with("q") || label.contains("i") {
+                total += label.len() + tick % 7;
             } else {
-                total += "quest".len();
-            }
-        } else if remainder == 1 {
-            if "raid".starts_with("q") || "raid".contains("i") {
-                total += "raid".len() + tick % 7;
-            } else {
-                total += "raid".len();
-            }
-        } else if remainder == 2 {
-            if "daily".starts_with("q") || "daily".contains("i") {
-                total += "daily".len() + tick % 7;
-            } else {
-                total += "daily".len();
-            }
-        } else {
-            if "bonus".starts_with("q") || "bonus".contains("i") {
-                total += "bonus".len() + tick % 7;
-            } else {
-                total += "bonus".len();
+                total += label.len();
             }
         }
     }
