@@ -193,6 +193,11 @@ fn stdlib_function_facts_reject_unknown_names_and_wrong_arity() {
 
 #[test]
 fn stdlib_method_facts_enumerate_receiver_api_surface() {
+    let array_facts = stdlib_method_facts(&TypeFact::array(TypeFact::I64), None);
+    assert!(array_facts.iter().any(|fact| {
+        fact.method == "values" && fact.returns == TypeFact::iterator(TypeFact::I64)
+    }));
+
     let map = TypeFact::map(TypeFact::STRING, TypeFact::I64);
     let facts = stdlib_method_facts(&map, Some(&TypeFact::BOOL));
 

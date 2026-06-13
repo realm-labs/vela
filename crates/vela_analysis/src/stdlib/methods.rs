@@ -40,6 +40,7 @@ const ARRAY_METHOD_NAMES: &[&str] = &[
     "min",
     "max",
     "sort_by",
+    "values",
     "iter",
 ];
 const MAP_METHOD_NAMES: &[&str] = &[
