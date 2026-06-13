@@ -514,6 +514,7 @@ fn dispatch_linked_dynamic_method_call_inner(
         method,
         context.program,
         heap.as_deref(),
+        vm.type_registry(),
     )
     .ok_or_else(|| {
         VmError::new(VmErrorKind::UnknownMethod {
@@ -538,6 +539,29 @@ fn dispatch_linked_dynamic_method_call_inner(
                     args: script_args.as_slice(),
                 },
             )
+        }
+        DynamicMethodTarget::Host { method_id } => {
+            let return_value = host_access::execute_host_root_method_call(
+                host_access::HostAccessRuntime {
+                    frame,
+                    heap: heap.as_deref_mut(),
+                    budget: budget.as_deref_mut(),
+                    host: host.as_deref_mut(),
+                    inline_caches: context.inline_caches,
+                    source_span: context.call_site,
+                },
+                call.receiver,
+                host_access::HostRootMethodCall {
+                    method: method_id,
+                    args: values,
+                    wants_return: true,
+                    cache_site: context.cache_site,
+                },
+            )?;
+            if let Some(return_value) = return_value {
+                frame.write(call.dst, return_value)?;
+            }
+            Ok(())
         }
         DynamicMethodTarget::StandardValue { method_id } => {
             let standard_method =

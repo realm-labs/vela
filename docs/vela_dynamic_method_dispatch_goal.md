@@ -465,7 +465,7 @@ After commit, change this checkbox to `[x]`.
 
 ---
 
-## [ ] Phase 5 — Add host dynamic method resolution through registered metadata
+## [x] Phase 5 — Add host dynamic method resolution through registered metadata
 
 Dynamic calls on `HostRef` must not bypass HostAccess or capability checks.
 

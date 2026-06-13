@@ -1,7 +1,8 @@
-use vela_common::HostTypeId;
+use vela_common::{HostMethodId, HostTypeId};
 use vela_def::MethodId;
 
 use vela_bytecode::{LinkedProgram, MethodDispatchHandle};
+use vela_reflect::registry::TypeRegistry;
 
 use crate::heap::HeapValue;
 use crate::std_method_ids::{StdMethodIds, std_method_ids};
@@ -36,6 +37,7 @@ pub(crate) enum DynamicReceiverKind {
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub(crate) enum DynamicMethodTarget {
     Script { dispatch: MethodDispatchHandle },
+    Host { method_id: HostMethodId },
     StandardValue { method_id: MethodId },
 }
 
@@ -44,8 +46,10 @@ pub(crate) fn resolve_linked_dynamic_method(
     method: &str,
     program: &LinkedProgram,
     heap: Option<&HeapExecution<'_>>,
+    registry: Option<&TypeRegistry>,
 ) -> Option<DynamicMethodTarget> {
     resolve_script_dynamic_method(receiver, method, program, heap)
+        .or_else(|| resolve_host_dynamic_method(receiver, method, registry))
         .or_else(|| resolve_standard_dynamic_method(receiver, method, heap))
 }
 
@@ -118,6 +122,23 @@ fn resolve_script_dynamic_method(
     program
         .script_method_dispatch(&type_name, method)
         .map(|dispatch| DynamicMethodTarget::Script { dispatch })
+}
+
+fn resolve_host_dynamic_method(
+    receiver: &Value,
+    method: &str,
+    registry: Option<&TypeRegistry>,
+) -> Option<DynamicMethodTarget> {
+    let Value::HostRef(reference) = receiver else {
+        return None;
+    };
+    let desc = registry?.type_of_host(*reference)?;
+    desc.methods
+        .iter()
+        .find(|candidate| candidate.name == method)
+        .map(|candidate| DynamicMethodTarget::Host {
+            method_id: candidate.id,
+        })
 }
 
 fn standard_method_id_for_receiver(

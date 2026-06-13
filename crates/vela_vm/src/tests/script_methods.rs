@@ -446,6 +446,161 @@ fn main(player: Player) {
 }
 
 #[test]
+fn dynamic_host_method_dispatch_uses_registered_method_id_and_host_access() {
+    let host_ref = player_ref(3);
+    let method = HostMethodId::new(5);
+    let program = compile_host_program_source(
+        SourceId::new(1),
+        r#"
+fn main(player) {
+    return player.grant_exp(20);
+}
+"#,
+        host_definition_registry(
+            &[("Player", host_ref.type_id)],
+            &[],
+            &[TestHostMethod::new(
+                "Player",
+                "grant_exp",
+                method,
+                &["amount"],
+            )],
+        ),
+    )
+    .expect("dynamic host method source should compile");
+    let mut adapter = host_adapter(host_ref, HostValue::Null);
+    adapter.insert_method_return(method, HostValue::Scalar(vela_common::ScalarValue::I64(1)));
+    let mut tx = HostAccess::new();
+    let vm = Vm::new().with_type_registry(Arc::new(reflection_registry()));
+
+    let result = {
+        let mut host = HostExecution {
+            adapter: &mut adapter,
+            access: &mut tx,
+            script_globals: None,
+        };
+        run_script_method_program_with_host(
+            &vm,
+            &program,
+            "main",
+            &[OwnedValue::HostRef(host_ref)],
+            &mut host,
+        )
+    };
+
+    assert_eq!(result, Ok(OwnedValue::i64(1)));
+    assert_eq!(
+        adapter.method_calls(),
+        &[(
+            HostPath::new(host_ref),
+            method,
+            vec![HostValue::Scalar(vela_common::ScalarValue::I64(20))]
+        )]
+    );
+}
+
+#[test]
+fn dynamic_host_method_missing_and_host_access_failures_keep_source_spans() {
+    let host_ref = player_ref(3);
+    let method = HostMethodId::new(5);
+    let registry = host_definition_registry(
+        &[("Player", host_ref.type_id)],
+        &[],
+        &[TestHostMethod::new(
+            "Player",
+            "grant_exp",
+            method,
+            &["amount"],
+        )],
+    );
+    let missing_program = compile_host_program_source(
+        SourceId::new(1),
+        r#"
+fn main(player) {
+    return player.missing(20);
+}
+"#,
+        registry.clone(),
+    )
+    .expect("missing dynamic host method source should compile");
+    let vm = Vm::new().with_type_registry(Arc::new(reflection_registry()));
+    let mut adapter = host_adapter(host_ref, HostValue::Null);
+    let mut tx = HostAccess::new();
+    let error = {
+        let mut host = HostExecution {
+            adapter: &mut adapter,
+            access: &mut tx,
+            script_globals: None,
+        };
+        run_script_method_program_with_host(
+            &vm,
+            &missing_program,
+            "main",
+            &[OwnedValue::HostRef(host_ref)],
+            &mut host,
+        )
+    }
+    .expect_err("missing dynamic host method should fail");
+    assert!(matches!(
+        error.kind(),
+        VmErrorKind::UnknownMethod { method } if method == "missing"
+    ));
+    assert!(error.source_span.is_some());
+
+    let call_program = compile_host_program_source(
+        SourceId::new(2),
+        r#"
+fn main(player) {
+    return player.grant_exp(20);
+}
+"#,
+        registry,
+    )
+    .expect("dynamic host method source should compile");
+    let mut denied_adapter = host_adapter(host_ref, HostValue::Null);
+    denied_adapter.deny_diagnostic_path_call(HostPath::new(host_ref));
+    let mut tx = HostAccess::new();
+    let error = {
+        let mut host = HostExecution {
+            adapter: &mut denied_adapter,
+            access: &mut tx,
+            script_globals: None,
+        };
+        run_script_method_program_with_host(
+            &vm,
+            &call_program,
+            "main",
+            &[OwnedValue::HostRef(host_ref)],
+            &mut host,
+        )
+    }
+    .expect_err("denied dynamic host method should fail through HostAccess");
+    assert!(matches!(error.kind(), VmErrorKind::Host(_)));
+    assert!(error.source_span.is_some());
+
+    let stale_ref = player_ref(4);
+    let mut stale_adapter = host_adapter(host_ref, HostValue::Null);
+    let mut tx = HostAccess::new();
+    let error = {
+        let mut host = HostExecution {
+            adapter: &mut stale_adapter,
+            access: &mut tx,
+            script_globals: None,
+        };
+        run_script_method_program_with_host(
+            &vm,
+            &call_program,
+            "main",
+            &[OwnedValue::HostRef(stale_ref)],
+            &mut host,
+        )
+    }
+    .expect_err("stale dynamic host method receiver should fail through HostAccess");
+    assert!(matches!(error.kind(), VmErrorKind::Host(_)));
+    assert!(error.source_span.is_some());
+}
+
+#[test]
 fn runs_compiled_record_variant_field_method_id_dispatch() {
     let program = compile_program_source(
         SourceId::new(1),
