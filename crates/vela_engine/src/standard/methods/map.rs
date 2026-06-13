@@ -57,9 +57,9 @@ const MAP_METHODS: &[MethodSpec] = &[
         "Inserts entries from another map.",
     ),
     MethodSpec::new("clear", &[], "null", "Removes all entries."),
-    MethodSpec::new("keys", &[], "array", "Returns keys in sorted order."),
-    MethodSpec::new("values", &[], "array", "Returns values in key order."),
-    MethodSpec::new("entries", &[], "array", "Returns key/value records."),
+    MethodSpec::new("keys", &[], "iterator", "Returns keys in sorted order."),
+    MethodSpec::new("values", &[], "iterator", "Returns values in key order."),
+    MethodSpec::new("entries", &[], "iterator", "Returns key/value records."),
     MethodSpec::new(
         "merge",
         &[ParamSpec::new("other", "map")],

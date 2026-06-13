@@ -134,4 +134,10 @@ const ARRAY_METHODS: &[MethodSpec] = &[
         "iterator",
         "Returns a one-shot iterator over array values.",
     ),
+    MethodSpec::new(
+        "values",
+        &[],
+        "iterator",
+        "Returns a one-shot iterator over array values.",
+    ),
 ];

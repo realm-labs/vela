@@ -307,3 +307,39 @@ fn required_std_field_id(owner: &str, name: &str) -> FieldId {
     };
     id
 }
+
+#[cfg(test)]
+mod tests {
+    use std::collections::BTreeMap;
+
+    use vela_common::HostMethodId;
+
+    use super::*;
+
+    #[test]
+    fn standard_method_descs_match_manifest_contracts() {
+        let mut descs = BTreeMap::new();
+        for ty in standard_type_descs() {
+            for method in ty.methods {
+                descs.insert(method.id, method);
+            }
+        }
+
+        assert_eq!(descs.len(), vela_stdlib::STD_METHODS.len());
+        for spec in vela_stdlib::STD_METHODS {
+            let id = HostMethodId::new(spec.id().get());
+            let desc = descs
+                .get(&id)
+                .unwrap_or_else(|| panic!("missing standard method desc for {id:?}"));
+
+            assert_eq!(desc.name, spec.name);
+            assert_eq!(desc.return_type.as_deref(), Some(spec.return_type));
+            assert_eq!(desc.params.len(), spec.params.len());
+            for (actual, expected) in desc.params.iter().zip(spec.params) {
+                assert_eq!(actual.name, expected.name);
+                assert_eq!(actual.type_hint.as_deref(), Some(expected.type_hint));
+                assert_eq!(actual.has_default, expected.defaulted);
+            }
+        }
+    }
+}

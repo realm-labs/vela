@@ -39,7 +39,12 @@ const SET_METHODS: &[MethodSpec] = &[
         "Adds all values from another set::",
     ),
     MethodSpec::new("clear", &[], "null", "Removes all values."),
-    MethodSpec::new("values", &[], "array", "Returns set values."),
+    MethodSpec::new(
+        "values",
+        &[],
+        "iterator",
+        "Returns a one-shot iterator over set values.",
+    ),
     MethodSpec::new(
         "map",
         &[ParamSpec::new("callback", "function")],
