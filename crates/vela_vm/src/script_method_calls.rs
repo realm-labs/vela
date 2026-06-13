@@ -1,7 +1,7 @@
 use vela_bytecode::linked::{DynamicCallArgumentLinked, LinkedMethodDispatchKind};
 use vela_bytecode::{
     CacheSiteId, CallArgument, DebugNameId, InstructionOffset, LinkedProgram, MethodDispatchHandle,
-    Register, UnlinkedProgramCode,
+    Register, ScriptFunctionHandle, UnlinkedProgramCode,
 };
 use vela_common::Span;
 use vela_def::MethodId;
@@ -502,13 +502,6 @@ fn dispatch_linked_dynamic_method_call_inner(
 ) -> VmResult<()> {
     let method = context.program.debug_name(call.method_name);
     let receiver = *frame.read(call.receiver)?;
-    let values_storage;
-    let values = if call.args.is_empty() {
-        &[]
-    } else {
-        values_storage = dynamic_call_args_from_linked_arguments(frame, call.args)?;
-        values_storage.as_slice()
-    };
     let target = dynamic_method_resolution::resolve_linked_dynamic_method(
         &receiver,
         method,
@@ -522,8 +515,12 @@ fn dispatch_linked_dynamic_method_call_inner(
         })
     })?;
     match target {
-        DynamicMethodTarget::Script { dispatch } => {
-            let script_args = dynamic_call_args_to_call_arguments(call.args)?;
+        DynamicMethodTarget::Script { dispatch, function } => {
+            let script_args = dynamic_script_call_args_from_linked_arguments(
+                context.program,
+                function,
+                call.args,
+            )?;
             dispatch_linked_method_call(
                 vm,
                 context,
@@ -541,6 +538,7 @@ fn dispatch_linked_dynamic_method_call_inner(
             )
         }
         DynamicMethodTarget::Host { method_id } => {
+            let values_storage = dynamic_value_args_from_linked_arguments(frame, call.args)?;
             let return_value = host_access::execute_host_root_method_call(
                 host_access::HostAccessRuntime {
                     frame,
@@ -553,7 +551,7 @@ fn dispatch_linked_dynamic_method_call_inner(
                 call.receiver,
                 host_access::HostRootMethodCall {
                     method: method_id,
-                    args: values,
+                    args: values_storage.as_slice(),
                     wants_return: true,
                     cache_site: context.cache_site,
                 },
@@ -564,6 +562,7 @@ fn dispatch_linked_dynamic_method_call_inner(
             Ok(())
         }
         DynamicMethodTarget::StandardValue { method_id } => {
+            let values_storage = dynamic_value_args_from_linked_arguments(frame, call.args)?;
             let standard_method =
                 script_builtin_methods::standard_cache_entry(method_id, &receiver, heap.as_deref())
                     .ok_or_else(|| {
@@ -574,7 +573,7 @@ fn dispatch_linked_dynamic_method_call_inner(
             let result = script_builtin_methods::call_standard_cached(
                 &receiver,
                 standard_method,
-                values,
+                values_storage.as_slice(),
                 heap,
                 budget,
             )
@@ -588,22 +587,77 @@ fn dispatch_linked_dynamic_method_call_inner(
     }
 }
 
-fn dynamic_call_args_to_call_arguments(
+fn dynamic_script_call_args_from_linked_arguments(
+    program: &LinkedProgram,
+    function: ScriptFunctionHandle,
     args: &[DynamicCallArgumentLinked],
 ) -> VmResult<Vec<CallArgument>> {
-    let mut values = Vec::with_capacity(args.len());
+    let code = program.function(function).ok_or_else(|| {
+        VmError::new(VmErrorKind::UnsupportedLinkedInstruction {
+            opcode: "CallDynamicMethod",
+        })
+    })?;
+    let params = code.params.get(1..).unwrap_or(&[]);
+    let defaults = code.param_defaults.get(1..).unwrap_or(&[]);
+    let mut slots = vec![None; params.len()];
+    let mut next_positional = 0_usize;
+    let mut seen_named = false;
     for arg in args {
-        if arg.name.is_some() {
+        let index = if let Some(name) = arg.name {
+            seen_named = true;
+            let name = program.debug_name(name);
+            params
+                .iter()
+                .position(|param| program.debug_name(*param) == name)
+                .ok_or_else(|| {
+                    VmError::new(VmErrorKind::TypeMismatch {
+                        operation: "dynamic method unknown named argument",
+                    })
+                })?
+        } else {
+            if seen_named {
+                return Err(VmError::new(VmErrorKind::TypeMismatch {
+                    operation: "dynamic method positional argument after named argument",
+                }));
+            }
+            let index = next_positional;
+            next_positional = next_positional.saturating_add(1);
+            if index >= params.len() {
+                return Err(VmError::new(VmErrorKind::ArityMismatch {
+                    name: program.debug_name(code.debug_name).to_owned(),
+                    expected: params.len(),
+                    actual: args.len(),
+                }));
+            }
+            index
+        };
+        if slots[index].is_some() {
             return Err(VmError::new(VmErrorKind::TypeMismatch {
-                operation: "dynamic method named arguments",
+                operation: "dynamic method duplicate argument",
             }));
         }
-        values.push(CallArgument::Register(arg.value));
+        slots[index] = Some(arg.value);
     }
-    Ok(values)
+    slots
+        .into_iter()
+        .enumerate()
+        .map(|(index, slot)| {
+            if let Some(register) = slot {
+                Ok(CallArgument::Register(register))
+            } else if defaults.get(index).copied().unwrap_or(false) {
+                Ok(CallArgument::Missing)
+            } else {
+                Err(VmError::new(VmErrorKind::ArityMismatch {
+                    name: program.debug_name(code.debug_name).to_owned(),
+                    expected: params.len(),
+                    actual: args.len(),
+                }))
+            }
+        })
+        .collect()
 }
 
-fn dynamic_call_args_from_linked_arguments(
+fn dynamic_value_args_from_linked_arguments(
     frame: &CallFrame,
     args: &[DynamicCallArgumentLinked],
 ) -> VmResult<Vec<Value>> {

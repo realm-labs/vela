@@ -371,6 +371,127 @@ fn main() {
     assert_eq!(run_dynamic_entry(&program, "main"), Ok(OwnedValue::i64(2)));
 }
 
+#[test]
+fn linked_dynamic_script_method_materializes_named_and_default_args_after_resolution() {
+    let program = compile_standard_program_source(
+        SourceId::new(1),
+        r#"
+struct Label {
+    text: string,
+}
+
+impl Label {
+    fn wrap(self, prefix: string = "[", suffix: string = "]") -> string {
+        return [prefix, self.text, suffix].join("");
+    }
+}
+
+fn wrap_named(x) {
+    return x.wrap(suffix = "}", prefix = "{");
+}
+
+fn wrap_defaulted(x) {
+    return x.wrap();
+}
+
+fn named_case() {
+    return wrap_named(Label { text: "quest" });
+}
+
+fn defaulted_case() {
+    return wrap_defaulted(Label { text: "quest" });
+}
+"#,
+    )
+    .expect("dynamic script method named/default source should compile");
+
+    assert_eq!(
+        run_dynamic_entry(&program, "named_case"),
+        Ok(OwnedValue::String("{quest}".to_owned()))
+    );
+    assert_eq!(
+        run_dynamic_entry(&program, "defaulted_case"),
+        Ok(OwnedValue::String("[quest]".to_owned()))
+    );
+}
+
+#[test]
+fn linked_dynamic_script_method_named_arg_errors_keep_source_span() {
+    let program = compile_standard_program_source(
+        SourceId::new(1),
+        r#"
+struct Label {
+    text: string,
+}
+
+impl Label {
+    fn wrap(self, prefix: string = "[", suffix: string = "]") -> string {
+        return [prefix, self.text, suffix].join("");
+    }
+
+    fn require(self, prefix: string) -> string {
+        return [prefix, self.text].join("");
+    }
+}
+
+fn missing_required(x) {
+    return x.require();
+}
+
+fn unknown_named(x) {
+    return x.wrap(extra = "!");
+}
+
+fn unsupported_receiver(x) {
+    return x.wrap(prefix = "{");
+}
+
+fn missing_case() {
+    return missing_required(Label { text: "quest" });
+}
+
+fn unknown_case() {
+    return unknown_named(Label { text: "quest" });
+}
+
+fn unsupported_case() {
+    return unsupported_receiver(42);
+}
+"#,
+    )
+    .expect("dynamic script method named/default error source should compile");
+
+    let error = run_dynamic_entry(&program, "missing_case")
+        .expect_err("missing required dynamic script method argument should fail");
+    assert!(matches!(error.kind(), VmErrorKind::ArityMismatch { .. }));
+    assert!(
+        error.source_span.is_some(),
+        "missing dynamic method argument error should keep the call span"
+    );
+
+    let error = run_dynamic_entry(&program, "unknown_case")
+        .expect_err("unknown named dynamic script method argument should fail");
+    assert!(
+        matches!(error.kind(), VmErrorKind::TypeMismatch { operation }
+        if operation == "dynamic method unknown named argument")
+    );
+    assert!(
+        error.source_span.is_some(),
+        "unknown dynamic method named argument error should keep the call span"
+    );
+
+    let error = run_dynamic_entry(&program, "unsupported_case")
+        .expect_err("unsupported dynamic receiver with named args should fail");
+    assert!(matches!(
+        error.kind(),
+        VmErrorKind::UnknownMethod { method } if method == "wrap"
+    ));
+    assert!(
+        error.source_span.is_some(),
+        "unsupported receiver dynamic method error should keep the call span"
+    );
+}
+
 fn run_dynamic_entry(program: &UnlinkedProgram, entry: &str) -> VmResult<OwnedValue> {
     let mut budget = ExecutionBudget::unbounded();
     run_linked_test_program_with_budget(&Vm::new(), program, entry, &[], &mut budget)

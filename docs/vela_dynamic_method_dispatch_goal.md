@@ -503,7 +503,7 @@ After commit, change this checkbox to `[x]`.
 
 ---
 
-## [ ] Phase 6 — Complete dynamic named/default argument semantics
+## [x] Phase 6 — Complete dynamic named/default argument semantics
 
 Unknown-receiver dynamic calls must support the final language argument model, not just positional calls.
 
