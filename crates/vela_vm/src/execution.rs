@@ -630,6 +630,8 @@ impl Vm {
                     indexing::dispatch_get_index(&mut frame, heap.as_deref(), *dst, *base, *index)?;
                 }
                 UnlinkedInstructionKind::GetStringKeyIndex { dst, base, key } => {
+                    let key =
+                        string_key_constant(code.constants.get(key.0), key.0, instruction.span)?;
                     indexing::dispatch_get_string_key_index(
                         &mut frame,
                         heap.as_deref(),
@@ -649,6 +651,8 @@ impl Vm {
                     )?;
                 }
                 UnlinkedInstructionKind::SetStringKeyIndex { base, key, src } => {
+                    let key =
+                        string_key_constant(code.constants.get(key.0), key.0, instruction.span)?;
                     indexing::dispatch_set_string_key_index(
                         &mut frame,
                         heap.as_deref_mut(),
@@ -928,6 +932,24 @@ impl Vm {
         }
 
         Err(VmError::new(VmErrorKind::MissingReturn))
+    }
+}
+
+fn string_key_constant(
+    constant: Option<&vela_bytecode::Constant>,
+    constant_index: usize,
+    span: Option<Span>,
+) -> VmResult<&str> {
+    match constant {
+        Some(vela_bytecode::Constant::String(value)) => Ok(value),
+        Some(_) => Err(VmError::new(VmErrorKind::TypeMismatch {
+            operation: "map string key constant",
+        })
+        .with_source_span(span)),
+        None => Err(VmError::new(VmErrorKind::ConstantOutOfBounds {
+            constant: constant_index,
+        })
+        .with_source_span(span)),
     }
 }
 

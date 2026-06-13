@@ -32,6 +32,11 @@ pub enum VerificationErrorKind {
         constant: ConstantId,
         constant_count: usize,
     },
+    ConstantKindMismatch {
+        constant: ConstantId,
+        expected: &'static str,
+        actual: &'static str,
+    },
     InstructionOutOfBounds {
         target: InstructionOffset,
         instruction_count: usize,
@@ -538,6 +543,9 @@ fn verify_instruction(
             if let UnlinkedInstructionKind::GetIndex { index, .. } = &instruction.kind {
                 verify_register(function, instruction_index, code, *index)?;
             }
+            if let UnlinkedInstructionKind::GetStringKeyIndex { key, .. } = &instruction.kind {
+                verify_string_constant(function, instruction_index, code, *key)?;
+            }
             Ok(())
         }
         UnlinkedInstructionKind::SetRecordField { record, src, .. }
@@ -552,7 +560,11 @@ fn verify_instruction(
         }
         UnlinkedInstructionKind::SetStringKeyIndex { base, src, .. } => {
             verify_register(function, instruction_index, code, *base)?;
-            verify_register(function, instruction_index, code, *src)
+            verify_register(function, instruction_index, code, *src)?;
+            if let UnlinkedInstructionKind::SetStringKeyIndex { key, .. } = &instruction.kind {
+                verify_string_constant(function, instruction_index, code, *key)?;
+            }
+            Ok(())
         }
         UnlinkedInstructionKind::IterInit { dst, iterable } => {
             verify_register(function, instruction_index, code, *dst)?;
@@ -852,6 +864,39 @@ fn verify_constant(
                 constant_count: code.constants.len(),
             },
         ))
+    }
+}
+
+fn verify_string_constant(
+    function: &str,
+    instruction: Option<usize>,
+    code: &UnlinkedCodeObject,
+    constant: ConstantId,
+) -> Result<(), VerificationError> {
+    verify_constant(function, instruction, code, constant)?;
+    match &code.constants[constant.0] {
+        crate::Constant::String(_) => Ok(()),
+        actual => Err(error(
+            function,
+            instruction,
+            VerificationErrorKind::ConstantKindMismatch {
+                constant,
+                expected: "string",
+                actual: constant_kind(actual),
+            },
+        )),
+    }
+}
+
+fn constant_kind(constant: &crate::Constant) -> &'static str {
+    match constant {
+        crate::Constant::Null => "null",
+        crate::Constant::Bool(_) => "bool",
+        crate::Constant::Scalar(_) => "scalar",
+        crate::Constant::String(_) => "string",
+        crate::Constant::Bytes(_) => "bytes",
+        crate::Constant::Array(_) => "array",
+        crate::Constant::Map(_) => "map",
     }
 }
 

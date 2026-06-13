@@ -134,11 +134,10 @@ impl Compiler<'_, '_> {
                 let base = self.compile_expr(base)?;
                 let dst = self.alloc_register()?;
                 if let Some(key) = literal_string(index) {
-                    self.emit(UnlinkedInstructionKind::GetStringKeyIndex {
-                        dst,
-                        base,
-                        key: key.to_owned(),
-                    });
+                    let key = self
+                        .code
+                        .push_constant(crate::Constant::String(key.to_owned()));
+                    self.emit(UnlinkedInstructionKind::GetStringKeyIndex { dst, base, key });
                 } else {
                     let index = self.compile_expr(index)?;
                     self.emit(UnlinkedInstructionKind::GetIndex { dst, base, index });

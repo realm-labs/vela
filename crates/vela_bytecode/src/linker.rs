@@ -764,7 +764,7 @@ impl<'linker, 'registry> LinkContext<'linker, 'registry> {
                 InstructionKind::GetStringKeyIndex {
                     dst: *dst,
                     base: *base,
-                    key: self.linked.intern_debug_name(key.clone()),
+                    key: *key,
                 }
             }
             UnlinkedInstructionKind::SetIndex { base, index, src } => InstructionKind::SetIndex {
@@ -775,7 +775,7 @@ impl<'linker, 'registry> LinkContext<'linker, 'registry> {
             UnlinkedInstructionKind::SetStringKeyIndex { base, key, src } => {
                 InstructionKind::SetStringKeyIndex {
                     base: *base,
-                    key: self.linked.intern_debug_name(key.clone()),
+                    key: *key,
                     src: *src,
                 }
             }

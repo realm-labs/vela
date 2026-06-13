@@ -888,7 +888,7 @@ pub enum UnlinkedInstructionKind {
     GetStringKeyIndex {
         dst: Register,
         base: Register,
-        key: String,
+        key: ConstantId,
     },
     SetIndex {
         base: Register,
@@ -897,7 +897,7 @@ pub enum UnlinkedInstructionKind {
     },
     SetStringKeyIndex {
         base: Register,
-        key: String,
+        key: ConstantId,
         src: Register,
     },
     IterInit {

@@ -6,11 +6,11 @@ use crate::linked::{
     VariantHandle,
 };
 use crate::{
-    CacheSiteId, CacheSiteKind, CallArgument, ConstantId, HostTargetPlanId, InstructionOffset,
-    Register,
+    CacheSiteId, CacheSiteKind, CallArgument, Constant, ConstantId, HostTargetPlanId,
+    InstructionOffset, Register,
 };
 
-use super::{VerificationError, VerificationErrorKind, error};
+use super::{VerificationError, VerificationErrorKind, constant_kind, error};
 
 pub fn verify_linked_program(program: &LinkedProgram) -> Result<(), VerificationError> {
     let context = LinkedVerificationContext::new(program);
@@ -411,7 +411,7 @@ fn verify_linked_instruction(
         InstructionKind::GetStringKeyIndex { dst, base, key } => {
             verify_linked_register(function, instruction_index, code, *dst)?;
             verify_linked_register(function, instruction_index, code, *base)?;
-            verify_linked_debug_name(function, instruction_index, context, *key)
+            verify_linked_string_constant(function, instruction_index, code, *key)
         }
         InstructionKind::SetIndex { base, index, src } => {
             verify_linked_register(function, instruction_index, code, *base)?;
@@ -420,7 +420,7 @@ fn verify_linked_instruction(
         }
         InstructionKind::SetStringKeyIndex { base, key, src } => {
             verify_linked_register(function, instruction_index, code, *base)?;
-            verify_linked_debug_name(function, instruction_index, context, *key)?;
+            verify_linked_string_constant(function, instruction_index, code, *key)?;
             verify_linked_register(function, instruction_index, code, *src)
         }
         InstructionKind::IterInit { dst, iterable } => {
@@ -925,6 +925,27 @@ fn verify_linked_constant(
                 constant_count: code.constants.len(),
             },
         ))
+    }
+}
+
+fn verify_linked_string_constant(
+    function: &str,
+    instruction: Option<usize>,
+    code: &LinkedCodeObject,
+    constant: ConstantId,
+) -> Result<(), VerificationError> {
+    verify_linked_constant(function, instruction, code, constant)?;
+    match &code.constants[constant.0] {
+        Constant::String(_) => Ok(()),
+        actual => Err(error(
+            function,
+            instruction,
+            VerificationErrorKind::ConstantKindMismatch {
+                constant,
+                expected: "string",
+                actual: constant_kind(actual),
+            },
+        )),
     }
 }
 

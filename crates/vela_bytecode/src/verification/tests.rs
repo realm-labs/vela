@@ -575,6 +575,26 @@ fn linked_code_verify_preserves_local_invariant_checks() {
         ))
     );
 
+    let mut string_key_code = LinkedCodeObject::new(DebugNameId::new(0), 2);
+    let key = string_key_code.push_constant(Constant::i64(1));
+    string_key_code.push_instruction(Instruction::new(InstructionKind::SetStringKeyIndex {
+        base: Register(0),
+        key,
+        src: Register(1),
+    }));
+    assert_eq!(
+        verify_linked_code_object(&string_key_code),
+        Err(error(
+            "<linked code>",
+            Some(0),
+            VerificationErrorKind::ConstantKindMismatch {
+                constant: key,
+                expected: "string",
+                actual: "scalar",
+            }
+        ))
+    );
+
     let mut host_code = LinkedCodeObject::new(DebugNameId::new(0), 3);
     let target = host_code.intern_host_target(
         HostTargetPlan::new(vela_common::HostTypeId::new(1))
@@ -769,6 +789,32 @@ fn rejects_out_of_bounds_constants() {
             VerificationErrorKind::ConstantOutOfBounds {
                 constant: ConstantId(4),
                 constant_count: 0
+            }
+        ))
+    );
+}
+
+#[test]
+fn rejects_non_string_constants_for_string_key_index_bytecode() {
+    let mut code = UnlinkedCodeObject::new("main", 3);
+    let key = code.push_constant(Constant::i64(1));
+    code.push_instruction(UnlinkedInstruction::new(
+        UnlinkedInstructionKind::GetStringKeyIndex {
+            dst: Register(0),
+            base: Register(1),
+            key,
+        },
+    ));
+
+    assert_eq!(
+        verify_code_object(&code),
+        Err(error(
+            "main",
+            Some(0),
+            VerificationErrorKind::ConstantKindMismatch {
+                constant: key,
+                expected: "string",
+                actual: "scalar",
             }
         ))
     );

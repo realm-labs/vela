@@ -210,6 +210,9 @@ impl Compiler<'_, '_> {
         key: &str,
         value: &Expr,
     ) -> CompileResult<Register> {
+        let key = self
+            .code
+            .push_constant(crate::Constant::String(key.to_owned()));
         let assigned = match op {
             AssignOp::Set => self.compile_expr(value)?,
             AssignOp::Add | AssignOp::Sub | AssignOp::Mul | AssignOp::Div | AssignOp::Rem => {
@@ -217,7 +220,7 @@ impl Compiler<'_, '_> {
                 self.emit(UnlinkedInstructionKind::GetStringKeyIndex {
                     dst: current,
                     base,
-                    key: key.to_owned(),
+                    key,
                 });
                 let rhs = self.compile_expr(value)?;
                 let dst = self.alloc_register()?;
@@ -229,7 +232,7 @@ impl Compiler<'_, '_> {
         };
         self.emit(UnlinkedInstructionKind::SetStringKeyIndex {
             base,
-            key: key.to_owned(),
+            key,
             src: assigned,
         });
         Ok(assigned)

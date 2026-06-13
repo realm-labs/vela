@@ -824,7 +824,7 @@ pub enum InstructionKind {
     GetStringKeyIndex {
         dst: Register,
         base: Register,
-        key: DebugNameId,
+        key: ConstantId,
     },
     SetIndex {
         base: Register,
@@ -833,7 +833,7 @@ pub enum InstructionKind {
     },
     SetStringKeyIndex {
         base: Register,
-        key: DebugNameId,
+        key: ConstantId,
         src: Register,
     },
     IterInit {
