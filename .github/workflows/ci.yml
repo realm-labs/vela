@@ -90,4 +90,4 @@ jobs:
         run: cargo install cargo-fuzz --locked
 
       - name: Run parser fuzz
-        run: cargo fuzz run parser --manifest-path fuzz/Cargo.toml -- -max_total_time=300
+        run: cargo fuzz run parser -- -max_total_time=300
