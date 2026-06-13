@@ -248,7 +248,9 @@ fn values(
     heap: &mut Option<&mut HeapExecution<'_>>,
     budget: &mut Option<&mut ExecutionBudget>,
 ) -> VmResult<Value> {
-    if set_methods::is_set(receiver, heap.as_deref()) {
+    if array_methods::is_array(receiver, heap.as_deref()) {
+        iteration::iter_method(receiver, args, heap, budget)
+    } else if set_methods::is_set(receiver, heap.as_deref()) {
         set_methods::values(receiver, args, heap, budget)
     } else {
         map_methods::values(receiver, args, heap, budget)

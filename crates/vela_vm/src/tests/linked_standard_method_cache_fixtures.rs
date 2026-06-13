@@ -13,6 +13,7 @@ pub(super) use array::{
     linked_array_push_cache_program, linked_array_remove_at_cache_program,
     linked_array_reverse_cache_program, linked_array_slice_cache_program,
     linked_array_sort_cache_program, linked_array_sum_cache_program,
+    linked_array_values_collect_cache_program,
 };
 
 pub(super) type LinkedMethodCacheFixture = (

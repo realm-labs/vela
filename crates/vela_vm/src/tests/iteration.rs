@@ -360,6 +360,33 @@ fn main() {
 }
 
 #[test]
+fn array_value_views_read_current_values_without_growth_snapshot() {
+    let code = compile_function_source(
+        SourceId::new(1),
+        r#"
+fn main() {
+    let values = [1, 2];
+    let iter = values.values();
+    values[0] = 9;
+    values.push(100);
+    let collected = iter.collect_array();
+    if collected.len() == 2 {
+        return collected[0] * 100 + collected[1] * 10 + iter.next().unwrap_or(77);
+    }
+    return 0;
+}
+"#,
+        "main",
+    )
+    .expect("compile array values source iterator");
+
+    assert_eq!(
+        run_linked_test_code(code),
+        Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(997)))
+    );
+}
+
+#[test]
 fn iterator_map_sources_snapshot_keys_but_read_current_values() {
     let code = compile_function_source(
         SourceId::new(1),

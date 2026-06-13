@@ -389,6 +389,13 @@ pub const STD_METHODS: &[StdMethodSpec] = &[
         "iterator",
         "Returns a one-shot iterator over array values.",
     ),
+    StdMethodSpec::new(
+        "Array",
+        "values",
+        &[],
+        "iterator",
+        "Returns a one-shot iterator over array values.",
+    ),
     StdMethodSpec::new("Map", "len", &[], "i64", "Returns the map length."),
     StdMethodSpec::new(
         "Map",

@@ -131,6 +131,11 @@ pub(super) fn array_method_fact(
         "iter" => Some(StdlibMethodFact::new(
             receiver,
             "iter",
+            TypeFact::iterator(element.clone()),
+        )),
+        "values" => Some(StdlibMethodFact::new(
+            receiver,
+            "values",
             TypeFact::iterator(element),
         )),
         _ => None,

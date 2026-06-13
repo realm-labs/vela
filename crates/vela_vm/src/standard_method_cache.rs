@@ -130,6 +130,9 @@ pub(crate) fn standard_cache_entry_matches_method_id(
         (StandardMethodReceiver::Array, StandardMethodInlineCacheTarget::Iter) => {
             return method_id == std_method_ids().array_iter;
         }
+        (StandardMethodReceiver::Array, StandardMethodInlineCacheTarget::Values) => {
+            return method_id == std_method_ids().array_values;
+        }
         (StandardMethodReceiver::Map, StandardMethodInlineCacheTarget::Keys) => {
             return method_id == std_method_ids().map_keys;
         }
@@ -332,6 +335,9 @@ fn standard_method_target(
         }
         (StandardMethodReceiver::Array, id) if id == ids.array_iter => {
             StandardMethodInlineCacheTarget::Iter
+        }
+        (StandardMethodReceiver::Array, id) if id == ids.array_values => {
+            StandardMethodInlineCacheTarget::Values
         }
         (StandardMethodReceiver::Map, id) if id == ids.map_len => {
             StandardMethodInlineCacheTarget::Len
@@ -580,6 +586,11 @@ pub(crate) fn call_standard_cached(
         {
             return call_cached_bytes_materialization(receiver, cache.target, args, heap, budget);
         }
+        StandardMethodInlineCacheTarget::Values
+            if cache.receiver == StandardMethodReceiver::Array =>
+        {
+            return Some(crate::iteration::iter_method(receiver, args, heap, budget));
+        }
         StandardMethodInlineCacheTarget::Iter
             if matches!(
                 cache.receiver,
@@ -791,6 +802,9 @@ pub(crate) fn call_standard_cached(
         }
         (StandardMethodReceiver::Array, StandardMethodInlineCacheTarget::Sum) => {
             array_methods::sum_values(receiver, heap.as_deref(), "method sum")
+        }
+        (StandardMethodReceiver::Array, StandardMethodInlineCacheTarget::Values) => {
+            crate::iteration::iter_method(receiver, args, heap, budget)
         }
         (StandardMethodReceiver::Map, StandardMethodInlineCacheTarget::Get) => {
             map_methods::get(receiver, args, heap, budget)

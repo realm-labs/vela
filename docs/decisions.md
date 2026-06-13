@@ -773,11 +773,11 @@ because UTF-8 character indexing is O(n) and would misrepresent performance.
 
 ### Iterator View Naming
 
-Explicit one-shot iterator creation uses `iter()` for arrays, sets, maps, and
-ranges, and `chars()` / `bytes()` for string traversal. Direct map `iter()` and
-`map.values()` yield values in key order, matching current direct map `for-in`
-behavior. `map.keys()`, `map.entries()`, and `set.values()` are also
-iterator-backed views.
+Explicit one-shot iterator creation uses `values()` / `iter()` for arrays and
+sets, `iter()` for maps and ranges, and `chars()` / `bytes()` for string
+traversal. Direct map `iter()` and `map.values()` yield values in key order,
+matching current direct map `for-in` behavior. `map.keys()` and `map.entries()`
+are also iterator-backed views.
 
 ### Iterator Adapter Ownership
 

@@ -16,6 +16,8 @@ arr.count(|x| ...)
 arr.sum(|x| ...)
 arr.group_by(|x| ...)
 arr.sort_by(|x| ...)
+arr.values()    // Iterator over values
+arr.iter()      // Iterator over values
 ```
 
 Array methods should expose analysis-only signatures so LSP can infer lambda

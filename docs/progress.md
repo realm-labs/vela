@@ -98,8 +98,8 @@ Cranelift JIT.
   stdio and sandboxed filesystem helpers with `io_read`/`io_write`
   capability gating, lambda TypeFacts, explicit iterator creation methods, core
   one-shot iterator terminals and lazy `map`/`filter`/`take`/`skip` adapters,
-  iterator-backed map key/value/entry and set value views, and domain-neutral
-  helpers.
+  iterator-backed array value, map key/value/entry, and set value views, and
+  domain-neutral helpers.
 - Engine registration for host types, native functions, context helpers,
   standard natives, capability profiles, reflection permissions, compiler options, dynamic
   `CallArgs`, direct call-boundary `&T`/`&mut T` host object bindings,

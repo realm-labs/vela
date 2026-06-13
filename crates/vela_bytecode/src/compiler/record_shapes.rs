@@ -822,7 +822,7 @@ fn method_call_shape(
             .map_parts()
             .map(|(key, _)| ValueShape::Iterator(Box::new(key.clone()))),
         "values" => match &receiver {
-            ValueShape::Map { value, .. } | ValueShape::Set(value) => {
+            ValueShape::Array(value) | ValueShape::Set(value) | ValueShape::Map { value, .. } => {
                 Some(ValueShape::Iterator(value.clone()))
             }
             _ => None,

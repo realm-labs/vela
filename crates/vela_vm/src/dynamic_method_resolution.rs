@@ -248,6 +248,7 @@ fn array_method_id(ids: &StdMethodIds, method: &str) -> Option<MethodId> {
         "max" => ids.array_max,
         "sum" => ids.array_sum,
         "iter" => ids.array_iter,
+        "values" => ids.array_values,
         _ => return None,
     })
 }

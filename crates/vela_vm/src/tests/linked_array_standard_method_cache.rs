@@ -232,6 +232,18 @@ fn linked_standard_value_method_caches_array_sum_target() {
     );
 }
 
+#[test]
+fn linked_standard_value_method_caches_array_values_target() {
+    assert_array_owned_cache(
+        linked_array_values_collect_cache_program(),
+        StandardMethodInlineCacheTarget::Values,
+        OwnedValue::Array(vec![
+            OwnedValue::Scalar(vela_common::ScalarValue::I64(2)),
+            OwnedValue::Scalar(vela_common::ScalarValue::I64(4)),
+        ]),
+    );
+}
+
 fn assert_array_bool_cache(
     fixture: LinkedMethodCacheFixture,
     target: StandardMethodInlineCacheTarget,

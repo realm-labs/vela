@@ -247,6 +247,12 @@ fn scalar_collection_methods_return_non_generic_facts() {
         TypeFact::iterator(TypeFact::F64)
     );
     assert_eq!(
+        stdlib_method_fact(&array, "values", None)
+            .expect("array values fact")
+            .returns,
+        TypeFact::iterator(TypeFact::F64)
+    );
+    assert_eq!(
         stdlib_method_fact(&set, "values", None)
             .expect("values fact")
             .returns,
