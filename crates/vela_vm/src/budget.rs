@@ -99,11 +99,33 @@ impl ExecutionBudget {
     }
 
     #[must_use]
+    #[inline(always)]
     pub(crate) fn charges_instructions(&self) -> bool {
         self.instruction_limit != u64::MAX
     }
 
+    #[must_use]
+    #[inline(always)]
+    pub(crate) fn charges_memory(&self) -> bool {
+        self.memory_limit_bytes != usize::MAX
+    }
+
+    #[must_use]
+    #[inline(always)]
+    pub(crate) fn limits_collections(&self) -> bool {
+        self.collection_limits != CollectionLimits::unbounded()
+    }
+
+    #[must_use]
+    #[inline(always)]
+    pub(crate) fn tracks_collection_growth(&self) -> bool {
+        self.charges_memory() || self.limits_collections()
+    }
+
     pub fn charge_memory_bytes(&mut self, bytes: usize) -> VmResult<()> {
+        if !self.charges_memory() {
+            return Ok(());
+        }
         let next = self.memory_bytes_allocated.saturating_add(bytes);
         if next > self.memory_limit_bytes {
             return Err(VmError::new(VmErrorKind::BudgetExceeded {

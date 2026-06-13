@@ -172,12 +172,16 @@ instructions, memory, call depth, and patches. Script heap values use stable,
 generation-checked non-moving handles; host refs and path proxies remain
 external handles and are not traced as Rust-owned state.
 
-Execution budgets account for heap collection growth at the mutation boundary.
-Array and set budget deltas are based on script-visible element count rather
-than spare `Vec` capacity; map deltas are based on script-visible keys and
-values. Hosts may add explicit collection length limits for arrays, maps, and
-sets. Native allocator reserve failures are runtime allocation errors, not
-host panics.
+Execution budgets account for heap collection growth at the mutation boundary
+when either memory bytes or explicit collection limits are enabled.
+`ExecutionBudget::unbounded()` disables memory and collection-growth
+bookkeeping the same way it disables instruction counting, so hosts can choose
+the lower-overhead trusted path. Array and set budget deltas are based on
+script-visible element count rather than spare `Vec` capacity; map deltas are
+based on script-visible keys and values. Hosts may add explicit collection
+length limits for arrays, maps, and sets independently from the byte budget.
+Native allocator reserve failures are runtime allocation errors when the
+growth-budget path is active.
 
 Typed scalar fast paths are interpreter specializations, not alternate
 language semantics. Proven `i64` hot paths may use typed frame slots and fused

@@ -180,11 +180,15 @@ unbounded array/map/set growth
 too many state writes in a single event
 ```
 
-Heap allocation and in-place heap collection growth both charge the memory
-budget. Arrays and sets charge collection memory by script-visible element
+Heap allocation and in-place heap collection growth charge the memory budget
+when `memory_limit_bytes` is finite. `ExecutionBudget::unbounded()` disables
+memory accounting the same way it disables instruction accounting, so hot
+paths can run without budget bookkeeping when the host intentionally chooses
+that mode. Arrays and sets charge collection memory by script-visible element
 count, and maps charge by script-visible entry keys plus stored values. Hosts
-can set collection length limits in addition to the byte budget when a script
-should not be allowed to build arbitrarily large arrays, maps, or sets.
+can set collection length limits in addition to, or independently from, the
+byte budget when a script should not be allowed to build arbitrarily large
+arrays, maps, or sets.
 
 ## Threading Model
 

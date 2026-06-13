@@ -10,10 +10,25 @@ pub(crate) fn push_array_slot(
     heap: &mut HeapExecution<'_>,
     reference: GcRef,
     slot: Value,
-    budget: Option<&mut ExecutionBudget>,
+    mut budget: Option<&mut ExecutionBudget>,
     operation: &'static str,
 ) -> VmResult<()> {
-    extend_array_slots(heap, reference, [slot], budget, operation)
+    if !tracks_collection_growth(budget.as_deref()) {
+        array_slots_mut(heap, reference, operation)?.push(slot);
+        return Ok(());
+    }
+
+    let len = array_slots(heap, reference, operation)?.len();
+    check_collection_len("array", len, 1, budget.as_deref(), |budget| {
+        budget.collection_limits().max_array_len
+    })?;
+    reserve_vec_slot(heap, reference, 1, operation)?;
+    let precharged_growth = mem::size_of::<Value>();
+    charge_growth(budget.as_deref_mut(), precharged_growth)?;
+
+    array_slots_mut(heap, reference, operation)?.push(slot);
+    heap.heap
+        .adjust_object_size_after_mutation(reference, budget, precharged_growth)
 }
 
 pub(crate) fn insert_array_slot(
@@ -24,6 +39,11 @@ pub(crate) fn insert_array_slot(
     mut budget: Option<&mut ExecutionBudget>,
     operation: &'static str,
 ) -> VmResult<()> {
+    if !tracks_collection_growth(budget.as_deref()) {
+        array_slots_mut(heap, reference, operation)?.insert(index, slot);
+        return Ok(());
+    }
+
     let len = array_slots(heap, reference, operation)?.len();
     check_collection_len("array", len, 1, budget.as_deref(), |budget| {
         budget.collection_limits().max_array_len
@@ -45,6 +65,11 @@ pub(crate) fn extend_array_slots(
     mut budget: Option<&mut ExecutionBudget>,
     operation: &'static str,
 ) -> VmResult<()> {
+    if !tracks_collection_growth(budget.as_deref()) {
+        array_slots_mut(heap, reference, operation)?.extend(slots);
+        return Ok(());
+    }
+
     let slots = slots.into_iter().collect::<Vec<_>>();
     let additional = slots.len();
     let len = array_slots(heap, reference, operation)?.len();
@@ -67,6 +92,9 @@ pub(crate) fn pop_array_slot(
     operation: &'static str,
 ) -> VmResult<Option<Value>> {
     let payload = array_slots_mut(heap, reference, operation)?.pop();
+    if !tracks_collection_growth(budget.as_deref()) {
+        return Ok(payload.map(|slot| stored_runtime_value(&slot)));
+    }
     heap.heap
         .adjust_object_size_after_mutation(reference, budget, 0)?;
     Ok(payload.map(|slot| stored_runtime_value(&slot)))
@@ -80,6 +108,9 @@ pub(crate) fn remove_array_slot(
     operation: &'static str,
 ) -> VmResult<Value> {
     let slot = array_slots_mut(heap, reference, operation)?.remove(index);
+    if !tracks_collection_growth(budget.as_deref()) {
+        return Ok(stored_runtime_value(&slot));
+    }
     heap.heap
         .adjust_object_size_after_mutation(reference, budget, 0)?;
     Ok(stored_runtime_value(&slot))
@@ -92,6 +123,9 @@ pub(crate) fn clear_array(
     operation: &'static str,
 ) -> VmResult<()> {
     array_slots_mut(heap, reference, operation)?.clear();
+    if !tracks_collection_growth(budget.as_deref()) {
+        return Ok(());
+    }
     heap.heap
         .adjust_object_size_after_mutation(reference, budget, 0)
 }
@@ -106,6 +140,11 @@ pub(crate) fn insert_map_slot(
 ) -> VmResult<()> {
     let values = map_slots(heap, reference, operation)?;
     let is_new_key = !values.contains_key(&key);
+    if !is_new_key || !tracks_collection_growth(budget.as_deref()) {
+        map_slots_mut(heap, reference, operation)?.insert(key, slot);
+        return Ok(());
+    }
+
     let precharged_growth = if is_new_key {
         check_collection_len("map", values.len(), 1, budget.as_deref(), |budget| {
             budget.collection_limits().max_map_entries
@@ -128,6 +167,11 @@ pub(crate) fn extend_map_slots(
     mut budget: Option<&mut ExecutionBudget>,
     operation: &'static str,
 ) -> VmResult<()> {
+    if !tracks_collection_growth(budget.as_deref()) {
+        map_slots_mut(heap, reference, operation)?.extend(slots);
+        return Ok(());
+    }
+
     let values = map_slots(heap, reference, operation)?;
     let new_keys = slots
         .iter()
@@ -161,6 +205,9 @@ pub(crate) fn remove_map_slot(
     let payload = map_slots_mut(heap, reference, operation)?
         .remove(key)
         .map(|slot| stored_runtime_value(&slot));
+    if !tracks_collection_growth(budget.as_deref()) {
+        return Ok(payload);
+    }
     heap.heap
         .adjust_object_size_after_mutation(reference, budget, 0)?;
     Ok(payload)
@@ -173,6 +220,9 @@ pub(crate) fn clear_map(
     operation: &'static str,
 ) -> VmResult<()> {
     map_slots_mut(heap, reference, operation)?.clear();
+    if !tracks_collection_growth(budget.as_deref()) {
+        return Ok(());
+    }
     heap.heap
         .adjust_object_size_after_mutation(reference, budget, 0)
 }
@@ -181,10 +231,25 @@ pub(crate) fn push_set_slot(
     heap: &mut HeapExecution<'_>,
     reference: GcRef,
     slot: Value,
-    budget: Option<&mut ExecutionBudget>,
+    mut budget: Option<&mut ExecutionBudget>,
     operation: &'static str,
 ) -> VmResult<()> {
-    extend_set_slots(heap, reference, [slot], budget, operation)
+    if !tracks_collection_growth(budget.as_deref()) {
+        set_slots_mut(heap, reference, operation)?.push(slot);
+        return Ok(());
+    }
+
+    let len = set_slots(heap, reference, operation)?.len();
+    check_collection_len("set", len, 1, budget.as_deref(), |budget| {
+        budget.collection_limits().max_set_len
+    })?;
+    reserve_vec_slot(heap, reference, 1, operation)?;
+    let precharged_growth = mem::size_of::<Value>();
+    charge_growth(budget.as_deref_mut(), precharged_growth)?;
+
+    set_slots_mut(heap, reference, operation)?.push(slot);
+    heap.heap
+        .adjust_object_size_after_mutation(reference, budget, precharged_growth)
 }
 
 pub(crate) fn extend_set_slots(
@@ -194,6 +259,11 @@ pub(crate) fn extend_set_slots(
     mut budget: Option<&mut ExecutionBudget>,
     operation: &'static str,
 ) -> VmResult<()> {
+    if !tracks_collection_growth(budget.as_deref()) {
+        set_slots_mut(heap, reference, operation)?.extend(slots);
+        return Ok(());
+    }
+
     let slots = slots.into_iter().collect::<Vec<_>>();
     let additional = slots.len();
     let len = set_slots(heap, reference, operation)?.len();
@@ -224,6 +294,9 @@ pub(crate) fn remove_set_slots(
         values.remove(index);
     }
     let changed = values.len() != before;
+    if !tracks_collection_growth(budget.as_deref()) {
+        return Ok(changed);
+    }
     heap.heap
         .adjust_object_size_after_mutation(reference, budget, 0)?;
     Ok(changed)
@@ -236,8 +309,16 @@ pub(crate) fn clear_set(
     operation: &'static str,
 ) -> VmResult<()> {
     set_slots_mut(heap, reference, operation)?.clear();
+    if !tracks_collection_growth(budget.as_deref()) {
+        return Ok(());
+    }
     heap.heap
         .adjust_object_size_after_mutation(reference, budget, 0)
+}
+
+#[inline(always)]
+fn tracks_collection_growth(budget: Option<&ExecutionBudget>) -> bool {
+    budget.is_some_and(ExecutionBudget::tracks_collection_growth)
 }
 
 fn check_collection_len(
@@ -250,6 +331,9 @@ fn check_collection_len(
     let Some(budget) = budget else {
         return Ok(());
     };
+    if !budget.limits_collections() {
+        return Ok(());
+    }
     let limit = limit(budget);
     if current_len.saturating_add(additional) > limit {
         return Err(VmError::new(VmErrorKind::CollectionLimitExceeded {
@@ -264,7 +348,9 @@ fn charge_growth(budget: Option<&mut ExecutionBudget>, bytes: usize) -> VmResult
     if bytes == 0 {
         return Ok(());
     }
-    if let Some(budget) = budget {
+    if let Some(budget) = budget
+        && budget.charges_memory()
+    {
         budget.charge_memory(bytes)?;
     }
     Ok(())
@@ -373,7 +459,7 @@ mod tests {
         let reference = heap.allocate(HeapValue::Array(Vec::new()));
         let initial_bytes = heap.allocated_bytes();
         let mut heap_execution = HeapExecution::new(&mut heap);
-        let mut budget = ExecutionBudget::unbounded();
+        let mut budget = ExecutionBudget::new(u64::MAX, 4096, usize::MAX);
 
         push_array_slot(
             &mut heap_execution,
@@ -388,6 +474,31 @@ mod tests {
         assert_eq!(
             heap_execution.heap.allocated_bytes() - initial_bytes,
             budget.memory_bytes_allocated()
+        );
+    }
+
+    #[test]
+    fn unbounded_budget_skips_collection_growth_accounting() {
+        let mut heap = ScriptHeap::new();
+        let reference = heap.allocate(HeapValue::Array(Vec::new()));
+        let initial_bytes = heap.allocated_bytes();
+        let mut heap_execution = HeapExecution::new(&mut heap);
+        let mut budget = ExecutionBudget::unbounded();
+
+        push_array_slot(
+            &mut heap_execution,
+            reference,
+            Value::I64(10),
+            Some(&mut budget),
+            "test array push",
+        )
+        .expect("array push should fit");
+
+        assert_eq!(heap_execution.heap.allocated_bytes(), initial_bytes);
+        assert_eq!(budget.memory_bytes_allocated(), 0);
+        assert_eq!(
+            heap_execution.heap.get(reference),
+            Some(&HeapValue::Array(vec![Value::I64(10)]))
         );
     }
 

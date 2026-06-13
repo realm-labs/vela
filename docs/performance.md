@@ -245,10 +245,10 @@ command=cargo bench -p vela_vm --bench baseline -- mutation
 warmup=10, repeats=7, iterations=100
 ```
 
-Checksums matched for every compared row. The accepted cost is concentrated in
-array/map mutation paths, where in-place heap growth now performs collection
-limit checks, memory-budget charging, allocator reserve checks, and heap-size
-accounting. Set interpreter rows were flat to slightly faster in this sample.
+Checksums matched for every compared row. The initial accepted cost was
+concentrated in array/map mutation paths, where in-place heap growth performs
+collection limit checks, memory-budget charging, allocator reserve checks, and
+heap-size accounting when the host enables those budget controls.
 
 | Benchmark | Mode | Mean Before ns | Mean After ns | Delta | P95 After ns |
 |---|---|---:|---:|---:|---:|
@@ -268,6 +268,36 @@ tail sample in this capture. Future budget or collection-mutation changes must
 rerun the same filtered benchmark before landing; a regression above roughly
 5% on array/map interpreter or cache-enabled rows needs either an explicit
 safety rationale or a follow-up performance task.
+
+A follow-up profile-backed optimization keeps the budgeted path but makes
+`ExecutionBudget::unbounded()` disable memory and collection-growth
+bookkeeping. Before the optimization, a macOS `sample` capture of the focused
+mutation benchmark showed hot stack samples in `reserve_vec_slot`,
+`ScriptHeap::adjust_object_size_after_mutation`, and
+`HeapValue::shallow_size_bytes`. After the optimization, the unbounded-budget
+profile no longer showed the reserve or post-mutation size-adjustment stacks
+on those paths. The stable array/map rows recovered the initial budget cost;
+set rows still show run-to-run tail noise and should be interpreted by median
+or rerun in isolation before treating them as a regression.
+
+```text
+candidate=unbounded collection-growth fast path
+rustc=1.96.0 (ac68faa20 2026-05-25)
+cargo=1.96.0 (30a34c682 2026-05-25)
+target=macos/aarch64
+profile=release
+command=cargo bench -p vela_vm --bench baseline -- mutation
+warmup=10, repeats=7, iterations=100
+```
+
+| Benchmark | Mode | Budgeted Mean ns | Optimized Mean ns | Delta | Optimized P95 ns |
+|---|---|---:|---:|---:|---:|
+| managed_heap_array_mutation | managed_heap | 90379106 | 90146255 | -0.26% | 93660083 |
+| array_mutation | inline | 89817803 | 89230791 | -0.65% | 89999083 |
+| array_mutation_cache_hot_offsets | cache_enabled | 89517976 | 87901155 | -1.81% | 90758959 |
+| managed_heap_map_mutation | managed_heap | 54131410 | 52919262 | -2.24% | 53485167 |
+| map_mutation | inline | 54207744 | 52557666 | -3.04% | 53207458 |
+| map_mutation_cache_hot_offsets | cache_enabled | 54491898 | 52476000 | -3.70% | 52997417 |
 
 ## Current Conclusions
 
