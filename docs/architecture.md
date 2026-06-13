@@ -172,6 +172,7 @@ contract before changing that subsystem:
 - [Host bridge and registration](architecture/host-and-registration.md)
 - [Reflection](architecture/reflection.md)
 - [Runtime, bytecode, threading, and GC](architecture/runtime.md)
+- [Dynamic method dispatch](architecture/dynamic_method_dispatch.md)
 - [Hot reload](architecture/hot-reload.md)
 - [Standard library and embedding](architecture/stdlib-and-embedding.md)
 - [Tooling, performance, security, and testing](architecture/tooling-performance-security-testing.md)

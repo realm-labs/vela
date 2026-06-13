@@ -648,6 +648,17 @@ unsupported wide Rust integer fields such as `usize`, `isize`, `i128`, and
 explicit supported contract instead of relying on an alias or hidden
 conversion.
 
+### Controlled Dynamic Method Dispatch
+
+Unknown-receiver calls with a source-static method name are first-class linked
+dynamic method calls, not legacy name-only fallback. Static known receiver
+calls keep the `MethodId` / linked-dispatch fast path, and statically provable
+missing methods may remain compile-time diagnostics. Runtime dynamic dispatch
+resolves through controlled standard, script, or host metadata, preserves
+source argument names until target lookup, reports source-spanned runtime
+errors, and guards inline caches by receiver identity plus schema/hot-reload
+epochs where applicable.
+
 ## Validation Rules
 
 - Multi-level `super` scan must return no matches:

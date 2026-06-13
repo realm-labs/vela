@@ -113,7 +113,7 @@ recorded as explicit follow-up gaps before this goal can be marked complete.
 
 # Execution plan
 
-## [ ] Phase 0 — Write the architecture contract first
+## [x] Phase 0 — Write the architecture contract first
 
 Create an architecture note, for example:
 
