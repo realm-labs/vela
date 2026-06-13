@@ -686,6 +686,13 @@ pub enum InstructionKind {
         cache_site: Option<CacheSiteId>,
         args: Vec<CallArgument>,
     },
+    CallDynamicMethod {
+        dst: Register,
+        receiver: Register,
+        method_name: DebugNameId,
+        cache_site: Option<CacheSiteId>,
+        args: Vec<DynamicCallArgumentLinked>,
+    },
     TryPropagate {
         dst: Register,
         src: Register,
@@ -815,6 +822,12 @@ pub enum InstructionKind {
     Return {
         src: Register,
     },
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct DynamicCallArgumentLinked {
+    pub name: Option<DebugNameId>,
+    pub value: Register,
 }
 
 #[cfg(test)]

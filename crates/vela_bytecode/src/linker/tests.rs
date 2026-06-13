@@ -1,9 +1,10 @@
-use vela_common::HostTypeId;
+use vela_common::{HostTypeId, SourceId};
 use vela_def::FieldId;
 use vela_host::target::HostTargetPlan;
 use vela_registry::{DefinitionRegistry, FunctionDef, FunctionSignature};
 
 use super::*;
+use crate::compiler::compile_function_source_with_registry;
 use crate::{CacheSiteKind, InstructionOffset, Register};
 
 #[test]
@@ -221,6 +222,40 @@ fn linker_preserves_method_call_cache_site_operand() {
 }
 
 #[test]
+fn linker_links_unknown_receiver_source_dynamic_methods() {
+    assert_linked_dynamic_method_source("starts_with", r#"return value.starts_with("q");"#);
+    assert_linked_dynamic_method_source("trim", "return value.trim();");
+}
+
+fn assert_linked_dynamic_method_source(method: &str, body: &str) {
+    let registry = vela_stdlib::standard_registry().expect("standard registry should build");
+    let code = compile_function_source_with_registry(
+        SourceId::new(1),
+        &format!("fn f(value) {{ {body} }}"),
+        "f",
+        registry.compile_view(),
+    )
+    .expect("dynamic method source should compile");
+    let mut program = UnlinkedProgram::new();
+    program.insert_function(code);
+    let linked = Linker::new()
+        .link_program(&program)
+        .expect("dynamic method source should link");
+    let function = linked
+        .entry_point_by_name("f")
+        .and_then(|handle| linked.function(handle))
+        .expect("linked function");
+    assert!(function.instructions.iter().any(|instruction| matches!(
+        &instruction.kind,
+        InstructionKind::CallDynamicMethod {
+            method_name,
+            cache_site: Some(_),
+            ..
+        } if linked.debug_name(*method_name) == method
+    )));
+}
+
+#[test]
 fn linker_rejects_script_call_with_matching_name_and_wrong_id() {
     let mut helper = UnlinkedCodeObject::new("helper", 1);
     helper.push_instruction(UnlinkedInstruction::new(UnlinkedInstructionKind::Return {
@@ -339,7 +374,7 @@ fn linker_maps_globals_map_keys_and_field_slots_without_instruction_names() {
 }
 
 #[test]
-fn linker_rejects_dynamic_method_until_linked_ir_lands_and_record_field_fallbacks() {
+fn linker_links_dynamic_method_and_rejects_record_field_fallbacks() {
     let mut method_code = UnlinkedCodeObject::new("method", 2);
     method_code.push_instruction(UnlinkedInstruction::new(
         UnlinkedInstructionKind::CallDynamicMethod {
@@ -352,10 +387,18 @@ fn linker_rejects_dynamic_method_until_linked_ir_lands_and_record_field_fallback
     let mut method_program = UnlinkedProgram::new();
     method_program.insert_function(method_code);
 
-    let error = Linker::new()
+    let linked = Linker::new()
         .link_program(&method_program)
-        .expect_err("dynamic method dispatch links in a later phase");
-    assert!(matches!(error, LinkError::UnresolvedMethodName { .. }));
+        .expect("dynamic method dispatch should link");
+    let method = linked
+        .entry_point_by_name("method")
+        .and_then(|handle| linked.function(handle))
+        .expect("linked method function");
+    assert!(matches!(
+        &method.instructions[0].kind,
+        InstructionKind::CallDynamicMethod { method_name, args, .. }
+            if linked.debug_name(*method_name) == "score" && args.is_empty()
+    ));
 
     let mut field_code = UnlinkedCodeObject::new("field", 2);
     field_code.push_instruction(UnlinkedInstruction::new(

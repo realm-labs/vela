@@ -219,7 +219,7 @@ After commit, change this checkbox to `[x]`.
 
 ---
 
-## [ ] Phase 2 — Add first-class linked dynamic method IR
+## [x] Phase 2 — Add first-class linked dynamic method IR
 
 Add a linked instruction that is separate from resolved `CallMethod`.
 

@@ -439,6 +439,12 @@ impl Vm {
                         },
                     )?;
                 }
+                InstructionKind::CallDynamicMethod { method_name, .. } => {
+                    return Err(VmError::new(VmErrorKind::UnknownMethod {
+                        method: call.program.debug_name(*method_name).to_owned(),
+                    })
+                    .with_source_span(instruction.span));
+                }
                 InstructionKind::TryPropagate { dst, src } => {
                     if let Some(value) = try_propagation::dispatch_try_propagate(
                         &mut frame,

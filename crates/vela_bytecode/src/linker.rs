@@ -7,9 +7,9 @@ use vela_def::{DefPath, FunctionId, MethodId, TypeId, VariantId};
 use vela_registry::{Def, DefinitionRegistry};
 
 use crate::linked::{
-    GuardContext, Instruction, InstructionKind, LinkedCodeObject, LinkedFrameDebugInfo,
-    LinkedFrameSlotInfo, LinkedMethodDispatch, LinkedMethodDispatchKind, LinkedNativeFunction,
-    LinkedProgram, LinkedType, LinkedVariant, TypeGuard, TypeGuardPlan,
+    DynamicCallArgumentLinked, GuardContext, Instruction, InstructionKind, LinkedCodeObject,
+    LinkedFrameDebugInfo, LinkedFrameSlotInfo, LinkedMethodDispatch, LinkedMethodDispatchKind,
+    LinkedNativeFunction, LinkedProgram, LinkedType, LinkedVariant, TypeGuard, TypeGuardPlan,
 };
 use crate::{
     CacheSiteId, CacheSiteKind, Constant, FieldSlot, FunctionIndex, HostTargetPlanId,
@@ -71,10 +71,6 @@ pub enum LinkError {
         function: String,
         index: FunctionIndex,
     },
-    UnresolvedMethodName {
-        function: String,
-        method: String,
-    },
     MissingMethodDefinition {
         method: String,
         id: MethodId,
@@ -123,12 +119,6 @@ impl fmt::Display for LinkError {
                 write!(
                     formatter,
                     "function {function} references missing nested function {index:?}"
-                )
-            }
-            Self::UnresolvedMethodName { function, method } => {
-                write!(
-                    formatter,
-                    "function {function} contains unresolved method call {method}"
                 )
             }
             Self::MissingMethodDefinition { method, id } => {
@@ -508,11 +498,30 @@ impl<'linker, 'registry> LinkContext<'linker, 'registry> {
                     args: args.clone(),
                 }
             }
-            UnlinkedInstructionKind::CallDynamicMethod { method, .. } => {
-                return Err(LinkError::UnresolvedMethodName {
-                    function: code.name.clone(),
-                    method: method.clone(),
-                });
+            UnlinkedInstructionKind::CallDynamicMethod {
+                dst,
+                receiver,
+                method,
+                args,
+            } => {
+                let method_name = self.linked.intern_debug_name(method.clone());
+                let args = args
+                    .iter()
+                    .map(|arg| DynamicCallArgumentLinked {
+                        name: arg
+                            .name
+                            .as_ref()
+                            .map(|name| self.linked.intern_debug_name(name.clone())),
+                        value: arg.value,
+                    })
+                    .collect();
+                InstructionKind::CallDynamicMethod {
+                    dst: *dst,
+                    receiver: *receiver,
+                    method_name,
+                    cache_site: cache_site_at(code, instruction_offset, CacheSiteKind::MethodCall),
+                    args,
+                }
             }
             UnlinkedInstructionKind::CallMethodId {
                 dst,

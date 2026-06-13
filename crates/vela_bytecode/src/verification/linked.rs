@@ -283,6 +283,25 @@ fn verify_linked_instruction(
                 CacheSiteKind::MethodCall,
             )
         }
+        InstructionKind::CallDynamicMethod {
+            dst,
+            receiver,
+            method_name,
+            cache_site,
+            args,
+        } => {
+            verify_linked_register(function, instruction_index, code, *dst)?;
+            verify_linked_register(function, instruction_index, code, *receiver)?;
+            verify_linked_debug_name(function, instruction_index, context, *method_name)?;
+            verify_linked_dynamic_call_arguments(function, instruction_index, code, context, args)?;
+            verify_linked_optional_cache_site(
+                function,
+                instruction_index,
+                code,
+                *cache_site,
+                CacheSiteKind::MethodCall,
+            )
+        }
         InstructionKind::MakeArray { dst, elements } => {
             verify_linked_register(function, instruction_index, code, *dst)?;
             verify_linked_registers(function, instruction_index, code, elements)
@@ -787,6 +806,22 @@ fn verify_linked_call_arguments(
     Ok(())
 }
 
+fn verify_linked_dynamic_call_arguments(
+    function: &str,
+    instruction: Option<usize>,
+    code: &LinkedCodeObject,
+    context: &LinkedVerificationContext<'_>,
+    args: &[crate::linked::DynamicCallArgumentLinked],
+) -> Result<(), VerificationError> {
+    for arg in args {
+        if let Some(name) = arg.name {
+            verify_linked_debug_name(function, instruction, context, name)?;
+        }
+        verify_linked_register(function, instruction, code, arg.value)?;
+    }
+    Ok(())
+}
+
 fn verify_linked_register(
     function: &str,
     instruction: Option<usize>,
@@ -948,7 +983,9 @@ fn linked_instruction_cache_site_kind(kind: &InstructionKind) -> Option<CacheSit
     match kind {
         InstructionKind::LoadGlobal { .. } => Some(CacheSiteKind::GlobalRead),
         InstructionKind::CallNative { .. } => Some(CacheSiteKind::NativeCall),
-        InstructionKind::CallMethod { .. } => Some(CacheSiteKind::MethodCall),
+        InstructionKind::CallMethod { .. } | InstructionKind::CallDynamicMethod { .. } => {
+            Some(CacheSiteKind::MethodCall)
+        }
         InstructionKind::GetRecordSlot { .. } => Some(CacheSiteKind::RecordFieldRead),
         InstructionKind::SetRecordSlot { .. } => Some(CacheSiteKind::RecordFieldWrite),
         InstructionKind::HostRead { .. } => Some(CacheSiteKind::HostPathRead),

@@ -77,6 +77,38 @@ fn main() {
 }
 
 #[test]
+fn linked_dynamic_method_call_reports_source_spanned_unknown_method_placeholder() {
+    let program = compile_standard_program_source(
+        SourceId::new(1),
+        r#"
+fn main(value) {
+    return value.starts_with("q");
+}
+"#,
+    )
+    .expect("dynamic method source should compile");
+    let mut budget = ExecutionBudget::unbounded();
+
+    let error = run_linked_test_program_with_budget(
+        &Vm::new(),
+        &program,
+        "main",
+        &[OwnedValue::String("quest".to_owned())],
+        &mut budget,
+    )
+    .expect_err("Phase 2 dynamic method placeholder should fail at runtime");
+
+    assert!(matches!(
+        error.kind(),
+        VmErrorKind::UnknownMethod { method } if method == "starts_with"
+    ));
+    assert!(
+        error.source_span.is_some(),
+        "dynamic method runtime error should keep the call span"
+    );
+}
+
+#[test]
 fn managed_heap_execution_runs_for_in_string_value_methods() {
     let program = compile_standard_program_source(
         SourceId::new(1),
