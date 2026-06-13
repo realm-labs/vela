@@ -279,6 +279,16 @@ fn opcode_label(kind: &InstructionKind) -> &'static str {
         InstructionKind::LessEqual { .. } => "LessEqual",
         InstructionKind::Greater { .. } => "Greater",
         InstructionKind::GreaterEqual { .. } => "GreaterEqual",
+        InstructionKind::I64Add { .. } => "I64Add",
+        InstructionKind::I64Sub { .. } => "I64Sub",
+        InstructionKind::I64Mul { .. } => "I64Mul",
+        InstructionKind::I64Rem { .. } => "I64Rem",
+        InstructionKind::I64AddImm { .. } => "I64AddImm",
+        InstructionKind::I64SubImm { .. } => "I64SubImm",
+        InstructionKind::I64MulImm { .. } => "I64MulImm",
+        InstructionKind::I64RemImm { .. } => "I64RemImm",
+        InstructionKind::I64EqImm { .. } => "I64EqImm",
+        InstructionKind::I64GtImm { .. } => "I64GtImm",
         InstructionKind::BinaryIntLiteral { op, side, .. } => binary_int_literal_label(*op, *side),
         InstructionKind::BinaryFloatLiteral { op, side, .. } => {
             binary_float_literal_label(*op, *side)

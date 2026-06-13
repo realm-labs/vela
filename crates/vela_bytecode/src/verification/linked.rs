@@ -190,10 +190,27 @@ fn verify_linked_instruction(
         | InstructionKind::Less { dst, lhs, rhs }
         | InstructionKind::LessEqual { dst, lhs, rhs }
         | InstructionKind::Greater { dst, lhs, rhs }
-        | InstructionKind::GreaterEqual { dst, lhs, rhs } => {
+        | InstructionKind::GreaterEqual { dst, lhs, rhs }
+        | InstructionKind::I64Add { dst, lhs, rhs }
+        | InstructionKind::I64Sub { dst, lhs, rhs }
+        | InstructionKind::I64Mul { dst, lhs, rhs }
+        | InstructionKind::I64Rem { dst, lhs, rhs } => {
             verify_linked_register(function, instruction_index, code, *dst)?;
             verify_linked_register(function, instruction_index, code, *lhs)?;
             verify_linked_register(function, instruction_index, code, *rhs)
+        }
+        InstructionKind::I64AddImm { dst, lhs, .. }
+        | InstructionKind::I64SubImm { dst, lhs, .. }
+        | InstructionKind::I64MulImm { dst, lhs, .. }
+        | InstructionKind::I64EqImm { dst, lhs, .. }
+        | InstructionKind::I64GtImm { dst, lhs, .. } => {
+            verify_linked_register(function, instruction_index, code, *dst)?;
+            verify_linked_register(function, instruction_index, code, *lhs)
+        }
+        InstructionKind::I64RemImm { dst, lhs, imm } => {
+            verify_linked_register(function, instruction_index, code, *dst)?;
+            verify_linked_register(function, instruction_index, code, *lhs)?;
+            verify_linked_i64_rem_imm(function, instruction_index, *imm)
         }
         InstructionKind::BinaryIntLiteral { dst, value, .. }
         | InstructionKind::BinaryFloatLiteral { dst, value, .. } => {
@@ -776,6 +793,25 @@ fn verify_linked_registers(
         verify_linked_register(function, instruction, code, *register)?;
     }
     Ok(())
+}
+
+fn verify_linked_i64_rem_imm(
+    function: &str,
+    instruction: Option<usize>,
+    imm: i64,
+) -> Result<(), VerificationError> {
+    if imm != 0 {
+        Ok(())
+    } else {
+        Err(error(
+            function,
+            instruction,
+            VerificationErrorKind::InvalidTypedImmediate {
+                instruction: "I64RemImm",
+                reason: "immediate must be nonzero",
+            },
+        ))
+    }
 }
 
 fn verify_linked_object_fields(

@@ -421,6 +421,56 @@ impl<'linker, 'registry> LinkContext<'linker, 'registry> {
                     rhs: *rhs,
                 }
             }
+            UnlinkedInstructionKind::I64Add { dst, lhs, rhs } => InstructionKind::I64Add {
+                dst: *dst,
+                lhs: *lhs,
+                rhs: *rhs,
+            },
+            UnlinkedInstructionKind::I64Sub { dst, lhs, rhs } => InstructionKind::I64Sub {
+                dst: *dst,
+                lhs: *lhs,
+                rhs: *rhs,
+            },
+            UnlinkedInstructionKind::I64Mul { dst, lhs, rhs } => InstructionKind::I64Mul {
+                dst: *dst,
+                lhs: *lhs,
+                rhs: *rhs,
+            },
+            UnlinkedInstructionKind::I64Rem { dst, lhs, rhs } => InstructionKind::I64Rem {
+                dst: *dst,
+                lhs: *lhs,
+                rhs: *rhs,
+            },
+            UnlinkedInstructionKind::I64AddImm { dst, lhs, imm } => InstructionKind::I64AddImm {
+                dst: *dst,
+                lhs: *lhs,
+                imm: *imm,
+            },
+            UnlinkedInstructionKind::I64SubImm { dst, lhs, imm } => InstructionKind::I64SubImm {
+                dst: *dst,
+                lhs: *lhs,
+                imm: *imm,
+            },
+            UnlinkedInstructionKind::I64MulImm { dst, lhs, imm } => InstructionKind::I64MulImm {
+                dst: *dst,
+                lhs: *lhs,
+                imm: *imm,
+            },
+            UnlinkedInstructionKind::I64RemImm { dst, lhs, imm } => InstructionKind::I64RemImm {
+                dst: *dst,
+                lhs: *lhs,
+                imm: *imm,
+            },
+            UnlinkedInstructionKind::I64EqImm { dst, lhs, imm } => InstructionKind::I64EqImm {
+                dst: *dst,
+                lhs: *lhs,
+                imm: *imm,
+            },
+            UnlinkedInstructionKind::I64GtImm { dst, lhs, imm } => InstructionKind::I64GtImm {
+                dst: *dst,
+                lhs: *lhs,
+                imm: *imm,
+            },
             UnlinkedInstructionKind::BinaryIntLiteral {
                 dst,
                 op,

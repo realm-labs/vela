@@ -289,6 +289,80 @@ impl Vm {
                         .map_err(|error| error.with_source_span_if_absent(instruction.span))?;
                     frame.write(*dst, Value::Bool(value))?;
                 }
+                InstructionKind::I64Add { dst, lhs, rhs } => {
+                    let lhs = i64_ops::read(frame.read(*lhs)?, "add")
+                        .map_err(|error| error.with_source_span_if_absent(instruction.span))?;
+                    let rhs = i64_ops::read(frame.read(*rhs)?, "add")
+                        .map_err(|error| error.with_source_span_if_absent(instruction.span))?;
+                    let value = i64_ops::add(lhs, rhs)
+                        .map_err(|error| error.with_source_span_if_absent(instruction.span))?;
+                    frame.write(*dst, value)?;
+                }
+                InstructionKind::I64Sub { dst, lhs, rhs } => {
+                    let lhs = i64_ops::read(frame.read(*lhs)?, "sub")
+                        .map_err(|error| error.with_source_span_if_absent(instruction.span))?;
+                    let rhs = i64_ops::read(frame.read(*rhs)?, "sub")
+                        .map_err(|error| error.with_source_span_if_absent(instruction.span))?;
+                    let value = i64_ops::sub(lhs, rhs)
+                        .map_err(|error| error.with_source_span_if_absent(instruction.span))?;
+                    frame.write(*dst, value)?;
+                }
+                InstructionKind::I64Mul { dst, lhs, rhs } => {
+                    let lhs = i64_ops::read(frame.read(*lhs)?, "mul")
+                        .map_err(|error| error.with_source_span_if_absent(instruction.span))?;
+                    let rhs = i64_ops::read(frame.read(*rhs)?, "mul")
+                        .map_err(|error| error.with_source_span_if_absent(instruction.span))?;
+                    let value = i64_ops::mul(lhs, rhs)
+                        .map_err(|error| error.with_source_span_if_absent(instruction.span))?;
+                    frame.write(*dst, value)?;
+                }
+                InstructionKind::I64Rem { dst, lhs, rhs } => {
+                    let lhs = i64_ops::read(frame.read(*lhs)?, "rem")
+                        .map_err(|error| error.with_source_span_if_absent(instruction.span))?;
+                    let rhs = i64_ops::read(frame.read(*rhs)?, "rem")
+                        .map_err(|error| error.with_source_span_if_absent(instruction.span))?;
+                    let value = i64_ops::rem(lhs, rhs)
+                        .map_err(|error| error.with_source_span_if_absent(instruction.span))?;
+                    frame.write(*dst, value)?;
+                }
+                InstructionKind::I64AddImm { dst, lhs, imm } => {
+                    let lhs = i64_ops::read(frame.read(*lhs)?, "add")
+                        .map_err(|error| error.with_source_span_if_absent(instruction.span))?;
+                    let value = i64_ops::add(lhs, *imm)
+                        .map_err(|error| error.with_source_span_if_absent(instruction.span))?;
+                    frame.write(*dst, value)?;
+                }
+                InstructionKind::I64SubImm { dst, lhs, imm } => {
+                    let lhs = i64_ops::read(frame.read(*lhs)?, "sub")
+                        .map_err(|error| error.with_source_span_if_absent(instruction.span))?;
+                    let value = i64_ops::sub(lhs, *imm)
+                        .map_err(|error| error.with_source_span_if_absent(instruction.span))?;
+                    frame.write(*dst, value)?;
+                }
+                InstructionKind::I64MulImm { dst, lhs, imm } => {
+                    let lhs = i64_ops::read(frame.read(*lhs)?, "mul")
+                        .map_err(|error| error.with_source_span_if_absent(instruction.span))?;
+                    let value = i64_ops::mul(lhs, *imm)
+                        .map_err(|error| error.with_source_span_if_absent(instruction.span))?;
+                    frame.write(*dst, value)?;
+                }
+                InstructionKind::I64RemImm { dst, lhs, imm } => {
+                    let lhs = i64_ops::read(frame.read(*lhs)?, "rem")
+                        .map_err(|error| error.with_source_span_if_absent(instruction.span))?;
+                    let value = i64_ops::rem(lhs, *imm)
+                        .map_err(|error| error.with_source_span_if_absent(instruction.span))?;
+                    frame.write(*dst, value)?;
+                }
+                InstructionKind::I64EqImm { dst, lhs, imm } => {
+                    let lhs = i64_ops::read(frame.read(*lhs)?, "equal")
+                        .map_err(|error| error.with_source_span_if_absent(instruction.span))?;
+                    frame.write(*dst, i64_ops::eq_imm(lhs, *imm))?;
+                }
+                InstructionKind::I64GtImm { dst, lhs, imm } => {
+                    let lhs = i64_ops::read(frame.read(*lhs)?, "greater")
+                        .map_err(|error| error.with_source_span_if_absent(instruction.span))?;
+                    frame.write(*dst, i64_ops::gt_imm(lhs, *imm))?;
+                }
                 InstructionKind::GuardType { src, guard } => {
                     runtime_type_guards::execute_linked_register_guard(
                         code,

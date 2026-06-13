@@ -303,3 +303,174 @@ fn add_ten(x) { return x + 10; }
         }
     );
 }
+
+#[test]
+fn linked_i64_typed_arithmetic_instructions_execute() {
+    let mut code = linked_i64_code(7);
+    let ten = code.push_constant(Constant::Scalar(ScalarValue::I64(10)));
+    let five = code.push_constant(Constant::Scalar(ScalarValue::I64(5)));
+    code.push_instruction(vela_bytecode::linked::Instruction::new(
+        vela_bytecode::linked::InstructionKind::LoadConst {
+            dst: Register(0),
+            constant: ten,
+        },
+    ));
+    code.push_instruction(vela_bytecode::linked::Instruction::new(
+        vela_bytecode::linked::InstructionKind::LoadConst {
+            dst: Register(1),
+            constant: five,
+        },
+    ));
+    code.push_instruction(vela_bytecode::linked::Instruction::new(
+        vela_bytecode::linked::InstructionKind::I64Add {
+            dst: Register(2),
+            lhs: Register(0),
+            rhs: Register(1),
+        },
+    ));
+    code.push_instruction(vela_bytecode::linked::Instruction::new(
+        vela_bytecode::linked::InstructionKind::I64MulImm {
+            dst: Register(3),
+            lhs: Register(2),
+            imm: 3,
+        },
+    ));
+    code.push_instruction(vela_bytecode::linked::Instruction::new(
+        vela_bytecode::linked::InstructionKind::I64SubImm {
+            dst: Register(4),
+            lhs: Register(3),
+            imm: 5,
+        },
+    ));
+    code.push_instruction(vela_bytecode::linked::Instruction::new(
+        vela_bytecode::linked::InstructionKind::I64RemImm {
+            dst: Register(5),
+            lhs: Register(4),
+            imm: 17,
+        },
+    ));
+    code.push_instruction(vela_bytecode::linked::Instruction::new(
+        vela_bytecode::linked::InstructionKind::I64AddImm {
+            dst: Register(6),
+            lhs: Register(5),
+            imm: 1,
+        },
+    ));
+    code.push_instruction(vela_bytecode::linked::Instruction::new(
+        vela_bytecode::linked::InstructionKind::Return { src: Register(6) },
+    ));
+
+    assert_eq!(
+        run_linked_i64_code(code),
+        Ok(OwnedValue::Scalar(ScalarValue::I64(7)))
+    );
+}
+
+#[test]
+fn linked_i64_typed_immediate_comparisons_execute() {
+    let mut code = linked_i64_code(3);
+    let ten = code.push_constant(Constant::Scalar(ScalarValue::I64(10)));
+    code.push_instruction(vela_bytecode::linked::Instruction::new(
+        vela_bytecode::linked::InstructionKind::LoadConst {
+            dst: Register(0),
+            constant: ten,
+        },
+    ));
+    code.push_instruction(vela_bytecode::linked::Instruction::new(
+        vela_bytecode::linked::InstructionKind::I64EqImm {
+            dst: Register(1),
+            lhs: Register(0),
+            imm: 10,
+        },
+    ));
+    code.push_instruction(vela_bytecode::linked::Instruction::new(
+        vela_bytecode::linked::InstructionKind::I64GtImm {
+            dst: Register(2),
+            lhs: Register(0),
+            imm: 9,
+        },
+    ));
+    code.push_instruction(vela_bytecode::linked::Instruction::new(
+        vela_bytecode::linked::InstructionKind::Return { src: Register(2) },
+    ));
+
+    assert_eq!(run_linked_i64_code(code), Ok(OwnedValue::Bool(true)));
+}
+
+#[test]
+fn linked_i64_typed_arithmetic_preserves_error_semantics_and_spans() {
+    let span = Span::new(SourceId::new(9), 4, 12);
+    let mut overflow_code = linked_i64_code(2);
+    let max = overflow_code.push_constant(Constant::Scalar(ScalarValue::I64(i64::MAX)));
+    overflow_code.push_instruction(vela_bytecode::linked::Instruction::new(
+        vela_bytecode::linked::InstructionKind::LoadConst {
+            dst: Register(0),
+            constant: max,
+        },
+    ));
+    overflow_code.push_instruction(
+        vela_bytecode::linked::Instruction::new(
+            vela_bytecode::linked::InstructionKind::I64AddImm {
+                dst: Register(1),
+                lhs: Register(0),
+                imm: 1,
+            },
+        )
+        .with_span(span),
+    );
+    overflow_code.push_instruction(vela_bytecode::linked::Instruction::new(
+        vela_bytecode::linked::InstructionKind::Return { src: Register(1) },
+    ));
+
+    let overflow = run_linked_i64_code(overflow_code).expect_err("overflow should fail");
+    assert_eq!(
+        overflow.kind(),
+        VmErrorKind::ArithmeticOverflow { operation: "add" }
+    );
+    assert_eq!(overflow.source_span, Some(span));
+
+    let mut rem_code = linked_i64_code(3);
+    let four = rem_code.push_constant(Constant::Scalar(ScalarValue::I64(4)));
+    let zero = rem_code.push_constant(Constant::Scalar(ScalarValue::I64(0)));
+    rem_code.push_instruction(vela_bytecode::linked::Instruction::new(
+        vela_bytecode::linked::InstructionKind::LoadConst {
+            dst: Register(0),
+            constant: four,
+        },
+    ));
+    rem_code.push_instruction(vela_bytecode::linked::Instruction::new(
+        vela_bytecode::linked::InstructionKind::LoadConst {
+            dst: Register(1),
+            constant: zero,
+        },
+    ));
+    rem_code.push_instruction(vela_bytecode::linked::Instruction::new(
+        vela_bytecode::linked::InstructionKind::I64Rem {
+            dst: Register(2),
+            lhs: Register(0),
+            rhs: Register(1),
+        },
+    ));
+    rem_code.push_instruction(vela_bytecode::linked::Instruction::new(
+        vela_bytecode::linked::InstructionKind::Return { src: Register(2) },
+    ));
+
+    let division_by_zero = run_linked_i64_code(rem_code).expect_err("rem by zero should fail");
+    assert_eq!(division_by_zero.kind(), VmErrorKind::DivisionByZero);
+}
+
+fn linked_i64_code(register_count: u16) -> vela_bytecode::LinkedCodeObject {
+    vela_bytecode::LinkedCodeObject::new(vela_registry::DebugNameId::new(0), register_count)
+}
+
+fn run_linked_i64_code(code: vela_bytecode::LinkedCodeObject) -> VmResult<OwnedValue> {
+    code.verify().expect("linked i64 code should verify");
+    let mut program = LinkedProgram::new();
+    let main_name = program.intern_debug_name("main");
+    let mut code = code;
+    code.debug_name = main_name;
+    let function = program.push_function(code);
+    program.set_entry_point(main_name, function);
+    program.verify().expect("linked i64 program should verify");
+    Vm::new().run_linked_program(&program, "main", &[])
+}

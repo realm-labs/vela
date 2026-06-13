@@ -117,6 +117,56 @@ fn linker_maps_native_functions_to_dense_handles() {
 }
 
 #[test]
+fn linker_preserves_i64_typed_instructions() {
+    let mut code = UnlinkedCodeObject::new("main", 3);
+    code.push_instruction(UnlinkedInstruction::new(
+        UnlinkedInstructionKind::I64AddImm {
+            dst: Register(1),
+            lhs: Register(0),
+            imm: 4,
+        },
+    ));
+    code.push_instruction(UnlinkedInstruction::new(
+        UnlinkedInstructionKind::I64GtImm {
+            dst: Register(2),
+            lhs: Register(1),
+            imm: 10,
+        },
+    ));
+    code.push_instruction(UnlinkedInstruction::new(UnlinkedInstructionKind::Return {
+        src: Register(2),
+    }));
+    let mut program = UnlinkedProgram::new();
+    program.insert_function(code);
+
+    let linked = Linker::new()
+        .link_program(&program)
+        .expect("typed scalar instructions should link");
+    let main = linked
+        .functions()
+        .find(|(_, code)| linked.debug_name(code.debug_name) == "main")
+        .map(|(_, code)| code)
+        .expect("main function should link");
+
+    assert!(matches!(
+        main.instructions[0].kind,
+        InstructionKind::I64AddImm {
+            dst: Register(1),
+            lhs: Register(0),
+            imm: 4
+        }
+    ));
+    assert!(matches!(
+        main.instructions[1].kind,
+        InstructionKind::I64GtImm {
+            dst: Register(2),
+            lhs: Register(1),
+            imm: 10
+        }
+    ));
+}
+
+#[test]
 fn linker_maps_script_functions_and_methods_to_dense_handles() {
     let mut helper = UnlinkedCodeObject::new("helper", 1);
     helper.push_instruction(UnlinkedInstruction::new(UnlinkedInstructionKind::Return {

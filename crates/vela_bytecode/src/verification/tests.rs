@@ -728,6 +728,30 @@ fn rejects_out_of_bounds_deferred_literal_operand_registers() {
 }
 
 #[test]
+fn rejects_zero_i64_rem_imm() {
+    let mut code = UnlinkedCodeObject::new("main", 2);
+    code.push_instruction(UnlinkedInstruction::new(
+        UnlinkedInstructionKind::I64RemImm {
+            dst: Register(0),
+            lhs: Register(1),
+            imm: 0,
+        },
+    ));
+
+    assert_eq!(
+        verify_code_object(&code),
+        Err(error(
+            "main",
+            Some(0),
+            VerificationErrorKind::InvalidTypedImmediate {
+                instruction: "I64RemImm",
+                reason: "immediate must be nonzero"
+            }
+        ))
+    );
+}
+
+#[test]
 fn rejects_out_of_bounds_constants() {
     let mut code = UnlinkedCodeObject::new("main", 1);
     code.push_instruction(UnlinkedInstruction::new(

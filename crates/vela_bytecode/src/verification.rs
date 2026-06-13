@@ -36,6 +36,10 @@ pub enum VerificationErrorKind {
         target: InstructionOffset,
         instruction_count: usize,
     },
+    InvalidTypedImmediate {
+        instruction: &'static str,
+        reason: &'static str,
+    },
     ArityFrameMismatch {
         capture_count: u16,
         parameter_count: usize,
@@ -394,10 +398,27 @@ fn verify_instruction(
         | UnlinkedInstructionKind::Less { dst, lhs, rhs }
         | UnlinkedInstructionKind::LessEqual { dst, lhs, rhs }
         | UnlinkedInstructionKind::Greater { dst, lhs, rhs }
-        | UnlinkedInstructionKind::GreaterEqual { dst, lhs, rhs } => {
+        | UnlinkedInstructionKind::GreaterEqual { dst, lhs, rhs }
+        | UnlinkedInstructionKind::I64Add { dst, lhs, rhs }
+        | UnlinkedInstructionKind::I64Sub { dst, lhs, rhs }
+        | UnlinkedInstructionKind::I64Mul { dst, lhs, rhs }
+        | UnlinkedInstructionKind::I64Rem { dst, lhs, rhs } => {
             verify_register(function, instruction_index, code, *dst)?;
             verify_register(function, instruction_index, code, *lhs)?;
             verify_register(function, instruction_index, code, *rhs)
+        }
+        UnlinkedInstructionKind::I64AddImm { dst, lhs, .. }
+        | UnlinkedInstructionKind::I64SubImm { dst, lhs, .. }
+        | UnlinkedInstructionKind::I64MulImm { dst, lhs, .. }
+        | UnlinkedInstructionKind::I64EqImm { dst, lhs, .. }
+        | UnlinkedInstructionKind::I64GtImm { dst, lhs, .. } => {
+            verify_register(function, instruction_index, code, *dst)?;
+            verify_register(function, instruction_index, code, *lhs)
+        }
+        UnlinkedInstructionKind::I64RemImm { dst, lhs, imm } => {
+            verify_register(function, instruction_index, code, *dst)?;
+            verify_register(function, instruction_index, code, *lhs)?;
+            verify_i64_rem_imm(function, instruction_index, *imm)
         }
         UnlinkedInstructionKind::BinaryIntLiteral { dst, value, .. }
         | UnlinkedInstructionKind::BinaryFloatLiteral { dst, value, .. } => {
@@ -717,6 +738,25 @@ fn verify_registers(
         verify_register(function, instruction, code, *register)?;
     }
     Ok(())
+}
+
+fn verify_i64_rem_imm(
+    function: &str,
+    instruction: Option<usize>,
+    imm: i64,
+) -> Result<(), VerificationError> {
+    if imm != 0 {
+        Ok(())
+    } else {
+        Err(error(
+            function,
+            instruction,
+            VerificationErrorKind::InvalidTypedImmediate {
+                instruction: "I64RemImm",
+                reason: "immediate must be nonzero",
+            },
+        ))
+    }
 }
 
 fn verify_registers_from_pairs(

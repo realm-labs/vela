@@ -66,6 +66,28 @@ fn linked_code_rejects_cache_site_layout_instruction_offset_out_of_bounds() {
 }
 
 #[test]
+fn linked_code_rejects_zero_i64_rem_imm() {
+    let mut code = LinkedCodeObject::new(DebugNameId::new(0), 2);
+    code.push_instruction(Instruction::new(InstructionKind::I64RemImm {
+        dst: Register(0),
+        lhs: Register(1),
+        imm: 0,
+    }));
+
+    assert_eq!(
+        verify_linked_code_object(&code),
+        Err(error(
+            "<linked code>",
+            Some(0),
+            VerificationErrorKind::InvalidTypedImmediate {
+                instruction: "I64RemImm",
+                reason: "immediate must be nonzero"
+            }
+        ))
+    );
+}
+
+#[test]
 fn linked_code_rejects_cache_site_layout_instruction_kind_mismatch_for_sidecar_only_sites() {
     let mut code = linked_native_call_code();
     code.cache_sites = CacheSiteLayout::new(vec![CacheSiteDesc::new(

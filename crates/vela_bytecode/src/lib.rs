@@ -690,6 +690,56 @@ pub enum UnlinkedInstructionKind {
         lhs: Register,
         rhs: Register,
     },
+    I64Add {
+        dst: Register,
+        lhs: Register,
+        rhs: Register,
+    },
+    I64Sub {
+        dst: Register,
+        lhs: Register,
+        rhs: Register,
+    },
+    I64Mul {
+        dst: Register,
+        lhs: Register,
+        rhs: Register,
+    },
+    I64Rem {
+        dst: Register,
+        lhs: Register,
+        rhs: Register,
+    },
+    I64AddImm {
+        dst: Register,
+        lhs: Register,
+        imm: i64,
+    },
+    I64SubImm {
+        dst: Register,
+        lhs: Register,
+        imm: i64,
+    },
+    I64MulImm {
+        dst: Register,
+        lhs: Register,
+        imm: i64,
+    },
+    I64RemImm {
+        dst: Register,
+        lhs: Register,
+        imm: i64,
+    },
+    I64EqImm {
+        dst: Register,
+        lhs: Register,
+        imm: i64,
+    },
+    I64GtImm {
+        dst: Register,
+        lhs: Register,
+        imm: i64,
+    },
     BinaryIntLiteral {
         dst: Register,
         op: BinaryLiteralOp,

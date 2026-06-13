@@ -16,6 +16,7 @@ pub mod heap_execution;
 mod heap_values;
 mod host_access;
 mod host_values;
+mod i64_ops;
 mod indexing;
 pub mod iteration;
 mod linked_execution;
