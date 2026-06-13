@@ -136,6 +136,12 @@ fn scalar_collection_methods_return_non_generic_facts() {
         TypeFact::array(TypeFact::I64)
     );
     assert_eq!(
+        stdlib_method_fact(&map, "iter", None)
+            .expect("map iter fact")
+            .returns,
+        TypeFact::iterator(TypeFact::I64)
+    );
+    assert_eq!(
         stdlib_method_fact(&map, "entries", None)
             .expect("entries fact")
             .returns,
@@ -235,10 +241,22 @@ fn scalar_collection_methods_return_non_generic_facts() {
     assert_eq!(slice.params, vec![TypeFact::I64, TypeFact::I64]);
     assert_eq!(slice.returns, TypeFact::array(TypeFact::F64));
     assert_eq!(
+        stdlib_method_fact(&array, "iter", None)
+            .expect("array iter fact")
+            .returns,
+        TypeFact::iterator(TypeFact::F64)
+    );
+    assert_eq!(
         stdlib_method_fact(&set, "values", None)
             .expect("values fact")
             .returns,
         TypeFact::array(TypeFact::STRING)
+    );
+    assert_eq!(
+        stdlib_method_fact(&set, "iter", None)
+            .expect("set iter fact")
+            .returns,
+        TypeFact::iterator(TypeFact::STRING)
     );
     assert_eq!(
         stdlib_method_fact(&set, "clear", None)
@@ -325,6 +343,45 @@ fn scalar_collection_methods_return_non_generic_facts() {
             .returns,
         TypeFact::BOOL
     );
+    assert_eq!(
+        stdlib_method_fact(&range, "iter", None)
+            .expect("range iter fact")
+            .returns,
+        TypeFact::iterator(TypeFact::I64)
+    );
+}
+
+#[test]
+fn iterator_methods_expose_item_and_callback_facts_without_generics() {
+    let iterator = TypeFact::iterator(TypeFact::record("Reward"));
+
+    let next = stdlib_method_fact(&iterator, "next", None).expect("next fact");
+    assert_eq!(next.returns, TypeFact::option(TypeFact::record("Reward")));
+
+    let mapped = stdlib_method_fact(&iterator, "map", Some(&TypeFact::STRING)).expect("map fact");
+    assert_eq!(mapped.returns, TypeFact::iterator(TypeFact::STRING));
+    assert_eq!(
+        mapped.lambda.expect("map lambda").params,
+        vec![TypeFact::record("Reward")]
+    );
+
+    let filter = stdlib_method_fact(&iterator, "filter", None).expect("filter fact");
+    assert_eq!(
+        filter.params,
+        vec![TypeFact::function(
+            vec![TypeFact::record("Reward")],
+            TypeFact::BOOL
+        )]
+    );
+    assert_eq!(filter.returns, iterator.clone());
+
+    let take = stdlib_method_fact(&iterator, "take", None).expect("take fact");
+    assert_eq!(take.params, vec![TypeFact::I64]);
+    assert_eq!(take.returns, TypeFact::iterator(TypeFact::record("Reward")));
+
+    let collect = stdlib_method_fact(&iterator, "collect_array", None).expect("collect_array fact");
+    assert_eq!(collect.returns, TypeFact::array(TypeFact::record("Reward")));
+    assert_eq!(iterator.display_name(), "iterator");
 }
 
 #[test]
@@ -332,6 +389,18 @@ fn string_methods_expose_replacement_and_split_facts() {
     let find = stdlib_method_fact(&TypeFact::STRING, "find", None).expect("find fact");
     assert_eq!(find.params, vec![TypeFact::STRING]);
     assert_eq!(find.returns, TypeFact::option(TypeFact::I64));
+    assert_eq!(
+        stdlib_method_fact(&TypeFact::STRING, "chars", None)
+            .expect("chars fact")
+            .returns,
+        TypeFact::iterator(TypeFact::CHAR)
+    );
+    assert_eq!(
+        stdlib_method_fact(&TypeFact::STRING, "bytes", None)
+            .expect("bytes fact")
+            .returns,
+        TypeFact::iterator(TypeFact::U8)
+    );
 
     let strip_prefix =
         stdlib_method_fact(&TypeFact::STRING, "strip_prefix", None).expect("prefix fact");

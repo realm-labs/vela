@@ -19,6 +19,9 @@ pub enum TypeFact {
     Set {
         element: Box<TypeFact>,
     },
+    Iterator {
+        item: Box<TypeFact>,
+    },
     Option {
         some: Box<TypeFact>,
     },
@@ -96,6 +99,12 @@ impl TypeFact {
     pub fn set(element: TypeFact) -> Self {
         Self::Set {
             element: Box::new(element),
+        }
+    }
+
+    pub fn iterator(item: TypeFact) -> Self {
+        Self::Iterator {
+            item: Box::new(item),
         }
     }
 
@@ -227,6 +236,7 @@ impl TypeFact {
                 format!("map({}, {})", key.display_name(), value.display_name())
             }
             Self::Set { element } => format!("set({})", element.display_name()),
+            Self::Iterator { .. } => "iterator".to_owned(),
             Self::Option { some } => format!("Option({})", some.display_name()),
             Self::OptionSome { some } => format!("Option::Some({})", some.display_name()),
             Self::OptionNone => "Option::None".to_owned(),
@@ -297,6 +307,7 @@ mod tests {
             TypeFact::result_err(TypeFact::STRING).display_name(),
             "Result::Err(string)"
         );
+        assert_eq!(TypeFact::iterator(TypeFact::I64).display_name(), "iterator");
         assert!(!fact.display_name().contains('<'));
         assert!(!fact.display_name().contains('>'));
     }

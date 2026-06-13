@@ -210,6 +210,14 @@ fn stdlib_method_facts_enumerate_receiver_api_surface() {
                 .as_ref()
                 .is_some_and(|lambda| lambda.params == vec![TypeFact::STRING, TypeFact::I64])
     }));
+    let iterator_facts =
+        stdlib_method_facts(&TypeFact::iterator(TypeFact::I64), Some(&TypeFact::STRING));
+    assert!(iterator_facts.iter().any(|fact| {
+        fact.method == "map" && fact.returns == TypeFact::iterator(TypeFact::STRING)
+    }));
+    assert!(iterator_facts.iter().any(|fact| {
+        fact.method == "collect_array" && fact.returns == TypeFact::array(TypeFact::I64)
+    }));
     let option_facts = stdlib_method_facts(&TypeFact::option(TypeFact::I64), None);
     assert!(
         option_facts

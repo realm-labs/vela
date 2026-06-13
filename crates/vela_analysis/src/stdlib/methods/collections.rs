@@ -128,6 +128,11 @@ pub(super) fn array_method_fact(
             StdlibMethodFact::new(receiver, "sort_by", TypeFact::array(element.clone()))
                 .with_lambda(vec![element], TypeFact::Any),
         ),
+        "iter" => Some(StdlibMethodFact::new(
+            receiver,
+            "iter",
+            TypeFact::iterator(element),
+        )),
         _ => None,
     }
 }
@@ -238,6 +243,11 @@ pub(super) fn map_method_fact(
                 TypeFact::BOOL,
             ),
         ),
+        "iter" => Some(StdlibMethodFact::new(
+            receiver,
+            "iter",
+            TypeFact::iterator(value),
+        )),
         _ => None,
     }
 }
@@ -337,6 +347,11 @@ pub(super) fn set_method_fact(
             )
             .with_params(vec![TypeFact::set(element)]),
         ),
+        "iter" => Some(StdlibMethodFact::new(
+            receiver,
+            "iter",
+            TypeFact::iterator(element),
+        )),
         _ => None,
     }
 }
@@ -438,6 +453,16 @@ pub(super) fn string_method_fact(method: &str) -> Option<StdlibMethodFact> {
             "parse_bool",
             TypeFact::option(TypeFact::BOOL),
         )),
+        "chars" => Some(StdlibMethodFact::new(
+            receiver,
+            "chars",
+            TypeFact::iterator(TypeFact::CHAR),
+        )),
+        "bytes" => Some(StdlibMethodFact::new(
+            receiver,
+            "bytes",
+            TypeFact::iterator(TypeFact::U8),
+        )),
         _ => None,
     }
 }
@@ -472,6 +497,64 @@ pub(super) fn range_method_fact(method: &str) -> Option<StdlibMethodFact> {
     match method {
         "len" => Some(StdlibMethodFact::new(receiver, "len", TypeFact::I64)),
         "is_empty" => Some(StdlibMethodFact::new(receiver, "is_empty", TypeFact::BOOL)),
+        "iter" => Some(StdlibMethodFact::new(
+            receiver,
+            "iter",
+            TypeFact::iterator(TypeFact::I64),
+        )),
+        _ => None,
+    }
+}
+
+pub(super) fn iterator_method_fact(
+    item: TypeFact,
+    method: &str,
+    lambda_return: Option<&TypeFact>,
+) -> Option<StdlibMethodFact> {
+    let receiver = TypeFact::iterator(item.clone());
+    match method {
+        "next" => Some(StdlibMethodFact::new(
+            receiver,
+            "next",
+            TypeFact::option(item.clone()),
+        )),
+        "count" => Some(StdlibMethodFact::new(receiver, "count", TypeFact::I64)),
+        "any" => Some(
+            StdlibMethodFact::new(receiver, "any", TypeFact::BOOL)
+                .with_lambda(vec![item.clone()], TypeFact::BOOL),
+        ),
+        "all" => Some(
+            StdlibMethodFact::new(receiver, "all", TypeFact::BOOL)
+                .with_lambda(vec![item.clone()], TypeFact::BOOL),
+        ),
+        "find" => Some(
+            StdlibMethodFact::new(receiver, "find", TypeFact::option(item.clone()))
+                .with_lambda(vec![item.clone()], TypeFact::BOOL),
+        ),
+        "map" => {
+            let mapped = lambda_return.cloned().unwrap_or(TypeFact::Any);
+            Some(
+                StdlibMethodFact::new(receiver, "map", TypeFact::iterator(mapped.clone()))
+                    .with_lambda(vec![item], mapped),
+            )
+        }
+        "filter" => Some(
+            StdlibMethodFact::new(receiver, "filter", TypeFact::iterator(item.clone()))
+                .with_lambda(vec![item], TypeFact::BOOL),
+        ),
+        "take" => Some(
+            StdlibMethodFact::new(receiver, "take", TypeFact::iterator(item.clone()))
+                .with_params(vec![TypeFact::I64]),
+        ),
+        "skip" => Some(
+            StdlibMethodFact::new(receiver, "skip", TypeFact::iterator(item.clone()))
+                .with_params(vec![TypeFact::I64]),
+        ),
+        "collect_array" => Some(StdlibMethodFact::new(
+            receiver,
+            "collect_array",
+            TypeFact::array(item),
+        )),
         _ => None,
     }
 }
