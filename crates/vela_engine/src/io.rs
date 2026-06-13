@@ -152,9 +152,9 @@ fn io_println(args: &[OwnedValue]) -> VmResult<OwnedValue> {
 fn write_stdout(value: &OwnedValue, newline: bool) -> VmResult<OwnedValue> {
     let mut stdout = std::io::stdout().lock();
     let result = if newline {
-        writeln!(stdout, "{}", display_value(value))
+        writeln!(stdout, "{}", value.display_text())
     } else {
-        write!(stdout, "{}", display_value(value))
+        write!(stdout, "{}", value.display_text())
     };
     match result {
         Ok(()) => Ok(result_ok(OwnedValue::Null)),
@@ -247,55 +247,6 @@ fn io_error(
             ("message", OwnedValue::String(message.into())),
         ],
     )
-}
-
-fn display_value(value: &OwnedValue) -> String {
-    match value {
-        OwnedValue::Missing => "<missing>".to_owned(),
-        OwnedValue::Null => "null".to_owned(),
-        OwnedValue::Bool(value) => value.to_string(),
-        OwnedValue::Scalar(value) => value.to_string(),
-        OwnedValue::String(value) => value.clone(),
-        OwnedValue::Bytes(value) => format!("{value:?}"),
-        OwnedValue::Array(values) => {
-            let values = values.iter().map(display_value).collect::<Vec<_>>();
-            format!("[{}]", values.join(", "))
-        }
-        OwnedValue::Map(entries) => {
-            let entries = entries
-                .iter()
-                .map(|(key, value)| format!("{key}: {}", display_value(value)))
-                .collect::<Vec<_>>();
-            format!("{{{}}}", entries.join(", "))
-        }
-        OwnedValue::Set(values) => {
-            let values = values.iter().map(display_value).collect::<Vec<_>>();
-            format!("{{{}}}", values.join(", "))
-        }
-        OwnedValue::Record { type_name, fields } => {
-            let fields = fields
-                .iter()
-                .map(|(field, value)| format!("{field}: {}", display_value(value)))
-                .collect::<Vec<_>>();
-            format!("{type_name}{{{}}}", fields.join(", "))
-        }
-        OwnedValue::Enum {
-            enum_name,
-            variant,
-            fields,
-        } => {
-            let fields = fields
-                .iter()
-                .map(|(field, value)| format!("{field}: {}", display_value(value)))
-                .collect::<Vec<_>>();
-            format!("{enum_name}::{variant}({})", fields.join(", "))
-        }
-        OwnedValue::Closure(_) => "<closure>".to_owned(),
-        OwnedValue::Range(value) => format!("{value:?}"),
-        OwnedValue::HostRef(value) => format!("{value:?}"),
-        OwnedValue::PathProxy(value) => format!("{value:?}"),
-        OwnedValue::Iterator(_) => "<iterator>".to_owned(),
-    }
 }
 
 fn expect_string<'a>(operation: &'static str, value: &'a OwnedValue) -> VmResult<&'a str> {

@@ -1,5 +1,5 @@
 use vela_common::{Diagnostic, PrimitiveTag};
-use vela_syntax::ast::{AssignOp, Expr, ExprKind};
+use vela_syntax::ast::{AssignOp, Expr, ExprKind, InterpolatedStringPart};
 
 use crate::completion::{CompletionKind, member_completions};
 use crate::expression::{ExprFactScope, type_fact_from_expr};
@@ -100,6 +100,13 @@ fn collect_member_access_diagnostics(
             for field in fields {
                 if let Some(value) = &field.value {
                     collect_member_access_diagnostics(value, scope, facts, diagnostics);
+                }
+            }
+        }
+        ExprKind::InterpolatedString(parts) => {
+            for part in parts {
+                if let InterpolatedStringPart::Expr(expr) = part {
+                    collect_member_access_diagnostics(expr, scope, facts, diagnostics);
                 }
             }
         }

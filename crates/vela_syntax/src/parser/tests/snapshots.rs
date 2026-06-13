@@ -244,6 +244,7 @@ fn snapshot_expr_stmt(out: &mut String, expr: &Expr, indent: usize) {
 fn expr_kind_name(expr: &Expr) -> &'static str {
     match expr.kind {
         ExprKind::Literal(_) => "literal",
+        ExprKind::InterpolatedString(_) => "interpolated_string",
         ExprKind::Path(_) => "path",
         ExprKind::SelfValue => "self",
         ExprKind::Unary { .. } => "unary",

@@ -98,6 +98,7 @@ pub(super) fn evaluate_const_expr(
             .collect::<CompileResult<Option<Vec<_>>>>()
             .map(|entries| entries.map(Constant::Map)),
         ExprKind::Block(_)
+        | ExprKind::InterpolatedString(_)
         | ExprKind::If(_)
         | ExprKind::Match(_)
         | ExprKind::SelfValue

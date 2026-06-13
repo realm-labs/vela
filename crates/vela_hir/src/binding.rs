@@ -324,6 +324,13 @@ impl<'a> BindingLowerer<'a> {
         let id = self.next_expr(expr.span);
         match &expr.kind {
             ExprKind::Literal(_) | ExprKind::SelfValue | ExprKind::Error => {}
+            ExprKind::InterpolatedString(parts) => {
+                for part in parts {
+                    if let vela_syntax::ast::InterpolatedStringPart::Expr(expr) = part {
+                        self.bind_expr(expr, PathUsage::Value);
+                    }
+                }
+            }
             ExprKind::Path(path) => {
                 self.bind_path(id, path, expr.span, usage);
             }

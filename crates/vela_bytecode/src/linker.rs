@@ -628,6 +628,10 @@ impl<'linker, 'registry> LinkContext<'linker, 'registry> {
                 dst: *dst,
                 elements: elements.clone(),
             },
+            UnlinkedInstructionKind::FormatString { dst, parts } => InstructionKind::FormatString {
+                dst: *dst,
+                parts: parts.clone(),
+            },
             UnlinkedInstructionKind::MakeMap { dst, entries } => {
                 let entries = entries
                     .iter()

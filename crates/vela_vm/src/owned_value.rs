@@ -142,6 +142,77 @@ impl OwnedValue {
             _ => Err(value),
         }
     }
+
+    #[must_use]
+    pub fn display_text(&self) -> String {
+        match self {
+            Self::Missing => "<missing>".to_owned(),
+            Self::Null => "null".to_owned(),
+            Self::Bool(value) => value.to_string(),
+            Self::Scalar(value) => scalar_display_text(*value),
+            Self::String(value) => value.clone(),
+            Self::Bytes(value) => format!("{value:?}"),
+            Self::Array(values) => {
+                let values = values.iter().map(Self::display_text).collect::<Vec<_>>();
+                format!("[{}]", values.join(", "))
+            }
+            Self::Map(entries) => {
+                let entries = entries
+                    .iter()
+                    .map(|(key, value)| format!("{key}: {}", value.display_text()))
+                    .collect::<Vec<_>>();
+                format!("{{{}}}", entries.join(", "))
+            }
+            Self::Set(values) => {
+                let values = values.iter().map(Self::display_text).collect::<Vec<_>>();
+                format!("{{{}}}", values.join(", "))
+            }
+            Self::Record { type_name, fields } => {
+                let fields = fields
+                    .iter()
+                    .map(|(field, value)| format!("{field}: {}", value.display_text()))
+                    .collect::<Vec<_>>();
+                format!("{type_name}{{{}}}", fields.join(", "))
+            }
+            Self::Enum {
+                enum_name,
+                variant,
+                fields,
+            } => {
+                let fields = fields
+                    .iter()
+                    .map(|(field, value)| format!("{field}: {}", value.display_text()))
+                    .collect::<Vec<_>>();
+                format!("{enum_name}::{variant}({})", fields.join(", "))
+            }
+            Self::Closure(_) => "<closure>".to_owned(),
+            Self::Range(value) => {
+                if value.inclusive {
+                    format!("{}..={}", value.start, value.end)
+                } else {
+                    format!("{}..{}", value.start, value.end)
+                }
+            }
+            Self::HostRef(value) => format!("{value:?}"),
+            Self::PathProxy(value) => format!("{value:?}"),
+            Self::Iterator(_) => "<iterator>".to_owned(),
+        }
+    }
+}
+
+fn scalar_display_text(value: ScalarValue) -> String {
+    match value {
+        ScalarValue::I8(value) => value.to_string(),
+        ScalarValue::I16(value) => value.to_string(),
+        ScalarValue::I32(value) => value.to_string(),
+        ScalarValue::I64(value) => value.to_string(),
+        ScalarValue::U8(value) => value.to_string(),
+        ScalarValue::U16(value) => value.to_string(),
+        ScalarValue::U32(value) => value.to_string(),
+        ScalarValue::U64(value) => value.to_string(),
+        ScalarValue::F32(value) => value.to_string(),
+        ScalarValue::F64(value) => value.to_string(),
+    }
 }
 
 #[macro_export]

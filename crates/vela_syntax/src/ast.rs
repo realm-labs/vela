@@ -194,6 +194,7 @@ pub struct Expr {
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub enum ExprKind {
     Literal(Literal),
+    InterpolatedString(Vec<InterpolatedStringPart>),
     Path(Vec<String>),
     SelfValue,
     Unary {
@@ -269,6 +270,12 @@ pub struct IfExpr {
 pub enum ElseBranch {
     If(Box<IfExpr>),
     Block(Block),
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub enum InterpolatedStringPart {
+    Text(String),
+    Expr(Expr),
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]

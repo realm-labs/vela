@@ -44,8 +44,26 @@ FLOAT           = ASCII_DIGIT, { "_" | ASCII_DIGIT }, ".", ASCII_DIGIT,
 exponent        = ( "e" | "E" ), [ "+" | "-" ], ASCII_DIGIT,
                   { "_" | ASCII_DIGIT } ;
 
-STRING          = '"', { string_char | escape }, '"' ;
+STRING          = single_line_string | multiline_string ;
+single_line_string
+                = '"', { string_char | escape }, '"' ;
+multiline_string
+                = '"""', { multiline_string_char }, '"""' ;
+INTERPOLATED_STRING
+                = "f", ( interpolated_single_line_string
+                       | interpolated_multiline_string ) ;
+interpolated_single_line_string
+                = '"', { interpolated_text | interpolation | escape }, '"' ;
+interpolated_multiline_string
+                = '"""', { interpolated_text | interpolation },
+                  '"""' ;
+interpolation   = "{", expr, "}" ;
+interpolated_text
+                = "{{" | "}}" | ? any text not starting an interpolation
+                  boundary ? ;
 string_char     = ? any non-quote, non-backslash, non-newline character ? ;
+multiline_string_char
+                = ? any text not ending the triple-quote delimiter ? ;
 escape          = "\\", ( '"' | "\\" | "/" | "n" | "r" | "t" | "0"
                   | unicode_escape ) ;
 unicode_escape  = "u", "{", HEX_DIGIT, { HEX_DIGIT }, "}" ;
@@ -217,6 +235,7 @@ argument_list   = "(", ws, [ argument, { ws, ",", ws, argument },
 argument        = [ IDENT, ws, "=", ws ], expr ;
 
 primary         = literal
+                | INTERPOLATED_STRING
                 | "self"
                 | path_or_record_expr
                 | array_literal

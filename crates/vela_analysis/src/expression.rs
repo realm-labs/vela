@@ -84,6 +84,7 @@ fn type_fact_from_expr_impl(
 ) -> TypeFact {
     match &expr.kind {
         ExprKind::Literal(literal) => literal_fact(literal),
+        ExprKind::InterpolatedString(_) => TypeFact::STRING,
         ExprKind::Path(path) => scope
             .path_fact(path)
             .cloned()

@@ -1,8 +1,8 @@
 use vela_common::{PrimitiveTag, Span};
-use vela_syntax::ast::{BinaryOp, Expr, ExprKind, Literal, UnaryOp};
+use vela_syntax::ast::{BinaryOp, Expr, ExprKind, InterpolatedStringPart, Literal, UnaryOp};
 
 use crate::{
-    BinaryLiteralSide, GuardKind, GuardLocation, Register, UnlinkedGuardContext,
+    BinaryLiteralSide, FormatStringPart, GuardKind, GuardLocation, Register, UnlinkedGuardContext,
     UnlinkedInstructionKind, UnlinkedTypeGuard, UnlinkedTypeGuardPlan,
 };
 
@@ -24,6 +24,7 @@ impl Compiler<'_, '_> {
     pub(super) fn compile_expr(&mut self, expr: &Expr) -> CompileResult<Register> {
         match &expr.kind {
             ExprKind::Literal(literal) => self.compile_literal(Some(expr.span), literal),
+            ExprKind::InterpolatedString(parts) => self.compile_interpolated_string(parts),
             ExprKind::Path(path) => self.compile_path_expr(expr.span, path),
             ExprKind::Binary { op, left, right } => {
                 if matches!(op, BinaryOp::And | BinaryOp::Or) {
@@ -543,6 +544,32 @@ impl Compiler<'_, '_> {
     fn emit_truthy_to_bool(&mut self, dst: Register, src: Register) -> CompileResult<()> {
         self.emit(UnlinkedInstructionKind::Truthy { dst, src });
         Ok(())
+    }
+
+    fn compile_interpolated_string(
+        &mut self,
+        parts: &[InterpolatedStringPart],
+    ) -> CompileResult<Register> {
+        let mut compiled = Vec::with_capacity(parts.len());
+        for part in parts {
+            match part {
+                InterpolatedStringPart::Text(value) => {
+                    let constant = self
+                        .code
+                        .push_constant(crate::Constant::String(value.clone()));
+                    compiled.push(FormatStringPart::Text(constant));
+                }
+                InterpolatedStringPart::Expr(expr) => {
+                    compiled.push(FormatStringPart::Value(self.compile_expr(expr)?));
+                }
+            }
+        }
+        let dst = self.alloc_register()?;
+        self.emit(UnlinkedInstructionKind::FormatString {
+            dst,
+            parts: compiled,
+        });
+        Ok(dst)
     }
 
     fn compile_unary(&mut self, op: UnaryOp, span: Span, expr: &Expr) -> CompileResult<Register> {

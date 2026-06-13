@@ -281,6 +281,7 @@ pub(super) fn expression_value_shape(
     match &expr.kind {
         ExprKind::Literal(_) => expression_value_type(expr, local_type_at_span, local_type_named)
             .map(ValueShape::from_runtime_type),
+        ExprKind::InterpolatedString(_) => Some(ValueShape::Scalar("string".to_owned())),
         ExprKind::Binary {
             op: BinaryOp::Range | BinaryOp::RangeInclusive,
             ..

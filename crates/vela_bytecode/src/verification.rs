@@ -6,9 +6,9 @@ use crate::linked::{
     MethodDispatchHandle, NativeHandle, ScriptFunctionHandle, TypeHandle, VariantHandle,
 };
 use crate::{
-    CacheSiteId, CacheSiteKind, CallArgument, ConstantId, DynamicCallArgument, HostTargetPlanId,
-    InstructionOffset, ProgramImage, Register, TypeGuardPlanId, UnlinkedCodeObject,
-    UnlinkedInstruction, UnlinkedInstructionKind, UnlinkedProgram,
+    CacheSiteId, CacheSiteKind, CallArgument, ConstantId, DynamicCallArgument, FormatStringPart,
+    HostTargetPlanId, InstructionOffset, ProgramImage, Register, TypeGuardPlanId,
+    UnlinkedCodeObject, UnlinkedInstruction, UnlinkedInstructionKind, UnlinkedProgram,
 };
 
 mod linked;
@@ -508,6 +508,10 @@ fn verify_instruction(
             verify_register(function, instruction_index, code, *dst)?;
             verify_registers(function, instruction_index, code, elements)
         }
+        UnlinkedInstructionKind::FormatString { dst, parts } => {
+            verify_register(function, instruction_index, code, *dst)?;
+            verify_format_string_parts(function, instruction_index, code, parts)
+        }
         UnlinkedInstructionKind::MakeMap { dst, entries } => {
             verify_register(function, instruction_index, code, *dst)?;
             verify_registers_from_pairs(function, instruction_index, code, entries)
@@ -766,6 +770,25 @@ fn verify_registers(
 ) -> Result<(), VerificationError> {
     for register in registers {
         verify_register(function, instruction, code, *register)?;
+    }
+    Ok(())
+}
+
+fn verify_format_string_parts(
+    function: &str,
+    instruction: Option<usize>,
+    code: &UnlinkedCodeObject,
+    parts: &[FormatStringPart],
+) -> Result<(), VerificationError> {
+    for part in parts {
+        match part {
+            FormatStringPart::Text(constant) => {
+                verify_string_constant(function, instruction, code, *constant)?;
+            }
+            FormatStringPart::Value(register) => {
+                verify_register(function, instruction, code, *register)?;
+            }
+        }
     }
     Ok(())
 }

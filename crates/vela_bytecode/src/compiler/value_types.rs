@@ -242,6 +242,9 @@ fn static_expr_type_with(
         ExprKind::Literal(Literal::String(_)) => {
             StaticExprType::Exact(RuntimeTypeFact::primitive(PrimitiveTag::String))
         }
+        ExprKind::InterpolatedString(_) => {
+            StaticExprType::Exact(RuntimeTypeFact::primitive(PrimitiveTag::String))
+        }
         ExprKind::Literal(Literal::Bytes(_)) => {
             StaticExprType::Exact(RuntimeTypeFact::primitive(PrimitiveTag::Bytes))
         }

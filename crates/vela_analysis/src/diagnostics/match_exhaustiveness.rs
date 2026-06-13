@@ -1,7 +1,9 @@
 use std::collections::BTreeSet;
 
 use vela_common::Diagnostic;
-use vela_syntax::ast::{ElseBranch, Expr, ExprKind, MatchExpr, Pattern, Stmt, StmtKind};
+use vela_syntax::ast::{
+    ElseBranch, Expr, ExprKind, InterpolatedStringPart, MatchExpr, Pattern, Stmt, StmtKind,
+};
 
 use crate::expression::{ExprFactScope, type_fact_from_expr};
 use crate::registry::RegistryFacts;
@@ -63,6 +65,13 @@ fn collect_match_exhaustiveness_diagnostics(
             for field in fields {
                 if let Some(value) = &field.value {
                     collect_match_exhaustiveness_diagnostics(value, scope, facts, diagnostics);
+                }
+            }
+        }
+        ExprKind::InterpolatedString(parts) => {
+            for part in parts {
+                if let InterpolatedStringPart::Expr(expr) = part {
+                    collect_match_exhaustiveness_diagnostics(expr, scope, facts, diagnostics);
                 }
             }
         }

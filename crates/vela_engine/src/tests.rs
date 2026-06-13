@@ -10,6 +10,7 @@ mod random;
 mod reflection;
 mod runtime_args;
 mod source_reload;
+mod strings;
 mod typed_host;
 mod typed_native;
 mod validation;

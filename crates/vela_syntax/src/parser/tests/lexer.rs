@@ -201,6 +201,77 @@ fn lexes_unicode_string_escapes() {
 }
 
 #[test]
+fn lexes_multiline_strings() {
+    let source = "\"\"\"line1\nline2\"\"\"";
+    let lexed = lex(source_id(), source);
+
+    assert!(lexed.diagnostics.is_empty(), "{:?}", lexed.diagnostics);
+    assert_eq!(
+        lexed.tokens[0].kind,
+        TokenKind::String("line1\nline2".into())
+    );
+    assert_eq!(
+        lexed.tokens[0].span,
+        Span::new(source_id(), 0, source.len() as u32)
+    );
+}
+
+#[test]
+fn lexes_interpolated_strings() {
+    let source = r#"f"hello {player.name} {{ok}}""#;
+    let lexed = lex(source_id(), source);
+
+    assert!(lexed.diagnostics.is_empty(), "{:?}", lexed.diagnostics);
+    let TokenKind::InterpolatedString(parts) = &lexed.tokens[0].kind else {
+        panic!("expected interpolated string");
+    };
+    assert_eq!(lexed.tokens[0].span, Span::new(source_id(), 0, 29));
+    assert_eq!(parts.len(), 3);
+    assert_eq!(
+        parts[0],
+        InterpolatedStringTokenPart::Text("hello ".to_owned())
+    );
+    assert_eq!(
+        parts[1],
+        InterpolatedStringTokenPart::Expr {
+            source: "player.name".to_owned(),
+            span: Span::new(source_id(), 9, 20),
+        }
+    );
+    assert_eq!(
+        parts[2],
+        InterpolatedStringTokenPart::Text(" {ok}".to_owned())
+    );
+}
+
+#[test]
+fn lexes_multiline_interpolated_strings() {
+    let source = "f\"\"\"line1\n{value}\nline3\"\"\"";
+    let lexed = lex(source_id(), source);
+
+    assert!(lexed.diagnostics.is_empty(), "{:?}", lexed.diagnostics);
+    let TokenKind::InterpolatedString(parts) = &lexed.tokens[0].kind else {
+        panic!("expected interpolated string");
+    };
+    assert_eq!(parts.len(), 3);
+    assert_eq!(
+        parts[0],
+        InterpolatedStringTokenPart::Text("line1\n".to_owned())
+    );
+    assert_eq!(
+        parts[1],
+        InterpolatedStringTokenPart::Expr {
+            source: "value".to_owned(),
+            span: Span::new(source_id(), 11, 16),
+        }
+    );
+    assert_eq!(
+        parts[2],
+        InterpolatedStringTokenPart::Text("\nline3".to_owned())
+    );
+}
+
+#[test]
 fn diagnoses_invalid_string_escapes() {
     let lexed = lex(source_id(), r#""quest\qtag""#);
 

@@ -10,6 +10,7 @@ mod dynamic_method_resolution;
 pub mod error;
 mod execution;
 mod field_access;
+mod format_strings;
 mod frame;
 pub mod heap;
 pub mod heap_execution;

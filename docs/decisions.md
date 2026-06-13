@@ -153,6 +153,18 @@ The current representative shift helpers use `u32` shift counts, return zero
 when the count is greater than or equal to the left operand width, and rotate
 helpers use native modulo-width rotate semantics.
 
+### String Literals And Interpolation
+
+Multiline strings use triple quotes, `"""..."""`, and preserve body text
+without indentation trimming. Interpolated strings require an explicit `f`
+prefix, as `f"..."` or `f"""..."""`; ordinary strings never interpolate.
+Interpolation supports `{expr}` plus escaped literal braces `{{` and `}}`.
+
+Interpolated strings lower to a dedicated format-string bytecode instruction.
+They must not lower through numeric `+`, implicit string concatenation, or a
+stdlib compatibility helper. Runtime formatting uses the same user-facing
+`OwnedValue::display_text()` rule as standard output.
+
 ### Runtime And Heap
 
 The VM is a register bytecode interpreter. Execution budgets cover

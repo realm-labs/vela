@@ -237,6 +237,10 @@ impl Parser {
                 self.advance();
                 self.literal_expr(Literal::String(value), span)
             }
+            TokenKind::InterpolatedString(parts) => {
+                self.advance();
+                self.interpolated_string_expr(parts, span)
+            }
             TokenKind::Bytes(value) => {
                 self.advance();
                 self.literal_expr(Literal::Bytes(value), span)
@@ -272,6 +276,29 @@ impl Parser {
     pub(super) fn literal_expr(&self, literal: Literal, span: Span) -> Expr {
         Expr {
             kind: ExprKind::Literal(literal),
+            span,
+        }
+    }
+
+    fn interpolated_string_expr(
+        &mut self,
+        parts: Vec<InterpolatedStringTokenPart>,
+        span: Span,
+    ) -> Expr {
+        let parts = parts
+            .into_iter()
+            .map(|part| match part {
+                InterpolatedStringTokenPart::Text(value) => InterpolatedStringPart::Text(value),
+                InterpolatedStringTokenPart::Expr { source, span } => {
+                    let (expr, diagnostics) =
+                        parse_expression_fragment(span.source, &source, span.start);
+                    self.diagnostics.extend(diagnostics);
+                    InterpolatedStringPart::Expr(expr)
+                }
+            })
+            .collect();
+        Expr {
+            kind: ExprKind::InterpolatedString(parts),
             span,
         }
     }

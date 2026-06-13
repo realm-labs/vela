@@ -1,6 +1,7 @@
 use vela_common::Diagnostic;
 use vela_syntax::ast::{
-    Argument, ConstItem, ElseBranch, Expr, ExprKind, MapEntry, RecordField, Stmt, StmtKind,
+    Argument, ConstItem, ElseBranch, Expr, ExprKind, InterpolatedStringPart, MapEntry, RecordField,
+    Stmt, StmtKind,
 };
 
 pub(crate) fn validate_const_initializer(item: &ConstItem) -> Vec<Diagnostic> {
@@ -59,6 +60,13 @@ impl ConstInitializerValidator<'_> {
             ExprKind::Record { fields, .. } => {
                 for field in fields {
                     self.visit_record_field(field);
+                }
+            }
+            ExprKind::InterpolatedString(parts) => {
+                for part in parts {
+                    if let InterpolatedStringPart::Expr(expr) = part {
+                        self.visit_expr(expr);
+                    }
                 }
             }
             ExprKind::Lambda { .. } => {}

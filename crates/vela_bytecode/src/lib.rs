@@ -478,6 +478,12 @@ pub enum Constant {
     Map(Vec<(String, Constant)>),
 }
 
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum FormatStringPart {
+    Text(ConstantId),
+    Value(Register),
+}
+
 impl Constant {
     #[must_use]
     pub const fn i64(value: i64) -> Self {
@@ -825,6 +831,10 @@ pub enum UnlinkedInstructionKind {
     MakeArray {
         dst: Register,
         elements: Vec<Register>,
+    },
+    FormatString {
+        dst: Register,
+        parts: Vec<FormatStringPart>,
     },
     MakeMap {
         dst: Register,

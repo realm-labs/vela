@@ -613,6 +613,17 @@ impl Vm {
                         elements,
                     )?;
                 }
+                InstructionKind::FormatString { dst, parts } => {
+                    format_strings::make_format_string(
+                        &mut frame,
+                        heap.as_deref_mut(),
+                        budget.as_deref_mut(),
+                        *dst,
+                        &code.constants,
+                        parts,
+                        instruction.span,
+                    )?;
+                }
                 InstructionKind::MakeMap { dst, entries } => {
                     script_aggregate_construction::make_linked_map(
                         &mut frame,

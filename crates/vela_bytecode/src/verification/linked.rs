@@ -6,8 +6,8 @@ use crate::linked::{
     VariantHandle,
 };
 use crate::{
-    CacheSiteId, CacheSiteKind, CallArgument, Constant, ConstantId, HostTargetPlanId,
-    InstructionOffset, Register,
+    CacheSiteId, CacheSiteKind, CallArgument, Constant, ConstantId, FormatStringPart,
+    HostTargetPlanId, InstructionOffset, Register,
 };
 
 use super::{VerificationError, VerificationErrorKind, constant_kind, error};
@@ -325,6 +325,10 @@ fn verify_linked_instruction(
         InstructionKind::MakeArray { dst, elements } => {
             verify_linked_register(function, instruction_index, code, *dst)?;
             verify_linked_registers(function, instruction_index, code, elements)
+        }
+        InstructionKind::FormatString { dst, parts } => {
+            verify_linked_register(function, instruction_index, code, *dst)?;
+            verify_linked_format_string_parts(function, instruction_index, code, parts)
         }
         InstructionKind::MakeMap { dst, entries } => {
             verify_linked_register(function, instruction_index, code, *dst)?;
@@ -812,6 +816,25 @@ fn verify_linked_registers(
 ) -> Result<(), VerificationError> {
     for register in registers {
         verify_linked_register(function, instruction, code, *register)?;
+    }
+    Ok(())
+}
+
+fn verify_linked_format_string_parts(
+    function: &str,
+    instruction: Option<usize>,
+    code: &LinkedCodeObject,
+    parts: &[FormatStringPart],
+) -> Result<(), VerificationError> {
+    for part in parts {
+        match part {
+            FormatStringPart::Text(constant) => {
+                verify_linked_string_constant(function, instruction, code, *constant)?;
+            }
+            FormatStringPart::Value(register) => {
+                verify_linked_register(function, instruction, code, *register)?;
+            }
+        }
     }
     Ok(())
 }

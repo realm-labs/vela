@@ -1,4 +1,4 @@
-use crate::token::{Keyword, Symbol, TokenKind};
+use crate::token::{InterpolatedStringTokenPart, Keyword, Symbol, TokenKind};
 
 pub(crate) fn normalize_attribute_value(tokens: &[TokenKind]) -> String {
     match tokens {
@@ -23,6 +23,7 @@ fn attribute_token_text(token: &TokenKind) -> String {
         TokenKind::Int(value) => value.source_text_with_suffix(),
         TokenKind::Float(value) => value.source_text_with_suffix(),
         TokenKind::String(value) => quoted_attribute_string(value),
+        TokenKind::InterpolatedString(parts) => quoted_interpolated_attribute_string(parts),
         TokenKind::Bytes(value) => quoted_attribute_bytes(value),
         TokenKind::Keyword(keyword) => keyword_text(*keyword).to_owned(),
         TokenKind::Symbol(symbol) => symbol_text(*symbol).to_owned(),
@@ -30,8 +31,32 @@ fn attribute_token_text(token: &TokenKind) -> String {
     }
 }
 
+fn quoted_interpolated_attribute_string(parts: &[InterpolatedStringTokenPart]) -> String {
+    let mut quoted = String::from("f\"");
+    for part in parts {
+        match part {
+            InterpolatedStringTokenPart::Text(value) => {
+                append_quoted_attribute_string_body(&mut quoted, value);
+            }
+            InterpolatedStringTokenPart::Expr { source, .. } => {
+                quoted.push('{');
+                quoted.push_str(source);
+                quoted.push('}');
+            }
+        }
+    }
+    quoted.push('"');
+    quoted
+}
+
 fn quoted_attribute_string(value: &str) -> String {
     let mut quoted = String::from("\"");
+    append_quoted_attribute_string_body(&mut quoted, value);
+    quoted.push('"');
+    quoted
+}
+
+fn append_quoted_attribute_string_body(quoted: &mut String, value: &str) {
     for ch in value.chars() {
         match ch {
             '"' => quoted.push_str("\\\""),
@@ -43,8 +68,6 @@ fn quoted_attribute_string(value: &str) -> String {
             _ => quoted.push(ch),
         }
     }
-    quoted.push('"');
-    quoted
 }
 
 fn quoted_attribute_bytes(value: &[u8]) -> String {

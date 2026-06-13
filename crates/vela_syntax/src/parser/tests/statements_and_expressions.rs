@@ -265,6 +265,31 @@ fn parses_literal_return() {
 }
 
 #[test]
+fn parses_interpolated_string_return() {
+    let parsed = parse_source(
+        source_id(),
+        r#"fn label(player) { return f"player {player.name}"; }"#,
+    );
+
+    assert!(parsed.diagnostics.is_empty(), "{:?}", parsed.diagnostics);
+    let ItemKind::Function(function) = &parsed.items[0].kind else {
+        panic!("expected function item");
+    };
+    let StmtKind::Return(Some(value)) = &function.body.statements[0].kind else {
+        panic!("expected return value");
+    };
+    let ExprKind::InterpolatedString(parts) = &value.kind else {
+        panic!("expected interpolated string");
+    };
+    assert_eq!(parts.len(), 2);
+    assert_eq!(parts[0], InterpolatedStringPart::Text("player ".to_owned()));
+    let InterpolatedStringPart::Expr(expr) = &parts[1] else {
+        panic!("expected expression part");
+    };
+    assert!(matches!(expr.kind, ExprKind::Field { .. }));
+}
+
+#[test]
 fn parses_integer_literal_radix_metadata() {
     let parsed = parse_source(
         source_id(),

@@ -181,6 +181,18 @@ as the normal "not found" or "failed" result:: `null` remains the value for
 statement-only blocks, no-result native calls, reflection metadata gaps, and
 host/Rust nullable interop.
 
+### Strings
+
+Single-line strings use `"..."` and process ordinary escapes such as `\n`,
+`\t`, `\"`, `\\`, and Unicode escapes. Triple-quoted strings use `"""..."""`
+and preserve their body text exactly, including newlines and indentation.
+
+String interpolation is explicit. `f"..."` and `f"""..."""` may contain
+`{expr}` interpolation parts, while `{{` and `}}` produce literal braces.
+Plain strings never interpolate. Interpolation compiles to a dedicated
+format-string bytecode instruction rather than numeric `+`, so it does not
+change the meaning of the addition operator.
+
 Control-flow expressions produce values. Empty or statement-only blocks
 evaluate to `null`, and expression-valued `if` without an `else` evaluates to
 `null` on the untaken branch.

@@ -1,7 +1,7 @@
 use vela_common::{Diagnostic, SourceId, Span};
 
 use crate::ast::{FloatLiteral, FloatSuffix, IntRadix, IntegerLiteral, IntegerSuffix};
-use crate::token::{Keyword, Symbol, Token, TokenKind};
+use crate::token::{InterpolatedStringTokenPart, Keyword, Symbol, Token, TokenKind};
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct Lexed {
@@ -14,9 +14,15 @@ pub fn lex(source: SourceId, text: &str) -> Lexed {
     Lexer::new(source, text).lex()
 }
 
+#[must_use]
+pub(crate) fn lex_at(source: SourceId, text: &str, base_offset: u32) -> Lexed {
+    Lexer::new_at(source, text, base_offset).lex()
+}
+
 struct Lexer<'src> {
     source: SourceId,
     text: &'src str,
+    base_offset: u32,
     offset: usize,
     tokens: Vec<Token>,
     diagnostics: Vec<Diagnostic>,
@@ -27,6 +33,18 @@ impl<'src> Lexer<'src> {
         Self {
             source,
             text,
+            base_offset: 0,
+            offset: 0,
+            tokens: Vec::new(),
+            diagnostics: Vec::new(),
+        }
+    }
+
+    fn new_at(source: SourceId, text: &'src str, base_offset: u32) -> Self {
+        Self {
+            source,
+            text,
+            base_offset,
             offset: 0,
             tokens: Vec::new(),
             diagnostics: Vec::new(),
@@ -43,7 +61,9 @@ impl<'src> Lexer<'src> {
                 }
                 '/' if self.peek_next_char() == Some('/') => self.skip_line_comment(),
                 '/' if self.peek_next_char() == Some('*') => self.skip_block_comment(),
+                '"' if self.starts_with_at_current("\"\"\"") => self.lex_multiline_string(),
                 '"' => self.lex_string(),
+                'f' if self.peek_next_char() == Some('"') => self.lex_interpolated_string(),
                 'b' if self.peek_next_char() == Some('"') => self.lex_byte_string(),
                 '0'..='9' => self.lex_number(),
                 '_' | 'a'..='z' | 'A'..='Z' => self.lex_ident_or_keyword(),
@@ -85,6 +105,18 @@ impl<'src> Lexer<'src> {
         let ch = self.peek_char()?;
         self.offset = self.offset.saturating_add(ch.len_utf8());
         Some(ch)
+    }
+
+    fn bump_chars(&mut self, count: usize) {
+        for _ in 0..count {
+            self.bump_char();
+        }
+    }
+
+    fn starts_with_at_current(&self, value: &str) -> bool {
+        self.text
+            .get(self.offset..)
+            .is_some_and(|rest| rest.starts_with(value))
     }
 
     fn skip_line_comment(&mut self) {
@@ -180,6 +212,221 @@ impl<'src> Lexer<'src> {
                 .with_code("E_LEX_STRING")
                 .with_span(self.span(start, self.offset)),
         );
+    }
+
+    fn lex_multiline_string(&mut self) {
+        let start = self.offset;
+        self.bump_chars(3);
+        let content_start = self.offset;
+
+        while self.peek_char().is_some() {
+            if self.starts_with_at_current("\"\"\"") {
+                let value = self.slice(content_start, self.offset).to_owned();
+                self.bump_chars(3);
+                self.push_token(TokenKind::String(value), start, self.offset);
+                return;
+            }
+            self.bump_char();
+        }
+
+        self.diagnostics.push(
+            Diagnostic::error("unterminated multiline string literal")
+                .with_code("E_LEX_MULTILINE_STRING")
+                .with_span(self.span(start, self.offset)),
+        );
+    }
+
+    fn lex_interpolated_string(&mut self) {
+        let start = self.offset;
+        self.bump_char();
+        let multiline = self.starts_with_at_current("\"\"\"");
+        if multiline {
+            self.bump_chars(3);
+        } else {
+            self.bump_char();
+        }
+
+        let mut parts = Vec::new();
+        let mut text = String::new();
+
+        while let Some(ch) = self.peek_char() {
+            if multiline && self.starts_with_at_current("\"\"\"") {
+                self.bump_chars(3);
+                self.flush_interpolated_text(&mut parts, &mut text);
+                self.push_token(TokenKind::InterpolatedString(parts), start, self.offset);
+                return;
+            }
+            if !multiline && ch == '"' {
+                self.bump_char();
+                self.flush_interpolated_text(&mut parts, &mut text);
+                self.push_token(TokenKind::InterpolatedString(parts), start, self.offset);
+                return;
+            }
+            if !multiline && ch == '\n' {
+                break;
+            }
+            match ch {
+                '\\' if !multiline => self.lex_interpolated_escape(&mut text),
+                '{' if self.peek_next_char() == Some('{') => {
+                    self.bump_char();
+                    self.bump_char();
+                    text.push('{');
+                }
+                '}' if self.peek_next_char() == Some('}') => {
+                    self.bump_char();
+                    self.bump_char();
+                    text.push('}');
+                }
+                '{' => {
+                    self.flush_interpolated_text(&mut parts, &mut text);
+                    if let Some(part) = self.lex_interpolation_expr() {
+                        parts.push(part);
+                    }
+                }
+                '}' => {
+                    let span_start = self.offset;
+                    self.bump_char();
+                    self.diagnostics.push(
+                        Diagnostic::error("unmatched `}` in interpolated string")
+                            .with_code("E_LEX_STRING_INTERPOLATION")
+                            .with_span(self.span(span_start, self.offset)),
+                    );
+                    text.push('}');
+                }
+                other => {
+                    self.bump_char();
+                    text.push(other);
+                }
+            }
+        }
+
+        let code = if multiline {
+            "E_LEX_MULTILINE_STRING"
+        } else {
+            "E_LEX_STRING"
+        };
+        self.diagnostics.push(
+            Diagnostic::error("unterminated interpolated string literal")
+                .with_code(code)
+                .with_span(self.span(start, self.offset)),
+        );
+    }
+
+    fn lex_interpolated_escape(&mut self, text: &mut String) {
+        let escape_start = self.offset;
+        self.bump_char();
+        let Some(escaped) = self.peek_char() else {
+            self.push_string_escape_diagnostic(escape_start);
+            return;
+        };
+        if escaped == 'u' && self.peek_next_char() == Some('{') {
+            if let Some(decoded) = self.consume_unicode_escape() {
+                text.push(decoded);
+            }
+            return;
+        }
+        self.bump_char();
+        let decoded = match escaped {
+            'n' => '\n',
+            'r' => '\r',
+            't' => '\t',
+            '0' => '\0',
+            '"' => '"',
+            '\\' => '\\',
+            '/' => '/',
+            '{' => '{',
+            '}' => '}',
+            other => {
+                self.push_string_escape_diagnostic(escape_start);
+                other
+            }
+        };
+        text.push(decoded);
+    }
+
+    fn lex_interpolation_expr(&mut self) -> Option<InterpolatedStringTokenPart> {
+        let open_start = self.offset;
+        self.bump_char();
+        let expr_start = self.offset;
+        let mut depth = 0_u32;
+
+        while let Some(ch) = self.peek_char() {
+            match ch {
+                '"' => self.skip_quoted_source_string(),
+                'b' | 'f' if self.peek_next_char() == Some('"') => {
+                    self.bump_char();
+                    self.skip_quoted_source_string();
+                }
+                '/' if self.peek_next_char() == Some('/') => self.skip_line_comment(),
+                '/' if self.peek_next_char() == Some('*') => self.skip_block_comment(),
+                '{' => {
+                    depth = depth.saturating_add(1);
+                    self.bump_char();
+                }
+                '}' if depth == 0 => {
+                    let expr_end = self.offset;
+                    let source = self.slice(expr_start, expr_end).to_owned();
+                    let span = self.span(expr_start, expr_end);
+                    self.bump_char();
+                    return Some(InterpolatedStringTokenPart::Expr { source, span });
+                }
+                '}' => {
+                    depth = depth.saturating_sub(1);
+                    self.bump_char();
+                }
+                _ => {
+                    self.bump_char();
+                }
+            }
+        }
+
+        self.diagnostics.push(
+            Diagnostic::error("unterminated string interpolation")
+                .with_code("E_LEX_STRING_INTERPOLATION")
+                .with_span(self.span(open_start, self.offset)),
+        );
+        None
+    }
+
+    fn skip_quoted_source_string(&mut self) {
+        if self.starts_with_at_current("\"\"\"") {
+            self.bump_chars(3);
+            while self.peek_char().is_some() {
+                if self.starts_with_at_current("\"\"\"") {
+                    self.bump_chars(3);
+                    return;
+                }
+                self.bump_char();
+            }
+            return;
+        }
+
+        self.bump_char();
+        while let Some(ch) = self.peek_char() {
+            match ch {
+                '"' => {
+                    self.bump_char();
+                    return;
+                }
+                '\\' => {
+                    self.bump_char();
+                    self.bump_char();
+                }
+                _ => {
+                    self.bump_char();
+                }
+            }
+        }
+    }
+
+    fn flush_interpolated_text(
+        &mut self,
+        parts: &mut Vec<InterpolatedStringTokenPart>,
+        text: &mut String,
+    ) {
+        if !text.is_empty() {
+            parts.push(InterpolatedStringTokenPart::Text(std::mem::take(text)));
+        }
     }
 
     fn lex_byte_string(&mut self) {
@@ -678,7 +925,11 @@ impl<'src> Lexer<'src> {
     }
 
     fn span(&self, start: usize, end: usize) -> Span {
-        Span::new(self.source, to_u32(start), to_u32(end))
+        Span::new(
+            self.source,
+            self.base_offset.saturating_add(to_u32(start)),
+            self.base_offset.saturating_add(to_u32(end)),
+        )
     }
 
     fn slice(&self, start: usize, end: usize) -> &str {

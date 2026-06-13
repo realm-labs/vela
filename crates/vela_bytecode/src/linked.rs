@@ -775,6 +775,10 @@ pub enum InstructionKind {
         dst: Register,
         elements: Vec<Register>,
     },
+    FormatString {
+        dst: Register,
+        parts: Vec<crate::FormatStringPart>,
+    },
     MakeMap {
         dst: Register,
         entries: Vec<(ConstantId, Register)>,

@@ -1,5 +1,5 @@
 use vela_common::Diagnostic;
-use vela_syntax::ast::{ElseBranch, Expr, ExprKind, Stmt, StmtKind};
+use vela_syntax::ast::{ElseBranch, Expr, ExprKind, InterpolatedStringPart, Stmt, StmtKind};
 
 use crate::expression::{ExprFactScope, type_fact_from_expr_with_registry};
 use crate::registry::{RegistryEffectFact, RegistryFacts};
@@ -67,6 +67,13 @@ fn collect_effect_diagnostics(
             for field in fields {
                 if let Some(value) = &field.value {
                     collect_effect_diagnostics(value, scope, facts, allowed, diagnostics);
+                }
+            }
+        }
+        ExprKind::InterpolatedString(parts) => {
+            for part in parts {
+                if let InterpolatedStringPart::Expr(expr) = part {
+                    collect_effect_diagnostics(expr, scope, facts, allowed, diagnostics);
                 }
             }
         }

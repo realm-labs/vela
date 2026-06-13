@@ -14,10 +14,17 @@ pub enum TokenKind {
     Int(IntegerLiteral),
     Float(FloatLiteral),
     String(String),
+    InterpolatedString(Vec<InterpolatedStringTokenPart>),
     Bytes(Vec<u8>),
     Keyword(Keyword),
     Symbol(Symbol),
     Eof,
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub enum InterpolatedStringTokenPart {
+    Text(String),
+    Expr { source: String, span: Span },
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]

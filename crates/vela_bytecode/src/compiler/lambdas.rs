@@ -202,6 +202,13 @@ fn collect_expr(
                 collect_record_field(bindings, available, field, captures);
             }
         }
+        ExprKind::InterpolatedString(parts) => {
+            for part in parts {
+                if let vela_syntax::ast::InterpolatedStringPart::Expr(expr) = part {
+                    collect_expr(bindings, available, expr, captures);
+                }
+            }
+        }
         ExprKind::If(if_expr) => collect_if(bindings, available, if_expr, captures),
         ExprKind::Match(match_expr) => collect_match(bindings, available, match_expr, captures),
         ExprKind::Block(block) => collect_block(bindings, available, block, captures),

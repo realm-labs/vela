@@ -84,7 +84,8 @@ Cranelift JIT.
 
 - `.vela` source parsing, HIR lowering, bytecode compilation, VM execution
   with ordinary and indexed `for-in`, inherent `impl Type` methods, trait
-  `impl Trait for Type` methods,
+  `impl Trait for Type` methods, single-line and multiline strings, explicit
+  `f"..."` and `f"""..."""` string interpolation,
   managed heap entrypoints, execution budgets, and non-moving GC foundations.
 - Host mutation through `HostRef`, `HostPath`, `PathProxy`, write-through
   `HostAccess`, and capability-gated effects.
