@@ -16,9 +16,9 @@ fi
 
 cargo bench -p vela_vm --bench external_compare --no-run >/dev/null
 BENCH_BIN="$(
-  find target/release/deps -maxdepth 1 -type f -perm -111 -name 'external_compare-*' |
-  sort |
-  tail -n 1
+  find target/release/deps -maxdepth 1 -type f -perm -111 -name 'external_compare-*' -print0 |
+  xargs -0 ls -t |
+  head -n 1
 )"
 
 STAMP="$(date -u +%Y%m%dT%H%M%SZ)"
@@ -26,10 +26,12 @@ OUT_DIR="perf-results/profiles"
 mkdir -p "$OUT_DIR"
 OUT_FILE="$OUT_DIR/${STAMP}-external_compare.sample.txt"
 
-"$BENCH_BIN" "${BENCH_ARGS[@]}" >/tmp/vela-external-compare-profile.out 2>&1 &
+PROFILE_STDOUT="$(mktemp)"
+"$BENCH_BIN" "${BENCH_ARGS[@]}" >"$PROFILE_STDOUT" 2>&1 &
 PID=$!
 sleep 1
 sample "$PID" 10 -file "$OUT_FILE" >/dev/null
 wait "$PID" || true
-cat /tmp/vela-external-compare-profile.out
+cat "$PROFILE_STDOUT"
+rm -f "$PROFILE_STDOUT"
 echo "profile=$OUT_FILE"
