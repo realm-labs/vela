@@ -7,6 +7,24 @@ arr.len()
 arr.is_empty()
 arr.push(value)
 arr.pop()
+arr.values()    // Iterator over values
+arr.iter()      // Iterator over values
+```
+
+Iterator pipelines are the primary collection transformation model:
+
+```rust
+arr.iter().filter(|x| predicate).map(|x| value).collect_array()
+arr.iter().find(|x| predicate)
+arr.iter().any(|x| predicate)
+arr.iter().all(|x| predicate)
+arr.iter().count(|x| predicate)
+```
+
+The retained eager array helpers are convenience wrappers over the same
+iterator and callback engine:
+
+```rust
 arr.map(|x| ...)
 arr.filter(|x| ...)
 arr.find(|x| ...)
@@ -16,18 +34,16 @@ arr.count(|x| ...)
 arr.sum(|x| ...)
 arr.group_by(|x| ...)
 arr.sort_by(|x| ...)
-arr.values()    // Iterator over values
-arr.iter()      // Iterator over values
 ```
 
-Array methods should expose analysis-only signatures so LSP can infer lambda
-parameter facts without adding script generics. For example, if `arr` has
-`TypeFact::Array { element: E }`, then:
+Iterator adapters and retained eager helpers should expose analysis-only
+signatures so LSP can infer lambda parameter facts without adding script
+generics. For example, if `arr` has `TypeFact::Array { element: E }`, then:
 
 ```text
-arr.filter(|x| predicate) gives x: E and returns Array(element = E)
-arr.map(|x| value) gives x: E and returns Array(element = TypeFact(value))
-arr.find(|x| predicate) gives x: E and returns Option-like enum containing E
+arr.iter().filter(|x| predicate) gives x: E and returns Iterator(item = E)
+arr.iter().map(|x| value) gives x: E and returns Iterator(item = TypeFact(value))
+arr.iter().find(|x| predicate) gives x: E and returns Option-like enum containing E
 arr.sum(|x| value) gives x: E and returns the concrete scalar type produced by value
 ```
 
@@ -43,13 +59,33 @@ map.remove(key)
 map.keys()      // Iterator over keys
 map.values()    // Iterator over values
 map.entries()   // Iterator over MapEntry records
+```
+
+Map traversal and transformation are explicit. Use views when the pipeline only
+needs keys, values, or entries:
+
+```rust
+map.values().filter(|v| predicate).map(|v| value).collect_array()
+map.entries().find(|entry| predicate)
+```
+
+Retained eager map helpers are wrappers over the iterator callback engine when
+the result should be materialized as a map or scalar immediately:
+
+```rust
 map.map_values(|v| ...)
 map.filter(|k, v| ...)
+map.find(|k, v| ...)
+map.any(|k, v| ...)
+map.all(|k, v| ...)
+map.count(|k, v| ...)
 ```
 
 Map methods follow the same rule. If `map` has
 `TypeFact::Map { key: K, value: V }`, `map.filter(|k, v| ...)` gives `k: K`,
-`v: V`, and returns `Map(key = K, value = V)` as an internal fact only.
+`v: V`, and returns `Map(key = K, value = V)` as an internal fact only. The
+iterator views expose `Iterator(item = K)`, `Iterator(item = V)`, or
+`Iterator(item = MapEntry)` facts respectively.
 
 These analysis rules are not user-visible generic syntax. They are part of the
 standard library metadata consumed by `vela_analysis` and future LSP tooling.
@@ -68,7 +104,14 @@ set.values()    // Iterator over values
 set.iter()      // Iterator over values
 ```
 
-Set callback helpers follow the same analysis-only item fact rules as arrays.
+Set iterator pipelines use the same callback boundary as arrays:
+
+```rust
+set.iter().filter(|value| predicate).map(|value| result).collect_array()
+```
+
+Retained eager set callback helpers follow the same analysis-only item fact
+rules as arrays and are wrappers over the iterator callback engine.
 
 ### Option And Result
 

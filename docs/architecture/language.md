@@ -41,11 +41,13 @@ pub fn on_invoice_paid(ctx, account, invoice) {
     }
 
     let adjustments = ctx.config.payment_adjustments
+        .iter()
         .filter(|a| a.kind == invoice.kind)
         .map(|a| PaymentAdjustment {
             code: a.code,
             amount: a.amount,
         })
+        .collect_array()
 
     for adjustment in adjustments {
         account.ledger.add(adjustment.code, adjustment.amount)

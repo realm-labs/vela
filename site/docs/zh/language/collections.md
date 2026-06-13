@@ -6,11 +6,14 @@ Vela 有一等 array、map 和 set。除非它们是 host path，否则都是 VM
 
 ```vela
 let values = [1, 2, 3];
-let doubled = values.map(|item| item * 2);
-let large = doubled.filter(|item| item > 2);
-let lazy = values.iter().filter(|item| item > 1).map(|item| item * 10);
-let collected = lazy.collect_array();
+let collected = values.iter()
+    .filter(|item| item > 1)
+    .map(|item| item * 10)
+    .collect_array();
+let has_large = values.iter().any(|item| item > 2);
 ```
+
+保留的 eager helper（例如 `values.map(...)` 和 `values.filter(...)`）是 convenience wrapper，使用同一套 callback、budget 和 host-access 语义。
 
 ## Map
 
@@ -30,6 +33,9 @@ Map 遍历是显式的：
 let keys = rewards.keys().collect_array();
 let amounts = rewards.values().collect_array();
 let entries = rewards.entries().collect_array();
+let large_rewards = rewards.values()
+    .filter(|amount| amount >= 10)
+    .collect_array();
 ```
 
 ## Set

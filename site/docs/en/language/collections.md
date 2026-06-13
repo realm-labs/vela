@@ -6,11 +6,14 @@ Vela has first-class arrays, maps, and sets. They are VM-owned values unless the
 
 ```vela
 let values = [1, 2, 3];
-let doubled = values.map(|item| item * 2);
-let large = doubled.filter(|item| item > 2);
-let lazy = values.iter().filter(|item| item > 1).map(|item| item * 10);
-let collected = lazy.collect_array();
+let collected = values.iter()
+    .filter(|item| item > 1)
+    .map(|item| item * 10)
+    .collect_array();
+let has_large = values.iter().any(|item| item > 2);
 ```
+
+Retained eager helpers such as `values.map(...)` and `values.filter(...)` are convenience wrappers over the same callback, budget, and host-access semantics.
 
 ## Maps
 
@@ -30,6 +33,9 @@ Map traversal is explicit:
 let keys = rewards.keys().collect_array();
 let amounts = rewards.values().collect_array();
 let entries = rewards.entries().collect_array();
+let large_rewards = rewards.values()
+    .filter(|amount| amount >= 10)
+    .collect_array();
 ```
 
 ## Sets
