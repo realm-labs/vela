@@ -350,6 +350,16 @@ mod tests {
     }
 
     #[test]
+    fn slot_at_reads_sorted_slot_without_name_guard() {
+        let fields = ScriptFields::three("Reward", "item_id", 1, "bonus", 3, "count", 2);
+
+        assert_eq!(fields.get_slot(0, "bonus"), Some(&3));
+        assert_eq!(fields.get_slot(0, "item_id"), None);
+        assert_eq!(fields.get_slot_at(0), Some(&3));
+        assert_eq!(fields.get_slot_at(3), None);
+    }
+
+    #[test]
     fn three_field_constructor_matches_duplicate_pair_semantics() {
         let from_pairs = ScriptFields::from_pairs(
             "Duplicate",
