@@ -507,8 +507,7 @@ pub(crate) fn call_standard_cached(
         {
             return call_cached_map_mutation(receiver, cache.target, args, heap, budget);
         }
-        StandardMethodInlineCacheTarget::Values
-        | StandardMethodInlineCacheTarget::Union
+        StandardMethodInlineCacheTarget::Union
         | StandardMethodInlineCacheTarget::Intersection
         | StandardMethodInlineCacheTarget::Difference
         | StandardMethodInlineCacheTarget::SymmetricDifference

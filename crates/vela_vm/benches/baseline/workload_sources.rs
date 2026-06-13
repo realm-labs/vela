@@ -418,7 +418,10 @@ fn main() {
         {
             return 0;
         }
-        total += sorted.sum() + keyed.get_or("r12", 0) + lengths.values().sum() + even.sum();
+        total += sorted.sum()
+            + keyed.get_or("r12", 0)
+            + lengths.values().collect_array().sum()
+            + even.sum();
     }
     return total;
 }

@@ -52,6 +52,22 @@ Map methods follow the same rule. If `map` has
 These analysis rules are not user-visible generic syntax. They are part of the
 standard library metadata consumed by `vela_analysis` and future LSP tooling.
 
+### Set
+
+```rust
+set.len()
+set.is_empty()
+set.has(value)
+set.add(value)
+set.remove(value)
+set.extend(other)
+set.clear()
+set.values()    // Iterator over values
+set.iter()      // Iterator over values
+```
+
+Set callback helpers follow the same analysis-only item fact rules as arrays.
+
 ### Option And Result
 
 ```rust

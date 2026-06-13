@@ -1,9 +1,10 @@
 use crate::heap::HeapValue;
-use crate::heap_values::make_array_value;
+use crate::heap_values::allocate_heap_value;
+use crate::iteration::IteratorState;
 use crate::owned_value::OwnedValue;
 use crate::{ExecutionBudget, HeapExecution, Value, VmError, VmErrorKind, VmResult};
 
-use super::{contains_value, expect_arity, set_values, type_error};
+use super::{contains_value, expect_arity, type_error};
 
 pub(crate) fn from_array(args: &[OwnedValue]) -> VmResult<OwnedValue> {
     expect_arity("set::from_array", args, 1)?;
@@ -50,11 +51,21 @@ pub(crate) fn values(
     budget: &mut Option<&mut ExecutionBudget>,
 ) -> VmResult<Value> {
     expect_arity("values", args, 0)?;
-    let values = set_values(receiver, heap.as_deref(), "method values")?;
+    let Value::HeapRef(reference) = receiver else {
+        return type_error("method values");
+    };
+    let len = match heap.as_deref().and_then(|heap| heap.heap.get(*reference)) {
+        Some(HeapValue::Set(values)) => values.len(),
+        _ => return type_error("method values"),
+    };
     let Some(heap) = heap.as_deref_mut() else {
         return type_error("method values");
     };
-    make_array_value(values, heap, budget.as_deref_mut())
+    allocate_heap_value(
+        HeapValue::Iterator(IteratorState::from_set_source(*reference, len)),
+        heap,
+        budget.as_deref_mut(),
+    )
 }
 
 #[derive(Clone, Debug, PartialEq)]

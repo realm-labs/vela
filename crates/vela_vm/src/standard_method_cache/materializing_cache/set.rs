@@ -12,16 +12,6 @@ pub(in crate::standard_method_cache) fn call_cached_set_materialization(
     budget: &mut Option<&mut ExecutionBudget>,
 ) -> Option<VmResult<Value>> {
     match target {
-        StandardMethodInlineCacheTarget::Values => {
-            let payload = {
-                let values = set_values(receiver, heap.as_deref())?;
-                match set_values_payload(values, args) {
-                    Ok(payload) => payload,
-                    Err(error) => return Some(Err(error)),
-                }
-            };
-            Some(super::make_array(payload, heap, budget, "method values"))
-        }
         StandardMethodInlineCacheTarget::Union
         | StandardMethodInlineCacheTarget::Intersection
         | StandardMethodInlineCacheTarget::Difference
@@ -75,11 +65,6 @@ fn set_values<'a>(receiver: &Value, heap: Option<&'a HeapExecution<'_>>) -> Opti
         return None;
     };
     Some(values)
-}
-
-fn set_values_payload(values: &[Value], args: &[Value]) -> VmResult<Vec<Value>> {
-    crate::runtime_checks::expect_arity("values", args, 0)?;
-    Ok(values.to_vec())
 }
 
 fn set_combination_payload(

@@ -293,7 +293,7 @@ pub(super) fn set_method_fact(
         "values" => Some(StdlibMethodFact::new(
             receiver,
             "values",
-            TypeFact::array(element.clone()),
+            TypeFact::iterator(element.clone()),
         )),
         "map" => {
             let mapped = lambda_return.cloned().unwrap_or(TypeFact::Any);

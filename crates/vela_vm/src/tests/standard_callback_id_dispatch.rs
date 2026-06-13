@@ -563,7 +563,7 @@ fn linked_callback_value_method_caches_set_targets() {
     assert_callback_value_method_cache(
         r#"
 fn main() {
-    return set::from_array([1, 2, 3]).map(|value| value + 1).values().sum();
+    return set::from_array([1, 2, 3]).map(|value| value + 1).values().collect_array().sum();
 }
 "#,
         "map",
@@ -576,7 +576,7 @@ fn main() {
     assert_callback_value_method_cache(
         r#"
 fn main() {
-    return set::from_array([1, 2, 3]).filter(|value| value > 1).values().sum();
+    return set::from_array([1, 2, 3]).filter(|value| value > 1).values().collect_array().sum();
 }
 "#,
         "filter",

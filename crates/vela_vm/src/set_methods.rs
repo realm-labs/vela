@@ -203,10 +203,10 @@ mod tests {
 fn main() {
     let player = set::from_array(["daily", "quest", "raid"]);
     let event = set::from_array(["quest", "bonus", "daily"]);
-    let unioned = player.union(event).values().sort_by(|tag| tag).join(",");
-    let shared = player.intersection(event).values().sort_by(|tag| tag).join(",");
-    let missing = player.difference(event).values().join(",");
-    let changed = player.symmetric_difference(event).values().sort_by(|tag| tag).join(",");
+    let unioned = player.union(event).values().collect_array().sort_by(|tag| tag).join(",");
+    let shared = player.intersection(event).values().collect_array().sort_by(|tag| tag).join(",");
+    let missing = player.difference(event).values().collect_array().join(",");
+    let changed = player.symmetric_difference(event).values().collect_array().sort_by(|tag| tag).join(",");
     let required = set::from_array(["daily", "quest"]);
     if unioned == "bonus,daily,quest,raid"
         && shared == "daily,quest"
@@ -247,10 +247,10 @@ fn main() {
     if !required.is_subset(base) || !base.is_superset(required) || !base.is_disjoint(excluded) {
         return -1;
     }
-    return unioned.values().sum()
-        + shared.values().sum()
-        + only_base.values().sum()
-        + changed.values().sum();
+    return unioned.values().collect_array().sum()
+        + shared.values().collect_array().sum()
+        + only_base.values().collect_array().sum()
+        + changed.values().collect_array().sum();
 }
 "#;
         let code = compile_function_source(SourceId::new(1), source, "main")
@@ -274,10 +274,10 @@ fn main() {
     let player = set::from_array(["daily", "quest", "raid"]);
     let required = set::from_array(["daily", "quest"]);
     let event = set::from_array(["quest", "bonus"]);
-    let unioned = player.union(event).values().sort_by(|tag| tag).join(",");
-    let shared = player.intersection(event).values().sort_by(|tag| tag).join(",");
-    let missing = player.difference(required).values().sort_by(|tag| tag).join(",");
-    let changed = player.symmetric_difference(event).values().sort_by(|tag| tag).join(",");
+    let unioned = player.union(event).values().collect_array().sort_by(|tag| tag).join(",");
+    let shared = player.intersection(event).values().collect_array().sort_by(|tag| tag).join(",");
+    let missing = player.difference(required).values().collect_array().sort_by(|tag| tag).join(",");
+    let changed = player.symmetric_difference(event).values().collect_array().sort_by(|tag| tag).join(",");
     if required.is_subset(player)
         && player.is_superset(required)
         && player.is_disjoint(set::from_array(["bonus"]))
@@ -334,9 +334,9 @@ fn main() {
 fn main() {
     let tags = set::from_array(["daily", "quest", "raid", "daily"]);
     let filtered = tags.filter(|tag| tag.starts_with("q") || tag == "raid");
-    let unchanged = tags.values().sort_by(|tag| tag).join(",");
+    let unchanged = tags.values().collect_array().sort_by(|tag| tag).join(",");
     if unchanged == "daily,quest,raid" && filtered.len() == 2 {
-        return filtered.values().sort_by(|tag| tag).join(",");
+        return filtered.values().collect_array().sort_by(|tag| tag).join(",");
     }
     return "";
 }
@@ -356,7 +356,7 @@ fn main() {
 fn main() {
     let ids = set::from_array([1, 2, 3, 4, 5]);
     let filtered = ids.filter(|id| id > 2 && id != 4);
-    return filtered.values().sum() + ids.values().sum();
+    return filtered.values().collect_array().sum() + ids.values().collect_array().sum();
 }
 "#;
         let code = compile_function_source(SourceId::new(1), source, "main")
@@ -378,7 +378,7 @@ fn main() {
         let source = r#"
 fn main() {
     let tags = set::from_array(["daily", "quest", "raid"]);
-    let mapped = tags.map(|tag| tag.to_upper()).values().sort_by(|tag| tag).join(",");
+    let mapped = tags.map(|tag| tag.to_upper()).values().collect_array().sort_by(|tag| tag).join(",");
     let lengths = tags.map(|tag| tag.len());
     if tags.len() == 3 && lengths.len() == 2 {
         return mapped;
@@ -402,7 +402,7 @@ fn main() {
     let ids = set::from_array([1, 2, 3, 4]);
     let doubled = ids.map(|id| id * 2);
     let parity = ids.map(|id| id % 2);
-    return doubled.values().sum() + parity.values().sum();
+    return doubled.values().collect_array().sum() + parity.values().collect_array().sum();
 }
 "#;
         let code = compile_function_source(SourceId::new(1), source, "main")
@@ -454,7 +454,7 @@ fn main() {
         && !ids.all(|id| id % 2 == 0)
         && ids.count(|id| id % 2 == 0) == 3
     {
-        return first_large + ids.values().sum();
+        return first_large + ids.values().collect_array().sum();
     }
     return 0;
 }
@@ -471,6 +471,29 @@ fn main() {
             result,
             OwnedValue::Scalar(vela_common::ScalarValue::I64(27))
         );
+    }
+
+    #[test]
+    fn set_value_views_snapshot_values_without_growth() {
+        let source = r#"
+fn main() {
+    let tags = set::from_array(["a", "b"]);
+    let values = tags.values();
+    tags.add("c");
+    let collected = values.collect_array().sort();
+    if collected.len() == 2 && collected.join("|") == "a|b" {
+        return 1;
+    }
+    return 0;
+}
+"#;
+        let code = compile_function_source(SourceId::new(1), source, "main")
+            .expect("set value view should compile");
+        let mut vm = Vm::new();
+        vm.register_standard_natives();
+
+        let result = run_linked_set_test_code(&vm, code).expect("set value view should run");
+        assert_eq!(result, OwnedValue::Scalar(vela_common::ScalarValue::I64(1)));
     }
 
     #[test]
@@ -563,7 +586,7 @@ fn main() {
     tags.clear();
     tags.add("raid");
     if tags.len() == 1 && tags.has("raid") {
-        let values = tags.values();
+        let values = tags.values().collect_array();
         return values[0];
     }
     return "";
@@ -586,7 +609,7 @@ fn main() {
     ids.clear();
     ids.add(9);
     if ids.len() == 1 && ids.has(9) {
-        let values = ids.values();
+        let values = ids.values().collect_array();
         return values[0];
     }
     return 0;
@@ -610,7 +633,7 @@ fn main() {
     let tags = set::from_array(["daily", "quest"]);
     tags.extend(set::from_array(["quest", "raid"]));
     if tags.len() == 3 && tags.has("daily") && tags.has("quest") && tags.has("raid") {
-        return tags.values().join("|");
+        return tags.values().collect_array().join("|");
     }
     return "";
 }
@@ -632,7 +655,7 @@ fn main() {
     let more = set::from_array([4, 6, 8]);
     ids.extend(more);
     if ids.len() == 4 && ids.has(8) {
-        return ids.values().sum();
+        return ids.values().collect_array().sum();
     }
     return 0;
 }

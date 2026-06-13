@@ -250,7 +250,7 @@ fn scalar_collection_methods_return_non_generic_facts() {
         stdlib_method_fact(&set, "values", None)
             .expect("values fact")
             .returns,
-        TypeFact::array(TypeFact::STRING)
+        TypeFact::iterator(TypeFact::STRING)
     );
     assert_eq!(
         stdlib_method_fact(&set, "iter", None)

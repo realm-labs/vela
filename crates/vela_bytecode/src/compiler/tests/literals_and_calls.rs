@@ -946,7 +946,8 @@ fn compiler_lowers_value_method_ids_after_set_values_method() {
 fn main() {
     let numbers = set::from_array([1, 2, 3]);
     let tags = set::from_array(["raid", "daily"]);
-    return numbers.values().sum() + tags.values().sort_by(|tag| tag).join(",").len();
+    return numbers.values().collect_array().sum()
+        + tags.values().collect_array().sort_by(|tag| tag).join(",").len();
 }
 "#,
         registry.compile_view(),

@@ -560,7 +560,13 @@ pub const STD_METHODS: &[StdMethodSpec] = &[
         "Adds all values from another set.",
     ),
     StdMethodSpec::new("Set", "clear", &[], "null", "Removes all values."),
-    StdMethodSpec::new("Set", "values", &[], "array", "Returns set values."),
+    StdMethodSpec::new(
+        "Set",
+        "values",
+        &[],
+        "iterator",
+        "Returns a one-shot iterator over set values.",
+    ),
     StdMethodSpec::new(
         "Set",
         "map",

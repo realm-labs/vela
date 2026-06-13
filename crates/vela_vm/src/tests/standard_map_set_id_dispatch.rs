@@ -49,10 +49,10 @@ fn main() {
     let base = set::from_array(["daily", "quest"]);
     let patch = set::from_array(["quest", "raid"]);
     base.extend(set::from_array(["bonus"]));
-    let unioned = base.union(patch).values().sort().join(",");
-    let shared = base.intersection(patch).values().sort().join(",");
-    let only_base = base.difference(patch).values().sort().join(",");
-    let changed = base.symmetric_difference(patch).values().sort().join(",");
+    let unioned = base.union(patch).values().collect_array().sort().join(",");
+    let shared = base.intersection(patch).values().collect_array().sort().join(",");
+    let only_base = base.difference(patch).values().collect_array().sort().join(",");
+    let changed = base.symmetric_difference(patch).values().collect_array().sort().join(",");
     if unioned == "bonus,daily,quest,raid"
         && shared == "quest"
         && only_base == "bonus,daily"

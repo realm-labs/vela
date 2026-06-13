@@ -40,8 +40,8 @@ fn main() {
     for tick in 0..96 {
         let tags = set::from_array(["daily", "quest", "raid", "bonus", "event", "boss"]);
         let tiers = set::from_array([1, 2, 3, 5, 8, 13]);
-        let tag_values = tags.values().sort();
-        let tier_values = tiers.values().sort();
+        let tag_values = tags.values().collect_array().sort();
+        let tier_values = tiers.values().collect_array().sort();
         if tag_values.join("|") != "bonus|boss|daily|event|quest|raid"
             || tier_values.sum() != 32
         {
@@ -63,7 +63,7 @@ fn main() {
         let removed = active.remove("raid");
         let missing = active.remove("missing");
         active.extend(set::from_array(["bonus", "boss"]));
-        let before_clear = active.values().sort().join("|");
+        let before_clear = active.values().collect_array().sort().join("|");
         active.clear();
         if !added || duplicate || !removed || missing
             || before_clear != "bonus|boss|event|quest"
