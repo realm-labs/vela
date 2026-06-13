@@ -28,6 +28,43 @@ pub enum Value {
     HostRef(HostRef),
 }
 
+macro_rules! impl_scalar_value_helpers {
+    (
+        $(
+            $value_variant:ident($scalar_variant:ident)
+        ),* $(,)?
+    ) => {
+        #[must_use]
+        pub const fn from_scalar(value: ScalarValue) -> Self {
+            match value {
+                $(
+                    ScalarValue::$scalar_variant(value) => Self::$value_variant(value),
+                )*
+            }
+        }
+
+        #[must_use]
+        pub const fn as_scalar(self) -> Option<ScalarValue> {
+            match self {
+                $(
+                    Self::$value_variant(value) => Some(ScalarValue::$scalar_variant(value)),
+                )*
+                _ => None,
+            }
+        }
+
+        #[must_use]
+        pub const fn is_scalar(self) -> bool {
+            matches!(
+                self,
+                $(
+                    Self::$value_variant(_)
+                )|*
+            )
+        }
+    };
+}
+
 impl Value {
     #[must_use]
     pub const fn i64(value: i64) -> Self {
@@ -39,43 +76,18 @@ impl Value {
         Self::F64(value)
     }
 
-    #[must_use]
-    pub const fn from_scalar(value: ScalarValue) -> Self {
-        match value {
-            ScalarValue::I8(value) => Self::I8(value),
-            ScalarValue::I16(value) => Self::I16(value),
-            ScalarValue::I32(value) => Self::I32(value),
-            ScalarValue::I64(value) => Self::I64(value),
-            ScalarValue::U8(value) => Self::U8(value),
-            ScalarValue::U16(value) => Self::U16(value),
-            ScalarValue::U32(value) => Self::U32(value),
-            ScalarValue::U64(value) => Self::U64(value),
-            ScalarValue::F32(value) => Self::F32(value),
-            ScalarValue::F64(value) => Self::F64(value),
-        }
-    }
-
-    #[must_use]
-    pub const fn as_scalar(self) -> Option<ScalarValue> {
-        match self {
-            Self::I8(value) => Some(ScalarValue::I8(value)),
-            Self::I16(value) => Some(ScalarValue::I16(value)),
-            Self::I32(value) => Some(ScalarValue::I32(value)),
-            Self::I64(value) => Some(ScalarValue::I64(value)),
-            Self::U8(value) => Some(ScalarValue::U8(value)),
-            Self::U16(value) => Some(ScalarValue::U16(value)),
-            Self::U32(value) => Some(ScalarValue::U32(value)),
-            Self::U64(value) => Some(ScalarValue::U64(value)),
-            Self::F32(value) => Some(ScalarValue::F32(value)),
-            Self::F64(value) => Some(ScalarValue::F64(value)),
-            _ => None,
-        }
-    }
-
-    #[must_use]
-    pub const fn is_scalar(self) -> bool {
-        self.as_scalar().is_some()
-    }
+    impl_scalar_value_helpers!(
+        I8(I8),
+        I16(I16),
+        I32(I32),
+        I64(I64),
+        U8(U8),
+        U16(U16),
+        U32(U32),
+        U64(U64),
+        F32(F32),
+        F64(F64),
+    );
 
     pub fn trace_heap_refs(&self, refs: &mut Vec<GcRef>) {
         if let Self::HeapRef(reference) = self {

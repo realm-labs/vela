@@ -305,22 +305,70 @@ fn type_contract_error(
     })
 }
 
-fn runtime_primitive_tag(value: &Value, heap: Option<&HeapExecution<'_>>) -> Option<PrimitiveTag> {
-    if let Some(value) = value.as_scalar() {
-        return Some(value.primitive_tag());
-    }
-    match value {
-        Value::Null => Some(PrimitiveTag::Null),
-        Value::Bool(_) => Some(PrimitiveTag::Bool),
-        Value::HeapRef(reference) => match heap.and_then(|heap| heap.heap.get(*reference)) {
-            Some(HeapValue::String(_)) => Some(PrimitiveTag::String),
-            Some(HeapValue::Bytes(_)) => Some(PrimitiveTag::Bytes),
-            _ => None,
-        },
-        Value::Missing | Value::Range(_) | Value::HostRef(_) => None,
-        _ => unreachable!("scalar values return before primitive tag match"),
-    }
+macro_rules! define_runtime_type_helpers {
+    ($($value_variant:ident => $primitive_tag:ident),* $(,)?) => {
+        fn runtime_primitive_tag(
+            value: &Value,
+            heap: Option<&HeapExecution<'_>>,
+        ) -> Option<PrimitiveTag> {
+            match value {
+                Value::Null => Some(PrimitiveTag::Null),
+                Value::Bool(_) => Some(PrimitiveTag::Bool),
+                $(
+                    Value::$value_variant(_) => Some(PrimitiveTag::$primitive_tag),
+                )*
+                Value::HeapRef(reference) => match heap.and_then(|heap| heap.heap.get(*reference)) {
+                    Some(HeapValue::String(_)) => Some(PrimitiveTag::String),
+                    Some(HeapValue::Bytes(_)) => Some(PrimitiveTag::Bytes),
+                    _ => None,
+                },
+                Value::Missing | Value::Range(_) | Value::HostRef(_) => None,
+            }
+        }
+
+        fn runtime_type_name<'a>(
+            value: &Value,
+            heap: Option<&'a HeapExecution<'_>>,
+        ) -> &'a str {
+            match value {
+                Value::Missing => "missing",
+                Value::Null => PrimitiveTag::Null.name(),
+                Value::Bool(_) => PrimitiveTag::Bool.name(),
+                $(
+                    Value::$value_variant(_) => PrimitiveTag::$primitive_tag.name(),
+                )*
+                Value::Range(_) => "range",
+                Value::HostRef(_) => "host",
+                Value::HeapRef(reference) => match heap.and_then(|heap| heap.heap.get(*reference)) {
+                    Some(HeapValue::String(_)) => PrimitiveTag::String.name(),
+                    Some(HeapValue::Bytes(_)) => PrimitiveTag::Bytes.name(),
+                    Some(HeapValue::Array(_)) => "array",
+                    Some(HeapValue::Map(_)) => "map",
+                    Some(HeapValue::Set(_)) => "set",
+                    Some(HeapValue::Record { .. }) => "record",
+                    Some(HeapValue::Enum { .. }) => "enum",
+                    Some(HeapValue::Closure(_)) => "closure",
+                    Some(HeapValue::PathProxy(_)) => "host_path",
+                    Some(HeapValue::Iterator(_)) => "iterator",
+                    None => "heap",
+                },
+            }
+        }
+    };
 }
+
+define_runtime_type_helpers!(
+    I8 => I8,
+    I16 => I16,
+    I32 => I32,
+    I64 => I64,
+    U8 => U8,
+    U16 => U16,
+    U32 => U32,
+    U64 => U64,
+    F32 => F32,
+    F64 => F64,
+);
 
 fn runtime_type_id(value: &Value, heap: Option<&HeapExecution<'_>>) -> Option<vela_def::TypeId> {
     match value {
@@ -417,32 +465,5 @@ fn runtime_record_debug_shape<'a>(
             _ => None,
         },
         _ => None,
-    }
-}
-
-fn runtime_type_name<'a>(value: &Value, heap: Option<&'a HeapExecution<'_>>) -> &'a str {
-    if let Some(value) = value.as_scalar() {
-        return value.type_name();
-    }
-    match value {
-        Value::Missing => "missing",
-        Value::Null => PrimitiveTag::Null.name(),
-        Value::Bool(_) => PrimitiveTag::Bool.name(),
-        Value::Range(_) => "range",
-        Value::HostRef(_) => "host",
-        Value::HeapRef(reference) => match heap.and_then(|heap| heap.heap.get(*reference)) {
-            Some(HeapValue::String(_)) => PrimitiveTag::String.name(),
-            Some(HeapValue::Bytes(_)) => PrimitiveTag::Bytes.name(),
-            Some(HeapValue::Array(_)) => "array",
-            Some(HeapValue::Map(_)) => "map",
-            Some(HeapValue::Set(_)) => "set",
-            Some(HeapValue::Record { .. }) => "record",
-            Some(HeapValue::Enum { .. }) => "enum",
-            Some(HeapValue::Closure(_)) => "closure",
-            Some(HeapValue::PathProxy(_)) => "host_path",
-            Some(HeapValue::Iterator(_)) => "iterator",
-            None => "heap",
-        },
-        _ => unreachable!("scalar values return before runtime type-name match"),
     }
 }
