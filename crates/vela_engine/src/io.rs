@@ -13,6 +13,8 @@ use crate::native::{
 
 pub const IO_PRINTLN_FUNCTION_ID: NativeFunctionId =
     FunctionId::new(stable_id("std_function", "io", "println") as u128);
+pub const IO_PRINT_FUNCTION_ID: NativeFunctionId =
+    FunctionId::new(stable_id("std_function", "io", "print") as u128);
 pub const FS_READ_TO_STRING_FUNCTION_ID: NativeFunctionId =
     FunctionId::new(stable_id("std_function", "fs", "read_to_string") as u128);
 pub const FS_WRITE_STRING_FUNCTION_ID: NativeFunctionId =
@@ -80,18 +82,31 @@ pub(crate) fn fs_module_desc() -> ModuleDesc {
         .attr("domain", "io")
 }
 
-pub(crate) fn stdio_functions() -> [NativeFunctionEntry; 1] {
-    [NativeFunctionEntry::new(
-        NativeFunctionDesc::new("io::println", IO_PRINTLN_FUNCTION_ID)
-            .param("value", TypeHint::Any)
-            .returns(TypeHint::Any)
-            .effects(EffectSet::io_write())
-            .access(FunctionAccess::public().reflect_callable(true))
-            .attr("stdlib", "io")
-            .attr("domain", "io")
-            .docs("Writes a formatted value and newline to stdout."),
-        io_println,
-    )]
+pub(crate) fn stdio_functions() -> [NativeFunctionEntry; 2] {
+    [
+        NativeFunctionEntry::new(
+            NativeFunctionDesc::new("io::print", IO_PRINT_FUNCTION_ID)
+                .param("value", TypeHint::Any)
+                .returns(TypeHint::Any)
+                .effects(EffectSet::io_write())
+                .access(FunctionAccess::public().reflect_callable(true))
+                .attr("stdlib", "io")
+                .attr("domain", "io")
+                .docs("Writes a formatted value to stdout."),
+            io_print,
+        ),
+        NativeFunctionEntry::new(
+            NativeFunctionDesc::new("io::println", IO_PRINTLN_FUNCTION_ID)
+                .param("value", TypeHint::Any)
+                .returns(TypeHint::Any)
+                .effects(EffectSet::io_write())
+                .access(FunctionAccess::public().reflect_callable(true))
+                .attr("stdlib", "io")
+                .attr("domain", "io")
+                .docs("Writes a formatted value and newline to stdout."),
+            io_println,
+        ),
+    ]
 }
 
 pub(crate) fn fs_functions(sandbox: FsSandbox) -> [NativeFunctionEntry; 2] {
@@ -124,10 +139,24 @@ pub(crate) fn fs_functions(sandbox: FsSandbox) -> [NativeFunctionEntry; 2] {
     ]
 }
 
+fn io_print(args: &[OwnedValue]) -> VmResult<OwnedValue> {
+    expect_arity("io::print", args, 1)?;
+    write_stdout(&args[0], false)
+}
+
 fn io_println(args: &[OwnedValue]) -> VmResult<OwnedValue> {
     expect_arity("io::println", args, 1)?;
+    write_stdout(&args[0], true)
+}
+
+fn write_stdout(value: &OwnedValue, newline: bool) -> VmResult<OwnedValue> {
     let mut stdout = std::io::stdout().lock();
-    match writeln!(stdout, "{}", display_value(&args[0])) {
+    let result = if newline {
+        writeln!(stdout, "{}", display_value(value))
+    } else {
+        write!(stdout, "{}", display_value(value))
+    };
+    match result {
         Ok(()) => Ok(result_ok(OwnedValue::Null)),
         Err(error) => Ok(result_err(io_error("write", "stdout", error.to_string()))),
     }

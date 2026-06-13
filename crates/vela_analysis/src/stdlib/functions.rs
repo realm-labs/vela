@@ -149,6 +149,11 @@ pub(super) fn completion_facts() -> Vec<StdlibFunctionFact> {
         StdlibFunctionFact::new("time::tick", Vec::new(), TypeFact::I64),
         StdlibFunctionFact::new("time::elapsed_since", vec![TypeFact::I64], TypeFact::I64),
         StdlibFunctionFact::new(
+            "io::print",
+            vec![TypeFact::Any],
+            TypeFact::result(TypeFact::NULL, TypeFact::record("IoError")),
+        ),
+        StdlibFunctionFact::new(
             "io::println",
             vec![TypeFact::Any],
             TypeFact::result(TypeFact::NULL, TypeFact::record("IoError")),
@@ -454,10 +459,10 @@ pub(super) fn function_fact(name: &str, args: &[TypeFact]) -> Option<StdlibFunct
                 TypeFact::I64,
             ))
         }
-        "io::println" => {
+        "io::print" | "io::println" => {
             expect_len(args, 1)?;
             Some(StdlibFunctionFact::new(
-                "io::println",
+                canonical_function_name(name)?,
                 args.to_vec(),
                 TypeFact::result(TypeFact::NULL, TypeFact::record("IoError")),
             ))
@@ -745,6 +750,8 @@ fn canonical_function_name(name: &str) -> Option<&'static str> {
         "time::now" => Some("time::now"),
         "time::tick" => Some("time::tick"),
         "time::elapsed_since" => Some("time::elapsed_since"),
+        "io::print" => Some("io::print"),
+        "io::println" => Some("io::println"),
         "i64::from_i32" => Some("i64::from_i32"),
         "u64::from_u32" => Some("u64::from_u32"),
         "i8::try_from_i64" => Some("i8::try_from_i64"),

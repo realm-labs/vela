@@ -211,6 +211,7 @@ let engine = Engine::builder()
 The minimal I/O surface is:
 
 ```text
+io::print(value)                -> Result::Ok(null) | Result::Err(IoError)
 io::println(value)              -> Result::Ok(null) | Result::Err(IoError)
 fs::read_to_string(path)        -> Result::Ok(string) | Result::Err(IoError)
 fs::write_string(path, text)    -> Result::Ok(null) | Result::Err(IoError)

@@ -508,7 +508,7 @@ fn native_call_shape(
                 ]),
             ))),
         }),
-        ("fs", "write_string") | ("io", "println") => Some(ValueShape::Result {
+        ("fs", "write_string") | ("io", "print") | ("io", "println") => Some(ValueShape::Result {
             ok: Some(Box::new(ValueShape::Scalar("null".to_owned()))),
             err: Some(Box::new(ValueShape::Record(
                 RecordShape::from_field_shapes([

@@ -7,7 +7,8 @@ use vela_vm::owned_value::OwnedValue;
 
 use crate::engine::Engine;
 use crate::io::{
-    FS_READ_TO_STRING_FUNCTION_ID, FS_WRITE_STRING_FUNCTION_ID, IO_PRINTLN_FUNCTION_ID,
+    FS_READ_TO_STRING_FUNCTION_ID, FS_WRITE_STRING_FUNCTION_ID, IO_PRINT_FUNCTION_ID,
+    IO_PRINTLN_FUNCTION_ID,
 };
 use crate::permission::Capability;
 use crate::runtime::{CallArgs, CallOptions, Runtime};
@@ -95,7 +96,8 @@ fn runtime_new_links_stdio_and_fs_io_programs() {
             r#"
 fn main() {
     let input = result::unwrap_or(fs::read_to_string("input.txt"), "missing");
-    io::println(input);
+    io::print("hello");
+    io::println(" from fs");
     fs::write_string("output.txt", "done");
     return input.len();
 }
@@ -159,6 +161,13 @@ fn io_stdlib_registers_metadata() {
 
     assert_eq!(
         registry
+            .function_by_name("io::print")
+            .expect("print metadata")
+            .id,
+        IO_PRINT_FUNCTION_ID
+    );
+    assert_eq!(
+        registry
             .function_by_name("io::println")
             .expect("println metadata")
             .id,
@@ -177,6 +186,20 @@ fn io_stdlib_registers_metadata() {
             .expect("write metadata")
             .id,
         FS_WRITE_STRING_FUNCTION_ID
+    );
+    assert!(
+        registry
+            .function_by_name("io::print")
+            .expect("print metadata")
+            .effects
+            .writes_io
+    );
+    assert!(
+        registry
+            .function_by_name("io::println")
+            .expect("println metadata")
+            .effects
+            .writes_io
     );
     assert!(
         registry
