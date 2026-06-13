@@ -21,6 +21,7 @@ impl CallFrame {
         }
     }
 
+    #[inline(always)]
     pub(crate) fn read(&self, register: Register) -> VmResult<Value> {
         self.registers
             .get(usize::from(register.0))
@@ -28,6 +29,7 @@ impl CallFrame {
             .ok_or_else(|| VmError::new(VmErrorKind::RegisterOutOfBounds { register }))
     }
 
+    #[inline(always)]
     pub(crate) fn write(&mut self, register: Register, value: Value) -> VmResult<()> {
         let slot = self
             .registers
@@ -37,6 +39,7 @@ impl CallFrame {
         Ok(())
     }
 
+    #[inline(always)]
     pub(crate) fn read_i64(&self, register: Register, operation: &'static str) -> VmResult<i64> {
         match self
             .registers
@@ -48,6 +51,7 @@ impl CallFrame {
         }
     }
 
+    #[inline(always)]
     pub(crate) fn write_i64(&mut self, register: Register, value: i64) -> VmResult<()> {
         let slot = self
             .registers
@@ -57,6 +61,7 @@ impl CallFrame {
         Ok(())
     }
 
+    #[inline(always)]
     pub(crate) fn read_bool(&self, register: Register, operation: &'static str) -> VmResult<bool> {
         match self
             .registers
@@ -68,6 +73,7 @@ impl CallFrame {
         }
     }
 
+    #[inline(always)]
     pub(crate) fn read_bool_lane(&self, register: Register) -> VmResult<Option<bool>> {
         match self
             .registers
@@ -79,6 +85,7 @@ impl CallFrame {
         }
     }
 
+    #[inline(always)]
     pub(crate) fn write_bool(&mut self, register: Register, value: bool) -> VmResult<()> {
         let slot = self
             .registers

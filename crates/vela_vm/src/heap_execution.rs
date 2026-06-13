@@ -67,12 +67,18 @@ impl<'heap> HeapExecution<'heap> {
             .for_each(|value| value.trace_heap_refs(&mut self.protected_roots));
     }
 
+    #[inline(always)]
+    pub(crate) fn needs_safe_point(&self) -> bool {
+        self.gc_in_progress || self.heap.should_collect()
+    }
+
+    #[inline(always)]
     pub(crate) fn collect_frame_at_safe_point(
         &mut self,
         frame: &CallFrame,
         budget: Option<&mut ExecutionBudget>,
     ) {
-        if !self.gc_in_progress && !self.heap.should_collect() {
+        if !self.needs_safe_point() {
             return;
         }
 

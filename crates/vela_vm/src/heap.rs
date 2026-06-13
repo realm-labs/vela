@@ -379,6 +379,7 @@ impl ScriptHeap {
     }
 
     #[must_use]
+    #[inline(always)]
     pub fn should_collect(&self) -> bool {
         self.allocated_bytes >= self.next_gc_at_bytes
     }

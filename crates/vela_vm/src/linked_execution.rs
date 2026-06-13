@@ -1009,7 +1009,9 @@ impl Vm {
                 }
             }
 
-            if let Some(heap) = heap.as_deref_mut() {
+            if let Some(heap) = heap.as_deref_mut()
+                && heap.needs_safe_point()
+            {
                 heap.collect_frame_at_safe_point(&frame, budget.as_deref_mut());
             }
         }
