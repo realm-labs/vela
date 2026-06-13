@@ -145,6 +145,16 @@ Cranelift JIT.
 - Current benchmark rules, baseline summaries, and M19 exit conclusions live in
   [performance.md](performance.md). Detailed M18/M19 benchmark history is
   archived in [archive/performance-full-2026-06-06.md](archive/performance-full-2026-06-06.md).
+- The typed scalar bytecode optimization pass has landed through the first
+  non-JIT i64 slice: opcode visibility exists for external comparison
+  workloads, linked jump/range structural checks are verifier-owned, verified
+  `i64` arithmetic/immediate bytecode executes with checked semantics and
+  source-spanned errors, the compiler lowers only proven i64 facts to typed
+  scalar ops, direct integer `for` ranges lower to `I64RangeNext`, and linked
+  execution has a no-hook mode split for inactive budget/profiler paths.
+  Superinstructions are intentionally deferred until a profile-backed fused
+  condition lowering can prove temporary-register liveness or lower directly
+  from source-owned condition structure.
 - The M19 interpreter/heap phase is complete enough for M20. Accepted work
   covered GC pacing, direct heap aggregate construction, argument
   materialization and storage, borrowed receiver/runtime views, collection and

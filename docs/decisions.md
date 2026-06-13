@@ -667,6 +667,19 @@ Node.js/Python 3 use `process_hot_loop`. Mixed-mode benchmark rows are
 directional references and must not be collapsed into one fairness ranking or
 mixed with VM cache-delta rows.
 
+### Typed Scalar Bytecode
+
+The first non-JIT scalar specialization tier is verified `i64` bytecode emitted
+from compiler-owned type facts. Dynamic or mixed numeric operands stay on
+generic scalar bytecode, and typed operations preserve checked arithmetic,
+source spans, hot-reload compatibility, and HostAccess boundaries. Direct
+integer range loops may use `I64RangeNext`; broader numeric matrices and
+superinstructions require separate measured justification.
+
+Superinstructions must be lowered only when the compiler can prove the fused
+condition shape directly or prove that removed temporary registers are not
+observable. Do not add post-compile fused rewrites from adjacent opcodes alone.
+
 ## Validation Rules
 
 - Multi-level `super` scan must return no matches:
