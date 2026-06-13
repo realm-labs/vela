@@ -364,6 +364,40 @@ fn main() {
 }
 
 #[test]
+fn iterator_instruction_budget_traps_keep_source_spans() {
+    let program = compile_program_source(
+        SourceId::new(1),
+        r#"
+fn main() {
+    return [1, 2, 3, 4, 5, 6, 7, 8]
+        .iter()
+        .map(|value| value + 1)
+        .filter(|value| value > 3)
+        .collect_array()
+        .len();
+}
+"#,
+    )
+    .expect("compile iterator budget source");
+    let mut budget = ExecutionBudget::new(32, usize::MAX, usize::MAX);
+
+    let error = run_linked_test_program_with_budget(&Vm::new(), &program, "main", &[], &mut budget)
+        .expect_err("iterator pipeline should exceed the instruction budget");
+
+    assert_eq!(
+        error.kind(),
+        VmErrorKind::BudgetExceeded {
+            budget: ExecutionBudgetKind::Instructions,
+            limit: 32,
+        }
+    );
+    assert!(
+        error.source_span.is_some(),
+        "iterator budget trap should retain a source span"
+    );
+}
+
+#[test]
 fn iterator_array_sources_read_current_values_without_growth_snapshot() {
     let code = compile_function_source(
         SourceId::new(1),

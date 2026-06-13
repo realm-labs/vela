@@ -100,7 +100,8 @@ impl Vm {
                 budget
                     .as_deref_mut()
                     .expect("instruction budget mode requires a budget")
-                    .charge_instruction()?;
+                    .charge_instruction()
+                    .map_err(|error| error.with_source_span_if_absent(instruction.span))?;
             }
             ip = ip.saturating_add(1);
 

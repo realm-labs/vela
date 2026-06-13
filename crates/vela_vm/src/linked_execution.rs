@@ -183,7 +183,8 @@ impl Vm {
                 budget
                     .as_deref_mut()
                     .expect("budget execution mode requires a budget")
-                    .charge_instruction()?;
+                    .charge_instruction()
+                    .map_err(|error| error.with_source_span_if_absent(instruction.span))?;
             }
             if PROFILE {
                 call.bytecode_profiler
