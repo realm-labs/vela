@@ -6,7 +6,7 @@ pub const STD_METHODS: &[StdMethodSpec] = &[
         "len",
         &[],
         "i64",
-        "Returns the string length in characters.",
+        "Returns the string length in bytes.",
     ),
     StdMethodSpec::new(
         "String",
@@ -27,7 +27,7 @@ pub const STD_METHODS: &[StdMethodSpec] = &[
         "find",
         &[StdParamSpec::new("needle", "string")],
         "Option",
-        "Returns the character index of the first match, or Option::None.",
+        "Returns the byte index of the first match, or Option::None.",
     ),
     StdMethodSpec::new(
         "String",
@@ -117,7 +117,7 @@ pub const STD_METHODS: &[StdMethodSpec] = &[
             StdParamSpec::new("end", "i64"),
         ],
         "string",
-        "Returns the substring in the character range.",
+        "Returns the substring in the byte range.",
     ),
     StdMethodSpec::new(
         "String",
@@ -146,13 +146,6 @@ pub const STD_METHODS: &[StdMethodSpec] = &[
         &[],
         "array",
         "Returns the string split on whitespace.",
-    ),
-    StdMethodSpec::new(
-        "String",
-        "char_at",
-        &[StdParamSpec::new("index", "i64")],
-        "Option",
-        "Returns the character at the character index, or Option::None.",
     ),
     StdMethodSpec::new(
         "String",

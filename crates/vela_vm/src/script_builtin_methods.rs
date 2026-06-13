@@ -339,11 +339,6 @@ pub(crate) fn call_by_id(
             receiver, args, heap, budget,
         ));
     }
-    if method_id == ids.string_char_at
-        && crate::string_methods::is_string(receiver, heap.as_deref())
-    {
-        return Some(crate::string_methods::char_at(receiver, args, heap, budget));
-    }
     if method_id == ids.string_split && crate::string_methods::is_string(receiver, heap.as_deref())
     {
         return Some(crate::string_methods::split(receiver, args, heap, budget));
@@ -680,7 +675,7 @@ pub(crate) fn len(receiver: &Value, heap: Option<&HeapExecution<'_>>) -> VmResul
                 return type_error("method len");
             };
             match value {
-                HeapValue::String(value) => usize_to_i64(string_char_len(value), "method len"),
+                HeapValue::String(value) => usize_to_i64(value.len(), "method len"),
                 HeapValue::Bytes(value) => usize_to_i64(value.len(), "method len"),
                 HeapValue::Array(values) | HeapValue::Set(values) => {
                     usize_to_i64(values.len(), "method len")
@@ -696,14 +691,6 @@ pub(crate) fn len(receiver: &Value, heap: Option<&HeapExecution<'_>>) -> VmResul
             }
         }
         _ => type_error("method len"),
-    }
-}
-
-fn string_char_len(value: &str) -> usize {
-    if value.is_ascii() {
-        value.len()
-    } else {
-        value.chars().count()
     }
 }
 
@@ -784,7 +771,7 @@ mod tests {
     }
 
     #[test]
-    fn string_len_counts_unicode_characters() {
+    fn string_len_counts_bytes() {
         let source = r#"
 fn main() {
     return "quest".len() * 100 + "é日".len();
@@ -798,12 +785,12 @@ fn main() {
             run_linked_builtin_test_code(code, &mut budget).expect("string len should run");
         assert_eq!(
             result,
-            OwnedValue::Scalar(vela_common::ScalarValue::I64(502))
+            OwnedValue::Scalar(vela_common::ScalarValue::I64(505))
         );
     }
 
     #[test]
-    fn managed_heap_string_len_counts_unicode_characters() {
+    fn managed_heap_string_len_counts_bytes() {
         let source = r#"
 fn main() {
     let ascii = "quest";
@@ -819,7 +806,7 @@ fn main() {
             .expect("managed heap string len should run");
         assert_eq!(
             result,
-            OwnedValue::Scalar(vela_common::ScalarValue::I64(502))
+            OwnedValue::Scalar(vela_common::ScalarValue::I64(505))
         );
     }
 }

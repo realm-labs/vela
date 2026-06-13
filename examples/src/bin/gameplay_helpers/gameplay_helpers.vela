@@ -11,7 +11,12 @@ fn main() {
     let enabled = enabled_text.parse_bool().unwrap_or(false);
     let rate = "2.5".parse_float().unwrap_or(0.0);
     let tags = set::from_array(["reward", item, "daily", item]);
-    let tag_prefix = item.char_at(0).unwrap_or('\0');
+    let tag_prefix = '\0';
+    for ch in item {
+        if tag_prefix == '\0' {
+            tag_prefix = ch;
+        }
+    }
     let label_lines = "  Quest.Gold \nReward ".trim().split_lines();
     let label = label_lines[0].trim_end().replace(".", "_").to_lower();
     let label_kind = label.slice(0, 5);

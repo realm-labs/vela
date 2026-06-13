@@ -758,10 +758,18 @@ runtime scalar variant.
 `char` is a first-class primitive with Rust `char` semantics: one Unicode
 scalar value, not a byte and not a one-character string. Vela uses single-quote
 char literals such as `'x'` and `'\u{5956}'`; double-quote literals remain
-strings. String iteration yields `char` values, and `string.char_at(index)`
-returns `Option<char>`. The pre-release implementation does not preserve the
-old internal behavior where `char_at` returned `Option<string>` or serde
-decoded single-character strings as Rust `char`.
+strings. String iteration yields `char` values. The pre-release implementation
+does not preserve the old internal behavior where serde decoded
+single-character strings as Rust `char`.
+
+### Rust-Like String Indexing
+
+Vela strings follow Rust `str` indexing semantics. `string.len()` returns byte
+length, `string.find(needle)` returns an optional byte index, and
+`string.slice(start, end)` uses a byte range that must land on UTF-8 character
+boundaries. Character-level traversal uses `for ch in text`, yielding
+first-class `char` values. Vela does not expose a `char_at` random-access API
+because UTF-8 character indexing is O(n) and would misrepresent performance.
 
 ## Validation Rules
 

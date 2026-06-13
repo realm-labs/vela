@@ -12,31 +12,21 @@ pub(crate) fn slice(
     let value = string_value(receiver, heap.as_deref(), "method slice")?;
     let start = index_value(&args[0], "method slice")?;
     let end = index_value(&args[1], "method slice")?;
-    let char_len = value.chars().count();
     if start > end {
         return type_error("method slice range");
     }
-    if start > char_len {
-        return Err(index_out_of_bounds(start, char_len));
+    if start > value.len() {
+        return Err(index_out_of_bounds(start, value.len()));
     }
-    if end > char_len {
-        return Err(index_out_of_bounds(end, char_len));
+    if end > value.len() {
+        return Err(index_out_of_bounds(end, value.len()));
+    }
+    if !value.is_char_boundary(start) || !value.is_char_boundary(end) {
+        return type_error("method slice boundary");
     }
 
-    let start_byte = char_byte_index(value, start);
-    let end_byte = char_byte_index(value, end);
-    let value = value[start_byte..end_byte].to_owned();
+    let value = value[start..end].to_owned();
     make_string(value, heap, budget, "method slice")
-}
-
-fn char_byte_index(value: &str, index: usize) -> usize {
-    if index == 0 {
-        return 0;
-    }
-    value
-        .char_indices()
-        .nth(index)
-        .map_or(value.len(), |(byte, _)| byte)
 }
 
 fn index_out_of_bounds(index: usize, len: usize) -> VmError {

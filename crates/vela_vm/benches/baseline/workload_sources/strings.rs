@@ -11,7 +11,14 @@ fn main() {
         let lines = "alpha\nbeta".split_lines();
         let words = "alpha beta".split_whitespace();
         let sliced = "hello".slice(1, 4);
-        let ch = "quest".char_at(1).unwrap_or('\0');
+        let ch = '\0';
+        let ch_index = 0;
+        for candidate in "quest" {
+            if ch_index == 1 {
+                ch = candidate;
+            }
+            ch_index += 1;
+        }
         let found = "daily_quest".find("quest").unwrap_or(-1);
         let stripped_prefix = "event:quest".strip_prefix("event:").unwrap_or("");
         let stripped_suffix = "quest.done".strip_suffix(".done").unwrap_or("");
@@ -146,7 +153,14 @@ fn main() {
     for tick in 0..96 {
         let text = "event:alpha.done";
         let found = text.find("alpha").unwrap_or(-1);
-        let ch = text.char_at(6).unwrap_or('\0');
+        let ch = '\0';
+        let ch_index = 0;
+        for candidate in text {
+            if ch_index == 6 {
+                ch = candidate;
+            }
+            ch_index += 1;
+        }
         let prefix = text.strip_prefix("event:").unwrap_or("");
         let suffix = text.strip_suffix(".done").unwrap_or("");
 
@@ -155,7 +169,6 @@ fn main() {
             || prefix != "alpha.done"
             || suffix != "event:alpha"
             || !option::is_none(text.find("missing"))
-            || !option::is_none(text.char_at(99))
             || !option::is_none(text.strip_prefix("wrong:"))
             || !option::is_none(text.strip_suffix(".miss"))
         {

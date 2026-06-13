@@ -106,7 +106,6 @@ const STRING_METHOD_NAMES: &[&str] = &[
     "split_once",
     "split_lines",
     "split_whitespace",
-    "char_at",
     "parse_int",
     "parse_float",
     "parse_bool",

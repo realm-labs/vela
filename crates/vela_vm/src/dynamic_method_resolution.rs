@@ -199,7 +199,6 @@ fn string_method_id(ids: &StdMethodIds, method: &str) -> Option<MethodId> {
         "split_once" => ids.string_split_once,
         "split_lines" => ids.string_split_lines,
         "split_whitespace" => ids.string_split_whitespace,
-        "char_at" => ids.string_char_at,
         "parse_int" => ids.string_parse_int,
         "parse_float" => ids.string_parse_float,
         "parse_bool" => ids.string_parse_bool,

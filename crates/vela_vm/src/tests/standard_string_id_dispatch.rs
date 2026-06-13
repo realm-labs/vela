@@ -173,14 +173,6 @@ fn call_method_uses_standard_string_option_ids_before_name_fallback() {
         ),
         Ok(option_some(OwnedValue::String("reward".to_owned())))
     );
-    assert_eq!(
-        run_string_transform_with_args_by_id(
-            std_method_id("String", "char_at"),
-            "reward:gold",
-            &[Constant::Scalar(vela_common::ScalarValue::I64(6))],
-        ),
-        Ok(option_some(OwnedValue::Char(':')))
-    );
 }
 
 #[test]

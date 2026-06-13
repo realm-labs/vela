@@ -639,9 +639,6 @@ fn method_call_shape(
         "split_once" => Some(ValueShape::Option(Box::new(ValueShape::Array(Box::new(
             ValueShape::Scalar("string".to_owned()),
         ))))),
-        "char_at" => Some(ValueShape::Option(Box::new(ValueShape::Scalar(
-            "char".to_owned(),
-        )))),
         "strip_prefix" | "strip_suffix" => Some(ValueShape::Option(Box::new(ValueShape::Scalar(
             "string".to_owned(),
         )))),

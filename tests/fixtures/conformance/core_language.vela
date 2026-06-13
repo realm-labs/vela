@@ -209,6 +209,14 @@ fn main() {
     let pair = "count=3".split_once("=").unwrap_or(["", "0"]);
     let words = " grant\tgold 3 ".split_whitespace();
     let lines = "start\napply\ncommit".split_lines();
+    let reward_char = '\0';
+    let reward_char_index = 0;
+    for ch in "xp奖励" {
+        if reward_char_index == 2 {
+            reward_char = ch;
+        }
+        reward_char_index += 1;
+    }
     let string_helper_score: i64 = if normalized.starts_with("quest")
         && normalized.ends_with("_done")
         && normalized.contains("reward")
@@ -222,8 +230,8 @@ fn main() {
         && lines[1] == "apply"
         && option::unwrap_or("true".parse_bool(), false)
         && option::unwrap_or("2.5".parse_float(), 0.0) == 2.5
-        && option::unwrap_or("xp奖励".char_at(2), '\0') == '奖'
-        && "xp奖励".slice(2, 4) == "奖励"
+        && reward_char == '奖'
+        && "xp奖励".slice(2, 8) == "奖励"
     {
         30
     } else {

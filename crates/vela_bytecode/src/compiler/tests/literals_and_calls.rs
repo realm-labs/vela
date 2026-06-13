@@ -987,22 +987,22 @@ fn main() {
 }
 
 #[test]
-fn compiler_lowers_value_method_ids_after_string_char_at_method() {
+fn compiler_lowers_value_method_ids_after_string_find_method() {
     let registry = vela_stdlib::standard_registry().expect("standard registry should build");
     let program = compile_program_source_with_registry(
         SourceId::new(1),
         r#"
 fn main() {
-    return "level.up".char_at(5).unwrap_or('\0');
+    return "level.up".find(".").unwrap_or(-1);
 }
 "#,
         registry.compile_view(),
     )
-    .expect("string char_at option method should compile");
+    .expect("string find option method should compile");
     let main = program.function("main").expect("main function");
     let methods = nested_method_id_names(main);
 
-    assert!(methods.iter().any(|method| method == "char_at"));
+    assert!(methods.iter().any(|method| method == "find"));
     assert!(methods.iter().any(|method| method == "unwrap_or"));
 }
 

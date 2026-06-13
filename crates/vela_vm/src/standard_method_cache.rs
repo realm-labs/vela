@@ -166,9 +166,6 @@ fn standard_method_target(
         (StandardMethodReceiver::String, id) if id == ids.string_strip_suffix => {
             StandardMethodInlineCacheTarget::StripSuffix
         }
-        (StandardMethodReceiver::String, id) if id == ids.string_char_at => {
-            StandardMethodInlineCacheTarget::CharAt
-        }
         (StandardMethodReceiver::String, id) if id == ids.string_split => {
             StandardMethodInlineCacheTarget::Split
         }
@@ -508,7 +505,6 @@ pub(crate) fn call_standard_cached(
             return call_cached_string_parse_option(receiver, cache.target, args, heap, budget);
         }
         StandardMethodInlineCacheTarget::Find
-        | StandardMethodInlineCacheTarget::CharAt
         | StandardMethodInlineCacheTarget::SplitOnce
         | StandardMethodInlineCacheTarget::StripPrefix
         | StandardMethodInlineCacheTarget::StripSuffix
@@ -597,9 +593,6 @@ pub(crate) fn call_standard_cached(
         }
         (StandardMethodReceiver::String, StandardMethodInlineCacheTarget::StripSuffix) => {
             crate::string_methods::strip_suffix(receiver, args, heap, budget)
-        }
-        (StandardMethodReceiver::String, StandardMethodInlineCacheTarget::CharAt) => {
-            crate::string_methods::char_at(receiver, args, heap, budget)
         }
         (StandardMethodReceiver::String, StandardMethodInlineCacheTarget::Split) => {
             crate::string_methods::split(receiver, args, heap, budget)

@@ -12,7 +12,7 @@ mod transform;
 
 pub(crate) use affix::{strip_prefix, strip_suffix};
 pub(crate) use parsing::{parse_bool, parse_float, parse_int};
-pub(crate) use search::{char_at, contains, ends_with, find, starts_with};
+pub(crate) use search::{contains, ends_with, find, starts_with};
 pub(crate) use slicing::slice;
 pub(crate) use splitting::{split, split_lines, split_once, split_whitespace};
 pub(crate) use transform::{repeat, replace, to_lower, to_upper, trim, trim_end, trim_start};
@@ -251,10 +251,10 @@ fn main() {
     }
 
     #[test]
-    fn string_slice_uses_character_indexes() {
+    fn string_slice_uses_byte_indexes() {
         let source = r#"
 fn main() {
-    return "xp奖励".slice(2, 4);
+    return "xp奖励".slice(2, 8);
 }
 "#;
         let code = compile_function_source(SourceId::new(1), source, "main")
@@ -284,7 +284,27 @@ fn main() {
     }
 
     #[test]
-    fn string_find_returns_character_indexes_as_options() {
+    fn string_slice_rejects_non_boundary_byte_ranges() {
+        let source = r#"
+fn main() {
+    return "xp奖励".slice(3, 8);
+}
+"#;
+        let code = compile_function_source(SourceId::new(1), source, "main")
+            .expect("non-boundary string slice source should compile");
+
+        let error = run_linked_string_test_code(&Vm::new(), code)
+            .expect_err("string slice should reject non-boundary index");
+        assert_eq!(
+            error.kind(),
+            crate::VmErrorKind::TypeMismatch {
+                operation: "method slice boundary"
+            }
+        );
+    }
+
+    #[test]
+    fn string_find_returns_byte_indexes_as_options() {
         let source = r#"
 fn main() {
     let event = "xp奖励.done";
@@ -304,7 +324,7 @@ fn main() {
         vm.register_standard_natives();
 
         let result = run_linked_string_test_code(&vm, code).expect("string find should run");
-        assert_eq!(result, OwnedValue::Scalar(vela_common::ScalarValue::I64(4)));
+        assert_eq!(result, OwnedValue::Scalar(vela_common::ScalarValue::I64(8)));
     }
 
     #[test]
@@ -342,70 +362,6 @@ fn main() {
             error.kind(),
             crate::VmErrorKind::TypeMismatch {
                 operation: "method find"
-            }
-        );
-    }
-
-    #[test]
-    fn string_char_at_returns_character_options() {
-        let source = r#"
-fn main() {
-    let label = "xp奖励";
-    let first = label.char_at(0);
-    let reward = label.char_at(2);
-    let missing = label.char_at(99);
-    if option::unwrap_or(first, '\0') == 'x'
-        && option::unwrap_or(reward, '\0') == '奖'
-        && option::is_none(missing)
-    {
-        return option::unwrap_or(label.char_at(3), '\0');
-    }
-    return '\0';
-}
-"#;
-        let code = compile_function_source(SourceId::new(1), source, "main")
-            .expect("string char_at source should compile");
-        let mut vm = Vm::new();
-        vm.register_standard_natives();
-
-        let result = run_linked_string_test_code(&vm, code).expect("string char_at should run");
-        assert_eq!(result, OwnedValue::Char('励'));
-    }
-
-    #[test]
-    fn managed_heap_execution_runs_string_char_at() {
-        let source = r#"
-fn main() {
-    let event = "level.up";
-    return event.char_at(5).unwrap_or('\0');
-}
-"#;
-        let code = compile_function_source(SourceId::new(1), source, "main")
-            .expect("heap string char_at source should compile");
-        let mut budget = ExecutionBudget::unbounded();
-        let vm = Vm::new().with_standard_natives();
-
-        let result = run_linked_string_test_code_with_budget(&vm, code, &mut budget)
-            .expect("heap string char_at should run");
-        assert_eq!(result, OwnedValue::Char('.'));
-    }
-
-    #[test]
-    fn string_char_at_rejects_negative_indexes() {
-        let source = r#"
-fn main() {
-    return "quest".char_at(-1);
-}
-"#;
-        let code = compile_function_source(SourceId::new(1), source, "main")
-            .expect("string char_at type error source should compile");
-
-        let error = run_linked_string_test_code(&Vm::new(), code)
-            .expect_err("string char_at should reject negative indexes");
-        assert_eq!(
-            error.kind(),
-            crate::VmErrorKind::TypeMismatch {
-                operation: "method char_at"
             }
         );
     }

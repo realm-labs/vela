@@ -38,7 +38,6 @@ pub(crate) fn call(
         "split_whitespace" => Some(string_methods::split_whitespace(
             receiver, args, heap, budget,
         )),
-        "char_at" => Some(string_methods::char_at(receiver, args, heap, budget)),
         "parse_int" => Some(string_methods::parse_int(receiver, args, heap, budget)),
         "parse_float" => Some(string_methods::parse_float(receiver, args, heap, budget)),
         "parse_bool" => Some(string_methods::parse_bool(receiver, args, heap, budget)),

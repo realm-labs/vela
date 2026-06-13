@@ -80,7 +80,7 @@ operations should return VM diagnostics, not `Result::Err`.
 text.len()
 text.is_empty()
 text.contains(needle)
-text.find(needle)
+text.find(needle) // Option<i64>, byte index
 text.starts_with(prefix)
 text.ends_with(suffix)
 text.strip_prefix(prefix)
@@ -92,8 +92,7 @@ text.trim_start()
 text.trim_end()
 text.replace(old, new)
 text.repeat(count)
-text.slice(start, end)
-text.char_at(index) // Option<char>
+text.slice(start, end) // byte range, must be UTF-8 boundaries
 text.split(separator)
 text.split_once(separator)
 text.split_lines()
@@ -106,6 +105,12 @@ text.parse_bool()
 Additional explicit parse helpers such as `parse_i32`, `parse_u64`, or
 `parse_f32` may be registered when the corresponding primitive conversion API
 is implemented. Parsing never performs implicit numeric conversion.
+
+Vela strings follow Rust `str` indexing semantics: `len()` returns byte length,
+`find()` returns byte indexes, and `slice(start, end)` uses byte ranges. Strings
+remain valid UTF-8, so string slices must start and end on UTF-8 character
+boundaries. Character-level traversal should use `for ch in text`, which yields
+Rust-semantics `char` values.
 
 ### Bytes
 

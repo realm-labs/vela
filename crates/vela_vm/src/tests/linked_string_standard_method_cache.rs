@@ -220,45 +220,6 @@ fn linked_standard_value_method_caches_string_parse_targets() {
 }
 
 #[test]
-fn linked_standard_value_method_caches_string_char_at_target() {
-    let (program, site, dispatch, method_id) = linked_string_one_constant_arg_cache_program(
-        "char_at",
-        "quest",
-        Constant::Scalar(vela_common::ScalarValue::I64(1)),
-    );
-    let caches = RecordingMethodCaches::new(1);
-
-    assert_eq!(
-        run_linked_method_cache_owned_program(&program, &caches),
-        Ok(owned_option_some(OwnedValue::Char('u')))
-    );
-    let entry = caches
-        .entry(site)
-        .expect("standard string char_at cache should populate");
-    assert_eq!(entry.dispatch, dispatch);
-    let MethodInlineCacheTarget::Value {
-        method_id: cached_method,
-        standard_method: Some(standard_method),
-    } = entry.target
-    else {
-        panic!("standard string char_at cache should store value target");
-    };
-    assert_eq!(cached_method, method_id);
-    assert_eq!(standard_method.receiver, StandardMethodReceiver::String);
-    assert_eq!(
-        standard_method.target,
-        StandardMethodInlineCacheTarget::CharAt
-    );
-    assert_eq!(caches.set_count(), 2);
-
-    assert_eq!(
-        run_linked_method_cache_owned_program(&program, &caches),
-        Ok(owned_option_some(OwnedValue::Char('u')))
-    );
-    assert_eq!(caches.set_count(), 2);
-}
-
-#[test]
 fn linked_standard_value_method_caches_string_split_target() {
     let (program, site, dispatch, method_id) =
         linked_string_one_arg_cache_program("split", "alpha,beta", ",");

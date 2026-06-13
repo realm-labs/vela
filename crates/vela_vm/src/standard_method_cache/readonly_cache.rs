@@ -16,7 +16,7 @@ pub(super) fn call_cached_len(
             let HeapValue::String(value) = cached_heap_value(receiver, heap)? else {
                 return None;
             };
-            string_char_len(value)
+            value.len()
         }
         StandardMethodReceiver::Bytes => {
             let HeapValue::Bytes(value) = cached_heap_value(receiver, heap)? else {
@@ -431,14 +431,6 @@ fn cached_heap_value<'a>(
         return None;
     };
     heap.and_then(|heap| heap.heap.get(*reference))
-}
-
-fn string_char_len(value: &str) -> usize {
-    if value.is_ascii() {
-        value.len()
-    } else {
-        value.chars().count()
-    }
 }
 
 fn usize_to_i64(value: usize, operation: &'static str) -> VmResult<i64> {

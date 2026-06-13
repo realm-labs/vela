@@ -218,20 +218,12 @@ pub(super) fn call_cached_string_option(
                         "method find",
                     )?;
                     Ok(value.find(needle).map(|byte_index| {
-                        let char_index = value[..byte_index].chars().count();
-                        Value::i64(i64::try_from(char_index).unwrap_or(i64::MAX))
+                        Value::i64(i64::try_from(byte_index).unwrap_or(i64::MAX))
                     }))
                 }) {
                     Ok(payload) => payload,
                     Err(error) => return Some(Err(error)),
                 };
-            Some(make_option(payload, heap, budget))
-        }
-        StandardMethodInlineCacheTarget::CharAt => {
-            let payload = match char_at_payload(value, args) {
-                Ok(payload) => payload,
-                Err(error) => return Some(Err(error)),
-            };
             Some(make_option(payload, heap, budget))
         }
         StandardMethodInlineCacheTarget::SplitOnce => {
@@ -703,12 +695,6 @@ fn strip_affix_payload(
     Ok(stripped.map(str::to_owned))
 }
 
-fn char_at_payload(value: &str, args: &[Value]) -> VmResult<Option<Value>> {
-    crate::runtime_checks::expect_arity("char_at", args, 1)?;
-    let index = char_index_value(&args[0])?;
-    Ok(value.chars().nth(index).map(Value::Char))
-}
-
 fn split_once_payload(
     value: &str,
     args: &[Value],
@@ -788,32 +774,24 @@ fn slice_payload(value: &str, args: &[Value]) -> VmResult<String> {
     crate::runtime_checks::expect_arity("slice", args, 2)?;
     let start = char_index_value_with_operation(&args[0], "method slice")?;
     let end = char_index_value_with_operation(&args[1], "method slice")?;
-    let char_len = value.chars().count();
     if start > end {
         return Err(VmError::new(VmErrorKind::TypeMismatch {
             operation: "method slice range",
         }));
     }
-    if start > char_len {
-        return Err(index_out_of_bounds(start, char_len));
+    if start > value.len() {
+        return Err(index_out_of_bounds(start, value.len()));
     }
-    if end > char_len {
-        return Err(index_out_of_bounds(end, char_len));
+    if end > value.len() {
+        return Err(index_out_of_bounds(end, value.len()));
+    }
+    if !value.is_char_boundary(start) || !value.is_char_boundary(end) {
+        return Err(VmError::new(VmErrorKind::TypeMismatch {
+            operation: "method slice boundary",
+        }));
     }
 
-    let start_byte = char_byte_index(value, start);
-    let end_byte = char_byte_index(value, end);
-    Ok(value[start_byte..end_byte].to_owned())
-}
-
-fn char_byte_index(value: &str, index: usize) -> usize {
-    if index == 0 {
-        return 0;
-    }
-    value
-        .char_indices()
-        .nth(index)
-        .map_or(value.len(), |(byte, _)| byte)
+    Ok(value[start..end].to_owned())
 }
 
 fn index_out_of_bounds(index: usize, len: usize) -> VmError {
@@ -821,10 +799,6 @@ fn index_out_of_bounds(index: usize, len: usize) -> VmError {
         index: i64::try_from(index).unwrap_or(i64::MAX),
         len,
     })
-}
-
-fn char_index_value(value: &Value) -> VmResult<usize> {
-    char_index_value_with_operation(value, "method char_at")
 }
 
 fn char_index_value_with_operation(value: &Value, operation: &'static str) -> VmResult<usize> {

@@ -7,12 +7,7 @@ pub(crate) fn string_method_descs() -> Vec<MethodDesc> {
 }
 
 const STRING_METHODS: &[MethodSpec] = &[
-    MethodSpec::new(
-        "len",
-        &[],
-        "i64",
-        "Returns the string length in characters.",
-    ),
+    MethodSpec::new("len", &[], "i64", "Returns the string length in bytes."),
     MethodSpec::new(
         "is_empty",
         &[],
@@ -29,7 +24,7 @@ const STRING_METHODS: &[MethodSpec] = &[
         "find",
         &[ParamSpec::new("needle", "string")],
         "Option",
-        "Returns the character index of the first match, or Option::None.",
+        "Returns the byte index of the first match, or Option::None.",
     ),
     MethodSpec::new(
         "starts_with",
@@ -94,7 +89,7 @@ const STRING_METHODS: &[MethodSpec] = &[
         "slice",
         &[ParamSpec::new("start", "i64"), ParamSpec::new("end", "i64")],
         "string",
-        "Returns the substring in the character range.",
+        "Returns the substring in the byte range.",
     ),
     MethodSpec::new(
         "split",
@@ -119,12 +114,6 @@ const STRING_METHODS: &[MethodSpec] = &[
         &[],
         "array",
         "Returns the string split on whitespace.",
-    ),
-    MethodSpec::new(
-        "char_at",
-        &[ParamSpec::new("index", "i64")],
-        "Option",
-        "Returns the character at the character index, or Option::None.",
     ),
     MethodSpec::new(
         "parse_int",

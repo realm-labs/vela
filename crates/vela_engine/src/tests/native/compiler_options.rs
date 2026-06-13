@@ -354,8 +354,7 @@ fn main() {
     let label = "reward:gold";
     return label.find(":").unwrap_or(-1) == 6
         && label.strip_prefix("reward:").unwrap_or("") == "gold"
-        && label.strip_suffix(":gold").unwrap_or("") == "reward"
-        && label.char_at(6).unwrap_or('\0') == ':';
+        && label.strip_suffix(":gold").unwrap_or("") == "reward";
 }
 "#,
         )
@@ -382,7 +381,6 @@ fn main() {
         "strip_suffix",
         Some(std_method_id("String", "strip_suffix"))
     )));
-    assert!(value_methods.contains(&("char_at", Some(std_method_id("String", "char_at")))));
 }
 
 #[test]
