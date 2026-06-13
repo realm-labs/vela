@@ -4,7 +4,7 @@ use std::hint::black_box;
 use std::process::Command;
 use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 
-use vela_bytecode::compiler::compile_program_source;
+use vela_bytecode::compiler::compile_program_source_with_registry;
 use vela_bytecode::{LinkedProgram, Linker, UnlinkedProgram};
 use vela_common::SourceId;
 use vela_vm::Vm;
@@ -296,14 +296,31 @@ print(checksum);
         name: "string_methods",
         vela: r#"
 fn main() {
-    let labels = ["quest", "raid", "daily", "bonus"];
     let total = 0;
     for tick in 0..200 {
-        for label in labels {
-            if label.starts_with("q") || label.contains("i") {
-                total += label.len() + tick % 7;
+        if tick % 4 == 0 {
+            if "quest".starts_with("q") || "quest".contains("i") {
+                total += "quest".len() + tick % 7;
             } else {
-                total += label.len();
+                total += "quest".len();
+            }
+        } else if tick % 4 == 1 {
+            if "raid".starts_with("q") || "raid".contains("i") {
+                total += "raid".len() + tick % 7;
+            } else {
+                total += "raid".len();
+            }
+        } else if tick % 4 == 2 {
+            if "daily".starts_with("q") || "daily".contains("i") {
+                total += "daily".len() + tick % 7;
+            } else {
+                total += "daily".len();
+            }
+        } else {
+            if "bonus".starts_with("q") || "bonus".contains("i") {
+                total += "bonus".len() + tick % 7;
+            } else {
+                total += "bonus".len();
             }
         }
     }
@@ -313,15 +330,33 @@ fn main() {
         lua: r#"
 local iterations = tonumber(os.getenv("VELA_BENCH_ITERATIONS") or "1")
 local checksum = 0
-local labels = {"quest", "raid", "daily", "bonus"}
 local function run()
     local total = 0
     for tick = 0, 199 do
-        for _, label in ipairs(labels) do
-            if string.sub(label, 1, 1) == "q" or string.find(label, "i", 1, true) ~= nil then
-                total = total + #label + tick % 7
+        local remainder = tick % 4
+        if remainder == 0 then
+            if string.sub("quest", 1, 1) == "q" or string.find("quest", "i", 1, true) ~= nil then
+                total = total + #"quest" + tick % 7
             else
-                total = total + #label
+                total = total + #"quest"
+            end
+        elseif remainder == 1 then
+            if string.sub("raid", 1, 1) == "q" or string.find("raid", "i", 1, true) ~= nil then
+                total = total + #"raid" + tick % 7
+            else
+                total = total + #"raid"
+            end
+        elseif remainder == 2 then
+            if string.sub("daily", 1, 1) == "q" or string.find("daily", "i", 1, true) ~= nil then
+                total = total + #"daily" + tick % 7
+            else
+                total = total + #"daily"
+            end
+        else
+            if string.sub("bonus", 1, 1) == "q" or string.find("bonus", "i", 1, true) ~= nil then
+                total = total + #"bonus" + tick % 7
+            else
+                total = total + #"bonus"
             end
         end
     end
@@ -335,15 +370,33 @@ print(string.format("%.0f", checksum))
         node: r#"
 const iterations = Number(process.env.VELA_BENCH_ITERATIONS || "1");
 let checksum = 0;
-const labels = ["quest", "raid", "daily", "bonus"];
 function run() {
     let total = 0;
     for (let tick = 0; tick < 200; tick += 1) {
-        for (const label of labels) {
-            if (label.startsWith("q") || label.includes("i")) {
-                total += label.length + tick % 7;
+        const remainder = tick % 4;
+        if (remainder === 0) {
+            if ("quest".startsWith("q") || "quest".includes("i")) {
+                total += "quest".length + tick % 7;
             } else {
-                total += label.length;
+                total += "quest".length;
+            }
+        } else if (remainder === 1) {
+            if ("raid".startsWith("q") || "raid".includes("i")) {
+                total += "raid".length + tick % 7;
+            } else {
+                total += "raid".length;
+            }
+        } else if (remainder === 2) {
+            if ("daily".startsWith("q") || "daily".includes("i")) {
+                total += "daily".length + tick % 7;
+            } else {
+                total += "daily".length;
+            }
+        } else {
+            if ("bonus".startsWith("q") || "bonus".includes("i")) {
+                total += "bonus".length + tick % 7;
+            } else {
+                total += "bonus".length;
             }
         }
     }
@@ -357,16 +410,34 @@ console.log(String(checksum));
         rhai: r#"
 let iterations = {iterations};
 let checksum = 0;
-let labels = ["quest", "raid", "daily", "bonus"];
 
-fn run(labels) {
+fn run() {
     let total = 0;
     for tick in 0..200 {
-        for label in labels {
-            if label.starts_with("q") || label.contains("i") {
-                total += label.len() + tick % 7;
+        let remainder = tick % 4;
+        if remainder == 0 {
+            if "quest".starts_with("q") || "quest".contains("i") {
+                total += "quest".len() + tick % 7;
             } else {
-                total += label.len();
+                total += "quest".len();
+            }
+        } else if remainder == 1 {
+            if "raid".starts_with("q") || "raid".contains("i") {
+                total += "raid".len() + tick % 7;
+            } else {
+                total += "raid".len();
+            }
+        } else if remainder == 2 {
+            if "daily".starts_with("q") || "daily".contains("i") {
+                total += "daily".len() + tick % 7;
+            } else {
+                total += "daily".len();
+            }
+        } else {
+            if "bonus".starts_with("q") || "bonus".contains("i") {
+                total += "bonus".len() + tick % 7;
+            } else {
+                total += "bonus".len();
             }
         }
     }
@@ -374,7 +445,7 @@ fn run(labels) {
 }
 
 for _ in 0..iterations {
-    checksum += run(labels);
+    checksum += run();
 }
 
 print(checksum);
@@ -639,8 +710,14 @@ fn run_vela(
     workload: &Workload,
     params: BenchParams,
 ) -> Result<BenchResult, Box<dyn Error>> {
-    let program = compile_program_source(SourceId::new(1), workload.vela)
-        .map_err(|error| format!("{error:?}"))?;
+    let registry = vela_stdlib::standard_registry()
+        .map_err(|error| format!("standard registry failed: {error}"))?;
+    let program = compile_program_source_with_registry(
+        SourceId::new(1),
+        workload.vela,
+        registry.compile_view(),
+    )
+    .map_err(|error| format!("{error:?}"))?;
     let program = link_program_for_vm(vm, &program)?;
 
     for _ in 0..params.warmup {

@@ -29,6 +29,9 @@ cargo bench -p vela_engine --bench hot_reload -- --quick
 
 `baseline` accepts optional workload-name substring filters after `--`, for
 example `cargo bench -p vela_vm --bench baseline -- --quick host_field`.
+`external_compare` compiles Vela workloads with the standard registry, then
+links once and measures repeated in-process VM calls; external runtimes remain
+process-backed comparison rows.
 When a cache family has an explicit non-cache `_hot_offsets` row, `cache_delta`
 pairs the cache-enabled row against that base to isolate cache overhead from
 bytecode-profiler overhead. Host-boundary `_hot_offsets` rows run in
