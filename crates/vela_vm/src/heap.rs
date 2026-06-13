@@ -638,6 +638,8 @@ impl ScriptHeap {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::small_storage::SmallStorage;
+    use crate::value::ClosureCode;
     use vela_common::{HostObjectId, HostTypeId};
     use vela_def::FieldId;
     use vela_host::path::{HostPath, HostRef};
@@ -679,6 +681,78 @@ mod tests {
         assert!(heap.contains(source));
         assert!(heap.contains(child));
         assert!(!heap.contains(garbage));
+    }
+
+    #[test]
+    fn lazy_iterator_adapters_trace_sources_callbacks_and_captures() {
+        let mut heap = ScriptHeap::new();
+        let child = heap.allocate(HeapValue::String("gold".into()));
+        let source = heap.allocate(HeapValue::Array(vec![Value::HeapRef(child)]));
+        let captured = heap.allocate(HeapValue::String("captured".into()));
+        let callback = heap.allocate(HeapValue::Closure(ClosureValue {
+            code: ClosureCode::Linked(vela_bytecode::ScriptFunctionHandle::new(0)),
+            captures: SmallStorage::try_from_slice_map(&[Value::HeapRef(captured)], 4, |value| {
+                Ok::<_, ()>(*value)
+            })
+            .expect("closure captures"),
+        }));
+        let iterator = IteratorState::take(
+            IteratorState::filter(
+                IteratorState::map(
+                    IteratorState::from_array_source(source, 1),
+                    Value::HeapRef(callback),
+                ),
+                Value::HeapRef(callback),
+            ),
+            1,
+        );
+        let root = heap.allocate(HeapValue::Iterator(iterator));
+        let garbage = heap.allocate(HeapValue::String("unused".into()));
+
+        let stats = heap.collect_full(&[root]);
+
+        assert_eq!(stats.marked, 5);
+        assert_eq!(stats.swept, 1);
+        assert!(heap.contains(root));
+        assert!(heap.contains(source));
+        assert!(heap.contains(child));
+        assert!(heap.contains(callback));
+        assert!(heap.contains(captured));
+        assert!(!heap.contains(garbage));
+    }
+
+    #[test]
+    fn unreachable_iterator_adapters_reclaim_sources_callbacks_and_captures() {
+        let mut heap = ScriptHeap::new();
+        let child = heap.allocate(HeapValue::String("gold".into()));
+        let source = heap.allocate(HeapValue::Array(vec![Value::HeapRef(child)]));
+        let captured = heap.allocate(HeapValue::String("captured".into()));
+        let callback = heap.allocate(HeapValue::Closure(ClosureValue {
+            code: ClosureCode::Linked(vela_bytecode::ScriptFunctionHandle::new(0)),
+            captures: SmallStorage::try_from_slice_map(&[Value::HeapRef(captured)], 4, |value| {
+                Ok::<_, ()>(*value)
+            })
+            .expect("closure captures"),
+        }));
+        let iterator = IteratorState::skip(
+            IteratorState::map(
+                IteratorState::from_array_source(source, 1),
+                Value::HeapRef(callback),
+            ),
+            1,
+        );
+        let root = heap.allocate(HeapValue::Iterator(iterator));
+
+        let stats = heap.collect_full(&[]);
+
+        assert_eq!(stats.marked, 0);
+        assert_eq!(stats.swept, 5);
+        assert!(!heap.contains(root));
+        assert!(!heap.contains(source));
+        assert!(!heap.contains(child));
+        assert!(!heap.contains(callback));
+        assert!(!heap.contains(captured));
+        assert_eq!(heap.live_object_count(), 0);
     }
 
     #[test]
