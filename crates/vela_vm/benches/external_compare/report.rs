@@ -4,14 +4,15 @@ use super::support::{BenchResult, profile, sanitize};
 pub(crate) fn print_header(config: &BenchConfig) {
     let params = config.params;
     println!(
-        "vela_vm_external_compare profile={} target={}/{} repeats={} iterations={} warmup={} filters={}",
+        "vela_vm_external_compare profile={} target={}/{} repeats={} iterations={} warmup={} filters={} runtimes={}",
         profile(),
         std::env::consts::OS,
         std::env::consts::ARCH,
         params.repeats,
         params.iterations,
         params.warmup,
-        config.filters_label()
+        config.filters_label(),
+        config.runtimes_label()
     );
 }
 

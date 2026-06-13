@@ -31,6 +31,23 @@ cargo bench -p vela_engine --bench hot_reload -- --quick
 example `cargo bench -p vela_vm --bench baseline -- --quick host_field`.
 `external_compare` accepts the same kind of workload-name substring filters,
 for example `cargo bench -p vela_vm --bench external_compare -- --quick string`.
+It also accepts profiling/regression parameters:
+
+```text
+--runtime <substring-or-comma-list>
+--iterations <count>
+--repeats <count>
+--warmup <count>
+```
+
+For example, a Vela-only scalar run suitable for local profiling can be
+captured with:
+
+```bash
+cargo bench -p vela_vm --bench external_compare -- \
+  --runtime vela --iterations 500000 --repeats 1 --warmup 1 scalar
+```
+
 It is a mixed-mode language comparison harness:
 
 ```text
@@ -104,6 +121,63 @@ external runtime versions when used
 external comparison mode (`internal_hot_loop`, `embedded_hot_loop`, or
 `process_hot_loop`) when used
 ```
+
+## Perf Optimization Loop
+
+Performance work must follow a measurement-first loop:
+
+```text
+capture stable baseline -> profile hotspot -> implement one focused change ->
+capture candidate -> compare against baseline -> commit only with evidence
+```
+
+Use `tools/perf/capture_external_compare.py` to retain raw key=value output
+with commit, branch, rustc, cargo, command, and timestamp metadata:
+
+```bash
+tools/perf/capture_external_compare.py \
+  --name scalar-vela-before \
+  --baseline external_compare_scalar_vela_macos_aarch64 \
+  -- \
+  --runtime vela --iterations 500000 --repeats 5 --warmup 2 scalar
+```
+
+Routine local captures go under `perf-results/`, which is git-ignored.
+Checked-in guardrail captures belong under `perf-baselines/` and should be
+small, intentional, and tied to a documented regression check.
+
+After a candidate change, capture another run and compare:
+
+```bash
+tools/perf/capture_external_compare.py \
+  --name scalar-vela-after \
+  -- \
+  --runtime vela --iterations 500000 --repeats 5 --warmup 2 scalar
+
+tools/perf/compare_keyvalue_bench.py \
+  --baseline perf-baselines/external_compare_scalar_vela_macos_aarch64.txt \
+  --candidate perf-results/external_compare/<candidate-file>.txt \
+  --runtime vela \
+  --bench scalar_branch_loop \
+  --max-regression-percent 5
+```
+
+The comparison script checks matching `runtime/mode/bench` rows, verifies
+checksums by default, and fails when the candidate `per_iter_mean_ns` exceeds
+the baseline by more than the configured percentage.
+
+Use profiling before changing interpreter internals. On macOS, the repo helper
+uses `sample` against a long-running Vela-only `external_compare` process:
+
+```bash
+tools/perf/profile_external_compare.sh \
+  --runtime vela --iterations 500000 --repeats 1 --warmup 1 scalar
+```
+
+The helper writes text profiles under `perf-results/profiles/`. If a GUI call
+tree is needed, use Instruments or `xctrace` with the same long-running
+command. Do not accept broad interpreter changes from benchmark deltas alone;
+the profile should identify the dominant stack first.
 
 ## Current Baseline
 

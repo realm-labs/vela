@@ -1,3 +1,6 @@
+#[allow(dead_code)]
+#[path = "../benches/external_compare/config.rs"]
+mod config;
 #[path = "../benches/external_compare/version.rs"]
 mod version;
 #[path = "../benches/external_compare/workloads.rs"]
@@ -176,6 +179,35 @@ fn python_version_parser_accepts_only_python3_versions() {
         Some(2)
     );
     assert_eq!(version::python_major_from_version_text("not python"), None);
+}
+
+#[test]
+fn external_compare_config_accepts_profile_parameters() {
+    let config = config::BenchConfig::from_iter(
+        [
+            "--quick",
+            "--runtime",
+            "vela,lua54",
+            "--iterations=12345",
+            "--repeats",
+            "4",
+            "--warmup",
+            "2",
+            "scalar",
+        ]
+        .into_iter()
+        .map(str::to_owned),
+    );
+
+    assert_eq!(config.params.iterations, 12_345);
+    assert_eq!(config.params.repeats, 4);
+    assert_eq!(config.params.warmup, 2);
+    assert!(config.should_run("scalar_branch_loop"));
+    assert!(!config.should_run("range_iteration"));
+    assert!(config.should_run_runtime("vela"));
+    assert!(config.should_run_runtime("lua54"));
+    assert!(!config.should_run_runtime("rhai"));
+    assert_eq!(config.runtimes_label(), "vela,lua54");
 }
 
 fn run_vela_workload(

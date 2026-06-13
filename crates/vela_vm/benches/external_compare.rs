@@ -29,43 +29,52 @@ fn main() -> Result<(), Box<dyn Error>> {
         return Err(format!("no external workloads matched {}", config.filters_label()).into());
     }
 
-    let vela_runtime = vela::VelaRuntime::new()?;
-    for workload in &workloads {
-        report::print_result(
-            "vela",
-            env!("CARGO_PKG_VERSION"),
-            "internal_hot_loop",
-            workload.name,
-            vela_runtime.run(workload, config.params)?,
-            config.params,
-        );
+    if config.should_run_runtime("vela") {
+        let vela_runtime = vela::VelaRuntime::new()?;
+        for workload in &workloads {
+            report::print_result(
+                "vela",
+                env!("CARGO_PKG_VERSION"),
+                "internal_hot_loop",
+                workload.name,
+                vela_runtime.run(workload, config.params)?,
+                config.params,
+            );
+        }
     }
 
-    let lua_runtime = embedded::LuaRuntime::new();
-    for workload in &workloads {
-        report::print_result(
-            "lua54",
-            "mlua-vendored-lua54",
-            "embedded_hot_loop",
-            workload.name,
-            lua_runtime.run(workload, config.params)?,
-            config.params,
-        );
+    if config.should_run_runtime("lua54") {
+        let lua_runtime = embedded::LuaRuntime::new();
+        for workload in &workloads {
+            report::print_result(
+                "lua54",
+                "mlua-vendored-lua54",
+                "embedded_hot_loop",
+                workload.name,
+                lua_runtime.run(workload, config.params)?,
+                config.params,
+            );
+        }
     }
 
-    let rhai_runtime = embedded::RhaiRuntime::new();
-    for workload in &workloads {
-        report::print_result(
-            "rhai",
-            "rhai-crate",
-            "embedded_hot_loop",
-            workload.name,
-            rhai_runtime.run(workload, config.params)?,
-            config.params,
-        );
+    if config.should_run_runtime("rhai") {
+        let rhai_runtime = embedded::RhaiRuntime::new();
+        for workload in &workloads {
+            report::print_result(
+                "rhai",
+                "rhai-crate",
+                "embedded_hot_loop",
+                workload.name,
+                rhai_runtime.run(workload, config.params)?,
+                config.params,
+            );
+        }
     }
 
     for runtime in process::process_runtimes() {
+        if !config.should_run_runtime(runtime.name) {
+            continue;
+        }
         match runtime.locate() {
             Some(command) => {
                 let version = runtime.version(&command);
