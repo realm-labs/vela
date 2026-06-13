@@ -46,20 +46,34 @@ impl Vm {
                 .first()
                 .and_then(|instruction| instruction.span)
         });
-        let result = self
-            .execute_linked_body(call, host, heap, budget.as_deref_mut())
-            .map_err(|error| {
-                error
-                    .with_source_span_if_absent(fallback_span)
-                    .with_call_frame(frame)
-            });
+        let has_budget = budget.is_some();
+        let has_profiler = call.bytecode_profiler.is_some();
+        let result = match (has_budget, has_profiler) {
+            (false, false) => {
+                self.execute_linked_body::<false, false>(call, host, heap, budget.as_deref_mut())
+            }
+            (true, false) => {
+                self.execute_linked_body::<true, false>(call, host, heap, budget.as_deref_mut())
+            }
+            (false, true) => {
+                self.execute_linked_body::<false, true>(call, host, heap, budget.as_deref_mut())
+            }
+            (true, true) => {
+                self.execute_linked_body::<true, true>(call, host, heap, budget.as_deref_mut())
+            }
+        }
+        .map_err(|error| {
+            error
+                .with_source_span_if_absent(fallback_span)
+                .with_call_frame(frame)
+        });
         if let Some(budget) = budget {
             budget.exit_call();
         }
         result
     }
 
-    fn execute_linked_body(
+    fn execute_linked_body<const CHARGE_BUDGET: bool, const PROFILE: bool>(
         &self,
         call: LinkedExecutionCall<'_>,
         mut host: Option<&mut HostExecution<'_>>,
@@ -155,11 +169,16 @@ impl Vm {
         while ip < code.instructions.len() {
             let instruction_offset = InstructionOffset(ip);
             let instruction = &code.instructions[ip];
-            if let Some(budget) = budget.as_deref_mut() {
-                budget.charge_instruction()?;
+            if CHARGE_BUDGET {
+                budget
+                    .as_deref_mut()
+                    .expect("budget execution mode requires a budget")
+                    .charge_instruction()?;
             }
-            if let Some(profiler) = call.bytecode_profiler {
-                profiler.record_instruction(code.debug_name, instruction_offset);
+            if PROFILE {
+                call.bytecode_profiler
+                    .expect("profile execution mode requires a profiler")
+                    .record_instruction(code.debug_name, instruction_offset);
             }
             ip = ip.saturating_add(1);
 
