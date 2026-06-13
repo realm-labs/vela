@@ -760,11 +760,25 @@ impl<'linker, 'registry> LinkContext<'linker, 'registry> {
                 base: *base,
                 index: *index,
             },
+            UnlinkedInstructionKind::GetStringKeyIndex { dst, base, key } => {
+                InstructionKind::GetStringKeyIndex {
+                    dst: *dst,
+                    base: *base,
+                    key: self.linked.intern_debug_name(key.clone()),
+                }
+            }
             UnlinkedInstructionKind::SetIndex { base, index, src } => InstructionKind::SetIndex {
                 base: *base,
                 index: *index,
                 src: *src,
             },
+            UnlinkedInstructionKind::SetStringKeyIndex { base, key, src } => {
+                InstructionKind::SetStringKeyIndex {
+                    base: *base,
+                    key: self.linked.intern_debug_name(key.clone()),
+                    src: *src,
+                }
+            }
             UnlinkedInstructionKind::IterInit { dst, iterable } => InstructionKind::IterInit {
                 dst: *dst,
                 iterable: *iterable,

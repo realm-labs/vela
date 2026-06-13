@@ -529,6 +529,9 @@ fn verify_instruction(
         }
         | UnlinkedInstructionKind::GetIndex {
             dst, base: record, ..
+        }
+        | UnlinkedInstructionKind::GetStringKeyIndex {
+            dst, base: record, ..
         } => {
             verify_register(function, instruction_index, code, *dst)?;
             verify_register(function, instruction_index, code, *record)?;
@@ -545,6 +548,10 @@ fn verify_instruction(
         UnlinkedInstructionKind::SetIndex { base, index, src } => {
             verify_register(function, instruction_index, code, *base)?;
             verify_register(function, instruction_index, code, *index)?;
+            verify_register(function, instruction_index, code, *src)
+        }
+        UnlinkedInstructionKind::SetStringKeyIndex { base, src, .. } => {
+            verify_register(function, instruction_index, code, *base)?;
             verify_register(function, instruction_index, code, *src)
         }
         UnlinkedInstructionKind::IterInit { dst, iterable } => {

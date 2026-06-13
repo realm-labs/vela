@@ -6,6 +6,7 @@ use vela_syntax::ast::{AssignOp, Expr, ExprKind};
 
 use crate::{Register, UnlinkedInstructionKind};
 
+use super::expressions::literal_string;
 use super::host_paths::{HostIndexAccessKind, HostPath};
 use super::operators::{compound_assignment_instruction, i64_compound_assignment_instruction};
 use super::record_shapes::RecordShape;
@@ -173,6 +174,9 @@ impl Compiler<'_, '_> {
         value: &Expr,
     ) -> CompileResult<Register> {
         let base = self.compile_expr(base)?;
+        if let Some(key) = literal_string(index) {
+            return self.compile_string_key_index_assignment(op, base, key, value);
+        }
         let index = self.compile_expr(index)?;
         let assigned = match op {
             AssignOp::Set => self.compile_expr(value)?,
@@ -194,6 +198,38 @@ impl Compiler<'_, '_> {
         self.emit(UnlinkedInstructionKind::SetIndex {
             base,
             index,
+            src: assigned,
+        });
+        Ok(assigned)
+    }
+
+    fn compile_string_key_index_assignment(
+        &mut self,
+        op: AssignOp,
+        base: Register,
+        key: &str,
+        value: &Expr,
+    ) -> CompileResult<Register> {
+        let assigned = match op {
+            AssignOp::Set => self.compile_expr(value)?,
+            AssignOp::Add | AssignOp::Sub | AssignOp::Mul | AssignOp::Div | AssignOp::Rem => {
+                let current = self.alloc_register()?;
+                self.emit(UnlinkedInstructionKind::GetStringKeyIndex {
+                    dst: current,
+                    base,
+                    key: key.to_owned(),
+                });
+                let rhs = self.compile_expr(value)?;
+                let dst = self.alloc_register()?;
+                self.emit(compound_assignment_instruction_or_error(
+                    op, dst, current, rhs,
+                )?);
+                dst
+            }
+        };
+        self.emit(UnlinkedInstructionKind::SetStringKeyIndex {
+            base,
+            key: key.to_owned(),
             src: assigned,
         });
         Ok(assigned)

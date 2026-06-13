@@ -408,9 +408,19 @@ fn verify_linked_instruction(
             verify_linked_register(function, instruction_index, code, *base)?;
             verify_linked_register(function, instruction_index, code, *index)
         }
+        InstructionKind::GetStringKeyIndex { dst, base, key } => {
+            verify_linked_register(function, instruction_index, code, *dst)?;
+            verify_linked_register(function, instruction_index, code, *base)?;
+            verify_linked_debug_name(function, instruction_index, context, *key)
+        }
         InstructionKind::SetIndex { base, index, src } => {
             verify_linked_register(function, instruction_index, code, *base)?;
             verify_linked_register(function, instruction_index, code, *index)?;
+            verify_linked_register(function, instruction_index, code, *src)
+        }
+        InstructionKind::SetStringKeyIndex { base, key, src } => {
+            verify_linked_register(function, instruction_index, code, *base)?;
+            verify_linked_debug_name(function, instruction_index, context, *key)?;
             verify_linked_register(function, instruction_index, code, *src)
         }
         InstructionKind::IterInit { dst, iterable } => {

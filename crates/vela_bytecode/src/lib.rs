@@ -885,9 +885,19 @@ pub enum UnlinkedInstructionKind {
         base: Register,
         index: Register,
     },
+    GetStringKeyIndex {
+        dst: Register,
+        base: Register,
+        key: String,
+    },
     SetIndex {
         base: Register,
         index: Register,
+        src: Register,
+    },
+    SetStringKeyIndex {
+        base: Register,
+        key: String,
         src: Register,
     },
     IterInit {

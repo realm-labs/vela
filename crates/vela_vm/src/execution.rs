@@ -629,6 +629,15 @@ impl Vm {
                 UnlinkedInstructionKind::GetIndex { dst, base, index } => {
                     indexing::dispatch_get_index(&mut frame, heap.as_deref(), *dst, *base, *index)?;
                 }
+                UnlinkedInstructionKind::GetStringKeyIndex { dst, base, key } => {
+                    indexing::dispatch_get_string_key_index(
+                        &mut frame,
+                        heap.as_deref(),
+                        *dst,
+                        *base,
+                        key,
+                    )?;
+                }
                 UnlinkedInstructionKind::SetIndex { base, index, src } => {
                     indexing::dispatch_set_index(
                         &mut frame,
@@ -636,6 +645,16 @@ impl Vm {
                         budget.as_deref_mut(),
                         *base,
                         *index,
+                        *src,
+                    )?;
+                }
+                UnlinkedInstructionKind::SetStringKeyIndex { base, key, src } => {
+                    indexing::dispatch_set_string_key_index(
+                        &mut frame,
+                        heap.as_deref_mut(),
+                        budget.as_deref_mut(),
+                        *base,
+                        key,
                         *src,
                     )?;
                 }

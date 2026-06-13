@@ -726,6 +726,15 @@ impl Vm {
                 InstructionKind::GetIndex { dst, base, index } => {
                     indexing::dispatch_get_index(&mut frame, heap.as_deref(), *dst, *base, *index)?;
                 }
+                InstructionKind::GetStringKeyIndex { dst, base, key } => {
+                    indexing::dispatch_get_string_key_index(
+                        &mut frame,
+                        heap.as_deref(),
+                        *dst,
+                        *base,
+                        call.program.debug_name(*key),
+                    )?;
+                }
                 InstructionKind::SetIndex { base, index, src } => {
                     indexing::dispatch_set_index(
                         &mut frame,
@@ -733,6 +742,16 @@ impl Vm {
                         budget.as_deref_mut(),
                         *base,
                         *index,
+                        *src,
+                    )?;
+                }
+                InstructionKind::SetStringKeyIndex { base, key, src } => {
+                    indexing::dispatch_set_string_key_index(
+                        &mut frame,
+                        heap.as_deref_mut(),
+                        budget.as_deref_mut(),
+                        *base,
+                        call.program.debug_name(*key),
                         *src,
                     )?;
                 }

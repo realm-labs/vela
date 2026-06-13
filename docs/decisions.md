@@ -159,6 +159,13 @@ budget, and hot-reload behavior as the generic bytecode path. These
 specializations replace pre-release bytecode shapes instead of preserving
 compatibility aliases.
 
+Map string-literal index bytecode is a source-level lowering for ordinary
+`map["key"]` reads and writes. The linked form interns the key once and runtime
+dispatch borrows it directly, avoiding per-iteration string-object lookup and
+key cloning. Dynamic string indexes continue to use the generic index path, and
+benchmark-specific fused condition or method-call shapes are not part of this
+lowering.
+
 `OwnedValue` is the Rust boundary/materialized value name. `Value` is the VM
 runtime slot and is `Copy`, containing only scalars or handles. `HeapValue`
 stores script heap objects, and heap containers store runtime `Value` entries

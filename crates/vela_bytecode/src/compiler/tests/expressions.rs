@@ -492,8 +492,12 @@ fn main() {
                 UnlinkedInstructionKind::GetIndex { .. }
             ))
             .count()
-            >= 2
+            >= 1
     );
+    assert!(code.instructions.iter().any(|instruction| matches!(
+        instruction.kind,
+        UnlinkedInstructionKind::GetStringKeyIndex { .. }
+    )));
 }
 #[test]
 fn compiler_keeps_call_result_index_reads_off_host_paths() {
@@ -544,6 +548,31 @@ fn main() {
             UnlinkedInstructionKind::SetIndex { .. }
         ))
     );
+}
+
+#[test]
+fn compiler_lowers_literal_string_map_index_writes() {
+    let code = compile_function_source(
+        SourceId::new(1),
+        r#"
+fn main() {
+    let rewards = { "xp": 6 };
+    rewards["xp"] += 4;
+    rewards["gold"] = rewards["xp"] + 2;
+    return rewards["xp"] + rewards["gold"];
+}
+"#,
+        "main",
+    )
+    .expect("literal string map index writes should compile");
+    assert!(code.instructions.iter().any(|instruction| matches!(
+        instruction.kind,
+        UnlinkedInstructionKind::GetStringKeyIndex { .. }
+    )));
+    assert!(code.instructions.iter().any(|instruction| matches!(
+        instruction.kind,
+        UnlinkedInstructionKind::SetStringKeyIndex { .. }
+    )));
 }
 #[test]
 fn compiler_lowers_record_field_writes() {

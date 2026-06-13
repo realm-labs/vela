@@ -16,6 +16,17 @@ pub(crate) fn dispatch_get_index(
     frame.write(dst, value)
 }
 
+pub(crate) fn dispatch_get_string_key_index(
+    frame: &mut CallFrame,
+    heap: Option<&HeapExecution<'_>>,
+    dst: Register,
+    base: Register,
+    key: &str,
+) -> VmResult<()> {
+    let value = get_string_key_index(&frame.read(base)?, key, heap)?;
+    frame.write(dst, value)
+}
+
 pub(crate) fn dispatch_set_index(
     frame: &mut CallFrame,
     heap: Option<&mut HeapExecution<'_>>,
@@ -33,6 +44,17 @@ pub(crate) fn dispatch_set_index(
         budget,
     )?;
     frame.write(base, base_value)
+}
+
+pub(crate) fn dispatch_set_string_key_index(
+    frame: &mut CallFrame,
+    heap: Option<&mut HeapExecution<'_>>,
+    budget: Option<&mut ExecutionBudget>,
+    base: Register,
+    key: &str,
+    src: Register,
+) -> VmResult<()> {
+    set_string_key_index(&frame.read(base)?, key, &frame.read(src)?, heap, budget)
 }
 
 pub(crate) fn get_index(
@@ -93,6 +115,41 @@ pub(crate) fn get_index(
     }
 }
 
+pub(crate) fn get_string_key_index(
+    base: &Value,
+    key: &str,
+    heap: Option<&HeapExecution<'_>>,
+) -> VmResult<Value> {
+    let Value::HeapRef(reference) = base else {
+        return Err(VmError::new(VmErrorKind::TypeMismatch {
+            operation: "index",
+        }));
+    };
+    let Some(heap_value) = heap.and_then(|heap| heap.heap.get(*reference)) else {
+        return Err(VmError::new(VmErrorKind::TypeMismatch {
+            operation: "index",
+        }));
+    };
+    match heap_value {
+        HeapValue::Map(values) => values.get(key).map(stored_runtime_value).ok_or_else(|| {
+            VmError::new(VmErrorKind::UnknownMapKey {
+                key: key.to_owned(),
+            })
+        }),
+        HeapValue::Array(_)
+        | HeapValue::Bytes(_)
+        | HeapValue::String(_)
+        | HeapValue::Set(_)
+        | HeapValue::Record { .. }
+        | HeapValue::Enum { .. }
+        | HeapValue::Closure(_)
+        | HeapValue::Iterator(_)
+        | HeapValue::PathProxy(_) => Err(VmError::new(VmErrorKind::TypeMismatch {
+            operation: "index",
+        })),
+    }
+}
+
 pub(crate) fn set_index(
     base: &mut Value,
     index: &Value,
@@ -128,6 +185,44 @@ pub(crate) fn set_index(
             }
         }
         _ => Err(VmError::new(VmErrorKind::TypeMismatch {
+            operation: "index assignment",
+        })),
+    }
+}
+
+pub(crate) fn set_string_key_index(
+    base: &Value,
+    key: &str,
+    src: &Value,
+    heap: Option<&mut HeapExecution<'_>>,
+    budget: Option<&mut ExecutionBudget>,
+) -> VmResult<()> {
+    let Value::HeapRef(reference) = base else {
+        return Err(VmError::new(VmErrorKind::TypeMismatch {
+            operation: "index assignment",
+        }));
+    };
+    let Some(heap) = heap else {
+        return Err(VmError::new(VmErrorKind::TypeMismatch {
+            operation: "index assignment",
+        }));
+    };
+    match heap.heap.get(*reference) {
+        Some(HeapValue::Map(_)) => {
+            set_heap_map_string_key_index(*reference, key, src, heap, budget)
+        }
+        Some(
+            HeapValue::Array(_)
+            | HeapValue::String(_)
+            | HeapValue::Bytes(_)
+            | HeapValue::Set(_)
+            | HeapValue::Record { .. }
+            | HeapValue::Enum { .. }
+            | HeapValue::Closure(_)
+            | HeapValue::Iterator(_)
+            | HeapValue::PathProxy(_),
+        )
+        | None => Err(VmError::new(VmErrorKind::TypeMismatch {
             operation: "index assignment",
         })),
     }
@@ -183,6 +278,32 @@ fn set_heap_map_index(
         }));
     };
     values.insert(key, slot);
+    Ok(())
+}
+
+fn set_heap_map_string_key_index(
+    reference: crate::heap::GcRef,
+    key: &str,
+    src: &Value,
+    heap: &mut HeapExecution<'_>,
+    budget: Option<&mut ExecutionBudget>,
+) -> VmResult<()> {
+    let slot = store_runtime_value(src, heap, budget)?;
+    let HeapValue::Map(values) = heap.heap.get_mut(reference).map_err(|_| {
+        VmError::new(VmErrorKind::TypeMismatch {
+            operation: "index assignment",
+        })
+    })?
+    else {
+        return Err(VmError::new(VmErrorKind::TypeMismatch {
+            operation: "index assignment",
+        }));
+    };
+    if let Some(existing) = values.get_mut(key) {
+        *existing = slot;
+    } else {
+        values.insert(key.to_owned(), slot);
+    }
     Ok(())
 }
 

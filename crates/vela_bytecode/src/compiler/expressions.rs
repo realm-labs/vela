@@ -132,9 +132,17 @@ impl Compiler<'_, '_> {
                     HostIndexAccessKind::Read,
                 )?;
                 let base = self.compile_expr(base)?;
-                let index = self.compile_expr(index)?;
                 let dst = self.alloc_register()?;
-                self.emit(UnlinkedInstructionKind::GetIndex { dst, base, index });
+                if let Some(key) = literal_string(index) {
+                    self.emit(UnlinkedInstructionKind::GetStringKeyIndex {
+                        dst,
+                        base,
+                        key: key.to_owned(),
+                    });
+                } else {
+                    let index = self.compile_expr(index)?;
+                    self.emit(UnlinkedInstructionKind::GetIndex { dst, base, index });
+                }
                 Ok(dst)
             }
             ExprKind::Call { callee, args } => self.compile_call_expr(expr, callee, args),
@@ -582,6 +590,13 @@ impl Compiler<'_, '_> {
             _ => unreachable!("binary equality was matched above"),
         };
         self.compile_binary(inverse, span, left, right).map(Some)
+    }
+}
+
+pub(super) fn literal_string(expr: &Expr) -> Option<&str> {
+    match &expr.kind {
+        ExprKind::Literal(Literal::String(value)) => Some(value),
+        _ => None,
     }
 }
 
