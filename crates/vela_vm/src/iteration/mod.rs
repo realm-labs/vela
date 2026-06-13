@@ -8,6 +8,7 @@ pub(crate) use methods::{
     count_method, count_method_runtime, filter_method, find_method, is_iterator, iter_method,
     map_method, next_method, next_method_runtime, skip_method, string_bytes_method, take_method,
 };
+pub(crate) use methods::{callback_all, callback_any, callback_count, callback_find};
 pub(crate) use source::make_iterator;
 pub use state::IteratorState;
 pub(crate) use step::{

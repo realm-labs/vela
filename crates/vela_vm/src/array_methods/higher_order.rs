@@ -1,5 +1,6 @@
+use crate::iteration::{self, IteratorState};
 use crate::method_runtime::MethodRuntime;
-use crate::{Value, VmError, VmErrorKind, VmResult};
+use crate::{Value, VmResult};
 
 use super::{
     array_values, call_unary_callback, expect_arity, is_truthy, make_array_value, option_value,
@@ -55,13 +56,18 @@ pub(crate) fn find(
 ) -> VmResult<Value> {
     expect_arity("find", args, 1)?;
     let values = array_values(receiver, runtime.heap.as_deref(), "method find")?;
-    for value in values {
-        let predicate = call_unary_callback(&mut runtime, "method find", &args[0], value, &[])?;
-        if is_truthy(&predicate) {
-            return option_value("Some", Some(value), &mut runtime.heap, &mut runtime.budget);
-        }
-    }
-    option_value("None", None, &mut runtime.heap, &mut runtime.budget)
+    let found = iteration::callback_find(
+        &mut IteratorState::from_values(values),
+        &mut runtime,
+        "method find",
+        args[0],
+    )?;
+    option_value(
+        if found.is_some() { "Some" } else { "None" },
+        found,
+        &mut runtime.heap,
+        &mut runtime.budget,
+    )
 }
 
 pub(crate) fn any(
@@ -71,13 +77,12 @@ pub(crate) fn any(
 ) -> VmResult<bool> {
     expect_arity("any", args, 1)?;
     let values = array_values(receiver, runtime.heap.as_deref(), "method any")?;
-    for value in values {
-        let predicate = call_unary_callback(&mut runtime, "method any", &args[0], value, &[])?;
-        if is_truthy(&predicate) {
-            return Ok(true);
-        }
-    }
-    Ok(false)
+    iteration::callback_any(
+        &mut IteratorState::from_values(values),
+        &mut runtime,
+        "method any",
+        args[0],
+    )
 }
 
 pub(crate) fn all(
@@ -87,13 +92,12 @@ pub(crate) fn all(
 ) -> VmResult<bool> {
     expect_arity("all", args, 1)?;
     let values = array_values(receiver, runtime.heap.as_deref(), "method all")?;
-    for value in values {
-        let predicate = call_unary_callback(&mut runtime, "method all", &args[0], value, &[])?;
-        if !is_truthy(&predicate) {
-            return Ok(false);
-        }
-    }
-    Ok(true)
+    iteration::callback_all(
+        &mut IteratorState::from_values(values),
+        &mut runtime,
+        "method all",
+        args[0],
+    )
 }
 
 pub(crate) fn count(
@@ -103,16 +107,10 @@ pub(crate) fn count(
 ) -> VmResult<i64> {
     expect_arity("count", args, 1)?;
     let values = array_values(receiver, runtime.heap.as_deref(), "method count")?;
-    let mut count = 0_i64;
-    for value in values {
-        let predicate = call_unary_callback(&mut runtime, "method count", &args[0], value, &[])?;
-        if is_truthy(&predicate) {
-            count = count.checked_add(1).ok_or_else(|| {
-                VmError::new(VmErrorKind::TypeMismatch {
-                    operation: "method count",
-                })
-            })?;
-        }
-    }
-    Ok(count)
+    iteration::callback_count(
+        &mut IteratorState::from_values(values),
+        &mut runtime,
+        "method count",
+        args[0],
+    )
 }

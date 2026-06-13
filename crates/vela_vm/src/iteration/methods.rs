@@ -307,19 +307,7 @@ pub(crate) fn any_method(
 ) -> VmResult<Value> {
     runtime_checks::expect_arity("any", args, 1)?;
     let result = with_taken_iterator(receiver, &mut runtime, "method any", |iterator, runtime| {
-        while let Some(value) = iterator.next_with_runtime(runtime, "method any", &[])? {
-            let protected = iterator.protected_values();
-            if is_truthy(&crate::method_runtime::call_callback(
-                runtime,
-                "method any",
-                &args[0],
-                &[value],
-                &protected,
-            )?) {
-                return Ok(true);
-            }
-        }
-        Ok(false)
+        callback_any(iterator, runtime, "method any", args[0])
     })?;
     Ok(Value::Bool(result))
 }
@@ -331,19 +319,7 @@ pub(crate) fn all_method(
 ) -> VmResult<Value> {
     runtime_checks::expect_arity("all", args, 1)?;
     let result = with_taken_iterator(receiver, &mut runtime, "method all", |iterator, runtime| {
-        while let Some(value) = iterator.next_with_runtime(runtime, "method all", &[])? {
-            let protected = iterator.protected_values();
-            if !is_truthy(&crate::method_runtime::call_callback(
-                runtime,
-                "method all",
-                &args[0],
-                &[value],
-                &protected,
-            )?) {
-                return Ok(false);
-            }
-        }
-        Ok(true)
+        callback_all(iterator, runtime, "method all", args[0])
     })?;
     Ok(Value::Bool(result))
 }
@@ -358,26 +334,99 @@ pub(crate) fn find_method(
         receiver,
         &mut runtime,
         "method find",
-        |iterator, runtime| {
-            while let Some(value) = iterator.next_with_runtime(runtime, "method find", &[])? {
-                let protected = iterator.protected_values();
-                if is_truthy(&crate::method_runtime::call_callback(
-                    runtime,
-                    "method find",
-                    &args[0],
-                    &[value],
-                    &protected,
-                )?) {
-                    return Ok(Some(value));
-                }
-            }
-            Ok(None)
-        },
+        |iterator, runtime| callback_find(iterator, runtime, "method find", args[0]),
     )?;
     let Some(heap_ref) = runtime.heap.as_deref_mut() else {
         return type_error("method find");
     };
     option_value(found, heap_ref, runtime.budget.as_deref_mut())
+}
+
+pub(crate) fn callback_any(
+    iterator: &mut IteratorState,
+    runtime: &mut MethodRuntime<'_, '_, '_>,
+    operation: &'static str,
+    callback: Value,
+) -> VmResult<bool> {
+    while let Some(value) = iterator.next_with_runtime(runtime, operation, &[])? {
+        let protected = iterator.protected_values();
+        if is_truthy(&crate::method_runtime::call_callback(
+            runtime,
+            operation,
+            &callback,
+            &[value],
+            &protected,
+        )?) {
+            return Ok(true);
+        }
+    }
+    Ok(false)
+}
+
+pub(crate) fn callback_all(
+    iterator: &mut IteratorState,
+    runtime: &mut MethodRuntime<'_, '_, '_>,
+    operation: &'static str,
+    callback: Value,
+) -> VmResult<bool> {
+    while let Some(value) = iterator.next_with_runtime(runtime, operation, &[])? {
+        let protected = iterator.protected_values();
+        if !is_truthy(&crate::method_runtime::call_callback(
+            runtime,
+            operation,
+            &callback,
+            &[value],
+            &protected,
+        )?) {
+            return Ok(false);
+        }
+    }
+    Ok(true)
+}
+
+pub(crate) fn callback_find(
+    iterator: &mut IteratorState,
+    runtime: &mut MethodRuntime<'_, '_, '_>,
+    operation: &'static str,
+    callback: Value,
+) -> VmResult<Option<Value>> {
+    while let Some(value) = iterator.next_with_runtime(runtime, operation, &[])? {
+        let protected = iterator.protected_values();
+        if is_truthy(&crate::method_runtime::call_callback(
+            runtime,
+            operation,
+            &callback,
+            &[value],
+            &protected,
+        )?) {
+            return Ok(Some(value));
+        }
+    }
+    Ok(None)
+}
+
+pub(crate) fn callback_count(
+    iterator: &mut IteratorState,
+    runtime: &mut MethodRuntime<'_, '_, '_>,
+    operation: &'static str,
+    callback: Value,
+) -> VmResult<i64> {
+    let mut count = 0_i64;
+    while let Some(value) = iterator.next_with_runtime(runtime, operation, &[])? {
+        let protected = iterator.protected_values();
+        if is_truthy(&crate::method_runtime::call_callback(
+            runtime,
+            operation,
+            &callback,
+            &[value],
+            &protected,
+        )?) {
+            count = count
+                .checked_add(1)
+                .ok_or_else(|| VmError::new(VmErrorKind::TypeMismatch { operation }))?;
+        }
+    }
+    Ok(count)
 }
 
 fn with_iterator_mut<T>(
