@@ -88,13 +88,19 @@ impl Vm {
         if call.check_param_guards {
             execute_unlinked_param_guards(code, &frame, heap.as_deref())?;
         }
+        let charges_instructions = budget
+            .as_deref()
+            .is_some_and(ExecutionBudget::charges_instructions);
         let mut ip = 0_usize;
 
         while ip < code.instructions.len() {
             let instruction_offset = InstructionOffset(ip);
             let instruction = &code.instructions[ip];
-            if let Some(budget) = budget.as_deref_mut() {
-                budget.charge_instruction()?;
+            if charges_instructions {
+                budget
+                    .as_deref_mut()
+                    .expect("instruction budget mode requires a budget")
+                    .charge_instruction()?;
             }
             ip = ip.saturating_add(1);
 

@@ -46,9 +46,11 @@ impl Vm {
                 .first()
                 .and_then(|instruction| instruction.span)
         });
-        let has_budget = budget.is_some();
+        let charges_instructions = budget
+            .as_deref()
+            .is_some_and(ExecutionBudget::charges_instructions);
         let has_profiler = call.bytecode_profiler.is_some();
-        let result = match (has_budget, has_profiler) {
+        let result = match (charges_instructions, has_profiler) {
             (false, false) => {
                 self.execute_linked_body::<false, false>(call, host, heap, budget.as_deref_mut())
             }

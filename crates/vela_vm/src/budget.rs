@@ -67,6 +67,11 @@ impl ExecutionBudget {
         Ok(())
     }
 
+    #[must_use]
+    pub(crate) fn charges_instructions(&self) -> bool {
+        self.instruction_limit != u64::MAX
+    }
+
     pub fn charge_memory_bytes(&mut self, bytes: usize) -> VmResult<()> {
         let next = self.memory_bytes_allocated.saturating_add(bytes);
         if next > self.memory_limit_bytes {

@@ -185,6 +185,32 @@ fn linked_program_execution_charges_instruction_budget() {
 }
 
 #[test]
+fn unbounded_budget_skips_instruction_counting() {
+    let mut program = vela_bytecode::LinkedProgram::new();
+    let main_name = program.intern_debug_name("main");
+    let mut code = vela_bytecode::LinkedCodeObject::new(main_name, 1);
+    let value = code.push_constant(Constant::Scalar(vela_common::ScalarValue::I64(1)));
+    code.push_instruction(vela_bytecode::linked::Instruction::new(
+        vela_bytecode::linked::InstructionKind::LoadConst {
+            dst: Register(0),
+            constant: value,
+        },
+    ));
+    code.push_instruction(vela_bytecode::linked::Instruction::new(
+        vela_bytecode::linked::InstructionKind::Return { src: Register(0) },
+    ));
+    let function = program.push_function(code);
+    program.set_entry_point(main_name, function);
+    let mut budget = ExecutionBudget::unbounded();
+
+    assert_eq!(
+        Vm::new().run_linked_program_with_budget(&program, "main", &[], &mut budget),
+        Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(1)))
+    );
+    assert_eq!(budget.instructions_executed(), 0);
+}
+
+#[test]
 fn calls_registered_native_functions() {
     let mut vm = Vm::new();
     let native_id = function_id_for_native_name("log");
