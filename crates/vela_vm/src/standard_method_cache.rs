@@ -77,6 +77,18 @@ pub(crate) fn standard_cache_entry_matches_method_id(
         (StandardMethodReceiver::Bytes, StandardMethodInlineCacheTarget::ReadU32Be) => {
             return method_id == std_method_ids().bytes_read_u32_be;
         }
+        (StandardMethodReceiver::Map, StandardMethodInlineCacheTarget::Keys) => {
+            return method_id == std_method_ids().map_keys;
+        }
+        (StandardMethodReceiver::Map, StandardMethodInlineCacheTarget::Values) => {
+            return method_id == std_method_ids().map_values;
+        }
+        (StandardMethodReceiver::Map, StandardMethodInlineCacheTarget::Entries) => {
+            return method_id == std_method_ids().map_entries;
+        }
+        (StandardMethodReceiver::Set, StandardMethodInlineCacheTarget::Values) => {
+            return method_id == std_method_ids().set_values;
+        }
         _ => {}
     }
     standard_method_target(cache.receiver, method_id) == Some(cache.target)
