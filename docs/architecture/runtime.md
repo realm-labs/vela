@@ -148,6 +148,26 @@ pub enum HeapValue {
 }
 ```
 
+`HeapValue::Iterator` stores one-shot cursor state. Iterator state may point at
+script heap sources such as arrays, sets, maps, and strings by `GcRef`, may own
+copied `Value` snapshots from safe boundaries, and may wrap lazy adapter state
+such as `map`, `filter`, `take`, and `skip`. It must trace script heap
+references that it stores or protects, including callback closures and source
+containers, but it must not trace Rust host state as script-owned memory.
+
+Collection-backed iterator sources read current heap slots lazily while keeping
+the source identity and initial traversal extent. Map views snapshot key order
+for traversal and read values from the source map when each item is produced.
+Iterator adapters are also one-shot: creating an adapter takes the source
+iterator state, and terminal methods consume it.
+
+Iterator object allocation charges heap memory like other script heap values.
+Stepping an iterator and invoking callbacks still runs through normal VM budget
+and call-depth checks. Final collection materialization, such as
+`collect_array()`, charges output heap allocation and collection growth at the
+allocation or mutation boundary; lazy adapters do not charge collection growth
+for intermediate values they do not materialize.
+
 Only consider the following after profiling proves `Value` overhead is too high:
 
 ```text

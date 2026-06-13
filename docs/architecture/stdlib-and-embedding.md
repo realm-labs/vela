@@ -118,6 +118,8 @@ text.split_whitespace()
 text.parse_i64()
 text.parse_f64()
 text.parse_bool()
+text.chars() // Iterator over char values
+text.bytes() // Iterator over UTF-8 bytes as u8
 ```
 
 Additional explicit parse helpers such as `parse_i32`, `parse_u64`, or
@@ -127,8 +129,9 @@ is implemented. Parsing never performs implicit numeric conversion.
 Vela strings follow Rust `str` indexing semantics: `len()` returns byte length,
 `find()` returns byte indexes, and `slice(start, end)` uses byte ranges. Strings
 remain valid UTF-8, so string slices must start and end on UTF-8 character
-boundaries. Character-level traversal should use `for ch in text`, which yields
-Rust-semantics `char` values.
+boundaries. Character-level traversal should use `for ch in text` or
+`text.chars()`, which yield Rust-semantics `char` values. Byte traversal should
+use `text.bytes()` and yields `u8` values.
 
 ### Bytes
 

@@ -143,6 +143,35 @@ path proxy
 trait/protocol object
 ```
 
+### Iteration
+
+Vela uses one internal iteration model:
+
+```text
+Iterable  value or view that can create an iterator
+Sequence  repeatable iterable/view that creates a fresh iterator each traversal
+Iterator  one-shot cursor; `next()` advances its internal state
+```
+
+These are runtime and analysis concepts, not script-language generic types.
+Scripts write `iterator`, not `Iterator<T>`.
+
+`for value in source` evaluates `source` once, creates an iterator through the
+runtime iteration boundary, then repeatedly advances that iterator until it is
+done. Arrays, sets, maps, strings, and ranges are repeatable sources. Existing
+iterator values are one-shot: looping over an iterator consumes the same cursor
+state observed by later `next()` calls.
+
+Indexed `for index, value in source` remains syntax-level loop lowering. It
+does not allocate an eager `enumerate()` adapter. Proven `i64` ranges may keep a
+specialized bytecode fast path when it preserves the same observable iteration
+semantics.
+
+String iteration is explicit and UTF-8-aware. `for ch in text` uses the same
+character traversal source as `text.chars()`, yielding `char` values.
+`text.bytes()` yields UTF-8 bytes as `u8`. String `len()`, `find()`, and
+`slice(start, end)` remain byte-indexed.
+
 Script generics are not supported:
 
 ```text
