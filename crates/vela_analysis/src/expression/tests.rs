@@ -318,6 +318,72 @@ fn infers_stdlib_method_facts_with_lambda_parameters() {
 }
 
 #[test]
+fn infers_iterator_pipeline_facts_without_script_generics() {
+    let expressions = function_exprs(
+        r#"
+            fn main() {
+                scores.iter();
+                scores.iter().map(|score| score + 1);
+                scores.iter().map(|score| score + 1).collect_array();
+                scores.iter().filter(|score| score > 2).find(|score| score > 4);
+                scores.iter().take(2).skip(1).count();
+                rewards.keys().collect_array();
+                rewards.values().collect_array();
+                rewards.entries().collect_array();
+                (1..=4).iter().collect_array();
+                "ab".chars().collect_array();
+                "ab".bytes().collect_array();
+            }
+            "#,
+    );
+    let scope = ExprFactScope::new()
+        .with_path(["scores"], TypeFact::array(TypeFact::I64))
+        .with_path(["rewards"], TypeFact::map(TypeFact::STRING, TypeFact::I64));
+
+    assert_eq!(
+        type_fact_from_expr(&expressions[0], &scope),
+        TypeFact::iterator(TypeFact::I64)
+    );
+    assert_eq!(
+        type_fact_from_expr(&expressions[1], &scope),
+        TypeFact::iterator(TypeFact::I64)
+    );
+    assert_eq!(
+        type_fact_from_expr(&expressions[2], &scope),
+        TypeFact::array(TypeFact::I64)
+    );
+    assert_eq!(
+        type_fact_from_expr(&expressions[3], &scope),
+        TypeFact::option(TypeFact::I64)
+    );
+    assert_eq!(type_fact_from_expr(&expressions[4], &scope), TypeFact::I64);
+    assert_eq!(
+        type_fact_from_expr(&expressions[5], &scope),
+        TypeFact::array(TypeFact::STRING)
+    );
+    assert_eq!(
+        type_fact_from_expr(&expressions[6], &scope),
+        TypeFact::array(TypeFact::I64)
+    );
+    assert_eq!(
+        type_fact_from_expr(&expressions[7], &scope),
+        TypeFact::array(TypeFact::record("MapEntry"))
+    );
+    assert_eq!(
+        type_fact_from_expr(&expressions[8], &scope),
+        TypeFact::array(TypeFact::I64)
+    );
+    assert_eq!(
+        type_fact_from_expr(&expressions[9], &scope),
+        TypeFact::array(TypeFact::CHAR)
+    );
+    assert_eq!(
+        type_fact_from_expr(&expressions[10], &scope),
+        TypeFact::array(TypeFact::U8)
+    );
+}
+
+#[test]
 fn infers_value_fact_for_single_arg_map_callbacks() {
     let expressions = function_exprs(
         r#"
