@@ -334,6 +334,36 @@ fn main() {
 }
 
 #[test]
+fn iterator_collect_array_respects_array_collection_limit() {
+    let program = compile_program_source(
+        SourceId::new(1),
+        r#"
+fn main() {
+    return [1, 2, 3].iter().collect_array().len();
+}
+"#,
+    )
+    .expect("compile collect_array limit source");
+    let mut budget =
+        ExecutionBudget::unbounded().with_collection_limits(crate::budget::CollectionLimits {
+            max_array_len: 2,
+            max_map_entries: usize::MAX,
+            max_set_len: usize::MAX,
+        });
+
+    let error = run_linked_test_program_with_budget(&Vm::new(), &program, "main", &[], &mut budget)
+        .expect_err("collect_array should respect array length limit");
+
+    assert_eq!(
+        error.kind(),
+        VmErrorKind::CollectionLimitExceeded {
+            collection: "array",
+            limit: 2,
+        }
+    );
+}
+
+#[test]
 fn iterator_array_sources_read_current_values_without_growth_snapshot() {
     let code = compile_function_source(
         SourceId::new(1),

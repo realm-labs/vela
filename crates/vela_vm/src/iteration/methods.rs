@@ -195,6 +195,7 @@ pub(crate) fn collect_array_method(
         }
         Ok(values)
     })?;
+    check_collect_array_len(values.len(), budget.as_deref())?;
     let Some(heap_ref) = heap.as_deref_mut() else {
         return type_error("method collect_array");
     };
@@ -221,6 +222,7 @@ pub(crate) fn collect_array_method_runtime(
             Ok(values)
         },
     )?;
+    check_collect_array_len(values.len(), runtime.budget.as_deref())?;
     let Some(heap_ref) = runtime.heap.as_deref_mut() else {
         return type_error("method collect_array");
     };
@@ -462,6 +464,23 @@ fn count_arg(value: Value, operation: &'static str) -> VmResult<usize> {
         Value::I64(value) if value >= 0 => Ok(value as usize),
         _ => type_error(operation),
     }
+}
+
+fn check_collect_array_len(len: usize, budget: Option<&ExecutionBudget>) -> VmResult<()> {
+    let Some(budget) = budget else {
+        return Ok(());
+    };
+    if !budget.limits_collections() {
+        return Ok(());
+    }
+    let limit = budget.collection_limits().max_array_len;
+    if len > limit {
+        return Err(VmError::new(VmErrorKind::CollectionLimitExceeded {
+            collection: "array",
+            limit,
+        }));
+    }
+    Ok(())
 }
 
 fn type_error<T>(operation: &'static str) -> VmResult<T> {
