@@ -261,6 +261,31 @@ fn delta_band(mean_ratio_ppm: u128) -> &'static str {
 
 #[cfg(test)]
 mod tests {
+    #[allow(dead_code)]
+    fn record(
+        name: &'static str,
+        measurement_kind: &'static str,
+        cache_enabled: bool,
+    ) -> super::Record {
+        super::Record {
+            name,
+            mode: if cache_enabled {
+                "cache_enabled"
+            } else {
+                "inline"
+            },
+            measurement_kind,
+            cache_enabled,
+            min_ns: 100,
+            mean_ns: 100,
+            median_ns: 100,
+            p95_ns: 100,
+            checksum: 7,
+            cache_hits: usize::from(measurement_kind == "cache"),
+            profile_hits: u64::from(measurement_kind == "profile_only"),
+        }
+    }
+
     #[test]
     fn measurement_kind_separates_interpreter_profile_cache_and_idle_cache_rows() {
         assert_eq!(super::measurement_kind(false, 0, 0), "interpreter");
@@ -269,6 +294,59 @@ mod tests {
         assert_eq!(super::measurement_kind(true, 0, 0), "cache_no_activity");
         assert_eq!(super::measurement_kind(true, 3, 0), "cache");
         assert_eq!(super::measurement_kind(true, 3, 12), "cache");
+    }
+
+    #[test]
+    fn measurement_summary_counts_cache_mode_profile_and_idle_rows() {
+        let mut summary = super::MeasurementSummary::default();
+        for record in [
+            record("interpreter", "interpreter", false),
+            record("profile", "profile_only", false),
+            record("cache_profile", "profile_only", true),
+            record("cache", "cache", true),
+            record("cache_idle", "cache_no_activity", true),
+        ] {
+            summary.record(&record);
+        }
+
+        assert_eq!(summary.interpreter_rows, 1);
+        assert_eq!(summary.profile_only_rows, 2);
+        assert_eq!(summary.cache_rows, 1);
+        assert_eq!(summary.cache_no_activity_rows, 1);
+        assert_eq!(summary.cache_mode_profile_only_rows, 1);
+        assert_eq!(summary.cache_mode_no_activity_rows, 1);
+    }
+
+    #[test]
+    fn delta_summary_splits_bands_by_delta_kind() {
+        let base = record("family_hot_offsets", "profile_only", false);
+        let mut cache = record("family_cache_hot_offsets", "cache", true);
+        cache.mean_ns = 98;
+        cache.profile_hits = base.profile_hits;
+        let mut profile = record("script_call_cache_hot_offsets", "profile_only", true);
+        profile.mean_ns = 100;
+        let mut idle = record("empty_cache_hot_offsets", "cache_no_activity", true);
+        idle.mean_ns = 103;
+        idle.checksum = 9;
+        idle.profile_hits = 3;
+
+        let mut summary = super::DeltaSummary::default();
+        summary.record(&cache, &base, -2, "faster");
+        summary.record(&profile, &base, 0, "flat");
+        summary.record(&idle, &base, 3, "slower");
+
+        assert_eq!(summary.paired_rows, 3);
+        assert_eq!(summary.cache_rows, 1);
+        assert_eq!(summary.profile_only_rows, 1);
+        assert_eq!(summary.cache_no_activity_rows, 1);
+        assert_eq!(summary.improved_rows, 1);
+        assert_eq!(summary.neutral_rows, 1);
+        assert_eq!(summary.regressed_rows, 1);
+        assert_eq!(summary.cache_bands.faster, 1);
+        assert_eq!(summary.profile_only_bands.flat, 1);
+        assert_eq!(summary.cache_no_activity_bands.slower, 1);
+        assert_eq!(summary.checksum_mismatches, 1);
+        assert_eq!(summary.profile_mismatches, 1);
     }
 
     #[test]
