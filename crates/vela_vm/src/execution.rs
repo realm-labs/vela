@@ -699,11 +699,7 @@ impl Vm {
                     jump_if_done,
                 } => {
                     if let Some(target) = iteration::dispatch_i64_range_next(
-                        iteration::IterRuntime {
-                            frame: &mut frame,
-                            heap: heap.as_deref_mut(),
-                            budget: budget.as_deref_mut(),
-                        },
+                        &mut frame,
                         code,
                         iteration::RangeNextStep {
                             cursor: *cursor,

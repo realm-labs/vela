@@ -208,20 +208,22 @@ pub(crate) fn dispatch_linked_range_next(
     })
 }
 
+#[inline(always)]
 pub(crate) fn dispatch_i64_range_next(
-    runtime: IterRuntime<'_, '_>,
+    frame: &mut CallFrame,
     code: &UnlinkedCodeObject,
     step: RangeNextStep,
 ) -> VmResult<Option<usize>> {
-    dispatch_i64_range_next_with(runtime.frame, step, |offset| validate_jump(code, offset))
+    dispatch_i64_range_next_with(frame, step, |offset| validate_jump(code, offset))
 }
 
+#[inline(always)]
 pub(crate) fn dispatch_linked_i64_range_next(
-    runtime: IterRuntime<'_, '_>,
+    frame: &mut CallFrame,
     code: &LinkedCodeObject,
     step: RangeNextStep,
 ) -> VmResult<Option<usize>> {
-    dispatch_i64_range_next_with(runtime.frame, step, |offset| {
+    dispatch_i64_range_next_with(frame, step, |offset| {
         debug_assert!(offset <= code.instructions.len());
         Ok(())
     })
@@ -249,6 +251,7 @@ fn next_iterator_value(
     }
 }
 
+#[inline(always)]
 fn dispatch_i64_range_next_with(
     frame: &mut CallFrame,
     step: RangeNextStep,

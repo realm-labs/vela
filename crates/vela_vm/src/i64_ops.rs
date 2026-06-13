@@ -2,22 +2,22 @@ use vela_bytecode::I64CompareOp;
 
 use crate::{VmError, VmErrorKind, VmResult};
 
-#[inline]
+#[inline(always)]
 pub(crate) fn add_raw(lhs: i64, rhs: i64) -> VmResult<i64> {
     lhs.checked_add(rhs).ok_or_else(|| overflow("add"))
 }
 
-#[inline]
+#[inline(always)]
 pub(crate) fn sub_raw(lhs: i64, rhs: i64) -> VmResult<i64> {
     lhs.checked_sub(rhs).ok_or_else(|| overflow("sub"))
 }
 
-#[inline]
+#[inline(always)]
 pub(crate) fn mul_raw(lhs: i64, rhs: i64) -> VmResult<i64> {
     lhs.checked_mul(rhs).ok_or_else(|| overflow("mul"))
 }
 
-#[inline]
+#[inline(always)]
 pub(crate) fn rem_raw(lhs: i64, rhs: i64) -> VmResult<i64> {
     if rhs == 0 {
         return Err(VmError::new(VmErrorKind::DivisionByZero));
@@ -25,7 +25,7 @@ pub(crate) fn rem_raw(lhs: i64, rhs: i64) -> VmResult<i64> {
     lhs.checked_rem(rhs).ok_or_else(|| overflow("rem"))
 }
 
-#[inline]
+#[inline(always)]
 pub(crate) fn compare(lhs: i64, op: I64CompareOp, rhs: i64) -> bool {
     match op {
         I64CompareOp::Equal => lhs == rhs,
@@ -37,7 +37,7 @@ pub(crate) fn compare(lhs: i64, op: I64CompareOp, rhs: i64) -> bool {
     }
 }
 
-#[inline]
+#[inline(always)]
 fn overflow(operation: &'static str) -> VmError {
     VmError::new(VmErrorKind::ArithmeticOverflow { operation })
 }
