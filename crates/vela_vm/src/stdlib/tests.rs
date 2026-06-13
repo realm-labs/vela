@@ -17,10 +17,7 @@ fn run_linked_stdlib_test_program_with_budget(
     budget: &mut ExecutionBudget,
 ) -> crate::VmResult<OwnedValue> {
     let mut linker = Linker::new();
-    vm.native_ids
-        .keys()
-        .chain(vm.host_native_ids.keys())
-        .copied()
+    vm.native_implementation_ids()
         .for_each(|id| linker.add_native_implementation(id));
     let linked = linker
         .link_program(program)

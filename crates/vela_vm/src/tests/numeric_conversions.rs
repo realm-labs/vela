@@ -9,9 +9,7 @@ fn run_conversion_source(source: &str) -> VmResult<OwnedValue> {
             .expect("conversion source compiles");
     let mut linker = Linker::with_registry(&registry);
     let vm = Vm::new().with_standard_natives();
-    vm.native_ids
-        .keys()
-        .copied()
+    vm.native_implementation_ids()
         .for_each(|id| linker.add_native_implementation(id));
     let linked = linker
         .link_program(&program)

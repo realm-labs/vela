@@ -47,10 +47,7 @@ mod tests {
         let mut program = UnlinkedProgram::new();
         program.insert_function(code);
         let mut linker = Linker::new();
-        vm.native_ids
-            .keys()
-            .chain(vm.host_native_ids.keys())
-            .copied()
+        vm.native_implementation_ids()
             .for_each(|id| linker.add_native_implementation(id));
         let linked = linker
             .link_program(&program)

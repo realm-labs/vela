@@ -75,6 +75,7 @@ mod reflection_values;
 mod scalar_numeric_ops;
 mod script_methods;
 mod standard_array_id_dispatch;
+mod standard_borrowed_native_dispatch;
 mod standard_callback_id_dispatch;
 mod standard_id_dispatch;
 mod standard_map_set_id_dispatch;
@@ -111,10 +112,7 @@ fn run_linked_test_program_with_budget(
     budget: &mut ExecutionBudget,
 ) -> VmResult<OwnedValue> {
     let mut linker = Linker::new();
-    vm.native_ids
-        .keys()
-        .chain(vm.host_native_ids.keys())
-        .copied()
+    vm.native_implementation_ids()
         .for_each(|id| linker.add_native_implementation(id));
     let linked = linker
         .link_program(program)
@@ -131,10 +129,7 @@ fn run_linked_test_program_with_host_budget(
     budget: &mut ExecutionBudget,
 ) -> VmResult<OwnedValue> {
     let mut linker = Linker::new();
-    vm.native_ids
-        .keys()
-        .chain(vm.host_native_ids.keys())
-        .copied()
+    vm.native_implementation_ids()
         .for_each(|id| linker.add_native_implementation(id));
     let linked = linker
         .link_program(program)
@@ -151,10 +146,7 @@ fn run_linked_test_program_runtime_with_heap_and_budget(
     budget: &mut ExecutionBudget,
 ) -> VmResult<Value> {
     let mut linker = Linker::new();
-    vm.native_ids
-        .keys()
-        .chain(vm.host_native_ids.keys())
-        .copied()
+    vm.native_implementation_ids()
         .for_each(|id| linker.add_native_implementation(id));
     let linked = linker
         .link_program(program)
@@ -195,10 +187,7 @@ fn run_linked_test_program_runtime_with_host_heap_and_budget(
     budget: &mut ExecutionBudget,
 ) -> VmResult<Value> {
     let mut linker = Linker::new();
-    vm.native_ids
-        .keys()
-        .chain(vm.host_native_ids.keys())
-        .copied()
+    vm.native_implementation_ids()
         .for_each(|id| linker.add_native_implementation(id));
     let linked = linker
         .link_program(program)

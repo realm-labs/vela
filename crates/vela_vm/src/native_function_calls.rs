@@ -3,9 +3,9 @@ use vela_common::Span;
 use vela_def::FunctionId;
 
 use crate::{
-    CallFrame, ExecutionBudget, HeapExecution, HostExecution, HostNativeFunction, NativeFunction,
-    NativeInlineCacheEntry, OwnedValue, SmallStorage, Vm, VmError, VmErrorKind, VmInlineCaches,
-    VmResult, owned_to_value, value::Value, value_to_owned,
+    BorrowedNativeFunction, CallFrame, ExecutionBudget, HeapExecution, HostExecution,
+    HostNativeFunction, NativeFunction, NativeInlineCacheEntry, OwnedValue, SmallStorage, Vm,
+    VmError, VmErrorKind, VmInlineCaches, VmResult, owned_to_value, value::Value, value_to_owned,
 };
 
 pub(crate) struct NativeFunctionCall<'a> {
@@ -30,6 +30,7 @@ pub(crate) struct LinkedNativeFunctionCall<'a> {
 #[derive(Clone)]
 pub(crate) enum NativeCallTarget {
     Pure(NativeFunction),
+    BorrowedPure(BorrowedNativeFunction),
     Host(HostNativeFunction),
     BorrowedHost(crate::BorrowedHostNativeFunction),
 }
@@ -38,6 +39,7 @@ impl NativeCallTarget {
     pub(crate) const fn kind(&self) -> &'static str {
         match self {
             Self::Pure(_) => "pure",
+            Self::BorrowedPure(_) => "borrowed_pure",
             Self::Host(_) => "host",
             Self::BorrowedHost(_) => "borrowed_host",
         }
@@ -109,6 +111,17 @@ fn dispatch_resolved_native_function_call(
             native(values.as_slice())
                 .map_err(|error| error.with_source_span_if_absent(call.call_site))?
         }
+        NativeCallTarget::BorrowedPure(native) => {
+            let values = native_borrowed_call_args_from_registers(frame, call.args)?;
+            let heap = heap.as_deref().ok_or_else(|| {
+                VmError::new(VmErrorKind::TypeMismatch {
+                    operation: "native heap",
+                })
+                .with_source_span_if_absent(call.call_site)
+            })?;
+            native(values.as_slice(), heap, budget.as_deref_mut())
+                .map_err(|error| error.with_source_span_if_absent(call.call_site))?
+        }
         NativeCallTarget::Host(native) => {
             let values = native_call_args_from_registers(frame, call.args, heap.as_deref())?;
             let host = host.as_deref_mut().ok_or_else(|| {
@@ -173,10 +186,16 @@ fn resolve_cached_native_call_target(
 }
 
 fn resolve_native_call_target_by_id(vm: &Vm, native: FunctionId) -> Option<NativeCallTarget> {
-    vm.borrowed_host_native_ids
+    vm.borrowed_native_ids
         .get(&native)
         .cloned()
-        .map(NativeCallTarget::BorrowedHost)
+        .map(NativeCallTarget::BorrowedPure)
+        .or_else(|| {
+            vm.borrowed_host_native_ids
+                .get(&native)
+                .cloned()
+                .map(NativeCallTarget::BorrowedHost)
+        })
         .or_else(|| {
             vm.native_ids
                 .get(&native)

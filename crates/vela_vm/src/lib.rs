@@ -119,6 +119,16 @@ impl ExecutionCall<'_> {
 
 pub type NativeFunction =
     Arc<dyn Fn(&[OwnedValue]) -> VmResult<OwnedValue> + Send + Sync + 'static>;
+pub type BorrowedNativeFunction = Arc<
+    dyn for<'heap, 'budget> Fn(
+            &[Value],
+            &HeapExecution<'heap>,
+            Option<&'budget mut ExecutionBudget>,
+        ) -> VmResult<OwnedValue>
+        + Send
+        + Sync
+        + 'static,
+>;
 pub type HostNativeFunction = Arc<
     dyn for<'host, 'budget> Fn(
             &[OwnedValue],
@@ -144,6 +154,7 @@ pub(crate) type BorrowedHostNativeFunction = Arc<
 #[derive(Clone, Default)]
 pub struct Vm {
     native_ids: HashMap<FunctionId, NativeFunction>,
+    borrowed_native_ids: HashMap<FunctionId, BorrowedNativeFunction>,
     host_native_ids: HashMap<FunctionId, HostNativeFunction>,
     borrowed_host_native_ids: HashMap<FunctionId, BorrowedHostNativeFunction>,
     type_registry: Option<Arc<TypeRegistry>>,
@@ -539,6 +550,37 @@ impl Vm {
         self.native_ids.insert(id, Arc::new(function));
     }
 
+    pub fn register_borrowed_native(
+        &mut self,
+        name: impl Into<String>,
+        function: impl for<'heap, 'budget> Fn(
+            &[Value],
+            &HeapExecution<'heap>,
+            Option<&'budget mut ExecutionBudget>,
+        ) -> VmResult<OwnedValue>
+        + Send
+        + Sync
+        + 'static,
+    ) {
+        let name = name.into();
+        self.register_borrowed_native_with_id(function_id_for_native_name(&name), function);
+    }
+
+    pub fn register_borrowed_native_with_id(
+        &mut self,
+        id: FunctionId,
+        function: impl for<'heap, 'budget> Fn(
+            &[Value],
+            &HeapExecution<'heap>,
+            Option<&'budget mut ExecutionBudget>,
+        ) -> VmResult<OwnedValue>
+        + Send
+        + Sync
+        + 'static,
+    ) {
+        self.borrowed_native_ids.insert(id, Arc::new(function));
+    }
+
     pub fn register_host_native(
         &mut self,
         name: impl Into<String>,
@@ -641,7 +683,9 @@ impl Vm {
     pub fn native_implementation_ids(&self) -> impl Iterator<Item = FunctionId> + '_ {
         self.native_ids
             .keys()
+            .chain(self.borrowed_native_ids.keys())
             .chain(self.host_native_ids.keys())
+            .chain(self.borrowed_host_native_ids.keys())
             .copied()
     }
 

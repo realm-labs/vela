@@ -130,18 +130,18 @@ fn run_workload(workload: &Workload, params: BenchParams) -> Result<BenchResult,
 }
 
 fn register_bench_natives(vm: &mut Vm) {
-    vm.register_native("bench::mix4", |args| {
+    vm.register_borrowed_native("bench::mix4", |args, _heap, _budget| {
         let [
-            OwnedValue::Scalar(vela_common::ScalarValue::I64(a)),
-            OwnedValue::Scalar(vela_common::ScalarValue::I64(b)),
-            OwnedValue::Scalar(vela_common::ScalarValue::I64(c)),
-            OwnedValue::Scalar(vela_common::ScalarValue::I64(d)),
+            Value::Scalar(vela_common::ScalarValue::I64(a)),
+            Value::Scalar(vela_common::ScalarValue::I64(b)),
+            Value::Scalar(vela_common::ScalarValue::I64(c)),
+            Value::Scalar(vela_common::ScalarValue::I64(d)),
         ] = args
         else {
             return Ok(OwnedValue::Null);
         };
         Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(
-            a * 3 + b * 2 - c + d,
+            *a * 3 + *b * 2 - *c + *d,
         )))
     });
 }

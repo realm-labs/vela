@@ -34,12 +34,7 @@ fn run_linked_array_test_code_with_budget(
     program.insert_function(code);
 
     let mut linker = Linker::new();
-    for id in vm
-        .native_ids
-        .keys()
-        .chain(vm.host_native_ids.keys())
-        .copied()
-    {
+    for id in vm.native_implementation_ids() {
         linker.add_native_implementation(id);
     }
     let linked = linker

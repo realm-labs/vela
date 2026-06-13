@@ -28,10 +28,7 @@ pub(super) fn run_linked_standard_id_code(
     let mut program = UnlinkedProgram::new();
     program.insert_function(code);
     let mut linker = Linker::new();
-    vm.native_ids
-        .keys()
-        .chain(vm.host_native_ids.keys())
-        .copied()
+    vm.native_implementation_ids()
         .for_each(|id| linker.add_native_implementation(id));
     let linked = linker
         .link_program(&program)
@@ -48,10 +45,7 @@ fn run_linked_standard_id_code_with_host(
     let mut program = UnlinkedProgram::new();
     program.insert_function(code);
     let mut linker = Linker::new();
-    vm.native_ids
-        .keys()
-        .chain(vm.host_native_ids.keys())
-        .copied()
+    vm.native_implementation_ids()
         .for_each(|id| linker.add_native_implementation(id));
     let linked = linker
         .link_program(&program)
@@ -60,7 +54,7 @@ fn run_linked_standard_id_code_with_host(
     vm.run_linked_program_with_host_budget_and_caches(&linked, &entry, &[], host, &mut budget, None)
 }
 
-fn run_linked_standard_id_code_with_caches(
+pub(super) fn run_linked_standard_id_code_with_caches(
     vm: &Vm,
     code: UnlinkedCodeObject,
     caches: &RecordingNativeCaches,
@@ -97,20 +91,20 @@ fn run_linked_standard_id_code_with_caches(
     crate::heap_values::value_to_owned(&result, Some(&heap_execution))
 }
 
-struct RecordingNativeCaches {
+pub(super) struct RecordingNativeCaches {
     entries: RefCell<Vec<Option<NativeInlineCacheEntry>>>,
     set_count: Cell<usize>,
 }
 
 impl RecordingNativeCaches {
-    fn new(len: usize) -> Self {
+    pub(super) fn new(len: usize) -> Self {
         Self {
             entries: RefCell::new(vec![None; len]),
             set_count: Cell::new(0),
         }
     }
 
-    fn entry(&self, site: CacheSiteId) -> Option<NativeInlineCacheEntry> {
+    pub(super) fn entry(&self, site: CacheSiteId) -> Option<NativeInlineCacheEntry> {
         self.entries.borrow().get(site.index()).cloned().flatten()
     }
 
@@ -118,7 +112,7 @@ impl RecordingNativeCaches {
         self.entries.borrow_mut()[site.index()] = Some(entry);
     }
 
-    fn set_count(&self) -> usize {
+    pub(super) fn set_count(&self) -> usize {
         self.set_count.get()
     }
 }
@@ -138,7 +132,10 @@ impl VmInlineCaches for RecordingNativeCaches {
     }
 }
 
-fn native_cache_code(name: &str, native_id: FunctionId) -> (UnlinkedCodeObject, CacheSiteId) {
+pub(super) fn native_cache_code(
+    name: &str,
+    native_id: FunctionId,
+) -> (UnlinkedCodeObject, CacheSiteId) {
     let mut code = UnlinkedCodeObject::new(name, 1);
     let cache_site = code.push_cache_site(CacheSiteKind::NativeCall, InstructionOffset(0));
     code.push_instruction(UnlinkedInstruction::new(
