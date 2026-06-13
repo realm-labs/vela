@@ -65,6 +65,84 @@ pub(super) fn linked_standard_len_cache_program() -> (
     (program, site, dispatch, method_id)
 }
 
+pub(super) fn linked_iterator_adapter_cache_program(method: &str) -> LinkedMethodCacheFixture {
+    let array_method_id =
+        vela_stdlib::std_method_id("Array", "values").expect("Array::values method id");
+    let method_id = vela_stdlib::std_method_id("Iterator", method).expect("Iterator method id");
+    let collect_method_id = vela_stdlib::std_method_id("Iterator", "collect_array")
+        .expect("Iterator::collect_array method id");
+    let mut program = vela_bytecode::LinkedProgram::new();
+    let main_name = program.intern_debug_name("main");
+    let values_name = program.intern_debug_name("values");
+    let method_name = program.intern_debug_name(method);
+    let collect_name = program.intern_debug_name("collect_array");
+    let values_dispatch = program.push_method_dispatch(vela_bytecode::LinkedMethodDispatch::new(
+        values_name,
+        vela_bytecode::LinkedMethodDispatchKind::Value {
+            method_id: array_method_id,
+        },
+    ));
+    let dispatch = program.push_method_dispatch(vela_bytecode::LinkedMethodDispatch::new(
+        method_name,
+        vela_bytecode::LinkedMethodDispatchKind::Value { method_id },
+    ));
+    let collect_dispatch = program.push_method_dispatch(vela_bytecode::LinkedMethodDispatch::new(
+        collect_name,
+        vela_bytecode::LinkedMethodDispatchKind::Value {
+            method_id: collect_method_id,
+        },
+    ));
+
+    let mut code = vela_bytecode::LinkedCodeObject::new(main_name, 8);
+    push_i64_constants(&mut code, &[1, 2, 3, 4, 2], 0);
+    code.push_instruction(vela_bytecode::linked::Instruction::new(
+        vela_bytecode::linked::InstructionKind::MakeArray {
+            dst: Register(5),
+            elements: vec![Register(0), Register(1), Register(2), Register(3)],
+        },
+    ));
+    code.push_instruction(vela_bytecode::linked::Instruction::new(
+        vela_bytecode::linked::InstructionKind::CallMethod {
+            dst: Register(6),
+            receiver: Register(5),
+            dispatch: values_dispatch,
+            debug_name: values_name,
+            cache_site: None,
+            args: Vec::new(),
+        },
+    ));
+    let site = code.push_cache_site(
+        CacheSiteKind::MethodCall,
+        InstructionOffset(code.instructions.len()),
+    );
+    code.push_instruction(vela_bytecode::linked::Instruction::new(
+        vela_bytecode::linked::InstructionKind::CallMethod {
+            dst: Register(6),
+            receiver: Register(6),
+            dispatch,
+            debug_name: method_name,
+            cache_site: Some(site),
+            args: vec![vela_bytecode::CallArgument::Register(Register(4))],
+        },
+    ));
+    code.push_instruction(vela_bytecode::linked::Instruction::new(
+        vela_bytecode::linked::InstructionKind::CallMethod {
+            dst: Register(7),
+            receiver: Register(6),
+            dispatch: collect_dispatch,
+            debug_name: collect_name,
+            cache_site: None,
+            args: Vec::new(),
+        },
+    ));
+    code.push_instruction(vela_bytecode::linked::Instruction::new(
+        vela_bytecode::linked::InstructionKind::Return { src: Register(7) },
+    ));
+    let function = program.push_function(code);
+    program.set_entry_point(main_name, function);
+    (program, site, dispatch, method_id)
+}
+
 pub(super) fn linked_string_no_arg_cache_program(
     method: &str,
     receiver: &str,

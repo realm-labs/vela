@@ -36,6 +36,26 @@ fn linked_standard_value_method_populates_readonly_inline_cache() {
 }
 
 #[test]
+fn linked_standard_value_method_caches_iterator_adapter_targets() {
+    assert_iterator_adapter_cache(
+        linked_iterator_adapter_cache_program("take"),
+        StandardMethodInlineCacheTarget::Take,
+        OwnedValue::Array(vec![
+            OwnedValue::Scalar(vela_common::ScalarValue::I64(1)),
+            OwnedValue::Scalar(vela_common::ScalarValue::I64(2)),
+        ]),
+    );
+    assert_iterator_adapter_cache(
+        linked_iterator_adapter_cache_program("skip"),
+        StandardMethodInlineCacheTarget::Skip,
+        OwnedValue::Array(vec![
+            OwnedValue::Scalar(vela_common::ScalarValue::I64(3)),
+            OwnedValue::Scalar(vela_common::ScalarValue::I64(4)),
+        ]),
+    );
+}
+
+#[test]
 fn linked_standard_value_method_refreshes_wrong_receiver_guard() {
     let (program, site, dispatch, method_id) = linked_standard_len_cache_program();
     let caches = RecordingMethodCaches::new(1);
@@ -115,6 +135,42 @@ fn linked_standard_value_method_refreshes_wrong_method_guard() {
     assert_eq!(cached_method, method_id);
     assert_eq!(standard_method.receiver, StandardMethodReceiver::String);
     assert_eq!(standard_method.target, StandardMethodInlineCacheTarget::Len);
+    assert_eq!(caches.set_count(), 2);
+}
+
+fn assert_iterator_adapter_cache(
+    fixture: LinkedMethodCacheFixture,
+    target: StandardMethodInlineCacheTarget,
+    expected: OwnedValue,
+) {
+    let (program, site, dispatch, method_id) = fixture;
+    let caches = RecordingMethodCaches::new(1);
+    let expected = Ok(expected);
+
+    assert_eq!(
+        run_linked_method_cache_owned_program(&program, &caches),
+        expected
+    );
+    let entry = caches
+        .entry(site)
+        .expect("standard iterator cache should populate");
+    assert_eq!(entry.dispatch, dispatch);
+    let MethodInlineCacheTarget::Value {
+        method_id: cached_method,
+        standard_method: Some(standard_method),
+    } = entry.target
+    else {
+        panic!("standard iterator cache should store value target");
+    };
+    assert_eq!(cached_method, method_id);
+    assert_eq!(standard_method.receiver, StandardMethodReceiver::Iterator);
+    assert_eq!(standard_method.target, target);
+    assert_eq!(caches.set_count(), 2);
+
+    assert_eq!(
+        run_linked_method_cache_owned_program(&program, &caches),
+        expected
+    );
     assert_eq!(caches.set_count(), 2);
 }
 
