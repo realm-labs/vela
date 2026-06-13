@@ -174,6 +174,84 @@ fn main() {
 }
 
 #[test]
+fn linked_execution_reads_dynamic_record_fields_for_untyped_parameters() {
+    let program = compile_program_source(
+        SourceId::new(1),
+        r#"
+struct Reward { base: int, multiplier: int }
+
+fn score_reward(reward) {
+    return reward.base * reward.multiplier;
+}
+
+fn main() {
+    let reward = Reward { base: 12, multiplier: 3 };
+    return score_reward(reward) + 4;
+}
+"#,
+    )
+    .expect("compile dynamic record field source");
+
+    assert_eq!(
+        run_records_program(&program, "main", &[]),
+        Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(40)))
+    );
+}
+
+#[test]
+fn linked_execution_writes_dynamic_record_fields_for_untyped_parameters() {
+    let program = compile_program_source(
+        SourceId::new(1),
+        r#"
+struct Reward { count: int }
+
+fn add_count(reward) {
+    reward.count += 3;
+    return reward.count;
+}
+
+fn main() {
+    let reward = Reward { count: 2 };
+    return add_count(reward);
+}
+"#,
+    )
+    .expect("compile dynamic record field write source");
+
+    assert_eq!(
+        run_records_program(&program, "main", &[]),
+        Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(5)))
+    );
+}
+
+#[test]
+fn linked_execution_reads_dynamic_enum_fields_for_untyped_parameters() {
+    let program = compile_program_source(
+        SourceId::new(1),
+        r#"
+enum RewardResult {
+    Granted { amount: int },
+}
+
+fn read_amount(result) {
+    return result.amount;
+}
+
+fn main() {
+    let result = RewardResult::Granted { amount: 7 };
+    return read_amount(result);
+}
+"#,
+    )
+    .expect("compile dynamic enum field source");
+
+    assert_eq!(
+        run_records_program(&program, "main", &[]),
+        Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(7)))
+    );
+}
+
+#[test]
 fn returns_first_class_record_values() {
     let code = compile_function_source(
         SourceId::new(1),

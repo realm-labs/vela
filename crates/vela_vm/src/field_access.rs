@@ -221,21 +221,30 @@ pub(crate) fn get_record_field_value(
     heap: Option<&HeapExecution<'_>>,
 ) -> VmResult<Value> {
     match value {
-        Value::HeapRef(reference) => {
-            let Some(HeapValue::Record {
+        Value::HeapRef(reference) => match heap.and_then(|heap| heap.heap.get(*reference)) {
+            Some(HeapValue::Record {
                 type_name, fields, ..
-            }) = heap.and_then(|heap| heap.heap.get(*reference))
-            else {
-                return type_error("record field");
-            };
-            fields.get(field).map(stored_runtime_value).ok_or_else(|| {
+            }) => fields.get(field).map(stored_runtime_value).ok_or_else(|| {
                 VmError::new(VmErrorKind::UnknownRecordField {
                     type_name: type_name.clone(),
                     field: field.to_owned(),
                 })
-            })
-        }
-        _ => type_error("record field"),
+            }),
+            Some(HeapValue::Enum {
+                enum_name,
+                variant,
+                fields,
+                ..
+            }) => fields.get(field).map(stored_runtime_value).ok_or_else(|| {
+                VmError::new(VmErrorKind::UnknownEnumField {
+                    enum_name: enum_name.clone(),
+                    variant: variant.clone(),
+                    field: field.to_owned(),
+                })
+            }),
+            _ => type_error("field"),
+        },
+        _ => type_error("field"),
     }
 }
 

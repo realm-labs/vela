@@ -193,6 +193,13 @@ budget, and hot-reload behavior as the generic bytecode path. These
 specializations replace pre-release bytecode shapes instead of preserving
 compatibility aliases.
 
+Type facts and type hints may select static linked bytecode, field slots, and
+guarded inline caches, but they are not required for ordinary dynamic member
+access. If a receiver type is unknown, dot field access remains name-based
+dynamic bytecode and fails only at runtime when the actual value does not
+support the requested member. Linked bytecode must preserve that dynamic path
+instead of treating unresolved field slots as link errors.
+
 Map string-literal index bytecode is a source-level lowering for ordinary
 `map["key"]` reads and writes. The instruction stores a `ConstantId` pointing
 at a string literal, and runtime dispatch borrows that constant directly,

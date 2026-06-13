@@ -361,6 +361,15 @@ fn verify_linked_instruction(
             verify_linked_variant_handle(function, instruction_index, context, *variant)?;
             verify_linked_object_fields(function, instruction_index, code, context, fields)
         }
+        InstructionKind::GetRecordField {
+            dst,
+            record,
+            debug_name,
+        } => {
+            verify_linked_register(function, instruction_index, code, *dst)?;
+            verify_linked_register(function, instruction_index, code, *record)?;
+            verify_linked_debug_name(function, instruction_index, context, *debug_name)
+        }
         InstructionKind::GetRecordSlot {
             dst,
             record,
@@ -379,6 +388,15 @@ fn verify_linked_instruction(
                 CacheSiteKind::RecordFieldRead,
             )
         }
+        InstructionKind::SetRecordField {
+            record,
+            debug_name,
+            src,
+        } => {
+            verify_linked_register(function, instruction_index, code, *record)?;
+            verify_linked_debug_name(function, instruction_index, context, *debug_name)?;
+            verify_linked_register(function, instruction_index, code, *src)
+        }
         InstructionKind::SetRecordSlot {
             record,
             debug_name,
@@ -396,6 +414,15 @@ fn verify_linked_instruction(
                 *cache_site,
                 CacheSiteKind::RecordFieldWrite,
             )
+        }
+        InstructionKind::GetEnumField {
+            dst,
+            value,
+            debug_name,
+        } => {
+            verify_linked_register(function, instruction_index, code, *dst)?;
+            verify_linked_register(function, instruction_index, code, *value)?;
+            verify_linked_debug_name(function, instruction_index, context, *debug_name)
         }
         InstructionKind::GetEnumSlot {
             dst,

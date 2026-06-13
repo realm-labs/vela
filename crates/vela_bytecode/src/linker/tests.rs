@@ -426,7 +426,7 @@ fn linker_maps_globals_map_keys_and_field_slots_without_instruction_names() {
 }
 
 #[test]
-fn linker_links_dynamic_method_and_rejects_record_field_fallbacks() {
+fn linker_links_dynamic_method_and_field_fallbacks() {
     let mut method_code = UnlinkedCodeObject::new("method", 2);
     method_code.push_instruction(UnlinkedInstruction::new(
         UnlinkedInstructionKind::CallDynamicMethod {
@@ -463,10 +463,18 @@ fn linker_links_dynamic_method_and_rejects_record_field_fallbacks() {
     let mut field_program = UnlinkedProgram::new();
     field_program.insert_function(field_code);
 
-    let error = Linker::new()
+    let linked = Linker::new()
         .link_program(&field_program)
-        .expect_err("name-only record field dispatch should not link");
-    assert!(matches!(error, LinkError::UnresolvedRecordField { .. }));
+        .expect("name-only record field dispatch should link dynamically");
+    let field = linked
+        .entry_point_by_name("field")
+        .and_then(|handle| linked.function(handle))
+        .expect("linked field function");
+    assert!(matches!(
+        &field.instructions[0].kind,
+        InstructionKind::GetRecordField { debug_name, .. }
+            if linked.debug_name(*debug_name) == "score"
+    ));
 }
 
 #[test]

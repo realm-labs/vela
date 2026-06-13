@@ -340,7 +340,7 @@ mod tests {
     }
 
     #[test]
-    fn compile_script_reports_link_errors_without_panicking() {
+    fn compile_script_accepts_dynamic_record_field_access() {
         let response: JsonValue = serde_json::from_str(&compile_script(
             r#"
             struct Reward {
@@ -354,13 +354,7 @@ mod tests {
         ))
         .expect("valid playground response");
 
-        assert_eq!(response["ok"], false);
-        assert!(
-            response["diagnostics"][0]["message"]
-                .as_str()
-                .expect("diagnostic message")
-                .contains("unresolved record field enabled")
-        );
+        assert_eq!(response["ok"], true, "{response:#}");
     }
 
     #[test]
@@ -373,7 +367,7 @@ mod tests {
                 multiplier: int,
             }
 
-            fn score_reward(reward: Reward) -> int {
+            fn score_reward(reward) {
                 if !reward.enabled {
                     return 0;
                 }

@@ -800,6 +800,11 @@ pub enum InstructionKind {
         variant: VariantHandle,
         fields: Vec<(FieldSlot, DebugNameId, Register)>,
     },
+    GetRecordField {
+        dst: Register,
+        record: Register,
+        debug_name: DebugNameId,
+    },
     GetRecordSlot {
         dst: Register,
         record: Register,
@@ -807,12 +812,22 @@ pub enum InstructionKind {
         debug_name: DebugNameId,
         cache_site: Option<CacheSiteId>,
     },
+    SetRecordField {
+        record: Register,
+        debug_name: DebugNameId,
+        src: Register,
+    },
     SetRecordSlot {
         record: Register,
         field: FieldSlot,
         debug_name: DebugNameId,
         cache_site: Option<CacheSiteId>,
         src: Register,
+    },
+    GetEnumField {
+        dst: Register,
+        value: Register,
+        debug_name: DebugNameId,
     },
     GetEnumSlot {
         dst: Register,

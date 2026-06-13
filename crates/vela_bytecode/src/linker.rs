@@ -90,14 +90,6 @@ pub enum LinkError {
         enum_name: String,
         variant: String,
     },
-    UnresolvedRecordField {
-        function: String,
-        field: String,
-    },
-    UnresolvedEnumField {
-        function: String,
-        field: String,
-    },
 }
 
 impl fmt::Display for LinkError {
@@ -141,18 +133,6 @@ impl fmt::Display for LinkError {
             }
             Self::UnresolvedVariant { enum_name, variant } => {
                 write!(formatter, "unresolved variant {enum_name}::{variant}")
-            }
-            Self::UnresolvedRecordField { function, field } => {
-                write!(
-                    formatter,
-                    "function {function} contains unresolved record field {field}"
-                )
-            }
-            Self::UnresolvedEnumField { function, field } => {
-                write!(
-                    formatter,
-                    "function {function} contains unresolved enum field {field}"
-                )
             }
         }
     }
@@ -702,11 +682,12 @@ impl<'linker, 'registry> LinkContext<'linker, 'registry> {
                     fields,
                 }
             }
-            UnlinkedInstructionKind::GetRecordField { field, .. } => {
-                return Err(LinkError::UnresolvedRecordField {
-                    function: code.name.clone(),
-                    field: field.clone(),
-                });
+            UnlinkedInstructionKind::GetRecordField { dst, record, field } => {
+                InstructionKind::GetRecordField {
+                    dst: *dst,
+                    record: *record,
+                    debug_name: self.linked.intern_debug_name(field.clone()),
+                }
             }
             UnlinkedInstructionKind::GetRecordSlot {
                 dst,
@@ -720,11 +701,12 @@ impl<'linker, 'registry> LinkContext<'linker, 'registry> {
                 debug_name: self.linked.intern_debug_name(field.clone()),
                 cache_site: cache_site_at(code, instruction_offset, CacheSiteKind::RecordFieldRead),
             },
-            UnlinkedInstructionKind::SetRecordField { field, .. } => {
-                return Err(LinkError::UnresolvedRecordField {
-                    function: code.name.clone(),
-                    field: field.clone(),
-                });
+            UnlinkedInstructionKind::SetRecordField { record, field, src } => {
+                InstructionKind::SetRecordField {
+                    record: *record,
+                    debug_name: self.linked.intern_debug_name(field.clone()),
+                    src: *src,
+                }
             }
             UnlinkedInstructionKind::SetRecordSlot {
                 record,
@@ -742,11 +724,12 @@ impl<'linker, 'registry> LinkContext<'linker, 'registry> {
                 ),
                 src: *src,
             },
-            UnlinkedInstructionKind::GetEnumField { field, .. } => {
-                return Err(LinkError::UnresolvedEnumField {
-                    function: code.name.clone(),
-                    field: field.clone(),
-                });
+            UnlinkedInstructionKind::GetEnumField { dst, value, field } => {
+                InstructionKind::GetEnumField {
+                    dst: *dst,
+                    value: *value,
+                    debug_name: self.linked.intern_debug_name(field.clone()),
+                }
             }
             UnlinkedInstructionKind::GetEnumSlot {
                 dst,

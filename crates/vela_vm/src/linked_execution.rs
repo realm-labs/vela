@@ -664,6 +664,19 @@ impl Vm {
                         fields,
                     )?;
                 }
+                InstructionKind::GetRecordField {
+                    dst,
+                    record,
+                    debug_name,
+                } => {
+                    field_access::dispatch_get_record_field(
+                        &mut frame,
+                        heap.as_deref_mut(),
+                        *dst,
+                        *record,
+                        call.program.debug_name(*debug_name),
+                    )?;
+                }
                 InstructionKind::GetRecordSlot {
                     dst,
                     record,
@@ -683,6 +696,20 @@ impl Vm {
                         },
                         call.inline_caches,
                         *cache_site,
+                    )?;
+                }
+                InstructionKind::SetRecordField {
+                    record,
+                    debug_name,
+                    src,
+                } => {
+                    field_access::dispatch_set_record_field(
+                        &mut frame,
+                        heap.as_deref_mut(),
+                        budget.as_deref_mut(),
+                        *record,
+                        call.program.debug_name(*debug_name),
+                        *src,
                     )?;
                 }
                 InstructionKind::SetRecordSlot {
@@ -724,6 +751,19 @@ impl Vm {
                             variant: *variant,
                             fields,
                         },
+                    )?;
+                }
+                InstructionKind::GetEnumField {
+                    dst,
+                    value,
+                    debug_name,
+                } => {
+                    field_access::dispatch_get_enum_field(
+                        &mut frame,
+                        heap.as_deref_mut(),
+                        *dst,
+                        *value,
+                        call.program.debug_name(*debug_name),
                     )?;
                 }
                 InstructionKind::GetEnumSlot {
