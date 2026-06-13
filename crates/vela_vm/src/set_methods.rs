@@ -64,7 +64,7 @@ pub(crate) fn relation_matches(
     }
 }
 
-pub(super) fn push_unique(
+pub(crate) fn push_unique(
     values: &mut Vec<Value>,
     value: Value,
     heap: Option<&HeapExecution<'_>>,

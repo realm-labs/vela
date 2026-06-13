@@ -214,13 +214,13 @@ fn call_method_uses_standard_string_split_ids_before_name_fallback() {
 #[test]
 fn call_method_uses_standard_string_parse_ids_before_name_fallback() {
     assert_eq!(
-        run_string_transform_with_args_by_id(std_method_id("String", "parse_int"), "42", &[],),
+        run_string_transform_with_args_by_id(std_method_id("String", "parse_i64"), "42", &[],),
         Ok(option_some(OwnedValue::Scalar(
             vela_common::ScalarValue::I64(42)
         )))
     );
     assert_eq!(
-        run_string_transform_with_args_by_id(std_method_id("String", "parse_float"), "1.5", &[],),
+        run_string_transform_with_args_by_id(std_method_id("String", "parse_f64"), "1.5", &[],),
         Ok(option_some(OwnedValue::Scalar(
             vela_common::ScalarValue::F64(1.5)
         )))

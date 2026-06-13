@@ -4,6 +4,7 @@ mod array_methods;
 pub mod budget;
 mod bytes_methods;
 mod callback_method_dispatch;
+mod char_methods;
 mod closure_calls;
 mod collection_mutation;
 mod constant_loads;
@@ -443,6 +444,7 @@ pub struct StandardMethodInlineCacheEntry {
 pub enum StandardMethodReceiver {
     String,
     Bytes,
+    Char,
     Range,
     Array,
     Map,
@@ -475,6 +477,8 @@ pub enum CallbackMethodInlineCacheTarget {
     SortBy,
     MapValues,
     CollectArray,
+    CollectSet,
+    CollectMap,
 }
 
 #[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
@@ -494,8 +498,8 @@ pub enum StandardMethodInlineCacheTarget {
     SplitOnce,
     SplitLines,
     SplitWhitespace,
-    ParseInt,
-    ParseFloat,
+    ParseI64,
+    ParseF64,
     ParseBool,
     ToUpper,
     ToLower,
@@ -538,6 +542,10 @@ pub enum StandardMethodInlineCacheTarget {
     ToHex,
     ReadU32Le,
     ReadU32Be,
+    ToString,
+    IsWhitespace,
+    IsAscii,
+    IsAsciiDigit,
     IsSome,
     IsNone,
     IsOk,

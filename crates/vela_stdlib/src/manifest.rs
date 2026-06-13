@@ -743,7 +743,7 @@ mod tests {
         assert_eq!(STD_VARIANTS.len(), 4);
         assert_eq!(STD_FIELDS.len(), 3);
         assert_eq!(STD_FUNCTIONS.len(), 51);
-        assert_eq!(STD_METHODS.len(), 136);
+        assert_eq!(STD_METHODS.len(), 144);
     }
 
     #[test]
@@ -816,12 +816,32 @@ mod tests {
         assert!(
             STD_METHODS
                 .iter()
+                .any(|spec| spec.owner == "String" && spec.name == "parse_i64")
+        );
+        assert!(
+            STD_METHODS
+                .iter()
                 .any(|spec| spec.owner == "Bytes" && spec.name == "read_u32_le")
         );
         assert!(
             STD_METHODS
                 .iter()
                 .any(|spec| spec.owner == "Bytes" && spec.name == "to_hex")
+        );
+        assert!(
+            STD_METHODS
+                .iter()
+                .any(|spec| spec.owner == "Bytes" && spec.name == "values")
+        );
+        assert!(
+            STD_METHODS
+                .iter()
+                .any(|spec| spec.owner == "Char" && spec.name == "is_ascii_digit")
+        );
+        assert!(
+            STD_METHODS
+                .iter()
+                .any(|spec| spec.owner == "Iterator" && spec.name == "collect_map")
         );
         assert!(
             STD_METHODS

@@ -116,13 +116,13 @@ const STRING_METHODS: &[MethodSpec] = &[
         "Returns the string split on whitespace.",
     ),
     MethodSpec::new(
-        "parse_int",
+        "parse_i64",
         &[],
         "Option",
         "Parses the string as an integer, or Option::None.",
     ),
     MethodSpec::new(
-        "parse_float",
+        "parse_f64",
         &[],
         "Option",
         "Parses the string as a float, or Option::None.",

@@ -17,6 +17,7 @@ use crate::{
 pub(crate) enum DynamicReceiverKind {
     String,
     Bytes,
+    Char,
     Array,
     Map,
     Set,
@@ -72,6 +73,8 @@ pub(crate) fn classify_dynamic_receiver(
         DynamicReceiverKind::String
     } else if bytes_methods::is_bytes(receiver, heap) {
         DynamicReceiverKind::Bytes
+    } else if crate::char_methods::is_char(receiver) {
+        DynamicReceiverKind::Char
     } else if matches!(receiver, Value::Range(_)) {
         DynamicReceiverKind::Range
     } else if array_methods::is_array(receiver, heap) {
@@ -167,6 +170,7 @@ fn standard_method_id_for_receiver(
     match receiver {
         DynamicReceiverKind::String => string_method_id(ids, method),
         DynamicReceiverKind::Bytes => bytes_method_id(ids, method),
+        DynamicReceiverKind::Char => char_method_id(ids, method),
         DynamicReceiverKind::Array => array_method_id(ids, method),
         DynamicReceiverKind::Map => map_method_id(ids, method),
         DynamicReceiverKind::Set => set_method_id(ids, method),
@@ -203,8 +207,8 @@ fn string_method_id(ids: &StdMethodIds, method: &str) -> Option<MethodId> {
         "split_once" => ids.string_split_once,
         "split_lines" => ids.string_split_lines,
         "split_whitespace" => ids.string_split_whitespace,
-        "parse_int" => ids.string_parse_int,
-        "parse_float" => ids.string_parse_float,
+        "parse_i64" => ids.string_parse_i64,
+        "parse_f64" => ids.string_parse_f64,
         "parse_bool" => ids.string_parse_bool,
         "chars" => ids.string_chars,
         "bytes" => ids.string_bytes,
@@ -221,6 +225,18 @@ fn bytes_method_id(ids: &StdMethodIds, method: &str) -> Option<MethodId> {
         "read_u32_le" => ids.bytes_read_u32_le,
         "read_u32_be" => ids.bytes_read_u32_be,
         "to_hex" => ids.bytes_to_hex,
+        "iter" => ids.bytes_iter,
+        "values" => ids.bytes_values,
+        _ => return None,
+    })
+}
+
+fn char_method_id(ids: &StdMethodIds, method: &str) -> Option<MethodId> {
+    Some(match method {
+        "to_string" => ids.char_to_string,
+        "is_whitespace" => ids.char_is_whitespace,
+        "is_ascii" => ids.char_is_ascii,
+        "is_ascii_digit" => ids.char_is_ascii_digit,
         _ => return None,
     })
 }
@@ -339,6 +355,8 @@ fn iterator_method_id(ids: &StdMethodIds, method: &str) -> Option<MethodId> {
         "take" => ids.iterator_take,
         "skip" => ids.iterator_skip,
         "collect_array" => ids.iterator_collect_array,
+        "collect_set" => ids.iterator_collect_set,
+        "collect_map" => ids.iterator_collect_map,
         _ => return None,
     })
 }

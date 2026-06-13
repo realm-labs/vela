@@ -187,8 +187,8 @@ pub(super) fn call_cached_string_parse_option(
     budget: &mut Option<&mut ExecutionBudget>,
 ) -> Option<VmResult<Value>> {
     let (method, payload): (&str, fn(&str) -> Option<Value>) = match target {
-        StandardMethodInlineCacheTarget::ParseInt => ("parse_int", parse_int_payload),
-        StandardMethodInlineCacheTarget::ParseFloat => ("parse_float", parse_float_payload),
+        StandardMethodInlineCacheTarget::ParseI64 => ("parse_i64", parse_i64_payload),
+        StandardMethodInlineCacheTarget::ParseF64 => ("parse_f64", parse_f64_payload),
         StandardMethodInlineCacheTarget::ParseBool => ("parse_bool", parse_bool_payload),
         _ => return None,
     };
@@ -658,11 +658,11 @@ fn array_index_value(value: &Value, operation: &'static str) -> VmResult<usize> 
     }
 }
 
-fn parse_int_payload(value: &str) -> Option<Value> {
+fn parse_i64_payload(value: &str) -> Option<Value> {
     value.parse::<i64>().ok().map(Value::i64)
 }
 
-fn parse_float_payload(value: &str) -> Option<Value> {
+fn parse_f64_payload(value: &str) -> Option<Value> {
     value
         .parse::<f64>()
         .ok()

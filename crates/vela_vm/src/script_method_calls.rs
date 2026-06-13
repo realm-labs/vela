@@ -745,6 +745,7 @@ fn standard_receiver_guard(
     {
         dynamic_method_resolution::DynamicReceiverKind::String => StandardMethodReceiver::String,
         dynamic_method_resolution::DynamicReceiverKind::Bytes => StandardMethodReceiver::Bytes,
+        dynamic_method_resolution::DynamicReceiverKind::Char => StandardMethodReceiver::Char,
         dynamic_method_resolution::DynamicReceiverKind::Array => StandardMethodReceiver::Array,
         dynamic_method_resolution::DynamicReceiverKind::Map => StandardMethodReceiver::Map,
         dynamic_method_resolution::DynamicReceiverKind::Set => StandardMethodReceiver::Set,

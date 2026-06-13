@@ -540,6 +540,7 @@ fn type_desc_fact(desc: &TypeDesc) -> TypeFact {
         TypeKind::U64 => TypeFact::U64,
         TypeKind::F32 => TypeFact::F32,
         TypeKind::F64 => TypeFact::F64,
+        TypeKind::Char => TypeFact::CHAR,
         TypeKind::String => TypeFact::STRING,
         TypeKind::Bytes => TypeFact::BYTES,
         TypeKind::Array => TypeFact::array(TypeFact::Any),

@@ -1,3 +1,5 @@
+use std::collections::BTreeMap;
+
 use crate::collection_mutation::check_collection_len;
 use crate::heap::HeapValue;
 use crate::heap_values::allocate_heap_value;
@@ -41,6 +43,9 @@ pub(crate) fn iter_method(
                     *reference,
                     values.keys().cloned().collect(),
                 ),
+                Some(HeapValue::Bytes(values)) => {
+                    IteratorState::from_bytes_source(*reference, values.len())
+                }
                 _ => return type_error("method iter"),
             }
         }
@@ -226,6 +231,93 @@ pub(crate) fn collect_array_method_runtime(
     )
 }
 
+pub(crate) fn collect_set_method(
+    receiver: &Value,
+    args: &[Value],
+    heap: &mut Option<&mut HeapExecution<'_>>,
+    budget: &mut Option<&mut ExecutionBudget>,
+) -> VmResult<Value> {
+    runtime_checks::expect_arity("collect_set", args, 0)?;
+    let mut iterator = take_iterator_from_heap(receiver, heap, "method collect_set")?;
+    let values = collect_unique_values_without_callbacks(
+        &mut iterator,
+        heap.as_deref(),
+        "method collect_set",
+    );
+    restore_iterator_to_heap(*receiver, heap, iterator, "method collect_set")?;
+    let values = values?;
+    check_collect_set_len(values.len(), budget.as_deref())?;
+    let Some(heap_ref) = heap.as_deref_mut() else {
+        return type_error("method collect_set");
+    };
+    allocate_heap_value(HeapValue::Set(values), heap_ref, budget.as_deref_mut())
+}
+
+pub(crate) fn collect_set_method_runtime(
+    receiver: &Value,
+    args: &[Value],
+    mut runtime: MethodRuntime<'_, '_, '_>,
+) -> VmResult<Value> {
+    runtime_checks::expect_arity("collect_set", args, 0)?;
+    let values = with_taken_iterator(
+        receiver,
+        &mut runtime,
+        "method collect_set",
+        |iterator, runtime| collect_unique_values(iterator, runtime, "method collect_set"),
+    )?;
+    check_collect_set_len(values.len(), runtime.budget.as_deref())?;
+    let Some(heap_ref) = runtime.heap.as_deref_mut() else {
+        return type_error("method collect_set");
+    };
+    allocate_heap_value(
+        HeapValue::Set(values),
+        heap_ref,
+        runtime.budget.as_deref_mut(),
+    )
+}
+
+pub(crate) fn collect_map_method(
+    receiver: &Value,
+    args: &[Value],
+    heap: &mut Option<&mut HeapExecution<'_>>,
+    budget: &mut Option<&mut ExecutionBudget>,
+) -> VmResult<Value> {
+    runtime_checks::expect_arity("collect_map", args, 0)?;
+    let mut iterator = take_iterator_from_heap(receiver, heap, "method collect_map")?;
+    let values =
+        collect_map_entries_without_callbacks(&mut iterator, heap.as_deref(), "method collect_map");
+    restore_iterator_to_heap(*receiver, heap, iterator, "method collect_map")?;
+    let values = values?;
+    check_collect_map_len(values.len(), budget.as_deref())?;
+    let Some(heap_ref) = heap.as_deref_mut() else {
+        return type_error("method collect_map");
+    };
+    allocate_heap_value(HeapValue::Map(values), heap_ref, budget.as_deref_mut())
+}
+
+pub(crate) fn collect_map_method_runtime(
+    receiver: &Value,
+    args: &[Value],
+    mut runtime: MethodRuntime<'_, '_, '_>,
+) -> VmResult<Value> {
+    runtime_checks::expect_arity("collect_map", args, 0)?;
+    let values = with_taken_iterator(
+        receiver,
+        &mut runtime,
+        "method collect_map",
+        |iterator, runtime| collect_map_entries(iterator, runtime, "method collect_map"),
+    )?;
+    check_collect_map_len(values.len(), runtime.budget.as_deref())?;
+    let Some(heap_ref) = runtime.heap.as_deref_mut() else {
+        return type_error("method collect_map");
+    };
+    allocate_heap_value(
+        HeapValue::Map(values),
+        heap_ref,
+        runtime.budget.as_deref_mut(),
+    )
+}
+
 pub(crate) fn map_method(
     receiver: &Value,
     args: &[Value],
@@ -344,6 +436,84 @@ pub(crate) fn collect_values(
         values.push(value);
     }
     Ok(values)
+}
+
+fn collect_unique_values_without_callbacks(
+    iterator: &mut IteratorState,
+    heap: Option<&HeapExecution<'_>>,
+    operation: &'static str,
+) -> VmResult<Vec<Value>> {
+    let mut values = Vec::new();
+    while let Some(value) = iterator.next() {
+        crate::set_methods::push_unique(&mut values, value, heap, operation)?;
+    }
+    Ok(values)
+}
+
+fn collect_unique_values(
+    iterator: &mut IteratorState,
+    runtime: &mut MethodRuntime<'_, '_, '_>,
+    operation: &'static str,
+) -> VmResult<Vec<Value>> {
+    let mut values = Vec::new();
+    while let Some(value) = iterator.next_with_runtime(runtime, operation, &values)? {
+        crate::set_methods::push_unique(&mut values, value, runtime.heap.as_deref(), operation)?;
+    }
+    Ok(values)
+}
+
+fn collect_map_entries_without_callbacks(
+    iterator: &mut IteratorState,
+    heap: Option<&HeapExecution<'_>>,
+    operation: &'static str,
+) -> VmResult<BTreeMap<String, Value>> {
+    let mut values = BTreeMap::new();
+    while let Some(value) = iterator.next() {
+        let (key, value) = map_entry_value(&value, heap, operation)?;
+        values.insert(key, value);
+    }
+    Ok(values)
+}
+
+fn collect_map_entries(
+    iterator: &mut IteratorState,
+    runtime: &mut MethodRuntime<'_, '_, '_>,
+    operation: &'static str,
+) -> VmResult<BTreeMap<String, Value>> {
+    let mut values = BTreeMap::new();
+    while let Some(value) = iterator.next_with_runtime(runtime, operation, &[])? {
+        let (key, value) = map_entry_value(&value, runtime.heap.as_deref(), operation)?;
+        values.insert(key, value);
+    }
+    Ok(values)
+}
+
+fn map_entry_value(
+    value: &Value,
+    heap: Option<&HeapExecution<'_>>,
+    operation: &'static str,
+) -> VmResult<(String, Value)> {
+    let Value::HeapRef(reference) = value else {
+        return type_error(operation);
+    };
+    let Some(HeapValue::Record {
+        type_name, fields, ..
+    }) = heap.and_then(|heap| heap.heap.get(*reference))
+    else {
+        return type_error(operation);
+    };
+    if type_name != "MapEntry" {
+        return type_error(operation);
+    }
+    let key = fields
+        .get("key")
+        .ok_or_else(|| VmError::new(VmErrorKind::TypeMismatch { operation }))?;
+    let key = crate::string_methods::string_value(key, heap, operation)?.to_owned();
+    let value = fields
+        .get("value")
+        .copied()
+        .ok_or_else(|| VmError::new(VmErrorKind::TypeMismatch { operation }))?;
+    Ok((key, crate::stored_runtime_value(&value)))
 }
 
 pub(crate) fn collect_values_over<T>(
@@ -626,6 +796,18 @@ fn count_arg(value: Value, operation: &'static str) -> VmResult<usize> {
 fn check_collect_array_len(len: usize, budget: Option<&ExecutionBudget>) -> VmResult<()> {
     check_collection_len("array", 0, len, budget, |budget| {
         budget.collection_limits().max_array_len
+    })
+}
+
+fn check_collect_set_len(len: usize, budget: Option<&ExecutionBudget>) -> VmResult<()> {
+    check_collection_len("set", 0, len, budget, |budget| {
+        budget.collection_limits().max_set_len
+    })
+}
+
+fn check_collect_map_len(len: usize, budget: Option<&ExecutionBudget>) -> VmResult<()> {
+    check_collection_len("map", 0, len, budget, |budget| {
+        budget.collection_limits().max_map_entries
     })
 }
 

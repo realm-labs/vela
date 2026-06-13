@@ -32,6 +32,8 @@ pub(crate) fn standard_cache_entry(
         StandardMethodReceiver::String
     } else if bytes_methods::is_bytes(receiver, heap) {
         StandardMethodReceiver::Bytes
+    } else if crate::char_methods::is_char(receiver) {
+        StandardMethodReceiver::Char
     } else if matches!(receiver, Value::Range(_)) {
         StandardMethodReceiver::Range
     } else if array_methods::is_array(receiver, heap) {
@@ -108,6 +110,24 @@ pub(crate) fn standard_cache_entry_matches_method_id(
         }
         (StandardMethodReceiver::Bytes, StandardMethodInlineCacheTarget::ToHex) => {
             return method_id == std_method_ids().bytes_to_hex;
+        }
+        (StandardMethodReceiver::Bytes, StandardMethodInlineCacheTarget::Iter) => {
+            return method_id == std_method_ids().bytes_iter;
+        }
+        (StandardMethodReceiver::Bytes, StandardMethodInlineCacheTarget::Values) => {
+            return method_id == std_method_ids().bytes_values;
+        }
+        (StandardMethodReceiver::Char, StandardMethodInlineCacheTarget::ToString) => {
+            return method_id == std_method_ids().char_to_string;
+        }
+        (StandardMethodReceiver::Char, StandardMethodInlineCacheTarget::IsWhitespace) => {
+            return method_id == std_method_ids().char_is_whitespace;
+        }
+        (StandardMethodReceiver::Char, StandardMethodInlineCacheTarget::IsAscii) => {
+            return method_id == std_method_ids().char_is_ascii;
+        }
+        (StandardMethodReceiver::Char, StandardMethodInlineCacheTarget::IsAsciiDigit) => {
+            return method_id == std_method_ids().char_is_ascii_digit;
         }
         (StandardMethodReceiver::Array, StandardMethodInlineCacheTarget::Len) => {
             return method_id == std_method_ids().array_len;
@@ -207,11 +227,11 @@ fn standard_method_target(
         (StandardMethodReceiver::String, id) if id == ids.string_split_whitespace => {
             StandardMethodInlineCacheTarget::SplitWhitespace
         }
-        (StandardMethodReceiver::String, id) if id == ids.string_parse_int => {
-            StandardMethodInlineCacheTarget::ParseInt
+        (StandardMethodReceiver::String, id) if id == ids.string_parse_i64 => {
+            StandardMethodInlineCacheTarget::ParseI64
         }
-        (StandardMethodReceiver::String, id) if id == ids.string_parse_float => {
-            StandardMethodInlineCacheTarget::ParseFloat
+        (StandardMethodReceiver::String, id) if id == ids.string_parse_f64 => {
+            StandardMethodInlineCacheTarget::ParseF64
         }
         (StandardMethodReceiver::String, id) if id == ids.string_parse_bool => {
             StandardMethodInlineCacheTarget::ParseBool
@@ -266,6 +286,24 @@ fn standard_method_target(
         }
         (StandardMethodReceiver::Bytes, id) if id == ids.bytes_read_u32_be => {
             StandardMethodInlineCacheTarget::ReadU32Be
+        }
+        (StandardMethodReceiver::Bytes, id) if id == ids.bytes_iter => {
+            StandardMethodInlineCacheTarget::Iter
+        }
+        (StandardMethodReceiver::Bytes, id) if id == ids.bytes_values => {
+            StandardMethodInlineCacheTarget::Values
+        }
+        (StandardMethodReceiver::Char, id) if id == ids.char_to_string => {
+            StandardMethodInlineCacheTarget::ToString
+        }
+        (StandardMethodReceiver::Char, id) if id == ids.char_is_whitespace => {
+            StandardMethodInlineCacheTarget::IsWhitespace
+        }
+        (StandardMethodReceiver::Char, id) if id == ids.char_is_ascii => {
+            StandardMethodInlineCacheTarget::IsAscii
+        }
+        (StandardMethodReceiver::Char, id) if id == ids.char_is_ascii_digit => {
+            StandardMethodInlineCacheTarget::IsAsciiDigit
         }
         (StandardMethodReceiver::Range, id) if id == ids.range_len => {
             StandardMethodInlineCacheTarget::Len
@@ -547,8 +585,8 @@ pub(crate) fn call_standard_cached(
                 budget,
             );
         }
-        StandardMethodInlineCacheTarget::ParseInt
-        | StandardMethodInlineCacheTarget::ParseFloat
+        StandardMethodInlineCacheTarget::ParseI64
+        | StandardMethodInlineCacheTarget::ParseF64
         | StandardMethodInlineCacheTarget::ParseBool
             if cache.receiver == StandardMethodReceiver::String =>
         {
@@ -585,6 +623,16 @@ pub(crate) fn call_standard_cached(
             if cache.receiver == StandardMethodReceiver::Bytes =>
         {
             return call_cached_bytes_materialization(receiver, cache.target, args, heap, budget);
+        }
+        StandardMethodInlineCacheTarget::Iter | StandardMethodInlineCacheTarget::Values
+            if cache.receiver == StandardMethodReceiver::Bytes =>
+        {
+            return Some(crate::iteration::iter_method(receiver, args, heap, budget));
+        }
+        StandardMethodInlineCacheTarget::ToString
+            if cache.receiver == StandardMethodReceiver::Char =>
+        {
+            return Some(crate::char_methods::to_string(receiver, args, heap, budget));
         }
         StandardMethodInlineCacheTarget::Values
             if cache.receiver == StandardMethodReceiver::Array =>
@@ -697,11 +745,11 @@ pub(crate) fn call_standard_cached(
         (StandardMethodReceiver::String, StandardMethodInlineCacheTarget::SplitWhitespace) => {
             crate::string_methods::split_whitespace(receiver, args, heap, budget)
         }
-        (StandardMethodReceiver::String, StandardMethodInlineCacheTarget::ParseInt) => {
-            crate::string_methods::parse_int(receiver, args, heap, budget)
+        (StandardMethodReceiver::String, StandardMethodInlineCacheTarget::ParseI64) => {
+            crate::string_methods::parse_i64(receiver, args, heap, budget)
         }
-        (StandardMethodReceiver::String, StandardMethodInlineCacheTarget::ParseFloat) => {
-            crate::string_methods::parse_float(receiver, args, heap, budget)
+        (StandardMethodReceiver::String, StandardMethodInlineCacheTarget::ParseF64) => {
+            crate::string_methods::parse_f64(receiver, args, heap, budget)
         }
         (StandardMethodReceiver::String, StandardMethodInlineCacheTarget::ParseBool) => {
             crate::string_methods::parse_bool(receiver, args, heap, budget)
@@ -720,6 +768,13 @@ pub(crate) fn call_standard_cached(
         }
         (StandardMethodReceiver::Bytes, StandardMethodInlineCacheTarget::ToHex) => {
             bytes_methods::to_hex(receiver, args, heap, budget)
+        }
+        (StandardMethodReceiver::Bytes, StandardMethodInlineCacheTarget::Iter)
+        | (StandardMethodReceiver::Bytes, StandardMethodInlineCacheTarget::Values) => {
+            crate::iteration::iter_method(receiver, args, heap, budget)
+        }
+        (StandardMethodReceiver::Char, StandardMethodInlineCacheTarget::ToString) => {
+            crate::char_methods::to_string(receiver, args, heap, budget)
         }
         (StandardMethodReceiver::Array, StandardMethodInlineCacheTarget::First) => {
             array_methods::first(receiver, args, heap, budget)
@@ -989,6 +1044,24 @@ fn call_readonly_cached(
         {
             return call_cached_bytes_accessor(receiver, cache.target, args, heap);
         }
+        StandardMethodInlineCacheTarget::IsWhitespace
+        | StandardMethodInlineCacheTarget::IsAscii
+        | StandardMethodInlineCacheTarget::IsAsciiDigit
+            if cache.receiver == StandardMethodReceiver::Char =>
+        {
+            return Some(match cache.target {
+                StandardMethodInlineCacheTarget::IsWhitespace => {
+                    crate::char_methods::is_whitespace(receiver, args)
+                }
+                StandardMethodInlineCacheTarget::IsAscii => {
+                    crate::char_methods::is_ascii(receiver, args)
+                }
+                StandardMethodInlineCacheTarget::IsAsciiDigit => {
+                    crate::char_methods::is_ascii_digit(receiver, args)
+                }
+                _ => unreachable!("char readonly target was validated above"),
+            });
+        }
         _ => {}
     }
     if !receiver_matches_cache(receiver, cache.receiver, heap) {
@@ -1032,6 +1105,15 @@ fn call_readonly_cached(
         (StandardMethodReceiver::Bytes, StandardMethodInlineCacheTarget::ReadU32Be) => {
             bytes_methods::read_u32_be(receiver, args, heap)
         }
+        (StandardMethodReceiver::Char, StandardMethodInlineCacheTarget::IsWhitespace) => {
+            crate::char_methods::is_whitespace(receiver, args)
+        }
+        (StandardMethodReceiver::Char, StandardMethodInlineCacheTarget::IsAscii) => {
+            crate::char_methods::is_ascii(receiver, args)
+        }
+        (StandardMethodReceiver::Char, StandardMethodInlineCacheTarget::IsAsciiDigit) => {
+            crate::char_methods::is_ascii_digit(receiver, args)
+        }
         (StandardMethodReceiver::Option, StandardMethodInlineCacheTarget::IsSome) => {
             option_result_methods::is_some(receiver, args, heap)
         }
@@ -1061,6 +1143,7 @@ fn receiver_matches_cache(
     match cached {
         StandardMethodReceiver::String => crate::string_methods::is_string(receiver, heap),
         StandardMethodReceiver::Bytes => bytes_methods::is_bytes(receiver, heap),
+        StandardMethodReceiver::Char => crate::char_methods::is_char(receiver),
         StandardMethodReceiver::Range => matches!(receiver, Value::Range(_)),
         StandardMethodReceiver::Array => array_methods::is_array(receiver, heap),
         StandardMethodReceiver::Map => map_methods::is_map(receiver, heap),

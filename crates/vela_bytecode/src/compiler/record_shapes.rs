@@ -638,10 +638,10 @@ fn method_call_shape(
             Some(RuntimeTypeFact::Standard(StandardRuntimeType::Array)) => Some(receiver),
             _ => None,
         },
-        "parse_int" => Some(ValueShape::Option(Box::new(ValueShape::Scalar(
+        "parse_i64" => Some(ValueShape::Option(Box::new(ValueShape::Scalar(
             "i64".to_owned(),
         )))),
-        "parse_float" => Some(ValueShape::Option(Box::new(ValueShape::Scalar(
+        "parse_f64" => Some(ValueShape::Option(Box::new(ValueShape::Scalar(
             "f64".to_owned(),
         )))),
         "parse_bool" => Some(ValueShape::Option(Box::new(ValueShape::Scalar(

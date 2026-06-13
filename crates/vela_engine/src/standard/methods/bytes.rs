@@ -44,4 +44,16 @@ const BYTES_METHODS: &[MethodSpec] = &[
         "string",
         "Returns the lowercase hexadecimal representation.",
     ),
+    MethodSpec::new(
+        "iter",
+        &[],
+        "iterator",
+        "Returns a byte iterator over the byte buffer.",
+    ),
+    MethodSpec::new(
+        "values",
+        &[],
+        "iterator",
+        "Returns a byte iterator over the byte buffer.",
+    ),
 ];

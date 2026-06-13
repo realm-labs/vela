@@ -105,6 +105,7 @@ fn kind_name(kind: TypeKind) -> String {
         TypeKind::U64 => "u64",
         TypeKind::F32 => "f32",
         TypeKind::F64 => "f64",
+        TypeKind::Char => "char",
         TypeKind::String => "string",
         TypeKind::Bytes => "bytes",
         TypeKind::Array => "array",

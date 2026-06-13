@@ -22,7 +22,7 @@ fn main() {
         let found = "daily_quest".find("quest").unwrap_or(-1);
         let stripped_prefix = "event:quest".strip_prefix("event:").unwrap_or("");
         let stripped_suffix = "quest.done".strip_suffix(".done").unwrap_or("");
-        let parsed = "42".parse_int().unwrap_or(0);
+        let parsed = "42".parse_i64().unwrap_or(0);
         let parsed_bool = "true".parse_bool().unwrap_or(false);
 
         if upper != "QUEST.DONE"
@@ -123,10 +123,10 @@ pub(crate) const STRING_PARSING_SOURCE: &str = r#"
 fn main() {
     let total = 0;
     for tick in 0..96 {
-        let parsed = "42".parse_int().unwrap_or(0);
-        let negative = "-7".parse_int().unwrap_or(0);
-        let rate = "1.5".parse_float().unwrap_or(0.0);
-        let exponent = "2.5e1".parse_float().unwrap_or(0.0);
+        let parsed = "42".parse_i64().unwrap_or(0);
+        let negative = "-7".parse_i64().unwrap_or(0);
+        let rate = "1.5".parse_f64().unwrap_or(0.0);
+        let exponent = "2.5e1".parse_f64().unwrap_or(0.0);
         let enabled = "true".parse_bool().unwrap_or(false);
         let disabled = "false".parse_bool().unwrap_or(true);
 
@@ -136,7 +136,7 @@ fn main() {
             || exponent != 25.0
             || !enabled
             || disabled
-            || !option::is_none("bad".parse_int())
+            || !option::is_none("bad".parse_i64())
             || !option::is_none("yes".parse_bool())
         {
             return 0;

@@ -5,6 +5,7 @@ mod step;
 
 pub(crate) use methods::{
     all_method, any_method, chars_method, collect_array_method, collect_array_method_runtime,
+    collect_map_method, collect_map_method_runtime, collect_set_method, collect_set_method_runtime,
     collect_values, collect_values_over, count_method, count_method_runtime, filter_items_over,
     filter_method, find_method, is_iterator, iter_method, map_method, next_method,
     next_method_runtime, skip_method, string_bytes_method, take_method, try_for_each_over,

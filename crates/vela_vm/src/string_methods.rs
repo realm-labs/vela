@@ -11,7 +11,7 @@ mod splitting;
 mod transform;
 
 pub(crate) use affix::{strip_prefix, strip_suffix};
-pub(crate) use parsing::{parse_bool, parse_float, parse_int};
+pub(crate) use parsing::{parse_bool, parse_f64, parse_i64};
 pub(crate) use search::{contains, ends_with, find, starts_with};
 pub(crate) use slicing::slice;
 pub(crate) use splitting::{split, split_lines, split_once, split_whitespace};
@@ -484,7 +484,7 @@ fn main() {
     let pair = "count=3".split_once("=").unwrap_or(["", "0"]);
     let missing = "count".split_once("=").unwrap_or(["missing", "none"]);
     if pair[0] == "count" && pair[1] == "3" && missing[1] == "none" {
-        return pair[1].parse_int().unwrap_or(0);
+        return pair[1].parse_i64().unwrap_or(0);
     }
     return 0;
 }
@@ -566,49 +566,49 @@ fn main() {
     }
 
     #[test]
-    fn string_parse_int_returns_options() {
+    fn string_parse_i64_returns_options() {
         let source = r#"
 fn main() {
-    let level = "42".parse_int();
-    let negative = "-7".parse_int();
-    let invalid = "level-42".parse_int();
-    let overflow = "9223372036854775808".parse_int();
+    let level = "42".parse_i64();
+    let negative = "-7".parse_i64();
+    let invalid = "level-42".parse_i64();
+    let overflow = "9223372036854775808".parse_i64();
     if option::unwrap_or(level, 0) == 42
         && option::unwrap_or(negative, 0) == -7
         && option::is_none(invalid)
         && option::is_none(overflow)
     {
-        return option::unwrap_or("0".parse_int(), -1);
+        return option::unwrap_or("0".parse_i64(), -1);
     }
     return -1;
 }
 "#;
         let code = compile_function_source(SourceId::new(1), source, "main")
-            .expect("string parse_int source should compile");
+            .expect("string parse_i64 source should compile");
         let mut vm = Vm::new();
         vm.register_standard_natives();
 
-        let result = run_linked_string_test_code(&vm, code).expect("string parse_int should run");
+        let result = run_linked_string_test_code(&vm, code).expect("string parse_i64 should run");
         assert_eq!(result, OwnedValue::Scalar(vela_common::ScalarValue::I64(0)));
     }
 
     #[test]
-    fn managed_heap_execution_runs_string_parse_int() {
+    fn managed_heap_execution_runs_string_parse_i64() {
         let source = r#"
 fn main() {
     let raw = " 12 ";
-    let parsed = raw.trim().parse_int();
+    let parsed = raw.trim().parse_i64();
     return option::unwrap_or(parsed, -1);
 }
 "#;
         let code = compile_function_source(SourceId::new(1), source, "main")
-            .expect("heap string parse_int source should compile");
+            .expect("heap string parse_i64 source should compile");
         let mut vm = Vm::new();
         vm.register_standard_natives();
         let mut budget = ExecutionBudget::unbounded();
 
         let result = run_linked_string_test_code_with_budget(&vm, code, &mut budget)
-            .expect("heap string parse_int should run");
+            .expect("heap string parse_i64 should run");
         assert_eq!(
             result,
             OwnedValue::Scalar(vela_common::ScalarValue::I64(12))
@@ -616,29 +616,29 @@ fn main() {
     }
 
     #[test]
-    fn string_parse_float_returns_finite_options() {
+    fn string_parse_f64_returns_finite_options() {
         let source = r#"
 fn main() {
-    let rate = "1.25".parse_float();
-    let exponent = "2.5e1".parse_float();
-    let invalid = "rate:1.25".parse_float();
-    let infinite = "1e309".parse_float();
+    let rate = "1.25".parse_f64();
+    let exponent = "2.5e1".parse_f64();
+    let invalid = "rate:1.25".parse_f64();
+    let infinite = "1e309".parse_f64();
     if option::unwrap_or(rate, 0.0) == 1.25
         && option::unwrap_or(exponent, 0.0) == 25.0
         && option::is_none(invalid)
         && option::is_none(infinite)
     {
-        return option::unwrap_or("-0.5".parse_float(), 1.0);
+        return option::unwrap_or("-0.5".parse_f64(), 1.0);
     }
     return 1.0;
 }
 "#;
         let code = compile_function_source(SourceId::new(1), source, "main")
-            .expect("string parse_float source should compile");
+            .expect("string parse_f64 source should compile");
         let mut vm = Vm::new();
         vm.register_standard_natives();
 
-        let result = run_linked_string_test_code(&vm, code).expect("string parse_float should run");
+        let result = run_linked_string_test_code(&vm, code).expect("string parse_f64 should run");
         assert_eq!(
             result,
             OwnedValue::Scalar(vela_common::ScalarValue::F64(-0.5))
@@ -646,22 +646,22 @@ fn main() {
     }
 
     #[test]
-    fn managed_heap_execution_runs_string_parse_float() {
+    fn managed_heap_execution_runs_string_parse_f64() {
         let source = r#"
 fn main() {
     let raw = " 3.5 ";
-    let parsed = raw.trim().parse_float();
+    let parsed = raw.trim().parse_f64();
     return math::floor(option::unwrap_or(parsed, -1.0));
 }
 "#;
         let code = compile_function_source(SourceId::new(1), source, "main")
-            .expect("heap string parse_float source should compile");
+            .expect("heap string parse_f64 source should compile");
         let mut vm = Vm::new();
         vm.register_standard_natives();
         let mut budget = ExecutionBudget::unbounded();
 
         let result = run_linked_string_test_code_with_budget(&vm, code, &mut budget)
-            .expect("heap string parse_float should run");
+            .expect("heap string parse_f64 should run");
         assert_eq!(result, OwnedValue::Scalar(vela_common::ScalarValue::I64(3)));
     }
 

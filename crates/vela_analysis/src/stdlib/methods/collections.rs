@@ -443,14 +443,14 @@ pub(super) fn string_method_fact(method: &str) -> Option<StdlibMethodFact> {
             "split_whitespace",
             TypeFact::array(TypeFact::STRING),
         )),
-        "parse_int" => Some(StdlibMethodFact::new(
+        "parse_i64" => Some(StdlibMethodFact::new(
             receiver,
-            "parse_int",
+            "parse_i64",
             TypeFact::option(TypeFact::I64),
         )),
-        "parse_float" => Some(StdlibMethodFact::new(
+        "parse_f64" => Some(StdlibMethodFact::new(
             receiver,
-            "parse_float",
+            "parse_f64",
             TypeFact::option(TypeFact::F64),
         )),
         "parse_bool" => Some(StdlibMethodFact::new(
@@ -482,17 +482,48 @@ pub(super) fn bytes_method_fact(method: &str) -> Option<StdlibMethodFact> {
                 .with_params(vec![TypeFact::I64, TypeFact::I64]),
         ),
         "get" => Some(
-            StdlibMethodFact::new(receiver, "get", TypeFact::I64).with_params(vec![TypeFact::I64]),
+            StdlibMethodFact::new(receiver, "get", TypeFact::U8).with_params(vec![TypeFact::I64]),
         ),
         "read_u32_le" => Some(
-            StdlibMethodFact::new(receiver, "read_u32_le", TypeFact::I64)
+            StdlibMethodFact::new(receiver, "read_u32_le", TypeFact::U32)
                 .with_params(vec![TypeFact::I64]),
         ),
         "read_u32_be" => Some(
-            StdlibMethodFact::new(receiver, "read_u32_be", TypeFact::I64)
+            StdlibMethodFact::new(receiver, "read_u32_be", TypeFact::U32)
                 .with_params(vec![TypeFact::I64]),
         ),
         "to_hex" => Some(StdlibMethodFact::new(receiver, "to_hex", TypeFact::STRING)),
+        "iter" => Some(StdlibMethodFact::new(
+            receiver,
+            "iter",
+            TypeFact::iterator(TypeFact::U8),
+        )),
+        "values" => Some(StdlibMethodFact::new(
+            receiver,
+            "values",
+            TypeFact::iterator(TypeFact::U8),
+        )),
+        _ => None,
+    }
+}
+
+pub(super) fn char_method_fact(method: &str) -> Option<StdlibMethodFact> {
+    let receiver = TypeFact::CHAR;
+    match method {
+        "to_string" => Some(StdlibMethodFact::new(
+            receiver,
+            "to_string",
+            TypeFact::STRING,
+        )),
+        "is_whitespace" | "is_ascii" | "is_ascii_digit" => Some(StdlibMethodFact::new(
+            receiver,
+            match method {
+                "is_whitespace" => "is_whitespace",
+                "is_ascii_digit" => "is_ascii_digit",
+                _ => "is_ascii",
+            },
+            TypeFact::BOOL,
+        )),
         _ => None,
     }
 }
@@ -559,6 +590,16 @@ pub(super) fn iterator_method_fact(
             receiver,
             "collect_array",
             TypeFact::array(item),
+        )),
+        "collect_set" => Some(StdlibMethodFact::new(
+            receiver,
+            "collect_set",
+            TypeFact::set(item),
+        )),
+        "collect_map" => Some(StdlibMethodFact::new(
+            receiver,
+            "collect_map",
+            TypeFact::map(TypeFact::STRING, TypeFact::Any),
         )),
         _ => None,
     }

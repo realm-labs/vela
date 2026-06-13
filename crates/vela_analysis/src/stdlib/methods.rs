@@ -6,8 +6,8 @@ mod collections;
 mod option_result;
 
 use collections::{
-    array_method_fact, bytes_method_fact, iterator_method_fact, map_method_fact, range_method_fact,
-    set_method_fact, string_method_fact,
+    array_method_fact, bytes_method_fact, char_method_fact, iterator_method_fact, map_method_fact,
+    range_method_fact, set_method_fact, string_method_fact,
 };
 use option_result::{OptionShape, ResultShape, option_method_fact, result_method_fact};
 
@@ -110,8 +110,8 @@ const STRING_METHOD_NAMES: &[&str] = &[
     "split_once",
     "split_lines",
     "split_whitespace",
-    "parse_int",
-    "parse_float",
+    "parse_i64",
+    "parse_f64",
     "parse_bool",
     "chars",
     "bytes",
@@ -124,7 +124,10 @@ const BYTES_METHOD_NAMES: &[&str] = &[
     "read_u32_le",
     "read_u32_be",
     "to_hex",
+    "iter",
+    "values",
 ];
+const CHAR_METHOD_NAMES: &[&str] = &["to_string", "is_whitespace", "is_ascii", "is_ascii_digit"];
 const RANGE_METHOD_NAMES: &[&str] = &["len", "is_empty", "iter"];
 const ITERATOR_METHOD_NAMES: &[&str] = &[
     "next",
@@ -137,6 +140,8 @@ const ITERATOR_METHOD_NAMES: &[&str] = &[
     "take",
     "skip",
     "collect_array",
+    "collect_set",
+    "collect_map",
 ];
 const OPTION_METHOD_NAMES: &[&str] = &[
     "is_some",
@@ -185,6 +190,7 @@ pub(super) fn method_fact(
         }
         TypeFact::Primitive(PrimitiveTag::String) => string_method_fact(method),
         TypeFact::Primitive(PrimitiveTag::Bytes) => bytes_method_fact(method),
+        TypeFact::Primitive(PrimitiveTag::Char) => char_method_fact(method),
         TypeFact::Range => range_method_fact(method),
         TypeFact::Option { some } => {
             option_method_fact((**some).clone(), OptionShape::Maybe, method, lambda_return)
@@ -238,6 +244,7 @@ fn method_names(receiver: &TypeFact) -> &'static [&'static str] {
         TypeFact::Iterator { .. } => ITERATOR_METHOD_NAMES,
         TypeFact::Primitive(PrimitiveTag::String) => STRING_METHOD_NAMES,
         TypeFact::Primitive(PrimitiveTag::Bytes) => BYTES_METHOD_NAMES,
+        TypeFact::Primitive(PrimitiveTag::Char) => CHAR_METHOD_NAMES,
         TypeFact::Range => RANGE_METHOD_NAMES,
         TypeFact::Option { .. } | TypeFact::OptionSome { .. } | TypeFact::OptionNone => {
             OPTION_METHOD_NAMES

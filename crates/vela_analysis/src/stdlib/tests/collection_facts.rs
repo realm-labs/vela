@@ -387,7 +387,30 @@ fn iterator_methods_expose_item_and_callback_facts_without_generics() {
 
     let collect = stdlib_method_fact(&iterator, "collect_array", None).expect("collect_array fact");
     assert_eq!(collect.returns, TypeFact::array(TypeFact::record("Reward")));
+    let collect_set = stdlib_method_fact(&iterator, "collect_set", None).expect("collect_set fact");
+    assert_eq!(
+        collect_set.returns,
+        TypeFact::set(TypeFact::record("Reward"))
+    );
+    let collect_map = stdlib_method_fact(&iterator, "collect_map", None).expect("collect_map fact");
+    assert_eq!(
+        collect_map.returns,
+        TypeFact::map(TypeFact::STRING, TypeFact::Any)
+    );
     assert_eq!(iterator.display_name(), "iterator");
+}
+
+#[test]
+fn char_methods_expose_rust_like_character_facts() {
+    let to_string =
+        stdlib_method_fact(&TypeFact::CHAR, "to_string", None).expect("char to_string fact");
+    assert_eq!(to_string.params, Vec::<TypeFact>::new());
+    assert_eq!(to_string.returns, TypeFact::STRING);
+
+    let is_ascii_digit = stdlib_method_fact(&TypeFact::CHAR, "is_ascii_digit", None)
+        .expect("char is_ascii_digit fact");
+    assert_eq!(is_ascii_digit.params, Vec::<TypeFact>::new());
+    assert_eq!(is_ascii_digit.returns, TypeFact::BOOL);
 }
 
 #[test]
@@ -456,15 +479,15 @@ fn string_methods_expose_replacement_and_split_facts() {
     assert_eq!(split_lines.params, Vec::<TypeFact>::new());
     assert_eq!(split_lines.returns, TypeFact::array(TypeFact::STRING));
 
-    let parse_int =
-        stdlib_method_fact(&TypeFact::STRING, "parse_int", None).expect("parse_i64 fact");
-    assert_eq!(parse_int.params, Vec::<TypeFact>::new());
-    assert_eq!(parse_int.returns, TypeFact::option(TypeFact::I64));
+    let parse_i64 =
+        stdlib_method_fact(&TypeFact::STRING, "parse_i64", None).expect("parse_i64 fact");
+    assert_eq!(parse_i64.params, Vec::<TypeFact>::new());
+    assert_eq!(parse_i64.returns, TypeFact::option(TypeFact::I64));
 
-    let parse_float =
-        stdlib_method_fact(&TypeFact::STRING, "parse_float", None).expect("parse_f64 fact");
-    assert_eq!(parse_float.params, Vec::<TypeFact>::new());
-    assert_eq!(parse_float.returns, TypeFact::option(TypeFact::F64));
+    let parse_f64 =
+        stdlib_method_fact(&TypeFact::STRING, "parse_f64", None).expect("parse_f64 fact");
+    assert_eq!(parse_f64.params, Vec::<TypeFact>::new());
+    assert_eq!(parse_f64.returns, TypeFact::option(TypeFact::F64));
 
     let parse_bool =
         stdlib_method_fact(&TypeFact::STRING, "parse_bool", None).expect("parse_bool fact");
@@ -484,13 +507,17 @@ fn bytes_methods_expose_binary_api_facts() {
 
     let get = stdlib_method_fact(&TypeFact::BYTES, "get", None).expect("bytes get fact");
     assert_eq!(get.params, vec![TypeFact::I64]);
-    assert_eq!(get.returns, TypeFact::I64);
+    assert_eq!(get.returns, TypeFact::U8);
 
     let read_le =
         stdlib_method_fact(&TypeFact::BYTES, "read_u32_le", None).expect("bytes read fact");
     assert_eq!(read_le.params, vec![TypeFact::I64]);
-    assert_eq!(read_le.returns, TypeFact::I64);
+    assert_eq!(read_le.returns, TypeFact::U32);
 
     let hex = stdlib_method_fact(&TypeFact::BYTES, "to_hex", None).expect("bytes hex fact");
     assert_eq!(hex.returns, TypeFact::STRING);
+
+    let values = stdlib_method_fact(&TypeFact::BYTES, "values", None).expect("bytes values fact");
+    assert_eq!(values.params, Vec::<TypeFact>::new());
+    assert_eq!(values.returns, TypeFact::iterator(TypeFact::U8));
 }

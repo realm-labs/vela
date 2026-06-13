@@ -514,6 +514,58 @@ fn main() {
 }
 
 #[test]
+fn iterator_collect_set_consumes_lazy_pipeline() {
+    let code = compile_function_source(
+        SourceId::new(1),
+        r#"
+fn main() {
+    let values = [1, 2, 2, 3, 4]
+        .iter()
+        .filter(|value| value >= 2)
+        .map(|value| value % 3)
+        .collect_set()
+        .values()
+        .collect_array()
+        .sort();
+    return values.len() * 100 + values[0] * 10 + values[1];
+}
+"#,
+        "main",
+    )
+    .expect("compile iterator collect_set source");
+
+    assert_eq!(
+        run_linked_test_code(code),
+        Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(301)))
+    );
+}
+
+#[test]
+fn iterator_collect_map_consumes_map_entries() {
+    let code = compile_function_source(
+        SourceId::new(1),
+        r#"
+fn main() {
+    let rewards = {"gold": 4, "xp": 6};
+    let copied = rewards.entries().collect_map();
+    let remapped = rewards
+        .entries()
+        .map(|entry| MapEntry { key: entry.key, value: entry.value * 2 })
+        .collect_map();
+    return copied["gold"] * 100 + remapped["xp"];
+}
+"#,
+        "main",
+    )
+    .expect("compile iterator collect_map source");
+
+    assert_eq!(
+        run_linked_test_code(code),
+        Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(412)))
+    );
+}
+
+#[test]
 fn iterator_collect_array_respects_array_collection_limit() {
     let program = compile_program_source(
         SourceId::new(1),

@@ -279,35 +279,35 @@ pub(crate) fn binary_int_literal_numeric(
 ) -> VmResult<Value> {
     match value {
         Value::I8(value) => {
-            let literal = parse_integer_literal_as(literal, i8::MAX as u128)? as i8;
+            let literal = parse_i64eger_literal_as(literal, i8::MAX as u128)? as i8;
             eval_int_literal_op!(op, *value, literal, side, Value::I8, "binary_int_literal")
         }
         Value::I16(value) => {
-            let literal = parse_integer_literal_as(literal, i16::MAX as u128)? as i16;
+            let literal = parse_i64eger_literal_as(literal, i16::MAX as u128)? as i16;
             eval_int_literal_op!(op, *value, literal, side, Value::I16, "binary_int_literal")
         }
         Value::I32(value) => {
-            let literal = parse_integer_literal_as(literal, i32::MAX as u128)? as i32;
+            let literal = parse_i64eger_literal_as(literal, i32::MAX as u128)? as i32;
             eval_int_literal_op!(op, *value, literal, side, Value::I32, "binary_int_literal")
         }
         Value::I64(value) => {
-            let literal = parse_integer_literal_as(literal, i64::MAX as u128)? as i64;
+            let literal = parse_i64eger_literal_as(literal, i64::MAX as u128)? as i64;
             eval_int_literal_op!(op, *value, literal, side, Value::I64, "binary_int_literal")
         }
         Value::U8(value) => {
-            let literal = parse_integer_literal_as(literal, u8::MAX as u128)? as u8;
+            let literal = parse_i64eger_literal_as(literal, u8::MAX as u128)? as u8;
             eval_int_literal_op!(op, *value, literal, side, Value::U8, "binary_int_literal")
         }
         Value::U16(value) => {
-            let literal = parse_integer_literal_as(literal, u16::MAX as u128)? as u16;
+            let literal = parse_i64eger_literal_as(literal, u16::MAX as u128)? as u16;
             eval_int_literal_op!(op, *value, literal, side, Value::U16, "binary_int_literal")
         }
         Value::U32(value) => {
-            let literal = parse_integer_literal_as(literal, u32::MAX as u128)? as u32;
+            let literal = parse_i64eger_literal_as(literal, u32::MAX as u128)? as u32;
             eval_int_literal_op!(op, *value, literal, side, Value::U32, "binary_int_literal")
         }
         Value::U64(value) => {
-            let literal = parse_integer_literal_as(literal, u64::MAX as u128)? as u64;
+            let literal = parse_i64eger_literal_as(literal, u64::MAX as u128)? as u64;
             eval_int_literal_op!(op, *value, literal, side, Value::U64, "binary_int_literal")
         }
         _ => type_mismatch("binary_int_literal"),
@@ -341,7 +341,7 @@ pub(crate) fn binary_float_literal_numeric(
     }
 }
 
-fn parse_integer_literal_as(literal: &str, max: u128) -> VmResult<u128> {
+fn parse_i64eger_literal_as(literal: &str, max: u128) -> VmResult<u128> {
     let value = literal.replace('_', "");
     let (digits, radix) = if value.starts_with("0x") || value.starts_with("0X") {
         (&value[2..], 16)

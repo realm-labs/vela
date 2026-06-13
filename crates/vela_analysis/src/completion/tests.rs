@@ -354,12 +354,12 @@ fn receiver_completions_include_stdlib_collection_and_string_methods() {
         TypeFact::function(Vec::new(), TypeFact::array(TypeFact::STRING)),
     )));
     assert!(string.contains(&CompletionItem::new(
-        "parse_int",
+        "parse_i64",
         CompletionKind::Method,
         TypeFact::function(Vec::new(), TypeFact::option(TypeFact::I64)),
     )));
     assert!(string.contains(&CompletionItem::new(
-        "parse_float",
+        "parse_f64",
         CompletionKind::Method,
         TypeFact::function(Vec::new(), TypeFact::option(TypeFact::F64)),
     )));

@@ -16,8 +16,8 @@ pub(super) fn compile_literal_constant(literal: &Literal) -> CompileResult<Const
         Literal::Null => Constant::Null,
         Literal::Bool(value) => Constant::Bool(*value),
         Literal::Char(value) => Constant::Char(*value),
-        Literal::Integer(value) => Constant::Scalar(parse_integer_scalar(value)?),
-        Literal::Float(value) => Constant::Scalar(parse_float_scalar(value)?),
+        Literal::Integer(value) => Constant::Scalar(parse_i64eger_scalar(value)?),
+        Literal::Float(value) => Constant::Scalar(parse_f64_scalar(value)?),
         Literal::String(value) => Constant::String(value.clone()),
         Literal::Bytes(value) => Constant::Bytes(value.clone()),
     })
@@ -29,10 +29,10 @@ pub(super) fn compile_literal_constant_for_type(
 ) -> CompileResult<Option<Constant>> {
     match literal {
         Literal::Integer(value) if value.suffix.is_none() && is_integer_tag(expected) => {
-            parse_integer_scalar_as(value, expected).map(|value| Some(Constant::Scalar(value)))
+            parse_i64eger_scalar_as(value, expected).map(|value| Some(Constant::Scalar(value)))
         }
         Literal::Float(value) if value.suffix.is_none() && is_float_tag(expected) => {
-            parse_float_scalar_as(value, expected).map(|value| Some(Constant::Scalar(value)))
+            parse_f64_scalar_as(value, expected).map(|value| Some(Constant::Scalar(value)))
         }
         _ => Ok(None),
     }
@@ -46,7 +46,7 @@ pub(super) fn compile_negated_literal_constant(
             parse_negated_integer_scalar(value).map(|value| value.map(Constant::Scalar))
         }
         Literal::Float(value) => Ok(Some(Constant::Scalar(negate_float_scalar(
-            parse_float_scalar(value)?,
+            parse_f64_scalar(value)?,
         )))),
         _ => Ok(None),
     }
@@ -256,8 +256,8 @@ fn evaluate_numeric_compare_const(
     }
 }
 
-fn parse_integer_scalar(value: &IntegerLiteral) -> CompileResult<ScalarValue> {
-    let magnitude = parse_integer_magnitude(value)?;
+fn parse_i64eger_scalar(value: &IntegerLiteral) -> CompileResult<ScalarValue> {
+    let magnitude = parse_i64eger_magnitude(value)?;
     let scalar = match value.suffix {
         None | Some(IntegerSuffix::I64) => {
             ScalarValue::I64(checked_signed_positive(value, magnitude, i64::MAX as u128)? as i64)
@@ -287,11 +287,11 @@ fn parse_integer_scalar(value: &IntegerLiteral) -> CompileResult<ScalarValue> {
     Ok(scalar)
 }
 
-fn parse_integer_scalar_as(
+fn parse_i64eger_scalar_as(
     value: &IntegerLiteral,
     expected: PrimitiveTag,
 ) -> CompileResult<ScalarValue> {
-    let magnitude = parse_integer_magnitude(value)?;
+    let magnitude = parse_i64eger_magnitude(value)?;
     let scalar = match expected {
         PrimitiveTag::I8 => {
             ScalarValue::I8(checked_signed_positive(value, magnitude, i8::MAX as u128)? as i8)
@@ -323,7 +323,7 @@ fn parse_integer_scalar_as(
 }
 
 fn parse_negated_integer_scalar(value: &IntegerLiteral) -> CompileResult<Option<ScalarValue>> {
-    let magnitude = parse_integer_magnitude(value)?;
+    let magnitude = parse_i64eger_magnitude(value)?;
     let scalar = match value.suffix {
         None | Some(IntegerSuffix::I64) => {
             ScalarValue::I64(checked_signed_negative(value, magnitude, i64::MAX as u128)? as i64)
@@ -344,7 +344,7 @@ fn parse_negated_integer_scalar(value: &IntegerLiteral) -> CompileResult<Option<
     Ok(Some(scalar))
 }
 
-fn parse_integer_magnitude(value: &IntegerLiteral) -> CompileResult<u128> {
+fn parse_i64eger_magnitude(value: &IntegerLiteral) -> CompileResult<u128> {
     let value_without_separators = value.source_text().replace('_', "");
     let digits = match value.radix {
         IntRadix::Binary | IntRadix::Hex => &value_without_separators[2..],
@@ -401,20 +401,17 @@ fn out_of_range_integer(value: &IntegerLiteral) -> CompileError {
     })
 }
 
-fn parse_float_scalar(value: &FloatLiteral) -> CompileResult<ScalarValue> {
+fn parse_f64_scalar(value: &FloatLiteral) -> CompileResult<ScalarValue> {
     match value.suffix {
-        Some(FloatSuffix::F32) => parse_float::<f32>(value).map(ScalarValue::F32),
-        None | Some(FloatSuffix::F64) => parse_float::<f64>(value).map(ScalarValue::F64),
+        Some(FloatSuffix::F32) => parse_f64::<f32>(value).map(ScalarValue::F32),
+        None | Some(FloatSuffix::F64) => parse_f64::<f64>(value).map(ScalarValue::F64),
     }
 }
 
-fn parse_float_scalar_as(
-    value: &FloatLiteral,
-    expected: PrimitiveTag,
-) -> CompileResult<ScalarValue> {
+fn parse_f64_scalar_as(value: &FloatLiteral, expected: PrimitiveTag) -> CompileResult<ScalarValue> {
     match expected {
-        PrimitiveTag::F32 => parse_float::<f32>(value).map(ScalarValue::F32),
-        PrimitiveTag::F64 => parse_float::<f64>(value).map(ScalarValue::F64),
+        PrimitiveTag::F32 => parse_f64::<f32>(value).map(ScalarValue::F32),
+        PrimitiveTag::F64 => parse_f64::<f64>(value).map(ScalarValue::F64),
         _ => unreachable!("caller only passes float primitive tags"),
     }
 }
@@ -437,7 +434,7 @@ fn is_float_tag(tag: PrimitiveTag) -> bool {
     matches!(tag, PrimitiveTag::F32 | PrimitiveTag::F64)
 }
 
-fn parse_float<T>(value: &FloatLiteral) -> CompileResult<T>
+fn parse_f64<T>(value: &FloatLiteral) -> CompileResult<T>
 where
     T: Copy + Into<f64> + std::str::FromStr<Err = ParseFloatError>,
 {

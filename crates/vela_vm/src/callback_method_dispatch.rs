@@ -64,6 +64,8 @@ struct CallbackMethodIds {
     iterator_all: MethodId,
     iterator_count: MethodId,
     iterator_collect_array: MethodId,
+    iterator_collect_set: MethodId,
+    iterator_collect_map: MethodId,
 }
 
 impl CallbackMethodIds {
@@ -106,6 +108,8 @@ impl CallbackMethodIds {
             iterator_all: standard_method_id("Iterator", "all"),
             iterator_count: standard_method_id("Iterator", "count"),
             iterator_collect_array: standard_method_id("Iterator", "collect_array"),
+            iterator_collect_set: standard_method_id("Iterator", "collect_set"),
+            iterator_collect_map: standard_method_id("Iterator", "collect_map"),
         }
     }
 }
@@ -163,6 +167,12 @@ pub(crate) fn call(
         "count" => Some(call_count(receiver, args, dispatch).map(Value::i64)),
         "collect_array" if iteration::is_iterator(receiver, dispatch.heap_ref()) => Some(
             iteration::collect_array_method_runtime(receiver, args, dispatch.runtime()),
+        ),
+        "collect_set" if iteration::is_iterator(receiver, dispatch.heap_ref()) => Some(
+            iteration::collect_set_method_runtime(receiver, args, dispatch.runtime()),
+        ),
+        "collect_map" if iteration::is_iterator(receiver, dispatch.heap_ref()) => Some(
+            iteration::collect_map_method_runtime(receiver, args, dispatch.runtime()),
         ),
         "sum" => Some(array_methods::sum(receiver, args, dispatch.runtime())),
         "group_by" => Some(array_methods::group_by(receiver, args, dispatch.runtime())),
@@ -329,6 +339,12 @@ fn callback_method_target(
         }
         (StandardMethodReceiver::Iterator, id) if id == ids.iterator_collect_array => {
             CallbackMethodInlineCacheTarget::CollectArray
+        }
+        (StandardMethodReceiver::Iterator, id) if id == ids.iterator_collect_set => {
+            CallbackMethodInlineCacheTarget::CollectSet
+        }
+        (StandardMethodReceiver::Iterator, id) if id == ids.iterator_collect_map => {
+            CallbackMethodInlineCacheTarget::CollectMap
         }
         _ => return None,
     };
@@ -510,6 +526,12 @@ pub(crate) fn call_cached(
         (StandardMethodReceiver::Iterator, CallbackMethodInlineCacheTarget::CollectArray) => {
             iteration::collect_array_method_runtime(receiver, args, dispatch.runtime())
         }
+        (StandardMethodReceiver::Iterator, CallbackMethodInlineCacheTarget::CollectSet) => {
+            iteration::collect_set_method_runtime(receiver, args, dispatch.runtime())
+        }
+        (StandardMethodReceiver::Iterator, CallbackMethodInlineCacheTarget::CollectMap) => {
+            iteration::collect_map_method_runtime(receiver, args, dispatch.runtime())
+        }
         _ => return None,
     };
     Some(result)
@@ -527,6 +549,7 @@ fn receiver_matches_cache(
         StandardMethodReceiver::Option => option_result_methods::is_option(receiver, heap),
         StandardMethodReceiver::Result => option_result_methods::is_result(receiver, heap),
         StandardMethodReceiver::Iterator => iteration::is_iterator(receiver, heap),
+        StandardMethodReceiver::Char => false,
         StandardMethodReceiver::String
         | StandardMethodReceiver::Bytes
         | StandardMethodReceiver::Range => false,

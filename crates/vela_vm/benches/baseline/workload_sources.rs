@@ -148,7 +148,7 @@ fn main() {
     let command = " reward:gold count=3 enabled=true ".trim();
     let parts = command.replace(":", " ").split_whitespace();
     let item = parts[1];
-    let count = parts[2].strip_prefix("count=").unwrap_or("0").parse_int().unwrap_or(0);
+    let count = parts[2].strip_prefix("count=").unwrap_or("0").parse_i64().unwrap_or(0);
     let reward = Reward { item_id: item, count };
     let outcome = ResultState::Done { score: reward.count + item.len() };
     let label = "quest.reward.done".strip_suffix(".done").unwrap_or("");

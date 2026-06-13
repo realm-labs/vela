@@ -33,6 +33,7 @@ Map 遍历是显式的：
 let keys = rewards.keys().collect_array();
 let amounts = rewards.values().collect_array();
 let entries = rewards.entries().collect_array();
+let copied = rewards.entries().collect_map();
 let large_rewards = rewards.values()
     .filter(|amount| amount >= 10)
     .collect_array();
@@ -50,7 +51,7 @@ if tags.has("vip") {
 
 ## Iterator 和 Sequence
 
-Array、map、set、string 和 range 是可重复遍历的 sequence：每次 `for in` 或 `.iter()` 都会创建新的 iterator。Iterator value 是一次性 cursor。调用 `next()` 或用它执行 `for in` 会消耗这个 cursor。
+Array、map、set、bytes、string 和 range 是可重复遍历的 sequence：每次 `for in` 或 `.iter()` 都会创建新的 iterator。Iterator value 是一次性 cursor。调用 `next()` 或用它执行 `for in` 会消耗这个 cursor。
 
 ```vela
 let values = [1, 2, 3];
@@ -60,13 +61,16 @@ let first = iter.next();
 let rest = iter.collect_array();
 ```
 
-核心 lazy adapter 是 `map`、`filter`、`take` 和 `skip`。Terminal method 包括 `next`、`count`、`any`、`all`、`find` 和 `collect_array`。
+核心 lazy adapter 是 `map`、`filter`、`take` 和 `skip`。Terminal method 包括 `next`、`count`、`any`、`all`、`find`、`collect_array`、`collect_set` 和 `collect_map`。
 
 String 是 UTF-8 字符串。`text.len()` 和 `text.slice(start, end)` 使用 byte index。用 `text.chars()` 遍历 `char`，用 `text.bytes()` 遍历 UTF-8 byte，结果是 `u8`。
 
 ```vela
 let chars = "a奖励".chars().collect_array();
 let bytes = "a".bytes().collect_array();
+let byte_values = b"abc".values().collect_array();
 ```
+
+`char` 使用 Rust 字符语义。常用方法包括 `to_string()`、`is_whitespace()`、`is_ascii()` 和 `is_ascii_digit()`。
 
 高阶方法同步执行 callback。同一次 runtime call 内捕获 host handle 是合法的；如果保存 callback 后在 host scope 过期后访问，会报 stale handle。

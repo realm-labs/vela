@@ -3,36 +3,36 @@ use crate::{ExecutionBudget, HeapExecution, Value, VmResult};
 
 use super::{expect_no_args, string_value};
 
-pub(crate) fn parse_int(
+pub(crate) fn parse_i64(
     receiver: &Value,
     args: &[Value],
     heap: &mut Option<&mut HeapExecution<'_>>,
     budget: &mut Option<&mut ExecutionBudget>,
 ) -> VmResult<Value> {
-    expect_no_args("parse_int", args)?;
-    let value = string_value(receiver, heap.as_deref(), "method parse_int")?;
+    expect_no_args("parse_i64", args)?;
+    let value = string_value(receiver, heap.as_deref(), "method parse_i64")?;
     let payload = value.parse::<i64>().ok().map(Value::i64);
     let Some(heap) = heap.as_deref_mut() else {
-        return super::type_error("method parse_int");
+        return super::type_error("method parse_i64");
     };
     option_value(payload, heap, budget.as_deref_mut())
 }
 
-pub(crate) fn parse_float(
+pub(crate) fn parse_f64(
     receiver: &Value,
     args: &[Value],
     heap: &mut Option<&mut HeapExecution<'_>>,
     budget: &mut Option<&mut ExecutionBudget>,
 ) -> VmResult<Value> {
-    expect_no_args("parse_float", args)?;
-    let value = string_value(receiver, heap.as_deref(), "method parse_float")?;
+    expect_no_args("parse_f64", args)?;
+    let value = string_value(receiver, heap.as_deref(), "method parse_f64")?;
     let payload = value
         .parse::<f64>()
         .ok()
         .filter(|value| value.is_finite())
         .map(Value::f64);
     let Some(heap) = heap.as_deref_mut() else {
-        return super::type_error("method parse_float");
+        return super::type_error("method parse_f64");
     };
     option_value(payload, heap, budget.as_deref_mut())
 }

@@ -88,7 +88,7 @@ fn main() {
 fn bytes_methods_cover_length_slice_get_and_hex() {
     assert_eq!(
         run_bytes_source(
-            r#"
+            r##"
 fn main() {
     let data = b"\x00\x01\x02\xff";
     let middle = data.slice(1, 3);
@@ -97,9 +97,37 @@ fn main() {
     }
     return b"";
 }
-"#
+"##
         ),
         Ok(OwnedValue::Bytes(vec![1, 2]))
+    );
+}
+
+#[test]
+fn bytes_iterators_yield_u8_values() {
+    assert_eq!(
+        run_bytes_source(
+            r#"
+fn main() {
+    let total = 0;
+    for byte in b"AZ" {
+        if byte == 65u8 {
+            total += 10;
+        }
+        if byte == 90u8 {
+            total += 100;
+        }
+    }
+    let iter_values = b"\x01\x02\x03".iter().collect_array();
+    let byte_values = b"\x04\x05".values().collect_array();
+    if iter_values[0] == 1u8 && iter_values[2] == 3u8 && byte_values[1] == 5u8 {
+        total += iter_values.len() + byte_values.len();
+    }
+    return total;
+}
+"#
+        ),
+        Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(115)))
     );
 }
 

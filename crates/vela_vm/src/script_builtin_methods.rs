@@ -1,7 +1,7 @@
 use crate::heap::HeapValue;
 use crate::{
     ExecutionBudget, HeapExecution, Value, VmError, VmErrorKind, VmResult, array_methods,
-    bytes_methods, iteration, map_methods, option_result_methods, set_methods,
+    bytes_methods, char_methods, iteration, map_methods, option_result_methods, set_methods,
 };
 use vela_def::MethodId;
 
@@ -19,6 +19,11 @@ pub(crate) fn call(
 ) -> Option<VmResult<Value>> {
     if bytes_methods::is_bytes(receiver, heap.as_deref())
         && let Some(result) = call_bytes_by_name(receiver, method, args, heap, budget)
+    {
+        return Some(result);
+    }
+    if char_methods::is_char(receiver)
+        && let Some(result) = call_char_by_name(receiver, method, args, heap, budget)
     {
         return Some(result);
     }
@@ -82,6 +87,8 @@ pub(crate) fn call(
         "take" => iteration::take_method(receiver, args, heap, budget),
         "skip" => iteration::skip_method(receiver, args, heap, budget),
         "collect_array" => iteration::collect_array_method(receiver, args, heap, budget),
+        "collect_set" => iteration::collect_set_method(receiver, args, heap, budget),
+        "collect_map" => iteration::collect_map_method(receiver, args, heap, budget),
         _ => return None,
     };
     Some(result)
@@ -106,6 +113,11 @@ pub(crate) fn call_readonly(
 ) -> Option<VmResult<Value>> {
     if bytes_methods::is_bytes(receiver, heap)
         && let Some(result) = call_readonly_bytes_by_name(receiver, method, args, heap)
+    {
+        return Some(result);
+    }
+    if char_methods::is_char(receiver)
+        && let Some(result) = call_readonly_char_by_name(receiver, method, args)
     {
         return Some(result);
     }
@@ -151,8 +163,38 @@ fn call_bytes_by_name(
         "len" | "is_empty" | "get" | "read_u32_le" | "read_u32_be" => {
             call_readonly_bytes_by_name(receiver, method, args, heap.as_deref())
         }
+        "iter" | "values" => Some(iteration::iter_method(receiver, args, heap, budget)),
         "slice" => Some(bytes_methods::slice(receiver, args, heap, budget)),
         "to_hex" => Some(bytes_methods::to_hex(receiver, args, heap, budget)),
+        _ => None,
+    }
+}
+
+fn call_char_by_name(
+    receiver: &Value,
+    method: &str,
+    args: &[Value],
+    heap: &mut Option<&mut HeapExecution<'_>>,
+    budget: &mut Option<&mut ExecutionBudget>,
+) -> Option<VmResult<Value>> {
+    match method {
+        "to_string" => Some(char_methods::to_string(receiver, args, heap, budget)),
+        "is_whitespace" | "is_ascii" | "is_ascii_digit" => {
+            call_readonly_char_by_name(receiver, method, args)
+        }
+        _ => None,
+    }
+}
+
+fn call_readonly_char_by_name(
+    receiver: &Value,
+    method: &str,
+    args: &[Value],
+) -> Option<VmResult<Value>> {
+    match method {
+        "is_whitespace" => Some(char_methods::is_whitespace(receiver, args)),
+        "is_ascii" => Some(char_methods::is_ascii(receiver, args)),
+        "is_ascii_digit" => Some(char_methods::is_ascii_digit(receiver, args)),
         _ => None,
     }
 }

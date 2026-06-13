@@ -18,6 +18,7 @@ pub(super) fn type_detail(kind: TypeKind) -> String {
         TypeKind::U64 => "kind: u64".to_owned(),
         TypeKind::F32 => "kind: f32".to_owned(),
         TypeKind::F64 => "kind: f64".to_owned(),
+        TypeKind::Char => "kind: char".to_owned(),
         TypeKind::String => "kind: string".to_owned(),
         TypeKind::Bytes => "kind: bytes".to_owned(),
         TypeKind::Array => "kind: array".to_owned(),

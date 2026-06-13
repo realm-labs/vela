@@ -3,9 +3,9 @@ use vela_reflect::modules::DeclOrigin;
 use vela_reflect::registry::{FieldDesc, SchemaHash, TypeDesc, TypeKey, TypeKind, VariantDesc};
 
 use super::methods::{
-    array_method_descs, bytes_method_descs, iterator_method_descs, map_method_descs,
-    option_method_descs, range_method_descs, result_method_descs, set_method_descs,
-    string_method_descs,
+    array_method_descs, bytes_method_descs, char_method_descs, iterator_method_descs,
+    map_method_descs, option_method_descs, range_method_descs, result_method_descs,
+    set_method_descs, string_method_descs,
 };
 
 pub(crate) fn standard_type_descs() -> Vec<TypeDesc> {
@@ -82,6 +82,7 @@ pub(crate) fn standard_type_descs() -> Vec<TypeDesc> {
             TypeKind::F64,
             "Default floating-point scalar value type.",
         ),
+        char_type_desc(),
         string_type_desc(),
         bytes_type_desc(),
         array_type_desc(),
@@ -141,6 +142,19 @@ fn bytes_type_desc() -> TypeDesc {
         "Immutable binary data value type.",
     );
     for method in bytes_method_descs() {
+        desc = desc.method(method);
+    }
+    desc
+}
+
+fn char_type_desc() -> TypeDesc {
+    let mut desc = builtin_type(
+        "char",
+        required_std_type_id("Char"),
+        TypeKind::Char,
+        "Unicode scalar character value type.",
+    );
+    for method in char_method_descs() {
         desc = desc.method(method);
     }
     desc

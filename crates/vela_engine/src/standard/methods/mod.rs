@@ -1,5 +1,6 @@
 mod array;
 mod bytes;
+mod char;
 mod iterator;
 mod map;
 mod option;
@@ -13,6 +14,7 @@ use vela_reflect::registry::{MethodDesc, MethodParamDesc};
 
 pub(crate) use array::array_method_descs;
 pub(crate) use bytes::bytes_method_descs;
+pub(crate) use char::char_method_descs;
 pub(crate) use iterator::iterator_method_descs;
 pub(crate) use map::map_method_descs;
 pub(crate) use option::option_method_descs;

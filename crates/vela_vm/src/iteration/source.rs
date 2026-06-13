@@ -27,6 +27,7 @@ pub(crate) enum SequenceSource {
     Set { source: GcRef, len: usize },
     MapValues { source: GcRef, keys: Vec<String> },
     StringChars { source: GcRef },
+    Bytes { source: GcRef, len: usize },
     Range(RangeCursor),
 }
 
@@ -37,6 +38,7 @@ impl SequenceSource {
             Self::Set { source, len } => IteratorState::from_set_source(source, len),
             Self::MapValues { source, keys } => IteratorState::from_map_values_source(source, keys),
             Self::StringChars { source } => IteratorState::from_string_chars_source(source),
+            Self::Bytes { source, len } => IteratorState::from_bytes_source(source, len),
             Self::Range(cursor) => IteratorState::from_range_cursor(cursor),
         }
     }
@@ -85,8 +87,11 @@ fn heap_iterable_source(reference: GcRef, value: &HeapValue) -> VmResult<Iterabl
         HeapValue::String(_) => Ok(IterableSource::Sequence(SequenceSource::StringChars {
             source: reference,
         })),
-        HeapValue::Bytes(_)
-        | HeapValue::Record { .. }
+        HeapValue::Bytes(values) => Ok(IterableSource::Sequence(SequenceSource::Bytes {
+            source: reference,
+            len: values.len(),
+        })),
+        HeapValue::Record { .. }
         | HeapValue::Enum { .. }
         | HeapValue::Closure(_)
         | HeapValue::PathProxy(_) => Err(not_iterable()),

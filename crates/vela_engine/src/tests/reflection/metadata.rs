@@ -249,12 +249,12 @@ fn engine_standard_natives_register_reflection_metadata() {
     assert_eq!(split_once.params[0].name, "separator");
     assert_eq!(split_once.params[0].type_hint.as_deref(), Some("string"));
     assert_eq!(split_once.return_type.as_deref(), Some("Option"));
-    let parse_int = string_type
+    let parse_i64 = string_type
         .methods
         .iter()
-        .find(|method| method.name == "parse_int")
-        .expect("string.parse_int method metadata");
-    assert_eq!(parse_int.return_type.as_deref(), Some("Option"));
+        .find(|method| method.name == "parse_i64")
+        .expect("string.parse_i64 method metadata");
+    assert_eq!(parse_i64.return_type.as_deref(), Some("Option"));
 
     let array_type = registry.type_by_name("array").expect("array type");
     assert_eq!(array_type.kind, vela_reflect::registry::TypeKind::Array);
@@ -566,6 +566,7 @@ fn main() {
     let bytes_module = reflect::module("bytes");
     let string_type = reflect::type_info("string");
     let bytes_type = reflect::type_info("bytes");
+    let char_type = reflect::type_info("char");
     let array_type = reflect::type_info("array");
     let option_type = reflect::type_info("Option");
     let result_type = reflect::type_info("Result");
@@ -582,6 +583,7 @@ fn main() {
     let f32_type = reflect::type_info("f32");
     let float_value_type = reflect::type_of(1.5);
     let string_value_type = reflect::type_of("quest");
+    let char_value_type = reflect::type_of('q');
     let array_value_type = reflect::type_of(["quest"]);
     let map_value_type = reflect::type_of({"quest": 1});
     let set_value_type = reflect::type_of(set::from_array(["quest"]));
@@ -592,6 +594,7 @@ fn main() {
     let result_variants = reflect::variants(result_type);
     let string_methods = reflect::methods(string_type);
     let bytes_methods = reflect::methods(bytes_type);
+    let char_methods = reflect::methods(char_type);
     let array_methods = reflect::methods(array_type);
     let option_methods = reflect::methods(option_type);
     let result_methods = reflect::methods(result_type);
@@ -605,9 +608,12 @@ fn main() {
     let iterator_methods = reflect::methods(iterator_type);
     let trim = reflect::method(string_type, "trim");
     let split_once = reflect::method(string_type, "split_once");
-    let parse_int = reflect::method(string_type, "parse_int");
+    let parse_i64 = reflect::method(string_type, "parse_i64");
     let bytes_read_u32_le = reflect::method(bytes_type, "read_u32_le");
     let bytes_to_hex = reflect::method(bytes_type, "to_hex");
+    let bytes_values = reflect::method(bytes_type, "values");
+    let char_to_string = reflect::method(char_type, "to_string");
+    let char_is_ascii_digit = reflect::method(char_type, "is_ascii_digit");
     let array_push = reflect::method(array_type, "push");
     let array_map = reflect::method(array_type, "map");
     let map_get = reflect::method(map_type, "get");
@@ -619,6 +625,8 @@ fn main() {
     let iterator_map = reflect::method(iterator_type, "map");
     let iterator_take = reflect::method(iterator_type, "take");
     let iterator_collect_array = reflect::method(iterator_type, "collect_array");
+    let iterator_collect_set = reflect::method(iterator_type, "collect_set");
+    let iterator_collect_map = reflect::method(iterator_type, "collect_map");
     let option_map = reflect::method(option_type, "map");
     let option_ok_or = reflect::method(option_type, "ok_or");
     let result_map_err = reflect::method(result_type, "map_err");
@@ -663,6 +671,8 @@ fn main() {
         && reflect::kind(f32_type) == "f32"
         && reflect::name(float_value_type) == "f64"
         && reflect::kind(float_value_type) == "f64"
+        && reflect::name(char_value_type) == "char"
+        && reflect::kind(char_value_type) == "char"
         && reflect::name(string_value_type) == "string"
         && reflect::kind(string_value_type) == "string"
         && reflect::name(array_value_type) == "array"
@@ -695,6 +705,7 @@ fn main() {
         && reflect::has_type("u64")
         && reflect::has_type("f32")
         && reflect::has_type("f64")
+        && reflect::has_type("char")
         && reflect::has_type("array")
         && reflect::has_type("map")
         && reflect::has_type("set")
@@ -704,6 +715,7 @@ fn main() {
         && reflect::has_type("Result")
         && reflect::kind(string_type) == "string"
         && reflect::kind(bytes_type) == "bytes"
+        && reflect::kind(char_type) == "char"
         && reflect::kind(array_type) == "array"
         && reflect::kind(map_type) == "map"
         && reflect::kind(set_type) == "set"
@@ -724,15 +736,20 @@ fn main() {
         && reflect::attr(bytes_module, "stdlib") == "bytes"
         && reflect::attr(string_type, "stdlib") == "builtin"
         && reflect::attr(bytes_type, "stdlib") == "builtin"
+        && reflect::attr(char_type, "stdlib") == "builtin"
         && reflect::attr(option_type, "stdlib") == "option"
         && reflect::attr(result_type, "stdlib") == "result"
         && string_methods.len() >= 24
-        && bytes_methods.len() == 7
+        && bytes_methods.len() == 9
+        && char_methods.len() == 4
         && reflect::has_method(string_type, "trim")
         && reflect::has_method(string_type, "split_once")
-        && reflect::has_method(string_type, "parse_int")
+        && reflect::has_method(string_type, "parse_i64")
         && reflect::has_method(bytes_type, "read_u32_le")
         && reflect::has_method(bytes_type, "to_hex")
+        && reflect::has_method(bytes_type, "values")
+        && reflect::has_method(char_type, "to_string")
+        && reflect::has_method(char_type, "is_ascii_digit")
         && trim.owner == "string"
         && reflect::returns(trim) == "string"
         && reflect::attr(trim, "stdlib") == "string"
@@ -740,17 +757,21 @@ fn main() {
         && split_once.params[0].name == "separator"
         && split_once.params[0].type == "string"
         && reflect::returns(split_once) == "Option"
-        && reflect::returns(parse_int) == "Option"
+        && reflect::returns(parse_i64) == "Option"
         && bytes_read_u32_le.params[0].type == "i64"
         && reflect::returns(bytes_read_u32_le) == "u32"
         && reflect::attr(bytes_read_u32_le, "stdlib") == "bytes"
         && reflect::returns(bytes_to_hex) == "string"
         && reflect::attr(bytes_to_hex, "stdlib") == "bytes"
+        && reflect::returns(bytes_values) == "iterator"
+        && reflect::returns(char_to_string) == "string"
+        && reflect::attr(char_to_string, "stdlib") == "char"
+        && reflect::returns(char_is_ascii_digit) == "bool"
         && array_methods.len() >= 28
         && map_methods.len() >= 19
         && set_methods.len() >= 21
         && range_methods.len() == 3
-        && iterator_methods.len() == 10
+        && iterator_methods.len() == 12
         && option_methods.len() >= 9
         && result_methods.len() >= 10
         && reflect::has_method(array_type, "push")
@@ -771,6 +792,8 @@ fn main() {
         && reflect::has_method(iterator_type, "take")
         && reflect::has_method(iterator_type, "skip")
         && reflect::has_method(iterator_type, "collect_array")
+        && reflect::has_method(iterator_type, "collect_set")
+        && reflect::has_method(iterator_type, "collect_map")
         && reflect::has_method(option_type, "map")
         && reflect::has_method(option_type, "ok_or")
         && reflect::has_method(result_type, "map_err")
@@ -801,6 +824,10 @@ fn main() {
         && reflect::returns(iterator_take) == "iterator"
         && iterator_collect_array.params.is_empty()
         && reflect::returns(iterator_collect_array) == "array"
+        && iterator_collect_set.params.is_empty()
+        && reflect::returns(iterator_collect_set) == "set"
+        && iterator_collect_map.params.is_empty()
+        && reflect::returns(iterator_collect_map) == "map"
         && option_map.params[0].name == "callback"
         && option_map.params[0].type == "function"
         && reflect::returns(option_map) == "Option"

@@ -201,7 +201,7 @@ fn main() {
         captured_bonus()
     };
 
-    let parsed: i64 = "42".parse_int().unwrap_or(0);
+    let parsed: i64 = "42".parse_i64().unwrap_or(0);
     let normalized = "  Quest.Reward Done  ".trim().replace(" ", "_").to_lower();
     let pieces = normalized.split(".");
     let prefix = normalized.strip_prefix("quest.");
@@ -225,11 +225,11 @@ fn main() {
         && option::unwrap_or(option::unwrap_or(prefix, "").strip_suffix("_done"), "") == "reward"
         && option::unwrap_or(suffix, "") == "quest.reward"
         && pair[0] == "count"
-        && pair[1].parse_int().unwrap_or(0) == 3
+        && pair[1].parse_i64().unwrap_or(0) == 3
         && words.join(".") == "grant.gold.3"
         && lines[1] == "apply"
         && option::unwrap_or("true".parse_bool(), false)
-        && option::unwrap_or("2.5".parse_float(), 0.0) == 2.5
+        && option::unwrap_or("2.5".parse_f64(), 0.0) == 2.5
         && reward_char == '奖'
         && "xp奖励".slice(2, 8) == "奖励"
     {

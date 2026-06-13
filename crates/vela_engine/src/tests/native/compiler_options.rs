@@ -469,8 +469,8 @@ fn engine_compiler_options_emit_standard_string_parse_method_ids() {
             SourceId::new(1),
             r#"
 fn main() {
-    return "42".parse_int().unwrap_or(0) == 42
-        && "1.5".parse_float().unwrap_or(0.0) == 1.5
+    return "42".parse_i64().unwrap_or(0) == 42
+        && "1.5".parse_f64().unwrap_or(0.0) == 1.5
         && "true".parse_bool().unwrap_or(false);
 }
 "#,
@@ -489,8 +489,8 @@ fn main() {
         })
         .collect::<Vec<_>>();
 
-    assert!(value_methods.contains(&("parse_int", Some(std_method_id("String", "parse_int")))));
-    assert!(value_methods.contains(&("parse_float", Some(std_method_id("String", "parse_float")))));
+    assert!(value_methods.contains(&("parse_i64", Some(std_method_id("String", "parse_i64")))));
+    assert!(value_methods.contains(&("parse_f64", Some(std_method_id("String", "parse_f64")))));
     assert!(value_methods.contains(&("parse_bool", Some(std_method_id("String", "parse_bool")))));
 }
 

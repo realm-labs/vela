@@ -42,6 +42,7 @@ fn value_runtime_slot_stays_compact() {
 }
 
 mod bytes;
+mod char;
 mod consts;
 mod control_flow;
 mod deferred_literals;

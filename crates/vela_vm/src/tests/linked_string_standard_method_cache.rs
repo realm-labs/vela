@@ -200,15 +200,15 @@ fn linked_standard_value_method_caches_string_transform_target() {
 #[test]
 fn linked_standard_value_method_caches_string_parse_targets() {
     assert_string_no_arg_option_cache(
-        "parse_int",
+        "parse_i64",
         "42",
-        StandardMethodInlineCacheTarget::ParseInt,
+        StandardMethodInlineCacheTarget::ParseI64,
         OwnedValue::Scalar(vela_common::ScalarValue::I64(42)),
     );
     assert_string_no_arg_option_cache(
-        "parse_float",
+        "parse_f64",
         "1.5",
-        StandardMethodInlineCacheTarget::ParseFloat,
+        StandardMethodInlineCacheTarget::ParseF64,
         OwnedValue::Scalar(vela_common::ScalarValue::F64(1.5)),
     );
     assert_string_no_arg_option_cache(

@@ -57,6 +57,7 @@ pub enum TypeKind {
     U64,
     F32,
     F64,
+    Char,
     String,
     Bytes,
     Array,

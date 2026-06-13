@@ -15,6 +15,7 @@ Iterator pipelines are the primary collection transformation model:
 
 ```rust
 arr.iter().filter(|x| predicate).map(|x| value).collect_array()
+arr.iter().filter(|x| predicate).collect_set()
 arr.iter().find(|x| predicate)
 arr.iter().any(|x| predicate)
 arr.iter().all(|x| predicate)
@@ -67,6 +68,7 @@ needs keys, values, or entries:
 ```rust
 map.values().filter(|v| predicate).map(|v| value).collect_array()
 map.entries().find(|entry| predicate)
+map.entries().collect_map()
 ```
 
 Retained eager map helpers are wrappers over the iterator callback engine when
@@ -108,6 +110,7 @@ Set iterator pipelines use the same callback boundary as arrays:
 
 ```rust
 set.iter().filter(|value| predicate).map(|value| result).collect_array()
+set.iter().filter(|value| predicate).collect_set()
 ```
 
 Retained eager set callback helpers follow the same analysis-only item fact
@@ -176,6 +179,20 @@ boundaries. Character-level traversal should use `for ch in text` or
 `text.chars()`, which yield Rust-semantics `char` values. Byte traversal should
 use `text.bytes()` and yields `u8` values.
 
+### Char
+
+```rust
+ch.to_string()
+ch.is_whitespace()
+ch.is_ascii()
+ch.is_ascii_digit()
+```
+
+`char` follows Rust `char` semantics: one Unicode scalar value. It is not a
+byte and not a single-character string. Character-level string traversal
+returns `char`, and conversion back to `string` is explicit through
+`ch.to_string()`.
+
 ### Bytes
 
 ```rust
@@ -186,8 +203,13 @@ bytes.get(index)
 bytes.read_u32_le(index)
 bytes.read_u32_be(index)
 bytes.to_hex()
+bytes.iter()   // Iterator over u8 values
+bytes.values() // Iterator over u8 values
 bytes::from_hex(text)
 ```
+
+Bytes are repeatable byte sequences. Direct `for byte in bytes`,
+`bytes.iter()`, and `bytes.values()` all yield `u8` values.
 
 ### Numeric Conversions
 

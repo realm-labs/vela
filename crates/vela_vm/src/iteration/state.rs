@@ -50,6 +50,11 @@ enum IteratorCursor {
         source: GcRef,
         next: usize,
     },
+    Bytes {
+        source: GcRef,
+        next: usize,
+        len: usize,
+    },
     Range(RangeCursor),
     Map {
         source: Box<IteratorState>,
@@ -156,6 +161,16 @@ impl IteratorState {
         }
     }
 
+    pub(crate) fn from_bytes_source(source: GcRef, len: usize) -> Self {
+        Self {
+            cursor: IteratorCursor::Bytes {
+                source,
+                next: 0,
+                len,
+            },
+        }
+    }
+
     pub(crate) fn map(source: Self, callback: Value) -> Self {
         Self {
             cursor: IteratorCursor::Map {
@@ -227,6 +242,7 @@ impl IteratorState {
             | IteratorCursor::MapEntries { .. }
             | IteratorCursor::StringChars { .. }
             | IteratorCursor::StringBytes { .. }
+            | IteratorCursor::Bytes { .. }
             | IteratorCursor::Map { .. }
             | IteratorCursor::Filter { .. } => None,
         }
@@ -271,6 +287,14 @@ impl IteratorState {
             IteratorCursor::StringBytes { source, next } => {
                 next_string_byte(*source, next, runtime, operation)
             }
+            IteratorCursor::Bytes { source, next, len } => next_indexed_heap_value(
+                *source,
+                next,
+                *len,
+                runtime,
+                operation,
+                HeapSequenceKind::Bytes,
+            ),
             IteratorCursor::Take { source, remaining } => {
                 if *remaining == 0 {
                     return Ok(None);
@@ -323,7 +347,8 @@ impl IteratorState {
             | IteratorCursor::MapKeys { source, .. }
             | IteratorCursor::MapEntries { source, .. }
             | IteratorCursor::StringChars { source, .. }
-            | IteratorCursor::StringBytes { source, .. } => refs.push(*source),
+            | IteratorCursor::StringBytes { source, .. }
+            | IteratorCursor::Bytes { source, .. } => refs.push(*source),
             IteratorCursor::Range(_) => {}
             IteratorCursor::Map { source, callback }
             | IteratorCursor::Filter { source, callback } => {
@@ -351,7 +376,8 @@ impl IteratorState {
             | IteratorCursor::MapKeys { source, .. }
             | IteratorCursor::MapEntries { source, .. }
             | IteratorCursor::StringChars { source, .. }
-            | IteratorCursor::StringBytes { source, .. } => protected.push(Value::HeapRef(*source)),
+            | IteratorCursor::StringBytes { source, .. }
+            | IteratorCursor::Bytes { source, .. } => protected.push(Value::HeapRef(*source)),
             IteratorCursor::Range(_) => {}
             IteratorCursor::Map { source, callback }
             | IteratorCursor::Filter { source, callback } => {
@@ -375,6 +401,7 @@ impl IteratorState {
             | IteratorCursor::MapEntries { .. }
             | IteratorCursor::StringChars { .. }
             | IteratorCursor::StringBytes { .. }
+            | IteratorCursor::Bytes { .. }
             | IteratorCursor::Map { .. }
             | IteratorCursor::Filter { .. }
             | IteratorCursor::Take { .. }
@@ -393,6 +420,7 @@ impl IteratorState {
             | IteratorCursor::MapEntries { .. }
             | IteratorCursor::StringChars { .. }
             | IteratorCursor::StringBytes { .. }
+            | IteratorCursor::Bytes { .. }
             | IteratorCursor::Map { .. }
             | IteratorCursor::Filter { .. }
             | IteratorCursor::Take { .. }
@@ -405,6 +433,7 @@ impl IteratorState {
 enum HeapSequenceKind {
     Array,
     Set,
+    Bytes,
 }
 
 fn next_indexed_heap_value(
@@ -429,6 +458,9 @@ fn next_indexed_heap_value(
     let values = match (kind, value) {
         (HeapSequenceKind::Array, HeapValue::Array(values))
         | (HeapSequenceKind::Set, HeapValue::Set(values)) => values,
+        (HeapSequenceKind::Bytes, HeapValue::Bytes(values)) => {
+            return Ok(values.get(index).map(|byte| Value::U8(*byte)));
+        }
         _ => return type_error(operation),
     };
     Ok(values.get(index).map(stored_runtime_value))

@@ -67,4 +67,16 @@ const ITERATOR_METHODS: &[MethodSpec] = &[
         "array",
         "Consumes the iterator and collects remaining values into an array.",
     ),
+    MethodSpec::new(
+        "collect_set",
+        &[],
+        "set",
+        "Consumes the iterator and collects remaining unique scalar values into a set.",
+    ),
+    MethodSpec::new(
+        "collect_map",
+        &[],
+        "map",
+        "Consumes MapEntry values and collects them into a map.",
+    ),
 ];

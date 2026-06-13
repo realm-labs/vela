@@ -7,9 +7,9 @@ fn main() {
     let item = reward_pair[1];
     let count_text = count_pair[1];
     let enabled_text = enabled_pair[1];
-    let count = count_text.parse_int().unwrap_or(0);
+    let count = count_text.parse_i64().unwrap_or(0);
     let enabled = enabled_text.parse_bool().unwrap_or(false);
-    let rate = "2.5".parse_float().unwrap_or(0.0);
+    let rate = "2.5".parse_f64().unwrap_or(0.0);
     let tags = set::from_array(["reward", item, "daily", item]);
     let tag_prefix = '\0';
     for ch in item {

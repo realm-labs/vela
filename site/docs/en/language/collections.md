@@ -33,6 +33,7 @@ Map traversal is explicit:
 let keys = rewards.keys().collect_array();
 let amounts = rewards.values().collect_array();
 let entries = rewards.entries().collect_array();
+let copied = rewards.entries().collect_map();
 let large_rewards = rewards.values()
     .filter(|amount| amount >= 10)
     .collect_array();
@@ -50,7 +51,7 @@ if tags.has("vip") {
 
 ## Iterators And Sequences
 
-Arrays, maps, sets, strings, and ranges are repeatable sequences: each `for in` traversal or `.iter()` call creates a fresh iterator. Iterator values are one-shot cursors. Calling `next()` or using an iterator in `for in` consumes that cursor.
+Arrays, maps, sets, bytes, strings, and ranges are repeatable sequences: each `for in` traversal or `.iter()` call creates a fresh iterator. Iterator values are one-shot cursors. Calling `next()` or using an iterator in `for in` consumes that cursor.
 
 ```vela
 let values = [1, 2, 3];
@@ -60,13 +61,16 @@ let first = iter.next();
 let rest = iter.collect_array();
 ```
 
-Core lazy adapters are `map`, `filter`, `take`, and `skip`. Terminal methods include `next`, `count`, `any`, `all`, `find`, and `collect_array`.
+Core lazy adapters are `map`, `filter`, `take`, and `skip`. Terminal methods include `next`, `count`, `any`, `all`, `find`, `collect_array`, `collect_set`, and `collect_map`.
 
 Strings are UTF-8 strings. `text.len()` and `text.slice(start, end)` use byte indexes. Use `text.chars()` for `char` values and `text.bytes()` for UTF-8 bytes as `u8`.
 
 ```vela
 let chars = "a奖励".chars().collect_array();
 let bytes = "a".bytes().collect_array();
+let byte_values = b"abc".values().collect_array();
 ```
+
+`char` follows Rust character semantics. Common methods are `to_string()`, `is_whitespace()`, `is_ascii()`, and `is_ascii_digit()`.
 
 Higher-order methods execute callbacks synchronously. Capturing a host handle inside such a callback is valid during the same runtime call; using a saved callback after the host scope expires reports a stale handle error.

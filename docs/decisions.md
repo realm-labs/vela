@@ -760,7 +760,9 @@ scalar value, not a byte and not a one-character string. Vela uses single-quote
 char literals such as `'x'` and `'\u{5956}'`; double-quote literals remain
 strings. String iteration yields `char` values. The pre-release implementation
 does not preserve the old internal behavior where serde decoded
-single-character strings as Rust `char`.
+single-character strings as Rust `char`. Minimal char methods mirror Rust names
+for common operations: `to_string`, `is_whitespace`, `is_ascii`, and
+`is_ascii_digit`.
 
 ### Rust-Like String Indexing
 
@@ -773,11 +775,12 @@ because UTF-8 character indexing is O(n) and would misrepresent performance.
 
 ### Iterator View Naming
 
-Explicit one-shot iterator creation uses `values()` / `iter()` for arrays and
-sets, `iter()` for maps and ranges, and `chars()` / `bytes()` for string
-traversal. Direct map `iter()` and `map.values()` yield values in key order,
-matching current direct map `for-in` behavior. `map.keys()` and `map.entries()`
-are also iterator-backed views.
+Explicit one-shot iterator creation uses `values()` / `iter()` for arrays,
+sets, and bytes, `iter()` for maps and ranges, and `chars()` / `bytes()` for
+string traversal. Direct bytes `for-in`, `bytes.iter()`, and `bytes.values()`
+yield `u8` values. Direct map `iter()` and `map.values()` yield values in key
+order, matching current direct map `for-in` behavior. `map.keys()` and
+`map.entries()` are also iterator-backed views.
 
 ### Iterator Adapter Ownership
 
@@ -786,6 +789,10 @@ iterator state and leave the original iterator exhausted. Adapter stepping,
 `for-in`, and terminal methods use the callback-capable method runtime so
 `map`, `filter`, `any`, `all`, `find`, and `collect_array` share callback
 dispatch, heap-root protection, budget, and host-access behavior.
+Iterator terminals that materialize collections are explicit:
+`collect_array`, `collect_set`, and `collect_map`. `collect_map` consumes
+`MapEntry { key, value }` records and duplicate keys follow map insertion
+semantics, so later entries overwrite earlier entries.
 
 ### Iterator Source Bounds
 
