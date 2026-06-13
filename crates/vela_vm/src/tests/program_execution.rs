@@ -77,7 +77,177 @@ fn main() {
 }
 
 #[test]
-fn linked_dynamic_method_call_reports_source_spanned_unknown_method_placeholder() {
+fn linked_dynamic_string_predicate_resolves_by_runtime_receiver() {
+    let program = compile_standard_program_source(
+        SourceId::new(1),
+        r#"
+fn main(value) {
+    return value.starts_with("q");
+}
+"#,
+    )
+    .expect("dynamic method source should compile");
+    let mut budget = ExecutionBudget::unbounded();
+
+    assert_eq!(
+        run_linked_test_program_with_budget(
+            &Vm::new(),
+            &program,
+            "main",
+            &[OwnedValue::String("quest".to_owned())],
+            &mut budget,
+        ),
+        Ok(OwnedValue::Bool(true))
+    );
+    assert_eq!(
+        run_linked_test_program_with_budget(
+            &Vm::new(),
+            &program,
+            "main",
+            &[OwnedValue::String("raid".to_owned())],
+            &mut budget,
+        ),
+        Ok(OwnedValue::Bool(false))
+    );
+}
+
+#[test]
+fn linked_dynamic_standard_value_methods_resolve_representative_receivers() {
+    assert_eq!(
+        run_dynamic_method_source(
+            r#"
+fn main(value) {
+    return value.trim();
+}
+"#,
+            &[OwnedValue::String(" quest ".to_owned())],
+        ),
+        Ok(OwnedValue::String("quest".to_owned()))
+    );
+    assert_eq!(
+        run_dynamic_method_source(
+            r#"
+fn main(value) {
+    return value.len();
+}
+"#,
+            &[OwnedValue::array([OwnedValue::i64(1), OwnedValue::i64(2)])],
+        ),
+        Ok(OwnedValue::i64(2))
+    );
+    assert_eq!(
+        run_dynamic_method_source(
+            r#"
+fn main(value) {
+    return value.get("level");
+}
+"#,
+            &[OwnedValue::map([("level", OwnedValue::i64(7))])],
+        ),
+        Ok(OwnedValue::enum_variant(
+            "Option",
+            "Some",
+            [("0", OwnedValue::i64(7))]
+        ))
+    );
+    assert_eq!(
+        run_dynamic_method_source(
+            r#"
+fn main(value) {
+    return value.is_some();
+}
+"#,
+            &[OwnedValue::enum_variant(
+                "Option",
+                "Some",
+                [("0", OwnedValue::i64(3))]
+            )],
+        ),
+        Ok(OwnedValue::Bool(true))
+    );
+    assert_eq!(
+        run_dynamic_method_source(
+            r#"
+fn main(value) {
+    return value.is_ok();
+}
+"#,
+            &[OwnedValue::enum_variant(
+                "Result",
+                "Ok",
+                [("0", OwnedValue::i64(3))]
+            )],
+        ),
+        Ok(OwnedValue::Bool(true))
+    );
+}
+
+#[test]
+fn linked_dynamic_standard_value_method_errors_keep_source_span() {
+    let error = run_dynamic_method_source(
+        r#"
+fn main(value) {
+    return value.starts_with("q");
+}
+"#,
+        &[OwnedValue::i64(42)],
+    )
+    .expect_err("integer receiver should not support starts_with");
+
+    assert!(matches!(
+        error.kind(),
+        VmErrorKind::UnknownMethod { method } if method == "starts_with"
+    ));
+    assert!(
+        error.source_span.is_some(),
+        "dynamic missing method error should keep the call span"
+    );
+
+    let error = run_dynamic_method_source(
+        r#"
+fn main(value) {
+    return value.starts_with();
+}
+"#,
+        &[OwnedValue::String("quest".to_owned())],
+    )
+    .expect_err("missing dynamic argument should fail at runtime");
+
+    assert!(matches!(error.kind(), VmErrorKind::ArityMismatch { .. }));
+    assert!(
+        error.source_span.is_some(),
+        "dynamic arity error should keep the call span"
+    );
+
+    let error = run_dynamic_method_source(
+        r#"
+fn main(value) {
+    return value.starts_with(42);
+}
+"#,
+        &[OwnedValue::String("quest".to_owned())],
+    )
+    .expect_err("wrong dynamic argument type should fail at runtime");
+
+    assert!(matches!(
+        error.kind(),
+        VmErrorKind::TypeMismatch { operation } if operation == "method starts_with"
+    ));
+    assert!(
+        error.source_span.is_some(),
+        "dynamic argument type error should keep the call span"
+    );
+}
+
+fn run_dynamic_method_source(source: &str, args: &[OwnedValue]) -> VmResult<OwnedValue> {
+    let program = compile_standard_program_source(SourceId::new(1), source)
+        .expect("dynamic method source should compile");
+    let mut budget = ExecutionBudget::unbounded();
+    run_linked_test_program_with_budget(&Vm::new(), &program, "main", args, &mut budget)
+}
+
+#[test]
+fn linked_dynamic_method_call_reports_source_spanned_unknown_method_for_unsupported_receiver() {
     let program = compile_standard_program_source(
         SourceId::new(1),
         r#"
@@ -93,10 +263,10 @@ fn main(value) {
         &Vm::new(),
         &program,
         "main",
-        &[OwnedValue::String("quest".to_owned())],
+        &[OwnedValue::i64(42)],
         &mut budget,
     )
-    .expect_err("Phase 2 dynamic method placeholder should fail at runtime");
+    .expect_err("unsupported dynamic receiver should fail at runtime");
 
     assert!(matches!(
         error.kind(),

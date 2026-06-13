@@ -264,7 +264,7 @@ After commit, change this checkbox to `[x]`.
 
 ---
 
-## [ ] Phase 3 — Add runtime receiver classification and std/value dynamic resolver
+## [x] Phase 3 — Add runtime receiver classification and std/value dynamic resolver
 
 Create a focused resolver module, for example:
 

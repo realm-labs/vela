@@ -439,11 +439,32 @@ impl Vm {
                         },
                     )?;
                 }
-                InstructionKind::CallDynamicMethod { method_name, .. } => {
-                    return Err(VmError::new(VmErrorKind::UnknownMethod {
-                        method: call.program.debug_name(*method_name).to_owned(),
-                    })
-                    .with_source_span(instruction.span));
+                InstructionKind::CallDynamicMethod {
+                    dst,
+                    receiver,
+                    method_name,
+                    cache_site,
+                    args,
+                } => {
+                    script_method_calls::dispatch_linked_dynamic_method_call(
+                        script_method_calls::LinkedScriptMethodCallContext {
+                            program: call.program,
+                            inline_caches: call.inline_caches,
+                            cache_site: *cache_site,
+                            call_site: instruction.span,
+                            call_site_offset: Some(instruction_offset),
+                            bytecode_profiler: call.bytecode_profiler,
+                        },
+                        &mut heap,
+                        &mut budget,
+                        &mut frame,
+                        script_method_calls::LinkedDynamicMethodCall {
+                            dst: *dst,
+                            receiver: *receiver,
+                            method_name: *method_name,
+                            args,
+                        },
+                    )?;
                 }
                 InstructionKind::TryPropagate { dst, src } => {
                     if let Some(value) = try_propagation::dispatch_try_propagate(

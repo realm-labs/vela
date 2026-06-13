@@ -1,4 +1,4 @@
-use vela_bytecode::linked::LinkedMethodDispatchKind;
+use vela_bytecode::linked::{DynamicCallArgumentLinked, LinkedMethodDispatchKind};
 use vela_bytecode::{
     CacheSiteId, CallArgument, DebugNameId, InstructionOffset, LinkedProgram, MethodDispatchHandle,
     Register, UnlinkedProgramCode,
@@ -6,6 +6,7 @@ use vela_bytecode::{
 use vela_common::Span;
 use vela_def::MethodId;
 
+use crate::dynamic_method_resolution::{self, DynamicMethodTarget};
 use crate::linked_execution::LinkedExecutionCall;
 use crate::method_runtime::CallerRoots;
 use crate::{
@@ -300,6 +301,13 @@ pub(crate) struct LinkedScriptMethodCall<'a> {
     pub(crate) args: &'a [CallArgument],
 }
 
+pub(crate) struct LinkedDynamicMethodCall<'a> {
+    pub(crate) dst: Register,
+    pub(crate) receiver: Register,
+    pub(crate) method_name: DebugNameId,
+    pub(crate) args: &'a [DynamicCallArgumentLinked],
+}
+
 pub(crate) fn dispatch_linked_method_call(
     vm: &Vm,
     context: LinkedScriptMethodCallContext<'_>,
@@ -467,6 +475,86 @@ pub(crate) fn dispatch_linked_method_call(
             Ok(())
         }
     }
+}
+
+pub(crate) fn dispatch_linked_dynamic_method_call(
+    context: LinkedScriptMethodCallContext<'_>,
+    heap: &mut Option<&mut HeapExecution<'_>>,
+    budget: &mut Option<&mut ExecutionBudget>,
+    frame: &mut CallFrame,
+    call: LinkedDynamicMethodCall<'_>,
+) -> VmResult<()> {
+    let call_site = context.call_site;
+    dispatch_linked_dynamic_method_call_inner(context, heap, budget, frame, call)
+        .map_err(|error| error.with_source_span_if_absent(call_site))
+}
+
+fn dispatch_linked_dynamic_method_call_inner(
+    context: LinkedScriptMethodCallContext<'_>,
+    heap: &mut Option<&mut HeapExecution<'_>>,
+    budget: &mut Option<&mut ExecutionBudget>,
+    frame: &mut CallFrame,
+    call: LinkedDynamicMethodCall<'_>,
+) -> VmResult<()> {
+    let method = context.program.debug_name(call.method_name);
+    let receiver = *frame.read(call.receiver)?;
+    let values_storage;
+    let values = if call.args.is_empty() {
+        &[]
+    } else {
+        values_storage = dynamic_call_args_from_linked_arguments(frame, call.args)?;
+        values_storage.as_slice()
+    };
+    let target = dynamic_method_resolution::resolve_standard_dynamic_method(
+        &receiver,
+        method,
+        heap.as_deref(),
+    )
+    .ok_or_else(|| {
+        VmError::new(VmErrorKind::UnknownMethod {
+            method: method.to_owned(),
+        })
+    })?;
+    match target {
+        DynamicMethodTarget::StandardValue { method_id } => {
+            let standard_method =
+                script_builtin_methods::standard_cache_entry(method_id, &receiver, heap.as_deref())
+                    .ok_or_else(|| {
+                        VmError::new(VmErrorKind::UnknownMethod {
+                            method: method.to_owned(),
+                        })
+                    })?;
+            let result = script_builtin_methods::call_standard_cached(
+                &receiver,
+                standard_method,
+                values,
+                heap,
+                budget,
+            )
+            .ok_or_else(|| {
+                VmError::new(VmErrorKind::UnknownMethod {
+                    method: method.to_owned(),
+                })
+            })??;
+            frame.write(call.dst, result)
+        }
+    }
+}
+
+fn dynamic_call_args_from_linked_arguments(
+    frame: &CallFrame,
+    args: &[DynamicCallArgumentLinked],
+) -> VmResult<Vec<Value>> {
+    let mut values = Vec::with_capacity(args.len());
+    for arg in args {
+        if arg.name.is_some() {
+            return Err(VmError::new(VmErrorKind::TypeMismatch {
+                operation: "dynamic method named arguments",
+            }));
+        }
+        values.push(*frame.read(arg.value)?);
+    }
+    Ok(values)
 }
 
 #[derive(Clone, Copy)]
