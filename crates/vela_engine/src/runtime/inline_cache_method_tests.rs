@@ -5,7 +5,8 @@ use vela_bytecode::{
 use vela_common::{ScalarValue, SourceId};
 use vela_def::MethodId;
 use vela_vm::{
-    CallbackMethodInlineCacheTarget, MethodInlineCacheEntry, MethodInlineCacheTarget,
+    CallbackMethodInlineCacheTarget, DynamicMethodInlineCacheTarget, DynamicReceiverGuard,
+    MethodInlineCacheEntry, MethodInlineCacheTarget, StandardMethodInlineCacheTarget,
     StandardMethodReceiver, owned_value::OwnedValue,
 };
 
@@ -412,6 +413,85 @@ fn read_match() {
     assert_callback_value_method_cache(&runtime, reloaded_call.cache_site);
 }
 
+#[test]
+fn accepted_hot_reload_clears_iterator_adapter_inline_caches() {
+    let engine = Engine::builder()
+        .with_standard_natives()
+        .build()
+        .expect("engine should build");
+    let initial = engine
+        .compile_hot_reload_initial(
+            SourceId::new(1),
+            r#"
+fn read_total() {
+    return [1, 2, 3, 4]
+        .iter()
+        .take(2)
+        .collect_array()
+        .sum();
+}
+"#,
+        )
+        .expect("initial source should compile");
+    let mut runtime = Runtime::from_hot_reload_version(engine, initial);
+    let initial_site = dynamic_method_call_site_by_name(&runtime, "read_total", "take");
+
+    let first = runtime
+        .call("read_total", CallArgs::new(), CallOptions::unbounded())
+        .expect("initial read_total should run");
+    assert_eq!(
+        runtime.value_to_owned(&first),
+        Ok(OwnedValue::Scalar(ScalarValue::I64(3)))
+    );
+    assert_dynamic_iterator_value_method_cache(
+        &runtime,
+        initial_site,
+        StandardMethodInlineCacheTarget::Take,
+    );
+
+    let update = runtime
+        .compile_hot_reload_update(
+            SourceId::new(2),
+            r#"
+fn read_total() {
+    return [1, 2, 3, 4]
+        .iter()
+        .take(3)
+        .collect_array()
+        .sum();
+}
+"#,
+        )
+        .expect("runtime should compile iterator adapter hot reload update")
+        .expect("iterator adapter body update should be accepted");
+    let report = runtime
+        .apply_hot_update(update)
+        .expect("iterator adapter hot reload update should apply");
+    assert!(report.accepted);
+
+    let reloaded_site = dynamic_method_call_site_by_name(&runtime, "read_total", "take");
+    assert_eq!(
+        runtime
+            .state
+            .inline_caches
+            .dynamic_method_dispatch(reloaded_site),
+        None
+    );
+
+    let second = runtime
+        .call("read_total", CallArgs::new(), CallOptions::unbounded())
+        .expect("reloaded read_total should run");
+    assert_eq!(
+        runtime.value_to_owned(&second),
+        Ok(OwnedValue::Scalar(ScalarValue::I64(6)))
+    );
+    assert_dynamic_iterator_value_method_cache(
+        &runtime,
+        reloaded_site,
+        StandardMethodInlineCacheTarget::Take,
+    );
+}
+
 #[derive(Clone, Copy)]
 struct LinkedMethodCallSite {
     cache_site: CacheSiteId,
@@ -438,6 +518,20 @@ fn script_method_target(
 }
 
 fn assert_callback_value_method_cache(runtime: &Runtime, site: CacheSiteId) {
+    assert_callback_value_method_cache_target(
+        runtime,
+        site,
+        StandardMethodReceiver::Array,
+        CallbackMethodInlineCacheTarget::Any,
+    );
+}
+
+fn assert_callback_value_method_cache_target(
+    runtime: &Runtime,
+    site: CacheSiteId,
+    expected_receiver: StandardMethodReceiver,
+    expected_target: CallbackMethodInlineCacheTarget,
+) {
     let entry = runtime
         .state
         .inline_caches
@@ -449,11 +543,77 @@ fn assert_callback_value_method_cache(runtime: &Runtime, site: CacheSiteId) {
     else {
         panic!("method cache should store a callback value target");
     };
-    assert_eq!(callback_method.receiver, StandardMethodReceiver::Array);
-    assert_eq!(callback_method.target, CallbackMethodInlineCacheTarget::Any);
+    assert_eq!(callback_method.receiver, expected_receiver);
+    assert_eq!(callback_method.target, expected_target);
+}
+
+fn assert_dynamic_iterator_value_method_cache(
+    runtime: &Runtime,
+    site: CacheSiteId,
+    expected_target: StandardMethodInlineCacheTarget,
+) {
+    let entry = runtime
+        .state
+        .inline_caches
+        .dynamic_method_dispatch(site)
+        .expect("dynamic iterator method call should populate inline cache");
+    assert!(matches!(
+        entry.receiver_guard,
+        DynamicReceiverGuard::StdValue {
+            receiver: StandardMethodReceiver::Iterator,
+        }
+    ));
+    let DynamicMethodInlineCacheTarget::StandardValue {
+        standard_method: Some(standard_method),
+        ..
+    } = entry.target
+    else {
+        panic!("dynamic iterator method cache should store a standard value target");
+    };
+    assert_eq!(standard_method.receiver, StandardMethodReceiver::Iterator);
+    assert_eq!(standard_method.target, expected_target);
 }
 
 fn method_call_site(runtime: &Runtime, function_name: &str) -> LinkedMethodCallSite {
+    method_call_site_matching(runtime, function_name, |_, _| true)
+}
+
+fn dynamic_method_call_site_by_name(
+    runtime: &Runtime,
+    function_name: &str,
+    method_name: &str,
+) -> CacheSiteId {
+    let program = runtime.image.linked_program();
+    let function = program
+        .entry_point_by_name(function_name)
+        .and_then(|handle| program.function(handle))
+        .unwrap_or_else(|| panic!("{function_name} should exist"));
+    function
+        .instructions
+        .iter()
+        .find_map(|instruction| {
+            if let LinkedInstructionKind::CallDynamicMethod {
+                method_name: debug_name,
+                cache_site: Some(cache_site),
+                ..
+            } = &instruction.kind
+                && program.debug_name(*debug_name) == method_name
+            {
+                Some(*cache_site)
+            } else {
+                None
+            }
+        })
+        .unwrap_or_else(|| {
+            panic!("{function_name} should have a dynamic method call site named {method_name}")
+        })
+}
+
+fn method_call_site_matching(
+    runtime: &Runtime,
+    function_name: &str,
+    matches_debug_name: impl Fn(&vela_bytecode::LinkedProgram, DebugNameId) -> bool,
+) -> LinkedMethodCallSite {
     let program = runtime.image.linked_program();
     let function = program
         .entry_point_by_name(function_name)
@@ -469,6 +629,7 @@ fn method_call_site(runtime: &Runtime, function_name: &str) -> LinkedMethodCallS
                 cache_site: Some(cache_site),
                 ..
             } = &instruction.kind
+                && matches_debug_name(program, *debug_name)
             {
                 Some(LinkedMethodCallSite {
                     cache_site: *cache_site,
