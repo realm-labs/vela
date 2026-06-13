@@ -3,8 +3,8 @@
 use std::collections::{BTreeMap, BTreeSet};
 use std::error::Error;
 
+use vela_common::SourceId;
 use vela_engine::prelude::*;
-use vela_examples::example_file;
 use vela_macros::{ScriptHost, script_methods};
 
 fn main() -> Result<(), Box<dyn Error>> {
@@ -19,7 +19,7 @@ fn main() -> Result<(), Box<dyn Error>> {
         .register_script_host::<TagSet>()
         .register_script_host::<RewardSink>()
         .build()?;
-    let program = engine.compile_file(script_path())?;
+    let program = engine.compile_source(SourceId::new(1), include_str!("handle.vela"))?;
     let mut runtime = Runtime::new(engine, program);
 
     let mut player = Player::new();
@@ -192,8 +192,4 @@ impl RewardSink {
     fn grant(&mut self, item_id: String, amount: i64) {
         self.grants.push((item_id, amount));
     }
-}
-
-fn script_path() -> std::path::PathBuf {
-    example_file("host_type_methods", "handle.vela")
 }

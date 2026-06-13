@@ -1,44 +1,35 @@
-use std::path::Path;
-
 use vela_bytecode::compiler::error::{CompileError, CompileErrorKind};
 use vela_common::diagnostic_render::{DiagnosticRenderer, DiagnosticSource};
 use vela_common::{Diagnostic, SourceId};
-use vela_engine::reload::{EngineHotReloadSourceError, EngineHotReloadSourceErrorKind};
 use vela_engine::source::{EngineSourceError, EngineSourceErrorKind};
 use vela_hot_reload::error::{HotReloadError, HotReloadErrorKind};
 use vela_hot_reload::report::HotReloadReport;
 use vela_vm::error::VmError;
 
-pub(crate) fn render_engine_source_error(path: &Path, error: &EngineSourceError) -> String {
+pub(crate) fn render_engine_source_error(
+    label: &str,
+    source: &str,
+    error: &EngineSourceError,
+) -> String {
     match &error.kind {
-        EngineSourceErrorKind::Compile(error) => render_compile_error(path, error),
+        EngineSourceErrorKind::Compile(error) => render_compile_error(label, source, error),
         EngineSourceErrorKind::Io { .. }
         | EngineSourceErrorKind::InvalidSourcePath { .. }
         | EngineSourceErrorKind::TooManySources { .. } => error.to_string(),
     }
 }
 
-pub(crate) fn render_hot_reload_source_error(
-    path: &Path,
-    error: &EngineHotReloadSourceError,
-) -> String {
-    match &error.kind {
-        EngineHotReloadSourceErrorKind::Source(error) => render_engine_source_error(path, error),
-        EngineHotReloadSourceErrorKind::HotReload(error) => render_hot_reload_error(path, error),
-    }
-}
-
-pub(crate) fn render_vm_error(path: &Path, error: &VmError) -> String {
-    let source = std::fs::read_to_string(path)
-        .ok()
-        .map(|text| DiagnosticSource::new(SourceId::new(1), path.display().to_string(), text));
+pub(crate) fn render_vm_error(label: &str, source: &str, error: &VmError) -> String {
+    let source = DiagnosticSource::new(SourceId::new(1), label.to_owned(), source.to_owned());
     render_diagnostics(&[error.to_diagnostic()], source)
 }
 
-pub(crate) fn render_hot_reload_report(path: &Path, report: &HotReloadReport) -> String {
-    let source = std::fs::read_to_string(path)
-        .ok()
-        .map(|text| DiagnosticSource::new(SourceId::new(1), path.display().to_string(), text));
+pub(crate) fn render_hot_reload_report(
+    label: &str,
+    source: &str,
+    report: &HotReloadReport,
+) -> String {
+    let source = DiagnosticSource::new(SourceId::new(1), label.to_owned(), source.to_owned());
     let mut lines = report
         .render_lines()
         .into_iter()
@@ -52,21 +43,19 @@ pub(crate) fn render_hot_reload_report(path: &Path, report: &HotReloadReport) ->
     lines.join("\n")
 }
 
-fn render_hot_reload_error(path: &Path, error: &HotReloadError) -> String {
+pub(crate) fn render_hot_reload_error(label: &str, source: &str, error: &HotReloadError) -> String {
     match &error.kind {
-        HotReloadErrorKind::Compile(error) => render_compile_error(path, error),
+        HotReloadErrorKind::Compile(error) => render_compile_error(label, source, error),
         _ => format!("{error:?}"),
     }
 }
 
-fn render_compile_error(path: &Path, error: &CompileError) -> String {
+fn render_compile_error(label: &str, source: &str, error: &CompileError) -> String {
     let Some(diagnostics) = compile_diagnostics(error) else {
         return format!("{error:?}");
     };
 
-    let source = std::fs::read_to_string(path)
-        .ok()
-        .map(|text| DiagnosticSource::new(SourceId::new(1), path.display().to_string(), text));
+    let source = DiagnosticSource::new(SourceId::new(1), label.to_owned(), source.to_owned());
     render_diagnostics(diagnostics, source)
 }
 
@@ -99,8 +88,8 @@ fn report_source_diagnostics(report: &HotReloadReport) -> Vec<Diagnostic> {
         .collect()
 }
 
-fn render_diagnostics(diagnostics: &[Diagnostic], source: Option<DiagnosticSource>) -> String {
-    let renderer = DiagnosticRenderer::new(source);
+fn render_diagnostics(diagnostics: &[Diagnostic], source: DiagnosticSource) -> String {
+    let renderer = DiagnosticRenderer::new(Some(source));
     diagnostics
         .iter()
         .enumerate()

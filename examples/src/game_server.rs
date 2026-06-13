@@ -1,6 +1,6 @@
 use std::error::Error;
-use std::path::Path;
 
+use vela_common::SourceId;
 use vela_engine::engine::Engine;
 use vela_engine::error::EngineResult;
 use vela_engine::runtime::{CallOptions, Runtime};
@@ -13,25 +13,14 @@ mod ids;
 mod registry;
 mod state;
 
-pub fn script(name: &str) -> std::path::PathBuf {
-    let stem = Path::new(name)
-        .file_stem()
-        .and_then(|stem| stem.to_str())
-        .unwrap_or(name);
-    let example = stem
-        .strip_suffix("_v1")
-        .or_else(|| stem.strip_suffix("_v2"))
-        .unwrap_or(stem);
-    crate::example_file(example, name)
+pub fn run_script(label: &str, source: &str) -> Result<(), Box<dyn Error>> {
+    run_script_with_options(label, source, DemoRunOptions::default())
 }
 
-pub fn run_script(path: impl AsRef<Path>) -> Result<(), Box<dyn Error>> {
-    run_script_with_options(path.as_ref(), DemoRunOptions::default())
-}
-
-pub fn run_script_with_random(path: impl AsRef<Path>) -> Result<(), Box<dyn Error>> {
+pub fn run_script_with_random(label: &str, source: &str) -> Result<(), Box<dyn Error>> {
     run_script_with_options(
-        path.as_ref(),
+        label,
+        source,
         DemoRunOptions {
             engine: DemoEngineOptions { allow_random: true },
             ..DemoRunOptions::default()
@@ -39,9 +28,10 @@ pub fn run_script_with_random(path: impl AsRef<Path>) -> Result<(), Box<dyn Erro
     )
 }
 
-pub fn run_script_with_stale_player(path: impl AsRef<Path>) -> Result<(), Box<dyn Error>> {
+pub fn run_script_with_stale_player(label: &str, source: &str) -> Result<(), Box<dyn Error>> {
     run_script_with_options(
-        path.as_ref(),
+        label,
+        source,
         DemoRunOptions {
             host: DemoHostOptions {
                 stale_player_arg: true,
@@ -53,10 +43,12 @@ pub fn run_script_with_stale_player(path: impl AsRef<Path>) -> Result<(), Box<dy
 }
 
 pub fn run_script_with_denied_player_level_read(
-    path: impl AsRef<Path>,
+    label: &str,
+    source: &str,
 ) -> Result<(), Box<dyn Error>> {
     run_script_with_options(
-        path.as_ref(),
+        label,
+        source,
         DemoRunOptions {
             host: DemoHostOptions {
                 deny_player_level_read: true,
@@ -68,10 +60,12 @@ pub fn run_script_with_denied_player_level_read(
 }
 
 pub fn run_script_with_denied_player_level_write(
-    path: impl AsRef<Path>,
+    label: &str,
+    source: &str,
 ) -> Result<(), Box<dyn Error>> {
     run_script_with_options(
-        path.as_ref(),
+        label,
+        source,
         DemoRunOptions {
             host: DemoHostOptions {
                 deny_player_level_write: true,
@@ -83,10 +77,12 @@ pub fn run_script_with_denied_player_level_write(
 }
 
 pub fn run_script_with_denied_context_emit_call(
-    path: impl AsRef<Path>,
+    label: &str,
+    source: &str,
 ) -> Result<(), Box<dyn Error>> {
     run_script_with_options(
-        path.as_ref(),
+        label,
+        source,
         DemoRunOptions {
             host: DemoHostOptions {
                 deny_context_emit_call: true,
@@ -97,12 +93,16 @@ pub fn run_script_with_denied_context_emit_call(
     )
 }
 
-fn run_script_with_options(path: &Path, options: DemoRunOptions) -> Result<(), Box<dyn Error>> {
+fn run_script_with_options(
+    label: &str,
+    source: &str,
+    options: DemoRunOptions,
+) -> Result<(), Box<dyn Error>> {
     let ids = DemoIds::new();
     let engine = build_engine(ids, options.engine).map_err(|error| format!("{error:?}"))?;
     let program = engine
-        .compile_file(path)
-        .map_err(|error| crate::diagnostics::render_engine_source_error(path, &error))?;
+        .compile_source(SourceId::new(1), source)
+        .map_err(|error| crate::diagnostics::render_engine_source_error(label, source, &error))?;
 
     let main = program
         .function("main")
@@ -120,7 +120,7 @@ fn run_script_with_options(path: &Path, options: DemoRunOptions) -> Result<(), B
             CallOptions::new(10_000, 1024 * 1024, 64),
             &mut host_state.adapter,
         )
-        .map_err(|error| crate::diagnostics::render_vm_error(path, &error))?;
+        .map_err(|error| crate::diagnostics::render_vm_error(label, source, &error))?;
     let output = runtime.value_to_owned(&output)?;
     host_state.print_result(output)
 }

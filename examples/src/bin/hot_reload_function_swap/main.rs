@@ -1,10 +1,12 @@
 use std::error::Error;
 
-use vela_examples::{game_server, hot_reload_demo};
+use vela_examples::hot_reload_demo;
 
 fn main() -> Result<(), Box<dyn Error>> {
     hot_reload_demo::run(
-        game_server::script("hot_reload_function_swap_v1.vela"),
-        game_server::script("hot_reload_function_swap_v2.vela"),
+        "hot_reload_function_swap_v1.vela",
+        include_str!("hot_reload_function_swap_v1.vela"),
+        "hot_reload_function_swap_v2.vela",
+        include_str!("hot_reload_function_swap_v2.vela"),
     )
 }

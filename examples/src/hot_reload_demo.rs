@@ -1,9 +1,8 @@
 use std::error::Error;
-use std::path::Path;
 use std::sync::Arc;
 
+use vela_common::SourceId;
 use vela_engine::engine::Engine;
-use vela_engine::reload::EngineHotReloadSourceErrorKind;
 use vela_engine::runtime::{CallOptions, Runtime};
 use vela_host::access::HostAccess;
 use vela_host::mock::MockStateAdapter;
@@ -11,16 +10,16 @@ use vela_hot_reload::version::ProgramVersion;
 use vela_vm::owned_value::OwnedValue;
 
 pub fn run(
-    initial_path: impl AsRef<Path>,
-    updated_path: impl AsRef<Path>,
+    initial_label: &str,
+    initial_source: &str,
+    updated_label: &str,
+    updated_source: &str,
 ) -> Result<(), Box<dyn Error>> {
     let engine = crate::game_server::hot_reload_engine().map_err(|error| format!("{error:?}"))?;
-    let initial_path = initial_path.as_ref();
-    let updated_path = updated_path.as_ref();
     let initial = engine
-        .compile_hot_reload_initial_file(initial_path)
+        .compile_hot_reload_initial(SourceId::new(1), initial_source)
         .map_err(|error| {
-            crate::diagnostics::render_hot_reload_source_error(initial_path, &error)
+            crate::diagnostics::render_hot_reload_error(initial_label, initial_source, &error)
         })?;
     let mut runtime = Runtime::from_hot_reload_version(engine, initial);
     let old = runtime
@@ -28,28 +27,17 @@ pub fn run(
         .ok_or("runtime must keep the initial hot reload version")?;
     let old_before = run_current_main(&mut runtime)?;
 
-    if let Err(error) = runtime
-        .stage_hot_reload_update_file(updated_path)
-        .map_err(|error| format!("{error:?}"))?
-    {
-        match error.kind {
-            EngineHotReloadSourceErrorKind::Source(error) => {
-                return Err(
-                    crate::diagnostics::render_engine_source_error(updated_path, &error).into(),
-                );
-            }
-            EngineHotReloadSourceErrorKind::HotReload(error) => {
-                return Err(format!("{error:?}").into());
-            }
-        }
-    }
+    let update = runtime
+        .compile_hot_reload_update(SourceId::new(1), updated_source)
+        .map_err(|error| format!("{error:?}"))?;
+    runtime.stage_hot_update_result(update)?;
     let report = runtime
         .check_reload_at_tick_boundary()?
         .ok_or("staged hot reload update was not consumed at the safe point")?;
     let report_lines = report.render_lines();
-    let new = report
-        .version()
-        .ok_or_else(|| crate::diagnostics::render_hot_reload_report(updated_path, &report))?;
+    let new = report.version().ok_or_else(|| {
+        crate::diagnostics::render_hot_reload_report(updated_label, updated_source, &report)
+    })?;
     let old_after = run_version_main(runtime.engine(), &old)?;
     let new_after = run_current_main(&mut runtime)?;
 
