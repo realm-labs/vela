@@ -459,12 +459,12 @@ fn main() {
         source: METHOD_DISPATCH_SOURCE,
     },
     Workload {
-        name: "method_hot_offsets",
+        name: "method_dispatch_hot_offsets",
         mode: ExecutionMode::ProfileOnly,
         source: METHOD_DISPATCH_SOURCE,
     },
     Workload {
-        name: "method_cache_hot_offsets",
+        name: "method_dispatch_cache_hot_offsets",
         mode: ExecutionMode::CacheEnabled,
         source: METHOD_DISPATCH_SOURCE,
     },
@@ -474,12 +474,12 @@ fn main() {
         source: SCRIPT_METHOD_DISPATCH_SOURCE,
     },
     Workload {
-        name: "script_method_hot_offsets",
+        name: "script_method_dispatch_hot_offsets",
         mode: ExecutionMode::ScriptProgramProfileOnly,
         source: SCRIPT_METHOD_DISPATCH_SOURCE,
     },
     Workload {
-        name: "script_method_cache_hot_offsets",
+        name: "script_method_dispatch_cache_hot_offsets",
         mode: ExecutionMode::ScriptProgramCacheEnabled,
         source: SCRIPT_METHOD_DISPATCH_SOURCE,
     },
@@ -489,12 +489,12 @@ fn main() {
         source: TRAIT_METHOD_DISPATCH_SOURCE,
     },
     Workload {
-        name: "trait_method_hot_offsets",
+        name: "trait_method_dispatch_hot_offsets",
         mode: ExecutionMode::ScriptProgramProfileOnly,
         source: TRAIT_METHOD_DISPATCH_SOURCE,
     },
     Workload {
-        name: "trait_method_cache_hot_offsets",
+        name: "trait_method_dispatch_cache_hot_offsets",
         mode: ExecutionMode::ScriptProgramCacheEnabled,
         source: TRAIT_METHOD_DISPATCH_SOURCE,
     },

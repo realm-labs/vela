@@ -34,6 +34,8 @@ pairs the cache-enabled row against that base to isolate cache overhead from
 bytecode-profiler overhead. Host-boundary `_hot_offsets` rows run in
 `host_access_profile_only` mode so interpreter-only host measurements still
 carry bytecode profile counters without enabling inline caches.
+Method-dispatch aggregate rows use the `method_dispatch` prefix so filtered
+quick runs include interpreter, profile-only, and cache-enabled rows together.
 Cache-enabled benchmark rows use the same `Cell`-backed storage shape as the
 engine runtime for copyable global-read, host-access, record-field, and
 method-dispatch entries; native-call entries still use cloneable target storage.
