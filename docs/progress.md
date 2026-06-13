@@ -36,22 +36,17 @@ production hot-reload workflow, diagnostics/tooling foundation, runnable
 embedding/conformance proof, measured performance baselines, and non-JIT
 interpreter/heap optimization checkpoint. The primitive scalar, bytes,
 type-hint contract, and guard-plan refactor is complete as a breaking M19.5
-architecture continuation. M20 inline-cache work has started with declared global-read,
-script record field, host-access, native-call, linked method-dispatch cache entries, guarded stdlib
-length/emptiness/predicate/bytes-accessor/bytes-materialization/Option/Result/map-fallback/string-option/string-transform
-targets, and paired interpreter-only versus cache-enabled benchmark rows for
-the current cache families. Remaining work is guarded specialization and
-interpreting measured cache deltas:
+architecture continuation. M20 inline-cache work is now in close-out mode, not
+open-ended cache expansion. Declared global reads, script record fields,
+host access, native calls, linked method dispatch, broad stdlib value methods,
+callbacks, string/bytes, Option/Result, and selected map/set/array targets have
+guarded cache entries or explicit benchmark rows. Remaining M20 work should
+start from a cache-family audit and then do exactly one of these:
 
 ```text
-preserve all runtime, host, reflection, GC, and hot-reload semantics
-keep the explicit scalar primitive and bytes model without old int/float aliases
-preserve type-hint contracts with static mismatch errors and linked runtime guards
-move hot dispatch operands from names to IDs, slots, or resolved targets
-split growing VM hot dispatch families behind focused boundaries
-prepare cache/JIT-facing invariants while keeping generic fallback behavior
-finish verified-bytecode, profile ownership, HostTargetPlan/HostAccess boundaries,
-and callback/closure materialization prep before M20
+close a named cache-family gap with hit, miss, guard, fallback, and invalidation tests
+interpret a measured cache delta and record whether to keep, investigate, or defer it
+defer a remaining cost to M21/M22/JIT/value-layout work with an explicit reason
 ```
 
 Post-MVP performance remains a separate track: measure first, then optimize the
@@ -77,8 +72,8 @@ Cranelift JIT.
 | M17 | Complete enough | Game-server demos, negative workflows, conformance fixtures, and parser fuzz harness exist. |
 | M18 | Complete enough | Quick and full/default baseline captures exist with environment metadata and checksums. |
 | M19 | Complete enough | Non-JIT interpreter and heap optimization has a recorded exit checkpoint. Accepted work includes GC pacing, direct heap aggregate construction, argument materialization/storage cleanup, borrowed receiver/runtime views, stdlib collection/string/Option/Result fast paths, scalar/equality/constant/peephole/range-loop lowering, small script-field and short-array construction, and expanded benchmark coverage. Remaining Lua 5.x deltas are measured and belong to M20 cache/specialization families rather than more unguarded M19 micro-optimization. |
-| M19.5 | Active | Primitive scalar, bytes, type-hint contract, and guard-plan checklist is complete and fully validated; remaining transition work is M20 cache-entry prep around measured dispatch/cache gaps. |
-| M20 | Active | Declared global reads cache resolved slots, script record field read/write cache entries are guarded by record type, shape, and slot, host access caches resolved target plans by operation/schema epoch, native calls cache resolved pure/host/borrowed targets by function ID, linked method dispatch caches resolved targets by dispatch handle, broader stdlib value-method and callback targets cache receiver guards, runtime bytecode offset counters are scoped to the active image, and paired interpreter-only/cache-enabled benchmark rows cover the current cache families with family-level counters; specialization and measured delta interpretation remain. |
+| M19.5 | Complete enough | Primitive scalar, bytes, type-hint contract, guard-plan, verified-bytecode, profile ownership, HostTargetPlan/HostAccess, and linked-dispatch prep are complete and fully validated. |
+| M20 | Active | Declared global, record field, host access, native call, method dispatch, stdlib value-method, callback, string/bytes, Option/Result, and selected collection caches exist with benchmark coverage; active work is cache-family audit, measured delta interpretation, and closing only named remaining gaps. |
 | M21 | Not started | Debugger runtime hooks and DAP integration follow stable runtime/tooling contracts. |
 | M22 | Not started | Cranelift JIT follows interpreter/cache/debugger/conformance stability. |
 | M23 | Not started | Release hardening, public docs, validation gates, and performance targets. |
@@ -347,50 +342,39 @@ Cranelift JIT.
 
 ### Remaining Gaps
 
-- Current M19.5/M20 cache-entry status and remaining gaps after the primitive refactor:
-  - hot script, stdlib, method, and host-boundary dispatch operands
-    use IDs, slots, resolved targets, path keys, or an explicit remaining
-    fallback reason;
-  - diagnostic names are split from hot operands where practical and remain
-    available for reflection, source reports, and errors;
-  - VM execution delegates host access, script calls, stdlib/method dispatch,
-    callback/closure calls, aggregate/object construction, and iteration
-    through focused boundaries instead of growing `execution.rs`;
-  - native and stdlib hot paths have borrowed `Value` view coverage or a named
-    reason to defer the remaining conversions to M20/JIT work;
-  - callback and closure allocation costs now have isolated quick and default
-    baseline rows; direct script-call and direct-closure rows are profile-only
-    where linked operands already avoid runtime lookup; M20 cache-enabled stdlib
-    method, native-call, script record-field aggregate/detail, method-dispatch aggregate/detail,
-    collection lookup/view/aggregation/combination/mutation/materialization,
-    string/bytes method, Option/Result helper, callback collection/detail,
-    direct-closure, and host-boundary aggregate/detail rows separate warmed
-    cache hits from later JIT work;
-  - verified-bytecode and runtime tests cover the invariants needed by later
-    unchecked register, operand, and cache fast paths;
-  - runtime bytecode offset counters cover linked hot offsets and hot-reload
-    invalidation; profile-only direct script-call and direct-closure rows plus
-    cache-enabled stdlib, native-call, script
-    record-field aggregate/detail, method-dispatch aggregate/detail,
-    collection lookup/view/aggregation/combination/mutation/materialization,
-    string/bytes method, Option/Result helper, callback collection/detail,
-    direct-closure, and host-boundary aggregate/detail rows now consume those
-    counters;
-  - paired benchmark rows now emit explicit `measurement_kind`/`delta_kind`
-    fields so interpreter-only, profile-only, and cache-enabled costs can be
-    separated before assigning remaining deltas to M20 cache work or later JIT
-    work, and each quick/full run now emits a `measurement_summary` line for
-    row-kind and cache-mode profile-only/no-activity audits plus a
-    `cache_delta_summary` line for paired-row outcome and mismatch audits;
-    paired rows also emit `delta_band` with a 1% tolerance for
-    faster/slower/flat interpretation.
-- M20: continue guarded inline-cache specialization and measured delta
-  interpretation for hot stdlib, callback, method, record, host-boundary, and
-  bytecode-offset paths. Cache misses, guard failures, hot reload, and schema
-  ABI changes must fall back or invalidate without changing semantics.
-- Lua 5.x comparable performance remains a measured target for cache-enabled
-  non-JIT host-boundary workloads; scalar, array, string, function-call, and
-  callback deltas should be tracked separately from host-boundary benchmarks.
+M20 should now be driven by close-out criteria instead of broad "continue
+guarded inline-cache specialization" tasks. A remaining cache task is valid
+only when it names the specific family and one missing proof:
+
+```text
+coverage: no cache entry exists for a measured hot path
+correctness: hit, miss, wrong-guard, fallback, reload, or schema invalidation coverage is missing
+measurement: interpreter-only, profile-only, and cache-enabled rows cannot yet be compared
+decision: measured cache delta has not been classified as keep, investigate, or defer
+```
+
+Current M20 close-out gates:
+
+- Cache-family audit: list existing cache families and mark each as complete,
+  incomplete, or explicitly deferred. Do this before adding another cache
+  family.
+- Correctness proof: every completed family keeps generic fallback behavior and
+  covers guard failures, hot reload invalidation, and schema or version
+  invalidation where applicable.
+- Measurement proof: cache-enabled rows must be compared against the right
+  interpreter-only or profile-only baseline with `measurement_kind`,
+  `delta_kind`, `measurement_summary`, and `cache_delta_summary`.
+- Decision proof: slower or flat cache deltas must be assigned to a named
+  follow-up, accepted as neutral overhead, or deferred to JIT/value-layout work;
+  do not leave them as generic M20 work.
+- Scope proof: new M20 implementation should be a small named family, not a
+  cross-cutting cache expansion. Larger representation or value-layout changes
+  belong to a separate milestone decision.
+
+Lua 5.x comparable performance remains a measured target for cache-enabled
+non-JIT host-boundary workloads. Scalar, array, string, function-call,
+callback, and host-boundary deltas should stay separated so M20 can close
+without hiding unrelated future JIT work.
 
 ### Validation
 
@@ -403,20 +387,22 @@ cargo clippy --workspace --all-targets -- -D warnings
 cargo test --workspace
 ```
 
-For remaining M19.5/M20 cache-entry work, run focused correctness tests for
-touched bytecode, runtime dispatch, host-boundary, and stdlib/native call paths
-plus interpreter-only before/after benchmark rows. Preparatory fast paths must
-preserve ExecutionBudget, HostAccess, reflection policy, GC roots, hot reload
-ownership, schema invalidation, and source-spanned diagnostics.
+For remaining M20 cache-entry work, run focused correctness tests for touched
+bytecode, runtime dispatch, host-boundary, and stdlib/native call paths plus
+the relevant interpreter-only/profile-only/cache-enabled benchmark rows.
+Preparatory fast paths must preserve ExecutionBudget, HostAccess, reflection
+policy, GC roots, hot reload ownership, schema invalidation, and source-spanned
+diagnostics.
 
 ## Next Up
 
-- Use the completed primitive scalar, bytes, type-hint contract, and guard-plan
-  refactor as the baseline for M20 cache/specialization work; do not reintroduce
-  old `int`/`float` compatibility paths or string fallback dispatch.
-- Keep benchmark evidence ahead of M20 specialization work. M19.5 reports
-  interpreter-only before/after rows; M20 reports interpreter-only versus
-  cache-enabled rows.
+- Audit M20 cache families and classify each as complete, incomplete, or
+  deferred before starting more implementation.
+- Close only named cache-family gaps with focused tests and paired benchmark
+  evidence. Avoid generic "continue specialization" tasks.
+- Keep the completed primitive scalar, bytes, type-hint contract, and guard-plan
+  refactor as the baseline; do not reintroduce old `int`/`float` compatibility
+  paths or string fallback dispatch.
 - Plan M21 debugger and M22 Cranelift JIT only from stable source-span,
   frame-map, GC-root, budget, HostAccess, hot-reload, and conformance contracts.
 
