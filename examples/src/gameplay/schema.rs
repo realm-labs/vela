@@ -101,7 +101,6 @@ fn gameplay_reward_grant(_: OwnedValue, _: String) -> bool {
     true
 }
 
-#[allow(dead_code)]
 #[derive(ScriptHost)]
 #[script(path = "game::player::Player", implements = "Damageable")]
 pub(crate) struct Player {
@@ -122,7 +121,10 @@ pub(crate) struct Player {
 #[script_methods]
 impl Player {
     #[script_method(name = "add_reward", effect = "write_host", reflect = true)]
-    #[allow(dead_code)]
+    #[expect(
+        dead_code,
+        reason = "example registers this method for scripts; Rust never calls it directly"
+    )]
     pub fn add_reward(
         _ctx: &mut vela_engine::context::NativeCallContext<'_, '_>,
         _player: vela_host::path::HostRef,
@@ -132,7 +134,6 @@ impl Player {
     }
 }
 
-#[allow(dead_code)]
 #[derive(ScriptHost)]
 #[script(path = "game::monster::Monster")]
 pub(crate) struct Monster {
@@ -142,7 +143,6 @@ pub(crate) struct Monster {
     exp: i64,
 }
 
-#[allow(dead_code)]
 #[derive(ScriptHost)]
 #[script(
     path = "game::config::Config",
@@ -155,7 +155,6 @@ pub(crate) struct Config {
     kill_rewards: Vec<KillRewardConfig>,
 }
 
-#[allow(dead_code)]
 #[derive(ScriptHost)]
 #[script(path = "game::inventory::Inventory")]
 pub(crate) struct Inventory {
@@ -178,7 +177,6 @@ fn string_item_map_type() -> HostTypeSpec {
     )
 }
 
-#[allow(dead_code)]
 #[derive(ScriptHost)]
 #[script(path = "game::inventory::ItemStack")]
 pub(crate) struct ItemStack {
@@ -186,10 +184,13 @@ pub(crate) struct ItemStack {
     count: i64,
 }
 
-#[allow(dead_code)]
 #[derive(ScriptReflect)]
 #[script(path = "game::quest::HostQuestProgress")]
 enum HostQuestProgress {
+    #[expect(
+        dead_code,
+        reason = "example registers this variant for script reflection; Rust never constructs it"
+    )]
     Active {
         #[script(get, set, hint = "i64")]
         quest_count: i64,
@@ -198,7 +199,6 @@ enum HostQuestProgress {
     },
 }
 
-#[allow(dead_code)]
 struct KillRewardConfig;
 
 impl vela_host::object::ScriptHostFieldAccess for HostQuestProgress {
