@@ -1,6 +1,7 @@
 use std::collections::BTreeMap;
 
 use crate::heap::HeapValue;
+use crate::iteration;
 use crate::method_runtime::{MethodRuntime, call_callback_with_protected_values};
 use crate::{HeapExecution, Value, VmError, VmErrorKind, VmResult};
 
@@ -24,10 +25,11 @@ pub(crate) fn sum(
     let mut total = NumericTotal::default();
     if let Some(callback) = args.first() {
         let values = array_values(receiver, runtime.heap.as_deref(), "method sum")?;
-        for value in values {
-            let mapped = call_unary_callback(&mut runtime, "method sum", callback, value, &[])?;
+        iteration::try_for_each_over(values, &mut runtime, "method sum", |runtime, value| {
+            let mapped = call_unary_callback(runtime, "method sum", callback, value, &[])?;
             total.add_value(&mapped, "method sum")?;
-        }
+            Ok(())
+        })?;
     } else {
         return sum_values(receiver, runtime.heap.as_deref(), "method sum");
     }

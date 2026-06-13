@@ -378,6 +378,18 @@ pub(crate) fn filter_items_over<T>(
     Ok(kept)
 }
 
+pub(crate) fn try_for_each_over<T>(
+    items: impl IntoIterator<Item = T>,
+    runtime: &mut MethodRuntime<'_, '_, '_>,
+    _operation: &'static str,
+    mut f: impl FnMut(&mut MethodRuntime<'_, '_, '_>, T) -> VmResult<()>,
+) -> VmResult<()> {
+    for item in items {
+        f(runtime, item)?;
+    }
+    Ok(())
+}
+
 pub(crate) fn callback_any(
     iterator: &mut IteratorState,
     runtime: &mut MethodRuntime<'_, '_, '_>,
