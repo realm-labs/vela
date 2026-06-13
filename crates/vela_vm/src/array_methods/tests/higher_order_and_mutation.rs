@@ -64,6 +64,34 @@ fn main() {
 }
 
 #[test]
+fn array_map_respects_array_collection_limit() {
+    let source = r#"
+fn main() {
+    return [1, 2, 3].map(|value| value).len();
+}
+"#;
+    let code = compile_function_source(SourceId::new(1), source, "main")
+        .expect("array map limit source should compile");
+    let mut budget =
+        ExecutionBudget::unbounded().with_collection_limits(crate::budget::CollectionLimits {
+            max_array_len: 2,
+            max_map_entries: usize::MAX,
+            max_set_len: usize::MAX,
+        });
+
+    let error = run_linked_array_test_code_with_budget(&Vm::new(), code, &mut budget)
+        .expect_err("array map should respect array length limit");
+
+    assert_eq!(
+        error.kind(),
+        VmErrorKind::CollectionLimitExceeded {
+            collection: "array",
+            limit: 2,
+        }
+    );
+}
+
+#[test]
 fn runs_compiled_array_endpoint_methods() {
     let source = r#"
 fn main() {

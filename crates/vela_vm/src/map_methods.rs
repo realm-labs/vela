@@ -118,7 +118,7 @@ mod tests {
     use vela_common::SourceId;
 
     use crate::owned_value::OwnedValue;
-    use crate::{ExecutionBudget, Vm, VmResult};
+    use crate::{ExecutionBudget, Vm, VmErrorKind, VmResult};
 
     fn compile_function_source(
         source: SourceId,
@@ -210,6 +210,35 @@ fn main() {
         let result = run_linked_map_test_code_with_budget(&Vm::new(), code, &mut budget)
             .expect("heap map higher-order methods should run");
         assert_eq!(result, OwnedValue::Bool(true));
+    }
+
+    #[test]
+    fn map_values_respects_map_collection_limit() {
+        let source = r#"
+fn main() {
+    let rewards = {"gold": 1, "xp": 2, "quest": 3};
+    return rewards.map_values(|value| value).len();
+}
+"#;
+        let code = compile_function_source(SourceId::new(1), source, "main")
+            .expect("map_values limit source should compile");
+        let mut budget =
+            ExecutionBudget::unbounded().with_collection_limits(crate::budget::CollectionLimits {
+                max_array_len: usize::MAX,
+                max_map_entries: 2,
+                max_set_len: usize::MAX,
+            });
+
+        let error = run_linked_map_test_code_with_budget(&Vm::new(), code, &mut budget)
+            .expect_err("map_values should respect map entry limit");
+
+        assert_eq!(
+            error.kind(),
+            VmErrorKind::CollectionLimitExceeded {
+                collection: "map",
+                limit: 2,
+            }
+        );
     }
 
     #[test]

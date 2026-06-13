@@ -321,7 +321,7 @@ fn tracks_collection_growth(budget: Option<&ExecutionBudget>) -> bool {
     budget.is_some_and(ExecutionBudget::tracks_collection_growth)
 }
 
-fn check_collection_len(
+pub(crate) fn check_collection_len(
     collection: &'static str,
     current_len: usize,
     additional: usize,

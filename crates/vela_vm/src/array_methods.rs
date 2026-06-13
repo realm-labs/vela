@@ -12,6 +12,7 @@ pub(crate) use mutation::{clear, extend, insert, pop, push, remove_at};
 pub(crate) use ordering::{max, min, sort, sort_by};
 pub(crate) use transform::{distinct, join, reverse, slice};
 
+use crate::collection_mutation::check_collection_len;
 use crate::heap::HeapValue;
 use crate::method_runtime::{MethodRuntime, call_callback};
 use crate::option_result::{StdEnumVariant, std_enum_identity};
@@ -145,6 +146,9 @@ pub(crate) fn make_array_value(
     budget: &mut Option<&mut ExecutionBudget>,
     operation: &'static str,
 ) -> VmResult<Value> {
+    check_collection_len("array", 0, values.len(), budget.as_deref(), |budget| {
+        budget.collection_limits().max_array_len
+    })?;
     let Some(heap) = heap.as_deref_mut() else {
         return type_error(operation);
     };
@@ -157,6 +161,9 @@ pub(crate) fn make_map_value(
     budget: &mut Option<&mut ExecutionBudget>,
     operation: &'static str,
 ) -> VmResult<Value> {
+    check_collection_len("map", 0, values.len(), budget.as_deref(), |budget| {
+        budget.collection_limits().max_map_entries
+    })?;
     let Some(heap) = heap.as_deref_mut() else {
         return type_error(operation);
     };

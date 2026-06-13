@@ -1,3 +1,4 @@
+use crate::collection_mutation::check_collection_len;
 use crate::heap::HeapValue;
 use crate::heap_values::allocate_heap_value;
 use crate::method_runtime::MethodRuntime;
@@ -467,20 +468,9 @@ fn count_arg(value: Value, operation: &'static str) -> VmResult<usize> {
 }
 
 fn check_collect_array_len(len: usize, budget: Option<&ExecutionBudget>) -> VmResult<()> {
-    let Some(budget) = budget else {
-        return Ok(());
-    };
-    if !budget.limits_collections() {
-        return Ok(());
-    }
-    let limit = budget.collection_limits().max_array_len;
-    if len > limit {
-        return Err(VmError::new(VmErrorKind::CollectionLimitExceeded {
-            collection: "array",
-            limit,
-        }));
-    }
-    Ok(())
+    check_collection_len("array", 0, len, budget, |budget| {
+        budget.collection_limits().max_array_len
+    })
 }
 
 fn type_error<T>(operation: &'static str) -> VmResult<T> {

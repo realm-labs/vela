@@ -161,7 +161,7 @@ mod tests {
     use vela_common::SourceId;
 
     use crate::owned_value::OwnedValue;
-    use crate::{ExecutionBudget, Vm, VmResult};
+    use crate::{ExecutionBudget, Vm, VmErrorKind, VmResult};
 
     fn compile_function_source(
         source: SourceId,
@@ -694,6 +694,36 @@ fn main() {
             error.kind(),
             crate::VmErrorKind::TypeMismatch {
                 operation: "method extend"
+            }
+        );
+    }
+
+    #[test]
+    fn set_map_respects_set_collection_limit() {
+        let source = r#"
+fn main() {
+    return set::from_array([1, 2, 3]).map(|value| value).len();
+}
+"#;
+        let code = compile_function_source(SourceId::new(1), source, "main")
+            .expect("set map limit source should compile");
+        let mut vm = Vm::new();
+        vm.register_standard_natives();
+        let mut budget =
+            ExecutionBudget::unbounded().with_collection_limits(crate::budget::CollectionLimits {
+                max_array_len: usize::MAX,
+                max_map_entries: usize::MAX,
+                max_set_len: 2,
+            });
+
+        let error = run_linked_set_test_code_with_budget(&vm, code, &mut budget)
+            .expect_err("set map should respect set length limit");
+
+        assert_eq!(
+            error.kind(),
+            VmErrorKind::CollectionLimitExceeded {
+                collection: "set",
+                limit: 2,
             }
         );
     }

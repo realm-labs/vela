@@ -6,6 +6,7 @@ use vela_host::value::HostValue;
 
 use crate::SmallStorage;
 use crate::budget::ExecutionBudget;
+use crate::collection_mutation::check_collection_len;
 use crate::error::{VmError, VmErrorKind, VmResult};
 use crate::heap::HeapValue;
 use crate::heap_execution::HeapExecution;
@@ -106,6 +107,9 @@ pub(crate) fn make_array_value(
     heap: &mut HeapExecution<'_>,
     budget: Option<&mut ExecutionBudget>,
 ) -> VmResult<Value> {
+    check_collection_len("array", 0, values.len(), budget.as_deref(), |budget| {
+        budget.collection_limits().max_array_len
+    })?;
     allocate_heap_value(HeapValue::Array(values), heap, budget)
 }
 
@@ -115,6 +119,9 @@ pub(crate) fn make_map_value(
     heap: &mut HeapExecution<'_>,
     budget: Option<&mut ExecutionBudget>,
 ) -> VmResult<Value> {
+    check_collection_len("map", 0, values.len(), budget.as_deref(), |budget| {
+        budget.collection_limits().max_map_entries
+    })?;
     allocate_heap_value(HeapValue::Map(values), heap, budget)
 }
 
@@ -124,6 +131,9 @@ pub(crate) fn make_set_value(
     heap: &mut HeapExecution<'_>,
     budget: Option<&mut ExecutionBudget>,
 ) -> VmResult<Value> {
+    check_collection_len("set", 0, values.len(), budget.as_deref(), |budget| {
+        budget.collection_limits().max_set_len
+    })?;
     allocate_heap_value(HeapValue::Set(values), heap, budget)
 }
 
