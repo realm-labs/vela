@@ -69,47 +69,6 @@ pub fn on_invoice_paid(ctx, account, invoice) {
 }
 ```
 
-### Iterator And Sequence Semantics
-
-Iteration has one language-level model:
-
-```text
-Iterable
-  A value or view that can produce an Iterator.
-
-Iterator
-  A one-shot cursor. Calling `next()` or using it in `for-in` consumes state.
-
-Sequence
-  A repeatable iterable or view that creates a fresh iterator for each
-  traversal.
-```
-
-These are runtime and analysis concepts, not script-visible generic types.
-Scripts do not write `Iterator<T>` or `Sequence<T>`.
-
-`for value in source` evaluates `source` once, creates or consumes an iterator,
-then repeatedly steps that iterator until it is exhausted. `for index, value in
-source` is syntax-level indexed iteration over the same source; it is not an
-`enumerate()` adapter or an eager allocation.
-
-Arrays and sets are repeatable sequences. Their `iter()` and `values()` methods
-create one-shot iterators over values. Maps are repeatable sequences whose
-direct iteration and `iter()` yield values in key order; `keys()`, `values()`,
-and `entries()` expose explicit key, value, and `MapEntry` views. Ranges are
-repeatable sequences and may use specialized i64 loop lowering when the
-compiler can prove the range facts.
-
-Strings are UTF-8 byte strings. Direct string `for-in` and `text.chars()` yield
-first-class `char` values; `text.bytes()` yields UTF-8 bytes as `u8`. String
-`len()`, `find()`, and `slice(start, end)` remain byte-indexed.
-
-Iterator adapters such as `map`, `filter`, `take`, and `skip` are lazy and
-one-shot. Terminal methods such as `next`, `count`, `any`, `all`, `find`, and
-`collect_array` consume the iterator cursor. `collect_array()` is the core
-terminal that materializes an output collection; lazy adapters do not allocate
-intermediate arrays.
-
 ### Module Identity
 
 Vela source files do not declare their own module names. There is no
@@ -199,21 +158,33 @@ Iterator  one-shot cursor; `next()` advances its internal state
 These are runtime and analysis concepts, not script-language generic types.
 Scripts write `iterator`, not `Iterator<T>`.
 
-`for value in source` evaluates `source` once, creates an iterator through the
-runtime iteration boundary, then repeatedly advances that iterator until it is
-done. Arrays, sets, maps, strings, and ranges are repeatable sources. Existing
-iterator values are one-shot: looping over an iterator consumes the same cursor
-state observed by later `next()` calls.
+`for value in source` evaluates `source` once, creates or consumes an iterator
+through the runtime iteration boundary, then repeatedly advances that iterator
+until it is done. Existing iterator values are one-shot: looping over an
+iterator consumes the same cursor state observed by later `next()` calls.
 
 Indexed `for index, value in source` remains syntax-level loop lowering. It
 does not allocate an eager `enumerate()` adapter. Proven `i64` ranges may keep a
 specialized bytecode fast path when it preserves the same observable iteration
 semantics.
 
+Arrays and sets are repeatable sequences. Their `iter()` and `values()` methods
+create one-shot iterators over values. Maps are repeatable sequences whose
+direct iteration and `iter()` yield values in key order; `keys()`, `values()`,
+and `entries()` expose explicit key, value, and `MapEntry` views. Ranges are
+repeatable sequences and may use specialized `i64` loop lowering when the
+compiler can prove the range facts.
+
 String iteration is explicit and UTF-8-aware. `for ch in text` uses the same
 character traversal source as `text.chars()`, yielding `char` values.
 `text.bytes()` yields UTF-8 bytes as `u8`. String `len()`, `find()`, and
 `slice(start, end)` remain byte-indexed.
+
+Iterator adapters such as `map`, `filter`, `take`, and `skip` are lazy and
+one-shot. Terminal methods such as `next`, `count`, `any`, `all`, `find`, and
+`collect_array` consume the iterator cursor. `collect_array()` is the core
+terminal that materializes an output collection; lazy adapters do not allocate
+intermediate arrays.
 
 Script generics are not supported:
 
