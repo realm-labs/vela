@@ -258,3 +258,48 @@ fn delta_band(mean_ratio_ppm: u128) -> &'static str {
         "flat"
     }
 }
+
+#[cfg(test)]
+mod tests {
+    #[test]
+    fn measurement_kind_separates_interpreter_profile_cache_and_idle_cache_rows() {
+        assert_eq!(super::measurement_kind(false, 0, 0), "interpreter");
+        assert_eq!(super::measurement_kind(false, 0, 12), "profile_only");
+        assert_eq!(super::measurement_kind(true, 0, 12), "profile_only");
+        assert_eq!(super::measurement_kind(true, 0, 0), "cache_no_activity");
+        assert_eq!(super::measurement_kind(true, 3, 0), "cache");
+        assert_eq!(super::measurement_kind(true, 3, 12), "cache");
+    }
+
+    #[test]
+    fn cache_delta_prefers_explicit_hot_offset_base_when_present() {
+        let by_name = std::collections::BTreeMap::from([
+            ("record_fields", 0),
+            ("record_fields_hot_offsets", 1),
+            ("record_fields_cache_hot_offsets", 2),
+        ]);
+
+        assert_eq!(
+            super::cache_delta_base_name("record_fields_cache_hot_offsets", &by_name),
+            Some("record_fields_hot_offsets".to_owned())
+        );
+    }
+
+    #[test]
+    fn cache_delta_falls_back_to_interpreter_base_without_hot_offset_row() {
+        let by_name = std::collections::BTreeMap::from([("native_call_wide_args", 0)]);
+
+        assert_eq!(
+            super::cache_delta_base_name("native_call_wide_args_cache_hot_offsets", &by_name),
+            Some("native_call_wide_args".to_owned())
+        );
+    }
+
+    #[test]
+    fn delta_band_applies_one_percent_tolerance_around_parity() {
+        assert_eq!(super::delta_band(989_999), "faster");
+        assert_eq!(super::delta_band(990_000), "flat");
+        assert_eq!(super::delta_band(1_010_000), "flat");
+        assert_eq!(super::delta_band(1_010_001), "slower");
+    }
+}
