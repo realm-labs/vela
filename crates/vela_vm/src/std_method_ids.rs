@@ -103,6 +103,13 @@ pub(crate) struct StdMethodIds {
     pub(crate) range_iter: MethodId,
     pub(crate) iterator_next: MethodId,
     pub(crate) iterator_count: MethodId,
+    pub(crate) iterator_any: MethodId,
+    pub(crate) iterator_all: MethodId,
+    pub(crate) iterator_find: MethodId,
+    pub(crate) iterator_map: MethodId,
+    pub(crate) iterator_filter: MethodId,
+    pub(crate) iterator_take: MethodId,
+    pub(crate) iterator_skip: MethodId,
     pub(crate) iterator_collect_array: MethodId,
 }
 
@@ -208,6 +215,13 @@ impl StdMethodIds {
             range_iter: standard_method_id("Range", "iter"),
             iterator_next: standard_method_id("Iterator", "next"),
             iterator_count: standard_method_id("Iterator", "count"),
+            iterator_any: standard_method_id("Iterator", "any"),
+            iterator_all: standard_method_id("Iterator", "all"),
+            iterator_find: standard_method_id("Iterator", "find"),
+            iterator_map: standard_method_id("Iterator", "map"),
+            iterator_filter: standard_method_id("Iterator", "filter"),
+            iterator_take: standard_method_id("Iterator", "take"),
+            iterator_skip: standard_method_id("Iterator", "skip"),
             iterator_collect_array: standard_method_id("Iterator", "collect_array"),
         }
     }

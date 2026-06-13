@@ -79,6 +79,8 @@ pub(crate) fn call(
         "count" if iteration::is_iterator(receiver, heap.as_deref()) => {
             iteration::count_method(receiver, args, heap)
         }
+        "take" => iteration::take_method(receiver, args, heap, budget),
+        "skip" => iteration::skip_method(receiver, args, heap, budget),
         "collect_array" => iteration::collect_array_method(receiver, args, heap, budget),
         _ => return None,
     };

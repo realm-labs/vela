@@ -330,6 +330,13 @@ fn iterator_method_id(ids: &StdMethodIds, method: &str) -> Option<MethodId> {
     Some(match method {
         "next" => ids.iterator_next,
         "count" => ids.iterator_count,
+        "any" => ids.iterator_any,
+        "all" => ids.iterator_all,
+        "find" => ids.iterator_find,
+        "map" => ids.iterator_map,
+        "filter" => ids.iterator_filter,
+        "take" => ids.iterator_take,
+        "skip" => ids.iterator_skip,
         "collect_array" => ids.iterator_collect_array,
         _ => return None,
     })

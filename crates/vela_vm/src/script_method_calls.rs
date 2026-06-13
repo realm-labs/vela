@@ -565,25 +565,41 @@ fn dispatch_linked_dynamic_method_call_inner(
             standard_method,
         } => {
             let values_storage = dynamic_value_args_from_linked_arguments(frame, call.args)?;
-            let standard_method = standard_method
-                .or_else(|| {
-                    script_builtin_methods::standard_cache_entry(
-                        method_id,
-                        &receiver,
-                        heap.as_deref(),
-                    )
-                })
+            if let Some(standard_method) = standard_method.or_else(|| {
+                script_builtin_methods::standard_cache_entry(method_id, &receiver, heap.as_deref())
+            }) {
+                let result = script_builtin_methods::call_standard_cached(
+                    &receiver,
+                    standard_method,
+                    values_storage.as_slice(),
+                    heap,
+                    budget,
+                )
                 .ok_or_else(|| {
                     VmError::new(VmErrorKind::UnknownMethod {
                         method: method.to_owned(),
                     })
-                })?;
-            let result = script_builtin_methods::call_standard_cached(
+                })??;
+                return frame.write(call.dst, result);
+            }
+
+            let caller_roots = CallerRoots::for_frame(frame, heap.as_deref());
+            let mut dispatch = callback_method_dispatch::CallbackMethodDispatch {
+                vm,
+                program: None,
+                linked_program: Some(context.program),
+                host: host.as_deref_mut(),
+                heap: heap.as_deref_mut(),
+                budget: budget.as_deref_mut(),
+                caller_roots,
+                inline_caches: context.inline_caches,
+                bytecode_profiler: context.bytecode_profiler,
+            };
+            let result = callback_method_dispatch::call_by_id(
+                method_id,
                 &receiver,
-                standard_method,
                 values_storage.as_slice(),
-                heap,
-                budget,
+                &mut dispatch,
             )
             .ok_or_else(|| {
                 VmError::new(VmErrorKind::UnknownMethod {

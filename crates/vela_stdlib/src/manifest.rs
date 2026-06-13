@@ -743,7 +743,7 @@ mod tests {
         assert_eq!(STD_VARIANTS.len(), 4);
         assert_eq!(STD_FIELDS.len(), 3);
         assert_eq!(STD_FUNCTIONS.len(), 51);
-        assert_eq!(STD_METHODS.len(), 128);
+        assert_eq!(STD_METHODS.len(), 135);
     }
 
     #[test]

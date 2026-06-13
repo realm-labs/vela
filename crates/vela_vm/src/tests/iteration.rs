@@ -307,3 +307,89 @@ fn main() {
         Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(2303)))
     );
 }
+
+#[test]
+fn iterator_lazy_adapters_collect_without_intermediate_arrays() {
+    let code = compile_function_source(
+        SourceId::new(1),
+        r#"
+fn main() {
+    let values = [1, 2, 3, 4, 5]
+        .iter()
+        .filter(|value| value > 2)
+        .map(|value| value + 10)
+        .take(2)
+        .collect_array();
+    return values.len() * 100 + values[0] * 10 + values[1];
+}
+"#,
+        "main",
+    )
+    .expect("compile lazy iterator collect source");
+
+    assert_eq!(
+        run_linked_test_code(code),
+        Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(344)))
+    );
+}
+
+#[test]
+fn iterator_lazy_adapters_drive_for_in_and_consume_source() {
+    let code = compile_function_source(
+        SourceId::new(1),
+        r#"
+fn main() {
+    let iter = [1, 2, 3, 4, 5].iter();
+    let pipeline = iter
+        .filter(|value| value > 1)
+        .map(|value| value * 10)
+        .skip(1)
+        .take(2);
+    let total = 0;
+    for value in pipeline {
+        total += value;
+    }
+    let exhausted = iter.next().unwrap_or(99);
+    return total * 100 + exhausted;
+}
+"#,
+        "main",
+    )
+    .expect("compile lazy iterator for-in source");
+
+    assert_eq!(
+        run_linked_test_code(code),
+        Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(7099)))
+    );
+}
+
+#[test]
+fn iterator_callback_terminals_short_circuit_and_leave_remainder() {
+    let code = compile_function_source(
+        SourceId::new(1),
+        r#"
+fn main() {
+    let iter = [1, 2, 3, 4].iter().skip(1);
+    let has_three = iter.any(|value| value == 3);
+    let next = iter.next().unwrap_or(0);
+    let found = [1, 5, 9].iter().find(|value| value > 5).unwrap_or(0);
+    let all_large = [7, 8, 9].iter().all(|value| value > 6);
+    let total = next * 100 + found * 10;
+    if has_three {
+        total += 1000;
+    }
+    if all_large {
+        total += 1;
+    }
+    return total;
+}
+"#,
+        "main",
+    )
+    .expect("compile iterator terminal callbacks source");
+
+    assert_eq!(
+        run_linked_test_code(code),
+        Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(1491)))
+    );
+}

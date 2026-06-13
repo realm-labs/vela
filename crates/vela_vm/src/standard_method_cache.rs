@@ -151,14 +151,11 @@ pub(crate) fn standard_cache_entry_matches_method_id(
         (StandardMethodReceiver::Range, StandardMethodInlineCacheTarget::Iter) => {
             return method_id == std_method_ids().range_iter;
         }
-        (StandardMethodReceiver::Iterator, StandardMethodInlineCacheTarget::Next) => {
-            return method_id == std_method_ids().iterator_next;
+        (StandardMethodReceiver::Iterator, StandardMethodInlineCacheTarget::Take) => {
+            return method_id == std_method_ids().iterator_take;
         }
-        (StandardMethodReceiver::Iterator, StandardMethodInlineCacheTarget::Count) => {
-            return method_id == std_method_ids().iterator_count;
-        }
-        (StandardMethodReceiver::Iterator, StandardMethodInlineCacheTarget::CollectArray) => {
-            return method_id == std_method_ids().iterator_collect_array;
+        (StandardMethodReceiver::Iterator, StandardMethodInlineCacheTarget::Skip) => {
+            return method_id == std_method_ids().iterator_skip;
         }
         _ => {}
     }
@@ -462,14 +459,11 @@ fn standard_method_target(
         (StandardMethodReceiver::Range, id) if id == ids.range_iter => {
             StandardMethodInlineCacheTarget::Iter
         }
-        (StandardMethodReceiver::Iterator, id) if id == ids.iterator_next => {
-            StandardMethodInlineCacheTarget::Next
+        (StandardMethodReceiver::Iterator, id) if id == ids.iterator_take => {
+            StandardMethodInlineCacheTarget::Take
         }
-        (StandardMethodReceiver::Iterator, id) if id == ids.iterator_count => {
-            StandardMethodInlineCacheTarget::Count
-        }
-        (StandardMethodReceiver::Iterator, id) if id == ids.iterator_collect_array => {
-            StandardMethodInlineCacheTarget::CollectArray
+        (StandardMethodReceiver::Iterator, id) if id == ids.iterator_skip => {
+            StandardMethodInlineCacheTarget::Skip
         }
         _ => return None,
     };
@@ -615,23 +609,18 @@ pub(crate) fn call_standard_cached(
                 receiver, args, heap, budget,
             ));
         }
-        StandardMethodInlineCacheTarget::Next | StandardMethodInlineCacheTarget::CollectArray
+        StandardMethodInlineCacheTarget::Take | StandardMethodInlineCacheTarget::Skip
             if cache.receiver == StandardMethodReceiver::Iterator =>
         {
             return match cache.target {
-                StandardMethodInlineCacheTarget::Next => {
-                    Some(crate::iteration::next_method(receiver, args, heap, budget))
+                StandardMethodInlineCacheTarget::Take => {
+                    Some(crate::iteration::take_method(receiver, args, heap, budget))
                 }
-                StandardMethodInlineCacheTarget::CollectArray => Some(
-                    crate::iteration::collect_array_method(receiver, args, heap, budget),
-                ),
+                StandardMethodInlineCacheTarget::Skip => {
+                    Some(crate::iteration::skip_method(receiver, args, heap, budget))
+                }
                 _ => None,
             };
-        }
-        StandardMethodInlineCacheTarget::Count
-            if cache.receiver == StandardMethodReceiver::Iterator =>
-        {
-            return Some(crate::iteration::count_method(receiver, args, heap));
         }
         StandardMethodInlineCacheTarget::Slice
         | StandardMethodInlineCacheTarget::Reverse

@@ -460,6 +460,7 @@ pub struct CallbackMethodInlineCacheEntry {
 
 #[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
 pub enum CallbackMethodInlineCacheTarget {
+    Next,
     Map,
     MapErr,
     AndThen,
@@ -473,6 +474,7 @@ pub enum CallbackMethodInlineCacheTarget {
     GroupBy,
     SortBy,
     MapValues,
+    CollectArray,
 }
 
 #[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
@@ -550,6 +552,8 @@ pub enum StandardMethodInlineCacheTarget {
     Bytes,
     Next,
     Count,
+    Take,
+    Skip,
     CollectArray,
 }
 

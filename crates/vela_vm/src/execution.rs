@@ -676,9 +676,15 @@ impl Vm {
                 UnlinkedInstructionKind::IterInit { dst, iterable } => {
                     iteration::dispatch_iter_init(
                         iteration::IterRuntime {
+                            vm: self,
+                            program,
+                            linked_program: None,
+                            host: host.as_deref_mut(),
                             frame: &mut frame,
                             heap: heap.as_deref_mut(),
                             budget: budget.as_deref_mut(),
+                            inline_caches: call.inline_caches,
+                            bytecode_profiler: None,
                         },
                         *dst,
                         *iterable,
@@ -691,9 +697,15 @@ impl Vm {
                 } => {
                     if let Some(target) = iteration::dispatch_iter_next(
                         iteration::IterRuntime {
+                            vm: self,
+                            program,
+                            linked_program: None,
+                            host: host.as_deref_mut(),
                             frame: &mut frame,
                             heap: heap.as_deref_mut(),
                             budget: budget.as_deref_mut(),
+                            inline_caches: call.inline_caches,
+                            bytecode_profiler: None,
                         },
                         code,
                         *iterator,
@@ -713,9 +725,15 @@ impl Vm {
                 } => {
                     if let Some(target) = iteration::dispatch_range_next(
                         iteration::IterRuntime {
+                            vm: self,
+                            program,
+                            linked_program: None,
+                            host: host.as_deref_mut(),
                             frame: &mut frame,
                             heap: heap.as_deref_mut(),
                             budget: budget.as_deref_mut(),
+                            inline_caches: call.inline_caches,
+                            bytecode_profiler: None,
                         },
                         code,
                         iteration::RangeNextStep {

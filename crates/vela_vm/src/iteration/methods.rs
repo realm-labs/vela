@@ -1,6 +1,8 @@
 use crate::heap::HeapValue;
 use crate::heap_values::{allocate_heap_value, stored_runtime_value};
+use crate::method_runtime::MethodRuntime;
 use crate::option_result::option_value;
+use crate::runtime_checks::is_truthy;
 use crate::{
     ExecutionBudget, HeapExecution, Value, VmError, VmErrorKind, VmResult, runtime_checks,
 };
@@ -99,6 +101,24 @@ pub(crate) fn next_method(
     option_value(next, heap_ref, budget.as_deref_mut())
 }
 
+pub(crate) fn next_method_runtime(
+    receiver: &Value,
+    args: &[Value],
+    mut runtime: MethodRuntime<'_, '_, '_>,
+) -> VmResult<Value> {
+    runtime_checks::expect_arity("next", args, 0)?;
+    let next = with_taken_iterator(
+        receiver,
+        &mut runtime,
+        "method next",
+        |iterator, runtime| iterator.next_with_runtime(runtime, "method next", &[]),
+    )?;
+    let Some(heap_ref) = runtime.heap.as_deref_mut() else {
+        return type_error("method next");
+    };
+    option_value(next, heap_ref, runtime.budget.as_deref_mut())
+}
+
 pub(crate) fn count_method(
     receiver: &Value,
     args: &[Value],
@@ -116,6 +136,34 @@ pub(crate) fn count_method(
         }
         Ok(count)
     })?;
+    Ok(Value::i64(count))
+}
+
+pub(crate) fn count_method_runtime(
+    receiver: &Value,
+    args: &[Value],
+    mut runtime: MethodRuntime<'_, '_, '_>,
+) -> VmResult<Value> {
+    runtime_checks::expect_arity("count", args, 0)?;
+    let count = with_taken_iterator(
+        receiver,
+        &mut runtime,
+        "method count",
+        |iterator, runtime| {
+            let mut count = 0_i64;
+            while iterator
+                .next_with_runtime(runtime, "method count", &[])?
+                .is_some()
+            {
+                count = count.checked_add(1).ok_or_else(|| {
+                    VmError::new(VmErrorKind::TypeMismatch {
+                        operation: "method count",
+                    })
+                })?;
+            }
+            Ok(count)
+        },
+    )?;
     Ok(Value::i64(count))
 }
 
@@ -139,6 +187,182 @@ pub(crate) fn collect_array_method(
     allocate_heap_value(HeapValue::Array(values), heap_ref, budget.as_deref_mut())
 }
 
+pub(crate) fn collect_array_method_runtime(
+    receiver: &Value,
+    args: &[Value],
+    mut runtime: MethodRuntime<'_, '_, '_>,
+) -> VmResult<Value> {
+    runtime_checks::expect_arity("collect_array", args, 0)?;
+    let values = with_taken_iterator(
+        receiver,
+        &mut runtime,
+        "method collect_array",
+        |iterator, runtime| {
+            let mut values = Vec::new();
+            while let Some(value) =
+                iterator.next_with_runtime(runtime, "method collect_array", &values)?
+            {
+                values.push(value);
+            }
+            Ok(values)
+        },
+    )?;
+    let Some(heap_ref) = runtime.heap.as_deref_mut() else {
+        return type_error("method collect_array");
+    };
+    allocate_heap_value(
+        HeapValue::Array(values),
+        heap_ref,
+        runtime.budget.as_deref_mut(),
+    )
+}
+
+pub(crate) fn map_method(
+    receiver: &Value,
+    args: &[Value],
+    mut runtime: MethodRuntime<'_, '_, '_>,
+) -> VmResult<Value> {
+    runtime_checks::expect_arity("map", args, 1)?;
+    let source = take_iterator(receiver, &mut runtime.heap, "method map")?;
+    let iterator = IteratorState::map(source, args[0]);
+    allocate_iterator(
+        iterator,
+        &mut runtime.heap,
+        &mut runtime.budget,
+        "method map",
+    )
+}
+
+pub(crate) fn filter_method(
+    receiver: &Value,
+    args: &[Value],
+    mut runtime: MethodRuntime<'_, '_, '_>,
+) -> VmResult<Value> {
+    runtime_checks::expect_arity("filter", args, 1)?;
+    let source = take_iterator(receiver, &mut runtime.heap, "method filter")?;
+    let iterator = IteratorState::filter(source, args[0]);
+    allocate_iterator(
+        iterator,
+        &mut runtime.heap,
+        &mut runtime.budget,
+        "method filter",
+    )
+}
+
+pub(crate) fn take_method(
+    receiver: &Value,
+    args: &[Value],
+    heap: &mut Option<&mut HeapExecution<'_>>,
+    budget: &mut Option<&mut ExecutionBudget>,
+) -> VmResult<Value> {
+    runtime_checks::expect_arity("take", args, 1)?;
+    let count = count_arg(args[0], "method take")?;
+    let source = take_iterator_from_heap(receiver, heap, "method take")?;
+    allocate_iterator(
+        IteratorState::take(source, count),
+        heap,
+        budget,
+        "method take",
+    )
+}
+
+pub(crate) fn skip_method(
+    receiver: &Value,
+    args: &[Value],
+    heap: &mut Option<&mut HeapExecution<'_>>,
+    budget: &mut Option<&mut ExecutionBudget>,
+) -> VmResult<Value> {
+    runtime_checks::expect_arity("skip", args, 1)?;
+    let count = count_arg(args[0], "method skip")?;
+    let source = take_iterator_from_heap(receiver, heap, "method skip")?;
+    allocate_iterator(
+        IteratorState::skip(source, count),
+        heap,
+        budget,
+        "method skip",
+    )
+}
+
+pub(crate) fn any_method(
+    receiver: &Value,
+    args: &[Value],
+    mut runtime: MethodRuntime<'_, '_, '_>,
+) -> VmResult<Value> {
+    runtime_checks::expect_arity("any", args, 1)?;
+    let result = with_taken_iterator(receiver, &mut runtime, "method any", |iterator, runtime| {
+        while let Some(value) = iterator.next_with_runtime(runtime, "method any", &[])? {
+            let protected = iterator.protected_values();
+            if is_truthy(&crate::method_runtime::call_callback(
+                runtime,
+                "method any",
+                &args[0],
+                &[value],
+                &protected,
+            )?) {
+                return Ok(true);
+            }
+        }
+        Ok(false)
+    })?;
+    Ok(Value::Bool(result))
+}
+
+pub(crate) fn all_method(
+    receiver: &Value,
+    args: &[Value],
+    mut runtime: MethodRuntime<'_, '_, '_>,
+) -> VmResult<Value> {
+    runtime_checks::expect_arity("all", args, 1)?;
+    let result = with_taken_iterator(receiver, &mut runtime, "method all", |iterator, runtime| {
+        while let Some(value) = iterator.next_with_runtime(runtime, "method all", &[])? {
+            let protected = iterator.protected_values();
+            if !is_truthy(&crate::method_runtime::call_callback(
+                runtime,
+                "method all",
+                &args[0],
+                &[value],
+                &protected,
+            )?) {
+                return Ok(false);
+            }
+        }
+        Ok(true)
+    })?;
+    Ok(Value::Bool(result))
+}
+
+pub(crate) fn find_method(
+    receiver: &Value,
+    args: &[Value],
+    mut runtime: MethodRuntime<'_, '_, '_>,
+) -> VmResult<Value> {
+    runtime_checks::expect_arity("find", args, 1)?;
+    let found = with_taken_iterator(
+        receiver,
+        &mut runtime,
+        "method find",
+        |iterator, runtime| {
+            while let Some(value) = iterator.next_with_runtime(runtime, "method find", &[])? {
+                let protected = iterator.protected_values();
+                if is_truthy(&crate::method_runtime::call_callback(
+                    runtime,
+                    "method find",
+                    &args[0],
+                    &[value],
+                    &protected,
+                )?) {
+                    return Ok(Some(value));
+                }
+            }
+            Ok(None)
+        },
+    )?;
+    let Some(heap_ref) = runtime.heap.as_deref_mut() else {
+        return type_error("method find");
+    };
+    option_value(found, heap_ref, runtime.budget.as_deref_mut())
+}
+
 fn with_iterator_mut<T>(
     receiver: &Value,
     heap: &mut Option<&mut HeapExecution<'_>>,
@@ -155,6 +379,73 @@ fn with_iterator_mut<T>(
             };
             f(iterator)
         }
+        _ => type_error(operation),
+    }
+}
+
+pub(crate) fn take_iterator_from_heap(
+    receiver: &Value,
+    heap: &mut Option<&mut HeapExecution<'_>>,
+    operation: &'static str,
+) -> VmResult<IteratorState> {
+    match receiver {
+        Value::HeapRef(reference) => {
+            let Some(HeapValue::Iterator(iterator)) = heap
+                .as_deref_mut()
+                .and_then(|heap| heap.heap.get_mut(*reference).ok())
+            else {
+                return type_error(operation);
+            };
+            Ok(std::mem::replace(iterator, IteratorState::empty()))
+        }
+        _ => type_error(operation),
+    }
+}
+
+pub(crate) fn restore_iterator_to_heap(
+    receiver: Value,
+    heap: &mut Option<&mut HeapExecution<'_>>,
+    iterator: IteratorState,
+    operation: &'static str,
+) -> VmResult<()> {
+    match receiver {
+        Value::HeapRef(reference) => {
+            let Some(HeapValue::Iterator(slot)) = heap
+                .as_deref_mut()
+                .and_then(|heap| heap.heap.get_mut(reference).ok())
+            else {
+                return type_error(operation);
+            };
+            *slot = iterator;
+            Ok(())
+        }
+        _ => type_error(operation),
+    }
+}
+
+fn take_iterator(
+    receiver: &Value,
+    heap: &mut Option<&mut HeapExecution<'_>>,
+    operation: &'static str,
+) -> VmResult<IteratorState> {
+    take_iterator_from_heap(receiver, heap, operation)
+}
+
+fn with_taken_iterator<T>(
+    receiver: &Value,
+    runtime: &mut MethodRuntime<'_, '_, '_>,
+    operation: &'static str,
+    f: impl FnOnce(&mut IteratorState, &mut MethodRuntime<'_, '_, '_>) -> VmResult<T>,
+) -> VmResult<T> {
+    let mut iterator = take_iterator(receiver, &mut runtime.heap, operation)?;
+    let result = f(&mut iterator, runtime);
+    restore_iterator_to_heap(*receiver, &mut runtime.heap, iterator, operation)?;
+    result
+}
+
+fn count_arg(value: Value, operation: &'static str) -> VmResult<usize> {
+    match value {
+        Value::I64(value) if value >= 0 => Ok(value as usize),
         _ => type_error(operation),
     }
 }

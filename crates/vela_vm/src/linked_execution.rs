@@ -821,9 +821,15 @@ impl Vm {
                 InstructionKind::IterInit { dst, iterable } => {
                     iteration::dispatch_iter_init(
                         iteration::IterRuntime {
+                            vm: self,
+                            program: None,
+                            linked_program: Some(call.program),
+                            host: host.as_deref_mut(),
                             frame: &mut frame,
                             heap: heap.as_deref_mut(),
                             budget: budget.as_deref_mut(),
+                            inline_caches: call.inline_caches,
+                            bytecode_profiler: call.bytecode_profiler,
                         },
                         *dst,
                         *iterable,
@@ -836,9 +842,15 @@ impl Vm {
                 } => {
                     if let Some(target) = iteration::dispatch_linked_iter_next(
                         iteration::IterRuntime {
+                            vm: self,
+                            program: None,
+                            linked_program: Some(call.program),
+                            host: host.as_deref_mut(),
                             frame: &mut frame,
                             heap: heap.as_deref_mut(),
                             budget: budget.as_deref_mut(),
+                            inline_caches: call.inline_caches,
+                            bytecode_profiler: call.bytecode_profiler,
                         },
                         code,
                         *iterator,
@@ -858,9 +870,15 @@ impl Vm {
                 } => {
                     if let Some(target) = iteration::dispatch_linked_range_next(
                         iteration::IterRuntime {
+                            vm: self,
+                            program: None,
+                            linked_program: Some(call.program),
+                            host: host.as_deref_mut(),
                             frame: &mut frame,
                             heap: heap.as_deref_mut(),
                             budget: budget.as_deref_mut(),
+                            inline_caches: call.inline_caches,
+                            bytecode_profiler: call.bytecode_profiler,
                         },
                         code,
                         iteration::RangeNextStep {

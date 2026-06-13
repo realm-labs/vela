@@ -9,8 +9,8 @@ use crate::method_runtime::{CallerRoots, MethodRuntime};
 use crate::{
     CallbackMethodInlineCacheEntry, CallbackMethodInlineCacheTarget, ExecutionBudget,
     HeapExecution, HostExecution, StandardMethodReceiver, Value, Vm, VmBytecodeProfiler, VmError,
-    VmErrorKind, VmInlineCaches, VmResult, array_methods, map_methods, option_result_methods,
-    set_methods,
+    VmErrorKind, VmInlineCaches, VmResult, array_methods, iteration, map_methods,
+    option_result_methods, set_methods,
 };
 
 pub(crate) struct CallbackMethodDispatch<'a, 'host, 'heap> {
@@ -56,6 +56,14 @@ struct CallbackMethodIds {
     result_map_err: MethodId,
     result_and_then: MethodId,
     result_or_else: MethodId,
+    iterator_next: MethodId,
+    iterator_map: MethodId,
+    iterator_filter: MethodId,
+    iterator_find: MethodId,
+    iterator_any: MethodId,
+    iterator_all: MethodId,
+    iterator_count: MethodId,
+    iterator_collect_array: MethodId,
 }
 
 impl CallbackMethodIds {
@@ -90,6 +98,14 @@ impl CallbackMethodIds {
             result_map_err: standard_method_id("Result", "map_err"),
             result_and_then: standard_method_id("Result", "and_then"),
             result_or_else: standard_method_id("Result", "or_else"),
+            iterator_next: standard_method_id("Iterator", "next"),
+            iterator_map: standard_method_id("Iterator", "map"),
+            iterator_filter: standard_method_id("Iterator", "filter"),
+            iterator_find: standard_method_id("Iterator", "find"),
+            iterator_any: standard_method_id("Iterator", "any"),
+            iterator_all: standard_method_id("Iterator", "all"),
+            iterator_count: standard_method_id("Iterator", "count"),
+            iterator_collect_array: standard_method_id("Iterator", "collect_array"),
         }
     }
 }
@@ -133,6 +149,9 @@ pub(crate) fn call(
     dispatch: &mut CallbackMethodDispatch<'_, '_, '_>,
 ) -> Option<VmResult<Value>> {
     match method {
+        "next" if iteration::is_iterator(receiver, dispatch.heap_ref()) => Some(
+            iteration::next_method_runtime(receiver, args, dispatch.runtime()),
+        ),
         "map" => Some(call_map(receiver, args, dispatch)),
         "map_err" => Some(call_map_err(receiver, args, dispatch)),
         "and_then" => Some(call_and_then(receiver, args, dispatch)),
@@ -142,6 +161,9 @@ pub(crate) fn call(
         "any" => Some(call_any(receiver, args, dispatch).map(Value::Bool)),
         "all" => Some(call_all(receiver, args, dispatch).map(Value::Bool)),
         "count" => Some(call_count(receiver, args, dispatch).map(Value::i64)),
+        "collect_array" if iteration::is_iterator(receiver, dispatch.heap_ref()) => Some(
+            iteration::collect_array_method_runtime(receiver, args, dispatch.runtime()),
+        ),
         "sum" => Some(array_methods::sum(receiver, args, dispatch.runtime())),
         "group_by" => Some(array_methods::group_by(receiver, args, dispatch.runtime())),
         "sort_by" => Some(array_methods::sort_by(receiver, args, dispatch.runtime())),
@@ -175,6 +197,8 @@ pub(crate) fn callback_cache_entry(
         StandardMethodReceiver::Option
     } else if option_result_methods::is_result(receiver, heap) {
         StandardMethodReceiver::Result
+    } else if iteration::is_iterator(receiver, heap) {
+        StandardMethodReceiver::Iterator
     } else {
         return None;
     };
@@ -281,6 +305,30 @@ fn callback_method_target(
         }
         (StandardMethodReceiver::Result, id) if id == ids.result_or_else => {
             CallbackMethodInlineCacheTarget::OrElse
+        }
+        (StandardMethodReceiver::Iterator, id) if id == ids.iterator_next => {
+            CallbackMethodInlineCacheTarget::Next
+        }
+        (StandardMethodReceiver::Iterator, id) if id == ids.iterator_map => {
+            CallbackMethodInlineCacheTarget::Map
+        }
+        (StandardMethodReceiver::Iterator, id) if id == ids.iterator_filter => {
+            CallbackMethodInlineCacheTarget::Filter
+        }
+        (StandardMethodReceiver::Iterator, id) if id == ids.iterator_find => {
+            CallbackMethodInlineCacheTarget::Find
+        }
+        (StandardMethodReceiver::Iterator, id) if id == ids.iterator_any => {
+            CallbackMethodInlineCacheTarget::Any
+        }
+        (StandardMethodReceiver::Iterator, id) if id == ids.iterator_all => {
+            CallbackMethodInlineCacheTarget::All
+        }
+        (StandardMethodReceiver::Iterator, id) if id == ids.iterator_count => {
+            CallbackMethodInlineCacheTarget::Count
+        }
+        (StandardMethodReceiver::Iterator, id) if id == ids.iterator_collect_array => {
+            CallbackMethodInlineCacheTarget::CollectArray
         }
         _ => return None,
     };
@@ -438,6 +486,30 @@ pub(crate) fn call_cached(
         (StandardMethodReceiver::Map, CallbackMethodInlineCacheTarget::MapValues) => {
             map_methods::map_values(receiver, args, dispatch.runtime())
         }
+        (StandardMethodReceiver::Iterator, CallbackMethodInlineCacheTarget::Next) => {
+            iteration::next_method_runtime(receiver, args, dispatch.runtime())
+        }
+        (StandardMethodReceiver::Iterator, CallbackMethodInlineCacheTarget::Map) => {
+            iteration::map_method(receiver, args, dispatch.runtime())
+        }
+        (StandardMethodReceiver::Iterator, CallbackMethodInlineCacheTarget::Filter) => {
+            iteration::filter_method(receiver, args, dispatch.runtime())
+        }
+        (StandardMethodReceiver::Iterator, CallbackMethodInlineCacheTarget::Find) => {
+            iteration::find_method(receiver, args, dispatch.runtime())
+        }
+        (StandardMethodReceiver::Iterator, CallbackMethodInlineCacheTarget::Any) => {
+            iteration::any_method(receiver, args, dispatch.runtime())
+        }
+        (StandardMethodReceiver::Iterator, CallbackMethodInlineCacheTarget::All) => {
+            iteration::all_method(receiver, args, dispatch.runtime())
+        }
+        (StandardMethodReceiver::Iterator, CallbackMethodInlineCacheTarget::Count) => {
+            iteration::count_method_runtime(receiver, args, dispatch.runtime())
+        }
+        (StandardMethodReceiver::Iterator, CallbackMethodInlineCacheTarget::CollectArray) => {
+            iteration::collect_array_method_runtime(receiver, args, dispatch.runtime())
+        }
         _ => return None,
     };
     Some(result)
@@ -454,10 +526,10 @@ fn receiver_matches_cache(
         StandardMethodReceiver::Set => set_methods::is_set(receiver, heap),
         StandardMethodReceiver::Option => option_result_methods::is_option(receiver, heap),
         StandardMethodReceiver::Result => option_result_methods::is_result(receiver, heap),
+        StandardMethodReceiver::Iterator => iteration::is_iterator(receiver, heap),
         StandardMethodReceiver::String
         | StandardMethodReceiver::Bytes
-        | StandardMethodReceiver::Range
-        | StandardMethodReceiver::Iterator => false,
+        | StandardMethodReceiver::Range => false,
     }
 }
 
@@ -468,6 +540,8 @@ fn call_map(
 ) -> VmResult<Value> {
     if option_result_methods::is_option_or_result(receiver, dispatch.heap_ref()) {
         option_result_methods::map(receiver, args, dispatch.runtime())
+    } else if iteration::is_iterator(receiver, dispatch.heap_ref()) {
+        iteration::map_method(receiver, args, dispatch.runtime())
     } else if set_methods::is_set(receiver, dispatch.heap_ref()) {
         set_methods::map(receiver, args, dispatch.runtime())
     } else {
@@ -518,6 +592,8 @@ fn call_filter(
 ) -> VmResult<Value> {
     if option_result_methods::is_option(receiver, dispatch.heap_ref()) {
         option_result_methods::filter(receiver, args, dispatch.runtime())
+    } else if iteration::is_iterator(receiver, dispatch.heap_ref()) {
+        iteration::filter_method(receiver, args, dispatch.runtime())
     } else if set_methods::is_set(receiver, dispatch.heap_ref()) {
         set_methods::filter(receiver, args, dispatch.runtime())
     } else if map_methods::is_map(receiver, dispatch.heap_ref()) {
@@ -534,6 +610,8 @@ fn call_find(
 ) -> VmResult<Value> {
     if set_methods::is_set(receiver, dispatch.heap_ref()) {
         set_methods::find(receiver, args, dispatch.runtime())
+    } else if iteration::is_iterator(receiver, dispatch.heap_ref()) {
+        iteration::find_method(receiver, args, dispatch.runtime())
     } else if map_methods::is_map(receiver, dispatch.heap_ref()) {
         map_methods::find(receiver, args, dispatch.runtime())
     } else {
@@ -548,6 +626,9 @@ fn call_any(
 ) -> VmResult<bool> {
     if set_methods::is_set(receiver, dispatch.heap_ref()) {
         set_methods::any(receiver, args, dispatch.runtime())
+    } else if iteration::is_iterator(receiver, dispatch.heap_ref()) {
+        iteration::any_method(receiver, args, dispatch.runtime())
+            .map(|value| matches!(value, Value::Bool(true)))
     } else if map_methods::is_map(receiver, dispatch.heap_ref()) {
         map_methods::any(receiver, args, dispatch.runtime())
     } else {
@@ -562,6 +643,9 @@ fn call_all(
 ) -> VmResult<bool> {
     if set_methods::is_set(receiver, dispatch.heap_ref()) {
         set_methods::all(receiver, args, dispatch.runtime())
+    } else if iteration::is_iterator(receiver, dispatch.heap_ref()) {
+        iteration::all_method(receiver, args, dispatch.runtime())
+            .map(|value| matches!(value, Value::Bool(true)))
     } else if map_methods::is_map(receiver, dispatch.heap_ref()) {
         map_methods::all(receiver, args, dispatch.runtime())
     } else {
@@ -576,6 +660,13 @@ fn call_count(
 ) -> VmResult<i64> {
     if set_methods::is_set(receiver, dispatch.heap_ref()) {
         set_methods::count(receiver, args, dispatch.runtime())
+    } else if iteration::is_iterator(receiver, dispatch.heap_ref()) {
+        iteration::count_method_runtime(receiver, args, dispatch.runtime()).and_then(|value| {
+            match value {
+                Value::I64(count) => Ok(count),
+                _ => type_error("method count"),
+            }
+        })
     } else if map_methods::is_map(receiver, dispatch.heap_ref()) {
         map_methods::count(receiver, args, dispatch.runtime())
     } else {

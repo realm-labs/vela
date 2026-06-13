@@ -781,6 +781,14 @@ Existing eager pre-release view methods such as `map.keys()`, `map.values()`,
 renaming or replacing them requires a separate deliberate cleanup with tests
 and docs.
 
+### Iterator Adapter Ownership
+
+Lazy iterator adapters are one-shot cursors that take ownership of the source
+iterator state and leave the original iterator exhausted. Adapter stepping,
+`for-in`, and terminal methods use the callback-capable method runtime so
+`map`, `filter`, `any`, `all`, `find`, and `collect_array` share callback
+dispatch, heap-root protection, budget, and host-access behavior.
+
 ## Validation Rules
 
 - Multi-level `super` scan must return no matches:

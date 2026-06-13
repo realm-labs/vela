@@ -96,7 +96,9 @@ Cranelift JIT.
   strings, Option/Result helpers and propagation, math, deterministic time,
   context event/log helpers, controlled random capability gating, opt-in
   stdio and sandboxed filesystem helpers with `io_read`/`io_write`
-  capability gating, lambda TypeFacts, and domain-neutral helpers.
+  capability gating, lambda TypeFacts, explicit iterator creation methods, core
+  one-shot iterator terminals and lazy `map`/`filter`/`take`/`skip` adapters,
+  and domain-neutral helpers.
 - Engine registration for host types, native functions, context helpers,
   standard natives, capability profiles, reflection permissions, compiler options, dynamic
   `CallArgs`, direct call-boundary `&T`/`&mut T` host object bindings,
