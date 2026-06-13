@@ -8,7 +8,7 @@ window.VELA_PLAYGROUND_EXAMPLES = [
     multiplier: int,
 }
 
-fn score_reward(reward) {
+fn score_reward(reward: Reward) -> int {
     if !reward.enabled {
         return 0;
     }

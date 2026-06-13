@@ -18,6 +18,9 @@ let result = runtime.call(
 )?;
 ```
 
+如果源码来自不可信或交互式边界，并且 link error 应作为普通错误报告，
+使用 `Runtime::try_new(engine, program)?`。
+
 ## 调用句柄
 
 高频 embedding 可以缓存 `VelaFunction`：

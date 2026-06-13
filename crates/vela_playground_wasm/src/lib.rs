@@ -45,13 +45,13 @@ struct PlaygroundSpan {
 
 #[wasm_bindgen]
 pub fn compile_script(source: &str) -> String {
-    response_to_json(match compile_program(source) {
-        Ok(_) => PlaygroundResponse {
+    response_to_json(match compile_and_link_program(source) {
+        Ok(()) => PlaygroundResponse {
             ok: true,
             value: Some(json!({ "status": "compiled" })),
             diagnostics: Vec::new(),
         },
-        Err(error) => source_error_response(error),
+        Err(response) => response,
     })
 }
 
@@ -69,7 +69,10 @@ fn run_script_inner(source: &str, entry: &str) -> PlaygroundResponse {
         Ok(program) => program,
         Err(error) => return source_error_response(error),
     };
-    let mut runtime = Runtime::new(engine, program);
+    let mut runtime = match Runtime::try_new(engine, program) {
+        Ok(runtime) => runtime,
+        Err(error) => return single_error_response(format!("failed to link program: {error}")),
+    };
     match runtime.call(
         entry,
         CallArgs::new(),
@@ -91,8 +94,18 @@ fn run_script_inner(source: &str, entry: &str) -> PlaygroundResponse {
     }
 }
 
-fn compile_program(source: &str) -> Result<vela_bytecode::UnlinkedProgram, EngineSourceError> {
-    playground_engine()?.compile_source(PLAYGROUND_SOURCE_ID, source)
+fn compile_and_link_program(source: &str) -> Result<(), PlaygroundResponse> {
+    let engine = playground_engine().map_err(source_error_response)?;
+    let program = engine
+        .compile_source(PLAYGROUND_SOURCE_ID, source)
+        .map_err(source_error_response)?;
+    Runtime::try_new(engine, program)
+        .map(drop)
+        .map_err(link_error_response)
+}
+
+fn link_error_response(error: vela_bytecode::linker::LinkError) -> PlaygroundResponse {
+    single_error_response(format!("failed to link program: {error}"))
 }
 
 fn playground_engine() -> Result<vela_engine::prelude::Engine, EngineSourceError> {
@@ -291,7 +304,7 @@ fn response_to_json(response: PlaygroundResponse) -> String {
 mod tests {
     use serde_json::Value as JsonValue;
 
-    use super::run_script;
+    use super::{compile_script, run_script};
 
     #[test]
     fn run_script_returns_json_value() {
@@ -324,5 +337,63 @@ mod tests {
 
         assert_eq!(response["ok"], false);
         assert_eq!(response["diagnostics"][0]["code"], "vm::division_by_zero");
+    }
+
+    #[test]
+    fn compile_script_reports_link_errors_without_panicking() {
+        let response: JsonValue = serde_json::from_str(&compile_script(
+            r#"
+            struct Reward {
+                enabled: bool,
+            }
+
+            fn read_enabled(reward) {
+                return reward.enabled;
+            }
+            "#,
+        ))
+        .expect("valid playground response");
+
+        assert_eq!(response["ok"], false);
+        assert!(
+            response["diagnostics"][0]["message"]
+                .as_str()
+                .expect("diagnostic message")
+                .contains("unresolved record field enabled")
+        );
+    }
+
+    #[test]
+    fn run_script_runs_level_reward_playground_example() {
+        let response: JsonValue = serde_json::from_str(&run_script(
+            r#"
+            struct Reward {
+                enabled: bool,
+                base: int,
+                multiplier: int,
+            }
+
+            fn score_reward(reward: Reward) -> int {
+                if !reward.enabled {
+                    return 0;
+                }
+                return reward.base * reward.multiplier;
+            }
+
+            fn main() {
+                let reward = Reward {
+                    enabled: true,
+                    base: 12,
+                    multiplier: 3,
+                };
+                return score_reward(reward) + 4;
+            }
+            "#,
+            "main",
+        ))
+        .expect("valid playground response");
+
+        assert_eq!(response["ok"], true, "{response:#}");
+        assert_eq!(response["value"], 40);
     }
 }

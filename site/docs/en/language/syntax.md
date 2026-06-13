@@ -15,7 +15,7 @@ enum RewardResult {
     Denied { reason: string },
 }
 
-fn grant(reward) {
+fn grant(reward: Reward) -> RewardResult {
     return RewardResult::Granted {
         item: reward.item,
         amount: reward.amount,

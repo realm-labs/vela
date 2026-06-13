@@ -84,6 +84,19 @@ impl RuntimeImpl<OwnedImage> {
         }
     }
 
+    pub fn try_new(
+        engine: Engine,
+        program: UnlinkedProgram,
+    ) -> Result<Self, vela_bytecode::linker::LinkError> {
+        let image = OwnedImage::from_image(RuntimeImage::try_new(engine, program)?);
+        let state = RuntimeState::for_image(&image);
+        Ok(Self {
+            image,
+            hot_reload: None,
+            state,
+        })
+    }
+
     #[must_use]
     pub fn from_hot_reload_version(engine: Engine, version: ProgramVersion) -> Self {
         let image = OwnedImage::from_image(RuntimeImage::from_program_version(engine, &version));

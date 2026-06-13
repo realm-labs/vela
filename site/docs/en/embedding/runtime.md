@@ -18,6 +18,10 @@ let result = runtime.call(
 )?;
 ```
 
+Use `Runtime::try_new(engine, program)?` instead when the source comes from an
+untrusted or interactive boundary and link errors should be reported instead of
+treated as an internal invariant failure.
+
 ## Call Handles
 
 High-frequency embedders can cache `VelaFunction` handles:
