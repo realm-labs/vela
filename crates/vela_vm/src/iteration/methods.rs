@@ -346,6 +346,38 @@ pub(crate) fn collect_values(
     Ok(values)
 }
 
+pub(crate) fn collect_values_over<T>(
+    items: impl IntoIterator<Item = T>,
+    runtime: &mut MethodRuntime<'_, '_, '_>,
+    _operation: &'static str,
+    mut callback: impl FnMut(&mut MethodRuntime<'_, '_, '_>, T, &[Value]) -> VmResult<Value>,
+) -> VmResult<Vec<Value>> {
+    let mut values = Vec::new();
+    for item in items {
+        let value = callback(runtime, item, &values)?;
+        values.push(value);
+    }
+    Ok(values)
+}
+
+pub(crate) fn filter_items_over<T>(
+    items: impl IntoIterator<Item = T>,
+    runtime: &mut MethodRuntime<'_, '_, '_>,
+    _operation: &'static str,
+    mut predicate: impl FnMut(&mut MethodRuntime<'_, '_, '_>, &T, &[Value]) -> VmResult<Value>,
+    mut protected_value: impl FnMut(&T) -> Value,
+) -> VmResult<Vec<T>> {
+    let mut kept = Vec::new();
+    let mut protected_values = Vec::new();
+    for item in items {
+        if is_truthy(&predicate(runtime, &item, &protected_values)?) {
+            protected_values.push(protected_value(&item));
+            kept.push(item);
+        }
+    }
+    Ok(kept)
+}
+
 pub(crate) fn callback_any(
     iterator: &mut IteratorState,
     runtime: &mut MethodRuntime<'_, '_, '_>,

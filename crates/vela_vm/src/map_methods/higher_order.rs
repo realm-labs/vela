@@ -1,9 +1,5 @@
-use std::collections::BTreeMap;
-
 use crate::iteration;
-use crate::method_runtime::{
-    MethodRuntime, call_callback, call_callback_with_protected_values, callback_param_len,
-};
+use crate::method_runtime::{MethodRuntime, call_callback, callback_param_len};
 use crate::option_result::option_value;
 use crate::{Value, VmResult};
 
@@ -17,33 +13,29 @@ pub(crate) fn map_values(
 ) -> VmResult<Value> {
     expect_arity("map_values", args, 1)?;
     let entries = map_entries(receiver, runtime.heap.as_deref(), "method map_values")?;
-    let mut mapped = BTreeMap::new();
     let param_len =
         callback_param_len_for_entries(&runtime, "method map_values", &args[0], &entries)?;
-    for (key, value) in entries {
-        let value = if runtime.heap.is_some() {
-            call_map_callback_with_protected_values(
-                &mut runtime,
-                "method map_values",
-                &args[0],
-                param_len,
-                &key,
-                value,
-                mapped.values(),
-            )?
-        } else {
+    let values = iteration::collect_values_over(
+        entries.iter(),
+        &mut runtime,
+        "method map_values",
+        |runtime, (key, value), protected_values| {
             call_map_callback(
-                &mut runtime,
+                runtime,
                 "method map_values",
                 &args[0],
                 param_len,
-                &key,
-                value,
-                &[],
-            )?
-        };
-        mapped.insert(key, value);
-    }
+                key,
+                *value,
+                protected_values,
+            )
+        },
+    )?;
+    let mapped = entries
+        .into_iter()
+        .zip(values)
+        .map(|((key, _), value)| (key, value))
+        .collect();
     make_map_value(
         mapped,
         &mut runtime.heap,
@@ -59,34 +51,26 @@ pub(crate) fn filter(
 ) -> VmResult<Value> {
     expect_arity("filter", args, 1)?;
     let entries = map_entries(receiver, runtime.heap.as_deref(), "method filter")?;
-    let mut filtered = BTreeMap::new();
     let param_len = callback_param_len_for_entries(&runtime, "method filter", &args[0], &entries)?;
-    for (key, value) in entries {
-        let predicate = if runtime.heap.is_some() {
-            call_map_callback_with_protected_values(
-                &mut runtime,
-                "method filter",
-                &args[0],
-                param_len,
-                &key,
-                value,
-                filtered.values(),
-            )?
-        } else {
+    let filtered = iteration::filter_items_over(
+        entries,
+        &mut runtime,
+        "method filter",
+        |runtime, (key, value), protected_values| {
             call_map_callback(
-                &mut runtime,
+                runtime,
                 "method filter",
                 &args[0],
                 param_len,
-                &key,
-                value,
-                &[],
-            )?
-        };
-        if is_truthy(&predicate) {
-            filtered.insert(key, value);
-        }
-    }
+                key,
+                *value,
+                protected_values,
+            )
+        },
+        |(_, value)| *value,
+    )?
+    .into_iter()
+    .collect();
     make_map_value(
         filtered,
         &mut runtime.heap,
@@ -242,47 +226,4 @@ fn call_map_callback(
             )
         }
     }
-}
-
-fn call_map_callback_with_protected_values<'value>(
-    runtime: &mut MethodRuntime<'_, '_, '_>,
-    operation: &'static str,
-    callback: &Value,
-    param_len: usize,
-    key: &str,
-    value: Value,
-    protected_values: impl IntoIterator<Item = &'value Value>,
-) -> VmResult<Value> {
-    match param_len {
-        0 => {
-            call_callback_with_protected_values(runtime, operation, callback, &[], protected_values)
-        }
-        1 => call_callback_with_protected_values(
-            runtime,
-            operation,
-            callback,
-            std::slice::from_ref(&value),
-            protected_values,
-        ),
-        _ => {
-            let key = make_string_value(
-                key.to_owned(),
-                &mut runtime.heap,
-                &mut runtime.budget,
-                operation,
-            )?;
-            let callback_args = [key, value];
-            call_callback_with_protected_values(
-                runtime,
-                operation,
-                callback,
-                &callback_args,
-                protected_values,
-            )
-        }
-    }
-}
-
-fn is_truthy(value: &Value) -> bool {
-    !matches!(value, Value::Missing | Value::Null | Value::Bool(false))
 }
