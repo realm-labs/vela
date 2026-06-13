@@ -205,6 +205,41 @@ fn main() {
 }
 
 #[test]
+fn unknown_iterable_values_stay_runtime_checked() {
+    let source = r#"
+fn identity(value) {
+    return value;
+}
+
+fn main() {
+    for value in identity(42) {
+        return value;
+    }
+    return 0;
+}
+"#;
+    let program = compile_program_source(SourceId::new(1), source)
+        .expect("unknown iterable expression should compile");
+    let mut budget = ExecutionBudget::unbounded();
+
+    let error = run_linked_test_program_with_budget(&Vm::new(), &program, "main", &[], &mut budget)
+        .expect_err("non-iterable runtime value should fail at IterInit");
+
+    assert_eq!(
+        error.kind(),
+        VmErrorKind::TypeMismatch {
+            operation: "for in"
+        }
+    );
+    let span = error.source_span.expect("runtime iterable error span");
+    assert_eq!(span.source, SourceId::new(1));
+    assert_eq!(
+        &source[span.start as usize..span.end as usize],
+        "identity(42)"
+    );
+}
+
+#[test]
 fn host_iterable_items_mutate_through_host_access() {
     let host_ref = player_ref(3);
     let mut registry = host_definition_registry(

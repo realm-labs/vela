@@ -282,12 +282,15 @@ impl Compiler<'_, '_> {
                 inclusive,
             }
         } else {
-            let iterable = self.compile_expr(iterable)?;
+            let iterable_register = self.compile_expr(iterable)?;
             let iterator = self.alloc_register()?;
-            self.emit(UnlinkedInstructionKind::IterInit {
-                dst: iterator,
-                iterable,
-            });
+            self.emit_spanned(
+                UnlinkedInstructionKind::IterInit {
+                    dst: iterator,
+                    iterable: iterable_register,
+                },
+                iterable.span,
+            );
             LoopIterable::Generic { iterator }
         };
 

@@ -834,7 +834,8 @@ impl Vm {
                         },
                         *dst,
                         *iterable,
-                    )?;
+                    )
+                    .map_err(|error| error.with_source_span_if_absent(instruction.span))?;
                 }
                 InstructionKind::IterNext {
                     iterator,
