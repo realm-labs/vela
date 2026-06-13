@@ -168,20 +168,22 @@ stdlib compatibility helper. Runtime formatting uses the same user-facing
 ### Runtime And Heap
 
 The VM is a register bytecode interpreter. Execution budgets cover
-instructions, memory, call depth, and patches. Script heap values use stable,
-generation-checked non-moving handles; host refs and path proxies remain
-external handles and are not traced as Rust-owned state.
+instructions, memory, call depth, and patches. Runtime budgets keep immutable
+limits, mutable counters, and precomputed active flags separate so hot paths
+test budget mode directly instead of repeatedly interpreting sentinel limit
+values. Script heap values use stable, generation-checked non-moving handles;
+host refs and path proxies remain external handles and are not traced as
+Rust-owned state.
 
 Execution budgets account for heap collection growth at the mutation boundary
 when either memory bytes or explicit collection limits are enabled.
-`ExecutionBudget::unbounded()` disables memory and collection-growth
-bookkeeping the same way it disables instruction counting, so hosts can choose
-the lower-overhead trusted path. Array and set budget deltas are based on
-script-visible element count rather than spare `Vec` capacity; map deltas are
-based on script-visible keys and values. Hosts may add explicit collection
-length limits for arrays, maps, and sets independently from the byte budget.
-Native allocator reserve failures are runtime allocation errors when the
-growth-budget path is active.
+`ExecutionBudget::unbounded()` disables instruction, memory, call-depth, and
+collection-growth bookkeeping, so hosts can choose the lower-overhead trusted
+path. Array and set budget deltas are based on script-visible element count
+rather than spare `Vec` capacity; map deltas are based on script-visible keys
+and values. Hosts may add explicit collection length limits for arrays, maps,
+and sets independently from the byte budget. Native allocator reserve failures
+are runtime allocation errors when the growth-budget path is active.
 
 Typed scalar fast paths are interpreter specializations, not alternate
 language semantics. Proven `i64` hot paths may use typed frame slots and fused

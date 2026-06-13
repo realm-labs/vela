@@ -162,11 +162,17 @@ specialized arrays
 The VM charges an instruction budget while executing:
 
 ```rust
-pub struct ExecutionBudget {
+pub struct ExecutionLimits {
     pub instruction_limit: u64,
     pub memory_limit_bytes: usize,
     pub max_call_depth: usize,
-    collection_limits: CollectionLimits,
+    pub collection_limits: CollectionLimits,
+}
+
+pub struct ExecutionBudget {
+    limits: ExecutionLimits,
+    counters: ExecutionCounters,
+    flags: BudgetFlags,
 }
 ```
 
@@ -180,9 +186,14 @@ unbounded array/map/set growth
 too many state writes in a single event
 ```
 
+Execution limits are immutable configuration for a run, counters are mutable
+runtime state, and budget flags are precomputed from the limits. Hot paths test
+the flags instead of reinterpreting sentinel limit values. `usize::MAX` /
+`u64::MAX` still mean "disabled" at the public constructor boundary.
+
 Heap allocation and in-place heap collection growth charge the memory budget
 when `memory_limit_bytes` is finite. `ExecutionBudget::unbounded()` disables
-memory accounting the same way it disables instruction accounting, so hot
+instruction, memory, call-depth, and collection-growth bookkeeping, so hot
 paths can run without budget bookkeeping when the host intentionally chooses
 that mode. Arrays and sets charge collection memory by script-visible element
 count, and maps charge by script-visible entry keys plus stored values. Hosts

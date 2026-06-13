@@ -270,7 +270,8 @@ rerun the same filtered benchmark before landing; a regression above roughly
 safety rationale or a follow-up performance task.
 
 A follow-up profile-backed optimization keeps the budgeted path but makes
-`ExecutionBudget::unbounded()` disable memory and collection-growth
+`ExecutionBudget::unbounded()` disable inactive budget bookkeeping through
+precomputed budget flags, including memory, collection-growth, and call-depth
 bookkeeping. Before the optimization, a macOS `sample` capture of the focused
 mutation benchmark showed hot stack samples in `reserve_vec_slot`,
 `ScriptHeap::adjust_object_size_after_mutation`, and

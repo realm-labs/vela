@@ -34,7 +34,13 @@ impl Vm {
         heap: Option<&mut HeapExecution<'_>>,
         mut budget: Option<&mut ExecutionBudget>,
     ) -> VmResult<Value> {
-        if let Some(budget) = &mut budget {
+        let limits_call_depth = budget
+            .as_deref()
+            .is_some_and(ExecutionBudget::limits_call_depth);
+        if limits_call_depth {
+            let budget = budget
+                .as_deref_mut()
+                .expect("call-depth budget mode requires a budget");
             budget
                 .enter_call()
                 .map_err(|error| error.with_call_frame(call.stack_frame()))?;
@@ -69,8 +75,10 @@ impl Vm {
                 .with_source_span_if_absent(fallback_span)
                 .with_call_frame(frame)
         });
-        if let Some(budget) = budget {
-            budget.exit_call();
+        if limits_call_depth {
+            budget
+                .expect("call-depth budget mode requires a budget")
+                .exit_call();
         }
         result
     }
