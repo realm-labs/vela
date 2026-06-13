@@ -56,6 +56,9 @@ pub(crate) fn standard_cache_entry_matches_method_id(
     cache: StandardMethodInlineCacheEntry,
 ) -> bool {
     match (cache.receiver, cache.target) {
+        (StandardMethodReceiver::String, StandardMethodInlineCacheTarget::Len) => {
+            return method_id == std_method_ids().string_len;
+        }
         (StandardMethodReceiver::Range, StandardMethodInlineCacheTarget::Len) => {
             return method_id == std_method_ids().range_len;
         }
@@ -76,6 +79,15 @@ pub(crate) fn standard_cache_entry_matches_method_id(
         }
         (StandardMethodReceiver::Bytes, StandardMethodInlineCacheTarget::ReadU32Be) => {
             return method_id == std_method_ids().bytes_read_u32_be;
+        }
+        (StandardMethodReceiver::Array, StandardMethodInlineCacheTarget::Join) => {
+            return method_id == std_method_ids().array_join;
+        }
+        (StandardMethodReceiver::Array, StandardMethodInlineCacheTarget::Sort) => {
+            return method_id == std_method_ids().array_sort;
+        }
+        (StandardMethodReceiver::Array, StandardMethodInlineCacheTarget::Sum) => {
+            return method_id == std_method_ids().array_sum;
         }
         (StandardMethodReceiver::Map, StandardMethodInlineCacheTarget::Keys) => {
             return method_id == std_method_ids().map_keys;
