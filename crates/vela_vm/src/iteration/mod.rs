@@ -5,8 +5,9 @@ mod step;
 
 pub(crate) use methods::{
     all_method, any_method, chars_method, collect_array_method, collect_array_method_runtime,
-    count_method, count_method_runtime, filter_method, find_method, is_iterator, iter_method,
-    map_method, next_method, next_method_runtime, skip_method, string_bytes_method, take_method,
+    collect_values, count_method, count_method_runtime, filter_method, find_method, is_iterator,
+    iter_method, map_method, next_method, next_method_runtime, skip_method, string_bytes_method,
+    take_method,
 };
 pub(crate) use methods::{
     callback_all, callback_all_over, callback_any, callback_any_over, callback_count,

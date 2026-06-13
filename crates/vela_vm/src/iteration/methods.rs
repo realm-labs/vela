@@ -213,15 +213,7 @@ pub(crate) fn collect_array_method_runtime(
         receiver,
         &mut runtime,
         "method collect_array",
-        |iterator, runtime| {
-            let mut values = Vec::new();
-            while let Some(value) =
-                iterator.next_with_runtime(runtime, "method collect_array", &values)?
-            {
-                values.push(value);
-            }
-            Ok(values)
-        },
+        |iterator, runtime| collect_values(iterator, runtime, "method collect_array"),
     )?;
     check_collect_array_len(values.len(), runtime.budget.as_deref())?;
     let Some(heap_ref) = runtime.heap.as_deref_mut() else {
@@ -340,6 +332,18 @@ pub(crate) fn find_method(
         return type_error("method find");
     };
     option_value(found, heap_ref, runtime.budget.as_deref_mut())
+}
+
+pub(crate) fn collect_values(
+    iterator: &mut IteratorState,
+    runtime: &mut MethodRuntime<'_, '_, '_>,
+    operation: &'static str,
+) -> VmResult<Vec<Value>> {
+    let mut values = Vec::new();
+    while let Some(value) = iterator.next_with_runtime(runtime, operation, &values)? {
+        values.push(value);
+    }
+    Ok(values)
 }
 
 pub(crate) fn callback_any(

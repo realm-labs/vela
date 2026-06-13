@@ -93,10 +93,6 @@ pub(super) fn expect_arity(name: &str, args: &[Value], expected: usize) -> VmRes
     }))
 }
 
-pub(super) fn is_truthy(value: &Value) -> bool {
-    !matches!(value, Value::Missing | Value::Null | Value::Bool(false))
-}
-
 pub(super) fn option_value(
     variant: &str,
     payload: Option<Value>,

@@ -2,9 +2,7 @@ use crate::iteration::{self, IteratorState};
 use crate::method_runtime::MethodRuntime;
 use crate::{Value, VmResult};
 
-use super::{
-    array_values, call_unary_callback, expect_arity, is_truthy, make_array_value, option_value,
-};
+use super::{array_values, expect_arity, make_array_value, option_value};
 
 pub(crate) fn map(
     receiver: &Value,
@@ -13,16 +11,8 @@ pub(crate) fn map(
 ) -> VmResult<Value> {
     expect_arity("map", args, 1)?;
     let values = array_values(receiver, runtime.heap.as_deref(), "method map")?;
-    let mut mapped = Vec::with_capacity(values.len());
-    for value in values {
-        mapped.push(call_unary_callback(
-            &mut runtime,
-            "method map",
-            &args[0],
-            value,
-            &mapped,
-        )?);
-    }
+    let mut iterator = IteratorState::map(IteratorState::from_values(values), args[0]);
+    let mapped = iteration::collect_values(&mut iterator, &mut runtime, "method map")?;
     make_array_value(mapped, &mut runtime.heap, &mut runtime.budget, "method map")
 }
 
@@ -33,14 +23,8 @@ pub(crate) fn filter(
 ) -> VmResult<Value> {
     expect_arity("filter", args, 1)?;
     let values = array_values(receiver, runtime.heap.as_deref(), "method filter")?;
-    let mut filtered = Vec::new();
-    for value in values {
-        let predicate =
-            call_unary_callback(&mut runtime, "method filter", &args[0], value, &filtered)?;
-        if is_truthy(&predicate) {
-            filtered.push(value);
-        }
-    }
+    let mut iterator = IteratorState::filter(IteratorState::from_values(values), args[0]);
+    let filtered = iteration::collect_values(&mut iterator, &mut runtime, "method filter")?;
     make_array_value(
         filtered,
         &mut runtime.heap,
