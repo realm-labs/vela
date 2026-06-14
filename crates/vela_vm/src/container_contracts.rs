@@ -81,7 +81,19 @@ impl ContainerContracts {
         self.stamps.clear();
     }
 
+    pub(crate) fn note_replaced_map_value(&mut self) {
+        self.value_summary = ContainerTypeSummary::Unknown;
+        self.stamps.clear();
+    }
+
+    pub(crate) fn note_removed_map_entry(&mut self) {
+        self.key_summary = ContainerTypeSummary::Unknown;
+        self.value_summary = ContainerTypeSummary::Unknown;
+        self.stamps.clear();
+    }
+
     pub(crate) fn note_cleared(&mut self) {
+        self.key_summary = ContainerTypeSummary::Empty;
         self.value_summary = ContainerTypeSummary::Empty;
         self.stamps.clear();
     }
@@ -387,5 +399,50 @@ mod tests {
             }),
             ContainerSummaryProof::Unknown
         );
+    }
+
+    #[test]
+    fn clearing_contracts_resets_map_key_and_value_summaries() {
+        let mut contracts = ContainerContracts::default();
+        contracts.note_inserted_map_entry(
+            Some(ShallowTypeKey::Primitive(PrimitiveTag::I64)),
+            Some(ShallowTypeKey::Primitive(PrimitiveTag::String)),
+        );
+
+        contracts.note_cleared();
+
+        assert_eq!(contracts.key_summary(), ContainerTypeSummary::Empty);
+        assert_eq!(contracts.value_summary(), ContainerTypeSummary::Empty);
+    }
+
+    #[test]
+    fn map_value_replacement_preserves_key_summary() {
+        let mut contracts = ContainerContracts::default();
+        contracts.note_inserted_map_entry(
+            Some(ShallowTypeKey::Primitive(PrimitiveTag::I64)),
+            Some(ShallowTypeKey::Primitive(PrimitiveTag::String)),
+        );
+
+        contracts.note_replaced_map_value();
+
+        assert_eq!(
+            contracts.key_summary(),
+            ContainerTypeSummary::Exact(ShallowTypeKey::Primitive(PrimitiveTag::I64))
+        );
+        assert_eq!(contracts.value_summary(), ContainerTypeSummary::Unknown);
+    }
+
+    #[test]
+    fn map_entry_removal_drops_stale_key_summary() {
+        let mut contracts = ContainerContracts::default();
+        contracts.note_inserted_map_entry(
+            Some(ShallowTypeKey::Primitive(PrimitiveTag::I64)),
+            Some(ShallowTypeKey::Primitive(PrimitiveTag::String)),
+        );
+
+        contracts.note_removed_map_entry();
+
+        assert_eq!(contracts.key_summary(), ContainerTypeSummary::Unknown);
+        assert_eq!(contracts.value_summary(), ContainerTypeSummary::Unknown);
     }
 }

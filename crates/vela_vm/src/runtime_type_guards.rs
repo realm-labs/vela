@@ -1561,7 +1561,9 @@ mod tests {
     use vela_common::PrimitiveTag;
 
     use super::*;
-    use crate::collection_mutation::{extend_map_slots, push_array_slot};
+    use crate::collection_mutation::{
+        clear_map, extend_map_slots, push_array_slot, remove_map_slot,
+    };
     use crate::heap::{HeapValue, ScriptHeap};
     use crate::script_map::ScriptMap;
 
@@ -1692,5 +1694,69 @@ mod tests {
                 debug_name: "scores".to_owned(),
             }
         );
+    }
+
+    #[test]
+    fn cleared_map_guard_does_not_use_stale_key_summary() {
+        let mut map = ScriptMap::new();
+        map.insert(Value::I64(1), Value::I64(10), None, "test map")
+            .expect("initial map key should be keyable");
+
+        let mut heap = ScriptHeap::new();
+        let reference = heap.allocate(HeapValue::Map(map));
+        let value = Value::HeapRef(reference);
+        let program = LinkedProgram::new();
+        let plan = TypeGuardPlan::Map {
+            key: Some(Box::new(TypeGuardPlan::Primitive(PrimitiveTag::String))),
+            value: None,
+        };
+
+        {
+            let mut heap_execution = HeapExecution::new(&mut heap);
+            clear_map(&mut heap_execution, reference, None, "test map clear")
+                .expect("map clear should succeed");
+        }
+
+        let mut heap_execution = HeapExecution::new(&mut heap);
+        let mut budget = ExecutionBudget::new(0, usize::MAX, usize::MAX);
+        let mut context = GuardExecutionContext::new(Some(&mut heap_execution), Some(&mut budget));
+        execute_linked_guard_plan(&value, &plan, &program, &mut context, "scores")
+            .expect("empty map should satisfy a different key contract after clear");
+
+        assert_eq!(budget.instructions_executed(), 0);
+    }
+
+    #[test]
+    fn removed_map_key_guard_does_not_use_stale_key_summary() {
+        let mut map = ScriptMap::new();
+        map.insert(Value::I64(1), Value::I64(10), None, "test map")
+            .expect("initial map key should be keyable");
+
+        let mut heap = ScriptHeap::new();
+        let reference = heap.allocate(HeapValue::Map(map));
+        let value = Value::HeapRef(reference);
+        let program = LinkedProgram::new();
+        let plan = TypeGuardPlan::Map {
+            key: Some(Box::new(TypeGuardPlan::Primitive(PrimitiveTag::String))),
+            value: None,
+        };
+
+        {
+            let mut heap_execution = HeapExecution::new(&mut heap);
+            remove_map_slot(
+                &mut heap_execution,
+                reference,
+                &Value::I64(1),
+                None,
+                "test map remove",
+            )
+            .expect("map remove should succeed");
+        }
+
+        let mut heap_execution = HeapExecution::new(&mut heap);
+        let mut budget = ExecutionBudget::unbounded();
+        let mut context = GuardExecutionContext::new(Some(&mut heap_execution), Some(&mut budget));
+        execute_linked_guard_plan(&value, &plan, &program, &mut context, "scores")
+            .expect("empty map should satisfy a different key contract after removal");
     }
 }

@@ -429,6 +429,20 @@ impl ScriptHeap {
         }
     }
 
+    pub(crate) fn note_container_map_value_replaced(&mut self, reference: GcRef) {
+        self.invalidate_container_contract_stamps(reference);
+        if let Some(contracts) = self.container_contracts.get_mut(&reference) {
+            contracts.note_replaced_map_value();
+        }
+    }
+
+    pub(crate) fn note_container_map_entry_removed(&mut self, reference: GcRef) {
+        self.invalidate_container_contract_stamps(reference);
+        if let Some(contracts) = self.container_contracts.get_mut(&reference) {
+            contracts.note_removed_map_entry();
+        }
+    }
+
     pub(crate) fn note_container_cleared(&mut self, reference: GcRef) {
         self.invalidate_container_contract_stamps(reference);
         if let Some(contracts) = self.container_contracts.get_mut(&reference) {

@@ -174,8 +174,7 @@ pub(crate) fn insert_map_slot(
             heap.heap
                 .note_container_map_entry_inserted(reference, &key, &inserted);
         } else {
-            heap.heap
-                .note_container_value_replaced_or_removed(reference);
+            heap.heap.note_container_map_value_replaced(reference);
         }
         return Ok(());
     }
@@ -232,8 +231,7 @@ pub(crate) fn extend_map_slots(
             values.insert_keyed(value_key.clone(), *key, *slot);
         }
         if had_replacement {
-            heap.heap
-                .note_container_value_replaced_or_removed(reference);
+            heap.heap.note_container_map_value_replaced(reference);
         }
         for (_, key, slot) in &inserted_entries {
             heap.heap
@@ -264,8 +262,7 @@ pub(crate) fn extend_map_slots(
         values.insert_keyed(value_key.clone(), *key, *slot);
     }
     if had_replacement {
-        heap.heap
-            .note_container_value_replaced_or_removed(reference);
+        heap.heap.note_container_map_value_replaced(reference);
     }
     for (_, key, slot) in &inserted_entries {
         heap.heap
@@ -285,8 +282,7 @@ pub(crate) fn remove_map_slot(
     let key = ValueKey::from_value(key, Some(&*heap), operation)?;
     let payload = map_slots_mut(heap, reference, operation)?.remove_keyed(&key);
     if payload.is_some() {
-        heap.heap
-            .note_container_value_replaced_or_removed(reference);
+        heap.heap.note_container_map_entry_removed(reference);
     }
     if !tracks_collection_growth(budget.as_deref()) {
         return Ok(payload);
