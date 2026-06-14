@@ -350,6 +350,49 @@ fn function_descriptor_parameterized_container_changes_are_rejected() {
 }
 
 #[test]
+fn function_descriptor_type_hints_compare_canonical_structures() {
+    let old_abi = HotReloadAbi::empty().function(
+        FunctionAbi::new(
+            "game::reward::grant",
+            EffectAbi::host_read(),
+            AccessAbi::public(),
+        )
+        .param(ParamAbi::new("scores").type_hint("Map<Player,i64>"))
+        .param(ParamAbi::new("seen").type_hint("Set<Player>"))
+        .return_type("Result<Map<Player,i64>,String>"),
+    );
+    let equivalent_formatting = HotReloadAbi::empty().function(
+        FunctionAbi::new(
+            "game::reward::grant",
+            EffectAbi::host_read(),
+            AccessAbi::public(),
+        )
+        .param(ParamAbi::new("scores").type_hint("Map< Player, i64 >"))
+        .param(ParamAbi::new("seen").type_hint("Set< Player >"))
+        .return_type("Result< Map<Player, i64>, String >"),
+    );
+
+    old_abi
+        .ensure_compatible_update(&equivalent_formatting)
+        .expect("canonical value-keyed type hints should be compatible");
+
+    let changed_key = HotReloadAbi::empty().function(
+        FunctionAbi::new(
+            "game::reward::grant",
+            EffectAbi::host_read(),
+            AccessAbi::public(),
+        )
+        .param(ParamAbi::new("scores").type_hint("Map<String, i64>"))
+        .param(ParamAbi::new("seen").type_hint("Set<Player>"))
+        .return_type("Result<Map<Player, i64>, String>"),
+    );
+    let error = old_abi
+        .ensure_compatible_update(&changed_key)
+        .expect_err("changed value-keyed map key contract should fail");
+    assert_eq!(error.code(), "reload.function.parameter_abi_changed");
+}
+
+#[test]
 fn function_descriptor_return_abi_changes_are_rejected() {
     let span = Span::new(SourceId::new(13), 15, 35);
     let old_abi = HotReloadAbi::empty().function(

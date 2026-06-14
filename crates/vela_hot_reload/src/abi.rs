@@ -1,11 +1,12 @@
 use std::collections::BTreeMap;
 
-use vela_common::{PrimitiveTag, Span};
+use vela_common::Span;
 use vela_hir::module_graph::ModuleGraph;
 use vela_reflect::modules::{DeclOrigin, FunctionDesc, FunctionParamDesc};
 use vela_reflect::registry::{
     MethodDesc, MethodParamDesc, TraitDesc, TraitMethodDesc, TypeRegistry,
 };
+use vela_registry::TypeHintDef;
 
 use crate::error::{HotReloadError, HotReloadErrorKind, HotReloadResult};
 use crate::module_abi::ModuleAbi;
@@ -763,22 +764,22 @@ pub(crate) fn trait_methods_compatible(old: &TraitMethodAbi, new: &TraitMethodAb
 pub(crate) fn type_hints_compatible(old: Option<&str>, new: Option<&str>) -> bool {
     match (old.map(type_hint_key), new.map(type_hint_key)) {
         (None, None) => true,
-        (Some(TypeHintKey::Primitive(old)), Some(TypeHintKey::Primitive(new))) => old == new,
-        (Some(TypeHintKey::Named(old)), Some(TypeHintKey::Named(new))) => old == new,
+        (Some(TypeHintKey::Parsed(old)), Some(TypeHintKey::Parsed(new))) => old == new,
+        (Some(TypeHintKey::Raw(old)), Some(TypeHintKey::Raw(new))) => old == new,
         _ => false,
     }
 }
 
-#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+#[derive(Clone, Debug, Eq, PartialEq)]
 enum TypeHintKey<'a> {
-    Primitive(PrimitiveTag),
-    Named(&'a str),
+    Parsed(TypeHintDef),
+    Raw(&'a str),
 }
 
 fn type_hint_key(type_hint: &str) -> TypeHintKey<'_> {
-    PrimitiveTag::from_name(type_hint)
-        .map(TypeHintKey::Primitive)
-        .unwrap_or(TypeHintKey::Named(type_hint))
+    TypeHintDef::parse(type_hint)
+        .map(TypeHintKey::Parsed)
+        .unwrap_or(TypeHintKey::Raw(type_hint))
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]

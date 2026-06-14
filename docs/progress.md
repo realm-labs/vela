@@ -61,7 +61,7 @@ metadata display/validation, macro-inferred `Vec`/array/set/map hints,
 including value-keyed Rust map/set inference such as `Map<i64, String>`,
 value-keyed map/set runtime containers, detached `OwnedValue` map entries with
 non-string serde key preservation, key-preserving reflection map reads,
-hot-reload ABI string comparison, and
+hot-reload ABI structured type-hint comparison, and
 execution-budget charging for deep guard scans are implemented. `Array.group_by`
 now materializes value-keyed maps from callback keys instead of requiring
 string keys, and iterator `collect_map` analysis now exposes erased value-keyed
