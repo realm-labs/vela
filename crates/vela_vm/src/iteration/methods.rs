@@ -109,12 +109,7 @@ pub(crate) fn next_method(
     budget: &mut Option<&mut ExecutionBudget>,
 ) -> VmResult<Value> {
     runtime_checks::expect_arity("next", args, 0)?;
-    let next = with_iterator_mut(
-        receiver,
-        heap,
-        "method next",
-        |iterator| Ok(iterator.next()),
-    )?;
+    let next = with_iterator_mut(receiver, heap, "method next", IteratorState::next)?;
     let Some(heap_ref) = heap.as_deref_mut() else {
         return type_error("method next");
     };
@@ -147,7 +142,7 @@ pub(crate) fn count_method(
     runtime_checks::expect_arity("count", args, 0)?;
     let count = with_iterator_mut(receiver, heap, "method count", |iterator| {
         let mut count = 0_i64;
-        while iterator.next().is_some() {
+        while iterator.next()?.is_some() {
             count = count.checked_add(1).ok_or_else(|| {
                 VmError::new(VmErrorKind::TypeMismatch {
                     operation: "method count",
@@ -196,7 +191,7 @@ pub(crate) fn collect_array_method(
     runtime_checks::expect_arity("collect_array", args, 0)?;
     let values = with_iterator_mut(receiver, heap, "method collect_array", |iterator| {
         let mut values = Vec::new();
-        while let Some(value) = iterator.next() {
+        while let Some(value) = iterator.next()? {
             values.push(value);
         }
         Ok(values)
@@ -444,7 +439,7 @@ fn collect_unique_values_without_callbacks(
     operation: &'static str,
 ) -> VmResult<Vec<Value>> {
     let mut values = Vec::new();
-    while let Some(value) = iterator.next() {
+    while let Some(value) = iterator.next()? {
         crate::set_methods::push_unique(&mut values, value, heap, operation)?;
     }
     Ok(values)
@@ -468,7 +463,7 @@ fn collect_map_entries_without_callbacks(
     operation: &'static str,
 ) -> VmResult<BTreeMap<String, Value>> {
     let mut values = BTreeMap::new();
-    while let Some(value) = iterator.next() {
+    while let Some(value) = iterator.next()? {
         let (key, value) = map_entry_value(&value, heap, operation)?;
         values.insert(key, value);
     }

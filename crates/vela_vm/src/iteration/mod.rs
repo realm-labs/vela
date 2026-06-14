@@ -15,6 +15,7 @@ pub(crate) use methods::{
     callback_count_over, callback_find, callback_find_over,
 };
 pub(crate) use source::make_iterator;
+pub(crate) use state::IteratorItemGuard;
 pub use state::IteratorState;
 pub(crate) use step::{
     RangeNextStep, dispatch_i64_range_next, dispatch_linked_i64_range_next,

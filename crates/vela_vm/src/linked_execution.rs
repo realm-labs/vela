@@ -168,7 +168,7 @@ impl Vm {
         }
         if call.check_param_guards {
             let mut guard_context = runtime_type_guards::GuardExecutionContext::new(
-                heap.as_deref(),
+                heap.as_deref_mut(),
                 budget.as_deref_mut(),
             );
             runtime_type_guards::execute_linked_param_guards(
@@ -421,7 +421,7 @@ impl Vm {
                 }
                 InstructionKind::GuardType { src, guard } => {
                     let mut guard_context = runtime_type_guards::GuardExecutionContext::new(
-                        heap.as_deref(),
+                        heap.as_deref_mut(),
                         budget.as_deref_mut(),
                     );
                     runtime_type_guards::execute_linked_register_guard(
@@ -614,7 +614,7 @@ impl Vm {
                         *src,
                     )? {
                         let mut guard_context = runtime_type_guards::GuardExecutionContext::new(
-                            heap.as_deref(),
+                            heap.as_deref_mut(),
                             budget.as_deref_mut(),
                         );
                         return runtime_type_guards::execute_linked_return_guard(
@@ -1113,7 +1113,7 @@ impl Vm {
                 }
                 InstructionKind::Return { src } => {
                     let mut guard_context = runtime_type_guards::GuardExecutionContext::new(
-                        heap.as_deref(),
+                        heap.as_deref_mut(),
                         budget.as_deref_mut(),
                     );
                     return runtime_type_guards::execute_linked_return_guard(

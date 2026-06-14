@@ -75,10 +75,10 @@ The language still rejects user or schema generic syntax such as `Player<T>`,
 the builtin contracts above and do not create monomorphized script functions or
 generic user-defined types.
 
-`Iterator<T>` syntax is accepted as metadata, but non-erased runtime
-`Iterator<T>` contracts are currently rejected at checked VM boundaries until
-lazy item guards are implemented. `Iterator<Any>` and erased `Iterator` remain
-ordinary outer iterator contracts.
+`Iterator<T>` contracts validate the outer iterator at checked boundaries
+without consuming the cursor. Non-erased item contracts are enforced lazily as
+the iterator yields values through `next()`, `for`, or terminal methods.
+`Iterator<Any>` and erased `Iterator` remain ordinary outer iterator contracts.
 
 ## Hot Reload And Host Metadata
 

@@ -5,10 +5,34 @@ use crate::method_runtime::{MethodRuntime, call_callback};
 use crate::ranges::RangeCursor;
 use crate::runtime_checks::is_truthy;
 use crate::{Value, VmError, VmErrorKind, VmResult};
+use vela_bytecode::{TypeGuardPlan, UnlinkedTypeGuardPlan};
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct IteratorState {
     cursor: IteratorCursor,
+    item_guards: Vec<IteratorItemGuard>,
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub(crate) enum IteratorItemGuard {
+    Unlinked {
+        plan: UnlinkedTypeGuardPlan,
+        debug_name: String,
+    },
+    Linked {
+        plan: TypeGuardPlan,
+        debug_name: String,
+    },
+}
+
+impl IteratorItemGuard {
+    pub(crate) fn unlinked(plan: UnlinkedTypeGuardPlan, debug_name: String) -> Self {
+        Self::Unlinked { plan, debug_name }
+    }
+
+    pub(crate) fn linked(plan: TypeGuardPlan, debug_name: String) -> Self {
+        Self::Linked { plan, debug_name }
+    }
 }
 
 #[derive(Clone, Debug, PartialEq)]
@@ -93,6 +117,7 @@ impl IteratorState {
     pub(crate) fn from_range_cursor(cursor: RangeCursor) -> Self {
         Self {
             cursor: IteratorCursor::Range(cursor),
+            item_guards: Vec::new(),
         }
     }
 
@@ -103,6 +128,7 @@ impl IteratorState {
                 next: 0,
                 len,
             },
+            item_guards: Vec::new(),
         }
     }
 
@@ -113,6 +139,7 @@ impl IteratorState {
                 next: 0,
                 len,
             },
+            item_guards: Vec::new(),
         }
     }
 
@@ -123,6 +150,7 @@ impl IteratorState {
                 keys,
                 next: 0,
             },
+            item_guards: Vec::new(),
         }
     }
 
@@ -133,6 +161,7 @@ impl IteratorState {
                 keys,
                 next: 0,
             },
+            item_guards: Vec::new(),
         }
     }
 
@@ -143,6 +172,7 @@ impl IteratorState {
                 keys,
                 next: 0,
             },
+            item_guards: Vec::new(),
         }
     }
 
@@ -152,12 +182,14 @@ impl IteratorState {
                 source,
                 byte_next: 0,
             },
+            item_guards: Vec::new(),
         }
     }
 
     pub(crate) fn from_string_bytes_source(source: GcRef) -> Self {
         Self {
             cursor: IteratorCursor::StringBytes { source, next: 0 },
+            item_guards: Vec::new(),
         }
     }
 
@@ -168,6 +200,7 @@ impl IteratorState {
                 next: 0,
                 len,
             },
+            item_guards: Vec::new(),
         }
     }
 
@@ -177,6 +210,7 @@ impl IteratorState {
                 source: Box::new(source),
                 callback,
             },
+            item_guards: Vec::new(),
         }
     }
 
@@ -186,6 +220,7 @@ impl IteratorState {
                 source: Box::new(source),
                 callback,
             },
+            item_guards: Vec::new(),
         }
     }
 
@@ -195,6 +230,7 @@ impl IteratorState {
                 source: Box::new(source),
                 remaining,
             },
+            item_guards: Vec::new(),
         }
     }
 
@@ -204,33 +240,54 @@ impl IteratorState {
                 source: Box::new(source),
                 remaining,
             },
+            item_guards: Vec::new(),
         }
     }
 
     fn values_at(values: Vec<Value>, next: usize) -> Self {
         Self {
             cursor: IteratorCursor::Values { values, next },
+            item_guards: Vec::new(),
         }
     }
 
-    pub(crate) fn next(&mut self) -> Option<Value> {
+    pub(crate) fn add_item_guard(&mut self, guard: IteratorItemGuard) {
+        if !self.item_guards.contains(&guard) {
+            self.item_guards.push(guard);
+        }
+    }
+
+    pub(crate) fn next(&mut self) -> VmResult<Option<Value>> {
+        if !self.item_guards.is_empty() {
+            return Err(VmError::new(VmErrorKind::TypeMismatch {
+                operation: "guarded iterator",
+            }));
+        }
+        self.next_without_runtime()
+    }
+
+    fn next_without_runtime(&mut self) -> VmResult<Option<Value>> {
         match &mut self.cursor {
             IteratorCursor::Values { values, next } => {
-                let value = values.get(*next).copied()?;
+                let Some(value) = values.get(*next).copied() else {
+                    return Ok(None);
+                };
                 *next = next.saturating_add(1);
-                Some(value)
+                Ok(Some(value))
             }
-            IteratorCursor::Range(cursor) => cursor.next().map(Value::i64),
+            IteratorCursor::Range(cursor) => Ok(cursor.next().map(Value::i64)),
             IteratorCursor::Take { source, remaining } => {
                 if *remaining == 0 {
-                    return None;
+                    return Ok(None);
                 }
                 *remaining = remaining.saturating_sub(1);
                 source.next()
             }
             IteratorCursor::Skip { source, remaining } => {
                 while *remaining > 0 {
-                    source.next()?;
+                    if source.next()?.is_none() {
+                        return Ok(None);
+                    }
                     *remaining = remaining.saturating_sub(1);
                 }
                 source.next()
@@ -244,7 +301,7 @@ impl IteratorState {
             | IteratorCursor::StringBytes { .. }
             | IteratorCursor::Bytes { .. }
             | IteratorCursor::Map { .. }
-            | IteratorCursor::Filter { .. } => None,
+            | IteratorCursor::Filter { .. } => Ok(None),
         }
     }
 
@@ -254,8 +311,8 @@ impl IteratorState {
         operation: &'static str,
         protected_values: &[Value],
     ) -> VmResult<Option<Value>> {
-        match &mut self.cursor {
-            IteratorCursor::Values { .. } | IteratorCursor::Range(_) => Ok(self.next()),
+        let next = match &mut self.cursor {
+            IteratorCursor::Values { .. } | IteratorCursor::Range(_) => self.next_without_runtime(),
             IteratorCursor::Array { source, next, len } => next_indexed_heap_value(
                 *source,
                 next,
@@ -317,7 +374,7 @@ impl IteratorState {
             IteratorCursor::Map { source, callback } => {
                 let Some(value) = source.next_with_runtime(runtime, operation, protected_values)?
                 else {
-                    return Ok(None);
+                    return self.validate_item(None, runtime);
                 };
                 let protected = callback_protected_values(source, *callback, protected_values);
                 call_callback(runtime, operation, callback, &[value], &protected).map(Some)
@@ -325,15 +382,16 @@ impl IteratorState {
             IteratorCursor::Filter { source, callback } => loop {
                 let Some(value) = source.next_with_runtime(runtime, operation, protected_values)?
                 else {
-                    return Ok(None);
+                    return self.validate_item(None, runtime);
                 };
                 let protected = callback_protected_values(source, *callback, protected_values);
                 let predicate = call_callback(runtime, operation, callback, &[value], &protected)?;
                 if is_truthy(&predicate) {
-                    return Ok(Some(value));
+                    break Ok(Some(value));
                 }
             },
-        }
+        }?;
+        self.validate_item(next, runtime)
     }
 
     pub(crate) fn trace_heap_refs(&self, refs: &mut Vec<GcRef>) {
@@ -426,6 +484,20 @@ impl IteratorState {
             | IteratorCursor::Take { .. }
             | IteratorCursor::Skip { .. } => 0,
         }
+    }
+
+    fn validate_item(
+        &self,
+        value: Option<Value>,
+        runtime: &mut MethodRuntime<'_, '_, '_>,
+    ) -> VmResult<Option<Value>> {
+        let Some(value) = value else {
+            return Ok(None);
+        };
+        for guard in &self.item_guards {
+            crate::runtime_type_guards::execute_iterator_item_guard(&value, guard, runtime)?;
+        }
+        Ok(Some(value))
     }
 }
 

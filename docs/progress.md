@@ -58,12 +58,12 @@ RuntimeTypeFacts, recursive guard plans, VM deep checks for materialized
 array/map/set values, compiler-owned typed container mutator checks, embedding
 metadata display/validation, macro-inferred `Vec`/array/set/string-keyed map
 hints, hot-reload ABI string comparison, and execution-budget charging for
-deep guard scans are implemented. Non-erased `Iterator<T>` guard plans are
-explicitly rejected at runtime boundaries until lazy item-guarded iterator
-cursors exist. Mutation-focused benchmark/profile rows now cover proven typed,
-guarded erased-value, and erased-container array/map updates. Remaining gaps
-are container summaries and contract stamps, and lazy `Iterator<T>` item
-guards.
+deep guard scans are implemented. Non-erased `Iterator<T>` contracts now mark
+iterator cursors with lazy item guards so checked boundaries do not consume
+items, and yielded mismatches fail at `next()`/iteration time. Mutation-focused
+benchmark/profile rows now cover proven typed, guarded erased-value, and
+erased-container array/map updates. The remaining gap is container summaries
+and contract stamps.
 
 Post-MVP performance remains a separate track: measure first, then optimize the
 non-JIT bytecode interpreter toward Lua 5.x comparable host-boundary workloads

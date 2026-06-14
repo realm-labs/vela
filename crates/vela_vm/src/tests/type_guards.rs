@@ -313,7 +313,64 @@ fn main(values: Set<String>) {
 }
 
 #[test]
-fn linked_parameter_guard_rejects_parameterized_iterator_contracts_until_item_guards_exist() {
+fn linked_parameter_guard_marks_parameterized_iterators_without_consuming() {
+    let program = compile_program_source(
+        SourceId::new(1),
+        r#"
+fn main(values: Iterator<i64>) {
+    return values.next().unwrap_or(0);
+}
+"#,
+    )
+    .expect("program should compile");
+    let mut budget = ExecutionBudget::unbounded();
+
+    let value = run_linked_test_program_with_budget(
+        &Vm::new(),
+        &program,
+        "main",
+        &[OwnedValue::iterator([OwnedValue::i64(1)])],
+        &mut budget,
+    )
+    .expect("Iterator<i64> guard should validate lazily without consuming entry item");
+
+    assert_eq!(value, OwnedValue::i64(1));
+}
+
+#[test]
+fn linked_parameter_guard_rejects_parameterized_iterator_item_mismatch_when_yielded() {
+    let program = compile_program_source(
+        SourceId::new(1),
+        r#"
+fn main(values: Iterator<i64>) {
+    return values.next().unwrap_or(0);
+}
+"#,
+    )
+    .expect("program should compile");
+    let mut budget = ExecutionBudget::unbounded();
+
+    let error = run_linked_test_program_with_budget(
+        &Vm::new(),
+        &program,
+        "main",
+        &[OwnedValue::iterator([OwnedValue::String("bad".to_owned())])],
+        &mut budget,
+    )
+    .expect_err("Iterator<i64> should validate yielded items lazily");
+
+    assert_eq!(
+        error.kind(),
+        VmErrorKind::TypeContractViolation {
+            expected: "i64".to_owned(),
+            actual: "String".to_owned(),
+            debug_name: "values".to_owned(),
+        }
+    );
+}
+
+#[test]
+fn linked_parameter_guard_does_not_consume_invalid_unread_iterator_items() {
     let program = compile_program_source(
         SourceId::new(1),
         r#"
@@ -325,23 +382,16 @@ fn main(values: Iterator<i64>) {
     .expect("program should compile");
     let mut budget = ExecutionBudget::unbounded();
 
-    let error = run_linked_test_program_with_budget(
+    let value = run_linked_test_program_with_budget(
         &Vm::new(),
         &program,
         "main",
-        &[OwnedValue::iterator([OwnedValue::i64(1)])],
+        &[OwnedValue::iterator([OwnedValue::String("bad".to_owned())])],
         &mut budget,
     )
-    .expect_err("typed iterator contracts should not be trusted without item guards");
+    .expect("Iterator<i64> entry guard should not eagerly consume items");
 
-    assert_eq!(
-        error.kind(),
-        VmErrorKind::TypeContractViolation {
-            expected: "Iterator<T>".to_owned(),
-            actual: "Iterator".to_owned(),
-            debug_name: "values".to_owned(),
-        }
-    );
+    assert_eq!(value, OwnedValue::i64(1));
 }
 
 #[test]
