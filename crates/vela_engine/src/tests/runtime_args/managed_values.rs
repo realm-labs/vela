@@ -528,6 +528,46 @@ fn read_name() {
     );
 }
 
+#[cfg(feature = "serde")]
+#[test]
+fn runtime_from_value_rejects_non_string_map_keys_without_loss() {
+    let engine = Engine::builder().build().expect("engine should build");
+    let program = engine
+        .compile_source_with_id(
+            SourceId::new(1),
+            r#"
+fn make_scores() {
+    return [
+        MapEntry { key: 1, value: 10 },
+        MapEntry { key: 2, value: 20 },
+    ].iter().collect_map();
+}
+"#,
+        )
+        .expect("program should compile");
+    let mut runtime = Runtime::new(engine, program);
+
+    let scores = runtime
+        .call("make_scores", CallArgs::new(), CallOptions::unbounded())
+        .expect("scores should be returned as runtime value");
+    let error = runtime
+        .from_value::<BTreeMap<String, i64>>(&scores)
+        .expect_err("runtime serde object maps require string keys");
+
+    assert!(matches!(
+        error.kind(),
+        VmErrorKind::TypeMismatch {
+            operation: "serde owned value conversion",
+        }
+    ));
+    assert_eq!(
+        runtime
+            .value_to_owned(&scores)
+            .expect("runtime value can materialize without key loss"),
+        OwnedValue::map([(1_i64, 10_i64), (2_i64, 20_i64)])
+    );
+}
+
 #[test]
 fn runtime_insert_global_accepts_runtime_managed_value_with_single_api() {
     let engine = Engine::builder().build().expect("engine should build");
