@@ -271,6 +271,38 @@ fn linked_standard_value_method_caches_collection_membership_targets() {
     );
 }
 
+#[test]
+fn linked_standard_value_method_cache_set_has_uses_record_identity() {
+    let (program, site, dispatch, method_id) = linked_set_has_record_identity_cache_program();
+    let caches = RecordingMethodCaches::new(1);
+
+    assert_eq!(
+        run_linked_method_cache_program_with_standard_natives(&program, &caches),
+        Ok(RuntimeValue::Bool(false))
+    );
+    let entry = caches
+        .entry(site)
+        .expect("standard set membership cache should populate");
+    assert_eq!(entry.dispatch, dispatch);
+    let MethodInlineCacheTarget::Value {
+        method_id: cached_method,
+        standard_method: Some(standard_method),
+    } = entry.target
+    else {
+        panic!("standard set membership cache should store value target");
+    };
+    assert_eq!(cached_method, method_id);
+    assert_eq!(standard_method.receiver, StandardMethodReceiver::Set);
+    assert_eq!(standard_method.target, StandardMethodInlineCacheTarget::Has);
+    assert_eq!(caches.set_count(), 2);
+
+    assert_eq!(
+        run_linked_method_cache_program_with_standard_natives(&program, &caches),
+        Ok(RuntimeValue::Bool(false))
+    );
+    assert_eq!(caches.set_count(), 2);
+}
+
 fn assert_membership_cache(
     fixture: LinkedMethodCacheFixture,
     receiver: StandardMethodReceiver,
