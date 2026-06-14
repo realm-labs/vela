@@ -1,5 +1,6 @@
 use crate::collection_mutation;
 use crate::heap::HeapValue;
+use crate::value_key::ValueKey;
 use crate::{
     ExecutionBudget, HeapExecution, StandardMethodInlineCacheTarget, Value, VmError, VmErrorKind,
     VmResult, store_runtime_value,
@@ -40,7 +41,7 @@ fn call_cached_set_add(
     };
     let key = SetKey::from_value(&args[0], Some(&*heap), "method add")?;
     if set_slots(heap, reference, "method add")?
-        .iter()
+        .values()
         .any(|slot| slot_key(slot, heap).as_ref() == Ok(&key))
     {
         return Ok(Value::Bool(false));
@@ -62,7 +63,7 @@ fn call_cached_set_remove(
     };
     let key = SetKey::from_value(&args[0], Some(&*heap), "method remove")?;
     let indexes = set_slots(heap, reference, "method remove")?
-        .iter()
+        .values()
         .enumerate()
         .filter_map(|(index, slot)| (slot_key(slot, heap).as_ref() == Ok(&key)).then_some(index))
         .collect::<Vec<_>>();
@@ -156,8 +157,8 @@ fn set_slot_entry(
     reference: crate::heap::GcRef,
     operation: &'static str,
 ) -> VmResult<SetSlotEntry> {
-    let values = set_slots(heap, reference, operation)?;
-    match values {
+    let values = set_slots(heap, reference, operation)?.values_vec();
+    match values.as_slice() {
         [] => Ok(SetSlotEntry::Empty),
         [Value::Missing] => type_error("missing value"),
         [value] => Ok(SetSlotEntry::Single(*value)),
@@ -175,7 +176,7 @@ fn extend_set_slots(
     operation: &'static str,
 ) -> VmResult<()> {
     let mut keys = set_slots(heap, reference, operation)?
-        .iter()
+        .values()
         .map(|slot| slot_key(slot, heap))
         .collect::<VmResult<Vec<_>>>()?;
     let mut slots = Vec::new();
@@ -198,17 +199,17 @@ fn set_slot_values(
     let Some(HeapValue::Set(values)) = heap.heap.get(reference) else {
         return type_error(operation);
     };
-    if values.iter().any(|value| matches!(value, Value::Missing)) {
+    if values.values().any(|value| matches!(value, Value::Missing)) {
         return type_error("missing value");
     }
-    Ok(values.clone())
+    Ok(values.values_vec())
 }
 
 fn set_slots<'a>(
     heap: &'a HeapExecution<'_>,
     reference: crate::heap::GcRef,
     operation: &'static str,
-) -> VmResult<&'a [Value]> {
+) -> VmResult<&'a crate::script_set::ScriptSet> {
     let Some(HeapValue::Set(values)) = heap.heap.get(reference) else {
         return type_error(operation);
     };
@@ -223,47 +224,10 @@ fn set_reference(receiver: &Value, operation: &'static str) -> VmResult<crate::h
 }
 
 fn slot_key(slot: &Value, heap: &HeapExecution<'_>) -> VmResult<SetKey> {
-    match slot {
-        Value::Null => Ok(SetKey::Null),
-        Value::Bool(value) => Ok(SetKey::Bool(*value)),
-        Value::I64(value) => Ok(SetKey::Int(*value)),
-        Value::F64(value) if value.is_finite() => Ok(SetKey::Float(value.to_bits())),
-        Value::HeapRef(reference) => match heap.heap.get(*reference) {
-            Some(HeapValue::String(value)) => Ok(SetKey::String(value.clone())),
-            _ => type_error("method set"),
-        },
-        _ => type_error("method set"),
-    }
+    SetKey::from_value(slot, Some(heap), "method set")
 }
 
-#[derive(Clone, Debug, PartialEq)]
-enum SetKey {
-    Null,
-    Bool(bool),
-    Int(i64),
-    Float(u64),
-    String(String),
-}
-
-impl SetKey {
-    fn from_value(
-        value: &Value,
-        heap: Option<&HeapExecution<'_>>,
-        operation: &'static str,
-    ) -> VmResult<Self> {
-        match value {
-            Value::Null => Ok(Self::Null),
-            Value::Bool(value) => Ok(Self::Bool(*value)),
-            Value::I64(value) => Ok(Self::Int(*value)),
-            Value::F64(value) if value.is_finite() => Ok(Self::Float(value.to_bits())),
-            Value::HeapRef(reference) => match heap.and_then(|heap| heap.heap.get(*reference)) {
-                Some(HeapValue::String(value)) => Ok(Self::String(value.clone())),
-                _ => type_error(operation),
-            },
-            _ => type_error(operation),
-        }
-    }
-}
+type SetKey = ValueKey;
 
 fn type_error<T>(operation: &'static str) -> VmResult<T> {
     Err(VmError::new(VmErrorKind::TypeMismatch { operation }))

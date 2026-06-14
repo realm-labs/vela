@@ -13,6 +13,7 @@ use crate::heap_execution::HeapExecution;
 use crate::option_result::std_enum_identity_for_names;
 use crate::owned_value::{OwnedClosureValue, OwnedIteratorState, OwnedValue};
 use crate::script_object::ScriptFields;
+use crate::script_set::ScriptSet;
 use crate::value::{ClosureCode, ClosureValue, Value};
 
 pub(crate) fn value_from_constant(
@@ -134,6 +135,7 @@ pub(crate) fn make_set_value(
     check_collection_len("set", 0, values.len(), budget.as_deref(), |budget| {
         budget.collection_limits().max_set_len
     })?;
+    let values = ScriptSet::from_values(values, Some(&*heap), "set construction")?;
     allocate_heap_value(HeapValue::Set(values), heap, budget)
 }
 
@@ -197,6 +199,7 @@ pub(crate) fn owned_to_value(
                 .into_iter()
                 .map(|value| owned_to_value(value, heap, budget.as_deref_mut()))
                 .collect::<VmResult<Vec<_>>>()?;
+            let values = ScriptSet::from_values(values, Some(&*heap), "owned set")?;
             allocate_heap_value(HeapValue::Set(values), heap, budget)
         }
         OwnedValue::Map(values) => {
@@ -328,7 +331,7 @@ fn heap_value_to_owned(
             .collect::<VmResult<BTreeMap<_, _>>>()
             .map(OwnedValue::Map),
         HeapValue::Set(values) => values
-            .iter()
+            .values()
             .map(|value| value_to_owned(value, heap))
             .collect::<VmResult<Vec<_>>>()
             .map(OwnedValue::Set),

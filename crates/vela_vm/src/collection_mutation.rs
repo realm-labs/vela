@@ -2,6 +2,8 @@ use std::collections::BTreeMap;
 use std::mem;
 
 use crate::heap::{GcRef, HeapValue};
+use crate::script_set::ScriptSet;
+use crate::value_key::ValueKey;
 use crate::{
     ExecutionBudget, HeapExecution, Value, VmError, VmErrorKind, VmResult, stored_runtime_value,
 };
@@ -293,8 +295,9 @@ pub(crate) fn push_set_slot(
     operation: &'static str,
 ) -> VmResult<()> {
     let inserted = slot;
+    let key = ValueKey::from_value(&slot, Some(&*heap), operation)?;
     if !tracks_collection_growth(budget.as_deref()) {
-        set_slots_mut(heap, reference, operation)?.push(slot);
+        set_slots_mut(heap, reference, operation)?.insert_keyed(key, slot);
         heap.heap
             .note_container_value_inserted(reference, &inserted);
         return Ok(());
@@ -304,11 +307,10 @@ pub(crate) fn push_set_slot(
     check_collection_len("set", len, 1, budget.as_deref(), |budget| {
         budget.collection_limits().max_set_len
     })?;
-    reserve_vec_slot(heap, reference, 1, operation)?;
     let precharged_growth = mem::size_of::<Value>();
     charge_growth(budget.as_deref_mut(), precharged_growth)?;
 
-    set_slots_mut(heap, reference, operation)?.push(slot);
+    set_slots_mut(heap, reference, operation)?.insert_keyed(key, slot);
     heap.heap
         .note_container_value_inserted(reference, &inserted);
     heap.heap
@@ -322,10 +324,20 @@ pub(crate) fn extend_set_slots(
     mut budget: Option<&mut ExecutionBudget>,
     operation: &'static str,
 ) -> VmResult<()> {
-    let slots = slots.into_iter().collect::<Vec<_>>();
+    let mut slots = slots
+        .into_iter()
+        .map(|slot| Ok((ValueKey::from_value(&slot, Some(&*heap), operation)?, slot)))
+        .collect::<VmResult<Vec<_>>>()?;
+    slots.retain(|(key, _)| {
+        !set_slots(heap, reference, operation).is_ok_and(|set| set.contains_key(key))
+    });
+    dedup_keyed_slots(&mut slots);
     if !tracks_collection_growth(budget.as_deref()) {
-        set_slots_mut(heap, reference, operation)?.extend(slots.iter().copied());
-        for slot in &slots {
+        let set = set_slots_mut(heap, reference, operation)?;
+        for (key, slot) in &slots {
+            set.insert_keyed(key.clone(), *slot);
+        }
+        for (_, slot) in &slots {
             heap.heap.note_container_value_inserted(reference, slot);
         }
         return Ok(());
@@ -336,12 +348,14 @@ pub(crate) fn extend_set_slots(
     check_collection_len("set", len, additional, budget.as_deref(), |budget| {
         budget.collection_limits().max_set_len
     })?;
-    reserve_vec_slot(heap, reference, additional, operation)?;
     let precharged_growth = additional.saturating_mul(mem::size_of::<Value>());
     charge_growth(budget.as_deref_mut(), precharged_growth)?;
 
-    set_slots_mut(heap, reference, operation)?.extend(slots.iter().copied());
-    for slot in &slots {
+    let set = set_slots_mut(heap, reference, operation)?;
+    for (key, slot) in &slots {
+        set.insert_keyed(key.clone(), *slot);
+    }
+    for (_, slot) in &slots {
         heap.heap.note_container_value_inserted(reference, slot);
     }
     heap.heap
@@ -355,14 +369,18 @@ pub(crate) fn remove_set_slots(
     budget: Option<&mut ExecutionBudget>,
     operation: &'static str,
 ) -> VmResult<bool> {
-    let values = set_slots_mut(heap, reference, operation)?;
-    let before = values.len();
+    let before = set_slots(heap, reference, operation)?.len();
+    let snapshot = set_slots(heap, reference, operation)?.values_vec();
     let mut indexes = indexes.into_iter().collect::<Vec<_>>();
     indexes.sort_unstable_by(|left, right| right.cmp(left));
+    let mut changed = false;
     for index in indexes {
-        values.remove(index);
+        if let Some(value) = snapshot.get(index) {
+            let key = ValueKey::from_value(value, Some(&*heap), operation)?;
+            changed |= set_slots_mut(heap, reference, operation)?.remove_keyed(&key);
+        }
     }
-    let changed = values.len() != before;
+    let changed = changed && set_slots(heap, reference, operation)?.len() != before;
     if changed {
         heap.heap
             .note_container_value_replaced_or_removed(reference);
@@ -441,7 +459,7 @@ fn reserve_vec_slot(
         .get_mut(reference)
         .map_err(|_| VmError::new(VmErrorKind::TypeMismatch { operation }))?;
     let values = match value {
-        HeapValue::Array(values) | HeapValue::Set(values) => values,
+        HeapValue::Array(values) => values,
         _ => return type_error(operation),
     };
     values
@@ -471,6 +489,17 @@ fn array_slots_mut<'a>(
     Ok(values)
 }
 
+fn dedup_keyed_slots(slots: &mut Vec<(ValueKey, Value)>) {
+    let mut keys = Vec::new();
+    slots.retain(|(key, _)| {
+        if keys.contains(key) {
+            return false;
+        }
+        keys.push(key.clone());
+        true
+    });
+}
+
 fn map_slots<'a>(
     heap: &'a HeapExecution<'_>,
     reference: GcRef,
@@ -497,7 +526,7 @@ fn set_slots<'a>(
     heap: &'a HeapExecution<'_>,
     reference: GcRef,
     operation: &'static str,
-) -> VmResult<&'a [Value]> {
+) -> VmResult<&'a ScriptSet> {
     let Some(HeapValue::Set(values)) = heap.heap.get(reference) else {
         return type_error(operation);
     };
@@ -508,7 +537,7 @@ fn set_slots_mut<'a>(
     heap: &'a mut HeapExecution<'_>,
     reference: GcRef,
     operation: &'static str,
-) -> VmResult<&'a mut Vec<Value>> {
+) -> VmResult<&'a mut ScriptSet> {
     let Some(HeapValue::Set(values)) = heap.heap.get_mut(reference).ok() else {
         return type_error(operation);
     };
@@ -523,6 +552,7 @@ fn type_error<T>(operation: &'static str) -> VmResult<T> {
 mod tests {
     use crate::budget::CollectionLimits;
     use crate::heap::{HeapValue, ScriptHeap};
+    use crate::script_set::ScriptSet;
     use crate::{ExecutionBudget, HeapExecution, Value, VmErrorKind};
 
     use super::{insert_map_slot, push_array_slot, push_set_slot};
@@ -641,7 +671,7 @@ mod tests {
     #[test]
     fn set_add_rejects_length_limit_before_mutation() {
         let mut heap = ScriptHeap::new();
-        let reference = heap.allocate(HeapValue::Set(Vec::new()));
+        let reference = heap.allocate(HeapValue::Set(ScriptSet::new()));
         let mut heap_execution = HeapExecution::new(&mut heap);
         let mut budget = ExecutionBudget::unbounded().with_collection_limits(CollectionLimits {
             max_array_len: usize::MAX,
@@ -667,7 +697,7 @@ mod tests {
         ));
         assert_eq!(
             heap_execution.heap.get(reference),
-            Some(&HeapValue::Set(Vec::new()))
+            Some(&HeapValue::Set(ScriptSet::new()))
         );
     }
 }

@@ -2,7 +2,7 @@ use crate::collection_mutation;
 use crate::heap::HeapValue;
 use crate::{ExecutionBudget, HeapExecution, Value, VmResult, store_runtime_value};
 
-use super::{SetKey, expect_arity, set_values, slot_key, type_error};
+use super::{SetKey, expect_arity, set_values, type_error};
 
 pub(crate) fn add(
     receiver: &mut Value,
@@ -20,10 +20,7 @@ pub(crate) fn add(
             let Some(HeapValue::Set(values)) = heap.heap.get(*reference) else {
                 return type_error("method add");
             };
-            if values
-                .iter()
-                .any(|value| slot_key(value, &*heap).as_ref() == Ok(&key))
-            {
+            if values.contains_key(&key) {
                 return Ok(Value::Bool(false));
             }
             let slot = store_runtime_value(&args[0], heap, budget.as_deref_mut())?;
@@ -50,10 +47,11 @@ pub(crate) fn remove(
                 return type_error("method remove");
             };
             let indexes = values
-                .iter()
+                .values()
                 .enumerate()
                 .filter_map(|(index, value)| {
-                    (slot_key(value, &*heap).as_ref() == Ok(&key)).then_some(index)
+                    (SetKey::from_value(value, Some(&*heap), "method remove").as_ref() == Ok(&key))
+                        .then_some(index)
                 })
                 .collect::<Vec<_>>();
             let changed = collection_mutation::remove_set_slots(
@@ -104,8 +102,8 @@ pub(crate) fn extend(
                 return type_error("method extend");
             };
             let mut keys = values
-                .iter()
-                .map(|slot| slot_key(slot, &*heap))
+                .values()
+                .map(|slot| SetKey::from_value(slot, Some(&*heap), "method extend"))
                 .collect::<VmResult<Vec<_>>>()?;
             let mut slots = Vec::new();
             for value in extension {

@@ -313,9 +313,8 @@ pub(crate) fn len(receiver: &Value, heap: Option<&HeapExecution<'_>>) -> VmResul
             match value {
                 HeapValue::String(value) => usize_to_i64(value.len(), "method len"),
                 HeapValue::Bytes(value) => usize_to_i64(value.len(), "method len"),
-                HeapValue::Array(values) | HeapValue::Set(values) => {
-                    usize_to_i64(values.len(), "method len")
-                }
+                HeapValue::Array(values) => usize_to_i64(values.len(), "method len"),
+                HeapValue::Set(values) => usize_to_i64(values.len(), "method len"),
                 HeapValue::Map(values) => usize_to_i64(values.len(), "method len"),
                 HeapValue::Record { fields: values, .. }
                 | HeapValue::Enum { fields: values, .. } => {
@@ -340,7 +339,8 @@ pub(crate) fn is_empty(receiver: &Value, heap: Option<&HeapExecution<'_>>) -> Vm
             match value {
                 HeapValue::String(value) => Ok(value.is_empty()),
                 HeapValue::Bytes(value) => Ok(value.is_empty()),
-                HeapValue::Array(values) | HeapValue::Set(values) => Ok(values.is_empty()),
+                HeapValue::Array(values) => Ok(values.is_empty()),
+                HeapValue::Set(values) => Ok(values.is_empty()),
                 HeapValue::Map(values) => Ok(values.is_empty()),
                 HeapValue::Record { fields: values, .. }
                 | HeapValue::Enum { fields: values, .. } => Ok(values.is_empty()),

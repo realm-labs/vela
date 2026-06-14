@@ -455,8 +455,8 @@ fn copied_container_values(
     let values = heap
         .and_then(|heap| heap.heap.get(reference))
         .and_then(|value| match (kind, value) {
-            (ContainerGuardKind::Array, HeapValue::Array(values))
-            | (ContainerGuardKind::Set, HeapValue::Set(values)) => Some(values.to_vec()),
+            (ContainerGuardKind::Array, HeapValue::Array(values)) => Some(values.to_vec()),
+            (ContainerGuardKind::Set, HeapValue::Set(values)) => Some(values.values_vec()),
             (ContainerGuardKind::MapValues, HeapValue::Map(values)) => {
                 Some(values.values().copied().collect())
             }

@@ -46,6 +46,7 @@ mod script_method_calls;
 mod script_methods;
 mod script_object;
 mod script_object_construction;
+mod script_set;
 #[cfg(feature = "serde")]
 pub mod serde;
 #[cfg(all(test, feature = "serde"))]

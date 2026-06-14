@@ -13,6 +13,7 @@ use crate::container_contracts::{
 };
 use crate::iteration::IteratorState;
 use crate::script_object::ScriptFields;
+use crate::script_set::ScriptSet;
 use crate::value::{ClosureValue, Value};
 use crate::{ExecutionBudget, VmError, VmErrorKind, VmResult};
 
@@ -45,7 +46,7 @@ pub enum HeapValue {
     Bytes(Vec<u8>),
     Array(Vec<Value>),
     Map(BTreeMap<String, Value>),
-    Set(Vec<Value>),
+    Set(ScriptSet),
     Record {
         type_name: String,
         identity: Option<RecordIdentity>,
@@ -101,8 +102,11 @@ impl HeapValue {
     fn trace_refs(&self, refs: &mut Vec<GcRef>) {
         match self {
             Self::String(_) | Self::Bytes(_) | Self::PathProxy(_) => {}
-            Self::Array(values) | Self::Set(values) => {
+            Self::Array(values) => {
                 values.iter().for_each(|value| value.trace_refs(refs));
+            }
+            Self::Set(values) => {
+                values.values().for_each(|value| value.trace_refs(refs));
             }
             Self::Map(values) => {
                 values.values().for_each(|value| value.trace_refs(refs));
@@ -125,9 +129,10 @@ impl HeapValue {
         match self {
             Self::String(value) => mem::size_of::<String>() + value.len(),
             Self::Bytes(value) => mem::size_of::<Vec<u8>>() + value.len(),
-            Self::Array(values) | Self::Set(values) => {
+            Self::Array(values) => {
                 mem::size_of::<Vec<Value>>() + values.len() * mem::size_of::<Value>()
             }
+            Self::Set(values) => values.shallow_size_bytes(),
             Self::Map(values) => {
                 mem::size_of::<BTreeMap<String, Value>>()
                     + values
@@ -418,7 +423,7 @@ impl ScriptHeap {
         };
         match self.get(reference) {
             Some(HeapValue::Array(values)) => contracts.resummarize_array(values, self),
-            Some(HeapValue::Set(values)) => contracts.resummarize_set(values, self),
+            Some(HeapValue::Set(values)) => contracts.resummarize_set(&values.values_vec(), self),
             Some(HeapValue::Map(values)) => contracts.resummarize_map(values.values(), self),
             _ => {}
         }
@@ -693,7 +698,9 @@ impl ScriptHeap {
             Some(HeapValue::Map(values)) => {
                 Some(ContainerContracts::for_map(values.values().copied(), self))
             }
-            Some(HeapValue::Set(values)) => Some(ContainerContracts::for_set(values, self)),
+            Some(HeapValue::Set(values)) => {
+                Some(ContainerContracts::for_set(&values.values_vec(), self))
+            }
             _ => None,
         };
         if let Some(contracts) = contracts {

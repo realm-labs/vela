@@ -232,7 +232,9 @@ pub(super) fn call_cached_collection_has(
             };
             Some(
                 crate::runtime_checks::expect_arity("has", args, 1).and_then(|()| {
-                    if let Some(result) = cached_set_contains_immediate(values, &args[0]) {
+                    if let Some(result) =
+                        cached_set_contains_immediate(&values.values_vec(), &args[0])
+                    {
                         return Ok(Value::Bool(result));
                     }
                     set_methods::contains_value(values, &args[0], heap, "method has")

@@ -61,12 +61,14 @@ impl<'de> de::Deserializer<'de> for RuntimeValueDeserializer<'de> {
             Value::HeapRef(_) => match self.heap_value()? {
                 HeapValue::String(value) => visitor.visit_str(value),
                 HeapValue::Bytes(value) => visitor.visit_bytes(value),
-                HeapValue::Array(values) | HeapValue::Set(values) => {
-                    visitor.visit_seq(RuntimeSeqAccess {
-                        iter: values.iter(),
-                        heap: self.heap,
-                    })
-                }
+                HeapValue::Array(values) => visitor.visit_seq(RuntimeSeqAccess {
+                    iter: RuntimeSeqIter::Slice(values.iter()),
+                    heap: self.heap,
+                }),
+                HeapValue::Set(values) => visitor.visit_seq(RuntimeSeqAccess {
+                    iter: RuntimeSeqIter::Set(values.iter_values()),
+                    heap: self.heap,
+                }),
                 HeapValue::Map(values) => {
                     visitor.visit_map(RuntimeMapAccess::from_map(values, self.heap))
                 }
@@ -195,12 +197,14 @@ impl<'de> de::Deserializer<'de> for RuntimeValueDeserializer<'de> {
         V: Visitor<'de>,
     {
         match self.heap_value()? {
-            HeapValue::Array(values) | HeapValue::Set(values) => {
-                visitor.visit_seq(RuntimeSeqAccess {
-                    iter: values.iter(),
-                    heap: self.heap,
-                })
-            }
+            HeapValue::Array(values) => visitor.visit_seq(RuntimeSeqAccess {
+                iter: RuntimeSeqIter::Slice(values.iter()),
+                heap: self.heap,
+            }),
+            HeapValue::Set(values) => visitor.visit_seq(RuntimeSeqAccess {
+                iter: RuntimeSeqIter::Set(values.iter_values()),
+                heap: self.heap,
+            }),
             _ => Err(Error::custom("expected sequence")),
         }
     }
@@ -299,8 +303,22 @@ impl<'de> de::Deserializer<'de> for RuntimeValueDeserializer<'de> {
     }
 }
 
+enum RuntimeSeqIter<'de> {
+    Slice(slice::Iter<'de, Value>),
+    Set(std::collections::btree_map::Values<'de, crate::value_key::ValueKey, Value>),
+}
+
+impl<'de> RuntimeSeqIter<'de> {
+    fn next(&mut self) -> Option<&'de Value> {
+        match self {
+            Self::Slice(iter) => iter.next(),
+            Self::Set(iter) => iter.next(),
+        }
+    }
+}
+
 struct RuntimeSeqAccess<'de> {
-    iter: slice::Iter<'de, Value>,
+    iter: RuntimeSeqIter<'de>,
     heap: &'de ScriptHeap,
 }
 

@@ -1,4 +1,5 @@
 use crate::heap::HeapValue;
+use crate::script_set::ScriptSet;
 use crate::{HeapExecution, Value, VmError, VmErrorKind, VmResult};
 
 mod basic;
@@ -12,7 +13,7 @@ pub(crate) use combination::{
     difference, intersection, is_disjoint, is_subset, is_superset, symmetric_difference, union,
 };
 pub(crate) use higher_order::{all, any, count, filter, find, map};
-use key::{SetKey, set_keys, slot_key};
+use key::{SetKey, set_keys};
 pub(crate) use mutation::{add, clear, extend, remove};
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -35,22 +36,16 @@ pub(crate) fn is_set(receiver: &Value, heap: Option<&HeapExecution<'_>>) -> bool
 }
 
 pub(crate) fn contains_value(
-    values: &[Value],
+    values: &ScriptSet,
     candidate: &Value,
     heap: &HeapExecution<'_>,
     operation: &'static str,
 ) -> VmResult<bool> {
-    let key = SetKey::from_value(candidate, Some(heap), operation)?;
-    for value in values {
-        if key.matches_slot(value, heap, operation)? {
-            return Ok(true);
-        }
-    }
-    Ok(false)
+    values.contains_value(candidate, Some(heap), operation)
 }
 
 pub(crate) fn relation_matches(
-    receiver_values: &[Value],
+    receiver_values: &ScriptSet,
     other: &Value,
     heap: &HeapExecution<'_>,
     relation: SetRelation,
@@ -86,14 +81,14 @@ pub(super) fn set_values(
     heap: Option<&HeapExecution<'_>>,
     operation: &'static str,
 ) -> VmResult<Vec<Value>> {
-    set_slots(receiver, heap, operation).map(<[Value]>::to_vec)
+    set_slots(receiver, heap, operation).map(ScriptSet::values_vec)
 }
 
 pub(super) fn set_slots<'a>(
     receiver: &Value,
     heap: Option<&'a HeapExecution<'_>>,
     operation: &'static str,
-) -> VmResult<&'a [Value]> {
+) -> VmResult<&'a ScriptSet> {
     match receiver {
         Value::HeapRef(reference) => {
             let Some(HeapValue::Set(values)) = heap.and_then(|heap| heap.heap.get(*reference))
@@ -107,13 +102,13 @@ pub(super) fn set_slots<'a>(
 }
 
 fn slots_contain_all(
-    subset: &[Value],
-    superset: &[Value],
+    subset: &ScriptSet,
+    superset: &ScriptSet,
     heap: &HeapExecution<'_>,
     operation: &'static str,
 ) -> VmResult<bool> {
-    let superset = set_keys(superset, Some(heap), operation)?;
-    for value in subset {
+    let superset = set_keys(&superset.values_vec(), Some(heap), operation)?;
+    for value in subset.values() {
         let key = SetKey::from_value(value, Some(heap), operation)?;
         if !superset.contains(&key) {
             return Ok(false);
@@ -123,13 +118,13 @@ fn slots_contain_all(
 }
 
 fn slots_are_disjoint(
-    left: &[Value],
-    right: &[Value],
+    left: &ScriptSet,
+    right: &ScriptSet,
     heap: &HeapExecution<'_>,
     operation: &'static str,
 ) -> VmResult<bool> {
-    let right = set_keys(right, Some(heap), operation)?;
-    for value in left {
+    let right = set_keys(&right.values_vec(), Some(heap), operation)?;
+    for value in left.values() {
         let key = SetKey::from_value(value, Some(heap), operation)?;
         if right.contains(&key) {
             return Ok(false);
@@ -326,6 +321,42 @@ fn main() {
         let result = run_linked_set_test_code_with_budget(&vm, code, &mut budget)
             .expect("heap set has method should run");
         assert_eq!(result, OwnedValue::Scalar(vela_common::ScalarValue::I64(6)));
+    }
+
+    #[test]
+    fn managed_heap_set_uses_record_identity_keys() {
+        let source = r#"
+struct Player {
+    id
+    level
+}
+
+fn main() {
+    let a = Player { id: 1, level: 10 };
+    let b = Player { id: 1, level: 10 };
+    let seen = [].iter().collect_set();
+
+    let first_add = seen.add(a);
+    a.level += 1;
+    let duplicate_add = seen.add(a);
+    let second_add = seen.add(b);
+    let c = Player { id: 1, level: 11 };
+
+    if first_add && !duplicate_add && second_add && seen.has(a) && !seen.has(c) {
+        return seen.len();
+    }
+    return 0;
+}
+"#;
+        let code = compile_function_source(SourceId::new(1), source, "main")
+            .expect("record identity set source should compile");
+        let mut vm = Vm::new();
+        vm.register_standard_natives();
+        let mut budget = ExecutionBudget::unbounded();
+
+        let result = run_linked_set_test_code_with_budget(&vm, code, &mut budget)
+            .expect("record identity set should run");
+        assert_eq!(result, OwnedValue::Scalar(vela_common::ScalarValue::I64(2)));
     }
 
     #[test]

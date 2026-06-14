@@ -527,15 +527,20 @@ fn next_indexed_heap_value(
     let Some(value) = heap.heap.get(source) else {
         return type_error(operation);
     };
-    let values = match (kind, value) {
-        (HeapSequenceKind::Array, HeapValue::Array(values))
-        | (HeapSequenceKind::Set, HeapValue::Set(values)) => values,
-        (HeapSequenceKind::Bytes, HeapValue::Bytes(values)) => {
-            return Ok(values.get(index).map(|byte| Value::U8(*byte)));
+    match (kind, value) {
+        (HeapSequenceKind::Array, HeapValue::Array(values)) => {
+            Ok(values.get(index).map(stored_runtime_value))
         }
-        _ => return type_error(operation),
-    };
-    Ok(values.get(index).map(stored_runtime_value))
+        (HeapSequenceKind::Set, HeapValue::Set(values)) => Ok(values
+            .values()
+            .nth(index)
+            .copied()
+            .map(|value| stored_runtime_value(&value))),
+        (HeapSequenceKind::Bytes, HeapValue::Bytes(values)) => {
+            Ok(values.get(index).map(|byte| Value::U8(*byte)))
+        }
+        _ => type_error(operation),
+    }
 }
 
 fn next_map_value(

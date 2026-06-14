@@ -114,7 +114,7 @@ pub(crate) fn runtime_value_to_reflect(
                 Ok(reflect::value::ReflectValue::Record(values))
             }
             Some(HeapValue::Set(values)) => values
-                .iter()
+                .values()
                 .map(|value| runtime_value_to_reflect(value, heap, operation))
                 .collect::<VmResult<Vec<_>>>()
                 .map(reflect::value::ReflectValue::Set),

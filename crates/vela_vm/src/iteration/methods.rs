@@ -6,6 +6,7 @@ use crate::heap_values::allocate_heap_value;
 use crate::method_runtime::MethodRuntime;
 use crate::option_result::option_value;
 use crate::runtime_checks::is_truthy;
+use crate::script_set::ScriptSet;
 use crate::{
     ExecutionBudget, HeapExecution, Value, VmError, VmErrorKind, VmResult, runtime_checks,
 };
@@ -245,6 +246,7 @@ pub(crate) fn collect_set_method(
     let Some(heap_ref) = heap.as_deref_mut() else {
         return type_error("method collect_set");
     };
+    let values = ScriptSet::from_values(values, Some(&*heap_ref), "method collect_set")?;
     allocate_heap_value(HeapValue::Set(values), heap_ref, budget.as_deref_mut())
 }
 
@@ -264,6 +266,7 @@ pub(crate) fn collect_set_method_runtime(
     let Some(heap_ref) = runtime.heap.as_deref_mut() else {
         return type_error("method collect_set");
     };
+    let values = ScriptSet::from_values(values, Some(&*heap_ref), "method collect_set")?;
     allocate_heap_value(
         HeapValue::Set(values),
         heap_ref,
