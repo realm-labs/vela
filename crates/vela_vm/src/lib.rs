@@ -71,7 +71,7 @@ use std::sync::Arc;
 pub(crate) use equality::{
     EqualityRuntime, identity_equal, identity_not_equal, values_equal, values_equal_with_traits,
     values_greater_equal_with_traits, values_greater_with_traits, values_less_equal_with_traits,
-    values_less_with_traits, values_not_equal_with_traits,
+    values_less_with_traits, values_not_equal_with_traits, values_total_cmp_with_traits,
 };
 use error::{VmError, VmErrorKind, VmResult, VmStackFrame};
 pub(crate) use frame::CallFrame;

@@ -131,7 +131,12 @@ operator overloading. `PartialEq::eq(self, other)` returns `bool`.
 zero, or positive values for less, equal, or greater. Source ordering operators
 return `false` for incomparable results. This first-slice return shape avoids a
 new standard `Ordering` enum while preserving an explicit incomparability
-channel.
+channel. `Ord::cmp(self, other)` returns `i64` using the same negative, zero,
+or positive convention and drives total-order collection helpers such as
+`Array.sort`, `Array.min`, `Array.max`, and non-leaf `Array.sort_by` keys.
+Leaf scalar/string/bytes sorting remains a runtime fast path, while object
+sorting requires `Ord`; floats remain rejected by total-order helpers until an
+explicit total-float ordering API exists.
 
 Compiler identity lookup uses the definition registry, not reflection metadata
 or `CompilerOptions` identity maps. During the registry migration the engine

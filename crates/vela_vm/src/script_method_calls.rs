@@ -589,7 +589,10 @@ fn dispatch_linked_dynamic_method_call_inner(
                 )
             };
             if let Some(result) = contextual_result {
-                return frame.write(call.dst, result?);
+                return frame.write(
+                    call.dst,
+                    result.map_err(|error| error.with_source_span_if_absent(context.call_site))?,
+                );
             }
             if let Some(standard_method) = standard_method.or_else(|| {
                 script_builtin_methods::standard_cache_entry(method_id, &receiver, heap.as_deref())
@@ -1096,7 +1099,7 @@ fn linked_standard_value_method_result(
                 },
             );
         }
-        return Some(result);
+        return Some(result.map_err(|error| error.with_source_span_if_absent(context.call_site)));
     }
     if let Some(standard_method) = call.standard_method
         && script_builtin_methods::standard_cache_entry_matches_method_id(
@@ -1167,7 +1170,13 @@ fn contextual_array_standard_value_method(
             target,
             Some(crate::StandardMethodInlineCacheTarget::Distinct)
         );
-    if !(is_contains || is_index_of || is_distinct) {
+    let is_sort = method_id == ids.array_sort
+        || matches!(target, Some(crate::StandardMethodInlineCacheTarget::Sort));
+    let is_min = method_id == ids.array_min
+        || matches!(target, Some(crate::StandardMethodInlineCacheTarget::Min));
+    let is_max = method_id == ids.array_max
+        || matches!(target, Some(crate::StandardMethodInlineCacheTarget::Max));
+    if !(is_contains || is_index_of || is_distinct || is_sort || is_min || is_max) {
         return None;
     }
     if is_contains {
@@ -1180,9 +1189,18 @@ fn contextual_array_standard_value_method(
             receiver, args, runtime,
         ));
     }
-    Some(array_methods::distinct_with_equality(
-        receiver, args, runtime,
-    ))
+    if is_distinct {
+        return Some(array_methods::distinct_with_equality(
+            receiver, args, runtime,
+        ));
+    }
+    if is_sort {
+        return Some(array_methods::sort_with_ordering(receiver, args, runtime));
+    }
+    if is_min {
+        return Some(array_methods::min_with_ordering(receiver, args, runtime));
+    }
+    Some(array_methods::max_with_ordering(receiver, args, runtime))
 }
 
 struct LinkedCallbackValueMethodCall<'a> {

@@ -19,6 +19,7 @@ use crate::{
 
 const PARTIAL_EQ_METHOD: &str = "eq";
 const PARTIAL_ORD_METHOD: &str = "partial_cmp";
+const ORD_METHOD: &str = "cmp";
 
 pub(crate) fn values_equal(
     lhs: &Value,
@@ -92,6 +93,18 @@ pub(crate) fn values_greater_equal_with_traits(
     runtime: &mut EqualityRuntime<'_, '_, '_>,
 ) -> VmResult<bool> {
     values_order_with_traits(lhs, rhs, runtime, OrderingOp::GreaterEqual)
+}
+
+pub(crate) fn values_total_cmp_with_traits(
+    lhs: &Value,
+    rhs: &Value,
+    runtime: &mut EqualityRuntime<'_, '_, '_>,
+    operation: &'static str,
+) -> VmResult<Ordering> {
+    if let Some(ordering) = leaf_values_total_cmp(lhs, rhs, runtime.heap.as_deref(), operation)? {
+        return Ok(ordering);
+    }
+    call_ord(lhs, rhs, runtime, operation)?.ok_or_else(|| comparable_error(operation))
 }
 
 pub(crate) fn identity_equal(
@@ -187,6 +200,32 @@ fn call_partial_ord(
         return Ok(None);
     };
     partial_cmp_result(result, runtime.heap.as_deref(), operation).map(Some)
+}
+
+fn call_ord(
+    lhs: &Value,
+    rhs: &Value,
+    runtime: &mut EqualityRuntime<'_, '_, '_>,
+    operation: &'static str,
+) -> VmResult<Option<Ordering>> {
+    let Some(type_name) =
+        receiver_type_name(lhs, runtime.heap.as_deref(), runtime.vm.type_registry())
+            .map(str::to_owned)
+    else {
+        return Ok(None);
+    };
+    let method_id = builtin_trait_method_id("Ord", ORD_METHOD);
+    let Some(result) =
+        call_builtin_trait_method(lhs, rhs, runtime, &type_name, method_id, ORD_METHOD)?
+    else {
+        return Ok(None);
+    };
+    let result = store_value_in_heap_if_needed(
+        result,
+        runtime.heap.as_deref_mut(),
+        runtime.budget.as_deref_mut(),
+    )?;
+    total_cmp_result(result, operation).map(Some)
 }
 
 fn call_builtin_trait_method(
@@ -326,6 +365,13 @@ fn partial_cmp_payload_ordering(value: Value, operation: &'static str) -> VmResu
     Ok(value.cmp(&0))
 }
 
+fn total_cmp_result(value: Value, operation: &'static str) -> VmResult<Ordering> {
+    let Value::I64(value) = value else {
+        return non_comparable(operation);
+    };
+    Ok(value.cmp(&0))
+}
+
 #[derive(Clone, Copy)]
 enum OrderingOp {
     Less,
@@ -410,6 +456,28 @@ fn leaf_values_equal(
     }
 }
 
+fn leaf_values_total_cmp(
+    lhs: &Value,
+    rhs: &Value,
+    heap: Option<&HeapExecution<'_>>,
+    operation: &'static str,
+) -> VmResult<Option<Ordering>> {
+    if let Some(ordering) = immediate_leaf_values_total_cmp(lhs, rhs) {
+        return Ok(Some(ordering));
+    }
+
+    match (heap_leaf(lhs, heap)?, heap_leaf(rhs, heap)?) {
+        (Some(HeapLeaf::String(lhs)), Some(HeapLeaf::String(rhs))) => Ok(Some(lhs.cmp(rhs))),
+        (Some(HeapLeaf::Bytes(lhs)), Some(HeapLeaf::Bytes(rhs))) => Ok(Some(lhs.cmp(rhs))),
+        (Some(_), Some(_)) => Ok(None),
+        (Some(_), None) | (None, Some(_)) if is_immediate_leaf(lhs) || is_immediate_leaf(rhs) => {
+            non_comparable(operation)
+        }
+        (Some(_), None) | (None, Some(_)) => Ok(None),
+        (None, None) => Ok(None),
+    }
+}
+
 fn immediate_leaf_values_equal(lhs: &Value, rhs: &Value) -> Option<bool> {
     match (lhs, rhs) {
         (Value::Missing, _) | (_, Value::Missing) => None,
@@ -426,6 +494,22 @@ fn immediate_leaf_values_equal(lhs: &Value, rhs: &Value) -> Option<bool> {
         {
             Some(false)
         }
+        _ => None,
+    }
+}
+
+fn immediate_leaf_values_total_cmp(lhs: &Value, rhs: &Value) -> Option<Ordering> {
+    match (lhs, rhs) {
+        (Value::Bool(lhs), Value::Bool(rhs)) => Some(lhs.cmp(rhs)),
+        (Value::Char(lhs), Value::Char(rhs)) => Some(lhs.cmp(rhs)),
+        (Value::I8(lhs), Value::I8(rhs)) => Some(lhs.cmp(rhs)),
+        (Value::I16(lhs), Value::I16(rhs)) => Some(lhs.cmp(rhs)),
+        (Value::I32(lhs), Value::I32(rhs)) => Some(lhs.cmp(rhs)),
+        (Value::I64(lhs), Value::I64(rhs)) => Some(lhs.cmp(rhs)),
+        (Value::U8(lhs), Value::U8(rhs)) => Some(lhs.cmp(rhs)),
+        (Value::U16(lhs), Value::U16(rhs)) => Some(lhs.cmp(rhs)),
+        (Value::U32(lhs), Value::U32(rhs)) => Some(lhs.cmp(rhs)),
+        (Value::U64(lhs), Value::U64(rhs)) => Some(lhs.cmp(rhs)),
         _ => None,
     }
 }

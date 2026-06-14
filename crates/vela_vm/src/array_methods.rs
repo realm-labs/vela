@@ -11,7 +11,9 @@ pub(crate) use lookup::{
     contains, contains_with_equality, first, index_of, index_of_with_equality, last,
 };
 pub(crate) use mutation::{clear, extend, insert, pop, push, remove_at};
-pub(crate) use ordering::{max, min, sort, sort_by};
+pub(crate) use ordering::{
+    max, max_with_ordering, min, min_with_ordering, sort, sort_by, sort_with_ordering,
+};
 pub(crate) use transform::{distinct, distinct_with_equality, join, reverse, slice};
 
 use crate::collection_mutation::check_collection_len;

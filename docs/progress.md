@@ -95,11 +95,12 @@ script-object and `HostRef` identity, manual
 `impl PartialEq for Type { fn eq(...) -> bool }` drives record/enum semantic
 equality, array lookup/distinct helpers share runtime semantic equality,
 manual `impl PartialOrd for Type { fn partial_cmp(...) -> Option<i64> }`
-drives record/enum ordering operators, Map/Set `ValueKey` lookup remains
-separate from user comparison traits, and array sorting rejects float keys until
-an explicit total-float ordering API exists. Remaining comparison work is `Eq`,
-`Ord`, derive lowering, total-order sorting hooks, and static comparison
-diagnostics.
+drives record/enum ordering operators, manual
+`impl Ord for Type { fn cmp(...) -> i64 }` drives array sorting and extrema
+helpers, Map/Set `ValueKey` lookup remains separate from user comparison
+traits, and array sorting rejects float keys until an explicit total-float
+ordering API exists. Remaining comparison work is `Eq`, derive lowering, and
+static comparison diagnostics.
 
 Post-MVP performance remains a separate track: measure first, then optimize the
 non-JIT bytecode interpreter toward Lua 5.x comparable host-boundary workloads

@@ -220,6 +220,110 @@ fn main() {
 }
 
 #[test]
+fn array_sort_and_extrema_use_builtin_ord_impl() {
+    let source = r#"
+struct Score { value: i64, label: String }
+impl Ord for Score {
+    fn cmp(self, other: Score) -> i64 {
+        if self.value < other.value {
+            return -1;
+        }
+        if self.value > other.value {
+            return 1;
+        }
+        return 0;
+    }
+}
+
+fn main() {
+    let values = [
+        Score { value: 30, label: "thirty" },
+        Score { value: 10, label: "ten" },
+        Score { value: 20, label: "twenty" },
+    ];
+    let sorted = values.sort();
+    let min = values.min().unwrap_or(Score { value: 0, label: "missing" });
+    let max = values.max().unwrap_or(Score { value: 0, label: "missing" });
+    if sorted[0].label == "ten"
+        && sorted[1].label == "twenty"
+        && sorted[2].label == "thirty"
+        && min.label == "ten"
+        && max.label == "thirty"
+        && values[0].label == "thirty"
+    {
+        return 1;
+    }
+    return 0;
+}
+"#;
+    let program = compile_program_source(SourceId::new(1), source)
+        .expect("array Ord sort source should compile");
+
+    let result = run_linked_array_test_program(&Vm::new(), &program, "main")
+        .expect("array sort should use Ord impl");
+    assert_eq!(result, OwnedValue::Scalar(vela_common::ScalarValue::I64(1)));
+}
+
+#[test]
+fn array_sort_by_uses_builtin_ord_impl_for_keys() {
+    let source = r#"
+struct Rank { value: i64 }
+impl Ord for Rank {
+    fn cmp(self, other: Rank) -> i64 {
+        if self.value < other.value {
+            return -1;
+        }
+        if self.value > other.value {
+            return 1;
+        }
+        return 0;
+    }
+}
+
+fn main() {
+    let values = [3, 1, 2];
+    let sorted = values.sort_by(|value| Rank { value: 0 - value });
+    if sorted[0] == 3 && sorted[1] == 2 && sorted[2] == 1 {
+        return 1;
+    }
+    return 0;
+}
+"#;
+    let program = compile_program_source(SourceId::new(1), source)
+        .expect("array Ord sort_by key source should compile");
+
+    let result = run_linked_array_test_program(&Vm::new(), &program, "main")
+        .expect("array sort_by should use Ord impl for keys");
+    assert_eq!(result, OwnedValue::Scalar(vela_common::ScalarValue::I64(1)));
+}
+
+#[test]
+fn array_sort_rejects_records_without_ord() {
+    let source = r#"
+struct Score { value: i64 }
+
+fn main() {
+    return [Score { value: 1 }, Score { value: 2 }].sort();
+}
+"#;
+    let program = compile_program_source(SourceId::new(1), source)
+        .expect("array record sort source should compile");
+
+    let error = run_linked_array_test_program(&Vm::new(), &program, "main")
+        .expect_err("array sort should reject records without Ord");
+    assert_eq!(
+        error.kind(),
+        VmErrorKind::TypeMismatch {
+            operation: "method sort"
+        }
+    );
+    assert!(
+        error.source_span.is_some(),
+        "missing Ord failure should carry the call span"
+    );
+}
+
+#[test]
 fn runs_compiled_array_extrema_methods() {
     let source = r#"
 fn main() {

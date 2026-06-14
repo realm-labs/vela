@@ -223,6 +223,9 @@ fn contextual_array_method_by_name(
         "contains" => ids.array_contains,
         "index_of" => ids.array_index_of,
         "distinct" => ids.array_distinct,
+        "sort" => ids.array_sort,
+        "min" => ids.array_min,
+        "max" => ids.array_max,
         _ => return None,
     };
     contextual_array_method_by_id(receiver, method_id, args, dispatch)
@@ -263,6 +266,27 @@ fn contextual_array_method_by_id(
     }
     if method_id == ids.array_distinct {
         return Some(array_methods::distinct_with_equality(
+            receiver,
+            args,
+            &mut runtime,
+        ));
+    }
+    if method_id == ids.array_sort {
+        return Some(array_methods::sort_with_ordering(
+            receiver,
+            args,
+            &mut runtime,
+        ));
+    }
+    if method_id == ids.array_min {
+        return Some(array_methods::min_with_ordering(
+            receiver,
+            args,
+            &mut runtime,
+        ));
+    }
+    if method_id == ids.array_max {
+        return Some(array_methods::max_with_ordering(
             receiver,
             args,
             &mut runtime,
