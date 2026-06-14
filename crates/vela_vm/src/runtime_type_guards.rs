@@ -71,12 +71,9 @@ pub(crate) fn execute_unlinked_guard(
             context,
             &guard.context.debug_name,
         ),
-        UnlinkedTypeGuardPlan::Iterator { .. } => execute_standard_guard(
-            value,
-            StandardTypeGuard::Iterator,
-            heap,
-            &guard.context.debug_name,
-        ),
+        UnlinkedTypeGuardPlan::Iterator { ref item } => {
+            execute_iterator_guard(value, item.is_some(), heap, &guard.context.debug_name)
+        }
         UnlinkedTypeGuardPlan::Option { ref some } => {
             execute_option_guard(value, some.as_deref(), context, &guard.context.debug_name)
         }
@@ -151,8 +148,8 @@ pub(crate) fn execute_linked_guard(
         TypeGuardPlan::Set { ref element } => {
             execute_linked_set_guard(value, element.as_deref(), program, context, debug_name)
         }
-        TypeGuardPlan::Iterator { .. } => {
-            execute_standard_guard(value, StandardTypeGuard::Iterator, heap, debug_name)
+        TypeGuardPlan::Iterator { ref item } => {
+            execute_iterator_guard(value, item.is_some(), heap, debug_name)
         }
         TypeGuardPlan::Option { ref some } => {
             execute_linked_option_guard(value, some.as_deref(), program, context, debug_name)
@@ -331,6 +328,25 @@ fn execute_standard_guard(
     ))
 }
 
+fn execute_iterator_guard(
+    value: &Value,
+    has_item_contract: bool,
+    heap: Option<&HeapExecution<'_>>,
+    debug_name: &str,
+) -> VmResult<()> {
+    if runtime_standard_type(value, heap) != Some(StandardTypeGuard::Iterator) {
+        return Err(type_contract_error(value, "Iterator", heap, debug_name));
+    }
+    if has_item_contract {
+        return Err(VmError::new(VmErrorKind::TypeContractViolation {
+            expected: "Iterator<T>".to_owned(),
+            actual: "Iterator".to_owned(),
+            debug_name: debug_name.to_owned(),
+        }));
+    }
+    Ok(())
+}
+
 fn execute_option_guard(
     value: &Value,
     some: Option<&UnlinkedTypeGuardPlan>,
@@ -500,8 +516,8 @@ fn execute_unlinked_guard_plan(
         UnlinkedTypeGuardPlan::Set { element } => {
             execute_set_guard(value, element.as_deref(), context, debug_name)
         }
-        UnlinkedTypeGuardPlan::Iterator { .. } => {
-            execute_standard_guard(value, StandardTypeGuard::Iterator, heap, debug_name)
+        UnlinkedTypeGuardPlan::Iterator { item } => {
+            execute_iterator_guard(value, item.is_some(), heap, debug_name)
         }
         UnlinkedTypeGuardPlan::Option { some } => {
             execute_option_guard(value, some.as_deref(), context, debug_name)
@@ -699,8 +715,8 @@ fn execute_linked_guard_plan(
         TypeGuardPlan::Set { element } => {
             execute_linked_set_guard(value, element.as_deref(), program, context, debug_name)
         }
-        TypeGuardPlan::Iterator { .. } => {
-            execute_standard_guard(value, StandardTypeGuard::Iterator, heap, debug_name)
+        TypeGuardPlan::Iterator { item } => {
+            execute_iterator_guard(value, item.is_some(), heap, debug_name)
         }
         TypeGuardPlan::Option { some } => {
             execute_linked_option_guard(value, some.as_deref(), program, context, debug_name)

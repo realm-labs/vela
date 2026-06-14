@@ -313,6 +313,63 @@ fn main(values: Set<String>) {
 }
 
 #[test]
+fn linked_parameter_guard_rejects_parameterized_iterator_contracts_until_item_guards_exist() {
+    let program = compile_program_source(
+        SourceId::new(1),
+        r#"
+fn main(values: Iterator<i64>) {
+    return 1;
+}
+"#,
+    )
+    .expect("program should compile");
+    let mut budget = ExecutionBudget::unbounded();
+
+    let error = run_linked_test_program_with_budget(
+        &Vm::new(),
+        &program,
+        "main",
+        &[OwnedValue::iterator([OwnedValue::i64(1)])],
+        &mut budget,
+    )
+    .expect_err("typed iterator contracts should not be trusted without item guards");
+
+    assert_eq!(
+        error.kind(),
+        VmErrorKind::TypeContractViolation {
+            expected: "Iterator<T>".to_owned(),
+            actual: "Iterator".to_owned(),
+            debug_name: "values".to_owned(),
+        }
+    );
+}
+
+#[test]
+fn linked_parameter_guard_accepts_erased_iterator_any_contract() {
+    let program = compile_program_source(
+        SourceId::new(1),
+        r#"
+fn main(values: Iterator<Any>) {
+    return values.next().unwrap_or(0);
+}
+"#,
+    )
+    .expect("program should compile");
+    let mut budget = ExecutionBudget::unbounded();
+
+    let value = run_linked_test_program_with_budget(
+        &Vm::new(),
+        &program,
+        "main",
+        &[OwnedValue::iterator([OwnedValue::i64(7)])],
+        &mut budget,
+    )
+    .expect("Iterator<Any> should remain an erased iterator contract");
+
+    assert_eq!(value, OwnedValue::i64(7));
+}
+
+#[test]
 fn linked_static_safe_script_call_uses_unchecked_entry() {
     let program = compile_program_source(
         SourceId::new(1),
