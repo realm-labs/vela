@@ -475,7 +475,7 @@ pub const STD_METHODS: &[StdMethodSpec] = &[
         "group_by",
         &[StdParamSpec::new("callback", "function")],
         "map",
-        "Groups values by string callback keys.",
+        "Groups values by value-keyed callback keys.",
     ),
     StdMethodSpec::new("Array", "sort", &[], "array", "Returns sorted values."),
     StdMethodSpec::new("Array", "min", &[], "Option", "Returns the minimum value."),

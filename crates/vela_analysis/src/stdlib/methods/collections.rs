@@ -101,14 +101,17 @@ pub(super) fn array_method_fact(
                     .with_lambda(vec![element], returns),
             )
         }
-        "group_by" => Some(
-            StdlibMethodFact::new(
-                receiver,
-                "group_by",
-                TypeFact::map(TypeFact::STRING, TypeFact::array(element.clone())),
+        "group_by" => {
+            let key = lambda_return.cloned().unwrap_or(TypeFact::Any);
+            Some(
+                StdlibMethodFact::new(
+                    receiver,
+                    "group_by",
+                    TypeFact::map(key.clone(), TypeFact::array(element.clone())),
+                )
+                .with_lambda(vec![element], key),
             )
-            .with_lambda(vec![element], TypeFact::STRING),
-        ),
+        }
         "sort" => Some(StdlibMethodFact::new(
             receiver,
             "sort",

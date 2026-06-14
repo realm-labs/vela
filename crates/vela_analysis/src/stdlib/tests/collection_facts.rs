@@ -14,6 +14,16 @@ fn array_lambda_methods_expose_element_parameter_facts() {
     let mapped = stdlib_method_fact(&receiver, "map", Some(&TypeFact::STRING)).expect("map fact");
     assert_eq!(mapped.returns, TypeFact::array(TypeFact::STRING));
 
+    let grouped =
+        stdlib_method_fact(&receiver, "group_by", Some(&TypeFact::I64)).expect("group_by fact");
+    assert_eq!(
+        grouped.returns,
+        TypeFact::map(TypeFact::I64, TypeFact::array(TypeFact::record("Reward")))
+    );
+    let grouped_lambda = grouped.lambda.expect("group_by lambda");
+    assert_eq!(grouped_lambda.params, vec![TypeFact::record("Reward")]);
+    assert_eq!(grouped_lambda.returns, TypeFact::I64);
+
     let found = stdlib_method_fact(&receiver, "find", None).expect("find fact");
     assert_eq!(found.returns, TypeFact::option(TypeFact::record("Reward")));
 }

@@ -14,9 +14,9 @@ pub(crate) use transform::{distinct, join, reverse, slice};
 
 use crate::collection_mutation::check_collection_len;
 use crate::heap::HeapValue;
-use crate::heap_values::script_map_from_string_entries;
 use crate::method_runtime::{MethodRuntime, call_callback};
 use crate::option_result::{StdEnumVariant, std_enum_identity};
+use crate::script_map::ScriptMap;
 use crate::script_object::ScriptFields;
 use crate::{
     ExecutionBudget, HeapExecution, Value, VmError, VmErrorKind, VmResult, allocate_heap_value,
@@ -152,8 +152,8 @@ pub(crate) fn make_array_value(
     allocate_heap_value(HeapValue::Array(values), heap, budget.as_deref_mut())
 }
 
-pub(crate) fn make_map_value(
-    values: std::collections::BTreeMap<String, Value>,
+pub(crate) fn make_script_map_value(
+    values: ScriptMap,
     heap: &mut Option<&mut HeapExecution<'_>>,
     budget: &mut Option<&mut ExecutionBudget>,
     operation: &'static str,
@@ -164,7 +164,6 @@ pub(crate) fn make_map_value(
     let Some(heap) = heap.as_deref_mut() else {
         return type_error(operation);
     };
-    let values = script_map_from_string_entries(values, heap, budget.as_deref_mut(), operation)?;
     allocate_heap_value(HeapValue::Map(values), heap, budget.as_deref_mut())
 }
 

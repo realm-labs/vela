@@ -36,6 +36,8 @@ fn main() {
 
 `slice`、`reverse`、`distinct`、`sort`、`min`、`max`、`sum`、
 `group_by` 和 `sort_by` 会立即 materialize 结果。
+`group_by` 返回 value-keyed `Map<K, Array<T>>`，callback key 遵循普通
+Map key 相同的 `ValueKey` 策略。
 
 ```vela
 fn main() {

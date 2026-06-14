@@ -3,11 +3,13 @@ use std::collections::BTreeMap;
 use crate::heap::HeapValue;
 use crate::iteration;
 use crate::method_runtime::{MethodRuntime, call_callback_with_protected_values};
+use crate::script_map::ScriptMap;
+use crate::value_key::ValueKey;
 use crate::{HeapExecution, Value, VmError, VmErrorKind, VmResult};
 
 use super::{
-    array_values, call_unary_callback, expect_arity, make_array_value, make_map_value,
-    string_value, type_error,
+    array_values, call_unary_callback, expect_arity, make_array_value, make_script_map_value,
+    type_error,
 };
 
 pub(crate) fn sum(
@@ -53,7 +55,7 @@ pub(crate) fn group_by(
 ) -> VmResult<Value> {
     expect_arity("group_by", args, 1)?;
     let values = array_values(receiver, runtime.heap.as_deref(), "method group_by")?;
-    let mut groups = BTreeMap::<String, Vec<Value>>::new();
+    let mut groups = BTreeMap::<ValueKey, GroupValues>::new();
     iteration::try_for_each_over(values, &mut runtime, "method group_by", |runtime, value| {
         let key_value = if runtime.heap.is_some() {
             call_callback_with_protected_values(
@@ -61,38 +63,60 @@ pub(crate) fn group_by(
                 "method group_by",
                 &args[0],
                 std::slice::from_ref(&value),
-                groups.values().flat_map(|values| values.iter()),
+                protected_group_values(&groups),
             )?
         } else {
             call_unary_callback(runtime, "method group_by", &args[0], value, &[])?
         };
-        let key = group_key(&key_value, runtime.heap.as_deref())?;
+        let key = ValueKey::from_value(&key_value, runtime.heap.as_deref(), "method group_by")?;
         match groups.entry(key) {
             std::collections::btree_map::Entry::Vacant(entry) => {
-                entry.insert(vec![value]);
+                entry.insert(GroupValues {
+                    key: key_value,
+                    values: vec![value],
+                });
             }
             std::collections::btree_map::Entry::Occupied(mut entry) => {
-                entry.get_mut().push(value);
+                entry.get_mut().values.push(value);
             }
         }
         Ok(())
     })?;
-    let mut heap_groups = BTreeMap::new();
-    for (key, values) in groups {
+    let mut heap_groups = Vec::with_capacity(groups.len());
+    for group in groups.into_values() {
         let value = make_array_value(
-            values,
+            group.values,
             &mut runtime.heap,
             &mut runtime.budget,
             "method group_by",
         )?;
-        heap_groups.insert(key, value);
+        heap_groups.push((group.key, value));
     }
-    make_map_value(
-        heap_groups,
+    let groups = {
+        let Some(heap) = runtime.heap.as_deref() else {
+            return type_error("method group_by");
+        };
+        ScriptMap::from_entries(heap_groups, Some(heap), "method group_by")?
+    };
+    make_script_map_value(
+        groups,
         &mut runtime.heap,
         &mut runtime.budget,
         "method group_by",
     )
+}
+
+struct GroupValues {
+    key: Value,
+    values: Vec<Value>,
+}
+
+fn protected_group_values(
+    groups: &BTreeMap<ValueKey, GroupValues>,
+) -> impl Iterator<Item = &Value> {
+    groups
+        .values()
+        .flat_map(|group| std::iter::once(&group.key).chain(group.values.iter()))
 }
 
 enum NumericTotal {
@@ -177,8 +201,4 @@ impl NumericTotal {
             NumericTotal::Float(value) => Value::F64(value),
         }
     }
-}
-
-fn group_key(value: &Value, heap: Option<&HeapExecution<'_>>) -> VmResult<String> {
-    string_value(value, heap, "method group_by").map(str::to_owned)
 }

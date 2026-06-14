@@ -46,6 +46,7 @@ arr.iter().filter(|x| predicate) gives x: E and returns Iterator(item = E)
 arr.iter().map(|x| value) gives x: E and returns Iterator(item = TypeFact(value))
 arr.iter().find(|x| predicate) gives x: E and returns Option-like enum containing E
 arr.sum(|x| value) gives x: E and returns the concrete scalar type produced by value
+arr.group_by(|x| key) gives x: E and returns Map(key = TypeFact(key), value = Array<E>)
 ```
 
 ### Map

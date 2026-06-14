@@ -38,6 +38,8 @@ fn main() {
 
 Array helpers such as `slice`, `reverse`, `distinct`, `sort`, `min`, `max`,
 `sum`, `group_by`, and `sort_by` materialize a result immediately.
+`group_by` returns a value-keyed `Map<K, Array<T>>`, so callback keys follow
+the same `ValueKey` policy as ordinary map keys.
 
 ```vela
 fn main() {

@@ -117,7 +117,7 @@ const ARRAY_METHODS: &[MethodSpec] = &[
         "group_by",
         &[ParamSpec::new("callback", "function")],
         "map",
-        "Groups values by string callback keys.",
+        "Groups values by value-keyed callback keys.",
     ),
     MethodSpec::new("sort", &[], "array", "Returns sorted values."),
     MethodSpec::new("min", &[], "Option", "Returns the minimum value."),

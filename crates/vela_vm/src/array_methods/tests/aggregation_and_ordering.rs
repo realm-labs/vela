@@ -117,23 +117,53 @@ fn main() {
 }
 
 #[test]
-fn array_group_by_rejects_non_string_keys() {
+fn array_group_by_accepts_value_keyed_numeric_keys() {
     let source = r#"
 fn main() {
-    return [1].group_by(|value| value);
+    let groups = [1, 2, 3, 4].group_by(|value| value % 2);
+    if groups.len() == 2
+        && groups[0].sum() == 6
+        && groups[1].sum() == 4
+    {
+        return groups[0][1];
+    }
+    return 0;
 }
 "#;
     let code = compile_function_source(SourceId::new(1), source, "main")
-        .expect("array group_by type error source should compile");
+        .expect("array group_by numeric key source should compile");
 
-    let error = run_linked_array_test_code(&Vm::new(), code)
-        .expect_err("array group_by should reject non-string keys");
-    assert_eq!(
-        error.kind(),
-        VmErrorKind::TypeMismatch {
-            operation: "method group_by"
-        }
-    );
+    let result = run_linked_array_test_code(&Vm::new(), code)
+        .expect("array group_by should accept numeric value keys");
+    assert_eq!(result, OwnedValue::Scalar(vela_common::ScalarValue::I64(4)));
+}
+
+#[test]
+fn array_group_by_accepts_value_keyed_identity_keys() {
+    let source = r#"
+struct Bucket {
+    id: i64
+}
+
+fn main() {
+    let even = Bucket { id: 0 };
+    let odd = Bucket { id: 1 };
+    let groups = [1, 2, 3, 4].group_by(|value| if value % 2 == 0 { even } else { odd });
+    if groups.len() == 2
+        && groups[even].sum() == 6
+        && groups[odd].sum() == 4
+    {
+        return groups[even][1];
+    }
+    return 0;
+}
+"#;
+    let code = compile_function_source(SourceId::new(1), source, "main")
+        .expect("array group_by identity key source should compile");
+
+    let result = run_linked_array_test_code(&Vm::new(), code)
+        .expect("array group_by should accept identity value keys");
+    assert_eq!(result, OwnedValue::Scalar(vela_common::ScalarValue::I64(4)));
 }
 
 #[test]
