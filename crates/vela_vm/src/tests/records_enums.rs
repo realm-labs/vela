@@ -11,6 +11,17 @@ fn run_records_program(
     run_linked_test_program_with_budget(&Vm::new(), program, entry, args, &mut budget)
 }
 
+fn run_records_program_with_standard_natives(
+    program: &UnlinkedProgram,
+    entry: &str,
+    args: &[OwnedValue],
+) -> VmResult<OwnedValue> {
+    let mut budget = ExecutionBudget::unbounded();
+    let mut vm = Vm::new();
+    vm.register_standard_natives();
+    run_linked_test_program_with_budget(&vm, program, entry, args, &mut budget)
+}
+
 #[test]
 fn passes_arguments_to_program_entry() {
     let program = compile_program_source(
@@ -222,6 +233,108 @@ fn main() {
     assert!(
         error.source_span.is_some(),
         "PartialEq return type failure should carry the operator span"
+    );
+}
+
+#[test]
+fn record_semantic_ordering_requires_partial_ord() {
+    let program = compile_program_source(
+        SourceId::new(1),
+        r#"
+struct Score { value: i64 }
+
+fn main() {
+    return Score { value: 1 } < Score { value: 2 };
+}
+"#,
+    )
+    .expect("compile record ordering source");
+
+    let error = run_records_program(&program, "main", &[])
+        .expect_err("record ordering should require PartialOrd");
+    assert_eq!(
+        error.kind(),
+        VmErrorKind::TypeMismatch { operation: "less" }
+    );
+    assert!(
+        error.source_span.is_some(),
+        "dynamic ordering failure should carry the operator span"
+    );
+}
+
+#[test]
+fn record_semantic_ordering_uses_builtin_partial_ord_impl() {
+    let program = compile_program_source(
+        SourceId::new(1),
+        r#"
+struct Score { value: i64 }
+impl PartialOrd for Score {
+    fn partial_cmp(self, other: Score) {
+        if self.value < other.value {
+            return option::some(-1);
+        }
+        if self.value > other.value {
+            return option::some(1);
+        }
+        return option::some(0);
+    }
+}
+
+fn main() {
+    let low = Score { value: 1 };
+    let same = Score { value: 1 };
+    let high = Score { value: 2 };
+    if low < high
+        && low <= same
+        && high > low
+        && high >= same
+        && !(same < low)
+    {
+        return 1;
+    }
+    return 0;
+}
+"#,
+    )
+    .expect("compile PartialOrd record ordering source");
+
+    assert_eq!(
+        run_records_program_with_standard_natives(&program, "main", &[]),
+        Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(1)))
+    );
+}
+
+#[test]
+fn record_partial_ord_none_makes_ordering_operators_false() {
+    let program = compile_program_source(
+        SourceId::new(1),
+        r#"
+struct Score { value: i64 }
+impl PartialOrd for Score {
+    fn partial_cmp(self, other: Score) {
+        return option::none();
+    }
+}
+
+fn main() {
+    let left = Score { value: 1 };
+    let right = Score { value: 2 };
+    if !(left < right)
+        && !(left <= right)
+        && !(left > right)
+        && !(left >= right)
+    {
+        return 1;
+    }
+    return 0;
+}
+"#,
+    )
+    .expect("compile incomparable PartialOrd record ordering source");
+
+    assert_eq!(
+        run_records_program_with_standard_natives(&program, "main", &[]),
+        Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(1)))
     );
 }
 

@@ -352,23 +352,95 @@ impl Vm {
                     frame.write(*dst, value)?;
                 }
                 InstructionKind::Less { dst, lhs, rhs } => {
-                    let value = less_numeric(&frame.read(*lhs)?, &frame.read(*rhs)?)
-                        .map_err(|error| error.with_source_span_if_absent(instruction.span))?;
+                    let lhs_value = frame.read(*lhs)?;
+                    let rhs_value = frame.read(*rhs)?;
+                    let caller_roots =
+                        crate::method_runtime::CallerRoots::for_frame(&frame, heap.as_deref());
+                    let value = values_less_with_traits(
+                        &lhs_value,
+                        &rhs_value,
+                        &mut EqualityRuntime {
+                            vm: self,
+                            program: None,
+                            linked_program: Some(call.program),
+                            host: host.as_deref_mut(),
+                            heap: heap.as_deref_mut(),
+                            budget: budget.as_deref_mut(),
+                            caller_roots,
+                            inline_caches: call.inline_caches,
+                            bytecode_profiler: call.bytecode_profiler,
+                        },
+                    )
+                    .map_err(|error| error.with_source_span_if_absent(instruction.span))?;
                     frame.write(*dst, Value::Bool(value))?;
                 }
                 InstructionKind::LessEqual { dst, lhs, rhs } => {
-                    let value = less_equal_numeric(&frame.read(*lhs)?, &frame.read(*rhs)?)
-                        .map_err(|error| error.with_source_span_if_absent(instruction.span))?;
+                    let lhs_value = frame.read(*lhs)?;
+                    let rhs_value = frame.read(*rhs)?;
+                    let caller_roots =
+                        crate::method_runtime::CallerRoots::for_frame(&frame, heap.as_deref());
+                    let value = values_less_equal_with_traits(
+                        &lhs_value,
+                        &rhs_value,
+                        &mut EqualityRuntime {
+                            vm: self,
+                            program: None,
+                            linked_program: Some(call.program),
+                            host: host.as_deref_mut(),
+                            heap: heap.as_deref_mut(),
+                            budget: budget.as_deref_mut(),
+                            caller_roots,
+                            inline_caches: call.inline_caches,
+                            bytecode_profiler: call.bytecode_profiler,
+                        },
+                    )
+                    .map_err(|error| error.with_source_span_if_absent(instruction.span))?;
                     frame.write(*dst, Value::Bool(value))?;
                 }
                 InstructionKind::Greater { dst, lhs, rhs } => {
-                    let value = greater_numeric(&frame.read(*lhs)?, &frame.read(*rhs)?)
-                        .map_err(|error| error.with_source_span_if_absent(instruction.span))?;
+                    let lhs_value = frame.read(*lhs)?;
+                    let rhs_value = frame.read(*rhs)?;
+                    let caller_roots =
+                        crate::method_runtime::CallerRoots::for_frame(&frame, heap.as_deref());
+                    let value = values_greater_with_traits(
+                        &lhs_value,
+                        &rhs_value,
+                        &mut EqualityRuntime {
+                            vm: self,
+                            program: None,
+                            linked_program: Some(call.program),
+                            host: host.as_deref_mut(),
+                            heap: heap.as_deref_mut(),
+                            budget: budget.as_deref_mut(),
+                            caller_roots,
+                            inline_caches: call.inline_caches,
+                            bytecode_profiler: call.bytecode_profiler,
+                        },
+                    )
+                    .map_err(|error| error.with_source_span_if_absent(instruction.span))?;
                     frame.write(*dst, Value::Bool(value))?;
                 }
                 InstructionKind::GreaterEqual { dst, lhs, rhs } => {
-                    let value = greater_equal_numeric(&frame.read(*lhs)?, &frame.read(*rhs)?)
-                        .map_err(|error| error.with_source_span_if_absent(instruction.span))?;
+                    let lhs_value = frame.read(*lhs)?;
+                    let rhs_value = frame.read(*rhs)?;
+                    let caller_roots =
+                        crate::method_runtime::CallerRoots::for_frame(&frame, heap.as_deref());
+                    let value = values_greater_equal_with_traits(
+                        &lhs_value,
+                        &rhs_value,
+                        &mut EqualityRuntime {
+                            vm: self,
+                            program: None,
+                            linked_program: Some(call.program),
+                            host: host.as_deref_mut(),
+                            heap: heap.as_deref_mut(),
+                            budget: budget.as_deref_mut(),
+                            caller_roots,
+                            inline_caches: call.inline_caches,
+                            bytecode_profiler: call.bytecode_profiler,
+                        },
+                    )
+                    .map_err(|error| error.with_source_span_if_absent(instruction.span))?;
                     frame.write(*dst, Value::Bool(value))?;
                 }
                 InstructionKind::I64Add { dst, lhs, rhs } => {

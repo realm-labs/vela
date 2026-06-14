@@ -1,3 +1,4 @@
+use std::cmp::Ordering;
 use vela_bytecode::linked::LinkedMethodDispatchKind;
 use vela_bytecode::{LinkedProgram, UnlinkedProgramCode};
 use vela_def::MethodId;
@@ -6,12 +7,18 @@ use vela_reflect::registry::TypeRegistry;
 use crate::heap::{GcRef, HeapValue};
 use crate::linked_execution::LinkedExecutionCall;
 use crate::method_runtime::CallerRoots;
+use crate::numeric_ops::{
+    greater_equal_numeric, greater_numeric, less_equal_numeric, less_numeric,
+};
+use crate::option_result::{StdEnumKind, StdEnumVariant, std_enum_tag};
 use crate::{
     ExecutionBudget, HeapExecution, HostExecution, SmallStorage, Value, Vm, VmBytecodeProfiler,
     VmError, VmErrorKind, VmInlineCaches, VmResult, store_value_in_heap_if_needed,
+    stored_runtime_value,
 };
 
 const PARTIAL_EQ_METHOD: &str = "eq";
+const PARTIAL_ORD_METHOD: &str = "partial_cmp";
 
 pub(crate) fn values_equal(
     lhs: &Value,
@@ -55,6 +62,38 @@ pub(crate) fn values_not_equal_with_traits(
     values_equal_with_traits(lhs, rhs, runtime).map(|equal| !equal)
 }
 
+pub(crate) fn values_less_with_traits(
+    lhs: &Value,
+    rhs: &Value,
+    runtime: &mut EqualityRuntime<'_, '_, '_>,
+) -> VmResult<bool> {
+    values_order_with_traits(lhs, rhs, runtime, OrderingOp::Less)
+}
+
+pub(crate) fn values_less_equal_with_traits(
+    lhs: &Value,
+    rhs: &Value,
+    runtime: &mut EqualityRuntime<'_, '_, '_>,
+) -> VmResult<bool> {
+    values_order_with_traits(lhs, rhs, runtime, OrderingOp::LessEqual)
+}
+
+pub(crate) fn values_greater_with_traits(
+    lhs: &Value,
+    rhs: &Value,
+    runtime: &mut EqualityRuntime<'_, '_, '_>,
+) -> VmResult<bool> {
+    values_order_with_traits(lhs, rhs, runtime, OrderingOp::Greater)
+}
+
+pub(crate) fn values_greater_equal_with_traits(
+    lhs: &Value,
+    rhs: &Value,
+    runtime: &mut EqualityRuntime<'_, '_, '_>,
+) -> VmResult<bool> {
+    values_order_with_traits(lhs, rhs, runtime, OrderingOp::GreaterEqual)
+}
+
 pub(crate) fn identity_equal(
     lhs: &Value,
     rhs: &Value,
@@ -91,11 +130,74 @@ fn call_partial_eq(
 ) -> VmResult<Option<bool>> {
     let Some(type_name) =
         receiver_type_name(lhs, runtime.heap.as_deref(), runtime.vm.type_registry())
+            .map(str::to_owned)
     else {
         return Ok(None);
     };
     let method_id = builtin_trait_method_id("PartialEq", PARTIAL_EQ_METHOD);
-    let result = if let Some(program) = runtime.program {
+    let Some(result) =
+        call_builtin_trait_method(lhs, rhs, runtime, &type_name, method_id, PARTIAL_EQ_METHOD)?
+    else {
+        return Ok(None);
+    };
+    let result = store_value_in_heap_if_needed(
+        result,
+        runtime.heap.as_deref_mut(),
+        runtime.budget.as_deref_mut(),
+    )?;
+    match result {
+        Value::Bool(value) => Ok(Some(value)),
+        _ => Err(VmError::new(VmErrorKind::TypeMismatch {
+            operation: "equal",
+        })),
+    }
+}
+
+fn values_order_with_traits(
+    lhs: &Value,
+    rhs: &Value,
+    runtime: &mut EqualityRuntime<'_, '_, '_>,
+    op: OrderingOp,
+) -> VmResult<bool> {
+    if let Ok(result) = op.numeric(lhs, rhs) {
+        return Ok(result);
+    }
+    let Some(ordering) = call_partial_ord(lhs, rhs, runtime, op.operation())? else {
+        return non_comparable(op.operation());
+    };
+    Ok(ordering.is_some_and(|ordering| op.matches(ordering)))
+}
+
+fn call_partial_ord(
+    lhs: &Value,
+    rhs: &Value,
+    runtime: &mut EqualityRuntime<'_, '_, '_>,
+    operation: &'static str,
+) -> VmResult<Option<Option<Ordering>>> {
+    let Some(type_name) =
+        receiver_type_name(lhs, runtime.heap.as_deref(), runtime.vm.type_registry())
+            .map(str::to_owned)
+    else {
+        return Ok(None);
+    };
+    let method_id = builtin_trait_method_id("PartialOrd", PARTIAL_ORD_METHOD);
+    let Some(result) =
+        call_builtin_trait_method(lhs, rhs, runtime, &type_name, method_id, PARTIAL_ORD_METHOD)?
+    else {
+        return Ok(None);
+    };
+    partial_cmp_result(result, runtime.heap.as_deref(), operation).map(Some)
+}
+
+fn call_builtin_trait_method(
+    lhs: &Value,
+    rhs: &Value,
+    runtime: &mut EqualityRuntime<'_, '_, '_>,
+    type_name: &str,
+    method_id: MethodId,
+    method_name: &'static str,
+) -> VmResult<Option<Value>> {
+    if let Some(program) = runtime.program {
         let Some(function) = program.script_method_by_id(type_name, method_id) else {
             return Ok(None);
         };
@@ -119,14 +221,15 @@ fn call_partial_eq(
         {
             heap.truncate_protected_roots(protected_root_len);
         }
-        result?
+        result.map(Some)
     } else if let Some(program) = runtime.linked_program {
-        let Some(target) = linked_partial_eq_target(program, type_name, method_id) else {
+        let Some(target) = linked_builtin_trait_target(program, type_name, method_name, method_id)
+        else {
             return Ok(None);
         };
         let function_code = program.function(target.function).ok_or_else(|| {
             VmError::new(VmErrorKind::UnknownMethod {
-                method: PARTIAL_EQ_METHOD.to_owned(),
+                method: method_name.to_owned(),
             })
         })?;
         let args = SmallStorage::try_from_prefix_and_slice_map(*lhs, &[*rhs], 2, |arg| {
@@ -157,43 +260,106 @@ fn call_partial_eq(
         {
             heap.truncate_protected_roots(protected_root_len);
         }
-        result?
+        result.map(Some)
     } else {
-        return Ok(None);
-    };
-    let result = store_value_in_heap_if_needed(
-        result,
-        runtime.heap.as_deref_mut(),
-        runtime.budget.as_deref_mut(),
-    )?;
-    match result {
-        Value::Bool(value) => Ok(Some(value)),
-        _ => Err(VmError::new(VmErrorKind::TypeMismatch {
-            operation: "equal",
-        })),
+        Ok(None)
     }
 }
 
 #[derive(Clone, Copy)]
-struct LinkedPartialEqTarget {
+struct LinkedBuiltinTraitTarget {
     function: vela_bytecode::ScriptFunctionHandle,
 }
 
-fn linked_partial_eq_target(
+fn linked_builtin_trait_target(
     program: &LinkedProgram,
     type_name: &str,
+    method_name: &str,
     method_id: MethodId,
-) -> Option<LinkedPartialEqTarget> {
-    let dispatch = program.script_method_dispatch(type_name, PARTIAL_EQ_METHOD)?;
+) -> Option<LinkedBuiltinTraitTarget> {
+    let dispatch = program.script_method_dispatch(type_name, method_name)?;
     let dispatch = program.method_dispatch(dispatch)?;
     match &dispatch.kind {
         LinkedMethodDispatchKind::Script {
             method_id: actual,
             function,
-        } if *actual == method_id => Some(LinkedPartialEqTarget {
+        } if *actual == method_id => Some(LinkedBuiltinTraitTarget {
             function: *function,
         }),
         _ => None,
+    }
+}
+
+fn partial_cmp_result(
+    result: Value,
+    heap: Option<&HeapExecution<'_>>,
+    operation: &'static str,
+) -> VmResult<Option<Ordering>> {
+    let Value::HeapRef(reference) = result else {
+        return non_comparable(operation);
+    };
+    let Some(HeapValue::Enum {
+        identity: Some(identity),
+        fields,
+        ..
+    }) = heap.and_then(|heap| heap.heap.get(reference))
+    else {
+        return non_comparable(operation);
+    };
+    match std_enum_tag(*identity) {
+        Some((StdEnumKind::Option, StdEnumVariant::None)) => Ok(None),
+        Some((StdEnumKind::Option, StdEnumVariant::Some)) => {
+            let payload = fields
+                .get_slot(0, "0")
+                .map(stored_runtime_value)
+                .ok_or_else(|| comparable_error(operation))?;
+            partial_cmp_payload_ordering(payload, operation).map(Some)
+        }
+        _ => non_comparable(operation),
+    }
+}
+
+fn partial_cmp_payload_ordering(value: Value, operation: &'static str) -> VmResult<Ordering> {
+    let Value::I64(value) = value else {
+        return non_comparable(operation);
+    };
+    Ok(value.cmp(&0))
+}
+
+#[derive(Clone, Copy)]
+enum OrderingOp {
+    Less,
+    LessEqual,
+    Greater,
+    GreaterEqual,
+}
+
+impl OrderingOp {
+    fn operation(self) -> &'static str {
+        match self {
+            Self::Less => "less",
+            Self::LessEqual => "less_equal",
+            Self::Greater => "greater",
+            Self::GreaterEqual => "greater_equal",
+        }
+    }
+
+    fn numeric(self, lhs: &Value, rhs: &Value) -> VmResult<bool> {
+        match self {
+            Self::Less => less_numeric(lhs, rhs),
+            Self::LessEqual => less_equal_numeric(lhs, rhs),
+            Self::Greater => greater_numeric(lhs, rhs),
+            Self::GreaterEqual => greater_equal_numeric(lhs, rhs),
+        }
+    }
+
+    fn matches(self, ordering: Ordering) -> bool {
+        match self {
+            Self::Less => ordering == Ordering::Less,
+            Self::LessEqual => matches!(ordering, Ordering::Less | Ordering::Equal),
+            Self::Greater => ordering == Ordering::Greater,
+            Self::GreaterEqual => matches!(ordering, Ordering::Greater | Ordering::Equal),
+        }
     }
 }
 

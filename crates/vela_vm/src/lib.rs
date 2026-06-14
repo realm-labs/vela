@@ -70,7 +70,8 @@ use std::sync::Arc;
 
 pub(crate) use equality::{
     EqualityRuntime, identity_equal, identity_not_equal, values_equal, values_equal_with_traits,
-    values_not_equal_with_traits,
+    values_greater_equal_with_traits, values_greater_with_traits, values_less_equal_with_traits,
+    values_less_with_traits, values_not_equal_with_traits,
 };
 use error::{VmError, VmErrorKind, VmResult, VmStackFrame};
 pub(crate) use frame::CallFrame;
@@ -82,8 +83,7 @@ use heap_values::{
 };
 use numeric_ops::{
     add_numeric, binary_float_literal_numeric, binary_int_literal_numeric, div_numeric,
-    greater_equal_numeric, greater_numeric, less_equal_numeric, less_numeric, mul_numeric,
-    negate_numeric, rem_numeric, sub_numeric,
+    mul_numeric, negate_numeric, rem_numeric, sub_numeric,
 };
 use owned_value::OwnedValue;
 pub(crate) use reflection_values::{

@@ -124,6 +124,15 @@ and method name. A receiver type may not have two script methods with the same
 name, even if one comes from an inherent impl and another comes from a trait
 impl.
 
+Closed builtin comparison traits are VM-recognized protocol names, not open
+operator overloading. `PartialEq::eq(self, other)` returns `bool`.
+`PartialOrd::partial_cmp(self, other)` returns the standard `Option` enum:
+`Option::None` means incomparable, while `Option::Some(i64)` uses negative,
+zero, or positive values for less, equal, or greater. Source ordering operators
+return `false` for incomparable results. This first-slice return shape avoids a
+new standard `Ordering` enum while preserving an explicit incomparability
+channel.
+
 Compiler identity lookup uses the definition registry, not reflection metadata
 or `CompilerOptions` identity maps. During the registry migration the engine
 keeps a `DefinitionRegistry` compile sidecar derived from validated reflection
