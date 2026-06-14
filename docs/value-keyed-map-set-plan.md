@@ -479,11 +479,24 @@ String-literal indexing can stay a fast path but should lower into the same
 logical key model.
 
 ```vela
-scores[player] = 10;
+scores[player] = 10; // insert or replace
+
+let current = scores.get(player).unwrap_or(0);
+scores[player] = current + 1;
+```
+
+If the key is not keyable, the operation fails before mutation. Compound
+indexed assignment is read-modify-write:
+
+```vela
 scores[player] += 1;
 ```
 
-If the key is not keyable, the operation fails before mutation.
+It requires the key to already exist. Missing keys fail with a runtime
+key-not-found error; they do not create implicit zero, empty string, empty
+array, or other default values. Entry-style mutation such as
+`entry(key).or_insert(value)` requires a separate writable entry-proxy design
+and is not part of this plan.
 
 ### 9.2 Map methods
 
