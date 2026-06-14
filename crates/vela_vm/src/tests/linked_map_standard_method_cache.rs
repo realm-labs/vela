@@ -127,6 +127,40 @@ fn linked_standard_value_method_caches_map_remove_target() {
 }
 
 #[test]
+fn linked_standard_value_method_cache_uses_i64_map_keys() {
+    let (program, set_site, set_dispatch, set_method, remove_site, remove_dispatch, remove_method) =
+        linked_map_i64_set_remove_cache_program();
+    let caches = RecordingMethodCaches::new(2);
+    let expected = Ok(owned_option_some(OwnedValue::i64(8)));
+
+    assert_eq!(
+        run_linked_method_cache_owned_program(&program, &caches),
+        expected
+    );
+    assert_map_cache_entry(
+        &caches,
+        set_site,
+        set_dispatch,
+        set_method,
+        StandardMethodInlineCacheTarget::Set,
+    );
+    assert_map_cache_entry(
+        &caches,
+        remove_site,
+        remove_dispatch,
+        remove_method,
+        StandardMethodInlineCacheTarget::Remove,
+    );
+    assert_eq!(caches.set_count(), 4);
+
+    assert_eq!(
+        run_linked_method_cache_owned_program(&program, &caches),
+        expected
+    );
+    assert_eq!(caches.set_count(), 4);
+}
+
+#[test]
 fn linked_standard_value_method_caches_map_clear_target() {
     assert_map_owned_cache(
         linked_map_no_arg_cache_program("clear"),
@@ -489,6 +523,84 @@ fn linked_map_remove_cache_program() -> LinkedMapCacheFixture {
     let function = program.push_function(code);
     program.set_entry_point(main_name, function);
     (program, site, dispatch, method_id)
+}
+
+fn linked_map_i64_set_remove_cache_program() -> (
+    vela_bytecode::LinkedProgram,
+    CacheSiteId,
+    vela_bytecode::MethodDispatchHandle,
+    MethodId,
+    CacheSiteId,
+    vela_bytecode::MethodDispatchHandle,
+    MethodId,
+) {
+    let set_method = vela_stdlib::std_method_id("Map", "set").expect("Map::set method id");
+    let remove_method = vela_stdlib::std_method_id("Map", "remove").expect("Map::remove method id");
+    let mut program = vela_bytecode::LinkedProgram::new();
+    let main_name = program.intern_debug_name("main");
+    let set_name = program.intern_debug_name("set");
+    let remove_name = program.intern_debug_name("remove");
+    let set_dispatch = program.push_method_dispatch(vela_bytecode::LinkedMethodDispatch::new(
+        set_name,
+        vela_bytecode::LinkedMethodDispatchKind::Value {
+            method_id: set_method,
+        },
+    ));
+    let remove_dispatch = program.push_method_dispatch(vela_bytecode::LinkedMethodDispatch::new(
+        remove_name,
+        vela_bytecode::LinkedMethodDispatchKind::Value {
+            method_id: remove_method,
+        },
+    ));
+
+    let mut code = vela_bytecode::LinkedCodeObject::new(main_name, 5);
+    load_i64(&mut code, Register(0), 1);
+    load_i64(&mut code, Register(1), 8);
+    code.push_instruction(vela_bytecode::linked::Instruction::new(
+        vela_bytecode::linked::InstructionKind::MakeMap {
+            dst: Register(2),
+            entries: Vec::new(),
+        },
+    ));
+    let set_site = code.push_cache_site(CacheSiteKind::MethodCall, InstructionOffset(3));
+    code.push_instruction(vela_bytecode::linked::Instruction::new(
+        vela_bytecode::linked::InstructionKind::CallMethod {
+            dst: Register(3),
+            receiver: Register(2),
+            dispatch: set_dispatch,
+            debug_name: set_name,
+            cache_site: Some(set_site),
+            args: vec![
+                vela_bytecode::CallArgument::Register(Register(0)),
+                vela_bytecode::CallArgument::Register(Register(1)),
+            ],
+        },
+    ));
+    let remove_site = code.push_cache_site(CacheSiteKind::MethodCall, InstructionOffset(4));
+    code.push_instruction(vela_bytecode::linked::Instruction::new(
+        vela_bytecode::linked::InstructionKind::CallMethod {
+            dst: Register(4),
+            receiver: Register(2),
+            dispatch: remove_dispatch,
+            debug_name: remove_name,
+            cache_site: Some(remove_site),
+            args: vec![vela_bytecode::CallArgument::Register(Register(0))],
+        },
+    ));
+    code.push_instruction(vela_bytecode::linked::Instruction::new(
+        vela_bytecode::linked::InstructionKind::Return { src: Register(4) },
+    ));
+    let function = program.push_function(code);
+    program.set_entry_point(main_name, function);
+    (
+        program,
+        set_site,
+        set_dispatch,
+        set_method,
+        remove_site,
+        remove_dispatch,
+        remove_method,
+    )
 }
 
 fn linked_map_extend_cache_program() -> LinkedMapCacheFixture {
