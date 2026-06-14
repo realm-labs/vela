@@ -86,7 +86,7 @@ scalar/range dispatch
 script/native function calls
 array, map, set, string, Option, and Result stdlib methods
 callbacks, direct closure calls, and higher-order collection methods
-cache-enabled stdlib/native call, method-dispatch aggregate/detail, script record-field aggregate/detail, range-method detail, collection lookup/view/aggregation/combination/mutation/materialization, string/bytes method and string-transform detail, Option/Result helper, callback collection/detail, host-boundary aggregate/detail, plus linked script-call and direct-closure profile rows with bytecode profile counters
+cache-enabled stdlib/native call, method-dispatch aggregate/detail, script record-field aggregate/detail, range-method detail, collection lookup/view/aggregation/combination/mutation/materialization, typed container array/map mutation static/guarded/erased detail, string/bytes method and string-transform detail, Option/Result helper, callback collection/detail, host-boundary aggregate/detail, plus linked script-call and direct-closure profile rows with bytecode profile counters
 dynamic method dispatch rows for monomorphic string receivers, monomorphic script receivers, polymorphic standard/script receivers, and deliberate guard-miss pressure, plus the existing static CallMethodId method-dispatch rows for comparison
 record and enum construction and field access
 managed heap allocation and materialization
@@ -327,9 +327,11 @@ closure calls with default baseline data, includes cache-enabled stdlib
 collection, script-call, native-call, script record-field aggregate/detail,
 method-dispatch aggregate/detail, range-method detail,
 collection lookup/view/aggregation/combination/mutation/materialization,
-string/bytes method plus string-transform detail, Option/Result helper, callback
-collection/detail, direct-closure, and host-boundary aggregate/detail rows with
-warmed inline caches and bytecode profile counters. The record-field detail
+typed container array/map mutation detail for proven typed, guarded erased-value,
+and erased-container paths, string/bytes method plus string-transform detail,
+Option/Result helper, callback collection/detail, direct-closure, and
+host-boundary aggregate/detail rows with warmed inline caches and bytecode
+profile counters. The record-field detail
 rows cover triplet, quad, quint, and sextet shapes; the host-boundary detail
 rows cover declared global read/write, field read/write, nested path read/write,
 RMW mutation, dynamic key access, and host method calls; the method-dispatch detail rows cover script
