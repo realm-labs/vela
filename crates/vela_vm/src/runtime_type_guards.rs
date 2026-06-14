@@ -10,17 +10,38 @@ use crate::option_result::{StdEnumKind, StdEnumVariant, std_enum_tag};
 use crate::stored_runtime_value;
 use crate::{CallFrame, HeapExecution, Value, VmError, VmErrorKind, VmResult};
 
+pub(crate) struct GuardExecutionContext<'a, 'heap> {
+    heap: Option<&'a HeapExecution<'heap>>,
+    budget: Option<&'a mut ExecutionBudget>,
+}
+
+impl<'a, 'heap> GuardExecutionContext<'a, 'heap> {
+    pub(crate) fn new(
+        heap: Option<&'a HeapExecution<'heap>>,
+        budget: Option<&'a mut ExecutionBudget>,
+    ) -> Self {
+        Self { heap, budget }
+    }
+
+    fn charge_scan_item(&mut self) -> VmResult<()> {
+        if let Some(budget) = self.budget.as_deref_mut() {
+            budget.charge_instructions(1)?;
+        }
+        Ok(())
+    }
+}
+
 pub(crate) fn execute_unlinked_guard(
     value: &Value,
     guard: &UnlinkedTypeGuard,
-    heap: Option<&HeapExecution<'_>>,
-    budget: Option<&mut ExecutionBudget>,
+    context: &mut GuardExecutionContext<'_, '_>,
 ) -> VmResult<()> {
     // The interpreter is the generic fallback path for specialization misses.
     if guard.context.kind == GuardKind::Specialization {
         return Ok(());
     }
 
+    let heap = context.heap;
     match guard.plan {
         UnlinkedTypeGuardPlan::Primitive(expected) => {
             execute_primitive_guard(value, expected, heap, &guard.context.debug_name)
@@ -31,8 +52,7 @@ pub(crate) fn execute_unlinked_guard(
         UnlinkedTypeGuardPlan::Array { ref element } => execute_array_guard(
             value,
             element.as_deref(),
-            heap,
-            budget,
+            context,
             &guard.context.debug_name,
         ),
         UnlinkedTypeGuardPlan::Map {
@@ -42,15 +62,13 @@ pub(crate) fn execute_unlinked_guard(
             value,
             key.as_deref(),
             value_plan.as_deref(),
-            heap,
-            budget,
+            context,
             &guard.context.debug_name,
         ),
         UnlinkedTypeGuardPlan::Set { ref element } => execute_set_guard(
             value,
             element.as_deref(),
-            heap,
-            budget,
+            context,
             &guard.context.debug_name,
         ),
         UnlinkedTypeGuardPlan::Iterator { .. } => execute_standard_guard(
@@ -59,19 +77,14 @@ pub(crate) fn execute_unlinked_guard(
             heap,
             &guard.context.debug_name,
         ),
-        UnlinkedTypeGuardPlan::Option { ref some } => execute_option_guard(
-            value,
-            some.as_deref(),
-            heap,
-            budget,
-            &guard.context.debug_name,
-        ),
+        UnlinkedTypeGuardPlan::Option { ref some } => {
+            execute_option_guard(value, some.as_deref(), context, &guard.context.debug_name)
+        }
         UnlinkedTypeGuardPlan::Result { ref ok, ref err } => execute_result_guard(
             value,
             ok.as_deref(),
             err.as_deref(),
-            heap,
-            budget,
+            context,
             &guard.context.debug_name,
         ),
         UnlinkedTypeGuardPlan::Type(ref expected) => {
@@ -105,8 +118,7 @@ pub(crate) fn execute_linked_guard(
     value: &Value,
     guard: &TypeGuard,
     program: &LinkedProgram,
-    heap: Option<&HeapExecution<'_>>,
-    budget: Option<&mut ExecutionBudget>,
+    context: &mut GuardExecutionContext<'_, '_>,
     debug_name: &str,
 ) -> VmResult<()> {
     // The interpreter is the generic fallback path for specialization misses.
@@ -114,6 +126,7 @@ pub(crate) fn execute_linked_guard(
         return Ok(());
     }
 
+    let heap = context.heap;
     match guard.plan {
         TypeGuardPlan::Primitive(expected) => {
             execute_primitive_guard(value, expected, heap, debug_name)
@@ -122,7 +135,7 @@ pub(crate) fn execute_linked_guard(
             execute_standard_guard(value, expected, heap, debug_name)
         }
         TypeGuardPlan::Array { ref element } => {
-            execute_linked_array_guard(value, element.as_deref(), program, heap, budget, debug_name)
+            execute_linked_array_guard(value, element.as_deref(), program, context, debug_name)
         }
         TypeGuardPlan::Map {
             ref key,
@@ -132,26 +145,24 @@ pub(crate) fn execute_linked_guard(
             key.as_deref(),
             value_plan.as_deref(),
             program,
-            heap,
-            budget,
+            context,
             debug_name,
         ),
         TypeGuardPlan::Set { ref element } => {
-            execute_linked_set_guard(value, element.as_deref(), program, heap, budget, debug_name)
+            execute_linked_set_guard(value, element.as_deref(), program, context, debug_name)
         }
         TypeGuardPlan::Iterator { .. } => {
             execute_standard_guard(value, StandardTypeGuard::Iterator, heap, debug_name)
         }
         TypeGuardPlan::Option { ref some } => {
-            execute_linked_option_guard(value, some.as_deref(), program, heap, budget, debug_name)
+            execute_linked_option_guard(value, some.as_deref(), program, context, debug_name)
         }
         TypeGuardPlan::Result { ref ok, ref err } => execute_linked_result_guard(
             value,
             ok.as_deref(),
             err.as_deref(),
             program,
-            heap,
-            budget,
+            context,
             debug_name,
         ),
         TypeGuardPlan::Type(expected) => {
@@ -205,8 +216,7 @@ pub(crate) fn execute_linked_param_guards(
     code: &LinkedCodeObject,
     program: &LinkedProgram,
     frame: &CallFrame,
-    heap: Option<&HeapExecution<'_>>,
-    mut budget: Option<&mut ExecutionBudget>,
+    context: &mut GuardExecutionContext<'_, '_>,
 ) -> VmResult<()> {
     let param_offset = usize::from(code.capture_count);
     for param_guard in &code.param_guards {
@@ -232,8 +242,7 @@ pub(crate) fn execute_linked_param_guards(
             &value,
             guard,
             program,
-            heap,
-            budget.as_deref_mut(),
+            context,
             program.debug_name(guard.context.debug_name),
         )?;
         debug_assert!(usize::from(param_guard.parameter) < code.params.len());
@@ -248,8 +257,7 @@ pub(crate) fn execute_linked_register_guard(
     frame: &CallFrame,
     register: Register,
     guard_id: TypeGuardPlanId,
-    heap: Option<&HeapExecution<'_>>,
-    budget: Option<&mut ExecutionBudget>,
+    context: &mut GuardExecutionContext<'_, '_>,
 ) -> VmResult<()> {
     let value = frame.read(register)?;
     let guard = code.type_guard(guard_id).ok_or_else(|| {
@@ -261,8 +269,7 @@ pub(crate) fn execute_linked_register_guard(
         &value,
         guard,
         program,
-        heap,
-        budget,
+        context,
         program.debug_name(guard.context.debug_name),
     )
 }
@@ -271,8 +278,7 @@ pub(crate) fn execute_linked_return_guard(
     code: &LinkedCodeObject,
     program: &LinkedProgram,
     value: Value,
-    heap: Option<&HeapExecution<'_>>,
-    budget: Option<&mut ExecutionBudget>,
+    context: &mut GuardExecutionContext<'_, '_>,
 ) -> VmResult<Value> {
     let Some(guard_id) = code.return_guard else {
         return Ok(value);
@@ -286,8 +292,7 @@ pub(crate) fn execute_linked_return_guard(
         &value,
         guard,
         program,
-        heap,
-        budget,
+        context,
         program.debug_name(guard.context.debug_name),
     )?;
     Ok(value)
@@ -326,20 +331,13 @@ fn execute_standard_guard(
     ))
 }
 
-fn charge_guard_scan_item(budget: Option<&mut ExecutionBudget>) -> VmResult<()> {
-    if let Some(budget) = budget {
-        budget.charge_instructions(1)?;
-    }
-    Ok(())
-}
-
 fn execute_option_guard(
     value: &Value,
     some: Option<&UnlinkedTypeGuardPlan>,
-    heap: Option<&HeapExecution<'_>>,
-    mut budget: Option<&mut ExecutionBudget>,
+    context: &mut GuardExecutionContext<'_, '_>,
     debug_name: &str,
 ) -> VmResult<()> {
+    let heap = context.heap;
     match std_enum_value(value, heap) {
         Some((StdEnumKind::Option, StdEnumVariant::Some, fields)) => {
             if let Some(some) = some {
@@ -351,13 +349,7 @@ fn execute_option_guard(
                             operation: "Option payload contract",
                         })
                     })?;
-                execute_unlinked_guard_plan(
-                    &payload,
-                    some,
-                    heap,
-                    budget.as_deref_mut(),
-                    debug_name,
-                )?;
+                execute_unlinked_guard_plan(&payload, some, context, debug_name)?;
             }
             Ok(())
         }
@@ -369,10 +361,10 @@ fn execute_option_guard(
 fn execute_array_guard(
     value: &Value,
     element: Option<&UnlinkedTypeGuardPlan>,
-    heap: Option<&HeapExecution<'_>>,
-    mut budget: Option<&mut ExecutionBudget>,
+    context: &mut GuardExecutionContext<'_, '_>,
     debug_name: &str,
 ) -> VmResult<()> {
+    let heap = context.heap;
     let Value::HeapRef(reference) = value else {
         return Err(type_contract_error(value, "Array", heap, debug_name));
     };
@@ -381,8 +373,8 @@ fn execute_array_guard(
     };
     if let Some(element) = element {
         for value in values {
-            charge_guard_scan_item(budget.as_deref_mut())?;
-            execute_unlinked_guard_plan(value, element, heap, budget.as_deref_mut(), debug_name)?;
+            context.charge_scan_item()?;
+            execute_unlinked_guard_plan(value, element, context, debug_name)?;
         }
     }
     Ok(())
@@ -391,10 +383,10 @@ fn execute_array_guard(
 fn execute_set_guard(
     value: &Value,
     element: Option<&UnlinkedTypeGuardPlan>,
-    heap: Option<&HeapExecution<'_>>,
-    mut budget: Option<&mut ExecutionBudget>,
+    context: &mut GuardExecutionContext<'_, '_>,
     debug_name: &str,
 ) -> VmResult<()> {
+    let heap = context.heap;
     let Value::HeapRef(reference) = value else {
         return Err(type_contract_error(value, "Set", heap, debug_name));
     };
@@ -403,8 +395,8 @@ fn execute_set_guard(
     };
     if let Some(element) = element {
         for value in values {
-            charge_guard_scan_item(budget.as_deref_mut())?;
-            execute_unlinked_guard_plan(value, element, heap, budget.as_deref_mut(), debug_name)?;
+            context.charge_scan_item()?;
+            execute_unlinked_guard_plan(value, element, context, debug_name)?;
         }
     }
     Ok(())
@@ -414,10 +406,10 @@ fn execute_map_guard(
     value: &Value,
     key: Option<&UnlinkedTypeGuardPlan>,
     value_plan: Option<&UnlinkedTypeGuardPlan>,
-    heap: Option<&HeapExecution<'_>>,
-    mut budget: Option<&mut ExecutionBudget>,
+    context: &mut GuardExecutionContext<'_, '_>,
     debug_name: &str,
 ) -> VmResult<()> {
+    let heap = context.heap;
     let Value::HeapRef(reference) = value else {
         return Err(type_contract_error(value, "Map", heap, debug_name));
     };
@@ -433,14 +425,8 @@ fn execute_map_guard(
     }
     if let Some(value_plan) = value_plan {
         for value in values.values() {
-            charge_guard_scan_item(budget.as_deref_mut())?;
-            execute_unlinked_guard_plan(
-                value,
-                value_plan,
-                heap,
-                budget.as_deref_mut(),
-                debug_name,
-            )?;
+            context.charge_scan_item()?;
+            execute_unlinked_guard_plan(value, value_plan, context, debug_name)?;
         }
     }
     Ok(())
@@ -450,10 +436,10 @@ fn execute_result_guard(
     value: &Value,
     ok: Option<&UnlinkedTypeGuardPlan>,
     err: Option<&UnlinkedTypeGuardPlan>,
-    heap: Option<&HeapExecution<'_>>,
-    mut budget: Option<&mut ExecutionBudget>,
+    context: &mut GuardExecutionContext<'_, '_>,
     debug_name: &str,
 ) -> VmResult<()> {
+    let heap = context.heap;
     match std_enum_value(value, heap) {
         Some((StdEnumKind::Result, StdEnumVariant::Ok, fields)) => {
             if let Some(ok) = ok {
@@ -465,7 +451,7 @@ fn execute_result_guard(
                             operation: "Result Ok payload contract",
                         })
                     })?;
-                execute_unlinked_guard_plan(&payload, ok, heap, budget.as_deref_mut(), debug_name)?;
+                execute_unlinked_guard_plan(&payload, ok, context, debug_name)?;
             }
             Ok(())
         }
@@ -479,13 +465,7 @@ fn execute_result_guard(
                             operation: "Result Err payload contract",
                         })
                     })?;
-                execute_unlinked_guard_plan(
-                    &payload,
-                    err,
-                    heap,
-                    budget.as_deref_mut(),
-                    debug_name,
-                )?;
+                execute_unlinked_guard_plan(&payload, err, context, debug_name)?;
             }
             Ok(())
         }
@@ -496,10 +476,10 @@ fn execute_result_guard(
 fn execute_unlinked_guard_plan(
     value: &Value,
     plan: &UnlinkedTypeGuardPlan,
-    heap: Option<&HeapExecution<'_>>,
-    budget: Option<&mut ExecutionBudget>,
+    context: &mut GuardExecutionContext<'_, '_>,
     debug_name: &str,
 ) -> VmResult<()> {
+    let heap = context.heap;
     match plan {
         UnlinkedTypeGuardPlan::Primitive(expected) => {
             execute_primitive_guard(value, *expected, heap, debug_name)
@@ -508,33 +488,27 @@ fn execute_unlinked_guard_plan(
             execute_standard_guard(value, *expected, heap, debug_name)
         }
         UnlinkedTypeGuardPlan::Array { element } => {
-            execute_array_guard(value, element.as_deref(), heap, budget, debug_name)
+            execute_array_guard(value, element.as_deref(), context, debug_name)
         }
         UnlinkedTypeGuardPlan::Map { key, value: values } => execute_map_guard(
             value,
             key.as_deref(),
             values.as_deref(),
-            heap,
-            budget,
+            context,
             debug_name,
         ),
         UnlinkedTypeGuardPlan::Set { element } => {
-            execute_set_guard(value, element.as_deref(), heap, budget, debug_name)
+            execute_set_guard(value, element.as_deref(), context, debug_name)
         }
         UnlinkedTypeGuardPlan::Iterator { .. } => {
             execute_standard_guard(value, StandardTypeGuard::Iterator, heap, debug_name)
         }
         UnlinkedTypeGuardPlan::Option { some } => {
-            execute_option_guard(value, some.as_deref(), heap, budget, debug_name)
+            execute_option_guard(value, some.as_deref(), context, debug_name)
         }
-        UnlinkedTypeGuardPlan::Result { ok, err } => execute_result_guard(
-            value,
-            ok.as_deref(),
-            err.as_deref(),
-            heap,
-            budget,
-            debug_name,
-        ),
+        UnlinkedTypeGuardPlan::Result { ok, err } => {
+            execute_result_guard(value, ok.as_deref(), err.as_deref(), context, debug_name)
+        }
         UnlinkedTypeGuardPlan::Type(expected) => {
             execute_unlinked_type_guard(value, expected, heap, debug_name)
         }
@@ -553,10 +527,10 @@ fn execute_linked_option_guard(
     value: &Value,
     some: Option<&TypeGuardPlan>,
     program: &LinkedProgram,
-    heap: Option<&HeapExecution<'_>>,
-    mut budget: Option<&mut ExecutionBudget>,
+    context: &mut GuardExecutionContext<'_, '_>,
     debug_name: &str,
 ) -> VmResult<()> {
+    let heap = context.heap;
     match std_enum_value(value, heap) {
         Some((StdEnumKind::Option, StdEnumVariant::Some, fields)) => {
             if let Some(some) = some {
@@ -568,14 +542,7 @@ fn execute_linked_option_guard(
                             operation: "Option payload contract",
                         })
                     })?;
-                execute_linked_guard_plan(
-                    &payload,
-                    some,
-                    program,
-                    heap,
-                    budget.as_deref_mut(),
-                    debug_name,
-                )?;
+                execute_linked_guard_plan(&payload, some, program, context, debug_name)?;
             }
             Ok(())
         }
@@ -588,10 +555,10 @@ fn execute_linked_array_guard(
     value: &Value,
     element: Option<&TypeGuardPlan>,
     program: &LinkedProgram,
-    heap: Option<&HeapExecution<'_>>,
-    mut budget: Option<&mut ExecutionBudget>,
+    context: &mut GuardExecutionContext<'_, '_>,
     debug_name: &str,
 ) -> VmResult<()> {
+    let heap = context.heap;
     let Value::HeapRef(reference) = value else {
         return Err(type_contract_error(value, "Array", heap, debug_name));
     };
@@ -600,15 +567,8 @@ fn execute_linked_array_guard(
     };
     if let Some(element) = element {
         for value in values {
-            charge_guard_scan_item(budget.as_deref_mut())?;
-            execute_linked_guard_plan(
-                value,
-                element,
-                program,
-                heap,
-                budget.as_deref_mut(),
-                debug_name,
-            )?;
+            context.charge_scan_item()?;
+            execute_linked_guard_plan(value, element, program, context, debug_name)?;
         }
     }
     Ok(())
@@ -618,10 +578,10 @@ fn execute_linked_set_guard(
     value: &Value,
     element: Option<&TypeGuardPlan>,
     program: &LinkedProgram,
-    heap: Option<&HeapExecution<'_>>,
-    mut budget: Option<&mut ExecutionBudget>,
+    context: &mut GuardExecutionContext<'_, '_>,
     debug_name: &str,
 ) -> VmResult<()> {
+    let heap = context.heap;
     let Value::HeapRef(reference) = value else {
         return Err(type_contract_error(value, "Set", heap, debug_name));
     };
@@ -630,15 +590,8 @@ fn execute_linked_set_guard(
     };
     if let Some(element) = element {
         for value in values {
-            charge_guard_scan_item(budget.as_deref_mut())?;
-            execute_linked_guard_plan(
-                value,
-                element,
-                program,
-                heap,
-                budget.as_deref_mut(),
-                debug_name,
-            )?;
+            context.charge_scan_item()?;
+            execute_linked_guard_plan(value, element, program, context, debug_name)?;
         }
     }
     Ok(())
@@ -649,10 +602,10 @@ fn execute_linked_map_guard(
     key: Option<&TypeGuardPlan>,
     value_plan: Option<&TypeGuardPlan>,
     program: &LinkedProgram,
-    heap: Option<&HeapExecution<'_>>,
-    mut budget: Option<&mut ExecutionBudget>,
+    context: &mut GuardExecutionContext<'_, '_>,
     debug_name: &str,
 ) -> VmResult<()> {
+    let heap = context.heap;
     let Value::HeapRef(reference) = value else {
         return Err(type_contract_error(value, "Map", heap, debug_name));
     };
@@ -668,15 +621,8 @@ fn execute_linked_map_guard(
     }
     if let Some(value_plan) = value_plan {
         for value in values.values() {
-            charge_guard_scan_item(budget.as_deref_mut())?;
-            execute_linked_guard_plan(
-                value,
-                value_plan,
-                program,
-                heap,
-                budget.as_deref_mut(),
-                debug_name,
-            )?;
+            context.charge_scan_item()?;
+            execute_linked_guard_plan(value, value_plan, program, context, debug_name)?;
         }
     }
     Ok(())
@@ -687,10 +633,10 @@ fn execute_linked_result_guard(
     ok: Option<&TypeGuardPlan>,
     err: Option<&TypeGuardPlan>,
     program: &LinkedProgram,
-    heap: Option<&HeapExecution<'_>>,
-    mut budget: Option<&mut ExecutionBudget>,
+    context: &mut GuardExecutionContext<'_, '_>,
     debug_name: &str,
 ) -> VmResult<()> {
+    let heap = context.heap;
     match std_enum_value(value, heap) {
         Some((StdEnumKind::Result, StdEnumVariant::Ok, fields)) => {
             if let Some(ok) = ok {
@@ -702,14 +648,7 @@ fn execute_linked_result_guard(
                             operation: "Result Ok payload contract",
                         })
                     })?;
-                execute_linked_guard_plan(
-                    &payload,
-                    ok,
-                    program,
-                    heap,
-                    budget.as_deref_mut(),
-                    debug_name,
-                )?;
+                execute_linked_guard_plan(&payload, ok, program, context, debug_name)?;
             }
             Ok(())
         }
@@ -723,14 +662,7 @@ fn execute_linked_result_guard(
                             operation: "Result Err payload contract",
                         })
                     })?;
-                execute_linked_guard_plan(
-                    &payload,
-                    err,
-                    program,
-                    heap,
-                    budget.as_deref_mut(),
-                    debug_name,
-                )?;
+                execute_linked_guard_plan(&payload, err, program, context, debug_name)?;
             }
             Ok(())
         }
@@ -742,10 +674,10 @@ fn execute_linked_guard_plan(
     value: &Value,
     plan: &TypeGuardPlan,
     program: &LinkedProgram,
-    heap: Option<&HeapExecution<'_>>,
-    budget: Option<&mut ExecutionBudget>,
+    context: &mut GuardExecutionContext<'_, '_>,
     debug_name: &str,
 ) -> VmResult<()> {
+    let heap = context.heap;
     match plan {
         TypeGuardPlan::Primitive(expected) => {
             execute_primitive_guard(value, *expected, heap, debug_name)
@@ -754,33 +686,31 @@ fn execute_linked_guard_plan(
             execute_standard_guard(value, *expected, heap, debug_name)
         }
         TypeGuardPlan::Array { element } => {
-            execute_linked_array_guard(value, element.as_deref(), program, heap, budget, debug_name)
+            execute_linked_array_guard(value, element.as_deref(), program, context, debug_name)
         }
         TypeGuardPlan::Map { key, value: values } => execute_linked_map_guard(
             value,
             key.as_deref(),
             values.as_deref(),
             program,
-            heap,
-            budget,
+            context,
             debug_name,
         ),
         TypeGuardPlan::Set { element } => {
-            execute_linked_set_guard(value, element.as_deref(), program, heap, budget, debug_name)
+            execute_linked_set_guard(value, element.as_deref(), program, context, debug_name)
         }
         TypeGuardPlan::Iterator { .. } => {
             execute_standard_guard(value, StandardTypeGuard::Iterator, heap, debug_name)
         }
         TypeGuardPlan::Option { some } => {
-            execute_linked_option_guard(value, some.as_deref(), program, heap, budget, debug_name)
+            execute_linked_option_guard(value, some.as_deref(), program, context, debug_name)
         }
         TypeGuardPlan::Result { ok, err } => execute_linked_result_guard(
             value,
             ok.as_deref(),
             err.as_deref(),
             program,
-            heap,
-            budget,
+            context,
             debug_name,
         ),
         TypeGuardPlan::Type(expected) => {

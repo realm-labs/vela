@@ -167,12 +167,15 @@ impl Vm {
             }
         }
         if call.check_param_guards {
+            let mut guard_context = runtime_type_guards::GuardExecutionContext::new(
+                heap.as_deref(),
+                budget.as_deref_mut(),
+            );
             runtime_type_guards::execute_linked_param_guards(
                 code,
                 call.program,
                 &frame,
-                heap.as_deref(),
-                budget.as_deref_mut(),
+                &mut guard_context,
             )?;
         }
 
@@ -417,14 +420,17 @@ impl Vm {
                     }
                 }
                 InstructionKind::GuardType { src, guard } => {
+                    let mut guard_context = runtime_type_guards::GuardExecutionContext::new(
+                        heap.as_deref(),
+                        budget.as_deref_mut(),
+                    );
                     runtime_type_guards::execute_linked_register_guard(
                         code,
                         call.program,
                         &frame,
                         *src,
                         *guard,
-                        heap.as_deref(),
-                        budget.as_deref_mut(),
+                        &mut guard_context,
                     )
                     .map_err(|error| error.with_source_span_if_absent(instruction.span))?;
                 }
@@ -607,12 +613,15 @@ impl Vm {
                         *dst,
                         *src,
                     )? {
+                        let mut guard_context = runtime_type_guards::GuardExecutionContext::new(
+                            heap.as_deref(),
+                            budget.as_deref_mut(),
+                        );
                         return runtime_type_guards::execute_linked_return_guard(
                             code,
                             call.program,
                             value,
-                            heap.as_deref(),
-                            budget.as_deref_mut(),
+                            &mut guard_context,
                         );
                     }
                 }
@@ -1103,12 +1112,15 @@ impl Vm {
                     }
                 }
                 InstructionKind::Return { src } => {
+                    let mut guard_context = runtime_type_guards::GuardExecutionContext::new(
+                        heap.as_deref(),
+                        budget.as_deref_mut(),
+                    );
                     return runtime_type_guards::execute_linked_return_guard(
                         code,
                         call.program,
                         frame.read(*src)?,
-                        heap.as_deref(),
-                        budget.as_deref_mut(),
+                        &mut guard_context,
                     );
                 }
             }

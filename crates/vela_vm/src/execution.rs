@@ -86,7 +86,11 @@ impl Vm {
             }
         }
         if call.check_param_guards {
-            execute_unlinked_param_guards(code, &frame, heap.as_deref(), budget.as_deref_mut())?;
+            let mut guard_context = runtime_type_guards::GuardExecutionContext::new(
+                heap.as_deref(),
+                budget.as_deref_mut(),
+            );
+            execute_unlinked_param_guards(code, &frame, &mut guard_context)?;
         }
         let charges_instructions = budget
             .as_deref()
@@ -328,11 +332,14 @@ impl Vm {
                     }
                 }
                 UnlinkedInstructionKind::GuardType { src, guard } => {
+                    let mut guard_context = runtime_type_guards::GuardExecutionContext::new(
+                        heap.as_deref(),
+                        budget.as_deref_mut(),
+                    );
                     runtime_type_guards::execute_unlinked_guard(
                         &frame.read(*src)?,
                         guard,
-                        heap.as_deref(),
-                        budget.as_deref_mut(),
+                        &mut guard_context,
                     )
                     .map_err(|error| error.with_source_span_if_absent(instruction.span))?;
                 }
@@ -493,12 +500,11 @@ impl Vm {
                         *dst,
                         *src,
                     )? {
-                        return execute_unlinked_return_guard(
-                            code,
-                            value,
+                        let mut guard_context = runtime_type_guards::GuardExecutionContext::new(
                             heap.as_deref(),
                             budget.as_deref_mut(),
                         );
+                        return execute_unlinked_return_guard(code, value, &mut guard_context);
                     }
                 }
                 UnlinkedInstructionKind::MakeArray { dst, elements } => {
@@ -957,11 +963,14 @@ impl Vm {
                     }
                 }
                 UnlinkedInstructionKind::Return { src } => {
+                    let mut guard_context = runtime_type_guards::GuardExecutionContext::new(
+                        heap.as_deref(),
+                        budget.as_deref_mut(),
+                    );
                     return execute_unlinked_return_guard(
                         code,
                         frame.read(*src)?,
-                        heap.as_deref(),
-                        budget.as_deref_mut(),
+                        &mut guard_context,
                     );
                 }
             }
@@ -998,8 +1007,7 @@ fn string_key_constant(
 fn execute_unlinked_param_guards(
     code: &UnlinkedCodeObject,
     frame: &CallFrame,
-    heap: Option<&HeapExecution<'_>>,
-    mut budget: Option<&mut ExecutionBudget>,
+    context: &mut runtime_type_guards::GuardExecutionContext<'_, '_>,
 ) -> VmResult<()> {
     for param_guard in &code.param_guards {
         let register = Register(
@@ -1015,12 +1023,7 @@ fn execute_unlinked_param_guards(
         if matches!(value, Value::Missing) {
             continue;
         }
-        runtime_type_guards::execute_unlinked_guard(
-            &value,
-            &param_guard.guard,
-            heap,
-            budget.as_deref_mut(),
-        )?;
+        runtime_type_guards::execute_unlinked_guard(&value, &param_guard.guard, context)?;
     }
     Ok(())
 }
@@ -1028,12 +1031,11 @@ fn execute_unlinked_param_guards(
 fn execute_unlinked_return_guard(
     code: &UnlinkedCodeObject,
     value: Value,
-    heap: Option<&HeapExecution<'_>>,
-    budget: Option<&mut ExecutionBudget>,
+    context: &mut runtime_type_guards::GuardExecutionContext<'_, '_>,
 ) -> VmResult<Value> {
     let Some(guard) = &code.return_guard else {
         return Ok(value);
     };
-    runtime_type_guards::execute_unlinked_guard(&value, guard, heap, budget)?;
+    runtime_type_guards::execute_unlinked_guard(&value, guard, context)?;
     Ok(value)
 }
