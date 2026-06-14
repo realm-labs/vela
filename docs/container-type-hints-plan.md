@@ -68,6 +68,8 @@ bytecode decisions.
   `RuntimeTypeFact`, and contract guard metadata.
 - Make `Array<T>`, `Set<T>`, and `Map<K, V>` runtime contracts semantically
   real by validating existing contents at guarded boundaries.
+- Add container content summaries and contract stamps so repeated downcasts to
+  stable typed containers do not scan contents on every boundary crossing.
 - Keep typed container mutation sound without adding unnecessary hot-path
   checks: writes, pushes, inserts, and map/set updates through a typed
   container contract should skip runtime guards when the inserted key/item/value
@@ -93,6 +95,10 @@ This pass must not:
   bounds.
 - Add implicit conversions for container contents.
 - Trust container facts for fast paths after unchecked mutation.
+- Recheck element types on every indexed read, `for` item, arithmetic op, or
+  other hot read path after a container fact is trusted.
+- Scan full container contents on every repeated contract check when summary
+  or stamp metadata can answer the check safely.
 - Consume an iterator merely to prove `Iterator<T>`.
 - Expose Rust references or host-owned iterator internals to scripts.
 - Weaken budget charging, GC rooting, hot reload ABI checks, or source-spanned
@@ -281,7 +287,68 @@ starts after the contract guard, not before it.
 
 ## 6. Runtime Contract Model
 
-### 6.1 Deep guards for materialized containers
+### 6.1 Container summaries and contract stamps
+
+Parameterized container contracts need runtime metadata to keep type checks out
+of hot read paths. The first implementation should add two distinct concepts.
+
+`ContainerTypeSummary` is an observed shallow content summary:
+
+```text
+Empty             no values observed
+Exact(type_key)   every observed key/item/value has the same shallow type key
+Mixed             more than one shallow type key is present
+Unknown           summary is unavailable or invalidated
+```
+
+Arrays and sets track an element summary. Maps track key and value summaries if
+the runtime supports non-string keys; if the runtime map key remains string-only
+in this implementation, the key side is always `String` and only values need a
+summary.
+
+Summary updates must be cheap:
+
+```text
+Empty + i64       -> Exact(i64)
+Exact(i64) + i64  -> Exact(i64)
+Exact(i64) + str  -> Mixed
+Mixed + anything  -> Mixed
+Unknown + any     -> Unknown until an explicit rescan
+```
+
+The first implementation may make `Exact -> Mixed` a one-way downgrade. It
+does not need to rescan after deletes to recover `Exact`; that can be added
+later as an explicit optimization.
+
+`ContainerContractStamp` records that a specific container has already passed a
+specific parameterized contract and has not been invalidated by later mutation.
+It is needed for nested contracts such as `Array<Array<i64>>`, where a shallow
+summary can only prove that outer elements are arrays, not that inner arrays
+satisfy `Array<i64>`.
+
+Contract checks should use this order:
+
+```text
+matching valid contract stamp -> pass O(1)
+summary proves contract       -> install/update stamp and pass O(1)
+summary proves mismatch       -> fail O(1)
+summary Unknown               -> scan once, then update summary/stamp or fail
+```
+
+Container mutation must update summaries and stamps:
+
+```text
+statically compatible typed mutation -> preserve or update matching stamps O(1)
+dynamic value that passes guard      -> preserve or update matching stamps O(1)
+unchecked or incompatible mutation   -> downgrade summary and invalidate stamps
+```
+
+Once a container fact is trusted, indexed reads, `for` iteration, typed
+arithmetic over items, and other hot read paths must use the trusted fact
+directly. They must not repeat per-item type guards unless the operation itself
+crosses a new dynamic contract boundary.
+
+### 6.2 Deep guards for materialized containers
 
 `Array<T>`, `Set<T>`, and `Map<K, V>` contract guards must validate existing
 materialized contents:
@@ -295,7 +362,10 @@ Map<K, V>    validate each key against K and each value against V
 These guards are language semantics. They fail with runtime type contract
 errors, not inline-cache misses.
 
-### 6.2 Budget charging
+Deep scanning is the fallback for `Unknown` summaries or first-time nested
+contract checks, not the normal path for stable containers.
+
+### 6.3 Budget charging
 
 Deep container validation must charge execution budget. Large containers must
 not bypass budget limits merely by crossing a typed boundary.
@@ -314,7 +384,7 @@ pub struct GuardExecutionContext<'a> {
 Use the repository's actual lifetime and ownership style; this is a design
 sketch, not a required exact API.
 
-### 6.3 Iterator guards
+### 6.4 Iterator guards
 
 `Iterator<T>` must not eagerly consume the iterator to validate items.
 
@@ -330,7 +400,7 @@ If the first implementation cannot wrap iterator state cleanly, defer
 `Iterator<T>` execution support behind a compile/runtime rejection with tests.
 Do not implement an eager-consuming guard.
 
-### 6.4 Mutation soundness
+### 6.5 Mutation soundness
 
 Typed container facts are only safe if later mutations preserve the contract.
 Use the same compatibility table as function parameter and return contracts:
@@ -371,7 +441,7 @@ push proven `i64` values into `Array<i64>` should not pay a redundant runtime
 guard on every insertion. Guarded mutation exists for dynamic boundaries, not
 for values the compiler has already proven.
 
-### 6.5 Host containers
+### 6.6 Host containers
 
 Host-owned fields that expose `Array<T>`, `Map<K,V>`, or `Set<T>` through
 snapshot `OwnedValue`/`HostValue` boundaries can use the same deep guard model.
@@ -450,6 +520,8 @@ cargo test -p vela_bytecode
 - Extend unlinked and linked `TypeGuardPlan` with parameterized container
   plans, or introduce a uniform recursive guard-plan node that can represent
   `Array`, `Set`, `Map`, `Iterator`, `Option`, and `Result`.
+- Add or reference a stable contract identity usable by container contract
+  stamps without string lookup on the hot path.
 - Keep linked guard plans hot-path friendly: no string lookup or registry
   lookup during execution.
 - Update linker interning, verification, and profile/program-image ownership
@@ -464,6 +536,13 @@ cargo test -p vela_bytecode -p vela_vm
 
 ### Phase 5: VM guard execution and mutation checks
 
+- Replace plain heap array/map/set storage with focused container storage
+  structs, or otherwise attach equivalent metadata, so containers carry content
+  summaries and contract stamps without scattering side tables through the VM.
+- Maintain summaries during construction, owned/host value materialization,
+  array push/set, set insert/remove, map insert/update/remove, collection
+  transforms, iterator collection, and reflection-controlled writes.
+- Use contract stamps and summaries before falling back to full scans.
 - Implement deep guards for array/set/map contents.
 - Charge budget while scanning materialized containers.
 - Implement typed mutation checks for array push/set, set insert, map insert
@@ -477,6 +556,8 @@ cargo test -p vela_bytecode -p vela_vm
 - Preserve source spans in type contract errors.
 - Add negative tests proving invalid existing contents and invalid later
   mutations fail before typed fast paths rely on them.
+- Add positive tests proving repeated contract checks on a stable container use
+  summary/stamp metadata instead of rescanning contents.
 
 Checkpoint:
 
@@ -572,6 +653,10 @@ cargo bench -p vela_vm --bench baseline -- --quick container
   no-guard typed mutations or typed index fast paths.
 - A statically proven `[1i64, 2i64]` literal can bind trusted `Array<i64>`
   without a runtime guard.
+- Rechecking the same stable `Array<i64>` value after a successful contract
+  check uses its contract stamp or summary instead of rescanning every element.
+- Rechecking an `Array<i64>` value after an unchecked mixed mutation invalidates
+  the stamp and fails or rescans according to the updated summary.
 - Returning `Array<String>` from a function declared `-> Array<i64>` fails at
   the return guard.
 - `Array<i64>` rejects pushing `"x"` and preserves the previous array state.
@@ -607,6 +692,10 @@ cargo bench -p vela_vm --bench baseline -- --quick container
 - Acceptance rule: the static typed push/update path must not show guard
   execution as a material hotspot. If a measurable regression appears, fix the
   lowering/guard placement before calling the feature complete.
+- Add a repeated-boundary benchmark for passing the same stable `Array<i64>` or
+  `Map<String, i64>` through a typed function many times. The benchmark should
+  demonstrate O(1) stamp/summary checks after the first successful validation,
+  not repeated full-container scans.
 
 ### Embedding and hot reload
 
@@ -633,10 +722,11 @@ cargo test --workspace
 
 ### 9.1 Deep guard cost
 
-Deep guards can be expensive on large containers. That is acceptable because
-they are language contract checks, but they must be budgeted and visible in
-benchmarks. Future optimization can cache a container contract stamp when safe,
-but the first implementation should prefer correctness.
+Deep guards can be expensive on large containers. The first implementation
+must avoid making repeated deep scans the normal path. Use content summaries
+and contract stamps so stable containers pay O(1) for repeated checks after
+initial proof. Full scans remain the budgeted fallback for unknown summaries,
+first-time nested contract validation, or repair after explicit rescan.
 
 ### 9.2 Mutation invalidates facts
 
