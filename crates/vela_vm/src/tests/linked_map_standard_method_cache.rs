@@ -1,5 +1,6 @@
 use super::linked_standard_method_cache_support::*;
 use super::*;
+use crate::budget::CollectionLimits;
 
 type LinkedMapCacheFixture = (
     vela_bytecode::LinkedProgram,
@@ -70,6 +71,41 @@ fn linked_standard_value_method_caches_map_merge_target() {
             ("xp", OwnedValue::i64(10)),
         ]),
     );
+}
+
+#[test]
+fn linked_cached_map_merge_limit_counts_unique_value_keys() {
+    let (program, site, dispatch, method_id) = linked_map_merge_cache_program();
+    let caches = RecordingMethodCaches::new(1);
+    let expected = Ok(OwnedValue::map([
+        ("gold", OwnedValue::i64(4)),
+        ("quest", OwnedValue::i64(8)),
+        ("xp", OwnedValue::i64(10)),
+    ]));
+
+    assert_eq!(
+        run_linked_method_cache_owned_program(&program, &caches),
+        expected
+    );
+    assert_map_cache_entry(
+        &caches,
+        site,
+        dispatch,
+        method_id,
+        StandardMethodInlineCacheTarget::Merge,
+    );
+
+    let mut budget = ExecutionBudget::unbounded().with_collection_limits(CollectionLimits {
+        max_array_len: usize::MAX,
+        max_map_entries: 3,
+        max_set_len: usize::MAX,
+    });
+
+    assert_eq!(
+        run_linked_method_cache_owned_program_with_budget(&program, &caches, &mut budget),
+        expected
+    );
+    assert_eq!(caches.set_count(), 2);
 }
 
 #[test]

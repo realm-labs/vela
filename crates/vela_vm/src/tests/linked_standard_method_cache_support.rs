@@ -13,9 +13,19 @@ pub(super) fn run_linked_method_cache_owned_program(
     program: &vela_bytecode::LinkedProgram,
     caches: &RecordingMethodCaches,
 ) -> VmResult<OwnedValue> {
+    let mut budget = ExecutionBudget::unbounded();
+    run_linked_method_cache_owned_program_with_budget(program, caches, &mut budget)
+}
+
+pub(super) fn run_linked_method_cache_owned_program_with_budget(
+    program: &vela_bytecode::LinkedProgram,
+    caches: &RecordingMethodCaches,
+    budget: &mut ExecutionBudget,
+) -> VmResult<OwnedValue> {
     let mut heap = ScriptHeap::new();
     let mut heap_execution = HeapExecution::new(&mut heap);
-    let result = run_linked_method_cache_with_heap(program, caches, &mut heap_execution)?;
+    let result =
+        run_linked_method_cache_with_heap_and_budget(program, caches, &mut heap_execution, budget)?;
     crate::heap_values::value_to_owned(&result, Some(&heap_execution))
 }
 
@@ -59,8 +69,17 @@ fn run_linked_method_cache_with_heap(
     caches: &RecordingMethodCaches,
     heap_execution: &mut HeapExecution<'_>,
 ) -> VmResult<RuntimeValue> {
-    let code = main_code(program);
     let mut budget = ExecutionBudget::unbounded();
+    run_linked_method_cache_with_heap_and_budget(program, caches, heap_execution, &mut budget)
+}
+
+fn run_linked_method_cache_with_heap_and_budget(
+    program: &vela_bytecode::LinkedProgram,
+    caches: &RecordingMethodCaches,
+    heap_execution: &mut HeapExecution<'_>,
+    budget: &mut ExecutionBudget,
+) -> VmResult<RuntimeValue> {
+    let code = main_code(program);
     Vm::new().execute_linked_call(
         crate::linked_execution::LinkedExecutionCall {
             code,
@@ -75,7 +94,7 @@ fn run_linked_method_cache_with_heap(
         },
         None,
         Some(heap_execution),
-        Some(&mut budget),
+        Some(budget),
     )
 }
 

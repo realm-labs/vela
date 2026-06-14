@@ -80,13 +80,13 @@ pub(crate) fn make_map_from_entries(
     budget: &mut Option<&mut ExecutionBudget>,
     operation: &'static str,
 ) -> VmResult<Value> {
-    check_collection_len("map", 0, entries.len(), budget.as_deref(), |budget| {
-        budget.collection_limits().max_map_entries
-    })?;
     let Some(heap_ref) = heap.as_deref_mut() else {
         return type_error(operation);
     };
     let values = ScriptMap::from_entries(entries, Some(&*heap_ref), operation)?;
+    check_collection_len("map", 0, values.len(), budget.as_deref(), |budget| {
+        budget.collection_limits().max_map_entries
+    })?;
     allocate_heap_value(HeapValue::Map(values), heap_ref, budget.as_deref_mut())
 }
 
@@ -311,6 +311,31 @@ fn main() {
                 collection: "map",
                 limit: 2,
             }
+        );
+    }
+
+    #[test]
+    fn map_merge_limit_counts_unique_value_keys() {
+        let source = r#"
+fn main() {
+    let base = {"gold": 1, "xp": 2};
+    let incoming = {"xp": 20};
+    let merged = base.merge(incoming);
+    return merged["gold"] * 100 + merged["xp"];
+}
+"#;
+        let code = compile_function_source(SourceId::new(1), source, "main")
+            .expect("map merge duplicate key limit source should compile");
+        let mut budget =
+            ExecutionBudget::unbounded().with_collection_limits(crate::budget::CollectionLimits {
+                max_array_len: usize::MAX,
+                max_map_entries: 2,
+                max_set_len: usize::MAX,
+            });
+
+        assert_eq!(
+            run_linked_map_test_code_with_budget(&Vm::new(), code, &mut budget),
+            Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(120)))
         );
     }
 
