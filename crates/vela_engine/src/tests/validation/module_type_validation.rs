@@ -171,21 +171,15 @@ fn engine_rejects_empty_field_type_hints() {
 }
 
 #[test]
-fn engine_rejects_generic_field_type_hints() {
+fn engine_accepts_supported_generic_field_type_hints() {
     let result = Engine::builder()
         .register_type(
             TypeDesc::new(TypeKey::new(TypeId::new(1), "Player"))
-                .field(FieldDesc::new(FieldId::new(1), "inventory").type_hint("Array<Item>")),
+                .field(FieldDesc::new(FieldId::new(1), "inventory").type_hint("Array<i64>")),
         )
         .build();
 
-    assert!(matches!(
-        result,
-        Err(error) if error.kind == EngineErrorKind::InvalidTypeHintName {
-            descriptor: "field Player.inventory".to_owned(),
-            type_name: "Array<Item>".to_owned(),
-        }
-    ));
+    assert!(result.is_ok());
 }
 
 #[test]
@@ -302,7 +296,7 @@ fn engine_rejects_empty_variant_field_attribute_names() {
 }
 
 #[test]
-fn engine_rejects_generic_variant_field_type_hints() {
+fn engine_accepts_supported_generic_variant_field_type_hints() {
     let result = Engine::builder()
         .register_type(
             TypeDesc::new(TypeKey::new(TypeId::new(1), "Reward")).variant(
@@ -312,13 +306,7 @@ fn engine_rejects_generic_variant_field_type_hints() {
         )
         .build();
 
-    assert!(matches!(
-        result,
-        Err(error) if error.kind == EngineErrorKind::InvalidTypeHintName {
-            descriptor: "variant field Reward::Gold::count".to_owned(),
-            type_name: "Option<i64>".to_owned(),
-        }
-    ));
+    assert!(result.is_ok());
 }
 
 #[test]
@@ -389,7 +377,7 @@ fn engine_rejects_generic_trait_method_param_type_hints() {
             TypeDesc::new(TypeKey::new(TypeId::new(1), "Player")).trait_impl(
                 trait_desc_with_id(TraitId::new(1), "Rewardable").method(
                     TraitMethodDesc::new(MethodId::new(1), "reward")
-                        .param(MethodParamDesc::new("items").type_hint("Array<Item>"))
+                        .param(MethodParamDesc::new("items").type_hint("Map<i64, String>"))
                         .return_type("Result"),
                 ),
             ),
@@ -400,7 +388,7 @@ fn engine_rejects_generic_trait_method_param_type_hints() {
         result,
         Err(error) if error.kind == EngineErrorKind::InvalidTypeHintName {
             descriptor: "trait method Player::Rewardable::reward parameter items".to_owned(),
-            type_name: "Array<Item>".to_owned(),
+            type_name: "Map<i64, String>".to_owned(),
         }
     ));
 }

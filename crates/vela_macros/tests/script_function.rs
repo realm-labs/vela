@@ -174,6 +174,12 @@ fn count_unordered_labels(labels: HashSet<String>) -> i64 {
     i64::try_from(labels.len()).expect("label count fits i64")
 }
 
+/// Counts copied u8 ids from a script set without a parameterized Set contract.
+#[script_function(name = "game::count_byte_ids", effect = "pure", reflect = true)]
+fn count_byte_ids(ids: BTreeSet<u8>) -> i64 {
+    i64::try_from(ids.len()).expect("id count fits i64")
+}
+
 /// Sums a copied fixed weight array.
 #[script_function(name = "game::sum_weights", effect = "pure", reflect = true)]
 fn sum_weights(weights: [i64; 3]) -> i64 {

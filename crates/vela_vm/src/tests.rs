@@ -629,7 +629,7 @@ fn host_definition_registry(
                             .params
                             .iter()
                             .map(|name| vela_registry::ParamDef::new(*name, None::<String>)),
-                        None,
+                        None::<vela_registry::TypeHintDef>,
                     ),
                 )
                 .host_runtime_id(method.id.get()),

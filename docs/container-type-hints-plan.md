@@ -61,6 +61,9 @@ bytecode decisions.
 - Allow type arguments only on selected builtin type-hint contracts:
   `Array<T>`, `Set<T>`, `Map<String, V>`, `Iterator<T>`, `Option<T>`, and
   `Result<T, E>`.
+- Restrict `Set<T>` to the runtime's current set-keyable element contracts:
+  `null`, `bool`, `i64`, `f64`, and `String`; use erased `Set` for other Rust
+  set element types until arbitrary value-key support is designed.
 - Keep scalar primitive type hints lowercase and named container contracts
   capitalized.
 - Preserve the rule that type hints are contracts, not conversions.
@@ -115,7 +118,7 @@ The parser should accept only these arities:
 | Type hint | Arity | Meaning |
 |---|---:|---|
 | `Array<T>` | 1 | script/runtime array whose current and future elements satisfy `T` |
-| `Set<T>` | 1 | script/runtime set whose current and future values satisfy `T` |
+| `Set<T>` | 1 | script/runtime set whose current and future values satisfy set-keyable `T` |
 | `Map<String, V>` | 2 | script/runtime map whose current and future keys are strings and values satisfy `V` |
 | `Iterator<T>` | 1 | one-shot iterator whose yielded items satisfy `T` |
 | `Option<T>` | 1 | `Some` payload satisfies `T`; `None` carries no payload |
@@ -124,6 +127,9 @@ The parser should accept only these arities:
 Current runtime maps are string-keyed. The first container type-hint slice must
 therefore accept only `Map<String, V>` and reject `Map<K, V>` when `K` is not
 `String`. Supporting arbitrary map keys requires a separate `ValueKey` design.
+Current runtime sets are also limited to keyable values, so `Set<T>` accepts
+only `null`, `bool`, `i64`, `f64`, and `String` element contracts in this
+slice.
 
 Unparameterized forms remain valid erased container contracts:
 
@@ -578,7 +584,7 @@ cargo test -p vela_vm
 
 - Update macro-inferred hints:
   - `Vec<T>` and `[T; N]` -> `Array<T>`
-  - `HashSet<T>` / `BTreeSet<T>` -> `Set<T>`
+  - `HashSet<T>` / `BTreeSet<T>` -> `Set<T>` only for set-keyable `T`; otherwise `Set`
   - `HashMap<String,V>` / `BTreeMap<String,V>` -> `Map<String,V>`
   - non-string Rust map keys remain unsupported until arbitrary Vela map keys
     have a runtime design
@@ -682,8 +688,9 @@ cargo bench -p vela_vm --bench baseline -- --quick container
   emits no runtime guard.
 - `Map<String, i64>` update with dynamic key or value emits only the necessary
   key/value guard before mutation.
-- `Set<Player>` rejects inserting a non-`Player` value.
-- `Set<Player>` insert of a statically proven `Player` emits no runtime guard.
+- `Set<String>` rejects inserting a non-`String` value.
+- `Set<String>` insert of a statically proven `String` emits no runtime guard.
+- `Set<Player>` is rejected until arbitrary set value-key support is designed.
 - `Array<Any>` accepts mixed values while still rejecting a non-array outer
   value.
 - Deep guard scans charge budget and can fail with budget exhaustion before

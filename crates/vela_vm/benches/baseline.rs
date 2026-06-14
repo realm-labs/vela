@@ -707,7 +707,7 @@ fn register_bench_host_method(
                     params
                         .iter()
                         .map(|param| vela_registry::ParamDef::new(*param, None::<String>)),
-                    None,
+                    None::<vela_registry::TypeHintDef>,
                 ),
             )
             .host_runtime_id(method.get()),

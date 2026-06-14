@@ -336,7 +336,10 @@ fn hint_for_type(ty: &Type) -> HintKind {
             .unwrap_or(HintKind::Array),
         Some("BTreeMap" | "HashMap") => string_key_map_hint(ty).unwrap_or(HintKind::Map),
         Some("BTreeSet" | "HashSet") => generic_arg(ty, 0)
-            .map(|element| HintKind::SetOf(Box::new(hint_for_type(element))))
+            .and_then(|element| {
+                let element = hint_for_type(element);
+                is_set_key_hint(&element).then(|| HintKind::SetOf(Box::new(element)))
+            })
             .unwrap_or(HintKind::Set),
         Some("PathProxy") => HintKind::PathProxy,
         Some("Value") => HintKind::Any,
@@ -358,6 +361,19 @@ fn string_key_map_hint(ty: &Type) -> Option<HintKind> {
         key: Box::new(HintKind::Primitive(PrimitiveTag::String)),
         value: Box::new(hint_for_type(value)),
     })
+}
+
+fn is_set_key_hint(hint: &HintKind) -> bool {
+    matches!(
+        hint,
+        HintKind::Primitive(
+            PrimitiveTag::Null
+                | PrimitiveTag::Bool
+                | PrimitiveTag::I64
+                | PrimitiveTag::F64
+                | PrimitiveTag::String
+        )
+    )
 }
 
 fn is_unit_tuple(ty: &Type) -> bool {

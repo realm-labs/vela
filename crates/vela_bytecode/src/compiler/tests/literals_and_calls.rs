@@ -24,7 +24,7 @@ fn value_method_registry(specs: &[(&str, &str, &[&str])]) -> vela_registry::Defi
                     params
                         .iter()
                         .map(|param| vela_registry::ParamDef::new(*param, None::<String>)),
-                    None,
+                    None::<vela_registry::TypeHintDef>,
                 ),
             ))
             .expect("test value method should register");

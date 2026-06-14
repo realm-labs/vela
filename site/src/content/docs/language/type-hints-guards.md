@@ -61,9 +61,11 @@ fn grant(rewards: Map<String, i64>, tags: Set<String>) -> Result<i64, String> {
 }
 ```
 
-Allowed parameterized contracts are `Array<T>`, `Set<T>`,
-`Map<String, V>`, `Iterator<T>`, `Option<T>`, and `Result<T, E>`.
-`Array<Any>`, `Map<String, Any>`, and `Option<Any>` erase the inner contract.
+Allowed parameterized contracts are `Array<T>`, `Map<String, V>`,
+`Iterator<T>`, `Option<T>`, and `Result<T, E>`. `Set<T>` is also supported
+when `T` is set-keyable in the current runtime: `null`, `bool`, `i64`, `f64`,
+or `String`. `Array<Any>`, `Map<String, Any>`, and `Option<Any>` erase the
+inner contract.
 
 These are contracts, not conversions. A mixed array passed to `Array<i64>`
 fails at the checked boundary instead of being converted.

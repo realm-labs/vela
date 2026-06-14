@@ -2,10 +2,9 @@ use vela_def::{DefPath, FunctionId};
 use vela_reflect::registry::{FieldDesc, MethodDesc, MethodParamDesc, TypeDesc};
 use vela_registry::{
     DefinitionRegistry, EffectSet as DefinitionEffectSet, FieldDef, FunctionDef, FunctionSignature,
-    MethodDef, ParamDef, RegistryError, TypeDef,
+    MethodDef, ParamDef, RegistryError, TypeDef, TypeHintDef,
 };
 
-use crate::metadata::type_hint_display;
 use crate::native::{
     ContextHostNativeFunctionEntry, HostNativeFunctionEntry, NativeFunctionDesc,
     NativeFunctionEntry,
@@ -78,7 +77,7 @@ fn field_def(desc: &TypeDesc, owner: vela_def::TypeId, field: &FieldDesc) -> Fie
     )
     .host_runtime_id(field.id.get())
     .writable(field.access.writable)
-    .type_hint(field.type_hint.clone())
+    .type_hint(field.type_hint.as_deref().map(raw_type_hint_def))
 }
 
 fn variant_field_def(
@@ -98,7 +97,7 @@ fn variant_field_def(
     .host_runtime_id(field.id.get())
     .writable(field.access.writable)
     .variant_field(true)
-    .type_hint(field.type_hint.clone())
+    .type_hint(field.type_hint.as_deref().map(raw_type_hint_def))
 }
 
 fn method_def(desc: &TypeDesc, owner: vela_def::TypeId, method: &MethodDesc) -> MethodDef {
@@ -107,7 +106,7 @@ fn method_def(desc: &TypeDesc, owner: vela_def::TypeId, method: &MethodDesc) -> 
         owner,
         FunctionSignature::new(
             method.params.iter().map(method_param_def),
-            method.return_type.clone(),
+            method.return_type.as_deref().map(raw_type_hint_def),
         ),
     )
     .host_runtime_id(method.id.get())
@@ -115,7 +114,11 @@ fn method_def(desc: &TypeDesc, owner: vela_def::TypeId, method: &MethodDesc) -> 
 }
 
 fn method_param_def(param: &MethodParamDesc) -> ParamDef {
-    ParamDef::new(param.name.clone(), param.type_hint.clone()).defaulted(param.has_default)
+    ParamDef::new(
+        param.name.clone(),
+        param.type_hint.as_deref().map(raw_type_hint_def),
+    )
+    .defaulted(param.has_default)
 }
 
 fn native_function_def(desc: &NativeFunctionDesc) -> FunctionDef {
@@ -127,10 +130,10 @@ fn native_function_def(desc: &NativeFunctionDesc) -> FunctionDef {
     FunctionDef::new(
         source_function_path(package, &desc.name),
         FunctionSignature::new(
-            desc.params.iter().map(|param| {
-                ParamDef::new(param.name.clone(), Some(type_hint_display(&param.hint)))
-            }),
-            Some(type_hint_display(&desc.returns)),
+            desc.params
+                .iter()
+                .map(|param| ParamDef::new(param.name.clone(), Some(type_hint_def(&param.hint)))),
+            Some(type_hint_def(&desc.returns)),
         ),
     )
     .with_id(desc.id)
@@ -193,8 +196,8 @@ fn register_reflection_native_defs(registry: &mut DefinitionRegistry) -> Result<
             FunctionSignature::new(
                 params
                     .iter()
-                    .map(|param| ParamDef::new(*param, None::<String>)),
-                None::<String>,
+                    .map(|param| ParamDef::new(*param, None::<TypeHintDef>)),
+                None::<TypeHintDef>,
             ),
         ))?;
     }
@@ -255,3 +258,48 @@ const REFLECTION_NATIVE_DEFS: &[(&str, &[&str])] = &[
     ("reflect::variant_is", &["target", "name"]),
     ("reflect::variants", &["target"]),
 ];
+
+fn raw_type_hint_def(hint: &str) -> TypeHintDef {
+    TypeHintDef::parse(hint).unwrap_or_else(|| TypeHintDef::named(hint))
+}
+
+fn type_hint_def(hint: &crate::native::TypeHint) -> TypeHintDef {
+    match hint {
+        crate::native::TypeHint::Any => TypeHintDef::named("Any"),
+        crate::native::TypeHint::Primitive(vela_common::PrimitiveTag::String) => {
+            TypeHintDef::named("String")
+        }
+        crate::native::TypeHint::Primitive(vela_common::PrimitiveTag::Bytes) => {
+            TypeHintDef::named("Bytes")
+        }
+        crate::native::TypeHint::Primitive(tag) => TypeHintDef::named(tag.name()),
+        crate::native::TypeHint::Array => TypeHintDef::named("Array"),
+        crate::native::TypeHint::ArrayOf(element) => {
+            TypeHintDef::named("Array").with_args([type_hint_def(element)])
+        }
+        crate::native::TypeHint::Map => TypeHintDef::named("Map"),
+        crate::native::TypeHint::MapOf { key, value } => {
+            TypeHintDef::named("Map").with_args([type_hint_def(key), type_hint_def(value)])
+        }
+        crate::native::TypeHint::Set => TypeHintDef::named("Set"),
+        crate::native::TypeHint::SetOf(element) => {
+            TypeHintDef::named("Set").with_args([type_hint_def(element)])
+        }
+        crate::native::TypeHint::Iterator => TypeHintDef::named("Iterator"),
+        crate::native::TypeHint::IteratorOf(item) => {
+            TypeHintDef::named("Iterator").with_args([type_hint_def(item)])
+        }
+        crate::native::TypeHint::OptionOf(payload) => {
+            TypeHintDef::named("Option").with_args([type_hint_def(payload)])
+        }
+        crate::native::TypeHint::ResultOf { ok, err } => {
+            TypeHintDef::named("Result").with_args([type_hint_def(ok), type_hint_def(err)])
+        }
+        crate::native::TypeHint::PathProxy => TypeHintDef::named("path_proxy"),
+        crate::native::TypeHint::Record(key)
+        | crate::native::TypeHint::Enum(key)
+        | crate::native::TypeHint::Host(key) => TypeHintDef::named(key.name.clone()),
+        crate::native::TypeHint::Trait(name) => TypeHintDef::named(name.clone()),
+        crate::native::TypeHint::Function => TypeHintDef::named("Function"),
+    }
+}

@@ -834,11 +834,13 @@ Only builtin type-hint contracts may be parameterized:
 `Result<T, E>`. They exist to make contracts, diagnostics, static facts,
 bytecode guard metadata, mutation checks, embedding metadata, reflection, and
 hot-reload ABI precise without introducing a general script generic system.
-User/schema/host generics such as `Player<T>`, scalar parameterization such as
-`String<T>`, callable signature syntax such as `Function<T>`, and non-string
-map key contracts such as `Map<i64, V>` remain rejected. Unparameterized
-`Array`, `Map`, `Set`, `Iterator`, `Option`, and `Result` remain valid erased
-contracts.
+`Set<T>` is restricted to the current runtime's set-keyable contracts:
+`null`, `bool`, `i64`, `f64`, and `String`. User/schema/host generics such as
+`Player<T>`, scalar parameterization such as `String<T>`, callable signature
+syntax such as `Function<T>`, non-keyable set element contracts such as
+`Set<Player>`, and non-string map key contracts such as `Map<i64, V>` remain
+rejected. Unparameterized `Array`, `Map`, `Set`, `Iterator`, `Option`, and
+`Result` remain valid erased contracts.
 
 ## Validation Rules
 

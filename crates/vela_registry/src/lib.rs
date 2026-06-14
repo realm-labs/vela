@@ -13,7 +13,7 @@ use vela_def::{
 
 pub use defs::{
     Def, EffectSet, FieldDef, FunctionDef, FunctionSignature, MethodDef, ParamDef, SemanticKey,
-    TraitDef, TypeDef, VariantDef,
+    TraitDef, TypeDef, TypeHintDef, VariantDef,
 };
 
 #[derive(Clone, Debug, Default, Eq, PartialEq)]
@@ -253,7 +253,7 @@ impl<'registry> RegistryCompileView<'registry> {
     }
 
     #[must_use]
-    pub fn field_type_hint(&self, id: FieldId) -> Option<&'registry str> {
+    pub fn field_type_hint(&self, id: FieldId) -> Option<&'registry TypeHintDef> {
         self.registry
             .get(id.def_id())
             .and_then(Def::field_type_hint)
@@ -787,7 +787,7 @@ mod tests {
             .register_type(type_def("Player"))
             .expect("type registration should succeed");
         let method_path = DefPath::method("script", ["combat"], "Player", "grant_exp");
-        let signature = FunctionSignature::new([int_param("amount")], None);
+        let signature = FunctionSignature::new([int_param("amount")], None::<TypeHintDef>);
         let method_id = registry
             .register_method(MethodDef::new(method_path, owner, signature))
             .expect("method registration should succeed");

@@ -85,7 +85,7 @@ fn register_registry_host_method(
             vela_registry::MethodDef::new(
                 DefPath::method("host", std::iter::empty::<&str>(), owner_name, name),
                 owner,
-                vela_registry::FunctionSignature::new(params, None),
+                vela_registry::FunctionSignature::new(params, None::<vela_registry::TypeHintDef>),
             )
             .host_runtime_id(runtime_id.get()),
         )

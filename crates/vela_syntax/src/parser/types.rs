@@ -195,6 +195,19 @@ impl Parser {
                     .with_span(span)
                     .with_label(span, "use `String` as the first `Map` type argument"),
             );
+        } else if matches!(contract, TypeArgumentContract::KeyedSet)
+            && !is_set_key_type_hint(&args[0])
+        {
+            let span = args[0].span;
+            self.diagnostics.push(
+                Diagnostic::error("`Set` type hints require a set-keyable element type")
+                    .with_code("syntax::set_element_type_argument")
+                    .with_span(span)
+                    .with_label(
+                        span,
+                        "use bool, i64, f64, String, or an unparameterized Set",
+                    ),
+            );
         }
         args
     }
@@ -251,6 +264,7 @@ impl Parser {
 enum TypeArgumentContract {
     FixedArity(usize),
     StringKeyedMap,
+    KeyedSet,
 }
 
 impl TypeArgumentContract {
@@ -258,6 +272,7 @@ impl TypeArgumentContract {
         match self {
             Self::FixedArity(arity) => arity,
             Self::StringKeyedMap => 2,
+            Self::KeyedSet => 1,
         }
     }
 }
@@ -265,7 +280,7 @@ impl TypeArgumentContract {
 fn type_argument_contract(path: &[String]) -> Option<TypeArgumentContract> {
     match path {
         [name] if name == "Array" => Some(TypeArgumentContract::FixedArity(1)),
-        [name] if name == "Set" => Some(TypeArgumentContract::FixedArity(1)),
+        [name] if name == "Set" => Some(TypeArgumentContract::KeyedSet),
         [name] if name == "Map" => Some(TypeArgumentContract::StringKeyedMap),
         [name] if name == "Iterator" => Some(TypeArgumentContract::FixedArity(1)),
         [name] if name == "Option" => Some(TypeArgumentContract::FixedArity(1)),
@@ -276,4 +291,11 @@ fn type_argument_contract(path: &[String]) -> Option<TypeArgumentContract> {
 
 fn is_string_type_hint(hint: &TypeHint) -> bool {
     hint.path == ["String"] && hint.args.is_empty()
+}
+
+fn is_set_key_type_hint(hint: &TypeHint) -> bool {
+    matches!(hint.path.as_slice(), [name] if matches!(
+        name.as_str(),
+        "null" | "bool" | "i64" | "f64" | "String"
+    )) && hint.args.is_empty()
 }

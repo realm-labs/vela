@@ -10,7 +10,7 @@ description: "Vela 如何检查带类型提示的值。"
 ## 出现位置
 
 类型提示可以出现在参数、返回值、局部变量、全局值、struct 字段、enum 字段
-和 lambda 参数上。没有提示表示动态值。`any` 表示这个值有意保持动态。
+和 lambda 参数上。没有提示表示动态值。`Any` 表示这个值有意保持动态。
 
 ```vela
 struct Reward {
@@ -39,9 +39,37 @@ fn call_dynamic(value) -> i64 {
 }
 ```
 
-## 不是泛型
+## 内建容器契约
 
-Vela 明确拒绝 `Array<T>`、`Map<K, V>`、`Option<T>`、`Result<T, E>` 这类脚本泛型语法。容器是动态值；元素约束应放在 API 边界或显式检查中。
+部分内建契约可以带类型参数：
+
+```vela
+fn total(values: Array<i64>) -> i64 {
+    let sum = 0
+    for value in values {
+        sum += value
+    }
+    return sum
+}
+
+fn grant(rewards: Map<String, i64>, tags: Set<String>) -> Result<i64, String> {
+    rewards.set("tag_count", tags.len())
+    return result::ok(rewards.get("xp").unwrap_or(0))
+}
+```
+
+允许的参数化契约是 `Array<T>`、`Map<String, V>`、`Iterator<T>`、
+`Option<T>` 和 `Result<T, E>`。`Set<T>` 也可用，但 `T` 目前必须是
+set 可 key 化的值：`null`、`bool`、`i64`、`f64` 或 `String`。
+
+这些只是边界契约，不是转换。混合元素数组传给 `Array<i64>` 时会在检查边界失败，
+不会被转换。
+
+## 不是脚本泛型
+
+Vela 仍然拒绝 `Player<T>`、`String<T>`、`Map<i64, V>`、`Function<T>`
+这类用户泛型或非内建参数化语法。类型参数只保留给上面的内建契约，不会生成泛型函数
+或泛型用户类型。
 
 ## 热更新和宿主元数据
 

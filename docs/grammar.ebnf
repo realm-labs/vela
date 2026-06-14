@@ -178,7 +178,8 @@ type_arguments  = "<", ws, type_hint, { ws, ",", ws, type_hint }, ws, ">" ;
 
 (* Type arguments are restricted to builtin contracts:
    Array<T>, Set<T>, Map<String, V>, Iterator<T>, Option<T>, and Result<T, E>.
-   User-defined script generics and non-string Map keys are rejected. *)
+   User-defined script generics, non-string Map keys, and non-keyable Set
+   element contracts are rejected. *)
 
 (* ========================================================================= *)
 (* Statements and blocks                                                     *)

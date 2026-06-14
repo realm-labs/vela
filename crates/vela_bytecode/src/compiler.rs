@@ -1113,7 +1113,7 @@ impl<'ast, 'registry> Compiler<'ast, 'registry> {
             return Some(HostFieldLookup {
                 id: runtime_id,
                 writable: registry.field_writable(id).unwrap_or(true),
-                type_hint: registry.field_type_hint(id).map(str::to_owned),
+                type_hint: registry.field_type_hint(id).map(|hint| hint.display()),
                 variant_field: registry.field_is_variant_field(id).unwrap_or(false),
             });
         }

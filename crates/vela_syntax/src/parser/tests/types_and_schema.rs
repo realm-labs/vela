@@ -163,6 +163,14 @@ fn rejects_unsupported_parameterized_type_hints() {
             "syntax::map_key_type_argument",
         ),
         (
+            "fn bad(xs: Set<Player>) { return xs; }",
+            "syntax::set_element_type_argument",
+        ),
+        (
+            "fn bad(xs: Set<Any>) { return xs; }",
+            "syntax::set_element_type_argument",
+        ),
+        (
             "fn bad(xs: Player<i64>) { return xs; }",
             "syntax::generic_type_hint",
         ),

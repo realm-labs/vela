@@ -1,7 +1,184 @@
+use std::fmt;
+
 use vela_common::PrimitiveTag;
 use vela_def::{
     DefId, DefKind, DefPath, FieldId, FunctionId, MethodId, TraitId, TypeId, VariantId,
 };
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct TypeHintDef {
+    pub path: Vec<String>,
+    pub args: Vec<TypeHintDef>,
+}
+
+impl TypeHintDef {
+    #[must_use]
+    pub fn new(path: impl IntoIterator<Item = impl Into<String>>) -> Self {
+        Self {
+            path: path.into_iter().map(Into::into).collect(),
+            args: Vec::new(),
+        }
+    }
+
+    #[must_use]
+    pub fn named(name: impl Into<String>) -> Self {
+        Self::new(canonical_type_hint_path(name.into()))
+    }
+
+    #[must_use]
+    pub fn with_args(mut self, args: impl IntoIterator<Item = TypeHintDef>) -> Self {
+        self.args = args.into_iter().collect();
+        self
+    }
+
+    #[must_use]
+    pub fn display(&self) -> String {
+        let path = self.path.join("::");
+        if self.args.is_empty() {
+            path
+        } else {
+            let args = self
+                .args
+                .iter()
+                .map(Self::display)
+                .collect::<Vec<_>>()
+                .join(", ");
+            format!("{path}<{args}>")
+        }
+    }
+
+    #[must_use]
+    pub fn parse(text: &str) -> Option<Self> {
+        TypeHintParser::new(text).parse()
+    }
+}
+
+impl fmt::Display for TypeHintDef {
+    fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
+        formatter.write_str(&self.display())
+    }
+}
+
+impl From<&str> for TypeHintDef {
+    fn from(value: &str) -> Self {
+        Self::parse(value).unwrap_or_else(|| Self::named(value))
+    }
+}
+
+impl From<String> for TypeHintDef {
+    fn from(value: String) -> Self {
+        Self::from(value.as_str())
+    }
+}
+
+fn canonical_type_hint_path(name: String) -> Vec<String> {
+    match name.as_str() {
+        "any" => vec!["Any".to_owned()],
+        "string" => vec!["String".to_owned()],
+        "bytes" => vec!["Bytes".to_owned()],
+        "array" => vec!["Array".to_owned()],
+        "map" => vec!["Map".to_owned()],
+        "set" => vec!["Set".to_owned()],
+        "range" => vec!["Range".to_owned()],
+        "iterator" => vec!["Iterator".to_owned()],
+        "function" => vec!["Function".to_owned()],
+        "closure" => vec!["Closure".to_owned()],
+        "option" => vec!["Option".to_owned()],
+        "result" => vec!["Result".to_owned()],
+        _ => name.split("::").map(str::to_owned).collect(),
+    }
+}
+
+struct TypeHintParser<'a> {
+    input: &'a str,
+    position: usize,
+}
+
+impl<'a> TypeHintParser<'a> {
+    fn new(input: &'a str) -> Self {
+        Self { input, position: 0 }
+    }
+
+    fn parse(mut self) -> Option<TypeHintDef> {
+        let hint = self.parse_hint()?;
+        self.skip_ws();
+        (self.position == self.input.len()).then_some(hint)
+    }
+
+    fn parse_hint(&mut self) -> Option<TypeHintDef> {
+        self.skip_ws();
+        let path = self.parse_path()?;
+        let args = if self.consume('<') {
+            let mut args = Vec::new();
+            loop {
+                args.push(self.parse_hint()?);
+                self.skip_ws();
+                if self.consume(',') {
+                    continue;
+                }
+                if self.consume('>') {
+                    break;
+                }
+                return None;
+            }
+            args
+        } else {
+            Vec::new()
+        };
+        Some(TypeHintDef {
+            path: canonical_type_hint_path(path.join("::")),
+            args,
+        })
+    }
+
+    fn parse_path(&mut self) -> Option<Vec<String>> {
+        let mut path = vec![self.parse_segment()?];
+        while self.remaining().starts_with("::") {
+            self.position += 2;
+            path.push(self.parse_segment()?);
+        }
+        Some(path)
+    }
+
+    fn parse_segment(&mut self) -> Option<String> {
+        self.skip_ws();
+        let start = self.position;
+        while let Some(ch) = self.peek() {
+            if ch.is_ascii_alphanumeric() || ch == '_' {
+                self.position += ch.len_utf8();
+            } else {
+                break;
+            }
+        }
+        (self.position > start).then(|| self.input[start..self.position].to_owned())
+    }
+
+    fn consume(&mut self, expected: char) -> bool {
+        self.skip_ws();
+        if self.peek() == Some(expected) {
+            self.position += expected.len_utf8();
+            true
+        } else {
+            false
+        }
+    }
+
+    fn skip_ws(&mut self) {
+        while let Some(ch) = self.peek()
+            && ch.is_ascii_whitespace()
+        {
+            self.position += ch.len_utf8();
+        }
+    }
+
+    fn peek(&self) -> Option<char> {
+        self.remaining().chars().next()
+    }
+
+    fn remaining(&self) -> &'a str {
+        &self.input[self.position..]
+    }
+}
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub enum Def {
@@ -195,9 +372,9 @@ impl Def {
     }
 
     #[must_use]
-    pub fn field_type_hint(&self) -> Option<&str> {
+    pub fn field_type_hint(&self) -> Option<&TypeHintDef> {
         match self {
-            Self::Field(def) => def.type_hint.as_deref(),
+            Self::Field(def) => def.type_hint.as_ref(),
             Self::Function(_)
             | Self::Method(_)
             | Self::Type(_)
@@ -443,7 +620,7 @@ pub struct FieldDef {
     pub semantic_key: SemanticKey,
     pub owner: TypeId,
     pub writable: bool,
-    pub type_hint: Option<String>,
+    pub type_hint: Option<TypeHintDef>,
     pub host_runtime_id: Option<u128>,
     pub variant_field: bool,
 }
@@ -478,8 +655,8 @@ impl FieldDef {
     }
 
     #[must_use]
-    pub fn type_hint(mut self, type_hint: Option<String>) -> Self {
-        self.type_hint = type_hint;
+    pub fn type_hint(mut self, type_hint: Option<impl Into<TypeHintDef>>) -> Self {
+        self.type_hint = type_hint.map(Into::into);
         self
     }
 
@@ -553,15 +730,18 @@ impl TraitDef {
 #[derive(Clone, Debug, Default, Eq, PartialEq)]
 pub struct FunctionSignature {
     pub params: Vec<ParamDef>,
-    pub return_type: Option<String>,
+    pub return_type: Option<TypeHintDef>,
 }
 
 impl FunctionSignature {
     #[must_use]
-    pub fn new(params: impl IntoIterator<Item = ParamDef>, return_type: Option<String>) -> Self {
+    pub fn new(
+        params: impl IntoIterator<Item = ParamDef>,
+        return_type: Option<impl Into<TypeHintDef>>,
+    ) -> Self {
         Self {
             params: params.into_iter().collect(),
-            return_type,
+            return_type: return_type.map(Into::into),
         }
     }
 }
@@ -569,13 +749,13 @@ impl FunctionSignature {
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct ParamDef {
     pub name: String,
-    pub type_hint: Option<String>,
+    pub type_hint: Option<TypeHintDef>,
     pub has_default: bool,
 }
 
 impl ParamDef {
     #[must_use]
-    pub fn new(name: impl Into<String>, type_hint: Option<impl Into<String>>) -> Self {
+    pub fn new(name: impl Into<String>, type_hint: Option<impl Into<TypeHintDef>>) -> Self {
         Self {
             name: name.into(),
             type_hint: type_hint.map(Into::into),

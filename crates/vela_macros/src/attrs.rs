@@ -244,6 +244,7 @@ pub(crate) fn inferred_type_hint(ty: &Type) -> Option<String> {
             return args
                 .first()
                 .and_then(|arg| inferred_type_hint(arg))
+                .filter(|element| is_set_key_type_hint(element))
                 .map(|element| format!("Set<{element}>"))
                 .or_else(|| Some("Set".to_owned()));
         }
@@ -311,7 +312,8 @@ impl<'a> TypeHintParser<'a> {
             return false;
         }
         match name.as_str() {
-            "Array" | "Set" | "Iterator" | "Option" => args.len() == 1,
+            "Array" | "Iterator" | "Option" => args.len() == 1,
+            "Set" => matches!(args.as_slice(), [element] if is_set_key_type_hint(element)),
             "Result" => args.len() == 2,
             "Map" => matches!(args.as_slice(), [key, _] if key == "String"),
             _ => false,
@@ -366,6 +368,10 @@ impl<'a> TypeHintParser<'a> {
     fn peek(&self) -> Option<char> {
         self.input[self.cursor..].chars().next()
     }
+}
+
+fn is_set_key_type_hint(hint: &str) -> bool {
+    matches!(hint, "null" | "bool" | "i64" | "f64" | "String")
 }
 
 pub(crate) fn error(span: Span, message: &str) -> syn::Error {

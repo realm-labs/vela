@@ -4,6 +4,7 @@ use vela_reflect::modules::ModuleDesc;
 use vela_reflect::registry::{AttrMap, MethodParamDesc, TypeDesc};
 
 use crate::error::{EngineError, EngineErrorKind, EngineResult};
+use crate::metadata::type_hint_display;
 use crate::method::{NativeMethodDesc, NativeMethodEntry};
 use crate::native::{
     ContextHostNativeFunctionEntry, HostNativeFunctionEntry, NativeFunctionDesc,
@@ -646,10 +647,27 @@ fn validate_type_hint(
         | TypeHint::Host(_)
         | TypeHint::Function => Ok(()),
         TypeHint::ArrayOf(element)
-        | TypeHint::SetOf(element)
         | TypeHint::IteratorOf(element)
         | TypeHint::OptionOf(element) => validate_type_hint(element, descriptor, lookup),
+        TypeHint::SetOf(element) => {
+            if !is_set_key_type_hint(element) {
+                return Err(EngineError::new(EngineErrorKind::InvalidTypeHintName {
+                    descriptor: descriptor.to_owned(),
+                    type_name: type_hint_display(hint),
+                }));
+            }
+            validate_type_hint(element, descriptor, lookup)
+        }
         TypeHint::MapOf { key, value } => {
+            if !matches!(
+                key.as_ref(),
+                TypeHint::Primitive(vela_common::PrimitiveTag::String)
+            ) {
+                return Err(EngineError::new(EngineErrorKind::InvalidTypeHintName {
+                    descriptor: descriptor.to_owned(),
+                    type_name: type_hint_display(hint),
+                }));
+            }
             validate_type_hint(key, descriptor, lookup)?;
             validate_type_hint(value, descriptor, lookup)
         }
@@ -691,18 +709,71 @@ fn validate_raw_type_hint(descriptor: &str, hint: Option<&str>) -> EngineResult<
     let Some(hint) = hint else {
         return Ok(());
     };
-    if hint.is_empty()
-        || hint.trim() != hint
-        || hint.contains('<')
-        || hint.contains('>')
-        || !is_valid_qualified_name(hint)
-    {
+    let Some(parsed) = vela_registry::TypeHintDef::parse(hint) else {
+        return Err(EngineError::new(EngineErrorKind::InvalidTypeHintName {
+            descriptor: descriptor.to_owned(),
+            type_name: hint.to_owned(),
+        }));
+    };
+    if hint.is_empty() || hint.trim() != hint || !is_valid_type_hint_def(&parsed) {
         return Err(EngineError::new(EngineErrorKind::InvalidTypeHintName {
             descriptor: descriptor.to_owned(),
             type_name: hint.to_owned(),
         }));
     }
     Ok(())
+}
+
+fn is_valid_type_hint_def(hint: &vela_registry::TypeHintDef) -> bool {
+    if hint.path.is_empty()
+        || hint
+            .path
+            .iter()
+            .any(|segment| segment.is_empty() || segment.contains('.'))
+    {
+        return false;
+    }
+    let [name] = hint.path.as_slice() else {
+        return hint.args.is_empty();
+    };
+    match (name.as_str(), hint.args.as_slice()) {
+        ("Array" | "Iterator" | "Option", [element]) => is_valid_type_hint_def(element),
+        ("Set", [element]) => is_valid_type_hint_def(element) && is_set_key_type_hint_def(element),
+        ("Map", [key, value]) => is_string_type_hint_def(key) && is_valid_type_hint_def(value),
+        ("Result", [ok, err]) => is_valid_type_hint_def(ok) && is_valid_type_hint_def(err),
+        (
+            "Array" | "Set" | "Map" | "Range" | "Iterator" | "Function" | "Closure" | "Option"
+            | "Result" | "Any" | "String" | "Bytes" | "null" | "bool" | "char" | "i8" | "i16"
+            | "i32" | "i64" | "u8" | "u16" | "u32" | "u64" | "f32" | "f64",
+            [],
+        ) => true,
+        (_, []) => true,
+        _ => false,
+    }
+}
+
+fn is_string_type_hint_def(hint: &vela_registry::TypeHintDef) -> bool {
+    matches!(hint.path.as_slice(), [name] if name == "String") && hint.args.is_empty()
+}
+
+fn is_set_key_type_hint_def(hint: &vela_registry::TypeHintDef) -> bool {
+    matches!(hint.path.as_slice(), [name] if matches!(
+        name.as_str(),
+        "null" | "bool" | "i64" | "f64" | "String"
+    )) && hint.args.is_empty()
+}
+
+fn is_set_key_type_hint(hint: &TypeHint) -> bool {
+    matches!(
+        hint,
+        TypeHint::Primitive(
+            vela_common::PrimitiveTag::Null
+                | vela_common::PrimitiveTag::Bool
+                | vela_common::PrimitiveTag::I64
+                | vela_common::PrimitiveTag::F64
+                | vela_common::PrimitiveTag::String
+        )
+    )
 }
 
 fn is_valid_qualified_name(name: &str) -> bool {

@@ -325,6 +325,46 @@ fn engine_accepts_native_function_iterator_type_hints() {
 }
 
 #[test]
+fn engine_rejects_native_function_map_hints_with_non_string_keys() {
+    let result = Engine::builder()
+        .register_native_fn(
+            NativeFunctionDesc::new("game::bad_scores", NativeFunctionId::new(371)).param(
+                "scores",
+                TypeHint::map_of(TypeHint::i64(), TypeHint::string()),
+            ),
+            |_| Ok(OwnedValue::Null),
+        )
+        .build();
+
+    assert!(matches!(
+        result,
+        Err(error) if error.kind == EngineErrorKind::InvalidTypeHintName {
+            descriptor: "native function game::bad_scores parameter scores".to_owned(),
+            type_name: "Map<i64, String>".to_owned(),
+        }
+    ));
+}
+
+#[test]
+fn engine_rejects_native_function_set_hints_for_non_keyable_elements() {
+    let result = Engine::builder()
+        .register_native_fn(
+            NativeFunctionDesc::new("game::bad_ids", NativeFunctionId::new(372))
+                .param("ids", TypeHint::set_of(TypeHint::u8())),
+            |_| Ok(OwnedValue::Null),
+        )
+        .build();
+
+    assert!(matches!(
+        result,
+        Err(error) if error.kind == EngineErrorKind::InvalidTypeHintName {
+            descriptor: "native function game::bad_ids parameter ids".to_owned(),
+            type_name: "Set<u8>".to_owned(),
+        }
+    ));
+}
+
+#[test]
 fn engine_rejects_unknown_native_function_trait_type_hints() {
     let result = Engine::builder()
         .register_native_fn(

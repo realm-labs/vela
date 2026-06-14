@@ -3,7 +3,8 @@ title: "数组"
 description: "Vela 数组文档。"
 ---
 
-数组是有序、可索引、由 GC 管理的集合。数组本身是动态的：语言不支持 `Array<T>`，元素契约应由消费数组的 API 边界或显式脚本检查负责。
+数组是有序、可索引、由 GC 管理的集合。`Array<T>` 是内建类型提示契约，
+用于检查边界；它不是通用脚本泛型，也不会转换元素。
 
 ## 字面量和索引
 
@@ -29,6 +30,17 @@ fn collect_large(values) {
         }
     }
     return out
+}
+```
+
+当值有可信的 `Array<i64>` 类型事实时，兼容的修改可以省掉额外运行时检查；
+动态值写入会在修改前先检查：
+
+```vela
+fn append_score(scores: Array<i64>, value) {
+    scores.push(4)      // 静态兼容
+    scores.push(value)  // 动态值，写入前检查
+    return scores
 }
 ```
 

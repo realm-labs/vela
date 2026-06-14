@@ -10,7 +10,7 @@ use super::{CompileError, CompileErrorKind, CompileResult, Compiler, reject_name
 use vela_common::{Diagnostic, HostMethodId, Span};
 use vela_def::{DefPath, FunctionId, MethodId, TypeId};
 use vela_hir::type_hint::ParamHint;
-use vela_registry::ParamDef;
+use vela_registry::{ParamDef, TypeHintDef};
 
 impl Compiler<'_, '_> {
     pub(super) fn compile_call_expr(
@@ -738,10 +738,14 @@ fn registry_param_hints(params: &[ParamDef], call_span: Span) -> Vec<ParamHint> 
         .collect()
 }
 
-fn registry_type_hint(hint: &str, span: Span) -> vela_hir::type_hint::HirTypeHint {
+fn registry_type_hint(hint: &TypeHintDef, span: Span) -> vela_hir::type_hint::HirTypeHint {
     vela_hir::type_hint::HirTypeHint {
-        path: hint.split("::").map(str::to_owned).collect(),
-        args: Vec::new(),
+        path: hint.path.clone(),
+        args: hint
+            .args
+            .iter()
+            .map(|arg| registry_type_hint(arg, span))
+            .collect(),
         span,
     }
 }

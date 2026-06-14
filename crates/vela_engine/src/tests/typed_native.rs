@@ -29,6 +29,57 @@ fn run_linked_program(
 }
 
 #[test]
+fn native_parameterized_container_hints_emit_contract_guards() {
+    let engine = Engine::builder()
+        .register_native_fn(
+            NativeFunctionDesc::new("game::len", NativeFunctionId::new(700))
+                .param("values", TypeHint::array_of(TypeHint::i64()))
+                .returns(TypeHint::i64()),
+            |args| {
+                let Some(OwnedValue::Array(values)) = args.first() else {
+                    return Err(VmError::new(VmErrorKind::TypeMismatch {
+                        operation: "array",
+                    }));
+                };
+                Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(
+                    i64::try_from(values.len()).expect("array length fits i64"),
+                )))
+            },
+        )
+        .build()
+        .expect("engine should build");
+    let program = engine
+        .compile_source_with_id(
+            SourceId::new(1),
+            r#"
+fn main(values) {
+    return game::len(values);
+}
+"#,
+        )
+        .expect("program should compile");
+
+    let error = run_linked_program(
+        &engine,
+        &program,
+        &[OwnedValue::Array(vec![
+            OwnedValue::Scalar(vela_common::ScalarValue::I64(1)),
+            OwnedValue::String("bad".to_owned()),
+        ])],
+    )
+    .expect_err("native parameterized container contract should reject mixed array values");
+
+    assert_eq!(
+        error.kind(),
+        VmErrorKind::TypeContractViolation {
+            expected: "i64".to_owned(),
+            actual: "String".to_owned(),
+            debug_name: "values".to_owned(),
+        }
+    );
+}
+
+#[test]
 fn engine_registers_typed_native_functions() {
     let engine = Engine::builder()
         .register_typed_native_fn::<(i64, i64), _>(
