@@ -457,6 +457,113 @@ fn main(dynamic) {
 }
 
 #[test]
+fn compiler_contextualizes_proven_typed_container_mutations_without_guards() {
+    let registry = vela_stdlib::standard_registry().expect("standard registry should build");
+    let program = compile_program_source_with_registry(
+        SourceId::new(1),
+        r#"
+fn main(values: Array<u8>, names: Set<String>, scores: Map<String, i64>) {
+    values.push(12);
+    names.add("ready");
+    scores.set("level", 7);
+    return values;
+}
+"#,
+        registry.compile_view(),
+    )
+    .expect("typed container mutations should compile");
+    let main = program.function("main").expect("main function");
+
+    assert!(
+        !main.instructions.iter().any(|instruction| matches!(
+            instruction.kind,
+            UnlinkedInstructionKind::GuardType { .. }
+        ))
+    );
+    assert!(
+        main.constants
+            .contains(&Constant::Scalar(vela_common::ScalarValue::U8(12)))
+    );
+}
+
+#[test]
+fn compiler_emits_guards_for_dynamic_typed_container_mutations() {
+    let registry = vela_stdlib::standard_registry().expect("standard registry should build");
+    let program = compile_program_source_with_registry(
+        SourceId::new(1),
+        r#"
+fn main(values: Array<i64>, value, names: Set<String>, name, scores: Map<String, i64>, score) {
+    values.push(value);
+    names.add(name);
+    scores.set("level", score);
+    return values;
+}
+"#,
+        registry.compile_view(),
+    )
+    .expect("dynamic typed container mutations should compile with guards");
+    let main = program.function("main").expect("main function");
+
+    let guards = main
+        .instructions
+        .iter()
+        .filter_map(|instruction| match &instruction.kind {
+            UnlinkedInstructionKind::GuardType { guard, .. } => Some(&guard.plan),
+            _ => None,
+        })
+        .collect::<Vec<_>>();
+    assert_eq!(guards.len(), 3);
+    assert!(matches!(
+        guards[0],
+        crate::UnlinkedTypeGuardPlan::Primitive(vela_common::PrimitiveTag::I64)
+    ));
+    assert!(matches!(
+        guards[1],
+        crate::UnlinkedTypeGuardPlan::Primitive(vela_common::PrimitiveTag::String)
+    ));
+    assert!(matches!(
+        guards[2],
+        crate::UnlinkedTypeGuardPlan::Primitive(vela_common::PrimitiveTag::I64)
+    ));
+}
+
+#[test]
+fn compiler_rejects_static_typed_container_mutation_mismatches() {
+    let registry = vela_stdlib::standard_registry().expect("standard registry should build");
+    for source in [
+        r#"
+fn main(values: Array<i64>) {
+    values.push("bad");
+}
+"#,
+        r#"
+fn main(names: Set<String>) {
+    names.add(1);
+}
+"#,
+        r#"
+fn main(scores: Map<String, i64>) {
+    scores.set(1, 2);
+}
+"#,
+        r#"
+fn main(scores: Map<String, i64>) {
+    scores.set("level", "high");
+}
+"#,
+    ] {
+        let error =
+            compile_program_source_with_registry(SourceId::new(1), source, registry.compile_view())
+                .expect_err("static typed container mutation mismatch should fail");
+
+        assert_eq!(
+            semantic_diagnostic_codes(error),
+            ["compiler::type_contract_mismatch"]
+        );
+    }
+}
+
+#[test]
 fn compiler_leaves_unhinted_functions_without_guard_metadata() {
     let program = compile_program_source(
         SourceId::new(1),

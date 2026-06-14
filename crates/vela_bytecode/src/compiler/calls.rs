@@ -374,10 +374,20 @@ impl Compiler<'_, '_> {
         let registry_params = self.registry_value_method_params(receiver_type, method);
         let Some(params) = registry_params else {
             reject_named_args(args, "script method call")?;
-            return self.compile_positional_method_args(receiver_shape, method, args);
+            return self.compile_positional_method_args(
+                receiver_type,
+                receiver_shape,
+                method,
+                args,
+            );
         };
         if !args.iter().any(|arg| arg.name.is_some()) {
-            return self.compile_positional_method_args(receiver_shape, method, args);
+            return self.compile_positional_method_args(
+                receiver_type,
+                receiver_shape,
+                method,
+                args,
+            );
         }
         let params = registry_param_hints(params, call_span);
         let slots =
@@ -389,8 +399,11 @@ impl Compiler<'_, '_> {
         for (slot, param) in slots.into_iter().zip(params) {
             if let Some(arg) = slot {
                 registers.push(CallArgument::Register(self.compile_method_arg(
+                    receiver_type,
                     receiver_shape,
                     method,
+                    param.name.as_str(),
+                    registers.len(),
                     arg,
                 )?));
             } else if param.default_value_span.is_none() {
@@ -402,13 +415,15 @@ impl Compiler<'_, '_> {
 
     fn compile_positional_method_args(
         &mut self,
+        receiver_type: Option<&RuntimeTypeFact>,
         receiver_shape: Option<&ValueShape>,
         method: &str,
         args: &[Argument],
     ) -> CompileResult<Vec<CallArgument>> {
         args.iter()
-            .map(|arg| {
-                self.compile_method_arg(receiver_shape, method, arg)
+            .enumerate()
+            .map(|(index, arg)| {
+                self.compile_method_arg(receiver_type, receiver_shape, method, "", index, arg)
                     .map(CallArgument::Register)
             })
             .collect()
@@ -416,10 +431,26 @@ impl Compiler<'_, '_> {
 
     fn compile_method_arg(
         &mut self,
+        receiver_type: Option<&RuntimeTypeFact>,
         receiver_shape: Option<&ValueShape>,
         method: &str,
+        param_name: &str,
+        position: usize,
         arg: &Argument,
     ) -> CompileResult<crate::Register> {
+        if let Some(expected) =
+            typed_container_mutation_arg_contract(receiver_type, method, param_name, position)
+        {
+            return self.compile_expr_with_expected_type(
+                &arg.value,
+                expected,
+                TypeContractContext::NativeParameter {
+                    function: method.to_owned(),
+                    name: mutation_arg_debug_name(method, param_name, position),
+                    index: u16::try_from(position).unwrap_or(u16::MAX),
+                },
+            );
+        }
         let ExprKind::Lambda { params, body } = &arg.value.kind else {
             return self.compile_expr(&arg.value);
         };
@@ -595,6 +626,81 @@ impl Compiler<'_, '_> {
         }
         let type_name = receiver_type.std_type_name();
         registry.resolve_type(&DefPath::ty("std", std::iter::empty::<&str>(), type_name))
+    }
+}
+
+fn typed_container_mutation_arg_contract(
+    receiver_type: Option<&RuntimeTypeFact>,
+    method: &str,
+    param_name: &str,
+    position: usize,
+) -> Option<RuntimeTypeFact> {
+    match receiver_type? {
+        RuntimeTypeFact::Array(element) => {
+            match (method, mutation_arg_role(method, param_name, position)) {
+                ("push" | "insert", MutationArgRole::Value) => Some((**element).clone()),
+                ("extend", MutationArgRole::Values) => {
+                    Some(RuntimeTypeFact::array((**element).clone()))
+                }
+                _ => None,
+            }
+        }
+        RuntimeTypeFact::Map { key, value } => {
+            match (method, mutation_arg_role(method, param_name, position)) {
+                ("set", MutationArgRole::Key) => Some((**key).clone()),
+                ("set", MutationArgRole::Value) => Some((**value).clone()),
+                ("extend", MutationArgRole::Values) => {
+                    Some(RuntimeTypeFact::map((**key).clone(), (**value).clone()))
+                }
+                _ => None,
+            }
+        }
+        RuntimeTypeFact::Set(element) => {
+            match (method, mutation_arg_role(method, param_name, position)) {
+                ("add", MutationArgRole::Value) => Some((**element).clone()),
+                ("extend", MutationArgRole::Values) => {
+                    Some(RuntimeTypeFact::set((**element).clone()))
+                }
+                _ => None,
+            }
+        }
+        _ => None,
+    }
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+enum MutationArgRole {
+    Key,
+    Value,
+    Values,
+    Other,
+}
+
+fn mutation_arg_role(method: &str, param_name: &str, position: usize) -> MutationArgRole {
+    match param_name {
+        "key" => MutationArgRole::Key,
+        "value" => MutationArgRole::Value,
+        "values" => MutationArgRole::Values,
+        _ => match (method, position) {
+            ("set", 0) => MutationArgRole::Key,
+            ("set", 1) | ("insert", 1) | ("push", 0) | ("add", 0) => MutationArgRole::Value,
+            ("extend", 0) => MutationArgRole::Values,
+            _ => MutationArgRole::Other,
+        },
+    }
+}
+
+fn mutation_arg_debug_name(method: &str, param_name: &str, position: usize) -> String {
+    if param_name.is_empty() {
+        match mutation_arg_role(method, param_name, position) {
+            MutationArgRole::Key => "key",
+            MutationArgRole::Value => "value",
+            MutationArgRole::Values => "values",
+            _ => "argument",
+        }
+        .to_owned()
+    } else {
+        param_name.to_owned()
     }
 }
 
