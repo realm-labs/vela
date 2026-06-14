@@ -585,9 +585,9 @@ fn main() {
     #[test]
     fn map_extend_rejects_non_map_arguments() {
         let source = r#"
-fn main() {
+fn main(other = ["xp"]) {
     let rewards = {"gold": 4};
-    rewards.extend(["xp"]);
+    rewards.extend(other);
     return rewards.len();
 }
 "#;
@@ -598,8 +598,10 @@ fn main() {
             .expect_err("map extend should reject non-map args");
         assert_eq!(
             error.kind(),
-            crate::VmErrorKind::TypeMismatch {
-                operation: "method extend"
+            crate::VmErrorKind::TypeContractViolation {
+                expected: "Map".to_owned(),
+                actual: "Array".to_owned(),
+                debug_name: "values".to_owned(),
             }
         );
     }

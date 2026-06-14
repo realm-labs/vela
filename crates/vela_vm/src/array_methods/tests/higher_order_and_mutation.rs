@@ -330,9 +330,9 @@ fn main() {
 #[test]
 fn array_extend_rejects_non_array_arguments() {
     let source = r#"
-fn main() {
+fn main(other = 20) {
     let values = [10];
-    values.extend(20);
+    values.extend(other);
     return values.len();
 }
 "#;
@@ -341,7 +341,14 @@ fn main() {
 
     let error = run_linked_array_test_code(&Vm::new(), code)
         .expect_err("array extend should reject non-array args");
-    assert!(matches!(error.kind(), VmErrorKind::TypeMismatch { .. }));
+    assert_eq!(
+        error.kind(),
+        VmErrorKind::TypeContractViolation {
+            expected: "Array".to_owned(),
+            actual: "i64".to_owned(),
+            debug_name: "values".to_owned(),
+        }
+    );
 }
 
 #[test]

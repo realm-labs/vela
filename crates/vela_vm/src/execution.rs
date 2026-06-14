@@ -86,7 +86,7 @@ impl Vm {
             }
         }
         if call.check_param_guards {
-            execute_unlinked_param_guards(code, &frame, heap.as_deref())?;
+            execute_unlinked_param_guards(code, &frame, heap.as_deref(), budget.as_deref_mut())?;
         }
         let charges_instructions = budget
             .as_deref()
@@ -332,6 +332,7 @@ impl Vm {
                         &frame.read(*src)?,
                         guard,
                         heap.as_deref(),
+                        budget.as_deref_mut(),
                     )
                     .map_err(|error| error.with_source_span_if_absent(instruction.span))?;
                 }
@@ -492,7 +493,12 @@ impl Vm {
                         *dst,
                         *src,
                     )? {
-                        return execute_unlinked_return_guard(code, value, heap.as_deref());
+                        return execute_unlinked_return_guard(
+                            code,
+                            value,
+                            heap.as_deref(),
+                            budget.as_deref_mut(),
+                        );
                     }
                 }
                 UnlinkedInstructionKind::MakeArray { dst, elements } => {
@@ -951,7 +957,12 @@ impl Vm {
                     }
                 }
                 UnlinkedInstructionKind::Return { src } => {
-                    return execute_unlinked_return_guard(code, frame.read(*src)?, heap.as_deref());
+                    return execute_unlinked_return_guard(
+                        code,
+                        frame.read(*src)?,
+                        heap.as_deref(),
+                        budget.as_deref_mut(),
+                    );
                 }
             }
 
@@ -988,6 +999,7 @@ fn execute_unlinked_param_guards(
     code: &UnlinkedCodeObject,
     frame: &CallFrame,
     heap: Option<&HeapExecution<'_>>,
+    mut budget: Option<&mut ExecutionBudget>,
 ) -> VmResult<()> {
     for param_guard in &code.param_guards {
         let register = Register(
@@ -1003,7 +1015,12 @@ fn execute_unlinked_param_guards(
         if matches!(value, Value::Missing) {
             continue;
         }
-        runtime_type_guards::execute_unlinked_guard(&value, &param_guard.guard, heap)?;
+        runtime_type_guards::execute_unlinked_guard(
+            &value,
+            &param_guard.guard,
+            heap,
+            budget.as_deref_mut(),
+        )?;
     }
     Ok(())
 }
@@ -1012,10 +1029,11 @@ fn execute_unlinked_return_guard(
     code: &UnlinkedCodeObject,
     value: Value,
     heap: Option<&HeapExecution<'_>>,
+    budget: Option<&mut ExecutionBudget>,
 ) -> VmResult<Value> {
     let Some(guard) = &code.return_guard else {
         return Ok(value);
     };
-    runtime_type_guards::execute_unlinked_guard(&value, guard, heap)?;
+    runtime_type_guards::execute_unlinked_guard(&value, guard, heap, budget)?;
     Ok(value)
 }

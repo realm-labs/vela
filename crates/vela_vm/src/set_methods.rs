@@ -677,9 +677,9 @@ fn main() {
     #[test]
     fn set_extend_rejects_non_set_arguments() {
         let source = r#"
-fn main() {
+fn main(other = ["raid"]) {
     let tags = set::from_array(["quest"]);
-    tags.extend(["raid"]);
+    tags.extend(other);
     return tags.len();
 }
 "#;
@@ -692,8 +692,10 @@ fn main() {
             run_linked_set_test_code(&vm, code).expect_err("set extend should reject non-set args");
         assert_eq!(
             error.kind(),
-            crate::VmErrorKind::TypeMismatch {
-                operation: "method extend"
+            crate::VmErrorKind::TypeContractViolation {
+                expected: "Set".to_owned(),
+                actual: "Array".to_owned(),
+                debug_name: "values".to_owned(),
             }
         );
     }

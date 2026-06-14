@@ -172,6 +172,7 @@ impl Vm {
                 call.program,
                 &frame,
                 heap.as_deref(),
+                budget.as_deref_mut(),
             )?;
         }
 
@@ -423,6 +424,7 @@ impl Vm {
                         *src,
                         *guard,
                         heap.as_deref(),
+                        budget.as_deref_mut(),
                     )
                     .map_err(|error| error.with_source_span_if_absent(instruction.span))?;
                 }
@@ -610,6 +612,7 @@ impl Vm {
                             call.program,
                             value,
                             heap.as_deref(),
+                            budget.as_deref_mut(),
                         );
                     }
                 }
@@ -1105,6 +1108,7 @@ impl Vm {
                         call.program,
                         frame.read(*src)?,
                         heap.as_deref(),
+                        budget.as_deref_mut(),
                     );
                 }
             }

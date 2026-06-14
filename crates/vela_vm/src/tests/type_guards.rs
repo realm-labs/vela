@@ -211,6 +211,38 @@ fn main(values: Array<i64>) {
 }
 
 #[test]
+fn linked_parameter_guard_charges_budget_for_array_scan() {
+    let program = compile_program_source(
+        SourceId::new(1),
+        r#"
+fn main(values: Array<i64>) {
+    return 1;
+}
+"#,
+    )
+    .expect("program should compile");
+    let mut budget = ExecutionBudget::new(1, usize::MAX, usize::MAX);
+
+    let error = run_linked_test_program_with_budget(
+        &Vm::new(),
+        &program,
+        "main",
+        &[OwnedValue::array([OwnedValue::i64(1), OwnedValue::i64(2)])],
+        &mut budget,
+    )
+    .expect_err("array guard scan should consume instruction budget");
+
+    assert_eq!(
+        error.kind(),
+        VmErrorKind::BudgetExceeded {
+            budget: ExecutionBudgetKind::Instructions,
+            limit: 1,
+        }
+    );
+    assert_eq!(budget.instructions_executed(), 1);
+}
+
+#[test]
 fn linked_parameter_guard_rejects_mixed_map_values() {
     let program = compile_program_source(
         SourceId::new(1),

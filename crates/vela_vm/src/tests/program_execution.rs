@@ -132,10 +132,14 @@ fn managed_heap_execution_runs_script_value_methods() {
     let program = compile_standard_program_source(
             SourceId::new(1),
             r#"
+fn dynamic(value) {
+    return value;
+}
+
 fn main() {
     let names = ["gold", "xp"];
     let empty = [];
-    let rewards = {"gold": 4, "xp": 6};
+    let rewards = dynamic({"gold": 4, "xp": 6});
     names.push("quest");
     let popped = names.pop();
     let missing_pop = empty.pop();

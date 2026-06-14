@@ -57,10 +57,10 @@ type-contract continuation. Syntax, HIR, analysis TypeFacts, compiler
 RuntimeTypeFacts, recursive guard plans, VM deep checks for materialized
 array/map/set values, compiler-owned typed container mutator checks, embedding
 metadata display/validation, macro-inferred `Vec`/array/set/string-keyed map
-hints, and hot-reload ABI string comparison are implemented. Remaining gaps
-are container summaries and contract stamps, execution-budget charging for deep
-guard scans, deferred `Iterator<T>` item guards, public site/docs/examples, and
-benchmark/profile rows for typed container mutation paths.
+hints, hot-reload ABI string comparison, and execution-budget charging for
+deep guard scans are implemented. Remaining gaps are container summaries and
+contract stamps, deferred `Iterator<T>` item guards, public site/docs/examples,
+and benchmark/profile rows for typed container mutation paths.
 
 Post-MVP performance remains a separate track: measure first, then optimize the
 non-JIT bytecode interpreter toward Lua 5.x comparable host-boundary workloads
