@@ -32,6 +32,27 @@ fn external_compare_workload_names_are_unique() {
 }
 
 #[test]
+fn external_compare_includes_value_keyed_map_set_workloads() {
+    let names = workloads::all_workloads()
+        .map(|workload| workload.name)
+        .collect::<BTreeSet<_>>();
+
+    for expected in [
+        "map_string_key_lookup_update",
+        "map_i64_key_lookup_update",
+        "map_record_identity_lookup_update",
+        "set_i64_lookup_mutation",
+        "set_string_lookup_mutation",
+        "set_record_identity_lookup_mutation",
+    ] {
+        assert!(
+            names.contains(expected),
+            "missing value-keyed external compare workload: {expected}"
+        );
+    }
+}
+
+#[test]
 fn external_compare_workloads_have_all_runtime_sources() {
     for workload in workloads::all_workloads() {
         assert!(

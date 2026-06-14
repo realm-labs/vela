@@ -66,8 +66,10 @@ execution-budget charging for deep guard scans are implemented. Non-erased
 iterator cursors with lazy item guards so checked boundaries do not consume
 items, and yielded mismatches fail at `next()`/iteration time. Mutation-focused
 benchmark/profile rows now cover proven typed, guarded erased-value, and
-erased-container array/map updates. Heap-owned container summaries and contract
-stamps now let stable array/map/set contracts use O(1) summary/stamp checks
+erased-container array/map updates, and external comparison rows cover string,
+i64, and record-identity map/set lookup and mutation workloads. Heap-owned
+container summaries and contract stamps now let stable array/map/set contracts
+use O(1) summary/stamp checks
 before falling back to budget-charged scans, and nested stamps are invalidated
 when child containers mutate through aliases.
 

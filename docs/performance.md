@@ -95,7 +95,7 @@ reflection reads, writes, and calls
 hot reload compile/apply/reject workflow
 GC pacing and pause-budget scenarios
 domain-demo workflows from examples/src/bin game-server examples
-external_compare mixed-mode pure-language rows for scalar branch loops, range iteration, function calls, array scanning, map lookup/update, set lookup/mutation, string methods, closure/callback-style calls, recursive countdown, nested collection allocation, object field/method access, string split/join construction, float math loops, and array transform/sort across Vela, embedded Lua 5.4, embedded Rhai, optional process-backed Node.js, and optional process-backed Python 3
+external_compare mixed-mode pure-language rows for scalar branch loops, range iteration, function calls, array scanning, string/i64/record-identity map lookup/update, string/i64/record-identity set lookup/mutation, string methods, closure/callback-style calls, recursive countdown, nested collection allocation, object field/method access, string split/join construction, float math loops, and array transform/sort across Vela, embedded Lua 5.4, embedded Rhai, optional process-backed Node.js, and optional process-backed Python 3
 ```
 
 Every durable benchmark report should include:
