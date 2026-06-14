@@ -2,6 +2,7 @@ use std::collections::{BTreeMap, BTreeSet};
 
 use vela_common::{Diagnostic, Span};
 
+use crate::attributes::derived_traits;
 use crate::binding::{BindingMap, LocalBindingKind};
 use crate::ids::{HirDeclId, ModuleId};
 use crate::type_hint::{
@@ -24,6 +25,7 @@ pub(super) fn validate_once(graph: &mut ModuleGraph) {
     }
     diagnostics.extend(duplicate_script_method_diagnostics(graph));
     diagnostics.extend(builtin_operator_trait_prerequisite_diagnostics(graph));
+    diagnostics.extend(derived_operator_trait_diagnostics(graph));
     graph.diagnostics.extend(diagnostics);
 }
 
@@ -55,23 +57,7 @@ fn duplicate_script_method_diagnostics(graph: &ModuleGraph) -> Vec<Diagnostic> {
 }
 
 fn builtin_operator_trait_prerequisite_diagnostics(graph: &ModuleGraph) -> Vec<Diagnostic> {
-    let declared_types = declared_script_type_names(graph);
-    let mut impls: BTreeMap<(String, String), Span> = BTreeMap::new();
-    for declaration in graph.declarations.values() {
-        let Some(metadata) = graph.impl_metadata.get(&declaration.id) else {
-            continue;
-        };
-        let ImplMetadataKind::Trait { trait_path } = &metadata.kind else {
-            continue;
-        };
-        let Some(trait_name) = builtin_operator_trait_name(trait_path) else {
-            continue;
-        };
-        let receiver = qualified_path_name(graph, declaration, &metadata.target_path);
-        if declared_types.contains(&receiver) {
-            impls.insert((receiver, trait_name.to_owned()), declaration.span);
-        }
-    }
+    let impls = builtin_operator_trait_impls(graph);
 
     let mut diagnostics = Vec::new();
     for ((receiver, trait_name), span) in &impls {
@@ -111,6 +97,27 @@ fn builtin_operator_trait_prerequisite_diagnostics(graph: &ModuleGraph) -> Vec<D
     diagnostics
 }
 
+fn builtin_operator_trait_impls(graph: &ModuleGraph) -> BTreeMap<(String, String), Span> {
+    let declared_types = declared_script_type_names(graph);
+    let mut impls = BTreeMap::new();
+    for declaration in graph.declarations.values() {
+        let Some(metadata) = graph.impl_metadata.get(&declaration.id) else {
+            continue;
+        };
+        let ImplMetadataKind::Trait { trait_path } = &metadata.kind else {
+            continue;
+        };
+        let Some(trait_name) = builtin_operator_trait_name(trait_path) else {
+            continue;
+        };
+        let receiver = qualified_path_name(graph, declaration, &metadata.target_path);
+        if declared_types.contains(&receiver) {
+            impls.insert((receiver, trait_name.to_owned()), declaration.span);
+        }
+    }
+    impls
+}
+
 fn push_missing_operator_trait_prerequisite(
     diagnostics: &mut Vec<Diagnostic>,
     impls: &BTreeMap<(String, String), Span>,
@@ -133,6 +140,257 @@ fn push_missing_operator_trait_prerequisite(
             format!("`{trait_name}` requires `{prerequisite}` for `{receiver}`"),
         ),
     );
+}
+
+fn derived_operator_trait_diagnostics(graph: &ModuleGraph) -> Vec<Diagnostic> {
+    let impls = builtin_operator_trait_impls(graph);
+    let derives = derived_operator_traits_by_type(graph);
+    let declared_types = declared_script_type_names(graph);
+    let mut diagnostics = Vec::new();
+
+    for declaration in graph.declarations.values() {
+        if declaration.kind != DeclarationKind::Struct {
+            continue;
+        }
+        let type_name =
+            qualified_path_name(graph, declaration, std::slice::from_ref(&declaration.name));
+        let traits = derived_traits(graph.declaration_attrs(declaration.id));
+        if traits.is_empty() {
+            continue;
+        }
+
+        push_missing_derived_operator_trait_prerequisite(
+            &mut diagnostics,
+            OperatorTraitLookup {
+                impls: &impls,
+                derives: &derives,
+            },
+            &type_name,
+            &traits,
+            "Eq",
+            "PartialEq",
+            declaration.span,
+        );
+        push_missing_derived_operator_trait_prerequisite(
+            &mut diagnostics,
+            OperatorTraitLookup {
+                impls: &impls,
+                derives: &derives,
+            },
+            &type_name,
+            &traits,
+            "PartialOrd",
+            "PartialEq",
+            declaration.span,
+        );
+        push_missing_derived_operator_trait_prerequisite(
+            &mut diagnostics,
+            OperatorTraitLookup {
+                impls: &impls,
+                derives: &derives,
+            },
+            &type_name,
+            &traits,
+            "Ord",
+            "Eq",
+            declaration.span,
+        );
+        push_missing_derived_operator_trait_prerequisite(
+            &mut diagnostics,
+            OperatorTraitLookup {
+                impls: &impls,
+                derives: &derives,
+            },
+            &type_name,
+            &traits,
+            "Ord",
+            "PartialOrd",
+            declaration.span,
+        );
+
+        let Some(shape) = graph.struct_shape(declaration.id) else {
+            continue;
+        };
+        for trait_name in traits
+            .iter()
+            .filter_map(|trait_name| builtin_operator_trait_name(std::slice::from_ref(trait_name)))
+        {
+            for field in &shape.fields {
+                if field_supports_operator_trait(
+                    graph,
+                    declaration,
+                    field,
+                    trait_name,
+                    &declared_types,
+                    &impls,
+                    &derives,
+                ) {
+                    continue;
+                }
+                diagnostics.push(
+                    Diagnostic::error(format!(
+                        "`{type_name}` cannot derive `{trait_name}` because field `{}` does not satisfy `{trait_name}`",
+                        field.name
+                    ))
+                    .with_code("hir::unsupported_comparison_derive_field")
+                    .with_span(field.span)
+                    .with_label(
+                        field.span,
+                        format!("field `{}` must have `{trait_name}` support", field.name),
+                    ),
+                );
+            }
+        }
+    }
+
+    diagnostics
+}
+
+fn derived_operator_traits_by_type(graph: &ModuleGraph) -> BTreeMap<(String, String), Span> {
+    let mut derives = BTreeMap::new();
+    for declaration in graph.declarations.values() {
+        if declaration.kind != DeclarationKind::Struct {
+            continue;
+        }
+        let type_name =
+            qualified_path_name(graph, declaration, std::slice::from_ref(&declaration.name));
+        for trait_name in derived_traits(graph.declaration_attrs(declaration.id)) {
+            if builtin_operator_trait_name(std::slice::from_ref(&trait_name)).is_some() {
+                derives.insert((type_name.clone(), trait_name), declaration.span);
+            }
+        }
+    }
+    derives
+}
+
+fn push_missing_derived_operator_trait_prerequisite(
+    diagnostics: &mut Vec<Diagnostic>,
+    lookup: OperatorTraitLookup<'_>,
+    receiver: &str,
+    traits: &BTreeSet<String>,
+    trait_name: &'static str,
+    prerequisite: &'static str,
+    span: Span,
+) {
+    if !traits.contains(trait_name)
+        || type_has_operator_trait(receiver, prerequisite, lookup.impls, lookup.derives)
+    {
+        return;
+    }
+    diagnostics.push(
+        Diagnostic::error(format!(
+            "`{receiver}` derives `{trait_name}` without required `{prerequisite}`"
+        ))
+        .with_code("hir::missing_comparison_derive_prerequisite")
+        .with_span(span)
+        .with_label(
+            span,
+            format!("`derive({trait_name})` requires `{prerequisite}` for `{receiver}`"),
+        ),
+    );
+}
+
+#[derive(Clone, Copy)]
+struct OperatorTraitLookup<'a> {
+    impls: &'a BTreeMap<(String, String), Span>,
+    derives: &'a BTreeMap<(String, String), Span>,
+}
+
+fn type_has_operator_trait(
+    type_name: &str,
+    trait_name: &str,
+    impls: &BTreeMap<(String, String), Span>,
+    derives: &BTreeMap<(String, String), Span>,
+) -> bool {
+    let key = (type_name.to_owned(), trait_name.to_owned());
+    impls.contains_key(&key) || derives.contains_key(&key)
+}
+
+fn field_supports_operator_trait(
+    graph: &ModuleGraph,
+    owner: &super::Declaration,
+    field: &crate::type_hint::StructFieldHint,
+    trait_name: &str,
+    declared_types: &BTreeSet<String>,
+    impls: &BTreeMap<(String, String), Span>,
+    derives: &BTreeMap<(String, String), Span>,
+) -> bool {
+    let Some(hint) = &field.type_hint else {
+        return false;
+    };
+    let type_name = qualified_hint_name(graph, owner, hint);
+    if builtin_hint_supports_operator_trait(&type_name, trait_name) {
+        return true;
+    }
+    declared_types.contains(&type_name)
+        && type_has_operator_trait(&type_name, trait_name, impls, derives)
+}
+
+fn qualified_hint_name(
+    graph: &ModuleGraph,
+    owner: &super::Declaration,
+    hint: &HirTypeHint,
+) -> String {
+    if is_builtin_type_hint(&hint.path) || !hint.args.is_empty() {
+        hint.display()
+    } else {
+        qualified_path_name(graph, owner, &hint.path)
+    }
+}
+
+fn builtin_hint_supports_operator_trait(type_name: &str, trait_name: &str) -> bool {
+    match trait_name {
+        "PartialEq" => matches!(
+            type_name,
+            "bool"
+                | "char"
+                | "i8"
+                | "i16"
+                | "i32"
+                | "i64"
+                | "u8"
+                | "u16"
+                | "u32"
+                | "u64"
+                | "f32"
+                | "f64"
+                | "String"
+                | "Bytes"
+        ),
+        "Eq" | "Ord" => matches!(
+            type_name,
+            "bool"
+                | "char"
+                | "i8"
+                | "i16"
+                | "i32"
+                | "i64"
+                | "u8"
+                | "u16"
+                | "u32"
+                | "u64"
+                | "String"
+                | "Bytes"
+        ),
+        "PartialOrd" => matches!(
+            type_name,
+            "bool"
+                | "char"
+                | "i8"
+                | "i16"
+                | "i32"
+                | "i64"
+                | "u8"
+                | "u16"
+                | "u32"
+                | "u64"
+                | "f32"
+                | "f64"
+                | "String"
+                | "Bytes"
+        ),
+        _ => false,
+    }
 }
 
 fn declared_script_type_names(graph: &ModuleGraph) -> BTreeSet<String> {

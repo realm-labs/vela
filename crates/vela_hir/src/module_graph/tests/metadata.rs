@@ -229,6 +229,104 @@ impl Ord for Score { fn cmp(self, other: Score) -> i64 { return 0; } }
 }
 
 #[test]
+fn builtin_operator_derive_prerequisites_are_validated() {
+    let mut graph = ModuleGraph::new();
+    graph.add_source(source(
+        1,
+        "game::scores",
+        r#"
+#[derive(Eq)]
+struct Score { value: i64 }
+#[derive(Ord)]
+struct Rank { value: i64 }
+"#,
+    ));
+    graph.resolve_imports();
+
+    let diagnostics = graph.diagnostics();
+    assert_eq!(diagnostics.len(), 3, "{diagnostics:?}");
+    assert!(
+        diagnostics
+            .iter()
+            .all(|diagnostic| diagnostic.code.as_deref()
+                == Some("hir::missing_comparison_derive_prerequisite"))
+    );
+    assert!(diagnostics.iter().any(|diagnostic| {
+        diagnostic
+            .message
+            .contains("`Eq` without required `PartialEq`")
+    }));
+    assert!(
+        diagnostics
+            .iter()
+            .any(|diagnostic| diagnostic.message.contains("`Ord` without required `Eq`"))
+    );
+    assert!(diagnostics.iter().any(|diagnostic| {
+        diagnostic
+            .message
+            .contains("`Ord` without required `PartialOrd`")
+    }));
+}
+
+#[test]
+fn builtin_operator_derive_rejects_unsupported_fields() {
+    let mut graph = ModuleGraph::new();
+    graph.add_source(source(
+        1,
+        "game::scores",
+        r#"
+#[derive(PartialEq, Eq, PartialOrd, Ord)]
+struct Score { value: f64 }
+#[derive(PartialEq)]
+struct Dynamic { value }
+"#,
+    ));
+    graph.resolve_imports();
+
+    let diagnostics = graph.diagnostics();
+    assert_eq!(diagnostics.len(), 3, "{diagnostics:?}");
+    assert!(
+        diagnostics
+            .iter()
+            .all(|diagnostic| diagnostic.code.as_deref()
+                == Some("hir::unsupported_comparison_derive_field"))
+    );
+    assert!(
+        diagnostics
+            .iter()
+            .any(|diagnostic| diagnostic.message.contains("derive `Eq`"))
+    );
+    assert!(
+        diagnostics
+            .iter()
+            .any(|diagnostic| diagnostic.message.contains("derive `Ord`"))
+    );
+    assert!(
+        diagnostics
+            .iter()
+            .any(|diagnostic| diagnostic.message.contains("field `value`"))
+    );
+}
+
+#[test]
+fn builtin_operator_derive_accepts_nested_script_field_traits() {
+    let mut graph = ModuleGraph::new();
+    graph.add_source(source(
+        1,
+        "game::scores",
+        r#"
+#[derive(PartialEq, Eq, PartialOrd, Ord)]
+struct ScoreId { value: i64 }
+#[derive(PartialEq, Eq, PartialOrd, Ord)]
+struct Score { id: ScoreId, label: String }
+"#,
+    ));
+    graph.resolve_imports();
+
+    assert_eq!(graph.diagnostics(), &[]);
+}
+
+#[test]
 fn lowers_parameter_default_metadata_and_bindings() {
     let mut graph = ModuleGraph::new();
     let module = graph.add_source(source(

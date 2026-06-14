@@ -105,8 +105,9 @@ operators now reject missing `PartialEq` or `PartialOrd` during compilation,
 Map/Set `ValueKey` lookup remains separate from user comparison traits, and
 array sorting rejects float keys until an explicit total-float ordering API
 exists. `Eq` and `Ord` impl declarations now validate their required
-comparison-trait prerequisites. Remaining comparison work is static
-sorting/derive diagnostics.
+comparison-trait prerequisites, and comparison derives now validate their
+required trait chain plus unsupported fields such as float fields under
+`Eq`/`Ord`. Remaining comparison work is static sorting diagnostics.
 
 Post-MVP performance remains a separate track: measure first, then optimize the
 non-JIT bytecode interpreter toward Lua 5.x comparable host-boundary workloads
