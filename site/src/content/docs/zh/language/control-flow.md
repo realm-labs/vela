@@ -21,7 +21,11 @@ fn label(score: i64) -> string {
 
 ## 循环
 
-`for value in source` 会先求值 `source`，然后创建或消费迭代器。`for index, value in source` 是语法级 indexed loop lowering，不需要额外的 `enumerate()` 适配器。
+只需要值时使用 `for value in source`。同时需要位置和值时，使用
+`for index, value in source`，其中 `index` 是从 0 开始的位置。
+
+`source` 表达式会在循环开始时求值一次。数组、range、string、map、set、
+iterator 和宿主提供的 iterable，只要支持迭代，都可以放在这里。
 
 ```vela
 fn sum(values) -> i64 {

@@ -20,7 +20,9 @@ fn first_two(values) {
 
 ## For-In
 
-`for value in source` evaluates `source` once, gets an iterator, and advances it until completion. `for index, value in source` is syntax-level indexed loop lowering.
+`for value in source` evaluates `source` once, gets an iterator, and advances it
+until completion. `for index, value in source` gives the loop body both the
+zero-based position and the current value.
 
 ```vela
 fn total(values) -> i64 {

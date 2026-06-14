@@ -21,7 +21,13 @@ fn label(score: i64) -> string {
 
 ## Loops
 
-`for value in source` evaluates the source once and then consumes or creates an iterator. Indexed loops use `for index, value in source` and do not require a separate `enumerate()` adapter.
+Use `for value in source` when you only need each value. Use
+`for index, value in source` when you also need the zero-based position of each
+value.
+
+The `source` expression is evaluated once at the start of the loop. Arrays,
+ranges, strings, maps, sets, iterators, and host-provided iterables can all be
+used when they support iteration.
 
 ```vela
 fn sum(values) -> i64 {

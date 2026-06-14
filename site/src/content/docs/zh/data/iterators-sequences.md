@@ -20,7 +20,8 @@ fn first_two(values) {
 
 ## For-In
 
-`for value in source` 会先求值 `source`，取得 iterator，然后推进直到结束。`for index, value in source` 是语法级 indexed loop lowering。
+`for value in source` 会先求值 `source`，取得 iterator，然后推进直到结束。
+`for index, value in source` 会同时把从 0 开始的位置和当前值交给循环体。
 
 ```vela
 fn total(values) -> i64 {
