@@ -474,6 +474,154 @@ print(checksum)
 "#,
     },
     Workload {
+        name: "set_i64_large_lookup_mutation",
+        vela: r#"
+fn run_once() {
+    let active = set::from_array([]);
+    for value in 0..64 {
+        active.add(value);
+    }
+    let total = 0;
+    for tick in 0..192 {
+        active.add(64);
+        active.remove(64);
+        if active.has(0) && active.has(63) && !active.has(128) {
+            total += active.len() + tick % 7;
+        }
+    }
+    return total;
+}
+
+fn main(iterations: i64) {
+    let checksum = 0;
+    for iteration in 0..iterations {
+        checksum += run_once();
+    }
+    return checksum;
+}
+"#,
+        lua: r#"
+function run_once()
+    local active = {}
+    for value = 0, 63 do
+        active[value] = true
+    end
+    local total = 0
+    for tick = 0, 191 do
+        active[64] = true
+        active[64] = nil
+        if active[0] and active[63] and not active[128] then
+            local len = 0
+            for _ in pairs(active) do
+                len = len + 1
+            end
+            total = total + len + tick % 7
+        end
+    end
+    return total
+end
+
+function run(iterations)
+    local checksum = 0
+    for _ = 1, iterations do
+        checksum = checksum + run_once()
+    end
+    return checksum
+end
+"#,
+        rhai: r#"
+fn has(values, target) {
+    for value in values {
+        if value == target {
+            return true;
+        }
+    }
+    false
+}
+
+fn add(values, target) {
+    if !has(values, target) {
+        values.push(target);
+    }
+    values
+}
+
+fn remove(values, target) {
+    let kept = [];
+    for value in values {
+        if value != target {
+            kept.push(value);
+        }
+    }
+    kept
+}
+
+fn run_once() {
+    let active = [];
+    for value in 0..64 {
+        active.push(value);
+    }
+    let total = 0;
+    for tick in 0..192 {
+        active = add(active, 64);
+        active = remove(active, 64);
+        if has(active, 0) && has(active, 63) && !has(active, 128) {
+            total += active.len() + tick % 7;
+        }
+    }
+    total
+}
+
+fn run(iterations) {
+    let checksum = 0;
+    for iteration in 0..iterations {
+        checksum += run_once();
+    }
+    checksum
+}
+"#,
+        node: r#"
+const iterations = Number(process.env.VELA_BENCH_ITERATIONS || "1");
+function runOnce() {
+    const active = new Set();
+    for (let value = 0; value < 64; value += 1) {
+        active.add(value);
+    }
+    let total = 0;
+    for (let tick = 0; tick < 192; tick += 1) {
+        active.add(64);
+        active.delete(64);
+        if (active.has(0) && active.has(63) && !active.has(128)) {
+            total += active.size + tick % 7;
+        }
+    }
+    return total;
+}
+let checksum = 0;
+for (let iteration = 0; iteration < iterations; iteration += 1) {
+    checksum += runOnce();
+}
+console.log(String(checksum));
+"#,
+        python: r#"
+import os
+iterations = int(os.environ.get("VELA_BENCH_ITERATIONS", "1"))
+def run_once():
+    active = set(range(64))
+    total = 0
+    for tick in range(192):
+        active.add(64)
+        active.discard(64)
+        if 0 in active and 63 in active and 128 not in active:
+            total += len(active) + tick % 7
+    return total
+checksum = 0
+for _ in range(iterations):
+    checksum += run_once()
+print(checksum)
+"#,
+    },
+    Workload {
         name: "set_string_lookup_mutation",
         vela: r#"
 fn run_once() {

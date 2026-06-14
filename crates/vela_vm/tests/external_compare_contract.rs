@@ -42,6 +42,7 @@ fn external_compare_includes_value_keyed_map_set_workloads() {
         "map_i64_key_lookup_update",
         "map_record_identity_lookup_update",
         "set_i64_lookup_mutation",
+        "set_i64_large_lookup_mutation",
         "set_string_lookup_mutation",
         "set_record_identity_lookup_mutation",
     ] {
