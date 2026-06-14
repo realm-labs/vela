@@ -568,6 +568,40 @@ fn make_scores() {
     );
 }
 
+#[cfg(feature = "serde")]
+#[test]
+fn runtime_call_accepts_serde_non_string_map_keys() {
+    let engine = Engine::builder().build().expect("engine should build");
+    let program = engine
+        .compile_source_with_id(
+            SourceId::new(1),
+            r#"
+fn lookup_score(scores: Map<i64, i64>) -> i64 {
+    return scores[2];
+}
+"#,
+        )
+        .expect("program should compile");
+    let mut runtime = Runtime::new(engine, program);
+    let scores = BTreeMap::from([(1_i64, 10_i64), (2_i64, 20_i64)]);
+
+    let value = runtime
+        .call(
+            "lookup_score",
+            CallArgs::new()
+                .with_serde(&scores)
+                .expect("scores should serialize as an owned value"),
+            CallOptions::unbounded(),
+        )
+        .expect("numeric-key map should cross the serde call boundary");
+
+    assert_eq!(
+        runtime.from_value::<i64>(&value),
+        Ok(20),
+        "script lookup should use the numeric ValueKey, not string coercion"
+    );
+}
+
 #[test]
 fn runtime_insert_global_accepts_runtime_managed_value_with_single_api() {
     let engine = Engine::builder().build().expect("engine should build");
