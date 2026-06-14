@@ -228,6 +228,58 @@ fn main() {
 }
 
 #[test]
+fn managed_heap_execution_uses_host_ref_identity_map_set_keys() {
+    let program = compile_standard_program_source(
+        SourceId::new(1),
+        r#"
+fn main(first, duplicate, second) {
+    let scores = {"seed": 0};
+    scores.clear();
+    scores.set(first, 10);
+    scores.set(duplicate, 20);
+    scores.set(second, 30);
+
+    let active = set::from_array([first, duplicate, second]);
+
+    if scores.len() == 2
+        && scores[first] == 20
+        && scores[duplicate] == 20
+        && scores[second] == 30
+        && active.len() == 2
+        && active.has(first)
+        && active.has(duplicate)
+        && active.has(second)
+    {
+        return scores[first] + active.len();
+    }
+    return 0;
+}
+"#,
+    )
+    .expect("compile value-keyed host ref map/set source");
+    let mut budget = ExecutionBudget::unbounded();
+    let mut vm = Vm::new();
+    vm.register_standard_natives();
+    let first = player_ref(3);
+    let second_generation = player_ref(4);
+
+    assert_eq!(
+        run_linked_test_program_with_budget(
+            &vm,
+            &program,
+            "main",
+            &[
+                OwnedValue::HostRef(first),
+                OwnedValue::HostRef(first),
+                OwnedValue::HostRef(second_generation),
+            ],
+            &mut budget,
+        ),
+        Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(22)))
+    );
+}
+
+#[test]
 fn managed_heap_map_indexing_uses_record_identity_keys() {
     let program = compile_standard_program_source(
         SourceId::new(1),
