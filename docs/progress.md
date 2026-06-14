@@ -62,8 +62,10 @@ deep guard scans are implemented. Non-erased `Iterator<T>` contracts now mark
 iterator cursors with lazy item guards so checked boundaries do not consume
 items, and yielded mismatches fail at `next()`/iteration time. Mutation-focused
 benchmark/profile rows now cover proven typed, guarded erased-value, and
-erased-container array/map updates. The remaining gap is container summaries
-and contract stamps.
+erased-container array/map updates. Heap-owned container summaries and contract
+stamps now let stable array/map/set contracts use O(1) summary/stamp checks
+before falling back to budget-charged scans, and nested stamps are invalidated
+when child containers mutate through aliases.
 
 Post-MVP performance remains a separate track: measure first, then optimize the
 non-JIT bytecode interpreter toward Lua 5.x comparable host-boundary workloads

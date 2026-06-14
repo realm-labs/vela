@@ -256,6 +256,8 @@ fn set_heap_array_index(
         })
     })?;
     *target = slot;
+    heap.heap
+        .note_container_value_replaced_or_removed(reference);
     Ok(())
 }
 

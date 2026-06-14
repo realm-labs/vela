@@ -5,6 +5,9 @@ use vela_bytecode::{
 use vela_common::PrimitiveTag;
 
 use crate::budget::ExecutionBudget;
+use crate::container_contracts::{
+    ContainerContractStamp, ContainerSummaryProof, ContainerTypeSummary,
+};
 use crate::heap::HeapValue;
 use crate::iteration::IteratorItemGuard;
 use crate::method_runtime::MethodRuntime;
@@ -415,18 +418,42 @@ fn container_guard_type_name(kind: ContainerGuardKind) -> &'static str {
     }
 }
 
-fn copied_container_values(
+fn container_reference(
     value: &Value,
     heap: Option<&HeapExecution<'_>>,
     debug_name: &str,
     kind: ContainerGuardKind,
-) -> VmResult<Vec<Value>> {
+) -> VmResult<crate::heap::GcRef> {
     let type_name = container_guard_type_name(kind);
     let Value::HeapRef(reference) = value else {
         return Err(type_contract_error(value, type_name, heap, debug_name));
     };
-    let values = heap
+    let matches_kind = heap
         .and_then(|heap| heap.heap.get(*reference))
+        .is_some_and(|value| {
+            matches!(
+                (kind, value),
+                (ContainerGuardKind::Array, HeapValue::Array(_))
+                    | (ContainerGuardKind::Set, HeapValue::Set(_))
+                    | (ContainerGuardKind::MapValues, HeapValue::Map(_))
+            )
+        });
+    if matches_kind {
+        Ok(*reference)
+    } else {
+        Err(type_contract_error(value, type_name, heap, debug_name))
+    }
+}
+
+fn copied_container_values(
+    reference: crate::heap::GcRef,
+    heap: Option<&HeapExecution<'_>>,
+    _debug_name: &str,
+    kind: ContainerGuardKind,
+) -> VmResult<Vec<Value>> {
+    let type_name = container_guard_type_name(kind);
+    let values = heap
+        .and_then(|heap| heap.heap.get(reference))
         .and_then(|value| match (kind, value) {
             (ContainerGuardKind::Array, HeapValue::Array(values))
             | (ContainerGuardKind::Set, HeapValue::Set(values)) => Some(values.to_vec()),
@@ -435,7 +462,105 @@ fn copied_container_values(
             }
             _ => None,
         });
-    values.ok_or_else(|| type_contract_error(value, type_name, heap, debug_name))
+    values.ok_or_else(|| {
+        VmError::new(VmErrorKind::TypeMismatch {
+            operation: type_name,
+        })
+    })
+}
+
+fn try_unlinked_container_contract_fast_path(
+    reference: crate::heap::GcRef,
+    stamp: &ContainerContractStamp,
+    element: &UnlinkedTypeGuardPlan,
+    context: &mut GuardExecutionContext<'_, '_>,
+    debug_name: &str,
+) -> VmResult<bool> {
+    let Some(heap) = context.heap_mut() else {
+        return Ok(false);
+    };
+    if heap.heap.has_container_contract_stamp(reference, stamp) {
+        return Ok(true);
+    }
+    let summary = heap
+        .heap
+        .container_value_summary(reference)
+        .unwrap_or(ContainerTypeSummary::Unknown);
+    match summary.prove_unlinked_plan(element) {
+        ContainerSummaryProof::Proven => {
+            heap.heap
+                .install_container_contract_stamp(reference, stamp.clone());
+            Ok(true)
+        }
+        ContainerSummaryProof::Mismatch(actual) => {
+            Err(VmError::new(VmErrorKind::TypeContractViolation {
+                expected: unlinked_plan_type_name(element).to_owned(),
+                actual: actual.type_name().to_owned(),
+                debug_name: debug_name.to_owned(),
+            }))
+        }
+        ContainerSummaryProof::Unknown => Ok(false),
+    }
+}
+
+fn try_linked_container_contract_fast_path(
+    reference: crate::heap::GcRef,
+    stamp: &ContainerContractStamp,
+    element: &TypeGuardPlan,
+    context: &mut GuardExecutionContext<'_, '_>,
+    debug_name: &str,
+) -> VmResult<bool> {
+    let Some(heap) = context.heap_mut() else {
+        return Ok(false);
+    };
+    if heap.heap.has_container_contract_stamp(reference, stamp) {
+        return Ok(true);
+    }
+    let summary = heap
+        .heap
+        .container_value_summary(reference)
+        .unwrap_or(ContainerTypeSummary::Unknown);
+    match summary.prove_linked_plan(element) {
+        ContainerSummaryProof::Proven => {
+            heap.heap
+                .install_container_contract_stamp(reference, stamp.clone());
+            Ok(true)
+        }
+        ContainerSummaryProof::Mismatch(actual) => {
+            Err(VmError::new(VmErrorKind::TypeContractViolation {
+                expected: linked_plan_type_name(element).to_owned(),
+                actual: actual.type_name().to_owned(),
+                debug_name: debug_name.to_owned(),
+            }))
+        }
+        ContainerSummaryProof::Unknown => Ok(false),
+    }
+}
+
+fn install_container_contract_stamp(
+    reference: crate::heap::GcRef,
+    stamp: ContainerContractStamp,
+    context: &mut GuardExecutionContext<'_, '_>,
+) {
+    if let Some(heap) = context.heap_mut() {
+        heap.heap.refresh_container_contracts(reference);
+        heap.heap.install_container_contract_stamp(reference, stamp);
+    }
+}
+
+fn register_container_contract_dependencies(
+    parent: crate::heap::GcRef,
+    values: &[Value],
+    context: &mut GuardExecutionContext<'_, '_>,
+) {
+    let Some(heap) = context.heap_mut() else {
+        return;
+    };
+    for value in values {
+        if let Value::HeapRef(child) = value {
+            heap.heap.add_container_contract_dependency(*child, parent);
+        }
+    }
 }
 
 fn execute_option_guard(
@@ -472,12 +597,28 @@ fn execute_array_guard(
     debug_name: &str,
 ) -> VmResult<()> {
     let heap = context.heap();
-    let values = copied_container_values(value, heap, debug_name, ContainerGuardKind::Array)?;
+    let reference = container_reference(value, heap, debug_name, ContainerGuardKind::Array)?;
     if let Some(element) = element {
+        let stamp = ContainerContractStamp::Unlinked(UnlinkedTypeGuardPlan::Array {
+            element: Some(Box::new(element.clone())),
+        });
+        if try_unlinked_container_contract_fast_path(
+            reference, &stamp, element, context, debug_name,
+        )? {
+            return Ok(());
+        }
+        let values = copied_container_values(
+            reference,
+            context.heap(),
+            debug_name,
+            ContainerGuardKind::Array,
+        )?;
         for value in &values {
             context.charge_scan_item()?;
             execute_unlinked_guard_plan(value, element, context, debug_name)?;
         }
+        register_container_contract_dependencies(reference, &values, context);
+        install_container_contract_stamp(reference, stamp, context);
     }
     Ok(())
 }
@@ -489,12 +630,28 @@ fn execute_set_guard(
     debug_name: &str,
 ) -> VmResult<()> {
     let heap = context.heap();
-    let values = copied_container_values(value, heap, debug_name, ContainerGuardKind::Set)?;
+    let reference = container_reference(value, heap, debug_name, ContainerGuardKind::Set)?;
     if let Some(element) = element {
+        let stamp = ContainerContractStamp::Unlinked(UnlinkedTypeGuardPlan::Set {
+            element: Some(Box::new(element.clone())),
+        });
+        if try_unlinked_container_contract_fast_path(
+            reference, &stamp, element, context, debug_name,
+        )? {
+            return Ok(());
+        }
+        let values = copied_container_values(
+            reference,
+            context.heap(),
+            debug_name,
+            ContainerGuardKind::Set,
+        )?;
         for value in &values {
             context.charge_scan_item()?;
             execute_unlinked_guard_plan(value, element, context, debug_name)?;
         }
+        register_container_contract_dependencies(reference, &values, context);
+        install_container_contract_stamp(reference, stamp, context);
     }
     Ok(())
 }
@@ -507,7 +664,7 @@ fn execute_map_guard(
     debug_name: &str,
 ) -> VmResult<()> {
     let heap = context.heap();
-    let values = copied_container_values(value, heap, debug_name, ContainerGuardKind::MapValues)?;
+    let reference = container_reference(value, heap, debug_name, ContainerGuardKind::MapValues)?;
     if !map_key_plan_is_string_or_erased(key) {
         return Err(VmError::new(VmErrorKind::TypeContractViolation {
             expected: "Map<String, _>".to_owned(),
@@ -516,10 +673,27 @@ fn execute_map_guard(
         }));
     }
     if let Some(value_plan) = value_plan {
+        let stamp = ContainerContractStamp::Unlinked(UnlinkedTypeGuardPlan::Map {
+            key: key.cloned().map(Box::new),
+            value: Some(Box::new(value_plan.clone())),
+        });
+        if try_unlinked_container_contract_fast_path(
+            reference, &stamp, value_plan, context, debug_name,
+        )? {
+            return Ok(());
+        }
+        let values = copied_container_values(
+            reference,
+            context.heap(),
+            debug_name,
+            ContainerGuardKind::MapValues,
+        )?;
         for value in &values {
             context.charge_scan_item()?;
             execute_unlinked_guard_plan(value, value_plan, context, debug_name)?;
         }
+        register_container_contract_dependencies(reference, &values, context);
+        install_container_contract_stamp(reference, stamp, context);
     }
     Ok(())
 }
@@ -656,12 +830,27 @@ fn execute_linked_array_guard(
     debug_name: &str,
 ) -> VmResult<()> {
     let heap = context.heap();
-    let values = copied_container_values(value, heap, debug_name, ContainerGuardKind::Array)?;
+    let reference = container_reference(value, heap, debug_name, ContainerGuardKind::Array)?;
     if let Some(element) = element {
+        let stamp = ContainerContractStamp::Linked(TypeGuardPlan::Array {
+            element: Some(Box::new(element.clone())),
+        });
+        if try_linked_container_contract_fast_path(reference, &stamp, element, context, debug_name)?
+        {
+            return Ok(());
+        }
+        let values = copied_container_values(
+            reference,
+            context.heap(),
+            debug_name,
+            ContainerGuardKind::Array,
+        )?;
         for value in &values {
             context.charge_scan_item()?;
             execute_linked_guard_plan(value, element, program, context, debug_name)?;
         }
+        register_container_contract_dependencies(reference, &values, context);
+        install_container_contract_stamp(reference, stamp, context);
     }
     Ok(())
 }
@@ -674,12 +863,27 @@ fn execute_linked_set_guard(
     debug_name: &str,
 ) -> VmResult<()> {
     let heap = context.heap();
-    let values = copied_container_values(value, heap, debug_name, ContainerGuardKind::Set)?;
+    let reference = container_reference(value, heap, debug_name, ContainerGuardKind::Set)?;
     if let Some(element) = element {
+        let stamp = ContainerContractStamp::Linked(TypeGuardPlan::Set {
+            element: Some(Box::new(element.clone())),
+        });
+        if try_linked_container_contract_fast_path(reference, &stamp, element, context, debug_name)?
+        {
+            return Ok(());
+        }
+        let values = copied_container_values(
+            reference,
+            context.heap(),
+            debug_name,
+            ContainerGuardKind::Set,
+        )?;
         for value in &values {
             context.charge_scan_item()?;
             execute_linked_guard_plan(value, element, program, context, debug_name)?;
         }
+        register_container_contract_dependencies(reference, &values, context);
+        install_container_contract_stamp(reference, stamp, context);
     }
     Ok(())
 }
@@ -693,7 +897,7 @@ fn execute_linked_map_guard(
     debug_name: &str,
 ) -> VmResult<()> {
     let heap = context.heap();
-    let values = copied_container_values(value, heap, debug_name, ContainerGuardKind::MapValues)?;
+    let reference = container_reference(value, heap, debug_name, ContainerGuardKind::MapValues)?;
     if !linked_map_key_plan_is_string_or_erased(key) {
         return Err(VmError::new(VmErrorKind::TypeContractViolation {
             expected: "Map<String, _>".to_owned(),
@@ -702,10 +906,27 @@ fn execute_linked_map_guard(
         }));
     }
     if let Some(value_plan) = value_plan {
+        let stamp = ContainerContractStamp::Linked(TypeGuardPlan::Map {
+            key: key.cloned().map(Box::new),
+            value: Some(Box::new(value_plan.clone())),
+        });
+        if try_linked_container_contract_fast_path(
+            reference, &stamp, value_plan, context, debug_name,
+        )? {
+            return Ok(());
+        }
+        let values = copied_container_values(
+            reference,
+            context.heap(),
+            debug_name,
+            ContainerGuardKind::MapValues,
+        )?;
         for value in &values {
             context.charge_scan_item()?;
             execute_linked_guard_plan(value, value_plan, program, context, debug_name)?;
         }
+        register_container_contract_dependencies(reference, &values, context);
+        install_container_contract_stamp(reference, stamp, context);
     }
     Ok(())
 }
@@ -1006,6 +1227,39 @@ fn linked_map_key_plan_is_string_or_erased(plan: Option<&TypeGuardPlan>) -> bool
     )
 }
 
+fn unlinked_plan_type_name(plan: &UnlinkedTypeGuardPlan) -> &'static str {
+    match plan {
+        UnlinkedTypeGuardPlan::Primitive(tag) => primitive_type_name(*tag),
+        UnlinkedTypeGuardPlan::Standard(guard) => standard_type_name(*guard),
+        UnlinkedTypeGuardPlan::Array { .. } => "Array",
+        UnlinkedTypeGuardPlan::Map { .. } => "Map",
+        UnlinkedTypeGuardPlan::Set { .. } => "Set",
+        UnlinkedTypeGuardPlan::Iterator { .. } => "Iterator",
+        UnlinkedTypeGuardPlan::Option { .. } => "Option",
+        UnlinkedTypeGuardPlan::Result { .. } => "Result",
+        UnlinkedTypeGuardPlan::Type(_) => "record",
+        UnlinkedTypeGuardPlan::Variant { .. } => "enum",
+        UnlinkedTypeGuardPlan::Shape { .. } => "record",
+        UnlinkedTypeGuardPlan::HostType(_) => "host",
+    }
+}
+
+fn linked_plan_type_name(plan: &TypeGuardPlan) -> &'static str {
+    match plan {
+        TypeGuardPlan::Primitive(tag) => primitive_type_name(*tag),
+        TypeGuardPlan::Standard(guard) => standard_type_name(*guard),
+        TypeGuardPlan::Array { .. } => "Array",
+        TypeGuardPlan::Map { .. } => "Map",
+        TypeGuardPlan::Set { .. } => "Set",
+        TypeGuardPlan::Iterator { .. } => "Iterator",
+        TypeGuardPlan::Option { .. } => "Option",
+        TypeGuardPlan::Result { .. } => "Result",
+        TypeGuardPlan::Type(_) | TypeGuardPlan::Shape { .. } => "record",
+        TypeGuardPlan::Variant(_) => "enum",
+        TypeGuardPlan::HostType(_) => "host",
+    }
+}
+
 const fn primitive_type_name(tag: PrimitiveTag) -> &'static str {
     match tag {
         PrimitiveTag::String => "String",
@@ -1189,5 +1443,89 @@ fn runtime_record_debug_shape<'a>(
             _ => None,
         },
         _ => None,
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use vela_bytecode::{LinkedProgram, TypeGuardPlan};
+    use vela_common::PrimitiveTag;
+
+    use super::*;
+    use crate::collection_mutation::push_array_slot;
+    use crate::heap::{HeapValue, ScriptHeap};
+
+    #[test]
+    fn exact_container_summary_proves_simple_array_contract_without_scan() {
+        let mut heap = ScriptHeap::new();
+        let array =
+            Value::HeapRef(heap.allocate(HeapValue::Array(vec![Value::I64(1), Value::I64(2)])));
+        let program = LinkedProgram::new();
+        let plan = TypeGuardPlan::Array {
+            element: Some(Box::new(TypeGuardPlan::Primitive(PrimitiveTag::I64))),
+        };
+        let mut budget = ExecutionBudget::new(0, usize::MAX, usize::MAX);
+        let mut heap_execution = HeapExecution::new(&mut heap);
+        let mut context = GuardExecutionContext::new(Some(&mut heap_execution), Some(&mut budget));
+
+        execute_linked_guard_plan(&array, &plan, &program, &mut context, "values")
+            .expect("summary should prove array element contract");
+
+        assert_eq!(budget.instructions_executed(), 0);
+    }
+
+    #[test]
+    fn nested_container_stamp_skips_rescan_until_child_mutation() {
+        let mut heap = ScriptHeap::new();
+        let inner = heap.allocate(HeapValue::Array(vec![Value::I64(1), Value::I64(2)]));
+        let outer = Value::HeapRef(heap.allocate(HeapValue::Array(vec![Value::HeapRef(inner)])));
+        let program = LinkedProgram::new();
+        let plan = TypeGuardPlan::Array {
+            element: Some(Box::new(TypeGuardPlan::Array {
+                element: Some(Box::new(TypeGuardPlan::Primitive(PrimitiveTag::I64))),
+            })),
+        };
+        let mut budget = ExecutionBudget::new(1, usize::MAX, usize::MAX);
+
+        {
+            let mut heap_execution = HeapExecution::new(&mut heap);
+            let mut context =
+                GuardExecutionContext::new(Some(&mut heap_execution), Some(&mut budget));
+
+            execute_linked_guard_plan(&outer, &plan, &program, &mut context, "values")
+                .expect("first nested guard should scan");
+
+            execute_linked_guard_plan(&outer, &plan, &program, &mut context, "values")
+                .expect("matching stamp should skip second scan");
+        }
+        assert_eq!(budget.instructions_executed(), 1);
+
+        let bad = heap.allocate(HeapValue::String("bad".to_owned()));
+        {
+            let mut heap_execution = HeapExecution::new(&mut heap);
+            push_array_slot(
+                &mut heap_execution,
+                inner,
+                Value::HeapRef(bad),
+                None,
+                "test inner mutation",
+            )
+            .expect("inner mutation should succeed");
+        }
+
+        let mut heap_execution = HeapExecution::new(&mut heap);
+        let mut budget = ExecutionBudget::unbounded();
+        let mut context = GuardExecutionContext::new(Some(&mut heap_execution), Some(&mut budget));
+        let error = execute_linked_guard_plan(&outer, &plan, &program, &mut context, "values")
+            .expect_err("child mutation must invalidate parent stamp");
+
+        assert_eq!(
+            error.kind(),
+            VmErrorKind::TypeContractViolation {
+                expected: "i64".to_owned(),
+                actual: "String".to_owned(),
+                debug_name: "values".to_owned(),
+            }
+        );
     }
 }

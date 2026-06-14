@@ -13,8 +13,11 @@ pub(crate) fn push_array_slot(
     mut budget: Option<&mut ExecutionBudget>,
     operation: &'static str,
 ) -> VmResult<()> {
+    let inserted = slot;
     if !tracks_collection_growth(budget.as_deref()) {
         array_slots_mut(heap, reference, operation)?.push(slot);
+        heap.heap
+            .note_container_value_inserted(reference, &inserted);
         return Ok(());
     }
 
@@ -28,6 +31,8 @@ pub(crate) fn push_array_slot(
 
     array_slots_mut(heap, reference, operation)?.push(slot);
     heap.heap
+        .note_container_value_inserted(reference, &inserted);
+    heap.heap
         .adjust_object_size_after_mutation(reference, budget, precharged_growth)
 }
 
@@ -39,8 +44,11 @@ pub(crate) fn insert_array_slot(
     mut budget: Option<&mut ExecutionBudget>,
     operation: &'static str,
 ) -> VmResult<()> {
+    let inserted = slot;
     if !tracks_collection_growth(budget.as_deref()) {
         array_slots_mut(heap, reference, operation)?.insert(index, slot);
+        heap.heap
+            .note_container_value_inserted(reference, &inserted);
         return Ok(());
     }
 
@@ -55,6 +63,8 @@ pub(crate) fn insert_array_slot(
     let slots = array_slots_mut(heap, reference, operation)?;
     slots.insert(index, slot);
     heap.heap
+        .note_container_value_inserted(reference, &inserted);
+    heap.heap
         .adjust_object_size_after_mutation(reference, budget, precharged_growth)
 }
 
@@ -65,12 +75,15 @@ pub(crate) fn extend_array_slots(
     mut budget: Option<&mut ExecutionBudget>,
     operation: &'static str,
 ) -> VmResult<()> {
+    let slots = slots.into_iter().collect::<Vec<_>>();
     if !tracks_collection_growth(budget.as_deref()) {
-        array_slots_mut(heap, reference, operation)?.extend(slots);
+        array_slots_mut(heap, reference, operation)?.extend(slots.iter().copied());
+        for slot in &slots {
+            heap.heap.note_container_value_inserted(reference, slot);
+        }
         return Ok(());
     }
 
-    let slots = slots.into_iter().collect::<Vec<_>>();
     let additional = slots.len();
     let len = array_slots(heap, reference, operation)?.len();
     check_collection_len("array", len, additional, budget.as_deref(), |budget| {
@@ -80,7 +93,10 @@ pub(crate) fn extend_array_slots(
     let precharged_growth = additional.saturating_mul(mem::size_of::<Value>());
     charge_growth(budget.as_deref_mut(), precharged_growth)?;
 
-    array_slots_mut(heap, reference, operation)?.extend(slots);
+    array_slots_mut(heap, reference, operation)?.extend(slots.iter().copied());
+    for slot in &slots {
+        heap.heap.note_container_value_inserted(reference, slot);
+    }
     heap.heap
         .adjust_object_size_after_mutation(reference, budget, precharged_growth)
 }
@@ -92,6 +108,10 @@ pub(crate) fn pop_array_slot(
     operation: &'static str,
 ) -> VmResult<Option<Value>> {
     let payload = array_slots_mut(heap, reference, operation)?.pop();
+    if payload.is_some() {
+        heap.heap
+            .note_container_value_replaced_or_removed(reference);
+    }
     if !tracks_collection_growth(budget.as_deref()) {
         return Ok(payload.map(|slot| stored_runtime_value(&slot)));
     }
@@ -108,6 +128,8 @@ pub(crate) fn remove_array_slot(
     operation: &'static str,
 ) -> VmResult<Value> {
     let slot = array_slots_mut(heap, reference, operation)?.remove(index);
+    heap.heap
+        .note_container_value_replaced_or_removed(reference);
     if !tracks_collection_growth(budget.as_deref()) {
         return Ok(stored_runtime_value(&slot));
     }
@@ -123,6 +145,7 @@ pub(crate) fn clear_array(
     operation: &'static str,
 ) -> VmResult<()> {
     array_slots_mut(heap, reference, operation)?.clear();
+    heap.heap.note_container_cleared(reference);
     if !tracks_collection_growth(budget.as_deref()) {
         return Ok(());
     }
@@ -140,8 +163,16 @@ pub(crate) fn insert_map_slot(
 ) -> VmResult<()> {
     let values = map_slots(heap, reference, operation)?;
     let is_new_key = !values.contains_key(&key);
+    let inserted = slot;
     if !is_new_key || !tracks_collection_growth(budget.as_deref()) {
         map_slots_mut(heap, reference, operation)?.insert(key, slot);
+        if is_new_key {
+            heap.heap
+                .note_container_value_inserted(reference, &inserted);
+        } else {
+            heap.heap
+                .note_container_value_replaced_or_removed(reference);
+        }
         return Ok(());
     }
 
@@ -157,6 +188,8 @@ pub(crate) fn insert_map_slot(
 
     map_slots_mut(heap, reference, operation)?.insert(key, slot);
     heap.heap
+        .note_container_value_inserted(reference, &inserted);
+    heap.heap
         .adjust_object_size_after_mutation(reference, budget, precharged_growth)
 }
 
@@ -167,8 +200,20 @@ pub(crate) fn extend_map_slots(
     mut budget: Option<&mut ExecutionBudget>,
     operation: &'static str,
 ) -> VmResult<()> {
+    let had_replacement = {
+        let values = map_slots(heap, reference, operation)?;
+        slots.iter().any(|(key, _)| values.contains_key(key))
+    };
     if !tracks_collection_growth(budget.as_deref()) {
-        map_slots_mut(heap, reference, operation)?.extend(slots);
+        map_slots_mut(heap, reference, operation)?.extend(slots.iter().cloned());
+        if had_replacement {
+            heap.heap
+                .note_container_value_replaced_or_removed(reference);
+        } else {
+            for (_, slot) in &slots {
+                heap.heap.note_container_value_inserted(reference, slot);
+            }
+        }
         return Ok(());
     }
 
@@ -190,7 +235,15 @@ pub(crate) fn extend_map_slots(
         .sum::<usize>();
     charge_growth(budget.as_deref_mut(), precharged_growth)?;
 
-    map_slots_mut(heap, reference, operation)?.extend(slots);
+    map_slots_mut(heap, reference, operation)?.extend(slots.iter().cloned());
+    if had_replacement {
+        heap.heap
+            .note_container_value_replaced_or_removed(reference);
+    } else {
+        for (_, slot) in &slots {
+            heap.heap.note_container_value_inserted(reference, slot);
+        }
+    }
     heap.heap
         .adjust_object_size_after_mutation(reference, budget, precharged_growth)
 }
@@ -205,6 +258,10 @@ pub(crate) fn remove_map_slot(
     let payload = map_slots_mut(heap, reference, operation)?
         .remove(key)
         .map(|slot| stored_runtime_value(&slot));
+    if payload.is_some() {
+        heap.heap
+            .note_container_value_replaced_or_removed(reference);
+    }
     if !tracks_collection_growth(budget.as_deref()) {
         return Ok(payload);
     }
@@ -220,6 +277,7 @@ pub(crate) fn clear_map(
     operation: &'static str,
 ) -> VmResult<()> {
     map_slots_mut(heap, reference, operation)?.clear();
+    heap.heap.note_container_cleared(reference);
     if !tracks_collection_growth(budget.as_deref()) {
         return Ok(());
     }
@@ -234,8 +292,11 @@ pub(crate) fn push_set_slot(
     mut budget: Option<&mut ExecutionBudget>,
     operation: &'static str,
 ) -> VmResult<()> {
+    let inserted = slot;
     if !tracks_collection_growth(budget.as_deref()) {
         set_slots_mut(heap, reference, operation)?.push(slot);
+        heap.heap
+            .note_container_value_inserted(reference, &inserted);
         return Ok(());
     }
 
@@ -249,6 +310,8 @@ pub(crate) fn push_set_slot(
 
     set_slots_mut(heap, reference, operation)?.push(slot);
     heap.heap
+        .note_container_value_inserted(reference, &inserted);
+    heap.heap
         .adjust_object_size_after_mutation(reference, budget, precharged_growth)
 }
 
@@ -259,12 +322,15 @@ pub(crate) fn extend_set_slots(
     mut budget: Option<&mut ExecutionBudget>,
     operation: &'static str,
 ) -> VmResult<()> {
+    let slots = slots.into_iter().collect::<Vec<_>>();
     if !tracks_collection_growth(budget.as_deref()) {
-        set_slots_mut(heap, reference, operation)?.extend(slots);
+        set_slots_mut(heap, reference, operation)?.extend(slots.iter().copied());
+        for slot in &slots {
+            heap.heap.note_container_value_inserted(reference, slot);
+        }
         return Ok(());
     }
 
-    let slots = slots.into_iter().collect::<Vec<_>>();
     let additional = slots.len();
     let len = set_slots(heap, reference, operation)?.len();
     check_collection_len("set", len, additional, budget.as_deref(), |budget| {
@@ -274,7 +340,10 @@ pub(crate) fn extend_set_slots(
     let precharged_growth = additional.saturating_mul(mem::size_of::<Value>());
     charge_growth(budget.as_deref_mut(), precharged_growth)?;
 
-    set_slots_mut(heap, reference, operation)?.extend(slots);
+    set_slots_mut(heap, reference, operation)?.extend(slots.iter().copied());
+    for slot in &slots {
+        heap.heap.note_container_value_inserted(reference, slot);
+    }
     heap.heap
         .adjust_object_size_after_mutation(reference, budget, precharged_growth)
 }
@@ -294,6 +363,10 @@ pub(crate) fn remove_set_slots(
         values.remove(index);
     }
     let changed = values.len() != before;
+    if changed {
+        heap.heap
+            .note_container_value_replaced_or_removed(reference);
+    }
     if !tracks_collection_growth(budget.as_deref()) {
         return Ok(changed);
     }
@@ -309,6 +382,7 @@ pub(crate) fn clear_set(
     operation: &'static str,
 ) -> VmResult<()> {
     set_slots_mut(heap, reference, operation)?.clear();
+    heap.heap.note_container_cleared(reference);
     if !tracks_collection_growth(budget.as_deref()) {
         return Ok(());
     }

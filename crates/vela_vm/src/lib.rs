@@ -8,6 +8,7 @@ mod char_methods;
 mod closure_calls;
 mod collection_mutation;
 mod constant_loads;
+mod container_contracts;
 mod dynamic_method_resolution;
 pub mod error;
 mod execution;

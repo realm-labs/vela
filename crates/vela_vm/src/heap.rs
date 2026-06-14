@@ -1,6 +1,6 @@
 //! Non-moving script heap and mark-sweep collection.
 
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, BTreeSet};
 use std::fmt;
 use std::mem;
 
@@ -8,6 +8,9 @@ use vela_common::ShapeId;
 use vela_def::{FieldId, TypeId, VariantId};
 use vela_host::proxy::PathProxy;
 
+use crate::container_contracts::{
+    ContainerContractStamp, ContainerContracts, ContainerTypeSummary, ShallowTypeKey,
+};
 use crate::iteration::IteratorState;
 use crate::script_object::ScriptFields;
 use crate::value::{ClosureValue, Value};
@@ -290,6 +293,8 @@ pub struct ScriptHeap {
     entries: Vec<HeapEntry>,
     free_list: Vec<usize>,
     mark_stack: Vec<GcRef>,
+    container_contracts: BTreeMap<GcRef, ContainerContracts>,
+    container_contract_dependents: BTreeMap<GcRef, Vec<GcRef>>,
     allocated_bytes: usize,
     gc_config: GcConfig,
     next_gc_at_bytes: usize,
@@ -303,6 +308,8 @@ impl Default for ScriptHeap {
             entries: Vec::new(),
             free_list: Vec::new(),
             mark_stack: Vec::new(),
+            container_contracts: BTreeMap::new(),
+            container_contract_dependents: BTreeMap::new(),
             allocated_bytes: 0,
             gc_config,
             next_gc_at_bytes: 1,
@@ -343,6 +350,95 @@ impl ScriptHeap {
             .and_then(|entry| entry.object.as_mut())
             .map(|object| &mut object.value)
             .ok_or_else(|| HeapError::new(HeapErrorKind::InvalidRef { reference }))
+    }
+
+    #[must_use]
+    pub(crate) fn container_value_summary(&self, reference: GcRef) -> Option<ContainerTypeSummary> {
+        self.container_contracts
+            .get(&reference)
+            .map(ContainerContracts::value_summary)
+    }
+
+    #[must_use]
+    pub(crate) fn has_container_contract_stamp(
+        &self,
+        reference: GcRef,
+        stamp: &ContainerContractStamp,
+    ) -> bool {
+        self.container_contracts
+            .get(&reference)
+            .is_some_and(|contracts| contracts.has_stamp(stamp))
+    }
+
+    pub(crate) fn install_container_contract_stamp(
+        &mut self,
+        reference: GcRef,
+        stamp: ContainerContractStamp,
+    ) {
+        if let Some(contracts) = self.container_contracts.get_mut(&reference) {
+            contracts.install_stamp(stamp);
+        }
+    }
+
+    pub(crate) fn add_container_contract_dependency(&mut self, child: GcRef, parent: GcRef) {
+        if !self.container_contracts.contains_key(&child) {
+            return;
+        }
+        let dependents = self.container_contract_dependents.entry(child).or_default();
+        if !dependents.contains(&parent) {
+            dependents.push(parent);
+        }
+    }
+
+    pub(crate) fn note_container_value_inserted(&mut self, reference: GcRef, value: &Value) {
+        let key = ShallowTypeKey::from_value(value, self);
+        self.invalidate_container_contract_stamps(reference);
+        if let Some(contracts) = self.container_contracts.get_mut(&reference) {
+            contracts.note_inserted_value(key);
+        }
+    }
+
+    pub(crate) fn note_container_value_replaced_or_removed(&mut self, reference: GcRef) {
+        self.invalidate_container_contract_stamps(reference);
+        if let Some(contracts) = self.container_contracts.get_mut(&reference) {
+            contracts.note_replaced_or_removed_value();
+        }
+    }
+
+    pub(crate) fn note_container_cleared(&mut self, reference: GcRef) {
+        self.invalidate_container_contract_stamps(reference);
+        if let Some(contracts) = self.container_contracts.get_mut(&reference) {
+            contracts.note_cleared();
+        }
+    }
+
+    pub(crate) fn refresh_container_contracts(&mut self, reference: GcRef) {
+        let Some(mut contracts) = self.container_contracts.remove(&reference) else {
+            return;
+        };
+        match self.get(reference) {
+            Some(HeapValue::Array(values)) => contracts.resummarize_array(values, self),
+            Some(HeapValue::Set(values)) => contracts.resummarize_set(values, self),
+            Some(HeapValue::Map(values)) => contracts.resummarize_map(values.values(), self),
+            _ => {}
+        }
+        self.container_contracts.insert(reference, contracts);
+    }
+
+    fn invalidate_container_contract_stamps(&mut self, reference: GcRef) {
+        let mut stack = vec![reference];
+        let mut visited = BTreeSet::new();
+        while let Some(current) = stack.pop() {
+            if !visited.insert(current) {
+                continue;
+            }
+            if let Some(contracts) = self.container_contracts.get_mut(&current) {
+                contracts.clear_stamps();
+            }
+            if let Some(dependents) = self.container_contract_dependents.get(&current) {
+                stack.extend(dependents.iter().copied());
+            }
+        }
     }
 
     pub(crate) fn adjust_object_size_after_mutation(
@@ -456,6 +552,9 @@ impl ScriptHeap {
             }
 
             let object = entry.object.take().expect("checked object exists");
+            let reference = GcRef::new(u32::try_from(index).unwrap_or(u32::MAX), entry.generation);
+            self.container_contracts.remove(&reference);
+            self.container_contract_dependents.remove(&reference);
             bytes_freed += object.size_bytes;
             swept += 1;
             self.free_list.push(index);
@@ -521,10 +620,14 @@ impl ScriptHeap {
                 continue;
             }
 
+            let generation = self.entries[index].generation;
             let object = self.entries[index]
                 .object
                 .take()
                 .expect("checked object exists");
+            let reference = GcRef::new(u32::try_from(index).unwrap_or(u32::MAX), generation);
+            self.container_contracts.remove(&reference);
+            self.container_contract_dependents.remove(&reference);
             bytes_freed += object.size_bytes;
             swept += 1;
             self.free_list.push(index);
@@ -569,7 +672,9 @@ impl ScriptHeap {
             let entry = &mut self.entries[index];
             entry.generation = entry.generation.saturating_add(1).max(1);
             entry.object = Some(object);
-            return GcRef::new(u32::try_from(index).unwrap_or(u32::MAX), entry.generation);
+            let reference = GcRef::new(u32::try_from(index).unwrap_or(u32::MAX), entry.generation);
+            self.initialize_container_contracts(reference);
+            return reference;
         }
 
         let index = self.entries.len();
@@ -577,7 +682,25 @@ impl ScriptHeap {
             generation: 1,
             object: Some(object),
         });
-        GcRef::new(u32::try_from(index).unwrap_or(u32::MAX), 1)
+        let reference = GcRef::new(u32::try_from(index).unwrap_or(u32::MAX), 1);
+        self.initialize_container_contracts(reference);
+        reference
+    }
+
+    fn initialize_container_contracts(&mut self, reference: GcRef) {
+        let contracts = match self.get(reference) {
+            Some(HeapValue::Array(values)) => Some(ContainerContracts::for_array(values, self)),
+            Some(HeapValue::Map(values)) => {
+                Some(ContainerContracts::for_map(values.values().copied(), self))
+            }
+            Some(HeapValue::Set(values)) => Some(ContainerContracts::for_set(values, self)),
+            _ => None,
+        };
+        if let Some(contracts) = contracts {
+            self.container_contracts.insert(reference, contracts);
+        } else {
+            self.container_contracts.remove(&reference);
+        }
     }
 
     fn mark_from_roots(&mut self, roots: &[GcRef]) -> usize {
