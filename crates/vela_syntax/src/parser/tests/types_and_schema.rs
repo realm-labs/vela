@@ -163,6 +163,14 @@ fn rejects_unsupported_parameterized_type_hints() {
             "syntax::map_key_type_argument",
         ),
         (
+            "fn bad(xs: Map<Function, String>) { return xs; }",
+            "syntax::map_key_type_argument",
+        ),
+        (
+            "fn bad(xs: Set<PathProxy>) { return xs; }",
+            "syntax::set_element_type_argument",
+        ),
+        (
             "fn bad(xs: Set<Function>) { return xs; }",
             "syntax::set_element_type_argument",
         ),
