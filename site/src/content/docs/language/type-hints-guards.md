@@ -1,13 +1,18 @@
 ---
-title: "Type Hints And Guards"
-description: "Type hint and runtime guard documentation for Vela."
+title: "Type Hints And Runtime Checks"
+description: "How Vela checks values that have type hints."
 ---
 
-Type hints describe runtime contracts and metadata. They support diagnostics, reflection, host schemas, hot reload compatibility, and selected fast paths, but they are not static generics and do not monomorphize script code.
+Type hints tell Vela what kind of value a boundary expects. They can make
+errors clearer, document host schemas, and help hot reload decide whether a
+change is compatible. They are not static generics, and they do not convert a
+value from one type to another.
 
 ## Hint Locations
 
-Hints can appear on parameters, return values, locals, globals, struct fields, enum fields, and lambda parameters. Missing hints leave the value dynamic. `any` is explicit erased metadata and creates no contract by itself.
+Hints can appear on parameters, return values, locals, globals, struct fields,
+enum fields, and lambda parameters. Missing hints leave the value dynamic.
+`any` means the value is intentionally dynamic.
 
 ```vela
 struct Reward {
@@ -21,9 +26,11 @@ fn grant(player, reward: Reward) -> i64 {
 }
 ```
 
-## Guards
+## Runtime Checks
 
-When the compiler can prove a hint, the call or write can use an unchecked path. When a dynamic value flows into a hinted boundary, Vela inserts a runtime guard. A failed contract guard is a language error with source location, not a cache miss.
+When a value reaches a hinted boundary, Vela checks that the value matches the
+hint. If the value has the wrong type, the operation fails with a source-spanned
+diagnostic.
 
 ```vela
 fn double(value: i64) -> i64 {
@@ -31,7 +38,7 @@ fn double(value: i64) -> i64 {
 }
 
 fn call_dynamic(value) -> i64 {
-    return double(value) // checked at the function boundary
+    return double(value) // fails if value is not an i64
 }
 ```
 
@@ -41,4 +48,7 @@ The language deliberately rejects script generic syntax such as `Array<T>`, `Map
 
 ## Hot Reload And Host Metadata
 
-Hints are part of public script and host contracts. Changing a function signature, field hint, host schema, or exported return hint can affect ABI compatibility during hot reload and may be rejected until callers and host registrations agree.
+Hints are part of public script and host expectations. Changing a function
+signature, field hint, host schema, or exported return hint can affect hot
+reload compatibility and may be rejected until callers and host registrations
+agree.

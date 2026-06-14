@@ -51,7 +51,7 @@ export default defineConfig({
         { label: "Lexical Structure And Comments", translations: { 'zh-CN': "词法结构和注释" }, link: '/language/lexical-structure-comments/' },
         { label: "Variables And Constants", translations: { 'zh-CN': "变量和常量" }, link: '/language/variables-constants/' },
         { label: "Primitive Values", translations: { 'zh-CN': "基础值" }, link: '/language/primitive-values/' },
-        { label: "Type Hints And Guards", translations: { 'zh-CN': "类型提示和 Guard" }, link: '/language/type-hints-guards/' },
+        { label: "Type Hints And Runtime Checks", translations: { 'zh-CN': "类型提示和运行时检查" }, link: '/language/type-hints-guards/' },
         { label: "Operators And Assignment", translations: { 'zh-CN': "运算符和赋值" }, link: '/language/operators-assignment/' },
         { label: "Control Flow", translations: { 'zh-CN': "控制流" }, link: '/language/control-flow/' },
         { label: "Functions", translations: { 'zh-CN': "函数" }, link: '/language/functions/' },
