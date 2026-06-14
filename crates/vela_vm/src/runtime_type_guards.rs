@@ -6,7 +6,7 @@ use vela_common::PrimitiveTag;
 
 use crate::budget::ExecutionBudget;
 use crate::container_contracts::{
-    ContainerContractStamp, ContainerSummaryProof, ContainerTypeSummary,
+    ContainerContractStamp, ContainerSummaryProof, ContainerTypeSummary, ShallowTypeKey,
 };
 use crate::heap::HeapValue;
 use crate::iteration::IteratorItemGuard;
@@ -519,6 +519,7 @@ fn try_linked_container_contract_fast_path(
     reference: crate::heap::GcRef,
     stamp: &ContainerContractStamp,
     element: &TypeGuardPlan,
+    program: &LinkedProgram,
     context: &mut GuardExecutionContext<'_, '_>,
     debug_name: &str,
 ) -> VmResult<bool> {
@@ -532,7 +533,7 @@ fn try_linked_container_contract_fast_path(
         .heap
         .container_value_summary(reference)
         .unwrap_or(ContainerTypeSummary::Unknown);
-    match summary.prove_linked_plan(element) {
+    match linked_summary_proof(summary, element, program) {
         ContainerSummaryProof::Proven => {
             heap.heap
                 .install_container_contract_stamp(reference, stamp.clone());
@@ -540,7 +541,7 @@ fn try_linked_container_contract_fast_path(
         }
         ContainerSummaryProof::Mismatch(actual) => {
             Err(VmError::new(VmErrorKind::TypeContractViolation {
-                expected: linked_plan_type_name(element).to_owned(),
+                expected: linked_plan_expected_name(element, program),
                 actual: actual.type_name().to_owned(),
                 debug_name: debug_name.to_owned(),
             }))
@@ -594,6 +595,7 @@ fn try_linked_map_contract_fast_path(
     stamp: &ContainerContractStamp,
     key_plan: Option<&TypeGuardPlan>,
     value_plan: Option<&TypeGuardPlan>,
+    program: &LinkedProgram,
     context: &mut GuardExecutionContext<'_, '_>,
     debug_name: &str,
 ) -> VmResult<bool> {
@@ -609,6 +611,7 @@ fn try_linked_map_contract_fast_path(
                 .container_key_summary(reference)
                 .unwrap_or(ContainerTypeSummary::Unknown),
             plan,
+            program,
             debug_name,
         )
     })?;
@@ -618,6 +621,7 @@ fn try_linked_map_contract_fast_path(
                 .container_value_summary(reference)
                 .unwrap_or(ContainerTypeSummary::Unknown),
             plan,
+            program,
             debug_name,
         )
     })?;
@@ -649,17 +653,58 @@ fn map_summary_proof_unlinked(
 fn map_summary_proof_linked(
     summary: ContainerTypeSummary,
     plan: &TypeGuardPlan,
+    program: &LinkedProgram,
     debug_name: &str,
 ) -> VmResult<ContainerSummaryProof> {
-    match summary.prove_linked_plan(plan) {
+    match linked_summary_proof(summary, plan, program) {
         ContainerSummaryProof::Mismatch(actual) => {
             Err(VmError::new(VmErrorKind::TypeContractViolation {
-                expected: linked_plan_type_name(plan).to_owned(),
+                expected: linked_plan_expected_name(plan, program),
                 actual: actual.type_name().to_owned(),
                 debug_name: debug_name.to_owned(),
             }))
         }
         proof => Ok(proof),
+    }
+}
+
+fn linked_summary_proof(
+    summary: ContainerTypeSummary,
+    plan: &TypeGuardPlan,
+    program: &LinkedProgram,
+) -> ContainerSummaryProof {
+    if let Some(key) = linked_exact_shallow_key(plan, program) {
+        return summary.prove_exact_key(key);
+    }
+    summary.prove_linked_plan(plan)
+}
+
+fn linked_exact_shallow_key(
+    plan: &TypeGuardPlan,
+    program: &LinkedProgram,
+) -> Option<ShallowTypeKey> {
+    match plan {
+        TypeGuardPlan::Shape { ty, shape_id } => program
+            .ty(*ty)
+            .map(|ty| ShallowTypeKey::Shape(ty.id, *shape_id)),
+        TypeGuardPlan::Variant(variant) => program
+            .variant(*variant)
+            .map(|variant| ShallowTypeKey::Variant(variant.id)),
+        _ => None,
+    }
+}
+
+fn linked_plan_expected_name(plan: &TypeGuardPlan, program: &LinkedProgram) -> String {
+    match plan {
+        TypeGuardPlan::Shape { ty, .. } | TypeGuardPlan::Type(ty) => program
+            .ty(*ty)
+            .map(|ty| program.debug_name(ty.debug_name).to_owned())
+            .unwrap_or_else(|| linked_plan_type_name(plan).to_owned()),
+        TypeGuardPlan::Variant(variant) => program
+            .variant(*variant)
+            .map(|variant| program.debug_name(variant.debug_name).to_owned())
+            .unwrap_or_else(|| linked_plan_type_name(plan).to_owned()),
+        _ => linked_plan_type_name(plan).to_owned(),
     }
 }
 
@@ -960,8 +1005,9 @@ fn execute_linked_array_guard(
         let stamp = ContainerContractStamp::Linked(TypeGuardPlan::Array {
             element: Some(Box::new(element.clone())),
         });
-        if try_linked_container_contract_fast_path(reference, &stamp, element, context, debug_name)?
-        {
+        if try_linked_container_contract_fast_path(
+            reference, &stamp, element, program, context, debug_name,
+        )? {
             return Ok(());
         }
         let values = copied_container_values(
@@ -993,8 +1039,9 @@ fn execute_linked_set_guard(
         let stamp = ContainerContractStamp::Linked(TypeGuardPlan::Set {
             element: Some(Box::new(element.clone())),
         });
-        if try_linked_container_contract_fast_path(reference, &stamp, element, context, debug_name)?
-        {
+        if try_linked_container_contract_fast_path(
+            reference, &stamp, element, program, context, debug_name,
+        )? {
             return Ok(());
         }
         let values = copied_container_values(
@@ -1030,7 +1077,9 @@ fn execute_linked_map_guard(
         key: key.cloned().map(Box::new),
         value: value_plan.cloned().map(Box::new),
     });
-    if try_linked_map_contract_fast_path(reference, &stamp, key, value_plan, context, debug_name)? {
+    if try_linked_map_contract_fast_path(
+        reference, &stamp, key, value_plan, program, context, debug_name,
+    )? {
         return Ok(());
     }
     let entries = copied_map_entries(reference, context.heap())?;
@@ -1557,15 +1606,16 @@ fn runtime_record_debug_shape<'a>(
 
 #[cfg(test)]
 mod tests {
-    use vela_bytecode::{LinkedProgram, TypeGuardPlan};
+    use vela_bytecode::{LinkedProgram, LinkedType, TypeGuardPlan};
     use vela_common::PrimitiveTag;
 
     use super::*;
     use crate::collection_mutation::{
         clear_map, clear_set, extend_map_slots, push_array_slot, remove_map_slot, remove_set_slot,
     };
-    use crate::heap::{HeapValue, ScriptHeap};
+    use crate::heap::{HeapValue, RecordIdentity, ScriptHeap};
     use crate::script_map::ScriptMap;
+    use crate::script_object::ScriptFields;
     use crate::script_set::ScriptSet;
     use crate::value_key::ValueKey;
 
@@ -1584,6 +1634,69 @@ mod tests {
 
         execute_linked_guard_plan(&array, &plan, &program, &mut context, "values")
             .expect("summary should prove array element contract");
+
+        assert_eq!(budget.instructions_executed(), 0);
+    }
+
+    #[test]
+    fn exact_container_summary_proves_record_set_shape_contract_without_scan() {
+        let mut program = LinkedProgram::new();
+        let player_name = program.intern_debug_name("Player");
+        let player_type_id = vela_def::TypeId::new(0x701);
+        let player_type = program.push_type(LinkedType::new(player_type_id, player_name));
+
+        let mut heap = ScriptHeap::new();
+        let player = record_value(&mut heap, "Player", player_type_id, "level", Value::I64(10));
+        let shape_id = record_shape(&heap, player);
+        let mut set = ScriptSet::new();
+        set.insert_keyed(ValueKey::HeapIdentity(player), Value::HeapRef(player));
+        let value = Value::HeapRef(heap.allocate(HeapValue::Set(set)));
+        let plan = TypeGuardPlan::Set {
+            element: Some(Box::new(TypeGuardPlan::Shape {
+                ty: player_type,
+                shape_id,
+            })),
+        };
+        let mut budget = ExecutionBudget::new(0, usize::MAX, usize::MAX);
+        let mut heap_execution = HeapExecution::new(&mut heap);
+        let mut context = GuardExecutionContext::new(Some(&mut heap_execution), Some(&mut budget));
+
+        execute_linked_guard_plan(&value, &plan, &program, &mut context, "players")
+            .expect("record shape summary should prove set element contract");
+
+        assert_eq!(budget.instructions_executed(), 0);
+    }
+
+    #[test]
+    fn exact_container_summary_proves_record_map_key_contract_without_scan() {
+        let mut program = LinkedProgram::new();
+        let player_name = program.intern_debug_name("Player");
+        let player_type_id = vela_def::TypeId::new(0x702);
+        let player_type = program.push_type(LinkedType::new(player_type_id, player_name));
+
+        let mut heap = ScriptHeap::new();
+        let player = record_value(&mut heap, "Player", player_type_id, "level", Value::I64(10));
+        let shape_id = record_shape(&heap, player);
+        let mut map = ScriptMap::new();
+        map.insert_keyed(
+            ValueKey::HeapIdentity(player),
+            Value::HeapRef(player),
+            Value::I64(42),
+        );
+        let value = Value::HeapRef(heap.allocate(HeapValue::Map(map)));
+        let plan = TypeGuardPlan::Map {
+            key: Some(Box::new(TypeGuardPlan::Shape {
+                ty: player_type,
+                shape_id,
+            })),
+            value: Some(Box::new(TypeGuardPlan::Primitive(PrimitiveTag::I64))),
+        };
+        let mut budget = ExecutionBudget::new(0, usize::MAX, usize::MAX);
+        let mut heap_execution = HeapExecution::new(&mut heap);
+        let mut context = GuardExecutionContext::new(Some(&mut heap_execution), Some(&mut budget));
+
+        execute_linked_guard_plan(&value, &plan, &program, &mut context, "scores")
+            .expect("record shape summary should prove map key contract");
 
         assert_eq!(budget.instructions_executed(), 0);
     }
@@ -1824,5 +1937,31 @@ mod tests {
         let mut context = GuardExecutionContext::new(Some(&mut heap_execution), Some(&mut budget));
         execute_linked_guard_plan(&value, &plan, &program, &mut context, "values")
             .expect("empty set should satisfy a different element contract after removal");
+    }
+
+    fn record_value(
+        heap: &mut ScriptHeap,
+        type_name: &str,
+        type_id: vela_def::TypeId,
+        field_name: &str,
+        field_value: Value,
+    ) -> crate::heap::GcRef {
+        let fields = ScriptFields::single(type_name, field_name, field_value);
+        let shape_id = fields.shape_id();
+        heap.allocate(HeapValue::Record {
+            type_name: type_name.to_owned(),
+            identity: Some(RecordIdentity::new(type_id, shape_id)),
+            fields,
+        })
+    }
+
+    fn record_shape(heap: &ScriptHeap, reference: crate::heap::GcRef) -> vela_common::ShapeId {
+        match heap.get(reference) {
+            Some(HeapValue::Record {
+                identity: Some(identity),
+                ..
+            }) => identity.shape_id,
+            _ => panic!("test fixture should allocate a typed record"),
+        }
     }
 }

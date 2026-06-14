@@ -158,6 +158,10 @@ impl ContainerTypeSummary {
         )
     }
 
+    pub(crate) fn prove_exact_key(self, expected: ShallowTypeKey) -> ContainerSummaryProof {
+        self.prove_plan(Some(expected), Some(expected))
+    }
+
     fn prove_plan(
         self,
         complete: Option<ShallowTypeKey>,
