@@ -1,5 +1,17 @@
+use vela_bytecode::linked::LinkedMethodDispatchKind;
+use vela_bytecode::{LinkedProgram, UnlinkedProgramCode};
+use vela_def::MethodId;
+use vela_reflect::registry::TypeRegistry;
+
 use crate::heap::{GcRef, HeapValue};
-use crate::{HeapExecution, Value, VmError, VmErrorKind, VmResult};
+use crate::linked_execution::LinkedExecutionCall;
+use crate::method_runtime::CallerRoots;
+use crate::{
+    ExecutionBudget, HeapExecution, HostExecution, SmallStorage, Value, Vm, VmBytecodeProfiler,
+    VmError, VmErrorKind, VmInlineCaches, VmResult, store_value_in_heap_if_needed,
+};
+
+const PARTIAL_EQ_METHOD: &str = "eq";
 
 pub(crate) fn values_equal(
     lhs: &Value,
@@ -12,12 +24,35 @@ pub(crate) fn values_equal(
     non_comparable("equal")
 }
 
-pub(crate) fn values_not_equal(
+pub(crate) struct EqualityRuntime<'a, 'host, 'heap> {
+    pub(crate) vm: &'a Vm,
+    pub(crate) program: Option<&'a dyn UnlinkedProgramCode>,
+    pub(crate) linked_program: Option<&'a LinkedProgram>,
+    pub(crate) host: Option<&'a mut HostExecution<'host>>,
+    pub(crate) heap: Option<&'a mut HeapExecution<'heap>>,
+    pub(crate) budget: Option<&'a mut ExecutionBudget>,
+    pub(crate) caller_roots: CallerRoots<'a>,
+    pub(crate) inline_caches: Option<&'a dyn VmInlineCaches>,
+    pub(crate) bytecode_profiler: Option<&'a dyn VmBytecodeProfiler>,
+}
+
+pub(crate) fn values_equal_with_traits(
     lhs: &Value,
     rhs: &Value,
-    heap: Option<&HeapExecution<'_>>,
+    runtime: &mut EqualityRuntime<'_, '_, '_>,
 ) -> VmResult<bool> {
-    values_equal(lhs, rhs, heap).map(|equal| !equal)
+    if let Some(equal) = leaf_values_equal(lhs, rhs, runtime.heap.as_deref())? {
+        return Ok(equal);
+    }
+    call_partial_eq(lhs, rhs, runtime)?.ok_or_else(|| comparable_error("equal"))
+}
+
+pub(crate) fn values_not_equal_with_traits(
+    lhs: &Value,
+    rhs: &Value,
+    runtime: &mut EqualityRuntime<'_, '_, '_>,
+) -> VmResult<bool> {
+    values_equal_with_traits(lhs, rhs, runtime).map(|equal| !equal)
 }
 
 pub(crate) fn identity_equal(
@@ -47,6 +82,145 @@ pub(crate) fn simple_values_equal(
     heap: Option<&HeapExecution<'_>>,
 ) -> VmResult<Option<bool>> {
     leaf_values_equal(lhs, rhs, heap)
+}
+
+fn call_partial_eq(
+    lhs: &Value,
+    rhs: &Value,
+    runtime: &mut EqualityRuntime<'_, '_, '_>,
+) -> VmResult<Option<bool>> {
+    let Some(type_name) =
+        receiver_type_name(lhs, runtime.heap.as_deref(), runtime.vm.type_registry())
+    else {
+        return Ok(None);
+    };
+    let method_id = builtin_trait_method_id("PartialEq", PARTIAL_EQ_METHOD);
+    let result = if let Some(program) = runtime.program {
+        let Some(function) = program.script_method_by_id(type_name, method_id) else {
+            return Ok(None);
+        };
+        let args = SmallStorage::try_from_prefix_and_slice_map(*lhs, &[*rhs], 2, |arg| {
+            Ok::<_, VmError>(*arg)
+        })?;
+        let protected_root_len = runtime
+            .heap
+            .as_deref_mut()
+            .map(|heap| runtime.caller_roots.push_to_heap(heap));
+        let result = runtime.vm.execute_code_object(
+            function,
+            runtime.program,
+            args.as_slice(),
+            runtime.host.as_deref_mut(),
+            runtime.heap.as_deref_mut(),
+            runtime.budget.as_deref_mut(),
+        );
+        if let (Some(heap), Some(protected_root_len)) =
+            (runtime.heap.as_deref_mut(), protected_root_len)
+        {
+            heap.truncate_protected_roots(protected_root_len);
+        }
+        result?
+    } else if let Some(program) = runtime.linked_program {
+        let Some(target) = linked_partial_eq_target(program, type_name, method_id) else {
+            return Ok(None);
+        };
+        let function_code = program.function(target.function).ok_or_else(|| {
+            VmError::new(VmErrorKind::UnknownMethod {
+                method: PARTIAL_EQ_METHOD.to_owned(),
+            })
+        })?;
+        let args = SmallStorage::try_from_prefix_and_slice_map(*lhs, &[*rhs], 2, |arg| {
+            Ok::<_, VmError>(*arg)
+        })?;
+        let protected_root_len = runtime
+            .heap
+            .as_deref_mut()
+            .map(|heap| runtime.caller_roots.push_to_heap(heap));
+        let result = runtime.vm.execute_linked_call(
+            LinkedExecutionCall {
+                code: function_code,
+                program,
+                captures: &[],
+                args: args.as_slice(),
+                check_param_guards: true,
+                call_site: None,
+                call_site_offset: None,
+                inline_caches: runtime.inline_caches,
+                bytecode_profiler: runtime.bytecode_profiler,
+            },
+            runtime.host.as_deref_mut(),
+            runtime.heap.as_deref_mut(),
+            runtime.budget.as_deref_mut(),
+        );
+        if let (Some(heap), Some(protected_root_len)) =
+            (runtime.heap.as_deref_mut(), protected_root_len)
+        {
+            heap.truncate_protected_roots(protected_root_len);
+        }
+        result?
+    } else {
+        return Ok(None);
+    };
+    let result = store_value_in_heap_if_needed(
+        result,
+        runtime.heap.as_deref_mut(),
+        runtime.budget.as_deref_mut(),
+    )?;
+    match result {
+        Value::Bool(value) => Ok(Some(value)),
+        _ => Err(VmError::new(VmErrorKind::TypeMismatch {
+            operation: "equal",
+        })),
+    }
+}
+
+#[derive(Clone, Copy)]
+struct LinkedPartialEqTarget {
+    function: vela_bytecode::ScriptFunctionHandle,
+}
+
+fn linked_partial_eq_target(
+    program: &LinkedProgram,
+    type_name: &str,
+    method_id: MethodId,
+) -> Option<LinkedPartialEqTarget> {
+    let dispatch = program.script_method_dispatch(type_name, PARTIAL_EQ_METHOD)?;
+    let dispatch = program.method_dispatch(dispatch)?;
+    match &dispatch.kind {
+        LinkedMethodDispatchKind::Script {
+            method_id: actual,
+            function,
+        } if *actual == method_id => Some(LinkedPartialEqTarget {
+            function: *function,
+        }),
+        _ => None,
+    }
+}
+
+fn receiver_type_name<'a>(
+    receiver: &Value,
+    heap: Option<&'a HeapExecution<'_>>,
+    registry: Option<&'a TypeRegistry>,
+) -> Option<&'a str> {
+    match receiver {
+        Value::HostRef(reference) => registry
+            .and_then(|registry| registry.type_of_host(*reference))
+            .map(|desc| desc.key.name.as_str()),
+        Value::HeapRef(reference) => match heap?.heap.get(*reference)? {
+            HeapValue::Record { type_name, .. } => Some(type_name.as_str()),
+            HeapValue::Enum { enum_name, .. } => Some(enum_name.as_str()),
+            _ => None,
+        },
+        _ => None,
+    }
+}
+
+fn builtin_trait_method_id(trait_name: &str, method_name: &str) -> MethodId {
+    MethodId::new(u128::from(vela_common::stable_id(
+        "trait_method",
+        trait_name,
+        method_name,
+    )))
 }
 
 fn leaf_values_equal(
@@ -179,7 +353,11 @@ fn heap_identity_key(reference: GcRef, heap: Option<&HeapExecution<'_>>) -> VmRe
 }
 
 fn non_comparable<T>(operation: &'static str) -> VmResult<T> {
-    Err(VmError::new(VmErrorKind::TypeMismatch { operation }))
+    Err(comparable_error(operation))
+}
+
+fn comparable_error(operation: &'static str) -> VmError {
+    VmError::new(VmErrorKind::TypeMismatch { operation })
 }
 
 enum HeapLeaf<'a> {

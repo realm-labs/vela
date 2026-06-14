@@ -336,6 +336,9 @@ fn target_owner_name(module_path: Option<&ModulePath>, target_path: &[String]) -
 }
 
 fn trait_method_owner_name(module_path: Option<&ModulePath>, trait_path: &[String]) -> String {
+    if is_builtin_operator_trait(trait_path) {
+        return trait_path[0].clone();
+    }
     if trait_path.len() != 1 {
         return trait_path.join("::");
     }
@@ -347,6 +350,13 @@ fn trait_method_owner_name(module_path: Option<&ModulePath>, trait_path: &[Strin
     } else {
         format!("{}::{}", module_path.join(), trait_path[0])
     }
+}
+
+fn is_builtin_operator_trait(path: &[String]) -> bool {
+    let [name] = path else {
+        return false;
+    };
+    matches!(name.as_str(), "PartialEq" | "Eq" | "PartialOrd" | "Ord")
 }
 
 fn stable_trait_method_id(trait_name: &str, method_name: &str) -> MethodId {

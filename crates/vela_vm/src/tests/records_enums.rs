@@ -164,6 +164,68 @@ fn main() {
 }
 
 #[test]
+fn record_semantic_equality_uses_builtin_partial_eq_impl() {
+    let program = compile_program_source(
+        SourceId::new(1),
+        r#"
+struct Reward { code: String, amount: i64 }
+impl PartialEq for Reward {
+    fn eq(self, other: Reward) -> bool {
+        return self.code == other.code;
+    }
+}
+
+fn main() {
+    let left = Reward { code: "xp", amount: 10 };
+    let same_code = Reward { code: "xp", amount: 99 };
+    let different_code = Reward { code: "gold", amount: 10 };
+    if left == same_code && left != different_code {
+        return 1;
+    }
+    return 0;
+}
+"#,
+    )
+    .expect("compile PartialEq record equality source");
+
+    assert_eq!(
+        run_records_program(&program, "main", &[]),
+        Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(1)))
+    );
+}
+
+#[test]
+fn record_partial_eq_must_return_bool() {
+    let program = compile_program_source(
+        SourceId::new(1),
+        r#"
+struct Reward { code: String }
+impl PartialEq for Reward {
+    fn eq(self, other: Reward) -> i64 {
+        return 1;
+    }
+}
+
+fn main() {
+    return Reward { code: "xp" } == Reward { code: "xp" };
+}
+"#,
+    )
+    .expect("compile non-bool PartialEq record equality source");
+
+    let error = run_records_program(&program, "main", &[])
+        .expect_err("PartialEq eq returning non-bool should fail");
+    assert_eq!(
+        error.kind(),
+        VmErrorKind::TypeMismatch { operation: "equal" }
+    );
+    assert!(
+        error.source_span.is_some(),
+        "PartialEq return type failure should carry the operator span"
+    );
+}
+
+#[test]
 fn record_identity_comparison_uses_reference_identity() {
     let program = compile_program_source(
         SourceId::new(1),

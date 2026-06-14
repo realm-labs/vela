@@ -170,6 +170,28 @@ fn main() {
 }
 
 #[test]
+fn compiler_registers_builtin_partial_eq_impl_without_source_trait_item() {
+    let program = compile_program_source(
+        SourceId::new(1),
+        r#"
+struct PlayerId { server: i64, id: i64 }
+impl PartialEq for PlayerId {
+    fn eq(self, other: PlayerId) -> bool {
+        return self.server == other.server && self.id == other.id;
+    }
+}
+fn main() {
+    return PlayerId { server: 1, id: 7 } == PlayerId { server: 1, id: 7 };
+}
+"#,
+    )
+    .expect("builtin PartialEq impl should compile without declaring the trait");
+    let method_id = stable_test_trait_method_id("PartialEq", "eq");
+    assert_eq!(program.script_method_id("PlayerId", "eq"), Some(method_id));
+    assert!(program.script_method_by_id("PlayerId", method_id).is_some());
+}
+
+#[test]
 fn compiler_specializes_module_inherent_method_calls_by_method_id() {
     let program = compile_module_sources(&[
         ModuleSource::new(

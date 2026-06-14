@@ -200,16 +200,52 @@ impl Vm {
                     frame.write(*dst, value)?;
                 }
                 UnlinkedInstructionKind::Equal { dst, lhs, rhs } => {
+                    let lhs_value = frame.read(*lhs)?;
+                    let rhs_value = frame.read(*rhs)?;
+                    let caller_roots =
+                        crate::method_runtime::CallerRoots::for_frame(&frame, heap.as_deref());
                     let value = Value::Bool(
-                        values_equal(&frame.read(*lhs)?, &frame.read(*rhs)?, heap.as_deref())
-                            .map_err(|error| error.with_source_span_if_absent(instruction.span))?,
+                        values_equal_with_traits(
+                            &lhs_value,
+                            &rhs_value,
+                            &mut EqualityRuntime {
+                                vm: self,
+                                program,
+                                linked_program: None,
+                                host: host.as_deref_mut(),
+                                heap: heap.as_deref_mut(),
+                                budget: budget.as_deref_mut(),
+                                caller_roots,
+                                inline_caches: call.inline_caches,
+                                bytecode_profiler: None,
+                            },
+                        )
+                        .map_err(|error| error.with_source_span_if_absent(instruction.span))?,
                     );
                     frame.write(*dst, value)?;
                 }
                 UnlinkedInstructionKind::NotEqual { dst, lhs, rhs } => {
+                    let lhs_value = frame.read(*lhs)?;
+                    let rhs_value = frame.read(*rhs)?;
+                    let caller_roots =
+                        crate::method_runtime::CallerRoots::for_frame(&frame, heap.as_deref());
                     let value = Value::Bool(
-                        values_not_equal(&frame.read(*lhs)?, &frame.read(*rhs)?, heap.as_deref())
-                            .map_err(|error| error.with_source_span_if_absent(instruction.span))?,
+                        values_not_equal_with_traits(
+                            &lhs_value,
+                            &rhs_value,
+                            &mut EqualityRuntime {
+                                vm: self,
+                                program,
+                                linked_program: None,
+                                host: host.as_deref_mut(),
+                                heap: heap.as_deref_mut(),
+                                budget: budget.as_deref_mut(),
+                                caller_roots,
+                                inline_caches: call.inline_caches,
+                                bytecode_profiler: None,
+                            },
+                        )
+                        .map_err(|error| error.with_source_span_if_absent(instruction.span))?,
                     );
                     frame.write(*dst, value)?;
                 }

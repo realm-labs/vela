@@ -233,7 +233,7 @@ fn schema_path_diagnostics(
     allowed_kinds: Option<&[DeclarationKind]>,
     noun: &str,
 ) -> Vec<Diagnostic> {
-    if path.is_empty() || is_builtin_type_hint(path) {
+    if path.is_empty() || is_builtin_type_hint(path) || is_builtin_operator_trait(path) {
         return Vec::new();
     }
     let wanted = path.join("::");
@@ -362,6 +362,13 @@ fn is_builtin_type_hint(path: &[String]) -> bool {
             | "Option"
             | "Result"
     )
+}
+
+fn is_builtin_operator_trait(path: &[String]) -> bool {
+    let [name] = path else {
+        return false;
+    };
+    matches!(name.as_str(), "PartialEq" | "Eq" | "PartialOrd" | "Ord")
 }
 
 fn is_schema_declaration(kind: DeclarationKind) -> bool {

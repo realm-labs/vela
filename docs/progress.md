@@ -88,14 +88,17 @@ use O(1) summary/stamp checks
 before falling back to budget-charged scans, and nested stamps are invalidated
 when child containers mutate through aliases. Mixed map extensions update key
 summaries for newly inserted keys even when the same batch also replaces
-existing values. The first object equality/order slice is implemented:
-ordinary `==`/`!=` no longer materialize detached `OwnedValue` graphs for
-implicit structural comparison, `===`/`!==` compare script-object and
-`HostRef` identity, array lookup/distinct helpers share runtime semantic
-equality, Map/Set `ValueKey` lookup remains separate from user comparison
-traits, and array sorting rejects float keys until an explicit total-float
-ordering API exists. Remaining comparison work is builtin trait dispatch and
-derive lowering for `PartialEq`/`Eq`/`PartialOrd`/`Ord`.
+existing values. The object equality/order slice now has explicit runtime
+equality semantics: ordinary `==`/`!=` no longer materialize detached
+`OwnedValue` graphs for implicit structural comparison, `===`/`!==` compare
+script-object and `HostRef` identity, manual
+`impl PartialEq for Type { fn eq(...) -> bool }` drives record/enum semantic
+equality, array lookup/distinct helpers share runtime semantic equality,
+Map/Set `ValueKey` lookup remains separate from user comparison traits, and
+array sorting rejects float keys until an explicit total-float ordering API
+exists. Remaining comparison work is `Eq`, `PartialOrd`, `Ord`, derive
+lowering, static comparison diagnostics, and collection helper dispatch for
+user `PartialEq` where callbacks/runtime context must be threaded.
 
 Post-MVP performance remains a separate track: measure first, then optimize the
 non-JIT bytecode interpreter toward Lua 5.x comparable host-boundary workloads
