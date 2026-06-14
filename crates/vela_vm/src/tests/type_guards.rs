@@ -336,6 +336,75 @@ fn main() {
 }
 
 #[test]
+fn linked_local_guard_accepts_record_identity_map_keys() {
+    let program = compile_program_source(
+        SourceId::new(1),
+        r#"
+struct Player { id: i64, level: i64 }
+
+fn accept(values, player: Player) {
+    let typed: Map<Player, i64> = values;
+    return typed.get_or(player, 0);
+}
+
+fn main() {
+    let player = Player { id: 1, level: 10 };
+    let scores = {"seed": 0};
+    scores.clear();
+    scores.set(player, 42);
+    player.level += 1;
+    return accept(scores, player);
+}
+"#,
+    )
+    .expect("program should compile");
+    let mut budget = ExecutionBudget::unbounded();
+
+    let value = run_linked_test_program_with_budget(&Vm::new(), &program, "main", &[], &mut budget)
+        .expect("record map key contract should pass");
+
+    assert_eq!(value, OwnedValue::i64(42));
+}
+
+#[test]
+fn linked_local_guard_rejects_mismatched_record_map_keys() {
+    let program = compile_program_source(
+        SourceId::new(1),
+        r#"
+struct Player { id: i64 }
+struct Monster { id: i64 }
+
+fn accept(values) {
+    let typed: Map<Player, i64> = values;
+    return typed.len();
+}
+
+fn main() {
+    let monster = Monster { id: 1 };
+    let scores = {"seed": 0};
+    scores.clear();
+    scores.set(monster, 42);
+    return accept(scores);
+}
+"#,
+    )
+    .expect("program should compile");
+    let mut budget = ExecutionBudget::unbounded();
+
+    let error = run_linked_test_program_with_budget(&Vm::new(), &program, "main", &[], &mut budget)
+        .expect_err("record map key contract should fail before body uses typed map");
+
+    assert_eq!(
+        error.kind(),
+        VmErrorKind::TypeContractViolation {
+            expected: "Player".to_owned(),
+            actual: "record".to_owned(),
+            debug_name: "typed".to_owned(),
+        }
+    );
+}
+
+#[test]
 fn linked_parameter_guard_rejects_mixed_set_values() {
     let program = compile_program_source(
         SourceId::new(1),
@@ -366,6 +435,70 @@ fn main(values: Set<String>) {
             expected: "String".to_owned(),
             actual: "i64".to_owned(),
             debug_name: "values".to_owned(),
+        }
+    );
+}
+
+#[test]
+fn linked_local_guard_accepts_record_identity_set_values() {
+    let program = compile_program_source(
+        SourceId::new(1),
+        r#"
+struct Player { id: i64, level: i64 }
+
+fn accept(values, player: Player) {
+    let typed: Set<Player> = values;
+    return typed.has(player);
+}
+
+fn main() {
+    let player = Player { id: 1, level: 10 };
+    let values = set::from_array([player]);
+    player.level += 1;
+    return accept(values, player);
+}
+"#,
+    )
+    .expect("program should compile");
+    let mut budget = ExecutionBudget::unbounded();
+
+    let value = run_linked_test_program_with_budget(&Vm::new(), &program, "main", &[], &mut budget)
+        .expect("record set element contract should pass");
+
+    assert_eq!(value, OwnedValue::from(true));
+}
+
+#[test]
+fn linked_local_guard_rejects_mismatched_record_set_values() {
+    let program = compile_program_source(
+        SourceId::new(1),
+        r#"
+struct Player { id: i64 }
+struct Monster { id: i64 }
+
+fn accept(values) {
+    let typed: Set<Player> = values;
+    return typed.len();
+}
+
+fn main() {
+    let monster = Monster { id: 1 };
+    return accept(set::from_array([monster]));
+}
+"#,
+    )
+    .expect("program should compile");
+    let mut budget = ExecutionBudget::unbounded();
+
+    let error = run_linked_test_program_with_budget(&Vm::new(), &program, "main", &[], &mut budget)
+        .expect_err("record set element contract should fail before body uses typed set");
+
+    assert_eq!(
+        error.kind(),
+        VmErrorKind::TypeContractViolation {
+            expected: "Player".to_owned(),
+            actual: "record".to_owned(),
+            debug_name: "typed".to_owned(),
         }
     );
 }

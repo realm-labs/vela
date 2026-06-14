@@ -86,19 +86,21 @@ impl Compiler<'_, '_> {
                 type_hint,
                 value,
             } => {
-                let hinted_script_fact = type_hint.as_ref().and_then(|hint| {
+                let hir_type_hint = type_hint.as_ref().map(HirTypeHint::from_syntax);
+                let hinted_script_fact = hir_type_hint.as_ref().and_then(|hint| {
                     let known_type_names = self.facts.known_type_names();
-                    type_hint_script_type(&HirTypeHint::from_syntax(hint), known_type_names.iter())
-                        .map(ScriptTypeFact::new)
+                    type_hint_script_type(hint, known_type_names.iter()).map(ScriptTypeFact::new)
                 });
                 let value_script_fact = value
                     .as_ref()
                     .and_then(|value| self.script_fact_for_expr(value));
+                let script_hint_proven = hinted_script_fact
+                    .as_ref()
+                    .zip(value_script_fact.as_ref())
+                    .is_some_and(|(hint, value)| hint == value);
                 let script_fact =
                     merge_type_hint_and_value_fact(hinted_script_fact, value_script_fact);
-                let hinted_value_type = type_hint
-                    .as_ref()
-                    .and_then(|hint| type_hint_value_type(&HirTypeHint::from_syntax(hint)));
+                let hinted_value_type = hir_type_hint.as_ref().and_then(type_hint_value_type);
                 let value_type = value
                     .as_ref()
                     .and_then(|value| self.value_type_for_expr(value));
@@ -115,6 +117,27 @@ impl Compiler<'_, '_> {
                 } else {
                     (self.emit_constant(Constant::Null)?, false)
                 };
+                if let (Some(value), Some(hint), None) = (
+                    value.as_ref(),
+                    hir_type_hint.as_ref(),
+                    hinted_value_type.as_ref(),
+                ) && is_map_or_set_type_hint(hint)
+                    && !script_hint_proven
+                    && let Some(guard) = super::type_guard_for_hint(
+                        hint,
+                        crate::GuardLocation::Local,
+                        name,
+                        &self.facts,
+                    )
+                {
+                    self.emit_spanned(
+                        UnlinkedInstructionKind::GuardType {
+                            src: register,
+                            guard,
+                        },
+                        value.span,
+                    );
+                }
                 self.locals.insert(name.clone(), register);
                 if let Some(local) =
                     self.bindings
@@ -714,4 +737,8 @@ fn merge_type_hint_and_value_fact(
         (Some(hinted), _) => Some(hinted),
         (None, value) => value,
     }
+}
+
+fn is_map_or_set_type_hint(hint: &HirTypeHint) -> bool {
+    matches!(hint.path.as_slice(), [name] if matches!(name.as_str(), "Map" | "Set"))
 }
