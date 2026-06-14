@@ -74,7 +74,7 @@ impl ValueKey {
 }
 
 fn finite_f32_key(value: f32, operation: &'static str) -> VmResult<u32> {
-    if value.is_nan() {
+    if !value.is_finite() {
         return type_error(operation);
     }
     Ok(if value == 0.0 {
@@ -85,7 +85,7 @@ fn finite_f32_key(value: f32, operation: &'static str) -> VmResult<u32> {
 }
 
 fn finite_f64_key(value: f64, operation: &'static str) -> VmResult<u64> {
-    if value.is_nan() {
+    if !value.is_finite() {
         return type_error(operation);
     }
     Ok(if value == 0.0 {
@@ -139,7 +139,11 @@ mod tests {
     #[test]
     fn value_key_rejects_nan_and_normalizes_negative_zero() {
         assert_type_mismatch(&Value::F32(f32::NAN));
+        assert_type_mismatch(&Value::F32(f32::INFINITY));
+        assert_type_mismatch(&Value::F32(f32::NEG_INFINITY));
         assert_type_mismatch(&Value::F64(f64::NAN));
+        assert_type_mismatch(&Value::F64(f64::INFINITY));
+        assert_type_mismatch(&Value::F64(f64::NEG_INFINITY));
         assert_eq!(key(&Value::F32(-0.0)), key(&Value::F32(0.0)));
         assert_eq!(key(&Value::F64(-0.0)), key(&Value::F64(0.0)));
     }
