@@ -59,14 +59,14 @@ bytecode decisions.
 ## 2. Goals
 
 - Allow type arguments only on selected builtin type-hint contracts:
-  `Array<T>`, `Set<T>`, `Map<K, V>`, `Iterator<T>`, `Option<T>`, and
+  `Array<T>`, `Set<T>`, `Map<String, V>`, `Iterator<T>`, `Option<T>`, and
   `Result<T, E>`.
 - Keep scalar primitive type hints lowercase and named container contracts
   capitalized.
 - Preserve the rule that type hints are contracts, not conversions.
 - Propagate container item/key/value facts through analysis, compiler
   `RuntimeTypeFact`, and contract guard metadata.
-- Make `Array<T>`, `Set<T>`, and `Map<K, V>` runtime contracts semantically
+- Make `Array<T>`, `Set<T>`, and `Map<String, V>` runtime contracts semantically
   real by validating existing contents at guarded boundaries.
 - Add container content summaries and contract stamps so repeated downcasts to
   stable typed containers do not scan contents on every boundary crossing.
@@ -116,10 +116,14 @@ The parser should accept only these arities:
 |---|---:|---|
 | `Array<T>` | 1 | script/runtime array whose current and future elements satisfy `T` |
 | `Set<T>` | 1 | script/runtime set whose current and future values satisfy `T` |
-| `Map<K, V>` | 2 | script/runtime map whose current and future keys satisfy `K` and values satisfy `V` |
+| `Map<String, V>` | 2 | script/runtime map whose current and future keys are strings and values satisfy `V` |
 | `Iterator<T>` | 1 | one-shot iterator whose yielded items satisfy `T` |
 | `Option<T>` | 1 | `Some` payload satisfies `T`; `None` carries no payload |
 | `Result<T, E>` | 2 | `Ok` payload satisfies `T`; `Err` payload satisfies `E` |
+
+Current runtime maps are string-keyed. The first container type-hint slice must
+therefore accept only `Map<String, V>` and reject `Map<K, V>` when `K` is not
+`String`. Supporting arbitrary map keys requires a separate `ValueKey` design.
 
 Unparameterized forms remain valid erased container contracts:
 
@@ -146,6 +150,8 @@ Range<T>        // rejected for now
 Function<T>     // rejected; callable signatures need a separate design
 Array<T, U>     // rejected: wrong arity
 Map<K>          // rejected: wrong arity
+Map<i64, V>     // rejected in this slice: runtime maps are string-keyed
+Map<Any, V>     // rejected in this slice: runtime maps are string-keyed
 Option<T, E>    // rejected: wrong arity
 ```
 
@@ -191,8 +197,8 @@ fn sum(values: Array<i64>) -> i64 {
     return total;
 }
 
-fn names_by_id(players: Map<i64, String>) -> String {
-    return players.get(1).unwrap_or("unknown");
+fn names_by_id(players: Map<String, String>) -> String {
+    return players.get("player-1").unwrap_or("unknown");
 }
 ```
 
@@ -220,7 +226,7 @@ Analysis and compiler facts should preserve known item facts:
 ```text
 Array<T>     index read and for item -> T
 Set<T>       for item -> T
-Map<K, V>    key view item -> K; value view item -> V; entry fields -> K/V
+Map<String,V> key view item -> String; value view item -> V; entry fields -> String/V
 Iterator<T>  next Some payload and for item -> T
 Option<T>    ? and Some match payload -> T
 Result<T,E>  ? and Ok/Err match payload -> T/E
@@ -233,8 +239,8 @@ dynamic checks instead of keeping stale typed facts.
 ### 5.4 Trusted container fact provenance
 
 A container type hint is not itself proof. The compiler may use
-`Array<T>`, `Set<T>`, `Map<K, V>`, or `Iterator<T>` facts for fast paths only
-after the container fact is trusted.
+`Array<T>`, `Set<T>`, `Map<String, V>`, or `Iterator<T>` facts for fast paths
+only after the container fact is trusted.
 
 Trusted container facts may come from:
 
@@ -301,10 +307,12 @@ Mixed             more than one shallow type key is present
 Unknown           summary is unavailable or invalidated
 ```
 
-Arrays and sets track an element summary. Maps track key and value summaries if
-the runtime supports non-string keys; if the runtime map key remains string-only
-in this implementation, the key side is always `String` and only values need a
-summary.
+Arrays and sets track an element summary. Maps should use a storage/metadata
+shape that has both key and value sides, but in the first implementation the key
+contract is fixed to `String` because runtime maps are string-keyed. The value
+side still needs a summary. Keep the key side explicit in the data model so a
+future arbitrary-key map design does not require replacing every guard/stamp
+interface.
 
 Summary updates must be cheap:
 
@@ -350,13 +358,13 @@ crosses a new dynamic contract boundary.
 
 ### 6.2 Deep guards for materialized containers
 
-`Array<T>`, `Set<T>`, and `Map<K, V>` contract guards must validate existing
+`Array<T>`, `Set<T>`, and `Map<String, V>` contract guards must validate existing
 materialized contents:
 
 ```text
 Array<T>     validate each element against T
 Set<T>       validate each element against T
-Map<K, V>    validate each key against K and each value against V
+Map<String,V> validate map key storage is string-keyed and each value against V
 ```
 
 These guards are language semantics. They fail with runtime type contract
@@ -443,7 +451,7 @@ for values the compiler has already proven.
 
 ### 6.6 Host containers
 
-Host-owned fields that expose `Array<T>`, `Map<K,V>`, or `Set<T>` through
+Host-owned fields that expose `Array<T>`, `Map<String,V>`, or `Set<T>` through
 snapshot `OwnedValue`/`HostValue` boundaries can use the same deep guard model.
 
 Host mutation still goes through `HostRef`, `HostPath`, `PathProxy`, and
@@ -458,8 +466,9 @@ references to make typed container contracts work.
 
 - Replace the parser's `supports_type_arguments` boolean with a builtin
   arity table.
-- Accept `Array<T>`, `Set<T>`, `Map<K,V>`, `Iterator<T>`, `Option<T>`, and
+- Accept `Array<T>`, `Set<T>`, `Map<String,V>`, `Iterator<T>`, `Option<T>`, and
   `Result<T,E>`.
+- Reject `Map<K,V>` when `K` is anything other than `String` in this slice.
 - Keep rejecting all other generic-looking type hints.
 - Update `docs/grammar.ebnf` to describe builtin parameterized contracts.
 - Add parser tests for accepted nested hints and rejected wrong-arity/unknown
@@ -570,7 +579,9 @@ cargo test -p vela_vm
 - Update macro-inferred hints:
   - `Vec<T>` and `[T; N]` -> `Array<T>`
   - `HashSet<T>` / `BTreeSet<T>` -> `Set<T>`
-  - `HashMap<K,V>` / `BTreeMap<K,V>` -> `Map<K,V>`
+  - `HashMap<String,V>` / `BTreeMap<String,V>` -> `Map<String,V>`
+  - non-string Rust map keys remain unsupported until arbitrary Vela map keys
+    have a runtime design
   - `Option<T>` and `Result<T,E>` remain parameterized.
 - Update engine/native/host validation to accept the new builtin container
   parameterization and reject unsupported generic hints.
@@ -589,7 +600,7 @@ cargo test -p vela_macros -p vela_engine -p vela_reflect -p vela_hot_reload
 - Update architecture docs and `docs/decisions.md` with the builtin
   parameterized contract decision.
 - Update Starlight docs and playground examples to show `Array<T>`,
-  `Map<K,V>`, and `Set<T>` where useful.
+  `Map<String,V>`, and `Set<T>` where useful.
 - Add conformance examples that exercise typed container reads, writes, and
   `?` through nested `Option`/`Result` containers.
 - Add at least one benchmark or opcode/profile check that demonstrates the
@@ -629,6 +640,8 @@ cargo bench -p vela_vm --bench baseline -- --quick container
     with no rejection, as erased form
   - `Array<i64, String>`
   - `Map<String>`
+  - `Map<i64, String>`
+  - `Map<Any, String>`
   - `Player<i64>`
   - `Function<i64>`
   - `Range<i64>`
@@ -704,6 +717,22 @@ cargo bench -p vela_vm --bench baseline -- --quick container
   unsupported generic hints.
 - Reflection metadata displays `Array<i64>`, `Map<String, Player>`, etc.
 - Hot reload rejects ABI changes that alter any inner type argument.
+
+### Future arbitrary map keys
+
+- The first implementation must not accept non-string map key contracts.
+- The VM container storage and guard/stamp APIs should still name key-side and
+  value-side metadata explicitly, such as `key_contract`, `value_contract`,
+  `key_summary`, and `value_summary`.
+- A future arbitrary-key design must define `ValueKey` semantics before
+  accepting `Map<K,V>` generally:
+  - which runtime values are keyable;
+  - hash/equality or ordering behavior;
+  - whether floats and NaN are keyable;
+  - whether heap values, records, arrays, host refs, or path proxies are
+    keyable;
+  - serde/reflection/key iterator behavior;
+  - hot reload ABI compatibility for key contract changes.
 
 ### Full validation
 
