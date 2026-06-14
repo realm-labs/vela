@@ -10,6 +10,13 @@ use vela_syntax::ast::{BinaryOp, Expr, ExprKind, Literal};
 pub(super) enum RuntimeTypeFact {
     Primitive(PrimitiveTag),
     Standard(StandardRuntimeType),
+    Array(Box<RuntimeTypeFact>),
+    Map {
+        key: Box<RuntimeTypeFact>,
+        value: Box<RuntimeTypeFact>,
+    },
+    Set(Box<RuntimeTypeFact>),
+    Iterator(Box<RuntimeTypeFact>),
     Option(Box<RuntimeTypeFact>),
     Result {
         ok: Box<RuntimeTypeFact>,
@@ -75,6 +82,25 @@ impl RuntimeTypeFact {
         Self::Standard(ty)
     }
 
+    pub(super) fn array(element: RuntimeTypeFact) -> Self {
+        Self::Array(Box::new(element))
+    }
+
+    pub(super) fn map(key: RuntimeTypeFact, value: RuntimeTypeFact) -> Self {
+        Self::Map {
+            key: Box::new(key),
+            value: Box::new(value),
+        }
+    }
+
+    pub(super) fn set(element: RuntimeTypeFact) -> Self {
+        Self::Set(Box::new(element))
+    }
+
+    pub(super) fn iterator(item: RuntimeTypeFact) -> Self {
+        Self::Iterator(Box::new(item))
+    }
+
     pub(super) const fn std_type_name(&self) -> &'static str {
         match self {
             Self::Primitive(PrimitiveTag::Null) => "Null",
@@ -101,6 +127,10 @@ impl RuntimeTypeFact {
             Self::Standard(StandardRuntimeType::Iterator) => "Iterator",
             Self::Standard(StandardRuntimeType::Option) => "Option",
             Self::Standard(StandardRuntimeType::Result) => "Result",
+            Self::Array(_) => "Array",
+            Self::Map { .. } => "Map",
+            Self::Set(_) => "Set",
+            Self::Iterator(_) => "Iterator",
             Self::Option(_) => "Option",
             Self::Result { .. } => "Result",
         }
@@ -132,8 +162,36 @@ impl RuntimeTypeFact {
             Self::Standard(StandardRuntimeType::Iterator) => "Iterator",
             Self::Standard(StandardRuntimeType::Option) => "Option",
             Self::Standard(StandardRuntimeType::Result) => "Result",
+            Self::Array(_) => "Array",
+            Self::Map { .. } => "Map",
+            Self::Set(_) => "Set",
+            Self::Iterator(_) => "Iterator",
             Self::Option(_) => "Option",
             Self::Result { .. } => "Result",
+        }
+    }
+
+    pub(super) fn source_type_display(&self) -> String {
+        match self {
+            Self::Array(element) => format!("Array<{}>", element.source_type_display()),
+            Self::Map { key, value } => {
+                format!(
+                    "Map<{}, {}>",
+                    key.source_type_display(),
+                    value.source_type_display()
+                )
+            }
+            Self::Set(element) => format!("Set<{}>", element.source_type_display()),
+            Self::Iterator(item) => format!("Iterator<{}>", item.source_type_display()),
+            Self::Option(payload) => format!("Option<{}>", payload.source_type_display()),
+            Self::Result { ok, err } => {
+                format!(
+                    "Result<{}, {}>",
+                    ok.source_type_display(),
+                    err.source_type_display()
+                )
+            }
+            _ => self.source_type_name().to_owned(),
         }
     }
 }
@@ -265,11 +323,15 @@ fn static_expr_type_with(
         ExprKind::Literal(Literal::Bytes(_)) => {
             StaticExprType::Exact(RuntimeTypeFact::primitive(PrimitiveTag::Bytes))
         }
-        ExprKind::Array(_) => {
-            StaticExprType::Exact(RuntimeTypeFact::standard(StandardRuntimeType::Array))
+        ExprKind::Array(values) => {
+            StaticExprType::Exact(array_literal_type(values.iter().map(|value| {
+                expression_value_type_with(value, local_type_at_span, local_type_named)
+            })))
         }
-        ExprKind::Map(_) => {
-            StaticExprType::Exact(RuntimeTypeFact::standard(StandardRuntimeType::Map))
+        ExprKind::Map(entries) => {
+            StaticExprType::Exact(map_literal_type(entries.iter().map(|entry| {
+                expression_value_type_with(&entry.value, local_type_at_span, local_type_named)
+            })))
         }
         ExprKind::Lambda { .. } => {
             StaticExprType::Exact(RuntimeTypeFact::standard(StandardRuntimeType::Closure))
@@ -357,6 +419,20 @@ pub(super) fn type_hint_value_type(hint: &HirTypeHint) -> Option<RuntimeTypeFact
         "f64" => Some(RuntimeTypeFact::primitive(PrimitiveTag::F64)),
         "String" => Some(RuntimeTypeFact::primitive(PrimitiveTag::String)),
         "Bytes" => Some(RuntimeTypeFact::primitive(PrimitiveTag::Bytes)),
+        "Array" if hint.args.len() == 1 => {
+            type_hint_value_type(&hint.args[0]).map(RuntimeTypeFact::array)
+        }
+        "Map" if hint.args.len() == 2 => {
+            let key = type_hint_value_type(&hint.args[0])?;
+            let value = type_hint_value_type(&hint.args[1])?;
+            Some(RuntimeTypeFact::map(key, value))
+        }
+        "Set" if hint.args.len() == 1 => {
+            type_hint_value_type(&hint.args[0]).map(RuntimeTypeFact::set)
+        }
+        "Iterator" if hint.args.len() == 1 => {
+            type_hint_value_type(&hint.args[0]).map(RuntimeTypeFact::iterator)
+        }
         "Array" => Some(RuntimeTypeFact::standard(StandardRuntimeType::Array)),
         "Map" => Some(RuntimeTypeFact::standard(StandardRuntimeType::Map)),
         "Set" => Some(RuntimeTypeFact::standard(StandardRuntimeType::Set)),
@@ -388,6 +464,15 @@ pub(super) fn check_expected_type(
 ) -> super::CompileResult<ExpectedTypeOutcome> {
     match actual {
         StaticExprType::Exact(actual) if actual == expected => Ok(ExpectedTypeOutcome::Proven),
+        StaticExprType::Exact(actual) if accepts_erased_or_parameterized(&actual, &expected) => {
+            Ok(ExpectedTypeOutcome::Proven)
+        }
+        StaticExprType::Exact(actual)
+            if erased_outer_matches_parameterized(&actual, &expected)
+                || parameterized_outer_matches_erased(&actual, &expected) =>
+        {
+            Ok(ExpectedTypeOutcome::RequiresRuntimeGuard(expected))
+        }
         StaticExprType::Exact(actual) => Err(type_contract_mismatch(
             expected,
             ActualContractType::Exact(actual),
@@ -424,6 +509,10 @@ fn expected_primitive_tag(expected: &RuntimeTypeFact) -> Option<PrimitiveTag> {
     match expected {
         RuntimeTypeFact::Primitive(tag) => Some(*tag),
         RuntimeTypeFact::Standard(_)
+        | RuntimeTypeFact::Array(_)
+        | RuntimeTypeFact::Map { .. }
+        | RuntimeTypeFact::Set(_)
+        | RuntimeTypeFact::Iterator(_)
         | RuntimeTypeFact::Option(_)
         | RuntimeTypeFact::Result { .. } => None,
     }
@@ -471,7 +560,7 @@ fn type_contract_mismatch(
             span,
             format!(
                 "expected `{}`, found {}",
-                expected.source_type_name(),
+                expected.source_type_display(),
                 actual.description()
             ),
         ),
@@ -495,11 +584,100 @@ impl TypeContractContext {
 impl ActualContractType {
     fn description(&self) -> String {
         match self {
-            Self::Exact(actual) => format!("`{}`", actual.source_type_name()),
+            Self::Exact(actual) => format!("`{}`", actual.source_type_display()),
             Self::UnsuffixedIntegerLiteral => "unsuffixed integer literal".to_owned(),
             Self::UnsuffixedFloatLiteral => "unsuffixed float literal".to_owned(),
         }
     }
+}
+
+fn array_literal_type(
+    values: impl IntoIterator<Item = Option<RuntimeTypeFact>>,
+) -> RuntimeTypeFact {
+    uniform_runtime_type(values)
+        .map(RuntimeTypeFact::array)
+        .unwrap_or_else(|| RuntimeTypeFact::standard(StandardRuntimeType::Array))
+}
+
+fn map_literal_type(values: impl IntoIterator<Item = Option<RuntimeTypeFact>>) -> RuntimeTypeFact {
+    uniform_runtime_type(values)
+        .map(|value| RuntimeTypeFact::map(RuntimeTypeFact::primitive(PrimitiveTag::String), value))
+        .unwrap_or_else(|| RuntimeTypeFact::standard(StandardRuntimeType::Map))
+}
+
+fn uniform_runtime_type(
+    values: impl IntoIterator<Item = Option<RuntimeTypeFact>>,
+) -> Option<RuntimeTypeFact> {
+    let mut values = values.into_iter();
+    let first = values.next()??;
+    values.try_fold(first, |expected, value| {
+        let value = value?;
+        (value == expected).then_some(expected)
+    })
+}
+
+fn accepts_erased_or_parameterized(actual: &RuntimeTypeFact, expected: &RuntimeTypeFact) -> bool {
+    parameterized_outer_matches_erased(actual, expected)
+        || matches!(
+            (actual, expected),
+            (
+                RuntimeTypeFact::Option(_),
+                RuntimeTypeFact::Standard(StandardRuntimeType::Option)
+            ) | (
+                RuntimeTypeFact::Result { .. },
+                RuntimeTypeFact::Standard(StandardRuntimeType::Result)
+            )
+        )
+}
+
+fn erased_outer_matches_parameterized(
+    actual: &RuntimeTypeFact,
+    expected: &RuntimeTypeFact,
+) -> bool {
+    matches!(
+        (actual, expected),
+        (
+            RuntimeTypeFact::Standard(StandardRuntimeType::Array),
+            RuntimeTypeFact::Array(_)
+        ) | (
+            RuntimeTypeFact::Standard(StandardRuntimeType::Map),
+            RuntimeTypeFact::Map { .. }
+        ) | (
+            RuntimeTypeFact::Standard(StandardRuntimeType::Set),
+            RuntimeTypeFact::Set(_)
+        ) | (
+            RuntimeTypeFact::Standard(StandardRuntimeType::Iterator),
+            RuntimeTypeFact::Iterator(_)
+        ) | (
+            RuntimeTypeFact::Standard(StandardRuntimeType::Option),
+            RuntimeTypeFact::Option(_)
+        ) | (
+            RuntimeTypeFact::Standard(StandardRuntimeType::Result),
+            RuntimeTypeFact::Result { .. }
+        )
+    )
+}
+
+fn parameterized_outer_matches_erased(
+    actual: &RuntimeTypeFact,
+    expected: &RuntimeTypeFact,
+) -> bool {
+    matches!(
+        (actual, expected),
+        (
+            RuntimeTypeFact::Array(_),
+            RuntimeTypeFact::Standard(StandardRuntimeType::Array)
+        ) | (
+            RuntimeTypeFact::Map { .. },
+            RuntimeTypeFact::Standard(StandardRuntimeType::Map)
+        ) | (
+            RuntimeTypeFact::Set(_),
+            RuntimeTypeFact::Standard(StandardRuntimeType::Set)
+        ) | (
+            RuntimeTypeFact::Iterator(_),
+            RuntimeTypeFact::Standard(StandardRuntimeType::Iterator)
+        )
+    )
 }
 
 fn integer_literal_tag(value: &vela_syntax::ast::IntegerLiteral) -> PrimitiveTag {

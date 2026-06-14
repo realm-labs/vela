@@ -558,6 +558,19 @@ impl UnlinkedTypeGuard {
 pub enum UnlinkedTypeGuardPlan {
     Primitive(PrimitiveTag),
     Standard(StandardTypeGuard),
+    Array {
+        element: Option<Box<UnlinkedTypeGuardPlan>>,
+    },
+    Map {
+        key: Option<Box<UnlinkedTypeGuardPlan>>,
+        value: Option<Box<UnlinkedTypeGuardPlan>>,
+    },
+    Set {
+        element: Option<Box<UnlinkedTypeGuardPlan>>,
+    },
+    Iterator {
+        item: Option<Box<UnlinkedTypeGuardPlan>>,
+    },
     Option {
         some: Option<Box<UnlinkedTypeGuardPlan>>,
     },

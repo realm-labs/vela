@@ -26,6 +26,28 @@ pub(crate) fn execute_unlinked_guard(
         UnlinkedTypeGuardPlan::Standard(expected) => {
             execute_standard_guard(value, expected, heap, &guard.context.debug_name)
         }
+        UnlinkedTypeGuardPlan::Array { ref element } => {
+            execute_array_guard(value, element.as_deref(), heap, &guard.context.debug_name)
+        }
+        UnlinkedTypeGuardPlan::Map {
+            ref key,
+            value: ref value_plan,
+        } => execute_map_guard(
+            value,
+            key.as_deref(),
+            value_plan.as_deref(),
+            heap,
+            &guard.context.debug_name,
+        ),
+        UnlinkedTypeGuardPlan::Set { ref element } => {
+            execute_set_guard(value, element.as_deref(), heap, &guard.context.debug_name)
+        }
+        UnlinkedTypeGuardPlan::Iterator { .. } => execute_standard_guard(
+            value,
+            StandardTypeGuard::Iterator,
+            heap,
+            &guard.context.debug_name,
+        ),
         UnlinkedTypeGuardPlan::Option { ref some } => {
             execute_option_guard(value, some.as_deref(), heap, &guard.context.debug_name)
         }
@@ -81,6 +103,26 @@ pub(crate) fn execute_linked_guard(
         }
         TypeGuardPlan::Standard(expected) => {
             execute_standard_guard(value, expected, heap, debug_name)
+        }
+        TypeGuardPlan::Array { ref element } => {
+            execute_linked_array_guard(value, element.as_deref(), program, heap, debug_name)
+        }
+        TypeGuardPlan::Map {
+            ref key,
+            value: ref value_plan,
+        } => execute_linked_map_guard(
+            value,
+            key.as_deref(),
+            value_plan.as_deref(),
+            program,
+            heap,
+            debug_name,
+        ),
+        TypeGuardPlan::Set { ref element } => {
+            execute_linked_set_guard(value, element.as_deref(), program, heap, debug_name)
+        }
+        TypeGuardPlan::Iterator { .. } => {
+            execute_standard_guard(value, StandardTypeGuard::Iterator, heap, debug_name)
         }
         TypeGuardPlan::Option { ref some } => {
             execute_linked_option_guard(value, some.as_deref(), program, heap, debug_name)
@@ -285,6 +327,74 @@ fn execute_option_guard(
     }
 }
 
+fn execute_array_guard(
+    value: &Value,
+    element: Option<&UnlinkedTypeGuardPlan>,
+    heap: Option<&HeapExecution<'_>>,
+    debug_name: &str,
+) -> VmResult<()> {
+    let Value::HeapRef(reference) = value else {
+        return Err(type_contract_error(value, "Array", heap, debug_name));
+    };
+    let Some(HeapValue::Array(values)) = heap.and_then(|heap| heap.heap.get(*reference)) else {
+        return Err(type_contract_error(value, "Array", heap, debug_name));
+    };
+    if let Some(element) = element {
+        for value in values {
+            execute_unlinked_guard_plan(value, element, heap, debug_name)?;
+        }
+    }
+    Ok(())
+}
+
+fn execute_set_guard(
+    value: &Value,
+    element: Option<&UnlinkedTypeGuardPlan>,
+    heap: Option<&HeapExecution<'_>>,
+    debug_name: &str,
+) -> VmResult<()> {
+    let Value::HeapRef(reference) = value else {
+        return Err(type_contract_error(value, "Set", heap, debug_name));
+    };
+    let Some(HeapValue::Set(values)) = heap.and_then(|heap| heap.heap.get(*reference)) else {
+        return Err(type_contract_error(value, "Set", heap, debug_name));
+    };
+    if let Some(element) = element {
+        for value in values {
+            execute_unlinked_guard_plan(value, element, heap, debug_name)?;
+        }
+    }
+    Ok(())
+}
+
+fn execute_map_guard(
+    value: &Value,
+    key: Option<&UnlinkedTypeGuardPlan>,
+    value_plan: Option<&UnlinkedTypeGuardPlan>,
+    heap: Option<&HeapExecution<'_>>,
+    debug_name: &str,
+) -> VmResult<()> {
+    let Value::HeapRef(reference) = value else {
+        return Err(type_contract_error(value, "Map", heap, debug_name));
+    };
+    let Some(HeapValue::Map(values)) = heap.and_then(|heap| heap.heap.get(*reference)) else {
+        return Err(type_contract_error(value, "Map", heap, debug_name));
+    };
+    if !map_key_plan_is_string_or_erased(key) {
+        return Err(VmError::new(VmErrorKind::TypeContractViolation {
+            expected: "Map<String, _>".to_owned(),
+            actual: "Map".to_owned(),
+            debug_name: debug_name.to_owned(),
+        }));
+    }
+    if let Some(value_plan) = value_plan {
+        for value in values.values() {
+            execute_unlinked_guard_plan(value, value_plan, heap, debug_name)?;
+        }
+    }
+    Ok(())
+}
+
 fn execute_result_guard(
     value: &Value,
     ok: Option<&UnlinkedTypeGuardPlan>,
@@ -338,6 +448,18 @@ fn execute_unlinked_guard_plan(
         UnlinkedTypeGuardPlan::Standard(expected) => {
             execute_standard_guard(value, *expected, heap, debug_name)
         }
+        UnlinkedTypeGuardPlan::Array { element } => {
+            execute_array_guard(value, element.as_deref(), heap, debug_name)
+        }
+        UnlinkedTypeGuardPlan::Map { key, value: values } => {
+            execute_map_guard(value, key.as_deref(), values.as_deref(), heap, debug_name)
+        }
+        UnlinkedTypeGuardPlan::Set { element } => {
+            execute_set_guard(value, element.as_deref(), heap, debug_name)
+        }
+        UnlinkedTypeGuardPlan::Iterator { .. } => {
+            execute_standard_guard(value, StandardTypeGuard::Iterator, heap, debug_name)
+        }
         UnlinkedTypeGuardPlan::Option { some } => {
             execute_option_guard(value, some.as_deref(), heap, debug_name)
         }
@@ -383,6 +505,77 @@ fn execute_linked_option_guard(
         Some((StdEnumKind::Option, StdEnumVariant::None, _)) => Ok(()),
         _ => Err(type_contract_error(value, "Option", heap, debug_name)),
     }
+}
+
+fn execute_linked_array_guard(
+    value: &Value,
+    element: Option<&TypeGuardPlan>,
+    program: &LinkedProgram,
+    heap: Option<&HeapExecution<'_>>,
+    debug_name: &str,
+) -> VmResult<()> {
+    let Value::HeapRef(reference) = value else {
+        return Err(type_contract_error(value, "Array", heap, debug_name));
+    };
+    let Some(HeapValue::Array(values)) = heap.and_then(|heap| heap.heap.get(*reference)) else {
+        return Err(type_contract_error(value, "Array", heap, debug_name));
+    };
+    if let Some(element) = element {
+        for value in values {
+            execute_linked_guard_plan(value, element, program, heap, debug_name)?;
+        }
+    }
+    Ok(())
+}
+
+fn execute_linked_set_guard(
+    value: &Value,
+    element: Option<&TypeGuardPlan>,
+    program: &LinkedProgram,
+    heap: Option<&HeapExecution<'_>>,
+    debug_name: &str,
+) -> VmResult<()> {
+    let Value::HeapRef(reference) = value else {
+        return Err(type_contract_error(value, "Set", heap, debug_name));
+    };
+    let Some(HeapValue::Set(values)) = heap.and_then(|heap| heap.heap.get(*reference)) else {
+        return Err(type_contract_error(value, "Set", heap, debug_name));
+    };
+    if let Some(element) = element {
+        for value in values {
+            execute_linked_guard_plan(value, element, program, heap, debug_name)?;
+        }
+    }
+    Ok(())
+}
+
+fn execute_linked_map_guard(
+    value: &Value,
+    key: Option<&TypeGuardPlan>,
+    value_plan: Option<&TypeGuardPlan>,
+    program: &LinkedProgram,
+    heap: Option<&HeapExecution<'_>>,
+    debug_name: &str,
+) -> VmResult<()> {
+    let Value::HeapRef(reference) = value else {
+        return Err(type_contract_error(value, "Map", heap, debug_name));
+    };
+    let Some(HeapValue::Map(values)) = heap.and_then(|heap| heap.heap.get(*reference)) else {
+        return Err(type_contract_error(value, "Map", heap, debug_name));
+    };
+    if !linked_map_key_plan_is_string_or_erased(key) {
+        return Err(VmError::new(VmErrorKind::TypeContractViolation {
+            expected: "Map<String, _>".to_owned(),
+            actual: "Map".to_owned(),
+            debug_name: debug_name.to_owned(),
+        }));
+    }
+    if let Some(value_plan) = value_plan {
+        for value in values.values() {
+            execute_linked_guard_plan(value, value_plan, program, heap, debug_name)?;
+        }
+    }
+    Ok(())
 }
 
 fn execute_linked_result_guard(
@@ -439,6 +632,23 @@ fn execute_linked_guard_plan(
         }
         TypeGuardPlan::Standard(expected) => {
             execute_standard_guard(value, *expected, heap, debug_name)
+        }
+        TypeGuardPlan::Array { element } => {
+            execute_linked_array_guard(value, element.as_deref(), program, heap, debug_name)
+        }
+        TypeGuardPlan::Map { key, value: values } => execute_linked_map_guard(
+            value,
+            key.as_deref(),
+            values.as_deref(),
+            program,
+            heap,
+            debug_name,
+        ),
+        TypeGuardPlan::Set { element } => {
+            execute_linked_set_guard(value, element.as_deref(), program, heap, debug_name)
+        }
+        TypeGuardPlan::Iterator { .. } => {
+            execute_standard_guard(value, StandardTypeGuard::Iterator, heap, debug_name)
         }
         TypeGuardPlan::Option { some } => {
             execute_linked_option_guard(value, some.as_deref(), program, heap, debug_name)
@@ -641,6 +851,20 @@ fn standard_type_name(guard: StandardTypeGuard) -> &'static str {
         StandardTypeGuard::Option => "Option",
         StandardTypeGuard::Result => "Result",
     }
+}
+
+fn map_key_plan_is_string_or_erased(plan: Option<&UnlinkedTypeGuardPlan>) -> bool {
+    matches!(
+        plan,
+        None | Some(UnlinkedTypeGuardPlan::Primitive(PrimitiveTag::String))
+    )
+}
+
+fn linked_map_key_plan_is_string_or_erased(plan: Option<&TypeGuardPlan>) -> bool {
+    matches!(
+        plan,
+        None | Some(TypeGuardPlan::Primitive(PrimitiveTag::String))
+    )
 }
 
 const fn primitive_type_name(tag: PrimitiveTag) -> &'static str {

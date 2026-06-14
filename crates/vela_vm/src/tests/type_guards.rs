@@ -172,6 +172,115 @@ fn main(value) {
 }
 
 #[test]
+fn linked_parameter_guard_rejects_mixed_array_contents() {
+    let program = compile_program_source(
+        SourceId::new(1),
+        r#"
+fn main(values: Array<i64>) {
+    let total = 0;
+    for value in values {
+        total += value;
+    }
+    return total;
+}
+"#,
+    )
+    .expect("program should compile");
+    let mut budget = ExecutionBudget::unbounded();
+
+    let error = run_linked_test_program_with_budget(
+        &Vm::new(),
+        &program,
+        "main",
+        &[OwnedValue::array([
+            OwnedValue::i64(1),
+            OwnedValue::from("bad"),
+        ])],
+        &mut budget,
+    )
+    .expect_err("array element contract should fail before body executes");
+
+    assert_eq!(
+        error.kind(),
+        VmErrorKind::TypeContractViolation {
+            expected: "i64".to_owned(),
+            actual: "String".to_owned(),
+            debug_name: "values".to_owned(),
+        }
+    );
+}
+
+#[test]
+fn linked_parameter_guard_rejects_mixed_map_values() {
+    let program = compile_program_source(
+        SourceId::new(1),
+        r#"
+fn main(values: Map<String, i64>) {
+    return values.get("level").unwrap_or(0);
+}
+"#,
+    )
+    .expect("program should compile");
+    let mut budget = ExecutionBudget::unbounded();
+
+    let error = run_linked_test_program_with_budget(
+        &Vm::new(),
+        &program,
+        "main",
+        &[OwnedValue::map([
+            ("level", OwnedValue::i64(1)),
+            ("bad", OwnedValue::from("high")),
+        ])],
+        &mut budget,
+    )
+    .expect_err("map value contract should fail before body executes");
+
+    assert_eq!(
+        error.kind(),
+        VmErrorKind::TypeContractViolation {
+            expected: "i64".to_owned(),
+            actual: "String".to_owned(),
+            debug_name: "values".to_owned(),
+        }
+    );
+}
+
+#[test]
+fn linked_parameter_guard_rejects_mixed_set_values() {
+    let program = compile_program_source(
+        SourceId::new(1),
+        r#"
+fn main(values: Set<String>) {
+    return values.len();
+}
+"#,
+    )
+    .expect("program should compile");
+    let mut budget = ExecutionBudget::unbounded();
+
+    let error = run_linked_test_program_with_budget(
+        &Vm::new(),
+        &program,
+        "main",
+        &[OwnedValue::set([
+            OwnedValue::from("ok"),
+            OwnedValue::i64(1),
+        ])],
+        &mut budget,
+    )
+    .expect_err("set element contract should fail before body executes");
+
+    assert_eq!(
+        error.kind(),
+        VmErrorKind::TypeContractViolation {
+            expected: "String".to_owned(),
+            actual: "i64".to_owned(),
+            debug_name: "values".to_owned(),
+        }
+    );
+}
+
+#[test]
 fn linked_static_safe_script_call_uses_unchecked_entry() {
     let program = compile_program_source(
         SourceId::new(1),

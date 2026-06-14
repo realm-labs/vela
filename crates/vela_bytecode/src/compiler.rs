@@ -501,12 +501,22 @@ fn type_guard_plan_for_hint_inner(
         "Bytes" => Some(UnlinkedTypeGuardPlan::Primitive(
             vela_common::PrimitiveTag::Bytes,
         )),
+        "Array" if hint.args.len() == 1 => Some(UnlinkedTypeGuardPlan::Array {
+            element: type_guard_plan_for_hint_inner(&hint.args[0], facts).map(Box::new),
+        }),
         "Array" => Some(UnlinkedTypeGuardPlan::Standard(
             crate::StandardTypeGuard::Array,
         )),
+        "Map" if hint.args.len() == 2 => Some(UnlinkedTypeGuardPlan::Map {
+            key: type_guard_plan_for_hint_inner(&hint.args[0], facts).map(Box::new),
+            value: type_guard_plan_for_hint_inner(&hint.args[1], facts).map(Box::new),
+        }),
         "Map" => Some(UnlinkedTypeGuardPlan::Standard(
             crate::StandardTypeGuard::Map,
         )),
+        "Set" if hint.args.len() == 1 => Some(UnlinkedTypeGuardPlan::Set {
+            element: type_guard_plan_for_hint_inner(&hint.args[0], facts).map(Box::new),
+        }),
         "Set" => Some(UnlinkedTypeGuardPlan::Standard(
             crate::StandardTypeGuard::Set,
         )),
@@ -519,6 +529,9 @@ fn type_guard_plan_for_hint_inner(
         "Closure" => Some(UnlinkedTypeGuardPlan::Standard(
             crate::StandardTypeGuard::Closure,
         )),
+        "Iterator" if hint.args.len() == 1 => Some(UnlinkedTypeGuardPlan::Iterator {
+            item: type_guard_plan_for_hint_inner(&hint.args[0], facts).map(Box::new),
+        }),
         "Iterator" => Some(UnlinkedTypeGuardPlan::Standard(
             crate::StandardTypeGuard::Iterator,
         )),
@@ -593,6 +606,19 @@ fn type_guard_plan_for_runtime_type(ty: &RuntimeTypeFact) -> Option<UnlinkedType
         RuntimeTypeFact::Standard(StandardRuntimeType::Result) => Some(
             UnlinkedTypeGuardPlan::Standard(crate::StandardTypeGuard::Result),
         ),
+        RuntimeTypeFact::Array(element) => Some(UnlinkedTypeGuardPlan::Array {
+            element: type_guard_plan_for_runtime_type(element).map(Box::new),
+        }),
+        RuntimeTypeFact::Map { key, value } => Some(UnlinkedTypeGuardPlan::Map {
+            key: type_guard_plan_for_runtime_type(key).map(Box::new),
+            value: type_guard_plan_for_runtime_type(value).map(Box::new),
+        }),
+        RuntimeTypeFact::Set(element) => Some(UnlinkedTypeGuardPlan::Set {
+            element: type_guard_plan_for_runtime_type(element).map(Box::new),
+        }),
+        RuntimeTypeFact::Iterator(item) => Some(UnlinkedTypeGuardPlan::Iterator {
+            item: type_guard_plan_for_runtime_type(item).map(Box::new),
+        }),
         RuntimeTypeFact::Option(payload) => Some(UnlinkedTypeGuardPlan::Option {
             some: type_guard_plan_for_runtime_type(payload).map(Box::new),
         }),

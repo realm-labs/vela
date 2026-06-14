@@ -113,10 +113,22 @@ impl ValueShape {
             Self::Unknown => None,
             Self::Scalar(type_name) => scalar_shape_type_fact(type_name),
             Self::Record(_) => None,
-            Self::Array(_) => Some(RuntimeTypeFact::standard(StandardRuntimeType::Array)),
-            Self::Iterator(_) => Some(RuntimeTypeFact::standard(StandardRuntimeType::Iterator)),
-            Self::Map { .. } => Some(RuntimeTypeFact::standard(StandardRuntimeType::Map)),
-            Self::Set(_) => Some(RuntimeTypeFact::standard(StandardRuntimeType::Set)),
+            Self::Array(element) => element
+                .value_type()
+                .map(RuntimeTypeFact::array)
+                .or_else(|| Some(RuntimeTypeFact::standard(StandardRuntimeType::Array))),
+            Self::Iterator(item) => item
+                .value_type()
+                .map(RuntimeTypeFact::iterator)
+                .or_else(|| Some(RuntimeTypeFact::standard(StandardRuntimeType::Iterator))),
+            Self::Map { key, value } => match (key.value_type(), value.value_type()) {
+                (Some(key), Some(value)) => Some(RuntimeTypeFact::map(key, value)),
+                _ => Some(RuntimeTypeFact::standard(StandardRuntimeType::Map)),
+            },
+            Self::Set(element) => element
+                .value_type()
+                .map(RuntimeTypeFact::set)
+                .or_else(|| Some(RuntimeTypeFact::standard(StandardRuntimeType::Set))),
             Self::Option(value) => value
                 .value_type()
                 .map(|payload| RuntimeTypeFact::Option(Box::new(payload)))
@@ -154,20 +166,35 @@ impl ValueShape {
             RuntimeTypeFact::Standard(StandardRuntimeType::Array) => {
                 return Self::Array(Box::new(Self::Unknown));
             }
+            RuntimeTypeFact::Array(element) => {
+                return Self::Array(Box::new(Self::from_runtime_type(*element)));
+            }
             RuntimeTypeFact::Standard(StandardRuntimeType::Map) => {
                 return Self::Map {
                     key: Box::new(Self::Unknown),
                     value: Box::new(Self::Unknown),
                 };
             }
+            RuntimeTypeFact::Map { key, value } => {
+                return Self::Map {
+                    key: Box::new(Self::from_runtime_type(*key)),
+                    value: Box::new(Self::from_runtime_type(*value)),
+                };
+            }
             RuntimeTypeFact::Standard(StandardRuntimeType::Set) => {
                 return Self::Set(Box::new(Self::Unknown));
+            }
+            RuntimeTypeFact::Set(element) => {
+                return Self::Set(Box::new(Self::from_runtime_type(*element)));
             }
             RuntimeTypeFact::Standard(StandardRuntimeType::Range) => "Range",
             RuntimeTypeFact::Standard(StandardRuntimeType::Function) => "Function",
             RuntimeTypeFact::Standard(StandardRuntimeType::Closure) => "Closure",
             RuntimeTypeFact::Standard(StandardRuntimeType::Iterator) => {
                 return Self::Iterator(Box::new(Self::Unknown));
+            }
+            RuntimeTypeFact::Iterator(item) => {
+                return Self::Iterator(Box::new(Self::from_runtime_type(*item)));
             }
             RuntimeTypeFact::Standard(StandardRuntimeType::Option) => {
                 return Self::Option(Box::new(Self::Unknown));
@@ -675,7 +702,8 @@ fn method_call_shape(
             Some(RuntimeTypeFact::Primitive(PrimitiveTag::String)) => {
                 Some(ValueShape::Scalar("String".to_owned()))
             }
-            Some(RuntimeTypeFact::Standard(StandardRuntimeType::Array)) => Some(receiver),
+            Some(RuntimeTypeFact::Standard(StandardRuntimeType::Array))
+            | Some(RuntimeTypeFact::Array(_)) => Some(receiver),
             _ => None,
         },
         "parse_i64" => Some(ValueShape::Option(Box::new(ValueShape::Scalar(

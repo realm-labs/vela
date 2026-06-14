@@ -339,6 +339,19 @@ pub enum GuardKind {
 pub enum TypeGuardPlan {
     Primitive(PrimitiveTag),
     Standard(crate::StandardTypeGuard),
+    Array {
+        element: Option<Box<TypeGuardPlan>>,
+    },
+    Map {
+        key: Option<Box<TypeGuardPlan>>,
+        value: Option<Box<TypeGuardPlan>>,
+    },
+    Set {
+        element: Option<Box<TypeGuardPlan>>,
+    },
+    Iterator {
+        item: Option<Box<TypeGuardPlan>>,
+    },
     Option {
         some: Option<Box<TypeGuardPlan>>,
     },

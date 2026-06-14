@@ -786,6 +786,27 @@ fn verify_linked_type_guard(
     verify_linked_debug_name(function, None, context, guard.context.debug_name)?;
     match guard.plan {
         TypeGuardPlan::Primitive(_) | TypeGuardPlan::Standard(_) => Ok(()),
+        TypeGuardPlan::Array { ref element } | TypeGuardPlan::Set { ref element } => {
+            if let Some(element) = element {
+                verify_linked_type_guard_plan(function, context, element)?;
+            }
+            Ok(())
+        }
+        TypeGuardPlan::Map { ref key, ref value } => {
+            if let Some(key) = key {
+                verify_linked_type_guard_plan(function, context, key)?;
+            }
+            if let Some(value) = value {
+                verify_linked_type_guard_plan(function, context, value)?;
+            }
+            Ok(())
+        }
+        TypeGuardPlan::Iterator { ref item } => {
+            if let Some(item) = item {
+                verify_linked_type_guard_plan(function, context, item)?;
+            }
+            Ok(())
+        }
         TypeGuardPlan::Option { ref some } => {
             if let Some(some) = some {
                 verify_linked_type_guard_plan(function, context, some)?;
@@ -826,6 +847,27 @@ fn verify_linked_type_guard_plan(
     };
     match guard.plan {
         TypeGuardPlan::Primitive(_) | TypeGuardPlan::Standard(_) => Ok(()),
+        TypeGuardPlan::Array { ref element } | TypeGuardPlan::Set { ref element } => {
+            if let Some(element) = element {
+                verify_linked_type_guard_plan(function, context, element)?;
+            }
+            Ok(())
+        }
+        TypeGuardPlan::Map { ref key, ref value } => {
+            if let Some(key) = key {
+                verify_linked_type_guard_plan(function, context, key)?;
+            }
+            if let Some(value) = value {
+                verify_linked_type_guard_plan(function, context, value)?;
+            }
+            Ok(())
+        }
+        TypeGuardPlan::Iterator { ref item } => {
+            if let Some(item) = item {
+                verify_linked_type_guard_plan(function, context, item)?;
+            }
+            Ok(())
+        }
         TypeGuardPlan::Option { ref some } => {
             if let Some(some) = some {
                 verify_linked_type_guard_plan(function, context, some)?;

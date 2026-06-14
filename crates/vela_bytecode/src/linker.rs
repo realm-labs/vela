@@ -1142,6 +1142,29 @@ impl<'linker, 'registry> LinkContext<'linker, 'registry> {
         match plan {
             UnlinkedTypeGuardPlan::Primitive(tag) => Ok(TypeGuardPlan::Primitive(tag)),
             UnlinkedTypeGuardPlan::Standard(guard) => Ok(TypeGuardPlan::Standard(guard)),
+            UnlinkedTypeGuardPlan::Array { element } => Ok(TypeGuardPlan::Array {
+                element: element
+                    .map(|plan| self.link_type_guard_plan(*plan).map(Box::new))
+                    .transpose()?,
+            }),
+            UnlinkedTypeGuardPlan::Map { key, value } => Ok(TypeGuardPlan::Map {
+                key: key
+                    .map(|plan| self.link_type_guard_plan(*plan).map(Box::new))
+                    .transpose()?,
+                value: value
+                    .map(|plan| self.link_type_guard_plan(*plan).map(Box::new))
+                    .transpose()?,
+            }),
+            UnlinkedTypeGuardPlan::Set { element } => Ok(TypeGuardPlan::Set {
+                element: element
+                    .map(|plan| self.link_type_guard_plan(*plan).map(Box::new))
+                    .transpose()?,
+            }),
+            UnlinkedTypeGuardPlan::Iterator { item } => Ok(TypeGuardPlan::Iterator {
+                item: item
+                    .map(|plan| self.link_type_guard_plan(*plan).map(Box::new))
+                    .transpose()?,
+            }),
             UnlinkedTypeGuardPlan::Option { some } => Ok(TypeGuardPlan::Option {
                 some: some
                     .map(|plan| self.link_type_guard_plan(*plan).map(Box::new))

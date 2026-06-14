@@ -371,6 +371,92 @@ fn main() {
 }
 
 #[test]
+fn compiler_emits_parameterized_container_guard_metadata() {
+    let program = compile_program_source(
+        SourceId::new(1),
+        r#"
+fn f(values: Array<i64>, names: Set<String>, scores: Map<String, i64>) -> Array<i64> {
+    return values;
+}
+"#,
+    )
+    .expect("typed container function should compile");
+    let unlinked = program.function("f").expect("function should exist");
+
+    assert!(matches!(
+        unlinked.param_guards[0].guard.plan,
+        crate::UnlinkedTypeGuardPlan::Array { element: Some(_) }
+    ));
+    assert!(matches!(
+        unlinked.param_guards[1].guard.plan,
+        crate::UnlinkedTypeGuardPlan::Set { element: Some(_) }
+    ));
+    assert!(matches!(
+        unlinked.param_guards[2].guard.plan,
+        crate::UnlinkedTypeGuardPlan::Map {
+            key: Some(_),
+            value: Some(_)
+        }
+    ));
+    assert!(matches!(
+        unlinked.return_guard.as_ref().map(|guard| &guard.plan),
+        Some(crate::UnlinkedTypeGuardPlan::Array { element: Some(_) })
+    ));
+
+    let linked = crate::Linker::new()
+        .link_program(&program)
+        .expect("program should link");
+    linked
+        .verify()
+        .expect("linked container guards should verify");
+    let function = linked
+        .entry_point_by_name("f")
+        .and_then(|handle| linked.function(handle))
+        .expect("linked function should exist");
+    let guard = function.param_guards[0].guard;
+    assert!(matches!(
+        function.type_guard(guard).map(|guard| &guard.plan),
+        Some(crate::TypeGuardPlan::Array { element: Some(_) })
+    ));
+}
+
+#[test]
+fn compiler_preserves_parameterized_container_value_facts() {
+    with_static_type_compiler(
+        r#"
+fn main(dynamic) {
+    let values: Array<i64> = dynamic;
+    let scores: Map<String, i64> = dynamic;
+    let copied = values;
+    let copied_scores = scores;
+    return copied;
+}
+"#,
+        |compiler, function| {
+            for statement in function.body.statements.iter().take(2) {
+                compiler
+                    .compile_statement(statement)
+                    .expect("typed let should compile");
+            }
+
+            assert_eq!(
+                compiler.value_type_for_expr(let_initializer(function, 2)),
+                Some(RuntimeTypeFact::array(RuntimeTypeFact::primitive(
+                    vela_common::PrimitiveTag::I64
+                )))
+            );
+            assert_eq!(
+                compiler.value_type_for_expr(let_initializer(function, 3)),
+                Some(RuntimeTypeFact::map(
+                    RuntimeTypeFact::primitive(vela_common::PrimitiveTag::String),
+                    RuntimeTypeFact::primitive(vela_common::PrimitiveTag::I64),
+                ))
+            );
+        },
+    );
+}
+
+#[test]
 fn compiler_leaves_unhinted_functions_without_guard_metadata() {
     let program = compile_program_source(
         SourceId::new(1),
