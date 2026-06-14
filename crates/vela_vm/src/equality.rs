@@ -175,19 +175,7 @@ fn derived_partial_eq(
     runtime: &mut EqualityRuntime<'_, '_, '_>,
     type_name: &str,
 ) -> VmResult<Option<bool>> {
-    let Some(field_names) = runtime
-        .program
-        .and_then(|program| derived_record_trait_fields(program, type_name, "PartialEq"))
-        .or_else(|| {
-            runtime.linked_program.and_then(|program| {
-                derived_linked_record_trait_fields(program, type_name, "PartialEq")
-            })
-        })
-    else {
-        return Ok(None);
-    };
-    let Some(field_pairs) =
-        record_field_pairs(lhs, rhs, runtime.heap.as_deref(), type_name, &field_names)?
+    let Some(field_pairs) = derived_record_field_pairs(lhs, rhs, runtime, type_name, "PartialEq")?
     else {
         return Ok(None);
     };
@@ -197,6 +185,27 @@ fn derived_partial_eq(
         }
     }
     Ok(Some(true))
+}
+
+fn derived_record_field_pairs(
+    lhs: &Value,
+    rhs: &Value,
+    runtime: &EqualityRuntime<'_, '_, '_>,
+    type_name: &str,
+    trait_name: &str,
+) -> VmResult<Option<Vec<(Value, Value)>>> {
+    let Some(field_names) = runtime
+        .program
+        .and_then(|program| derived_record_trait_fields(program, type_name, trait_name))
+        .or_else(|| {
+            runtime.linked_program.and_then(|program| {
+                derived_linked_record_trait_fields(program, type_name, trait_name)
+            })
+        })
+    else {
+        return Ok(None);
+    };
+    record_field_pairs(lhs, rhs, runtime.heap.as_deref(), type_name, &field_names)
 }
 
 fn record_field_pairs(
@@ -279,7 +288,7 @@ fn call_partial_ord(
     let Some(result) =
         call_builtin_trait_method(lhs, rhs, runtime, &type_name, method_id, PARTIAL_ORD_METHOD)?
     else {
-        return Ok(None);
+        return derived_partial_ord(lhs, rhs, runtime, &type_name, operation);
     };
     partial_cmp_result(result, runtime.heap.as_deref(), operation).map(Some)
 }
@@ -300,7 +309,7 @@ fn call_ord(
     let Some(result) =
         call_builtin_trait_method(lhs, rhs, runtime, &type_name, method_id, ORD_METHOD)?
     else {
-        return Ok(None);
+        return derived_ord(lhs, rhs, runtime, &type_name, operation);
     };
     let result = store_value_in_heap_if_needed(
         result,
@@ -308,6 +317,60 @@ fn call_ord(
         runtime.budget.as_deref_mut(),
     )?;
     total_cmp_result(result, operation).map(Some)
+}
+
+fn derived_partial_ord(
+    lhs: &Value,
+    rhs: &Value,
+    runtime: &mut EqualityRuntime<'_, '_, '_>,
+    type_name: &str,
+    operation: &'static str,
+) -> VmResult<Option<Option<Ordering>>> {
+    let Some(field_pairs) = derived_record_field_pairs(lhs, rhs, runtime, type_name, "PartialOrd")?
+    else {
+        return Ok(None);
+    };
+    for (left, right) in field_pairs {
+        let Some(ordering) = values_partial_cmp_with_traits(&left, &right, runtime, operation)?
+        else {
+            return Ok(Some(None));
+        };
+        if ordering != Ordering::Equal {
+            return Ok(Some(Some(ordering)));
+        }
+    }
+    Ok(Some(Some(Ordering::Equal)))
+}
+
+fn derived_ord(
+    lhs: &Value,
+    rhs: &Value,
+    runtime: &mut EqualityRuntime<'_, '_, '_>,
+    type_name: &str,
+    operation: &'static str,
+) -> VmResult<Option<Ordering>> {
+    let Some(field_pairs) = derived_record_field_pairs(lhs, rhs, runtime, type_name, "Ord")? else {
+        return Ok(None);
+    };
+    for (left, right) in field_pairs {
+        let ordering = values_total_cmp_with_traits(&left, &right, runtime, operation)?;
+        if ordering != Ordering::Equal {
+            return Ok(Some(ordering));
+        }
+    }
+    Ok(Some(Ordering::Equal))
+}
+
+fn values_partial_cmp_with_traits(
+    lhs: &Value,
+    rhs: &Value,
+    runtime: &mut EqualityRuntime<'_, '_, '_>,
+    operation: &'static str,
+) -> VmResult<Option<Ordering>> {
+    if let Some(ordering) = leaf_values_partial_cmp(lhs, rhs, runtime.heap.as_deref(), operation)? {
+        return Ok(ordering);
+    }
+    call_partial_ord(lhs, rhs, runtime, operation)?.ok_or_else(|| comparable_error(operation))
 }
 
 fn call_builtin_trait_method(
@@ -560,6 +623,28 @@ fn leaf_values_total_cmp(
     }
 }
 
+fn leaf_values_partial_cmp(
+    lhs: &Value,
+    rhs: &Value,
+    heap: Option<&HeapExecution<'_>>,
+    operation: &'static str,
+) -> VmResult<Option<Option<Ordering>>> {
+    if let Some(ordering) = immediate_leaf_values_partial_cmp(lhs, rhs, operation)? {
+        return Ok(Some(ordering));
+    }
+
+    match (heap_leaf(lhs, heap)?, heap_leaf(rhs, heap)?) {
+        (Some(HeapLeaf::String(lhs)), Some(HeapLeaf::String(rhs))) => Ok(Some(Some(lhs.cmp(rhs)))),
+        (Some(HeapLeaf::Bytes(lhs)), Some(HeapLeaf::Bytes(rhs))) => Ok(Some(Some(lhs.cmp(rhs)))),
+        (Some(_), Some(_)) => Ok(None),
+        (Some(_), None) | (None, Some(_)) if is_immediate_leaf(lhs) || is_immediate_leaf(rhs) => {
+            non_comparable(operation)
+        }
+        (Some(_), None) | (None, Some(_)) => Ok(None),
+        (None, None) => Ok(None),
+    }
+}
+
 fn immediate_leaf_values_equal(lhs: &Value, rhs: &Value) -> Option<bool> {
     match (lhs, rhs) {
         (Value::Missing, _) | (_, Value::Missing) => None,
@@ -577,6 +662,22 @@ fn immediate_leaf_values_equal(lhs: &Value, rhs: &Value) -> Option<bool> {
             Some(false)
         }
         _ => None,
+    }
+}
+
+fn immediate_leaf_values_partial_cmp(
+    lhs: &Value,
+    rhs: &Value,
+    operation: &'static str,
+) -> VmResult<Option<Option<Ordering>>> {
+    if let Some(ordering) = immediate_leaf_values_total_cmp(lhs, rhs) {
+        return Ok(Some(Some(ordering)));
+    }
+    match (lhs, rhs) {
+        (Value::F32(lhs), Value::F32(rhs)) => Ok(Some(lhs.partial_cmp(rhs))),
+        (Value::F64(lhs), Value::F64(rhs)) => Ok(Some(lhs.partial_cmp(rhs))),
+        (lhs, rhs) if is_immediate_leaf(lhs) || is_immediate_leaf(rhs) => non_comparable(operation),
+        _ => Ok(None),
     }
 }
 

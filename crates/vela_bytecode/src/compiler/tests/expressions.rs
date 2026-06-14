@@ -115,6 +115,24 @@ fn main() {
 }
 
 #[test]
+fn compiler_accepts_static_record_ordering_with_derived_partial_ord() {
+    compile_program_source(
+        SourceId::new(1),
+        r#"
+#[derive(PartialEq, PartialOrd)]
+struct Score { value: i64 }
+
+fn main() {
+    let left = Score { value: 1 };
+    let right = Score { value: 2 };
+    return left < right;
+}
+"#,
+    )
+    .expect("known record ordering with derived PartialOrd should compile");
+}
+
+#[test]
 fn compiler_lowers_identity_comparison_operators() {
     let code = compile_function_source(
         SourceId::new(1),

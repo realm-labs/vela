@@ -402,7 +402,12 @@ fn derived_operator_traits(
             }
             let traits = derived_traits(graph.declaration_attrs(*declaration))
                 .into_iter()
-                .filter(|trait_name| trait_name == "PartialEq")
+                .filter(|trait_name| {
+                    matches!(
+                        trait_name.as_str(),
+                        "PartialEq" | "Eq" | "PartialOrd" | "Ord"
+                    )
+                })
                 .collect::<BTreeSet<_>>();
             (!traits.is_empty()).then(|| (type_name.clone(), traits))
         })

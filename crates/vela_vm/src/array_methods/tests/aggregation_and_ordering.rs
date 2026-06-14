@@ -276,6 +276,41 @@ fn main() {
 }
 
 #[test]
+fn array_sort_and_extrema_use_derived_record_ord() {
+    let source = r#"
+#[derive(PartialEq, Eq, PartialOrd, Ord)]
+struct Score { value: i64, label: String }
+
+fn main() {
+    let values = [
+        Score { value: 30, label: "thirty" },
+        Score { value: 10, label: "ten" },
+        Score { value: 20, label: "twenty" },
+    ];
+    let sorted = values.sort();
+    let min = values.min().unwrap_or(Score { value: 0, label: "missing" });
+    let max = values.max().unwrap_or(Score { value: 0, label: "missing" });
+    if sorted[0].label == "ten"
+        && sorted[1].label == "twenty"
+        && sorted[2].label == "thirty"
+        && min.label == "ten"
+        && max.label == "thirty"
+        && values[0].label == "thirty"
+    {
+        return 1;
+    }
+    return 0;
+}
+"#;
+    let program = compile_program_source(SourceId::new(1), source)
+        .expect("array derived Ord sort source should compile");
+
+    let result = run_linked_array_test_program(&Vm::new(), &program, "main")
+        .expect("array sort should use derived Ord");
+    assert_eq!(result, OwnedValue::Scalar(vela_common::ScalarValue::I64(1)));
+}
+
+#[test]
 fn array_sort_by_uses_builtin_ord_impl_for_keys() {
     let source = r#"
 struct Rank { value: i64 }

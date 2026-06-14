@@ -388,6 +388,38 @@ fn main() {
 }
 
 #[test]
+fn record_semantic_ordering_uses_derived_partial_ord() {
+    let program = compile_program_source(
+        SourceId::new(1),
+        r#"
+#[derive(PartialEq, PartialOrd)]
+struct Score { value: i64, label: String }
+
+fn main() {
+    let low = Score { value: 1, label: "b" };
+    let same_value_earlier_label = Score { value: 1, label: "a" };
+    let high = Score { value: 2, label: "a" };
+    if same_value_earlier_label < low
+        && low < high
+        && low <= low
+        && high > low
+        && high >= same_value_earlier_label
+    {
+        return 1;
+    }
+    return 0;
+}
+"#,
+    )
+    .expect("compile derived PartialOrd record ordering source");
+
+    assert_eq!(
+        run_records_program(&program, "main", &[]),
+        Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(1)))
+    );
+}
+
+#[test]
 fn record_partial_ord_none_makes_ordering_operators_false() {
     let program = compile_program_source(
         SourceId::new(1),
