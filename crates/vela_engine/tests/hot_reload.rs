@@ -1,4 +1,3 @@
-use vela_common::SourceId;
 use vela_engine::engine::Engine;
 use vela_engine::runtime::{CallOptions, Runtime};
 use vela_host::access::HostAccess;
@@ -10,7 +9,7 @@ use vela_vm::owned_value::OwnedValue;
 fn runtime_hot_reload_update_waits_for_explicit_reload_safe_point() {
     let engine = Engine::builder().build().expect("engine should build");
     let initial = engine
-        .compile_hot_reload_initial(SourceId::new(1), "fn main() { return 1; }")
+        .compile_hot_reload_initial("fn main() { return 1; }")
         .expect("initial hot reload compile");
     let mut runtime = Runtime::from_hot_reload_version(engine, initial);
     let initial_version = runtime
@@ -26,7 +25,7 @@ fn runtime_hot_reload_update_waits_for_explicit_reload_safe_point() {
     );
 
     let update = runtime
-        .compile_hot_reload_update(SourceId::new(2), "fn main() { return 2; }")
+        .compile_hot_reload_update("fn main() { return 2; }")
         .expect("runtime should be hot-reload enabled")
         .expect("compatible update should compile");
 
@@ -61,7 +60,6 @@ fn hot_reload_runtime_reflection_tracks_script_metadata_after_reload() {
         .expect("engine should build");
     let initial = engine
         .compile_hot_reload_initial(
-            SourceId::new(1),
             r#"
 enum QuestProgress {
     Active { count }
@@ -94,7 +92,6 @@ fn main() {
 
     let update = runtime
         .compile_hot_reload_update(
-            SourceId::new(2),
             r#"
 enum QuestProgress {
     Active { count }
@@ -140,7 +137,6 @@ fn hot_reload_runtime_preserves_script_method_dispatch_tables() {
     let engine = Engine::builder().build().expect("engine should build");
     let initial = engine
         .compile_hot_reload_initial(
-            SourceId::new(1),
             r#"
 trait BonusSource {
     fn bonus(self, amount) -> i64;
@@ -173,7 +169,6 @@ fn main() {
 
     let update = runtime
         .compile_hot_reload_update(
-            SourceId::new(2),
             r#"
 trait BonusSource {
     fn bonus(self, amount) -> i64;

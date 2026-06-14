@@ -60,7 +60,7 @@ fn engine_installs_registered_host_native_functions_into_vm() {
         .build()
         .expect("engine should build");
     let program = engine
-        .compile_source(
+        .compile_source_with_id(
             SourceId::new(1),
             r#"
 fn main(player) {
@@ -134,7 +134,7 @@ fn engine_installs_context_host_native_functions_into_vm() {
         .build()
         .expect("engine should build");
     let program = engine
-        .compile_source(
+        .compile_source_with_id(
             SourceId::new(1),
             r#"
 fn main(player) {
@@ -209,7 +209,7 @@ fn context_host_native_read_path_observes_write_through_state() {
         .build()
         .expect("engine should build");
     let program = engine
-        .compile_source(
+        .compile_source_with_id(
             SourceId::new(1),
             r#"
 fn main(player) {
@@ -275,7 +275,7 @@ fn context_host_native_returns_immediate_method_result() {
         .build()
         .expect("engine should build");
     let program = engine
-        .compile_source(
+        .compile_source_with_id(
             SourceId::new(1),
             r#"
 fn main(player) {
@@ -342,7 +342,7 @@ fn context_host_native_can_charge_execution_budget_before_host_access() {
         .build()
         .expect("engine should build");
     let program = engine
-        .compile_source(
+        .compile_source_with_id(
             SourceId::new(1),
             r#"
 fn main(player) {
@@ -405,7 +405,7 @@ fn context_host_native_can_charge_memory_budget_before_host_access() {
         .build()
         .expect("engine should build");
     let program = engine
-        .compile_source(
+        .compile_source_with_id(
             SourceId::new(1),
             r#"
 fn main(player) {
@@ -472,7 +472,7 @@ fn context_host_native_set_path_writes_through() {
         .build()
         .expect("engine should build");
     let program = engine
-        .compile_source(
+        .compile_source_with_id(
             SourceId::new(1),
             r#"
 fn main(player) {
@@ -560,7 +560,7 @@ fn context_host_native_patch_helpers_write_through() {
         .build()
         .expect("engine should build");
     let program = engine
-        .compile_source(
+        .compile_source_with_id(
             SourceId::new(1),
             r#"
 fn main(player) {
@@ -635,7 +635,7 @@ fn context_host_native_repeated_writes_write_through() {
         .build()
         .expect("engine should build");
     let program = engine
-        .compile_source(
+        .compile_source_with_id(
             SourceId::new(1),
             r#"
 fn main(player) {

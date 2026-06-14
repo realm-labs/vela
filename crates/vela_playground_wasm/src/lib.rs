@@ -1,7 +1,7 @@
 use serde::Serialize;
 use serde_json::{Value as JsonValue, json};
 use vela_bytecode::compiler::error::{CompileError, CompileErrorKind};
-use vela_common::{Diagnostic, Severity, SourceId, Span};
+use vela_common::{Diagnostic, Severity, Span};
 use vela_engine::prelude::{
     CallArgs, CallOptions, Capability, EngineBuilder, EngineSourceError, EngineSourceErrorKind,
     Runtime,
@@ -9,7 +9,6 @@ use vela_engine::prelude::{
 use vela_vm::owned_value::OwnedValue;
 use wasm_bindgen::prelude::*;
 
-const PLAYGROUND_SOURCE_ID: SourceId = SourceId::new(1);
 const DEFAULT_INSTRUCTION_BUDGET: u64 = 250_000;
 const DEFAULT_MEMORY_BUDGET: usize = 8 * 1024 * 1024;
 const DEFAULT_CALL_DEPTH: usize = 128;
@@ -65,7 +64,7 @@ fn run_script_inner(source: &str, entry: &str) -> PlaygroundResponse {
         Ok(engine) => engine,
         Err(error) => return source_error_response(error),
     };
-    let program = match engine.compile_source(PLAYGROUND_SOURCE_ID, source) {
+    let program = match engine.compile_source(source) {
         Ok(program) => program,
         Err(error) => return source_error_response(error),
     };
@@ -97,7 +96,7 @@ fn run_script_inner(source: &str, entry: &str) -> PlaygroundResponse {
 fn compile_and_link_program(source: &str) -> Result<(), PlaygroundResponse> {
     let engine = playground_engine().map_err(source_error_response)?;
     let program = engine
-        .compile_source(PLAYGROUND_SOURCE_ID, source)
+        .compile_source(source)
         .map_err(source_error_response)?;
     Runtime::try_new(engine, program)
         .map(drop)

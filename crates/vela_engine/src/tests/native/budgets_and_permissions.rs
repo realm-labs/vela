@@ -75,7 +75,7 @@ fn host_native_error_retains_written_mutations() {
         .build()
         .expect("engine should build");
     let program = engine
-        .compile_source(
+        .compile_source_with_id(
             SourceId::new(1),
             r#"
 fn main(player) {
@@ -149,7 +149,7 @@ fn host_native_error_retains_mutations_without_call_options() {
         .build()
         .expect("engine should build");
     let program = engine
-        .compile_source(
+        .compile_source_with_id(
             SourceId::new(1),
             r#"
 fn main(player) {
@@ -193,7 +193,7 @@ fn main(player) {
 fn runtime_call_enforces_call_options_budget() {
     let engine = Engine::builder().build().expect("engine should build");
     let program = engine
-        .compile_source(
+        .compile_source_with_id(
             SourceId::new(1),
             r#"
 fn main() {
@@ -238,7 +238,7 @@ fn main() {
 fn runtime_call_enforces_call_depth_budget() {
     let engine = Engine::builder().build().expect("engine should build");
     let program = engine
-        .compile_source(
+        .compile_source_with_id(
             SourceId::new(1),
             r#"
 fn recurse() {
@@ -299,7 +299,7 @@ fn engine_allows_pure_native_calls_without_capabilities() {
         .build()
         .expect("engine should build");
     let program = engine
-        .compile_source(
+        .compile_source_with_id(
             SourceId::new(1),
             r#"
 fn main() {
@@ -348,7 +348,7 @@ fn engine_denies_host_native_before_host_access() {
         .build()
         .expect("engine should build");
     let program = engine
-        .compile_source(
+        .compile_source_with_id(
             SourceId::new(1),
             r#"
 fn main(player) {

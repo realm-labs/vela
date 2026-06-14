@@ -1,6 +1,5 @@
 use std::error::Error;
 
-use vela_common::SourceId;
 use vela_engine::prelude::*;
 
 fn main() -> Result<(), Box<dyn Error>> {
@@ -13,7 +12,7 @@ fn main() -> Result<(), Box<dyn Error>> {
             scores,
         )
         .build()?;
-    let program = engine.compile_source(SourceId::new(1), include_str!("main.vela"))?;
+    let program = engine.compile_source(include_str!("main.vela"))?;
     let mut runtime = Runtime::new(engine, program);
 
     let output = runtime.call("main", CallArgs::new(), CallOptions::unbounded())?;

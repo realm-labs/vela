@@ -25,7 +25,11 @@ impl Engine {
         HotReloadAbi::from_registry(&self.registry())
     }
 
-    pub fn compile_hot_reload_initial(
+    pub fn compile_hot_reload_initial(&self, text: &str) -> HotReloadResult<ProgramVersion> {
+        self.compile_hot_reload_initial_with_id(SourceId::new(1), text)
+    }
+
+    pub(crate) fn compile_hot_reload_initial_with_id(
         &self,
         source: SourceId,
         text: &str,
@@ -48,6 +52,14 @@ impl Engine {
     }
 
     pub fn compile_hot_reload_update(
+        &self,
+        previous: &ProgramVersion,
+        text: &str,
+    ) -> HotReloadResult<HotUpdate> {
+        self.compile_hot_reload_update_with_id(previous, SourceId::new(1), text)
+    }
+
+    pub(crate) fn compile_hot_reload_update_with_id(
         &self,
         previous: &ProgramVersion,
         source: SourceId,
@@ -77,7 +89,7 @@ impl Engine {
         path: impl AsRef<Path>,
     ) -> EngineHotReloadSourceResult<ProgramVersion> {
         let text = read_source_text(path.as_ref()).map_err(EngineHotReloadSourceError::source)?;
-        self.compile_hot_reload_initial(SourceId::new(1), &text)
+        self.compile_hot_reload_initial(&text)
             .map_err(EngineHotReloadSourceError::hot_reload)
     }
 
@@ -87,7 +99,7 @@ impl Engine {
         path: impl AsRef<Path>,
     ) -> EngineHotReloadSourceResult<HotUpdate> {
         let text = read_source_text(path.as_ref()).map_err(EngineHotReloadSourceError::source)?;
-        self.compile_hot_reload_update(previous, SourceId::new(1), &text)
+        self.compile_hot_reload_update(previous, &text)
             .map_err(EngineHotReloadSourceError::hot_reload)
     }
 

@@ -94,7 +94,7 @@ fn engine_installs_permissioned_reflection_natives() {
         .build()
         .expect("engine should build");
     let program = engine
-        .compile_source(
+        .compile_source_with_id(
             SourceId::new(1),
             r#"
 fn main(player) {
@@ -143,7 +143,7 @@ fn engine_compiler_keeps_reflect_module_calls_off_host_method_lowering() {
         .build()
         .expect("engine should build");
     let program = engine
-        .compile_source(
+        .compile_source_with_id(
             SourceId::new(1),
             r#"
 fn main(player: Player) {
@@ -195,7 +195,7 @@ fn public_reflection_metadata_lists_do_not_need_engine_permissions() {
         .build()
         .expect("engine should build");
     let program = engine
-        .compile_source(
+        .compile_source_with_id(
             SourceId::new(1),
             r#"
 fn main() {
@@ -246,7 +246,7 @@ fn engine_missing_permissions_hide_reflection_metadata_lists() {
         .build()
         .expect("engine should build");
     let program = engine
-        .compile_source(
+        .compile_source_with_id(
             SourceId::new(1),
             r#"
 fn main() {

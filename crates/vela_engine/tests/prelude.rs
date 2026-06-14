@@ -209,7 +209,7 @@ fn prelude_imports_cover_source_and_reload_results() {
     accepts_vela_method(None);
     accepts_call_target("main");
     accepts_method_target("score");
-    accepts_hot_reload_result(engine.compile_hot_reload_initial(SourceId::new(2), "fn main() {}"));
+    accepts_hot_reload_result(engine.compile_hot_reload_initial("fn main() {}"));
     accepts_report_diagnostics(Vec::new());
     accepts_report_detail(None);
     accepts_report_lines(Vec::new());
@@ -218,7 +218,6 @@ fn prelude_imports_cover_source_and_reload_results() {
 
     let version = engine
         .compile_hot_reload_initial(
-            SourceId::new(3),
             r#"
 struct Player {
     score

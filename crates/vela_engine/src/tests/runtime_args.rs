@@ -59,7 +59,7 @@ fn runtime_and_runtime_values_are_send() {
 fn runtime_call_executes_program_image_code_view() {
     let engine = Engine::builder().build().expect("engine should build");
     let program = engine
-        .compile_source(
+        .compile_source_with_id(
             SourceId::new(1),
             r#"
 trait BonusSource { fn bonus(self, amount) -> i64; }
@@ -98,7 +98,7 @@ fn main() {
 fn runtime_call_checks_public_entry_parameter_contracts() {
     let engine = Engine::builder().build().expect("engine should build");
     let program = engine
-        .compile_source(
+        .compile_source_with_id(
             SourceId::new(1),
             r#"
 fn main(value: i64) {
@@ -421,7 +421,7 @@ fn runtime_call_args_bind_named_values_by_function_params() {
         .build()
         .expect("engine should build");
     let program = engine
-        .compile_source(
+        .compile_source_with_id(
             SourceId::new(1),
             r#"
 fn main(player: Player, amount, bonus = 1) {
@@ -468,7 +468,7 @@ fn main(player: Player, amount, bonus = 1) {
 fn runtime_call_args_accept_positional_values() {
     let engine = Engine::builder().build().expect("engine should build");
     let program = engine
-        .compile_source(
+        .compile_source_with_id(
             SourceId::new(1),
             r#"
 fn main(left, right) {
@@ -505,7 +505,7 @@ fn main(left, right) {
 fn runtime_call_args_reject_duplicate_named_values() {
     let engine = Engine::builder().build().expect("engine should build");
     let program = engine
-        .compile_source(SourceId::new(1), "fn main(value) { return value; }")
+        .compile_source_with_id(SourceId::new(1), "fn main(value) { return value; }")
         .expect("program should compile");
     let mut runtime = Runtime::new(engine, program);
     let mut adapter = MockStateAdapter::new();
@@ -536,7 +536,7 @@ fn runtime_call_args_reject_duplicate_named_values() {
 fn runtime_call_args_reject_unknown_named_values() {
     let engine = Engine::builder().build().expect("engine should build");
     let program = engine
-        .compile_source(SourceId::new(1), "fn main(value) { return value; }")
+        .compile_source_with_id(SourceId::new(1), "fn main(value) { return value; }")
         .expect("program should compile");
     let mut runtime = Runtime::new(engine, program);
     let mut adapter = MockStateAdapter::new();
@@ -565,7 +565,7 @@ fn runtime_call_args_reject_unknown_named_values() {
 fn runtime_call_args_reject_mixed_modes() {
     let engine = Engine::builder().build().expect("engine should build");
     let program = engine
-        .compile_source(SourceId::new(1), "fn main(value) { return value; }")
+        .compile_source_with_id(SourceId::new(1), "fn main(value) { return value; }")
         .expect("program should compile");
     let mut runtime = Runtime::new(engine, program);
     let mut adapter = MockStateAdapter::new();
@@ -597,7 +597,7 @@ fn runtime_call_args_host_mut_writes_through_to_rust_object() {
         .build()
         .expect("engine should build");
     let program = engine
-        .compile_source(
+        .compile_source_with_id(
             SourceId::new(1),
             r#"
 fn main(player: Player, amount) {
@@ -633,7 +633,7 @@ fn runtime_call_args_host_mut_writes_string_key_map_path_to_rust_object() {
         .build()
         .expect("engine should build");
     let program = engine
-        .compile_source(
+        .compile_source_with_id(
             SourceId::new(1),
             r#"
 fn main(player: Player, amount) {
@@ -700,7 +700,7 @@ fn runtime_call_args_host_mut_dispatches_root_and_child_host_methods() {
         .build()
         .expect("engine should build");
     let program = engine
-        .compile_source(
+        .compile_source_with_id(
             SourceId::new(1),
             r#"
 fn main(player: Player) {
@@ -737,7 +737,7 @@ fn runtime_call_returns_runtime_value() {
         .build()
         .expect("engine should build");
     let program = engine
-        .compile_source(
+        .compile_source_with_id(
             SourceId::new(1),
             r#"
 fn main(player: Player, amount) {
@@ -771,7 +771,7 @@ fn main(player: Player, amount) {
 fn runtime_cached_entry_calls_function() {
     let engine = Engine::builder().build().expect("engine should build");
     let program = engine
-        .compile_source(
+        .compile_source_with_id(
             SourceId::new(1),
             r#"
 fn main(amount, multiplier = 2) {
@@ -820,10 +820,10 @@ fn main(amount) {
 }
 "#;
     let program_a = engine
-        .compile_source(SourceId::new(1), source)
+        .compile_source_with_id(SourceId::new(1), source)
         .expect("program should compile");
     let program_b = engine
-        .compile_source(SourceId::new(2), source)
+        .compile_source_with_id(SourceId::new(2), source)
         .expect("program should compile");
     let runtime_a = Runtime::new(engine.clone(), program_a);
     let mut runtime_b = Runtime::new(engine, program_b);
@@ -849,7 +849,7 @@ fn main(amount) {
 fn runtime_call_method_on_runtime_value_by_name_and_cached_method() {
     let engine = Engine::builder().build().expect("engine should build");
     let program = engine
-        .compile_source(
+        .compile_source_with_id(
             SourceId::new(1),
             r#"
 trait BonusSource {
@@ -933,10 +933,10 @@ fn make_reward(gold) {
 }
 "#;
     let program_a = engine
-        .compile_source(SourceId::new(1), source)
+        .compile_source_with_id(SourceId::new(1), source)
         .expect("program should compile");
     let program_b = engine
-        .compile_source(SourceId::new(2), source)
+        .compile_source_with_id(SourceId::new(2), source)
         .expect("program should compile");
     let mut runtime_a = Runtime::new(engine.clone(), program_a);
     let mut runtime_b = Runtime::new(engine, program_b);
@@ -982,7 +982,7 @@ fn runtime_call_args_safe_point_preserves_direct_host_bindings() {
         .build()
         .expect("engine should build");
     let program = engine
-        .compile_source(
+        .compile_source_with_id(
             SourceId::new(1),
             r#"
 fn main(player: Player) {
@@ -1024,7 +1024,7 @@ fn runtime_call_args_host_ref_denies_writes_to_rust_object() {
         .build()
         .expect("engine should build");
     let program = engine
-        .compile_source(
+        .compile_source_with_id(
             SourceId::new(1),
             r#"
 fn main(player: Player) {

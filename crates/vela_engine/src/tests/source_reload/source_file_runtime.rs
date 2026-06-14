@@ -7,7 +7,7 @@ fn runtime_compiles_hot_reload_update_from_active_version() {
         .build()
         .expect("engine should build");
     let initial = engine
-        .compile_hot_reload_initial(SourceId::new(1), "fn main() { return 1; }")
+        .compile_hot_reload_initial_with_id(SourceId::new(1), "fn main() { return 1; }")
         .expect("initial hot reload compile");
     assert!(initial.linked_program().function_count() > 0);
     let mut runtime = Runtime::from_hot_reload_version(engine, initial);
@@ -15,7 +15,7 @@ fn runtime_compiles_hot_reload_update_from_active_version() {
     let mut tx = HostAccess::new();
 
     let first_update = runtime
-        .compile_hot_reload_update(
+        .compile_hot_reload_update_with_id(
             SourceId::new(2),
             r#"
 fn helper() {
@@ -48,7 +48,7 @@ fn main() {
     );
 
     let rejected_update = runtime
-        .compile_hot_reload_update(SourceId::new(3), "fn main() { return 3; }")
+        .compile_hot_reload_update_with_id(SourceId::new(3), "fn main() { return 3; }")
         .expect("runtime should be hot-reload enabled");
     let error = rejected_update.expect_err("active helper removal should be rejected");
     assert!(matches!(
@@ -64,7 +64,7 @@ fn runtime_compiles_hot_reload_update_file_from_active_version() {
         .build()
         .expect("engine should build");
     let initial = engine
-        .compile_hot_reload_initial(SourceId::new(1), "fn main() { return 1; }")
+        .compile_hot_reload_initial_with_id(SourceId::new(1), "fn main() { return 1; }")
         .expect("initial hot reload compile");
     let mut runtime = Runtime::from_hot_reload_version(engine, initial);
     let unique = std::time::SystemTime::now()

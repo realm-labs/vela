@@ -17,7 +17,7 @@ use crate::runtime::{CallArgs, CallOptions, Runtime};
 fn linked_method_dispatch_inline_cache_populates_for_script_methods() {
     let engine = Engine::builder().build().expect("engine should build");
     let program = engine
-        .compile_source(
+        .compile_source_with_id(
             SourceId::new(1),
             r#"
 struct Counter { amount: i64 }
@@ -67,7 +67,7 @@ fn read_bonus() {
 fn linked_method_dispatch_inline_cache_misses_wrong_dispatch_guard() {
     let engine = Engine::builder().build().expect("engine should build");
     let program = engine
-        .compile_source(
+        .compile_source_with_id(
             SourceId::new(1),
             r#"
 struct Counter { amount: i64 }
@@ -123,7 +123,7 @@ fn read_bonus() {
 fn linked_method_dispatch_inline_cache_misses_wrong_script_target_guard() {
     let engine = Engine::builder().build().expect("engine should build");
     let program = engine
-        .compile_source(
+        .compile_source_with_id(
             SourceId::new(1),
             r#"
 struct Counter { amount: i64 }
@@ -183,7 +183,7 @@ fn read_bonus() {
 fn accepted_hot_reload_clears_linked_method_dispatch_inline_caches() {
     let engine = Engine::builder().build().expect("engine should build");
     let initial = engine
-        .compile_hot_reload_initial(
+        .compile_hot_reload_initial_with_id(
             SourceId::new(1),
             r#"
 struct Counter { amount: i64 }
@@ -220,7 +220,7 @@ fn read_bonus() {
     );
 
     let update = runtime
-        .compile_hot_reload_update(
+        .compile_hot_reload_update_with_id(
             SourceId::new(2),
             r#"
 struct Counter { amount: i64 }
@@ -273,7 +273,7 @@ fn read_bonus() {
 fn rejected_hot_reload_preserves_linked_method_dispatch_inline_caches() {
     let engine = Engine::builder().build().expect("engine should build");
     let initial = engine
-        .compile_hot_reload_initial(
+        .compile_hot_reload_initial_with_id(
             SourceId::new(1),
             r#"
 struct Counter { amount: i64 }
@@ -307,7 +307,7 @@ pub fn read_bonus() -> i64 {
         .expect("initial method call should populate its inline cache");
 
     let update = runtime
-        .compile_hot_reload_update(
+        .compile_hot_reload_update_with_id(
             SourceId::new(2),
             r#"
 struct Counter { amount: i64 }
@@ -363,7 +363,7 @@ fn accepted_hot_reload_clears_callback_value_method_inline_caches() {
         .build()
         .expect("engine should build");
     let initial = engine
-        .compile_hot_reload_initial(
+        .compile_hot_reload_initial_with_id(
             SourceId::new(1),
             r#"
 fn read_match() {
@@ -382,7 +382,7 @@ fn read_match() {
     assert_callback_value_method_cache(&runtime, initial_call.cache_site);
 
     let update = runtime
-        .compile_hot_reload_update(
+        .compile_hot_reload_update_with_id(
             SourceId::new(2),
             r#"
 fn read_match() {
@@ -420,7 +420,7 @@ fn accepted_hot_reload_clears_iterator_adapter_inline_caches() {
         .build()
         .expect("engine should build");
     let initial = engine
-        .compile_hot_reload_initial(
+        .compile_hot_reload_initial_with_id(
             SourceId::new(1),
             r#"
 fn read_total() {
@@ -450,7 +450,7 @@ fn read_total() {
     );
 
     let update = runtime
-        .compile_hot_reload_update(
+        .compile_hot_reload_update_with_id(
             SourceId::new(2),
             r#"
 fn read_total() {

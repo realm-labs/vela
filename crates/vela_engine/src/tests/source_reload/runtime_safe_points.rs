@@ -192,7 +192,7 @@ fn engine_exposes_registry_hot_reload_abi() {
         .build()
         .expect("engine should build");
     let initial = engine
-        .compile_hot_reload_initial(
+        .compile_hot_reload_initial_with_id(
             SourceId::new(1),
             r#"
 fn main(player: Player) {
@@ -203,7 +203,7 @@ fn main(player: Player) {
         )
         .expect("initial hot reload compile");
     let update = engine
-        .compile_hot_reload_update(
+        .compile_hot_reload_update_with_id(
             &initial,
             SourceId::new(2),
             r#"
@@ -248,11 +248,11 @@ fn runtime_applies_engine_hot_reload_updates() {
         .build()
         .expect("engine should build");
     let initial = engine
-        .compile_hot_reload_initial(SourceId::new(1), "fn main() { return 1; }")
+        .compile_hot_reload_initial_with_id(SourceId::new(1), "fn main() { return 1; }")
         .expect("initial hot reload compile");
     assert!(initial.linked_program().function_count() > 0);
     let update = engine
-        .compile_hot_reload_update(&initial, SourceId::new(2), "fn main() { return 2; }")
+        .compile_hot_reload_update_with_id(&initial, SourceId::new(2), "fn main() { return 2; }")
         .expect("compatible update should compile");
     assert!(update.linked_program().function_count() > 0);
     let mut runtime = Runtime::from_hot_reload_version(engine, initial);
@@ -287,7 +287,7 @@ fn runtime_rebinds_script_globals_after_reload_image_swap() {
         .build()
         .expect("engine should build");
     let initial = engine
-        .compile_hot_reload_initial(
+        .compile_hot_reload_initial_with_id(
             SourceId::new(1),
             r#"
 struct ServerState {
@@ -318,7 +318,6 @@ fn bump(amount) {
 
     runtime
         .stage_hot_reload_update(
-            SourceId::new(2),
             r#"
 struct ServerState {
     level: i64,
@@ -393,10 +392,10 @@ fn runtime_stages_engine_hot_reload_until_check_reload_safe_point() {
         .build()
         .expect("engine should build");
     let initial = engine
-        .compile_hot_reload_initial(SourceId::new(1), "fn main() { return 1; }")
+        .compile_hot_reload_initial_with_id(SourceId::new(1), "fn main() { return 1; }")
         .expect("initial hot reload compile");
     let update = engine
-        .compile_hot_reload_update(&initial, SourceId::new(2), "fn main() { return 2; }")
+        .compile_hot_reload_update_with_id(&initial, SourceId::new(2), "fn main() { return 2; }")
         .expect("compatible update should compile");
     let mut runtime = Runtime::from_hot_reload_version(engine, initial);
     let mut adapter = MockStateAdapter::new();
@@ -448,14 +447,14 @@ fn runtime_stages_source_text_hot_reload_until_check_reload_safe_point() {
         .build()
         .expect("engine should build");
     let initial = engine
-        .compile_hot_reload_initial(SourceId::new(1), "fn main() { return 1; }")
+        .compile_hot_reload_initial_with_id(SourceId::new(1), "fn main() { return 1; }")
         .expect("initial hot reload compile");
     let mut runtime = Runtime::from_hot_reload_version(engine, initial);
     let mut adapter = MockStateAdapter::new();
     let mut tx = HostAccess::new();
 
     runtime
-        .stage_hot_reload_update(SourceId::new(2), "fn main() { return 2; }")
+        .stage_hot_reload_update("fn main() { return 2; }")
         .expect("stage source text update");
     assert!(
         runtime
@@ -487,14 +486,14 @@ fn runtime_stages_source_text_hot_reload_rejection_until_check_reload_safe_point
         .build()
         .expect("engine should build");
     let initial = engine
-        .compile_hot_reload_initial(SourceId::new(1), "pub fn main() -> i64 { return 1; }")
+        .compile_hot_reload_initial_with_id(SourceId::new(1), "pub fn main() -> i64 { return 1; }")
         .expect("initial hot reload compile");
     let mut runtime = Runtime::from_hot_reload_version(engine, initial);
     let mut adapter = MockStateAdapter::new();
     let mut tx = HostAccess::new();
 
     runtime
-        .stage_hot_reload_update(SourceId::new(2), "pub fn main() -> f64 { return 2.0; }")
+        .stage_hot_reload_update("pub fn main() -> f64 { return 2.0; }")
         .expect("stage rejected source text update");
     assert_eq!(
         runtime.call_raw("main", &[], CallOptions::unbounded(), &mut adapter, &mut tx),
@@ -533,10 +532,10 @@ fn runtime_tick_boundary_safe_point_consumes_staged_reload() {
         .build()
         .expect("engine should build");
     let initial = engine
-        .compile_hot_reload_initial(SourceId::new(1), "fn main() { return 1; }")
+        .compile_hot_reload_initial_with_id(SourceId::new(1), "fn main() { return 1; }")
         .expect("initial hot reload compile");
     let update = engine
-        .compile_hot_reload_update(&initial, SourceId::new(2), "fn main() { return 2; }")
+        .compile_hot_reload_update_with_id(&initial, SourceId::new(2), "fn main() { return 2; }")
         .expect("compatible update should compile");
     let mut runtime = Runtime::from_hot_reload_version(engine, initial);
     let mut adapter = MockStateAdapter::new();
@@ -581,10 +580,10 @@ fn runtime_tick_boundary_safe_point_reports_staged_reload_rejection() {
         .build()
         .expect("engine should build");
     let initial = engine
-        .compile_hot_reload_initial(SourceId::new(1), "pub fn main() -> i64 { return 1; }")
+        .compile_hot_reload_initial_with_id(SourceId::new(1), "pub fn main() -> i64 { return 1; }")
         .expect("initial hot reload compile");
     let update = engine
-        .compile_hot_reload_update(
+        .compile_hot_reload_update_with_id(
             &initial,
             SourceId::new(2),
             "pub fn main() -> f64 { return 2.0; }",
@@ -855,10 +854,10 @@ fn runtime_call_at_event_end_safe_point_consumes_staged_reload_after_call() {
         .build()
         .expect("engine should build");
     let initial = engine
-        .compile_hot_reload_initial(SourceId::new(1), "fn main() { return 1; }")
+        .compile_hot_reload_initial_with_id(SourceId::new(1), "fn main() { return 1; }")
         .expect("initial hot reload compile");
     let update = engine
-        .compile_hot_reload_update(&initial, SourceId::new(2), "fn main() { return 2; }")
+        .compile_hot_reload_update_with_id(&initial, SourceId::new(2), "fn main() { return 2; }")
         .expect("compatible update should compile");
     let mut runtime = Runtime::from_hot_reload_version(engine, initial);
     let mut adapter = MockStateAdapter::new();
@@ -902,7 +901,7 @@ fn runtime_event_end_safe_point_keeps_nested_calls_on_old_version_until_return()
         .build()
         .expect("engine should build");
     let initial = engine
-        .compile_hot_reload_initial(
+        .compile_hot_reload_initial_with_id(
             SourceId::new(1),
             r#"
 fn helper() {
@@ -916,7 +915,7 @@ fn main() {
         )
         .expect("initial hot reload compile");
     let update = engine
-        .compile_hot_reload_update(
+        .compile_hot_reload_update_with_id(
             &initial,
             SourceId::new(2),
             r#"
@@ -975,10 +974,10 @@ fn runtime_call_at_event_end_safe_point_reports_staged_reload_rejection() {
         .build()
         .expect("engine should build");
     let initial = engine
-        .compile_hot_reload_initial(SourceId::new(1), "pub fn main() -> i64 { return 1; }")
+        .compile_hot_reload_initial_with_id(SourceId::new(1), "pub fn main() -> i64 { return 1; }")
         .expect("initial hot reload compile");
     let update = engine
-        .compile_hot_reload_update(
+        .compile_hot_reload_update_with_id(
             &initial,
             SourceId::new(2),
             "pub fn main() -> f64 { return 2.0; }",
@@ -1039,7 +1038,7 @@ fn runtime_checks_reload_at_explicit_safe_point() {
         .build()
         .expect("engine should build");
     let initial = engine
-        .compile_hot_reload_initial(
+        .compile_hot_reload_initial_with_id(
             SourceId::new(1),
             r#"
 fn main(player: Player) {
@@ -1050,7 +1049,7 @@ fn main(player: Player) {
         )
         .expect("initial hot reload compile");
     let update = engine
-        .compile_hot_reload_update(
+        .compile_hot_reload_update_with_id(
             &initial,
             SourceId::new(2),
             r#"
@@ -1113,7 +1112,7 @@ fn runtime_write_error_does_not_consume_pending_reload() {
         .build()
         .expect("engine should build");
     let initial = engine
-        .compile_hot_reload_initial(
+        .compile_hot_reload_initial_with_id(
             SourceId::new(1),
             r#"
 fn main(player: Player) {
@@ -1124,7 +1123,7 @@ fn main(player: Player) {
         )
         .expect("initial hot reload compile");
     let update = engine
-        .compile_hot_reload_update(
+        .compile_hot_reload_update_with_id(
             &initial,
             SourceId::new(2),
             r#"

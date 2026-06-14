@@ -5,7 +5,7 @@ use crate::engine::Engine;
 
 fn run_linked_program(engine: &Engine, source: &str) -> OwnedValue {
     let program = engine
-        .compile_source(SourceId::new(1), source)
+        .compile_source_with_id(SourceId::new(1), source)
         .expect("string test program should compile");
     let linked = engine
         .link_program(&program)

@@ -58,7 +58,7 @@ fn engine_registers_typed_host_native_functions() {
         .build()
         .expect("engine should build");
     let program = engine
-        .compile_source(
+        .compile_source_with_id(
             SourceId::new(1),
             r#"
 fn main(player) {
@@ -100,7 +100,7 @@ fn typed_host_native_conversion_errors_before_host_write() {
         .build()
         .expect("engine should build");
     let program = engine
-        .compile_source(
+        .compile_source_with_id(
             SourceId::new(1),
             r#"
 fn main() {
@@ -145,7 +145,7 @@ fn typed_host_native_maps_host_result_errors() {
         .build()
         .expect("engine should build");
     let program = engine
-        .compile_source(
+        .compile_source_with_id(
             SourceId::new(1),
             r#"
 fn main(player) {
@@ -227,7 +227,7 @@ fn engine_registers_four_arg_typed_host_native_functions() {
         .build()
         .expect("engine should build");
     let program = engine
-        .compile_source(
+        .compile_source_with_id(
             SourceId::new(1),
             r#"
 fn main(player) {
@@ -273,7 +273,7 @@ fn engine_registers_five_arg_typed_host_native_functions() {
         .build()
         .expect("engine should build");
     let program = engine
-        .compile_source(
+        .compile_source_with_id(
             SourceId::new(1),
             r#"
 fn main(player) {
@@ -320,7 +320,7 @@ fn engine_registers_six_arg_typed_host_native_functions() {
         .build()
         .expect("engine should build");
     let program = engine
-        .compile_source(
+        .compile_source_with_id(
             SourceId::new(1),
             r#"
 fn main(player) {
@@ -417,7 +417,7 @@ fn engine_registers_typed_context_host_native_functions() {
         .build()
         .expect("engine should build");
     let program = engine
-        .compile_source(
+        .compile_source_with_id(
             SourceId::new(1),
             r#"
 fn main(player) {
@@ -458,7 +458,7 @@ fn typed_context_host_native_conversion_errors_before_host_write() {
         .build()
         .expect("engine should build");
     let program = engine
-        .compile_source(
+        .compile_source_with_id(
             SourceId::new(1),
             r#"
 fn main() {
@@ -506,7 +506,7 @@ fn typed_context_host_native_maps_host_result_errors() {
         .build()
         .expect("engine should build");
     let program = engine
-        .compile_source(
+        .compile_source_with_id(
             SourceId::new(1),
             r#"
 fn main(player) {
@@ -588,7 +588,7 @@ fn engine_registers_four_arg_typed_context_host_native_functions() {
         .build()
         .expect("engine should build");
     let program = engine
-        .compile_source(
+        .compile_source_with_id(
             SourceId::new(1),
             r#"
 fn main(player) {
@@ -634,7 +634,7 @@ fn engine_registers_five_arg_typed_context_host_native_functions() {
         .build()
         .expect("engine should build");
     let program = engine
-        .compile_source(
+        .compile_source_with_id(
             SourceId::new(1),
             r#"
 fn main(player) {
@@ -681,7 +681,7 @@ fn engine_registers_six_arg_typed_context_host_native_functions() {
         .build()
         .expect("engine should build");
     let program = engine
-        .compile_source(
+        .compile_source_with_id(
             SourceId::new(1),
             r#"
 fn main(player) {

@@ -49,7 +49,7 @@ fn engine_installs_registered_native_functions_into_vm() {
         .build()
         .expect("engine should build");
     let program = engine
-        .compile_source(
+        .compile_source_with_id(
             SourceId::new(1),
             r#"
 fn main() {
@@ -89,7 +89,7 @@ fn engine_compiler_options_lower_named_registered_native_arguments() {
         .build()
         .expect("engine should build");
     let program = engine
-        .compile_source(
+        .compile_source_with_id(
             SourceId::new(1),
             r#"
 fn main() {
@@ -112,7 +112,7 @@ fn engine_compiler_options_lower_named_standard_native_arguments() {
         .build()
         .expect("engine should build with standard natives");
     let program = engine
-        .compile_source(
+        .compile_source_with_id(
             SourceId::new(1),
             r#"
 fn main() {
@@ -135,7 +135,7 @@ fn engine_compiler_options_emit_standard_native_ids() {
         .build()
         .expect("engine should build with standard natives");
     let program = engine
-        .compile_source(
+        .compile_source_with_id(
             SourceId::new(1),
             r#"
 fn main() {
@@ -170,7 +170,7 @@ fn engine_compile_source_rejects_unregistered_native_function() {
         .build()
         .expect("engine should build without native functions");
     let error = engine
-        .compile_source(
+        .compile_source_with_id(
             SourceId::new(1),
             r#"
 fn main() {
@@ -202,7 +202,7 @@ fn engine_compiler_options_emit_standard_value_method_ids() {
         .build()
         .expect("engine should build with standard natives");
     let program = engine
-        .compile_source(
+        .compile_source_with_id(
             SourceId::new(1),
             r#"
 fn main() {
@@ -233,7 +233,7 @@ fn engine_compiler_options_emit_standard_string_predicate_method_ids() {
         .build()
         .expect("engine should build with standard natives");
     let program = engine
-        .compile_source(
+        .compile_source_with_id(
             SourceId::new(1),
             r#"
 fn main() {
@@ -269,7 +269,7 @@ fn engine_compiler_options_emit_standard_string_transform_method_ids() {
         .build()
         .expect("engine should build with standard natives");
     let program = engine
-        .compile_source(
+        .compile_source_with_id(
             SourceId::new(1),
             r#"
 fn main() {
@@ -310,7 +310,7 @@ fn engine_compiler_options_emit_standard_string_argument_transform_method_ids() 
         .build()
         .expect("engine should build with standard natives");
     let program = engine
-        .compile_source(
+        .compile_source_with_id(
             SourceId::new(1),
             r#"
 fn main() {
@@ -347,7 +347,7 @@ fn engine_compiler_options_emit_standard_string_option_method_ids() {
         .build()
         .expect("engine should build with standard natives");
     let program = engine
-        .compile_source(
+        .compile_source_with_id(
             SourceId::new(1),
             r#"
 fn main() {
@@ -390,7 +390,7 @@ fn engine_compiler_options_emit_standard_string_split_method_ids() {
         .build()
         .expect("engine should build with standard natives");
     let program = engine
-        .compile_source(
+        .compile_source_with_id(
             SourceId::new(1),
             r#"
 fn main() {
@@ -449,7 +449,7 @@ fn engine_links_standard_methods_after_indexed_collection_shapes() {
         ),
     ] {
         let program = engine
-            .compile_source(source, text)
+            .compile_source_with_id(source, text)
             .expect("example stdlib method chain should compile");
 
         engine
@@ -465,7 +465,7 @@ fn engine_compiler_options_emit_standard_string_parse_method_ids() {
         .build()
         .expect("engine should build with standard natives");
     let program = engine
-        .compile_source(
+        .compile_source_with_id(
             SourceId::new(1),
             r#"
 fn main() {
@@ -507,7 +507,7 @@ fn engine_compiler_options_emit_standard_range_method_ids() {
         .build()
         .expect("engine should build with standard natives");
     let program = engine
-        .compile_source(
+        .compile_source_with_id(
             SourceId::new(1),
             r#"
 fn main() {
@@ -538,7 +538,7 @@ fn engine_compiler_options_emit_standard_option_result_method_ids() {
         .build()
         .expect("engine should build with standard natives");
     let program = engine
-        .compile_source(
+        .compile_source_with_id(
             SourceId::new(1),
             r#"
 fn main() {
@@ -573,7 +573,7 @@ fn engine_compile_source_emits_standard_value_method_ids_from_registry() {
         .build()
         .expect("engine should build with standard natives");
     let program = engine
-        .compile_source(
+        .compile_source_with_id(
             SourceId::new(1),
             r#"
 fn main() {
@@ -623,7 +623,7 @@ fn engine_compiler_options_emit_standard_collection_method_ids() {
         .build()
         .expect("engine should build with standard natives");
     let program = engine
-        .compile_source(
+        .compile_source_with_id(
             SourceId::new(1),
             r#"
 fn main() {
@@ -694,7 +694,7 @@ fn engine_compiler_options_emit_standard_array_lookup_method_ids() {
         .build()
         .expect("engine should build with standard natives");
     let program = engine
-        .compile_source(
+        .compile_source_with_id(
             SourceId::new(1),
             r#"
 fn main() {
@@ -731,7 +731,7 @@ fn engine_compiler_options_emit_standard_array_transform_method_ids() {
         .build()
         .expect("engine should build with standard natives");
     let program = engine
-        .compile_source(
+        .compile_source_with_id(
             SourceId::new(1),
             r#"
 fn main() {
@@ -770,7 +770,7 @@ fn engine_compiler_options_lower_named_standard_value_method_arguments() {
         .build()
         .expect("engine should build with standard natives");
     let program = engine
-        .compile_source(
+        .compile_source_with_id(
             SourceId::new(1),
             r#"
 fn main() {
@@ -794,7 +794,7 @@ fn engine_compiler_options_lower_receiver_specific_named_standard_value_method_a
         .build()
         .expect("engine should build with standard natives");
     let program = engine
-        .compile_source(
+        .compile_source_with_id(
             SourceId::new(1),
             r#"
 fn main() {
@@ -817,7 +817,7 @@ fn engine_compiler_options_lower_local_receiver_named_standard_value_method_argu
         .build()
         .expect("engine should build with standard natives");
     let program = engine
-        .compile_source(
+        .compile_source_with_id(
             SourceId::new(1),
             r#"
 fn main(text: string) {
@@ -849,7 +849,7 @@ fn engine_compiler_options_preserve_unknown_receiver_named_method_arguments() {
         .build()
         .expect("engine should build with standard natives");
     let program = engine
-        .compile_source(
+        .compile_source_with_id(
             SourceId::new(1),
             r#"
 fn main(value) {
@@ -882,8 +882,7 @@ fn engine_builder_installs_standard_natives_into_runtime() {
         .build()
         .expect("engine should build with standard natives");
     let program = engine
-        .compile_source(
-        SourceId::new(1),
+        .compile_source_with_id(SourceId::new(1),
         r#"
 fn main() {
     set::from_array(["fire", "ice", "fire"]);

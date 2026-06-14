@@ -57,7 +57,7 @@ fn runtime_call_writes_through_host_method_and_updates_adapter() {
         .build()
         .expect("engine should build");
     let program = engine
-        .compile_source(
+        .compile_source_with_id(
             SourceId::new(1),
             r#"
 fn main(player: Player) {
@@ -106,7 +106,7 @@ fn engine_compiler_options_lower_registered_host_methods() {
         .build()
         .expect("engine should build");
     let program = engine
-        .compile_source(
+        .compile_source_with_id(
             SourceId::new(1),
             r#"
 fn main(player: Player) {
@@ -193,7 +193,7 @@ fn engine_compiler_options_lower_registered_host_field_methods() {
         .build()
         .expect("engine should build");
     let program = engine
-        .compile_source(
+        .compile_source_with_id(
             SourceId::new(1),
             r#"
 fn main(player: Player) {
@@ -244,7 +244,7 @@ fn engine_compiler_options_lower_registered_host_variant_fields() {
         .build()
         .expect("engine should build");
     let program = engine
-        .compile_source(
+        .compile_source_with_id(
             SourceId::new(1),
             r#"
 fn main(player: Player) {
@@ -298,7 +298,7 @@ fn engine_compiler_options_disambiguate_host_methods_by_receiver_type() {
         .build()
         .expect("engine should build");
     let program = engine
-        .compile_source(
+        .compile_source_with_id(
             SourceId::new(1),
             r#"
 fn main(player: Player, monster: Monster) {
@@ -382,7 +382,7 @@ fn engine_registers_callable_native_methods_for_host_paths() {
     assert_eq!(reflected_method.attrs.get("domain"), Some("gameplay"));
     assert_eq!(reflected_method.attrs.get("effect"), Some("reward"));
     let program = engine
-        .compile_source(
+        .compile_source_with_id(
             SourceId::new(1),
             r#"
 fn main(player: Player) {
@@ -1057,7 +1057,7 @@ fn engine_installs_type_registry_for_host_ref_script_impl_dispatch() {
         .build()
         .expect("engine should build");
     let program = engine
-        .compile_source(
+        .compile_source_with_id(
             SourceId::new(1),
             r#"
 trait BonusSource { fn bonus(self, amount) -> i64; }

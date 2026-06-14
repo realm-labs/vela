@@ -50,7 +50,7 @@ fn engine_reflect_call_invokes_reflect_callable_native_functions() {
         .build()
         .expect("engine should build");
     let program = engine
-        .compile_source(
+        .compile_source_with_id(
             SourceId::new(1),
             r#"
 fn main() {
@@ -87,7 +87,7 @@ fn engine_reflect_call_preserves_native_iterator_returns() {
         .build()
         .expect("engine should build");
     let program = engine
-        .compile_source(
+        .compile_source_with_id(
             SourceId::new(1),
             r#"
 fn main() {
@@ -129,7 +129,7 @@ fn engine_reflect_call_checks_typed_native_parameter_contracts() {
         .build()
         .expect("engine should build");
     let program = engine
-        .compile_source(
+        .compile_source_with_id(
             SourceId::new(1),
             r#"
 fn main() {
@@ -168,7 +168,7 @@ fn engine_reflect_call_requires_call_permission_for_function_descriptors() {
         .build()
         .expect("engine should build");
     let program = engine
-        .compile_source(
+        .compile_source_with_id(
             SourceId::new(1),
             r#"
 fn main() {
@@ -208,7 +208,7 @@ fn engine_reflect_call_rejects_non_callable_native_functions() {
         .build()
         .expect("engine should build");
     let program = engine
-        .compile_source(
+        .compile_source_with_id(
             SourceId::new(1),
             r#"
 fn main() {
@@ -272,7 +272,7 @@ fn engine_reflect_call_invokes_host_native_functions_through_host_access() {
         .build()
         .expect("engine should build");
     let program = engine
-        .compile_source(
+        .compile_source_with_id(
             SourceId::new(1),
             r#"
 fn main(player) {
@@ -342,7 +342,7 @@ fn engine_reflect_call_denies_effectful_native_functions_without_effect_permissi
         .build()
         .expect("engine should build");
     let program = engine
-        .compile_source(
+        .compile_source_with_id(
             SourceId::new(1),
             r#"
 fn main(player) {

@@ -1,7 +1,6 @@
 use std::error::Error;
 use std::sync::Arc;
 
-use vela_common::SourceId;
 use vela_engine::engine::Engine;
 use vela_engine::runtime::{CallOptions, Runtime};
 use vela_host::access::HostAccess;
@@ -18,7 +17,7 @@ pub fn run(
     let engine = crate::gameplay::build_engine(crate::gameplay::GameEngineOptions::default())
         .map_err(|error| format!("{error:?}"))?;
     let initial = engine
-        .compile_hot_reload_initial(SourceId::new(1), initial_source)
+        .compile_hot_reload_initial(initial_source)
         .map_err(|error| {
             crate::diagnostics::render_hot_reload_error(initial_label, initial_source, &error)
         })?;
@@ -29,7 +28,7 @@ pub fn run(
     let old_before = run_current_main(&mut runtime)?;
 
     let update = runtime
-        .compile_hot_reload_update(SourceId::new(1), updated_source)
+        .compile_hot_reload_update(updated_source)
         .map_err(|error| format!("{error:?}"))?;
     runtime.stage_hot_update_result(update)?;
     let report = runtime

@@ -46,7 +46,7 @@ fn engine_registers_typed_native_functions() {
         .build()
         .expect("engine should build");
     let program = engine
-        .compile_source(
+        .compile_source_with_id(
             SourceId::new(1),
             r#"
 fn main() {
@@ -147,7 +147,7 @@ fn typed_native_functions_accept_string_values() {
         .build()
         .expect("engine should build");
     let program = engine
-        .compile_source(
+        .compile_source_with_id(
             SourceId::new(1),
             r#"
 fn main() {
@@ -184,7 +184,7 @@ fn typed_native_functions_accept_host_refs() {
         .build()
         .expect("engine should build");
     let program = engine
-        .compile_source(
+        .compile_source_with_id(
             SourceId::new(1),
             r#"
 fn main(player) {
@@ -216,7 +216,7 @@ fn typed_native_functions_accept_path_proxies() {
         .build()
         .expect("engine should build");
     let program = engine
-        .compile_source(
+        .compile_source_with_id(
             SourceId::new(1),
             r#"
 fn main(path) {
@@ -255,7 +255,7 @@ fn typed_native_functions_accept_four_script_args() {
         .build()
         .expect("engine should build");
     let program = engine
-        .compile_source(
+        .compile_source_with_id(
             SourceId::new(1),
             r#"
 fn main() {
@@ -287,7 +287,7 @@ fn typed_native_functions_accept_five_script_args() {
         .build()
         .expect("engine should build");
     let program = engine
-        .compile_source(
+        .compile_source_with_id(
             SourceId::new(1),
             r#"
 fn main() {
@@ -320,7 +320,7 @@ fn typed_native_functions_accept_six_script_args() {
         .build()
         .expect("engine should build");
     let program = engine
-        .compile_source(
+        .compile_source_with_id(
             SourceId::new(1),
             r#"
 fn main() {
@@ -349,7 +349,7 @@ fn typed_native_functions_accept_optional_values() {
         .build()
         .expect("engine should build");
     let program = engine
-        .compile_source(
+        .compile_source_with_id(
             SourceId::new(1),
             r#"
 fn main() {
@@ -380,7 +380,7 @@ fn typed_native_functions_accept_f32_values() {
         .build()
         .expect("engine should build");
     let program = engine
-        .compile_source(
+        .compile_source_with_id(
             SourceId::new(1),
             r#"
 fn main() {
@@ -411,7 +411,7 @@ fn typed_native_functions_accept_and_return_byte_buffers() {
         .build()
         .expect("engine should build");
     let program = engine
-        .compile_source(
+        .compile_source_with_id(
             SourceId::new(1),
             r#"
 fn main() {
@@ -454,7 +454,7 @@ fn typed_native_functions_accept_set_values() {
         .build()
         .expect("engine should build");
     let program = engine
-        .compile_source(
+        .compile_source_with_id(
             SourceId::new(1),
             r#"
 fn main(tags) {
@@ -495,8 +495,7 @@ fn typed_native_functions_accept_hash_set_values() {
         .build()
         .expect("engine should build");
     let program = engine
-        .compile_source(
-            SourceId::new(1),
+        .compile_source_with_id(SourceId::new(1),
             r#"
 fn main(tags) {
     return game::count_unordered_tags(tags) + game::count_unordered_tags(game::unordered_reward_tags());
@@ -536,7 +535,7 @@ fn typed_native_functions_accept_fixed_array_values() {
         .build()
         .expect("engine should build");
     let program = engine
-        .compile_source(
+        .compile_source_with_id(
             SourceId::new(1),
             r#"
 fn main(weights) {
@@ -577,7 +576,7 @@ fn typed_native_functions_accept_vec_values() {
         .build()
         .expect("engine should build");
     let program = engine
-        .compile_source(
+        .compile_source_with_id(
             SourceId::new(1),
             r#"
 fn main(rewards) {
@@ -618,7 +617,7 @@ fn typed_native_functions_accept_hash_map_values() {
         .build()
         .expect("engine should build");
     let program = engine
-        .compile_source(
+        .compile_source_with_id(
             SourceId::new(1),
             r#"
 fn main(scores) {
@@ -668,7 +667,7 @@ fn typed_native_functions_accept_btree_map_values() {
         .build()
         .expect("engine should build");
     let program = engine
-        .compile_source(
+        .compile_source_with_id(
             SourceId::new(1),
             r#"
 fn main(scores) {
@@ -715,7 +714,7 @@ fn typed_native_functions_return_dynamic_result_values() {
         .build()
         .expect("engine should build");
     let program = engine
-        .compile_source(
+        .compile_source_with_id(
             SourceId::new(1),
             r#"
 fn main() {
@@ -756,7 +755,7 @@ fn typed_native_functions_propagate_vm_result_errors() {
         .build()
         .expect("engine should build");
     let program = engine
-        .compile_source(
+        .compile_source_with_id(
             SourceId::new(1),
             r#"
 fn main(allowed) {
@@ -803,7 +802,7 @@ fn typed_native_functions_map_host_result_errors() {
         .build()
         .expect("engine should build");
     let program = engine
-        .compile_source(
+        .compile_source_with_id(
             SourceId::new(1),
             r#"
 fn main(allowed) {

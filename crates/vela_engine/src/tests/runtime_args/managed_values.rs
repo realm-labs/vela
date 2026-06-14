@@ -20,7 +20,7 @@ fn runtime_host_global_decl_reads_and_writes_persistent_host_object() {
         .build()
         .expect("engine should build");
     let program = engine
-        .compile_source(
+        .compile_source_with_id(
             SourceId::new(1),
             r#"
 global state: Player;
@@ -53,7 +53,7 @@ fn runtime_host_global_decl_uses_slotted_lookup_without_fallback_name_lookup() {
         .build()
         .expect("engine should build");
     let program = engine
-        .compile_source(
+        .compile_source_with_id(
             SourceId::new(1),
             r#"
 global state: Player;
@@ -96,7 +96,7 @@ fn runtime_host_global_decl_requires_host_inserted_instance() {
         .build()
         .expect("engine should build");
     let program = engine
-        .compile_source(
+        .compile_source_with_id(
             SourceId::new(1),
             r#"
 global state: Player;
@@ -125,7 +125,7 @@ fn main() {
 fn runtime_script_global_decl_persists_vm_owned_value_and_rust_updates() {
     let engine = Engine::builder().build().expect("engine should build");
     let program = engine
-        .compile_source(
+        .compile_source_with_id(
             SourceId::new(1),
             r#"
 struct ServerState {
@@ -232,7 +232,7 @@ fn read_name() {
 fn runtime_script_global_nested_record_program_links() {
     let engine = Engine::builder().build().expect("engine should build");
     let program = engine
-        .compile_source(
+        .compile_source_with_id(
             SourceId::new(1),
             r#"
 struct ServerStats {
@@ -271,7 +271,7 @@ fn projected_score(snapshot: ServerState, bonus) {
 fn shared_runtime_image_keeps_script_globals_isolated() {
     let engine = Engine::builder().build().expect("engine should build");
     let program = engine
-        .compile_source(
+        .compile_source_with_id(
             SourceId::new(1),
             r#"
 struct ServerState {
@@ -371,7 +371,7 @@ fn read_name() {
 fn runtime_insert_global_rejects_type_contract_mismatch() {
     let engine = Engine::builder().build().expect("engine should build");
     let program = engine
-        .compile_source(
+        .compile_source_with_id(
             SourceId::new(1),
             r#"
 global amount: i64;
@@ -407,7 +407,7 @@ fn read_amount() {
 fn runtime_update_global_rejects_type_contract_mismatch_without_replacing_value() {
     let engine = Engine::builder().build().expect("engine should build");
     let program = engine
-        .compile_source(
+        .compile_source_with_id(
             SourceId::new(1),
             r#"
 struct ServerState {
@@ -464,7 +464,7 @@ struct SerdeServerState {
 fn runtime_insert_global_accepts_serde_struct_with_single_api() {
     let engine = Engine::builder().build().expect("engine should build");
     let program = engine
-        .compile_source(
+        .compile_source_with_id(
             SourceId::new(1),
             r#"
 struct SerdeServerState {
@@ -532,7 +532,7 @@ fn read_name() {
 fn runtime_insert_global_accepts_runtime_managed_value_with_single_api() {
     let engine = Engine::builder().build().expect("engine should build");
     let program = engine
-        .compile_source(
+        .compile_source_with_id(
             SourceId::new(1),
             r#"
 struct ServerState {
@@ -574,7 +574,7 @@ fn read_level() {
 fn runtime_call_returns_runtime_managed_value_that_can_be_passed_back() {
     let engine = Engine::builder().build().expect("engine should build");
     let program = engine
-        .compile_source(
+        .compile_source_with_id(
             SourceId::new(1),
             r#"
 struct Reward {
@@ -626,7 +626,7 @@ fn reward_score(reward: Reward, bonus) {
 fn retained_runtime_value_survives_script_global_collection() {
     let engine = Engine::builder().build().expect("engine should build");
     let program = engine
-        .compile_source(
+        .compile_source_with_id(
             SourceId::new(1),
             r#"
 struct Reward {
@@ -713,10 +713,10 @@ fn read_reward(reward: Reward) {
 }
 "#;
     let program_a = engine
-        .compile_source(SourceId::new(1), source)
+        .compile_source_with_id(SourceId::new(1), source)
         .expect("program should compile");
     let program_b = engine
-        .compile_source(SourceId::new(2), source)
+        .compile_source_with_id(SourceId::new(2), source)
         .expect("program should compile");
     let mut runtime_a = Runtime::new(engine.clone(), program_a);
     let mut runtime_b = Runtime::new(engine, program_b);

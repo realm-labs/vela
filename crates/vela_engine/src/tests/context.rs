@@ -54,7 +54,7 @@ fn engine_time_clock_requires_time_capability() {
         .build()
         .expect("engine should build");
     let program = engine
-        .compile_source(
+        .compile_source_with_id(
             SourceId::new(1),
             r#"
 fn main() {
@@ -80,7 +80,7 @@ fn engine_time_elapsed_since_requires_time_capability() {
         .build()
         .expect("engine should build");
     let program = engine
-        .compile_source(
+        .compile_source_with_id(
             SourceId::new(1),
             r#"
 fn main() {
@@ -108,7 +108,7 @@ fn explicit_capabilities_allow_time_but_not_random() {
         .build()
         .expect("engine should build");
     let time_program = engine
-        .compile_source(
+        .compile_source_with_id(
             SourceId::new(1),
             r#"
 fn main() {
@@ -125,7 +125,7 @@ fn main() {
     );
 
     let random_program = engine
-        .compile_source(
+        .compile_source_with_id(
             SourceId::new(2),
             r#"
 fn main() {
@@ -151,7 +151,7 @@ fn engine_time_clock_returns_configured_values() {
         .build()
         .expect("engine should build");
     let program = engine
-        .compile_source(
+        .compile_source_with_id(
             SourceId::new(1),
             r#"
 fn main() {
@@ -176,7 +176,7 @@ fn engine_reflect_call_invokes_capability_gated_time_clock_functions() {
         .build()
         .expect("engine should build");
     let program = engine
-        .compile_source(
+        .compile_source_with_id(
             SourceId::new(1),
             r#"
 fn main() {
@@ -338,7 +338,7 @@ fn engine_context_host_schema_metadata_is_script_reflectable() {
         .reflection_permissions(ReflectPermissionSet::all())
         .build()
         .expect("engine should build");
-    let program = engine.compile_source(SourceId::new(1), r#"
+    let program = engine.compile_source_with_id(SourceId::new(1), r#"
 fn main() {
     let context = reflect::type_info("Context");
     let fields = reflect::fields(context);
@@ -390,7 +390,7 @@ fn engine_context_host_schema_lowers_host_access_workflows() {
         .build()
         .expect("engine should build");
     let program = engine
-        .compile_source(
+        .compile_source_with_id(
             SourceId::new(1),
             r#"
 fn main(ctx: Context) {

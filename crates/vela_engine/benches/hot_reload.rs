@@ -2,7 +2,6 @@ use std::error::Error;
 use std::hint::black_box;
 use std::time::{Duration, Instant};
 
-use vela_common::SourceId;
 use vela_engine::engine::Engine;
 use vela_engine::runtime::{CallOptions, Runtime};
 use vela_host::access::HostAccess;
@@ -76,7 +75,7 @@ fn main() -> Result<(), Box<dyn Error>> {
     );
 
     let engine = Engine::builder().build()?;
-    let initial = engine.compile_hot_reload_initial(SourceId::new(1), INITIAL_SOURCE)?;
+    let initial = engine.compile_hot_reload_initial(INITIAL_SOURCE)?;
 
     let accepted = run_workload("hot_reload_accept", "compile_apply", params, || {
         run_accepted_update(&engine, &initial)
@@ -150,7 +149,7 @@ fn run_workload(
 }
 
 fn run_accepted_update(engine: &Engine, initial: &ProgramVersion) -> Result<u64, Box<dyn Error>> {
-    let update = engine.compile_hot_reload_update(initial, SourceId::new(2), UPDATED_SOURCE)?;
+    let update = engine.compile_hot_reload_update(initial, UPDATED_SOURCE)?;
     let mut runtime = Runtime::from_hot_reload_version(engine.clone(), initial.clone());
     let report = runtime.apply_hot_update(update)?;
     let mut adapter = MockStateAdapter::new();
@@ -165,7 +164,7 @@ fn run_accepted_update(engine: &Engine, initial: &ProgramVersion) -> Result<u64,
 }
 
 fn run_abi_rejection(engine: &Engine, initial: &ProgramVersion) -> Result<u64, Box<dyn Error>> {
-    let update = engine.compile_hot_reload_update(initial, SourceId::new(3), ABI_REJECT_SOURCE);
+    let update = engine.compile_hot_reload_update(initial, ABI_REJECT_SOURCE);
     let mut runtime = Runtime::from_hot_reload_version(engine.clone(), initial.clone());
     let report = runtime.apply_hot_update_result_report(update)?;
     let active_version = runtime

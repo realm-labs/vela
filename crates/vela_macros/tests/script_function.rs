@@ -2,7 +2,7 @@
 
 use std::collections::{BTreeMap, BTreeSet, HashMap, HashSet};
 
-use vela_common::{HostObjectId, HostTypeId, SourceId};
+use vela_common::{HostObjectId, HostTypeId};
 use vela_def::FieldId;
 use vela_engine::context::NativeCallContext;
 use vela_engine::engine::Engine;
@@ -25,9 +25,7 @@ use vela_vm::error::{VmErrorKind, VmResult};
 
 macro_rules! compile_source {
     ($engine:expr, $source:expr, $expect:literal) => {
-        $engine
-            .compile_source(SourceId::new(1), $source)
-            .expect($expect)
+        $engine.compile_source($source).expect($expect)
     };
 }
 

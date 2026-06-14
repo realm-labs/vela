@@ -85,6 +85,13 @@ re-export common Engine, Runtime, native descriptor, host-handle, reflection
 permission, and schema descriptor types needed to write host setup code, while
 the crate root remains a focused module index.
 
+Single-source embedding APIs do not require callers to provide `SourceId`.
+`Engine::compile_source`, text hot-reload compile, and text hot-reload staging
+assign internal single-source identity. Explicit source identity remains an
+internal compiler/reload concern and belongs to module-graph loading,
+diagnostic sources, and crate-local tests that need deterministic source
+identity.
+
 Rust source may use one direct-parent `super::...` reference inside a local
 module group. Multi-level `super::super` paths are prohibited; cross-subsystem
 imports should use explicit `crate::...` paths.

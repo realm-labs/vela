@@ -1,7 +1,6 @@
 use std::fs;
 use std::path::PathBuf;
 
-use vela_common::SourceId;
 use vela_engine::engine::Engine;
 use vela_engine::runtime::{CallOptions, Runtime};
 use vela_host::access::HostAccess;
@@ -55,9 +54,7 @@ fn main() {
         .reflection_policy(ReflectPolicy::all())
         .build()
         .expect("build engine");
-    let program = engine
-        .compile_source(SourceId::new(1), source)
-        .expect("compile script");
+    let program = engine.compile_source(source).expect("compile script");
     engine
         .link_program(&program)
         .expect("reflection script should link");

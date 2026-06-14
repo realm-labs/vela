@@ -49,13 +49,13 @@ fn hot_reload_initial_from_source(
     source: &str,
 ) -> vela_hot_reload::version::ProgramVersion {
     engine
-        .compile_hot_reload_initial(SourceId::new(1), source)
+        .compile_hot_reload_initial_with_id(SourceId::new(1), source)
         .expect("initial hot reload source compile")
 }
 
 fn stage_source_update(runtime: &mut Runtime, source: &str) {
     let update = runtime
-        .compile_hot_reload_update(SourceId::new(2), source)
+        .compile_hot_reload_update_with_id(SourceId::new(2), source)
         .expect("runtime should be hot-reload enabled");
     runtime
         .stage_hot_update_result(update)

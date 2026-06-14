@@ -1,6 +1,6 @@
 use std::collections::{BTreeMap, BTreeSet, HashMap, HashSet};
 
-use vela_common::{HostMethodId, HostObjectId, HostTypeId, SourceId};
+use vela_common::{HostMethodId, HostObjectId, HostTypeId};
 use vela_def::{FieldId, TypeId};
 use vela_engine::args::{FromScriptArg, IntoScriptArg, ScriptArgsExt};
 use vela_engine::engine::Engine;
@@ -382,7 +382,6 @@ fn runtime_call_accepts_args_and_host_macros() {
         .expect("engine should build");
     let program = engine
         .compile_source(
-            SourceId::new(1),
             r#"
 fn main(player: Player, amount: i64) {
     player.grant_exp(amount);

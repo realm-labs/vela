@@ -9,7 +9,7 @@ use crate::runtime::{CallArgs, CallOptions, Runtime};
 fn runtime_bytecode_profile_counts_linked_instruction_offsets() {
     let engine = Engine::builder().build().expect("engine should build");
     let program = engine
-        .compile_source(
+        .compile_source_with_id(
             SourceId::new(1),
             r#"
 fn main() {
@@ -60,7 +60,7 @@ fn main() {
 fn accepted_hot_reload_clears_runtime_bytecode_profile_counts() {
     let engine = Engine::builder().build().expect("engine should build");
     let initial = engine
-        .compile_hot_reload_initial(
+        .compile_hot_reload_initial_with_id(
             SourceId::new(1),
             r#"
 fn main() {
@@ -88,7 +88,7 @@ fn main() {
     );
 
     let update = runtime
-        .compile_hot_reload_update(
+        .compile_hot_reload_update_with_id(
             SourceId::new(2),
             r#"
 fn main() {

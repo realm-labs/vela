@@ -140,7 +140,7 @@ fn engine_native_private_functions_are_hidden_from_reflection() {
     assert!(!function.access.reflect_visible);
 
     let program = engine
-        .compile_source(
+        .compile_source_with_id(
             SourceId::new(1),
             r#"
 fn main() {
@@ -195,7 +195,7 @@ fn engine_native_private_functions_can_remain_reflect_visible() {
     assert_eq!(function_abi.access, AccessAbi::function(false, true, false));
 
     let program = engine
-        .compile_source(
+        .compile_source_with_id(
             SourceId::new(1),
             r#"
 fn main() {
@@ -561,8 +561,7 @@ fn engine_standard_natives_register_reflection_metadata() {
     assert_eq!(bytes_from_hex.attrs.get("stdlib"), Some("bytes"));
 
     let program = engine
-        .compile_source(
-            SourceId::new(1),
+        .compile_source_with_id(SourceId::new(1),
             r#"
 fn main() {
     let math = reflect::module("math");

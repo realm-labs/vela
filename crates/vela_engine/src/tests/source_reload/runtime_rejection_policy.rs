@@ -8,9 +8,9 @@ fn runtime_preserves_program_when_engine_hot_reload_update_is_rejected() {
         .build()
         .expect("engine should build");
     let initial = engine
-        .compile_hot_reload_initial(SourceId::new(1), "fn main() { return 1; }")
+        .compile_hot_reload_initial_with_id(SourceId::new(1), "fn main() { return 1; }")
         .expect("initial hot reload compile");
-    let update = engine.compile_hot_reload_update(
+    let update = engine.compile_hot_reload_update_with_id(
         &initial,
         SourceId::new(2),
         r#"
@@ -45,10 +45,10 @@ fn runtime_rejects_hot_update_when_not_created_from_version() {
         .build()
         .expect("engine should build");
     let initial = engine
-        .compile_hot_reload_initial(SourceId::new(1), "fn main() { return 1; }")
+        .compile_hot_reload_initial_with_id(SourceId::new(1), "fn main() { return 1; }")
         .expect("initial hot reload compile");
     let update = engine
-        .compile_hot_reload_update(&initial, SourceId::new(2), "fn main() { return 2; }")
+        .compile_hot_reload_update_with_id(&initial, SourceId::new(2), "fn main() { return 2; }")
         .expect("compatible update should compile");
     let mut runtime = Runtime::new(engine, initial.to_unlinked_program());
 
@@ -65,12 +65,12 @@ fn runtime_rejects_compile_update_when_not_created_from_version() {
         .build()
         .expect("engine should build");
     let initial = engine
-        .compile_hot_reload_initial(SourceId::new(1), "fn main() { return 1; }")
+        .compile_hot_reload_initial_with_id(SourceId::new(1), "fn main() { return 1; }")
         .expect("initial hot reload compile");
     let runtime = Runtime::new(engine, initial.to_unlinked_program());
 
     assert!(matches!(
-        runtime.compile_hot_reload_update(SourceId::new(2), "fn main() { return 2; }"),
+        runtime.compile_hot_reload_update_with_id(SourceId::new(2), "fn main() { return 2; }"),
         Err(error) if error.kind == EngineErrorKind::RuntimeNotHotReloadEnabled
     ));
 }
@@ -84,11 +84,11 @@ fn engine_applies_configured_hot_reload_policy() {
         .expect("engine should build");
     assert_eq!(engine.hot_reload_policy(), &HotReloadPolicy::locked_down());
     let initial = engine
-        .compile_hot_reload_initial(SourceId::new(1), "fn main() { return 1; }")
+        .compile_hot_reload_initial_with_id(SourceId::new(1), "fn main() { return 1; }")
         .expect("initial hot reload compile");
 
     let error = engine
-        .compile_hot_reload_update(
+        .compile_hot_reload_update_with_id(
             &initial,
             SourceId::new(2),
             r#"

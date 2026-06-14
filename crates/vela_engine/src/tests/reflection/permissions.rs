@@ -34,7 +34,7 @@ fn engine_installs_reflection_lookup_budget() {
         .build()
         .expect("engine should build");
     let program = engine
-        .compile_source(
+        .compile_source_with_id(
             SourceId::new(1),
             r#"
 fn main(player) {
@@ -88,7 +88,7 @@ fn engine_reflect_call_denies_native_methods_without_effect_permission() {
         .build()
         .expect("engine should build");
     let program = engine
-        .compile_source(
+        .compile_source_with_id(
             SourceId::new(1),
             r#"
 fn main(player) {
@@ -150,7 +150,7 @@ fn engine_reflect_call_records_approved_native_methods() {
     assert!(reflected_method.access.reflect_callable);
     assert!(reflected_method.effects.writes_host);
     let program = engine
-        .compile_source(
+        .compile_source_with_id(
             SourceId::new(1),
             r#"
 fn main(player) {

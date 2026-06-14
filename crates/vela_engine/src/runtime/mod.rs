@@ -202,8 +202,8 @@ where
         Ok(())
     }
 
-    pub fn stage_hot_reload_update(&mut self, source: SourceId, text: &str) -> EngineResult<()> {
-        let update = self.compile_hot_reload_update(source, text)?;
+    pub fn stage_hot_reload_update(&mut self, text: &str) -> EngineResult<()> {
+        let update = self.compile_hot_reload_update(text)?;
         self.stage_hot_update_result(update)
     }
 
@@ -247,6 +247,13 @@ where
 
     pub fn compile_hot_reload_update(
         &self,
+        text: &str,
+    ) -> EngineResult<HotReloadResult<HotUpdate>> {
+        self.compile_hot_reload_update_with_id(SourceId::new(1), text)
+    }
+
+    pub(crate) fn compile_hot_reload_update_with_id(
+        &self,
         source: SourceId,
         text: &str,
     ) -> EngineResult<HotReloadResult<HotUpdate>> {
@@ -254,7 +261,7 @@ where
         Ok(self
             .image
             .engine()
-            .compile_hot_reload_update(&previous, source, text))
+            .compile_hot_reload_update_with_id(&previous, source, text))
     }
 
     pub fn compile_hot_reload_update_file(

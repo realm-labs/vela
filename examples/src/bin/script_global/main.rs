@@ -1,7 +1,6 @@
 use std::error::Error;
 
 use serde::{Deserialize, Serialize};
-use vela_common::SourceId;
 use vela_engine::prelude::*;
 
 const STATE_GLOBAL: &str = "main::state";
@@ -10,7 +9,7 @@ fn main() -> Result<(), Box<dyn Error>> {
     let engine = Engine::builder()
         .execution_profile(ExecutionProfile::trusted())
         .build()?;
-    let program = engine.compile_source(SourceId::new(1), include_str!("main.vela"))?;
+    let program = engine.compile_source(include_str!("main.vela"))?;
     let mut runtime = Runtime::new(engine, program);
 
     let initial_state = ServerState {

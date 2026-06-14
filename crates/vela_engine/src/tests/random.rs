@@ -42,7 +42,7 @@ fn engine_controlled_random_requires_permission() {
         .build()
         .expect("engine should build");
     let program = engine
-        .compile_source(
+        .compile_source_with_id(
             SourceId::new(1),
             r#"
 fn main() {
@@ -84,7 +84,7 @@ fn main() {
         .build()
         .expect("second engine should build");
     let program = first_engine
-        .compile_source(SourceId::new(1), source)
+        .compile_source_with_id(SourceId::new(1), source)
         .expect("program should compile");
 
     let first =
@@ -171,7 +171,7 @@ fn engine_controlled_random_extends_standard_math_metadata() {
     assert!(random.effects.uses_random);
 
     let program = engine
-        .compile_source(
+        .compile_source_with_id(
             SourceId::new(2),
             r#"
 fn main() {
@@ -234,7 +234,7 @@ fn main() {
         .build()
         .expect("second engine should build");
     let program = first_engine
-        .compile_source(SourceId::new(1), source)
+        .compile_source_with_id(SourceId::new(1), source)
         .expect("program should compile");
     let mut first_adapter = MockStateAdapter::new();
     let mut first_tx = HostAccess::new();

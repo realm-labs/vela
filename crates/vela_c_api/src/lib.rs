@@ -10,7 +10,7 @@ use std::ffi::{CStr, CString, c_char};
 use std::panic::{AssertUnwindSafe, catch_unwind};
 use std::{mem, ptr, slice};
 
-use vela_common::{ScalarValue, SourceId};
+use vela_common::ScalarValue;
 use vela_engine::engine::Engine;
 use vela_engine::permission::ExecutionProfile;
 use vela_engine::runtime::{CallArgs, CallOptions, Runtime};
@@ -234,7 +234,7 @@ pub unsafe extern "C" fn vela_runtime_compile_source(
         let source = c_str(source, "source")?;
         let program = engine
             .engine
-            .compile_source(SourceId::new(1), source)
+            .compile_source(source)
             .map_err(|error| (VelaStatus::CompileError, error.to_string()))?;
         let runtime = Runtime::new(engine.engine.clone(), program);
         Ok(Box::into_raw(Box::new(VelaRuntime { runtime })))

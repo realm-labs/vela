@@ -1,6 +1,5 @@
 use std::error::Error;
 
-use vela_common::SourceId;
 use vela_engine::engine::Engine;
 use vela_engine::error::EngineResult;
 use vela_engine::runtime::{CallOptions, Runtime};
@@ -149,11 +148,9 @@ impl<'a> GameScript<'a> {
 
     pub fn run(self) -> Result<(), Box<dyn Error>> {
         let engine = build_engine(self.engine).map_err(|error| format!("{error:?}"))?;
-        let program = engine
-            .compile_source(SourceId::new(1), self.source)
-            .map_err(|error| {
-                crate::diagnostics::render_engine_source_error(self.label, self.source, &error)
-            })?;
+        let program = engine.compile_source(self.source).map_err(|error| {
+            crate::diagnostics::render_engine_source_error(self.label, self.source, &error)
+        })?;
         let main = program
             .function("main")
             .ok_or("script must define fn main(...)")?;

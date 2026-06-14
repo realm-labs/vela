@@ -16,7 +16,7 @@ use super::InlineCaches;
 fn inline_caches_allocate_from_image_cache_site_count() {
     let engine = Engine::builder().build().expect("engine should build");
     let cached_program = engine
-        .compile_source(
+        .compile_source_with_id(
             SourceId::new(1),
             r#"
 global value: i64;
@@ -35,7 +35,7 @@ fn main() {
     assert_eq!(caches.len(), cached_image.cache_site_count());
 
     let empty_program = engine
-        .compile_source(SourceId::new(2), "fn main() { return 1; }")
+        .compile_source_with_id(SourceId::new(2), "fn main() { return 1; }")
         .expect("program should compile");
     let empty_image = RuntimeImage::new(engine, empty_program);
     caches.clear_for_image(&empty_image);
@@ -49,7 +49,7 @@ fn main() {
 fn global_read_inline_cache_is_runtime_local_and_site_indexed() {
     let engine = Engine::builder().build().expect("engine should build");
     let program = engine
-        .compile_source(
+        .compile_source_with_id(
             SourceId::new(1),
             r#"
 global first: i64;
@@ -161,7 +161,7 @@ fn read_second() {
 fn record_field_inline_cache_is_site_indexed() {
     let engine = Engine::builder().build().expect("engine should build");
     let program = engine
-        .compile_source(
+        .compile_source_with_id(
             SourceId::new(1),
             r#"
 global value: i64;
@@ -190,7 +190,7 @@ fn main() {
 fn inline_cache_families_do_not_evict_same_site_entries() {
     let engine = Engine::builder().build().expect("engine should build");
     let program = engine
-        .compile_source(
+        .compile_source_with_id(
             SourceId::new(1),
             r#"
 global value: i64;
@@ -229,7 +229,7 @@ fn main() {
 fn accepted_hot_reload_clears_runtime_inline_caches() {
     let engine = Engine::builder().build().expect("engine should build");
     let initial = engine
-        .compile_hot_reload_initial(
+        .compile_hot_reload_initial_with_id(
             SourceId::new(1),
             r#"
 global first: i64;
@@ -291,7 +291,7 @@ fn read_value() {
     );
 
     let update = runtime
-        .compile_hot_reload_update(
+        .compile_hot_reload_update_with_id(
             SourceId::new(2),
             r#"
 global first: i64;

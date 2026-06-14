@@ -25,7 +25,7 @@ fn host_access_inline_cache_records_resolved_target_guard() {
         .build()
         .expect("engine should build");
     let program = engine
-        .compile_source(
+        .compile_source_with_id(
             SourceId::new(1),
             r#"
 fn read_level(player: CachedHostPlayer) {
@@ -103,7 +103,7 @@ fn host_access_inline_cache_refreshes_on_schema_epoch_change() {
         .build()
         .expect("engine should build");
     let program = engine
-        .compile_source(
+        .compile_source_with_id(
             SourceId::new(1),
             r#"
 fn read_level(player: EpochHostPlayer) {
@@ -188,7 +188,7 @@ fn host_write_inline_cache_refreshes_on_schema_epoch_change() {
         .build()
         .expect("engine should build");
     let program = engine
-        .compile_source(
+        .compile_source_with_id(
             SourceId::new(1),
             r#"
 fn write_level(player: EpochWriteHostPlayer, value: i64) {
@@ -281,7 +281,7 @@ fn host_access_inline_cache_misses_wrong_operation_guard() {
         .build()
         .expect("engine should build");
     let program = engine
-        .compile_source(
+        .compile_source_with_id(
             SourceId::new(1),
             r#"
 fn write_level(player: GuardedHostPlayer, value: i64) {
@@ -360,7 +360,7 @@ fn host_access_inline_cache_misses_wrong_target_guards() {
         .build()
         .expect("engine should build");
     let program = engine
-        .compile_source(
+        .compile_source_with_id(
             SourceId::new(1),
             r#"
 fn write_level(player: TargetGuardHostPlayer, value: i64) {
@@ -476,7 +476,7 @@ fn host_mutate_inline_cache_refreshes_on_schema_epoch_change() {
         .build()
         .expect("engine should build");
     let program = engine
-        .compile_source(
+        .compile_source_with_id(
             SourceId::new(1),
             r#"
 fn gain_level(player: EpochMutateHostPlayer, amount: i64) {
@@ -574,7 +574,7 @@ fn host_call_inline_cache_refreshes_on_schema_epoch_change() {
         .build()
         .expect("engine should build");
     let program = engine
-        .compile_source(
+        .compile_source_with_id(
             SourceId::new(1),
             r#"
 fn award(player: EpochCallHostPlayer, amount: i64) {
@@ -683,7 +683,7 @@ fn host_remove_inline_cache_refreshes_on_schema_epoch_change() {
         .build()
         .expect("engine should build");
     let program = engine
-        .compile_source(
+        .compile_source_with_id(
             SourceId::new(1),
             r#"
 fn remove_item(player: EpochRemoveHostPlayer, item_id: string) {

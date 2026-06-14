@@ -81,7 +81,11 @@ impl fmt::Display for EngineSourceError {
 impl std::error::Error for EngineSourceError {}
 
 impl Engine {
-    pub fn compile_source(
+    pub fn compile_source(&self, text: &str) -> Result<UnlinkedProgram, EngineSourceError> {
+        self.compile_source_with_id(SourceId::new(1), text)
+    }
+
+    pub(crate) fn compile_source_with_id(
         &self,
         source: SourceId,
         text: &str,
@@ -101,7 +105,7 @@ impl Engine {
     ) -> Result<UnlinkedProgram, EngineSourceError> {
         let path = path.as_ref();
         let text = read_source_text(path)?;
-        self.compile_source(SourceId::new(1), &text)
+        self.compile_source(&text)
     }
 
     pub fn compile_dir(

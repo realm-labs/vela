@@ -23,7 +23,7 @@ fn accepted_hot_reload_clears_host_access_inline_caches() {
         .build()
         .expect("engine should build");
     let initial = engine
-        .compile_hot_reload_initial(
+        .compile_hot_reload_initial_with_id(
             SourceId::new(1),
             r#"
 fn read_level(player: ReloadHostPlayer) {
@@ -61,7 +61,7 @@ fn read_level(player: ReloadHostPlayer) {
     );
 
     let update = runtime
-        .compile_hot_reload_update(
+        .compile_hot_reload_update_with_id(
             SourceId::new(2),
             r#"
 fn read_level(player: ReloadHostPlayer) {

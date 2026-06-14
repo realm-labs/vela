@@ -9,7 +9,7 @@ use crate::runtime::{CallArgs, CallOptions, Runtime};
 fn accepted_hot_reload_clears_record_field_inline_caches() {
     let engine = Engine::builder().build().expect("engine should build");
     let initial = engine
-        .compile_hot_reload_initial(
+        .compile_hot_reload_initial_with_id(
             SourceId::new(1),
             r#"
 struct Reward {
@@ -44,7 +44,7 @@ fn read_value() {
     );
 
     let update = runtime
-        .compile_hot_reload_update(
+        .compile_hot_reload_update_with_id(
             SourceId::new(2),
             r#"
 struct Reward {
@@ -92,7 +92,7 @@ fn read_value() {
 fn accepted_hot_reload_clears_dynamic_method_inline_caches() {
     let engine = Engine::builder().build().expect("engine should build");
     let initial = engine
-        .compile_hot_reload_initial(
+        .compile_hot_reload_initial_with_id(
             SourceId::new(1),
             r#"
 fn call_dynamic(value) {
@@ -122,7 +122,7 @@ fn call_dynamic(value) {
     );
 
     let update = runtime
-        .compile_hot_reload_update(
+        .compile_hot_reload_update_with_id(
             SourceId::new(2),
             r#"
 fn call_dynamic(value) {

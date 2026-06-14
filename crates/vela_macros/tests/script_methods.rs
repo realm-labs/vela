@@ -1,6 +1,6 @@
 #![allow(clippy::result_large_err)]
 
-use vela_common::{HostMethodId, HostObjectId, SourceId, stable_id};
+use vela_common::{HostMethodId, HostObjectId, stable_id};
 use vela_engine::engine::Engine;
 use vela_engine::method::NativeMethodDesc;
 use vela_engine::native::{EffectSet, FunctionAccess, TypeHint};
@@ -20,9 +20,7 @@ use vela_vm::error::VmResult;
 
 macro_rules! compile_source {
     ($engine:expr, $source:expr, $expect:literal) => {
-        $engine
-            .compile_source(SourceId::new(1), $source)
-            .expect($expect)
+        $engine.compile_source($source).expect($expect)
     };
 }
 

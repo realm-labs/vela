@@ -31,7 +31,7 @@ fn fs_read_requires_io_read_capability() {
         .build()
         .expect("engine should build");
     let program = engine
-        .compile_source(
+        .compile_source_with_id(
             SourceId::new(1),
             r#"
 fn main() {
@@ -61,7 +61,7 @@ fn fs_read_and_write_use_sandboxed_paths() {
         .build()
         .expect("engine should build");
     let program = engine
-        .compile_source(
+        .compile_source_with_id(
             SourceId::new(1),
             r#"
 fn main() {
@@ -91,7 +91,7 @@ fn runtime_new_links_stdio_and_fs_io_programs() {
         .build()
         .expect("engine should build");
     let program = engine
-        .compile_source(
+        .compile_source_with_id(
             SourceId::new(1),
             r#"
 fn main() {
@@ -133,7 +133,7 @@ fn fs_rejects_parent_directory_escape() {
         .build()
         .expect("engine should build");
     let program = engine
-        .compile_source(
+        .compile_source_with_id(
             SourceId::new(1),
             r#"
 fn main() {
