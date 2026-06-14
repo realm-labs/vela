@@ -213,13 +213,13 @@ fn main(ctx: Context, player: Player) {
         && reflect::has_method(result_type, "map_err")
         && reflect::has_method(result_type, "to_error_option")
         && option_map.params[0].name == "callback"
-        && option_map.params[0].type == "function"
+        && option_map.params[0].type == "Function"
         && reflect::returns(option_map) == "Option"
         && reflect::attr(option_map, "stdlib") == "option"
         && option_ok_or.params[0].name == "error"
         && reflect::returns(option_ok_or) == "Result"
         && result_map_err.params[0].name == "callback"
-        && result_map_err.params[0].type == "function"
+        && result_map_err.params[0].type == "Function"
         && reflect::returns(result_map_err) == "Result"
         && reflect::attr(result_map_err, "stdlib") == "result"
         && reflect::returns(result_to_error) == "Option"
@@ -229,7 +229,7 @@ fn main(ctx: Context, player: Player) {
         && reflect::has_method(set_type, "union")
         && reflect::has_method(range_type, "len")
         && reflect::has_method(range_type, "is_empty")
-        && reflect::returns(string_trim) == "string"
+        && reflect::returns(string_trim) == "String"
         && reflect::attr(string_trim, "stdlib") == "string"
         && string_trim.owner == "string"
         && reflect::has_method(bytes_type, "read_u32_le")
@@ -238,17 +238,17 @@ fn main(ctx: Context, player: Player) {
         && bytes_read_u32_le.params[0].type == "i64"
         && reflect::returns(bytes_read_u32_le) == "u32"
         && reflect::attr(bytes_read_u32_le, "stdlib") == "bytes"
-        && reflect::returns(bytes_to_hex) == "string"
+        && reflect::returns(bytes_to_hex) == "String"
         && reflect::attr(bytes_to_hex, "stdlib") == "bytes"
-        && array_map.params[0].type == "function"
-        && reflect::returns(array_map) == "array"
+        && array_map.params[0].type == "Function"
+        && reflect::returns(array_map) == "Array"
         && reflect::attr(array_map, "stdlib") == "array"
         && map_get.params[0].name == "key"
-        && map_get.params[0].type == "string"
+        && map_get.params[0].type == "String"
         && reflect::returns(map_get) == "Option"
         && reflect::attr(map_get, "stdlib") == "map"
-        && set_union.params[0].type == "set"
-        && reflect::returns(set_union) == "set"
+        && set_union.params[0].type == "Set"
+        && reflect::returns(set_union) == "Set"
         && reflect::attr(set_union, "stdlib") == "set"
         && range_len.params.is_empty()
         && reflect::returns(range_len) == "i64"
@@ -288,17 +288,17 @@ fn main(ctx: Context, player: Player) {
         && option_variants[0].name == "Some"
         && option_variants[0].fields[0].name == "0"
         && option_variants[0].fields[0].owner == "Option::Some"
-        && option_variants[0].fields[0].type == "any"
+        && option_variants[0].fields[0].type == "Any"
         && option_variants[1].name == "None"
         && result_variants.len() == 2
         && result_variants[0].name == "Ok"
         && result_variants[0].fields[0].name == "0"
         && result_variants[0].fields[0].owner == "Result::Ok"
-        && result_variants[0].fields[0].type == "any"
+        && result_variants[0].fields[0].type == "Any"
         && result_variants[1].name == "Err"
         && result_variants[1].fields[0].name == "0"
         && result_variants[1].fields[0].owner == "Result::Err"
-        && result_variants[1].fields[0].type == "any"
+        && result_variants[1].fields[0].type == "Any"
         && reflected_variants.len() == 7
         && reflect::name(active_variant) == "Active"
         && reflect::owner(active_variant) == "QuestProgress"
@@ -456,12 +456,12 @@ fn main(ctx: Context, player: Player) {
         && reward_params[0].name == "player"
         && reward_params[0].type == "Player"
         && reward_params[1].name == "item_id"
-        && reward_params[1].type == "string"
+        && reward_params[1].type == "String"
         && reflect::name(math_max) == "math::max"
         && reflect::kind(math_max) == "function"
         && reflect::origin(math_max) == "host"
         && reflect::attr(math_max, "stdlib") == "math"
-        && reflect::returns(math_max) == "any"
+        && reflect::returns(math_max) == "Any"
         && reflect::returns(math_sqrt) == "f64"
         && !math_max_effects.reads_host
         && !math_max_effects.writes_host
@@ -528,7 +528,7 @@ fn main(ctx: Context, player: Player) {
         && reflect::kind(option_some) == "function"
         && reflect::origin(option_some) == "host"
         && reflect::attr(option_some, "stdlib") == "option"
-        && reflect::returns(option_some) == "any"
+        && reflect::returns(option_some) == "Any"
         && option_some_params.len() == 1
         && option_some_params[0].name == "value"
         && !option_some_effects.reads_host
@@ -538,17 +538,17 @@ fn main(ctx: Context, player: Player) {
         && reflect::kind(result_ok) == "function"
         && reflect::origin(result_ok) == "host"
         && reflect::attr(result_ok, "stdlib") == "result"
-        && reflect::returns(result_ok) == "any"
+        && reflect::returns(result_ok) == "Any"
         && result_ok_params.len() == 1
         && result_ok_params[0].name == "value"
         && reflect::name(set_from_array) == "set::from_array"
         && reflect::kind(set_from_array) == "function"
         && reflect::origin(set_from_array) == "host"
         && reflect::attr(set_from_array, "stdlib") == "set"
-        && reflect::returns(set_from_array) == "set"
+        && reflect::returns(set_from_array) == "Set"
         && set_from_array_params.len() == 1
         && set_from_array_params[0].name == "values"
-        && set_from_array_params[0].type == "array"
+        && set_from_array_params[0].type == "Array"
         && reflect::name(bytes_from_hex) == "bytes::from_hex"
         && reflect::kind(bytes_from_hex) == "function"
         && reflect::origin(bytes_from_hex) == "host"
@@ -556,7 +556,7 @@ fn main(ctx: Context, player: Player) {
         && reflect::returns(bytes_from_hex) == "Result"
         && bytes_from_hex_params.len() == 1
         && bytes_from_hex_params[0].name == "text"
-        && bytes_from_hex_params[0].type == "string"
+        && bytes_from_hex_params[0].type == "String"
         && reflect::name(i32_from_i16) == "i32::from_i16"
         && reflect::kind(i32_from_i16) == "function"
         && reflect::origin(i32_from_i16) == "host"
@@ -657,7 +657,7 @@ fn main(ctx: Context, player: Player) {
         && ctx_log_access.reflect_callable
         && ctx_emit_params.len() == 2
         && ctx_emit_params[0].name == "event"
-        && ctx_emit_params[0].type == "string"
+        && ctx_emit_params[0].type == "String"
         && ctx_emit_params[1].defaulted
         && ctx_log_params.len() == 3
         && ctx_log_params[0].name == "level"

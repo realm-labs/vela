@@ -10,11 +10,11 @@ description: "Option And Result documentation for Vela."
 Use `Option::None` when data may be absent as part of normal business logic. Use `Result::Err` when an operation can fail and the script is expected to handle the reason. Reserve VM errors for bugs, contract violations, budget failures, or sandbox denials.
 
 ```vela
-fn find_reward(rewards, code: string) {
+fn find_reward(rewards, code: String) {
     return rewards.get(code) // Option
 }
 
-fn parse_amount(text: string) {
+fn parse_amount(text: String) {
     return text.parse_i64() // Result
 }
 ```
@@ -24,7 +24,7 @@ fn parse_amount(text: string) {
 Standard helpers include predicates and conversions such as `is_some`, `is_none`, `unwrap_or`, `ok_or`, `to_option`, and `to_error_option`.
 
 ```vela
-fn amount_or_zero(text: string) -> i64 {
+fn amount_or_zero(text: String) -> i64 {
     let parsed = text.parse_i64()
     return parsed.unwrap_or(0)
 }
@@ -35,7 +35,7 @@ fn amount_or_zero(text: string) -> i64 {
 You can also handle these values with `match`, especially when the success or error branch needs custom logic.
 
 ```vela
-fn describe(result) -> string {
+fn describe(result) -> String {
     match result {
         Result::Ok(value) => f"ok:{value}",
         Result::Err(error) => f"error:{error}",

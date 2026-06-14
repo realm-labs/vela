@@ -11,7 +11,7 @@ Fields may have type hints and default values. A record literal uses the type pa
 
 ```vela
 struct Reward {
-    code: string
+    code: String
     amount: i64 = 0
 }
 

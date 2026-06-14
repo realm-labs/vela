@@ -10,11 +10,11 @@ Strings are UTF-8 text values. Bytes are immutable binary buffers. Vela keeps th
 Plain strings use `"..."`, multiline strings use `"""..."""`, and interpolated strings must be explicitly prefixed with `f`. Plain strings never interpolate.
 
 ```vela
-fn greeting(name: string) -> string {
+fn greeting(name: String) -> String {
     return f"hello {name}"
 }
 
-fn template() -> string {
+fn template() -> String {
     return """
 line one
 line two
@@ -27,7 +27,7 @@ line two
 String methods cover predicates, transforms, search, split, parse helpers, and explicit traversal. `len()`, `find()`, and `slice(start, end)` are byte-indexed; `chars()` is UTF-8 character traversal.
 
 ```vela
-fn parse_count(text: string) {
+fn parse_count(text: String) {
     return text.trim().parse_i64()
 }
 ```
@@ -37,7 +37,7 @@ fn parse_count(text: string) {
 Byte strings use `b"..."`. Indexing a bytes value yields `u8`. Byte APIs should use explicit endian helpers rather than host-endian reads.
 
 ```vela
-fn first_byte(packet: bytes) -> u8 {
+fn first_byte(packet: Bytes) -> u8 {
     return packet[0]
 }
 ```

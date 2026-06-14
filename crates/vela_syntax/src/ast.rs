@@ -54,6 +54,7 @@ pub struct GlobalItem {
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct TypeHint {
     pub path: Vec<String>,
+    pub args: Vec<TypeHint>,
     pub span: Span,
 }
 

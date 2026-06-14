@@ -128,6 +128,7 @@ impl Parser {
                 self.error_here("expected global type annotation");
                 TypeHint {
                     path: Vec::new(),
+                    args: Vec::new(),
                     span: self.previous_span(),
                 }
             }

@@ -10,11 +10,11 @@ String 是 UTF-8 文本值。Bytes 是不可变二进制 buffer。Vela 明确区
 普通字符串使用 `"..."`，多行字符串使用 `"""..."""`，插值字符串必须显式加 `f` 前缀。普通字符串不会插值。
 
 ```vela
-fn greeting(name: string) -> string {
+fn greeting(name: String) -> String {
     return f"hello {name}"
 }
 
-fn template() -> string {
+fn template() -> String {
     return """
 line one
 line two
@@ -27,7 +27,7 @@ line two
 String 方法覆盖谓词、转换、查找、split、parse helper 和显式遍历。`len()`、`find()`、`slice(start, end)` 使用 byte index；`chars()` 是 UTF-8 字符遍历。
 
 ```vela
-fn parse_count(text: string) {
+fn parse_count(text: String) {
     return text.trim().parse_i64()
 }
 ```
@@ -37,7 +37,7 @@ fn parse_count(text: string) {
 Byte string 使用 `b"..."`。索引 bytes 值会得到 `u8`。Byte API 应使用显式 endian helper，而不是宿主 endian 读取。
 
 ```vela
-fn first_byte(packet: bytes) -> u8 {
+fn first_byte(packet: Bytes) -> u8 {
     return packet[0]
 }
 ```

@@ -25,7 +25,7 @@ fn award(level: i64) -> i64 {
 Line comments start with `//` and run to the end of the line. Block comments use `/* ... */` and may be nested, which makes it practical to disable a block that already contains comments.
 
 ```vela
-fn classify(value: i64) -> string {
+fn classify(value: i64) -> String {
     /* Nested comments are valid:
        /* disabled note */
     */

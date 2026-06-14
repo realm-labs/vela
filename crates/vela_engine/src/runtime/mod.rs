@@ -755,7 +755,7 @@ fn validate_global_contract(image: &ProgramImage, name: &str, value: &OwnedValue
     let Some(expected) = global_contract_type(image, name) else {
         return Ok(());
     };
-    if expected == "any" || owned_value_matches_contract(value, &expected) {
+    if expected == "Any" || owned_value_matches_contract(value, &expected) {
         return Ok(());
     }
     Err(VmError::new(VmErrorKind::TypeContractViolation {
@@ -808,19 +808,17 @@ fn owned_value_matches_contract(value: &OwnedValue, expected: &str) -> bool {
         OwnedValue::Bool(_) => expected == "bool",
         OwnedValue::Char(_) => expected == "char",
         OwnedValue::Scalar(value) => value.primitive_tag().name() == expected,
-        OwnedValue::String(_) => expected == "string",
-        OwnedValue::Bytes(_) => expected == "bytes",
-        OwnedValue::Array(_) => expected == "array",
-        OwnedValue::Map(_) => expected == "map",
-        OwnedValue::Set(_) => expected == "set",
+        OwnedValue::String(_) => expected == "String",
+        OwnedValue::Bytes(_) => expected == "Bytes",
+        OwnedValue::Array(_) => expected == "Array",
+        OwnedValue::Map(_) => expected == "Map",
+        OwnedValue::Set(_) => expected == "Set",
         OwnedValue::Record { type_name, .. } => type_name == expected,
         OwnedValue::Enum { enum_name, .. } => enum_name == expected,
-        OwnedValue::Closure(_) => expected == "closure",
-        OwnedValue::Range(_) => expected == "range",
-        OwnedValue::Missing
-        | OwnedValue::HostRef(_)
-        | OwnedValue::PathProxy(_)
-        | OwnedValue::Iterator(_) => false,
+        OwnedValue::Closure(_) => expected == "Closure",
+        OwnedValue::Range(_) => expected == "Range",
+        OwnedValue::Iterator(_) => expected == "Iterator",
+        OwnedValue::Missing | OwnedValue::HostRef(_) | OwnedValue::PathProxy(_) => false,
     }
 }
 
@@ -831,18 +829,18 @@ fn owned_value_contract_type_name(value: &OwnedValue) -> String {
         OwnedValue::Bool(_) => "bool".to_owned(),
         OwnedValue::Char(_) => "char".to_owned(),
         OwnedValue::Scalar(value) => value.primitive_tag().name().to_owned(),
-        OwnedValue::String(_) => "string".to_owned(),
-        OwnedValue::Bytes(_) => "bytes".to_owned(),
-        OwnedValue::Array(_) => "array".to_owned(),
-        OwnedValue::Map(_) => "map".to_owned(),
-        OwnedValue::Set(_) => "set".to_owned(),
+        OwnedValue::String(_) => "String".to_owned(),
+        OwnedValue::Bytes(_) => "Bytes".to_owned(),
+        OwnedValue::Array(_) => "Array".to_owned(),
+        OwnedValue::Map(_) => "Map".to_owned(),
+        OwnedValue::Set(_) => "Set".to_owned(),
         OwnedValue::Record { type_name, .. } => type_name.clone(),
         OwnedValue::Enum { enum_name, .. } => enum_name.clone(),
-        OwnedValue::Closure(_) => "closure".to_owned(),
-        OwnedValue::Range(_) => "range".to_owned(),
+        OwnedValue::Closure(_) => "Closure".to_owned(),
+        OwnedValue::Range(_) => "Range".to_owned(),
         OwnedValue::HostRef(_) => "host_ref".to_owned(),
         OwnedValue::PathProxy(_) => "path_proxy".to_owned(),
-        OwnedValue::Iterator(_) => "iterator".to_owned(),
+        OwnedValue::Iterator(_) => "Iterator".to_owned(),
     }
 }
 

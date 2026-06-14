@@ -228,15 +228,17 @@ impl TypeFact {
         match self {
             Self::Unknown => "unknown".to_owned(),
             Self::Never => "never".to_owned(),
-            Self::Any => "any".to_owned(),
+            Self::Any => "Any".to_owned(),
+            Self::Primitive(PrimitiveTag::String) => "String".to_owned(),
+            Self::Primitive(PrimitiveTag::Bytes) => "Bytes".to_owned(),
             Self::Primitive(tag) => tag.name().to_owned(),
-            Self::Range => "range".to_owned(),
-            Self::Array { element } => format!("array({})", element.display_name()),
+            Self::Range => "Range".to_owned(),
+            Self::Array { element } => format!("Array({})", element.display_name()),
             Self::Map { key, value } => {
-                format!("map({}, {})", key.display_name(), value.display_name())
+                format!("Map({}, {})", key.display_name(), value.display_name())
             }
-            Self::Set { element } => format!("set({})", element.display_name()),
-            Self::Iterator { .. } => "iterator".to_owned(),
+            Self::Set { element } => format!("Set({})", element.display_name()),
+            Self::Iterator { .. } => "Iterator".to_owned(),
             Self::Option { some } => format!("Option({})", some.display_name()),
             Self::OptionSome { some } => format!("Option::Some({})", some.display_name()),
             Self::OptionNone => "Option::None".to_owned(),
@@ -251,7 +253,7 @@ impl TypeFact {
                     .map(Self::display_name)
                     .collect::<Vec<_>>()
                     .join(", ");
-                format!("fn({params}) -> {}", returns.display_name())
+                format!("Function({params}) -> {}", returns.display_name())
             }
             Self::Record { name }
             | Self::Host { name }
@@ -298,16 +300,16 @@ mod tests {
     fn display_names_avoid_script_generic_syntax() {
         let fact = TypeFact::map(TypeFact::STRING, TypeFact::array(TypeFact::I64));
 
-        assert_eq!(fact.display_name(), "map(string, array(i64))");
+        assert_eq!(fact.display_name(), "Map(String, Array(i64))");
         assert_eq!(
             TypeFact::option_some(TypeFact::I64).display_name(),
             "Option::Some(i64)"
         );
         assert_eq!(
             TypeFact::result_err(TypeFact::STRING).display_name(),
-            "Result::Err(string)"
+            "Result::Err(String)"
         );
-        assert_eq!(TypeFact::iterator(TypeFact::I64).display_name(), "iterator");
+        assert_eq!(TypeFact::iterator(TypeFact::I64).display_name(), "Iterator");
         assert!(!fact.display_name().contains('<'));
         assert!(!fact.display_name().contains('>'));
     }

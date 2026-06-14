@@ -130,7 +130,7 @@ fn runtime_script_global_decl_persists_vm_owned_value_and_rust_updates() {
             r#"
 struct ServerState {
     level: i64,
-    name: string,
+    name: String,
 }
 
 global state: ServerState;
@@ -241,7 +241,7 @@ struct ServerStats {
 
 struct ServerState {
     level: i64,
-    name: string,
+    name: String,
     total_gold: i64,
     stats: ServerStats,
 }
@@ -276,7 +276,7 @@ fn shared_runtime_image_keeps_script_globals_isolated() {
             r#"
 struct ServerState {
     level: i64,
-    name: string,
+    name: String,
 }
 
 global state: ServerState;
@@ -392,7 +392,7 @@ fn read_amount() {
         error.kind(),
         VmErrorKind::TypeContractViolation {
             expected: "i64".to_owned(),
-            actual: "string".to_owned(),
+            actual: "String".to_owned(),
             debug_name: "main::amount".to_owned(),
         }
     );
@@ -436,7 +436,7 @@ global state: ServerState;
         error.kind(),
         VmErrorKind::TypeContractViolation {
             expected: "ServerState".to_owned(),
-            actual: "string".to_owned(),
+            actual: "String".to_owned(),
             debug_name: "main::state".to_owned(),
         }
     );
@@ -469,7 +469,7 @@ fn runtime_insert_global_accepts_serde_struct_with_single_api() {
             r#"
 struct SerdeServerState {
     level: i64,
-    name: string,
+    name: String,
 }
 
 global state: SerdeServerState;
@@ -537,7 +537,7 @@ fn runtime_insert_global_accepts_runtime_managed_value_with_single_api() {
             r#"
 struct ServerState {
     level: i64,
-    name: string,
+    name: String,
 }
 
 global state: ServerState;
@@ -631,7 +631,7 @@ fn retained_runtime_value_survives_script_global_collection() {
             r#"
 struct Reward {
     gold: i64,
-    label: string,
+    label: String,
 }
 
 global scratch: Reward;

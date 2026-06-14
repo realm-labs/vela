@@ -239,7 +239,7 @@ fn engine_standard_natives_register_reflection_metadata() {
         .iter()
         .find(|method| method.name == "trim")
         .expect("string.trim method metadata");
-    assert_eq!(trim.return_type.as_deref(), Some("string"));
+    assert_eq!(trim.return_type.as_deref(), Some("String"));
     assert_eq!(trim.attrs.get("stdlib"), Some("string"));
     let split_once = string_type
         .methods
@@ -247,7 +247,7 @@ fn engine_standard_natives_register_reflection_metadata() {
         .find(|method| method.name == "split_once")
         .expect("string.split_once method metadata");
     assert_eq!(split_once.params[0].name, "separator");
-    assert_eq!(split_once.params[0].type_hint.as_deref(), Some("string"));
+    assert_eq!(split_once.params[0].type_hint.as_deref(), Some("String"));
     assert_eq!(split_once.return_type.as_deref(), Some("Option"));
     let parse_i64 = string_type
         .methods
@@ -270,15 +270,15 @@ fn engine_standard_natives_register_reflection_metadata() {
         .iter()
         .find(|method| method.name == "push")
         .expect("array.push method metadata");
-    assert_eq!(array_push.params[0].type_hint.as_deref(), Some("any"));
+    assert_eq!(array_push.params[0].type_hint.as_deref(), Some("Any"));
     assert_eq!(array_push.return_type.as_deref(), Some("null"));
     let array_map = array_type
         .methods
         .iter()
         .find(|method| method.name == "map")
         .expect("array.map method metadata");
-    assert_eq!(array_map.params[0].type_hint.as_deref(), Some("function"));
-    assert_eq!(array_map.return_type.as_deref(), Some("array"));
+    assert_eq!(array_map.params[0].type_hint.as_deref(), Some("Function"));
+    assert_eq!(array_map.return_type.as_deref(), Some("Array"));
 
     let map_type = registry.type_by_name("map").expect("map type");
     assert_eq!(map_type.kind, vela_reflect::registry::TypeKind::Map);
@@ -297,8 +297,8 @@ fn engine_standard_natives_register_reflection_metadata() {
         .iter()
         .find(|method| method.name == "union")
         .expect("set::union method metadata");
-    assert_eq!(set_union.params[0].type_hint.as_deref(), Some("set"));
-    assert_eq!(set_union.return_type.as_deref(), Some("set"));
+    assert_eq!(set_union.params[0].type_hint.as_deref(), Some("Set"));
+    assert_eq!(set_union.return_type.as_deref(), Some("Set"));
 
     let range_type = registry.type_by_name("range").expect("range type");
     assert_eq!(range_type.kind, vela_reflect::registry::TypeKind::Range);
@@ -332,7 +332,7 @@ fn engine_standard_natives_register_reflection_metadata() {
     assert_eq!(option_type.variants[0].fields[0].name, "0");
     assert_eq!(
         option_type.variants[0].fields[0].type_hint.as_deref(),
-        Some("any")
+        Some("Any")
     );
     assert_eq!(
         option_type.variants[0].fields[0].docs.as_deref(),
@@ -355,7 +355,7 @@ fn engine_standard_natives_register_reflection_metadata() {
         .find(|method| method.name == "map")
         .expect("Option.map method metadata");
     assert_eq!(option_map.params[0].name, "callback");
-    assert_eq!(option_map.params[0].type_hint.as_deref(), Some("function"));
+    assert_eq!(option_map.params[0].type_hint.as_deref(), Some("Function"));
     assert_eq!(option_map.return_type.as_deref(), Some("Option"));
     assert_eq!(option_map.attrs.get("stdlib"), Some("option"));
     let option_ok_or = option_type
@@ -381,7 +381,7 @@ fn engine_standard_natives_register_reflection_metadata() {
     assert_eq!(result_type.variants[0].fields[0].name, "0");
     assert_eq!(
         result_type.variants[0].fields[0].type_hint.as_deref(),
-        Some("any")
+        Some("Any")
     );
     assert_eq!(
         result_type.variants[0].fields[0].docs.as_deref(),
@@ -400,7 +400,7 @@ fn engine_standard_natives_register_reflection_metadata() {
     assert_eq!(result_type.variants[1].fields[0].name, "0");
     assert_eq!(
         result_type.variants[1].fields[0].type_hint.as_deref(),
-        Some("any")
+        Some("Any")
     );
     assert_eq!(
         result_type.variants[1].fields[0].docs.as_deref(),
@@ -419,7 +419,7 @@ fn engine_standard_natives_register_reflection_metadata() {
     assert_eq!(result_map_err.params[0].name, "callback");
     assert_eq!(
         result_map_err.params[0].type_hint.as_deref(),
-        Some("function")
+        Some("Function")
     );
     assert_eq!(result_map_err.return_type.as_deref(), Some("Result"));
     assert_eq!(result_map_err.attrs.get("stdlib"), Some("result"));
@@ -449,7 +449,7 @@ fn engine_standard_natives_register_reflection_metadata() {
     assert_eq!(max.params.len(), 2);
     assert_eq!(max.params[0].name, "left");
     assert_eq!(max.params[1].name, "right");
-    assert_eq!(max.return_type.as_deref(), Some("any"));
+    assert_eq!(max.return_type.as_deref(), Some("Any"));
     assert_eq!(max.attrs.get("stdlib"), Some("math"));
     assert_eq!(
         max.docs.as_deref(),
@@ -519,7 +519,7 @@ fn engine_standard_natives_register_reflection_metadata() {
         .expect("option::some");
     assert_eq!(option_some.module.as_deref(), Some("option"));
     assert_eq!(option_some.params[0].name, "value");
-    assert_eq!(option_some.return_type.as_deref(), Some("any"));
+    assert_eq!(option_some.return_type.as_deref(), Some("Any"));
     assert_eq!(option_some.attrs.get("stdlib"), Some("option"));
     assert_eq!(
         option_some.docs.as_deref(),
@@ -529,7 +529,7 @@ fn engine_standard_natives_register_reflection_metadata() {
     let result_ok = registry.function_by_name("result::ok").expect("result::ok");
     assert_eq!(result_ok.module.as_deref(), Some("result"));
     assert_eq!(result_ok.params[0].name, "value");
-    assert_eq!(result_ok.return_type.as_deref(), Some("any"));
+    assert_eq!(result_ok.return_type.as_deref(), Some("Any"));
     assert_eq!(result_ok.attrs.get("stdlib"), Some("result"));
     assert_eq!(
         result_ok.docs.as_deref(),
@@ -541,8 +541,8 @@ fn engine_standard_natives_register_reflection_metadata() {
         .expect("set::from_array");
     assert_eq!(set_from_array.module.as_deref(), Some("set"));
     assert_eq!(set_from_array.params[0].name, "values");
-    assert_eq!(set_from_array.params[0].type_hint.as_deref(), Some("array"));
-    assert_eq!(set_from_array.return_type.as_deref(), Some("set"));
+    assert_eq!(set_from_array.params[0].type_hint.as_deref(), Some("Array"));
+    assert_eq!(set_from_array.return_type.as_deref(), Some("Set"));
     assert_eq!(set_from_array.attrs.get("stdlib"), Some("set"));
     assert_eq!(
         set_from_array.docs.as_deref(),
@@ -555,7 +555,7 @@ fn engine_standard_natives_register_reflection_metadata() {
     assert_eq!(bytes_from_hex.params[0].name, "text");
     assert_eq!(
         bytes_from_hex.params[0].type_hint.as_deref(),
-        Some("string")
+        Some("String")
     );
     assert_eq!(bytes_from_hex.return_type.as_deref(), Some("Result"));
     assert_eq!(bytes_from_hex.attrs.get("stdlib"), Some("bytes"));
@@ -758,21 +758,21 @@ fn main() {
         && reflect::has_method(char_type, "to_string")
         && reflect::has_method(char_type, "is_ascii_digit")
         && trim.owner == "string"
-        && reflect::returns(trim) == "string"
+        && reflect::returns(trim) == "String"
         && reflect::attr(trim, "stdlib") == "string"
         && split_once.params.len() == 1
         && split_once.params[0].name == "separator"
-        && split_once.params[0].type == "string"
+        && split_once.params[0].type == "String"
         && reflect::returns(split_once) == "Option"
         && reflect::returns(parse_i64) == "Option"
         && reflect::returns(parse_char) == "Option"
         && bytes_read_u32_le.params[0].type == "i64"
         && reflect::returns(bytes_read_u32_le) == "u32"
         && reflect::attr(bytes_read_u32_le, "stdlib") == "bytes"
-        && reflect::returns(bytes_to_hex) == "string"
+        && reflect::returns(bytes_to_hex) == "String"
         && reflect::attr(bytes_to_hex, "stdlib") == "bytes"
-        && reflect::returns(bytes_values) == "iterator"
-        && reflect::returns(char_to_string) == "string"
+        && reflect::returns(bytes_values) == "Iterator"
+        && reflect::returns(char_to_string) == "String"
         && reflect::attr(char_to_string, "stdlib") == "char"
         && reflect::returns(char_is_ascii_digit) == "bool"
         && array_methods.len() >= 28
@@ -807,43 +807,43 @@ fn main() {
         && reflect::has_method(result_type, "map_err")
         && reflect::has_method(result_type, "to_error_option")
         && array_push.params[0].name == "value"
-        && array_push.params[0].type == "any"
+        && array_push.params[0].type == "Any"
         && reflect::returns(array_push) == "null"
-        && array_map.params[0].type == "function"
-        && reflect::returns(array_map) == "array"
+        && array_map.params[0].type == "Function"
+        && reflect::returns(array_map) == "Array"
         && map_get.params[0].name == "key"
         && reflect::returns(map_get) == "Option"
-        && set_union.params[0].type == "set"
-        && reflect::returns(set_union) == "set"
+        && set_union.params[0].type == "Set"
+        && reflect::returns(set_union) == "Set"
         && range_len.params.is_empty()
         && reflect::returns(range_len) == "i64"
         && reflect::attr(range_len, "stdlib") == "range"
         && range_is_empty.params.is_empty()
         && reflect::returns(range_is_empty) == "bool"
         && range_iter.params.is_empty()
-        && reflect::returns(range_iter) == "iterator"
+        && reflect::returns(range_iter) == "Iterator"
         && iterator_next.params.is_empty()
         && reflect::returns(iterator_next) == "Option"
         && iterator_map.params[0].name == "callback"
-        && iterator_map.params[0].type == "function"
-        && reflect::returns(iterator_map) == "iterator"
+        && iterator_map.params[0].type == "Function"
+        && reflect::returns(iterator_map) == "Iterator"
         && iterator_take.params[0].name == "count"
         && iterator_take.params[0].type == "i64"
-        && reflect::returns(iterator_take) == "iterator"
+        && reflect::returns(iterator_take) == "Iterator"
         && iterator_collect_array.params.is_empty()
-        && reflect::returns(iterator_collect_array) == "array"
+        && reflect::returns(iterator_collect_array) == "Array"
         && iterator_collect_set.params.is_empty()
-        && reflect::returns(iterator_collect_set) == "set"
+        && reflect::returns(iterator_collect_set) == "Set"
         && iterator_collect_map.params.is_empty()
-        && reflect::returns(iterator_collect_map) == "map"
+        && reflect::returns(iterator_collect_map) == "Map"
         && option_map.params[0].name == "callback"
-        && option_map.params[0].type == "function"
+        && option_map.params[0].type == "Function"
         && reflect::returns(option_map) == "Option"
         && reflect::attr(option_map, "stdlib") == "option"
         && option_ok_or.params[0].name == "error"
         && reflect::returns(option_ok_or) == "Result"
         && result_map_err.params[0].name == "callback"
-        && result_map_err.params[0].type == "function"
+        && result_map_err.params[0].type == "Function"
         && reflect::returns(result_map_err) == "Result"
         && reflect::attr(result_map_err, "stdlib") == "result"
         && reflect::returns(result_to_error) == "Option"
@@ -852,7 +852,7 @@ fn main() {
         && reflect::docs(option_variants[0]) == "Carries a present Option payload."
         && reflect::attr(option_variants[0], "stdlib") == "option"
         && option_variants[0].fields[0].name == "0"
-        && option_variants[0].fields[0].type == "any"
+        && option_variants[0].fields[0].type == "Any"
         && reflect::docs(option_variants[0].fields[0]) == "Dynamic Option::Some payload value."
         && reflect::attr(option_variants[0].fields[0], "stdlib") == "option"
         && option_variants[1].name == "None"
@@ -862,13 +862,13 @@ fn main() {
         && result_variants[0].name == "Ok"
         && reflect::docs(result_variants[0]) == "Carries a successful Result payload."
         && reflect::attr(result_variants[0], "stdlib") == "result"
-        && result_variants[0].fields[0].type == "any"
+        && result_variants[0].fields[0].type == "Any"
         && reflect::docs(result_variants[0].fields[0]) == "Dynamic Result::Ok payload value."
         && reflect::attr(result_variants[0].fields[0], "stdlib") == "result"
         && result_variants[1].name == "Err"
         && reflect::docs(result_variants[1]) == "Carries a recoverable Result error payload."
         && reflect::attr(result_variants[1], "stdlib") == "result"
-        && result_variants[1].fields[0].type == "any"
+        && result_variants[1].fields[0].type == "Any"
         && reflect::docs(result_variants[1].fields[0]) == "Dynamic Result::Err payload value."
         && reflect::attr(result_variants[1].fields[0], "stdlib") == "result"
         && !reflect::has_function("math::random")
@@ -896,11 +896,11 @@ fn main() {
         && reflect::docs(ok) == "Wraps a success value in Result::Ok."
         && reflect::docs(set_from_array) == "Builds a set from array values."
         && reflect::docs(bytes_from_hex) == "Decodes hexadecimal text to bytes or returns an error string."
-        && reflect::returns(max) == "any"
+        && reflect::returns(max) == "Any"
         && reflect::returns(sqrt) == "f64"
-        && reflect::returns(some) == "any"
-        && reflect::returns(ok) == "any"
-        && reflect::returns(set_from_array) == "set"
+        && reflect::returns(some) == "Any"
+        && reflect::returns(ok) == "Any"
+        && reflect::returns(set_from_array) == "Set"
         && reflect::returns(bytes_from_hex) == "Result"
         && params.len() == 2
         && params[0].name == "left"
@@ -911,10 +911,10 @@ fn main() {
         && ok_params[0].name == "value"
         && set_params.len() == 1
         && set_params[0].name == "values"
-        && set_params[0].type == "array"
+        && set_params[0].type == "Array"
         && bytes_params.len() == 1
         && bytes_params[0].name == "text"
-        && bytes_params[0].type == "string";
+        && bytes_params[0].type == "String";
 }
 "#,
         )

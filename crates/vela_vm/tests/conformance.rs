@@ -101,7 +101,7 @@ fn primitive_negative_fixtures_fail_in_expected_phase() {
             PRIMITIVE_DYNAMIC_GUARD_RUNTIME,
             VmErrorKind::TypeContractViolation {
                 expected: "i64".to_owned(),
-                actual: "string".to_owned(),
+                actual: "String".to_owned(),
                 debug_name: "value".to_owned(),
             },
         ),
@@ -109,7 +109,7 @@ fn primitive_negative_fixtures_fail_in_expected_phase() {
             PRIMITIVE_FIELD_GUARD_RUNTIME,
             VmErrorKind::TypeContractViolation {
                 expected: "i64".to_owned(),
-                actual: "string".to_owned(),
+                actual: "String".to_owned(),
                 debug_name: "value".to_owned(),
             },
         ),

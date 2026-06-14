@@ -257,5 +257,5 @@ fn i64_shape() -> ValueShape {
 }
 
 fn string_shape() -> ValueShape {
-    ValueShape::Scalar("string".to_owned())
+    ValueShape::Scalar("String".to_owned())
 }

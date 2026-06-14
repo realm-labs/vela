@@ -269,9 +269,9 @@ fn runs_compiled_trait_default_method_dispatch() {
         r#"
 trait BonusSource {
     fn bonus(self, amount) -> i64 { return self.level + amount; }
-    fn label(self) -> string { return self.name; }
+    fn label(self) -> String { return self.name; }
 }
-struct Player { level: i64, name: string }
+struct Player { level: i64, name: String }
 
 impl BonusSource for Player {}
 
@@ -298,13 +298,13 @@ fn runs_compiled_self_method_id_dispatch() {
         SourceId::new(1),
         r#"
 trait BonusSource {
-    fn label(self) -> string;
-    fn summary(self) -> string { return self.label(); }
+    fn label(self) -> String;
+    fn summary(self) -> String { return self.label(); }
 }
-struct Player { name: string }
+struct Player { name: String }
 
 impl BonusSource for Player {
-    fn label(self) -> string {
+    fn label(self) -> String {
         return self.name;
     }
 }

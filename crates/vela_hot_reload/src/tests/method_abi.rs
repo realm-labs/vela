@@ -129,7 +129,7 @@ fn method_descriptor_parameter_abi_changes_are_rejected() {
             AccessAbi::public(),
         )
         .param(ParamAbi::new("amount").type_hint("i64"))
-        .param(ParamAbi::new("reason").type_hint("string")),
+        .param(ParamAbi::new("reason").type_hint("String")),
     );
     let error = compile_update_with_abi(
         &initial,
@@ -148,7 +148,7 @@ fn method_descriptor_parameter_abi_changes_are_rejected() {
             AccessAbi::public(),
         )
         .param(ParamAbi::new("amount").type_hint("i64"))
-        .param(ParamAbi::new("reason").type_hint("string").defaulted(true)),
+        .param(ParamAbi::new("reason").type_hint("String").defaulted(true)),
     );
     compile_update_with_abi(
         &initial,

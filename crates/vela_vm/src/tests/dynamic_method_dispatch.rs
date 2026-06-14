@@ -203,11 +203,11 @@ fn linked_dynamic_script_method_resolves_by_runtime_receiver_type() {
         SourceId::new(1),
         r#"
 struct Label {
-    text: string,
+    text: String,
 }
 
 impl Label {
-    fn starts_with(self, prefix: string) -> bool {
+    fn starts_with(self, prefix: String) -> bool {
         return self.text.starts_with(prefix);
     }
 }
@@ -258,11 +258,11 @@ fn linked_dynamic_script_method_handles_heterogeneous_receivers() {
         SourceId::new(1),
         r#"
 struct Label {
-    text: string,
+    text: String,
 }
 
 impl Label {
-    fn starts_with(self, prefix: string) -> bool {
+    fn starts_with(self, prefix: String) -> bool {
         return self.text.starts_with(prefix);
     }
 }
@@ -296,11 +296,11 @@ fn linked_dynamic_script_method_materializes_named_and_default_args_after_resolu
         SourceId::new(1),
         r#"
 struct Label {
-    text: string,
+    text: String,
 }
 
 impl Label {
-    fn wrap(self, prefix: string = "[", suffix: string = "]") -> string {
+    fn wrap(self, prefix: String = "[", suffix: String = "]") -> String {
         return [prefix, self.text, suffix].join("");
     }
 }
@@ -340,15 +340,15 @@ fn linked_dynamic_script_method_named_arg_errors_keep_source_span() {
         SourceId::new(1),
         r#"
 struct Label {
-    text: string,
+    text: String,
 }
 
 impl Label {
-    fn wrap(self, prefix: string = "[", suffix: string = "]") -> string {
+    fn wrap(self, prefix: String = "[", suffix: String = "]") -> String {
         return [prefix, self.text, suffix].join("");
     }
 
-    fn require(self, prefix: string) -> string {
+    fn require(self, prefix: String) -> String {
         return [prefix, self.text].join("");
     }
 }
@@ -481,11 +481,11 @@ fn linked_dynamic_method_cache_guard_miss_resolves_script_after_standard_receive
         SourceId::new(1),
         r#"
 struct Label {
-    text: string,
+    text: String,
 }
 
 impl Label {
-    fn starts_with(self, prefix: string) -> bool {
+    fn starts_with(self, prefix: String) -> bool {
         return self.text.starts_with(prefix);
     }
 }
@@ -558,21 +558,21 @@ fn linked_dynamic_method_cache_guard_misses_between_script_receiver_types() {
         SourceId::new(1),
         r#"
 struct LabelA {
-    text: string,
+    text: String,
 }
 
 struct LabelB {
-    text: string,
+    text: String,
 }
 
 impl LabelA {
-    fn starts_with(self, prefix: string) -> bool {
+    fn starts_with(self, prefix: String) -> bool {
         return self.text.starts_with(prefix);
     }
 }
 
 impl LabelB {
-    fn starts_with(self, prefix: string) -> bool {
+    fn starts_with(self, prefix: String) -> bool {
         return self.text.starts_with(prefix);
     }
 }

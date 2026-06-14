@@ -154,20 +154,30 @@ item_term       = ws, ( ";" | newline ), line_ws ;
 
 type_annotation = ":", ws, type_hint ;
 
-type_hint       = "any"
+type_hint       = type_path, [ type_arguments ] ;
+type_path       = "Any"
                 | "null"
                 | "bool"
-                | "int"
-                | "float"
-                | "string"
-                | "array"
-                | "map"
-                | "set"
-                | "function"
+                | "char"
+                | "i8" | "i16" | "i32" | "i64"
+                | "u8" | "u16" | "u32" | "u64"
+                | "f32" | "f64"
+                | "String"
+                | "Bytes"
+                | "Array"
+                | "Map"
+                | "Set"
+                | "Range"
+                | "Iterator"
+                | "Function"
+                | "Closure"
+                | "Option"
+                | "Result"
                 | path ;
+type_arguments  = "<", ws, type_hint, { ws, ",", ws, type_hint }, ws, ">" ;
 
-(* Vela does not support generic type syntax. The parser must reject
-   Array<T>, Map<K, V>, Option<T>, Result<T, E>, and similar forms. *)
+(* Type arguments are restricted to builtin Option<T> and Result<T, E>.
+   Container generics such as Array<T>, Map<K, V>, and Set<T> are rejected. *)
 
 (* ========================================================================= *)
 (* Statements and blocks                                                     *)

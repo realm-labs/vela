@@ -10,7 +10,7 @@ Sets store unique dynamic values. They are useful for membership checks and set 
 A set is usually created through standard library helpers or host-provided snapshot values. Membership APIs should be used instead of relying on array scans for uniqueness.
 
 ```vela
-fn has_tag(tags, tag: string) -> bool {
+fn has_tag(tags, tag: String) -> bool {
     return tags.contains(tag)
 }
 ```

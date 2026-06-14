@@ -56,7 +56,7 @@ use record_shapes::ValueShapeFlow;
 use schema_defaults::ScriptSchemaDefaults;
 use script_types::{ScriptTypeFlow, type_hint_script_type};
 use semantic::{parse_semantic_modules, parse_semantic_source};
-use value_types::{RuntimeTypeFact, ValueTypeFlow, type_hint_value_type};
+use value_types::{RuntimeTypeFact, StandardRuntimeType, ValueTypeFlow, type_hint_value_type};
 
 #[derive(Clone, Debug)]
 struct CompilerFacts<'registry> {
@@ -434,18 +434,173 @@ fn script_method_signatures(
         .collect()
 }
 
-fn primitive_type_guard_for_hint(
+fn type_guard_for_hint(
     hint: &HirTypeHint,
     location: GuardLocation,
     debug_name: impl Into<String>,
+    facts: &CompilerFacts<'_>,
 ) -> Option<UnlinkedTypeGuard> {
-    let RuntimeTypeFact::Primitive(tag) = type_hint_value_type(hint)? else {
-        return None;
-    };
+    let plan = type_guard_plan_for_hint_inner(hint, facts)?;
     Some(UnlinkedTypeGuard::new(
-        UnlinkedTypeGuardPlan::Primitive(tag),
+        plan,
         UnlinkedGuardContext::new(GuardKind::Contract, location, debug_name),
     ))
+}
+
+fn type_guard_plan_for_hint_inner(
+    hint: &HirTypeHint,
+    facts: &CompilerFacts<'_>,
+) -> Option<UnlinkedTypeGuardPlan> {
+    let [name] = hint.path.as_slice() else {
+        return None;
+    };
+    match name.as_str() {
+        "Any" => None,
+        "null" => Some(UnlinkedTypeGuardPlan::Primitive(
+            vela_common::PrimitiveTag::Null,
+        )),
+        "bool" => Some(UnlinkedTypeGuardPlan::Primitive(
+            vela_common::PrimitiveTag::Bool,
+        )),
+        "char" => Some(UnlinkedTypeGuardPlan::Primitive(
+            vela_common::PrimitiveTag::Char,
+        )),
+        "i8" => Some(UnlinkedTypeGuardPlan::Primitive(
+            vela_common::PrimitiveTag::I8,
+        )),
+        "i16" => Some(UnlinkedTypeGuardPlan::Primitive(
+            vela_common::PrimitiveTag::I16,
+        )),
+        "i32" => Some(UnlinkedTypeGuardPlan::Primitive(
+            vela_common::PrimitiveTag::I32,
+        )),
+        "i64" => Some(UnlinkedTypeGuardPlan::Primitive(
+            vela_common::PrimitiveTag::I64,
+        )),
+        "u8" => Some(UnlinkedTypeGuardPlan::Primitive(
+            vela_common::PrimitiveTag::U8,
+        )),
+        "u16" => Some(UnlinkedTypeGuardPlan::Primitive(
+            vela_common::PrimitiveTag::U16,
+        )),
+        "u32" => Some(UnlinkedTypeGuardPlan::Primitive(
+            vela_common::PrimitiveTag::U32,
+        )),
+        "u64" => Some(UnlinkedTypeGuardPlan::Primitive(
+            vela_common::PrimitiveTag::U64,
+        )),
+        "f32" => Some(UnlinkedTypeGuardPlan::Primitive(
+            vela_common::PrimitiveTag::F32,
+        )),
+        "f64" => Some(UnlinkedTypeGuardPlan::Primitive(
+            vela_common::PrimitiveTag::F64,
+        )),
+        "String" => Some(UnlinkedTypeGuardPlan::Primitive(
+            vela_common::PrimitiveTag::String,
+        )),
+        "Bytes" => Some(UnlinkedTypeGuardPlan::Primitive(
+            vela_common::PrimitiveTag::Bytes,
+        )),
+        "Array" => Some(UnlinkedTypeGuardPlan::Standard(
+            crate::StandardTypeGuard::Array,
+        )),
+        "Map" => Some(UnlinkedTypeGuardPlan::Standard(
+            crate::StandardTypeGuard::Map,
+        )),
+        "Set" => Some(UnlinkedTypeGuardPlan::Standard(
+            crate::StandardTypeGuard::Set,
+        )),
+        "Range" => Some(UnlinkedTypeGuardPlan::Standard(
+            crate::StandardTypeGuard::Range,
+        )),
+        "Function" => Some(UnlinkedTypeGuardPlan::Standard(
+            crate::StandardTypeGuard::Function,
+        )),
+        "Closure" => Some(UnlinkedTypeGuardPlan::Standard(
+            crate::StandardTypeGuard::Closure,
+        )),
+        "Iterator" => Some(UnlinkedTypeGuardPlan::Standard(
+            crate::StandardTypeGuard::Iterator,
+        )),
+        "Option" if hint.args.len() == 1 => Some(UnlinkedTypeGuardPlan::Option {
+            some: type_guard_plan_for_hint_inner(&hint.args[0], facts).map(Box::new),
+        }),
+        "Option" => Some(UnlinkedTypeGuardPlan::Standard(
+            crate::StandardTypeGuard::Option,
+        )),
+        "Result" if hint.args.len() == 2 => Some(UnlinkedTypeGuardPlan::Result {
+            ok: type_guard_plan_for_hint_inner(&hint.args[0], facts).map(Box::new),
+            err: type_guard_plan_for_hint_inner(&hint.args[1], facts).map(Box::new),
+        }),
+        "Result" => Some(UnlinkedTypeGuardPlan::Standard(
+            crate::StandardTypeGuard::Result,
+        )),
+        _ => script_record_shape_guard_plan(name, facts)
+            .or_else(|| host_type_guard_plan(name, facts.registry))
+            .or_else(|| Some(UnlinkedTypeGuardPlan::Type(hint.display()))),
+    }
+}
+
+fn script_record_shape_guard_plan(
+    type_name: &str,
+    facts: &CompilerFacts<'_>,
+) -> Option<UnlinkedTypeGuardPlan> {
+    let (type_name, shape_id) = facts.script_field_slots.record_shape_id(type_name)?;
+    Some(UnlinkedTypeGuardPlan::Shape {
+        type_name,
+        shape_id,
+    })
+}
+
+fn host_type_guard_plan(
+    type_name: &str,
+    registry: Option<vela_registry::RegistryCompileView<'_>>,
+) -> Option<UnlinkedTypeGuardPlan> {
+    let registry = registry?;
+    let type_id =
+        registry.resolve_type(&DefPath::ty("host", std::iter::empty::<&str>(), type_name))?;
+    registry.type_host_runtime_id(type_id)?;
+    Some(UnlinkedTypeGuardPlan::HostType(type_name.to_owned()))
+}
+
+fn type_guard_plan_for_runtime_type(ty: &RuntimeTypeFact) -> Option<UnlinkedTypeGuardPlan> {
+    match ty {
+        RuntimeTypeFact::Primitive(tag) => Some(UnlinkedTypeGuardPlan::Primitive(*tag)),
+        RuntimeTypeFact::Standard(StandardRuntimeType::Array) => Some(
+            UnlinkedTypeGuardPlan::Standard(crate::StandardTypeGuard::Array),
+        ),
+        RuntimeTypeFact::Standard(StandardRuntimeType::Map) => Some(
+            UnlinkedTypeGuardPlan::Standard(crate::StandardTypeGuard::Map),
+        ),
+        RuntimeTypeFact::Standard(StandardRuntimeType::Set) => Some(
+            UnlinkedTypeGuardPlan::Standard(crate::StandardTypeGuard::Set),
+        ),
+        RuntimeTypeFact::Standard(StandardRuntimeType::Range) => Some(
+            UnlinkedTypeGuardPlan::Standard(crate::StandardTypeGuard::Range),
+        ),
+        RuntimeTypeFact::Standard(StandardRuntimeType::Function) => Some(
+            UnlinkedTypeGuardPlan::Standard(crate::StandardTypeGuard::Function),
+        ),
+        RuntimeTypeFact::Standard(StandardRuntimeType::Closure) => Some(
+            UnlinkedTypeGuardPlan::Standard(crate::StandardTypeGuard::Closure),
+        ),
+        RuntimeTypeFact::Standard(StandardRuntimeType::Iterator) => Some(
+            UnlinkedTypeGuardPlan::Standard(crate::StandardTypeGuard::Iterator),
+        ),
+        RuntimeTypeFact::Standard(StandardRuntimeType::Option) => Some(
+            UnlinkedTypeGuardPlan::Standard(crate::StandardTypeGuard::Option),
+        ),
+        RuntimeTypeFact::Standard(StandardRuntimeType::Result) => Some(
+            UnlinkedTypeGuardPlan::Standard(crate::StandardTypeGuard::Result),
+        ),
+        RuntimeTypeFact::Option(payload) => Some(UnlinkedTypeGuardPlan::Option {
+            some: type_guard_plan_for_runtime_type(payload).map(Box::new),
+        }),
+        RuntimeTypeFact::Result { ok, err } => Some(UnlinkedTypeGuardPlan::Result {
+            ok: type_guard_plan_for_runtime_type(ok).map(Box::new),
+            err: type_guard_plan_for_runtime_type(err).map(Box::new),
+        }),
+    }
 }
 
 struct Compiler<'ast, 'registry> {
@@ -510,7 +665,7 @@ impl<'ast, 'registry> Compiler<'ast, 'registry> {
             .with_param_defaults(param_defaults);
         if let Some(return_type) = &signature.return_type
             && let Some(guard) =
-                primitive_type_guard_for_hint(return_type, GuardLocation::Return, "return")
+                type_guard_for_hint(return_type, GuardLocation::Return, "return", &facts)
         {
             code.set_return_guard(guard);
         }
@@ -529,10 +684,11 @@ impl<'ast, 'registry> Compiler<'ast, 'registry> {
             let register = u16::try_from(index)
                 .map_err(|_| CompileError::new(CompileErrorKind::RegisterOverflow))?;
             if let Some(type_hint) = &param.type_hint
-                && let Some(guard) = primitive_type_guard_for_hint(
+                && let Some(guard) = type_guard_for_hint(
                     type_hint,
                     GuardLocation::Parameter { index: register },
                     param.name.clone(),
+                    &facts,
                 )
             {
                 code.push_param_guard(register, guard);
@@ -659,13 +815,14 @@ impl<'ast, 'registry> Compiler<'ast, 'registry> {
             );
             if let Some(type_hint) = &param.type_hint {
                 let hint = HirTypeHint::from_syntax(type_hint);
-                if let Some(guard) = primitive_type_guard_for_hint(
+                if let Some(guard) = type_guard_for_hint(
                     &hint,
                     GuardLocation::Parameter {
                         index: u16::try_from(index)
                             .map_err(|_| CompileError::new(CompileErrorKind::RegisterOverflow))?,
                     },
                     param.name.clone(),
+                    &facts,
                 ) {
                     code.push_param_guard(
                         u16::try_from(index)

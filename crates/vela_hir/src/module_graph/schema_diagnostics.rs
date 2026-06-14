@@ -218,7 +218,12 @@ fn schema_hint_diagnostics(
     candidates: &[SchemaCandidate],
     allowed_kinds: Option<&[DeclarationKind]>,
 ) -> Vec<Diagnostic> {
-    schema_path_diagnostics(&hint.path, hint.span, candidates, allowed_kinds, "schema")
+    let mut diagnostics =
+        schema_path_diagnostics(&hint.path, hint.span, candidates, allowed_kinds, "schema");
+    for arg in &hint.args {
+        diagnostics.extend(schema_hint_diagnostics(arg, candidates, allowed_kinds));
+    }
+    diagnostics
 }
 
 fn schema_path_diagnostics(
@@ -333,7 +338,7 @@ fn is_builtin_type_hint(path: &[String]) -> bool {
     };
     matches!(
         name.as_str(),
-        "any"
+        "Any"
             | "null"
             | "bool"
             | "i8"
@@ -346,13 +351,14 @@ fn is_builtin_type_hint(path: &[String]) -> bool {
             | "u64"
             | "f32"
             | "f64"
-            | "string"
-            | "bytes"
-            | "array"
-            | "map"
-            | "set"
-            | "iterator"
-            | "function"
+            | "String"
+            | "Bytes"
+            | "Array"
+            | "Map"
+            | "Set"
+            | "Range"
+            | "Iterator"
+            | "Function"
             | "Option"
             | "Result"
     )

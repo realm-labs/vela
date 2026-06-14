@@ -635,6 +635,7 @@ fn registry_param_hints(params: &[ParamDef], call_span: Span) -> Vec<ParamHint> 
 fn registry_type_hint(hint: &str, span: Span) -> vela_hir::type_hint::HirTypeHint {
     vela_hir::type_hint::HirTypeHint {
         path: hint.split("::").map(str::to_owned).collect(),
+        args: Vec::new(),
         span,
     }
 }

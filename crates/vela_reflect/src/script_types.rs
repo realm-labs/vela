@@ -510,14 +510,14 @@ mod tests {
 struct Reward {
     #[doc("Reward count.")]
     count: i64 = 1,
-    item_id: string = "gold",
+    item_id: String = "gold",
 }
 
 enum QuestProgress {
     None,
     #[active]
-    Active { quest_id: string, count: i64 = 0 },
-    Finished(quest_id: string),
+    Active { quest_id: String, count: i64 = 0 },
+    Finished(quest_id: String),
 }
 "#,
         ));
@@ -613,7 +613,7 @@ enum QuestProgress {
                 .iter()
                 .find(|field| field.name == "quest_id")
                 .and_then(|field| field.type_hint.as_deref()),
-            Some("string")
+            Some("String")
         );
         assert_eq!(
             active
@@ -733,7 +733,7 @@ enum QuestProgress {
             r#"
 struct Reward {
     #[id(101)]
-    item_id: string,
+    item_id: String,
     #[id(102)]
     count: i64,
 }
@@ -751,7 +751,7 @@ enum QuestProgress {
             r#"
 struct Reward {
     #[id(101)]
-    item: string,
+    item: String,
     #[id(102)]
     quantity: i64,
 }
@@ -797,7 +797,7 @@ enum QuestProgress {
         original.add_source(ModuleSource::new(
             SourceId::new(1),
             ModulePath::from_qualified("game::reward"),
-            "struct Reward { count: i64, item_id: string }\nenum QuestProgress { None, Active }",
+            "struct Reward { count: i64, item_id: String }\nenum QuestProgress { None, Active }",
         ));
         let mut changed = ModuleGraph::new();
         changed.add_source(ModuleSource::new(

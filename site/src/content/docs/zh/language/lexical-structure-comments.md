@@ -25,7 +25,7 @@ fn award(level: i64) -> i64 {
 行注释从 `//` 开始直到行尾。块注释使用 `/* ... */`，并且可以嵌套，所以临时注释一段已经包含注释的代码不会破坏词法结构。
 
 ```vela
-fn classify(value: i64) -> string {
+fn classify(value: i64) -> String {
     /* 嵌套注释是合法的：
        /* disabled note */
     */

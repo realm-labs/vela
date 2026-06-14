@@ -82,7 +82,7 @@ fn registry_facts() -> RegistryFacts {
     registry.register(
         TypeDesc::new(TypeKey::new(TypeId::new(1), "Player"))
             .field(FieldDesc::new(FieldId::new(1), "level").type_hint("i64"))
-            .field(FieldDesc::new(FieldId::new(2), "inventory").type_hint("map"))
+            .field(FieldDesc::new(FieldId::new(2), "inventory").type_hint("Map"))
             .method(
                 MethodDesc::new(HostMethodId::new(1), "grant_exp")
                     .param(MethodParamDesc::new("amount").type_hint("i64"))

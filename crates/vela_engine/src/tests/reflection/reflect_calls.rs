@@ -96,7 +96,7 @@ fn main() {
     for score in reflect::call(scores) {
         total += score;
     }
-    return reflect::returns(scores) == "iterator" && total == 10;
+    return reflect::returns(scores) == "Iterator" && total == 10;
 }
 "#,
         )

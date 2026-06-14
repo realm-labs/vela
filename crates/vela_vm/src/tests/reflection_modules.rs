@@ -222,7 +222,7 @@ fn compiled_source_reflect_call_function_candidates_respect_policy() {
     let program = compile_reflection_module_source(
         SourceId::new(1),
         r#"
-struct ReflectFunction { name: string }
+struct ReflectFunction { name: String }
 
 fn main() {
     let function = ReflectFunction { name: "game::reward::grant_visibel" };

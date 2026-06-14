@@ -199,8 +199,8 @@ fn public_reflection_metadata_lists_do_not_need_engine_permissions() {
             SourceId::new(1),
             r#"
 fn main() {
-    let fields: array = reflect::fields();
-    let functions: array = reflect::functions();
+    let fields: Array = reflect::fields();
+    let functions: Array = reflect::functions();
     if fields[0].owner == "Player"
         && fields[0].name == "secret_level"
         && functions[0].name == "game::secret_bonus" {
@@ -250,8 +250,8 @@ fn engine_missing_permissions_hide_reflection_metadata_lists() {
             SourceId::new(1),
             r#"
 fn main() {
-    let fields: array = reflect::fields();
-    let functions: array = reflect::functions();
+    let fields: Array = reflect::fields();
+    let functions: Array = reflect::functions();
     if functions[0].name == "game::secret_bonus" {
         return 1;
     }

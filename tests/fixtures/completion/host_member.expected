@@ -1,3 +1,3 @@
-field inventory map(unknown, unknown)
+field inventory Map(unknown, unknown)
 field level i64
-method grant_exp fn(i64) -> bool
+method grant_exp Function(i64) -> bool

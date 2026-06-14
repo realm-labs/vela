@@ -17,7 +17,7 @@ pub fn on_level_up(player, amount: i64) {
 
 #[schema(name = "Reward", tags = ["economy", "drop"])]
 struct Reward {
-    code: string
+    code: String
     amount: i64
 }
 ```

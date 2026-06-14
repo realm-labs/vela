@@ -64,18 +64,18 @@ fn hovers_builtin_type_kinds_without_generics() {
     let array_info = type_hover(&registry, "array").expect("array hover");
     assert_eq!(array_info.kind, HoverKind::Type);
     assert_eq!(array_info.fact, TypeFact::array(TypeFact::Any));
-    assert_eq!(array_info.detail.as_deref(), Some("kind: array"));
+    assert_eq!(array_info.detail.as_deref(), Some("kind: Array"));
 
     let map_info = type_hover(&registry, "map").expect("map hover");
     assert_eq!(map_info.fact, TypeFact::map(TypeFact::Any, TypeFact::Any));
-    assert_eq!(map_info.detail.as_deref(), Some("kind: map"));
+    assert_eq!(map_info.detail.as_deref(), Some("kind: Map"));
 
     let closure_info = type_hover(&registry, "closure").expect("closure hover");
     assert_eq!(
         closure_info.fact,
         TypeFact::function(Vec::new(), TypeFact::Any)
     );
-    assert_eq!(closure_info.detail.as_deref(), Some("kind: closure"));
+    assert_eq!(closure_info.detail.as_deref(), Some("kind: Closure"));
 }
 
 #[test]
@@ -150,7 +150,7 @@ fn hover_registry() -> TypeRegistry {
             .kind(TypeKind::ScriptEnum)
             .variant(
                 VariantDesc::new(VariantId::new(1), "Active")
-                    .field(FieldDesc::new(FieldId::new(2), "quest_id").type_hint("string")),
+                    .field(FieldDesc::new(FieldId::new(2), "quest_id").type_hint("String")),
             ),
     );
     registry.register(TypeDesc::new(TypeKey::new(TypeId::new(3), "array")).kind(TypeKind::Array));

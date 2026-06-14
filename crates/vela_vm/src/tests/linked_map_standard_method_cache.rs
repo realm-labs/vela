@@ -363,7 +363,7 @@ fn linked_map_merge_cache_program() -> LinkedMapCacheFixture {
 }
 
 fn linked_map_set_cache_program() -> LinkedMapCacheFixture {
-    let method_id = vela_stdlib::std_method_id("Map", "set").expect("Map::set method id");
+    let method_id = vela_stdlib::std_method_id("Map", "set").expect("Map::Set method id");
     let mut program = vela_bytecode::LinkedProgram::new();
     let main_name = program.intern_debug_name("main");
     let method_name = program.intern_debug_name("set");

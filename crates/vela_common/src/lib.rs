@@ -37,6 +37,25 @@ stable_id!(ShapeId, u32);
 stable_id!(SourceId, u32);
 
 #[must_use]
+pub fn script_shape_id<'a>(owner: &str, field_names: impl Iterator<Item = &'a str>) -> ShapeId {
+    let mut hash = 0x811c_9dc5;
+    script_shape_hash_bytes(&mut hash, owner.as_bytes());
+    script_shape_hash_bytes(&mut hash, &[0]);
+    for name in field_names {
+        script_shape_hash_bytes(&mut hash, name.as_bytes());
+        script_shape_hash_bytes(&mut hash, &[0]);
+    }
+    ShapeId::new(if hash == 0 { 1 } else { hash })
+}
+
+fn script_shape_hash_bytes(hash: &mut u32, bytes: &[u8]) {
+    for byte in bytes {
+        *hash ^= u32::from(*byte);
+        *hash = hash.wrapping_mul(0x0100_0193);
+    }
+}
+
+#[must_use]
 pub const fn stable_id(namespace: &str, owner: &str, name: &str) -> u64 {
     let mut hash = 0xcbf2_9ce4_8422_2325;
     stable_hash_bytes(&mut hash, namespace.as_bytes());

@@ -23,7 +23,7 @@ fn reward_table() {
 Common map methods include insertion, removal, containment checks, `get`, and `get_or`. Missing lookup APIs should prefer `Option` rather than `null` when absence is expected.
 
 ```vela
-fn add_reward(rewards, code: string, amount: i64) {
+fn add_reward(rewards, code: String, amount: i64) {
     let current = rewards.get_or(code, 0)
     rewards[code] = current + amount
     return rewards

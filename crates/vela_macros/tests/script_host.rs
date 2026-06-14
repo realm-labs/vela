@@ -29,7 +29,7 @@ struct Player {
 #[derive(ScriptHost)]
 #[script(path = "game::reward::RewardConfig")]
 struct RewardConfigA {
-    #[script(get, hint = "string")]
+    #[script(get, hint = "String")]
     item_id: String,
     #[script(get, hint = "i64")]
     count: i64,
@@ -41,7 +41,7 @@ struct RewardConfigA {
 struct RewardConfigB {
     #[script(get, hint = "i64")]
     count: i64,
-    #[script(get, hint = "string")]
+    #[script(get, hint = "String")]
     item_id: String,
 }
 
@@ -52,7 +52,7 @@ struct RewardConfigB {
     alias = "game::reward::RewardConfig"
 )]
 struct RewardConfigRenamed {
-    #[script(get, hint = "string", alias = "item_id")]
+    #[script(get, hint = "String", alias = "item_id")]
     item_key: String,
     #[script(get, hint = "i64")]
     count: i64,
@@ -78,7 +78,7 @@ enum HostQuestProgress {
 struct Monster {
     #[script(get, hint = "i64")]
     exp: i64,
-    #[script(get, hint = "string")]
+    #[script(get, hint = "String")]
     species: String,
 }
 
@@ -138,7 +138,7 @@ fn script_host_derive_generates_type_metadata() {
                         .require_permission("player.profile"),
                 )
                 .attr("rust_name", "name")
-                .type_hint("string"),
+                .type_hint("String"),
         );
 
     assert_eq!(desc, expected);

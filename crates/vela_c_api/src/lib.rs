@@ -690,7 +690,7 @@ fn u64_value() -> u64 { return 64u64; }
 fn f32_value() -> f32 { return 1.5f32; }
 fn f64_value() -> f64 { return 2.5f64; }
 fn char_value() -> char { return '奖'; }
-fn bytes_value() -> bytes { return b"\x00\xff"; }
+fn bytes_value() -> Bytes { return b"\x00\xff"; }
 "#,
         );
 
@@ -798,7 +798,7 @@ fn id_u32(value: u32) -> u32 { return value; }
 fn id_f32(value: f32) -> f32 { return value; }
 fn id_f64(value: f64) -> f64 { return value; }
 fn id_char(value: char) -> char { return value; }
-fn id_bytes(value: bytes) -> bytes { return value; }
+fn id_bytes(value: Bytes) -> Bytes { return value; }
 "#,
         );
 

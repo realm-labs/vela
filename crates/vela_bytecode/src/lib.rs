@@ -557,6 +557,14 @@ impl UnlinkedTypeGuard {
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub enum UnlinkedTypeGuardPlan {
     Primitive(PrimitiveTag),
+    Standard(StandardTypeGuard),
+    Option {
+        some: Option<Box<UnlinkedTypeGuardPlan>>,
+    },
+    Result {
+        ok: Option<Box<UnlinkedTypeGuardPlan>>,
+        err: Option<Box<UnlinkedTypeGuardPlan>>,
+    },
     Type(String),
     Variant {
         enum_name: String,
@@ -567,6 +575,19 @@ pub enum UnlinkedTypeGuardPlan {
         shape_id: ShapeId,
     },
     HostType(String),
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum StandardTypeGuard {
+    Array,
+    Map,
+    Set,
+    Range,
+    Function,
+    Closure,
+    Iterator,
+    Option,
+    Result,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]

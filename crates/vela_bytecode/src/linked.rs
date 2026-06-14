@@ -338,9 +338,20 @@ pub enum GuardKind {
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub enum TypeGuardPlan {
     Primitive(PrimitiveTag),
+    Standard(crate::StandardTypeGuard),
+    Option {
+        some: Option<Box<TypeGuardPlan>>,
+    },
+    Result {
+        ok: Option<Box<TypeGuardPlan>>,
+        err: Option<Box<TypeGuardPlan>>,
+    },
     Type(TypeHandle),
     Variant(VariantHandle),
-    Shape { ty: TypeHandle, shape_id: ShapeId },
+    Shape {
+        ty: TypeHandle,
+        shape_id: ShapeId,
+    },
     HostType(TypeHandle),
 }
 
@@ -352,7 +363,7 @@ pub struct TypeGuard {
 
 impl TypeGuard {
     #[must_use]
-    pub const fn new(plan: TypeGuardPlan, context: GuardContext) -> Self {
+    pub fn new(plan: TypeGuardPlan, context: GuardContext) -> Self {
         Self { plan, context }
     }
 }

@@ -3,7 +3,7 @@ use vela_syntax::ast::{BinaryOp, Expr, ExprKind, InterpolatedStringPart, Literal
 
 use crate::{
     BinaryLiteralSide, FormatStringPart, GuardKind, GuardLocation, Register, UnlinkedGuardContext,
-    UnlinkedInstructionKind, UnlinkedTypeGuard, UnlinkedTypeGuardPlan,
+    UnlinkedInstructionKind, UnlinkedTypeGuard,
 };
 
 use super::const_eval::{
@@ -269,14 +269,15 @@ impl Compiler<'_, '_> {
             return self.emit_constant(constant);
         }
         let register = self.compile_expr(expr)?;
-        if let ExpectedTypeOutcome::RequiresRuntimeGuard(RuntimeTypeFact::Primitive(tag)) = &outcome
+        if let ExpectedTypeOutcome::RequiresRuntimeGuard(expected) = &outcome
             && let Some((location, name)) = guard_location_and_name(context)
+            && let Some(plan) = super::type_guard_plan_for_runtime_type(expected)
         {
             self.emit_spanned(
                 UnlinkedInstructionKind::GuardType {
                     src: register,
                     guard: UnlinkedTypeGuard::new(
-                        UnlinkedTypeGuardPlan::Primitive(*tag),
+                        plan,
                         UnlinkedGuardContext::new(GuardKind::Contract, location, name),
                     ),
                 },

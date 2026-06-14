@@ -25,7 +25,7 @@ fn script_schema_abi_changes_are_rejected_during_compile_update() {
         SourceId::new(1),
         r#"
 struct Reward {
-    item_id: string
+    item_id: String
     count: i64
 }
 
@@ -41,7 +41,7 @@ fn main() {
         SourceId::new(2),
         r#"
 struct Reward {
-    item_id: string
+    item_id: String
     count: f64
 }
 
@@ -62,7 +62,7 @@ fn script_schema_defaulted_field_additions_are_accepted_during_compile_update() 
         SourceId::new(1),
         r#"
 struct Reward {
-    item_id: string
+    item_id: String
 }
 
 fn main() {
@@ -77,7 +77,7 @@ fn main() {
         SourceId::new(2),
         r#"
 struct Reward {
-    item_id: string
+    item_id: String
     count: i64 = 1
 }
 
@@ -103,7 +103,7 @@ fn script_enum_defaulted_variant_field_additions_are_accepted_during_compile_upd
         r#"
 enum QuestProgress {
     Active {
-        quest_id: string
+        quest_id: String
     }
 }
 
@@ -120,7 +120,7 @@ fn main() {
         r#"
 enum QuestProgress {
     Active {
-        quest_id: string
+        quest_id: String
         count: i64 = 0
     }
 }
@@ -147,7 +147,7 @@ fn script_enum_required_variant_field_additions_are_rejected_during_compile_upda
         r#"
 enum QuestProgress {
     Active {
-        quest_id: string
+        quest_id: String
     }
 }
 
@@ -164,7 +164,7 @@ fn main() {
         r#"
 enum QuestProgress {
     Active {
-        quest_id: string
+        quest_id: String
         count: i64
     }
 }
@@ -187,7 +187,7 @@ fn script_schema_stable_id_member_renames_are_accepted_during_compile_update() {
         r#"
 struct Reward {
     #[id(101)]
-    item_id: string
+    item_id: String
     #[id(102)]
     count: i64
 }
@@ -210,7 +210,7 @@ fn main() {
         r#"
 struct Reward {
     #[id(101)]
-    item: string
+    item: String
     #[id(102)]
     quantity: i64
 }
@@ -244,7 +244,7 @@ fn script_schema_invalid_stable_ids_are_rejected_during_compile_update() {
         r#"
 struct Reward {
     #[id(101)]
-    item_id: string
+    item_id: String
 }
 
 fn main() {
@@ -260,7 +260,7 @@ fn main() {
         r#"
 struct Reward {
     #[id(101)]
-    item_id: string
+    item_id: String
     #[id(101)]
     count: i64
 }

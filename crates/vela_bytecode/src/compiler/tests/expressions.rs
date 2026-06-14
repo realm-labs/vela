@@ -746,7 +746,7 @@ fn compiler_lowers_typed_enum_variant_field_reads_to_slots() {
         SourceId::new(1),
         r#"
 enum Damage {
-    Physical { amount: i64, element: string },
+    Physical { amount: i64, element: String },
     Magical { amount: i64 },
 }
 fn main() {
@@ -778,7 +778,7 @@ fn compiler_lowers_typed_record_field_reads_to_slots() {
         SourceId::new(1),
         r#"
 struct Reward {
-    item_id: string,
+    item_id: String,
     count: i64,
 }
 fn make_reward() {
@@ -809,7 +809,7 @@ fn compiler_lowers_typed_record_field_writes_to_slots() {
         SourceId::new(1),
         r#"
 struct Reward {
-    item_id: string,
+    item_id: String,
     count: i64,
 }
 fn make_reward() {

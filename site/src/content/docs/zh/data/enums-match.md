@@ -13,7 +13,7 @@ Enum variant 可以携带字段和类型提示。Vela 不使用泛型 enum 语�
 enum QuestState {
     NotStarted
     Active { step: i64 }
-    Complete(reward: string)
+    Complete(reward: String)
 }
 ```
 

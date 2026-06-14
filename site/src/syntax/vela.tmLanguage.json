@@ -271,7 +271,7 @@
       "patterns": [
         {
           "name": "support.type.primitive.vela",
-          "match": "\\b(?:any|null|bool|char|int|float|string|bytes|array|map|set|function|i8|i16|i32|i64|u8|u16|u32|u64|f32|f64)\\b"
+          "match": "\\b(?:Any|null|bool|char|String|Bytes|Array|Map|Set|Range|Iterator|Function|Closure|Option|Result|i8|i16|i32|i64|u8|u16|u32|u64|f32|f64)\\b"
         },
         {
           "name": "entity.name.type.vela",

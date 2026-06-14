@@ -192,16 +192,16 @@ fn assert_registered_method_matches_native_desc(
 
 fn type_hint_name(hint: &TypeHint) -> &str {
     match hint {
-        TypeHint::Any => "any",
+        TypeHint::Any => "Any",
         TypeHint::Primitive(tag) => tag.name(),
-        TypeHint::Array => "array",
-        TypeHint::Map => "map",
-        TypeHint::Set => "set",
+        TypeHint::Array => "Array",
+        TypeHint::Map => "Map",
+        TypeHint::Set => "Set",
         TypeHint::PathProxy => "path_proxy",
         TypeHint::Record(key) | TypeHint::Enum(key) | TypeHint::Host(key) => &key.name,
         TypeHint::Trait(name) => name,
-        TypeHint::Function => "function",
-        TypeHint::Iterator => "iterator",
+        TypeHint::Function => "Function",
+        TypeHint::Iterator => "Iterator",
     }
 }
 

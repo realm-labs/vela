@@ -10,7 +10,7 @@ description: "Vela 标准库方法文档。"
 当前标准方法覆盖 string、bytes、array、map、set、range、iterator、`Option`、`Result`，以及部分数字转换 helper。
 
 ```vela
-fn summarize(name: string, values) -> string {
+fn summarize(name: String, values) -> String {
     let total = values.iter().count()
     return f"{name}:{total}"
 }
@@ -34,7 +34,7 @@ fn doubled(values) {
 `Option` 和 `Result` helper 让预期缺失和可恢复失败保持可见，而不是把它们变成 VM trap。
 
 ```vela
-fn safe_amount(text: string) -> i64 {
+fn safe_amount(text: String) -> i64 {
     return text.parse_i64().unwrap_or(0)
 }
 ```

@@ -11,7 +11,7 @@ Runtime globals 把模块级脚本声明连接到 Rust 提供的实例。声明�
 ```vela
 struct ServerState {
     level: i64,
-    name: string,
+    name: String,
     total_gold: i64,
 }
 

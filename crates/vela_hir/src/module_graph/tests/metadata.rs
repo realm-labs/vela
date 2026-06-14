@@ -233,11 +233,11 @@ pub fn grant(player: Player) {
 #[policy(level = 3, tags = ["reward", game::reward::Event])]
 struct Reward {
     #[doc("Reward item id")]
-    item_id: string,
+    item_id: String,
 }
 enum QuestProgress {
     #[terminal]
-    Finished { #[doc("Quest id")] quest_id: string },
+    Finished { #[doc("Quest id")] quest_id: String },
 }
 trait Damageable {
     #[doc("Apply damage")]
@@ -296,8 +296,8 @@ fn lowers_enum_shape_metadata() {
         r#"
 enum QuestProgress {
     None,
-    Active { quest_id: string, count: i64 },
-    Finished(quest_id: string),
+    Active { quest_id: String, count: i64 },
+    Finished(quest_id: String),
 }
 "#,
     ));
@@ -352,11 +352,11 @@ fn lowers_schema_field_default_metadata() {
         "game::quest",
         r#"
 struct Reward {
-    item_id: string = "gold",
+    item_id: String = "gold",
     count: i64 = 1,
 }
 enum QuestProgress {
-    Active { quest_id: string, count: i64 = 0 },
+    Active { quest_id: String, count: i64 = 0 },
 }
 "#,
     ));

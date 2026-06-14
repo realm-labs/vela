@@ -41,10 +41,10 @@ pub fn context_host_type_desc() -> TypeDesc {
         )
         .method(
             MethodDesc::new(CONTEXT_EMIT_METHOD_ID, "emit")
-                .param(MethodParamDesc::new("event").type_hint("string"))
+                .param(MethodParamDesc::new("event").type_hint("String"))
                 .param(
                     MethodParamDesc::new("payload")
-                        .type_hint("any")
+                        .type_hint("Any")
                         .defaulted(true),
                 )
                 .return_type("null")
@@ -56,11 +56,11 @@ pub fn context_host_type_desc() -> TypeDesc {
         )
         .method(
             MethodDesc::new(CONTEXT_LOG_METHOD_ID, "log")
-                .param(MethodParamDesc::new("level").type_hint("string"))
-                .param(MethodParamDesc::new("message").type_hint("string"))
+                .param(MethodParamDesc::new("level").type_hint("String"))
+                .param(MethodParamDesc::new("message").type_hint("String"))
                 .param(
                     MethodParamDesc::new("payload")
-                        .type_hint("any")
+                        .type_hint("Any")
                         .defaulted(true),
                 )
                 .return_type("null")

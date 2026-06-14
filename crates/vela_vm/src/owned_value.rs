@@ -228,7 +228,7 @@ fn scalar_display_text(value: ScalarValue) -> String {
 #[macro_export]
 macro_rules! owned_array {
     [$($value:expr),* $(,)?] => {
-        $crate::owned_value::OwnedValue::Array(vec![
+        $crate::owned_value::OwnedValue::array([
             $($crate::owned_value::OwnedValue::from($value)),*
         ])
     };
@@ -238,11 +238,11 @@ macro_rules! owned_array {
 macro_rules! owned_map {
     {} => {
         $crate::owned_value::OwnedValue::map(
-            Vec::<(String, $crate::owned_value::OwnedValue)>::new(),
+            Vec::<(String, $crate::owned_value::OwnedValue)>::new()
         )
     };
     {$($key:expr => $value:expr),* $(,)?} => {
-        $crate::owned_value::OwnedValue::map(vec![
+        $crate::owned_value::OwnedValue::map([
             $(($key, $crate::owned_value::OwnedValue::from($value))),*
         ])
     };
@@ -251,7 +251,7 @@ macro_rules! owned_map {
 #[macro_export]
 macro_rules! owned_set {
     [$($value:expr),* $(,)?] => {
-        $crate::owned_value::OwnedValue::Set(vec![
+        $crate::owned_value::OwnedValue::set([
             $($crate::owned_value::OwnedValue::from($value)),*
         ])
     };

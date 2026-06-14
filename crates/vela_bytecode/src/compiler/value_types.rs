@@ -10,6 +10,11 @@ use vela_syntax::ast::{BinaryOp, Expr, ExprKind, Literal};
 pub(super) enum RuntimeTypeFact {
     Primitive(PrimitiveTag),
     Standard(StandardRuntimeType),
+    Option(Box<RuntimeTypeFact>),
+    Result {
+        ok: Box<RuntimeTypeFact>,
+        err: Box<RuntimeTypeFact>,
+    },
 }
 
 pub(super) type TypeRef = RuntimeTypeFact;
@@ -96,6 +101,8 @@ impl RuntimeTypeFact {
             Self::Standard(StandardRuntimeType::Iterator) => "Iterator",
             Self::Standard(StandardRuntimeType::Option) => "Option",
             Self::Standard(StandardRuntimeType::Result) => "Result",
+            Self::Option(_) => "Option",
+            Self::Result { .. } => "Result",
         }
     }
 
@@ -114,17 +121,19 @@ impl RuntimeTypeFact {
             Self::Primitive(PrimitiveTag::U64) => "u64",
             Self::Primitive(PrimitiveTag::F32) => "f32",
             Self::Primitive(PrimitiveTag::F64) => "f64",
-            Self::Primitive(PrimitiveTag::String) => "string",
-            Self::Primitive(PrimitiveTag::Bytes) => "bytes",
-            Self::Standard(StandardRuntimeType::Array) => "array",
-            Self::Standard(StandardRuntimeType::Map) => "map",
-            Self::Standard(StandardRuntimeType::Set) => "set",
-            Self::Standard(StandardRuntimeType::Range) => "range",
-            Self::Standard(StandardRuntimeType::Function) => "function",
-            Self::Standard(StandardRuntimeType::Closure) => "closure",
-            Self::Standard(StandardRuntimeType::Iterator) => "iterator",
+            Self::Primitive(PrimitiveTag::String) => "String",
+            Self::Primitive(PrimitiveTag::Bytes) => "Bytes",
+            Self::Standard(StandardRuntimeType::Array) => "Array",
+            Self::Standard(StandardRuntimeType::Map) => "Map",
+            Self::Standard(StandardRuntimeType::Set) => "Set",
+            Self::Standard(StandardRuntimeType::Range) => "Range",
+            Self::Standard(StandardRuntimeType::Function) => "Function",
+            Self::Standard(StandardRuntimeType::Closure) => "Closure",
+            Self::Standard(StandardRuntimeType::Iterator) => "Iterator",
             Self::Standard(StandardRuntimeType::Option) => "Option",
             Self::Standard(StandardRuntimeType::Result) => "Result",
+            Self::Option(_) => "Option",
+            Self::Result { .. } => "Result",
         }
     }
 }
@@ -276,6 +285,13 @@ fn static_expr_type_with(
                 .map(StaticExprType::Exact)
                 .unwrap_or(StaticExprType::Dynamic)
         }
+        ExprKind::Try(value) => {
+            match expression_value_type_with(value, local_type_at_span, local_type_named) {
+                Some(RuntimeTypeFact::Option(payload)) => StaticExprType::Exact(*payload),
+                Some(RuntimeTypeFact::Result { ok, .. }) => StaticExprType::Exact(*ok),
+                _ => StaticExprType::Dynamic,
+            }
+        }
         ExprKind::Path(path) => local_type_at_span(expr.span)
             .or_else(|| {
                 path.as_slice()
@@ -322,7 +338,10 @@ fn i64_binary_result_type(
 }
 
 pub(super) fn type_hint_value_type(hint: &HirTypeHint) -> Option<RuntimeTypeFact> {
-    match hint.display().as_str() {
+    let [name] = hint.path.as_slice() else {
+        return None;
+    };
+    match name.as_str() {
         "null" => Some(RuntimeTypeFact::primitive(PrimitiveTag::Null)),
         "bool" => Some(RuntimeTypeFact::primitive(PrimitiveTag::Bool)),
         "char" => Some(RuntimeTypeFact::primitive(PrimitiveTag::Char)),
@@ -336,16 +355,26 @@ pub(super) fn type_hint_value_type(hint: &HirTypeHint) -> Option<RuntimeTypeFact
         "u64" => Some(RuntimeTypeFact::primitive(PrimitiveTag::U64)),
         "f32" => Some(RuntimeTypeFact::primitive(PrimitiveTag::F32)),
         "f64" => Some(RuntimeTypeFact::primitive(PrimitiveTag::F64)),
-        "string" => Some(RuntimeTypeFact::primitive(PrimitiveTag::String)),
-        "bytes" => Some(RuntimeTypeFact::primitive(PrimitiveTag::Bytes)),
-        "array" => Some(RuntimeTypeFact::standard(StandardRuntimeType::Array)),
-        "map" => Some(RuntimeTypeFact::standard(StandardRuntimeType::Map)),
-        "set" => Some(RuntimeTypeFact::standard(StandardRuntimeType::Set)),
-        "range" => Some(RuntimeTypeFact::standard(StandardRuntimeType::Range)),
-        "function" => Some(RuntimeTypeFact::standard(StandardRuntimeType::Function)),
-        "closure" => Some(RuntimeTypeFact::standard(StandardRuntimeType::Closure)),
-        "iterator" => Some(RuntimeTypeFact::standard(StandardRuntimeType::Iterator)),
+        "String" => Some(RuntimeTypeFact::primitive(PrimitiveTag::String)),
+        "Bytes" => Some(RuntimeTypeFact::primitive(PrimitiveTag::Bytes)),
+        "Array" => Some(RuntimeTypeFact::standard(StandardRuntimeType::Array)),
+        "Map" => Some(RuntimeTypeFact::standard(StandardRuntimeType::Map)),
+        "Set" => Some(RuntimeTypeFact::standard(StandardRuntimeType::Set)),
+        "Range" => Some(RuntimeTypeFact::standard(StandardRuntimeType::Range)),
+        "Function" => Some(RuntimeTypeFact::standard(StandardRuntimeType::Function)),
+        "Closure" => Some(RuntimeTypeFact::standard(StandardRuntimeType::Closure)),
+        "Iterator" => Some(RuntimeTypeFact::standard(StandardRuntimeType::Iterator)),
+        "Option" if hint.args.len() == 1 => type_hint_value_type(&hint.args[0])
+            .map(|payload| RuntimeTypeFact::Option(Box::new(payload))),
         "Option" => Some(RuntimeTypeFact::standard(StandardRuntimeType::Option)),
+        "Result" if hint.args.len() == 2 => {
+            let ok = type_hint_value_type(&hint.args[0])?;
+            let err = type_hint_value_type(&hint.args[1])?;
+            Some(RuntimeTypeFact::Result {
+                ok: Box::new(ok),
+                err: Box::new(err),
+            })
+        }
         "Result" => Some(RuntimeTypeFact::standard(StandardRuntimeType::Result)),
         _ => None,
     }
@@ -394,7 +423,9 @@ pub(super) fn check_expected_type(
 fn expected_primitive_tag(expected: &RuntimeTypeFact) -> Option<PrimitiveTag> {
     match expected {
         RuntimeTypeFact::Primitive(tag) => Some(*tag),
-        RuntimeTypeFact::Standard(_) => None,
+        RuntimeTypeFact::Standard(_)
+        | RuntimeTypeFact::Option(_)
+        | RuntimeTypeFact::Result { .. } => None,
     }
 }
 

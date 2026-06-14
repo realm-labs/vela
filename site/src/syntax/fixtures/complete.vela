@@ -4,7 +4,7 @@
 #[host(name = "Player", tags = ["game", "state"])]
 pub struct Player {
   id: i64,
-  name: string = "guest",
+  name: String = "guest",
   stats: Stats,
 }
 
@@ -18,7 +18,7 @@ struct Stats {
 
 enum Reward {
   Gold(i64),
-  Item { id: string, count: i64 },
+  Item { id: String, count: i64 },
   None,
 }
 
@@ -38,7 +38,7 @@ use game::rewards as rewards;
 const START_LEVEL: i64 = 1;
 global current_player: Player;
 
-fn award(player: Player, rewards: map) -> Result {
+fn award(player: Player, rewards: Map) -> Result {
   let log = f"award {{escaped}} {player.name}\n";
   let chars = 'x';
   let total = rewards["gold"] + 0x10 + 0b11 + 1.5;

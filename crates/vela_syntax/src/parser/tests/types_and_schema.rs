@@ -1,18 +1,18 @@
 use super::*;
 
 #[test]
-fn parses_type_hint_metadata_and_rejects_generics() {
+fn parses_type_hint_metadata_and_restricted_type_arguments() {
     let parsed = parse_source(
         source_id(),
         r#"
-fn level_up(player: game::Player, amount: i64) -> Result {
+fn level_up(player: game::Player, amount: i64) -> Result<i64, String> {
     let next: i64 = player.level + amount;
     let mapper = |reward: Reward| reward.count;
     return next;
 }
 
 struct Reward {
-    item_id: string,
+    item_id: String,
     count: i64,
 }
 "#,
@@ -38,14 +38,14 @@ struct Reward {
             .path,
         ["i64"]
     );
-    assert_eq!(
-        function
-            .return_type
-            .as_ref()
-            .expect("function return type hint")
-            .path,
-        ["Result"]
-    );
+    let return_type = function
+        .return_type
+        .as_ref()
+        .expect("function return type hint");
+    assert_eq!(return_type.path, ["Result"]);
+    assert_eq!(return_type.args.len(), 2);
+    assert_eq!(return_type.args[0].path, ["i64"]);
+    assert_eq!(return_type.args[1].path, ["String"]);
 
     let StmtKind::Let {
         type_hint: Some(next_hint),
@@ -84,7 +84,7 @@ struct Reward {
             .as_ref()
             .expect("item_id field type hint")
             .path,
-        ["string"]
+        ["String"]
     );
     assert_eq!(
         record.fields[1]
@@ -102,6 +102,9 @@ struct Reward {
             .iter()
             .any(|diagnostic| { diagnostic.code.as_deref() == Some("syntax::generic_type_hint") })
     );
+
+    let option = parse_source(source_id(), "fn ok(value: Option<i64>) { return value; }");
+    assert!(option.diagnostics.is_empty(), "{:?}", option.diagnostics);
 }
 
 #[test]
@@ -111,8 +114,8 @@ fn parses_enum_variant_payload_metadata() {
         r#"
 enum QuestProgress {
     None,
-    Active { quest_id: string, count: i64 },
-    Finished(quest_id: string),
+    Active { quest_id: String, count: i64 },
+    Finished(quest_id: String),
 }
 "#,
     );
@@ -141,12 +144,12 @@ fn parses_struct_and_record_variant_field_defaults() {
         source_id(),
         r#"
 struct Reward {
-    item_id: string = "gold",
+    item_id: String = "gold",
     count: i64 = 1,
 }
 
 enum QuestProgress {
-    Active { quest_id: string, count: i64 = 0 },
+    Active { quest_id: String, count: i64 = 0 },
 }
 "#,
     );
@@ -231,7 +234,7 @@ fn parses_parameter_defaults_and_named_arguments() {
     let parsed = parse_source(
         source_id(),
         r#"
-fn grant(player, amount = 10, reason: string = "quest") {
+fn grant(player, amount = 10, reason: String = "quest") {
     return apply(amount = amount, reason = reason);
 }
 "#,

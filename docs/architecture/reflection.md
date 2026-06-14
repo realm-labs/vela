@@ -283,7 +283,7 @@ Examples:
 
 ```rust
 let xs = [1, 2, 3]        // TypeFact::Array { element: Primitive(I64) }
-let ys: array = []        // public TypeHint::Array, internal element Unknown
+let ys: Array = []        // public TypeHint::Array, internal element Unknown
 let z = reflect::get(x, k) // Any unless k is a known constant and schema exists
 ```
 

@@ -321,7 +321,7 @@ fn engine_accepts_native_function_iterator_type_hints() {
     let function = registry
         .function_by_name("game::scores")
         .expect("native function should be reflected");
-    assert_eq!(function.return_type.as_deref(), Some("iterator"));
+    assert_eq!(function.return_type.as_deref(), Some("Iterator"));
 }
 
 #[test]

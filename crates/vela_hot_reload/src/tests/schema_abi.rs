@@ -57,7 +57,7 @@ fn registry_schema_abi_accepts_defaulted_field_additions() {
         TypeDesc::new(TypeKey::new(TypeId::new(1), "Reward"))
             .kind(TypeKind::ScriptStruct)
             .schema_hash(SchemaHash::new(0x1111))
-            .field(FieldDesc::new(FieldId::new(1), "item_id").type_hint("string"))
+            .field(FieldDesc::new(FieldId::new(1), "item_id").type_hint("String"))
             .field(FieldDesc::new(FieldId::new(2), "count").type_hint("i64")),
     );
 
@@ -68,11 +68,11 @@ fn registry_schema_abi_accepts_defaulted_field_additions() {
             .schema_hash(SchemaHash::new(0x2222))
             .field(
                 FieldDesc::new(FieldId::new(3), "rarity")
-                    .type_hint("string")
+                    .type_hint("String")
                     .defaulted(true),
             )
             .field(FieldDesc::new(FieldId::new(2), "count").type_hint("i64"))
-            .field(FieldDesc::new(FieldId::new(1), "item_id").type_hint("string")),
+            .field(FieldDesc::new(FieldId::new(1), "item_id").type_hint("String")),
     );
 
     HotReloadAbi::from_registry(&old_registry)
@@ -87,7 +87,7 @@ fn registry_schema_abi_accepts_stable_id_field_and_variant_renames() {
         TypeDesc::new(TypeKey::new(TypeId::new(1), "Reward"))
             .kind(TypeKind::ScriptStruct)
             .schema_hash(SchemaHash::new(0x1111))
-            .field(FieldDesc::new(FieldId::new(1), "item_id").type_hint("string"))
+            .field(FieldDesc::new(FieldId::new(1), "item_id").type_hint("String"))
             .field(FieldDesc::new(FieldId::new(2), "count").type_hint("i64")),
     );
     old_registry.register(
@@ -96,7 +96,7 @@ fn registry_schema_abi_accepts_stable_id_field_and_variant_renames() {
             .schema_hash(SchemaHash::new(0xaaaa))
             .variant(
                 VariantDesc::new(VariantId::new(1), "Active")
-                    .field(FieldDesc::new(FieldId::new(1), "quest_id").type_hint("string")),
+                    .field(FieldDesc::new(FieldId::new(1), "quest_id").type_hint("String")),
             ),
     );
 
@@ -105,7 +105,7 @@ fn registry_schema_abi_accepts_stable_id_field_and_variant_renames() {
         TypeDesc::new(TypeKey::new(TypeId::new(1), "Reward"))
             .kind(TypeKind::ScriptStruct)
             .schema_hash(SchemaHash::new(0x2222))
-            .field(FieldDesc::new(FieldId::new(1), "item").type_hint("string"))
+            .field(FieldDesc::new(FieldId::new(1), "item").type_hint("String"))
             .field(FieldDesc::new(FieldId::new(2), "quantity").type_hint("i64")),
     );
     new_registry.register(
@@ -114,7 +114,7 @@ fn registry_schema_abi_accepts_stable_id_field_and_variant_renames() {
             .schema_hash(SchemaHash::new(0xbbbb))
             .variant(
                 VariantDesc::new(VariantId::new(1), "Started")
-                    .field(FieldDesc::new(FieldId::new(1), "quest").type_hint("string")),
+                    .field(FieldDesc::new(FieldId::new(1), "quest").type_hint("String")),
             )
             .variant(VariantDesc::new(VariantId::new(2), "Finished")),
     );
@@ -131,7 +131,7 @@ fn registry_schema_abi_rejects_existing_field_or_variant_id_changes() {
         TypeDesc::new(TypeKey::new(TypeId::new(1), "Reward"))
             .kind(TypeKind::ScriptStruct)
             .schema_hash(SchemaHash::new(0x1111))
-            .field(FieldDesc::new(FieldId::new(1), "item_id").type_hint("string")),
+            .field(FieldDesc::new(FieldId::new(1), "item_id").type_hint("String")),
     );
 
     let mut changed_field_registry = TypeRegistry::new();
@@ -139,7 +139,7 @@ fn registry_schema_abi_rejects_existing_field_or_variant_id_changes() {
         TypeDesc::new(TypeKey::new(TypeId::new(1), "Reward"))
             .kind(TypeKind::ScriptStruct)
             .schema_hash(SchemaHash::new(0x2222))
-            .field(FieldDesc::new(FieldId::new(2), "item_id").type_hint("string")),
+            .field(FieldDesc::new(FieldId::new(2), "item_id").type_hint("String")),
     );
 
     let error = HotReloadAbi::from_registry(&old_registry)
@@ -177,7 +177,7 @@ fn registry_schema_abi_rejects_required_field_additions() {
         TypeDesc::new(TypeKey::new(TypeId::new(1), "Reward"))
             .kind(TypeKind::ScriptStruct)
             .schema_hash(SchemaHash::new(0x1111))
-            .field(FieldDesc::new(FieldId::new(1), "item_id").type_hint("string")),
+            .field(FieldDesc::new(FieldId::new(1), "item_id").type_hint("String")),
     );
 
     let mut new_registry = TypeRegistry::new();
@@ -185,7 +185,7 @@ fn registry_schema_abi_rejects_required_field_additions() {
         TypeDesc::new(TypeKey::new(TypeId::new(1), "Reward"))
             .kind(TypeKind::ScriptStruct)
             .schema_hash(SchemaHash::new(0x2222))
-            .field(FieldDesc::new(FieldId::new(1), "item_id").type_hint("string"))
+            .field(FieldDesc::new(FieldId::new(1), "item_id").type_hint("String"))
             .field(FieldDesc::new(FieldId::new(2), "count").type_hint("i64"))
             .source_span(span),
     );
@@ -203,7 +203,7 @@ fn registry_schema_abi_rejects_required_field_additions() {
     ));
     assert!(report.render_lines().iter().any(|line| {
         line.text
-            .contains("schema ABI: old=(kind=script_struct hash=4369 fields=[item_id#1:string]")
+            .contains("schema ABI: old=(kind=script_struct hash=4369 fields=[item_id#1:String]")
     }));
 }
 

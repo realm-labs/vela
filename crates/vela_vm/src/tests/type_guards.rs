@@ -53,7 +53,7 @@ fn main(value) {
         error.kind(),
         VmErrorKind::TypeContractViolation {
             expected: "i64".to_owned(),
-            actual: "string".to_owned(),
+            actual: "String".to_owned(),
             debug_name: "amount".to_owned(),
         }
     );
@@ -129,7 +129,7 @@ fn main(value: i64) {
         error.kind(),
         VmErrorKind::TypeContractViolation {
             expected: "i64".to_owned(),
-            actual: "string".to_owned(),
+            actual: "String".to_owned(),
             debug_name: "value".to_owned(),
         }
     );
@@ -165,7 +165,7 @@ fn main(value) {
         error.kind(),
         VmErrorKind::TypeContractViolation {
             expected: "i64".to_owned(),
-            actual: "string".to_owned(),
+            actual: "String".to_owned(),
             debug_name: "value".to_owned(),
         }
     );
@@ -213,7 +213,7 @@ fn main() {
     assert_eq!(
         error.kind(),
         VmErrorKind::TypeContractViolation {
-            expected: "string".to_owned(),
+            expected: "String".to_owned(),
             actual: "i64".to_owned(),
             debug_name: "value".to_owned(),
         }
@@ -225,11 +225,11 @@ fn linked_parameter_guard_accepts_string_and_bytes_primitive_tags() {
     let program = compile_program_source(
         SourceId::new(1),
         r#"
-fn echo_text(value: string) {
+fn echo_text(value: String) {
     return value;
 }
 
-fn echo_bytes(value: bytes) {
+fn echo_bytes(value: Bytes) {
     return value;
 }
 "#,
@@ -259,6 +259,130 @@ fn echo_bytes(value: bytes) {
 }
 
 #[test]
+fn linked_parameter_guard_accepts_option_and_result_payload_contracts() {
+    let program = compile_program_source(
+        SourceId::new(1),
+        r#"
+fn maybe_amount(value: Option<i64>) {
+    return value;
+}
+
+fn grant(value: Result<i64, String>) {
+    return value;
+}
+"#,
+    )
+    .expect("program should compile");
+
+    let some = OwnedValue::enum_variant("Option", "Some", [("0", OwnedValue::i64(42))]);
+    let none = OwnedValue::enum_variant("Option", "None", Vec::<(&str, OwnedValue)>::new());
+    let ok = OwnedValue::enum_variant("Result", "Ok", [("0", OwnedValue::i64(7))]);
+    let err = OwnedValue::enum_variant(
+        "Result",
+        "Err",
+        [("0", OwnedValue::String("blocked".to_owned()))],
+    );
+
+    let mut budget = ExecutionBudget::unbounded();
+    assert_eq!(
+        run_linked_test_program_with_budget(
+            &Vm::new(),
+            &program,
+            "maybe_amount",
+            &[some],
+            &mut budget
+        )
+        .expect("Option::Some payload guard should pass"),
+        OwnedValue::enum_variant("Option", "Some", [("0", OwnedValue::i64(42))])
+    );
+    assert_eq!(
+        run_linked_test_program_with_budget(
+            &Vm::new(),
+            &program,
+            "maybe_amount",
+            &[none],
+            &mut budget
+        )
+        .expect("Option::None should not check a payload"),
+        OwnedValue::enum_variant("Option", "None", Vec::<(&str, OwnedValue)>::new())
+    );
+    assert_eq!(
+        run_linked_test_program_with_budget(&Vm::new(), &program, "grant", &[ok], &mut budget)
+            .expect("Result::Ok payload guard should pass"),
+        OwnedValue::enum_variant("Result", "Ok", [("0", OwnedValue::i64(7))])
+    );
+    assert_eq!(
+        run_linked_test_program_with_budget(&Vm::new(), &program, "grant", &[err], &mut budget)
+            .expect("Result::Err payload guard should pass"),
+        OwnedValue::enum_variant(
+            "Result",
+            "Err",
+            [("0", OwnedValue::String("blocked".to_owned()))],
+        )
+    );
+}
+
+#[test]
+fn linked_parameter_guard_rejects_option_and_result_payload_mismatch() {
+    let program = compile_program_source(
+        SourceId::new(1),
+        r#"
+fn maybe_amount(value: Option<i64>) {
+    return value;
+}
+
+fn grant(value: Result<i64, String>) {
+    return value;
+}
+"#,
+    )
+    .expect("program should compile");
+
+    let mut budget = ExecutionBudget::unbounded();
+    let option_error = run_linked_test_program_with_budget(
+        &Vm::new(),
+        &program,
+        "maybe_amount",
+        &[OwnedValue::enum_variant(
+            "Option",
+            "Some",
+            [("0", OwnedValue::String("wrong".to_owned()))],
+        )],
+        &mut budget,
+    )
+    .expect_err("Option::Some payload mismatch should fail");
+    assert_eq!(
+        option_error.kind(),
+        VmErrorKind::TypeContractViolation {
+            expected: "i64".to_owned(),
+            actual: "String".to_owned(),
+            debug_name: "value".to_owned(),
+        }
+    );
+
+    let result_error = run_linked_test_program_with_budget(
+        &Vm::new(),
+        &program,
+        "grant",
+        &[OwnedValue::enum_variant(
+            "Result",
+            "Err",
+            [("0", OwnedValue::i64(9))],
+        )],
+        &mut budget,
+    )
+    .expect_err("Result::Err payload mismatch should fail");
+    assert_eq!(
+        result_error.kind(),
+        VmErrorKind::TypeContractViolation {
+            expected: "String".to_owned(),
+            actual: "i64".to_owned(),
+            debug_name: "value".to_owned(),
+        }
+    );
+}
+
+#[test]
 fn linked_return_guard_rejects_dynamic_contract_mismatch() {
     let program = compile_program_source(
         SourceId::new(1),
@@ -284,7 +408,7 @@ fn main(value) -> i64 {
         error.kind(),
         VmErrorKind::TypeContractViolation {
             expected: "i64".to_owned(),
-            actual: "string".to_owned(),
+            actual: "String".to_owned(),
             debug_name: "return".to_owned(),
         }
     );

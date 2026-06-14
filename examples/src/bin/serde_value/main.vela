@@ -1,5 +1,5 @@
 struct DamageActor {
-    name: string,
+    name: String,
     level: i64,
 }
 
@@ -7,13 +7,13 @@ struct DamageEvent {
     actor: DamageActor,
     amount: i64,
     multiplier: i64,
-    reason: string,
+    reason: String,
 }
 
 struct DamageResult {
-    actor_name: string,
+    actor_name: String,
     applied: i64,
-    label: string,
+    label: String,
 }
 
 trait DamageSummary {

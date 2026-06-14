@@ -46,10 +46,10 @@ fn compiler_rejects_duplicate_schema_members_from_hir() {
         r#"
 struct Reward {
     count: i64,
-    count: string
+    count: String
 }
 enum QuestProgress {
-    Active { quest_id: i64, quest_id: string },
+    Active { quest_id: i64, quest_id: String },
     Active
 }
 trait Rewardable {
@@ -93,7 +93,7 @@ struct Reward {
     #[id]
     missing: i64
     #[id(101)]
-    item_id: string
+    item_id: String
     #[id(101)]
     count: i64
     #[id(102)]
@@ -144,7 +144,7 @@ fn compiler_rejects_missing_required_constructor_fields() {
         SourceId::new(1),
         r#"
 struct Reward {
-    item_id: string,
+    item_id: String,
     count: i64 = 1,
 }
 fn main() {
@@ -164,7 +164,7 @@ fn compiler_rejects_unknown_constructor_fields() {
         SourceId::new(1),
         r#"
 struct Reward {
-    item_id: string,
+    item_id: String,
     count: i64,
 }
 fn main() {
@@ -184,7 +184,7 @@ fn compiler_rejects_duplicate_constructor_fields() {
         SourceId::new(1),
         r#"
 struct Reward {
-    item_id: string,
+    item_id: String,
     count: i64,
 }
 fn main() {
@@ -204,7 +204,7 @@ fn compiler_rejects_invalid_tuple_constructor_arity() {
         SourceId::new(1),
         r#"
 enum Damage {
-    Magical(amount: i64, element: string = "arcane"),
+    Magical(amount: i64, element: String = "arcane"),
 }
 fn main() {
     return Damage::Magical();

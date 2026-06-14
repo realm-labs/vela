@@ -9,6 +9,7 @@ use crate::{attributes::HirAttribute, attributes::attrs_from_syntax, ids::HirNod
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct HirTypeHint {
     pub path: Vec<String>,
+    pub args: Vec<HirTypeHint>,
     pub span: Span,
 }
 
@@ -17,13 +18,25 @@ impl HirTypeHint {
     pub fn from_syntax(hint: &TypeHint) -> Self {
         Self {
             path: hint.path.clone(),
+            args: hint.args.iter().map(Self::from_syntax).collect(),
             span: hint.span,
         }
     }
 
     #[must_use]
     pub fn display(&self) -> String {
-        self.path.join("::")
+        let path = self.path.join("::");
+        if self.args.is_empty() {
+            path
+        } else {
+            let args = self
+                .args
+                .iter()
+                .map(Self::display)
+                .collect::<Vec<_>>()
+                .join(", ");
+            format!("{path}<{args}>")
+        }
     }
 }
 

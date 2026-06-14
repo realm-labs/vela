@@ -218,7 +218,7 @@ leave the active linked program and its runtime caches unchanged.
 Standard value dynamic dispatch is table-driven in
 `crates/vela_vm/src/dynamic_method_resolution.rs`. Every standard value method
 family with a resolved `CallMethodId` path is represented there by stable
-`MethodId`: string, bytes, array, map, set, Option, Result, and range. The
+`MethodId`: String, bytes, array, map, set, Option, Result, and range. The
 current exclusions are not omitted dispatch families; they are argument
 metadata exclusions for standard named/default dynamic arguments as noted
 above.

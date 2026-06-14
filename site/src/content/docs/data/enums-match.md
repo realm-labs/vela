@@ -13,7 +13,7 @@ Enum variants may carry fields and type hints. Vela does not use generic enum sy
 enum QuestState {
     NotStarted
     Active { step: i64 }
-    Complete(reward: string)
+    Complete(reward: String)
 }
 ```
 

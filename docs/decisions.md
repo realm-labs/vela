@@ -699,7 +699,7 @@ raw pointer directly.
 Hot-reload function, method, trait, and schema compatibility checks normalize
 primitive type hints through `PrimitiveTag` before comparing contracts.
 Changing any primitive contract, such as `i32 -> i64`, `i64 -> u64`,
-`f32 -> f64`, or `bytes -> string`, is incompatible unless a future explicit
+`f32 -> f64`, or `Bytes -> String`, is incompatible unless a future explicit
 product compatibility rule is added. Report rendering may still use hint text
 for diagnostics, but compatibility decisions must not depend on old `int` or
 `float` names.
@@ -817,6 +817,19 @@ Collection-backed iterators read source heap slots lazily instead of copying
 the full collection at creation. Arrays and sets snapshot traversal length, and
 maps snapshot traversal keys, so later writes to existing items are observed
 while later growth does not extend the iterator.
+
+### Public Type Hint Spelling
+
+Public script type hints use lowercase only for scalar/literal primitive
+contracts such as `null`, `bool`, `char`, `i64`, and `f64`. Erased dynamic,
+text/binary, collection, callable, and Option/Result contracts use capitalized
+names: `Any`, `String`, `Bytes`, `Array`, `Map`, `Set`, `Range`, `Iterator`,
+`Function`, `Closure`, `Option`, and `Result`.
+
+`Option<T>` and `Result<T, E>` are the only parameterized type hints accepted
+by the parser. They exist to make `?`, contracts, diagnostics, and static fast
+paths precise without introducing a general script generic system. Container
+parameterization such as `Array<T>`, `Map<K, V>`, and `Set<T>` remains rejected.
 
 ## Validation Rules
 

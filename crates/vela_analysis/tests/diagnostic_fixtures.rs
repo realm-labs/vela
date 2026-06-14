@@ -89,7 +89,7 @@ fn registry_facts() -> RegistryFacts {
                     .type_hint("i64")
                     .writable(true),
             )
-            .field(FieldDesc::new(FieldId::new(2), "inventory").type_hint("map")),
+            .field(FieldDesc::new(FieldId::new(2), "inventory").type_hint("Map")),
     );
     RegistryFacts::from_registry(&registry)
 }

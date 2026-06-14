@@ -675,7 +675,7 @@ mod tests {
         .expect("fixed array host schema should expand")
         .to_string();
 
-        assert!(tokens.contains("type_hint (\"array\")"));
+        assert!(tokens.contains("type_hint (\"Array\")"));
     }
 
     #[test]

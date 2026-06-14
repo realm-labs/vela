@@ -99,9 +99,9 @@ fn compiler_keeps_static_script_receiver_on_method_id_path() {
     let program = compile_program_source(
         SourceId::new(1),
         r#"
-struct Label { text: string }
+struct Label { text: String }
 impl Label {
-    fn starts_with(self, prefix: string) -> bool {
+    fn starts_with(self, prefix: String) -> bool {
         return self.text.starts_with(prefix);
     }
 }
@@ -335,12 +335,12 @@ fn compiler_specializes_self_method_calls_by_method_id() {
         SourceId::new(1),
         r#"
 trait BonusSource {
-    fn label(self) -> string;
-    fn summary(self) -> string { return self.label(); }
+    fn label(self) -> String;
+    fn summary(self) -> String { return self.label(); }
 }
-struct Player { name: string }
+struct Player { name: String }
 impl BonusSource for Player {
-    fn label(self) -> string {
+    fn label(self) -> String {
         return self.name;
     }
 }

@@ -14,7 +14,7 @@ description: "Vela 如何检查带类型提示的值。"
 
 ```vela
 struct Reward {
-    code: string
+    code: String
     amount: i64 = 0
 }
 

@@ -4,7 +4,7 @@ struct ServerStats {
 
 struct ServerState {
     level: i64,
-    name: string,
+    name: String,
     total_gold: i64,
     stats: ServerStats,
 }

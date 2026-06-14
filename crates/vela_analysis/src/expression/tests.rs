@@ -685,7 +685,7 @@ fn quest_registry_facts() -> RegistryFacts {
             .kind(TypeKind::ScriptEnum)
             .variant(
                 VariantDesc::new(VariantId::new(1), "Active")
-                    .field(FieldDesc::new(FieldId::new(1), "quest_id").type_hint("string")),
+                    .field(FieldDesc::new(FieldId::new(1), "quest_id").type_hint("String")),
             )
             .variant(VariantDesc::new(VariantId::new(2), "Done")),
     );

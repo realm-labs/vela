@@ -41,7 +41,7 @@ structure.
 
 ## What Reload Can Change
 
-Hot reload is intended for function and module updates: function bodies, local
+Hot reload is intended for function and module updates: Function bodies, local
 logic, private helpers, compatible exported functions, and compatible schema
 additions. ABI, schema, capability, and source-boundary checks reject updates
 that would make running code or host integrations ambiguous.

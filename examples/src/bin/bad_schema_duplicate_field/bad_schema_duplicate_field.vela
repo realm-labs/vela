@@ -1,5 +1,5 @@
 struct RewardPreview {
-    item_id: string,
+    item_id: String,
     item_id: i64,
 }
 

@@ -140,8 +140,8 @@ mod tests {
             r#"
             struct Player { level: i64 }
             fn grant(player: Player, amount: i64) -> bool {
-                let rewards: map = {};
-                let title: string = "hero";
+                let rewards: Map = {};
+                let title: String = "hero";
                 return amount > 0;
             }
             "#,

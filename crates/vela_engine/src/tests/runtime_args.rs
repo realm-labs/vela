@@ -121,7 +121,7 @@ fn main(value: i64) {
         error.kind(),
         VmErrorKind::TypeContractViolation {
             expected: "i64".to_owned(),
-            actual: "string".to_owned(),
+            actual: "String".to_owned(),
             debug_name: "value".to_owned(),
         }
     );
@@ -138,7 +138,7 @@ fn direct_player_type() -> TypeDesc {
         )
         .method(
             MethodDesc::new(HostMethodId::new(11), "add")
-                .param(MethodParamDesc::new("key").type_hint("string"))
+                .param(MethodParamDesc::new("key").type_hint("String"))
                 .param(MethodParamDesc::new("amount").type_hint("i64")),
         )
 }
@@ -688,12 +688,12 @@ fn runtime_call_args_host_mut_dispatches_root_and_child_host_methods() {
                     HostIndexCapability::new()
                         .readable(true)
                         .addable(true)
-                        .key_type("string")
+                        .key_type("String")
                         .value_type("i64"),
                 )
                 .method(
                     MethodDesc::new(HostMethodId::new(11), "add")
-                        .param(MethodParamDesc::new("key").type_hint("string"))
+                        .param(MethodParamDesc::new("key").type_hint("String"))
                         .param(MethodParamDesc::new("amount").type_hint("i64")),
                 ),
         )

@@ -10,7 +10,7 @@ Standard library methods provide the built-in behavior for primitive and collect
 Standard methods currently cover strings, bytes, arrays, maps, sets, ranges, iterators, `Option`, and `Result`, plus selected numeric conversion helpers.
 
 ```vela
-fn summarize(name: string, values) -> string {
+fn summarize(name: String, values) -> String {
     let total = values.iter().count()
     return f"{name}:{total}"
 }
@@ -34,7 +34,7 @@ fn doubled(values) {
 `Option` and `Result` helpers keep absence and recoverable failure visible without turning expected cases into VM traps.
 
 ```vela
-fn safe_amount(text: string) -> i64 {
+fn safe_amount(text: String) -> i64 {
     return text.parse_i64().unwrap_or(0)
 }
 ```

@@ -107,7 +107,9 @@ impl Parser {
             self.error_here("use `::` for module/type paths; `.` is value access");
         }
 
-        if self.check_symbol(Symbol::Less) {
+        let args = if self.check_symbol(Symbol::Less) && supports_type_arguments(&path) {
+            self.parse_allowed_type_arguments(&path)
+        } else if self.check_symbol(Symbol::Less) {
             let generic_span = self.current().span;
             self.diagnostics.push(
                 Diagnostic::error("script type hints do not support generics")
@@ -116,12 +118,69 @@ impl Parser {
                     .with_label(generic_span, "remove generic type arguments"),
             );
             self.skip_generic_type_arguments();
-        }
+            Vec::new()
+        } else {
+            Vec::new()
+        };
 
         Some(TypeHint {
             path,
+            args,
             span: self.join_span(start, self.previous_span()),
         })
+    }
+
+    fn parse_allowed_type_arguments(&mut self, path: &[String]) -> Vec<TypeHint> {
+        let Some(open) = self.eat_symbol(Symbol::Less) else {
+            return Vec::new();
+        };
+        let open_span = open.span;
+        let expected = match path {
+            [name] if name == "Option" => 1,
+            [name] if name == "Result" => 2,
+            _ => 0,
+        };
+        let mut args = Vec::new();
+        if self.check_symbol(Symbol::Greater) {
+            self.error_here("expected type argument");
+        }
+        while !self.at_eof() && !self.check_symbol(Symbol::Greater) {
+            if let Some(arg) = self.parse_type_hint() {
+                args.push(arg);
+            } else {
+                self.skip_member_tail();
+                break;
+            }
+            if self.eat_symbol(Symbol::Comma).is_none() {
+                break;
+            }
+            if self.check_symbol(Symbol::Greater) {
+                self.error_here("expected type argument after `,`");
+                break;
+            }
+        }
+        if self.eat_symbol(Symbol::Greater).is_none() {
+            self.diagnostics.push(
+                Diagnostic::error("unterminated type argument list")
+                    .with_code("syntax::type_arguments")
+                    .with_span(open_span)
+                    .with_label(open_span, "type arguments start here"),
+            );
+        }
+        if args.len() != expected {
+            let span = self.join_span(open_span, self.previous_span());
+            self.diagnostics.push(
+                Diagnostic::error(format!(
+                    "`{}` expects {expected} type argument{}",
+                    path.join("::"),
+                    if expected == 1 { "" } else { "s" }
+                ))
+                .with_code("syntax::type_argument_arity")
+                .with_span(span)
+                .with_label(span, "wrong number of type arguments"),
+            );
+        }
+        args
     }
 
     pub(super) fn eat_type_hint_segment(&mut self) -> Option<String> {
@@ -170,4 +229,8 @@ impl Parser {
             || self.check_symbol(Symbol::Semicolon)
             || self.at_eof()
     }
+}
+
+fn supports_type_arguments(path: &[String]) -> bool {
+    matches!(path, [name] if name == "Option" || name == "Result")
 }

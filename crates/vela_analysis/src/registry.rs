@@ -614,11 +614,14 @@ fn registry_hint_fact(registry: &TypeRegistry, hint: &str) -> TypeFact {
     }
 
     match hint {
-        "any" => TypeFact::Any,
-        "array" => TypeFact::array(TypeFact::Unknown),
-        "map" => TypeFact::map(TypeFact::Unknown, TypeFact::Unknown),
-        "set" => TypeFact::set(TypeFact::Unknown),
-        "function" => TypeFact::function(Vec::new(), TypeFact::Unknown),
+        "Any" => TypeFact::Any,
+        "String" => TypeFact::STRING,
+        "Bytes" => TypeFact::BYTES,
+        "Array" => TypeFact::array(TypeFact::Unknown),
+        "Map" => TypeFact::map(TypeFact::Unknown, TypeFact::Unknown),
+        "Set" => TypeFact::set(TypeFact::Unknown),
+        "Iterator" => TypeFact::iterator(TypeFact::Unknown),
+        "Function" => TypeFact::function(Vec::new(), TypeFact::Unknown),
         "Option" => TypeFact::option(TypeFact::Unknown),
         "Result" => TypeFact::result(TypeFact::Unknown, TypeFact::Unknown),
         name => registry
@@ -692,12 +695,12 @@ mod tests {
             );
         let inventory = TypeDesc::new(TypeKey::new(TypeId::new(2), "Inventory"))
             .kind(TypeKind::ScriptStruct)
-            .field(FieldDesc::new(FieldId::new(1), "items").type_hint("map"));
+            .field(FieldDesc::new(FieldId::new(1), "items").type_hint("Map"));
         let quest = TypeDesc::new(TypeKey::new(TypeId::new(3), "QuestState"))
             .kind(TypeKind::ScriptEnum)
             .variant(
                 VariantDesc::new(VariantId::new(1), "Active")
-                    .field(FieldDesc::new(FieldId::new(1), "quest_id").type_hint("string")),
+                    .field(FieldDesc::new(FieldId::new(1), "quest_id").type_hint("String")),
             );
 
         let mut registry = TypeRegistry::new();

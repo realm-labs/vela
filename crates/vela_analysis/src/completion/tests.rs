@@ -622,10 +622,10 @@ fn local_completions_include_function_scope_bindings() {
         r#"
             struct Player { level: i64 }
             fn grant(player: Player, amount: i64) -> bool {
-                let rewards: map = {};
+                let rewards: Map = {};
                 let inferred = 10;
                 for reward in [] {
-                    let amount: string = reward;
+                    let amount: String = reward;
                 }
                 return amount > 0;
             }
@@ -677,7 +677,7 @@ fn declaration_completions_include_script_declarations() {
         ModulePath::from_qualified("game::player"),
         r#"
             pub struct Player { level: i64 }
-            pub enum QuestState { Active { quest_id: string }, Done }
+            pub enum QuestState { Active { quest_id: String }, Done }
             pub trait Damageable {
                 fn damage(self, amount: i64) -> bool;
             }
@@ -799,7 +799,7 @@ fn registry_facts() -> RegistryFacts {
             .kind(TypeKind::ScriptEnum)
             .variant(
                 VariantDesc::new(VariantId::new(1), "Active")
-                    .field(FieldDesc::new(FieldId::new(2), "quest_id").type_hint("string")),
+                    .field(FieldDesc::new(FieldId::new(2), "quest_id").type_hint("String")),
             ),
     );
     registry.register_trait(

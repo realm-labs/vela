@@ -146,7 +146,7 @@ fn compiled_source_reflect_set_returns_updated_script_record() {
     let program = compile_reflection_value_source(
         SourceId::new(1),
         r#"
-struct Player { level: i64, name: string }
+struct Player { level: i64, name: String }
 
 fn main() {
     let player = Player { level: 7, name: "hero" };

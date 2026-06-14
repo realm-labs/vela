@@ -243,7 +243,7 @@ fn option_type_desc() -> TypeDesc {
                 .attr("stdlib", "option")
                 .field(
                     FieldDesc::new(required_std_field_id("Option::Some", "0"), "0")
-                        .type_hint("any")
+                        .type_hint("Any")
                         .docs("Dynamic Option::Some payload value.")
                         .attr("stdlib", "option"),
                 ),
@@ -278,7 +278,7 @@ fn result_type_desc() -> TypeDesc {
                 .attr("stdlib", "result")
                 .field(
                     FieldDesc::new(required_std_field_id("Result::Ok", "0"), "0")
-                        .type_hint("any")
+                        .type_hint("Any")
                         .docs("Dynamic Result::Ok payload value.")
                         .attr("stdlib", "result"),
                 ),
@@ -290,7 +290,7 @@ fn result_type_desc() -> TypeDesc {
                 .attr("stdlib", "result")
                 .field(
                     FieldDesc::new(required_std_field_id("Result::Err", "0"), "0")
-                        .type_hint("any")
+                        .type_hint("Any")
                         .docs("Dynamic Result::Err payload value.")
                         .attr("stdlib", "result"),
                 ),
@@ -347,13 +347,37 @@ mod tests {
                 .unwrap_or_else(|| panic!("missing standard method desc for {id:?}"));
 
             assert_eq!(desc.name, spec.name);
-            assert_eq!(desc.return_type.as_deref(), Some(spec.return_type));
+            assert_eq!(
+                desc.return_type.as_deref(),
+                Some(canonical_test_type_hint(spec.return_type))
+            );
             assert_eq!(desc.params.len(), spec.params.len());
             for (actual, expected) in desc.params.iter().zip(spec.params) {
                 assert_eq!(actual.name, expected.name);
-                assert_eq!(actual.type_hint.as_deref(), Some(expected.type_hint));
+                assert_eq!(
+                    actual.type_hint.as_deref(),
+                    Some(canonical_test_type_hint(expected.type_hint))
+                );
                 assert_eq!(actual.has_default, expected.defaulted);
             }
+        }
+    }
+
+    fn canonical_test_type_hint(hint: &'static str) -> &'static str {
+        match hint {
+            "any" => "Any",
+            "string" => "String",
+            "bytes" => "Bytes",
+            "array" => "Array",
+            "map" => "Map",
+            "set" => "Set",
+            "range" => "Range",
+            "iterator" => "Iterator",
+            "function" => "Function",
+            "closure" => "Closure",
+            "option" => "Option",
+            "result" => "Result",
+            other => other,
         }
     }
 }

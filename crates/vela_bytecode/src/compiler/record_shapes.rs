@@ -117,8 +117,20 @@ impl ValueShape {
             Self::Iterator(_) => Some(RuntimeTypeFact::standard(StandardRuntimeType::Iterator)),
             Self::Map { .. } => Some(RuntimeTypeFact::standard(StandardRuntimeType::Map)),
             Self::Set(_) => Some(RuntimeTypeFact::standard(StandardRuntimeType::Set)),
-            Self::Option(_) => Some(RuntimeTypeFact::standard(StandardRuntimeType::Option)),
-            Self::Result { .. } => Some(RuntimeTypeFact::standard(StandardRuntimeType::Result)),
+            Self::Option(value) => value
+                .value_type()
+                .map(|payload| RuntimeTypeFact::Option(Box::new(payload)))
+                .or_else(|| Some(RuntimeTypeFact::standard(StandardRuntimeType::Option))),
+            Self::Result { ok, err } => match (
+                ok.as_deref().and_then(ValueShape::value_type),
+                err.as_deref().and_then(ValueShape::value_type),
+            ) {
+                (Some(ok), Some(err)) => Some(RuntimeTypeFact::Result {
+                    ok: Box::new(ok),
+                    err: Box::new(err),
+                }),
+                _ => Some(RuntimeTypeFact::standard(StandardRuntimeType::Result)),
+            },
         }
     }
 
@@ -137,19 +149,44 @@ impl ValueShape {
             RuntimeTypeFact::Primitive(PrimitiveTag::U64) => "u64",
             RuntimeTypeFact::Primitive(PrimitiveTag::F32) => "f32",
             RuntimeTypeFact::Primitive(PrimitiveTag::F64) => "f64",
-            RuntimeTypeFact::Primitive(PrimitiveTag::String) => "string",
-            RuntimeTypeFact::Primitive(PrimitiveTag::Bytes) => "bytes",
-            RuntimeTypeFact::Standard(StandardRuntimeType::Array) => "array",
-            RuntimeTypeFact::Standard(StandardRuntimeType::Map) => "map",
-            RuntimeTypeFact::Standard(StandardRuntimeType::Set) => "set",
-            RuntimeTypeFact::Standard(StandardRuntimeType::Range) => "range",
-            RuntimeTypeFact::Standard(StandardRuntimeType::Function) => "function",
-            RuntimeTypeFact::Standard(StandardRuntimeType::Closure) => "closure",
+            RuntimeTypeFact::Primitive(PrimitiveTag::String) => "String",
+            RuntimeTypeFact::Primitive(PrimitiveTag::Bytes) => "Bytes",
+            RuntimeTypeFact::Standard(StandardRuntimeType::Array) => {
+                return Self::Array(Box::new(Self::Unknown));
+            }
+            RuntimeTypeFact::Standard(StandardRuntimeType::Map) => {
+                return Self::Map {
+                    key: Box::new(Self::Unknown),
+                    value: Box::new(Self::Unknown),
+                };
+            }
+            RuntimeTypeFact::Standard(StandardRuntimeType::Set) => {
+                return Self::Set(Box::new(Self::Unknown));
+            }
+            RuntimeTypeFact::Standard(StandardRuntimeType::Range) => "Range",
+            RuntimeTypeFact::Standard(StandardRuntimeType::Function) => "Function",
+            RuntimeTypeFact::Standard(StandardRuntimeType::Closure) => "Closure",
             RuntimeTypeFact::Standard(StandardRuntimeType::Iterator) => {
                 return Self::Iterator(Box::new(Self::Unknown));
             }
-            RuntimeTypeFact::Standard(StandardRuntimeType::Option) => "Option",
-            RuntimeTypeFact::Standard(StandardRuntimeType::Result) => "Result",
+            RuntimeTypeFact::Standard(StandardRuntimeType::Option) => {
+                return Self::Option(Box::new(Self::Unknown));
+            }
+            RuntimeTypeFact::Standard(StandardRuntimeType::Result) => {
+                return Self::Result {
+                    ok: None,
+                    err: None,
+                };
+            }
+            RuntimeTypeFact::Option(payload) => {
+                return Self::Option(Box::new(Self::from_runtime_type(*payload)));
+            }
+            RuntimeTypeFact::Result { ok, err } => {
+                return Self::Result {
+                    ok: Some(Box::new(Self::from_runtime_type(*ok))),
+                    err: Some(Box::new(Self::from_runtime_type(*err))),
+                };
+            }
         };
         Self::Scalar(type_name.to_owned())
     }
@@ -194,9 +231,12 @@ fn scalar_shape_type_fact(type_name: &str) -> Option<RuntimeTypeFact> {
         "U64" | "u64" => Some(RuntimeTypeFact::primitive(PrimitiveTag::U64)),
         "F32" | "f32" => Some(RuntimeTypeFact::primitive(PrimitiveTag::F32)),
         "F64" | "f64" => Some(RuntimeTypeFact::primitive(PrimitiveTag::F64)),
-        "String" | "string" => Some(RuntimeTypeFact::primitive(PrimitiveTag::String)),
-        "Bytes" | "bytes" => Some(RuntimeTypeFact::primitive(PrimitiveTag::Bytes)),
-        "Iterator" | "iterator" => Some(RuntimeTypeFact::standard(StandardRuntimeType::Iterator)),
+        "String" => Some(RuntimeTypeFact::primitive(PrimitiveTag::String)),
+        "Bytes" => Some(RuntimeTypeFact::primitive(PrimitiveTag::Bytes)),
+        "Range" => Some(RuntimeTypeFact::standard(StandardRuntimeType::Range)),
+        "Function" => Some(RuntimeTypeFact::standard(StandardRuntimeType::Function)),
+        "Closure" => Some(RuntimeTypeFact::standard(StandardRuntimeType::Closure)),
+        "Iterator" => Some(RuntimeTypeFact::standard(StandardRuntimeType::Iterator)),
         _ => None,
     }
 }
@@ -296,11 +336,11 @@ pub(super) fn expression_value_shape(
     match &expr.kind {
         ExprKind::Literal(_) => expression_value_type(expr, local_type_at_span, local_type_named)
             .map(ValueShape::from_runtime_type),
-        ExprKind::InterpolatedString(_) => Some(ValueShape::Scalar("string".to_owned())),
+        ExprKind::InterpolatedString(_) => Some(ValueShape::Scalar("String".to_owned())),
         ExprKind::Binary {
             op: BinaryOp::Range | BinaryOp::RangeInclusive,
             ..
-        } => Some(ValueShape::Scalar("range".to_owned())),
+        } => Some(ValueShape::Scalar("Range".to_owned())),
         ExprKind::Binary { op, left, right } => binary_shape(op, left, right),
         ExprKind::Record { path, fields } => {
             if path.len() > 1 {
@@ -441,7 +481,7 @@ fn binary_shape(op: &BinaryOp, left: &Expr, right: &Expr) -> Option<ValueShape> 
         | BinaryOp::GreaterEqual
         | BinaryOp::And
         | BinaryOp::Or => Some(ValueShape::Scalar("bool".to_owned())),
-        BinaryOp::Range | BinaryOp::RangeInclusive => Some(ValueShape::Scalar("range".to_owned())),
+        BinaryOp::Range | BinaryOp::RangeInclusive => Some(ValueShape::Scalar("Range".to_owned())),
     }
 }
 
@@ -512,15 +552,15 @@ fn native_call_shape(
     });
     match (module.as_str(), function.as_str()) {
         ("fs", "read_to_string") => Some(ValueShape::Result {
-            ok: Some(Box::new(ValueShape::Scalar("string".to_owned()))),
+            ok: Some(Box::new(ValueShape::Scalar("String".to_owned()))),
             err: Some(Box::new(ValueShape::Record(
                 RecordShape::from_field_shapes([
-                    ("kind".to_owned(), ValueShape::Scalar("string".to_owned())),
+                    ("kind".to_owned(), ValueShape::Scalar("String".to_owned())),
                     (
                         "message".to_owned(),
-                        ValueShape::Scalar("string".to_owned()),
+                        ValueShape::Scalar("String".to_owned()),
                     ),
-                    ("path".to_owned(), ValueShape::Scalar("string".to_owned())),
+                    ("path".to_owned(), ValueShape::Scalar("String".to_owned())),
                 ]),
             ))),
         }),
@@ -528,12 +568,12 @@ fn native_call_shape(
             ok: Some(Box::new(ValueShape::Scalar("null".to_owned()))),
             err: Some(Box::new(ValueShape::Record(
                 RecordShape::from_field_shapes([
-                    ("kind".to_owned(), ValueShape::Scalar("string".to_owned())),
+                    ("kind".to_owned(), ValueShape::Scalar("String".to_owned())),
                     (
                         "message".to_owned(),
-                        ValueShape::Scalar("string".to_owned()),
+                        ValueShape::Scalar("String".to_owned()),
                     ),
-                    ("path".to_owned(), ValueShape::Scalar("string".to_owned())),
+                    ("path".to_owned(), ValueShape::Scalar("String".to_owned())),
                 ]),
             ))),
         }),
@@ -623,9 +663,9 @@ fn method_call_shape(
     )?;
     match method {
         "to_upper" | "to_lower" | "trim" | "trim_start" | "trim_end" | "replace" | "repeat" => {
-            Some(ValueShape::Scalar("string".to_owned()))
+            Some(ValueShape::Scalar("String".to_owned()))
         }
-        "join" => Some(ValueShape::Scalar("string".to_owned())),
+        "join" => Some(ValueShape::Scalar("String".to_owned())),
         "len" | "count" | "sum" => Some(ValueShape::Scalar("i64".to_owned())),
         "has" | "contains" | "starts_with" | "ends_with" | "is_empty" | "is_none" | "is_some"
         | "is_ok" | "is_err" | "any" | "all" | "is_subset" | "is_superset" | "is_disjoint" => {
@@ -633,7 +673,7 @@ fn method_call_shape(
         }
         "slice" => match receiver.value_type() {
             Some(RuntimeTypeFact::Primitive(PrimitiveTag::String)) => {
-                Some(ValueShape::Scalar("string".to_owned()))
+                Some(ValueShape::Scalar("String".to_owned()))
             }
             Some(RuntimeTypeFact::Standard(StandardRuntimeType::Array)) => Some(receiver),
             _ => None,
@@ -648,10 +688,10 @@ fn method_call_shape(
             "bool".to_owned(),
         )))),
         "split" | "split_whitespace" | "split_lines" => Some(ValueShape::Array(Box::new(
-            ValueShape::Scalar("string".to_owned()),
+            ValueShape::Scalar("String".to_owned()),
         ))),
         "split_once" => Some(ValueShape::Option(Box::new(ValueShape::Array(Box::new(
-            ValueShape::Scalar("string".to_owned()),
+            ValueShape::Scalar("String".to_owned()),
         ))))),
         "strip_prefix" | "strip_suffix" => Some(ValueShape::Option(Box::new(ValueShape::Scalar(
             "string".to_owned(),
@@ -775,7 +815,7 @@ fn method_call_shape(
                     ("value".to_owned(), (**value).clone()),
                 ])),
             ))),
-            ValueShape::Scalar(type_name) if type_name == "string" => Some(ValueShape::Option(
+            ValueShape::Scalar(type_name) if type_name == "String" => Some(ValueShape::Option(
                 Box::new(ValueShape::Scalar("i64".to_owned())),
             )),
             _ => None,
@@ -814,7 +854,7 @@ fn method_call_shape(
             .array_element()
             .cloned()
             .map(|element| ValueShape::Map {
-                key: Box::new(ValueShape::Scalar("string".to_owned())),
+                key: Box::new(ValueShape::Scalar("String".to_owned())),
                 value: Box::new(ValueShape::Array(Box::new(element))),
             }),
         "sort" | "sort_by" | "reverse" | "distinct" => Some(receiver),

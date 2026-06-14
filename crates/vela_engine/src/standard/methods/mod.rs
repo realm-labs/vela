@@ -81,17 +81,35 @@ fn descs(owner: &'static str, specs: &[MethodSpec], stdlib: &'static str) -> Vec
 
 fn desc(owner: &'static str, spec: MethodSpec, stdlib: &'static str) -> MethodDesc {
     let mut desc = MethodDesc::new(std_method_host_id(owner, spec.name), spec.name)
-        .return_type(spec.return_type)
+        .return_type(canonical_type_hint(spec.return_type))
         .attr("stdlib", stdlib)
         .docs(spec.docs);
     for param in spec.params {
         desc = desc.param(
             MethodParamDesc::new(param.name)
-                .type_hint(param.type_hint)
+                .type_hint(canonical_type_hint(param.type_hint))
                 .defaulted(param.defaulted),
         );
     }
     desc
+}
+
+fn canonical_type_hint(hint: &'static str) -> &'static str {
+    match hint {
+        "any" => "Any",
+        "string" => "String",
+        "bytes" => "Bytes",
+        "array" => "Array",
+        "map" => "Map",
+        "set" => "Set",
+        "range" => "Range",
+        "iterator" => "Iterator",
+        "function" => "Function",
+        "closure" => "Closure",
+        "option" => "Option",
+        "result" => "Result",
+        other => other,
+    }
 }
 
 fn std_method_host_id(owner: &str, name: &str) -> HostMethodId {

@@ -17,7 +17,7 @@ const BASE = 2
 #[rule(kind = conformance::reward::Rule, tags = ["core", "fixture"], config = { enabled: true, limit: 3 })]
 struct Reward {
     #[doc("Reward item")]
-    item: string,
+    item: String,
     count: i64,
 }
 
@@ -31,10 +31,10 @@ struct Player {
 }
 
 enum QuestState {
-    Active { id: string, count: i64 },
+    Active { id: String, count: i64 },
     #[terminal]
-    Done { id: string },
-    Streak(kind: string = "weekly", count: i64),
+    Done { id: String },
+    Streak(kind: String = "weekly", count: i64),
 }
 
 #[doc("Scored contract")]
@@ -77,7 +77,7 @@ fn main() {
        /* let impossible = missing_symbol; */
     */
     #[trace("values")]
-    let values: array = [1, 2, 3, 4, 5];
+    let values: Array = [1, 2, 3, 4, 5];
     let total: i64 = 0;
     #[audit]
     for value in values {
@@ -109,17 +109,17 @@ fn main() {
         .filter(|value| value % 2 == 1)
         .map(|value| value * 2)
         .sum();
-    let helper_values: array = [21, 11, 10, 12, 13];
-    let groups: map = helper_values.group_by(|value| if value % 2 == 0 {
+    let helper_values: Array = [21, 11, 10, 12, 13];
+    let groups: Map = helper_values.group_by(|value| if value % 2 == 0 {
         "even"
     } else {
         "odd"
     });
-    let sorted: array = helper_values.sort_by(|value| value % 10);
+    let sorted: Array = helper_values.sort_by(|value| value % 10);
     let found = helper_values.find(|value| value == 12);
-    let helper_slice: array = sorted.slice(1, 4);
-    let reversed: array = helper_slice.reverse();
-    let unique: array = [1, 2, 1, 3, 2].distinct();
+    let helper_slice: Array = sorted.slice(1, 4);
+    let reversed: Array = helper_slice.reverse();
+    let unique: Array = [1, 2, 1, 3, 2].distinct();
     let array_helper_score: i64 = if groups["odd"].count(|value| value > 12) == 2
         && groups["even"].sum() == 22
         && sorted[0] == 10
@@ -140,7 +140,7 @@ fn main() {
     } else {
         0
     };
-    let mutable_values: array = [10, 30];
+    let mutable_values: Array = [10, 30];
     mutable_values.insert(1, 20);
     mutable_values.push(50);
     let popped_value = mutable_values.pop();
@@ -289,12 +289,12 @@ fn main() {
         0
     };
     let result: i64 = result_bonus(true)?;
-    let mapped: map = {"gold": reward.count, "quest": quest_score}
+    let mapped: Map = {"gold": reward.count, "quest": quest_score}
         .map_values(|key, value| key.len() + value);
-    let mutable_rewards: map = {"gold": 1, "xp": 2};
+    let mutable_rewards: Map = {"gold": 1, "xp": 2};
     mutable_rewards.set("quest", 4);
     let removed_reward = mutable_rewards.remove("xp");
-    let merged_rewards: map = mutable_rewards.merge({"gold": 5, "gem": 6});
+    let merged_rewards: Map = mutable_rewards.merge({"gold": 5, "gem": 6});
     let map_score: i64 = option::unwrap_or(removed_reward, 0)
         + mutable_rewards.get_or("missing", 7)
         + merged_rewards["gold"]
@@ -306,7 +306,7 @@ fn main() {
     let found_reward = merged_rewards.find(|key, value| key == "gem" && value == 6);
     let found_entry = found_reward.unwrap_or(MapEntry { key: "", value: 0 });
     let filtered_rewards = merged_rewards.filter(|key, value| key.len() >= 3 && value >= 5);
-    let mutable_map: map = {"daily": "open"};
+    let mutable_map: Map = {"daily": "open"};
     mutable_map.extend({"raid": "active", "daily": "done"});
     let map_helper_score: i64 = if reward_keys.join(",") == "gem,gold,quest"
         && reward_values.sum() == 15
@@ -331,9 +331,9 @@ fn main() {
     } else {
         0
     };
-    let player_tags: set = set::from_array(["daily", "quest", "raid"]);
-    let event_tags: set = set::from_array(["quest", "bonus", "daily"]);
-    let required_tags: set = set::from_array(["daily", "quest"]);
+    let player_tags: Set = set::from_array(["daily", "quest", "raid"]);
+    let event_tags: Set = set::from_array(["quest", "bonus", "daily"]);
+    let required_tags: Set = set::from_array(["daily", "quest"]);
     let set_score: i64 = {
         let shared = player_tags.intersection(event_tags);
         let unique = player_tags.difference(event_tags);
@@ -350,7 +350,7 @@ fn main() {
             0
         }
     };
-    let mutable_tags: set = set::from_array(["daily", "quest"]);
+    let mutable_tags: Set = set::from_array(["daily", "quest"]);
     let added_tag = mutable_tags.add("raid");
     let duplicate_tag = mutable_tags.add("quest");
     let removed_tag = mutable_tags.remove("daily");
@@ -389,7 +389,7 @@ fn main() {
     player.stats.level += 3;
     player.stats.exp = player.stats.level + 1;
     let nested_score: i64 = player.stats.level + player.stats.exp;
-    let players: array = [
+    let players: Array = [
         Player {
             stats: Stats {
                 level: 2,
@@ -423,8 +423,8 @@ fn main() {
         Outcome::Skipped(reason) => reason.len(),
         _ => 0,
     };
-    let imported_counts: array = REWARD_COUNTS;
-    let imported_table: map = REWARD_TABLE;
+    let imported_counts: Array = REWARD_COUNTS;
+    let imported_table: Map = REWARD_TABLE;
     let imported_const_score: i64 = imported_counts.sum() + imported_table["gem"];
 
     return total

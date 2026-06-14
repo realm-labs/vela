@@ -11,7 +11,7 @@ description: "Vela Record 和 Struct文档。"
 
 ```vela
 struct Reward {
-    code: string
+    code: String
     amount: i64 = 0
 }
 

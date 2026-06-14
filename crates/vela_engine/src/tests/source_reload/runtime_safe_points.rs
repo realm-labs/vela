@@ -292,7 +292,7 @@ fn runtime_rebinds_script_globals_after_reload_image_swap() {
             r#"
 struct ServerState {
     level: i64,
-    name: string,
+    name: String,
 }
 
 global state: ServerState;
@@ -321,7 +321,7 @@ fn bump(amount) {
             r#"
 struct ServerState {
     level: i64,
-    name: string,
+    name: String,
 }
 
 global state: ServerState;

@@ -1,10 +1,12 @@
 use vela_bytecode::{
-    GuardKind, LinkedCodeObject, LinkedProgram, Register, TypeGuard, TypeGuardPlan,
-    TypeGuardPlanId, UnlinkedTypeGuard, UnlinkedTypeGuardPlan,
+    GuardKind, LinkedCodeObject, LinkedProgram, Register, StandardTypeGuard, TypeGuard,
+    TypeGuardPlan, TypeGuardPlanId, UnlinkedTypeGuard, UnlinkedTypeGuardPlan,
 };
 use vela_common::PrimitiveTag;
 
 use crate::heap::HeapValue;
+use crate::option_result::{StdEnumKind, StdEnumVariant, std_enum_tag};
+use crate::stored_runtime_value;
 use crate::{CallFrame, HeapExecution, Value, VmError, VmErrorKind, VmResult};
 
 pub(crate) fn execute_unlinked_guard(
@@ -21,6 +23,19 @@ pub(crate) fn execute_unlinked_guard(
         UnlinkedTypeGuardPlan::Primitive(expected) => {
             execute_primitive_guard(value, expected, heap, &guard.context.debug_name)
         }
+        UnlinkedTypeGuardPlan::Standard(expected) => {
+            execute_standard_guard(value, expected, heap, &guard.context.debug_name)
+        }
+        UnlinkedTypeGuardPlan::Option { ref some } => {
+            execute_option_guard(value, some.as_deref(), heap, &guard.context.debug_name)
+        }
+        UnlinkedTypeGuardPlan::Result { ref ok, ref err } => execute_result_guard(
+            value,
+            ok.as_deref(),
+            err.as_deref(),
+            heap,
+            &guard.context.debug_name,
+        ),
         UnlinkedTypeGuardPlan::Type(ref expected) => {
             execute_unlinked_type_guard(value, expected, heap, &guard.context.debug_name)
         }
@@ -64,6 +79,20 @@ pub(crate) fn execute_linked_guard(
         TypeGuardPlan::Primitive(expected) => {
             execute_primitive_guard(value, expected, heap, debug_name)
         }
+        TypeGuardPlan::Standard(expected) => {
+            execute_standard_guard(value, expected, heap, debug_name)
+        }
+        TypeGuardPlan::Option { ref some } => {
+            execute_linked_option_guard(value, some.as_deref(), program, heap, debug_name)
+        }
+        TypeGuardPlan::Result { ref ok, ref err } => execute_linked_result_guard(
+            value,
+            ok.as_deref(),
+            err.as_deref(),
+            program,
+            heap,
+            debug_name,
+        ),
         TypeGuardPlan::Type(expected) => {
             let expected = program.ty(expected).ok_or_else(|| {
                 VmError::new(VmErrorKind::UnsupportedLinkedInstruction {
@@ -207,10 +236,266 @@ fn execute_primitive_guard(
         return Ok(());
     }
     Err(VmError::new(VmErrorKind::TypeContractViolation {
-        expected: expected.name().to_owned(),
+        expected: primitive_type_name(expected).to_owned(),
         actual: runtime_type_name(value, heap).to_owned(),
         debug_name: debug_name.to_owned(),
     }))
+}
+
+fn execute_standard_guard(
+    value: &Value,
+    expected: StandardTypeGuard,
+    heap: Option<&HeapExecution<'_>>,
+    debug_name: &str,
+) -> VmResult<()> {
+    if runtime_standard_type(value, heap) == Some(expected) {
+        return Ok(());
+    }
+    Err(type_contract_error(
+        value,
+        standard_type_name(expected),
+        heap,
+        debug_name,
+    ))
+}
+
+fn execute_option_guard(
+    value: &Value,
+    some: Option<&UnlinkedTypeGuardPlan>,
+    heap: Option<&HeapExecution<'_>>,
+    debug_name: &str,
+) -> VmResult<()> {
+    match std_enum_value(value, heap) {
+        Some((StdEnumKind::Option, StdEnumVariant::Some, fields)) => {
+            if let Some(some) = some {
+                let payload = fields
+                    .get_slot(0, "0")
+                    .map(stored_runtime_value)
+                    .ok_or_else(|| {
+                        VmError::new(VmErrorKind::TypeMismatch {
+                            operation: "Option payload contract",
+                        })
+                    })?;
+                execute_unlinked_guard_plan(&payload, some, heap, debug_name)?;
+            }
+            Ok(())
+        }
+        Some((StdEnumKind::Option, StdEnumVariant::None, _)) => Ok(()),
+        _ => Err(type_contract_error(value, "Option", heap, debug_name)),
+    }
+}
+
+fn execute_result_guard(
+    value: &Value,
+    ok: Option<&UnlinkedTypeGuardPlan>,
+    err: Option<&UnlinkedTypeGuardPlan>,
+    heap: Option<&HeapExecution<'_>>,
+    debug_name: &str,
+) -> VmResult<()> {
+    match std_enum_value(value, heap) {
+        Some((StdEnumKind::Result, StdEnumVariant::Ok, fields)) => {
+            if let Some(ok) = ok {
+                let payload = fields
+                    .get_slot(0, "0")
+                    .map(stored_runtime_value)
+                    .ok_or_else(|| {
+                        VmError::new(VmErrorKind::TypeMismatch {
+                            operation: "Result Ok payload contract",
+                        })
+                    })?;
+                execute_unlinked_guard_plan(&payload, ok, heap, debug_name)?;
+            }
+            Ok(())
+        }
+        Some((StdEnumKind::Result, StdEnumVariant::Err, fields)) => {
+            if let Some(err) = err {
+                let payload = fields
+                    .get_slot(0, "0")
+                    .map(stored_runtime_value)
+                    .ok_or_else(|| {
+                        VmError::new(VmErrorKind::TypeMismatch {
+                            operation: "Result Err payload contract",
+                        })
+                    })?;
+                execute_unlinked_guard_plan(&payload, err, heap, debug_name)?;
+            }
+            Ok(())
+        }
+        _ => Err(type_contract_error(value, "Result", heap, debug_name)),
+    }
+}
+
+fn execute_unlinked_guard_plan(
+    value: &Value,
+    plan: &UnlinkedTypeGuardPlan,
+    heap: Option<&HeapExecution<'_>>,
+    debug_name: &str,
+) -> VmResult<()> {
+    match plan {
+        UnlinkedTypeGuardPlan::Primitive(expected) => {
+            execute_primitive_guard(value, *expected, heap, debug_name)
+        }
+        UnlinkedTypeGuardPlan::Standard(expected) => {
+            execute_standard_guard(value, *expected, heap, debug_name)
+        }
+        UnlinkedTypeGuardPlan::Option { some } => {
+            execute_option_guard(value, some.as_deref(), heap, debug_name)
+        }
+        UnlinkedTypeGuardPlan::Result { ok, err } => {
+            execute_result_guard(value, ok.as_deref(), err.as_deref(), heap, debug_name)
+        }
+        UnlinkedTypeGuardPlan::Type(expected) => {
+            execute_unlinked_type_guard(value, expected, heap, debug_name)
+        }
+        UnlinkedTypeGuardPlan::Variant { enum_name, variant } => {
+            execute_unlinked_variant_guard(value, enum_name, variant, heap, debug_name)
+        }
+        UnlinkedTypeGuardPlan::Shape {
+            type_name,
+            shape_id,
+        } => execute_unlinked_shape_guard(value, type_name, *shape_id, heap, debug_name),
+        UnlinkedTypeGuardPlan::HostType(_) => Ok(()),
+    }
+}
+
+fn execute_linked_option_guard(
+    value: &Value,
+    some: Option<&TypeGuardPlan>,
+    program: &LinkedProgram,
+    heap: Option<&HeapExecution<'_>>,
+    debug_name: &str,
+) -> VmResult<()> {
+    match std_enum_value(value, heap) {
+        Some((StdEnumKind::Option, StdEnumVariant::Some, fields)) => {
+            if let Some(some) = some {
+                let payload = fields
+                    .get_slot(0, "0")
+                    .map(stored_runtime_value)
+                    .ok_or_else(|| {
+                        VmError::new(VmErrorKind::TypeMismatch {
+                            operation: "Option payload contract",
+                        })
+                    })?;
+                execute_linked_guard_plan(&payload, some, program, heap, debug_name)?;
+            }
+            Ok(())
+        }
+        Some((StdEnumKind::Option, StdEnumVariant::None, _)) => Ok(()),
+        _ => Err(type_contract_error(value, "Option", heap, debug_name)),
+    }
+}
+
+fn execute_linked_result_guard(
+    value: &Value,
+    ok: Option<&TypeGuardPlan>,
+    err: Option<&TypeGuardPlan>,
+    program: &LinkedProgram,
+    heap: Option<&HeapExecution<'_>>,
+    debug_name: &str,
+) -> VmResult<()> {
+    match std_enum_value(value, heap) {
+        Some((StdEnumKind::Result, StdEnumVariant::Ok, fields)) => {
+            if let Some(ok) = ok {
+                let payload = fields
+                    .get_slot(0, "0")
+                    .map(stored_runtime_value)
+                    .ok_or_else(|| {
+                        VmError::new(VmErrorKind::TypeMismatch {
+                            operation: "Result Ok payload contract",
+                        })
+                    })?;
+                execute_linked_guard_plan(&payload, ok, program, heap, debug_name)?;
+            }
+            Ok(())
+        }
+        Some((StdEnumKind::Result, StdEnumVariant::Err, fields)) => {
+            if let Some(err) = err {
+                let payload = fields
+                    .get_slot(0, "0")
+                    .map(stored_runtime_value)
+                    .ok_or_else(|| {
+                        VmError::new(VmErrorKind::TypeMismatch {
+                            operation: "Result Err payload contract",
+                        })
+                    })?;
+                execute_linked_guard_plan(&payload, err, program, heap, debug_name)?;
+            }
+            Ok(())
+        }
+        _ => Err(type_contract_error(value, "Result", heap, debug_name)),
+    }
+}
+
+fn execute_linked_guard_plan(
+    value: &Value,
+    plan: &TypeGuardPlan,
+    program: &LinkedProgram,
+    heap: Option<&HeapExecution<'_>>,
+    debug_name: &str,
+) -> VmResult<()> {
+    match plan {
+        TypeGuardPlan::Primitive(expected) => {
+            execute_primitive_guard(value, *expected, heap, debug_name)
+        }
+        TypeGuardPlan::Standard(expected) => {
+            execute_standard_guard(value, *expected, heap, debug_name)
+        }
+        TypeGuardPlan::Option { some } => {
+            execute_linked_option_guard(value, some.as_deref(), program, heap, debug_name)
+        }
+        TypeGuardPlan::Result { ok, err } => execute_linked_result_guard(
+            value,
+            ok.as_deref(),
+            err.as_deref(),
+            program,
+            heap,
+            debug_name,
+        ),
+        TypeGuardPlan::Type(expected) => {
+            let expected = program.ty(*expected).ok_or_else(|| {
+                VmError::new(VmErrorKind::UnsupportedLinkedInstruction {
+                    opcode: "type_guard",
+                })
+            })?;
+            execute_type_id_guard(
+                value,
+                expected.id,
+                program.debug_name(expected.debug_name),
+                heap,
+                debug_name,
+            )
+        }
+        TypeGuardPlan::Variant(expected) => {
+            let expected = program.variant(*expected).ok_or_else(|| {
+                VmError::new(VmErrorKind::UnsupportedLinkedInstruction {
+                    opcode: "variant_guard",
+                })
+            })?;
+            execute_variant_id_guard(
+                value,
+                expected.id,
+                program.debug_name(expected.debug_name),
+                heap,
+                debug_name,
+            )
+        }
+        TypeGuardPlan::Shape { ty, shape_id } => {
+            let expected = program.ty(*ty).ok_or_else(|| {
+                VmError::new(VmErrorKind::UnsupportedLinkedInstruction {
+                    opcode: "shape_guard",
+                })
+            })?;
+            execute_shape_id_guard(
+                value,
+                expected.id,
+                *shape_id,
+                program.debug_name(expected.debug_name),
+                heap,
+                debug_name,
+            )
+        }
+        TypeGuardPlan::HostType(_) => Ok(()),
+    }
 }
 
 fn execute_type_id_guard(
@@ -248,6 +533,9 @@ fn execute_shape_id_guard(
     debug_name: &str,
 ) -> VmResult<()> {
     if runtime_record_shape(value, heap) == Some((expected_type, expected_shape)) {
+        return Ok(());
+    }
+    if runtime_record_debug_shape(value, heap) == Some((expected_name, expected_shape)) {
         return Ok(());
     }
     Err(type_contract_error(value, expected_name, heap, debug_name))
@@ -292,6 +580,77 @@ fn execute_unlinked_shape_guard(
     Err(type_contract_error(value, expected_type, heap, debug_name))
 }
 
+fn std_enum_value<'a>(
+    value: &Value,
+    heap: Option<&'a HeapExecution<'_>>,
+) -> Option<(
+    StdEnumKind,
+    StdEnumVariant,
+    &'a crate::script_object::ScriptFields<Value>,
+)> {
+    let Value::HeapRef(reference) = value else {
+        return None;
+    };
+    let HeapValue::Enum {
+        identity: Some(identity),
+        fields,
+        ..
+    } = heap?.heap.get(*reference)?
+    else {
+        return None;
+    };
+    let (kind, variant) = std_enum_tag(*identity)?;
+    Some((kind, variant, fields))
+}
+
+fn runtime_standard_type(
+    value: &Value,
+    heap: Option<&HeapExecution<'_>>,
+) -> Option<StandardTypeGuard> {
+    match value {
+        Value::Range(_) => Some(StandardTypeGuard::Range),
+        Value::HeapRef(reference) => match heap.and_then(|heap| heap.heap.get(*reference)) {
+            Some(HeapValue::Array(_)) => Some(StandardTypeGuard::Array),
+            Some(HeapValue::Map(_)) => Some(StandardTypeGuard::Map),
+            Some(HeapValue::Set(_)) => Some(StandardTypeGuard::Set),
+            Some(HeapValue::Closure(_)) => Some(StandardTypeGuard::Closure),
+            Some(HeapValue::Iterator(_)) => Some(StandardTypeGuard::Iterator),
+            Some(HeapValue::Enum {
+                identity: Some(identity),
+                ..
+            }) => match std_enum_tag(*identity) {
+                Some((StdEnumKind::Option, _)) => Some(StandardTypeGuard::Option),
+                Some((StdEnumKind::Result, _)) => Some(StandardTypeGuard::Result),
+                None => None,
+            },
+            _ => None,
+        },
+        _ => None,
+    }
+}
+
+fn standard_type_name(guard: StandardTypeGuard) -> &'static str {
+    match guard {
+        StandardTypeGuard::Array => "Array",
+        StandardTypeGuard::Map => "Map",
+        StandardTypeGuard::Set => "Set",
+        StandardTypeGuard::Range => "Range",
+        StandardTypeGuard::Function => "Function",
+        StandardTypeGuard::Closure => "Closure",
+        StandardTypeGuard::Iterator => "Iterator",
+        StandardTypeGuard::Option => "Option",
+        StandardTypeGuard::Result => "Result",
+    }
+}
+
+const fn primitive_type_name(tag: PrimitiveTag) -> &'static str {
+    match tag {
+        PrimitiveTag::String => "String",
+        PrimitiveTag::Bytes => "Bytes",
+        _ => tag.name(),
+    }
+}
+
 fn type_contract_error(
     value: &Value,
     expected: &str,
@@ -333,25 +692,25 @@ macro_rules! define_runtime_type_helpers {
         ) -> &'a str {
             match value {
                 Value::Missing => "missing",
-                Value::Null => PrimitiveTag::Null.name(),
-                Value::Bool(_) => PrimitiveTag::Bool.name(),
-                Value::Char(_) => PrimitiveTag::Char.name(),
+                Value::Null => primitive_type_name(PrimitiveTag::Null),
+                Value::Bool(_) => primitive_type_name(PrimitiveTag::Bool),
+                Value::Char(_) => primitive_type_name(PrimitiveTag::Char),
                 $(
-                    Value::$value_variant(_) => PrimitiveTag::$primitive_tag.name(),
+                    Value::$value_variant(_) => primitive_type_name(PrimitiveTag::$primitive_tag),
                 )*
-                Value::Range(_) => "range",
+                Value::Range(_) => "Range",
                 Value::HostRef(_) => "host",
                 Value::HeapRef(reference) => match heap.and_then(|heap| heap.heap.get(*reference)) {
-                    Some(HeapValue::String(_)) => PrimitiveTag::String.name(),
-                    Some(HeapValue::Bytes(_)) => PrimitiveTag::Bytes.name(),
-                    Some(HeapValue::Array(_)) => "array",
-                    Some(HeapValue::Map(_)) => "map",
-                    Some(HeapValue::Set(_)) => "set",
+                    Some(HeapValue::String(_)) => primitive_type_name(PrimitiveTag::String),
+                    Some(HeapValue::Bytes(_)) => primitive_type_name(PrimitiveTag::Bytes),
+                    Some(HeapValue::Array(_)) => "Array",
+                    Some(HeapValue::Map(_)) => "Map",
+                    Some(HeapValue::Set(_)) => "Set",
                     Some(HeapValue::Record { .. }) => "record",
                     Some(HeapValue::Enum { .. }) => "enum",
-                    Some(HeapValue::Closure(_)) => "closure",
+                    Some(HeapValue::Closure(_)) => "Closure",
                     Some(HeapValue::PathProxy(_)) => "host_path",
-                    Some(HeapValue::Iterator(_)) => "iterator",
+                    Some(HeapValue::Iterator(_)) => "Iterator",
                     None => "heap",
                 },
             }

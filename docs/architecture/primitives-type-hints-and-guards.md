@@ -19,6 +19,23 @@ string
 bytes
 ```
 
+Source type hints use lowercase only for scalar/literal primitive contracts.
+The public spelling for erased, text/binary, collection, callable, and
+Option/Result contracts is capitalized:
+
+```text
+Any
+String Bytes
+Array Map Set Range Iterator Function Closure
+Option<T>
+Result<T, E>
+```
+
+`Option<T>` and `Result<T, E>` are the only parameterized type hints in the
+current language. This is not a general script generic system. Container hints
+such as `Array<T>`, `Map<K, V>`, and `Set<T>` are rejected until the language
+has a separate container typing design.
+
 Unsuffixed integer literals default to `i64` only when they escape without a
 more specific expected type. Unsuffixed float literals default to `f64` only
 when they escape without a more specific expected type.
@@ -76,8 +93,8 @@ embedding/constant boundaries.
 
 ## Type Hints
 
-No type hint means no contract. `any` is explicit erased dynamic metadata and
-also creates no contract by itself. Passing an unhinted or `any` value into a
+No type hint means no contract. `Any` is explicit erased dynamic metadata and
+also creates no contract by itself. Passing an unhinted or `Any` value into a
 more specific site may still require that target site to guard.
 
 Type hints are contracts, never conversions:

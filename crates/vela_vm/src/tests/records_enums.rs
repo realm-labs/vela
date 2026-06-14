@@ -287,7 +287,7 @@ fn runs_schema_field_defaults_for_record_constructors() {
 const BASE_COUNT: i64 = 2
 
 struct Reward {
-    item_id: string = "gold",
+    item_id: String = "gold",
     count: i64 = BASE_COUNT + 3,
 }
 
@@ -362,7 +362,7 @@ fn runs_compiled_immediate_slot_field_reads() {
     let program = compile_program_source(
         SourceId::new(1),
         r#"
-struct Reward { item_id: string, count: i64 }
+struct Reward { item_id: String, count: i64 }
 enum Damage { Physical { amount: i64 } }
 
 fn main() {
@@ -385,7 +385,7 @@ fn runs_compiled_typed_record_slot_field_reads() {
         SourceId::new(1),
         r#"
 struct Reward {
-    item_id: string,
+    item_id: String,
     count: i64,
 }
 
@@ -413,7 +413,7 @@ fn runs_compiled_typed_record_slot_field_writes() {
         SourceId::new(1),
         r#"
 struct Reward {
-    item_id: string,
+    item_id: String,
     count: i64,
 }
 
@@ -446,7 +446,7 @@ fn runs_compiled_typed_enum_variant_slot_field_reads() {
         SourceId::new(1),
         r#"
 enum Damage {
-    Physical { amount: i64, element: string },
+    Physical { amount: i64, element: String },
     Magical { amount: i64 },
 }
 
@@ -501,8 +501,8 @@ fn runs_schema_field_defaults_for_enum_constructors() {
         SourceId::new(1),
         r#"
 enum Damage {
-    Physical { amount: i64 = 7, element: string = "slash" },
-    Magical(amount: i64 = 3, element: string = "arcane"),
+    Physical { amount: i64 = 7, element: String = "slash" },
+    Magical(amount: i64 = 3, element: String = "arcane"),
 }
 
 fn main() {

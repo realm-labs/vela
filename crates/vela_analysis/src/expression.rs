@@ -455,16 +455,27 @@ fn collection_fact(facts: impl IntoIterator<Item = TypeFact>) -> TypeFact {
 fn type_fact_from_syntax_hint(hint: &TypeHint) -> TypeFact {
     match hint.path.as_slice() {
         [name] => {
+            if name == "Option" && hint.args.len() == 1 {
+                return TypeFact::option(type_fact_from_syntax_hint(&hint.args[0]));
+            }
+            if name == "Result" && hint.args.len() == 2 {
+                return TypeFact::result(
+                    type_fact_from_syntax_hint(&hint.args[0]),
+                    type_fact_from_syntax_hint(&hint.args[1]),
+                );
+            }
             if let Some(tag) = PrimitiveTag::from_name(name) {
                 return TypeFact::primitive(tag);
             }
 
             match name.as_str() {
-                "any" => TypeFact::Any,
-                "array" => TypeFact::array(TypeFact::Unknown),
-                "map" => TypeFact::map(TypeFact::Unknown, TypeFact::Unknown),
-                "set" => TypeFact::set(TypeFact::Unknown),
-                "function" => TypeFact::function(Vec::new(), TypeFact::Unknown),
+                "Any" => TypeFact::Any,
+                "String" => TypeFact::primitive(PrimitiveTag::String),
+                "Bytes" => TypeFact::primitive(PrimitiveTag::Bytes),
+                "Array" => TypeFact::array(TypeFact::Unknown),
+                "Map" => TypeFact::map(TypeFact::Unknown, TypeFact::Unknown),
+                "Set" => TypeFact::set(TypeFact::Unknown),
+                "Function" => TypeFact::function(Vec::new(), TypeFact::Unknown),
                 "Option" => TypeFact::option(TypeFact::Unknown),
                 "Result" => TypeFact::result(TypeFact::Unknown, TypeFact::Unknown),
                 name => TypeFact::record(name),

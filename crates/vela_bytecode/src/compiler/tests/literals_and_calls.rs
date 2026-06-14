@@ -751,7 +751,7 @@ fn compiler_lowers_named_value_method_args_from_local_value_type_flow() {
     let program = compile_program_source_with_registry(
         SourceId::new(1),
         r#"
-fn main(text: string) {
+fn main(text: String) {
     let parts = ["gold"];
     let reward = "reward:gold";
     return text.contains(needle = ":")
@@ -791,7 +791,7 @@ fn compiler_tracks_exact_primitive_value_type_flow() {
     let program = compile_program_source_with_registry(
         SourceId::new(1),
         r#"
-fn main(i64_arg: i64, text: string, blob: bytes) {
+fn main(i64_arg: i64, text: String, blob: Bytes) {
     let i8_value = 1i8;
     let u32_value = 1u32;
     let f32_value = 1.0f32;

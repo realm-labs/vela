@@ -6,7 +6,7 @@ use vela_hir::type_hint::HirTypeHint;
 use crate::type_fact::TypeFact;
 
 pub fn type_fact_from_hint(graph: &ModuleGraph, hint: &HirTypeHint) -> TypeFact {
-    type_fact_from_path(graph, &hint.path)
+    type_fact_from_hir_hint(graph, None, hint)
 }
 
 pub(crate) fn type_fact_from_hint_in_module(
@@ -14,6 +14,9 @@ pub(crate) fn type_fact_from_hint_in_module(
     module: ModuleId,
     hint: &HirTypeHint,
 ) -> TypeFact {
+    if let Some(fact) = builtin_type_fact_from_hir_hint(graph, Some(module), hint) {
+        return fact;
+    }
     imported_schema_fact(graph, module, &hint.path)
         .unwrap_or_else(|| type_fact_from_hint(graph, hint))
 }
@@ -30,6 +33,51 @@ pub fn type_fact_from_path(graph: &ModuleGraph, path: &[String]) -> TypeFact {
     }
 
     resolved_schema_fact(graph, path).unwrap_or(TypeFact::Unknown)
+}
+
+fn type_fact_from_hir_hint(
+    graph: &ModuleGraph,
+    module: Option<ModuleId>,
+    hint: &HirTypeHint,
+) -> TypeFact {
+    if let Some(fact) = builtin_type_fact_from_hir_hint(graph, module, hint) {
+        return fact;
+    }
+    type_fact_from_path(graph, &hint.path)
+}
+
+fn builtin_type_fact_from_hir_hint(
+    graph: &ModuleGraph,
+    module: Option<ModuleId>,
+    hint: &HirTypeHint,
+) -> Option<TypeFact> {
+    let [name] = hint.path.as_slice() else {
+        return None;
+    };
+    match name.as_str() {
+        "Option" if hint.args.len() == 1 => Some(TypeFact::option(type_fact_from_arg(
+            graph,
+            module,
+            &hint.args[0],
+        ))),
+        "Result" if hint.args.len() == 2 => Some(TypeFact::result(
+            type_fact_from_arg(graph, module, &hint.args[0]),
+            type_fact_from_arg(graph, module, &hint.args[1]),
+        )),
+        _ if hint.args.is_empty() => builtin_type_fact(name),
+        _ => None,
+    }
+}
+
+fn type_fact_from_arg(
+    graph: &ModuleGraph,
+    module: Option<ModuleId>,
+    hint: &HirTypeHint,
+) -> TypeFact {
+    match module {
+        Some(module) => type_fact_from_hint_in_module(graph, module, hint),
+        None => type_fact_from_hir_hint(graph, None, hint),
+    }
 }
 
 pub(crate) fn qualified_declaration_name(graph: &ModuleGraph, declaration: &Declaration) -> String {
@@ -65,12 +113,14 @@ fn builtin_type_fact(name: &str) -> Option<TypeFact> {
     }
 
     match name {
-        "any" => Some(TypeFact::Any),
-        "array" => Some(TypeFact::array(TypeFact::Unknown)),
-        "map" => Some(TypeFact::map(TypeFact::Unknown, TypeFact::Unknown)),
-        "set" => Some(TypeFact::set(TypeFact::Unknown)),
-        "iterator" => Some(TypeFact::iterator(TypeFact::Unknown)),
-        "function" => Some(TypeFact::function(Vec::new(), TypeFact::Unknown)),
+        "Any" => Some(TypeFact::Any),
+        "String" => Some(TypeFact::primitive(PrimitiveTag::String)),
+        "Bytes" => Some(TypeFact::primitive(PrimitiveTag::Bytes)),
+        "Array" => Some(TypeFact::array(TypeFact::Unknown)),
+        "Map" => Some(TypeFact::map(TypeFact::Unknown, TypeFact::Unknown)),
+        "Set" => Some(TypeFact::set(TypeFact::Unknown)),
+        "Iterator" => Some(TypeFact::iterator(TypeFact::Unknown)),
+        "Function" => Some(TypeFact::function(Vec::new(), TypeFact::Unknown)),
         "Option" => Some(TypeFact::option(TypeFact::Unknown)),
         "Result" => Some(TypeFact::result(TypeFact::Unknown, TypeFact::Unknown)),
         _ => None,
@@ -143,15 +193,15 @@ mod tests {
     fn builtin_hints_map_to_internal_facts_without_generics() {
         let graph = graph("");
         assert_eq!(
-            type_fact_from_path(&graph, &["array".to_owned()]),
+            type_fact_from_path(&graph, &["Array".to_owned()]),
             TypeFact::array(TypeFact::Unknown)
         );
         assert_eq!(
-            type_fact_from_path(&graph, &["map".to_owned()]),
+            type_fact_from_path(&graph, &["Map".to_owned()]),
             TypeFact::map(TypeFact::Unknown, TypeFact::Unknown)
         );
         assert_eq!(
-            type_fact_from_path(&graph, &["iterator".to_owned()]),
+            type_fact_from_path(&graph, &["Iterator".to_owned()]),
             TypeFact::iterator(TypeFact::Unknown)
         );
         assert_eq!(

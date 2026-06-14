@@ -79,7 +79,7 @@ fn core_language_fixture_resolves() {
             .type_hint
             .as_ref()
             .map(|hint| hint.display()),
-        Some("string".to_owned())
+        Some("String".to_owned())
     );
     assert_eq!(reward_shape.fields[1].name, "count");
     assert_eq!(

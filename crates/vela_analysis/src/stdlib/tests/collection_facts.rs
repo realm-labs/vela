@@ -397,7 +397,7 @@ fn iterator_methods_expose_item_and_callback_facts_without_generics() {
         collect_map.returns,
         TypeFact::map(TypeFact::STRING, TypeFact::Any)
     );
-    assert_eq!(iterator.display_name(), "iterator");
+    assert_eq!(iterator.display_name(), "Iterator");
 }
 
 #[test]

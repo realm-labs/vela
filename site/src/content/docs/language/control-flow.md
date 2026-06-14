@@ -10,7 +10,7 @@ Control flow is expression-oriented where useful, but stays bounded by the VM ex
 `if` can be used as a statement or expression. If an expression-valued `if` has no `else`, the untaken branch evaluates to `null`. Empty or statement-only blocks also evaluate to `null`.
 
 ```vela
-fn label(score: i64) -> string {
+fn label(score: i64) -> String {
     if score >= 90 {
         return "high"
     } else {
@@ -46,7 +46,7 @@ fn sum(values) -> i64 {
 `match` compares one value against literal, binding, wildcard, path, tuple-variant, or record-variant patterns. Guards can refine an arm with `if`.
 
 ```vela
-fn describe(result) -> string {
+fn describe(result) -> String {
     match result {
         Result::Ok(value) if value > 0 => "positive",
         Result::Ok(_) => "ok",

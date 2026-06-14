@@ -33,7 +33,8 @@ The language should provide:
 
 The first phase does not include:
 
-- Script-language generics.
+- General script-language generics beyond restricted builtin type hints such
+  as `Option<T>` and `Result<T, E>`.
 - Function overloading by arity, type hint, or native signature.
 - A Rust-style borrow checker in the script language.
 - Real Rust references exposed to script code.
@@ -106,8 +107,9 @@ status and remaining milestone gaps. Continue implementing Vela into a complete
 Hot Reload First dynamic scripting language for host-owned business logic,
 always
 starting from the active checkpoint in docs/progress.md. Preserve the standing
-constraints in this roadmap: no script-language generics, no Rust &mut exposed
-to scripts, all host mutation through HostRef, HostPath, PathProxy, and HostAccess,
+constraints in this roadmap: no general script-language generics beyond
+restricted builtin type hints, no Rust &mut exposed to scripts, all host
+mutation through HostRef, HostPath, PathProxy, and HostAccess,
 reflection without runtime type-structure mutation or monkey patching, and no
 MVP JIT, script async/coroutines, moving GC, or full LSP. For each turn, choose
 the smallest verifiable task that advances the current milestone, validate it

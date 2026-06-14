@@ -202,7 +202,7 @@ fn main() {
 pub const BASE_COUNT: i64 = 5
 
 pub struct Reward {
-    item_id: string = "gold",
+    item_id: String = "gold",
     count: i64 = BASE_COUNT + 2,
 }
 "#,

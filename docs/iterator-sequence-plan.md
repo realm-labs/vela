@@ -173,7 +173,7 @@ iterator.map(|x| ...)    -> Iterator
 iterator.filter(|x| ...) -> Iterator
 iterator.take(n)         -> Iterator
 iterator.skip(n)         -> Iterator
-iterator.collect_array() -> array
+iterator.collect_array() -> Array
 ```
 
 Defer `zip`, `enumerate`, `flat_map`, `collect_map`, and `collect_set` until the
@@ -540,7 +540,7 @@ compiler:
   proven i64 ranges keep specialized lowering where applicable
 
 VM:
-  array/set/map/string/range iteration
+  Array/set/map/string/range iteration
   string chars yield char, string bytes yield u8
   iterator next returns Option
   lazy map/filter/take/skip do not allocate intermediate arrays
@@ -555,11 +555,11 @@ host:
   host item mutation routes through HostAccess
 
 hot reload:
-  iterator bytecode and cache-site changes are ABI-safe
+  Iterator bytecode and cache-site changes are ABI-safe
   accepted reload clears stale iterator-related inline caches
 
 docs/examples:
-  string chars/bytes examples
+  String chars/bytes examples
   iterator pipeline example
   host iterable example
 ```

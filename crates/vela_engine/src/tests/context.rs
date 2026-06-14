@@ -310,7 +310,7 @@ fn engine_context_host_schema_registers_metadata() {
     assert!(emit.effects.emits_events);
     assert!(emit.access.reflect_callable);
     assert_eq!(emit.params[0].name, "event");
-    assert_eq!(emit.params[0].type_hint.as_deref(), Some("string"));
+    assert_eq!(emit.params[0].type_hint.as_deref(), Some("String"));
     assert_eq!(emit.return_type.as_deref(), Some("null"));
     assert_eq!(emit.attrs.get("stdlib"), Some("context"));
     assert_eq!(emit.attrs.get("domain"), Some("context"));

@@ -164,7 +164,7 @@ fn write_schema_reward_module(path: &std::path::Path, reward: i64, count_field: 
         format!(
             r#"
 struct Reward {{
-    item_id: string
+    item_id: String
 {count_field}}}
 
 pub fn grant() {{
@@ -216,7 +216,7 @@ fn write_stable_schema_rename_module(path: &std::path::Path, reward: i64, rename
             r#"
 struct Reward {{
     #[id(101)]
-    {item_field}: string
+    {item_field}: String
     #[id(102)]
     {count_field}: i64
 }}
@@ -289,7 +289,7 @@ fn write_enum_reward_module(
             r#"
 enum QuestProgress {{
     Active {{
-        quest_id: string
+        quest_id: String
 {count_field}    }}
 }}
 

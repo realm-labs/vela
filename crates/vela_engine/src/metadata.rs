@@ -184,16 +184,18 @@ fn reflect_function_access(access: &crate::native::FunctionAccess) -> ReflectFun
 
 pub(crate) fn type_hint_display(hint: &TypeHint) -> String {
     match hint {
-        TypeHint::Any => "any".to_owned(),
+        TypeHint::Any => "Any".to_owned(),
+        TypeHint::Primitive(vela_common::PrimitiveTag::String) => "String".to_owned(),
+        TypeHint::Primitive(vela_common::PrimitiveTag::Bytes) => "Bytes".to_owned(),
         TypeHint::Primitive(tag) => tag.name().to_owned(),
-        TypeHint::Array => "array".to_owned(),
-        TypeHint::Map => "map".to_owned(),
-        TypeHint::Set => "set".to_owned(),
-        TypeHint::Iterator => "iterator".to_owned(),
+        TypeHint::Array => "Array".to_owned(),
+        TypeHint::Map => "Map".to_owned(),
+        TypeHint::Set => "Set".to_owned(),
+        TypeHint::Iterator => "Iterator".to_owned(),
         TypeHint::PathProxy => "path_proxy".to_owned(),
         TypeHint::Record(key) | TypeHint::Enum(key) | TypeHint::Host(key) => key.name.clone(),
         TypeHint::Trait(name) => name.clone(),
-        TypeHint::Function => "function".to_owned(),
+        TypeHint::Function => "Function".to_owned(),
     }
 }
 

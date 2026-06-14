@@ -10,8 +10,8 @@ export const PLAYGROUND_EXAMPLES: PlaygroundExample[] = [
     entry: 'main',
     source: `struct Reward {
     enabled: bool,
-    base: int,
-    multiplier: int,
+    base: i64,
+    multiplier: i64,
 }
 
 fn score_reward(reward) {
@@ -48,12 +48,12 @@ fn main() {
     title: 'Methods',
     entry: 'main',
     source: `struct DamageResult {
-    actor: string,
-    applied: int,
+    actor: String,
+    applied: i64,
 }
 
 impl DamageResult {
-    fn score(self, bonus) -> int {
+    fn score(self, bonus) -> i64 {
         return self.applied + bonus;
     }
 }

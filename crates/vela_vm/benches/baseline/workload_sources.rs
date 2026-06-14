@@ -135,13 +135,13 @@ fn main(player: Player) {
 
 pub(crate) const MATERIALIZATION_SOURCE: &str = r#"
 struct Reward {
-    item_id: string
+    item_id: String
     count: i64
 }
 
 enum ResultState {
     Done { score: i64 }
-    Blocked(reason: string)
+    Blocked(reason: String)
 }
 
 fn main() {
@@ -162,13 +162,13 @@ fn main() {
 
 pub(crate) const RECORD_TRIPLETS_SOURCE: &str = r#"
 struct Reward {
-    item_id: string,
+    item_id: String,
     count: i64,
     bonus: i64,
 }
 
 enum ResultState {
-    Scored { item_id: string, count: i64, bonus: i64 }
+    Scored { item_id: String, count: i64, bonus: i64 }
 }
 
 fn main() {
@@ -204,14 +204,14 @@ fn main() {
 
 pub(crate) const RECORD_QUADS_SOURCE: &str = r#"
 struct Reward {
-    item_id: string,
+    item_id: String,
     count: i64,
     bonus: i64,
     rarity: i64,
 }
 
 enum ResultState {
-    Scored { item_id: string, count: i64, bonus: i64, rarity: i64 }
+    Scored { item_id: String, count: i64, bonus: i64, rarity: i64 }
 }
 
 fn main() {
@@ -259,7 +259,7 @@ fn main() {
 
 pub(crate) const RECORD_QUINTS_SOURCE: &str = r#"
 struct Reward {
-    item_id: string,
+    item_id: String,
     count: i64,
     bonus: i64,
     rarity: i64,
@@ -267,7 +267,7 @@ struct Reward {
 }
 
 enum ResultState {
-    Scored { item_id: string, count: i64, bonus: i64, rarity: i64, quality: i64 }
+    Scored { item_id: String, count: i64, bonus: i64, rarity: i64, quality: i64 }
 }
 
 fn main() {
@@ -319,7 +319,7 @@ fn main() {
 
 pub(crate) const RECORD_SEXTETS_SOURCE: &str = r#"
 struct Reward {
-    item_id: string,
+    item_id: String,
     count: i64,
     bonus: i64,
     rarity: i64,
@@ -329,7 +329,7 @@ struct Reward {
 
 enum ResultState {
     Scored {
-        item_id: string,
+        item_id: String,
         count: i64,
         bonus: i64,
         rarity: i64,

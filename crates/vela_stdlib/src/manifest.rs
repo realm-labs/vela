@@ -32,7 +32,8 @@ impl StdParamSpec {
 
     #[must_use]
     pub fn def(self) -> ParamDef {
-        ParamDef::new(self.name, Some(self.type_hint)).defaulted(self.defaulted)
+        ParamDef::new(self.name, Some(canonical_type_hint(self.type_hint)))
+            .defaulted(self.defaulted)
     }
 }
 
@@ -77,7 +78,7 @@ impl StdFunctionSpec {
     pub fn signature(self) -> FunctionSignature {
         FunctionSignature::new(
             self.params.iter().map(|param| param.def()),
-            Some(self.return_type.to_owned()),
+            Some(canonical_type_hint(self.return_type).to_owned()),
         )
     }
 
@@ -133,13 +134,31 @@ impl StdMethodSpec {
     pub fn signature(self) -> FunctionSignature {
         FunctionSignature::new(
             self.params.iter().map(|param| param.def()),
-            Some(self.return_type.to_owned()),
+            Some(canonical_type_hint(self.return_type).to_owned()),
         )
     }
 
     #[must_use]
     pub fn def(self) -> MethodDef {
         MethodDef::new(self.path(), self.owner_type_id(), self.signature())
+    }
+}
+
+fn canonical_type_hint(hint: &'static str) -> &'static str {
+    match hint {
+        "any" => "Any",
+        "string" => "String",
+        "bytes" => "Bytes",
+        "array" => "Array",
+        "map" => "Map",
+        "set" => "Set",
+        "range" => "Range",
+        "iterator" => "Iterator",
+        "function" => "Function",
+        "closure" => "Closure",
+        "option" => "Option",
+        "result" => "Result",
+        other => other,
     }
 }
 
@@ -189,6 +208,7 @@ impl StdTypeSpec {
     #[must_use]
     pub const fn source_name(self) -> &'static str {
         match self.primitive {
+            Some(PrimitiveTag::String | PrimitiveTag::Bytes) => self.name,
             Some(primitive) => primitive.name(),
             None => self.name,
         }

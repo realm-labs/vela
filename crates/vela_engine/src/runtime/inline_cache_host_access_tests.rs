@@ -686,7 +686,7 @@ fn host_remove_inline_cache_refreshes_on_schema_epoch_change() {
         .compile_source_with_id(
             SourceId::new(1),
             r#"
-fn remove_item(player: EpochRemoveHostPlayer, item_id: string) {
+fn remove_item(player: EpochRemoveHostPlayer, item_id: String) {
     player.inventory.items[item_id].remove();
 }
 "#,

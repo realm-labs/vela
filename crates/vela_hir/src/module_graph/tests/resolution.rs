@@ -168,7 +168,7 @@ fn duplicate_struct_fields_report_both_spans() {
         r#"
 struct Reward {
     count: i64,
-    count: string
+    count: String
 }
 "#,
     ));
@@ -190,7 +190,7 @@ fn duplicate_enum_variants_and_fields_report_both_spans() {
         "game::quest",
         r#"
 enum QuestProgress {
-    Active { count: i64, count: string },
+    Active { count: i64, count: String },
     Active
 }
 "#,

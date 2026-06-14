@@ -1,5 +1,6 @@
 use std::collections::BTreeMap;
 
+use vela_common::ShapeId;
 use vela_hir::ids::HirDeclId;
 use vela_hir::module_graph::ModuleGraph;
 use vela_hir::type_hint::{EnumVariantFieldsHint, HirTypeHint};
@@ -98,6 +99,18 @@ impl ScriptFieldSlots {
         self.record_slots
             .get(&(type_name, field.to_owned()))
             .copied()
+    }
+
+    pub(super) fn record_shape_id(&self, type_name: &str) -> Option<(String, ShapeId)> {
+        let type_name = self.resolve_record_type_name(type_name)?;
+        let fields = self
+            .record_slots
+            .keys()
+            .filter_map(|(owner, field)| (owner == &type_name).then_some(field.as_str()));
+        Some((
+            type_name.clone(),
+            vela_common::script_shape_id(&type_name, fields),
+        ))
     }
 
     pub(super) fn record_field_value_type(

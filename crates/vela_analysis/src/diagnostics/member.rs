@@ -984,7 +984,7 @@ mod tests {
                         .type_hint("i64")
                         .writable(true),
                 )
-                .field(FieldDesc::new(FieldId::new(2), "inventory").type_hint("map"))
+                .field(FieldDesc::new(FieldId::new(2), "inventory").type_hint("Map"))
                 .method(
                     MethodDesc::new(HostMethodId::new(1), "grant_exp")
                         .effects(MethodEffectSet::host_write())
@@ -1046,7 +1046,7 @@ mod tests {
                 .kind(TypeKind::ScriptEnum)
                 .variant(
                     VariantDesc::new(VariantId::new(1), "Active")
-                        .field(FieldDesc::new(FieldId::new(1), "quest_id").type_hint("string")),
+                        .field(FieldDesc::new(FieldId::new(1), "quest_id").type_hint("String")),
                 )
                 .variant(VariantDesc::new(VariantId::new(2), "Done")),
         );

@@ -11,7 +11,7 @@ instances. The declaration is metadata; Rust supplies the value.
 ```vela
 struct ServerState {
     level: i64,
-    name: string,
+    name: String,
     total_gold: i64,
 }
 

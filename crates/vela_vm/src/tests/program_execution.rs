@@ -210,9 +210,9 @@ fn managed_heap_execution_runs_trait_default_method_dispatch() {
         r#"
 trait BonusSource {
     fn bonus(self, amount) -> i64 { return self.level + amount; }
-    fn label(self) -> string { return self.name; }
+    fn label(self) -> String { return self.name; }
 }
-struct Player { level: i64, name: string }
+struct Player { level: i64, name: String }
 
 impl BonusSource for Player {}
 

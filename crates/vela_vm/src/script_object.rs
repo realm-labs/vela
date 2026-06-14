@@ -1,6 +1,6 @@
 use std::collections::BTreeMap;
 
-use vela_common::ShapeId;
+use vela_common::{ShapeId, script_shape_id};
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct FieldSlot<T> {
@@ -232,21 +232,7 @@ impl<T: PartialEq> PartialEq for ScriptFields<T> {
 }
 
 fn shape_id<'a>(owner: &str, field_names: impl Iterator<Item = &'a str>) -> ShapeId {
-    let mut hash = 0x811c_9dc5;
-    hash_bytes(&mut hash, owner.as_bytes());
-    hash_bytes(&mut hash, &[0]);
-    for name in field_names {
-        hash_bytes(&mut hash, name.as_bytes());
-        hash_bytes(&mut hash, &[0]);
-    }
-    ShapeId::new(if hash == 0 { 1 } else { hash })
-}
-
-fn hash_bytes(hash: &mut u32, bytes: &[u8]) {
-    for byte in bytes {
-        *hash ^= u32::from(*byte);
-        *hash = hash.wrapping_mul(0x0100_0193);
-    }
+    script_shape_id(owner, field_names)
 }
 
 #[inline]

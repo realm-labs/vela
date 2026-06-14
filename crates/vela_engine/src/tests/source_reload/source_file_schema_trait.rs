@@ -10,7 +10,7 @@ fn runtime_stages_source_file_defaulted_schema_addition_until_safe_point() {
         engine,
         r#"
 struct Reward {
-    item_id: string
+    item_id: String
 }
 
 fn main() {
@@ -25,7 +25,7 @@ fn main() {
         &mut runtime,
         r#"
 struct Reward {
-    item_id: string
+    item_id: String
     count: i64 = 1
 }
 
@@ -63,7 +63,7 @@ fn runtime_stages_source_file_stable_id_schema_renames_until_safe_point() {
         r#"
 struct Reward {
     #[id(101)]
-    item_id: string
+    item_id: String
     #[id(102)]
     count: i64
 }
@@ -86,7 +86,7 @@ fn main() {
         r#"
 struct Reward {
     #[id(101)]
-    item: string
+    item: String
     #[id(102)]
     quantity: i64
 }
@@ -131,7 +131,7 @@ fn runtime_stages_source_file_required_schema_field_rejection_until_safe_point()
         engine,
         r#"
 struct Reward {
-    item_id: string
+    item_id: String
 }
 
 fn main() {
@@ -146,7 +146,7 @@ fn main() {
         &mut runtime,
         r#"
 struct Reward {
-    item_id: string
+    item_id: String
     count: i64
 }
 
@@ -186,7 +186,7 @@ fn runtime_stages_source_file_removed_schema_rejection_until_safe_point() {
         engine,
         r#"
 struct Reward {
-    item_id: string
+    item_id: String
     count: i64
 }
 
@@ -248,7 +248,7 @@ fn runtime_stages_source_file_schema_field_type_rejection_until_safe_point() {
         engine,
         r#"
 struct Reward {
-    item_id: string
+    item_id: String
     count: i64
 }
 
@@ -264,7 +264,7 @@ fn main() {
         &mut runtime,
         r#"
 struct Reward {
-    item_id: string
+    item_id: String
     count: f64
 }
 
@@ -305,7 +305,7 @@ fn runtime_stages_source_file_defaulted_enum_variant_field_addition_until_safe_p
         r#"
 enum QuestProgress {
     Active {
-        quest_id: string
+        quest_id: String
     }
 }
 
@@ -322,7 +322,7 @@ fn main() {
         r#"
 enum QuestProgress {
     Active {
-        quest_id: string
+        quest_id: String
         count: i64 = 0
     }
 }
@@ -361,7 +361,7 @@ fn runtime_stages_source_file_required_enum_variant_field_rejection_until_safe_p
         r#"
 enum QuestProgress {
     Active {
-        quest_id: string
+        quest_id: String
     }
 }
 
@@ -378,7 +378,7 @@ fn main() {
         r#"
 enum QuestProgress {
     Active {
-        quest_id: string
+        quest_id: String
         count: i64
     }
 }
@@ -420,7 +420,7 @@ fn runtime_stages_source_file_enum_variant_field_type_rejection_until_safe_point
         r#"
 enum QuestProgress {
     Active {
-        quest_id: string
+        quest_id: String
         count: i64
     }
 }
@@ -438,7 +438,7 @@ fn main() {
         r#"
 enum QuestProgress {
     Active {
-        quest_id: string
+        quest_id: String
         count: f64
     }
 }

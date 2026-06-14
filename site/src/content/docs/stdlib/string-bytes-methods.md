@@ -4,7 +4,7 @@ description: "String and bytes method documentation for Vela."
 ---
 
 Strings are valid UTF-8 text values. Bytes are raw byte sequences. The two
-types intentionally have different indexing rules: string indexes are byte
+types intentionally have different indexing rules: String indexes are byte
 offsets that must land on UTF-8 boundaries, while bytes indexes address raw
 `u8` values.
 

@@ -130,11 +130,11 @@ fn main() {
 
 pub(crate) const DYNAMIC_SCRIPT_METHOD_MONOMORPHIC_SOURCE: &str = r#"
 struct Label {
-    text: string,
+    text: String,
 }
 
 impl Label {
-    fn starts_with(self, prefix: string) -> bool {
+    fn starts_with(self, prefix: String) -> bool {
         return self.text.starts_with(prefix);
     }
 }
@@ -157,11 +157,11 @@ fn main() {
 
 pub(crate) const DYNAMIC_METHOD_POLYMORPHIC_SOURCE: &str = r#"
 struct Label {
-    text: string,
+    text: String,
 }
 
 impl Label {
-    fn starts_with(self, prefix: string) -> bool {
+    fn starts_with(self, prefix: String) -> bool {
         return self.text.starts_with(prefix);
     }
 }
@@ -192,21 +192,21 @@ fn main() {
 
 pub(crate) const DYNAMIC_METHOD_CACHE_MISS_SOURCE: &str = r#"
 struct LabelA {
-    text: string,
+    text: String,
 }
 
 struct LabelB {
-    text: string,
+    text: String,
 }
 
 impl LabelA {
-    fn starts_with(self, prefix: string) -> bool {
+    fn starts_with(self, prefix: String) -> bool {
         return self.text.starts_with(prefix);
     }
 }
 
 impl LabelB {
-    fn starts_with(self, prefix: string) -> bool {
+    fn starts_with(self, prefix: String) -> bool {
         return self.text.starts_with(prefix);
     }
 }
@@ -238,7 +238,7 @@ fn main() {
 pub(crate) const TRAIT_METHOD_DISPATCH_SOURCE: &str = r#"
 trait AccountScoring {
     fn score(self, bonus) -> i64;
-    fn label(self) -> string { return self.name; }
+    fn label(self) -> String { return self.name; }
     fn boosted(self, bonus, multiplier) -> i64 {
         return self.score(bonus) * multiplier;
     }
@@ -247,7 +247,7 @@ trait AccountScoring {
 struct Account {
     balance: i64,
     tier: i64,
-    name: string,
+    name: String,
 }
 
 impl AccountScoring for Account {

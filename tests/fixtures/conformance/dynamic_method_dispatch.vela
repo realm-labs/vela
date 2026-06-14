@@ -1,23 +1,23 @@
 struct Label {
-    text: string,
+    text: String,
 }
 
 struct Badge {
-    code: string,
+    code: String,
 }
 
 impl Label {
-    fn starts_with(self, prefix: string) -> bool {
+    fn starts_with(self, prefix: String) -> bool {
         return self.text.starts_with(prefix);
     }
 
-    fn wrap(self, prefix: string = "[", suffix: string = "]") -> string {
+    fn wrap(self, prefix: String = "[", suffix: String = "]") -> String {
         return [prefix, self.text, suffix].join("");
     }
 }
 
 impl Badge {
-    fn render(self, suffix: string = "!") -> string {
+    fn render(self, suffix: String = "!") -> String {
         return [self.code, suffix].join("");
     }
 }

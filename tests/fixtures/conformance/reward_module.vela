@@ -3,13 +3,13 @@ pub const REWARD_COUNTS = [BASE_REWARD, BASE_REWARD + 1]
 pub const REWARD_TABLE = {"gold": BASE_REWARD, "gem": BASE_REWARD + 2}
 
 pub struct RewardConfig {
-    item: string,
+    item: String,
     count: i64 = 4,
 }
 
 pub enum RewardOutcome {
-    Granted { item: string, count: i64 },
-    Skipped(reason: string),
+    Granted { item: String, count: i64 },
+    Skipped(reason: String),
 }
 
 pub fn reward_bonus(amount, scale = 2) {

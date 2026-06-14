@@ -236,7 +236,7 @@ fn function_descriptor_parameter_abi_changes_are_rejected() {
         )
         .param(ParamAbi::new("player").type_hint("Player"))
         .param(ParamAbi::new("amount").type_hint("i64"))
-        .param(ParamAbi::new("reason").type_hint("string")),
+        .param(ParamAbi::new("reason").type_hint("String")),
     );
     let error = compile_update_with_abi(
         &initial,
@@ -261,7 +261,7 @@ fn function_descriptor_parameter_abi_changes_are_rejected() {
         )
         .param(ParamAbi::new("player").type_hint("Player"))
         .param(ParamAbi::new("amount").type_hint("i64"))
-        .param(ParamAbi::new("reason").type_hint("string").defaulted(true)),
+        .param(ParamAbi::new("reason").type_hint("String").defaulted(true)),
     );
     compile_update_with_abi(
         &initial,

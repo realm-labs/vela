@@ -785,7 +785,62 @@ fn verify_linked_type_guard(
 ) -> Result<(), VerificationError> {
     verify_linked_debug_name(function, None, context, guard.context.debug_name)?;
     match guard.plan {
-        TypeGuardPlan::Primitive(_) => Ok(()),
+        TypeGuardPlan::Primitive(_) | TypeGuardPlan::Standard(_) => Ok(()),
+        TypeGuardPlan::Option { ref some } => {
+            if let Some(some) = some {
+                verify_linked_type_guard_plan(function, context, some)?;
+            }
+            Ok(())
+        }
+        TypeGuardPlan::Result { ref ok, ref err } => {
+            if let Some(ok) = ok {
+                verify_linked_type_guard_plan(function, context, ok)?;
+            }
+            if let Some(err) = err {
+                verify_linked_type_guard_plan(function, context, err)?;
+            }
+            Ok(())
+        }
+        TypeGuardPlan::Type(handle) | TypeGuardPlan::HostType(handle) => {
+            verify_linked_type_handle(function, None, context, handle)
+        }
+        TypeGuardPlan::Variant(handle) => {
+            verify_linked_variant_handle(function, None, context, handle)
+        }
+        TypeGuardPlan::Shape { ty, .. } => verify_linked_type_handle(function, None, context, ty),
+    }
+}
+
+fn verify_linked_type_guard_plan(
+    function: &str,
+    context: &LinkedVerificationContext<'_>,
+    plan: &TypeGuardPlan,
+) -> Result<(), VerificationError> {
+    let guard = TypeGuard {
+        plan: plan.clone(),
+        context: crate::GuardContext::new(
+            crate::GuardKind::Contract,
+            crate::GuardLocation::Return,
+            crate::DebugNameId::new(0),
+        ),
+    };
+    match guard.plan {
+        TypeGuardPlan::Primitive(_) | TypeGuardPlan::Standard(_) => Ok(()),
+        TypeGuardPlan::Option { ref some } => {
+            if let Some(some) = some {
+                verify_linked_type_guard_plan(function, context, some)?;
+            }
+            Ok(())
+        }
+        TypeGuardPlan::Result { ref ok, ref err } => {
+            if let Some(ok) = ok {
+                verify_linked_type_guard_plan(function, context, ok)?;
+            }
+            if let Some(err) = err {
+                verify_linked_type_guard_plan(function, context, err)?;
+            }
+            Ok(())
+        }
         TypeGuardPlan::Type(handle) | TypeGuardPlan::HostType(handle) => {
             verify_linked_type_handle(function, None, context, handle)
         }

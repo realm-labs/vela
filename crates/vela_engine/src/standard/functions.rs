@@ -45,10 +45,15 @@ fn type_hint(hint: &str) -> TypeHint {
         "set" => TypeHint::Set,
         "iterator" => TypeHint::Iterator,
         "function" => TypeHint::Function,
-        "Option" | "Result" => {
-            let id = vela_stdlib::std_type_id(hint)
-                .unwrap_or_else(|| panic!("missing standard enum type identity for {hint}"));
-            TypeHint::Enum(TypeKey::new(id, hint))
+        "option" | "Option" => {
+            let id = vela_stdlib::std_type_id("Option")
+                .unwrap_or_else(|| panic!("missing standard enum type identity for Option"));
+            TypeHint::Enum(TypeKey::new(id, "Option"))
+        }
+        "result" | "Result" => {
+            let id = vela_stdlib::std_type_id("Result")
+                .unwrap_or_else(|| panic!("missing standard enum type identity for Result"));
+            TypeHint::Enum(TypeKey::new(id, "Result"))
         }
         _ => TypeHint::Any,
     }

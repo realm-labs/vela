@@ -206,7 +206,7 @@ fn path_name(path: &syn::Path, expected: &str) -> bool {
 
 pub(crate) fn inferred_type_hint(ty: &Type) -> Option<String> {
     if matches!(ty, Type::Array(_)) {
-        return Some("array".to_owned());
+        return Some("Array".to_owned());
     }
     let Type::Path(path) = ty else {
         return None;
@@ -219,10 +219,10 @@ pub(crate) fn inferred_type_hint(ty: &Type) -> Option<String> {
             ident
         }
         "i128" | "isize" | "u128" | "usize" => return None,
-        "String" => "string".to_owned(),
-        "Vec" => "array".to_owned(),
-        "BTreeMap" | "HashMap" => "map".to_owned(),
-        "BTreeSet" | "HashSet" => "set".to_owned(),
+        "String" => "String".to_owned(),
+        "Vec" => "Array".to_owned(),
+        "BTreeMap" | "HashMap" => "Map".to_owned(),
+        "BTreeSet" | "HashSet" => "Set".to_owned(),
         _ => ident,
     })
 }

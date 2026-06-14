@@ -577,9 +577,9 @@ fn engine_compile_source_emits_standard_value_method_ids_from_registry() {
             SourceId::new(1),
             r#"
 fn main() {
-    let names: array = ["gold", "xp"];
-    let rewards: map = {"gold": 4};
-    let tags: set = set::from_array(["daily"]);
+    let names: Array = ["gold", "xp"];
+    let rewards: Map = {"gold": 4};
+    let tags: Set = set::from_array(["daily"]);
     let some: Option = option::some(1);
     let err: Result = result::err("bad");
     if some.is_some() && err.is_err() {
@@ -627,10 +627,10 @@ fn engine_compiler_options_emit_standard_collection_method_ids() {
             SourceId::new(1),
             r#"
 fn main() {
-    let names: array = ["gold", "xp"];
-    let rewards: map = {"gold": 4};
-    let tags: set = set::from_array(["daily"]);
-    let other: set = set::from_array(["raid"]);
+    let names: Array = ["gold", "xp"];
+    let rewards: Map = {"gold": 4};
+    let tags: Set = set::from_array(["daily"]);
+    let other: Set = set::from_array(["raid"]);
     names.push("bonus");
     names.pop();
     rewards.set("xp", 6);
@@ -698,7 +698,7 @@ fn engine_compiler_options_emit_standard_array_lookup_method_ids() {
             SourceId::new(1),
             r#"
 fn main() {
-    let names: array = ["gold", "xp"];
+    let names: Array = ["gold", "xp"];
     return names.first().unwrap_or("") == "gold"
         && names.last().unwrap_or("") == "xp"
         && names.index_of("xp").unwrap_or(-1) == 1;
@@ -735,7 +735,7 @@ fn engine_compiler_options_emit_standard_array_transform_method_ids() {
             SourceId::new(1),
             r#"
 fn main() {
-    let names: array = ["gold", "xp", "gold"];
+    let names: Array = ["gold", "xp", "gold"];
     return names.join(":") == "gold:xp:gold"
         && names.distinct().len() == 2
         && names.reverse()[0] == "gold"
@@ -820,7 +820,7 @@ fn engine_compiler_options_lower_local_receiver_named_standard_value_method_argu
         .compile_source_with_id(
             SourceId::new(1),
             r#"
-fn main(text: string) {
+fn main(text: String) {
     let parts = ["gold"];
     let reward = "reward:gold";
     return text.contains(needle = ":")

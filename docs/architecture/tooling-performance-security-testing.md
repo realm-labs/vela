@@ -51,7 +51,7 @@ FieldNotWritable:
 
 ```text
 HotReloadAbiMismatch:
-  function: billing.on_invoice_paid
+  Function: billing.on_invoice_paid
   old_params: [ctx, account, invoice]
   new_params: [ctx, account]
   reason: exported event function cannot remove parameters

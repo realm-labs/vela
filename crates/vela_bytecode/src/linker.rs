@@ -1141,6 +1141,20 @@ impl<'linker, 'registry> LinkContext<'linker, 'registry> {
     ) -> Result<TypeGuardPlan, LinkError> {
         match plan {
             UnlinkedTypeGuardPlan::Primitive(tag) => Ok(TypeGuardPlan::Primitive(tag)),
+            UnlinkedTypeGuardPlan::Standard(guard) => Ok(TypeGuardPlan::Standard(guard)),
+            UnlinkedTypeGuardPlan::Option { some } => Ok(TypeGuardPlan::Option {
+                some: some
+                    .map(|plan| self.link_type_guard_plan(*plan).map(Box::new))
+                    .transpose()?,
+            }),
+            UnlinkedTypeGuardPlan::Result { ok, err } => Ok(TypeGuardPlan::Result {
+                ok: ok
+                    .map(|plan| self.link_type_guard_plan(*plan).map(Box::new))
+                    .transpose()?,
+                err: err
+                    .map(|plan| self.link_type_guard_plan(*plan).map(Box::new))
+                    .transpose()?,
+            }),
             UnlinkedTypeGuardPlan::Type(name) => self.link_type(&name).map(TypeGuardPlan::Type),
             UnlinkedTypeGuardPlan::Variant { enum_name, variant } => {
                 let owner = self.link_type(&enum_name)?;

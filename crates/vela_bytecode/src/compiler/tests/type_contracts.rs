@@ -259,7 +259,7 @@ fn main() {
     );
     assert!(diagnostic.span.is_some(), "{diagnostic:?}");
     assert!(diagnostic.labels.iter().any(|label| {
-        label.message.contains("expected `i64`") && label.message.contains("found `string`")
+        label.message.contains("expected `i64`") && label.message.contains("found `String`")
     }));
 }
 

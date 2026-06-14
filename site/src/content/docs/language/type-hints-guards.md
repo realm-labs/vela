@@ -16,7 +16,7 @@ enum fields, and lambda parameters. Missing hints leave the value dynamic.
 
 ```vela
 struct Reward {
-    code: string
+    code: String
     amount: i64 = 0
 }
 
