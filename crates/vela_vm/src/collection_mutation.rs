@@ -336,7 +336,9 @@ pub(crate) fn push_set_slot(
     check_collection_len("set", len, 1, budget.as_deref(), |budget| {
         budget.collection_limits().max_set_len
     })?;
-    let precharged_growth = mem::size_of::<Value>();
+    let precharged_growth = key
+        .payload_size_bytes()
+        .saturating_add(mem::size_of::<Value>());
     charge_growth(budget.as_deref_mut(), precharged_growth)?;
 
     if set_slots_mut(heap, reference, operation)?.insert_keyed(key, slot) {
@@ -378,7 +380,13 @@ pub(crate) fn extend_set_slots(
     check_collection_len("set", len, additional, budget.as_deref(), |budget| {
         budget.collection_limits().max_set_len
     })?;
-    let precharged_growth = additional.saturating_mul(mem::size_of::<Value>());
+    let precharged_growth = slots
+        .iter()
+        .map(|(key, _)| {
+            key.payload_size_bytes()
+                .saturating_add(mem::size_of::<Value>())
+        })
+        .sum::<usize>();
     charge_growth(budget.as_deref_mut(), precharged_growth)?;
 
     let set = set_slots_mut(heap, reference, operation)?;
@@ -585,12 +593,16 @@ fn type_error<T>(operation: &'static str) -> VmResult<T> {
 
 #[cfg(test)]
 mod tests {
+    use std::mem;
+
     use crate::budget::CollectionLimits;
     use crate::heap::{HeapValue, ScriptHeap};
     use crate::script_set::ScriptSet;
     use crate::{ExecutionBudget, HeapExecution, Value, VmErrorKind};
 
-    use super::{extend_map_slots, insert_map_slot, push_array_slot, push_set_slot};
+    use super::{
+        extend_map_slots, extend_set_slots, insert_map_slot, push_array_slot, push_set_slot,
+    };
 
     #[test]
     fn array_push_charges_container_slot_growth() {
@@ -768,6 +780,64 @@ mod tests {
                 collection: "set",
                 limit: 0
             }
+        ));
+        assert_eq!(
+            heap_execution.heap.get(reference),
+            Some(&HeapValue::Set(ScriptSet::new()))
+        );
+    }
+
+    #[test]
+    fn set_add_rejects_value_key_payload_memory_before_mutation() {
+        let mut heap = ScriptHeap::new();
+        let value = Value::HeapRef(heap.allocate(HeapValue::String("large-key".to_owned())));
+        let reference = heap.allocate(HeapValue::Set(ScriptSet::new()));
+        let mut heap_execution = HeapExecution::new(&mut heap);
+        let mut budget = ExecutionBudget::new(u64::MAX, mem::size_of::<Value>(), usize::MAX);
+
+        let error = push_set_slot(
+            &mut heap_execution,
+            reference,
+            value,
+            Some(&mut budget),
+            "test set add",
+        )
+        .expect_err("set add should exceed key payload memory before mutation");
+
+        assert!(matches!(
+            error.kind_ref(),
+            VmErrorKind::BudgetExceeded { .. }
+        ));
+        assert_eq!(
+            heap_execution.heap.get(reference),
+            Some(&HeapValue::Set(ScriptSet::new()))
+        );
+    }
+
+    #[test]
+    fn set_extend_rejects_value_key_payload_memory_before_mutation() {
+        let mut heap = ScriptHeap::new();
+        let values = vec![
+            Value::HeapRef(heap.allocate(HeapValue::String("large-a".to_owned()))),
+            Value::HeapRef(heap.allocate(HeapValue::String("large-b".to_owned()))),
+        ];
+        let reference = heap.allocate(HeapValue::Set(ScriptSet::new()));
+        let mut heap_execution = HeapExecution::new(&mut heap);
+        let mut budget =
+            ExecutionBudget::new(u64::MAX, mem::size_of::<Value>() * values.len(), usize::MAX);
+
+        let error = extend_set_slots(
+            &mut heap_execution,
+            reference,
+            values,
+            Some(&mut budget),
+            "test set extend",
+        )
+        .expect_err("set extend should exceed key payload memory before mutation");
+
+        assert!(matches!(
+            error.kind_ref(),
+            VmErrorKind::BudgetExceeded { .. }
         ));
         assert_eq!(
             heap_execution.heap.get(reference),
