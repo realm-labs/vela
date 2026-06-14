@@ -407,14 +407,14 @@ fn execute_iterator_guard(
 enum ContainerGuardKind {
     Array,
     Set,
-    MapValues,
+    Map,
 }
 
 fn container_guard_type_name(kind: ContainerGuardKind) -> &'static str {
     match kind {
         ContainerGuardKind::Array => "Array",
         ContainerGuardKind::Set => "Set",
-        ContainerGuardKind::MapValues => "Map",
+        ContainerGuardKind::Map => "Map",
     }
 }
 
@@ -435,7 +435,7 @@ fn container_reference(
                 (kind, value),
                 (ContainerGuardKind::Array, HeapValue::Array(_))
                     | (ContainerGuardKind::Set, HeapValue::Set(_))
-                    | (ContainerGuardKind::MapValues, HeapValue::Map(_))
+                    | (ContainerGuardKind::Map, HeapValue::Map(_))
             )
         });
     if matches_kind {
@@ -457,7 +457,7 @@ fn copied_container_values(
         .and_then(|value| match (kind, value) {
             (ContainerGuardKind::Array, HeapValue::Array(values)) => Some(values.to_vec()),
             (ContainerGuardKind::Set, HeapValue::Set(values)) => Some(values.values_vec()),
-            (ContainerGuardKind::MapValues, HeapValue::Map(values)) => {
+            (ContainerGuardKind::Map, HeapValue::Map(values)) => {
                 Some(values.values().copied().collect())
             }
             _ => None,
@@ -467,6 +467,18 @@ fn copied_container_values(
             operation: type_name,
         })
     })
+}
+
+fn copied_map_entries(
+    reference: crate::heap::GcRef,
+    heap: Option<&HeapExecution<'_>>,
+) -> VmResult<Vec<(Value, Value)>> {
+    heap.and_then(|heap| heap.heap.get(reference))
+        .and_then(|value| match value {
+            HeapValue::Map(values) => Some(values.entries_vec()),
+            _ => None,
+        })
+        .ok_or_else(|| VmError::new(VmErrorKind::TypeMismatch { operation: "Map" }))
 }
 
 fn try_unlinked_container_contract_fast_path(
@@ -534,6 +546,120 @@ fn try_linked_container_contract_fast_path(
             }))
         }
         ContainerSummaryProof::Unknown => Ok(false),
+    }
+}
+
+fn try_unlinked_map_contract_fast_path(
+    reference: crate::heap::GcRef,
+    stamp: &ContainerContractStamp,
+    key_plan: Option<&UnlinkedTypeGuardPlan>,
+    value_plan: Option<&UnlinkedTypeGuardPlan>,
+    context: &mut GuardExecutionContext<'_, '_>,
+    debug_name: &str,
+) -> VmResult<bool> {
+    let Some(heap) = context.heap_mut() else {
+        return Ok(false);
+    };
+    if heap.heap.has_container_contract_stamp(reference, stamp) {
+        return Ok(true);
+    }
+    let key_proof = key_plan.map_or(Ok(ContainerSummaryProof::Proven), |plan| {
+        map_summary_proof_unlinked(
+            heap.heap
+                .container_key_summary(reference)
+                .unwrap_or(ContainerTypeSummary::Unknown),
+            plan,
+            debug_name,
+        )
+    })?;
+    let value_proof = value_plan.map_or(Ok(ContainerSummaryProof::Proven), |plan| {
+        map_summary_proof_unlinked(
+            heap.heap
+                .container_value_summary(reference)
+                .unwrap_or(ContainerTypeSummary::Unknown),
+            plan,
+            debug_name,
+        )
+    })?;
+    if key_proof == ContainerSummaryProof::Proven && value_proof == ContainerSummaryProof::Proven {
+        heap.heap
+            .install_container_contract_stamp(reference, stamp.clone());
+        return Ok(true);
+    }
+    Ok(false)
+}
+
+fn try_linked_map_contract_fast_path(
+    reference: crate::heap::GcRef,
+    stamp: &ContainerContractStamp,
+    key_plan: Option<&TypeGuardPlan>,
+    value_plan: Option<&TypeGuardPlan>,
+    context: &mut GuardExecutionContext<'_, '_>,
+    debug_name: &str,
+) -> VmResult<bool> {
+    let Some(heap) = context.heap_mut() else {
+        return Ok(false);
+    };
+    if heap.heap.has_container_contract_stamp(reference, stamp) {
+        return Ok(true);
+    }
+    let key_proof = key_plan.map_or(Ok(ContainerSummaryProof::Proven), |plan| {
+        map_summary_proof_linked(
+            heap.heap
+                .container_key_summary(reference)
+                .unwrap_or(ContainerTypeSummary::Unknown),
+            plan,
+            debug_name,
+        )
+    })?;
+    let value_proof = value_plan.map_or(Ok(ContainerSummaryProof::Proven), |plan| {
+        map_summary_proof_linked(
+            heap.heap
+                .container_value_summary(reference)
+                .unwrap_or(ContainerTypeSummary::Unknown),
+            plan,
+            debug_name,
+        )
+    })?;
+    if key_proof == ContainerSummaryProof::Proven && value_proof == ContainerSummaryProof::Proven {
+        heap.heap
+            .install_container_contract_stamp(reference, stamp.clone());
+        return Ok(true);
+    }
+    Ok(false)
+}
+
+fn map_summary_proof_unlinked(
+    summary: ContainerTypeSummary,
+    plan: &UnlinkedTypeGuardPlan,
+    debug_name: &str,
+) -> VmResult<ContainerSummaryProof> {
+    match summary.prove_unlinked_plan(plan) {
+        ContainerSummaryProof::Mismatch(actual) => {
+            Err(VmError::new(VmErrorKind::TypeContractViolation {
+                expected: unlinked_plan_type_name(plan).to_owned(),
+                actual: actual.type_name().to_owned(),
+                debug_name: debug_name.to_owned(),
+            }))
+        }
+        proof => Ok(proof),
+    }
+}
+
+fn map_summary_proof_linked(
+    summary: ContainerTypeSummary,
+    plan: &TypeGuardPlan,
+    debug_name: &str,
+) -> VmResult<ContainerSummaryProof> {
+    match summary.prove_linked_plan(plan) {
+        ContainerSummaryProof::Mismatch(actual) => {
+            Err(VmError::new(VmErrorKind::TypeContractViolation {
+                expected: linked_plan_type_name(plan).to_owned(),
+                actual: actual.type_name().to_owned(),
+                debug_name: debug_name.to_owned(),
+            }))
+        }
+        proof => Ok(proof),
     }
 }
 
@@ -664,37 +790,36 @@ fn execute_map_guard(
     debug_name: &str,
 ) -> VmResult<()> {
     let heap = context.heap();
-    let reference = container_reference(value, heap, debug_name, ContainerGuardKind::MapValues)?;
-    if !map_key_plan_is_string_or_erased(key) {
-        return Err(VmError::new(VmErrorKind::TypeContractViolation {
-            expected: "Map<String, _>".to_owned(),
-            actual: "Map".to_owned(),
-            debug_name: debug_name.to_owned(),
-        }));
+    let reference = container_reference(value, heap, debug_name, ContainerGuardKind::Map)?;
+    if key.is_none() && value_plan.is_none() {
+        return Ok(());
     }
-    if let Some(value_plan) = value_plan {
-        let stamp = ContainerContractStamp::Unlinked(UnlinkedTypeGuardPlan::Map {
-            key: key.cloned().map(Box::new),
-            value: Some(Box::new(value_plan.clone())),
-        });
-        if try_unlinked_container_contract_fast_path(
-            reference, &stamp, value_plan, context, debug_name,
-        )? {
-            return Ok(());
-        }
-        let values = copied_container_values(
-            reference,
-            context.heap(),
-            debug_name,
-            ContainerGuardKind::MapValues,
-        )?;
-        for value in &values {
+    let stamp = ContainerContractStamp::Unlinked(UnlinkedTypeGuardPlan::Map {
+        key: key.cloned().map(Box::new),
+        value: value_plan.cloned().map(Box::new),
+    });
+    if try_unlinked_map_contract_fast_path(reference, &stamp, key, value_plan, context, debug_name)?
+    {
+        return Ok(());
+    }
+    let entries = copied_map_entries(reference, context.heap())?;
+    for (entry_key, entry_value) in &entries {
+        if let Some(key_plan) = key {
             context.charge_scan_item()?;
-            execute_unlinked_guard_plan(value, value_plan, context, debug_name)?;
+            execute_unlinked_guard_plan(entry_key, key_plan, context, debug_name)?;
         }
-        register_container_contract_dependencies(reference, &values, context);
-        install_container_contract_stamp(reference, stamp, context);
+        if let Some(value_plan) = value_plan {
+            context.charge_scan_item()?;
+            execute_unlinked_guard_plan(entry_value, value_plan, context, debug_name)?;
+        }
     }
+    let dependencies = entries
+        .iter()
+        .flat_map(|(key, value)| [key, value])
+        .copied()
+        .collect::<Vec<_>>();
+    register_container_contract_dependencies(reference, &dependencies, context);
+    install_container_contract_stamp(reference, stamp, context);
     Ok(())
 }
 
@@ -897,37 +1022,35 @@ fn execute_linked_map_guard(
     debug_name: &str,
 ) -> VmResult<()> {
     let heap = context.heap();
-    let reference = container_reference(value, heap, debug_name, ContainerGuardKind::MapValues)?;
-    if !linked_map_key_plan_is_string_or_erased(key) {
-        return Err(VmError::new(VmErrorKind::TypeContractViolation {
-            expected: "Map<String, _>".to_owned(),
-            actual: "Map".to_owned(),
-            debug_name: debug_name.to_owned(),
-        }));
+    let reference = container_reference(value, heap, debug_name, ContainerGuardKind::Map)?;
+    if key.is_none() && value_plan.is_none() {
+        return Ok(());
     }
-    if let Some(value_plan) = value_plan {
-        let stamp = ContainerContractStamp::Linked(TypeGuardPlan::Map {
-            key: key.cloned().map(Box::new),
-            value: Some(Box::new(value_plan.clone())),
-        });
-        if try_linked_container_contract_fast_path(
-            reference, &stamp, value_plan, context, debug_name,
-        )? {
-            return Ok(());
-        }
-        let values = copied_container_values(
-            reference,
-            context.heap(),
-            debug_name,
-            ContainerGuardKind::MapValues,
-        )?;
-        for value in &values {
+    let stamp = ContainerContractStamp::Linked(TypeGuardPlan::Map {
+        key: key.cloned().map(Box::new),
+        value: value_plan.cloned().map(Box::new),
+    });
+    if try_linked_map_contract_fast_path(reference, &stamp, key, value_plan, context, debug_name)? {
+        return Ok(());
+    }
+    let entries = copied_map_entries(reference, context.heap())?;
+    for (entry_key, entry_value) in &entries {
+        if let Some(key_plan) = key {
             context.charge_scan_item()?;
-            execute_linked_guard_plan(value, value_plan, program, context, debug_name)?;
+            execute_linked_guard_plan(entry_key, key_plan, program, context, debug_name)?;
         }
-        register_container_contract_dependencies(reference, &values, context);
-        install_container_contract_stamp(reference, stamp, context);
+        if let Some(value_plan) = value_plan {
+            context.charge_scan_item()?;
+            execute_linked_guard_plan(entry_value, value_plan, program, context, debug_name)?;
+        }
     }
+    let dependencies = entries
+        .iter()
+        .flat_map(|(key, value)| [key, value])
+        .copied()
+        .collect::<Vec<_>>();
+    register_container_contract_dependencies(reference, &dependencies, context);
+    install_container_contract_stamp(reference, stamp, context);
     Ok(())
 }
 
@@ -1211,20 +1334,6 @@ fn standard_type_name(guard: StandardTypeGuard) -> &'static str {
         StandardTypeGuard::Option => "Option",
         StandardTypeGuard::Result => "Result",
     }
-}
-
-fn map_key_plan_is_string_or_erased(plan: Option<&UnlinkedTypeGuardPlan>) -> bool {
-    matches!(
-        plan,
-        None | Some(UnlinkedTypeGuardPlan::Primitive(PrimitiveTag::String))
-    )
-}
-
-fn linked_map_key_plan_is_string_or_erased(plan: Option<&TypeGuardPlan>) -> bool {
-    matches!(
-        plan,
-        None | Some(TypeGuardPlan::Primitive(PrimitiveTag::String))
-    )
 }
 
 fn unlinked_plan_type_name(plan: &UnlinkedTypeGuardPlan) -> &'static str {

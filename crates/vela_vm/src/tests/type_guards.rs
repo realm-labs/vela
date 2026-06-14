@@ -278,6 +278,64 @@ fn main(values: Map<String, i64>) {
 }
 
 #[test]
+fn linked_local_guard_accepts_value_keyed_map_keys() {
+    let program = compile_program_source(
+        SourceId::new(1),
+        r#"
+fn accept(values) {
+    let typed: Map<i64, String> = values;
+    return typed.get_or(1, "missing");
+}
+
+fn main() {
+    let values = {"seed": ""};
+    values.clear();
+    values.set(1, "one");
+    return accept(values);
+}
+"#,
+    )
+    .expect("program should compile");
+    let mut budget = ExecutionBudget::unbounded();
+
+    let value = run_linked_test_program_with_budget(&Vm::new(), &program, "main", &[], &mut budget)
+        .expect("i64 map key contract should pass");
+
+    assert_eq!(value, OwnedValue::String("one".to_owned()));
+}
+
+#[test]
+fn linked_local_guard_rejects_mismatched_map_keys() {
+    let program = compile_program_source(
+        SourceId::new(1),
+        r#"
+fn accept(values) {
+    let typed: Map<i64, String> = values;
+    return typed.len();
+}
+
+fn main() {
+    return accept({"seed": "bad"});
+}
+"#,
+    )
+    .expect("program should compile");
+    let mut budget = ExecutionBudget::unbounded();
+
+    let error = run_linked_test_program_with_budget(&Vm::new(), &program, "main", &[], &mut budget)
+        .expect_err("map key contract should fail before body uses typed map");
+
+    assert_eq!(
+        error.kind(),
+        VmErrorKind::TypeContractViolation {
+            expected: "i64".to_owned(),
+            actual: "String".to_owned(),
+            debug_name: "typed".to_owned(),
+        }
+    );
+}
+
+#[test]
 fn linked_parameter_guard_rejects_mixed_set_values() {
     let program = compile_program_source(
         SourceId::new(1),

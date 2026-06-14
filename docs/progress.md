@@ -55,7 +55,8 @@ defer a remaining cost to M21/M22/JIT/value-layout work with an explicit reason
 The builtin parameterized container type-hint slice is in progress as an M20
 type-contract continuation. Syntax, HIR, analysis TypeFacts, compiler
 RuntimeTypeFacts, recursive guard plans, VM deep checks for materialized
-array/map/set values, compiler-owned typed container mutator checks, embedding
+array/map/set values, value-keyed map key guard scans,
+compiler-owned typed container mutator checks, embedding
 metadata display/validation, macro-inferred `Vec`/array/set/map hints,
 value-keyed map/set runtime containers, hot-reload ABI string comparison, and
 execution-budget charging for deep guard scans are implemented. Non-erased

@@ -155,19 +155,15 @@ fn rejects_unsupported_parameterized_type_hints() {
             "syntax::type_argument_arity",
         ),
         (
-            "fn bad(xs: Map<i64, String>) { return xs; }",
+            "fn bad(xs: Map<PathProxy, String>) { return xs; }",
             "syntax::map_key_type_argument",
         ),
         (
-            "fn bad(xs: Map<Any, String>) { return xs; }",
+            "fn bad(xs: Map<Range, String>) { return xs; }",
             "syntax::map_key_type_argument",
         ),
         (
-            "fn bad(xs: Set<Player>) { return xs; }",
-            "syntax::set_element_type_argument",
-        ),
-        (
-            "fn bad(xs: Set<Any>) { return xs; }",
+            "fn bad(xs: Set<Function>) { return xs; }",
             "syntax::set_element_type_argument",
         ),
         (
@@ -197,6 +193,37 @@ fn rejects_unsupported_parameterized_type_hints() {
             parsed.diagnostics
         );
     }
+}
+
+#[test]
+fn parses_value_keyed_map_and_set_type_hints() {
+    let parsed = parse_source(
+        source_id(),
+        r#"
+fn accepts(
+    scores: Map<i64, String>,
+    by_player: Map<Player, i64>,
+    dynamic_keys: Map<Any, String>,
+    players: Set<Player>,
+    dynamic_values: Set<Any>,
+) {
+    return scores;
+}
+"#,
+    );
+
+    assert!(parsed.diagnostics.is_empty(), "{:?}", parsed.diagnostics);
+    let ItemKind::Function(function) = &parsed.items[0].kind else {
+        panic!("expected function item");
+    };
+    let map_i64 = function.params[0].type_hint.as_ref().expect("map hint");
+    assert_eq!(map_i64.path, ["Map"]);
+    assert_eq!(map_i64.args[0].path, ["i64"]);
+    let map_player = function.params[1].type_hint.as_ref().expect("map hint");
+    assert_eq!(map_player.args[0].path, ["Player"]);
+    let set_player = function.params[3].type_hint.as_ref().expect("set hint");
+    assert_eq!(set_player.path, ["Set"]);
+    assert_eq!(set_player.args[0].path, ["Player"]);
 }
 
 #[test]

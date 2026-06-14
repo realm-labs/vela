@@ -27,14 +27,20 @@ impl ContainerContracts {
         }
     }
 
-    pub(crate) fn for_map(values: impl Iterator<Item = Value>, heap: &ScriptHeap) -> Self {
+    pub(crate) fn for_map(
+        keys: impl IntoIterator<Item = Value>,
+        values: impl IntoIterator<Item = Value>,
+        heap: &ScriptHeap,
+    ) -> Self {
         Self {
-            key_summary: ContainerTypeSummary::Exact(ShallowTypeKey::Primitive(
-                PrimitiveTag::String,
-            )),
+            key_summary: ContainerTypeSummary::from_values(keys, heap),
             value_summary: ContainerTypeSummary::from_values(values, heap),
             ..Self::default()
         }
+    }
+
+    pub(crate) fn key_summary(&self) -> ContainerTypeSummary {
+        self.key_summary
     }
 
     pub(crate) fn value_summary(&self) -> ContainerTypeSummary {
@@ -60,6 +66,16 @@ impl ContainerContracts {
         self.stamps.clear();
     }
 
+    pub(crate) fn note_inserted_map_entry(
+        &mut self,
+        key: Option<ShallowTypeKey>,
+        value: Option<ShallowTypeKey>,
+    ) {
+        self.key_summary.observe(key);
+        self.value_summary.observe(value);
+        self.stamps.clear();
+    }
+
     pub(crate) fn note_replaced_or_removed_value(&mut self) {
         self.value_summary = ContainerTypeSummary::Unknown;
         self.stamps.clear();
@@ -78,14 +94,14 @@ impl ContainerContracts {
         self.value_summary = ContainerTypeSummary::from_values(values.iter().copied(), heap);
     }
 
-    pub(crate) fn resummarize_map<'a>(
+    pub(crate) fn resummarize_map(
         &mut self,
-        values: impl Iterator<Item = &'a Value>,
+        keys: impl IntoIterator<Item = Value>,
+        values: impl IntoIterator<Item = Value>,
         heap: &ScriptHeap,
     ) {
-        self.key_summary =
-            ContainerTypeSummary::Exact(ShallowTypeKey::Primitive(PrimitiveTag::String));
-        self.value_summary = ContainerTypeSummary::from_values(values.copied(), heap);
+        self.key_summary = ContainerTypeSummary::from_values(keys, heap);
+        self.value_summary = ContainerTypeSummary::from_values(values, heap);
     }
 }
 

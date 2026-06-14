@@ -244,7 +244,7 @@ pub(crate) fn inferred_type_hint(ty: &Type) -> Option<String> {
             return args
                 .first()
                 .and_then(|arg| inferred_type_hint(arg))
-                .filter(|element| is_set_key_type_hint(element))
+                .filter(|element| is_keyable_type_hint(element))
                 .map(|element| format!("Set<{element}>"))
                 .or_else(|| Some("Set".to_owned()));
         }
@@ -291,50 +291,38 @@ impl<'a> TypeHintParser<'a> {
     }
 
     fn parse_complete(mut self) -> bool {
-        self.parse_hint() && {
-            self.skip_ws();
-            self.cursor == self.input.len()
-        }
+        self.parse_hint_def()
+            .is_some_and(|hint| hint.is_valid_contract())
+            && {
+                self.skip_ws();
+                self.cursor == self.input.len()
+            }
     }
 
-    fn parse_hint(&mut self) -> bool {
+    fn parse_hint_def(&mut self) -> Option<ParsedTypeHint> {
         self.skip_ws();
-        let Some(name) = self.parse_name() else {
-            return false;
-        };
+        let name = self.parse_name()?;
         self.skip_ws();
         if !self.consume('<') {
-            return true;
+            return Some(ParsedTypeHint {
+                name,
+                args: Vec::new(),
+            });
         }
-        let args = self.parse_args();
-        self.skip_ws();
-        if !self.consume('>') {
-            return false;
-        }
-        match name.as_str() {
-            "Array" | "Iterator" | "Option" => args.len() == 1,
-            "Set" => matches!(args.as_slice(), [element] if is_set_key_type_hint(element)),
-            "Result" => args.len() == 2,
-            "Map" => matches!(args.as_slice(), [key, _] if key == "String"),
-            _ => false,
-        }
-    }
-
-    fn parse_args(&mut self) -> Vec<String> {
         let mut args = Vec::new();
         loop {
             self.skip_ws();
-            let start = self.cursor;
-            if !self.parse_hint() {
-                break;
-            }
-            args.push(self.input[start..self.cursor].trim().to_owned());
+            args.push(self.parse_hint_def()?);
             self.skip_ws();
             if !self.consume(',') {
                 break;
             }
         }
-        args
+        self.skip_ws();
+        if !self.consume('>') {
+            return None;
+        }
+        Some(ParsedTypeHint { name, args })
     }
 
     fn parse_name(&mut self) -> Option<String> {
@@ -370,8 +358,46 @@ impl<'a> TypeHintParser<'a> {
     }
 }
 
-fn is_set_key_type_hint(hint: &str) -> bool {
-    matches!(hint, "null" | "bool" | "i64" | "f64" | "String")
+fn is_keyable_type_hint(hint: &str) -> bool {
+    let mut parser = TypeHintParser::new(hint);
+    let Some(parsed) = parser.parse_hint_def() else {
+        return false;
+    };
+    parser.skip_ws();
+    parser.cursor == hint.len() && parsed.is_valid_contract() && parsed.is_keyable()
+}
+
+#[derive(Clone, Debug)]
+struct ParsedTypeHint {
+    name: String,
+    args: Vec<ParsedTypeHint>,
+}
+
+impl ParsedTypeHint {
+    fn is_valid_contract(&self) -> bool {
+        match self.name.as_str() {
+            "Array" | "Iterator" | "Option" => {
+                matches!(self.args.as_slice(), [element] if element.is_valid_contract())
+            }
+            "Set" => {
+                matches!(self.args.as_slice(), [element] if element.is_valid_contract() && element.is_keyable())
+            }
+            "Result" => {
+                matches!(self.args.as_slice(), [ok, err] if ok.is_valid_contract() && err.is_valid_contract())
+            }
+            "Map" => {
+                matches!(self.args.as_slice(), [key, value] if key.is_valid_contract() && key.is_keyable() && value.is_valid_contract())
+            }
+            _ => self.args.is_empty(),
+        }
+    }
+
+    fn is_keyable(&self) -> bool {
+        !matches!(
+            self.name.as_str(),
+            "Range" | "Function" | "PathProxy" | "path_proxy"
+        )
+    }
 }
 
 pub(crate) fn error(span: Span, message: &str) -> syn::Error {

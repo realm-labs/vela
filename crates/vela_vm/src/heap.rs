@@ -363,6 +363,13 @@ impl ScriptHeap {
     }
 
     #[must_use]
+    pub(crate) fn container_key_summary(&self, reference: GcRef) -> Option<ContainerTypeSummary> {
+        self.container_contracts
+            .get(&reference)
+            .map(ContainerContracts::key_summary)
+    }
+
+    #[must_use]
     pub(crate) fn has_container_contract_stamp(
         &self,
         reference: GcRef,
@@ -401,6 +408,20 @@ impl ScriptHeap {
         }
     }
 
+    pub(crate) fn note_container_map_entry_inserted(
+        &mut self,
+        reference: GcRef,
+        key: &Value,
+        value: &Value,
+    ) {
+        let key_type = ShallowTypeKey::from_value(key, self);
+        let value_type = ShallowTypeKey::from_value(value, self);
+        self.invalidate_container_contract_stamps(reference);
+        if let Some(contracts) = self.container_contracts.get_mut(&reference) {
+            contracts.note_inserted_map_entry(key_type, value_type);
+        }
+    }
+
     pub(crate) fn note_container_value_replaced_or_removed(&mut self, reference: GcRef) {
         self.invalidate_container_contract_stamps(reference);
         if let Some(contracts) = self.container_contracts.get_mut(&reference) {
@@ -422,7 +443,9 @@ impl ScriptHeap {
         match self.get(reference) {
             Some(HeapValue::Array(values)) => contracts.resummarize_array(values, self),
             Some(HeapValue::Set(values)) => contracts.resummarize_set(&values.values_vec(), self),
-            Some(HeapValue::Map(values)) => contracts.resummarize_map(values.values(), self),
+            Some(HeapValue::Map(values)) => {
+                contracts.resummarize_map(values.keys().copied(), values.values().copied(), self);
+            }
             _ => {}
         }
         self.container_contracts.insert(reference, contracts);
@@ -693,9 +716,11 @@ impl ScriptHeap {
     fn initialize_container_contracts(&mut self, reference: GcRef) {
         let contracts = match self.get(reference) {
             Some(HeapValue::Array(values)) => Some(ContainerContracts::for_array(values, self)),
-            Some(HeapValue::Map(values)) => {
-                Some(ContainerContracts::for_map(values.values().copied(), self))
-            }
+            Some(HeapValue::Map(values)) => Some(ContainerContracts::for_map(
+                values.keys().copied(),
+                values.values().copied(),
+                self,
+            )),
             Some(HeapValue::Set(values)) => {
                 Some(ContainerContracts::for_set(&values.values_vec(), self))
             }

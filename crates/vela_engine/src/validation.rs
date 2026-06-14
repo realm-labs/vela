@@ -650,7 +650,7 @@ fn validate_type_hint(
         | TypeHint::IteratorOf(element)
         | TypeHint::OptionOf(element) => validate_type_hint(element, descriptor, lookup),
         TypeHint::SetOf(element) => {
-            if !is_set_key_type_hint(element) {
+            if !is_keyable_type_hint(element) {
                 return Err(EngineError::new(EngineErrorKind::InvalidTypeHintName {
                     descriptor: descriptor.to_owned(),
                     type_name: type_hint_display(hint),
@@ -659,10 +659,7 @@ fn validate_type_hint(
             validate_type_hint(element, descriptor, lookup)
         }
         TypeHint::MapOf { key, value } => {
-            if !matches!(
-                key.as_ref(),
-                TypeHint::Primitive(vela_common::PrimitiveTag::String)
-            ) {
+            if !is_keyable_type_hint(key) {
                 return Err(EngineError::new(EngineErrorKind::InvalidTypeHintName {
                     descriptor: descriptor.to_owned(),
                     type_name: type_hint_display(hint),
@@ -738,8 +735,12 @@ fn is_valid_type_hint_def(hint: &vela_registry::TypeHintDef) -> bool {
     };
     match (name.as_str(), hint.args.as_slice()) {
         ("Array" | "Iterator" | "Option", [element]) => is_valid_type_hint_def(element),
-        ("Set", [element]) => is_valid_type_hint_def(element) && is_set_key_type_hint_def(element),
-        ("Map", [key, value]) => is_string_type_hint_def(key) && is_valid_type_hint_def(value),
+        ("Set", [element]) => is_valid_type_hint_def(element) && is_keyable_type_hint_def(element),
+        ("Map", [key, value]) => {
+            is_valid_type_hint_def(key)
+                && is_keyable_type_hint_def(key)
+                && is_valid_type_hint_def(value)
+        }
         ("Result", [ok, err]) => is_valid_type_hint_def(ok) && is_valid_type_hint_def(err),
         (
             "Array" | "Set" | "Map" | "Range" | "Iterator" | "Function" | "Closure" | "Option"
@@ -752,28 +753,42 @@ fn is_valid_type_hint_def(hint: &vela_registry::TypeHintDef) -> bool {
     }
 }
 
-fn is_string_type_hint_def(hint: &vela_registry::TypeHintDef) -> bool {
-    matches!(hint.path.as_slice(), [name] if name == "String") && hint.args.is_empty()
+fn is_keyable_type_hint_def(hint: &vela_registry::TypeHintDef) -> bool {
+    match hint.path.as_slice() {
+        [name]
+            if matches!(
+                name.as_str(),
+                "Range" | "Function" | "PathProxy" | "path_proxy"
+            ) =>
+        {
+            false
+        }
+        [_] => true,
+        _ => hint.args.is_empty(),
+    }
 }
 
-fn is_set_key_type_hint_def(hint: &vela_registry::TypeHintDef) -> bool {
-    matches!(hint.path.as_slice(), [name] if matches!(
-        name.as_str(),
-        "null" | "bool" | "i64" | "f64" | "String"
-    )) && hint.args.is_empty()
-}
-
-fn is_set_key_type_hint(hint: &TypeHint) -> bool {
-    matches!(
-        hint,
-        TypeHint::Primitive(
-            vela_common::PrimitiveTag::Null
-                | vela_common::PrimitiveTag::Bool
-                | vela_common::PrimitiveTag::I64
-                | vela_common::PrimitiveTag::F64
-                | vela_common::PrimitiveTag::String
-        )
-    )
+fn is_keyable_type_hint(hint: &TypeHint) -> bool {
+    match hint {
+        TypeHint::Any
+        | TypeHint::Primitive(_)
+        | TypeHint::Array
+        | TypeHint::ArrayOf(_)
+        | TypeHint::Map
+        | TypeHint::MapOf { .. }
+        | TypeHint::Set
+        | TypeHint::SetOf(_)
+        | TypeHint::Iterator
+        | TypeHint::IteratorOf(_)
+        | TypeHint::OptionOf(_)
+        | TypeHint::ResultOf { .. }
+        | TypeHint::Record(_)
+        | TypeHint::Enum(_)
+        | TypeHint::Host(_)
+        | TypeHint::Trait(_)
+        | TypeHint::PathProxy => !matches!(hint, TypeHint::PathProxy),
+        TypeHint::Function => false,
+    }
 }
 
 fn is_valid_qualified_name(name: &str) -> bool {

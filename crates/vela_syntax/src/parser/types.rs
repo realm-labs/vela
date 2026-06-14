@@ -185,27 +185,30 @@ impl Parser {
                 .with_span(span)
                 .with_label(span, "wrong number of type arguments"),
             );
-        } else if matches!(contract, TypeArgumentContract::StringKeyedMap)
-            && !is_string_type_hint(&args[0])
+        } else if matches!(contract, TypeArgumentContract::KeyedMap)
+            && !is_keyable_type_hint(&args[0])
         {
             let span = args[0].span;
             self.diagnostics.push(
-                Diagnostic::error("`Map` type hints currently require `String` keys")
+                Diagnostic::error("`Map` key type hints require a keyable type")
                     .with_code("syntax::map_key_type_argument")
                     .with_span(span)
-                    .with_label(span, "use `String` as the first `Map` type argument"),
+                    .with_label(
+                        span,
+                        "use a ValueKey-supported key type or an unparameterized Map",
+                    ),
             );
         } else if matches!(contract, TypeArgumentContract::KeyedSet)
-            && !is_set_key_type_hint(&args[0])
+            && !is_keyable_type_hint(&args[0])
         {
             let span = args[0].span;
             self.diagnostics.push(
-                Diagnostic::error("`Set` type hints require a set-keyable element type")
+                Diagnostic::error("`Set` type hints require a keyable element type")
                     .with_code("syntax::set_element_type_argument")
                     .with_span(span)
                     .with_label(
                         span,
-                        "use bool, i64, f64, String, or an unparameterized Set",
+                        "use a ValueKey-supported element type or an unparameterized Set",
                     ),
             );
         }
@@ -263,7 +266,7 @@ impl Parser {
 #[derive(Clone, Copy)]
 enum TypeArgumentContract {
     FixedArity(usize),
-    StringKeyedMap,
+    KeyedMap,
     KeyedSet,
 }
 
@@ -271,7 +274,7 @@ impl TypeArgumentContract {
     fn arity(self) -> usize {
         match self {
             Self::FixedArity(arity) => arity,
-            Self::StringKeyedMap => 2,
+            Self::KeyedMap => 2,
             Self::KeyedSet => 1,
         }
     }
@@ -281,7 +284,7 @@ fn type_argument_contract(path: &[String]) -> Option<TypeArgumentContract> {
     match path {
         [name] if name == "Array" => Some(TypeArgumentContract::FixedArity(1)),
         [name] if name == "Set" => Some(TypeArgumentContract::KeyedSet),
-        [name] if name == "Map" => Some(TypeArgumentContract::StringKeyedMap),
+        [name] if name == "Map" => Some(TypeArgumentContract::KeyedMap),
         [name] if name == "Iterator" => Some(TypeArgumentContract::FixedArity(1)),
         [name] if name == "Option" => Some(TypeArgumentContract::FixedArity(1)),
         [name] if name == "Result" => Some(TypeArgumentContract::FixedArity(2)),
@@ -289,13 +292,17 @@ fn type_argument_contract(path: &[String]) -> Option<TypeArgumentContract> {
     }
 }
 
-fn is_string_type_hint(hint: &TypeHint) -> bool {
-    hint.path == ["String"] && hint.args.is_empty()
-}
-
-fn is_set_key_type_hint(hint: &TypeHint) -> bool {
-    matches!(hint.path.as_slice(), [name] if matches!(
-        name.as_str(),
-        "null" | "bool" | "i64" | "f64" | "String"
-    )) && hint.args.is_empty()
+fn is_keyable_type_hint(hint: &TypeHint) -> bool {
+    match hint.path.as_slice() {
+        [name]
+            if matches!(
+                name.as_str(),
+                "Range" | "Function" | "PathProxy" | "path_proxy"
+            ) =>
+        {
+            false
+        }
+        [_] => true,
+        _ => hint.args.is_empty(),
+    }
 }

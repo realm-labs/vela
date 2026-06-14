@@ -171,7 +171,7 @@ pub(crate) fn insert_map_slot(
         map_slots_mut(heap, reference, operation)?.insert_keyed(value_key, key, slot);
         if is_new_key {
             heap.heap
-                .note_container_value_inserted(reference, &inserted);
+                .note_container_map_entry_inserted(reference, &key, &inserted);
         } else {
             heap.heap
                 .note_container_value_replaced_or_removed(reference);
@@ -193,7 +193,7 @@ pub(crate) fn insert_map_slot(
 
     map_slots_mut(heap, reference, operation)?.insert_keyed(value_key, key, slot);
     heap.heap
-        .note_container_value_inserted(reference, &inserted);
+        .note_container_map_entry_inserted(reference, &key, &inserted);
     heap.heap
         .adjust_object_size_after_mutation(reference, budget, precharged_growth)
 }
@@ -230,8 +230,9 @@ pub(crate) fn extend_map_slots(
             heap.heap
                 .note_container_value_replaced_or_removed(reference);
         } else {
-            for (_, _, slot) in &keyed_slots {
-                heap.heap.note_container_value_inserted(reference, slot);
+            for (_, key, slot) in &keyed_slots {
+                heap.heap
+                    .note_container_map_entry_inserted(reference, key, slot);
             }
         }
         return Ok(());
@@ -266,8 +267,9 @@ pub(crate) fn extend_map_slots(
         heap.heap
             .note_container_value_replaced_or_removed(reference);
     } else {
-        for (_, _, slot) in &keyed_slots {
-            heap.heap.note_container_value_inserted(reference, slot);
+        for (_, key, slot) in &keyed_slots {
+            heap.heap
+                .note_container_map_entry_inserted(reference, key, slot);
         }
     }
     heap.heap

@@ -530,6 +530,46 @@ mod tests {
     }
 
     #[test]
+    fn accepts_value_keyed_generic_field_type_hints() {
+        let expanded = expand_result(
+            quote! {
+                #[script(path = "game::player::Player")]
+                struct Player {
+                    #[script(get, hint = "Map<i64, String>")]
+                    scores: std::collections::BTreeMap<String, String>,
+                    #[script(get, hint = "Set<Player>")]
+                    seen: std::collections::BTreeSet<String>,
+                }
+            },
+            GeneratedMethod::Host,
+        )
+        .expect("value-keyed field type hints should expand")
+        .to_string();
+
+        assert!(expanded.contains("Map<i64, String>"));
+        assert!(expanded.contains("Set<Player>"));
+    }
+
+    #[test]
+    fn rejects_non_keyable_generic_field_type_hints() {
+        let error = expand_result(
+            quote! {
+                #[script(path = "game::player::Player")]
+                struct Player {
+                    #[script(get, hint = "Map<PathProxy, String>")]
+                    inventory: Vec<String>,
+                }
+            },
+            GeneratedMethod::Host,
+        )
+        .expect_err("non-keyable map key hint should fail macro expansion");
+
+        assert!(error.to_string().contains(
+            "script type hint must be a non-generic name or supported builtin type-hint contract"
+        ));
+    }
+
+    #[test]
     fn rejects_malformed_field_type_hints() {
         let error = expand_result(
             quote! {

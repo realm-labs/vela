@@ -175,7 +175,9 @@ fn engine_accepts_supported_generic_field_type_hints() {
     let result = Engine::builder()
         .register_type(
             TypeDesc::new(TypeKey::new(TypeId::new(1), "Player"))
-                .field(FieldDesc::new(FieldId::new(1), "inventory").type_hint("Array<i64>")),
+                .field(FieldDesc::new(FieldId::new(1), "inventory").type_hint("Array<i64>"))
+                .field(FieldDesc::new(FieldId::new(2), "scores").type_hint("Map<i64, String>"))
+                .field(FieldDesc::new(FieldId::new(3), "seen").type_hint("Set<Player>")),
         )
         .build();
 
@@ -377,7 +379,7 @@ fn engine_rejects_generic_trait_method_param_type_hints() {
             TypeDesc::new(TypeKey::new(TypeId::new(1), "Player")).trait_impl(
                 trait_desc_with_id(TraitId::new(1), "Rewardable").method(
                     TraitMethodDesc::new(MethodId::new(1), "reward")
-                        .param(MethodParamDesc::new("items").type_hint("Map<i64, String>"))
+                        .param(MethodParamDesc::new("items").type_hint("Map<PathProxy, String>"))
                         .return_type("Result"),
                 ),
             ),
@@ -388,7 +390,7 @@ fn engine_rejects_generic_trait_method_param_type_hints() {
         result,
         Err(error) if error.kind == EngineErrorKind::InvalidTypeHintName {
             descriptor: "trait method Player::Rewardable::reward parameter items".to_owned(),
-            type_name: "Map<i64, String>".to_owned(),
+            type_name: "Map<PathProxy, String>".to_owned(),
         }
     ));
 }

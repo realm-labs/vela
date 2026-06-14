@@ -325,12 +325,31 @@ fn engine_accepts_native_function_iterator_type_hints() {
 }
 
 #[test]
-fn engine_rejects_native_function_map_hints_with_non_string_keys() {
+fn engine_accepts_native_function_value_keyed_map_and_set_hints() {
+    let player = TypeKey::new(TypeId::new(1), "Player");
+    let result = Engine::builder()
+        .register_type(TypeDesc::new(player.clone()))
+        .register_native_fn(
+            NativeFunctionDesc::new("game::scores", NativeFunctionId::new(371))
+                .param(
+                    "scores",
+                    TypeHint::map_of(TypeHint::i64(), TypeHint::string()),
+                )
+                .param("seen", TypeHint::set_of(TypeHint::Record(player))),
+            |_| Ok(OwnedValue::Null),
+        )
+        .build();
+
+    assert!(result.is_ok());
+}
+
+#[test]
+fn engine_rejects_native_function_map_hints_with_non_keyable_keys() {
     let result = Engine::builder()
         .register_native_fn(
             NativeFunctionDesc::new("game::bad_scores", NativeFunctionId::new(371)).param(
                 "scores",
-                TypeHint::map_of(TypeHint::i64(), TypeHint::string()),
+                TypeHint::map_of(TypeHint::PathProxy, TypeHint::string()),
             ),
             |_| Ok(OwnedValue::Null),
         )
@@ -340,7 +359,7 @@ fn engine_rejects_native_function_map_hints_with_non_string_keys() {
         result,
         Err(error) if error.kind == EngineErrorKind::InvalidTypeHintName {
             descriptor: "native function game::bad_scores parameter scores".to_owned(),
-            type_name: "Map<i64, String>".to_owned(),
+            type_name: "Map<path_proxy, String>".to_owned(),
         }
     ));
 }
@@ -350,7 +369,7 @@ fn engine_rejects_native_function_set_hints_for_non_keyable_elements() {
     let result = Engine::builder()
         .register_native_fn(
             NativeFunctionDesc::new("game::bad_ids", NativeFunctionId::new(372))
-                .param("ids", TypeHint::set_of(TypeHint::u8())),
+                .param("ids", TypeHint::set_of(TypeHint::Function)),
             |_| Ok(OwnedValue::Null),
         )
         .build();
@@ -359,7 +378,7 @@ fn engine_rejects_native_function_set_hints_for_non_keyable_elements() {
         result,
         Err(error) if error.kind == EngineErrorKind::InvalidTypeHintName {
             descriptor: "native function game::bad_ids parameter ids".to_owned(),
-            type_name: "Set<u8>".to_owned(),
+            type_name: "Set<Function>".to_owned(),
         }
     ));
 }

@@ -462,10 +462,10 @@ fn compiler_contextualizes_proven_typed_container_mutations_without_guards() {
     let program = compile_program_source_with_registry(
         SourceId::new(1),
         r#"
-fn main(values: Array<u8>, names: Set<String>, scores: Map<String, i64>) {
+fn main(values: Array<u8>, names: Set<String>, scores: Map<i64, i64>) {
     values.push(12);
     names.add("ready");
-    scores.set("level", 7);
+    scores.set(7, 7);
     return values;
 }
 "#,
@@ -492,10 +492,10 @@ fn compiler_emits_guards_for_dynamic_typed_container_mutations() {
     let program = compile_program_source_with_registry(
         SourceId::new(1),
         r#"
-fn main(values: Array<i64>, value, names: Set<String>, name, scores: Map<String, i64>, score) {
+fn main(values: Array<i64>, value, names: Set<String>, name, scores: Map<i64, i64>, key, score) {
     values.push(value);
     names.add(name);
-    scores.set("level", score);
+    scores.set(key, score);
     return values;
 }
 "#,
@@ -512,7 +512,7 @@ fn main(values: Array<i64>, value, names: Set<String>, name, scores: Map<String,
             _ => None,
         })
         .collect::<Vec<_>>();
-    assert_eq!(guards.len(), 3);
+    assert_eq!(guards.len(), 4);
     assert!(matches!(
         guards[0],
         crate::UnlinkedTypeGuardPlan::Primitive(vela_common::PrimitiveTag::I64)
@@ -523,6 +523,10 @@ fn main(values: Array<i64>, value, names: Set<String>, name, scores: Map<String,
     ));
     assert!(matches!(
         guards[2],
+        crate::UnlinkedTypeGuardPlan::Primitive(vela_common::PrimitiveTag::I64)
+    ));
+    assert!(matches!(
+        guards[3],
         crate::UnlinkedTypeGuardPlan::Primitive(vela_common::PrimitiveTag::I64)
     ));
 }
@@ -542,8 +546,8 @@ fn main(names: Set<String>) {
 }
 "#,
         r#"
-fn main(scores: Map<String, i64>) {
-    scores.set(1, "high");
+fn main(scores: Map<i64, i64>) {
+    scores.set("bad", 1);
 }
 "#,
     ] {
