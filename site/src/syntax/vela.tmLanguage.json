@@ -1,9 +1,11 @@
 {
   "$schema": "https://raw.githubusercontent.com/martinring/tmlanguage/master/tmlanguage.json",
-  "name": "Vela",
+  "name": "vela",
+  "displayName": "Vela",
   "scopeName": "source.vela",
   "fileTypes": ["vela"],
   "patterns": [
+    { "include": "#shebang" },
     { "include": "#comments" },
     { "include": "#attributes" },
     { "include": "#strings" },
@@ -17,6 +19,14 @@
     { "include": "#punctuation" }
   ],
   "repository": {
+    "shebang": {
+      "patterns": [
+        {
+          "name": "comment.line.shebang.vela",
+          "match": "\\A#!.*$"
+        }
+      ]
+    },
     "comments": {
       "patterns": [
         {
@@ -46,6 +56,7 @@
             "0": { "name": "punctuation.definition.attribute.end.vela" }
           },
           "patterns": [
+            { "include": "#attribute_collections" },
             { "include": "#strings" },
             { "include": "#numbers" },
             {
@@ -58,33 +69,107 @@
         }
       ]
     },
+    "attribute_collections": {
+      "patterns": [
+        {
+          "name": "meta.attribute.array.vela",
+          "begin": "\\[",
+          "beginCaptures": {
+            "0": { "name": "punctuation.bracket.vela" }
+          },
+          "end": "\\]",
+          "endCaptures": {
+            "0": { "name": "punctuation.bracket.vela" }
+          },
+          "patterns": [
+            { "include": "#attribute_collections" },
+            { "include": "#strings" },
+            { "include": "#numbers" },
+            {
+              "name": "entity.other.attribute-name.vela",
+              "match": "\\b[A-Za-z_][A-Za-z0-9_]*(?=\\s*(?:\\.|\\(|,|=|\\]|\\}))"
+            },
+            { "include": "#operators" },
+            { "include": "#punctuation" }
+          ]
+        },
+        {
+          "name": "meta.attribute.map.vela",
+          "begin": "\\{",
+          "beginCaptures": {
+            "0": { "name": "punctuation.bracket.vela" }
+          },
+          "end": "\\}",
+          "endCaptures": {
+            "0": { "name": "punctuation.bracket.vela" }
+          },
+          "patterns": [
+            { "include": "#attribute_collections" },
+            { "include": "#strings" },
+            { "include": "#numbers" },
+            {
+              "name": "entity.other.attribute-name.vela",
+              "match": "\\b[A-Za-z_][A-Za-z0-9_]*(?=\\s*(?:\\.|\\(|,|:|=|\\]|\\}))"
+            },
+            { "include": "#operators" },
+            { "include": "#punctuation" }
+          ]
+        }
+      ]
+    },
     "strings": {
       "patterns": [
         {
-          "name": "string.quoted.triple.vela",
-          "begin": "f?\"\"\"",
+          "name": "string.interpolated.triple.vela",
+          "begin": "f\"\"\"",
           "end": "\"\"\"",
           "patterns": [
             { "include": "#escapes" },
+            { "include": "#escaped_interpolation_braces" },
             { "include": "#interpolation" }
+          ]
+        },
+        {
+          "name": "string.interpolated.double.vela",
+          "begin": "f\"",
+          "end": "\"",
+          "patterns": [
+            { "include": "#escapes" },
+            { "include": "#escaped_interpolation_braces" },
+            { "include": "#interpolation" }
+          ]
+        },
+        {
+          "name": "string.quoted.triple.vela",
+          "begin": "\"\"\"",
+          "end": "\"\"\"",
+          "patterns": [
+            { "include": "#escapes" }
           ]
         },
         {
           "name": "string.quoted.double.vela",
-          "begin": "f?\"",
+          "begin": "\"",
           "end": "\"",
           "patterns": [
-            { "include": "#escapes" },
-            { "include": "#interpolation" }
+            { "include": "#escapes" }
           ]
         },
         {
-          "name": "string.quoted.single.vela",
+          "name": "constant.character.vela",
           "begin": "'",
           "end": "'",
           "patterns": [
             { "include": "#escapes" }
           ]
+        }
+      ]
+    },
+    "escaped_interpolation_braces": {
+      "patterns": [
+        {
+          "name": "constant.character.escape.vela",
+          "match": "\\{\\{|\\}\\}"
         }
       ]
     },
@@ -197,6 +282,10 @@
     "constants": {
       "patterns": [
         {
+          "name": "constant.language.wildcard.vela",
+          "match": "\\b_\\b"
+        },
+        {
           "name": "constant.language.boolean.vela",
           "match": "\\b(?:true|false)\\b"
         },
@@ -229,8 +318,12 @@
     "operators": {
       "patterns": [
         {
-          "name": "keyword.operator.assignment.vela",
-          "match": "\\+=|-=|\\*=|/=|%=|="
+          "name": "storage.type.return.vela",
+          "match": "->"
+        },
+        {
+          "name": "keyword.operator.match-arm.vela",
+          "match": "=>"
         },
         {
           "name": "keyword.operator.comparison.vela",
@@ -245,6 +338,10 @@
           "match": "\\.\\.=|\\.\\."
         },
         {
+          "name": "keyword.operator.assignment.vela",
+          "match": "\\+=|-=|\\*=|/=|%=|="
+        },
+        {
           "name": "keyword.operator.arithmetic.vela",
           "match": "\\+|-|\\*|/|%"
         },
@@ -253,8 +350,8 @@
           "match": "\\?"
         },
         {
-          "name": "storage.type.return.vela",
-          "match": "->"
+          "name": "punctuation.definition.lambda.vela",
+          "match": "\\|"
         }
       ]
     },

@@ -2,7 +2,8 @@
   "scripts": {
     "dev": "astro dev",
     "build": "astro check && astro build",
-    "preview": "astro preview"
+    "preview": "astro preview",
+    "test:syntax": "node ./scripts/check-vela-highlighting.mjs"
   },
   "dependencies": {
     "@astrojs/mdx": "^6.0.3",
@@ -11,6 +12,7 @@
   },
   "devDependencies": {
     "@astrojs/check": "^0.9.9",
+    "shiki": "^4.2.0",
     "typescript": "^6.0.3"
   }
 }
