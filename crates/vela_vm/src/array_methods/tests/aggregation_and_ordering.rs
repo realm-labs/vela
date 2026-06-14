@@ -359,8 +359,12 @@ fn array_sort_rejects_records_without_ord() {
     let source = r#"
 struct Score { value: i64 }
 
+fn scores() {
+    return [Score { value: 1 }, Score { value: 2 }];
+}
+
 fn main() {
-    return [Score { value: 1 }, Score { value: 2 }].sort();
+    return scores().sort();
 }
 "#;
     let program = compile_program_source(SourceId::new(1), source)
@@ -506,14 +510,18 @@ fn main() {
 #[test]
 fn array_sort_rejects_float_values_without_total_order() {
     let source = r#"
+fn values() {
+    return [1.0, 0.5];
+}
+
 fn main() {
-    return [1.0, 0.5].sort();
+    return values().sort();
 }
 "#;
-    let code = compile_function_source(SourceId::new(1), source, "main")
+    let program = compile_program_source(SourceId::new(1), source)
         .expect("array float sort source should compile");
 
-    let error = run_linked_array_test_code(&Vm::new(), code)
+    let error = run_linked_array_test_program(&Vm::new(), &program, "main")
         .expect_err("array sort should reject float values without Ord");
     assert_eq!(
         error.kind(),

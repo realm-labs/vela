@@ -676,14 +676,14 @@ impl Compiler<'_, '_> {
 }
 
 impl Compiler<'_, '_> {
-    fn is_declared_script_type(&self, type_name: &str) -> bool {
+    pub(super) fn is_declared_script_type(&self, type_name: &str) -> bool {
         self.facts
             .type_symbols
             .values()
             .any(|known| known == type_name)
     }
 
-    fn type_implements_builtin_trait_method(
+    pub(super) fn type_implements_builtin_trait_method(
         &self,
         type_name: &str,
         trait_name: &str,

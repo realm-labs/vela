@@ -4,10 +4,10 @@ use crate::{CallArgument, DynamicCallArgument, UnlinkedInstructionKind};
 
 use super::call_args::resolve_script_call_arguments;
 use super::methods::host_method_call;
-use super::record_shapes::{ValueShape, callback_param_shapes};
+use super::record_shapes::{ValueShape, callback_param_shapes, callback_return_shape};
 use super::value_types::{RuntimeTypeFact, TypeContractContext, type_hint_value_type};
 use super::{CompileError, CompileErrorKind, CompileResult, Compiler, reject_named_args};
-use vela_common::{Diagnostic, HostMethodId, Span};
+use vela_common::{Diagnostic, HostMethodId, PrimitiveTag, Span};
 use vela_def::{DefPath, FunctionId, MethodId, TypeId};
 use vela_hir::type_hint::ParamHint;
 use vela_registry::{ParamDef, TypeHintDef};
@@ -176,6 +176,13 @@ impl Compiler<'_, '_> {
         let value_receiver_type = self
             .value_type_for_expr(base)
             .or_else(|| receiver_shape.as_ref().and_then(ValueShape::value_type));
+        self.reject_static_array_ordering_method_without_ord(
+            name,
+            args,
+            value_receiver_type.as_ref(),
+            receiver_shape.as_ref(),
+            expr.span,
+        )?;
         let method_id = receiver_type
             .as_deref()
             .and_then(|type_name| self.script_method_id_for_type(type_name, name));
@@ -255,6 +262,13 @@ impl Compiler<'_, '_> {
         let value_receiver_type = self
             .value_type_for_receiver_path(receiver_path)
             .or_else(|| receiver_shape.as_ref().and_then(ValueShape::value_type));
+        self.reject_static_array_ordering_method_without_ord(
+            method,
+            args,
+            value_receiver_type.as_ref(),
+            receiver_shape.as_ref(),
+            expr.span,
+        )?;
         let method_id = receiver_type
             .as_deref()
             .and_then(|type_name| self.script_method_id_for_type(type_name, method));
@@ -648,6 +662,120 @@ impl Compiler<'_, '_> {
         let type_name = receiver_type.std_type_name();
         registry.resolve_type(&DefPath::ty("std", std::iter::empty::<&str>(), type_name))
     }
+}
+
+impl Compiler<'_, '_> {
+    fn reject_static_array_ordering_method_without_ord(
+        &self,
+        method: &str,
+        args: &[Argument],
+        receiver_type: Option<&RuntimeTypeFact>,
+        receiver_shape: Option<&ValueShape>,
+        span: Span,
+    ) -> CompileResult<()> {
+        if !matches!(method, "sort" | "sort_by" | "min" | "max") {
+            return Ok(());
+        }
+        if method == "sort_by" {
+            let Some(receiver_shape) = receiver_shape else {
+                return Ok(());
+            };
+            let Some(key_shape) = callback_return_shape(receiver_shape, method, args) else {
+                return Ok(());
+            };
+            return self.reject_static_ord_shape(method, &key_shape, span);
+        }
+        if let Some(RuntimeTypeFact::Array(element)) = receiver_type
+            && !runtime_type_satisfies_ord(element)
+        {
+            return Err(missing_array_ord_error(
+                method,
+                "element",
+                &element.source_type_display(),
+                span,
+            ));
+        }
+        let Some(ValueShape::Array(element)) = receiver_shape else {
+            return Ok(());
+        };
+        let Some(type_name) = element.as_record().and_then(|record| record.type_name()) else {
+            return Ok(());
+        };
+        if !self.is_declared_script_type(type_name)
+            || self.type_implements_builtin_trait_method(type_name, "Ord", "cmp")
+        {
+            return Ok(());
+        }
+        Err(missing_array_ord_error(method, "element", type_name, span))
+    }
+
+    fn reject_static_ord_shape(
+        &self,
+        method: &str,
+        shape: &ValueShape,
+        span: Span,
+    ) -> CompileResult<()> {
+        if let Some(value_type) = shape.value_type() {
+            if !runtime_type_satisfies_ord(&value_type) {
+                return Err(missing_array_ord_error(
+                    method,
+                    "key",
+                    &value_type.source_type_display(),
+                    span,
+                ));
+            }
+            return Ok(());
+        }
+        let Some(type_name) = shape.as_record().and_then(|record| record.type_name()) else {
+            return Ok(());
+        };
+        if !self.is_declared_script_type(type_name)
+            || self.type_implements_builtin_trait_method(type_name, "Ord", "cmp")
+        {
+            return Ok(());
+        }
+        Err(missing_array_ord_error(method, "key", type_name, span))
+    }
+}
+
+fn runtime_type_satisfies_ord(fact: &RuntimeTypeFact) -> bool {
+    matches!(
+        fact,
+        RuntimeTypeFact::Primitive(
+            PrimitiveTag::Bool
+                | PrimitiveTag::Char
+                | PrimitiveTag::I8
+                | PrimitiveTag::I16
+                | PrimitiveTag::I32
+                | PrimitiveTag::I64
+                | PrimitiveTag::U8
+                | PrimitiveTag::U16
+                | PrimitiveTag::U32
+                | PrimitiveTag::U64
+                | PrimitiveTag::String
+                | PrimitiveTag::Bytes
+        )
+    )
+}
+
+fn missing_array_ord_error(
+    method: &str,
+    value_kind: &str,
+    value_type: &str,
+    span: Span,
+) -> CompileError {
+    CompileError::new(CompileErrorKind::SemanticDiagnostics(vec![
+        Diagnostic::error(format!(
+            "`Array.{method}` requires an `Ord` {value_kind}, but `{value_type}` does not implement `Ord`"
+        ))
+        .with_code("compiler::missing_ord_for_array_ordering")
+        .with_span(span)
+        .with_label(span, format!("static `Array.{method}` requires `Ord`"))
+        .with_label(
+            span,
+            format!("add `impl Ord for {value_type}` or use a dynamic value"),
+        ),
+    ]))
 }
 
 fn typed_container_mutation_arg_contract(

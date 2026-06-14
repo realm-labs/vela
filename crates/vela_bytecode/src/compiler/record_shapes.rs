@@ -35,6 +35,7 @@ pub(super) enum ValueShape {
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub(super) struct RecordShape {
+    type_name: Option<String>,
     fields: BTreeMap<String, RecordFieldShape>,
 }
 
@@ -272,6 +273,13 @@ impl RecordShape {
     pub(super) fn from_field_shapes(
         fields: impl IntoIterator<Item = (String, ValueShape)>,
     ) -> Self {
+        Self::from_field_shapes_with_type(None, fields)
+    }
+
+    fn from_field_shapes_with_type(
+        type_name: Option<String>,
+        fields: impl IntoIterator<Item = (String, ValueShape)>,
+    ) -> Self {
         let fields = fields.into_iter().collect::<BTreeMap<_, _>>();
         let fields = fields
             .into_iter()
@@ -287,7 +295,11 @@ impl RecordShape {
                 )
             })
             .collect();
-        Self { fields }
+        Self { type_name, fields }
+    }
+
+    pub(super) fn type_name(&self) -> Option<&str> {
+        self.type_name.as_deref()
     }
 
     pub(super) fn field_slot(&self, field: &str) -> Option<usize> {
@@ -314,6 +326,7 @@ impl RecordShape {
     }
 
     fn from_fields(
+        type_name: Option<String>,
         fields: &[RecordField],
         expression_shape: &impl Fn(&Expr) -> Option<ValueShape>,
         expression_type: &impl Fn(&Expr) -> Option<RuntimeTypeFact>,
@@ -349,7 +362,7 @@ impl RecordShape {
                 ))
             })
             .collect();
-        Some(Self { fields })
+        Some(Self { type_name, fields })
     }
 }
 
@@ -373,7 +386,9 @@ pub(super) fn expression_value_shape(
             if path.len() > 1 {
                 return None;
             }
+            let type_name = path.first().cloned();
             let shape = RecordShape::from_fields(
+                type_name,
                 fields,
                 &|value| {
                     expression_value_shape(
@@ -909,7 +924,7 @@ fn method_call_shape(
     }
 }
 
-fn callback_return_shape(
+pub(super) fn callback_return_shape(
     receiver: &ValueShape,
     method: &str,
     args: &[vela_syntax::ast::Argument],
@@ -1101,6 +1116,7 @@ impl super::Compiler<'_, '_> {
             })
             .collect::<Vec<_>>();
         visiting.remove(type_name);
-        (!fields.is_empty()).then(|| RecordShape::from_field_shapes(fields))
+        (!fields.is_empty())
+            .then(|| RecordShape::from_field_shapes_with_type(Some(type_name.to_owned()), fields))
     }
 }

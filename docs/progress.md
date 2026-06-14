@@ -107,7 +107,11 @@ array sorting rejects float keys until an explicit total-float ordering API
 exists. `Eq` and `Ord` impl declarations now validate their required
 comparison-trait prerequisites, and comparison derives now validate their
 required trait chain plus unsupported fields such as float fields under
-`Eq`/`Ord`. Remaining comparison work is static sorting diagnostics.
+`Eq`/`Ord`. Statically known array `sort`, `sort_by`, `min`, and `max` calls
+now reject non-`Ord` elements or keys at compile time when the compiler can
+prove the element or callback key type, including record values and floats.
+The object equality/order semantics slice is complete enough for the current
+M20 checkpoint.
 
 Post-MVP performance remains a separate track: measure first, then optimize the
 non-JIT bytecode interpreter toward Lua 5.x comparable host-boundary workloads

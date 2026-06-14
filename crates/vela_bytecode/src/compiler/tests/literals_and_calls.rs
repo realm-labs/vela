@@ -938,6 +938,139 @@ fn main() {
 }
 
 #[test]
+fn compiler_rejects_static_record_array_sort_without_ord() {
+    let registry = vela_stdlib::standard_registry().expect("standard registry should build");
+    let error = compile_program_source_with_registry(
+        SourceId::new(1),
+        r#"
+struct Score { value: i64 }
+
+fn main() {
+    let values = [Score { value: 2 }, Score { value: 1 }];
+    return values.sort();
+}
+"#,
+        registry.compile_view(),
+    )
+    .expect_err("known record array sort without Ord should be a compile error");
+
+    assert_eq!(
+        semantic_diagnostic_codes(error),
+        ["compiler::missing_ord_for_array_ordering"]
+    );
+}
+
+#[test]
+fn compiler_rejects_static_record_array_extrema_without_ord() {
+    let registry = vela_stdlib::standard_registry().expect("standard registry should build");
+    let error = compile_program_source_with_registry(
+        SourceId::new(1),
+        r#"
+struct Score { value: i64 }
+
+fn main() {
+    let values = [Score { value: 2 }, Score { value: 1 }];
+    return values.min();
+}
+"#,
+        registry.compile_view(),
+    )
+    .expect_err("known record array extrema without Ord should be a compile error");
+
+    assert_eq!(
+        semantic_diagnostic_codes(error),
+        ["compiler::missing_ord_for_array_ordering"]
+    );
+}
+
+#[test]
+fn compiler_accepts_static_record_array_sort_with_derived_ord() {
+    let registry = vela_stdlib::standard_registry().expect("standard registry should build");
+    compile_program_source_with_registry(
+        SourceId::new(1),
+        r#"
+#[derive(PartialEq, Eq, PartialOrd, Ord)]
+struct Score { value: i64 }
+
+fn main() {
+    let values = [Score { value: 2 }, Score { value: 1 }];
+    return values.sort();
+}
+"#,
+        registry.compile_view(),
+    )
+    .expect("known record array sort with derived Ord should compile");
+}
+
+#[test]
+fn compiler_rejects_static_float_array_sort_without_ord() {
+    let registry = vela_stdlib::standard_registry().expect("standard registry should build");
+    let error = compile_program_source_with_registry(
+        SourceId::new(1),
+        r#"
+fn main() {
+    let values: Array<f64> = [2.0, 1.0];
+    return values.sort();
+}
+"#,
+        registry.compile_view(),
+    )
+    .expect_err("known float array sort without Ord should be a compile error");
+
+    assert_eq!(
+        semantic_diagnostic_codes(error),
+        ["compiler::missing_ord_for_array_ordering"]
+    );
+}
+
+#[test]
+fn compiler_rejects_static_float_array_sort_by_key_without_ord() {
+    let registry = vela_stdlib::standard_registry().expect("standard registry should build");
+    let error = compile_program_source_with_registry(
+        SourceId::new(1),
+        r#"
+struct Score { value: f64 }
+
+fn main() {
+    let values = [Score { value: 2.0 }, Score { value: 1.0 }];
+    return values.sort_by(|score| score.value);
+}
+"#,
+        registry.compile_view(),
+    )
+    .expect_err("known float array sort_by key without Ord should be a compile error");
+
+    assert_eq!(
+        semantic_diagnostic_codes(error),
+        ["compiler::missing_ord_for_array_ordering"]
+    );
+}
+
+#[test]
+fn compiler_rejects_static_record_array_sort_by_key_without_ord() {
+    let registry = vela_stdlib::standard_registry().expect("standard registry should build");
+    let error = compile_program_source_with_registry(
+        SourceId::new(1),
+        r#"
+struct Rank { value: i64 }
+struct Score { rank: Rank }
+
+fn main() {
+    let values = [Score { rank: Rank { value: 2 } }, Score { rank: Rank { value: 1 } }];
+    return values.sort_by(|score| score.rank);
+}
+"#,
+        registry.compile_view(),
+    )
+    .expect_err("known record array sort_by key without Ord should be a compile error");
+
+    assert_eq!(
+        semantic_diagnostic_codes(error),
+        ["compiler::missing_ord_for_array_ordering"]
+    );
+}
+
+#[test]
 fn compiler_lowers_value_method_ids_after_set_values_method() {
     let registry = vela_stdlib::standard_registry().expect("standard registry should build");
     let program = compile_program_source_with_registry(
