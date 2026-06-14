@@ -3,13 +3,42 @@ title: "Core Concepts"
 description: "Core concepts documentation for Vela."
 ---
 
-This page defines the terms used throughout the documentation. Vela has a small language surface, but its host boundary is deliberate.
+This page defines the terms used throughout the documentation. It starts with
+the embedding model because Vela is designed to run inside a Rust host, not as
+a standalone shell-only language.
+
+The shortest mental model is:
+
+```text
+Engine  = configured compiler and host registry
+Program = compiled Vela code
+Runtime = mutable execution instance for a Program
+```
 
 ## Engine, Program, Runtime
 
-`Engine` owns registration and policy: host types, native functions, standard natives, capability profiles, reflection permissions, and compiler options. Source is compiled through the engine into a program.
+An `Engine` is the long-lived object that knows what the host has made
+available to scripts. It owns host type registrations, native functions,
+standard library natives, capability profiles, reflection permissions, and
+compiler options. If a script mentions `Player.level`, the engine is where that
+host schema was registered.
 
-`Runtime` owns execution state for one running program version. Calls enter the runtime through named entries or cached entry handles, pass values through `CallArgs`, and are bounded by `CallOptions` such as instruction budget, memory budget, and call depth.
+A `Program` is compiled Vela code. It is the result of compiling one source
+file, a set of module sources, or a source directory through an `Engine`. A
+program contains bytecode, metadata, stable IDs, cache sites, and entry points,
+but it is not itself "running" yet.
+
+A `Runtime` is where a program actually executes. It owns the mutable VM state
+for one active program version: script heap, globals, inline caches, execution
+budgets, and hot reload state. Calls enter the runtime through named entries or
+cached entry handles, pass values through `CallArgs`, and are bounded by
+`CallOptions` such as instruction budget, memory budget, and call depth.
+
+In ordinary embedding code the flow is:
+
+```text
+build Engine -> compile Program -> create Runtime -> call script entries
+```
 
 ```rust
 let engine = Engine::builder()
@@ -20,6 +49,13 @@ let engine = Engine::builder()
 let program = engine.compile_source(source)?;
 let mut runtime = Runtime::new(engine, program);
 ```
+
+Keep the boundaries separate:
+
+- Change host registrations or policy before compiling by configuring the
+  `Engine`.
+- Change script code by compiling a new `Program`.
+- Change running script state by calling or hot-reloading the `Runtime`.
 
 ## Script Values And Host State
 
