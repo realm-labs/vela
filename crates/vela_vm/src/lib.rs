@@ -10,6 +10,7 @@ mod collection_mutation;
 mod constant_loads;
 mod container_contracts;
 mod dynamic_method_resolution;
+mod equality;
 pub mod error;
 mod execution;
 mod field_access;
@@ -67,6 +68,7 @@ use std::collections::{BTreeMap, HashMap};
 use std::fmt;
 use std::sync::Arc;
 
+pub(crate) use equality::{identity_equal, identity_not_equal, values_equal, values_not_equal};
 use error::{VmError, VmErrorKind, VmResult, VmStackFrame};
 pub(crate) use frame::CallFrame;
 use heap::{HeapValue, ScriptHeap};
@@ -74,7 +76,6 @@ use heap_execution::HeapExecution;
 use heap_values::{
     allocate_heap_value, enum_variant_owner, owned_to_value, store_runtime_value,
     store_value_in_heap_if_needed, stored_runtime_value, value_from_constant, value_to_owned,
-    values_equal,
 };
 use numeric_ops::{
     add_numeric, binary_float_literal_numeric, binary_int_literal_numeric, div_numeric,

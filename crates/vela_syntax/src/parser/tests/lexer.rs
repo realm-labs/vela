@@ -32,6 +32,37 @@ fn lexes_keywords_identifiers_and_operators_with_spans() {
 }
 
 #[test]
+fn lexes_identity_comparison_operators() {
+    let lexed = lex(source_id(), "a === b; a !== c; a == d; a != e");
+
+    assert!(lexed.diagnostics.is_empty());
+    assert!(
+        lexed
+            .tokens
+            .iter()
+            .any(|token| token.kind == TokenKind::Symbol(Symbol::EqualEqualEqual))
+    );
+    assert!(
+        lexed
+            .tokens
+            .iter()
+            .any(|token| token.kind == TokenKind::Symbol(Symbol::BangEqualEqual))
+    );
+    assert!(
+        lexed
+            .tokens
+            .iter()
+            .any(|token| token.kind == TokenKind::Symbol(Symbol::EqualEqual))
+    );
+    assert!(
+        lexed
+            .tokens
+            .iter()
+            .any(|token| token.kind == TokenKind::Symbol(Symbol::BangEqual))
+    );
+}
+
+#[test]
 fn lexes_radix_ints_and_exponent_floats() {
     let lexed = lex(source_id(), "0x2a 0b1010 1_000 3.5e+2 4.25E-1");
 

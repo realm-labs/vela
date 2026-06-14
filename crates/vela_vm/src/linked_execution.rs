@@ -288,19 +288,31 @@ impl Vm {
                     frame.write(*dst, value)?;
                 }
                 InstructionKind::Equal { dst, lhs, rhs } => {
-                    let value = Value::Bool(values_equal(
-                        &frame.read(*lhs)?,
-                        &frame.read(*rhs)?,
-                        heap.as_deref(),
-                    )?);
+                    let value = Value::Bool(
+                        values_equal(&frame.read(*lhs)?, &frame.read(*rhs)?, heap.as_deref())
+                            .map_err(|error| error.with_source_span_if_absent(instruction.span))?,
+                    );
                     frame.write(*dst, value)?;
                 }
                 InstructionKind::NotEqual { dst, lhs, rhs } => {
-                    let value = Value::Bool(!values_equal(
-                        &frame.read(*lhs)?,
-                        &frame.read(*rhs)?,
-                        heap.as_deref(),
-                    )?);
+                    let value = Value::Bool(
+                        values_not_equal(&frame.read(*lhs)?, &frame.read(*rhs)?, heap.as_deref())
+                            .map_err(|error| error.with_source_span_if_absent(instruction.span))?,
+                    );
+                    frame.write(*dst, value)?;
+                }
+                InstructionKind::IdentityEqual { dst, lhs, rhs } => {
+                    let value = Value::Bool(
+                        identity_equal(&frame.read(*lhs)?, &frame.read(*rhs)?, heap.as_deref())
+                            .map_err(|error| error.with_source_span_if_absent(instruction.span))?,
+                    );
+                    frame.write(*dst, value)?;
+                }
+                InstructionKind::IdentityNotEqual { dst, lhs, rhs } => {
+                    let value = Value::Bool(
+                        identity_not_equal(&frame.read(*lhs)?, &frame.read(*rhs)?, heap.as_deref())
+                            .map_err(|error| error.with_source_span_if_absent(instruction.span))?,
+                    );
                     frame.write(*dst, value)?;
                 }
                 InstructionKind::Less { dst, lhs, rhs } => {

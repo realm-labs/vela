@@ -15,6 +15,8 @@ pub(super) fn binary_literal_op(op: BinaryOp) -> Option<BinaryLiteralOp> {
         BinaryOp::GreaterEqual => Some(BinaryLiteralOp::GreaterEqual),
         BinaryOp::Equal
         | BinaryOp::NotEqual
+        | BinaryOp::IdentityEqual
+        | BinaryOp::IdentityNotEqual
         | BinaryOp::Range
         | BinaryOp::RangeInclusive
         | BinaryOp::Or
@@ -36,6 +38,10 @@ pub(super) fn non_logical_binary_instruction(
         BinaryOp::Rem => Some(UnlinkedInstructionKind::Rem { dst, lhs, rhs }),
         BinaryOp::Equal => Some(UnlinkedInstructionKind::Equal { dst, lhs, rhs }),
         BinaryOp::NotEqual => Some(UnlinkedInstructionKind::NotEqual { dst, lhs, rhs }),
+        BinaryOp::IdentityEqual => Some(UnlinkedInstructionKind::IdentityEqual { dst, lhs, rhs }),
+        BinaryOp::IdentityNotEqual => {
+            Some(UnlinkedInstructionKind::IdentityNotEqual { dst, lhs, rhs })
+        }
         BinaryOp::Less => Some(UnlinkedInstructionKind::Less { dst, lhs, rhs }),
         BinaryOp::LessEqual => Some(UnlinkedInstructionKind::LessEqual { dst, lhs, rhs }),
         BinaryOp::Greater => Some(UnlinkedInstructionKind::Greater { dst, lhs, rhs }),
@@ -107,6 +113,7 @@ pub(super) fn i64_compare_op(op: BinaryOp) -> Option<I64CompareOp> {
     match op {
         BinaryOp::Equal => Some(I64CompareOp::Equal),
         BinaryOp::NotEqual => Some(I64CompareOp::NotEqual),
+        BinaryOp::IdentityEqual | BinaryOp::IdentityNotEqual => None,
         BinaryOp::Less => Some(I64CompareOp::Less),
         BinaryOp::LessEqual => Some(I64CompareOp::LessEqual),
         BinaryOp::Greater => Some(I64CompareOp::Greater),

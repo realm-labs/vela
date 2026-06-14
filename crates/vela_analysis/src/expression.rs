@@ -174,6 +174,8 @@ fn binary_fact(op: BinaryOp, left: TypeFact, right: TypeFact) -> TypeFact {
         | BinaryOp::And
         | BinaryOp::Equal
         | BinaryOp::NotEqual
+        | BinaryOp::IdentityEqual
+        | BinaryOp::IdentityNotEqual
         | BinaryOp::Less
         | BinaryOp::LessEqual
         | BinaryOp::Greater

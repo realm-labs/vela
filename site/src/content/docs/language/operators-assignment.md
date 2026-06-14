@@ -20,9 +20,17 @@ Arithmetic operators are `+`, `-`, `*`, `/`, and `%`. They work on numeric
 values. The two sides must be compatible numeric types; Vela does not turn
 strings into numbers or mix incompatible numeric tags for you.
 
-Comparison operators are `==`, `!=`, `<`, `<=`, `>`, and `>=`. Integer
-arithmetic is checked. Overflow, unsigned underflow, and division by zero are
-errors.
+Comparison operators are `==`, `!=`, `<`, `<=`, `>`, and `>=`. Semantic object
+equality is opt-in: records, arrays, maps, sets, closures, iterators, and host
+refs do not become structurally comparable just because their fields or
+contents match. Use `===` and `!==` when you need reference identity for script
+objects or `HostRef` values. These identity operators do not read host state
+and do not use Map/Set key equivalence.
+
+Builtin leaf values such as `null`, booleans, chars, exact scalar tags,
+strings, bytes, and ranges compare by value. Numeric equality is tag-exact, so
+`1i64 == 1u64` is false. Integer arithmetic is checked. Overflow, unsigned
+underflow, and division by zero are errors.
 
 ```vela
 fn score(base: i64, streak: i64) -> i64 {

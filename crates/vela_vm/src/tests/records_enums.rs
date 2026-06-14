@@ -136,6 +136,81 @@ fn main() {
 }
 
 #[test]
+fn record_semantic_equality_requires_partial_eq() {
+    let program = compile_program_source(
+        SourceId::new(1),
+        r#"
+struct Reward { code: String, amount: i64 }
+
+fn main() {
+    let left = Reward { code: "xp", amount: 10 };
+    let right = Reward { code: "xp", amount: 10 };
+    return left == right;
+}
+"#,
+    )
+    .expect("compile record equality source");
+
+    let error = run_records_program(&program, "main", &[])
+        .expect_err("record equality should require PartialEq");
+    assert_eq!(
+        error.kind(),
+        VmErrorKind::TypeMismatch { operation: "equal" }
+    );
+    assert!(
+        error.source_span.is_some(),
+        "dynamic equality failure should carry the operator span"
+    );
+}
+
+#[test]
+fn record_identity_comparison_uses_reference_identity() {
+    let program = compile_program_source(
+        SourceId::new(1),
+        r#"
+struct Reward { code: String, amount: i64 }
+
+fn main() {
+    let left = Reward { code: "xp", amount: 10 };
+    let alias = left;
+    let right = Reward { code: "xp", amount: 10 };
+    return left === alias && left !== right;
+}
+"#,
+    )
+    .expect("compile record identity source");
+
+    assert_eq!(
+        run_records_program(&program, "main", &[]),
+        Ok(OwnedValue::Bool(true))
+    );
+}
+
+#[test]
+fn array_semantic_equality_is_not_implicit_structural_equality() {
+    let code = compile_function_source(
+        SourceId::new(1),
+        r#"
+fn main() {
+    return [1, 2] == [1, 2];
+}
+"#,
+        "main",
+    )
+    .expect("compile array equality source");
+
+    let error = run_linked_test_code(code).expect_err("array equality should require PartialEq");
+    assert_eq!(
+        error.kind(),
+        VmErrorKind::TypeMismatch { operation: "equal" }
+    );
+    assert!(
+        error.source_span.is_some(),
+        "dynamic equality failure should carry the operator span"
+    );
+}
+
+#[test]
 fn heap_execution_reads_record_fields_from_heap_records() {
     let program = compile_program_source(
         SourceId::new(1),

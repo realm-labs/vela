@@ -983,7 +983,12 @@ impl<'src> Lexer<'src> {
             '%' => Some(Symbol::Percent),
             '!' if self.peek_char() == Some('=') => {
                 self.bump_char();
-                Some(Symbol::BangEqual)
+                if self.peek_char() == Some('=') {
+                    self.bump_char();
+                    Some(Symbol::BangEqualEqual)
+                } else {
+                    Some(Symbol::BangEqual)
+                }
             }
             '!' => Some(Symbol::Bang),
             '=' if self.peek_char() == Some('>') => {
@@ -992,7 +997,12 @@ impl<'src> Lexer<'src> {
             }
             '=' if self.peek_char() == Some('=') => {
                 self.bump_char();
-                Some(Symbol::EqualEqual)
+                if self.peek_char() == Some('=') {
+                    self.bump_char();
+                    Some(Symbol::EqualEqualEqual)
+                } else {
+                    Some(Symbol::EqualEqual)
+                }
             }
             '=' => Some(Symbol::Equal),
             '<' if self.peek_char() == Some('=') => {

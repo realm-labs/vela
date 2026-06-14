@@ -88,7 +88,14 @@ use O(1) summary/stamp checks
 before falling back to budget-charged scans, and nested stamps are invalidated
 when child containers mutate through aliases. Mixed map extensions update key
 summaries for newly inserted keys even when the same batch also replaces
-existing values.
+existing values. The first object equality/order slice is implemented:
+ordinary `==`/`!=` no longer materialize detached `OwnedValue` graphs for
+implicit structural comparison, `===`/`!==` compare script-object and
+`HostRef` identity, array lookup/distinct helpers share runtime semantic
+equality, Map/Set `ValueKey` lookup remains separate from user comparison
+traits, and array sorting rejects float keys until an explicit total-float
+ordering API exists. Remaining comparison work is builtin trait dispatch and
+derive lowering for `PartialEq`/`Eq`/`PartialOrd`/`Ord`.
 
 Post-MVP performance remains a separate track: measure first, then optimize the
 non-JIT bytecode interpreter toward Lua 5.x comparable host-boundary workloads

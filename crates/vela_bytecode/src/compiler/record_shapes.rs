@@ -502,6 +502,8 @@ fn binary_shape(op: &BinaryOp, left: &Expr, right: &Expr) -> Option<ValueShape> 
         }
         BinaryOp::Equal
         | BinaryOp::NotEqual
+        | BinaryOp::IdentityEqual
+        | BinaryOp::IdentityNotEqual
         | BinaryOp::Less
         | BinaryOp::LessEqual
         | BinaryOp::Greater

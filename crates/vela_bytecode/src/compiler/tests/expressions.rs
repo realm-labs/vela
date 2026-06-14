@@ -53,6 +53,60 @@ fn main() {
 }
 
 #[test]
+fn compiler_lowers_identity_comparison_operators() {
+    let code = compile_function_source(
+        SourceId::new(1),
+        r#"
+fn main(left, right) {
+    return left === right || left !== right;
+}
+"#,
+        "main",
+    )
+    .expect("identity comparisons should compile");
+
+    assert!(code.instructions.iter().any(|instruction| {
+        matches!(
+            instruction.kind,
+            UnlinkedInstructionKind::IdentityEqual { .. }
+        )
+    }));
+    assert!(code.instructions.iter().any(|instruction| {
+        matches!(
+            instruction.kind,
+            UnlinkedInstructionKind::IdentityNotEqual { .. }
+        )
+    }));
+}
+
+#[test]
+fn compiler_inverts_negated_identity_equality_without_not_instruction() {
+    let code = compile_function_source(
+        SourceId::new(1),
+        r#"
+fn main(left, right) {
+    return !(left === right);
+}
+"#,
+        "main",
+    )
+    .expect("negated identity comparison should compile");
+
+    assert!(code.instructions.iter().any(|instruction| {
+        matches!(
+            instruction.kind,
+            UnlinkedInstructionKind::IdentityNotEqual { .. }
+        )
+    }));
+    assert!(
+        !code
+            .instructions
+            .iter()
+            .any(|instruction| matches!(instruction.kind, UnlinkedInstructionKind::Not { .. }))
+    );
+}
+
+#[test]
 fn compiler_lowers_logical_short_circuit_operators() {
     let code = compile_function_source(
         SourceId::new(1),

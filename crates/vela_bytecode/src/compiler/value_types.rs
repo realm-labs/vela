@@ -391,6 +391,8 @@ fn i64_binary_result_type(
         }
         BinaryOp::Equal
         | BinaryOp::NotEqual
+        | BinaryOp::IdentityEqual
+        | BinaryOp::IdentityNotEqual
         | BinaryOp::Less
         | BinaryOp::LessEqual
         | BinaryOp::Greater

@@ -343,6 +343,46 @@ fn main() {
 }
 
 #[test]
+fn array_sort_rejects_float_values_without_total_order() {
+    let source = r#"
+fn main() {
+    return [1.0, 0.5].sort();
+}
+"#;
+    let code = compile_function_source(SourceId::new(1), source, "main")
+        .expect("array float sort source should compile");
+
+    let error = run_linked_array_test_code(&Vm::new(), code)
+        .expect_err("array sort should reject float values without Ord");
+    assert_eq!(
+        error.kind(),
+        VmErrorKind::TypeMismatch {
+            operation: "method sort"
+        }
+    );
+}
+
+#[test]
+fn array_sort_by_rejects_float_keys_without_total_order() {
+    let source = r#"
+fn main() {
+    return [1, 2].sort_by(|value| if value == 1 { 1.0 } else { 0.5 });
+}
+"#;
+    let code = compile_function_source(SourceId::new(1), source, "main")
+        .expect("array float sort_by source should compile");
+
+    let error = run_linked_array_test_code(&Vm::new(), code)
+        .expect_err("array sort_by should reject float keys without Ord");
+    assert_eq!(
+        error.kind(),
+        VmErrorKind::TypeMismatch {
+            operation: "method sort_by"
+        }
+    );
+}
+
+#[test]
 fn array_sort_rejects_mixed_scalar_domains() {
     let source = r#"
 fn main() {

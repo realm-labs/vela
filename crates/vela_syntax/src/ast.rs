@@ -486,6 +486,8 @@ pub enum BinaryOp {
     And,
     Equal,
     NotEqual,
+    IdentityEqual,
+    IdentityNotEqual,
     Less,
     LessEqual,
     Greater,

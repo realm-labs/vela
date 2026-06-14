@@ -211,6 +211,7 @@ fn evaluate_binary_const(op: BinaryOp, left: Constant, right: Constant) -> Optio
         },
         BinaryOp::Equal => Some(Constant::Bool(left == right)),
         BinaryOp::NotEqual => Some(Constant::Bool(left != right)),
+        BinaryOp::IdentityEqual | BinaryOp::IdentityNotEqual => None,
         BinaryOp::Less => evaluate_numeric_compare_const(left, right, |a, b| a < b),
         BinaryOp::LessEqual => evaluate_numeric_compare_const(left, right, |a, b| a <= b),
         BinaryOp::Greater => evaluate_numeric_compare_const(left, right, |a, b| a > b),

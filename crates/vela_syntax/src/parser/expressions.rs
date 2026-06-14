@@ -44,6 +44,8 @@ impl Parser {
             &[
                 (Symbol::EqualEqual, BinaryOp::Equal),
                 (Symbol::BangEqual, BinaryOp::NotEqual),
+                (Symbol::EqualEqualEqual, BinaryOp::IdentityEqual),
+                (Symbol::BangEqualEqual, BinaryOp::IdentityNotEqual),
             ],
         )
     }

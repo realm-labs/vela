@@ -379,6 +379,20 @@ impl<'linker, 'registry> LinkContext<'linker, 'registry> {
                 lhs: *lhs,
                 rhs: *rhs,
             },
+            UnlinkedInstructionKind::IdentityEqual { dst, lhs, rhs } => {
+                InstructionKind::IdentityEqual {
+                    dst: *dst,
+                    lhs: *lhs,
+                    rhs: *rhs,
+                }
+            }
+            UnlinkedInstructionKind::IdentityNotEqual { dst, lhs, rhs } => {
+                InstructionKind::IdentityNotEqual {
+                    dst: *dst,
+                    lhs: *lhs,
+                    rhs: *rhs,
+                }
+            }
             UnlinkedInstructionKind::Less { dst, lhs, rhs } => InstructionKind::Less {
                 dst: *dst,
                 lhs: *lhs,

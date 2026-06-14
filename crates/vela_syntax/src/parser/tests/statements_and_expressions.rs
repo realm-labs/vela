@@ -18,6 +18,7 @@ fn on_kill(ctx, player, monster) {
         player.inventory.add(reward.item_id, reward.count);
     }
 }
+
 "#,
     );
 
@@ -56,6 +57,48 @@ fn on_kill(ctx, player, monster) {
         items[1].kind,
         ExprKind::Binary {
             op: BinaryOp::Add,
+            ..
+        }
+    ));
+}
+
+#[test]
+fn parses_identity_comparison_expressions() {
+    let parsed = parse_source(
+        source_id(),
+        r#"
+fn main(a, b, c) {
+    return a === b || a !== c;
+}
+"#,
+    );
+
+    assert!(parsed.diagnostics.is_empty(), "{:?}", parsed.diagnostics);
+    let ItemKind::Function(function) = &parsed.items[0].kind else {
+        panic!("expected function item");
+    };
+    let StmtKind::Return(Some(expr)) = &function.body.statements[0].kind else {
+        panic!("expected return expression");
+    };
+    let ExprKind::Binary {
+        op: BinaryOp::Or,
+        left,
+        right,
+    } = &expr.kind
+    else {
+        panic!("expected logical or expression");
+    };
+    assert!(matches!(
+        left.kind,
+        ExprKind::Binary {
+            op: BinaryOp::IdentityEqual,
+            ..
+        }
+    ));
+    assert!(matches!(
+        right.kind,
+        ExprKind::Binary {
+            op: BinaryOp::IdentityNotEqual,
             ..
         }
     ));

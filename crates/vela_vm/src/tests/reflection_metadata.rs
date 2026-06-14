@@ -196,7 +196,7 @@ fn main() {
         && reflect::get(access, "required_permissions")[0] == "game::admin"
         && access_permissions[0] == "game::admin"
         && reflect::get(direct_access, "required_permissions")[0] == "game::admin"
-        && reflect::required_permissions(public_function) == [];
+        && reflect::required_permissions(public_function).len() == 0;
 }
 "#,
     )

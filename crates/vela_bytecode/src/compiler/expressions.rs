@@ -603,7 +603,11 @@ impl Compiler<'_, '_> {
         expr: &Expr,
     ) -> CompileResult<Option<Register>> {
         let ExprKind::Binary {
-            op: equality_op @ (BinaryOp::Equal | BinaryOp::NotEqual),
+            op:
+                equality_op @ (BinaryOp::Equal
+                | BinaryOp::NotEqual
+                | BinaryOp::IdentityEqual
+                | BinaryOp::IdentityNotEqual),
             left,
             right,
         } = &expr.kind
@@ -614,6 +618,8 @@ impl Compiler<'_, '_> {
         let inverse = match equality_op {
             BinaryOp::Equal => BinaryOp::NotEqual,
             BinaryOp::NotEqual => BinaryOp::Equal,
+            BinaryOp::IdentityEqual => BinaryOp::IdentityNotEqual,
+            BinaryOp::IdentityNotEqual => BinaryOp::IdentityEqual,
             _ => unreachable!("binary equality was matched above"),
         };
         self.compile_binary(inverse, span, left, right).map(Some)

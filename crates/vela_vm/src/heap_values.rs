@@ -305,13 +305,6 @@ pub(crate) fn value_to_owned(
     }
 }
 
-pub(crate) fn materialize_value(
-    value: &Value,
-    heap: Option<&HeapExecution<'_>>,
-) -> VmResult<OwnedValue> {
-    value_to_owned(value, heap)
-}
-
 #[allow(dead_code)]
 fn heap_value_to_owned(
     value: &HeapValue,
@@ -480,106 +473,6 @@ fn store_value_in_heap(
     }
 }
 
-pub(crate) fn values_equal(
-    lhs: &Value,
-    rhs: &Value,
-    heap: Option<&HeapExecution<'_>>,
-) -> VmResult<bool> {
-    if let Some(equal) = simple_values_equal(lhs, rhs, heap) {
-        return Ok(equal);
-    }
-    let lhs = materialize_value(lhs, heap)?;
-    let rhs = materialize_value(rhs, heap)?;
-    Ok(lhs == rhs)
-}
-
-pub(crate) fn simple_values_equal(
-    lhs: &Value,
-    rhs: &Value,
-    heap: Option<&HeapExecution<'_>>,
-) -> Option<bool> {
-    scalar_values_equal(lhs, rhs)
-        .or_else(|| heap_string_values_equal(lhs, rhs, heap))
-        .or_else(|| heap_bytes_values_equal(lhs, rhs, heap))
-}
-
-fn scalar_values_equal(lhs: &Value, rhs: &Value) -> Option<bool> {
-    match (lhs, rhs) {
-        (Value::Null, Value::Null) => Some(true),
-        (Value::Bool(lhs), Value::Bool(rhs)) => Some(lhs == rhs),
-        (lhs, rhs) if lhs.is_scalar() && rhs.is_scalar() => {
-            Some(lhs.as_scalar() == rhs.as_scalar())
-        }
-        (
-            Value::Null
-            | Value::Bool(_)
-            | Value::I8(_)
-            | Value::I16(_)
-            | Value::I32(_)
-            | Value::I64(_)
-            | Value::U8(_)
-            | Value::U16(_)
-            | Value::U32(_)
-            | Value::U64(_)
-            | Value::F32(_)
-            | Value::F64(_),
-            Value::Null
-            | Value::Bool(_)
-            | Value::I8(_)
-            | Value::I16(_)
-            | Value::I32(_)
-            | Value::I64(_)
-            | Value::U8(_)
-            | Value::U16(_)
-            | Value::U32(_)
-            | Value::U64(_)
-            | Value::F32(_)
-            | Value::F64(_),
-        ) => Some(false),
-        _ => None,
-    }
-}
-
-fn heap_string_values_equal(
-    lhs: &Value,
-    rhs: &Value,
-    heap: Option<&HeapExecution<'_>>,
-) -> Option<bool> {
-    let (Value::HeapRef(lhs), Value::HeapRef(rhs)) = (lhs, rhs) else {
-        return None;
-    };
-    let heap = heap?;
-    let lhs = match heap.heap.get(*lhs)? {
-        HeapValue::String(value) => value,
-        _ => return None,
-    };
-    let rhs = match heap.heap.get(*rhs)? {
-        HeapValue::String(value) => value,
-        _ => return None,
-    };
-    Some(lhs == rhs)
-}
-
-fn heap_bytes_values_equal(
-    lhs: &Value,
-    rhs: &Value,
-    heap: Option<&HeapExecution<'_>>,
-) -> Option<bool> {
-    let (Value::HeapRef(lhs), Value::HeapRef(rhs)) = (lhs, rhs) else {
-        return None;
-    };
-    let heap = heap?;
-    let lhs = match heap.heap.get(*lhs)? {
-        HeapValue::Bytes(value) => value,
-        _ => return None,
-    };
-    let rhs = match heap.heap.get(*rhs)? {
-        HeapValue::Bytes(value) => value,
-        _ => return None,
-    };
-    Some(lhs == rhs)
-}
-
 fn type_error(operation: &'static str) -> VmError {
     VmError::new(VmErrorKind::TypeMismatch { operation })
 }
@@ -605,27 +498,6 @@ mod tests {
     use crate::heap::ScriptHeap;
 
     use super::*;
-
-    #[test]
-    fn heap_string_equality_compares_borrowed_string_slots() {
-        let mut heap = ScriptHeap::new();
-        let gold = Value::HeapRef(heap.allocate(HeapValue::String("gold".to_owned())));
-        let gold_again = Value::HeapRef(heap.allocate(HeapValue::String("gold".to_owned())));
-        let xp = Value::HeapRef(heap.allocate(HeapValue::String("xp".to_owned())));
-        let array = Value::HeapRef(heap.allocate(HeapValue::Array(Vec::new())));
-        let heap = HeapExecution::new(&mut heap);
-
-        assert_eq!(
-            heap_string_values_equal(&gold, &gold_again, Some(&heap)),
-            Some(true)
-        );
-        assert_eq!(
-            heap_string_values_equal(&gold, &xp, Some(&heap)),
-            Some(false)
-        );
-        assert_eq!(heap_string_values_equal(&gold, &array, Some(&heap)), None);
-        assert_eq!(heap_string_values_equal(&gold, &gold_again, None), None);
-    }
 
     #[test]
     fn owned_bytes_round_trip_through_heap_value() {
@@ -669,26 +541,5 @@ mod tests {
             heap_execution.heap.get(reference),
             Some(&HeapValue::Bytes(vec![b'a', b'b', b'c']))
         );
-    }
-
-    #[test]
-    fn heap_bytes_equality_compares_borrowed_byte_slots() {
-        let mut heap = ScriptHeap::new();
-        let bytes = Value::HeapRef(heap.allocate(HeapValue::Bytes(vec![1, 2, 3])));
-        let bytes_again = Value::HeapRef(heap.allocate(HeapValue::Bytes(vec![1, 2, 3])));
-        let other = Value::HeapRef(heap.allocate(HeapValue::Bytes(vec![3])));
-        let string = Value::HeapRef(heap.allocate(HeapValue::String("123".to_owned())));
-        let heap = HeapExecution::new(&mut heap);
-
-        assert_eq!(
-            heap_bytes_values_equal(&bytes, &bytes_again, Some(&heap)),
-            Some(true)
-        );
-        assert_eq!(
-            heap_bytes_values_equal(&bytes, &other, Some(&heap)),
-            Some(false)
-        );
-        assert_eq!(heap_bytes_values_equal(&bytes, &string, Some(&heap)), None);
-        assert_eq!(heap_bytes_values_equal(&bytes, &bytes_again, None), None);
     }
 }

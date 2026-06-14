@@ -654,6 +654,16 @@ pub enum InstructionKind {
         lhs: Register,
         rhs: Register,
     },
+    IdentityEqual {
+        dst: Register,
+        lhs: Register,
+        rhs: Register,
+    },
+    IdentityNotEqual {
+        dst: Register,
+        lhs: Register,
+        rhs: Register,
+    },
     Less {
         dst: Register,
         lhs: Register,

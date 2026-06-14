@@ -10,7 +10,10 @@ growth is still checked by the VM's execution and collection budgets.
 ## Lookup And Mutation
 
 Use `len`, `is_empty`, `first`, `last`, `contains`, and `index_of` for basic
-queries. Methods that may not find a value return `Option`.
+queries. `contains` and `index_of` use the same semantic equality boundary as
+`==`; they compare builtin leaf values by value and reject objects that do not
+provide `PartialEq` semantics. Methods that may not find a value return
+`Option`.
 
 ```vela
 fn main() {
@@ -38,6 +41,9 @@ fn main() {
 
 Array helpers such as `slice`, `reverse`, `distinct`, `sort`, `min`, `max`,
 `sum`, `group_by`, and `sort_by` materialize a result immediately.
+`distinct` also uses semantic equality, not deep structural comparison.
+`sort` and `sort_by` require total-order keys; floats are rejected until Vela
+adds an explicit total-float ordering API.
 `group_by` returns a value-keyed `Map<K, Array<T>>`, so callback keys follow
 the same `ValueKey` policy as ordinary map keys.
 

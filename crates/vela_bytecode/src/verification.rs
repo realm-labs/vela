@@ -400,6 +400,8 @@ fn verify_instruction(
         | UnlinkedInstructionKind::Rem { dst, lhs, rhs }
         | UnlinkedInstructionKind::Equal { dst, lhs, rhs }
         | UnlinkedInstructionKind::NotEqual { dst, lhs, rhs }
+        | UnlinkedInstructionKind::IdentityEqual { dst, lhs, rhs }
+        | UnlinkedInstructionKind::IdentityNotEqual { dst, lhs, rhs }
         | UnlinkedInstructionKind::Less { dst, lhs, rhs }
         | UnlinkedInstructionKind::LessEqual { dst, lhs, rhs }
         | UnlinkedInstructionKind::Greater { dst, lhs, rhs }

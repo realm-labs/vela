@@ -5,11 +5,8 @@ fn runs_compiled_array_contains_method() {
     let source = r#"
 fn main() {
     let values = [10, 20, 30];
-    let rewards = [Reward { item_id: "gold", count: 2 }];
-    let expected = Reward { item_id: "gold", count: 2 };
     if values.contains(20)
         && !values.contains(99)
-        && rewards.contains(expected)
         && ![].contains("missing")
     {
         return 1;
@@ -31,10 +28,8 @@ fn managed_heap_execution_runs_array_contains_method() {
     let source = r#"
 fn main() {
     let tags = ["daily", "quest", "raid"];
-    let nested = [["daily", "quest"], ["raid"]];
     if tags.contains("quest")
         && !tags.contains("bonus")
-        && nested.contains(["daily", "quest"])
     {
         return tags.join(",");
     }
@@ -57,11 +52,8 @@ fn runs_compiled_array_index_of_method() {
     let source = r#"
 fn main() {
     let values = [10, 20, 30, 20];
-    let rewards = [Reward { item_id: "gold", count: 2 }];
-    let expected = Reward { item_id: "gold", count: 2 };
     if option::unwrap_or(values.index_of(20), -1) == 1
         && option::unwrap_or(values.index_of(99), -1) == -1
-        && option::unwrap_or(rewards.index_of(expected), -1) == 0
         && option::unwrap_or([].index_of("missing"), -1) == -1
     {
         return 1;
@@ -83,10 +75,8 @@ fn managed_heap_execution_runs_array_index_of_method() {
     let source = r#"
 fn main() {
     let tags = ["daily", "quest", "raid"];
-    let nested = [["daily", "quest"], ["raid"]];
     if option::unwrap_or(tags.index_of("quest"), -1) == 1
         && option::unwrap_or(tags.index_of("bonus"), -1) == -1
-        && option::unwrap_or(nested.index_of(["raid"]), -1) == 1
     {
         return tags[option::unwrap_or(tags.index_of("raid"), 0)];
     }
@@ -131,24 +121,71 @@ fn main() {
 }
 
 #[test]
+fn array_lookup_methods_reject_objects_without_partial_eq() {
+    let source = r#"
+fn main() {
+    let rewards = [Reward { item_id: "gold", count: 2 }];
+    let expected = Reward { item_id: "gold", count: 2 };
+    return rewards.contains(expected);
+}
+"#;
+    let code = compile_function_source(SourceId::new(1), source, "main")
+        .expect("array contains source should compile");
+
+    let error = run_linked_array_test_code(&Vm::new(), code)
+        .expect_err("record contains should require PartialEq");
+    assert_eq!(
+        error.kind(),
+        VmErrorKind::TypeMismatch { operation: "equal" }
+    );
+
+    let source = r#"
+fn main() {
+    let nested = [["daily", "quest"], ["raid"]];
+    return nested.index_of(["raid"]);
+}
+"#;
+    let code = compile_function_source(SourceId::new(1), source, "main")
+        .expect("array index_of source should compile");
+
+    let error = run_linked_array_test_code(&Vm::new(), code)
+        .expect_err("nested array index_of should require PartialEq");
+    assert_eq!(
+        error.kind(),
+        VmErrorKind::TypeMismatch { operation: "equal" }
+    );
+}
+
+#[test]
+fn array_distinct_rejects_objects_without_partial_eq() {
+    let source = r#"
+fn main() {
+    let nested = [["daily", "quest"], ["daily", "quest"], ["raid"]];
+    return nested.distinct();
+}
+"#;
+    let code = compile_function_source(SourceId::new(1), source, "main")
+        .expect("array distinct source should compile");
+
+    let error = run_linked_array_test_code(&Vm::new(), code)
+        .expect_err("nested array distinct should require PartialEq");
+    assert_eq!(
+        error.kind(),
+        VmErrorKind::TypeMismatch { operation: "equal" }
+    );
+}
+
+#[test]
 fn runs_compiled_array_distinct_method() {
     let source = r#"
 fn main() {
-    let rewards = [
-        Reward { item_id: "gold", count: 2 },
-        Reward { item_id: "xp", count: 1 },
-        Reward { item_id: "gold", count: 2 },
-    ];
     let unique = [3, 1, 3, 2, 1].distinct();
-    let unique_rewards = rewards.distinct();
     if unique.len() == 3
         && unique[0] == 3
         && unique[1] == 1
         && unique[2] == 2
-        && rewards.len() == 3
-        && unique_rewards.len() == 2
     {
-        return unique_rewards[0].item_id;
+        return "ok";
     }
     return "";
 }
@@ -157,7 +194,7 @@ fn main() {
         .expect("array distinct source should compile");
 
     let result = run_linked_array_test_code(&Vm::new(), code).expect("array distinct should run");
-    assert_eq!(result, OwnedValue::String("gold".to_owned()));
+    assert_eq!(result, OwnedValue::String("ok".to_owned()));
 }
 
 #[test]
@@ -166,10 +203,8 @@ fn managed_heap_execution_runs_array_distinct_method() {
 fn main() {
     let scores = [3, 1, 3, 2, 1];
     let tags = ["raid", "quest", "raid", "daily", "quest"];
-    let nested = [["daily", "quest"], ["daily", "quest"], ["raid"]];
     let unique_scores = scores.distinct();
     let unique_tags = tags.distinct();
-    let unique_nested = nested.distinct();
     if scores.len() == 5
         && unique_scores.len() == 3
         && unique_scores[0] == 3
@@ -177,7 +212,6 @@ fn main() {
         && unique_scores[2] == 2
         && tags.len() == 5
         && unique_tags.join(",") == "raid,quest,daily"
-        && unique_nested.len() == 2
     {
         return unique_scores.sum();
     }

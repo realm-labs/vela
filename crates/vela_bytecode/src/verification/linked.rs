@@ -187,6 +187,8 @@ fn verify_linked_instruction(
         | InstructionKind::Rem { dst, lhs, rhs }
         | InstructionKind::Equal { dst, lhs, rhs }
         | InstructionKind::NotEqual { dst, lhs, rhs }
+        | InstructionKind::IdentityEqual { dst, lhs, rhs }
+        | InstructionKind::IdentityNotEqual { dst, lhs, rhs }
         | InstructionKind::Less { dst, lhs, rhs }
         | InstructionKind::LessEqual { dst, lhs, rhs }
         | InstructionKind::Greater { dst, lhs, rhs }

@@ -261,14 +261,13 @@ enum SortKeyKind {
 
 enum SortKey {
     Int(i64),
-    Float(f64),
     String(String),
 }
 
 impl SortKey {
     fn kind(&self) -> SortKeyKind {
         match self {
-            Self::Int(_) | Self::Float(_) => SortKeyKind::Numeric,
+            Self::Int(_) => SortKeyKind::Numeric,
             Self::String(_) => SortKeyKind::String,
         }
     }
@@ -276,18 +275,8 @@ impl SortKey {
     fn compare(&self, other: &Self) -> Ordering {
         match (self, other) {
             (Self::Int(left), Self::Int(right)) => left.cmp(right),
-            (Self::Int(left), Self::Float(right)) => {
-                (*left as f64).partial_cmp(right).unwrap_or(Ordering::Equal)
-            }
-            (Self::Float(left), Self::Int(right)) => left
-                .partial_cmp(&(*right as f64))
-                .unwrap_or(Ordering::Equal),
-            (Self::Float(left), Self::Float(right)) => {
-                left.partial_cmp(right).unwrap_or(Ordering::Equal)
-            }
             (Self::String(left), Self::String(right)) => left.cmp(right),
-            (Self::Int(_) | Self::Float(_), Self::String(_))
-            | (Self::String(_), Self::Int(_) | Self::Float(_)) => Ordering::Equal,
+            (Self::Int(_), Self::String(_)) | (Self::String(_), Self::Int(_)) => Ordering::Equal,
         }
     }
 }
@@ -299,7 +288,6 @@ fn sort_key(
 ) -> VmResult<SortKey> {
     match value {
         Value::I64(value) => Ok(SortKey::Int(*value)),
-        Value::F64(value) if value.is_finite() => Ok(SortKey::Float(*value)),
         Value::HeapRef(reference) => match heap.and_then(|heap| heap.heap.get(*reference)) {
             Some(HeapValue::String(value)) => Ok(SortKey::String(value.clone())),
             _ => type_error(operation),
@@ -315,7 +303,6 @@ fn sort_key_from_runtime_value(
 ) -> VmResult<SortKey> {
     match value {
         Value::I64(value) => Ok(SortKey::Int(*value)),
-        Value::F64(value) if value.is_finite() => Ok(SortKey::Float(*value)),
         Value::HeapRef(reference) => match heap.and_then(|heap| heap.heap.get(*reference)) {
             Some(HeapValue::String(value)) => Ok(SortKey::String(value.clone())),
             _ => type_error(operation),

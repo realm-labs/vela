@@ -327,6 +327,8 @@ fn opcode_label(kind: &InstructionKind) -> &'static str {
         InstructionKind::Rem { .. } => "Rem",
         InstructionKind::Equal { .. } => "Equal",
         InstructionKind::NotEqual { .. } => "NotEqual",
+        InstructionKind::IdentityEqual { .. } => "IdentityEqual",
+        InstructionKind::IdentityNotEqual { .. } => "IdentityNotEqual",
         InstructionKind::Less { .. } => "Less",
         InstructionKind::LessEqual { .. } => "LessEqual",
         InstructionKind::Greater { .. } => "Greater",
