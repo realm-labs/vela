@@ -3,7 +3,7 @@ use crate::script_set::ScriptSet;
 use crate::value_key::ValueKey;
 use crate::{
     ExecutionBudget, HeapExecution, StandardMethodInlineCacheTarget, Value, VmError, VmErrorKind,
-    VmResult, allocate_heap_value,
+    VmResult, allocate_heap_value, collection_mutation::check_collection_len,
 };
 
 pub(in crate::standard_method_cache) fn call_cached_set_materialization(
@@ -168,6 +168,9 @@ fn make_set(
     budget: &mut Option<&mut ExecutionBudget>,
     operation: &'static str,
 ) -> VmResult<Value> {
+    check_collection_len("set", 0, value.len(), budget.as_deref(), |budget| {
+        budget.collection_limits().max_set_len
+    })?;
     let Some(heap) = heap.as_deref_mut() else {
         return Err(VmError::new(VmErrorKind::TypeMismatch { operation }));
     };

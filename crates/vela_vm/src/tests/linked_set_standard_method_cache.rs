@@ -1,5 +1,6 @@
 use super::linked_standard_method_cache_support::*;
 use super::*;
+use crate::budget::CollectionLimits;
 use crate::value::Value as RuntimeValue;
 use vela_stdlib_runtime::{StdFunctionImplementation, stdlib_function_runtime_bindings};
 
@@ -162,6 +163,51 @@ fn linked_standard_value_method_caches_set_union_target() {
         StandardMethodInlineCacheTarget::Union,
         OwnedValue::set([OwnedValue::i64(2), OwnedValue::i64(4), OwnedValue::i64(6)]),
     );
+}
+
+#[test]
+fn linked_cached_set_union_respects_set_collection_limit() {
+    let (program, site, dispatch, method_id) =
+        linked_set_combination_cache_program("union", &[2, 4], &[4, 6]);
+    let caches = RecordingMethodCaches::new(1);
+    assert_eq!(
+        run_linked_set_cache_owned_program(&program, &caches),
+        Ok(OwnedValue::set([
+            OwnedValue::i64(2),
+            OwnedValue::i64(4),
+            OwnedValue::i64(6),
+        ]))
+    );
+    assert_set_cache_entry(
+        &caches,
+        site,
+        dispatch,
+        method_id,
+        StandardMethodInlineCacheTarget::Union,
+    );
+
+    let mut heap = ScriptHeap::new();
+    let mut heap_execution = HeapExecution::new(&mut heap);
+    let mut budget = ExecutionBudget::unbounded().with_collection_limits(CollectionLimits {
+        max_array_len: usize::MAX,
+        max_map_entries: usize::MAX,
+        max_set_len: 2,
+    });
+    let error = run_linked_set_cache_program_with_budget(
+        &program,
+        &caches,
+        &mut heap_execution,
+        &mut budget,
+    )
+    .expect_err("cached set union should respect set collection limits");
+
+    assert!(matches!(
+        error.kind_ref(),
+        VmErrorKind::CollectionLimitExceeded {
+            collection: "set",
+            limit: 2
+        }
+    ));
 }
 
 #[test]
@@ -642,8 +688,17 @@ fn run_linked_set_cache_program(
     caches: &RecordingMethodCaches,
     heap_execution: &mut HeapExecution<'_>,
 ) -> VmResult<RuntimeValue> {
-    let code = main_code(program);
     let mut budget = ExecutionBudget::unbounded();
+    run_linked_set_cache_program_with_budget(program, caches, heap_execution, &mut budget)
+}
+
+fn run_linked_set_cache_program_with_budget(
+    program: &vela_bytecode::LinkedProgram,
+    caches: &RecordingMethodCaches,
+    heap_execution: &mut HeapExecution<'_>,
+    budget: &mut ExecutionBudget,
+) -> VmResult<RuntimeValue> {
+    let code = main_code(program);
     Vm::new().with_standard_natives().execute_linked_call(
         crate::linked_execution::LinkedExecutionCall {
             code,
@@ -658,7 +713,7 @@ fn run_linked_set_cache_program(
         },
         None,
         Some(heap_execution),
-        Some(&mut budget),
+        Some(budget),
     )
 }
 
