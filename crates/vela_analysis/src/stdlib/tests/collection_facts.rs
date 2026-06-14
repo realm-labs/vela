@@ -405,7 +405,7 @@ fn iterator_methods_expose_item_and_callback_facts_without_generics() {
     let collect_map = stdlib_method_fact(&iterator, "collect_map", None).expect("collect_map fact");
     assert_eq!(
         collect_map.returns,
-        TypeFact::map(TypeFact::STRING, TypeFact::Any)
+        TypeFact::map(TypeFact::Any, TypeFact::Any)
     );
     assert_eq!(iterator.display_name(), "Iterator");
 }

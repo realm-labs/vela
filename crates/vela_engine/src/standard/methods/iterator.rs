@@ -71,7 +71,7 @@ const ITERATOR_METHODS: &[MethodSpec] = &[
         "collect_set",
         &[],
         "set",
-        "Consumes the iterator and collects remaining unique scalar values into a set.",
+        "Consumes the iterator and collects remaining unique value-keyed values into a set.",
     ),
     MethodSpec::new(
         "collect_map",

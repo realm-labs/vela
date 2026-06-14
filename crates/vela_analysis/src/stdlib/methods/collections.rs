@@ -603,7 +603,7 @@ pub(super) fn iterator_method_fact(
         "collect_map" => Some(StdlibMethodFact::new(
             receiver,
             "collect_map",
-            TypeFact::map(TypeFact::STRING, TypeFact::Any),
+            TypeFact::map(TypeFact::Any, TypeFact::Any),
         )),
         _ => None,
     }

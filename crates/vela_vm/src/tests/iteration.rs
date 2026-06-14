@@ -600,6 +600,42 @@ fn main() {
 }
 
 #[test]
+fn iterator_collect_map_preserves_value_keyed_entries() {
+    let code = compile_function_source(
+        SourceId::new(1),
+        r#"
+struct Bucket {
+    id: i64
+}
+
+fn main() {
+    let even = Bucket { id: 0 };
+    let odd = Bucket { id: 1 };
+    let numeric = [
+        MapEntry { key: 1, value: 10 },
+        MapEntry { key: 2, value: 20 },
+    ].iter().collect_map();
+    let identity = [
+        MapEntry { key: even, value: 100 },
+        MapEntry { key: odd, value: 200 },
+    ].iter().collect_map();
+    if numeric[1] == 10 && numeric[2] == 20 && identity[even] == 100 && identity[odd] == 200 {
+        return numeric[2] + identity[odd];
+    }
+    return 0;
+}
+"#,
+        "main",
+    )
+    .expect("compile iterator collect_map value-keyed source");
+
+    assert_eq!(
+        run_linked_test_code(code),
+        Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(220)))
+    );
+}
+
+#[test]
 fn iterator_collect_array_respects_array_collection_limit() {
     let program = compile_program_source(
         SourceId::new(1),

@@ -64,7 +64,8 @@ non-string serde key preservation, key-preserving reflection map reads,
 hot-reload ABI string comparison, and
 execution-budget charging for deep guard scans are implemented. `Array.group_by`
 now materializes value-keyed maps from callback keys instead of requiring
-string keys. Set add/remove
+string keys, and iterator `collect_map` analysis now exposes erased value-keyed
+`Map<Any, Any>` results rather than assuming string keys. Set add/remove
 mutation paths now route through the `ValueKey`-indexed container entry instead
 of scanning stored values, and `set::from_array` now lowers to a heap-aware
 runtime constructor so identity key elements do not pass through detached
