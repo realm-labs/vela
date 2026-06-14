@@ -16,9 +16,9 @@ use crate::{
 };
 use crate::{
     DynamicMethodInlineCacheEntry, DynamicMethodInlineCacheTarget, DynamicReceiverGuard,
-    MethodInlineCacheEntry, MethodInlineCacheTarget, StandardMethodReceiver, VmBytecodeProfiler,
-    VmError, VmErrorKind, VmInlineCaches, callback_method_dispatch, host_access,
-    script_builtin_methods, script_function_calls,
+    EqualityRuntime, MethodInlineCacheEntry, MethodInlineCacheTarget, StandardMethodReceiver,
+    VmBytecodeProfiler, VmError, VmErrorKind, VmInlineCaches, array_methods,
+    callback_method_dispatch, host_access, script_builtin_methods, script_function_calls,
 };
 
 use crate::script_methods::{
@@ -352,8 +352,10 @@ pub(crate) fn dispatch_linked_method_call(
             standard_method,
         } => {
             if let Some(result) = linked_standard_value_method_result(
+                vm,
                 &context,
                 frame,
+                host,
                 heap,
                 budget,
                 LinkedStandardValueMethodCall {
@@ -565,6 +567,30 @@ fn dispatch_linked_dynamic_method_call_inner(
             standard_method,
         } => {
             let values_storage = dynamic_value_args_from_linked_arguments(frame, call.args)?;
+            let contextual_result = {
+                let caller_roots = CallerRoots::for_frame(frame, heap.as_deref());
+                let mut runtime = EqualityRuntime {
+                    vm,
+                    program: None,
+                    linked_program: Some(context.program),
+                    host: host.as_deref_mut(),
+                    heap: heap.as_deref_mut(),
+                    budget: budget.as_deref_mut(),
+                    caller_roots,
+                    inline_caches: context.inline_caches,
+                    bytecode_profiler: context.bytecode_profiler,
+                };
+                contextual_array_standard_value_method(
+                    &receiver,
+                    method_id,
+                    standard_method,
+                    values_storage.as_slice(),
+                    &mut runtime,
+                )
+            };
+            if let Some(result) = contextual_result {
+                return frame.write(call.dst, result?);
+            }
             if let Some(standard_method) = standard_method.or_else(|| {
                 script_builtin_methods::standard_cache_entry(method_id, &receiver, heap.as_deref())
             }) {
@@ -1016,8 +1042,10 @@ struct LinkedStandardValueMethodCall<'a> {
 }
 
 fn linked_standard_value_method_result(
+    vm: &Vm,
     context: &LinkedScriptMethodCallContext<'_>,
     frame: &CallFrame,
+    host: &mut Option<&mut HostExecution<'_>>,
     heap: &mut Option<&mut HeapExecution<'_>>,
     budget: &mut Option<&mut ExecutionBudget>,
     call: LinkedStandardValueMethodCall<'_>,
@@ -1026,6 +1054,50 @@ fn linked_standard_value_method_result(
         Ok(receiver) => receiver,
         Err(error) => return Some(Err(error)),
     };
+    let resolved_standard_method = call.standard_method.or_else(|| {
+        script_builtin_methods::standard_cache_entry(call.method_id, &receiver, heap.as_deref())
+    });
+    let contextual_result = {
+        let caller_roots = CallerRoots::for_frame(frame, heap.as_deref());
+        let mut runtime = EqualityRuntime {
+            vm,
+            program: None,
+            linked_program: Some(context.program),
+            host: host.as_deref_mut(),
+            heap: heap.as_deref_mut(),
+            budget: budget.as_deref_mut(),
+            caller_roots,
+            inline_caches: context.inline_caches,
+            bytecode_profiler: context.bytecode_profiler,
+        };
+        contextual_array_standard_value_method(
+            &receiver,
+            call.method_id,
+            resolved_standard_method,
+            call.values,
+            &mut runtime,
+        )
+    };
+    if let Some(result) = contextual_result {
+        if call.standard_method.is_none()
+            && let Some(site) = context.cache_site
+            && let Some(caches) = context.inline_caches
+            && let Some(standard_method) = resolved_standard_method
+        {
+            caches.set_method_dispatch(
+                site,
+                MethodInlineCacheEntry {
+                    dispatch: call.dispatch,
+                    debug_name: call.debug_name,
+                    target: MethodInlineCacheTarget::Value {
+                        method_id: call.method_id,
+                        standard_method: Some(standard_method),
+                    },
+                },
+            );
+        }
+        return Some(result);
+    }
     if let Some(standard_method) = call.standard_method
         && script_builtin_methods::standard_cache_entry_matches_method_id(
             call.method_id,
@@ -1066,6 +1138,51 @@ fn linked_standard_value_method_result(
         );
     }
     Some(result)
+}
+
+fn contextual_array_standard_value_method(
+    receiver: &Value,
+    method_id: MethodId,
+    standard_method: Option<crate::StandardMethodInlineCacheEntry>,
+    args: &[Value],
+    runtime: &mut EqualityRuntime<'_, '_, '_>,
+) -> Option<VmResult<Value>> {
+    if !array_methods::is_array(receiver, runtime.heap.as_deref()) {
+        return None;
+    }
+    let ids = crate::std_method_ids::std_method_ids();
+    let target = standard_method.map(|method| method.target);
+    let is_contains = method_id == ids.array_contains
+        || matches!(
+            target,
+            Some(crate::StandardMethodInlineCacheTarget::Contains)
+        );
+    let is_index_of = method_id == ids.array_index_of
+        || matches!(
+            target,
+            Some(crate::StandardMethodInlineCacheTarget::IndexOf)
+        );
+    let is_distinct = method_id == ids.array_distinct
+        || matches!(
+            target,
+            Some(crate::StandardMethodInlineCacheTarget::Distinct)
+        );
+    if !(is_contains || is_index_of || is_distinct) {
+        return None;
+    }
+    if is_contains {
+        return Some(
+            array_methods::contains_with_equality(receiver, args, runtime).map(Value::Bool),
+        );
+    }
+    if is_index_of {
+        return Some(array_methods::index_of_with_equality(
+            receiver, args, runtime,
+        ));
+    }
+    Some(array_methods::distinct_with_equality(
+        receiver, args, runtime,
+    ))
 }
 
 struct LinkedCallbackValueMethodCall<'a> {

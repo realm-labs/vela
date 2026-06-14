@@ -6,10 +6,11 @@ use crate::callback_method_dispatch::{self, CallbackMethodDispatch};
 use crate::heap::HeapValue;
 use crate::method_runtime::CallerRoots;
 use crate::script_builtin_methods;
+use crate::std_method_ids::std_method_ids;
 use crate::string_method_dispatch;
 use crate::{
-    ExecutionBudget, HeapExecution, HostExecution, SmallStorage, Value, Vm, VmBytecodeProfiler,
-    VmError, VmErrorKind, VmInlineCaches, VmResult,
+    EqualityRuntime, ExecutionBudget, HeapExecution, HostExecution, SmallStorage, Value, Vm,
+    VmBytecodeProfiler, VmError, VmErrorKind, VmInlineCaches, VmResult, array_methods,
 };
 
 pub(crate) struct ScriptMethodDispatch<'a, 'host, 'heap> {
@@ -31,6 +32,9 @@ pub(crate) fn call_method(
     args: &[Value],
     mut dispatch: ScriptMethodDispatch<'_, '_, '_>,
 ) -> VmResult<Value> {
+    if let Some(result) = contextual_array_method_by_name(receiver, method, args, &mut dispatch) {
+        return result;
+    }
     if let Some(result) = value_method_id.and_then(|method_id| {
         script_builtin_methods::call_by_id(
             receiver,
@@ -96,6 +100,9 @@ pub(crate) fn call_method_id(
     args: &[Value],
     mut dispatch: ScriptMethodDispatch<'_, '_, '_>,
 ) -> VmResult<Value> {
+    if let Some(result) = contextual_array_method_by_id(receiver, method_id, args, &mut dispatch) {
+        return result;
+    }
     if let Some(result) = script_builtin_methods::call_by_id(
         receiver,
         method_id,
@@ -139,6 +146,9 @@ pub(crate) fn call_readonly_method_without_callbacks(
     args: &[Value],
     heap: Option<&HeapExecution<'_>>,
 ) -> Option<VmResult<Value>> {
+    if method == "contains" && array_methods::is_array(receiver, heap) {
+        return None;
+    }
     if let Some(result) = value_method_id.and_then(|method_id| {
         script_builtin_methods::call_readonly_by_id(receiver, method_id, args, heap)
     }) {
@@ -158,6 +168,9 @@ pub(crate) fn call_non_mutating_method(
     args: &[Value],
     mut dispatch: ScriptMethodDispatch<'_, '_, '_>,
 ) -> Option<VmResult<Value>> {
+    if let Some(result) = contextual_array_method_by_name(receiver, method, args, &mut dispatch) {
+        return Some(result);
+    }
     if let Some(result) = value_method_id.and_then(|method_id| {
         script_builtin_methods::call_readonly_by_id(
             receiver,
@@ -197,6 +210,65 @@ pub(crate) fn call_non_mutating_method(
     }
 
     script_builtin_methods::call_readonly(receiver, method, args, dispatch.heap.as_deref())
+}
+
+fn contextual_array_method_by_name(
+    receiver: &Value,
+    method: &str,
+    args: &[Value],
+    dispatch: &mut ScriptMethodDispatch<'_, '_, '_>,
+) -> Option<VmResult<Value>> {
+    let ids = std_method_ids();
+    let method_id = match method {
+        "contains" => ids.array_contains,
+        "index_of" => ids.array_index_of,
+        "distinct" => ids.array_distinct,
+        _ => return None,
+    };
+    contextual_array_method_by_id(receiver, method_id, args, dispatch)
+}
+
+fn contextual_array_method_by_id(
+    receiver: &Value,
+    method_id: MethodId,
+    args: &[Value],
+    dispatch: &mut ScriptMethodDispatch<'_, '_, '_>,
+) -> Option<VmResult<Value>> {
+    if !array_methods::is_array(receiver, dispatch.heap.as_deref()) {
+        return None;
+    }
+    let ids = std_method_ids();
+    let mut runtime = EqualityRuntime {
+        vm: dispatch.vm,
+        program: dispatch.program,
+        linked_program: dispatch.linked_program,
+        host: dispatch.host.as_deref_mut(),
+        heap: dispatch.heap.as_deref_mut(),
+        budget: dispatch.budget.as_deref_mut(),
+        caller_roots: dispatch.caller_roots,
+        inline_caches: dispatch.inline_caches,
+        bytecode_profiler: dispatch.bytecode_profiler,
+    };
+    if method_id == ids.array_contains {
+        return Some(
+            array_methods::contains_with_equality(receiver, args, &mut runtime).map(Value::Bool),
+        );
+    }
+    if method_id == ids.array_index_of {
+        return Some(array_methods::index_of_with_equality(
+            receiver,
+            args,
+            &mut runtime,
+        ));
+    }
+    if method_id == ids.array_distinct {
+        return Some(array_methods::distinct_with_equality(
+            receiver,
+            args,
+            &mut runtime,
+        ));
+    }
+    None
 }
 
 fn call_script_impl_method(

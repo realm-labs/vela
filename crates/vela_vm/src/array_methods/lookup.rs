@@ -1,7 +1,7 @@
 use crate::heap::HeapValue;
 use crate::{
-    ExecutionBudget, HeapExecution, Value, VmError, VmErrorKind, VmResult, stored_runtime_value,
-    values_equal,
+    EqualityRuntime, ExecutionBudget, HeapExecution, Value, VmError, VmErrorKind, VmResult,
+    stored_runtime_value, values_equal, values_equal_with_traits,
 };
 
 use super::{expect_arity, option_value, type_error};
@@ -35,6 +35,21 @@ pub(crate) fn contains(
     array_contains(receiver, &args[0], heap)
 }
 
+pub(crate) fn contains_with_equality(
+    receiver: &Value,
+    args: &[Value],
+    runtime: &mut EqualityRuntime<'_, '_, '_>,
+) -> VmResult<bool> {
+    expect_arity("contains", args, 1)?;
+    let values = super::array_values(receiver, runtime.heap.as_deref(), "method contains")?;
+    for value in values {
+        if values_equal_with_traits(&value, &args[0], runtime)? {
+            return Ok(true);
+        }
+    }
+    Ok(false)
+}
+
 pub(crate) fn index_of(
     receiver: &Value,
     args: &[Value],
@@ -43,6 +58,21 @@ pub(crate) fn index_of(
 ) -> VmResult<Value> {
     expect_arity("index_of", args, 1)?;
     array_index_of(receiver, &args[0], heap, budget)
+}
+
+pub(crate) fn index_of_with_equality(
+    receiver: &Value,
+    args: &[Value],
+    runtime: &mut EqualityRuntime<'_, '_, '_>,
+) -> VmResult<Value> {
+    expect_arity("index_of", args, 1)?;
+    let values = super::array_values(receiver, runtime.heap.as_deref(), "method index_of")?;
+    for (index, value) in values.iter().enumerate() {
+        if values_equal_with_traits(value, &args[0], runtime)? {
+            return index_option(index, &mut runtime.heap, &mut runtime.budget);
+        }
+    }
+    option_value("None", None, &mut runtime.heap, &mut runtime.budget)
 }
 
 fn first_value(

@@ -97,8 +97,7 @@ equality, array lookup/distinct helpers share runtime semantic equality,
 Map/Set `ValueKey` lookup remains separate from user comparison traits, and
 array sorting rejects float keys until an explicit total-float ordering API
 exists. Remaining comparison work is `Eq`, `PartialOrd`, `Ord`, derive
-lowering, static comparison diagnostics, and collection helper dispatch for
-user `PartialEq` where callbacks/runtime context must be threaded.
+lowering, and static comparison diagnostics.
 
 Post-MVP performance remains a separate track: measure first, then optimize the
 non-JIT bytecode interpreter toward Lua 5.x comparable host-boundary workloads

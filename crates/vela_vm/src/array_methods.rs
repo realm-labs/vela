@@ -7,10 +7,12 @@ mod transform;
 
 pub(crate) use aggregation::{group_by, sum, sum_values};
 pub(crate) use higher_order::{all, any, count, filter, find, map};
-pub(crate) use lookup::{contains, first, index_of, last};
+pub(crate) use lookup::{
+    contains, contains_with_equality, first, index_of, index_of_with_equality, last,
+};
 pub(crate) use mutation::{clear, extend, insert, pop, push, remove_at};
 pub(crate) use ordering::{max, min, sort, sort_by};
-pub(crate) use transform::{distinct, join, reverse, slice};
+pub(crate) use transform::{distinct, distinct_with_equality, join, reverse, slice};
 
 use crate::collection_mutation::check_collection_len;
 use crate::heap::HeapValue;

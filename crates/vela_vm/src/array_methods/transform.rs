@@ -1,5 +1,8 @@
 use crate::heap::HeapValue;
-use crate::{ExecutionBudget, HeapExecution, Value, VmResult, stored_runtime_value, values_equal};
+use crate::{
+    EqualityRuntime, ExecutionBudget, HeapExecution, Value, VmResult, stored_runtime_value,
+    values_equal, values_equal_with_traits,
+};
 
 use super::{
     array_values, expect_arity, index_out_of_bounds, index_value, make_array_value,
@@ -49,6 +52,30 @@ pub(crate) fn distinct(
         distinct.push(value);
     }
     make_array_value(distinct, heap, budget, "method distinct")
+}
+
+pub(crate) fn distinct_with_equality(
+    receiver: &Value,
+    args: &[Value],
+    runtime: &mut EqualityRuntime<'_, '_, '_>,
+) -> VmResult<Value> {
+    expect_arity("distinct", args, 0)?;
+    let values = array_values(receiver, runtime.heap.as_deref(), "method distinct")?;
+    let mut distinct = Vec::new();
+    'values: for value in values {
+        for existing in &distinct {
+            if values_equal_with_traits(existing, &value, runtime)? {
+                continue 'values;
+            }
+        }
+        distinct.push(value);
+    }
+    make_array_value(
+        distinct,
+        &mut runtime.heap,
+        &mut runtime.budget,
+        "method distinct",
+    )
 }
 
 pub(crate) fn reverse(

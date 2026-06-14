@@ -176,6 +176,46 @@ fn main() {
 }
 
 #[test]
+fn array_lookup_and_distinct_use_builtin_partial_eq_impl() {
+    let source = r#"
+struct Reward { code: String, amount: i64 }
+impl PartialEq for Reward {
+    fn eq(self, other: Reward) -> bool {
+        return self.code == other.code;
+    }
+}
+
+fn main() {
+    let rewards = [
+        Reward { code: "xp", amount: 10 },
+        Reward { code: "xp", amount: 99 },
+        Reward { code: "gold", amount: 1 },
+    ];
+    let expected_xp = Reward { code: "xp", amount: 0 };
+    let expected_gold = Reward { code: "gold", amount: 999 };
+    let unique = rewards.distinct();
+    if rewards.contains(expected_xp)
+        && option::unwrap_or(rewards.index_of(expected_gold), -1) == 2
+        && unique.len() == 2
+        && unique[0].amount == 10
+        && unique[1].code == "gold"
+    {
+        return 1;
+    }
+    return 0;
+}
+"#;
+    let program = compile_program_source(SourceId::new(1), source)
+        .expect("array PartialEq method source should compile");
+
+    let mut vm = Vm::new();
+    vm.register_standard_natives();
+    let result = run_linked_array_test_program(&vm, &program, "main")
+        .expect("array PartialEq methods should run");
+    assert_eq!(result, OwnedValue::Scalar(vela_common::ScalarValue::I64(1)));
+}
+
+#[test]
 fn runs_compiled_array_distinct_method() {
     let source = r#"
 fn main() {
