@@ -238,6 +238,38 @@ fn script_arg_conversions_support_set_values() {
 }
 
 #[test]
+fn script_arg_conversions_support_non_string_map_keys() {
+    let ordered = BTreeMap::from([(1_i64, "one"), (2_i64, "two")]);
+    assert_eq!(
+        ordered.clone().into_script_arg(),
+        OwnedValue::map([(1_i64, "one"), (2_i64, "two")])
+    );
+    assert_eq!(
+        BTreeMap::<i64, String>::from_script_arg(&OwnedValue::map([
+            (1_i64, "one"),
+            (2_i64, "two"),
+        ])),
+        Ok(BTreeMap::from([
+            (1_i64, "one".to_owned()),
+            (2_i64, "two".to_owned()),
+        ]))
+    );
+
+    let hash = HashMap::from([(1_i64, "one"), (2_i64, "two")]);
+    assert_eq!(
+        HashMap::<i64, String>::from_script_arg(&hash.clone().into_script_arg()),
+        Ok(HashMap::from([
+            (1_i64, "one".to_owned()),
+            (2_i64, "two".to_owned()),
+        ]))
+    );
+    assert!(matches!(
+        BTreeMap::<i64, String>::from_script_arg(&OwnedValue::map([("not-int", "bad")])),
+        Err(error) if matches!(error.kind(), VmErrorKind::TypeMismatch { operation: "i64" })
+    ));
+}
+
+#[test]
 fn args_macro_converts_rust_values_and_host_refs() {
     let host_ref = HostRef::new(HostTypeId::new(1), HostObjectId::new(42), 7);
     let proxy = PathProxy::from_diagnostic_path(HostPath::new(host_ref).field(FieldId::new(9)));
@@ -271,20 +303,11 @@ fn args_macro_converts_rust_values_and_host_refs() {
                 OwnedValue::String("a".to_owned()),
                 OwnedValue::String("b".to_owned())
             ]),
-            OwnedValue::Map(
-                [(
-                    "key".to_owned(),
-                    OwnedValue::Scalar(vela_common::ScalarValue::I64(9))
-                )]
-                .into()
-            ),
-            OwnedValue::Map(
-                [(
-                    "hash".to_owned(),
-                    OwnedValue::Scalar(vela_common::ScalarValue::I64(11))
-                )]
-                .into()
-            ),
+            OwnedValue::map([("key", OwnedValue::Scalar(vela_common::ScalarValue::I64(9)))]),
+            OwnedValue::map([(
+                "hash",
+                OwnedValue::Scalar(vela_common::ScalarValue::I64(11))
+            )]),
             OwnedValue::HostRef(host_ref),
             OwnedValue::PathProxy(proxy),
         ]

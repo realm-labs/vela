@@ -4,7 +4,7 @@ use vela_host::value::HostValue;
 use vela_reflect as reflect;
 
 use crate::heap::HeapValue;
-use crate::owned_value::OwnedValue;
+use crate::owned_value::{OwnedMapEntry, OwnedValue};
 use crate::script_object::ScriptFields;
 use crate::{HeapExecution, Value, VmError, VmErrorKind, VmResult};
 
@@ -22,7 +22,12 @@ pub(crate) fn value_to_reflect(
         OwnedValue::Map(values) => {
             let values = values
                 .iter()
-                .map(|(key, value)| Ok((key.clone(), value_to_reflect(value, operation)?)))
+                .map(|entry| {
+                    Ok((
+                        owned_string_key(&entry.key, operation)?,
+                        value_to_reflect(&entry.value, operation)?,
+                    ))
+                })
                 .collect::<VmResult<BTreeMap<_, _>>>()?;
             Ok(reflect::value::ReflectValue::Record(values))
         }
@@ -182,8 +187,8 @@ pub(crate) fn value_from_reflect(value: reflect::value::ReflectValue) -> VmResul
         reflect::value::ReflectValue::Record(values) => {
             let values = values
                 .into_iter()
-                .map(|(key, value)| Ok((key, value_from_reflect(value)?)))
-                .collect::<VmResult<BTreeMap<_, _>>>()?;
+                .map(|(key, value)| Ok(OwnedMapEntry::new(key, value_from_reflect(value)?)))
+                .collect::<VmResult<Vec<_>>>()?;
             Ok(OwnedValue::Map(values))
         }
         reflect::value::ReflectValue::Set(values) => values
@@ -238,6 +243,13 @@ fn owned_to_host(value: &OwnedValue, operation: &'static str) -> VmResult<HostVa
         | OwnedValue::Range(_)
         | OwnedValue::PathProxy(_)
         | OwnedValue::Iterator(_) => Err(type_error(operation)),
+    }
+}
+
+fn owned_string_key(value: &OwnedValue, operation: &'static str) -> VmResult<String> {
+    match value {
+        OwnedValue::String(value) => Ok(value.clone()),
+        _ => Err(type_error(operation)),
     }
 }
 

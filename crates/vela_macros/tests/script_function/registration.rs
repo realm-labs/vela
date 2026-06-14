@@ -195,19 +195,16 @@ fn main(scores) {
         run_linked_program(
             &engine,
             &program,
-            &[OwnedValue::Map(
-                [
-                    (
-                        "daily".to_owned(),
-                        OwnedValue::Scalar(vela_common::ScalarValue::I64(3))
-                    ),
-                    (
-                        "weekly".to_owned(),
-                        OwnedValue::Scalar(vela_common::ScalarValue::I64(7))
-                    ),
-                ]
-                .into(),
-            )],
+            &[OwnedValue::map([
+                (
+                    "daily",
+                    OwnedValue::Scalar(vela_common::ScalarValue::I64(3))
+                ),
+                (
+                    "weekly",
+                    OwnedValue::Scalar(vela_common::ScalarValue::I64(7))
+                ),
+            ],)],
         ),
         Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(10))),
     );
@@ -232,37 +229,31 @@ fn main(scores) {
         run_linked_program(
             &engine,
             &program,
-            &[OwnedValue::Map(
-                [
-                    (
-                        "daily".to_owned(),
-                        OwnedValue::Scalar(vela_common::ScalarValue::I64(3))
-                    ),
-                    (
-                        "weekly".to_owned(),
-                        OwnedValue::Scalar(vela_common::ScalarValue::I64(7))
-                    ),
-                ]
-                .into(),
-            )],
-        ),
-        Ok(OwnedValue::Map(
-            [
+            &[OwnedValue::map([
                 (
-                    "daily".to_owned(),
+                    "daily",
                     OwnedValue::Scalar(vela_common::ScalarValue::I64(3))
                 ),
                 (
-                    "total".to_owned(),
-                    OwnedValue::Scalar(vela_common::ScalarValue::I64(10))
-                ),
-                (
-                    "weekly".to_owned(),
+                    "weekly",
                     OwnedValue::Scalar(vela_common::ScalarValue::I64(7))
                 ),
-            ]
-            .into(),
-        )),
+            ],)],
+        ),
+        Ok(OwnedValue::map([
+            (
+                "daily",
+                OwnedValue::Scalar(vela_common::ScalarValue::I64(3))
+            ),
+            (
+                "total",
+                OwnedValue::Scalar(vela_common::ScalarValue::I64(10))
+            ),
+            (
+                "weekly",
+                OwnedValue::Scalar(vela_common::ScalarValue::I64(7))
+            ),
+        ],)),
     );
 }
 

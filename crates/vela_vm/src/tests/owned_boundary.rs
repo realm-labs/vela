@@ -12,7 +12,8 @@ fn identity(value) {
 "#,
     )
     .expect("compile identity program");
-    let value = OwnedValue::Map(BTreeMap::from([
+    let value = OwnedValue::map([
+        ("enabled".to_owned(), OwnedValue::Bool(true)),
         (
             "items".to_owned(),
             OwnedValue::Array(vec![
@@ -20,8 +21,28 @@ fn identity(value) {
                 OwnedValue::Scalar(vela_common::ScalarValue::I64(3)),
             ]),
         ),
-        ("enabled".to_owned(), OwnedValue::Bool(true)),
-    ]));
+    ]);
+    let linked = link_test_program(&program);
+
+    let result = Vm::new()
+        .run_linked_program(&linked, "identity", std::slice::from_ref(&value))
+        .expect("run public owned boundary");
+
+    assert_eq!(result, value);
+}
+
+#[test]
+fn public_program_entrypoint_preserves_owned_non_string_map_keys() {
+    let program = compile_program_source(
+        SourceId::new(1),
+        r#"
+fn identity(value) {
+    return value;
+}
+"#,
+    )
+    .expect("compile identity program");
+    let value = OwnedValue::map([(1_i64, "one"), (2_i64, "two")]);
     let linked = link_test_program(&program);
 
     let result = Vm::new()

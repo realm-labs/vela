@@ -102,17 +102,15 @@ fn runs_compiled_map_literal_source() {
         "main",
     )
     .expect("compile map literal source");
-    let mut expected = BTreeMap::new();
-    expected.insert(
-        "level".into(),
-        OwnedValue::Scalar(vela_common::ScalarValue::I64(2)),
-    );
-    expected.insert(
-        "exp".into(),
-        OwnedValue::Scalar(vela_common::ScalarValue::I64(15)),
-    );
+    let expected = OwnedValue::map([
+        ("exp", OwnedValue::Scalar(vela_common::ScalarValue::I64(15))),
+        (
+            "level",
+            OwnedValue::Scalar(vela_common::ScalarValue::I64(2)),
+        ),
+    ]);
 
-    assert_eq!(run_linked_test_code(code), Ok(OwnedValue::Map(expected)));
+    assert_eq!(run_linked_test_code(code), Ok(expected));
 }
 
 #[test]

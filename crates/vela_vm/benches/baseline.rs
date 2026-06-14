@@ -1059,10 +1059,10 @@ fn value_checksum(value: &OwnedValue) -> u64 {
         OwnedValue::Array(values) | OwnedValue::Set(values) => values
             .iter()
             .fold(0x05, |checksum, value| mix(checksum, value_checksum(value))),
-        OwnedValue::Map(values) => values.iter().fold(0x06, |checksum, (key, value)| {
+        OwnedValue::Map(values) => values.iter().fold(0x06, |checksum, entry| {
             mix(
-                mix(checksum, bytes_checksum(key.as_bytes())),
-                value_checksum(value),
+                mix(checksum, value_checksum(&entry.key)),
+                value_checksum(&entry.value),
             )
         }),
         OwnedValue::Record { type_name, fields } => fields.values().fold(

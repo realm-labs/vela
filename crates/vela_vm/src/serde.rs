@@ -1,4 +1,3 @@
-use std::collections::BTreeMap;
 use std::fmt;
 
 use ::serde::Serialize;
@@ -12,7 +11,7 @@ use ::serde::ser::{
 };
 
 use crate::error::{VmError, VmErrorKind, VmResult};
-use crate::owned_value::OwnedValue;
+use crate::owned_value::{OwnedMapEntry, OwnedValue};
 use crate::script_object::ScriptFields;
 use vela_common::ScalarValue;
 
@@ -241,7 +240,7 @@ impl ser::Serializer for OwnedValueSerializer {
 
     fn serialize_map(self, len: Option<usize>) -> Result<Self::SerializeMap> {
         Ok(MapSerializer {
-            entries: BTreeMap::new(),
+            entries: Vec::with_capacity(len.unwrap_or(0)),
             next_key: None,
             len,
         })
@@ -361,8 +360,8 @@ impl SerializeTupleVariant for TupleVariantSerializer {
 }
 
 struct MapSerializer {
-    entries: BTreeMap<String, OwnedValue>,
-    next_key: Option<String>,
+    entries: Vec<OwnedMapEntry>,
+    next_key: Option<OwnedValue>,
     len: Option<usize>,
 }
 
@@ -374,7 +373,7 @@ impl SerializeMap for MapSerializer {
     where
         T: Serialize + ?Sized,
     {
-        self.next_key = Some(key.serialize(MapKeySerializer)?);
+        self.next_key = Some(key.serialize(OwnedValueSerializer)?);
         Ok(())
     }
 
@@ -386,8 +385,10 @@ impl SerializeMap for MapSerializer {
             .next_key
             .take()
             .ok_or_else(|| Error::custom("map value serialized before key"))?;
-        self.entries
-            .insert(key, value.serialize(OwnedValueSerializer)?);
+        self.entries.push(OwnedMapEntry::new(
+            key,
+            value.serialize(OwnedValueSerializer)?,
+        ));
         Ok(())
     }
 
@@ -396,9 +397,10 @@ impl SerializeMap for MapSerializer {
         K: Serialize + ?Sized,
         V: Serialize + ?Sized,
     {
-        let key = key.serialize(MapKeySerializer)?;
-        self.entries
-            .insert(key, value.serialize(OwnedValueSerializer)?);
+        self.entries.push(OwnedMapEntry::new(
+            key.serialize(OwnedValueSerializer)?,
+            value.serialize(OwnedValueSerializer)?,
+        ));
         Ok(())
     }
 
@@ -463,168 +465,6 @@ impl SerializeStructVariant for StructVariantSerializer {
             self.variant,
             self.fields,
         ))
-    }
-}
-
-struct MapKeySerializer;
-
-impl ser::Serializer for MapKeySerializer {
-    type Ok = String;
-    type Error = Error;
-    type SerializeSeq = ser::Impossible<String, Error>;
-    type SerializeTuple = ser::Impossible<String, Error>;
-    type SerializeTupleStruct = ser::Impossible<String, Error>;
-    type SerializeTupleVariant = ser::Impossible<String, Error>;
-    type SerializeMap = ser::Impossible<String, Error>;
-    type SerializeStruct = ser::Impossible<String, Error>;
-    type SerializeStructVariant = ser::Impossible<String, Error>;
-
-    fn serialize_str(self, v: &str) -> Result<Self::Ok> {
-        Ok(v.to_owned())
-    }
-
-    fn serialize_bool(self, _v: bool) -> Result<Self::Ok> {
-        Err(Error::custom("Vela maps require string serde keys"))
-    }
-
-    fn serialize_i8(self, _v: i8) -> Result<Self::Ok> {
-        Err(Error::custom("Vela maps require string serde keys"))
-    }
-
-    fn serialize_i16(self, _v: i16) -> Result<Self::Ok> {
-        Err(Error::custom("Vela maps require string serde keys"))
-    }
-
-    fn serialize_i32(self, _v: i32) -> Result<Self::Ok> {
-        Err(Error::custom("Vela maps require string serde keys"))
-    }
-
-    fn serialize_i64(self, _v: i64) -> Result<Self::Ok> {
-        Err(Error::custom("Vela maps require string serde keys"))
-    }
-
-    fn serialize_u8(self, _v: u8) -> Result<Self::Ok> {
-        Err(Error::custom("Vela maps require string serde keys"))
-    }
-
-    fn serialize_u16(self, _v: u16) -> Result<Self::Ok> {
-        Err(Error::custom("Vela maps require string serde keys"))
-    }
-
-    fn serialize_u32(self, _v: u32) -> Result<Self::Ok> {
-        Err(Error::custom("Vela maps require string serde keys"))
-    }
-
-    fn serialize_u64(self, _v: u64) -> Result<Self::Ok> {
-        Err(Error::custom("Vela maps require string serde keys"))
-    }
-
-    fn serialize_f32(self, _v: f32) -> Result<Self::Ok> {
-        Err(Error::custom("Vela maps require string serde keys"))
-    }
-
-    fn serialize_f64(self, _v: f64) -> Result<Self::Ok> {
-        Err(Error::custom("Vela maps require string serde keys"))
-    }
-
-    fn serialize_char(self, v: char) -> Result<Self::Ok> {
-        Ok(v.to_string())
-    }
-
-    fn serialize_bytes(self, _v: &[u8]) -> Result<Self::Ok> {
-        Err(Error::custom("Vela maps require string serde keys"))
-    }
-
-    fn serialize_none(self) -> Result<Self::Ok> {
-        Err(Error::custom("Vela maps require string serde keys"))
-    }
-
-    fn serialize_some<T>(self, _value: &T) -> Result<Self::Ok>
-    where
-        T: Serialize + ?Sized,
-    {
-        Err(Error::custom("Vela maps require string serde keys"))
-    }
-
-    fn serialize_unit(self) -> Result<Self::Ok> {
-        Err(Error::custom("Vela maps require string serde keys"))
-    }
-
-    fn serialize_unit_struct(self, _name: &'static str) -> Result<Self::Ok> {
-        Err(Error::custom("Vela maps require string serde keys"))
-    }
-
-    fn serialize_unit_variant(
-        self,
-        _name: &'static str,
-        _variant_index: u32,
-        variant: &'static str,
-    ) -> Result<Self::Ok> {
-        Ok(variant.to_owned())
-    }
-
-    fn serialize_newtype_struct<T>(self, _name: &'static str, _value: &T) -> Result<Self::Ok>
-    where
-        T: Serialize + ?Sized,
-    {
-        Err(Error::custom("Vela maps require string serde keys"))
-    }
-
-    fn serialize_newtype_variant<T>(
-        self,
-        _name: &'static str,
-        _variant_index: u32,
-        variant: &'static str,
-        _value: &T,
-    ) -> Result<Self::Ok>
-    where
-        T: Serialize + ?Sized,
-    {
-        Ok(variant.to_owned())
-    }
-
-    fn serialize_seq(self, _len: Option<usize>) -> Result<Self::SerializeSeq> {
-        Err(Error::custom("Vela maps require string serde keys"))
-    }
-
-    fn serialize_tuple(self, _len: usize) -> Result<Self::SerializeTuple> {
-        Err(Error::custom("Vela maps require string serde keys"))
-    }
-
-    fn serialize_tuple_struct(
-        self,
-        _name: &'static str,
-        _len: usize,
-    ) -> Result<Self::SerializeTupleStruct> {
-        Err(Error::custom("Vela maps require string serde keys"))
-    }
-
-    fn serialize_tuple_variant(
-        self,
-        _name: &'static str,
-        _variant_index: u32,
-        _variant: &'static str,
-        _len: usize,
-    ) -> Result<Self::SerializeTupleVariant> {
-        Err(Error::custom("Vela maps require string serde keys"))
-    }
-
-    fn serialize_map(self, _len: Option<usize>) -> Result<Self::SerializeMap> {
-        Err(Error::custom("Vela maps require string serde keys"))
-    }
-
-    fn serialize_struct(self, _name: &'static str, _len: usize) -> Result<Self::SerializeStruct> {
-        Err(Error::custom("Vela maps require string serde keys"))
-    }
-
-    fn serialize_struct_variant(
-        self,
-        _name: &'static str,
-        _variant_index: u32,
-        _variant: &'static str,
-        _len: usize,
-    ) -> Result<Self::SerializeStructVariant> {
-        Err(Error::custom("Vela maps require string serde keys"))
     }
 }
 
@@ -973,16 +813,19 @@ impl<'de> SeqAccess<'de> for ValueSeqAccess<'de> {
 }
 
 struct ValueMapAccess<'de> {
-    entries: Vec<(&'de str, &'de OwnedValue)>,
+    entries: Vec<ValueMapEntry<'de>>,
     next_value: Option<&'de OwnedValue>,
 }
 
 impl<'de> ValueMapAccess<'de> {
-    fn from_map(values: &'de BTreeMap<String, OwnedValue>) -> Self {
+    fn from_map(values: &'de [OwnedMapEntry]) -> Self {
         Self {
             entries: values
                 .iter()
-                .map(|(key, value)| (key.as_str(), value))
+                .map(|entry| ValueMapEntry {
+                    key: ValueMapKey::Owned(&entry.key),
+                    value: &entry.value,
+                })
                 .collect(),
             next_value: None,
         }
@@ -990,10 +833,26 @@ impl<'de> ValueMapAccess<'de> {
 
     fn from_fields(fields: &'de ScriptFields<OwnedValue>) -> Self {
         Self {
-            entries: fields.iter().collect(),
+            entries: fields
+                .iter()
+                .map(|(key, value)| ValueMapEntry {
+                    key: ValueMapKey::String(key),
+                    value,
+                })
+                .collect(),
             next_value: None,
         }
     }
+}
+
+struct ValueMapEntry<'de> {
+    key: ValueMapKey<'de>,
+    value: &'de OwnedValue,
+}
+
+enum ValueMapKey<'de> {
+    String(&'de str),
+    Owned(&'de OwnedValue),
 }
 
 impl<'de> MapAccess<'de> for ValueMapAccess<'de> {
@@ -1003,11 +862,14 @@ impl<'de> MapAccess<'de> for ValueMapAccess<'de> {
     where
         K: de::DeserializeSeed<'de>,
     {
-        let Some((key, value)) = self.entries.pop() else {
+        let Some(entry) = self.entries.pop() else {
             return Ok(None);
         };
-        self.next_value = Some(value);
-        seed.deserialize(key.into_deserializer()).map(Some)
+        self.next_value = Some(entry.value);
+        match entry.key {
+            ValueMapKey::String(key) => seed.deserialize(key.into_deserializer()).map(Some),
+            ValueMapKey::Owned(key) => seed.deserialize(key).map(Some),
+        }
     }
 
     fn next_value_seed<V>(&mut self, seed: V) -> Result<V::Value>

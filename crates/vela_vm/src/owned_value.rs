@@ -1,4 +1,3 @@
-use std::collections::BTreeMap;
 use std::sync::Arc;
 
 use vela_bytecode::{Constant, UnlinkedCodeObject};
@@ -22,7 +21,7 @@ pub enum OwnedValue {
     String(String),
     Bytes(Vec<u8>),
     Array(Vec<OwnedValue>),
-    Map(BTreeMap<String, OwnedValue>),
+    Map(Vec<OwnedMapEntry>),
     Set(Vec<OwnedValue>),
     Record {
         type_name: String,
@@ -62,15 +61,10 @@ impl OwnedValue {
     #[must_use]
     pub fn map<K, V>(entries: impl IntoIterator<Item = (K, V)>) -> Self
     where
-        K: Into<String>,
+        K: Into<Self>,
         V: Into<Self>,
     {
-        Self::Map(
-            entries
-                .into_iter()
-                .map(|(key, value)| (key.into(), value.into()))
-                .collect(),
-        )
+        Self::Map(entries.into_iter().map(OwnedMapEntry::from_pair).collect())
     }
 
     #[must_use]
@@ -169,7 +163,13 @@ impl OwnedValue {
             Self::Map(entries) => {
                 let entries = entries
                     .iter()
-                    .map(|(key, value)| format!("{key}: {}", value.display_text()))
+                    .map(|entry| {
+                        format!(
+                            "{}: {}",
+                            entry.key.display_text(),
+                            entry.value.display_text()
+                        )
+                    })
                     .collect::<Vec<_>>();
                 format!("{{{}}}", entries.join(", "))
             }
@@ -238,7 +238,7 @@ macro_rules! owned_array {
 macro_rules! owned_map {
     {} => {
         $crate::owned_value::OwnedValue::map(
-            Vec::<(String, $crate::owned_value::OwnedValue)>::new()
+            Vec::<($crate::owned_value::OwnedValue, $crate::owned_value::OwnedValue)>::new()
         )
     };
     {$($key:expr => $value:expr),* $(,)?} => {
@@ -289,6 +289,30 @@ macro_rules! owned_enum {
             vec![$(($field, $crate::owned_value::OwnedValue::from($value))),*],
         )
     };
+}
+
+#[derive(Clone, Debug, PartialEq)]
+pub struct OwnedMapEntry {
+    pub key: OwnedValue,
+    pub value: OwnedValue,
+}
+
+impl OwnedMapEntry {
+    #[must_use]
+    pub fn new(key: impl Into<OwnedValue>, value: impl Into<OwnedValue>) -> Self {
+        Self {
+            key: key.into(),
+            value: value.into(),
+        }
+    }
+
+    fn from_pair<K, V>((key, value): (K, V)) -> Self
+    where
+        K: Into<OwnedValue>,
+        V: Into<OwnedValue>,
+    {
+        Self::new(key, value)
+    }
 }
 
 #[derive(Clone, Debug, PartialEq)]
@@ -358,8 +382,8 @@ impl From<&Constant> for OwnedValue {
             Constant::Map(entries) => Self::Map(
                 entries
                     .iter()
-                    .map(|(key, value)| (key.clone(), Self::from(value)))
-                    .collect::<BTreeMap<_, _>>(),
+                    .map(|(key, value)| OwnedMapEntry::new(key.clone(), Self::from(value)))
+                    .collect(),
             ),
         }
     }

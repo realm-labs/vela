@@ -11,7 +11,7 @@ use crate::error::{VmError, VmErrorKind, VmResult};
 use crate::heap::HeapValue;
 use crate::heap_execution::HeapExecution;
 use crate::option_result::std_enum_identity_for_names;
-use crate::owned_value::{OwnedClosureValue, OwnedIteratorState, OwnedValue};
+use crate::owned_value::{OwnedClosureValue, OwnedIteratorState, OwnedMapEntry, OwnedValue};
 use crate::script_map::ScriptMap;
 use crate::script_object::ScriptFields;
 use crate::script_set::ScriptSet;
@@ -214,10 +214,14 @@ pub(crate) fn owned_to_value(
         OwnedValue::Map(values) => {
             let values = values
                 .into_iter()
-                .map(|(key, value)| Ok((key, owned_to_value(value, heap, budget.as_deref_mut())?)))
-                .collect::<VmResult<BTreeMap<_, _>>>()?;
-            let values =
-                script_map_from_string_entries(values, heap, budget.as_deref_mut(), "owned map")?;
+                .map(|entry| {
+                    Ok((
+                        owned_to_value(entry.key, heap, budget.as_deref_mut())?,
+                        owned_to_value(entry.value, heap, budget.as_deref_mut())?,
+                    ))
+                })
+                .collect::<VmResult<Vec<_>>>()?;
+            let values = ScriptMap::from_entries(values, Some(&*heap), "owned map")?;
             allocate_heap_value(HeapValue::Map(values), heap, budget)
         }
         OwnedValue::Record { type_name, fields } => {
@@ -340,12 +344,9 @@ fn heap_value_to_owned(
             .entries()
             .map(|entry| {
                 let key = value_to_owned(&entry.key, heap)?;
-                let OwnedValue::String(key) = key else {
-                    return Err(type_error("non-string map key materialization"));
-                };
-                Ok((key, value_to_owned(&entry.value, heap)?))
+                Ok(OwnedMapEntry::new(key, value_to_owned(&entry.value, heap)?))
             })
-            .collect::<VmResult<BTreeMap<_, _>>>()
+            .collect::<VmResult<Vec<_>>>()
             .map(OwnedValue::Map),
         HeapValue::Set(values) => values
             .values()

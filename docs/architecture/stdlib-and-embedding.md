@@ -428,6 +428,13 @@ mutate the original Rust struct when scripts write to the script value.
 Write-through Rust state should still be passed with `with_host_ref`,
 `with_host_mut`, or adapter-backed host handles.
 
+Detached `OwnedValue::Map` stores key-preserving entries rather than a
+string-key object map. String-key serde maps may still become object-shaped
+maps at host boundaries, but non-string keys serialize as owned key values and
+must round-trip without stringification. Runtime insertion still applies the
+normal `ValueKey` keyability checks before a script map is mutated or
+allocated.
+
 Native functions may return `OwnedValue::Iterator(...)` when a host wants to
 provide copied iterable data without first materializing a script array. This is
 a snapshot boundary: items are converted to VM-owned values, `HostRef`, or

@@ -1,3 +1,4 @@
+use std::collections::BTreeMap;
 use std::fmt;
 
 use ::serde::de::{SeqAccess, Visitor};
@@ -209,6 +210,21 @@ fn serde_preserves_exact_scalar_tags_and_explicit_bytes() {
     let restored: PrimitiveSerdeSnapshot =
         from_owned_value(&value).expect("deserialize primitive snapshot");
     assert_eq!(restored, snapshot);
+}
+
+#[test]
+fn serde_preserves_non_string_map_keys_as_owned_values() {
+    let source = BTreeMap::from([(1_i64, "one".to_owned()), (2_i64, "two".to_owned())]);
+
+    let value = to_owned_value(&source).expect("serialize non-string-key map");
+    assert_eq!(
+        value,
+        OwnedValue::map([(1_i64, "one".to_owned()), (2_i64, "two".to_owned()),])
+    );
+
+    let restored: BTreeMap<i64, String> =
+        from_owned_value(&value).expect("deserialize non-string-key map");
+    assert_eq!(restored, source);
 }
 
 #[test]

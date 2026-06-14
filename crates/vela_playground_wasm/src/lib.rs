@@ -245,12 +245,33 @@ fn owned_value_to_json(value: &OwnedValue) -> JsonValue {
         OwnedValue::Array(values) => {
             JsonValue::Array(values.iter().map(owned_value_to_json).collect())
         }
-        OwnedValue::Map(entries) => JsonValue::Object(
-            entries
+        OwnedValue::Map(entries)
+            if entries
                 .iter()
-                .map(|(key, value)| (key.clone(), owned_value_to_json(value)))
-                .collect(),
-        ),
+                .all(|entry| matches!(entry.key, OwnedValue::String(_))) =>
+        {
+            JsonValue::Object(
+                entries
+                    .iter()
+                    .map(|entry| {
+                        let OwnedValue::String(key) = &entry.key else {
+                            unreachable!("all map keys were checked as strings")
+                        };
+                        (key.clone(), owned_value_to_json(&entry.value))
+                    })
+                    .collect(),
+            )
+        }
+        OwnedValue::Map(entries) => json!({
+            "kind": "map",
+            "entries": entries
+                .iter()
+                .map(|entry| json!({
+                    "key": owned_value_to_json(&entry.key),
+                    "value": owned_value_to_json(&entry.value),
+                }))
+                .collect::<Vec<_>>(),
+        }),
         OwnedValue::Set(values) => json!({
             "kind": "set",
             "values": values.iter().map(owned_value_to_json).collect::<Vec<_>>(),

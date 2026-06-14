@@ -8,7 +8,7 @@ use vela_common::{HostObjectId, HostTypeId};
 use vela_host::path::{HostPath, HostRef};
 use vela_host::proxy::PathProxy;
 use vela_vm::error::{VmError, VmErrorKind, VmResult};
-use vela_vm::owned_value::OwnedValue;
+use vela_vm::owned_value::{OwnedMapEntry, OwnedValue};
 
 pub trait IntoScriptArg {
     fn into_script_arg(self) -> OwnedValue;
@@ -519,20 +519,23 @@ where
 
 impl<K, T> IntoScriptArg for BTreeMap<K, T>
 where
-    K: Into<String> + Ord,
+    K: IntoScriptArg + Ord,
     T: IntoScriptArg,
 {
     fn into_script_arg(self) -> OwnedValue {
         OwnedValue::Map(
             self.into_iter()
-                .map(|(key, value)| (key.into(), value.into_script_arg()))
+                .map(|(key, value)| {
+                    OwnedMapEntry::new(key.into_script_arg(), value.into_script_arg())
+                })
                 .collect(),
         )
     }
 }
 
-impl<T> FromScriptArg for BTreeMap<String, T>
+impl<K, T> FromScriptArg for BTreeMap<K, T>
 where
+    K: FromScriptArg + Ord,
     T: FromScriptArg,
 {
     const TYPE_NAME: &'static str = "map";
@@ -541,7 +544,12 @@ where
         match value {
             OwnedValue::Map(values) => values
                 .iter()
-                .map(|(key, value)| Ok((key.clone(), T::from_script_arg(value)?)))
+                .map(|entry| {
+                    Ok((
+                        K::from_script_arg(&entry.key)?,
+                        T::from_script_arg(&entry.value)?,
+                    ))
+                })
                 .collect(),
             _ => Err(type_mismatch(Self::TYPE_NAME)),
         }
@@ -550,20 +558,23 @@ where
 
 impl<K, T> IntoScriptArg for HashMap<K, T>
 where
-    K: Into<String> + Eq + Hash,
+    K: IntoScriptArg + Eq + Hash,
     T: IntoScriptArg,
 {
     fn into_script_arg(self) -> OwnedValue {
         OwnedValue::Map(
             self.into_iter()
-                .map(|(key, value)| (key.into(), value.into_script_arg()))
+                .map(|(key, value)| {
+                    OwnedMapEntry::new(key.into_script_arg(), value.into_script_arg())
+                })
                 .collect(),
         )
     }
 }
 
-impl<T> FromScriptArg for HashMap<String, T>
+impl<K, T> FromScriptArg for HashMap<K, T>
 where
+    K: FromScriptArg + Eq + Hash,
     T: FromScriptArg,
 {
     const TYPE_NAME: &'static str = "map";
@@ -572,7 +583,12 @@ where
         match value {
             OwnedValue::Map(values) => values
                 .iter()
-                .map(|(key, value)| Ok((key.clone(), T::from_script_arg(value)?)))
+                .map(|entry| {
+                    Ok((
+                        K::from_script_arg(&entry.key)?,
+                        T::from_script_arg(&entry.value)?,
+                    ))
+                })
                 .collect(),
             _ => Err(type_mismatch(Self::TYPE_NAME)),
         }
