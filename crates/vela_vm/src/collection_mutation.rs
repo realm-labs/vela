@@ -591,6 +591,11 @@ fn type_error<T>(operation: &'static str) -> VmResult<T> {
 mod tests {
     use std::mem;
 
+    use vela_common::{HostObjectId, HostTypeId};
+    use vela_def::FieldId;
+    use vela_host::path::{HostPath, HostRef};
+    use vela_host::proxy::PathProxy;
+
     use crate::budget::CollectionLimits;
     use crate::heap::{HeapValue, ScriptHeap};
     use crate::script_set::ScriptSet;
@@ -740,6 +745,37 @@ mod tests {
     }
 
     #[test]
+    fn map_insert_rejects_transient_keys_before_mutation() {
+        for key in transient_values() {
+            let mut heap = ScriptHeap::new();
+            let key = key(&mut heap);
+            let reference = heap.allocate(HeapValue::Map(Default::default()));
+            let mut heap_execution = HeapExecution::new(&mut heap);
+
+            let error = insert_map_slot(
+                &mut heap_execution,
+                reference,
+                key,
+                Value::I64(10),
+                None,
+                "test map set",
+            )
+            .expect_err("transient map keys should be rejected");
+
+            assert_eq!(
+                error.kind_ref(),
+                &VmErrorKind::TypeMismatch {
+                    operation: "test map set"
+                }
+            );
+            assert_eq!(
+                heap_execution.heap.get(reference),
+                Some(&HeapValue::Map(Default::default()))
+            );
+        }
+    }
+
+    #[test]
     fn map_extend_duplicate_new_key_counts_once_and_preserves_key() {
         let mut heap = ScriptHeap::new();
         let reference = heap.allocate(HeapValue::Map(Default::default()));
@@ -836,6 +872,30 @@ mod tests {
             heap_execution.heap.get(reference),
             Some(&HeapValue::Set(ScriptSet::new()))
         );
+    }
+
+    #[test]
+    fn set_add_rejects_transient_elements_before_mutation() {
+        for value in transient_values() {
+            let mut heap = ScriptHeap::new();
+            let value = value(&mut heap);
+            let reference = heap.allocate(HeapValue::Set(ScriptSet::new()));
+            let mut heap_execution = HeapExecution::new(&mut heap);
+
+            let error = push_set_slot(&mut heap_execution, reference, value, None, "test set add")
+                .expect_err("transient set elements should be rejected");
+
+            assert_eq!(
+                error.kind_ref(),
+                &VmErrorKind::TypeMismatch {
+                    operation: "test set add"
+                }
+            );
+            assert_eq!(
+                heap_execution.heap.get(reference),
+                Some(&HeapValue::Set(ScriptSet::new()))
+            );
+        }
     }
 
     #[test]
@@ -939,5 +999,21 @@ mod tests {
             value.is_sign_negative(),
             "duplicate set insertion must preserve the first stored element"
         );
+    }
+
+    fn transient_values() -> [fn(&mut ScriptHeap) -> Value; 2] {
+        [
+            |_| Value::Missing,
+            |heap| {
+                let proxy = PathProxy::from_diagnostic_path(
+                    HostPath::new(host_ref()).field(FieldId::new(2)),
+                );
+                Value::HeapRef(heap.allocate(HeapValue::PathProxy(proxy)))
+            },
+        ]
+    }
+
+    fn host_ref() -> HostRef {
+        HostRef::new(HostTypeId::new(1), HostObjectId::new(7), 3)
     }
 }
