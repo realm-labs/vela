@@ -691,6 +691,11 @@ impl Compiler<'_, '_> {
     ) -> bool {
         self.script_method_id_for_type(type_name, method_name)
             == Some(builtin_trait_method_id(trait_name, method_name))
+            || self
+                .facts
+                .derived_operator_traits
+                .get(type_name)
+                .is_some_and(|traits| traits.contains(trait_name))
     }
 }
 

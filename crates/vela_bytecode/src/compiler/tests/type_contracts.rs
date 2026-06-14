@@ -20,6 +20,7 @@ fn with_static_type_compiler(
         script_function_signatures,
         script_method_ids: std::collections::BTreeMap::new(),
         script_method_signatures: std::collections::BTreeMap::new(),
+        derived_operator_traits: std::collections::BTreeMap::new(),
         script_field_slots,
         schema_defaults,
         type_symbols,

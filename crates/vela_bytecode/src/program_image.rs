@@ -146,6 +146,10 @@ impl ProgramImage {
 }
 
 impl UnlinkedProgramCode for ProgramImage {
+    fn script_metadata(&self) -> Option<&ModuleGraph> {
+        ProgramImage::script_metadata(self)
+    }
+
     fn function(&self, name: &str) -> Option<&UnlinkedCodeObject> {
         self.function_by_name(name)
     }

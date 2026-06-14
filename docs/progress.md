@@ -93,7 +93,9 @@ equality semantics: ordinary `==`/`!=` no longer materialize detached
 `OwnedValue` graphs for implicit structural comparison, `===`/`!==` compare
 script-object and `HostRef` identity, manual
 `impl PartialEq for Type { fn eq(...) -> bool }` drives record/enum semantic
-equality, array lookup/distinct helpers share runtime semantic equality,
+equality, `#[derive(PartialEq)]` drives field-wise record equality without
+`OwnedValue` materialization, array lookup/distinct helpers share runtime
+semantic equality,
 manual `impl PartialOrd for Type { fn partial_cmp(...) -> Option<i64> }`
 drives record/enum ordering operators, manual
 `impl Ord for Type { fn cmp(...) -> i64 }` drives array sorting and extrema
@@ -102,8 +104,8 @@ missing `PartialEq` or `PartialOrd` during compilation, Map/Set `ValueKey`
 lookup remains separate from user comparison traits, and array sorting rejects
 float keys until an explicit total-float ordering API exists. `Eq` and `Ord`
 impl declarations now validate their required comparison-trait prerequisites.
-Remaining comparison work is derive lowering and static sorting/derive
-diagnostics.
+Remaining comparison work is `Eq`/`PartialOrd`/`Ord` derive lowering and static
+sorting/derive diagnostics.
 
 Post-MVP performance remains a separate track: measure first, then optimize the
 non-JIT bytecode interpreter toward Lua 5.x comparable host-boundary workloads

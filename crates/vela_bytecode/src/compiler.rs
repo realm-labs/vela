@@ -31,11 +31,12 @@ use std::collections::{BTreeMap, BTreeSet, HashMap};
 
 use vela_common::{GlobalSlot, HostMethodId, HostTypeId, SourceId, Span};
 use vela_def::{DefPath, FieldId, MethodId, TypeId};
+use vela_hir::attributes::derived_traits;
 use vela_hir::binding::{BindingMap, BindingResolution, LocalBindingKind};
 use vela_hir::ids::{HirDeclId, HirLocalId};
 #[cfg(test)]
 use vela_hir::module_graph::ModulePath;
-use vela_hir::module_graph::ModuleSource;
+use vela_hir::module_graph::{DeclarationKind, ModuleGraph, ModuleSource};
 use vela_hir::type_hint::{FunctionSignature, HirTypeHint, ParamHint};
 use vela_registry::RegistryCompileView;
 use vela_syntax::ast::{Argument, Block, Expr, ExprKind, FunctionItem, Param};
@@ -64,6 +65,7 @@ struct CompilerFacts<'registry> {
     script_function_signatures: BTreeMap<HirDeclId, Vec<ParamHint>>,
     script_method_ids: BTreeMap<(String, String), MethodId>,
     script_method_signatures: BTreeMap<(String, String), Vec<ParamHint>>,
+    derived_operator_traits: BTreeMap<String, BTreeSet<String>>,
     script_field_slots: ScriptFieldSlots,
     schema_defaults: ScriptSchemaDefaults,
     type_symbols: BTreeMap<HirDeclId, String>,
@@ -147,6 +149,8 @@ fn compile_function_source_inner<'registry>(
     let global_slots = global_slots(&global_symbols);
     let global_type_symbols = semantic.global_type_symbols();
     let script_field_slots = semantic.script_field_slots(&type_symbols);
+    let derived_operator_traits =
+        derived_operator_traits(&semantic.script_metadata_graph(), &type_symbols);
     let const_values = semantic.const_values()?;
     let schema_defaults = semantic.schema_defaults(&type_symbols, &const_values);
     let facts = CompilerFacts {
@@ -154,6 +158,7 @@ fn compile_function_source_inner<'registry>(
         script_function_signatures,
         script_method_ids: BTreeMap::new(),
         script_method_signatures: BTreeMap::new(),
+        derived_operator_traits,
         script_field_slots,
         schema_defaults,
         type_symbols,
@@ -225,6 +230,8 @@ fn compile_program_source_inner<'registry>(
     let global_slots = global_slots(&global_symbols);
     let global_type_symbols = semantic.global_type_symbols();
     let script_field_slots = semantic.script_field_slots(&type_symbols);
+    let derived_operator_traits =
+        derived_operator_traits(&semantic.script_metadata_graph(), &type_symbols);
     let const_values = semantic.const_values()?;
     let schema_defaults = semantic.schema_defaults(&type_symbols, &const_values);
     let facts = CompilerFacts {
@@ -232,6 +239,7 @@ fn compile_program_source_inner<'registry>(
         script_function_signatures,
         script_method_ids,
         script_method_signatures,
+        derived_operator_traits,
         script_field_slots,
         schema_defaults,
         type_symbols,
@@ -309,6 +317,8 @@ fn compile_module_sources_inner<'registry>(
     let global_slots = global_slots(&global_symbols);
     let global_type_symbols = semantic.global_type_symbols();
     let script_field_slots = semantic.script_field_slots(&type_symbols);
+    let derived_operator_traits =
+        derived_operator_traits(&semantic.script_metadata_graph(), &type_symbols);
     let const_values = semantic.const_values()?;
     let schema_defaults = semantic.schema_defaults(&type_symbols, &const_values);
     let facts = CompilerFacts {
@@ -316,6 +326,7 @@ fn compile_module_sources_inner<'registry>(
         script_function_signatures,
         script_method_ids,
         script_method_signatures,
+        derived_operator_traits,
         script_field_slots,
         schema_defaults,
         type_symbols,
@@ -375,6 +386,26 @@ fn global_slots(global_symbols: &BTreeMap<HirDeclId, String>) -> BTreeMap<String
         .into_iter()
         .enumerate()
         .map(|(slot, name)| (name, GlobalSlot::new(slot)))
+        .collect()
+}
+
+fn derived_operator_traits(
+    graph: &ModuleGraph,
+    type_symbols: &BTreeMap<HirDeclId, String>,
+) -> BTreeMap<String, BTreeSet<String>> {
+    type_symbols
+        .iter()
+        .filter_map(|(declaration, type_name)| {
+            let metadata = graph.declaration(*declaration)?;
+            if metadata.kind != DeclarationKind::Struct {
+                return None;
+            }
+            let traits = derived_traits(graph.declaration_attrs(*declaration))
+                .into_iter()
+                .filter(|trait_name| trait_name == "PartialEq")
+                .collect::<BTreeSet<_>>();
+            (!traits.is_empty()).then(|| (type_name.clone(), traits))
+        })
         .collect()
 }
 

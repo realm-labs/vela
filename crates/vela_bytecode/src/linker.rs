@@ -196,6 +196,9 @@ impl<'linker, 'registry> LinkContext<'linker, 'registry> {
     }
 
     fn link_program(mut self, program: &UnlinkedProgram) -> Result<LinkedProgram, LinkError> {
+        if let Some(metadata) = program.script_metadata() {
+            self.linked.set_script_metadata(metadata.clone());
+        }
         let mut top_level = Vec::with_capacity(program.function_count());
         for code in program.functions() {
             top_level.push(self.link_code(program, code)?);

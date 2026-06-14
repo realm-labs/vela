@@ -12,8 +12,9 @@ use std::collections::BTreeMap;
 
 use vela_common::{GlobalSlot, HostMethodId, HostTypeId, PrimitiveTag, ShapeId, Span};
 use vela_def::{DefPath, FunctionId, MethodId};
+use vela_hir::attributes::derived_traits;
 use vela_hir::ids::HirLocalId;
-use vela_hir::module_graph::ModuleGraph;
+use vela_hir::module_graph::{Declaration, DeclarationKind, ModuleGraph};
 use vela_host::resolved::HostMutationOp;
 use vela_host::target::HostTargetPlan;
 
@@ -217,6 +218,10 @@ impl UnlinkedProgram {
 }
 
 pub trait UnlinkedProgramCode {
+    fn script_metadata(&self) -> Option<&ModuleGraph> {
+        None
+    }
+
     fn function(&self, name: &str) -> Option<&UnlinkedCodeObject>;
 
     fn function_by_index(&self, _index: FunctionIndex) -> Option<&UnlinkedCodeObject> {
@@ -238,7 +243,67 @@ pub trait UnlinkedProgramCode {
     ) -> Option<&UnlinkedCodeObject>;
 }
 
+#[must_use]
+pub fn derived_record_trait_fields(
+    program: &dyn UnlinkedProgramCode,
+    type_name: &str,
+    trait_name: &str,
+) -> Option<Vec<String>> {
+    derived_record_trait_fields_in_graph(program.script_metadata()?, type_name, trait_name)
+}
+
+#[must_use]
+pub fn derived_linked_record_trait_fields(
+    program: &LinkedProgram,
+    type_name: &str,
+    trait_name: &str,
+) -> Option<Vec<String>> {
+    derived_record_trait_fields_in_graph(program.script_metadata()?, type_name, trait_name)
+}
+
+fn derived_record_trait_fields_in_graph(
+    graph: &ModuleGraph,
+    type_name: &str,
+    trait_name: &str,
+) -> Option<Vec<String>> {
+    graph.declarations().find_map(|declaration| {
+        if declaration.kind != DeclarationKind::Struct {
+            return None;
+        }
+        if declaration_type_name(graph, declaration) != type_name {
+            return None;
+        }
+        let traits = derived_traits(graph.declaration_attrs(declaration.id));
+        if !traits.contains(trait_name) {
+            return None;
+        }
+        let shape = graph.struct_shape(declaration.id)?;
+        Some(
+            shape
+                .fields
+                .iter()
+                .map(|field| field.name.clone())
+                .collect(),
+        )
+    })
+}
+
+fn declaration_type_name(graph: &ModuleGraph, declaration: &Declaration) -> String {
+    let Some(path) = graph.module_path(declaration.module) else {
+        return declaration.name.clone();
+    };
+    if path.segments().is_empty() {
+        declaration.name.clone()
+    } else {
+        format!("{}::{}", path.join(), declaration.name)
+    }
+}
+
 impl UnlinkedProgramCode for UnlinkedProgram {
+    fn script_metadata(&self) -> Option<&ModuleGraph> {
+        UnlinkedProgram::script_metadata(self)
+    }
+
     fn function(&self, name: &str) -> Option<&UnlinkedCodeObject> {
         UnlinkedProgram::function(self, name)
     }

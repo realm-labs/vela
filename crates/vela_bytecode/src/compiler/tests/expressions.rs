@@ -75,6 +75,24 @@ fn main() {
 }
 
 #[test]
+fn compiler_accepts_static_record_equality_with_derived_partial_eq() {
+    compile_program_source(
+        SourceId::new(1),
+        r#"
+#[derive(PartialEq)]
+struct Reward { amount: i64 }
+
+fn main() {
+    let left = Reward { amount: 1 };
+    let right = Reward { amount: 1 };
+    return left == right;
+}
+"#,
+    )
+    .expect("known record equality with derived PartialEq should compile");
+}
+
+#[test]
 fn compiler_rejects_static_record_ordering_without_partial_ord() {
     let error = compile_program_source(
         SourceId::new(1),

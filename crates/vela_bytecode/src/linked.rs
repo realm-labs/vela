@@ -2,6 +2,7 @@ use std::collections::BTreeMap;
 
 use vela_common::{GlobalSlot, HostMethodId, HostTypeId, PrimitiveTag, ShapeId, Span};
 use vela_def::{FunctionId, MethodId, TypeId, VariantId};
+use vela_hir::module_graph::ModuleGraph;
 use vela_host::resolved::HostMutationOp;
 use vela_host::target::HostTargetPlan;
 use vela_registry::{DebugNameId, DebugNameTable};
@@ -57,6 +58,7 @@ pub struct LinkedProgram {
     functions: Vec<LinkedCodeObject>,
     entry_points: BTreeMap<DebugNameId, ScriptFunctionHandle>,
     script_method_dispatches_by_type_and_name: BTreeMap<(String, String), MethodDispatchHandle>,
+    script_metadata: Option<ModuleGraph>,
 }
 
 impl LinkedProgram {
@@ -146,6 +148,15 @@ impl LinkedProgram {
         self.script_method_dispatches_by_type_and_name
             .get(&(type_name.to_owned(), method_name.to_owned()))
             .copied()
+    }
+
+    pub fn set_script_metadata(&mut self, graph: ModuleGraph) {
+        self.script_metadata = Some(graph);
+    }
+
+    #[must_use]
+    pub fn script_metadata(&self) -> Option<&ModuleGraph> {
+        self.script_metadata.as_ref()
     }
 
     pub fn push_type(&mut self, ty: LinkedType) -> TypeHandle {

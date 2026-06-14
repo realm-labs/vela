@@ -211,6 +211,90 @@ fn main() {
 }
 
 #[test]
+fn record_semantic_equality_uses_derived_partial_eq() {
+    let program = compile_program_source(
+        SourceId::new(1),
+        r#"
+#[derive(PartialEq)]
+struct Reward { code: String, amount: i64 }
+
+fn main() {
+    let left = Reward { code: "xp", amount: 10 };
+    let same = Reward { code: "xp", amount: 10 };
+    let different_amount = Reward { code: "xp", amount: 99 };
+    if left == same && left != different_amount {
+        return 1;
+    }
+    return 0;
+}
+"#,
+    )
+    .expect("compile derived PartialEq record equality source");
+
+    assert_eq!(
+        run_records_program(&program, "main", &[]),
+        Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(1)))
+    );
+}
+
+#[test]
+fn array_lookup_uses_derived_record_partial_eq() {
+    let program = compile_program_source(
+        SourceId::new(1),
+        r#"
+#[derive(PartialEq)]
+struct Reward { code: String, amount: i64 }
+
+fn main() {
+    let rewards = [
+        Reward { code: "xp", amount: 10 },
+        Reward { code: "gold", amount: 5 },
+    ];
+    let matching = Reward { code: "xp", amount: 10 };
+    let different_amount = Reward { code: "xp", amount: 99 };
+    if rewards.contains(matching) && !rewards.contains(different_amount) {
+        return 1;
+    }
+    return 0;
+}
+"#,
+    )
+    .expect("compile derived PartialEq array lookup source");
+
+    assert_eq!(
+        run_records_program(&program, "main", &[]),
+        Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(1)))
+    );
+}
+
+#[test]
+fn set_keys_ignore_derived_record_partial_eq() {
+    let program = compile_program_source(
+        SourceId::new(1),
+        r#"
+#[derive(PartialEq)]
+struct Reward { code: String, amount: i64 }
+
+fn main() {
+    let first = Reward { code: "xp", amount: 10 };
+    let same_business_value = Reward { code: "xp", amount: 10 };
+    let rewards = set::from_array([first, same_business_value]);
+    if first == same_business_value && rewards.len() == 2 {
+        return rewards.len();
+    }
+    return 0;
+}
+"#,
+    )
+    .expect("compile derived PartialEq set key source");
+
+    assert_eq!(
+        run_records_program_with_standard_natives(&program, "main", &[]),
+        Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(2)))
+    );
+}
+
+#[test]
 fn record_partial_eq_must_return_bool() {
     let program = compile_program_source(
         SourceId::new(1),

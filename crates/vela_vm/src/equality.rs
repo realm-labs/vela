@@ -1,6 +1,9 @@
 use std::cmp::Ordering;
 use vela_bytecode::linked::LinkedMethodDispatchKind;
-use vela_bytecode::{LinkedProgram, UnlinkedProgramCode};
+use vela_bytecode::{
+    LinkedProgram, UnlinkedProgramCode, derived_linked_record_trait_fields,
+    derived_record_trait_fields,
+};
 use vela_def::MethodId;
 use vela_reflect::registry::TypeRegistry;
 
@@ -151,7 +154,7 @@ fn call_partial_eq(
     let Some(result) =
         call_builtin_trait_method(lhs, rhs, runtime, &type_name, method_id, PARTIAL_EQ_METHOD)?
     else {
-        return Ok(None);
+        return derived_partial_eq(lhs, rhs, runtime, &type_name);
     };
     let result = store_value_in_heap_if_needed(
         result,
@@ -164,6 +167,85 @@ fn call_partial_eq(
             operation: "equal",
         })),
     }
+}
+
+fn derived_partial_eq(
+    lhs: &Value,
+    rhs: &Value,
+    runtime: &mut EqualityRuntime<'_, '_, '_>,
+    type_name: &str,
+) -> VmResult<Option<bool>> {
+    let Some(field_names) = runtime
+        .program
+        .and_then(|program| derived_record_trait_fields(program, type_name, "PartialEq"))
+        .or_else(|| {
+            runtime.linked_program.and_then(|program| {
+                derived_linked_record_trait_fields(program, type_name, "PartialEq")
+            })
+        })
+    else {
+        return Ok(None);
+    };
+    let Some(field_pairs) =
+        record_field_pairs(lhs, rhs, runtime.heap.as_deref(), type_name, &field_names)?
+    else {
+        return Ok(None);
+    };
+    for (left, right) in field_pairs {
+        if !values_equal_with_traits(&left, &right, runtime)? {
+            return Ok(Some(false));
+        }
+    }
+    Ok(Some(true))
+}
+
+fn record_field_pairs(
+    lhs: &Value,
+    rhs: &Value,
+    heap: Option<&HeapExecution<'_>>,
+    type_name: &str,
+    field_names: &[String],
+) -> VmResult<Option<Vec<(Value, Value)>>> {
+    let Some(heap) = heap else {
+        return Ok(None);
+    };
+    let (Value::HeapRef(lhs), Value::HeapRef(rhs)) = (lhs, rhs) else {
+        return Ok(None);
+    };
+    let Some(HeapValue::Record {
+        type_name: lhs_type,
+        fields: lhs_fields,
+        ..
+    }) = heap.heap.get(*lhs)
+    else {
+        return Ok(None);
+    };
+    let Some(HeapValue::Record {
+        type_name: rhs_type,
+        fields: rhs_fields,
+        ..
+    }) = heap.heap.get(*rhs)
+    else {
+        return Ok(None);
+    };
+    if lhs_type != type_name || rhs_type != type_name {
+        return Ok(None);
+    }
+    field_names
+        .iter()
+        .map(|field_name| {
+            let left = lhs_fields
+                .get(field_name)
+                .copied()
+                .ok_or_else(|| comparable_error("equal"))?;
+            let right = rhs_fields
+                .get(field_name)
+                .copied()
+                .ok_or_else(|| comparable_error("equal"))?;
+            Ok((left, right))
+        })
+        .collect::<VmResult<Vec<_>>>()
+        .map(Some)
 }
 
 fn values_order_with_traits(
