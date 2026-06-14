@@ -1561,8 +1561,9 @@ mod tests {
     use vela_common::PrimitiveTag;
 
     use super::*;
-    use crate::collection_mutation::push_array_slot;
+    use crate::collection_mutation::{extend_map_slots, push_array_slot};
     use crate::heap::{HeapValue, ScriptHeap};
+    use crate::script_map::ScriptMap;
 
     #[test]
     fn exact_container_summary_proves_simple_array_contract_without_scan() {
@@ -1634,6 +1635,61 @@ mod tests {
                 expected: "i64".to_owned(),
                 actual: "String".to_owned(),
                 debug_name: "values".to_owned(),
+            }
+        );
+    }
+
+    #[test]
+    fn mixed_map_extend_updates_key_summary_for_new_keys() {
+        let mut map = ScriptMap::new();
+        map.insert(Value::I64(1), Value::I64(10), None, "test map")
+            .expect("initial map key should be keyable");
+
+        let mut heap = ScriptHeap::new();
+        let reference = heap.allocate(HeapValue::Map(map));
+        let value = Value::HeapRef(reference);
+        let program = LinkedProgram::new();
+        let plan = TypeGuardPlan::Map {
+            key: Some(Box::new(TypeGuardPlan::Primitive(PrimitiveTag::I64))),
+            value: None,
+        };
+
+        {
+            let mut heap_execution = HeapExecution::new(&mut heap);
+            let mut budget = ExecutionBudget::new(0, usize::MAX, usize::MAX);
+            let mut context =
+                GuardExecutionContext::new(Some(&mut heap_execution), Some(&mut budget));
+            execute_linked_guard_plan(&value, &plan, &program, &mut context, "scores")
+                .expect("initial i64-key map should satisfy guard from summary");
+        }
+
+        {
+            let mut heap_execution = HeapExecution::new(&mut heap);
+            extend_map_slots(
+                &mut heap_execution,
+                reference,
+                vec![
+                    (Value::I64(1), Value::I64(11)),
+                    (Value::Bool(true), Value::I64(20)),
+                ],
+                None,
+                "test map extend",
+            )
+            .expect("mixed replacement and insertion should mutate map");
+        }
+
+        let mut heap_execution = HeapExecution::new(&mut heap);
+        let mut budget = ExecutionBudget::unbounded();
+        let mut context = GuardExecutionContext::new(Some(&mut heap_execution), Some(&mut budget));
+        let error = execute_linked_guard_plan(&value, &plan, &program, &mut context, "scores")
+            .expect_err("new bool key must not be hidden by stale key summary");
+
+        assert_eq!(
+            error.kind(),
+            VmErrorKind::TypeContractViolation {
+                expected: "i64".to_owned(),
+                actual: "bool".to_owned(),
+                debug_name: "scores".to_owned(),
             }
         );
     }

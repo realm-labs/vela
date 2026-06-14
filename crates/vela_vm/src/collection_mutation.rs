@@ -222,6 +222,14 @@ pub(crate) fn extend_map_slots(
             .iter()
             .any(|(key, _, _)| values.contains_key(key))
     };
+    let inserted_entries = {
+        let values = map_slots(heap, reference, operation)?;
+        keyed_slots
+            .iter()
+            .filter(|(key, _, _)| !values.contains_key(key))
+            .map(|(_, key, slot)| (*key, *slot))
+            .collect::<Vec<_>>()
+    };
     if !tracks_collection_growth(budget.as_deref()) {
         let values = map_slots_mut(heap, reference, operation)?;
         for (value_key, key, slot) in &keyed_slots {
@@ -230,11 +238,10 @@ pub(crate) fn extend_map_slots(
         if had_replacement {
             heap.heap
                 .note_container_value_replaced_or_removed(reference);
-        } else {
-            for (_, key, slot) in &keyed_slots {
-                heap.heap
-                    .note_container_map_entry_inserted(reference, key, slot);
-            }
+        }
+        for (key, slot) in &inserted_entries {
+            heap.heap
+                .note_container_map_entry_inserted(reference, key, slot);
         }
         return Ok(());
     }
@@ -267,11 +274,10 @@ pub(crate) fn extend_map_slots(
     if had_replacement {
         heap.heap
             .note_container_value_replaced_or_removed(reference);
-    } else {
-        for (_, key, slot) in &keyed_slots {
-            heap.heap
-                .note_container_map_entry_inserted(reference, key, slot);
-        }
+    }
+    for (key, slot) in &inserted_entries {
+        heap.heap
+            .note_container_map_entry_inserted(reference, key, slot);
     }
     heap.heap
         .adjust_object_size_after_mutation(reference, budget, precharged_growth)

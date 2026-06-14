@@ -82,7 +82,9 @@ i64, and record-identity map/set lookup and mutation workloads. Heap-owned
 container summaries and contract stamps now let stable array/map/set contracts
 use O(1) summary/stamp checks
 before falling back to budget-charged scans, and nested stamps are invalidated
-when child containers mutate through aliases.
+when child containers mutate through aliases. Mixed map extensions update key
+summaries for newly inserted keys even when the same batch also replaces
+existing values.
 
 Post-MVP performance remains a separate track: measure first, then optimize the
 non-JIT bytecode interpreter toward Lua 5.x comparable host-boundary workloads
