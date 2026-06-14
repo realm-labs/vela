@@ -3,7 +3,7 @@ title: "Sets"
 description: "Sets documentation for Vela."
 ---
 
-Sets store unique dynamic values. They are useful for membership checks and set algebra on script-owned data.
+Sets store unique dynamic values. They are useful for membership checks and set algebra on script-owned data. `Set<T>` is a builtin type-hint contract for checked boundaries and typed mutation paths.
 
 ## Construction And Membership
 
@@ -28,9 +28,17 @@ fn mark_seen(seen, id: i64) {
 }
 ```
 
+```vela
+fn add_tag(tags: Set<String>, tag) {
+    tags.add("checked") // statically compatible
+    tags.add(tag)       // dynamic value, guarded before mutation
+    return tags
+}
+```
+
 ## Set Operations
 
-Standard methods provide operations such as intersection, union, difference, and subset checks where supported by the runtime. These operations remain dynamic and do not require `Set<T>` syntax.
+Standard methods provide operations such as intersection, union, difference, and subset checks where supported by the runtime. Erased sets remain valid; `Set<T>` is only needed when a boundary wants an element contract.
 
 ## Iteration
 

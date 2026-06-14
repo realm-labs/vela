@@ -3,7 +3,9 @@ title: "Arrays"
 description: "Arrays documentation for Vela."
 ---
 
-Arrays are ordered, indexable, GC-managed collections. They are dynamic: the language does not support `Array<T>`, so element contracts are enforced by the API boundary that consumes the array or by explicit script checks.
+Arrays are ordered, indexable, GC-managed collections. `Array<T>` is a builtin
+type-hint contract for checked boundaries; it is not a general script generic
+type and it does not convert elements.
 
 ## Literals And Indexing
 
@@ -29,6 +31,18 @@ fn collect_large(values) {
         }
     }
     return out
+}
+```
+
+When a value has a trusted `Array<i64>` fact, compatible mutations can avoid
+extra runtime guards while incompatible mutations are rejected or checked before
+the write:
+
+```vela
+fn append_score(scores: Array<i64>, value) {
+    scores.push(4)      // statically compatible
+    scores.push(value)  // dynamic value, guarded before mutation
+    return scores
 }
 ```
 

@@ -12,7 +12,7 @@ value from one type to another.
 
 Hints can appear on parameters, return values, locals, globals, struct fields,
 enum fields, and lambda parameters. Missing hints leave the value dynamic.
-`any` means the value is intentionally dynamic.
+`Any` means the value is intentionally dynamic.
 
 ```vela
 struct Reward {
@@ -42,9 +42,43 @@ fn call_dynamic(value) -> i64 {
 }
 ```
 
-## Not Generics
+## Builtin Container Contracts
 
-The language deliberately rejects script generic syntax such as `Array<T>`, `Map<K, V>`, `Option<T>`, and `Result<T, E>`. Containers are dynamic values; element expectations should be checked at API boundaries or by explicit code.
+Selected builtin contracts can carry type arguments:
+
+```vela
+fn total(values: Array<i64>) -> i64 {
+    let sum = 0
+    for value in values {
+        sum += value
+    }
+    return sum
+}
+
+fn grant(rewards: Map<String, i64>, tags: Set<String>) -> Result<i64, String> {
+    rewards.set("tag_count", tags.len())
+    return result::ok(rewards.get("xp").unwrap_or(0))
+}
+```
+
+Allowed parameterized contracts are `Array<T>`, `Set<T>`,
+`Map<String, V>`, `Iterator<T>`, `Option<T>`, and `Result<T, E>`.
+`Array<Any>`, `Map<String, Any>`, and `Option<Any>` erase the inner contract.
+
+These are contracts, not conversions. A mixed array passed to `Array<i64>`
+fails at the checked boundary instead of being converted.
+
+## Not Script Generics
+
+The language still rejects user or schema generic syntax such as `Player<T>`,
+`String<T>`, `Map<i64, V>`, and `Function<T>`. Type arguments are reserved for
+the builtin contracts above and do not create monomorphized script functions or
+generic user-defined types.
+
+`Iterator<T>` syntax is accepted as metadata, but non-erased runtime
+`Iterator<T>` contracts are currently rejected at checked VM boundaries until
+lazy item guards are implemented. `Iterator<Any>` and erased `Iterator` remain
+ordinary outer iterator contracts.
 
 ## Hot Reload And Host Metadata
 

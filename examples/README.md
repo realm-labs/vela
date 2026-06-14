@@ -10,6 +10,7 @@ cargo run -p vela_examples --bin hot_reload_function_swap
 cargo run -p vela_examples --bin host_type_methods
 cargo run -p vela_examples --bin script_global
 cargo run -p vela_examples --bin serde_value
+cargo run -p vela_examples --bin container_type_hints
 cargo run -p vela_examples --bin io_stdlib
 ```
 
@@ -41,6 +42,8 @@ Other useful embedding examples:
 - `serde_value`: snapshot-style serde conversion between Rust structs/enums and
   Vela owned values.
 - `native_function`: script calls into Rust native functions.
+- `container_type_hints`: builtin typed container contracts across arrays,
+  string-keyed maps, sets, and nested Result propagation.
 - `io_stdlib`: opt-in stdout plus sandboxed file I/O capability checks.
 
 Expected-error examples such as `random_permission_denied` and

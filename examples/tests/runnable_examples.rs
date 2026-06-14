@@ -85,6 +85,10 @@ fn gameplay_examples_run() {
             env!("CARGO_BIN_EXE_serde_value"),
             "serde_value actor=player-1001 applied=34 score=39 label=slash original_amount=9\n",
         ),
+        (
+            env!("CARGO_BIN_EXE_container_type_hints"),
+            "container_type_hints result=Scalar(I64(17))\n",
+        ),
     ];
 
     for (bin, expected) in cases {
@@ -126,7 +130,7 @@ fn expected_error_examples_run() {
         ),
         (
             env!("CARGO_BIN_EXE_generic_type_hint_denied"),
-            "script type hints do not support generics",
+            "only builtin container, Option, and Result type hints support type arguments",
         ),
         (
             env!("CARGO_BIN_EXE_reflect_schema_mutation_denied"),

@@ -5,6 +5,10 @@ description: "Maps documentation for Vela."
 
 Maps are key-value collections for dynamic script data. They are useful for configuration, lookup tables, and snapshot values, but they are not a replacement for registered host schemas when Rust-owned state must be mutated safely.
 
+`Map<String, V>` is the parameterized builtin map contract in the current
+runtime because script maps are string-keyed. Other key type arguments, such as
+`Map<i64, V>`, are rejected.
+
 ## Literals And Access
 
 Map literals use `{ key: value }`. Keys can be identifiers, strings, chars, numbers, or paths according to the grammar. Indexing reads or writes an entry by key.
@@ -27,6 +31,16 @@ fn add_reward(rewards, code: String, amount: i64) {
     let current = rewards.get_or(code, 0)
     rewards[code] = current + amount
     return rewards
+}
+```
+
+Typed map contracts check existing values at dynamic boundaries and protect
+later typed updates:
+
+```vela
+fn add_tag_count(rewards: Map<String, i64>, tags: Set<String>) {
+    rewards.set("tag_count", tags.len())
+    return rewards.get("tag_count").unwrap_or(0)
 }
 ```
 

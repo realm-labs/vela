@@ -1,3 +1,7 @@
-fn main(values: Array<i64>) {
-    return values;
+struct Player {
+    id: String,
+}
+
+fn main(value: Player<String>) {
+    return value;
 }

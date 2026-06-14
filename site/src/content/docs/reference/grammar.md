@@ -42,4 +42,6 @@ macro expansion, `eval`, classes, monkey patching, and Rust-style borrow
 syntax.
 
 Type hints are metadata contracts and analysis inputs. They do not create
-generic types or monomorphized script functions.
+generic types or monomorphized script functions. Only selected builtin
+contracts accept type arguments: `Array<T>`, `Set<T>`, `Map<String, V>`,
+`Iterator<T>`, `Option<T>`, and `Result<T, E>`.

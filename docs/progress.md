@@ -61,8 +61,8 @@ hints, hot-reload ABI string comparison, and execution-budget charging for
 deep guard scans are implemented. Non-erased `Iterator<T>` guard plans are
 explicitly rejected at runtime boundaries until lazy item-guarded iterator
 cursors exist. Remaining gaps are container summaries and contract stamps,
-lazy `Iterator<T>` item guards, public site/docs/examples, and benchmark/profile
-rows for typed container mutation paths.
+lazy `Iterator<T>` item guards, and benchmark/profile rows for typed container
+mutation paths.
 
 Post-MVP performance remains a separate track: measure first, then optimize the
 non-JIT bytecode interpreter toward Lua 5.x comparable host-boundary workloads

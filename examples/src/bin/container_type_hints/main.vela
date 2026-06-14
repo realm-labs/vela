@@ -1,0 +1,22 @@
+fn load_rewards(rewards: Map<String, i64>) -> Result<Map<String, i64>, String> {
+    return result::ok(rewards);
+}
+
+fn score(scores: Array<i64>, rewards: Map<String, i64>, tags: Set<String>) -> Result<i64, String> {
+    let checked_rewards: Map<String, i64> = load_rewards(rewards)?;
+
+    scores.push(4);
+    checked_rewards.set("tag_count", tags.len());
+
+    let total = scores.sum()
+        + checked_rewards.get("xp").unwrap_or(0)
+        + checked_rewards.get("tag_count").unwrap_or(0);
+    return result::ok(total);
+}
+
+fn main() {
+    let scores: Array<i64> = [1, 2, 3];
+    let rewards: Map<String, i64> = { "xp": 5 };
+    let tags: Set<String> = set::from_array(["daily", "vip"]);
+    return score(scores, rewards, tags).unwrap_or(0);
+}

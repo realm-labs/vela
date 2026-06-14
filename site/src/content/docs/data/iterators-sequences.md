@@ -50,3 +50,11 @@ fn active_codes(items) {
 ## Host Iterables
 
 Hosts may return snapshot iterables, but host-owned state is not placed under the script GC. Any later host mutation still uses HostAccess or an explicit native function boundary.
+
+## Type Hints
+
+`Iterator<T>` is reserved as a builtin iterator contract, not a script generic
+type. The current runtime accepts erased `Iterator` and `Iterator<Any>` at
+checked boundaries. Non-erased `Iterator<T>` contracts are rejected until lazy
+item guards can validate each yielded value without consuming the cursor at the
+boundary.

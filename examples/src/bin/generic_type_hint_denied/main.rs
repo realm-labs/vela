@@ -8,6 +8,6 @@ const SOURCE: &str = include_str!("generic_type_hint_denied.vela");
 fn main() -> Result<(), Box<dyn Error>> {
     expect_error(
         || GameScript::new(SOURCE_LABEL, SOURCE).run(),
-        "script type hints do not support generics",
+        "only builtin container, Option, and Result type hints support type arguments",
     )
 }

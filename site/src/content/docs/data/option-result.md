@@ -3,7 +3,7 @@ title: "Option And Result"
 description: "Option And Result documentation for Vela."
 ---
 
-`Option` and `Result` are standard enum-style values for expected absence and recoverable failure. They are dynamic values, not generic types.
+`Option` and `Result` are standard enum-style values for expected absence and recoverable failure. `Option<T>` and `Result<T, E>` are builtin type-hint contracts for payload checks at boundaries; they are not user-defined generic types.
 
 ## Responsibilities
 
@@ -30,6 +30,19 @@ fn amount_or_zero(text: String) -> i64 {
 }
 ```
 
+Payload contracts compose with containers:
+
+```vela
+fn load_rewards() -> Result<Map<String, i64>, String> {
+    return result::ok({ "xp": 10 })
+}
+
+fn xp_or_zero() -> Result<i64, String> {
+    let rewards = load_rewards()?
+    return result::ok(rewards.get("xp").unwrap_or(0))
+}
+```
+
 ## Pattern Matching
 
 You can also handle these values with `match`, especially when the success or error branch needs custom logic.
@@ -43,6 +56,8 @@ fn describe(result) -> String {
 }
 ```
 
-## No Generic Syntax
+## Generic Boundary
 
-Write `Option` and `Result`, not `Option<T>` or `Result<T, E>`. Contracts for payload values belong at function, field, host, or explicit validation boundaries.
+Only builtin type-hint contracts accept type arguments. `Option<T>` and
+`Result<T, E>` are valid contracts; `Player<T>` and other user-defined generic
+types are not.
