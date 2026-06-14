@@ -1,0 +1,11 @@
+---
+title: "Playground"
+description: "Playground documentation for Vela."
+---
+
+import Playground from '../../components/Playground.astro';
+
+The browser Playground runs a small WASM wrapper around `vela_engine`. It is useful for trying syntax, collections, methods, diagnostics, and return values.
+
+It intentionally does not expose real Rust host objects, filesystem access, or server state. Host write-through examples belong in the Rust examples.
+<Playground />

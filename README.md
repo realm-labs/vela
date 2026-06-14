@@ -7,8 +7,8 @@ domain-neutral.
 
 Read the hosted docs or try the browser playground:
 
-- [Documentation](https://realm-labs.github.io/vela/#/en/overview)
-- [Playground](https://realm-labs.github.io/vela/#/playground)
+- [Documentation](https://realm-labs.github.io/vela/overview/)
+- [Playground](https://realm-labs.github.io/vela/playground/)
 
 Scripts can read and mutate Rust-owned state with natural syntax while the
 runtime keeps the boundary explicit:
@@ -155,8 +155,10 @@ Local playground build:
 ```bash
 rustup target add wasm32-unknown-unknown
 cargo build -p vela_playground_wasm --target wasm32-unknown-unknown --release
-wasm-bindgen target/wasm32-unknown-unknown/release/vela_playground_wasm.wasm --target web --out-dir site/pkg
-python3 -m http.server 8080 --directory site
+wasm-bindgen target/wasm32-unknown-unknown/release/vela_playground_wasm.wasm --target web --out-dir site/public/pkg
+cd site
+npm ci
+npm run dev
 ```
 
 GitHub Pages deploys automatically from the Pages workflow after CI succeeds.

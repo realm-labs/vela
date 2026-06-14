@@ -1,4 +1,8 @@
 /target
 /perf-results
+/site/.astro
+/site/dist
+/site/node_modules
+/site/public/pkg
 __pycache__/
 *.trace

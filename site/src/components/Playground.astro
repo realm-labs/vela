@@ -1,0 +1,265 @@
+---
+import { PLAYGROUND_EXAMPLES } from '../data/playground-examples';
+
+const examplesJson = JSON.stringify(PLAYGROUND_EXAMPLES);
+---
+
+<section class="vela-playground" data-playground data-examples={examplesJson}>
+  <div class="playground-toolbar">
+    <label>
+      <span>Example</span>
+      <select data-example-select></select>
+    </label>
+    <label>
+      <span>Entry</span>
+      <input data-entry-input value="main" />
+    </label>
+    <button type="button" data-compile-button>Compile</button>
+    <button type="button" class="primary" data-run-button>Run</button>
+  </div>
+  <div class="playground-grid">
+    <label class="editor-pane">
+      <span>main.vela</span>
+      <textarea data-source-editor aria-label="Vela source editor" spellcheck="false"></textarea>
+    </label>
+    <div class="output-pane">
+      <div class="output-header">
+        <span>Output</span>
+        <span data-runtime-status>loading wasm</span>
+      </div>
+      <pre data-output-view></pre>
+      <div data-diagnostic-list class="diagnostics"></div>
+    </div>
+  </div>
+</section>
+
+<script>
+  type WasmModule = {
+    default: () => Promise<void>;
+    compile_script: (source: string) => string;
+    run_script: (source: string, entry: string) => string;
+  };
+
+  for (const root of document.querySelectorAll<HTMLElement>('[data-playground]')) {
+    bootPlayground(root);
+  }
+
+  async function bootPlayground(root: HTMLElement) {
+    const examples = JSON.parse(root.dataset.examples || '[]') as Array<{
+      title: string;
+      entry: string;
+      source: string;
+    }>;
+    const controls = {
+      exampleSelect: root.querySelector<HTMLSelectElement>('[data-example-select]'),
+      sourceEditor: root.querySelector<HTMLTextAreaElement>('[data-source-editor]'),
+      entryInput: root.querySelector<HTMLInputElement>('[data-entry-input]'),
+      outputView: root.querySelector<HTMLPreElement>('[data-output-view]'),
+      diagnosticList: root.querySelector<HTMLElement>('[data-diagnostic-list]'),
+      runtimeStatus: root.querySelector<HTMLElement>('[data-runtime-status]'),
+      compileButton: root.querySelector<HTMLButtonElement>('[data-compile-button]'),
+      runButton: root.querySelector<HTMLButtonElement>('[data-run-button]'),
+    };
+
+    if (!controls.exampleSelect || !controls.sourceEditor || !controls.entryInput || !controls.outputView || !controls.diagnosticList || !controls.runtimeStatus || !controls.compileButton || !controls.runButton) {
+      return;
+    }
+    const {
+      exampleSelect,
+      sourceEditor,
+      entryInput,
+      outputView,
+      diagnosticList,
+      runtimeStatus,
+      compileButton,
+      runButton,
+    } = controls as {
+      exampleSelect: HTMLSelectElement;
+      sourceEditor: HTMLTextAreaElement;
+      entryInput: HTMLInputElement;
+      outputView: HTMLPreElement;
+      diagnosticList: HTMLElement;
+      runtimeStatus: HTMLElement;
+      compileButton: HTMLButtonElement;
+      runButton: HTMLButtonElement;
+    };
+
+    let wasm: WasmModule | undefined;
+    for (const [index, example] of examples.entries()) {
+      const option = document.createElement('option');
+      option.value = String(index);
+      option.textContent = example.title;
+      exampleSelect.append(option);
+    }
+
+    function loadExample(index: number) {
+      const example = examples[index] || examples[0];
+      if (!example) return;
+      sourceEditor.value = example.source;
+      entryInput.value = example.entry;
+      outputView.textContent = '';
+      diagnosticList.replaceChildren();
+    }
+
+    function renderDiagnostics(diagnostics: Array<{ severity: string; code?: string; message: string; span?: { start: number; end: number } }>) {
+      diagnosticList.replaceChildren();
+      for (const diagnostic of diagnostics) {
+        const item = document.createElement('div');
+        item.className = diagnostic.severity === 'warning' ? 'diagnostic warning' : 'diagnostic';
+        const code = diagnostic.code ? ` [${diagnostic.code}]` : '';
+        const span = diagnostic.span ? ` at ${diagnostic.span.start}..${diagnostic.span.end}` : '';
+        item.textContent = `${diagnostic.severity}${code}: ${diagnostic.message}${span}`;
+        diagnosticList.append(item);
+      }
+    }
+
+    function execute(mode: 'compile' | 'run') {
+      if (!wasm) {
+        runtimeStatus.textContent = 'wasm unavailable';
+        return;
+      }
+      const responseText = mode === 'compile'
+        ? wasm.compile_script(sourceEditor.value)
+        : wasm.run_script(sourceEditor.value, entryInput.value || 'main');
+      const response = JSON.parse(responseText) as { ok: boolean; value?: unknown; diagnostics?: [] };
+      runtimeStatus.textContent = response.ok ? 'ok' : 'error';
+      outputView.textContent = response.ok ? JSON.stringify(response.value, null, 2) : 'No value returned.';
+      renderDiagnostics(response.diagnostics || []);
+    }
+
+    exampleSelect.addEventListener('change', () => loadExample(Number(exampleSelect.value)));
+    compileButton.addEventListener('click', () => execute('compile'));
+    runButton.addEventListener('click', () => execute('run'));
+    loadExample(0);
+
+    try {
+      const baseUrl = import.meta.env.BASE_URL.endsWith('/')
+        ? import.meta.env.BASE_URL
+        : `${import.meta.env.BASE_URL}/`;
+      const wasmPath = `${baseUrl}pkg/vela_playground_wasm.js`;
+      wasm = await import(/* @vite-ignore */ wasmPath) as WasmModule;
+      await wasm.default();
+      runtimeStatus.textContent = 'ready';
+    } catch (error) {
+      runtimeStatus.textContent = 'wasm unavailable';
+      outputView.textContent = String(error);
+    }
+  }
+</script>
+
+<style>
+  .vela-playground {
+    display: grid;
+    gap: 1rem;
+    margin: 1.25rem 0;
+  }
+
+  .playground-toolbar {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.75rem;
+    align-items: end;
+  }
+
+  .playground-toolbar label,
+  .editor-pane {
+    display: grid;
+    gap: 0.35rem;
+    color: var(--sl-color-gray-2);
+    font-size: 0.9rem;
+    font-weight: 600;
+  }
+
+  .playground-toolbar select,
+  .playground-toolbar input,
+  .playground-toolbar button,
+  .editor-pane textarea {
+    border: 1px solid var(--sl-color-gray-5);
+    border-radius: 0.35rem;
+    background: var(--sl-color-bg);
+    color: var(--sl-color-white);
+    font: inherit;
+  }
+
+  .playground-toolbar select,
+  .playground-toolbar input,
+  .playground-toolbar button {
+    min-height: 2.35rem;
+    padding: 0.4rem 0.65rem;
+  }
+
+  .playground-toolbar button {
+    cursor: pointer;
+  }
+
+  .playground-toolbar button.primary {
+    border-color: var(--sl-color-accent-high);
+    background: var(--sl-color-accent);
+    color: var(--sl-color-black);
+    font-weight: 700;
+  }
+
+  .playground-grid {
+    display: grid;
+    grid-template-columns: minmax(0, 1.15fr) minmax(18rem, 0.85fr);
+    gap: 1rem;
+  }
+
+  .editor-pane textarea,
+  .output-pane pre {
+    min-height: 28rem;
+    margin: 0;
+    padding: 1rem;
+    overflow: auto;
+    border-radius: 0.5rem;
+    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', monospace;
+    font-size: 0.9rem;
+    line-height: 1.55;
+  }
+
+  .editor-pane textarea {
+    resize: vertical;
+  }
+
+  .output-pane {
+    display: grid;
+    gap: 0.5rem;
+  }
+
+  .output-header {
+    display: flex;
+    justify-content: space-between;
+    gap: 1rem;
+    color: var(--sl-color-gray-2);
+    font-weight: 700;
+  }
+
+  .output-pane pre {
+    border: 1px solid var(--sl-color-gray-6);
+    background: var(--sl-color-black);
+    color: var(--sl-color-gray-1);
+    white-space: pre-wrap;
+  }
+
+  .diagnostics {
+    display: grid;
+    gap: 0.5rem;
+  }
+
+  .diagnostic {
+    border-left: 3px solid var(--sl-color-red-high);
+    padding: 0.5rem 0.65rem;
+    background: color-mix(in srgb, var(--sl-color-red-low), transparent 55%);
+    color: var(--sl-color-gray-1);
+  }
+
+  .diagnostic.warning {
+    border-left-color: var(--sl-color-orange-high);
+  }
+
+  @media (max-width: 50rem) {
+    .playground-grid {
+      grid-template-columns: 1fr;
+    }
+  }
+</style>

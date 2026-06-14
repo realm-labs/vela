@@ -53,6 +53,13 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-pages-cargo-
 
+      - name: Install Node
+        uses: actions/setup-node@v6
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: site/package-lock.json
+
       - name: Install wasm-bindgen
         run: |
           WASM_BINDGEN_VERSION="$(cargo metadata --format-version=1 | python3 -c 'import json,sys; data=json.load(sys.stdin); print(next(p["version"] for p in data["packages"] if p["name"] == "wasm-bindgen"))')"
@@ -63,16 +70,24 @@ jobs:
 
       - name: Generate browser bindings
         run: |
-          rm -rf site/pkg
+          rm -rf site/public/pkg
           wasm-bindgen \
             target/wasm32-unknown-unknown/release/vela_playground_wasm.wasm \
             --target web \
-            --out-dir site/pkg
+            --out-dir site/public/pkg
+
+      - name: Install site dependencies
+        working-directory: site
+        run: npm ci
+
+      - name: Build site
+        working-directory: site
+        run: npm run build
 
       - name: Upload Pages artifact
         uses: actions/upload-pages-artifact@v5
         with:
-          path: site
+          path: site/dist
 
   deploy:
     name: Deploy Pages
