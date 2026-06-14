@@ -3,14 +3,17 @@ title: "Set Methods"
 description: "Set method documentation for Vela."
 ---
 
-Sets store unique script values. Current set keys are intentionally limited to
-stable value categories such as `null`, booleans, finite numbers, and strings,
-so set behavior stays deterministic across host boundaries.
+Sets store unique script values through the same `ValueKey` policy used by map
+keys. Immutable leaf values such as `null`, booleans, finite numbers, chars,
+strings, and bytes compare by value. Script heap objects and host refs compare
+by identity, while transient values such as `PathProxy` are rejected before
+mutation.
 
 ## Construction And Membership
 
 Use `set::from_array` to build a set from an array. Duplicate values are
-deduplicated according to set key equality.
+deduplicated according to `ValueKey` equality, so aliases of the same script
+object collapse while separate objects with identical fields remain distinct.
 
 ```vela
 fn main() {

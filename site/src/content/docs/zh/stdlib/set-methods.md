@@ -3,12 +3,14 @@ title: "Set 方法"
 description: "Vela Set 方法文档。"
 ---
 
-Set 存储唯一脚本值。当前 set key 有意限制在稳定值类别上，例如 `null`、
-bool、有限数字和 string，让跨宿主边界的行为保持确定。
+Set 通过和 Map key 相同的 `ValueKey` 策略存储唯一脚本值。`null`、bool、
+有限数字、char、string 和 bytes 等不可变叶子值按值比较；脚本堆对象和
+host ref 按身份比较；`PathProxy` 等临时值会在修改前被拒绝。
 
 ## 构造和成员检查
 
-用 `set::from_array` 从数组构造 Set。重复值会按 set key 相等规则去重。
+用 `set::from_array` 从数组构造 Set。重复值会按 `ValueKey` 相等规则去重，
+因此同一脚本对象的别名会合并，而字段相同但独立构造的对象仍然是不同元素。
 
 ```vela
 fn main() {
