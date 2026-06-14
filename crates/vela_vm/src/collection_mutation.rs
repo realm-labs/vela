@@ -387,24 +387,15 @@ pub(crate) fn extend_set_slots(
         .adjust_object_size_after_mutation(reference, budget, precharged_growth)
 }
 
-pub(crate) fn remove_set_slots(
+pub(crate) fn remove_set_slot(
     heap: &mut HeapExecution<'_>,
     reference: GcRef,
-    indexes: impl IntoIterator<Item = usize>,
+    key: &ValueKey,
     budget: Option<&mut ExecutionBudget>,
     operation: &'static str,
 ) -> VmResult<bool> {
     let before = set_slots(heap, reference, operation)?.len();
-    let snapshot = set_slots(heap, reference, operation)?.values_vec();
-    let mut indexes = indexes.into_iter().collect::<Vec<_>>();
-    indexes.sort_unstable_by(|left, right| right.cmp(left));
-    let mut changed = false;
-    for index in indexes {
-        if let Some(value) = snapshot.get(index) {
-            let key = ValueKey::from_value(value, Some(&*heap), operation)?;
-            changed |= set_slots_mut(heap, reference, operation)?.remove_keyed(&key);
-        }
-    }
+    let changed = set_slots_mut(heap, reference, operation)?.remove_keyed(key);
     let changed = changed && set_slots(heap, reference, operation)?.len() != before;
     if changed {
         heap.heap

@@ -178,6 +178,98 @@ fn main() {
 }
 
 #[test]
+fn managed_heap_execution_uses_record_identity_map_set_keys() {
+    let program = compile_standard_program_source(
+        SourceId::new(1),
+        r#"
+struct Player { id: i64, level: i64 }
+
+fn main() {
+    let alice = Player { id: 1, level: 10 };
+    let bob = Player { id: 2, level: 20 };
+    let alice_copy = Player { id: 1, level: 10 };
+    let scores = {"seed": 0};
+    scores.clear();
+    scores.set(alice, 10);
+    scores.set(bob, 20);
+    alice.level += 1;
+
+    let missing_copy = scores.remove(alice_copy);
+    let removed_bob = scores.remove(bob);
+    let active = set::from_array([]);
+    let inserted_alice = active.add(alice);
+    let duplicate_alice = active.add(alice);
+    let inserted_copy = active.add(alice_copy);
+    let removed_copy = active.remove(alice_copy);
+    let removed_copy_again = active.remove(alice_copy);
+
+    if scores.has(alice) && !scores.has(bob)
+        && scores.get_or(alice, 0) == 10
+        && option::is_none(missing_copy)
+        && option::unwrap_or(removed_bob, 0) == 20
+        && active.has(alice) && !active.has(alice_copy)
+        && inserted_alice && !duplicate_alice && inserted_copy
+        && removed_copy && !removed_copy_again {
+        return scores.get_or(alice, 0) + active.len();
+    }
+    return 0;
+}
+"#,
+    )
+    .expect("compile value-keyed record map/set source");
+    let mut budget = ExecutionBudget::unbounded();
+    let mut vm = Vm::new();
+    vm.register_standard_natives();
+
+    assert_eq!(
+        run_linked_test_program_with_budget(&vm, &program, "main", &[], &mut budget),
+        Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(11)))
+    );
+}
+
+#[test]
+fn managed_heap_execution_uses_finite_float_map_set_keys() {
+    let program = compile_standard_program_source(
+        SourceId::new(1),
+        r#"
+fn main() {
+    let scores = {"seed": 0};
+    scores.clear();
+    scores.set(1.5f32, 4);
+    scores.set(1.5f64, 6);
+    scores.set(-0.0f64, 8);
+    scores.set(0.0f64, 9);
+
+    let values = set::from_array([]);
+    values.add(1.5f32);
+    values.add(1.5f64);
+    values.add(-0.0f64);
+    values.add(0.0f64);
+    let removed_zero = values.remove(-0.0f64);
+    if scores.has(1.5f32) && scores.has(1.5f64)
+        && scores.get_or(0.0f64, 0) == 9
+        && scores.get_or(-0.0f64, 0) == 9
+        && values.len() == 2
+        && removed_zero
+        && !values.has(0.0f64) {
+        return scores.get_or(1.5f32, 0) + scores.get_or(1.5f64, 0) + scores.get_or(0.0f64, 0);
+    }
+    return 0;
+}
+"#,
+    )
+    .expect("compile finite float map/set source");
+    let mut budget = ExecutionBudget::unbounded();
+    let mut vm = Vm::new();
+    vm.register_standard_natives();
+
+    assert_eq!(
+        run_linked_test_program_with_budget(&vm, &program, "main", &[], &mut budget),
+        Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(19)))
+    );
+}
+
+#[test]
 fn managed_heap_execution_runs_script_impl_method_dispatch() {
     let program = compile_program_source(
         SourceId::new(1),

@@ -40,10 +40,7 @@ fn call_cached_set_add(
         return type_error("method add");
     };
     let key = SetKey::from_value(&args[0], Some(&*heap), "method add")?;
-    if set_slots(heap, reference, "method add")?
-        .values()
-        .any(|slot| slot_key(slot, heap).as_ref() == Ok(&key))
-    {
+    if set_slots(heap, reference, "method add")?.contains_key(&key) {
         return Ok(Value::Bool(false));
     }
     let slot = store_runtime_value(&args[0], heap, budget.as_deref_mut())?;
@@ -62,18 +59,8 @@ fn call_cached_set_remove(
         return type_error("method remove");
     };
     let key = SetKey::from_value(&args[0], Some(&*heap), "method remove")?;
-    let indexes = set_slots(heap, reference, "method remove")?
-        .values()
-        .enumerate()
-        .filter_map(|(index, slot)| (slot_key(slot, heap).as_ref() == Ok(&key)).then_some(index))
-        .collect::<Vec<_>>();
-    let changed = collection_mutation::remove_set_slots(
-        heap,
-        reference,
-        indexes.into_iter().rev(),
-        None,
-        "method remove",
-    )?;
+    let changed =
+        collection_mutation::remove_set_slot(heap, reference, &key, None, "method remove")?;
     Ok(Value::Bool(changed))
 }
 

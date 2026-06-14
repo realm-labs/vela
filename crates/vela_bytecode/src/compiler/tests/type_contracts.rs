@@ -421,6 +421,39 @@ fn f(values: Array<i64>, names: Set<String>, scores: Map<String, i64>) -> Array<
 }
 
 #[test]
+fn compiler_rejects_non_keyable_map_set_contract_hints() {
+    for source in [
+        r#"
+fn main(scores: Map<PathProxy, i64>) {
+    return scores;
+}
+"#,
+        r#"
+fn main(values: Set<PathProxy>) {
+    return values;
+}
+"#,
+        r#"
+fn main(values: Set<Function>) {
+    return values;
+}
+"#,
+    ] {
+        let error = compile_program_source(SourceId::new(1), source)
+            .expect_err("non-keyable container contract should fail before bytecode emission");
+        let CompileErrorKind::SyntaxDiagnostics(diagnostics) = error.kind else {
+            panic!("expected syntax diagnostics");
+        };
+        assert!(diagnostics.iter().any(|diagnostic| {
+            matches!(
+                diagnostic.code.as_deref(),
+                Some("syntax::map_key_type_argument" | "syntax::set_element_type_argument")
+            )
+        }));
+    }
+}
+
+#[test]
 fn compiler_preserves_parameterized_container_value_facts() {
     with_static_type_compiler(
         r#"

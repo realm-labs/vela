@@ -46,18 +46,13 @@ pub(crate) fn remove(
             let Some(HeapValue::Set(values)) = heap.heap.get(*reference) else {
                 return type_error("method remove");
             };
-            let indexes = values
-                .values()
-                .enumerate()
-                .filter_map(|(index, value)| {
-                    (SetKey::from_value(value, Some(&*heap), "method remove").as_ref() == Ok(&key))
-                        .then_some(index)
-                })
-                .collect::<Vec<_>>();
-            let changed = collection_mutation::remove_set_slots(
+            if !values.contains_key(&key) {
+                return Ok(Value::Bool(false));
+            }
+            let changed = collection_mutation::remove_set_slot(
                 heap,
                 *reference,
-                indexes.into_iter().rev(),
+                &key,
                 None,
                 "method remove",
             )?;

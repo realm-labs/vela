@@ -61,7 +61,9 @@ metadata display/validation, macro-inferred `Vec`/array/set/map hints,
 value-keyed map/set runtime containers, detached `OwnedValue` map entries with
 non-string serde key preservation, key-preserving reflection map reads,
 hot-reload ABI string comparison, and
-execution-budget charging for deep guard scans are implemented. Non-erased
+execution-budget charging for deep guard scans are implemented. Set add/remove
+mutation paths now route through the `ValueKey`-indexed container entry instead
+of scanning stored values. Non-erased
 `Iterator<T>` contracts now mark
 iterator cursors with lazy item guards so checked boundaries do not consume
 items, and yielded mismatches fail at `next()`/iteration time. Mutation-focused
