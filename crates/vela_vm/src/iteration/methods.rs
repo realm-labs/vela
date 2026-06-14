@@ -282,11 +282,11 @@ pub(crate) fn collect_map_method(
         collect_map_entries_without_callbacks(&mut iterator, heap.as_deref(), "method collect_map");
     restore_iterator_to_heap(*receiver, heap, iterator, "method collect_map")?;
     let values = values?;
-    check_collect_map_len(values.len(), budget.as_deref())?;
     let Some(heap_ref) = heap.as_deref_mut() else {
         return type_error("method collect_map");
     };
     let values = ScriptMap::from_entries(values, Some(&*heap_ref), "method collect_map")?;
+    check_collect_map_len(values.len(), budget.as_deref())?;
     allocate_heap_value(HeapValue::Map(values), heap_ref, budget.as_deref_mut())
 }
 
@@ -302,11 +302,11 @@ pub(crate) fn collect_map_method_runtime(
         "method collect_map",
         |iterator, runtime| collect_map_entries(iterator, runtime, "method collect_map"),
     )?;
-    check_collect_map_len(values.len(), runtime.budget.as_deref())?;
     let Some(heap_ref) = runtime.heap.as_deref_mut() else {
         return type_error("method collect_map");
     };
     let values = ScriptMap::from_entries(values, Some(&*heap_ref), "method collect_map")?;
+    check_collect_map_len(values.len(), runtime.budget.as_deref())?;
     allocate_heap_value(
         HeapValue::Map(values),
         heap_ref,

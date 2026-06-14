@@ -636,6 +636,35 @@ fn main() {
 }
 
 #[test]
+fn iterator_collect_map_limit_counts_unique_value_keys() {
+    let program = compile_program_source(
+        SourceId::new(1),
+        r#"
+fn main() {
+    let collected = [
+        MapEntry { key: "xp", value: 1 },
+        MapEntry { key: "xp", value: 2 },
+        MapEntry { key: "gold", value: 3 },
+    ].iter().collect_map();
+    return collected["xp"] * 10 + collected["gold"];
+}
+"#,
+    )
+    .expect("compile collect_map duplicate key limit source");
+    let mut budget =
+        ExecutionBudget::unbounded().with_collection_limits(crate::budget::CollectionLimits {
+            max_array_len: usize::MAX,
+            max_map_entries: 2,
+            max_set_len: usize::MAX,
+        });
+
+    assert_eq!(
+        run_linked_test_program_with_budget(&Vm::new(), &program, "main", &[], &mut budget),
+        Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(23)))
+    );
+}
+
+#[test]
 fn iterator_collect_array_respects_array_collection_limit() {
     let program = compile_program_source(
         SourceId::new(1),
