@@ -5,7 +5,7 @@ description: "Quickstart documentation for Vela."
 
 The fastest way to try Vela is the Playground. Pick an example, edit the source, and run `main`.
 
-```text
+```vela
 fn main() {
     let rewards = { "gold": 10, "xp": 25 };
     return rewards["gold"] + rewards["xp"];

@@ -24,6 +24,13 @@ export default defineConfig({
         { icon: 'github', label: 'GitHub', href: 'https://github.com/realm-labs/vela' },
       ],
       customCss: ['./src/styles/custom.css'],
+      expressiveCode: {
+        shiki: {
+          langAlias: {
+            vela: 'rust',
+          },
+        },
+      },
       sidebar: [
     {
       label: "Guide",

@@ -5,7 +5,7 @@ description: "Vela 快速开始文档。"
 
 最快的体验方式是使用 Playground，选择示例、修改源码，然后运行 `main`。
 
-```text
+```vela
 fn main() {
     let rewards = { "gold": 10, "xp": 25 };
     return rewards["gold"] + rewards["xp"];
