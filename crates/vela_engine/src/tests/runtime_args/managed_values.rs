@@ -570,6 +570,44 @@ fn make_scores() {
 
 #[cfg(feature = "serde")]
 #[test]
+fn runtime_from_value_accepts_string_keyed_script_maps() {
+    let engine = Engine::builder().build().expect("engine should build");
+    let program = engine
+        .compile_source_with_id(
+            SourceId::new(1),
+            r#"
+fn make_scores() {
+    return [
+        MapEntry { key: "xp", value: 20 },
+        MapEntry { key: "gold", value: 10 },
+    ].iter().collect_map();
+}
+"#,
+        )
+        .expect("program should compile");
+    let mut runtime = Runtime::new(engine, program);
+
+    let scores = runtime
+        .call("make_scores", CallArgs::new(), CallOptions::unbounded())
+        .expect("scores should be returned as runtime value");
+
+    assert_eq!(
+        runtime.from_value::<BTreeMap<String, i64>>(&scores),
+        Ok(BTreeMap::from([
+            ("gold".to_owned(), 10_i64),
+            ("xp".to_owned(), 20_i64),
+        ]))
+    );
+    assert_eq!(
+        runtime
+            .value_to_owned(&scores)
+            .expect("runtime value can materialize with string keys"),
+        OwnedValue::map([("gold", 10_i64), ("xp", 20_i64)])
+    );
+}
+
+#[cfg(feature = "serde")]
+#[test]
 fn runtime_call_accepts_serde_non_string_map_keys() {
     let engine = Engine::builder().build().expect("engine should build");
     let program = engine
