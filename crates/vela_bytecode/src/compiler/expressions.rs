@@ -1,4 +1,5 @@
-use vela_common::{PrimitiveTag, Span};
+use vela_common::{Diagnostic, PrimitiveTag, Span};
+use vela_def::MethodId;
 use vela_syntax::ast::{BinaryOp, Expr, ExprKind, InterpolatedStringPart, Literal, UnaryOp};
 
 use crate::{
@@ -299,6 +300,7 @@ impl Compiler<'_, '_> {
             BinaryOp::RangeInclusive => return self.compile_range(left, right, true),
             _ => {}
         }
+        self.reject_static_comparison_without_trait(op, span, left)?;
 
         if let Some(register) = self.compile_binary_with_inline_literal(op, span, left, right)? {
             return Ok(register);
@@ -319,6 +321,53 @@ impl Compiler<'_, '_> {
         .expect("logical operators handled above");
         self.emit_spanned(instruction, span);
         Ok(dst)
+    }
+
+    fn reject_static_comparison_without_trait(
+        &self,
+        op: BinaryOp,
+        span: Span,
+        left: &Expr,
+    ) -> CompileResult<()> {
+        let Some(requirement) = ComparisonTraitRequirement::for_op(op) else {
+            return Ok(());
+        };
+        let Some(type_name) = self.script_type_for_expr(left) else {
+            return Ok(());
+        };
+        if !self.is_declared_script_type(&type_name)
+            || self.type_implements_builtin_trait_method(
+                &type_name,
+                requirement.trait_name,
+                requirement.method_name,
+            )
+        {
+            return Ok(());
+        }
+        Err(CompileError::new(CompileErrorKind::SemanticDiagnostics(
+            vec![
+                Diagnostic::error(format!(
+                    "`{type_name}` does not implement `{}` for `{}`",
+                    requirement.trait_name, requirement.operator
+                ))
+                .with_code("compiler::missing_comparison_trait")
+                .with_span(span)
+                .with_label(
+                    span,
+                    format!(
+                        "static `{}` comparison requires `{}`",
+                        requirement.operator, requirement.trait_name
+                    ),
+                )
+                .with_label(
+                    span,
+                    format!(
+                        "add `impl {} for {type_name}` or make the value dynamic",
+                        requirement.trait_name
+                    ),
+                ),
+            ],
+        )))
     }
 
     fn compile_binary_with_inline_literal(
@@ -624,6 +673,97 @@ impl Compiler<'_, '_> {
         };
         self.compile_binary(inverse, span, left, right).map(Some)
     }
+}
+
+impl Compiler<'_, '_> {
+    fn is_declared_script_type(&self, type_name: &str) -> bool {
+        self.facts
+            .type_symbols
+            .values()
+            .any(|known| known == type_name)
+    }
+
+    fn type_implements_builtin_trait_method(
+        &self,
+        type_name: &str,
+        trait_name: &str,
+        method_name: &str,
+    ) -> bool {
+        self.script_method_id_for_type(type_name, method_name)
+            == Some(builtin_trait_method_id(trait_name, method_name))
+    }
+}
+
+struct ComparisonTraitRequirement {
+    trait_name: &'static str,
+    method_name: &'static str,
+    operator: &'static str,
+}
+
+impl ComparisonTraitRequirement {
+    fn for_op(op: BinaryOp) -> Option<Self> {
+        match op {
+            BinaryOp::Equal | BinaryOp::NotEqual => Some(Self {
+                trait_name: "PartialEq",
+                method_name: "eq",
+                operator: op.source_name(),
+            }),
+            BinaryOp::Less | BinaryOp::LessEqual | BinaryOp::Greater | BinaryOp::GreaterEqual => {
+                Some(Self {
+                    trait_name: "PartialOrd",
+                    method_name: "partial_cmp",
+                    operator: op.source_name(),
+                })
+            }
+            BinaryOp::Add
+            | BinaryOp::Sub
+            | BinaryOp::Mul
+            | BinaryOp::Div
+            | BinaryOp::Rem
+            | BinaryOp::Range
+            | BinaryOp::RangeInclusive
+            | BinaryOp::Or
+            | BinaryOp::And
+            | BinaryOp::IdentityEqual
+            | BinaryOp::IdentityNotEqual => None,
+        }
+    }
+}
+
+trait BinaryOpName {
+    fn source_name(self) -> &'static str;
+}
+
+impl BinaryOpName for BinaryOp {
+    fn source_name(self) -> &'static str {
+        match self {
+            BinaryOp::Add => "+",
+            BinaryOp::Sub => "-",
+            BinaryOp::Mul => "*",
+            BinaryOp::Div => "/",
+            BinaryOp::Rem => "%",
+            BinaryOp::Equal => "==",
+            BinaryOp::NotEqual => "!=",
+            BinaryOp::IdentityEqual => "===",
+            BinaryOp::IdentityNotEqual => "!==",
+            BinaryOp::Less => "<",
+            BinaryOp::LessEqual => "<=",
+            BinaryOp::Greater => ">",
+            BinaryOp::GreaterEqual => ">=",
+            BinaryOp::Range => "..",
+            BinaryOp::RangeInclusive => "..=",
+            BinaryOp::Or => "||",
+            BinaryOp::And => "&&",
+        }
+    }
+}
+
+fn builtin_trait_method_id(trait_name: &str, method_name: &str) -> MethodId {
+    MethodId::new(u128::from(vela_common::stable_id(
+        "trait_method",
+        trait_name,
+        method_name,
+    )))
 }
 
 pub(super) fn literal_string(expr: &Expr) -> Option<&str> {

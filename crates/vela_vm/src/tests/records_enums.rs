@@ -1,6 +1,17 @@
 use super::*;
 use crate::owned_value::OwnedValue;
 use crate::value::Value as RuntimeValue;
+use vela_bytecode::compiler::error::{CompileError, CompileErrorKind};
+
+fn semantic_diagnostic_codes(error: CompileError) -> Vec<String> {
+    let CompileErrorKind::SemanticDiagnostics(diagnostics) = error.kind else {
+        panic!("expected semantic diagnostics");
+    };
+    diagnostics
+        .into_iter()
+        .filter_map(|diagnostic| diagnostic.code)
+        .collect()
+}
 
 fn run_records_program(
     program: &UnlinkedProgram,
@@ -148,7 +159,7 @@ fn main() {
 
 #[test]
 fn record_semantic_equality_requires_partial_eq() {
-    let program = compile_program_source(
+    let error = compile_program_source(
         SourceId::new(1),
         r#"
 struct Reward { code: String, amount: i64 }
@@ -160,17 +171,11 @@ fn main() {
 }
 "#,
     )
-    .expect("compile record equality source");
+    .expect_err("known record equality without PartialEq should be a compile error");
 
-    let error = run_records_program(&program, "main", &[])
-        .expect_err("record equality should require PartialEq");
     assert_eq!(
-        error.kind(),
-        VmErrorKind::TypeMismatch { operation: "equal" }
-    );
-    assert!(
-        error.source_span.is_some(),
-        "dynamic equality failure should carry the operator span"
+        semantic_diagnostic_codes(error),
+        ["compiler::missing_comparison_trait"]
     );
 }
 
@@ -238,7 +243,7 @@ fn main() {
 
 #[test]
 fn record_semantic_ordering_requires_partial_ord() {
-    let program = compile_program_source(
+    let error = compile_program_source(
         SourceId::new(1),
         r#"
 struct Score { value: i64 }
@@ -248,17 +253,11 @@ fn main() {
 }
 "#,
     )
-    .expect("compile record ordering source");
+    .expect_err("known record ordering without PartialOrd should be a compile error");
 
-    let error = run_records_program(&program, "main", &[])
-        .expect_err("record ordering should require PartialOrd");
     assert_eq!(
-        error.kind(),
-        VmErrorKind::TypeMismatch { operation: "less" }
-    );
-    assert!(
-        error.source_span.is_some(),
-        "dynamic ordering failure should carry the operator span"
+        semantic_diagnostic_codes(error),
+        ["compiler::missing_comparison_trait"]
     );
 }
 

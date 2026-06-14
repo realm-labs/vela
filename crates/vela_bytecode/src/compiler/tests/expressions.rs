@@ -53,6 +53,50 @@ fn main() {
 }
 
 #[test]
+fn compiler_rejects_static_record_equality_without_partial_eq() {
+    let error = compile_program_source(
+        SourceId::new(1),
+        r#"
+struct Reward { amount: i64 }
+
+fn main() {
+    let left = Reward { amount: 1 };
+    let right = Reward { amount: 1 };
+    return left == right;
+}
+"#,
+    )
+    .expect_err("known record equality without PartialEq should be a compile error");
+
+    assert_eq!(
+        semantic_diagnostic_codes(error),
+        ["compiler::missing_comparison_trait"]
+    );
+}
+
+#[test]
+fn compiler_rejects_static_record_ordering_without_partial_ord() {
+    let error = compile_program_source(
+        SourceId::new(1),
+        r#"
+struct Score { value: i64 }
+
+fn main() {
+    let left = Score { value: 1 };
+    let right = Score { value: 2 };
+    return left < right;
+}
+"#,
+    )
+    .expect_err("known record ordering without PartialOrd should be a compile error");
+
+    assert_eq!(
+        semantic_diagnostic_codes(error),
+        ["compiler::missing_comparison_trait"]
+    );
+}
+
+#[test]
 fn compiler_lowers_identity_comparison_operators() {
     let code = compile_function_source(
         SourceId::new(1),
