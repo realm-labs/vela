@@ -224,6 +224,59 @@ When facts become unknown through dynamic calls, reflection, erased `Any`,
 untyped native returns, or untracked mutation, the compiler must degrade to
 dynamic checks instead of keeping stale typed facts.
 
+### 5.4 Trusted container fact provenance
+
+A container type hint is not itself proof. The compiler may use
+`Array<T>`, `Set<T>`, `Map<K, V>`, or `Iterator<T>` facts for fast paths only
+after the container fact is trusted.
+
+Trusted container facts may come from:
+
+```text
+checked function entry guards
+typed let/global/field boundaries after the guard succeeds
+statically proven literals or constructors
+typed mutation paths that guard or statically prove every inserted value
+native/host/reflection returns after an explicit contract guard succeeds
+```
+
+Untrusted container facts include:
+
+```text
+annotation text before validating the right-hand side
+untyped or Any values
+dynamic native/host/reflection returns before guarding
+aliases after an unknown mutation
+containers passed through dynamic calls that may mutate them
+```
+
+The required lowering order is:
+
+```text
+evaluate RHS
+prove or guard RHS against the annotated container contract
+bind the local/global/field fact only after proof or guard success
+use the trusted fact for later reads, loops, and statically proven mutations
+```
+
+Example:
+
+```vela
+fn source() {
+    return ["bad"];
+}
+
+fn f() {
+    let xs: Array<i64> = source(); // guard must run before xs is trusted
+    xs.push(1i64);                 // no guard only if the previous guard passed
+    return xs[0] + 1;
+}
+```
+
+It is a bug to assign `xs` a trusted `Array<i64>` fact only because the
+annotation text says `Array<i64>`. If the RHS is dynamic, the trusted fact
+starts after the contract guard, not before it.
+
 ---
 
 ## 6. Runtime Contract Model
@@ -381,6 +434,9 @@ Iterator(Box<RuntimeTypeFact>)
   contracts if that remains the cleanest representation.
 - Update `type_hint_value_type`, expected-type outcomes, typed let/param/return
   guard generation, index/for item facts, and write-site contract checks.
+- Track trusted container fact provenance explicitly enough that a type
+  annotation on a dynamic RHS does not create fast-path facts before the
+  required guard succeeds.
 - Ensure dynamic/erased facts degrade safely.
 
 Checkpoint:
@@ -510,6 +566,12 @@ cargo bench -p vela_vm --bench baseline -- --quick container
 
 - Passing a mixed array to `fn f(values: Array<i64>)` fails before function body
   code assumes `i64` items.
+- `let xs: Array<i64> = dynamic_value()` emits or performs the contract guard
+  before binding `xs` as a trusted `Array<i64>` fact.
+- A dynamic RHS that fails `Array<i64>` validation does not execute later
+  no-guard typed mutations or typed index fast paths.
+- A statically proven `[1i64, 2i64]` literal can bind trusted `Array<i64>`
+  without a runtime guard.
 - Returning `Array<String>` from a function declared `-> Array<i64>` fails at
   the return guard.
 - `Array<i64>` rejects pushing `"x"` and preserves the previous array state.
