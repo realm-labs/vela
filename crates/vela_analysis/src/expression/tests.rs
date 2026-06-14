@@ -318,6 +318,30 @@ fn infers_stdlib_method_facts_with_lambda_parameters() {
 }
 
 #[test]
+fn infers_parameterized_container_facts_from_lambda_type_hints() {
+    let expressions = function_exprs(
+        r#"
+            fn main() {
+                |values: Array<i64>, scores: Map<String, i64>, names: Set<String>, players: Iterator<Player>| values[0];
+            }
+            "#,
+    );
+
+    assert_eq!(
+        type_fact_from_expr(&expressions[0], &ExprFactScope::new()),
+        TypeFact::function(
+            vec![
+                TypeFact::array(TypeFact::I64),
+                TypeFact::map(TypeFact::STRING, TypeFact::I64),
+                TypeFact::set(TypeFact::STRING),
+                TypeFact::iterator(TypeFact::record("Player")),
+            ],
+            TypeFact::I64,
+        )
+    );
+}
+
+#[test]
 fn infers_iterator_pipeline_facts_without_script_generics() {
     let expressions = function_exprs(
         r#"

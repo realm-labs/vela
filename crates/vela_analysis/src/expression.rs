@@ -455,6 +455,21 @@ fn collection_fact(facts: impl IntoIterator<Item = TypeFact>) -> TypeFact {
 fn type_fact_from_syntax_hint(hint: &TypeHint) -> TypeFact {
     match hint.path.as_slice() {
         [name] => {
+            if name == "Array" && hint.args.len() == 1 {
+                return TypeFact::array(type_fact_from_syntax_hint(&hint.args[0]));
+            }
+            if name == "Map" && hint.args.len() == 2 {
+                return TypeFact::map(
+                    type_fact_from_syntax_hint(&hint.args[0]),
+                    type_fact_from_syntax_hint(&hint.args[1]),
+                );
+            }
+            if name == "Set" && hint.args.len() == 1 {
+                return TypeFact::set(type_fact_from_syntax_hint(&hint.args[0]));
+            }
+            if name == "Iterator" && hint.args.len() == 1 {
+                return TypeFact::iterator(type_fact_from_syntax_hint(&hint.args[0]));
+            }
             if name == "Option" && hint.args.len() == 1 {
                 return TypeFact::option(type_fact_from_syntax_hint(&hint.args[0]));
             }
@@ -475,6 +490,7 @@ fn type_fact_from_syntax_hint(hint: &TypeHint) -> TypeFact {
                 "Array" => TypeFact::array(TypeFact::Unknown),
                 "Map" => TypeFact::map(TypeFact::Unknown, TypeFact::Unknown),
                 "Set" => TypeFact::set(TypeFact::Unknown),
+                "Iterator" => TypeFact::iterator(TypeFact::Unknown),
                 "Function" => TypeFact::function(Vec::new(), TypeFact::Unknown),
                 "Option" => TypeFact::option(TypeFact::Unknown),
                 "Result" => TypeFact::result(TypeFact::Unknown, TypeFact::Unknown),

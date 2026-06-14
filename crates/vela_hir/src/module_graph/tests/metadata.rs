@@ -7,8 +7,9 @@ fn lowers_type_hint_metadata_for_signatures_structs_and_locals() {
         1,
         "game::reward",
         r#"
-fn grant(player: game::Player, amount: i64) -> Result {
+fn grant(player: game::Player, amount: i64, bonuses: Array<Option<i64>>) -> Result<Map<String, i64>, String> {
     let reward: Reward = Reward { count: amount };
+    let names: Set<String> = [];
     let mapper = |entry: Reward| entry.count;
     return reward;
 }
@@ -32,12 +33,20 @@ struct Reward {
         Some("game::Player")
     );
     assert_eq!(
+        signature.params[2]
+            .type_hint
+            .as_ref()
+            .map(HirTypeHint::display)
+            .as_deref(),
+        Some("Array<Option<i64>>")
+    );
+    assert_eq!(
         signature
             .return_type
             .as_ref()
             .map(HirTypeHint::display)
             .as_deref(),
-        Some("Result")
+        Some("Result<Map<String, i64>, String>")
     );
     let shape = graph.struct_shape(reward).expect("struct shape");
     assert_eq!(shape.fields[0].name, "count");
@@ -60,6 +69,17 @@ struct Reward {
             .map(HirTypeHint::display)
             .as_deref(),
         Some("Reward")
+    );
+    let [names_local] = bindings.locals_named("names") else {
+        panic!("expected names local");
+    };
+    assert_eq!(
+        bindings
+            .local(*names_local)
+            .and_then(|local| local.type_hint.as_ref())
+            .map(HirTypeHint::display)
+            .as_deref(),
+        Some("Set<String>")
     );
     let entry_bindings = bindings.locals_named("entry");
     assert_eq!(

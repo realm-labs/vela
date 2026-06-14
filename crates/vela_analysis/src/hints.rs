@@ -55,6 +55,25 @@ fn builtin_type_fact_from_hir_hint(
         return None;
     };
     match name.as_str() {
+        "Array" if hint.args.len() == 1 => Some(TypeFact::array(type_fact_from_arg(
+            graph,
+            module,
+            &hint.args[0],
+        ))),
+        "Map" if hint.args.len() == 2 => Some(TypeFact::map(
+            type_fact_from_arg(graph, module, &hint.args[0]),
+            type_fact_from_arg(graph, module, &hint.args[1]),
+        )),
+        "Set" if hint.args.len() == 1 => Some(TypeFact::set(type_fact_from_arg(
+            graph,
+            module,
+            &hint.args[0],
+        ))),
+        "Iterator" if hint.args.len() == 1 => Some(TypeFact::iterator(type_fact_from_arg(
+            graph,
+            module,
+            &hint.args[0],
+        ))),
         "Option" if hint.args.len() == 1 => Some(TypeFact::option(type_fact_from_arg(
             graph,
             module,
@@ -174,7 +193,7 @@ fn schema_path_matches(graph: &ModuleGraph, declaration: &Declaration, path: &[S
 #[cfg(test)]
 mod tests {
     use super::*;
-    use vela_common::SourceId;
+    use vela_common::{SourceId, Span};
     use vela_hir::module_graph::{ModulePath, ModuleSource};
 
     fn graph(source: &str) -> ModuleGraph {
@@ -187,6 +206,14 @@ mod tests {
         graph.resolve_imports();
         assert_eq!(graph.diagnostics(), &[]);
         graph
+    }
+
+    fn hint(path: &[&str], args: Vec<HirTypeHint>) -> HirTypeHint {
+        HirTypeHint {
+            path: path.iter().map(|segment| (*segment).to_owned()).collect(),
+            args,
+            span: Span::new(SourceId::new(1), 0, 0),
+        }
     }
 
     #[test]
@@ -207,6 +234,74 @@ mod tests {
         assert_eq!(
             type_fact_from_path(&graph, &["Option".to_owned()]),
             TypeFact::option(TypeFact::Unknown)
+        );
+    }
+
+    #[test]
+    fn parameterized_builtin_hints_map_to_nested_container_facts() {
+        let graph = graph(
+            r#"
+            struct Player { level: i64 }
+            "#,
+        );
+        let module = graph
+            .declarations()
+            .find(|declaration| declaration.name == "Player")
+            .expect("Player declaration")
+            .module;
+
+        assert_eq!(
+            type_fact_from_hint_in_module(
+                &graph,
+                module,
+                &hint(
+                    &["Array"],
+                    vec![hint(&["Option"], vec![hint(&["i64"], Vec::new())])]
+                ),
+            ),
+            TypeFact::array(TypeFact::option(TypeFact::I64))
+        );
+        assert_eq!(
+            type_fact_from_hint_in_module(
+                &graph,
+                module,
+                &hint(
+                    &["Result"],
+                    vec![
+                        hint(
+                            &["Map"],
+                            vec![
+                                hint(&["String"], Vec::new()),
+                                hint(&["Array"], vec![hint(&["Player"], Vec::new())]),
+                            ],
+                        ),
+                        hint(&["String"], Vec::new()),
+                    ],
+                ),
+            ),
+            TypeFact::result(
+                TypeFact::map(
+                    TypeFact::STRING,
+                    TypeFact::array(TypeFact::record("game::Player"))
+                ),
+                TypeFact::STRING,
+            )
+        );
+        assert_eq!(
+            type_fact_from_hint_in_module(
+                &graph,
+                module,
+                &hint(&["Iterator"], vec![hint(&["Player"], Vec::new())]),
+            ),
+            TypeFact::iterator(TypeFact::record("game::Player"))
+        );
+        assert_eq!(
+            type_fact_from_hint_in_module(
+                &graph,
+                module,
+                &hint(&["Set"], vec![hint(&["String"], Vec::new())]),
+            ),
+            TypeFact::set(TypeFact::STRING)
         );
     }
 
