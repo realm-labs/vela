@@ -647,7 +647,6 @@ fn typed_container_mutation_arg_contract(
         }
         RuntimeTypeFact::Map { key, value } => {
             match (method, mutation_arg_role(method, param_name, position)) {
-                ("set", MutationArgRole::Key) => Some((**key).clone()),
                 ("set", MutationArgRole::Value) => Some((**value).clone()),
                 ("extend", MutationArgRole::Values) => {
                     Some(RuntimeTypeFact::map((**key).clone(), (**value).clone()))

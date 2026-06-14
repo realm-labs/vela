@@ -138,8 +138,8 @@ pub enum HeapValue {
     String(String),
     Bytes(Vec<u8>),
     Array(Vec<Value>),
-    Map(BTreeMap<String, Value>),
-    Set(Vec<Value>),
+    Map(ScriptMap),
+    Set(ScriptSet),
     Record { type_name: String, fields: ScriptFields<Value> },
     Enum { enum_name: String, variant: String, fields: ScriptFields<Value> },
     Closure(ClosureValue),
@@ -147,6 +147,12 @@ pub enum HeapValue {
     PathProxy(PathProxy),
 }
 ```
+
+`ScriptMap` and `ScriptSet` preserve original runtime key/element `Value`s,
+but lookup, uniqueness, and removal are driven by `ValueKey`. Immutable leaf
+keys compare by value, script heap objects and host refs compare by identity,
+and transient non-data values are rejected before mutation. Map and set keying
+does not call user comparison traits or any script-visible hash hook.
 
 `HeapValue::Iterator` stores one-shot cursor state. Iterator state may point at
 script heap sources such as arrays, sets, maps, and strings by `GcRef`, may own

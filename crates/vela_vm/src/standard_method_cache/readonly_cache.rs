@@ -201,8 +201,9 @@ pub(super) fn call_cached_map_get_or(
     };
     Some(
         crate::runtime_checks::expect_arity("get_or", args, 2).and_then(|()| {
-            let key = crate::string_methods::string_value(&args[0], heap, "map key")?;
-            Ok(values.get(key).map_or(args[1], |value| *value))
+            values
+                .get(&args[0], heap, "method get_or")
+                .map(|payload| payload.unwrap_or(args[1]))
         }),
     )
 }
@@ -220,8 +221,9 @@ pub(super) fn call_cached_collection_has(
             };
             Some(
                 crate::runtime_checks::expect_arity("has", args, 1).and_then(|()| {
-                    let key = crate::string_methods::string_value(&args[0], heap, "map key")?;
-                    Ok(Value::Bool(values.contains_key(key)))
+                    values
+                        .contains_key_value(&args[0], heap, "method has")
+                        .map(Value::Bool)
                 }),
             )
         }

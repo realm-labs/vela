@@ -56,9 +56,10 @@ The builtin parameterized container type-hint slice is in progress as an M20
 type-contract continuation. Syntax, HIR, analysis TypeFacts, compiler
 RuntimeTypeFacts, recursive guard plans, VM deep checks for materialized
 array/map/set values, compiler-owned typed container mutator checks, embedding
-metadata display/validation, macro-inferred `Vec`/array/set/string-keyed map
-hints, hot-reload ABI string comparison, and execution-budget charging for
-deep guard scans are implemented. Non-erased `Iterator<T>` contracts now mark
+metadata display/validation, macro-inferred `Vec`/array/set/map hints,
+value-keyed map/set runtime containers, hot-reload ABI string comparison, and
+execution-budget charging for deep guard scans are implemented. Non-erased
+`Iterator<T>` contracts now mark
 iterator cursors with lazy item guards so checked boundaries do not consume
 items, and yielded mismatches fail at `next()`/iteration time. Mutation-focused
 benchmark/profile rows now cover proven typed, guarded erased-value, and

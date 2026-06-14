@@ -12,6 +12,7 @@ use crate::heap::HeapValue;
 use crate::heap_execution::HeapExecution;
 use crate::option_result::std_enum_identity_for_names;
 use crate::owned_value::{OwnedClosureValue, OwnedIteratorState, OwnedValue};
+use crate::script_map::ScriptMap;
 use crate::script_object::ScriptFields;
 use crate::script_set::ScriptSet;
 use crate::value::{ClosureCode, ClosureValue, Value};
@@ -54,7 +55,7 @@ pub(crate) fn value_from_constant(
                 return Err(type_error("constant map"));
             };
             let mut budget = budget;
-            let values = entries
+            let mut entries = entries
                 .iter()
                 .map(|(key, value)| {
                     Ok((
@@ -63,6 +64,12 @@ pub(crate) fn value_from_constant(
                     ))
                 })
                 .collect::<VmResult<BTreeMap<_, _>>>()?;
+            let values = script_map_from_string_entries(
+                std::mem::take(&mut entries),
+                heap,
+                budget.as_deref_mut(),
+                "constant map",
+            )?;
             allocate_heap_value(HeapValue::Map(values), heap, budget)
         }
     }
@@ -118,11 +125,13 @@ pub(crate) fn make_array_value(
 pub(crate) fn make_map_value(
     values: BTreeMap<String, Value>,
     heap: &mut HeapExecution<'_>,
-    budget: Option<&mut ExecutionBudget>,
+    mut budget: Option<&mut ExecutionBudget>,
 ) -> VmResult<Value> {
     check_collection_len("map", 0, values.len(), budget.as_deref(), |budget| {
         budget.collection_limits().max_map_entries
     })?;
+    let values =
+        script_map_from_string_entries(values, heap, budget.as_deref_mut(), "map construction")?;
     allocate_heap_value(HeapValue::Map(values), heap, budget)
 }
 
@@ -207,6 +216,8 @@ pub(crate) fn owned_to_value(
                 .into_iter()
                 .map(|(key, value)| Ok((key, owned_to_value(value, heap, budget.as_deref_mut())?)))
                 .collect::<VmResult<BTreeMap<_, _>>>()?;
+            let values =
+                script_map_from_string_entries(values, heap, budget.as_deref_mut(), "owned map")?;
             allocate_heap_value(HeapValue::Map(values), heap, budget)
         }
         OwnedValue::Record { type_name, fields } => {
@@ -326,8 +337,14 @@ fn heap_value_to_owned(
             .collect::<VmResult<Vec<_>>>()
             .map(OwnedValue::Array),
         HeapValue::Map(values) => values
-            .iter()
-            .map(|(key, value)| Ok((key.clone(), value_to_owned(value, heap)?)))
+            .entries()
+            .map(|entry| {
+                let key = value_to_owned(&entry.key, heap)?;
+                let OwnedValue::String(key) = key else {
+                    return Err(type_error("non-string map key materialization"));
+                };
+                Ok((key, value_to_owned(&entry.value, heap)?))
+            })
             .collect::<VmResult<BTreeMap<_, _>>>()
             .map(OwnedValue::Map),
         HeapValue::Set(values) => values
@@ -579,6 +596,20 @@ fn heap_bytes_values_equal(
 
 fn type_error(operation: &'static str) -> VmError {
     VmError::new(VmErrorKind::TypeMismatch { operation })
+}
+
+pub(crate) fn script_map_from_string_entries(
+    entries: BTreeMap<String, Value>,
+    heap: &mut HeapExecution<'_>,
+    mut budget: Option<&mut ExecutionBudget>,
+    operation: &'static str,
+) -> VmResult<ScriptMap> {
+    let mut values = Vec::with_capacity(entries.len());
+    for (key, value) in entries {
+        let key = allocate_heap_value(HeapValue::String(key), heap, budget.as_deref_mut())?;
+        values.push((key, value));
+    }
+    ScriptMap::from_entries(values, Some(&*heap), operation)
 }
 
 #[cfg(test)]

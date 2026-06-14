@@ -4,6 +4,7 @@ use crate::heap_values::stored_runtime_value;
 use crate::method_runtime::{MethodRuntime, call_callback};
 use crate::ranges::RangeCursor;
 use crate::runtime_checks::is_truthy;
+use crate::value_key::ValueKey;
 use crate::{Value, VmError, VmErrorKind, VmResult};
 use vela_bytecode::{TypeGuardPlan, UnlinkedTypeGuardPlan};
 
@@ -53,17 +54,17 @@ enum IteratorCursor {
     },
     MapValues {
         source: GcRef,
-        keys: Vec<String>,
+        keys: Vec<ValueKey>,
         next: usize,
     },
     MapKeys {
         source: GcRef,
-        keys: Vec<String>,
+        keys: Vec<ValueKey>,
         next: usize,
     },
     MapEntries {
         source: GcRef,
-        keys: Vec<String>,
+        keys: Vec<ValueKey>,
         next: usize,
     },
     StringChars {
@@ -143,7 +144,7 @@ impl IteratorState {
         }
     }
 
-    pub(crate) fn from_map_values_source(source: GcRef, keys: Vec<String>) -> Self {
+    pub(crate) fn from_map_values_source(source: GcRef, keys: Vec<ValueKey>) -> Self {
         Self {
             cursor: IteratorCursor::MapValues {
                 source,
@@ -154,7 +155,7 @@ impl IteratorState {
         }
     }
 
-    pub(crate) fn from_map_keys_source(source: GcRef, keys: Vec<String>) -> Self {
+    pub(crate) fn from_map_keys_source(source: GcRef, keys: Vec<ValueKey>) -> Self {
         Self {
             cursor: IteratorCursor::MapKeys {
                 source,
@@ -165,7 +166,7 @@ impl IteratorState {
         }
     }
 
-    pub(crate) fn from_map_entries_source(source: GcRef, keys: Vec<String>) -> Self {
+    pub(crate) fn from_map_entries_source(source: GcRef, keys: Vec<ValueKey>) -> Self {
         Self {
             cursor: IteratorCursor::MapEntries {
                 source,
@@ -545,7 +546,7 @@ fn next_indexed_heap_value(
 
 fn next_map_value(
     source: GcRef,
-    keys: &[String],
+    keys: &[ValueKey],
     next: &mut usize,
     runtime: &MethodRuntime<'_, '_, '_>,
     operation: &'static str,
@@ -558,8 +559,8 @@ fn next_map_value(
     };
     while let Some(key) = keys.get(*next) {
         *next = next.saturating_add(1);
-        if let Some(value) = values.get(key) {
-            return Ok(Some(stored_runtime_value(value)));
+        if let Some(value) = values.get_keyed(key) {
+            return Ok(Some(value));
         }
     }
     Ok(None)
@@ -567,35 +568,7 @@ fn next_map_value(
 
 fn next_map_key(
     source: GcRef,
-    keys: &[String],
-    next: &mut usize,
-    runtime: &mut MethodRuntime<'_, '_, '_>,
-    operation: &'static str,
-) -> VmResult<Option<Value>> {
-    let Some(heap) = runtime.heap.as_deref() else {
-        return type_error(operation);
-    };
-    let Some(HeapValue::Map(_)) = heap.heap.get(source) else {
-        return type_error(operation);
-    };
-    let Some(key) = keys.get(*next) else {
-        return Ok(None);
-    };
-    *next = next.saturating_add(1);
-    let Some(heap) = runtime.heap.as_deref_mut() else {
-        return type_error(operation);
-    };
-    crate::heap_values::allocate_heap_value(
-        HeapValue::String(key.clone()),
-        heap,
-        runtime.budget.as_deref_mut(),
-    )
-    .map(Some)
-}
-
-fn next_map_entry(
-    source: GcRef,
-    keys: &[String],
+    keys: &[ValueKey],
     next: &mut usize,
     runtime: &mut MethodRuntime<'_, '_, '_>,
     operation: &'static str,
@@ -608,7 +581,31 @@ fn next_map_entry(
     };
     while let Some(key) = keys.get(*next) {
         *next = next.saturating_add(1);
-        if let Some(value) = values.get(key).map(stored_runtime_value) {
+        if let Some(entry) = values.entry_for_key(key) {
+            return Ok(Some(stored_runtime_value(&entry.key)));
+        }
+    }
+    Ok(None)
+}
+
+fn next_map_entry(
+    source: GcRef,
+    keys: &[ValueKey],
+    next: &mut usize,
+    runtime: &mut MethodRuntime<'_, '_, '_>,
+    operation: &'static str,
+) -> VmResult<Option<Value>> {
+    let Some(heap) = runtime.heap.as_deref() else {
+        return type_error(operation);
+    };
+    let Some(HeapValue::Map(values)) = heap.heap.get(source) else {
+        return type_error(operation);
+    };
+    while let Some(key) = keys.get(*next) {
+        *next = next.saturating_add(1);
+        if let Some(entry) = values.entry_for_key(key) {
+            let key = stored_runtime_value(&entry.key);
+            let value = stored_runtime_value(&entry.value);
             let mut heap = runtime.heap.as_deref_mut();
             return crate::map_methods::map_entry(key, value, &mut heap, &mut runtime.budget)
                 .map(Some);

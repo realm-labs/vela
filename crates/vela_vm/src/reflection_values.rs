@@ -103,11 +103,14 @@ pub(crate) fn runtime_value_to_reflect(
                 .map(reflect::value::ReflectValue::Array),
             Some(HeapValue::Map(values)) => {
                 let values = values
-                    .iter()
-                    .map(|(key, value)| {
+                    .entries()
+                    .map(|entry| {
+                        let key =
+                            crate::string_methods::string_value(&entry.key, Some(heap), operation)?
+                                .to_owned();
                         Ok((
-                            key.clone(),
-                            runtime_value_to_reflect(value, heap, operation)?,
+                            key,
+                            runtime_value_to_reflect(&entry.value, heap, operation)?,
                         ))
                     })
                     .collect::<VmResult<BTreeMap<_, _>>>()?;

@@ -1,6 +1,6 @@
-use std::collections::BTreeMap;
-
 use crate::heap::HeapValue;
+use crate::map_methods::make_map_from_entries;
+use crate::script_map::ScriptMap;
 use crate::script_object::ScriptFields;
 use crate::{
     ExecutionBudget, HeapExecution, StandardMethodInlineCacheTarget, Value, VmError, VmErrorKind,
@@ -23,12 +23,7 @@ pub(in crate::standard_method_cache) fn call_cached_map_materialization(
                     Err(error) => return Some(Err(error)),
                 }
             };
-            Some(super::make_string_array(
-                payload,
-                heap,
-                budget,
-                "method keys",
-            ))
+            Some(super::make_array(payload, heap, budget, "method keys"))
         }
         StandardMethodInlineCacheTarget::Values => {
             let payload = {
@@ -72,7 +67,7 @@ pub(in crate::standard_method_cache) fn call_cached_map_materialization(
 pub(super) fn map_values<'a>(
     receiver: &Value,
     heap: Option<&'a HeapExecution<'_>>,
-) -> Option<&'a BTreeMap<String, Value>> {
+) -> Option<&'a ScriptMap> {
     let Value::HeapRef(reference) = receiver else {
         return None;
     };
@@ -82,45 +77,39 @@ pub(super) fn map_values<'a>(
     Some(values)
 }
 
-fn map_keys_payload(values: &BTreeMap<String, Value>, args: &[Value]) -> VmResult<Vec<String>> {
+fn map_keys_payload(values: &ScriptMap, args: &[Value]) -> VmResult<Vec<Value>> {
     crate::runtime_checks::expect_arity("keys", args, 0)?;
-    Ok(values.keys().cloned().collect())
+    Ok(values.keys().copied().collect())
 }
 
-fn map_values_payload(values: &BTreeMap<String, Value>, args: &[Value]) -> VmResult<Vec<Value>> {
+fn map_values_payload(values: &ScriptMap, args: &[Value]) -> VmResult<Vec<Value>> {
     crate::runtime_checks::expect_arity("values", args, 0)?;
-    Ok(values.values().copied().collect())
+    Ok(values.values_vec())
 }
 
-fn map_entries_payload(
-    values: &BTreeMap<String, Value>,
-    args: &[Value],
-) -> VmResult<Vec<(String, Value)>> {
+fn map_entries_payload(values: &ScriptMap, args: &[Value]) -> VmResult<Vec<(Value, Value)>> {
     crate::runtime_checks::expect_arity("entries", args, 0)?;
-    Ok(values
-        .iter()
-        .map(|(key, value)| (key.clone(), *value))
-        .collect())
+    Ok(values.entries_vec())
 }
 
 fn map_merge_payload(
-    values: &BTreeMap<String, Value>,
+    values: &ScriptMap,
     args: &[Value],
     heap: Option<&HeapExecution<'_>>,
-) -> VmResult<BTreeMap<String, Value>> {
+) -> VmResult<Vec<(Value, Value)>> {
     crate::runtime_checks::expect_arity("merge", args, 1)?;
     let other = map_values(&args[0], heap).ok_or_else(|| {
         VmError::new(VmErrorKind::TypeMismatch {
             operation: "method merge",
         })
     })?;
-    let mut merged = values.clone();
-    merged.extend(other.iter().map(|(key, value)| (key.clone(), *value)));
+    let mut merged = values.entries_vec();
+    merged.extend(other.entries_vec());
     Ok(merged)
 }
 
 fn make_map_entry_array(
-    values: Vec<(String, Value)>,
+    values: Vec<(Value, Value)>,
     heap: &mut Option<&mut HeapExecution<'_>>,
     budget: &mut Option<&mut ExecutionBudget>,
     operation: &'static str,
@@ -133,13 +122,12 @@ fn make_map_entry_array(
 }
 
 fn make_map_entry(
-    key: String,
+    key: Value,
     value: Value,
     heap: &mut Option<&mut HeapExecution<'_>>,
     budget: &mut Option<&mut ExecutionBudget>,
     operation: &'static str,
 ) -> VmResult<Value> {
-    let key = super::make_string(key, heap, budget, operation)?;
     let Some(heap) = heap.as_deref_mut() else {
         return Err(VmError::new(VmErrorKind::TypeMismatch { operation }));
     };
@@ -155,13 +143,10 @@ fn make_map_entry(
 }
 
 fn make_map(
-    value: BTreeMap<String, Value>,
+    value: Vec<(Value, Value)>,
     heap: &mut Option<&mut HeapExecution<'_>>,
     budget: &mut Option<&mut ExecutionBudget>,
     operation: &'static str,
 ) -> VmResult<Value> {
-    let Some(heap) = heap.as_deref_mut() else {
-        return Err(VmError::new(VmErrorKind::TypeMismatch { operation }));
-    };
-    allocate_heap_value(HeapValue::Map(value), heap, budget.as_deref_mut())
+    make_map_from_entries(value, heap, budget, operation)
 }

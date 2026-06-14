@@ -221,14 +221,14 @@ may carry type arguments:
 
 ```text
 Array<T>          allowed as a builtin array contract
-Set<T>            allowed for set-keyable T: null, bool, i64, f64, String
-Map<String, V>    allowed because runtime maps are string-keyed
+Set<T>            allowed when T satisfies the ValueKey keyability contract
+Map<K, V>         allowed when K satisfies the ValueKey keyability contract
 Iterator<T>       allowed as a builtin iterator contract
 Option<T>         allowed as a builtin Option contract
 Result<T, E>      allowed as a builtin Result contract
 Player<T>         not supported
-Map<K, V>         not supported when K is not String
-Set<Player>       not supported because records are not set-keyable in this slice
+Map<PathProxy, V> not supported because PathProxy is transient
+Set<Function>     not supported until callable identity has an explicit policy
 ```
 
 Dynamic enum definitions can still model Option and Result:

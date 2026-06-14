@@ -1,6 +1,7 @@
 use std::collections::BTreeMap;
 
 use crate::heap::HeapValue;
+use crate::heap_values::script_map_from_string_entries;
 use crate::{
     CallFrame, ExecutionBudget, HeapExecution, SmallStorage, Value, VmError, VmErrorKind, VmResult,
     allocate_heap_value, expect_int, store_runtime_value,
@@ -38,6 +39,7 @@ pub(crate) fn make_map(
         }));
     };
     let slots = runtime_map_from_registers(frame, entries, heap, budget_ref(&mut budget))?;
+    let slots = script_map_from_string_entries(slots, heap, budget_ref(&mut budget), "map heap")?;
     let value = allocate_heap_value(HeapValue::Map(slots), heap, budget_ref(&mut budget))?;
     frame.write(dst, value)
 }
@@ -64,6 +66,7 @@ pub(crate) fn make_linked_map(
         heap,
         budget_ref(&mut budget),
     )?;
+    let slots = script_map_from_string_entries(slots, heap, budget_ref(&mut budget), "map heap")?;
     let value = allocate_heap_value(HeapValue::Map(slots), heap, budget_ref(&mut budget))?;
     frame.write(dst, value)
 }

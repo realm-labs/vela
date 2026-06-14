@@ -1,12 +1,9 @@
-use std::collections::BTreeMap;
-
+use crate::collection_mutation::check_collection_len;
 use crate::heap::HeapValue;
+use crate::heap_values::allocate_heap_value;
+use crate::script_map::ScriptMap;
 use crate::script_object::ScriptFields;
-use crate::string_methods;
-use crate::{
-    ExecutionBudget, HeapExecution, Value, VmError, VmErrorKind, VmResult, allocate_heap_value,
-    stored_runtime_value,
-};
+use crate::{ExecutionBudget, HeapExecution, Value, VmError, VmErrorKind, VmResult};
 
 mod higher_order;
 mod introspection;
@@ -36,20 +33,15 @@ pub(super) fn map_entries(
     receiver: &Value,
     heap: Option<&crate::HeapExecution<'_>>,
     operation: &'static str,
-) -> VmResult<Vec<(String, Value)>> {
-    map_slots(receiver, heap, operation).map(|values| {
-        values
-            .iter()
-            .map(|(key, value)| (key.clone(), stored_runtime_value(value)))
-            .collect()
-    })
+) -> VmResult<Vec<(Value, Value)>> {
+    map_slots(receiver, heap, operation).map(ScriptMap::entries_vec)
 }
 
 pub(super) fn map_slots<'a>(
     receiver: &Value,
     heap: Option<&'a crate::HeapExecution<'_>>,
     operation: &'static str,
-) -> VmResult<&'a BTreeMap<String, Value>> {
+) -> VmResult<&'a ScriptMap> {
     match receiver {
         Value::HeapRef(reference) => {
             let Some(HeapValue::Map(values)) = heap.and_then(|heap| heap.heap.get(*reference))
@@ -63,7 +55,7 @@ pub(super) fn map_slots<'a>(
 }
 
 pub(crate) fn map_entry(
-    key: &str,
+    key: Value,
     value: Value,
     heap: &mut Option<&mut HeapExecution<'_>>,
     budget: &mut Option<&mut ExecutionBudget>,
@@ -71,11 +63,6 @@ pub(crate) fn map_entry(
     let Some(heap_ref) = heap.as_deref_mut() else {
         return type_error("map entry");
     };
-    let key = allocate_heap_value(
-        HeapValue::String(key.to_owned()),
-        heap_ref,
-        budget.as_deref_mut(),
-    )?;
     allocate_heap_value(
         HeapValue::Record {
             type_name: "MapEntry".to_owned(),
@@ -85,6 +72,22 @@ pub(crate) fn map_entry(
         heap_ref,
         budget.as_deref_mut(),
     )
+}
+
+pub(crate) fn make_map_from_entries(
+    entries: Vec<(Value, Value)>,
+    heap: &mut Option<&mut HeapExecution<'_>>,
+    budget: &mut Option<&mut ExecutionBudget>,
+    operation: &'static str,
+) -> VmResult<Value> {
+    check_collection_len("map", 0, entries.len(), budget.as_deref(), |budget| {
+        budget.collection_limits().max_map_entries
+    })?;
+    let Some(heap_ref) = heap.as_deref_mut() else {
+        return type_error(operation);
+    };
+    let values = ScriptMap::from_entries(entries, Some(&*heap_ref), operation)?;
+    allocate_heap_value(HeapValue::Map(values), heap_ref, budget.as_deref_mut())
 }
 
 pub(super) fn expect_arity(name: &str, args: &[Value], expected: usize) -> VmResult<()> {
@@ -100,10 +103,6 @@ pub(super) fn expect_arity(name: &str, args: &[Value], expected: usize) -> VmRes
 
 pub(super) fn expect_no_args(method: &str, args: &[Value]) -> VmResult<()> {
     expect_arity(method, args, 0)
-}
-
-pub(super) fn map_key(value: &Value, heap: Option<&HeapExecution<'_>>) -> VmResult<String> {
-    string_methods::string_value(value, heap, "map key").map(str::to_owned)
 }
 
 pub(super) fn type_error<T>(operation: &'static str) -> VmResult<T> {
@@ -210,6 +209,80 @@ fn main() {
         let result = run_linked_map_test_code_with_budget(&Vm::new(), code, &mut budget)
             .expect("heap map higher-order methods should run");
         assert_eq!(result, OwnedValue::Bool(true));
+    }
+
+    #[test]
+    fn managed_heap_map_accepts_scalar_runtime_keys() {
+        let source = r#"
+fn main() {
+    let scores = {"seed": 0};
+    scores.clear();
+    scores.set(10, 10);
+    scores.set(true, 1);
+    scores.set(10, 20);
+
+    if scores.len() == 2
+        && scores[10] == 20
+        && scores.has(true)
+        && !scores.has(false)
+        && scores.get_or(false, 30) == 30
+    {
+        return scores.keys().count();
+    }
+    return 0;
+}
+"#;
+        let code = compile_function_source(SourceId::new(1), source, "main")
+            .expect("scalar map key source should compile");
+        let mut vm = Vm::new();
+        vm.register_standard_natives();
+        let mut budget = ExecutionBudget::unbounded();
+
+        let result = run_linked_map_test_code_with_budget(&vm, code, &mut budget)
+            .expect("scalar map keys should run");
+        assert_eq!(result, OwnedValue::Scalar(vela_common::ScalarValue::I64(2)));
+    }
+
+    #[test]
+    fn managed_heap_map_uses_record_identity_keys() {
+        let source = r#"
+struct Player {
+    id
+    level
+}
+
+fn main() {
+    let a = Player { id: 1, level: 10 };
+    let b = Player { id: 1, level: 10 };
+    let rewards = {"seed": ""};
+    rewards.clear();
+
+    rewards.set(a, "first");
+    a.level += 1;
+    rewards.set(a, "updated");
+    rewards.set(b, "second");
+    let c = Player { id: 1, level: 11 };
+
+    if rewards.len() == 2
+        && rewards[a] == "updated"
+        && rewards.get_or(b, "missing") == "second"
+        && rewards.has(a)
+        && !rewards.has(c)
+    {
+        return rewards.keys().count();
+    }
+    return 0;
+}
+"#;
+        let code = compile_function_source(SourceId::new(1), source, "main")
+            .expect("record identity map source should compile");
+        let mut vm = Vm::new();
+        vm.register_standard_natives();
+        let mut budget = ExecutionBudget::unbounded();
+
+        let result = run_linked_map_test_code_with_budget(&vm, code, &mut budget)
+            .expect("record identity map should run");
+        assert_eq!(result, OwnedValue::Scalar(vela_common::ScalarValue::I64(2)));
     }
 
     #[test]

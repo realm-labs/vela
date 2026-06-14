@@ -1,7 +1,7 @@
-use std::collections::BTreeMap;
 use std::mem;
 
 use crate::heap::{GcRef, HeapValue};
+use crate::script_map::ScriptMap;
 use crate::script_set::ScriptSet;
 use crate::value_key::ValueKey;
 use crate::{
@@ -158,16 +158,17 @@ pub(crate) fn clear_array(
 pub(crate) fn insert_map_slot(
     heap: &mut HeapExecution<'_>,
     reference: GcRef,
-    key: String,
+    key: Value,
     slot: Value,
     mut budget: Option<&mut ExecutionBudget>,
     operation: &'static str,
 ) -> VmResult<()> {
+    let value_key = ValueKey::from_value(&key, Some(&*heap), operation)?;
     let values = map_slots(heap, reference, operation)?;
-    let is_new_key = !values.contains_key(&key);
+    let is_new_key = !values.contains_key(&value_key);
     let inserted = slot;
     if !is_new_key || !tracks_collection_growth(budget.as_deref()) {
-        map_slots_mut(heap, reference, operation)?.insert(key, slot);
+        map_slots_mut(heap, reference, operation)?.insert_keyed(value_key, key, slot);
         if is_new_key {
             heap.heap
                 .note_container_value_inserted(reference, &inserted);
@@ -182,13 +183,15 @@ pub(crate) fn insert_map_slot(
         check_collection_len("map", values.len(), 1, budget.as_deref(), |budget| {
             budget.collection_limits().max_map_entries
         })?;
-        key.len().saturating_add(mem::size_of::<Value>())
+        value_key
+            .payload_size_bytes()
+            .saturating_add(mem::size_of::<crate::script_map::MapEntry>())
     } else {
         0
     };
     charge_growth(budget.as_deref_mut(), precharged_growth)?;
 
-    map_slots_mut(heap, reference, operation)?.insert(key, slot);
+    map_slots_mut(heap, reference, operation)?.insert_keyed(value_key, key, slot);
     heap.heap
         .note_container_value_inserted(reference, &inserted);
     heap.heap
@@ -198,21 +201,36 @@ pub(crate) fn insert_map_slot(
 pub(crate) fn extend_map_slots(
     heap: &mut HeapExecution<'_>,
     reference: GcRef,
-    slots: Vec<(String, Value)>,
+    slots: Vec<(Value, Value)>,
     mut budget: Option<&mut ExecutionBudget>,
     operation: &'static str,
 ) -> VmResult<()> {
+    let keyed_slots = slots
+        .into_iter()
+        .map(|(key, slot)| {
+            Ok((
+                ValueKey::from_value(&key, Some(&*heap), operation)?,
+                key,
+                slot,
+            ))
+        })
+        .collect::<VmResult<Vec<_>>>()?;
     let had_replacement = {
         let values = map_slots(heap, reference, operation)?;
-        slots.iter().any(|(key, _)| values.contains_key(key))
+        keyed_slots
+            .iter()
+            .any(|(key, _, _)| values.contains_key(key))
     };
     if !tracks_collection_growth(budget.as_deref()) {
-        map_slots_mut(heap, reference, operation)?.extend(slots.iter().cloned());
+        let values = map_slots_mut(heap, reference, operation)?;
+        for (value_key, key, slot) in &keyed_slots {
+            values.insert_keyed(value_key.clone(), *key, *slot);
+        }
         if had_replacement {
             heap.heap
                 .note_container_value_replaced_or_removed(reference);
         } else {
-            for (_, slot) in &slots {
+            for (_, _, slot) in &keyed_slots {
                 heap.heap.note_container_value_inserted(reference, slot);
             }
         }
@@ -220,9 +238,9 @@ pub(crate) fn extend_map_slots(
     }
 
     let values = map_slots(heap, reference, operation)?;
-    let new_keys = slots
+    let new_keys = keyed_slots
         .iter()
-        .filter(|(key, _)| !values.contains_key(key))
+        .filter(|(key, _, _)| !values.contains_key(key))
         .collect::<Vec<_>>();
     check_collection_len(
         "map",
@@ -233,16 +251,22 @@ pub(crate) fn extend_map_slots(
     )?;
     let precharged_growth = new_keys
         .iter()
-        .map(|(key, _)| key.len().saturating_add(mem::size_of::<Value>()))
+        .map(|(key, _, _)| {
+            key.payload_size_bytes()
+                .saturating_add(mem::size_of::<crate::script_map::MapEntry>())
+        })
         .sum::<usize>();
     charge_growth(budget.as_deref_mut(), precharged_growth)?;
 
-    map_slots_mut(heap, reference, operation)?.extend(slots.iter().cloned());
+    let values = map_slots_mut(heap, reference, operation)?;
+    for (value_key, key, slot) in &keyed_slots {
+        values.insert_keyed(value_key.clone(), *key, *slot);
+    }
     if had_replacement {
         heap.heap
             .note_container_value_replaced_or_removed(reference);
     } else {
-        for (_, slot) in &slots {
+        for (_, _, slot) in &keyed_slots {
             heap.heap.note_container_value_inserted(reference, slot);
         }
     }
@@ -253,13 +277,12 @@ pub(crate) fn extend_map_slots(
 pub(crate) fn remove_map_slot(
     heap: &mut HeapExecution<'_>,
     reference: GcRef,
-    key: &str,
+    key: &Value,
     budget: Option<&mut ExecutionBudget>,
     operation: &'static str,
 ) -> VmResult<Option<Value>> {
-    let payload = map_slots_mut(heap, reference, operation)?
-        .remove(key)
-        .map(|slot| stored_runtime_value(&slot));
+    let key = ValueKey::from_value(key, Some(&*heap), operation)?;
+    let payload = map_slots_mut(heap, reference, operation)?.remove_keyed(&key);
     if payload.is_some() {
         heap.heap
             .note_container_value_replaced_or_removed(reference);
@@ -504,7 +527,7 @@ fn map_slots<'a>(
     heap: &'a HeapExecution<'_>,
     reference: GcRef,
     operation: &'static str,
-) -> VmResult<&'a BTreeMap<String, Value>> {
+) -> VmResult<&'a ScriptMap> {
     let Some(HeapValue::Map(values)) = heap.heap.get(reference) else {
         return type_error(operation);
     };
@@ -515,7 +538,7 @@ fn map_slots_mut<'a>(
     heap: &'a mut HeapExecution<'_>,
     reference: GcRef,
     operation: &'static str,
-) -> VmResult<&'a mut BTreeMap<String, Value>> {
+) -> VmResult<&'a mut ScriptMap> {
     let Some(HeapValue::Map(values)) = heap.heap.get_mut(reference).ok() else {
         return type_error(operation);
     };
@@ -648,7 +671,7 @@ mod tests {
         let error = insert_map_slot(
             &mut heap_execution,
             reference,
-            "a".to_owned(),
+            Value::I64(1),
             Value::I64(10),
             Some(&mut budget),
             "test map set",

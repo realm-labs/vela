@@ -512,14 +512,14 @@ pub const STD_METHODS: &[StdMethodSpec] = &[
     StdMethodSpec::new(
         "Map",
         "has",
-        &[StdParamSpec::new("key", "string")],
+        &[StdParamSpec::new("key", "any")],
         "bool",
         "Returns true when a key exists.",
     ),
     StdMethodSpec::new(
         "Map",
         "get",
-        &[StdParamSpec::new("key", "string")],
+        &[StdParamSpec::new("key", "any")],
         "Option",
         "Returns the value for a key, or Option::None.",
     ),
@@ -527,7 +527,7 @@ pub const STD_METHODS: &[StdMethodSpec] = &[
         "Map",
         "get_or",
         &[
-            StdParamSpec::new("key", "string"),
+            StdParamSpec::new("key", "any"),
             StdParamSpec::new("default", "any"),
         ],
         "any",
@@ -537,7 +537,7 @@ pub const STD_METHODS: &[StdMethodSpec] = &[
         "Map",
         "set",
         &[
-            StdParamSpec::new("key", "string"),
+            StdParamSpec::new("key", "any"),
             StdParamSpec::new("value", "any"),
         ],
         "any",
@@ -546,7 +546,7 @@ pub const STD_METHODS: &[StdMethodSpec] = &[
     StdMethodSpec::new(
         "Map",
         "remove",
-        &[StdParamSpec::new("key", "string")],
+        &[StdParamSpec::new("key", "any")],
         "Option",
         "Removes and returns the value for a key.",
     ),

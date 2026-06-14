@@ -1,8 +1,6 @@
 use crate::heap::HeapValue;
 use crate::option_result::option_value;
-use crate::{
-    ExecutionBudget, HeapExecution, Value, VmResult, stored_runtime_value, string_methods,
-};
+use crate::{ExecutionBudget, HeapExecution, Value, VmResult};
 
 use super::{expect_arity, type_error};
 
@@ -12,14 +10,13 @@ pub(crate) fn has(
     heap: Option<&HeapExecution<'_>>,
 ) -> VmResult<bool> {
     expect_arity("has", args, 1)?;
-    let key = lookup_key(&args[0], heap)?;
     match receiver {
         Value::HeapRef(reference) => {
             let Some(HeapValue::Map(values)) = heap.and_then(|heap| heap.heap.get(*reference))
             else {
                 return type_error("method has");
             };
-            Ok(values.contains_key(key))
+            values.contains_key_value(&args[0], heap, "method has")
         }
         _ => type_error("method has"),
     }
@@ -32,7 +29,6 @@ pub(crate) fn get(
     budget: &mut Option<&mut ExecutionBudget>,
 ) -> VmResult<Value> {
     expect_arity("get", args, 1)?;
-    let key = lookup_key(&args[0], heap.as_deref())?;
     match receiver {
         Value::HeapRef(reference) => {
             let payload = {
@@ -41,7 +37,7 @@ pub(crate) fn get(
                 else {
                     return type_error("method get");
                 };
-                values.get(key).map(stored_runtime_value)
+                values.get(&args[0], heap.as_deref(), "method get")?
             };
             let Some(heap) = heap.as_deref_mut() else {
                 return type_error("method get");
@@ -58,7 +54,6 @@ pub(crate) fn get_or(
     heap: Option<&HeapExecution<'_>>,
 ) -> VmResult<Value> {
     expect_arity("get_or", args, 2)?;
-    let key = lookup_key(&args[0], heap)?;
     match receiver {
         Value::HeapRef(reference) => {
             let Some(HeapValue::Map(values)) = heap.and_then(|heap| heap.heap.get(*reference))
@@ -66,13 +61,9 @@ pub(crate) fn get_or(
                 return type_error("method get_or");
             };
             Ok(values
-                .get(key)
-                .map_or_else(|| args[1], stored_runtime_value))
+                .get(&args[0], heap, "method get_or")?
+                .unwrap_or(args[1]))
         }
         _ => type_error("method get_or"),
     }
-}
-
-fn lookup_key<'a>(value: &'a Value, heap: Option<&'a HeapExecution<'_>>) -> VmResult<&'a str> {
-    string_methods::string_value(value, heap, "map key")
 }

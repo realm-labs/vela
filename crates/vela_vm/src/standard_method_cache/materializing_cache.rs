@@ -169,10 +169,9 @@ pub(super) fn call_cached_map_get_option(
     budget: &mut Option<&mut ExecutionBudget>,
 ) -> Option<VmResult<Value>> {
     let values = map::map_values(receiver, heap.as_deref())?;
-    let payload = match crate::runtime_checks::expect_arity("get", args, 1).and_then(|()| {
-        let key = crate::string_methods::string_value(&args[0], heap.as_deref(), "map key")?;
-        Ok(values.get(key).copied())
-    }) {
+    let payload = match crate::runtime_checks::expect_arity("get", args, 1)
+        .and_then(|()| values.get(&args[0], heap.as_deref(), "method get"))
+    {
         Ok(payload) => payload,
         Err(error) => return Some(Err(error)),
     };

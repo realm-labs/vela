@@ -1,11 +1,10 @@
-use std::collections::BTreeMap;
-
 use crate::collection_mutation::check_collection_len;
 use crate::heap::HeapValue;
 use crate::heap_values::allocate_heap_value;
 use crate::method_runtime::MethodRuntime;
 use crate::option_result::option_value;
 use crate::runtime_checks::is_truthy;
+use crate::script_map::ScriptMap;
 use crate::script_set::ScriptSet;
 use crate::{
     ExecutionBudget, HeapExecution, Value, VmError, VmErrorKind, VmResult, runtime_checks,
@@ -40,10 +39,9 @@ pub(crate) fn iter_method(
                 Some(HeapValue::Set(values)) => {
                     IteratorState::from_set_source(*reference, values.len())
                 }
-                Some(HeapValue::Map(values)) => IteratorState::from_map_values_source(
-                    *reference,
-                    values.keys().cloned().collect(),
-                ),
+                Some(HeapValue::Map(values)) => {
+                    IteratorState::from_map_values_source(*reference, values.key_order())
+                }
                 Some(HeapValue::Bytes(values)) => {
                     IteratorState::from_bytes_source(*reference, values.len())
                 }
@@ -290,6 +288,7 @@ pub(crate) fn collect_map_method(
     let Some(heap_ref) = heap.as_deref_mut() else {
         return type_error("method collect_map");
     };
+    let values = ScriptMap::from_entries(values, Some(&*heap_ref), "method collect_map")?;
     allocate_heap_value(HeapValue::Map(values), heap_ref, budget.as_deref_mut())
 }
 
@@ -309,6 +308,7 @@ pub(crate) fn collect_map_method_runtime(
     let Some(heap_ref) = runtime.heap.as_deref_mut() else {
         return type_error("method collect_map");
     };
+    let values = ScriptMap::from_entries(values, Some(&*heap_ref), "method collect_map")?;
     allocate_heap_value(
         HeapValue::Map(values),
         heap_ref,
@@ -464,11 +464,11 @@ fn collect_map_entries_without_callbacks(
     iterator: &mut IteratorState,
     heap: Option<&HeapExecution<'_>>,
     operation: &'static str,
-) -> VmResult<BTreeMap<String, Value>> {
-    let mut values = BTreeMap::new();
+) -> VmResult<Vec<(Value, Value)>> {
+    let mut values = Vec::new();
     while let Some(value) = iterator.next()? {
         let (key, value) = map_entry_value(&value, heap, operation)?;
-        values.insert(key, value);
+        values.push((key, value));
     }
     Ok(values)
 }
@@ -477,11 +477,11 @@ fn collect_map_entries(
     iterator: &mut IteratorState,
     runtime: &mut MethodRuntime<'_, '_, '_>,
     operation: &'static str,
-) -> VmResult<BTreeMap<String, Value>> {
-    let mut values = BTreeMap::new();
+) -> VmResult<Vec<(Value, Value)>> {
+    let mut values = Vec::new();
     while let Some(value) = iterator.next_with_runtime(runtime, operation, &[])? {
         let (key, value) = map_entry_value(&value, runtime.heap.as_deref(), operation)?;
-        values.insert(key, value);
+        values.push((key, value));
     }
     Ok(values)
 }
@@ -490,7 +490,7 @@ fn map_entry_value(
     value: &Value,
     heap: Option<&HeapExecution<'_>>,
     operation: &'static str,
-) -> VmResult<(String, Value)> {
+) -> VmResult<(Value, Value)> {
     let Value::HeapRef(reference) = value else {
         return type_error(operation);
     };
@@ -506,7 +506,7 @@ fn map_entry_value(
     let key = fields
         .get("key")
         .ok_or_else(|| VmError::new(VmErrorKind::TypeMismatch { operation }))?;
-    let key = crate::string_methods::string_value(key, heap, operation)?.to_owned();
+    let key = crate::stored_runtime_value(key);
     let value = fields
         .get("value")
         .copied()

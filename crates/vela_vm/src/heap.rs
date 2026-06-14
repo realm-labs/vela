@@ -12,6 +12,7 @@ use crate::container_contracts::{
     ContainerContractStamp, ContainerContracts, ContainerTypeSummary, ShallowTypeKey,
 };
 use crate::iteration::IteratorState;
+use crate::script_map::ScriptMap;
 use crate::script_object::ScriptFields;
 use crate::script_set::ScriptSet;
 use crate::value::{ClosureValue, Value};
@@ -45,7 +46,7 @@ pub enum HeapValue {
     String(String),
     Bytes(Vec<u8>),
     Array(Vec<Value>),
-    Map(BTreeMap<String, Value>),
+    Map(ScriptMap),
     Set(ScriptSet),
     Record {
         type_name: String,
@@ -109,7 +110,10 @@ impl HeapValue {
                 values.values().for_each(|value| value.trace_refs(refs));
             }
             Self::Map(values) => {
-                values.values().for_each(|value| value.trace_refs(refs));
+                values.entries().for_each(|entry| {
+                    entry.key.trace_refs(refs);
+                    entry.value.trace_refs(refs);
+                });
             }
             Self::Record { fields, .. } | Self::Enum { fields, .. } => {
                 fields.values().for_each(|value| value.trace_refs(refs));
@@ -133,13 +137,7 @@ impl HeapValue {
                 mem::size_of::<Vec<Value>>() + values.len() * mem::size_of::<Value>()
             }
             Self::Set(values) => values.shallow_size_bytes(),
-            Self::Map(values) => {
-                mem::size_of::<BTreeMap<String, Value>>()
-                    + values
-                        .keys()
-                        .map(|key| key.len() + mem::size_of::<Value>())
-                        .sum::<usize>()
-            }
+            Self::Map(values) => values.shallow_size_bytes(),
             Self::Record {
                 type_name, fields, ..
             } => {

@@ -42,6 +42,7 @@ mod runtime_type_guards;
 mod script_aggregate_construction;
 mod script_builtin_methods;
 mod script_function_calls;
+mod script_map;
 mod script_method_calls;
 mod script_methods;
 mod script_object;

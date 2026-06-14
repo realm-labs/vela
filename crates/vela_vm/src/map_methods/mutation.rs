@@ -2,7 +2,7 @@ use crate::collection_mutation;
 use crate::option_result::option_value;
 use crate::{ExecutionBudget, HeapExecution, Value, VmResult, store_runtime_value};
 
-use super::{expect_arity, map_entries, map_key, type_error};
+use super::{expect_arity, map_entries, type_error};
 
 pub(crate) fn set(
     receiver: &mut Value,
@@ -11,12 +11,12 @@ pub(crate) fn set(
     mut budget: Option<&mut ExecutionBudget>,
 ) -> VmResult<Value> {
     expect_arity("set", args, 2)?;
-    let key = map_key(&args[0], heap.as_deref())?;
     match receiver {
         Value::HeapRef(reference) => {
             let Some(heap) = heap else {
                 return type_error("method set");
             };
+            let key = store_runtime_value(&args[0], heap, budget.as_deref_mut())?;
             let slot = store_runtime_value(&args[1], heap, budget.as_deref_mut())?;
             collection_mutation::insert_map_slot(
                 heap,
@@ -39,7 +39,6 @@ pub(crate) fn remove(
     mut budget: Option<&mut ExecutionBudget>,
 ) -> VmResult<Value> {
     expect_arity("remove", args, 1)?;
-    let key = map_key(&args[0], heap.as_deref())?;
     match receiver {
         Value::HeapRef(reference) => {
             let Some(heap) = heap else {
@@ -48,7 +47,7 @@ pub(crate) fn remove(
             let payload = collection_mutation::remove_map_slot(
                 heap,
                 *reference,
-                &key,
+                &args[0],
                 budget.as_deref_mut(),
                 "method remove",
             )?;

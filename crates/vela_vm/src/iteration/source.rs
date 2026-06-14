@@ -2,6 +2,7 @@ use crate::heap::GcRef;
 use crate::heap::HeapValue;
 use crate::heap_execution::HeapExecution;
 use crate::ranges::RangeCursor;
+use crate::value_key::ValueKey;
 use crate::{Value, VmError, VmErrorKind, VmResult};
 
 use super::IteratorState;
@@ -25,7 +26,7 @@ impl IterableSource {
 pub(crate) enum SequenceSource {
     Array { source: GcRef, len: usize },
     Set { source: GcRef, len: usize },
-    MapValues { source: GcRef, keys: Vec<String> },
+    MapValues { source: GcRef, keys: Vec<ValueKey> },
     StringChars { source: GcRef },
     Bytes { source: GcRef, len: usize },
     Range(RangeCursor),
@@ -81,7 +82,7 @@ fn heap_iterable_source(reference: GcRef, value: &HeapValue) -> VmResult<Iterabl
         })),
         HeapValue::Map(values) => Ok(IterableSource::Sequence(SequenceSource::MapValues {
             source: reference,
-            keys: values.keys().cloned().collect(),
+            keys: values.key_order(),
         })),
         HeapValue::Iterator(iterator) => Ok(IterableSource::Iterator(iterator.clone())),
         HeapValue::String(_) => Ok(IterableSource::Sequence(SequenceSource::StringChars {

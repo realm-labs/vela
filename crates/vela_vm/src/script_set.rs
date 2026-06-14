@@ -94,8 +94,8 @@ impl ScriptSet {
         mem::size_of::<Self>()
             + self
                 .entries
-                .iter()
-                .map(|(key, _)| value_key_size_bytes(key) + mem::size_of::<Value>())
+                .keys()
+                .map(|key| value_key_size_bytes(key) + mem::size_of::<Value>())
                 .sum::<usize>()
     }
 }
@@ -107,9 +107,5 @@ impl Default for ScriptSet {
 }
 
 fn value_key_size_bytes(key: &ValueKey) -> usize {
-    match key {
-        ValueKey::String(value) => value.len(),
-        ValueKey::Bytes(value) => value.len(),
-        _ => 0,
-    }
+    key.payload_size_bytes()
 }

@@ -16,20 +16,20 @@ const MAP_METHODS: &[MethodSpec] = &[
     ),
     MethodSpec::new(
         "has",
-        &[ParamSpec::new("key", "string")],
+        &[ParamSpec::new("key", "any")],
         "bool",
         "Returns true when a key exists.",
     ),
     MethodSpec::new(
         "get",
-        &[ParamSpec::new("key", "string")],
+        &[ParamSpec::new("key", "any")],
         "Option",
         "Returns the value for a key, or Option::None.",
     ),
     MethodSpec::new(
         "get_or",
         &[
-            ParamSpec::new("key", "string"),
+            ParamSpec::new("key", "any"),
             ParamSpec::new("default", "any"),
         ],
         "any",
@@ -37,16 +37,13 @@ const MAP_METHODS: &[MethodSpec] = &[
     ),
     MethodSpec::new(
         "set",
-        &[
-            ParamSpec::new("key", "string"),
-            ParamSpec::new("value", "any"),
-        ],
+        &[ParamSpec::new("key", "any"), ParamSpec::new("value", "any")],
         "any",
         "Sets and returns a value for a key.",
     ),
     MethodSpec::new(
         "remove",
-        &[ParamSpec::new("key", "string")],
+        &[ParamSpec::new("key", "any")],
         "Option",
         "Removes and returns the value for a key.",
     ),

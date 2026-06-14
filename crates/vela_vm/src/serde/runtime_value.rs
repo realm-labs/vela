@@ -1,4 +1,3 @@
-use std::collections::BTreeMap;
 use std::slice;
 
 use ::serde::de::{
@@ -10,6 +9,7 @@ use ::serde::forward_to_deserialize_any;
 use super::{Error, Result};
 use crate::error::VmResult;
 use crate::heap::{HeapValue, ScriptHeap};
+use crate::script_map::ScriptMap;
 use crate::script_object::ScriptFields;
 use crate::value::Value;
 
@@ -70,7 +70,7 @@ impl<'de> de::Deserializer<'de> for RuntimeValueDeserializer<'de> {
                     heap: self.heap,
                 }),
                 HeapValue::Map(values) => {
-                    visitor.visit_map(RuntimeMapAccess::from_map(values, self.heap))
+                    visitor.visit_map(RuntimeMapAccess::from_map(values, self.heap)?)
                 }
                 HeapValue::Record { fields, .. } => {
                     visitor.visit_map(RuntimeMapAccess::from_fields(fields, self.heap))
@@ -234,7 +234,7 @@ impl<'de> de::Deserializer<'de> for RuntimeValueDeserializer<'de> {
     {
         match self.heap_value()? {
             HeapValue::Map(values) => {
-                visitor.visit_map(RuntimeMapAccess::from_map(values, self.heap))
+                visitor.visit_map(RuntimeMapAccess::from_map(values, self.heap)?)
             }
             HeapValue::Record { fields, .. } => {
                 visitor.visit_map(RuntimeMapAccess::from_fields(fields, self.heap))
@@ -257,7 +257,7 @@ impl<'de> de::Deserializer<'de> for RuntimeValueDeserializer<'de> {
                 visitor.visit_map(RuntimeMapAccess::from_fields(fields, self.heap))
             }
             HeapValue::Map(values) => {
-                visitor.visit_map(RuntimeMapAccess::from_map(values, self.heap))
+                visitor.visit_map(RuntimeMapAccess::from_map(values, self.heap)?)
             }
             _ => Err(Error::custom("expected struct")),
         }
@@ -348,15 +348,23 @@ struct RuntimeMapAccess<'de> {
 }
 
 impl<'de> RuntimeMapAccess<'de> {
-    fn from_map(values: &'de BTreeMap<String, Value>, heap: &'de ScriptHeap) -> Self {
-        Self {
-            entries: values
-                .iter()
-                .map(|(key, value)| (key.as_str(), value))
-                .collect(),
+    fn from_map(values: &'de ScriptMap, heap: &'de ScriptHeap) -> Result<Self> {
+        let mut entries = Vec::with_capacity(values.len());
+        for entry in values.entries() {
+            let key = match entry.key {
+                Value::HeapRef(reference) => match heap.get(reference) {
+                    Some(HeapValue::String(key)) => key.as_str(),
+                    _ => return Err(Error::custom("runtime map serde requires string keys")),
+                },
+                _ => return Err(Error::custom("runtime map serde requires string keys")),
+            };
+            entries.push((key, &entry.value));
+        }
+        Ok(Self {
+            entries,
             next_value: None,
             heap,
-        }
+        })
     }
 
     fn from_fields(fields: &'de ScriptFields<Value>, heap: &'de ScriptHeap) -> Self {

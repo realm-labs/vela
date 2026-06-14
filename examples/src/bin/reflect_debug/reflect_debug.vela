@@ -244,7 +244,7 @@ fn main(ctx: Context, player: Player) {
         && reflect::returns(array_map) == "Array"
         && reflect::attr(array_map, "stdlib") == "array"
         && map_get.params[0].name == "key"
-        && map_get.params[0].type == "String"
+        && map_get.params[0].type == "Any"
         && reflect::returns(map_get) == "Option"
         && reflect::attr(map_get, "stdlib") == "map"
         && set_union.params[0].type == "Set"

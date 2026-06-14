@@ -20,7 +20,7 @@ pub(crate) fn keys(
                 else {
                     return type_error("method keys");
                 };
-                values.keys().cloned().collect::<Vec<_>>()
+                values.key_order()
             };
             allocate_iterator(
                 IteratorState::from_map_keys_source(*reference, keys),
@@ -48,7 +48,7 @@ pub(crate) fn values(
                 else {
                     return type_error("method values");
                 };
-                values.keys().cloned().collect::<Vec<_>>()
+                values.key_order()
             };
             allocate_iterator(
                 IteratorState::from_map_values_source(*reference, keys),
@@ -76,7 +76,7 @@ pub(crate) fn entries(
                 else {
                     return type_error("method entries");
                 };
-                values.keys().cloned().collect::<Vec<_>>()
+                values.key_order()
             };
             allocate_iterator(
                 IteratorState::from_map_entries_source(*reference, keys),

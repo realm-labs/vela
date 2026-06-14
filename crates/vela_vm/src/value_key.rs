@@ -62,6 +62,15 @@ impl ValueKey {
             Value::HostRef(reference) => Ok(Self::HostIdentity(*reference)),
         }
     }
+
+    #[must_use]
+    pub(crate) fn payload_size_bytes(&self) -> usize {
+        match self {
+            Self::String(value) => value.len(),
+            Self::Bytes(value) => value.len(),
+            _ => 0,
+        }
+    }
 }
 
 fn finite_f32_key(value: f32, operation: &'static str) -> VmResult<u32> {
@@ -143,11 +152,13 @@ mod tests {
         let heap = HeapExecution::new(&mut heap);
 
         assert_eq!(
-            ValueKey::from_value(&Value::HeapRef(string), Some(&heap), "test").unwrap(),
+            ValueKey::from_value(&Value::HeapRef(string), Some(&heap), "test")
+                .expect("string heap value should key by payload"),
             ValueKey::String("player".to_owned())
         );
         assert_eq!(
-            ValueKey::from_value(&Value::HeapRef(bytes), Some(&heap), "test").unwrap(),
+            ValueKey::from_value(&Value::HeapRef(bytes), Some(&heap), "test")
+                .expect("bytes heap value should key by payload"),
             ValueKey::Bytes(vec![1, 2, 3])
         );
     }
@@ -160,12 +171,15 @@ mod tests {
         let heap = HeapExecution::new(&mut heap);
 
         assert_eq!(
-            ValueKey::from_value(&Value::HeapRef(first), Some(&heap), "test").unwrap(),
+            ValueKey::from_value(&Value::HeapRef(first), Some(&heap), "test")
+                .expect("record heap value should key by identity"),
             ValueKey::HeapIdentity(first)
         );
         assert_ne!(
-            ValueKey::from_value(&Value::HeapRef(first), Some(&heap), "test").unwrap(),
-            ValueKey::from_value(&Value::HeapRef(second), Some(&heap), "test").unwrap()
+            ValueKey::from_value(&Value::HeapRef(first), Some(&heap), "test")
+                .expect("record heap value should key by identity"),
+            ValueKey::from_value(&Value::HeapRef(second), Some(&heap), "test")
+                .expect("record heap value should key by identity")
         );
     }
 
@@ -189,8 +203,8 @@ mod tests {
         let path_proxy = heap.allocate(HeapValue::PathProxy(PathProxy::new(host_ref, plan)));
         let heap = HeapExecution::new(&mut heap);
 
-        let error =
-            ValueKey::from_value(&Value::HeapRef(path_proxy), Some(&heap), "test").unwrap_err();
+        let error = ValueKey::from_value(&Value::HeapRef(path_proxy), Some(&heap), "test")
+            .expect_err("path proxies are not stable keys");
         assert_eq!(
             error.kind(),
             VmErrorKind::TypeMismatch { operation: "test" }
@@ -202,7 +216,8 @@ mod tests {
     }
 
     fn assert_type_mismatch(value: &Value) {
-        let error = ValueKey::from_value(value, None, "test").unwrap_err();
+        let error = ValueKey::from_value(value, None, "test")
+            .expect_err("unsupported transient value should be rejected");
         assert_eq!(
             error.kind(),
             VmErrorKind::TypeMismatch { operation: "test" }

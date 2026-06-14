@@ -27,19 +27,20 @@ Option/Result contracts is capitalized:
 Any
 String Bytes
 Array Map Set Range Iterator Function Closure
-Array<T> Set<T> Map<String, V> Iterator<T>
+Array<T> Set<T> Map<K, V> Iterator<T>
 Option<T>
 Result<T, E>
 ```
 
 Only builtin type-hint contracts may carry type arguments:
-`Array<T>`, `Set<T>`, `Map<String, V>`, `Iterator<T>`, `Option<T>`, and
-`Result<T, E>`. This is not a general script generic system. `Set<T>` is
-restricted to the current runtime's set-keyable element contracts: `null`,
-`bool`, `i64`, `f64`, and `String`. User/schema/host types such as
-`Player<T>`, scalar hints such as `String<T>`, callable signatures such as
-`Function<T>`, non-keyable set elements such as `Set<Player>`, and non-string
-map keys such as `Map<i64, V>` are rejected.
+`Array<T>`, `Set<T>`, `Map<K, V>`, `Iterator<T>`, `Option<T>`, and
+`Result<T, E>`. This is not a general script generic system. `Map<K, V>` keys
+and `Set<T>` elements must satisfy the runtime `ValueKey` keyability contract:
+immutable leaf values compare by value, script heap objects and host refs
+compare by identity, and transient values such as `PathProxy` are rejected.
+User/schema/host generics such as `Player<T>`, scalar hints such as
+`String<T>`, callable signatures such as `Function<T>`, and non-keyable
+container key contracts such as `Set<PathProxy>` are rejected.
 
 Unsuffixed integer literals default to `i64` only when they escape without a
 more specific expected type. Unsuffixed float literals default to `f64` only

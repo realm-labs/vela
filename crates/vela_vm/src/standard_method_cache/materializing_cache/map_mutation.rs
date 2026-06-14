@@ -1,8 +1,7 @@
-use std::collections::BTreeMap;
-
 use crate::collection_mutation;
 use crate::heap::HeapValue;
 use crate::option_result::option_value;
+use crate::script_map::ScriptMap;
 use crate::{
     ExecutionBudget, HeapExecution, StandardMethodInlineCacheTarget, Value, VmError, VmErrorKind,
     VmResult, store_runtime_value,
@@ -37,11 +36,11 @@ fn call_cached_map_set(
     budget: &mut Option<&mut ExecutionBudget>,
 ) -> VmResult<Value> {
     crate::runtime_checks::expect_arity("set", args, 2)?;
-    let key = map_key(&args[0], heap.as_deref(), "map key")?;
     let reference = map_reference(receiver, "method set")?;
     let Some(heap) = heap.as_deref_mut() else {
         return type_error("method set");
     };
+    let key = store_runtime_value(&args[0], heap, budget.as_deref_mut())?;
     let slot = store_runtime_value(&args[1], heap, budget.as_deref_mut())?;
     collection_mutation::insert_map_slot(
         heap,
@@ -61,7 +60,6 @@ fn call_cached_map_remove(
     budget: &mut Option<&mut ExecutionBudget>,
 ) -> VmResult<Value> {
     crate::runtime_checks::expect_arity("remove", args, 1)?;
-    let key = map_key(&args[0], heap.as_deref(), "map key")?;
     let reference = map_reference(receiver, "method remove")?;
     let Some(heap) = heap.as_deref_mut() else {
         return type_error("method remove");
@@ -69,7 +67,7 @@ fn call_cached_map_remove(
     let payload = collection_mutation::remove_map_slot(
         heap,
         reference,
-        &key,
+        &args[0],
         budget.as_deref_mut(),
         "method remove",
     )?;
@@ -137,7 +135,7 @@ fn call_cached_map_extend(
 
 enum MapSlotEntry {
     Empty,
-    Single(String, Value),
+    Single(Value, Value),
     Many,
 }
 
@@ -153,35 +151,32 @@ fn map_slot_entry(
     if values.len() != 1 {
         return Ok(MapSlotEntry::Many);
     }
-    let Some((key, value)) = values.first_key_value() else {
+    let Some(entry) = values.entries().next() else {
         return Ok(MapSlotEntry::Empty);
     };
-    if matches!(value, Value::Missing) {
+    if matches!(entry.value, Value::Missing) {
         return type_error("missing value");
     }
-    Ok(MapSlotEntry::Single(key.clone(), *value))
+    Ok(MapSlotEntry::Single(entry.key, entry.value))
 }
 
 fn map_slot_entries(
     heap: &HeapExecution<'_>,
     reference: crate::heap::GcRef,
     operation: &'static str,
-) -> VmResult<Vec<(String, Value)>> {
+) -> VmResult<Vec<(Value, Value)>> {
     let values = map_slots_by_reference(heap, reference, operation)?;
     if values.values().any(|value| matches!(value, Value::Missing)) {
         return type_error("missing value");
     }
-    Ok(values
-        .iter()
-        .map(|(key, value)| (key.clone(), *value))
-        .collect())
+    Ok(values.entries_vec())
 }
 
 fn map_slots<'a>(
     receiver: &Value,
     heap: Option<&'a HeapExecution<'_>>,
     operation: &'static str,
-) -> VmResult<&'a BTreeMap<String, Value>> {
+) -> VmResult<&'a ScriptMap> {
     let reference = map_reference(receiver, operation)?;
     let Some(heap) = heap else {
         return type_error(operation);
@@ -193,19 +188,11 @@ fn map_slots_by_reference<'a>(
     heap: &'a HeapExecution<'_>,
     reference: crate::heap::GcRef,
     operation: &'static str,
-) -> VmResult<&'a BTreeMap<String, Value>> {
+) -> VmResult<&'a ScriptMap> {
     let Some(HeapValue::Map(values)) = heap.heap.get(reference) else {
         return type_error(operation);
     };
     Ok(values)
-}
-
-fn map_key(
-    value: &Value,
-    heap: Option<&HeapExecution<'_>>,
-    operation: &'static str,
-) -> VmResult<String> {
-    crate::string_methods::string_value(value, heap, operation).map(str::to_owned)
 }
 
 fn map_reference(receiver: &Value, operation: &'static str) -> VmResult<crate::heap::GcRef> {

@@ -861,17 +861,17 @@ names: `Any`, `String`, `Bytes`, `Array`, `Map`, `Set`, `Range`, `Iterator`,
 `Function`, `Closure`, `Option`, and `Result`.
 
 Only builtin type-hint contracts may be parameterized:
-`Array<T>`, `Set<T>`, `Map<String, V>`, `Iterator<T>`, `Option<T>`, and
+`Array<T>`, `Set<T>`, `Map<K, V>`, `Iterator<T>`, `Option<T>`, and
 `Result<T, E>`. They exist to make contracts, diagnostics, static facts,
 bytecode guard metadata, mutation checks, embedding metadata, reflection, and
 hot-reload ABI precise without introducing a general script generic system.
-`Set<T>` is restricted to the current runtime's set-keyable contracts:
-`null`, `bool`, `i64`, `f64`, and `String`. User/schema/host generics such as
-`Player<T>`, scalar parameterization such as `String<T>`, callable signature
-syntax such as `Function<T>`, non-keyable set element contracts such as
-`Set<Player>`, and non-string map key contracts such as `Map<i64, V>` remain
-rejected. Unparameterized `Array`, `Map`, `Set`, `Iterator`, `Option`, and
-`Result` remain valid erased contracts.
+`Map<K, V>` keys and `Set<T>` elements use the runtime `ValueKey` keyability
+contract: immutable leaf values compare by value, script heap objects and host
+refs compare by identity, and transient values such as `PathProxy` are
+rejected. User/schema/host generics such as `Player<T>`, scalar
+parameterization such as `String<T>`, and callable signature syntax such as
+`Function<T>` remain rejected. Unparameterized `Array`, `Map`, `Set`,
+`Iterator`, `Option`, and `Result` remain valid erased contracts.
 
 ## Validation Rules
 

@@ -3,8 +3,7 @@ use crate::method_runtime::{MethodRuntime, call_callback, callback_param_len};
 use crate::option_result::option_value;
 use crate::{Value, VmResult};
 
-use super::{expect_arity, map_entries, map_entry};
-use crate::array_methods::{make_map_value, make_string_value};
+use super::{expect_arity, make_map_from_entries, map_entries, map_entry};
 
 pub(crate) fn map_values(
     receiver: &Value,
@@ -36,7 +35,7 @@ pub(crate) fn map_values(
         .zip(values)
         .map(|((key, _), value)| (key, value))
         .collect();
-    make_map_value(
+    make_map_from_entries(
         mapped,
         &mut runtime.heap,
         &mut runtime.budget,
@@ -71,7 +70,7 @@ pub(crate) fn filter(
     )?
     .into_iter()
     .collect();
-    make_map_value(
+    make_map_from_entries(
         filtered,
         &mut runtime.heap,
         &mut runtime.budget,
@@ -104,7 +103,7 @@ pub(crate) fn find(
         },
     )?;
     if let Some((key, value)) = found {
-        let entry = map_entry(&key, value, &mut runtime.heap, &mut runtime.budget)?;
+        let entry = map_entry(key, value, &mut runtime.heap, &mut runtime.budget)?;
         let Some(heap) = runtime.heap.as_deref_mut() else {
             return super::type_error("method find");
         };
@@ -182,7 +181,7 @@ fn callback_param_len_for_entries(
     runtime: &MethodRuntime<'_, '_, '_>,
     operation: &'static str,
     callback: &Value,
-    entries: &[(String, Value)],
+    entries: &[(Value, Value)],
 ) -> VmResult<usize> {
     if entries.is_empty() {
         Ok(0)
@@ -196,7 +195,7 @@ fn call_map_callback(
     operation: &'static str,
     callback: &Value,
     param_len: usize,
-    key: &str,
+    key: &Value,
     value: Value,
     protected_values: &[Value],
 ) -> VmResult<Value> {
@@ -210,13 +209,7 @@ fn call_map_callback(
             protected_values,
         ),
         _ => {
-            let key = make_string_value(
-                key.to_owned(),
-                &mut runtime.heap,
-                &mut runtime.budget,
-                operation,
-            )?;
-            let callback_args = [key, value];
+            let callback_args = [*key, value];
             call_callback(
                 runtime,
                 operation,

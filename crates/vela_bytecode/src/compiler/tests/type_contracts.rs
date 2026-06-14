@@ -543,12 +543,7 @@ fn main(names: Set<String>) {
 "#,
         r#"
 fn main(scores: Map<String, i64>) {
-    scores.set(1, 2);
-}
-"#,
-        r#"
-fn main(scores: Map<String, i64>) {
-    scores.set("level", "high");
+    scores.set(1, "high");
 }
 "#,
     ] {
