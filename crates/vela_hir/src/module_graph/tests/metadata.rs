@@ -170,6 +170,64 @@ impl Damageabl for Playr {}
         label.span == player.span && label.message == "candidate `Player` is declared here"
     }));
 }
+
+#[test]
+fn builtin_operator_trait_prerequisites_are_validated() {
+    let mut graph = ModuleGraph::new();
+    graph.add_source(source(
+        1,
+        "game::scores",
+        r#"
+struct Score { value: i64 }
+impl Eq for Score {}
+impl Ord for Score {}
+"#,
+    ));
+    graph.resolve_imports();
+
+    let diagnostics = graph.diagnostics();
+    assert_eq!(diagnostics.len(), 2, "{diagnostics:?}");
+    assert_eq!(
+        diagnostics
+            .iter()
+            .map(|diagnostic| diagnostic.code.as_deref())
+            .collect::<Vec<_>>(),
+        [
+            Some("hir::missing_comparison_trait_prerequisite"),
+            Some("hir::missing_comparison_trait_prerequisite")
+        ]
+    );
+    assert!(diagnostics.iter().any(|diagnostic| {
+        diagnostic
+            .message
+            .contains("`Eq` without required `PartialEq`")
+    }));
+    assert!(diagnostics.iter().any(|diagnostic| {
+        diagnostic
+            .message
+            .contains("`Ord` without required `PartialOrd`")
+    }));
+}
+
+#[test]
+fn builtin_operator_trait_prerequisites_accept_complete_chain() {
+    let mut graph = ModuleGraph::new();
+    graph.add_source(source(
+        1,
+        "game::scores",
+        r#"
+struct Score { value: i64 }
+impl PartialEq for Score { fn eq(self, other: Score) -> bool { return true; } }
+impl Eq for Score {}
+impl PartialOrd for Score { fn partial_cmp(self, other: Score) { return option::some(0); } }
+impl Ord for Score { fn cmp(self, other: Score) -> i64 { return 0; } }
+"#,
+    ));
+    graph.resolve_imports();
+
+    assert_eq!(graph.diagnostics(), &[]);
+}
+
 #[test]
 fn lowers_parameter_default_metadata_and_bindings() {
     let mut graph = ModuleGraph::new();

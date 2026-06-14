@@ -1,4 +1,4 @@
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, BTreeSet};
 
 use vela_common::{Diagnostic, Span};
 
@@ -23,6 +23,7 @@ pub(super) fn validate_once(graph: &mut ModuleGraph) {
         diagnostics.extend(schema_reference_diagnostics_for_module(graph, module.id));
     }
     diagnostics.extend(duplicate_script_method_diagnostics(graph));
+    diagnostics.extend(builtin_operator_trait_prerequisite_diagnostics(graph));
     graph.diagnostics.extend(diagnostics);
 }
 
@@ -51,6 +52,103 @@ fn duplicate_script_method_diagnostics(graph: &ModuleGraph) -> Vec<Diagnostic> {
         }
     }
     diagnostics
+}
+
+fn builtin_operator_trait_prerequisite_diagnostics(graph: &ModuleGraph) -> Vec<Diagnostic> {
+    let declared_types = declared_script_type_names(graph);
+    let mut impls: BTreeMap<(String, String), Span> = BTreeMap::new();
+    for declaration in graph.declarations.values() {
+        let Some(metadata) = graph.impl_metadata.get(&declaration.id) else {
+            continue;
+        };
+        let ImplMetadataKind::Trait { trait_path } = &metadata.kind else {
+            continue;
+        };
+        let Some(trait_name) = builtin_operator_trait_name(trait_path) else {
+            continue;
+        };
+        let receiver = qualified_path_name(graph, declaration, &metadata.target_path);
+        if declared_types.contains(&receiver) {
+            impls.insert((receiver, trait_name.to_owned()), declaration.span);
+        }
+    }
+
+    let mut diagnostics = Vec::new();
+    for ((receiver, trait_name), span) in &impls {
+        match trait_name.as_str() {
+            "Eq" => {
+                push_missing_operator_trait_prerequisite(
+                    &mut diagnostics,
+                    &impls,
+                    receiver,
+                    "Eq",
+                    "PartialEq",
+                    *span,
+                );
+            }
+            "Ord" => {
+                push_missing_operator_trait_prerequisite(
+                    &mut diagnostics,
+                    &impls,
+                    receiver,
+                    "Ord",
+                    "Eq",
+                    *span,
+                );
+                push_missing_operator_trait_prerequisite(
+                    &mut diagnostics,
+                    &impls,
+                    receiver,
+                    "Ord",
+                    "PartialOrd",
+                    *span,
+                );
+            }
+            "PartialEq" | "PartialOrd" => {}
+            _ => unreachable!("builtin_operator_trait_name only returns known traits"),
+        }
+    }
+    diagnostics
+}
+
+fn push_missing_operator_trait_prerequisite(
+    diagnostics: &mut Vec<Diagnostic>,
+    impls: &BTreeMap<(String, String), Span>,
+    receiver: &str,
+    trait_name: &'static str,
+    prerequisite: &'static str,
+    span: Span,
+) {
+    if impls.contains_key(&(receiver.to_owned(), prerequisite.to_owned())) {
+        return;
+    }
+    diagnostics.push(
+        Diagnostic::error(format!(
+            "`{receiver}` implements `{trait_name}` without required `{prerequisite}`"
+        ))
+        .with_code("hir::missing_comparison_trait_prerequisite")
+        .with_span(span)
+        .with_label(
+            span,
+            format!("`{trait_name}` requires `{prerequisite}` for `{receiver}`"),
+        ),
+    );
+}
+
+fn declared_script_type_names(graph: &ModuleGraph) -> BTreeSet<String> {
+    graph
+        .declarations
+        .values()
+        .filter(|declaration| {
+            matches!(
+                declaration.kind,
+                DeclarationKind::Struct | DeclarationKind::Enum
+            )
+        })
+        .map(|declaration| {
+            qualified_path_name(graph, declaration, std::slice::from_ref(&declaration.name))
+        })
+        .collect()
 }
 
 fn schema_reference_diagnostics_for_module(
@@ -365,10 +463,14 @@ fn is_builtin_type_hint(path: &[String]) -> bool {
 }
 
 fn is_builtin_operator_trait(path: &[String]) -> bool {
+    builtin_operator_trait_name(path).is_some()
+}
+
+fn builtin_operator_trait_name(path: &[String]) -> Option<&str> {
     let [name] = path else {
-        return false;
+        return None;
     };
-    matches!(name.as_str(), "PartialEq" | "Eq" | "PartialOrd" | "Ord")
+    matches!(name.as_str(), "PartialEq" | "Eq" | "PartialOrd" | "Ord").then_some(name.as_str())
 }
 
 fn is_schema_declaration(kind: DeclarationKind) -> bool {

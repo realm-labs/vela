@@ -223,6 +223,17 @@ fn main() {
 fn array_sort_and_extrema_use_builtin_ord_impl() {
     let source = r#"
 struct Score { value: i64, label: String }
+impl PartialEq for Score {
+    fn eq(self, other: Score) -> bool {
+        return self.value == other.value;
+    }
+}
+impl Eq for Score {}
+impl PartialOrd for Score {
+    fn partial_cmp(self, other: Score) {
+        return 0;
+    }
+}
 impl Ord for Score {
     fn cmp(self, other: Score) -> i64 {
         if self.value < other.value {
@@ -268,6 +279,17 @@ fn main() {
 fn array_sort_by_uses_builtin_ord_impl_for_keys() {
     let source = r#"
 struct Rank { value: i64 }
+impl PartialEq for Rank {
+    fn eq(self, other: Rank) -> bool {
+        return self.value == other.value;
+    }
+}
+impl Eq for Rank {}
+impl PartialOrd for Rank {
+    fn partial_cmp(self, other: Rank) {
+        return 0;
+    }
+}
 impl Ord for Rank {
     fn cmp(self, other: Rank) -> i64 {
         if self.value < other.value {
