@@ -328,10 +328,15 @@ pub(crate) fn push_set_slot(
 ) -> VmResult<()> {
     let inserted = slot;
     let key = ValueKey::from_value(&slot, Some(&*heap), operation)?;
+    let is_new_key = !set_slots(heap, reference, operation)?.contains_key(&key);
+    if !is_new_key {
+        return Ok(());
+    }
     if !tracks_collection_growth(budget.as_deref()) {
-        set_slots_mut(heap, reference, operation)?.insert_keyed(key, slot);
-        heap.heap
-            .note_container_value_inserted(reference, &inserted);
+        if set_slots_mut(heap, reference, operation)?.insert_keyed(key, slot) {
+            heap.heap
+                .note_container_value_inserted(reference, &inserted);
+        }
         return Ok(());
     }
 
@@ -342,9 +347,10 @@ pub(crate) fn push_set_slot(
     let precharged_growth = mem::size_of::<Value>();
     charge_growth(budget.as_deref_mut(), precharged_growth)?;
 
-    set_slots_mut(heap, reference, operation)?.insert_keyed(key, slot);
-    heap.heap
-        .note_container_value_inserted(reference, &inserted);
+    if set_slots_mut(heap, reference, operation)?.insert_keyed(key, slot) {
+        heap.heap
+            .note_container_value_inserted(reference, &inserted);
+    }
     heap.heap
         .adjust_object_size_after_mutation(reference, budget, precharged_growth)
 }
@@ -715,6 +721,51 @@ mod tests {
         assert_eq!(
             heap_execution.heap.get(reference),
             Some(&HeapValue::Set(ScriptSet::new()))
+        );
+    }
+
+    #[test]
+    fn set_add_duplicate_skips_length_limit_and_preserves_element() {
+        let mut heap = ScriptHeap::new();
+        let reference = heap.allocate(HeapValue::Set(ScriptSet::new()));
+        let mut heap_execution = HeapExecution::new(&mut heap);
+        push_set_slot(
+            &mut heap_execution,
+            reference,
+            Value::F64(-0.0),
+            None,
+            "test set add",
+        )
+        .expect("initial set add should insert");
+        let allocated_before = heap_execution.heap.allocated_bytes();
+        let mut budget = ExecutionBudget::unbounded().with_collection_limits(CollectionLimits {
+            max_array_len: usize::MAX,
+            max_map_entries: usize::MAX,
+            max_set_len: 1,
+        });
+
+        push_set_slot(
+            &mut heap_execution,
+            reference,
+            Value::F64(0.0),
+            Some(&mut budget),
+            "test set add",
+        )
+        .expect("duplicate set add should not count as growth");
+
+        assert_eq!(heap_execution.heap.allocated_bytes(), allocated_before);
+        assert_eq!(budget.memory_bytes_allocated(), 0);
+        let Some(HeapValue::Set(values)) = heap_execution.heap.get(reference) else {
+            panic!("expected set value");
+        };
+        let values = values.values_vec();
+        assert_eq!(values.len(), 1);
+        let Value::F64(value) = values[0] else {
+            panic!("stored set value should remain f64");
+        };
+        assert!(
+            value.is_sign_negative(),
+            "duplicate set insertion must preserve the first stored element"
         );
     }
 }

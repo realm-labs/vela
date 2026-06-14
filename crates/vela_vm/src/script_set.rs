@@ -78,7 +78,13 @@ impl ScriptSet {
     }
 
     pub(crate) fn insert_keyed(&mut self, key: ValueKey, value: Value) -> bool {
-        self.entries.insert(key, value).is_none()
+        match self.entries.entry(key) {
+            btree_map::Entry::Vacant(entry) => {
+                entry.insert(value);
+                true
+            }
+            btree_map::Entry::Occupied(_) => false,
+        }
     }
 
     pub(crate) fn remove_keyed(&mut self, key: &ValueKey) -> bool {
