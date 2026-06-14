@@ -20,7 +20,10 @@ const examplesJson = JSON.stringify(PLAYGROUND_EXAMPLES);
   <div class="playground-grid">
     <label class="editor-pane">
       <span>main.vela</span>
-      <textarea data-source-editor aria-label="Vela source editor" spellcheck="false"></textarea>
+      <div class="editor-shell">
+        <pre data-highlight-layer aria-hidden="true"><code data-source-highlight></code></pre>
+        <textarea data-source-editor aria-label="Vela source editor" spellcheck="false" wrap="off"></textarea>
+      </div>
     </label>
     <div class="output-pane">
       <div class="output-header">
@@ -34,11 +37,37 @@ const examplesJson = JSON.stringify(PLAYGROUND_EXAMPLES);
 </section>
 
 <script>
+  import { createHighlighter } from 'shiki';
+  import githubDark from 'shiki/dist/themes/github-dark.mjs';
+  import velaGrammar from '../syntax/vela.tmLanguage.json';
+
   type WasmModule = {
     default: () => Promise<void>;
     compile_script: (source: string) => string;
     run_script: (source: string, entry: string) => string;
   };
+
+  type VelaHighlighter = Awaited<ReturnType<typeof createHighlighter>>;
+  type HighlightToken = {
+    content: string;
+    color?: string;
+    fontStyle?: number;
+  };
+  type LoadedVelaHighlighter = {
+    codeToTokens: (source: string, options: { lang: string; theme: string }) => {
+      tokens: HighlightToken[][];
+    };
+  };
+
+  let highlighterPromise: Promise<VelaHighlighter> | undefined;
+
+  function getVelaHighlighter() {
+    highlighterPromise ??= createHighlighter({
+      themes: [githubDark],
+      langs: [velaGrammar],
+    });
+    return highlighterPromise;
+  }
 
   for (const root of document.querySelectorAll<HTMLElement>('[data-playground]')) {
     bootPlayground(root);
@@ -53,6 +82,8 @@ const examplesJson = JSON.stringify(PLAYGROUND_EXAMPLES);
     const controls = {
       exampleSelect: root.querySelector<HTMLSelectElement>('[data-example-select]'),
       sourceEditor: root.querySelector<HTMLTextAreaElement>('[data-source-editor]'),
+      highlightLayer: root.querySelector<HTMLElement>('[data-highlight-layer]'),
+      sourceHighlight: root.querySelector<HTMLElement>('[data-source-highlight]'),
       entryInput: root.querySelector<HTMLInputElement>('[data-entry-input]'),
       outputView: root.querySelector<HTMLPreElement>('[data-output-view]'),
       diagnosticList: root.querySelector<HTMLElement>('[data-diagnostic-list]'),
@@ -61,12 +92,14 @@ const examplesJson = JSON.stringify(PLAYGROUND_EXAMPLES);
       runButton: root.querySelector<HTMLButtonElement>('[data-run-button]'),
     };
 
-    if (!controls.exampleSelect || !controls.sourceEditor || !controls.entryInput || !controls.outputView || !controls.diagnosticList || !controls.runtimeStatus || !controls.compileButton || !controls.runButton) {
+    if (!controls.exampleSelect || !controls.sourceEditor || !controls.highlightLayer || !controls.sourceHighlight || !controls.entryInput || !controls.outputView || !controls.diagnosticList || !controls.runtimeStatus || !controls.compileButton || !controls.runButton) {
       return;
     }
     const {
       exampleSelect,
       sourceEditor,
+      highlightLayer,
+      sourceHighlight,
       entryInput,
       outputView,
       diagnosticList,
@@ -76,6 +109,8 @@ const examplesJson = JSON.stringify(PLAYGROUND_EXAMPLES);
     } = controls as {
       exampleSelect: HTMLSelectElement;
       sourceEditor: HTMLTextAreaElement;
+      highlightLayer: HTMLElement;
+      sourceHighlight: HTMLElement;
       entryInput: HTMLInputElement;
       outputView: HTMLPreElement;
       diagnosticList: HTMLElement;
@@ -85,11 +120,68 @@ const examplesJson = JSON.stringify(PLAYGROUND_EXAMPLES);
     };
 
     let wasm: WasmModule | undefined;
+    let highlightVersion = 0;
     for (const [index, example] of examples.entries()) {
       const option = document.createElement('option');
       option.value = String(index);
       option.textContent = example.title;
       exampleSelect.append(option);
+    }
+
+    function escapeHtml(value: string) {
+      return value.replace(/[&<>"']/g, (char) => {
+        switch (char) {
+          case '&': return '&amp;';
+          case '<': return '&lt;';
+          case '>': return '&gt;';
+          case '"': return '&quot;';
+          default: return '&#39;';
+        }
+      });
+    }
+
+    function fontStyleCss(fontStyle?: number) {
+      const styles = [];
+      if ((fontStyle ?? 0) & 1) styles.push('font-style: italic');
+      if ((fontStyle ?? 0) & 2) styles.push('font-weight: 700');
+      if ((fontStyle ?? 0) & 4) styles.push('text-decoration: underline');
+      return styles;
+    }
+
+    function syncEditorScroll() {
+      highlightLayer.scrollTop = sourceEditor.scrollTop;
+      highlightLayer.scrollLeft = sourceEditor.scrollLeft;
+    }
+
+    async function renderSourceHighlight() {
+      const version = ++highlightVersion;
+      const source = sourceEditor.value || '\n';
+      try {
+        const highlighter = await getVelaHighlighter() as LoadedVelaHighlighter;
+        if (version !== highlightVersion) return;
+        const highlighted = highlighter.codeToTokens(source, {
+          lang: 'vela',
+          theme: 'github-dark',
+        });
+        sourceHighlight.innerHTML = highlighted.tokens
+          .map((line) => {
+            if (line.length === 0) return '<span>&nbsp;</span>';
+            return line
+              .map((token) => {
+                const styles = token.color ? [`color: ${token.color}`] : [];
+                styles.push(...fontStyleCss(token.fontStyle));
+                return `<span style="${styles.join('; ')}">${escapeHtml(token.content)}</span>`;
+              })
+              .join('');
+          })
+          .join('\n');
+        syncEditorScroll();
+      } catch (error) {
+        if (version === highlightVersion) {
+          console.warn('Vela playground syntax highlighting unavailable.', error);
+          sourceHighlight.textContent = source;
+        }
+      }
     }
 
     function loadExample(index: number) {
@@ -99,6 +191,7 @@ const examplesJson = JSON.stringify(PLAYGROUND_EXAMPLES);
       entryInput.value = example.entry;
       outputView.textContent = '';
       diagnosticList.replaceChildren();
+      renderSourceHighlight();
     }
 
     function renderDiagnostics(diagnostics: Array<{ severity: string; code?: string; message: string; span?: { start: number; end: number } }>) {
@@ -128,6 +221,8 @@ const examplesJson = JSON.stringify(PLAYGROUND_EXAMPLES);
     }
 
     exampleSelect.addEventListener('change', () => loadExample(Number(exampleSelect.value)));
+    sourceEditor.addEventListener('input', () => renderSourceHighlight());
+    sourceEditor.addEventListener('scroll', syncEditorScroll);
     compileButton.addEventListener('click', () => execute('compile'));
     runButton.addEventListener('click', () => execute('run'));
     loadExample(0);
@@ -172,8 +267,7 @@ const examplesJson = JSON.stringify(PLAYGROUND_EXAMPLES);
 
   .playground-toolbar select,
   .playground-toolbar input,
-  .playground-toolbar button,
-  .editor-pane textarea {
+  .playground-toolbar button {
     border: 1px solid var(--sl-color-gray-5);
     border-radius: 0.35rem;
     background: var(--sl-color-bg);
@@ -205,20 +299,59 @@ const examplesJson = JSON.stringify(PLAYGROUND_EXAMPLES);
     gap: 1rem;
   }
 
-  .editor-pane textarea,
+  .editor-shell,
   .output-pane pre {
     min-height: 28rem;
+  }
+
+  .editor-shell {
+    position: relative;
+    margin: 0;
+    overflow: hidden;
+    border: 1px solid var(--sl-color-gray-6);
+    border-radius: 0.5rem;
+    background: #0d1117;
+  }
+
+  .editor-shell pre,
+  .editor-pane textarea,
+  .output-pane pre {
     margin: 0;
     padding: 1rem;
-    overflow: auto;
-    border-radius: 0.5rem;
     font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', monospace;
     font-size: 0.9rem;
     line-height: 1.55;
+    tab-size: 2;
+  }
+
+  .editor-shell pre,
+  .editor-pane textarea {
+    position: absolute;
+    inset: 0;
+    min-width: 100%;
+    min-height: 100%;
+    overflow: auto;
+    white-space: pre;
+  }
+
+  .editor-shell pre {
+    pointer-events: none;
+    color: #c9d1d9;
   }
 
   .editor-pane textarea {
-    resize: vertical;
+    z-index: 1;
+    border: 0;
+    background: transparent;
+    color: transparent;
+    caret-color: var(--sl-color-white);
+    outline: none;
+    resize: none;
+    -webkit-text-fill-color: transparent;
+  }
+
+  .editor-pane textarea::selection {
+    background: color-mix(in srgb, var(--sl-color-accent), transparent 55%);
   }
 
   .output-pane {
