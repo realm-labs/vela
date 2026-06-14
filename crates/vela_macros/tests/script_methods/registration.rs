@@ -156,7 +156,7 @@ fn assert_registered_method_matches_native_desc(
     assert_eq!(registered.name, generated.name);
     assert_eq!(
         registered.return_type.as_deref(),
-        Some(type_hint_name(&generated.returns))
+        Some(type_hint_name(&generated.returns).as_str())
     );
     assert_eq!(
         registered.effects.reads_host,
@@ -184,24 +184,34 @@ fn assert_registered_method_matches_native_desc(
         assert_eq!(registered_param.name, generated_param.name);
         assert_eq!(
             registered_param.type_hint.as_deref(),
-            Some(type_hint_name(&generated_param.hint))
+            Some(type_hint_name(&generated_param.hint).as_str())
         );
         assert!(!registered_param.has_default);
     }
 }
 
-fn type_hint_name(hint: &TypeHint) -> &str {
+fn type_hint_name(hint: &TypeHint) -> String {
     match hint {
-        TypeHint::Any => "Any",
-        TypeHint::Primitive(tag) => tag.name(),
-        TypeHint::Array => "Array",
-        TypeHint::Map => "Map",
-        TypeHint::Set => "Set",
-        TypeHint::PathProxy => "path_proxy",
-        TypeHint::Record(key) | TypeHint::Enum(key) | TypeHint::Host(key) => &key.name,
-        TypeHint::Trait(name) => name,
-        TypeHint::Function => "Function",
-        TypeHint::Iterator => "Iterator",
+        TypeHint::Any => "Any".to_owned(),
+        TypeHint::Primitive(tag) => tag.name().to_owned(),
+        TypeHint::Array => "Array".to_owned(),
+        TypeHint::ArrayOf(element) => format!("Array<{}>", type_hint_name(element)),
+        TypeHint::Map => "Map".to_owned(),
+        TypeHint::MapOf { key, value } => {
+            format!("Map<{}, {}>", type_hint_name(key), type_hint_name(value))
+        }
+        TypeHint::Set => "Set".to_owned(),
+        TypeHint::SetOf(element) => format!("Set<{}>", type_hint_name(element)),
+        TypeHint::PathProxy => "path_proxy".to_owned(),
+        TypeHint::Record(key) | TypeHint::Enum(key) | TypeHint::Host(key) => key.name.clone(),
+        TypeHint::Trait(name) => name.clone(),
+        TypeHint::Function => "Function".to_owned(),
+        TypeHint::Iterator => "Iterator".to_owned(),
+        TypeHint::IteratorOf(item) => format!("Iterator<{}>", type_hint_name(item)),
+        TypeHint::OptionOf(payload) => format!("Option<{}>", type_hint_name(payload)),
+        TypeHint::ResultOf { ok, err } => {
+            format!("Result<{}, {}>", type_hint_name(ok), type_hint_name(err))
+        }
     }
 }
 

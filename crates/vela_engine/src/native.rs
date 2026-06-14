@@ -310,9 +310,21 @@ pub enum TypeHint {
     Any,
     Primitive(PrimitiveTag),
     Array,
+    ArrayOf(Box<TypeHint>),
     Map,
+    MapOf {
+        key: Box<TypeHint>,
+        value: Box<TypeHint>,
+    },
     Set,
+    SetOf(Box<TypeHint>),
     Iterator,
+    IteratorOf(Box<TypeHint>),
+    OptionOf(Box<TypeHint>),
+    ResultOf {
+        ok: Box<TypeHint>,
+        err: Box<TypeHint>,
+    },
     PathProxy,
     Record(TypeKey),
     Enum(TypeKey),
@@ -405,6 +417,42 @@ impl TypeHint {
     #[must_use]
     pub const fn iterator() -> Self {
         Self::Iterator
+    }
+
+    #[must_use]
+    pub fn array_of(element: TypeHint) -> Self {
+        Self::ArrayOf(Box::new(element))
+    }
+
+    #[must_use]
+    pub fn map_of(key: TypeHint, value: TypeHint) -> Self {
+        Self::MapOf {
+            key: Box::new(key),
+            value: Box::new(value),
+        }
+    }
+
+    #[must_use]
+    pub fn set_of(element: TypeHint) -> Self {
+        Self::SetOf(Box::new(element))
+    }
+
+    #[must_use]
+    pub fn iterator_of(item: TypeHint) -> Self {
+        Self::IteratorOf(Box::new(item))
+    }
+
+    #[must_use]
+    pub fn option_of(payload: TypeHint) -> Self {
+        Self::OptionOf(Box::new(payload))
+    }
+
+    #[must_use]
+    pub fn result_of(ok: TypeHint, err: TypeHint) -> Self {
+        Self::ResultOf {
+            ok: Box::new(ok),
+            err: Box::new(err),
+        }
     }
 }
 

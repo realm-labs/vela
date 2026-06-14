@@ -1,3 +1,5 @@
+use std::collections::{BTreeMap, BTreeSet};
+
 use vela_common::{HostObjectId, stable_id};
 use vela_def::{FieldId, TypeId};
 use vela_host::path::{HostPath, HostRef};
@@ -100,6 +102,20 @@ struct GameConfig {
     exp_to_next_level: i64,
     #[script(get, hint = "u32")]
     max_inventory_slots: u32,
+}
+
+#[allow(dead_code)]
+#[derive(ScriptHost)]
+#[script(path = "game::containers::ContainerHints")]
+struct ContainerHints {
+    #[script(get)]
+    rewards: Vec<i64>,
+    #[script(get)]
+    tags: BTreeSet<String>,
+    #[script(get)]
+    scores: BTreeMap<String, i64>,
+    #[script(get, hint = "Array<i64>")]
+    explicit_rewards: Vec<i64>,
 }
 
 #[test]
@@ -404,6 +420,24 @@ fn script_host_sample_game_schemas_register_with_engine_builder() {
     assert!(registry.type_by_name("Monster").is_some());
     assert!(registry.type_by_name("Inventory").is_some());
     assert!(registry.type_by_name("Config").is_some());
+}
+
+#[test]
+fn script_host_derive_infers_parameterized_container_hints() {
+    let desc = ContainerHints::vela_host_type_desc();
+
+    assert_eq!(desc.fields.len(), 4);
+    assert_eq!(desc.fields[0].name, "rewards");
+    assert_eq!(desc.fields[0].type_hint.as_deref(), Some("Array<i64>"));
+    assert_eq!(desc.fields[1].name, "tags");
+    assert_eq!(desc.fields[1].type_hint.as_deref(), Some("Set<String>"));
+    assert_eq!(desc.fields[2].name, "scores");
+    assert_eq!(
+        desc.fields[2].type_hint.as_deref(),
+        Some("Map<String, i64>")
+    );
+    assert_eq!(desc.fields[3].name, "explicit_rewards");
+    assert_eq!(desc.fields[3].type_hint.as_deref(), Some("Array<i64>"));
 }
 
 #[test]

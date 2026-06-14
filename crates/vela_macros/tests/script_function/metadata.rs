@@ -34,7 +34,7 @@ fn script_function_generates_set_signature_metadata() {
     assert_eq!(
         vela_native_function_desc_count_labels(),
         NativeFunctionDesc::new("game::count_labels", function_id("game::count_labels"))
-            .param("labels", TypeHint::Set)
+            .param("labels", TypeHint::set_of(TypeHint::string()))
             .returns(TypeHint::i64())
             .effects(EffectSet::pure())
             .access(FunctionAccess::public().reflect_callable(true))
@@ -50,7 +50,7 @@ fn script_function_generates_hash_set_signature_metadata() {
             "game::count_unordered_labels",
             function_id("game::count_unordered_labels"),
         )
-        .param("labels", TypeHint::Set)
+        .param("labels", TypeHint::set_of(TypeHint::string()))
         .returns(TypeHint::i64())
         .effects(EffectSet::pure())
         .access(FunctionAccess::public().reflect_callable(true))
@@ -63,7 +63,7 @@ fn script_function_generates_fixed_array_signature_metadata() {
     assert_eq!(
         vela_native_function_desc_sum_weights(),
         NativeFunctionDesc::new("game::sum_weights", function_id("game::sum_weights"))
-            .param("weights", TypeHint::Array)
+            .param("weights", TypeHint::array_of(TypeHint::i64()))
             .returns(TypeHint::i64())
             .effects(EffectSet::pure())
             .access(FunctionAccess::public().reflect_callable(true))
@@ -75,7 +75,7 @@ fn script_function_generates_fixed_array_signature_metadata() {
             "game::default_weights",
             function_id("game::default_weights")
         )
-        .returns(TypeHint::Array)
+        .returns(TypeHint::array_of(TypeHint::i64()))
         .effects(EffectSet::pure())
         .access(FunctionAccess::public().reflect_callable(true))
         .docs("Returns a copied fixed weight array."),
@@ -87,7 +87,10 @@ fn script_function_generates_hash_map_signature_metadata() {
     assert_eq!(
         vela_native_function_desc_score_total(),
         NativeFunctionDesc::new("game::score_total", function_id("game::score_total"))
-            .param("scores", TypeHint::Map)
+            .param(
+                "scores",
+                TypeHint::map_of(TypeHint::string(), TypeHint::i64())
+            )
             .returns(TypeHint::i64())
             .effects(EffectSet::pure())
             .access(FunctionAccess::public().reflect_callable(true))
@@ -103,8 +106,11 @@ fn script_function_generates_btree_map_signature_metadata() {
             "game::ordered_score_summary",
             function_id("game::ordered_score_summary"),
         )
-        .param("scores", TypeHint::Map)
-        .returns(TypeHint::Map)
+        .param(
+            "scores",
+            TypeHint::map_of(TypeHint::string(), TypeHint::i64())
+        )
+        .returns(TypeHint::map_of(TypeHint::string(), TypeHint::i64()))
         .effects(EffectSet::pure())
         .access(FunctionAccess::public().reflect_callable(true))
         .docs("Adds a copied total entry to an ordered script map."),

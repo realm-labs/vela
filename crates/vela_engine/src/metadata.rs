@@ -189,9 +189,27 @@ pub(crate) fn type_hint_display(hint: &TypeHint) -> String {
         TypeHint::Primitive(vela_common::PrimitiveTag::Bytes) => "Bytes".to_owned(),
         TypeHint::Primitive(tag) => tag.name().to_owned(),
         TypeHint::Array => "Array".to_owned(),
+        TypeHint::ArrayOf(element) => format!("Array<{}>", type_hint_display(element)),
         TypeHint::Map => "Map".to_owned(),
+        TypeHint::MapOf { key, value } => {
+            format!(
+                "Map<{}, {}>",
+                type_hint_display(key),
+                type_hint_display(value)
+            )
+        }
         TypeHint::Set => "Set".to_owned(),
+        TypeHint::SetOf(element) => format!("Set<{}>", type_hint_display(element)),
         TypeHint::Iterator => "Iterator".to_owned(),
+        TypeHint::IteratorOf(item) => format!("Iterator<{}>", type_hint_display(item)),
+        TypeHint::OptionOf(payload) => format!("Option<{}>", type_hint_display(payload)),
+        TypeHint::ResultOf { ok, err } => {
+            format!(
+                "Result<{}, {}>",
+                type_hint_display(ok),
+                type_hint_display(err)
+            )
+        }
         TypeHint::PathProxy => "path_proxy".to_owned(),
         TypeHint::Record(key) | TypeHint::Enum(key) | TypeHint::Host(key) => key.name.clone(),
         TypeHint::Trait(name) => name.clone(),

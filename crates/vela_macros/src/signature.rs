@@ -86,6 +86,25 @@ pub(crate) fn type_ident(ty: &Type) -> Option<String> {
     }
 }
 
+pub(crate) fn type_generic_args(ty: &Type) -> Vec<&Type> {
+    let Type::Path(path) = ty else {
+        return Vec::new();
+    };
+    let Some(segment) = path.path.segments.last() else {
+        return Vec::new();
+    };
+    let syn::PathArguments::AngleBracketed(args) = &segment.arguments else {
+        return Vec::new();
+    };
+    args.args
+        .iter()
+        .filter_map(|arg| match arg {
+            syn::GenericArgument::Type(ty) => Some(ty),
+            _ => None,
+        })
+        .collect()
+}
+
 pub(crate) fn is_mut_reference_to_type(ty: &Type, expected: &str) -> bool {
     let Type::Reference(reference) = ty else {
         return false;

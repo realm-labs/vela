@@ -383,6 +383,7 @@ mod tests {
         .expect("fixed array method should expand")
         .to_string();
 
-        assert!(tokens.contains("TypeHint :: Array"));
+        assert!(tokens.contains("TypeHint :: array_of"));
+        assert!(tokens.contains("TypeHint :: i64"));
     }
 }

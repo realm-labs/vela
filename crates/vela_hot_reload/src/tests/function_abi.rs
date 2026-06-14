@@ -315,6 +315,41 @@ fn function_descriptor_primitive_parameter_changes_are_rejected_by_tag() {
 }
 
 #[test]
+fn function_descriptor_parameterized_container_changes_are_rejected() {
+    let span = Span::new(SourceId::new(91), 20, 45);
+    let old_abi = HotReloadAbi::empty().function(
+        FunctionAbi::new(
+            "game::reward::grant",
+            EffectAbi::host_read(),
+            AccessAbi::public(),
+        )
+        .param(ParamAbi::new("values").type_hint("Array<i64>"))
+        .param(ParamAbi::new("scores").type_hint("Map<String, i64>")),
+    );
+    let changed_param = HotReloadAbi::empty().function(
+        FunctionAbi::new(
+            "game::reward::grant",
+            EffectAbi::host_read(),
+            AccessAbi::public(),
+        )
+        .param(ParamAbi::new("values").type_hint("Array<String>"))
+        .param(ParamAbi::new("scores").type_hint("Map<String, String>"))
+        .source_span(span),
+    );
+
+    let error = old_abi
+        .ensure_compatible_update(&changed_param)
+        .expect_err("parameterized container parameter ABI change should fail");
+    assert_eq!(error.code(), "reload.function.parameter_abi_changed");
+    assert_eq!(error.source_span(), Some(span));
+    let report = HotReloadReport::rejected(ProgramVersionId(91), error);
+    assert!(report.render_lines().iter().any(|line| {
+        line.text
+            == "parameter ABI: old=(values:Array<i64>, scores:Map<String, i64>) new=(values:Array<String>, scores:Map<String, String>)"
+    }));
+}
+
+#[test]
 fn function_descriptor_return_abi_changes_are_rejected() {
     let span = Span::new(SourceId::new(13), 15, 35);
     let old_abi = HotReloadAbi::empty().function(

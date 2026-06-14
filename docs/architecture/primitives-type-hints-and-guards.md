@@ -27,14 +27,17 @@ Option/Result contracts is capitalized:
 Any
 String Bytes
 Array Map Set Range Iterator Function Closure
+Array<T> Set<T> Map<String, V> Iterator<T>
 Option<T>
 Result<T, E>
 ```
 
-`Option<T>` and `Result<T, E>` are the only parameterized type hints in the
-current language. This is not a general script generic system. Container hints
-such as `Array<T>`, `Map<K, V>`, and `Set<T>` are rejected until the language
-has a separate container typing design.
+Only builtin type-hint contracts may carry type arguments:
+`Array<T>`, `Set<T>`, `Map<String, V>`, `Iterator<T>`, `Option<T>`, and
+`Result<T, E>`. This is not a general script generic system. User/schema/host
+types such as `Player<T>`, scalar hints such as `String<T>`, callable
+signatures such as `Function<T>`, and non-string map keys such as
+`Map<i64, V>` are rejected.
 
 Unsuffixed integer literals default to `i64` only when they escape without a
 more specific expected type. Unsuffixed float literals default to `f64` only

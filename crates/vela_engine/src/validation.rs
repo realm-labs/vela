@@ -645,6 +645,18 @@ fn validate_type_hint(
         | TypeHint::PathProxy
         | TypeHint::Host(_)
         | TypeHint::Function => Ok(()),
+        TypeHint::ArrayOf(element)
+        | TypeHint::SetOf(element)
+        | TypeHint::IteratorOf(element)
+        | TypeHint::OptionOf(element) => validate_type_hint(element, descriptor, lookup),
+        TypeHint::MapOf { key, value } => {
+            validate_type_hint(key, descriptor, lookup)?;
+            validate_type_hint(value, descriptor, lookup)
+        }
+        TypeHint::ResultOf { ok, err } => {
+            validate_type_hint(ok, descriptor, lookup)?;
+            validate_type_hint(err, descriptor, lookup)
+        }
     }
 }
 

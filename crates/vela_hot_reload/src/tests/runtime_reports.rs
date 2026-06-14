@@ -869,7 +869,7 @@ fn rejected_compile_report_carries_source_span_and_labels() {
     let report = runtime.apply_hot_update_result_report(compile_update(
         &runtime.current(),
         SourceId::new(2),
-        "fn main(value: Array<i64>) { return value; }",
+        "fn main(value: Player<i64>) { return value; }",
     ));
 
     assert!(!report.accepted);
@@ -883,26 +883,24 @@ fn rejected_compile_report_carries_source_span_and_labels() {
         SourceId::new(2)
     );
     assert!(diagnostic.source_diagnostics.iter().any(|diagnostic| {
-        diagnostic
-            .message
-            .contains("script type hints do not support generics")
+        diagnostic.message.contains(
+            "only builtin container, Option, and Result type hints support type arguments",
+        )
     }));
-    assert!(
-        diagnostic
-            .labels
-            .iter()
-            .any(|label| label.message == "remove generic type arguments")
-    );
+    assert!(diagnostic.labels.iter().any(|label| label.message
+        == "use a builtin parameterized type hint or remove these type arguments"));
     let lines = report.render_lines();
     assert!(lines.iter().any(|line| {
         line.kind == HotReloadReportLineKind::SourceDiagnostic
-            && line
-                .text
-                .contains("script type hints do not support generics")
+            && line.text.contains(
+                "only builtin container, Option, and Result type hints support type arguments",
+            )
     }));
     assert!(lines.iter().any(|line| {
         line.kind == HotReloadReportLineKind::SourceLabel
-            && line.text.contains("remove generic type arguments")
+            && line
+                .text
+                .contains("use a builtin parameterized type hint or remove these type arguments")
             && line.span.is_some()
     }));
     assert_eq!(runtime.current().id, ProgramVersionId(0));

@@ -4,6 +4,8 @@ use proc_macro2::Span;
 use quote::ToTokens;
 use syn::{Attribute, LitStr, Meta, Result, Type, spanned::Spanned};
 
+use crate::signature::type_generic_args;
+
 #[derive(Clone, Debug, Default)]
 pub(crate) struct ScriptAttrs {
     pub(crate) has_script_attr: bool,
@@ -167,15 +169,12 @@ pub(crate) fn reject_duplicate_attr_keys(attrs: &[(String, String)], context: &s
 
 pub(crate) fn parse_type_hint(literal: LitStr, context: &str) -> Result<String> {
     let hint = literal.value();
-    if hint.is_empty()
-        || hint.trim() != hint
-        || hint.contains('<')
-        || hint.contains('>')
-        || !is_valid_qualified_name(&hint)
-    {
+    if !is_valid_type_hint_contract(&hint) {
         return Err(error(
             literal.span(),
-            &format!("{context} type hint must be a non-generic `::` qualified name"),
+            &format!(
+                "{context} type hint must be a non-generic name or supported builtin type-hint contract"
+            ),
         ));
     }
     Ok(hint)
@@ -205,8 +204,10 @@ fn path_name(path: &syn::Path, expected: &str) -> bool {
 }
 
 pub(crate) fn inferred_type_hint(ty: &Type) -> Option<String> {
-    if matches!(ty, Type::Array(_)) {
-        return Some("Array".to_owned());
+    if let Type::Array(array) = ty {
+        return inferred_type_hint(&array.elem)
+            .map(|element| format!("Array<{element}>"))
+            .or_else(|| Some("Array".to_owned()));
     }
     let Type::Path(path) = ty else {
         return None;
@@ -220,11 +221,151 @@ pub(crate) fn inferred_type_hint(ty: &Type) -> Option<String> {
         }
         "i128" | "isize" | "u128" | "usize" => return None,
         "String" => "String".to_owned(),
-        "Vec" => "Array".to_owned(),
-        "BTreeMap" | "HashMap" => "Map".to_owned(),
-        "BTreeSet" | "HashSet" => "Set".to_owned(),
+        "Vec" => {
+            let args = type_generic_args(ty);
+            return args
+                .first()
+                .and_then(|arg| inferred_type_hint(arg))
+                .map(|element| format!("Array<{element}>"))
+                .or_else(|| Some("Array".to_owned()));
+        }
+        "BTreeMap" | "HashMap" => {
+            let args = type_generic_args(ty);
+            return match args.as_slice() {
+                [key, value] if inferred_type_hint(key).as_deref() == Some("String") => {
+                    inferred_type_hint(value).map(|value| format!("Map<String, {value}>"))
+                }
+                [_, _] => None,
+                _ => Some("Map".to_owned()),
+            };
+        }
+        "BTreeSet" | "HashSet" => {
+            let args = type_generic_args(ty);
+            return args
+                .first()
+                .and_then(|arg| inferred_type_hint(arg))
+                .map(|element| format!("Set<{element}>"))
+                .or_else(|| Some("Set".to_owned()));
+        }
+        "Option" => {
+            let args = type_generic_args(ty);
+            return args
+                .first()
+                .and_then(|arg| inferred_type_hint(arg))
+                .map(|payload| format!("Option<{payload}>"));
+        }
+        "Result" => {
+            let args = type_generic_args(ty);
+            return match args.as_slice() {
+                [ok, err] => Some(format!(
+                    "Result<{}, {}>",
+                    inferred_type_hint(ok)?,
+                    inferred_type_hint(err)?
+                )),
+                _ => None,
+            };
+        }
         _ => ident,
     })
+}
+
+fn is_valid_type_hint_contract(hint: &str) -> bool {
+    if hint.is_empty() || hint.trim() != hint {
+        return false;
+    }
+    if !hint.contains('<') && !hint.contains('>') {
+        return is_valid_qualified_name(hint);
+    }
+    TypeHintParser::new(hint).parse_complete()
+}
+
+struct TypeHintParser<'a> {
+    input: &'a str,
+    cursor: usize,
+}
+
+impl<'a> TypeHintParser<'a> {
+    fn new(input: &'a str) -> Self {
+        Self { input, cursor: 0 }
+    }
+
+    fn parse_complete(mut self) -> bool {
+        self.parse_hint() && {
+            self.skip_ws();
+            self.cursor == self.input.len()
+        }
+    }
+
+    fn parse_hint(&mut self) -> bool {
+        self.skip_ws();
+        let Some(name) = self.parse_name() else {
+            return false;
+        };
+        self.skip_ws();
+        if !self.consume('<') {
+            return true;
+        }
+        let args = self.parse_args();
+        self.skip_ws();
+        if !self.consume('>') {
+            return false;
+        }
+        match name.as_str() {
+            "Array" | "Set" | "Iterator" | "Option" => args.len() == 1,
+            "Result" => args.len() == 2,
+            "Map" => matches!(args.as_slice(), [key, _] if key == "String"),
+            _ => false,
+        }
+    }
+
+    fn parse_args(&mut self) -> Vec<String> {
+        let mut args = Vec::new();
+        loop {
+            self.skip_ws();
+            let start = self.cursor;
+            if !self.parse_hint() {
+                break;
+            }
+            args.push(self.input[start..self.cursor].trim().to_owned());
+            self.skip_ws();
+            if !self.consume(',') {
+                break;
+            }
+        }
+        args
+    }
+
+    fn parse_name(&mut self) -> Option<String> {
+        let start = self.cursor;
+        while let Some(ch) = self.peek() {
+            if ch == '<' || ch == '>' || ch == ',' || ch.is_whitespace() {
+                break;
+            }
+            self.cursor += ch.len_utf8();
+        }
+        let name = &self.input[start..self.cursor];
+        (!name.is_empty() && is_valid_qualified_name(name)).then(|| name.to_owned())
+    }
+
+    fn skip_ws(&mut self) {
+        while self.peek().is_some_and(char::is_whitespace) {
+            let ch = self.peek().expect("peek checked");
+            self.cursor += ch.len_utf8();
+        }
+    }
+
+    fn consume(&mut self, expected: char) -> bool {
+        if self.peek() == Some(expected) {
+            self.cursor += expected.len_utf8();
+            true
+        } else {
+            false
+        }
+    }
+
+    fn peek(&self) -> Option<char> {
+        self.input[self.cursor..].chars().next()
+    }
 }
 
 pub(crate) fn error(span: Span, message: &str) -> syn::Error {

@@ -16,7 +16,7 @@ fn method_desc_expr(method: &MethodMeta) -> TokenStream {
     let name = &method.name;
     let stable_name = &method.stable_name;
     let effect = effect_tokens(method.effect);
-    let returns = hint_tokens(method.returns);
+    let returns = hint_tokens(method.returns.clone());
     let params = method.params.iter().map(param_tokens);
     let access = access_tokens(method);
     let docs = method
@@ -288,7 +288,7 @@ fn args_tuple_tokens(params: &[ParamMeta]) -> TokenStream {
 
 fn param_tokens(param: &ParamMeta) -> TokenStream {
     let name = &param.name;
-    let hint = hint_tokens(param.hint);
+    let hint = hint_tokens(param.hint.clone());
     quote! { #name, #hint }
 }
 
@@ -306,8 +306,21 @@ fn hint_tokens(hint: HintKind) -> TokenStream {
         HintKind::Any => quote! { ::vela_engine::native::TypeHint::Any },
         HintKind::Primitive(tag) => primitive_hint_tokens(tag),
         HintKind::Array => quote! { ::vela_engine::native::TypeHint::Array },
+        HintKind::ArrayOf(element) => {
+            let element = hint_tokens(*element);
+            quote! { ::vela_engine::native::TypeHint::array_of(#element) }
+        }
         HintKind::Map => quote! { ::vela_engine::native::TypeHint::Map },
+        HintKind::MapOf { key, value } => {
+            let key = hint_tokens(*key);
+            let value = hint_tokens(*value);
+            quote! { ::vela_engine::native::TypeHint::map_of(#key, #value) }
+        }
         HintKind::Set => quote! { ::vela_engine::native::TypeHint::Set },
+        HintKind::SetOf(element) => {
+            let element = hint_tokens(*element);
+            quote! { ::vela_engine::native::TypeHint::set_of(#element) }
+        }
         HintKind::PathProxy => quote! { ::vela_engine::native::TypeHint::PathProxy },
         HintKind::HostOwner => quote! { ::vela_engine::native::TypeHint::Host(owner_key.clone()) },
         HintKind::Function => quote! { ::vela_engine::native::TypeHint::Function },

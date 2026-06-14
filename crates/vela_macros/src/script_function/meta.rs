@@ -8,7 +8,7 @@ use crate::attrs::{
 };
 use crate::signature::{
     is_mut_reference_to_type, param_name, reject_script_reference_param,
-    reject_script_reference_return, reject_unsupported_integer_type, type_ident,
+    reject_script_reference_return, reject_unsupported_integer_type, type_generic_args, type_ident,
     wrapper_inner_type,
 };
 
@@ -48,13 +48,19 @@ pub(super) enum FunctionEffect {
     EventEmit,
 }
 
-#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+#[derive(Clone, Debug, Eq, PartialEq)]
 pub(super) enum HintKind {
     Any,
     Primitive(PrimitiveTag),
     Array,
+    ArrayOf(Box<HintKind>),
     Map,
+    MapOf {
+        key: Box<HintKind>,
+        value: Box<HintKind>,
+    },
     Set,
+    SetOf(Box<HintKind>),
     PathProxy,
     Function,
 }
@@ -306,8 +312,8 @@ fn hint_for_type(ty: &Type) -> HintKind {
     if is_unit_tuple(ty) {
         return HintKind::Primitive(PrimitiveTag::Null);
     }
-    if matches!(ty, Type::Array(_)) {
-        return HintKind::Array;
+    if let Type::Array(array) = ty {
+        return HintKind::ArrayOf(Box::new(hint_for_type(&array.elem)));
     }
     if wrapper_inner_type(ty, &["Option"]).is_some() {
         return HintKind::Any;
@@ -325,14 +331,33 @@ fn hint_for_type(ty: &Type) -> HintKind {
         Some("f32") => HintKind::Primitive(PrimitiveTag::F32),
         Some("f64") => HintKind::Primitive(PrimitiveTag::F64),
         Some("String" | "str") => HintKind::Primitive(PrimitiveTag::String),
-        Some("Vec") => HintKind::Array,
-        Some("BTreeMap" | "HashMap") => HintKind::Map,
-        Some("BTreeSet" | "HashSet") => HintKind::Set,
+        Some("Vec") => generic_arg(ty, 0)
+            .map(|element| HintKind::ArrayOf(Box::new(hint_for_type(element))))
+            .unwrap_or(HintKind::Array),
+        Some("BTreeMap" | "HashMap") => string_key_map_hint(ty).unwrap_or(HintKind::Map),
+        Some("BTreeSet" | "HashSet") => generic_arg(ty, 0)
+            .map(|element| HintKind::SetOf(Box::new(hint_for_type(element))))
+            .unwrap_or(HintKind::Set),
         Some("PathProxy") => HintKind::PathProxy,
         Some("Value") => HintKind::Any,
         Some("NativeFunction" | "HostNativeFunction") => HintKind::Function,
         _ => HintKind::Any,
     }
+}
+
+fn generic_arg(ty: &Type, index: usize) -> Option<&Type> {
+    type_generic_args(ty).get(index).copied()
+}
+
+fn string_key_map_hint(ty: &Type) -> Option<HintKind> {
+    let args = type_generic_args(ty);
+    let [key, value] = args.as_slice() else {
+        return None;
+    };
+    (hint_for_type(key) == HintKind::Primitive(PrimitiveTag::String)).then(|| HintKind::MapOf {
+        key: Box::new(HintKind::Primitive(PrimitiveTag::String)),
+        value: Box::new(hint_for_type(value)),
+    })
 }
 
 fn is_unit_tuple(ty: &Type) -> bool {

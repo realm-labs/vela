@@ -155,15 +155,29 @@ should provide enough information for hover and go-to-definition when possible.
 
 ### TypeHint
 
-There are no generics, but lightweight type hints are allowed:
+There are no script-language generics, but lightweight type-hint contracts are
+allowed. Only builtin contracts carry type arguments:
 
 ```rust
 pub enum TypeHint {
     Any,
     Primitive(PrimitiveTag),
     Array,
+    ArrayOf(Box<TypeHint>),
     Map,
+    MapOf {
+        key: Box<TypeHint>,
+        value: Box<TypeHint>,
+    },
     Set,
+    SetOf(Box<TypeHint>),
+    Iterator,
+    IteratorOf(Box<TypeHint>),
+    OptionOf(Box<TypeHint>),
+    ResultOf {
+        ok: Box<TypeHint>,
+        err: Box<TypeHint>,
+    },
     PathProxy,
     Record(TypeKey),
     Enum(TypeKey),
@@ -183,8 +197,8 @@ supplied mismatches are runtime guard errors.
 Hints are still meaningful. They feed reflection metadata, hot-reload ABI
 checks, diagnostics, completions, hover, dispatch hints, field-slot lowering,
 and host schema documentation. They are not the complete internal analysis type
-system. Keeping them small preserves the no-generics language rule and keeps
-host schemas stable.
+system. Keeping parameterization limited to builtin contracts preserves the
+no-user-generics language rule and keeps host schemas stable.
 
 ### TypeFacts
 

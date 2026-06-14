@@ -485,11 +485,9 @@ mod tests {
         )
         .expect_err("empty field type hint should fail macro expansion");
 
-        assert!(
-            error
-                .to_string()
-                .contains("script type hint must be a non-generic `::` qualified name")
-        );
+        assert!(error.to_string().contains(
+            "script type hint must be a non-generic name or supported builtin type-hint contract"
+        ));
     }
 
     #[test]
@@ -513,24 +511,22 @@ mod tests {
     }
 
     #[test]
-    fn rejects_generic_field_type_hints() {
+    fn rejects_unsupported_generic_field_type_hints() {
         let error = expand_result(
             quote! {
                 #[script(path = "game::player::Player")]
                 struct Player {
-                    #[script(get, hint = "Array<Item>")]
+                    #[script(get, hint = "Player<i64>")]
                     inventory: Vec<String>,
                 }
             },
             GeneratedMethod::Host,
         )
-        .expect_err("generic field type hint should fail macro expansion");
+        .expect_err("unsupported generic field type hint should fail macro expansion");
 
-        assert!(
-            error
-                .to_string()
-                .contains("script type hint must be a non-generic `::` qualified name")
-        );
+        assert!(error.to_string().contains(
+            "script type hint must be a non-generic name or supported builtin type-hint contract"
+        ));
     }
 
     #[test]
@@ -547,11 +543,9 @@ mod tests {
         )
         .expect_err("malformed field type hint should fail macro expansion");
 
-        assert!(
-            error
-                .to_string()
-                .contains("script type hint must be a non-generic `::` qualified name")
-        );
+        assert!(error.to_string().contains(
+            "script type hint must be a non-generic name or supported builtin type-hint contract"
+        ));
     }
 
     #[test]
@@ -675,7 +669,7 @@ mod tests {
         .expect("fixed array host schema should expand")
         .to_string();
 
-        assert!(tokens.contains("type_hint (\"Array\")"));
+        assert!(tokens.contains("type_hint (\"Array<i64>\")"));
     }
 
     #[test]

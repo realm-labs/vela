@@ -52,6 +52,16 @@ interpret a measured cache delta and record whether to keep, investigate, or def
 defer a remaining cost to M21/M22/JIT/value-layout work with an explicit reason
 ```
 
+The builtin parameterized container type-hint slice is in progress as an M20
+type-contract continuation. Syntax, HIR, analysis TypeFacts, compiler
+RuntimeTypeFacts, recursive guard plans, VM deep checks for materialized
+array/map/set values, compiler-owned typed container mutator checks, embedding
+metadata display/validation, macro-inferred `Vec`/array/set/string-keyed map
+hints, and hot-reload ABI string comparison are implemented. Remaining gaps
+are container summaries and contract stamps, execution-budget charging for deep
+guard scans, deferred `Iterator<T>` item guards, public site/docs/examples, and
+benchmark/profile rows for typed container mutation paths.
+
 Post-MVP performance remains a separate track: measure first, then optimize the
 non-JIT bytecode interpreter toward Lua 5.x comparable host-boundary workloads
 through M19.5 architecture prep and M20 cache work before debugger/DAP work and
@@ -136,7 +146,7 @@ Cranelift JIT.
   reflection, schema-safe mutation denial, capability gating, read-only host boundary
   rejection, host read/write/call capability denial, stale host ref generation
   rejection, host write/call denial diagnostics, reflection candidate
-  diagnostics, bad schema diagnostics, generic type hint rejection, and
+  diagnostics, bad schema diagnostics, unsupported generic type hint rejection, and
   tick-boundary hot reload. A standalone host iterable example covers
   native-returned `OwnedValue::iterator` snapshot traversal through `for-in`
   and lazy iterator adapters without first returning a script array. A

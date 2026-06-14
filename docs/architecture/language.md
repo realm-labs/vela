@@ -156,7 +156,9 @@ Iterator  one-shot cursor; `next()` advances its internal state
 ```
 
 These are runtime and analysis concepts, not script-language generic types.
-Scripts write `iterator`, not `Iterator<T>`.
+Scripts may write `Iterator<T>` only as a builtin type-hint contract at
+function, field, local, or embedding boundaries; it does not introduce
+script-defined generic iterator types.
 
 `for value in source` evaluates `source` once, creates or consumes an iterator
 through the runtime iteration boundary, then repeatedly advances that iterator
@@ -186,13 +188,18 @@ one-shot. Terminal methods such as `next`, `count`, `any`, `all`, `find`, and
 terminal that materializes an output collection; lazy adapters do not allocate
 intermediate arrays.
 
-Script generics are not supported:
+Script generics are not supported. Only selected builtin type-hint contracts
+may carry type arguments:
 
 ```text
-Array<T>      not supported
-Map<K, V>     not supported
-Option<T>     not supported
-Result<T, E>  not supported
+Array<T>          allowed as a builtin array contract
+Set<T>            allowed as a builtin set contract
+Map<String, V>    allowed because runtime maps are string-keyed
+Iterator<T>       allowed as a builtin iterator contract
+Option<T>         allowed as a builtin Option contract
+Result<T, E>      allowed as a builtin Result contract
+Player<T>         not supported
+Map<K, V>         not supported when K is not String
 ```
 
 Dynamic enum definitions can still model Option and Result:

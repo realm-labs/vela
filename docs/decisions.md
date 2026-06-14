@@ -146,9 +146,12 @@ metadata.
 
 Macro-generated descriptors for Rust `Option<T>` parameters and returns use
 `TypeHint::Any` for now. The script-visible value is `null` or the dynamic
-standard `Option` enum, and Vela has no script-language generics to express
-`Option<T>` as a precise public contract. Typed native conversion still decodes
-the `Option<T>` value at the Rust boundary.
+standard `Option` enum. This is a macro bridge limitation, not a language
+type-hint limitation: source and explicit metadata may express `Option<T>` as a
+builtin contract, but the current generated native wrapper keeps Rust
+`Option<T>` payload metadata erased until conversion semantics are tightened.
+Typed native conversion still decodes the `Option<T>` value at the Rust
+boundary.
 
 Embedding float conversions are exact: Rust `f32` maps to Vela `f32`, Rust
 `f64` maps to Vela `f64`, and the embedding layer does not silently convert
@@ -826,10 +829,16 @@ text/binary, collection, callable, and Option/Result contracts use capitalized
 names: `Any`, `String`, `Bytes`, `Array`, `Map`, `Set`, `Range`, `Iterator`,
 `Function`, `Closure`, `Option`, and `Result`.
 
-`Option<T>` and `Result<T, E>` are the only parameterized type hints accepted
-by the parser. They exist to make `?`, contracts, diagnostics, and static fast
-paths precise without introducing a general script generic system. Container
-parameterization such as `Array<T>`, `Map<K, V>`, and `Set<T>` remains rejected.
+Only builtin type-hint contracts may be parameterized:
+`Array<T>`, `Set<T>`, `Map<String, V>`, `Iterator<T>`, `Option<T>`, and
+`Result<T, E>`. They exist to make contracts, diagnostics, static facts,
+bytecode guard metadata, mutation checks, embedding metadata, reflection, and
+hot-reload ABI precise without introducing a general script generic system.
+User/schema/host generics such as `Player<T>`, scalar parameterization such as
+`String<T>`, callable signature syntax such as `Function<T>`, and non-string
+map key contracts such as `Map<i64, V>` remain rejected. Unparameterized
+`Array`, `Map`, `Set`, `Iterator`, `Option`, and `Result` remain valid erased
+contracts.
 
 ## Validation Rules
 
