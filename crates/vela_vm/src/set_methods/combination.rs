@@ -1,8 +1,9 @@
 use crate::heap_values::make_set_value;
 use crate::script_set::ScriptSet;
+use crate::value_key::ValueKey;
 use crate::{ExecutionBudget, HeapExecution, Value, VmResult};
 
-use super::{SetKey, SetRelation, expect_arity, relation_matches, set_slots};
+use super::{SetRelation, expect_arity, relation_matches, set_slots};
 
 pub(crate) fn union(
     receiver: &Value,
@@ -31,7 +32,7 @@ pub(crate) fn intersection(
     let right = set_slots(&args[0], heap.as_deref(), "method intersection")?;
     let mut result = ScriptSet::new();
     for value in set_slots(receiver, heap.as_deref(), "method intersection")?.values() {
-        let key = SetKey::from_value(value, heap.as_deref(), "method intersection")?;
+        let key = ValueKey::from_value(value, heap.as_deref(), "method intersection")?;
         if right.contains_key(&key) {
             result.insert_keyed(key, *value);
         }
@@ -49,7 +50,7 @@ pub(crate) fn difference(
     let right = set_slots(&args[0], heap.as_deref(), "method difference")?;
     let mut result = ScriptSet::new();
     for value in set_slots(receiver, heap.as_deref(), "method difference")?.values() {
-        let key = SetKey::from_value(value, heap.as_deref(), "method difference")?;
+        let key = ValueKey::from_value(value, heap.as_deref(), "method difference")?;
         if !right.contains_key(&key) {
             result.insert_keyed(key, *value);
         }
@@ -69,13 +70,13 @@ pub(crate) fn symmetric_difference(
 
     let mut result = ScriptSet::new();
     for value in left.values() {
-        let key = SetKey::from_value(value, heap.as_deref(), "method symmetric_difference")?;
+        let key = ValueKey::from_value(value, heap.as_deref(), "method symmetric_difference")?;
         if !right.contains_key(&key) {
             result.insert_keyed(key, *value);
         }
     }
     for value in right.values() {
-        let key = SetKey::from_value(value, heap.as_deref(), "method symmetric_difference")?;
+        let key = ValueKey::from_value(value, heap.as_deref(), "method symmetric_difference")?;
         if !left.contains_key(&key) {
             result.insert_keyed(key, *value);
         }

@@ -39,7 +39,7 @@ fn call_cached_set_add(
     let Some(heap) = heap.as_deref_mut() else {
         return type_error("method add");
     };
-    let key = SetKey::from_value(&args[0], Some(&*heap), "method add")?;
+    let key = ValueKey::from_value(&args[0], Some(&*heap), "method add")?;
     if set_slots(heap, reference, "method add")?.contains_key(&key) {
         return Ok(Value::Bool(false));
     }
@@ -58,7 +58,7 @@ fn call_cached_set_remove(
     let Some(heap) = heap.as_deref_mut() else {
         return type_error("method remove");
     };
-    let key = SetKey::from_value(&args[0], Some(&*heap), "method remove")?;
+    let key = ValueKey::from_value(&args[0], Some(&*heap), "method remove")?;
     let changed =
         collection_mutation::remove_set_slot(heap, reference, &key, None, "method remove")?;
     Ok(Value::Bool(changed))
@@ -202,8 +202,6 @@ fn set_reference(receiver: &Value, operation: &'static str) -> VmResult<crate::h
         _ => type_error(operation),
     }
 }
-
-type SetKey = ValueKey;
 
 fn type_error<T>(operation: &'static str) -> VmResult<T> {
     Err(VmError::new(VmErrorKind::TypeMismatch { operation }))

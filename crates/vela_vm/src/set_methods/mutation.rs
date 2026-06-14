@@ -1,8 +1,9 @@
 use crate::collection_mutation;
 use crate::heap::HeapValue;
+use crate::value_key::ValueKey;
 use crate::{ExecutionBudget, HeapExecution, Value, VmResult, store_runtime_value};
 
-use super::{SetKey, expect_arity, set_values, type_error};
+use super::{expect_arity, set_values, type_error};
 
 pub(crate) fn add(
     receiver: &mut Value,
@@ -16,7 +17,7 @@ pub(crate) fn add(
             let Some(heap) = heap else {
                 return type_error("method add");
             };
-            let key = SetKey::from_value(&args[0], Some(&*heap), "method add")?;
+            let key = ValueKey::from_value(&args[0], Some(&*heap), "method add")?;
             let Some(HeapValue::Set(values)) = heap.heap.get(*reference) else {
                 return type_error("method add");
             };
@@ -42,7 +43,7 @@ pub(crate) fn remove(
             let Some(heap) = heap else {
                 return type_error("method remove");
             };
-            let key = SetKey::from_value(&args[0], Some(&*heap), "method remove")?;
+            let key = ValueKey::from_value(&args[0], Some(&*heap), "method remove")?;
             let Some(HeapValue::Set(values)) = heap.heap.get(*reference) else {
                 return type_error("method remove");
             };

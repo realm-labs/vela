@@ -15,8 +15,6 @@ pub(crate) use combination::{
 pub(crate) use higher_order::{all, any, count, filter, find, map};
 pub(crate) use mutation::{add, clear, extend, remove};
 
-type SetKey = ValueKey;
-
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub(crate) enum SetRelation {
     Subset,
@@ -92,7 +90,7 @@ fn slots_contain_all(
     operation: &'static str,
 ) -> VmResult<bool> {
     for value in subset.values() {
-        let key = SetKey::from_value(value, Some(heap), operation)?;
+        let key = ValueKey::from_value(value, Some(heap), operation)?;
         if !superset.contains_key(&key) {
             return Ok(false);
         }
@@ -107,7 +105,7 @@ fn slots_are_disjoint(
     operation: &'static str,
 ) -> VmResult<bool> {
     for value in left.values() {
-        let key = SetKey::from_value(value, Some(heap), operation)?;
+        let key = ValueKey::from_value(value, Some(heap), operation)?;
         if right.contains_key(&key) {
             return Ok(false);
         }

@@ -69,7 +69,9 @@ runtime constructor so identity key elements do not pass through detached
 `ScriptSet` key lookups/accumulators instead of temporary vector key scans, and
 set higher-order/iterator `collect_set` materializers now accumulate directly
 into `ScriptSet`. Cached and uncached `set.extend` paths now delegate
-deduplication and insertion to the shared `ScriptSet` mutation boundary.
+deduplication and insertion to the shared `ScriptSet` mutation boundary, and
+the old `SetKey` aliases have been removed from set methods and cached
+mutators.
 Non-erased
 `Iterator<T>` contracts now mark
 iterator cursors with lazy item guards so checked boundaries do not consume
