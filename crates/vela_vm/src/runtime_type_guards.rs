@@ -1562,10 +1562,12 @@ mod tests {
 
     use super::*;
     use crate::collection_mutation::{
-        clear_map, extend_map_slots, push_array_slot, remove_map_slot,
+        clear_map, clear_set, extend_map_slots, push_array_slot, remove_map_slot, remove_set_slot,
     };
     use crate::heap::{HeapValue, ScriptHeap};
     use crate::script_map::ScriptMap;
+    use crate::script_set::ScriptSet;
+    use crate::value_key::ValueKey;
 
     #[test]
     fn exact_container_summary_proves_simple_array_contract_without_scan() {
@@ -1758,5 +1760,69 @@ mod tests {
         let mut context = GuardExecutionContext::new(Some(&mut heap_execution), Some(&mut budget));
         execute_linked_guard_plan(&value, &plan, &program, &mut context, "scores")
             .expect("empty map should satisfy a different key contract after removal");
+    }
+
+    #[test]
+    fn cleared_set_guard_does_not_use_stale_value_summary() {
+        let mut set = ScriptSet::new();
+        set.insert(Value::I64(1), None, "test set")
+            .expect("initial set value should be keyable");
+
+        let mut heap = ScriptHeap::new();
+        let reference = heap.allocate(HeapValue::Set(set));
+        let value = Value::HeapRef(reference);
+        let program = LinkedProgram::new();
+        let plan = TypeGuardPlan::Set {
+            element: Some(Box::new(TypeGuardPlan::Primitive(PrimitiveTag::String))),
+        };
+
+        {
+            let mut heap_execution = HeapExecution::new(&mut heap);
+            clear_set(&mut heap_execution, reference, None, "test set clear")
+                .expect("set clear should succeed");
+        }
+
+        let mut heap_execution = HeapExecution::new(&mut heap);
+        let mut budget = ExecutionBudget::new(0, usize::MAX, usize::MAX);
+        let mut context = GuardExecutionContext::new(Some(&mut heap_execution), Some(&mut budget));
+        execute_linked_guard_plan(&value, &plan, &program, &mut context, "values")
+            .expect("empty set should satisfy a different element contract after clear");
+
+        assert_eq!(budget.instructions_executed(), 0);
+    }
+
+    #[test]
+    fn removed_set_value_guard_does_not_use_stale_value_summary() {
+        let mut set = ScriptSet::new();
+        set.insert(Value::I64(1), None, "test set")
+            .expect("initial set value should be keyable");
+
+        let mut heap = ScriptHeap::new();
+        let reference = heap.allocate(HeapValue::Set(set));
+        let value = Value::HeapRef(reference);
+        let program = LinkedProgram::new();
+        let plan = TypeGuardPlan::Set {
+            element: Some(Box::new(TypeGuardPlan::Primitive(PrimitiveTag::String))),
+        };
+
+        {
+            let mut heap_execution = HeapExecution::new(&mut heap);
+            let key = ValueKey::from_value(&Value::I64(1), Some(&heap_execution), "test set")
+                .expect("set value should be keyable");
+            remove_set_slot(
+                &mut heap_execution,
+                reference,
+                &key,
+                None,
+                "test set remove",
+            )
+            .expect("set remove should succeed");
+        }
+
+        let mut heap_execution = HeapExecution::new(&mut heap);
+        let mut budget = ExecutionBudget::unbounded();
+        let mut context = GuardExecutionContext::new(Some(&mut heap_execution), Some(&mut budget));
+        execute_linked_guard_plan(&value, &plan, &program, &mut context, "values")
+            .expect("empty set should satisfy a different element contract after removal");
     }
 }
