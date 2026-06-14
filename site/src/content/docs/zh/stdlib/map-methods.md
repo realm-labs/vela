@@ -36,8 +36,9 @@ fn main() {
 
 ## View 和 Entry
 
-`keys`、`values` 和 `entries` 返回 iterator。Entry 值是带 `key` 和
-`value` 字段的 `MapEntry` record。
+`keys`、`values` 和 `entries` 返回 iterator。`keys` 产生存储的原始 key
+值，`entries` 产生带 `key` 和 `value` 字段的 `MapEntry` record。这些 helper
+不会把非字符串 key 字符串化。
 
 ```vela
 fn main() {

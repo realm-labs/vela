@@ -37,8 +37,9 @@ fn main() {
 
 ## Views And Entries
 
-`keys`, `values`, and `entries` return iterators. Entry values are `MapEntry`
-records with `key` and `value` fields.
+`keys`, `values`, and `entries` return iterators. `keys` yields the stored
+original key values, and `entries` yields `MapEntry` records with `key` and
+`value` fields. Non-string keys are not stringified by these helpers.
 
 ```vela
 fn main() {
