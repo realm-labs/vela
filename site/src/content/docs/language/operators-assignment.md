@@ -3,11 +3,26 @@ title: "Operators And Assignment"
 description: "Operators And Assignment documentation for Vela."
 ---
 
-Vela operators are intentionally ordinary and explicit. Numeric operators require compatible concrete scalar types, boolean operators operate on booleans, and assignment routes through the correct local, heap, or host boundary.
+Vela uses familiar operators, but it does not silently guess or convert types.
+If an operation receives a value of the wrong kind, the script fails with a
+diagnostic at that expression.
+
+In practice:
+
+- `1i64 + 2i64` works.
+- `1i64 + "2"` fails instead of converting the string.
+- `if ready { ... }` expects `ready` to be `bool`.
+- `player.gold += 10` changes `player.gold` only if that field is writable.
 
 ## Arithmetic And Comparison
 
-Arithmetic operators are `+`, `-`, `*`, `/`, and `%`. Comparison operators are `==`, `!=`, `<`, `<=`, `>`, and `>=`. Integer arithmetic is checked; overflow and unsigned underflow are errors.
+Arithmetic operators are `+`, `-`, `*`, `/`, and `%`. They work on numeric
+values. The two sides must be compatible numeric types; Vela does not turn
+strings into numbers or mix incompatible numeric tags for you.
+
+Comparison operators are `==`, `!=`, `<`, `<=`, `>`, and `>=`. Integer
+arithmetic is checked. Overflow, unsigned underflow, and division by zero are
+errors.
 
 ```vela
 fn score(base: i64, streak: i64) -> i64 {
@@ -37,7 +52,18 @@ fn count_even(limit: i64) -> i64 {
 
 ## Assignment Targets
 
-Assignment supports `=`, `+=`, `-=`, `*=`, `/=`, and `%=`. Valid targets include locals, record fields, indexed values, and host paths. Host writes are not direct Rust mutation; they are read/write or read-modify-write operations through HostAccess.
+Assignment supports `=`, `+=`, `-=`, `*=`, `/=`, and `%=`.
+
+You can assign to:
+
+- a local variable: `score = 10`
+- a script record field: `reward.amount = 25`
+- an indexed collection entry: `tags["last_reward"] = reward.code`
+- a writable field on a host object: `player.gold += reward.amount`
+
+When the target belongs to a Rust host object, Vela asks the host to apply the
+write. The host can allow it, reject it because the field is read-only, or
+reject it because the current capability profile does not allow that write.
 
 ```vela
 fn apply(player, reward) {
@@ -48,4 +74,8 @@ fn apply(player, reward) {
 
 ## Common Errors
 
-Operator mismatches are reported when the concrete runtime tags do not match the operation. Assignment to a non-assignable expression, a read-only host path, or a target denied by capabilities fails with a source-spanned diagnostic.
+Common errors include using a non-number in arithmetic, using a non-boolean in
+boolean logic, assigning to something that is not assignable, writing a value
+with the wrong type, or writing a host field that the host has marked read-only.
+These errors include source locations when Vela can identify the responsible
+expression.
