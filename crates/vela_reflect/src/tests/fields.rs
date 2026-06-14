@@ -25,6 +25,35 @@ fn reflect_get_record_field_reads_value() {
 }
 
 #[test]
+fn reflect_get_map_string_key_reads_key_preserving_map() {
+    let registry = TypeRegistry::new();
+    let mut adapter = MockStateAdapter::new();
+    let mut tx = HostAccess::new();
+    let map = ReflectValue::Map(vec![
+        crate::value::ReflectMapEntry::new(
+            ReflectValue::Host(HostValue::String("field".to_owned())),
+            ReflectValue::Host(HostValue::Scalar(vela_common::ScalarValue::I64(42))),
+        ),
+        crate::value::ReflectMapEntry::new(
+            ReflectValue::Host(HostValue::Scalar(vela_common::ScalarValue::I64(1))),
+            ReflectValue::Host(HostValue::String("one".to_owned())),
+        ),
+    ]);
+    let mut ctx = ReflectContext {
+        registry: &registry,
+        adapter: &mut adapter,
+        access: &mut tx,
+    };
+
+    let value = get(&mut ctx, &map, "field").expect("map string-key get");
+
+    assert_eq!(
+        value,
+        ReflectValue::Host(HostValue::Scalar(vela_common::ScalarValue::I64(42)))
+    );
+}
+
+#[test]
 fn reflect_get_script_record_unknown_field_uses_schema_candidates() {
     let field_span = Span::new(SourceId::new(7), 20, 25);
     let mut registry = TypeRegistry::new();

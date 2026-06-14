@@ -40,20 +40,20 @@ pub(crate) fn attrs(target: &ReflectValue) -> ReflectResult<Option<ReflectValue>
 }
 
 pub(crate) fn attr(target: &ReflectValue, name: &str) -> ReflectResult<Option<HostValue>> {
-    let Some(ReflectValue::Record(attrs)) = attrs(target)? else {
+    let Some(attrs) = attrs(target)? else {
         return Ok(None);
     };
-    let Some(value) = attrs.get(name) else {
+    let Some(value) = attr_value(&attrs, name)? else {
         return Ok(Some(HostValue::Null));
     };
     scalar(value, is_string).map(Some)
 }
 
 pub(crate) fn has_attr(target: &ReflectValue, name: &str) -> ReflectResult<Option<bool>> {
-    let Some(ReflectValue::Record(attrs)) = attrs(target)? else {
+    let Some(attrs) = attrs(target)? else {
         return Ok(None);
     };
-    Ok(Some(attrs.contains_key(name)))
+    Ok(Some(attr_value(&attrs, name)?.is_some()))
 }
 
 pub(crate) fn docs(target: &ReflectValue) -> ReflectResult<Option<HostValue>> {
@@ -190,13 +190,40 @@ fn record_field<'a>(value: &'a ReflectValue, name: &str) -> Option<&'a ReflectVa
 }
 
 fn attrs_record(value: &ReflectValue) -> ReflectResult<ReflectValue> {
-    let ReflectValue::Record(attrs) = value else {
-        return Err(invalid_target());
-    };
-    for value in attrs.values() {
-        scalar(value, is_string)?;
+    match value {
+        ReflectValue::Record(attrs) => {
+            for value in attrs.values() {
+                scalar(value, is_string)?;
+            }
+            Ok(value.clone())
+        }
+        ReflectValue::Map(entries) => {
+            for entry in entries {
+                let ReflectValue::Host(HostValue::String(_)) = &entry.key else {
+                    return Err(invalid_target());
+                };
+                scalar(&entry.value, is_string)?;
+            }
+            Ok(value.clone())
+        }
+        _ => Err(invalid_target()),
     }
-    Ok(value.clone())
+}
+
+fn attr_value<'a>(attrs: &'a ReflectValue, name: &str) -> ReflectResult<Option<&'a ReflectValue>> {
+    match attrs {
+        ReflectValue::Record(attrs) => Ok(attrs.get(name)),
+        ReflectValue::Map(entries) => Ok(entries
+            .iter()
+            .find(|entry| {
+                matches!(
+                    &entry.key,
+                    ReflectValue::Host(HostValue::String(key)) if key == name
+                )
+            })
+            .map(|entry| &entry.value)),
+        _ => Err(invalid_target()),
+    }
 }
 
 fn string_array(value: &ReflectValue) -> ReflectResult<ReflectValue> {

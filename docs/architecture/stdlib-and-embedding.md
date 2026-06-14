@@ -433,7 +433,8 @@ string-key object map. String-key serde maps may still become object-shaped
 maps at host boundaries, but non-string keys serialize as owned key values and
 must round-trip without stringification. Runtime insertion still applies the
 normal `ValueKey` keyability checks before a script map is mutated or
-allocated.
+allocated. Reflection map reads expose the same key-preserving entry shape
+instead of converting maps through string-field records.
 
 Native functions may return `OwnedValue::Iterator(...)` when a host wants to
 provide copied iterable data without first materializing a script array. This is

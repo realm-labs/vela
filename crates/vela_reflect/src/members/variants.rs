@@ -170,6 +170,7 @@ fn variant_name(target: &ReflectValue) -> ReflectResult<&str> {
         | ReflectValue::Closure
         | ReflectValue::Range
         | ReflectValue::Array(_)
+        | ReflectValue::Map(_)
         | ReflectValue::Record(_)
         | ReflectValue::Set(_)
         | ReflectValue::ScriptRecord { .. } => {

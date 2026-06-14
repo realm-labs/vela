@@ -27,6 +27,7 @@ pub enum ReflectValue {
     Closure,
     Range,
     Array(Vec<ReflectValue>),
+    Map(Vec<ReflectMapEntry>),
     Record(BTreeMap<String, ReflectValue>),
     Set(Vec<ReflectValue>),
     ScriptRecord {
@@ -38,6 +39,19 @@ pub enum ReflectValue {
         variant: String,
         fields: BTreeMap<String, ReflectValue>,
     },
+}
+
+#[derive(Clone, Debug, PartialEq)]
+pub struct ReflectMapEntry {
+    pub key: ReflectValue,
+    pub value: ReflectValue,
+}
+
+impl ReflectMapEntry {
+    #[must_use]
+    pub const fn new(key: ReflectValue, value: ReflectValue) -> Self {
+        Self { key, value }
+    }
 }
 
 impl PartialEq<HostValue> for ReflectValue {
@@ -67,7 +81,8 @@ pub fn type_of<'a>(registry: &'a TypeRegistry, value: &ReflectValue) -> Option<&
         ReflectValue::ScriptEnum { enum_name, .. } => registry.type_by_name(enum_name),
         ReflectValue::Host(value) => type_of_host_value(registry, value),
         ReflectValue::Array(_) => registry.type_by_name("array"),
-        // Generic records are the reflect-layer representation for script maps.
+        ReflectValue::Map(_) => registry.type_by_name("map"),
+        // Generic records remain object-shaped metadata maps.
         ReflectValue::Record(_) => registry.type_by_name("map"),
         ReflectValue::Set(_) => registry.type_by_name("set"),
     }
@@ -150,6 +165,7 @@ fn get_impl(
         ReflectValue::Record(record) => {
             get_record_field(field, record, || record_unknown_field(field, record))
         }
+        ReflectValue::Map(entries) => get_map_string_key(field, entries),
         ReflectValue::ScriptRecord { type_name, fields } => {
             if let Some(policy) = policy
                 && let Some(field_desc) = script_record_field(ctx.registry, type_name, field)
@@ -200,8 +216,9 @@ fn get_impl(
         ReflectValue::Host(_) | ReflectValue::Closure | ReflectValue::Range => {
             Err(ReflectError::new(ReflectErrorKind::InvalidTarget))
         }
-        ReflectValue::Array(_) => Err(ReflectError::new(ReflectErrorKind::InvalidTarget)),
-        ReflectValue::Set(_) => Err(ReflectError::new(ReflectErrorKind::InvalidTarget)),
+        ReflectValue::Array(_) | ReflectValue::Set(_) => {
+            Err(ReflectError::new(ReflectErrorKind::InvalidTarget))
+        }
     }
 }
 
@@ -342,8 +359,9 @@ fn set_impl(
         ReflectValue::Host(_) | ReflectValue::Closure | ReflectValue::Range => {
             Err(ReflectError::new(ReflectErrorKind::InvalidTarget))
         }
-        ReflectValue::Array(_) => Err(ReflectError::new(ReflectErrorKind::InvalidTarget)),
-        ReflectValue::Set(_) => Err(ReflectError::new(ReflectErrorKind::InvalidTarget)),
+        ReflectValue::Array(_) | ReflectValue::Map(_) | ReflectValue::Set(_) => {
+            Err(ReflectError::new(ReflectErrorKind::InvalidTarget))
+        }
     }
 }
 
@@ -450,6 +468,7 @@ pub fn implements(
         | ReflectValue::Closure
         | ReflectValue::Range
         | ReflectValue::Array(_)
+        | ReflectValue::Map(_)
         | ReflectValue::Record(_)
         | ReflectValue::Set(_) => Err(ReflectError::new(ReflectErrorKind::InvalidTarget)),
     }
@@ -512,4 +531,24 @@ fn host_arg(value: ReflectValue) -> ReflectResult<HostValue> {
         return Err(ReflectError::new(ReflectErrorKind::InvalidValue));
     };
     Ok(value)
+}
+
+fn get_map_string_key(field: &str, entries: &[ReflectMapEntry]) -> ReflectResult<ReflectValue> {
+    let lookup_key = ReflectValue::Host(HostValue::String(field.to_owned()));
+    entries
+        .iter()
+        .find(|entry| entry.key == lookup_key)
+        .map(|entry| entry.value.clone())
+        .ok_or_else(|| ReflectError::new(map_unknown_string_key(field, entries)))
+}
+
+fn map_unknown_string_key(field: &str, entries: &[ReflectMapEntry]) -> ReflectErrorKind {
+    let string_entries = entries
+        .iter()
+        .filter_map(|entry| match &entry.key {
+            ReflectValue::Host(HostValue::String(key)) => Some((key.clone(), entry.value.clone())),
+            _ => None,
+        })
+        .collect::<BTreeMap<_, _>>();
+    record_unknown_field(field, &string_entries)
 }

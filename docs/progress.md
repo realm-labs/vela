@@ -59,7 +59,8 @@ array/map/set values, value-keyed map key guard scans,
 compiler-owned typed container mutator checks, embedding
 metadata display/validation, macro-inferred `Vec`/array/set/map hints,
 value-keyed map/set runtime containers, detached `OwnedValue` map entries with
-non-string serde key preservation, hot-reload ABI string comparison, and
+non-string serde key preservation, key-preserving reflection map reads,
+hot-reload ABI string comparison, and
 execution-budget charging for deep guard scans are implemented. Non-erased
 `Iterator<T>` contracts now mark
 iterator cursors with lazy item guards so checked boundaries do not consume

@@ -1,6 +1,7 @@
 use super::*;
 use crate::owned_value::OwnedValue;
 use crate::value::Value as RuntimeValue;
+use vela_reflect::value::{ReflectMapEntry, ReflectValue};
 
 fn reflection_value_natives() -> &'static [&'static str] {
     &[
@@ -73,6 +74,61 @@ fn exec_reflection_value_runtime(
     run_linked_test_program_runtime_with_host_heap_and_budget(
         vm, program, entry, args, host, heap, budget,
     )
+}
+
+#[test]
+fn reflect_conversion_preserves_owned_map_key_values() {
+    let value = OwnedValue::map([
+        (
+            OwnedValue::Scalar(vela_common::ScalarValue::I64(1)),
+            OwnedValue::from("one"),
+        ),
+        (OwnedValue::Bytes(vec![1, 2, 3]), OwnedValue::from("bytes")),
+    ]);
+
+    let reflected = value_to_reflect(&value, "test reflect map").expect("reflect owned map");
+
+    assert_eq!(
+        reflected,
+        ReflectValue::Map(vec![
+            ReflectMapEntry::new(
+                ReflectValue::Host(HostValue::Scalar(vela_common::ScalarValue::I64(1))),
+                ReflectValue::Host(HostValue::String("one".to_owned())),
+            ),
+            ReflectMapEntry::new(
+                ReflectValue::Host(HostValue::Bytes(vec![1, 2, 3])),
+                ReflectValue::Host(HostValue::String("bytes".to_owned())),
+            ),
+        ])
+    );
+    assert_eq!(value_from_reflect(reflected), Ok(value));
+}
+
+#[test]
+fn runtime_reflection_preserves_map_key_values() {
+    let value = OwnedValue::map([(1_i64, "one"), (2_i64, "two")]);
+    let mut heap = ScriptHeap::new();
+    let mut heap_execution = HeapExecution::new(&mut heap);
+    let runtime =
+        owned_to_value(value.clone(), &mut heap_execution, None).expect("materialize map");
+
+    let reflected = runtime_value_to_reflect(&runtime, &heap_execution, "test runtime reflect map")
+        .expect("reflect runtime map");
+
+    assert_eq!(
+        reflected,
+        ReflectValue::Map(vec![
+            ReflectMapEntry::new(
+                ReflectValue::Host(HostValue::Scalar(vela_common::ScalarValue::I64(1))),
+                ReflectValue::Host(HostValue::String("one".to_owned())),
+            ),
+            ReflectMapEntry::new(
+                ReflectValue::Host(HostValue::Scalar(vela_common::ScalarValue::I64(2))),
+                ReflectValue::Host(HostValue::String("two".to_owned())),
+            ),
+        ])
+    );
+    assert_eq!(value_from_reflect(reflected), Ok(value));
 }
 
 #[test]

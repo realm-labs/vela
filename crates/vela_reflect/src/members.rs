@@ -199,6 +199,7 @@ pub(super) fn target_type<'a>(
         | ReflectValue::Closure
         | ReflectValue::Range
         | ReflectValue::Array(_)
+        | ReflectValue::Map(_)
         | ReflectValue::Record(_)
         | ReflectValue::Set(_) => Err(ReflectError::new(ReflectErrorKind::InvalidTarget)),
         ReflectValue::ScriptRecord { .. } | ReflectValue::ScriptEnum { .. } => {
