@@ -1,4 +1,3 @@
-use std::collections::BTreeMap;
 use std::sync::Arc;
 
 use vela_bytecode::Constant;
@@ -55,7 +54,7 @@ pub(crate) fn value_from_constant(
                 return Err(type_error("constant map"));
             };
             let mut budget = budget;
-            let mut entries = entries
+            let entries = entries
                 .iter()
                 .map(|(key, value)| {
                     Ok((
@@ -63,9 +62,9 @@ pub(crate) fn value_from_constant(
                         value_from_constant(value, Some(&mut heap), budget.as_deref_mut())?,
                     ))
                 })
-                .collect::<VmResult<BTreeMap<_, _>>>()?;
+                .collect::<VmResult<Vec<_>>>()?;
             let values = script_map_from_string_entries(
-                std::mem::take(&mut entries),
+                entries,
                 heap,
                 budget.as_deref_mut(),
                 "constant map",
@@ -119,20 +118,6 @@ pub(crate) fn make_array_value(
         budget.collection_limits().max_array_len
     })?;
     allocate_heap_value(HeapValue::Array(values), heap, budget)
-}
-
-#[allow(dead_code)]
-pub(crate) fn make_map_value(
-    values: BTreeMap<String, Value>,
-    heap: &mut HeapExecution<'_>,
-    mut budget: Option<&mut ExecutionBudget>,
-) -> VmResult<Value> {
-    check_collection_len("map", 0, values.len(), budget.as_deref(), |budget| {
-        budget.collection_limits().max_map_entries
-    })?;
-    let values =
-        script_map_from_string_entries(values, heap, budget.as_deref_mut(), "map construction")?;
-    allocate_heap_value(HeapValue::Map(values), heap, budget)
 }
 
 #[allow(dead_code)]
@@ -600,12 +585,14 @@ fn type_error(operation: &'static str) -> VmError {
 }
 
 pub(crate) fn script_map_from_string_entries(
-    entries: BTreeMap<String, Value>,
+    entries: impl IntoIterator<Item = (String, Value)>,
     heap: &mut HeapExecution<'_>,
     mut budget: Option<&mut ExecutionBudget>,
     operation: &'static str,
 ) -> VmResult<ScriptMap> {
-    let mut values = Vec::with_capacity(entries.len());
+    let entries = entries.into_iter();
+    let (min_entries, _) = entries.size_hint();
+    let mut values = Vec::with_capacity(min_entries);
     for (key, value) in entries {
         let key = allocate_heap_value(HeapValue::String(key), heap, budget.as_deref_mut())?;
         values.push((key, value));

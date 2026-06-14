@@ -1,5 +1,3 @@
-use std::collections::BTreeMap;
-
 use crate::heap::HeapValue;
 use crate::heap_values::script_map_from_string_entries;
 use crate::script_set::ScriptSet;
@@ -149,7 +147,7 @@ fn runtime_map_from_registers(
     entries: &[(String, Register)],
     heap: &mut HeapExecution<'_>,
     mut budget: Option<&mut ExecutionBudget>,
-) -> VmResult<BTreeMap<String, Value>> {
+) -> VmResult<Vec<(String, Value)>> {
     entries
         .iter()
         .map(|(key, register)| {
@@ -168,7 +166,7 @@ fn runtime_linked_map_from_registers(
     source_span: Option<Span>,
     heap: &mut HeapExecution<'_>,
     mut budget: Option<&mut ExecutionBudget>,
-) -> VmResult<BTreeMap<String, Value>> {
+) -> VmResult<Vec<(String, Value)>> {
     entries
         .iter()
         .map(|(key, register)| {
