@@ -264,10 +264,13 @@ values. `Hash`, `PartialEq`, and `PartialOrd` are not script-visible builtin
 traits in the first slice. `f32` and `f64` keep primitive comparison behavior
 where it already exists, but float sorting and float `Eq`/`Ord` derivation are
 deferred until a later `PartialEq`/`PartialOrd` or total-float-order design.
-Identity comparison for script heap objects and host refs remains a separate
-primitive/helper and must not read host state. `==` and `!=` must not
-recursively materialize and deep-compare object graphs; deep equality belongs
-in an explicit, budgeted helper if it is added later.
+Reference identity comparison for script heap objects and host refs uses
+`===` and `!==`. These operators are not overloadable, do not call user
+`Eq`/`Ord`, do not call `ValueKey`, and must not read host state. Statically
+known non-reference operands are rejected; dynamic non-reference operands fail
+with a source-spanned runtime error. `==` and `!=` must not recursively
+materialize and deep-compare object graphs; deep equality belongs in an
+explicit, budgeted helper if it is added later.
 
 Map and Set key semantics are owned by a focused runtime `ValueKey` layer.
 Map keys and Set elements are script runtime `Value`s, but lookup and uniqueness

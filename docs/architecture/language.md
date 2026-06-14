@@ -85,8 +85,11 @@ first slice. `f32` and `f64` keep primitive comparison behavior where it
 already exists, but float sorting and float `Eq`/`Ord` derivation are deferred
 until a later partial-comparison or total-float-order design.
 
-Identity comparison for script heap objects and host refs remains separate
-from semantic `Eq`. It must not read host state.
+Reference identity comparison for script heap objects and host refs uses
+`===` and `!==`. These operators are not overloadable, do not call user `Eq` or
+`Ord`, and must not read host state. Statically known non-reference operands
+are rejected; dynamic non-reference operands fail with a source-spanned runtime
+error.
 
 `==` and `!=` must not recursively materialize and deep-compare object graphs.
 If Vela adds deep structural comparison later, it should be an explicit,

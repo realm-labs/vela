@@ -66,8 +66,8 @@ runtime when used with the corresponding operator.
   where the primitive semantics are total enough for the operation.
 - Keep script records/structs, user enums, arrays, maps, sets, closures, and
   iterators from gaining implicit structural equality or ordering.
-- Preserve a separate identity operation for script heap objects and `HostRef`
-  values without reading host state.
+- Preserve separate identity operators `===` and `!==` for script heap objects
+  and `HostRef` values without reading host state.
 - Reject or prevent comparison of internal/transient values such as `Missing`
   and `PathProxy`.
 - Remove the generic materialize-then-compare fallback from ordinary runtime
@@ -211,9 +211,10 @@ Generated implementations should use field slots and static dispatch where
 possible. They must not materialize full `OwnedValue` graphs or recursively
 compare arbitrary containers by accident.
 
-### 4.4 Identity
+### 4.4 Reference Identity
 
-Identity comparison is still needed, but it is not semantic `Eq`.
+Reference identity comparison is still needed, but it is not semantic `Eq`.
+Vela uses `===` and `!==` for this operation.
 
 These values have stable identity:
 
@@ -229,16 +230,16 @@ HostRef
 ```
 
 Identity equality is same-object equality, not same-content equality. It should
-be exposed through a focused primitive/helper such as `same(left, right)` or an
-internal VM operation, not through default derived `Eq`.
+be exposed through `===` and `!==`, not through default derived `Eq`.
 
 ```vela
 let a = Reward { code: "xp", amount: 10 };
 let b = a;
 let c = Reward { code: "xp", amount: 10 };
 
-same(a, b)  // true
-same(a, c)  // false
+a === b  // true
+a === c  // false
+a !== c  // true
 ```
 
 Mutating an object does not change its identity:
@@ -248,12 +249,19 @@ let reward = Reward { code: "xp", amount: 10 };
 let alias = reward;
 reward.amount += 5;
 
-same(reward, alias) // true
+reward === alias // true
 ```
 
 This is the same stable identity class used by identity-keyed `Set<Reward>` and
 `Map<Reward, V>`, but Map/Set lookup still goes through `ValueKey`, not user
 `Eq`.
+
+`===` and `!==` are not overloadable and do not call `Eq`, `Ord`, or
+`ValueKey`. They are valid only for identity-carrying values. When both operand
+types are statically known to be leaf values such as `i64` or `String`, the
+compiler should reject the operation and suggest `==` / `!=` for semantic
+equality. Dynamic non-reference operands fail at runtime with a source-spanned
+diagnostic.
 
 ### 4.5 HostRef Identity
 
@@ -375,7 +383,7 @@ Map/Set insertion and lookup fail before mutation.
   - `values_equal(lhs, rhs, heap)`
   - `identity_equal(lhs, rhs, heap)`
   - helper functions for string/bytes/range/scalar equality
-- Add focused identity comparison for heap and host objects.
+- Add focused `===`/`!==` identity comparison for heap and host objects.
 - Remove the materialize-then-compare fallback from ordinary equality.
 
 Validation:
@@ -385,7 +393,26 @@ cargo test -p vela_vm equality
 cargo test -p vela_vm execution_core
 ```
 
-### Phase 2: Builtin Eq/Ord trait IDs and dispatch
+### Phase 2: Identity operator syntax and lowering
+
+- Add lexer/parser tokens for `===` and `!==`.
+- Add AST/HIR binary operators for reference identity equality and inequality.
+- Lower statically known reference operands to direct identity bytecode or a
+  focused VM helper.
+- Emit compile diagnostics for statically known non-reference operands.
+- Emit source-spanned runtime errors for dynamic non-reference operands.
+- Ensure `===` and `!==` never call `Eq`, `Ord`, `ValueKey`, or deep equality.
+
+Validation:
+
+```bash
+cargo test -p vela_syntax lexer
+cargo test -p vela_syntax parser
+cargo test -p vela_bytecode identity
+cargo test -p vela_vm equality
+```
+
+### Phase 3: Builtin Eq/Ord trait IDs and dispatch
 
 - Add stable builtin trait IDs for `Eq` and `Ord`.
 - Lower statically known `Eq`/`Ord` uses to direct targets where possible.
@@ -405,7 +432,7 @@ cargo test -p vela_vm equality
 cargo test -p vela_vm sorting
 ```
 
-### Phase 3: Derive
+### Phase 4: Derive
 
 - Add explicit `#[derive(Eq)]` and `#[derive(Eq, Ord)]` lowering for eligible
   records.
@@ -422,14 +449,14 @@ cargo test -p vela_bytecode script_types
 cargo test -p vela_vm equality
 ```
 
-### Phase 4: Collection method alignment
+### Phase 5: Collection method alignment
 
 - Update array, map, set, iterator, and callback helper paths that call
   equality so `contains`, `index_of`, `distinct`, `find`, and related helpers
   share semantic `Eq` dispatch where appropriate.
 - Update sorting helpers to require `Ord`.
-- Add tests proving identity helpers and `ValueKey` remain separate from
-  semantic `Eq`.
+- Add tests proving `===`/`!==` and `ValueKey` remain separate from semantic
+  `Eq`.
 
 Validation:
 
@@ -438,7 +465,7 @@ cargo test -p vela_vm array_methods
 cargo test -p vela_vm standard_map_set_id_dispatch
 ```
 
-### Phase 5: ValueKey integration
+### Phase 6: ValueKey integration
 
 - Update `docs/value-keyed-map-set-plan.md` implementation to derive key
   equivalence from stable `ValueKey` classes, not user `Eq`/`Ord`.
@@ -454,14 +481,15 @@ cargo test -p vela_vm set
 cargo test -p vela_vm map
 ```
 
-### Phase 6: Docs and diagnostics
+### Phase 7: Docs and diagnostics
 
 - Update website operator docs after implementation.
-- Add examples showing explicit `Eq`/`Ord`, derive, identity comparison, and
-  explicit field comparison.
+- Add examples showing explicit `Eq`/`Ord`, derive, `===`/`!==` identity
+  comparison, and explicit field comparison.
 - Add diagnostics for non-comparable transient values.
 - Add diagnostics for missing `Eq`, missing `Ord`, rejected float sort, and
   rejected derive.
+- Add diagnostics for invalid `===`/`!==` operands.
 
 Validation:
 
@@ -485,8 +513,11 @@ cargo test --workspace
 - `Array<f64>.sort()` is rejected until the `PartialOrd` or total-float-order
   design exists.
 - Float fields reject `#[derive(Eq)]` and `#[derive(Ord)]` in the first slice.
-- Identity comparison remains available separately for aliases of the same
-  script object or host ref.
+- `===` and `!==` compare only reference identity for script heap objects and
+  host refs.
+- `===` and `!==` do not call user `Eq`, user `Ord`, `ValueKey`, or deep
+  equality.
+- Statically known non-reference operands for `===`/`!==` are rejected.
 - Strings and bytes compare by contents.
 - Numeric equality remains tag-exact and does not widen.
 - `HostRef` identity checks do not read host state.
