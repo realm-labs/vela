@@ -124,12 +124,14 @@ The parser should accept only these arities:
 | `Option<T>` | 1 | `Some` payload satisfies `T`; `None` carries no payload |
 | `Result<T, E>` | 2 | `Ok` payload satisfies `T`; `Err` payload satisfies `E` |
 
-Current runtime maps are string-keyed. The first container type-hint slice must
-therefore accept only `Map<String, V>` and reject `Map<K, V>` when `K` is not
-`String`. Supporting arbitrary map keys requires a separate `ValueKey` design.
-Current runtime sets are also limited to keyable values, so `Set<T>` accepts
-only `null`, `bool`, `i64`, `f64`, and `String` element contracts in this
-slice.
+Current runtime maps are string-keyed. This container type-hint slice therefore
+accepts only `Map<String, V>` and rejects `Map<K, V>` when `K` is not `String`.
+The follow-on value-keyed collection design is tracked in
+[value-keyed-map-set-plan.md](value-keyed-map-set-plan.md); that plan replaces
+the string-key restriction with a shared `ValueKey` policy and identity keys
+for script records/structs. Current runtime sets are also limited to keyable
+values, so `Set<T>` accepts only `null`, `bool`, `i64`, `f64`, and `String`
+element contracts in this slice.
 
 Unparameterized forms remain valid erased container contracts:
 
@@ -727,19 +729,16 @@ cargo bench -p vela_vm --bench baseline -- --quick container
 
 ### Future arbitrary map keys
 
-- The first implementation must not accept non-string map key contracts.
-- The VM container storage and guard/stamp APIs should still name key-side and
-  value-side metadata explicitly, such as `key_contract`, `value_contract`,
-  `key_summary`, and `value_summary`.
-- A future arbitrary-key design must define `ValueKey` semantics before
-  accepting `Map<K,V>` generally:
-  - which runtime values are keyable;
-  - hash/equality or ordering behavior;
-  - whether floats and NaN are keyable;
-  - whether heap values, records, arrays, host refs, or path proxies are
-    keyable;
-  - serde/reflection/key iterator behavior;
-  - hot reload ABI compatibility for key contract changes.
+- This plan intentionally keeps `Map<K, V>` restricted to `Map<String, V>`.
+- The follow-on plan, [value-keyed-map-set-plan.md](value-keyed-map-set-plan.md),
+  defines the `ValueKey` semantics needed to accept arbitrary key contracts:
+  keyable runtime values, identity keys for records/structs, ordering behavior,
+  float/NaN policy, serde/reflection/key iterator behavior, and hot-reload ABI
+  compatibility for key contract changes.
+- The current VM container storage and guard/stamp APIs should still name
+  key-side and value-side metadata explicitly, such as `key_contract`,
+  `value_contract`, `key_summary`, and `value_summary`, so the follow-on plan
+  can replace the string-key restriction cleanly.
 
 ### Full validation
 
