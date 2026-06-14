@@ -228,6 +228,46 @@ fn main() {
 }
 
 #[test]
+fn managed_heap_map_indexing_uses_record_identity_keys() {
+    let program = compile_standard_program_source(
+        SourceId::new(1),
+        r#"
+struct Player { id: i64, level: i64 }
+
+fn main() {
+    let alice = Player { id: 1, level: 10 };
+    let alice_copy = Player { id: 1, level: 10 };
+    let scores = {"seed": 0};
+    scores.clear();
+
+    scores[alice] = 10;
+    scores[alice] += 5;
+    alice.level += 1;
+    scores[alice_copy] = 3;
+
+    let removed_copy = scores.remove(alice_copy);
+    if scores[alice] == 15
+        && option::unwrap_or(removed_copy, 0) == 3
+        && scores.has(alice)
+        && !scores.has(alice_copy) {
+        return scores[alice] + alice.level;
+    }
+    return 0;
+}
+"#,
+    )
+    .expect("compile value-keyed record map indexing source");
+    let mut budget = ExecutionBudget::unbounded();
+    let mut vm = Vm::new();
+    vm.register_standard_natives();
+
+    assert_eq!(
+        run_linked_test_program_with_budget(&vm, &program, "main", &[], &mut budget),
+        Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(26)))
+    );
+}
+
+#[test]
 fn managed_heap_execution_uses_finite_float_map_set_keys() {
     let program = compile_standard_program_source(
         SourceId::new(1),
