@@ -18,16 +18,17 @@ docs/object-equality-semantics-plan.md. Treat docs/goal.md as the product
 roadmap, docs/architecture.md and docs/architecture/*.md as the architecture
 contract, and docs/progress.md as the current milestone state. Replace
 accidental structural equality caused by OwnedValue materialization with a
-focused runtime equality module and closed builtin operator-trait hooks. `Eq`
-drives semantic `==`/`!=` for user objects, `Ord` drives source-level ordering
-and sorting, and missing static support is a compile-time error where the
+focused runtime equality module and closed builtin operator-trait hooks.
+`PartialEq` drives semantic `==`/`!=`, `Eq` marks full equivalence,
+`PartialOrd` drives source-level ordering operators, and `Ord` drives total
+ordering and sorting. Missing static support is a compile-time error where the
 compiler can prove it. Dynamic values perform runtime trait checks with
 source-spanned failures. Deep structural comparison, if added, must be an
 explicit budgeted helper, not the default equality operator. Keep Map/Set
-ValueKey semantics separate from user `Eq`/`Ord`: containers use stable key
-equivalence, not business equality or ordering. Validate with focused VM tests,
-collection method tests, Map/Set key tests, docs, and full workspace checks.
-Commit small Conventional Commit checkpoints.
+ValueKey semantics separate from user `PartialEq`/`Eq`/`PartialOrd`/`Ord`:
+containers use stable key equivalence, not business equality or ordering.
+Validate with focused VM tests, collection method tests, Map/Set key tests,
+docs, and full workspace checks. Commit small Conventional Commit checkpoints.
 ```
 
 ---
@@ -52,16 +53,16 @@ user object semantic equality and ordering are opt-in
 
 Builtin leaf values keep cheap VM equality and ordering paths where they are
 well-defined. User objects do not get structural equality or ordering by
-default. They either implement the closed builtin `Eq` / `Ord` traits
-explicitly, derive them with strict field rules, or fail at compile time or
-runtime when used with the corresponding operator.
+default. They either implement the closed builtin `PartialEq` / `Eq` /
+`PartialOrd` / `Ord` traits explicitly, derive them with strict field rules, or
+fail at compile time or runtime when used with the corresponding operator.
 
 ---
 
 ## 2. Goals
 
-- Add VM-recognized builtin `Eq` and `Ord` traits for semantic equality and
-  ordering.
+- Add VM-recognized builtin `PartialEq`, `Eq`, `PartialOrd`, and `Ord` traits
+  for semantic equality and ordering.
 - Keep builtin scalar, string, bytes, and range equality cheap and value-based
   where the primitive semantics are total enough for the operation.
 - Keep script records/structs, user enums, arrays, maps, sets, closures, and
@@ -73,12 +74,16 @@ runtime when used with the corresponding operator.
 - Remove the generic materialize-then-compare fallback from ordinary runtime
   equality.
 - Make array methods such as `contains`, `index_of`, and `distinct` use the
-  same semantic equality dispatch as `==`.
+  same semantic `PartialEq` dispatch as `==`.
+- Make ordering operators require `PartialOrd`.
 - Make array and collection sorting require `Ord`.
-- Support explicit `#[derive(Eq)]` and `#[derive(Eq, Ord)]` for records whose
-  fields all satisfy the required builtin trait.
-- Keep `ValueKey` for Map/Set keys separate from user `Eq`/`Ord` while using
-  stable leaf-value and object-identity key classes.
+- Support explicit `#[derive(PartialEq)]`, `#[derive(PartialEq, Eq)]`,
+  `#[derive(PartialEq, PartialOrd)]`, and
+  `#[derive(PartialEq, Eq, PartialOrd, Ord)]` for records whose fields all
+  satisfy the required builtin trait.
+- Keep `ValueKey` for Map/Set keys separate from user `PartialEq`/`Eq`/
+  `PartialOrd`/`Ord` while using stable leaf-value and object-identity key
+  classes.
 - Leave deep structural equality as a future explicit helper, not an operator.
 
 ---
@@ -89,20 +94,19 @@ This pass must not:
 
 - Add open-ended operator overloading.
 - Add general Rust-like trait machinery or script-language generics.
-- Add `Hash`, `PartialEq`, or `PartialOrd` as script-visible builtin traits in
-  the first slice.
+- Add `Hash` as a script-visible builtin trait.
 - Make `==` recursively compare arbitrary records, arrays, maps, sets, host
   state, or object graphs.
 - Read host object fields to decide equality.
 - Let reflection mutate type structure to affect equality.
 - Add implicit numeric widening for equality.
-- Treat `ValueKey` as the implementation of semantic equality or ordering;
-  key lookup has independent constraints such as keyability, internal ordering,
-  and NaN rejection.
-- Make Map/Set lookup, uniqueness, or iteration order call user `Eq`, `Ord`, or
-  future `Hash` implementations.
-- Sort `f32` or `f64` arrays before the language has an explicit
-  `PartialEq`/`PartialOrd` or total-float-order design.
+- Treat `ValueKey` as the implementation of semantic equality or ordering; key
+  lookup has independent constraints such as keyability, internal ordering, and
+  NaN rejection.
+- Make Map/Set lookup, uniqueness, or iteration order call user `PartialEq`,
+  `Eq`, `PartialOrd`, `Ord`, or future `Hash` implementations.
+- Make `Array<f32>.sort()` or `Array<f64>.sort()` use partial ordering or
+  silently invent a total float order.
 - Add deep equality unless it is explicitly budgeted, cycle-safe, and separate
   from `==`.
 
@@ -110,19 +114,24 @@ This pass must not:
 
 ## 4. Builtin Operator Traits
 
-### 4.1 `Eq`
+### 4.1 `PartialEq` And `Eq`
 
-`Eq` is a closed builtin trait recognized by the compiler and VM. It is not a
-general script-generic trait and it should not imply HashMap-style key
-semantics.
+`PartialEq` and `Eq` are closed builtin traits recognized by the compiler and
+VM. They are not general script-generic traits and they should not imply
+HashMap-style key semantics.
 
-`==` and `!=` use this contract for user-defined semantic equality:
+`==` and `!=` use `PartialEq` for user-defined semantic equality:
 
 ```text
-static receiver type has Eq      -> compile and bind directly when possible
-static receiver type lacks Eq    -> compile-time diagnostic
-dynamic receiver type            -> runtime trait check with source span
+static receiver type has PartialEq      -> compile and bind directly when possible
+static receiver type lacks PartialEq    -> compile-time diagnostic
+dynamic receiver type                   -> runtime trait check with source span
 ```
+
+`Eq` is the stronger promise that equality is a full equivalence relation:
+reflexive, symmetric, and transitive. In practical terms, a type with `Eq`
+should never have a value where `value != value`. `Eq` requires `PartialEq`,
+but `PartialEq` does not require `Eq`.
 
 Builtin exact scalar tags, bool, char, `String`, `Bytes`, and range values keep
 specialized VM equality paths. Numeric equality is tag-exact. There is no
@@ -135,25 +144,35 @@ hidden widening:
 ```
 
 `f32` and `f64` keep primitive comparison behavior where it already exists, but
-they do not satisfy the first `Eq` trait contract. Float `Eq`/`PartialEq`
-integration is deferred until Vela has an explicit float partial-comparison
-design.
+they satisfy only `PartialEq`, not `Eq`, because `NaN != NaN`.
 
-### 4.2 `Ord`
+### 4.2 `PartialOrd` And `Ord`
 
-`Ord` is the closed builtin trait for total ordering. It drives:
+`PartialOrd` and `Ord` are closed builtin traits for ordering. `PartialOrd`
+drives source-level comparison operators:
 
 ```text
 < <= > >= for user objects
-Array<T>.sort() and ordering-based helpers
+derive(PartialOrd)
+```
+
+When `PartialOrd` reports two values as incomparable, comparison operators
+return `false`. This matches ordinary floating-point comparison behavior around
+`NaN`.
+
+`Ord` is the stronger total-ordering promise. It requires `PartialOrd` and
+`Eq`, and it drives:
+
+```text
+Array<T>.sort()
+ordering-based helpers that require a total order
 derive(Ord)
 ```
 
-`Ord` must be total. Builtin candidates for first-slice `Ord` are exact
-integers, `bool`, `char`, `String`, and `Bytes`. `f32` and `f64` do not
-implement `Ord` in the first slice, so `Array<f64>.sort()` and
-`#[derive(Ord)]` on a record with float fields are rejected until Vela adds a
-separate `PartialOrd` or total-float-order API.
+Builtin candidates for first-slice `Ord` are exact integers, `bool`, `char`,
+`String`, and `Bytes`. `f32` and `f64` implement `PartialOrd` but not `Ord`, so
+`Array<f64>.sort()` and `#[derive(Ord)]` on a record with float fields are
+rejected until Vela adds a separate total-float-order API.
 
 Sorting must not silently invent a float ordering:
 
@@ -163,17 +182,19 @@ values.sort(); // rejected in the first slice
 ```
 
 Future float ordering should be explicit, for example a dedicated total-order
-float sort helper or a `PartialOrd`-based API with clear diagnostics.
+float sort helper or a partial-order sort API that reports incomparable values
+with clear diagnostics.
 
 ### 4.3 Explicit Implementations And Derive
 
-User records and structs do not receive `Eq` or `Ord` automatically.
+User records and structs do not receive `PartialEq`, `Eq`, `PartialOrd`, or
+`Ord` automatically.
 
 Manual implementations are allowed through the normal trait implementation
 surface once the builtin trait IDs exist:
 
 ```vela
-impl Eq for PlayerId {
+impl PartialEq for PlayerId {
     fn eq(self, other: PlayerId) -> bool {
         return self.server == other.server && self.id == other.id;
     }
@@ -183,13 +204,13 @@ impl Eq for PlayerId {
 Vela may also synthesize implementations through explicit derive:
 
 ```vela
-#[derive(Eq)]
+#[derive(PartialEq, Eq)]
 struct PlayerId {
     server: i64,
     id: i64,
 }
 
-#[derive(Eq, Ord)]
+#[derive(PartialEq, Eq, PartialOrd, Ord)]
 struct ScoreEntry {
     score: i64,
     player_id: i64,
@@ -199,10 +220,12 @@ struct ScoreEntry {
 Derive rules:
 
 ```text
-derive(Eq)  -> every field must satisfy Eq
-derive(Ord) -> every field must satisfy Ord and the type must also satisfy Eq
+derive(PartialEq)  -> every field must satisfy PartialEq
+derive(Eq)         -> every field must satisfy Eq and the type must also satisfy PartialEq
+derive(PartialOrd) -> every field must satisfy PartialOrd and the type must also satisfy PartialEq
+derive(Ord)        -> every field must satisfy Ord and the type must also satisfy Eq and PartialOrd
 field order -> declaration order
-float field -> rejected in the first slice
+float field -> allowed for PartialEq/PartialOrd, rejected for Eq/Ord
 container or object field -> rejected unless that field type has the trait
 host type -> Rust registration metadata owns support; scripts cannot derive it
 ```
@@ -254,14 +277,14 @@ reward === alias // true
 
 This is the same stable identity class used by identity-keyed `Set<Reward>` and
 `Map<Reward, V>`, but Map/Set lookup still goes through `ValueKey`, not user
-`Eq`.
+`PartialEq`.
 
-`===` and `!==` are not overloadable and do not call `Eq`, `Ord`, or
-`ValueKey`. They are valid only for identity-carrying values. When both operand
-types are statically known to be leaf values such as `i64` or `String`, the
-compiler should reject the operation and suggest `==` / `!=` for semantic
-equality. Dynamic non-reference operands fail at runtime with a source-spanned
-diagnostic.
+`===` and `!==` are not overloadable and do not call `PartialEq`, `Eq`,
+`PartialOrd`, `Ord`, or `ValueKey`. They are valid only for identity-carrying
+values. When both operand types are statically known to be leaf values such as
+`i64` or `String`, the compiler should reject the operation and suggest `==` /
+`!=` for semantic equality. Dynamic non-reference operands fail at runtime with
+a source-spanned diagnostic.
 
 ### 4.5 HostRef Identity
 
@@ -300,8 +323,8 @@ Bytes
 Range
 ```
 
-`f32` and `f64` keep primitive comparison behavior but are excluded from first
-slice `Eq`/`Ord` derivation and sorting.
+`f32` and `f64` keep primitive comparison behavior through `PartialEq` and
+`PartialOrd` but are excluded from `Eq`/`Ord` derivation and sorting.
 
 Float primitive equality follows ordinary runtime numeric equality:
 
@@ -347,8 +370,8 @@ capability explicitly exposes value snapshots.
 
 ## 7. Map/Set Key Alignment
 
-`ValueKey` should align with stable key classes, not user-defined `Eq` or
-`Ord`:
+`ValueKey` should align with stable key classes, not user-defined `PartialEq`,
+`Eq`, `PartialOrd`, or `Ord`:
 
 ```text
 leaf value equality -> value keys
@@ -367,8 +390,8 @@ no transient PathProxy keys
 
 For keyable leaf values, if two values are equal by builtin leaf-value
 equality, their `ValueKey`s should match. For objects, `ValueKey` uses identity
-even when the object implements semantic `Eq`. If a value is not keyable,
-Map/Set insertion and lookup fail before mutation.
+even when the object implements semantic `PartialEq`. If a value is not
+keyable, Map/Set insertion and lookup fail before mutation.
 
 ---
 
@@ -401,7 +424,8 @@ cargo test -p vela_vm execution_core
   focused VM helper.
 - Emit compile diagnostics for statically known non-reference operands.
 - Emit source-spanned runtime errors for dynamic non-reference operands.
-- Ensure `===` and `!==` never call `Eq`, `Ord`, `ValueKey`, or deep equality.
+- Ensure `===` and `!==` never call `PartialEq`, `Eq`, `PartialOrd`, `Ord`,
+  `ValueKey`, or deep equality.
 
 Validation:
 
@@ -412,17 +436,18 @@ cargo test -p vela_bytecode identity
 cargo test -p vela_vm equality
 ```
 
-### Phase 3: Builtin Eq/Ord trait IDs and dispatch
+### Phase 3: Builtin comparison trait IDs and dispatch
 
-- Add stable builtin trait IDs for `Eq` and `Ord`.
-- Lower statically known `Eq`/`Ord` uses to direct targets where possible.
+- Add stable builtin trait IDs for `PartialEq`, `Eq`, `PartialOrd`, and `Ord`.
+- Lower statically known comparison trait uses to direct targets where
+  possible.
 - Emit compile diagnostics when a statically known type lacks the required
   builtin trait.
 - Emit source-spanned runtime errors when dynamic values lack the required
   builtin trait.
 - Keep primitive leaf comparisons on specialized VM paths.
-- Reject float sorting and float `Ord` derive until the `PartialOrd` or
-  total-float-order design exists.
+- Reject float sorting and float `Eq`/`Ord` derive until a total-float-order
+  design exists.
 
 Validation:
 
@@ -434,10 +459,12 @@ cargo test -p vela_vm sorting
 
 ### Phase 4: Derive
 
-- Add explicit `#[derive(Eq)]` and `#[derive(Eq, Ord)]` lowering for eligible
-  records.
+- Add explicit `#[derive(PartialEq)]`, `#[derive(PartialEq, Eq)]`,
+  `#[derive(PartialEq, PartialOrd)]`, and
+  `#[derive(PartialEq, Eq, PartialOrd, Ord)]` lowering for eligible records.
 - Reject derive when any field lacks the required trait.
-- Reject float fields for `Eq`/`Ord` derive in the first slice.
+- Reject float fields for `Eq`/`Ord` derive while allowing them for
+  `PartialEq`/`PartialOrd`.
 - Ensure generated implementations use slots/static dispatch instead of
   materializing `OwnedValue`.
 
@@ -453,10 +480,11 @@ cargo test -p vela_vm equality
 
 - Update array, map, set, iterator, and callback helper paths that call
   equality so `contains`, `index_of`, `distinct`, `find`, and related helpers
-  share semantic `Eq` dispatch where appropriate.
+  share semantic `PartialEq` dispatch where appropriate.
+- Update ordering operators to require `PartialOrd`.
 - Update sorting helpers to require `Ord`.
 - Add tests proving `===`/`!==` and `ValueKey` remain separate from semantic
-  `Eq`.
+  comparison traits.
 
 Validation:
 
@@ -468,7 +496,8 @@ cargo test -p vela_vm standard_map_set_id_dispatch
 ### Phase 6: ValueKey integration
 
 - Update `docs/value-keyed-map-set-plan.md` implementation to derive key
-  equivalence from stable `ValueKey` classes, not user `Eq`/`Ord`.
+  equivalence from stable `ValueKey` classes, not user
+  `PartialEq`/`Eq`/`PartialOrd`/`Ord`.
 - Ensure `Set<Player>` and `Map<Player, V>` use identity keys.
 - Ensure string and bytes keys use value keys.
 - Ensure NaN and PathProxy key attempts fail before mutation.
@@ -484,11 +513,11 @@ cargo test -p vela_vm map
 ### Phase 7: Docs and diagnostics
 
 - Update website operator docs after implementation.
-- Add examples showing explicit `Eq`/`Ord`, derive, `===`/`!==` identity
-  comparison, and explicit field comparison.
+- Add examples showing explicit comparison trait implementations, derive,
+  `===`/`!==` identity comparison, and explicit field comparison.
 - Add diagnostics for non-comparable transient values.
-- Add diagnostics for missing `Eq`, missing `Ord`, rejected float sort, and
-  rejected derive.
+- Add diagnostics for missing `PartialEq`, missing `PartialOrd`, missing `Ord`,
+  rejected float sort, and rejected derive.
 - Add diagnostics for invalid `===`/`!==` operands.
 
 Validation:
@@ -503,20 +532,22 @@ cargo test --workspace
 
 ## 9. Acceptance Criteria
 
-- User records without `Eq` cannot be used with semantic `==` when the compiler
-  can prove the receiver type.
-- Dynamic user values without `Eq` fail with a source-spanned runtime error
+- User records without `PartialEq` cannot be used with semantic `==` when the
+  compiler can prove the receiver type.
+- Dynamic user values without `PartialEq` fail with a source-spanned runtime error
   when used with `==`.
-- User records with explicit or derived `Eq` compare through that
+- User records with explicit or derived `PartialEq` compare through that
   implementation.
-- Sorting and ordering operators on user types require `Ord`.
-- `Array<f64>.sort()` is rejected until the `PartialOrd` or total-float-order
-  design exists.
-- Float fields reject `#[derive(Eq)]` and `#[derive(Ord)]` in the first slice.
+- Ordering operators on user types require `PartialOrd`.
+- Sorting requires `Ord`.
+- `Array<f64>.sort()` is rejected until a total-float-order or explicit
+  partial-sort API exists.
+- Float fields allow `#[derive(PartialEq)]` and `#[derive(PartialOrd)]` but
+  reject `#[derive(Eq)]` and `#[derive(Ord)]`.
 - `===` and `!==` compare only reference identity for script heap objects and
   host refs.
-- `===` and `!==` do not call user `Eq`, user `Ord`, `ValueKey`, or deep
-  equality.
+- `===` and `!==` do not call user `PartialEq`, user `Eq`,
+  user `PartialOrd`, user `Ord`, `ValueKey`, or deep equality.
 - Statically known non-reference operands for `===`/`!==` are rejected.
 - Strings and bytes compare by contents.
 - Numeric equality remains tag-exact and does not widen.
@@ -524,5 +555,5 @@ cargo test --workspace
 - `Missing` and `PathProxy` cannot silently compare as ordinary data.
 - Ordinary `==` never recursively materializes and compares large object
   graphs.
-- Map/Set `ValueKey` semantics do not call user `Eq`, user `Ord`, or future
-  user `Hash`.
+- Map/Set `ValueKey` semantics do not call user `PartialEq`, user `Eq`,
+  user `PartialOrd`, user `Ord`, or future user `Hash`.

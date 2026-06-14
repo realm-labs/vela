@@ -71,25 +71,27 @@ pub fn on_invoice_paid(ctx, account, invoice) {
 
 ### Equality And Ordering
 
-Semantic object equality and ordering are opt-in. `Eq` is the closed builtin
-trait for user-object `==`/`!=`, and `Ord` is the closed builtin trait for
-user-object ordering and sorting. User records/structs do not receive implicit
-structural equality or ordering; they must implement the builtin trait
-explicitly or use explicit `#[derive(Eq)]` / `#[derive(Eq, Ord)]` when every
-field satisfies the required trait.
+Semantic object equality and ordering are opt-in. `PartialEq` is the closed
+builtin trait for user-object `==`/`!=`, `Eq` marks full equivalence,
+`PartialOrd` drives ordering operators, and `Ord` drives total ordering and
+sorting. User records/structs do not receive implicit structural equality or
+ordering; they must implement the builtin trait explicitly or use explicit
+derive such as `#[derive(PartialEq, Eq)]` or
+`#[derive(PartialEq, Eq, PartialOrd, Ord)]` when every field satisfies the
+required traits.
 
-Missing `Eq` or `Ord` support is a compile-time diagnostic when statically
-known and a source-spanned runtime error for dynamic values. `Hash`,
-`PartialEq`, and `PartialOrd` are not script-visible builtin traits in the
-first slice. `f32` and `f64` keep primitive comparison behavior where it
-already exists, but float sorting and float `Eq`/`Ord` derivation are deferred
-until a later partial-comparison or total-float-order design.
+Missing comparison-trait support is a compile-time diagnostic when statically
+known and a source-spanned runtime error for dynamic values. `Hash` is not a
+script-visible builtin trait. `f32` and `f64` implement partial comparison
+semantics but do not satisfy `Eq` or `Ord`, so float sorting and float
+`Eq`/`Ord` derivation are deferred until a later total-float-order or explicit
+partial-sort design.
 
 Reference identity comparison for script heap objects and host refs uses
-`===` and `!==`. These operators are not overloadable, do not call user `Eq` or
-`Ord`, and must not read host state. Statically known non-reference operands
-are rejected; dynamic non-reference operands fail with a source-spanned runtime
-error.
+`===` and `!==`. These operators are not overloadable, do not call user
+comparison traits, and must not read host state. Statically known non-reference
+operands are rejected; dynamic non-reference operands fail with a source-spanned
+runtime error.
 
 `==` and `!=` must not recursively materialize and deep-compare object graphs.
 If Vela adds deep structural comparison later, it should be an explicit,
