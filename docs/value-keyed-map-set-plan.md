@@ -20,10 +20,11 @@ docs/architecture.md and docs/architecture/*.md as the architecture contract,
 and docs/progress.md as the current milestone state. Replace the current
 string-keyed map and vector-scanned set internals with focused ScriptMap,
 ScriptSet, and ValueKey modules. Map keys and Set elements are runtime Values,
-but key equality is defined only by ValueKey and follows the shallow equality
-classes from docs/object-equality-semantics-plan.md: immutable leaf values
-compare by value, script heap objects and host refs compare by identity, and
-unsupported transient values are rejected before mutation.
+but key equality is defined only by ValueKey and follows stable key classes:
+immutable leaf values compare by value, script heap objects and host refs
+compare by identity, and unsupported transient values are rejected before
+mutation. ValueKey does not call user `Eq`, user `Ord`, or any future
+script-visible `Hash` implementation.
 Propagate the new keyable contract through syntax, type hints, runtime guards,
 container summaries/stamps, stdlib methods, reflection, OwnedValue, serde
 bridges, benchmarks, docs, and tests. Prefer clean replacement over
@@ -64,6 +65,11 @@ and host objects use identity equality, not deep structural equality. A record
 can be stored in a Set and looked up efficiently by the same object identity
 even if fields later mutate.
 
+This plan intentionally keeps container key semantics separate from semantic
+object equality and ordering. User-defined or derived `Eq`/`Ord` may affect
+`==`, ordering operators, and sorting, but it must not affect Map lookup, Set
+uniqueness, or deterministic container iteration.
+
 ---
 
 ## 2. Goals
@@ -83,6 +89,8 @@ even if fields later mutate.
 - Reject transient or non-data values as keys: `Missing` and `PathProxy`.
 - Keep record/struct keys efficient by using identity, not field-by-field
   comparison.
+- Keep Map/Set lookup independent from user `Eq`, user `Ord`, and future
+  script-visible `Hash`.
 - Extend `Map<K, V>` and `Set<T>` type hints to use the same keyable policy as
   runtime `ValueKey`.
 - Preserve fast typed-container mutation rules: statically proven key/value
@@ -100,6 +108,8 @@ This pass must not:
 - Add structural equality for mutable records, arrays, maps, sets, closures,
   iterators, or host objects.
 - Make Map or Set keys depend on a value that can later mutate by content.
+- Make Map or Set keys depend on user-defined or derived `Eq`/`Ord`.
+- Add script-visible `Hash` or make container indexes call user hash code.
 - Treat two independently constructed records with identical fields as the
   same Set element or Map key.
 - Allow `PathProxy` to become a Map/Set key before there is an explicit host
@@ -146,10 +156,13 @@ pub(crate) enum ValueKey {
 VM error when the value is not keyable. It should not allocate script heap
 objects. It may clone immutable string/bytes payloads into the key.
 
-For keyable values, `ValueKey` should agree with ordinary shallow equality from
+For keyable leaf values, `ValueKey` should agree with builtin leaf-value
+equality from
 [object-equality-semantics-plan.md](object-equality-semantics-plan.md): values
-that compare equal by `==` should map to the same key. `ValueKey` remains a
-separate layer because it also defines keyability, ordering, and NaN rejection.
+that compare equal by builtin leaf equality should map to the same key. For
+objects, `ValueKey` uses identity even when the object implements semantic
+`Eq`. `ValueKey` remains a separate layer because it also defines keyability,
+internal ordering, and NaN rejection.
 
 ### 4.2 Scalar equality
 
@@ -160,9 +173,10 @@ i64(1) != u64(1)
 f32(1.0) != f64(1.0)
 ```
 
-Finite floating-point values are keyable by canonical bits. Reject `NaN`
-because it is not a stable equality key. Normalize `-0.0` and `0.0` to the same
-key so numeric equality does not surprise users.
+Finite floating-point values are keyable by canonical bits. This is only a
+Map/Set key policy; it does not mean `f32` or `f64` implement semantic `Eq` or
+`Ord`. Reject `NaN` because it is not a stable equality key. Normalize `-0.0`
+and `0.0` to the same key so numeric equality does not surprise users.
 
 ### 4.3 String and bytes equality
 
@@ -215,6 +229,10 @@ fn main() -> bool {
 
 The lookup is efficient because it compares `HeapIdentity(GcRef)`. It does not
 scan fields.
+
+Even if `Player` later derives or implements semantic `Eq`, the set above still
+uses identity. A business-keyed collection should store a stable field such as
+`player.id` as the key instead of relying on object equality.
 
 ---
 
@@ -289,6 +307,12 @@ Use `BTreeMap<ValueKey, _>` in the first implementation to preserve
 deterministic iteration by key order. The ordering is an implementation detail,
 not a source-level sorting guarantee, but deterministic output keeps tests,
 diagnostics, and replay behavior stable.
+
+This internal ordering is not user `Ord`. Changing or adding a user `Ord`
+implementation must not reorder existing Map/Set entries. If later benchmarks
+justify `HashMap` or `IndexMap` behind `ScriptMap`/`ScriptSet`, script-visible
+key semantics should remain the same unless the language explicitly documents a
+new iteration-order contract.
 
 ---
 
@@ -640,6 +664,8 @@ ad-hoc display strings. Display strings remain diagnostics/docs output.
 - Centralize current duplicated `SetKey` behavior behind `ValueKey`.
 - Add tests for scalar, string, bytes, heap identity, host identity,
   non-keyable `Missing`, non-keyable `PathProxy`, float `NaN`, and `-0.0`.
+- Add tests proving user `Eq`/`Ord` implementations do not affect
+  `ValueKey::from_value` output or Map/Set lookup.
 
 Validation:
 
@@ -687,6 +713,8 @@ cargo test -p vela_vm external_compare_contract
 - Update HIR, analysis TypeFacts, compiler RuntimeTypeFacts, guard plans, and
   VM guard execution so map keys are checked as well as values.
 - Ensure `Set<Player>` and `Map<Player, V>` use identity semantics at runtime.
+- Ensure `Set<Player>` and `Map<Player, V>` continue to use identity semantics
+  even when `Player` implements or derives semantic `Eq`/`Ord`.
 - Ensure typed mutation checks guard dynamic keys and values before mutation.
 
 Validation:
@@ -751,6 +779,11 @@ cargo test --workspace
 - Two different records with identical fields are different Set elements.
 - Mutating a record after insertion does not break Set or Map lookup.
 - `Map<Player, i64>` supports get/set/remove with record identity keys.
+- User `Eq`/`Ord` implementations do not affect Map lookup, Set uniqueness, or
+  Map/Set iteration order.
+- `f32`/`f64` finite values can be used as `ValueKey` keys according to the
+  finite-float key policy, but this does not make float arrays sortable or make
+  floats satisfy semantic `Ord`.
 - Existing string-key map behavior still works through the new `ScriptMap`
   implementation.
 - Dynamic non-keyable values fail before mutation.

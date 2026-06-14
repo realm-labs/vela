@@ -69,13 +69,24 @@ pub fn on_invoice_paid(ctx, account, invoice) {
 }
 ```
 
-### Equality
+### Equality And Ordering
 
-Ordinary equality is shallow. Immutable leaf values such as null, booleans,
-characters, exact scalar numeric tags, strings, bytes, and ranges compare by
-value. Mutable script heap objects such as records, user enums, arrays, maps,
-sets, closures, and iterators compare by identity. Host refs compare by host
-identity without reading host state.
+Semantic object equality and ordering are opt-in. `Eq` is the closed builtin
+trait for user-object `==`/`!=`, and `Ord` is the closed builtin trait for
+user-object ordering and sorting. User records/structs do not receive implicit
+structural equality or ordering; they must implement the builtin trait
+explicitly or use explicit `#[derive(Eq)]` / `#[derive(Eq, Ord)]` when every
+field satisfies the required trait.
+
+Missing `Eq` or `Ord` support is a compile-time diagnostic when statically
+known and a source-spanned runtime error for dynamic values. `Hash`,
+`PartialEq`, and `PartialOrd` are not script-visible builtin traits in the
+first slice. `f32` and `f64` keep primitive comparison behavior where it
+already exists, but float sorting and float `Eq`/`Ord` derivation are deferred
+until a later partial-comparison or total-float-order design.
+
+Identity comparison for script heap objects and host refs remains separate
+from semantic `Eq`. It must not read host state.
 
 `==` and `!=` must not recursively materialize and deep-compare object graphs.
 If Vela adds deep structural comparison later, it should be an explicit,
