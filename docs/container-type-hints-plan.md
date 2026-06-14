@@ -1,0 +1,565 @@
+# Container Type Hint Contracts Implementation Plan
+
+> **Track:** M20/M23 type-contract and fast-path architecture continuation  
+> **Document status:** Codex execution plan  
+> **Compatibility policy:** breaking pre-release syntax, metadata, bytecode,
+> VM, docs, and tests are allowed. Do not preserve old rejected-container
+> generic behavior only for compatibility. Preserve product contracts:
+> no user-defined script generics, no Rust `&mut` exposure, HostAccess safety,
+> source-spanned diagnostics, execution budgets, GC roots, reflection
+> permissioning, and hot-reload ABI/schema checks.
+
+---
+
+## 0. Codex Goal
+
+```text
+/goal Implement Vela's builtin parameterized container type hints from
+docs/container-type-hints-plan.md. Treat docs/goal.md as the product roadmap,
+docs/architecture.md and docs/architecture/*.md as the architecture contract,
+and docs/progress.md as the current milestone state. This is not a general
+script-language generics feature: only builtin type-hint contracts may carry
+type arguments. Build the feature as a vertical slice across syntax, HIR,
+analysis TypeFacts, bytecode RuntimeTypeFacts, type guard plans, VM contract
+execution, typed container mutation checks, embedding metadata, hot-reload ABI,
+docs, examples, and tests. Prefer clean replacement over compatibility shims.
+Validate each checkpoint with focused tests plus the relevant workspace checks,
+and commit small Conventional Commit checkpoints.
+```
+
+---
+
+## 1. Purpose
+
+Vela now has consistent public type-hint spelling:
+
+```text
+lowercase scalar/literal primitives: null bool char i64 f64 ...
+capitalized named contracts: Any String Bytes Array Map Set Iterator Option Result
+```
+
+Only `Option<T>` and `Result<T, E>` currently accept type arguments. The next
+clean step is to open builtin container type arguments for type hints:
+
+```vela
+Array<i64>
+Set<String>
+Map<String, i64>
+Iterator<Player>
+Option<Array<i64>>
+Result<Map<String, i64>, String>
+```
+
+The goal is not to add user-defined generics. The goal is to make type hints
+precise enough for contracts, diagnostics, static TypeFacts, and fast-path
+bytecode decisions.
+
+---
+
+## 2. Goals
+
+- Allow type arguments only on selected builtin type-hint contracts:
+  `Array<T>`, `Set<T>`, `Map<K, V>`, `Iterator<T>`, `Option<T>`, and
+  `Result<T, E>`.
+- Keep scalar primitive type hints lowercase and named container contracts
+  capitalized.
+- Preserve the rule that type hints are contracts, not conversions.
+- Propagate container item/key/value facts through analysis, compiler
+  `RuntimeTypeFact`, and contract guard metadata.
+- Make `Array<T>`, `Set<T>`, and `Map<K, V>` runtime contracts semantically
+  real by validating existing contents at guarded boundaries.
+- Keep typed container mutation sound: writes, pushes, inserts, and map/set
+  updates through a typed container contract must validate the inserted value.
+- Support `Iterator<T>` without consuming the iterator at the guard boundary.
+- Make hot-reload ABI and reflection metadata compare/display structured
+  parameterized contracts.
+- Keep the design open to future container fast paths and JIT without adding
+  a script generic type system.
+
+---
+
+## 3. Non-Goals
+
+This pass must not:
+
+- Add user-defined generic types, generic functions, or generic impls.
+- Add `Player<T>`, `Foo<T>`, or other schema/host/user generic syntax.
+- Add `Function<...>` or callable signature type syntax. Function types need a
+  separate design.
+- Add covariance/subtyping rules, wildcard types, type aliases, or trait
+  bounds.
+- Add implicit conversions for container contents.
+- Trust container facts for fast paths after unchecked mutation.
+- Consume an iterator merely to prove `Iterator<T>`.
+- Expose Rust references or host-owned iterator internals to scripts.
+- Weaken budget charging, GC rooting, hot reload ABI checks, or source-spanned
+  diagnostics.
+
+---
+
+## 4. Syntax Contract
+
+### 4.1 Allowed parameterized hints
+
+The parser should accept only these arities:
+
+| Type hint | Arity | Meaning |
+|---|---:|---|
+| `Array<T>` | 1 | script/runtime array whose current and future elements satisfy `T` |
+| `Set<T>` | 1 | script/runtime set whose current and future values satisfy `T` |
+| `Map<K, V>` | 2 | script/runtime map whose current and future keys satisfy `K` and values satisfy `V` |
+| `Iterator<T>` | 1 | one-shot iterator whose yielded items satisfy `T` |
+| `Option<T>` | 1 | `Some` payload satisfies `T`; `None` carries no payload |
+| `Result<T, E>` | 2 | `Ok` payload satisfies `T`; `Err` payload satisfies `E` |
+
+Unparameterized forms remain valid erased container contracts:
+
+```vela
+Array
+Map
+Set
+Iterator
+Option
+Result
+```
+
+These validate only the outer runtime category and carry unknown item facts.
+
+### 4.2 Rejected hints
+
+Reject all other generic-looking hints with a source-spanned diagnostic:
+
+```vela
+Player<T>       // rejected: script schemas are not generic
+String<T>       // rejected: String is not parameterized
+Bytes<T>        // rejected
+Range<T>        // rejected for now
+Function<T>     // rejected; callable signatures need a separate design
+Array<T, U>     // rejected: wrong arity
+Map<K>          // rejected: wrong arity
+Option<T, E>    // rejected: wrong arity
+```
+
+The diagnostic should say that only builtin container/Option/Result type hints
+support type arguments.
+
+### 4.3 Nested hints
+
+Nested builtin hints are allowed:
+
+```vela
+Array<Option<i64>>
+Map<String, Result<Player, String>>
+Result<Array<i64>, String>
+```
+
+The nesting limit is the parser's normal recursion behavior. Do not add a new
+unbounded execution path; if a practical nesting limit exists for diagnostics
+or stack safety, document it and test it.
+
+---
+
+## 5. Semantic Model
+
+### 5.1 Type hints remain contracts
+
+The existing contract table still applies:
+
+```text
+exact compatible fact    -> accepted, no runtime guard
+exact incompatible fact  -> compile error
+dynamic or erased fact   -> accepted with runtime contract guard
+```
+
+Examples:
+
+```vela
+fn sum(values: Array<i64>) -> i64 {
+    let total = 0;
+    for value in values {
+        total += value;
+    }
+    return total;
+}
+
+fn names_by_id(players: Map<i64, String>) -> String {
+    return players.get(1).unwrap_or("unknown");
+}
+```
+
+`Array<i64>` is not a conversion from mixed arrays to integer arrays. A mixed
+array fails when it crosses the contract boundary or when an invalid value is
+inserted through a typed container path.
+
+### 5.2 Any and unknown
+
+`Any` erases the inner contract at that position:
+
+```vela
+Array<Any>          // array category only; elements are dynamic
+Map<String, Any>    // string keys; dynamic values
+Option<Any>         // option category only; Some payload dynamic
+```
+
+No type hint and `Any` are not identical metadata, but neither introduces a
+specific runtime contract by itself.
+
+### 5.3 Static facts
+
+Analysis and compiler facts should preserve known item facts:
+
+```text
+Array<T>     index read and for item -> T
+Set<T>       for item -> T
+Map<K, V>    key view item -> K; value view item -> V; entry fields -> K/V
+Iterator<T>  next Some payload and for item -> T
+Option<T>    ? and Some match payload -> T
+Result<T,E>  ? and Ok/Err match payload -> T/E
+```
+
+When facts become unknown through dynamic calls, reflection, erased `Any`,
+untyped native returns, or untracked mutation, the compiler must degrade to
+dynamic checks instead of keeping stale typed facts.
+
+---
+
+## 6. Runtime Contract Model
+
+### 6.1 Deep guards for materialized containers
+
+`Array<T>`, `Set<T>`, and `Map<K, V>` contract guards must validate existing
+materialized contents:
+
+```text
+Array<T>     validate each element against T
+Set<T>       validate each element against T
+Map<K, V>    validate each key against K and each value against V
+```
+
+These guards are language semantics. They fail with runtime type contract
+errors, not inline-cache misses.
+
+### 6.2 Budget charging
+
+Deep container validation must charge execution budget. Large containers must
+not bypass budget limits merely by crossing a typed boundary.
+
+The implementation should add a focused guard execution context rather than
+threading ad hoc optional budget parameters through unrelated call paths.
+Suggested shape:
+
+```rust
+pub struct GuardExecutionContext<'a> {
+    heap: Option<&'a HeapExecution<'a>>,
+    budget: Option<&'a mut ExecutionBudget>,
+}
+```
+
+Use the repository's actual lifetime and ownership style; this is a design
+sketch, not a required exact API.
+
+### 6.3 Iterator guards
+
+`Iterator<T>` must not eagerly consume the iterator to validate items.
+
+Preferred model:
+
+```text
+Iterator<T> contract guard validates outer iterator category
+then wraps or marks the iterator with an item guard
+each next() validates the yielded value against T
+```
+
+If the first implementation cannot wrap iterator state cleanly, defer
+`Iterator<T>` execution support behind a compile/runtime rejection with tests.
+Do not implement an eager-consuming guard.
+
+### 6.4 Mutation soundness
+
+Typed container facts are only safe if later mutations preserve the contract.
+
+Required behavior:
+
+```vela
+fn bad(values: Array<i64>) {
+    values.push("x"); // must fail before corrupting the typed container fact
+}
+
+fn bad_map(values: Map<String, i64>) {
+    values["level"] = "high"; // must fail before write
+}
+```
+
+The clean implementation should attach container element contracts to the
+container handle/path/fact used by mutation lowering, or invalidate the typed
+fact before any path that cannot prove mutation safety. Do not keep a stale
+`Array<i64>` fact after an unchecked dynamic mutation.
+
+### 6.5 Host containers
+
+Host-owned fields that expose `Array<T>`, `Map<K,V>`, or `Set<T>` through
+snapshot `OwnedValue`/`HostValue` boundaries can use the same deep guard model.
+
+Host mutation still goes through `HostRef`, `HostPath`, `PathProxy`, and
+`HostAccess`. Do not place Rust host containers under script GC or expose Rust
+references to make typed container contracts work.
+
+---
+
+## 7. Implementation Plan
+
+### Phase 1: Syntax and HIR shape
+
+- Replace the parser's `supports_type_arguments` boolean with a builtin
+  arity table.
+- Accept `Array<T>`, `Set<T>`, `Map<K,V>`, `Iterator<T>`, `Option<T>`, and
+  `Result<T,E>`.
+- Keep rejecting all other generic-looking type hints.
+- Update `docs/grammar.ebnf` to describe builtin parameterized contracts.
+- Add parser tests for accepted nested hints and rejected wrong-arity/unknown
+  generic hints.
+
+Checkpoint:
+
+```bash
+cargo test -p vela_syntax
+```
+
+### Phase 2: Analysis TypeFacts
+
+- Extend `builtin_type_fact_from_hir_hint` to lower parameterized containers.
+- Preserve nested facts through `TypeFact::array`, `TypeFact::set`,
+  `TypeFact::map`, and `TypeFact::iterator`.
+- Update completion, hover, member diagnostics, `for-in`, index read, map view,
+  set view, iterator `next`, `Option`, and `Result` fact tests.
+- Keep erased forms (`Array`, `Map`, `Set`, `Iterator`) as unknown inner facts.
+
+Checkpoint:
+
+```bash
+cargo test -p vela_hir -p vela_analysis
+```
+
+### Phase 3: Compiler RuntimeTypeFacts
+
+- Extend `RuntimeTypeFact` with parameterized container variants:
+
+```rust
+Array(Box<RuntimeTypeFact>)
+Set(Box<RuntimeTypeFact>)
+Map {
+    key: Box<RuntimeTypeFact>,
+    value: Box<RuntimeTypeFact>,
+}
+Iterator(Box<RuntimeTypeFact>)
+```
+
+- Keep `StandardRuntimeType::Array/Map/Set/Iterator` for erased outer-category
+  contracts if that remains the cleanest representation.
+- Update `type_hint_value_type`, expected-type outcomes, typed let/param/return
+  guard generation, index/for item facts, and write-site contract checks.
+- Ensure dynamic/erased facts degrade safely.
+
+Checkpoint:
+
+```bash
+cargo test -p vela_bytecode
+```
+
+### Phase 4: Guard plans and verifier
+
+- Extend unlinked and linked `TypeGuardPlan` with parameterized container
+  plans, or introduce a uniform recursive guard-plan node that can represent
+  `Array`, `Set`, `Map`, `Iterator`, `Option`, and `Result`.
+- Keep linked guard plans hot-path friendly: no string lookup or registry
+  lookup during execution.
+- Update linker interning, verification, and profile/program-image ownership
+  tests as needed.
+- Ensure guard debug names still render source-facing type hints.
+
+Checkpoint:
+
+```bash
+cargo test -p vela_bytecode -p vela_vm
+```
+
+### Phase 5: VM guard execution and mutation checks
+
+- Implement deep guards for array/set/map contents.
+- Charge budget while scanning materialized containers.
+- Implement typed mutation checks for array push/set, set insert, map insert
+  and map value update paths that carry typed container contracts.
+- Add or defer `Iterator<T>` through an explicit guarded-iterator model. Do not
+  consume iterators for validation.
+- Preserve source spans in type contract errors.
+- Add negative tests proving invalid existing contents and invalid later
+  mutations fail before typed fast paths rely on them.
+
+Checkpoint:
+
+```bash
+cargo test -p vela_vm
+```
+
+### Phase 6: Embedding, macros, and metadata
+
+- Update macro-inferred hints:
+  - `Vec<T>` and `[T; N]` -> `Array<T>`
+  - `HashSet<T>` / `BTreeSet<T>` -> `Set<T>`
+  - `HashMap<K,V>` / `BTreeMap<K,V>` -> `Map<K,V>`
+  - `Option<T>` and `Result<T,E>` remain parameterized.
+- Update engine/native/host validation to accept the new builtin container
+  parameterization and reject unsupported generic hints.
+- Ensure reflection metadata displays structured public type hints.
+- Ensure hot reload ABI treats `Array<i64>` vs `Array<String>` and
+  `Map<String,i64>` vs `Map<String,String>` as incompatible.
+
+Checkpoint:
+
+```bash
+cargo test -p vela_macros -p vela_engine -p vela_reflect -p vela_hot_reload
+```
+
+### Phase 7: Docs, site, examples, and benchmark hooks
+
+- Update architecture docs and `docs/decisions.md` with the builtin
+  parameterized contract decision.
+- Update Starlight docs and playground examples to show `Array<T>`,
+  `Map<K,V>`, and `Set<T>` where useful.
+- Add conformance examples that exercise typed container reads, writes, and
+  `?` through nested `Option`/`Result` containers.
+- Add at least one benchmark or opcode/profile check that demonstrates the
+  compiler sees `Array<i64>`/`Map<String,i64>` facts and can select existing or
+  future fast paths.
+
+Checkpoint:
+
+```bash
+cargo test --workspace
+(cd site && npm run build)
+```
+
+---
+
+## 8. Test Plan
+
+### Parser and HIR
+
+- Accept:
+  - `Array<i64>`
+  - `Set<String>`
+  - `Map<String, i64>`
+  - `Iterator<Player>`
+  - `Option<Array<i64>>`
+  - `Result<Map<String, i64>, String>`
+- Reject:
+  - `Array`
+    with no rejection, as erased form
+  - `Array<i64, String>`
+  - `Map<String>`
+  - `Player<i64>`
+  - `Function<i64>`
+  - `Range<i64>`
+
+### Analysis
+
+- `for value in values` where `values: Array<i64>` binds `value` as `i64`.
+- `values[0]` where `values: Array<Player>` has `Player` fact.
+- `map.get("level")` where `map: Map<String, i64>` returns `Option<i64>` fact
+  if the stdlib method supports that fact shape.
+- `iterator.next()` where `iterator: Iterator<Player>` returns
+  `Option<Player>` fact.
+- Nested `Result<Array<i64>, String>?` unwraps to `Array<i64>`.
+
+### Compiler and VM
+
+- Passing a mixed array to `fn f(values: Array<i64>)` fails before function body
+  code assumes `i64` items.
+- Returning `Array<String>` from a function declared `-> Array<i64>` fails at
+  the return guard.
+- `Array<i64>` rejects pushing `"x"` and preserves the previous array state.
+- `Map<String, i64>` rejects non-string keys and non-i64 values on guarded
+  insertion/update paths.
+- `Set<Player>` rejects inserting a non-`Player` value.
+- `Array<Any>` accepts mixed values while still rejecting a non-array outer
+  value.
+- Deep guard scans charge budget and can fail with budget exhaustion before
+  finishing a very large container.
+- `Iterator<T>` either yields guarded items lazily or is explicitly rejected
+  until guarded iterator adapters exist.
+
+### Embedding and hot reload
+
+- Macro-inferred collection hints include parameterized public names.
+- Native/host function validation accepts supported container hints and rejects
+  unsupported generic hints.
+- Reflection metadata displays `Array<i64>`, `Map<String, Player>`, etc.
+- Hot reload rejects ABI changes that alter any inner type argument.
+
+### Full validation
+
+Use focused checks during implementation and end with:
+
+```bash
+cargo fmt --all -- --check
+cargo clippy --workspace --all-targets -- -D warnings
+cargo test --workspace
+(cd site && npm run build)
+```
+
+---
+
+## 9. Architecture Risks
+
+### 9.1 Deep guard cost
+
+Deep guards can be expensive on large containers. That is acceptable because
+they are language contract checks, but they must be budgeted and visible in
+benchmarks. Future optimization can cache a container contract stamp when safe,
+but the first implementation should prefer correctness.
+
+### 9.2 Mutation invalidates facts
+
+The biggest soundness risk is keeping a typed fact after an unchecked mutation.
+Every collection mutation path must either validate against the active typed
+contract or invalidate the fact before downstream fast paths can rely on it.
+
+### 9.3 Iterator contracts
+
+Iterators are one-shot. Eager validation consumes them and changes behavior.
+`Iterator<T>` must use lazy item validation or remain deferred.
+
+### 9.4 Host boundary ambiguity
+
+Host containers may be snapshots, path proxies, or adapter-backed data. The
+implementation must avoid assuming host-owned Rust collections are script heap
+containers. All host mutation remains mediated by `HostAccess`.
+
+### 9.5 Metadata string drift
+
+Public type hint display strings, registry metadata, hot reload ABI manifests,
+docs, site examples, macro output, and diagnostics must use the same spelling.
+Add tests at the metadata boundary instead of relying on manual consistency.
+
+---
+
+## 10. Acceptance Criteria
+
+This plan is complete when:
+
+- Supported builtin container type hints parse and display correctly.
+- Unsupported generic type hints are rejected with source-spanned diagnostics.
+- Analysis facts preserve container item/key/value information through common
+  reads, loops, iterator methods, `Option`, and `Result`.
+- Compiler/runtime guard plans represent parameterized containers without
+  string lookup on the hot path.
+- Materialized array/set/map contracts validate existing contents and charge
+  budget.
+- Typed container mutations validate inserted keys/items/values or safely
+  invalidate the typed fact.
+- `Iterator<T>` has lazy item validation, or is deliberately deferred with
+  tests and docs explaining the boundary.
+- Macro, embedding, reflection, and hot reload ABI surfaces agree on public
+  parameterized type-hint spelling.
+- The full validation command set passes.
+
