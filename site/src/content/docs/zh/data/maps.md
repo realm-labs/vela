@@ -5,6 +5,11 @@ description: "Vela Map文档。"
 
 Map 是动态脚本数据的键值集合，适合配置、查找表和快照值。需要安全修改 Rust 拥有的状态时，应使用注册宿主 schema，而不是把 map 当成宿主模型替代品。
 
+`Map<K, V>` 是内建参数化 Map 契约。Map key 使用 Vela 的 `ValueKey` 策略：
+不可变叶子值按值比较，脚本堆对象和 host ref 按身份比较，`PathProxy` 等临时
+值会在修改前被拒绝。现有 Map 字面量仍然适合字符串 key，其他 runtime key
+值可以通过索引或 Map 方法插入。
+
 ## 字面量和访问
 
 Map 字面量使用 `{ key: value }`。key 可以是标识符、字符串、字符、数字或路径。索引用于按 key 读写 entry。

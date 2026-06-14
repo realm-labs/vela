@@ -43,7 +43,7 @@ syntax.
 
 Type hints are metadata contracts and analysis inputs. They do not create
 generic types or monomorphized script functions. Only selected builtin
-contracts accept type arguments: `Array<T>`, `Set<T>`, `Map<String, V>`,
-`Iterator<T>`, `Option<T>`, and `Result<T, E>`. `Set<T>` is limited to the
-runtime's set-keyable element contracts: `null`, `bool`, `i64`, `f64`, and
-`String`.
+contracts accept type arguments: `Array<T>`, `Set<T>`, `Map<K, V>`,
+`Iterator<T>`, `Option<T>`, and `Result<T, E>`. `Map<K, V>` keys
+and `Set<T>` elements must satisfy the runtime `ValueKey` keyability policy.
+User-defined script generics and non-keyable container contracts are rejected.

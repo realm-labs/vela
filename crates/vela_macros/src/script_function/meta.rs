@@ -328,17 +328,18 @@ fn hint_for_type(ty: &Type) -> HintKind {
         Some("u8") => HintKind::Primitive(PrimitiveTag::U8),
         Some("u16") => HintKind::Primitive(PrimitiveTag::U16),
         Some("u32") => HintKind::Primitive(PrimitiveTag::U32),
+        Some("u64") => HintKind::Primitive(PrimitiveTag::U64),
         Some("f32") => HintKind::Primitive(PrimitiveTag::F32),
         Some("f64") => HintKind::Primitive(PrimitiveTag::F64),
         Some("String" | "str") => HintKind::Primitive(PrimitiveTag::String),
         Some("Vec") => generic_arg(ty, 0)
             .map(|element| HintKind::ArrayOf(Box::new(hint_for_type(element))))
             .unwrap_or(HintKind::Array),
-        Some("BTreeMap" | "HashMap") => string_key_map_hint(ty).unwrap_or(HintKind::Map),
+        Some("BTreeMap" | "HashMap") => map_hint(ty).unwrap_or(HintKind::Map),
         Some("BTreeSet" | "HashSet") => generic_arg(ty, 0)
             .and_then(|element| {
                 let element = hint_for_type(element);
-                is_set_key_hint(&element).then(|| HintKind::SetOf(Box::new(element)))
+                is_keyable_hint(&element).then(|| HintKind::SetOf(Box::new(element)))
             })
             .unwrap_or(HintKind::Set),
         Some("PathProxy") => HintKind::PathProxy,
@@ -352,28 +353,20 @@ fn generic_arg(ty: &Type, index: usize) -> Option<&Type> {
     type_generic_args(ty).get(index).copied()
 }
 
-fn string_key_map_hint(ty: &Type) -> Option<HintKind> {
+fn map_hint(ty: &Type) -> Option<HintKind> {
     let args = type_generic_args(ty);
     let [key, value] = args.as_slice() else {
         return None;
     };
-    (hint_for_type(key) == HintKind::Primitive(PrimitiveTag::String)).then(|| HintKind::MapOf {
-        key: Box::new(HintKind::Primitive(PrimitiveTag::String)),
+    let key = hint_for_type(key);
+    is_keyable_hint(&key).then(|| HintKind::MapOf {
+        key: Box::new(key),
         value: Box::new(hint_for_type(value)),
     })
 }
 
-fn is_set_key_hint(hint: &HintKind) -> bool {
-    matches!(
-        hint,
-        HintKind::Primitive(
-            PrimitiveTag::Null
-                | PrimitiveTag::Bool
-                | PrimitiveTag::I64
-                | PrimitiveTag::F64
-                | PrimitiveTag::String
-        )
-    )
+fn is_keyable_hint(hint: &HintKind) -> bool {
+    !matches!(hint, HintKind::PathProxy | HintKind::Function)
 }
 
 fn is_unit_tuple(ty: &Type) -> bool {

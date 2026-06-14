@@ -43,7 +43,7 @@ Other useful embedding examples:
   Vela owned values.
 - `native_function`: script calls into Rust native functions.
 - `container_type_hints`: builtin typed container contracts across arrays,
-  string-keyed maps, sets, and nested Result propagation.
+  value-keyed maps, sets, and nested Result propagation.
 - `io_stdlib`: opt-in stdout plus sandboxed file I/O capability checks.
 
 Expected-error examples such as `random_permission_denied` and

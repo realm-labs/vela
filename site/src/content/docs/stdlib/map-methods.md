@@ -3,9 +3,10 @@ title: "Map Methods"
 description: "Map method documentation for Vela."
 ---
 
-Maps are script-owned string-keyed collections. Standard map helpers are
+Maps are script-owned value-keyed collections. Standard map helpers are
 designed for explicit lookup and explicit traversal; missing keys do not trap
-unless the script uses direct indexing.
+unless the script uses direct indexing. Key equality is defined by `ValueKey`,
+not by user-visible equality or ordering implementations.
 
 ## Lookup And Update
 

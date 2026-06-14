@@ -3,8 +3,9 @@ title: "Map 方法"
 description: "Vela Map 方法文档。"
 ---
 
-Map 是脚本自有的字符串 key 集合。标准 Map helper 强调显式查询和显式遍历；
-key 缺失不会自动 trap，除非脚本使用直接索引。
+Map 是脚本自有的 value-keyed 集合。标准 Map helper 强调显式查询和显式遍历；
+key 缺失不会自动 trap，除非脚本使用直接索引。key 相等性由 `ValueKey` 定义，
+不调用用户可见的相等或排序实现。
 
 ## 查询和更新
 

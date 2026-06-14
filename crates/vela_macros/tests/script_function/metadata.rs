@@ -59,15 +59,15 @@ fn script_function_generates_hash_set_signature_metadata() {
 }
 
 #[test]
-fn script_function_erases_unsupported_set_element_metadata() {
+fn script_function_generates_value_keyed_scalar_set_metadata() {
     assert_eq!(
         vela_native_function_desc_count_byte_ids(),
         NativeFunctionDesc::new("game::count_byte_ids", function_id("game::count_byte_ids"))
-            .param("ids", TypeHint::Set)
+            .param("ids", TypeHint::set_of(TypeHint::u8()))
             .returns(TypeHint::i64())
             .effects(EffectSet::pure())
             .access(FunctionAccess::public().reflect_callable(true))
-            .docs("Counts copied u8 ids from a script set without a parameterized Set contract."),
+            .docs("Counts copied u8 ids from a value-keyed script set."),
     );
 }
 

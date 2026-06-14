@@ -713,6 +713,27 @@ mod tests {
     }
 
     #[test]
+    fn infers_value_keyed_map_and_set_field_type_hints() {
+        let tokens = expand_result(
+            quote! {
+                #[script(path = "game::player::Scores")]
+                struct Scores {
+                    #[script(get)]
+                    by_id: std::collections::BTreeMap<i64, String>,
+                    #[script(get)]
+                    seen: std::collections::HashSet<i64>,
+                }
+            },
+            GeneratedMethod::Host,
+        )
+        .expect("value-keyed map and set fields should expand")
+        .to_string();
+
+        assert!(tokens.contains("type_hint (\"Map<i64, String>\")"));
+        assert!(tokens.contains("type_hint (\"Set<i64>\")"));
+    }
+
+    #[test]
     fn rejects_generic_host_schemas() {
         let error = expand_result(
             quote! {

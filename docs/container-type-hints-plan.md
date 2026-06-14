@@ -9,6 +9,12 @@
 > source-spanned diagnostics, execution budgets, GC roots, reflection
 > permissioning, and hot-reload ABI/schema checks.
 
+> **Superseded note:** the original slice in this document intentionally
+> restricted maps to `Map<String, V>` and narrow set key contracts. Current
+> map/set keyability is defined by
+> [value-keyed-map-set-plan.md](value-keyed-map-set-plan.md), where
+> `Map<K, V>` keys and `Set<T>` elements use the runtime `ValueKey` policy.
+
 ---
 
 ## 0. Codex Goal

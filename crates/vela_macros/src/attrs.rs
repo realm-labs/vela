@@ -232,10 +232,11 @@ pub(crate) fn inferred_type_hint(ty: &Type) -> Option<String> {
         "BTreeMap" | "HashMap" => {
             let args = type_generic_args(ty);
             return match args.as_slice() {
-                [key, value] if inferred_type_hint(key).as_deref() == Some("String") => {
-                    inferred_type_hint(value).map(|value| format!("Map<String, {value}>"))
+                [key, value] => {
+                    let key = inferred_type_hint(key)?;
+                    let value = inferred_type_hint(value)?;
+                    is_keyable_type_hint(&key).then(|| format!("Map<{key}, {value}>"))
                 }
-                [_, _] => None,
                 _ => Some("Map".to_owned()),
             };
         }

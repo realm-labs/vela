@@ -61,11 +61,14 @@ fn grant(rewards: Map<String, i64>, tags: Set<String>) -> Result<i64, String> {
 }
 ```
 
-Allowed parameterized contracts are `Array<T>`, `Map<String, V>`,
-`Iterator<T>`, `Option<T>`, and `Result<T, E>`. `Set<T>` is also supported
-when `T` is set-keyable in the current runtime: `null`, `bool`, `i64`, `f64`,
-or `String`. `Array<Any>`, `Map<String, Any>`, and `Option<Any>` erase the
-inner contract.
+Allowed parameterized contracts are `Array<T>`, `Map<K, V>`, `Set<T>`,
+`Iterator<T>`, `Option<T>`, and `Result<T, E>`. `Map<K, V>` keys and `Set<T>`
+elements must satisfy the runtime `ValueKey` policy: immutable leaf values are
+keyed by value, script heap objects and host refs are keyed by identity, and
+transient values such as `PathProxy` are rejected before mutation. `Function`
+is not accepted as a keyable type-hint contract until callable identity is
+explicit. `Array<Any>`, `Map<Any, Any>`, `Set<Any>`, and `Option<Any>` erase
+their inner contracts.
 
 These are contracts, not conversions. A mixed array passed to `Array<i64>`
 fails at the checked boundary instead of being converted.
@@ -73,9 +76,9 @@ fails at the checked boundary instead of being converted.
 ## Not Script Generics
 
 The language still rejects user or schema generic syntax such as `Player<T>`,
-`String<T>`, `Map<i64, V>`, and `Function<T>`. Type arguments are reserved for
-the builtin contracts above and do not create monomorphized script functions or
-generic user-defined types.
+`String<T>`, `Map<PathProxy, V>`, `Set<Function>`, and `Function<T>`. Type
+arguments are reserved for the builtin contracts above and do not create
+monomorphized script functions or generic user-defined types.
 
 `Iterator<T>` contracts validate the outer iterator at checked boundaries
 without consuming the cursor. Non-erased item contracts are enforced lazily as

@@ -5,9 +5,12 @@ description: "Maps documentation for Vela."
 
 Maps are key-value collections for dynamic script data. They are useful for configuration, lookup tables, and snapshot values, but they are not a replacement for registered host schemas when Rust-owned state must be mutated safely.
 
-`Map<String, V>` is the parameterized builtin map contract in the current
-runtime because script maps are string-keyed. Other key type arguments, such as
-`Map<i64, V>`, are rejected.
+`Map<K, V>` is the parameterized builtin map contract. Map keys use Vela's
+`ValueKey` policy: immutable leaf values compare by value, script heap objects
+and host refs compare by identity, and transient values such as `PathProxy` are
+rejected before mutation. Existing map literals remain convenient for string
+keys, and arbitrary runtime key values can be inserted through indexing or map
+methods.
 
 ## Literals And Access
 
@@ -34,13 +37,20 @@ fn add_reward(rewards, code: String, amount: i64) {
 }
 ```
 
-Typed map contracts check existing values at dynamic boundaries and protect
-later typed updates:
+Typed map contracts check existing keys and values at dynamic boundaries and
+protect later typed updates:
 
 ```vela
 fn add_tag_count(rewards: Map<String, i64>, tags: Set<String>) {
     rewards.set("tag_count", tags.len())
     return rewards.get("tag_count").unwrap_or(0)
+}
+```
+
+```vela
+fn remember_by_id(rewards: Map<i64, String>, id: i64, label: String) {
+    rewards.set(id, label)
+    return rewards.get(id).unwrap_or("")
 }
 ```
 

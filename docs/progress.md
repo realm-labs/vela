@@ -58,6 +58,7 @@ RuntimeTypeFacts, recursive guard plans, VM deep checks for materialized
 array/map/set values, value-keyed map key guard scans,
 compiler-owned typed container mutator checks, embedding
 metadata display/validation, macro-inferred `Vec`/array/set/map hints,
+including value-keyed Rust map/set inference such as `Map<i64, String>`,
 value-keyed map/set runtime containers, detached `OwnedValue` map entries with
 non-string serde key preservation, key-preserving reflection map reads,
 hot-reload ABI string comparison, and

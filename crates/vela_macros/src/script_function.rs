@@ -446,4 +446,27 @@ mod tests {
         assert!(tokens.contains("TypeHint :: array_of"));
         assert!(tokens.contains("TypeHint :: i64"));
     }
+
+    #[test]
+    fn infers_value_keyed_map_and_set_signature_hints() {
+        let tokens = expand_result(
+            quote! { name = "game::score" },
+            quote! {
+                fn score(
+                    scores: std::collections::BTreeMap<i64, String>,
+                    seen: std::collections::HashSet<i64>,
+                ) -> std::collections::HashMap<i64, String> {
+                    std::collections::HashMap::new()
+                }
+            },
+            FunctionMode::Pure,
+        )
+        .expect("value-keyed map function should expand")
+        .to_string();
+
+        assert!(tokens.contains("TypeHint :: map_of"));
+        assert!(tokens.contains("TypeHint :: set_of"));
+        assert!(tokens.contains("TypeHint :: i64"));
+        assert!(tokens.contains("TypeHint :: string"));
+    }
 }
