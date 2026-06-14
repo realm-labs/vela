@@ -1,4 +1,4 @@
-use std::collections::BTreeSet;
+use std::collections::{BTreeMap, BTreeSet};
 use std::mem;
 
 use crate::heap::{GcRef, HeapValue};
@@ -216,20 +216,16 @@ pub(crate) fn extend_map_slots(
             ))
         })
         .collect::<VmResult<Vec<_>>>()?;
-    let had_replacement = {
+    let existing_keys = {
         let values = map_slots(heap, reference, operation)?;
         keyed_slots
             .iter()
-            .any(|(key, _, _)| values.contains_key(key))
+            .filter(|(key, _, _)| values.contains_key(key))
+            .map(|(key, _, _)| key.clone())
+            .collect::<BTreeSet<_>>()
     };
-    let inserted_entries = {
-        let values = map_slots(heap, reference, operation)?;
-        keyed_slots
-            .iter()
-            .filter(|(key, _, _)| !values.contains_key(key))
-            .map(|(_, key, slot)| (*key, *slot))
-            .collect::<Vec<_>>()
-    };
+    let had_replacement = !existing_keys.is_empty();
+    let inserted_entries = unique_new_map_entries(&keyed_slots, &existing_keys);
     if !tracks_collection_growth(budget.as_deref()) {
         let values = map_slots_mut(heap, reference, operation)?;
         for (value_key, key, slot) in &keyed_slots {
@@ -239,7 +235,7 @@ pub(crate) fn extend_map_slots(
             heap.heap
                 .note_container_value_replaced_or_removed(reference);
         }
-        for (key, slot) in &inserted_entries {
+        for (_, key, slot) in &inserted_entries {
             heap.heap
                 .note_container_map_entry_inserted(reference, key, slot);
         }
@@ -247,18 +243,14 @@ pub(crate) fn extend_map_slots(
     }
 
     let values = map_slots(heap, reference, operation)?;
-    let new_keys = keyed_slots
-        .iter()
-        .filter(|(key, _, _)| !values.contains_key(key))
-        .collect::<Vec<_>>();
     check_collection_len(
         "map",
         values.len(),
-        new_keys.len(),
+        inserted_entries.len(),
         budget.as_deref(),
         |budget| budget.collection_limits().max_map_entries,
     )?;
-    let precharged_growth = new_keys
+    let precharged_growth = inserted_entries
         .iter()
         .map(|(key, _, _)| {
             key.payload_size_bytes()
@@ -275,7 +267,7 @@ pub(crate) fn extend_map_slots(
         heap.heap
             .note_container_value_replaced_or_removed(reference);
     }
-    for (key, slot) in &inserted_entries {
+    for (_, key, slot) in &inserted_entries {
         heap.heap
             .note_container_map_entry_inserted(reference, key, slot);
     }
@@ -523,6 +515,26 @@ fn dedup_keyed_slots(slots: &mut Vec<(ValueKey, Value)>) {
     slots.retain(|(key, _)| keys.insert(key.clone()));
 }
 
+fn unique_new_map_entries(
+    slots: &[(ValueKey, Value, Value)],
+    existing_keys: &BTreeSet<ValueKey>,
+) -> Vec<(ValueKey, Value, Value)> {
+    let mut entries = BTreeMap::new();
+    for (value_key, key, value) in slots {
+        if existing_keys.contains(value_key) {
+            continue;
+        }
+        entries
+            .entry(value_key.clone())
+            .and_modify(|(_, stored_value)| *stored_value = *value)
+            .or_insert((*key, *value));
+    }
+    entries
+        .into_iter()
+        .map(|(value_key, (key, value))| (value_key, key, value))
+        .collect()
+}
+
 fn map_slots<'a>(
     heap: &'a HeapExecution<'_>,
     reference: GcRef,
@@ -578,7 +590,7 @@ mod tests {
     use crate::script_set::ScriptSet;
     use crate::{ExecutionBudget, HeapExecution, Value, VmErrorKind};
 
-    use super::{insert_map_slot, push_array_slot, push_set_slot};
+    use super::{extend_map_slots, insert_map_slot, push_array_slot, push_set_slot};
 
     #[test]
     fn array_push_charges_container_slot_growth() {
@@ -689,6 +701,45 @@ mod tests {
             heap_execution.heap.get(reference),
             Some(&HeapValue::Map(Default::default()))
         );
+    }
+
+    #[test]
+    fn map_extend_duplicate_new_key_counts_once_and_preserves_key() {
+        let mut heap = ScriptHeap::new();
+        let reference = heap.allocate(HeapValue::Map(Default::default()));
+        let mut heap_execution = HeapExecution::new(&mut heap);
+        let mut budget = ExecutionBudget::unbounded().with_collection_limits(CollectionLimits {
+            max_array_len: usize::MAX,
+            max_map_entries: 1,
+            max_set_len: usize::MAX,
+        });
+
+        extend_map_slots(
+            &mut heap_execution,
+            reference,
+            vec![
+                (Value::F64(-0.0), Value::I64(10)),
+                (Value::F64(0.0), Value::I64(20)),
+            ],
+            Some(&mut budget),
+            "test map extend",
+        )
+        .expect("duplicate new map key should count as one entry");
+
+        let Some(HeapValue::Map(values)) = heap_execution.heap.get(reference) else {
+            panic!("expected map value");
+        };
+        let entries = values.entries_vec();
+        assert_eq!(entries.len(), 1);
+        let (key, value) = entries[0];
+        let Value::F64(key) = key else {
+            panic!("stored map key should remain f64");
+        };
+        assert!(
+            key.is_sign_negative(),
+            "duplicate map insertion must preserve the first stored key"
+        );
+        assert_eq!(value, Value::I64(20));
     }
 
     #[test]
