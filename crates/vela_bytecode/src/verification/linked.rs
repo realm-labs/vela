@@ -826,7 +826,7 @@ fn verify_linked_type_guard(
             }
             Ok(())
         }
-        TypeGuardPlan::Type(handle) | TypeGuardPlan::HostType(handle) => {
+        TypeGuardPlan::Type(handle) | TypeGuardPlan::HostType { ty: handle, .. } => {
             verify_linked_type_handle(function, None, context, handle)
         }
         TypeGuardPlan::Variant(handle) => {
@@ -887,7 +887,7 @@ fn verify_linked_type_guard_plan(
             }
             Ok(())
         }
-        TypeGuardPlan::Type(handle) | TypeGuardPlan::HostType(handle) => {
+        TypeGuardPlan::Type(handle) | TypeGuardPlan::HostType { ty: handle, .. } => {
             verify_linked_type_handle(function, None, context, handle)
         }
         TypeGuardPlan::Variant(handle) => {

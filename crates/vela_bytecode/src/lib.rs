@@ -10,7 +10,7 @@ pub mod verification;
 
 use std::collections::BTreeMap;
 
-use vela_common::{GlobalSlot, HostMethodId, PrimitiveTag, ShapeId, Span};
+use vela_common::{GlobalSlot, HostMethodId, HostTypeId, PrimitiveTag, ShapeId, Span};
 use vela_def::{DefPath, FunctionId, MethodId};
 use vela_hir::ids::HirLocalId;
 use vela_hir::module_graph::ModuleGraph;
@@ -587,7 +587,10 @@ pub enum UnlinkedTypeGuardPlan {
         type_name: String,
         shape_id: ShapeId,
     },
-    HostType(String),
+    HostType {
+        type_name: String,
+        host_type_id: HostTypeId,
+    },
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]

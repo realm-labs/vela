@@ -572,8 +572,12 @@ fn host_type_guard_plan(
     let registry = registry?;
     let type_id =
         registry.resolve_type(&DefPath::ty("host", std::iter::empty::<&str>(), type_name))?;
-    registry.type_host_runtime_id(type_id)?;
-    Some(UnlinkedTypeGuardPlan::HostType(type_name.to_owned()))
+    let runtime_id = registry.type_host_runtime_id(type_id)?;
+    let runtime_id = u64::try_from(runtime_id).ok()?;
+    Some(UnlinkedTypeGuardPlan::HostType {
+        type_name: type_name.to_owned(),
+        host_type_id: HostTypeId::new(runtime_id),
+    })
 }
 
 fn type_guard_plan_for_runtime_type(ty: &RuntimeTypeFact) -> Option<UnlinkedTypeGuardPlan> {

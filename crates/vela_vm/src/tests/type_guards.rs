@@ -405,6 +405,89 @@ fn main() {
 }
 
 #[test]
+fn linked_local_guard_accepts_host_ref_map_keys() {
+    let program = compile_host_program_source(
+        SourceId::new(1),
+        r#"
+fn accept(values, player: Player) {
+    let typed: Map<Player, i64> = values;
+    return typed.get_or(player, 0);
+}
+
+fn main(player: Player) {
+    let scores = {"seed": 0};
+    scores.clear();
+    scores.set(player, 42);
+    return accept(scores, player);
+}
+"#,
+        host_definition_registry(&[("Player", HostTypeId::new(1))], &[], &[]),
+    )
+    .expect("program should compile");
+    let mut budget = ExecutionBudget::unbounded();
+
+    let value = run_linked_test_program_with_budget(
+        &Vm::new(),
+        &program,
+        "main",
+        &[OwnedValue::HostRef(player_ref(1))],
+        &mut budget,
+    )
+    .expect("host-ref map key contract should pass");
+
+    assert_eq!(value, OwnedValue::i64(42));
+}
+
+#[test]
+fn linked_local_guard_rejects_mismatched_host_ref_map_keys() {
+    let monster = HostRef::new(HostTypeId::new(2), HostObjectId::new(9), 1);
+    let program = compile_host_program_source(
+        SourceId::new(1),
+        r#"
+fn accept(values) {
+    let typed: Map<Player, i64> = values;
+    return typed.len();
+}
+
+fn main(monster: Monster) {
+    let scores = {"seed": 0};
+    scores.clear();
+    scores.set(monster, 42);
+    return accept(scores);
+}
+"#,
+        host_definition_registry(
+            &[
+                ("Player", HostTypeId::new(1)),
+                ("Monster", HostTypeId::new(2)),
+            ],
+            &[],
+            &[],
+        ),
+    )
+    .expect("program should compile");
+    let mut budget = ExecutionBudget::unbounded();
+
+    let error = run_linked_test_program_with_budget(
+        &Vm::new(),
+        &program,
+        "main",
+        &[OwnedValue::HostRef(monster)],
+        &mut budget,
+    )
+    .expect_err("host-ref map key contract should reject mismatched host type");
+
+    assert_eq!(
+        error.kind(),
+        VmErrorKind::TypeContractViolation {
+            expected: "Player".to_owned(),
+            actual: "host".to_owned(),
+            debug_name: "typed".to_owned(),
+        }
+    );
+}
+
+#[test]
 fn linked_parameter_guard_rejects_mixed_set_values() {
     let program = compile_program_source(
         SourceId::new(1),
@@ -466,6 +549,83 @@ fn main() {
         .expect("record set element contract should pass");
 
     assert_eq!(value, OwnedValue::from(true));
+}
+
+#[test]
+fn linked_local_guard_accepts_host_ref_set_values() {
+    let program = compile_host_program_source(
+        SourceId::new(1),
+        r#"
+fn accept(values, player: Player) {
+    let typed: Set<Player> = values;
+    return typed.has(player);
+}
+
+fn main(player: Player) {
+    return accept(set::from_array([player]), player);
+}
+"#,
+        host_definition_registry(&[("Player", HostTypeId::new(1))], &[], &[]),
+    )
+    .expect("program should compile");
+    let mut budget = ExecutionBudget::unbounded();
+
+    let value = run_linked_test_program_with_budget(
+        &Vm::new(),
+        &program,
+        "main",
+        &[OwnedValue::HostRef(player_ref(1))],
+        &mut budget,
+    )
+    .expect("host-ref set element contract should pass");
+
+    assert_eq!(value, OwnedValue::from(true));
+}
+
+#[test]
+fn linked_local_guard_rejects_mismatched_host_ref_set_values() {
+    let monster = HostRef::new(HostTypeId::new(2), HostObjectId::new(9), 1);
+    let program = compile_host_program_source(
+        SourceId::new(1),
+        r#"
+fn accept(values) {
+    let typed: Set<Player> = values;
+    return typed.len();
+}
+
+fn main(monster: Monster) {
+    return accept(set::from_array([monster]));
+}
+"#,
+        host_definition_registry(
+            &[
+                ("Player", HostTypeId::new(1)),
+                ("Monster", HostTypeId::new(2)),
+            ],
+            &[],
+            &[],
+        ),
+    )
+    .expect("program should compile");
+    let mut budget = ExecutionBudget::unbounded();
+
+    let error = run_linked_test_program_with_budget(
+        &Vm::new(),
+        &program,
+        "main",
+        &[OwnedValue::HostRef(monster)],
+        &mut budget,
+    )
+    .expect_err("host-ref set element contract should reject mismatched host type");
+
+    assert_eq!(
+        error.kind(),
+        VmErrorKind::TypeContractViolation {
+            expected: "Player".to_owned(),
+            actual: "host".to_owned(),
+            debug_name: "typed".to_owned(),
+        }
+    );
 }
 
 #[test]

@@ -1,6 +1,6 @@
 use std::collections::BTreeMap;
 
-use vela_common::{GlobalSlot, HostMethodId, PrimitiveTag, ShapeId, Span};
+use vela_common::{GlobalSlot, HostMethodId, HostTypeId, PrimitiveTag, ShapeId, Span};
 use vela_def::{FunctionId, MethodId, TypeId, VariantId};
 use vela_host::resolved::HostMutationOp;
 use vela_host::target::HostTargetPlan;
@@ -365,7 +365,10 @@ pub enum TypeGuardPlan {
         ty: TypeHandle,
         shape_id: ShapeId,
     },
-    HostType(TypeHandle),
+    HostType {
+        ty: TypeHandle,
+        host_type_id: HostTypeId,
+    },
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]

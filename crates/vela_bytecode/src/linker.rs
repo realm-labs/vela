@@ -1196,9 +1196,12 @@ impl<'linker, 'registry> LinkContext<'linker, 'registry> {
             } => self
                 .link_type(&type_name)
                 .map(|ty| TypeGuardPlan::Shape { ty, shape_id }),
-            UnlinkedTypeGuardPlan::HostType(name) => {
-                self.link_type(&name).map(TypeGuardPlan::HostType)
-            }
+            UnlinkedTypeGuardPlan::HostType {
+                type_name,
+                host_type_id,
+            } => self
+                .link_type(&type_name)
+                .map(|ty| TypeGuardPlan::HostType { ty, host_type_id }),
         }
     }
 }
