@@ -95,16 +95,100 @@ struct Reward {
         ["i64"]
     );
 
-    let generic = parse_source(source_id(), "fn bad(xs: Array<i64>) { return xs; }");
-    assert!(
-        generic
-            .diagnostics
-            .iter()
-            .any(|diagnostic| { diagnostic.code.as_deref() == Some("syntax::generic_type_hint") })
-    );
-
     let option = parse_source(source_id(), "fn ok(value: Option<i64>) { return value; }");
     assert!(option.diagnostics.is_empty(), "{:?}", option.diagnostics);
+}
+
+#[test]
+fn parses_builtin_parameterized_container_type_hints() {
+    let parsed = parse_source(
+        source_id(),
+        r#"
+fn ok(
+    ids: Array<i64>,
+    names: Set<String>,
+    scores: Map<String, i64>,
+    players: Iterator<Player>,
+    optional: Option<Array<i64>>,
+    result: Result<Map<String, i64>, String>,
+) -> Result<Array<Option<i64>>, String> {
+    return result;
+}
+"#,
+    );
+
+    assert!(parsed.diagnostics.is_empty(), "{:?}", parsed.diagnostics);
+    let ItemKind::Function(function) = &parsed.items[0].kind else {
+        panic!("expected function item");
+    };
+    let hint = function.params[0].type_hint.as_ref().expect("Array hint");
+    assert_eq!(hint.path, ["Array"]);
+    assert_eq!(hint.args[0].path, ["i64"]);
+    let hint = function.params[2].type_hint.as_ref().expect("Map hint");
+    assert_eq!(hint.path, ["Map"]);
+    assert_eq!(hint.args[0].path, ["String"]);
+    assert_eq!(hint.args[1].path, ["i64"]);
+    let hint = function.params[4].type_hint.as_ref().expect("Option hint");
+    assert_eq!(hint.path, ["Option"]);
+    assert_eq!(hint.args[0].path, ["Array"]);
+    assert_eq!(hint.args[0].args[0].path, ["i64"]);
+    let hint = function.params[5].type_hint.as_ref().expect("Result hint");
+    assert_eq!(hint.path, ["Result"]);
+    assert_eq!(hint.args[0].path, ["Map"]);
+    assert_eq!(hint.args[0].args[1].path, ["i64"]);
+    let return_type = function.return_type.as_ref().expect("return hint");
+    assert_eq!(return_type.path, ["Result"]);
+    assert_eq!(return_type.args[0].path, ["Array"]);
+    assert_eq!(return_type.args[0].args[0].path, ["Option"]);
+    assert_eq!(return_type.args[0].args[0].args[0].path, ["i64"]);
+}
+
+#[test]
+fn rejects_unsupported_parameterized_type_hints() {
+    for (source, code) in [
+        (
+            "fn bad(xs: Array<i64, String>) { return xs; }",
+            "syntax::type_argument_arity",
+        ),
+        (
+            "fn bad(xs: Map<String>) { return xs; }",
+            "syntax::type_argument_arity",
+        ),
+        (
+            "fn bad(xs: Map<i64, String>) { return xs; }",
+            "syntax::map_key_type_argument",
+        ),
+        (
+            "fn bad(xs: Map<Any, String>) { return xs; }",
+            "syntax::map_key_type_argument",
+        ),
+        (
+            "fn bad(xs: Player<i64>) { return xs; }",
+            "syntax::generic_type_hint",
+        ),
+        (
+            "fn bad(xs: Function<i64>) { return xs; }",
+            "syntax::generic_type_hint",
+        ),
+        (
+            "fn bad(xs: Range<i64>) { return xs; }",
+            "syntax::generic_type_hint",
+        ),
+        (
+            "fn bad(xs: Option<i64, String>) { return xs; }",
+            "syntax::type_argument_arity",
+        ),
+    ] {
+        let parsed = parse_source(source_id(), source);
+        assert!(
+            parsed
+                .diagnostics
+                .iter()
+                .any(|diagnostic| diagnostic.code.as_deref() == Some(code)),
+            "{source}: {:?}",
+            parsed.diagnostics
+        );
+    }
 }
 
 #[test]

@@ -176,8 +176,9 @@ type_path       = "Any"
                 | path ;
 type_arguments  = "<", ws, type_hint, { ws, ",", ws, type_hint }, ws, ">" ;
 
-(* Type arguments are restricted to builtin Option<T> and Result<T, E>.
-   Container generics such as Array<T>, Map<K, V>, and Set<T> are rejected. *)
+(* Type arguments are restricted to builtin contracts:
+   Array<T>, Set<T>, Map<String, V>, Iterator<T>, Option<T>, and Result<T, E>.
+   User-defined script generics and non-string Map keys are rejected. *)
 
 (* ========================================================================= *)
 (* Statements and blocks                                                     *)

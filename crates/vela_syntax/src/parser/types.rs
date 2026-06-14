@@ -107,18 +107,25 @@ impl Parser {
             self.error_here("use `::` for module/type paths; `.` is value access");
         }
 
-        let args = if self.check_symbol(Symbol::Less) && supports_type_arguments(&path) {
-            self.parse_allowed_type_arguments(&path)
-        } else if self.check_symbol(Symbol::Less) {
-            let generic_span = self.current().span;
-            self.diagnostics.push(
-                Diagnostic::error("script type hints do not support generics")
+        let args = if self.check_symbol(Symbol::Less) {
+            if type_argument_contract(&path).is_some() {
+                self.parse_allowed_type_arguments(&path)
+            } else {
+                let generic_span = self.current().span;
+                self.diagnostics.push(
+                    Diagnostic::error(
+                        "only builtin container, Option, and Result type hints support type arguments",
+                    )
                     .with_code("syntax::generic_type_hint")
                     .with_span(generic_span)
-                    .with_label(generic_span, "remove generic type arguments"),
-            );
-            self.skip_generic_type_arguments();
-            Vec::new()
+                    .with_label(
+                        generic_span,
+                        "use a builtin parameterized type hint or remove these type arguments",
+                    ),
+                );
+                self.skip_generic_type_arguments();
+                Vec::new()
+            }
         } else {
             Vec::new()
         };
@@ -135,11 +142,10 @@ impl Parser {
             return Vec::new();
         };
         let open_span = open.span;
-        let expected = match path {
-            [name] if name == "Option" => 1,
-            [name] if name == "Result" => 2,
-            _ => 0,
+        let Some(contract) = type_argument_contract(path) else {
+            return Vec::new();
         };
+        let expected = contract.arity();
         let mut args = Vec::new();
         if self.check_symbol(Symbol::Greater) {
             self.error_here("expected type argument");
@@ -178,6 +184,16 @@ impl Parser {
                 .with_code("syntax::type_argument_arity")
                 .with_span(span)
                 .with_label(span, "wrong number of type arguments"),
+            );
+        } else if matches!(contract, TypeArgumentContract::StringKeyedMap)
+            && !is_string_type_hint(&args[0])
+        {
+            let span = args[0].span;
+            self.diagnostics.push(
+                Diagnostic::error("`Map` type hints currently require `String` keys")
+                    .with_code("syntax::map_key_type_argument")
+                    .with_span(span)
+                    .with_label(span, "use `String` as the first `Map` type argument"),
             );
         }
         args
@@ -231,6 +247,33 @@ impl Parser {
     }
 }
 
-fn supports_type_arguments(path: &[String]) -> bool {
-    matches!(path, [name] if name == "Option" || name == "Result")
+#[derive(Clone, Copy)]
+enum TypeArgumentContract {
+    FixedArity(usize),
+    StringKeyedMap,
+}
+
+impl TypeArgumentContract {
+    fn arity(self) -> usize {
+        match self {
+            Self::FixedArity(arity) => arity,
+            Self::StringKeyedMap => 2,
+        }
+    }
+}
+
+fn type_argument_contract(path: &[String]) -> Option<TypeArgumentContract> {
+    match path {
+        [name] if name == "Array" => Some(TypeArgumentContract::FixedArity(1)),
+        [name] if name == "Set" => Some(TypeArgumentContract::FixedArity(1)),
+        [name] if name == "Map" => Some(TypeArgumentContract::StringKeyedMap),
+        [name] if name == "Iterator" => Some(TypeArgumentContract::FixedArity(1)),
+        [name] if name == "Option" => Some(TypeArgumentContract::FixedArity(1)),
+        [name] if name == "Result" => Some(TypeArgumentContract::FixedArity(2)),
+        _ => None,
+    }
+}
+
+fn is_string_type_hint(hint: &TypeHint) -> bool {
+    hint.path == ["String"] && hint.args.is_empty()
 }

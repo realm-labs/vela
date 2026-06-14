@@ -1,3 +1,3 @@
-fn bad(xs: Array<i64>) {
+fn bad(xs: Player<i64>) {
     return xs;
 }

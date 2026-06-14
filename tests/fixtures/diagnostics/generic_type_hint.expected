@@ -1,9 +1,9 @@
-error[syntax::generic_type_hint]: script type hints do not support generics
-  --> generic_type_hint.vela:1:17
+error[syntax::generic_type_hint]: only builtin container, Option, and Result type hints support type arguments
+  --> generic_type_hint.vela:1:18
     |
-  1 | fn bad(xs: Array<i64>) {
-    |                 ^ script type hints do not support generics
-  --> generic_type_hint.vela:1:17
+  1 | fn bad(xs: Player<i64>) {
+    |                  ^ only builtin container, Option, and Result type hints support type arguments
+  --> generic_type_hint.vela:1:18
     |
-  1 | fn bad(xs: Array<i64>) {
-    |                 ^ remove generic type arguments
+  1 | fn bad(xs: Player<i64>) {
+    |                  ^ use a builtin parameterized type hint or remove these type arguments
