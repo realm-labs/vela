@@ -59,6 +59,7 @@ mod string_method_dispatch;
 mod string_methods;
 mod try_propagation;
 pub mod value;
+mod value_key;
 
 use std::collections::{BTreeMap, HashMap};
 use std::fmt;
