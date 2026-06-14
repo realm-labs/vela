@@ -60,23 +60,6 @@ pub(crate) fn relation_matches(
     }
 }
 
-pub(crate) fn push_unique(
-    values: &mut Vec<Value>,
-    value: Value,
-    heap: Option<&HeapExecution<'_>>,
-    operation: &'static str,
-) -> VmResult<bool> {
-    let key = SetKey::from_value(&value, heap, operation)?;
-    if values
-        .iter()
-        .any(|value| SetKey::from_value(value, heap, operation).as_ref() == Ok(&key))
-    {
-        return Ok(false);
-    }
-    values.push(value);
-    Ok(true)
-}
-
 pub(super) fn set_values(
     receiver: &Value,
     heap: Option<&HeapExecution<'_>>,
@@ -546,6 +529,50 @@ fn main() {
             result,
             OwnedValue::Scalar(vela_common::ScalarValue::I64(27))
         );
+    }
+
+    #[test]
+    fn managed_heap_set_higher_order_outputs_use_record_identity_keys() {
+        let source = r#"
+struct Player {
+    id
+    level
+}
+
+fn main() {
+    let a = Player { id: 1, level: 10 };
+    let b = Player { id: 1, level: 10 };
+    let c = Player { id: 2, level: 20 };
+    let players = set::from_array([a, b, c]);
+    let copied = players.map(|player| player);
+    let filtered = players.filter(|player| player.id == 1);
+    a.level += 1;
+    let d = Player { id: 1, level: 11 };
+
+    if copied.len() == 3
+        && filtered.len() == 2
+        && copied.has(a)
+        && copied.has(b)
+        && copied.has(c)
+        && !copied.has(d)
+        && filtered.has(a)
+        && filtered.has(b)
+        && !filtered.has(c)
+    {
+        return copied.len() + filtered.len();
+    }
+    return 0;
+}
+"#;
+        let code = compile_function_source(SourceId::new(1), source, "main")
+            .expect("heap set higher-order identity source should compile");
+        let mut vm = Vm::new();
+        vm.register_standard_natives();
+        let mut budget = ExecutionBudget::unbounded();
+
+        let result = run_linked_set_test_code_with_budget(&vm, code, &mut budget)
+            .expect("heap set higher-order identity methods should run");
+        assert_eq!(result, OwnedValue::Scalar(vela_common::ScalarValue::I64(5)));
     }
 
     #[test]

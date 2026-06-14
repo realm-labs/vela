@@ -541,6 +541,40 @@ fn main() {
 }
 
 #[test]
+fn iterator_collect_set_uses_record_identity_keys() {
+    let code = compile_function_source(
+        SourceId::new(1),
+        r#"
+struct Player {
+    id
+    level
+}
+
+fn main() {
+    let a = Player { id: 1, level: 10 };
+    let b = Player { id: 1, level: 10 };
+    let collected = [a, a, b]
+        .iter()
+        .collect_set();
+    a.level += 1;
+    let c = Player { id: 1, level: 11 };
+    if collected.len() == 2 && collected.has(a) && collected.has(b) && !collected.has(c) {
+        return collected.len();
+    }
+    return 0;
+}
+"#,
+        "main",
+    )
+    .expect("compile iterator collect_set identity source");
+
+    assert_eq!(
+        run_linked_test_code(code),
+        Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(2)))
+    );
+}
+
+#[test]
 fn iterator_collect_map_consumes_map_entries() {
     let code = compile_function_source(
         SourceId::new(1),

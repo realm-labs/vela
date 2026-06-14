@@ -244,7 +244,6 @@ pub(crate) fn collect_set_method(
     let Some(heap_ref) = heap.as_deref_mut() else {
         return type_error("method collect_set");
     };
-    let values = ScriptSet::from_values(values, Some(&*heap_ref), "method collect_set")?;
     allocate_heap_value(HeapValue::Set(values), heap_ref, budget.as_deref_mut())
 }
 
@@ -264,7 +263,6 @@ pub(crate) fn collect_set_method_runtime(
     let Some(heap_ref) = runtime.heap.as_deref_mut() else {
         return type_error("method collect_set");
     };
-    let values = ScriptSet::from_values(values, Some(&*heap_ref), "method collect_set")?;
     allocate_heap_value(
         HeapValue::Set(values),
         heap_ref,
@@ -440,10 +438,10 @@ fn collect_unique_values_without_callbacks(
     iterator: &mut IteratorState,
     heap: Option<&HeapExecution<'_>>,
     operation: &'static str,
-) -> VmResult<Vec<Value>> {
-    let mut values = Vec::new();
+) -> VmResult<ScriptSet> {
+    let mut values = ScriptSet::new();
     while let Some(value) = iterator.next()? {
-        crate::set_methods::push_unique(&mut values, value, heap, operation)?;
+        values.insert(value, heap, operation)?;
     }
     Ok(values)
 }
@@ -452,10 +450,13 @@ fn collect_unique_values(
     iterator: &mut IteratorState,
     runtime: &mut MethodRuntime<'_, '_, '_>,
     operation: &'static str,
-) -> VmResult<Vec<Value>> {
-    let mut values = Vec::new();
-    while let Some(value) = iterator.next_with_runtime(runtime, operation, &values)? {
-        crate::set_methods::push_unique(&mut values, value, runtime.heap.as_deref(), operation)?;
+) -> VmResult<ScriptSet> {
+    let mut values = ScriptSet::new();
+    let mut protected = Vec::new();
+    while let Some(value) = iterator.next_with_runtime(runtime, operation, &protected)? {
+        if values.insert(value, runtime.heap.as_deref(), operation)? {
+            protected.push(value);
+        }
     }
     Ok(values)
 }

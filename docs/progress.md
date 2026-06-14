@@ -66,7 +66,9 @@ mutation paths now route through the `ValueKey`-indexed container entry instead
 of scanning stored values, and `set::from_array` now lowers to a heap-aware
 runtime constructor so identity key elements do not pass through detached
 `OwnedValue` scalar filtering. Set relation and combination methods now use
-`ScriptSet` key lookups/accumulators instead of temporary vector key scans.
+`ScriptSet` key lookups/accumulators instead of temporary vector key scans, and
+set higher-order/iterator `collect_set` materializers now accumulate directly
+into `ScriptSet`.
 Non-erased
 `Iterator<T>` contracts now mark
 iterator cursors with lazy item guards so checked boundaries do not consume

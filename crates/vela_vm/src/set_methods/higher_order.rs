@@ -1,10 +1,13 @@
-use crate::heap_values::make_set_value;
+use crate::collection_mutation::check_collection_len;
+use crate::heap::HeapValue;
+use crate::heap_values::allocate_heap_value;
 use crate::iteration::{self, IteratorState};
 use crate::method_runtime::MethodRuntime;
 use crate::option_result::option_value;
+use crate::script_set::ScriptSet;
 use crate::{Value, VmResult};
 
-use super::{expect_arity, push_unique, set_values, type_error};
+use super::{expect_arity, set_values, type_error};
 
 pub(crate) fn map(
     receiver: &Value,
@@ -92,14 +95,15 @@ pub(crate) fn count(
 }
 
 fn make_result_set(
-    values: Vec<Value>,
+    values: ScriptSet,
     runtime: &mut MethodRuntime<'_, '_, '_>,
     operation: &'static str,
 ) -> VmResult<Value> {
     let Some(heap) = runtime.heap.as_deref_mut() else {
         return type_error(operation);
     };
-    make_set_value(values, heap, runtime.budget.as_deref_mut())
+    check_result_set_len(values.len(), runtime.budget.as_deref())?;
+    allocate_heap_value(HeapValue::Set(values), heap, runtime.budget.as_deref_mut())
 }
 
 fn option_result(
@@ -117,10 +121,19 @@ fn collect_unique_values(
     iterator: &mut IteratorState,
     runtime: &mut MethodRuntime<'_, '_, '_>,
     operation: &'static str,
-) -> VmResult<Vec<Value>> {
-    let mut values = Vec::new();
-    while let Some(value) = iterator.next_with_runtime(runtime, operation, &values)? {
-        push_unique(&mut values, value, runtime.heap.as_deref(), operation)?;
+) -> VmResult<ScriptSet> {
+    let mut values = ScriptSet::new();
+    let mut protected = Vec::new();
+    while let Some(value) = iterator.next_with_runtime(runtime, operation, &protected)? {
+        if values.insert(value, runtime.heap.as_deref(), operation)? {
+            protected.push(value);
+        }
     }
     Ok(values)
+}
+
+fn check_result_set_len(len: usize, budget: Option<&crate::ExecutionBudget>) -> VmResult<()> {
+    check_collection_len("set", 0, len, budget, |budget| {
+        budget.collection_limits().max_set_len
+    })
 }
