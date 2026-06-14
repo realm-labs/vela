@@ -68,7 +68,8 @@ runtime constructor so identity key elements do not pass through detached
 `OwnedValue` scalar filtering. Set relation and combination methods now use
 `ScriptSet` key lookups/accumulators instead of temporary vector key scans, and
 set higher-order/iterator `collect_set` materializers now accumulate directly
-into `ScriptSet`.
+into `ScriptSet`. Cached and uncached `set.extend` paths now delegate
+deduplication and insertion to the shared `ScriptSet` mutation boundary.
 Non-erased
 `Iterator<T>` contracts now mark
 iterator cursors with lazy item guards so checked boundaries do not consume

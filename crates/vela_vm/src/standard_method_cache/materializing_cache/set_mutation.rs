@@ -162,20 +162,13 @@ fn extend_set_slots(
     budget: Option<&mut ExecutionBudget>,
     operation: &'static str,
 ) -> VmResult<()> {
-    let mut keys = set_slots(heap, reference, operation)?
-        .values()
-        .map(|slot| slot_key(slot, heap))
-        .collect::<VmResult<Vec<_>>>()?;
-    let mut slots = Vec::new();
-    for slot in extension {
-        let key = SetKey::from_value(slot, Some(&*heap), operation)?;
-        if keys.contains(&key) {
-            continue;
-        }
-        keys.push(key);
-        slots.push(*slot);
-    }
-    collection_mutation::extend_set_slots(heap, reference, slots, budget, operation)
+    collection_mutation::extend_set_slots(
+        heap,
+        reference,
+        extension.iter().copied(),
+        budget,
+        operation,
+    )
 }
 
 fn set_slot_values(
@@ -208,10 +201,6 @@ fn set_reference(receiver: &Value, operation: &'static str) -> VmResult<crate::h
         Value::HeapRef(reference) => Ok(*reference),
         _ => type_error(operation),
     }
-}
-
-fn slot_key(slot: &Value, heap: &HeapExecution<'_>) -> VmResult<SetKey> {
-    SetKey::from_value(slot, Some(heap), "method set")
 }
 
 type SetKey = ValueKey;

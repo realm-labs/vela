@@ -1,3 +1,4 @@
+use std::collections::BTreeSet;
 use std::mem;
 
 use crate::heap::{GcRef, HeapValue};
@@ -506,14 +507,8 @@ fn array_slots_mut<'a>(
 }
 
 fn dedup_keyed_slots(slots: &mut Vec<(ValueKey, Value)>) {
-    let mut keys = Vec::new();
-    slots.retain(|(key, _)| {
-        if keys.contains(key) {
-            return false;
-        }
-        keys.push(key.clone());
-        true
-    });
+    let mut keys = BTreeSet::new();
+    slots.retain(|(key, _)| keys.insert(key.clone()));
 }
 
 fn map_slots<'a>(

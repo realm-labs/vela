@@ -131,6 +131,31 @@ fn linked_standard_value_method_caches_set_pair_extend_target() {
 }
 
 #[test]
+fn linked_standard_value_method_caches_set_duplicate_extend_target() {
+    let (program, site, dispatch, method_id) =
+        linked_set_extend_return_receiver_cache_program(&[2, 4], &[4, 6]);
+    let caches = RecordingMethodCaches::new(1);
+    let expected = Ok(OwnedValue::set([
+        OwnedValue::i64(2),
+        OwnedValue::i64(4),
+        OwnedValue::i64(6),
+    ]));
+
+    assert_eq!(
+        run_linked_set_cache_owned_program(&program, &caches),
+        expected
+    );
+    assert_set_cache_entry(
+        &caches,
+        site,
+        dispatch,
+        method_id,
+        StandardMethodInlineCacheTarget::Extend,
+    );
+    assert_eq!(caches.set_count(), 2);
+}
+
+#[test]
 fn linked_standard_value_method_caches_set_union_target() {
     assert_set_owned_cache(
         linked_set_combination_cache_program("union", &[2, 4], &[4, 6]),

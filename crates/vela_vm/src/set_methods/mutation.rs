@@ -84,7 +84,7 @@ pub(crate) fn extend(
     receiver: &mut Value,
     args: &[Value],
     heap: Option<&mut HeapExecution<'_>>,
-    mut budget: Option<&mut ExecutionBudget>,
+    budget: Option<&mut ExecutionBudget>,
 ) -> VmResult<Value> {
     expect_arity("extend", args, 1)?;
     let extension = set_values(&args[0], heap.as_deref(), "method extend")?;
@@ -93,26 +93,13 @@ pub(crate) fn extend(
             let Some(heap) = heap else {
                 return type_error("method extend");
             };
-            let Some(HeapValue::Set(values)) = heap.heap.get(*reference) else {
+            let Some(HeapValue::Set(_)) = heap.heap.get(*reference) else {
                 return type_error("method extend");
             };
-            let mut keys = values
-                .values()
-                .map(|slot| SetKey::from_value(slot, Some(&*heap), "method extend"))
-                .collect::<VmResult<Vec<_>>>()?;
-            let mut slots = Vec::new();
-            for value in extension {
-                let key = SetKey::from_value(&value, Some(&*heap), "method extend")?;
-                if keys.contains(&key) {
-                    continue;
-                }
-                keys.push(key);
-                slots.push(store_runtime_value(&value, heap, budget.as_deref_mut())?);
-            }
             collection_mutation::extend_set_slots(
                 heap,
                 *reference,
-                slots,
+                extension,
                 budget,
                 "method extend",
             )?;
