@@ -68,8 +68,11 @@ bytecode decisions.
   `RuntimeTypeFact`, and contract guard metadata.
 - Make `Array<T>`, `Set<T>`, and `Map<K, V>` runtime contracts semantically
   real by validating existing contents at guarded boundaries.
-- Keep typed container mutation sound: writes, pushes, inserts, and map/set
-  updates through a typed container contract must validate the inserted value.
+- Keep typed container mutation sound without adding unnecessary hot-path
+  checks: writes, pushes, inserts, and map/set updates through a typed
+  container contract should skip runtime guards when the inserted key/item/value
+  is statically proven compatible, reject statically incompatible values at
+  compile time, and guard only dynamic or erased values.
 - Support `Iterator<T>` without consuming the iterator at the guard boundary.
 - Make hot-reload ABI and reflection metadata compare/display structured
   parameterized contracts.
@@ -277,16 +280,31 @@ Do not implement an eager-consuming guard.
 ### 6.4 Mutation soundness
 
 Typed container facts are only safe if later mutations preserve the contract.
+Use the same compatibility table as function parameter and return contracts:
+
+```text
+inserted key/item/value statically compatible    -> no runtime guard
+inserted key/item/value statically incompatible  -> compile error
+inserted key/item/value dynamic or erased        -> runtime guard before write
+```
 
 Required behavior:
 
 ```vela
+fn fast(values: Array<i64>) {
+    values.push(1i64); // statically compatible: no runtime guard
+}
+
+fn checked(values: Array<i64>, value) {
+    values.push(value); // dynamic: guard value as i64 before push
+}
+
 fn bad(values: Array<i64>) {
-    values.push("x"); // must fail before corrupting the typed container fact
+    values.push("x"); // statically incompatible: compile error
 }
 
 fn bad_map(values: Map<String, i64>) {
-    values["level"] = "high"; // must fail before write
+    values["level"] = "high"; // statically incompatible: compile error
 }
 ```
 
@@ -294,6 +312,11 @@ The clean implementation should attach container element contracts to the
 container handle/path/fact used by mutation lowering, or invalidate the typed
 fact before any path that cannot prove mutation safety. Do not keep a stale
 `Array<i64>` fact after an unchecked dynamic mutation.
+
+This rule is required for performance as well as correctness. Hot loops that
+push proven `i64` values into `Array<i64>` should not pay a redundant runtime
+guard on every insertion. Guarded mutation exists for dynamic boundaries, not
+for values the compiler has already proven.
 
 ### 6.5 Host containers
 
@@ -389,6 +412,10 @@ cargo test -p vela_bytecode -p vela_vm
 - Charge budget while scanning materialized containers.
 - Implement typed mutation checks for array push/set, set insert, map insert
   and map value update paths that carry typed container contracts.
+- Apply the mutation compatibility table during lowering:
+  - proven compatible inserted values emit no guard;
+  - proven incompatible inserted values become compile diagnostics;
+  - dynamic or erased inserted values emit a guard before the mutation.
 - Add or defer `Iterator<T>` through an explicit guarded-iterator model. Do not
   consume iterators for validation.
 - Preserve source spans in type contract errors.
@@ -431,12 +458,20 @@ cargo test -p vela_macros -p vela_engine -p vela_reflect -p vela_hot_reload
 - Add at least one benchmark or opcode/profile check that demonstrates the
   compiler sees `Array<i64>`/`Map<String,i64>` facts and can select existing or
   future fast paths.
+- Add mutation-focused benchmark rows that separate:
+  - proven compatible typed container push/update with no runtime guard;
+  - dynamic guarded push/update;
+  - erased container push/update.
+- Capture profiling for the mutation rows before and after the feature lands.
+  The proven-compatible typed path must not regress materially versus the
+  erased path because of redundant contract machinery.
 
 Checkpoint:
 
 ```bash
 cargo test --workspace
 (cd site && npm run build)
+cargo bench -p vela_vm --bench baseline -- --quick container
 ```
 
 ---
@@ -478,15 +513,38 @@ cargo test --workspace
 - Returning `Array<String>` from a function declared `-> Array<i64>` fails at
   the return guard.
 - `Array<i64>` rejects pushing `"x"` and preserves the previous array state.
+- `Array<i64>` push of a statically proven `i64` emits no runtime guard.
+- `Array<i64>` push of a dynamic value emits a runtime guard before mutation.
+- `Array<i64>` push of a statically proven `String` is rejected before codegen.
 - `Map<String, i64>` rejects non-string keys and non-i64 values on guarded
   insertion/update paths.
+- `Map<String, i64>` update with statically proven `String` key and `i64` value
+  emits no runtime guard.
+- `Map<String, i64>` update with dynamic key or value emits only the necessary
+  key/value guard before mutation.
 - `Set<Player>` rejects inserting a non-`Player` value.
+- `Set<Player>` insert of a statically proven `Player` emits no runtime guard.
 - `Array<Any>` accepts mixed values while still rejecting a non-array outer
   value.
 - Deep guard scans charge budget and can fail with budget exhaustion before
   finishing a very large container.
 - `Iterator<T>` either yields guarded items lazily or is explicitly rejected
   until guarded iterator adapters exist.
+
+### Benchmark and profiling
+
+- Add or reuse quick benchmark rows for typed container mutation:
+  - `array_i64_push_static`
+  - `array_i64_push_dynamic_guarded`
+  - `map_string_i64_update_static`
+  - `map_string_i64_update_dynamic_guarded`
+- Store benchmark output under the existing `perf-results/` convention when
+  taking a checkpoint.
+- Run the existing profiling helper for at least the static and dynamic array
+  push rows.
+- Acceptance rule: the static typed push/update path must not show guard
+  execution as a material hotspot. If a measurable regression appears, fix the
+  lowering/guard placement before calling the feature complete.
 
 ### Embedding and hot reload
 
@@ -562,4 +620,3 @@ This plan is complete when:
 - Macro, embedding, reflection, and hot reload ABI surfaces agree on public
   parameterized type-hint spelling.
 - The full validation command set passes.
-
