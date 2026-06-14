@@ -712,6 +712,34 @@ mod tests {
     }
 
     #[test]
+    fn map_insert_rejects_infinite_float_key_before_mutation() {
+        let mut heap = ScriptHeap::new();
+        let reference = heap.allocate(HeapValue::Map(Default::default()));
+        let mut heap_execution = HeapExecution::new(&mut heap);
+
+        let error = insert_map_slot(
+            &mut heap_execution,
+            reference,
+            Value::F64(f64::INFINITY),
+            Value::I64(10),
+            None,
+            "test map set",
+        )
+        .expect_err("infinite map keys should be rejected");
+
+        assert_eq!(
+            error.kind_ref(),
+            &VmErrorKind::TypeMismatch {
+                operation: "test map set"
+            }
+        );
+        assert_eq!(
+            heap_execution.heap.get(reference),
+            Some(&HeapValue::Map(Default::default()))
+        );
+    }
+
+    #[test]
     fn map_extend_duplicate_new_key_counts_once_and_preserves_key() {
         let mut heap = ScriptHeap::new();
         let reference = heap.allocate(HeapValue::Map(Default::default()));
@@ -777,6 +805,33 @@ mod tests {
                 limit: 0
             }
         ));
+        assert_eq!(
+            heap_execution.heap.get(reference),
+            Some(&HeapValue::Set(ScriptSet::new()))
+        );
+    }
+
+    #[test]
+    fn set_add_rejects_infinite_float_key_before_mutation() {
+        let mut heap = ScriptHeap::new();
+        let reference = heap.allocate(HeapValue::Set(ScriptSet::new()));
+        let mut heap_execution = HeapExecution::new(&mut heap);
+
+        let error = push_set_slot(
+            &mut heap_execution,
+            reference,
+            Value::F32(f32::NEG_INFINITY),
+            None,
+            "test set add",
+        )
+        .expect_err("infinite set elements should be rejected");
+
+        assert_eq!(
+            error.kind_ref(),
+            &VmErrorKind::TypeMismatch {
+                operation: "test set add"
+            }
+        );
         assert_eq!(
             heap_execution.heap.get(reference),
             Some(&HeapValue::Set(ScriptSet::new()))
