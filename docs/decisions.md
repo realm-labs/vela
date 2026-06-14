@@ -253,16 +253,22 @@ GC. With the `serde` feature enabled, `Runtime::from_value` deserializes a
 script-owned results into structs/enums/scalars without first constructing a
 detached `OwnedValue`.
 
+Ordinary language equality is shallow equality. Immutable leaf values such as
+null, bool, char, exact scalar numeric tags, strings, bytes, and ranges compare
+by value. Mutable script heap objects such as records, user enums, arrays,
+maps, sets, closures, and iterators compare by identity. Host refs compare by
+host identity without reading host state. `==` and `!=` must not recursively
+materialize and deep-compare object graphs; deep equality belongs in an
+explicit, budgeted helper if it is added later.
+
 Map and Set key semantics are owned by a focused runtime `ValueKey` layer.
 Map keys and Set elements are script runtime `Value`s, but lookup and uniqueness
-do not use `Value` equality directly. Immutable leaf values such as null,
-bool, char, scalar numeric tags, strings, and bytes compare by value. Script
-heap aggregates such as records, enums, arrays, maps, sets, closures, and
-iterators compare by identity. Host refs compare by host identity. Mutable
-records and structs must not use structural equality as Map/Set keys, because
-field mutation would make the container index unstable. Transient mutation
-proxies such as `PathProxy` are not keyable until they have an explicit host
-path identity policy.
+do not use Rust `Value` equality directly. Instead, `ValueKey` follows the
+language's shallow equality classes for keyable values while adding keyability
+and ordering rules. Mutable records and structs must not use structural
+equality as Map/Set keys, because field mutation would make the container index
+unstable. Transient mutation proxies such as `PathProxy` are not keyable until
+they have an explicit host path identity policy.
 
 High-frequency embedding can cache script entry lookup with `Runtime::entry`.
 The common call API remains `Runtime::call`: a `&str` target performs ordinary

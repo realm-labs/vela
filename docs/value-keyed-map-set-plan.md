@@ -20,9 +20,10 @@ docs/architecture.md and docs/architecture/*.md as the architecture contract,
 and docs/progress.md as the current milestone state. Replace the current
 string-keyed map and vector-scanned set internals with focused ScriptMap,
 ScriptSet, and ValueKey modules. Map keys and Set elements are runtime Values,
-but key equality is defined only by ValueKey: immutable scalar/string/bytes
-values compare by value, script heap aggregates and host refs compare by
-identity, and unsupported transient values are rejected before mutation.
+but key equality is defined only by ValueKey and follows the shallow equality
+classes from docs/object-equality-semantics-plan.md: immutable leaf values
+compare by value, script heap objects and host refs compare by identity, and
+unsupported transient values are rejected before mutation.
 Propagate the new keyable contract through syntax, type hints, runtime guards,
 container summaries/stamps, stdlib methods, reflection, OwnedValue, serde
 bridges, benchmarks, docs, and tests. Prefer clean replacement over
@@ -56,10 +57,12 @@ Set<T> stores original element Values.
 Lookup, uniqueness, and removal are driven by ValueKey.
 ```
 
-For mutable script structs/records, arrays, maps, sets, enums, closures,
-iterators, and host objects, key equality is identity equality. It is not deep
-structural equality. A record can be stored in a Set and looked up efficiently
-by the same object identity even if fields later mutate.
+`ValueKey` follows the object equality model in
+[object-equality-semantics-plan.md](object-equality-semantics-plan.md).
+Mutable script structs/records, arrays, maps, sets, enums, closures, iterators,
+and host objects use identity equality, not deep structural equality. A record
+can be stored in a Set and looked up efficiently by the same object identity
+even if fields later mutate.
 
 ---
 
@@ -142,6 +145,11 @@ pub(crate) enum ValueKey {
 `ValueKey::from_value(value, heap, operation)` should return a source-spanned
 VM error when the value is not keyable. It should not allocate script heap
 objects. It may clone immutable string/bytes payloads into the key.
+
+For keyable values, `ValueKey` should agree with ordinary shallow equality from
+[object-equality-semantics-plan.md](object-equality-semantics-plan.md): values
+that compare equal by `==` should map to the same key. `ValueKey` remains a
+separate layer because it also defines keyability, ordering, and NaN rejection.
 
 ### 4.2 Scalar equality
 

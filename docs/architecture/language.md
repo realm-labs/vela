@@ -69,6 +69,18 @@ pub fn on_invoice_paid(ctx, account, invoice) {
 }
 ```
 
+### Equality
+
+Ordinary equality is shallow. Immutable leaf values such as null, booleans,
+characters, exact scalar numeric tags, strings, bytes, and ranges compare by
+value. Mutable script heap objects such as records, user enums, arrays, maps,
+sets, closures, and iterators compare by identity. Host refs compare by host
+identity without reading host state.
+
+`==` and `!=` must not recursively materialize and deep-compare object graphs.
+If Vela adds deep structural comparison later, it should be an explicit,
+budgeted helper rather than the default equality operator.
+
 ### Module Identity
 
 Vela source files do not declare their own module names. There is no
