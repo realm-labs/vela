@@ -1,9 +1,8 @@
 use crate::heap_values::make_set_value;
+use crate::script_set::ScriptSet;
 use crate::{ExecutionBudget, HeapExecution, Value, VmResult};
 
-use super::{
-    SetKey, SetRelation, expect_arity, push_unique, relation_matches, set_keys, set_slots,
-};
+use super::{SetKey, SetRelation, expect_arity, relation_matches, set_slots};
 
 pub(crate) fn union(
     receiver: &Value,
@@ -12,14 +11,14 @@ pub(crate) fn union(
     budget: &mut Option<&mut ExecutionBudget>,
 ) -> VmResult<Value> {
     expect_arity("union", args, 1)?;
-    let mut combined = Vec::new();
+    let mut combined = ScriptSet::new();
     for value in set_slots(receiver, heap.as_deref(), "method union")?.values() {
-        push_unique(&mut combined, *value, heap.as_deref(), "method union")?;
+        combined.insert(*value, heap.as_deref(), "method union")?;
     }
     for value in set_slots(&args[0], heap.as_deref(), "method union")?.values() {
-        push_unique(&mut combined, *value, heap.as_deref(), "method union")?;
+        combined.insert(*value, heap.as_deref(), "method union")?;
     }
-    make_result_set(combined, heap, budget, "method union")
+    make_result_set(combined.values_vec(), heap, budget, "method union")
 }
 
 pub(crate) fn intersection(
@@ -29,19 +28,15 @@ pub(crate) fn intersection(
     budget: &mut Option<&mut ExecutionBudget>,
 ) -> VmResult<Value> {
     expect_arity("intersection", args, 1)?;
-    let right = set_keys(
-        &set_slots(&args[0], heap.as_deref(), "method intersection")?.values_vec(),
-        heap.as_deref(),
-        "method intersection",
-    )?;
-    let mut result = Vec::new();
+    let right = set_slots(&args[0], heap.as_deref(), "method intersection")?;
+    let mut result = ScriptSet::new();
     for value in set_slots(receiver, heap.as_deref(), "method intersection")?.values() {
         let key = SetKey::from_value(value, heap.as_deref(), "method intersection")?;
-        if right.contains(&key) {
-            push_unique(&mut result, *value, heap.as_deref(), "method intersection")?;
+        if right.contains_key(&key) {
+            result.insert_keyed(key, *value);
         }
     }
-    make_result_set(result, heap, budget, "method intersection")
+    make_result_set(result.values_vec(), heap, budget, "method intersection")
 }
 
 pub(crate) fn difference(
@@ -51,19 +46,15 @@ pub(crate) fn difference(
     budget: &mut Option<&mut ExecutionBudget>,
 ) -> VmResult<Value> {
     expect_arity("difference", args, 1)?;
-    let right = set_keys(
-        &set_slots(&args[0], heap.as_deref(), "method difference")?.values_vec(),
-        heap.as_deref(),
-        "method difference",
-    )?;
-    let mut result = Vec::new();
+    let right = set_slots(&args[0], heap.as_deref(), "method difference")?;
+    let mut result = ScriptSet::new();
     for value in set_slots(receiver, heap.as_deref(), "method difference")?.values() {
         let key = SetKey::from_value(value, heap.as_deref(), "method difference")?;
-        if !right.contains(&key) {
-            push_unique(&mut result, *value, heap.as_deref(), "method difference")?;
+        if !right.contains_key(&key) {
+            result.insert_keyed(key, *value);
         }
     }
-    make_result_set(result, heap, budget, "method difference")
+    make_result_set(result.values_vec(), heap, budget, "method difference")
 }
 
 pub(crate) fn symmetric_difference(
@@ -73,39 +64,28 @@ pub(crate) fn symmetric_difference(
     budget: &mut Option<&mut ExecutionBudget>,
 ) -> VmResult<Value> {
     expect_arity("symmetric_difference", args, 1)?;
-    let left_values =
-        set_slots(receiver, heap.as_deref(), "method symmetric_difference")?.values_vec();
-    let right_values =
-        set_slots(&args[0], heap.as_deref(), "method symmetric_difference")?.values_vec();
-    let left_keys = set_keys(&left_values, heap.as_deref(), "method symmetric_difference")?;
-    let right_keys = set_keys(
-        &right_values,
-        heap.as_deref(),
-        "method symmetric_difference",
-    )?;
+    let left = set_slots(receiver, heap.as_deref(), "method symmetric_difference")?;
+    let right = set_slots(&args[0], heap.as_deref(), "method symmetric_difference")?;
 
-    let mut result = Vec::new();
-    for (value, key) in left_values.iter().zip(left_keys.iter()) {
-        if !right_keys.contains(key) {
-            push_unique(
-                &mut result,
-                *value,
-                heap.as_deref(),
-                "method symmetric_difference",
-            )?;
+    let mut result = ScriptSet::new();
+    for value in left.values() {
+        let key = SetKey::from_value(value, heap.as_deref(), "method symmetric_difference")?;
+        if !right.contains_key(&key) {
+            result.insert_keyed(key, *value);
         }
     }
-    for (value, key) in right_values.iter().zip(right_keys.iter()) {
-        if !left_keys.contains(key) {
-            push_unique(
-                &mut result,
-                *value,
-                heap.as_deref(),
-                "method symmetric_difference",
-            )?;
+    for value in right.values() {
+        let key = SetKey::from_value(value, heap.as_deref(), "method symmetric_difference")?;
+        if !left.contains_key(&key) {
+            result.insert_keyed(key, *value);
         }
     }
-    make_result_set(result, heap, budget, "method symmetric_difference")
+    make_result_set(
+        result.values_vec(),
+        heap,
+        budget,
+        "method symmetric_difference",
+    )
 }
 
 pub(crate) fn is_subset(

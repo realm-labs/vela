@@ -65,7 +65,9 @@ execution-budget charging for deep guard scans are implemented. Set add/remove
 mutation paths now route through the `ValueKey`-indexed container entry instead
 of scanning stored values, and `set::from_array` now lowers to a heap-aware
 runtime constructor so identity key elements do not pass through detached
-`OwnedValue` scalar filtering. Non-erased
+`OwnedValue` scalar filtering. Set relation and combination methods now use
+`ScriptSet` key lookups/accumulators instead of temporary vector key scans.
+Non-erased
 `Iterator<T>` contracts now mark
 iterator cursors with lazy item guards so checked boundaries do not consume
 items, and yielded mismatches fail at `next()`/iteration time. Mutation-focused

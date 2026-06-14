@@ -1,11 +1,11 @@
 use crate::heap::HeapValue;
 use crate::script_set::ScriptSet;
+use crate::value_key::ValueKey;
 use crate::{HeapExecution, Value, VmError, VmErrorKind, VmResult};
 
 mod basic;
 mod combination;
 mod higher_order;
-mod key;
 mod mutation;
 
 pub(crate) use basic::{from_array, has, values};
@@ -13,8 +13,9 @@ pub(crate) use combination::{
     difference, intersection, is_disjoint, is_subset, is_superset, symmetric_difference, union,
 };
 pub(crate) use higher_order::{all, any, count, filter, find, map};
-use key::{SetKey, set_keys};
 pub(crate) use mutation::{add, clear, extend, remove};
+
+type SetKey = ValueKey;
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub(crate) enum SetRelation {
@@ -107,10 +108,9 @@ fn slots_contain_all(
     heap: &HeapExecution<'_>,
     operation: &'static str,
 ) -> VmResult<bool> {
-    let superset = set_keys(&superset.values_vec(), Some(heap), operation)?;
     for value in subset.values() {
         let key = SetKey::from_value(value, Some(heap), operation)?;
-        if !superset.contains(&key) {
+        if !superset.contains_key(&key) {
             return Ok(false);
         }
     }
@@ -123,10 +123,9 @@ fn slots_are_disjoint(
     heap: &HeapExecution<'_>,
     operation: &'static str,
 ) -> VmResult<bool> {
-    let right = set_keys(&right.values_vec(), Some(heap), operation)?;
     for value in left.values() {
         let key = SetKey::from_value(value, Some(heap), operation)?;
-        if right.contains(&key) {
+        if right.contains_key(&key) {
             return Ok(false);
         }
     }
@@ -357,6 +356,51 @@ fn main() {
         let result = run_linked_set_test_code_with_budget(&vm, code, &mut budget)
             .expect("record identity set should run");
         assert_eq!(result, OwnedValue::Scalar(vela_common::ScalarValue::I64(2)));
+    }
+
+    #[test]
+    fn managed_heap_set_combinations_use_record_identity_keys() {
+        let source = r#"
+struct Player {
+    id
+    level
+}
+
+fn main() {
+    let a = Player { id: 1, level: 10 };
+    let b = Player { id: 1, level: 10 };
+    let c = Player { id: 1, level: 10 };
+    let left = set::from_array([a, b]);
+    let right = set::from_array([a, c]);
+    a.level += 1;
+
+    let unioned = left.union(right);
+    let shared = left.intersection(right);
+    let only_left = left.difference(right);
+    let changed = left.symmetric_difference(right);
+    let required = set::from_array([a]);
+    let d = Player { id: 1, level: 11 };
+
+    if unioned.len() == 3
+        && shared.len() == 1 && shared.has(a)
+        && only_left.len() == 1 && only_left.has(b)
+        && changed.len() == 2 && changed.has(b) && changed.has(c)
+        && required.is_subset(left) && left.is_superset(required)
+        && left.is_disjoint(set::from_array([d])) {
+        return 7;
+    }
+    return 0;
+}
+"#;
+        let code = compile_function_source(SourceId::new(1), source, "main")
+            .expect("record identity set combination source should compile");
+        let mut vm = Vm::new();
+        vm.register_standard_natives();
+        let mut budget = ExecutionBudget::unbounded();
+
+        let result = run_linked_set_test_code_with_budget(&vm, code, &mut budget)
+            .expect("record identity set combinations should run");
+        assert_eq!(result, OwnedValue::Scalar(vela_common::ScalarValue::I64(7)));
     }
 
     #[test]
