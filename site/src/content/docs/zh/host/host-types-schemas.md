@@ -1,20 +1,54 @@
 ---
 title: "Host 类型和 Schema"
-description: "Vela Host 类型和 Schema文档。"
+description: "Rust host types 如何成为稳定的脚本可见 schema。"
 ---
 
-本章属于 **宿主集成**。
+Host schemas 定义脚本可以看到什么。它们描述类型名、字段、方法、index
+capability、effects、stable IDs 和 reflection access。
 
-## 本页目标
+## Schema Surface
 
-TODO：补充 Host 类型和 Schema 的语义、示例、宿主边界和常见错误。
+```rust
+#[derive(Debug, ScriptHost)]
+#[script(path = "examples::host_type_methods::ItemStack")]
+struct ItemStack {
+    #[script(get, set, hint = "i64")]
+    count: i64,
+}
+```
 
-## 设计边界
+脚本会看到 `ItemStack.count` 是一个可读可写的 `i64` 字段。Rust 仍然拥有
+对象本身。读写必须经过 host access checks。
 
-- 不引入脚本侧泛型。
-- 不向脚本暴露真实 Rust `&mut T`。
-- 宿主状态修改必须通过 HostAccess 相关边界。
+## 具体 Host 类型
 
-## 示例
+脚本不看到 Rust 泛型。宿主可以注册一个 map-like 具体类型，给它
+script-facing 名称和 index capability。
 
-TODO：补充可运行的 Vela 或 Rust embedding 示例。
+```rust
+fn string_item_map_type() -> HostTypeSpec {
+    HostTypeSpec::new(
+        TypeDesc::new(TypeKey::new(TypeId::new(8_801), "StringItemMap"))
+            .index_capability(
+                HostIndexCapability::new()
+                    .readable(true)
+                    .writable(true)
+                    .key_type("string")
+                    .value_type("ItemStack"),
+            ),
+    )
+}
+```
+
+```vela
+player.inventory.items["gold"].count += amount;
+```
+
+VM 不把它当作 Rust `BTreeMap` 特判，而是把它当作一个带 keyed path 能力的
+已注册 host type。
+
+## 兼容性
+
+Stable IDs 和 schema hashes 是 hot reload 与 reflection 的一部分。修改字段
+可写性、type hint、method effect 或 callable surface，都可能让新的 program
+image 和现有 runtime 不兼容。

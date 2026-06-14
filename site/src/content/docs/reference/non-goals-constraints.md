@@ -1,20 +1,32 @@
 ---
 title: "Non-Goals And Constraints"
-description: "Non-Goals And Constraints documentation for Vela."
+description: "Design constraints that keep Vela embeddable and hot-reload safe."
 ---
 
-This chapter belongs to **Reference**.
+Vela is a dynamic scripting language for host-owned business logic. It is not
+dynamic Rust and it is not a Lua clone. Some features are intentionally outside
+the first release.
 
-## Goals
+## Language Non-Goals
 
-TODO: document the semantics, examples, host boundary behavior, and common errors for Non-Goals And Constraints.
+The MVP does not include script-language generics, function overloading by type,
+a Rust-style borrow checker, arbitrary `eval`, macros, monkey patching, classes,
+script threads, async/coroutine hot reload, or JIT compilation.
 
-## Design Boundaries
+## Host Boundary Constraints
 
-- No script-language generics.
-- No real Rust `&mut T` is exposed to scripts.
-- Host state mutation must go through the HostAccess boundary.
+Scripts never receive real Rust `&mut T`. Host mutation must flow through
+`HostRef`, `HostPath`, `PathProxy`, `HostAccess`, and the host adapter. Host
+state is not placed under the script GC.
 
-## Example
+## Reflection Constraints
 
-TODO: add runnable Vela or Rust embedding examples.
+Reflection may query metadata and perform controlled reads, writes, and calls.
+It may not mutate type structure, replace methods, add fields, or create a
+monkey-patching system.
+
+## Runtime Constraints
+
+Execution must be budgeted. Optimizations must preserve source diagnostics, GC
+roots, hot reload versioning, reflection permissions, and host access checks.
+JIT is a post-MVP backend goal, not a requirement for the first interpreter.

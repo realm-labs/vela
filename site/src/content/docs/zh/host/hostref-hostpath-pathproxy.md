@@ -1,20 +1,54 @@
 ---
 title: "HostRef、HostPath、PathProxy"
-description: "Vela HostRef、HostPath、PathProxy文档。"
+description: "Vela 用来替代 Rust 引用的 handles 和 path objects。"
 ---
 
-本章属于 **宿主集成**。
+`HostRef`、`HostPath` 和 `PathProxy` 是宿主状态 handle 的核心。它们让脚本
+可以定位 Rust 拥有的状态，但不会借用它。
 
-## 本页目标
+## HostRef
 
-TODO：补充 HostRef、HostPath、PathProxy 的语义、示例、宿主边界和常见错误。
+`HostRef` 用 type、object ID 和 generation 标识一个宿主对象。
 
-## 设计边界
+```rust
+pub struct HostRef {
+    pub type_id: HostTypeId,
+    pub object_id: HostObjectId,
+    pub generation: u32,
+}
+```
 
-- 不引入脚本侧泛型。
-- 不向脚本暴露真实 Rust `&mut T`。
-- 宿主状态修改必须通过 HostAccess 相关边界。
+Generation 防止对象 ID 复用后，旧 handle 写到另一个对象上。
 
-## 示例
+## HostPath
 
-TODO：补充可运行的 Vela 或 Rust embedding 示例。
+`HostPath` 是 materialized readable path，用于 diagnostics、reflection、
+fixtures 和 embedding APIs。
+
+```rust
+let path = HostPath::new(player_ref).field(FieldId::new(1));
+```
+
+热路径 bytecode 通常存储 interned `HostTargetPlan`，而不是每次访问都构造
+`HostPath`。
+
+## PathProxy
+
+`PathProxy` 保存 root `HostRef`、target plan 和动态 index/key 参数。当 host
+method 或 native function 需要携带嵌套 host target 时，可以使用它，而不是
+暴露 Rust 引用。
+
+```rust
+let proxy = PathProxy::new(player_ref, plan)
+    .key("gold")
+    .field(FieldId::new(2));
+proxy.add(
+    adapter,
+    &mut access,
+    HostValue::Scalar(vela_common::ScalarValue::I64(1)),
+    None,
+)?;
+```
+
+Proxy 仍然通过 `HostAccess` 路由，所以 schema、capability、generation 和
+adapter checks 仍然生效。

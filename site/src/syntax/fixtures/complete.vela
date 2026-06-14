@@ -11,6 +11,9 @@ pub struct Player {
 struct Stats {
   level: i64 = 1,
   xp: i64 = 0,
+  flags: u8 = 0u8,
+  seed: i32 = 12i32,
+  scale: f32 = 1.0f32,
 }
 
 enum Reward {

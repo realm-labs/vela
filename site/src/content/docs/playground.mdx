@@ -5,7 +5,25 @@ description: "Playground documentation for Vela."
 
 import Playground from '../../components/Playground.astro';
 
-The browser Playground runs a small WASM wrapper around `vela_engine`. It is useful for trying syntax, collections, methods, diagnostics, and return values.
+The Playground runs a browser WASM wrapper around `vela_engine`. It is intended for quick experiments with syntax, collections, standard methods, diagnostics, and return values.
 
-It intentionally does not expose real Rust host objects, filesystem access, or server state. Host write-through examples belong in the Rust examples.
+## What It Can Run
+
+The Playground compiles the source in the editor and calls the selected entry function. It can show compiler diagnostics, runtime errors, and JSON output for script-owned return values.
+
+Try small scripts like:
+
+```vela
+fn main() {
+    let scores = { "quest": 5, "raid": 8 };
+    return scores["quest"] + scores["raid"];
+}
+```
+
+## Sandbox Limits
+
+The browser environment does not expose real Rust host objects, server state, filesystem access, or a long-lived application runtime. Host write-through examples, native function registration, runtime globals, and hot reload workflows belong in the Rust examples and embedding chapters.
+
+Use the Playground to check language behavior. Use local examples when you need to test the host boundary.
+
 <Playground />

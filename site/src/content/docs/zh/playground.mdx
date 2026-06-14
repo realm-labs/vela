@@ -5,7 +5,25 @@ description: "Vela Playground文档。"
 
 import Playground from '../../../components/Playground.astro';
 
-浏览器 Playground 运行一个 WASM 包装后的 `vela_engine`，适合体验语言语法、集合、方法、诊断和返回值。
+Playground 在浏览器中运行 WASM 包装后的 `vela_engine`。它适合快速尝试语法、集合、标准方法、诊断和返回值。
 
-它有意不暴露真实 Rust host object、文件系统或服务器状态。需要宿主状态写穿的例子会放在 Rust examples 中。
+## 能运行什么
+
+Playground 会编译编辑器里的源码，并调用选中的入口函数。它可以展示编译诊断、运行时错误，以及脚本返回值的 JSON 表示。
+
+可以先试这种小脚本：
+
+```vela
+fn main() {
+    let scores = { "quest": 5, "raid": 8 };
+    return scores["quest"] + scores["raid"];
+}
+```
+
+## 沙箱边界
+
+浏览器环境不暴露真实 Rust host object、服务器状态、文件系统访问，也不代表一个长期运行的应用 Runtime。Host 写穿、native 函数注册、runtime global 和热更新流程需要看 Rust 示例和宿主集成章节。
+
+Playground 适合验证语言行为；需要验证宿主边界时请运行本地示例。
+
 <Playground />

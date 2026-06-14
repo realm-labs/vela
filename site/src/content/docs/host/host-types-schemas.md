@@ -1,20 +1,54 @@
 ---
 title: "Host Types And Schemas"
-description: "Host Types And Schemas documentation for Vela."
+description: "How Rust host types become stable script-visible schemas."
 ---
 
-This chapter belongs to **Host Integration**.
+Host schemas define what script code may see. They describe type names, fields,
+methods, index capability, effects, stable IDs, and reflection access.
 
-## Goals
+## Schema Surface
 
-TODO: document the semantics, examples, host boundary behavior, and common errors for Host Types And Schemas.
+```rust
+#[derive(Debug, ScriptHost)]
+#[script(path = "examples::host_type_methods::ItemStack")]
+struct ItemStack {
+    #[script(get, set, hint = "i64")]
+    count: i64,
+}
+```
 
-## Design Boundaries
+The script sees `ItemStack.count` as a readable and writable `i64` field.
+Rust still owns the object. Reads and writes pass through host access checks.
 
-- No script-language generics.
-- No real Rust `&mut T` is exposed to scripts.
-- Host state mutation must go through the HostAccess boundary.
+## Concrete Host Types
 
-## Example
+Scripts do not see Rust generics. A host can register a concrete map-like type
+with an index capability and a script-facing name.
 
-TODO: add runnable Vela or Rust embedding examples.
+```rust
+fn string_item_map_type() -> HostTypeSpec {
+    HostTypeSpec::new(
+        TypeDesc::new(TypeKey::new(TypeId::new(8_801), "StringItemMap"))
+            .index_capability(
+                HostIndexCapability::new()
+                    .readable(true)
+                    .writable(true)
+                    .key_type("string")
+                    .value_type("ItemStack"),
+            ),
+    )
+}
+```
+
+```vela
+player.inventory.items["gold"].count += amount;
+```
+
+The VM does not treat this as a Rust `BTreeMap`. It treats it as a registered
+host type with keyed path support.
+
+## Compatibility
+
+Stable IDs and schema hashes are part of hot reload and reflection. Changing a
+field's writability, type hint, method effect, or callable surface can make a
+new program image incompatible with an existing runtime.

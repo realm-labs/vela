@@ -211,19 +211,19 @@
       "patterns": [
         {
           "name": "constant.numeric.float.vela",
-          "match": "\\b(?:[0-9](?:_?[0-9])*\\.[0-9](?:_?[0-9])*(?:[eE][+-]?[0-9](?:_?[0-9])*)?)(?:_[A-Za-z][A-Za-z0-9_]*)?\\b"
+          "match": "\\b(?:[0-9](?:_?[0-9])*\\.[0-9](?:_?[0-9])*(?:[eE][+-]?[0-9](?:_?[0-9])*)?)(?:f32|f64)?\\b"
         },
         {
           "name": "constant.numeric.hex.vela",
-          "match": "\\b0x[0-9A-Fa-f](?:_?[0-9A-Fa-f])*(?:_[A-Za-z][A-Za-z0-9_]*)?\\b"
+          "match": "\\b0x[0-9A-Fa-f](?:_?[0-9A-Fa-f])*(?:i8|i16|i32|i64|u8|u16|u32|u64)?\\b"
         },
         {
           "name": "constant.numeric.binary.vela",
-          "match": "\\b0b[01](?:_?[01])*(?:_[A-Za-z][A-Za-z0-9_]*)?\\b"
+          "match": "\\b0b[01](?:_?[01])*(?:i8|i16|i32|i64|u8|u16|u32|u64)?\\b"
         },
         {
           "name": "constant.numeric.integer.vela",
-          "match": "\\b[0-9](?:_?[0-9])*(?:_[A-Za-z][A-Za-z0-9_]*)?\\b"
+          "match": "\\b[0-9](?:_?[0-9])*(?:i8|i16|i32|i64|u8|u16|u32|u64)?\\b"
         }
       ]
     },
@@ -271,7 +271,7 @@
       "patterns": [
         {
           "name": "support.type.primitive.vela",
-          "match": "\\b(?:any|null|bool|int|float|string|bytes|array|map|set|function|i64|u64|f64)\\b"
+          "match": "\\b(?:any|null|bool|char|int|float|string|bytes|array|map|set|function|i8|i16|i32|i64|u8|u16|u32|u64|f32|f64)\\b"
         },
         {
           "name": "entity.name.type.vela",

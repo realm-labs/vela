@@ -1,20 +1,43 @@
 ---
 title: "Engine API 参考"
-description: "Vela Engine API 参考文档。"
+description: "Rust 嵌入 API 的高层参考。"
 ---
 
-本章属于 **参考**。
+Rust API 是 Vela 的主要嵌入表面。本页是稳定概要，不是自动生成的 API 参
+考。项目仍处于 pre-release 阶段，精确签名请以 crate docs 和源码为准。
 
-## 本页目标
+## Engine Builder
 
-TODO：补充 Engine API 参考 的语义、示例、宿主边界和常见错误。
+`Engine::builder()` 配置 host types、native functions、standard natives、
+capabilities、reflection policy、compiler options 和 hot reload policy。
 
-## 设计边界
+```rust
+let engine = Engine::builder()
+    .with_standard_natives()
+    .capability(Capability::Time)
+    .build()?;
+```
 
-- 不引入脚本侧泛型。
-- 不向脚本暴露真实 Rust `&mut T`。
-- 宿主状态修改必须通过 HostAccess 相关边界。
+## 编译和 Runtime
 
-## 示例
+Engine 可以编译文件、源码字符串、module、program image 和 hot reload
+version。`Runtime` 拥有执行状态，并用 `CallArgs` 和 `CallOptions` 调用脚本
+entry。
 
-TODO：补充可运行的 Vela 或 Rust embedding 示例。
+```rust
+let program = engine.compile_file(path)?;
+let mut runtime = Runtime::new(engine, program);
+let value = runtime.call("main", CallArgs::new(), CallOptions::new(10_000, 1024 * 1024, 64))?;
+```
+
+## 宿主边界
+
+宿主状态通过 schemas、host refs、native functions 和 adapters 注册。脚本
+永远不会拿到 Rust `&mut T`；修改通过 `HostRef`、`HostPath`、`PathProxy`、
+`HostAccess` 和 `ScriptStateAdapter` 表示。
+
+## Values 和 Handles
+
+嵌入代码可以使用 owned values 表示 detached snapshots，也可以使用 runtime
+managed value handles 在同一个 runtime 内复用值。生产 runtime 应显式配置
+host capabilities 和 execution budgets。

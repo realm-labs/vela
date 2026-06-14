@@ -3,18 +3,48 @@ title: "Iterator 和 Sequence"
 description: "Vela Iterator 和 Sequence文档。"
 ---
 
-本章属于 **数据模型**。
+Vela 在数组、map、set、range、string 和宿主返回的 iterable 上使用同一套迭代模型。这个模型区分可重复来源和 one-shot cursor。
 
-## 本页目标
+## Iterable、Sequence、Iterator
 
-TODO：补充 Iterator 和 Sequence 的语义、示例、宿主边界和常见错误。
+Iterable 可以创建或提供 iterator。Sequence 是可重复 iterable，每次遍历都会创建新的 iterator。Iterator 是 one-shot cursor；`next()` 会推进同一个状态，后续调用能观察到推进后的结果。
 
-## 设计边界
+```vela
+fn first_two(values) {
+    let iter = values.iter()
+    let first = iter.next()
+    let second = iter.next()
+    return [first, second]
+}
+```
 
-- 不引入脚本侧泛型。
-- 不向脚本暴露真实 Rust `&mut T`。
-- 宿主状态修改必须通过 HostAccess 相关边界。
+## For-In
 
-## 示例
+`for value in source` 会先求值 `source`，取得 iterator，然后推进直到结束。`for index, value in source` 是语法级 indexed loop lowering。
 
-TODO：补充可运行的 Vela 或 Rust embedding 示例。
+```vela
+fn total(values) -> i64 {
+    let sum = 0
+    for index, value in values {
+        sum += value + index
+    }
+    return sum
+}
+```
+
+## 惰性适配器
+
+`map`、`filter`、`take`、`skip` 等方法是 lazy 且 one-shot 的。`count`、`any`、`all`、`find`、`collect_array` 等终端方法会消费 cursor。
+
+```vela
+fn active_codes(items) {
+    return items.iter()
+        .filter(|item| item.active)
+        .map(|item| item.code)
+        .collect_array()
+}
+```
+
+## 宿主 Iterable
+
+宿主可以返回 snapshot iterable，但宿主拥有的状态不会被放到脚本 GC 下。后续宿主修改仍然需要 HostAccess 或显式 native function 边界。

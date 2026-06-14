@@ -1,20 +1,47 @@
 ---
 title: "Diagnostics"
-description: "Diagnostics documentation for Vela."
+description: "How Vela reports parser, semantic, runtime, reflection, and reload errors."
 ---
 
-This chapter belongs to **Reflection And Tooling**.
+Diagnostics are part of the runtime contract. Vela errors should carry enough
+structure for CLI output, editor labels, hot reload reports, and host logs.
 
-## Goals
+## Diagnostic Data
 
-TODO: document the semantics, examples, host boundary behavior, and common errors for Diagnostics.
+A useful diagnostic includes:
 
-## Design Boundaries
+```text
+error kind
+source span
+message
+related locations
+candidate names
+repair hint
+call stack when runtime execution was involved
+```
 
-- No script-language generics.
-- No real Rust `&mut T` is exposed to scripts.
-- Host state mutation must go through the HostAccess boundary.
+Source spans are available for script declarations and many runtime errors.
+Host-generated schemas may omit source spans.
 
-## Example
+## Candidate Hints
 
-TODO: add runnable Vela or Rust embedding examples.
+Reflection and host schema errors should include candidates when possible. A
+misspelled field can point to nearby fields from the registered type.
+
+```text
+FieldNotFound
+type: Player
+field: levle
+candidates: ["level"]
+```
+
+## Runtime Context
+
+Runtime diagnostics should preserve call-stack and source information across
+script calls, native calls, host access, and reflection. Hot reload diagnostics
+should include version/update context when a candidate cannot be applied.
+
+## CLI Rendering
+
+`vela_cli` renders source errors and VM errors for script execution. It is a
+consumer of structured diagnostics, not the only representation.

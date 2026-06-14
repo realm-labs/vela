@@ -1,20 +1,41 @@
 ---
 title: "受控读写调用"
-description: "Vela 受控读写调用文档。"
+description: "动态反射操作及其安全边界。"
 ---
 
-本章属于 **反射和工具**。
+反射可以动态读取字段、写入字段、调用函数或方法。这些操作是受控且受策
+略约束的。
 
-## 本页目标
+## 读取
 
-TODO：补充 受控读写调用 的语义、示例、宿主边界和常见错误。
+`reflect::get(target, field)` 在目标 shape 和当前策略允许时读取字段。
 
-## 设计边界
+```vela
+let level = reflect::get(player, "level");
+```
 
-- 不引入脚本侧泛型。
-- 不向脚本暴露真实 Rust `&mut T`。
-- 宿主状态修改必须通过 HostAccess 相关边界。
+对于宿主对象，读取会走 host access 机制。对于脚本 record 和 enum，反射
+会尽量使用已注册脚本 metadata，让诊断能命名脚本类型。
 
-## 示例
+## 写入
 
-TODO：补充可运行的 Vela 或 Rust embedding 示例。
+`reflect::set(target, field, value)` 只在字段可写且当前反射/宿主策略允许
+时写入。
+
+```vela
+reflect::set(player, "level", 12);
+```
+
+这仍然不会向脚本暴露 Rust `&mut T`。宿主修改通过 `HostRef`、`HostPath`、
+`PathProxy`、`HostAccess` 和宿主 adapter 完成。
+
+## 调用
+
+`reflect::call(target, args...)` 只会调用被标记为 reflection-callable 的函
+数或方法。effects、capabilities、budgets 和参数转换仍然生效。
+
+## 失败模式
+
+受控操作可能因为 unknown field、read-only field、permission denied、
+stale host reference、argument mismatch、effect denial 或 budget exhaustion
+失败。这些都是普通 runtime error，不代表 reflection metadata 被破坏。

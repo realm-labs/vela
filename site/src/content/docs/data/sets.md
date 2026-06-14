@@ -3,18 +3,35 @@ title: "Sets"
 description: "Sets documentation for Vela."
 ---
 
-This chapter belongs to **Data Model**.
+Sets store unique dynamic values. They are useful for membership checks and set algebra on script-owned data.
 
-## Goals
+## Construction And Membership
 
-TODO: document the semantics, examples, host boundary behavior, and common errors for Sets.
+A set is usually created through standard library helpers or host-provided snapshot values. Membership APIs should be used instead of relying on array scans for uniqueness.
 
-## Design Boundaries
+```vela
+fn has_tag(tags, tag: string) -> bool {
+    return tags.contains(tag)
+}
+```
 
-- No script-language generics.
-- No real Rust `&mut T` is exposed to scripts.
-- Host state mutation must go through the HostAccess boundary.
+## Mutation
 
-## Example
+Set methods cover insertion, removal, and clearing. Mutating a script set changes the script heap value; mutating a host-owned set-like field goes through HostAccess.
 
-TODO: add runnable Vela or Rust embedding examples.
+```vela
+fn mark_seen(seen, id: i64) {
+    if !seen.contains(id) {
+        seen.insert(id)
+    }
+    return seen
+}
+```
+
+## Set Operations
+
+Standard methods provide operations such as intersection, union, difference, and subset checks where supported by the runtime. These operations remain dynamic and do not require `Set<T>` syntax.
+
+## Iteration
+
+Sets are repeatable sequences over their values. Iteration order is runtime-defined and should not be used as persistent business semantics unless the API explicitly documents an ordering.

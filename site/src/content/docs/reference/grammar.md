@@ -1,20 +1,45 @@
 ---
 title: "Grammar"
-description: "Grammar documentation for Vela."
+description: "A stable overview of the current Vela source grammar."
 ---
 
-This chapter belongs to **Reference**.
+The grammar source of truth is `docs/grammar.ebnf`. This page summarizes the
+current language surface; it is not a generated parser listing.
 
-## Goals
+## Source Files
 
-TODO: document the semantics, examples, host boundary behavior, and common errors for Grammar.
+Vela source files use `.vela`. A source file may contain imports, attributes,
+constants, globals, functions, structs, enums, traits, and impl blocks.
 
-## Design Boundaries
+```vela
+use game::reward as reward
 
-- No script-language generics.
-- No real Rust `&mut T` is exposed to scripts.
-- Host state mutation must go through the HostAccess boundary.
+#[event("monster.kill")]
+fn on_kill(ctx: Context, player: Player) {
+    reward::grant(ctx, player, 10);
+}
+```
 
-## Example
+## Expressions And Statements
 
-TODO: add runnable Vela or Rust embedding examples.
+The expression grammar covers literals, arrays, maps, typed record literals,
+field access, indexing, calls, unary and binary operators, ranges, lambdas,
+`if`, `match`, and blocks.
+
+Assignments require assignable targets: identifiers, fields, indexes, or host
+path proxies. Compound assignment uses the same write boundary as ordinary
+assignment.
+
+## Patterns
+
+Patterns are used by `match` and `for` bindings. The grammar supports wildcard,
+literal, binding, path, tuple-variant, and record-variant patterns.
+
+## Deliberate Exclusions
+
+The grammar intentionally excludes script-language generics, async/coroutines,
+macro expansion, `eval`, classes, monkey patching, and Rust-style borrow
+syntax.
+
+Type hints are metadata contracts and analysis inputs. They do not create
+generic types or monomorphized script functions.

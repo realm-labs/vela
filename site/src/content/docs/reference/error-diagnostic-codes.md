@@ -1,20 +1,37 @@
 ---
 title: "Error And Diagnostic Codes"
-description: "Error And Diagnostic Codes documentation for Vela."
+description: "Common Vela diagnostic families and how to interpret them."
 ---
 
-This chapter belongs to **Reference**.
+Vela diagnostics are structured by subsystem. The exact code list is still
+stabilizing, so this page groups the durable families rather than pretending a
+complete generated catalog exists.
 
-## Goals
+## Parse And Semantic Errors
 
-TODO: document the semantics, examples, host boundary behavior, and common errors for Error And Diagnostic Codes.
+Parser and semantic errors cover invalid syntax, unresolved names, duplicate
+declarations, invalid assignment targets, rejected generic type syntax,
+top-level side effects, and invalid module imports.
 
-## Design Boundaries
+These errors should include source spans and related locations when available.
 
-- No script-language generics.
-- No real Rust `&mut T` is exposed to scripts.
-- Host state mutation must go through the HostAccess boundary.
+## Runtime Errors
 
-## Example
+Runtime errors cover type guard failures, bad calls, arithmetic failures,
+budget exhaustion, stack depth limits, missing entries, and value conversion
+failures.
 
-TODO: add runnable Vela or Rust embedding examples.
+## Host And Reflection Errors
+
+Host and reflection errors cover field not found, field not writable,
+permission denied, required capability missing, stale host ref generation,
+unknown reflected item, and reflect-call denial.
+
+## Hot Reload Errors
+
+Hot reload diagnostics cover compile failures, ABI mismatches, schema
+incompatibilities, effect/access expansion, source graph problems, and rejected
+top-level side effects.
+
+Reports should state that the previous active version remains current when an
+update is rejected.

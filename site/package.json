@@ -3,7 +3,8 @@
     "dev": "astro dev",
     "build": "astro check && astro build",
     "preview": "astro preview",
-    "test:syntax": "node ./scripts/check-vela-highlighting.mjs"
+    "test:syntax": "node ./scripts/check-vela-highlighting.mjs",
+    "test:docs": "node ./scripts/check-doc-placeholders.mjs"
   },
   "dependencies": {
     "@astrojs/mdx": "^6.0.3",

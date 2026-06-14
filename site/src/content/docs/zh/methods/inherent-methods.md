@@ -3,18 +3,38 @@ title: "固有方法"
 description: "Vela 固有方法文档。"
 ---
 
-本章属于 **方法和分发**。
+固有方法是直接声明在某个脚本类型上的方法。它们按 receiver 分发；当 receiver 类型已知时，会编译到稳定的方法元数据。
 
-## 本页目标
+## 声明
 
-TODO：补充 固有方法 的语义、示例、宿主边界和常见错误。
+使用 `impl Type { ... }` 给脚本 struct 或 enum 添加方法。第一个参数通常写作 `self`，表示被调用的值。
 
-## 设计边界
+```vela
+struct Player {
+    level: i64
+}
 
-- 不引入脚本侧泛型。
-- 不向脚本暴露真实 Rust `&mut T`。
-- 宿主状态修改必须通过 HostAccess 相关边界。
+impl Player {
+    fn bonus(self, amount: i64) -> i64 {
+        return self.level + amount
+    }
+}
+```
 
-## 示例
+## 调用
 
-TODO：补充可运行的 Vela 或 Rust embedding 示例。
+方法调用语法是 `receiver.method(args...)`。如果编译器知道 receiver 类型，会链接到已解析方法；如果 receiver 是动态的，运行时方法分发会根据实际值解析目标。
+
+```vela
+fn main(player: Player) -> i64 {
+    return player.bonus(5)
+}
+```
+
+## 没有重载
+
+同一个类型不能定义多个同名 receiver 方法。参数提示、默认值和参数数量不会形成重载集。
+
+## 宿主边界
+
+注册宿主类型也可以暴露方法，但这些调用会通过 HostAccess 和注册宿主元数据执行。脚本方法不会向脚本暴露 Rust `&mut T`。

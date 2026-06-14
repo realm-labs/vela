@@ -1,20 +1,40 @@
 ---
 title: "反射概览"
-description: "Vela 反射概览文档。"
+description: "Vela 反射可以检查什么，以及不能修改什么。"
 ---
 
-本章属于 **反射和工具**。
+反射给脚本和宿主工具提供受控的 Vela metadata 视图。它服务于宿主集成、
+诊断、管理工具、调试器、编辑器和热更新检查。
 
-## 本页目标
+## 反射可以看到什么
 
-TODO：补充 反射概览 的语义、示例、宿主边界和常见错误。
+反射可以查询 type、field、method、variant、trait、module、function、
+attribute、source origin、effect metadata 和 permission metadata，也可以查
+询某个值的 runtime type。
 
-## 设计边界
+```vela
+fn main(player: Player) {
+    let player_type = reflect::type_of(player);
+    let fields = reflect::fields(player_type);
+    let level = reflect::field(player, "level");
+    return reflect::name(player_type);
+}
+```
 
-- 不引入脚本侧泛型。
-- 不向脚本暴露真实 Rust `&mut T`。
-- 宿主状态修改必须通过 HostAccess 相关边界。
+## 受控操作
 
-## 示例
+当当前策略允许时，反射可以执行受控 read、write 和 call。这些操作仍然通
+过普通脚本执行相同的 runtime 和 host access 边界。
 
-TODO：补充可运行的 Vela 或 Rust embedding 示例。
+反射不是绕过 `HostAccess`、execution budget、capability、只读字段或
+stale host reference 校验的后门。
+
+## 反射不能做什么
+
+反射不能在 runtime 修改类型结构。它不能添加字段、删除方法、替换函数、
+monkey patch 类型，也不能执行生成出来的源码字符串。
+
+## 版本化元数据
+
+热更新会创建新的 registry 快照。反射观察相关程序版本的 registry，因此
+旧调用帧和工具视图能保持稳定，而新调用可以进入新版本。

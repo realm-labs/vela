@@ -1,20 +1,43 @@
 ---
 title: "语法参考"
-description: "Vela 语法参考文档。"
+description: "当前 Vela 源码语法的稳定概要。"
 ---
 
-本章属于 **参考**。
+语法的事实来源是 `docs/grammar.ebnf`。本页总结当前语言表面，不是自动生
+成的 parser 清单。
 
-## 本页目标
+## 源文件
 
-TODO：补充 语法参考 的语义、示例、宿主边界和常见错误。
+Vela 源文件使用 `.vela`。一个源文件可以包含 imports、attributes、consts、
+globals、functions、structs、enums、traits 和 impl blocks。
 
-## 设计边界
+```vela
+use game::reward as reward
 
-- 不引入脚本侧泛型。
-- 不向脚本暴露真实 Rust `&mut T`。
-- 宿主状态修改必须通过 HostAccess 相关边界。
+#[event("monster.kill")]
+fn on_kill(ctx: Context, player: Player) {
+    reward::grant(ctx, player, 10);
+}
+```
 
-## 示例
+## 表达式和语句
 
-TODO：补充可运行的 Vela 或 Rust embedding 示例。
+表达式语法覆盖 literals、arrays、maps、typed record literals、field
+access、indexing、calls、unary/binary operators、ranges、lambdas、`if`、
+`match` 和 blocks。
+
+赋值目标必须是可赋值目标：identifier、field、index 或 host path proxy。
+复合赋值和普通赋值使用相同写入边界。
+
+## Patterns
+
+`match` 和 `for` binding 使用 patterns。语法支持 wildcard、literal、
+binding、path、tuple-variant 和 record-variant patterns。
+
+## 有意排除
+
+语法有意排除脚本侧泛型、async/coroutines、macro expansion、`eval`、
+classes、monkey patching 和 Rust-style borrow syntax。
+
+Type hints 是 metadata contract 和分析输入。它们不会创建泛型类型，也不
+会生成 monomorphized script functions。

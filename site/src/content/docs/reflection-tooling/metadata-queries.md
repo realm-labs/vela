@@ -1,20 +1,42 @@
 ---
 title: "Metadata Queries"
-description: "Metadata Queries documentation for Vela."
+description: "Querying Vela types, modules, functions, fields, and methods."
 ---
 
-This chapter belongs to **Reflection And Tooling**.
+Metadata queries return copied reflection values. They describe the registered
+schema and script declarations without exposing mutable runtime internals.
 
-## Goals
+## Types And Values
 
-TODO: document the semantics, examples, host boundary behavior, and common errors for Metadata Queries.
+Use `reflect::type_info(name)` to look up a type by name and
+`reflect::type_of(value)` to inspect a value.
 
-## Design Boundaries
+```vela
+let player_type = reflect::type_info("Player");
+let current_type = reflect::type_of(player);
 
-- No script-language generics.
-- No real Rust `&mut T` is exposed to scripts.
-- Host state mutation must go through the HostAccess boundary.
+if reflect::kind(player_type) == "host" {
+    return reflect::fields(player_type);
+}
+```
 
-## Example
+## Members And Variants
 
-TODO: add runnable Vela or Rust embedding examples.
+`reflect::fields`, `reflect::methods`, `reflect::variants`, and
+`reflect::traits` expose structured records. These records may include names,
+stable IDs, type hints, docs, attributes, source spans, effects, and required
+permissions when the registry has that data.
+
+## Modules And Functions
+
+`reflect::module`, `reflect::modules`, `reflect::function`,
+`reflect::functions`, and `reflect::exports` describe the module/function
+surface installed in the current registry.
+
+Standard modules such as `math`, `time`, `option`, `result`, `set`, and `bytes`
+are reflected when the engine installs the corresponding standard natives.
+
+## Missing Metadata
+
+Host-provided schemas may not always have source spans. Missing source origins
+should be represented as absent metadata, not as fake file locations.

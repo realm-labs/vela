@@ -149,10 +149,12 @@ Cranelift JIT.
   sandboxed file read/write.
 - A GitHub Pages documentation site source exists under `site/` as an Astro
   Starlight project with English root routes, a complete Chinese `/zh/`
-  mirror, Starlight navigation/search/i18n, and a browser playground backed by
-  the `vela_playground_wasm` wrapper. The Pages workflow builds the WASM target,
-  generates `wasm-bindgen` browser bindings into Astro public assets, builds the
-  npm site, and deploys the Astro static artifact.
+  mirror, Starlight navigation/search/i18n, first-pass formal documentation
+  across the main guide, language, data, methods, stdlib, host, hot reload,
+  reflection/tooling, and reference sections, and a browser playground backed
+  by the `vela_playground_wasm` wrapper. The Pages workflow builds the WASM
+  target, generates `wasm-bindgen` browser bindings into Astro public assets,
+  builds the npm site, and deploys the Astro static artifact.
 - A parser fuzz target exists under `fuzz/` and can be compile-checked even
   when the local machine has not installed `cargo-fuzz`.
 - Current benchmark rules, baseline summaries, and M19 exit conclusions live in
