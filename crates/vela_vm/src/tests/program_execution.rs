@@ -270,6 +270,45 @@ fn main() {
 }
 
 #[test]
+fn managed_heap_map_replacement_preserves_first_inserted_key() {
+    let program = compile_standard_program_source(
+        SourceId::new(1),
+        r#"
+fn main() {
+    let scores = {"seed": 0};
+    scores.clear();
+    scores.set(-0.0f64, 8);
+    scores.set(0.0f64, 9);
+    return scores;
+}
+"#,
+    )
+    .expect("compile map key replacement source");
+    let mut budget = ExecutionBudget::unbounded();
+    let mut vm = Vm::new();
+    vm.register_standard_natives();
+
+    let result = run_linked_test_program_with_budget(&vm, &program, "main", &[], &mut budget)
+        .expect("run map key replacement source");
+
+    let OwnedValue::Map(entries) = result else {
+        panic!("main should return a map");
+    };
+    assert_eq!(entries.len(), 1, "0.0 and -0.0 must share a ValueKey");
+    assert_eq!(
+        entries[0].value,
+        OwnedValue::Scalar(vela_common::ScalarValue::I64(9))
+    );
+    let OwnedValue::Scalar(vela_common::ScalarValue::F64(key)) = entries[0].key else {
+        panic!("stored key should remain the first f64 key");
+    };
+    assert!(
+        key.is_sign_negative(),
+        "replacing an existing map entry must not replace the original key value"
+    );
+}
+
+#[test]
 fn managed_heap_execution_runs_script_impl_method_dispatch() {
     let program = compile_program_source(
         SourceId::new(1),
