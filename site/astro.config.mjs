@@ -1,6 +1,7 @@
 import { defineConfig } from 'astro/config';
 import starlight from '@astrojs/starlight';
 import mdx from '@astrojs/mdx';
+import velaGrammar from './src/syntax/vela.tmLanguage.json' with { type: 'json' };
 
 export default defineConfig({
   site: 'https://realm-labs.github.io',
@@ -26,9 +27,7 @@ export default defineConfig({
       customCss: ['./src/styles/custom.css'],
       expressiveCode: {
         shiki: {
-          langAlias: {
-            vela: 'rust',
-          },
+          langs: [velaGrammar],
         },
       },
       sidebar: [

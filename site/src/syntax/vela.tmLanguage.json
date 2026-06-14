@@ -1,0 +1,282 @@
+{
+  "$schema": "https://raw.githubusercontent.com/martinring/tmlanguage/master/tmlanguage.json",
+  "name": "Vela",
+  "scopeName": "source.vela",
+  "fileTypes": ["vela"],
+  "patterns": [
+    { "include": "#comments" },
+    { "include": "#attributes" },
+    { "include": "#strings" },
+    { "include": "#numbers" },
+    { "include": "#declarations" },
+    { "include": "#function_calls" },
+    { "include": "#types" },
+    { "include": "#constants" },
+    { "include": "#keywords" },
+    { "include": "#operators" },
+    { "include": "#punctuation" }
+  ],
+  "repository": {
+    "comments": {
+      "patterns": [
+        {
+          "name": "comment.line.double-slash.vela",
+          "match": "//.*$"
+        },
+        {
+          "name": "comment.block.vela",
+          "begin": "/\\*",
+          "end": "\\*/",
+          "patterns": [
+            { "include": "#comments" }
+          ]
+        }
+      ]
+    },
+    "attributes": {
+      "patterns": [
+        {
+          "name": "meta.attribute.vela",
+          "begin": "#\\s*\\[",
+          "beginCaptures": {
+            "0": { "name": "punctuation.definition.attribute.begin.vela" }
+          },
+          "end": "\\]",
+          "endCaptures": {
+            "0": { "name": "punctuation.definition.attribute.end.vela" }
+          },
+          "patterns": [
+            { "include": "#strings" },
+            { "include": "#numbers" },
+            {
+              "name": "entity.other.attribute-name.vela",
+              "match": "\\b[A-Za-z_][A-Za-z0-9_]*(?=\\s*(?:\\.|\\(|,|=|\\]))"
+            },
+            { "include": "#operators" },
+            { "include": "#punctuation" }
+          ]
+        }
+      ]
+    },
+    "strings": {
+      "patterns": [
+        {
+          "name": "string.quoted.triple.vela",
+          "begin": "f?\"\"\"",
+          "end": "\"\"\"",
+          "patterns": [
+            { "include": "#escapes" },
+            { "include": "#interpolation" }
+          ]
+        },
+        {
+          "name": "string.quoted.double.vela",
+          "begin": "f?\"",
+          "end": "\"",
+          "patterns": [
+            { "include": "#escapes" },
+            { "include": "#interpolation" }
+          ]
+        },
+        {
+          "name": "string.quoted.single.vela",
+          "begin": "'",
+          "end": "'",
+          "patterns": [
+            { "include": "#escapes" }
+          ]
+        }
+      ]
+    },
+    "escapes": {
+      "patterns": [
+        {
+          "name": "constant.character.escape.vela",
+          "match": "\\\\(?:[\"\\\\/nrt0]|u\\{[0-9A-Fa-f]+\\})"
+        }
+      ]
+    },
+    "interpolation": {
+      "patterns": [
+        {
+          "name": "meta.interpolation.vela",
+          "begin": "\\{",
+          "beginCaptures": {
+            "0": { "name": "punctuation.section.interpolation.begin.vela" }
+          },
+          "end": "\\}",
+          "endCaptures": {
+            "0": { "name": "punctuation.section.interpolation.end.vela" }
+          },
+          "patterns": [
+            { "include": "#comments" },
+            { "include": "#strings" },
+            { "include": "#numbers" },
+            { "include": "#function_calls" },
+            { "include": "#types" },
+            { "include": "#constants" },
+            { "include": "#keywords" },
+            { "include": "#operators" },
+            { "include": "#punctuation" }
+          ]
+        }
+      ]
+    },
+    "numbers": {
+      "patterns": [
+        {
+          "name": "constant.numeric.float.vela",
+          "match": "\\b(?:[0-9](?:_?[0-9])*\\.[0-9](?:_?[0-9])*(?:[eE][+-]?[0-9](?:_?[0-9])*)?)(?:_[A-Za-z][A-Za-z0-9_]*)?\\b"
+        },
+        {
+          "name": "constant.numeric.hex.vela",
+          "match": "\\b0x[0-9A-Fa-f](?:_?[0-9A-Fa-f])*(?:_[A-Za-z][A-Za-z0-9_]*)?\\b"
+        },
+        {
+          "name": "constant.numeric.binary.vela",
+          "match": "\\b0b[01](?:_?[01])*(?:_[A-Za-z][A-Za-z0-9_]*)?\\b"
+        },
+        {
+          "name": "constant.numeric.integer.vela",
+          "match": "\\b[0-9](?:_?[0-9])*(?:_[A-Za-z][A-Za-z0-9_]*)?\\b"
+        }
+      ]
+    },
+    "declarations": {
+      "patterns": [
+        {
+          "name": "meta.function.definition.vela",
+          "match": "\\b(fn)\\s+([A-Za-z_][A-Za-z0-9_]*)",
+          "captures": {
+            "1": { "name": "keyword.declaration.function.vela" },
+            "2": { "name": "entity.name.function.vela" }
+          }
+        },
+        {
+          "name": "meta.type.definition.vela",
+          "match": "\\b(struct|enum|trait)\\s+([A-Za-z_][A-Za-z0-9_]*)",
+          "captures": {
+            "1": { "name": "keyword.declaration.type.vela" },
+            "2": { "name": "entity.name.type.vela" }
+          }
+        },
+        {
+          "name": "meta.impl.definition.vela",
+          "match": "\\b(impl)\\s+([A-Za-z_][A-Za-z0-9_]*(?:::[A-Za-z_][A-Za-z0-9_]*)*)",
+          "captures": {
+            "1": { "name": "keyword.declaration.impl.vela" },
+            "2": { "name": "entity.name.type.vela" }
+          }
+        }
+      ]
+    },
+    "function_calls": {
+      "patterns": [
+        {
+          "name": "entity.name.function.call.vela",
+          "match": "\\b[A-Za-z_][A-Za-z0-9_]*(?=\\s*\\()"
+        },
+        {
+          "name": "entity.name.function.method.vela",
+          "match": "(?<=\\.)[A-Za-z_][A-Za-z0-9_]*(?=\\s*\\()"
+        }
+      ]
+    },
+    "types": {
+      "patterns": [
+        {
+          "name": "support.type.primitive.vela",
+          "match": "\\b(?:any|null|bool|int|float|string|bytes|array|map|set|function|i64|u64|f64)\\b"
+        },
+        {
+          "name": "entity.name.type.vela",
+          "match": "\\b[A-Z][A-Za-z0-9_]*(?=\\b)"
+        }
+      ]
+    },
+    "constants": {
+      "patterns": [
+        {
+          "name": "constant.language.boolean.vela",
+          "match": "\\b(?:true|false)\\b"
+        },
+        {
+          "name": "constant.language.null.vela",
+          "match": "\\bnull\\b"
+        },
+        {
+          "name": "variable.language.self.vela",
+          "match": "\\bself\\b"
+        }
+      ]
+    },
+    "keywords": {
+      "patterns": [
+        {
+          "name": "keyword.control.vela",
+          "match": "\\b(?:if|else|match|for|in|return|break|continue)\\b"
+        },
+        {
+          "name": "keyword.declaration.vela",
+          "match": "\\b(?:use|pub|const|global|let|fn|struct|enum|trait|impl|as)\\b"
+        },
+        {
+          "name": "keyword.operator.word.vela",
+          "match": "\\b(?:and|or|not)\\b"
+        }
+      ]
+    },
+    "operators": {
+      "patterns": [
+        {
+          "name": "keyword.operator.assignment.vela",
+          "match": "\\+=|-=|\\*=|/=|%=|="
+        },
+        {
+          "name": "keyword.operator.comparison.vela",
+          "match": "==|!=|<=|>=|<|>"
+        },
+        {
+          "name": "keyword.operator.logical.vela",
+          "match": "&&|\\|\\||!"
+        },
+        {
+          "name": "keyword.operator.range.vela",
+          "match": "\\.\\.=|\\.\\."
+        },
+        {
+          "name": "keyword.operator.arithmetic.vela",
+          "match": "\\+|-|\\*|/|%"
+        },
+        {
+          "name": "keyword.operator.try.vela",
+          "match": "\\?"
+        },
+        {
+          "name": "storage.type.return.vela",
+          "match": "->"
+        }
+      ]
+    },
+    "punctuation": {
+      "patterns": [
+        {
+          "name": "punctuation.separator.path.vela",
+          "match": "::"
+        },
+        {
+          "name": "punctuation.accessor.vela",
+          "match": "\\."
+        },
+        {
+          "name": "punctuation.separator.vela",
+          "match": "[,;:]"
+        },
+        {
+          "name": "punctuation.bracket.vela",
+          "match": "[(){}\\[\\]]"
+        }
+      ]
+    }
+  }
+}
