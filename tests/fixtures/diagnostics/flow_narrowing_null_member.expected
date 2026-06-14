@@ -1,25 +1,25 @@
 error[analysis::unknown_field]: unknown field `levle` for `Player`
   --> flow_narrowing_null_member.vela:3:9
-   |
+    |
   3 |         player.levle;
-   |         ^^^^^^^^^^^^ unknown field `levle` for `Player`
+    |         ^^^^^^^^^^^^ unknown field `levle` for `Player`
   --> flow_narrowing_null_member.vela:3:9
-   |
+    |
   3 |         player.levle;
-   |         ^^^^^^^^^^^^ unknown member access
+    |         ^^^^^^^^^^^^ unknown member access
   --> flow_narrowing_null_member.vela:3:9
-   |
+    |
   3 |         player.levle;
-   |         ^^^^^^^^^^^^ did you mean `level`?
+    |         ^^^^^^^^^^^^ did you mean `level`?
   --> flow_narrowing_null_member.vela:3:9
-   |
+    |
   3 |         player.levle;
-   |         ^^^^^^^^^^^^ similar candidates: level, inventory
+    |         ^^^^^^^^^^^^ similar candidates: level, inventory
   --> flow_narrowing_null_member.vela:3:9
-   |
+    |
   3 |         player.levle;
-   |         ^^^^^^^^^^^^ candidate `Player.level` is readable and writable
+    |         ^^^^^^^^^^^^ candidate `Player.level` is readable and writable
   --> flow_narrowing_null_member.vela:3:9
-   |
+    |
   3 |         player.levle;
-   |         ^^^^^^^^^^^^ candidate `Player.inventory` is readable and read-only
+    |         ^^^^^^^^^^^^ candidate `Player.inventory` is readable and read-only

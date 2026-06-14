@@ -84,11 +84,17 @@ impl DiagnosticRenderer {
             "  --> {}:{}:{}",
             source.name, first_line.number, first_line.column
         ));
-        lines.push("   |".to_owned());
+        let gutter_width = span_lines
+            .iter()
+            .map(|line| decimal_width(line.number))
+            .max()
+            .unwrap_or(1);
+        lines.push(format!("  {:>gutter_width$} |", ""));
         for (index, line) in span_lines.iter().enumerate() {
-            lines.push(format!("{:>3} | {}", line.number, line.text));
+            lines.push(format!("  {:>gutter_width$} | {}", line.number, line.text));
             lines.push(format!(
-                "   | {}{}{}",
+                "  {:>gutter_width$} | {}{}{}",
+                "",
                 " ".repeat(line.caret_padding),
                 "^".repeat(line.caret_width),
                 if index == 0 && !message.is_empty() {
@@ -176,6 +182,15 @@ fn lines_for_span(source: &str, span: Span) -> Option<Vec<RenderLine>> {
     Some(lines)
 }
 
+const fn decimal_width(mut value: usize) -> usize {
+    let mut width = 1;
+    while value >= 10 {
+        value /= 10;
+        width += 1;
+    }
+    width
+}
+
 #[cfg(test)]
 mod tests {
     use crate::{Diagnostic, SourceId, Span};
@@ -201,13 +216,13 @@ mod tests {
             "\
 error[hir::unknown_field]: unknown field `levle`
   --> combat.vela:2:19
-   |
+    |
   2 |     return player.levle;
-   |                   ^^^^^ unknown field `levle`
+    |                   ^^^^^ unknown field `levle`
   --> combat.vela:2:12
-   |
+    |
   2 |     return player.levle;
-   |            ^^^^^^ receiver is `Player`"
+    |            ^^^^^^ receiver is `Player`"
         );
     }
 
@@ -230,6 +245,33 @@ error[hir::unknown_field]: unknown field `levle`
     }
 
     #[test]
+    fn aligns_marker_gutter_with_source_lines() {
+        let source = DiagnosticSource::new(
+            SourceId::new(1),
+            "host_write_permission_denied.vela",
+            "fn main(player: Player) {\n    player.level = 12;\n}\n",
+        );
+        let diagnostic = Diagnostic::error("runtime error")
+            .with_code("vm::host_error")
+            .with_span(Span::new(SourceId::new(1), 30, 42));
+
+        let lines = render_diagnostic(&diagnostic, [source]);
+        let source_pipe = lines[3].find('|').expect("source line has a gutter");
+        let marker_pipe = lines[4].find('|').expect("marker line has a gutter");
+
+        assert_eq!(source_pipe, marker_pipe);
+        assert_eq!(
+            lines.join("\n"),
+            "\
+error[vm::host_error]: runtime error
+  --> host_write_permission_denied.vela:2:5
+    |
+  2 |     player.level = 12;
+    |     ^^^^^^^^^^^^ runtime error"
+        );
+    }
+
+    #[test]
     fn renders_multi_line_spans() {
         let source = DiagnosticSource::new(
             SourceId::new(1),
@@ -247,11 +289,11 @@ error[hir::unknown_field]: unknown field `levle`
             "\
 error[hir::top_level_effect]: top-level host mutation
   --> combat.vela:2:1
-   |
+    |
   2 |     player.level += 1
-   | ^^^^^^^^^^^^^^^^^^^^^ top-level host mutation
+    | ^^^^^^^^^^^^^^^^^^^^^ top-level host mutation
   3 |     player.exp = 0
-   | ^^^^^^^^^^^^^^^^^^"
+    | ^^^^^^^^^^^^^^^^^^"
         );
     }
 }

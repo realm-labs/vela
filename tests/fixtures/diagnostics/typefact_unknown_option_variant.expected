@@ -1,31 +1,31 @@
 error[analysis::unknown_variant]: unknown variant `Smoe` for `Option`
   --> typefact_unknown_option_variant.vela:2:5
-   |
+    |
   2 |     match maybe {
-   |     ^^^^^^^^^^^^^ unknown variant `Smoe` for `Option`
+    |     ^^^^^^^^^^^^^ unknown variant `Smoe` for `Option`
   3 |         Option::Smoe(value) => value,
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
   4 |         Option::None => 0,
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^
+    | ^^^^^^^^^^^^^^^^^^^^^^^^^^
   5 |     };
-   | ^^^^^
+    | ^^^^^
   --> typefact_unknown_option_variant.vela:2:5
-   |
+    |
   2 |     match maybe {
-   |     ^^^^^^^^^^^^^ unknown match pattern variant
+    |     ^^^^^^^^^^^^^ unknown match pattern variant
   3 |         Option::Smoe(value) => value,
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
   4 |         Option::None => 0,
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^
+    | ^^^^^^^^^^^^^^^^^^^^^^^^^^
   5 |     };
-   | ^^^^^
+    | ^^^^^
   --> typefact_unknown_option_variant.vela:2:5
-   |
+    |
   2 |     match maybe {
-   |     ^^^^^^^^^^^^^ available variants: Some, None
+    |     ^^^^^^^^^^^^^ available variants: Some, None
   3 |         Option::Smoe(value) => value,
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
   4 |         Option::None => 0,
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^
+    | ^^^^^^^^^^^^^^^^^^^^^^^^^^
   5 |     };
-   | ^^^^^
+    | ^^^^^

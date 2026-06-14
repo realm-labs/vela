@@ -1,9 +1,9 @@
 error[vm::host_error]: host error: PermissionDenied { path: HostPath { root: HostRef { type_id: HostTypeId(1), object_id: HostObjectId(42), generation: 1 }, segments: [Field(FieldId(1))] }, action: "read" }
   --> host_permission_denied.vela:2:12
-   |
+    |
   2 |     return player.level;
-   |            ^^^^^^^^^^^^ host error: PermissionDenied { path: HostPath { root: HostRef { type_id: HostTypeId(1), object_id: HostObjectId(42), generation: 1 }, segments: [Field(FieldId(1))] }, action: "read" }
+    |            ^^^^^^^^^^^^ host error: PermissionDenied { path: HostPath { root: HostRef { type_id: HostTypeId(1), object_id: HostObjectId(42), generation: 1 }, segments: [Field(FieldId(1))] }, action: "read" }
   --> host_permission_denied.vela:2:12
-   |
+    |
   2 |     return player.level;
-   |            ^^^^^^^^^^^^ runtime error
+    |            ^^^^^^^^^^^^ runtime error

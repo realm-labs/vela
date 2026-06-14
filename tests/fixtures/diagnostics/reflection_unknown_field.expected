@@ -1,9 +1,9 @@
 error[reflect::unknown_field]: unknown reflected field `leve` on `Player`; candidates: level
   --> reflection_unknown_field.vela:2:12
-   |
+    |
   2 |     return reflect::get(player, "leve");
-   |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ unknown reflected field `leve` on `Player`; candidates: level
+    |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ unknown reflected field `leve` on `Player`; candidates: level
   --> reflection_unknown_field.vela:2:12
-   |
+    |
   2 |     return reflect::get(player, "leve");
-   |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ runtime error
+    |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ runtime error

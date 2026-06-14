@@ -1,9 +1,9 @@
 error[vm::host_error]: host error: PermissionDenied { path: HostPath { root: HostRef { type_id: HostTypeId(1), object_id: HostObjectId(42), generation: 1 }, segments: [Field(FieldId(1))] }, action: "write" }
   --> host_compound_write_denied.vela:2:5
-   |
+    |
   2 |     player.level += 1;
-   |     ^^^^^^^^^^^^ host error: PermissionDenied { path: HostPath { root: HostRef { type_id: HostTypeId(1), object_id: HostObjectId(42), generation: 1 }, segments: [Field(FieldId(1))] }, action: "write" }
+    |     ^^^^^^^^^^^^ host error: PermissionDenied { path: HostPath { root: HostRef { type_id: HostTypeId(1), object_id: HostObjectId(42), generation: 1 }, segments: [Field(FieldId(1))] }, action: "write" }
   --> host_compound_write_denied.vela:2:5
-   |
+    |
   2 |     player.level += 1;
-   |     ^^^^^^^^^^^^ runtime error
+    |     ^^^^^^^^^^^^ runtime error

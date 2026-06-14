@@ -1,25 +1,25 @@
 error[analysis::unknown_field]: unknown field `levle` for `Player`
   --> unknown_host_field.vela:2:5
-   |
+    |
   2 |     player.levle;
-   |     ^^^^^^^^^^^^ unknown field `levle` for `Player`
+    |     ^^^^^^^^^^^^ unknown field `levle` for `Player`
   --> unknown_host_field.vela:2:5
-   |
+    |
   2 |     player.levle;
-   |     ^^^^^^^^^^^^ unknown member access
+    |     ^^^^^^^^^^^^ unknown member access
   --> unknown_host_field.vela:2:5
-   |
+    |
   2 |     player.levle;
-   |     ^^^^^^^^^^^^ did you mean `level`?
+    |     ^^^^^^^^^^^^ did you mean `level`?
   --> unknown_host_field.vela:2:5
-   |
+    |
   2 |     player.levle;
-   |     ^^^^^^^^^^^^ similar candidates: level, inventory
+    |     ^^^^^^^^^^^^ similar candidates: level, inventory
   --> unknown_host_field.vela:2:5
-   |
+    |
   2 |     player.levle;
-   |     ^^^^^^^^^^^^ candidate `Player.level` is readable and writable
+    |     ^^^^^^^^^^^^ candidate `Player.level` is readable and writable
   --> unknown_host_field.vela:2:5
-   |
+    |
   2 |     player.levle;
-   |     ^^^^^^^^^^^^ candidate `Player.inventory` is readable and read-only
+    |     ^^^^^^^^^^^^ candidate `Player.inventory` is readable and read-only
