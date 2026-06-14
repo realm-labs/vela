@@ -280,6 +280,69 @@ fn main(first, duplicate, second) {
 }
 
 #[test]
+fn managed_heap_execution_uses_closure_and_iterator_identity_map_set_keys() {
+    let program = compile_standard_program_source(
+        SourceId::new(1),
+        r#"
+fn main() {
+    let inc = |value| value + 1;
+    let inc_alias = inc;
+    let inc_same_body = |value| value + 1;
+    let next = |value| value + 2;
+
+    let closure_scores = {"seed": 0};
+    closure_scores.clear();
+    closure_scores.set(inc, 10);
+    closure_scores.set(inc_alias, 20);
+    closure_scores.set(inc_same_body, 30);
+    let closures = set::from_array([inc, inc_alias, inc_same_body, next]);
+
+    let iter = [1, 2].iter();
+    let iter_alias = iter;
+    let other_iter = [1, 2].iter();
+    let iterator_scores = {"seed": 0};
+    iterator_scores.clear();
+    iterator_scores.set(iter, 3);
+    iterator_scores.set(iter_alias, 4);
+    iterator_scores.set(other_iter, 5);
+    let iterators = set::from_array([iter, iter_alias, other_iter]);
+
+    if closure_scores.len() == 2
+        && closure_scores[inc] == 20
+        && closure_scores[inc_alias] == 20
+        && closure_scores[inc_same_body] == 30
+        && closures.len() == 3
+        && closures.has(inc)
+        && closures.has(inc_alias)
+        && closures.has(inc_same_body)
+        && closures.has(next)
+        && iterator_scores.len() == 2
+        && iterator_scores[iter] == 4
+        && iterator_scores[iter_alias] == 4
+        && iterator_scores[other_iter] == 5
+        && iterators.len() == 2
+        && iterators.has(iter)
+        && iterators.has(iter_alias)
+        && iterators.has(other_iter)
+    {
+        return closure_scores[inc] + iterator_scores[iter] + closures.len() + iterators.len();
+    }
+    return 0;
+}
+"#,
+    )
+    .expect("compile value-keyed closure/iterator map/set source");
+    let mut budget = ExecutionBudget::unbounded();
+    let mut vm = Vm::new();
+    vm.register_standard_natives();
+
+    assert_eq!(
+        run_linked_test_program_with_budget(&vm, &program, "main", &[], &mut budget),
+        Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(29)))
+    );
+}
+
+#[test]
 fn managed_heap_map_indexing_uses_record_identity_keys() {
     let program = compile_standard_program_source(
         SourceId::new(1),
