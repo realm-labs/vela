@@ -2,9 +2,11 @@ use std::collections::BTreeMap;
 
 use crate::heap::HeapValue;
 use crate::heap_values::script_map_from_string_entries;
+use crate::script_set::ScriptSet;
 use crate::{
     CallFrame, ExecutionBudget, HeapExecution, SmallStorage, Value, VmError, VmErrorKind, VmResult,
-    allocate_heap_value, expect_int, store_runtime_value,
+    allocate_heap_value, collection_mutation::check_collection_len, expect_int,
+    store_runtime_value,
 };
 use vela_bytecode::{Constant, ConstantId, LinkedCodeObject, Register};
 use vela_common::Span;
@@ -41,6 +43,39 @@ pub(crate) fn make_map(
     let slots = runtime_map_from_registers(frame, entries, heap, budget_ref(&mut budget))?;
     let slots = script_map_from_string_entries(slots, heap, budget_ref(&mut budget), "map heap")?;
     let value = allocate_heap_value(HeapValue::Map(slots), heap, budget_ref(&mut budget))?;
+    frame.write(dst, value)
+}
+
+pub(crate) fn make_set_from_array(
+    frame: &mut CallFrame,
+    heap: Option<&mut HeapExecution<'_>>,
+    mut budget: Option<&mut ExecutionBudget>,
+    dst: Register,
+    src: Register,
+) -> VmResult<()> {
+    let Some(heap) = heap else {
+        return Err(VmError::new(VmErrorKind::TypeMismatch {
+            operation: "set::from_array",
+        }));
+    };
+    let Value::HeapRef(reference) = frame.read(src)? else {
+        return Err(VmError::new(VmErrorKind::TypeMismatch {
+            operation: "set::from_array",
+        }));
+    };
+    let values = match heap.heap.get(reference) {
+        Some(HeapValue::Array(values)) => values.clone(),
+        _ => {
+            return Err(VmError::new(VmErrorKind::TypeMismatch {
+                operation: "set::from_array",
+            }));
+        }
+    };
+    let values = ScriptSet::from_values(values, Some(&*heap), "set::from_array")?;
+    check_collection_len("set", 0, values.len(), budget.as_deref(), |budget| {
+        budget.collection_limits().max_set_len
+    })?;
+    let value = allocate_heap_value(HeapValue::Set(values), heap, budget_ref(&mut budget))?;
     frame.write(dst, value)
 }
 

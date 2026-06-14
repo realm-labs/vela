@@ -872,6 +872,10 @@ pub enum UnlinkedInstructionKind {
         dst: Register,
         elements: Vec<Register>,
     },
+    MakeSetFromArray {
+        dst: Register,
+        src: Register,
+    },
     FormatString {
         dst: Register,
         parts: Vec<FormatStringPart>,

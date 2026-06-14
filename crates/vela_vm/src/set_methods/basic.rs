@@ -11,17 +11,7 @@ pub(crate) fn from_array(args: &[OwnedValue]) -> VmResult<OwnedValue> {
     let OwnedValue::Array(values) = &args[0] else {
         return owned_type_error("set::from_array");
     };
-    let mut set = Vec::new();
-    for value in values {
-        let key = OwnedSetKey::from_value(value, "set::from_array")?;
-        if set.iter().any(|existing| {
-            OwnedSetKey::from_value(existing, "set::from_array").as_ref() == Ok(&key)
-        }) {
-            continue;
-        }
-        set.push(value.clone());
-    }
-    Ok(OwnedValue::Set(set))
+    Ok(OwnedValue::Set(values.clone()))
 }
 
 pub(crate) fn has(
@@ -66,30 +56,6 @@ pub(crate) fn values(
         heap,
         budget.as_deref_mut(),
     )
-}
-
-#[derive(Clone, Debug, PartialEq)]
-enum OwnedSetKey {
-    Null,
-    Bool(bool),
-    Int(i64),
-    Float(u64),
-    String(String),
-}
-
-impl OwnedSetKey {
-    fn from_value(value: &OwnedValue, operation: &'static str) -> VmResult<Self> {
-        match value {
-            OwnedValue::Null => Ok(Self::Null),
-            OwnedValue::Bool(value) => Ok(Self::Bool(*value)),
-            OwnedValue::Scalar(vela_common::ScalarValue::I64(value)) => Ok(Self::Int(*value)),
-            OwnedValue::Scalar(vela_common::ScalarValue::F64(value)) if value.is_finite() => {
-                Ok(Self::Float(value.to_bits()))
-            }
-            OwnedValue::String(value) => Ok(Self::String(value.clone())),
-            _ => owned_type_error(operation),
-        }
-    }
 }
 
 fn owned_type_error<T>(operation: &'static str) -> VmResult<T> {

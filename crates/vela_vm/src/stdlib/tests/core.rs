@@ -237,25 +237,36 @@ fn main() {
 }
 
 #[test]
-fn set_from_array_rejects_non_scalar_elements() {
+fn set_from_array_uses_value_keyed_identity_elements() {
     let source = r#"
+struct Player {
+    id
+    level
+}
+
 fn main() {
-    return set::from_array([[1]]);
+    let a = Player { id: 1, level: 10 };
+    let b = Player { id: 1, level: 10 };
+    let values = [[1], [1], a, a, b];
+    let seen = set::from_array(values);
+    a.level += 1;
+    let c = Player { id: 1, level: 11 };
+
+    if seen.has(a) && seen.has(b) && !seen.has(c) {
+        return seen.len();
+    }
+    return 0;
 }
 "#;
 
     let program = compile_standard_program_source(SourceId::new(1), source)
-        .expect("set type error source should compile");
+        .expect("value-keyed set source should compile");
     let mut vm = Vm::new();
     vm.register_standard_natives();
     let mut budget = ExecutionBudget::unbounded();
 
-    let error = run_linked_stdlib_test_program_with_budget(&vm, &program, "main", &[], &mut budget)
-        .expect_err("set::from_array should reject non-scalar elements");
-    assert_eq!(
-        error.kind(),
-        VmErrorKind::TypeMismatch {
-            operation: "set::from_array"
-        }
-    );
+    let result =
+        run_linked_stdlib_test_program_with_budget(&vm, &program, "main", &[], &mut budget)
+            .expect("set::from_array should preserve value-keyed identities");
+    assert_eq!(result, OwnedValue::Scalar(vela_common::ScalarValue::I64(4)));
 }

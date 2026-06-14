@@ -608,6 +608,12 @@ impl<'linker, 'registry> LinkContext<'linker, 'registry> {
                 dst: *dst,
                 elements: elements.clone(),
             },
+            UnlinkedInstructionKind::MakeSetFromArray { dst, src } => {
+                InstructionKind::MakeSetFromArray {
+                    dst: *dst,
+                    src: *src,
+                }
+            }
             UnlinkedInstructionKind::FormatString { dst, parts } => InstructionKind::FormatString {
                 dst: *dst,
                 parts: parts.clone(),

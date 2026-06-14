@@ -356,6 +356,7 @@ fn opcode_label(kind: &InstructionKind) -> &'static str {
         InstructionKind::CallDynamicMethod { .. } => "CallDynamicMethod",
         InstructionKind::TryPropagate { .. } => "TryPropagate",
         InstructionKind::MakeArray { .. } => "MakeArray",
+        InstructionKind::MakeSetFromArray { .. } => "MakeSetFromArray",
         InstructionKind::FormatString { .. } => "FormatString",
         InstructionKind::MakeMap { .. } => "MakeMap",
         InstructionKind::MakeRange { .. } => "MakeRange",

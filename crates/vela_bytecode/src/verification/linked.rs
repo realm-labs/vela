@@ -326,6 +326,10 @@ fn verify_linked_instruction(
             verify_linked_register(function, instruction_index, code, *dst)?;
             verify_linked_registers(function, instruction_index, code, elements)
         }
+        InstructionKind::MakeSetFromArray { dst, src } => {
+            verify_linked_register(function, instruction_index, code, *dst)?;
+            verify_linked_register(function, instruction_index, code, *src)
+        }
         InstructionKind::FormatString { dst, parts } => {
             verify_linked_register(function, instruction_index, code, *dst)?;
             verify_linked_format_string_parts(function, instruction_index, code, parts)

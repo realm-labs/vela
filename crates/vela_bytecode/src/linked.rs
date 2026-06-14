@@ -799,6 +799,10 @@ pub enum InstructionKind {
         dst: Register,
         elements: Vec<Register>,
     },
+    MakeSetFromArray {
+        dst: Register,
+        src: Register,
+    },
     FormatString {
         dst: Register,
         parts: Vec<crate::FormatStringPart>,

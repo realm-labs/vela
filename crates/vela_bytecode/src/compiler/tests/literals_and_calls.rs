@@ -956,6 +956,10 @@ fn main() {
     let main = program.function("main").expect("main function");
     let methods = nested_method_id_names(main);
 
+    assert!(main.instructions.iter().any(|instruction| matches!(
+        &instruction.kind,
+        UnlinkedInstructionKind::MakeSetFromArray { .. }
+    )));
     assert!(methods.iter().any(|method| method == "values"));
     assert!(methods.iter().any(|method| method == "sum"));
     assert!(methods.iter().any(|method| method == "sort_by"));

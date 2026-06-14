@@ -98,6 +98,27 @@ impl Compiler<'_, '_> {
             );
         } else {
             let fallback_name = callable_name(callee)?;
+            if fallback_name == "set::from_array" {
+                reject_named_args(args, "set::from_array")?;
+                if args.len() != 1 {
+                    return Err(CompileError::new(CompileErrorKind::SemanticDiagnostics(
+                        vec![
+                            Diagnostic::error(format!(
+                                "set::from_array expects 1 argument, got {}",
+                                args.len()
+                            ))
+                            .with_code("compiler::arity")
+                            .with_span(callee.span),
+                        ],
+                    )));
+                }
+                let src = self.compile_expr(&args[0].value)?;
+                self.emit_spanned(
+                    UnlinkedInstructionKind::MakeSetFromArray { dst, src },
+                    expr.span,
+                );
+                return Ok(dst);
+            }
             let native = self.resolve_native_function_id(&fallback_name, callee.span)?;
             let arg_registers =
                 self.compile_native_call_args(&fallback_name, native, args, callee.span)?;

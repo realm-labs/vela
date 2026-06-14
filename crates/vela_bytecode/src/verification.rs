@@ -508,6 +508,10 @@ fn verify_instruction(
             verify_register(function, instruction_index, code, *dst)?;
             verify_registers(function, instruction_index, code, elements)
         }
+        UnlinkedInstructionKind::MakeSetFromArray { dst, src } => {
+            verify_register(function, instruction_index, code, *dst)?;
+            verify_register(function, instruction_index, code, *src)
+        }
         UnlinkedInstructionKind::FormatString { dst, parts } => {
             verify_register(function, instruction_index, code, *dst)?;
             verify_format_string_parts(function, instruction_index, code, parts)

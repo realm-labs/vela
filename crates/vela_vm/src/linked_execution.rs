@@ -634,6 +634,15 @@ impl Vm {
                         elements,
                     )?;
                 }
+                InstructionKind::MakeSetFromArray { dst, src } => {
+                    script_aggregate_construction::make_set_from_array(
+                        &mut frame,
+                        heap.as_deref_mut(),
+                        budget.as_deref_mut(),
+                        *dst,
+                        *src,
+                    )?;
+                }
                 InstructionKind::FormatString { dst, parts } => {
                     format_strings::make_format_string(
                         &mut frame,
