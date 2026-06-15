@@ -289,23 +289,23 @@ cargo test -p vela_analysis diagnostic
 
 Purpose: expose the service through a native LSP binary.
 
-- [ ] Add `crates/vela_lsp_server`.
-- [ ] Implement `initialize`, `initialized`, `shutdown`, and `exit`.
-- [ ] Advertise only implemented capabilities.
+- [x] Add `crates/vela_lsp_server`.
+- [x] Implement `initialize`, `initialized`, `shutdown`, and `exit`.
+- [x] Advertise only implemented capabilities.
 - [ ] Implement full document sync first.
 - [ ] Add incremental document sync after text edit application is tested.
 - [ ] Implement workspace folder/config handling.
 - [ ] Wire cancellation and work-done progress.
 - [ ] Publish diagnostics for open files.
-- [ ] Add JSON-RPC fixture harness.
+- [x] Add JSON-RPC fixture harness.
 
 Tests:
 
-- [ ] `lsp_initialize_reports_capabilities`
+- [x] `lsp_initialize_reports_capabilities`
 - [ ] `lsp_did_open_publishes_diagnostics`
 - [ ] `lsp_did_change_replaces_document_text`
 - [ ] `lsp_cancellation_discards_stale_request`
-- [ ] `lsp_shutdown_exits_without_background_tasks`
+- [x] `lsp_shutdown_exits_without_background_tasks`
 
 Validation:
 

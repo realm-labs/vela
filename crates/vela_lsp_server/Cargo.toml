@@ -1,0 +1,13 @@
+[package]
+name = "vela_lsp_server"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[dependencies]
+serde = { workspace = true }
+serde_json = { workspace = true }
+vela_language_service = { workspace = true }
+
+[lints]
+workspace = true

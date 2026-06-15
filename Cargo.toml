@@ -11,6 +11,7 @@ members = [
     "crates/vela_hot_reload",
     "crates/vela_host",
     "crates/vela_language_service",
+    "crates/vela_lsp_server",
     "crates/vela_macros",
     "crates/vela_playground_wasm",
     "crates/vela_registry",
