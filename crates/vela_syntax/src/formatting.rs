@@ -1,7 +1,7 @@
 use vela_common::{Diagnostic, SourceId, Span};
 
 use crate::lexer::lex;
-use crate::token::TokenKind;
+use crate::token::{Keyword, Symbol, TokenKind};
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct FormatElementStream {
@@ -89,6 +89,389 @@ pub fn extract_format_elements(source: SourceId, text: &str) -> FormatElementStr
         elements,
         diagnostics: lexed.diagnostics,
     }
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct FormattedSource {
+    text: String,
+    diagnostics: Vec<Diagnostic>,
+}
+
+impl FormattedSource {
+    #[must_use]
+    pub fn text(&self) -> &str {
+        &self.text
+    }
+
+    #[must_use]
+    pub fn diagnostics(&self) -> &[Diagnostic] {
+        &self.diagnostics
+    }
+}
+
+#[must_use]
+pub fn format_source(source: SourceId, text: &str) -> FormattedSource {
+    let stream = extract_format_elements(source, text);
+    let mut formatter = Formatter::new();
+    formatter.format(stream.elements());
+    FormattedSource {
+        text: formatter.finish(),
+        diagnostics: stream.diagnostics,
+    }
+}
+
+#[derive(Debug, Default)]
+struct Formatter {
+    output: String,
+    indent: usize,
+    line_start: bool,
+    pending_blank_lines: usize,
+    previous_token: Option<TokenKind>,
+    delimiter_stack: Vec<Symbol>,
+}
+
+impl Formatter {
+    fn new() -> Self {
+        Self {
+            line_start: true,
+            ..Self::default()
+        }
+    }
+
+    fn format(&mut self, elements: &[FormatElement]) {
+        for element in elements {
+            match element.kind() {
+                FormatElementKind::Token(TokenKind::Eof) => {}
+                FormatElementKind::Token(token) => self.write_token(token, element.text()),
+                FormatElementKind::Trivia(kind) => self.write_trivia(*kind, element.text()),
+            }
+        }
+    }
+
+    fn finish(mut self) -> String {
+        self.trim_trailing_horizontal_space();
+        if !self.output.is_empty() && !self.output.ends_with('\n') {
+            self.output.push('\n');
+        }
+        self.output
+    }
+
+    fn write_trivia(&mut self, kind: TriviaKind, text: &str) {
+        match kind {
+            TriviaKind::Whitespace => {
+                self.pending_blank_lines = self
+                    .pending_blank_lines
+                    .max(text.matches('\n').count().saturating_sub(1));
+            }
+            TriviaKind::LineComment | TriviaKind::Shebang => self.write_line_comment(text),
+            TriviaKind::BlockComment => self.write_block_comment(text),
+            TriviaKind::Unknown => self.write_unknown_trivia(text),
+        }
+    }
+
+    fn write_line_comment(&mut self, text: &str) {
+        if !self.line_start {
+            self.output.push(' ');
+        }
+        self.write_indent_if_needed();
+        self.output.push_str(text.trim_end());
+        self.newline();
+    }
+
+    fn write_block_comment(&mut self, text: &str) {
+        if text.contains('\n') {
+            self.ensure_line_start();
+            self.write_indent_if_needed();
+            self.output.push_str(text.trim_end());
+            self.newline();
+        } else {
+            if !self.line_start {
+                self.output.push(' ');
+            }
+            self.write_indent_if_needed();
+            self.output.push_str(text.trim_end());
+        }
+    }
+
+    fn write_unknown_trivia(&mut self, text: &str) {
+        self.write_indent_if_needed();
+        self.output.push_str(text);
+    }
+
+    fn write_token(&mut self, token: &TokenKind, text: &str) {
+        match token {
+            TokenKind::Symbol(symbol) => self.write_symbol(*symbol, text),
+            _ => {
+                self.write_space_before_word(token);
+                self.write_indent_if_needed();
+                self.output.push_str(text);
+            }
+        }
+        self.previous_token = Some(token.clone());
+    }
+
+    fn write_symbol(&mut self, symbol: Symbol, text: &str) {
+        match symbol {
+            Symbol::LBrace => {
+                self.write_space_before_open_brace();
+                self.write_indent_if_needed();
+                self.output.push_str(text);
+                self.delimiter_stack.push(symbol);
+                self.indent = self.indent.saturating_add(1);
+                self.newline();
+            }
+            Symbol::RBrace => {
+                self.indent = self.indent.saturating_sub(1);
+                self.pop_delimiter(Symbol::LBrace);
+                self.ensure_line_start();
+                self.write_indent_if_needed();
+                self.output.push_str(text);
+            }
+            Symbol::LParen | Symbol::LBracket => {
+                self.write_indent_if_needed();
+                self.output.push_str(text);
+                self.delimiter_stack.push(symbol);
+            }
+            Symbol::RParen => {
+                self.trim_trailing_horizontal_space();
+                self.pop_delimiter(Symbol::LParen);
+                self.output.push_str(text);
+            }
+            Symbol::RBracket => {
+                self.trim_trailing_horizontal_space();
+                self.pop_delimiter(Symbol::LBracket);
+                self.output.push_str(text);
+            }
+            Symbol::Comma => {
+                self.trim_trailing_horizontal_space();
+                self.output.push_str(text);
+                if self.in_brace_block() {
+                    self.newline();
+                } else {
+                    self.output.push(' ');
+                }
+            }
+            Symbol::Semicolon => {
+                self.trim_trailing_horizontal_space();
+                self.output.push_str(text);
+                self.newline();
+            }
+            Symbol::Dot | Symbol::ColonColon | Symbol::Question => {
+                self.trim_trailing_horizontal_space();
+                self.output.push_str(text);
+            }
+            Symbol::Colon => {
+                self.trim_trailing_horizontal_space();
+                self.output.push_str(text);
+                self.output.push(' ');
+            }
+            Symbol::Arrow | Symbol::FatArrow => self.write_spaced_symbol(text),
+            symbol if is_assignment_or_binary_symbol(symbol) => self.write_spaced_symbol(text),
+            Symbol::Pipe => {
+                if matches!(
+                    self.previous_token,
+                    None | Some(TokenKind::Symbol(
+                        Symbol::LParen | Symbol::Equal | Symbol::Comma
+                    ))
+                ) {
+                    self.write_indent_if_needed();
+                    self.output.push_str(text);
+                } else {
+                    self.write_spaced_symbol(text);
+                }
+            }
+            _ => {
+                self.write_indent_if_needed();
+                self.output.push_str(text);
+            }
+        }
+    }
+
+    fn write_space_before_word(&mut self, token: &TokenKind) {
+        if self.line_start || !needs_space_between(self.previous_token.as_ref(), token) {
+            return;
+        }
+        self.trim_trailing_horizontal_space();
+        self.output.push(' ');
+    }
+
+    fn write_space_before_open_brace(&mut self) {
+        if self.line_start {
+            return;
+        }
+        match self.previous_token {
+            Some(TokenKind::Symbol(
+                Symbol::LBrace | Symbol::LBracket | Symbol::ColonColon | Symbol::Dot,
+            )) => {}
+            _ => {
+                self.trim_trailing_horizontal_space();
+                self.output.push(' ');
+            }
+        }
+    }
+
+    fn write_spaced_symbol(&mut self, text: &str) {
+        if !self.line_start {
+            self.trim_trailing_horizontal_space();
+            self.output.push(' ');
+        }
+        self.write_indent_if_needed();
+        self.output.push_str(text);
+        self.output.push(' ');
+    }
+
+    fn write_indent_if_needed(&mut self) {
+        if !self.line_start {
+            return;
+        }
+        self.flush_blank_lines();
+        for _ in 0..self.indent {
+            self.output.push_str("    ");
+        }
+        self.line_start = false;
+    }
+
+    fn flush_blank_lines(&mut self) {
+        if self.output.is_empty() {
+            self.pending_blank_lines = 0;
+            return;
+        }
+        for _ in 0..self.pending_blank_lines.min(2) {
+            if !self.output.ends_with('\n') {
+                self.output.push('\n');
+            }
+            self.output.push('\n');
+        }
+        self.pending_blank_lines = 0;
+    }
+
+    fn ensure_line_start(&mut self) {
+        if !self.line_start {
+            self.newline();
+        }
+    }
+
+    fn newline(&mut self) {
+        self.trim_trailing_horizontal_space();
+        if !self.output.ends_with('\n') {
+            self.output.push('\n');
+        }
+        self.line_start = true;
+    }
+
+    fn trim_trailing_horizontal_space(&mut self) {
+        while self.output.ends_with([' ', '\t']) {
+            self.output.pop();
+        }
+    }
+
+    fn pop_delimiter(&mut self, expected: Symbol) {
+        if let Some(position) = self
+            .delimiter_stack
+            .iter()
+            .rposition(|symbol| *symbol == expected)
+        {
+            self.delimiter_stack.truncate(position);
+        }
+    }
+
+    fn in_brace_block(&self) -> bool {
+        self.delimiter_stack.last() == Some(&Symbol::LBrace)
+    }
+}
+
+fn needs_space_between(previous: Option<&TokenKind>, current: &TokenKind) -> bool {
+    let Some(previous) = previous else {
+        return false;
+    };
+    if matches!(
+        previous,
+        TokenKind::Symbol(
+            Symbol::LParen | Symbol::LBracket | Symbol::Dot | Symbol::ColonColon | Symbol::Bang
+        )
+    ) || matches!(
+        current,
+        TokenKind::Symbol(
+            Symbol::RParen
+                | Symbol::RBracket
+                | Symbol::RBrace
+                | Symbol::Comma
+                | Symbol::Dot
+                | Symbol::ColonColon
+                | Symbol::Semicolon
+                | Symbol::Question
+        )
+    ) {
+        return false;
+    }
+    is_word_like(previous) && is_word_like(current)
+}
+
+fn is_word_like(token: &TokenKind) -> bool {
+    matches!(
+        token,
+        TokenKind::Ident(_)
+            | TokenKind::Int(_)
+            | TokenKind::Float(_)
+            | TokenKind::Char(_)
+            | TokenKind::String(_)
+            | TokenKind::InterpolatedString(_)
+            | TokenKind::Bytes(_)
+            | TokenKind::Keyword(
+                Keyword::Use
+                    | Keyword::Pub
+                    | Keyword::Const
+                    | Keyword::Global
+                    | Keyword::Let
+                    | Keyword::Fn
+                    | Keyword::Struct
+                    | Keyword::Enum
+                    | Keyword::Trait
+                    | Keyword::Impl
+                    | Keyword::For
+                    | Keyword::If
+                    | Keyword::Else
+                    | Keyword::Match
+                    | Keyword::Return
+                    | Keyword::Break
+                    | Keyword::Continue
+                    | Keyword::True
+                    | Keyword::False
+                    | Keyword::Null
+                    | Keyword::SelfValue
+                    | Keyword::In
+                    | Keyword::As
+            )
+    )
+}
+
+fn is_assignment_or_binary_symbol(symbol: Symbol) -> bool {
+    matches!(
+        symbol,
+        Symbol::Equal
+            | Symbol::PlusEqual
+            | Symbol::MinusEqual
+            | Symbol::StarEqual
+            | Symbol::SlashEqual
+            | Symbol::PercentEqual
+            | Symbol::Plus
+            | Symbol::Minus
+            | Symbol::Star
+            | Symbol::Slash
+            | Symbol::Percent
+            | Symbol::BangEqual
+            | Symbol::BangEqualEqual
+            | Symbol::EqualEqual
+            | Symbol::EqualEqualEqual
+            | Symbol::Less
+            | Symbol::LessEqual
+            | Symbol::Greater
+            | Symbol::GreaterEqual
+            | Symbol::AndAnd
+            | Symbol::OrOr
+            | Symbol::DotDot
+            | Symbol::DotDotEqual
+    )
 }
 
 fn push_trivia_segments(
@@ -290,6 +673,29 @@ mod tests {
             )
         }));
         assert_eq!(reconstruct(&stream), source);
+    }
+
+    #[test]
+    fn formatting_formats_expressions_and_function_blocks() {
+        let source = "pub fn main(){return 1+2*3}";
+        let formatted = format_source(source_id(), source);
+
+        assert!(formatted.diagnostics().is_empty());
+        assert_eq!(
+            formatted.text(),
+            "pub fn main() {\n    return 1 + 2 * 3\n}\n"
+        );
+    }
+
+    #[test]
+    fn formatting_preserves_comments_while_formatting_blocks() {
+        let source = "fn main(){// keep\nlet value=1\n/* block\n\ncomment */\nreturn value}";
+        let formatted = format_source(source_id(), source);
+
+        assert_eq!(
+            formatted.text(),
+            "fn main() {\n    // keep\n    let value = 1\n    /* block\n\ncomment */\n    return value\n}\n"
+        );
     }
 
     fn reconstruct(stream: &FormatElementStream) -> String {

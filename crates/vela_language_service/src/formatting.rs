@@ -1,5 +1,8 @@
 use crate::{DiagnosticRange, DocumentId, LanguageServiceDatabases, LineIndex, Position, TextEdit};
-use vela_syntax::formatting::{FormatElementKind, TriviaKind, extract_format_elements};
+use vela_common::SourceId;
+use vela_syntax::formatting::{
+    FormatElementKind, TriviaKind, extract_format_elements, format_source,
+};
 
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub struct FormattingIr {
@@ -88,7 +91,7 @@ impl LanguageServiceDatabases {
         let Some(source) = self.source_db().records().get(document_id) else {
             return Vec::new();
         };
-        let formatted = format_document(source.text());
+        let formatted = format_document(source.source_id(), source.text());
         if formatted == source.text() {
             return Vec::new();
         }
@@ -127,30 +130,8 @@ fn service_segment_kind(kind: &FormatElementKind) -> FormattingSegmentKind {
     }
 }
 
-fn format_document(source: &str) -> String {
-    if source.is_empty() {
-        return String::new();
-    }
-
-    let mut formatted = String::with_capacity(source.len().saturating_add(1));
-    let mut saw_trailing_newline = false;
-    for line in source.split_inclusive('\n') {
-        saw_trailing_newline = line.ends_with('\n');
-        let line = line.strip_suffix('\n').unwrap_or(line);
-        let (body, ending) = line
-            .strip_suffix('\r')
-            .map_or((line, ""), |body| (body, "\r"));
-        formatted.push_str(body.trim_end_matches([' ', '\t']));
-        formatted.push_str(ending);
-        if saw_trailing_newline {
-            formatted.push('\n');
-        }
-    }
-
-    if !saw_trailing_newline {
-        formatted.push('\n');
-    }
-    formatted
+fn format_document(source_id: SourceId, source: &str) -> String {
+    format_source(source_id, source).text().to_owned()
 }
 
 fn trailing_whitespace_edits(source: &str, range: DiagnosticRange) -> Vec<TextEdit> {
@@ -280,7 +261,7 @@ mod tests {
 
         assert_eq!(
             formatted,
-            "// keep this comment\npub fn main() { // inline\n    return 1\n}\n"
+            "// keep this comment\npub fn main() {\n    // inline\n    return 1\n}\n"
         );
     }
 

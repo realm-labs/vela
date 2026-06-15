@@ -647,23 +647,25 @@ cargo test -p vela_lsp_server code_action
 Purpose: provide deterministic source formatting without losing comments.
 
 - [~] Decide and document the lossless CST/trivia policy used by formatting.
-  - Initial policy: `vela_language_service` exposes source-preserving
-    whitespace-only full-document edits while CST/trivia-backed formatting IR
-    remains open.
+  - Current policy: `vela_syntax::formatting` owns stable token/trivia
+    extraction and token-driven full-document formatting; richer AST-aware
+    formatting rules remain open.
 - [x] Implement stable token/trivia extraction if current parser data is not
   sufficient.
 - [~] Add formatting IR that preserves comments and blank-line groups.
   - Initial editor-neutral IR preserves token/trivia source text, comments,
     shebang trivia, spans, and blank-line whitespace groups.
-- [ ] Implement expression formatting.
-- [ ] Implement statement and block formatting.
+- [~] Implement expression formatting.
+  - Initial token-driven rules normalize operator and delimiter spacing.
+- [~] Implement statement and block formatting.
+  - Initial token-driven rules indent brace blocks and comment lines.
 - [ ] Implement item/declaration formatting.
 - [~] Implement range formatting.
   - Initial native LSP support limits trailing-whitespace cleanup edits to the
     requested range.
 - [~] Implement full document formatting.
-  - Initial native LSP support trims trailing spaces/tabs and ensures a final
-    newline without depending on successful parsing.
+  - Native LSP full-document formatting now uses the token/trivia formatter
+    for spacing, brace indentation, comment preservation, and final newline.
 - [ ] Implement on-type formatting only after full/range formatting is stable.
 - [x] Add idempotence tests and malformed-source fallback behavior.
 
@@ -675,6 +677,8 @@ Tests:
 - [x] `formatting_handles_malformed_source_without_panic`
 - [x] `formatting_extracts_comments_and_blank_line_groups`
 - [x] `formatting_ir_preserves_comments_and_blank_line_groups`
+- [x] `formatting_formats_expressions_and_function_blocks`
+- [x] `formatting_preserves_comments_while_formatting_blocks`
 - [ ] `on_type_formatting_only_edits_current_construct`
 - [x] `lsp_document_formatting_returns_full_document_edit`
 - [x] `lsp_document_formatting_returns_empty_edits_when_idempotent`
