@@ -179,6 +179,84 @@ pub fn main(amount: i64) -> i64 {
     );
 }
 
+#[test]
+fn lsp_semantic_tokens_include_comments() {
+    let mut server = LspServer::new();
+    let initialize = response_value(server.handle_json(&request(
+        1,
+        "initialize",
+        serde_json::json!({
+            "processId": null,
+            "rootUri": "file:///workspace/scripts",
+            "capabilities": {}
+        }),
+    )));
+    let token_types =
+        initialize["result"]["capabilities"]["semanticTokensProvider"]["legend"]["tokenTypes"]
+            .as_array()
+            .expect("semantic token legend should list token types");
+    let comment = token_type_index(token_types, "comment");
+
+    let text = "\
+// setup
+pub fn main() {
+    let text = \"not // a comment\"
+    /* block
+       done */
+    return text
+}";
+    let uri = "file:///workspace/scripts/game/main.vela";
+    let _ = notification_value(server.handle_json(&notification(
+        "textDocument/didOpen",
+        serde_json::json!({
+            "textDocument": {
+                "uri": uri,
+                "languageId": "vela",
+                "version": 1,
+                "text": text
+            }
+        }),
+    )));
+
+    let response = response_value(server.handle_json(&request(
+        2,
+        "textDocument/semanticTokens/full",
+        serde_json::json!({
+            "textDocument": { "uri": uri }
+        }),
+    )));
+    let tokens = decode_tokens(
+        response["result"]["data"]
+            .as_array()
+            .expect("semantic token response should include data"),
+    );
+
+    assert_token_at(&tokens, 0, 0, line(text, 0).len(), comment, 0);
+    assert_token_at(
+        &tokens,
+        3,
+        line(text, 3)
+            .find("/* block")
+            .expect("block comment should exist"),
+        "/* block".len(),
+        comment,
+        0,
+    );
+    assert_token_at(&tokens, 4, 0, line(text, 4).len(), comment, 0);
+    assert!(
+        tokens.iter().all(|token| {
+            token.line != 2
+                || token.token_type != comment
+                || token.character
+                    != line(text, 2)
+                        .find("//")
+                        .expect("string should contain comment marker")
+                        as u64
+        }),
+        "{tokens:?}"
+    );
+}
+
 fn token_type_index(token_types: &[serde_json::Value], name: &str) -> u64 {
     token_types
         .iter()

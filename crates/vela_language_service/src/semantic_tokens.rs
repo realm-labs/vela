@@ -74,6 +74,7 @@ impl SemanticToken {
 pub enum SemanticTokenType {
     Attribute,
     Bytes,
+    Comment,
     EnumMember,
     Field,
     Function,
@@ -91,7 +92,7 @@ pub enum SemanticTokenType {
 }
 
 impl SemanticTokenType {
-    pub const LEGEND: [Self; 16] = [
+    pub const LEGEND: [Self; 17] = [
         Self::Module,
         Self::Function,
         Self::Method,
@@ -105,6 +106,7 @@ impl SemanticTokenType {
         Self::Number,
         Self::String,
         Self::Bytes,
+        Self::Comment,
         Self::Operator,
         Self::Attribute,
         Self::Macro,
@@ -126,6 +128,7 @@ impl SemanticTokenType {
             Self::Number => "number",
             Self::String => "string",
             Self::Bytes => "bytes",
+            Self::Comment => "comment",
             Self::Operator => "operator",
             Self::Attribute => "decorator",
             Self::Macro => "macro",
@@ -202,6 +205,17 @@ impl LanguageServiceDatabases {
         let classifications =
             self.semantic_token_classifications(source.source_id(), source.text(), &lexed.tokens);
         let mut semantic_tokens = Vec::new();
+
+        for range in comment_ranges(source.text(), &lexed.tokens) {
+            push_semantic_token_slices(
+                source.text(),
+                &line_index,
+                range,
+                SemanticTokenType::Comment,
+                SemanticTokenModifiers::NONE,
+                &mut semantic_tokens,
+            );
+        }
 
         for token in lexed.tokens {
             let Some(range) = token_range(token.span) else {
@@ -428,6 +442,85 @@ fn symbol_token_type(symbol: Symbol) -> Option<SemanticTokenType> {
     }
 }
 
+fn comment_ranges(text: &str, tokens: &[Token]) -> Vec<TextRange> {
+    let token_ranges = sorted_token_ranges(tokens);
+    let mut ranges = Vec::new();
+    let mut token_index = 0;
+    let mut offset = 0;
+
+    if text.starts_with("#!") {
+        let end = text.find('\n').unwrap_or(text.len());
+        ranges.push(TextRange::new(0, end));
+        offset = end;
+    }
+
+    while offset < text.len() {
+        while token_index < token_ranges.len() && token_ranges[token_index].end <= offset {
+            token_index += 1;
+        }
+
+        if token_index < token_ranges.len() && token_ranges[token_index].start == offset {
+            offset = token_ranges[token_index].end;
+            token_index += 1;
+            continue;
+        }
+
+        let Some(rest) = text.get(offset..) else {
+            break;
+        };
+        if rest.starts_with("//") {
+            let end = offset + rest.find('\n').unwrap_or(rest.len());
+            ranges.push(TextRange::new(offset, end));
+            offset = end;
+            continue;
+        }
+        if rest.starts_with("/*") {
+            let end = block_comment_end(text, offset);
+            ranges.push(TextRange::new(offset, end));
+            offset = end;
+            continue;
+        }
+
+        offset += rest.chars().next().map_or(1, |ch| ch.len_utf8());
+    }
+
+    ranges
+}
+
+fn sorted_token_ranges(tokens: &[Token]) -> Vec<TextRange> {
+    let mut ranges: Vec<_> = tokens
+        .iter()
+        .filter_map(|token| token_range(token.span))
+        .collect();
+    ranges.sort_by_key(|range| (range.start, range.end));
+    ranges
+}
+
+fn block_comment_end(text: &str, start: usize) -> usize {
+    let mut offset = start + "/*".len();
+    let mut depth = 1_u32;
+
+    while offset < text.len() {
+        let Some(rest) = text.get(offset..) else {
+            return text.len();
+        };
+        if rest.starts_with("/*") {
+            depth = depth.saturating_add(1);
+            offset += "/*".len();
+        } else if rest.starts_with("*/") {
+            depth = depth.saturating_sub(1);
+            offset += "*/".len();
+            if depth == 0 {
+                return offset;
+            }
+        } else {
+            offset += rest.chars().next().map_or(1, |ch| ch.len_utf8());
+        }
+    }
+
+    text.len()
+}
+
 fn push_semantic_token_slices(
     text: &str,
     line_index: &LineIndex,
@@ -597,6 +690,79 @@ pub fn main(amount: i64) -> i64 {
             "next".len(),
             SemanticTokenType::Variable,
             SemanticTokenModifiers::NONE,
+        );
+    }
+
+    #[test]
+    fn semantic_tokens_include_comments() {
+        let document = DocumentId::from("/workspace/scripts/game/main.vela");
+        let text = "\
+#! /usr/bin/env vela
+// setup
+pub fn main() {
+    let text = \"not // a comment\"
+    /* outer
+       /* nested */
+       done */
+    return text
+}";
+        let databases = databases_for(vec![SourceFileSnapshot::new(document.clone(), text)]);
+
+        let tokens = databases.semantic_tokens(&document);
+
+        assert_token_at(
+            &tokens,
+            0,
+            0,
+            line(text, 0).len(),
+            SemanticTokenType::Comment,
+            SemanticTokenModifiers::NONE,
+        );
+        assert_token_at(
+            &tokens,
+            1,
+            0,
+            line(text, 1).len(),
+            SemanticTokenType::Comment,
+            SemanticTokenModifiers::NONE,
+        );
+        assert_token_at(
+            &tokens,
+            4,
+            line(text, 4)
+                .find("/* outer")
+                .expect("block comment should exist"),
+            "/* outer".len(),
+            SemanticTokenType::Comment,
+            SemanticTokenModifiers::NONE,
+        );
+        assert_token_at(
+            &tokens,
+            5,
+            0,
+            line(text, 5).len(),
+            SemanticTokenType::Comment,
+            SemanticTokenModifiers::NONE,
+        );
+        assert_token_at(
+            &tokens,
+            6,
+            0,
+            line(text, 6).len(),
+            SemanticTokenType::Comment,
+            SemanticTokenModifiers::NONE,
+        );
+        assert!(
+            tokens.tokens().iter().all(|token| {
+                token.start().line != 3
+                    || token.token_type() != SemanticTokenType::Comment
+                    || token.start().character
+                        != line(text, 3)
+                            .find("//")
+                            .expect("string should contain comment marker")
+            }),
+            "string contents must not produce comment tokens: {:?}",
+            tokens.tokens()
         );
     }
 

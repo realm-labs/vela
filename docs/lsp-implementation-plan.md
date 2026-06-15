@@ -477,6 +477,8 @@ Purpose: provide syntax and semantic highlighting without changing semantics.
     operators, and attribute marker tokens.
   - [x] Add resolved script function, type, parameter, and variable token
     classes from declarations and binding maps.
+  - [x] Add trivia-backed shebang, line-comment, and block-comment token
+    classes without changing parser tokenization.
 - [ ] Implement full semantic tokens.
 - [ ] Implement semantic token delta only after generation-stable token caches
   exist.
@@ -487,6 +489,8 @@ Tests:
 - [x] `lsp_semantic_tokens_cover_lexical_classes`
 - [x] `semantic_tokens_mark_resolved_symbols`
 - [x] `lsp_semantic_tokens_mark_resolved_symbols`
+- [x] `semantic_tokens_include_comments`
+- [x] `lsp_semantic_tokens_include_comments`
 - [ ] `semantic_tokens_degrade_under_parse_errors`
 - [ ] `semantic_token_delta_matches_full_tokens`
 
