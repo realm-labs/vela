@@ -11,10 +11,12 @@ use crate::{
     protocol::DocumentSymbolParams,
     protocol::FoldingRangeParams,
     protocol::SelectionRangeParams,
+    protocol::SemanticTokensParams,
     protocol::TextDocumentPositionParams,
     protocol::WorkspaceSymbolParams,
     protocol::service_position,
     selection::lsp_selection_ranges,
+    semantic_tokens::lsp_semantic_tokens,
     signature::lsp_signature_help,
     success_response,
     symbols::{lsp_document_symbols, lsp_workspace_symbols},
@@ -213,6 +215,32 @@ impl LspServer {
         let ranges = self.databases.selection_ranges(&document_id, &positions);
 
         JsonRpcResult::Response(success_response(id, lsp_selection_ranges(&ranges)))
+    }
+
+    pub(crate) fn semantic_tokens_full(
+        &mut self,
+        id: Option<RequestId>,
+        params: JsonValue,
+    ) -> JsonRpcResult {
+        let Some(id) = id else {
+            return JsonRpcResult::None;
+        };
+        let params = match serde_json::from_value::<SemanticTokensParams>(params) {
+            Ok(params) => params,
+            Err(error) => {
+                return JsonRpcResult::Response(error_response(
+                    Some(id),
+                    ErrorCode::InvalidRequest,
+                    format!("invalid semanticTokens/full params: {error}"),
+                ));
+            }
+        };
+
+        let document_id = DocumentId::from(params.text_document.uri);
+        self.refresh_databases_for_query(&document_id);
+        let tokens = self.databases.semantic_tokens(&document_id);
+
+        JsonRpcResult::Response(success_response(id, lsp_semantic_tokens(&tokens)))
     }
 
     pub(crate) fn workspace_symbol(

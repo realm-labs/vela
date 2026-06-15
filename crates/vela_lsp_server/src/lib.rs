@@ -7,6 +7,7 @@ mod hover;
 mod protocol;
 mod queries;
 mod selection;
+mod semantic_tokens;
 mod signature;
 mod symbols;
 
@@ -120,6 +121,9 @@ impl LspServer {
             "textDocument/documentSymbol" => self.document_symbol(message.id, message.params),
             "textDocument/foldingRange" => self.folding_range(message.id, message.params),
             "textDocument/selectionRange" => self.selection_range(message.id, message.params),
+            "textDocument/semanticTokens/full" => {
+                self.semantic_tokens_full(message.id, message.params)
+            }
             "workspace/symbol" => self.workspace_symbol(message.id, message.params),
             "workspace/didChangeWatchedFiles" => {
                 self.did_change_watched_files(message.id, message.params)
@@ -793,6 +797,11 @@ fn initialize_result() -> JsonValue {
             "documentSymbolProvider": true,
             "foldingRangeProvider": true,
             "selectionRangeProvider": true,
+            "semanticTokensProvider": {
+                "legend": semantic_tokens::semantic_tokens_legend(),
+                "range": false,
+                "full": true
+            },
             "workspaceSymbolProvider": true,
             "workspace": {
                 "workspaceFolders": {

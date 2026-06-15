@@ -35,6 +35,12 @@ pub(crate) struct SelectionRangeParams {
 
 #[derive(Debug, Clone, Deserialize)]
 #[serde(rename_all = "camelCase")]
+pub(crate) struct SemanticTokensParams {
+    pub(crate) text_document: TextDocumentIdentifier,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub(crate) struct WorkspaceSymbolParams {
     pub(crate) query: String,
 }

@@ -136,6 +136,15 @@ mod lifecycle {
             serde_json::json!(true)
         );
         assert_eq!(
+            response["result"]["capabilities"]["semanticTokensProvider"]["full"],
+            serde_json::json!(true)
+        );
+        assert!(
+            response["result"]["capabilities"]["semanticTokensProvider"]["legend"]["tokenTypes"]
+                .as_array()
+                .is_some_and(|types| types.iter().any(|token_type| token_type == "keyword"))
+        );
+        assert_eq!(
             response["result"]["capabilities"]["workspaceSymbolProvider"],
             serde_json::json!(true)
         );
@@ -709,6 +718,7 @@ mod definition;
 mod folding;
 mod hover;
 mod selection;
+mod semantic_tokens;
 mod symbols;
 
 mod file_watching {
