@@ -21,8 +21,10 @@ pub struct LspServer {
     workspace: Workspace,
     databases: LanguageServiceDatabases,
     config: Option<WorkspaceConfig>,
+    has_config_file: bool,
     config_diagnostics: Vec<ProjectDiagnostic>,
     config_documents: BTreeSet<DocumentId>,
+    workspace_roots: BTreeSet<String>,
     disk_sources: BTreeMap<DocumentId, SourceFileSnapshot>,
     open_documents: BTreeSet<DocumentId>,
     initialized: bool,
@@ -87,6 +89,9 @@ impl LspServer {
             "workspace/didChangeWatchedFiles" => {
                 self.did_change_watched_files(message.id, message.params)
             }
+            "workspace/didChangeWorkspaceFolders" => {
+                self.did_change_workspace_folders(message.id, message.params)
+            }
             method => self.method_not_found(message.id, method),
         }
     }
@@ -97,7 +102,8 @@ impl LspServer {
         };
         self.initialized = true;
         let params = serde_json::from_value::<InitializeParams>(params).unwrap_or_default();
-        self.config = workspace_config_from_initialize(&params);
+        self.workspace_roots = workspace_roots_from_initialize(&params);
+        self.config = workspace_config_from_roots(&self.workspace_roots);
         JsonRpcResult::Response(success_response(id, initialize_result()))
     }
 
@@ -241,6 +247,45 @@ impl LspServer {
         self.publish_open_diagnostics()
     }
 
+    fn did_change_workspace_folders(
+        &mut self,
+        id: Option<RequestId>,
+        params: JsonValue,
+    ) -> JsonRpcResult {
+        if let Some(id) = id {
+            return JsonRpcResult::Response(error_response(
+                Some(id),
+                ErrorCode::InvalidRequest,
+                "`workspace/didChangeWorkspaceFolders` must be sent as a notification",
+            ));
+        }
+
+        let params = match serde_json::from_value::<DidChangeWorkspaceFoldersParams>(params) {
+            Ok(params) => params,
+            Err(error) => {
+                return JsonRpcResult::Notification(publish_diagnostics_notification(
+                    "",
+                    Vec::new(),
+                    Some(format!("invalid didChangeWorkspaceFolders params: {error}")),
+                ));
+            }
+        };
+
+        for folder in params.event.removed {
+            let root = WorkspaceRoot::from(folder.uri);
+            self.workspace_roots.remove(root.path());
+        }
+        for folder in params.event.added {
+            let root = WorkspaceRoot::from(folder.uri);
+            self.workspace_roots.insert(root.path().to_owned());
+        }
+        if !self.has_config_file {
+            self.config = workspace_config_from_roots(&self.workspace_roots);
+        }
+
+        self.publish_open_diagnostics()
+    }
+
     fn upsert_watched_file(&mut self, uri: &str) {
         let Some(text) = read_document_uri(uri) else {
             return;
@@ -251,6 +296,7 @@ impl LspServer {
             if !result.diagnostics.is_empty() || self.config_documents.contains(&document_id) {
                 self.config_documents.insert(document_id);
             }
+            self.has_config_file = true;
             self.config = Some(result.config);
             self.config_diagnostics = result.diagnostics;
         } else if is_source_uri(uri) {
@@ -264,7 +310,8 @@ impl LspServer {
 
     fn remove_watched_file(&mut self, uri: &str) {
         if is_config_uri(uri) {
-            self.config = None;
+            self.has_config_file = false;
+            self.config = workspace_config_from_roots(&self.workspace_roots);
             self.config_diagnostics.clear();
             self.config_documents
                 .insert(DocumentId::from(uri.to_owned()));
@@ -473,6 +520,17 @@ struct DidChangeWatchedFilesParams {
 }
 
 #[derive(Debug, Clone, Deserialize)]
+struct DidChangeWorkspaceFoldersParams {
+    event: WorkspaceFoldersChangeEvent,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+struct WorkspaceFoldersChangeEvent {
+    added: Vec<WorkspaceFolder>,
+    removed: Vec<WorkspaceFolder>,
+}
+
+#[derive(Debug, Clone, Deserialize)]
 struct FileEvent {
     uri: String,
     #[serde(rename = "type")]
@@ -510,6 +568,12 @@ fn initialize_result() -> JsonValue {
                 "openClose": true,
                 "change": 1,
                 "save": false
+            },
+            "workspace": {
+                "workspaceFolders": {
+                    "supported": true,
+                    "changeNotifications": true
+                }
             }
         },
         "serverInfo": {
@@ -519,15 +583,20 @@ fn initialize_result() -> JsonValue {
     })
 }
 
-fn workspace_config_from_initialize(params: &InitializeParams) -> Option<WorkspaceConfig> {
-    let roots = params
+fn workspace_roots_from_initialize(params: &InitializeParams) -> BTreeSet<String> {
+    params
         .workspace_folders
         .iter()
         .flatten()
         .map(|folder| WorkspaceRoot::from(folder.uri.clone()))
         .chain(params.root_uri.iter().cloned().map(WorkspaceRoot::from))
-        .collect::<Vec<_>>();
-    (!roots.is_empty()).then(|| WorkspaceConfig::workspace(roots))
+        .map(|root| root.path().to_owned())
+        .collect()
+}
+
+fn workspace_config_from_roots(roots: &BTreeSet<String>) -> Option<WorkspaceConfig> {
+    (!roots.is_empty())
+        .then(|| WorkspaceConfig::workspace(roots.iter().cloned().map(WorkspaceRoot::from)))
 }
 
 fn is_config_uri(uri: &str) -> bool {

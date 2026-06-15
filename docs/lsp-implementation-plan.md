@@ -294,10 +294,10 @@ Purpose: expose the service through a native LSP binary.
 - [x] Advertise only implemented capabilities.
 - [x] Implement full document sync first.
 - [ ] Add incremental document sync after text edit application is tested.
-- [~] Implement workspace folder/config handling.
+- [x] Implement workspace folder/config handling.
   - [x] Capture `initialize` workspace roots for open-document diagnostics.
   - [x] Load `vela.toml` and workspace files through the platform layer.
-  - [ ] Handle workspace folder changes.
+  - [x] Handle workspace folder changes.
 - [ ] Wire cancellation and work-done progress.
 - [x] Publish diagnostics for open files.
 - [x] Add JSON-RPC fixture harness.
@@ -640,7 +640,7 @@ Purpose: make the server robust in real projects.
   - [x] Renamed `.vela` files update module paths.
 - [x] Rebuild module path index after file moves.
 - [x] Surface configuration diagnostics.
-- [ ] Support workspace folder changes.
+- [x] Support workspace folder changes.
 
 Tests:
 
@@ -649,7 +649,7 @@ Tests:
 - [x] `file_rename_updates_module_path`
 - [x] `invalid_vela_toml_publishes_config_diagnostic`
 - [ ] `schema_file_change_reloads_facts`
-- [ ] `workspace_folder_change_reindexes_project`
+- [x] `workspace_folder_change_reindexes_project`
 
 Validation:
 

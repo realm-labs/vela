@@ -24,6 +24,11 @@ fn project(files: &[SourceFileSnapshot]) -> ProjectSources {
     assemble_project_sources(&config, files, &Workspace::new().snapshot())
 }
 
+fn project_with_roots(files: &[SourceFileSnapshot], roots: &[&str]) -> ProjectSources {
+    let config = WorkspaceConfig::workspace(roots.iter().copied().map(WorkspaceRoot::from));
+    assemble_project_sources(&config, files, &Workspace::new().snapshot())
+}
+
 fn module(name: &str) -> ModulePath {
     ModulePath::from_qualified(name)
 }
@@ -182,6 +187,40 @@ fn declaration_edit_invalidates_dependent_modules() {
             .hir_invalidated_modules()
             .contains(&module("game::main"))
     );
+}
+
+#[test]
+fn module_path_change_invalidates_hir_without_text_reparse() {
+    let files = [
+        file(
+            "/workspace/scripts/game/main.vela",
+            "use game::reward::grant\npub fn main() { return grant() }",
+        ),
+        file(
+            "/workspace/scripts/game/reward.vela",
+            "pub fn grant() { return 1 }",
+        ),
+    ];
+    let mut db = LanguageServiceDatabases::new();
+    db.update(&project_with_roots(&files, &["/workspace/scripts/game"]));
+    let before_parse_count = db.parse_db().parse_count();
+
+    let report = db.update(&project_with_roots(&files, &["/workspace/scripts"]));
+
+    assert_eq!(db.parse_db().parse_count(), before_parse_count);
+    assert!(report.changed_modules().contains(&module("main")));
+    assert!(report.changed_modules().contains(&module("game::main")));
+    assert!(
+        report
+            .hir_invalidated_modules()
+            .contains(&module("game::main"))
+    );
+    assert!(
+        report
+            .hir_invalidated_modules()
+            .contains(&module("game::reward"))
+    );
+    assert_eq!(report.metrics().hir_rebuild_count(), 1);
 }
 
 #[test]

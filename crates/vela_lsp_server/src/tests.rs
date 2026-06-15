@@ -81,6 +81,14 @@ mod lifecycle {
         assert!(response["result"]["capabilities"]["completionProvider"].is_null());
         assert!(response["result"]["capabilities"]["hoverProvider"].is_null());
         assert!(response["result"]["capabilities"]["definitionProvider"].is_null());
+        assert_eq!(
+            response["result"]["capabilities"]["workspace"]["workspaceFolders"]["supported"],
+            true
+        );
+        assert_eq!(
+            response["result"]["capabilities"]["workspace"]["workspaceFolders"]["changeNotifications"],
+            true
+        );
     }
 
     #[test]
@@ -348,6 +356,22 @@ mod file_watching {
             "{diagnostics:?}"
         );
     }
+    fn assert_has_unresolved_import(notification: &JsonValue) {
+        let Some(diagnostics) = notification["params"]["diagnostics"].as_array() else {
+            panic!("notification should publish diagnostics");
+        };
+        assert!(
+            diagnostics
+                .iter()
+                .any(|diagnostic| diagnostic["code"] == "hir::unresolved_module"
+                    || diagnostic["code"] == "hir::unresolved_import"
+                    || diagnostic["code"] == "project::diagnostic"
+                        && diagnostic["message"]
+                            .as_str()
+                            .is_some_and(|message| message.contains("unresolved module"))),
+            "{diagnostics:?}"
+        );
+    }
     #[test]
     fn invalid_vela_toml_publishes_config_diagnostic() {
         let root = temp_workspace();
@@ -410,6 +434,48 @@ mod file_watching {
             panic!("temporary workspace should be removable: {error}");
         }
     }
+
+    #[test]
+    fn workspace_folder_change_reindexes_project() {
+        let root = temp_workspace();
+        let (_, helper_path) = write_workspace(&root, "helper");
+        let game_root = root.join("scripts").join("game");
+        let scripts_root = root.join("scripts");
+        let mut server = LspServer::new();
+        let response = response_value(server.handle_json(&request(
+            1,
+            "initialize",
+            serde_json::json!({
+                "processId": null,
+                "rootUri": file_uri(&game_root),
+                "capabilities": {}
+            }),
+        )));
+        assert_eq!(response["result"]["serverInfo"]["name"], "vela_lsp_server");
+        let watched = server.handle_json(&notification(
+            "workspace/didChangeWatchedFiles",
+            serde_json::json!({
+                "changes": [{ "uri": file_uri(&helper_path), "type": 1 }]
+            }),
+        ));
+        assert_eq!(watched, JsonRpcResult::None);
+        let main = open_main(&mut server, &root, "game::helper");
+        assert_has_unresolved_import(&main);
+
+        let notifications = notification_values(server.handle_json(&notification(
+            "workspace/didChangeWorkspaceFolders",
+            serde_json::json!({
+                "event": {
+                    "added": [{ "uri": file_uri(&scripts_root), "name": "scripts" }],
+                    "removed": [{ "uri": file_uri(&game_root), "name": "game" }]
+                }
+            }),
+        )));
+        assert_eq!(notifications.len(), 1);
+        assert_no_unresolved_imports(&notifications[0]);
+        fs::remove_dir_all(&root).expect("temporary workspace should be removable");
+    }
+
     #[test]
     fn file_delete_reports_removed_imports() {
         let root = temp_workspace();

@@ -137,10 +137,13 @@ impl ParseDb {
 
         for (document_id, source) in sources {
             let previous_record = previous.get(document_id);
-            let record = if previous_record
-                .is_some_and(|record| record.content_hash == source.content_hash)
+            let record = if let Some(previous_record) = previous_record
+                && previous_record.content_hash == source.content_hash
+                && previous_record.source == source.source_id
             {
-                previous_record.cloned().expect("checked previous record")
+                let mut record = previous_record.clone();
+                record.module_path.clone_from(&source.module_path);
+                record
             } else {
                 reparsed_documents.insert(document_id.clone());
                 changed_modules.insert(source.module_path.clone());
@@ -157,15 +160,26 @@ impl ParseDb {
             };
 
             if let Some(previous_record) = previous_record {
+                let module_path_changed = previous_record.module_path != record.module_path;
+                if module_path_changed {
+                    changed_modules.insert(previous_record.module_path.clone());
+                    changed_modules.insert(record.module_path.clone());
+                }
                 if previous_record.summary.declaration_fingerprint
                     != record.summary.declaration_fingerprint
-                    || previous_record.module_path != record.module_path
+                    || module_path_changed
                 {
+                    if module_path_changed {
+                        declaration_changed_modules.insert(previous_record.module_path.clone());
+                    }
                     declaration_changed_modules.insert(record.module_path.clone());
                 }
                 if previous_record.summary.import_fingerprint != record.summary.import_fingerprint
-                    || previous_record.module_path != record.module_path
+                    || module_path_changed
                 {
+                    if module_path_changed {
+                        import_changed_modules.insert(previous_record.module_path.clone());
+                    }
                     import_changed_modules.insert(record.module_path.clone());
                 }
             } else {
