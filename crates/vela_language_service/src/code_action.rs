@@ -1,3 +1,6 @@
+use vela_hir::module_graph::{Declaration, DeclarationKind};
+use vela_syntax::ast::Visibility;
+
 use crate::{
     DiagnosticRange, DocumentId, DocumentTextEdit, LanguageServiceDatabases, LineIndex, Position,
     ServiceDiagnostic, TextEdit, WorkspaceEdit,
@@ -59,9 +62,53 @@ impl LanguageServiceDatabases {
             .flat_map(|diagnostic| {
                 let mut actions = repair_hint_actions(document_id, diagnostic);
                 actions.extend(candidate_actions(document_id, source.text(), diagnostic));
+                actions.extend(self.import_actions(document_id, source.text(), diagnostic));
                 actions
             })
             .collect()
+    }
+
+    fn import_actions(
+        &self,
+        document_id: &DocumentId,
+        text: &str,
+        diagnostic: &ServiceDiagnostic,
+    ) -> Vec<CodeAction> {
+        if diagnostic.code() != Some("hir::unresolved_name") {
+            return Vec::new();
+        }
+        let Some(name) = backticked_token(diagnostic.message()) else {
+            return Vec::new();
+        };
+        let Some(current_module_path) = self.project_db().module_by_document().get(document_id)
+        else {
+            return Vec::new();
+        };
+        let Some(current_module) = self.hir_db().graph().module_id(current_module_path) else {
+            return Vec::new();
+        };
+        let matches = self
+            .hir_db()
+            .graph()
+            .declarations()
+            .filter(|declaration| importable_declaration(declaration, current_module, name))
+            .collect::<Vec<_>>();
+        let [declaration] = matches.as_slice() else {
+            return Vec::new();
+        };
+        let Some(module_path) = self.hir_db().graph().module_path(declaration.module) else {
+            return Vec::new();
+        };
+        let import_path = format!("{}::{}", module_path.join(), declaration.name);
+        let range = import_insertion_range(text);
+        vec![CodeAction {
+            title: format!("Import `{import_path}`"),
+            kind: CodeActionKind::QuickFix,
+            edit: WorkspaceEdit::new(vec![DocumentTextEdit::new(
+                document_id.clone(),
+                vec![TextEdit::new(range, format!("use {import_path}\n"))],
+            )]),
+        }]
     }
 }
 
@@ -127,6 +174,50 @@ fn quick_fix(
             vec![TextEdit::new(range, replacement)],
         )]),
     }
+}
+
+fn importable_declaration(
+    declaration: &Declaration,
+    current_module: vela_hir::ids::ModuleId,
+    name: &str,
+) -> bool {
+    declaration.module != current_module
+        && declaration.name == name
+        && declaration.visibility == Visibility::Public
+        && matches!(
+            declaration.kind,
+            DeclarationKind::Const
+                | DeclarationKind::Global
+                | DeclarationKind::Function
+                | DeclarationKind::Struct
+                | DeclarationKind::Enum
+                | DeclarationKind::Trait
+        )
+}
+
+fn import_insertion_range(text: &str) -> DiagnosticRange {
+    let mut offset = 0usize;
+    let mut insertion_offset = 0usize;
+    let mut saw_import = false;
+    for line in text.split_inclusive('\n') {
+        let trimmed = line.trim_start();
+        if trimmed.starts_with("use ") {
+            saw_import = true;
+            offset += line.len();
+            insertion_offset = offset;
+            continue;
+        }
+        if !saw_import && trimmed.trim().is_empty() {
+            offset += line.len();
+            insertion_offset = offset;
+            continue;
+        }
+        break;
+    }
+
+    let line_index = LineIndex::new(text);
+    let position = line_index.position(insertion_offset);
+    DiagnosticRange::new(position, position)
 }
 
 fn diagnostic_overlaps_request(
@@ -218,5 +309,43 @@ mod tests {
             Position::new(0, typo_start + "levle".len())
         );
         assert_eq!(edit.new_text(), "level");
+    }
+
+    #[test]
+    fn code_action_inserts_missing_import() {
+        let document = DocumentId::from("/workspace/scripts/game/main.vela");
+        let text = "pub fn main() { return grant }";
+        let files = vec![
+            SourceFileSnapshot::new(document.clone(), text),
+            SourceFileSnapshot::new(
+                "/workspace/scripts/game/reward.vela",
+                "pub fn grant() { return 1 }",
+            ),
+        ];
+        let config = WorkspaceConfig::workspace([WorkspaceRoot::from("/workspace/scripts")]);
+        let project = assemble_project_sources(&config, &files, &Workspace::new().snapshot());
+        let mut databases = LanguageServiceDatabases::new();
+        databases.update(&project);
+
+        let grant_start = text.find("grant").expect("unresolved call");
+        let actions = databases.code_actions(
+            &document,
+            DiagnosticRange::new(
+                Position::new(0, grant_start),
+                Position::new(0, grant_start + "grant".len()),
+            ),
+        );
+
+        let action = actions
+            .iter()
+            .find(|action| action.title() == "Import `game::reward::grant`")
+            .expect("missing import quick fix should exist");
+        assert_eq!(action.kind(), CodeActionKind::QuickFix);
+        let document_edit = &action.edit().document_edits()[0];
+        assert_eq!(document_edit.document_id(), &document);
+        let edit = &document_edit.edits()[0];
+        assert_eq!(edit.range().start(), Position::new(0, 0));
+        assert_eq!(edit.range().end(), Position::new(0, 0));
+        assert_eq!(edit.new_text(), "use game::reward::grant\n");
     }
 }
