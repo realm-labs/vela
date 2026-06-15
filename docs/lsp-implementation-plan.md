@@ -650,9 +650,11 @@ Purpose: provide deterministic source formatting without losing comments.
   - Initial policy: `vela_language_service` exposes source-preserving
     whitespace-only full-document edits while CST/trivia-backed formatting IR
     remains open.
-- [ ] Implement stable token/trivia extraction if current parser data is not
+- [x] Implement stable token/trivia extraction if current parser data is not
   sufficient.
-- [ ] Add formatting IR that preserves comments and blank-line groups.
+- [~] Add formatting IR that preserves comments and blank-line groups.
+  - Initial editor-neutral IR preserves token/trivia source text, comments,
+    shebang trivia, spans, and blank-line whitespace groups.
 - [ ] Implement expression formatting.
 - [ ] Implement statement and block formatting.
 - [ ] Implement item/declaration formatting.
@@ -671,6 +673,8 @@ Tests:
 - [x] `formatting_is_idempotent`
 - [x] `range_formatting_limits_edits_to_range`
 - [x] `formatting_handles_malformed_source_without_panic`
+- [x] `formatting_extracts_comments_and_blank_line_groups`
+- [x] `formatting_ir_preserves_comments_and_blank_line_groups`
 - [ ] `on_type_formatting_only_edits_current_construct`
 - [x] `lsp_document_formatting_returns_full_document_edit`
 - [x] `lsp_document_formatting_returns_empty_edits_when_idempotent`

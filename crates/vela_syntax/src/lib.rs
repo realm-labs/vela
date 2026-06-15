@@ -2,6 +2,7 @@
 
 pub mod ast;
 mod attribute;
+pub mod formatting;
 pub mod lexer;
 pub mod parser;
 pub mod token;

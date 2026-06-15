@@ -1,6 +1,88 @@
 use crate::{DiagnosticRange, DocumentId, LanguageServiceDatabases, LineIndex, Position, TextEdit};
+use vela_syntax::formatting::{FormatElementKind, TriviaKind, extract_format_elements};
+
+#[derive(Debug, Clone, Eq, PartialEq)]
+pub struct FormattingIr {
+    document_id: DocumentId,
+    segments: Vec<FormattingSegment>,
+}
+
+impl FormattingIr {
+    #[must_use]
+    pub fn document_id(&self) -> &DocumentId {
+        &self.document_id
+    }
+
+    #[must_use]
+    pub fn segments(&self) -> &[FormattingSegment] {
+        &self.segments
+    }
+
+    #[must_use]
+    pub fn reconstruct_source(&self) -> String {
+        self.segments.iter().map(FormattingSegment::text).collect()
+    }
+}
+
+#[derive(Debug, Clone, Eq, PartialEq)]
+pub struct FormattingSegment {
+    kind: FormattingSegmentKind,
+    range: DiagnosticRange,
+    text: String,
+}
+
+impl FormattingSegment {
+    #[must_use]
+    pub const fn kind(&self) -> FormattingSegmentKind {
+        self.kind
+    }
+
+    #[must_use]
+    pub const fn range(&self) -> DiagnosticRange {
+        self.range
+    }
+
+    #[must_use]
+    pub fn text(&self) -> &str {
+        &self.text
+    }
+}
+
+#[derive(Debug, Clone, Copy, Eq, PartialEq)]
+pub enum FormattingSegmentKind {
+    Token,
+    Whitespace,
+    LineComment,
+    BlockComment,
+    Shebang,
+    UnknownTrivia,
+}
 
 impl LanguageServiceDatabases {
+    #[must_use]
+    pub fn formatting_ir(&self, document_id: &DocumentId) -> Option<FormattingIr> {
+        let source = self.source_db().records().get(document_id)?;
+        let line_index = LineIndex::new(source.text());
+        let extracted = extract_format_elements(source.source_id(), source.text());
+        let segments = extracted
+            .elements()
+            .iter()
+            .map(|element| FormattingSegment {
+                kind: service_segment_kind(element.kind()),
+                range: DiagnosticRange::new(
+                    line_index.position(element.span().start as usize),
+                    line_index.position(element.span().end as usize),
+                ),
+                text: element.text().to_owned(),
+            })
+            .collect();
+
+        Some(FormattingIr {
+            document_id: document_id.clone(),
+            segments,
+        })
+    }
+
     #[must_use]
     pub fn document_formatting(&self, document_id: &DocumentId) -> Vec<TextEdit> {
         let Some(source) = self.source_db().records().get(document_id) else {
@@ -31,6 +113,17 @@ impl LanguageServiceDatabases {
         };
 
         trailing_whitespace_edits(source.text(), range)
+    }
+}
+
+fn service_segment_kind(kind: &FormatElementKind) -> FormattingSegmentKind {
+    match kind {
+        FormatElementKind::Token(_) => FormattingSegmentKind::Token,
+        FormatElementKind::Trivia(TriviaKind::Whitespace) => FormattingSegmentKind::Whitespace,
+        FormatElementKind::Trivia(TriviaKind::LineComment) => FormattingSegmentKind::LineComment,
+        FormatElementKind::Trivia(TriviaKind::BlockComment) => FormattingSegmentKind::BlockComment,
+        FormatElementKind::Trivia(TriviaKind::Shebang) => FormattingSegmentKind::Shebang,
+        FormatElementKind::Trivia(TriviaKind::Unknown) => FormattingSegmentKind::UnknownTrivia,
     }
 }
 
@@ -144,6 +237,13 @@ mod tests {
         databases.range_formatting(&document_id, range)
     }
 
+    fn formatting_ir(source: &str) -> FormattingIr {
+        let (databases, document_id) = project_databases(source);
+        databases
+            .formatting_ir(&document_id)
+            .expect("formatting IR should be available")
+    }
+
     fn apply_edits(source: &str, edits: &[TextEdit]) -> String {
         if edits.is_empty() {
             return source.to_owned();
@@ -214,5 +314,39 @@ mod tests {
         assert_eq!(edits[0].range().start(), Position::new(1, 12));
         assert_eq!(edits[0].range().end(), Position::new(1, 15));
         assert_eq!(formatted, "pub fn main() {   \n    return 1\n}\n");
+    }
+
+    #[test]
+    fn formatting_ir_preserves_comments_and_blank_line_groups() {
+        let source = "#!/usr/bin/env vela\n\npub fn main() {\n    /* keep\n\n       grouped */\n    // tail\n    return 1\n}\n";
+        let ir = formatting_ir(source);
+        let comment_texts = ir
+            .segments()
+            .iter()
+            .filter(|segment| {
+                matches!(
+                    segment.kind(),
+                    FormattingSegmentKind::LineComment | FormattingSegmentKind::BlockComment
+                )
+            })
+            .map(FormattingSegment::text)
+            .collect::<Vec<_>>();
+        let preserves_blank_line_group = ir.segments().iter().any(|segment| {
+            segment.kind() == FormattingSegmentKind::Whitespace
+                && segment.text().matches('\n').count() >= 2
+        });
+
+        assert_eq!(
+            ir.document_id().as_str(),
+            "file:///workspace/scripts/main.vela"
+        );
+        assert_eq!(ir.reconstruct_source(), source);
+        assert_eq!(
+            comment_texts,
+            vec!["/* keep\n\n       grouped */", "// tail"]
+        );
+        assert!(preserves_blank_line_group);
+        assert_eq!(ir.segments()[0].kind(), FormattingSegmentKind::Shebang);
+        assert_eq!(ir.segments()[0].range().start(), Position::new(0, 0));
     }
 }

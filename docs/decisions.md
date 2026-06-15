@@ -137,9 +137,12 @@ Initial LSP formatting uses source-preserving text edits in
 `vela_language_service`: full-document formatting trims trailing spaces/tabs
 and ensures a final newline, while range formatting only trims trailing
 spaces/tabs inside the requested range. Neither path requires a successful
-parse. The richer formatter still needs a lossless CST/trivia policy and
-formatter IR before expression, statement, declaration, range, or on-type
-formatting can claim semantic formatting coverage.
+parse. `vela_syntax::formatting` owns stable token/trivia extraction from
+parser-token spans and skipped source gaps, and `vela_language_service`
+projects that stream into an editor-neutral formatting IR that preserves raw
+comments, shebang trivia, spans, and blank-line whitespace groups. The richer
+formatter still needs expression, statement, declaration, range, and on-type
+formatting rules before it can claim semantic formatting coverage.
 
 When the configured host schema is missing or unavailable, editor tooling
 reports a schema diagnostic and treats schema-owned host, record, trait, and

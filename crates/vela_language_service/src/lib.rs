@@ -32,6 +32,7 @@ pub use diagnostics::{
     WorkspaceDiagnosticsBatch,
 };
 pub use folding::{FoldingRange, FoldingRangeKind};
+pub use formatting::{FormattingIr, FormattingSegment, FormattingSegmentKind};
 pub use hover::{Hover, HoverKind};
 pub use incremental::{
     AnalysisDb, BackgroundResult, CancellationHandle, CancellationToken, GenerationToken, HirDb,
