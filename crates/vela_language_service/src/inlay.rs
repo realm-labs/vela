@@ -1072,6 +1072,37 @@ pub fn main() {
     }
 
     #[test]
+    fn inlay_hints_show_enum_variant_payload_names() {
+        let document = DocumentId::from("/workspace/scripts/game/main.vela");
+        let text = r#"enum QuestProgress {
+    Active(quest_id: String, count: i64),
+    Done,
+}
+pub fn main() {
+    let active = QuestProgress::Active("quest-1", 3);
+}"#;
+        let databases = databases_for(vec![SourceFileSnapshot::new(document.clone(), text)]);
+
+        let hints = databases.inlay_hints(
+            &document,
+            DiagnosticRange::new(Position::new(0, 0), Position::new(7, 0)),
+        );
+
+        assert_eq!(
+            hint_labels(&hints),
+            vec![
+                (Position::new(5, 39), "quest_id:".to_owned()),
+                (Position::new(5, 50), "count:".to_owned())
+            ]
+        );
+        assert!(
+            hints
+                .iter()
+                .all(|hint| hint.kind() == InlayHintKind::Parameter)
+        );
+    }
+
+    #[test]
     fn inlay_hints_degrade_to_any_without_schema() {
         let document = DocumentId::from("/workspace/scripts/game/main.vela");
         let text = "pub fn main() { return host_grant(10) }";

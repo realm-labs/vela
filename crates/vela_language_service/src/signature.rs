@@ -1,7 +1,8 @@
 use vela_analysis::facts::AnalysisFacts;
+use vela_analysis::hints::type_fact_from_hint;
 use vela_analysis::type_fact::TypeFact;
 use vela_hir::module_graph::{DeclarationKind, ModuleGraph};
-use vela_hir::type_hint::HirTypeHint;
+use vela_hir::type_hint::{EnumVariantFieldsHint, HirTypeHint};
 
 use crate::{DocumentId, LanguageServiceDatabases, LineIndex, Position};
 
@@ -88,6 +89,7 @@ impl LanguageServiceDatabases {
 
     pub(crate) fn signature_candidates(&self, callee: &str) -> Vec<SignatureInformation> {
         let mut signatures = self.script_signatures(callee);
+        signatures.extend(self.script_variant_signatures(callee));
         signatures.extend(self.schema_signatures(callee));
         signatures
     }
@@ -133,6 +135,53 @@ impl LanguageServiceDatabases {
                 Some(SignatureInformation {
                     label: signature_label(&declaration.name, &parameters, returns),
                     parameters,
+                })
+            })
+            .collect()
+    }
+
+    fn script_variant_signatures(&self, callee: &str) -> Vec<SignatureInformation> {
+        let graph = self.hir_db().graph();
+        graph
+            .declarations()
+            .filter(|declaration| declaration.kind == DeclarationKind::Enum)
+            .filter_map(|declaration| {
+                let owner = qualified_declaration_label(graph, declaration.id);
+                let shape = graph.enum_shape(declaration.id)?;
+                Some((declaration, owner, shape))
+            })
+            .flat_map(|(declaration, owner, shape)| {
+                shape.variants.iter().filter_map(move |variant| {
+                    if !variant_callee_matches(
+                        callee,
+                        declaration.name.as_str(),
+                        &owner,
+                        &variant.name,
+                    ) {
+                        return None;
+                    }
+                    let EnumVariantFieldsHint::Tuple(fields) = &variant.fields else {
+                        return None;
+                    };
+                    let parameters = fields
+                        .iter()
+                        .map(|field| {
+                            let fact = field.type_hint.as_ref().map_or(TypeFact::Unknown, |hint| {
+                                signature_type_fact(graph, hint, self.schema_db().facts())
+                            });
+                            SignatureParameter {
+                                label: format!("{}: {}", field.name, fact.display_name()),
+                            }
+                        })
+                        .collect::<Vec<_>>();
+                    Some(SignatureInformation {
+                        label: signature_label(
+                            &format!("{owner}::{}", variant.name),
+                            &parameters,
+                            &TypeFact::enum_type(&owner, Some(&variant.name)),
+                        ),
+                        parameters,
+                    })
                 })
             })
             .collect()
@@ -230,6 +279,25 @@ fn signature_label(name: &str, parameters: &[SignatureParameter], returns: &Type
         .collect::<Vec<_>>()
         .join(", ");
     format!("{name}({params}) -> {}", returns.display_name())
+}
+
+fn variant_callee_matches(callee: &str, enum_name: &str, owner: &str, variant: &str) -> bool {
+    callee == variant
+        || callee == format!("{enum_name}::{variant}")
+        || callee == format!("{owner}::{variant}")
+}
+
+fn signature_type_fact(
+    graph: &ModuleGraph,
+    hint: &HirTypeHint,
+    schema: &vela_analysis::registry::RegistryFacts,
+) -> TypeFact {
+    let fact = type_fact_from_hint(graph, hint);
+    if matches!(fact, TypeFact::Unknown) {
+        schema_fact_for_hint(hint, schema).unwrap_or(TypeFact::Unknown)
+    } else {
+        fact
+    }
 }
 
 fn schema_fact_for_hint(
