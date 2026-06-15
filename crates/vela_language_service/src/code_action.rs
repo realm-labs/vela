@@ -354,7 +354,8 @@ mod tests {
 
     use super::*;
     use crate::{
-        SourceFileSnapshot, Workspace, WorkspaceConfig, WorkspaceRoot, assemble_project_sources,
+        SourceFileSnapshot, SourceVersion, Workspace, WorkspaceConfig, WorkspaceRoot,
+        assemble_project_sources,
     };
 
     #[test]
@@ -459,5 +460,93 @@ pub fn main(maybe_name: Option<String>) {
         assert_eq!(edit.range().start(), Position::new(3, 4));
         assert_eq!(edit.range().end(), Position::new(3, 4));
         assert_eq!(edit.new_text(), "    Option::None => null,\n    ");
+    }
+
+    #[test]
+    fn code_action_rejects_ambiguous_dynamic_fix() {
+        let document = DocumentId::from("/workspace/scripts/game/main.vela");
+        let text = "pub fn main(player) { return player.levle + grant }";
+        let files = vec![
+            SourceFileSnapshot::new(document.clone(), text),
+            SourceFileSnapshot::new(
+                "/workspace/scripts/game/reward.vela",
+                "pub fn grant() { return 1 }",
+            ),
+            SourceFileSnapshot::new(
+                "/workspace/scripts/game/bonus.vela",
+                "pub fn grant() { return 2 }",
+            ),
+        ];
+        let config = WorkspaceConfig::workspace([WorkspaceRoot::from("/workspace/scripts")]);
+        let project = assemble_project_sources(&config, &files, &Workspace::new().snapshot());
+        let mut databases = LanguageServiceDatabases::new();
+        databases.update(&project);
+
+        let dynamic_member_start = text.find("levle").expect("dynamic member typo");
+        let dynamic_actions = databases.code_actions(
+            &document,
+            DiagnosticRange::new(
+                Position::new(0, dynamic_member_start),
+                Position::new(0, dynamic_member_start + "levle".len()),
+            ),
+        );
+        assert!(
+            dynamic_actions.is_empty(),
+            "dynamic receiver typos must not invent type facts: {dynamic_actions:?}"
+        );
+
+        let grant_start = text.find("grant").expect("ambiguous missing import");
+        let import_actions = databases.code_actions(
+            &document,
+            DiagnosticRange::new(
+                Position::new(0, grant_start),
+                Position::new(0, grant_start + "grant".len()),
+            ),
+        );
+        assert!(
+            import_actions.is_empty(),
+            "ambiguous imports must not choose an arbitrary module: {import_actions:?}"
+        );
+    }
+
+    #[test]
+    fn code_action_ranges_follow_open_overlay_text() {
+        let document = DocumentId::from("/workspace/scripts/game/main.vela");
+        let disk_text = "pub fn main(player: Player) { return player.level }";
+        let overlay_text = "\npub fn main(player: Player) {
+    return player.levle
+}";
+        let files = vec![SourceFileSnapshot::new(document.clone(), disk_text)];
+        let config = WorkspaceConfig::workspace([WorkspaceRoot::from("/workspace/scripts")]);
+        let mut workspace = Workspace::new();
+        workspace.open_document(
+            document.clone(),
+            overlay_text,
+            SourceVersion::new(SourceVersion::INITIAL.get() + 1),
+        );
+        let project = assemble_project_sources(&config, &files, &workspace.snapshot());
+        let mut databases = LanguageServiceDatabases::new();
+        let mut schema = RegistryFacts::default();
+        schema.insert_type("Player", TypeFact::host("Player"));
+        schema.insert_field("Player", "level", TypeFact::I64);
+        databases.set_schema_facts(schema);
+        databases.update(&project);
+
+        let index = LineIndex::new(overlay_text);
+        let typo_start = overlay_text.find("levle").expect("overlay typo");
+        let typo_end = typo_start + "levle".len();
+        let actions = databases.code_actions(
+            &document,
+            DiagnosticRange::new(index.position(typo_start), index.position(typo_end)),
+        );
+
+        let action = actions
+            .iter()
+            .find(|action| action.title() == "Replace with `level`")
+            .expect("overlay-backed typo quick fix should exist");
+        let edit = &action.edit().document_edits()[0].edits()[0];
+        assert_eq!(edit.range().start(), index.position(typo_start));
+        assert_eq!(edit.range().end(), index.position(typo_end));
+        assert_eq!(edit.new_text(), "level");
     }
 }

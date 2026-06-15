@@ -623,7 +623,7 @@ Purpose: turn structured diagnostics into safe edits.
 - [ ] Add add missing record fields for known constructors.
 - [ ] Add convert simple `if` null checks into Option/Result guard idioms only
   if syntax ownership is unambiguous.
-- [ ] Add quick-fix tests for range stability under open overlays.
+- [x] Add quick-fix tests for range stability under open overlays.
 
 Tests:
 
@@ -631,7 +631,7 @@ Tests:
 - [x] `code_action_inserts_missing_import`
 - [x] `code_action_fills_enum_match_arms`
 - [ ] `code_action_adds_missing_record_fields`
-- [ ] `code_action_rejects_ambiguous_dynamic_fix`
+- [x] `code_action_rejects_ambiguous_dynamic_fix`
 
 Validation:
 

@@ -188,3 +188,68 @@ pub fn main(maybe_name: Option<String>) {
     assert_eq!(edit["range"]["end"]["character"], 4);
     assert_eq!(edit["newText"], "    Option::None => null,\n    ");
 }
+
+#[test]
+fn lsp_code_action_rejects_ambiguous_import_fix() {
+    let mut server = LspServer::new();
+    let _ = response_value(server.handle_json(&request(
+        1,
+        "initialize",
+        serde_json::json!({
+            "processId": null,
+            "rootUri": "file:///workspace/scripts",
+            "capabilities": {}
+        }),
+    )));
+    for (uri, text) in [
+        (
+            "file:///workspace/scripts/game/reward.vela",
+            "pub fn grant() { return 1 }",
+        ),
+        (
+            "file:///workspace/scripts/game/bonus.vela",
+            "pub fn grant() { return 2 }",
+        ),
+    ] {
+        let _ = notification_value(server.handle_json(&notification(
+            "textDocument/didOpen",
+            serde_json::json!({
+                "textDocument": {
+                    "uri": uri,
+                    "languageId": "vela",
+                    "version": 1,
+                    "text": text
+                }
+            }),
+        )));
+    }
+    let text = "pub fn main() { return grant }";
+    let uri = "file:///workspace/scripts/game/main.vela";
+    let _ = notification_value(server.handle_json(&notification(
+        "textDocument/didOpen",
+        serde_json::json!({
+            "textDocument": {
+                "uri": uri,
+                "languageId": "vela",
+                "version": 1,
+                "text": text
+            }
+        }),
+    )));
+
+    let grant_start = text.find("grant").expect("unresolved symbol");
+    let response = response_value(server.handle_json(&request(
+        2,
+        "textDocument/codeAction",
+        serde_json::json!({
+            "textDocument": { "uri": uri },
+            "range": {
+                "start": { "line": 0, "character": grant_start },
+                "end": { "line": 0, "character": grant_start + "grant".len() }
+            },
+            "context": { "diagnostics": [] }
+        }),
+    )));
+
+    assert_eq!(response["result"], serde_json::json!([]));
+}
