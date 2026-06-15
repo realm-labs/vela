@@ -115,6 +115,14 @@ mod lifecycle {
             response["result"]["capabilities"]["completionProvider"]["triggerCharacters"],
             serde_json::json!([".", ":", "{", "(", ",", "|"])
         );
+        assert_eq!(
+            response["result"]["capabilities"]["signatureHelpProvider"]["triggerCharacters"],
+            serde_json::json!(["(", ","])
+        );
+        assert_eq!(
+            response["result"]["capabilities"]["signatureHelpProvider"]["retriggerCharacters"],
+            serde_json::json!([","])
+        );
         assert!(response["result"]["capabilities"]["hoverProvider"].is_null());
         assert!(response["result"]["capabilities"]["definitionProvider"].is_null());
         assert_eq!(
@@ -625,6 +633,61 @@ mod completion {
         } else {
             format!("file:///{path}")
         }
+    }
+}
+
+mod signature {
+    use super::{LspServer, notification, notification_value, request, response_value};
+
+    #[test]
+    fn lsp_signature_help_tracks_active_parameter() {
+        let mut server = LspServer::new();
+        let _ = response_value(server.handle_json(&request(
+            1,
+            "initialize",
+            serde_json::json!({
+                "processId": null,
+                "rootUri": "file:///workspace/scripts",
+                "capabilities": {}
+            }),
+        )));
+        let text = "pub fn grant(amount: i64, bonus: i64) -> bool { return true } pub fn main() { grant(1, 2) }";
+        let _ = notification_value(server.handle_json(&notification(
+            "textDocument/didOpen",
+            serde_json::json!({
+                "textDocument": {
+                    "uri": "file:///workspace/scripts/game/main.vela",
+                    "languageId": "vela",
+                    "version": 1,
+                    "text": text
+                }
+            }),
+        )));
+
+        let response = response_value(server.handle_json(&request(
+            2,
+            "textDocument/signatureHelp",
+            serde_json::json!({
+                "textDocument": { "uri": "file:///workspace/scripts/game/main.vela" },
+                "position": {
+                    "line": 0,
+                    "character": text.find("2)").unwrap_or_else(|| {
+                        panic!("signature fixture should contain second argument")
+                    })
+                }
+            }),
+        )));
+
+        assert_eq!(response["result"]["activeSignature"], 0);
+        assert_eq!(response["result"]["activeParameter"], 1);
+        assert_eq!(
+            response["result"]["signatures"][0]["label"],
+            "grant(amount: i64, bonus: i64) -> bool"
+        );
+        assert_eq!(
+            response["result"]["signatures"][0]["parameters"][1]["label"],
+            "bonus: i64"
+        );
     }
 }
 

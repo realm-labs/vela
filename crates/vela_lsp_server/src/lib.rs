@@ -1,18 +1,22 @@
 //! Native LSP protocol boundary for Vela editor tooling.
 
 mod completion;
+mod protocol;
+mod signature;
 
 use std::collections::{BTreeMap, BTreeSet};
 use std::path::{Path, PathBuf};
 
 use completion::lsp_completion_list;
+use protocol::{LspPosition, LspRange, TextDocumentPositionParams, service_position};
 use serde::{Deserialize, Serialize};
 use serde_json::{Value as JsonValue, json};
+use signature::lsp_signature_help;
 use vela_language_service::{
-    DocumentDiagnostics, DocumentId, LanguageServiceDatabases, Position, ProjectDiagnostic,
-    ProjectSources, SchemaDiagnostic, ServiceDiagnostic, ServiceDiagnosticSeverity,
-    SourceFileSnapshot, SourceVersion, Workspace, WorkspaceConfig, WorkspaceRoot,
-    assemble_project_sources, missing_import_diagnostics,
+    DocumentDiagnostics, DocumentId, LanguageServiceDatabases, ProjectDiagnostic, ProjectSources,
+    SchemaDiagnostic, ServiceDiagnostic, ServiceDiagnosticSeverity, SourceFileSnapshot,
+    SourceVersion, Workspace, WorkspaceConfig, WorkspaceRoot, assemble_project_sources,
+    missing_import_diagnostics,
 };
 
 const JSONRPC_VERSION: &str = "2.0";
@@ -106,6 +110,7 @@ impl LspServer {
             "textDocument/didOpen" => self.did_open(message.id, message.params),
             "textDocument/didChange" => self.did_change(message.id, message.params),
             "textDocument/completion" => self.completion(message.id, message.params),
+            "textDocument/signatureHelp" => self.signature_help(message.id, message.params),
             "workspace/didChangeWatchedFiles" => {
                 self.did_change_watched_files(message.id, message.params)
             }
@@ -263,6 +268,35 @@ impl LspServer {
             .completion_items(&document_id, service_position(params.position));
 
         JsonRpcResult::Response(success_response(id, lsp_completion_list(&completions)))
+    }
+
+    fn signature_help(&mut self, id: Option<RequestId>, params: JsonValue) -> JsonRpcResult {
+        let Some(id) = id else {
+            return JsonRpcResult::None;
+        };
+        let params = match serde_json::from_value::<TextDocumentPositionParams>(params) {
+            Ok(params) => params,
+            Err(error) => {
+                return JsonRpcResult::Response(error_response(
+                    Some(id),
+                    ErrorCode::InvalidRequest,
+                    format!("invalid signatureHelp params: {error}"),
+                ));
+            }
+        };
+
+        let document_id = DocumentId::from(params.text_document.uri);
+        self.refresh_databases_for_query(&document_id);
+        let signatures = self
+            .databases
+            .signature_help(&document_id, service_position(params.position));
+
+        JsonRpcResult::Response(success_response(
+            id,
+            signatures
+                .as_ref()
+                .map_or(JsonValue::Null, lsp_signature_help),
+        ))
     }
 
     fn did_change_watched_files(
@@ -720,31 +754,6 @@ struct TextDocumentContentChangeEvent {
 
 #[derive(Debug, Clone, Deserialize)]
 #[serde(rename_all = "camelCase")]
-struct TextDocumentPositionParams {
-    text_document: TextDocumentIdentifier,
-    position: LspPosition,
-}
-
-#[derive(Debug, Clone, Deserialize)]
-#[serde(rename_all = "camelCase")]
-struct TextDocumentIdentifier {
-    uri: String,
-}
-
-#[derive(Debug, Clone, Copy, Deserialize)]
-struct LspRange {
-    start: LspPosition,
-    end: LspPosition,
-}
-
-#[derive(Debug, Clone, Copy, Deserialize)]
-struct LspPosition {
-    line: u32,
-    character: u32,
-}
-
-#[derive(Debug, Clone, Deserialize)]
-#[serde(rename_all = "camelCase")]
 struct DidChangeWatchedFilesParams {
     changes: Vec<FileEvent>,
 }
@@ -805,6 +814,10 @@ fn initialize_result() -> JsonValue {
             "completionProvider": {
                 "resolveProvider": false,
                 "triggerCharacters": [".", ":", "{", "(", ",", "|"]
+            },
+            "signatureHelpProvider": {
+                "triggerCharacters": ["(", ","],
+                "retriggerCharacters": [","]
             },
             "workspace": {
                 "workspaceFolders": {
@@ -879,10 +892,6 @@ fn source_version(version: i32) -> SourceVersion {
     u64::try_from(version)
         .ok()
         .map_or(SourceVersion::INITIAL, SourceVersion::new)
-}
-
-fn service_position(position: LspPosition) -> Position {
-    Position::new(position.line as usize, position.character as usize)
 }
 
 fn apply_document_changes(

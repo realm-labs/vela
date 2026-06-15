@@ -369,7 +369,7 @@ Purpose: make common authoring flows fast and schema-aware.
 - [x] Complete host members from schema facts.
 - [~] Add trigger-character behavior for `.`, `::`, `{`, `(`, `,`, and `|`.
   - [x] Advertise trigger characters for the implemented LSP completion request.
-- [ ] Add signature help for script functions, native functions, methods, and
+- [~] Add signature help for script functions, native functions, methods, and
   callbacks.
 
 Tests:
@@ -381,7 +381,8 @@ Tests:
 - [x] `member_completion_uses_host_schema_facts`
 - [x] `module_completion_follows_import_context`
 - [ ] `record_field_completion_requires_known_type`
-- [ ] `signature_help_tracks_active_parameter`
+- [x] `signature_help_tracks_active_parameter`
+- [x] `lsp_signature_help_tracks_active_parameter`
 
 Validation:
 

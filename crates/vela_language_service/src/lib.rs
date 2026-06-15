@@ -5,6 +5,7 @@ mod diagnostics;
 mod incremental;
 mod project;
 mod schema;
+mod signature;
 mod text;
 mod workspace;
 
@@ -29,6 +30,7 @@ pub use project::{
 pub use schema::{
     SCHEMA_ARTIFACT_FORMAT_VERSION, SchemaArtifact, SchemaArtifactError, SchemaArtifactFacts,
 };
+pub use signature::{SignatureHelp, SignatureInformation, SignatureParameter};
 pub use text::{LineIndex, Position, TextRange};
 pub use workspace::{
     DocumentId, DocumentSnapshot, SourceVersion, Workspace, WorkspaceGeneration, WorkspaceSnapshot,
