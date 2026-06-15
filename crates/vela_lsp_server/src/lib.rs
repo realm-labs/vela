@@ -6,7 +6,8 @@ use serde::{Deserialize, Serialize};
 use serde_json::{Value as JsonValue, json};
 use vela_language_service::{
     DocumentDiagnostics, DocumentId, LanguageServiceDatabases, ServiceDiagnostic,
-    ServiceDiagnosticSeverity, SourceVersion, Workspace, WorkspaceConfig, assemble_project_sources,
+    ServiceDiagnosticSeverity, SourceVersion, Workspace, WorkspaceConfig, WorkspaceRoot,
+    assemble_project_sources,
 };
 
 const JSONRPC_VERSION: &str = "2.0";
@@ -15,6 +16,7 @@ const JSONRPC_VERSION: &str = "2.0";
 pub struct LspServer {
     workspace: Workspace,
     databases: LanguageServiceDatabases,
+    config: Option<WorkspaceConfig>,
     open_documents: BTreeSet<DocumentId>,
     initialized: bool,
     shutdown_requested: bool,
@@ -69,7 +71,7 @@ impl LspServer {
         }
 
         match message.method.as_str() {
-            "initialize" => self.initialize(message.id),
+            "initialize" => self.initialize(message.id, message.params),
             "initialized" => self.initialized(message.id),
             "shutdown" => self.shutdown(message.id),
             "exit" => self.exit(message.id),
@@ -79,11 +81,13 @@ impl LspServer {
         }
     }
 
-    fn initialize(&mut self, id: Option<RequestId>) -> JsonRpcResult {
+    fn initialize(&mut self, id: Option<RequestId>, params: JsonValue) -> JsonRpcResult {
         let Some(id) = id else {
             return JsonRpcResult::None;
         };
         self.initialized = true;
+        let params = serde_json::from_value::<InitializeParams>(params).unwrap_or_default();
+        self.config = workspace_config_from_initialize(&params);
         JsonRpcResult::Response(success_response(id, initialize_result()))
     }
 
@@ -197,7 +201,10 @@ impl LspServer {
         uri: &str,
         document_id: &DocumentId,
     ) -> JsonRpcResult {
-        let config = WorkspaceConfig::scratch(document_id.clone());
+        let config = self
+            .config
+            .clone()
+            .unwrap_or_else(|| WorkspaceConfig::scratch(document_id.clone()));
         let project = assemble_project_sources(&config, &[], &self.workspace.snapshot());
         self.databases
             .update_with_open_documents(&project, &self.open_documents);
@@ -253,6 +260,21 @@ struct JsonRpcMessage {
     method: String,
     #[serde(default)]
     params: JsonValue,
+}
+
+#[derive(Debug, Clone, Default, Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct InitializeParams {
+    root_uri: Option<String>,
+    workspace_folders: Option<Vec<WorkspaceFolder>>,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct WorkspaceFolder {
+    uri: String,
+    #[allow(dead_code)]
+    name: Option<String>,
 }
 
 #[derive(Debug, Clone, Deserialize)]
@@ -331,6 +353,17 @@ fn initialize_result() -> JsonValue {
             "version": env!("CARGO_PKG_VERSION")
         }
     })
+}
+
+fn workspace_config_from_initialize(params: &InitializeParams) -> Option<WorkspaceConfig> {
+    let roots = params
+        .workspace_folders
+        .iter()
+        .flatten()
+        .map(|folder| WorkspaceRoot::from(folder.uri.clone()))
+        .chain(params.root_uri.iter().cloned().map(WorkspaceRoot::from))
+        .collect::<Vec<_>>();
+    (!roots.is_empty()).then(|| WorkspaceConfig::workspace(roots))
 }
 
 fn source_version(version: i32) -> SourceVersion {
@@ -551,7 +584,7 @@ mod tests {
     }
 
     mod document_sync {
-        use super::{LspServer, notification, notification_value};
+        use super::{LspServer, notification, notification_value, request, response_value};
 
         #[test]
         fn lsp_did_open_publishes_diagnostics() {
@@ -640,6 +673,60 @@ mod tests {
                 panic!("didChange should publish diagnostics");
             };
             assert!(change_diagnostics.is_empty());
+        }
+
+        #[test]
+        fn lsp_initialize_uses_workspace_root_for_document_sync() {
+            let mut server = LspServer::new();
+            let response = response_value(server.handle_json(&request(
+                1,
+                "initialize",
+                serde_json::json!({
+                    "processId": null,
+                    "rootUri": "file:///workspace/scripts",
+                    "capabilities": {}
+                }),
+            )));
+            assert_eq!(response["result"]["serverInfo"]["name"], "vela_lsp_server");
+
+            let helper = notification_value(server.handle_json(&notification(
+                "textDocument/didOpen",
+                serde_json::json!({
+                    "textDocument": {
+                        "uri": "file:///workspace/scripts/game/helper.vela",
+                        "languageId": "vela",
+                        "version": 1,
+                        "text": "pub fn grant() { return 1 }"
+                    }
+                }),
+            )));
+            let Some(helper_diagnostics) = helper["params"]["diagnostics"].as_array() else {
+                panic!("helper didOpen should publish diagnostics");
+            };
+            assert!(helper_diagnostics.is_empty(), "{helper_diagnostics:?}");
+
+            let main = notification_value(server.handle_json(&notification(
+                "textDocument/didOpen",
+                serde_json::json!({
+                    "textDocument": {
+                        "uri": "file:///workspace/scripts/game/main.vela",
+                        "languageId": "vela",
+                        "version": 1,
+                        "text": "use game::helper::grant\npub fn main() { return grant() }"
+                    }
+                }),
+            )));
+
+            let Some(main_diagnostics) = main["params"]["diagnostics"].as_array() else {
+                panic!("main didOpen should publish diagnostics");
+            };
+            assert!(
+                main_diagnostics
+                    .iter()
+                    .all(|diagnostic| diagnostic["code"] != "hir::unresolved_module"
+                        && diagnostic["code"] != "hir::unresolved_import"),
+                "{main_diagnostics:?}"
+            );
         }
     }
 }
