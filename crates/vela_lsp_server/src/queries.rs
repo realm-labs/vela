@@ -12,11 +12,13 @@ use crate::{
     definition::lsp_definition,
     error_response,
     folding::lsp_folding_ranges,
+    formatting::lsp_text_edits,
     hover::lsp_hover,
     protocol::CallHierarchyIncomingCallsParams,
     protocol::CallHierarchyOutgoingCallsParams,
     protocol::CallHierarchyPrepareParams,
     protocol::CodeActionParams,
+    protocol::DocumentFormattingParams,
     protocol::DocumentSymbolParams,
     protocol::FoldingRangeParams,
     protocol::PrepareRenameParams,
@@ -422,6 +424,28 @@ impl LspServer {
         let ranges = self.databases.folding_ranges(&document_id);
 
         JsonRpcResult::Response(success_response(id, lsp_folding_ranges(&ranges)))
+    }
+
+    pub(crate) fn formatting(&mut self, id: Option<RequestId>, params: JsonValue) -> JsonRpcResult {
+        let Some(id) = id else {
+            return JsonRpcResult::None;
+        };
+        let params = match serde_json::from_value::<DocumentFormattingParams>(params) {
+            Ok(params) => params,
+            Err(error) => {
+                return JsonRpcResult::Response(error_response(
+                    Some(id),
+                    ErrorCode::InvalidRequest,
+                    format!("invalid formatting params: {error}"),
+                ));
+            }
+        };
+
+        let document_id = DocumentId::from(params.text_document.uri);
+        self.refresh_databases_for_query(&document_id);
+        let edits = self.databases.document_formatting(&document_id);
+
+        JsonRpcResult::Response(success_response(id, lsp_text_edits(&edits)))
     }
 
     pub(crate) fn selection_range(

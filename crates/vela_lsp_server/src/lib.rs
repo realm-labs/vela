@@ -5,6 +5,7 @@ mod code_action;
 mod completion;
 mod definition;
 mod folding;
+mod formatting;
 mod hover;
 mod protocol;
 mod queries;
@@ -134,6 +135,7 @@ impl LspServer {
             "textDocument/documentHighlight" => self.document_highlight(message.id, message.params),
             "textDocument/documentSymbol" => self.document_symbol(message.id, message.params),
             "textDocument/foldingRange" => self.folding_range(message.id, message.params),
+            "textDocument/formatting" => self.formatting(message.id, message.params),
             "textDocument/selectionRange" => self.selection_range(message.id, message.params),
             "textDocument/semanticTokens/full" => {
                 self.semantic_tokens_full(message.id, message.params)
@@ -819,6 +821,7 @@ fn initialize_result() -> JsonValue {
             "documentHighlightProvider": true,
             "documentSymbolProvider": true,
             "foldingRangeProvider": true,
+            "documentFormattingProvider": true,
             "selectionRangeProvider": true,
             "semanticTokensProvider": {
                 "legend": semantic_tokens::semantic_tokens_legend(),

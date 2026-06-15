@@ -646,7 +646,10 @@ cargo test -p vela_lsp_server code_action
 
 Purpose: provide deterministic source formatting without losing comments.
 
-- [ ] Decide and document the lossless CST/trivia policy used by formatting.
+- [~] Decide and document the lossless CST/trivia policy used by formatting.
+  - Initial policy: `vela_language_service` exposes source-preserving
+    whitespace-only full-document edits while CST/trivia-backed formatting IR
+    remains open.
 - [ ] Implement stable token/trivia extraction if current parser data is not
   sufficient.
 - [ ] Add formatting IR that preserves comments and blank-line groups.
@@ -654,22 +657,27 @@ Purpose: provide deterministic source formatting without losing comments.
 - [ ] Implement statement and block formatting.
 - [ ] Implement item/declaration formatting.
 - [ ] Implement range formatting.
-- [ ] Implement full document formatting.
+- [~] Implement full document formatting.
+  - Initial native LSP support trims trailing spaces/tabs and ensures a final
+    newline without depending on successful parsing.
 - [ ] Implement on-type formatting only after full/range formatting is stable.
-- [ ] Add idempotence tests and malformed-source fallback behavior.
+- [x] Add idempotence tests and malformed-source fallback behavior.
 
 Tests:
 
-- [ ] `formatting_preserves_comments`
-- [ ] `formatting_is_idempotent`
+- [x] `formatting_preserves_comments`
+- [x] `formatting_is_idempotent`
 - [ ] `range_formatting_limits_edits_to_range`
-- [ ] `formatting_handles_malformed_source_without_panic`
+- [x] `formatting_handles_malformed_source_without_panic`
 - [ ] `on_type_formatting_only_edits_current_construct`
+- [x] `lsp_document_formatting_returns_full_document_edit`
+- [x] `lsp_document_formatting_returns_empty_edits_when_idempotent`
 
 Validation:
 
 ```bash
 cargo test -p vela_language_service formatting
+cargo test -p vela_lsp_server formatting
 cargo test -p vela_syntax formatting
 ```
 

@@ -46,6 +46,23 @@ pub(crate) struct FoldingRangeParams {
 
 #[derive(Debug, Clone, Deserialize)]
 #[serde(rename_all = "camelCase")]
+pub(crate) struct DocumentFormattingParams {
+    pub(crate) text_document: TextDocumentIdentifier,
+    #[allow(dead_code)]
+    pub(crate) options: FormattingOptions,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub(crate) struct FormattingOptions {
+    #[allow(dead_code)]
+    pub(crate) tab_size: u32,
+    #[allow(dead_code)]
+    pub(crate) insert_spaces: bool,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub(crate) struct SelectionRangeParams {
     pub(crate) text_document: TextDocumentIdentifier,
     pub(crate) positions: Vec<LspPosition>,

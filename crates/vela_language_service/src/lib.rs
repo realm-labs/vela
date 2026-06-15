@@ -6,6 +6,7 @@ mod completion;
 mod definition;
 mod diagnostics;
 mod folding;
+mod formatting;
 mod hover;
 mod incremental;
 mod project;
