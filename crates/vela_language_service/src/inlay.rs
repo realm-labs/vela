@@ -1,6 +1,15 @@
+use vela_analysis::{
+    expression::{ExprFactScope, type_fact_from_expr_with_registry},
+    facts::AnalysisFacts,
+    hints::type_fact_from_hint,
+    registry::RegistryFacts,
+    type_fact::TypeFact,
+};
+use vela_hir::module_graph::ModuleGraph;
+use vela_hir::type_hint::HirTypeHint;
 use vela_syntax::ast::{
-    Argument, Block, ElseBranch, Expr, ExprKind, FunctionItem, IfExpr, ItemKind, MatchExpr, Stmt,
-    StmtKind,
+    Argument, Block, ElseBranch, Expr, ExprKind, FunctionItem, IfExpr, ItemKind, MatchExpr, Param,
+    Stmt, StmtKind, TypeHint,
 };
 
 use crate::{DiagnosticRange, DocumentId, LanguageServiceDatabases, LineIndex, Position};
@@ -16,6 +25,69 @@ pub struct InlayHint {
     position: Position,
     label: String,
     kind: InlayHintKind,
+}
+
+#[derive(Clone, Copy)]
+struct DiagnosticRangeOffsets {
+    start: usize,
+    end: usize,
+}
+
+impl DiagnosticRangeOffsets {
+    const fn new(start: usize, end: usize) -> Self {
+        Self { start, end }
+    }
+
+    const fn contains(self, offset: usize) -> bool {
+        self.start <= offset && offset <= self.end
+    }
+}
+
+#[derive(Clone, Copy)]
+struct TypeHintContext<'a> {
+    graph: &'a ModuleGraph,
+    facts: &'a AnalysisFacts,
+    schema: &'a RegistryFacts,
+}
+
+impl<'a> TypeHintContext<'a> {
+    const fn new(
+        graph: &'a ModuleGraph,
+        facts: &'a AnalysisFacts,
+        schema: &'a RegistryFacts,
+    ) -> Self {
+        Self {
+            graph,
+            facts,
+            schema,
+        }
+    }
+}
+
+struct TypeHintCollector<'a, 'hints> {
+    source_text: &'a str,
+    line_index: &'a LineIndex,
+    range: DiagnosticRangeOffsets,
+    context: TypeHintContext<'a>,
+    hints: &'hints mut Vec<InlayHint>,
+}
+
+impl<'a, 'hints> TypeHintCollector<'a, 'hints> {
+    fn new(
+        source_text: &'a str,
+        line_index: &'a LineIndex,
+        range: DiagnosticRangeOffsets,
+        context: TypeHintContext<'a>,
+        hints: &'hints mut Vec<InlayHint>,
+    ) -> Self {
+        Self {
+            source_text,
+            line_index,
+            range,
+            context,
+            hints,
+        }
+    }
 }
 
 impl InlayHint {
@@ -96,6 +168,41 @@ impl LanguageServiceDatabases {
             }
         }
 
+        let graph = self.hir_db().graph();
+        let facts = AnalysisFacts::from_module_graph(graph);
+        let schema = self.schema_db().facts();
+        let mut type_collector = TypeHintCollector::new(
+            source.text(),
+            &line_index,
+            DiagnosticRangeOffsets::new(range_start, range_end),
+            TypeHintContext::new(graph, &facts, schema),
+            &mut hints,
+        );
+        for item in &parsed.items {
+            match &item.kind {
+                ItemKind::Function(function) => type_collector.collect_function(function),
+                ItemKind::Impl(item) => {
+                    for method in &item.methods {
+                        type_collector.collect_function(&method.function);
+                    }
+                }
+                ItemKind::Trait(item) => {
+                    for method in &item.methods {
+                        if let Some(body) = &method.default_body {
+                            let mut scope = ExprFactScope::new();
+                            type_collector.collect_block(body, &mut scope);
+                        }
+                    }
+                }
+                ItemKind::Use(_)
+                | ItemKind::Const(_)
+                | ItemKind::Global(_)
+                | ItemKind::Struct(_)
+                | ItemKind::Enum(_) => {}
+            }
+        }
+
+        hints.sort_by_key(|hint| (hint.position.line, hint.position.character));
         hints
     }
 
@@ -438,9 +545,274 @@ impl LanguageServiceDatabases {
     }
 }
 
+impl TypeHintCollector<'_, '_> {
+    fn collect_function(&mut self, function: &FunctionItem) {
+        let mut scope = declaration_scope(self.context);
+        for param in &function.params {
+            if let Some(fact) = type_fact_from_param(param, self.context) {
+                scope.insert_path([param.name.clone()], fact);
+            }
+            if let Some(default) = &param.default_value {
+                self.collect_expr(default, &mut scope);
+            }
+        }
+        self.collect_block(&function.body, &mut scope);
+    }
+
+    fn collect_block(&mut self, block: &Block, scope: &mut ExprFactScope) {
+        for statement in &block.statements {
+            self.collect_stmt(statement, scope);
+        }
+    }
+
+    fn collect_stmt(&mut self, statement: &Stmt, scope: &mut ExprFactScope) {
+        match &statement.kind {
+            StmtKind::Let {
+                name,
+                type_hint,
+                value,
+            } => {
+                if let Some(value) = value {
+                    self.collect_expr(value, scope);
+                    let fact = type_fact_from_expr_with_registry(value, scope, self.context.schema);
+                    if type_hint.is_none()
+                        && let Some(label) = type_hint_label(&fact)
+                        && let Some(position_offset) =
+                            let_name_end_offset(statement, name, self.source_text)
+                        && self.range.contains(position_offset)
+                    {
+                        self.hints.push(InlayHint {
+                            position: self.line_index.position(position_offset),
+                            label,
+                            kind: InlayHintKind::Type,
+                        });
+                    }
+                    scope.insert_path([name.clone()], fact);
+                } else if let Some(type_hint) = type_hint {
+                    let fact = type_fact_from_syntax_hint(type_hint, self.context);
+                    scope.insert_path([name.clone()], fact);
+                }
+            }
+            StmtKind::Return(value) => {
+                if let Some(expr) = value {
+                    self.collect_expr(expr, scope);
+                }
+            }
+            StmtKind::For { iterable, body, .. } => {
+                self.collect_expr(iterable, scope);
+                let mut body_scope = scope.clone();
+                self.collect_block(body, &mut body_scope);
+            }
+            StmtKind::Expr(expr) => {
+                self.collect_expr(expr, scope);
+            }
+            StmtKind::Block(block) => {
+                let mut block_scope = scope.clone();
+                self.collect_block(block, &mut block_scope);
+            }
+            StmtKind::Break | StmtKind::Continue => {}
+        }
+    }
+
+    fn collect_expr(&mut self, expr: &Expr, scope: &mut ExprFactScope) {
+        match &expr.kind {
+            ExprKind::Unary { expr, .. } | ExprKind::Try(expr) => {
+                self.collect_expr(expr, scope);
+            }
+            ExprKind::Binary { left, right, .. }
+            | ExprKind::Assign {
+                target: left,
+                value: right,
+                ..
+            } => {
+                self.collect_expr(left, scope);
+                self.collect_expr(right, scope);
+            }
+            ExprKind::Field { base, .. } => {
+                self.collect_expr(base, scope);
+            }
+            ExprKind::Call { callee, args } => {
+                self.collect_expr(callee, scope);
+                for arg in args {
+                    self.collect_expr(&arg.value, scope);
+                }
+            }
+            ExprKind::Index { base, index } => {
+                self.collect_expr(base, scope);
+                self.collect_expr(index, scope);
+            }
+            ExprKind::Array(items) => {
+                for item in items {
+                    self.collect_expr(item, scope);
+                }
+            }
+            ExprKind::Map(entries) => {
+                for entry in entries {
+                    self.collect_expr(&entry.key, scope);
+                    self.collect_expr(&entry.value, scope);
+                }
+            }
+            ExprKind::Record { fields, .. } => {
+                for field in fields {
+                    if let Some(value) = &field.value {
+                        self.collect_expr(value, scope);
+                    }
+                }
+            }
+            ExprKind::Lambda { params, body } => {
+                let mut lambda_scope = scope.clone();
+                for param in params {
+                    if let Some(fact) = type_fact_from_param(param, self.context) {
+                        lambda_scope.insert_path([param.name.clone()], fact);
+                    }
+                    if let Some(default) = &param.default_value {
+                        self.collect_expr(default, &mut lambda_scope);
+                    }
+                }
+                self.collect_expr(body, &mut lambda_scope);
+            }
+            ExprKind::If(if_expr) => {
+                self.collect_if(if_expr, scope);
+            }
+            ExprKind::Match(match_expr) => {
+                self.collect_expr(&match_expr.scrutinee, scope);
+                for arm in &match_expr.arms {
+                    let mut arm_scope = scope.clone();
+                    self.collect_expr(&arm.body, &mut arm_scope);
+                }
+            }
+            ExprKind::Block(block) => {
+                let mut block_scope = scope.clone();
+                self.collect_block(block, &mut block_scope);
+            }
+            ExprKind::InterpolatedString(parts) => {
+                for part in parts {
+                    if let vela_syntax::ast::InterpolatedStringPart::Expr(expr) = part {
+                        self.collect_expr(expr, scope);
+                    }
+                }
+            }
+            ExprKind::Literal(_) | ExprKind::Path(_) | ExprKind::SelfValue | ExprKind::Error => {}
+        }
+    }
+
+    fn collect_if(&mut self, if_expr: &IfExpr, scope: &mut ExprFactScope) {
+        self.collect_expr(&if_expr.condition, scope);
+        let mut then_scope = scope.clone();
+        self.collect_block(&if_expr.then_branch, &mut then_scope);
+        if let Some(else_branch) = &if_expr.else_branch {
+            match else_branch {
+                ElseBranch::Block(block) => {
+                    let mut else_scope = scope.clone();
+                    self.collect_block(block, &mut else_scope);
+                }
+                ElseBranch::If(nested) => {
+                    let mut else_scope = scope.clone();
+                    self.collect_if(nested, &mut else_scope);
+                }
+            }
+        }
+    }
+}
+
 fn parameter_hint_label(parameter: &crate::SignatureParameter) -> Option<String> {
     let name = parameter.label().split(':').next()?.trim();
     (!name.is_empty()).then(|| format!("{name}:"))
+}
+
+fn declaration_scope(context: TypeHintContext<'_>) -> ExprFactScope {
+    let mut scope = ExprFactScope::new();
+    for (declaration_id, fact) in context.facts.declarations() {
+        let Some(declaration) = context.graph.declaration(declaration_id) else {
+            continue;
+        };
+        scope.insert_path([declaration.name.clone()], fact.clone());
+        if let Some(module_path) = context.graph.module_path(declaration.module) {
+            let mut path = module_path.segments().to_vec();
+            path.push(declaration.name.clone());
+            scope.insert_path(path, fact.clone());
+        }
+    }
+    scope
+}
+
+fn type_fact_from_param(param: &Param, context: TypeHintContext<'_>) -> Option<TypeFact> {
+    param
+        .type_hint
+        .as_ref()
+        .map(|hint| type_fact_from_syntax_hint(hint, context))
+}
+
+fn type_fact_from_syntax_hint(hint: &TypeHint, context: TypeHintContext<'_>) -> TypeFact {
+    let fact = type_fact_from_hint(context.graph, &HirTypeHint::from_syntax(hint));
+    if !matches!(fact, TypeFact::Unknown) {
+        return fact;
+    }
+
+    if hint.args.is_empty() {
+        let qualified = hint.path.join("::");
+        context
+            .schema
+            .type_fact(&qualified)
+            .or_else(|| {
+                hint.path
+                    .last()
+                    .and_then(|name| context.schema.type_fact(name))
+            })
+            .cloned()
+            .unwrap_or(TypeFact::Unknown)
+    } else {
+        TypeFact::Unknown
+    }
+}
+
+fn type_hint_label(fact: &TypeFact) -> Option<String> {
+    is_stable_type_fact(fact).then(|| format!(": {}", fact.display_name()))
+}
+
+fn is_stable_type_fact(fact: &TypeFact) -> bool {
+    match fact {
+        TypeFact::Unknown | TypeFact::Any | TypeFact::Never => false,
+        TypeFact::Array { element }
+        | TypeFact::Set { element }
+        | TypeFact::Iterator { item: element }
+        | TypeFact::Option { some: element }
+        | TypeFact::OptionSome { some: element }
+        | TypeFact::ResultOk { ok: element }
+        | TypeFact::ResultErr { err: element } => is_stable_type_fact(element),
+        TypeFact::Map { key, value }
+        | TypeFact::Result {
+            ok: key,
+            err: value,
+        } => is_stable_type_fact(key) && is_stable_type_fact(value),
+        TypeFact::Function { params, returns } => {
+            params.iter().all(is_stable_type_fact) && is_stable_type_fact(returns)
+        }
+        TypeFact::Union(facts) => {
+            !facts.is_empty()
+                && facts.iter().all(is_stable_type_fact)
+                && facts.iter().any(|fact| !matches!(fact, TypeFact::Never))
+        }
+        TypeFact::Primitive(_)
+        | TypeFact::Range
+        | TypeFact::OptionNone
+        | TypeFact::Record { .. }
+        | TypeFact::Enum { .. }
+        | TypeFact::Host { .. }
+        | TypeFact::Trait { .. }
+        | TypeFact::Module { .. } => true,
+    }
+}
+
+fn let_name_end_offset(statement: &Stmt, name: &str, source_text: &str) -> Option<usize> {
+    let start = usize::try_from(statement.span.start).ok()?;
+    let end = usize::try_from(statement.span.end)
+        .ok()?
+        .min(source_text.len());
+    let text = source_text.get(start..end)?;
+    let let_offset = text.find("let")?;
+    let name_start = text.get(let_offset + "let".len()..)?.find(name)?;
+    Some(start + let_offset + "let".len() + name_start + name.len())
 }
 
 fn callee_label(callee: &Expr) -> Option<String> {
@@ -504,6 +876,38 @@ mod tests {
         );
 
         assert!(hints.is_empty());
+    }
+
+    #[test]
+    fn inlay_hints_show_stable_local_typefacts() {
+        let document = DocumentId::from("/workspace/scripts/game/main.vela");
+        let text = r#"const BONUS: i64 = 10
+pub fn main() {
+    let total = 1 + 2;
+    let next = total + 1;
+    let scripted = BONUS;
+    let explicit: i64 = 3;
+    let dynamic = host_any();
+}"#;
+        let mut databases = databases_for(vec![SourceFileSnapshot::new(document.clone(), text)]);
+        let mut schema = vela_analysis::registry::RegistryFacts::default();
+        schema.insert_function("host_any", TypeFact::function(Vec::new(), TypeFact::Any));
+        databases.set_schema_facts(schema);
+
+        let hints = databases.inlay_hints(
+            &document,
+            DiagnosticRange::new(Position::new(0, 0), Position::new(7, 0)),
+        );
+
+        assert_eq!(
+            hint_labels(&hints),
+            vec![
+                (Position::new(2, 13), ": i64".to_owned()),
+                (Position::new(3, 12), ": i64".to_owned()),
+                (Position::new(4, 16), ": i64".to_owned())
+            ]
+        );
+        assert!(hints.iter().all(|hint| hint.kind() == InlayHintKind::Type));
     }
 
     #[test]

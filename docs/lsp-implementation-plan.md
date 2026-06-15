@@ -706,19 +706,24 @@ Purpose: expose gradual type facts without implying static typing.
 - [~] Add parameter name hints for calls.
   - Initial native support exposes script and schema function parameter labels
     through `textDocument/inlayHint` and suppresses already named arguments.
-- [ ] Add inferred local type hints from stable TypeFacts.
+- [x] Add inferred local type hints from stable TypeFacts.
+  - Ordinary `let` bindings now expose stable inferred `TypeFact` labels and
+    suppress explicit annotations plus unstable `unknown`/`Any` boundaries.
 - [ ] Add lambda parameter hints from collection/iterator facts.
 - [ ] Add enum variant payload hints.
 - [ ] Add host path type hints from schema facts.
-- [ ] Suppress hints at dynamic `Any` boundaries.
+- [~] Suppress hints at dynamic `Any` boundaries.
+  - Local type inlay hints suppress `Any`; remaining hint families still need
+    equivalent dynamic-boundary checks as they are added.
 
 Tests:
 
 - [x] `inlay_hints_show_parameter_names`
-- [ ] `inlay_hints_show_stable_local_typefacts`
+- [x] `inlay_hints_show_stable_local_typefacts`
 - [ ] `inlay_hints_show_lambda_parameter_facts`
 - [x] `inlay_hints_degrade_to_any_without_schema`
 - [x] `lsp_inlay_hints_show_parameter_names`
+- [x] `lsp_inlay_hints_show_local_typefacts`
 - [x] `lsp_inlay_hints_respect_requested_range`
 
 Validation:
