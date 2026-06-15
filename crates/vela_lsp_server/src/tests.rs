@@ -51,6 +51,34 @@ fn json_value(source: &str) -> JsonValue {
     }
 }
 
+fn publish_diagnostics_notifications(notifications: &[JsonValue]) -> Vec<&JsonValue> {
+    notifications
+        .iter()
+        .filter(|notification| notification["method"] == "textDocument/publishDiagnostics")
+        .collect()
+}
+
+fn assert_workspace_progress(notifications: &[JsonValue]) {
+    let Some(begin) = notifications.first() else {
+        panic!("workspace progress should include a begin notification");
+    };
+    let Some(end) = notifications.last() else {
+        panic!("workspace progress should include an end notification");
+    };
+
+    assert_eq!(begin["method"], "$/progress");
+    assert_eq!(begin["params"]["token"], "vela/workspace-diagnostics");
+    assert_eq!(begin["params"]["value"]["kind"], "begin");
+    assert_eq!(
+        begin["params"]["value"]["title"],
+        "Vela workspace diagnostics"
+    );
+
+    assert_eq!(end["method"], "$/progress");
+    assert_eq!(end["params"]["token"], "vela/workspace-diagnostics");
+    assert_eq!(end["params"]["value"]["kind"], "end");
+}
+
 mod lifecycle {
     use super::{JsonRpcResult, JsonValue, LspServer, notification, request, response_value};
 
@@ -70,6 +98,7 @@ mod lifecycle {
         assert_eq!(response["jsonrpc"], "2.0");
         assert_eq!(response["id"], 1);
         assert_eq!(response["result"]["serverInfo"]["name"], "vela_lsp_server");
+        assert_eq!(response["result"]["capabilities"]["workDoneProgress"], true);
         assert_eq!(
             response["result"]["capabilities"]["textDocumentSync"]["openClose"],
             true
@@ -287,8 +316,9 @@ mod file_watching {
     use std::time::{SystemTime, UNIX_EPOCH};
 
     use super::{
-        JsonRpcResult, JsonValue, LspServer, notification, notification_value, notification_values,
-        request, response_value,
+        JsonRpcResult, JsonValue, LspServer, assert_workspace_progress, notification,
+        notification_value, notification_values, publish_diagnostics_notifications, request,
+        response_value,
     };
 
     fn temp_workspace() -> PathBuf {
@@ -339,7 +369,11 @@ mod file_watching {
             serde_json::json!({
                 "processId": null,
                 "rootUri": file_uri(root),
-                "capabilities": {}
+                "capabilities": {
+                    "window": {
+                        "workDoneProgress": true
+                    }
+                }
             }),
         )));
         assert_eq!(response["result"]["serverInfo"]["name"], "vela_lsp_server");
@@ -476,7 +510,11 @@ mod file_watching {
             serde_json::json!({
                 "processId": null,
                 "rootUri": file_uri(&game_root),
-                "capabilities": {}
+                "capabilities": {
+                    "window": {
+                        "workDoneProgress": true
+                    }
+                }
             }),
         )));
         assert_eq!(response["result"]["serverInfo"]["name"], "vela_lsp_server");
@@ -499,8 +537,10 @@ mod file_watching {
                 }
             }),
         )));
-        assert_eq!(notifications.len(), 1);
-        assert_no_unresolved_imports(&notifications[0]);
+        assert_workspace_progress(&notifications);
+        let published = publish_diagnostics_notifications(&notifications);
+        assert_eq!(published.len(), 1);
+        assert_no_unresolved_imports(published[0]);
         fs::remove_dir_all(&root).expect("temporary workspace should be removable");
     }
 
@@ -523,8 +563,10 @@ mod file_watching {
             }),
         )));
 
-        assert_eq!(notifications.len(), 1);
-        let Some(diagnostics) = notifications[0]["params"]["diagnostics"].as_array() else {
+        assert_workspace_progress(&notifications);
+        let published = publish_diagnostics_notifications(&notifications);
+        assert_eq!(published.len(), 1);
+        let Some(diagnostics) = published[0]["params"]["diagnostics"].as_array() else {
             panic!("file delete should publish diagnostics");
         };
         assert!(
@@ -536,6 +578,39 @@ mod file_watching {
                         .is_some_and(|message| message.contains("unresolved module"))),
             "{diagnostics:?}"
         );
+        if let Err(error) = fs::remove_dir_all(&root) {
+            panic!("temporary workspace should be removable: {error}");
+        }
+    }
+    #[test]
+    fn lsp_progress_wraps_workspace_diagnostics() {
+        let root = temp_workspace();
+        let (config_path, helper_path) = write_workspace(&root, "helper");
+        let mut server = initialized_server(&root, &config_path, &helper_path);
+        let main = open_main(&mut server, &root, "game::helper");
+        assert_no_unresolved_imports(&main);
+        if let Err(error) = fs::remove_file(&helper_path) {
+            panic!("helper source should be removable: {error}");
+        }
+
+        let notifications = notification_values(server.handle_json(&notification(
+            "workspace/didChangeWatchedFiles",
+            serde_json::json!({
+                "changes": [
+                    { "uri": file_uri(&helper_path), "type": 3 }
+                ]
+            }),
+        )));
+
+        assert_eq!(notifications.len(), 3);
+        assert_workspace_progress(&notifications);
+        let published = publish_diagnostics_notifications(&notifications);
+        assert_eq!(published.len(), 1);
+        assert_eq!(
+            published[0]["params"]["uri"],
+            file_uri(&root.join("scripts").join("game").join("main.vela"))
+        );
+        assert_has_unresolved_import(published[0]);
         if let Err(error) = fs::remove_dir_all(&root) {
             panic!("temporary workspace should be removable: {error}");
         }

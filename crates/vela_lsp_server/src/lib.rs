@@ -15,6 +15,7 @@ const JSONRPC_VERSION: &str = "2.0";
 const FILE_CHANGE_DELETED: u8 = 3;
 const CONFIG_FILE: &str = "vela.toml";
 const SOURCE_EXTENSION: &str = ".vela";
+const WORKSPACE_DIAGNOSTICS_PROGRESS_TOKEN: &str = "vela/workspace-diagnostics";
 
 #[derive(Debug, Default)]
 pub struct LspServer {
@@ -28,6 +29,7 @@ pub struct LspServer {
     cancelled_requests: BTreeSet<RequestId>,
     disk_sources: BTreeMap<DocumentId, SourceFileSnapshot>,
     open_documents: BTreeSet<DocumentId>,
+    client_supports_work_done_progress: bool,
     initialized: bool,
     shutdown_requested: bool,
     exited: bool,
@@ -116,6 +118,7 @@ impl LspServer {
         let params = serde_json::from_value::<InitializeParams>(params).unwrap_or_default();
         self.workspace_roots = workspace_roots_from_initialize(&params);
         self.config = workspace_config_from_roots(&self.workspace_roots);
+        self.client_supports_work_done_progress = params.capabilities.supports_work_done_progress();
         JsonRpcResult::Response(success_response(id, initialize_result()))
     }
 
@@ -256,7 +259,13 @@ impl LspServer {
             }
         }
 
-        self.publish_open_diagnostics()
+        let has_open_documents = !self.open_documents.is_empty();
+        let result = self.publish_open_diagnostics();
+        if has_open_documents && self.client_supports_work_done_progress {
+            with_work_done_progress(result, "Vela workspace diagnostics")
+        } else {
+            result
+        }
     }
 
     fn cancel_request(&mut self, id: Option<RequestId>, params: JsonValue) -> JsonRpcResult {
@@ -311,7 +320,13 @@ impl LspServer {
             self.config = workspace_config_from_roots(&self.workspace_roots);
         }
 
-        self.publish_open_diagnostics()
+        let has_open_documents = !self.open_documents.is_empty();
+        let result = self.publish_open_diagnostics();
+        if has_open_documents && self.client_supports_work_done_progress {
+            with_work_done_progress(result, "Vela workspace diagnostics")
+        } else {
+            result
+        }
     }
 
     fn upsert_watched_file(&mut self, uri: &str) {
@@ -498,6 +513,28 @@ struct CancelRequestParams {
 struct InitializeParams {
     root_uri: Option<String>,
     workspace_folders: Option<Vec<WorkspaceFolder>>,
+    #[serde(default)]
+    capabilities: ClientCapabilities,
+}
+
+#[derive(Debug, Clone, Default, Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct ClientCapabilities {
+    window: Option<WindowClientCapabilities>,
+}
+
+impl ClientCapabilities {
+    fn supports_work_done_progress(&self) -> bool {
+        self.window
+            .as_ref()
+            .is_some_and(|window| window.work_done_progress)
+    }
+}
+
+#[derive(Debug, Clone, Default, Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct WindowClientCapabilities {
+    work_done_progress: bool,
 }
 
 #[derive(Debug, Clone, Deserialize)]
@@ -599,6 +636,7 @@ impl ErrorCode {
 fn initialize_result() -> JsonValue {
     json!({
         "capabilities": {
+            "workDoneProgress": true,
             "textDocumentSync": {
                 "openClose": true,
                 "change": 1,
@@ -781,6 +819,42 @@ fn publish_diagnostics_notification(
         "jsonrpc": JSONRPC_VERSION,
         "method": "textDocument/publishDiagnostics",
         "params": params
+    })
+    .to_string()
+}
+
+fn with_work_done_progress(result: JsonRpcResult, title: &str) -> JsonRpcResult {
+    let notifications = match result {
+        JsonRpcResult::Notification(notification) => vec![notification],
+        JsonRpcResult::Notifications(notifications) => notifications,
+        other @ (JsonRpcResult::Response(_) | JsonRpcResult::None) => return other,
+    };
+    if notifications.is_empty() {
+        return JsonRpcResult::None;
+    }
+
+    let mut wrapped = Vec::with_capacity(notifications.len() + 2);
+    wrapped.push(work_done_progress_notification(json!({
+        "kind": "begin",
+        "title": title,
+        "message": "updating open-file diagnostics"
+    })));
+    wrapped.extend(notifications);
+    wrapped.push(work_done_progress_notification(json!({
+        "kind": "end",
+        "message": "workspace diagnostics updated"
+    })));
+    JsonRpcResult::Notifications(wrapped)
+}
+
+fn work_done_progress_notification(value: JsonValue) -> String {
+    json!({
+        "jsonrpc": JSONRPC_VERSION,
+        "method": "$/progress",
+        "params": {
+            "token": WORKSPACE_DIAGNOSTICS_PROGRESS_TOKEN,
+            "value": value
+        }
     })
     .to_string()
 }
