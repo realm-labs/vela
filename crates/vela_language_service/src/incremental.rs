@@ -14,7 +14,7 @@ use vela_syntax::ast::{
 };
 use vela_syntax::parser::parse_source;
 
-use crate::{DocumentId, ProjectSources, SourceVersion, WorkspaceGeneration};
+use crate::{DocumentId, ProjectSources, SchemaArtifact, SourceVersion, WorkspaceGeneration};
 
 #[derive(Debug, Clone)]
 pub struct SourceRecord {
@@ -379,6 +379,15 @@ impl SchemaDb {
             schema_path.into()
         ))];
     }
+
+    pub fn set_invalid(&mut self, schema_path: impl Into<String>, message: impl Into<String>) {
+        self.facts = RegistryFacts::default();
+        self.diagnostics = vec![SchemaDiagnostic::new(format!(
+            "host schema `{}` is invalid: {}; host facts degrade to Any",
+            schema_path.into(),
+            message.into()
+        ))];
+    }
 }
 
 #[derive(Debug, Clone)]
@@ -650,6 +659,13 @@ impl LanguageServiceDatabases {
 
     pub fn set_schema_facts(&mut self, facts: RegistryFacts) {
         self.schema_db.set_facts(facts);
+    }
+
+    pub fn load_schema_artifact_json(&mut self, schema_path: &str, source: &str) {
+        match SchemaArtifact::from_json(source) {
+            Ok(artifact) => self.schema_db.set_facts(artifact.to_registry_facts()),
+            Err(error) => self.schema_db.set_invalid(schema_path, error.message()),
+        }
     }
 
     pub fn clear_schema(&mut self) {

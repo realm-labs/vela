@@ -3,6 +3,7 @@
 mod diagnostics;
 mod incremental;
 mod project;
+mod schema;
 mod text;
 mod workspace;
 
@@ -20,6 +21,9 @@ pub use project::{
     ConfigParseResult, ProjectDiagnostic, ProjectMode, ProjectSources, SchemaConfig,
     SourceFileSnapshot, WorkspaceConfig, WorkspaceRoot, assemble_project_sources,
     missing_import_diagnostics,
+};
+pub use schema::{
+    SCHEMA_ARTIFACT_FORMAT_VERSION, SchemaArtifact, SchemaArtifactError, SchemaArtifactFacts,
 };
 pub use text::{LineIndex, Position, TextRange};
 pub use workspace::{

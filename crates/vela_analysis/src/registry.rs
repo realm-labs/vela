@@ -490,6 +490,135 @@ impl RegistryFacts {
             .iter()
             .map(|(name, fact)| RegistryFunctionFact::new(name, fact.clone()))
     }
+
+    pub fn field_accesses(&self) -> impl Iterator<Item = RegistryFieldAccessFact> + '_ {
+        self.field_access.values().cloned()
+    }
+
+    pub fn method_accesses(&self) -> impl Iterator<Item = RegistryMethodAccessFact> + '_ {
+        self.method_access.values().cloned()
+    }
+
+    pub fn index_capabilities(&self) -> impl Iterator<Item = RegistryIndexCapabilityFact> + '_ {
+        self.index_capabilities.values().cloned()
+    }
+
+    pub fn method_effects(
+        &self,
+    ) -> impl Iterator<Item = (RegistryMemberFact, RegistryEffectFact)> + '_ {
+        self.method_effects.iter().map(|((owner, name), effect)| {
+            (
+                RegistryMemberFact::new(owner, name, TypeFact::Unknown),
+                effect.clone(),
+            )
+        })
+    }
+
+    pub fn trait_method_effects(
+        &self,
+    ) -> impl Iterator<Item = (RegistryMemberFact, RegistryEffectFact)> + '_ {
+        self.trait_method_effects
+            .iter()
+            .map(|((owner, name), effect)| {
+                (
+                    RegistryMemberFact::new(owner, name, TypeFact::Unknown),
+                    effect.clone(),
+                )
+            })
+    }
+
+    pub fn function_effects(&self) -> impl Iterator<Item = (&str, &RegistryEffectFact)> {
+        self.function_effects
+            .iter()
+            .map(|(name, effect)| (name.as_str(), effect))
+    }
+
+    pub fn insert_type(&mut self, name: impl Into<String>, fact: TypeFact) {
+        self.types.insert(name.into(), fact);
+    }
+
+    pub fn insert_trait(&mut self, name: impl Into<String>, fact: TypeFact) {
+        self.traits.insert(name.into(), fact);
+    }
+
+    pub fn insert_field(
+        &mut self,
+        owner: impl Into<String>,
+        name: impl Into<String>,
+        fact: TypeFact,
+    ) {
+        self.fields.insert((owner.into(), name.into()), fact);
+    }
+
+    pub fn insert_field_access(&mut self, access: RegistryFieldAccessFact) {
+        self.field_access
+            .insert((access.owner.clone(), access.name.clone()), access);
+    }
+
+    pub fn insert_variant(
+        &mut self,
+        owner: impl Into<String>,
+        name: impl Into<String>,
+        fact: TypeFact,
+    ) {
+        self.variants.insert((owner.into(), name.into()), fact);
+    }
+
+    pub fn insert_method(
+        &mut self,
+        owner: impl Into<String>,
+        name: impl Into<String>,
+        fact: TypeFact,
+    ) {
+        self.methods.insert((owner.into(), name.into()), fact);
+    }
+
+    pub fn insert_method_effect(
+        &mut self,
+        owner: impl Into<String>,
+        name: impl Into<String>,
+        effect: RegistryEffectFact,
+    ) {
+        self.method_effects
+            .insert((owner.into(), name.into()), effect);
+    }
+
+    pub fn insert_method_access(&mut self, access: RegistryMethodAccessFact) {
+        self.method_access
+            .insert((access.owner.clone(), access.name.clone()), access);
+    }
+
+    pub fn insert_trait_method(
+        &mut self,
+        owner: impl Into<String>,
+        name: impl Into<String>,
+        fact: TypeFact,
+    ) {
+        self.trait_methods.insert((owner.into(), name.into()), fact);
+    }
+
+    pub fn insert_trait_method_effect(
+        &mut self,
+        owner: impl Into<String>,
+        name: impl Into<String>,
+        effect: RegistryEffectFact,
+    ) {
+        self.trait_method_effects
+            .insert((owner.into(), name.into()), effect);
+    }
+
+    pub fn insert_function(&mut self, name: impl Into<String>, fact: TypeFact) {
+        self.functions.insert(name.into(), fact);
+    }
+
+    pub fn insert_function_effect(&mut self, name: impl Into<String>, effect: RegistryEffectFact) {
+        self.function_effects.insert(name.into(), effect);
+    }
+
+    pub fn insert_index_capability(&mut self, capability: RegistryIndexCapabilityFact) {
+        self.index_capabilities
+            .insert(capability.owner.clone(), capability);
+    }
 }
 
 fn function_effect_fact(effects: &FunctionEffectSet) -> RegistryEffectFact {
