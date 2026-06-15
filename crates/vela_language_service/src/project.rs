@@ -523,15 +523,21 @@ fn is_absolute_document_path(path: &str) -> bool {
 }
 
 #[must_use]
-pub fn missing_import_diagnostics(sources: &[ModuleSource]) -> Vec<ProjectDiagnostic> {
+pub fn missing_import_diagnostics(project: &ProjectSources) -> Vec<ProjectDiagnostic> {
     let mut graph = vela_hir::module_graph::ModuleGraph::new();
-    for source in sources {
+    for source in project.sources() {
         graph.add_source(source.clone());
     }
     graph.resolve_imports();
-    let source_ids = sources
+    let source_ids = project
+        .sources()
         .iter()
-        .map(|source| (source.id, source.path.join()))
+        .map(|source| (source.id, source.path.clone()))
+        .collect::<BTreeMap<_, _>>();
+    let document_by_module = project
+        .document_modules()
+        .iter()
+        .map(|(document_id, module)| (module.clone(), document_id.clone()))
         .collect::<BTreeMap<_, _>>();
     let unresolved_codes = BTreeSet::from([
         "hir::unresolved_module",
@@ -550,8 +556,9 @@ pub fn missing_import_diagnostics(sources: &[ModuleSource]) -> Vec<ProjectDiagno
         .map(|diagnostic| {
             let source = diagnostic
                 .span
-                .and_then(|span| source_ids.get(&span.source).cloned());
-            ProjectDiagnostic::new(source.map(DocumentId::from), diagnostic.message.clone())
+                .and_then(|span| source_ids.get(&span.source).cloned())
+                .and_then(|module| document_by_module.get(&module).cloned());
+            ProjectDiagnostic::new(source, diagnostic.message.clone())
         })
         .collect()
 }
@@ -644,9 +651,13 @@ mod tests {
             &workspace.snapshot(),
         );
 
-        let diagnostics = missing_import_diagnostics(project.sources());
+        let diagnostics = missing_import_diagnostics(&project);
 
         assert_eq!(diagnostics.len(), 1);
+        assert_eq!(
+            diagnostics[0].document_id(),
+            Some(&DocumentId::from("/workspace/scripts/game/main.vela"))
+        );
         assert!(diagnostics[0].message().contains("unresolved module"));
     }
 

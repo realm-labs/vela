@@ -6,9 +6,9 @@ use std::path::PathBuf;
 use serde::{Deserialize, Serialize};
 use serde_json::{Value as JsonValue, json};
 use vela_language_service::{
-    DocumentDiagnostics, DocumentId, LanguageServiceDatabases, ServiceDiagnostic,
-    ServiceDiagnosticSeverity, SourceFileSnapshot, SourceVersion, Workspace, WorkspaceConfig,
-    WorkspaceRoot, assemble_project_sources,
+    DocumentDiagnostics, DocumentId, LanguageServiceDatabases, ProjectDiagnostic, ProjectSources,
+    ServiceDiagnostic, ServiceDiagnosticSeverity, SourceFileSnapshot, SourceVersion, Workspace,
+    WorkspaceConfig, WorkspaceRoot, assemble_project_sources, missing_import_diagnostics,
 };
 
 const JSONRPC_VERSION: &str = "2.0";
@@ -236,7 +236,7 @@ impl LspServer {
             }
         }
 
-        JsonRpcResult::None
+        self.publish_open_diagnostics()
     }
 
     fn upsert_watched_file(&mut self, uri: &str) {
@@ -263,6 +263,35 @@ impl LspServer {
         }
     }
 
+    fn publish_open_diagnostics(&mut self) -> JsonRpcResult {
+        if self.open_documents.is_empty() {
+            return JsonRpcResult::None;
+        }
+
+        let config = self.config.clone().unwrap_or_else(|| {
+            self.open_documents
+                .iter()
+                .next()
+                .cloned()
+                .map_or_else(|| WorkspaceConfig::workspace([]), WorkspaceConfig::scratch)
+        });
+        let files = self.disk_sources.values().cloned().collect::<Vec<_>>();
+        let project = self.update_databases(&config, &files);
+        let project_diagnostics = project_diagnostics(&project);
+
+        let notifications = self
+            .open_documents
+            .iter()
+            .map(|document_id| {
+                let diagnostics = self.databases.diagnostics_for_document(document_id);
+                let mut diagnostics = lsp_diagnostics(&diagnostics);
+                diagnostics.extend(lsp_project_diagnostics(&project_diagnostics, document_id));
+                publish_diagnostics_notification(document_id.as_str(), diagnostics, None)
+            })
+            .collect::<Vec<_>>();
+        JsonRpcResult::Notifications(notifications)
+    }
+
     fn publish_current_diagnostics(
         &mut self,
         uri: &str,
@@ -273,16 +302,26 @@ impl LspServer {
             .clone()
             .unwrap_or_else(|| WorkspaceConfig::scratch(document_id.clone()));
         let files = self.disk_sources.values().cloned().collect::<Vec<_>>();
-        let project = assemble_project_sources(&config, &files, &self.workspace.snapshot());
+        let project = self.update_databases(&config, &files);
+        let diagnostics = self.databases.diagnostics_for_document(document_id);
+        let mut diagnostics = lsp_diagnostics(&diagnostics);
+        diagnostics.extend(lsp_project_diagnostics(
+            &project_diagnostics(&project),
+            document_id,
+        ));
+
+        JsonRpcResult::Notification(publish_diagnostics_notification(uri, diagnostics, None))
+    }
+
+    fn update_databases(
+        &mut self,
+        config: &WorkspaceConfig,
+        files: &[SourceFileSnapshot],
+    ) -> ProjectSources {
+        let project = assemble_project_sources(config, files, &self.workspace.snapshot());
         self.databases
             .update_with_open_documents(&project, &self.open_documents);
-        let diagnostics = self.databases.diagnostics_for_document(document_id);
-
-        JsonRpcResult::Notification(publish_diagnostics_notification(
-            uri,
-            lsp_diagnostics(&diagnostics),
-            None,
-        ))
+        project
     }
 
     fn method_not_found(&self, id: Option<RequestId>, method: &str) -> JsonRpcResult {
@@ -300,6 +339,7 @@ impl LspServer {
 pub enum JsonRpcResult {
     Response(String),
     Notification(String),
+    Notifications(Vec<String>),
     None,
 }
 
@@ -308,7 +348,7 @@ impl JsonRpcResult {
     pub fn into_response(self) -> Option<String> {
         match self {
             Self::Response(response) => Some(response),
-            Self::Notification(_) | Self::None => None,
+            Self::Notification(_) | Self::Notifications(_) | Self::None => None,
         }
     }
 
@@ -316,6 +356,18 @@ impl JsonRpcResult {
     pub fn into_notification(self) -> Option<String> {
         match self {
             Self::Notification(notification) => Some(notification),
+            Self::Notifications(mut notifications) if notifications.len() == 1 => {
+                notifications.pop()
+            }
+            Self::Response(_) | Self::Notifications(_) | Self::None => None,
+        }
+    }
+
+    #[must_use]
+    pub fn into_notifications(self) -> Option<Vec<String>> {
+        match self {
+            Self::Notification(notification) => Some(vec![notification]),
+            Self::Notifications(notifications) => Some(notifications),
             Self::Response(_) | Self::None => None,
         }
     }
@@ -517,6 +569,36 @@ fn lsp_diagnostic(diagnostic: &ServiceDiagnostic) -> JsonValue {
     })
 }
 
+fn project_diagnostics(project: &ProjectSources) -> Vec<ProjectDiagnostic> {
+    let mut diagnostics = project.diagnostics().to_vec();
+    diagnostics.extend(missing_import_diagnostics(project));
+    diagnostics
+}
+
+fn lsp_project_diagnostics(
+    diagnostics: &[ProjectDiagnostic],
+    document_id: &DocumentId,
+) -> Vec<JsonValue> {
+    diagnostics
+        .iter()
+        .filter(|diagnostic| diagnostic.document_id() == Some(document_id))
+        .map(|diagnostic| {
+            json!({
+                "range": zero_range(),
+                "severity": 1,
+                "code": "project::diagnostic",
+                "source": "vela",
+                "message": diagnostic.message(),
+                "data": {
+                    "labels": [],
+                    "candidates": [],
+                    "repairHints": []
+                }
+            })
+        })
+        .collect()
+}
+
 fn lsp_range(range: vela_language_service::DiagnosticRange) -> JsonValue {
     json!({
         "start": {
@@ -626,6 +708,16 @@ mod tests {
             panic!("notification should return a JSON-RPC notification");
         };
         json_value(&notification)
+    }
+
+    fn notification_values(result: JsonRpcResult) -> Vec<JsonValue> {
+        let Some(notifications) = result.into_notifications() else {
+            panic!("result should contain JSON-RPC notifications");
+        };
+        notifications
+            .iter()
+            .map(|notification| json_value(notification))
+            .collect()
     }
 
     fn json_value(source: &str) -> JsonValue {
@@ -843,7 +935,8 @@ mod tests {
         use std::time::{SystemTime, UNIX_EPOCH};
 
         use super::{
-            JsonRpcResult, LspServer, notification, notification_value, request, response_value,
+            JsonRpcResult, LspServer, notification, notification_value, notification_values,
+            request, response_value,
         };
 
         fn temp_workspace() -> PathBuf {
@@ -933,6 +1026,101 @@ mod tests {
                     .iter()
                     .all(|diagnostic| diagnostic["code"] != "hir::unresolved_module"
                         && diagnostic["code"] != "hir::unresolved_import"),
+                "{diagnostics:?}"
+            );
+
+            if let Err(error) = fs::remove_dir_all(&root) {
+                panic!("temporary workspace should be removable: {error}");
+            }
+        }
+
+        #[test]
+        fn file_delete_reports_removed_imports() {
+            let root = temp_workspace();
+            let config_path = root.join("vela.toml");
+            let helper_path = root.join("scripts").join("game").join("helper.vela");
+            if let Err(error) = fs::write(
+                &config_path,
+                r#"
+                    [workspace]
+                    roots = ["scripts"]
+                "#,
+            ) {
+                panic!("vela.toml should be writable: {error}");
+            }
+            if let Err(error) = fs::write(&helper_path, "pub fn grant() { return 1 }") {
+                panic!("helper source should be writable: {error}");
+            }
+
+            let mut server = LspServer::new();
+            let response = response_value(server.handle_json(&request(
+                1,
+                "initialize",
+                serde_json::json!({
+                    "processId": null,
+                    "rootUri": file_uri(&root),
+                    "capabilities": {}
+                }),
+            )));
+            assert_eq!(response["result"]["serverInfo"]["name"], "vela_lsp_server");
+
+            let watched = server.handle_json(&notification(
+                "workspace/didChangeWatchedFiles",
+                serde_json::json!({
+                    "changes": [
+                        { "uri": file_uri(&config_path), "type": 1 },
+                        { "uri": file_uri(&helper_path), "type": 1 }
+                    ]
+                }),
+            ));
+            assert_eq!(watched, JsonRpcResult::None);
+
+            let main_uri = file_uri(&root.join("scripts").join("game").join("main.vela"));
+            let main = notification_value(server.handle_json(&notification(
+                "textDocument/didOpen",
+                serde_json::json!({
+                    "textDocument": {
+                        "uri": main_uri,
+                        "languageId": "vela",
+                        "version": 1,
+                        "text": "use game::helper::grant\npub fn main() { return grant() }"
+                    }
+                }),
+            )));
+            let Some(clean_diagnostics) = main["params"]["diagnostics"].as_array() else {
+                panic!("didOpen should publish diagnostics");
+            };
+            assert!(
+                clean_diagnostics
+                    .iter()
+                    .all(|diagnostic| diagnostic["code"] != "hir::unresolved_module"
+                        && diagnostic["code"] != "hir::unresolved_import"),
+                "{clean_diagnostics:?}"
+            );
+
+            if let Err(error) = fs::remove_file(&helper_path) {
+                panic!("helper source should be removable: {error}");
+            }
+            let notifications = notification_values(server.handle_json(&notification(
+                "workspace/didChangeWatchedFiles",
+                serde_json::json!({
+                    "changes": [
+                        { "uri": file_uri(&helper_path), "type": 3 }
+                    ]
+                }),
+            )));
+
+            assert_eq!(notifications.len(), 1);
+            let Some(diagnostics) = notifications[0]["params"]["diagnostics"].as_array() else {
+                panic!("file delete should publish diagnostics");
+            };
+            assert!(
+                diagnostics
+                    .iter()
+                    .any(|diagnostic| diagnostic["code"] == "project::diagnostic"
+                        && diagnostic["message"]
+                            .as_str()
+                            .is_some_and(|message| message.contains("unresolved module"))),
                 "{diagnostics:?}"
             );
 
