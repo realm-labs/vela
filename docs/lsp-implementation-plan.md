@@ -709,7 +709,9 @@ Purpose: expose gradual type facts without implying static typing.
 - [x] Add inferred local type hints from stable TypeFacts.
   - Ordinary `let` bindings now expose stable inferred `TypeFact` labels and
     suppress explicit annotations plus unstable `unknown`/`Any` boundaries.
-- [ ] Add lambda parameter hints from collection/iterator facts.
+- [x] Add lambda parameter hints from collection/iterator facts.
+  - Lambda callbacks on typed stdlib collection/iterator methods now expose
+    stable inferred parameter labels, including map key/value arity variants.
 - [ ] Add enum variant payload hints.
 - [ ] Add host path type hints from schema facts.
 - [~] Suppress hints at dynamic `Any` boundaries.
@@ -720,10 +722,11 @@ Tests:
 
 - [x] `inlay_hints_show_parameter_names`
 - [x] `inlay_hints_show_stable_local_typefacts`
-- [ ] `inlay_hints_show_lambda_parameter_facts`
+- [x] `inlay_hints_show_lambda_parameter_facts`
 - [x] `inlay_hints_degrade_to_any_without_schema`
 - [x] `lsp_inlay_hints_show_parameter_names`
 - [x] `lsp_inlay_hints_show_local_typefacts`
+- [x] `lsp_inlay_hints_show_lambda_parameter_facts`
 - [x] `lsp_inlay_hints_respect_requested_range`
 
 Validation:

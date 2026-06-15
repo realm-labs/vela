@@ -168,3 +168,78 @@ pub fn main() {
         ])
     );
 }
+
+#[test]
+fn lsp_inlay_hints_show_lambda_parameter_facts() {
+    let mut server = LspServer::new();
+    let _ = response_value(server.handle_json(&request(
+        1,
+        "initialize",
+        serde_json::json!({
+            "processId": null,
+            "rootUri": "file:///workspace/scripts",
+            "capabilities": {}
+        }),
+    )));
+    let uri = "file:///workspace/scripts/game/main.vela";
+    let text = r#"pub fn main() {
+    let scores: Array<i64> = [1, 2, 3];
+    let doubled: Array<i64> = scores.map(|score| score + 1);
+    let rewards: Map<String, i64> = {"gold": 1};
+    let mapped: Map<String, i64> = rewards.map_values(|value| value + 1);
+    let filtered: Map<String, i64> = rewards.filter(|key, value| key.len() > value);
+}"#;
+    let _ = notification_value(server.handle_json(&notification(
+        "textDocument/didOpen",
+        serde_json::json!({
+            "textDocument": {
+                "uri": uri,
+                "languageId": "vela",
+                "version": 1,
+                "text": text
+            }
+        }),
+    )));
+
+    let response = response_value(server.handle_json(&request(
+        2,
+        "textDocument/inlayHint",
+        serde_json::json!({
+            "textDocument": { "uri": uri },
+            "range": {
+                "start": { "line": 0, "character": 0 },
+                "end": { "line": 7, "character": 0 }
+            }
+        }),
+    )));
+
+    assert_eq!(
+        response["result"],
+        serde_json::json!([
+            {
+                "position": { "line": 2, "character": 47 },
+                "label": ": i64",
+                "kind": 1,
+                "paddingRight": true
+            },
+            {
+                "position": { "line": 4, "character": 60 },
+                "label": ": i64",
+                "kind": 1,
+                "paddingRight": true
+            },
+            {
+                "position": { "line": 5, "character": 56 },
+                "label": ": String",
+                "kind": 1,
+                "paddingRight": true
+            },
+            {
+                "position": { "line": 5, "character": 63 },
+                "label": ": i64",
+                "kind": 1,
+                "paddingRight": true
+            }
+        ])
+    );
+}

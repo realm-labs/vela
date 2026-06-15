@@ -3,6 +3,7 @@ use vela_analysis::{
     facts::AnalysisFacts,
     hints::type_fact_from_hint,
     registry::RegistryFacts,
+    stdlib::stdlib_method_fact_with_lambda_arity,
     type_fact::TypeFact,
 };
 use vela_hir::module_graph::ModuleGraph;
@@ -632,9 +633,15 @@ impl TypeHintCollector<'_, '_> {
                 self.collect_expr(base, scope);
             }
             ExprKind::Call { callee, args } => {
+                let lambda_params =
+                    lambda_parameter_facts(callee, args, scope, self.context.schema);
                 self.collect_expr(callee, scope);
                 for arg in args {
-                    self.collect_expr(&arg.value, scope);
+                    if let ExprKind::Lambda { params, body } = &arg.value.kind {
+                        self.collect_lambda(params, body, scope, lambda_params.as_deref());
+                    } else {
+                        self.collect_expr(&arg.value, scope);
+                    }
                 }
             }
             ExprKind::Index { base, index } => {
@@ -660,16 +667,7 @@ impl TypeHintCollector<'_, '_> {
                 }
             }
             ExprKind::Lambda { params, body } => {
-                let mut lambda_scope = scope.clone();
-                for param in params {
-                    if let Some(fact) = type_fact_from_param(param, self.context) {
-                        lambda_scope.insert_path([param.name.clone()], fact);
-                    }
-                    if let Some(default) = &param.default_value {
-                        self.collect_expr(default, &mut lambda_scope);
-                    }
-                }
-                self.collect_expr(body, &mut lambda_scope);
+                self.collect_lambda(params, body, scope, None);
             }
             ExprKind::If(if_expr) => {
                 self.collect_if(if_expr, scope);
@@ -712,6 +710,39 @@ impl TypeHintCollector<'_, '_> {
                 }
             }
         }
+    }
+
+    fn collect_lambda(
+        &mut self,
+        params: &[Param],
+        body: &Expr,
+        scope: &mut ExprFactScope,
+        inferred_params: Option<&[TypeFact]>,
+    ) {
+        let mut lambda_scope = scope.clone();
+        for (index, param) in params.iter().enumerate() {
+            let fact = type_fact_from_param(param, self.context)
+                .or_else(|| inferred_params.and_then(|facts| facts.get(index).cloned()));
+            if param.type_hint.is_none()
+                && let Some(fact) = fact.as_ref()
+                && let Some(label) = type_hint_label(fact)
+                && let Some(position_offset) = param_name_end_offset(param)
+                && self.range.contains(position_offset)
+            {
+                self.hints.push(InlayHint {
+                    position: self.line_index.position(position_offset),
+                    label,
+                    kind: InlayHintKind::Type,
+                });
+            }
+            if let Some(fact) = fact {
+                lambda_scope.insert_path([param.name.clone()], fact);
+            }
+            if let Some(default) = &param.default_value {
+                self.collect_expr(default, &mut lambda_scope);
+            }
+        }
+        self.collect_expr(body, &mut lambda_scope);
     }
 }
 
@@ -766,6 +797,27 @@ fn type_fact_from_syntax_hint(hint: &TypeHint, context: TypeHintContext<'_>) -> 
     }
 }
 
+fn lambda_parameter_facts(
+    callee: &Expr,
+    args: &[Argument],
+    scope: &ExprFactScope,
+    schema: &RegistryFacts,
+) -> Option<Vec<TypeFact>> {
+    let ExprKind::Field { base, name } = &callee.kind else {
+        return None;
+    };
+    let param_count = args.iter().find_map(|arg| {
+        if let ExprKind::Lambda { params, .. } = &arg.value.kind {
+            Some(params.len())
+        } else {
+            None
+        }
+    })?;
+    let receiver = type_fact_from_expr_with_registry(base, scope, schema);
+    stdlib_method_fact_with_lambda_arity(&receiver, name, None, Some(param_count))
+        .and_then(|fact| fact.lambda.map(|lambda| lambda.params))
+}
+
 fn type_hint_label(fact: &TypeFact) -> Option<String> {
     is_stable_type_fact(fact).then(|| format!(": {}", fact.display_name()))
 }
@@ -813,6 +865,11 @@ fn let_name_end_offset(statement: &Stmt, name: &str, source_text: &str) -> Optio
     let let_offset = text.find("let")?;
     let name_start = text.get(let_offset + "let".len()..)?.find(name)?;
     Some(start + let_offset + "let".len() + name_start + name.len())
+}
+
+fn param_name_end_offset(param: &Param) -> Option<usize> {
+    let start = usize::try_from(param.span.start).ok()?;
+    Some(start + param.name.len())
 }
 
 fn callee_label(callee: &Expr) -> Option<String> {
@@ -905,6 +962,35 @@ pub fn main() {
                 (Position::new(2, 13), ": i64".to_owned()),
                 (Position::new(3, 12), ": i64".to_owned()),
                 (Position::new(4, 16), ": i64".to_owned())
+            ]
+        );
+        assert!(hints.iter().all(|hint| hint.kind() == InlayHintKind::Type));
+    }
+
+    #[test]
+    fn inlay_hints_show_lambda_parameter_facts() {
+        let document = DocumentId::from("/workspace/scripts/game/main.vela");
+        let text = r#"pub fn main() {
+    let scores: Array<i64> = [1, 2, 3];
+    let doubled: Array<i64> = scores.map(|score| score + 1);
+    let rewards: Map<String, i64> = {"gold": 1};
+    let mapped: Map<String, i64> = rewards.map_values(|value| value + 1);
+    let filtered: Map<String, i64> = rewards.filter(|key, value| key.len() > value);
+}"#;
+        let databases = databases_for(vec![SourceFileSnapshot::new(document.clone(), text)]);
+
+        let hints = databases.inlay_hints(
+            &document,
+            DiagnosticRange::new(Position::new(0, 0), Position::new(7, 0)),
+        );
+
+        assert_eq!(
+            hint_labels(&hints),
+            vec![
+                (Position::new(2, 47), ": i64".to_owned()),
+                (Position::new(4, 60), ": i64".to_owned()),
+                (Position::new(5, 56), ": String".to_owned()),
+                (Position::new(5, 63), ": i64".to_owned())
             ]
         );
         assert!(hints.iter().all(|hint| hint.kind() == InlayHintKind::Type));
