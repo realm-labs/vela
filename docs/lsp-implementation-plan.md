@@ -510,15 +510,22 @@ Purpose: support workspace navigation and prepare rename.
 - [~] Build a reference index from `BindingMap` and module graph use sites.
   - [x] Build initial local binding references from `BindingMap` declarations
     and resolved local expression spans.
+  - [x] Build initial script declaration references from resolved
+    `BindingMap` declaration uses and module import resolutions.
 - [~] Index local, module, function, method, field, variant, trait, and schema
   references.
   - [x] Index local binding declaration and read references within the owning
     function.
+  - [x] Index imported script function declarations, imports, and resolved
+    call/read sites across workspace sources.
 - [~] Track reference kind: read, write, call, type use, import, pattern,
   declaration.
   - [x] Track local declaration and read reference kinds.
+  - [x] Track script declaration, import, and read reference kinds.
 - [~] Implement `textDocument/references`.
   - [x] Serve local binding references through the native LSP request.
+  - [x] Serve imported script function references through the native LSP
+    request.
 - [ ] Implement `textDocument/documentHighlight`.
 - [ ] Implement incoming and outgoing call hierarchy for script functions and
   methods where calls are statically resolved.
@@ -527,7 +534,8 @@ Tests:
 
 - [x] `references_find_local_binding_uses`
 - [x] `lsp_references_find_local_binding_uses`
-- [ ] `references_find_imported_function_uses`
+- [x] `references_find_imported_function_uses`
+- [x] `lsp_references_find_imported_function_uses`
 - [ ] `references_find_field_reads_and_writes`
 - [ ] `document_highlight_marks_read_write_call`
 - [ ] `call_hierarchy_uses_resolved_call_graph`

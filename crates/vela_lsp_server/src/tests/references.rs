@@ -67,6 +67,93 @@ pub fn main(amount: i64) -> i64 {
     );
 }
 
+#[test]
+fn lsp_references_find_imported_function_uses() {
+    let mut server = LspServer::new();
+    let _ = response_value(server.handle_json(&request(
+        1,
+        "initialize",
+        serde_json::json!({
+            "processId": null,
+            "rootUri": "file:///workspace/scripts",
+            "capabilities": {}
+        }),
+    )));
+    let main_text = "\
+use game::reward::grant
+pub fn main(amount: i64) -> i64 {
+    let first = grant(amount)
+    return grant(first)
+}";
+    let helper_text = "pub fn grant(amount: i64) -> i64 { return amount }";
+    let main_uri = "file:///workspace/scripts/game/main.vela";
+    let helper_uri = "file:///workspace/scripts/game/reward.vela";
+    let _ = notification_value(server.handle_json(&notification(
+        "textDocument/didOpen",
+        serde_json::json!({
+            "textDocument": {
+                "uri": helper_uri,
+                "languageId": "vela",
+                "version": 1,
+                "text": helper_text
+            }
+        }),
+    )));
+    let _ = notification_value(server.handle_json(&notification(
+        "textDocument/didOpen",
+        serde_json::json!({
+            "textDocument": {
+                "uri": main_uri,
+                "languageId": "vela",
+                "version": 1,
+                "text": main_text
+            }
+        }),
+    )));
+
+    let response = response_value(server.handle_json(&request(
+        2,
+        "textDocument/references",
+        serde_json::json!({
+            "textDocument": { "uri": main_uri },
+            "position": {
+                "line": 2,
+                "character": line(main_text, 2).find("grant").expect("grant call")
+            },
+            "context": { "includeDeclaration": true }
+        }),
+    )));
+    let references = response["result"]
+        .as_array()
+        .expect("references response should be an array");
+
+    assert_eq!(references.len(), 4);
+    assert_reference(
+        references,
+        helper_uri,
+        0,
+        helper_text.find("grant").expect("function declaration"),
+    );
+    assert_reference(
+        references,
+        main_uri,
+        0,
+        line(main_text, 0).find("grant").expect("import"),
+    );
+    assert_reference(
+        references,
+        main_uri,
+        2,
+        line(main_text, 2).find("grant").expect("first call"),
+    );
+    assert_reference(
+        references,
+        main_uri,
+        3,
+        line(main_text, 3).find("grant").expect("second call"),
+    );
+}
+
 fn assert_reference(references: &[serde_json::Value], uri: &str, line: usize, character: usize) {
     assert!(
         references.iter().any(|reference| {
