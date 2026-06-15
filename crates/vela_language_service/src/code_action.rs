@@ -63,6 +63,11 @@ impl LanguageServiceDatabases {
                 let mut actions = repair_hint_actions(document_id, diagnostic);
                 actions.extend(candidate_actions(document_id, source.text(), diagnostic));
                 actions.extend(self.import_actions(document_id, source.text(), diagnostic));
+                actions.extend(fill_match_arm_actions(
+                    document_id,
+                    source.text(),
+                    diagnostic,
+                ));
                 actions
             })
             .collect()
@@ -220,6 +225,83 @@ fn import_insertion_range(text: &str) -> DiagnosticRange {
     DiagnosticRange::new(position, position)
 }
 
+fn fill_match_arm_actions(
+    document_id: &DocumentId,
+    text: &str,
+    diagnostic: &ServiceDiagnostic,
+) -> Vec<CodeAction> {
+    if diagnostic.code() != Some("analysis::non_exhaustive_match") {
+        return Vec::new();
+    }
+    let Some(enum_name) = backticked_token(diagnostic.message()) else {
+        return Vec::new();
+    };
+    let missing = missing_variants(diagnostic);
+    if missing.is_empty() {
+        return Vec::new();
+    }
+    let Some(range) = diagnostic.range() else {
+        return Vec::new();
+    };
+    let Some((insert_range, closing_indent)) = match_arm_insertion(text, range) else {
+        return Vec::new();
+    };
+
+    let mut edit_text = String::new();
+    for variant in &missing {
+        edit_text.push_str("    ");
+        edit_text.push_str(enum_name);
+        edit_text.push_str("::");
+        edit_text.push_str(variant);
+        edit_text.push_str(" => null,\n");
+    }
+    edit_text.push_str(&closing_indent);
+
+    vec![CodeAction {
+        title: format!("Add missing match arms for `{enum_name}`"),
+        kind: CodeActionKind::QuickFix,
+        edit: WorkspaceEdit::new(vec![DocumentTextEdit::new(
+            document_id.clone(),
+            vec![TextEdit::new(insert_range, edit_text)],
+        )]),
+    }]
+}
+
+fn missing_variants(diagnostic: &ServiceDiagnostic) -> Vec<String> {
+    diagnostic
+        .labels()
+        .iter()
+        .find_map(|label| label.message().strip_prefix("missing variants: "))
+        .map(|variants| {
+            variants
+                .split(',')
+                .map(str::trim)
+                .filter(|variant| !variant.is_empty())
+                .map(str::to_owned)
+                .collect()
+        })
+        .unwrap_or_default()
+}
+
+fn match_arm_insertion(
+    text: &str,
+    diagnostic_range: DiagnosticRange,
+) -> Option<(DiagnosticRange, String)> {
+    let line_index = LineIndex::new(text);
+    let end = line_index.offset(diagnostic_range.end());
+    let brace_offset = text.get(..end)?.rfind('}')?;
+    let line_start = text
+        .get(..brace_offset)?
+        .rfind('\n')
+        .map_or(0, |offset| offset + 1);
+    let closing_indent = text.get(line_start..brace_offset)?.to_owned();
+    if !closing_indent.chars().all(char::is_whitespace) {
+        return None;
+    }
+    let position = line_index.position(brace_offset);
+    Some((DiagnosticRange::new(position, position), closing_indent))
+}
+
 fn diagnostic_overlaps_request(
     diagnostic: &ServiceDiagnostic,
     request_range: DiagnosticRange,
@@ -347,5 +429,35 @@ mod tests {
         assert_eq!(edit.range().start(), Position::new(0, 0));
         assert_eq!(edit.range().end(), Position::new(0, 0));
         assert_eq!(edit.new_text(), "use game::reward::grant\n");
+    }
+
+    #[test]
+    fn code_action_fills_enum_match_arms() {
+        let document = DocumentId::from("/workspace/scripts/game/main.vela");
+        let text = "\
+pub fn main(maybe_name: Option<String>) {
+    match maybe_name {
+        Option::Some(name) => name,
+    }
+}";
+        let files = vec![SourceFileSnapshot::new(document.clone(), text)];
+        let config = WorkspaceConfig::workspace([WorkspaceRoot::from("/workspace/scripts")]);
+        let project = assemble_project_sources(&config, &files, &Workspace::new().snapshot());
+        let mut databases = LanguageServiceDatabases::new();
+        databases.update(&project);
+
+        let actions = databases.code_actions(
+            &document,
+            DiagnosticRange::new(Position::new(1, 4), Position::new(3, 5)),
+        );
+
+        let action = actions
+            .iter()
+            .find(|action| action.title() == "Add missing match arms for `Option`")
+            .expect("missing match arm quick fix should exist");
+        let edit = &action.edit().document_edits()[0].edits()[0];
+        assert_eq!(edit.range().start(), Position::new(3, 4));
+        assert_eq!(edit.range().end(), Position::new(3, 4));
+        assert_eq!(edit.new_text(), "    Option::None => null,\n    ");
     }
 }
