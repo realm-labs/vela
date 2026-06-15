@@ -232,6 +232,7 @@ Tests:
 - [x] `cancelled_background_diagnostics_are_not_published`
 - [x] `open_file_recomputation_is_scheduled_before_workspace_work`
 - [x] `scale_fixture_avoids_full_rebuild_per_edit`
+- [x] `larger_synthetic_workspace_reports_indexing_metrics`
 
 Validation:
 
@@ -242,7 +243,7 @@ cargo test -p vela_language_service incremental
 Scale checkpoint:
 
 - [~] Synthetic workspace approaches one million lines.
-- [~] Initial indexing reports timing and memory.
+- [x] Initial indexing reports timing and source-size metrics.
 - [x] Single-file edit avoids full project parse.
 - [x] Single-file edit avoids full HIR rebuild.
 - [ ] Open-file diagnostics remain responsive under background indexing.

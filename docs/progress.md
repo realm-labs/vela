@@ -142,7 +142,7 @@ JIT remain separate roadmap tracks.
 | M19 | Complete enough | Non-JIT interpreter and heap optimization has a recorded exit checkpoint. Accepted work includes GC pacing, direct heap aggregate construction, argument materialization/storage cleanup, borrowed receiver/runtime views, stdlib collection/string/Option/Result fast paths, scalar/equality/constant/peephole/range-loop lowering, small script-field and short-array construction, and expanded benchmark coverage. Remaining Lua 5.x deltas are measured and belong to M20 cache/specialization families rather than more unguarded M19 micro-optimization. |
 | M19.5 | Complete enough | Primitive scalar, bytes, type-hint contract, guard-plan, verified-bytecode, profile ownership, HostTargetPlan/HostAccess, and linked-dispatch prep are complete and fully validated. |
 | M20 | Active | Declared global, record field, host access, native call, resolved method dispatch, dynamic method dispatch, stdlib value-method, callback, string/bytes, Option/Result, and selected collection caches exist with benchmark coverage; active work is cache-family audit, measured delta interpretation, and closing only named remaining gaps. |
-| M20.5 | Active | Full native language-service and LSP capability track is underway in parallel with M19/M20. Phase 1 workspace core and Phase 2 project/source loading now exist. Phase 3 now has source/project/parse/HIR/analysis database ownership, content hashes, declaration/import fingerprints, reverse-dependency invalidation, changed-file reparsing, stale-generation and cancellation result rejection, open-file-first scheduling, initial indexing metrics, and body-only edit avoidance of full HIR graph rebuilds. Next is closing the remaining scale-evidence and diagnostics-responsiveness gaps before diagnostics queries. |
+| M20.5 | Active | Full native language-service and LSP capability track is underway in parallel with M19/M20. Phase 1 workspace core and Phase 2 project/source loading now exist. Phase 3 now has source/project/parse/HIR/analysis database ownership, content hashes, declaration/import fingerprints, reverse-dependency invalidation, changed-file reparsing, stale-generation and cancellation result rejection, open-file-first scheduling, initial indexing metrics with larger synthetic workspace coverage, and body-only edit avoidance of full HIR graph rebuilds. Next is proving open-file diagnostics responsiveness before diagnostics queries. |
 | M21 | Not started | Debugger runtime hooks and DAP integration follow stable runtime/tooling contracts. |
 | M22 | Not started | Cranelift JIT follows interpreter/cache/debugger/conformance stability. |
 | M23 | Not started | Release hardening, public docs, validation gates, and performance targets. |
@@ -495,8 +495,7 @@ diagnostics.
   refactor as the baseline; do not reintroduce old `int`/`float` compatibility
   paths or string fallback dispatch.
 - Continue the M20.5 native LSP capability track by closing the remaining
-  Phase 3 scale gaps: expand synthetic timing/memory evidence toward larger
-  workspaces, prove open-file diagnostics responsiveness under background
+  Phase 3 gap: prove open-file diagnostics responsiveness under background
   indexing, then begin the diagnostics query slice without advertising
   incomplete LSP capabilities.
 - Plan M21 debugger and M22 Cranelift JIT only from stable source-span,
