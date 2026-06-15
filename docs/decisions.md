@@ -133,12 +133,13 @@ launchers around this binary. Host facts for editor tooling come from a static
 schema artifact exported from `TypeRegistry`/`RegistryFacts`; the server must
 not run the host application to discover schema metadata.
 
-Initial LSP formatting uses source-preserving full-document text edits in
-`vela_language_service`: trim trailing spaces/tabs and ensure a final newline
-without requiring a successful parse. The richer formatter still needs a
-lossless CST/trivia policy and formatter IR before expression, statement,
-declaration, range, or on-type formatting can claim semantic formatting
-coverage.
+Initial LSP formatting uses source-preserving text edits in
+`vela_language_service`: full-document formatting trims trailing spaces/tabs
+and ensures a final newline, while range formatting only trims trailing
+spaces/tabs inside the requested range. Neither path requires a successful
+parse. The richer formatter still needs a lossless CST/trivia policy and
+formatter IR before expression, statement, declaration, range, or on-type
+formatting can claim semantic formatting coverage.
 
 When the configured host schema is missing or unavailable, editor tooling
 reports a schema diagnostic and treats schema-owned host, record, trait, and

@@ -656,7 +656,9 @@ Purpose: provide deterministic source formatting without losing comments.
 - [ ] Implement expression formatting.
 - [ ] Implement statement and block formatting.
 - [ ] Implement item/declaration formatting.
-- [ ] Implement range formatting.
+- [~] Implement range formatting.
+  - Initial native LSP support limits trailing-whitespace cleanup edits to the
+    requested range.
 - [~] Implement full document formatting.
   - Initial native LSP support trims trailing spaces/tabs and ensures a final
     newline without depending on successful parsing.
@@ -667,11 +669,12 @@ Tests:
 
 - [x] `formatting_preserves_comments`
 - [x] `formatting_is_idempotent`
-- [ ] `range_formatting_limits_edits_to_range`
+- [x] `range_formatting_limits_edits_to_range`
 - [x] `formatting_handles_malformed_source_without_panic`
 - [ ] `on_type_formatting_only_edits_current_construct`
 - [x] `lsp_document_formatting_returns_full_document_edit`
 - [x] `lsp_document_formatting_returns_empty_edits_when_idempotent`
+- [x] `lsp_range_formatting_limits_edits_to_range`
 
 Validation:
 

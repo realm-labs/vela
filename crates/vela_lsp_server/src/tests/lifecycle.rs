@@ -66,6 +66,10 @@ fn lsp_initialize_reports_capabilities() {
         serde_json::json!(true)
     );
     assert_eq!(
+        response["result"]["capabilities"]["documentRangeFormattingProvider"],
+        serde_json::json!(true)
+    );
+    assert_eq!(
         response["result"]["capabilities"]["documentSymbolProvider"],
         serde_json::json!(true)
     );

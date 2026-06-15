@@ -136,6 +136,7 @@ impl LspServer {
             "textDocument/documentSymbol" => self.document_symbol(message.id, message.params),
             "textDocument/foldingRange" => self.folding_range(message.id, message.params),
             "textDocument/formatting" => self.formatting(message.id, message.params),
+            "textDocument/rangeFormatting" => self.range_formatting(message.id, message.params),
             "textDocument/selectionRange" => self.selection_range(message.id, message.params),
             "textDocument/semanticTokens/full" => {
                 self.semantic_tokens_full(message.id, message.params)
@@ -822,6 +823,7 @@ fn initialize_result() -> JsonValue {
             "documentSymbolProvider": true,
             "foldingRangeProvider": true,
             "documentFormattingProvider": true,
+            "documentRangeFormattingProvider": true,
             "selectionRangeProvider": true,
             "semanticTokensProvider": {
                 "legend": semantic_tokens::semantic_tokens_legend(),
