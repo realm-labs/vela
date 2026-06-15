@@ -401,8 +401,8 @@ Purpose: expose semantic facts and navigation.
   methods, fields, variants, traits, and type hints.
 - [~] Include docs, type facts, effects, permissions, origins, and source spans
   where known.
-- [ ] Implement go to definition for local bindings.
-- [ ] Implement go to definition for imported module declarations.
+- [x] Implement go to definition for local bindings.
+- [x] Implement go to definition for imported module declarations.
 - [ ] Implement go to definition for schema items with source spans.
 - [ ] Implement go to declaration/type definition where LSP clients separate
   those requests.
@@ -412,8 +412,9 @@ Tests:
 - [x] `hover_degrades_to_any_without_schema`
 - [x] `hover_reports_effects_and_permissions`
 - [x] `lsp_hover_reports_open_overlay_parameter_fact`
-- [ ] `definition_follows_local_binding`
-- [ ] `definition_follows_imported_module_declaration`
+- [x] `definition_follows_local_binding`
+- [x] `definition_follows_imported_module_declaration`
+- [x] `lsp_definition_follows_open_overlay_local_binding`
 - [ ] `definition_follows_schema_source_span`
 
 Validation:

@@ -1,6 +1,7 @@
 //! Native LSP protocol boundary for Vela editor tooling.
 
 mod completion;
+mod definition;
 mod hover;
 mod protocol;
 mod queries;
@@ -112,6 +113,7 @@ impl LspServer {
             "textDocument/completion" => self.completion(message.id, message.params),
             "textDocument/signatureHelp" => self.signature_help(message.id, message.params),
             "textDocument/hover" => self.hover(message.id, message.params),
+            "textDocument/definition" => self.definition(message.id, message.params),
             "workspace/didChangeWatchedFiles" => {
                 self.did_change_watched_files(message.id, message.params)
             }
@@ -768,6 +770,7 @@ fn initialize_result() -> JsonValue {
                 "retriggerCharacters": [","]
             },
             "hoverProvider": true,
+            "definitionProvider": true,
             "workspace": {
                 "workspaceFolders": {
                     "supported": true,

@@ -1,6 +1,7 @@
 //! Editor-neutral language-service workspace state.
 
 mod completion;
+mod definition;
 mod diagnostics;
 mod hover;
 mod incremental;
@@ -13,6 +14,7 @@ mod workspace;
 pub use completion::{
     CompletionContext, CompletionContextKind, CompletionItem, CompletionKind, CompletionList,
 };
+pub use definition::Definition;
 pub use diagnostics::{
     DiagnosticCandidate, DiagnosticLabel, DiagnosticRange, DiagnosticRepairHint, DiagnosticStatus,
     DocumentDiagnostics, OpenDiagnosticsBatch, ServiceDiagnostic, ServiceDiagnosticSeverity,

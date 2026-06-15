@@ -127,7 +127,10 @@ mod lifecycle {
             response["result"]["capabilities"]["hoverProvider"],
             serde_json::json!(true)
         );
-        assert!(response["result"]["capabilities"]["definitionProvider"].is_null());
+        assert_eq!(
+            response["result"]["capabilities"]["definitionProvider"],
+            serde_json::json!(true)
+        );
         assert_eq!(
             response["result"]["capabilities"]["workspace"]["workspaceFolders"]["supported"],
             true
@@ -694,6 +697,7 @@ mod signature {
     }
 }
 
+mod definition;
 mod hover;
 
 mod file_watching {

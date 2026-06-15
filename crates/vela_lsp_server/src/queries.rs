@@ -3,8 +3,9 @@ use vela_language_service::DocumentId;
 
 use crate::{
     ErrorCode, JsonRpcResult, LspServer, RequestId, completion::lsp_completion_list,
-    error_response, hover::lsp_hover, protocol::TextDocumentPositionParams,
-    protocol::service_position, signature::lsp_signature_help, success_response,
+    definition::lsp_definition, error_response, hover::lsp_hover,
+    protocol::TextDocumentPositionParams, protocol::service_position,
+    signature::lsp_signature_help, success_response,
 };
 
 impl LspServer {
@@ -89,6 +90,33 @@ impl LspServer {
         JsonRpcResult::Response(success_response(
             id,
             hover.as_ref().map_or(JsonValue::Null, lsp_hover),
+        ))
+    }
+
+    pub(crate) fn definition(&mut self, id: Option<RequestId>, params: JsonValue) -> JsonRpcResult {
+        let Some(id) = id else {
+            return JsonRpcResult::None;
+        };
+        let params = match serde_json::from_value::<TextDocumentPositionParams>(params) {
+            Ok(params) => params,
+            Err(error) => {
+                return JsonRpcResult::Response(error_response(
+                    Some(id),
+                    ErrorCode::InvalidRequest,
+                    format!("invalid definition params: {error}"),
+                ));
+            }
+        };
+
+        let document_id = DocumentId::from(params.text_document.uri);
+        self.refresh_databases_for_query(&document_id);
+        let definition = self
+            .databases
+            .definition(&document_id, service_position(params.position));
+
+        JsonRpcResult::Response(success_response(
+            id,
+            definition.as_ref().map_or(JsonValue::Null, lsp_definition),
         ))
     }
 }
