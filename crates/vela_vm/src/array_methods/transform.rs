@@ -1,7 +1,7 @@
 use crate::heap::HeapValue;
 use crate::{
     EqualityRuntime, ExecutionBudget, HeapExecution, Value, VmResult, stored_runtime_value,
-    values_equal, values_equal_with_traits,
+    values_equal_with_traits,
 };
 
 use super::{
@@ -32,26 +32,6 @@ pub(crate) fn join(
         parts.push(string_value(&value, heap.as_deref(), "method join")?.to_owned());
     }
     make_string_value(parts.join(&separator), heap, budget, "method join")
-}
-
-pub(crate) fn distinct(
-    receiver: &Value,
-    args: &[Value],
-    heap: &mut Option<&mut HeapExecution<'_>>,
-    budget: &mut Option<&mut ExecutionBudget>,
-) -> VmResult<Value> {
-    expect_arity("distinct", args, 0)?;
-    let values = array_values(receiver, heap.as_deref(), "method distinct")?;
-    let mut distinct = Vec::new();
-    'values: for value in values {
-        for existing in &distinct {
-            if values_equal(existing, &value, heap.as_deref())? {
-                continue 'values;
-            }
-        }
-        distinct.push(value);
-    }
-    make_array_value(distinct, heap, budget, "method distinct")
 }
 
 pub(crate) fn distinct_with_equality(

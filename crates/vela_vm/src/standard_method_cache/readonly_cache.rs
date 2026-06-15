@@ -317,32 +317,6 @@ pub(super) fn call_cached_string_predicate(
     )
 }
 
-pub(super) fn call_cached_array_contains(
-    receiver: &Value,
-    args: &[Value],
-    heap: Option<&HeapExecution<'_>>,
-) -> Option<VmResult<Value>> {
-    let HeapValue::Array(values) = cached_heap_value(receiver, heap)? else {
-        return None;
-    };
-    Some(
-        crate::runtime_checks::expect_arity("contains", args, 1).and_then(|()| {
-            for value in values {
-                if let Some(equal) = crate::equality::simple_values_equal(value, &args[0], heap)? {
-                    if equal {
-                        return Ok(Value::Bool(true));
-                    }
-                    continue;
-                }
-                if crate::values_equal(value, &args[0], heap)? {
-                    return Ok(Value::Bool(true));
-                }
-            }
-            Ok(Value::Bool(false))
-        }),
-    )
-}
-
 pub(super) fn call_cached_bytes_accessor(
     receiver: &Value,
     target: StandardMethodInlineCacheTarget,

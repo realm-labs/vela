@@ -17,8 +17,11 @@ use super::operators::{
     i64_immediate_op_supported, non_logical_binary_instruction,
 };
 use super::patterns::enum_variant_path;
+use super::record_shapes::ValueShape;
 use super::schema_defaults::{record_constructor_diagnostics, unknown_enum_variant_diagnostic};
-use super::value_types::{ExpectedTypeOutcome, RuntimeTypeFact, TypeContractContext};
+use super::value_types::{
+    ExpectedTypeOutcome, RuntimeTypeFact, StandardRuntimeType, TypeContractContext,
+};
 use super::{CompileError, CompileErrorKind, CompileResult, Compiler};
 
 impl Compiler<'_, '_> {
@@ -300,6 +303,7 @@ impl Compiler<'_, '_> {
             BinaryOp::RangeInclusive => return self.compile_range(left, right, true),
             _ => {}
         }
+        self.reject_static_identity_comparison_operands(op, span, left, right)?;
         self.reject_static_comparison_without_trait(op, span, left)?;
 
         if let Some(register) = self.compile_binary_with_inline_literal(op, span, left, right)? {
@@ -321,6 +325,48 @@ impl Compiler<'_, '_> {
         .expect("logical operators handled above");
         self.emit_spanned(instruction, span);
         Ok(dst)
+    }
+
+    fn reject_static_identity_comparison_operands(
+        &self,
+        op: BinaryOp,
+        span: Span,
+        left: &Expr,
+        right: &Expr,
+    ) -> CompileResult<()> {
+        if !matches!(op, BinaryOp::IdentityEqual | BinaryOp::IdentityNotEqual) {
+            return Ok(());
+        }
+        for (side, expr) in [("left", left), ("right", right)] {
+            if let Some(type_name) = self.static_non_identity_operand_type(expr) {
+                return Err(CompileError::new(CompileErrorKind::SemanticDiagnostics(
+                    vec![
+                        Diagnostic::error(format!(
+                            "`{}` requires reference identity operands, but the {side} operand has type `{type_name}`",
+                            op.source_name()
+                        ))
+                        .with_code("compiler::invalid_identity_comparison")
+                        .with_span(span)
+                        .with_label(span, "identity comparison requires reference operands")
+                        .with_label(
+                            expr.span,
+                            format!("{side} operand is statically `{type_name}`"),
+                        ),
+                    ],
+                )));
+            }
+        }
+        Ok(())
+    }
+
+    fn static_non_identity_operand_type(&self, expr: &Expr) -> Option<String> {
+        if let Some(fact) = self.value_type_for_expr(expr) {
+            return (!runtime_type_is_identity_operand(&fact)).then(|| fact.source_type_display());
+        }
+        if let Some(shape) = self.value_shape_for_expr(expr) {
+            return non_identity_shape_type(&shape);
+        }
+        None
     }
 
     fn reject_static_comparison_without_trait(
@@ -696,6 +742,44 @@ impl Compiler<'_, '_> {
                 .derived_operator_traits
                 .get(type_name)
                 .is_some_and(|traits| traits.contains(trait_name))
+    }
+}
+
+fn runtime_type_is_identity_operand(fact: &RuntimeTypeFact) -> bool {
+    match fact {
+        RuntimeTypeFact::Primitive(_) | RuntimeTypeFact::Standard(StandardRuntimeType::Range) => {
+            false
+        }
+        RuntimeTypeFact::Standard(
+            StandardRuntimeType::Array
+            | StandardRuntimeType::Map
+            | StandardRuntimeType::Set
+            | StandardRuntimeType::Function
+            | StandardRuntimeType::Closure
+            | StandardRuntimeType::Iterator
+            | StandardRuntimeType::Option
+            | StandardRuntimeType::Result,
+        )
+        | RuntimeTypeFact::Array(_)
+        | RuntimeTypeFact::Map { .. }
+        | RuntimeTypeFact::Set(_)
+        | RuntimeTypeFact::Iterator(_)
+        | RuntimeTypeFact::Option(_)
+        | RuntimeTypeFact::Result { .. } => true,
+    }
+}
+
+fn non_identity_shape_type(shape: &ValueShape) -> Option<String> {
+    match shape {
+        ValueShape::Scalar(type_name) => Some(type_name.clone()),
+        ValueShape::Unknown
+        | ValueShape::Record(_)
+        | ValueShape::Array(_)
+        | ValueShape::Iterator(_)
+        | ValueShape::Map { .. }
+        | ValueShape::Set(_)
+        | ValueShape::Option(_)
+        | ValueShape::Result { .. } => None,
     }
 }
 

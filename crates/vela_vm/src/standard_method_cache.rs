@@ -10,10 +10,9 @@ use materializing_cache::{
     call_cached_string_option, call_cached_string_parse_option, call_cached_string_transform,
 };
 use readonly_cache::{
-    call_cached_array_contains, call_cached_bytes_accessor, call_cached_collection_has,
-    call_cached_is_empty, call_cached_len, call_cached_map_get_or,
-    call_cached_option_result_predicate, call_cached_option_result_unwrap_or,
-    call_cached_set_relation, call_cached_string_predicate,
+    call_cached_bytes_accessor, call_cached_collection_has, call_cached_is_empty, call_cached_len,
+    call_cached_map_get_or, call_cached_option_result_predicate,
+    call_cached_option_result_unwrap_or, call_cached_set_relation, call_cached_string_predicate,
 };
 
 use crate::std_method_ids::std_method_ids;
@@ -523,6 +522,9 @@ pub(crate) fn call_standard_cached(
     heap: &mut Option<&mut HeapExecution<'_>>,
     budget: &mut Option<&mut ExecutionBudget>,
 ) -> Option<VmResult<Value>> {
+    if array_target_requires_method_runtime(cache) {
+        return None;
+    }
     if cache.receiver == StandardMethodReceiver::Range
         && matches!(
             cache.target,
@@ -532,9 +534,7 @@ pub(crate) fn call_standard_cached(
         return call_readonly_cached(receiver, cache, args, heap.as_deref());
     }
     match cache.target {
-        StandardMethodInlineCacheTarget::First
-        | StandardMethodInlineCacheTarget::Last
-        | StandardMethodInlineCacheTarget::IndexOf
+        StandardMethodInlineCacheTarget::First | StandardMethodInlineCacheTarget::Last
             if cache.receiver == StandardMethodReceiver::Array =>
         {
             return call_cached_array_lookup_option(receiver, cache.target, args, heap, budget);
@@ -678,11 +678,7 @@ pub(crate) fn call_standard_cached(
         }
         StandardMethodInlineCacheTarget::Slice
         | StandardMethodInlineCacheTarget::Reverse
-        | StandardMethodInlineCacheTarget::Distinct
         | StandardMethodInlineCacheTarget::Join
-        | StandardMethodInlineCacheTarget::Sort
-        | StandardMethodInlineCacheTarget::Min
-        | StandardMethodInlineCacheTarget::Max
         | StandardMethodInlineCacheTarget::Sum
             if cache.receiver == StandardMethodReceiver::Array =>
         {
@@ -778,9 +774,6 @@ pub(crate) fn call_standard_cached(
         (StandardMethodReceiver::Array, StandardMethodInlineCacheTarget::Last) => {
             array_methods::last(receiver, args, heap, budget)
         }
-        (StandardMethodReceiver::Array, StandardMethodInlineCacheTarget::IndexOf) => {
-            array_methods::index_of(receiver, args, heap, budget)
-        }
         (StandardMethodReceiver::Array, StandardMethodInlineCacheTarget::Slice) => {
             array_methods::slice(receiver, args, heap, budget)
         }
@@ -836,20 +829,8 @@ pub(crate) fn call_standard_cached(
         (StandardMethodReceiver::Array, StandardMethodInlineCacheTarget::Reverse) => {
             array_methods::reverse(receiver, args, heap, budget)
         }
-        (StandardMethodReceiver::Array, StandardMethodInlineCacheTarget::Distinct) => {
-            array_methods::distinct(receiver, args, heap, budget)
-        }
         (StandardMethodReceiver::Array, StandardMethodInlineCacheTarget::Join) => {
             array_methods::join(receiver, args, heap, budget)
-        }
-        (StandardMethodReceiver::Array, StandardMethodInlineCacheTarget::Sort) => {
-            array_methods::sort(receiver, args, heap, budget)
-        }
-        (StandardMethodReceiver::Array, StandardMethodInlineCacheTarget::Min) => {
-            array_methods::min(receiver, args, heap, budget)
-        }
-        (StandardMethodReceiver::Array, StandardMethodInlineCacheTarget::Max) => {
-            array_methods::max(receiver, args, heap, budget)
         }
         (StandardMethodReceiver::Array, StandardMethodInlineCacheTarget::Sum) => {
             array_methods::sum_values(receiver, heap.as_deref(), "method sum")
@@ -968,7 +949,23 @@ pub(crate) fn call_standard_readonly_cached(
     args: &[Value],
     heap: Option<&HeapExecution<'_>>,
 ) -> Option<VmResult<Value>> {
+    if array_target_requires_method_runtime(cache) {
+        return None;
+    }
     call_readonly_cached(receiver, cache, args, heap)
+}
+
+fn array_target_requires_method_runtime(cache: StandardMethodInlineCacheEntry) -> bool {
+    cache.receiver == StandardMethodReceiver::Array
+        && matches!(
+            cache.target,
+            StandardMethodInlineCacheTarget::Contains
+                | StandardMethodInlineCacheTarget::IndexOf
+                | StandardMethodInlineCacheTarget::Distinct
+                | StandardMethodInlineCacheTarget::Sort
+                | StandardMethodInlineCacheTarget::Min
+                | StandardMethodInlineCacheTarget::Max
+        )
 }
 
 fn call_cached_array_sum(
@@ -1028,11 +1025,6 @@ fn call_readonly_cached(
         {
             return call_cached_string_predicate(receiver, cache.target, args, heap);
         }
-        StandardMethodInlineCacheTarget::Contains
-            if cache.receiver == StandardMethodReceiver::Array =>
-        {
-            return call_cached_array_contains(receiver, args, heap);
-        }
         StandardMethodInlineCacheTarget::Get
         | StandardMethodInlineCacheTarget::ReadU32Le
         | StandardMethodInlineCacheTarget::ReadU32Be
@@ -1066,9 +1058,6 @@ fn call_readonly_cached(
     let result = match (cache.receiver, cache.target) {
         (StandardMethodReceiver::String, StandardMethodInlineCacheTarget::Contains) => {
             crate::string_methods::contains(receiver, args, heap).map(Value::Bool)
-        }
-        (StandardMethodReceiver::Array, StandardMethodInlineCacheTarget::Contains) => {
-            array_methods::contains(receiver, args, heap).map(Value::Bool)
         }
         (StandardMethodReceiver::String, StandardMethodInlineCacheTarget::StartsWith) => {
             crate::string_methods::starts_with(receiver, args, heap).map(Value::Bool)

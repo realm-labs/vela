@@ -33,7 +33,6 @@ pub(crate) fn call(
         "is_empty" => expect_no_args(method, args)
             .and_then(|()| is_empty(receiver, heap.as_deref()).map(Value::Bool)),
         "iter" => iteration::iter_method(receiver, args, heap, budget),
-        "contains" => array_methods::contains(receiver, args, heap.as_deref()).map(Value::Bool),
         "slice" => array_methods::slice(receiver, args, heap, budget),
         "push" => array_methods::push(receiver, args, heap.as_deref_mut(), budget.as_deref_mut()),
         "pop" => array_methods::pop(receiver, args, heap.as_deref_mut(), budget.as_deref_mut()),
@@ -47,12 +46,7 @@ pub(crate) fn call(
             array_methods::remove_at(receiver, args, heap.as_deref_mut(), budget.as_deref_mut())
         }
         "join" => array_methods::join(receiver, args, heap, budget),
-        "index_of" => array_methods::index_of(receiver, args, heap, budget),
-        "distinct" => array_methods::distinct(receiver, args, heap, budget),
         "reverse" => array_methods::reverse(receiver, args, heap, budget),
-        "sort" => array_methods::sort(receiver, args, heap, budget),
-        "min" => array_methods::min(receiver, args, heap, budget),
-        "max" => array_methods::max(receiver, args, heap, budget),
         "is_some" => option_result_methods::is_some(receiver, args, heap.as_deref()),
         "is_none" => option_result_methods::is_none(receiver, args, heap.as_deref()),
         "is_ok" => option_result_methods::is_ok(receiver, args, heap.as_deref()),
@@ -126,7 +120,6 @@ pub(crate) fn call_readonly(
         "is_empty" => {
             expect_no_args(method, args).and_then(|()| is_empty(receiver, heap).map(Value::Bool))
         }
-        "contains" => array_methods::contains(receiver, args, heap).map(Value::Bool),
         "is_some" => option_result_methods::is_some(receiver, args, heap),
         "is_none" => option_result_methods::is_none(receiver, args, heap),
         "is_ok" => option_result_methods::is_ok(receiver, args, heap),

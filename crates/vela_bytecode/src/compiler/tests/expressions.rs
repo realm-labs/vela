@@ -160,6 +160,25 @@ fn main(left, right) {
 }
 
 #[test]
+fn compiler_rejects_static_non_reference_identity_comparison() {
+    let error = compile_function_source(
+        SourceId::new(1),
+        r#"
+fn main() {
+    return 1 === 1;
+}
+"#,
+        "main",
+    )
+    .expect_err("static scalar identity comparison should be a compile error");
+
+    assert_eq!(
+        semantic_diagnostic_codes(error),
+        ["compiler::invalid_identity_comparison"]
+    );
+}
+
+#[test]
 fn compiler_inverts_negated_identity_equality_without_not_instruction() {
     let code = compile_function_source(
         SourceId::new(1),

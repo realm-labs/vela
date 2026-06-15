@@ -229,6 +229,27 @@ impl Ord for Score { fn cmp(self, other: Score) -> i64 { return 0; } }
 }
 
 #[test]
+fn builtin_operator_trait_prerequisites_accept_derived_prerequisites() {
+    let mut graph = ModuleGraph::new();
+    graph.add_source(source(
+        1,
+        "game::scores",
+        r#"
+#[derive(PartialEq)]
+struct Score { value: i64 }
+impl Eq for Score {}
+
+#[derive(PartialEq, Eq, PartialOrd)]
+struct Rank { value: i64 }
+impl Ord for Rank { fn cmp(self, other: Rank) -> i64 { return self.value - other.value; } }
+"#,
+    ));
+    graph.resolve_imports();
+
+    assert_eq!(graph.diagnostics(), &[]);
+}
+
+#[test]
 fn builtin_operator_derive_prerequisites_are_validated() {
     let mut graph = ModuleGraph::new();
     graph.add_source(source(

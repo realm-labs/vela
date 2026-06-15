@@ -24,11 +24,8 @@ const PARTIAL_EQ_METHOD: &str = "eq";
 const PARTIAL_ORD_METHOD: &str = "partial_cmp";
 const ORD_METHOD: &str = "cmp";
 
-pub(crate) fn values_equal(
-    lhs: &Value,
-    rhs: &Value,
-    heap: Option<&HeapExecution<'_>>,
-) -> VmResult<bool> {
+#[cfg(test)]
+fn values_equal(lhs: &Value, rhs: &Value, heap: Option<&HeapExecution<'_>>) -> VmResult<bool> {
     if let Some(equal) = leaf_values_equal(lhs, rhs, heap)? {
         return Ok(equal);
     }
@@ -129,14 +126,6 @@ pub(crate) fn identity_not_equal(
     heap: Option<&HeapExecution<'_>>,
 ) -> VmResult<bool> {
     identity_equal(lhs, rhs, heap).map(|equal| !equal)
-}
-
-pub(crate) fn simple_values_equal(
-    lhs: &Value,
-    rhs: &Value,
-    heap: Option<&HeapExecution<'_>>,
-) -> VmResult<Option<bool>> {
-    leaf_values_equal(lhs, rhs, heap)
 }
 
 fn call_partial_eq(

@@ -28,7 +28,6 @@ pub(super) fn call_cached_array_lookup_option(
     let (method, operation) = match target {
         StandardMethodInlineCacheTarget::First => ("first", "method first"),
         StandardMethodInlineCacheTarget::Last => ("last", "method last"),
-        StandardMethodInlineCacheTarget::IndexOf => ("index_of", "method index_of"),
         _ => return None,
     };
     let slots = array_slots(receiver, heap.as_deref(), operation)?;
@@ -46,34 +45,6 @@ pub(super) fn call_cached_array_lookup_option(
                 Err(error) => return Some(Err(error)),
             }
             slots.last().copied()
-        }
-        StandardMethodInlineCacheTarget::IndexOf => {
-            match crate::runtime_checks::expect_arity(method, args, 1) {
-                Ok(()) => {}
-                Err(error) => return Some(Err(error)),
-            }
-            let heap_ref = heap.as_deref();
-            let index = match slots.iter().enumerate().find_map(|(index, value)| {
-                match crate::equality::simple_values_equal(value, &args[0], heap_ref).and_then(
-                    |equal| {
-                        equal
-                            .map(Ok)
-                            .unwrap_or_else(|| crate::values_equal(value, &args[0], heap_ref))
-                    },
-                ) {
-                    Ok(true) => Some(Ok(index)),
-                    Ok(false) => None,
-                    Err(error) => Some(Err(error)),
-                }
-            }) {
-                Some(Ok(index)) => Some(index),
-                Some(Err(error)) => return Some(Err(error)),
-                None => None,
-            };
-            match index.map(index_value).transpose() {
-                Ok(payload) => payload,
-                Err(error) => return Some(Err(error)),
-            }
         }
         _ => return None,
     };
@@ -108,17 +79,6 @@ pub(super) fn call_cached_array_materialization(
             };
             Some(make_array(payload, heap, budget, "method reverse"))
         }
-        StandardMethodInlineCacheTarget::Distinct => {
-            let payload = {
-                let heap_ref = heap.as_deref();
-                let slots = array_slots(receiver, heap_ref, "method distinct")?;
-                match array_distinct_payload(slots, args, heap_ref) {
-                    Ok(payload) => payload,
-                    Err(error) => return Some(Err(error)),
-                }
-            };
-            Some(make_array(payload, heap, budget, "method distinct"))
-        }
         StandardMethodInlineCacheTarget::Join => {
             let payload = {
                 let heap_ref = heap.as_deref();
@@ -129,37 +89,6 @@ pub(super) fn call_cached_array_materialization(
                 }
             };
             Some(make_string(payload, heap, budget, "method join"))
-        }
-        StandardMethodInlineCacheTarget::Sort => {
-            let payload = {
-                let heap_ref = heap.as_deref();
-                let slots = array_slots(receiver, heap_ref, "method sort")?;
-                match array_sort_payload(slots, args, heap_ref) {
-                    Ok(payload) => payload,
-                    Err(error) => return Some(Err(error)),
-                }
-            };
-            Some(make_array(payload, heap, budget, "method sort"))
-        }
-        StandardMethodInlineCacheTarget::Min | StandardMethodInlineCacheTarget::Max => {
-            let (method, operation, extremum) = match target {
-                StandardMethodInlineCacheTarget::Min => {
-                    ("min", "method min", CachedArrayExtremum::Min)
-                }
-                StandardMethodInlineCacheTarget::Max => {
-                    ("max", "method max", CachedArrayExtremum::Max)
-                }
-                _ => unreachable!("array extrema target was validated above"),
-            };
-            let payload = {
-                let heap_ref = heap.as_deref();
-                let slots = array_slots(receiver, heap_ref, operation)?;
-                match array_extremum_payload(slots, args, heap_ref, method, operation, extremum) {
-                    Ok(payload) => payload,
-                    Err(error) => return Some(Err(error)),
-                }
-            };
-            Some(make_option(payload, heap, budget))
         }
         _ => None,
     }
@@ -433,15 +362,6 @@ fn string_receiver<'a>(receiver: &Value, heap: Option<&'a HeapExecution<'_>>) ->
     Some(value)
 }
 
-fn index_value(index: usize) -> VmResult<Value> {
-    let index = i64::try_from(index).map_err(|_| {
-        VmError::new(VmErrorKind::TypeMismatch {
-            operation: "method index_of",
-        })
-    })?;
-    Ok(Value::I64(index))
-}
-
 fn array_slice_payload(values: &[Value], args: &[Value]) -> VmResult<Vec<Value>> {
     crate::runtime_checks::expect_arity("slice", args, 2)?;
     let start = array_index_value(&args[0], "method slice")?;
@@ -463,25 +383,6 @@ fn array_slice_payload(values: &[Value], args: &[Value]) -> VmResult<Vec<Value>>
 fn array_reverse_payload(values: &[Value], args: &[Value]) -> VmResult<Vec<Value>> {
     crate::runtime_checks::expect_arity("reverse", args, 0)?;
     Ok(values.iter().rev().copied().collect())
-}
-
-fn array_distinct_payload(
-    values: &[Value],
-    args: &[Value],
-    heap: Option<&HeapExecution<'_>>,
-) -> VmResult<Vec<Value>> {
-    crate::runtime_checks::expect_arity("distinct", args, 0)?;
-    let mut distinct = Vec::new();
-    'values: for value in values {
-        let value = *value;
-        for existing in &distinct {
-            if crate::values_equal(existing, &value, heap)? {
-                continue 'values;
-            }
-        }
-        distinct.push(value);
-    }
-    Ok(distinct)
 }
 
 fn array_join_payload(
@@ -526,129 +427,6 @@ fn array_join_string<'a>(
         _ => Err(VmError::new(VmErrorKind::TypeMismatch {
             operation: "method join",
         })),
-    }
-}
-
-fn array_sort_payload(
-    values: &[Value],
-    args: &[Value],
-    heap: Option<&HeapExecution<'_>>,
-) -> VmResult<Vec<Value>> {
-    crate::runtime_checks::expect_arity("sort", args, 0)?;
-    let mut entries = Vec::with_capacity(values.len());
-    let mut key_kind = None;
-    for value in values {
-        let key = cached_sort_key(value, heap, "method sort")?;
-        if let Some(expected) = key_kind {
-            if key.kind() != expected {
-                return Err(VmError::new(VmErrorKind::TypeMismatch {
-                    operation: "method sort",
-                }));
-            }
-        } else {
-            key_kind = Some(key.kind());
-        }
-        entries.push(CachedSortEntry {
-            key,
-            value: *value,
-            index: entries.len(),
-        });
-    }
-    entries.sort_by(|left, right| {
-        left.key
-            .compare(&right.key)
-            .then_with(|| left.index.cmp(&right.index))
-    });
-    Ok(entries.into_iter().map(|entry| entry.value).collect())
-}
-
-fn array_extremum_payload(
-    values: &[Value],
-    args: &[Value],
-    heap: Option<&HeapExecution<'_>>,
-    method: &str,
-    operation: &'static str,
-    extremum: CachedArrayExtremum,
-) -> VmResult<Option<Value>> {
-    crate::runtime_checks::expect_arity(method, args, 0)?;
-    let Some((first, rest)) = values.split_first() else {
-        return Ok(None);
-    };
-    let mut best = first;
-    let mut best_key = cached_sort_key(first, heap, operation)?;
-    let key_kind = best_key.kind();
-    for value in rest {
-        let key = cached_sort_key(value, heap, operation)?;
-        if key.kind() != key_kind {
-            return Err(VmError::new(VmErrorKind::TypeMismatch { operation }));
-        }
-        let ordering = key.compare(&best_key);
-        let replace = match extremum {
-            CachedArrayExtremum::Min => ordering.is_lt(),
-            CachedArrayExtremum::Max => ordering.is_gt(),
-        };
-        if replace {
-            best = value;
-            best_key = key;
-        }
-    }
-    Ok(Some(*best))
-}
-
-#[derive(Clone, Copy)]
-enum CachedArrayExtremum {
-    Min,
-    Max,
-}
-
-#[derive(Clone, Copy, Eq, PartialEq)]
-enum CachedSortKeyKind {
-    Numeric,
-    String,
-}
-
-enum CachedSortKey {
-    Int(i64),
-    String(String),
-}
-
-struct CachedSortEntry {
-    key: CachedSortKey,
-    value: Value,
-    index: usize,
-}
-
-impl CachedSortKey {
-    fn kind(&self) -> CachedSortKeyKind {
-        match self {
-            Self::Int(_) => CachedSortKeyKind::Numeric,
-            Self::String(_) => CachedSortKeyKind::String,
-        }
-    }
-
-    fn compare(&self, other: &Self) -> std::cmp::Ordering {
-        match (self, other) {
-            (Self::Int(left), Self::Int(right)) => left.cmp(right),
-            (Self::String(left), Self::String(right)) => left.cmp(right),
-            (Self::Int(_), Self::String(_)) | (Self::String(_), Self::Int(_)) => {
-                std::cmp::Ordering::Equal
-            }
-        }
-    }
-}
-
-fn cached_sort_key(
-    value: &Value,
-    heap: Option<&HeapExecution<'_>>,
-    operation: &'static str,
-) -> VmResult<CachedSortKey> {
-    match value {
-        Value::I64(value) => Ok(CachedSortKey::Int(*value)),
-        Value::HeapRef(reference) => match heap.and_then(|heap| heap.heap.get(*reference)) {
-            Some(HeapValue::String(value)) => Ok(CachedSortKey::String(value.clone())),
-            _ => Err(VmError::new(VmErrorKind::TypeMismatch { operation })),
-        },
-        _ => Err(VmError::new(VmErrorKind::TypeMismatch { operation })),
     }
 }
 

@@ -58,6 +58,11 @@ fn duplicate_script_method_diagnostics(graph: &ModuleGraph) -> Vec<Diagnostic> {
 
 fn builtin_operator_trait_prerequisite_diagnostics(graph: &ModuleGraph) -> Vec<Diagnostic> {
     let impls = builtin_operator_trait_impls(graph);
+    let derives = derived_operator_traits_by_type(graph);
+    let lookup = OperatorTraitLookup {
+        impls: &impls,
+        derives: &derives,
+    };
 
     let mut diagnostics = Vec::new();
     for ((receiver, trait_name), span) in &impls {
@@ -65,7 +70,7 @@ fn builtin_operator_trait_prerequisite_diagnostics(graph: &ModuleGraph) -> Vec<D
             "Eq" => {
                 push_missing_operator_trait_prerequisite(
                     &mut diagnostics,
-                    &impls,
+                    lookup,
                     receiver,
                     "Eq",
                     "PartialEq",
@@ -75,7 +80,7 @@ fn builtin_operator_trait_prerequisite_diagnostics(graph: &ModuleGraph) -> Vec<D
             "Ord" => {
                 push_missing_operator_trait_prerequisite(
                     &mut diagnostics,
-                    &impls,
+                    lookup,
                     receiver,
                     "Ord",
                     "Eq",
@@ -83,7 +88,7 @@ fn builtin_operator_trait_prerequisite_diagnostics(graph: &ModuleGraph) -> Vec<D
                 );
                 push_missing_operator_trait_prerequisite(
                     &mut diagnostics,
-                    &impls,
+                    lookup,
                     receiver,
                     "Ord",
                     "PartialOrd",
@@ -120,13 +125,13 @@ fn builtin_operator_trait_impls(graph: &ModuleGraph) -> BTreeMap<(String, String
 
 fn push_missing_operator_trait_prerequisite(
     diagnostics: &mut Vec<Diagnostic>,
-    impls: &BTreeMap<(String, String), Span>,
+    lookup: OperatorTraitLookup<'_>,
     receiver: &str,
     trait_name: &'static str,
     prerequisite: &'static str,
     span: Span,
 ) {
-    if impls.contains_key(&(receiver.to_owned(), prerequisite.to_owned())) {
+    if type_has_operator_trait(receiver, prerequisite, lookup.impls, lookup.derives) {
         return;
     }
     diagnostics.push(
