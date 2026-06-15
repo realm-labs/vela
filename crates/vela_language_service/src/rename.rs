@@ -4,6 +4,7 @@ use vela_common::{SourceId, Span};
 use vela_hir::binding::{BindingMap, BindingResolution, LocalBinding};
 use vela_hir::ids::{HirDeclId, HirLocalId};
 use vela_hir::module_graph::{Declaration, DeclarationKind, ImportResolution, ModuleGraph};
+use vela_syntax::ast::Visibility;
 use vela_syntax::token::Keyword;
 
 use crate::{
@@ -37,6 +38,7 @@ impl PrepareRename {
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub struct WorkspaceEdit {
     document_edits: Vec<DocumentTextEdit>,
+    risks: Vec<RenameRisk>,
 }
 
 impl WorkspaceEdit {
@@ -44,6 +46,34 @@ impl WorkspaceEdit {
     pub fn document_edits(&self) -> &[DocumentTextEdit] {
         &self.document_edits
     }
+
+    #[must_use]
+    pub fn risks(&self) -> &[RenameRisk] {
+        &self.risks
+    }
+}
+
+#[derive(Debug, Clone, Eq, PartialEq)]
+pub struct RenameRisk {
+    kind: RenameRiskKind,
+    message: String,
+}
+
+impl RenameRisk {
+    #[must_use]
+    pub const fn kind(&self) -> RenameRiskKind {
+        self.kind
+    }
+
+    #[must_use]
+    pub fn message(&self) -> &str {
+        &self.message
+    }
+}
+
+#[derive(Debug, Clone, Copy, Eq, PartialEq)]
+pub enum RenameRiskKind {
+    HotReloadAbi,
 }
 
 #[derive(Debug, Clone, Eq, PartialEq)]
@@ -179,6 +209,7 @@ impl LanguageServiceDatabases {
         });
 
         Some(WorkspaceEdit {
+            risks: Vec::new(),
             document_edits: vec![DocumentTextEdit {
                 document_id: document_id.clone(),
                 edits,
@@ -212,7 +243,10 @@ impl LanguageServiceDatabases {
             })
             .collect::<Vec<_>>();
 
-        Some(WorkspaceEdit { document_edits })
+        Some(WorkspaceEdit {
+            document_edits,
+            risks: rename_risks_for_declaration(target.declaration),
+        })
     }
 
     fn push_declaration_edit(
@@ -517,6 +551,20 @@ fn declaration_name_conflicts(
         .is_some_and(|existing| existing != declaration.id)
 }
 
+fn rename_risks_for_declaration(declaration: &Declaration) -> Vec<RenameRisk> {
+    if declaration.visibility != Visibility::Public {
+        return Vec::new();
+    }
+
+    vec![RenameRisk {
+        kind: RenameRiskKind::HotReloadAbi,
+        message: format!(
+            "renaming public function `{}` can break hot-reload ABI compatibility and external callers",
+            declaration.name
+        ),
+    }]
+}
+
 fn is_valid_rename_identifier(name: &str) -> bool {
     let mut chars = name.chars();
     chars
@@ -718,6 +766,32 @@ pub fn main(amount: i64) -> i64 {
         let helper_edit = document_edit(&edit, &helper);
         assert_eq!(helper_edit.edits().len(), 1);
         assert_edit_at(helper_edit.edits(), 0, 7, "award");
+    }
+
+    #[test]
+    fn public_export_rename_reports_hot_reload_risk() {
+        let document = DocumentId::from("/workspace/scripts/game/reward.vela");
+        let text = "pub fn grant(amount: i64) -> i64 { return amount }";
+        let databases = databases_for(vec![SourceFileSnapshot::new(document.clone(), text)]);
+
+        let edit = databases
+            .rename(
+                &document,
+                Position::new(0, line(text, 0).find("grant").expect("grant declaration")),
+                "award",
+            )
+            .expect("public function rename should still produce edits");
+
+        assert_eq!(edit.risks().len(), 1);
+        assert_eq!(edit.risks()[0].kind(), RenameRiskKind::HotReloadAbi);
+        assert!(
+            edit.risks()[0]
+                .message()
+                .contains("public function `grant`")
+        );
+        let document_edit = document_edit(&edit, &document);
+        assert_eq!(document_edit.edits().len(), 1);
+        assert_edit_at(document_edit.edits(), 0, 7, "award");
     }
 
     #[test]

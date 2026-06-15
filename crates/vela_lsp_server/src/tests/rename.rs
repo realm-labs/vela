@@ -208,6 +208,64 @@ pub fn main(amount: i64) -> i64 {
     assert_text_edit(helper_edits, 0, 7, "award");
 }
 
+#[test]
+fn lsp_public_export_rename_reports_hot_reload_risk() {
+    let mut server = LspServer::new();
+    let _ = response_value(server.handle_json(&request(
+        1,
+        "initialize",
+        serde_json::json!({
+            "processId": null,
+            "rootUri": "file:///workspace/scripts",
+            "capabilities": {}
+        }),
+    )));
+    let text = "pub fn grant(amount: i64) -> i64 { return amount }";
+    let uri = "file:///workspace/scripts/game/reward.vela";
+    let _ = notification_value(server.handle_json(&notification(
+        "textDocument/didOpen",
+        serde_json::json!({
+            "textDocument": {
+                "uri": uri,
+                "languageId": "vela",
+                "version": 1,
+                "text": text
+            }
+        }),
+    )));
+
+    let rename = response_value(server.handle_json(&request(
+        2,
+        "textDocument/rename",
+        serde_json::json!({
+            "textDocument": { "uri": uri },
+            "position": {
+                "line": 0,
+                "character": line(text, 0).find("grant").expect("grant declaration")
+            },
+            "newName": "award"
+        }),
+    )));
+    let edits = rename["result"]["changes"][uri]
+        .as_array()
+        .expect("rename should return text edits");
+    assert_eq!(edits.len(), 1);
+    assert_text_edit(edits, 0, 7, "award");
+
+    let annotations = rename["result"]["changeAnnotations"]
+        .as_object()
+        .expect("public export rename should include a change annotation");
+    let risk = &annotations["renameRisk0"];
+    assert_eq!(risk["needsConfirmation"], true);
+    assert_eq!(risk["description"], "hotReloadAbi");
+    assert!(
+        risk["label"]
+            .as_str()
+            .expect("risk label should be a string")
+            .contains("public function `grant`")
+    );
+}
+
 fn assert_text_edit(edits: &[serde_json::Value], line: usize, character: usize, new_text: &str) {
     assert!(
         edits.iter().any(|edit| {

@@ -585,7 +585,9 @@ Purpose: provide safe refactoring without changing runtime contracts.
   or import aliases.
   - [x] Reject local binding renames that collide with an existing function
     binding.
-- [ ] Report hot-reload ABI/schema risk for exported API rename.
+- [~] Report hot-reload ABI/schema risk for exported API rename.
+  - [x] Public script function renames carry hot-reload ABI risk metadata in
+    service workspace edits and LSP change annotations.
 - [ ] Return workspace edits with stable text ranges and document versions.
 
 Tests:
@@ -596,7 +598,7 @@ Tests:
 - [x] `lsp_local_rename_updates_all_function_uses`
 - [x] `private_function_rename_updates_imports`
 - [x] `lsp_private_function_rename_updates_imports`
-- [ ] `public_export_rename_reports_hot_reload_risk`
+- [x] `public_export_rename_reports_hot_reload_risk`
 - [x] `rename_rejects_scope_collision`
 - [ ] `host_schema_rename_is_not_editable`
 

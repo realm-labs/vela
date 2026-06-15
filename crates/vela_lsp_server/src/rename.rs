@@ -1,5 +1,7 @@
 use serde_json::{Value as JsonValue, json};
-use vela_language_service::{DiagnosticRange, PrepareRename, TextEdit, WorkspaceEdit};
+use vela_language_service::{
+    DiagnosticRange, PrepareRename, RenameRiskKind, TextEdit, WorkspaceEdit,
+};
 
 pub(crate) fn lsp_prepare_rename(rename: &PrepareRename) -> JsonValue {
     json!({
@@ -26,7 +28,14 @@ pub(crate) fn lsp_workspace_edit(edit: &WorkspaceEdit) -> JsonValue {
         })
         .collect::<serde_json::Map<_, _>>();
 
-    json!({ "changes": changes })
+    if edit.risks().is_empty() {
+        json!({ "changes": changes })
+    } else {
+        json!({
+            "changes": changes,
+            "changeAnnotations": lsp_change_annotations(edit)
+        })
+    }
 }
 
 fn lsp_text_edit(edit: &TextEdit) -> JsonValue {
@@ -34,6 +43,28 @@ fn lsp_text_edit(edit: &TextEdit) -> JsonValue {
         "range": lsp_range(edit.range()),
         "newText": edit.new_text()
     })
+}
+
+fn lsp_change_annotations(edit: &WorkspaceEdit) -> JsonValue {
+    JsonValue::Object(
+        edit.risks()
+            .iter()
+            .enumerate()
+            .map(|(index, risk)| {
+                let kind = match risk.kind() {
+                    RenameRiskKind::HotReloadAbi => "hotReloadAbi",
+                };
+                (
+                    format!("renameRisk{index}"),
+                    json!({
+                        "label": risk.message(),
+                        "description": kind,
+                        "needsConfirmation": true
+                    }),
+                )
+            })
+            .collect(),
+    )
 }
 
 fn lsp_range(range: DiagnosticRange) -> JsonValue {
