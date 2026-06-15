@@ -935,8 +935,8 @@ mod tests {
         use std::time::{SystemTime, UNIX_EPOCH};
 
         use super::{
-            JsonRpcResult, LspServer, notification, notification_value, notification_values,
-            request, response_value,
+            JsonRpcResult, JsonValue, LspServer, notification, notification_value,
+            notification_values, request, response_value,
         };
 
         fn temp_workspace() -> PathBuf {
@@ -964,11 +964,12 @@ mod tests {
             }
         }
 
-        #[test]
-        fn file_create_adds_module() {
-            let root = temp_workspace();
+        fn write_workspace(root: &Path, helper_name: &str) -> (PathBuf, PathBuf) {
             let config_path = root.join("vela.toml");
-            let helper_path = root.join("scripts").join("game").join("helper.vela");
+            let helper_path = root
+                .join("scripts")
+                .join("game")
+                .join(format!("{helper_name}.vela"));
             if let Err(error) = fs::write(
                 &config_path,
                 r#"
@@ -981,14 +982,17 @@ mod tests {
             if let Err(error) = fs::write(&helper_path, "pub fn grant() { return 1 }") {
                 panic!("helper source should be writable: {error}");
             }
+            (config_path, helper_path)
+        }
 
+        fn initialized_server(root: &Path, config_path: &Path, helper_path: &Path) -> LspServer {
             let mut server = LspServer::new();
             let response = response_value(server.handle_json(&request(
                 1,
                 "initialize",
                 serde_json::json!({
                     "processId": null,
-                    "rootUri": file_uri(&root),
+                    "rootUri": file_uri(root),
                     "capabilities": {}
                 }),
             )));
@@ -998,27 +1002,34 @@ mod tests {
                 "workspace/didChangeWatchedFiles",
                 serde_json::json!({
                     "changes": [
-                        { "uri": file_uri(&config_path), "type": 1 },
-                        { "uri": file_uri(&helper_path), "type": 1 }
+                        { "uri": file_uri(config_path), "type": 1 },
+                        { "uri": file_uri(helper_path), "type": 1 }
                     ]
                 }),
             ));
             assert_eq!(watched, JsonRpcResult::None);
+            server
+        }
 
+        fn open_main(server: &mut LspServer, root: &Path, import_module: &str) -> JsonValue {
             let main_uri = file_uri(&root.join("scripts").join("game").join("main.vela"));
-            let main = notification_value(server.handle_json(&notification(
+            notification_value(server.handle_json(&notification(
                 "textDocument/didOpen",
                 serde_json::json!({
                     "textDocument": {
                         "uri": main_uri,
                         "languageId": "vela",
                         "version": 1,
-                        "text": "use game::helper::grant\npub fn main() { return grant() }"
+                        "text": format!(
+                            "use {import_module}::grant\npub fn main() {{ return grant() }}"
+                        )
                     }
                 }),
-            )));
+            )))
+        }
 
-            let Some(diagnostics) = main["params"]["diagnostics"].as_array() else {
+        fn assert_no_unresolved_imports(notification: &JsonValue) {
+            let Some(diagnostics) = notification["params"]["diagnostics"].as_array() else {
                 panic!("didOpen should publish diagnostics");
             };
             assert!(
@@ -1028,6 +1039,15 @@ mod tests {
                         && diagnostic["code"] != "hir::unresolved_import"),
                 "{diagnostics:?}"
             );
+        }
+
+        #[test]
+        fn file_create_adds_module() {
+            let root = temp_workspace();
+            let (config_path, helper_path) = write_workspace(&root, "helper");
+            let mut server = initialized_server(&root, &config_path, &helper_path);
+            let main = open_main(&mut server, &root, "game::helper");
+            assert_no_unresolved_imports(&main);
 
             if let Err(error) = fs::remove_dir_all(&root) {
                 panic!("temporary workspace should be removable: {error}");
@@ -1037,66 +1057,10 @@ mod tests {
         #[test]
         fn file_delete_reports_removed_imports() {
             let root = temp_workspace();
-            let config_path = root.join("vela.toml");
-            let helper_path = root.join("scripts").join("game").join("helper.vela");
-            if let Err(error) = fs::write(
-                &config_path,
-                r#"
-                    [workspace]
-                    roots = ["scripts"]
-                "#,
-            ) {
-                panic!("vela.toml should be writable: {error}");
-            }
-            if let Err(error) = fs::write(&helper_path, "pub fn grant() { return 1 }") {
-                panic!("helper source should be writable: {error}");
-            }
-
-            let mut server = LspServer::new();
-            let response = response_value(server.handle_json(&request(
-                1,
-                "initialize",
-                serde_json::json!({
-                    "processId": null,
-                    "rootUri": file_uri(&root),
-                    "capabilities": {}
-                }),
-            )));
-            assert_eq!(response["result"]["serverInfo"]["name"], "vela_lsp_server");
-
-            let watched = server.handle_json(&notification(
-                "workspace/didChangeWatchedFiles",
-                serde_json::json!({
-                    "changes": [
-                        { "uri": file_uri(&config_path), "type": 1 },
-                        { "uri": file_uri(&helper_path), "type": 1 }
-                    ]
-                }),
-            ));
-            assert_eq!(watched, JsonRpcResult::None);
-
-            let main_uri = file_uri(&root.join("scripts").join("game").join("main.vela"));
-            let main = notification_value(server.handle_json(&notification(
-                "textDocument/didOpen",
-                serde_json::json!({
-                    "textDocument": {
-                        "uri": main_uri,
-                        "languageId": "vela",
-                        "version": 1,
-                        "text": "use game::helper::grant\npub fn main() { return grant() }"
-                    }
-                }),
-            )));
-            let Some(clean_diagnostics) = main["params"]["diagnostics"].as_array() else {
-                panic!("didOpen should publish diagnostics");
-            };
-            assert!(
-                clean_diagnostics
-                    .iter()
-                    .all(|diagnostic| diagnostic["code"] != "hir::unresolved_module"
-                        && diagnostic["code"] != "hir::unresolved_import"),
-                "{clean_diagnostics:?}"
-            );
+            let (config_path, helper_path) = write_workspace(&root, "helper");
+            let mut server = initialized_server(&root, &config_path, &helper_path);
+            let main = open_main(&mut server, &root, "game::helper");
+            assert_no_unresolved_imports(&main);
 
             if let Err(error) = fs::remove_file(&helper_path) {
                 panic!("helper source should be removable: {error}");
@@ -1123,6 +1087,50 @@ mod tests {
                             .is_some_and(|message| message.contains("unresolved module"))),
                 "{diagnostics:?}"
             );
+
+            if let Err(error) = fs::remove_dir_all(&root) {
+                panic!("temporary workspace should be removable: {error}");
+            }
+        }
+
+        #[test]
+        fn file_rename_updates_module_path() {
+            let root = temp_workspace();
+            let (config_path, helper_path) = write_workspace(&root, "helper");
+            let reward_path = root.join("scripts").join("game").join("reward.vela");
+            let mut server = initialized_server(&root, &config_path, &helper_path);
+            let main = open_main(&mut server, &root, "game::helper");
+            assert_no_unresolved_imports(&main);
+
+            if let Err(error) = fs::rename(&helper_path, &reward_path) {
+                panic!("helper source should be renameable: {error}");
+            }
+            let _ = notification_values(server.handle_json(&notification(
+                "workspace/didChangeWatchedFiles",
+                serde_json::json!({
+                    "changes": [
+                        { "uri": file_uri(&helper_path), "type": 3 },
+                        { "uri": file_uri(&reward_path), "type": 1 }
+                    ]
+                }),
+            )));
+
+            let main_uri = file_uri(&root.join("scripts").join("game").join("main.vela"));
+            let main = notification_value(server.handle_json(&notification(
+                "textDocument/didChange",
+                serde_json::json!({
+                    "textDocument": {
+                        "uri": main_uri,
+                        "version": 2
+                    },
+                    "contentChanges": [
+                        {
+                            "text": "use game::reward::grant\npub fn main() { return grant() }"
+                        }
+                    ]
+                }),
+            )));
+            assert_no_unresolved_imports(&main);
 
             if let Err(error) = fs::remove_dir_all(&root) {
                 panic!("temporary workspace should be removable: {error}");

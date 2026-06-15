@@ -637,8 +637,8 @@ Purpose: make the server robust in real projects.
 - [~] Handle created, changed, deleted, and renamed files.
   - [x] Created and changed `.vela` files update disk snapshots.
   - [x] Deleted `.vela` files remove disk snapshots and republish open diagnostics.
-  - [ ] Renamed `.vela` files update module paths.
-- [ ] Rebuild module path index after file moves.
+  - [x] Renamed `.vela` files update module paths.
+- [x] Rebuild module path index after file moves.
 - [ ] Surface configuration diagnostics.
 - [ ] Support workspace folder changes.
 
@@ -646,7 +646,7 @@ Tests:
 
 - [x] `file_create_adds_module`
 - [x] `file_delete_reports_removed_imports`
-- [ ] `file_rename_updates_module_path`
+- [x] `file_rename_updates_module_path`
 - [ ] `schema_file_change_reloads_facts`
 - [ ] `workspace_folder_change_reindexes_project`
 
