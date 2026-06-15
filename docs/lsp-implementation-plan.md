@@ -30,15 +30,16 @@ and incremental invalidation; existing `vela_syntax`, `vela_hir`,
 `vela_analysis`, and `vela_reflect` remain the semantic source of truth.
 Prefer `compile_dir` module-graph semantics with open-document overlays and a
 host schema artifact loaded from exported TypeRegistry/RegistryFacts metadata.
-Scale toward one-million-line Vela workspaces by avoiding per-keystroke full
-project rebuilds, prioritizing open-file queries, using generation-based
-cancellation, and adding explicit source/parse/HIR/analysis indexes. The LSP
-track may progress in parallel with M19/M20 optimization work because it is
-analysis-only and must not change VM semantics. WASM is optional for browser
-tooling and must not constrain the native server architecture. Validate each
-checkpoint with focused language-service tests, LSP JSON-RPC fixtures,
-scale-oriented tests, docs, and relevant workspace checks. Commit small
-Conventional Commit checkpoints.
+Scale toward Vela workspaces whose total source size approaches one million
+lines across many files and modules by avoiding per-keystroke full project
+rebuilds, prioritizing open-file queries, using generation-based cancellation,
+and adding explicit source/parse/HIR/analysis indexes. The LSP track may
+progress in parallel with M19/M20 optimization work because it is analysis-only
+and must not change VM semantics. WASM is optional for browser tooling and must
+not constrain the native server architecture. Validate each checkpoint with
+focused language-service tests, LSP JSON-RPC fixtures, scale-oriented tests,
+docs, and relevant workspace checks. Commit small Conventional Commit
+checkpoints.
 ```
 
 ---
@@ -83,8 +84,8 @@ or unadvertised until its service-level behavior is correct.
   typo repairs.
 - [ ] Support formatting once syntax trivia/lossless token policy is stable.
 - [ ] Support inlay hints from stable TypeFacts.
-- [ ] Build toward one-million-line workspaces with explicit source, parse,
-  HIR, and analysis databases.
+- [ ] Build toward many-file workspaces whose total source size approaches one
+  million lines with explicit source, parse, HIR, and analysis databases.
 - [ ] Use generation IDs and cancellation so stale request results are
   discarded.
 - [ ] Keep LSP, editor, filesystem, and watcher types out of
@@ -242,7 +243,8 @@ cargo test -p vela_language_service incremental
 
 Scale checkpoint:
 
-- [~] Synthetic workspace approaches one million lines.
+- [~] Synthetic workspace approaches one million total lines across many files
+  and modules, not one unusually large source file.
 - [x] Initial indexing reports timing and source-size metrics.
 - [x] Single-file edit avoids full project parse.
 - [x] Single-file edit avoids full HIR rebuild.
@@ -815,7 +817,8 @@ Purpose: prove the LSP track is complete enough to run alongside runtime work.
 - [ ] Run all language-service unit tests.
 - [ ] Run all LSP JSON-RPC fixture tests.
 - [ ] Run parser/HIR/analysis focused tests.
-- [ ] Run one-million-line synthetic scale checkpoint.
+- [ ] Run many-file synthetic scale checkpoint approaching one million total
+  lines.
 - [ ] Run full workspace validation.
 - [ ] Update `docs/progress.md` with completed LSP capability coverage.
 - [ ] Archive long scale logs only if needed for later audit.
