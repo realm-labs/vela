@@ -1,10 +1,15 @@
 //! Editor-neutral language-service workspace state.
 
+mod diagnostics;
 mod incremental;
 mod project;
 mod text;
 mod workspace;
 
+pub use diagnostics::{
+    DiagnosticLabel, DiagnosticRange, DiagnosticStatus, DocumentDiagnostics, OpenDiagnosticsBatch,
+    ServiceDiagnostic, ServiceDiagnosticSeverity,
+};
 pub use incremental::{
     AnalysisDb, BackgroundResult, CancellationHandle, CancellationToken, GenerationToken, HirDb,
     IndexingMetrics, InvalidationReport, LanguageServiceDatabases, ParseDb, ProjectDb,

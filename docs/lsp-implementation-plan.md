@@ -246,7 +246,7 @@ Scale checkpoint:
 - [x] Initial indexing reports timing and source-size metrics.
 - [x] Single-file edit avoids full project parse.
 - [x] Single-file edit avoids full HIR rebuild.
-- [ ] Open-file diagnostics remain responsive under background indexing.
+- [x] Open-file diagnostics remain responsive under background indexing.
 
 ---
 
@@ -254,22 +254,22 @@ Scale checkpoint:
 
 Purpose: publish actionable parser, HIR, analysis, and schema diagnostics.
 
-- [ ] Convert `vela_common::Diagnostic` into editor-neutral service
+- [~] Convert `vela_common::Diagnostic` into editor-neutral service
   diagnostics.
-- [ ] Preserve severity, code, primary span, labels, candidates, and repair
+- [~] Preserve severity, code, primary span, labels, candidates, and repair
   hints.
-- [ ] Query diagnostics for one file.
-- [ ] Query diagnostics for all open files.
+- [x] Query diagnostics for one file.
+- [x] Query diagnostics for all open files.
 - [ ] Add workspace diagnostics for background indexing.
-- [ ] Mark diagnostics as complete, partial, or stale.
+- [~] Mark diagnostics as complete, partial, or stale.
 - [ ] Keep syntax errors from blocking diagnostics in unaffected modules.
 
 Tests:
 
-- [ ] `syntax_diagnostics_map_to_document_ranges`
+- [x] `syntax_diagnostics_map_to_document_ranges`
 - [ ] `hir_diagnostics_survive_multi_file_workspace`
 - [ ] `schema_diagnostics_degrade_to_any`
-- [ ] `open_file_diagnostics_are_prioritized`
+- [x] `open_file_diagnostics_are_prioritized`
 - [ ] `partial_diagnostics_report_stale_generation`
 
 Validation:
