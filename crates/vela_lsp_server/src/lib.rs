@@ -202,26 +202,34 @@ impl LspServer {
             }
         };
 
-        let Some(change) = params.content_changes.into_iter().last() else {
+        if params.content_changes.is_empty() {
             return JsonRpcResult::Notification(publish_diagnostics_notification(
                 &params.text_document.uri,
                 Vec::new(),
-                Some("didChange requires a full replacement text change".to_owned()),
-            ));
-        };
-        if change.range.is_some() {
-            return JsonRpcResult::Notification(publish_diagnostics_notification(
-                &params.text_document.uri,
-                Vec::new(),
-                Some("incremental didChange ranges are not implemented".to_owned()),
+                Some("didChange requires at least one content change".to_owned()),
             ));
         }
 
         let uri = params.text_document.uri;
         let document_id = DocumentId::from(uri.clone());
         let version = source_version(params.text_document.version);
+        let current_text = self
+            .workspace
+            .document_text(&document_id)
+            .map(std::borrow::ToOwned::to_owned);
+        let text = match apply_document_changes(current_text.as_deref(), params.content_changes) {
+            Ok(text) => text,
+            Err(error) => {
+                return JsonRpcResult::Notification(publish_diagnostics_notification(
+                    &uri,
+                    Vec::new(),
+                    Some(error),
+                ));
+            }
+        };
+
         self.workspace
-            .change_document(document_id.clone(), change.text, version);
+            .change_document(document_id.clone(), text, version);
         self.open_documents.insert(document_id.clone());
 
         self.publish_current_diagnostics(&uri, &document_id)
@@ -579,8 +587,23 @@ struct VersionedTextDocumentIdentifier {
 #[serde(rename_all = "camelCase")]
 struct TextDocumentContentChangeEvent {
     #[serde(default)]
-    range: Option<JsonValue>,
+    range: Option<LspRange>,
+    #[serde(rename = "rangeLength")]
+    #[allow(dead_code)]
+    range_length: Option<u32>,
     text: String,
+}
+
+#[derive(Debug, Clone, Copy, Deserialize)]
+struct LspRange {
+    start: LspPosition,
+    end: LspPosition,
+}
+
+#[derive(Debug, Clone, Copy, Deserialize)]
+struct LspPosition {
+    line: u32,
+    character: u32,
 }
 
 #[derive(Debug, Clone, Deserialize)]
@@ -639,7 +662,7 @@ fn initialize_result() -> JsonValue {
             "workDoneProgress": true,
             "textDocumentSync": {
                 "openClose": true,
-                "change": 1,
+                "change": 2,
                 "save": false
             },
             "workspace": {
@@ -702,6 +725,93 @@ fn source_version(version: i32) -> SourceVersion {
     u64::try_from(version)
         .ok()
         .map_or(SourceVersion::INITIAL, SourceVersion::new)
+}
+
+fn apply_document_changes(
+    current_text: Option<&str>,
+    changes: Vec<TextDocumentContentChangeEvent>,
+) -> Result<String, String> {
+    let mut text = current_text.map(str::to_owned);
+    for change in changes {
+        match change.range {
+            Some(range) => {
+                let Some(current) = text.as_mut() else {
+                    return Err("ranged didChange requires an open document".to_owned());
+                };
+                apply_range_edit(current, range, &change.text)?;
+            }
+            None => {
+                text = Some(change.text);
+            }
+        }
+    }
+    text.ok_or_else(|| "didChange requires at least one content change".to_owned())
+}
+
+fn apply_range_edit(text: &mut String, range: LspRange, replacement: &str) -> Result<(), String> {
+    let start = lsp_position_offset(text, range.start)?;
+    let end = lsp_position_offset(text, range.end)?;
+    if start > end {
+        return Err("didChange range start must not be after the end".to_owned());
+    }
+    text.replace_range(start..end, replacement);
+    Ok(())
+}
+
+fn lsp_position_offset(text: &str, position: LspPosition) -> Result<usize, String> {
+    let line = usize::try_from(position.line)
+        .map_err(|_| "didChange range line is too large".to_owned())?;
+    let character = usize::try_from(position.character)
+        .map_err(|_| "didChange range character is too large".to_owned())?;
+    let (line_start, line_end) = line_bounds(text, line)?;
+    utf16_character_offset(&text[line_start..line_end], character).map(|offset| line_start + offset)
+}
+
+fn line_bounds(text: &str, target_line: usize) -> Result<(usize, usize), String> {
+    let mut line = 0usize;
+    let mut line_start = 0usize;
+    for (offset, byte) in text.bytes().enumerate() {
+        if byte != b'\n' {
+            continue;
+        }
+        if line == target_line {
+            return Ok((line_start, trim_carriage_return(text, line_start, offset)));
+        }
+        line = line.saturating_add(1);
+        line_start = offset + 1;
+    }
+    if line == target_line {
+        Ok((line_start, text.len()))
+    } else {
+        Err("didChange range line is outside the document".to_owned())
+    }
+}
+
+fn trim_carriage_return(text: &str, line_start: usize, line_end: usize) -> usize {
+    if line_end > line_start && text.as_bytes()[line_end - 1] == b'\r' {
+        line_end - 1
+    } else {
+        line_end
+    }
+}
+
+fn utf16_character_offset(line_text: &str, character: usize) -> Result<usize, String> {
+    let mut utf16_units = 0usize;
+    for (offset, ch) in line_text.char_indices() {
+        if utf16_units == character {
+            return Ok(offset);
+        }
+        let next_units = utf16_units + ch.len_utf16();
+        if character < next_units {
+            return Err("didChange range splits a UTF-16 character".to_owned());
+        }
+        utf16_units = next_units;
+    }
+    if utf16_units == character {
+        Ok(line_text.len())
+    } else {
+        Err("didChange range character is outside the line".to_owned())
+    }
 }
 
 fn lsp_diagnostics(diagnostics: &DocumentDiagnostics) -> Vec<JsonValue> {

@@ -293,7 +293,7 @@ Purpose: expose the service through a native LSP binary.
 - [x] Implement `initialize`, `initialized`, `shutdown`, and `exit`.
 - [x] Advertise only implemented capabilities.
 - [x] Implement full document sync first.
-- [ ] Add incremental document sync after text edit application is tested.
+- [x] Add incremental document sync after text edit application is tested.
 - [x] Implement workspace folder/config handling.
   - [x] Capture `initialize` workspace roots for open-document diagnostics.
   - [x] Load `vela.toml` and workspace files through the platform layer.
@@ -309,6 +309,7 @@ Tests:
 - [x] `lsp_initialize_reports_capabilities`
 - [x] `lsp_did_open_publishes_diagnostics`
 - [x] `lsp_did_change_replaces_document_text`
+- [x] `lsp_did_change_applies_incremental_text_edit`
 - [x] `lsp_initialize_uses_workspace_root_for_document_sync`
 - [x] `file_create_adds_module`
 - [x] `lsp_cancellation_discards_stale_request`

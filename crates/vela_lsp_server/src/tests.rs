@@ -105,7 +105,7 @@ mod lifecycle {
         );
         assert_eq!(
             response["result"]["capabilities"]["textDocumentSync"]["change"],
-            1
+            2
         );
         assert!(response["result"]["capabilities"]["completionProvider"].is_null());
         assert!(response["result"]["capabilities"]["hoverProvider"].is_null());
@@ -258,6 +258,58 @@ mod document_sync {
         };
         assert!(change_diagnostics.is_empty());
     }
+
+    #[test]
+    fn lsp_did_change_applies_incremental_text_edit() {
+        let mut server = LspServer::new();
+        let source = "pub fn main(scores: Array<i64>) { return scores.frist() }";
+        let start = source
+            .find("frist")
+            .expect("test source should contain typo");
+        let end = start + "frist".len();
+        let open = notification_value(server.handle_json(&notification(
+            "textDocument/didOpen",
+            serde_json::json!({
+                "textDocument": {
+                    "uri": "file:///workspace/main.vela",
+                    "languageId": "vela",
+                    "version": 1,
+                    "text": source
+                }
+            }),
+        )));
+        let Some(open_diagnostics) = open["params"]["diagnostics"].as_array() else {
+            panic!("didOpen should publish diagnostics");
+        };
+        assert_eq!(open_diagnostics.len(), 1);
+
+        let change = notification_value(server.handle_json(&notification(
+            "textDocument/didChange",
+            serde_json::json!({
+                "textDocument": {
+                    "uri": "file:///workspace/main.vela",
+                    "version": 2
+                },
+                "contentChanges": [
+                    {
+                        "range": {
+                            "start": { "line": 0, "character": start },
+                            "end": { "line": 0, "character": end }
+                        },
+                        "text": "first"
+                    }
+                ]
+            }),
+        )));
+
+        assert_eq!(change["method"], "textDocument/publishDiagnostics");
+        assert_eq!(change["params"]["uri"], "file:///workspace/main.vela");
+        let Some(change_diagnostics) = change["params"]["diagnostics"].as_array() else {
+            panic!("incremental didChange should publish diagnostics");
+        };
+        assert!(change_diagnostics.is_empty(), "{change_diagnostics:?}");
+    }
+
     #[test]
     fn lsp_initialize_uses_workspace_root_for_document_sync() {
         let mut server = LspServer::new();
