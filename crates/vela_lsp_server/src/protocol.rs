@@ -14,6 +14,12 @@ pub(crate) struct TextDocumentIdentifier {
     pub(crate) uri: String,
 }
 
+#[derive(Debug, Clone, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub(crate) struct DocumentSymbolParams {
+    pub(crate) text_document: TextDocumentIdentifier,
+}
+
 #[derive(Debug, Clone, Copy, Deserialize)]
 pub(crate) struct LspRange {
     pub(crate) start: LspPosition,

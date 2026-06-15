@@ -132,6 +132,10 @@ mod lifecycle {
             serde_json::json!(true)
         );
         assert_eq!(
+            response["result"]["capabilities"]["documentSymbolProvider"],
+            serde_json::json!(true)
+        );
+        assert_eq!(
             response["result"]["capabilities"]["workspace"]["workspaceFolders"]["supported"],
             true
         );
@@ -699,6 +703,7 @@ mod signature {
 
 mod definition;
 mod hover;
+mod symbols;
 
 mod file_watching {
     use std::fs;

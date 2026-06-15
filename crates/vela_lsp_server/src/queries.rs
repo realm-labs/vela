@@ -3,9 +3,9 @@ use vela_language_service::DocumentId;
 
 use crate::{
     ErrorCode, JsonRpcResult, LspServer, RequestId, completion::lsp_completion_list,
-    definition::lsp_definition, error_response, hover::lsp_hover,
+    definition::lsp_definition, error_response, hover::lsp_hover, protocol::DocumentSymbolParams,
     protocol::TextDocumentPositionParams, protocol::service_position,
-    signature::lsp_signature_help, success_response,
+    signature::lsp_signature_help, success_response, symbols::lsp_document_symbols,
 };
 
 impl LspServer {
@@ -118,5 +118,31 @@ impl LspServer {
             id,
             definition.as_ref().map_or(JsonValue::Null, lsp_definition),
         ))
+    }
+
+    pub(crate) fn document_symbol(
+        &mut self,
+        id: Option<RequestId>,
+        params: JsonValue,
+    ) -> JsonRpcResult {
+        let Some(id) = id else {
+            return JsonRpcResult::None;
+        };
+        let params = match serde_json::from_value::<DocumentSymbolParams>(params) {
+            Ok(params) => params,
+            Err(error) => {
+                return JsonRpcResult::Response(error_response(
+                    Some(id),
+                    ErrorCode::InvalidRequest,
+                    format!("invalid documentSymbol params: {error}"),
+                ));
+            }
+        };
+
+        let document_id = DocumentId::from(params.text_document.uri);
+        self.refresh_databases_for_query(&document_id);
+        let symbols = self.databases.document_symbols(&document_id);
+
+        JsonRpcResult::Response(success_response(id, lsp_document_symbols(&symbols)))
     }
 }

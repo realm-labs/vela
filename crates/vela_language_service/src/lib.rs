@@ -8,6 +8,7 @@ mod incremental;
 mod project;
 mod schema;
 mod signature;
+mod symbols;
 mod text;
 mod workspace;
 
@@ -35,6 +36,7 @@ pub use schema::{
     SCHEMA_ARTIFACT_FORMAT_VERSION, SchemaArtifact, SchemaArtifactError, SchemaArtifactFacts,
 };
 pub use signature::{SignatureHelp, SignatureInformation, SignatureParameter};
+pub use symbols::{DocumentSymbol, DocumentSymbolKind};
 pub use text::{LineIndex, Position, TextRange};
 pub use workspace::{
     DocumentId, DocumentSnapshot, SourceVersion, Workspace, WorkspaceGeneration, WorkspaceSnapshot,

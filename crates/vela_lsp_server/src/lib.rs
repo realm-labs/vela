@@ -6,6 +6,7 @@ mod hover;
 mod protocol;
 mod queries;
 mod signature;
+mod symbols;
 
 use std::collections::{BTreeMap, BTreeSet};
 use std::path::{Path, PathBuf};
@@ -114,6 +115,7 @@ impl LspServer {
             "textDocument/signatureHelp" => self.signature_help(message.id, message.params),
             "textDocument/hover" => self.hover(message.id, message.params),
             "textDocument/definition" => self.definition(message.id, message.params),
+            "textDocument/documentSymbol" => self.document_symbol(message.id, message.params),
             "workspace/didChangeWatchedFiles" => {
                 self.did_change_watched_files(message.id, message.params)
             }
@@ -771,6 +773,7 @@ fn initialize_result() -> JsonValue {
             },
             "hoverProvider": true,
             "definitionProvider": true,
+            "documentSymbolProvider": true,
             "workspace": {
                 "workspaceFolders": {
                     "supported": true,
