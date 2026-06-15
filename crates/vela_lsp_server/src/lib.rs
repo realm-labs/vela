@@ -21,6 +21,8 @@ pub struct LspServer {
     workspace: Workspace,
     databases: LanguageServiceDatabases,
     config: Option<WorkspaceConfig>,
+    config_diagnostics: Vec<ProjectDiagnostic>,
+    config_documents: BTreeSet<DocumentId>,
     disk_sources: BTreeMap<DocumentId, SourceFileSnapshot>,
     open_documents: BTreeSet<DocumentId>,
     initialized: bool,
@@ -244,8 +246,13 @@ impl LspServer {
             return;
         };
         if is_config_uri(uri) {
+            let document_id = DocumentId::from(uri.to_owned());
             let result = WorkspaceConfig::from_vela_toml(uri, &text);
+            if !result.diagnostics.is_empty() || self.config_documents.contains(&document_id) {
+                self.config_documents.insert(document_id);
+            }
             self.config = Some(result.config);
+            self.config_diagnostics = result.diagnostics;
         } else if is_source_uri(uri) {
             let document_id = DocumentId::from(uri.to_owned());
             self.disk_sources.insert(
@@ -258,38 +265,43 @@ impl LspServer {
     fn remove_watched_file(&mut self, uri: &str) {
         if is_config_uri(uri) {
             self.config = None;
+            self.config_diagnostics.clear();
+            self.config_documents
+                .insert(DocumentId::from(uri.to_owned()));
         } else if is_source_uri(uri) {
             self.disk_sources.remove(&DocumentId::from(uri.to_owned()));
         }
     }
 
     fn publish_open_diagnostics(&mut self) -> JsonRpcResult {
-        if self.open_documents.is_empty() {
-            return JsonRpcResult::None;
-        }
+        let mut notifications = Vec::new();
 
-        let config = self.config.clone().unwrap_or_else(|| {
-            self.open_documents
-                .iter()
-                .next()
-                .cloned()
-                .map_or_else(|| WorkspaceConfig::workspace([]), WorkspaceConfig::scratch)
-        });
-        let files = self.disk_sources.values().cloned().collect::<Vec<_>>();
-        let project = self.update_databases(&config, &files);
-        let project_diagnostics = project_diagnostics(&project);
+        if !self.open_documents.is_empty() {
+            let config = self.config.clone().unwrap_or_else(|| {
+                self.open_documents
+                    .iter()
+                    .next()
+                    .cloned()
+                    .map_or_else(|| WorkspaceConfig::workspace([]), WorkspaceConfig::scratch)
+            });
+            let files = self.disk_sources.values().cloned().collect::<Vec<_>>();
+            let project = self.update_databases(&config, &files);
+            let project_diagnostics = self.current_project_diagnostics(&project);
 
-        let notifications = self
-            .open_documents
-            .iter()
-            .map(|document_id| {
+            notifications.extend(self.open_documents.iter().map(|document_id| {
                 let diagnostics = self.databases.diagnostics_for_document(document_id);
                 let mut diagnostics = lsp_diagnostics(&diagnostics);
                 diagnostics.extend(lsp_project_diagnostics(&project_diagnostics, document_id));
                 publish_diagnostics_notification(document_id.as_str(), diagnostics, None)
-            })
-            .collect::<Vec<_>>();
-        JsonRpcResult::Notifications(notifications)
+            }));
+        }
+
+        notifications.extend(self.config_diagnostic_notifications());
+        if notifications.is_empty() {
+            JsonRpcResult::None
+        } else {
+            JsonRpcResult::Notifications(notifications)
+        }
     }
 
     fn publish_current_diagnostics(
@@ -306,7 +318,7 @@ impl LspServer {
         let diagnostics = self.databases.diagnostics_for_document(document_id);
         let mut diagnostics = lsp_diagnostics(&diagnostics);
         diagnostics.extend(lsp_project_diagnostics(
-            &project_diagnostics(&project),
+            &self.current_project_diagnostics(&project),
             document_id,
         ));
 
@@ -322,6 +334,25 @@ impl LspServer {
         self.databases
             .update_with_open_documents(&project, &self.open_documents);
         project
+    }
+
+    fn current_project_diagnostics(&self, project: &ProjectSources) -> Vec<ProjectDiagnostic> {
+        let mut diagnostics = self.config_diagnostics.clone();
+        diagnostics.extend(project_diagnostics(project));
+        diagnostics
+    }
+
+    fn config_diagnostic_notifications(&self) -> Vec<String> {
+        self.config_documents
+            .iter()
+            .map(|document_id| {
+                publish_diagnostics_notification(
+                    document_id.as_str(),
+                    lsp_project_diagnostics(&self.config_diagnostics, document_id),
+                    None,
+                )
+            })
+            .collect()
     }
 
     fn method_not_found(&self, id: Option<RequestId>, method: &str) -> JsonRpcResult {
@@ -672,469 +703,4 @@ fn error_response(id: Option<RequestId>, code: ErrorCode, message: impl Into<Str
 }
 
 #[cfg(test)]
-mod tests {
-    use serde_json::Value as JsonValue;
-
-    use crate::{JsonRpcResult, LspServer};
-
-    fn request(id: i64, method: &str, params: JsonValue) -> String {
-        serde_json::json!({
-            "jsonrpc": "2.0",
-            "id": id,
-            "method": method,
-            "params": params
-        })
-        .to_string()
-    }
-
-    fn notification(method: &str, params: JsonValue) -> String {
-        serde_json::json!({
-            "jsonrpc": "2.0",
-            "method": method,
-            "params": params
-        })
-        .to_string()
-    }
-
-    fn response_value(result: JsonRpcResult) -> JsonValue {
-        let Some(response) = result.into_response() else {
-            panic!("request should return a JSON-RPC response");
-        };
-        json_value(&response)
-    }
-
-    fn notification_value(result: JsonRpcResult) -> JsonValue {
-        let Some(notification) = result.into_notification() else {
-            panic!("notification should return a JSON-RPC notification");
-        };
-        json_value(&notification)
-    }
-
-    fn notification_values(result: JsonRpcResult) -> Vec<JsonValue> {
-        let Some(notifications) = result.into_notifications() else {
-            panic!("result should contain JSON-RPC notifications");
-        };
-        notifications
-            .iter()
-            .map(|notification| json_value(notification))
-            .collect()
-    }
-
-    fn json_value(source: &str) -> JsonValue {
-        match serde_json::from_str(source) {
-            Ok(value) => value,
-            Err(error) => panic!("message should be valid JSON: {error}"),
-        }
-    }
-
-    mod lifecycle {
-        use super::{JsonRpcResult, JsonValue, LspServer, notification, request, response_value};
-
-        #[test]
-        fn lsp_initialize_reports_capabilities() {
-            let mut server = LspServer::new();
-            let response = response_value(server.handle_json(&request(
-                1,
-                "initialize",
-                serde_json::json!({
-                    "processId": null,
-                    "capabilities": {}
-                }),
-            )));
-
-            assert!(server.is_initialized());
-            assert_eq!(response["jsonrpc"], "2.0");
-            assert_eq!(response["id"], 1);
-            assert_eq!(response["result"]["serverInfo"]["name"], "vela_lsp_server");
-            assert_eq!(
-                response["result"]["capabilities"]["textDocumentSync"]["openClose"],
-                true
-            );
-            assert_eq!(
-                response["result"]["capabilities"]["textDocumentSync"]["change"],
-                1
-            );
-            assert!(response["result"]["capabilities"]["completionProvider"].is_null());
-            assert!(response["result"]["capabilities"]["hoverProvider"].is_null());
-            assert!(response["result"]["capabilities"]["definitionProvider"].is_null());
-        }
-
-        #[test]
-        fn lsp_initialized_notification_has_no_response() {
-            let mut server = LspServer::new();
-            let result = server.handle_json(&notification("initialized", serde_json::json!({})));
-
-            assert!(server.is_initialized());
-            assert_eq!(result, JsonRpcResult::None);
-        }
-
-        #[test]
-        fn lsp_shutdown_exits_without_background_tasks() {
-            let mut server = LspServer::new();
-            let response =
-                response_value(server.handle_json(&request(2, "shutdown", JsonValue::Null)));
-            let exit = server.handle_json(&notification("exit", JsonValue::Null));
-
-            assert_eq!(response["result"], JsonValue::Null);
-            assert!(server.is_shutdown_requested());
-            assert!(server.is_exited());
-            assert_eq!(exit, JsonRpcResult::None);
-        }
-    }
-
-    mod document_sync {
-        use super::{LspServer, notification, notification_value, request, response_value};
-
-        #[test]
-        fn lsp_did_open_publishes_diagnostics() {
-            let mut server = LspServer::new();
-            let notification = notification_value(server.handle_json(&notification(
-                "textDocument/didOpen",
-                serde_json::json!({
-                    "textDocument": {
-                        "uri": "file:///workspace/main.vela",
-                        "languageId": "vela",
-                        "version": 1,
-                        "text": "pub fn main(scores: Array<i64>) { return scores.frist() }"
-                    }
-                }),
-            )));
-
-            assert_eq!(notification["jsonrpc"], "2.0");
-            assert_eq!(notification["method"], "textDocument/publishDiagnostics");
-            assert_eq!(notification["params"]["uri"], "file:///workspace/main.vela");
-            let Some(diagnostics) = notification["params"]["diagnostics"].as_array() else {
-                panic!("publishDiagnostics should contain a diagnostic array");
-            };
-            assert_eq!(diagnostics.len(), 1);
-            let diagnostic = &diagnostics[0];
-            assert_eq!(diagnostic["severity"], 1);
-            assert_eq!(diagnostic["source"], "vela");
-            assert_eq!(diagnostic["code"], "analysis::unknown_method");
-            assert!(
-                diagnostic["message"]
-                    .as_str()
-                    .is_some_and(|message| message.contains("unknown method `frist`"))
-            );
-
-            let Some(candidates) = diagnostic["data"]["candidates"].as_array() else {
-                panic!("diagnostic should preserve candidate metadata");
-            };
-            assert!(
-                candidates
-                    .iter()
-                    .any(|candidate| candidate["replacement"] == "first")
-            );
-            let Some(repair_hints) = diagnostic["data"]["repairHints"].as_array() else {
-                panic!("diagnostic should preserve repair hints");
-            };
-            assert!(repair_hints.is_empty());
-        }
-
-        #[test]
-        fn lsp_did_change_replaces_document_text() {
-            let mut server = LspServer::new();
-            let open = notification_value(server.handle_json(&notification(
-                "textDocument/didOpen",
-                serde_json::json!({
-                    "textDocument": {
-                        "uri": "file:///workspace/main.vela",
-                        "languageId": "vela",
-                        "version": 1,
-                        "text": "pub fn main(scores: Array<i64>) { return scores.frist() }"
-                    }
-                }),
-            )));
-            let Some(open_diagnostics) = open["params"]["diagnostics"].as_array() else {
-                panic!("didOpen should publish diagnostics");
-            };
-            assert_eq!(open_diagnostics.len(), 1);
-
-            let change = notification_value(server.handle_json(&notification(
-                "textDocument/didChange",
-                serde_json::json!({
-                    "textDocument": {
-                        "uri": "file:///workspace/main.vela",
-                        "version": 2
-                    },
-                    "contentChanges": [
-                        {
-                            "text": "pub fn main(scores: Array<i64>) { return scores.first() }"
-                        }
-                    ]
-                }),
-            )));
-
-            assert_eq!(change["jsonrpc"], "2.0");
-            assert_eq!(change["method"], "textDocument/publishDiagnostics");
-            assert_eq!(change["params"]["uri"], "file:///workspace/main.vela");
-            let Some(change_diagnostics) = change["params"]["diagnostics"].as_array() else {
-                panic!("didChange should publish diagnostics");
-            };
-            assert!(change_diagnostics.is_empty());
-        }
-
-        #[test]
-        fn lsp_initialize_uses_workspace_root_for_document_sync() {
-            let mut server = LspServer::new();
-            let response = response_value(server.handle_json(&request(
-                1,
-                "initialize",
-                serde_json::json!({
-                    "processId": null,
-                    "rootUri": "file:///workspace/scripts",
-                    "capabilities": {}
-                }),
-            )));
-            assert_eq!(response["result"]["serverInfo"]["name"], "vela_lsp_server");
-
-            let helper = notification_value(server.handle_json(&notification(
-                "textDocument/didOpen",
-                serde_json::json!({
-                    "textDocument": {
-                        "uri": "file:///workspace/scripts/game/helper.vela",
-                        "languageId": "vela",
-                        "version": 1,
-                        "text": "pub fn grant() { return 1 }"
-                    }
-                }),
-            )));
-            let Some(helper_diagnostics) = helper["params"]["diagnostics"].as_array() else {
-                panic!("helper didOpen should publish diagnostics");
-            };
-            assert!(helper_diagnostics.is_empty(), "{helper_diagnostics:?}");
-
-            let main = notification_value(server.handle_json(&notification(
-                "textDocument/didOpen",
-                serde_json::json!({
-                    "textDocument": {
-                        "uri": "file:///workspace/scripts/game/main.vela",
-                        "languageId": "vela",
-                        "version": 1,
-                        "text": "use game::helper::grant\npub fn main() { return grant() }"
-                    }
-                }),
-            )));
-
-            let Some(main_diagnostics) = main["params"]["diagnostics"].as_array() else {
-                panic!("main didOpen should publish diagnostics");
-            };
-            assert!(
-                main_diagnostics
-                    .iter()
-                    .all(|diagnostic| diagnostic["code"] != "hir::unresolved_module"
-                        && diagnostic["code"] != "hir::unresolved_import"),
-                "{main_diagnostics:?}"
-            );
-        }
-    }
-
-    mod file_watching {
-        use std::fs;
-        use std::path::{Path, PathBuf};
-        use std::time::{SystemTime, UNIX_EPOCH};
-
-        use super::{
-            JsonRpcResult, JsonValue, LspServer, notification, notification_value,
-            notification_values, request, response_value,
-        };
-
-        fn temp_workspace() -> PathBuf {
-            let suffix = match SystemTime::now().duration_since(UNIX_EPOCH) {
-                Ok(duration) => duration.as_nanos(),
-                Err(error) => panic!("system time should be after UNIX_EPOCH: {error}"),
-            };
-            let root = std::env::temp_dir().join(format!(
-                "vela_lsp_server_{}_{}",
-                std::process::id(),
-                suffix
-            ));
-            if let Err(error) = fs::create_dir_all(root.join("scripts").join("game")) {
-                panic!("temporary workspace should be creatable: {error}");
-            }
-            root
-        }
-
-        fn file_uri(path: &Path) -> String {
-            let path = path.display().to_string().replace('\\', "/");
-            if path.starts_with('/') {
-                format!("file://{path}")
-            } else {
-                format!("file:///{path}")
-            }
-        }
-
-        fn write_workspace(root: &Path, helper_name: &str) -> (PathBuf, PathBuf) {
-            let config_path = root.join("vela.toml");
-            let helper_path = root
-                .join("scripts")
-                .join("game")
-                .join(format!("{helper_name}.vela"));
-            if let Err(error) = fs::write(
-                &config_path,
-                r#"
-                    [workspace]
-                    roots = ["scripts"]
-                "#,
-            ) {
-                panic!("vela.toml should be writable: {error}");
-            }
-            if let Err(error) = fs::write(&helper_path, "pub fn grant() { return 1 }") {
-                panic!("helper source should be writable: {error}");
-            }
-            (config_path, helper_path)
-        }
-
-        fn initialized_server(root: &Path, config_path: &Path, helper_path: &Path) -> LspServer {
-            let mut server = LspServer::new();
-            let response = response_value(server.handle_json(&request(
-                1,
-                "initialize",
-                serde_json::json!({
-                    "processId": null,
-                    "rootUri": file_uri(root),
-                    "capabilities": {}
-                }),
-            )));
-            assert_eq!(response["result"]["serverInfo"]["name"], "vela_lsp_server");
-
-            let watched = server.handle_json(&notification(
-                "workspace/didChangeWatchedFiles",
-                serde_json::json!({
-                    "changes": [
-                        { "uri": file_uri(config_path), "type": 1 },
-                        { "uri": file_uri(helper_path), "type": 1 }
-                    ]
-                }),
-            ));
-            assert_eq!(watched, JsonRpcResult::None);
-            server
-        }
-
-        fn open_main(server: &mut LspServer, root: &Path, import_module: &str) -> JsonValue {
-            let main_uri = file_uri(&root.join("scripts").join("game").join("main.vela"));
-            notification_value(server.handle_json(&notification(
-                "textDocument/didOpen",
-                serde_json::json!({
-                    "textDocument": {
-                        "uri": main_uri,
-                        "languageId": "vela",
-                        "version": 1,
-                        "text": format!(
-                            "use {import_module}::grant\npub fn main() {{ return grant() }}"
-                        )
-                    }
-                }),
-            )))
-        }
-
-        fn assert_no_unresolved_imports(notification: &JsonValue) {
-            let Some(diagnostics) = notification["params"]["diagnostics"].as_array() else {
-                panic!("didOpen should publish diagnostics");
-            };
-            assert!(
-                diagnostics
-                    .iter()
-                    .all(|diagnostic| diagnostic["code"] != "hir::unresolved_module"
-                        && diagnostic["code"] != "hir::unresolved_import"),
-                "{diagnostics:?}"
-            );
-        }
-
-        #[test]
-        fn file_create_adds_module() {
-            let root = temp_workspace();
-            let (config_path, helper_path) = write_workspace(&root, "helper");
-            let mut server = initialized_server(&root, &config_path, &helper_path);
-            let main = open_main(&mut server, &root, "game::helper");
-            assert_no_unresolved_imports(&main);
-
-            if let Err(error) = fs::remove_dir_all(&root) {
-                panic!("temporary workspace should be removable: {error}");
-            }
-        }
-
-        #[test]
-        fn file_delete_reports_removed_imports() {
-            let root = temp_workspace();
-            let (config_path, helper_path) = write_workspace(&root, "helper");
-            let mut server = initialized_server(&root, &config_path, &helper_path);
-            let main = open_main(&mut server, &root, "game::helper");
-            assert_no_unresolved_imports(&main);
-
-            if let Err(error) = fs::remove_file(&helper_path) {
-                panic!("helper source should be removable: {error}");
-            }
-            let notifications = notification_values(server.handle_json(&notification(
-                "workspace/didChangeWatchedFiles",
-                serde_json::json!({
-                    "changes": [
-                        { "uri": file_uri(&helper_path), "type": 3 }
-                    ]
-                }),
-            )));
-
-            assert_eq!(notifications.len(), 1);
-            let Some(diagnostics) = notifications[0]["params"]["diagnostics"].as_array() else {
-                panic!("file delete should publish diagnostics");
-            };
-            assert!(
-                diagnostics
-                    .iter()
-                    .any(|diagnostic| diagnostic["code"] == "project::diagnostic"
-                        && diagnostic["message"]
-                            .as_str()
-                            .is_some_and(|message| message.contains("unresolved module"))),
-                "{diagnostics:?}"
-            );
-
-            if let Err(error) = fs::remove_dir_all(&root) {
-                panic!("temporary workspace should be removable: {error}");
-            }
-        }
-
-        #[test]
-        fn file_rename_updates_module_path() {
-            let root = temp_workspace();
-            let (config_path, helper_path) = write_workspace(&root, "helper");
-            let reward_path = root.join("scripts").join("game").join("reward.vela");
-            let mut server = initialized_server(&root, &config_path, &helper_path);
-            let main = open_main(&mut server, &root, "game::helper");
-            assert_no_unresolved_imports(&main);
-
-            if let Err(error) = fs::rename(&helper_path, &reward_path) {
-                panic!("helper source should be renameable: {error}");
-            }
-            let _ = notification_values(server.handle_json(&notification(
-                "workspace/didChangeWatchedFiles",
-                serde_json::json!({
-                    "changes": [
-                        { "uri": file_uri(&helper_path), "type": 3 },
-                        { "uri": file_uri(&reward_path), "type": 1 }
-                    ]
-                }),
-            )));
-
-            let main_uri = file_uri(&root.join("scripts").join("game").join("main.vela"));
-            let main = notification_value(server.handle_json(&notification(
-                "textDocument/didChange",
-                serde_json::json!({
-                    "textDocument": {
-                        "uri": main_uri,
-                        "version": 2
-                    },
-                    "contentChanges": [
-                        {
-                            "text": "use game::reward::grant\npub fn main() { return grant() }"
-                        }
-                    ]
-                }),
-            )));
-            assert_no_unresolved_imports(&main);
-
-            if let Err(error) = fs::remove_dir_all(&root) {
-                panic!("temporary workspace should be removable: {error}");
-            }
-        }
-    }
-}
+mod tests;
