@@ -6,8 +6,9 @@ mod text;
 mod workspace;
 
 pub use incremental::{
-    AnalysisDb, BackgroundResult, GenerationToken, HirDb, InvalidationReport,
-    LanguageServiceDatabases, ParseDb, ProjectDb, SourceDb, SourceRecord,
+    AnalysisDb, BackgroundResult, CancellationHandle, CancellationToken, GenerationToken, HirDb,
+    IndexingMetrics, InvalidationReport, LanguageServiceDatabases, ParseDb, ProjectDb,
+    ScheduledModule, SourceDb, SourceRecord, WorkPriority,
 };
 pub use project::{
     ConfigParseResult, ProjectDiagnostic, ProjectMode, ProjectSources, SchemaConfig,

@@ -1,5 +1,9 @@
 use std::collections::{BTreeMap, BTreeSet};
-use std::sync::Arc;
+use std::sync::{
+    Arc,
+    atomic::{AtomicBool, Ordering},
+};
+use std::time::Instant;
 
 use vela_common::{Diagnostic, SourceId};
 use vela_hir::module_graph::{ModuleGraph, ModulePath, ModuleSource, stable_source_hash};
@@ -302,31 +306,158 @@ impl AnalysisDb {
     }
 }
 
-#[derive(Debug, Clone, Copy, Eq, PartialEq)]
+#[derive(Debug, Clone)]
+pub struct CancellationToken {
+    cancelled: Arc<AtomicBool>,
+}
+
+impl CancellationToken {
+    #[must_use]
+    pub fn is_cancelled(&self) -> bool {
+        self.cancelled.load(Ordering::Acquire)
+    }
+}
+
+#[derive(Debug, Clone)]
+pub struct CancellationHandle {
+    cancelled: Arc<AtomicBool>,
+}
+
+impl CancellationHandle {
+    pub fn cancel(&self) {
+        self.cancelled.store(true, Ordering::Release);
+    }
+
+    #[must_use]
+    pub fn token(&self) -> CancellationToken {
+        CancellationToken {
+            cancelled: Arc::clone(&self.cancelled),
+        }
+    }
+}
+
+fn cancellation_pair() -> (CancellationToken, CancellationHandle) {
+    let cancelled = Arc::new(AtomicBool::new(false));
+    (
+        CancellationToken {
+            cancelled: Arc::clone(&cancelled),
+        },
+        CancellationHandle { cancelled },
+    )
+}
+
+#[derive(Debug, Clone)]
 pub struct GenerationToken {
     generation: WorkspaceGeneration,
+    cancellation: Option<CancellationToken>,
 }
 
 impl GenerationToken {
     #[must_use]
-    pub const fn generation(self) -> WorkspaceGeneration {
+    pub const fn generation(&self) -> WorkspaceGeneration {
         self.generation
+    }
+
+    #[must_use]
+    pub fn is_cancelled(&self) -> bool {
+        self.cancellation
+            .as_ref()
+            .is_some_and(CancellationToken::is_cancelled)
     }
 }
 
-#[derive(Debug, Clone, Eq, PartialEq)]
+#[derive(Debug, Clone)]
 pub struct BackgroundResult<T> {
     generation: WorkspaceGeneration,
+    cancellation: Option<CancellationToken>,
     value: T,
 }
 
 impl<T> BackgroundResult<T> {
     #[must_use]
-    pub const fn new(token: GenerationToken, value: T) -> Self {
+    pub fn new(token: GenerationToken, value: T) -> Self {
         Self {
             generation: token.generation,
+            cancellation: token.cancellation,
             value,
         }
+    }
+}
+
+#[derive(Debug, Clone, Copy, Eq, PartialEq)]
+pub enum WorkPriority {
+    Open,
+    Workspace,
+}
+
+#[derive(Debug, Clone, Eq, PartialEq)]
+pub struct ScheduledModule {
+    module: ModulePath,
+    priority: WorkPriority,
+}
+
+impl ScheduledModule {
+    #[must_use]
+    pub fn new(module: ModulePath, priority: WorkPriority) -> Self {
+        Self { module, priority }
+    }
+
+    #[must_use]
+    pub fn module(&self) -> &ModulePath {
+        &self.module
+    }
+
+    #[must_use]
+    pub const fn priority(&self) -> WorkPriority {
+        self.priority
+    }
+}
+
+#[derive(Debug, Clone, Copy, Default, Eq, PartialEq)]
+pub struct IndexingMetrics {
+    source_count: usize,
+    total_bytes: usize,
+    total_lines: usize,
+    parsed_document_count: usize,
+    reparsed_document_count: usize,
+    hir_rebuild_count: usize,
+    elapsed_micros: u128,
+}
+
+impl IndexingMetrics {
+    #[must_use]
+    pub const fn source_count(self) -> usize {
+        self.source_count
+    }
+
+    #[must_use]
+    pub const fn total_bytes(self) -> usize {
+        self.total_bytes
+    }
+
+    #[must_use]
+    pub const fn total_lines(self) -> usize {
+        self.total_lines
+    }
+
+    #[must_use]
+    pub const fn parsed_document_count(self) -> usize {
+        self.parsed_document_count
+    }
+
+    #[must_use]
+    pub const fn reparsed_document_count(self) -> usize {
+        self.reparsed_document_count
+    }
+
+    #[must_use]
+    pub const fn hir_rebuild_count(self) -> usize {
+        self.hir_rebuild_count
+    }
+
+    #[must_use]
+    pub const fn elapsed_micros(self) -> u128 {
+        self.elapsed_micros
     }
 }
 
@@ -339,6 +470,8 @@ pub struct InvalidationReport {
     import_changed_modules: BTreeSet<ModulePath>,
     hir_invalidated_modules: BTreeSet<ModulePath>,
     analysis_invalidated_modules: BTreeSet<ModulePath>,
+    scheduled_modules: Vec<ScheduledModule>,
+    metrics: IndexingMetrics,
 }
 
 impl InvalidationReport {
@@ -375,6 +508,16 @@ impl InvalidationReport {
     #[must_use]
     pub fn analysis_invalidated_modules(&self) -> &BTreeSet<ModulePath> {
         &self.analysis_invalidated_modules
+    }
+
+    #[must_use]
+    pub fn scheduled_modules(&self) -> &[ScheduledModule] {
+        &self.scheduled_modules
+    }
+
+    #[must_use]
+    pub const fn metrics(&self) -> IndexingMetrics {
+        self.metrics
     }
 }
 
@@ -428,17 +571,46 @@ impl LanguageServiceDatabases {
     pub const fn begin_background_request(&self) -> GenerationToken {
         GenerationToken {
             generation: self.generation,
+            cancellation: None,
         }
     }
 
+    #[must_use]
+    pub fn begin_cancellable_background_request(&self) -> (GenerationToken, CancellationHandle) {
+        let (cancellation, handle) = cancellation_pair();
+        (
+            GenerationToken {
+                generation: self.generation,
+                cancellation: Some(cancellation),
+            },
+            handle,
+        )
+    }
+
     pub fn accept_background_result<T>(&self, result: BackgroundResult<T>) -> Option<T> {
-        (result.generation == self.generation).then_some(result.value)
+        (result.generation == self.generation
+            && !result
+                .cancellation
+                .as_ref()
+                .is_some_and(CancellationToken::is_cancelled))
+        .then_some(result.value)
     }
 
     pub fn update(&mut self, project: &ProjectSources) -> InvalidationReport {
+        self.update_with_open_documents(project, &BTreeSet::new())
+    }
+
+    pub fn update_with_open_documents(
+        &mut self,
+        project: &ProjectSources,
+        open_documents: &BTreeSet<DocumentId>,
+    ) -> InvalidationReport {
+        let started = Instant::now();
         self.generation = WorkspaceGeneration::new(self.generation.get().saturating_add(1));
         let sources = source_records(project);
         self.source_db.replace(sources);
+        let previous_parse_count = self.parse_db.parse_count();
+        let previous_hir_rebuild_count = self.hir_db.rebuild_count();
         let parse_update = self.parse_db.update_from_sources(self.source_db.records());
         self.project_db.rebuild(&self.parse_db);
 
@@ -456,6 +628,18 @@ impl LanguageServiceDatabases {
         if !hir_invalidated_modules.is_empty() {
             self.hir_db.rebuild(project.sources());
         }
+        let scheduled_modules = schedule_modules(&hir_invalidated_modules, project, open_documents);
+        let metrics = indexing_metrics(
+            self.source_db.records(),
+            self.parse_db.parsed_document_count(),
+            self.parse_db
+                .parse_count()
+                .saturating_sub(previous_parse_count),
+            self.hir_db
+                .rebuild_count()
+                .saturating_sub(previous_hir_rebuild_count),
+            started.elapsed().as_micros(),
+        );
 
         InvalidationReport {
             generation: self.generation,
@@ -465,7 +649,57 @@ impl LanguageServiceDatabases {
             import_changed_modules: parse_update.import_changed_modules,
             hir_invalidated_modules,
             analysis_invalidated_modules,
+            scheduled_modules,
+            metrics,
         }
+    }
+}
+
+fn schedule_modules(
+    invalidated_modules: &BTreeSet<ModulePath>,
+    project: &ProjectSources,
+    open_documents: &BTreeSet<DocumentId>,
+) -> Vec<ScheduledModule> {
+    let open_modules = open_documents
+        .iter()
+        .filter_map(|document| project.document_modules().get(document))
+        .cloned()
+        .collect::<BTreeSet<_>>();
+    invalidated_modules
+        .iter()
+        .filter(|module| open_modules.contains(*module))
+        .cloned()
+        .map(|module| ScheduledModule::new(module, WorkPriority::Open))
+        .chain(
+            invalidated_modules
+                .iter()
+                .filter(|module| !open_modules.contains(*module))
+                .cloned()
+                .map(|module| ScheduledModule::new(module, WorkPriority::Workspace)),
+        )
+        .collect()
+}
+
+fn indexing_metrics(
+    sources: &BTreeMap<DocumentId, SourceRecord>,
+    parsed_document_count: usize,
+    reparsed_document_count: usize,
+    hir_rebuild_count: usize,
+    elapsed_micros: u128,
+) -> IndexingMetrics {
+    let total_bytes = sources.values().map(|source| source.text.len()).sum();
+    let total_lines = sources
+        .values()
+        .map(|source| source.text.lines().count().max(1))
+        .sum();
+    IndexingMetrics {
+        source_count: sources.len(),
+        total_bytes,
+        total_lines,
+        parsed_document_count,
+        reparsed_document_count,
+        hir_rebuild_count,
+        elapsed_micros,
     }
 }
 
@@ -685,6 +919,7 @@ mod tests {
     use crate::{
         SourceFileSnapshot, Workspace, WorkspaceConfig, WorkspaceRoot, assemble_project_sources,
     };
+    use std::collections::BTreeSet;
 
     fn file(path: &str, text: &str) -> SourceFileSnapshot {
         SourceFileSnapshot::new(path, text)
@@ -878,6 +1113,74 @@ mod tests {
     }
 
     #[test]
+    fn cancelled_background_diagnostics_are_not_published() {
+        let mut db = LanguageServiceDatabases::new();
+        db.update(&project(&[file(
+            "/workspace/scripts/game/main.vela",
+            "pub fn main() { return 1 }",
+        )]));
+        let (token, cancellation) = db.begin_cancellable_background_request();
+        cancellation.cancel();
+
+        let result = BackgroundResult::new(token, vec!["cancelled diagnostic"]);
+
+        assert_eq!(db.accept_background_result(result), None);
+    }
+
+    #[test]
+    fn open_file_recomputation_is_scheduled_before_workspace_work() {
+        let mut db = LanguageServiceDatabases::new();
+        db.update(&project(&[
+            file(
+                "/workspace/scripts/game/main.vela",
+                "use game::reward::grant\npub fn main() { return grant() }",
+            ),
+            file(
+                "/workspace/scripts/game/wrapper.vela",
+                "use game::main::main\npub fn wrapped() { return main() }",
+            ),
+            file(
+                "/workspace/scripts/game/reward.vela",
+                "pub fn grant() { return 1 }",
+            ),
+        ]));
+        let open_documents =
+            BTreeSet::from([DocumentId::from("/workspace/scripts/game/wrapper.vela")]);
+
+        let report = db.update_with_open_documents(
+            &project(&[
+                file(
+                    "/workspace/scripts/game/main.vela",
+                    "use game::reward::grant\npub fn main() { return grant() }",
+                ),
+                file(
+                    "/workspace/scripts/game/wrapper.vela",
+                    "use game::main::main\npub fn wrapped() { return main() }",
+                ),
+                file(
+                    "/workspace/scripts/game/reward.vela",
+                    "pub fn grant_bonus() { return 1 }",
+                ),
+            ]),
+            &open_documents,
+        );
+
+        assert_eq!(
+            report.scheduled_modules()[0].module(),
+            &module("game::wrapper")
+        );
+        assert_eq!(report.scheduled_modules()[0].priority(), WorkPriority::Open);
+        assert!(
+            report
+                .scheduled_modules()
+                .iter()
+                .skip(1)
+                .any(|scheduled| scheduled.module() == &module("game::reward")
+                    && scheduled.priority() == WorkPriority::Workspace)
+        );
+    }
+
+    #[test]
     fn scale_fixture_avoids_full_rebuild_per_edit() {
         let mut files = (0..128)
             .map(|index| {
@@ -901,5 +1204,10 @@ mod tests {
         assert_eq!(report.reparsed_documents().len(), 1);
         assert!(report.changed_modules().contains(&module("mod_42")));
         assert_eq!(report.hir_invalidated_modules().len(), 1);
+        assert_eq!(report.metrics().source_count(), 128);
+        assert_eq!(report.metrics().parsed_document_count(), 128);
+        assert_eq!(report.metrics().reparsed_document_count(), 1);
+        assert!(report.metrics().total_lines() >= 128);
+        assert!(report.metrics().total_bytes() > 0);
     }
 }

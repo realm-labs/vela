@@ -220,8 +220,8 @@ Purpose: make the service scale before adding expensive features.
 - [x] Maintain module import and reverse-dependency indexes.
 - [x] Reparse changed files without reparsing unrelated files.
 - [x] Invalidate HIR and analysis by changed declaration/import fingerprints.
-- [ ] Prioritize open-file recomputation over workspace background work.
-- [~] Add cancellation and stale-generation result handling.
+- [x] Prioritize open-file recomputation over workspace background work.
+- [x] Add cancellation and stale-generation result handling.
 
 Tests:
 
@@ -229,6 +229,8 @@ Tests:
 - [x] `import_edit_invalidates_reverse_dependencies`
 - [x] `declaration_edit_invalidates_dependent_modules`
 - [x] `stale_background_diagnostics_are_not_published`
+- [x] `cancelled_background_diagnostics_are_not_published`
+- [x] `open_file_recomputation_is_scheduled_before_workspace_work`
 - [x] `scale_fixture_avoids_full_rebuild_per_edit`
 
 Validation:
@@ -240,7 +242,7 @@ cargo test -p vela_language_service incremental
 Scale checkpoint:
 
 - [~] Synthetic workspace approaches one million lines.
-- [ ] Initial indexing reports timing and memory.
+- [~] Initial indexing reports timing and memory.
 - [x] Single-file edit avoids full project parse.
 - [ ] Single-file edit avoids full HIR rebuild.
 - [ ] Open-file diagnostics remain responsive under background indexing.
