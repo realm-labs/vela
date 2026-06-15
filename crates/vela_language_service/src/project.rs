@@ -502,7 +502,13 @@ fn strip_root<'a>(root: &str, path: &'a str) -> Option<&'a str> {
 }
 
 fn normalize_document_path(path: &str) -> String {
-    let path = path.trim_start_matches("file://").replace('\\', "/");
+    let mut path = path.trim_start_matches("file://").replace('\\', "/");
+    if cfg!(windows)
+        && path.as_bytes().first() == Some(&b'/')
+        && path.as_bytes().get(2) == Some(&b':')
+    {
+        path.remove(0);
+    }
     let mut normalized = PathBuf::new();
     for component in Path::new(&path).components() {
         match component {

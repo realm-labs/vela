@@ -335,12 +335,14 @@ Purpose: provide host-aware editor tooling without running host code.
 - [x] Load schema artifacts into language-service schema facts.
 - [ ] Validate schema version/hash compatibility.
 - [~] Report missing, stale, or invalid schema diagnostics.
-- [ ] Watch schema artifact changes through the LSP server.
+- [x] Watch schema artifact changes through the LSP server.
 
 Tests:
 
 - [x] `schema_export_round_trips_registry_facts`
 - [x] `invalid_schema_reports_diagnostic`
+- [x] `schema_watch_publishes_invalid_schema_diagnostic`
+- [x] `schema_watch_clears_diagnostic_after_valid_reload`
 - [ ] `missing_schema_keeps_syntax_diagnostics_available`
 - [ ] `schema_reload_updates_host_member_completion`
 - [ ] `schema_source_spans_enable_definition`
@@ -636,7 +638,7 @@ Purpose: make the server robust in real projects.
 
 - [ ] Watch `.vela` sources under configured roots.
 - [ ] Watch `vela.toml`.
-- [ ] Watch host schema artifact.
+- [x] Watch host schema artifact.
 - [ ] Debounce file events.
 - [~] Handle created, changed, deleted, and renamed files.
   - [x] Created and changed `.vela` files update disk snapshots.
@@ -652,7 +654,8 @@ Tests:
 - [x] `file_delete_reports_removed_imports`
 - [x] `file_rename_updates_module_path`
 - [x] `invalid_vela_toml_publishes_config_diagnostic`
-- [ ] `schema_file_change_reloads_facts`
+- [x] `schema_watch_publishes_invalid_schema_diagnostic`
+- [x] `schema_watch_clears_diagnostic_after_valid_reload`
 - [x] `workspace_folder_change_reindexes_project`
 
 Validation:

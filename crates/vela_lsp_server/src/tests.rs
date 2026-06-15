@@ -486,6 +486,21 @@ mod file_watching {
             "{diagnostics:?}"
         );
     }
+
+    fn valid_schema_artifact() -> &'static str {
+        r#"{
+            "formatVersion": 1,
+            "facts": {
+                "types": [
+                    {
+                        "name": "Player",
+                        "fact": { "kind": "host", "name": "Player" }
+                    }
+                ]
+            }
+        }"#
+    }
+
     #[test]
     fn invalid_vela_toml_publishes_config_diagnostic() {
         let root = temp_workspace();
@@ -528,6 +543,114 @@ mod file_watching {
             }),
         )));
         assert_eq!(cleared.len(), 1);
+        assert!(
+            cleared[0]["params"]["diagnostics"]
+                .as_array()
+                .is_some_and(Vec::is_empty),
+            "{cleared:?}"
+        );
+        fs::remove_dir_all(&root).expect("temporary workspace should be removable");
+    }
+
+    #[test]
+    fn schema_watch_publishes_invalid_schema_diagnostic() {
+        let root = temp_workspace();
+        let config_path = root.join("vela.toml");
+        let schema_path = root.join("target").join("vela").join("schema.json");
+        fs::create_dir_all(schema_path.parent().expect("schema should have parent"))
+            .expect("schema directory should be creatable");
+        fs::write(
+            &config_path,
+            r#"
+                [workspace]
+                roots = ["scripts"]
+
+                [host]
+                schema = "target/vela/schema.json"
+            "#,
+        )
+        .expect("vela.toml should be writable");
+        fs::write(&schema_path, "{").expect("invalid schema should be writable");
+
+        let mut server = LspServer::new();
+        let _ = server.handle_json(&request(
+            1,
+            "initialize",
+            serde_json::json!({
+                "processId": null,
+                "rootUri": file_uri(&root),
+                "capabilities": {}
+            }),
+        ));
+        let notifications = notification_values(server.handle_json(&notification(
+            "workspace/didChangeWatchedFiles",
+            serde_json::json!({
+                "changes": [{ "uri": file_uri(&config_path), "type": 1 }]
+            }),
+        )));
+
+        assert_eq!(notifications.len(), 1, "{notifications:?}");
+        assert_eq!(notifications[0]["params"]["uri"], file_uri(&schema_path));
+        let diagnostics = notifications[0]["params"]["diagnostics"]
+            .as_array()
+            .expect("schema diagnostics should be an array");
+        assert!(diagnostics.iter().any(|diagnostic| {
+            diagnostic["code"] == "schema::diagnostic"
+                && diagnostic["message"]
+                    .as_str()
+                    .is_some_and(|message| message.contains("host schema"))
+        }));
+        fs::remove_dir_all(&root).expect("temporary workspace should be removable");
+    }
+
+    #[test]
+    fn schema_watch_clears_diagnostic_after_valid_reload() {
+        let root = temp_workspace();
+        let config_path = root.join("vela.toml");
+        let schema_path = root.join("target").join("vela").join("schema.json");
+        fs::create_dir_all(schema_path.parent().expect("schema should have parent"))
+            .expect("schema directory should be creatable");
+        fs::write(
+            &config_path,
+            r#"
+                [workspace]
+                roots = ["scripts"]
+
+                [host]
+                schema = "target/vela/schema.json"
+            "#,
+        )
+        .expect("vela.toml should be writable");
+        fs::write(&schema_path, "{").expect("invalid schema should be writable");
+
+        let mut server = LspServer::new();
+        let _ = server.handle_json(&request(
+            1,
+            "initialize",
+            serde_json::json!({
+                "processId": null,
+                "rootUri": file_uri(&root),
+                "capabilities": {}
+            }),
+        ));
+        let invalid = notification_values(server.handle_json(&notification(
+            "workspace/didChangeWatchedFiles",
+            serde_json::json!({
+                "changes": [{ "uri": file_uri(&config_path), "type": 1 }]
+            }),
+        )));
+        assert_eq!(invalid.len(), 1, "{invalid:?}");
+        fs::write(&schema_path, valid_schema_artifact()).expect("valid schema should be writable");
+
+        let cleared = notification_values(server.handle_json(&notification(
+            "workspace/didChangeWatchedFiles",
+            serde_json::json!({
+                "changes": [{ "uri": file_uri(&schema_path), "type": 2 }]
+            }),
+        )));
+
+        assert_eq!(cleared.len(), 1, "{cleared:?}");
+        assert_eq!(cleared[0]["params"]["uri"], file_uri(&schema_path));
         assert!(
             cleared[0]["params"]["diagnostics"]
                 .as_array()

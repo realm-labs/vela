@@ -1,14 +1,15 @@
 //! Native LSP protocol boundary for Vela editor tooling.
 
 use std::collections::{BTreeMap, BTreeSet};
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
 use serde::{Deserialize, Serialize};
 use serde_json::{Value as JsonValue, json};
 use vela_language_service::{
     DocumentDiagnostics, DocumentId, LanguageServiceDatabases, ProjectDiagnostic, ProjectSources,
-    ServiceDiagnostic, ServiceDiagnosticSeverity, SourceFileSnapshot, SourceVersion, Workspace,
-    WorkspaceConfig, WorkspaceRoot, assemble_project_sources, missing_import_diagnostics,
+    SchemaDiagnostic, ServiceDiagnostic, ServiceDiagnosticSeverity, SourceFileSnapshot,
+    SourceVersion, Workspace, WorkspaceConfig, WorkspaceRoot, assemble_project_sources,
+    missing_import_diagnostics,
 };
 
 const JSONRPC_VERSION: &str = "2.0";
@@ -25,6 +26,7 @@ pub struct LspServer {
     has_config_file: bool,
     config_diagnostics: Vec<ProjectDiagnostic>,
     config_documents: BTreeSet<DocumentId>,
+    schema_documents: BTreeSet<DocumentId>,
     workspace_roots: BTreeSet<String>,
     cancelled_requests: BTreeSet<RequestId>,
     disk_sources: BTreeMap<DocumentId, SourceFileSnapshot>,
@@ -326,6 +328,7 @@ impl LspServer {
         }
         if !self.has_config_file {
             self.config = workspace_config_from_roots(&self.workspace_roots);
+            self.reload_schema_from_config();
         }
 
         let has_open_documents = !self.open_documents.is_empty();
@@ -338,10 +341,10 @@ impl LspServer {
     }
 
     fn upsert_watched_file(&mut self, uri: &str) {
-        let Some(text) = read_document_uri(uri) else {
-            return;
-        };
         if is_config_uri(uri) {
+            let Some(text) = read_document_uri(uri) else {
+                return;
+            };
             let document_id = DocumentId::from(uri.to_owned());
             let result = WorkspaceConfig::from_vela_toml(uri, &text);
             if !result.diagnostics.is_empty() || self.config_documents.contains(&document_id) {
@@ -350,7 +353,13 @@ impl LspServer {
             self.has_config_file = true;
             self.config = Some(result.config);
             self.config_diagnostics = result.diagnostics;
+            self.reload_schema_from_config();
+        } else if self.is_schema_uri(uri) {
+            self.upsert_schema_artifact(uri);
         } else if is_source_uri(uri) {
+            let Some(text) = read_document_uri(uri) else {
+                return;
+            };
             let document_id = DocumentId::from(uri.to_owned());
             self.disk_sources.insert(
                 document_id.clone(),
@@ -366,9 +375,67 @@ impl LspServer {
             self.config_diagnostics.clear();
             self.config_documents
                 .insert(DocumentId::from(uri.to_owned()));
+            self.reload_schema_from_config();
+        } else if self.is_schema_uri(uri) {
+            self.mark_schema_artifact_missing();
         } else if is_source_uri(uri) {
             self.disk_sources.remove(&DocumentId::from(uri.to_owned()));
         }
+    }
+
+    fn reload_schema_from_config(&mut self) {
+        let Some(schema_path) = self
+            .config
+            .as_ref()
+            .and_then(|config| config.schema().path())
+            .map(str::to_owned)
+        else {
+            self.databases.clear_schema();
+            return;
+        };
+        self.schema_documents
+            .insert(DocumentId::from(document_path_uri(&schema_path)));
+        match std::fs::read_to_string(&schema_path) {
+            Ok(source) => self
+                .databases
+                .load_schema_artifact_json(&schema_path, &source),
+            Err(_) => self.databases.mark_schema_missing(schema_path),
+        }
+    }
+
+    fn upsert_schema_artifact(&mut self, uri: &str) {
+        let Some(schema_path) = self.schema_path().map(str::to_owned) else {
+            return;
+        };
+        self.schema_documents
+            .insert(DocumentId::from(uri.to_owned()));
+        match read_document_uri(uri) {
+            Some(source) => self
+                .databases
+                .load_schema_artifact_json(&schema_path, &source),
+            None => self.databases.mark_schema_missing(schema_path),
+        }
+    }
+
+    fn mark_schema_artifact_missing(&mut self) {
+        let Some(schema_path) = self.schema_path().map(str::to_owned) else {
+            return;
+        };
+        self.schema_documents
+            .insert(DocumentId::from(document_path_uri(&schema_path)));
+        self.databases.mark_schema_missing(schema_path);
+    }
+
+    fn is_schema_uri(&self, uri: &str) -> bool {
+        self.schema_path().is_some_and(|schema_path| {
+            normalized_path(document_uri_path(uri)) == normalized_path(schema_path)
+        })
+    }
+
+    fn schema_path(&self) -> Option<&str> {
+        self.config
+            .as_ref()
+            .and_then(|config| config.schema().path())
     }
 
     fn publish_open_diagnostics(&mut self) -> JsonRpcResult {
@@ -395,6 +462,7 @@ impl LspServer {
         }
 
         notifications.extend(self.config_diagnostic_notifications());
+        notifications.extend(self.schema_diagnostic_notifications());
         if notifications.is_empty() {
             JsonRpcResult::None
         } else {
@@ -449,6 +517,25 @@ impl LspServer {
                     lsp_project_diagnostics(&self.config_diagnostics, document_id),
                     None,
                 )
+            })
+            .collect()
+    }
+
+    fn schema_diagnostic_notifications(&self) -> Vec<String> {
+        let diagnostics = lsp_schema_diagnostics(self.databases.schema_db().diagnostics());
+        let active_document = self
+            .schema_path()
+            .map(document_path_uri)
+            .map(DocumentId::from);
+        self.schema_documents
+            .iter()
+            .map(|document_id| {
+                let diagnostics = if active_document.as_ref() == Some(document_id) {
+                    diagnostics.clone()
+                } else {
+                    Vec::new()
+                };
+                publish_diagnostics_notification(document_id.as_str(), diagnostics, None)
             })
             .collect()
     }
@@ -707,6 +794,15 @@ fn read_document_uri(uri: &str) -> Option<String> {
     std::fs::read_to_string(document_uri_path(uri)).ok()
 }
 
+fn document_path_uri(path: &str) -> String {
+    let path = normalized_path(path);
+    if path.starts_with('/') {
+        format!("file://{path}")
+    } else {
+        format!("file:///{path}")
+    }
+}
+
 fn document_uri_path(uri: &str) -> PathBuf {
     let path = uri.strip_prefix("file://").unwrap_or(uri);
     if cfg!(windows) {
@@ -719,6 +815,10 @@ fn document_uri_path(uri: &str) -> PathBuf {
     } else {
         PathBuf::from(path)
     }
+}
+
+fn normalized_path(path: impl AsRef<Path>) -> String {
+    path.as_ref().display().to_string().replace('\\', "/")
 }
 
 fn source_version(version: i32) -> SourceVersion {
@@ -870,6 +970,26 @@ fn lsp_project_diagnostics(
                 "range": zero_range(),
                 "severity": 1,
                 "code": "project::diagnostic",
+                "source": "vela",
+                "message": diagnostic.message(),
+                "data": {
+                    "labels": [],
+                    "candidates": [],
+                    "repairHints": []
+                }
+            })
+        })
+        .collect()
+}
+
+fn lsp_schema_diagnostics(diagnostics: &[SchemaDiagnostic]) -> Vec<JsonValue> {
+    diagnostics
+        .iter()
+        .map(|diagnostic| {
+            json!({
+                "range": zero_range(),
+                "severity": 1,
+                "code": "schema::diagnostic",
                 "source": "vela",
                 "message": diagnostic.message(),
                 "data": {
