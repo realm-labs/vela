@@ -25,6 +25,7 @@ pub struct LspServer {
     config_diagnostics: Vec<ProjectDiagnostic>,
     config_documents: BTreeSet<DocumentId>,
     workspace_roots: BTreeSet<String>,
+    cancelled_requests: BTreeSet<RequestId>,
     disk_sources: BTreeMap<DocumentId, SourceFileSnapshot>,
     open_documents: BTreeSet<DocumentId>,
     initialized: bool,
@@ -79,7 +80,18 @@ impl LspServer {
             });
         }
 
+        if let Some(id) = message.id.as_ref()
+            && self.cancelled_requests.remove(id)
+        {
+            return JsonRpcResult::Response(error_response(
+                message.id,
+                ErrorCode::RequestCancelled,
+                "request was cancelled before processing",
+            ));
+        }
+
         match message.method.as_str() {
+            "$/cancelRequest" => self.cancel_request(message.id, message.params),
             "initialize" => self.initialize(message.id, message.params),
             "initialized" => self.initialized(message.id),
             "shutdown" => self.shutdown(message.id),
@@ -245,6 +257,22 @@ impl LspServer {
         }
 
         self.publish_open_diagnostics()
+    }
+
+    fn cancel_request(&mut self, id: Option<RequestId>, params: JsonValue) -> JsonRpcResult {
+        if let Some(id) = id {
+            return JsonRpcResult::Response(error_response(
+                Some(id),
+                ErrorCode::InvalidRequest,
+                "`$/cancelRequest` must be sent as a notification",
+            ));
+        }
+
+        let Ok(params) = serde_json::from_value::<CancelRequestParams>(params) else {
+            return JsonRpcResult::None;
+        };
+        self.cancelled_requests.insert(params.id);
+        JsonRpcResult::None
     }
 
     fn did_change_workspace_folders(
@@ -460,6 +488,11 @@ struct JsonRpcMessage {
     params: JsonValue,
 }
 
+#[derive(Debug, Clone, Deserialize)]
+struct CancelRequestParams {
+    id: RequestId,
+}
+
 #[derive(Debug, Clone, Default, Deserialize)]
 #[serde(rename_all = "camelCase")]
 struct InitializeParams {
@@ -537,7 +570,7 @@ struct FileEvent {
     kind: u8,
 }
 
-#[derive(Debug, Clone, Deserialize, Serialize, PartialEq, Eq)]
+#[derive(Debug, Clone, Deserialize, Serialize, PartialEq, Eq, PartialOrd, Ord)]
 #[serde(untagged)]
 enum RequestId {
     Number(i64),
@@ -549,6 +582,7 @@ enum ErrorCode {
     ParseError,
     InvalidRequest,
     MethodNotFound,
+    RequestCancelled,
 }
 
 impl ErrorCode {
@@ -557,6 +591,7 @@ impl ErrorCode {
             Self::ParseError => -32700,
             Self::InvalidRequest => -32600,
             Self::MethodNotFound => -32601,
+            Self::RequestCancelled => -32800,
         }
     }
 }

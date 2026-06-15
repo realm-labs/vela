@@ -101,6 +101,34 @@ mod lifecycle {
     }
 
     #[test]
+    fn lsp_cancellation_discards_stale_request() {
+        let mut server = LspServer::new();
+        let cancel = server.handle_json(&notification(
+            "$/cancelRequest",
+            serde_json::json!({ "id": 7 }),
+        ));
+        assert_eq!(cancel, JsonRpcResult::None);
+
+        let response = response_value(server.handle_json(&request(
+            7,
+            "initialize",
+            serde_json::json!({
+                "processId": null,
+                "capabilities": {}
+            }),
+        )));
+
+        assert!(!server.is_initialized());
+        assert_eq!(response["id"], 7);
+        assert_eq!(response["error"]["code"], -32800);
+        assert!(
+            response["error"]["message"]
+                .as_str()
+                .is_some_and(|message| message.contains("cancelled"))
+        );
+    }
+
+    #[test]
     fn lsp_shutdown_exits_without_background_tasks() {
         let mut server = LspServer::new();
         let response = response_value(server.handle_json(&request(2, "shutdown", JsonValue::Null)));

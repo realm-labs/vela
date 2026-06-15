@@ -298,7 +298,9 @@ Purpose: expose the service through a native LSP binary.
   - [x] Capture `initialize` workspace roots for open-document diagnostics.
   - [x] Load `vela.toml` and workspace files through the platform layer.
   - [x] Handle workspace folder changes.
-- [ ] Wire cancellation and work-done progress.
+- [~] Wire cancellation and work-done progress.
+  - [x] Handle `$/cancelRequest` for stale queued requests.
+  - [ ] Publish work-done progress for long-running work.
 - [x] Publish diagnostics for open files.
 - [x] Add JSON-RPC fixture harness.
 
@@ -309,7 +311,7 @@ Tests:
 - [x] `lsp_did_change_replaces_document_text`
 - [x] `lsp_initialize_uses_workspace_root_for_document_sync`
 - [x] `file_create_adds_module`
-- [ ] `lsp_cancellation_discards_stale_request`
+- [x] `lsp_cancellation_discards_stale_request`
 - [x] `lsp_shutdown_exits_without_background_tasks`
 
 Validation:
