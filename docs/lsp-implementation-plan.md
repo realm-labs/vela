@@ -185,22 +185,22 @@ cargo test -p vela_language_service workspace
 
 Purpose: make Vela's multi-file module model the default editor model.
 
-- [ ] Define `WorkspaceConfig`, `WorkspaceRoot`, `ProjectMode`, and
+- [x] Define `WorkspaceConfig`, `WorkspaceRoot`, `ProjectMode`, and
   `SchemaConfig`.
-- [ ] Parse `vela.toml` with workspace roots and optional host schema path.
-- [ ] Add single-file scratch mode as fallback, not the default project model.
-- [ ] Add file snapshot ingestion from the platform layer.
-- [ ] Map root-relative `.vela` paths to module paths.
-- [ ] Build `ModuleSource` collections from disk snapshots plus overlays.
-- [ ] Track missing files/imports as diagnostics, not panics.
+- [x] Parse `vela.toml` with workspace roots and optional host schema path.
+- [x] Add single-file scratch mode as fallback, not the default project model.
+- [x] Add file snapshot ingestion from the platform layer.
+- [x] Map root-relative `.vela` paths to module paths.
+- [x] Build `ModuleSource` collections from disk snapshots plus overlays.
+- [x] Track missing files/imports as diagnostics, not panics.
 
 Tests:
 
-- [ ] `configured_roots_build_module_paths`
-- [ ] `scratch_file_uses_single_file_mode`
-- [ ] `open_overlay_wins_over_disk_source`
-- [ ] `missing_import_reports_diagnostic`
-- [ ] `multi_root_config_keeps_module_paths_stable`
+- [x] `configured_roots_build_module_paths`
+- [x] `scratch_file_uses_single_file_mode`
+- [x] `open_overlay_wins_over_disk_source`
+- [x] `missing_import_reports_diagnostic`
+- [x] `multi_root_config_keeps_module_paths_stable`
 
 Validation:
 

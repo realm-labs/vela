@@ -222,6 +222,10 @@ impl WorkspaceSnapshot {
             .map(DocumentEntry::snapshot)
     }
 
+    pub fn open_document_ids(&self) -> impl Iterator<Item = DocumentId> + '_ {
+        self.open_documents.keys().cloned()
+    }
+
     fn document_entry(&self, document_id: &DocumentId) -> Option<&DocumentEntry> {
         self.open_documents
             .get(document_id)

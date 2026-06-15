@@ -772,6 +772,10 @@ dependencies = [
 [[package]]
 name = "vela_language_service"
 version = "0.1.0"
+dependencies = [
+ "vela_common",
+ "vela_hir",
+]
 
 [[package]]
 name = "vela_macros"
