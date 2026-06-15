@@ -649,6 +649,23 @@ state such as Player, Monster, Context, or permission-denial fixtures. Host
 world demos belong in `vela_examples`; `vela_cli <script.vela>` compiles the
 file, runs `main()` with no host arguments, and prints the returned value.
 
+### Package And Service Providers
+
+Vela plugin discovery should use package manifests plus a trait-backed service
+provider catalog, not script-side runtime `require`, `eval`, or directory
+scanning. Package manifests own source roots, path dependencies, package
+identity, and requested capabilities. Module identity is package-aware:
+`PackageId + ModulePath`; `SourceId` remains internal.
+
+Service providers are explicit trait implementations exported with
+`#[provider(id = "...")]`. The service trait is inferred from
+`impl ServiceTrait for ProviderType`; the attribute carries only the stable
+provider identity and export intent. Provider identity is
+`PackageId + ServiceTraitId + ProviderId`, so provider type renames do not
+change host-visible SPI identity. First-slice package dependencies are path
+dependencies only; foreign host-language modules, remote registries, version
+solving, and script-side package loading are deferred.
+
 ### Opt-In IO Stdlib
 
 I/O is an Engine-side native stdlib extension, not a VM-default primitive.
