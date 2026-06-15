@@ -625,7 +625,7 @@ impl LanguageServiceDatabases {
         self.analysis_db
             .invalidate(self.generation, analysis_invalidated_modules.clone());
 
-        if !hir_invalidated_modules.is_empty() {
+        if !dependency_roots.is_empty() {
             self.hir_db.rebuild(project.sources());
         }
         let scheduled_modules = schedule_modules(&hir_invalidated_modules, project, open_documents);
@@ -981,6 +981,7 @@ mod tests {
         );
         assert!(report.declaration_changed_modules().is_empty());
         assert!(report.import_changed_modules().is_empty());
+        assert_eq!(report.metrics().hir_rebuild_count(), 0);
     }
 
     #[test]
@@ -1044,6 +1045,7 @@ mod tests {
                 .hir_invalidated_modules()
                 .contains(&module("game::reward"))
         );
+        assert_eq!(report.metrics().hir_rebuild_count(), 1);
     }
 
     #[test]
@@ -1207,6 +1209,7 @@ mod tests {
         assert_eq!(report.metrics().source_count(), 128);
         assert_eq!(report.metrics().parsed_document_count(), 128);
         assert_eq!(report.metrics().reparsed_document_count(), 1);
+        assert_eq!(report.metrics().hir_rebuild_count(), 0);
         assert!(report.metrics().total_lines() >= 128);
         assert!(report.metrics().total_bytes() > 0);
     }

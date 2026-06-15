@@ -244,7 +244,7 @@ Scale checkpoint:
 - [~] Synthetic workspace approaches one million lines.
 - [~] Initial indexing reports timing and memory.
 - [x] Single-file edit avoids full project parse.
-- [ ] Single-file edit avoids full HIR rebuild.
+- [x] Single-file edit avoids full HIR rebuild.
 - [ ] Open-file diagnostics remain responsive under background indexing.
 
 ---
