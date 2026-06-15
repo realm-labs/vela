@@ -7,6 +7,7 @@ use crate::{
         lsp_call_hierarchy_items, lsp_incoming_calls, lsp_outgoing_calls,
         service_call_hierarchy_item,
     },
+    code_action::lsp_code_actions,
     completion::lsp_completion_list,
     definition::lsp_definition,
     error_response,
@@ -15,6 +16,7 @@ use crate::{
     protocol::CallHierarchyIncomingCallsParams,
     protocol::CallHierarchyOutgoingCallsParams,
     protocol::CallHierarchyPrepareParams,
+    protocol::CodeActionParams,
     protocol::DocumentSymbolParams,
     protocol::FoldingRangeParams,
     protocol::PrepareRenameParams,
@@ -35,6 +37,34 @@ use crate::{
 };
 
 impl LspServer {
+    pub(crate) fn code_action(
+        &mut self,
+        id: Option<RequestId>,
+        params: JsonValue,
+    ) -> JsonRpcResult {
+        let Some(id) = id else {
+            return JsonRpcResult::None;
+        };
+        let params = match serde_json::from_value::<CodeActionParams>(params) {
+            Ok(params) => params,
+            Err(error) => {
+                return JsonRpcResult::Response(error_response(
+                    Some(id),
+                    ErrorCode::InvalidRequest,
+                    format!("invalid codeAction params: {error}"),
+                ));
+            }
+        };
+
+        let document_id = DocumentId::from(params.text_document.uri);
+        self.refresh_databases_for_query(&document_id);
+        let actions = self
+            .databases
+            .code_actions(&document_id, crate::protocol::service_range(params.range));
+
+        JsonRpcResult::Response(success_response(id, lsp_code_actions(&actions)))
+    }
+
     pub(crate) fn completion(&mut self, id: Option<RequestId>, params: JsonValue) -> JsonRpcResult {
         let Some(id) = id else {
             return JsonRpcResult::None;

@@ -140,6 +140,10 @@ mod lifecycle {
             serde_json::json!(true)
         );
         assert_eq!(
+            response["result"]["capabilities"]["codeActionProvider"]["codeActionKinds"],
+            serde_json::json!(["quickfix"])
+        );
+        assert_eq!(
             response["result"]["capabilities"]["documentSymbolProvider"],
             serde_json::json!(true)
         );
@@ -215,6 +219,7 @@ mod lifecycle {
         assert_eq!(exit, JsonRpcResult::None);
     }
 }
+mod code_action;
 mod document_sync {
     use super::{LspServer, notification, notification_value, request, response_value};
 

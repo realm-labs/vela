@@ -1,5 +1,5 @@
 use serde::Deserialize;
-use vela_language_service::Position;
+use vela_language_service::{DiagnosticRange, Position};
 
 #[derive(Debug, Clone, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -12,6 +12,24 @@ pub(crate) struct TextDocumentPositionParams {
 #[serde(rename_all = "camelCase")]
 pub(crate) struct TextDocumentIdentifier {
     pub(crate) uri: String,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub(crate) struct CodeActionParams {
+    pub(crate) text_document: TextDocumentIdentifier,
+    pub(crate) range: LspRange,
+    #[allow(dead_code)]
+    pub(crate) context: CodeActionContext,
+}
+
+#[derive(Debug, Clone, Default, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub(crate) struct CodeActionContext {
+    #[allow(dead_code)]
+    pub(crate) diagnostics: Vec<serde_json::Value>,
+    #[allow(dead_code)]
+    pub(crate) only: Option<Vec<String>>,
 }
 
 #[derive(Debug, Clone, Deserialize)]
@@ -106,4 +124,8 @@ pub(crate) struct LspPosition {
 
 pub(crate) fn service_position(position: LspPosition) -> Position {
     Position::new(position.line as usize, position.character as usize)
+}
+
+pub(crate) fn service_range(range: LspRange) -> DiagnosticRange {
+    DiagnosticRange::new(service_position(range.start), service_position(range.end))
 }

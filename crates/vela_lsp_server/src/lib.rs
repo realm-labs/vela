@@ -1,6 +1,7 @@
 //! Native LSP protocol boundary for Vela editor tooling.
 
 mod call_hierarchy;
+mod code_action;
 mod completion;
 mod definition;
 mod folding;
@@ -118,6 +119,7 @@ impl LspServer {
             "textDocument/didOpen" => self.did_open(message.id, message.params),
             "textDocument/didChange" => self.did_change(message.id, message.params),
             "textDocument/completion" => self.completion(message.id, message.params),
+            "textDocument/codeAction" => self.code_action(message.id, message.params),
             "textDocument/signatureHelp" => self.signature_help(message.id, message.params),
             "textDocument/hover" => self.hover(message.id, message.params),
             "textDocument/definition" => self.definition(message.id, message.params),
@@ -809,6 +811,9 @@ fn initialize_result() -> JsonValue {
             "referencesProvider": true,
             "renameProvider": {
                 "prepareProvider": true
+            },
+            "codeActionProvider": {
+                "codeActionKinds": ["quickfix"]
             },
             "callHierarchyProvider": true,
             "documentHighlightProvider": true,

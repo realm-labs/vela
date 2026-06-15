@@ -43,6 +43,14 @@ pub struct WorkspaceEdit {
 
 impl WorkspaceEdit {
     #[must_use]
+    pub fn new(document_edits: Vec<DocumentTextEdit>) -> Self {
+        Self {
+            document_edits,
+            risks: Vec::new(),
+        }
+    }
+
+    #[must_use]
     pub fn document_edits(&self) -> &[DocumentTextEdit] {
         &self.document_edits
     }
@@ -84,6 +92,11 @@ pub struct DocumentTextEdit {
 
 impl DocumentTextEdit {
     #[must_use]
+    pub fn new(document_id: DocumentId, edits: Vec<TextEdit>) -> Self {
+        Self { document_id, edits }
+    }
+
+    #[must_use]
     pub fn document_id(&self) -> &DocumentId {
         &self.document_id
     }
@@ -101,6 +114,14 @@ pub struct TextEdit {
 }
 
 impl TextEdit {
+    #[must_use]
+    pub fn new(range: DiagnosticRange, new_text: impl Into<String>) -> Self {
+        Self {
+            range,
+            new_text: new_text.into(),
+        }
+    }
+
     #[must_use]
     pub const fn range(&self) -> DiagnosticRange {
         self.range

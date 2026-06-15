@@ -615,8 +615,8 @@ cargo test -p vela_lsp_server rename
 
 Purpose: turn structured diagnostics into safe edits.
 
-- [ ] Add code action data model independent from LSP protocol types.
-- [ ] Add typo fixes from candidate diagnostics.
+- [x] Add code action data model independent from LSP protocol types.
+- [x] Add typo fixes from candidate diagnostics.
 - [ ] Add import insertion for unresolved qualified symbols.
 - [ ] Add remove-unused-import action after unused diagnostics exist.
 - [ ] Add fill missing match arms when enum facts are known.
@@ -627,7 +627,7 @@ Purpose: turn structured diagnostics into safe edits.
 
 Tests:
 
-- [ ] `code_action_fixes_unknown_field_typo`
+- [x] `code_action_fixes_unknown_field_typo`
 - [ ] `code_action_inserts_missing_import`
 - [ ] `code_action_fills_enum_match_arms`
 - [ ] `code_action_adds_missing_record_fields`

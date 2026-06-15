@@ -1,6 +1,7 @@
 //! Editor-neutral language-service workspace state.
 
 mod call_hierarchy;
+mod code_action;
 mod completion;
 mod definition;
 mod diagnostics;
@@ -19,6 +20,7 @@ mod text;
 mod workspace;
 
 pub use call_hierarchy::{CallHierarchyItem, IncomingCall, OutgoingCall};
+pub use code_action::{CodeAction, CodeActionKind};
 pub use completion::{
     CompletionContext, CompletionContextKind, CompletionItem, CompletionKind, CompletionList,
 };
