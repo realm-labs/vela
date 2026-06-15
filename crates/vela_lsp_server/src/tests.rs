@@ -718,6 +718,7 @@ mod signature {
     }
 }
 
+mod call_hierarchy;
 mod definition;
 mod folding;
 mod hover;

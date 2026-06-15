@@ -530,8 +530,10 @@ Purpose: support workspace navigation and prepare rename.
   - [x] Serve local declaration/read highlights through the native LSP request.
   - [x] Serve imported script function import/read highlights in the active
     document.
-- [ ] Implement incoming and outgoing call hierarchy for script functions and
+- [~] Implement incoming and outgoing call hierarchy for script functions and
   methods where calls are statically resolved.
+  - [x] Serve initial source-backed script function prepare, incoming, and
+    outgoing call hierarchy for statically resolved calls.
 
 Tests:
 
@@ -544,7 +546,8 @@ Tests:
 - [x] `document_highlight_marks_import_and_calls_in_active_document`
 - [x] `lsp_document_highlight_marks_local_declaration_and_reads`
 - [ ] `document_highlight_marks_read_write_call`
-- [ ] `call_hierarchy_uses_resolved_call_graph`
+- [x] `call_hierarchy_uses_resolved_call_graph`
+- [x] `lsp_call_hierarchy_uses_resolved_call_graph`
 
 Validation:
 

@@ -1,5 +1,6 @@
 //! Native LSP protocol boundary for Vela editor tooling.
 
+mod call_hierarchy;
 mod completion;
 mod definition;
 mod folding;
@@ -120,6 +121,11 @@ impl LspServer {
             "textDocument/hover" => self.hover(message.id, message.params),
             "textDocument/definition" => self.definition(message.id, message.params),
             "textDocument/references" => self.references(message.id, message.params),
+            "textDocument/prepareCallHierarchy" => {
+                self.prepare_call_hierarchy(message.id, message.params)
+            }
+            "callHierarchy/incomingCalls" => self.incoming_calls(message.id, message.params),
+            "callHierarchy/outgoingCalls" => self.outgoing_calls(message.id, message.params),
             "textDocument/documentHighlight" => self.document_highlight(message.id, message.params),
             "textDocument/documentSymbol" => self.document_symbol(message.id, message.params),
             "textDocument/foldingRange" => self.folding_range(message.id, message.params),
@@ -798,6 +804,7 @@ fn initialize_result() -> JsonValue {
             "hoverProvider": true,
             "definitionProvider": true,
             "referencesProvider": true,
+            "callHierarchyProvider": true,
             "documentHighlightProvider": true,
             "documentSymbolProvider": true,
             "foldingRangeProvider": true,

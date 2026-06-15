@@ -3,11 +3,18 @@ use vela_language_service::DocumentId;
 
 use crate::{
     ErrorCode, JsonRpcResult, LspServer, RequestId,
+    call_hierarchy::{
+        lsp_call_hierarchy_items, lsp_incoming_calls, lsp_outgoing_calls,
+        service_call_hierarchy_item,
+    },
     completion::lsp_completion_list,
     definition::lsp_definition,
     error_response,
     folding::lsp_folding_ranges,
     hover::lsp_hover,
+    protocol::CallHierarchyIncomingCallsParams,
+    protocol::CallHierarchyOutgoingCallsParams,
+    protocol::CallHierarchyPrepareParams,
     protocol::DocumentSymbolParams,
     protocol::FoldingRangeParams,
     protocol::ReferencesParams,
@@ -160,6 +167,88 @@ impl LspServer {
         );
 
         JsonRpcResult::Response(success_response(id, lsp_references(&references)))
+    }
+
+    pub(crate) fn prepare_call_hierarchy(
+        &mut self,
+        id: Option<RequestId>,
+        params: JsonValue,
+    ) -> JsonRpcResult {
+        let Some(id) = id else {
+            return JsonRpcResult::None;
+        };
+        let params = match serde_json::from_value::<CallHierarchyPrepareParams>(params) {
+            Ok(params) => params,
+            Err(error) => {
+                return JsonRpcResult::Response(error_response(
+                    Some(id),
+                    ErrorCode::InvalidRequest,
+                    format!("invalid prepareCallHierarchy params: {error}"),
+                ));
+            }
+        };
+
+        let document_id = DocumentId::from(params.text_document.uri);
+        self.refresh_databases_for_query(&document_id);
+        let items = self
+            .databases
+            .prepare_call_hierarchy(&document_id, service_position(params.position));
+
+        JsonRpcResult::Response(success_response(id, lsp_call_hierarchy_items(&items)))
+    }
+
+    pub(crate) fn incoming_calls(
+        &mut self,
+        id: Option<RequestId>,
+        params: JsonValue,
+    ) -> JsonRpcResult {
+        let Some(id) = id else {
+            return JsonRpcResult::None;
+        };
+        let params = match serde_json::from_value::<CallHierarchyIncomingCallsParams>(params) {
+            Ok(params) => params,
+            Err(error) => {
+                return JsonRpcResult::Response(error_response(
+                    Some(id),
+                    ErrorCode::InvalidRequest,
+                    format!("invalid incomingCalls params: {error}"),
+                ));
+            }
+        };
+
+        let document_id = DocumentId::from(params.item.uri.clone());
+        self.refresh_databases_for_query(&document_id);
+        let item = service_call_hierarchy_item(&params.item);
+        let calls = self.databases.incoming_calls(&item);
+
+        JsonRpcResult::Response(success_response(id, lsp_incoming_calls(&calls)))
+    }
+
+    pub(crate) fn outgoing_calls(
+        &mut self,
+        id: Option<RequestId>,
+        params: JsonValue,
+    ) -> JsonRpcResult {
+        let Some(id) = id else {
+            return JsonRpcResult::None;
+        };
+        let params = match serde_json::from_value::<CallHierarchyOutgoingCallsParams>(params) {
+            Ok(params) => params,
+            Err(error) => {
+                return JsonRpcResult::Response(error_response(
+                    Some(id),
+                    ErrorCode::InvalidRequest,
+                    format!("invalid outgoingCalls params: {error}"),
+                ));
+            }
+        };
+
+        let document_id = DocumentId::from(params.item.uri.clone());
+        self.refresh_databases_for_query(&document_id);
+        let item = service_call_hierarchy_item(&params.item);
+        let calls = self.databases.outgoing_calls(&item);
+
+        JsonRpcResult::Response(success_response(id, lsp_outgoing_calls(&calls)))
     }
 
     pub(crate) fn document_highlight(
