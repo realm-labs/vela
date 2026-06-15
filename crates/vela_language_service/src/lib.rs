@@ -3,6 +3,7 @@
 mod completion;
 mod definition;
 mod diagnostics;
+mod folding;
 mod hover;
 mod incremental;
 mod project;
@@ -21,6 +22,7 @@ pub use diagnostics::{
     DocumentDiagnostics, OpenDiagnosticsBatch, ServiceDiagnostic, ServiceDiagnosticSeverity,
     WorkspaceDiagnosticsBatch,
 };
+pub use folding::{FoldingRange, FoldingRangeKind};
 pub use hover::{Hover, HoverKind};
 pub use incremental::{
     AnalysisDb, BackgroundResult, CancellationHandle, CancellationToken, GenerationToken, HirDb,

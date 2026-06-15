@@ -6,8 +6,10 @@ use crate::{
     completion::lsp_completion_list,
     definition::lsp_definition,
     error_response,
+    folding::lsp_folding_ranges,
     hover::lsp_hover,
     protocol::DocumentSymbolParams,
+    protocol::FoldingRangeParams,
     protocol::TextDocumentPositionParams,
     protocol::WorkspaceSymbolParams,
     protocol::service_position,
@@ -152,6 +154,32 @@ impl LspServer {
         let symbols = self.databases.document_symbols(&document_id);
 
         JsonRpcResult::Response(success_response(id, lsp_document_symbols(&symbols)))
+    }
+
+    pub(crate) fn folding_range(
+        &mut self,
+        id: Option<RequestId>,
+        params: JsonValue,
+    ) -> JsonRpcResult {
+        let Some(id) = id else {
+            return JsonRpcResult::None;
+        };
+        let params = match serde_json::from_value::<FoldingRangeParams>(params) {
+            Ok(params) => params,
+            Err(error) => {
+                return JsonRpcResult::Response(error_response(
+                    Some(id),
+                    ErrorCode::InvalidRequest,
+                    format!("invalid foldingRange params: {error}"),
+                ));
+            }
+        };
+
+        let document_id = DocumentId::from(params.text_document.uri);
+        self.refresh_databases_for_query(&document_id);
+        let ranges = self.databases.folding_ranges(&document_id);
+
+        JsonRpcResult::Response(success_response(id, lsp_folding_ranges(&ranges)))
     }
 
     pub(crate) fn workspace_symbol(

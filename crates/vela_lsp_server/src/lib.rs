@@ -2,6 +2,7 @@
 
 mod completion;
 mod definition;
+mod folding;
 mod hover;
 mod protocol;
 mod queries;
@@ -116,6 +117,7 @@ impl LspServer {
             "textDocument/hover" => self.hover(message.id, message.params),
             "textDocument/definition" => self.definition(message.id, message.params),
             "textDocument/documentSymbol" => self.document_symbol(message.id, message.params),
+            "textDocument/foldingRange" => self.folding_range(message.id, message.params),
             "workspace/symbol" => self.workspace_symbol(message.id, message.params),
             "workspace/didChangeWatchedFiles" => {
                 self.did_change_watched_files(message.id, message.params)
@@ -787,6 +789,7 @@ fn initialize_result() -> JsonValue {
             "hoverProvider": true,
             "definitionProvider": true,
             "documentSymbolProvider": true,
+            "foldingRangeProvider": true,
             "workspaceSymbolProvider": true,
             "workspace": {
                 "workspaceFolders": {

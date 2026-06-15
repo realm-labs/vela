@@ -706,6 +706,7 @@ mod signature {
 }
 
 mod definition;
+mod folding;
 mod hover;
 mod symbols;
 
