@@ -170,13 +170,7 @@ impl LanguageServiceDatabases {
     #[must_use]
     pub fn diagnostics_for_document(&self, document_id: &DocumentId) -> DocumentDiagnostics {
         let status = self.diagnostic_status(document_id);
-        let diagnostics = self
-            .parse_db()
-            .parse_diagnostics(document_id)
-            .unwrap_or_default()
-            .iter()
-            .map(|diagnostic| self.convert_diagnostic(diagnostic))
-            .collect();
+        let diagnostics = self.document_diagnostics(document_id);
         DocumentDiagnostics {
             document_id: document_id.clone(),
             generation: self.generation(),
@@ -226,6 +220,30 @@ impl LanguageServiceDatabases {
             .collect()
     }
 
+    fn document_diagnostics(&self, document_id: &DocumentId) -> Vec<ServiceDiagnostic> {
+        let mut diagnostics = self
+            .parse_db()
+            .parse_diagnostics(document_id)
+            .unwrap_or_default()
+            .iter()
+            .map(|diagnostic| self.convert_diagnostic(diagnostic))
+            .collect::<Vec<_>>();
+
+        if let Some(source) = self.parse_db().source_id(document_id) {
+            diagnostics.extend(
+                self.hir_db()
+                    .graph()
+                    .diagnostics()
+                    .iter()
+                    .filter(|diagnostic| is_hir_diagnostic(diagnostic))
+                    .filter(|diagnostic| diagnostic_mentions_source(diagnostic, source))
+                    .map(|diagnostic| self.convert_diagnostic(diagnostic)),
+            );
+        }
+
+        diagnostics
+    }
+
     fn convert_diagnostic(&self, diagnostic: &Diagnostic) -> ServiceDiagnostic {
         ServiceDiagnostic {
             severity: diagnostic.severity.into(),
@@ -266,6 +284,21 @@ impl LanguageServiceDatabases {
             .find(|record| record.source_id() == source)
             .map(|record| (record.document_id().clone(), record.text()))
     }
+}
+
+fn is_hir_diagnostic(diagnostic: &Diagnostic) -> bool {
+    diagnostic
+        .code
+        .as_deref()
+        .is_some_and(|code| code.starts_with("hir::"))
+}
+
+fn diagnostic_mentions_source(diagnostic: &Diagnostic, source: SourceId) -> bool {
+    diagnostic.span.is_some_and(|span| span.source == source)
+        || diagnostic
+            .labels
+            .iter()
+            .any(|label| label.span.source == source)
 }
 
 #[cfg(test)]
@@ -355,5 +388,36 @@ mod tests {
                 .iter()
                 .any(|document| document.as_str() == "/workspace/scripts/game/reward.vela")
         );
+    }
+
+    #[test]
+    fn hir_diagnostics_survive_multi_file_workspace() {
+        let document = DocumentId::from("/workspace/scripts/game/main.vela");
+        let helper = DocumentId::from("/workspace/scripts/game/reward.vela");
+        let mut db = LanguageServiceDatabases::new();
+        db.update(&project(&[
+            file(
+                document.as_str(),
+                "use game::reward::grant_bonus\npub fn main() { return 1 }",
+            ),
+            file(helper.as_str(), "pub fn grant() { return 1 }"),
+        ]));
+
+        let diagnostics = db.diagnostics_for_document(&document);
+        let helper_diagnostics = db.diagnostics_for_document(&helper);
+
+        assert!(
+            diagnostics.diagnostics().iter().any(|diagnostic| {
+                diagnostic.code() == Some("hir::unresolved_import")
+                    && diagnostic.range().is_some()
+                    && diagnostic
+                        .labels()
+                        .iter()
+                        .any(|label| label.document_id() == &document)
+            }),
+            "{:?}",
+            diagnostics.diagnostics()
+        );
+        assert!(helper_diagnostics.diagnostics().is_empty());
     }
 }
