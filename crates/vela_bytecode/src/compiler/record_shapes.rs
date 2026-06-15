@@ -243,6 +243,13 @@ impl ValueShape {
             _ => None,
         }
     }
+
+    pub(super) fn map_entry(key: ValueShape, value: ValueShape) -> Self {
+        Self::Record(RecordShape::from_field_shapes_with_type(
+            Some("MapEntry".to_owned()),
+            [("key".to_owned(), key), ("value".to_owned(), value)],
+        ))
+    }
 }
 
 fn scalar_shape_type_fact(type_name: &str) -> Option<RuntimeTypeFact> {

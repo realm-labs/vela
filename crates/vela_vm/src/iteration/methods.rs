@@ -40,7 +40,7 @@ pub(crate) fn iter_method(
                     IteratorState::from_set_source(*reference, values.len())
                 }
                 Some(HeapValue::Map(values)) => {
-                    IteratorState::from_map_values_source(*reference, values.key_order())
+                    IteratorState::from_map_entries_source(*reference, values.key_order())
                 }
                 Some(HeapValue::Bytes(values)) => {
                     IteratorState::from_bytes_source(*reference, values.len())

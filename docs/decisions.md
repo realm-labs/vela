@@ -843,9 +843,11 @@ one Unicode scalar value.
 Explicit one-shot iterator creation uses `values()` / `iter()` for arrays,
 sets, and bytes, `iter()` for maps and ranges, and `chars()` / `bytes()` for
 string traversal. Direct bytes `for-in`, `bytes.iter()`, and `bytes.values()`
-yield `u8` values. Direct map `iter()` and `map.values()` yield values in key
-order, matching current direct map `for-in` behavior. `map.keys()` and
-`map.entries()` are also iterator-backed views.
+yield `u8` values. Direct map `for-in` and `map.iter()` yield
+`MapEntry { key, value }` records in key order, matching Rust's key/value map
+iteration model without exposing references. `map.keys()` and `map.values()`
+are explicit projection views, and `map.entries()` is equivalent to
+`map.iter()`.
 
 ### Iterator Adapter Ownership
 

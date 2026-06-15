@@ -103,6 +103,6 @@ const MAP_METHODS: &[MethodSpec] = &[
         "iter",
         &[],
         "iterator",
-        "Returns a one-shot iterator over map values in key order.",
+        "Returns a one-shot iterator over MapEntry records in key order.",
     ),
 ];

@@ -26,7 +26,7 @@ impl IterableSource {
 pub(crate) enum SequenceSource {
     Array { source: GcRef, len: usize },
     Set { source: GcRef, len: usize },
-    MapValues { source: GcRef, keys: Vec<ValueKey> },
+    MapEntries { source: GcRef, keys: Vec<ValueKey> },
     StringChars { source: GcRef },
     Bytes { source: GcRef, len: usize },
     Range(RangeCursor),
@@ -37,7 +37,9 @@ impl SequenceSource {
         match self {
             Self::Array { source, len } => IteratorState::from_array_source(source, len),
             Self::Set { source, len } => IteratorState::from_set_source(source, len),
-            Self::MapValues { source, keys } => IteratorState::from_map_values_source(source, keys),
+            Self::MapEntries { source, keys } => {
+                IteratorState::from_map_entries_source(source, keys)
+            }
             Self::StringChars { source } => IteratorState::from_string_chars_source(source),
             Self::Bytes { source, len } => IteratorState::from_bytes_source(source, len),
             Self::Range(cursor) => IteratorState::from_range_cursor(cursor),
@@ -80,7 +82,7 @@ fn heap_iterable_source(reference: GcRef, value: &HeapValue) -> VmResult<Iterabl
             source: reference,
             len: values.len(),
         })),
-        HeapValue::Map(values) => Ok(IterableSource::Sequence(SequenceSource::MapValues {
+        HeapValue::Map(values) => Ok(IterableSource::Sequence(SequenceSource::MapEntries {
             source: reference,
             keys: values.key_order(),
         })),

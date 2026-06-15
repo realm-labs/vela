@@ -714,7 +714,7 @@ impl Compiler<'_, '_> {
 fn iterable_item_shape(shape: ValueShape) -> Option<ValueShape> {
     match shape {
         ValueShape::Array(element) | ValueShape::Set(element) => Some(*element),
-        ValueShape::Map { value, .. } => Some(*value),
+        ValueShape::Map { key, value } => Some(ValueShape::map_entry(*key, *value)),
         _ => None,
     }
 }

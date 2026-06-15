@@ -56,15 +56,16 @@ fn remember_by_id(rewards: Map<i64, String>, id: i64, label: String) {
 
 ## Views
 
-`keys()`, `values()`, and `entries()` expose repeatable views. `keys()`
-returns the stored original key values, and `entries()` yields values with
-`key` and `value` fields. Non-string keys stay typed values; they are not
-stringified for traversal.
+Direct map iteration and `iter()` yield `MapEntry` records with `key` and
+`value` fields. `keys()`, `values()`, and `entries()` expose repeatable views:
+`keys()` returns the stored original key values, `values()` returns only entry
+values, and `entries()` is equivalent to `iter()`. Non-string keys stay typed
+values; they are not stringified for traversal.
 
 ```vela
 fn total(rewards) -> i64 {
     let sum = 0
-    for entry in rewards.entries() {
+    for entry in rewards {
         sum += entry.value
     }
     return sum

@@ -13,7 +13,7 @@ fn sum() {
         total += value;
     }
     for reward in { "gold": 4, "xp": 6 } {
-        total += reward;
+        total += reward.value;
     }
     return total;
 }

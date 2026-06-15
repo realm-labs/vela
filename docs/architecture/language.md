@@ -200,10 +200,10 @@ semantics.
 
 Arrays and sets are repeatable sequences. Their `iter()` and `values()` methods
 create one-shot iterators over values. Maps are repeatable sequences whose
-direct iteration and `iter()` yield values in key order; `keys()`, `values()`,
-and `entries()` expose explicit key, value, and `MapEntry` views. Ranges are
-repeatable sequences and may use specialized `i64` loop lowering when the
-compiler can prove the range facts.
+direct iteration and `iter()` yield `MapEntry { key, value }` records in key
+order; `keys()` and `values()` expose explicit key and value projections.
+Ranges are repeatable sequences and may use specialized `i64` loop lowering
+when the compiler can prove the range facts.
 
 String iteration is explicit and UTF-8-aware. `for ch in text` uses the same
 character traversal source as `text.chars()`, yielding `char` values.

@@ -58,13 +58,15 @@ map.get(key)
 map.get_or(key, default)
 map.set(key, value)
 map.remove(key)
+map.iter()      // Iterator over MapEntry records
 map.keys()      // Iterator over keys
 map.values()    // Iterator over values
 map.entries()   // Iterator over MapEntry records
 ```
 
-Map traversal and transformation are explicit. Use views when the pipeline only
-needs keys, values, or entries:
+Map traversal and transformation are explicit. Direct map iteration and
+`map.iter()` produce `MapEntry { key, value }` records. Use views when the
+pipeline only needs keys, values, or entries:
 
 ```rust
 map.values().filter(|v| predicate).map(|v| value).collect_array()
@@ -85,10 +87,11 @@ map.count(|k, v| ...)
 ```
 
 Map methods follow the same rule. If `map` has
-`TypeFact::Map { key: K, value: V }`, `map.filter(|k, v| ...)` gives `k: K`,
-`v: V`, and returns `Map(key = K, value = V)` as an internal fact only. The
-iterator views expose `Iterator(item = K)`, `Iterator(item = V)`, or
-`Iterator(item = MapEntry)` facts respectively.
+`TypeFact::Map { key: K, value: V }`, `map.iter()` and `map.entries()` expose
+`Iterator(item = MapEntry)` facts, `map.keys()` exposes `Iterator(item = K)`,
+and `map.values()` exposes `Iterator(item = V)`. Eager helpers such as
+`map.filter(|k, v| ...)` give `k: K`, `v: V`, and return
+`Map(key = K, value = V)` as an internal fact only.
 
 These analysis rules are not user-visible generic syntax. They are part of the
 standard library metadata consumed by `vela_analysis` and future LSP tooling.

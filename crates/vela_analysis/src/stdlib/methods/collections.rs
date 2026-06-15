@@ -254,7 +254,7 @@ pub(super) fn map_method_fact(
         "iter" => Some(StdlibMethodFact::new(
             receiver,
             "iter",
-            TypeFact::iterator(value),
+            TypeFact::iterator(TypeFact::record("MapEntry")),
         )),
         _ => None,
     }

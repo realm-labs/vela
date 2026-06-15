@@ -24,6 +24,9 @@ fn first_two(values) {
 until completion. `for index, value in source` gives the loop body both the
 zero-based position and the current value.
 
+Map loops yield `MapEntry { key, value }` records. Use `map.values()` when a
+loop only needs values and `map.keys()` when it only needs keys.
+
 ```vela
 fn total(values) -> i64 {
     let sum = 0

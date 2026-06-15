@@ -13,7 +13,7 @@ fn main() {
     }
     let rewards = { "gold": 4, "xp": 6 };
     for reward in rewards {
-        total += reward;
+        total += reward.value;
     }
     return total;
 }
@@ -431,8 +431,8 @@ fn main() {
     for value in [2, 3, 5].iter() {
         total += value;
     }
-    for value in {"gold": 7, "xp": 11}.iter() {
-        total += value;
+    for entry in {"gold": 7, "xp": 11}.iter() {
+        total += entry.value;
     }
     for value in (1..4).iter() {
         total += value;
@@ -782,7 +782,7 @@ fn main() {
 }
 
 #[test]
-fn iterator_map_sources_snapshot_keys_but_read_current_values() {
+fn iterator_map_sources_yield_entries_and_read_current_values() {
     let code = compile_function_source(
         SourceId::new(1),
         r#"
@@ -791,10 +791,10 @@ fn main() {
     let iter = rewards.iter();
     rewards.set("a", 9);
     rewards.set("c", 100);
-    let first = iter.next().unwrap_or(0);
-    let second = iter.next().unwrap_or(0);
-    let third = iter.next().unwrap_or(77);
-    return first * 100 + second * 10 + third;
+    let first = iter.next().unwrap_or(MapEntry { key: "", value: 0 });
+    let second = iter.next().unwrap_or(MapEntry { key: "", value: 0 });
+    let third = iter.next().unwrap_or(MapEntry { key: "", value: 77 });
+    return first.value * 100 + second.value * 10 + third.value;
 }
 "#,
         "main",

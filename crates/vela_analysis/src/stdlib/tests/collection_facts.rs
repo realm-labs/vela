@@ -149,7 +149,7 @@ fn scalar_collection_methods_return_non_generic_facts() {
         stdlib_method_fact(&map, "iter", None)
             .expect("map iter fact")
             .returns,
-        TypeFact::iterator(TypeFact::I64)
+        TypeFact::iterator(TypeFact::record("MapEntry"))
     );
     assert_eq!(
         stdlib_method_fact(&map, "entries", None)

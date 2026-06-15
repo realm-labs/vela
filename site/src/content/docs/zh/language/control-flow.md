@@ -27,6 +27,9 @@ fn label(score: i64) -> String {
 `source` 表达式会在循环开始时求值一次。数组、range、string、map、set、
 iterator 和宿主提供的 iterable，只要支持迭代，都可以放在这里。
 
+Map 循环会产生 `MapEntry { key, value }` record。只需要 value 时使用
+`map.values()`，只需要 key 时使用 `map.keys()`。
+
 ```vela
 fn sum(values) -> i64 {
     let total = 0

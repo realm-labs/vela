@@ -121,6 +121,7 @@ set.values() / set.iter()
 map.keys()
 map.values()
 map.entries()
+map.iter()
 string.chars()
 string.bytes()
 range.iter() or direct range iteration
@@ -149,6 +150,7 @@ map.keys()         -> key
 map.values()       -> value
 map.entries()      -> record-like entry with key and value fields, or the
                       existing current entry shape if already standardized
+map.iter()         -> MapEntry { key, value }
 string.chars()     -> char
 string.bytes()     -> u8
 range iteration    -> i64 for proven i64 ranges; otherwise current range item

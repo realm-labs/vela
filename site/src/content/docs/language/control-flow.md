@@ -29,6 +29,9 @@ The `source` expression is evaluated once at the start of the loop. Arrays,
 ranges, strings, maps, sets, iterators, and host-provided iterables can all be
 used when they support iteration.
 
+Map loops yield `MapEntry { key, value }` records. Use `map.values()` when the
+loop only needs values and `map.keys()` when it only needs keys.
+
 ```vela
 fn sum(values) -> i64 {
     let total = 0

@@ -37,14 +37,15 @@ fn add_reward(rewards, code: String, amount: i64) {
 
 ## 视图
 
-`keys()`、`values()` 和 `entries()` 暴露可重复视图。`keys()` 返回存储的原始
-key 值，`entries()` 产生带 `key` 和 `value` 字段的值。非字符串 key 在遍历时
-仍保持为带类型的值，不会被字符串化。
+直接遍历 Map 和 `iter()` 都会产生带 `key` 和 `value` 字段的 `MapEntry`
+record。`keys()`、`values()` 和 `entries()` 暴露可重复视图：`keys()` 返回存储的
+原始 key 值，`values()` 只返回 entry value，`entries()` 等价于 `iter()`。
+非字符串 key 在遍历时仍保持为带类型的值，不会被字符串化。
 
 ```vela
 fn total(rewards) -> i64 {
     let sum = 0
-    for entry in rewards.entries() {
+    for entry in rewards {
         sum += entry.value
     }
     return sum

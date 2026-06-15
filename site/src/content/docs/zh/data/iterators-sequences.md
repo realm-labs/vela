@@ -23,6 +23,9 @@ fn first_two(values) {
 `for value in source` 会先求值 `source`，取得 iterator，然后推进直到结束。
 `for index, value in source` 会同时把从 0 开始的位置和当前值交给循环体。
 
+Map 循环会产生 `MapEntry { key, value }` record。只需要 value 时使用
+`map.values()`，只需要 key 时使用 `map.keys()`。
+
 ```vela
 fn total(values) -> i64 {
     let sum = 0

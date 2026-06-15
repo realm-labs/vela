@@ -633,7 +633,7 @@ pub const STD_METHODS: &[StdMethodSpec] = &[
         "iter",
         &[],
         "iterator",
-        "Returns a one-shot iterator over map values in key order.",
+        "Returns a one-shot iterator over MapEntry records in key order.",
     ),
     StdMethodSpec::new("Set", "len", &[], "i64", "Returns the set length."),
     StdMethodSpec::new(
