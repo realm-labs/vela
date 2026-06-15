@@ -156,22 +156,22 @@ its focused tests and validation command pass.
 
 Purpose: establish reusable editor-neutral workspace state.
 
-- [ ] Add `crates/vela_language_service`.
-- [ ] Define `DocumentId`, `SourceVersion`, `WorkspaceGeneration`, `LineIndex`,
+- [x] Add `crates/vela_language_service`.
+- [x] Define `DocumentId`, `SourceVersion`, `WorkspaceGeneration`, `LineIndex`,
   and `TextRange` service types.
-- [ ] Implement `open_document`, `change_document`, `close_document`, and
+- [x] Implement `open_document`, `change_document`, `close_document`, and
   `document_text`.
-- [ ] Store open overlays separately from disk snapshots.
-- [ ] Implement UTF-8 offset to line/column conversion.
-- [ ] Add immutable `WorkspaceSnapshot` reads for query handlers.
+- [x] Store open overlays separately from disk snapshots.
+- [x] Implement UTF-8 offset to line/column conversion.
+- [x] Add immutable `WorkspaceSnapshot` reads for query handlers.
 
 Tests:
 
-- [ ] `open_document_creates_overlay`
-- [ ] `change_document_updates_version_and_generation`
-- [ ] `close_document_preserves_disk_snapshot`
-- [ ] `line_index_maps_offsets_and_positions`
-- [ ] `snapshot_reads_are_generation_stable`
+- [x] `open_document_creates_overlay`
+- [x] `change_document_updates_version_and_generation`
+- [x] `close_document_preserves_disk_snapshot`
+- [x] `line_index_maps_offsets_and_positions`
+- [x] `snapshot_reads_are_generation_stable`
 
 Validation:
 
