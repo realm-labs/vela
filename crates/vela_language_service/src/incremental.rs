@@ -1,0 +1,905 @@
+use std::collections::{BTreeMap, BTreeSet};
+use std::sync::Arc;
+
+use vela_common::{Diagnostic, SourceId};
+use vela_hir::module_graph::{ModuleGraph, ModulePath, ModuleSource, stable_source_hash};
+use vela_syntax::ast::{
+    EnumVariantFields, FunctionItem, ImplKind, ItemKind, Param, SourceFile, StructField, TraitItem,
+    TraitMethod, TypeHint, Visibility,
+};
+use vela_syntax::parser::parse_source;
+
+use crate::{DocumentId, ProjectSources, SourceVersion, WorkspaceGeneration};
+
+#[derive(Debug, Clone)]
+pub struct SourceRecord {
+    document_id: DocumentId,
+    source_id: SourceId,
+    module_path: ModulePath,
+    text: Arc<str>,
+    version: SourceVersion,
+    content_hash: u64,
+}
+
+impl SourceRecord {
+    #[must_use]
+    pub fn document_id(&self) -> &DocumentId {
+        &self.document_id
+    }
+
+    #[must_use]
+    pub const fn source_id(&self) -> SourceId {
+        self.source_id
+    }
+
+    #[must_use]
+    pub fn module_path(&self) -> &ModulePath {
+        &self.module_path
+    }
+
+    #[must_use]
+    pub fn text(&self) -> &str {
+        &self.text
+    }
+
+    #[must_use]
+    pub const fn version(&self) -> SourceVersion {
+        self.version
+    }
+
+    #[must_use]
+    pub const fn content_hash(&self) -> u64 {
+        self.content_hash
+    }
+}
+
+#[derive(Debug, Clone, Default)]
+pub struct SourceDb {
+    records: BTreeMap<DocumentId, SourceRecord>,
+}
+
+impl SourceDb {
+    #[must_use]
+    pub fn records(&self) -> &BTreeMap<DocumentId, SourceRecord> {
+        &self.records
+    }
+
+    fn replace(&mut self, records: BTreeMap<DocumentId, SourceRecord>) {
+        self.records = records;
+    }
+}
+
+#[derive(Debug, Clone, Eq, PartialEq)]
+struct ParseSummary {
+    imports: BTreeSet<ModulePath>,
+    declaration_fingerprint: u64,
+    import_fingerprint: u64,
+}
+
+#[derive(Debug, Clone)]
+struct ParseRecord {
+    source: SourceId,
+    module_path: ModulePath,
+    content_hash: u64,
+    parsed: SourceFile,
+    summary: ParseSummary,
+}
+
+#[derive(Debug, Clone, Default)]
+pub struct ParseDb {
+    records: BTreeMap<DocumentId, ParseRecord>,
+    parse_count: usize,
+}
+
+impl ParseDb {
+    #[must_use]
+    pub fn parse_count(&self) -> usize {
+        self.parse_count
+    }
+
+    #[must_use]
+    pub fn source_id(&self, document_id: &DocumentId) -> Option<SourceId> {
+        self.records.get(document_id).map(|record| record.source)
+    }
+
+    #[must_use]
+    pub fn parse_diagnostics(&self, document_id: &DocumentId) -> Option<&[Diagnostic]> {
+        self.records
+            .get(document_id)
+            .map(|record| record.parsed.diagnostics.as_slice())
+    }
+
+    #[must_use]
+    pub fn parsed_document_count(&self) -> usize {
+        self.records.len()
+    }
+
+    fn update_from_sources(&mut self, sources: &BTreeMap<DocumentId, SourceRecord>) -> ParseUpdate {
+        let previous = self.records.clone();
+        let source_ids = sources.keys().cloned().collect::<BTreeSet<_>>();
+        self.records
+            .retain(|document_id, _| source_ids.contains(document_id));
+
+        let mut changed_modules = BTreeSet::new();
+        let mut declaration_changed_modules = BTreeSet::new();
+        let mut import_changed_modules = BTreeSet::new();
+        let mut reparsed_documents = BTreeSet::new();
+
+        for (document_id, source) in sources {
+            let previous_record = previous.get(document_id);
+            let record = if previous_record
+                .is_some_and(|record| record.content_hash == source.content_hash)
+            {
+                previous_record.cloned().expect("checked previous record")
+            } else {
+                reparsed_documents.insert(document_id.clone());
+                changed_modules.insert(source.module_path.clone());
+                self.parse_count = self.parse_count.saturating_add(1);
+                let parsed = parse_source(source.source_id, source.text());
+                let summary = summarize_source(&parsed);
+                ParseRecord {
+                    source: source.source_id,
+                    module_path: source.module_path.clone(),
+                    content_hash: source.content_hash,
+                    parsed,
+                    summary,
+                }
+            };
+
+            if let Some(previous_record) = previous_record {
+                if previous_record.summary.declaration_fingerprint
+                    != record.summary.declaration_fingerprint
+                    || previous_record.module_path != record.module_path
+                {
+                    declaration_changed_modules.insert(record.module_path.clone());
+                }
+                if previous_record.summary.import_fingerprint != record.summary.import_fingerprint
+                    || previous_record.module_path != record.module_path
+                {
+                    import_changed_modules.insert(record.module_path.clone());
+                }
+            } else {
+                declaration_changed_modules.insert(record.module_path.clone());
+                import_changed_modules.insert(record.module_path.clone());
+            }
+
+            self.records.insert(document_id.clone(), record);
+        }
+
+        for (document_id, previous_record) in previous {
+            if !sources.contains_key(&document_id) {
+                changed_modules.insert(previous_record.module_path.clone());
+                declaration_changed_modules.insert(previous_record.module_path.clone());
+                import_changed_modules.insert(previous_record.module_path);
+            }
+        }
+
+        ParseUpdate {
+            changed_modules,
+            declaration_changed_modules,
+            import_changed_modules,
+            reparsed_documents,
+        }
+    }
+}
+
+#[derive(Debug, Clone, Default)]
+struct ParseUpdate {
+    changed_modules: BTreeSet<ModulePath>,
+    declaration_changed_modules: BTreeSet<ModulePath>,
+    import_changed_modules: BTreeSet<ModulePath>,
+    reparsed_documents: BTreeSet<DocumentId>,
+}
+
+#[derive(Debug, Clone, Default)]
+pub struct ProjectDb {
+    module_by_document: BTreeMap<DocumentId, ModulePath>,
+    document_by_module: BTreeMap<ModulePath, DocumentId>,
+    imports_by_module: BTreeMap<ModulePath, BTreeSet<ModulePath>>,
+    reverse_dependencies: BTreeMap<ModulePath, BTreeSet<ModulePath>>,
+}
+
+impl ProjectDb {
+    #[must_use]
+    pub fn module_by_document(&self) -> &BTreeMap<DocumentId, ModulePath> {
+        &self.module_by_document
+    }
+
+    #[must_use]
+    pub fn reverse_dependencies(&self) -> &BTreeMap<ModulePath, BTreeSet<ModulePath>> {
+        &self.reverse_dependencies
+    }
+
+    fn rebuild(&mut self, parse_db: &ParseDb) {
+        self.module_by_document.clear();
+        self.document_by_module.clear();
+        self.imports_by_module.clear();
+        self.reverse_dependencies.clear();
+
+        for (document_id, record) in &parse_db.records {
+            self.module_by_document
+                .insert(document_id.clone(), record.module_path.clone());
+            self.document_by_module
+                .insert(record.module_path.clone(), document_id.clone());
+            self.imports_by_module
+                .insert(record.module_path.clone(), record.summary.imports.clone());
+        }
+
+        for (module, imports) in &self.imports_by_module {
+            for imported in imports {
+                self.reverse_dependencies
+                    .entry(imported.clone())
+                    .or_default()
+                    .insert(module.clone());
+            }
+        }
+    }
+
+    fn transitive_dependents(&self, roots: &BTreeSet<ModulePath>) -> BTreeSet<ModulePath> {
+        let mut impacted = roots.clone();
+        let mut pending = roots.iter().cloned().collect::<Vec<_>>();
+        while let Some(module) = pending.pop() {
+            if let Some(dependents) = self.reverse_dependencies.get(&module) {
+                for dependent in dependents {
+                    if impacted.insert(dependent.clone()) {
+                        pending.push(dependent.clone());
+                    }
+                }
+            }
+        }
+        impacted
+    }
+}
+
+#[derive(Debug, Clone, Default)]
+pub struct HirDb {
+    graph: ModuleGraph,
+    rebuild_count: usize,
+}
+
+impl HirDb {
+    #[must_use]
+    pub const fn rebuild_count(&self) -> usize {
+        self.rebuild_count
+    }
+
+    #[must_use]
+    pub const fn graph(&self) -> &ModuleGraph {
+        &self.graph
+    }
+
+    fn rebuild(&mut self, sources: &[ModuleSource]) {
+        let mut graph = ModuleGraph::new();
+        for source in sources {
+            graph.add_source(source.clone());
+        }
+        graph.resolve_imports();
+        self.graph = graph;
+        self.rebuild_count = self.rebuild_count.saturating_add(1);
+    }
+}
+
+#[derive(Debug, Clone, Default)]
+pub struct AnalysisDb {
+    invalidated_modules: BTreeSet<ModulePath>,
+    generation: WorkspaceGeneration,
+}
+
+impl AnalysisDb {
+    #[must_use]
+    pub fn invalidated_modules(&self) -> &BTreeSet<ModulePath> {
+        &self.invalidated_modules
+    }
+
+    #[must_use]
+    pub const fn generation(&self) -> WorkspaceGeneration {
+        self.generation
+    }
+
+    fn invalidate(&mut self, generation: WorkspaceGeneration, modules: BTreeSet<ModulePath>) {
+        self.generation = generation;
+        self.invalidated_modules = modules;
+    }
+}
+
+#[derive(Debug, Clone, Copy, Eq, PartialEq)]
+pub struct GenerationToken {
+    generation: WorkspaceGeneration,
+}
+
+impl GenerationToken {
+    #[must_use]
+    pub const fn generation(self) -> WorkspaceGeneration {
+        self.generation
+    }
+}
+
+#[derive(Debug, Clone, Eq, PartialEq)]
+pub struct BackgroundResult<T> {
+    generation: WorkspaceGeneration,
+    value: T,
+}
+
+impl<T> BackgroundResult<T> {
+    #[must_use]
+    pub const fn new(token: GenerationToken, value: T) -> Self {
+        Self {
+            generation: token.generation,
+            value,
+        }
+    }
+}
+
+#[derive(Debug, Clone, Default, Eq, PartialEq)]
+pub struct InvalidationReport {
+    generation: WorkspaceGeneration,
+    reparsed_documents: BTreeSet<DocumentId>,
+    changed_modules: BTreeSet<ModulePath>,
+    declaration_changed_modules: BTreeSet<ModulePath>,
+    import_changed_modules: BTreeSet<ModulePath>,
+    hir_invalidated_modules: BTreeSet<ModulePath>,
+    analysis_invalidated_modules: BTreeSet<ModulePath>,
+}
+
+impl InvalidationReport {
+    #[must_use]
+    pub const fn generation(&self) -> WorkspaceGeneration {
+        self.generation
+    }
+
+    #[must_use]
+    pub fn reparsed_documents(&self) -> &BTreeSet<DocumentId> {
+        &self.reparsed_documents
+    }
+
+    #[must_use]
+    pub fn changed_modules(&self) -> &BTreeSet<ModulePath> {
+        &self.changed_modules
+    }
+
+    #[must_use]
+    pub fn declaration_changed_modules(&self) -> &BTreeSet<ModulePath> {
+        &self.declaration_changed_modules
+    }
+
+    #[must_use]
+    pub fn import_changed_modules(&self) -> &BTreeSet<ModulePath> {
+        &self.import_changed_modules
+    }
+
+    #[must_use]
+    pub fn hir_invalidated_modules(&self) -> &BTreeSet<ModulePath> {
+        &self.hir_invalidated_modules
+    }
+
+    #[must_use]
+    pub fn analysis_invalidated_modules(&self) -> &BTreeSet<ModulePath> {
+        &self.analysis_invalidated_modules
+    }
+}
+
+#[derive(Debug, Clone, Default)]
+pub struct LanguageServiceDatabases {
+    source_db: SourceDb,
+    project_db: ProjectDb,
+    parse_db: ParseDb,
+    hir_db: HirDb,
+    analysis_db: AnalysisDb,
+    generation: WorkspaceGeneration,
+}
+
+impl LanguageServiceDatabases {
+    #[must_use]
+    pub fn new() -> Self {
+        Self::default()
+    }
+
+    #[must_use]
+    pub const fn generation(&self) -> WorkspaceGeneration {
+        self.generation
+    }
+
+    #[must_use]
+    pub const fn source_db(&self) -> &SourceDb {
+        &self.source_db
+    }
+
+    #[must_use]
+    pub const fn project_db(&self) -> &ProjectDb {
+        &self.project_db
+    }
+
+    #[must_use]
+    pub const fn parse_db(&self) -> &ParseDb {
+        &self.parse_db
+    }
+
+    #[must_use]
+    pub const fn hir_db(&self) -> &HirDb {
+        &self.hir_db
+    }
+
+    #[must_use]
+    pub const fn analysis_db(&self) -> &AnalysisDb {
+        &self.analysis_db
+    }
+
+    #[must_use]
+    pub const fn begin_background_request(&self) -> GenerationToken {
+        GenerationToken {
+            generation: self.generation,
+        }
+    }
+
+    pub fn accept_background_result<T>(&self, result: BackgroundResult<T>) -> Option<T> {
+        (result.generation == self.generation).then_some(result.value)
+    }
+
+    pub fn update(&mut self, project: &ProjectSources) -> InvalidationReport {
+        self.generation = WorkspaceGeneration::new(self.generation.get().saturating_add(1));
+        let sources = source_records(project);
+        self.source_db.replace(sources);
+        let parse_update = self.parse_db.update_from_sources(self.source_db.records());
+        self.project_db.rebuild(&self.parse_db);
+
+        let dependency_roots = parse_update
+            .declaration_changed_modules
+            .union(&parse_update.import_changed_modules)
+            .cloned()
+            .collect::<BTreeSet<_>>();
+        let mut hir_invalidated_modules = parse_update.changed_modules.clone();
+        hir_invalidated_modules.extend(self.project_db.transitive_dependents(&dependency_roots));
+        let analysis_invalidated_modules = hir_invalidated_modules.clone();
+        self.analysis_db
+            .invalidate(self.generation, analysis_invalidated_modules.clone());
+
+        if !hir_invalidated_modules.is_empty() {
+            self.hir_db.rebuild(project.sources());
+        }
+
+        InvalidationReport {
+            generation: self.generation,
+            reparsed_documents: parse_update.reparsed_documents,
+            changed_modules: parse_update.changed_modules,
+            declaration_changed_modules: parse_update.declaration_changed_modules,
+            import_changed_modules: parse_update.import_changed_modules,
+            hir_invalidated_modules,
+            analysis_invalidated_modules,
+        }
+    }
+}
+
+fn source_records(project: &ProjectSources) -> BTreeMap<DocumentId, SourceRecord> {
+    let source_by_module = project
+        .sources()
+        .iter()
+        .map(|source| (source.path.clone(), source))
+        .collect::<BTreeMap<_, _>>();
+    project
+        .document_modules()
+        .iter()
+        .filter_map(|(document_id, module_path)| {
+            let source = source_by_module.get(module_path)?;
+            let text = Arc::<str>::from(source.text.as_str());
+            Some((
+                document_id.clone(),
+                SourceRecord {
+                    document_id: document_id.clone(),
+                    source_id: source.id,
+                    module_path: module_path.clone(),
+                    content_hash: stable_source_hash(&text),
+                    version: SourceVersion::INITIAL,
+                    text,
+                },
+            ))
+        })
+        .collect()
+}
+
+fn summarize_source(parsed: &SourceFile) -> ParseSummary {
+    let mut declarations = Vec::new();
+    let mut imports = BTreeSet::new();
+    let mut import_fingerprint_parts = Vec::new();
+
+    for item in &parsed.items {
+        match &item.kind {
+            ItemKind::Use(use_item) => {
+                if let Some((_, module_segments)) = use_item.path.split_last() {
+                    imports.insert(ModulePath::new(module_segments.iter().cloned()));
+                }
+                import_fingerprint_parts.push(format!(
+                    "use:{} as {}",
+                    use_item.path.join("::"),
+                    use_item.alias.as_deref().unwrap_or("")
+                ));
+            }
+            ItemKind::Const(inner) => declarations.push(format!(
+                "{} const {}:{}",
+                visibility(&item.visibility),
+                inner.name,
+                optional_hint(&inner.type_hint)
+            )),
+            ItemKind::Global(inner) => declarations.push(format!(
+                "{} global {}:{}",
+                visibility(&item.visibility),
+                inner.name,
+                hint_signature(&inner.type_hint)
+            )),
+            ItemKind::Function(function) => declarations.push(format!(
+                "{} {}",
+                visibility(&item.visibility),
+                function_signature(function)
+            )),
+            ItemKind::Struct(inner) => declarations.push(format!(
+                "{} struct {} {}",
+                visibility(&item.visibility),
+                inner.name,
+                fields_signature(&inner.fields)
+            )),
+            ItemKind::Enum(inner) => declarations.push(format!(
+                "{} enum {} {}",
+                visibility(&item.visibility),
+                inner.name,
+                inner
+                    .variants
+                    .iter()
+                    .map(|variant| {
+                        let fields = match &variant.fields {
+                            EnumVariantFields::Unit => String::new(),
+                            EnumVariantFields::Tuple(params) => params_signature(params),
+                            EnumVariantFields::Record(fields) => fields_signature(fields),
+                        };
+                        format!("{}({fields})", variant.name)
+                    })
+                    .collect::<Vec<_>>()
+                    .join("|")
+            )),
+            ItemKind::Trait(inner) => declarations.push(format!(
+                "{} {}",
+                visibility(&item.visibility),
+                trait_signature(inner)
+            )),
+            ItemKind::Impl(inner) => declarations.push(format!(
+                "{} {}",
+                visibility(&item.visibility),
+                impl_signature(inner)
+            )),
+        }
+    }
+    declarations.sort();
+    import_fingerprint_parts.sort();
+    ParseSummary {
+        imports,
+        declaration_fingerprint: stable_source_hash(&declarations.join("\n")),
+        import_fingerprint: stable_source_hash(&import_fingerprint_parts.join("\n")),
+    }
+}
+
+fn visibility(visibility: &Visibility) -> &'static str {
+    match visibility {
+        Visibility::Private => "private",
+        Visibility::Public => "public",
+    }
+}
+
+fn function_signature(function: &FunctionItem) -> String {
+    format!(
+        "fn {}({}) -> {}",
+        function.name,
+        params_signature(&function.params),
+        optional_hint(&function.return_type)
+    )
+}
+
+fn trait_signature(item: &TraitItem) -> String {
+    format!(
+        "trait {} {}",
+        item.name,
+        item.methods
+            .iter()
+            .map(trait_method_signature)
+            .collect::<Vec<_>>()
+            .join("|")
+    )
+}
+
+fn trait_method_signature(method: &TraitMethod) -> String {
+    format!(
+        "{}({}) -> {} default:{}",
+        method.name,
+        params_signature(&method.params),
+        optional_hint(&method.return_type),
+        method.has_default
+    )
+}
+
+fn impl_signature(item: &vela_syntax::ast::ImplItem) -> String {
+    let owner = item.target_path.join("::");
+    let kind = match &item.kind {
+        ImplKind::Inherent => "impl".to_owned(),
+        ImplKind::Trait { trait_path } => format!("impl {}", trait_path.join("::")),
+    };
+    format!(
+        "{kind} for {owner} {}",
+        item.methods
+            .iter()
+            .map(|method| function_signature(&method.function))
+            .collect::<Vec<_>>()
+            .join("|")
+    )
+}
+
+fn params_signature(params: &[Param]) -> String {
+    params
+        .iter()
+        .map(|param| {
+            format!(
+                "{}:{}={}",
+                param.name,
+                optional_hint(&param.type_hint),
+                param.default_value.is_some()
+            )
+        })
+        .collect::<Vec<_>>()
+        .join(",")
+}
+
+fn fields_signature(fields: &[StructField]) -> String {
+    fields
+        .iter()
+        .map(|field| {
+            format!(
+                "{}:{}={}",
+                field.name,
+                optional_hint(&field.type_hint),
+                field.default_value.is_some()
+            )
+        })
+        .collect::<Vec<_>>()
+        .join(",")
+}
+
+fn optional_hint(hint: &Option<TypeHint>) -> String {
+    hint.as_ref().map_or_else(String::new, hint_signature)
+}
+
+fn hint_signature(hint: &TypeHint) -> String {
+    if hint.args.is_empty() {
+        hint.path.join("::")
+    } else {
+        format!(
+            "{}<{}>",
+            hint.path.join("::"),
+            hint.args
+                .iter()
+                .map(hint_signature)
+                .collect::<Vec<_>>()
+                .join(",")
+        )
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::{
+        SourceFileSnapshot, Workspace, WorkspaceConfig, WorkspaceRoot, assemble_project_sources,
+    };
+
+    fn file(path: &str, text: &str) -> SourceFileSnapshot {
+        SourceFileSnapshot::new(path, text)
+    }
+
+    fn project(files: &[SourceFileSnapshot]) -> ProjectSources {
+        let config = WorkspaceConfig::workspace([WorkspaceRoot::from("/workspace/scripts")]);
+        assemble_project_sources(&config, files, &Workspace::new().snapshot())
+    }
+
+    fn module(name: &str) -> ModulePath {
+        ModulePath::from_qualified(name)
+    }
+
+    #[test]
+    fn function_body_edit_does_not_invalidate_unrelated_modules() {
+        let mut db = LanguageServiceDatabases::new();
+        db.update(&project(&[
+            file(
+                "/workspace/scripts/game/main.vela",
+                "use game::reward::grant\npub fn main() { return grant() }",
+            ),
+            file(
+                "/workspace/scripts/game/reward.vela",
+                "pub fn grant() { return 1 }",
+            ),
+            file("/workspace/scripts/game/config.vela", "pub const value = 1"),
+        ]));
+        let before_parse_count = db.parse_db().parse_count();
+
+        let report = db.update(&project(&[
+            file(
+                "/workspace/scripts/game/main.vela",
+                "use game::reward::grant\npub fn main() { return grant() + 1 }",
+            ),
+            file(
+                "/workspace/scripts/game/reward.vela",
+                "pub fn grant() { return 1 }",
+            ),
+            file("/workspace/scripts/game/config.vela", "pub const value = 1"),
+        ]));
+
+        assert_eq!(db.parse_db().parse_count() - before_parse_count, 1);
+        assert!(report.changed_modules().contains(&module("game::main")));
+        assert!(
+            report
+                .hir_invalidated_modules()
+                .contains(&module("game::main"))
+        );
+        assert!(
+            !report
+                .hir_invalidated_modules()
+                .contains(&module("game::reward"))
+        );
+        assert!(
+            !report
+                .hir_invalidated_modules()
+                .contains(&module("game::config"))
+        );
+        assert!(report.declaration_changed_modules().is_empty());
+        assert!(report.import_changed_modules().is_empty());
+    }
+
+    #[test]
+    fn import_edit_invalidates_reverse_dependencies() {
+        let mut db = LanguageServiceDatabases::new();
+        db.update(&project(&[
+            file(
+                "/workspace/scripts/game/main.vela",
+                "use game::reward::grant\npub fn main() { return grant() }",
+            ),
+            file(
+                "/workspace/scripts/game/wrapper.vela",
+                "use game::main::main\npub fn wrapped() { return main() }",
+            ),
+            file(
+                "/workspace/scripts/game/reward.vela",
+                "pub fn grant() { return 1 }",
+            ),
+            file(
+                "/workspace/scripts/game/bonus.vela",
+                "pub fn grant() { return 2 }",
+            ),
+        ]));
+
+        let report = db.update(&project(&[
+            file(
+                "/workspace/scripts/game/main.vela",
+                "use game::bonus::grant\npub fn main() { return grant() }",
+            ),
+            file(
+                "/workspace/scripts/game/wrapper.vela",
+                "use game::main::main\npub fn wrapped() { return main() }",
+            ),
+            file(
+                "/workspace/scripts/game/reward.vela",
+                "pub fn grant() { return 1 }",
+            ),
+            file(
+                "/workspace/scripts/game/bonus.vela",
+                "pub fn grant() { return 2 }",
+            ),
+        ]));
+
+        assert!(
+            report
+                .import_changed_modules()
+                .contains(&module("game::main"))
+        );
+        assert!(
+            report
+                .hir_invalidated_modules()
+                .contains(&module("game::main"))
+        );
+        assert!(
+            report
+                .hir_invalidated_modules()
+                .contains(&module("game::wrapper"))
+        );
+        assert!(
+            !report
+                .hir_invalidated_modules()
+                .contains(&module("game::reward"))
+        );
+    }
+
+    #[test]
+    fn declaration_edit_invalidates_dependent_modules() {
+        let mut db = LanguageServiceDatabases::new();
+        db.update(&project(&[
+            file(
+                "/workspace/scripts/game/main.vela",
+                "use game::reward::grant\npub fn main() { return grant() }",
+            ),
+            file(
+                "/workspace/scripts/game/reward.vela",
+                "pub fn grant() { return 1 }",
+            ),
+        ]));
+
+        let report = db.update(&project(&[
+            file(
+                "/workspace/scripts/game/main.vela",
+                "use game::reward::grant\npub fn main() { return grant() }",
+            ),
+            file(
+                "/workspace/scripts/game/reward.vela",
+                "pub fn grant_bonus() { return 1 }",
+            ),
+        ]));
+
+        assert!(
+            report
+                .declaration_changed_modules()
+                .contains(&module("game::reward"))
+        );
+        assert!(
+            report
+                .hir_invalidated_modules()
+                .contains(&module("game::reward"))
+        );
+        assert!(
+            report
+                .hir_invalidated_modules()
+                .contains(&module("game::main"))
+        );
+    }
+
+    #[test]
+    fn stale_background_diagnostics_are_not_published() {
+        let mut db = LanguageServiceDatabases::new();
+        db.update(&project(&[file(
+            "/workspace/scripts/game/main.vela",
+            "pub fn main() { return 1 }",
+        )]));
+        let stale = db.begin_background_request();
+
+        db.update(&project(&[file(
+            "/workspace/scripts/game/main.vela",
+            "pub fn main() { return 2 }",
+        )]));
+
+        let result = BackgroundResult::new(stale, vec!["old diagnostic"]);
+        assert_eq!(db.accept_background_result(result), None);
+        let fresh = db.begin_background_request();
+        let result = BackgroundResult::new(fresh, vec!["current diagnostic"]);
+        assert_eq!(
+            db.accept_background_result(result),
+            Some(vec!["current diagnostic"])
+        );
+    }
+
+    #[test]
+    fn scale_fixture_avoids_full_rebuild_per_edit() {
+        let mut files = (0..128)
+            .map(|index| {
+                file(
+                    &format!("/workspace/scripts/mod_{index}.vela"),
+                    &format!("pub fn value_{index}() {{ return {index} }}"),
+                )
+            })
+            .collect::<Vec<_>>();
+        let mut db = LanguageServiceDatabases::new();
+        db.update(&project(&files));
+        let before_parse_count = db.parse_db().parse_count();
+
+        files[42] = file(
+            "/workspace/scripts/mod_42.vela",
+            "pub fn value_42() { return 4200 }",
+        );
+        let report = db.update(&project(&files));
+
+        assert_eq!(db.parse_db().parse_count() - before_parse_count, 1);
+        assert_eq!(report.reparsed_documents().len(), 1);
+        assert!(report.changed_modules().contains(&module("mod_42")));
+        assert_eq!(report.hir_invalidated_modules().len(), 1);
+    }
+}

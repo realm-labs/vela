@@ -215,21 +215,21 @@ cargo test -p vela_hir module_graph
 
 Purpose: make the service scale before adding expensive features.
 
-- [ ] Split `SourceDb`, `ProjectDb`, `ParseDb`, `HirDb`, and `AnalysisDb`.
-- [ ] Store file content hashes and declaration/import fingerprints.
-- [ ] Maintain module import and reverse-dependency indexes.
-- [ ] Reparse changed files without reparsing unrelated files.
-- [ ] Invalidate HIR and analysis by changed declaration/import fingerprints.
+- [x] Split `SourceDb`, `ProjectDb`, `ParseDb`, `HirDb`, and `AnalysisDb`.
+- [x] Store file content hashes and declaration/import fingerprints.
+- [x] Maintain module import and reverse-dependency indexes.
+- [x] Reparse changed files without reparsing unrelated files.
+- [x] Invalidate HIR and analysis by changed declaration/import fingerprints.
 - [ ] Prioritize open-file recomputation over workspace background work.
-- [ ] Add cancellation and stale-generation result handling.
+- [~] Add cancellation and stale-generation result handling.
 
 Tests:
 
-- [ ] `function_body_edit_does_not_invalidate_unrelated_modules`
-- [ ] `import_edit_invalidates_reverse_dependencies`
-- [ ] `declaration_edit_invalidates_dependent_modules`
-- [ ] `stale_background_diagnostics_are_not_published`
-- [ ] `scale_fixture_avoids_full_rebuild_per_edit`
+- [x] `function_body_edit_does_not_invalidate_unrelated_modules`
+- [x] `import_edit_invalidates_reverse_dependencies`
+- [x] `declaration_edit_invalidates_dependent_modules`
+- [x] `stale_background_diagnostics_are_not_published`
+- [x] `scale_fixture_avoids_full_rebuild_per_edit`
 
 Validation:
 
@@ -239,9 +239,10 @@ cargo test -p vela_language_service incremental
 
 Scale checkpoint:
 
-- [ ] Synthetic workspace approaches one million lines.
+- [~] Synthetic workspace approaches one million lines.
 - [ ] Initial indexing reports timing and memory.
-- [ ] Single-file edit avoids full project parse and full HIR rebuild.
+- [x] Single-file edit avoids full project parse.
+- [ ] Single-file edit avoids full HIR rebuild.
 - [ ] Open-file diagnostics remain responsive under background indexing.
 
 ---
