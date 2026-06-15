@@ -526,7 +526,10 @@ Purpose: support workspace navigation and prepare rename.
   - [x] Serve local binding references through the native LSP request.
   - [x] Serve imported script function references through the native LSP
     request.
-- [ ] Implement `textDocument/documentHighlight`.
+- [~] Implement `textDocument/documentHighlight`.
+  - [x] Serve local declaration/read highlights through the native LSP request.
+  - [x] Serve imported script function import/read highlights in the active
+    document.
 - [ ] Implement incoming and outgoing call hierarchy for script functions and
   methods where calls are statically resolved.
 
@@ -537,6 +540,9 @@ Tests:
 - [x] `references_find_imported_function_uses`
 - [x] `lsp_references_find_imported_function_uses`
 - [ ] `references_find_field_reads_and_writes`
+- [x] `document_highlight_marks_local_declaration_and_reads`
+- [x] `document_highlight_marks_import_and_calls_in_active_document`
+- [x] `lsp_document_highlight_marks_local_declaration_and_reads`
 - [ ] `document_highlight_marks_read_write_call`
 - [ ] `call_hierarchy_uses_resolved_call_graph`
 

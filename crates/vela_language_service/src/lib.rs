@@ -37,7 +37,7 @@ pub use project::{
     SourceFileSnapshot, WorkspaceConfig, WorkspaceRoot, assemble_project_sources,
     missing_import_diagnostics,
 };
-pub use references::{Reference, ReferenceKind};
+pub use references::{DocumentHighlight, DocumentHighlightKind, Reference, ReferenceKind};
 pub use schema::{
     SCHEMA_ARTIFACT_FORMAT_VERSION, SchemaArtifact, SchemaArtifactError, SchemaArtifactFacts,
 };

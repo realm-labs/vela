@@ -1,8 +1,12 @@
 use serde_json::{Value as JsonValue, json};
-use vela_language_service::{DiagnosticRange, Reference};
+use vela_language_service::{DiagnosticRange, DocumentHighlight, DocumentHighlightKind, Reference};
 
 pub(crate) fn lsp_references(references: &[Reference]) -> JsonValue {
     JsonValue::Array(references.iter().map(lsp_reference).collect())
+}
+
+pub(crate) fn lsp_document_highlights(highlights: &[DocumentHighlight]) -> JsonValue {
+    JsonValue::Array(highlights.iter().map(lsp_document_highlight).collect())
 }
 
 fn lsp_reference(reference: &Reference) -> JsonValue {
@@ -10,6 +14,20 @@ fn lsp_reference(reference: &Reference) -> JsonValue {
         "uri": reference.document_id().as_str(),
         "range": lsp_range(reference.range())
     })
+}
+
+fn lsp_document_highlight(highlight: &DocumentHighlight) -> JsonValue {
+    json!({
+        "range": lsp_range(highlight.range()),
+        "kind": lsp_document_highlight_kind(highlight.kind())
+    })
+}
+
+const fn lsp_document_highlight_kind(kind: DocumentHighlightKind) -> u8 {
+    match kind {
+        DocumentHighlightKind::Text => 1,
+        DocumentHighlightKind::Read => 2,
+    }
 }
 
 fn lsp_range(range: DiagnosticRange) -> JsonValue {

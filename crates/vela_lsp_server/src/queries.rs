@@ -16,7 +16,7 @@ use crate::{
     protocol::TextDocumentPositionParams,
     protocol::WorkspaceSymbolParams,
     protocol::service_position,
-    references::lsp_references,
+    references::{lsp_document_highlights, lsp_references},
     selection::lsp_selection_ranges,
     semantic_tokens::lsp_semantic_tokens,
     signature::lsp_signature_help,
@@ -160,6 +160,34 @@ impl LspServer {
         );
 
         JsonRpcResult::Response(success_response(id, lsp_references(&references)))
+    }
+
+    pub(crate) fn document_highlight(
+        &mut self,
+        id: Option<RequestId>,
+        params: JsonValue,
+    ) -> JsonRpcResult {
+        let Some(id) = id else {
+            return JsonRpcResult::None;
+        };
+        let params = match serde_json::from_value::<TextDocumentPositionParams>(params) {
+            Ok(params) => params,
+            Err(error) => {
+                return JsonRpcResult::Response(error_response(
+                    Some(id),
+                    ErrorCode::InvalidRequest,
+                    format!("invalid documentHighlight params: {error}"),
+                ));
+            }
+        };
+
+        let document_id = DocumentId::from(params.text_document.uri);
+        self.refresh_databases_for_query(&document_id);
+        let highlights = self
+            .databases
+            .document_highlights(&document_id, service_position(params.position));
+
+        JsonRpcResult::Response(success_response(id, lsp_document_highlights(&highlights)))
     }
 
     pub(crate) fn document_symbol(

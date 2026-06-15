@@ -14,6 +14,12 @@ pub enum ReferenceKind {
     Read,
 }
 
+#[derive(Debug, Clone, Copy, Eq, PartialEq)]
+pub enum DocumentHighlightKind {
+    Text,
+    Read,
+}
+
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub struct Reference {
     document_id: DocumentId,
@@ -39,11 +45,45 @@ impl Reference {
 }
 
 #[derive(Debug, Clone, Eq, PartialEq)]
+pub struct DocumentHighlight {
+    range: DiagnosticRange,
+    kind: DocumentHighlightKind,
+}
+
+impl DocumentHighlight {
+    #[must_use]
+    pub const fn range(&self) -> DiagnosticRange {
+        self.range
+    }
+
+    #[must_use]
+    pub const fn kind(&self) -> DocumentHighlightKind {
+        self.kind
+    }
+}
+
+#[derive(Debug, Clone, Eq, PartialEq)]
 struct ReferenceToken {
     range: TextRange,
 }
 
 impl LanguageServiceDatabases {
+    #[must_use]
+    pub fn document_highlights(
+        &self,
+        document_id: &DocumentId,
+        position: Position,
+    ) -> Vec<DocumentHighlight> {
+        self.references(document_id, position, true)
+            .into_iter()
+            .filter(|reference| reference.document_id() == document_id)
+            .map(|reference| DocumentHighlight {
+                range: reference.range(),
+                kind: document_highlight_kind(reference.kind()),
+            })
+            .collect()
+    }
+
     #[must_use]
     pub fn references(
         &self,
@@ -378,6 +418,13 @@ fn token_text(text: &str, range: TextRange) -> Option<&str> {
     text.get(range.start..range.end)
 }
 
+const fn document_highlight_kind(kind: ReferenceKind) -> DocumentHighlightKind {
+    match kind {
+        ReferenceKind::Read => DocumentHighlightKind::Read,
+        ReferenceKind::Declaration | ReferenceKind::Import => DocumentHighlightKind::Text,
+    }
+}
+
 fn is_identifier_continue(ch: char) -> bool {
     ch == '_' || ch.is_ascii_alphanumeric()
 }
@@ -500,6 +547,84 @@ pub fn main(amount: i64) -> i64 {
         );
     }
 
+    #[test]
+    fn document_highlight_marks_local_declaration_and_reads() {
+        let document = DocumentId::from("/workspace/scripts/game/main.vela");
+        let text = "\
+pub fn main(amount: i64) -> i64 {
+    let next = amount + 1
+    return next + amount
+}";
+        let databases = databases_for(vec![SourceFileSnapshot::new(document.clone(), text)]);
+
+        let highlights = databases.document_highlights(
+            &document,
+            Position::new(2, line(text, 2).find("amount").expect("amount use")),
+        );
+
+        assert_eq!(highlights.len(), 3);
+        assert_highlight(
+            &highlights,
+            0,
+            line(text, 0).find("amount").expect("parameter declaration"),
+            DocumentHighlightKind::Text,
+        );
+        assert_highlight(
+            &highlights,
+            1,
+            line(text, 1).find("amount").expect("first read"),
+            DocumentHighlightKind::Read,
+        );
+        assert_highlight(
+            &highlights,
+            2,
+            line(text, 2).find("amount").expect("second read"),
+            DocumentHighlightKind::Read,
+        );
+    }
+
+    #[test]
+    fn document_highlight_marks_import_and_calls_in_active_document() {
+        let main = DocumentId::from("/workspace/scripts/game/main.vela");
+        let helper = DocumentId::from("/workspace/scripts/game/reward.vela");
+        let main_text = "\
+use game::reward::grant
+pub fn main(amount: i64) -> i64 {
+    let first = grant(amount)
+    return grant(first)
+}";
+        let helper_text = "pub fn grant(amount: i64) -> i64 { return amount }";
+        let databases = databases_for(vec![
+            SourceFileSnapshot::new(main.clone(), main_text),
+            SourceFileSnapshot::new(helper, helper_text),
+        ]);
+
+        let highlights = databases.document_highlights(
+            &main,
+            Position::new(2, line(main_text, 2).find("grant").expect("grant call")),
+        );
+
+        assert_eq!(highlights.len(), 3);
+        assert_highlight(
+            &highlights,
+            0,
+            line(main_text, 0).find("grant").expect("import"),
+            DocumentHighlightKind::Text,
+        );
+        assert_highlight(
+            &highlights,
+            2,
+            line(main_text, 2).find("grant").expect("first call"),
+            DocumentHighlightKind::Read,
+        );
+        assert_highlight(
+            &highlights,
+            3,
+            line(main_text, 3).find("grant").expect("second call"),
+            DocumentHighlightKind::Read,
+        );
+    }
+
     fn assert_reference(
         references: &[Reference],
         line: usize,
@@ -531,6 +656,22 @@ pub fn main(amount: i64) -> i64 {
                     && reference.kind() == kind
             }),
             "{references:?}"
+        );
+    }
+
+    fn assert_highlight(
+        highlights: &[DocumentHighlight],
+        line: usize,
+        character: usize,
+        kind: DocumentHighlightKind,
+    ) {
+        assert!(
+            highlights.iter().any(|highlight| {
+                highlight.range().start().line == line
+                    && highlight.range().start().character == character
+                    && highlight.kind() == kind
+            }),
+            "{highlights:?}"
         );
     }
 
