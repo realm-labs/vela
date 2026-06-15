@@ -116,6 +116,7 @@ impl LspServer {
             "textDocument/hover" => self.hover(message.id, message.params),
             "textDocument/definition" => self.definition(message.id, message.params),
             "textDocument/documentSymbol" => self.document_symbol(message.id, message.params),
+            "workspace/symbol" => self.workspace_symbol(message.id, message.params),
             "workspace/didChangeWatchedFiles" => {
                 self.did_change_watched_files(message.id, message.params)
             }
@@ -514,6 +515,18 @@ impl LspServer {
         self.update_databases(&config, &files);
     }
 
+    fn refresh_databases_for_workspace_query(&mut self) {
+        let config = self.config.clone().unwrap_or_else(|| {
+            self.open_documents
+                .iter()
+                .next()
+                .cloned()
+                .map_or_else(|| WorkspaceConfig::workspace([]), WorkspaceConfig::scratch)
+        });
+        let files = self.disk_sources.values().cloned().collect::<Vec<_>>();
+        self.update_databases(&config, &files);
+    }
+
     fn update_databases(
         &mut self,
         config: &WorkspaceConfig,
@@ -774,6 +787,7 @@ fn initialize_result() -> JsonValue {
             "hoverProvider": true,
             "definitionProvider": true,
             "documentSymbolProvider": true,
+            "workspaceSymbolProvider": true,
             "workspace": {
                 "workspaceFolders": {
                     "supported": true,

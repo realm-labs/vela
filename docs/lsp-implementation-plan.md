@@ -431,7 +431,7 @@ cargo test -p vela_analysis hover
 Purpose: support navigation and outline features.
 
 - [x] Build document symbols from parsed declarations.
-- [ ] Build workspace symbols from module graph declarations and schema facts.
+- [x] Build workspace symbols from module graph declarations and schema facts.
 - [~] Add file/module/class/function/method/field/enum/variant symbol kinds.
   - [x] Add script const/global/function/struct/enum/trait/impl/member kinds.
 - [ ] Add folding ranges for imports, type declarations, impls, functions,
@@ -442,8 +442,9 @@ Tests:
 
 - [x] `document_symbols_include_nested_type_members`
 - [x] `lsp_document_symbols_include_nested_script_members`
-- [ ] `workspace_symbols_include_module_qualified_names`
-- [ ] `workspace_symbols_include_schema_items`
+- [x] `workspace_symbols_include_module_qualified_names`
+- [x] `workspace_symbols_include_schema_items`
+- [x] `lsp_workspace_symbols_include_script_and_schema_symbols`
 - [ ] `folding_ranges_cover_items_and_blocks`
 - [ ] `selection_ranges_walk_syntax_ancestors`
 

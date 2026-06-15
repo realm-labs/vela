@@ -2,10 +2,18 @@ use serde_json::Value as JsonValue;
 use vela_language_service::DocumentId;
 
 use crate::{
-    ErrorCode, JsonRpcResult, LspServer, RequestId, completion::lsp_completion_list,
-    definition::lsp_definition, error_response, hover::lsp_hover, protocol::DocumentSymbolParams,
-    protocol::TextDocumentPositionParams, protocol::service_position,
-    signature::lsp_signature_help, success_response, symbols::lsp_document_symbols,
+    ErrorCode, JsonRpcResult, LspServer, RequestId,
+    completion::lsp_completion_list,
+    definition::lsp_definition,
+    error_response,
+    hover::lsp_hover,
+    protocol::DocumentSymbolParams,
+    protocol::TextDocumentPositionParams,
+    protocol::WorkspaceSymbolParams,
+    protocol::service_position,
+    signature::lsp_signature_help,
+    success_response,
+    symbols::{lsp_document_symbols, lsp_workspace_symbols},
 };
 
 impl LspServer {
@@ -144,5 +152,30 @@ impl LspServer {
         let symbols = self.databases.document_symbols(&document_id);
 
         JsonRpcResult::Response(success_response(id, lsp_document_symbols(&symbols)))
+    }
+
+    pub(crate) fn workspace_symbol(
+        &mut self,
+        id: Option<RequestId>,
+        params: JsonValue,
+    ) -> JsonRpcResult {
+        let Some(id) = id else {
+            return JsonRpcResult::None;
+        };
+        let params = match serde_json::from_value::<WorkspaceSymbolParams>(params) {
+            Ok(params) => params,
+            Err(error) => {
+                return JsonRpcResult::Response(error_response(
+                    Some(id),
+                    ErrorCode::InvalidRequest,
+                    format!("invalid workspace/symbol params: {error}"),
+                ));
+            }
+        };
+
+        self.refresh_databases_for_workspace_query();
+        let symbols = self.databases.workspace_symbols(&params.query);
+
+        JsonRpcResult::Response(success_response(id, lsp_workspace_symbols(&symbols)))
     }
 }

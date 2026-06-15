@@ -36,7 +36,7 @@ pub use schema::{
     SCHEMA_ARTIFACT_FORMAT_VERSION, SchemaArtifact, SchemaArtifactError, SchemaArtifactFacts,
 };
 pub use signature::{SignatureHelp, SignatureInformation, SignatureParameter};
-pub use symbols::{DocumentSymbol, DocumentSymbolKind};
+pub use symbols::{DocumentSymbol, DocumentSymbolKind, WorkspaceSymbol, WorkspaceSymbolLocation};
 pub use text::{LineIndex, Position, TextRange};
 pub use workspace::{
     DocumentId, DocumentSnapshot, SourceVersion, Workspace, WorkspaceGeneration, WorkspaceSnapshot,

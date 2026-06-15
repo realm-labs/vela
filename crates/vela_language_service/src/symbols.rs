@@ -1,3 +1,4 @@
+use vela_analysis::registry::{RegistryFunctionFact, RegistryMemberFact};
 use vela_common::Span;
 use vela_hir::module_graph::{Declaration, DeclarationKind, ModuleGraph};
 use vela_hir::type_hint::{EnumVariantFieldsHint, FunctionSignature};
@@ -48,6 +49,51 @@ impl DocumentSymbol {
     }
 }
 
+#[derive(Debug, Clone, Eq, PartialEq)]
+pub struct WorkspaceSymbol {
+    name: String,
+    detail: Option<String>,
+    kind: DocumentSymbolKind,
+    container_name: Option<String>,
+    location: WorkspaceSymbolLocation,
+}
+
+impl WorkspaceSymbol {
+    #[must_use]
+    pub fn name(&self) -> &str {
+        &self.name
+    }
+
+    #[must_use]
+    pub fn detail(&self) -> Option<&str> {
+        self.detail.as_deref()
+    }
+
+    #[must_use]
+    pub const fn kind(&self) -> DocumentSymbolKind {
+        self.kind
+    }
+
+    #[must_use]
+    pub fn container_name(&self) -> Option<&str> {
+        self.container_name.as_deref()
+    }
+
+    #[must_use]
+    pub const fn location(&self) -> &WorkspaceSymbolLocation {
+        &self.location
+    }
+}
+
+#[derive(Debug, Clone, Eq, PartialEq)]
+pub enum WorkspaceSymbolLocation {
+    Source {
+        document_id: DocumentId,
+        range: DiagnosticRange,
+    },
+    Schema,
+}
+
 #[derive(Debug, Clone, Copy, Eq, PartialEq)]
 pub enum DocumentSymbolKind {
     Constant,
@@ -59,6 +105,7 @@ pub enum DocumentSymbolKind {
     Method,
     Object,
     Struct,
+    TypeParameter,
     Variable,
 }
 
@@ -80,6 +127,122 @@ impl LanguageServiceDatabases {
         });
         symbols
     }
+
+    #[must_use]
+    pub fn workspace_symbols(&self, query: &str) -> Vec<WorkspaceSymbol> {
+        let query = query.trim();
+        let mut symbols = self
+            .script_workspace_symbols(query)
+            .into_iter()
+            .chain(self.schema_workspace_symbols(query))
+            .collect::<Vec<_>>();
+        symbols.sort_by(|left, right| {
+            left.name
+                .cmp(&right.name)
+                .then(left.kind_name().cmp(right.kind_name()))
+        });
+        symbols
+    }
+
+    fn script_workspace_symbols(&self, query: &str) -> Vec<WorkspaceSymbol> {
+        let graph = self.hir_db().graph();
+        graph
+            .declarations()
+            .filter_map(|declaration| {
+                let module_path = graph.module_path(declaration.module)?;
+                let module = module_path.join();
+                let name = if module.is_empty() {
+                    declaration.name.clone()
+                } else {
+                    format!("{module}::{}", declaration.name)
+                };
+                symbol_matches(query, &name).then(|| {
+                    let source = self.symbol_source_record_for(declaration.span.source)?;
+                    let range = diagnostic_range(source.text(), span_range(declaration.span)?);
+                    Some(WorkspaceSymbol {
+                        name,
+                        detail: detail_for_declaration(graph, declaration),
+                        kind: kind_for_declaration(declaration.kind),
+                        container_name: (!module.is_empty()).then_some(module),
+                        location: WorkspaceSymbolLocation::Source {
+                            document_id: source.document_id().clone(),
+                            range,
+                        },
+                    })
+                })?
+            })
+            .collect()
+    }
+
+    fn schema_workspace_symbols(&self, query: &str) -> Vec<WorkspaceSymbol> {
+        let facts = self.schema_db().facts();
+        let mut symbols = Vec::new();
+        symbols.extend(facts.types().filter_map(|(name, fact)| {
+            schema_symbol(
+                query,
+                name,
+                Some(fact.display_name()),
+                DocumentSymbolKind::Struct,
+                None,
+            )
+        }));
+        symbols.extend(facts.traits().filter_map(|(name, fact)| {
+            schema_symbol(
+                query,
+                name,
+                Some(fact.display_name()),
+                DocumentSymbolKind::Interface,
+                None,
+            )
+        }));
+        symbols.extend(facts.functions().filter_map(|function| {
+            schema_function_symbol(query, function, DocumentSymbolKind::Function)
+        }));
+        symbols.extend(
+            facts.fields().filter_map(|member| {
+                schema_member_symbol(query, member, DocumentSymbolKind::Field)
+            }),
+        );
+        symbols.extend(facts.variants().filter_map(|member| {
+            schema_member_symbol(query, member, DocumentSymbolKind::EnumMember)
+        }));
+        symbols.extend(
+            facts.methods().filter_map(|member| {
+                schema_member_symbol(query, member, DocumentSymbolKind::Method)
+            }),
+        );
+        symbols.extend(
+            facts.trait_methods().filter_map(|member| {
+                schema_member_symbol(query, member, DocumentSymbolKind::Method)
+            }),
+        );
+        symbols
+    }
+
+    fn symbol_source_record_for(&self, source_id: vela_common::SourceId) -> Option<&SourceRecord> {
+        self.source_db()
+            .records()
+            .values()
+            .find(|record| record.source_id() == source_id)
+    }
+}
+
+impl WorkspaceSymbol {
+    fn kind_name(&self) -> &'static str {
+        match self.kind {
+            DocumentSymbolKind::Constant => "constant",
+            DocumentSymbolKind::Enum => "enum",
+            DocumentSymbolKind::EnumMember => "enum_member",
+            DocumentSymbolKind::Field => "field",
+            DocumentSymbolKind::Function => "function",
+            DocumentSymbolKind::Interface => "interface",
+            DocumentSymbolKind::Method => "method",
+            DocumentSymbolKind::Object => "object",
+            DocumentSymbolKind::Struct => "struct",
+            DocumentSymbolKind::TypeParameter => "type_parameter",
+            DocumentSymbolKind::Variable => "variable",
+        }
+    }
 }
 
 fn symbol_from_declaration(
@@ -87,15 +250,7 @@ fn symbol_from_declaration(
     declaration: &Declaration,
     source: &SourceRecord,
 ) -> Option<DocumentSymbol> {
-    let kind = match declaration.kind {
-        DeclarationKind::Const => DocumentSymbolKind::Constant,
-        DeclarationKind::Global => DocumentSymbolKind::Variable,
-        DeclarationKind::Function => DocumentSymbolKind::Function,
-        DeclarationKind::Struct => DocumentSymbolKind::Struct,
-        DeclarationKind::Enum => DocumentSymbolKind::Enum,
-        DeclarationKind::Trait => DocumentSymbolKind::Interface,
-        DeclarationKind::Impl => DocumentSymbolKind::Object,
-    };
+    let kind = kind_for_declaration(declaration.kind);
     let children = children_for_declaration(graph, declaration, source);
     symbol_from_span(
         source,
@@ -105,6 +260,18 @@ fn symbol_from_declaration(
         kind,
         children,
     )
+}
+
+fn kind_for_declaration(kind: DeclarationKind) -> DocumentSymbolKind {
+    match kind {
+        DeclarationKind::Const => DocumentSymbolKind::Constant,
+        DeclarationKind::Global => DocumentSymbolKind::Variable,
+        DeclarationKind::Function => DocumentSymbolKind::Function,
+        DeclarationKind::Struct => DocumentSymbolKind::Struct,
+        DeclarationKind::Enum => DocumentSymbolKind::Enum,
+        DeclarationKind::Trait => DocumentSymbolKind::Interface,
+        DeclarationKind::Impl => DocumentSymbolKind::Object,
+    }
 }
 
 fn children_for_declaration(
@@ -290,6 +457,58 @@ fn diagnostic_range(text: &str, range: TextRange) -> DiagnosticRange {
     )
 }
 
+fn schema_function_symbol(
+    query: &str,
+    function: RegistryFunctionFact,
+    kind: DocumentSymbolKind,
+) -> Option<WorkspaceSymbol> {
+    schema_symbol(
+        query,
+        &function.name,
+        Some(function.fact.display_name()),
+        kind,
+        None,
+    )
+}
+
+fn schema_member_symbol(
+    query: &str,
+    member: RegistryMemberFact,
+    kind: DocumentSymbolKind,
+) -> Option<WorkspaceSymbol> {
+    let name = format!("{}::{}", member.owner, member.name);
+    schema_symbol(
+        query,
+        &name,
+        Some(member.fact.display_name()),
+        kind,
+        Some(member.owner),
+    )
+}
+
+fn schema_symbol(
+    query: &str,
+    name: &str,
+    detail: Option<String>,
+    kind: DocumentSymbolKind,
+    container_name: Option<String>,
+) -> Option<WorkspaceSymbol> {
+    symbol_matches(query, name).then(|| WorkspaceSymbol {
+        name: name.to_owned(),
+        detail,
+        kind,
+        container_name,
+        location: WorkspaceSymbolLocation::Schema,
+    })
+}
+
+fn symbol_matches(query: &str, name: &str) -> bool {
+    query.is_empty()
+        || name
+            .to_ascii_lowercase()
+            .contains(&query.to_ascii_lowercase())
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -361,6 +580,91 @@ pub fn main(amount: i64) -> i64 { return amount }";
         let main = symbol(&symbols, "main");
         assert_eq!(main.detail(), Some("(amount: i64) -> i64"));
         assert_eq!(main.kind(), DocumentSymbolKind::Function);
+    }
+
+    #[test]
+    fn workspace_symbols_include_module_qualified_names() {
+        let main = DocumentId::from("/workspace/scripts/game/main.vela");
+        let helper = DocumentId::from("/workspace/scripts/game/reward.vela");
+        let databases = databases_for(vec![
+            SourceFileSnapshot::new(main, "pub fn main() -> i64 { return grant() }"),
+            SourceFileSnapshot::new(
+                helper.clone(),
+                "pub struct Reward { amount: i64 }\npub fn grant() -> Reward { return Reward { amount: 1 } }",
+            ),
+        ]);
+
+        let symbols = databases.workspace_symbols("reward");
+
+        assert!(
+            symbols
+                .iter()
+                .any(|symbol| symbol.name() == "game::reward::Reward"
+                    && symbol.kind() == DocumentSymbolKind::Struct
+                    && matches!(
+                        symbol.location(),
+                        WorkspaceSymbolLocation::Source { document_id, .. } if document_id == &helper
+                    )),
+            "{symbols:?}"
+        );
+        assert!(
+            symbols
+                .iter()
+                .any(|symbol| symbol.name() == "game::reward::grant"
+                    && symbol.container_name() == Some("game::reward")),
+            "{symbols:?}"
+        );
+    }
+
+    #[test]
+    fn workspace_symbols_include_schema_items() {
+        let mut databases = databases_for(Vec::new());
+        let mut facts = vela_analysis::registry::RegistryFacts::default();
+        facts.insert_type("Player", vela_analysis::type_fact::TypeFact::host("Player"));
+        facts.insert_trait(
+            "Rewardable",
+            vela_analysis::type_fact::TypeFact::trait_type("Rewardable"),
+        );
+        facts.insert_field("Player", "level", vela_analysis::type_fact::TypeFact::I64);
+        facts.insert_method(
+            "Player",
+            "grant_exp",
+            vela_analysis::type_fact::TypeFact::function(
+                vec![vela_analysis::type_fact::TypeFact::I64],
+                vela_analysis::type_fact::TypeFact::BOOL,
+            ),
+        );
+        facts.insert_function(
+            "game::reward::grant",
+            vela_analysis::type_fact::TypeFact::function(
+                Vec::new(),
+                vela_analysis::type_fact::TypeFact::BOOL,
+            ),
+        );
+        databases.set_schema_facts(facts);
+
+        let symbols = databases.workspace_symbols("Player");
+
+        assert!(
+            symbols.iter().any(|symbol| symbol.name() == "Player"
+                && symbol.kind() == DocumentSymbolKind::Struct
+                && matches!(symbol.location(), WorkspaceSymbolLocation::Schema)),
+            "{symbols:?}"
+        );
+        assert!(
+            symbols.iter().any(|symbol| symbol.name() == "Player::level"
+                && symbol.kind() == DocumentSymbolKind::Field
+                && symbol.detail() == Some("i64")),
+            "{symbols:?}"
+        );
+        assert!(
+            symbols
+                .iter()
+                .any(|symbol| symbol.name() == "Player::grant_exp"
+                    && symbol.kind() == DocumentSymbolKind::Method
+                    && symbol.container_name() == Some("Player")),
+            "{symbols:?}"
+        );
     }
 
     fn databases_for(files: Vec<SourceFileSnapshot>) -> LanguageServiceDatabases {

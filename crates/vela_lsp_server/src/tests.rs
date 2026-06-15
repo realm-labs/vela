@@ -136,6 +136,10 @@ mod lifecycle {
             serde_json::json!(true)
         );
         assert_eq!(
+            response["result"]["capabilities"]["workspaceSymbolProvider"],
+            serde_json::json!(true)
+        );
+        assert_eq!(
             response["result"]["capabilities"]["workspace"]["workspaceFolders"]["supported"],
             true
         );
