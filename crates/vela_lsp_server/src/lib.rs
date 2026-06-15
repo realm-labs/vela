@@ -1,15 +1,18 @@
 //! Native LSP protocol boundary for Vela editor tooling.
 
+mod completion;
+
 use std::collections::{BTreeMap, BTreeSet};
 use std::path::{Path, PathBuf};
 
+use completion::lsp_completion_list;
 use serde::{Deserialize, Serialize};
 use serde_json::{Value as JsonValue, json};
 use vela_language_service::{
-    DocumentDiagnostics, DocumentId, LanguageServiceDatabases, ProjectDiagnostic, ProjectSources,
-    SchemaDiagnostic, ServiceDiagnostic, ServiceDiagnosticSeverity, SourceFileSnapshot,
-    SourceVersion, Workspace, WorkspaceConfig, WorkspaceRoot, assemble_project_sources,
-    missing_import_diagnostics,
+    DocumentDiagnostics, DocumentId, LanguageServiceDatabases, Position, ProjectDiagnostic,
+    ProjectSources, SchemaDiagnostic, ServiceDiagnostic, ServiceDiagnosticSeverity,
+    SourceFileSnapshot, SourceVersion, Workspace, WorkspaceConfig, WorkspaceRoot,
+    assemble_project_sources, missing_import_diagnostics,
 };
 
 const JSONRPC_VERSION: &str = "2.0";
@@ -102,6 +105,7 @@ impl LspServer {
             "exit" => self.exit(message.id),
             "textDocument/didOpen" => self.did_open(message.id, message.params),
             "textDocument/didChange" => self.did_change(message.id, message.params),
+            "textDocument/completion" => self.completion(message.id, message.params),
             "workspace/didChangeWatchedFiles" => {
                 self.did_change_watched_files(message.id, message.params)
             }
@@ -235,6 +239,30 @@ impl LspServer {
         self.open_documents.insert(document_id.clone());
 
         self.publish_current_diagnostics(&uri, &document_id)
+    }
+
+    fn completion(&mut self, id: Option<RequestId>, params: JsonValue) -> JsonRpcResult {
+        let Some(id) = id else {
+            return JsonRpcResult::None;
+        };
+        let params = match serde_json::from_value::<TextDocumentPositionParams>(params) {
+            Ok(params) => params,
+            Err(error) => {
+                return JsonRpcResult::Response(error_response(
+                    Some(id),
+                    ErrorCode::InvalidRequest,
+                    format!("invalid completion params: {error}"),
+                ));
+            }
+        };
+
+        let document_id = DocumentId::from(params.text_document.uri);
+        self.refresh_databases_for_query(&document_id);
+        let completions = self
+            .databases
+            .completion_items(&document_id, service_position(params.position));
+
+        JsonRpcResult::Response(success_response(id, lsp_completion_list(&completions)))
     }
 
     fn did_change_watched_files(
@@ -491,6 +519,15 @@ impl LspServer {
         JsonRpcResult::Notification(publish_diagnostics_notification(uri, diagnostics, None))
     }
 
+    fn refresh_databases_for_query(&mut self, document_id: &DocumentId) {
+        let config = self
+            .config
+            .clone()
+            .unwrap_or_else(|| WorkspaceConfig::scratch(document_id.clone()));
+        let files = self.disk_sources.values().cloned().collect::<Vec<_>>();
+        self.update_databases(&config, &files);
+    }
+
     fn update_databases(
         &mut self,
         config: &WorkspaceConfig,
@@ -681,6 +718,19 @@ struct TextDocumentContentChangeEvent {
     text: String,
 }
 
+#[derive(Debug, Clone, Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct TextDocumentPositionParams {
+    text_document: TextDocumentIdentifier,
+    position: LspPosition,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct TextDocumentIdentifier {
+    uri: String,
+}
+
 #[derive(Debug, Clone, Copy, Deserialize)]
 struct LspRange {
     start: LspPosition,
@@ -751,6 +801,10 @@ fn initialize_result() -> JsonValue {
                 "openClose": true,
                 "change": 2,
                 "save": false
+            },
+            "completionProvider": {
+                "resolveProvider": false,
+                "triggerCharacters": [".", ":", "{", "(", ",", "|"]
             },
             "workspace": {
                 "workspaceFolders": {
@@ -825,6 +879,10 @@ fn source_version(version: i32) -> SourceVersion {
     u64::try_from(version)
         .ok()
         .map_or(SourceVersion::INITIAL, SourceVersion::new)
+}
+
+fn service_position(position: LspPosition) -> Position {
+    Position::new(position.line as usize, position.character as usize)
 }
 
 fn apply_document_changes(

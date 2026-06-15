@@ -107,7 +107,14 @@ mod lifecycle {
             response["result"]["capabilities"]["textDocumentSync"]["change"],
             2
         );
-        assert!(response["result"]["capabilities"]["completionProvider"].is_null());
+        assert_eq!(
+            response["result"]["capabilities"]["completionProvider"]["resolveProvider"],
+            false
+        );
+        assert_eq!(
+            response["result"]["capabilities"]["completionProvider"]["triggerCharacters"],
+            serde_json::json!([".", ":", "{", "(", ",", "|"])
+        );
         assert!(response["result"]["capabilities"]["hoverProvider"].is_null());
         assert!(response["result"]["capabilities"]["definitionProvider"].is_null());
         assert_eq!(
@@ -362,6 +369,166 @@ mod document_sync {
         );
     }
 }
+
+mod completion {
+    use std::fs;
+    use std::path::{Path, PathBuf};
+    use std::time::{SystemTime, UNIX_EPOCH};
+
+    use super::{LspServer, notification, notification_value, request, response_value};
+
+    #[test]
+    fn lsp_completion_uses_open_overlay_declarations() {
+        let mut server = LspServer::new();
+        let _ = response_value(server.handle_json(&request(
+            1,
+            "initialize",
+            serde_json::json!({
+                "processId": null,
+                "rootUri": "file:///workspace/scripts",
+                "capabilities": {}
+            }),
+        )));
+        let _ = notification_value(server.handle_json(&notification(
+            "textDocument/didOpen",
+            serde_json::json!({
+                "textDocument": {
+                    "uri": "file:///workspace/scripts/game/main.vela",
+                    "languageId": "vela",
+                    "version": 1,
+                    "text": "pub fn overlay_only() { return 2 }"
+                }
+            }),
+        )));
+
+        let response = response_value(server.handle_json(&request(
+            2,
+            "textDocument/completion",
+            serde_json::json!({
+                "textDocument": { "uri": "file:///workspace/scripts/game/main.vela" },
+                "position": { "line": 0, "character": 7 }
+            }),
+        )));
+
+        assert_completion(
+            &response,
+            "game::main::overlay_only",
+            3,
+            "Function() -> unknown",
+        );
+    }
+
+    #[test]
+    fn lsp_completion_uses_loaded_schema_facts() {
+        let root = temp_workspace();
+        let config_path = root.join("vela.toml");
+        let schema_path = root.join("target").join("vela").join("schema.json");
+        fs::create_dir_all(schema_path.parent().expect("schema should have parent"))
+            .expect("schema directory should be creatable");
+        fs::write(
+            &config_path,
+            r#"
+                [workspace]
+                roots = ["scripts"]
+
+                [host]
+                schema = "target/vela/schema.json"
+            "#,
+        )
+        .expect("vela.toml should be writable");
+        fs::write(
+            &schema_path,
+            r#"{
+                "formatVersion": 1,
+                "facts": {
+                    "types": [
+                        {
+                            "name": "Player",
+                            "fact": { "kind": "host", "name": "Player" }
+                        }
+                    ]
+                }
+            }"#,
+        )
+        .expect("schema should be writable");
+
+        let mut server = LspServer::new();
+        let _ = response_value(server.handle_json(&request(
+            1,
+            "initialize",
+            serde_json::json!({
+                "processId": null,
+                "rootUri": file_uri(&root),
+                "capabilities": {}
+            }),
+        )));
+        let _ = server.handle_json(&notification(
+            "workspace/didChangeWatchedFiles",
+            serde_json::json!({
+                "changes": [{ "uri": file_uri(&config_path), "type": 1 }]
+            }),
+        ));
+        let main_uri = file_uri(&root.join("scripts").join("game").join("main.vela"));
+        let _ = notification_value(server.handle_json(&notification(
+            "textDocument/didOpen",
+            serde_json::json!({
+                "textDocument": {
+                    "uri": main_uri,
+                    "languageId": "vela",
+                    "version": 1,
+                    "text": "pub fn main() { Pla }"
+                }
+            }),
+        )));
+
+        let response = response_value(server.handle_json(&request(
+            2,
+            "textDocument/completion",
+            serde_json::json!({
+                "textDocument": { "uri": main_uri },
+                "position": { "line": 0, "character": 18 }
+            }),
+        )));
+
+        assert_completion(&response, "Player", 22, "Player");
+        fs::remove_dir_all(&root).expect("temporary workspace should be removable");
+    }
+
+    fn assert_completion(response: &serde_json::Value, label: &str, kind: u8, detail: &str) {
+        assert_eq!(response["result"]["isIncomplete"], false);
+        let Some(items) = response["result"]["items"].as_array() else {
+            panic!("completion response should contain items");
+        };
+        assert!(
+            items.iter().any(|item| {
+                item["label"] == label && item["kind"] == kind && item["detail"] == detail
+            }),
+            "{items:?}"
+        );
+    }
+
+    fn temp_workspace() -> PathBuf {
+        let suffix = match SystemTime::now().duration_since(UNIX_EPOCH) {
+            Ok(duration) => duration.as_nanos(),
+            Err(error) => panic!("system time should be after UNIX_EPOCH: {error}"),
+        };
+        let root =
+            std::env::temp_dir().join(format!("vela_lsp_server_{}_{}", std::process::id(), suffix));
+        fs::create_dir_all(root.join("scripts").join("game"))
+            .expect("temporary workspace should be creatable");
+        root
+    }
+
+    fn file_uri(path: &Path) -> String {
+        let path = path.display().to_string().replace('\\', "/");
+        if path.starts_with('/') {
+            format!("file://{path}")
+        } else {
+            format!("file:///{path}")
+        }
+    }
+}
+
 mod file_watching {
     use std::fs;
     use std::path::{Path, PathBuf};

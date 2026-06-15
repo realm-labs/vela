@@ -367,7 +367,8 @@ Purpose: make common authoring flows fast and schema-aware.
 - [ ] Complete record fields inside known constructors.
 - [ ] Complete map literal keys only when appropriate.
 - [ ] Complete host members from schema facts.
-- [ ] Add trigger-character behavior for `.`, `::`, `{`, `(`, `,`, and `|`.
+- [~] Add trigger-character behavior for `.`, `::`, `{`, `(`, `,`, and `|`.
+  - [x] Advertise trigger characters for the implemented LSP completion request.
 - [ ] Add signature help for script functions, native functions, methods, and
   callbacks.
 
@@ -375,6 +376,8 @@ Tests:
 
 - [x] `completion_uses_open_overlay_facts`
 - [x] `global_completion_uses_schema_facts`
+- [x] `lsp_completion_uses_open_overlay_declarations`
+- [x] `lsp_completion_uses_loaded_schema_facts`
 - [ ] `member_completion_uses_host_schema_facts`
 - [x] `module_completion_follows_import_context`
 - [ ] `record_field_completion_requires_known_type`
