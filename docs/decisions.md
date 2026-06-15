@@ -142,9 +142,11 @@ parser-token spans and skipped source gaps, and `vela_language_service`
 projects that stream into an editor-neutral formatting IR that preserves raw
 comments, shebang trivia, spans, and blank-line whitespace groups. The first
 full-document formatter normalizes token spacing and brace indentation while
-preserving comments. The richer formatter still needs AST-aware declaration,
-range, and on-type formatting rules before it can claim complete semantic
-formatting coverage.
+preserving comments. It also tracks declaration-member brace contexts for
+initial struct field, enum variant, trait method, impl method, and adjacent
+top-level declaration layout. The richer formatter still needs AST-aware range
+and on-type formatting rules before it can claim complete semantic formatting
+coverage.
 
 When the configured host schema is missing or unavailable, editor tooling
 reports a schema diagnostic and treats schema-owned host, record, trait, and

@@ -283,6 +283,28 @@ mod tests {
     }
 
     #[test]
+    fn formatting_formats_item_declarations() {
+        let source = "pub struct Player{level:i64 name:String}impl Player{fn heal(amount:i64)->i64{return amount}}";
+        let edits = format_source(source);
+        let formatted = apply_edits(source, &edits);
+
+        assert_eq!(
+            formatted,
+            "\
+pub struct Player {
+    level: i64
+    name: String
+}
+impl Player {
+    fn heal(amount: i64) -> i64 {
+        return amount
+    }
+}
+"
+        );
+    }
+
+    #[test]
     fn range_formatting_limits_edits_to_range() {
         let source = "pub fn main() {   \n    return 1   \n}\n";
         let edits = range_format_source(

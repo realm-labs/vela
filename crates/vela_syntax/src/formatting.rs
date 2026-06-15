@@ -128,6 +128,14 @@ struct Formatter {
     pending_blank_lines: usize,
     previous_token: Option<TokenKind>,
     delimiter_stack: Vec<Symbol>,
+    brace_context_stack: Vec<BraceContext>,
+    declaration_brace_pending: bool,
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+enum BraceContext {
+    Code,
+    DeclarationMembers,
 }
 
 impl Formatter {
@@ -207,6 +215,7 @@ impl Formatter {
                 self.output.push_str(text);
             }
         }
+        self.observe_token(token);
         self.previous_token = Some(token.clone());
     }
 
@@ -217,12 +226,15 @@ impl Formatter {
                 self.write_indent_if_needed();
                 self.output.push_str(text);
                 self.delimiter_stack.push(symbol);
+                self.brace_context_stack.push(self.next_brace_context());
+                self.declaration_brace_pending = false;
                 self.indent = self.indent.saturating_add(1);
                 self.newline();
             }
             Symbol::RBrace => {
                 self.indent = self.indent.saturating_sub(1);
                 self.pop_delimiter(Symbol::LBrace);
+                self.brace_context_stack.pop();
                 self.ensure_line_start();
                 self.write_indent_if_needed();
                 self.output.push_str(text);
@@ -288,6 +300,23 @@ impl Formatter {
     }
 
     fn write_space_before_word(&mut self, token: &TokenKind) {
+        if matches!(self.previous_token, Some(TokenKind::Symbol(Symbol::RBrace)))
+            && !self.line_start
+        {
+            self.trim_trailing_horizontal_space();
+            if matches!(token, TokenKind::Keyword(Keyword::Else)) {
+                self.output.push(' ');
+            } else {
+                self.newline();
+            }
+            return;
+        }
+
+        if self.should_start_declaration_member(token) {
+            self.newline();
+            return;
+        }
+
         if self.line_start || !needs_space_between(self.previous_token.as_ref(), token) {
             return;
         }
@@ -378,6 +407,60 @@ impl Formatter {
     fn in_brace_block(&self) -> bool {
         self.delimiter_stack.last() == Some(&Symbol::LBrace)
     }
+
+    fn in_declaration_members(&self) -> bool {
+        self.brace_context_stack.last() == Some(&BraceContext::DeclarationMembers)
+    }
+
+    fn next_brace_context(&self) -> BraceContext {
+        if self.declaration_brace_pending || self.starts_nested_declaration_members() {
+            BraceContext::DeclarationMembers
+        } else {
+            BraceContext::Code
+        }
+    }
+
+    fn starts_nested_declaration_members(&self) -> bool {
+        self.in_declaration_members() && matches!(self.previous_token, Some(TokenKind::Ident(_)))
+    }
+
+    fn should_start_declaration_member(&self, token: &TokenKind) -> bool {
+        self.in_declaration_members()
+            && !self.line_start
+            && matches!(token, TokenKind::Ident(_))
+            && previous_token_can_end_declaration_member(self.previous_token.as_ref())
+    }
+
+    fn observe_token(&mut self, token: &TokenKind) {
+        if let TokenKind::Keyword(keyword) = token {
+            match keyword {
+                Keyword::Struct | Keyword::Enum | Keyword::Trait | Keyword::Impl => {
+                    self.declaration_brace_pending = true;
+                }
+                Keyword::Fn
+                | Keyword::Const
+                | Keyword::Global
+                | Keyword::Let
+                | Keyword::If
+                | Keyword::Else
+                | Keyword::Match
+                | Keyword::Return
+                | Keyword::Break
+                | Keyword::Continue
+                | Keyword::Use => {
+                    self.declaration_brace_pending = false;
+                }
+                Keyword::Pub
+                | Keyword::For
+                | Keyword::In
+                | Keyword::As
+                | Keyword::True
+                | Keyword::False
+                | Keyword::Null
+                | Keyword::SelfValue => {}
+            }
+        }
+    }
 }
 
 fn needs_space_between(previous: Option<&TokenKind>, current: &TokenKind) -> bool {
@@ -442,6 +525,23 @@ fn is_word_like(token: &TokenKind) -> bool {
                     | Keyword::In
                     | Keyword::As
             )
+    )
+}
+
+fn previous_token_can_end_declaration_member(previous: Option<&TokenKind>) -> bool {
+    matches!(
+        previous,
+        Some(
+            TokenKind::Ident(_)
+                | TokenKind::Int(_)
+                | TokenKind::Float(_)
+                | TokenKind::Char(_)
+                | TokenKind::String(_)
+                | TokenKind::InterpolatedString(_)
+                | TokenKind::Bytes(_)
+                | TokenKind::Keyword(Keyword::True | Keyword::False | Keyword::Null)
+                | TokenKind::Symbol(Symbol::RParen | Symbol::RBrace | Symbol::RBracket)
+        )
     )
 }
 
@@ -695,6 +795,62 @@ mod tests {
         assert_eq!(
             formatted.text(),
             "fn main() {\n    // keep\n    let value = 1\n    /* block\n\ncomment */\n    return value\n}\n"
+        );
+    }
+
+    #[test]
+    fn formatting_formats_item_declarations() {
+        let source = "pub struct Player{level:i64 name:String}pub enum Reward{None Coins(amount:i64) Item{id:String}}pub trait Damageable{fn damage(amount:i64)->bool;}impl Damageable for Player{fn damage(amount:i64)->bool{return amount>0}}impl Player{fn heal(amount:i64)->i64{return amount}}";
+        let formatted = format_source(source_id(), source);
+
+        assert!(formatted.diagnostics().is_empty());
+        assert_eq!(
+            formatted.text(),
+            "\
+pub struct Player {
+    level: i64
+    name: String
+}
+pub enum Reward {
+    None
+    Coins(amount: i64)
+    Item {
+        id: String
+    }
+}
+pub trait Damageable {
+    fn damage(amount: i64) -> bool;
+}
+impl Damageable for Player {
+    fn damage(amount: i64) -> bool {
+        return amount > 0
+    }
+}
+impl Player {
+    fn heal(amount: i64) -> i64 {
+        return amount
+    }
+}
+"
+        );
+    }
+
+    #[test]
+    fn formatting_keeps_else_attached_to_closing_block() {
+        let source = "fn main(){if true{return 1}else{return 2}}";
+        let formatted = format_source(source_id(), source);
+
+        assert_eq!(
+            formatted.text(),
+            "\
+fn main() {
+    if true {
+        return 1
+    } else {
+        return 2
+    }
+}
+"
         );
     }
 

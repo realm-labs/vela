@@ -659,7 +659,10 @@ Purpose: provide deterministic source formatting without losing comments.
   - Initial token-driven rules normalize operator and delimiter spacing.
 - [~] Implement statement and block formatting.
   - Initial token-driven rules indent brace blocks and comment lines.
-- [ ] Implement item/declaration formatting.
+- [~] Implement item/declaration formatting.
+  - Initial token-driven rules indent struct fields, enum variants, trait
+    method declarations, impl methods, nested enum record fields, and adjacent
+    top-level declarations.
 - [~] Implement range formatting.
   - Initial native LSP support limits trailing-whitespace cleanup edits to the
     requested range.
@@ -679,6 +682,8 @@ Tests:
 - [x] `formatting_ir_preserves_comments_and_blank_line_groups`
 - [x] `formatting_formats_expressions_and_function_blocks`
 - [x] `formatting_preserves_comments_while_formatting_blocks`
+- [x] `formatting_formats_item_declarations`
+- [x] `lsp_document_formatting_formats_declarations`
 - [ ] `on_type_formatting_only_edits_current_construct`
 - [x] `lsp_document_formatting_returns_full_document_edit`
 - [x] `lsp_document_formatting_returns_empty_edits_when_idempotent`
