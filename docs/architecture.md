@@ -78,6 +78,7 @@ vela/
     vela_syntax/          # Lexer, parser, lossless CST, AST
     vela_hir/             # Resolver, HIR, name binding
     vela_analysis/        # Semantic model, TypeFacts, completion data
+    vela_language_service/ # Shared editor analysis service, no LSP protocol or platform IO
     vela_bytecode/        # Instruction, CodeObject, compiler
     vela_vm/              # Runtime, VM, Value, GC, call frames
     vela_c_api/           # C ABI opaque handles and external FFI surface
@@ -86,7 +87,7 @@ vela/
     vela_macros/          # #[derive(ScriptHost)] and related macros
     vela_std/             # Native standard library implementation
     vela_hot_reload/      # ProgramVersion, ABI diff, code swap
-    vela_lsp/             # Future language server, not part of MVP
+    vela_lsp_server/      # Future native LSP server, not part of MVP
     vela_cli/             # final CLI binary for direct script execution
   examples/               # standalone runnable embedding examples
   docs/
@@ -176,6 +177,7 @@ contract before changing that subsystem:
 - [Hot reload](architecture/hot-reload.md)
 - [Standard library and embedding](architecture/stdlib-and-embedding.md)
 - [Tooling, performance, security, and testing](architecture/tooling-performance-security-testing.md)
+- [Native LSP architecture](architecture/lsp.md)
 - [Clean identity refactor](architecture/clean-identity-refactor.md)
 
 Keep this file as the entrypoint and cross-subsystem contract. Subsystem files

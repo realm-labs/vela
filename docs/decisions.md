@@ -108,6 +108,27 @@ current semantic pipeline; a lower IR/MIR should only be introduced when
 optimization, CFG/data-flow, register allocation, or lowering complexity
 requires it.
 
+### Native-First LSP Boundary
+
+Vela's LSP is a post-MVP native tooling capability, not part of the MVP. The
+primary desktop integration uses native `vela_lsp_server` binaries so editor
+tooling can use platform filesystem watchers, threads, cancellation, and large
+workspace indexing. WASM may wrap the reusable language-service core for
+browser tooling, but it must not constrain the native server architecture.
+
+`vela_language_service` owns reusable editor analysis: virtual workspace
+state, open-document overlays, module graph snapshots, diagnostics,
+completion, hover, definitions, schema facts, and incremental invalidation. It
+must not depend on LSP protocol types, read the filesystem directly, execute
+scripts, inspect live host state, or mutate `TypeRegistry`.
+
+`vela_lsp_server` owns protocol and platform integration: JSON-RPC transport,
+document sync, workspace folders, file watching, request cancellation,
+progress, and LSP position/range conversion. Editor plugins should stay thin
+launchers around this binary. Host facts for editor tooling come from a static
+schema artifact exported from `TypeRegistry`/`RegistryFacts`; the server must
+not run the host application to discover schema metadata.
+
 ### Function Identity
 
 Vela does not support function overloading. A module has one function per
