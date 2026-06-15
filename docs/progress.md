@@ -94,15 +94,16 @@ equality semantics: ordinary `==`/`!=` no longer materialize detached
 script-object and `HostRef` identity, manual
 `impl PartialEq for Type { fn eq(...) -> bool }` drives record/enum semantic
 equality, `#[derive(PartialEq)]` drives field-wise record equality without
-`OwnedValue` materialization, array lookup/distinct helpers share runtime
-semantic equality,
+`OwnedValue` materialization, array lookup/distinct helpers use `ValueKey`
+container equivalence rather than user comparison traits,
 manual `impl PartialOrd for Type { fn partial_cmp(...) -> Option<i64> }`
 drives record/enum ordering operators, `#[derive(PartialOrd)]` drives
 field-wise record ordering operators, manual
 `impl Ord for Type { fn cmp(...) -> i64 }` and `#[derive(Ord)]` drive array
 sorting and extrema helpers, statically known record/enum `==`/`!=`/ordering
 operators now reject missing `PartialEq` or `PartialOrd` during compilation,
-Map/Set `ValueKey` lookup remains separate from user comparison traits, and
+Map/Set/Array container lookup and dedup remain separate from user comparison
+traits, and
 array sorting rejects float keys until an explicit total-float ordering API
 exists. `Eq` and `Ord` impl declarations now validate their required
 comparison-trait prerequisites, and comparison derives now validate their

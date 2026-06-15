@@ -42,11 +42,20 @@ pub(crate) fn call(
         "extend" => extend(receiver, args, heap, budget),
         "first" => array_methods::first(receiver, args, heap, budget),
         "last" => array_methods::last(receiver, args, heap, budget),
+        "contains" if array_methods::is_array(receiver, heap.as_deref()) => {
+            array_methods::contains_by_key(receiver, args, heap.as_deref()).map(Value::Bool)
+        }
+        "index_of" if array_methods::is_array(receiver, heap.as_deref()) => {
+            array_methods::index_of_by_key(receiver, args, heap, budget)
+        }
         "remove_at" => {
             array_methods::remove_at(receiver, args, heap.as_deref_mut(), budget.as_deref_mut())
         }
         "join" => array_methods::join(receiver, args, heap, budget),
         "reverse" => array_methods::reverse(receiver, args, heap, budget),
+        "distinct" if array_methods::is_array(receiver, heap.as_deref()) => {
+            array_methods::distinct_by_key(receiver, args, heap, budget)
+        }
         "is_some" => option_result_methods::is_some(receiver, args, heap.as_deref()),
         "is_none" => option_result_methods::is_none(receiver, args, heap.as_deref()),
         "is_ok" => option_result_methods::is_ok(receiver, args, heap.as_deref()),
@@ -119,6 +128,9 @@ pub(crate) fn call_readonly(
         "len" => expect_no_args(method, args).and_then(|()| len(receiver, heap).map(Value::i64)),
         "is_empty" => {
             expect_no_args(method, args).and_then(|()| is_empty(receiver, heap).map(Value::Bool))
+        }
+        "contains" if array_methods::is_array(receiver, heap) => {
+            array_methods::contains_by_key(receiver, args, heap).map(Value::Bool)
         }
         "is_some" => option_result_methods::is_some(receiver, args, heap),
         "is_none" => option_result_methods::is_none(receiver, args, heap),

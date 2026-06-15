@@ -297,6 +297,10 @@ rejected. Mutable records and structs must not use structural or user-defined
 business equality as Map/Set keys, because field mutation would make the
 container index unstable. Transient mutation proxies such as `PathProxy` are
 not keyable until they have an explicit host path identity policy.
+Array membership and dedup helpers use the same container-equivalence boundary:
+`contains`, `index_of`, and `distinct` compare by `ValueKey`, not by
+`PartialEq` or `Eq`. Business equality remains explicit through `==`, `!=`, and
+predicate helpers such as `find`, `any`, `filter`, and `count`.
 
 High-frequency embedding can cache script entry lookup with `Runtime::entry`.
 The common call API remains `Runtime::call`: a `&str` target performs ordinary

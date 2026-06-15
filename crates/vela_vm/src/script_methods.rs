@@ -146,9 +146,6 @@ pub(crate) fn call_readonly_method_without_callbacks(
     args: &[Value],
     heap: Option<&HeapExecution<'_>>,
 ) -> Option<VmResult<Value>> {
-    if method == "contains" && array_methods::is_array(receiver, heap) {
-        return None;
-    }
     if let Some(result) = value_method_id.and_then(|method_id| {
         script_builtin_methods::call_readonly_by_id(receiver, method_id, args, heap)
     }) {
@@ -241,6 +238,28 @@ fn contextual_array_method_by_id(
         return None;
     }
     let ids = std_method_ids();
+    if method_id == ids.array_contains {
+        return Some(
+            array_methods::contains_by_key(receiver, args, dispatch.heap.as_deref())
+                .map(Value::Bool),
+        );
+    }
+    if method_id == ids.array_index_of {
+        return Some(array_methods::index_of_by_key(
+            receiver,
+            args,
+            &mut dispatch.heap,
+            &mut dispatch.budget,
+        ));
+    }
+    if method_id == ids.array_distinct {
+        return Some(array_methods::distinct_by_key(
+            receiver,
+            args,
+            &mut dispatch.heap,
+            &mut dispatch.budget,
+        ));
+    }
     let mut runtime = EqualityRuntime {
         vm: dispatch.vm,
         program: dispatch.program,
@@ -252,25 +271,6 @@ fn contextual_array_method_by_id(
         inline_caches: dispatch.inline_caches,
         bytecode_profiler: dispatch.bytecode_profiler,
     };
-    if method_id == ids.array_contains {
-        return Some(
-            array_methods::contains_with_equality(receiver, args, &mut runtime).map(Value::Bool),
-        );
-    }
-    if method_id == ids.array_index_of {
-        return Some(array_methods::index_of_with_equality(
-            receiver,
-            args,
-            &mut runtime,
-        ));
-    }
-    if method_id == ids.array_distinct {
-        return Some(array_methods::distinct_with_equality(
-            receiver,
-            args,
-            &mut runtime,
-        ));
-    }
     if method_id == ids.array_sort {
         return Some(array_methods::sort_with_ordering(
             receiver,

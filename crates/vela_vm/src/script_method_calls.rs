@@ -1181,17 +1181,24 @@ fn contextual_array_standard_value_method(
     }
     if is_contains {
         return Some(
-            array_methods::contains_with_equality(receiver, args, runtime).map(Value::Bool),
+            array_methods::contains_by_key(receiver, args, runtime.heap.as_deref())
+                .map(Value::Bool),
         );
     }
     if is_index_of {
-        return Some(array_methods::index_of_with_equality(
-            receiver, args, runtime,
+        return Some(array_methods::index_of_by_key(
+            receiver,
+            args,
+            &mut runtime.heap,
+            &mut runtime.budget,
         ));
     }
     if is_distinct {
-        return Some(array_methods::distinct_with_equality(
-            receiver, args, runtime,
+        return Some(array_methods::distinct_by_key(
+            receiver,
+            args,
+            &mut runtime.heap,
+            &mut runtime.budget,
         ));
     }
     if is_sort {

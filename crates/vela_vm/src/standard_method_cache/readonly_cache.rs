@@ -2,7 +2,7 @@ use crate::heap::HeapValue;
 use crate::option_result::{StdEnumKind, StdEnumVariant, std_enum_identity, std_enum_tag};
 use crate::{
     HeapExecution, StandardMethodInlineCacheTarget, StandardMethodReceiver, Value, VmError,
-    VmErrorKind, VmResult, script_builtin_methods, set_methods,
+    VmErrorKind, VmResult, array_methods, script_builtin_methods, set_methods,
 };
 
 pub(super) fn call_cached_len(
@@ -246,6 +246,17 @@ pub(super) fn call_cached_collection_has(
         }
         _ => None,
     }
+}
+
+pub(super) fn call_cached_array_contains(
+    receiver: &Value,
+    args: &[Value],
+    heap: Option<&HeapExecution<'_>>,
+) -> Option<VmResult<Value>> {
+    let HeapValue::Array(_) = cached_heap_value(receiver, heap)? else {
+        return None;
+    };
+    Some(array_methods::contains_by_key(receiver, args, heap).map(Value::Bool))
 }
 
 pub(super) fn call_cached_set_relation(

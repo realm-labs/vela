@@ -1,7 +1,8 @@
+use std::collections::BTreeSet;
+
 use crate::heap::HeapValue;
 use crate::{
-    EqualityRuntime, ExecutionBudget, HeapExecution, Value, VmResult, stored_runtime_value,
-    values_equal_with_traits,
+    ExecutionBudget, HeapExecution, Value, VmResult, stored_runtime_value, value_key::ValueKey,
 };
 
 use super::{
@@ -34,28 +35,24 @@ pub(crate) fn join(
     make_string_value(parts.join(&separator), heap, budget, "method join")
 }
 
-pub(crate) fn distinct_with_equality(
+pub(crate) fn distinct_by_key(
     receiver: &Value,
     args: &[Value],
-    runtime: &mut EqualityRuntime<'_, '_, '_>,
+    heap: &mut Option<&mut HeapExecution<'_>>,
+    budget: &mut Option<&mut ExecutionBudget>,
 ) -> VmResult<Value> {
     expect_arity("distinct", args, 0)?;
-    let values = array_values(receiver, runtime.heap.as_deref(), "method distinct")?;
+    let values = array_values(receiver, heap.as_deref(), "method distinct")?;
+    let heap_ref = heap.as_deref();
+    let mut seen = BTreeSet::new();
     let mut distinct = Vec::new();
-    'values: for value in values {
-        for existing in &distinct {
-            if values_equal_with_traits(existing, &value, runtime)? {
-                continue 'values;
-            }
+    for value in values {
+        let key = ValueKey::from_value(&value, heap_ref, "method distinct")?;
+        if seen.insert(key) {
+            distinct.push(value);
         }
-        distinct.push(value);
     }
-    make_array_value(
-        distinct,
-        &mut runtime.heap,
-        &mut runtime.budget,
-        "method distinct",
-    )
+    make_array_value(distinct, heap, budget, "method distinct")
 }
 
 pub(crate) fn reverse(

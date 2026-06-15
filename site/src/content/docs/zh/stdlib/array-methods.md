@@ -9,9 +9,10 @@ iterator 创建。集合增长仍然受 VM 执行预算和集合预算检查。
 ## 查询和修改
 
 基础查询使用 `len`、`is_empty`、`first`、`last`、`contains` 和
-`index_of`。`contains` 和 `index_of` 使用与 `==` 相同的语义相等边界：
-内建叶子值按值比较，没有 `PartialEq` 语义的对象会被拒绝。可能找不到值的
-方法返回 `Option`。
+`index_of`。`contains` 和 `index_of` 使用 `ValueKey` 容器等价规则：
+不可变叶子值按值比较，脚本堆对象和 host ref 按 identity 比较。可能找不到值
+的方法返回 `Option`。当查询需要通过 `==`/`PartialEq` 使用业务相等时，使用
+`find`、`any`、`filter` 等 predicate helper。
 
 ```vela
 fn main() {
@@ -38,7 +39,7 @@ fn main() {
 
 `slice`、`reverse`、`distinct`、`sort`、`min`、`max`、`sum`、
 `group_by` 和 `sort_by` 会立即 materialize 结果。
-`distinct` 同样使用语义相等，不做深层结构比较。`sort` 和 `sort_by` 要求
+`distinct` 同样使用 `ValueKey` 容器等价规则，不使用语义 `PartialEq`，也不做深层结构比较。`sort` 和 `sort_by` 要求
 total-order key；float 会被拒绝，直到 Vela 增加显式 total-float ordering
 API。
 `group_by` 返回 value-keyed `Map<K, Array<T>>`，callback key 遵循普通

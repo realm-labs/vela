@@ -238,7 +238,7 @@ fn main() {
 }
 
 #[test]
-fn array_lookup_uses_derived_record_partial_eq() {
+fn array_lookup_uses_value_key_not_derived_record_partial_eq() {
     let program = compile_program_source(
         SourceId::new(1),
         r#"
@@ -250,16 +250,31 @@ fn main() {
         Reward { code: "xp", amount: 10 },
         Reward { code: "gold", amount: 5 },
     ];
+    let same_object = rewards[0];
     let matching = Reward { code: "xp", amount: 10 };
     let different_amount = Reward { code: "xp", amount: 99 };
-    if rewards.contains(matching) && !rewards.contains(different_amount) {
+    let found_matching = false;
+    let found_different_amount = false;
+    for reward in rewards {
+        if reward == matching {
+            found_matching = true;
+        }
+        if reward == different_amount {
+            found_different_amount = true;
+        }
+    }
+    if rewards.contains(same_object)
+        && !rewards.contains(matching)
+        && found_matching
+        && !found_different_amount
+    {
         return 1;
     }
     return 0;
 }
 "#,
     )
-    .expect("compile derived PartialEq array lookup source");
+    .expect("compile derived PartialEq array key lookup source");
 
     assert_eq!(
         run_records_program(&program, "main", &[]),

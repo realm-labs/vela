@@ -1,7 +1,7 @@
 use crate::heap::HeapValue;
 use crate::{
-    EqualityRuntime, ExecutionBudget, HeapExecution, Value, VmError, VmErrorKind, VmResult,
-    stored_runtime_value, values_equal_with_traits,
+    ExecutionBudget, HeapExecution, Value, VmError, VmErrorKind, VmResult, stored_runtime_value,
+    value_key::ValueKey,
 };
 
 use super::{expect_arity, option_value, type_error};
@@ -26,34 +26,46 @@ pub(crate) fn last(
     last_value(receiver, heap, budget)
 }
 
-pub(crate) fn contains_with_equality(
+pub(crate) fn contains_by_key(
     receiver: &Value,
     args: &[Value],
-    runtime: &mut EqualityRuntime<'_, '_, '_>,
+    heap: Option<&HeapExecution<'_>>,
 ) -> VmResult<bool> {
     expect_arity("contains", args, 1)?;
-    let values = super::array_values(receiver, runtime.heap.as_deref(), "method contains")?;
+    let needle = ValueKey::from_value(&args[0], heap, "method contains")?;
+    let values = super::array_values(receiver, heap, "method contains")?;
     for value in values {
-        if values_equal_with_traits(&value, &args[0], runtime)? {
+        if ValueKey::from_value(&value, heap, "method contains")? == needle {
             return Ok(true);
         }
     }
     Ok(false)
 }
 
-pub(crate) fn index_of_with_equality(
+pub(crate) fn index_of_by_key(
     receiver: &Value,
     args: &[Value],
-    runtime: &mut EqualityRuntime<'_, '_, '_>,
+    heap: &mut Option<&mut HeapExecution<'_>>,
+    budget: &mut Option<&mut ExecutionBudget>,
 ) -> VmResult<Value> {
     expect_arity("index_of", args, 1)?;
-    let values = super::array_values(receiver, runtime.heap.as_deref(), "method index_of")?;
-    for (index, value) in values.iter().enumerate() {
-        if values_equal_with_traits(value, &args[0], runtime)? {
-            return index_option(index, &mut runtime.heap, &mut runtime.budget);
+    let index = {
+        let heap_ref = heap.as_deref();
+        let needle = ValueKey::from_value(&args[0], heap_ref, "method index_of")?;
+        let values = super::array_values(receiver, heap_ref, "method index_of")?;
+        let mut found = None;
+        for (index, value) in values.iter().enumerate() {
+            if ValueKey::from_value(value, heap_ref, "method index_of")? == needle {
+                found = Some(index);
+                break;
+            }
         }
+        found
+    };
+    if let Some(index) = index {
+        return index_option(index, heap, budget);
     }
-    option_value("None", None, &mut runtime.heap, &mut runtime.budget)
+    option_value("None", None, heap, budget)
 }
 
 fn first_value(

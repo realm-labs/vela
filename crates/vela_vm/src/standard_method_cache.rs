@@ -10,9 +10,10 @@ use materializing_cache::{
     call_cached_string_option, call_cached_string_parse_option, call_cached_string_transform,
 };
 use readonly_cache::{
-    call_cached_bytes_accessor, call_cached_collection_has, call_cached_is_empty, call_cached_len,
-    call_cached_map_get_or, call_cached_option_result_predicate,
-    call_cached_option_result_unwrap_or, call_cached_set_relation, call_cached_string_predicate,
+    call_cached_array_contains, call_cached_bytes_accessor, call_cached_collection_has,
+    call_cached_is_empty, call_cached_len, call_cached_map_get_or,
+    call_cached_option_result_predicate, call_cached_option_result_unwrap_or,
+    call_cached_set_relation, call_cached_string_predicate,
 };
 
 use crate::std_method_ids::std_method_ids;
@@ -774,6 +775,12 @@ pub(crate) fn call_standard_cached(
         (StandardMethodReceiver::Array, StandardMethodInlineCacheTarget::Last) => {
             array_methods::last(receiver, args, heap, budget)
         }
+        (StandardMethodReceiver::Array, StandardMethodInlineCacheTarget::Contains) => {
+            array_methods::contains_by_key(receiver, args, heap.as_deref()).map(Value::Bool)
+        }
+        (StandardMethodReceiver::Array, StandardMethodInlineCacheTarget::IndexOf) => {
+            array_methods::index_of_by_key(receiver, args, heap, budget)
+        }
         (StandardMethodReceiver::Array, StandardMethodInlineCacheTarget::Slice) => {
             array_methods::slice(receiver, args, heap, budget)
         }
@@ -828,6 +835,9 @@ pub(crate) fn call_standard_cached(
         }
         (StandardMethodReceiver::Array, StandardMethodInlineCacheTarget::Reverse) => {
             array_methods::reverse(receiver, args, heap, budget)
+        }
+        (StandardMethodReceiver::Array, StandardMethodInlineCacheTarget::Distinct) => {
+            array_methods::distinct_by_key(receiver, args, heap, budget)
         }
         (StandardMethodReceiver::Array, StandardMethodInlineCacheTarget::Join) => {
             array_methods::join(receiver, args, heap, budget)
@@ -959,10 +969,7 @@ fn array_target_requires_method_runtime(cache: StandardMethodInlineCacheEntry) -
     cache.receiver == StandardMethodReceiver::Array
         && matches!(
             cache.target,
-            StandardMethodInlineCacheTarget::Contains
-                | StandardMethodInlineCacheTarget::IndexOf
-                | StandardMethodInlineCacheTarget::Distinct
-                | StandardMethodInlineCacheTarget::Sort
+            StandardMethodInlineCacheTarget::Sort
                 | StandardMethodInlineCacheTarget::Min
                 | StandardMethodInlineCacheTarget::Max
         )
@@ -1012,6 +1019,11 @@ fn call_readonly_cached(
         }
         StandardMethodInlineCacheTarget::Has => {
             return call_cached_collection_has(receiver, cache.receiver, args, heap);
+        }
+        StandardMethodInlineCacheTarget::Contains
+            if cache.receiver == StandardMethodReceiver::Array =>
+        {
+            return call_cached_array_contains(receiver, args, heap);
         }
         StandardMethodInlineCacheTarget::IsSubset
         | StandardMethodInlineCacheTarget::IsSuperset

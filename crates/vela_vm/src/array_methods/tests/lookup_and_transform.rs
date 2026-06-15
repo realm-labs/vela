@@ -121,62 +121,62 @@ fn main() {
 }
 
 #[test]
-fn array_lookup_methods_reject_objects_without_partial_eq() {
+fn array_lookup_methods_use_value_key_identity_for_objects() {
     let source = r#"
 fn main() {
     let rewards = [Reward { item_id: "gold", count: 2 }];
     let expected = Reward { item_id: "gold", count: 2 };
-    return rewards.contains(expected);
+    if !rewards.contains(expected) && option::unwrap_or(rewards.index_of(expected), -1) == -1 {
+        return 1;
+    }
+    return 0;
 }
 "#;
     let code = compile_function_source(SourceId::new(1), source, "main")
         .expect("array contains source should compile");
 
-    let error = run_linked_array_test_code(&Vm::new(), code)
-        .expect_err("record contains should require PartialEq");
-    assert_eq!(
-        error.kind(),
-        VmErrorKind::TypeMismatch { operation: "equal" }
-    );
+    let mut vm = Vm::new();
+    vm.register_standard_natives();
+    let result =
+        run_linked_array_test_code(&vm, code).expect("record lookup should use key identity");
+    assert_eq!(result, OwnedValue::Scalar(vela_common::ScalarValue::I64(1)));
 
     let source = r#"
 fn main() {
     let nested = [["daily", "quest"], ["raid"]];
-    return nested.index_of(["raid"]);
+    return option::unwrap_or(nested.index_of(["raid"]), -1);
 }
 "#;
     let code = compile_function_source(SourceId::new(1), source, "main")
         .expect("array index_of source should compile");
 
-    let error = run_linked_array_test_code(&Vm::new(), code)
-        .expect_err("nested array index_of should require PartialEq");
+    let mut vm = Vm::new();
+    vm.register_standard_natives();
     assert_eq!(
-        error.kind(),
-        VmErrorKind::TypeMismatch { operation: "equal" }
+        run_linked_array_test_code(&vm, code),
+        Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(-1)))
     );
 }
 
 #[test]
-fn array_distinct_rejects_objects_without_partial_eq() {
+fn array_distinct_uses_value_key_identity_for_objects() {
     let source = r#"
 fn main() {
     let nested = [["daily", "quest"], ["daily", "quest"], ["raid"]];
-    return nested.distinct();
+    return nested.distinct().len();
 }
 "#;
     let code = compile_function_source(SourceId::new(1), source, "main")
         .expect("array distinct source should compile");
 
-    let error = run_linked_array_test_code(&Vm::new(), code)
-        .expect_err("nested array distinct should require PartialEq");
     assert_eq!(
-        error.kind(),
-        VmErrorKind::TypeMismatch { operation: "equal" }
+        run_linked_array_test_code(&Vm::new(), code),
+        Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(3)))
     );
 }
 
 #[test]
-fn array_lookup_and_distinct_use_builtin_partial_eq_impl() {
+fn array_predicate_search_uses_partial_eq_but_lookup_and_distinct_use_value_key() {
     let source = r#"
 struct Reward { code: String, amount: i64 }
 impl PartialEq for Reward {
@@ -194,11 +194,16 @@ fn main() {
     let expected_xp = Reward { code: "xp", amount: 0 };
     let expected_gold = Reward { code: "gold", amount: 999 };
     let unique = rewards.distinct();
-    if rewards.contains(expected_xp)
-        && option::unwrap_or(rewards.index_of(expected_gold), -1) == 2
-        && unique.len() == 2
+    let found = rewards.find(|reward| reward == expected_gold);
+    let found_reward = option::unwrap_or(found, Reward { code: "missing", amount: -1 });
+    if rewards.any(|reward| reward == expected_xp)
+        && found_reward.amount == 1
+        && !rewards.contains(expected_xp)
+        && option::unwrap_or(rewards.index_of(expected_gold), -1) == -1
+        && unique.len() == 3
         && unique[0].amount == 10
-        && unique[1].code == "gold"
+        && unique[1].amount == 99
+        && unique[2].code == "gold"
     {
         return 1;
     }
@@ -211,7 +216,7 @@ fn main() {
     let mut vm = Vm::new();
     vm.register_standard_natives();
     let result = run_linked_array_test_program(&vm, &program, "main")
-        .expect("array PartialEq methods should run");
+        .expect("array key and predicate equality methods should run");
     assert_eq!(result, OwnedValue::Scalar(vela_common::ScalarValue::I64(1)));
 }
 

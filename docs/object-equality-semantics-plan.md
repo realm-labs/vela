@@ -24,10 +24,12 @@ focused runtime equality module and closed builtin operator-trait hooks.
 ordering and sorting. Missing static support is a compile-time error where the
 compiler can prove it. Dynamic values perform runtime trait checks with
 source-spanned failures. Deep structural comparison, if added, must be an
-explicit budgeted helper, not the default equality operator. Keep Map/Set
-ValueKey semantics separate from user `PartialEq`/`Eq`/`PartialOrd`/`Ord`:
-containers use stable key equivalence, not business equality or ordering.
-Validate with focused VM tests, collection method tests, Map/Set key tests,
+explicit budgeted helper, not the default equality operator. Keep Map/Set/Array
+container equivalence separate from user `PartialEq`/`Eq`/`PartialOrd`/`Ord`:
+containers use stable `ValueKey` equivalence, not business equality or
+ordering. Business equality in arrays is explicit through predicate helpers
+such as `find` and `any`.
+Validate with focused VM tests, collection method tests, Map/Set/Array key tests,
 docs, and full workspace checks. Commit small Conventional Commit checkpoints.
 ```
 
@@ -73,17 +75,18 @@ fail at compile time or runtime when used with the corresponding operator.
   and `PathProxy`.
 - Remove the generic materialize-then-compare fallback from ordinary runtime
   equality.
-- Make array methods such as `contains`, `index_of`, and `distinct` use the
-  same semantic `PartialEq` dispatch as `==`.
+- Make array methods such as `contains`, `index_of`, and `distinct` use
+  `ValueKey` container equivalence; use predicate helpers such as `find` and
+  `any` for semantic `PartialEq` business equality.
 - Make ordering operators require `PartialOrd`.
 - Make array and collection sorting require `Ord`.
 - Support explicit `#[derive(PartialEq)]`, `#[derive(PartialEq, Eq)]`,
   `#[derive(PartialEq, PartialOrd)]`, and
   `#[derive(PartialEq, Eq, PartialOrd, Ord)]` for records whose fields all
   satisfy the required builtin trait.
-- Keep `ValueKey` for Map/Set keys separate from user `PartialEq`/`Eq`/
-  `PartialOrd`/`Ord` while using stable leaf-value and object-identity key
-  classes.
+- Keep `ValueKey` for Map/Set keys, Set elements, and Array membership/dedup
+  separate from user `PartialEq`/`Eq`/`PartialOrd`/`Ord` while using stable
+  leaf-value and object-identity key classes.
 - Leave deep structural equality as a future explicit helper, not an operator.
 
 ---
@@ -103,8 +106,9 @@ This pass must not:
 - Treat `ValueKey` as the implementation of semantic equality or ordering; key
   lookup has independent constraints such as keyability, internal ordering, and
   NaN rejection.
-- Make Map/Set lookup, uniqueness, or iteration order call user `PartialEq`,
-  `Eq`, `PartialOrd`, `Ord`, or future `Hash` implementations.
+- Make Map/Set lookup, uniqueness, iteration order, or Array membership/dedup
+  call user `PartialEq`, `Eq`, `PartialOrd`, `Ord`, or future `Hash`
+  implementations.
 - Make `Array<f32>.sort()` or `Array<f64>.sort()` use partial ordering or
   silently invent a total float order.
 - Add deep equality unless it is explicitly budgeted, cycle-safe, and separate
