@@ -133,6 +133,13 @@ launchers around this binary. Host facts for editor tooling come from a static
 schema artifact exported from `TypeRegistry`/`RegistryFacts`; the server must
 not run the host application to discover schema metadata.
 
+When the configured host schema is missing or unavailable, editor tooling
+reports a schema diagnostic and treats schema-owned host, record, trait, and
+enum receivers as dynamic `Any` for unknown-member diagnostics. Builtin
+receiver diagnostics, parser diagnostics, HIR diagnostics, and non-schema
+analysis diagnostics should still be published from the available source
+facts.
+
 ### Function Identity
 
 Vela does not support function overloading. A module has one function per

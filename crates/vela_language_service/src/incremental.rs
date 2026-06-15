@@ -5,6 +5,7 @@ use std::sync::{
 };
 use std::time::Instant;
 
+use vela_analysis::registry::RegistryFacts;
 use vela_common::{Diagnostic, SourceId};
 use vela_hir::module_graph::{ModuleGraph, ModulePath, ModuleSource, stable_source_hash};
 use vela_syntax::ast::{
@@ -311,6 +312,61 @@ impl AnalysisDb {
     }
 }
 
+#[derive(Debug, Clone, Eq, PartialEq)]
+pub struct SchemaDiagnostic {
+    message: String,
+}
+
+impl SchemaDiagnostic {
+    #[must_use]
+    pub fn new(message: impl Into<String>) -> Self {
+        Self {
+            message: message.into(),
+        }
+    }
+
+    #[must_use]
+    pub fn message(&self) -> &str {
+        &self.message
+    }
+}
+
+#[derive(Debug, Clone, Default)]
+pub struct SchemaDb {
+    facts: RegistryFacts,
+    diagnostics: Vec<SchemaDiagnostic>,
+}
+
+impl SchemaDb {
+    #[must_use]
+    pub const fn facts(&self) -> &RegistryFacts {
+        &self.facts
+    }
+
+    #[must_use]
+    pub fn diagnostics(&self) -> &[SchemaDiagnostic] {
+        &self.diagnostics
+    }
+
+    pub fn clear(&mut self) {
+        self.facts = RegistryFacts::default();
+        self.diagnostics.clear();
+    }
+
+    pub fn set_facts(&mut self, facts: RegistryFacts) {
+        self.facts = facts;
+        self.diagnostics.clear();
+    }
+
+    pub fn set_missing(&mut self, schema_path: impl Into<String>) {
+        self.facts = RegistryFacts::default();
+        self.diagnostics = vec![SchemaDiagnostic::new(format!(
+            "host schema `{}` is unavailable; host facts degrade to Any",
+            schema_path.into()
+        ))];
+    }
+}
+
 #[derive(Debug, Clone)]
 pub struct CancellationToken {
     cancelled: Arc<AtomicBool>,
@@ -532,6 +588,7 @@ pub struct LanguageServiceDatabases {
     project_db: ProjectDb,
     parse_db: ParseDb,
     hir_db: HirDb,
+    schema_db: SchemaDb,
     analysis_db: AnalysisDb,
     generation: WorkspaceGeneration,
 }
@@ -568,8 +625,25 @@ impl LanguageServiceDatabases {
     }
 
     #[must_use]
+    pub const fn schema_db(&self) -> &SchemaDb {
+        &self.schema_db
+    }
+
+    #[must_use]
     pub const fn analysis_db(&self) -> &AnalysisDb {
         &self.analysis_db
+    }
+
+    pub fn set_schema_facts(&mut self, facts: RegistryFacts) {
+        self.schema_db.set_facts(facts);
+    }
+
+    pub fn clear_schema(&mut self) {
+        self.schema_db.clear();
+    }
+
+    pub fn mark_schema_missing(&mut self, schema_path: impl Into<String>) {
+        self.schema_db.set_missing(schema_path);
     }
 
     #[must_use]

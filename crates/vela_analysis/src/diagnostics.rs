@@ -100,4 +100,28 @@ mod tests {
                     .any(|label| label.message == "did you mean `first`?")
         }));
     }
+
+    #[test]
+    fn source_diagnostics_degrade_unknown_schema_receivers_to_any() {
+        let source = parse_source(
+            SourceId::new(1),
+            "pub fn main(player: Player, scores: Array<i64>) {
+                player.level
+                scores.frist()
+            }",
+        );
+
+        let diagnostics = source_diagnostics(&source, &RegistryFacts::default());
+
+        assert!(
+            diagnostics.iter().any(|diagnostic| {
+                diagnostic.code.as_deref() == Some("analysis::unknown_method")
+            })
+        );
+        assert!(
+            diagnostics.iter().all(|diagnostic| {
+                diagnostic.code.as_deref() != Some("analysis::unknown_field")
+            })
+        );
+    }
 }

@@ -13,7 +13,7 @@ pub use diagnostics::{
 pub use incremental::{
     AnalysisDb, BackgroundResult, CancellationHandle, CancellationToken, GenerationToken, HirDb,
     IndexingMetrics, InvalidationReport, LanguageServiceDatabases, ParseDb, ProjectDb,
-    ScheduledModule, SourceDb, SourceRecord, WorkPriority,
+    ScheduledModule, SchemaDb, SchemaDiagnostic, SourceDb, SourceRecord, WorkPriority,
 };
 pub use project::{
     ConfigParseResult, ProjectDiagnostic, ProjectMode, ProjectSources, SchemaConfig,

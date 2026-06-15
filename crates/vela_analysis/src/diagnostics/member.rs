@@ -208,7 +208,7 @@ fn diagnose_call(
         return false;
     };
 
-    if !is_precise_receiver(&receiver) {
+    if !is_precise_receiver(facts, &receiver) {
         return false;
     }
     if method_exists(facts, &receiver, &name) {
@@ -236,7 +236,7 @@ fn diagnose_field_access(
     diagnostics: &mut Vec<Diagnostic>,
 ) {
     let receiver = type_fact_from_expr(base, scope);
-    if !is_precise_receiver(&receiver) || field_exists(facts, &receiver, field) {
+    if !is_precise_receiver(facts, &receiver) || field_exists(facts, &receiver, field) {
         return;
     }
 
@@ -261,7 +261,7 @@ fn diagnose_path_field_access(
     let Some((receiver, field)) = path_receiver_and_name(expr, path, scope) else {
         return;
     };
-    if !is_precise_receiver(&receiver) || field_exists(facts, &receiver, &field) {
+    if !is_precise_receiver(facts, &receiver) || field_exists(facts, &receiver, &field) {
         return;
     }
 
@@ -285,7 +285,7 @@ fn diagnose_assignment_target(
     let Some((receiver, field)) = member_receiver_and_name(target, scope) else {
         return;
     };
-    if !is_precise_receiver(&receiver) {
+    if !is_precise_receiver(facts, &receiver) {
         return;
     }
     let Some(access) = field_access(facts, &receiver, &field) else {
@@ -451,21 +451,21 @@ fn path_receiver_and_name(
     Some((type_fact_from_expr(&receiver, scope), name.clone()))
 }
 
-fn is_precise_receiver(receiver: &TypeFact) -> bool {
-    matches!(
-        receiver,
-        TypeFact::Host { .. }
-            | TypeFact::Record { .. }
-            | TypeFact::Enum {
-                variant: Some(_),
-                ..
-            }
-            | TypeFact::Array { .. }
-            | TypeFact::Map { .. }
-            | TypeFact::Set { .. }
-            | TypeFact::Primitive(PrimitiveTag::String)
-            | TypeFact::Trait { .. }
-    )
+fn is_precise_receiver(facts: &RegistryFacts, receiver: &TypeFact) -> bool {
+    match receiver {
+        TypeFact::Host { name } | TypeFact::Record { name } | TypeFact::Trait { name } => {
+            facts.type_fact(name).is_some() || facts.trait_fact(name).is_some()
+        }
+        TypeFact::Enum {
+            name,
+            variant: Some(_),
+        } => facts.type_fact(name).is_some(),
+        TypeFact::Array { .. }
+        | TypeFact::Map { .. }
+        | TypeFact::Set { .. }
+        | TypeFact::Primitive(PrimitiveTag::String) => true,
+        _ => false,
+    }
 }
 
 fn field_exists(facts: &RegistryFacts, receiver: &TypeFact, field: &str) -> bool {

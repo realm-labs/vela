@@ -1,6 +1,5 @@
 use std::collections::BTreeSet;
 
-use vela_analysis::registry::RegistryFacts;
 use vela_common::{Diagnostic, Severity, SourceId, Span};
 
 use crate::{DocumentId, LanguageServiceDatabases, LineIndex, Position, WorkspaceGeneration};
@@ -320,11 +319,13 @@ impl LanguageServiceDatabases {
 
         if let Some(parsed) = self.parse_db().parsed_source(document_id) {
             diagnostics.extend(
-                vela_analysis::diagnostics::source_diagnostics(parsed, &RegistryFacts::default())
+                vela_analysis::diagnostics::source_diagnostics(parsed, self.schema_db().facts())
                     .iter()
                     .map(|diagnostic| self.convert_diagnostic(diagnostic)),
             );
         }
+
+        diagnostics.extend(self.schema_db().diagnostics().iter().map(schema_diagnostic));
 
         diagnostics
     }
@@ -368,6 +369,16 @@ impl LanguageServiceDatabases {
             .values()
             .find(|record| record.source_id() == source)
             .map(|record| (record.document_id().clone(), record.text()))
+    }
+}
+
+fn schema_diagnostic(diagnostic: &crate::SchemaDiagnostic) -> ServiceDiagnostic {
+    ServiceDiagnostic {
+        severity: ServiceDiagnosticSeverity::Warning,
+        code: Some("schema::unavailable".to_owned()),
+        message: diagnostic.message().to_owned(),
+        range: None,
+        labels: Vec::new(),
     }
 }
 
@@ -562,6 +573,47 @@ mod tests {
                 .any(|diagnostic| diagnostic.code() == Some("analysis::unknown_method")),
             "{:?}",
             healthy_diagnostics.diagnostics()
+        );
+    }
+
+    #[test]
+    fn schema_diagnostics_degrade_to_any() {
+        let document = DocumentId::from("/workspace/scripts/game/main.vela");
+        let mut db = LanguageServiceDatabases::new();
+        db.mark_schema_missing("/workspace/target/vela/schema.json");
+        db.update(&project(&[file(
+            document.as_str(),
+            "pub fn main(player: Player, scores: Array<i64>) {
+                player.level
+                scores.frist()
+            }",
+        )]));
+
+        let diagnostics = db.diagnostics_for_document(&document);
+
+        assert!(
+            diagnostics
+                .diagnostics()
+                .iter()
+                .any(|diagnostic| diagnostic.code() == Some("schema::unavailable")),
+            "{:?}",
+            diagnostics.diagnostics()
+        );
+        assert!(
+            diagnostics
+                .diagnostics()
+                .iter()
+                .any(|diagnostic| diagnostic.code() == Some("analysis::unknown_method")),
+            "{:?}",
+            diagnostics.diagnostics()
+        );
+        assert!(
+            diagnostics
+                .diagnostics()
+                .iter()
+                .all(|diagnostic| diagnostic.code() != Some("analysis::unknown_field")),
+            "{:?}",
+            diagnostics.diagnostics()
         );
     }
 

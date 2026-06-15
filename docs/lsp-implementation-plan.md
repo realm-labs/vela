@@ -271,7 +271,7 @@ Tests:
 - [x] `analysis_diagnostics_map_to_document_ranges`
 - [x] `syntax_errors_do_not_block_unaffected_module_diagnostics`
 - [x] `workspace_diagnostics_include_background_documents`
-- [ ] `schema_diagnostics_degrade_to_any`
+- [x] `schema_diagnostics_degrade_to_any`
 - [x] `open_file_diagnostics_are_prioritized`
 - [x] `partial_diagnostics_report_stale_generation`
 
