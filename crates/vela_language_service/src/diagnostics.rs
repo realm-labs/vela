@@ -532,6 +532,40 @@ mod tests {
     }
 
     #[test]
+    fn syntax_errors_do_not_block_unaffected_module_diagnostics() {
+        let broken_document = DocumentId::from("/workspace/scripts/game/broken.vela");
+        let healthy_document = DocumentId::from("/workspace/scripts/game/reward.vela");
+        let mut db = LanguageServiceDatabases::new();
+        db.update(&project(&[
+            file(broken_document.as_str(), "pub fn broken( { return 1 }"),
+            file(
+                healthy_document.as_str(),
+                "pub fn reward(scores: Array<i64>) { return scores.frist() }",
+            ),
+        ]));
+
+        let broken_diagnostics = db.diagnostics_for_document(&broken_document);
+        let healthy_diagnostics = db.diagnostics_for_document(&healthy_document);
+
+        assert!(
+            broken_diagnostics
+                .diagnostics()
+                .iter()
+                .any(|diagnostic| diagnostic.severity() == ServiceDiagnosticSeverity::Error),
+            "{:?}",
+            broken_diagnostics.diagnostics()
+        );
+        assert!(
+            healthy_diagnostics
+                .diagnostics()
+                .iter()
+                .any(|diagnostic| diagnostic.code() == Some("analysis::unknown_method")),
+            "{:?}",
+            healthy_diagnostics.diagnostics()
+        );
+    }
+
+    #[test]
     fn partial_diagnostics_report_stale_generation() {
         let document = DocumentId::from("/workspace/scripts/game/main.vela");
         let mut db = LanguageServiceDatabases::new();
