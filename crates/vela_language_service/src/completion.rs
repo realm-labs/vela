@@ -2,9 +2,12 @@ use std::collections::BTreeMap;
 
 use vela_analysis::completion::{
     CompletionItem as AnalysisCompletionItem, CompletionKind as AnalysisCompletionKind,
-    declaration_completions, global_completions, module_completions,
+    declaration_completions, global_completions, member_completions, module_completions,
 };
 use vela_analysis::facts::AnalysisFacts;
+use vela_analysis::type_fact::TypeFact;
+use vela_common::Span;
+use vela_hir::binding::{BindingMap, BindingResolution, LocalBinding};
 
 use crate::{DocumentId, LanguageServiceDatabases, LineIndex, Position, TextRange};
 
@@ -74,6 +77,12 @@ pub struct CompletionContext {
     prefix: String,
     replace_range: TextRange,
     module_base: Option<String>,
+    member_receiver: Option<MemberReceiver>,
+}
+
+#[derive(Debug, Clone, Eq, PartialEq)]
+struct MemberReceiver {
+    range: TextRange,
 }
 
 impl CompletionContext {
@@ -126,7 +135,7 @@ impl LanguageServiceDatabases {
         let items = match context.kind {
             CompletionContextKind::Global => self.global_completion_items(&context),
             CompletionContextKind::ModulePath => self.module_path_completion_items(&context),
-            CompletionContextKind::Member => Vec::new(),
+            CompletionContextKind::Member => self.member_completion_items(document_id, &context),
         };
         CompletionList { context, items }
     }
@@ -157,6 +166,46 @@ impl LanguageServiceDatabases {
                 .is_some_and(|suffix| suffix.starts_with(context.prefix()))
         })
     }
+
+    fn member_completion_items(
+        &self,
+        document_id: &DocumentId,
+        context: &CompletionContext,
+    ) -> Vec<CompletionItem> {
+        let Some(receiver) = context.member_receiver.as_ref() else {
+            return Vec::new();
+        };
+        let Some(receiver_fact) = self.member_receiver_fact(document_id, receiver) else {
+            return Vec::new();
+        };
+        dedupe_and_filter_items(
+            member_completions(self.schema_db().facts(), &receiver_fact),
+            |item| label_segment_matches(&item.label, context.prefix()),
+        )
+    }
+
+    fn member_receiver_fact(
+        &self,
+        document_id: &DocumentId,
+        receiver: &MemberReceiver,
+    ) -> Option<TypeFact> {
+        let source = self.source_db().records().get(document_id)?;
+        let source_id = source.source_id();
+        let start = u32::try_from(receiver.range.start).ok()?;
+        let end = u32::try_from(receiver.range.end).ok()?;
+        let receiver_span = Span::new(source_id, start, end);
+        let graph = self.hir_db().graph();
+        let facts = AnalysisFacts::from_module_graph(graph);
+
+        graph.declarations().find_map(|declaration| {
+            if declaration.span.source != source_id || !declaration.span.contains(start) {
+                return None;
+            }
+            let bindings = graph.bindings(declaration.id)?;
+            let resolution = bindings.resolution_at_span(receiver_span)?;
+            type_fact_for_resolution(resolution, bindings, &facts, self.schema_db().facts())
+        })
+    }
 }
 
 impl CompletionContext {
@@ -166,6 +215,7 @@ impl CompletionContext {
             prefix: prefix.to_owned(),
             replace_range: TextRange::new(prefix_start, prefix_start + prefix.len()),
             module_base: None,
+            member_receiver: None,
         }
     }
 }
@@ -177,11 +227,13 @@ fn completion_context(text: &str, position: Position) -> CompletionContext {
     let before_prefix = &text[..prefix_start];
 
     if before_prefix.ends_with('.') {
+        let member_receiver = member_receiver_before_dot(before_prefix);
         return CompletionContext {
             kind: CompletionContextKind::Member,
             prefix: prefix.to_owned(),
             replace_range: TextRange::new(prefix_start, offset),
             module_base: None,
+            member_receiver,
         };
     }
 
@@ -191,6 +243,7 @@ fn completion_context(text: &str, position: Position) -> CompletionContext {
             prefix: prefix.to_owned(),
             replace_range: TextRange::new(prefix_start, offset),
             module_base: Some(module_base),
+            member_receiver: None,
         };
     }
 
@@ -214,6 +267,19 @@ fn module_base_before_colons(before_prefix: &str) -> Option<String> {
         .unwrap_or(0);
     let module_base = before_colons[start..].trim_matches(':');
     (!module_base.is_empty()).then(|| module_base.to_owned())
+}
+
+fn member_receiver_before_dot(before_prefix: &str) -> Option<MemberReceiver> {
+    let before_dot = before_prefix.strip_suffix('.')?;
+    let end = before_dot.len();
+    let start = before_dot
+        .char_indices()
+        .rev()
+        .find_map(|(index, ch)| (!is_identifier_continue(ch)).then_some(index + ch.len_utf8()))
+        .unwrap_or(0);
+    (start < end).then(|| MemberReceiver {
+        range: TextRange::new(start, end),
+    })
 }
 
 fn is_identifier_continue(ch: char) -> bool {
@@ -248,6 +314,40 @@ fn label_segment_matches(label: &str, prefix: &str) -> bool {
             .rsplit("::")
             .next()
             .is_some_and(|segment| segment.starts_with(prefix))
+}
+
+fn type_fact_for_resolution(
+    resolution: &BindingResolution,
+    bindings: &BindingMap,
+    facts: &AnalysisFacts,
+    schema: &vela_analysis::registry::RegistryFacts,
+) -> Option<TypeFact> {
+    match resolution {
+        BindingResolution::Local(local) => {
+            let binding = bindings.local(*local)?;
+            let fact = facts.local(*local).cloned();
+            fact.filter(|fact| !matches!(fact, TypeFact::Unknown))
+                .or_else(|| schema_fact_for_local_hint(binding, schema))
+        }
+        BindingResolution::Declaration(declaration) => facts.declaration(*declaration).cloned(),
+        BindingResolution::Import(_) | BindingResolution::QualifiedPath(_) => None,
+    }
+}
+
+fn schema_fact_for_local_hint(
+    binding: &LocalBinding,
+    schema: &vela_analysis::registry::RegistryFacts,
+) -> Option<TypeFact> {
+    let hint = binding.type_hint.as_ref()?;
+    if hint.args.is_empty() {
+        let qualified = hint.path.join("::");
+        schema
+            .type_fact(&qualified)
+            .or_else(|| hint.path.last().and_then(|name| schema.type_fact(name)))
+            .cloned()
+    } else {
+        None
+    }
 }
 
 fn empty_completion_list(context: CompletionContext) -> CompletionList {
@@ -319,6 +419,35 @@ mod tests {
 
         assert_completion(&completions, "Player", CompletionKind::Type);
         assert_no_completion(&completions, "spawn_player");
+    }
+
+    #[test]
+    fn member_completion_uses_host_schema_facts() {
+        let document = DocumentId::from("/workspace/scripts/game/main.vela");
+        let text = "pub fn main(player: Player) { player.le }";
+        let files = vec![SourceFileSnapshot::new(document.clone(), text)];
+        let config = WorkspaceConfig::workspace([WorkspaceRoot::from("/workspace/scripts")]);
+        let project = assemble_project_sources(&config, &files, &Workspace::new().snapshot());
+        let mut databases = LanguageServiceDatabases::new();
+        let mut schema = RegistryFacts::default();
+        schema.insert_type("Player", TypeFact::host("Player"));
+        schema.insert_field("Player", "level", TypeFact::I64);
+        schema.insert_method(
+            "Player",
+            "level_up",
+            TypeFact::function(vec![TypeFact::I64], TypeFact::BOOL),
+        );
+        databases.set_schema_facts(schema);
+        databases.update(&project);
+
+        let completions = databases.completion_items(
+            &document,
+            Position::new(0, text.find("le }").expect("member prefix") + "le".len()),
+        );
+
+        assert_eq!(completions.context().kind(), CompletionContextKind::Member);
+        assert_completion(&completions, "level", CompletionKind::Field);
+        assert_completion(&completions, "level_up", CompletionKind::Method);
     }
 
     #[test]
