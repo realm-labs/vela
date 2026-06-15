@@ -116,9 +116,11 @@ M20 checkpoint.
 
 Post-MVP performance remains a separate track: measure first, then optimize the
 non-JIT bytecode interpreter toward Lua 5.x comparable host-boundary workloads
-through M19.5 architecture prep and M20 cache work. A bounded native LSP slice
-is now planned before the MVP and before M21 debugger/DAP work. Full IDE/LSP
-behavior, debugger/DAP, and Cranelift JIT remain outside the MVP slice.
+through M19.5 architecture prep and M20 cache work. A full native LSP
+capability track is now planned before the MVP and may proceed in parallel with
+M19/M20 optimization. It remains analysis-only: no script or host execution, no
+runtime semantic changes, and no custom IDE product. Debugger/DAP and Cranelift
+JIT remain separate roadmap tracks.
 
 ## Milestone Snapshot
 
@@ -140,7 +142,7 @@ behavior, debugger/DAP, and Cranelift JIT remain outside the MVP slice.
 | M19 | Complete enough | Non-JIT interpreter and heap optimization has a recorded exit checkpoint. Accepted work includes GC pacing, direct heap aggregate construction, argument materialization/storage cleanup, borrowed receiver/runtime views, stdlib collection/string/Option/Result fast paths, scalar/equality/constant/peephole/range-loop lowering, small script-field and short-array construction, and expanded benchmark coverage. Remaining Lua 5.x deltas are measured and belong to M20 cache/specialization families rather than more unguarded M19 micro-optimization. |
 | M19.5 | Complete enough | Primitive scalar, bytes, type-hint contract, guard-plan, verified-bytecode, profile ownership, HostTargetPlan/HostAccess, and linked-dispatch prep are complete and fully validated. |
 | M20 | Active | Declared global, record field, host access, native call, resolved method dispatch, dynamic method dispatch, stdlib value-method, callback, string/bytes, Option/Result, and selected collection caches exist with benchmark coverage; active work is cache-family audit, measured delta interpretation, and closing only named remaining gaps. |
-| M20.5 | Not started | Bounded native language-service and LSP MVP slice follows M20 close-out: overlays, project model, schema artifact, diagnostics, completion, hover, definition, basic invalidation, and scale fixtures. |
+| M20.5 | Not started | Full native language-service and LSP capability track may proceed in parallel with M19/M20: overlays, project model, schema artifact, diagnostics, completion, signature help, hover, definitions, symbols, semantic tokens, references, rename, code actions, formatting, inlay hints, invalidation, file watching, distribution, and scale fixtures. |
 | M21 | Not started | Debugger runtime hooks and DAP integration follow stable runtime/tooling contracts. |
 | M22 | Not started | Cranelift JIT follows interpreter/cache/debugger/conformance stability. |
 | M23 | Not started | Release hardening, public docs, validation gates, and performance targets. |
@@ -492,10 +494,12 @@ diagnostics.
 - Keep the completed primitive scalar, bytes, type-hint contract, and guard-plan
   refactor as the baseline; do not reintroduce old `int`/`float` compatibility
   paths or string fallback dispatch.
-- After M20 close-out, implement the bounded M20.5 native LSP slice before M21:
-  `vela_language_service`, native `vela_lsp_server`, source overlays, project
-  model, static host schema artifact, diagnostics, completion, hover,
-  definition, basic invalidation, and scale fixtures.
+- Implement the M20.5 native LSP capability track in parallel where it does not
+  disturb M19/M20 optimization: `vela_language_service`, native
+  `vela_lsp_server`, source overlays, project model, static host schema
+  artifact, diagnostics, completion, signature help, hover, definitions,
+  symbols, semantic tokens, references, rename, code actions, formatting, inlay
+  hints, invalidation, file watching, distribution, and scale fixtures.
 - Plan M21 debugger and M22 Cranelift JIT only from stable source-span,
   frame-map, GC-root, budget, HostAccess, hot-reload, tooling, and conformance
   contracts.

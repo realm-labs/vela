@@ -1,12 +1,14 @@
 # Native LSP Architecture
 
-Vela's language server has a bounded pre-MVP slice and a broader post-MVP
-editor tooling roadmap. The pre-MVP slice should deliver native diagnostics,
-completion, hover, go to definition, source overlays, static host schema facts,
-and basic incremental invalidation without becoming a full IDE feature set.
-It should be native-first for scale and platform integration, while keeping the
-reusable language-service core independent from LSP transport, editor APIs, and
-filesystem access.
+Vela's language server is a full native LSP capability track that may land
+before the MVP and may progress in parallel with M19/M20 optimization. It
+should deliver diagnostics, completion, signature help, hover, go to
+definition, symbols, semantic tokens, references, rename, code actions,
+formatting, inlay hints, source overlays, static host schema facts, and
+incremental invalidation without becoming a custom IDE product or changing
+language/runtime semantics. It should be native-first for scale and platform
+integration, while keeping the reusable language-service core independent from
+LSP transport, editor APIs, and filesystem access.
 
 The target scale is a workspace with around one million lines of `.vela`
 source spread across multiple modules. The design must avoid per-keystroke full
@@ -205,27 +207,30 @@ completion in another file when the last known project graph is still usable.
 
 ## Feature Mapping
 
-Initial features:
+Foundation features:
 
 ```text
 diagnostics       parser + HIR + analysis diagnostics
 completion        SymbolTable + TypeFact + TypeRegistry/RegistryFacts
+signature help    call target facts + TypeRegistry/RegistryFacts
 hover             TypeFact + docs + EffectSet + DeclOrigin
 go to definition  BindingMap + DeclOrigin + source spans
 ```
 
-Later features:
+Full capability phases:
 
 ```text
 semantic tokens   CST/token kinds plus resolved symbol classes
 find references   reference index derived from BindingMap
 rename            symbol ownership, module visibility, and conflict checks
 code actions      structured diagnostic repair hints
+formatting        lossless CST/trivia policy plus deterministic formatter IR
 inlay hints       stable TypeFacts only, never mandatory static typing
 ```
 
-Rename, code actions, and broad workspace references should wait until the
-reference index and symbol ownership model are explicit.
+References, rename, code actions, and formatting require their underlying
+indexes and syntax trivia policy first, but they are part of the native LSP
+capability track rather than a separate custom IDE project.
 
 ## Threading And Memory
 
@@ -276,10 +281,11 @@ native server to avoid platform capabilities.
 The native LSP architecture must not:
 
 ```text
-make the full IDE/LSP feature set part of the MVP
+build a custom full IDE product beyond native server and thin editor launchers
 couple editor diagnostics to VM execution
 run the host application for schema discovery
 read host object state for editor hints
+change language or runtime semantics for editor convenience
 preserve temporary pre-LSP APIs for compatibility
 make WASM the primary LSP transport
 make single-file analysis the dominant project model

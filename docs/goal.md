@@ -43,15 +43,16 @@ The first phase does not include:
 - JIT compilation.
 - Script-level threads or shared-memory concurrency.
 - Complex async or coroutine hot reload.
-- A full IDE or LSP implementation.
+- A custom full IDE product beyond the native LSP server and thin editor
+  integrations.
 - Performance that exceeds LuaJIT at the outset.
 
-These are first-phase non-goals. A bounded native language-server slice is
-allowed before the MVP when it is built from existing parser, HIR, analysis,
-and reflection contracts and does not become a full IDE feature set. The
-post-MVP roadmap includes a debugger runtime/DAP milestone and a Cranelift JIT
-milestone after the interpreter, baseline, inline-cache work, and bounded
-editor tooling slice are stable.
+These are first-phase non-goals. A full native LSP capability track is allowed
+before the MVP and may proceed in parallel with M19/M20 optimization when it
+stays analysis-only, uses existing parser, HIR, analysis, and reflection
+contracts, and does not change language or runtime semantics. The post-MVP
+roadmap includes a debugger runtime/DAP milestone and a Cranelift JIT milestone
+after interpreter/cache and tooling contracts are stable.
 
 ## Design Principles
 
@@ -114,10 +115,10 @@ constraints in this roadmap: no general script-language generics beyond
 restricted builtin type hints, no Rust &mut exposed to scripts, all host
 mutation through HostRef, HostPath, PathProxy, and HostAccess,
 reflection without runtime type-structure mutation or monkey patching, and no
-MVP JIT, script async/coroutines, moving GC, or full IDE/LSP feature set.
-Bounded native language-server work is allowed before the MVP when it stays
-behind the clean `vela_language_service` and `vela_lsp_server` boundaries and
-does not change language/runtime semantics. For each turn, choose the smallest
+MVP JIT, script async/coroutines, moving GC, or a custom full IDE product.
+Full native LSP work is allowed before the MVP when it stays behind the clean
+`vela_language_service` and `vela_lsp_server` boundaries and does not change
+language/runtime semantics. For each turn, choose the smallest
 verifiable task that advances the current milestone, validate it with the
 relevant subset of docs/validation.md, update docs/progress.md only when
 current focus, milestone status, or current gaps change, and commit appropriate
@@ -141,17 +142,18 @@ measured against Lua 5.x on equivalent host-boundary workloads. LuaJIT and
 Node.js remain useful upper-reference points for hot scalar loops and future
 JIT decisions, not the baseline required for the MVP. Cranelift JIT is a
 post-MVP backend milestone after the optimized interpreter, inline-cache work,
-and debugger contracts. A bounded native language-server slice may land before
-the MVP; debugger support is planned as runtime debug hooks plus Debug Adapter
-Protocol integration rather than script-language syntax.
+tooling contracts, and debugger contracts. A full native LSP capability track
+may land before the MVP and may progress in parallel with M19/M20 optimization;
+debugger support is planned as runtime debug hooks plus Debug Adapter Protocol
+integration rather than script-language syntax.
 
 ## Milestones
 
 These milestones start after the completed M0-M6 prototype. Current
 implementation status lives in [progress.md](progress.md), and detailed
 historical progress is archived under [archive](archive/). The plan below
-tracks the first complete non-JIT, non-async interpreter, a bounded native
-language-server slice before the MVP, plus post-MVP debugger, JIT, and
+tracks the first complete non-JIT, non-async interpreter, a full native LSP
+capability track before the MVP, plus post-MVP debugger, JIT, and
 release-hardening work.
 
 ### Milestone Checkpoint Rules
@@ -774,10 +776,12 @@ target status; docs/progress.md names remaining cache families or marks M20
 complete enough
 ```
 
-### M20.5: Native Language Service And LSP MVP Slice
+### M20.5: Native Language Service And Full LSP Capability Track
 
-Goal: provide useful editor tooling before the MVP without turning LSP into a
-full IDE project or coupling editor behavior to VM execution.
+Goal: deliver the native LSP capability set before the MVP without building a
+custom IDE product or coupling editor behavior to VM execution. This track may
+progress in parallel with M19/M20 optimization because it is analysis-only and
+must not change language or runtime semantics.
 
 Scope:
 
@@ -789,47 +793,62 @@ vela.toml workspace roots and optional host schema path
 static host schema artifact loaded from TypeRegistry/RegistryFacts metadata
 diagnostics for parser, HIR, and analysis errors across open files
 completion for locals, modules, declarations, stdlib APIs, host fields, methods, variants, and type facts
+signature help for script and schema-backed calls
 hover for type facts, docs, effects, origins, and schema metadata
 go to definition for local, module, and schema-backed declarations where source spans exist
+document symbols, workspace symbols, folding ranges, and selection ranges
+semantic tokens from lexical tokens plus resolved symbol classes
+find references, call hierarchy, and a workspace reference index
+prepare rename and rename with ownership, visibility, conflict, and hot-reload risk checks
+code actions driven by structured diagnostics and safe repair hints
+document, range, and on-type formatting after lossless trivia policy is explicit
+inlay hints from stable TypeFacts, never mandatory static typing
 open-document overlays that override disk snapshots
-basic reverse-dependency invalidation for changed imports and declarations
+reverse-dependency invalidation for changed imports and declarations
 generation-based cancellation so stale analysis results are not published
+file watching, configuration reload, schema reload, and native binary distribution
 scale fixtures for large multi-module workspaces approaching one million lines
 ```
 
 Acceptance:
 
 ```text
-the native server initializes, syncs documents, and publishes diagnostics through LSP JSON-RPC fixtures
-open-buffer edits update diagnostics and completion without requiring a full server restart
+the native server initializes, syncs documents, handles cancellation, and publishes diagnostics through LSP JSON-RPC fixtures
+open-buffer edits update diagnostics, completion, hover, and semantic tokens without requiring a full server restart
 multi-file module imports resolve through workspace roots rather than single-file assumptions
 host completions and hovers work from a static schema artifact without running host code
 missing or stale schema degrades host facts to Any with diagnostics instead of failing editor requests
-go to definition works for script declarations and schema items with known source spans
+go to definition and references work for script declarations and schema items with known source spans
+rename produces a workspace edit only when every affected symbol is script-owned or explicitly source-backed
+code actions only offer repairs backed by structured diagnostics and reject unsafe semantic rewrites
+formatting is deterministic, idempotent, and preserves comments and blank-line groups
+inlay hints are derived from stable TypeFacts and disappear cleanly when facts are stale
 editing one function body does not force a full project reparse in the incremental model
-unsupported advanced requests fail cleanly or remain unadvertised
+the service can index large synthetic workspaces without per-keystroke full project rebuilds
+features remain unadvertised until service-level behavior is correct and covered by fixtures
 ```
 
 Non-goals:
 
 ```text
-rename
-formatting
-code actions beyond structured diagnostics plumbing
-full workspace references before the reference index is explicit
-semantic tokens beyond a separately scoped slice
-inlay hints beyond stable TypeFacts
+custom full IDE product beyond native server and thin editor launchers
 executing scripts or host code for editor results
 running the host application for schema discovery
+reading or mutating live host state for editor results
+runtime TypeRegistry mutation or monkey patching
+new language semantics, script-language generics, or runtime behavior for editor convenience
+WASM as the primary server architecture or release unit
+rename, code actions, or formatting that bypass hot-reload ABI/schema compatibility reporting
 ```
 
 Checkpoint:
 
 ```text
-cargo test covers language-service overlays, module source assembly, diagnostics, completion, hover, definitions, schema loading, invalidation, and cancellation
-LSP JSON-RPC fixtures cover initialize, document sync, diagnostics, completion, hover, definition, and shutdown
+cargo test covers language-service overlays, module source assembly, diagnostics, completion, signature help, hover, definitions, symbols, semantic tokens, references, rename, code actions, formatting, inlay hints, schema loading, invalidation, and cancellation
+LSP JSON-RPC fixtures cover initialize, document sync, diagnostics, completion, signature help, hover, definition, symbols, semantic tokens, references, rename, code actions, formatting, inlay hints, shutdown, and cancellation
 scale tests prove the service avoids per-keystroke full project rebuilds on large synthetic workspaces
-docs/progress.md marks M20.5 complete enough before M21 debugger/DAP becomes active
+formatter fixtures prove idempotence and comment preservation
+docs/progress.md marks M20.5 complete enough only when advertised native LSP capabilities are covered
 ```
 
 ### M21: Debugger Runtime And DAP Integration

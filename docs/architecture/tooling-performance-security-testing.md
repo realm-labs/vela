@@ -66,11 +66,13 @@ StaleHostRef:
 
 ## IDE And LSP Readiness
 
-A full IDE/LSP feature set is not part of the MVP, but a bounded native
-language-server slice is allowed before the MVP. The slice should expose
-diagnostics, completion, hover, go to definition, source overlays, static host
-schema facts, and basic incremental invalidation without executing scripts or
-running host applications. The required foundation is:
+A full native LSP capability track is allowed before the MVP and may progress
+in parallel with M19/M20 optimization when it stays analysis-only. The track
+should expose diagnostics, completion, signature help, hover, go to definition,
+symbols, semantic tokens, references, rename, code actions, formatting, inlay
+hints, source overlays, static host schema facts, and incremental invalidation
+without executing scripts or running host applications. A custom full IDE
+product remains outside the MVP. The required foundation is:
 
 ```text
 lossless CST or equivalent token tree with comments, newlines, and spans
