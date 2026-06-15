@@ -436,7 +436,7 @@ Purpose: support navigation and outline features.
   - [x] Add script const/global/function/struct/enum/trait/impl/member kinds.
 - [x] Add folding ranges for imports, type declarations, impls, functions,
   blocks, match arms, and multiline literals.
-- [ ] Add selection ranges from token/expression/statement/item ancestry.
+- [x] Add selection ranges from token/expression/statement/item ancestry.
 
 Tests:
 
@@ -447,12 +447,16 @@ Tests:
 - [x] `lsp_workspace_symbols_include_script_and_schema_symbols`
 - [x] `folding_ranges_cover_items_and_blocks`
 - [x] `lsp_folding_ranges_cover_items_and_blocks`
-- [ ] `selection_ranges_walk_syntax_ancestors`
+- [x] `selection_ranges_walk_syntax_ancestors`
+- [x] `lsp_selection_ranges_walk_syntax_ancestors`
 
 Validation:
 
 ```bash
-cargo test -p vela_language_service symbols folding selection
+cargo test -p vela_language_service symbols
+cargo test -p vela_language_service folding
+cargo test -p vela_language_service selection
+cargo test -p vela_lsp_server selection
 ```
 
 ---

@@ -28,6 +28,13 @@ pub(crate) struct FoldingRangeParams {
 
 #[derive(Debug, Clone, Deserialize)]
 #[serde(rename_all = "camelCase")]
+pub(crate) struct SelectionRangeParams {
+    pub(crate) text_document: TextDocumentIdentifier,
+    pub(crate) positions: Vec<LspPosition>,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub(crate) struct WorkspaceSymbolParams {
     pub(crate) query: String,
 }

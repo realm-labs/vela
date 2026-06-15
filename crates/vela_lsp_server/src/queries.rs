@@ -10,9 +10,11 @@ use crate::{
     hover::lsp_hover,
     protocol::DocumentSymbolParams,
     protocol::FoldingRangeParams,
+    protocol::SelectionRangeParams,
     protocol::TextDocumentPositionParams,
     protocol::WorkspaceSymbolParams,
     protocol::service_position,
+    selection::lsp_selection_ranges,
     signature::lsp_signature_help,
     success_response,
     symbols::{lsp_document_symbols, lsp_workspace_symbols},
@@ -180,6 +182,37 @@ impl LspServer {
         let ranges = self.databases.folding_ranges(&document_id);
 
         JsonRpcResult::Response(success_response(id, lsp_folding_ranges(&ranges)))
+    }
+
+    pub(crate) fn selection_range(
+        &mut self,
+        id: Option<RequestId>,
+        params: JsonValue,
+    ) -> JsonRpcResult {
+        let Some(id) = id else {
+            return JsonRpcResult::None;
+        };
+        let params = match serde_json::from_value::<SelectionRangeParams>(params) {
+            Ok(params) => params,
+            Err(error) => {
+                return JsonRpcResult::Response(error_response(
+                    Some(id),
+                    ErrorCode::InvalidRequest,
+                    format!("invalid selectionRange params: {error}"),
+                ));
+            }
+        };
+
+        let document_id = DocumentId::from(params.text_document.uri);
+        self.refresh_databases_for_query(&document_id);
+        let positions = params
+            .positions
+            .into_iter()
+            .map(service_position)
+            .collect::<Vec<_>>();
+        let ranges = self.databases.selection_ranges(&document_id, &positions);
+
+        JsonRpcResult::Response(success_response(id, lsp_selection_ranges(&ranges)))
     }
 
     pub(crate) fn workspace_symbol(

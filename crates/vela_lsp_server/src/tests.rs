@@ -708,6 +708,7 @@ mod signature {
 mod definition;
 mod folding;
 mod hover;
+mod selection;
 mod symbols;
 
 mod file_watching {

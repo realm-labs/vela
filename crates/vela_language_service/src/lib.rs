@@ -8,6 +8,7 @@ mod hover;
 mod incremental;
 mod project;
 mod schema;
+mod selection;
 mod signature;
 mod symbols;
 mod text;
@@ -37,6 +38,7 @@ pub use project::{
 pub use schema::{
     SCHEMA_ARTIFACT_FORMAT_VERSION, SchemaArtifact, SchemaArtifactError, SchemaArtifactFacts,
 };
+pub use selection::SelectionRange;
 pub use signature::{SignatureHelp, SignatureInformation, SignatureParameter};
 pub use symbols::{DocumentSymbol, DocumentSymbolKind, WorkspaceSymbol, WorkspaceSymbolLocation};
 pub use text::{LineIndex, Position, TextRange};
