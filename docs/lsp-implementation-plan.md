@@ -466,13 +466,17 @@ cargo test -p vela_lsp_server selection
 Purpose: provide syntax and semantic highlighting without changing semantics.
 
 - [x] Implement lexical semantic tokens from tokenizer output.
-- [ ] Add resolved token modifiers for declarations, definitions, readonly,
+- [~] Add resolved token modifiers for declarations, definitions, readonly,
   deprecated, builtin, host, and unresolved symbols.
+  - [x] Add declaration, definition, readonly, and unresolved modifiers for
+    script declarations and binding-map resolutions.
 - [~] Add token classes for modules, functions, methods, fields, variables,
   parameters, types, traits, enum variants, properties, keywords, numbers,
   strings, bytes, comments, operators, attributes, and macros.
   - [x] Add tokenizer-backed identifiers, keywords, numbers, strings, bytes,
     operators, and attribute marker tokens.
+  - [x] Add resolved script function, type, parameter, and variable token
+    classes from declarations and binding maps.
 - [ ] Implement full semantic tokens.
 - [ ] Implement semantic token delta only after generation-stable token caches
   exist.
@@ -481,7 +485,8 @@ Tests:
 
 - [x] `semantic_tokens_cover_lexical_classes`
 - [x] `lsp_semantic_tokens_cover_lexical_classes`
-- [ ] `semantic_tokens_mark_resolved_symbols`
+- [x] `semantic_tokens_mark_resolved_symbols`
+- [x] `lsp_semantic_tokens_mark_resolved_symbols`
 - [ ] `semantic_tokens_degrade_under_parse_errors`
 - [ ] `semantic_token_delta_matches_full_tokens`
 

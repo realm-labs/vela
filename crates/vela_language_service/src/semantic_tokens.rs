@@ -1,5 +1,10 @@
+use std::collections::BTreeMap;
+
+use vela_common::{SourceId, Span};
+use vela_hir::binding::{BindingMap, BindingResolution, LocalBinding, LocalBindingKind};
+use vela_hir::module_graph::{Declaration, DeclarationKind};
 use vela_syntax::lexer::lex;
-use vela_syntax::token::{Keyword, Symbol, TokenKind};
+use vela_syntax::token::{Keyword, Symbol, Token, TokenKind};
 
 use crate::{DocumentId, LanguageServiceDatabases, LineIndex, Position, TextRange};
 
@@ -164,6 +169,26 @@ impl SemanticTokenModifiers {
     pub const fn bits(self) -> u32 {
         self.0
     }
+
+    #[must_use]
+    pub const fn union(self, other: Self) -> Self {
+        Self(self.0 | other.0)
+    }
+}
+
+#[derive(Debug, Clone, Copy, Eq, PartialEq)]
+struct SemanticTokenClassification {
+    token_type: SemanticTokenType,
+    modifiers: SemanticTokenModifiers,
+}
+
+impl SemanticTokenClassification {
+    const fn new(token_type: SemanticTokenType, modifiers: SemanticTokenModifiers) -> Self {
+        Self {
+            token_type,
+            modifiers,
+        }
+    }
 }
 
 impl LanguageServiceDatabases {
@@ -174,21 +199,31 @@ impl LanguageServiceDatabases {
         };
         let line_index = LineIndex::new(source.text());
         let lexed = lex(source.source_id(), source.text());
+        let classifications =
+            self.semantic_token_classifications(source.source_id(), source.text(), &lexed.tokens);
         let mut semantic_tokens = Vec::new();
 
         for token in lexed.tokens {
-            let Some(token_type) = token_type(&token.kind) else {
+            let Some(range) = token_range(token.span) else {
                 continue;
             };
-            let Some(range) = token_range(token.span) else {
+            let classification = classifications
+                .get(&(range.start, range.end))
+                .copied()
+                .or_else(|| {
+                    token_type(&token.kind).map(|token_type| {
+                        SemanticTokenClassification::new(token_type, SemanticTokenModifiers::NONE)
+                    })
+                });
+            let Some(classification) = classification else {
                 continue;
             };
             push_semantic_token_slices(
                 source.text(),
                 &line_index,
                 range,
-                token_type,
-                SemanticTokenModifiers::NONE,
+                classification.token_type,
+                classification.modifiers,
                 &mut semantic_tokens,
             );
         }
@@ -199,6 +234,170 @@ impl LanguageServiceDatabases {
         });
         SemanticTokens::new(semantic_tokens)
     }
+
+    fn semantic_token_classifications(
+        &self,
+        source_id: SourceId,
+        text: &str,
+        tokens: &[Token],
+    ) -> BTreeMap<(usize, usize), SemanticTokenClassification> {
+        let mut classifications = BTreeMap::new();
+        for token in tokens {
+            let TokenKind::Ident(name) = &token.kind else {
+                continue;
+            };
+            let Some(range) = token_range(token.span) else {
+                continue;
+            };
+            if let Some(classification) =
+                self.semantic_classification_for_identifier(source_id, text, name, range)
+            {
+                classifications.insert((range.start, range.end), classification);
+            }
+        }
+        classifications
+    }
+
+    fn semantic_classification_for_identifier(
+        &self,
+        source_id: SourceId,
+        text: &str,
+        name: &str,
+        range: TextRange,
+    ) -> Option<SemanticTokenClassification> {
+        let span = span_for_range(source_id, range)?;
+        let graph = self.hir_db().graph();
+
+        for declaration in graph.declarations() {
+            if declaration.span.source != source_id || !declaration.span.contains(span.start) {
+                continue;
+            }
+            if let Some(bindings) = graph.bindings(declaration.id) {
+                if let Some(classification) =
+                    local_declaration_classification(bindings, name, range)
+                {
+                    return Some(classification);
+                }
+                if let Some(classification) =
+                    resolved_identifier_classification(bindings, span, self)
+                {
+                    return Some(classification);
+                }
+            }
+        }
+
+        graph
+            .declarations()
+            .find(|declaration| {
+                declaration.span.source == source_id
+                    && declaration.span.contains(span.start)
+                    && declaration.name == name
+                    && token_text(text, range) == Some(name)
+            })
+            .map(declaration_classification)
+    }
+}
+
+fn local_declaration_classification(
+    bindings: &BindingMap,
+    name: &str,
+    range: TextRange,
+) -> Option<SemanticTokenClassification> {
+    bindings
+        .locals()
+        .find(|binding| binding.name == name && span_contains_range(binding.span, range))
+        .map(local_declaration_token_classification)
+}
+
+fn resolved_identifier_classification(
+    bindings: &BindingMap,
+    span: Span,
+    databases: &LanguageServiceDatabases,
+) -> Option<SemanticTokenClassification> {
+    let resolution = bindings.resolution_at_span(span)?;
+    match resolution {
+        BindingResolution::Local(local) => bindings.local(*local).map(local_use_classification),
+        BindingResolution::Declaration(declaration) => databases
+            .hir_db()
+            .graph()
+            .declaration(*declaration)
+            .map(declaration_use_classification),
+        BindingResolution::Import(_) | BindingResolution::QualifiedPath(_) => {
+            Some(SemanticTokenClassification::new(
+                SemanticTokenType::Variable,
+                SemanticTokenModifiers::UNRESOLVED,
+            ))
+        }
+    }
+}
+
+fn local_declaration_token_classification(binding: &LocalBinding) -> SemanticTokenClassification {
+    SemanticTokenClassification::new(
+        local_token_type(binding.kind),
+        SemanticTokenModifiers::DECLARATION,
+    )
+}
+
+fn local_use_classification(binding: &LocalBinding) -> SemanticTokenClassification {
+    SemanticTokenClassification::new(local_token_type(binding.kind), SemanticTokenModifiers::NONE)
+}
+
+fn local_token_type(kind: LocalBindingKind) -> SemanticTokenType {
+    match kind {
+        LocalBindingKind::Parameter | LocalBindingKind::LambdaParameter => {
+            SemanticTokenType::Parameter
+        }
+        LocalBindingKind::Let | LocalBindingKind::For | LocalBindingKind::Pattern => {
+            SemanticTokenType::Variable
+        }
+    }
+}
+
+fn declaration_classification(declaration: &Declaration) -> SemanticTokenClassification {
+    SemanticTokenClassification::new(
+        declaration_token_type(declaration.kind),
+        SemanticTokenModifiers::DECLARATION.union(SemanticTokenModifiers::DEFINITION),
+    )
+}
+
+fn declaration_use_classification(declaration: &Declaration) -> SemanticTokenClassification {
+    let modifiers = if matches!(declaration.kind, DeclarationKind::Const) {
+        SemanticTokenModifiers::READONLY
+    } else {
+        SemanticTokenModifiers::NONE
+    };
+    SemanticTokenClassification::new(declaration_token_type(declaration.kind), modifiers)
+}
+
+fn declaration_token_type(kind: DeclarationKind) -> SemanticTokenType {
+    match kind {
+        DeclarationKind::Const | DeclarationKind::Global => SemanticTokenType::Variable,
+        DeclarationKind::Function => SemanticTokenType::Function,
+        DeclarationKind::Struct | DeclarationKind::Enum | DeclarationKind::Trait => {
+            SemanticTokenType::Type
+        }
+        DeclarationKind::Impl => SemanticTokenType::Type,
+    }
+}
+
+fn span_contains_range(span: Span, range: TextRange) -> bool {
+    let Ok(start) = u32::try_from(range.start) else {
+        return false;
+    };
+    let Ok(end) = u32::try_from(range.end) else {
+        return false;
+    };
+    span.start <= start && end <= span.end
+}
+
+fn span_for_range(source_id: SourceId, range: TextRange) -> Option<Span> {
+    let start = u32::try_from(range.start).ok()?;
+    let end = u32::try_from(range.end).ok()?;
+    Some(Span::new(source_id, start, end))
+}
+
+fn token_text(text: &str, range: TextRange) -> Option<&str> {
+    text.get(range.start..range.end)
 }
 
 fn token_type(kind: &TokenKind) -> Option<SemanticTokenType> {
@@ -294,62 +493,136 @@ mod tests {
 
         let tokens = databases.semantic_tokens(&document);
 
-        assert_token(
+        assert_token_at(
             &tokens,
-            text,
-            "pub",
+            0,
+            text.find("pub").expect("keyword should exist"),
+            "pub".len(),
             SemanticTokenType::Keyword,
             SemanticTokenModifiers::NONE,
         );
-        assert_token(
+        assert_token_at(
             &tokens,
-            text,
-            "main",
-            SemanticTokenType::Variable,
-            SemanticTokenModifiers::NONE,
-        );
-        assert_token(
-            &tokens,
-            text,
-            "b\"ok\"",
+            0,
+            text.find("b\"ok\"").expect("bytes literal should exist"),
+            "b\"ok\"".len(),
             SemanticTokenType::Bytes,
             SemanticTokenModifiers::NONE,
         );
-        assert_token(
+        assert_token_at(
             &tokens,
-            text,
-            "+",
+            0,
+            text.find('+').expect("operator should exist"),
+            1,
             SemanticTokenType::Operator,
             SemanticTokenModifiers::NONE,
         );
-        assert_token(
+        assert_token_at(
             &tokens,
-            text,
-            "1",
+            0,
+            text.find('1').expect("number should exist"),
+            1,
             SemanticTokenType::Number,
             SemanticTokenModifiers::NONE,
         );
     }
 
-    fn assert_token(
+    #[test]
+    fn semantic_tokens_mark_resolved_symbols() {
+        let main = DocumentId::from("/workspace/scripts/game/main.vela");
+        let helper = DocumentId::from("/workspace/scripts/game/reward.vela");
+        let main_text = "\
+use game::reward::grant
+pub fn main(amount: i64) -> i64 {
+    let next = grant(amount)
+    return next
+}";
+        let databases = databases_for(vec![
+            SourceFileSnapshot::new(main.clone(), main_text),
+            SourceFileSnapshot::new(helper, "pub fn grant(amount: i64) -> i64 { return amount }"),
+        ]);
+
+        let tokens = databases.semantic_tokens(&main);
+
+        assert_token_at(
+            &tokens,
+            1,
+            line(main_text, 1).find("main").expect("main should exist"),
+            "main".len(),
+            SemanticTokenType::Function,
+            SemanticTokenModifiers::DECLARATION.union(SemanticTokenModifiers::DEFINITION),
+        );
+        assert_token_at(
+            &tokens,
+            1,
+            line(main_text, 1)
+                .find("amount")
+                .expect("parameter should exist"),
+            "amount".len(),
+            SemanticTokenType::Parameter,
+            SemanticTokenModifiers::DECLARATION,
+        );
+        assert_token_at(
+            &tokens,
+            2,
+            line(main_text, 2).find("next").expect("local should exist"),
+            "next".len(),
+            SemanticTokenType::Variable,
+            SemanticTokenModifiers::DECLARATION,
+        );
+        assert_token_at(
+            &tokens,
+            2,
+            line(main_text, 2).find("grant").expect("call should exist"),
+            "grant".len(),
+            SemanticTokenType::Function,
+            SemanticTokenModifiers::NONE,
+        );
+        assert_token_at(
+            &tokens,
+            2,
+            line(main_text, 2)
+                .find("amount")
+                .expect("argument should exist"),
+            "amount".len(),
+            SemanticTokenType::Parameter,
+            SemanticTokenModifiers::NONE,
+        );
+        assert_token_at(
+            &tokens,
+            3,
+            line(main_text, 3)
+                .find("next")
+                .expect("return value should exist"),
+            "next".len(),
+            SemanticTokenType::Variable,
+            SemanticTokenModifiers::NONE,
+        );
+    }
+
+    fn assert_token_at(
         tokens: &SemanticTokens,
-        text: &str,
-        needle: &str,
+        line: usize,
+        character: usize,
+        length: usize,
         token_type: SemanticTokenType,
         modifiers: SemanticTokenModifiers,
     ) {
-        let start = text.find(needle).expect("token text should exist");
         assert!(
             tokens.tokens().iter().any(|token| {
-                token.start().line == 0
-                    && token.start().character == start
-                    && token.length() == needle.len()
+                token.start().line == line
+                    && token.start().character == character
+                    && token.length() == length
                     && token.token_type() == token_type
                     && token.modifiers() == modifiers
             }),
             "{:?}",
             tokens.tokens()
         );
+    }
+
+    fn line(text: &str, line: usize) -> &str {
+        text.lines().nth(line).expect("line should exist")
     }
 
     fn databases_for(files: Vec<SourceFileSnapshot>) -> LanguageServiceDatabases {
