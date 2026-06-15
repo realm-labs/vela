@@ -292,18 +292,18 @@ Purpose: expose the service through a native LSP binary.
 - [x] Add `crates/vela_lsp_server`.
 - [x] Implement `initialize`, `initialized`, `shutdown`, and `exit`.
 - [x] Advertise only implemented capabilities.
-- [ ] Implement full document sync first.
+- [x] Implement full document sync first.
 - [ ] Add incremental document sync after text edit application is tested.
 - [ ] Implement workspace folder/config handling.
 - [ ] Wire cancellation and work-done progress.
-- [ ] Publish diagnostics for open files.
+- [x] Publish diagnostics for open files.
 - [x] Add JSON-RPC fixture harness.
 
 Tests:
 
 - [x] `lsp_initialize_reports_capabilities`
-- [ ] `lsp_did_open_publishes_diagnostics`
-- [ ] `lsp_did_change_replaces_document_text`
+- [x] `lsp_did_open_publishes_diagnostics`
+- [x] `lsp_did_change_replaces_document_text`
 - [ ] `lsp_cancellation_discards_stale_request`
 - [x] `lsp_shutdown_exits_without_background_tasks`
 
