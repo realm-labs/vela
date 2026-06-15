@@ -1,5 +1,6 @@
 //! Editor-neutral language-service workspace state.
 
+mod completion;
 mod diagnostics;
 mod incremental;
 mod project;
@@ -7,6 +8,9 @@ mod schema;
 mod text;
 mod workspace;
 
+pub use completion::{
+    CompletionContext, CompletionContextKind, CompletionItem, CompletionKind, CompletionList,
+};
 pub use diagnostics::{
     DiagnosticCandidate, DiagnosticLabel, DiagnosticRange, DiagnosticRepairHint, DiagnosticStatus,
     DocumentDiagnostics, OpenDiagnosticsBatch, ServiceDiagnostic, ServiceDiagnosticSeverity,

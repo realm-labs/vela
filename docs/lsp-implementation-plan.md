@@ -360,8 +360,8 @@ cargo test -p vela_reflect
 
 Purpose: make common authoring flows fast and schema-aware.
 
-- [ ] Add cursor-context extraction in `vela_language_service`.
-- [ ] Complete locals, parameters, captures, declarations, modules, imports,
+- [x] Add cursor-context extraction in `vela_language_service`.
+- [~] Complete locals, parameters, captures, declarations, modules, imports,
   stdlib APIs, fields, methods, variants, traits, and type hints.
 - [ ] Complete named arguments and defaulted parameters.
 - [ ] Complete record fields inside known constructors.
@@ -373,9 +373,10 @@ Purpose: make common authoring flows fast and schema-aware.
 
 Tests:
 
-- [ ] `completion_uses_open_overlay_facts`
+- [x] `completion_uses_open_overlay_facts`
+- [x] `global_completion_uses_schema_facts`
 - [ ] `member_completion_uses_host_schema_facts`
-- [ ] `module_completion_follows_import_context`
+- [x] `module_completion_follows_import_context`
 - [ ] `record_field_completion_requires_known_type`
 - [ ] `signature_help_tracks_active_parameter`
 
