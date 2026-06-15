@@ -25,8 +25,9 @@ fn lsp_document_highlight(highlight: &DocumentHighlight) -> JsonValue {
 
 const fn lsp_document_highlight_kind(kind: DocumentHighlightKind) -> u8 {
     match kind {
-        DocumentHighlightKind::Text => 1,
+        DocumentHighlightKind::Text | DocumentHighlightKind::Call => 1,
         DocumentHighlightKind::Read => 2,
+        DocumentHighlightKind::Write => 3,
     }
 }
 

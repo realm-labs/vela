@@ -526,6 +526,8 @@ Purpose: support workspace navigation and prepare rename.
   declaration.
   - [x] Track local declaration and read reference kinds.
   - [x] Track script declaration, import, and read reference kinds.
+  - [x] Track local write references and statically resolved script function
+    call references.
 - [~] Implement `textDocument/references`.
   - [x] Serve local binding references through the native LSP request.
   - [x] Serve imported script function references through the native LSP
@@ -549,7 +551,8 @@ Tests:
 - [x] `document_highlight_marks_local_declaration_and_reads`
 - [x] `document_highlight_marks_import_and_calls_in_active_document`
 - [x] `lsp_document_highlight_marks_local_declaration_and_reads`
-- [ ] `document_highlight_marks_read_write_call`
+- [x] `document_highlight_marks_read_write_call`
+- [x] `lsp_document_highlight_marks_read_write_call`
 - [x] `call_hierarchy_uses_resolved_call_graph`
 - [x] `lsp_call_hierarchy_uses_resolved_call_graph`
 

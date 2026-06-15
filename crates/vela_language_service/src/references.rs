@@ -11,13 +11,17 @@ use crate::{
 pub enum ReferenceKind {
     Declaration,
     Import,
+    Call,
     Read,
+    Write,
 }
 
 #[derive(Debug, Clone, Copy, Eq, PartialEq)]
 pub enum DocumentHighlightKind {
     Text,
+    Call,
     Read,
+    Write,
 }
 
 #[derive(Debug, Clone, Eq, PartialEq)]
@@ -150,7 +154,7 @@ impl LanguageServiceDatabases {
                 .filter_map(|(expression, resolution)| match resolution {
                     BindingResolution::Local(resolved) if *resolved == local => {
                         let expression = bindings.expression(expression)?;
-                        self.reference_for_span(expression.span, ReferenceKind::Read)
+                        self.reference_for_resolved_use_span(expression.span)
                     }
                     BindingResolution::Local(_)
                     | BindingResolution::Declaration(_)
@@ -217,7 +221,7 @@ impl LanguageServiceDatabases {
                     .filter_map(|(expression, resolution)| match resolution {
                         BindingResolution::Declaration(resolved) if *resolved == declaration => {
                             let expression = bindings.expression(expression)?;
-                            self.reference_for_span(expression.span, ReferenceKind::Read)
+                            self.reference_for_resolved_use_span(expression.span)
                         }
                         BindingResolution::Declaration(_)
                         | BindingResolution::Local(_)
@@ -281,12 +285,13 @@ impl LanguageServiceDatabases {
         })
     }
 
-    fn reference_for_span(&self, span: Span, kind: ReferenceKind) -> Option<Reference> {
+    fn reference_for_resolved_use_span(&self, span: Span) -> Option<Reference> {
         let source = self.source_record_for_reference(span.source)?;
-        let range = diagnostic_range(source.text(), span_text_range(span)?);
+        let range = span_text_range(span)?;
+        let kind = resolved_use_reference_kind(source.text(), range);
         Some(Reference {
             document_id: source.document_id().clone(),
-            range,
+            range: diagnostic_range(source.text(), range),
             kind,
         })
     }
@@ -420,9 +425,41 @@ fn token_text(text: &str, range: TextRange) -> Option<&str> {
 
 const fn document_highlight_kind(kind: ReferenceKind) -> DocumentHighlightKind {
     match kind {
+        ReferenceKind::Call => DocumentHighlightKind::Call,
         ReferenceKind::Read => DocumentHighlightKind::Read,
+        ReferenceKind::Write => DocumentHighlightKind::Write,
         ReferenceKind::Declaration | ReferenceKind::Import => DocumentHighlightKind::Text,
     }
+}
+
+fn resolved_use_reference_kind(text: &str, range: TextRange) -> ReferenceKind {
+    if is_call_callee(text, range) {
+        ReferenceKind::Call
+    } else if is_assignment_target(text, range) {
+        ReferenceKind::Write
+    } else {
+        ReferenceKind::Read
+    }
+}
+
+fn is_call_callee(text: &str, range: TextRange) -> bool {
+    text.get(range.end..)
+        .is_some_and(|suffix| suffix.trim_start().starts_with('('))
+}
+
+fn is_assignment_target(text: &str, range: TextRange) -> bool {
+    text.get(range.end..)
+        .map(str::trim_start)
+        .is_some_and(|suffix| {
+            suffix.starts_with("+=")
+                || suffix.starts_with("-=")
+                || suffix.starts_with("*=")
+                || suffix.starts_with("/=")
+                || suffix.starts_with("%=")
+                || (suffix.starts_with('=')
+                    && !suffix.starts_with("==")
+                    && !suffix.starts_with("=>"))
+        })
 }
 
 fn is_identifier_continue(ch: char) -> bool {
@@ -536,14 +573,14 @@ pub fn main(amount: i64) -> i64 {
             &main,
             2,
             line(main_text, 2).find("grant").expect("first call"),
-            ReferenceKind::Read,
+            ReferenceKind::Call,
         );
         assert_reference_in_document(
             &references,
             &main,
             3,
             line(main_text, 3).find("grant").expect("second call"),
-            ReferenceKind::Read,
+            ReferenceKind::Call,
         );
     }
 
@@ -615,13 +652,82 @@ pub fn main(amount: i64) -> i64 {
             &highlights,
             2,
             line(main_text, 2).find("grant").expect("first call"),
-            DocumentHighlightKind::Read,
+            DocumentHighlightKind::Call,
         );
         assert_highlight(
             &highlights,
             3,
             line(main_text, 3).find("grant").expect("second call"),
+            DocumentHighlightKind::Call,
+        );
+    }
+
+    #[test]
+    fn document_highlight_marks_read_write_call() {
+        let document = DocumentId::from("/workspace/scripts/game/main.vela");
+        let text = "\
+pub fn grant(amount: i64) -> i64 { return amount }
+pub fn main(amount: i64) -> i64 {
+    let score = amount
+    score += grant(amount)
+    return score + grant(score)
+}";
+        let databases = databases_for(vec![SourceFileSnapshot::new(document.clone(), text)]);
+
+        let score_highlights = databases.document_highlights(
+            &document,
+            Position::new(3, line(text, 3).find("score").expect("score write")),
+        );
+
+        assert_eq!(score_highlights.len(), 4);
+        assert_highlight(
+            &score_highlights,
+            2,
+            line(text, 2).find("score").expect("score declaration"),
+            DocumentHighlightKind::Text,
+        );
+        assert_highlight(
+            &score_highlights,
+            3,
+            line(text, 3).find("score").expect("score write"),
+            DocumentHighlightKind::Write,
+        );
+        assert_highlight(
+            &score_highlights,
+            4,
+            line(text, 4).find("score").expect("score read"),
             DocumentHighlightKind::Read,
+        );
+        assert_highlight(
+            &score_highlights,
+            4,
+            line(text, 4).rfind("score").expect("score argument read"),
+            DocumentHighlightKind::Read,
+        );
+
+        let grant_highlights = databases.document_highlights(
+            &document,
+            Position::new(3, line(text, 3).find("grant").expect("grant call")),
+        );
+
+        assert_eq!(grant_highlights.len(), 3);
+        assert_highlight(
+            &grant_highlights,
+            0,
+            line(text, 0).find("grant").expect("grant declaration"),
+            DocumentHighlightKind::Text,
+        );
+        assert_highlight(
+            &grant_highlights,
+            3,
+            line(text, 3).find("grant").expect("first grant call"),
+            DocumentHighlightKind::Call,
+        );
+        assert_highlight(
+            &grant_highlights,
+            4,
+            line(text, 4).find("grant").expect("second grant call"),
+            DocumentHighlightKind::Call,
         );
     }
 
