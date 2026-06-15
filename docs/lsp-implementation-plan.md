@@ -507,19 +507,26 @@ cargo test -p vela_lsp_server semantic_tokens
 
 Purpose: support workspace navigation and prepare rename.
 
-- [ ] Build a reference index from `BindingMap` and module graph use sites.
-- [ ] Index local, module, function, method, field, variant, trait, and schema
+- [~] Build a reference index from `BindingMap` and module graph use sites.
+  - [x] Build initial local binding references from `BindingMap` declarations
+    and resolved local expression spans.
+- [~] Index local, module, function, method, field, variant, trait, and schema
   references.
-- [ ] Track reference kind: read, write, call, type use, import, pattern,
+  - [x] Index local binding declaration and read references within the owning
+    function.
+- [~] Track reference kind: read, write, call, type use, import, pattern,
   declaration.
-- [ ] Implement `textDocument/references`.
+  - [x] Track local declaration and read reference kinds.
+- [~] Implement `textDocument/references`.
+  - [x] Serve local binding references through the native LSP request.
 - [ ] Implement `textDocument/documentHighlight`.
 - [ ] Implement incoming and outgoing call hierarchy for script functions and
   methods where calls are statically resolved.
 
 Tests:
 
-- [ ] `references_find_local_binding_uses`
+- [x] `references_find_local_binding_uses`
+- [x] `lsp_references_find_local_binding_uses`
 - [ ] `references_find_imported_function_uses`
 - [ ] `references_find_field_reads_and_writes`
 - [ ] `document_highlight_marks_read_write_call`

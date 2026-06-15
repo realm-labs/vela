@@ -6,6 +6,7 @@ mod folding;
 mod hover;
 mod protocol;
 mod queries;
+mod references;
 mod selection;
 mod semantic_tokens;
 mod signature;
@@ -118,6 +119,7 @@ impl LspServer {
             "textDocument/signatureHelp" => self.signature_help(message.id, message.params),
             "textDocument/hover" => self.hover(message.id, message.params),
             "textDocument/definition" => self.definition(message.id, message.params),
+            "textDocument/references" => self.references(message.id, message.params),
             "textDocument/documentSymbol" => self.document_symbol(message.id, message.params),
             "textDocument/foldingRange" => self.folding_range(message.id, message.params),
             "textDocument/selectionRange" => self.selection_range(message.id, message.params),
@@ -794,6 +796,7 @@ fn initialize_result() -> JsonValue {
             },
             "hoverProvider": true,
             "definitionProvider": true,
+            "referencesProvider": true,
             "documentSymbolProvider": true,
             "foldingRangeProvider": true,
             "selectionRangeProvider": true,

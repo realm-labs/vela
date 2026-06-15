@@ -10,11 +10,13 @@ use crate::{
     hover::lsp_hover,
     protocol::DocumentSymbolParams,
     protocol::FoldingRangeParams,
+    protocol::ReferencesParams,
     protocol::SelectionRangeParams,
     protocol::SemanticTokensParams,
     protocol::TextDocumentPositionParams,
     protocol::WorkspaceSymbolParams,
     protocol::service_position,
+    references::lsp_references,
     selection::lsp_selection_ranges,
     semantic_tokens::lsp_semantic_tokens,
     signature::lsp_signature_help,
@@ -132,6 +134,32 @@ impl LspServer {
             id,
             definition.as_ref().map_or(JsonValue::Null, lsp_definition),
         ))
+    }
+
+    pub(crate) fn references(&mut self, id: Option<RequestId>, params: JsonValue) -> JsonRpcResult {
+        let Some(id) = id else {
+            return JsonRpcResult::None;
+        };
+        let params = match serde_json::from_value::<ReferencesParams>(params) {
+            Ok(params) => params,
+            Err(error) => {
+                return JsonRpcResult::Response(error_response(
+                    Some(id),
+                    ErrorCode::InvalidRequest,
+                    format!("invalid references params: {error}"),
+                ));
+            }
+        };
+
+        let document_id = DocumentId::from(params.text_document.uri);
+        self.refresh_databases_for_query(&document_id);
+        let references = self.databases.references(
+            &document_id,
+            service_position(params.position),
+            params.context.include_declaration,
+        );
+
+        JsonRpcResult::Response(success_response(id, lsp_references(&references)))
     }
 
     pub(crate) fn document_symbol(

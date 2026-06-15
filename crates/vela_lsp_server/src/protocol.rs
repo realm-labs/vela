@@ -41,6 +41,20 @@ pub(crate) struct SemanticTokensParams {
 
 #[derive(Debug, Clone, Deserialize)]
 #[serde(rename_all = "camelCase")]
+pub(crate) struct ReferencesParams {
+    pub(crate) text_document: TextDocumentIdentifier,
+    pub(crate) position: LspPosition,
+    pub(crate) context: ReferenceContext,
+}
+
+#[derive(Debug, Clone, Copy, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub(crate) struct ReferenceContext {
+    pub(crate) include_declaration: bool,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub(crate) struct WorkspaceSymbolParams {
     pub(crate) query: String,
 }

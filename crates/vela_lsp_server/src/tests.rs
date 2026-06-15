@@ -132,6 +132,10 @@ mod lifecycle {
             serde_json::json!(true)
         );
         assert_eq!(
+            response["result"]["capabilities"]["referencesProvider"],
+            serde_json::json!(true)
+        );
+        assert_eq!(
             response["result"]["capabilities"]["documentSymbolProvider"],
             serde_json::json!(true)
         );
@@ -717,6 +721,7 @@ mod signature {
 mod definition;
 mod folding;
 mod hover;
+mod references;
 mod selection;
 mod semantic_tokens;
 mod symbols;
