@@ -1,5 +1,6 @@
 use std::collections::BTreeSet;
 
+use vela_analysis::registry::RegistryFacts;
 use vela_common::{Diagnostic, Severity, SourceId, Span};
 
 use crate::{DocumentId, LanguageServiceDatabases, LineIndex, Position, WorkspaceGeneration};
@@ -241,6 +242,14 @@ impl LanguageServiceDatabases {
             );
         }
 
+        if let Some(parsed) = self.parse_db().parsed_source(document_id) {
+            diagnostics.extend(
+                vela_analysis::diagnostics::source_diagnostics(parsed, &RegistryFacts::default())
+                    .iter()
+                    .map(|diagnostic| self.convert_diagnostic(diagnostic)),
+            );
+        }
+
         diagnostics
     }
 
@@ -419,5 +428,30 @@ mod tests {
             diagnostics.diagnostics()
         );
         assert!(helper_diagnostics.diagnostics().is_empty());
+    }
+
+    #[test]
+    fn analysis_diagnostics_map_to_document_ranges() {
+        let document = DocumentId::from("/workspace/scripts/game/main.vela");
+        let mut db = LanguageServiceDatabases::new();
+        db.update(&project(&[file(
+            document.as_str(),
+            "pub fn main(scores: Array<i64>) { return scores.frist() }",
+        )]));
+
+        let diagnostics = db.diagnostics_for_document(&document);
+
+        assert!(
+            diagnostics.diagnostics().iter().any(|diagnostic| {
+                diagnostic.code() == Some("analysis::unknown_method")
+                    && diagnostic.range().is_some()
+                    && diagnostic
+                        .labels()
+                        .iter()
+                        .any(|label| label.document_id() == &document)
+            }),
+            "{:?}",
+            diagnostics.diagnostics()
+        );
     }
 }

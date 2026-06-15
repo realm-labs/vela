@@ -114,6 +114,11 @@ impl ParseDb {
     }
 
     #[must_use]
+    pub fn parsed_source(&self, document_id: &DocumentId) -> Option<&SourceFile> {
+        self.records.get(document_id).map(|record| &record.parsed)
+    }
+
+    #[must_use]
     pub fn parsed_document_count(&self) -> usize {
         self.records.len()
     }

@@ -454,7 +454,7 @@ fn collection_fact(facts: impl IntoIterator<Item = TypeFact>) -> TypeFact {
     TypeFact::union(facts)
 }
 
-fn type_fact_from_syntax_hint(hint: &TypeHint) -> TypeFact {
+pub(crate) fn type_fact_from_syntax_hint(hint: &TypeHint) -> TypeFact {
     match hint.path.as_slice() {
         [name] => {
             if name == "Array" && hint.args.len() == 1 {

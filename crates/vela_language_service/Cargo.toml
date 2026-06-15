@@ -5,6 +5,7 @@ edition.workspace = true
 license.workspace = true
 
 [dependencies]
+vela_analysis.workspace = true
 vela_common.workspace = true
 vela_hir.workspace = true
 vela_syntax.workspace = true

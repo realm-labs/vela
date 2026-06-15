@@ -773,6 +773,7 @@ dependencies = [
 name = "vela_language_service"
 version = "0.1.0"
 dependencies = [
+ "vela_analysis",
  "vela_common",
  "vela_hir",
  "vela_syntax",
