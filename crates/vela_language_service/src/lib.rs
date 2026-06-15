@@ -2,6 +2,7 @@
 
 mod completion;
 mod diagnostics;
+mod hover;
 mod incremental;
 mod project;
 mod schema;
@@ -17,6 +18,7 @@ pub use diagnostics::{
     DocumentDiagnostics, OpenDiagnosticsBatch, ServiceDiagnostic, ServiceDiagnosticSeverity,
     WorkspaceDiagnosticsBatch,
 };
+pub use hover::{Hover, HoverKind};
 pub use incremental::{
     AnalysisDb, BackgroundResult, CancellationHandle, CancellationToken, GenerationToken, HirDb,
     IndexingMetrics, InvalidationReport, LanguageServiceDatabases, ParseDb, ProjectDb,

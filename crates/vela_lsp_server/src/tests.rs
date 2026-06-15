@@ -123,7 +123,10 @@ mod lifecycle {
             response["result"]["capabilities"]["signatureHelpProvider"]["retriggerCharacters"],
             serde_json::json!([","])
         );
-        assert!(response["result"]["capabilities"]["hoverProvider"].is_null());
+        assert_eq!(
+            response["result"]["capabilities"]["hoverProvider"],
+            serde_json::json!(true)
+        );
         assert!(response["result"]["capabilities"]["definitionProvider"].is_null());
         assert_eq!(
             response["result"]["capabilities"]["workspace"]["workspaceFolders"]["supported"],
@@ -690,6 +693,8 @@ mod signature {
         );
     }
 }
+
+mod hover;
 
 mod file_watching {
     use std::fs;

@@ -1,17 +1,17 @@
 //! Native LSP protocol boundary for Vela editor tooling.
 
 mod completion;
+mod hover;
 mod protocol;
+mod queries;
 mod signature;
 
 use std::collections::{BTreeMap, BTreeSet};
 use std::path::{Path, PathBuf};
 
-use completion::lsp_completion_list;
-use protocol::{LspPosition, LspRange, TextDocumentPositionParams, service_position};
+use protocol::{LspPosition, LspRange};
 use serde::{Deserialize, Serialize};
 use serde_json::{Value as JsonValue, json};
-use signature::lsp_signature_help;
 use vela_language_service::{
     DocumentDiagnostics, DocumentId, LanguageServiceDatabases, ProjectDiagnostic, ProjectSources,
     SchemaDiagnostic, ServiceDiagnostic, ServiceDiagnosticSeverity, SourceFileSnapshot,
@@ -111,6 +111,7 @@ impl LspServer {
             "textDocument/didChange" => self.did_change(message.id, message.params),
             "textDocument/completion" => self.completion(message.id, message.params),
             "textDocument/signatureHelp" => self.signature_help(message.id, message.params),
+            "textDocument/hover" => self.hover(message.id, message.params),
             "workspace/didChangeWatchedFiles" => {
                 self.did_change_watched_files(message.id, message.params)
             }
@@ -244,59 +245,6 @@ impl LspServer {
         self.open_documents.insert(document_id.clone());
 
         self.publish_current_diagnostics(&uri, &document_id)
-    }
-
-    fn completion(&mut self, id: Option<RequestId>, params: JsonValue) -> JsonRpcResult {
-        let Some(id) = id else {
-            return JsonRpcResult::None;
-        };
-        let params = match serde_json::from_value::<TextDocumentPositionParams>(params) {
-            Ok(params) => params,
-            Err(error) => {
-                return JsonRpcResult::Response(error_response(
-                    Some(id),
-                    ErrorCode::InvalidRequest,
-                    format!("invalid completion params: {error}"),
-                ));
-            }
-        };
-
-        let document_id = DocumentId::from(params.text_document.uri);
-        self.refresh_databases_for_query(&document_id);
-        let completions = self
-            .databases
-            .completion_items(&document_id, service_position(params.position));
-
-        JsonRpcResult::Response(success_response(id, lsp_completion_list(&completions)))
-    }
-
-    fn signature_help(&mut self, id: Option<RequestId>, params: JsonValue) -> JsonRpcResult {
-        let Some(id) = id else {
-            return JsonRpcResult::None;
-        };
-        let params = match serde_json::from_value::<TextDocumentPositionParams>(params) {
-            Ok(params) => params,
-            Err(error) => {
-                return JsonRpcResult::Response(error_response(
-                    Some(id),
-                    ErrorCode::InvalidRequest,
-                    format!("invalid signatureHelp params: {error}"),
-                ));
-            }
-        };
-
-        let document_id = DocumentId::from(params.text_document.uri);
-        self.refresh_databases_for_query(&document_id);
-        let signatures = self
-            .databases
-            .signature_help(&document_id, service_position(params.position));
-
-        JsonRpcResult::Response(success_response(
-            id,
-            signatures
-                .as_ref()
-                .map_or(JsonValue::Null, lsp_signature_help),
-        ))
     }
 
     fn did_change_watched_files(
@@ -819,6 +767,7 @@ fn initialize_result() -> JsonValue {
                 "triggerCharacters": ["(", ","],
                 "retriggerCharacters": [","]
             },
+            "hoverProvider": true,
             "workspace": {
                 "workspaceFolders": {
                     "supported": true,

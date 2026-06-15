@@ -397,9 +397,9 @@ cargo test -p vela_analysis completion
 
 Purpose: expose semantic facts and navigation.
 
-- [ ] Hover locals, parameters, captures, declarations, modules, functions,
+- [~] Hover locals, parameters, captures, declarations, modules, functions,
   methods, fields, variants, traits, and type hints.
-- [ ] Include docs, type facts, effects, permissions, origins, and source spans
+- [~] Include docs, type facts, effects, permissions, origins, and source spans
   where known.
 - [ ] Implement go to definition for local bindings.
 - [ ] Implement go to definition for imported module declarations.
@@ -409,8 +409,9 @@ Purpose: expose semantic facts and navigation.
 
 Tests:
 
-- [ ] `hover_degrades_to_any_without_schema`
-- [ ] `hover_reports_effects_and_permissions`
+- [x] `hover_degrades_to_any_without_schema`
+- [x] `hover_reports_effects_and_permissions`
+- [x] `lsp_hover_reports_open_overlay_parameter_fact`
 - [ ] `definition_follows_local_binding`
 - [ ] `definition_follows_imported_module_declaration`
 - [ ] `definition_follows_schema_source_span`
