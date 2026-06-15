@@ -629,13 +629,14 @@ impl TypeHintCollector<'_, '_> {
                 self.collect_expr(left, scope);
                 self.collect_expr(right, scope);
             }
-            ExprKind::Field { base, .. } => {
+            ExprKind::Field { base, name } => {
                 self.collect_expr(base, scope);
+                self.collect_field_hint(expr, base, name, scope);
             }
             ExprKind::Call { callee, args } => {
                 let lambda_params =
                     lambda_parameter_facts(callee, args, scope, self.context.schema);
-                self.collect_expr(callee, scope);
+                self.collect_call_callee(callee, scope);
                 for arg in args {
                     if let ExprKind::Lambda { params, body } = &arg.value.kind {
                         self.collect_lambda(params, body, scope, lambda_params.as_deref());
@@ -691,6 +692,35 @@ impl TypeHintCollector<'_, '_> {
                 }
             }
             ExprKind::Literal(_) | ExprKind::Path(_) | ExprKind::SelfValue | ExprKind::Error => {}
+        }
+    }
+
+    fn collect_call_callee(&mut self, callee: &Expr, scope: &mut ExprFactScope) {
+        if let ExprKind::Field { base, .. } = &callee.kind {
+            self.collect_expr(base, scope);
+        } else {
+            self.collect_expr(callee, scope);
+        }
+    }
+
+    fn collect_field_hint(&mut self, expr: &Expr, base: &Expr, name: &str, scope: &ExprFactScope) {
+        let receiver = type_fact_from_expr_with_registry(base, scope, self.context.schema);
+        if !matches!(receiver, TypeFact::Host { .. }) {
+            return;
+        }
+        let fact = type_fact_from_expr_with_registry(expr, scope, self.context.schema);
+        let Some(label) = type_hint_label(&fact) else {
+            return;
+        };
+        let Some(position_offset) = field_name_end_offset(expr, name, self.source_text) else {
+            return;
+        };
+        if self.range.contains(position_offset) {
+            self.hints.push(InlayHint {
+                position: self.line_index.position(position_offset),
+                label,
+                kind: InlayHintKind::Type,
+            });
         }
     }
 
@@ -872,6 +902,14 @@ fn param_name_end_offset(param: &Param) -> Option<usize> {
     Some(start + param.name.len())
 }
 
+fn field_name_end_offset(expr: &Expr, name: &str, source_text: &str) -> Option<usize> {
+    let start = usize::try_from(expr.span.start).ok()?;
+    let end = usize::try_from(expr.span.end).ok()?.min(source_text.len());
+    let text = source_text.get(start..end)?;
+    let name_start = text.rfind(name)?;
+    Some(start + name_start + name.len())
+}
+
 fn callee_label(callee: &Expr) -> Option<String> {
     match &callee.kind {
         ExprKind::Path(path) => Some(path.join("::")),
@@ -991,6 +1029,43 @@ pub fn main() {
                 (Position::new(4, 60), ": i64".to_owned()),
                 (Position::new(5, 56), ": String".to_owned()),
                 (Position::new(5, 63), ": i64".to_owned())
+            ]
+        );
+        assert!(hints.iter().all(|hint| hint.kind() == InlayHintKind::Type));
+    }
+
+    #[test]
+    fn inlay_hints_show_host_path_typefacts() {
+        let document = DocumentId::from("/workspace/scripts/game/main.vela");
+        let text = r#"pub fn main(player: Player) {
+    let next = player.level + 1;
+    player.level += next;
+    let dynamic = player.mystery;
+    player.grant(next);
+}"#;
+        let mut databases = databases_for(vec![SourceFileSnapshot::new(document.clone(), text)]);
+        let mut schema = vela_analysis::registry::RegistryFacts::default();
+        schema.insert_type("Player", TypeFact::host("Player"));
+        schema.insert_field("Player", "level", TypeFact::I64);
+        schema.insert_field("Player", "mystery", TypeFact::Any);
+        schema.insert_method(
+            "Player",
+            "grant",
+            TypeFact::function(vec![TypeFact::I64], TypeFact::I64),
+        );
+        databases.set_schema_facts(schema);
+
+        let hints = databases.inlay_hints(
+            &document,
+            DiagnosticRange::new(Position::new(0, 0), Position::new(6, 0)),
+        );
+
+        assert_eq!(
+            hint_labels(&hints),
+            vec![
+                (Position::new(1, 12), ": i64".to_owned()),
+                (Position::new(1, 27), ": i64".to_owned()),
+                (Position::new(2, 16), ": i64".to_owned())
             ]
         );
         assert!(hints.iter().all(|hint| hint.kind() == InlayHintKind::Type));

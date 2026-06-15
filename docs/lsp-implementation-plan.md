@@ -713,20 +713,25 @@ Purpose: expose gradual type facts without implying static typing.
   - Lambda callbacks on typed stdlib collection/iterator methods now expose
     stable inferred parameter labels, including map key/value arity variants.
 - [ ] Add enum variant payload hints.
-- [ ] Add host path type hints from schema facts.
+- [x] Add host path type hints from schema facts.
+  - Host field paths with stable schema facts now expose type labels while
+    suppressing method callees and dynamic `Any` fields.
 - [~] Suppress hints at dynamic `Any` boundaries.
-  - Local type inlay hints suppress `Any`; remaining hint families still need
-    equivalent dynamic-boundary checks as they are added.
+  - Local, lambda, and host-path type inlay hints suppress `Any`; remaining
+    hint families still need equivalent dynamic-boundary checks as they are
+    added.
 
 Tests:
 
 - [x] `inlay_hints_show_parameter_names`
 - [x] `inlay_hints_show_stable_local_typefacts`
 - [x] `inlay_hints_show_lambda_parameter_facts`
+- [x] `inlay_hints_show_host_path_typefacts`
 - [x] `inlay_hints_degrade_to_any_without_schema`
 - [x] `lsp_inlay_hints_show_parameter_names`
 - [x] `lsp_inlay_hints_show_local_typefacts`
 - [x] `lsp_inlay_hints_show_lambda_parameter_facts`
+- [x] `lsp_inlay_hints_show_host_path_typefacts`
 - [x] `lsp_inlay_hints_respect_requested_range`
 
 Validation:
