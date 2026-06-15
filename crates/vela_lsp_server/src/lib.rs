@@ -1,12 +1,14 @@
 //! Native LSP protocol boundary for Vela editor tooling.
 
 mod call_hierarchy;
+mod capabilities;
 mod code_action;
 mod completion;
 mod definition;
 mod folding;
 mod formatting;
 mod hover;
+mod inlay;
 mod protocol;
 mod queries;
 mod references;
@@ -28,6 +30,8 @@ use vela_language_service::{
     SourceVersion, Workspace, WorkspaceConfig, WorkspaceRoot, assemble_project_sources,
     missing_import_diagnostics,
 };
+
+use crate::capabilities::initialize_result;
 
 const JSONRPC_VERSION: &str = "2.0";
 const FILE_CHANGE_DELETED: u8 = 3;
@@ -141,6 +145,7 @@ impl LspServer {
             "textDocument/semanticTokens/full" => {
                 self.semantic_tokens_full(message.id, message.params)
             }
+            "textDocument/inlayHint" => self.inlay_hint(message.id, message.params),
             "workspace/symbol" => self.workspace_symbol(message.id, message.params),
             "workspace/didChangeWatchedFiles" => {
                 self.did_change_watched_files(message.id, message.params)
@@ -790,59 +795,6 @@ impl ErrorCode {
             Self::RequestCancelled => -32800,
         }
     }
-}
-
-fn initialize_result() -> JsonValue {
-    json!({
-        "capabilities": {
-            "workDoneProgress": true,
-            "textDocumentSync": {
-                "openClose": true,
-                "change": 2,
-                "save": false
-            },
-            "completionProvider": {
-                "resolveProvider": false,
-                "triggerCharacters": [".", ":", "{", "(", ",", "|"]
-            },
-            "signatureHelpProvider": {
-                "triggerCharacters": ["(", ","],
-                "retriggerCharacters": [","]
-            },
-            "hoverProvider": true,
-            "definitionProvider": true,
-            "referencesProvider": true,
-            "renameProvider": {
-                "prepareProvider": true
-            },
-            "codeActionProvider": {
-                "codeActionKinds": ["quickfix"]
-            },
-            "callHierarchyProvider": true,
-            "documentHighlightProvider": true,
-            "documentSymbolProvider": true,
-            "foldingRangeProvider": true,
-            "documentFormattingProvider": true,
-            "documentRangeFormattingProvider": true,
-            "selectionRangeProvider": true,
-            "semanticTokensProvider": {
-                "legend": semantic_tokens::semantic_tokens_legend(),
-                "range": false,
-                "full": true
-            },
-            "workspaceSymbolProvider": true,
-            "workspace": {
-                "workspaceFolders": {
-                    "supported": true,
-                    "changeNotifications": true
-                }
-            }
-        },
-        "serverInfo": {
-            "name": "vela_lsp_server",
-            "version": env!("CARGO_PKG_VERSION")
-        }
-    })
 }
 
 fn workspace_roots_from_initialize(params: &InitializeParams) -> BTreeSet<String> {

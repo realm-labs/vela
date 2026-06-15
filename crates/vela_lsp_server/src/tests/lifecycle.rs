@@ -77,6 +77,10 @@ fn lsp_initialize_reports_capabilities() {
         response["result"]["capabilities"]["semanticTokensProvider"]["full"],
         serde_json::json!(true)
     );
+    assert_eq!(
+        response["result"]["capabilities"]["inlayHintProvider"]["resolveProvider"],
+        serde_json::json!(false)
+    );
     assert!(
         response["result"]["capabilities"]["semanticTokensProvider"]["legend"]["tokenTypes"]
             .as_array()

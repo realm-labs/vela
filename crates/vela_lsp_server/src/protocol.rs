@@ -85,6 +85,13 @@ pub(crate) struct SemanticTokensParams {
 
 #[derive(Debug, Clone, Deserialize)]
 #[serde(rename_all = "camelCase")]
+pub(crate) struct InlayHintParams {
+    pub(crate) text_document: TextDocumentIdentifier,
+    pub(crate) range: LspRange,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub(crate) struct ReferencesParams {
     pub(crate) text_document: TextDocumentIdentifier,
     pub(crate) position: LspPosition,

@@ -14,6 +14,7 @@ use crate::{
     folding::lsp_folding_ranges,
     formatting::lsp_text_edits,
     hover::lsp_hover,
+    inlay::lsp_inlay_hints,
     protocol::CallHierarchyIncomingCallsParams,
     protocol::CallHierarchyOutgoingCallsParams,
     protocol::CallHierarchyPrepareParams,
@@ -22,6 +23,7 @@ use crate::{
     protocol::DocumentRangeFormattingParams,
     protocol::DocumentSymbolParams,
     protocol::FoldingRangeParams,
+    protocol::InlayHintParams,
     protocol::PrepareRenameParams,
     protocol::ReferencesParams,
     protocol::RenameParams,
@@ -533,6 +535,30 @@ impl LspServer {
         let tokens = self.databases.semantic_tokens(&document_id);
 
         JsonRpcResult::Response(success_response(id, lsp_semantic_tokens(&tokens)))
+    }
+
+    pub(crate) fn inlay_hint(&mut self, id: Option<RequestId>, params: JsonValue) -> JsonRpcResult {
+        let Some(id) = id else {
+            return JsonRpcResult::None;
+        };
+        let params = match serde_json::from_value::<InlayHintParams>(params) {
+            Ok(params) => params,
+            Err(error) => {
+                return JsonRpcResult::Response(error_response(
+                    Some(id),
+                    ErrorCode::InvalidRequest,
+                    format!("invalid inlayHint params: {error}"),
+                ));
+            }
+        };
+
+        let document_id = DocumentId::from(params.text_document.uri);
+        self.refresh_databases_for_query(&document_id);
+        let hints = self
+            .databases
+            .inlay_hints(&document_id, service_range(params.range));
+
+        JsonRpcResult::Response(success_response(id, lsp_inlay_hints(&hints)))
     }
 
     pub(crate) fn workspace_symbol(

@@ -74,8 +74,7 @@ impl LanguageServiceDatabases {
     ) -> Option<SignatureHelp> {
         let source = self.source_db().records().get(document_id)?;
         let context = call_context_at(source.text(), position)?;
-        let mut signatures = self.script_signatures(&context.callee);
-        signatures.extend(self.schema_signatures(&context.callee));
+        let signatures = self.signature_candidates(&context.callee);
         if signatures.is_empty() {
             return None;
         }
@@ -85,6 +84,12 @@ impl LanguageServiceDatabases {
             active_parameter: context.active_parameter.min(max_parameter),
             signatures,
         })
+    }
+
+    pub(crate) fn signature_candidates(&self, callee: &str) -> Vec<SignatureInformation> {
+        let mut signatures = self.script_signatures(callee);
+        signatures.extend(self.schema_signatures(callee));
+        signatures
     }
 
     fn script_signatures(&self, callee: &str) -> Vec<SignatureInformation> {

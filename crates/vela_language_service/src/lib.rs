@@ -9,6 +9,7 @@ mod folding;
 mod formatting;
 mod hover;
 mod incremental;
+mod inlay;
 mod project;
 mod references;
 mod rename;
@@ -39,6 +40,7 @@ pub use incremental::{
     IndexingMetrics, InvalidationReport, LanguageServiceDatabases, ParseDb, ProjectDb,
     ScheduledModule, SchemaDb, SchemaDiagnostic, SourceDb, SourceRecord, WorkPriority,
 };
+pub use inlay::{InlayHint, InlayHintKind};
 pub use project::{
     ConfigParseResult, ProjectDiagnostic, ProjectMode, ProjectSources, SchemaConfig,
     SourceFileSnapshot, WorkspaceConfig, WorkspaceRoot, assemble_project_sources,

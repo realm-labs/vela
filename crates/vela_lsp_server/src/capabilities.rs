@@ -1,0 +1,59 @@
+use serde_json::{Value as JsonValue, json};
+
+use crate::semantic_tokens;
+
+pub(crate) fn initialize_result() -> JsonValue {
+    json!({
+        "capabilities": {
+            "workDoneProgress": true,
+            "textDocumentSync": {
+                "openClose": true,
+                "change": 2,
+                "save": false
+            },
+            "completionProvider": {
+                "resolveProvider": false,
+                "triggerCharacters": [".", ":", "{", "(", ",", "|"]
+            },
+            "signatureHelpProvider": {
+                "triggerCharacters": ["(", ","],
+                "retriggerCharacters": [","]
+            },
+            "hoverProvider": true,
+            "definitionProvider": true,
+            "referencesProvider": true,
+            "renameProvider": {
+                "prepareProvider": true
+            },
+            "codeActionProvider": {
+                "codeActionKinds": ["quickfix"]
+            },
+            "callHierarchyProvider": true,
+            "documentHighlightProvider": true,
+            "documentSymbolProvider": true,
+            "foldingRangeProvider": true,
+            "documentFormattingProvider": true,
+            "documentRangeFormattingProvider": true,
+            "selectionRangeProvider": true,
+            "semanticTokensProvider": {
+                "legend": semantic_tokens::semantic_tokens_legend(),
+                "range": false,
+                "full": true
+            },
+            "inlayHintProvider": {
+                "resolveProvider": false
+            },
+            "workspaceSymbolProvider": true,
+            "workspace": {
+                "workspaceFolders": {
+                    "supported": true,
+                    "changeNotifications": true
+                }
+            }
+        },
+        "serverInfo": {
+            "name": "vela_lsp_server",
+            "version": env!("CARGO_PKG_VERSION")
+        }
+    })
+}
