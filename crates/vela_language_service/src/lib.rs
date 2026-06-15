@@ -8,7 +8,7 @@ mod workspace;
 
 pub use diagnostics::{
     DiagnosticLabel, DiagnosticRange, DiagnosticStatus, DocumentDiagnostics, OpenDiagnosticsBatch,
-    ServiceDiagnostic, ServiceDiagnosticSeverity,
+    ServiceDiagnostic, ServiceDiagnosticSeverity, WorkspaceDiagnosticsBatch,
 };
 pub use incremental::{
     AnalysisDb, BackgroundResult, CancellationHandle, CancellationToken, GenerationToken, HirDb,

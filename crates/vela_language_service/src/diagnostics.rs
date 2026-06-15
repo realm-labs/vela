@@ -168,6 +168,24 @@ impl OpenDiagnosticsBatch {
     }
 }
 
+#[derive(Debug, Clone, Eq, PartialEq)]
+pub struct WorkspaceDiagnosticsBatch {
+    generation: WorkspaceGeneration,
+    documents: Vec<DocumentDiagnostics>,
+}
+
+impl WorkspaceDiagnosticsBatch {
+    #[must_use]
+    pub const fn generation(&self) -> WorkspaceGeneration {
+        self.generation
+    }
+
+    #[must_use]
+    pub fn documents(&self) -> &[DocumentDiagnostics] {
+        &self.documents
+    }
+}
+
 impl LanguageServiceDatabases {
     #[must_use]
     pub fn diagnostics_for_document(&self, document_id: &DocumentId) -> DocumentDiagnostics {
@@ -217,6 +235,33 @@ impl LanguageServiceDatabases {
         }
     }
 
+    #[must_use]
+    pub fn diagnostics_for_workspace_documents(
+        &self,
+        open_documents: &BTreeSet<DocumentId>,
+    ) -> WorkspaceDiagnosticsBatch {
+        self.diagnostics_for_workspace_documents_at_generation(open_documents, self.generation())
+    }
+
+    #[must_use]
+    pub fn diagnostics_for_workspace_documents_at_generation(
+        &self,
+        open_documents: &BTreeSet<DocumentId>,
+        generation: WorkspaceGeneration,
+    ) -> WorkspaceDiagnosticsBatch {
+        let documents = self
+            .workspace_document_ids(open_documents)
+            .into_iter()
+            .map(|document_id| {
+                self.diagnostics_for_document_at_generation(&document_id, generation)
+            })
+            .collect();
+        WorkspaceDiagnosticsBatch {
+            generation,
+            documents,
+        }
+    }
+
     fn diagnostic_status(&self, document_id: &DocumentId) -> DiagnosticStatus {
         self.project_db()
             .module_by_document()
@@ -229,14 +274,26 @@ impl LanguageServiceDatabases {
         &self,
         open_documents: &BTreeSet<DocumentId>,
     ) -> Vec<DocumentId> {
+        self.workspace_document_ids(open_documents)
+            .into_iter()
+            .filter(|document_id| {
+                self.project_db()
+                    .module_by_document()
+                    .get(document_id)
+                    .is_some_and(|module| self.analysis_db().invalidated_modules().contains(module))
+            })
+            .collect()
+    }
+
+    fn workspace_document_ids(&self, open_documents: &BTreeSet<DocumentId>) -> Vec<DocumentId> {
         self.project_db()
             .module_by_document()
-            .iter()
-            .filter(|(document_id, module)| {
+            .keys()
+            .filter(|document_id| {
                 !open_documents.contains(*document_id)
-                    && self.analysis_db().invalidated_modules().contains(*module)
+                    && self.source_db().records().contains_key(*document_id)
             })
-            .map(|(document_id, _)| document_id.clone())
+            .cloned()
             .collect()
     }
 
@@ -498,5 +555,38 @@ mod tests {
         assert!(stale.diagnostics().is_empty());
         assert_eq!(current.status(), DiagnosticStatus::Partial);
         assert_eq!(current.generation(), db.generation());
+    }
+
+    #[test]
+    fn workspace_diagnostics_include_background_documents() {
+        let open_document = DocumentId::from("/workspace/scripts/game/main.vela");
+        let workspace_document = DocumentId::from("/workspace/scripts/game/reward.vela");
+        let mut db = LanguageServiceDatabases::new();
+        db.update(&project(&[
+            file(open_document.as_str(), "pub fn main() { return 1 }"),
+            file(
+                workspace_document.as_str(),
+                "pub fn reward(scores: Array<i64>) { return scores.frist() }",
+            ),
+        ]));
+        let open_documents = BTreeSet::from([open_document.clone()]);
+
+        let open_batch = db.diagnostics_for_open_documents(&open_documents);
+        let workspace_batch = db.diagnostics_for_workspace_documents(&open_documents);
+
+        assert_eq!(open_batch.documents().len(), 1);
+        assert_eq!(open_batch.documents()[0].document_id(), &open_document);
+        assert_eq!(workspace_batch.generation(), db.generation());
+        assert_eq!(workspace_batch.documents().len(), 1);
+        assert_eq!(
+            workspace_batch.documents()[0].document_id(),
+            &workspace_document
+        );
+        assert!(
+            workspace_batch.documents()[0]
+                .diagnostics()
+                .iter()
+                .any(|diagnostic| diagnostic.code() == Some("analysis::unknown_method"))
+        );
     }
 }
