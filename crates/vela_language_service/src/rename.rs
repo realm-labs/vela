@@ -1,7 +1,9 @@
+use std::collections::BTreeMap;
+
 use vela_common::{SourceId, Span};
 use vela_hir::binding::{BindingMap, BindingResolution, LocalBinding};
-use vela_hir::ids::HirLocalId;
-use vela_hir::module_graph::ModuleGraph;
+use vela_hir::ids::{HirDeclId, HirLocalId};
+use vela_hir::module_graph::{Declaration, DeclarationKind, ImportResolution, ModuleGraph};
 use vela_syntax::token::Keyword;
 
 use crate::{
@@ -93,17 +95,17 @@ impl LanguageServiceDatabases {
         position: Position,
     ) -> Option<PrepareRename> {
         let source = self.source_db().records().get(document_id)?;
-        let target = local_rename_target(
+        let target = rename_target(
             self.hir_db().graph(),
             source.source_id(),
             source.text(),
             position,
         )?;
-        let token_range = diagnostic_range(source.text(), target.token.range);
+        let token_range = diagnostic_range(source.text(), target.token_range());
         Some(PrepareRename {
             document_id: document_id.clone(),
             range: token_range,
-            placeholder: target.placeholder,
+            placeholder: target.placeholder().to_owned(),
         })
     }
 
@@ -118,22 +120,37 @@ impl LanguageServiceDatabases {
             return None;
         }
         let source = self.source_db().records().get(document_id)?;
-        let target = local_rename_target(
+        let target = rename_target(
             self.hir_db().graph(),
             source.source_id(),
             source.text(),
             position,
         )?;
+        match target {
+            RenameTarget::Local(target) => {
+                self.rename_local(document_id, source.text(), target, new_name)
+            }
+            RenameTarget::Declaration(target) => self.rename_declaration(target, new_name),
+        }
+    }
+
+    fn rename_local(
+        &self,
+        document_id: &DocumentId,
+        text: &str,
+        target: LocalRenameTarget<'_>,
+        new_name: &str,
+    ) -> Option<WorkspaceEdit> {
         if local_name_conflicts(target.bindings, target.local, new_name) {
             return None;
         }
 
         let mut edits = Vec::new();
         if let Some(binding) = target.bindings.local(target.local)
-            && let Some(range) = local_binding_name_range(source.text(), binding)
+            && let Some(range) = local_binding_name_range(text, binding)
         {
             edits.push(TextEdit {
-                range: diagnostic_range(source.text(), range),
+                range: diagnostic_range(text, range),
                 new_text: new_name.to_owned(),
             });
         }
@@ -145,10 +162,7 @@ impl LanguageServiceDatabases {
                     BindingResolution::Local(local) if *local == target.local => {
                         let expression = target.bindings.expression(expression)?;
                         Some(TextEdit {
-                            range: diagnostic_range(
-                                source.text(),
-                                span_text_range(expression.span)?,
-                            ),
+                            range: diagnostic_range(text, span_text_range(expression.span)?),
                             new_text: new_name.to_owned(),
                         })
                     }
@@ -171,6 +185,165 @@ impl LanguageServiceDatabases {
             }],
         })
     }
+
+    fn rename_declaration(
+        &self,
+        target: DeclarationRenameTarget<'_>,
+        new_name: &str,
+    ) -> Option<WorkspaceEdit> {
+        let graph = self.hir_db().graph();
+        if declaration_name_conflicts(graph, target.declaration, new_name) {
+            return None;
+        }
+
+        let mut edits_by_document = BTreeMap::<DocumentId, Vec<TextEdit>>::new();
+        self.push_declaration_edit(target.declaration, new_name, &mut edits_by_document)?;
+        self.push_import_edits(target.declaration, new_name, &mut edits_by_document);
+        self.push_declaration_use_edits(target.declaration, new_name, &mut edits_by_document);
+
+        let document_edits = edits_by_document
+            .into_iter()
+            .map(|(document_id, mut edits)| {
+                edits.sort_by_key(|edit| {
+                    let start = edit.range.start();
+                    (start.line, start.character)
+                });
+                DocumentTextEdit { document_id, edits }
+            })
+            .collect::<Vec<_>>();
+
+        Some(WorkspaceEdit { document_edits })
+    }
+
+    fn push_declaration_edit(
+        &self,
+        declaration: &Declaration,
+        new_name: &str,
+        edits_by_document: &mut BTreeMap<DocumentId, Vec<TextEdit>>,
+    ) -> Option<()> {
+        let source = self.source_record_for_rename(declaration.span.source)?;
+        let span_range = span_text_range(declaration.span)?;
+        let range = name_range_in_text(source.text(), span_range, &declaration.name)?;
+        edits_by_document
+            .entry(source.document_id().clone())
+            .or_default()
+            .push(TextEdit {
+                range: diagnostic_range(source.text(), range),
+                new_text: new_name.to_owned(),
+            });
+        Some(())
+    }
+
+    fn push_import_edits(
+        &self,
+        declaration: &Declaration,
+        new_name: &str,
+        edits_by_document: &mut BTreeMap<DocumentId, Vec<TextEdit>>,
+    ) {
+        let graph = self.hir_db().graph();
+        for module in graph.module_ids() {
+            let Some(imports) = graph.imports(module) else {
+                continue;
+            };
+            for import in imports {
+                let Some(ImportResolution::Declaration(resolved)) = import.resolution else {
+                    continue;
+                };
+                if resolved != declaration.id {
+                    continue;
+                }
+                let Some(source) = self.source_record_for_rename(import.span.source) else {
+                    continue;
+                };
+                let Some(span_range) = span_text_range(import.span) else {
+                    continue;
+                };
+                let Some(name) = import.path.last() else {
+                    continue;
+                };
+                let Some(range) = name_range_in_text(source.text(), span_range, name) else {
+                    continue;
+                };
+                edits_by_document
+                    .entry(source.document_id().clone())
+                    .or_default()
+                    .push(TextEdit {
+                        range: diagnostic_range(source.text(), range),
+                        new_text: new_name.to_owned(),
+                    });
+            }
+        }
+    }
+
+    fn push_declaration_use_edits(
+        &self,
+        declaration: &Declaration,
+        new_name: &str,
+        edits_by_document: &mut BTreeMap<DocumentId, Vec<TextEdit>>,
+    ) {
+        let graph = self.hir_db().graph();
+        for owner in graph.declarations() {
+            let Some(bindings) = graph.bindings(owner.id) else {
+                continue;
+            };
+            for (expression, resolution) in bindings.resolutions() {
+                let BindingResolution::Declaration(resolved) = resolution else {
+                    continue;
+                };
+                if *resolved != declaration.id {
+                    continue;
+                }
+                let Some(expression) = bindings.expression(expression) else {
+                    continue;
+                };
+                let Some(source) = self.source_record_for_rename(expression.span.source) else {
+                    continue;
+                };
+                let Some(range) = span_text_range(expression.span) else {
+                    continue;
+                };
+                if token_text(source.text(), range) != Some(declaration.name.as_str()) {
+                    continue;
+                }
+                edits_by_document
+                    .entry(source.document_id().clone())
+                    .or_default()
+                    .push(TextEdit {
+                        range: diagnostic_range(source.text(), range),
+                        new_text: new_name.to_owned(),
+                    });
+            }
+        }
+    }
+
+    fn source_record_for_rename(&self, source_id: SourceId) -> Option<&crate::SourceRecord> {
+        self.source_db()
+            .records()
+            .values()
+            .find(|record| record.source_id() == source_id)
+    }
+}
+
+#[derive(Debug, Clone, Eq, PartialEq)]
+enum RenameTarget<'a> {
+    Local(LocalRenameTarget<'a>),
+    Declaration(DeclarationRenameTarget<'a>),
+}
+
+impl RenameTarget<'_> {
+    const fn token_range(&self) -> TextRange {
+        match self {
+            Self::Local(target) => target.token.range,
+            Self::Declaration(target) => target.token.range,
+        }
+    }
+
+    fn placeholder(&self) -> &str {
+        match self {
+            Self::Local(target) => &target.placeholder,
+            Self::Declaration(target) => &target.declaration.name,
+        }
+    }
 }
 
 #[derive(Debug, Clone, Eq, PartialEq)]
@@ -181,12 +354,18 @@ struct LocalRenameTarget<'a> {
     placeholder: String,
 }
 
-fn local_rename_target<'a>(
+#[derive(Debug, Clone, Eq, PartialEq)]
+struct DeclarationRenameTarget<'a> {
+    declaration: &'a Declaration,
+    token: RenameToken,
+}
+
+fn rename_target<'a>(
     graph: &'a ModuleGraph,
     source_id: SourceId,
     text: &str,
     position: Position,
-) -> Option<LocalRenameTarget<'a>> {
+) -> Option<RenameTarget<'a>> {
     let token = rename_token_at(text, position)?;
     let offset = u32::try_from(token.range.start).ok()?;
 
@@ -194,26 +373,73 @@ fn local_rename_target<'a>(
         if declaration.span.source != source_id || !declaration.span.contains(offset) {
             continue;
         }
+        if token_text(text, token.range) == Some(declaration.name.as_str())
+            && declaration.kind == DeclarationKind::Function
+        {
+            return Some(RenameTarget::Declaration(DeclarationRenameTarget {
+                declaration,
+                token,
+            }));
+        }
         let Some(bindings) = graph.bindings(declaration.id) else {
             continue;
         };
         if let Some(binding) = local_declaration_at_token(text, bindings, &token) {
-            return Some(LocalRenameTarget {
+            return Some(RenameTarget::Local(LocalRenameTarget {
                 bindings,
                 local: binding.id,
                 token,
                 placeholder: binding.name.clone(),
-            });
+            }));
         }
         if let Some(local) = local_use_at_token(bindings, &token)
             && let Some(binding) = bindings.local(local)
         {
-            return Some(LocalRenameTarget {
+            return Some(RenameTarget::Local(LocalRenameTarget {
                 bindings,
                 local,
                 token,
                 placeholder: binding.name.clone(),
-            });
+            }));
+        }
+        if let Some(declaration_id) = declaration_use_at_token(bindings, &token)
+            && let Some(target) = graph.declaration(declaration_id)
+            && target.kind == DeclarationKind::Function
+        {
+            return Some(RenameTarget::Declaration(DeclarationRenameTarget {
+                declaration: target,
+                token,
+            }));
+        }
+    }
+
+    for module in graph.module_ids() {
+        let Some(imports) = graph.imports(module) else {
+            continue;
+        };
+        for import in imports {
+            if import.span.source != source_id || !import.span.contains(offset) {
+                continue;
+            }
+            let Some(ImportResolution::Declaration(declaration_id)) = import.resolution else {
+                continue;
+            };
+            let Some(name) = import.path.last() else {
+                continue;
+            };
+            if token_text(text, token.range) != Some(name.as_str()) {
+                continue;
+            }
+            let Some(target) = graph.declaration(declaration_id) else {
+                continue;
+            };
+            if target.kind != DeclarationKind::Function {
+                continue;
+            }
+            return Some(RenameTarget::Declaration(DeclarationRenameTarget {
+                declaration: target,
+                token,
+            }));
         }
     }
 
@@ -225,6 +451,16 @@ fn local_use_at_token(bindings: &BindingMap, token: &RenameToken) -> Option<HirL
     match resolution {
         BindingResolution::Local(local) => Some(*local),
         BindingResolution::Declaration(_)
+        | BindingResolution::Import(_)
+        | BindingResolution::QualifiedPath(_) => None,
+    }
+}
+
+fn declaration_use_at_token(bindings: &BindingMap, token: &RenameToken) -> Option<HirDeclId> {
+    let resolution = narrowest_resolution_at_token(bindings, token)?;
+    match resolution {
+        BindingResolution::Declaration(declaration) => Some(*declaration),
+        BindingResolution::Local(_)
         | BindingResolution::Import(_)
         | BindingResolution::QualifiedPath(_) => None,
     }
@@ -268,6 +504,17 @@ fn local_name_conflicts(bindings: &BindingMap, local: HirLocalId, new_name: &str
     bindings
         .locals()
         .any(|binding| binding.id != local && binding.name == new_name)
+}
+
+fn declaration_name_conflicts(
+    graph: &ModuleGraph,
+    declaration: &Declaration,
+    new_name: &str,
+) -> bool {
+    graph
+        .module(declaration.module)
+        .and_then(|declarations| declarations.get(new_name))
+        .is_some_and(|existing| existing != declaration.id)
 }
 
 fn is_valid_rename_identifier(name: &str) -> bool {
@@ -327,6 +574,10 @@ fn is_identifier_boundary(text: &str, start: usize, end: usize) -> bool {
     let after = text[end..].chars().next();
     before.is_none_or(|ch| !is_identifier_continue(ch))
         && after.is_none_or(|ch| !is_identifier_continue(ch))
+}
+
+fn token_text(text: &str, range: TextRange) -> Option<&str> {
+    text.get(range.start..range.end)
 }
 
 fn is_identifier_continue(ch: char) -> bool {
@@ -426,6 +677,67 @@ pub fn main(amount: i64) -> i64 {
         );
     }
 
+    #[test]
+    fn private_function_rename_updates_imports() {
+        let main = DocumentId::from("/workspace/scripts/game/main.vela");
+        let helper = DocumentId::from("/workspace/scripts/game/reward.vela");
+        let main_text = "\
+use game::reward::grant
+pub fn main(amount: i64) -> i64 {
+    return grant(amount)
+}";
+        let helper_text = "pub fn grant(amount: i64) -> i64 { return amount }";
+        let databases = databases_for(vec![
+            SourceFileSnapshot::new(main.clone(), main_text),
+            SourceFileSnapshot::new(helper.clone(), helper_text),
+        ]);
+
+        let prepare = databases
+            .prepare_rename(
+                &main,
+                Position::new(2, line(main_text, 2).find("grant").expect("grant call")),
+            )
+            .expect("script function should be renameable from call site");
+
+        assert_eq!(prepare.placeholder(), "grant");
+        assert_eq!(prepare.range().start(), Position::new(2, 11));
+
+        let edit = databases
+            .rename(
+                &main,
+                Position::new(2, line(main_text, 2).find("grant").expect("grant call")),
+                "award",
+            )
+            .expect("script function rename should produce workspace edits");
+
+        let main_edit = document_edit(&edit, &main);
+        assert_eq!(main_edit.edits().len(), 2);
+        assert_edit_at(main_edit.edits(), 0, 18, "award");
+        assert_edit_at(main_edit.edits(), 2, 11, "award");
+
+        let helper_edit = document_edit(&edit, &helper);
+        assert_eq!(helper_edit.edits().len(), 1);
+        assert_edit_at(helper_edit.edits(), 0, 7, "award");
+    }
+
+    #[test]
+    fn rename_rejects_module_declaration_collision() {
+        let document = DocumentId::from("/workspace/scripts/game/main.vela");
+        let text = "\
+pub fn grant(amount: i64) -> i64 { return amount }
+pub fn award(amount: i64) -> i64 { return amount + 1 }";
+        let databases = databases_for(vec![SourceFileSnapshot::new(document.clone(), text)]);
+
+        assert_eq!(
+            databases.rename(
+                &document,
+                Position::new(0, line(text, 0).find("grant").expect("grant declaration")),
+                "award",
+            ),
+            None
+        );
+    }
+
     fn assert_edit_at(edits: &[TextEdit], line: usize, character: usize, new_text: &str) {
         assert!(
             edits.iter().any(|edit| {
@@ -434,6 +746,16 @@ pub fn main(amount: i64) -> i64 {
             }),
             "{edits:?}"
         );
+    }
+
+    fn document_edit<'a>(
+        edit: &'a WorkspaceEdit,
+        document_id: &DocumentId,
+    ) -> &'a DocumentTextEdit {
+        edit.document_edits()
+            .iter()
+            .find(|document_edit| document_edit.document_id() == document_id)
+            .unwrap_or_else(|| panic!("workspace edit should contain {document_id:?}"))
     }
 
     fn line(text: &str, line: usize) -> &str {

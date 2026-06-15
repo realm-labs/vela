@@ -124,6 +124,90 @@ pub fn main(amount: i64) -> i64 {
     assert_text_edit(edits, 3, 11, "score");
 }
 
+#[test]
+fn lsp_private_function_rename_updates_imports() {
+    let mut server = LspServer::new();
+    let _ = response_value(server.handle_json(&request(
+        1,
+        "initialize",
+        serde_json::json!({
+            "processId": null,
+            "rootUri": "file:///workspace/scripts",
+            "capabilities": {}
+        }),
+    )));
+    let main_text = "\
+use game::reward::grant
+pub fn main(amount: i64) -> i64 {
+    return grant(amount)
+}";
+    let helper_text = "pub fn grant(amount: i64) -> i64 { return amount }";
+    let main_uri = "file:///workspace/scripts/game/main.vela";
+    let helper_uri = "file:///workspace/scripts/game/reward.vela";
+    let _ = notification_value(server.handle_json(&notification(
+        "textDocument/didOpen",
+        serde_json::json!({
+            "textDocument": {
+                "uri": helper_uri,
+                "languageId": "vela",
+                "version": 1,
+                "text": helper_text
+            }
+        }),
+    )));
+    let _ = notification_value(server.handle_json(&notification(
+        "textDocument/didOpen",
+        serde_json::json!({
+            "textDocument": {
+                "uri": main_uri,
+                "languageId": "vela",
+                "version": 1,
+                "text": main_text
+            }
+        }),
+    )));
+
+    let prepare = response_value(server.handle_json(&request(
+        2,
+        "textDocument/prepareRename",
+        serde_json::json!({
+            "textDocument": { "uri": main_uri },
+            "position": {
+                "line": 2,
+                "character": line(main_text, 2).find("grant").expect("grant call")
+            }
+        }),
+    )));
+    assert_eq!(prepare["result"]["placeholder"], "grant");
+    assert_eq!(prepare["result"]["range"]["start"]["line"], 2);
+    assert_eq!(prepare["result"]["range"]["start"]["character"], 11);
+
+    let rename = response_value(server.handle_json(&request(
+        3,
+        "textDocument/rename",
+        serde_json::json!({
+            "textDocument": { "uri": main_uri },
+            "position": {
+                "line": 2,
+                "character": line(main_text, 2).find("grant").expect("grant call")
+            },
+            "newName": "award"
+        }),
+    )));
+    let main_edits = rename["result"]["changes"][main_uri]
+        .as_array()
+        .expect("rename should return main edits");
+    let helper_edits = rename["result"]["changes"][helper_uri]
+        .as_array()
+        .expect("rename should return helper edits");
+
+    assert_eq!(main_edits.len(), 2);
+    assert_text_edit(main_edits, 0, 18, "award");
+    assert_text_edit(main_edits, 2, 11, "award");
+    assert_eq!(helper_edits.len(), 1);
+    assert_text_edit(helper_edits, 0, 7, "award");
+}
+
 fn assert_text_edit(edits: &[serde_json::Value], line: usize, character: usize, new_text: &str) {
     assert!(
         edits.iter().any(|edit| {

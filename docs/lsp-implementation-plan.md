@@ -575,7 +575,9 @@ Purpose: provide safe refactoring without changing runtime contracts.
 - [~] Implement local rename inside one function body.
   - [x] Return workspace edits for local declaration and resolved uses.
 - [ ] Implement private module declaration rename.
-- [ ] Implement public module declaration rename with import rewrites.
+- [~] Implement public module declaration rename with import rewrites.
+  - [x] Rename script function declarations, resolved import path segments,
+    and resolved unaliased call sites.
 - [ ] Implement field/method/variant rename only when ownership is known and
   source spans are script-owned.
 - [ ] Reject host schema rename unless the source is explicitly script-owned.
@@ -592,7 +594,8 @@ Tests:
 - [x] `lsp_prepare_rename_rejects_keywords_and_literals`
 - [x] `local_rename_updates_all_function_uses`
 - [x] `lsp_local_rename_updates_all_function_uses`
-- [ ] `private_function_rename_updates_imports`
+- [x] `private_function_rename_updates_imports`
+- [x] `lsp_private_function_rename_updates_imports`
 - [ ] `public_export_rename_reports_hot_reload_risk`
 - [x] `rename_rejects_scope_collision`
 - [ ] `host_schema_rename_is_not_editable`
