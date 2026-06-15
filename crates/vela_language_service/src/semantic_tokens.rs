@@ -2,7 +2,8 @@ use std::collections::BTreeMap;
 
 use vela_common::{SourceId, Span};
 use vela_hir::binding::{BindingMap, BindingResolution, LocalBinding, LocalBindingKind};
-use vela_hir::module_graph::{Declaration, DeclarationKind};
+use vela_hir::module_graph::{Declaration, DeclarationKind, ModuleGraph};
+use vela_hir::type_hint::EnumVariantFieldsHint;
 use vela_syntax::lexer::lex;
 use vela_syntax::token::{Keyword, Symbol, Token, TokenKind};
 
@@ -286,6 +287,11 @@ impl LanguageServiceDatabases {
             if declaration.span.source != source_id || !declaration.span.contains(span.start) {
                 continue;
             }
+            if let Some(classification) =
+                member_declaration_classification(graph, declaration, text, name, range)
+            {
+                return Some(classification);
+            }
             if let Some(bindings) = graph.bindings(declaration.id) {
                 if let Some(classification) =
                     local_declaration_classification(bindings, name, range)
@@ -392,6 +398,115 @@ fn declaration_token_type(kind: DeclarationKind) -> SemanticTokenType {
         }
         DeclarationKind::Impl => SemanticTokenType::Type,
     }
+}
+
+fn member_declaration_classification(
+    graph: &ModuleGraph,
+    declaration: &Declaration,
+    text: &str,
+    name: &str,
+    range: TextRange,
+) -> Option<SemanticTokenClassification> {
+    match declaration.kind {
+        DeclarationKind::Struct => graph
+            .struct_shape(declaration.id)?
+            .fields
+            .iter()
+            .find(|field| member_name_matches(text, field.span, &field.name, name, range))
+            .map(|_| member_declaration_token_classification(SemanticTokenType::Field)),
+        DeclarationKind::Enum => graph.enum_shape(declaration.id).and_then(|shape| {
+            shape.variants.iter().find_map(|variant| {
+                if member_name_matches(text, variant.span, &variant.name, name, range) {
+                    return Some(member_declaration_token_classification(
+                        SemanticTokenType::EnumMember,
+                    ));
+                }
+
+                match &variant.fields {
+                    EnumVariantFieldsHint::Unit => None,
+                    EnumVariantFieldsHint::Tuple(fields) => fields
+                        .iter()
+                        .find(|field| {
+                            member_name_matches(text, field.span, &field.name, name, range)
+                        })
+                        .map(|_| member_declaration_token_classification(SemanticTokenType::Field)),
+                    EnumVariantFieldsHint::Record(fields) => fields
+                        .iter()
+                        .find(|field| {
+                            member_name_matches(text, field.span, &field.name, name, range)
+                        })
+                        .map(|_| member_declaration_token_classification(SemanticTokenType::Field)),
+                }
+            })
+        }),
+        DeclarationKind::Trait => graph.trait_shape(declaration.id).and_then(|shape| {
+            shape
+                .methods
+                .iter()
+                .find(|method| {
+                    method.name == name
+                        && span_contains_range(method.span, range)
+                        && token_text(text, range) == Some(name)
+                        && preceded_by_fn_keyword(text, range)
+                })
+                .map(|_| member_declaration_token_classification(SemanticTokenType::Method))
+        }),
+        DeclarationKind::Impl => graph.impl_metadata(declaration.id).and_then(|metadata| {
+            metadata
+                .methods
+                .iter()
+                .find(|method| {
+                    method.name == name
+                        && span_contains_range(declaration.span, range)
+                        && token_text(text, range) == Some(name)
+                        && range_ends_before_span_start(range, method.span)
+                        && preceded_by_fn_keyword(text, range)
+                })
+                .map(|_| member_declaration_token_classification(SemanticTokenType::Method))
+        }),
+        DeclarationKind::Const | DeclarationKind::Global | DeclarationKind::Function => None,
+    }
+}
+
+fn member_declaration_token_classification(
+    token_type: SemanticTokenType,
+) -> SemanticTokenClassification {
+    SemanticTokenClassification::new(
+        token_type,
+        SemanticTokenModifiers::DECLARATION.union(SemanticTokenModifiers::DEFINITION),
+    )
+}
+
+fn member_name_matches(
+    text: &str,
+    span: Span,
+    expected: &str,
+    name: &str,
+    range: TextRange,
+) -> bool {
+    expected == name && span_contains_range(span, range) && token_text(text, range) == Some(name)
+}
+
+fn range_ends_before_span_start(range: TextRange, span: Span) -> bool {
+    usize::try_from(span.start).is_ok_and(|start| range.end <= start)
+}
+
+fn preceded_by_fn_keyword(text: &str, range: TextRange) -> bool {
+    let Some(prefix) = text.get(..range.start) else {
+        return false;
+    };
+    let trimmed = prefix.trim_end();
+    let Some(before_fn) = trimmed.strip_suffix("fn") else {
+        return false;
+    };
+    before_fn
+        .chars()
+        .last()
+        .is_none_or(|ch| !is_identifier_continue(ch))
+}
+
+fn is_identifier_continue(ch: char) -> bool {
+    ch == '_' || ch.is_ascii_alphanumeric()
 }
 
 fn span_contains_range(span: Span, range: TextRange) -> bool {
@@ -763,6 +878,91 @@ pub fn main() {
             }),
             "string contents must not produce comment tokens: {:?}",
             tokens.tokens()
+        );
+    }
+
+    #[test]
+    fn semantic_tokens_classify_script_members() {
+        let document = DocumentId::from("/workspace/scripts/game/main.vela");
+        let text = "\
+pub struct Reward {
+    amount: i64
+}
+
+pub enum Progress {
+    Started
+    Active { quest_id: String }
+    Finished(result: String)
+}
+
+pub trait Scored {
+    fn score(value: Reward) -> i64
+}
+
+impl Reward {
+    fn bonus(value: Reward) -> i64 { return 1 }
+}";
+        let databases = databases_for(vec![SourceFileSnapshot::new(document.clone(), text)]);
+
+        let tokens = databases.semantic_tokens(&document);
+        let member_modifiers =
+            SemanticTokenModifiers::DECLARATION.union(SemanticTokenModifiers::DEFINITION);
+
+        assert_token_at(
+            &tokens,
+            1,
+            line(text, 1).find("amount").expect("field should exist"),
+            "amount".len(),
+            SemanticTokenType::Field,
+            member_modifiers,
+        );
+        assert_token_at(
+            &tokens,
+            5,
+            line(text, 5).find("Started").expect("variant should exist"),
+            "Started".len(),
+            SemanticTokenType::EnumMember,
+            member_modifiers,
+        );
+        assert_token_at(
+            &tokens,
+            6,
+            line(text, 6)
+                .find("quest_id")
+                .expect("record variant field should exist"),
+            "quest_id".len(),
+            SemanticTokenType::Field,
+            member_modifiers,
+        );
+        assert_token_at(
+            &tokens,
+            7,
+            line(text, 7)
+                .find("result")
+                .expect("tuple variant field should exist"),
+            "result".len(),
+            SemanticTokenType::Field,
+            member_modifiers,
+        );
+        assert_token_at(
+            &tokens,
+            11,
+            line(text, 11)
+                .find("score")
+                .expect("trait method should exist"),
+            "score".len(),
+            SemanticTokenType::Method,
+            member_modifiers,
+        );
+        assert_token_at(
+            &tokens,
+            15,
+            line(text, 15)
+                .find("bonus")
+                .expect("impl method should exist"),
+            "bonus".len(),
+            SemanticTokenType::Method,
+            member_modifiers,
         );
     }
 

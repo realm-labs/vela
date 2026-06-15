@@ -257,6 +257,134 @@ pub fn main() {
     );
 }
 
+#[test]
+fn lsp_semantic_tokens_classify_script_members() {
+    let mut server = LspServer::new();
+    let initialize = response_value(server.handle_json(&request(
+        1,
+        "initialize",
+        serde_json::json!({
+            "processId": null,
+            "rootUri": "file:///workspace/scripts",
+            "capabilities": {}
+        }),
+    )));
+    let token_types =
+        initialize["result"]["capabilities"]["semanticTokensProvider"]["legend"]["tokenTypes"]
+            .as_array()
+            .expect("semantic token legend should list token types");
+    let token_modifiers = initialize["result"]["capabilities"]["semanticTokensProvider"]["legend"]
+        ["tokenModifiers"]
+        .as_array()
+        .expect("semantic token legend should list token modifiers");
+    let field = token_type_index(token_types, "field");
+    let enum_member = token_type_index(token_types, "enumMember");
+    let method = token_type_index(token_types, "method");
+    let member_modifiers = token_modifier_bit(token_modifiers, "declaration")
+        | token_modifier_bit(token_modifiers, "definition");
+
+    let text = "\
+pub struct Reward {
+    amount: i64
+}
+
+pub enum Progress {
+    Started
+    Active { quest_id: String }
+    Finished(result: String)
+}
+
+pub trait Scored {
+    fn score(value: Reward) -> i64
+}
+
+impl Reward {
+    fn bonus(value: Reward) -> i64 { return 1 }
+}";
+    let uri = "file:///workspace/scripts/game/main.vela";
+    let _ = notification_value(server.handle_json(&notification(
+        "textDocument/didOpen",
+        serde_json::json!({
+            "textDocument": {
+                "uri": uri,
+                "languageId": "vela",
+                "version": 1,
+                "text": text
+            }
+        }),
+    )));
+
+    let response = response_value(server.handle_json(&request(
+        2,
+        "textDocument/semanticTokens/full",
+        serde_json::json!({
+            "textDocument": { "uri": uri }
+        }),
+    )));
+    let tokens = decode_tokens(
+        response["result"]["data"]
+            .as_array()
+            .expect("semantic token response should include data"),
+    );
+
+    assert_token_at(
+        &tokens,
+        1,
+        line(text, 1).find("amount").expect("field should exist"),
+        "amount".len(),
+        field,
+        member_modifiers,
+    );
+    assert_token_at(
+        &tokens,
+        5,
+        line(text, 5).find("Started").expect("variant should exist"),
+        "Started".len(),
+        enum_member,
+        member_modifiers,
+    );
+    assert_token_at(
+        &tokens,
+        6,
+        line(text, 6)
+            .find("quest_id")
+            .expect("record variant field should exist"),
+        "quest_id".len(),
+        field,
+        member_modifiers,
+    );
+    assert_token_at(
+        &tokens,
+        7,
+        line(text, 7)
+            .find("result")
+            .expect("tuple variant field should exist"),
+        "result".len(),
+        field,
+        member_modifiers,
+    );
+    assert_token_at(
+        &tokens,
+        11,
+        line(text, 11)
+            .find("score")
+            .expect("trait method should exist"),
+        "score".len(),
+        method,
+        member_modifiers,
+    );
+    assert_token_at(
+        &tokens,
+        15,
+        line(text, 15)
+            .find("bonus")
+            .expect("impl method should exist"),
+        "bonus".len(),
+        method,
+        member_modifiers,
+    );
+}
+
 fn token_type_index(token_types: &[serde_json::Value], name: &str) -> u64 {
     token_types
         .iter()
