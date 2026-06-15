@@ -111,6 +111,7 @@ impl ServiceDiagnostic {
 pub enum DiagnosticStatus {
     Complete,
     Partial,
+    Stale,
 }
 
 #[derive(Debug, Clone, Eq, PartialEq)]
@@ -170,11 +171,29 @@ impl OpenDiagnosticsBatch {
 impl LanguageServiceDatabases {
     #[must_use]
     pub fn diagnostics_for_document(&self, document_id: &DocumentId) -> DocumentDiagnostics {
+        self.diagnostics_for_document_at_generation(document_id, self.generation())
+    }
+
+    #[must_use]
+    pub fn diagnostics_for_document_at_generation(
+        &self,
+        document_id: &DocumentId,
+        generation: WorkspaceGeneration,
+    ) -> DocumentDiagnostics {
+        if generation != self.generation() {
+            return DocumentDiagnostics {
+                document_id: document_id.clone(),
+                generation,
+                status: DiagnosticStatus::Stale,
+                diagnostics: Vec::new(),
+            };
+        }
+
         let status = self.diagnostic_status(document_id);
         let diagnostics = self.document_diagnostics(document_id);
         DocumentDiagnostics {
             document_id: document_id.clone(),
-            generation: self.generation(),
+            generation,
             status,
             diagnostics,
         }
@@ -453,5 +472,31 @@ mod tests {
             "{:?}",
             diagnostics.diagnostics()
         );
+    }
+
+    #[test]
+    fn partial_diagnostics_report_stale_generation() {
+        let document = DocumentId::from("/workspace/scripts/game/main.vela");
+        let mut db = LanguageServiceDatabases::new();
+        db.update(&project(&[file(
+            document.as_str(),
+            "pub fn main(scores: Array<i64>) { return scores.frist() }",
+        )]));
+        let stale_generation = db.generation();
+
+        db.update(&project(&[file(
+            document.as_str(),
+            "pub fn main(scores: Array<i64>) { return scores.first() }",
+        )]));
+
+        let stale = db.diagnostics_for_document_at_generation(&document, stale_generation);
+        let current = db.diagnostics_for_document_at_generation(&document, db.generation());
+
+        assert_eq!(stale.document_id(), &document);
+        assert_eq!(stale.generation(), stale_generation);
+        assert_eq!(stale.status(), DiagnosticStatus::Stale);
+        assert!(stale.diagnostics().is_empty());
+        assert_eq!(current.status(), DiagnosticStatus::Partial);
+        assert_eq!(current.generation(), db.generation());
     }
 }

@@ -261,7 +261,7 @@ Purpose: publish actionable parser, HIR, analysis, and schema diagnostics.
 - [x] Query diagnostics for one file.
 - [x] Query diagnostics for all open files.
 - [ ] Add workspace diagnostics for background indexing.
-- [~] Mark diagnostics as complete, partial, or stale.
+- [x] Mark diagnostics as complete, partial, or stale.
 - [ ] Keep syntax errors from blocking diagnostics in unaffected modules.
 
 Tests:
@@ -271,7 +271,7 @@ Tests:
 - [x] `analysis_diagnostics_map_to_document_ranges`
 - [ ] `schema_diagnostics_degrade_to_any`
 - [x] `open_file_diagnostics_are_prioritized`
-- [ ] `partial_diagnostics_report_stale_generation`
+- [x] `partial_diagnostics_report_stale_generation`
 
 Validation:
 
