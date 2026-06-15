@@ -95,6 +95,10 @@ mod tests {
             diagnostic.code.as_deref() == Some("analysis::unknown_method")
                 && diagnostic.span.is_some()
                 && diagnostic
+                    .candidates
+                    .iter()
+                    .any(|candidate| candidate.replacement == "first")
+                && diagnostic
                     .labels
                     .iter()
                     .any(|label| label.message == "did you mean `first`?")

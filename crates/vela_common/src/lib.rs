@@ -178,6 +178,8 @@ pub struct Diagnostic {
     pub message: String,
     pub span: Option<Span>,
     pub labels: Vec<Label>,
+    pub candidates: Vec<DiagnosticCandidate>,
+    pub repairs: Vec<DiagnosticRepair>,
 }
 
 impl Diagnostic {
@@ -189,6 +191,8 @@ impl Diagnostic {
             message: message.into(),
             span: None,
             labels: Vec::new(),
+            candidates: Vec::new(),
+            repairs: Vec::new(),
         }
     }
 
@@ -200,6 +204,8 @@ impl Diagnostic {
             message: message.into(),
             span: None,
             labels: Vec::new(),
+            candidates: Vec::new(),
+            repairs: Vec::new(),
         }
     }
 
@@ -223,12 +229,47 @@ impl Diagnostic {
         });
         self
     }
+
+    #[must_use]
+    pub fn with_candidate(mut self, replacement: impl Into<String>) -> Self {
+        self.candidates.push(DiagnosticCandidate {
+            replacement: replacement.into(),
+        });
+        self
+    }
+
+    #[must_use]
+    pub fn with_repair(
+        mut self,
+        title: impl Into<String>,
+        span: Span,
+        replacement: impl Into<String>,
+    ) -> Self {
+        self.repairs.push(DiagnosticRepair {
+            title: title.into(),
+            span,
+            replacement: replacement.into(),
+        });
+        self
+    }
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct Label {
     pub span: Span,
     pub message: String,
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct DiagnosticCandidate {
+    pub replacement: String,
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct DiagnosticRepair {
+    pub title: String,
+    pub span: Span,
+    pub replacement: String,
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -282,19 +323,25 @@ mod tests {
     }
 
     #[test]
-    fn diagnostic_builder_keeps_primary_span_and_labels() {
+    fn diagnostic_builder_keeps_structured_metadata() {
         let primary = Span::new(SourceId::new(1), 2, 8);
         let label = Span::new(SourceId::new(1), 4, 6);
 
         let diagnostic = Diagnostic::error("unknown field")
             .with_code("E0001")
             .with_span(primary)
-            .with_label(label, "field lookup failed");
+            .with_label(label, "field lookup failed")
+            .with_candidate("level")
+            .with_repair("replace with `level`", label, "level");
 
         assert_eq!(diagnostic.severity, Severity::Error);
         assert_eq!(diagnostic.code.as_deref(), Some("E0001"));
         assert_eq!(diagnostic.span, Some(primary));
         assert_eq!(diagnostic.labels.len(), 1);
         assert_eq!(diagnostic.labels[0].span, label);
+        assert_eq!(diagnostic.candidates[0].replacement, "level");
+        assert_eq!(diagnostic.repairs[0].title, "replace with `level`");
+        assert_eq!(diagnostic.repairs[0].span, label);
+        assert_eq!(diagnostic.repairs[0].replacement, "level");
     }
 }

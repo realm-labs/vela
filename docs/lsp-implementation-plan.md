@@ -254,9 +254,9 @@ Scale checkpoint:
 
 Purpose: publish actionable parser, HIR, analysis, and schema diagnostics.
 
-- [~] Convert parser, HIR, and analysis `vela_common::Diagnostic` values into
+- [x] Convert parser, HIR, and analysis `vela_common::Diagnostic` values into
   editor-neutral service diagnostics.
-- [~] Preserve severity, code, primary span, labels, candidates, and repair
+- [x] Preserve severity, code, primary span, labels, candidates, and repair
   hints.
 - [x] Query diagnostics for one file.
 - [x] Query diagnostics for all open files.
@@ -272,6 +272,7 @@ Tests:
 - [x] `syntax_errors_do_not_block_unaffected_module_diagnostics`
 - [x] `workspace_diagnostics_include_background_documents`
 - [x] `schema_diagnostics_degrade_to_any`
+- [x] `structured_diagnostics_preserve_candidates_and_repair_hints`
 - [x] `open_file_diagnostics_are_prioritized`
 - [x] `partial_diagnostics_report_stale_generation`
 

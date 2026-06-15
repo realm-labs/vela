@@ -652,6 +652,9 @@ fn unknown_member_diagnostic(
         .with_code(code)
         .with_span(expr.span)
         .with_label(expr.span, "unknown member access");
+    for candidate in &candidates {
+        diagnostic = diagnostic.with_candidate(candidate);
+    }
     if let Some(candidate) = candidates.first() {
         diagnostic = diagnostic.with_label(expr.span, format!("did you mean `{candidate}`?"));
     }

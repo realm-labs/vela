@@ -71,12 +71,56 @@ impl DiagnosticLabel {
 }
 
 #[derive(Debug, Clone, Eq, PartialEq)]
+pub struct DiagnosticCandidate {
+    replacement: String,
+}
+
+impl DiagnosticCandidate {
+    #[must_use]
+    pub fn replacement(&self) -> &str {
+        &self.replacement
+    }
+}
+
+#[derive(Debug, Clone, Eq, PartialEq)]
+pub struct DiagnosticRepairHint {
+    document_id: DocumentId,
+    range: DiagnosticRange,
+    title: String,
+    replacement: String,
+}
+
+impl DiagnosticRepairHint {
+    #[must_use]
+    pub fn document_id(&self) -> &DocumentId {
+        &self.document_id
+    }
+
+    #[must_use]
+    pub const fn range(&self) -> DiagnosticRange {
+        self.range
+    }
+
+    #[must_use]
+    pub fn title(&self) -> &str {
+        &self.title
+    }
+
+    #[must_use]
+    pub fn replacement(&self) -> &str {
+        &self.replacement
+    }
+}
+
+#[derive(Debug, Clone, Eq, PartialEq)]
 pub struct ServiceDiagnostic {
     severity: ServiceDiagnosticSeverity,
     code: Option<String>,
     message: String,
     range: Option<DiagnosticRange>,
     labels: Vec<DiagnosticLabel>,
+    candidates: Vec<DiagnosticCandidate>,
+    repair_hints: Vec<DiagnosticRepairHint>,
 }
 
 impl ServiceDiagnostic {
@@ -103,6 +147,16 @@ impl ServiceDiagnostic {
     #[must_use]
     pub fn labels(&self) -> &[DiagnosticLabel] {
         &self.labels
+    }
+
+    #[must_use]
+    pub fn candidates(&self) -> &[DiagnosticCandidate] {
+        &self.candidates
+    }
+
+    #[must_use]
+    pub fn repair_hints(&self) -> &[DiagnosticRepairHint] {
+        &self.repair_hints
     }
 }
 
@@ -348,6 +402,26 @@ impl LanguageServiceDatabases {
                     })
                 })
                 .collect(),
+            candidates: diagnostic
+                .candidates
+                .iter()
+                .map(|candidate| DiagnosticCandidate {
+                    replacement: candidate.replacement.clone(),
+                })
+                .collect(),
+            repair_hints: diagnostic
+                .repairs
+                .iter()
+                .filter_map(|repair| {
+                    let (document_id, range) = self.document_range_for_span(repair.span)?;
+                    Some(DiagnosticRepairHint {
+                        document_id,
+                        range,
+                        title: repair.title.clone(),
+                        replacement: repair.replacement.clone(),
+                    })
+                })
+                .collect(),
         }
     }
 
@@ -379,6 +453,8 @@ fn schema_diagnostic(diagnostic: &crate::SchemaDiagnostic) -> ServiceDiagnostic 
         message: diagnostic.message().to_owned(),
         range: None,
         labels: Vec::new(),
+        candidates: Vec::new(),
+        repair_hints: Vec::new(),
     }
 }
 
@@ -614,6 +690,39 @@ mod tests {
                 .all(|diagnostic| diagnostic.code() != Some("analysis::unknown_field")),
             "{:?}",
             diagnostics.diagnostics()
+        );
+    }
+
+    #[test]
+    fn structured_diagnostics_preserve_candidates_and_repair_hints() {
+        let document = DocumentId::from("/workspace/scripts/game/main.vela");
+        let mut db = LanguageServiceDatabases::new();
+        db.update(&project(&[file(
+            document.as_str(),
+            "pub fn main() { return levle }",
+        )]));
+        let source = db.parse_db().source_id(&document).expect("source exists");
+        let diagnostic = Diagnostic::error("unknown name `levle`")
+            .with_code("hir::unresolved_name")
+            .with_span(Span::new(source, 23, 28))
+            .with_candidate("level")
+            .with_repair("replace with `level`", Span::new(source, 23, 28), "level");
+
+        let converted = db.convert_diagnostic(&diagnostic);
+
+        assert_eq!(converted.candidates().len(), 1);
+        assert_eq!(converted.candidates()[0].replacement(), "level");
+        assert_eq!(converted.repair_hints().len(), 1);
+        assert_eq!(converted.repair_hints()[0].document_id(), &document);
+        assert_eq!(converted.repair_hints()[0].title(), "replace with `level`");
+        assert_eq!(converted.repair_hints()[0].replacement(), "level");
+        assert_eq!(
+            converted.repair_hints()[0].range().start(),
+            Position::new(0, 23)
+        );
+        assert_eq!(
+            converted.repair_hints()[0].range().end(),
+            Position::new(0, 28)
         );
     }
 
