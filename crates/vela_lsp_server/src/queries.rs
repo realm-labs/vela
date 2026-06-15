@@ -17,13 +17,16 @@ use crate::{
     protocol::CallHierarchyPrepareParams,
     protocol::DocumentSymbolParams,
     protocol::FoldingRangeParams,
+    protocol::PrepareRenameParams,
     protocol::ReferencesParams,
+    protocol::RenameParams,
     protocol::SelectionRangeParams,
     protocol::SemanticTokensParams,
     protocol::TextDocumentPositionParams,
     protocol::WorkspaceSymbolParams,
     protocol::service_position,
     references::{lsp_document_highlights, lsp_references},
+    rename::{lsp_prepare_rename, lsp_workspace_edit},
     selection::lsp_selection_ranges,
     semantic_tokens::lsp_semantic_tokens,
     signature::lsp_signature_help,
@@ -167,6 +170,66 @@ impl LspServer {
         );
 
         JsonRpcResult::Response(success_response(id, lsp_references(&references)))
+    }
+
+    pub(crate) fn prepare_rename(
+        &mut self,
+        id: Option<RequestId>,
+        params: JsonValue,
+    ) -> JsonRpcResult {
+        let Some(id) = id else {
+            return JsonRpcResult::None;
+        };
+        let params = match serde_json::from_value::<PrepareRenameParams>(params) {
+            Ok(params) => params,
+            Err(error) => {
+                return JsonRpcResult::Response(error_response(
+                    Some(id),
+                    ErrorCode::InvalidRequest,
+                    format!("invalid prepareRename params: {error}"),
+                ));
+            }
+        };
+
+        let document_id = DocumentId::from(params.text_document.uri);
+        self.refresh_databases_for_query(&document_id);
+        let prepare = self
+            .databases
+            .prepare_rename(&document_id, service_position(params.position));
+
+        JsonRpcResult::Response(success_response(
+            id,
+            prepare.as_ref().map_or(JsonValue::Null, lsp_prepare_rename),
+        ))
+    }
+
+    pub(crate) fn rename(&mut self, id: Option<RequestId>, params: JsonValue) -> JsonRpcResult {
+        let Some(id) = id else {
+            return JsonRpcResult::None;
+        };
+        let params = match serde_json::from_value::<RenameParams>(params) {
+            Ok(params) => params,
+            Err(error) => {
+                return JsonRpcResult::Response(error_response(
+                    Some(id),
+                    ErrorCode::InvalidRequest,
+                    format!("invalid rename params: {error}"),
+                ));
+            }
+        };
+
+        let document_id = DocumentId::from(params.text_document.uri);
+        self.refresh_databases_for_query(&document_id);
+        let edit = self.databases.rename(
+            &document_id,
+            service_position(params.position),
+            &params.new_name,
+        );
+
+        JsonRpcResult::Response(success_response(
+            id,
+            edit.as_ref().map_or(JsonValue::Null, lsp_workspace_edit),
+        ))
     }
 
     pub(crate) fn prepare_call_hierarchy(

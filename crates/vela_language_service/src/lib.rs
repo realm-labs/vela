@@ -9,6 +9,7 @@ mod hover;
 mod incremental;
 mod project;
 mod references;
+mod rename;
 mod schema;
 mod selection;
 mod semantic_tokens;
@@ -40,6 +41,7 @@ pub use project::{
     missing_import_diagnostics,
 };
 pub use references::{DocumentHighlight, DocumentHighlightKind, Reference, ReferenceKind};
+pub use rename::{DocumentTextEdit, PrepareRename, TextEdit, WorkspaceEdit};
 pub use schema::{
     SCHEMA_ARTIFACT_FORMAT_VERSION, SchemaArtifact, SchemaArtifactError, SchemaArtifactFacts,
 };

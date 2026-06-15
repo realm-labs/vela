@@ -53,6 +53,16 @@ pub(crate) struct ReferenceContext {
     pub(crate) include_declaration: bool,
 }
 
+pub(crate) type PrepareRenameParams = TextDocumentPositionParams;
+
+#[derive(Debug, Clone, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub(crate) struct RenameParams {
+    pub(crate) text_document: TextDocumentIdentifier,
+    pub(crate) position: LspPosition,
+    pub(crate) new_name: String,
+}
+
 pub(crate) type CallHierarchyPrepareParams = TextDocumentPositionParams;
 
 #[derive(Debug, Clone, Deserialize)]

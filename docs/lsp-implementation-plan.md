@@ -569,25 +569,32 @@ cargo test -p vela_lsp_server references
 
 Purpose: provide safe refactoring without changing runtime contracts.
 
-- [ ] Implement `prepareRename` for local bindings.
-- [ ] Implement local rename inside one function body.
+- [~] Implement `prepareRename` for local bindings.
+  - [x] Prepare local binding rename ranges and placeholders.
+  - [x] Reject keywords, literals, and non-local targets.
+- [~] Implement local rename inside one function body.
+  - [x] Return workspace edits for local declaration and resolved uses.
 - [ ] Implement private module declaration rename.
 - [ ] Implement public module declaration rename with import rewrites.
 - [ ] Implement field/method/variant rename only when ownership is known and
   source spans are script-owned.
 - [ ] Reject host schema rename unless the source is explicitly script-owned.
-- [ ] Reject renames that would collide in scope, module exports, trait impls,
+- [~] Reject renames that would collide in scope, module exports, trait impls,
   or import aliases.
+  - [x] Reject local binding renames that collide with an existing function
+    binding.
 - [ ] Report hot-reload ABI/schema risk for exported API rename.
 - [ ] Return workspace edits with stable text ranges and document versions.
 
 Tests:
 
-- [ ] `prepare_rename_rejects_keywords_and_literals`
-- [ ] `local_rename_updates_all_function_uses`
+- [x] `prepare_rename_rejects_keywords_and_literals`
+- [x] `lsp_prepare_rename_rejects_keywords_and_literals`
+- [x] `local_rename_updates_all_function_uses`
+- [x] `lsp_local_rename_updates_all_function_uses`
 - [ ] `private_function_rename_updates_imports`
 - [ ] `public_export_rename_reports_hot_reload_risk`
-- [ ] `rename_rejects_scope_collision`
+- [x] `rename_rejects_scope_collision`
 - [ ] `host_schema_rename_is_not_editable`
 
 Validation:

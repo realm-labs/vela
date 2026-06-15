@@ -8,6 +8,7 @@ mod hover;
 mod protocol;
 mod queries;
 mod references;
+mod rename;
 mod selection;
 mod semantic_tokens;
 mod signature;
@@ -121,6 +122,8 @@ impl LspServer {
             "textDocument/hover" => self.hover(message.id, message.params),
             "textDocument/definition" => self.definition(message.id, message.params),
             "textDocument/references" => self.references(message.id, message.params),
+            "textDocument/prepareRename" => self.prepare_rename(message.id, message.params),
+            "textDocument/rename" => self.rename(message.id, message.params),
             "textDocument/prepareCallHierarchy" => {
                 self.prepare_call_hierarchy(message.id, message.params)
             }
@@ -804,6 +807,9 @@ fn initialize_result() -> JsonValue {
             "hoverProvider": true,
             "definitionProvider": true,
             "referencesProvider": true,
+            "renameProvider": {
+                "prepareProvider": true
+            },
             "callHierarchyProvider": true,
             "documentHighlightProvider": true,
             "documentSymbolProvider": true,
