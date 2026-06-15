@@ -1,8 +1,11 @@
 # Native LSP Architecture
 
-Vela's language server is a post-MVP editor tooling capability. It should be
-native-first for scale and platform integration, while keeping the reusable
-language-service core independent from LSP transport, editor APIs, and
+Vela's language server has a bounded pre-MVP slice and a broader post-MVP
+editor tooling roadmap. The pre-MVP slice should deliver native diagnostics,
+completion, hover, go to definition, source overlays, static host schema facts,
+and basic incremental invalidation without becoming a full IDE feature set.
+It should be native-first for scale and platform integration, while keeping the
+reusable language-service core independent from LSP transport, editor APIs, and
 filesystem access.
 
 The target scale is a workspace with around one million lines of `.vela`
@@ -273,7 +276,7 @@ native server to avoid platform capabilities.
 The native LSP architecture must not:
 
 ```text
-make full LSP support part of the MVP
+make the full IDE/LSP feature set part of the MVP
 couple editor diagnostics to VM execution
 run the host application for schema discovery
 read host object state for editor hints

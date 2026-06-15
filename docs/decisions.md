@@ -15,7 +15,8 @@ decision history lives in
 - Reflection can query metadata and perform controlled reads, writes, and
   calls, but cannot mutate runtime type structure or implement monkey patching.
 - The MVP does not include JIT, script async/coroutines, moving GC, or a full
-  LSP.
+  IDE/LSP feature set. A bounded native language-server slice is allowed
+  before the MVP.
 - Pre-release code should replace obsolete internal APIs instead of preserving
   compatibility shims. Product-level hot reload ABI and schema compatibility
   checks remain required.
@@ -110,11 +111,12 @@ requires it.
 
 ### Native-First LSP Boundary
 
-Vela's LSP is a post-MVP native tooling capability, not part of the MVP. The
-primary desktop integration uses native `vela_lsp_server` binaries so editor
-tooling can use platform filesystem watchers, threads, cancellation, and large
-workspace indexing. WASM may wrap the reusable language-service core for
-browser tooling, but it must not constrain the native server architecture.
+Vela's bounded native language-server slice is allowed before the MVP. The
+full IDE/LSP feature set remains outside the MVP. The primary desktop
+integration uses native `vela_lsp_server` binaries so editor tooling can use
+platform filesystem watchers, threads, cancellation, and large workspace
+indexing. WASM may wrap the reusable language-service core for browser
+tooling, but it must not constrain the native server architecture.
 
 `vela_language_service` owns reusable editor analysis: virtual workspace
 state, open-document overlays, module graph snapshots, diagnostics,

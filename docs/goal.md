@@ -46,9 +46,12 @@ The first phase does not include:
 - A full IDE or LSP implementation.
 - Performance that exceeds LuaJIT at the outset.
 
-These are first-phase non-goals. The post-MVP roadmap includes a debugger
-runtime/DAP milestone and a Cranelift JIT milestone after the interpreter,
-baseline, and inline-cache work are stable.
+These are first-phase non-goals. A bounded native language-server slice is
+allowed before the MVP when it is built from existing parser, HIR, analysis,
+and reflection contracts and does not become a full IDE feature set. The
+post-MVP roadmap includes a debugger runtime/DAP milestone and a Cranelift JIT
+milestone after the interpreter, baseline, inline-cache work, and bounded
+editor tooling slice are stable.
 
 ## Design Principles
 
@@ -111,11 +114,14 @@ constraints in this roadmap: no general script-language generics beyond
 restricted builtin type hints, no Rust &mut exposed to scripts, all host
 mutation through HostRef, HostPath, PathProxy, and HostAccess,
 reflection without runtime type-structure mutation or monkey patching, and no
-MVP JIT, script async/coroutines, moving GC, or full LSP. For each turn, choose
-the smallest verifiable task that advances the current milestone, validate it
-with the relevant subset of docs/validation.md, update docs/progress.md only
-when current focus, milestone status, or current gaps change, and commit
-appropriate verified checkpoints with Conventional Commit messages.
+MVP JIT, script async/coroutines, moving GC, or full IDE/LSP feature set.
+Bounded native language-server work is allowed before the MVP when it stays
+behind the clean `vela_language_service` and `vela_lsp_server` boundaries and
+does not change language/runtime semantics. For each turn, choose the smallest
+verifiable task that advances the current milestone, validate it with the
+relevant subset of docs/validation.md, update docs/progress.md only when
+current focus, milestone status, or current gaps change, and commit appropriate
+verified checkpoints with Conventional Commit messages.
 Keep durable docs compact: update `docs/progress.md` only for focus, status,
 validation, or remaining-gap changes; update `docs/performance.md` only for
 baseline checkpoints, target thresholds, benchmark harness changes, milestone
@@ -134,8 +140,9 @@ should not depend on JIT, but the optimized interpreter should eventually be
 measured against Lua 5.x on equivalent host-boundary workloads. LuaJIT and
 Node.js remain useful upper-reference points for hot scalar loops and future
 JIT decisions, not the baseline required for the MVP. Cranelift JIT is a
-post-MVP backend milestone after the optimized interpreter and inline-cache
-work, and debugger support is planned as runtime debug hooks plus Debug Adapter
+post-MVP backend milestone after the optimized interpreter, inline-cache work,
+and debugger contracts. A bounded native language-server slice may land before
+the MVP; debugger support is planned as runtime debug hooks plus Debug Adapter
 Protocol integration rather than script-language syntax.
 
 ## Milestones
@@ -143,8 +150,9 @@ Protocol integration rather than script-language syntax.
 These milestones start after the completed M0-M6 prototype. Current
 implementation status lives in [progress.md](progress.md), and detailed
 historical progress is archived under [archive](archive/). The plan below
-tracks the first complete non-JIT, non-async interpreter plus post-MVP
-debugger, JIT, and release-hardening work.
+tracks the first complete non-JIT, non-async interpreter, a bounded native
+language-server slice before the MVP, plus post-MVP debugger, JIT, and
+release-hardening work.
 
 ### Milestone Checkpoint Rules
 
@@ -764,6 +772,64 @@ cargo bench reports interpreter-only versus cache-enabled benchmark groups
 docs/performance.md records only durable cache-enabled baseline summaries and
 target status; docs/progress.md names remaining cache families or marks M20
 complete enough
+```
+
+### M20.5: Native Language Service And LSP MVP Slice
+
+Goal: provide useful editor tooling before the MVP without turning LSP into a
+full IDE project or coupling editor behavior to VM execution.
+
+Scope:
+
+```text
+vela_language_service crate with source overlays, document versions, line indexes, and workspace generations
+native vela_lsp_server crate for LSP transport, document sync, cancellation, progress, and diagnostics publishing
+compile_dir-style project model with single-file fallback
+vela.toml workspace roots and optional host schema path
+static host schema artifact loaded from TypeRegistry/RegistryFacts metadata
+diagnostics for parser, HIR, and analysis errors across open files
+completion for locals, modules, declarations, stdlib APIs, host fields, methods, variants, and type facts
+hover for type facts, docs, effects, origins, and schema metadata
+go to definition for local, module, and schema-backed declarations where source spans exist
+open-document overlays that override disk snapshots
+basic reverse-dependency invalidation for changed imports and declarations
+generation-based cancellation so stale analysis results are not published
+scale fixtures for large multi-module workspaces approaching one million lines
+```
+
+Acceptance:
+
+```text
+the native server initializes, syncs documents, and publishes diagnostics through LSP JSON-RPC fixtures
+open-buffer edits update diagnostics and completion without requiring a full server restart
+multi-file module imports resolve through workspace roots rather than single-file assumptions
+host completions and hovers work from a static schema artifact without running host code
+missing or stale schema degrades host facts to Any with diagnostics instead of failing editor requests
+go to definition works for script declarations and schema items with known source spans
+editing one function body does not force a full project reparse in the incremental model
+unsupported advanced requests fail cleanly or remain unadvertised
+```
+
+Non-goals:
+
+```text
+rename
+formatting
+code actions beyond structured diagnostics plumbing
+full workspace references before the reference index is explicit
+semantic tokens beyond a separately scoped slice
+inlay hints beyond stable TypeFacts
+executing scripts or host code for editor results
+running the host application for schema discovery
+```
+
+Checkpoint:
+
+```text
+cargo test covers language-service overlays, module source assembly, diagnostics, completion, hover, definitions, schema loading, invalidation, and cancellation
+LSP JSON-RPC fixtures cover initialize, document sync, diagnostics, completion, hover, definition, and shutdown
+scale tests prove the service avoids per-keystroke full project rebuilds on large synthetic workspaces
+docs/progress.md marks M20.5 complete enough before M21 debugger/DAP becomes active
 ```
 
 ### M21: Debugger Runtime And DAP Integration

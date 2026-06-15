@@ -1,20 +1,20 @@
 # Native LSP Implementation Plan
 
-> **Track:** post-MVP editor tooling architecture
+> **Track:** pre-MVP bounded native editor tooling slice
 > **Document status:** Codex execution plan
 > **Compatibility policy:** breaking pre-release tooling APIs are allowed. Do
 > not preserve temporary single-file, WASM-first, or protocol-coupled internal
 > shapes for compatibility. Preserve product contracts: no Rust `&mut`
 > exposure, no runtime TypeRegistry mutation, no monkey patching, HostAccess
 > safety, reflection permissioning, source-spanned diagnostics, hot-reload
-> ABI/schema checks, and no full LSP in the MVP.
+> ABI/schema checks, and no full IDE/LSP feature set in the MVP.
 
 ---
 
 ## 0. Codex Goal
 
 ```text
-/goal Implement Vela's native-first LSP architecture from
+/goal Implement Vela's bounded pre-MVP native LSP architecture from
 docs/lsp-implementation-plan.md and docs/architecture/lsp.md. Treat
 docs/goal.md as the product roadmap, docs/architecture.md and
 docs/architecture/*.md as the architecture contract, and docs/progress.md as
@@ -28,12 +28,14 @@ Prefer `compile_dir` module-graph semantics with open-document overlays and a
 host schema artifact loaded from exported TypeRegistry/RegistryFacts metadata.
 Scale toward one-million-line Vela workspaces by avoiding per-keystroke full
 project rebuilds, prioritizing open-file queries, using generation-based
-cancellation, and adding explicit invalidation indexes. WASM is optional for
-browser tooling and must not constrain the native server architecture. Do not
-keep compatibility shims for obsolete pre-LSP shapes. Validate each checkpoint
-with focused language-service tests, LSP JSON-RPC fixtures, scale-oriented
-tests, docs, and the relevant workspace checks. Commit small Conventional
-Commit checkpoints.
+cancellation, and adding explicit invalidation indexes. Keep rename,
+formatting, broad workspace references, advanced code actions, and full IDE
+polish out of the MVP slice unless they receive separate scoped plans. WASM is
+optional for browser tooling and must not constrain the native server
+architecture. Do not keep compatibility shims for obsolete pre-LSP shapes.
+Validate each checkpoint with focused language-service tests, LSP JSON-RPC
+fixtures, scale-oriented tests, docs, and the relevant workspace checks. Commit
+small Conventional Commit checkpoints.
 ```
 
 ---
@@ -49,7 +51,9 @@ compiler pipeline.
 The target design is native-first and scale-aware. VS Code, Zed, JetBrains,
 and CLI tooling can use platform-specific binaries. Browser tooling may reuse
 the language-service core through WASM later, but it should not shape the
-primary LSP implementation.
+primary LSP implementation. The useful pre-MVP slice is intentionally bounded:
+diagnostics, completion, hover, go to definition, schema facts, overlays, and
+basic invalidation come first; full IDE behavior remains later work.
 
 ---
 
@@ -71,6 +75,7 @@ primary LSP implementation.
   API.
 - Keep runtime execution, DAP, and live host state separate from editor
   analysis.
+- Finish the bounded slice before activating M21 debugger/DAP work.
 
 ---
 
@@ -78,7 +83,8 @@ primary LSP implementation.
 
 This plan must not:
 
-- Make full LSP support part of the MVP.
+- Make the full IDE/LSP feature set part of the MVP.
+- Expand the MVP slice into full IDE behavior.
 - Run Vela programs to answer editor requests.
 - Run the Rust host application to discover schema metadata.
 - Read or mutate live host state for hovers, completions, or diagnostics.
@@ -450,7 +456,8 @@ cargo test -p vela_lsp_server
 ## 13. Phase 9: Advanced Editor Features
 
 Implement only after the base service, schema, and invalidation model are
-stable.
+stable. These features are outside the bounded MVP slice unless a later
+milestone explicitly pulls one forward with a focused plan.
 
 Candidate features:
 
@@ -474,7 +481,7 @@ invent language semantics.
 
 ```text
 Task: Implement the `vela_language_service` workspace skeleton.
-Context: This belongs to the post-MVP native LSP plan. The relevant crates are
+Context: This belongs to the pre-MVP bounded native LSP plan. The relevant crates are
 `vela_common`, `vela_syntax`, `vela_hir`, and the new
 `vela_language_service`.
 Expected behavior:

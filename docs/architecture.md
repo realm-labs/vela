@@ -87,7 +87,7 @@ vela/
     vela_macros/          # #[derive(ScriptHost)] and related macros
     vela_std/             # Native standard library implementation
     vela_hot_reload/      # ProgramVersion, ABI diff, code swap
-    vela_lsp_server/      # Future native LSP server, not part of MVP
+    vela_lsp_server/      # Native LSP server for the bounded pre-MVP tooling slice
     vela_cli/             # final CLI binary for direct script execution
   examples/               # standalone runnable embedding examples
   docs/

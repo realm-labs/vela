@@ -66,8 +66,11 @@ StaleHostRef:
 
 ## IDE And LSP Readiness
 
-A full LSP is not part of the MVP, but the core architecture must not make it
-hard to add later. The required foundation is:
+A full IDE/LSP feature set is not part of the MVP, but a bounded native
+language-server slice is allowed before the MVP. The slice should expose
+diagnostics, completion, hover, go to definition, source overlays, static host
+schema facts, and basic incremental invalidation without executing scripts or
+running host applications. The required foundation is:
 
 ```text
 lossless CST or equivalent token tree with comments, newlines, and spans
