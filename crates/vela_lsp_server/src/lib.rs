@@ -1,22 +1,27 @@
 //! Native LSP protocol boundary for Vela editor tooling.
 
-use std::collections::BTreeSet;
+use std::collections::{BTreeMap, BTreeSet};
+use std::path::PathBuf;
 
 use serde::{Deserialize, Serialize};
 use serde_json::{Value as JsonValue, json};
 use vela_language_service::{
     DocumentDiagnostics, DocumentId, LanguageServiceDatabases, ServiceDiagnostic,
-    ServiceDiagnosticSeverity, SourceVersion, Workspace, WorkspaceConfig, WorkspaceRoot,
-    assemble_project_sources,
+    ServiceDiagnosticSeverity, SourceFileSnapshot, SourceVersion, Workspace, WorkspaceConfig,
+    WorkspaceRoot, assemble_project_sources,
 };
 
 const JSONRPC_VERSION: &str = "2.0";
+const FILE_CHANGE_DELETED: u8 = 3;
+const CONFIG_FILE: &str = "vela.toml";
+const SOURCE_EXTENSION: &str = ".vela";
 
 #[derive(Debug, Default)]
 pub struct LspServer {
     workspace: Workspace,
     databases: LanguageServiceDatabases,
     config: Option<WorkspaceConfig>,
+    disk_sources: BTreeMap<DocumentId, SourceFileSnapshot>,
     open_documents: BTreeSet<DocumentId>,
     initialized: bool,
     shutdown_requested: bool,
@@ -77,6 +82,9 @@ impl LspServer {
             "exit" => self.exit(message.id),
             "textDocument/didOpen" => self.did_open(message.id, message.params),
             "textDocument/didChange" => self.did_change(message.id, message.params),
+            "workspace/didChangeWatchedFiles" => {
+                self.did_change_watched_files(message.id, message.params)
+            }
             method => self.method_not_found(message.id, method),
         }
     }
@@ -196,6 +204,65 @@ impl LspServer {
         self.publish_current_diagnostics(&uri, &document_id)
     }
 
+    fn did_change_watched_files(
+        &mut self,
+        id: Option<RequestId>,
+        params: JsonValue,
+    ) -> JsonRpcResult {
+        if let Some(id) = id {
+            return JsonRpcResult::Response(error_response(
+                Some(id),
+                ErrorCode::InvalidRequest,
+                "`workspace/didChangeWatchedFiles` must be sent as a notification",
+            ));
+        }
+
+        let params = match serde_json::from_value::<DidChangeWatchedFilesParams>(params) {
+            Ok(params) => params,
+            Err(error) => {
+                return JsonRpcResult::Notification(publish_diagnostics_notification(
+                    "",
+                    Vec::new(),
+                    Some(format!("invalid didChangeWatchedFiles params: {error}")),
+                ));
+            }
+        };
+
+        for change in params.changes {
+            if change.kind == FILE_CHANGE_DELETED {
+                self.remove_watched_file(&change.uri);
+            } else {
+                self.upsert_watched_file(&change.uri);
+            }
+        }
+
+        JsonRpcResult::None
+    }
+
+    fn upsert_watched_file(&mut self, uri: &str) {
+        let Some(text) = read_document_uri(uri) else {
+            return;
+        };
+        if is_config_uri(uri) {
+            let result = WorkspaceConfig::from_vela_toml(uri, &text);
+            self.config = Some(result.config);
+        } else if is_source_uri(uri) {
+            let document_id = DocumentId::from(uri.to_owned());
+            self.disk_sources.insert(
+                document_id.clone(),
+                SourceFileSnapshot::new(document_id, text),
+            );
+        }
+    }
+
+    fn remove_watched_file(&mut self, uri: &str) {
+        if is_config_uri(uri) {
+            self.config = None;
+        } else if is_source_uri(uri) {
+            self.disk_sources.remove(&DocumentId::from(uri.to_owned()));
+        }
+    }
+
     fn publish_current_diagnostics(
         &mut self,
         uri: &str,
@@ -205,7 +272,8 @@ impl LspServer {
             .config
             .clone()
             .unwrap_or_else(|| WorkspaceConfig::scratch(document_id.clone()));
-        let project = assemble_project_sources(&config, &[], &self.workspace.snapshot());
+        let files = self.disk_sources.values().cloned().collect::<Vec<_>>();
+        let project = assemble_project_sources(&config, &files, &self.workspace.snapshot());
         self.databases
             .update_with_open_documents(&project, &self.open_documents);
         let diagnostics = self.databases.diagnostics_for_document(document_id);
@@ -315,6 +383,19 @@ struct TextDocumentContentChangeEvent {
     text: String,
 }
 
+#[derive(Debug, Clone, Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct DidChangeWatchedFilesParams {
+    changes: Vec<FileEvent>,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+struct FileEvent {
+    uri: String,
+    #[serde(rename = "type")]
+    kind: u8,
+}
+
 #[derive(Debug, Clone, Deserialize, Serialize, PartialEq, Eq)]
 #[serde(untagged)]
 enum RequestId {
@@ -364,6 +445,32 @@ fn workspace_config_from_initialize(params: &InitializeParams) -> Option<Workspa
         .chain(params.root_uri.iter().cloned().map(WorkspaceRoot::from))
         .collect::<Vec<_>>();
     (!roots.is_empty()).then(|| WorkspaceConfig::workspace(roots))
+}
+
+fn is_config_uri(uri: &str) -> bool {
+    uri.trim_end_matches('/').ends_with(CONFIG_FILE)
+}
+
+fn is_source_uri(uri: &str) -> bool {
+    uri.ends_with(SOURCE_EXTENSION)
+}
+
+fn read_document_uri(uri: &str) -> Option<String> {
+    std::fs::read_to_string(document_uri_path(uri)).ok()
+}
+
+fn document_uri_path(uri: &str) -> PathBuf {
+    let path = uri.strip_prefix("file://").unwrap_or(uri);
+    if cfg!(windows) {
+        let path = path.replace('/', "\\");
+        let path = path
+            .strip_prefix("\\")
+            .filter(|path| path.as_bytes().get(1) == Some(&b':'))
+            .unwrap_or(&path);
+        PathBuf::from(path)
+    } else {
+        PathBuf::from(path)
+    }
 }
 
 fn source_version(version: i32) -> SourceVersion {
@@ -727,6 +834,111 @@ mod tests {
                         && diagnostic["code"] != "hir::unresolved_import"),
                 "{main_diagnostics:?}"
             );
+        }
+    }
+
+    mod file_watching {
+        use std::fs;
+        use std::path::{Path, PathBuf};
+        use std::time::{SystemTime, UNIX_EPOCH};
+
+        use super::{
+            JsonRpcResult, LspServer, notification, notification_value, request, response_value,
+        };
+
+        fn temp_workspace() -> PathBuf {
+            let suffix = match SystemTime::now().duration_since(UNIX_EPOCH) {
+                Ok(duration) => duration.as_nanos(),
+                Err(error) => panic!("system time should be after UNIX_EPOCH: {error}"),
+            };
+            let root = std::env::temp_dir().join(format!(
+                "vela_lsp_server_{}_{}",
+                std::process::id(),
+                suffix
+            ));
+            if let Err(error) = fs::create_dir_all(root.join("scripts").join("game")) {
+                panic!("temporary workspace should be creatable: {error}");
+            }
+            root
+        }
+
+        fn file_uri(path: &Path) -> String {
+            let path = path.display().to_string().replace('\\', "/");
+            if path.starts_with('/') {
+                format!("file://{path}")
+            } else {
+                format!("file:///{path}")
+            }
+        }
+
+        #[test]
+        fn file_create_adds_module() {
+            let root = temp_workspace();
+            let config_path = root.join("vela.toml");
+            let helper_path = root.join("scripts").join("game").join("helper.vela");
+            if let Err(error) = fs::write(
+                &config_path,
+                r#"
+                    [workspace]
+                    roots = ["scripts"]
+                "#,
+            ) {
+                panic!("vela.toml should be writable: {error}");
+            }
+            if let Err(error) = fs::write(&helper_path, "pub fn grant() { return 1 }") {
+                panic!("helper source should be writable: {error}");
+            }
+
+            let mut server = LspServer::new();
+            let response = response_value(server.handle_json(&request(
+                1,
+                "initialize",
+                serde_json::json!({
+                    "processId": null,
+                    "rootUri": file_uri(&root),
+                    "capabilities": {}
+                }),
+            )));
+            assert_eq!(response["result"]["serverInfo"]["name"], "vela_lsp_server");
+
+            let watched = server.handle_json(&notification(
+                "workspace/didChangeWatchedFiles",
+                serde_json::json!({
+                    "changes": [
+                        { "uri": file_uri(&config_path), "type": 1 },
+                        { "uri": file_uri(&helper_path), "type": 1 }
+                    ]
+                }),
+            ));
+            assert_eq!(watched, JsonRpcResult::None);
+
+            let main_uri = file_uri(&root.join("scripts").join("game").join("main.vela"));
+            let main = notification_value(server.handle_json(&notification(
+                "textDocument/didOpen",
+                serde_json::json!({
+                    "textDocument": {
+                        "uri": main_uri,
+                        "languageId": "vela",
+                        "version": 1,
+                        "text": "use game::helper::grant\npub fn main() { return grant() }"
+                    }
+                }),
+            )));
+
+            let Some(diagnostics) = main["params"]["diagnostics"].as_array() else {
+                panic!("didOpen should publish diagnostics");
+            };
+            assert!(
+                diagnostics
+                    .iter()
+                    .all(|diagnostic| diagnostic["code"] != "hir::unresolved_module"
+                        && diagnostic["code"] != "hir::unresolved_import"),
+                "{diagnostics:?}"
+            );
+
+            if let Err(error) = fs::remove_dir_all(&root) {
+                panic!("temporary workspace should be removable: {error}");
+            }
         }
     }
 }
