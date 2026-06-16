@@ -568,6 +568,12 @@ fn lsp_semantic_tokens_classify_host_and_builtin_member_uses() {
                         "fact": { "kind": "host", "name": "Player" }
                     }
                 ],
+                "traits": [
+                    {
+                        "name": "Rewardable",
+                        "fact": { "kind": "trait", "name": "Rewardable" }
+                    }
+                ],
                 "fields": [
                     {
                         "owner": "Player",
@@ -579,6 +585,17 @@ fn lsp_semantic_tokens_classify_host_and_builtin_member_uses() {
                     {
                         "owner": "Player",
                         "name": "grant",
+                        "fact": {
+                            "kind": "function",
+                            "params": [{ "kind": "primitive", "name": "i64" }],
+                            "returns": { "kind": "primitive", "name": "i64" }
+                        }
+                    }
+                ],
+                "traitMethods": [
+                    {
+                        "owner": "Rewardable",
+                        "name": "preview",
                         "fact": {
                             "kind": "function",
                             "params": [{ "kind": "primitive", "name": "i64" }],
@@ -621,10 +638,10 @@ fn lsp_semantic_tokens_classify_host_and_builtin_member_uses() {
     let builtin = token_modifier_bit(token_modifiers, "defaultLibrary");
 
     let text = "\
-pub fn main(player: Player, names: Array<String>) -> i64 {
+pub fn main(player: Player, names: Array<String>, rewardable: Rewardable) -> i64 {
     let level = player.level
     player.grant(level)
-    return names.len()
+    return rewardable.preview(names.len())
 }";
     let uri = file_uri(&root.join("scripts").join("game").join("main.vela"));
     let _ = notification_value(server.handle_json(&notification(
@@ -669,6 +686,16 @@ pub fn main(player: Player, names: Array<String>) -> i64 {
             .find("grant")
             .expect("host method use should exist"),
         "grant".len(),
+        method,
+        host,
+    );
+    assert_token_at(
+        &tokens,
+        3,
+        line(text, 3)
+            .find("preview")
+            .expect("schema trait method call should exist"),
+        "preview".len(),
         method,
         host,
     );

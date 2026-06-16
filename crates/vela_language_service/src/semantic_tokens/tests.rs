@@ -447,6 +447,39 @@ pub fn main(player: Player, names: Array<String>) -> i64 {
 }
 
 #[test]
+fn semantic_tokens_classify_schema_trait_method_uses_as_host() {
+    let document = DocumentId::from("/workspace/scripts/game/main.vela");
+    let text = "\
+pub fn main(rewardable: Rewardable) -> i64 {
+    return rewardable.preview(1)
+}";
+    let mut schema = RegistryFacts::default();
+    schema.insert_trait("Rewardable", TypeFact::trait_type("Rewardable"));
+    schema.insert_trait_method(
+        "Rewardable",
+        "preview",
+        TypeFact::function(vec![TypeFact::I64], TypeFact::I64),
+    );
+    let databases = databases_for_with_schema(
+        vec![SourceFileSnapshot::new(document.clone(), text)],
+        schema,
+    );
+
+    let tokens = databases.semantic_tokens(&document);
+
+    assert_token_at(
+        &tokens,
+        1,
+        line(text, 1)
+            .find("preview")
+            .expect("schema trait method call should exist"),
+        "preview".len(),
+        SemanticTokenType::Method,
+        SemanticTokenModifiers::HOST,
+    );
+}
+
+#[test]
 fn semantic_tokens_classify_schema_and_stdlib_function_calls() {
     let document = DocumentId::from("/workspace/scripts/game/main.vela");
     let text = "\

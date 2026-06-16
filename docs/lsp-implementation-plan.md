@@ -556,6 +556,7 @@ Purpose: provide syntax and semantic highlighting without changing semantics.
     host fields/methods, and stdlib member methods.
   - [x] Add source-owned trait receiver method call classification through
     the same method token class.
+  - [x] Add host-modified schema trait receiver method call classification.
 - [~] Implement full semantic tokens.
   - [x] Full tokens include lexical classes, comments, resolved script symbols,
     script member declarations, script/schema/stdlib member uses, and
@@ -581,6 +582,7 @@ Tests:
 - [x] `lsp_semantic_tokens_classify_script_trait_method_uses`
 - [x] `semantic_tokens_classify_schema_and_stdlib_member_uses`
 - [x] `lsp_semantic_tokens_classify_host_and_builtin_member_uses`
+- [x] `semantic_tokens_classify_schema_trait_method_uses_as_host`
 - [x] `semantic_tokens_classify_schema_and_stdlib_function_calls`
 - [x] `lsp_semantic_tokens_classify_host_and_builtin_function_calls`
 - [x] `semantic_tokens_classify_host_and_builtin_type_hints`

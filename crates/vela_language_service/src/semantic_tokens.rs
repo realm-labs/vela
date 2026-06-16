@@ -503,10 +503,10 @@ fn method_use_classification(
     receiver: &TypeFact,
     name: &str,
 ) -> Option<SemanticTokenClassification> {
-    if schema_method_exists(schema, receiver, name) {
+    if let Some(modifiers) = schema_method_modifiers(schema, receiver, name) {
         return Some(SemanticTokenClassification::new(
             SemanticTokenType::Method,
-            host_modifier(receiver),
+            modifiers,
         ));
     }
     if stdlib_method_fact(receiver, name, None).is_some() {
@@ -567,16 +567,27 @@ fn schema_fact_for_local_hint(
         schema
             .type_fact(&qualified)
             .or_else(|| hint.path.last().and_then(|name| schema.type_fact(name)))
+            .or_else(|| schema.trait_fact(&qualified))
+            .or_else(|| hint.path.last().and_then(|name| schema.trait_fact(name)))
             .cloned()
     } else {
         None
     }
 }
 
-fn schema_method_exists(schema: &RegistryFacts, receiver: &TypeFact, method: &str) -> bool {
-    owner_names(receiver).iter().any(|owner| {
-        schema.method_fact(owner, method).is_some()
-            || schema.trait_method_fact(owner, method).is_some()
+fn schema_method_modifiers(
+    schema: &RegistryFacts,
+    receiver: &TypeFact,
+    method: &str,
+) -> Option<SemanticTokenModifiers> {
+    owner_names(receiver).iter().find_map(|owner| {
+        if schema.method_fact(owner, method).is_some() {
+            Some(host_modifier(receiver))
+        } else {
+            schema
+                .trait_method_fact(owner, method)
+                .map(|_| SemanticTokenModifiers::HOST)
+        }
     })
 }
 
