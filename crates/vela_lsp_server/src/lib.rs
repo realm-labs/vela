@@ -134,6 +134,8 @@ impl LspServer {
             "textDocument/signatureHelp" => self.signature_help(message.id, message.params),
             "textDocument/hover" => self.hover(message.id, message.params),
             "textDocument/definition" => self.definition(message.id, message.params),
+            "textDocument/declaration" => self.declaration(message.id, message.params),
+            "textDocument/typeDefinition" => self.type_definition(message.id, message.params),
             "textDocument/references" => self.references(message.id, message.params),
             "textDocument/prepareRename" => self.prepare_rename(message.id, message.params),
             "textDocument/rename" => self.rename(message.id, message.params),

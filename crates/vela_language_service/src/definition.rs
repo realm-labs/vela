@@ -63,6 +63,20 @@ impl LanguageServiceDatabases {
         })
     }
 
+    #[must_use]
+    pub fn declaration(&self, document_id: &DocumentId, position: Position) -> Option<Definition> {
+        self.definition(document_id, position)
+    }
+
+    #[must_use]
+    pub fn type_definition(
+        &self,
+        document_id: &DocumentId,
+        position: Position,
+    ) -> Option<Definition> {
+        self.definition(document_id, position)
+    }
+
     fn definition_from_span(&self, span: Span) -> Option<Definition> {
         let source = self.source_record_for(span.source)?;
         let start = usize::try_from(span.start).ok()?;
@@ -215,6 +229,79 @@ mod tests {
             text.find("amount")
                 .expect("parameter declaration should exist")
         );
+    }
+
+    #[test]
+    fn declaration_follows_local_binding() {
+        let document = DocumentId::from("/workspace/scripts/game/main.vela");
+        let text = "pub fn main(amount: i64) -> i64 { return amount }";
+        let databases = databases_for(vec![SourceFileSnapshot::new(document.clone(), text)]);
+
+        let declaration = databases
+            .declaration(
+                &document,
+                Position::new(0, text.rfind("amount").expect("amount use")),
+            )
+            .expect("declaration should resolve parameter binding");
+
+        assert_eq!(declaration.document_id(), &document);
+        assert_eq!(declaration.range().start().line, 0);
+        assert_eq!(
+            declaration.range().start().character,
+            text.find("amount")
+                .expect("parameter declaration should exist")
+        );
+    }
+
+    #[test]
+    fn type_definition_follows_schema_source_span() {
+        let main = DocumentId::from("/workspace/scripts/game/main.vela");
+        let schema_source = DocumentId::from("/workspace/scripts/schema_defs.vela");
+        let main_text = "pub fn main(player: Player) { return 1 }";
+        let schema_text = "pub fn host_player_schema() { return 1 }";
+        let mut databases = databases_for(vec![
+            SourceFileSnapshot::new(main.clone(), main_text),
+            SourceFileSnapshot::new(schema_source.clone(), schema_text),
+        ]);
+        let schema_record = databases
+            .source_db()
+            .records()
+            .get(&schema_source)
+            .expect("schema source should be indexed");
+        let target_start = schema_text
+            .find("host_player_schema")
+            .expect("schema marker should exist");
+        let target_end = target_start + "host_player_schema".len();
+        let artifact = serde_json::json!({
+            "formatVersion": 1,
+            "facts": {
+                "types": [
+                    {
+                        "name": "Player",
+                        "fact": { "kind": "host", "name": "Player" },
+                        "sourceSpan": {
+                            "source": schema_record.source_id().get(),
+                            "start": target_start,
+                            "end": target_end
+                        }
+                    }
+                ]
+            }
+        })
+        .to_string();
+        databases.load_schema_artifact_json("/workspace/target/vela/schema.json", &artifact);
+
+        let definition = databases
+            .type_definition(
+                &main,
+                Position::new(0, main_text.find("Player").expect("type hint should exist")),
+            )
+            .expect("type definition should resolve schema source span");
+
+        assert_eq!(definition.document_id(), &schema_source);
+        assert_eq!(definition.range().start().line, 0);
+        assert_eq!(definition.range().start().character, target_start);
+        assert_eq!(definition.range().end().character, target_end);
     }
 
     #[test]

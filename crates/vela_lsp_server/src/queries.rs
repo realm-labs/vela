@@ -44,6 +44,12 @@ use crate::{
     symbols::{lsp_document_symbols, lsp_workspace_symbols},
 };
 
+enum NavigationLocationQuery {
+    Definition,
+    Declaration,
+    TypeDefinition,
+}
+
 impl LspServer {
     pub(crate) fn code_action(
         &mut self,
@@ -158,6 +164,47 @@ impl LspServer {
     }
 
     pub(crate) fn definition(&mut self, id: Option<RequestId>, params: JsonValue) -> JsonRpcResult {
+        self.navigation_location(
+            id,
+            params,
+            "definition",
+            NavigationLocationQuery::Definition,
+        )
+    }
+
+    pub(crate) fn declaration(
+        &mut self,
+        id: Option<RequestId>,
+        params: JsonValue,
+    ) -> JsonRpcResult {
+        self.navigation_location(
+            id,
+            params,
+            "declaration",
+            NavigationLocationQuery::Declaration,
+        )
+    }
+
+    pub(crate) fn type_definition(
+        &mut self,
+        id: Option<RequestId>,
+        params: JsonValue,
+    ) -> JsonRpcResult {
+        self.navigation_location(
+            id,
+            params,
+            "typeDefinition",
+            NavigationLocationQuery::TypeDefinition,
+        )
+    }
+
+    fn navigation_location(
+        &mut self,
+        id: Option<RequestId>,
+        params: JsonValue,
+        method_name: &'static str,
+        query: NavigationLocationQuery,
+    ) -> JsonRpcResult {
         let Some(id) = id else {
             return JsonRpcResult::None;
         };
@@ -167,16 +214,25 @@ impl LspServer {
                 return JsonRpcResult::Response(error_response(
                     Some(id),
                     ErrorCode::InvalidRequest,
-                    format!("invalid definition params: {error}"),
+                    format!("invalid {method_name} params: {error}"),
                 ));
             }
         };
 
         let document_id = DocumentId::from(params.text_document.uri);
         self.refresh_databases_for_query(&document_id);
-        let definition = self
-            .databases
-            .definition(&document_id, service_position(params.position));
+        let position = service_position(params.position);
+        let definition = match query {
+            NavigationLocationQuery::Definition => {
+                self.databases.definition(&document_id, position)
+            }
+            NavigationLocationQuery::Declaration => {
+                self.databases.declaration(&document_id, position)
+            }
+            NavigationLocationQuery::TypeDefinition => {
+                self.databases.type_definition(&document_id, position)
+            }
+        };
 
         JsonRpcResult::Response(success_response(
             id,

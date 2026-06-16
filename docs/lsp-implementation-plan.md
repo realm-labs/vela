@@ -424,8 +424,11 @@ Purpose: expose semantic facts and navigation.
   - Initial service and LSP definition support schema type, trait, and
     function source spans when the referenced schema `SourceId` exists in the
     current workspace snapshot.
-- [ ] Implement go to declaration/type definition where LSP clients separate
+- [~] Implement go to declaration/type definition where LSP clients separate
   those requests.
+  - Initial language-service and LSP support routes `textDocument/declaration`
+    and `textDocument/typeDefinition` through the same source/schema-backed
+    navigation spans as definition.
 
 Tests:
 
@@ -437,11 +440,16 @@ Tests:
 - [x] `lsp_definition_follows_open_overlay_local_binding`
 - [x] `definition_follows_schema_source_span`
 - [x] `lsp_definition_follows_schema_source_span`
+- [x] `declaration_follows_local_binding`
+- [x] `type_definition_follows_schema_source_span`
+- [x] `lsp_declaration_follows_open_overlay_local_binding`
+- [x] `lsp_type_definition_follows_schema_source_span`
 
 Validation:
 
 ```bash
 cargo test -p vela_language_service hover definition
+cargo test -p vela_lsp_server definition lifecycle
 cargo test -p vela_analysis hover
 ```
 

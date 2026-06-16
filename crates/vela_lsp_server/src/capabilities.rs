@@ -21,6 +21,8 @@ pub(crate) fn initialize_result() -> JsonValue {
             },
             "hoverProvider": true,
             "definitionProvider": true,
+            "declarationProvider": true,
+            "typeDefinitionProvider": true,
             "referencesProvider": true,
             "renameProvider": {
                 "prepareProvider": true

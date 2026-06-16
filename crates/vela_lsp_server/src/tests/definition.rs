@@ -6,6 +6,25 @@ use super::{LspServer, notification, notification_value, request, response_value
 
 #[test]
 fn lsp_definition_follows_open_overlay_local_binding() {
+    assert_local_binding_navigation("textDocument/definition");
+}
+
+#[test]
+fn lsp_declaration_follows_open_overlay_local_binding() {
+    assert_local_binding_navigation("textDocument/declaration");
+}
+
+#[test]
+fn lsp_definition_follows_schema_source_span() {
+    assert_schema_source_navigation("textDocument/definition");
+}
+
+#[test]
+fn lsp_type_definition_follows_schema_source_span() {
+    assert_schema_source_navigation("textDocument/typeDefinition");
+}
+
+fn assert_local_binding_navigation(method: &str) {
     let mut server = LspServer::new();
     let _ = response_value(server.handle_json(&request(
         1,
@@ -31,7 +50,7 @@ fn lsp_definition_follows_open_overlay_local_binding() {
 
     let response = response_value(server.handle_json(&request(
         2,
-        "textDocument/definition",
+        method,
         serde_json::json!({
             "textDocument": { "uri": "file:///workspace/scripts/game/main.vela" },
             "position": {
@@ -54,8 +73,7 @@ fn lsp_definition_follows_open_overlay_local_binding() {
     );
 }
 
-#[test]
-fn lsp_definition_follows_schema_source_span() {
+fn assert_schema_source_navigation(method: &str) {
     let root = temp_workspace();
     let config_path = root.join("vela.toml");
     let schema_path = root.join("target").join("vela").join("schema.json");
@@ -130,7 +148,7 @@ fn lsp_definition_follows_schema_source_span() {
 
     let response = response_value(server.handle_json(&request(
         2,
-        "textDocument/definition",
+        method,
         serde_json::json!({
             "textDocument": { "uri": main_uri },
             "position": {

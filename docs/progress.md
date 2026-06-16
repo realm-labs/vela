@@ -155,6 +155,12 @@ sessions, configured schema artifacts load without running host code, project
 indexes invalidate after config changes, and `vela.toml` remains the
 authoritative project config when present.
 
+M20.5 Phase 8 update: `vela_language_service` now exposes explicit
+declaration and type-definition navigation queries, and `vela_lsp_server`
+advertises and serves `textDocument/declaration` plus
+`textDocument/typeDefinition` using the same source/schema-backed spans as
+go-to-definition.
+
 M20.5 Phase 11 update: source-owned inherent script methods now participate in
 the editor reference index. `textDocument/references` returns method
 declarations plus typed receiver call sites, and

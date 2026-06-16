@@ -54,6 +54,14 @@ fn lsp_initialize_reports_capabilities() {
         serde_json::json!(true)
     );
     assert_eq!(
+        response["result"]["capabilities"]["declarationProvider"],
+        serde_json::json!(true)
+    );
+    assert_eq!(
+        response["result"]["capabilities"]["typeDefinitionProvider"],
+        serde_json::json!(true)
+    );
+    assert_eq!(
         response["result"]["capabilities"]["referencesProvider"],
         serde_json::json!(true)
     );
