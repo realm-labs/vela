@@ -1,4 +1,9 @@
 use super::{LspServer, notification, notification_value, request, response_value};
+use std::{
+    fs,
+    path::{Path, PathBuf},
+    time::{SystemTime, UNIX_EPOCH},
+};
 
 #[test]
 fn lsp_prepare_rename_rejects_keywords_and_literals() {
@@ -348,6 +353,128 @@ fn grant(reward: Reward) -> Reward {
 }
 
 #[test]
+fn lsp_host_schema_rename_is_not_editable() {
+    let root = temp_workspace();
+    let config_path = root.join("vela.toml");
+    let schema_path = root.join("target").join("vela").join("schema.json");
+    fs::create_dir_all(schema_path.parent().expect("schema should have parent"))
+        .expect("schema directory should be creatable");
+    fs::write(
+        &config_path,
+        r#"
+            [workspace]
+            roots = ["scripts"]
+
+            [host]
+            schema = "target/vela/schema.json"
+        "#,
+    )
+    .expect("vela.toml should be writable");
+    fs::write(&schema_path, schema_artifact()).expect("schema should be writable");
+
+    let mut server = LspServer::new();
+    let _ = response_value(server.handle_json(&request(
+        1,
+        "initialize",
+        serde_json::json!({
+            "processId": null,
+            "rootUri": file_uri(&root),
+            "capabilities": {}
+        }),
+    )));
+    let _ = server.handle_json(&notification(
+        "workspace/didChangeWatchedFiles",
+        serde_json::json!({
+            "changes": [{ "uri": file_uri(&config_path), "type": 1 }]
+        }),
+    ));
+    let text = "pub fn main(player: Player) { return player.level }";
+    let uri = file_uri(&root.join("scripts").join("game").join("main.vela"));
+    let _ = notification_value(server.handle_json(&notification(
+        "textDocument/didOpen",
+        serde_json::json!({
+            "textDocument": {
+                "uri": uri,
+                "languageId": "vela",
+                "version": 1,
+                "text": text
+            }
+        }),
+    )));
+
+    let hover = response_value(server.handle_json(&request(
+        2,
+        "textDocument/hover",
+        serde_json::json!({
+            "textDocument": { "uri": uri },
+            "position": {
+                "line": 0,
+                "character": text.find("level").expect("schema field")
+            }
+        }),
+    )));
+    let hover_value = hover["result"]["contents"]["value"]
+        .as_str()
+        .expect("schema hover should produce markdown");
+    assert!(hover_value.contains("Player.level"), "{hover_value}");
+
+    let type_prepare = response_value(server.handle_json(&request(
+        3,
+        "textDocument/prepareRename",
+        serde_json::json!({
+            "textDocument": { "uri": uri },
+            "position": {
+                "line": 0,
+                "character": text.find("Player").expect("schema type")
+            }
+        }),
+    )));
+    assert_eq!(type_prepare["result"], serde_json::Value::Null);
+
+    let type_rename = response_value(server.handle_json(&request(
+        4,
+        "textDocument/rename",
+        serde_json::json!({
+            "textDocument": { "uri": uri },
+            "position": {
+                "line": 0,
+                "character": text.find("Player").expect("schema type")
+            },
+            "newName": "Actor"
+        }),
+    )));
+    assert_eq!(type_rename["result"], serde_json::Value::Null);
+
+    let field_prepare = response_value(server.handle_json(&request(
+        5,
+        "textDocument/prepareRename",
+        serde_json::json!({
+            "textDocument": { "uri": uri },
+            "position": {
+                "line": 0,
+                "character": text.find("level").expect("schema field")
+            }
+        }),
+    )));
+    assert_eq!(field_prepare["result"], serde_json::Value::Null);
+
+    let field_rename = response_value(server.handle_json(&request(
+        6,
+        "textDocument/rename",
+        serde_json::json!({
+            "textDocument": { "uri": uri },
+            "position": {
+                "line": 0,
+                "character": text.find("level").expect("schema field")
+            },
+            "newName": "rank"
+        }),
+    )));
+    assert_eq!(field_rename["result"], serde_json::Value::Null);
+    fs::remove_dir_all(&root).expect("temporary workspace should be removable");
+}
+
+#[test]
 fn lsp_public_export_rename_reports_hot_reload_risk() {
     let mut server = LspServer::new();
     let _ = response_value(server.handle_json(&request(
@@ -418,4 +545,46 @@ fn assert_text_edit(edits: &[serde_json::Value], line: usize, character: usize, 
 
 fn line(text: &str, line: usize) -> &str {
     text.lines().nth(line).expect("line should exist")
+}
+
+fn temp_workspace() -> PathBuf {
+    let suffix = match SystemTime::now().duration_since(UNIX_EPOCH) {
+        Ok(duration) => duration.as_nanos(),
+        Err(error) => panic!("system time should be after UNIX_EPOCH: {error}"),
+    };
+    let root =
+        std::env::temp_dir().join(format!("vela_lsp_rename_{}_{}", std::process::id(), suffix));
+    fs::create_dir_all(root.join("scripts").join("game"))
+        .expect("temporary workspace should be creatable");
+    root
+}
+
+fn file_uri(path: &Path) -> String {
+    let path = path.display().to_string().replace('\\', "/");
+    if path.starts_with('/') {
+        format!("file://{path}")
+    } else {
+        format!("file:///{path}")
+    }
+}
+
+fn schema_artifact() -> &'static str {
+    r#"{
+        "formatVersion": 1,
+        "facts": {
+            "types": [
+                {
+                    "name": "Player",
+                    "fact": { "kind": "host", "name": "Player" }
+                }
+            ],
+            "fields": [
+                {
+                    "owner": "Player",
+                    "name": "level",
+                    "fact": { "kind": "primitive", "name": "i64" }
+                }
+            ]
+        }
+    }"#
 }

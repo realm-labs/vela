@@ -2,6 +2,7 @@ use super::*;
 use crate::{
     SourceFileSnapshot, Workspace, WorkspaceConfig, WorkspaceRoot, assemble_project_sources,
 };
+use vela_analysis::{registry::RegistryFacts, type_fact::TypeFact};
 
 #[test]
 fn prepare_rename_rejects_keywords_and_literals() {
@@ -210,6 +211,60 @@ pub fn main(amount: i64) -> i64 {
 }
 
 #[test]
+fn host_schema_rename_is_not_editable() {
+    let document = DocumentId::from("/workspace/scripts/game/main.vela");
+    let text = "pub fn main(player: Player) { return player.level }";
+    let mut schema = RegistryFacts::default();
+    schema.insert_type("Player", TypeFact::host("Player"));
+    schema.insert_field("Player", "level", TypeFact::I64);
+    let databases = databases_for_with_schema(
+        vec![SourceFileSnapshot::new(document.clone(), text)],
+        schema,
+    );
+
+    assert!(
+        databases
+            .hover(
+                &document,
+                Position::new(0, text.find("level").expect("schema field"))
+            )
+            .is_some(),
+        "fixture should prove schema-backed member resolution is active"
+    );
+
+    assert_eq!(
+        databases.prepare_rename(
+            &document,
+            Position::new(0, text.find("Player").expect("schema type"))
+        ),
+        None
+    );
+    assert_eq!(
+        databases.rename(
+            &document,
+            Position::new(0, text.find("Player").expect("schema type")),
+            "Actor",
+        ),
+        None
+    );
+    assert_eq!(
+        databases.prepare_rename(
+            &document,
+            Position::new(0, text.find("level").expect("schema field"))
+        ),
+        None
+    );
+    assert_eq!(
+        databases.rename(
+            &document,
+            Position::new(0, text.find("level").expect("schema field")),
+            "rank",
+        ),
+        None
+    );
+}
+
+#[test]
 fn public_export_rename_reports_hot_reload_risk() {
     let document = DocumentId::from("/workspace/scripts/game/reward.vela");
     let text = "pub fn grant(amount: i64) -> i64 { return amount }";
@@ -274,9 +329,17 @@ fn line(text: &str, line: usize) -> &str {
 }
 
 fn databases_for(files: Vec<SourceFileSnapshot>) -> LanguageServiceDatabases {
+    databases_for_with_schema(files, RegistryFacts::default())
+}
+
+fn databases_for_with_schema(
+    files: Vec<SourceFileSnapshot>,
+    schema: RegistryFacts,
+) -> LanguageServiceDatabases {
     let config = WorkspaceConfig::workspace([WorkspaceRoot::from("/workspace/scripts")]);
     let project = assemble_project_sources(&config, &files, &Workspace::new().snapshot());
     let mut databases = LanguageServiceDatabases::new();
+    databases.set_schema_facts(schema);
     databases.update(&project);
     databases
 }

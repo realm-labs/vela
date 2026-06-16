@@ -609,7 +609,7 @@ Purpose: provide safe refactoring without changing runtime contracts.
     and resolved unaliased call sites.
 - [ ] Implement field/method/variant rename only when ownership is known and
   source spans are script-owned.
-- [ ] Reject host schema rename unless the source is explicitly script-owned.
+- [x] Reject host schema rename unless the source is explicitly script-owned.
 - [~] Reject renames that would collide in scope, module exports, trait impls,
   or import aliases.
   - [x] Reject local binding renames that collide with an existing function
@@ -631,7 +631,8 @@ Tests:
 - [x] `lsp_private_value_declaration_rename_updates_uses`
 - [x] `public_export_rename_reports_hot_reload_risk`
 - [x] `rename_rejects_scope_collision`
-- [ ] `host_schema_rename_is_not_editable`
+- [x] `host_schema_rename_is_not_editable`
+- [x] `lsp_host_schema_rename_is_not_editable`
 
 Validation:
 
