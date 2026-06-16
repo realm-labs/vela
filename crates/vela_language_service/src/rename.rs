@@ -15,6 +15,7 @@ use crate::{
 
 mod fields;
 mod methods;
+mod variants;
 
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub struct PrepareRename {
@@ -192,6 +193,9 @@ impl LanguageServiceDatabases {
             }
             RenameTarget::ScriptMethod(target) => {
                 methods::rename_script_method(self, target, new_name)
+            }
+            RenameTarget::EnumVariant(target) => {
+                variants::rename_enum_variant(self, target, new_name)
             }
         }
     }
@@ -424,6 +428,7 @@ enum RenameTarget<'a> {
     Declaration(DeclarationRenameTarget<'a>),
     ScriptField(fields::ScriptFieldRenameTarget),
     ScriptMethod(methods::ScriptMethodRenameTarget),
+    EnumVariant(variants::EnumVariantRenameTarget),
 }
 
 impl RenameTarget<'_> {
@@ -433,6 +438,7 @@ impl RenameTarget<'_> {
             Self::Declaration(target) => target.token.range,
             Self::ScriptField(target) => target.token.range,
             Self::ScriptMethod(target) => target.token.range,
+            Self::EnumVariant(target) => target.token.range,
         }
     }
 
@@ -442,6 +448,7 @@ impl RenameTarget<'_> {
             Self::Declaration(target) => &target.declaration.name,
             Self::ScriptField(target) => &target.field,
             Self::ScriptMethod(target) => &target.method,
+            Self::EnumVariant(target) => &target.variant,
         }
     }
 }
@@ -477,6 +484,10 @@ fn rename_target<'a>(
     {
         return Some(RenameTarget::ScriptMethod(target));
     }
+    if let Some(target) = variants::enum_variant_declaration_target(graph, source_id, text, &token)
+    {
+        return Some(RenameTarget::EnumVariant(target));
+    }
 
     for declaration in graph.declarations() {
         if declaration.span.source != source_id || !declaration.span.contains(offset) {
@@ -510,6 +521,9 @@ fn rename_target<'a>(
                 token,
                 placeholder: binding.name.clone(),
             }));
+        }
+        if let Some(target) = variants::enum_variant_use_target(graph, bindings, text, &token) {
+            return Some(RenameTarget::EnumVariant(target));
         }
         if let Some(declaration_id) = declaration_use_at_token(bindings, &token)
             && let Some(target) = graph.declaration(declaration_id)

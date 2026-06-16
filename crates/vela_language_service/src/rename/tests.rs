@@ -255,6 +255,77 @@ fn main(reward: Reward) -> i64 {
 }
 
 #[test]
+fn private_enum_variant_rename_updates_constructors_and_patterns() {
+    let document = DocumentId::from("/workspace/scripts/game/main.vela");
+    let text = "\
+enum QuestState {
+    Active { count: i64 },
+    Done
+}
+
+fn active(count: i64) -> QuestState {
+    return QuestState::Active { count: count }
+}
+
+fn main(state: QuestState) -> i64 {
+    match state {
+        QuestState::Active { count } => { return count }
+        QuestState::Done => { return 0 }
+    }
+}";
+    let databases = databases_for(vec![SourceFileSnapshot::new(document.clone(), text)]);
+
+    let prepare = databases
+        .prepare_rename(
+            &document,
+            Position::new(6, line(text, 6).find("Active").expect("constructor")),
+        )
+        .expect("private enum variant should be renameable from a constructor");
+
+    assert_eq!(prepare.placeholder(), "Active");
+    assert_eq!(prepare.range().start(), Position::new(6, 23));
+
+    let edit = databases
+        .rename(
+            &document,
+            Position::new(6, line(text, 6).find("Active").expect("constructor")),
+            "Running",
+        )
+        .expect("private enum variant rename should produce edits");
+
+    let document_edit = document_edit(&edit, &document);
+    assert_eq!(document_edit.edits().len(), 3);
+    assert_edit_at(document_edit.edits(), 1, 4, "Running");
+    assert_edit_at(document_edit.edits(), 6, 23, "Running");
+    assert_edit_at(document_edit.edits(), 11, 20, "Running");
+    assert!(edit.risks().is_empty());
+}
+
+#[test]
+fn private_enum_variant_rename_rejects_variant_collision() {
+    let document = DocumentId::from("/workspace/scripts/game/main.vela");
+    let text = "\
+enum QuestState {
+    Active,
+    Done
+}
+
+fn main() -> QuestState {
+    return QuestState::Active
+}";
+    let databases = databases_for(vec![SourceFileSnapshot::new(document.clone(), text)]);
+
+    assert_eq!(
+        databases.rename(
+            &document,
+            Position::new(6, line(text, 6).find("Active").expect("constructor")),
+            "Done",
+        ),
+        None
+    );
+}
+
+#[test]
 fn private_function_rename_updates_imports() {
     let main = DocumentId::from("/workspace/scripts/game/main.vela");
     let helper = DocumentId::from("/workspace/scripts/game/reward.vela");
