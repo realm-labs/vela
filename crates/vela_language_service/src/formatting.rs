@@ -141,6 +141,18 @@ impl LanguageServiceDatabases {
             return Vec::new();
         };
         let line_index = LineIndex::new(source.text());
+        if trigger == "}"
+            && let Some(parsed) = self.parse_db().parsed_source(document_id)
+            && let Some(edit) = completed_item_formatting_edit(
+                source.source_id(),
+                source.text(),
+                parsed,
+                &line_index,
+                position,
+            )
+        {
+            return vec![edit];
+        }
         let range = current_construct_range(
             source.source_id(),
             source.text(),
@@ -200,6 +212,37 @@ fn selected_item_formatting_edit(
     let selected = source.get(start..end)?;
     let formatted = format_document(source_id, selected);
     (formatted != selected).then(|| TextEdit::new(range, formatted))
+}
+
+fn completed_item_formatting_edit(
+    source_id: SourceId,
+    source: &str,
+    parsed: &SourceFile,
+    line_index: &LineIndex,
+    position: Position,
+) -> Option<TextEdit> {
+    let offset = line_index.offset(position).min(source.len());
+    let item = parsed.items.iter().find(|item| {
+        let start = item.span.start as usize;
+        let end = item.span.end as usize;
+        start < offset && offset <= end
+    })?;
+    let start = item.span.start as usize;
+    let item_end = item.span.end as usize;
+    if line_index.position(start).line != line_index.position(item_end).line {
+        return None;
+    }
+    let end = include_single_trailing_newline(source, item_end);
+    let range = DiagnosticRange::new(line_index.position(start), line_index.position(end));
+    selected_item_formatting_edit(source_id, source, parsed, range)
+}
+
+fn include_single_trailing_newline(source: &str, offset: usize) -> usize {
+    match source.get(offset..) {
+        Some(suffix) if suffix.starts_with("\r\n") => offset + 2,
+        Some(suffix) if suffix.starts_with('\n') => offset + 1,
+        _ => offset,
+    }
 }
 
 fn current_construct_range(
@@ -546,6 +589,27 @@ pub fn main() {
 pub fn other() {   
     return 2   
 }
+"
+        );
+    }
+
+    #[test]
+    fn on_type_formatting_reflows_completed_item() {
+        let source = "pub fn main(){return 1}\n\npub fn other(){return 2}\n";
+        let edits = on_type_format_source(source, Position::new(0, 23), "}");
+        let formatted = apply_range_edits(source, &edits);
+
+        assert_eq!(edits.len(), 1);
+        assert_eq!(edits[0].range().start(), Position::new(0, 0));
+        assert_eq!(edits[0].range().end(), Position::new(1, 0));
+        assert_eq!(
+            formatted,
+            "\
+pub fn main() {
+    return 1
+}
+
+pub fn other(){return 2}
 "
         );
     }
