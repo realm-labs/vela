@@ -1,14 +1,26 @@
 use std::io::{self, BufRead, Write};
 
-use crate::{JsonRpcResult, LspServer};
+use crate::{JsonRpcResult, LaunchConfiguration, LspServer};
 
 pub fn run_stdio<R, W>(reader: R, writer: W) -> io::Result<()>
 where
     R: BufRead,
     W: Write,
 {
+    run_stdio_with_configuration(reader, writer, LaunchConfiguration::new())
+}
+
+pub fn run_stdio_with_configuration<R, W>(
+    reader: R,
+    writer: W,
+    configuration: LaunchConfiguration,
+) -> io::Result<()>
+where
+    R: BufRead,
+    W: Write,
+{
     let mut transport = StdioTransport::new(reader, writer);
-    let mut server = LspServer::new();
+    let mut server = LspServer::with_launch_configuration(configuration);
     while let Some(message) = transport.read_message()? {
         let result = server.handle_json(&message);
         transport.write_result(result)?;

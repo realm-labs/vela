@@ -139,6 +139,12 @@ configuration source for native server startup and later
 `workspace/didChangeConfiguration` settings; a discovered `vela.toml` remains
 the authoritative project configuration.
 
+Native launch flags mirror the same fallback path: `--root` appends a
+workspace root and `--schema` sets the host schema artifact before stdio
+transport starts. Client-provided initialization options override those launch
+defaults, while `vela.toml` discovery still wins once project configuration is
+loaded.
+
 Initial LSP formatting uses source-preserving text edits in
 `vela_language_service`: full-document formatting is driven by
 `vela_syntax::formatting`, while range formatting only trims trailing

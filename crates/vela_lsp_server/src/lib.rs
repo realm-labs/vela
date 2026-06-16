@@ -36,6 +36,8 @@ use vela_language_service::{
 use crate::capabilities::initialize_result;
 use crate::config::{EditorConfiguration, workspace_config_from_roots_and_editor_config};
 
+pub use crate::config::LaunchConfiguration;
+
 const JSONRPC_VERSION: &str = "2.0";
 const FILE_CHANGE_DELETED: u8 = 3;
 const CONFIG_FILE: &str = "vela.toml";
@@ -175,7 +177,9 @@ impl LspServer {
         self.initialized = true;
         let params = serde_json::from_value::<InitializeParams>(params).unwrap_or_default();
         self.workspace_roots = workspace_roots_from_initialize(&params);
-        self.editor_config = params.initialization_options.clone();
+        if params.initialization_options.is_some() {
+            self.editor_config = params.initialization_options.clone();
+        }
         self.config = workspace_config_from_roots_and_editor_config(
             &self.workspace_roots,
             self.editor_config.as_ref(),

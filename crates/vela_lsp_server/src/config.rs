@@ -10,6 +10,55 @@ use crate::{
     normalized_path, publish_diagnostics_notification,
 };
 
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
+pub struct LaunchConfiguration {
+    workspace_roots: Vec<String>,
+    host_schema: Option<String>,
+}
+
+impl LaunchConfiguration {
+    #[must_use]
+    pub fn new() -> Self {
+        Self::default()
+    }
+
+    #[must_use]
+    pub fn is_empty(&self) -> bool {
+        self.workspace_roots.is_empty() && self.host_schema.is_none()
+    }
+
+    pub fn add_workspace_root(&mut self, root: impl Into<String>) {
+        self.workspace_roots.push(root.into());
+    }
+
+    pub fn set_host_schema(&mut self, schema: impl Into<String>) {
+        self.host_schema = Some(schema.into());
+    }
+
+    #[must_use]
+    pub fn workspace_roots(&self) -> &[String] {
+        &self.workspace_roots
+    }
+
+    #[must_use]
+    pub fn host_schema(&self) -> Option<&str> {
+        self.host_schema.as_deref()
+    }
+
+    fn into_editor_configuration(self) -> Option<EditorConfiguration> {
+        (!self.is_empty()).then(|| EditorConfiguration {
+            workspace: (!self.workspace_roots.is_empty()).then_some(EditorWorkspaceConfiguration {
+                roots: Some(self.workspace_roots),
+            }),
+            host: self.host_schema.map(|schema| EditorHostConfiguration {
+                schema: Some(schema),
+            }),
+            workspace_roots: None,
+            host_schema: None,
+        })
+    }
+}
+
 #[derive(Debug, Clone, Default, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub(crate) struct EditorConfiguration {
@@ -84,6 +133,18 @@ struct DidChangeConfigurationParams {
 }
 
 impl LspServer {
+    #[must_use]
+    pub fn with_launch_configuration(configuration: LaunchConfiguration) -> Self {
+        let mut server = Self::new();
+        server.editor_config = configuration.into_editor_configuration();
+        server.config = workspace_config_from_roots_and_editor_config(
+            &server.workspace_roots,
+            server.editor_config.as_ref(),
+        );
+        server.reload_schema_from_config();
+        server
+    }
+
     pub(crate) fn did_change_configuration(
         &mut self,
         id: Option<RequestId>,

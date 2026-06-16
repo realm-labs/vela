@@ -847,14 +847,16 @@ cargo test -p vela_language_service project
 Purpose: package native LSP for real editors while keeping plugins thin.
 
 - [x] Add stdio server command.
-- [~] Add `--version`, `--stdio`, and config flags.
+- [x] Add `--version`, `--stdio`, and config flags.
   - Native binary now runs stdio by default or with `--stdio`, and reports
     package version with `--version`.
+  - Native launch flags `--root` and `--schema` seed the same
+    `WorkspaceConfig` fallback used by editor initialization options.
   - Editor initialization options now map `workspace.roots` and `host.schema`
     into the server `WorkspaceConfig`.
   - `workspace/didChangeConfiguration` now remaps editor settings into
     `WorkspaceConfig`, reloads configured schema artifacts, and invalidates
-    project-derived indexes; CLI config flags remain open.
+    project-derived indexes.
 - [ ] Package VS Code extension as thin launcher/config UI.
 - [ ] Package Zed extension as thin launcher/config UI.
 - [ ] Document manual setup for editors that can launch generic LSP servers.
@@ -866,6 +868,8 @@ Tests:
 - [x] `lsp_server_stdio_smoke_test`
 - [x] `editor_config_maps_to_workspace_config`
 - [x] `lsp_workspace_configuration_request_updates_workspace_config`
+- [x] `cli_config_flags_parse_roots_and_schema`
+- [x] `cli_config_flags_seed_workspace_config`
 - [x] `server_info_reports_version`
 
 Validation:
