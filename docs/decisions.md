@@ -133,6 +133,11 @@ launchers around this binary. Host facts for editor tooling come from a static
 schema artifact exported from `TypeRegistry`/`RegistryFacts`; the server must
 not run the host application to discover schema metadata.
 
+Thin editor launchers may pass initialization options that mirror `vela.toml`
+using `workspace.roots` and `host.schema`. Those options are a fallback
+configuration source for native server startup; a discovered `vela.toml`
+remains the authoritative project configuration.
+
 Initial LSP formatting uses source-preserving text edits in
 `vela_language_service`: full-document formatting is driven by
 `vela_syntax::formatting`, while range formatting only trims trailing

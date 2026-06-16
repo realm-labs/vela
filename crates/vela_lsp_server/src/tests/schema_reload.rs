@@ -89,6 +89,80 @@ fn schema_reload_updates_host_member_completion() {
     fs::remove_dir_all(&root).expect("temporary workspace should be removable");
 }
 
+#[test]
+fn editor_config_maps_to_workspace_config() {
+    let root = temp_workspace();
+    let schema_path = root.join("target").join("vela").join("schema.json");
+    fs::create_dir_all(schema_path.parent().expect("schema should have parent"))
+        .expect("schema directory should be creatable");
+    fs::write(&schema_path, schema_with_player_field("level", "i64"))
+        .expect("schema should be writable");
+
+    let mut server = LspServer::new();
+    let _ = response_value(server.handle_json(&request(
+        1,
+        "initialize",
+        serde_json::json!({
+            "processId": null,
+            "rootUri": file_uri(&root),
+            "initializationOptions": {
+                "workspace": {
+                    "roots": [file_uri(&root.join("scripts"))]
+                },
+                "host": {
+                    "schema": file_uri(&schema_path)
+                }
+            },
+            "capabilities": {}
+        }),
+    )));
+
+    let helper_uri = file_uri(&root.join("scripts").join("game").join("helper.vela"));
+    let _ = notification_value(server.handle_json(&notification(
+        "textDocument/didOpen",
+        serde_json::json!({
+            "textDocument": {
+                "uri": helper_uri,
+                "languageId": "vela",
+                "version": 1,
+                "text": "pub fn grant() -> i64 { return 1 }"
+            }
+        }),
+    )));
+
+    let main_uri = file_uri(&root.join("scripts").join("game").join("main.vela"));
+    let text = "\
+use game::helper::grant
+pub fn main(player: Player) {
+    let score = grant()
+    return player.level
+}";
+    let open = notification_value(server.handle_json(&notification(
+        "textDocument/didOpen",
+        serde_json::json!({
+            "textDocument": {
+                "uri": main_uri,
+                "languageId": "vela",
+                "version": 1,
+                "text": text
+            }
+        }),
+    )));
+    assert_eq!(open["params"]["diagnostics"], serde_json::json!([]));
+
+    let response = response_value(server.handle_json(&request(
+        2,
+        "textDocument/completion",
+        serde_json::json!({
+            "textDocument": { "uri": main_uri },
+            "position": { "line": 3, "character": "    return player.".len() }
+        }),
+    )));
+
+    assert_completion(&response, "level", 5, "i64");
+    fs::remove_dir_all(&root).expect("temporary workspace should be removable");
+}
+
 fn assert_completion(response: &serde_json::Value, label: &str, kind: u8, detail: &str) {
     assert_eq!(response["result"]["isIncomplete"], false);
     let Some(items) = response["result"]["items"].as_array() else {

@@ -147,6 +147,11 @@ JIT remain separate roadmap tracks.
 | M22 | Not started | Cranelift JIT follows interpreter/cache/debugger/conformance stability. |
 | M23 | Not started | Release hardening, public docs, validation gates, and performance targets. |
 
+M20.5 Phase 17 update: editor initialization options now map
+`workspace.roots` and `host.schema` into the server `WorkspaceConfig`, load the
+configured schema artifact on initialize, and preserve `vela.toml` as the
+authoritative project config when present.
+
 ## Current Milestone State
 
 ### Available Now

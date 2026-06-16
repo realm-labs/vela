@@ -4,6 +4,7 @@ mod call_hierarchy;
 mod capabilities;
 mod code_action;
 mod completion;
+mod config;
 mod definition;
 mod folding;
 mod formatting;
@@ -33,6 +34,7 @@ use vela_language_service::{
 };
 
 use crate::capabilities::initialize_result;
+use crate::config::{EditorConfiguration, workspace_config_from_roots_and_editor_config};
 
 const JSONRPC_VERSION: &str = "2.0";
 const FILE_CHANGE_DELETED: u8 = 3;
@@ -50,6 +52,7 @@ pub struct LspServer {
     config_documents: BTreeSet<DocumentId>,
     schema_documents: BTreeSet<DocumentId>,
     workspace_roots: BTreeSet<String>,
+    editor_config: Option<EditorConfiguration>,
     cancelled_requests: BTreeSet<RequestId>,
     disk_sources: BTreeMap<DocumentId, SourceFileSnapshot>,
     open_documents: BTreeSet<DocumentId>,
@@ -169,7 +172,12 @@ impl LspServer {
         self.initialized = true;
         let params = serde_json::from_value::<InitializeParams>(params).unwrap_or_default();
         self.workspace_roots = workspace_roots_from_initialize(&params);
-        self.config = workspace_config_from_roots(&self.workspace_roots);
+        self.editor_config = params.initialization_options.clone();
+        self.config = workspace_config_from_roots_and_editor_config(
+            &self.workspace_roots,
+            self.editor_config.as_ref(),
+        );
+        self.reload_schema_from_config();
         self.client_supports_work_done_progress = params.capabilities.supports_work_done_progress();
         JsonRpcResult::Response(success_response(id, initialize_result()))
     }
@@ -377,7 +385,10 @@ impl LspServer {
             self.workspace_roots.insert(root.path().to_owned());
         }
         if !self.has_config_file {
-            self.config = workspace_config_from_roots(&self.workspace_roots);
+            self.config = workspace_config_from_roots_and_editor_config(
+                &self.workspace_roots,
+                self.editor_config.as_ref(),
+            );
             self.reload_schema_from_config();
         }
 
@@ -421,7 +432,10 @@ impl LspServer {
     fn remove_watched_file(&mut self, uri: &str) {
         if is_config_uri(uri) {
             self.has_config_file = false;
-            self.config = workspace_config_from_roots(&self.workspace_roots);
+            self.config = workspace_config_from_roots_and_editor_config(
+                &self.workspace_roots,
+                self.editor_config.as_ref(),
+            );
             self.config_diagnostics.clear();
             self.config_documents
                 .insert(DocumentId::from(uri.to_owned()));
@@ -679,6 +693,7 @@ struct CancelRequestParams {
 struct InitializeParams {
     root_uri: Option<String>,
     workspace_folders: Option<Vec<WorkspaceFolder>>,
+    initialization_options: Option<EditorConfiguration>,
     #[serde(default)]
     capabilities: ClientCapabilities,
 }
@@ -813,11 +828,6 @@ fn workspace_roots_from_initialize(params: &InitializeParams) -> BTreeSet<String
         .collect()
 }
 
-fn workspace_config_from_roots(roots: &BTreeSet<String>) -> Option<WorkspaceConfig> {
-    (!roots.is_empty())
-        .then(|| WorkspaceConfig::workspace(roots.iter().cloned().map(WorkspaceRoot::from)))
-}
-
 fn is_config_uri(uri: &str) -> bool {
     uri.trim_end_matches('/').ends_with(CONFIG_FILE)
 }
@@ -839,7 +849,7 @@ fn document_path_uri(path: &str) -> String {
     }
 }
 
-fn document_uri_path(uri: &str) -> PathBuf {
+pub(crate) fn document_uri_path(uri: &str) -> PathBuf {
     let path = uri.strip_prefix("file://").unwrap_or(uri);
     if cfg!(windows) {
         let path = path.replace('/', "\\");
@@ -853,7 +863,7 @@ fn document_uri_path(uri: &str) -> PathBuf {
     }
 }
 
-fn normalized_path(path: impl AsRef<Path>) -> String {
+pub(crate) fn normalized_path(path: impl AsRef<Path>) -> String {
     path.as_ref().display().to_string().replace('\\', "/")
 }
 

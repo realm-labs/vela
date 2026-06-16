@@ -849,8 +849,9 @@ Purpose: package native LSP for real editors while keeping plugins thin.
 - [x] Add stdio server command.
 - [~] Add `--version`, `--stdio`, and config flags.
   - Native binary now runs stdio by default or with `--stdio`, and reports
-    package version with `--version`; editor/workspace config flags remain
-    open.
+    package version with `--version`.
+  - Editor initialization options now map `workspace.roots` and `host.schema`
+    into the server `WorkspaceConfig`; CLI config flags remain open.
 - [ ] Package VS Code extension as thin launcher/config UI.
 - [ ] Package Zed extension as thin launcher/config UI.
 - [ ] Document manual setup for editors that can launch generic LSP servers.
@@ -860,7 +861,7 @@ Purpose: package native LSP for real editors while keeping plugins thin.
 Tests:
 
 - [x] `lsp_server_stdio_smoke_test`
-- [ ] `editor_config_maps_to_workspace_config`
+- [x] `editor_config_maps_to_workspace_config`
 - [x] `server_info_reports_version`
 
 Validation:
