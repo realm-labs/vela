@@ -834,6 +834,8 @@ fn schema_fact_for_hint(
     schema
         .type_fact(&qualified)
         .or_else(|| hint.path.last().and_then(|name| schema.type_fact(name)))
+        .or_else(|| schema.trait_fact(&qualified))
+        .or_else(|| hint.path.last().and_then(|name| schema.trait_fact(name)))
         .cloned()
 }
 
@@ -964,6 +966,43 @@ mod tests {
         assert_eq!(
             help.signatures()[0].label(),
             "Player.grant(arg0: i64, arg1: i64) -> bool"
+        );
+        assert_eq!(help.signatures()[0].parameters()[1].label(), "arg1: i64");
+    }
+
+    #[test]
+    fn signature_help_resolves_schema_trait_method_call() {
+        let document = DocumentId::from("/workspace/scripts/game/main.vela");
+        let text = r#"
+            pub fn main(rewardable: Rewardable) { rewardable.preview(1, 2) }
+        "#;
+        let files = vec![SourceFileSnapshot::new(document.clone(), text)];
+        let config = WorkspaceConfig::workspace([WorkspaceRoot::from("/workspace/scripts")]);
+        let project = assemble_project_sources(&config, &files, &Workspace::new().snapshot());
+        let mut databases = LanguageServiceDatabases::new();
+        let mut schema = RegistryFacts::default();
+        schema.insert_trait("Rewardable", TypeFact::trait_type("Rewardable"));
+        schema.insert_trait_method(
+            "Rewardable",
+            "preview",
+            TypeFact::function(vec![TypeFact::I64, TypeFact::I64], TypeFact::BOOL),
+        );
+        databases.set_schema_facts(schema);
+        databases.update(&project);
+
+        let main_line = text.lines().nth(1).expect("main line should exist");
+        let argument_offset = main_line
+            .find("2)")
+            .expect("second argument should exist in trait method call");
+        let position = Position::new(1, argument_offset);
+        let help = databases
+            .signature_help(&document, position)
+            .expect("signature help should resolve schema trait method");
+
+        assert_eq!(help.active_parameter(), 1);
+        assert_eq!(
+            help.signatures()[0].label(),
+            "Rewardable.preview(arg0: i64, arg1: i64) -> bool"
         );
         assert_eq!(help.signatures()[0].parameters()[1].label(), "arg1: i64");
     }

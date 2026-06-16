@@ -191,10 +191,11 @@ refinements are non-blocking follow-up work.
 
 M20.5 Phase 7 update: `textDocument/signatureHelp` now resolves stdlib
 function calls, typed source-owned inherent method calls, schema-backed host
-method calls, and stdlib callback method calls in addition to script and
-schema function calls. The language service tests cover script, schema,
-stdlib function, source method, schema method, and stdlib callback method
-signatures, and the LSP fixtures cover the same signature paths.
+and trait receiver method calls, and stdlib callback method calls in addition
+to script and schema function calls. The language service tests cover script,
+schema, stdlib function, source method, schema host/trait method, and stdlib
+callback method signatures, and the LSP fixtures cover the same signature
+paths.
 
 M20.5 Phase 8 update: hover now reports stdlib global function facts and
 typed stdlib receiver-method facts through both `vela_language_service` and
