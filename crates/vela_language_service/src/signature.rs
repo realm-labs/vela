@@ -1,6 +1,9 @@
 use vela_analysis::facts::AnalysisFacts;
 use vela_analysis::hints::type_fact_from_hint;
-use vela_analysis::stdlib::{LambdaFact, StdlibMethodFact, stdlib_method_fact_with_lambda_arity};
+use vela_analysis::stdlib::{
+    LambdaFact, StdlibFunctionFact, StdlibMethodFact, stdlib_function_completion_facts,
+    stdlib_method_fact_with_lambda_arity,
+};
 use vela_analysis::type_fact::TypeFact;
 use vela_common::{SourceId, Span};
 use vela_hir::binding::{BindingMap, BindingResolution};
@@ -113,6 +116,7 @@ impl LanguageServiceDatabases {
         let mut signatures = self.script_signatures(callee);
         signatures.extend(self.script_variant_signatures(callee));
         signatures.extend(self.schema_signatures(callee));
+        signatures.extend(stdlib_function_signatures(callee));
         signatures
     }
 
@@ -585,6 +589,29 @@ fn stdlib_method_signature_information(fact: &StdlibMethodFact) -> SignatureInfo
     }
 }
 
+fn stdlib_function_signatures(callee: &str) -> Vec<SignatureInformation> {
+    stdlib_function_completion_facts()
+        .into_iter()
+        .filter(|fact| {
+            fact.name == callee
+                || fact
+                    .name
+                    .rsplit("::")
+                    .next()
+                    .is_some_and(|name| name == callee)
+        })
+        .map(|fact| stdlib_function_signature_information(&fact))
+        .collect()
+}
+
+fn stdlib_function_signature_information(fact: &StdlibFunctionFact) -> SignatureInformation {
+    let parameters = schema_parameters(&fact.params);
+    SignatureInformation {
+        label: signature_label(fact.name, &parameters, &fact.returns),
+        parameters,
+    }
+}
+
 fn stdlib_method_parameters(fact: &StdlibMethodFact) -> Vec<SignatureParameter> {
     fact.params
         .iter()
@@ -974,6 +1001,35 @@ mod tests {
         assert_eq!(
             help.signatures()[0].parameters()[0].label(),
             "callback: Function(i64) -> bool"
+        );
+    }
+
+    #[test]
+    fn signature_help_resolves_stdlib_function_call() {
+        let document = DocumentId::from("/workspace/scripts/game/main.vela");
+        let text = r#"
+            pub fn main() { math::max(1, 2) }
+        "#;
+        let files = vec![SourceFileSnapshot::new(document.clone(), text)];
+        let config = WorkspaceConfig::workspace([WorkspaceRoot::from("/workspace/scripts")]);
+        let project = assemble_project_sources(&config, &files, &Workspace::new().snapshot());
+        let mut databases = LanguageServiceDatabases::new();
+        databases.update(&project);
+
+        let main_line = text.lines().nth(1).expect("main line should exist");
+        let position = Position::new(1, main_line.find("2)").expect("second argument"));
+        let help = databases
+            .signature_help(&document, position)
+            .expect("signature help should resolve stdlib function");
+
+        assert_eq!(help.active_parameter(), 1);
+        assert_eq!(
+            help.signatures()[0].label(),
+            "math::max(arg0: i64 | f64, arg1: i64 | f64) -> i64 | f64"
+        );
+        assert_eq!(
+            help.signatures()[0].parameters()[1].label(),
+            "arg1: i64 | f64"
         );
     }
 }

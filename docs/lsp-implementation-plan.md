@@ -385,9 +385,10 @@ Purpose: make common authoring flows fast and schema-aware.
 - [x] Complete host members from schema facts.
 - [~] Add trigger-character behavior for `.`, `::`, `{`, `(`, `,`, and `|`.
   - [x] Advertise trigger characters for the implemented LSP completion request.
-- [~] Add signature help for script functions, native functions, methods, and
+- [x] Add signature help for script functions, native functions, methods, and
   callbacks.
   - Initial service and LSP signature help support script function calls,
+    schema-backed host/native function calls, stdlib function calls,
     source-owned inherent method calls, schema-backed host method calls, and
     stdlib callback method calls.
 
@@ -412,9 +413,11 @@ Tests:
 - [x] `signature_help_resolves_script_method_call`
 - [x] `signature_help_resolves_schema_method_call`
 - [x] `signature_help_resolves_stdlib_callback_method_call`
+- [x] `signature_help_resolves_stdlib_function_call`
 - [x] `lsp_signature_help_resolves_script_method_call`
 - [x] `lsp_signature_help_resolves_schema_method_call`
 - [x] `lsp_signature_help_resolves_stdlib_callback_method_call`
+- [x] `lsp_signature_help_resolves_stdlib_function_call`
 
 Validation:
 

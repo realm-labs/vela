@@ -242,6 +242,58 @@ pub fn main(scores: Array<i64>) {
     );
 }
 
+#[test]
+fn lsp_signature_help_resolves_stdlib_function_call() {
+    let mut server = LspServer::new();
+    let _ = response_value(server.handle_json(&request(
+        1,
+        "initialize",
+        serde_json::json!({
+            "processId": null,
+            "rootUri": "file:///workspace/scripts",
+            "capabilities": {}
+        }),
+    )));
+    let uri = "file:///workspace/scripts/game/main.vela";
+    let text = "pub fn main() { math::max(1, 2) }";
+    let _ = notification_value(server.handle_json(&notification(
+        "textDocument/didOpen",
+        serde_json::json!({
+            "textDocument": {
+                "uri": uri,
+                "languageId": "vela",
+                "version": 1,
+                "text": text
+            }
+        }),
+    )));
+
+    let response = response_value(server.handle_json(&request(
+        2,
+        "textDocument/signatureHelp",
+        serde_json::json!({
+            "textDocument": { "uri": uri },
+            "position": {
+                "line": 0,
+                "character": text.find("2)").unwrap_or_else(|| {
+                    panic!("signature fixture should contain second argument")
+                })
+            }
+        }),
+    )));
+
+    assert_eq!(response["result"]["activeSignature"], 0);
+    assert_eq!(response["result"]["activeParameter"], 1);
+    assert_eq!(
+        response["result"]["signatures"][0]["label"],
+        "math::max(arg0: i64 | f64, arg1: i64 | f64) -> i64 | f64"
+    );
+    assert_eq!(
+        response["result"]["signatures"][0]["parameters"][1]["label"],
+        "arg1: i64 | f64"
+    );
+}
+
 fn temp_workspace() -> PathBuf {
     let suffix = match SystemTime::now().duration_since(UNIX_EPOCH) {
         Ok(duration) => duration.as_nanos(),
