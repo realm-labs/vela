@@ -502,152 +502,151 @@ website docs and playground examples
 
 ## 6. Implementation Phases
 
+Tracking rules:
+
+```text
+[ ] task not started
+[~] task in progress or partially implemented
+[x] task implemented and covered by the named tests/validation
+```
+
+Do not mark a phase task `[x]` only because code compiles. A checkable task is
+complete when the implementation, focused tests, diagnostics/docs impact, and
+the phase validation note are all updated. If a task is intentionally deferred,
+leave it unchecked and add a short note naming the follow-up plan.
+
 ### Phase 1: Decide External Null Policy
 
-- Choose strict null removal or explicit external-null wrapper.
-- Update `docs/decisions.md`.
-- Update architecture docs to distinguish current implementation from target
+- [ ] Choose strict null removal or explicit external-null wrapper.
+- [ ] Update `docs/decisions.md`.
+- [ ] Update architecture docs to distinguish current implementation from target
   semantics if implementation will be incremental.
-- Add parser and VM tests that assert the old `null` behavior is no longer the
-  target.
+- [ ] Add parser and VM tests that assert the old `null` behavior is no longer
+  the target.
 
 Exit criteria:
 
-```text
-durable decision recorded
-tests name the selected null policy
-no runtime changes yet required
-```
+- [ ] Durable decision recorded.
+- [ ] Tests name the selected null policy.
+- [ ] No runtime changes are required for this decision checkpoint.
 
 ### Phase 2: Add Unit
 
-- Add `()` parsing in expression and type contexts.
-- Add unit HIR/type facts.
-- Add `Value::Unit` or equivalent runtime representation.
-- Make empty/statement-only blocks produce unit.
-- Make no-result functions and `return;` produce unit.
-- Update host conversion for Rust `()`.
-- Update diagnostics to print unit clearly.
+- [ ] Add `()` parsing in expression and type contexts.
+- [ ] Add unit HIR/type facts.
+- [ ] Add `Value::Unit` or equivalent runtime representation.
+- [ ] Make empty/statement-only blocks produce unit.
+- [ ] Make no-result functions and `return;` produce unit.
+- [ ] Update host conversion for Rust `()`.
+- [ ] Update diagnostics to print unit clearly.
 
 Tests:
 
-```text
-parser accepts unit expression and type
-compiler lowers empty block and return;
-VM returns unit for effect-only functions
-host native () returns unit
-diagnostics render unit in type mismatch messages
-```
+- [ ] Parser accepts unit expression and type.
+- [ ] Compiler lowers empty block and `return;`.
+- [ ] VM returns unit for effect-only functions.
+- [ ] Host native `()` returns unit.
+- [ ] Diagnostics render unit in type mismatch messages.
 
 ### Phase 3: Move Absence To Option
 
-- Update stdlib and native APIs that returned `null` for expected absence.
-- Update Rust `Option<T>` conversion to use dynamic Option values.
-- Update `?` tests for `Option<T>` paths.
-- Update docs and examples.
+- [ ] Update stdlib and native APIs that returned `null` for expected absence.
+- [ ] Update Rust `Option<T>` conversion to use dynamic Option values.
+- [ ] Update `?` tests for `Option<T>` paths.
+- [ ] Update docs and examples.
 
 Tests:
 
-```text
-lookup APIs return Option::None
-split/search APIs return Option::None
-typed Rust Option<T> round-trips through script Option
-old null-as-not-found behavior is rejected or absent
-```
+- [ ] Lookup APIs return `Option::None`.
+- [ ] Split/search APIs return `Option::None`.
+- [ ] Typed Rust `Option<T>` round-trips through script `Option`.
+- [ ] Old null-as-not-found behavior is rejected or absent.
 
 ### Phase 4: Add Tuple Syntax And Runtime Values
 
-- Add tuple expressions, types, and patterns.
-- Add tuple construction bytecode.
-- Add tuple destructuring lowering.
-- Add runtime tuple guards.
-- Add tuple OwnedValue and reflection descriptors.
-- Add host conversion for selected Rust tuple arities.
+- [ ] Add tuple expressions, types, and patterns.
+- [ ] Add tuple construction bytecode.
+- [ ] Add tuple destructuring lowering.
+- [ ] Add runtime tuple guards.
+- [ ] Add tuple `OwnedValue` and reflection descriptors.
+- [ ] Add host conversion for selected Rust tuple arities.
 
 Tests:
 
-```text
-tuple literals evaluate to fixed-size tuples
-tuple destructuring binds values in order
-arity mismatch is a source-spanned diagnostic
-tuple type hints guard dynamic values
-host Rust tuple arities convert correctly
-reflection reports tuple element descriptors
-```
+- [ ] Tuple literals evaluate to fixed-size tuples.
+- [ ] Tuple destructuring binds values in order.
+- [ ] Arity mismatch is a source-spanned diagnostic.
+- [ ] Tuple type hints guard dynamic values.
+- [ ] Host Rust tuple arities convert correctly.
+- [ ] Reflection reports tuple element descriptors.
 
 ### Phase 5: Integrate Option/Result With Tuple Payloads
 
-- Make `Option<(A, B)>` and `Result<(A, B), E>` precise in type facts.
-- Ensure `?` propagation preserves tuple payloads.
-- Update stdlib APIs such as `split_once`.
-- Add benchmark rows for tuple-return hot paths if they become common in
+- [ ] Make `Option<(A, B)>` and `Result<(A, B), E>` precise in type facts.
+- [ ] Ensure `?` propagation preserves tuple payloads.
+- [ ] Update stdlib APIs such as `split_once`.
+- [ ] Add benchmark rows for tuple-return hot paths if they become common in
   standard library code.
 
 Tests:
 
-```text
-Option tuple payload unwraps through ?
-Result tuple payload unwraps through ?
-Option ? inside Result-returning function is rejected without explicit ok_or
-Result ? inside Option-returning function is rejected without explicit mapping
-split_once-style APIs return Option tuple payloads
-tuple payload type mismatches fail at guarded boundaries
-```
+- [ ] `Option` tuple payload unwraps through `?`.
+- [ ] `Result` tuple payload unwraps through `?`.
+- [ ] `Option ?` inside `Result`-returning function is rejected without
+  explicit `ok_or`.
+- [ ] `Result ?` inside `Option`-returning function is rejected without
+  explicit mapping.
+- [ ] `split_once`-style APIs return `Option` tuple payloads.
+- [ ] Tuple payload type mismatches fail at guarded boundaries.
 
 ### Phase 6: Remove Or Isolate Null
 
-- Remove global `null` literal and `null` type hint if strict removal is
+- [ ] Remove global `null` literal and `null` type hint if strict removal is
   selected.
-- Or move raw null behind explicit external data wrappers if that policy is
+- [ ] Or move raw null behind explicit external data wrappers if that policy is
   selected.
-- Remove ordinary `Value::Null` usage from compiler, VM, stdlib, host bridge,
-  reflection, and tests.
-- Update documentation and diagnostics.
+- [ ] Remove ordinary `Value::Null` usage from compiler, VM, stdlib, host
+  bridge, reflection, and tests.
+- [ ] Update documentation and diagnostics.
 
 Tests:
 
-```text
-source-level null is rejected under strict removal
-ordinary APIs do not return null
-external raw null wrapper preserves JSON/serde null if selected
-missing reflection metadata no longer appears as null
-```
+- [ ] Source-level null is rejected under strict removal.
+- [ ] Ordinary APIs do not return null.
+- [ ] External raw null wrapper preserves JSON/serde null if selected.
+- [ ] Missing reflection metadata no longer appears as null.
 
 ### Phase 7: Hot Reload, LSP, Formatter, And Website
 
-- Update ABI comparison for unit and tuples.
-- Update schema artifacts.
-- Update LSP parsing, semantic tokens, completion, hover, signature help,
+- [ ] Update ABI comparison for unit and tuples.
+- [ ] Update schema artifacts.
+- [ ] Update LSP parsing, semantic tokens, completion, hover, signature help,
   formatting, references, rename, and diagnostics.
-- Update website docs and playground examples.
-- Update conformance fixtures.
+- [ ] Update website docs and playground examples.
+- [ ] Update conformance fixtures.
 
 Tests:
 
-```text
-hot reload rejects exported unit/tuple signature changes
-schema artifact round-trips unit and tuple descriptors
-formatter preserves tuple syntax
-LSP hover/completion/signature help render tuple/unit contracts
-website builds with updated examples
-```
+- [ ] Hot reload rejects exported unit/tuple signature changes.
+- [ ] Schema artifact round-trips unit and tuple descriptors.
+- [ ] Formatter preserves tuple syntax.
+- [ ] LSP hover/completion/signature help render tuple/unit contracts.
+- [ ] Website builds with updated examples.
 
 ### Phase 8: Performance And Cleanup
 
-- Add focused tuple/unit benchmark rows.
-- Profile common tuple-return stdlib paths.
-- Remove obsolete null compatibility helpers, tests, docs, and diagnostic
+- [ ] Add focused tuple/unit benchmark rows.
+- [ ] Profile common tuple-return stdlib paths.
+- [ ] Remove obsolete null compatibility helpers, tests, docs, and diagnostic
   wording.
-- Validate full workspace.
+- [ ] Validate full workspace.
 
 Validation:
 
-```bash
-cargo fmt --all -- --check
-cargo clippy --workspace --all-targets -- -D warnings
-cargo test --workspace
-cargo bench -p vela_vm --bench external_compare -- --quick tuple
-```
+- [ ] `cargo fmt --all -- --check`
+- [ ] `cargo clippy --workspace --all-targets -- -D warnings`
+- [ ] `cargo test --workspace`
+- [ ] `cargo bench -p vela_vm --bench external_compare -- --quick tuple`
 
 The benchmark row may be added during implementation. If it does not exist yet,
 record the focused VM/std-lib benchmark command that replaces it.
