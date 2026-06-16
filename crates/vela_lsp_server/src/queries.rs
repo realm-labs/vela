@@ -28,6 +28,7 @@ use crate::{
     protocol::ReferencesParams,
     protocol::RenameParams,
     protocol::SelectionRangeParams,
+    protocol::SemanticTokensDeltaParams,
     protocol::SemanticTokensParams,
     protocol::TextDocumentPositionParams,
     protocol::WorkspaceSymbolParams,
@@ -36,7 +37,7 @@ use crate::{
     references::{lsp_document_highlights, lsp_references},
     rename::{lsp_prepare_rename, lsp_workspace_edit},
     selection::lsp_selection_ranges,
-    semantic_tokens::lsp_semantic_tokens,
+    semantic_tokens::{lsp_semantic_token_delta, lsp_semantic_tokens},
     signature::lsp_signature_help,
     success_response,
     symbols::{lsp_document_symbols, lsp_workspace_symbols},
@@ -535,6 +536,34 @@ impl LspServer {
         let tokens = self.databases.semantic_tokens(&document_id);
 
         JsonRpcResult::Response(success_response(id, lsp_semantic_tokens(&tokens)))
+    }
+
+    pub(crate) fn semantic_tokens_full_delta(
+        &mut self,
+        id: Option<RequestId>,
+        params: JsonValue,
+    ) -> JsonRpcResult {
+        let Some(id) = id else {
+            return JsonRpcResult::None;
+        };
+        let params = match serde_json::from_value::<SemanticTokensDeltaParams>(params) {
+            Ok(params) => params,
+            Err(error) => {
+                return JsonRpcResult::Response(error_response(
+                    Some(id),
+                    ErrorCode::InvalidRequest,
+                    format!("invalid semanticTokens/full/delta params: {error}"),
+                ));
+            }
+        };
+
+        let document_id = DocumentId::from(params.text_document.uri);
+        self.refresh_databases_for_query(&document_id);
+        let delta = self
+            .databases
+            .semantic_token_delta(&document_id, &params.previous_result_id);
+
+        JsonRpcResult::Response(success_response(id, lsp_semantic_token_delta(&delta)))
     }
 
     pub(crate) fn inlay_hint(&mut self, id: Option<RequestId>, params: JsonValue) -> JsonRpcResult {

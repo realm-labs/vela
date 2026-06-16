@@ -38,7 +38,9 @@ pub(crate) fn initialize_result() -> JsonValue {
             "semanticTokensProvider": {
                 "legend": semantic_tokens::semantic_tokens_legend(),
                 "range": false,
-                "full": true
+                "full": {
+                    "delta": true
+                }
             },
             "inlayHintProvider": {
                 "resolveProvider": false

@@ -14,13 +14,76 @@ use crate::{DocumentId, LanguageServiceDatabases, LineIndex, Position, TextRange
 
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub struct SemanticTokens {
+    result_id: String,
     tokens: Vec<SemanticToken>,
 }
 
 impl SemanticTokens {
     #[must_use]
     pub fn new(tokens: Vec<SemanticToken>) -> Self {
-        Self { tokens }
+        let result_id = semantic_tokens_result_id(&tokens);
+        Self { result_id, tokens }
+    }
+
+    #[must_use]
+    pub fn result_id(&self) -> &str {
+        &self.result_id
+    }
+
+    #[must_use]
+    pub fn tokens(&self) -> &[SemanticToken] {
+        &self.tokens
+    }
+}
+
+#[derive(Debug, Clone, Eq, PartialEq)]
+pub struct SemanticTokenDelta {
+    result_id: String,
+    edits: Vec<SemanticTokenEdit>,
+}
+
+impl SemanticTokenDelta {
+    #[must_use]
+    pub fn new(result_id: String, edits: Vec<SemanticTokenEdit>) -> Self {
+        Self { result_id, edits }
+    }
+
+    #[must_use]
+    pub fn result_id(&self) -> &str {
+        &self.result_id
+    }
+
+    #[must_use]
+    pub fn edits(&self) -> &[SemanticTokenEdit] {
+        &self.edits
+    }
+}
+
+#[derive(Debug, Clone, Eq, PartialEq)]
+pub struct SemanticTokenEdit {
+    start: usize,
+    delete_count: usize,
+    tokens: Vec<SemanticToken>,
+}
+
+impl SemanticTokenEdit {
+    #[must_use]
+    pub fn new(start: usize, delete_count: usize, tokens: Vec<SemanticToken>) -> Self {
+        Self {
+            start,
+            delete_count,
+            tokens,
+        }
+    }
+
+    #[must_use]
+    pub const fn start(&self) -> usize {
+        self.start
+    }
+
+    #[must_use]
+    pub const fn delete_count(&self) -> usize {
+        self.delete_count
     }
 
     #[must_use]
@@ -253,6 +316,28 @@ impl LanguageServiceDatabases {
         SemanticTokens::new(semantic_tokens)
     }
 
+    #[must_use]
+    pub fn semantic_token_delta(
+        &self,
+        document_id: &DocumentId,
+        previous_result_id: &str,
+    ) -> SemanticTokenDelta {
+        let current = self.semantic_tokens(document_id);
+        if current.result_id() == previous_result_id {
+            return SemanticTokenDelta::new(current.result_id().to_owned(), Vec::new());
+        }
+
+        let previous_token_count = semantic_token_count_from_result_id(previous_result_id);
+        SemanticTokenDelta::new(
+            current.result_id().to_owned(),
+            vec![SemanticTokenEdit::new(
+                0,
+                previous_token_count,
+                current.tokens().to_vec(),
+            )],
+        )
+    }
+
     fn semantic_token_classifications(
         &self,
         source_id: SourceId,
@@ -327,6 +412,34 @@ impl LanguageServiceDatabases {
                     && token_text(text, range) == Some(name)
             })
             .map(declaration_classification)
+    }
+}
+
+fn semantic_tokens_result_id(tokens: &[SemanticToken]) -> String {
+    let mut hash = 0xcbf2_9ce4_8422_2325_u64;
+    hash_result_id_part(&mut hash, tokens.len() as u64);
+    for token in tokens {
+        hash_result_id_part(&mut hash, token.start().line as u64);
+        hash_result_id_part(&mut hash, token.start().character as u64);
+        hash_result_id_part(&mut hash, token.length() as u64);
+        hash_result_id_part(&mut hash, u64::from(token.token_type().legend_index()));
+        hash_result_id_part(&mut hash, u64::from(token.modifiers().bits()));
+    }
+    format!("v1:{}:{hash:016x}", tokens.len())
+}
+
+fn hash_result_id_part(hash: &mut u64, value: u64) {
+    for byte in value.to_le_bytes() {
+        *hash ^= u64::from(byte);
+        *hash = hash.wrapping_mul(0x0000_0100_0000_01b3);
+    }
+}
+
+fn semantic_token_count_from_result_id(result_id: &str) -> usize {
+    let mut parts = result_id.split(':');
+    match (parts.next(), parts.next(), parts.next(), parts.next()) {
+        (Some("v1"), Some(count), Some(_hash), None) => count.parse().unwrap_or(0),
+        _ => 0,
     }
 }
 

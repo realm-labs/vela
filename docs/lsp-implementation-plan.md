@@ -487,9 +487,14 @@ Purpose: provide syntax and semantic highlighting without changing semantics.
     trait method, and impl method declaration token classes.
   - [x] Add member-use token classes for script fields/methods, schema-backed
     host fields/methods, and stdlib member methods.
-- [ ] Implement full semantic tokens.
-- [ ] Implement semantic token delta only after generation-stable token caches
+- [~] Implement full semantic tokens.
+  - [x] Full tokens include lexical classes, comments, resolved script symbols,
+    script member declarations, and script/schema/stdlib member uses.
+- [~] Implement semantic token delta only after generation-stable token caches
   exist.
+  - [x] Full-token responses carry deterministic result IDs, and
+    `semanticTokens/full/delta` returns no edits for unchanged streams or a
+    full replacement edit for changed streams.
 
 Tests:
 
@@ -506,7 +511,7 @@ Tests:
 - [x] `lsp_semantic_tokens_classify_host_and_builtin_member_uses`
 - [x] `semantic_tokens_degrade_under_parse_errors`
 - [x] `lsp_semantic_tokens_degrade_under_parse_errors`
-- [ ] `semantic_token_delta_matches_full_tokens`
+- [x] `semantic_token_delta_matches_full_tokens`
 
 Validation:
 

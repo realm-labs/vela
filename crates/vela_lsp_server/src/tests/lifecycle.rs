@@ -74,7 +74,7 @@ fn lsp_initialize_reports_capabilities() {
         serde_json::json!(true)
     );
     assert_eq!(
-        response["result"]["capabilities"]["semanticTokensProvider"]["full"],
+        response["result"]["capabilities"]["semanticTokensProvider"]["full"]["delta"],
         serde_json::json!(true)
     );
     assert_eq!(

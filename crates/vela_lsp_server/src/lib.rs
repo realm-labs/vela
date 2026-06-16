@@ -145,6 +145,9 @@ impl LspServer {
             "textDocument/semanticTokens/full" => {
                 self.semantic_tokens_full(message.id, message.params)
             }
+            "textDocument/semanticTokens/full/delta" => {
+                self.semantic_tokens_full_delta(message.id, message.params)
+            }
             "textDocument/inlayHint" => self.inlay_hint(message.id, message.params),
             "workspace/symbol" => self.workspace_symbol(message.id, message.params),
             "workspace/didChangeWatchedFiles" => {

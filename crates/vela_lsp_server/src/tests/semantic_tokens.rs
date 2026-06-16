@@ -620,6 +620,113 @@ pub fn main(player: Player, names: Array<String>) -> i64 {
     );
 }
 
+#[test]
+fn lsp_semantic_token_delta_matches_full_tokens() {
+    let mut server = LspServer::new();
+    let initialize = response_value(server.handle_json(&request(
+        1,
+        "initialize",
+        serde_json::json!({
+            "processId": null,
+            "rootUri": "file:///workspace/scripts",
+            "capabilities": {}
+        }),
+    )));
+    assert_eq!(
+        initialize["result"]["capabilities"]["semanticTokensProvider"]["full"]["delta"],
+        true
+    );
+
+    let uri = "file:///workspace/scripts/game/main.vela";
+    let original = "pub fn main() { let value = 1 return value }";
+    let changed = "pub fn main() { let value = 20 return value }";
+    let _ = notification_value(server.handle_json(&notification(
+        "textDocument/didOpen",
+        serde_json::json!({
+            "textDocument": {
+                "uri": uri,
+                "languageId": "vela",
+                "version": 1,
+                "text": original
+            }
+        }),
+    )));
+
+    let full = response_value(server.handle_json(&request(
+        2,
+        "textDocument/semanticTokens/full",
+        serde_json::json!({
+            "textDocument": { "uri": uri }
+        }),
+    )));
+    let previous_result_id = full["result"]["resultId"]
+        .as_str()
+        .expect("full semantic tokens should include resultId")
+        .to_owned();
+    let previous_len = full["result"]["data"]
+        .as_array()
+        .expect("full semantic tokens should include data")
+        .len();
+
+    let unchanged = response_value(server.handle_json(&request(
+        3,
+        "textDocument/semanticTokens/full/delta",
+        serde_json::json!({
+            "textDocument": { "uri": uri },
+            "previousResultId": previous_result_id.clone()
+        }),
+    )));
+    assert_eq!(unchanged["result"]["edits"], serde_json::json!([]));
+
+    let _ = notification_value(server.handle_json(&notification(
+        "textDocument/didChange",
+        serde_json::json!({
+            "textDocument": {
+                "uri": uri,
+                "version": 2
+            },
+            "contentChanges": [
+                { "text": changed }
+            ]
+        }),
+    )));
+    let changed_full = response_value(server.handle_json(&request(
+        4,
+        "textDocument/semanticTokens/full",
+        serde_json::json!({
+            "textDocument": { "uri": uri }
+        }),
+    )));
+    let changed_full_data = changed_full["result"]["data"]
+        .as_array()
+        .expect("changed full semantic tokens should include data");
+
+    let delta = response_value(server.handle_json(&request(
+        5,
+        "textDocument/semanticTokens/full/delta",
+        serde_json::json!({
+            "textDocument": { "uri": uri },
+            "previousResultId": previous_result_id
+        }),
+    )));
+    let edits = delta["result"]["edits"]
+        .as_array()
+        .expect("delta semantic tokens should include edits");
+    assert_eq!(edits.len(), 1);
+    assert_eq!(edits[0]["start"], 0);
+    assert_eq!(edits[0]["deleteCount"], previous_len);
+    assert_eq!(
+        edits[0]["data"]
+            .as_array()
+            .expect("delta replacement should include data"),
+        changed_full_data
+    );
+    assert_eq!(
+        delta["result"]["resultId"],
+        changed_full["result"]["resultId"]
+    );
+}
+
 fn token_type_index(token_types: &[serde_json::Value], name: &str) -> u64 {
     token_types
         .iter()

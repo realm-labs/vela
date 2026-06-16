@@ -419,6 +419,36 @@ pub fn main(player: Player, names: Array<String>) -> i64 {
     );
 }
 
+#[test]
+fn semantic_token_delta_matches_full_tokens() {
+    let document = DocumentId::from("/workspace/scripts/game/main.vela");
+    let text = "pub fn main() { let value = 1 return value }";
+    let databases = databases_for(vec![SourceFileSnapshot::new(document.clone(), text)]);
+
+    let full = databases.semantic_tokens(&document);
+    let unchanged = databases.semantic_token_delta(&document, full.result_id());
+
+    assert_eq!(unchanged.result_id(), full.result_id());
+    assert!(unchanged.edits().is_empty());
+
+    let changed_text = "pub fn main() { let value = 20 return value }";
+    let changed = databases_for(vec![SourceFileSnapshot::new(
+        document.clone(),
+        changed_text,
+    )]);
+    let changed_full = changed.semantic_tokens(&document);
+    let delta = changed.semantic_token_delta(&document, full.result_id());
+
+    assert_eq!(delta.result_id(), changed_full.result_id());
+    let edit = delta
+        .edits()
+        .first()
+        .expect("changed tokens should produce a replacement edit");
+    assert_eq!(edit.start(), 0);
+    assert_eq!(edit.delete_count(), full.tokens().len());
+    assert_eq!(edit.tokens(), changed_full.tokens());
+}
+
 fn assert_token_at(
     tokens: &SemanticTokens,
     line: usize,

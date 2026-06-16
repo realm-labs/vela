@@ -55,7 +55,8 @@ pub use schema::{
 };
 pub use selection::SelectionRange;
 pub use semantic_tokens::{
-    SemanticToken, SemanticTokenModifiers, SemanticTokenType, SemanticTokens,
+    SemanticToken, SemanticTokenDelta, SemanticTokenEdit, SemanticTokenModifiers,
+    SemanticTokenType, SemanticTokens,
 };
 pub use signature::{SignatureHelp, SignatureInformation, SignatureParameter};
 pub use symbols::{DocumentSymbol, DocumentSymbolKind, WorkspaceSymbol, WorkspaceSymbolLocation};
