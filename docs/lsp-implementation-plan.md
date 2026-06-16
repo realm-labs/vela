@@ -943,8 +943,8 @@ Purpose: provide deterministic source formatting without losing comments.
   - Initial native LSP support handles `}` and newline triggers by limiting
     trailing-whitespace cleanup to the current brace-delimited construct or
     current line fallback.
-  - `}` triggers on completed single-line top-level items now reflow that item
-    through the token/trivia formatter while preserving surrounding text.
+  - `}` triggers on completed top-level items now reflow that item through the
+    token/trivia formatter while preserving surrounding text.
 - [x] Add idempotence tests and malformed-source fallback behavior.
 
 Tests:
@@ -963,6 +963,8 @@ Tests:
 - [x] `lsp_on_type_formatting_only_edits_current_construct`
 - [x] `on_type_formatting_reflows_completed_item`
 - [x] `lsp_on_type_formatting_reflows_completed_item`
+- [x] `on_type_formatting_reflows_completed_multiline_item`
+- [x] `lsp_on_type_formatting_reflows_completed_multiline_item`
 - [x] `lsp_document_formatting_returns_full_document_edit`
 - [x] `lsp_document_formatting_returns_empty_edits_when_idempotent`
 - [x] `lsp_range_formatting_limits_edits_to_range`

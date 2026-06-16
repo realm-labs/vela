@@ -447,9 +447,6 @@ fn completed_item_formatting_edit(
     })?;
     let start = item.span.start as usize;
     let item_end = item.span.end as usize;
-    if line_index.position(start).line != line_index.position(item_end).line {
-        return None;
-    }
     let end = include_single_trailing_newline(source, item_end);
     let range = DiagnosticRange::new(line_index.position(start), line_index.position(end));
     selected_item_formatting_edit(source_id, source, parsed, range)
@@ -945,11 +942,9 @@ pub fn other() {
         let edits = on_type_format_source(source, Position::new(2, 1), "}");
         let formatted = apply_range_edits(source, &edits);
 
-        assert_eq!(edits.len(), 2);
-        assert_eq!(edits[0].range().start(), Position::new(0, 15));
-        assert_eq!(edits[0].range().end(), Position::new(0, 18));
-        assert_eq!(edits[1].range().start(), Position::new(1, 12));
-        assert_eq!(edits[1].range().end(), Position::new(1, 15));
+        assert_eq!(edits.len(), 1);
+        assert_eq!(edits[0].range().start(), Position::new(0, 0));
+        assert_eq!(edits[0].range().end(), Position::new(3, 0));
         assert_eq!(
             formatted,
             "\
@@ -978,6 +973,33 @@ pub fn other() {
             "\
 pub fn main() {
     return 1
+}
+
+pub fn other(){return 2}
+"
+        );
+    }
+
+    #[test]
+    fn on_type_formatting_reflows_completed_multiline_item() {
+        let source = "\
+pub fn main(){
+    return 1+2
+}
+
+pub fn other(){return 2}
+";
+        let edits = on_type_format_source(source, Position::new(2, 1), "}");
+        let formatted = apply_range_edits(source, &edits);
+
+        assert_eq!(edits.len(), 1);
+        assert_eq!(edits[0].range().start(), Position::new(0, 0));
+        assert_eq!(edits[0].range().end(), Position::new(3, 0));
+        assert_eq!(
+            formatted,
+            "\
+pub fn main() {
+    return 1 + 2
 }
 
 pub fn other(){return 2}
