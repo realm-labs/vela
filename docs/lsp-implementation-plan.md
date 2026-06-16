@@ -1082,9 +1082,14 @@ Purpose: prove the LSP track is complete enough to run alongside runtime work.
   - Verified with `cargo test -p vela_language_service
     million_line_synthetic_workspace_checkpoint -- --ignored`: 1 explicit
     million-line scale checkpoint passed.
-- [ ] Run full workspace validation.
-- [ ] Update `docs/progress.md` with completed LSP capability coverage.
-- [ ] Archive long scale logs only if needed for later audit.
+- [x] Run full workspace validation.
+  - Verified with `cargo fmt --all -- --check`,
+    `cargo clippy --workspace --all-targets -- -D warnings`, and
+    `cargo test --workspace`.
+- [x] Update `docs/progress.md` with completed LSP capability coverage.
+- [x] Archive long scale logs only if needed for later audit.
+  - No archive needed; the validation summary is recorded in
+    `docs/progress.md`.
 
 Validation:
 
