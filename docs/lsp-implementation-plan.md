@@ -612,6 +612,7 @@ Purpose: support workspace navigation and prepare rename.
   - [x] Index source-owned script struct field declarations plus typed
     receiver read/write member uses.
   - [x] Index explicit source-owned record-constructor field labels.
+  - [x] Index source-owned record-constructor shorthand field labels.
   - [x] Index source-owned enum variant declarations, constructor uses, and
     match-pattern uses.
   - [x] Index source-owned inherent script method declarations and typed
@@ -620,6 +621,7 @@ Purpose: support workspace navigation and prepare rename.
   - [x] Index schema-backed field declarations with source spans plus typed
     host receiver read/write member uses.
   - [x] Index explicit schema-backed record-constructor field labels.
+  - [x] Index schema-backed record-constructor shorthand field labels.
   - [x] Index schema-backed method declarations with source spans plus typed
     host receiver call sites.
   - [x] Index schema-backed trait-method declarations with source spans plus
@@ -636,6 +638,9 @@ Purpose: support workspace navigation and prepare rename.
     reference kinds.
   - [x] Track explicit source-owned record-constructor field labels as reads.
   - [x] Track explicit schema-backed record-constructor field labels as reads.
+  - [x] Track record-constructor shorthand field labels as reads when
+    collecting field references while preserving local references from the
+    shorthand token.
   - [x] Track source-owned enum variant declaration/read/pattern reference
     kinds.
   - [x] Track schema-backed variant declaration/read/pattern reference kinds.
@@ -646,6 +651,8 @@ Purpose: support workspace navigation and prepare rename.
   - [x] Serve source-owned script struct field references through the native
     LSP request.
   - [x] Serve explicit source-owned record-constructor field label references
+    through the native LSP request.
+  - [x] Serve source-owned record-constructor shorthand field label references
     through the native LSP request.
   - [x] Serve source-owned enum variant references through the native LSP
     request.
@@ -695,6 +702,8 @@ Tests:
 - [x] `lsp_references_find_field_reads_and_writes`
 - [x] `references_find_record_constructor_field_labels`
 - [x] `lsp_references_find_record_constructor_field_labels`
+- [x] `references_find_record_constructor_shorthand_field_labels`
+- [x] `lsp_references_find_record_constructor_shorthand_field_labels`
 - [x] `references_find_enum_variant_constructors_and_patterns`
 - [x] `lsp_references_find_enum_variant_constructors_and_patterns`
 - [x] `references_find_script_method_calls`
@@ -705,6 +714,7 @@ Tests:
 - [x] `lsp_references_find_schema_field_reads_and_writes`
 - [x] `references_find_schema_record_constructor_field_labels`
 - [x] `lsp_references_find_schema_record_constructor_field_labels`
+- [x] `references_find_schema_record_constructor_shorthand_field_labels`
 - [x] `references_find_schema_method_calls`
 - [x] `lsp_references_find_schema_method_calls`
 - [x] `references_find_schema_trait_method_calls`

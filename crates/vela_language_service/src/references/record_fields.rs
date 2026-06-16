@@ -3,7 +3,7 @@ use vela_syntax::ast::{
     SourceFile, Stmt, StmtKind,
 };
 
-pub(super) fn for_each_explicit_record_field(
+pub(super) fn for_each_record_field(
     parsed: &SourceFile,
     mut visit: impl FnMut(&[String], &RecordField),
 ) {
@@ -65,9 +65,7 @@ fn visit_expr_record_fields(expr: &Expr, visit: &mut impl FnMut(&[String], &Reco
     match &expr.kind {
         ExprKind::Record { path, fields } => {
             for field in fields {
-                if field.value.is_some() {
-                    visit(path, field);
-                }
+                visit(path, field);
                 if let Some(value) = &field.value {
                     visit_expr_record_fields(value, visit);
                 }

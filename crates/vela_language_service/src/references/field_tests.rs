@@ -54,6 +54,79 @@ pub fn main(reward: Reward) -> i64 {
     );
 }
 
+#[test]
+fn references_find_record_constructor_shorthand_field_labels() {
+    let document = DocumentId::from("/workspace/scripts/game/main.vela");
+    let text = "\
+pub struct Reward {
+    amount: i64
+}
+
+pub fn make(amount: i64) -> Reward {
+    return Reward { amount }
+}
+
+pub fn main(reward: Reward) -> i64 {
+    return reward.amount
+}";
+    let databases = databases_for(vec![SourceFileSnapshot::new(document.clone(), text)]);
+
+    let references = databases.references(
+        &document,
+        Position::new(1, line(text, 1).find("amount").expect("field declaration")),
+        true,
+    );
+
+    assert_eq!(references.len(), 3, "{references:?}");
+    assert_reference(
+        &references,
+        1,
+        line(text, 1).find("amount").expect("field declaration"),
+        ReferenceKind::Declaration,
+    );
+    assert_reference(
+        &references,
+        5,
+        line(text, 5)
+            .find("amount")
+            .expect("constructor shorthand field label"),
+        ReferenceKind::Read,
+    );
+    assert_reference(
+        &references,
+        9,
+        line(text, 9).find("amount").expect("member field read"),
+        ReferenceKind::Read,
+    );
+
+    let local_references = databases.references(
+        &document,
+        Position::new(
+            5,
+            line(text, 5)
+                .find("amount")
+                .expect("constructor shorthand local read"),
+        ),
+        true,
+    );
+
+    assert_eq!(local_references.len(), 2, "{local_references:?}");
+    assert_reference(
+        &local_references,
+        4,
+        line(text, 4).find("amount").expect("parameter declaration"),
+        ReferenceKind::Declaration,
+    );
+    assert_reference(
+        &local_references,
+        5,
+        line(text, 5)
+            .find("amount")
+            .expect("constructor shorthand local read"),
+        ReferenceKind::Read,
+    );
+}
+
 fn assert_reference(references: &[Reference], line: usize, character: usize, kind: ReferenceKind) {
     assert!(
         references.iter().any(|reference| {

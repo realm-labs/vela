@@ -108,7 +108,7 @@ pub(super) fn script_record_field_use_target(
 ) -> Option<FieldReferenceTarget> {
     let field = token_text(text, token.range)?;
     let mut target = None;
-    record_fields::for_each_explicit_record_field(parsed, |path, record_field| {
+    record_fields::for_each_record_field(parsed, |path, record_field| {
         if target.is_some() || record_field.name != field {
             return;
         }
@@ -202,7 +202,7 @@ fn script_record_field_references_for_source(
 ) -> Vec<Reference> {
     let mut references = Vec::new();
     let text = source.text();
-    record_fields::for_each_explicit_record_field(parsed, |path, field| {
+    record_fields::for_each_record_field(parsed, |path, field| {
         if field.name != target.field {
             return;
         }

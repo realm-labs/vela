@@ -93,6 +93,94 @@ pub fn main(player: Player) -> i64 {
     );
 }
 
+#[test]
+fn references_find_schema_record_constructor_shorthand_field_labels() {
+    let main = DocumentId::from("/workspace/scripts/game/main.vela");
+    let schema = DocumentId::from("/workspace/scripts/schema_defs.vela");
+    let main_text = "\
+pub fn make(level: i64) -> Player {
+    let player = Player { level }
+    return player
+}
+
+pub fn main(player: Player) -> i64 {
+    return player.level
+}";
+    let schema_text = "pub fn level() { return 1 }";
+    let mut databases = databases_for(vec![
+        SourceFileSnapshot::new(main.clone(), main_text),
+        SourceFileSnapshot::new(schema.clone(), schema_text),
+    ]);
+    let schema_record = databases
+        .source_db()
+        .records()
+        .get(&schema)
+        .expect("schema source should be indexed");
+    let target_start = schema_text
+        .find("level")
+        .expect("schema marker should exist");
+    let target_end = target_start + "level".len();
+    let artifact = serde_json::json!({
+        "formatVersion": 1,
+        "facts": {
+            "types": [
+                {
+                    "name": "Player",
+                    "fact": { "kind": "host", "name": "Player" }
+                }
+            ],
+            "fields": [
+                {
+                    "owner": "Player",
+                    "name": "level",
+                    "fact": { "kind": "primitive", "name": "i64" },
+                    "sourceSpan": {
+                        "source": schema_record.source_id().get(),
+                        "start": target_start,
+                        "end": target_end
+                    }
+                }
+            ]
+        }
+    })
+    .to_string();
+    databases.load_schema_artifact_json("/workspace/target/vela/schema.json", &artifact);
+
+    let references = databases.references(
+        &schema,
+        Position::new(
+            0,
+            schema_text.find("level").expect("schema field declaration"),
+        ),
+        true,
+    );
+
+    assert_eq!(references.len(), 3, "{references:?}");
+    assert_reference_in_document(
+        &references,
+        &schema,
+        0,
+        schema_text.find("level").expect("schema field declaration"),
+        ReferenceKind::Declaration,
+    );
+    assert_reference_in_document(
+        &references,
+        &main,
+        1,
+        line(main_text, 1)
+            .find("level")
+            .expect("constructor shorthand field label"),
+        ReferenceKind::Read,
+    );
+    assert_reference_in_document(
+        &references,
+        &main,
+        6,
+        line(main_text, 6).find("level").expect("member field read"),
+        ReferenceKind::Read,
+    );
+}
+
 fn assert_reference_in_document(
     references: &[Reference],
     document_id: &DocumentId,
