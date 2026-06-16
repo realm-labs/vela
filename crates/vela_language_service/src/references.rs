@@ -146,6 +146,9 @@ impl LanguageServiceDatabases {
         {
             return methods::script_method_references(self, &target, include_declaration);
         }
+        if let Some(target) = schema::schema_method_declaration_target(self, source_id, &token) {
+            return schema::schema_method_references(self, &target, include_declaration);
+        }
         if let Some(target) = schema::schema_field_declaration_target(self, source_id, &token) {
             return schema::schema_field_references(self, &target, include_declaration);
         }
@@ -185,6 +188,16 @@ impl LanguageServiceDatabases {
                 &token,
             ) {
                 return methods::script_method_references(self, &target, include_declaration);
+            }
+            if let Some(target) = schema::schema_method_use_target(
+                self,
+                &facts,
+                source.text(),
+                source_id,
+                bindings,
+                &token,
+            ) {
+                return schema::schema_method_references(self, &target, include_declaration);
             }
             if let Some(target) = schema::schema_field_use_target(
                 self,
