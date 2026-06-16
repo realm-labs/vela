@@ -1,0 +1,14 @@
+id = "vela"
+name = "Vela"
+version = "0.1.0"
+schema_version = 1
+authors = ["Vela contributors"]
+description = "Thin Zed launcher for the native Vela language server."
+repository = "https://github.com/realm-labs/vela"
+
+[language_servers.vela-language-server]
+name = "Vela Language Server"
+language = "Vela"
+
+[languages.Vela]
+language_servers = ["vela-language-server"]

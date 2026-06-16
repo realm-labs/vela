@@ -82,6 +82,23 @@ place a packaged binary under `editors/vscode/server/`. The extension passes
 initialization-option shape used by generic clients. It does not implement
 language analysis itself.
 
+## Zed Extension Package
+
+The repository includes a thin Zed extension package under `editors/zed`. It
+contributes Vela language metadata and starts `vela_lsp_server` over stdio via
+Zed's extension command hook.
+
+For local extension validation:
+
+```bash
+node editors/zed/scripts/validate-package.js
+```
+
+Put `vela_lsp_server` on `PATH`, or unpack a release artifact and expose the
+binary to Zed. Project roots and schema configuration still come from
+`vela.toml`; the Zed package does not implement Vela analysis or LSP request
+behavior.
+
 ## Project Configuration
 
 Prefer a `vela.toml` at the workspace root:

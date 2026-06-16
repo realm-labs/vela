@@ -1,0 +1,13 @@
+name = "Vela"
+grammar = "vela"
+path_suffixes = ["vela"]
+line_comments = ["// "]
+block_comment = ["/*", "*/"]
+brackets = [
+  { start = "{", end = "}", close = true, newline = true },
+  { start = "[", end = "]", close = true, newline = false },
+  { start = "(", end = ")", close = true, newline = false },
+  { start = "\"", end = "\"", close = true, newline = false, not_in = ["string", "comment"] }
+]
+tab_size = 4
+hard_tabs = false
