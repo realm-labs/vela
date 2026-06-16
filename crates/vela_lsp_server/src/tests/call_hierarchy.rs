@@ -268,6 +268,133 @@ pub fn main(reward: Reward) -> i64 {
     );
 }
 
+#[test]
+fn lsp_call_hierarchy_uses_resolved_trait_impl_method_calls() {
+    let mut server = LspServer::new();
+    let initialize = response_value(server.handle_json(&request(
+        1,
+        "initialize",
+        serde_json::json!({
+            "processId": null,
+            "rootUri": "file:///workspace/scripts",
+            "capabilities": {}
+        }),
+    )));
+    assert_eq!(
+        initialize["result"]["capabilities"]["callHierarchyProvider"],
+        true
+    );
+    let text = "\
+pub fn clamp(value: i64) -> i64 { return value }
+
+pub trait Rewardable {
+    fn grant(self, amount: i64) -> i64;
+}
+
+pub struct Player { level: i64 }
+
+impl Rewardable for Player {
+    fn grant(self, amount: i64) -> i64 { return clamp(amount) }
+}
+
+pub fn main(player: Player) -> i64 {
+    let first = player.grant(1)
+    return player.grant(first)
+}";
+    let uri = "file:///workspace/scripts/game/main.vela";
+    let _ = notification_value(server.handle_json(&notification(
+        "textDocument/didOpen",
+        serde_json::json!({
+            "textDocument": {
+                "uri": uri,
+                "languageId": "vela",
+                "version": 1,
+                "text": text
+            }
+        }),
+    )));
+
+    let prepare_grant = response_value(server.handle_json(&request(
+        2,
+        "textDocument/prepareCallHierarchy",
+        serde_json::json!({
+            "textDocument": { "uri": uri },
+            "position": {
+                "line": 9,
+                "character": line(text, 9).find("grant").expect("method declaration")
+            }
+        }),
+    )));
+    let grant_items = prepare_grant["result"]
+        .as_array()
+        .expect("prepareCallHierarchy response should be an array");
+    assert_eq!(grant_items.len(), 1);
+    assert_eq!(grant_items[0]["name"], "grant");
+    assert_eq!(grant_items[0]["kind"], 12);
+    assert_eq!(grant_items[0]["uri"], uri);
+
+    let prepare_from_call = response_value(server.handle_json(&request(
+        3,
+        "textDocument/prepareCallHierarchy",
+        serde_json::json!({
+            "textDocument": { "uri": uri },
+            "position": {
+                "line": 13,
+                "character": line(text, 13).find("grant").expect("method call")
+            }
+        }),
+    )));
+    let call_items = prepare_from_call["result"]
+        .as_array()
+        .expect("prepareCallHierarchy response should be an array");
+    assert_eq!(call_items, grant_items);
+
+    let incoming = response_value(server.handle_json(&request(
+        4,
+        "callHierarchy/incomingCalls",
+        serde_json::json!({ "item": grant_items[0].clone() }),
+    )));
+    let incoming_calls = incoming["result"]
+        .as_array()
+        .expect("incomingCalls response should be an array");
+    assert_eq!(incoming_calls.len(), 1);
+    assert_eq!(incoming_calls[0]["from"]["name"], "main");
+    assert_eq!(incoming_calls[0]["from"]["uri"], uri);
+    assert_call_range(
+        incoming_calls[0]["fromRanges"]
+            .as_array()
+            .expect("incoming call should include ranges"),
+        13,
+        line(text, 13).find("grant").expect("first method call"),
+    );
+    assert_call_range(
+        incoming_calls[0]["fromRanges"]
+            .as_array()
+            .expect("incoming call should include ranges"),
+        14,
+        line(text, 14).find("grant").expect("second method call"),
+    );
+
+    let outgoing = response_value(server.handle_json(&request(
+        5,
+        "callHierarchy/outgoingCalls",
+        serde_json::json!({ "item": grant_items[0].clone() }),
+    )));
+    let outgoing_calls = outgoing["result"]
+        .as_array()
+        .expect("outgoingCalls response should be an array");
+    assert_eq!(outgoing_calls.len(), 1);
+    assert_eq!(outgoing_calls[0]["to"]["name"], "clamp");
+    assert_eq!(outgoing_calls[0]["to"]["uri"], uri);
+    assert_call_range(
+        outgoing_calls[0]["fromRanges"]
+            .as_array()
+            .expect("outgoing call should include ranges"),
+        9,
+        line(text, 9).find("clamp").expect("helper call"),
+    );
+}
+
 fn assert_call_range(ranges: &[serde_json::Value], line: usize, character: usize) {
     assert!(
         ranges.iter().any(|range| {

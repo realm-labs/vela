@@ -3,7 +3,6 @@ use vela_common::{SourceId, Span};
 use vela_hir::binding::{BindingMap, BindingResolution};
 use vela_hir::ids::{HirDeclId, HirNodeId};
 use vela_hir::module_graph::{Declaration, DeclarationKind, ModuleGraph};
-use vela_hir::type_hint::ImplMetadataKind;
 use vela_syntax::lexer::lex;
 use vela_syntax::token::TokenKind;
 
@@ -345,9 +344,7 @@ impl LanguageServiceDatabases {
         let graph = self.hir_db().graph();
         graph.declarations().find_map(|declaration| {
             let metadata = graph.impl_metadata(declaration.id)?;
-            if !matches!(metadata.kind, ImplMetadataKind::Inherent)
-                || declaration.span.source != source.source_id()
-            {
+            if declaration.span.source != source.source_id() {
                 return None;
             }
             metadata
@@ -434,7 +431,6 @@ impl LanguageServiceDatabases {
             }
             if declaration.kind == DeclarationKind::Impl
                 && let Some(metadata) = graph.impl_metadata(declaration.id)
-                && matches!(metadata.kind, ImplMetadataKind::Inherent)
             {
                 for method in &metadata.methods {
                     if let Some(bindings) = graph.impl_method_bindings(method.node) {
@@ -531,9 +527,6 @@ fn script_method_declaration_target(
             continue;
         }
         let metadata = graph.impl_metadata(declaration.id)?;
-        if !matches!(metadata.kind, ImplMetadataKind::Inherent) {
-            continue;
-        }
         let span_range = span_text_range(declaration.span)?;
         for method in &metadata.methods {
             let Some(name_range) = method_name_range_in_text(text, span_range, &method.name) else {
@@ -583,9 +576,6 @@ fn script_method_owner(
             return None;
         }
         let metadata = graph.impl_metadata(declaration.id)?;
-        if !matches!(metadata.kind, ImplMetadataKind::Inherent) {
-            return None;
-        }
         let matches_owner = owner_names.iter().any(|owner| {
             metadata
                 .target_path
@@ -950,6 +940,84 @@ pub fn main(reward: Reward) -> i64 {
             outgoing[0].from_ranges(),
             10,
             line(text, 10).find("grant").expect("second method call"),
+        );
+    }
+
+    #[test]
+    fn call_hierarchy_uses_resolved_trait_impl_method_calls() {
+        let main = DocumentId::from("/workspace/scripts/game/main.vela");
+        let text = "\
+pub fn clamp(value: i64) -> i64 { return value }
+
+pub trait Rewardable {
+    fn grant(self, amount: i64) -> i64;
+}
+
+pub struct Player { level: i64 }
+
+impl Rewardable for Player {
+    fn grant(self, amount: i64) -> i64 { return clamp(amount) }
+}
+
+pub fn main(player: Player) -> i64 {
+    let first = player.grant(1)
+    return player.grant(first)
+}";
+        let databases = databases_for(vec![SourceFileSnapshot::new(main.clone(), text)]);
+
+        let prepared_from_declaration = databases.prepare_call_hierarchy(
+            &main,
+            Position::new(
+                9,
+                line(text, 9)
+                    .find("grant")
+                    .expect("trait impl method declaration should exist"),
+            ),
+        );
+        let prepared_from_call = databases.prepare_call_hierarchy(
+            &main,
+            Position::new(
+                13,
+                line(text, 13)
+                    .find("grant")
+                    .expect("trait impl method call should exist"),
+            ),
+        );
+
+        assert_eq!(prepared_from_declaration.len(), 1);
+        assert_eq!(prepared_from_declaration[0].name(), "grant");
+        assert_eq!(prepared_from_declaration[0].document_id(), &main);
+        assert_eq!(prepared_from_call, prepared_from_declaration);
+
+        let incoming = databases.incoming_calls(&prepared_from_declaration[0]);
+        assert_eq!(incoming.len(), 1);
+        assert_eq!(incoming[0].from().name(), "main");
+        assert_eq!(incoming[0].from().document_id(), &main);
+        assert_eq!(incoming[0].from_ranges().len(), 2);
+        assert_range(
+            incoming[0].from_ranges(),
+            13,
+            line(text, 13)
+                .find("grant")
+                .expect("first trait method call"),
+        );
+        assert_range(
+            incoming[0].from_ranges(),
+            14,
+            line(text, 14)
+                .find("grant")
+                .expect("second trait method call"),
+        );
+
+        let outgoing = databases.outgoing_calls(&prepared_from_declaration[0]);
+        assert_eq!(outgoing.len(), 1);
+        assert_eq!(outgoing[0].to().name(), "clamp");
+        assert_eq!(outgoing[0].to().document_id(), &main);
+        assert_eq!(outgoing[0].from_ranges().len(), 1);
+        assert_range(
+            outgoing[0].from_ranges(),
+            9,
+            line(text, 9).find("clamp").expect("helper call"),
         );
     }
 

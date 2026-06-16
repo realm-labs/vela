@@ -609,6 +609,8 @@ Purpose: support workspace navigation and prepare rename.
     outgoing call hierarchy for statically resolved calls.
   - [x] Serve source-owned inherent script method prepare, incoming, and
     outgoing call hierarchy for typed receiver calls.
+  - [x] Serve source-owned trait impl method prepare, incoming, and outgoing
+    call hierarchy for typed receiver calls.
 
 Tests:
 
@@ -642,6 +644,8 @@ Tests:
 - [x] `lsp_call_hierarchy_uses_resolved_call_graph`
 - [x] `call_hierarchy_uses_resolved_script_method_calls`
 - [x] `lsp_call_hierarchy_uses_resolved_script_method_calls`
+- [x] `call_hierarchy_uses_resolved_trait_impl_method_calls`
+- [x] `lsp_call_hierarchy_uses_resolved_trait_impl_method_calls`
 
 Validation:
 
