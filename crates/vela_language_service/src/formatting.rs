@@ -190,28 +190,51 @@ fn selected_item_formatting_edit(
     let line_index = LineIndex::new(source);
     let start = line_index.offset(range.start());
     let end = line_index.offset(range.end());
+    let (format_start, format_end) = selected_item_offsets(source, parsed, start, end)?;
+    let selected = source.get(format_start..format_end)?;
+    let formatted = format_document(source_id, selected);
+    (formatted != selected).then(|| {
+        TextEdit::new(
+            DiagnosticRange::new(
+                line_index.position(format_start),
+                line_index.position(format_end),
+            ),
+            formatted,
+        )
+    })
+}
+
+fn selected_item_offsets(
+    source: &str,
+    parsed: &SourceFile,
+    start: usize,
+    end: usize,
+) -> Option<(usize, usize)> {
     if start >= end {
         return None;
     }
 
-    let item = parsed
-        .items
-        .iter()
-        .find(|item| item.span.start as usize == start)?;
+    let item = parsed.items.iter().find(|item| {
+        let item_start = item.span.start as usize;
+        item_start >= start
+            && item_start < end
+            && source
+                .get(start..item_start)
+                .is_some_and(|prefix| prefix.chars().all(char::is_whitespace))
+    })?;
+    let item_start = item.span.start as usize;
     let item_end = item.span.end as usize;
     if item_end > end || !source.get(item_end..end)?.chars().all(char::is_whitespace) {
         return None;
     }
     if parsed.items.iter().any(|item| {
-        let item_start = item.span.start as usize;
-        item_start > start && item_start < end
+        let other_start = item.span.start as usize;
+        other_start != item_start && other_start > start && other_start < end
     }) {
         return None;
     }
 
-    let selected = source.get(start..end)?;
-    let formatted = format_document(source_id, selected);
-    (formatted != selected).then(|| TextEdit::new(range, formatted))
+    Some((item_start, end))
 }
 
 fn completed_item_formatting_edit(
@@ -552,6 +575,29 @@ impl Player {
             formatted,
             "\
 pub fn main() {
+    return 1
+}
+
+pub fn other(){return 2}
+"
+        );
+    }
+
+    #[test]
+    fn range_formatting_formats_item_with_leading_blank_selection() {
+        let source = "\n\npub fn main(){return 1}\n\npub fn other(){return 2}\n";
+        let edits = range_format_source(
+            source,
+            DiagnosticRange::new(Position::new(0, 0), Position::new(3, 0)),
+        );
+        let formatted = apply_range_edits(source, &edits);
+
+        assert_eq!(edits.len(), 1);
+        assert_eq!(edits[0].range().start(), Position::new(2, 0));
+        assert_eq!(edits[0].range().end(), Position::new(3, 0));
+        assert_eq!(
+            formatted,
+            "\n\npub fn main() {
     return 1
 }
 

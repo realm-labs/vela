@@ -926,6 +926,8 @@ Purpose: provide deterministic source formatting without losing comments.
     requested range.
   - Whole top-level item selections now apply the token/trivia formatter to
     the selected item while preserving unselected text.
+  - Whitespace-padded selections around one top-level item normalize to that
+    item span before applying the token/trivia formatter.
 - [~] Implement full document formatting.
   - Native LSP full-document formatting now uses the token/trivia formatter
     for spacing, brace indentation, comment preservation, and final newline.
@@ -958,6 +960,8 @@ Tests:
 - [x] `lsp_range_formatting_limits_edits_to_range`
 - [x] `range_formatting_formats_selected_item`
 - [x] `lsp_range_formatting_formats_selected_item`
+- [x] `range_formatting_formats_item_with_leading_blank_selection`
+- [x] `lsp_range_formatting_formats_item_with_leading_blank_selection`
 
 Validation:
 
