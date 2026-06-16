@@ -14,6 +14,7 @@ use crate::{
 mod fields;
 mod methods;
 mod record_fields;
+mod record_variant_patterns;
 pub(crate) mod schema;
 mod variant_fields;
 

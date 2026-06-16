@@ -624,6 +624,8 @@ Purpose: support workspace navigation and prepare rename.
     host receiver read/write member uses.
   - [x] Index explicit schema-backed record-constructor field labels.
   - [x] Index schema-backed record-constructor shorthand field labels.
+  - [x] Index schema-backed enum record-variant field declarations plus
+    constructor and match-pattern labels.
   - [x] Index schema-backed method declarations with source spans plus typed
     host receiver call sites.
   - [x] Index schema-backed trait-method declarations with source spans plus
@@ -647,6 +649,8 @@ Purpose: support workspace navigation and prepare rename.
     kinds.
   - [x] Track source-owned enum record-variant field declaration/read/pattern
     reference kinds.
+  - [x] Track schema-backed enum record-variant field declaration/read/pattern
+    reference kinds.
   - [x] Track schema-backed variant declaration/read/pattern reference kinds.
 - [~] Implement `textDocument/references`.
   - [x] Serve local binding references through the native LSP request.
@@ -669,6 +673,8 @@ Purpose: support workspace navigation and prepare rename.
   - [x] Serve schema-backed field references through the native LSP request.
   - [x] Serve explicit schema-backed record-constructor field label references
     through the native LSP request.
+  - [x] Serve schema-backed enum record-variant field references through the
+    native LSP request.
   - [x] Serve schema-backed method references through the native LSP request.
   - [x] Serve schema-backed trait-method references through the native LSP
     request.
@@ -723,6 +729,8 @@ Tests:
 - [x] `references_find_schema_record_constructor_field_labels`
 - [x] `lsp_references_find_schema_record_constructor_field_labels`
 - [x] `references_find_schema_record_constructor_shorthand_field_labels`
+- [x] `references_find_schema_record_variant_field_labels_and_patterns`
+- [x] `lsp_references_find_schema_record_variant_field_labels_and_patterns`
 - [x] `references_find_schema_method_calls`
 - [x] `lsp_references_find_schema_method_calls`
 - [x] `references_find_schema_trait_method_calls`

@@ -5,6 +5,7 @@ use std::time::{SystemTime, UNIX_EPOCH};
 use super::{LspServer, notification, notification_value, request, response_value};
 
 mod schema;
+mod schema_variant_fields;
 
 #[test]
 fn lsp_references_find_local_binding_uses() {

@@ -10,7 +10,8 @@ use crate::{LanguageServiceDatabases, TextRange};
 use super::{
     Reference, ReferenceKind, ReferenceToken, diagnostic_range, is_call_callee,
     member_receiver_range, name_range_in_text, path_ending_at, record_fields,
-    resolved_use_reference_kind, span_text_range, token_text, type_fact_for_resolution,
+    record_variant_patterns, resolved_use_reference_kind, span_text_range, token_text,
+    type_fact_for_resolution,
 };
 
 #[derive(Debug, Clone, Eq, PartialEq)]
@@ -92,6 +93,12 @@ pub(super) fn schema_field_references(
         ));
         if let Some(parsed) = databases.parse_db().parsed_source(source.document_id()) {
             references.extend(schema_record_field_references_for_source(
+                databases.schema_db().facts(),
+                parsed,
+                source,
+                target,
+            ));
+            references.extend(schema_record_variant_pattern_field_references_for_source(
                 databases.schema_db().facts(),
                 parsed,
                 source,
@@ -299,6 +306,15 @@ pub(super) fn schema_record_field_use_target(
             );
         }
     });
+    if target.is_none() {
+        target = schema_record_variant_pattern_field_use_target(
+            databases.schema_db().facts(),
+            parsed,
+            text,
+            token,
+            field,
+        );
+    }
     target
 }
 
@@ -498,6 +514,38 @@ fn schema_record_field_references_for_source(
     references
 }
 
+fn schema_record_variant_pattern_field_references_for_source(
+    schema: &RegistryFacts,
+    parsed: &SourceFile,
+    source: &crate::SourceRecord,
+    target: &SchemaFieldReferenceTarget,
+) -> Vec<Reference> {
+    let mut references = Vec::new();
+    let text = source.text();
+    record_variant_patterns::for_each_record_variant_pattern_field(parsed, |path, field| {
+        if field.name != target.field {
+            return;
+        }
+        if schema_field_target_for_constructor_path(schema, path, &target.field).as_ref()
+            != Some(target)
+        {
+            return;
+        }
+        let Some(span_range) = span_text_range(field.span) else {
+            return;
+        };
+        let Some(name_range) = name_range_in_text(text, span_range, &field.name) else {
+            return;
+        };
+        references.push(Reference {
+            document_id: source.document_id().clone(),
+            range: diagnostic_range(text, name_range),
+            kind: ReferenceKind::Pattern,
+        });
+    });
+    references
+}
+
 fn schema_variant_use_references_for_source(
     schema: &RegistryFacts,
     source: &crate::SourceRecord,
@@ -516,6 +564,34 @@ fn schema_variant_use_references_for_source(
         }
     }
     references
+}
+
+fn schema_record_variant_pattern_field_use_target(
+    schema: &RegistryFacts,
+    parsed: &SourceFile,
+    text: &str,
+    token: &ReferenceToken,
+    field: &str,
+) -> Option<SchemaFieldReferenceTarget> {
+    let mut target = None;
+    record_variant_patterns::for_each_record_variant_pattern_field(
+        parsed,
+        |path, pattern_field| {
+            if target.is_some() || pattern_field.name != field {
+                return;
+            }
+            let Some(span_range) = span_text_range(pattern_field.span) else {
+                return;
+            };
+            let Some(name_range) = name_range_in_text(text, span_range, &pattern_field.name) else {
+                return;
+            };
+            if name_range.start <= token.range.start && token.range.end <= name_range.end {
+                target = schema_field_target_for_constructor_path(schema, path, field);
+            }
+        },
+    );
+    target
 }
 
 pub(crate) fn schema_method_target_for_member(

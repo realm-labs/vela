@@ -181,6 +181,109 @@ pub fn main(player: Player) -> i64 {
     );
 }
 
+#[test]
+fn references_find_schema_record_variant_field_labels_and_patterns() {
+    let main = DocumentId::from("/workspace/scripts/game/main.vela");
+    let schema = DocumentId::from("/workspace/scripts/schema_defs.vela");
+    let main_text = "\
+pub fn active(count: i64) -> QuestState {
+    return QuestState::Active { count: count }
+}
+
+pub fn main(state: QuestState) -> i64 {
+    match state {
+        QuestState::Active { count: current } => { return current }
+        QuestState::Done => { return 0 }
+    }
+}";
+    let schema_text = "pub fn count() { return 1 }";
+    let mut databases = databases_for(vec![
+        SourceFileSnapshot::new(main.clone(), main_text),
+        SourceFileSnapshot::new(schema.clone(), schema_text),
+    ]);
+    let schema_record = databases
+        .source_db()
+        .records()
+        .get(&schema)
+        .expect("schema source should be indexed");
+    let target_start = schema_text
+        .find("count")
+        .expect("schema marker should exist");
+    let target_end = target_start + "count".len();
+    let artifact = serde_json::json!({
+        "formatVersion": 1,
+        "facts": {
+            "types": [
+                {
+                    "name": "QuestState",
+                    "fact": { "kind": "enum", "name": "QuestState", "variant": null }
+                }
+            ],
+            "variants": [
+                {
+                    "owner": "QuestState",
+                    "name": "Active",
+                    "fact": {
+                        "kind": "enum",
+                        "name": "QuestState",
+                        "variant": "Active"
+                    }
+                }
+            ],
+            "fields": [
+                {
+                    "owner": "QuestState::Active",
+                    "name": "count",
+                    "fact": { "kind": "primitive", "name": "i64" },
+                    "sourceSpan": {
+                        "source": schema_record.source_id().get(),
+                        "start": target_start,
+                        "end": target_end
+                    }
+                }
+            ]
+        }
+    })
+    .to_string();
+    databases.load_schema_artifact_json("/workspace/target/vela/schema.json", &artifact);
+
+    let references = databases.references(
+        &schema,
+        Position::new(
+            0,
+            schema_text.find("count").expect("schema field declaration"),
+        ),
+        true,
+    );
+
+    assert_eq!(references.len(), 3, "{references:?}");
+    assert_reference_in_document(
+        &references,
+        &schema,
+        0,
+        schema_text.find("count").expect("schema field declaration"),
+        ReferenceKind::Declaration,
+    );
+    assert_reference_in_document(
+        &references,
+        &main,
+        1,
+        line(main_text, 1)
+            .find("count")
+            .expect("constructor field label"),
+        ReferenceKind::Read,
+    );
+    assert_reference_in_document(
+        &references,
+        &main,
+        6,
+        line(main_text, 6)
+            .find("count")
+            .expect("pattern field label"),
+        ReferenceKind::Pattern,
+    );
+}
+
 fn assert_reference_in_document(
     references: &[Reference],
     document_id: &DocumentId,
