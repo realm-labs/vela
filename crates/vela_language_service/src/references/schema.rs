@@ -22,6 +22,13 @@ pub(super) struct SchemaFieldReferenceTarget {
 pub(super) struct SchemaMethodReferenceTarget {
     owner: String,
     method: String,
+    kind: SchemaMethodReferenceKind,
+}
+
+#[derive(Debug, Clone, Copy, Eq, PartialEq)]
+enum SchemaMethodReferenceKind {
+    Method,
+    TraitMethod,
 }
 
 pub(super) fn schema_method_references(
@@ -101,6 +108,23 @@ pub(super) fn schema_method_declaration_target(
             return Some(SchemaMethodReferenceTarget {
                 owner: method.owner,
                 method: method.name,
+                kind: SchemaMethodReferenceKind::Method,
+            });
+        }
+    }
+    for method in facts.trait_methods() {
+        let Some(span) = locations.trait_method_span(&method.owner, &method.name) else {
+            continue;
+        };
+        if span.source != source_id {
+            continue;
+        }
+        let range = span_text_range(span)?;
+        if range.start <= token.range.start && token.range.end <= range.end {
+            return Some(SchemaMethodReferenceTarget {
+                owner: method.owner,
+                method: method.name,
+                kind: SchemaMethodReferenceKind::TraitMethod,
             });
         }
     }
@@ -182,7 +206,18 @@ fn reference_for_schema_method_declaration(
     let span = databases
         .schema_db()
         .source_locations()
-        .method_span(&target.owner, &target.method)?;
+        .method_span(&target.owner, &target.method)
+        .filter(|_| target.kind == SchemaMethodReferenceKind::Method)
+        .or_else(|| {
+            (target.kind == SchemaMethodReferenceKind::TraitMethod)
+                .then(|| {
+                    databases
+                        .schema_db()
+                        .source_locations()
+                        .trait_method_span(&target.owner, &target.method)
+                })
+                .flatten()
+        })?;
     let source = databases
         .source_db()
         .records()
@@ -322,10 +357,11 @@ fn schema_method_target_for_member(
     let span = Span::new(source_id, start, end);
     let resolution = bindings.resolution_at_span(span)?;
     let receiver = schema_type_fact_for_resolution(resolution, bindings, facts, schema)?;
-    let owner = schema_method_owner(schema, &receiver, method)?;
+    let (owner, kind) = schema_method_owner(schema, &receiver, method)?;
     Some(SchemaMethodReferenceTarget {
         owner,
         method: method.to_owned(),
+        kind,
     })
 }
 
@@ -379,7 +415,9 @@ fn schema_fact_for_hint(
     let qualified = hint.path.join("::");
     schema
         .type_fact(&qualified)
+        .or_else(|| schema.trait_fact(&qualified))
         .or_else(|| hint.path.last().and_then(|name| schema.type_fact(name)))
+        .or_else(|| hint.path.last().and_then(|name| schema.trait_fact(name)))
         .cloned()
 }
 
@@ -387,10 +425,16 @@ fn schema_method_owner(
     schema: &RegistryFacts,
     receiver: &TypeFact,
     method: &str,
-) -> Option<String> {
-    owner_names(receiver)
-        .into_iter()
-        .find(|owner| schema.method_fact(owner, method).is_some())
+) -> Option<(String, SchemaMethodReferenceKind)> {
+    owner_names(receiver).into_iter().find_map(|owner| {
+        if schema.method_fact(&owner, method).is_some() {
+            Some((owner, SchemaMethodReferenceKind::Method))
+        } else if schema.trait_method_fact(&owner, method).is_some() {
+            Some((owner, SchemaMethodReferenceKind::TraitMethod))
+        } else {
+            None
+        }
+    })
 }
 
 fn schema_field_owner(schema: &RegistryFacts, receiver: &TypeFact, field: &str) -> Option<String> {

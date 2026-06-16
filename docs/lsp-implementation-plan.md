@@ -567,6 +567,8 @@ Purpose: support workspace navigation and prepare rename.
     host receiver read/write member uses.
   - [x] Index schema-backed method declarations with source spans plus typed
     host receiver call sites.
+  - [x] Index schema-backed trait-method declarations with source spans plus
+    typed trait receiver call sites.
 - [~] Track reference kind: read, write, call, type use, import, pattern,
   declaration.
   - [x] Track local declaration and read reference kinds.
@@ -591,6 +593,8 @@ Purpose: support workspace navigation and prepare rename.
     request.
   - [x] Serve schema-backed field references through the native LSP request.
   - [x] Serve schema-backed method references through the native LSP request.
+  - [x] Serve schema-backed trait-method references through the native LSP
+    request.
 - [~] Implement `textDocument/documentHighlight`.
   - [x] Serve local declaration/read highlights through the native LSP request.
   - [x] Serve imported script function import/read highlights in the active
@@ -624,6 +628,8 @@ Tests:
 - [x] `lsp_references_find_schema_field_reads_and_writes`
 - [x] `references_find_schema_method_calls`
 - [x] `lsp_references_find_schema_method_calls`
+- [x] `references_find_schema_trait_method_calls`
+- [x] `lsp_references_find_schema_trait_method_calls`
 - [x] `document_highlight_marks_local_declaration_and_reads`
 - [x] `document_highlight_marks_import_and_calls_in_active_document`
 - [x] `lsp_document_highlight_marks_local_declaration_and_reads`

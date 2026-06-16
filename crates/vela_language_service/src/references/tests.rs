@@ -741,6 +741,106 @@ pub fn main(player: Player) -> i64 {
     assert_eq!(declaration_references, references);
 }
 
+#[test]
+fn references_find_schema_trait_method_calls() {
+    let main = DocumentId::from("/workspace/scripts/game/main.vela");
+    let schema = DocumentId::from("/workspace/scripts/schema_defs.vela");
+    let main_text = "\
+pub fn main(player: Rewardable) -> i64 {
+    let first = player.grant(1)
+    return player.grant(first)
+}";
+    let schema_text = "pub fn grant() { return 1 }";
+    let mut databases = databases_for(vec![
+        SourceFileSnapshot::new(main.clone(), main_text),
+        SourceFileSnapshot::new(schema.clone(), schema_text),
+    ]);
+    let schema_record = databases
+        .source_db()
+        .records()
+        .get(&schema)
+        .expect("schema source should be indexed");
+    let target_start = schema_text
+        .find("grant")
+        .expect("schema marker should exist");
+    let target_end = target_start + "grant".len();
+    let artifact = serde_json::json!({
+        "formatVersion": 1,
+        "facts": {
+            "traits": [
+                {
+                    "name": "Rewardable",
+                    "fact": { "kind": "trait", "name": "Rewardable" }
+                }
+            ],
+            "traitMethods": [
+                {
+                    "owner": "Rewardable",
+                    "name": "grant",
+                    "fact": {
+                        "kind": "function",
+                        "params": [{ "kind": "primitive", "name": "i64" }],
+                        "returns": { "kind": "primitive", "name": "i64" }
+                    },
+                    "sourceSpan": {
+                        "source": schema_record.source_id().get(),
+                        "start": target_start,
+                        "end": target_end
+                    }
+                }
+            ]
+        }
+    })
+    .to_string();
+    databases.load_schema_artifact_json("/workspace/target/vela/schema.json", &artifact);
+
+    let references = databases.references(
+        &main,
+        Position::new(1, line(main_text, 1).find("grant").expect("method call")),
+        true,
+    );
+
+    assert_eq!(references.len(), 3, "{references:?}");
+    assert_reference_in_document(
+        &references,
+        &schema,
+        0,
+        schema_text
+            .find("grant")
+            .expect("schema trait method declaration"),
+        ReferenceKind::Declaration,
+    );
+    assert_reference_in_document(
+        &references,
+        &main,
+        1,
+        line(main_text, 1).find("grant").expect("first method call"),
+        ReferenceKind::Call,
+    );
+    assert_reference_in_document(
+        &references,
+        &main,
+        2,
+        line(main_text, 2)
+            .find("grant")
+            .expect("second method call"),
+        ReferenceKind::Call,
+    );
+
+    let declaration_references = databases.references(
+        &schema,
+        Position::new(
+            0,
+            schema_text
+                .find("grant")
+                .expect("schema trait method declaration"),
+        ),
+        true,
+    );
+
+    assert_eq!(declaration_references, references);
+}
+
 fn assert_reference(references: &[Reference], line: usize, character: usize, kind: ReferenceKind) {
     assert!(
         references.iter().any(|reference| {
