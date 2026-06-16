@@ -190,18 +190,50 @@ fn selected_item_formatting_edit(
     let line_index = LineIndex::new(source);
     let start = line_index.offset(range.start());
     let end = line_index.offset(range.end());
-    let (format_start, format_end) = selected_item_offsets(source, parsed, start, end)?;
-    let selected = source.get(format_start..format_end)?;
-    let formatted = format_selected_range(source_id, source, selected, format_start, format_end);
+    let selection = selected_item_offsets(source, parsed, start, end)?;
+    let selected = source.get(selection.start..selection.end)?;
+    let formatted = if selection.members.len() > 1 {
+        format_selected_members(source_id, source, &selection)
+    } else {
+        format_selected_range(source_id, source, selected, selection.start, selection.end)
+    };
     (formatted != selected).then(|| {
         TextEdit::new(
             DiagnosticRange::new(
-                line_index.position(format_start),
-                line_index.position(format_end),
+                line_index.position(selection.start),
+                line_index.position(selection.end),
             ),
             formatted,
         )
     })
+}
+
+fn format_selected_members(
+    source_id: SourceId,
+    source: &str,
+    selection: &SelectedFormatRange,
+) -> String {
+    let mut formatted = String::new();
+    let mut cursor = selection.start;
+    for member in &selection.members {
+        if let Some(gap) = source.get(cursor..member.start) {
+            formatted.push_str(gap);
+        }
+        if let Some(selected) = source.get(member.start..member.end) {
+            formatted.push_str(&format_selected_range(
+                source_id,
+                source,
+                selected,
+                member.start,
+                member.end,
+            ));
+        }
+        cursor = member.end;
+    }
+    if let Some(suffix) = source.get(cursor..selection.end) {
+        formatted.push_str(suffix);
+    }
+    formatted
 }
 
 fn format_selected_range(
@@ -260,28 +292,66 @@ fn selected_item_offsets(
     parsed: &SourceFile,
     start: usize,
     end: usize,
-) -> Option<(usize, usize)> {
+) -> Option<SelectedFormatRange> {
     if start >= end {
         return None;
     }
 
-    let ranges = selectable_format_ranges(parsed);
-    let range = ranges.iter().find(|range| {
+    let mut ranges = selectable_format_ranges(parsed);
+    ranges.sort_by_key(|range| (range.start, range.end));
+    let (range_index, range) = ranges.iter().enumerate().find(|(_, range)| {
         range.start >= start
             && range.start < end
             && source
                 .get(start..range.start)
                 .is_some_and(|prefix| prefix.chars().all(char::is_whitespace))
     })?;
-    if range.end > end || !source.get(range.end..end)?.chars().all(char::is_whitespace) {
+    if range.end > end {
         return None;
     }
 
-    Some((range.start, end))
+    let mut members = vec![*range];
+    let mut cursor = range.end;
+    while !source.get(cursor..end)?.chars().all(char::is_whitespace) {
+        let group = range.group?;
+        let next = ranges[range_index + 1..].iter().find(|next| {
+            next.group == Some(group)
+                && next.start >= cursor
+                && next.start < end
+                && source
+                    .get(cursor..next.start)
+                    .is_some_and(|gap| gap.chars().all(char::is_whitespace))
+        })?;
+        if next.end > end {
+            return None;
+        }
+        members.push(*next);
+        cursor = next.end;
+    }
+
+    Some(SelectedFormatRange {
+        start: range.start,
+        end,
+        members,
+    })
 }
 
 #[derive(Debug, Clone, Copy, Eq, PartialEq)]
 struct SelectableFormatRange {
+    start: usize,
+    end: usize,
+    group: Option<SelectableFormatGroup>,
+}
+
+#[derive(Debug, Clone, Eq, PartialEq)]
+struct SelectedFormatRange {
+    start: usize,
+    end: usize,
+    members: Vec<SelectableFormatRange>,
+}
+
+#[derive(Debug, Clone, Copy, Eq, PartialEq)]
+struct SelectableFormatGroup {
     start: usize,
     end: usize,
 }
@@ -289,9 +359,14 @@ struct SelectableFormatRange {
 fn selectable_format_ranges(parsed: &SourceFile) -> Vec<SelectableFormatRange> {
     let mut ranges = Vec::new();
     for item in &parsed.items {
-        ranges.push(SelectableFormatRange {
+        let item_span = SelectableFormatGroup {
             start: item.span.start as usize,
             end: item.span.end as usize,
+        };
+        ranges.push(SelectableFormatRange {
+            start: item_span.start,
+            end: item_span.end,
+            group: None,
         });
         match &item.kind {
             ItemKind::Trait(trait_item) => {
@@ -302,6 +377,7 @@ fn selectable_format_ranges(parsed: &SourceFile) -> Vec<SelectableFormatRange> {
                         .map(|method| SelectableFormatRange {
                             start: method.span.start as usize,
                             end: method.span.end as usize,
+                            group: Some(item_span),
                         }),
                 );
             }
@@ -313,6 +389,7 @@ fn selectable_format_ranges(parsed: &SourceFile) -> Vec<SelectableFormatRange> {
                         .map(|method| SelectableFormatRange {
                             start: method.span.start as usize,
                             end: method.span.end as usize,
+                            group: Some(item_span),
                         }),
                 );
             }
@@ -324,19 +401,26 @@ fn selectable_format_ranges(parsed: &SourceFile) -> Vec<SelectableFormatRange> {
                         .map(|field| SelectableFormatRange {
                             start: field.span.start as usize,
                             end: field.span.end as usize,
+                            group: Some(item_span),
                         }),
                 );
             }
             ItemKind::Enum(enum_item) => {
                 for variant in &enum_item.variants {
-                    ranges.push(SelectableFormatRange {
+                    let variant_span = SelectableFormatGroup {
                         start: variant.span.start as usize,
                         end: variant.span.end as usize,
+                    };
+                    ranges.push(SelectableFormatRange {
+                        start: variant_span.start,
+                        end: variant_span.end,
+                        group: Some(item_span),
                     });
                     if let EnumVariantFields::Record(fields) = &variant.fields {
                         ranges.extend(fields.iter().map(|field| SelectableFormatRange {
                             start: field.span.start as usize,
                             end: field.span.end as usize,
+                            group: Some(variant_span),
                         }));
                     }
                 }
@@ -776,6 +860,72 @@ pub struct Player {
 pub struct Player {
     level: i64
     name:String
+}
+"
+        );
+    }
+
+    #[test]
+    fn range_formatting_formats_selected_struct_field_group() {
+        let source = "\
+pub struct Player {
+    level:i64
+    name:String
+    xp:i64
+}
+";
+        let edits = range_format_source(
+            source,
+            DiagnosticRange::new(Position::new(1, 4), Position::new(2, 15)),
+        );
+        let formatted = apply_range_edits(source, &edits);
+
+        assert_eq!(edits.len(), 1);
+        assert_eq!(edits[0].range().start(), Position::new(1, 4));
+        assert_eq!(edits[0].range().end(), Position::new(2, 15));
+        assert_eq!(
+            formatted,
+            "\
+pub struct Player {
+    level: i64
+    name: String
+    xp:i64
+}
+"
+        );
+    }
+
+    #[test]
+    fn range_formatting_formats_selected_enum_record_field_group() {
+        let source = "\
+pub enum Reward {
+    Coins {
+        amount:i64
+        label:String
+        rare:bool
+    }
+    None
+}
+";
+        let edits = range_format_source(
+            source,
+            DiagnosticRange::new(Position::new(2, 8), Position::new(3, 20)),
+        );
+        let formatted = apply_range_edits(source, &edits);
+
+        assert_eq!(edits.len(), 1);
+        assert_eq!(edits[0].range().start(), Position::new(2, 8));
+        assert_eq!(edits[0].range().end(), Position::new(3, 20));
+        assert_eq!(
+            formatted,
+            "\
+pub enum Reward {
+    Coins {
+        amount: i64
+        label: String
+        rare:bool
+    }
+    None
 }
 "
         );

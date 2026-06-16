@@ -934,6 +934,8 @@ Purpose: provide deterministic source formatting without losing comments.
     and avoid duplicating the following line break.
   - Struct fields, enum variants, and enum record fields now use parser-owned
     spans for selected nested member formatting.
+  - Adjacent selected members within the same struct, enum variant, trait, or
+    impl parent now format as a contiguous nested member group.
 - [~] Implement full document formatting.
   - Native LSP full-document formatting now uses the token/trivia formatter
     for spacing, brace indentation, comment preservation, and final newline.
@@ -975,6 +977,10 @@ Tests:
 - [x] `lsp_range_formatting_preserves_nested_method_indent`
 - [x] `range_formatting_preserves_struct_field_indent`
 - [x] `lsp_range_formatting_preserves_struct_field_indent`
+- [x] `range_formatting_formats_selected_struct_field_group`
+- [x] `lsp_range_formatting_formats_selected_struct_field_group`
+- [x] `range_formatting_formats_selected_enum_record_field_group`
+- [x] `lsp_range_formatting_formats_selected_enum_record_field_group`
 
 Validation:
 
