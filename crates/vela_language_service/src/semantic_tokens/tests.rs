@@ -192,6 +192,52 @@ pub fn main() {
 }
 
 #[test]
+fn semantic_tokens_degrade_under_parse_errors() {
+    let document = DocumentId::from("/workspace/scripts/game/main.vela");
+    let text = "\
+pub fn main( {
+    let value = 1 +
+    // keep tokenization alive
+}";
+    let databases = databases_for(vec![SourceFileSnapshot::new(document.clone(), text)]);
+
+    let tokens = databases.semantic_tokens(&document);
+
+    assert_token_at(
+        &tokens,
+        0,
+        line(text, 0).find("pub").expect("keyword should exist"),
+        "pub".len(),
+        SemanticTokenType::Keyword,
+        SemanticTokenModifiers::NONE,
+    );
+    assert_token_at(
+        &tokens,
+        1,
+        line(text, 1).find("let").expect("keyword should exist"),
+        "let".len(),
+        SemanticTokenType::Keyword,
+        SemanticTokenModifiers::NONE,
+    );
+    assert_token_at(
+        &tokens,
+        1,
+        line(text, 1).find('1').expect("number should exist"),
+        1,
+        SemanticTokenType::Number,
+        SemanticTokenModifiers::NONE,
+    );
+    assert_token_at(
+        &tokens,
+        2,
+        line(text, 2).find("// keep").expect("comment should exist"),
+        line(text, 2).trim_start().len(),
+        SemanticTokenType::Comment,
+        SemanticTokenModifiers::NONE,
+    );
+}
+
+#[test]
 fn semantic_tokens_classify_script_members() {
     let document = DocumentId::from("/workspace/scripts/game/main.vela");
     let text = "\

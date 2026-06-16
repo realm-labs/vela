@@ -263,6 +263,91 @@ pub fn main() {
 }
 
 #[test]
+fn lsp_semantic_tokens_degrade_under_parse_errors() {
+    let mut server = LspServer::new();
+    let initialize = response_value(server.handle_json(&request(
+        1,
+        "initialize",
+        serde_json::json!({
+            "processId": null,
+            "rootUri": "file:///workspace/scripts",
+            "capabilities": {}
+        }),
+    )));
+    let token_types =
+        initialize["result"]["capabilities"]["semanticTokensProvider"]["legend"]["tokenTypes"]
+            .as_array()
+            .expect("semantic token legend should list token types");
+    let keyword = token_type_index(token_types, "keyword");
+    let number = token_type_index(token_types, "number");
+    let comment = token_type_index(token_types, "comment");
+
+    let text = "\
+pub fn main( {
+    let value = 1 +
+    // keep tokenization alive
+}";
+    let uri = "file:///workspace/scripts/game/main.vela";
+    let _ = notification_value(server.handle_json(&notification(
+        "textDocument/didOpen",
+        serde_json::json!({
+            "textDocument": {
+                "uri": uri,
+                "languageId": "vela",
+                "version": 1,
+                "text": text
+            }
+        }),
+    )));
+
+    let response = response_value(server.handle_json(&request(
+        2,
+        "textDocument/semanticTokens/full",
+        serde_json::json!({
+            "textDocument": { "uri": uri }
+        }),
+    )));
+    let tokens = decode_tokens(
+        response["result"]["data"]
+            .as_array()
+            .expect("semantic token response should include data"),
+    );
+
+    assert_token_at(
+        &tokens,
+        0,
+        line(text, 0).find("pub").expect("keyword should exist"),
+        "pub".len(),
+        keyword,
+        0,
+    );
+    assert_token_at(
+        &tokens,
+        1,
+        line(text, 1).find("let").expect("keyword should exist"),
+        "let".len(),
+        keyword,
+        0,
+    );
+    assert_token_at(
+        &tokens,
+        1,
+        line(text, 1).find('1').expect("number should exist"),
+        1,
+        number,
+        0,
+    );
+    assert_token_at(
+        &tokens,
+        2,
+        line(text, 2).find("// keep").expect("comment should exist"),
+        line(text, 2).trim_start().len(),
+        comment,
+        0,
+    );
+}
+
+#[test]
 fn lsp_semantic_tokens_classify_script_members() {
     let mut server = LspServer::new();
     let initialize = response_value(server.handle_json(&request(

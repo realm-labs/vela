@@ -504,7 +504,8 @@ Tests:
 - [x] `semantic_tokens_classify_script_member_uses`
 - [x] `semantic_tokens_classify_schema_and_stdlib_member_uses`
 - [x] `lsp_semantic_tokens_classify_host_and_builtin_member_uses`
-- [ ] `semantic_tokens_degrade_under_parse_errors`
+- [x] `semantic_tokens_degrade_under_parse_errors`
+- [x] `lsp_semantic_tokens_degrade_under_parse_errors`
 - [ ] `semantic_token_delta_matches_full_tokens`
 
 Validation:
