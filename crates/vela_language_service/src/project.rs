@@ -5,7 +5,7 @@ use std::sync::Arc;
 use vela_common::SourceId;
 use vela_hir::module_graph::{ModulePath, ModuleSource};
 
-use crate::{DocumentId, WorkspaceSnapshot};
+use crate::{DocumentId, SourceVersion, WorkspaceSnapshot};
 
 const SOURCE_EXTENSION: &str = "vela";
 const CONFIG_FILE: &str = "vela.toml";
@@ -190,6 +190,7 @@ pub struct ConfigParseResult {
 pub struct ProjectSources {
     sources: Vec<ModuleSource>,
     document_modules: BTreeMap<DocumentId, ModulePath>,
+    document_versions: BTreeMap<DocumentId, SourceVersion>,
     diagnostics: Vec<ProjectDiagnostic>,
 }
 
@@ -202,6 +203,11 @@ impl ProjectSources {
     #[must_use]
     pub fn document_modules(&self) -> &BTreeMap<DocumentId, ModulePath> {
         &self.document_modules
+    }
+
+    #[must_use]
+    pub fn document_versions(&self) -> &BTreeMap<DocumentId, SourceVersion> {
+        &self.document_versions
     }
 
     #[must_use]
@@ -228,15 +234,18 @@ fn assemble_workspace_sources(
     snapshot: &WorkspaceSnapshot,
 ) -> ProjectSources {
     let mut inputs = BTreeMap::<DocumentId, Arc<str>>::new();
+    let mut document_versions = BTreeMap::<DocumentId, SourceVersion>::new();
     for file in files {
         if is_vela_source(file.document_id.as_str()) {
             inputs.insert(file.document_id.clone(), Arc::clone(&file.text));
+            document_versions.insert(file.document_id.clone(), SourceVersion::INITIAL);
         }
     }
     for document_id in snapshot.open_document_ids() {
         if is_vela_source(document_id.as_str())
             && let Some(document) = snapshot.document(&document_id)
         {
+            document_versions.insert(document_id.clone(), document.version());
             inputs.insert(document_id, Arc::<str>::from(document.text()));
         }
     }
@@ -282,6 +291,7 @@ fn assemble_workspace_sources(
     ProjectSources {
         sources,
         document_modules,
+        document_versions,
         diagnostics,
     }
 }
@@ -304,6 +314,7 @@ fn assemble_scratch_source(
         return ProjectSources {
             sources: Vec::new(),
             document_modules: BTreeMap::new(),
+            document_versions: BTreeMap::new(),
             diagnostics: vec![ProjectDiagnostic::new(
                 Some(document.clone()),
                 "scratch source is missing",
@@ -314,6 +325,11 @@ fn assemble_scratch_source(
     let module_path = ModulePath::from_qualified("main");
     let mut document_modules = BTreeMap::new();
     document_modules.insert(document.clone(), module_path.clone());
+    let mut document_versions = BTreeMap::new();
+    let version = snapshot
+        .document(document)
+        .map_or(SourceVersion::INITIAL, |document| document.version());
+    document_versions.insert(document.clone(), version);
     ProjectSources {
         sources: vec![ModuleSource::new(
             SourceId::new(1),
@@ -321,6 +337,7 @@ fn assemble_scratch_source(
             text.as_ref(),
         )],
         document_modules,
+        document_versions,
         diagnostics: Vec::new(),
     }
 }

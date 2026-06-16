@@ -10,7 +10,8 @@ use vela_syntax::ast::Visibility;
 use vela_syntax::token::Keyword;
 
 use crate::{
-    DiagnosticRange, DocumentId, LanguageServiceDatabases, LineIndex, Position, TextRange,
+    DiagnosticRange, DocumentId, LanguageServiceDatabases, LineIndex, Position, SourceVersion,
+    TextRange,
 };
 
 mod fields;
@@ -94,18 +95,41 @@ pub enum RenameRiskKind {
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub struct DocumentTextEdit {
     document_id: DocumentId,
+    document_version: Option<SourceVersion>,
     edits: Vec<TextEdit>,
 }
 
 impl DocumentTextEdit {
     #[must_use]
     pub fn new(document_id: DocumentId, edits: Vec<TextEdit>) -> Self {
-        Self { document_id, edits }
+        Self {
+            document_id,
+            document_version: None,
+            edits,
+        }
+    }
+
+    #[must_use]
+    pub fn new_versioned(
+        document_id: DocumentId,
+        document_version: SourceVersion,
+        edits: Vec<TextEdit>,
+    ) -> Self {
+        Self {
+            document_id,
+            document_version: Some(document_version),
+            edits,
+        }
     }
 
     #[must_use]
     pub fn document_id(&self) -> &DocumentId {
         &self.document_id
+    }
+
+    #[must_use]
+    pub const fn document_version(&self) -> Option<SourceVersion> {
+        self.document_version
     }
 
     #[must_use]
@@ -247,10 +271,11 @@ impl LanguageServiceDatabases {
 
         Some(WorkspaceEdit {
             risks: Vec::new(),
-            document_edits: vec![DocumentTextEdit {
-                document_id: document_id.clone(),
+            document_edits: vec![document_text_edit_for_rename(
+                self,
+                document_id.clone(),
                 edits,
-            }],
+            )],
         })
     }
 
@@ -278,7 +303,7 @@ impl LanguageServiceDatabases {
                     (start.line, start.character)
                 });
                 edits.dedup();
-                DocumentTextEdit { document_id, edits }
+                document_text_edit_for_rename(self, document_id, edits)
             })
             .collect::<Vec<_>>();
 
@@ -857,6 +882,17 @@ fn qualified_declaration_path(graph: &ModuleGraph, declaration: &Declaration) ->
                 .collect()
         })
         .unwrap_or_else(|| vec![declaration.name.clone()])
+}
+
+pub(super) fn document_text_edit_for_rename(
+    databases: &LanguageServiceDatabases,
+    document_id: DocumentId,
+    edits: Vec<TextEdit>,
+) -> DocumentTextEdit {
+    let Some(source) = databases.source_db().records().get(&document_id) else {
+        return DocumentTextEdit::new(document_id, edits);
+    };
+    DocumentTextEdit::new_versioned(document_id, source.version(), edits)
 }
 
 fn local_use_at_token(bindings: &BindingMap, token: &RenameToken) -> Option<HirLocalId> {

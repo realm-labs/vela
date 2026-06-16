@@ -11,8 +11,8 @@ use vela_syntax::token::TokenKind;
 use crate::{DocumentId, LanguageServiceDatabases, TextRange};
 
 use super::{
-    DocumentTextEdit, RenameToken, TextEdit, WorkspaceEdit, diagnostic_range, name_range_in_text,
-    qualified_declaration_path, span_text_range, token_text,
+    RenameToken, TextEdit, WorkspaceEdit, diagnostic_range, document_text_edit_for_rename,
+    name_range_in_text, qualified_declaration_path, span_text_range, token_text,
 };
 
 #[derive(Debug, Clone, Eq, PartialEq)]
@@ -44,7 +44,7 @@ pub(super) fn rename_script_field(
                 (start.line, start.character)
             });
             edits.dedup();
-            DocumentTextEdit { document_id, edits }
+            document_text_edit_for_rename(databases, document_id, edits)
         })
         .collect::<Vec<_>>();
 

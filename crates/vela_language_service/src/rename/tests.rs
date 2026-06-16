@@ -1,6 +1,7 @@
 use super::*;
 use crate::{
-    SourceFileSnapshot, Workspace, WorkspaceConfig, WorkspaceRoot, assemble_project_sources,
+    SourceFileSnapshot, SourceVersion, Workspace, WorkspaceConfig, WorkspaceRoot,
+    assemble_project_sources,
 };
 use vela_analysis::{registry::RegistryFacts, type_fact::TypeFact};
 
@@ -68,6 +69,45 @@ pub fn main(amount: i64) -> i64 {
     assert_edit_at(document_edit.edits(), 1, 8, "score");
     assert_edit_at(document_edit.edits(), 2, 4, "score");
     assert_edit_at(document_edit.edits(), 3, 11, "score");
+}
+
+#[test]
+fn rename_workspace_edits_carry_document_versions() {
+    let document = DocumentId::from("/workspace/scripts/game/main.vela");
+    let initial = "\
+pub fn main(amount: i64) -> i64 {
+    let next = amount + 1
+    return next
+}";
+    let changed = "\
+pub fn main(amount: i64) -> i64 {
+    let next = amount + 2
+    return next
+}";
+    let config = WorkspaceConfig::scratch(document.clone());
+    let mut workspace = Workspace::new();
+    workspace.set_disk_snapshot(document.clone(), initial, SourceVersion::new(1));
+    workspace.open_document(document.clone(), changed, SourceVersion::new(2));
+    let project = assemble_project_sources(&config, &[], &workspace.snapshot());
+    let mut databases = LanguageServiceDatabases::new();
+    databases.update(&project);
+
+    let edit = databases
+        .rename(
+            &document,
+            Position::new(2, line(changed, 2).find("next").expect("next use")),
+            "score",
+        )
+        .expect("local rename should produce edits");
+
+    let document_edit = document_edit(&edit, &document);
+    assert_eq!(
+        document_edit.document_version(),
+        Some(SourceVersion::new(2))
+    );
+    assert_eq!(document_edit.edits().len(), 2);
+    assert_edit_at(document_edit.edits(), 1, 8, "score");
+    assert_edit_at(document_edit.edits(), 2, 11, "score");
 }
 
 #[test]

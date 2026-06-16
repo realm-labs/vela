@@ -11,8 +11,8 @@ use vela_syntax::token::TokenKind;
 use crate::{DocumentId, LanguageServiceDatabases, TextRange};
 
 use super::{
-    DocumentTextEdit, RenameToken, TextEdit, WorkspaceEdit, diagnostic_range, span_text_range,
-    token_text, type_hint_name_range,
+    RenameToken, TextEdit, WorkspaceEdit, diagnostic_range, document_text_edit_for_rename,
+    span_text_range, token_text, type_hint_name_range,
 };
 
 #[derive(Debug, Clone, Copy, Eq, PartialEq)]
@@ -77,7 +77,7 @@ pub(super) fn rename_schema_function(
                 (start.line, start.character)
             });
             edits.dedup();
-            DocumentTextEdit { document_id, edits }
+            document_text_edit_for_rename(databases, document_id, edits)
         })
         .collect::<Vec<_>>();
 
@@ -108,7 +108,7 @@ pub(super) fn rename_schema_variant(
                 (start.line, start.character)
             });
             edits.dedup();
-            DocumentTextEdit { document_id, edits }
+            document_text_edit_for_rename(databases, document_id, edits)
         })
         .collect::<Vec<_>>();
 
@@ -139,7 +139,7 @@ pub(super) fn rename_schema_type(
                 (start.line, start.character)
             });
             edits.dedup();
-            DocumentTextEdit { document_id, edits }
+            document_text_edit_for_rename(databases, document_id, edits)
         })
         .collect::<Vec<_>>();
 
@@ -170,7 +170,7 @@ pub(super) fn rename_schema_member(
                 (start.line, start.character)
             });
             edits.dedup();
-            DocumentTextEdit { document_id, edits }
+            document_text_edit_for_rename(databases, document_id, edits)
         })
         .collect::<Vec<_>>();
 

@@ -726,7 +726,10 @@ Purpose: provide safe refactoring without changing runtime contracts.
 - [~] Report hot-reload ABI/schema risk for exported API rename.
   - [x] Public script function renames carry hot-reload ABI risk metadata in
     service workspace edits and LSP change annotations.
-- [ ] Return workspace edits with stable text ranges and document versions.
+- [x] Return workspace edits with stable text ranges and document versions.
+  - Rename workspace edits now carry source versions through the editor-neutral
+    service model, and native LSP rename responses include versioned
+    `documentChanges` while retaining URI-keyed `changes`.
 
 Tests:
 
@@ -734,6 +737,8 @@ Tests:
 - [x] `lsp_prepare_rename_rejects_keywords_and_literals`
 - [x] `local_rename_updates_all_function_uses`
 - [x] `lsp_local_rename_updates_all_function_uses`
+- [x] `rename_workspace_edits_carry_document_versions`
+- [x] `lsp_rename_returns_versioned_document_changes`
 - [x] `private_function_rename_updates_imports`
 - [x] `lsp_private_function_rename_updates_imports`
 - [x] `private_value_declaration_rename_updates_uses`

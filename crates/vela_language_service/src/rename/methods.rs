@@ -12,7 +12,7 @@ use vela_syntax::token::TokenKind;
 use crate::{DocumentId, LanguageServiceDatabases, TextRange};
 
 use super::{
-    DocumentTextEdit, RenameToken, TextEdit, WorkspaceEdit, diagnostic_range,
+    RenameToken, TextEdit, WorkspaceEdit, diagnostic_range, document_text_edit_for_rename,
     is_identifier_boundary, span_text_range, token_text,
 };
 
@@ -45,7 +45,7 @@ pub(super) fn rename_script_method(
                 (start.line, start.character)
             });
             edits.dedup();
-            DocumentTextEdit { document_id, edits }
+            document_text_edit_for_rename(databases, document_id, edits)
         })
         .collect::<Vec<_>>();
 

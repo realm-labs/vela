@@ -130,6 +130,62 @@ pub fn main(amount: i64) -> i64 {
 }
 
 #[test]
+fn lsp_rename_returns_versioned_document_changes() {
+    let mut server = LspServer::new();
+    let _ = response_value(server.handle_json(&request(
+        1,
+        "initialize",
+        serde_json::json!({
+            "processId": null,
+            "rootUri": "file:///workspace/scripts",
+            "capabilities": {}
+        }),
+    )));
+    let text = "\
+pub fn main(amount: i64) -> i64 {
+    let next = amount + 1
+    return next
+}";
+    let uri = "file:///workspace/scripts/game/main.vela";
+    let _ = notification_value(server.handle_json(&notification(
+        "textDocument/didOpen",
+        serde_json::json!({
+            "textDocument": {
+                "uri": uri,
+                "languageId": "vela",
+                "version": 2,
+                "text": text
+            }
+        }),
+    )));
+
+    let rename = response_value(server.handle_json(&request(
+        2,
+        "textDocument/rename",
+        serde_json::json!({
+            "textDocument": { "uri": uri },
+            "position": {
+                "line": 2,
+                "character": line(text, 2).find("next").expect("next use")
+            },
+            "newName": "score"
+        }),
+    )));
+    let document_changes = rename["result"]["documentChanges"]
+        .as_array()
+        .expect("rename should return versioned document changes");
+    assert_eq!(document_changes.len(), 1);
+    assert_eq!(document_changes[0]["textDocument"]["uri"], uri);
+    assert_eq!(document_changes[0]["textDocument"]["version"], 2);
+    let edits = document_changes[0]["edits"]
+        .as_array()
+        .expect("document changes should contain text edits");
+    assert_eq!(edits.len(), 2);
+    assert_text_edit(edits, 1, 8, "score");
+    assert_text_edit(edits, 2, 11, "score");
+}
+
+#[test]
 fn lsp_private_function_rename_updates_imports() {
     let mut server = LspServer::new();
     let _ = response_value(server.handle_json(&request(

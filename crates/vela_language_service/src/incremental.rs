@@ -860,7 +860,11 @@ fn source_records(project: &ProjectSources) -> BTreeMap<DocumentId, SourceRecord
                     source_id: source.id,
                     module_path: module_path.clone(),
                     content_hash: stable_source_hash(&text),
-                    version: SourceVersion::INITIAL,
+                    version: project
+                        .document_versions()
+                        .get(document_id)
+                        .copied()
+                        .unwrap_or(SourceVersion::INITIAL),
                     text,
                 },
             ))
