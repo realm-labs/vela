@@ -209,6 +209,52 @@ fn bump(player: Player) -> i64 {
 }
 
 #[test]
+fn private_method_rename_updates_typed_receiver_calls() {
+    let document = DocumentId::from("/workspace/scripts/game/main.vela");
+    let text = "\
+struct Reward {
+    amount: i64
+}
+
+impl Reward {
+    fn grant(self, amount: i64) -> i64 { return amount }
+    fn preview(self) -> i64 { return self.grant(1) }
+}
+
+fn main(reward: Reward) -> i64 {
+    let first = reward.grant(1)
+    return reward.grant(first)
+}";
+    let databases = databases_for(vec![SourceFileSnapshot::new(document.clone(), text)]);
+
+    let prepare = databases
+        .prepare_rename(
+            &document,
+            Position::new(10, line(text, 10).find("grant").expect("grant call")),
+        )
+        .expect("private method should be renameable from a typed call");
+
+    assert_eq!(prepare.placeholder(), "grant");
+    assert_eq!(prepare.range().start(), Position::new(10, 23));
+
+    let edit = databases
+        .rename(
+            &document,
+            Position::new(10, line(text, 10).find("grant").expect("grant call")),
+            "award",
+        )
+        .expect("private method rename should produce edits");
+
+    let document_edit = document_edit(&edit, &document);
+    assert_eq!(document_edit.edits().len(), 4);
+    assert_edit_at(document_edit.edits(), 5, 7, "award");
+    assert_edit_at(document_edit.edits(), 6, 42, "award");
+    assert_edit_at(document_edit.edits(), 10, 23, "award");
+    assert_edit_at(document_edit.edits(), 11, 18, "award");
+    assert!(edit.risks().is_empty());
+}
+
+#[test]
 fn private_function_rename_updates_imports() {
     let main = DocumentId::from("/workspace/scripts/game/main.vela");
     let helper = DocumentId::from("/workspace/scripts/game/reward.vela");

@@ -425,6 +425,83 @@ fn bump(player: Player) -> i64 {
 }
 
 #[test]
+fn lsp_private_method_rename_updates_typed_receiver_calls() {
+    let mut server = LspServer::new();
+    let _ = response_value(server.handle_json(&request(
+        1,
+        "initialize",
+        serde_json::json!({
+            "processId": null,
+            "rootUri": "file:///workspace/scripts",
+            "capabilities": {}
+        }),
+    )));
+    let text = "\
+struct Reward {
+    amount: i64
+}
+
+impl Reward {
+    fn grant(self, amount: i64) -> i64 { return amount }
+    fn preview(self) -> i64 { return self.grant(1) }
+}
+
+fn main(reward: Reward) -> i64 {
+    let first = reward.grant(1)
+    return reward.grant(first)
+}";
+    let uri = "file:///workspace/scripts/game/main.vela";
+    let _ = notification_value(server.handle_json(&notification(
+        "textDocument/didOpen",
+        serde_json::json!({
+            "textDocument": {
+                "uri": uri,
+                "languageId": "vela",
+                "version": 1,
+                "text": text
+            }
+        }),
+    )));
+
+    let prepare = response_value(server.handle_json(&request(
+        2,
+        "textDocument/prepareRename",
+        serde_json::json!({
+            "textDocument": { "uri": uri },
+            "position": {
+                "line": 10,
+                "character": line(text, 10).find("grant").expect("grant call")
+            }
+        }),
+    )));
+    assert_eq!(prepare["result"]["placeholder"], "grant");
+    assert_eq!(prepare["result"]["range"]["start"]["line"], 10);
+    assert_eq!(prepare["result"]["range"]["start"]["character"], 23);
+
+    let rename = response_value(server.handle_json(&request(
+        3,
+        "textDocument/rename",
+        serde_json::json!({
+            "textDocument": { "uri": uri },
+            "position": {
+                "line": 10,
+                "character": line(text, 10).find("grant").expect("grant call")
+            },
+            "newName": "award"
+        }),
+    )));
+    let edits = rename["result"]["changes"][uri]
+        .as_array()
+        .expect("rename should return text edits for the document");
+
+    assert_eq!(edits.len(), 4);
+    assert_text_edit(edits, 5, 7, "award");
+    assert_text_edit(edits, 6, 42, "award");
+    assert_text_edit(edits, 10, 23, "award");
+    assert_text_edit(edits, 11, 18, "award");
+}
+
+#[test]
 fn lsp_host_schema_rename_is_not_editable() {
     let root = temp_workspace();
     let config_path = root.join("vela.toml");

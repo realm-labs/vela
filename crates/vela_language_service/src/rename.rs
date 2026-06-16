@@ -14,6 +14,7 @@ use crate::{
 };
 
 mod fields;
+mod methods;
 
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub struct PrepareRename {
@@ -188,6 +189,9 @@ impl LanguageServiceDatabases {
             RenameTarget::Declaration(target) => self.rename_declaration(target, new_name),
             RenameTarget::ScriptField(target) => {
                 fields::rename_script_field(self, target, new_name)
+            }
+            RenameTarget::ScriptMethod(target) => {
+                methods::rename_script_method(self, target, new_name)
             }
         }
     }
@@ -419,6 +423,7 @@ enum RenameTarget<'a> {
     Local(LocalRenameTarget<'a>),
     Declaration(DeclarationRenameTarget<'a>),
     ScriptField(fields::ScriptFieldRenameTarget),
+    ScriptMethod(methods::ScriptMethodRenameTarget),
 }
 
 impl RenameTarget<'_> {
@@ -427,6 +432,7 @@ impl RenameTarget<'_> {
             Self::Local(target) => target.token.range,
             Self::Declaration(target) => target.token.range,
             Self::ScriptField(target) => target.token.range,
+            Self::ScriptMethod(target) => target.token.range,
         }
     }
 
@@ -435,6 +441,7 @@ impl RenameTarget<'_> {
             Self::Local(target) => &target.placeholder,
             Self::Declaration(target) => &target.declaration.name,
             Self::ScriptField(target) => &target.field,
+            Self::ScriptMethod(target) => &target.method,
         }
     }
 }
@@ -465,6 +472,10 @@ fn rename_target<'a>(
 
     if let Some(target) = fields::script_field_declaration_target(graph, source_id, text, &token) {
         return Some(RenameTarget::ScriptField(target));
+    }
+    if let Some(target) = methods::script_method_declaration_target(graph, source_id, text, &token)
+    {
+        return Some(RenameTarget::ScriptMethod(target));
     }
 
     for declaration in graph.declarations() {
@@ -521,6 +532,17 @@ fn rename_target<'a>(
             fields::script_field_use_target(graph, &facts, text, source_id, bindings, &token)
         {
             return Some(RenameTarget::ScriptField(target));
+        }
+        if let Some(target) = methods::script_method_use_target(
+            graph,
+            &facts,
+            text,
+            source_id,
+            declaration.id,
+            bindings,
+            &token,
+        ) {
+            return Some(RenameTarget::ScriptMethod(target));
         }
     }
 

@@ -687,8 +687,12 @@ Purpose: provide safe refactoring without changing runtime contracts.
 - [~] Implement public module declaration rename with import rewrites.
   - [x] Rename script function declarations, resolved import path segments,
     and resolved unaliased call sites.
-- [ ] Implement field/method/variant rename only when ownership is known and
+- [~] Implement field/method/variant rename only when ownership is known and
   source spans are script-owned.
+  - [x] Rename source-owned private struct fields and typed receiver member
+    uses.
+  - [x] Rename source-owned private inherent methods and typed receiver member
+    calls.
 - [x] Reject host schema rename unless the source is explicitly script-owned.
 - [~] Reject renames that would collide in scope, module exports, trait impls,
   or import aliases.
@@ -711,6 +715,10 @@ Tests:
 - [x] `lsp_private_value_declaration_rename_updates_uses`
 - [x] `public_export_rename_reports_hot_reload_risk`
 - [x] `rename_rejects_scope_collision`
+- [x] `private_struct_field_rename_updates_member_uses`
+- [x] `lsp_private_struct_field_rename_updates_member_uses`
+- [x] `private_method_rename_updates_typed_receiver_calls`
+- [x] `lsp_private_method_rename_updates_typed_receiver_calls`
 - [x] `host_schema_rename_is_not_editable`
 - [x] `lsp_host_schema_rename_is_not_editable`
 
