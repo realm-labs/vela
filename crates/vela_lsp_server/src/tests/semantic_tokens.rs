@@ -476,6 +476,70 @@ impl Reward {
 }
 
 #[test]
+fn lsp_semantic_tokens_classify_script_trait_method_uses() {
+    let mut server = LspServer::new();
+    let initialize = response_value(server.handle_json(&request(
+        1,
+        "initialize",
+        serde_json::json!({
+            "processId": null,
+            "rootUri": "file:///workspace/scripts",
+            "capabilities": {}
+        }),
+    )));
+    let token_types =
+        initialize["result"]["capabilities"]["semanticTokensProvider"]["legend"]["tokenTypes"]
+            .as_array()
+            .expect("semantic token legend should list token types");
+    let method = token_type_index(token_types, "method");
+
+    let text = "\
+pub trait Rewardable {
+    fn preview(self, amount: i64) -> i64
+}
+
+pub fn main(rewardable: Rewardable) -> i64 {
+    return rewardable.preview(1)
+}";
+    let uri = "file:///workspace/scripts/game/main.vela";
+    let _ = notification_value(server.handle_json(&notification(
+        "textDocument/didOpen",
+        serde_json::json!({
+            "textDocument": {
+                "uri": uri,
+                "languageId": "vela",
+                "version": 1,
+                "text": text
+            }
+        }),
+    )));
+
+    let response = response_value(server.handle_json(&request(
+        2,
+        "textDocument/semanticTokens/full",
+        serde_json::json!({
+            "textDocument": { "uri": uri }
+        }),
+    )));
+    let tokens = decode_tokens(
+        response["result"]["data"]
+            .as_array()
+            .expect("semantic token response should include data"),
+    );
+
+    assert_token_at(
+        &tokens,
+        5,
+        line(text, 5)
+            .find("preview")
+            .expect("trait method call should exist"),
+        "preview".len(),
+        method,
+        0,
+    );
+}
+
+#[test]
 fn lsp_semantic_tokens_classify_host_and_builtin_member_uses() {
     let root = temp_workspace();
     let config_path = root.join("vela.toml");

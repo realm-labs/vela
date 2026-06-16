@@ -154,6 +154,11 @@ use parser-owned spans for context-aware formatting through both the language
 service and native LSP server. Remaining formatting follow-up is richer
 AST-aware formatter polish rather than a named blocking LSP capability gap.
 
+M20.5 Phase 10 update: semantic tokens now classify source-owned trait
+receiver method call sites through both the language service and native LSP
+server, matching the existing reference and call-hierarchy treatment for typed
+trait receivers.
+
 M20.5 Phase 17 update: editor initialization options and
 `workspace/didChangeConfiguration` settings now map `workspace.roots` and
 `host.schema` into the server `WorkspaceConfig`, native `--root` and

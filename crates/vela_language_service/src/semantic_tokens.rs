@@ -588,17 +588,31 @@ fn schema_field_exists(schema: &RegistryFacts, receiver: &TypeFact, field: &str)
 
 fn script_method_exists(graph: &ModuleGraph, receiver: &TypeFact, method: &str) -> bool {
     let owner_names = owner_names(receiver);
-    graph.declarations().any(|declaration| {
-        if !matches!(declaration.kind, DeclarationKind::Impl) {
-            return false;
-        }
-        let Some(metadata) = graph.impl_metadata(declaration.id) else {
-            return false;
-        };
-        let targets = impl_target_names(graph, declaration, &metadata.target_path);
-        targets.iter().any(|target| owner_names.contains(target))
-            && metadata.methods.iter().any(|entry| entry.name == method)
-    })
+    graph
+        .declarations()
+        .any(|declaration| match declaration.kind {
+            DeclarationKind::Impl => {
+                let Some(metadata) = graph.impl_metadata(declaration.id) else {
+                    return false;
+                };
+                let targets = impl_target_names(graph, declaration, &metadata.target_path);
+                targets.iter().any(|target| owner_names.contains(target))
+                    && metadata.methods.iter().any(|entry| entry.name == method)
+            }
+            DeclarationKind::Trait => {
+                owner_names
+                    .iter()
+                    .any(|owner| declaration_name_matches(graph, declaration, owner))
+                    && graph
+                        .trait_shape(declaration.id)
+                        .is_some_and(|shape| shape.methods.iter().any(|entry| entry.name == method))
+            }
+            DeclarationKind::Const
+            | DeclarationKind::Enum
+            | DeclarationKind::Function
+            | DeclarationKind::Global
+            | DeclarationKind::Struct => false,
+        })
 }
 
 fn script_field_exists(graph: &ModuleGraph, receiver: &TypeFact, field: &str) -> bool {

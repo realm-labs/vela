@@ -364,6 +364,33 @@ pub fn main(reward: Reward) -> i64 {
 }
 
 #[test]
+fn semantic_tokens_classify_script_trait_method_uses() {
+    let document = DocumentId::from("/workspace/scripts/game/main.vela");
+    let text = "\
+pub trait Rewardable {
+    fn preview(self, amount: i64) -> i64
+}
+
+pub fn main(rewardable: Rewardable) -> i64 {
+    return rewardable.preview(1)
+}";
+    let databases = databases_for(vec![SourceFileSnapshot::new(document.clone(), text)]);
+
+    let tokens = databases.semantic_tokens(&document);
+
+    assert_token_at(
+        &tokens,
+        5,
+        line(text, 5)
+            .find("preview")
+            .expect("trait method call should exist"),
+        "preview".len(),
+        SemanticTokenType::Method,
+        SemanticTokenModifiers::NONE,
+    );
+}
+
+#[test]
 fn semantic_tokens_classify_schema_and_stdlib_member_uses() {
     let document = DocumentId::from("/workspace/scripts/game/main.vela");
     let text = "\

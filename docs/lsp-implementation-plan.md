@@ -554,6 +554,8 @@ Purpose: provide syntax and semantic highlighting without changing semantics.
     trait method, and impl method declaration token classes.
   - [x] Add member-use token classes for script fields/methods, schema-backed
     host fields/methods, and stdlib member methods.
+  - [x] Add source-owned trait receiver method call classification through
+    the same method token class.
 - [~] Implement full semantic tokens.
   - [x] Full tokens include lexical classes, comments, resolved script symbols,
     script member declarations, script/schema/stdlib member uses, and
@@ -575,6 +577,8 @@ Tests:
 - [x] `semantic_tokens_classify_script_members`
 - [x] `lsp_semantic_tokens_classify_script_members`
 - [x] `semantic_tokens_classify_script_member_uses`
+- [x] `semantic_tokens_classify_script_trait_method_uses`
+- [x] `lsp_semantic_tokens_classify_script_trait_method_uses`
 - [x] `semantic_tokens_classify_schema_and_stdlib_member_uses`
 - [x] `lsp_semantic_tokens_classify_host_and_builtin_member_uses`
 - [x] `semantic_tokens_classify_schema_and_stdlib_function_calls`
