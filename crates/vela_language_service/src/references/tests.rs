@@ -218,6 +218,51 @@ pub fn main(state: QuestState) -> i64 {
 }
 
 #[test]
+fn references_find_script_method_calls() {
+    let document = DocumentId::from("/workspace/scripts/game/main.vela");
+    let text = "\
+pub struct Reward {
+    amount: i64
+}
+
+impl Reward {
+    pub fn grant(self, amount: i64) -> i64 { return amount }
+}
+
+pub fn main(reward: Reward) -> i64 {
+    let first = reward.grant(1)
+    return reward.grant(first)
+}";
+    let databases = databases_for(vec![SourceFileSnapshot::new(document.clone(), text)]);
+
+    let references = databases.references(
+        &document,
+        Position::new(9, line(text, 9).find("grant").expect("first method call")),
+        true,
+    );
+
+    assert_eq!(references.len(), 3, "{references:?}");
+    assert_reference(
+        &references,
+        5,
+        line(text, 5).find("grant").expect("method declaration"),
+        ReferenceKind::Declaration,
+    );
+    assert_reference(
+        &references,
+        9,
+        line(text, 9).find("grant").expect("first method call"),
+        ReferenceKind::Call,
+    );
+    assert_reference(
+        &references,
+        10,
+        line(text, 10).find("grant").expect("second method call"),
+        ReferenceKind::Call,
+    );
+}
+
+#[test]
 fn document_highlight_marks_local_declaration_and_reads() {
     let document = DocumentId::from("/workspace/scripts/game/main.vela");
     let text = "\
@@ -360,6 +405,50 @@ pub fn main(amount: i64) -> i64 {
         &grant_highlights,
         4,
         line(text, 4).find("grant").expect("second grant call"),
+        DocumentHighlightKind::Call,
+    );
+}
+
+#[test]
+fn document_highlight_marks_script_method_calls() {
+    let document = DocumentId::from("/workspace/scripts/game/main.vela");
+    let text = "\
+pub struct Reward {
+    amount: i64
+}
+
+impl Reward {
+    pub fn grant(self, amount: i64) -> i64 { return amount }
+}
+
+pub fn main(reward: Reward) -> i64 {
+    let first = reward.grant(1)
+    return reward.grant(first)
+}";
+    let databases = databases_for(vec![SourceFileSnapshot::new(document.clone(), text)]);
+
+    let highlights = databases.document_highlights(
+        &document,
+        Position::new(9, line(text, 9).find("grant").expect("first method call")),
+    );
+
+    assert_eq!(highlights.len(), 3, "{highlights:?}");
+    assert_highlight(
+        &highlights,
+        5,
+        line(text, 5).find("grant").expect("method declaration"),
+        DocumentHighlightKind::Text,
+    );
+    assert_highlight(
+        &highlights,
+        9,
+        line(text, 9).find("grant").expect("first method call"),
+        DocumentHighlightKind::Call,
+    );
+    assert_highlight(
+        &highlights,
+        10,
+        line(text, 10).find("grant").expect("second method call"),
         DocumentHighlightKind::Call,
     );
 }

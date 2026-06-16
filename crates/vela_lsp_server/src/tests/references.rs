@@ -313,6 +313,81 @@ pub fn main(state: QuestState) -> i64 {
 }
 
 #[test]
+fn lsp_references_find_script_method_calls() {
+    let mut server = LspServer::new();
+    let _ = response_value(server.handle_json(&request(
+        1,
+        "initialize",
+        serde_json::json!({
+            "processId": null,
+            "rootUri": "file:///workspace/scripts",
+            "capabilities": {}
+        }),
+    )));
+    let text = "\
+pub struct Reward {
+    amount: i64
+}
+
+impl Reward {
+    pub fn grant(self, amount: i64) -> i64 { return amount }
+}
+
+pub fn main(reward: Reward) -> i64 {
+    let first = reward.grant(1)
+    return reward.grant(first)
+}";
+    let uri = "file:///workspace/scripts/game/main.vela";
+    let _ = notification_value(server.handle_json(&notification(
+        "textDocument/didOpen",
+        serde_json::json!({
+            "textDocument": {
+                "uri": uri,
+                "languageId": "vela",
+                "version": 1,
+                "text": text
+            }
+        }),
+    )));
+
+    let response = response_value(server.handle_json(&request(
+        2,
+        "textDocument/references",
+        serde_json::json!({
+            "textDocument": { "uri": uri },
+            "position": {
+                "line": 9,
+                "character": line(text, 9).find("grant").expect("first method call")
+            },
+            "context": { "includeDeclaration": true }
+        }),
+    )));
+    let references = response["result"]
+        .as_array()
+        .expect("references response should be an array");
+
+    assert_eq!(references.len(), 3);
+    assert_reference(
+        references,
+        uri,
+        5,
+        line(text, 5).find("grant").expect("method declaration"),
+    );
+    assert_reference(
+        references,
+        uri,
+        9,
+        line(text, 9).find("grant").expect("first method call"),
+    );
+    assert_reference(
+        references,
+        uri,
+        10,
+        line(text, 10).find("grant").expect("second method call"),
+    );
+}
+
+#[test]
 fn lsp_document_highlight_marks_local_declaration_and_reads() {
     let mut server = LspServer::new();
     let initialize = response_value(server.handle_json(&request(
@@ -481,6 +556,80 @@ pub fn main(amount: i64) -> i64 {
         grant_highlights,
         4,
         line(text, 4).find("grant").expect("second grant call"),
+        1,
+    );
+}
+
+#[test]
+fn lsp_document_highlight_marks_script_method_calls() {
+    let mut server = LspServer::new();
+    let _ = response_value(server.handle_json(&request(
+        1,
+        "initialize",
+        serde_json::json!({
+            "processId": null,
+            "rootUri": "file:///workspace/scripts",
+            "capabilities": {}
+        }),
+    )));
+    let text = "\
+pub struct Reward {
+    amount: i64
+}
+
+impl Reward {
+    pub fn grant(self, amount: i64) -> i64 { return amount }
+}
+
+pub fn main(reward: Reward) -> i64 {
+    let first = reward.grant(1)
+    return reward.grant(first)
+}";
+    let uri = "file:///workspace/scripts/game/main.vela";
+    let _ = notification_value(server.handle_json(&notification(
+        "textDocument/didOpen",
+        serde_json::json!({
+            "textDocument": {
+                "uri": uri,
+                "languageId": "vela",
+                "version": 1,
+                "text": text
+            }
+        }),
+    )));
+
+    let response = response_value(server.handle_json(&request(
+        2,
+        "textDocument/documentHighlight",
+        serde_json::json!({
+            "textDocument": { "uri": uri },
+            "position": {
+                "line": 9,
+                "character": line(text, 9).find("grant").expect("first method call")
+            }
+        }),
+    )));
+    let highlights = response["result"]
+        .as_array()
+        .expect("documentHighlight response should be an array");
+
+    assert_eq!(highlights.len(), 3);
+    assert_highlight(
+        highlights,
+        5,
+        line(text, 5).find("grant").expect("method declaration"),
+        1,
+    );
+    assert_highlight(
+        highlights,
+        9,
+        line(text, 9).find("grant").expect("first method call"),
+        1,
+    );
+    assert_highlight(
+        highlights,
+        10,
+        line(text, 10).find("grant").expect("second method call"),
         1,
     );
 }

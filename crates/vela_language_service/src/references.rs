@@ -10,6 +10,8 @@ use crate::{
     DiagnosticRange, DocumentId, LanguageServiceDatabases, LineIndex, Position, TextRange,
 };
 
+mod methods;
+
 #[derive(Debug, Clone, Copy, Eq, Ord, PartialEq, PartialOrd)]
 pub enum ReferenceKind {
     Declaration,
@@ -134,6 +136,11 @@ impl LanguageServiceDatabases {
         {
             return self.enum_variant_references(&target, include_declaration);
         }
+        if let Some(target) =
+            methods::script_method_declaration_target(graph, source_id, source.text(), &token)
+        {
+            return methods::script_method_references(self, &target, include_declaration);
+        }
 
         for declaration in graph.declarations() {
             if declaration.span.source != source_id || !declaration.span.contains(offset) {
@@ -155,6 +162,16 @@ impl LanguageServiceDatabases {
                 script_field_use_target(graph, &facts, source.text(), source_id, bindings, &token)
             {
                 return self.script_field_references(&target, include_declaration);
+            }
+            if let Some(target) = methods::script_method_use_target(
+                graph,
+                &facts,
+                source.text(),
+                source_id,
+                bindings,
+                &token,
+            ) {
+                return methods::script_method_references(self, &target, include_declaration);
             }
         }
 

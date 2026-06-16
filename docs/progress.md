@@ -155,6 +155,12 @@ sessions, configured schema artifacts load without running host code, project
 indexes invalidate after config changes, and `vela.toml` remains the
 authoritative project config when present.
 
+M20.5 Phase 11 update: source-owned inherent script methods now participate in
+the editor reference index. `textDocument/references` returns method
+declarations plus typed receiver call sites, and
+`textDocument/documentHighlight` marks same-document method declarations and
+calls.
+
 ## Current Milestone State
 
 ### Available Now

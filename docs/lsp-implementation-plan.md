@@ -560,6 +560,8 @@ Purpose: support workspace navigation and prepare rename.
     receiver read/write member uses.
   - [x] Index source-owned enum variant declarations, constructor uses, and
     match-pattern uses.
+  - [x] Index source-owned inherent script method declarations and typed
+    receiver call sites.
 - [~] Track reference kind: read, write, call, type use, import, pattern,
   declaration.
   - [x] Track local declaration and read reference kinds.
@@ -578,10 +580,14 @@ Purpose: support workspace navigation and prepare rename.
     LSP request.
   - [x] Serve source-owned enum variant references through the native LSP
     request.
+  - [x] Serve source-owned script method references through the native LSP
+    request.
 - [~] Implement `textDocument/documentHighlight`.
   - [x] Serve local declaration/read highlights through the native LSP request.
   - [x] Serve imported script function import/read highlights in the active
     document.
+  - [x] Serve source-owned script method declaration/call highlights in the
+    active document.
 - [~] Implement incoming and outgoing call hierarchy for script functions and
   methods where calls are statically resolved.
   - [x] Serve initial source-backed script function prepare, incoming, and
@@ -597,11 +603,15 @@ Tests:
 - [x] `lsp_references_find_field_reads_and_writes`
 - [x] `references_find_enum_variant_constructors_and_patterns`
 - [x] `lsp_references_find_enum_variant_constructors_and_patterns`
+- [x] `references_find_script_method_calls`
+- [x] `lsp_references_find_script_method_calls`
 - [x] `document_highlight_marks_local_declaration_and_reads`
 - [x] `document_highlight_marks_import_and_calls_in_active_document`
 - [x] `lsp_document_highlight_marks_local_declaration_and_reads`
 - [x] `document_highlight_marks_read_write_call`
 - [x] `lsp_document_highlight_marks_read_write_call`
+- [x] `document_highlight_marks_script_method_calls`
+- [x] `lsp_document_highlight_marks_script_method_calls`
 - [x] `call_hierarchy_uses_resolved_call_graph`
 - [x] `lsp_call_hierarchy_uses_resolved_call_graph`
 
