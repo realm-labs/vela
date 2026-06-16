@@ -5,11 +5,17 @@ use vela_analysis::completion::{
     declaration_completions, global_completions, member_completions, module_completions,
 };
 use vela_analysis::facts::AnalysisFacts;
+use vela_analysis::hints::type_fact_from_hint;
 use vela_analysis::type_fact::TypeFact;
 use vela_common::Span;
 use vela_hir::binding::{BindingMap, BindingResolution, LocalBinding};
+use vela_hir::module_graph::{DeclarationKind, ModuleGraph};
+use vela_hir::type_hint::StructFieldHint;
+use vela_syntax::ast::{
+    Block, ElseBranch, Expr, ExprKind, FunctionItem, ItemKind, SourceFile, Stmt, StmtKind,
+};
 
-use crate::{DocumentId, LanguageServiceDatabases, LineIndex, Position, TextRange};
+use crate::{DocumentId, LanguageServiceDatabases, LineIndex, Position, SourceRecord, TextRange};
 
 #[derive(Debug, Clone, Copy, Eq, Ord, PartialEq, PartialOrd)]
 pub enum CompletionKind {
@@ -45,6 +51,7 @@ pub enum CompletionContextKind {
     Global,
     ModulePath,
     Member,
+    RecordField,
 }
 
 #[derive(Debug, Clone, Eq, PartialEq)]
@@ -78,11 +85,19 @@ pub struct CompletionContext {
     replace_range: TextRange,
     module_base: Option<String>,
     member_receiver: Option<MemberReceiver>,
+    record_constructor: Option<RecordConstructor>,
 }
 
 #[derive(Debug, Clone, Eq, PartialEq)]
 struct MemberReceiver {
     range: TextRange,
+}
+
+#[derive(Debug, Clone, Eq, PartialEq)]
+struct RecordConstructor {
+    path: Vec<String>,
+    field_names: Vec<String>,
+    current_module: Vec<String>,
 }
 
 impl CompletionContext {
@@ -131,11 +146,13 @@ impl LanguageServiceDatabases {
         let Some(source) = self.source_db().records().get(document_id) else {
             return empty_completion_list(CompletionContext::global(0, ""));
         };
-        let context = completion_context(source.text(), position);
+        let context =
+            completion_context(source, position, self.parse_db().parsed_source(document_id));
         let items = match context.kind {
             CompletionContextKind::Global => self.global_completion_items(&context),
             CompletionContextKind::ModulePath => self.module_path_completion_items(&context),
             CompletionContextKind::Member => self.member_completion_items(document_id, &context),
+            CompletionContextKind::RecordField => self.record_field_completion_items(&context),
         };
         CompletionList { context, items }
     }
@@ -206,6 +223,27 @@ impl LanguageServiceDatabases {
             type_fact_for_resolution(resolution, bindings, &facts, self.schema_db().facts())
         })
     }
+
+    fn record_field_completion_items(&self, context: &CompletionContext) -> Vec<CompletionItem> {
+        let Some(constructor) = context.record_constructor.as_ref() else {
+            return Vec::new();
+        };
+        let graph = self.hir_db().graph();
+        let mut items = script_record_field_completions(graph, constructor);
+        items.extend(schema_record_field_completions(
+            self.schema_db().facts(),
+            constructor,
+        ));
+        let existing_fields = constructor
+            .field_names
+            .iter()
+            .map(String::as_str)
+            .collect::<Vec<_>>();
+        dedupe_and_filter_service_items(items, |item| {
+            !existing_fields.contains(&item.label())
+                && label_segment_matches(item.label(), context.prefix())
+        })
+    }
 }
 
 impl CompletionContext {
@@ -216,15 +254,35 @@ impl CompletionContext {
             replace_range: TextRange::new(prefix_start, prefix_start + prefix.len()),
             module_base: None,
             member_receiver: None,
+            record_constructor: None,
         }
     }
 }
 
-fn completion_context(text: &str, position: Position) -> CompletionContext {
+fn completion_context(
+    source: &SourceRecord,
+    position: Position,
+    parsed: Option<&SourceFile>,
+) -> CompletionContext {
+    let text = source.text();
     let offset = LineIndex::new(text).offset(position);
     let prefix_start = identifier_prefix_start(text, offset);
     let prefix = &text[prefix_start..offset];
     let before_prefix = &text[..prefix_start];
+
+    if let Some(mut record_constructor) =
+        parsed.and_then(|source| record_constructor_at(source, offset))
+    {
+        record_constructor.current_module = source.module_path().segments().to_vec();
+        return CompletionContext {
+            kind: CompletionContextKind::RecordField,
+            prefix: prefix.to_owned(),
+            replace_range: TextRange::new(prefix_start, offset),
+            module_base: None,
+            member_receiver: None,
+            record_constructor: Some(record_constructor),
+        };
+    }
 
     if before_prefix.ends_with('.') {
         let member_receiver = member_receiver_before_dot(before_prefix);
@@ -234,6 +292,7 @@ fn completion_context(text: &str, position: Position) -> CompletionContext {
             replace_range: TextRange::new(prefix_start, offset),
             module_base: None,
             member_receiver,
+            record_constructor: None,
         };
     }
 
@@ -244,10 +303,191 @@ fn completion_context(text: &str, position: Position) -> CompletionContext {
             replace_range: TextRange::new(prefix_start, offset),
             module_base: Some(module_base),
             member_receiver: None,
+            record_constructor: None,
         };
     }
 
     CompletionContext::global(prefix_start, prefix)
+}
+
+fn record_constructor_at(source: &SourceFile, offset: usize) -> Option<RecordConstructor> {
+    let offset = u32::try_from(offset).ok()?;
+    for item in &source.items {
+        match &item.kind {
+            ItemKind::Const(item) => {
+                if let Some(context) = record_constructor_for_expr(&item.value, offset) {
+                    return Some(context);
+                }
+            }
+            ItemKind::Function(item) => {
+                if let Some(context) = record_constructor_for_function(item, offset) {
+                    return Some(context);
+                }
+            }
+            _ => {}
+        }
+    }
+    None
+}
+
+fn record_constructor_for_function(
+    function: &FunctionItem,
+    offset: u32,
+) -> Option<RecordConstructor> {
+    for param in &function.params {
+        if let Some(value) = param.default_value.as_ref()
+            && let Some(context) = record_constructor_for_expr(value, offset)
+        {
+            return Some(context);
+        }
+    }
+    record_constructor_for_block(&function.body, offset)
+}
+
+fn record_constructor_for_block(block: &Block, offset: u32) -> Option<RecordConstructor> {
+    if !block.span.contains(offset) {
+        return None;
+    }
+    for statement in &block.statements {
+        if let Some(context) = record_constructor_for_statement(statement, offset) {
+            return Some(context);
+        }
+    }
+    None
+}
+
+fn record_constructor_for_statement(statement: &Stmt, offset: u32) -> Option<RecordConstructor> {
+    if !statement.span.contains(offset) {
+        return None;
+    }
+    match &statement.kind {
+        StmtKind::Let { value, .. } => value
+            .as_ref()
+            .and_then(|value| record_constructor_for_expr(value, offset)),
+        StmtKind::Expr(value) => record_constructor_for_expr(value, offset),
+        StmtKind::Return(Some(value)) => record_constructor_for_expr(value, offset),
+        StmtKind::Return(None) | StmtKind::Break | StmtKind::Continue => None,
+        StmtKind::For { iterable, body, .. } => record_constructor_for_expr(iterable, offset)
+            .or_else(|| record_constructor_for_block(body, offset)),
+        StmtKind::Block(block) => record_constructor_for_block(block, offset),
+    }
+}
+
+fn record_constructor_for_expr(expr: &Expr, offset: u32) -> Option<RecordConstructor> {
+    if !expr.span.contains(offset) {
+        return None;
+    }
+    match &expr.kind {
+        ExprKind::Record { path, fields } => {
+            for field in fields {
+                if let Some(value) = field.value.as_ref()
+                    && let Some(context) = record_constructor_for_expr(value, offset)
+                {
+                    return Some(context);
+                }
+            }
+            Some(RecordConstructor {
+                path: path.clone(),
+                field_names: fields.iter().map(|field| field.name.clone()).collect(),
+                current_module: Vec::new(),
+            })
+        }
+        ExprKind::Unary { expr, .. } | ExprKind::Try(expr) => {
+            record_constructor_for_expr(expr, offset)
+        }
+        ExprKind::Binary { left, right, .. }
+        | ExprKind::Assign {
+            target: left,
+            value: right,
+            ..
+        } => record_constructor_for_expr(left, offset)
+            .or_else(|| record_constructor_for_expr(right, offset)),
+        ExprKind::Field { base, .. } => record_constructor_for_expr(base, offset),
+        ExprKind::Call { callee, args } => {
+            record_constructor_for_expr(callee, offset).or_else(|| {
+                args.iter()
+                    .find_map(|arg| record_constructor_for_expr(&arg.value, offset))
+            })
+        }
+        ExprKind::Index { base, index } => record_constructor_for_expr(base, offset)
+            .or_else(|| record_constructor_for_expr(index, offset)),
+        ExprKind::Array(values) => values
+            .iter()
+            .find_map(|value| record_constructor_for_expr(value, offset)),
+        ExprKind::Map(entries) => entries.iter().find_map(|entry| {
+            record_constructor_for_expr(&entry.key, offset)
+                .or_else(|| record_constructor_for_expr(&entry.value, offset))
+        }),
+        ExprKind::Lambda { params, body } => params
+            .iter()
+            .filter_map(|param| param.default_value.as_ref())
+            .find_map(|value| record_constructor_for_expr(value, offset))
+            .or_else(|| record_constructor_for_expr(body, offset)),
+        ExprKind::If(if_expr) => record_constructor_for_expr(&if_expr.condition, offset)
+            .or_else(|| record_constructor_for_block(&if_expr.then_branch, offset))
+            .or_else(|| {
+                if_expr
+                    .else_branch
+                    .as_ref()
+                    .and_then(|branch| match branch {
+                        ElseBranch::Block(block) => record_constructor_for_block(block, offset),
+                        ElseBranch::If(if_expr) => record_constructor_for_if(if_expr, offset),
+                    })
+            }),
+        ExprKind::Match(match_expr) => record_constructor_for_expr(&match_expr.scrutinee, offset)
+            .or_else(|| {
+                match_expr
+                    .arms
+                    .iter()
+                    .find_map(|arm| record_constructor_for_expr(&arm.body, offset))
+            }),
+        ExprKind::Block(block) => record_constructor_for_block(block, offset),
+        ExprKind::Literal(_)
+        | ExprKind::InterpolatedString(_)
+        | ExprKind::Path(_)
+        | ExprKind::SelfValue
+        | ExprKind::Error => None,
+    }
+}
+
+fn record_constructor_for_if(
+    if_expr: &vela_syntax::ast::IfExpr,
+    offset: u32,
+) -> Option<RecordConstructor> {
+    if !if_expr.condition.span.contains(offset)
+        && !if_expr.then_branch.span.contains(offset)
+        && !if_expr
+            .else_branch
+            .as_ref()
+            .is_some_and(|branch| else_branch_contains(branch, offset))
+    {
+        return None;
+    }
+    record_constructor_for_expr(&if_expr.condition, offset)
+        .or_else(|| record_constructor_for_block(&if_expr.then_branch, offset))
+        .or_else(|| {
+            if_expr
+                .else_branch
+                .as_ref()
+                .and_then(|branch| match branch {
+                    ElseBranch::Block(block) => record_constructor_for_block(block, offset),
+                    ElseBranch::If(if_expr) => record_constructor_for_if(if_expr, offset),
+                })
+        })
+}
+
+fn else_branch_contains(branch: &ElseBranch, offset: u32) -> bool {
+    match branch {
+        ElseBranch::If(if_expr) => {
+            if_expr.condition.span.contains(offset)
+                || if_expr.then_branch.span.contains(offset)
+                || if_expr
+                    .else_branch
+                    .as_ref()
+                    .is_some_and(|branch| else_branch_contains(branch, offset))
+        }
+        ElseBranch::Block(block) => block.span.contains(offset),
+    }
 }
 
 fn identifier_prefix_start(text: &str, offset: usize) -> usize {
@@ -305,6 +545,93 @@ fn dedupe_and_filter_items(
             });
     }
     deduped.into_values().collect()
+}
+
+fn dedupe_and_filter_service_items(
+    items: Vec<CompletionItem>,
+    matches_context: impl Fn(&CompletionItem) -> bool,
+) -> Vec<CompletionItem> {
+    let mut deduped = BTreeMap::new();
+    for item in items.into_iter().filter(matches_context) {
+        deduped
+            .entry((item.label.clone(), item.kind))
+            .or_insert(item);
+    }
+    deduped.into_values().collect()
+}
+
+fn script_record_field_completions(
+    graph: &ModuleGraph,
+    constructor: &RecordConstructor,
+) -> Vec<CompletionItem> {
+    let Some(declaration) = script_record_constructor_declaration(graph, constructor) else {
+        return Vec::new();
+    };
+    let Some(shape) = graph.struct_shape(declaration.id) else {
+        return Vec::new();
+    };
+    shape
+        .fields
+        .iter()
+        .map(|field| field_completion_from_hint(graph, field))
+        .collect()
+}
+
+fn script_record_constructor_declaration<'a>(
+    graph: &'a ModuleGraph,
+    constructor: &RecordConstructor,
+) -> Option<&'a vela_hir::module_graph::Declaration> {
+    let name = constructor.path.last()?;
+    graph.declarations().find(|declaration| {
+        declaration.kind == DeclarationKind::Struct
+            && declaration.name == *name
+            && declaration_path_matches(graph, declaration, constructor)
+    })
+}
+
+fn declaration_path_matches(
+    graph: &ModuleGraph,
+    declaration: &vela_hir::module_graph::Declaration,
+    constructor: &RecordConstructor,
+) -> bool {
+    let Some(module_path) = graph.module_path(declaration.module) else {
+        return false;
+    };
+    let path = &constructor.path;
+    if path.len() == 1 {
+        return module_path.segments() == constructor.current_module;
+    }
+    let expected = path[..path.len().saturating_sub(1)].join("::");
+    module_path.join() == expected
+}
+
+fn field_completion_from_hint(graph: &ModuleGraph, field: &StructFieldHint) -> CompletionItem {
+    let fact = field
+        .type_hint
+        .as_ref()
+        .map_or(TypeFact::Unknown, |hint| type_fact_from_hint(graph, hint));
+    CompletionItem {
+        label: field.name.clone(),
+        kind: CompletionKind::Field,
+        detail: fact.display_name(),
+    }
+}
+
+fn schema_record_field_completions(
+    schema: &vela_analysis::registry::RegistryFacts,
+    constructor: &RecordConstructor,
+) -> Vec<CompletionItem> {
+    let owner = constructor.path.join("::");
+    let short_owner = constructor.path.last().map(String::as_str);
+    schema
+        .fields()
+        .filter(|field| field.owner == owner || Some(field.owner.as_str()) == short_owner)
+        .map(|field| CompletionItem {
+            label: field.name,
+            kind: CompletionKind::Field,
+            detail: field.fact.display_name(),
+        })
+        .collect()
 }
 
 fn label_segment_matches(label: &str, prefix: &str) -> bool {
@@ -448,6 +775,91 @@ mod tests {
         assert_eq!(completions.context().kind(), CompletionContextKind::Member);
         assert_completion(&completions, "level", CompletionKind::Field);
         assert_completion(&completions, "level_up", CompletionKind::Method);
+    }
+
+    #[test]
+    fn record_field_completion_requires_known_type() {
+        let document = DocumentId::from("/workspace/scripts/game/main.vela");
+        let text = "pub struct Player { id: String level: i64 }\npub fn main() { let player = Player { id: \"p1\", le } }";
+        let files = vec![SourceFileSnapshot::new(document.clone(), text)];
+        let config = WorkspaceConfig::workspace([WorkspaceRoot::from("/workspace/scripts")]);
+        let project = assemble_project_sources(&config, &files, &Workspace::new().snapshot());
+        let mut databases = LanguageServiceDatabases::new();
+        databases.update(&project);
+
+        let completions = databases.completion_items(
+            &document,
+            Position::new(
+                1,
+                text.lines()
+                    .nth(1)
+                    .expect("second line")
+                    .find("le }")
+                    .expect("record prefix")
+                    + "le".len(),
+            ),
+        );
+
+        assert_eq!(
+            completions.context().kind(),
+            CompletionContextKind::RecordField
+        );
+        assert_completion(&completions, "level", CompletionKind::Field);
+        assert_no_completion(&completions, "id");
+
+        let unknown_text =
+            "pub fn helper() { return 1 }\npub fn main() { let player = Missing { le } }";
+        let files = vec![SourceFileSnapshot::new(document.clone(), unknown_text)];
+        let project = assemble_project_sources(&config, &files, &Workspace::new().snapshot());
+        databases.update(&project);
+
+        let completions = databases.completion_items(
+            &document,
+            Position::new(
+                1,
+                unknown_text
+                    .lines()
+                    .nth(1)
+                    .expect("second line")
+                    .find("le }")
+                    .expect("unknown prefix")
+                    + "le".len(),
+            ),
+        );
+
+        assert_eq!(
+            completions.context().kind(),
+            CompletionContextKind::RecordField
+        );
+        assert!(completions.items().is_empty(), "{completions:?}");
+    }
+
+    #[test]
+    fn record_field_completion_uses_schema_facts() {
+        let document = DocumentId::from("/workspace/scripts/game/main.vela");
+        let text = "pub fn main() { let player = Player { le } }";
+        let files = vec![SourceFileSnapshot::new(document.clone(), text)];
+        let config = WorkspaceConfig::workspace([WorkspaceRoot::from("/workspace/scripts")]);
+        let project = assemble_project_sources(&config, &files, &Workspace::new().snapshot());
+        let mut databases = LanguageServiceDatabases::new();
+        let mut schema = RegistryFacts::default();
+        schema.insert_type("Player", TypeFact::host("Player"));
+        schema.insert_field("Player", "level", TypeFact::I64);
+        schema.insert_field("Player", "name", TypeFact::STRING);
+        databases.set_schema_facts(schema);
+        databases.update(&project);
+
+        let completions = databases.completion_items(
+            &document,
+            Position::new(0, text.find("le }").expect("record prefix") + "le".len()),
+        );
+
+        assert_eq!(
+            completions.context().kind(),
+            CompletionContextKind::RecordField
+        );
+        assert_completion(&completions, "level", CompletionKind::Field);
+        assert_no_completion(&completions, "name");
     }
 
     #[test]

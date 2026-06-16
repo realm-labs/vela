@@ -366,7 +366,10 @@ Purpose: make common authoring flows fast and schema-aware.
 - [~] Complete locals, parameters, captures, declarations, modules, imports,
   stdlib APIs, fields, methods, variants, traits, and type hints.
 - [ ] Complete named arguments and defaulted parameters.
-- [ ] Complete record fields inside known constructors.
+- [~] Complete record fields inside known constructors.
+  - Initial service and LSP completion support source-owned struct
+    constructors plus schema-backed host constructors and suppresses unknown
+    constructor fallback.
 - [ ] Complete map literal keys only when appropriate.
 - [x] Complete host members from schema facts.
 - [~] Add trigger-character behavior for `.`, `::`, `{`, `(`, `,`, and `|`.
@@ -382,7 +385,9 @@ Tests:
 - [x] `lsp_completion_uses_loaded_schema_facts`
 - [x] `member_completion_uses_host_schema_facts`
 - [x] `module_completion_follows_import_context`
-- [ ] `record_field_completion_requires_known_type`
+- [x] `record_field_completion_requires_known_type`
+- [x] `record_field_completion_uses_schema_facts`
+- [x] `lsp_record_field_completion_uses_known_constructor`
 - [x] `signature_help_tracks_active_parameter`
 - [x] `lsp_signature_help_tracks_active_parameter`
 

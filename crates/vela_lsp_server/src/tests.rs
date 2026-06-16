@@ -500,6 +500,48 @@ mod completion {
         fs::remove_dir_all(&root).expect("temporary workspace should be removable");
     }
 
+    #[test]
+    fn lsp_record_field_completion_uses_known_constructor() {
+        let mut server = LspServer::new();
+        let _ = response_value(server.handle_json(&request(
+            1,
+            "initialize",
+            serde_json::json!({
+                "processId": null,
+                "rootUri": "file:///workspace/scripts",
+                "capabilities": {}
+            }),
+        )));
+        let uri = "file:///workspace/scripts/game/main.vela";
+        let text = "pub struct Player { id: String level: i64 }\npub fn main() { let player = Player { id: \"p1\", le } }";
+        let _ = notification_value(server.handle_json(&notification(
+            "textDocument/didOpen",
+            serde_json::json!({
+                "textDocument": {
+                    "uri": uri,
+                    "languageId": "vela",
+                    "version": 1,
+                    "text": text
+                }
+            }),
+        )));
+
+        let response = response_value(server.handle_json(&request(
+            2,
+            "textDocument/completion",
+            serde_json::json!({
+                "textDocument": { "uri": uri },
+                "position": {
+                    "line": 1,
+                    "character": text.lines().nth(1).expect("second line").find("le }").expect("record prefix") + 2
+                }
+            }),
+        )));
+
+        assert_completion(&response, "level", 5, "i64");
+        assert_no_completion(&response, "id");
+    }
+
     fn assert_completion(response: &serde_json::Value, label: &str, kind: u8, detail: &str) {
         assert_eq!(response["result"]["isIncomplete"], false);
         let Some(items) = response["result"]["items"].as_array() else {
@@ -511,6 +553,14 @@ mod completion {
             }),
             "{items:?}"
         );
+    }
+
+    fn assert_no_completion(response: &serde_json::Value, label: &str) {
+        assert_eq!(response["result"]["isIncomplete"], false);
+        let Some(items) = response["result"]["items"].as_array() else {
+            panic!("completion response should contain items");
+        };
+        assert!(items.iter().all(|item| item["label"] != label), "{items:?}");
     }
 
     fn temp_workspace() -> PathBuf {
