@@ -192,7 +192,7 @@ fn selected_item_formatting_edit(
     let end = line_index.offset(range.end());
     let (format_start, format_end) = selected_item_offsets(source, parsed, start, end)?;
     let selected = source.get(format_start..format_end)?;
-    let formatted = format_document(source_id, selected);
+    let formatted = format_selected_range(source_id, source, selected, format_start, format_end);
     (formatted != selected).then(|| {
         TextEdit::new(
             DiagnosticRange::new(
@@ -202,6 +202,57 @@ fn selected_item_formatting_edit(
             formatted,
         )
     })
+}
+
+fn format_selected_range(
+    source_id: SourceId,
+    source: &str,
+    selected: &str,
+    format_start: usize,
+    format_end: usize,
+) -> String {
+    let mut formatted = format_document(source_id, selected);
+    let Some(indent) = line_indent_before(source, format_start) else {
+        return formatted;
+    };
+    if indent.is_empty() {
+        return formatted;
+    }
+
+    if source
+        .get(format_end..)
+        .is_some_and(|suffix| suffix.starts_with('\n') || suffix.starts_with("\r\n"))
+        && formatted.ends_with('\n')
+    {
+        formatted.pop();
+    }
+
+    indent_continuation_lines(&formatted, indent)
+}
+
+fn line_indent_before(source: &str, offset: usize) -> Option<&str> {
+    let line_start = source[..offset].rfind('\n').map_or(0, |index| index + 1);
+    let indent = source.get(line_start..offset)?;
+    indent
+        .chars()
+        .all(|ch| matches!(ch, ' ' | '\t'))
+        .then_some(indent)
+}
+
+fn indent_continuation_lines(formatted: &str, indent: &str) -> String {
+    let mut lines = formatted.split('\n');
+    let Some(first) = lines.next() else {
+        return String::new();
+    };
+    let mut indented = first.to_owned();
+    for line in lines {
+        indented.push('\n');
+        if !line.is_empty() {
+            indented.push_str(indent);
+        }
+        indented.push_str(line);
+    }
+    indented
 }
 
 fn selected_item_offsets(
@@ -654,11 +705,36 @@ pub fn other(){return 2}
         assert_eq!(edits[0].range().end(), Position::new(0, 51));
         assert_eq!(
             formatted,
-            "\
-impl Player{fn heal(amount: i64) -> i64 {
-    return amount
+            "impl Player{fn heal(amount: i64) -> i64 {\n    return amount\n}\nfn hurt(amount:i64)->i64{return amount}}\n"
+        );
+    }
+
+    #[test]
+    fn range_formatting_preserves_nested_method_indent() {
+        let source = "\
+impl Player {
+    fn heal(amount:i64)->i64{return amount}
+    fn hurt(amount:i64)->i64{return amount}
 }
-fn hurt(amount:i64)->i64{return amount}}
+";
+        let edits = range_format_source(
+            source,
+            DiagnosticRange::new(Position::new(1, 4), Position::new(1, 43)),
+        );
+        let formatted = apply_range_edits(source, &edits);
+
+        assert_eq!(edits.len(), 1);
+        assert_eq!(edits[0].range().start(), Position::new(1, 4));
+        assert_eq!(edits[0].range().end(), Position::new(1, 43));
+        assert_eq!(
+            formatted,
+            "\
+impl Player {
+    fn heal(amount: i64) -> i64 {
+        return amount
+    }
+    fn hurt(amount:i64)->i64{return amount}
+}
 "
         );
     }

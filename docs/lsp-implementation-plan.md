@@ -930,6 +930,8 @@ Purpose: provide deterministic source formatting without losing comments.
     item span before applying the token/trivia formatter.
   - Impl and trait method selections now use parser-owned method spans to
     format one selected nested member while preserving surrounding text.
+  - Indented nested method selections now preserve enclosing member indentation
+    and avoid duplicating the following line break.
 - [~] Implement full document formatting.
   - Native LSP full-document formatting now uses the token/trivia formatter
     for spacing, brace indentation, comment preservation, and final newline.
@@ -967,6 +969,8 @@ Tests:
 - [x] `parses_inherent_impl_methods`
 - [x] `range_formatting_formats_selected_impl_method`
 - [x] `lsp_range_formatting_formats_selected_impl_method`
+- [x] `range_formatting_preserves_nested_method_indent`
+- [x] `lsp_range_formatting_preserves_nested_method_indent`
 
 Validation:
 
