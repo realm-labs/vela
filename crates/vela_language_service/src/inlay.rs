@@ -777,6 +777,9 @@ impl TypeHintCollector<'_, '_> {
 }
 
 fn parameter_hint_label(parameter: &crate::SignatureParameter) -> Option<String> {
+    if !is_stable_type_fact(parameter.type_fact()) {
+        return None;
+    }
     let name = parameter.label().split(':').next()?.trim();
     (!name.is_empty()).then(|| format!("{name}:"))
 }
@@ -918,6 +921,8 @@ fn callee_label(callee: &Expr) -> Option<String> {
     }
 }
 
+#[cfg(test)]
+mod suppression_tests;
 #[cfg(test)]
 mod tests {
     use super::*;

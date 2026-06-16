@@ -867,6 +867,8 @@ Purpose: expose gradual type facts without implying static typing.
 - [~] Add parameter name hints for calls.
   - Initial native support exposes script and schema function parameter labels
     through `textDocument/inlayHint` and suppresses already named arguments.
+  - Parameter hints suppress schema/script/variant parameters whose facts cross
+    dynamic `Any` or unknown boundaries.
 - [x] Add inferred local type hints from stable TypeFacts.
   - Ordinary `let` bindings now expose stable inferred `TypeFact` labels and
     suppress explicit annotations plus unstable `unknown`/`Any` boundaries.
@@ -883,6 +885,8 @@ Purpose: expose gradual type facts without implying static typing.
   - Local, lambda, and host-path type inlay hints suppress `Any`; remaining
     hint families still need equivalent dynamic-boundary checks as they are
     added.
+  - Parameter name hints suppress unstable `Any`/unknown parameter facts before
+    emitting labels.
 
 Tests:
 
@@ -892,11 +896,13 @@ Tests:
 - [x] `inlay_hints_show_host_path_typefacts`
 - [x] `inlay_hints_show_enum_variant_payload_names`
 - [x] `inlay_hints_degrade_to_any_without_schema`
+- [x] `inlay_hints_suppress_any_schema_function_parameters`
 - [x] `lsp_inlay_hints_show_parameter_names`
 - [x] `lsp_inlay_hints_show_local_typefacts`
 - [x] `lsp_inlay_hints_show_lambda_parameter_facts`
 - [x] `lsp_inlay_hints_show_host_path_typefacts`
 - [x] `lsp_inlay_hints_show_enum_variant_payload_names`
+- [x] `lsp_inlay_hints_suppress_any_schema_function_parameters`
 - [x] `lsp_inlay_hints_respect_requested_range`
 
 Validation:

@@ -51,12 +51,18 @@ impl SignatureInformation {
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub struct SignatureParameter {
     label: String,
+    type_fact: TypeFact,
 }
 
 impl SignatureParameter {
     #[must_use]
     pub fn label(&self) -> &str {
         &self.label
+    }
+
+    #[must_use]
+    pub fn type_fact(&self) -> &TypeFact {
+        &self.type_fact
     }
 }
 
@@ -129,6 +135,7 @@ impl LanguageServiceDatabases {
                         };
                         SignatureParameter {
                             label: format!("{}: {}", param.name, type_fact.display_name()),
+                            type_fact,
                         }
                     })
                     .collect::<Vec<_>>();
@@ -171,6 +178,7 @@ impl LanguageServiceDatabases {
                             });
                             SignatureParameter {
                                 label: format!("{}: {}", field.name, fact.display_name()),
+                                type_fact: fact,
                             }
                         })
                         .collect::<Vec<_>>();
@@ -208,6 +216,7 @@ impl LanguageServiceDatabases {
                     .enumerate()
                     .map(|(index, fact)| SignatureParameter {
                         label: format!("arg{index}: {}", fact.display_name()),
+                        type_fact: fact.clone(),
                     })
                     .collect::<Vec<_>>();
                 Some(SignatureInformation {
