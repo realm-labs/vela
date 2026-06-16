@@ -602,7 +602,7 @@ Purpose: provide safe refactoring without changing runtime contracts.
 - [~] Implement private module declaration rename.
   - [x] Rename private value declarations (`const`/`global`) and resolved
     same-workspace uses.
-  - [ ] Rename private type declarations and type-hint uses once ownership
+  - [x] Rename private type declarations and type-hint uses once ownership
     spans are indexed.
 - [~] Implement public module declaration rename with import rewrites.
   - [x] Rename script function declarations, resolved import path segments,

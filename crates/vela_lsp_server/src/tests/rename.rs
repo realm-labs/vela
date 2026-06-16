@@ -276,6 +276,78 @@ pub fn main() -> i64 {
 }
 
 #[test]
+fn lsp_private_type_declaration_rename_updates_type_hints() {
+    let mut server = LspServer::new();
+    let _ = response_value(server.handle_json(&request(
+        1,
+        "initialize",
+        serde_json::json!({
+            "processId": null,
+            "rootUri": "file:///workspace/scripts",
+            "capabilities": {}
+        }),
+    )));
+    let text = "\
+struct Reward {
+    amount: i64
+}
+
+fn grant(reward: Reward) -> Reward {
+    let next: Reward = reward
+    return next
+}";
+    let uri = "file:///workspace/scripts/game/main.vela";
+    let _ = notification_value(server.handle_json(&notification(
+        "textDocument/didOpen",
+        serde_json::json!({
+            "textDocument": {
+                "uri": uri,
+                "languageId": "vela",
+                "version": 1,
+                "text": text
+            }
+        }),
+    )));
+
+    let prepare = response_value(server.handle_json(&request(
+        2,
+        "textDocument/prepareRename",
+        serde_json::json!({
+            "textDocument": { "uri": uri },
+            "position": {
+                "line": 4,
+                "character": line(text, 4).rfind("Reward").expect("return type")
+            }
+        }),
+    )));
+    assert_eq!(prepare["result"]["placeholder"], "Reward");
+    assert_eq!(prepare["result"]["range"]["start"]["line"], 4);
+    assert_eq!(prepare["result"]["range"]["start"]["character"], 28);
+
+    let rename = response_value(server.handle_json(&request(
+        3,
+        "textDocument/rename",
+        serde_json::json!({
+            "textDocument": { "uri": uri },
+            "position": {
+                "line": 4,
+                "character": line(text, 4).rfind("Reward").expect("return type")
+            },
+            "newName": "Prize"
+        }),
+    )));
+    let edits = rename["result"]["changes"][uri]
+        .as_array()
+        .expect("rename should return text edits for the document");
+
+    assert_eq!(edits.len(), 4);
+    assert_text_edit(edits, 0, 7, "Prize");
+    assert_text_edit(edits, 4, 17, "Prize");
+    assert_text_edit(edits, 4, 28, "Prize");
+    assert_text_edit(edits, 5, 14, "Prize");
+}
+
+#[test]
 fn lsp_public_export_rename_reports_hot_reload_risk() {
     let mut server = LspServer::new();
     let _ = response_value(server.handle_json(&request(
