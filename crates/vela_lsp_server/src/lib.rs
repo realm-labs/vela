@@ -16,6 +16,7 @@ mod rename;
 mod selection;
 mod semantic_tokens;
 mod signature;
+pub mod stdio;
 mod symbols;
 
 use std::collections::{BTreeMap, BTreeSet};

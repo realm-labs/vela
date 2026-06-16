@@ -846,8 +846,11 @@ cargo test -p vela_language_service project
 
 Purpose: package native LSP for real editors while keeping plugins thin.
 
-- [ ] Add stdio server command.
-- [ ] Add `--version`, `--stdio`, and config flags.
+- [x] Add stdio server command.
+- [~] Add `--version`, `--stdio`, and config flags.
+  - Native binary now runs stdio by default or with `--stdio`, and reports
+    package version with `--version`; editor/workspace config flags remain
+    open.
 - [ ] Package VS Code extension as thin launcher/config UI.
 - [ ] Package Zed extension as thin launcher/config UI.
 - [ ] Document manual setup for editors that can launch generic LSP servers.
@@ -856,9 +859,9 @@ Purpose: package native LSP for real editors while keeping plugins thin.
 
 Tests:
 
-- [ ] `lsp_server_stdio_smoke_test`
+- [x] `lsp_server_stdio_smoke_test`
 - [ ] `editor_config_maps_to_workspace_config`
-- [ ] `server_info_reports_version`
+- [x] `server_info_reports_version`
 
 Validation:
 

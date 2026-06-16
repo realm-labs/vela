@@ -16,6 +16,10 @@ fn lsp_initialize_reports_capabilities() {
     assert_eq!(response["jsonrpc"], "2.0");
     assert_eq!(response["id"], 1);
     assert_eq!(response["result"]["serverInfo"]["name"], "vela_lsp_server");
+    assert_eq!(
+        response["result"]["serverInfo"]["version"],
+        env!("CARGO_PKG_VERSION")
+    );
     assert_eq!(response["result"]["capabilities"]["workDoneProgress"], true);
     assert_eq!(
         response["result"]["capabilities"]["textDocumentSync"]["openClose"],
@@ -104,6 +108,25 @@ fn lsp_initialize_reports_capabilities() {
     assert_eq!(
         response["result"]["capabilities"]["workspace"]["workspaceFolders"]["changeNotifications"],
         true
+    );
+}
+
+#[test]
+fn server_info_reports_version() {
+    let mut server = LspServer::new();
+    let response = response_value(server.handle_json(&request(
+        1,
+        "initialize",
+        serde_json::json!({
+            "processId": null,
+            "capabilities": {}
+        }),
+    )));
+
+    assert_eq!(response["result"]["serverInfo"]["name"], "vela_lsp_server");
+    assert_eq!(
+        response["result"]["serverInfo"]["version"],
+        env!("CARGO_PKG_VERSION")
     );
 }
 

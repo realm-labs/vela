@@ -83,6 +83,7 @@ mod code_action;
 mod formatting;
 mod inlay;
 mod lifecycle;
+mod stdio;
 mod document_sync {
     use super::{LspServer, notification, notification_value, request, response_value};
 
