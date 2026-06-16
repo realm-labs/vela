@@ -945,6 +945,8 @@ Purpose: provide deterministic source formatting without losing comments.
     current line fallback.
   - `}` triggers on completed top-level items now reflow that item through the
     token/trivia formatter while preserving surrounding text.
+  - `}` triggers on completed impl/trait methods now reflow the innermost
+    parser-owned nested member while preserving enclosing indentation.
 - [x] Add idempotence tests and malformed-source fallback behavior.
 
 Tests:
@@ -965,6 +967,8 @@ Tests:
 - [x] `lsp_on_type_formatting_reflows_completed_item`
 - [x] `on_type_formatting_reflows_completed_multiline_item`
 - [x] `lsp_on_type_formatting_reflows_completed_multiline_item`
+- [x] `on_type_formatting_reflows_completed_nested_method`
+- [x] `lsp_on_type_formatting_reflows_completed_nested_method`
 - [x] `lsp_document_formatting_returns_full_document_edit`
 - [x] `lsp_document_formatting_returns_empty_edits_when_idempotent`
 - [x] `lsp_range_formatting_limits_edits_to_range`

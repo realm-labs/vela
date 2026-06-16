@@ -440,15 +440,15 @@ fn completed_item_formatting_edit(
     position: Position,
 ) -> Option<TextEdit> {
     let offset = line_index.offset(position).min(source.len());
-    let item = parsed.items.iter().find(|item| {
-        let start = item.span.start as usize;
-        let end = item.span.end as usize;
-        start < offset && offset <= end
-    })?;
-    let start = item.span.start as usize;
-    let item_end = item.span.end as usize;
-    let end = include_single_trailing_newline(source, item_end);
-    let range = DiagnosticRange::new(line_index.position(start), line_index.position(end));
+    let selected = selectable_format_ranges(parsed)
+        .into_iter()
+        .filter(|range| range.start < offset && offset <= range.end)
+        .min_by_key(|range| range.end.saturating_sub(range.start))?;
+    let end = include_single_trailing_newline(source, selected.end);
+    let range = DiagnosticRange::new(
+        line_index.position(selected.start),
+        line_index.position(end),
+    );
     selected_item_formatting_edit(source_id, source, parsed, range)
 }
 
@@ -1003,6 +1003,33 @@ pub fn main() {
 }
 
 pub fn other(){return 2}
+"
+        );
+    }
+
+    #[test]
+    fn on_type_formatting_reflows_completed_nested_method() {
+        let source = "\
+impl Player {
+    fn heal(amount:i64)->i64{return amount}
+    fn hurt(amount:i64)->i64{return amount}
+}
+";
+        let edits = on_type_format_source(source, Position::new(1, 43), "}");
+        let formatted = apply_range_edits(source, &edits);
+
+        assert_eq!(edits.len(), 1);
+        assert_eq!(edits[0].range().start(), Position::new(1, 4));
+        assert_eq!(edits[0].range().end(), Position::new(2, 0));
+        assert_eq!(
+            formatted,
+            "\
+impl Player {
+    fn heal(amount: i64) -> i64 {
+        return amount
+    }
+    fn hurt(amount:i64)->i64{return amount}
+}
 "
         );
     }
