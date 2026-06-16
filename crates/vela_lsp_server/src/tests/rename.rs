@@ -209,6 +209,73 @@ pub fn main(amount: i64) -> i64 {
 }
 
 #[test]
+fn lsp_private_value_declaration_rename_updates_uses() {
+    let mut server = LspServer::new();
+    let _ = response_value(server.handle_json(&request(
+        1,
+        "initialize",
+        serde_json::json!({
+            "processId": null,
+            "rootUri": "file:///workspace/scripts",
+            "capabilities": {}
+        }),
+    )));
+    let text = "\
+const BONUS: i64 = 5
+pub fn main() -> i64 {
+    return BONUS + BONUS
+}";
+    let uri = "file:///workspace/scripts/game/main.vela";
+    let _ = notification_value(server.handle_json(&notification(
+        "textDocument/didOpen",
+        serde_json::json!({
+            "textDocument": {
+                "uri": uri,
+                "languageId": "vela",
+                "version": 1,
+                "text": text
+            }
+        }),
+    )));
+
+    let prepare = response_value(server.handle_json(&request(
+        2,
+        "textDocument/prepareRename",
+        serde_json::json!({
+            "textDocument": { "uri": uri },
+            "position": {
+                "line": 2,
+                "character": line(text, 2).find("BONUS").expect("BONUS read")
+            }
+        }),
+    )));
+    assert_eq!(prepare["result"]["placeholder"], "BONUS");
+    assert_eq!(prepare["result"]["range"]["start"]["line"], 2);
+    assert_eq!(prepare["result"]["range"]["start"]["character"], 11);
+
+    let rename = response_value(server.handle_json(&request(
+        3,
+        "textDocument/rename",
+        serde_json::json!({
+            "textDocument": { "uri": uri },
+            "position": {
+                "line": 2,
+                "character": line(text, 2).find("BONUS").expect("BONUS read")
+            },
+            "newName": "BASE"
+        }),
+    )));
+    let edits = rename["result"]["changes"][uri]
+        .as_array()
+        .expect("rename should return text edits for the document");
+
+    assert_eq!(edits.len(), 3);
+    assert_text_edit(edits, 0, 6, "BASE");
+    assert_text_edit(edits, 2, 11, "BASE");
+    assert_text_edit(edits, 2, 19, "BASE");
+}
+
+#[test]
 fn lsp_public_export_rename_reports_hot_reload_risk() {
     let mut server = LspServer::new();
     let _ = response_value(server.handle_json(&request(

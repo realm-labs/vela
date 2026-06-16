@@ -599,7 +599,11 @@ Purpose: provide safe refactoring without changing runtime contracts.
   - [x] Reject keywords, literals, and non-local targets.
 - [~] Implement local rename inside one function body.
   - [x] Return workspace edits for local declaration and resolved uses.
-- [ ] Implement private module declaration rename.
+- [~] Implement private module declaration rename.
+  - [x] Rename private value declarations (`const`/`global`) and resolved
+    same-workspace uses.
+  - [ ] Rename private type declarations and type-hint uses once ownership
+    spans are indexed.
 - [~] Implement public module declaration rename with import rewrites.
   - [x] Rename script function declarations, resolved import path segments,
     and resolved unaliased call sites.
@@ -623,6 +627,8 @@ Tests:
 - [x] `lsp_local_rename_updates_all_function_uses`
 - [x] `private_function_rename_updates_imports`
 - [x] `lsp_private_function_rename_updates_imports`
+- [x] `private_value_declaration_rename_updates_uses`
+- [x] `lsp_private_value_declaration_rename_updates_uses`
 - [x] `public_export_rename_reports_hot_reload_risk`
 - [x] `rename_rejects_scope_collision`
 - [ ] `host_schema_rename_is_not_editable`

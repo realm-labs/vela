@@ -429,7 +429,7 @@ fn rename_target<'a>(
             continue;
         }
         if token_text(text, token.range) == Some(declaration.name.as_str())
-            && declaration.kind == DeclarationKind::Function
+            && can_rename_declaration_target(declaration)
         {
             return Some(RenameTarget::Declaration(DeclarationRenameTarget {
                 declaration,
@@ -459,7 +459,7 @@ fn rename_target<'a>(
         }
         if let Some(declaration_id) = declaration_use_at_token(bindings, &token)
             && let Some(target) = graph.declaration(declaration_id)
-            && target.kind == DeclarationKind::Function
+            && can_rename_declaration_target(target)
         {
             return Some(RenameTarget::Declaration(DeclarationRenameTarget {
                 declaration: target,
@@ -488,7 +488,7 @@ fn rename_target<'a>(
             let Some(target) = graph.declaration(declaration_id) else {
                 continue;
             };
-            if target.kind != DeclarationKind::Function {
+            if !can_rename_declaration_target(target) {
                 continue;
             }
             return Some(RenameTarget::Declaration(DeclarationRenameTarget {
@@ -499,6 +499,19 @@ fn rename_target<'a>(
     }
 
     None
+}
+
+fn can_rename_declaration_target(declaration: &Declaration) -> bool {
+    match declaration.kind {
+        DeclarationKind::Function => true,
+        DeclarationKind::Const | DeclarationKind::Global => {
+            declaration.visibility != Visibility::Public
+        }
+        DeclarationKind::Struct
+        | DeclarationKind::Enum
+        | DeclarationKind::Trait
+        | DeclarationKind::Impl => false,
+    }
 }
 
 fn local_use_at_token(bindings: &BindingMap, token: &RenameToken) -> Option<HirLocalId> {
@@ -744,6 +757,42 @@ pub fn main(amount: i64) -> i64 {
             ),
             None
         );
+    }
+
+    #[test]
+    fn private_value_declaration_rename_updates_uses() {
+        let document = DocumentId::from("/workspace/scripts/game/main.vela");
+        let text = "\
+const BONUS: i64 = 5
+pub fn main() -> i64 {
+    return BONUS + BONUS
+}";
+        let databases = databases_for(vec![SourceFileSnapshot::new(document.clone(), text)]);
+
+        let prepare = databases
+            .prepare_rename(
+                &document,
+                Position::new(2, line(text, 2).find("BONUS").expect("BONUS read")),
+            )
+            .expect("private const should be renameable from a use site");
+
+        assert_eq!(prepare.placeholder(), "BONUS");
+        assert_eq!(prepare.range().start(), Position::new(2, 11));
+
+        let edit = databases
+            .rename(
+                &document,
+                Position::new(2, line(text, 2).find("BONUS").expect("BONUS read")),
+                "BASE",
+            )
+            .expect("private const rename should produce edits");
+
+        let document_edit = document_edit(&edit, &document);
+        assert_eq!(document_edit.edits().len(), 3);
+        assert_edit_at(document_edit.edits(), 0, 6, "BASE");
+        assert_edit_at(document_edit.edits(), 2, 11, "BASE");
+        assert_edit_at(document_edit.edits(), 2, 19, "BASE");
+        assert!(edit.risks().is_empty());
     }
 
     #[test]
