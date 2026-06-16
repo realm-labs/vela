@@ -2,7 +2,9 @@ use std::fs;
 use std::path::{Path, PathBuf};
 use std::time::{SystemTime, UNIX_EPOCH};
 
-use super::{LspServer, notification, notification_value, request, response_value};
+use super::{
+    LspServer, notification, notification_value, notification_values, request, response_value,
+};
 
 #[test]
 fn schema_reload_updates_host_member_completion() {
@@ -161,6 +163,115 @@ pub fn main(player: Player) {
 
     assert_completion(&response, "level", 5, "i64");
     fs::remove_dir_all(&root).expect("temporary workspace should be removable");
+}
+
+#[test]
+fn lsp_workspace_configuration_request_updates_workspace_config() {
+    let root = temp_workspace();
+    let schema_path = root.join("target").join("vela").join("schema.json");
+    fs::create_dir_all(schema_path.parent().expect("schema should have parent"))
+        .expect("schema directory should be creatable");
+    fs::write(&schema_path, schema_with_player_field("rank", "string"))
+        .expect("schema should be writable");
+
+    let mut server = LspServer::new();
+    let _ = response_value(server.handle_json(&request(
+        1,
+        "initialize",
+        serde_json::json!({
+            "processId": null,
+            "rootUri": file_uri(&root),
+            "capabilities": {}
+        }),
+    )));
+
+    let helper_uri = file_uri(&root.join("scripts").join("game").join("helper.vela"));
+    let _ = notification_value(server.handle_json(&notification(
+        "textDocument/didOpen",
+        serde_json::json!({
+            "textDocument": {
+                "uri": helper_uri,
+                "languageId": "vela",
+                "version": 1,
+                "text": "pub fn grant() -> i64 { return 1 }"
+            }
+        }),
+    )));
+
+    let main_uri = file_uri(&root.join("scripts").join("game").join("main.vela"));
+    let text = "\
+use game::helper::grant
+pub fn main(player: Player) {
+    let score = grant()
+    return player.rank
+}";
+    let before = notification_value(server.handle_json(&notification(
+        "textDocument/didOpen",
+        serde_json::json!({
+            "textDocument": {
+                "uri": main_uri,
+                "languageId": "vela",
+                "version": 1,
+                "text": text
+            }
+        }),
+    )));
+    assert_has_diagnostic_code(&before, "hir::unresolved_module");
+
+    let notifications = notification_values(server.handle_json(&notification(
+        "workspace/didChangeConfiguration",
+        serde_json::json!({
+            "settings": {
+                "vela": {
+                    "workspace": {
+                        "roots": [file_uri(&root.join("scripts"))]
+                    },
+                    "host": {
+                        "schema": file_uri(&schema_path)
+                    }
+                }
+            }
+        }),
+    )));
+    assert_document_diagnostics(&notifications, &main_uri, serde_json::json!([]));
+
+    let response = response_value(server.handle_json(&request(
+        2,
+        "textDocument/completion",
+        serde_json::json!({
+            "textDocument": { "uri": main_uri },
+            "position": { "line": 3, "character": "    return player.".len() }
+        }),
+    )));
+
+    assert_completion(&response, "rank", 5, "String");
+    fs::remove_dir_all(&root).expect("temporary workspace should be removable");
+}
+
+fn assert_has_diagnostic_code(notification: &serde_json::Value, code: &str) {
+    let Some(diagnostics) = notification["params"]["diagnostics"].as_array() else {
+        panic!("publishDiagnostics should contain diagnostics");
+    };
+    assert!(
+        diagnostics
+            .iter()
+            .any(|diagnostic| diagnostic["code"] == code),
+        "{diagnostics:?}"
+    );
+}
+
+fn assert_document_diagnostics(
+    notifications: &[serde_json::Value],
+    uri: &str,
+    expected: serde_json::Value,
+) {
+    let Some(notification) = notifications
+        .iter()
+        .find(|notification| notification["params"]["uri"] == uri)
+    else {
+        panic!("expected diagnostics for {uri}");
+    };
+    assert_eq!(notification["params"]["diagnostics"], expected);
 }
 
 fn assert_completion(response: &serde_json::Value, label: &str, kind: u8, detail: &str) {

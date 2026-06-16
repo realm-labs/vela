@@ -224,6 +224,38 @@ fn module_path_change_invalidates_hir_without_text_reparse() {
 }
 
 #[test]
+fn project_config_invalidation_rebuilds_module_paths() {
+    let files = [
+        file(
+            "/workspace/scripts/game/main.vela",
+            "use game::reward::grant\npub fn main() { return grant() }",
+        ),
+        file(
+            "/workspace/scripts/game/reward.vela",
+            "pub fn grant() { return 1 }",
+        ),
+    ];
+    let reward = DocumentId::from("/workspace/scripts/game/reward.vela");
+    let mut db = LanguageServiceDatabases::new();
+    db.update(&project_with_roots(&files, &["/workspace"]));
+    assert_eq!(
+        db.project_db().module_by_document().get(&reward),
+        Some(&module("scripts::game::reward"))
+    );
+    let before_generation = db.generation();
+
+    db.invalidate_project_config();
+    assert!(db.generation() > before_generation);
+    db.update(&project_with_roots(&files, &["/workspace/scripts"]));
+
+    assert_eq!(
+        db.project_db().module_by_document().get(&reward),
+        Some(&module("game::reward"))
+    );
+    assert_eq!(db.parse_db().parse_count(), 2);
+}
+
+#[test]
 fn stale_background_diagnostics_are_not_published() {
     let mut db = LanguageServiceDatabases::new();
     db.update(&project(&[file(

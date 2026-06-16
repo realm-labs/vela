@@ -158,6 +158,9 @@ impl LspServer {
             "workspace/didChangeWatchedFiles" => {
                 self.did_change_watched_files(message.id, message.params)
             }
+            "workspace/didChangeConfiguration" => {
+                self.did_change_configuration(message.id, message.params)
+            }
             "workspace/didChangeWorkspaceFolders" => {
                 self.did_change_workspace_folders(message.id, message.params)
             }
@@ -389,6 +392,7 @@ impl LspServer {
                 &self.workspace_roots,
                 self.editor_config.as_ref(),
             );
+            self.databases.invalidate_project_config();
             self.reload_schema_from_config();
         }
 
@@ -414,6 +418,7 @@ impl LspServer {
             self.has_config_file = true;
             self.config = Some(result.config);
             self.config_diagnostics = result.diagnostics;
+            self.databases.invalidate_project_config();
             self.reload_schema_from_config();
         } else if self.is_schema_uri(uri) {
             self.upsert_schema_artifact(uri);
@@ -439,6 +444,7 @@ impl LspServer {
             self.config_diagnostics.clear();
             self.config_documents
                 .insert(DocumentId::from(uri.to_owned()));
+            self.databases.invalidate_project_config();
             self.reload_schema_from_config();
         } else if self.is_schema_uri(uri) {
             self.mark_schema_artifact_missing();

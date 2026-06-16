@@ -135,8 +135,9 @@ not run the host application to discover schema metadata.
 
 Thin editor launchers may pass initialization options that mirror `vela.toml`
 using `workspace.roots` and `host.schema`. Those options are a fallback
-configuration source for native server startup; a discovered `vela.toml`
-remains the authoritative project configuration.
+configuration source for native server startup and later
+`workspace/didChangeConfiguration` settings; a discovered `vela.toml` remains
+the authoritative project configuration.
 
 Initial LSP formatting uses source-preserving text edits in
 `vela_language_service`: full-document formatting is driven by
