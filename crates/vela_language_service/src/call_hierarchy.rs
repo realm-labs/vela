@@ -127,6 +127,12 @@ impl LanguageServiceDatabases {
             {
                 return vec![item];
             }
+            if let Some(target) =
+                trait_method_declaration_target(graph, source_id, source.text(), &token)
+                && let Some(item) = self.call_hierarchy_item_for_target(&target)
+            {
+                return vec![item];
+            }
         }
 
         for scope in self.call_scopes() {
@@ -143,7 +149,7 @@ impl LanguageServiceDatabases {
             let Some(method_name) = token_text(source.text(), token.range) else {
                 continue;
             };
-            if let Some(target) = script_method_target_for_member(
+            if let Some(target) = method_target_for_member(
                 graph,
                 &facts,
                 source.text(),
@@ -151,9 +157,7 @@ impl LanguageServiceDatabases {
                 scope.bindings,
                 method_name,
                 token.range,
-            )
-            .map(CallHierarchyTarget::Method)
-                && let Some(item) = self.call_hierarchy_item_for_target(&target)
+            ) && let Some(item) = self.call_hierarchy_item_for_target(&target)
             {
                 return vec![item];
             }
@@ -289,7 +293,7 @@ impl LanguageServiceDatabases {
         member_method_call_ranges(source.source_id(), source.text(), scope_span)
             .into_iter()
             .filter_map(|range| {
-                script_method_target_for_member(
+                method_target_for_member(
                     graph,
                     &facts,
                     source.text(),
@@ -298,12 +302,7 @@ impl LanguageServiceDatabases {
                     token_text(source.text(), range)?,
                     range,
                 )
-                .map(|target| {
-                    (
-                        CallHierarchyTarget::Method(target),
-                        diagnostic_range(source.text(), range),
-                    )
-                })
+                .map(|target| (target, diagnostic_range(source.text(), range)))
             })
             .collect()
     }
@@ -317,6 +316,10 @@ impl LanguageServiceDatabases {
             .or_else(|| {
                 self.call_hierarchy_method_for_item(item)
                     .map(CallHierarchyTarget::Method)
+            })
+            .or_else(|| {
+                self.call_hierarchy_trait_method_for_item(item)
+                    .map(CallHierarchyTarget::TraitMethod)
             })
     }
 
@@ -374,6 +377,9 @@ impl LanguageServiceDatabases {
                 self.call_hierarchy_item_for_declaration(declaration)
             }
             CallHierarchyTarget::Method(method) => self.call_hierarchy_item_for_method(method),
+            CallHierarchyTarget::TraitMethod(method) => {
+                self.call_hierarchy_item_for_trait_method(method)
+            }
         }
     }
 
@@ -416,6 +422,58 @@ impl LanguageServiceDatabases {
         ))
     }
 
+    fn call_hierarchy_trait_method_for_item(
+        &self,
+        item: &CallHierarchyItem,
+    ) -> Option<TraitMethodCallTarget> {
+        let source = self.source_db().records().get(item.document_id())?;
+        let graph = self.hir_db().graph();
+        graph.declarations().find_map(|declaration| {
+            if declaration.kind != DeclarationKind::Trait
+                || declaration.span.source != source.source_id()
+            {
+                return None;
+            }
+            let shape = graph.trait_shape(declaration.id)?;
+            shape
+                .methods
+                .iter()
+                .find(|method| method.name == item.name())
+                .and_then(|method| {
+                    let target = TraitMethodCallTarget {
+                        owner: declaration.id,
+                        method: method.name.clone(),
+                    };
+                    self.call_hierarchy_item_for_trait_method(&target)
+                        .is_some_and(|candidate| candidate.selection_range == item.selection_range)
+                        .then_some(target)
+                })
+        })
+    }
+
+    fn call_hierarchy_item_for_trait_method(
+        &self,
+        target: &TraitMethodCallTarget,
+    ) -> Option<CallHierarchyItem> {
+        let graph = self.hir_db().graph();
+        let declaration = graph.declaration(target.owner)?;
+        let shape = graph.trait_shape(target.owner)?;
+        let method = shape
+            .methods
+            .iter()
+            .find(|method| method.name == target.method)?;
+        let source = self.source_record_for_call_hierarchy(declaration.span.source)?;
+        let span_range = span_text_range(declaration.span)?;
+        let name_range = method_name_range_in_text(source.text(), span_range, &method.name)
+            .unwrap_or(span_range);
+        Some(CallHierarchyItem::new(
+            method.name.clone(),
+            source.document_id().clone(),
+            diagnostic_range(source.text(), span_range),
+            diagnostic_range(source.text(), name_range),
+        ))
+    }
+
     fn call_scopes(&self) -> Vec<CallScope<'_>> {
         let graph = self.hir_db().graph();
         let mut scopes = Vec::new();
@@ -446,6 +504,25 @@ impl LanguageServiceDatabases {
                     }
                 }
             }
+            if declaration.kind == DeclarationKind::Trait
+                && let Some(shape) = graph.trait_shape(declaration.id)
+            {
+                for method in &shape.methods {
+                    if let Some(node) = method.default_body_node
+                        && let Some(span) = method.default_body_span
+                        && let Some(bindings) = graph.trait_default_method_bindings(node)
+                    {
+                        scopes.push(CallScope {
+                            caller: CallHierarchyTarget::TraitMethod(TraitMethodCallTarget {
+                                owner: declaration.id,
+                                method: method.name.clone(),
+                            }),
+                            span,
+                            bindings,
+                        });
+                    }
+                }
+            }
         }
         scopes
     }
@@ -471,12 +548,19 @@ impl LanguageServiceDatabases {
 enum CallHierarchyTarget {
     Function(HirDeclId),
     Method(ScriptMethodCallTarget),
+    TraitMethod(TraitMethodCallTarget),
 }
 
 #[derive(Debug, Clone, Eq, PartialEq)]
 struct ScriptMethodCallTarget {
     owner: HirDeclId,
     method_node: HirNodeId,
+    method: String,
+}
+
+#[derive(Debug, Clone, Eq, PartialEq)]
+struct TraitMethodCallTarget {
+    owner: HirDeclId,
     method: String,
 }
 
@@ -544,6 +628,70 @@ fn script_method_declaration_target(
     None
 }
 
+fn trait_method_declaration_target(
+    graph: &ModuleGraph,
+    source_id: SourceId,
+    text: &str,
+    token: &CallHierarchyToken,
+) -> Option<CallHierarchyTarget> {
+    let start = u32::try_from(token.range.start).ok()?;
+    for declaration in graph.declarations() {
+        if declaration.kind != DeclarationKind::Trait
+            || declaration.span.source != source_id
+            || !declaration.span.contains(start)
+        {
+            continue;
+        }
+        let shape = graph.trait_shape(declaration.id)?;
+        let span_range = span_text_range(declaration.span)?;
+        for method in &shape.methods {
+            let Some(name_range) = method_name_range_in_text(text, span_range, &method.name) else {
+                continue;
+            };
+            if name_range.start <= token.range.start && token.range.end <= name_range.end {
+                return Some(CallHierarchyTarget::TraitMethod(TraitMethodCallTarget {
+                    owner: declaration.id,
+                    method: method.name.clone(),
+                }));
+            }
+        }
+    }
+    None
+}
+
+fn method_target_for_member(
+    graph: &ModuleGraph,
+    facts: &AnalysisFacts,
+    text: &str,
+    source_id: SourceId,
+    bindings: &BindingMap,
+    method: &str,
+    member_range: TextRange,
+) -> Option<CallHierarchyTarget> {
+    script_method_target_for_member(
+        graph,
+        facts,
+        text,
+        source_id,
+        bindings,
+        method,
+        member_range,
+    )
+    .map(CallHierarchyTarget::Method)
+    .or_else(|| {
+        trait_method_target_for_member(
+            graph,
+            facts,
+            text,
+            source_id,
+            bindings,
+            method,
+            member_range,
+        )
+        .map(CallHierarchyTarget::TraitMethod)
+    })
+}
+
 fn script_method_target_for_member(
     graph: &ModuleGraph,
     facts: &AnalysisFacts,
@@ -563,6 +711,27 @@ fn script_method_target_for_member(
     let resolution = bindings.resolution_at_span(span)?;
     let receiver = type_fact_for_resolution(resolution, facts)?;
     script_method_owner(graph, &receiver, method)
+}
+
+fn trait_method_target_for_member(
+    graph: &ModuleGraph,
+    facts: &AnalysisFacts,
+    text: &str,
+    source_id: SourceId,
+    bindings: &BindingMap,
+    method: &str,
+    member_range: TextRange,
+) -> Option<TraitMethodCallTarget> {
+    if !is_call_callee(text, member_range) {
+        return None;
+    }
+    let receiver = member_receiver_range(text, member_range.start)?;
+    let start = u32::try_from(receiver.start).ok()?;
+    let end = u32::try_from(receiver.end).ok()?;
+    let span = Span::new(source_id, start, end);
+    let resolution = bindings.resolution_at_span(span)?;
+    let receiver = type_fact_for_resolution(resolution, facts)?;
+    trait_method_owner(graph, &receiver, method)
 }
 
 fn script_method_owner(
@@ -598,6 +767,34 @@ fn script_method_owner(
     })
 }
 
+fn trait_method_owner(
+    graph: &ModuleGraph,
+    receiver: &TypeFact,
+    method: &str,
+) -> Option<TraitMethodCallTarget> {
+    let owner_names = trait_owner_names(receiver);
+    graph.declarations().find_map(|declaration| {
+        if declaration.kind != DeclarationKind::Trait {
+            return None;
+        }
+        let matches_owner = owner_names
+            .iter()
+            .any(|owner| declaration_name_matches(declaration, owner));
+        if !matches_owner {
+            return None;
+        }
+        let shape = graph.trait_shape(declaration.id)?;
+        shape
+            .methods
+            .iter()
+            .find(|entry| entry.name == method)
+            .map(|entry| TraitMethodCallTarget {
+                owner: declaration.id,
+                method: entry.name.clone(),
+            })
+    })
+}
+
 fn type_fact_for_resolution(
     resolution: &BindingResolution,
     facts: &AnalysisFacts,
@@ -612,9 +809,24 @@ fn type_fact_for_resolution(
     }
 }
 
+fn declaration_name_matches(declaration: &Declaration, owner: &str) -> bool {
+    declaration.name == owner
+        || declaration
+            .name
+            .rsplit("::")
+            .next()
+            .is_some_and(|short| short == owner)
+}
+
 fn record_owner_names(receiver: &TypeFact) -> Vec<String> {
     let mut owners = Vec::new();
     collect_record_owner_names(receiver, &mut owners);
+    owners
+}
+
+fn trait_owner_names(receiver: &TypeFact) -> Vec<String> {
+    let mut owners = Vec::new();
+    collect_trait_owner_names(receiver, &mut owners);
     owners
 }
 
@@ -652,6 +864,44 @@ fn collect_record_owner_names(receiver: &TypeFact, owners: &mut Vec<String>) {
         | TypeFact::Enum { .. }
         | TypeFact::Host { .. }
         | TypeFact::Trait { .. }
+        | TypeFact::Module { .. } => {}
+    }
+}
+
+fn collect_trait_owner_names(receiver: &TypeFact, owners: &mut Vec<String>) {
+    match receiver {
+        TypeFact::Trait { name } => {
+            push_owner_name(owners, name);
+            if let Some(short) = name.rsplit("::").next()
+                && short != name
+            {
+                push_owner_name(owners, short);
+            }
+        }
+        TypeFact::Union(facts) => {
+            for fact in facts {
+                collect_trait_owner_names(fact, owners);
+            }
+        }
+        TypeFact::Unknown
+        | TypeFact::Never
+        | TypeFact::Any
+        | TypeFact::Primitive(_)
+        | TypeFact::Range
+        | TypeFact::Array { .. }
+        | TypeFact::Map { .. }
+        | TypeFact::Set { .. }
+        | TypeFact::Iterator { .. }
+        | TypeFact::Option { .. }
+        | TypeFact::OptionSome { .. }
+        | TypeFact::OptionNone
+        | TypeFact::Result { .. }
+        | TypeFact::ResultOk { .. }
+        | TypeFact::ResultErr { .. }
+        | TypeFact::Function { .. }
+        | TypeFact::Enum { .. }
+        | TypeFact::Host { .. }
+        | TypeFact::Record { .. }
         | TypeFact::Module { .. } => {}
     }
 }
@@ -797,248 +1047,4 @@ fn is_identifier_continue(ch: char) -> bool {
 }
 
 #[cfg(test)]
-mod tests {
-    use super::*;
-    use crate::{
-        SourceFileSnapshot, Workspace, WorkspaceConfig, WorkspaceRoot, assemble_project_sources,
-    };
-
-    #[test]
-    fn call_hierarchy_uses_resolved_call_graph() {
-        let main = DocumentId::from("/workspace/scripts/game/main.vela");
-        let helper = DocumentId::from("/workspace/scripts/game/reward.vela");
-        let main_text = "\
-use game::reward::grant
-pub fn main(amount: i64) -> i64 {
-    let first = grant(amount)
-    return grant(first)
-}";
-        let helper_text = "pub fn grant(amount: i64) -> i64 { return amount }";
-        let databases = databases_for(vec![
-            SourceFileSnapshot::new(main.clone(), main_text),
-            SourceFileSnapshot::new(helper.clone(), helper_text),
-        ]);
-
-        let prepared = databases.prepare_call_hierarchy(
-            &helper,
-            Position::new(0, helper_text.find("grant").expect("grant declaration")),
-        );
-
-        assert_eq!(prepared.len(), 1);
-        assert_eq!(prepared[0].name(), "grant");
-        assert_eq!(prepared[0].document_id(), &helper);
-
-        let incoming = databases.incoming_calls(&prepared[0]);
-        assert_eq!(incoming.len(), 1);
-        assert_eq!(incoming[0].from().name(), "main");
-        assert_eq!(incoming[0].from().document_id(), &main);
-        assert_eq!(incoming[0].from_ranges().len(), 2);
-        assert_range(
-            incoming[0].from_ranges(),
-            2,
-            line(main_text, 2).find("grant").expect("first call"),
-        );
-        assert_range(
-            incoming[0].from_ranges(),
-            3,
-            line(main_text, 3).find("grant").expect("second call"),
-        );
-
-        let main_item = databases
-            .prepare_call_hierarchy(
-                &main,
-                Position::new(
-                    1,
-                    line(main_text, 1).find("main").expect("main declaration"),
-                ),
-            )
-            .pop()
-            .expect("main should prepare a call hierarchy item");
-        let outgoing = databases.outgoing_calls(&main_item);
-        assert_eq!(outgoing.len(), 1);
-        assert_eq!(outgoing[0].to().name(), "grant");
-        assert_eq!(outgoing[0].to().document_id(), &helper);
-        assert_eq!(outgoing[0].from_ranges().len(), 2);
-    }
-
-    #[test]
-    fn call_hierarchy_uses_resolved_script_method_calls() {
-        let main = DocumentId::from("/workspace/scripts/game/main.vela");
-        let text = "\
-pub struct Reward {
-    amount: i64
-}
-
-impl Reward {
-    pub fn grant(self, amount: i64) -> i64 { return amount }
-}
-
-pub fn main(reward: Reward) -> i64 {
-    let first = reward.grant(1)
-    return reward.grant(first)
-}";
-        let databases = databases_for(vec![SourceFileSnapshot::new(main.clone(), text)]);
-
-        let prepared_from_declaration = databases.prepare_call_hierarchy(
-            &main,
-            Position::new(
-                5,
-                line(text, 5)
-                    .find("grant")
-                    .expect("method declaration should exist"),
-            ),
-        );
-        let prepared_from_call = databases.prepare_call_hierarchy(
-            &main,
-            Position::new(
-                9,
-                line(text, 9)
-                    .find("grant")
-                    .expect("method call should exist"),
-            ),
-        );
-
-        assert_eq!(prepared_from_declaration.len(), 1);
-        assert_eq!(prepared_from_declaration[0].name(), "grant");
-        assert_eq!(prepared_from_declaration[0].document_id(), &main);
-        assert_eq!(prepared_from_call, prepared_from_declaration);
-
-        let incoming = databases.incoming_calls(&prepared_from_declaration[0]);
-        assert_eq!(incoming.len(), 1);
-        assert_eq!(incoming[0].from().name(), "main");
-        assert_eq!(incoming[0].from().document_id(), &main);
-        assert_eq!(incoming[0].from_ranges().len(), 2);
-        assert_range(
-            incoming[0].from_ranges(),
-            9,
-            line(text, 9).find("grant").expect("first method call"),
-        );
-        assert_range(
-            incoming[0].from_ranges(),
-            10,
-            line(text, 10).find("grant").expect("second method call"),
-        );
-
-        let main_item = databases
-            .prepare_call_hierarchy(
-                &main,
-                Position::new(8, line(text, 8).find("main").expect("main declaration")),
-            )
-            .pop()
-            .expect("main should prepare a call hierarchy item");
-        let outgoing = databases.outgoing_calls(&main_item);
-        assert_eq!(outgoing.len(), 1);
-        assert_eq!(outgoing[0].to().name(), "grant");
-        assert_eq!(outgoing[0].to().document_id(), &main);
-        assert_eq!(outgoing[0].from_ranges().len(), 2);
-        assert_range(
-            outgoing[0].from_ranges(),
-            9,
-            line(text, 9).find("grant").expect("first method call"),
-        );
-        assert_range(
-            outgoing[0].from_ranges(),
-            10,
-            line(text, 10).find("grant").expect("second method call"),
-        );
-    }
-
-    #[test]
-    fn call_hierarchy_uses_resolved_trait_impl_method_calls() {
-        let main = DocumentId::from("/workspace/scripts/game/main.vela");
-        let text = "\
-pub fn clamp(value: i64) -> i64 { return value }
-
-pub trait Rewardable {
-    fn grant(self, amount: i64) -> i64;
-}
-
-pub struct Player { level: i64 }
-
-impl Rewardable for Player {
-    fn grant(self, amount: i64) -> i64 { return clamp(amount) }
-}
-
-pub fn main(player: Player) -> i64 {
-    let first = player.grant(1)
-    return player.grant(first)
-}";
-        let databases = databases_for(vec![SourceFileSnapshot::new(main.clone(), text)]);
-
-        let prepared_from_declaration = databases.prepare_call_hierarchy(
-            &main,
-            Position::new(
-                9,
-                line(text, 9)
-                    .find("grant")
-                    .expect("trait impl method declaration should exist"),
-            ),
-        );
-        let prepared_from_call = databases.prepare_call_hierarchy(
-            &main,
-            Position::new(
-                13,
-                line(text, 13)
-                    .find("grant")
-                    .expect("trait impl method call should exist"),
-            ),
-        );
-
-        assert_eq!(prepared_from_declaration.len(), 1);
-        assert_eq!(prepared_from_declaration[0].name(), "grant");
-        assert_eq!(prepared_from_declaration[0].document_id(), &main);
-        assert_eq!(prepared_from_call, prepared_from_declaration);
-
-        let incoming = databases.incoming_calls(&prepared_from_declaration[0]);
-        assert_eq!(incoming.len(), 1);
-        assert_eq!(incoming[0].from().name(), "main");
-        assert_eq!(incoming[0].from().document_id(), &main);
-        assert_eq!(incoming[0].from_ranges().len(), 2);
-        assert_range(
-            incoming[0].from_ranges(),
-            13,
-            line(text, 13)
-                .find("grant")
-                .expect("first trait method call"),
-        );
-        assert_range(
-            incoming[0].from_ranges(),
-            14,
-            line(text, 14)
-                .find("grant")
-                .expect("second trait method call"),
-        );
-
-        let outgoing = databases.outgoing_calls(&prepared_from_declaration[0]);
-        assert_eq!(outgoing.len(), 1);
-        assert_eq!(outgoing[0].to().name(), "clamp");
-        assert_eq!(outgoing[0].to().document_id(), &main);
-        assert_eq!(outgoing[0].from_ranges().len(), 1);
-        assert_range(
-            outgoing[0].from_ranges(),
-            9,
-            line(text, 9).find("clamp").expect("helper call"),
-        );
-    }
-
-    fn assert_range(ranges: &[DiagnosticRange], line: usize, character: usize) {
-        assert!(
-            ranges.iter().any(|range| {
-                range.start().line == line && range.start().character == character
-            }),
-            "{ranges:?}"
-        );
-    }
-
-    fn line(text: &str, line: usize) -> &str {
-        text.lines().nth(line).expect("line should exist")
-    }
-
-    fn databases_for(files: Vec<SourceFileSnapshot>) -> LanguageServiceDatabases {
-        let config = WorkspaceConfig::workspace([WorkspaceRoot::from("/workspace/scripts")]);
-        let project = assemble_project_sources(&config, &files, &Workspace::new().snapshot());
-        let mut databases = LanguageServiceDatabases::new();
-        databases.update(&project);
-        databases
-    }
-}
+mod tests;
