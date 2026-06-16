@@ -42,6 +42,25 @@ vela_lsp_server --stdio --root scripts --schema target/vela/schema.json
 fallback configuration before LSP initialization; a discovered `vela.toml`
 remains the authoritative project configuration.
 
+## Packaged Binaries
+
+The `LSP Release` workflow builds native `vela_lsp_server` artifacts for:
+
+```text
+vela_lsp_server-linux-x64.tar.gz
+vela_lsp_server-macos.tar.gz
+vela_lsp_server-windows-x64.zip
+```
+
+Each archive contains the native server binary plus this setup guide as
+`README.md`. The workflow also emits a `.sha256` checksum beside every
+archive. Tag pushes matching `v*` publish those archives as a GitHub Release;
+manual workflow runs upload the same archives as workflow artifacts.
+
+Editor integrations should launch the unpacked binary over stdio and pass
+configuration through `vela.toml`, initialization options, or
+`workspace/didChangeConfiguration`.
+
 ## Project Configuration
 
 Prefer a `vela.toml` at the workspace root:

@@ -1000,7 +1000,11 @@ Purpose: package native LSP for real editors while keeping plugins thin.
   - `docs/lsp-editor-setup.md` documents stdio launch, `vela.toml`,
     `--root`/`--schema` fallback flags, initialization options, and generic
     client wiring without moving behavior into editor plugins.
-- [ ] Add release matrix for Windows, macOS, and Linux binaries.
+- [x] Add release matrix for Windows, macOS, and Linux binaries.
+  - `.github/workflows/lsp-release.yml` builds native
+    `vela_lsp_server` artifacts for Linux, macOS, and Windows, emits SHA-256
+    checksum files, uploads workflow artifacts, and publishes tagged `v*`
+    releases.
 - [ ] Keep feature behavior out of editor-specific plugins.
 
 Tests:

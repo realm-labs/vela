@@ -1,0 +1,109 @@
+name: LSP Release
+
+on:
+  workflow_dispatch:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: write
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  build:
+    name: Build ${{ matrix.label }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            label: linux-x64
+            archive: vela_lsp_server-linux-x64.tar.gz
+            exe: vela_lsp_server
+          - os: macos-latest
+            label: macos
+            archive: vela_lsp_server-macos.tar.gz
+            exe: vela_lsp_server
+          - os: windows-latest
+            label: windows-x64
+            archive: vela_lsp_server-windows-x64.zip
+            exe: vela_lsp_server.exe
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Install Rust toolchain
+        run: |
+          rustup toolchain install stable --profile minimal
+          rustup default stable
+
+      - name: Cache Cargo
+        uses: actions/cache@v5
+        with:
+          path: |
+            ~/.cargo/registry/index/
+            ~/.cargo/registry/cache/
+            ~/.cargo/git/db/
+            target/
+          key: ${{ runner.os }}-lsp-release-cargo-${{ hashFiles('Cargo.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-lsp-release-cargo-
+
+      - name: Build native LSP server
+        run: cargo build -p vela_lsp_server --release
+
+      - name: Package Unix artifact
+        if: runner.os != 'Windows'
+        run: |
+          mkdir -p dist/package
+          cp "target/release/${{ matrix.exe }}" dist/package/
+          cp docs/lsp-editor-setup.md dist/package/README.md
+          tar -czf "dist/${{ matrix.archive }}" -C dist/package .
+          (cd dist && shasum -a 256 "${{ matrix.archive }}" > "${{ matrix.archive }}.sha256")
+
+      - name: Package Windows artifact
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force dist/package | Out-Null
+          Copy-Item "target/release/${{ matrix.exe }}" dist/package/
+          Copy-Item docs/lsp-editor-setup.md dist/package/README.md
+          Compress-Archive -Path dist/package/* -DestinationPath "dist/${{ matrix.archive }}" -Force
+          $hash = Get-FileHash "dist/${{ matrix.archive }}" -Algorithm SHA256
+          "$($hash.Hash.ToLowerInvariant())  ${{ matrix.archive }}" |
+            Set-Content -NoNewline "dist/${{ matrix.archive }}.sha256"
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v5
+        with:
+          name: vela-lsp-${{ matrix.label }}
+          path: |
+            dist/${{ matrix.archive }}
+            dist/${{ matrix.archive }}.sha256
+          if-no-files-found: error
+
+  release:
+    name: Publish tagged release
+    needs: build
+    runs-on: ubuntu-latest
+    if: startsWith(github.ref, 'refs/tags/')
+
+    steps:
+      - name: Download artifacts
+        uses: actions/download-artifact@v5
+        with:
+          path: dist
+          merge-multiple: true
+
+      - name: Publish release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "${GITHUB_REF_NAME}" dist/* \
+            --title "${GITHUB_REF_NAME}" \
+            --notes "Native Vela LSP server binaries for Windows, macOS, and Linux."

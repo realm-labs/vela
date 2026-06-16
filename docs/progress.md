@@ -153,7 +153,9 @@ M20.5 Phase 17 update: editor initialization options and
 `--schema` launch flags seed the same fallback configuration for stdio
 sessions, configured schema artifacts load without running host code, project
 indexes invalidate after config changes, and `vela.toml` remains the
-authoritative project config when present.
+authoritative project config when present. The native LSP release workflow now
+builds Linux, macOS, and Windows server artifacts with checksums for workflow
+artifacts or tagged releases.
 
 M20.5 Phase 8 update: `vela_language_service` now exposes explicit
 declaration and type-definition navigation queries, and `vela_lsp_server`
