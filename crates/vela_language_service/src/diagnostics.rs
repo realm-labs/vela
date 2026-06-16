@@ -716,6 +716,37 @@ mod tests {
     }
 
     #[test]
+    fn missing_schema_keeps_syntax_diagnostics_available() {
+        let document = DocumentId::from("/workspace/scripts/game/main.vela");
+        let mut db = LanguageServiceDatabases::new();
+        db.mark_schema_missing("/workspace/target/vela/schema.json");
+        db.update(&project(&[file(
+            document.as_str(),
+            "pub fn main(player: Player) { return player.level ",
+        )]));
+
+        let diagnostics = db.diagnostics_for_document(&document);
+
+        assert!(
+            diagnostics
+                .diagnostics()
+                .iter()
+                .any(|diagnostic| diagnostic.code() == Some("schema::unavailable")),
+            "{:?}",
+            diagnostics.diagnostics()
+        );
+        assert!(
+            diagnostics.diagnostics().iter().any(|diagnostic| {
+                diagnostic.severity() == ServiceDiagnosticSeverity::Error
+                    && diagnostic.code() != Some("schema::unavailable")
+                    && diagnostic.range().is_some()
+            }),
+            "{:?}",
+            diagnostics.diagnostics()
+        );
+    }
+
+    #[test]
     fn structured_diagnostics_preserve_candidates_and_repair_hints() {
         let document = DocumentId::from("/workspace/scripts/game/main.vela");
         let mut db = LanguageServiceDatabases::new();

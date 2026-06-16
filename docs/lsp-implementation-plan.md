@@ -347,7 +347,7 @@ Tests:
 - [x] `invalid_schema_reports_diagnostic`
 - [x] `schema_watch_publishes_invalid_schema_diagnostic`
 - [x] `schema_watch_clears_diagnostic_after_valid_reload`
-- [ ] `missing_schema_keeps_syntax_diagnostics_available`
+- [x] `missing_schema_keeps_syntax_diagnostics_available`
 - [x] `schema_reload_updates_host_member_completion`
 - [x] `schema_source_spans_enable_definition`
 
