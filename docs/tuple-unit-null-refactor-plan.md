@@ -72,7 +72,8 @@ fn split_name(full: String) -> Option<(String, String)> {
 }
 
 fn main() -> Result<(), Error> {
-    let (first, last) = split_name("Ada Lovelace")?;
+    let (first, last) = split_name("Ada Lovelace")
+        .ok_or(Error::InvalidName)?;
     return Result::Ok(());
 }
 ```
@@ -100,6 +101,10 @@ not `Tuple<String, String>`.
   fast paths and precise diagnostics.
 - Make `?` work cleanly with tuple payloads inside `Option<(...)>` and
   `Result<(...), E>` without making tuples a general generic feature.
+- Keep `?` propagation aligned with Rust: `Option` propagates through
+  `Option`-returning functions, `Result` propagates through
+  `Result`-returning functions, and cross-family conversion requires explicit
+  helpers such as `ok_or` or `ok_or_else`.
 - Move ordinary script absence to `Option::None`.
 - Move ordinary recoverable failure to `Result::Err`.
 - Remove `null` from ordinary script no-value semantics.
@@ -129,6 +134,8 @@ This pass must not:
 - Add implicit conversion between `()` and `Option::None`.
 - Add implicit conversion between external raw null and `Option::None` at
   untyped script boundaries.
+- Add implicit `?` conversion from `Option::None` to `Result::Err`, or from
+  `Result::Err` to `Option::None`.
 - Preserve `null` as a synonym for `()` or `Option::None`.
 - Keep old APIs returning `null` behind compatibility wrappers.
 - Weaken HostAccess, execution budgets, GC roots, reflection permissions, or
@@ -209,6 +216,29 @@ special tuple behavior. Tuple payloads are ordinary payload values:
 fn split_name(full: String) -> Option<(String, String)> {
     let parts = full.split_once(" ")?;
     return Option::Some((parts.left, parts.right));
+}
+```
+
+Propagation should stay Rust-aligned. `Option ?` is valid in an
+`Option`-returning function, and `Result ?` is valid in a `Result`-returning
+function. Crossing from `Option` to `Result` requires an explicit conversion
+that provides the error value:
+
+```vela
+fn main() -> Result<(), Error> {
+    let (first, last) = split_name("Ada Lovelace")
+        .ok_or(Error::InvalidName)?;
+    return Result::Ok(());
+}
+```
+
+This is intentionally rejected because `Option::None` does not contain an
+error value:
+
+```vela
+fn main() -> Result<(), Error> {
+    let (first, last) = split_name("Ada Lovelace")?;
+    return Result::Ok(());
 }
 ```
 
@@ -558,6 +588,8 @@ Tests:
 ```text
 Option tuple payload unwraps through ?
 Result tuple payload unwraps through ?
+Option ? inside Result-returning function is rejected without explicit ok_or
+Result ? inside Option-returning function is rejected without explicit mapping
 split_once-style APIs return Option tuple payloads
 tuple payload type mismatches fail at guarded boundaries
 ```
@@ -640,6 +672,7 @@ unit and tuple TypeFacts
 tuple destructuring bindings
 tuple arity mismatch diagnostics
 Option/Result tuple payload propagation
+Rust-aligned ? diagnostics for Option/Result return-kind mismatch
 ```
 
 Compiler and VM:
@@ -649,6 +682,7 @@ unit-returning blocks/functions/native calls
 tuple construction/destructuring
 tuple guards at typed dynamic boundaries
 ? propagation with tuple payloads
+no implicit Option-to-Result or Result-to-Option ? conversion
 old null no-result paths removed
 ```
 
@@ -698,6 +732,8 @@ npm --prefix site run build
 
 - Keep unit, tuple, Option, Result, and external null as separate concepts.
 - Do not implement `null` aliases for `()` or `Option::None`.
+- Keep `?` propagation Rust-aligned. Cross-family `Option`/`Result`
+  propagation must use explicit conversion helpers.
 - Do not trust tuple type hints until values are proven by construction,
   verified contracts, or runtime guards.
 - Keep tuple syntax structural; do not add a public `Tuple<T, U>` type.
