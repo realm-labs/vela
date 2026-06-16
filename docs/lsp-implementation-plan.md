@@ -378,7 +378,10 @@ Purpose: make common authoring flows fast and schema-aware.
   - Initial service and LSP completion support source-owned struct
     constructors plus schema-backed host constructors and suppresses unknown
     constructor fallback.
-- [ ] Complete map literal keys only when appropriate.
+- [~] Complete map literal keys only when appropriate.
+  - Initial service and LSP completion detect map-key cursor contexts,
+    suggest unused script/schema enum variants for typed `Map<Enum, V>` keys,
+    and suppress global fallback for untyped map literals.
 - [x] Complete host members from schema facts.
 - [~] Add trigger-character behavior for `.`, `::`, `{`, `(`, `,`, and `|`.
   - [x] Advertise trigger characters for the implemented LSP completion request.
@@ -398,6 +401,9 @@ Tests:
 - [x] `lsp_record_field_completion_uses_known_constructor`
 - [x] `named_argument_completion_suggests_unused_script_parameters`
 - [x] `lsp_named_argument_completion_suggests_unused_script_parameters`
+- [x] `map_key_completion_suggests_typed_enum_variants`
+- [x] `map_key_completion_suppresses_untyped_global_fallback`
+- [x] `lsp_map_key_completion_suggests_schema_enum_variants`
 - [x] `signature_help_tracks_active_parameter`
 - [x] `lsp_signature_help_tracks_active_parameter`
 

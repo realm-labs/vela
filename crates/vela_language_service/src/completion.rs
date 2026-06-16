@@ -17,8 +17,12 @@ use vela_syntax::ast::{
 
 use crate::{DocumentId, LanguageServiceDatabases, LineIndex, Position, SourceRecord, TextRange};
 
+mod map_key;
 mod named_argument;
 
+use map_key::{
+    MapKeyContext, map_key_at, map_key_completion_items as map_key_context_completion_items,
+};
 use named_argument::{named_argument_completion_context, script_function_parameter_completions};
 
 #[derive(Debug, Clone, Copy, Eq, Ord, PartialEq, PartialOrd)]
@@ -57,6 +61,7 @@ pub enum CompletionContextKind {
     ModulePath,
     Member,
     RecordField,
+    MapKey,
     NamedArgument,
 }
 
@@ -98,6 +103,7 @@ pub struct CompletionContext {
     module_base: Option<String>,
     member_receiver: Option<MemberReceiver>,
     record_constructor: Option<RecordConstructor>,
+    map_key: Option<MapKeyContext>,
     call_arguments: Option<CallArgumentContext>,
 }
 
@@ -183,6 +189,7 @@ impl LanguageServiceDatabases {
             CompletionContextKind::ModulePath => self.module_path_completion_items(&context),
             CompletionContextKind::Member => self.member_completion_items(document_id, &context),
             CompletionContextKind::RecordField => self.record_field_completion_items(&context),
+            CompletionContextKind::MapKey => self.map_key_completion_items(&context),
             CompletionContextKind::NamedArgument => self.named_argument_completion_items(&context),
         };
         CompletionList { context, items }
@@ -295,6 +302,18 @@ impl LanguageServiceDatabases {
             label_segment_matches(item.label(), context.prefix())
         })
     }
+
+    fn map_key_completion_items(&self, context: &CompletionContext) -> Vec<CompletionItem> {
+        let Some(map_key) = context.map_key.as_ref() else {
+            return Vec::new();
+        };
+        map_key_context_completion_items(
+            self.hir_db().graph(),
+            self.schema_db().facts(),
+            map_key,
+            context.prefix(),
+        )
+    }
 }
 
 impl CompletionContext {
@@ -306,6 +325,7 @@ impl CompletionContext {
             module_base: None,
             member_receiver: None,
             record_constructor: None,
+            map_key: None,
             call_arguments: None,
         }
     }
@@ -333,6 +353,21 @@ fn completion_context(
             module_base: None,
             member_receiver: None,
             record_constructor: Some(record_constructor),
+            map_key: None,
+            call_arguments: None,
+        };
+    }
+
+    if let Some(mut map_key) = parsed.and_then(|source| map_key_at(source, offset)) {
+        map_key.current_module = source.module_path().segments().to_vec();
+        return CompletionContext {
+            kind: CompletionContextKind::MapKey,
+            prefix: prefix.to_owned(),
+            replace_range: TextRange::new(prefix_start, offset),
+            module_base: None,
+            member_receiver: None,
+            record_constructor: None,
+            map_key: Some(map_key),
             call_arguments: None,
         };
     }
@@ -346,6 +381,7 @@ fn completion_context(
             module_base: None,
             member_receiver,
             record_constructor: None,
+            map_key: None,
             call_arguments: None,
         };
     }
@@ -358,6 +394,7 @@ fn completion_context(
             module_base: Some(module_base),
             member_receiver: None,
             record_constructor: None,
+            map_key: None,
             call_arguments: None,
         };
     }
@@ -641,11 +678,11 @@ fn script_record_constructor_declaration<'a>(
     graph.declarations().find(|declaration| {
         declaration.kind == DeclarationKind::Struct
             && declaration.name == *name
-            && declaration_path_matches(graph, declaration, constructor)
+            && record_constructor_path_matches(graph, declaration, constructor)
     })
 }
 
-fn declaration_path_matches(
+fn record_constructor_path_matches(
     graph: &ModuleGraph,
     declaration: &vela_hir::module_graph::Declaration,
     constructor: &RecordConstructor,
@@ -1035,6 +1072,69 @@ pub fn main(player: Player) { grant(player: player, am) }
         assert_completion(&completions, "amount", CompletionKind::Parameter);
         assert_no_completion(&completions, "reason");
         assert_no_completion(&completions, "player");
+    }
+
+    #[test]
+    fn map_key_completion_suggests_typed_enum_variants() {
+        let document = DocumentId::from("/workspace/scripts/game/main.vela");
+        let text = r#"
+pub enum QuestState { Started, Completed, Failed }
+pub fn main() {
+    let rewards: Map<QuestState, i64> = {
+        Started: 1,
+        Co: 2,
+    }
+}
+"#;
+        let files = vec![SourceFileSnapshot::new(document.clone(), text)];
+        let config = WorkspaceConfig::workspace([WorkspaceRoot::from("/workspace/scripts")]);
+        let project = assemble_project_sources(&config, &files, &Workspace::new().snapshot());
+        let mut databases = LanguageServiceDatabases::new();
+        databases.update(&project);
+        let main_line = text.lines().nth(5).expect("map key line should exist");
+
+        let completions = databases.completion_items(
+            &document,
+            Position::new(
+                5,
+                main_line.find("Co:").expect("map key prefix") + "Co".len(),
+            ),
+        );
+
+        assert_eq!(completions.context().kind(), CompletionContextKind::MapKey);
+        assert_completion(&completions, "Completed", CompletionKind::Variant);
+        assert_no_completion(&completions, "Started");
+        assert_no_completion(&completions, "Failed");
+    }
+
+    #[test]
+    fn map_key_completion_suppresses_untyped_global_fallback() {
+        let document = DocumentId::from("/workspace/scripts/game/main.vela");
+        let text = r#"
+pub fn helper() { return 1 }
+pub fn main() {
+    let rewards = {
+        he: 1,
+    }
+}
+"#;
+        let files = vec![SourceFileSnapshot::new(document.clone(), text)];
+        let config = WorkspaceConfig::workspace([WorkspaceRoot::from("/workspace/scripts")]);
+        let project = assemble_project_sources(&config, &files, &Workspace::new().snapshot());
+        let mut databases = LanguageServiceDatabases::new();
+        databases.update(&project);
+        let main_line = text.lines().nth(4).expect("map key line should exist");
+
+        let completions = databases.completion_items(
+            &document,
+            Position::new(
+                4,
+                main_line.find("he:").expect("map key prefix") + "he".len(),
+            ),
+        );
+
+        assert_eq!(completions.context().kind(), CompletionContextKind::MapKey);
+        assert!(completions.items().is_empty(), "{completions:?}");
     }
 
     #[test]

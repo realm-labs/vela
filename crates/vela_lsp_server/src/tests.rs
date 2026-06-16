@@ -80,6 +80,7 @@ fn assert_workspace_progress(notifications: &[JsonValue]) {
 }
 
 mod code_action;
+mod completion_map;
 mod formatting;
 mod inlay;
 mod lifecycle;
