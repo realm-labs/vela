@@ -8,14 +8,20 @@ use crate::{LanguageServiceDatabases, TextRange};
 
 use super::{
     Reference, ReferenceKind, ReferenceToken, diagnostic_range, is_call_callee,
-    member_receiver_range, resolved_use_reference_kind, span_text_range, token_text,
-    type_fact_for_resolution,
+    member_receiver_range, path_ending_at, resolved_use_reference_kind, span_text_range,
+    token_text, type_fact_for_resolution,
 };
 
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub(super) struct SchemaFieldReferenceTarget {
     owner: String,
     field: String,
+}
+
+#[derive(Debug, Clone, Eq, PartialEq)]
+pub(super) struct SchemaVariantReferenceTarget {
+    owner: String,
+    variant: String,
 }
 
 #[derive(Debug, Clone, Eq, PartialEq)]
@@ -89,6 +95,31 @@ pub(super) fn schema_field_references(
     references
 }
 
+pub(super) fn schema_variant_references(
+    databases: &LanguageServiceDatabases,
+    target: &SchemaVariantReferenceTarget,
+    include_declaration: bool,
+) -> Vec<Reference> {
+    let mut references = Vec::new();
+
+    if include_declaration
+        && let Some(reference) = reference_for_schema_variant_declaration(databases, target)
+    {
+        references.push(reference);
+    }
+
+    for source in databases.source_db().records().values() {
+        references.extend(schema_variant_use_references_for_source(
+            databases.schema_db().facts(),
+            source,
+            target,
+        ));
+    }
+
+    sort_references(&mut references);
+    references
+}
+
 pub(super) fn schema_method_declaration_target(
     databases: &LanguageServiceDatabases,
     source_id: SourceId,
@@ -125,6 +156,31 @@ pub(super) fn schema_method_declaration_target(
                 owner: method.owner,
                 method: method.name,
                 kind: SchemaMethodReferenceKind::TraitMethod,
+            });
+        }
+    }
+    None
+}
+
+pub(super) fn schema_variant_declaration_target(
+    databases: &LanguageServiceDatabases,
+    source_id: SourceId,
+    token: &ReferenceToken,
+) -> Option<SchemaVariantReferenceTarget> {
+    let locations = databases.schema_db().source_locations();
+    let facts = databases.schema_db().facts();
+    for variant in facts.variants() {
+        let Some(span) = locations.variant_span(&variant.owner, &variant.name) else {
+            continue;
+        };
+        if span.source != source_id {
+            continue;
+        }
+        let range = span_text_range(span)?;
+        if range.start <= token.range.start && token.range.end <= range.end {
+            return Some(SchemaVariantReferenceTarget {
+                owner: variant.owner,
+                variant: variant.name,
             });
         }
     }
@@ -199,6 +255,15 @@ pub(super) fn schema_field_use_target(
     )
 }
 
+pub(super) fn schema_variant_use_target(
+    databases: &LanguageServiceDatabases,
+    text: &str,
+    token: &ReferenceToken,
+) -> Option<SchemaVariantReferenceTarget> {
+    let path = path_ending_at(text, token.range)?;
+    schema_variant_target_for_path(databases.schema_db().facts(), &path)
+}
+
 fn reference_for_schema_method_declaration(
     databases: &LanguageServiceDatabases,
     target: &SchemaMethodReferenceTarget,
@@ -239,6 +304,27 @@ fn reference_for_schema_field_declaration(
         .schema_db()
         .source_locations()
         .field_span(&target.owner, &target.field)?;
+    let source = databases
+        .source_db()
+        .records()
+        .values()
+        .find(|record| record.source_id() == span.source)?;
+    let range = span_text_range(span)?;
+    Some(Reference {
+        document_id: source.document_id().clone(),
+        range: diagnostic_range(source.text(), range),
+        kind: ReferenceKind::Declaration,
+    })
+}
+
+fn reference_for_schema_variant_declaration(
+    databases: &LanguageServiceDatabases,
+    target: &SchemaVariantReferenceTarget,
+) -> Option<Reference> {
+    let span = databases
+        .schema_db()
+        .source_locations()
+        .variant_span(&target.owner, &target.variant)?;
     let source = databases
         .source_db()
         .records()
@@ -342,6 +428,26 @@ fn schema_field_use_references_for_source(
     references
 }
 
+fn schema_variant_use_references_for_source(
+    schema: &RegistryFacts,
+    source: &crate::SourceRecord,
+    target: &SchemaVariantReferenceTarget,
+) -> Vec<Reference> {
+    let mut references = Vec::new();
+    let source_id = source.source_id();
+    let text = source.text();
+    for range in schema_variant_ranges(source_id, text, &target.variant) {
+        if schema_variant_target_for_path_range(schema, text, range).as_ref() == Some(target) {
+            references.push(Reference {
+                document_id: source.document_id().clone(),
+                range: diagnostic_range(text, range),
+                kind: schema_variant_reference_kind(text, range),
+            });
+        }
+    }
+    references
+}
+
 pub(crate) fn schema_method_target_for_member(
     schema: &RegistryFacts,
     facts: &AnalysisFacts,
@@ -385,6 +491,54 @@ fn schema_field_target_for_member(
         owner,
         field: field.to_owned(),
     })
+}
+
+fn schema_variant_target_for_path(
+    schema: &RegistryFacts,
+    path: &[String],
+) -> Option<SchemaVariantReferenceTarget> {
+    let (variant, owner_segments) = path.split_last()?;
+    if owner_segments.is_empty() {
+        return None;
+    }
+    let owner = owner_segments.join("::");
+    if schema.variant_fact(&owner, variant).is_some() {
+        return Some(SchemaVariantReferenceTarget {
+            owner,
+            variant: variant.clone(),
+        });
+    }
+
+    if owner.contains("::") {
+        return None;
+    }
+
+    let mut matches = schema.variants().filter_map(|candidate| {
+        (candidate.name == *variant
+            && candidate
+                .owner
+                .rsplit("::")
+                .next()
+                .is_some_and(|short| short == owner))
+        .then_some(candidate.owner)
+    });
+    let matched_owner = matches.next()?;
+    matches
+        .next()
+        .is_none()
+        .then_some(SchemaVariantReferenceTarget {
+            owner: matched_owner,
+            variant: variant.clone(),
+        })
+}
+
+fn schema_variant_target_for_path_range(
+    schema: &RegistryFacts,
+    text: &str,
+    range: TextRange,
+) -> Option<SchemaVariantReferenceTarget> {
+    let path = path_ending_at(text, range)?;
+    schema_variant_target_for_path(schema, &path)
 }
 
 fn schema_type_fact_for_resolution(
@@ -495,6 +649,44 @@ fn member_method_ranges(source_id: SourceId, text: &str, method: &str) -> Vec<Te
             | TokenKind::Eof => None,
         })
         .collect()
+}
+
+fn schema_variant_ranges(source_id: SourceId, text: &str, variant: &str) -> Vec<TextRange> {
+    lex(source_id, text)
+        .tokens
+        .into_iter()
+        .filter_map(|token| match token.kind {
+            TokenKind::Ident(name) if name == variant => {
+                let range = span_text_range(token.span)?;
+                path_ending_at(text, range).map(|_| range)
+            }
+            TokenKind::Ident(_)
+            | TokenKind::Int(_)
+            | TokenKind::Float(_)
+            | TokenKind::Char(_)
+            | TokenKind::String(_)
+            | TokenKind::InterpolatedString(_)
+            | TokenKind::Bytes(_)
+            | TokenKind::Keyword(_)
+            | TokenKind::Symbol(_)
+            | TokenKind::Eof => None,
+        })
+        .collect()
+}
+
+fn schema_variant_reference_kind(text: &str, range: TextRange) -> ReferenceKind {
+    let line_end = text
+        .get(range.end..)
+        .and_then(|suffix| suffix.find('\n').map(|end| range.end + end))
+        .unwrap_or(text.len());
+    if text
+        .get(range.end..line_end)
+        .is_some_and(|suffix| suffix.contains("=>"))
+    {
+        ReferenceKind::Pattern
+    } else {
+        ReferenceKind::Read
+    }
 }
 
 fn member_field_ranges(source_id: SourceId, text: &str, field: &str) -> Vec<TextRange> {

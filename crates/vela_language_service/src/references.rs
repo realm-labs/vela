@@ -141,6 +141,9 @@ impl LanguageServiceDatabases {
         {
             return self.enum_variant_references(&target, include_declaration);
         }
+        if let Some(target) = schema::schema_variant_declaration_target(self, source_id, &token) {
+            return schema::schema_variant_references(self, &target, include_declaration);
+        }
         if let Some(target) =
             methods::script_method_declaration_target(graph, source_id, source.text(), &token)
         {
@@ -165,6 +168,9 @@ impl LanguageServiceDatabases {
             }
             if let Some(target) = enum_variant_use_target(graph, bindings, source.text(), &token) {
                 return self.enum_variant_references(&target.target, include_declaration);
+            }
+            if let Some(target) = schema::schema_variant_use_target(self, source.text(), &token) {
+                return schema::schema_variant_references(self, &target, include_declaration);
             }
             if let Some(declaration) = declaration_reference_target(bindings, &token) {
                 return self.declaration_references(declaration, include_declaration);
@@ -1025,5 +1031,7 @@ fn is_identifier_continue(ch: char) -> bool {
     ch == '_' || ch.is_ascii_alphanumeric()
 }
 
+#[cfg(test)]
+mod highlight_tests;
 #[cfg(test)]
 mod tests;

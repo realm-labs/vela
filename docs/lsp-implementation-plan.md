@@ -493,6 +493,8 @@ Purpose: provide syntax and semantic highlighting without changing semantics.
     script declarations and binding-map resolutions.
   - [x] Add host modifiers for schema-backed member accesses and builtin
     modifiers for stdlib member method accesses.
+  - [x] Add host modifiers for schema-backed function calls and builtin
+    modifiers for stdlib qualified function calls.
 - [~] Add token classes for modules, functions, methods, fields, variables,
   parameters, types, traits, enum variants, properties, keywords, numbers,
   strings, bytes, comments, operators, attributes, and macros.
@@ -508,7 +510,8 @@ Purpose: provide syntax and semantic highlighting without changing semantics.
     host fields/methods, and stdlib member methods.
 - [~] Implement full semantic tokens.
   - [x] Full tokens include lexical classes, comments, resolved script symbols,
-    script member declarations, and script/schema/stdlib member uses.
+    script member declarations, script/schema/stdlib member uses, and
+    schema/stdlib function calls.
 - [~] Implement semantic token delta only after generation-stable token caches
   exist.
   - [x] Full-token responses carry deterministic result IDs, and
@@ -528,6 +531,8 @@ Tests:
 - [x] `semantic_tokens_classify_script_member_uses`
 - [x] `semantic_tokens_classify_schema_and_stdlib_member_uses`
 - [x] `lsp_semantic_tokens_classify_host_and_builtin_member_uses`
+- [x] `semantic_tokens_classify_schema_and_stdlib_function_calls`
+- [x] `lsp_semantic_tokens_classify_host_and_builtin_function_calls`
 - [x] `semantic_tokens_degrade_under_parse_errors`
 - [x] `lsp_semantic_tokens_degrade_under_parse_errors`
 - [x] `semantic_token_delta_matches_full_tokens`
@@ -569,6 +574,8 @@ Purpose: support workspace navigation and prepare rename.
     host receiver call sites.
   - [x] Index schema-backed trait-method declarations with source spans plus
     typed trait receiver call sites.
+  - [x] Index schema-backed variant declarations with source spans plus
+    constructor and match-pattern uses.
 - [~] Track reference kind: read, write, call, type use, import, pattern,
   declaration.
   - [x] Track local declaration and read reference kinds.
@@ -579,6 +586,7 @@ Purpose: support workspace navigation and prepare rename.
     reference kinds.
   - [x] Track source-owned enum variant declaration/read/pattern reference
     kinds.
+  - [x] Track schema-backed variant declaration/read/pattern reference kinds.
 - [~] Implement `textDocument/references`.
   - [x] Serve local binding references through the native LSP request.
   - [x] Serve imported script function references through the native LSP
@@ -595,6 +603,7 @@ Purpose: support workspace navigation and prepare rename.
   - [x] Serve schema-backed method references through the native LSP request.
   - [x] Serve schema-backed trait-method references through the native LSP
     request.
+  - [x] Serve schema-backed variant references through the native LSP request.
 - [~] Implement `textDocument/documentHighlight`.
   - [x] Serve local declaration/read highlights through the native LSP request.
   - [x] Serve imported script function import/read highlights in the active
@@ -604,6 +613,8 @@ Purpose: support workspace navigation and prepare rename.
   - [x] Serve source-owned trait declaration/impl highlights in the active
     document.
   - [x] Serve schema-backed method and trait-method call highlights in the
+    active document.
+  - [x] Serve schema-backed variant constructor and pattern highlights in the
     active document.
 - [~] Implement incoming and outgoing call hierarchy for script functions and
   methods where calls are statically resolved.
@@ -638,6 +649,8 @@ Tests:
 - [x] `lsp_references_find_schema_method_calls`
 - [x] `references_find_schema_trait_method_calls`
 - [x] `lsp_references_find_schema_trait_method_calls`
+- [x] `references_find_schema_variant_constructors_and_patterns`
+- [x] `lsp_references_find_schema_variant_constructors_and_patterns`
 - [x] `document_highlight_marks_local_declaration_and_reads`
 - [x] `document_highlight_marks_import_and_calls_in_active_document`
 - [x] `lsp_document_highlight_marks_local_declaration_and_reads`
@@ -648,6 +661,8 @@ Tests:
 - [x] `document_highlight_marks_trait_impl_uses`
 - [x] `document_highlight_marks_schema_method_calls`
 - [x] `lsp_document_highlight_marks_schema_method_calls`
+- [x] `document_highlight_marks_schema_variant_uses`
+- [x] `lsp_document_highlight_marks_schema_variant_uses`
 - [x] `call_hierarchy_uses_resolved_call_graph`
 - [x] `lsp_call_hierarchy_uses_resolved_call_graph`
 - [x] `call_hierarchy_uses_resolved_script_method_calls`
@@ -702,6 +717,8 @@ Purpose: provide safe refactoring without changing runtime contracts.
   - [x] Rename source-backed schema functions plus call sites.
   - [x] Rename source-backed schema fields and methods plus typed receiver
     member uses.
+  - [x] Rename source-backed schema variants plus constructor and
+    match-pattern uses.
 - [~] Reject renames that would collide in scope, module exports, trait impls,
   or import aliases.
   - [x] Reject local binding renames that collide with an existing function
@@ -734,6 +751,8 @@ Tests:
 - [x] `lsp_source_backed_schema_type_rename_updates_type_hints`
 - [x] `source_backed_schema_function_rename_updates_call_sites`
 - [x] `lsp_source_backed_schema_function_rename_updates_call_sites`
+- [x] `source_backed_schema_variant_rename_updates_constructors_and_patterns`
+- [x] `lsp_source_backed_schema_variant_rename_updates_constructors_and_patterns`
 - [x] `source_backed_schema_field_rename_updates_member_uses`
 - [x] `source_backed_schema_method_rename_updates_member_calls`
 - [x] `lsp_source_backed_schema_rename_updates_member_uses`

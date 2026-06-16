@@ -885,6 +885,124 @@ pub fn main(player: Player) -> i64 {
 }
 
 #[test]
+fn references_find_schema_variant_constructors_and_patterns() {
+    let main = DocumentId::from("/workspace/scripts/game/main.vela");
+    let schema = DocumentId::from("/workspace/scripts/schema_defs.vela");
+    let main_text = "\
+pub fn main(state: QuestState) -> i64 {
+    let next = QuestState::Active
+    match state {
+        QuestState::Active => { return 1 }
+        QuestState::Done => { return 2 }
+    }
+    return 0
+}";
+    let schema_text = "pub fn Active() { return 1 }\npub fn Done() { return 2 }";
+    let mut databases = databases_for(vec![
+        SourceFileSnapshot::new(main.clone(), main_text),
+        SourceFileSnapshot::new(schema.clone(), schema_text),
+    ]);
+    let schema_record = databases
+        .source_db()
+        .records()
+        .get(&schema)
+        .expect("schema source should be indexed");
+    let active_start = schema_text
+        .find("Active")
+        .expect("schema Active marker should exist");
+    let done_start = schema_text
+        .find("Done")
+        .expect("schema Done marker should exist");
+    let artifact = serde_json::json!({
+        "formatVersion": 1,
+        "facts": {
+            "types": [
+                {
+                    "name": "QuestState",
+                    "fact": { "kind": "enum", "name": "QuestState", "variant": null }
+                }
+            ],
+            "variants": [
+                {
+                    "owner": "QuestState",
+                    "name": "Active",
+                    "fact": {
+                        "kind": "enum",
+                        "name": "QuestState",
+                        "variant": "Active"
+                    },
+                    "sourceSpan": {
+                        "source": schema_record.source_id().get(),
+                        "start": active_start,
+                        "end": active_start + "Active".len()
+                    }
+                },
+                {
+                    "owner": "QuestState",
+                    "name": "Done",
+                    "fact": {
+                        "kind": "enum",
+                        "name": "QuestState",
+                        "variant": "Done"
+                    },
+                    "sourceSpan": {
+                        "source": schema_record.source_id().get(),
+                        "start": done_start,
+                        "end": done_start + "Done".len()
+                    }
+                }
+            ]
+        }
+    })
+    .to_string();
+    databases.load_schema_artifact_json("/workspace/target/vela/schema.json", &artifact);
+
+    let references = databases.references(
+        &main,
+        Position::new(1, line(main_text, 1).find("Active").expect("constructor")),
+        true,
+    );
+
+    assert_eq!(references.len(), 3, "{references:?}");
+    assert_reference_in_document(
+        &references,
+        &schema,
+        0,
+        schema_text
+            .find("Active")
+            .expect("schema variant declaration"),
+        ReferenceKind::Declaration,
+    );
+    assert_reference_in_document(
+        &references,
+        &main,
+        1,
+        line(main_text, 1).find("Active").expect("constructor"),
+        ReferenceKind::Read,
+    );
+    assert_reference_in_document(
+        &references,
+        &main,
+        3,
+        line(main_text, 3).find("Active").expect("pattern"),
+        ReferenceKind::Pattern,
+    );
+
+    let declaration_references = databases.references(
+        &schema,
+        Position::new(
+            0,
+            schema_text
+                .find("Active")
+                .expect("schema variant declaration"),
+        ),
+        true,
+    );
+
+    assert_eq!(declaration_references, references);
+}
+
+#[test]
 fn references_find_schema_trait_method_calls() {
     let main = DocumentId::from("/workspace/scripts/game/main.vela");
     let schema = DocumentId::from("/workspace/scripts/schema_defs.vela");

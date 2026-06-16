@@ -471,6 +471,113 @@ pub fn main(amount: i64) -> i64 {
 }
 
 #[test]
+fn source_backed_schema_variant_rename_updates_constructors_and_patterns() {
+    let main = DocumentId::from("/workspace/scripts/game/main.vela");
+    let schema = DocumentId::from("/workspace/scripts/_schema_defs.vela");
+    let main_text = "\
+pub fn main(state: QuestState) -> i64 {
+    let next = QuestState::Active
+    match state {
+        QuestState::Active => { return 1 }
+        QuestState::Done => { return 2 }
+    }
+    return 0
+}";
+    let schema_text = "pub fn Active() { return 1 }\npub fn Done() { return 2 }";
+    let mut databases = databases_for(vec![
+        SourceFileSnapshot::new(main.clone(), main_text),
+        SourceFileSnapshot::new(schema.clone(), schema_text),
+    ]);
+    let schema_record = databases
+        .source_db()
+        .records()
+        .get(&schema)
+        .expect("schema source should be indexed");
+    let target_start = schema_text.find("Active").expect("schema marker");
+    let done_start = schema_text.find("Done").expect("schema Done marker");
+    let artifact = serde_json::json!({
+        "formatVersion": 1,
+        "facts": {
+            "types": [
+                {
+                    "name": "QuestState",
+                    "fact": { "kind": "enum", "name": "QuestState", "variant": null }
+                }
+            ],
+            "variants": [
+                {
+                    "owner": "QuestState",
+                    "name": "Active",
+                    "fact": {
+                        "kind": "enum",
+                        "name": "QuestState",
+                        "variant": "Active"
+                    },
+                    "sourceSpan": {
+                        "source": schema_record.source_id().get(),
+                        "start": target_start,
+                        "end": target_start + "Active".len()
+                    }
+                },
+                {
+                    "owner": "QuestState",
+                    "name": "Done",
+                    "fact": {
+                        "kind": "enum",
+                        "name": "QuestState",
+                        "variant": "Done"
+                    },
+                    "sourceSpan": {
+                        "source": schema_record.source_id().get(),
+                        "start": done_start,
+                        "end": done_start + "Done".len()
+                    }
+                }
+            ]
+        }
+    })
+    .to_string();
+    databases.load_schema_artifact_json("/workspace/target/vela/schema.json", &artifact);
+
+    let prepare = databases
+        .prepare_rename(
+            &main,
+            Position::new(1, line(main_text, 1).find("Active").expect("constructor")),
+        )
+        .expect("source-backed schema variant should be renameable from a constructor");
+
+    assert_eq!(prepare.placeholder(), "Active");
+    assert_eq!(prepare.range().start(), Position::new(1, 27));
+
+    assert_eq!(
+        databases.rename(
+            &main,
+            Position::new(1, line(main_text, 1).find("Active").expect("constructor")),
+            "Done",
+        ),
+        None
+    );
+
+    let edit = databases
+        .rename(
+            &main,
+            Position::new(1, line(main_text, 1).find("Active").expect("constructor")),
+            "Running",
+        )
+        .expect("source-backed schema variant rename should produce edits");
+
+    let schema_edit = document_edit(&edit, &schema);
+    assert_eq!(schema_edit.edits().len(), 1);
+    assert_edit_at(schema_edit.edits(), 0, 7, "Running");
+
+    let main_edit = document_edit(&edit, &main);
+    assert_eq!(main_edit.edits().len(), 2);
+    assert_edit_at(main_edit.edits(), 1, 27, "Running");
+    assert_edit_at(main_edit.edits(), 3, 20, "Running");
+    assert!(edit.risks().is_empty());
+}
+
+#[test]
 fn source_backed_schema_field_rename_updates_member_uses() {
     let main = DocumentId::from("/workspace/scripts/game/main.vela");
     let schema = DocumentId::from("/workspace/scripts/_schema_defs.vela");

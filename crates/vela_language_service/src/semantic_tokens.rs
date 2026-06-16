@@ -1,7 +1,10 @@
 use std::collections::BTreeMap;
 
 use vela_analysis::{
-    facts::AnalysisFacts, registry::RegistryFacts, stdlib::stdlib_method_fact, type_fact::TypeFact,
+    facts::AnalysisFacts,
+    registry::RegistryFacts,
+    stdlib::{stdlib_function_completion_facts, stdlib_method_fact},
+    type_fact::TypeFact,
 };
 use vela_common::{SourceId, Span};
 use vela_hir::binding::{BindingMap, BindingResolution, LocalBinding, LocalBindingKind};
@@ -400,6 +403,12 @@ impl LanguageServiceDatabases {
                 {
                     return Some(classification);
                 }
+                if let Some(classification) = function_call_classification(schema, text, range) {
+                    return Some(classification);
+                }
+                if let Some(classification) = unresolved_identifier_classification(bindings, span) {
+                    return Some(classification);
+                }
             }
         }
 
@@ -720,13 +729,77 @@ fn resolved_identifier_classification(
             .graph()
             .declaration(*declaration)
             .map(declaration_use_classification),
-        BindingResolution::Import(_) | BindingResolution::QualifiedPath(_) => {
-            Some(SemanticTokenClassification::new(
-                SemanticTokenType::Variable,
-                SemanticTokenModifiers::UNRESOLVED,
-            ))
-        }
+        BindingResolution::Import(_) | BindingResolution::QualifiedPath(_) => None,
     }
+}
+
+fn unresolved_identifier_classification(
+    bindings: &BindingMap,
+    span: Span,
+) -> Option<SemanticTokenClassification> {
+    matches!(
+        bindings.resolution_at_span(span)?,
+        BindingResolution::Import(_) | BindingResolution::QualifiedPath(_)
+    )
+    .then(|| {
+        SemanticTokenClassification::new(
+            SemanticTokenType::Variable,
+            SemanticTokenModifiers::UNRESOLVED,
+        )
+    })
+}
+
+fn function_call_classification(
+    schema: &RegistryFacts,
+    text: &str,
+    range: TextRange,
+) -> Option<SemanticTokenClassification> {
+    let path = call_path_ending_at(text, range)?;
+    let qualified = path.join("::");
+    if schema.function_fact(&qualified).is_some() {
+        return Some(SemanticTokenClassification::new(
+            SemanticTokenType::Function,
+            SemanticTokenModifiers::HOST,
+        ));
+    }
+    stdlib_function_completion_facts()
+        .iter()
+        .any(|function| function.name == qualified)
+        .then(|| {
+            SemanticTokenClassification::new(
+                SemanticTokenType::Function,
+                SemanticTokenModifiers::BUILTIN,
+            )
+        })
+}
+
+fn call_path_ending_at(text: &str, range: TextRange) -> Option<Vec<String>> {
+    (next_non_whitespace(text, range.end) == Some('(')).then_some(())?;
+    let mut path = vec![token_text(text, range)?.to_owned()];
+    let mut prefix = text.get(..range.start)?.trim_end();
+
+    while let Some(before_separator) = prefix.strip_suffix("::") {
+        let end = before_separator.trim_end().len();
+        let start = identifier_start_before(before_separator, end)?;
+        path.push(before_separator.get(start..end)?.to_owned());
+        prefix = before_separator.get(..start)?.trim_end();
+    }
+
+    path.reverse();
+    Some(path)
+}
+
+fn identifier_start_before(text: &str, end: usize) -> Option<usize> {
+    if end == 0 {
+        return None;
+    }
+    let prefix = text.get(..end)?;
+    let start = prefix
+        .char_indices()
+        .rev()
+        .find_map(|(index, ch)| (!is_identifier_continue(ch)).then_some(index + ch.len_utf8()))
+        .unwrap_or(0);
+    (start < end).then_some(start)
 }
 
 fn local_declaration_token_classification(binding: &LocalBinding) -> SemanticTokenClassification {

@@ -420,6 +420,49 @@ pub fn main(player: Player, names: Array<String>) -> i64 {
 }
 
 #[test]
+fn semantic_tokens_classify_schema_and_stdlib_function_calls() {
+    let document = DocumentId::from("/workspace/scripts/game/main.vela");
+    let text = "\
+pub fn main(player: Player) -> i64 {
+    let reward = grant_reward(player)
+    return math::max(reward, 10)
+}";
+    let mut schema = RegistryFacts::default();
+    schema.insert_type("Player", TypeFact::host("Player"));
+    schema.insert_function(
+        "grant_reward",
+        TypeFact::function(vec![TypeFact::host("Player")], TypeFact::I64),
+    );
+    let databases = databases_for_with_schema(
+        vec![SourceFileSnapshot::new(document.clone(), text)],
+        schema,
+    );
+
+    let tokens = databases.semantic_tokens(&document);
+
+    assert_token_at(
+        &tokens,
+        1,
+        line(text, 1)
+            .find("grant_reward")
+            .expect("schema function call should exist"),
+        "grant_reward".len(),
+        SemanticTokenType::Function,
+        SemanticTokenModifiers::HOST,
+    );
+    assert_token_at(
+        &tokens,
+        2,
+        line(text, 2)
+            .find("max")
+            .expect("stdlib function call should exist"),
+        "max".len(),
+        SemanticTokenType::Function,
+        SemanticTokenModifiers::BUILTIN,
+    );
+}
+
+#[test]
 fn semantic_token_delta_matches_full_tokens() {
     let document = DocumentId::from("/workspace/scripts/game/main.vela");
     let text = "pub fn main() { let value = 1 return value }";

@@ -49,6 +49,13 @@ pub(super) struct SchemaFunctionRenameTarget {
     pub(super) token: RenameToken,
 }
 
+#[derive(Debug, Clone, Eq, PartialEq)]
+pub(super) struct SchemaVariantRenameTarget {
+    pub(super) owner: String,
+    pub(super) variant: String,
+    pub(super) token: RenameToken,
+}
+
 pub(super) fn rename_schema_function(
     databases: &LanguageServiceDatabases,
     target: SchemaFunctionRenameTarget,
@@ -61,6 +68,37 @@ pub(super) fn rename_schema_function(
     let mut edits_by_document = BTreeMap::<DocumentId, Vec<TextEdit>>::new();
     push_schema_function_declaration_edit(databases, &target, new_name, &mut edits_by_document)?;
     push_schema_function_use_edits(databases, &target, new_name, &mut edits_by_document);
+
+    let document_edits = edits_by_document
+        .into_iter()
+        .map(|(document_id, mut edits)| {
+            edits.sort_by_key(|edit| {
+                let start = edit.range.start();
+                (start.line, start.character)
+            });
+            edits.dedup();
+            DocumentTextEdit { document_id, edits }
+        })
+        .collect::<Vec<_>>();
+
+    Some(WorkspaceEdit {
+        document_edits,
+        risks: Vec::new(),
+    })
+}
+
+pub(super) fn rename_schema_variant(
+    databases: &LanguageServiceDatabases,
+    target: SchemaVariantRenameTarget,
+    new_name: &str,
+) -> Option<WorkspaceEdit> {
+    if schema_variant_name_conflicts(databases.schema_db().facts(), &target, new_name) {
+        return None;
+    }
+
+    let mut edits_by_document = BTreeMap::<DocumentId, Vec<TextEdit>>::new();
+    push_schema_variant_declaration_edit(databases, &target, new_name, &mut edits_by_document)?;
+    push_schema_variant_use_edits(databases, &target, new_name, &mut edits_by_document);
 
     let document_edits = edits_by_document
         .into_iter()
@@ -202,6 +240,30 @@ pub(super) fn schema_function_declaration_target(
     None
 }
 
+pub(super) fn schema_variant_declaration_target(
+    databases: &LanguageServiceDatabases,
+    source_id: SourceId,
+    token: &RenameToken,
+) -> Option<SchemaVariantRenameTarget> {
+    let locations = databases.schema_db().source_locations();
+    let facts = databases.schema_db().facts();
+
+    for variant in facts.variants() {
+        let Some(span) = locations.variant_span(&variant.owner, &variant.name) else {
+            continue;
+        };
+        if source_span_contains_token(span, source_id, token) {
+            return Some(SchemaVariantRenameTarget {
+                owner: variant.owner,
+                variant: variant.name,
+                token: token.clone(),
+            });
+        }
+    }
+
+    None
+}
+
 pub(super) fn schema_member_declaration_target(
     databases: &LanguageServiceDatabases,
     source_id: SourceId,
@@ -279,6 +341,19 @@ pub(super) fn schema_function_use_target(
     let callee = function_call_name_at(text, token.range)?;
     let target = schema_function_target_for_name(databases, &callee)?;
     source_backed_schema_function_target(databases, target).map(|mut target| {
+        target.token = token.clone();
+        target
+    })
+}
+
+pub(super) fn schema_variant_use_target(
+    databases: &LanguageServiceDatabases,
+    text: &str,
+    token: &RenameToken,
+) -> Option<SchemaVariantRenameTarget> {
+    let path = path_ending_at(text, token.range)?;
+    let target = schema_variant_target_for_path(databases, &path)?;
+    source_backed_schema_variant_target(databases, target).map(|mut target| {
         target.token = token.clone();
         target
     })
@@ -378,6 +453,25 @@ fn push_schema_member_declaration_edit(
     Some(())
 }
 
+fn push_schema_variant_declaration_edit(
+    databases: &LanguageServiceDatabases,
+    target: &SchemaVariantRenameTarget,
+    new_name: &str,
+    edits_by_document: &mut BTreeMap<DocumentId, Vec<TextEdit>>,
+) -> Option<()> {
+    let span = schema_variant_span(databases, target)?;
+    let source = databases.source_record_for_rename(span.source)?;
+    let range = span_text_range(span)?;
+    edits_by_document
+        .entry(source.document_id().clone())
+        .or_default()
+        .push(TextEdit {
+            range: diagnostic_range(source.text(), range),
+            new_text: new_name.to_owned(),
+        });
+    Some(())
+}
+
 fn push_schema_type_hint_edits(
     databases: &LanguageServiceDatabases,
     target: &SchemaTypeRenameTarget,
@@ -416,6 +510,31 @@ fn push_schema_function_use_edits(
         for range in schema_function_use_ranges(source.source_id(), text, target_segment) {
             if schema_function_use_target(databases, text, &RenameToken { range })
                 .is_some_and(|found| found.name == target.name)
+            {
+                edits_by_document
+                    .entry(source.document_id().clone())
+                    .or_default()
+                    .push(TextEdit {
+                        range: diagnostic_range(text, range),
+                        new_text: new_name.to_owned(),
+                    });
+            }
+        }
+    }
+}
+
+fn push_schema_variant_use_edits(
+    databases: &LanguageServiceDatabases,
+    target: &SchemaVariantRenameTarget,
+    new_name: &str,
+    edits_by_document: &mut BTreeMap<DocumentId, Vec<TextEdit>>,
+) {
+    for source in databases.source_db().records().values() {
+        let source_id = source.source_id();
+        let text = source.text();
+        for range in schema_variant_use_ranges(source_id, text, target) {
+            if schema_variant_use_target(databases, text, &RenameToken { range })
+                .is_some_and(|found| found.owner == target.owner && found.variant == target.variant)
             {
                 edits_by_document
                     .entry(source.document_id().clone())
@@ -547,6 +666,16 @@ fn schema_function_span(
         .function_span(&target.name)
 }
 
+fn schema_variant_span(
+    databases: &LanguageServiceDatabases,
+    target: &SchemaVariantRenameTarget,
+) -> Option<Span> {
+    databases
+        .schema_db()
+        .source_locations()
+        .variant_span(&target.owner, &target.variant)
+}
+
 fn source_span_contains_token(span: Span, source_id: SourceId, token: &RenameToken) -> bool {
     span.source == source_id
         && span_text_range(span)
@@ -596,6 +725,15 @@ fn source_backed_schema_function_target(
     Some(target)
 }
 
+fn source_backed_schema_variant_target(
+    databases: &LanguageServiceDatabases,
+    target: SchemaVariantRenameTarget,
+) -> Option<SchemaVariantRenameTarget> {
+    let span = schema_variant_span(databases, &target)?;
+    databases.source_record_for_rename(span.source)?;
+    Some(target)
+}
+
 fn source_backed_schema_target(
     databases: &LanguageServiceDatabases,
     target: SchemaMemberRenameTarget,
@@ -626,6 +764,17 @@ fn schema_function_name_conflicts(
         return false;
     }
     schema.function_fact(&renamed).is_some()
+}
+
+fn schema_variant_name_conflicts(
+    schema: &RegistryFacts,
+    target: &SchemaVariantRenameTarget,
+    new_name: &str,
+) -> bool {
+    if new_name == target.variant {
+        return false;
+    }
+    schema.variant_fact(&target.owner, new_name).is_some()
 }
 
 fn schema_member_name_conflicts(
@@ -824,6 +973,33 @@ fn schema_function_use_ranges(
         .collect()
 }
 
+fn schema_variant_use_ranges(
+    source_id: SourceId,
+    text: &str,
+    target: &SchemaVariantRenameTarget,
+) -> Vec<TextRange> {
+    lex(source_id, text)
+        .tokens
+        .into_iter()
+        .filter_map(|token| match token.kind {
+            TokenKind::Ident(name) if name == target.variant => {
+                let range = span_text_range(token.span)?;
+                path_ending_at(text, range).map(|_| range)
+            }
+            TokenKind::Ident(_)
+            | TokenKind::Int(_)
+            | TokenKind::Float(_)
+            | TokenKind::Char(_)
+            | TokenKind::String(_)
+            | TokenKind::InterpolatedString(_)
+            | TokenKind::Bytes(_)
+            | TokenKind::Keyword(_)
+            | TokenKind::Symbol(_)
+            | TokenKind::Eof => None,
+        })
+        .collect()
+}
+
 fn schema_member_use_ranges(
     source_id: SourceId,
     text: &str,
@@ -858,6 +1034,52 @@ fn schema_member_use_ranges(
             | TokenKind::Eof => None,
         })
         .collect()
+}
+
+fn schema_variant_target_for_path(
+    databases: &LanguageServiceDatabases,
+    path: &[String],
+) -> Option<SchemaVariantRenameTarget> {
+    let (variant, owner_segments) = path.split_last()?;
+    if owner_segments.is_empty() {
+        return None;
+    }
+    let owner = owner_segments.join("::");
+    let schema = databases.schema_db().facts();
+    if schema.variant_fact(&owner, variant).is_some() {
+        return Some(SchemaVariantRenameTarget {
+            owner,
+            variant: variant.clone(),
+            token: RenameToken {
+                range: TextRange::new(0, 0),
+            },
+        });
+    }
+
+    if owner.contains("::") {
+        return None;
+    }
+
+    let mut matches = schema.variants().filter_map(|candidate| {
+        (candidate.name == *variant
+            && candidate
+                .owner
+                .rsplit("::")
+                .next()
+                .is_some_and(|short| short == owner))
+        .then_some(candidate.owner)
+    });
+    let matched_owner = matches.next()?;
+    matches
+        .next()
+        .is_none()
+        .then_some(SchemaVariantRenameTarget {
+            owner: matched_owner,
+            variant: variant.clone(),
+            token: RenameToken {
+                range: TextRange::new(0, 0),
+            },
+        })
 }
 
 fn schema_function_target_for_name(
@@ -907,6 +1129,32 @@ fn function_call_name_at(text: &str, token_range: TextRange) -> Option<String> {
         return None;
     }
     text.get(start..token_range.end).map(str::to_owned)
+}
+
+fn path_ending_at(text: &str, range: TextRange) -> Option<Vec<String>> {
+    let mut path = vec![token_text(text, range)?.to_owned()];
+    let mut cursor = range.start;
+    loop {
+        let before_segment = text.get(..cursor)?.trim_end();
+        let Some(before_separator) = before_segment.strip_suffix("::").map(str::trim_end) else {
+            break;
+        };
+        let end = before_separator.len();
+        let start = before_separator
+            .char_indices()
+            .rev()
+            .find_map(|(index, ch)| (!is_identifier_continue(ch)).then_some(index + ch.len_utf8()))
+            .unwrap_or(0);
+        if start == end {
+            break;
+        }
+        path.push(text.get(start..end)?.to_owned());
+        cursor = start;
+    }
+    (path.len() > 1).then(|| {
+        path.reverse();
+        path
+    })
 }
 
 fn schema_function_segment(name: &str) -> &str {
