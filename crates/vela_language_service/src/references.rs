@@ -13,7 +13,7 @@ use crate::{
 
 mod fields;
 mod methods;
-mod schema;
+pub(crate) mod schema;
 
 #[derive(Debug, Clone, Copy, Eq, Ord, PartialEq, PartialOrd)]
 pub enum ReferenceKind {

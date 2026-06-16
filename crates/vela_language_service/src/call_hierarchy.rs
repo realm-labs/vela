@@ -1,4 +1,4 @@
-use vela_analysis::{facts::AnalysisFacts, type_fact::TypeFact};
+use vela_analysis::{facts::AnalysisFacts, registry::RegistryFacts, type_fact::TypeFact};
 use vela_common::{SourceId, Span};
 use vela_hir::binding::{BindingMap, BindingResolution};
 use vela_hir::ids::{HirDeclId, HirNodeId};
@@ -8,6 +8,7 @@ use vela_syntax::token::TokenKind;
 
 use crate::{
     DiagnosticRange, DocumentId, LanguageServiceDatabases, LineIndex, Position, TextRange,
+    references::schema as reference_schema,
 };
 
 #[derive(Debug, Clone, Eq, PartialEq)]
@@ -111,6 +112,12 @@ impl LanguageServiceDatabases {
         let graph = self.hir_db().graph();
         let facts = AnalysisFacts::from_module_graph(graph);
 
+        if let Some(target) = self.schema_method_declaration_target(source_id, &token)
+            && let Some(item) = self.call_hierarchy_item_for_target(&target)
+        {
+            return vec![item];
+        }
+
         for declaration in graph.declarations() {
             if declaration.span.source != source_id || !declaration.span.contains(offset) {
                 continue;
@@ -152,8 +159,8 @@ impl LanguageServiceDatabases {
             if let Some(target) = method_target_for_member(
                 graph,
                 &facts,
-                source.text(),
-                source_id,
+                self.schema_db().facts(),
+                source,
                 scope.bindings,
                 method_name,
                 token.range,
@@ -296,8 +303,8 @@ impl LanguageServiceDatabases {
                 method_target_for_member(
                     graph,
                     &facts,
-                    source.text(),
-                    source.source_id(),
+                    self.schema_db().facts(),
+                    source,
                     bindings,
                     token_text(source.text(), range)?,
                     range,
@@ -311,8 +318,12 @@ impl LanguageServiceDatabases {
         &self,
         item: &CallHierarchyItem,
     ) -> Option<CallHierarchyTarget> {
-        self.call_hierarchy_declaration_for_item(item)
-            .map(CallHierarchyTarget::Function)
+        self.call_hierarchy_schema_method_for_item(item)
+            .map(CallHierarchyTarget::SchemaMethod)
+            .or_else(|| {
+                self.call_hierarchy_declaration_for_item(item)
+                    .map(CallHierarchyTarget::Function)
+            })
             .or_else(|| {
                 self.call_hierarchy_method_for_item(item)
                     .map(CallHierarchyTarget::Method)
@@ -379,6 +390,9 @@ impl LanguageServiceDatabases {
             CallHierarchyTarget::Method(method) => self.call_hierarchy_item_for_method(method),
             CallHierarchyTarget::TraitMethod(method) => {
                 self.call_hierarchy_item_for_trait_method(method)
+            }
+            CallHierarchyTarget::SchemaMethod(method) => {
+                self.call_hierarchy_item_for_schema_method(method)
             }
         }
     }
@@ -474,6 +488,114 @@ impl LanguageServiceDatabases {
         ))
     }
 
+    fn schema_method_declaration_target(
+        &self,
+        source_id: SourceId,
+        token: &CallHierarchyToken,
+    ) -> Option<CallHierarchyTarget> {
+        let locations = self.schema_db().source_locations();
+        let facts = self.schema_db().facts();
+        for method in facts.methods() {
+            let Some(span) = locations.method_span(&method.owner, &method.name) else {
+                continue;
+            };
+            if span.source == source_id && span_contains_range(span, token.range) {
+                return Some(CallHierarchyTarget::SchemaMethod(
+                    reference_schema::SchemaMethodReferenceTarget {
+                        owner: method.owner,
+                        method: method.name,
+                        kind: reference_schema::SchemaMethodReferenceKind::Method,
+                    },
+                ));
+            }
+        }
+        for method in facts.trait_methods() {
+            let Some(span) = locations.trait_method_span(&method.owner, &method.name) else {
+                continue;
+            };
+            if span.source == source_id && span_contains_range(span, token.range) {
+                return Some(CallHierarchyTarget::SchemaMethod(
+                    reference_schema::SchemaMethodReferenceTarget {
+                        owner: method.owner,
+                        method: method.name,
+                        kind: reference_schema::SchemaMethodReferenceKind::TraitMethod,
+                    },
+                ));
+            }
+        }
+        None
+    }
+
+    fn call_hierarchy_schema_method_for_item(
+        &self,
+        item: &CallHierarchyItem,
+    ) -> Option<reference_schema::SchemaMethodReferenceTarget> {
+        let source = self.source_db().records().get(item.document_id())?;
+        for method in self.schema_db().facts().methods() {
+            let target = reference_schema::SchemaMethodReferenceTarget {
+                owner: method.owner,
+                method: method.name,
+                kind: reference_schema::SchemaMethodReferenceKind::Method,
+            };
+            let span = self
+                .schema_db()
+                .source_locations()
+                .method_span(&target.owner, &target.method)?;
+            if span.source == source.source_id()
+                && target.method == item.name()
+                && self
+                    .call_hierarchy_item_for_schema_method(&target)
+                    .is_some_and(|candidate| candidate.selection_range == item.selection_range)
+            {
+                return Some(target);
+            }
+        }
+        for method in self.schema_db().facts().trait_methods() {
+            let target = reference_schema::SchemaMethodReferenceTarget {
+                owner: method.owner,
+                method: method.name,
+                kind: reference_schema::SchemaMethodReferenceKind::TraitMethod,
+            };
+            let span = self
+                .schema_db()
+                .source_locations()
+                .trait_method_span(&target.owner, &target.method)?;
+            if span.source == source.source_id()
+                && target.method == item.name()
+                && self
+                    .call_hierarchy_item_for_schema_method(&target)
+                    .is_some_and(|candidate| candidate.selection_range == item.selection_range)
+            {
+                return Some(target);
+            }
+        }
+        None
+    }
+
+    fn call_hierarchy_item_for_schema_method(
+        &self,
+        target: &reference_schema::SchemaMethodReferenceTarget,
+    ) -> Option<CallHierarchyItem> {
+        let span = match target.kind {
+            reference_schema::SchemaMethodReferenceKind::Method => self
+                .schema_db()
+                .source_locations()
+                .method_span(&target.owner, &target.method),
+            reference_schema::SchemaMethodReferenceKind::TraitMethod => self
+                .schema_db()
+                .source_locations()
+                .trait_method_span(&target.owner, &target.method),
+        }?;
+        let source = self.source_record_for_call_hierarchy(span.source)?;
+        let range = span_text_range(span)?;
+        Some(CallHierarchyItem::new(
+            target.method.clone(),
+            source.document_id().clone(),
+            diagnostic_range(source.text(), range),
+            diagnostic_range(source.text(), range),
+        ))
+    }
+
     fn call_scopes(&self) -> Vec<CallScope<'_>> {
         let graph = self.hir_db().graph();
         let mut scopes = Vec::new();
@@ -549,6 +671,7 @@ enum CallHierarchyTarget {
     Function(HirDeclId),
     Method(ScriptMethodCallTarget),
     TraitMethod(TraitMethodCallTarget),
+    SchemaMethod(reference_schema::SchemaMethodReferenceTarget),
 }
 
 #[derive(Debug, Clone, Eq, PartialEq)]
@@ -662,8 +785,8 @@ fn trait_method_declaration_target(
 fn method_target_for_member(
     graph: &ModuleGraph,
     facts: &AnalysisFacts,
-    text: &str,
-    source_id: SourceId,
+    schema: &RegistryFacts,
+    source: &crate::SourceRecord,
     bindings: &BindingMap,
     method: &str,
     member_range: TextRange,
@@ -671,8 +794,8 @@ fn method_target_for_member(
     script_method_target_for_member(
         graph,
         facts,
-        text,
-        source_id,
+        source.text(),
+        source.source_id(),
         bindings,
         method,
         member_range,
@@ -682,13 +805,25 @@ fn method_target_for_member(
         trait_method_target_for_member(
             graph,
             facts,
-            text,
-            source_id,
+            source.text(),
+            source.source_id(),
             bindings,
             method,
             member_range,
         )
         .map(CallHierarchyTarget::TraitMethod)
+    })
+    .or_else(|| {
+        reference_schema::schema_method_target_for_member(
+            schema,
+            facts,
+            source.text(),
+            source.source_id(),
+            bindings,
+            method,
+            member_range,
+        )
+        .map(CallHierarchyTarget::SchemaMethod)
     })
 }
 
@@ -991,6 +1126,16 @@ fn span_text_range(span: Span) -> Option<TextRange> {
     let start = usize::try_from(span.start).ok()?;
     let end = usize::try_from(span.end).ok()?;
     Some(TextRange::new(start, end))
+}
+
+fn span_contains_range(span: Span, range: TextRange) -> bool {
+    let Ok(start) = u32::try_from(range.start) else {
+        return false;
+    };
+    let Ok(end) = u32::try_from(range.end) else {
+        return false;
+    };
+    span.start <= start && end <= span.end
 }
 
 fn name_range_in_text(text: &str, range: TextRange, name: &str) -> Option<TextRange> {

@@ -309,6 +309,185 @@ pub fn main(rewardable: Rewardable) -> i64 {
     assert!(databases.outgoing_calls(&preview[0]).is_empty());
 }
 
+#[test]
+fn call_hierarchy_uses_schema_method_and_trait_method_calls() {
+    let main = DocumentId::from("/workspace/scripts/game/main.vela");
+    let schema = DocumentId::from("/workspace/scripts/schema_defs.vela");
+    let main_text = "\
+pub fn main(player: Player, rewardable: Rewardable) -> i64 {
+    let first = player.grant(1)
+    return rewardable.preview(first)
+}";
+    let schema_text = "\
+pub fn grant() { return 1 }
+pub fn preview() { return 1 }";
+    let mut databases = databases_for(vec![
+        SourceFileSnapshot::new(main.clone(), main_text),
+        SourceFileSnapshot::new(schema.clone(), schema_text),
+    ]);
+    let schema_record = databases
+        .source_db()
+        .records()
+        .get(&schema)
+        .expect("schema source should be indexed");
+    let grant_start = schema_text.find("grant").expect("grant marker");
+    let preview_start = schema_text.find("preview").expect("preview marker");
+    let artifact = serde_json::json!({
+        "formatVersion": 1,
+        "facts": {
+            "types": [
+                {
+                    "name": "Player",
+                    "fact": { "kind": "host", "name": "Player" }
+                }
+            ],
+            "traits": [
+                {
+                    "name": "Rewardable",
+                    "fact": { "kind": "trait", "name": "Rewardable" }
+                }
+            ],
+            "methods": [
+                {
+                    "owner": "Player",
+                    "name": "grant",
+                    "fact": {
+                        "kind": "function",
+                        "params": [{ "kind": "primitive", "name": "i64" }],
+                        "returns": { "kind": "primitive", "name": "i64" }
+                    },
+                    "sourceSpan": {
+                        "source": schema_record.source_id().get(),
+                        "start": grant_start,
+                        "end": grant_start + "grant".len()
+                    }
+                }
+            ],
+            "traitMethods": [
+                {
+                    "owner": "Rewardable",
+                    "name": "preview",
+                    "fact": {
+                        "kind": "function",
+                        "params": [{ "kind": "primitive", "name": "i64" }],
+                        "returns": { "kind": "primitive", "name": "i64" }
+                    },
+                    "sourceSpan": {
+                        "source": schema_record.source_id().get(),
+                        "start": preview_start,
+                        "end": preview_start + "preview".len()
+                    }
+                }
+            ]
+        }
+    })
+    .to_string();
+    databases.load_schema_artifact_json("/workspace/target/vela/schema.json", &artifact);
+
+    let grant_from_declaration = databases.prepare_call_hierarchy(
+        &schema,
+        Position::new(0, line(schema_text, 0).find("grant").expect("grant")),
+    );
+    let grant_from_call = databases.prepare_call_hierarchy(
+        &main,
+        Position::new(1, line(main_text, 1).find("grant").expect("grant call")),
+    );
+    let preview_from_declaration = databases.prepare_call_hierarchy(
+        &schema,
+        Position::new(
+            1,
+            line(schema_text, 1)
+                .find("preview")
+                .expect("preview declaration"),
+        ),
+    );
+    let preview_from_call = databases.prepare_call_hierarchy(
+        &main,
+        Position::new(2, line(main_text, 2).find("preview").expect("preview call")),
+    );
+
+    assert_eq!(grant_from_declaration.len(), 1);
+    assert_eq!(grant_from_declaration[0].name(), "grant");
+    assert_eq!(grant_from_declaration[0].document_id(), &schema);
+    assert_eq!(grant_from_call, grant_from_declaration);
+    assert_eq!(preview_from_declaration.len(), 1);
+    assert_eq!(preview_from_declaration[0].name(), "preview");
+    assert_eq!(preview_from_declaration[0].document_id(), &schema);
+    assert_eq!(preview_from_call, preview_from_declaration);
+
+    let grant_incoming = databases.incoming_calls(&grant_from_declaration[0]);
+    assert_eq!(grant_incoming.len(), 1);
+    assert_eq!(grant_incoming[0].from().name(), "main");
+    assert_range(
+        grant_incoming[0].from_ranges(),
+        1,
+        line(main_text, 1).find("grant").expect("grant call"),
+    );
+    assert!(
+        databases
+            .outgoing_calls(&grant_from_declaration[0])
+            .is_empty()
+    );
+
+    let preview_incoming = databases.incoming_calls(&preview_from_declaration[0]);
+    assert_eq!(preview_incoming.len(), 1);
+    assert_eq!(preview_incoming[0].from().name(), "main");
+    assert_range(
+        preview_incoming[0].from_ranges(),
+        2,
+        line(main_text, 2).find("preview").expect("preview call"),
+    );
+    assert!(
+        databases
+            .outgoing_calls(&preview_from_declaration[0])
+            .is_empty()
+    );
+
+    let main_item = databases
+        .prepare_call_hierarchy(
+            &main,
+            Position::new(0, line(main_text, 0).find("main").expect("main")),
+        )
+        .pop()
+        .expect("main should prepare a call hierarchy item");
+    let outgoing = databases.outgoing_calls(&main_item);
+    assert_eq!(outgoing.len(), 2, "{outgoing:?}");
+    assert_outgoing_call(
+        &outgoing,
+        "grant",
+        &schema,
+        1,
+        line(main_text, 1).find("grant").expect("grant call"),
+    );
+    assert_outgoing_call(
+        &outgoing,
+        "preview",
+        &schema,
+        2,
+        line(main_text, 2).find("preview").expect("preview call"),
+    );
+}
+
+fn assert_outgoing_call(
+    calls: &[OutgoingCall],
+    name: &str,
+    document_id: &DocumentId,
+    line: usize,
+    character: usize,
+) {
+    assert!(
+        calls.iter().any(|call| {
+            call.to().name() == name
+                && call.to().document_id() == document_id
+                && call
+                    .from_ranges()
+                    .iter()
+                    .any(|range| range.start().line == line && range.start().character == character)
+        }),
+        "{calls:?}"
+    );
+}
+
 fn assert_range(ranges: &[DiagnosticRange], line: usize, character: usize) {
     assert!(
         ranges

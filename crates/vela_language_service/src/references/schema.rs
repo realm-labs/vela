@@ -19,14 +19,14 @@ pub(super) struct SchemaFieldReferenceTarget {
 }
 
 #[derive(Debug, Clone, Eq, PartialEq)]
-pub(super) struct SchemaMethodReferenceTarget {
-    owner: String,
-    method: String,
-    kind: SchemaMethodReferenceKind,
+pub(crate) struct SchemaMethodReferenceTarget {
+    pub(crate) owner: String,
+    pub(crate) method: String,
+    pub(crate) kind: SchemaMethodReferenceKind,
 }
 
 #[derive(Debug, Clone, Copy, Eq, PartialEq)]
-enum SchemaMethodReferenceKind {
+pub(crate) enum SchemaMethodReferenceKind {
     Method,
     TraitMethod,
 }
@@ -342,7 +342,7 @@ fn schema_field_use_references_for_source(
     references
 }
 
-fn schema_method_target_for_member(
+pub(crate) fn schema_method_target_for_member(
     schema: &RegistryFacts,
     facts: &AnalysisFacts,
     text: &str,
