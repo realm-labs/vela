@@ -1,0 +1,83 @@
+{
+  "name": "vela-vscode",
+  "displayName": "Vela",
+  "description": "Thin VS Code launcher for the native Vela language server.",
+  "version": "0.1.0",
+  "publisher": "vela-lang",
+  "license": "MIT",
+  "private": true,
+  "engines": {
+    "vscode": "^1.90.0"
+  },
+  "categories": [
+    "Programming Languages"
+  ],
+  "activationEvents": [
+    "onLanguage:vela"
+  ],
+  "main": "./extension.js",
+  "scripts": {
+    "validate": "node scripts/validate-package.js"
+  },
+  "contributes": {
+    "languages": [
+      {
+        "id": "vela",
+        "aliases": [
+          "Vela",
+          "vela"
+        ],
+        "extensions": [
+          ".vela"
+        ],
+        "configuration": "./language-configuration.json"
+      }
+    ],
+    "grammars": [
+      {
+        "language": "vela",
+        "scopeName": "source.vela",
+        "path": "./syntaxes/vela.tmLanguage.json"
+      }
+    ],
+    "configuration": {
+      "title": "Vela",
+      "properties": {
+        "vela.server.path": {
+          "type": "string",
+          "default": "",
+          "description": "Path to the vela_lsp_server binary. When empty, the extension looks for a bundled server/vela_lsp_server executable."
+        },
+        "vela.server.args": {
+          "type": "array",
+          "default": [
+            "--stdio"
+          ],
+          "items": {
+            "type": "string"
+          },
+          "description": "Arguments passed to the native Vela language server."
+        },
+        "vela.workspace.roots": {
+          "type": "array",
+          "default": [],
+          "items": {
+            "type": "string"
+          },
+          "description": "Fallback Vela source roots passed as initialization options when vela.toml is absent."
+        },
+        "vela.host.schema": {
+          "type": "string",
+          "default": "",
+          "description": "Fallback path to a static Vela host schema artifact."
+        }
+      }
+    }
+  },
+  "dependencies": {
+    "vscode-languageclient": "^9.0.1"
+  },
+  "devDependencies": {
+    "@types/vscode": "^1.90.0"
+  }
+}

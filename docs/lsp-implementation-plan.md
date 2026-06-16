@@ -994,18 +994,24 @@ Purpose: package native LSP for real editors while keeping plugins thin.
   - `workspace/didChangeConfiguration` now remaps editor settings into
     `WorkspaceConfig`, reloads configured schema artifacts, and invalidates
     project-derived indexes.
-- [ ] Package VS Code extension as thin launcher/config UI.
+- [x] Package VS Code extension as thin launcher/config UI.
+  - `editors/vscode` contributes `.vela` language metadata, syntax metadata,
+    `vela.*` settings, and a `vscode-languageclient` stdio launcher for the
+    native server without duplicating language-service behavior.
 - [ ] Package Zed extension as thin launcher/config UI.
 - [x] Document manual setup for editors that can launch generic LSP servers.
   - `docs/lsp-editor-setup.md` documents stdio launch, `vela.toml`,
-    `--root`/`--schema` fallback flags, initialization options, and generic
-    client wiring without moving behavior into editor plugins.
+    `--root`/`--schema` fallback flags, initialization options, packaged
+    binaries, VS Code package setup, and generic client wiring without moving
+    behavior into editor plugins.
 - [x] Add release matrix for Windows, macOS, and Linux binaries.
   - `.github/workflows/lsp-release.yml` builds native
     `vela_lsp_server` artifacts for Linux, macOS, and Windows, emits SHA-256
     checksum files, uploads workflow artifacts, and publishes tagged `v*`
     releases.
-- [ ] Keep feature behavior out of editor-specific plugins.
+- [~] Keep feature behavior out of editor-specific plugins.
+  - The VS Code package only contributes launcher/configuration metadata;
+    the remaining Zed package must keep the same boundary.
 
 Tests:
 
@@ -1020,6 +1026,7 @@ Validation:
 
 ```bash
 cargo test -p vela_lsp_server
+node editors/vscode/scripts/validate-package.js
 ```
 
 ---

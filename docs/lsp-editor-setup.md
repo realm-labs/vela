@@ -61,6 +61,27 @@ Editor integrations should launch the unpacked binary over stdio and pass
 configuration through `vela.toml`, initialization options, or
 `workspace/didChangeConfiguration`.
 
+## VS Code Extension Package
+
+The repository includes a thin VS Code extension package under
+`editors/vscode`. It contributes the `vela` language ID, `.vela` file
+association, syntax metadata, settings, and a `vscode-languageclient` launcher
+for the native server.
+
+For local extension development:
+
+```bash
+cd editors/vscode
+npm install
+npm run validate
+```
+
+Set `vela.server.path` to a built or downloaded `vela_lsp_server` binary, or
+place a packaged binary under `editors/vscode/server/`. The extension passes
+`vela.workspace.roots` and `vela.host.schema` through the same native flags and
+initialization-option shape used by generic clients. It does not implement
+language analysis itself.
+
 ## Project Configuration
 
 Prefer a `vela.toml` at the workspace root:
