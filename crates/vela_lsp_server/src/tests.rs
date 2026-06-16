@@ -542,6 +542,55 @@ mod completion {
         assert_no_completion(&response, "id");
     }
 
+    #[test]
+    fn lsp_named_argument_completion_suggests_unused_script_parameters() {
+        let mut server = LspServer::new();
+        let _ = response_value(server.handle_json(&request(
+            1,
+            "initialize",
+            serde_json::json!({
+                "processId": null,
+                "rootUri": "file:///workspace/scripts",
+                "capabilities": {}
+            }),
+        )));
+        let uri = "file:///workspace/scripts/game/main.vela";
+        let text = r#"
+pub fn grant(player: Player, amount: i64, reason: String = "quest") -> bool { return true }
+pub fn main(player: Player) { grant(player: player, ) }
+"#;
+        let _ = notification_value(server.handle_json(&notification(
+            "textDocument/didOpen",
+            serde_json::json!({
+                "textDocument": {
+                    "uri": uri,
+                    "languageId": "vela",
+                    "version": 1,
+                    "text": text
+                }
+            }),
+        )));
+        let main_line = text.lines().nth(2).expect("main line should exist");
+
+        let response = response_value(server.handle_json(&request(
+            2,
+            "textDocument/completion",
+            serde_json::json!({
+                "textDocument": { "uri": uri },
+                "position": {
+                    "line": 2,
+                    "character": main_line
+                        .find(", )")
+                        .expect("call should contain empty argument") + ", ".len()
+                }
+            }),
+        )));
+
+        assert_completion_insert_text(&response, "amount", 6, "i64", "amount: ");
+        assert_completion_insert_text(&response, "reason", 6, "String (defaulted)", "reason: ");
+        assert_no_completion(&response, "player");
+    }
+
     fn assert_completion(response: &serde_json::Value, label: &str, kind: u8, detail: &str) {
         assert_eq!(response["result"]["isIncomplete"], false);
         let Some(items) = response["result"]["items"].as_array() else {
@@ -550,6 +599,28 @@ mod completion {
         assert!(
             items.iter().any(|item| {
                 item["label"] == label && item["kind"] == kind && item["detail"] == detail
+            }),
+            "{items:?}"
+        );
+    }
+
+    fn assert_completion_insert_text(
+        response: &serde_json::Value,
+        label: &str,
+        kind: u8,
+        detail: &str,
+        insert_text: &str,
+    ) {
+        assert_eq!(response["result"]["isIncomplete"], false);
+        let Some(items) = response["result"]["items"].as_array() else {
+            panic!("completion response should contain items");
+        };
+        assert!(
+            items.iter().any(|item| {
+                item["label"] == label
+                    && item["kind"] == kind
+                    && item["detail"] == detail
+                    && item["insertText"] == insert_text
             }),
             "{items:?}"
         );

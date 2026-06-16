@@ -10,12 +10,16 @@ use vela_analysis::type_fact::TypeFact;
 use vela_common::Span;
 use vela_hir::binding::{BindingMap, BindingResolution, LocalBinding};
 use vela_hir::module_graph::{DeclarationKind, ModuleGraph};
-use vela_hir::type_hint::StructFieldHint;
+use vela_hir::type_hint::{HirTypeHint, StructFieldHint};
 use vela_syntax::ast::{
     Block, ElseBranch, Expr, ExprKind, FunctionItem, ItemKind, SourceFile, Stmt, StmtKind,
 };
 
 use crate::{DocumentId, LanguageServiceDatabases, LineIndex, Position, SourceRecord, TextRange};
+
+mod named_argument;
+
+use named_argument::{named_argument_completion_context, script_function_parameter_completions};
 
 #[derive(Debug, Clone, Copy, Eq, Ord, PartialEq, PartialOrd)]
 pub enum CompletionKind {
@@ -28,6 +32,7 @@ pub enum CompletionKind {
     Function,
     Type,
     Trait,
+    Parameter,
 }
 
 impl From<AnalysisCompletionKind> for CompletionKind {
@@ -52,6 +57,7 @@ pub enum CompletionContextKind {
     ModulePath,
     Member,
     RecordField,
+    NamedArgument,
 }
 
 #[derive(Debug, Clone, Eq, PartialEq)]
@@ -59,6 +65,7 @@ pub struct CompletionItem {
     label: String,
     kind: CompletionKind,
     detail: String,
+    insert_text: Option<String>,
 }
 
 impl CompletionItem {
@@ -76,6 +83,11 @@ impl CompletionItem {
     pub fn detail(&self) -> &str {
         &self.detail
     }
+
+    #[must_use]
+    pub fn insert_text(&self) -> Option<&str> {
+        self.insert_text.as_deref()
+    }
 }
 
 #[derive(Debug, Clone, Eq, PartialEq)]
@@ -86,6 +98,7 @@ pub struct CompletionContext {
     module_base: Option<String>,
     member_receiver: Option<MemberReceiver>,
     record_constructor: Option<RecordConstructor>,
+    call_arguments: Option<CallArgumentContext>,
 }
 
 #[derive(Debug, Clone, Eq, PartialEq)]
@@ -98,6 +111,12 @@ struct RecordConstructor {
     path: Vec<String>,
     field_names: Vec<String>,
     current_module: Vec<String>,
+}
+
+#[derive(Debug, Clone, Eq, PartialEq)]
+struct CallArgumentContext {
+    callee: String,
+    used_names: Vec<String>,
 }
 
 impl CompletionContext {
@@ -148,11 +167,23 @@ impl LanguageServiceDatabases {
         };
         let context =
             completion_context(source, position, self.parse_db().parsed_source(document_id));
+        if matches!(context.kind, CompletionContextKind::Global)
+            && let Some(named_context) = named_argument_completion_context(source.text(), position)
+        {
+            let mut context = context.clone();
+            context.kind = CompletionContextKind::NamedArgument;
+            context.call_arguments = Some(named_context);
+            let items = self.named_argument_completion_items(&context);
+            if !items.is_empty() {
+                return CompletionList { context, items };
+            }
+        }
         let items = match context.kind {
             CompletionContextKind::Global => self.global_completion_items(&context),
             CompletionContextKind::ModulePath => self.module_path_completion_items(&context),
             CompletionContextKind::Member => self.member_completion_items(document_id, &context),
             CompletionContextKind::RecordField => self.record_field_completion_items(&context),
+            CompletionContextKind::NamedArgument => self.named_argument_completion_items(&context),
         };
         CompletionList { context, items }
     }
@@ -244,6 +275,26 @@ impl LanguageServiceDatabases {
                 && label_segment_matches(item.label(), context.prefix())
         })
     }
+
+    fn named_argument_completion_items(&self, context: &CompletionContext) -> Vec<CompletionItem> {
+        let Some(call) = context.call_arguments.as_ref() else {
+            return Vec::new();
+        };
+        let used_names = call
+            .used_names
+            .iter()
+            .map(String::as_str)
+            .collect::<Vec<_>>();
+        let items = script_function_parameter_completions(
+            self.hir_db().graph(),
+            self.schema_db().facts(),
+            &call.callee,
+            &used_names,
+        );
+        dedupe_and_filter_service_items(items, |item| {
+            label_segment_matches(item.label(), context.prefix())
+        })
+    }
 }
 
 impl CompletionContext {
@@ -255,6 +306,7 @@ impl CompletionContext {
             module_base: None,
             member_receiver: None,
             record_constructor: None,
+            call_arguments: None,
         }
     }
 }
@@ -281,6 +333,7 @@ fn completion_context(
             module_base: None,
             member_receiver: None,
             record_constructor: Some(record_constructor),
+            call_arguments: None,
         };
     }
 
@@ -293,6 +346,7 @@ fn completion_context(
             module_base: None,
             member_receiver,
             record_constructor: None,
+            call_arguments: None,
         };
     }
 
@@ -304,6 +358,7 @@ fn completion_context(
             module_base: Some(module_base),
             member_receiver: None,
             record_constructor: None,
+            call_arguments: None,
         };
     }
 
@@ -542,6 +597,7 @@ fn dedupe_and_filter_items(
                 label: item.label,
                 kind: item.kind.into(),
                 detail: item.fact.display_name(),
+                insert_text: None,
             });
     }
     deduped.into_values().collect()
@@ -614,6 +670,7 @@ fn field_completion_from_hint(graph: &ModuleGraph, field: &StructFieldHint) -> C
         label: field.name.clone(),
         kind: CompletionKind::Field,
         detail: fact.display_name(),
+        insert_text: None,
     }
 }
 
@@ -630,8 +687,22 @@ fn schema_record_field_completions(
             label: field.name,
             kind: CompletionKind::Field,
             detail: field.fact.display_name(),
+            insert_text: None,
         })
         .collect()
+}
+
+fn completion_type_fact(
+    graph: &ModuleGraph,
+    hint: &HirTypeHint,
+    schema: &vela_analysis::registry::RegistryFacts,
+) -> TypeFact {
+    let fact = type_fact_from_hint(graph, hint);
+    if matches!(fact, TypeFact::Unknown) {
+        schema_fact_for_hint(hint, schema).unwrap_or(TypeFact::Unknown)
+    } else {
+        fact
+    }
 }
 
 fn label_segment_matches(label: &str, prefix: &str) -> bool {
@@ -666,6 +737,13 @@ fn schema_fact_for_local_hint(
     schema: &vela_analysis::registry::RegistryFacts,
 ) -> Option<TypeFact> {
     let hint = binding.type_hint.as_ref()?;
+    schema_fact_for_hint(hint, schema)
+}
+
+fn schema_fact_for_hint(
+    hint: &HirTypeHint,
+    schema: &vela_analysis::registry::RegistryFacts,
+) -> Option<TypeFact> {
     if hint.args.is_empty() {
         let qualified = hint.path.join("::");
         schema
@@ -887,6 +965,79 @@ mod tests {
     }
 
     #[test]
+    fn named_argument_completion_suggests_unused_script_parameters() {
+        let document = DocumentId::from("/workspace/scripts/game/main.vela");
+        let text = r#"
+pub fn grant(player: Player, amount: i64, reason: String = "quest") -> bool { return true }
+pub fn main(player: Player) { grant(player: player, ) }
+"#;
+        let files = vec![SourceFileSnapshot::new(document.clone(), text)];
+        let config = WorkspaceConfig::workspace([WorkspaceRoot::from("/workspace/scripts")]);
+        let project = assemble_project_sources(&config, &files, &Workspace::new().snapshot());
+        let mut databases = LanguageServiceDatabases::new();
+        let mut schema = RegistryFacts::default();
+        schema.insert_type("Player", TypeFact::host("Player"));
+        databases.set_schema_facts(schema);
+        databases.update(&project);
+
+        let main_line = text.lines().nth(2).expect("main line should exist");
+        let position = Position::new(
+            2,
+            main_line
+                .find(", )")
+                .expect("call should contain empty argument")
+                + ", ".len(),
+        );
+        let completions = databases.completion_items(&document, position);
+
+        assert_eq!(
+            completions.context().kind(),
+            CompletionContextKind::NamedArgument
+        );
+        assert_no_completion(&completions, "player");
+        assert_completion(&completions, "amount", CompletionKind::Parameter);
+        assert_completion(&completions, "reason", CompletionKind::Parameter);
+        let amount = completion(&completions, "amount");
+        assert_eq!(amount.detail(), "i64");
+        assert_eq!(amount.insert_text(), Some("amount: "));
+        let reason = completion(&completions, "reason");
+        assert_eq!(reason.detail(), "String (defaulted)");
+        assert_eq!(reason.insert_text(), Some("reason: "));
+    }
+
+    #[test]
+    fn named_argument_completion_uses_parameter_prefix() {
+        let document = DocumentId::from("/workspace/scripts/game/main.vela");
+        let text = r#"
+pub fn grant(player: Player, amount: i64, reason: String = "quest") -> bool { return true }
+pub fn main(player: Player) { grant(player: player, am) }
+"#;
+        let files = vec![SourceFileSnapshot::new(document.clone(), text)];
+        let config = WorkspaceConfig::workspace([WorkspaceRoot::from("/workspace/scripts")]);
+        let project = assemble_project_sources(&config, &files, &Workspace::new().snapshot());
+        let mut databases = LanguageServiceDatabases::new();
+        let mut schema = RegistryFacts::default();
+        schema.insert_type("Player", TypeFact::host("Player"));
+        databases.set_schema_facts(schema);
+        databases.update(&project);
+
+        let main_line = text.lines().nth(2).expect("main line should exist");
+        let position = Position::new(
+            2,
+            main_line.find("am)").expect("call should contain prefix") + "am".len(),
+        );
+        let completions = databases.completion_items(&document, position);
+
+        assert_eq!(
+            completions.context().kind(),
+            CompletionContextKind::NamedArgument
+        );
+        assert_completion(&completions, "amount", CompletionKind::Parameter);
+        assert_no_completion(&completions, "reason");
+        assert_no_completion(&completions, "player");
+    }
+
+    #[test]
     fn member_context_is_detected_without_global_fallback() {
         let document = DocumentId::from("/workspace/scripts/game/main.vela");
         let files = vec![SourceFileSnapshot::new(
@@ -902,6 +1053,13 @@ mod tests {
 
         assert_eq!(completions.context().kind(), CompletionContextKind::Member);
         assert!(completions.items().is_empty(), "{completions:?}");
+    }
+
+    fn completion<'a>(list: &'a CompletionList, label: &str) -> &'a CompletionItem {
+        list.items()
+            .iter()
+            .find(|item| item.label() == label)
+            .unwrap_or_else(|| panic!("completion {label} should exist in {list:?}"))
     }
 
     fn assert_completion(list: &CompletionList, label: &str, kind: CompletionKind) {

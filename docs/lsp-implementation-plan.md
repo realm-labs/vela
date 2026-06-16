@@ -365,7 +365,10 @@ Purpose: make common authoring flows fast and schema-aware.
 - [x] Add cursor-context extraction in `vela_language_service`.
 - [~] Complete locals, parameters, captures, declarations, modules, imports,
   stdlib APIs, fields, methods, variants, traits, and type hints.
-- [ ] Complete named arguments and defaulted parameters.
+- [~] Complete named arguments and defaulted parameters.
+  - Initial service and LSP completion support source-backed script function
+    parameters, unused named-argument filtering, defaulted-parameter detail,
+    and `insertText` snippets such as `amount: `.
 - [~] Complete record fields inside known constructors.
   - Initial service and LSP completion support source-owned struct
     constructors plus schema-backed host constructors and suppresses unknown
@@ -388,6 +391,8 @@ Tests:
 - [x] `record_field_completion_requires_known_type`
 - [x] `record_field_completion_uses_schema_facts`
 - [x] `lsp_record_field_completion_uses_known_constructor`
+- [x] `named_argument_completion_suggests_unused_script_parameters`
+- [x] `lsp_named_argument_completion_suggests_unused_script_parameters`
 - [x] `signature_help_tracks_active_parameter`
 - [x] `lsp_signature_help_tracks_active_parameter`
 

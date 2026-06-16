@@ -9,14 +9,18 @@ pub(crate) fn lsp_completion_list(completions: &CompletionList) -> JsonValue {
 }
 
 fn lsp_completion_item(item: &vela_language_service::CompletionItem) -> JsonValue {
-    json!({
+    let mut value = json!({
         "label": item.label(),
         "kind": lsp_completion_kind(item.kind()),
         "detail": item.detail(),
         "data": {
             "source": "vela"
         }
-    })
+    });
+    if let Some(insert_text) = item.insert_text() {
+        value["insertText"] = json!(insert_text);
+    }
+    value
 }
 
 fn lsp_completion_kind(kind: CompletionKind) -> u8 {
@@ -30,5 +34,6 @@ fn lsp_completion_kind(kind: CompletionKind) -> u8 {
         CompletionKind::Function => 3,
         CompletionKind::Type => 22,
         CompletionKind::Trait => 8,
+        CompletionKind::Parameter => 6,
     }
 }
