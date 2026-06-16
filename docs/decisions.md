@@ -44,6 +44,17 @@ decision history lives in
 
 ## Active Architecture Decisions
 
+### Tuple, Unit, And Null Direction
+
+Future breaking value-model cleanup should add Rust-like tuple syntax and
+`()` as the unit type/value. Unit should replace the current void-like use of
+`null`; expected absence should use `Option`, and recoverable failure should
+use `Result`. Ordinary script APIs should not use `null` for no-value,
+not-found, or failed results. Raw external null, if retained, must be explicit
+at the serde/JSON boundary rather than overloaded as the VM no-value result.
+The implementation plan lives in
+[tuple-unit-null-refactor-plan.md](tuple-unit-null-refactor-plan.md).
+
 ### Source And Artifact Naming
 
 Vela source files use `.vela`. Future precompiled bytecode-only artifacts use
