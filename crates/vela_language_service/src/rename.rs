@@ -189,6 +189,9 @@ impl LanguageServiceDatabases {
                 schema::rename_schema_member(self, target, new_name)
             }
             RenameTarget::SchemaType(target) => schema::rename_schema_type(self, target, new_name),
+            RenameTarget::SchemaFunction(target) => {
+                schema::rename_schema_function(self, target, new_name)
+            }
             RenameTarget::EnumVariant(target) => {
                 variants::rename_enum_variant(self, target, new_name)
             }
@@ -425,6 +428,7 @@ enum RenameTarget<'a> {
     ScriptMethod(methods::ScriptMethodRenameTarget),
     SchemaMember(schema::SchemaMemberRenameTarget),
     SchemaType(schema::SchemaTypeRenameTarget),
+    SchemaFunction(schema::SchemaFunctionRenameTarget),
     EnumVariant(variants::EnumVariantRenameTarget),
 }
 
@@ -437,6 +441,7 @@ impl RenameTarget<'_> {
             Self::ScriptMethod(target) => target.token.range,
             Self::SchemaMember(target) => target.token.range,
             Self::SchemaType(target) => target.token.range,
+            Self::SchemaFunction(target) => target.token.range,
             Self::EnumVariant(target) => target.token.range,
         }
     }
@@ -449,6 +454,7 @@ impl RenameTarget<'_> {
             Self::ScriptMethod(target) => &target.method,
             Self::SchemaMember(target) => &target.member,
             Self::SchemaType(target) => &target.name,
+            Self::SchemaFunction(target) => &target.name,
             Self::EnumVariant(target) => &target.variant,
         }
     }
@@ -495,6 +501,9 @@ fn rename_target<'a>(
     }
     if let Some(target) = schema::schema_type_declaration_target(databases, source_id, &token) {
         return Some(RenameTarget::SchemaType(target));
+    }
+    if let Some(target) = schema::schema_function_declaration_target(databases, source_id, &token) {
+        return Some(RenameTarget::SchemaFunction(target));
     }
 
     for declaration in graph.declarations() {
@@ -552,6 +561,9 @@ fn rename_target<'a>(
         }
         if let Some(target) = schema::schema_type_use_target(databases, declaration, text, &token) {
             return Some(RenameTarget::SchemaType(target));
+        }
+        if let Some(target) = schema::schema_function_use_target(databases, text, &token) {
+            return Some(RenameTarget::SchemaFunction(target));
         }
         if let Some(target) =
             fields::script_field_use_target(graph, &facts, text, source_id, bindings, &token)

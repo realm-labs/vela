@@ -699,6 +699,7 @@ Purpose: provide safe refactoring without changing runtime contracts.
 - [~] Rename source-backed schema items only when the schema declaration span
   maps to a workspace source.
   - [x] Rename source-backed schema types plus type-hint uses.
+  - [x] Rename source-backed schema functions plus call sites.
   - [x] Rename source-backed schema fields and methods plus typed receiver
     member uses.
 - [~] Reject renames that would collide in scope, module exports, trait impls,
@@ -731,6 +732,8 @@ Tests:
 - [x] `lsp_private_enum_variant_rename_updates_constructors_and_patterns`
 - [x] `source_backed_schema_type_rename_updates_type_hints`
 - [x] `lsp_source_backed_schema_type_rename_updates_type_hints`
+- [x] `source_backed_schema_function_rename_updates_call_sites`
+- [x] `lsp_source_backed_schema_function_rename_updates_call_sites`
 - [x] `source_backed_schema_field_rename_updates_member_uses`
 - [x] `source_backed_schema_method_rename_updates_member_calls`
 - [x] `lsp_source_backed_schema_rename_updates_member_uses`
