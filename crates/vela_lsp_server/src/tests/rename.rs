@@ -702,6 +702,176 @@ fn lsp_host_schema_rename_is_not_editable() {
 }
 
 #[test]
+fn lsp_source_backed_schema_rename_updates_member_uses() {
+    let root = temp_workspace();
+    let config_path = root.join("vela.toml");
+    let schema_path = root.join("target").join("vela").join("schema.json");
+    fs::create_dir_all(schema_path.parent().expect("schema should have parent"))
+        .expect("schema directory should be creatable");
+    fs::write(
+        &config_path,
+        r#"
+            [workspace]
+            roots = ["scripts"]
+
+            [host]
+            schema = "target/vela/schema.json"
+        "#,
+    )
+    .expect("vela.toml should be writable");
+
+    let schema_text = "\
+pub fn level() { return 1 }
+pub fn grant() { return 1 }";
+    let level_start = schema_text.find("level").expect("level marker");
+    let grant_start = schema_text.find("grant").expect("grant marker");
+    fs::write(
+        &schema_path,
+        serde_json::json!({
+            "formatVersion": 1,
+            "facts": {
+                "types": [
+                    {
+                        "name": "Player",
+                        "fact": { "kind": "host", "name": "Player" }
+                    }
+                ],
+                "fields": [
+                    {
+                        "owner": "Player",
+                        "name": "level",
+                        "fact": { "kind": "primitive", "name": "i64" },
+                        "sourceSpan": {
+                            "source": 1,
+                            "start": level_start,
+                            "end": level_start + "level".len()
+                        }
+                    }
+                ],
+                "methods": [
+                    {
+                        "owner": "Player",
+                        "name": "grant",
+                        "fact": {
+                            "kind": "function",
+                            "params": [{ "kind": "primitive", "name": "i64" }],
+                            "returns": { "kind": "primitive", "name": "i64" }
+                        },
+                        "sourceSpan": {
+                            "source": 1,
+                            "start": grant_start,
+                            "end": grant_start + "grant".len()
+                        }
+                    }
+                ]
+            }
+        })
+        .to_string(),
+    )
+    .expect("schema should be writable");
+
+    let mut server = LspServer::new();
+    let _ = response_value(server.handle_json(&request(
+        1,
+        "initialize",
+        serde_json::json!({
+            "processId": null,
+            "rootUri": file_uri(&root),
+            "capabilities": {}
+        }),
+    )));
+    let _ = server.handle_json(&notification(
+        "workspace/didChangeWatchedFiles",
+        serde_json::json!({
+            "changes": [{ "uri": file_uri(&config_path), "type": 1 }]
+        }),
+    ));
+
+    let schema_uri = file_uri(&root.join("scripts").join("_schema_defs.vela"));
+    let _ = notification_value(server.handle_json(&notification(
+        "textDocument/didOpen",
+        serde_json::json!({
+            "textDocument": {
+                "uri": schema_uri,
+                "languageId": "vela",
+                "version": 1,
+                "text": schema_text
+            }
+        }),
+    )));
+
+    let text = "\
+pub fn main(player: Player) -> i64 {
+    let first = player.level
+    player.level += 1
+    return player.grant(first)
+}";
+    let uri = file_uri(&root.join("scripts").join("game").join("main.vela"));
+    let _ = notification_value(server.handle_json(&notification(
+        "textDocument/didOpen",
+        serde_json::json!({
+            "textDocument": {
+                "uri": uri,
+                "languageId": "vela",
+                "version": 1,
+                "text": text
+            }
+        }),
+    )));
+
+    let field_rename = response_value(server.handle_json(&request(
+        2,
+        "textDocument/rename",
+        serde_json::json!({
+            "textDocument": { "uri": uri },
+            "position": {
+                "line": 1,
+                "character": line(text, 1).find("level").expect("field read")
+            },
+            "newName": "rank"
+        }),
+    )));
+    let field_main_edits = field_rename["result"]["changes"][uri.as_str()]
+        .as_array()
+        .expect("field rename should return main edits");
+    let field_schema_edits = field_rename["result"]["changes"][schema_uri.as_str()]
+        .as_array()
+        .expect("field rename should return schema edits");
+
+    assert_eq!(field_main_edits.len(), 2);
+    assert_text_edit(field_main_edits, 1, 23, "rank");
+    assert_text_edit(field_main_edits, 2, 11, "rank");
+    assert_eq!(field_schema_edits.len(), 1);
+    assert_text_edit(field_schema_edits, 0, 7, "rank");
+
+    let method_rename = response_value(server.handle_json(&request(
+        3,
+        "textDocument/rename",
+        serde_json::json!({
+            "textDocument": { "uri": uri },
+            "position": {
+                "line": 3,
+                "character": line(text, 3).find("grant").expect("method call")
+            },
+            "newName": "award"
+        }),
+    )));
+    let method_main_edits = method_rename["result"]["changes"][uri.as_str()]
+        .as_array()
+        .expect("method rename should return main edits");
+    let method_schema_edits = method_rename["result"]["changes"][schema_uri.as_str()]
+        .as_array()
+        .expect("method rename should return schema edits");
+
+    assert_eq!(method_main_edits.len(), 1);
+    assert_text_edit(method_main_edits, 3, 18, "award");
+    assert_eq!(method_schema_edits.len(), 1);
+    assert_text_edit(method_schema_edits, 1, 7, "award");
+
+    fs::remove_dir_all(&root).expect("temporary workspace should be removable");
+}
+
+#[test]
 fn lsp_public_export_rename_reports_hot_reload_risk() {
     let mut server = LspServer::new();
     let _ = response_value(server.handle_json(&request(

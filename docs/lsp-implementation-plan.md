@@ -696,6 +696,10 @@ Purpose: provide safe refactoring without changing runtime contracts.
   - [x] Rename source-owned private enum variants, constructor uses, and
     match-pattern uses.
 - [x] Reject host schema rename unless the source is explicitly script-owned.
+- [~] Rename source-backed schema items only when the schema declaration span
+  maps to a workspace source.
+  - [x] Rename source-backed schema fields and methods plus typed receiver
+    member uses.
 - [~] Reject renames that would collide in scope, module exports, trait impls,
   or import aliases.
   - [x] Reject local binding renames that collide with an existing function
@@ -724,6 +728,9 @@ Tests:
 - [x] `private_enum_variant_rename_updates_constructors_and_patterns`
 - [x] `private_enum_variant_rename_rejects_variant_collision`
 - [x] `lsp_private_enum_variant_rename_updates_constructors_and_patterns`
+- [x] `source_backed_schema_field_rename_updates_member_uses`
+- [x] `source_backed_schema_method_rename_updates_member_calls`
+- [x] `lsp_source_backed_schema_rename_updates_member_uses`
 - [x] `host_schema_rename_is_not_editable`
 - [x] `lsp_host_schema_rename_is_not_editable`
 

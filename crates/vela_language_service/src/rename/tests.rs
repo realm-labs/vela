@@ -326,6 +326,162 @@ fn main() -> QuestState {
 }
 
 #[test]
+fn source_backed_schema_field_rename_updates_member_uses() {
+    let main = DocumentId::from("/workspace/scripts/game/main.vela");
+    let schema = DocumentId::from("/workspace/scripts/_schema_defs.vela");
+    let main_text = "\
+pub fn main(player: Player) -> i64 {
+    let first = player.level
+    player.level += 1
+    return player.level + first
+}";
+    let schema_text = "pub fn level() { return 1 }";
+    let mut databases = databases_for(vec![
+        SourceFileSnapshot::new(main.clone(), main_text),
+        SourceFileSnapshot::new(schema.clone(), schema_text),
+    ]);
+    let schema_record = databases
+        .source_db()
+        .records()
+        .get(&schema)
+        .expect("schema source should be indexed");
+    let target_start = schema_text.find("level").expect("schema marker");
+    let artifact = serde_json::json!({
+        "formatVersion": 1,
+        "facts": {
+            "types": [
+                {
+                    "name": "Player",
+                    "fact": { "kind": "host", "name": "Player" }
+                }
+            ],
+            "fields": [
+                {
+                    "owner": "Player",
+                    "name": "level",
+                    "fact": { "kind": "primitive", "name": "i64" },
+                    "sourceSpan": {
+                        "source": schema_record.source_id().get(),
+                        "start": target_start,
+                        "end": target_start + "level".len()
+                    }
+                }
+            ]
+        }
+    })
+    .to_string();
+    databases.load_schema_artifact_json("/workspace/target/vela/schema.json", &artifact);
+
+    let prepare = databases
+        .prepare_rename(
+            &main,
+            Position::new(1, line(main_text, 1).find("level").expect("field read")),
+        )
+        .expect("source-backed schema field should be renameable from a use");
+
+    assert_eq!(prepare.placeholder(), "level");
+    assert_eq!(prepare.range().start(), Position::new(1, 23));
+
+    let edit = databases
+        .rename(
+            &main,
+            Position::new(1, line(main_text, 1).find("level").expect("field read")),
+            "rank",
+        )
+        .expect("source-backed schema field rename should produce edits");
+
+    let schema_edit = document_edit(&edit, &schema);
+    assert_eq!(schema_edit.edits().len(), 1);
+    assert_edit_at(schema_edit.edits(), 0, 7, "rank");
+
+    let main_edit = document_edit(&edit, &main);
+    assert_eq!(main_edit.edits().len(), 3);
+    assert_edit_at(main_edit.edits(), 1, 23, "rank");
+    assert_edit_at(main_edit.edits(), 2, 11, "rank");
+    assert_edit_at(main_edit.edits(), 3, 18, "rank");
+    assert!(edit.risks().is_empty());
+}
+
+#[test]
+fn source_backed_schema_method_rename_updates_member_calls() {
+    let main = DocumentId::from("/workspace/scripts/game/main.vela");
+    let schema = DocumentId::from("/workspace/scripts/_schema_defs.vela");
+    let main_text = "\
+pub fn main(player: Player) -> i64 {
+    let first = player.grant(1)
+    return player.grant(first)
+}";
+    let schema_text = "pub fn grant() { return 1 }";
+    let mut databases = databases_for(vec![
+        SourceFileSnapshot::new(main.clone(), main_text),
+        SourceFileSnapshot::new(schema.clone(), schema_text),
+    ]);
+    let schema_record = databases
+        .source_db()
+        .records()
+        .get(&schema)
+        .expect("schema source should be indexed");
+    let target_start = schema_text.find("grant").expect("schema marker");
+    let artifact = serde_json::json!({
+        "formatVersion": 1,
+        "facts": {
+            "types": [
+                {
+                    "name": "Player",
+                    "fact": { "kind": "host", "name": "Player" }
+                }
+            ],
+            "methods": [
+                {
+                    "owner": "Player",
+                    "name": "grant",
+                    "fact": {
+                        "kind": "function",
+                        "params": [{ "kind": "primitive", "name": "i64" }],
+                        "returns": { "kind": "primitive", "name": "i64" }
+                    },
+                    "sourceSpan": {
+                        "source": schema_record.source_id().get(),
+                        "start": target_start,
+                        "end": target_start + "grant".len()
+                    }
+                }
+            ]
+        }
+    })
+    .to_string();
+    databases.load_schema_artifact_json("/workspace/target/vela/schema.json", &artifact);
+
+    let prepare = databases
+        .prepare_rename(
+            &main,
+            Position::new(1, line(main_text, 1).find("grant").expect("method call")),
+        )
+        .expect("source-backed schema method should be renameable from a call");
+
+    assert_eq!(prepare.placeholder(), "grant");
+    assert_eq!(prepare.range().start(), Position::new(1, 23));
+
+    let edit = databases
+        .rename(
+            &main,
+            Position::new(1, line(main_text, 1).find("grant").expect("method call")),
+            "award",
+        )
+        .expect("source-backed schema method rename should produce edits");
+
+    let schema_edit = document_edit(&edit, &schema);
+    assert_eq!(schema_edit.edits().len(), 1);
+    assert_edit_at(schema_edit.edits(), 0, 7, "award");
+
+    let main_edit = document_edit(&edit, &main);
+    assert_eq!(main_edit.edits().len(), 2);
+    assert_edit_at(main_edit.edits(), 1, 23, "award");
+    assert_edit_at(main_edit.edits(), 2, 18, "award");
+    assert!(edit.risks().is_empty());
+}
+
+#[test]
 fn private_function_rename_updates_imports() {
     let main = DocumentId::from("/workspace/scripts/game/main.vela");
     let helper = DocumentId::from("/workspace/scripts/game/reward.vela");
