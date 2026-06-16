@@ -353,6 +353,78 @@ fn grant(reward: Reward) -> Reward {
 }
 
 #[test]
+fn lsp_private_struct_field_rename_updates_member_uses() {
+    let mut server = LspServer::new();
+    let _ = response_value(server.handle_json(&request(
+        1,
+        "initialize",
+        serde_json::json!({
+            "processId": null,
+            "rootUri": "file:///workspace/scripts",
+            "capabilities": {}
+        }),
+    )));
+    let text = "\
+struct Player {
+    level: i64
+    xp: i64
+}
+
+fn bump(player: Player) -> i64 {
+    player.level += 1
+    return player.level + player.xp
+}";
+    let uri = "file:///workspace/scripts/game/main.vela";
+    let _ = notification_value(server.handle_json(&notification(
+        "textDocument/didOpen",
+        serde_json::json!({
+            "textDocument": {
+                "uri": uri,
+                "languageId": "vela",
+                "version": 1,
+                "text": text
+            }
+        }),
+    )));
+
+    let prepare = response_value(server.handle_json(&request(
+        2,
+        "textDocument/prepareRename",
+        serde_json::json!({
+            "textDocument": { "uri": uri },
+            "position": {
+                "line": 6,
+                "character": line(text, 6).find("level").expect("level write")
+            }
+        }),
+    )));
+    assert_eq!(prepare["result"]["placeholder"], "level");
+    assert_eq!(prepare["result"]["range"]["start"]["line"], 6);
+    assert_eq!(prepare["result"]["range"]["start"]["character"], 11);
+
+    let rename = response_value(server.handle_json(&request(
+        3,
+        "textDocument/rename",
+        serde_json::json!({
+            "textDocument": { "uri": uri },
+            "position": {
+                "line": 6,
+                "character": line(text, 6).find("level").expect("level write")
+            },
+            "newName": "rank"
+        }),
+    )));
+    let edits = rename["result"]["changes"][uri]
+        .as_array()
+        .expect("rename should return text edits for the document");
+
+    assert_eq!(edits.len(), 3);
+    assert_text_edit(edits, 1, 4, "rank");
+    assert_text_edit(edits, 6, 11, "rank");
+    assert_text_edit(edits, 7, 18, "rank");
+}
+
+#[test]
 fn lsp_host_schema_rename_is_not_editable() {
     let root = temp_workspace();
     let config_path = root.join("vela.toml");

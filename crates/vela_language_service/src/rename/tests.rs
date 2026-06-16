@@ -168,6 +168,47 @@ fn grant(reward: Reward) -> Reward {
 }
 
 #[test]
+fn private_struct_field_rename_updates_member_uses() {
+    let document = DocumentId::from("/workspace/scripts/game/main.vela");
+    let text = "\
+struct Player {
+    level: i64
+    xp: i64
+}
+
+fn bump(player: Player) -> i64 {
+    player.level += 1
+    return player.level + player.xp
+}";
+    let databases = databases_for(vec![SourceFileSnapshot::new(document.clone(), text)]);
+
+    let prepare = databases
+        .prepare_rename(
+            &document,
+            Position::new(6, line(text, 6).find("level").expect("level write")),
+        )
+        .expect("private struct field should be renameable from a member use");
+
+    assert_eq!(prepare.placeholder(), "level");
+    assert_eq!(prepare.range().start(), Position::new(6, 11));
+
+    let edit = databases
+        .rename(
+            &document,
+            Position::new(6, line(text, 6).find("level").expect("level write")),
+            "rank",
+        )
+        .expect("private struct field rename should produce edits");
+
+    let document_edit = document_edit(&edit, &document);
+    assert_eq!(document_edit.edits().len(), 3);
+    assert_edit_at(document_edit.edits(), 1, 4, "rank");
+    assert_edit_at(document_edit.edits(), 6, 11, "rank");
+    assert_edit_at(document_edit.edits(), 7, 18, "rank");
+    assert!(edit.risks().is_empty());
+}
+
+#[test]
 fn private_function_rename_updates_imports() {
     let main = DocumentId::from("/workspace/scripts/game/main.vela");
     let helper = DocumentId::from("/workspace/scripts/game/reward.vela");

@@ -1,5 +1,6 @@
 use std::collections::BTreeMap;
 
+use vela_analysis::facts::AnalysisFacts;
 use vela_common::{SourceId, Span};
 use vela_hir::binding::{BindingMap, BindingResolution, LocalBinding};
 use vela_hir::ids::{HirDeclId, HirLocalId};
@@ -11,6 +12,8 @@ use vela_syntax::token::Keyword;
 use crate::{
     DiagnosticRange, DocumentId, LanguageServiceDatabases, LineIndex, Position, TextRange,
 };
+
+mod fields;
 
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub struct PrepareRename {
@@ -183,6 +186,9 @@ impl LanguageServiceDatabases {
                 self.rename_local(document_id, source.text(), target, new_name)
             }
             RenameTarget::Declaration(target) => self.rename_declaration(target, new_name),
+            RenameTarget::ScriptField(target) => {
+                fields::rename_script_field(self, target, new_name)
+            }
         }
     }
 
@@ -412,6 +418,7 @@ impl LanguageServiceDatabases {
 enum RenameTarget<'a> {
     Local(LocalRenameTarget<'a>),
     Declaration(DeclarationRenameTarget<'a>),
+    ScriptField(fields::ScriptFieldRenameTarget),
 }
 
 impl RenameTarget<'_> {
@@ -419,6 +426,7 @@ impl RenameTarget<'_> {
         match self {
             Self::Local(target) => target.token.range,
             Self::Declaration(target) => target.token.range,
+            Self::ScriptField(target) => target.token.range,
         }
     }
 
@@ -426,6 +434,7 @@ impl RenameTarget<'_> {
         match self {
             Self::Local(target) => &target.placeholder,
             Self::Declaration(target) => &target.declaration.name,
+            Self::ScriptField(target) => &target.field,
         }
     }
 }
@@ -452,6 +461,11 @@ fn rename_target<'a>(
 ) -> Option<RenameTarget<'a>> {
     let token = rename_token_at(text, position)?;
     let offset = u32::try_from(token.range.start).ok()?;
+    let facts = AnalysisFacts::from_module_graph(graph);
+
+    if let Some(target) = fields::script_field_declaration_target(graph, source_id, text, &token) {
+        return Some(RenameTarget::ScriptField(target));
+    }
 
     for declaration in graph.declarations() {
         if declaration.span.source != source_id || !declaration.span.contains(offset) {
@@ -502,6 +516,11 @@ fn rename_target<'a>(
                 declaration: target,
                 token,
             }));
+        }
+        if let Some(target) =
+            fields::script_field_use_target(graph, &facts, text, source_id, bindings, &token)
+        {
+            return Some(RenameTarget::ScriptField(target));
         }
     }
 
