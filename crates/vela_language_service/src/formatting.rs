@@ -1,5 +1,6 @@
 use crate::{DiagnosticRange, DocumentId, LanguageServiceDatabases, LineIndex, Position, TextEdit};
 use vela_common::SourceId;
+use vela_syntax::ast::SourceFile;
 use vela_syntax::formatting::{
     FormatElementKind, TriviaKind, extract_format_elements, format_source,
 };
@@ -116,6 +117,13 @@ impl LanguageServiceDatabases {
             return Vec::new();
         };
 
+        if let Some(parsed) = self.parse_db().parsed_source(document_id)
+            && let Some(edit) =
+                selected_item_formatting_edit(source.source_id(), source.text(), parsed, range)
+        {
+            return vec![edit];
+        }
+
         trailing_whitespace_edits(source.text(), range)
     }
 
@@ -159,6 +167,39 @@ fn service_segment_kind(kind: &FormatElementKind) -> FormattingSegmentKind {
 
 fn format_document(source_id: SourceId, source: &str) -> String {
     format_source(source_id, source).text().to_owned()
+}
+
+fn selected_item_formatting_edit(
+    source_id: SourceId,
+    source: &str,
+    parsed: &SourceFile,
+    range: DiagnosticRange,
+) -> Option<TextEdit> {
+    let line_index = LineIndex::new(source);
+    let start = line_index.offset(range.start());
+    let end = line_index.offset(range.end());
+    if start >= end {
+        return None;
+    }
+
+    let item = parsed
+        .items
+        .iter()
+        .find(|item| item.span.start as usize == start)?;
+    let item_end = item.span.end as usize;
+    if item_end > end || !source.get(item_end..end)?.chars().all(char::is_whitespace) {
+        return None;
+    }
+    if parsed.items.iter().any(|item| {
+        let item_start = item.span.start as usize;
+        item_start > start && item_start < end
+    }) {
+        return None;
+    }
+
+    let selected = source.get(start..end)?;
+    let formatted = format_document(source_id, selected);
+    (formatted != selected).then(|| TextEdit::new(range, formatted))
 }
 
 fn current_construct_range(
@@ -450,6 +491,30 @@ impl Player {
         assert_eq!(edits[0].range().start(), Position::new(1, 12));
         assert_eq!(edits[0].range().end(), Position::new(1, 15));
         assert_eq!(formatted, "pub fn main() {   \n    return 1\n}\n");
+    }
+
+    #[test]
+    fn range_formatting_formats_selected_item() {
+        let source = "pub fn main(){return 1}\n\npub fn other(){return 2}\n";
+        let edits = range_format_source(
+            source,
+            DiagnosticRange::new(Position::new(0, 0), Position::new(1, 0)),
+        );
+        let formatted = apply_range_edits(source, &edits);
+
+        assert_eq!(edits.len(), 1);
+        assert_eq!(edits[0].range().start(), Position::new(0, 0));
+        assert_eq!(edits[0].range().end(), Position::new(1, 0));
+        assert_eq!(
+            formatted,
+            "\
+pub fn main() {
+    return 1
+}
+
+pub fn other(){return 2}
+"
+        );
     }
 
     #[test]
