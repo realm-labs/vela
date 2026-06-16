@@ -534,6 +534,8 @@ Purpose: support workspace navigation and prepare rename.
     call/read sites across workspace sources.
   - [x] Index source-owned script struct field declarations plus typed
     receiver read/write member uses.
+  - [x] Index source-owned enum variant declarations, constructor uses, and
+    match-pattern uses.
 - [~] Track reference kind: read, write, call, type use, import, pattern,
   declaration.
   - [x] Track local declaration and read reference kinds.
@@ -542,12 +544,16 @@ Purpose: support workspace navigation and prepare rename.
     call references.
   - [x] Track source-owned script struct field declaration/read/write
     reference kinds.
+  - [x] Track source-owned enum variant declaration/read/pattern reference
+    kinds.
 - [~] Implement `textDocument/references`.
   - [x] Serve local binding references through the native LSP request.
   - [x] Serve imported script function references through the native LSP
     request.
   - [x] Serve source-owned script struct field references through the native
     LSP request.
+  - [x] Serve source-owned enum variant references through the native LSP
+    request.
 - [~] Implement `textDocument/documentHighlight`.
   - [x] Serve local declaration/read highlights through the native LSP request.
   - [x] Serve imported script function import/read highlights in the active
@@ -565,6 +571,8 @@ Tests:
 - [x] `lsp_references_find_imported_function_uses`
 - [x] `references_find_field_reads_and_writes`
 - [x] `lsp_references_find_field_reads_and_writes`
+- [x] `references_find_enum_variant_constructors_and_patterns`
+- [x] `lsp_references_find_enum_variant_constructors_and_patterns`
 - [x] `document_highlight_marks_local_declaration_and_reads`
 - [x] `document_highlight_marks_import_and_calls_in_active_document`
 - [x] `lsp_document_highlight_marks_local_declaration_and_reads`

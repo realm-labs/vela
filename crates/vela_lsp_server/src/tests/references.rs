@@ -233,6 +233,86 @@ pub fn main(reward: Reward) -> i64 {
 }
 
 #[test]
+fn lsp_references_find_enum_variant_constructors_and_patterns() {
+    let mut server = LspServer::new();
+    let _ = response_value(server.handle_json(&request(
+        1,
+        "initialize",
+        serde_json::json!({
+            "processId": null,
+            "rootUri": "file:///workspace/scripts",
+            "capabilities": {}
+        }),
+    )));
+    let text = "\
+pub enum QuestState {
+    Active { count: i64 },
+    Done
+}
+
+pub fn active(count: i64) -> QuestState {
+    return QuestState::Active { count: count }
+}
+
+pub fn main(state: QuestState) -> i64 {
+    match state {
+        QuestState::Active { count } => { return count }
+        QuestState::Done => { return 0 }
+    }
+}";
+    let uri = "file:///workspace/scripts/game/main.vela";
+    let _ = notification_value(server.handle_json(&notification(
+        "textDocument/didOpen",
+        serde_json::json!({
+            "textDocument": {
+                "uri": uri,
+                "languageId": "vela",
+                "version": 1,
+                "text": text
+            }
+        }),
+    )));
+
+    let response = response_value(server.handle_json(&request(
+        2,
+        "textDocument/references",
+        serde_json::json!({
+            "textDocument": { "uri": uri },
+            "position": {
+                "line": 6,
+                "character": line(text, 6).find("Active").expect("Active constructor use")
+            },
+            "context": { "includeDeclaration": true }
+        }),
+    )));
+    let references = response["result"]
+        .as_array()
+        .expect("references response should be an array");
+
+    assert_eq!(references.len(), 3);
+    assert_reference(
+        references,
+        uri,
+        1,
+        line(text, 1).find("Active").expect("Active declaration"),
+    );
+    assert_reference(
+        references,
+        uri,
+        6,
+        line(text, 6)
+            .find("Active")
+            .expect("Active constructor use"),
+    );
+    assert_reference(
+        references,
+        uri,
+        11,
+        line(text, 11).find("Active").expect("Active pattern use"),
+    );
+}
+
+#[test]
 fn lsp_document_highlight_marks_local_declaration_and_reads() {
     let mut server = LspServer::new();
     let initialize = response_value(server.handle_json(&request(

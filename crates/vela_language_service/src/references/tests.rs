@@ -1,0 +1,422 @@
+use super::*;
+use crate::{
+    SourceFileSnapshot, Workspace, WorkspaceConfig, WorkspaceRoot, assemble_project_sources,
+};
+
+#[test]
+fn references_find_local_binding_uses() {
+    let document = DocumentId::from("/workspace/scripts/game/main.vela");
+    let text = "\
+pub fn main(amount: i64) -> i64 {
+    let next = amount + 1
+    return next + amount
+}";
+    let databases = databases_for(vec![SourceFileSnapshot::new(document.clone(), text)]);
+
+    let references = databases.references(
+        &document,
+        Position::new(2, line(text, 2).find("amount").expect("amount use")),
+        true,
+    );
+
+    assert_eq!(references.len(), 3, "{references:?}");
+    assert_reference(
+        &references,
+        0,
+        line(text, 0).find("amount").expect("parameter declaration"),
+        ReferenceKind::Declaration,
+    );
+    assert_reference(
+        &references,
+        1,
+        line(text, 1).find("amount").expect("first read"),
+        ReferenceKind::Read,
+    );
+    assert_reference(
+        &references,
+        2,
+        line(text, 2).find("amount").expect("second read"),
+        ReferenceKind::Read,
+    );
+}
+
+#[test]
+fn references_can_exclude_local_declaration() {
+    let document = DocumentId::from("/workspace/scripts/game/main.vela");
+    let text = "pub fn main(amount: i64) -> i64 { return amount }";
+    let databases = databases_for(vec![SourceFileSnapshot::new(document.clone(), text)]);
+
+    let references = databases.references(
+        &document,
+        Position::new(0, text.find("amount").expect("parameter declaration")),
+        false,
+    );
+
+    assert_eq!(references.len(), 1);
+    assert_reference(
+        &references,
+        0,
+        text.rfind("amount").expect("parameter read"),
+        ReferenceKind::Read,
+    );
+}
+
+#[test]
+fn references_find_imported_function_uses() {
+    let main = DocumentId::from("/workspace/scripts/game/main.vela");
+    let helper = DocumentId::from("/workspace/scripts/game/reward.vela");
+    let main_text = "\
+use game::reward::grant
+pub fn main(amount: i64) -> i64 {
+    let first = grant(amount)
+    return grant(first)
+}";
+    let helper_text = "pub fn grant(amount: i64) -> i64 { return amount }";
+    let databases = databases_for(vec![
+        SourceFileSnapshot::new(main.clone(), main_text),
+        SourceFileSnapshot::new(helper.clone(), helper_text),
+    ]);
+
+    let references = databases.references(
+        &main,
+        Position::new(2, line(main_text, 2).find("grant").expect("grant call")),
+        true,
+    );
+
+    assert_eq!(references.len(), 4);
+    assert_reference_in_document(
+        &references,
+        &helper,
+        0,
+        helper_text.find("grant").expect("function declaration"),
+        ReferenceKind::Declaration,
+    );
+    assert_reference_in_document(
+        &references,
+        &main,
+        0,
+        line(main_text, 0).find("grant").expect("import"),
+        ReferenceKind::Import,
+    );
+    assert_reference_in_document(
+        &references,
+        &main,
+        2,
+        line(main_text, 2).find("grant").expect("first call"),
+        ReferenceKind::Call,
+    );
+    assert_reference_in_document(
+        &references,
+        &main,
+        3,
+        line(main_text, 3).find("grant").expect("second call"),
+        ReferenceKind::Call,
+    );
+}
+
+#[test]
+fn references_find_field_reads_and_writes() {
+    let document = DocumentId::from("/workspace/scripts/game/main.vela");
+    let text = "\
+pub struct Reward {
+    amount: i64
+}
+
+pub fn main(reward: Reward) -> i64 {
+    let first = reward.amount
+    reward.amount += 1
+    return reward.amount + first
+}";
+    let databases = databases_for(vec![SourceFileSnapshot::new(document.clone(), text)]);
+
+    let references = databases.references(
+        &document,
+        Position::new(5, line(text, 5).find("amount").expect("first field read")),
+        true,
+    );
+
+    assert_eq!(references.len(), 4);
+    assert_reference(
+        &references,
+        1,
+        line(text, 1).find("amount").expect("field declaration"),
+        ReferenceKind::Declaration,
+    );
+    assert_reference(
+        &references,
+        5,
+        line(text, 5).find("amount").expect("first field read"),
+        ReferenceKind::Read,
+    );
+    assert_reference(
+        &references,
+        6,
+        line(text, 6).find("amount").expect("field write"),
+        ReferenceKind::Write,
+    );
+    assert_reference(
+        &references,
+        7,
+        line(text, 7).find("amount").expect("second field read"),
+        ReferenceKind::Read,
+    );
+}
+
+#[test]
+fn references_find_enum_variant_constructors_and_patterns() {
+    let document = DocumentId::from("/workspace/scripts/game/main.vela");
+    let text = "\
+pub enum QuestState {
+    Active { count: i64 },
+    Done
+}
+
+pub fn active(count: i64) -> QuestState {
+    return QuestState::Active { count: count }
+}
+
+pub fn main(state: QuestState) -> i64 {
+    match state {
+        QuestState::Active { count } => { return count }
+        QuestState::Done => { return 0 }
+    }
+}";
+    let databases = databases_for(vec![SourceFileSnapshot::new(document.clone(), text)]);
+
+    let references = databases.references(
+        &document,
+        Position::new(
+            6,
+            line(text, 6)
+                .find("Active")
+                .expect("Active constructor use"),
+        ),
+        true,
+    );
+
+    assert_eq!(references.len(), 3, "{references:?}");
+    assert_reference(
+        &references,
+        1,
+        line(text, 1).find("Active").expect("Active declaration"),
+        ReferenceKind::Declaration,
+    );
+    assert_reference(
+        &references,
+        6,
+        line(text, 6)
+            .find("Active")
+            .expect("Active constructor use"),
+        ReferenceKind::Read,
+    );
+    assert_reference(
+        &references,
+        11,
+        line(text, 11).find("Active").expect("Active pattern use"),
+        ReferenceKind::Pattern,
+    );
+}
+
+#[test]
+fn document_highlight_marks_local_declaration_and_reads() {
+    let document = DocumentId::from("/workspace/scripts/game/main.vela");
+    let text = "\
+pub fn main(amount: i64) -> i64 {
+    let next = amount + 1
+    return next + amount
+}";
+    let databases = databases_for(vec![SourceFileSnapshot::new(document.clone(), text)]);
+
+    let highlights = databases.document_highlights(
+        &document,
+        Position::new(2, line(text, 2).find("amount").expect("amount use")),
+    );
+
+    assert_eq!(highlights.len(), 3);
+    assert_highlight(
+        &highlights,
+        0,
+        line(text, 0).find("amount").expect("parameter declaration"),
+        DocumentHighlightKind::Text,
+    );
+    assert_highlight(
+        &highlights,
+        1,
+        line(text, 1).find("amount").expect("first read"),
+        DocumentHighlightKind::Read,
+    );
+    assert_highlight(
+        &highlights,
+        2,
+        line(text, 2).find("amount").expect("second read"),
+        DocumentHighlightKind::Read,
+    );
+}
+
+#[test]
+fn document_highlight_marks_import_and_calls_in_active_document() {
+    let main = DocumentId::from("/workspace/scripts/game/main.vela");
+    let helper = DocumentId::from("/workspace/scripts/game/reward.vela");
+    let main_text = "\
+use game::reward::grant
+pub fn main(amount: i64) -> i64 {
+    let first = grant(amount)
+    return grant(first)
+}";
+    let helper_text = "pub fn grant(amount: i64) -> i64 { return amount }";
+    let databases = databases_for(vec![
+        SourceFileSnapshot::new(main.clone(), main_text),
+        SourceFileSnapshot::new(helper, helper_text),
+    ]);
+
+    let highlights = databases.document_highlights(
+        &main,
+        Position::new(2, line(main_text, 2).find("grant").expect("grant call")),
+    );
+
+    assert_eq!(highlights.len(), 3);
+    assert_highlight(
+        &highlights,
+        0,
+        line(main_text, 0).find("grant").expect("import"),
+        DocumentHighlightKind::Text,
+    );
+    assert_highlight(
+        &highlights,
+        2,
+        line(main_text, 2).find("grant").expect("first call"),
+        DocumentHighlightKind::Call,
+    );
+    assert_highlight(
+        &highlights,
+        3,
+        line(main_text, 3).find("grant").expect("second call"),
+        DocumentHighlightKind::Call,
+    );
+}
+
+#[test]
+fn document_highlight_marks_read_write_call() {
+    let document = DocumentId::from("/workspace/scripts/game/main.vela");
+    let text = "\
+pub fn grant(amount: i64) -> i64 { return amount }
+pub fn main(amount: i64) -> i64 {
+    let score = amount
+    score += grant(amount)
+    return score + grant(score)
+}";
+    let databases = databases_for(vec![SourceFileSnapshot::new(document.clone(), text)]);
+
+    let score_highlights = databases.document_highlights(
+        &document,
+        Position::new(3, line(text, 3).find("score").expect("score write")),
+    );
+
+    assert_eq!(score_highlights.len(), 4);
+    assert_highlight(
+        &score_highlights,
+        2,
+        line(text, 2).find("score").expect("score declaration"),
+        DocumentHighlightKind::Text,
+    );
+    assert_highlight(
+        &score_highlights,
+        3,
+        line(text, 3).find("score").expect("score write"),
+        DocumentHighlightKind::Write,
+    );
+    assert_highlight(
+        &score_highlights,
+        4,
+        line(text, 4).find("score").expect("score read"),
+        DocumentHighlightKind::Read,
+    );
+    assert_highlight(
+        &score_highlights,
+        4,
+        line(text, 4).rfind("score").expect("score argument read"),
+        DocumentHighlightKind::Read,
+    );
+
+    let grant_highlights = databases.document_highlights(
+        &document,
+        Position::new(3, line(text, 3).find("grant").expect("grant call")),
+    );
+
+    assert_eq!(grant_highlights.len(), 3);
+    assert_highlight(
+        &grant_highlights,
+        0,
+        line(text, 0).find("grant").expect("grant declaration"),
+        DocumentHighlightKind::Text,
+    );
+    assert_highlight(
+        &grant_highlights,
+        3,
+        line(text, 3).find("grant").expect("first grant call"),
+        DocumentHighlightKind::Call,
+    );
+    assert_highlight(
+        &grant_highlights,
+        4,
+        line(text, 4).find("grant").expect("second grant call"),
+        DocumentHighlightKind::Call,
+    );
+}
+
+fn assert_reference(references: &[Reference], line: usize, character: usize, kind: ReferenceKind) {
+    assert!(
+        references.iter().any(|reference| {
+            reference.range().start().line == line
+                && reference.range().start().character == character
+                && reference.kind() == kind
+        }),
+        "{references:?}"
+    );
+}
+
+fn assert_reference_in_document(
+    references: &[Reference],
+    document_id: &DocumentId,
+    line: usize,
+    character: usize,
+    kind: ReferenceKind,
+) {
+    assert!(
+        references.iter().any(|reference| {
+            reference.document_id() == document_id
+                && reference.range().start().line == line
+                && reference.range().start().character == character
+                && reference.kind() == kind
+        }),
+        "{references:?}"
+    );
+}
+
+fn assert_highlight(
+    highlights: &[DocumentHighlight],
+    line: usize,
+    character: usize,
+    kind: DocumentHighlightKind,
+) {
+    assert!(
+        highlights.iter().any(|highlight| {
+            highlight.range().start().line == line
+                && highlight.range().start().character == character
+                && highlight.kind() == kind
+        }),
+        "{highlights:?}"
+    );
+}
+
+fn line(text: &str, line: usize) -> &str {
+    text.lines().nth(line).expect("line should exist")
+}
+
+fn databases_for(files: Vec<SourceFileSnapshot>) -> LanguageServiceDatabases {
+    let config = WorkspaceConfig::workspace([WorkspaceRoot::from("/workspace/scripts")]);
+    let project = assemble_project_sources(&config, &files, &Workspace::new().snapshot());
+    let mut databases = LanguageServiceDatabases::new();
+    databases.update(&project);
+    databases
+}

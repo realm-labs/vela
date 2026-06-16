@@ -15,6 +15,7 @@ pub enum ReferenceKind {
     Declaration,
     Import,
     Call,
+    Pattern,
     Read,
     Write,
 }
@@ -80,6 +81,12 @@ struct FieldReferenceTarget {
     field: String,
 }
 
+#[derive(Debug, Clone, Eq, PartialEq)]
+struct EnumVariantReferenceTarget {
+    owner: HirDeclId,
+    variant: String,
+}
+
 impl LanguageServiceDatabases {
     #[must_use]
     pub fn document_highlights(
@@ -122,6 +129,11 @@ impl LanguageServiceDatabases {
         {
             return self.script_field_references(&target, include_declaration);
         }
+        if let Some(target) =
+            enum_variant_declaration_target(graph, source_id, source.text(), &token)
+        {
+            return self.enum_variant_references(&target, include_declaration);
+        }
 
         for declaration in graph.declarations() {
             if declaration.span.source != source_id || !declaration.span.contains(offset) {
@@ -132,6 +144,9 @@ impl LanguageServiceDatabases {
             };
             if let Some(local) = local_reference_target(source.text(), bindings, &token) {
                 return self.local_references(bindings, local, include_declaration);
+            }
+            if let Some(target) = enum_variant_use_target(graph, bindings, source.text(), &token) {
+                return self.enum_variant_references(&target.target, include_declaration);
             }
             if let Some(declaration) = declaration_reference_target(bindings, &token) {
                 return self.declaration_references(declaration, include_declaration);
@@ -297,6 +312,38 @@ impl LanguageServiceDatabases {
         references
     }
 
+    fn enum_variant_references(
+        &self,
+        target: &EnumVariantReferenceTarget,
+        include_declaration: bool,
+    ) -> Vec<Reference> {
+        let graph = self.hir_db().graph();
+        let mut references = Vec::new();
+
+        if include_declaration
+            && let Some(reference) = self.reference_for_enum_variant_declaration(target)
+        {
+            references.push(reference);
+        }
+
+        for source in self.source_db().records().values() {
+            references.extend(enum_variant_use_references_for_source(
+                graph, source, target,
+            ));
+        }
+
+        references.sort_by_key(|reference| {
+            let start = reference.range.start();
+            (
+                reference.document_id.as_str().to_owned(),
+                start.line,
+                start.character,
+                reference.kind,
+            )
+        });
+        references
+    }
+
     fn reference_for_declaration(
         &self,
         declaration: &Declaration,
@@ -360,6 +407,27 @@ impl LanguageServiceDatabases {
         })
     }
 
+    fn reference_for_enum_variant_declaration(
+        &self,
+        target: &EnumVariantReferenceTarget,
+    ) -> Option<Reference> {
+        let graph = self.hir_db().graph();
+        let variant = graph
+            .enum_shape(target.owner)?
+            .variants
+            .iter()
+            .find(|variant| variant.name == target.variant)?;
+        let source = self.source_record_for_reference(variant.span.source)?;
+        let span_range = span_text_range(variant.span)?;
+        let name_range =
+            name_range_in_text(source.text(), span_range, &variant.name).unwrap_or(span_range);
+        Some(Reference {
+            document_id: source.document_id().clone(),
+            range: diagnostic_range(source.text(), name_range),
+            kind: ReferenceKind::Declaration,
+        })
+    }
+
     fn reference_for_resolved_use_span(&self, span: Span) -> Option<Reference> {
         let source = self.source_record_for_reference(span.source)?;
         let range = span_text_range(span)?;
@@ -401,6 +469,35 @@ fn script_field_declaration_target(
                 return Some(FieldReferenceTarget {
                     owner: declaration.id,
                     field: field.name.clone(),
+                });
+            }
+        }
+    }
+    None
+}
+
+fn enum_variant_declaration_target(
+    graph: &ModuleGraph,
+    source_id: SourceId,
+    text: &str,
+    token: &ReferenceToken,
+) -> Option<EnumVariantReferenceTarget> {
+    let start = u32::try_from(token.range.start).ok()?;
+    for declaration in graph.declarations() {
+        if declaration.kind != DeclarationKind::Enum
+            || declaration.span.source != source_id
+            || !declaration.span.contains(start)
+        {
+            continue;
+        }
+        let shape = graph.enum_shape(declaration.id)?;
+        for variant in &shape.variants {
+            let span_range = span_text_range(variant.span)?;
+            let name_range = name_range_in_text(text, span_range, &variant.name)?;
+            if name_range.start <= token.range.start && token.range.end <= name_range.end {
+                return Some(EnumVariantReferenceTarget {
+                    owner: declaration.id,
+                    variant: variant.name.clone(),
                 });
             }
         }
@@ -485,6 +582,141 @@ fn member_field_ranges(source_id: SourceId, text: &str, field: &str) -> Vec<Text
             | TokenKind::Eof => None,
         })
         .collect()
+}
+
+#[derive(Debug, Clone, Eq, PartialEq)]
+struct EnumVariantUseTarget {
+    target: EnumVariantReferenceTarget,
+    kind: ReferenceKind,
+}
+
+fn enum_variant_use_target(
+    graph: &ModuleGraph,
+    bindings: &BindingMap,
+    text: &str,
+    token: &ReferenceToken,
+) -> Option<EnumVariantUseTarget> {
+    let path = path_ending_at(text, token.range)?;
+    let variant = path.last()?;
+    if let Some(BindingResolution::Declaration(owner)) = bindings.pattern_resolution(&path)
+        && enum_variant_exists(graph, *owner, variant)
+    {
+        return Some(EnumVariantUseTarget {
+            target: EnumVariantReferenceTarget {
+                owner: *owner,
+                variant: variant.clone(),
+            },
+            kind: ReferenceKind::Pattern,
+        });
+    }
+
+    match narrowest_resolution_at_token(bindings, token)? {
+        BindingResolution::Declaration(owner) if enum_variant_exists(graph, *owner, variant) => {
+            Some(EnumVariantUseTarget {
+                target: EnumVariantReferenceTarget {
+                    owner: *owner,
+                    variant: variant.clone(),
+                },
+                kind: resolved_use_reference_kind(text, token.range),
+            })
+        }
+        BindingResolution::Declaration(_)
+        | BindingResolution::Local(_)
+        | BindingResolution::Import(_)
+        | BindingResolution::QualifiedPath(_) => None,
+    }
+}
+
+fn enum_variant_use_references_for_source(
+    graph: &ModuleGraph,
+    source: &crate::SourceRecord,
+    target: &EnumVariantReferenceTarget,
+) -> Vec<Reference> {
+    let mut references = Vec::new();
+    let source_id = source.source_id();
+    let text = source.text();
+    for range in path_segment_ranges(source_id, text, &target.variant) {
+        let Some(start) = u32::try_from(range.start).ok() else {
+            continue;
+        };
+        for declaration in graph.declarations() {
+            if declaration.span.source != source_id || !declaration.span.contains(start) {
+                continue;
+            }
+            let Some(bindings) = graph.bindings(declaration.id) else {
+                continue;
+            };
+            let Some(found) =
+                enum_variant_use_target(graph, bindings, text, &ReferenceToken { range })
+            else {
+                continue;
+            };
+            if found.target == *target {
+                references.push(Reference {
+                    document_id: source.document_id().clone(),
+                    range: diagnostic_range(text, range),
+                    kind: found.kind,
+                });
+                break;
+            }
+        }
+    }
+    references
+}
+
+fn enum_variant_exists(graph: &ModuleGraph, owner: HirDeclId, variant: &str) -> bool {
+    graph
+        .enum_shape(owner)
+        .is_some_and(|shape| shape.variants.iter().any(|entry| entry.name == variant))
+}
+
+fn path_segment_ranges(source_id: SourceId, text: &str, name: &str) -> Vec<TextRange> {
+    lex(source_id, text)
+        .tokens
+        .into_iter()
+        .filter_map(|token| match token.kind {
+            TokenKind::Ident(token_name) if token_name == name => {
+                let range = span_text_range(token.span)?;
+                path_ending_at(text, range).map(|_| range)
+            }
+            TokenKind::Ident(_)
+            | TokenKind::Int(_)
+            | TokenKind::Float(_)
+            | TokenKind::Char(_)
+            | TokenKind::String(_)
+            | TokenKind::InterpolatedString(_)
+            | TokenKind::Bytes(_)
+            | TokenKind::Keyword(_)
+            | TokenKind::Symbol(_)
+            | TokenKind::Eof => None,
+        })
+        .collect()
+}
+
+fn path_ending_at(text: &str, range: TextRange) -> Option<Vec<String>> {
+    let mut path = vec![token_text(text, range)?.to_owned()];
+    let mut cursor = range.start;
+    loop {
+        let before_segment = text.get(..cursor)?.trim_end();
+        let Some(before_separator) = before_segment.strip_suffix("::").map(str::trim_end) else {
+            break;
+        };
+        let end = before_separator.len();
+        let start = before_separator
+            .char_indices()
+            .rev()
+            .find_map(|(index, ch)| (!is_identifier_continue(ch)).then_some(index + ch.len_utf8()))
+            .unwrap_or(0);
+        if start == end {
+            break;
+        }
+        path.push(text.get(start..end)?.to_owned());
+        cursor = start;
+    }
+    (path.len() > 1).then(|| {
+        path.reverse();
+        path
+    })
 }
 
 fn script_field_target_for_member(
@@ -731,7 +963,9 @@ const fn document_highlight_kind(kind: ReferenceKind) -> DocumentHighlightKind {
         ReferenceKind::Call => DocumentHighlightKind::Call,
         ReferenceKind::Read => DocumentHighlightKind::Read,
         ReferenceKind::Write => DocumentHighlightKind::Write,
-        ReferenceKind::Declaration | ReferenceKind::Import => DocumentHighlightKind::Text,
+        ReferenceKind::Declaration | ReferenceKind::Import | ReferenceKind::Pattern => {
+            DocumentHighlightKind::Text
+        }
     }
 }
 
@@ -782,377 +1016,4 @@ fn is_identifier_continue(ch: char) -> bool {
 }
 
 #[cfg(test)]
-mod tests {
-    use super::*;
-    use crate::{
-        SourceFileSnapshot, Workspace, WorkspaceConfig, WorkspaceRoot, assemble_project_sources,
-    };
-
-    #[test]
-    fn references_find_local_binding_uses() {
-        let document = DocumentId::from("/workspace/scripts/game/main.vela");
-        let text = "\
-pub fn main(amount: i64) -> i64 {
-    let next = amount + 1
-    return next + amount
-}";
-        let databases = databases_for(vec![SourceFileSnapshot::new(document.clone(), text)]);
-
-        let references = databases.references(
-            &document,
-            Position::new(2, line(text, 2).find("amount").expect("amount use")),
-            true,
-        );
-
-        assert_eq!(references.len(), 3);
-        assert_reference(
-            &references,
-            0,
-            line(text, 0).find("amount").expect("parameter declaration"),
-            ReferenceKind::Declaration,
-        );
-        assert_reference(
-            &references,
-            1,
-            line(text, 1).find("amount").expect("first read"),
-            ReferenceKind::Read,
-        );
-        assert_reference(
-            &references,
-            2,
-            line(text, 2).find("amount").expect("second read"),
-            ReferenceKind::Read,
-        );
-    }
-
-    #[test]
-    fn references_can_exclude_local_declaration() {
-        let document = DocumentId::from("/workspace/scripts/game/main.vela");
-        let text = "pub fn main(amount: i64) -> i64 { return amount }";
-        let databases = databases_for(vec![SourceFileSnapshot::new(document.clone(), text)]);
-
-        let references = databases.references(
-            &document,
-            Position::new(0, text.find("amount").expect("parameter declaration")),
-            false,
-        );
-
-        assert_eq!(references.len(), 1);
-        assert_reference(
-            &references,
-            0,
-            text.rfind("amount").expect("parameter read"),
-            ReferenceKind::Read,
-        );
-    }
-
-    #[test]
-    fn references_find_imported_function_uses() {
-        let main = DocumentId::from("/workspace/scripts/game/main.vela");
-        let helper = DocumentId::from("/workspace/scripts/game/reward.vela");
-        let main_text = "\
-use game::reward::grant
-pub fn main(amount: i64) -> i64 {
-    let first = grant(amount)
-    return grant(first)
-}";
-        let helper_text = "pub fn grant(amount: i64) -> i64 { return amount }";
-        let databases = databases_for(vec![
-            SourceFileSnapshot::new(main.clone(), main_text),
-            SourceFileSnapshot::new(helper.clone(), helper_text),
-        ]);
-
-        let references = databases.references(
-            &main,
-            Position::new(2, line(main_text, 2).find("grant").expect("grant call")),
-            true,
-        );
-
-        assert_eq!(references.len(), 4);
-        assert_reference_in_document(
-            &references,
-            &helper,
-            0,
-            helper_text.find("grant").expect("function declaration"),
-            ReferenceKind::Declaration,
-        );
-        assert_reference_in_document(
-            &references,
-            &main,
-            0,
-            line(main_text, 0).find("grant").expect("import"),
-            ReferenceKind::Import,
-        );
-        assert_reference_in_document(
-            &references,
-            &main,
-            2,
-            line(main_text, 2).find("grant").expect("first call"),
-            ReferenceKind::Call,
-        );
-        assert_reference_in_document(
-            &references,
-            &main,
-            3,
-            line(main_text, 3).find("grant").expect("second call"),
-            ReferenceKind::Call,
-        );
-    }
-
-    #[test]
-    fn references_find_field_reads_and_writes() {
-        let document = DocumentId::from("/workspace/scripts/game/main.vela");
-        let text = "\
-pub struct Reward {
-    amount: i64
-}
-
-pub fn main(reward: Reward) -> i64 {
-    let first = reward.amount
-    reward.amount += 1
-    return reward.amount + first
-}";
-        let databases = databases_for(vec![SourceFileSnapshot::new(document.clone(), text)]);
-
-        let references = databases.references(
-            &document,
-            Position::new(5, line(text, 5).find("amount").expect("first field read")),
-            true,
-        );
-
-        assert_eq!(references.len(), 4);
-        assert_reference(
-            &references,
-            1,
-            line(text, 1).find("amount").expect("field declaration"),
-            ReferenceKind::Declaration,
-        );
-        assert_reference(
-            &references,
-            5,
-            line(text, 5).find("amount").expect("first field read"),
-            ReferenceKind::Read,
-        );
-        assert_reference(
-            &references,
-            6,
-            line(text, 6).find("amount").expect("field write"),
-            ReferenceKind::Write,
-        );
-        assert_reference(
-            &references,
-            7,
-            line(text, 7).find("amount").expect("second field read"),
-            ReferenceKind::Read,
-        );
-    }
-
-    #[test]
-    fn document_highlight_marks_local_declaration_and_reads() {
-        let document = DocumentId::from("/workspace/scripts/game/main.vela");
-        let text = "\
-pub fn main(amount: i64) -> i64 {
-    let next = amount + 1
-    return next + amount
-}";
-        let databases = databases_for(vec![SourceFileSnapshot::new(document.clone(), text)]);
-
-        let highlights = databases.document_highlights(
-            &document,
-            Position::new(2, line(text, 2).find("amount").expect("amount use")),
-        );
-
-        assert_eq!(highlights.len(), 3);
-        assert_highlight(
-            &highlights,
-            0,
-            line(text, 0).find("amount").expect("parameter declaration"),
-            DocumentHighlightKind::Text,
-        );
-        assert_highlight(
-            &highlights,
-            1,
-            line(text, 1).find("amount").expect("first read"),
-            DocumentHighlightKind::Read,
-        );
-        assert_highlight(
-            &highlights,
-            2,
-            line(text, 2).find("amount").expect("second read"),
-            DocumentHighlightKind::Read,
-        );
-    }
-
-    #[test]
-    fn document_highlight_marks_import_and_calls_in_active_document() {
-        let main = DocumentId::from("/workspace/scripts/game/main.vela");
-        let helper = DocumentId::from("/workspace/scripts/game/reward.vela");
-        let main_text = "\
-use game::reward::grant
-pub fn main(amount: i64) -> i64 {
-    let first = grant(amount)
-    return grant(first)
-}";
-        let helper_text = "pub fn grant(amount: i64) -> i64 { return amount }";
-        let databases = databases_for(vec![
-            SourceFileSnapshot::new(main.clone(), main_text),
-            SourceFileSnapshot::new(helper, helper_text),
-        ]);
-
-        let highlights = databases.document_highlights(
-            &main,
-            Position::new(2, line(main_text, 2).find("grant").expect("grant call")),
-        );
-
-        assert_eq!(highlights.len(), 3);
-        assert_highlight(
-            &highlights,
-            0,
-            line(main_text, 0).find("grant").expect("import"),
-            DocumentHighlightKind::Text,
-        );
-        assert_highlight(
-            &highlights,
-            2,
-            line(main_text, 2).find("grant").expect("first call"),
-            DocumentHighlightKind::Call,
-        );
-        assert_highlight(
-            &highlights,
-            3,
-            line(main_text, 3).find("grant").expect("second call"),
-            DocumentHighlightKind::Call,
-        );
-    }
-
-    #[test]
-    fn document_highlight_marks_read_write_call() {
-        let document = DocumentId::from("/workspace/scripts/game/main.vela");
-        let text = "\
-pub fn grant(amount: i64) -> i64 { return amount }
-pub fn main(amount: i64) -> i64 {
-    let score = amount
-    score += grant(amount)
-    return score + grant(score)
-}";
-        let databases = databases_for(vec![SourceFileSnapshot::new(document.clone(), text)]);
-
-        let score_highlights = databases.document_highlights(
-            &document,
-            Position::new(3, line(text, 3).find("score").expect("score write")),
-        );
-
-        assert_eq!(score_highlights.len(), 4);
-        assert_highlight(
-            &score_highlights,
-            2,
-            line(text, 2).find("score").expect("score declaration"),
-            DocumentHighlightKind::Text,
-        );
-        assert_highlight(
-            &score_highlights,
-            3,
-            line(text, 3).find("score").expect("score write"),
-            DocumentHighlightKind::Write,
-        );
-        assert_highlight(
-            &score_highlights,
-            4,
-            line(text, 4).find("score").expect("score read"),
-            DocumentHighlightKind::Read,
-        );
-        assert_highlight(
-            &score_highlights,
-            4,
-            line(text, 4).rfind("score").expect("score argument read"),
-            DocumentHighlightKind::Read,
-        );
-
-        let grant_highlights = databases.document_highlights(
-            &document,
-            Position::new(3, line(text, 3).find("grant").expect("grant call")),
-        );
-
-        assert_eq!(grant_highlights.len(), 3);
-        assert_highlight(
-            &grant_highlights,
-            0,
-            line(text, 0).find("grant").expect("grant declaration"),
-            DocumentHighlightKind::Text,
-        );
-        assert_highlight(
-            &grant_highlights,
-            3,
-            line(text, 3).find("grant").expect("first grant call"),
-            DocumentHighlightKind::Call,
-        );
-        assert_highlight(
-            &grant_highlights,
-            4,
-            line(text, 4).find("grant").expect("second grant call"),
-            DocumentHighlightKind::Call,
-        );
-    }
-
-    fn assert_reference(
-        references: &[Reference],
-        line: usize,
-        character: usize,
-        kind: ReferenceKind,
-    ) {
-        assert!(
-            references.iter().any(|reference| {
-                reference.range().start().line == line
-                    && reference.range().start().character == character
-                    && reference.kind() == kind
-            }),
-            "{references:?}"
-        );
-    }
-
-    fn assert_reference_in_document(
-        references: &[Reference],
-        document_id: &DocumentId,
-        line: usize,
-        character: usize,
-        kind: ReferenceKind,
-    ) {
-        assert!(
-            references.iter().any(|reference| {
-                reference.document_id() == document_id
-                    && reference.range().start().line == line
-                    && reference.range().start().character == character
-                    && reference.kind() == kind
-            }),
-            "{references:?}"
-        );
-    }
-
-    fn assert_highlight(
-        highlights: &[DocumentHighlight],
-        line: usize,
-        character: usize,
-        kind: DocumentHighlightKind,
-    ) {
-        assert!(
-            highlights.iter().any(|highlight| {
-                highlight.range().start().line == line
-                    && highlight.range().start().character == character
-                    && highlight.kind() == kind
-            }),
-            "{highlights:?}"
-        );
-    }
-
-    fn line(text: &str, line: usize) -> &str {
-        text.lines().nth(line).expect("line should exist")
-    }
-
-    fn databases_for(files: Vec<SourceFileSnapshot>) -> LanguageServiceDatabases {
-        let config = WorkspaceConfig::workspace([WorkspaceRoot::from("/workspace/scripts")]);
-        let project = assemble_project_sources(&config, &files, &Workspace::new().snapshot());
-        let mut databases = LanguageServiceDatabases::new();
-        databases.update(&project);
-        databases
-    }
-}
+mod tests;
