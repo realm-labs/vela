@@ -636,6 +636,7 @@ impl Parser {
         } else if self.eat_symbol(Symbol::LBrace).is_some() {
             let mut fields = Vec::new();
             while !self.at_eof() && !self.check_symbol(Symbol::RBrace) {
+                let span = self.current().span;
                 let name = self
                     .expect_ident("expected pattern field")
                     .unwrap_or_default();
@@ -644,7 +645,11 @@ impl Parser {
                 } else {
                     None
                 };
-                fields.push(RecordPatternField { name, pattern });
+                fields.push(RecordPatternField {
+                    name,
+                    span,
+                    pattern,
+                });
                 if self.eat_symbol(Symbol::Comma).is_none() {
                     break;
                 }

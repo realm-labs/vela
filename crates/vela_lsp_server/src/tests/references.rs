@@ -471,6 +471,86 @@ pub fn main(state: QuestState) -> i64 {
 }
 
 #[test]
+fn lsp_references_find_enum_record_variant_field_labels_and_patterns() {
+    let mut server = LspServer::new();
+    let _ = response_value(server.handle_json(&request(
+        1,
+        "initialize",
+        serde_json::json!({
+            "processId": null,
+            "rootUri": "file:///workspace/scripts",
+            "capabilities": {}
+        }),
+    )));
+    let text = "\
+pub enum QuestState {
+    Active { count: i64 },
+    Done
+}
+
+pub fn active(count: i64) -> QuestState {
+    return QuestState::Active { count: count }
+}
+
+pub fn main(state: QuestState) -> i64 {
+    match state {
+        QuestState::Active { count: current } => { return current }
+        QuestState::Done => { return 0 }
+    }
+}";
+    let uri = "file:///workspace/scripts/game/main.vela";
+    let _ = notification_value(server.handle_json(&notification(
+        "textDocument/didOpen",
+        serde_json::json!({
+            "textDocument": {
+                "uri": uri,
+                "languageId": "vela",
+                "version": 1,
+                "text": text
+            }
+        }),
+    )));
+
+    let response = response_value(server.handle_json(&request(
+        2,
+        "textDocument/references",
+        serde_json::json!({
+            "textDocument": { "uri": uri },
+            "position": {
+                "line": 1,
+                "character": line(text, 1).find("count").expect("field declaration")
+            },
+            "context": { "includeDeclaration": true }
+        }),
+    )));
+    let references = response["result"]
+        .as_array()
+        .expect("references response should be an array");
+
+    assert_eq!(references.len(), 3, "{references:?}");
+    assert_reference(
+        references,
+        uri,
+        1,
+        line(text, 1).find("count").expect("field declaration"),
+    );
+    assert_reference(
+        references,
+        uri,
+        6,
+        line(text, 6)
+            .find("count")
+            .expect("constructor field label"),
+    );
+    assert_reference(
+        references,
+        uri,
+        11,
+        line(text, 11).find("count").expect("pattern field label"),
+    );
+}
+
+#[test]
 fn lsp_references_find_script_method_calls() {
     let mut server = LspServer::new();
     let _ = response_value(server.handle_json(&request(

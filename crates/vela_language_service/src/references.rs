@@ -15,6 +15,7 @@ mod fields;
 mod methods;
 mod record_fields;
 pub(crate) mod schema;
+mod variant_fields;
 
 #[derive(Debug, Clone, Copy, Eq, Ord, PartialEq, PartialOrd)]
 pub enum ReferenceKind {
@@ -142,6 +143,18 @@ impl LanguageServiceDatabases {
         {
             return self.enum_variant_references(&target, include_declaration);
         }
+        if let Some(target) = variant_fields::script_variant_field_declaration_target(
+            graph,
+            source_id,
+            source.text(),
+            &token,
+        ) {
+            return variant_fields::script_variant_field_references(
+                self,
+                &target,
+                include_declaration,
+            );
+        }
         if let Some(target) = schema::schema_variant_declaration_target(self, source_id, &token) {
             return schema::schema_variant_references(self, &target, include_declaration);
         }
@@ -184,6 +197,20 @@ impl LanguageServiceDatabases {
                     fields::script_record_field_use_target(graph, parsed, source.text(), &token)
             {
                 return fields::script_field_references(self, &target, include_declaration);
+            }
+            if let Some(parsed) = self.parse_db().parsed_source(document_id)
+                && let Some(target) = variant_fields::script_variant_field_use_target(
+                    graph,
+                    parsed,
+                    source.text(),
+                    &token,
+                )
+            {
+                return variant_fields::script_variant_field_references(
+                    self,
+                    &target,
+                    include_declaration,
+                );
             }
             if let Some(declaration) = declaration_reference_target(bindings, &token) {
                 return self.declaration_references(declaration, include_declaration);
@@ -1052,3 +1079,5 @@ mod highlight_tests;
 mod schema_field_tests;
 #[cfg(test)]
 mod tests;
+#[cfg(test)]
+mod variant_field_tests;

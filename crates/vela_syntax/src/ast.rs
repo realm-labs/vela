@@ -311,6 +311,7 @@ pub enum Pattern {
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct RecordPatternField {
     pub name: String,
+    pub span: Span,
     pub pattern: Option<Pattern>,
 }
 

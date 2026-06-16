@@ -615,6 +615,8 @@ Purpose: support workspace navigation and prepare rename.
   - [x] Index source-owned record-constructor shorthand field labels.
   - [x] Index source-owned enum variant declarations, constructor uses, and
     match-pattern uses.
+  - [x] Index source-owned enum record-variant field declarations plus
+    constructor and match-pattern labels.
   - [x] Index source-owned inherent script method declarations and typed
     receiver call sites.
   - [x] Index source-owned trait declarations and `impl Trait for Type` uses.
@@ -643,6 +645,8 @@ Purpose: support workspace navigation and prepare rename.
     shorthand token.
   - [x] Track source-owned enum variant declaration/read/pattern reference
     kinds.
+  - [x] Track source-owned enum record-variant field declaration/read/pattern
+    reference kinds.
   - [x] Track schema-backed variant declaration/read/pattern reference kinds.
 - [~] Implement `textDocument/references`.
   - [x] Serve local binding references through the native LSP request.
@@ -656,6 +660,8 @@ Purpose: support workspace navigation and prepare rename.
     through the native LSP request.
   - [x] Serve source-owned enum variant references through the native LSP
     request.
+  - [x] Serve source-owned enum record-variant field references through the
+    native LSP request.
   - [x] Serve source-owned script method references through the native LSP
     request.
   - [x] Serve source-owned trait impl references through the native LSP
@@ -706,6 +712,8 @@ Tests:
 - [x] `lsp_references_find_record_constructor_shorthand_field_labels`
 - [x] `references_find_enum_variant_constructors_and_patterns`
 - [x] `lsp_references_find_enum_variant_constructors_and_patterns`
+- [x] `references_find_enum_record_variant_field_labels_and_patterns`
+- [x] `lsp_references_find_enum_record_variant_field_labels_and_patterns`
 - [x] `references_find_script_method_calls`
 - [x] `lsp_references_find_script_method_calls`
 - [x] `references_find_trait_impl_uses`
