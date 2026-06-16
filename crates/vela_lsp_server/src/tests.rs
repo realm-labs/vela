@@ -593,6 +593,51 @@ pub fn main(player: Player) { grant(player: player, ) }
         assert_no_completion(&response, "player");
     }
 
+    #[test]
+    fn lsp_lambda_parameter_completion_uses_pipe_trigger_context() {
+        let mut server = LspServer::new();
+        let _ = response_value(server.handle_json(&request(
+            1,
+            "initialize",
+            serde_json::json!({
+                "processId": null,
+                "rootUri": "file:///workspace/scripts",
+                "capabilities": {}
+            }),
+        )));
+        let uri = "file:///workspace/scripts/game/main.vela";
+        let text = "pub fn main(scores: Array<i64>) { scores.filter(|) }";
+        let _ = notification_value(server.handle_json(&notification(
+            "textDocument/didOpen",
+            serde_json::json!({
+                "textDocument": {
+                    "uri": uri,
+                    "languageId": "vela",
+                    "version": 1,
+                    "text": text
+                }
+            }),
+        )));
+
+        let response = response_value(server.handle_json(&request(
+            2,
+            "textDocument/completion",
+            serde_json::json!({
+                "textDocument": { "uri": uri },
+                "position": {
+                    "line": 0,
+                    "character": text.find("|)").expect("lambda pipe should exist") + "|".len()
+                },
+                "context": {
+                    "triggerKind": 2,
+                    "triggerCharacter": "|"
+                }
+            }),
+        )));
+
+        assert_completion(&response, "item", 6, "i64");
+    }
+
     fn assert_completion(response: &serde_json::Value, label: &str, kind: u8, detail: &str) {
         assert_eq!(response["result"]["isIncomplete"], false);
         let Some(items) = response["result"]["items"].as_array() else {
