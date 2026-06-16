@@ -592,6 +592,8 @@ Purpose: support workspace navigation and prepare rename.
   methods where calls are statically resolved.
   - [x] Serve initial source-backed script function prepare, incoming, and
     outgoing call hierarchy for statically resolved calls.
+  - [x] Serve source-owned inherent script method prepare, incoming, and
+    outgoing call hierarchy for typed receiver calls.
 
 Tests:
 
@@ -614,12 +616,16 @@ Tests:
 - [x] `lsp_document_highlight_marks_script_method_calls`
 - [x] `call_hierarchy_uses_resolved_call_graph`
 - [x] `lsp_call_hierarchy_uses_resolved_call_graph`
+- [x] `call_hierarchy_uses_resolved_script_method_calls`
+- [x] `lsp_call_hierarchy_uses_resolved_script_method_calls`
 
 Validation:
 
 ```bash
 cargo test -p vela_language_service references
 cargo test -p vela_lsp_server references
+cargo test -p vela_language_service call_hierarchy
+cargo test -p vela_lsp_server call_hierarchy
 ```
 
 ---

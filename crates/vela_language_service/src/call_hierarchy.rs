@@ -1,7 +1,11 @@
+use vela_analysis::{facts::AnalysisFacts, type_fact::TypeFact};
 use vela_common::{SourceId, Span};
 use vela_hir::binding::{BindingMap, BindingResolution};
-use vela_hir::ids::HirDeclId;
-use vela_hir::module_graph::{Declaration, DeclarationKind};
+use vela_hir::ids::{HirDeclId, HirNodeId};
+use vela_hir::module_graph::{Declaration, DeclarationKind, ModuleGraph};
+use vela_hir::type_hint::ImplMetadataKind;
+use vela_syntax::lexer::lex;
+use vela_syntax::token::TokenKind;
 
 use crate::{
     DiagnosticRange, DocumentId, LanguageServiceDatabases, LineIndex, Position, TextRange,
@@ -106,6 +110,7 @@ impl LanguageServiceDatabases {
             return Vec::new();
         };
         let graph = self.hir_db().graph();
+        let facts = AnalysisFacts::from_module_graph(graph);
 
         for declaration in graph.declarations() {
             if declaration.span.source != source_id || !declaration.span.contains(offset) {
@@ -117,13 +122,39 @@ impl LanguageServiceDatabases {
             {
                 return vec![item];
             }
-            let Some(bindings) = graph.bindings(declaration.id) else {
+            if let Some(target) =
+                script_method_declaration_target(graph, source_id, source.text(), &token)
+                && let Some(item) = self.call_hierarchy_item_for_target(&target)
+            {
+                return vec![item];
+            }
+        }
+
+        for scope in self.call_scopes() {
+            if scope.span.source != source_id || !scope.span.contains(offset) {
+                continue;
+            }
+            if let Some(target) = declaration_call_target(scope.bindings, &token)
+                .and_then(|target| self.call_hierarchy_function_target(target))
+                && let Some(item) =
+                    self.call_hierarchy_item_for_target(&CallHierarchyTarget::Function(target))
+            {
+                return vec![item];
+            }
+            let Some(method_name) = token_text(source.text(), token.range) else {
                 continue;
             };
-            if let Some(target) = declaration_call_target(bindings, &token)
-                && let Some(target) = graph.declaration(target)
-                && target.kind == DeclarationKind::Function
-                && let Some(item) = self.call_hierarchy_item_for_declaration(target)
+            if let Some(target) = script_method_target_for_member(
+                graph,
+                &facts,
+                source.text(),
+                source_id,
+                scope.bindings,
+                method_name,
+                token.range,
+            )
+            .map(CallHierarchyTarget::Method)
+                && let Some(item) = self.call_hierarchy_item_for_target(&target)
             {
                 return vec![item];
             }
@@ -134,24 +165,17 @@ impl LanguageServiceDatabases {
 
     #[must_use]
     pub fn incoming_calls(&self, item: &CallHierarchyItem) -> Vec<IncomingCall> {
-        let Some(target) = self.call_hierarchy_declaration_for_item(item) else {
+        let Some(target) = self.call_hierarchy_target_for_item(item) else {
             return Vec::new();
         };
-        let graph = self.hir_db().graph();
         let mut calls = Vec::new();
 
-        for caller in graph.declarations() {
-            if caller.kind != DeclarationKind::Function {
-                continue;
-            }
-            let Some(bindings) = graph.bindings(caller.id) else {
-                continue;
-            };
-            let ranges = self.call_ranges_to(bindings, target);
+        for scope in self.call_scopes() {
+            let ranges = self.call_ranges_to(scope.bindings, scope.span, &target);
             if ranges.is_empty() {
                 continue;
             }
-            if let Some(from) = self.call_hierarchy_item_for_declaration(caller) {
+            if let Some(from) = self.call_hierarchy_item_for_target(&scope.caller) {
                 calls.push(IncomingCall {
                     from,
                     from_ranges: ranges,
@@ -172,23 +196,16 @@ impl LanguageServiceDatabases {
 
     #[must_use]
     pub fn outgoing_calls(&self, item: &CallHierarchyItem) -> Vec<OutgoingCall> {
-        let Some(caller) = self.call_hierarchy_declaration_for_item(item) else {
+        let Some(caller) = self.call_hierarchy_target_for_item(item) else {
             return Vec::new();
         };
-        let graph = self.hir_db().graph();
-        let Some(bindings) = graph.bindings(caller) else {
+        let Some(scope) = self.call_scope_for_target(&caller) else {
             return Vec::new();
         };
         let mut calls = Vec::<OutgoingCall>::new();
 
-        for (target, range) in self.resolved_call_ranges(bindings) {
-            let Some(target_declaration) = graph.declaration(target) else {
-                continue;
-            };
-            if target_declaration.kind != DeclarationKind::Function {
-                continue;
-            }
-            let Some(to) = self.call_hierarchy_item_for_declaration(target_declaration) else {
+        for (target, range) in self.resolved_call_ranges(scope.bindings, scope.span) {
+            let Some(to) = self.call_hierarchy_item_for_target(&target) else {
                 continue;
             };
             if let Some(existing) = calls.iter_mut().find(|call| call.to == to) {
@@ -212,33 +229,96 @@ impl LanguageServiceDatabases {
         calls
     }
 
-    fn call_ranges_to(&self, bindings: &BindingMap, target: HirDeclId) -> Vec<DiagnosticRange> {
-        self.resolved_call_ranges(bindings)
+    fn call_ranges_to(
+        &self,
+        bindings: &BindingMap,
+        scope_span: Span,
+        target: &CallHierarchyTarget,
+    ) -> Vec<DiagnosticRange> {
+        self.resolved_call_ranges(bindings, scope_span)
             .into_iter()
-            .filter_map(|(resolved, range)| (resolved == target).then_some(range))
+            .filter_map(|(resolved, range)| (&resolved == target).then_some(range))
             .collect()
     }
 
-    fn resolved_call_ranges(&self, bindings: &BindingMap) -> Vec<(HirDeclId, DiagnosticRange)> {
-        bindings
+    fn resolved_call_ranges(
+        &self,
+        bindings: &BindingMap,
+        scope_span: Span,
+    ) -> Vec<(CallHierarchyTarget, DiagnosticRange)> {
+        let mut calls = bindings
             .resolutions()
             .filter_map(|(expression, resolution)| match resolution {
                 BindingResolution::Declaration(target) => {
                     let expression = bindings.expression(expression)?;
+                    let target = self.call_hierarchy_function_target(*target)?;
                     self.call_range_for_expression(expression.span)
-                        .map(|range| (*target, range))
+                        .map(|range| (CallHierarchyTarget::Function(target), range))
                 }
                 BindingResolution::Local(_)
                 | BindingResolution::Import(_)
                 | BindingResolution::QualifiedPath(_) => None,
             })
-            .collect()
+            .collect::<Vec<_>>();
+
+        calls.extend(self.resolved_method_call_ranges(bindings, scope_span));
+        calls
     }
 
     fn call_range_for_expression(&self, span: Span) -> Option<DiagnosticRange> {
         let source = self.source_record_for_call_hierarchy(span.source)?;
         let range = span_text_range(span)?;
         is_call_callee(source.text(), range).then(|| diagnostic_range(source.text(), range))
+    }
+
+    fn call_hierarchy_function_target(&self, target: HirDeclId) -> Option<HirDeclId> {
+        let graph = self.hir_db().graph();
+        let target = graph.declaration(target)?;
+        (target.kind == DeclarationKind::Function).then_some(target.id)
+    }
+
+    fn resolved_method_call_ranges(
+        &self,
+        bindings: &BindingMap,
+        scope_span: Span,
+    ) -> Vec<(CallHierarchyTarget, DiagnosticRange)> {
+        let Some(source) = self.source_record_for_call_hierarchy(scope_span.source) else {
+            return Vec::new();
+        };
+        let graph = self.hir_db().graph();
+        let facts = AnalysisFacts::from_module_graph(graph);
+        member_method_call_ranges(source.source_id(), source.text(), scope_span)
+            .into_iter()
+            .filter_map(|range| {
+                script_method_target_for_member(
+                    graph,
+                    &facts,
+                    source.text(),
+                    source.source_id(),
+                    bindings,
+                    token_text(source.text(), range)?,
+                    range,
+                )
+                .map(|target| {
+                    (
+                        CallHierarchyTarget::Method(target),
+                        diagnostic_range(source.text(), range),
+                    )
+                })
+            })
+            .collect()
+    }
+
+    fn call_hierarchy_target_for_item(
+        &self,
+        item: &CallHierarchyItem,
+    ) -> Option<CallHierarchyTarget> {
+        self.call_hierarchy_declaration_for_item(item)
+            .map(CallHierarchyTarget::Function)
+            .or_else(|| {
+                self.call_hierarchy_method_for_item(item)
+                    .map(CallHierarchyTarget::Method)
+            })
     }
 
     fn call_hierarchy_declaration_for_item(&self, item: &CallHierarchyItem) -> Option<HirDeclId> {
@@ -257,6 +337,49 @@ impl LanguageServiceDatabases {
             .map(|declaration| declaration.id)
     }
 
+    fn call_hierarchy_method_for_item(
+        &self,
+        item: &CallHierarchyItem,
+    ) -> Option<ScriptMethodCallTarget> {
+        let source = self.source_db().records().get(item.document_id())?;
+        let graph = self.hir_db().graph();
+        graph.declarations().find_map(|declaration| {
+            let metadata = graph.impl_metadata(declaration.id)?;
+            if !matches!(metadata.kind, ImplMetadataKind::Inherent)
+                || declaration.span.source != source.source_id()
+            {
+                return None;
+            }
+            metadata
+                .methods
+                .iter()
+                .find(|method| method.name == item.name())
+                .and_then(|method| {
+                    let target = ScriptMethodCallTarget {
+                        owner: declaration.id,
+                        method_node: method.node,
+                        method: method.name.clone(),
+                    };
+                    self.call_hierarchy_item_for_method(&target)
+                        .is_some_and(|candidate| candidate.selection_range == item.selection_range)
+                        .then_some(target)
+                })
+        })
+    }
+
+    fn call_hierarchy_item_for_target(
+        &self,
+        target: &CallHierarchyTarget,
+    ) -> Option<CallHierarchyItem> {
+        match target {
+            CallHierarchyTarget::Function(declaration) => {
+                let declaration = self.hir_db().graph().declaration(*declaration)?;
+                self.call_hierarchy_item_for_declaration(declaration)
+            }
+            CallHierarchyTarget::Method(method) => self.call_hierarchy_item_for_method(method),
+        }
+    }
+
     fn call_hierarchy_item_for_declaration(
         &self,
         declaration: &Declaration,
@@ -273,6 +396,70 @@ impl LanguageServiceDatabases {
         ))
     }
 
+    fn call_hierarchy_item_for_method(
+        &self,
+        target: &ScriptMethodCallTarget,
+    ) -> Option<CallHierarchyItem> {
+        let graph = self.hir_db().graph();
+        let declaration = graph.declaration(target.owner)?;
+        let metadata = graph.impl_metadata(target.owner)?;
+        let method = metadata
+            .methods
+            .iter()
+            .find(|method| method.node == target.method_node && method.name == target.method)?;
+        let source = self.source_record_for_call_hierarchy(declaration.span.source)?;
+        let span_range = span_text_range(declaration.span)?;
+        let name_range = method_name_range_in_text(source.text(), span_range, &method.name)
+            .unwrap_or(span_range);
+        Some(CallHierarchyItem::new(
+            method.name.clone(),
+            source.document_id().clone(),
+            diagnostic_range(source.text(), span_range),
+            diagnostic_range(source.text(), name_range),
+        ))
+    }
+
+    fn call_scopes(&self) -> Vec<CallScope<'_>> {
+        let graph = self.hir_db().graph();
+        let mut scopes = Vec::new();
+        for declaration in graph.declarations() {
+            if declaration.kind == DeclarationKind::Function
+                && let Some(bindings) = graph.bindings(declaration.id)
+            {
+                scopes.push(CallScope {
+                    caller: CallHierarchyTarget::Function(declaration.id),
+                    span: declaration.span,
+                    bindings,
+                });
+            }
+            if declaration.kind == DeclarationKind::Impl
+                && let Some(metadata) = graph.impl_metadata(declaration.id)
+                && matches!(metadata.kind, ImplMetadataKind::Inherent)
+            {
+                for method in &metadata.methods {
+                    if let Some(bindings) = graph.impl_method_bindings(method.node) {
+                        scopes.push(CallScope {
+                            caller: CallHierarchyTarget::Method(ScriptMethodCallTarget {
+                                owner: declaration.id,
+                                method_node: method.node,
+                                method: method.name.clone(),
+                            }),
+                            span: method.span,
+                            bindings,
+                        });
+                    }
+                }
+            }
+        }
+        scopes
+    }
+
+    fn call_scope_for_target(&self, target: &CallHierarchyTarget) -> Option<CallScope<'_>> {
+        self.call_scopes()
+            .into_iter()
+            .find(|scope| &scope.caller == target)
+    }
+
     fn source_record_for_call_hierarchy(
         &self,
         source_id: SourceId,
@@ -282,6 +469,25 @@ impl LanguageServiceDatabases {
             .values()
             .find(|record| record.source_id() == source_id)
     }
+}
+
+#[derive(Debug, Clone, Eq, PartialEq)]
+enum CallHierarchyTarget {
+    Function(HirDeclId),
+    Method(ScriptMethodCallTarget),
+}
+
+#[derive(Debug, Clone, Eq, PartialEq)]
+struct ScriptMethodCallTarget {
+    owner: HirDeclId,
+    method_node: HirNodeId,
+    method: String,
+}
+
+struct CallScope<'a> {
+    caller: CallHierarchyTarget,
+    span: Span,
+    bindings: &'a BindingMap,
 }
 
 #[derive(Debug, Clone, Eq, PartialEq)]
@@ -308,6 +514,204 @@ fn declaration_call_target(bindings: &BindingMap, token: &CallHierarchyToken) ->
         | BindingResolution::Import(_)
         | BindingResolution::QualifiedPath(_) => None,
     }
+}
+
+fn script_method_declaration_target(
+    graph: &ModuleGraph,
+    source_id: SourceId,
+    text: &str,
+    token: &CallHierarchyToken,
+) -> Option<CallHierarchyTarget> {
+    let start = u32::try_from(token.range.start).ok()?;
+    for declaration in graph.declarations() {
+        if declaration.kind != DeclarationKind::Impl
+            || declaration.span.source != source_id
+            || !declaration.span.contains(start)
+        {
+            continue;
+        }
+        let metadata = graph.impl_metadata(declaration.id)?;
+        if !matches!(metadata.kind, ImplMetadataKind::Inherent) {
+            continue;
+        }
+        let span_range = span_text_range(declaration.span)?;
+        for method in &metadata.methods {
+            let Some(name_range) = method_name_range_in_text(text, span_range, &method.name) else {
+                continue;
+            };
+            if name_range.start <= token.range.start && token.range.end <= name_range.end {
+                return Some(CallHierarchyTarget::Method(ScriptMethodCallTarget {
+                    owner: declaration.id,
+                    method_node: method.node,
+                    method: method.name.clone(),
+                }));
+            }
+        }
+    }
+    None
+}
+
+fn script_method_target_for_member(
+    graph: &ModuleGraph,
+    facts: &AnalysisFacts,
+    text: &str,
+    source_id: SourceId,
+    bindings: &BindingMap,
+    method: &str,
+    member_range: TextRange,
+) -> Option<ScriptMethodCallTarget> {
+    if !is_call_callee(text, member_range) {
+        return None;
+    }
+    let receiver = member_receiver_range(text, member_range.start)?;
+    let start = u32::try_from(receiver.start).ok()?;
+    let end = u32::try_from(receiver.end).ok()?;
+    let span = Span::new(source_id, start, end);
+    let resolution = bindings.resolution_at_span(span)?;
+    let receiver = type_fact_for_resolution(resolution, facts)?;
+    script_method_owner(graph, &receiver, method)
+}
+
+fn script_method_owner(
+    graph: &ModuleGraph,
+    receiver: &TypeFact,
+    method: &str,
+) -> Option<ScriptMethodCallTarget> {
+    let owner_names = record_owner_names(receiver);
+    graph.declarations().find_map(|declaration| {
+        if declaration.kind != DeclarationKind::Impl {
+            return None;
+        }
+        let metadata = graph.impl_metadata(declaration.id)?;
+        if !matches!(metadata.kind, ImplMetadataKind::Inherent) {
+            return None;
+        }
+        let matches_owner = owner_names.iter().any(|owner| {
+            metadata
+                .target_path
+                .last()
+                .is_some_and(|name| name == owner)
+                || metadata.target_path.join("::") == *owner
+        });
+        if !matches_owner {
+            return None;
+        }
+        metadata
+            .methods
+            .iter()
+            .find(|entry| entry.name == method)
+            .map(|entry| ScriptMethodCallTarget {
+                owner: declaration.id,
+                method_node: entry.node,
+                method: entry.name.clone(),
+            })
+    })
+}
+
+fn type_fact_for_resolution(
+    resolution: &BindingResolution,
+    facts: &AnalysisFacts,
+) -> Option<TypeFact> {
+    match resolution {
+        BindingResolution::Local(local) => facts
+            .local(*local)
+            .cloned()
+            .filter(|fact| !matches!(fact, TypeFact::Unknown)),
+        BindingResolution::Declaration(declaration) => facts.declaration(*declaration).cloned(),
+        BindingResolution::Import(_) | BindingResolution::QualifiedPath(_) => None,
+    }
+}
+
+fn record_owner_names(receiver: &TypeFact) -> Vec<String> {
+    let mut owners = Vec::new();
+    collect_record_owner_names(receiver, &mut owners);
+    owners
+}
+
+fn collect_record_owner_names(receiver: &TypeFact, owners: &mut Vec<String>) {
+    match receiver {
+        TypeFact::Record { name } => {
+            push_owner_name(owners, name);
+            if let Some(short) = name.rsplit("::").next()
+                && short != name
+            {
+                push_owner_name(owners, short);
+            }
+        }
+        TypeFact::Union(facts) => {
+            for fact in facts {
+                collect_record_owner_names(fact, owners);
+            }
+        }
+        TypeFact::Unknown
+        | TypeFact::Never
+        | TypeFact::Any
+        | TypeFact::Primitive(_)
+        | TypeFact::Range
+        | TypeFact::Array { .. }
+        | TypeFact::Map { .. }
+        | TypeFact::Set { .. }
+        | TypeFact::Iterator { .. }
+        | TypeFact::Option { .. }
+        | TypeFact::OptionSome { .. }
+        | TypeFact::OptionNone
+        | TypeFact::Result { .. }
+        | TypeFact::ResultOk { .. }
+        | TypeFact::ResultErr { .. }
+        | TypeFact::Function { .. }
+        | TypeFact::Enum { .. }
+        | TypeFact::Host { .. }
+        | TypeFact::Trait { .. }
+        | TypeFact::Module { .. } => {}
+    }
+}
+
+fn push_owner_name(owners: &mut Vec<String>, name: &str) {
+    if !owners.iter().any(|owner| owner == name) {
+        owners.push(name.to_owned());
+    }
+}
+
+fn member_method_call_ranges(source_id: SourceId, text: &str, scope: Span) -> Vec<TextRange> {
+    lex(source_id, text)
+        .tokens
+        .into_iter()
+        .filter_map(|token| match token.kind {
+            TokenKind::Ident(_) => {
+                let range = span_text_range(token.span)?;
+                let start = u32::try_from(range.start).ok()?;
+                (scope.contains(start)
+                    && is_call_callee(text, range)
+                    && member_receiver_range(text, range.start).is_some())
+                .then_some(range)
+            }
+            TokenKind::Int(_)
+            | TokenKind::Float(_)
+            | TokenKind::Char(_)
+            | TokenKind::String(_)
+            | TokenKind::InterpolatedString(_)
+            | TokenKind::Bytes(_)
+            | TokenKind::Keyword(_)
+            | TokenKind::Symbol(_)
+            | TokenKind::Eof => None,
+        })
+        .collect()
+}
+
+fn member_receiver_range(text: &str, member_start: usize) -> Option<TextRange> {
+    let before_member = text.get(..member_start)?;
+    let before_dot = before_member.trim_end();
+    if !before_dot.ends_with('.') {
+        return None;
+    }
+    let before_receiver = before_dot[..before_dot.len().saturating_sub(1)].trim_end();
+    let end = before_receiver.len();
+    let start = before_receiver
+        .char_indices()
+        .rev()
+        .find_map(|(index, ch)| (!is_identifier_continue(ch)).then_some(index + ch.len_utf8()))
+        .unwrap_or(0);
+    (start < end).then(|| TextRange::new(start, end))
 }
 
 fn call_hierarchy_token_at(text: &str, position: Position) -> Option<CallHierarchyToken> {
@@ -356,6 +760,35 @@ fn name_range_in_text(text: &str, range: TextRange, name: &str) -> Option<TextRa
         let end = start + matched.len();
         is_identifier_boundary(text, start, end).then(|| TextRange::new(start, end))
     })
+}
+
+fn method_name_range_in_text(text: &str, range: TextRange, name: &str) -> Option<TextRange> {
+    let slice = text.get(range.start..range.end)?;
+    slice.match_indices(name).find_map(|(offset, matched)| {
+        let start = range.start + offset;
+        let end = start + matched.len();
+        (is_identifier_boundary(text, start, end) && preceded_by_fn_keyword(text, start))
+            .then(|| TextRange::new(start, end))
+    })
+}
+
+fn preceded_by_fn_keyword(text: &str, start: usize) -> bool {
+    let Some(before_name) = text.get(..start).map(str::trim_end) else {
+        return false;
+    };
+    let end = before_name.len();
+    let word_start = before_name
+        .char_indices()
+        .rev()
+        .find_map(|(index, ch)| (!is_identifier_continue(ch)).then_some(index + ch.len_utf8()))
+        .unwrap_or(0);
+    if before_name.get(word_start..end) != Some("fn") {
+        return false;
+    }
+    before_name
+        .get(..word_start)
+        .and_then(|prefix| prefix.chars().next_back())
+        .is_none_or(|ch| !is_identifier_continue(ch))
 }
 
 fn is_identifier_boundary(text: &str, start: usize, end: usize) -> bool {
@@ -436,6 +869,88 @@ pub fn main(amount: i64) -> i64 {
         assert_eq!(outgoing[0].to().name(), "grant");
         assert_eq!(outgoing[0].to().document_id(), &helper);
         assert_eq!(outgoing[0].from_ranges().len(), 2);
+    }
+
+    #[test]
+    fn call_hierarchy_uses_resolved_script_method_calls() {
+        let main = DocumentId::from("/workspace/scripts/game/main.vela");
+        let text = "\
+pub struct Reward {
+    amount: i64
+}
+
+impl Reward {
+    pub fn grant(self, amount: i64) -> i64 { return amount }
+}
+
+pub fn main(reward: Reward) -> i64 {
+    let first = reward.grant(1)
+    return reward.grant(first)
+}";
+        let databases = databases_for(vec![SourceFileSnapshot::new(main.clone(), text)]);
+
+        let prepared_from_declaration = databases.prepare_call_hierarchy(
+            &main,
+            Position::new(
+                5,
+                line(text, 5)
+                    .find("grant")
+                    .expect("method declaration should exist"),
+            ),
+        );
+        let prepared_from_call = databases.prepare_call_hierarchy(
+            &main,
+            Position::new(
+                9,
+                line(text, 9)
+                    .find("grant")
+                    .expect("method call should exist"),
+            ),
+        );
+
+        assert_eq!(prepared_from_declaration.len(), 1);
+        assert_eq!(prepared_from_declaration[0].name(), "grant");
+        assert_eq!(prepared_from_declaration[0].document_id(), &main);
+        assert_eq!(prepared_from_call, prepared_from_declaration);
+
+        let incoming = databases.incoming_calls(&prepared_from_declaration[0]);
+        assert_eq!(incoming.len(), 1);
+        assert_eq!(incoming[0].from().name(), "main");
+        assert_eq!(incoming[0].from().document_id(), &main);
+        assert_eq!(incoming[0].from_ranges().len(), 2);
+        assert_range(
+            incoming[0].from_ranges(),
+            9,
+            line(text, 9).find("grant").expect("first method call"),
+        );
+        assert_range(
+            incoming[0].from_ranges(),
+            10,
+            line(text, 10).find("grant").expect("second method call"),
+        );
+
+        let main_item = databases
+            .prepare_call_hierarchy(
+                &main,
+                Position::new(8, line(text, 8).find("main").expect("main declaration")),
+            )
+            .pop()
+            .expect("main should prepare a call hierarchy item");
+        let outgoing = databases.outgoing_calls(&main_item);
+        assert_eq!(outgoing.len(), 1);
+        assert_eq!(outgoing[0].to().name(), "grant");
+        assert_eq!(outgoing[0].to().document_id(), &main);
+        assert_eq!(outgoing[0].from_ranges().len(), 2);
+        assert_range(
+            outgoing[0].from_ranges(),
+            9,
+            line(text, 9).find("grant").expect("first method call"),
+        );
+        assert_range(
+            outgoing[0].from_ranges(),
+            10,
+            line(text, 10).find("grant").expect("second method call"),
+        );
     }
 
     fn assert_range(ranges: &[DiagnosticRange], line: usize, character: usize) {
