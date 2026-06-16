@@ -463,6 +463,67 @@ pub fn main(player: Player) -> i64 {
 }
 
 #[test]
+fn semantic_tokens_classify_host_and_builtin_type_hints() {
+    let document = DocumentId::from("/workspace/scripts/game/main.vela");
+    let text = "\
+pub fn main(player: Player, names: Array<String>) -> i64 {
+    let next: Player = player
+    return 1
+}";
+    let mut schema = RegistryFacts::default();
+    schema.insert_type("Player", TypeFact::host("Player"));
+    let databases = databases_for_with_schema(
+        vec![SourceFileSnapshot::new(document.clone(), text)],
+        schema,
+    );
+
+    let tokens = databases.semantic_tokens(&document);
+
+    assert_token_at(
+        &tokens,
+        0,
+        line(text, 0).find("Player").expect("schema type hint"),
+        "Player".len(),
+        SemanticTokenType::Type,
+        SemanticTokenModifiers::HOST,
+    );
+    assert_token_at(
+        &tokens,
+        0,
+        line(text, 0).find("Array").expect("builtin array hint"),
+        "Array".len(),
+        SemanticTokenType::Type,
+        SemanticTokenModifiers::BUILTIN,
+    );
+    assert_token_at(
+        &tokens,
+        0,
+        line(text, 0).find("String").expect("builtin string hint"),
+        "String".len(),
+        SemanticTokenType::Type,
+        SemanticTokenModifiers::BUILTIN,
+    );
+    assert_token_at(
+        &tokens,
+        0,
+        line(text, 0).rfind("i64").expect("builtin return hint"),
+        "i64".len(),
+        SemanticTokenType::Type,
+        SemanticTokenModifiers::BUILTIN,
+    );
+    assert_token_at(
+        &tokens,
+        1,
+        line(text, 1)
+            .find("Player")
+            .expect("local schema type hint"),
+        "Player".len(),
+        SemanticTokenType::Type,
+        SemanticTokenModifiers::HOST,
+    );
+}
+
+#[test]
 fn semantic_token_delta_matches_full_tokens() {
     let document = DocumentId::from("/workspace/scripts/game/main.vela");
     let text = "pub fn main() { let value = 1 return value }";

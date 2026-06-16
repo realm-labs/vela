@@ -15,6 +15,8 @@ use vela_syntax::token::{Keyword, Symbol, Token, TokenKind};
 
 use crate::{DocumentId, LanguageServiceDatabases, LineIndex, Position, TextRange};
 
+mod type_hints;
+
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub struct SemanticTokens {
     result_id: String,
@@ -384,6 +386,11 @@ impl LanguageServiceDatabases {
             }
             if let Some(classification) =
                 member_declaration_classification(graph, declaration, text, name, range)
+            {
+                return Some(classification);
+            }
+            if let Some(classification) =
+                type_hints::classification(graph, declaration, schema, text, name, range)
             {
                 return Some(classification);
             }

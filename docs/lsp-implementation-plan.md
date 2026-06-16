@@ -539,6 +539,8 @@ Purpose: provide syntax and semantic highlighting without changing semantics.
     modifiers for stdlib member method accesses.
   - [x] Add host modifiers for schema-backed function calls and builtin
     modifiers for stdlib qualified function calls.
+  - [x] Add host modifiers for schema-backed type hints and builtin modifiers
+    for builtin type hints.
 - [~] Add token classes for modules, functions, methods, fields, variables,
   parameters, types, traits, enum variants, properties, keywords, numbers,
   strings, bytes, comments, operators, attributes, and macros.
@@ -555,7 +557,7 @@ Purpose: provide syntax and semantic highlighting without changing semantics.
 - [~] Implement full semantic tokens.
   - [x] Full tokens include lexical classes, comments, resolved script symbols,
     script member declarations, script/schema/stdlib member uses, and
-    schema/stdlib function calls.
+    schema/stdlib function calls, plus schema/builtin type hints.
 - [~] Implement semantic token delta only after generation-stable token caches
   exist.
   - [x] Full-token responses carry deterministic result IDs, and
@@ -577,6 +579,8 @@ Tests:
 - [x] `lsp_semantic_tokens_classify_host_and_builtin_member_uses`
 - [x] `semantic_tokens_classify_schema_and_stdlib_function_calls`
 - [x] `lsp_semantic_tokens_classify_host_and_builtin_function_calls`
+- [x] `semantic_tokens_classify_host_and_builtin_type_hints`
+- [x] `lsp_semantic_tokens_classify_host_and_builtin_type_hints`
 - [x] `semantic_tokens_degrade_under_parse_errors`
 - [x] `lsp_semantic_tokens_degrade_under_parse_errors`
 - [x] `semantic_token_delta_matches_full_tokens`
