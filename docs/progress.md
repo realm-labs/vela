@@ -169,7 +169,9 @@ schema function calls. The language service tests cover script, schema,
 stdlib function, source method, schema method, and stdlib callback method
 signatures, and the LSP fixtures cover the same signature paths.
 
-M20.5 Phase 8 update: `vela_language_service` now exposes explicit
+M20.5 Phase 8 update: hover now reports stdlib global function facts and
+typed stdlib receiver-method facts through both `vela_language_service` and
+`textDocument/hover` fixtures. `vela_language_service` now exposes explicit
 declaration and type-definition navigation queries, and `vela_lsp_server`
 advertises and serves `textDocument/declaration` plus
 `textDocument/typeDefinition` using the same source/schema-backed spans as

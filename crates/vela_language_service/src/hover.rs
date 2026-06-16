@@ -1,5 +1,8 @@
 use vela_analysis::facts::AnalysisFacts;
 use vela_analysis::registry::{RegistryEffectFact, RegistryFacts};
+use vela_analysis::stdlib::{
+    StdlibFunctionFact, StdlibMethodFact, stdlib_function_completion_facts, stdlib_method_fact,
+};
 use vela_analysis::type_fact::TypeFact;
 use vela_common::Span;
 use vela_hir::binding::{BindingMap, BindingResolution, LocalBinding, LocalBindingKind};
@@ -77,7 +80,7 @@ impl LanguageServiceDatabases {
         let facts = AnalysisFacts::from_module_graph(graph);
 
         if let Some(receiver) = token.member_receiver
-            && let Some(hover) = self.schema_member_hover(document_id, receiver, &token, range)
+            && let Some(hover) = self.member_hover(document_id, receiver, &token, range)
         {
             return Some(hover);
         }
@@ -111,10 +114,11 @@ impl LanguageServiceDatabases {
         }
 
         self.schema_symbol_hover(&token.text, range)
+            .or_else(|| stdlib_function_hover(&token.text, range))
             .or_else(|| type_hint_hover(self.schema_db().facts(), &token.text, range))
     }
 
-    fn schema_member_hover(
+    fn member_hover(
         &self,
         document_id: &DocumentId,
         receiver: TextRange,
@@ -122,7 +126,19 @@ impl LanguageServiceDatabases {
         range: DiagnosticRange,
     ) -> Option<Hover> {
         let receiver_fact = member_receiver_fact(self, document_id, receiver)?;
-        let owner = fact_owner_name(&receiver_fact)?;
+        if let Some(hover) = self.schema_member_hover(&receiver_fact, token, range) {
+            return Some(hover);
+        }
+        stdlib_method_hover(&receiver_fact, &token.text, range)
+    }
+
+    fn schema_member_hover(
+        &self,
+        receiver_fact: &TypeFact,
+        token: &HoverToken,
+        range: DiagnosticRange,
+    ) -> Option<Hover> {
+        let owner = fact_owner_name(receiver_fact)?;
         let schema = self.schema_db().facts();
         if let Some(fact) = schema.field_fact(&owner, &token.text) {
             let detail = schema
@@ -194,6 +210,36 @@ impl LanguageServiceDatabases {
     }
 }
 
+fn stdlib_function_hover(name: &str, range: DiagnosticRange) -> Option<Hover> {
+    stdlib_function_completion_facts()
+        .into_iter()
+        .find(|function| {
+            function.name == name
+                || function
+                    .name
+                    .rsplit("::")
+                    .next()
+                    .is_some_and(|segment| segment == name)
+        })
+        .map(|function| Hover {
+            range,
+            label: function.name.to_owned(),
+            kind: HoverKind::Function,
+            detail: stdlib_function_detail(&function),
+            docs: None,
+        })
+}
+
+fn stdlib_method_hover(receiver: &TypeFact, method: &str, range: DiagnosticRange) -> Option<Hover> {
+    stdlib_method_fact(receiver, method, None).map(|fact| Hover {
+        range,
+        label: format!("{}.{}", receiver.display_name(), fact.method),
+        kind: HoverKind::Method,
+        detail: stdlib_method_detail(&fact),
+        docs: None,
+    })
+}
+
 fn hover_from_resolution_at_token(
     bindings: &BindingMap,
     facts: &AnalysisFacts,
@@ -229,13 +275,21 @@ fn hover_from_resolution_at_token(
             detail: "unresolved import".to_owned(),
             docs: None,
         }),
-        BindingResolution::QualifiedPath(path) => Some(Hover {
-            range,
-            label: path.join("::"),
-            kind: HoverKind::Unknown,
-            detail: "unresolved qualified path".to_owned(),
-            docs: None,
-        }),
+        BindingResolution::QualifiedPath(path) => {
+            let qualified = path.join("::");
+            databases
+                .schema_symbol_hover(&qualified, range)
+                .or_else(|| stdlib_function_hover(&qualified, range))
+                .or_else(|| {
+                    Some(Hover {
+                        range,
+                        label: qualified,
+                        kind: HoverKind::Unknown,
+                        detail: "unresolved qualified path".to_owned(),
+                        docs: None,
+                    })
+                })
+        }
     }
 }
 
@@ -404,6 +458,14 @@ fn method_detail(schema: &RegistryFacts, owner: &str, method: &str, fact: &TypeF
         "{}; {effects}; permissions: {permissions}",
         fact.display_name()
     )
+}
+
+fn stdlib_function_detail(function: &StdlibFunctionFact) -> String {
+    TypeFact::function(function.params.clone(), function.returns.clone()).display_name()
+}
+
+fn stdlib_method_detail(method: &StdlibMethodFact) -> String {
+    TypeFact::function(method.params.clone(), method.returns.clone()).display_name()
 }
 
 fn effect_detail(effect: &RegistryEffectFact) -> String {
@@ -576,6 +638,48 @@ mod tests {
         assert_eq!(hover.kind(), HoverKind::Parameter);
         assert_eq!(hover.label(), "amount");
         assert_eq!(hover.detail(), "i64");
+    }
+
+    #[test]
+    fn hover_reports_stdlib_function_fact() {
+        let document = DocumentId::from("/workspace/scripts/game/main.vela");
+        let text = "pub fn main() { math::max(1, 2) }";
+        let databases = databases_for(&document, text, RegistryFacts::default());
+
+        let hover = databases
+            .hover(
+                &document,
+                Position::new(0, text.find("max").expect("stdlib function")),
+            )
+            .expect("hover should resolve stdlib function");
+
+        assert_eq!(hover.kind(), HoverKind::Function);
+        assert_eq!(hover.label(), "math::max");
+        assert_eq!(
+            hover.detail(),
+            "Function(i64 | f64, i64 | f64) -> i64 | f64"
+        );
+    }
+
+    #[test]
+    fn hover_reports_stdlib_method_fact() {
+        let document = DocumentId::from("/workspace/scripts/game/main.vela");
+        let text = "pub fn main(scores: Array<i64>) { scores.filter(|score| score > 0) }";
+        let databases = databases_for(&document, text, RegistryFacts::default());
+
+        let hover = databases
+            .hover(
+                &document,
+                Position::new(0, text.find("filter").expect("stdlib method")),
+            )
+            .expect("hover should resolve stdlib method");
+
+        assert_eq!(hover.kind(), HoverKind::Method);
+        assert_eq!(hover.label(), "Array(i64).filter");
+        assert_eq!(
+            hover.detail(),
+            "Function(Function(i64) -> bool) -> Array(i64)"
+        );
     }
 
     fn databases_for(
