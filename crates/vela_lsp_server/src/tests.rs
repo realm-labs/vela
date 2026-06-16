@@ -658,121 +658,6 @@ pub fn main(player: Player) { grant(player: player, ) }
     }
 }
 
-mod signature {
-    use super::{LspServer, notification, notification_value, request, response_value};
-
-    #[test]
-    fn lsp_signature_help_tracks_active_parameter() {
-        let mut server = LspServer::new();
-        let _ = response_value(server.handle_json(&request(
-            1,
-            "initialize",
-            serde_json::json!({
-                "processId": null,
-                "rootUri": "file:///workspace/scripts",
-                "capabilities": {}
-            }),
-        )));
-        let text = "pub fn grant(amount: i64, bonus: i64) -> bool { return true } pub fn main() { grant(1, 2) }";
-        let _ = notification_value(server.handle_json(&notification(
-            "textDocument/didOpen",
-            serde_json::json!({
-                "textDocument": {
-                    "uri": "file:///workspace/scripts/game/main.vela",
-                    "languageId": "vela",
-                    "version": 1,
-                    "text": text
-                }
-            }),
-        )));
-
-        let response = response_value(server.handle_json(&request(
-            2,
-            "textDocument/signatureHelp",
-            serde_json::json!({
-                "textDocument": { "uri": "file:///workspace/scripts/game/main.vela" },
-                "position": {
-                    "line": 0,
-                    "character": text.find("2)").unwrap_or_else(|| {
-                        panic!("signature fixture should contain second argument")
-                    })
-                }
-            }),
-        )));
-
-        assert_eq!(response["result"]["activeSignature"], 0);
-        assert_eq!(response["result"]["activeParameter"], 1);
-        assert_eq!(
-            response["result"]["signatures"][0]["label"],
-            "grant(amount: i64, bonus: i64) -> bool"
-        );
-        assert_eq!(
-            response["result"]["signatures"][0]["parameters"][1]["label"],
-            "bonus: i64"
-        );
-    }
-
-    #[test]
-    fn lsp_signature_help_resolves_script_method_call() {
-        let mut server = LspServer::new();
-        let _ = response_value(server.handle_json(&request(
-            1,
-            "initialize",
-            serde_json::json!({
-                "processId": null,
-                "rootUri": "file:///workspace/scripts",
-                "capabilities": {}
-            }),
-        )));
-        let text = "\
-struct Player { level: i64 }
-impl Player {
-    fn grant(self, amount: i64, bonus: i64) -> i64 { return amount + bonus }
-}
-pub fn main(player: Player) { player.grant(1, 2) }";
-        let _ = notification_value(server.handle_json(&notification(
-            "textDocument/didOpen",
-            serde_json::json!({
-                "textDocument": {
-                    "uri": "file:///workspace/scripts/game/main.vela",
-                    "languageId": "vela",
-                    "version": 1,
-                    "text": text
-                }
-            }),
-        )));
-
-        let call_line = text
-            .lines()
-            .nth(4)
-            .expect("fixture should contain method call");
-        let response = response_value(server.handle_json(&request(
-            2,
-            "textDocument/signatureHelp",
-            serde_json::json!({
-                "textDocument": { "uri": "file:///workspace/scripts/game/main.vela" },
-                "position": {
-                    "line": 4,
-                    "character": call_line.find("2)").unwrap_or_else(|| {
-                        panic!("signature fixture should contain second argument")
-                    })
-                }
-            }),
-        )));
-
-        assert_eq!(response["result"]["activeSignature"], 0);
-        assert_eq!(response["result"]["activeParameter"], 1);
-        assert_eq!(
-            response["result"]["signatures"][0]["label"],
-            "Player.grant(amount: i64, bonus: i64) -> i64"
-        );
-        assert_eq!(
-            response["result"]["signatures"][0]["parameters"][1]["label"],
-            "bonus: i64"
-        );
-    }
-}
-
 mod call_hierarchy;
 mod definition;
 mod file_watching_coalescing;
@@ -784,6 +669,7 @@ mod rename_schema;
 mod schema_reload;
 mod selection;
 mod semantic_tokens;
+mod signature;
 mod symbols;
 
 mod file_watching {

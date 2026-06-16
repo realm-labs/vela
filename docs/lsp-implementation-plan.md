@@ -412,6 +412,7 @@ Tests:
 - [x] `signature_help_resolves_script_method_call`
 - [x] `signature_help_resolves_schema_method_call`
 - [x] `lsp_signature_help_resolves_script_method_call`
+- [x] `lsp_signature_help_resolves_schema_method_call`
 
 Validation:
 
