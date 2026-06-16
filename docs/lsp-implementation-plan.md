@@ -1066,8 +1066,12 @@ node editors/zed/scripts/validate-package.js
 
 Purpose: prove the LSP track is complete enough to run alongside runtime work.
 
-- [ ] Run all language-service unit tests.
-- [ ] Run all LSP JSON-RPC fixture tests.
+- [x] Run all language-service unit tests.
+  - Verified with `cargo test -p vela_language_service`: 146 unit tests and
+    doctests passed.
+- [x] Run all LSP JSON-RPC fixture tests.
+  - Verified with `cargo test -p vela_lsp_server`: 110 library tests, 3
+    CLI/main tests, and doctests passed.
 - [ ] Run parser/HIR/analysis focused tests.
 - [ ] Run many-file synthetic scale checkpoint approaching one million total
   lines.
