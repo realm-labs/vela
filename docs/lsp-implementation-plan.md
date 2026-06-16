@@ -794,7 +794,7 @@ Purpose: turn structured diagnostics into safe edits.
 - [x] Add code action data model independent from LSP protocol types.
 - [x] Add typo fixes from candidate diagnostics.
 - [x] Add import insertion for unresolved qualified symbols.
-- [ ] Add remove-unused-import action after unused diagnostics exist.
+- [x] Add remove-unused-import action after unused diagnostics exist.
 - [x] Add fill missing match arms when enum facts are known.
 - [x] Add missing record fields for known constructors.
 - [ ] Add convert simple `if` null checks into Option/Result guard idioms only
@@ -805,6 +805,10 @@ Tests:
 
 - [x] `code_action_fixes_unknown_field_typo`
 - [x] `code_action_inserts_missing_import`
+- [x] `unused_import_reports_warning`
+- [x] `unused_import_ignores_type_hint_use`
+- [x] `code_action_removes_unused_import`
+- [x] `lsp_code_action_removes_unused_import`
 - [x] `code_action_fills_enum_match_arms`
 - [x] `code_action_adds_missing_record_fields`
 - [x] `code_action_rejects_ambiguous_dynamic_fix`

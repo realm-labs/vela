@@ -1,8 +1,16 @@
 use std::collections::BTreeSet;
 
 use vela_common::{Diagnostic, Severity, SourceId, Span};
+use vela_hir::{
+    binding::{BindingMap, BindingResolution},
+    ids::{HirDeclId, ModuleId},
+    module_graph::{Declaration, Import, ImportResolution, ModuleGraph},
+    type_hint::{EnumVariantFieldsHint, FunctionSignature, HirTypeHint},
+};
 
 use crate::{DocumentId, LanguageServiceDatabases, LineIndex, Position, WorkspaceGeneration};
+
+pub(crate) const UNUSED_IMPORT_CODE: &str = "lsp::unused_import";
 
 #[derive(Debug, Clone, Copy, Eq, PartialEq)]
 pub enum ServiceDiagnosticSeverity {
@@ -370,6 +378,7 @@ impl LanguageServiceDatabases {
                     .map(|diagnostic| self.convert_diagnostic(diagnostic)),
             );
         }
+        diagnostics.extend(self.unused_import_diagnostics(document_id));
 
         if let Some(parsed) = self.parse_db().parsed_source(document_id) {
             let graph = self.hir_db().graph();
@@ -404,6 +413,36 @@ impl LanguageServiceDatabases {
         diagnostics.extend(self.schema_db().diagnostics().iter().map(schema_diagnostic));
 
         diagnostics
+    }
+
+    fn unused_import_diagnostics(&self, document_id: &DocumentId) -> Vec<ServiceDiagnostic> {
+        let graph = self.hir_db().graph();
+        let Some(module_path) = self.project_db().module_by_document().get(document_id) else {
+            return Vec::new();
+        };
+        let Some(module) = graph.module_id(module_path) else {
+            return Vec::new();
+        };
+        let Some(imports) = graph.imports(module) else {
+            return Vec::new();
+        };
+
+        let used_declarations = used_declarations_in_module(graph, module);
+        imports
+            .iter()
+            .filter_map(|import| {
+                let ImportResolution::Declaration(declaration) = import.resolution?;
+                if used_declarations.contains(&declaration) {
+                    return None;
+                }
+                let binding_name = import_binding_name(import)?;
+                let diagnostic = Diagnostic::warning(format!("unused import `{binding_name}`"))
+                    .with_code(UNUSED_IMPORT_CODE)
+                    .with_span(import.span)
+                    .with_label(import.span, "import is never used");
+                Some(self.convert_diagnostic(&diagnostic))
+            })
+            .collect()
     }
 
     fn convert_diagnostic(&self, diagnostic: &Diagnostic) -> ServiceDiagnostic {
@@ -478,6 +517,208 @@ fn schema_diagnostic(diagnostic: &crate::SchemaDiagnostic) -> ServiceDiagnostic 
         candidates: Vec::new(),
         repair_hints: Vec::new(),
     }
+}
+
+fn used_declarations_in_module(graph: &ModuleGraph, module: ModuleId) -> BTreeSet<HirDeclId> {
+    let mut used = BTreeSet::new();
+    for declaration in graph
+        .declarations()
+        .filter(|declaration| declaration.module == module)
+    {
+        collect_body_declaration_uses(graph, declaration, &mut used);
+        for_each_type_hint_in_declaration(graph, declaration, |hint| {
+            if let Some(target) = type_hint_target_declaration(graph, declaration, hint) {
+                used.insert(target.id);
+            }
+        });
+    }
+    used
+}
+
+fn collect_body_declaration_uses(
+    graph: &ModuleGraph,
+    declaration: &Declaration,
+    used: &mut BTreeSet<HirDeclId>,
+) {
+    if let Some(bindings) = graph.bindings(declaration.id) {
+        collect_binding_declaration_uses(bindings, used);
+    }
+    if let Some(shape) = graph.trait_shape(declaration.id) {
+        for method in &shape.methods {
+            if let Some(node) = method.default_body_node
+                && let Some(bindings) = graph.trait_default_method_bindings(node)
+            {
+                collect_binding_declaration_uses(bindings, used);
+            }
+        }
+    }
+    if let Some(metadata) = graph.impl_metadata(declaration.id) {
+        for method in &metadata.methods {
+            if let Some(bindings) = graph.impl_method_bindings(method.node) {
+                collect_binding_declaration_uses(bindings, used);
+            }
+        }
+    }
+}
+
+fn collect_binding_declaration_uses(bindings: &BindingMap, used: &mut BTreeSet<HirDeclId>) {
+    for (_, resolution) in bindings.resolutions() {
+        if let BindingResolution::Declaration(declaration) = resolution {
+            used.insert(*declaration);
+        }
+    }
+    for (_, resolution) in bindings.pattern_resolutions() {
+        if let BindingResolution::Declaration(declaration) = resolution {
+            used.insert(*declaration);
+        }
+    }
+}
+
+fn for_each_type_hint_in_declaration(
+    graph: &ModuleGraph,
+    declaration: &Declaration,
+    mut visit: impl FnMut(&HirTypeHint),
+) {
+    if let Some(metadata) = graph.const_metadata(declaration.id)
+        && let Some(type_hint) = &metadata.type_hint
+    {
+        visit_type_hint_and_args(type_hint, &mut visit);
+    }
+    if let Some(metadata) = graph.global_metadata(declaration.id) {
+        visit_type_hint_and_args(&metadata.type_hint, &mut visit);
+    }
+    if let Some(signature) = graph.function_signature(declaration.id) {
+        visit_signature_type_hints(signature, &mut visit);
+    }
+    if let Some(shape) = graph.struct_shape(declaration.id) {
+        for field in &shape.fields {
+            if let Some(type_hint) = &field.type_hint {
+                visit_type_hint_and_args(type_hint, &mut visit);
+            }
+        }
+    }
+    if let Some(shape) = graph.enum_shape(declaration.id) {
+        for variant in &shape.variants {
+            match &variant.fields {
+                EnumVariantFieldsHint::Unit => {}
+                EnumVariantFieldsHint::Tuple(params) => {
+                    for param in params {
+                        if let Some(type_hint) = &param.type_hint {
+                            visit_type_hint_and_args(type_hint, &mut visit);
+                        }
+                    }
+                }
+                EnumVariantFieldsHint::Record(fields) => {
+                    for field in fields {
+                        if let Some(type_hint) = &field.type_hint {
+                            visit_type_hint_and_args(type_hint, &mut visit);
+                        }
+                    }
+                }
+            }
+        }
+    }
+    if let Some(shape) = graph.trait_shape(declaration.id) {
+        for method in &shape.methods {
+            visit_signature_type_hints(&method.signature, &mut visit);
+            if let Some(node) = method.default_body_node
+                && let Some(bindings) = graph.trait_default_method_bindings(node)
+            {
+                visit_binding_type_hints(bindings, &mut visit);
+            }
+        }
+    }
+    if let Some(metadata) = graph.impl_metadata(declaration.id) {
+        for method in &metadata.methods {
+            visit_signature_type_hints(&method.signature, &mut visit);
+            if let Some(bindings) = graph.impl_method_bindings(method.node) {
+                visit_binding_type_hints(bindings, &mut visit);
+            }
+        }
+    }
+    if let Some(bindings) = graph.bindings(declaration.id) {
+        visit_binding_type_hints(bindings, &mut visit);
+    }
+}
+
+fn visit_signature_type_hints(signature: &FunctionSignature, visit: &mut impl FnMut(&HirTypeHint)) {
+    for param in &signature.params {
+        if let Some(type_hint) = &param.type_hint {
+            visit_type_hint_and_args(type_hint, visit);
+        }
+    }
+    if let Some(type_hint) = &signature.return_type {
+        visit_type_hint_and_args(type_hint, visit);
+    }
+}
+
+fn visit_binding_type_hints(bindings: &BindingMap, visit: &mut impl FnMut(&HirTypeHint)) {
+    for binding in bindings.locals() {
+        if let Some(type_hint) = &binding.type_hint {
+            visit_type_hint_and_args(type_hint, visit);
+        }
+    }
+}
+
+fn visit_type_hint_and_args(hint: &HirTypeHint, visit: &mut impl FnMut(&HirTypeHint)) {
+    visit(hint);
+    for arg in &hint.args {
+        visit_type_hint_and_args(arg, visit);
+    }
+}
+
+fn type_hint_target_declaration<'a>(
+    graph: &'a ModuleGraph,
+    owner: &Declaration,
+    hint: &HirTypeHint,
+) -> Option<&'a Declaration> {
+    let name = hint.path.last()?;
+    let declaration_id = if hint.path.len() == 1 {
+        graph
+            .module(owner.module)
+            .and_then(|declarations| declarations.get(name))
+            .or_else(|| imported_declaration_for_name(graph, owner.module, name))?
+    } else {
+        graph
+            .declarations()
+            .find(|declaration| qualified_declaration_path(graph, declaration) == hint.path)?
+            .id
+    };
+    graph.declaration(declaration_id)
+}
+
+fn imported_declaration_for_name(
+    graph: &ModuleGraph,
+    module: ModuleId,
+    name: &str,
+) -> Option<HirDeclId> {
+    graph.imports(module)?.iter().find_map(|import| {
+        if import_binding_name(import)? != name {
+            return None;
+        }
+        let ImportResolution::Declaration(declaration) = import.resolution?;
+        Some(declaration)
+    })
+}
+
+fn import_binding_name(import: &Import) -> Option<&str> {
+    import
+        .alias
+        .as_deref()
+        .or_else(|| import.path.last().map(String::as_str))
+}
+
+fn qualified_declaration_path(graph: &ModuleGraph, declaration: &Declaration) -> Vec<String> {
+    graph
+        .module_path(declaration.module)
+        .map(|path| {
+            path.segments()
+                .iter()
+                .chain(std::iter::once(&declaration.name))
+                .cloned()
+                .collect()
+        })
+        .unwrap_or_else(|| vec![declaration.name.clone()])
 }
 
 fn is_hir_diagnostic(diagnostic: &Diagnostic) -> bool {
@@ -613,6 +854,62 @@ mod tests {
             diagnostics.diagnostics()
         );
         assert!(helper_diagnostics.diagnostics().is_empty());
+    }
+
+    #[test]
+    fn unused_import_reports_warning() {
+        let document = DocumentId::from("/workspace/scripts/game/main.vela");
+        let mut db = LanguageServiceDatabases::new();
+        db.update(&project(&[
+            file(
+                document.as_str(),
+                "use game::reward::grant\npub fn main() { return 1 }",
+            ),
+            file(
+                "/workspace/scripts/game/reward.vela",
+                "pub fn grant() { return 1 }",
+            ),
+        ]));
+
+        let diagnostics = db.diagnostics_for_document(&document);
+
+        assert!(
+            diagnostics.diagnostics().iter().any(|diagnostic| {
+                diagnostic.code() == Some(UNUSED_IMPORT_CODE)
+                    && diagnostic.severity() == ServiceDiagnosticSeverity::Warning
+                    && diagnostic.range().is_some()
+                    && diagnostic.message() == "unused import `grant`"
+            }),
+            "{:?}",
+            diagnostics.diagnostics()
+        );
+    }
+
+    #[test]
+    fn unused_import_ignores_type_hint_use() {
+        let document = DocumentId::from("/workspace/scripts/game/main.vela");
+        let mut db = LanguageServiceDatabases::new();
+        db.update(&project(&[
+            file(
+                document.as_str(),
+                "use game::types::Reward\npub fn main(reward: Reward) { return reward.amount }",
+            ),
+            file(
+                "/workspace/scripts/game/types.vela",
+                "pub struct Reward { amount: i64 }",
+            ),
+        ]));
+
+        let diagnostics = db.diagnostics_for_document(&document);
+
+        assert!(
+            diagnostics
+                .diagnostics()
+                .iter()
+                .all(|diagnostic| diagnostic.code() != Some(UNUSED_IMPORT_CODE)),
+            "{:?}",
+            diagnostics.diagnostics()
+        );
     }
 
     #[test]

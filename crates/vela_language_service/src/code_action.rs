@@ -3,7 +3,7 @@ use vela_syntax::ast::Visibility;
 
 use crate::{
     DiagnosticRange, DocumentId, DocumentTextEdit, LanguageServiceDatabases, LineIndex, Position,
-    ServiceDiagnostic, TextEdit, WorkspaceEdit,
+    ServiceDiagnostic, TextEdit, WorkspaceEdit, diagnostics::UNUSED_IMPORT_CODE,
 };
 
 #[derive(Debug, Clone, Eq, PartialEq)]
@@ -63,6 +63,11 @@ impl LanguageServiceDatabases {
                 let mut actions = repair_hint_actions(document_id, diagnostic);
                 actions.extend(candidate_actions(document_id, source.text(), diagnostic));
                 actions.extend(self.import_actions(document_id, source.text(), diagnostic));
+                actions.extend(remove_unused_import_actions(
+                    document_id,
+                    source.text(),
+                    diagnostic,
+                ));
                 actions.extend(fill_match_arm_actions(
                     document_id,
                     source.text(),
@@ -228,6 +233,47 @@ fn import_insertion_range(text: &str) -> DiagnosticRange {
     let line_index = LineIndex::new(text);
     let position = line_index.position(insertion_offset);
     DiagnosticRange::new(position, position)
+}
+
+fn remove_unused_import_actions(
+    document_id: &DocumentId,
+    text: &str,
+    diagnostic: &ServiceDiagnostic,
+) -> Vec<CodeAction> {
+    if diagnostic.code() != Some(UNUSED_IMPORT_CODE) {
+        return Vec::new();
+    }
+    let Some(range) = diagnostic.range() else {
+        return Vec::new();
+    };
+    let Some(line_range) = full_line_range(text, range) else {
+        return Vec::new();
+    };
+
+    vec![CodeAction {
+        title: "Remove unused import".to_owned(),
+        kind: CodeActionKind::QuickFix,
+        edit: WorkspaceEdit::new(vec![DocumentTextEdit::new(
+            document_id.clone(),
+            vec![TextEdit::new(line_range, "")],
+        )]),
+    }]
+}
+
+fn full_line_range(text: &str, range: DiagnosticRange) -> Option<DiagnosticRange> {
+    let line_index = LineIndex::new(text);
+    let start = line_index.offset(range.start());
+    if start > text.len() {
+        return None;
+    }
+    let line_start = text[..start].rfind('\n').map_or(0, |offset| offset + 1);
+    let line_end = text[start..]
+        .find('\n')
+        .map_or(text.len(), |offset| start + offset + 1);
+    Some(DiagnosticRange::new(
+        line_index.position(line_start),
+        line_index.position(line_end),
+    ))
 }
 
 fn fill_match_arm_actions(
@@ -538,6 +584,43 @@ mod tests {
         assert_eq!(edit.range().start(), Position::new(0, 0));
         assert_eq!(edit.range().end(), Position::new(0, 0));
         assert_eq!(edit.new_text(), "use game::reward::grant\n");
+    }
+
+    #[test]
+    fn code_action_removes_unused_import() {
+        let document = DocumentId::from("/workspace/scripts/game/main.vela");
+        let text = "use game::reward::grant\npub fn main() { return 1 }";
+        let files = vec![
+            SourceFileSnapshot::new(document.clone(), text),
+            SourceFileSnapshot::new(
+                "/workspace/scripts/game/reward.vela",
+                "pub fn grant() { return 1 }",
+            ),
+        ];
+        let config = WorkspaceConfig::workspace([WorkspaceRoot::from("/workspace/scripts")]);
+        let project = assemble_project_sources(&config, &files, &Workspace::new().snapshot());
+        let mut databases = LanguageServiceDatabases::new();
+        databases.update(&project);
+
+        let index = LineIndex::new(text);
+        let import_start = text.find("grant").expect("import name");
+        let import_end = import_start + "grant".len();
+        let actions = databases.code_actions(
+            &document,
+            DiagnosticRange::new(index.position(import_start), index.position(import_end)),
+        );
+
+        let action = actions
+            .iter()
+            .find(|action| action.title() == "Remove unused import")
+            .expect("unused import quick fix should exist");
+        assert_eq!(action.kind(), CodeActionKind::QuickFix);
+        let document_edit = &action.edit().document_edits()[0];
+        assert_eq!(document_edit.document_id(), &document);
+        let edit = &document_edit.edits()[0];
+        assert_eq!(edit.range().start(), Position::new(0, 0));
+        assert_eq!(edit.range().end(), Position::new(1, 0));
+        assert_eq!(edit.new_text(), "");
     }
 
     #[test]
