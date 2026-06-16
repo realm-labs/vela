@@ -611,6 +611,7 @@ Purpose: support workspace navigation and prepare rename.
     call/read sites across workspace sources.
   - [x] Index source-owned script struct field declarations plus typed
     receiver read/write member uses.
+  - [x] Index explicit source-owned record-constructor field labels.
   - [x] Index source-owned enum variant declarations, constructor uses, and
     match-pattern uses.
   - [x] Index source-owned inherent script method declarations and typed
@@ -632,6 +633,7 @@ Purpose: support workspace navigation and prepare rename.
     call references.
   - [x] Track source-owned script struct field declaration/read/write
     reference kinds.
+  - [x] Track explicit source-owned record-constructor field labels as reads.
   - [x] Track source-owned enum variant declaration/read/pattern reference
     kinds.
   - [x] Track schema-backed variant declaration/read/pattern reference kinds.
@@ -641,6 +643,8 @@ Purpose: support workspace navigation and prepare rename.
     request.
   - [x] Serve source-owned script struct field references through the native
     LSP request.
+  - [x] Serve explicit source-owned record-constructor field label references
+    through the native LSP request.
   - [x] Serve source-owned enum variant references through the native LSP
     request.
   - [x] Serve source-owned script method references through the native LSP
@@ -685,6 +689,8 @@ Tests:
 - [x] `lsp_references_find_imported_function_uses`
 - [x] `references_find_field_reads_and_writes`
 - [x] `lsp_references_find_field_reads_and_writes`
+- [x] `references_find_record_constructor_field_labels`
+- [x] `lsp_references_find_record_constructor_field_labels`
 - [x] `references_find_enum_variant_constructors_and_patterns`
 - [x] `lsp_references_find_enum_variant_constructors_and_patterns`
 - [x] `references_find_script_method_calls`

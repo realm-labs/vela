@@ -172,6 +172,12 @@ impl LanguageServiceDatabases {
             if let Some(target) = schema::schema_variant_use_target(self, source.text(), &token) {
                 return schema::schema_variant_references(self, &target, include_declaration);
             }
+            if let Some(parsed) = self.parse_db().parsed_source(document_id)
+                && let Some(target) =
+                    fields::script_record_field_use_target(graph, parsed, source.text(), &token)
+            {
+                return fields::script_field_references(self, &target, include_declaration);
+            }
             if let Some(declaration) = declaration_reference_target(bindings, &token) {
                 return self.declaration_references(declaration, include_declaration);
             }
@@ -1031,6 +1037,8 @@ fn is_identifier_continue(ch: char) -> bool {
     ch == '_' || ch.is_ascii_alphanumeric()
 }
 
+#[cfg(test)]
+mod field_tests;
 #[cfg(test)]
 mod highlight_tests;
 #[cfg(test)]

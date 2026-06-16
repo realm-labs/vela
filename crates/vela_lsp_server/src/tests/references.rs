@@ -239,6 +239,82 @@ pub fn main(reward: Reward) -> i64 {
 }
 
 #[test]
+fn lsp_references_find_record_constructor_field_labels() {
+    let mut server = LspServer::new();
+    let _ = response_value(server.handle_json(&request(
+        1,
+        "initialize",
+        serde_json::json!({
+            "processId": null,
+            "rootUri": "file:///workspace/scripts",
+            "capabilities": {}
+        }),
+    )));
+    let text = "\
+pub struct Reward {
+    amount: i64
+}
+
+pub fn make(amount: i64) -> Reward {
+    return Reward { amount: amount }
+}
+
+pub fn main(reward: Reward) -> i64 {
+    return reward.amount
+}";
+    let uri = "file:///workspace/scripts/game/main.vela";
+    let _ = notification_value(server.handle_json(&notification(
+        "textDocument/didOpen",
+        serde_json::json!({
+            "textDocument": {
+                "uri": uri,
+                "languageId": "vela",
+                "version": 1,
+                "text": text
+            }
+        }),
+    )));
+
+    let response = response_value(server.handle_json(&request(
+        2,
+        "textDocument/references",
+        serde_json::json!({
+            "textDocument": { "uri": uri },
+            "position": {
+                "line": 5,
+                "character": line(text, 5).find("amount").expect("constructor field label")
+            },
+            "context": { "includeDeclaration": true }
+        }),
+    )));
+    let references = response["result"]
+        .as_array()
+        .expect("references response should be an array");
+
+    assert_eq!(references.len(), 3, "{references:?}");
+    assert_reference(
+        references,
+        uri,
+        1,
+        line(text, 1).find("amount").expect("field declaration"),
+    );
+    assert_reference(
+        references,
+        uri,
+        5,
+        line(text, 5)
+            .find("amount")
+            .expect("constructor field label"),
+    );
+    assert_reference(
+        references,
+        uri,
+        9,
+        line(text, 9).find("amount").expect("member field read"),
+    );
+}
+
+#[test]
 fn lsp_references_find_enum_variant_constructors_and_patterns() {
     let mut server = LspServer::new();
     let _ = response_value(server.handle_json(&request(
