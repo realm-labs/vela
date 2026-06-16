@@ -147,6 +147,13 @@ JIT remain separate roadmap tracks.
 | M22 | Not started | Cranelift JIT follows interpreter/cache/debugger/conformance stability. |
 | M23 | Not started | Release hardening, public docs, validation gates, and performance targets. |
 
+M20.5 Phase 14 update: selected struct fields now use parser-owned member
+spans for context-aware range formatting through both the language service and
+native LSP server, preserving enclosing indentation while limiting edits to the
+selected member. Remaining range-formatting follow-up is narrower: broader enum
+record-field and multi-member declaration group selections still need dedicated
+fixtures and behavior coverage.
+
 M20.5 Phase 17 update: editor initialization options and
 `workspace/didChangeConfiguration` settings now map `workspace.roots` and
 `host.schema` into the server `WorkspaceConfig`, native `--root` and

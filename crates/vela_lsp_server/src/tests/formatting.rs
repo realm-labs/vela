@@ -393,6 +393,60 @@ impl Player {
 }
 
 #[test]
+fn lsp_range_formatting_preserves_struct_field_indent() {
+    let mut server = LspServer::new();
+    let _ = response_value(server.handle_json(&request(
+        1,
+        "initialize",
+        serde_json::json!({
+            "processId": null,
+            "rootUri": "file:///workspace/scripts",
+            "capabilities": {}
+        }),
+    )));
+    let uri = "file:///workspace/scripts/game/main.vela";
+    let _ = notification_value(server.handle_json(&notification(
+        "textDocument/didOpen",
+        serde_json::json!({
+            "textDocument": {
+                "uri": uri,
+                "languageId": "vela",
+                "version": 1,
+                "text": "\
+pub struct Player {
+    level:i64
+    name:String
+}
+"
+            }
+        }),
+    )));
+
+    let response = response_value(server.handle_json(&request(
+        2,
+        "textDocument/rangeFormatting",
+        serde_json::json!({
+            "textDocument": { "uri": uri },
+            "range": {
+                "start": { "line": 1, "character": 4 },
+                "end": { "line": 1, "character": 13 }
+            },
+            "options": { "tabSize": 4, "insertSpaces": true }
+        }),
+    )));
+    let edits = response["result"]
+        .as_array()
+        .expect("rangeFormatting should return edits");
+
+    assert_eq!(edits.len(), 1);
+    assert_eq!(edits[0]["range"]["start"]["line"], 1);
+    assert_eq!(edits[0]["range"]["start"]["character"], 4);
+    assert_eq!(edits[0]["range"]["end"]["line"], 1);
+    assert_eq!(edits[0]["range"]["end"]["character"], 13);
+    assert_eq!(edits[0]["newText"], "level: i64");
+}
+
+#[test]
 fn lsp_on_type_formatting_only_edits_current_construct() {
     let mut server = LspServer::new();
     let _ = response_value(server.handle_json(&request(

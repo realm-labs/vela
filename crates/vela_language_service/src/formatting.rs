@@ -1,6 +1,6 @@
 use crate::{DiagnosticRange, DocumentId, LanguageServiceDatabases, LineIndex, Position, TextEdit};
 use vela_common::SourceId;
-use vela_syntax::ast::{ItemKind, SourceFile};
+use vela_syntax::ast::{EnumVariantFields, ItemKind, SourceFile};
 use vela_syntax::formatting::{
     FormatElementKind, TriviaKind, extract_format_elements, format_source,
 };
@@ -316,12 +316,33 @@ fn selectable_format_ranges(parsed: &SourceFile) -> Vec<SelectableFormatRange> {
                         }),
                 );
             }
-            ItemKind::Use(_)
-            | ItemKind::Const(_)
-            | ItemKind::Global(_)
-            | ItemKind::Function(_)
-            | ItemKind::Struct(_)
-            | ItemKind::Enum(_) => {}
+            ItemKind::Struct(struct_item) => {
+                ranges.extend(
+                    struct_item
+                        .fields
+                        .iter()
+                        .map(|field| SelectableFormatRange {
+                            start: field.span.start as usize,
+                            end: field.span.end as usize,
+                        }),
+                );
+            }
+            ItemKind::Enum(enum_item) => {
+                for variant in &enum_item.variants {
+                    ranges.push(SelectableFormatRange {
+                        start: variant.span.start as usize,
+                        end: variant.span.end as usize,
+                    });
+                    if let EnumVariantFields::Record(fields) = &variant.fields {
+                        ranges.extend(fields.iter().map(|field| SelectableFormatRange {
+                            start: field.span.start as usize,
+                            end: field.span.end as usize,
+                        }));
+                    }
+                }
+            }
+            ItemKind::Use(_) | ItemKind::Const(_) | ItemKind::Global(_) | ItemKind::Function(_) => {
+            }
         }
     }
     ranges
@@ -728,12 +749,33 @@ impl Player {
         assert_eq!(edits[0].range().end(), Position::new(1, 43));
         assert_eq!(
             formatted,
-            "\
-impl Player {
-    fn heal(amount: i64) -> i64 {
-        return amount
+            "impl Player {\n    fn heal(amount: i64) -> i64 {\n        return amount\n    }\n    fn hurt(amount:i64)->i64{return amount}\n}\n"
+        );
     }
-    fn hurt(amount:i64)->i64{return amount}
+
+    #[test]
+    fn range_formatting_preserves_struct_field_indent() {
+        let source = "\
+pub struct Player {
+    level:i64
+    name:String
+}
+";
+        let edits = range_format_source(
+            source,
+            DiagnosticRange::new(Position::new(1, 4), Position::new(1, 13)),
+        );
+        let formatted = apply_range_edits(source, &edits);
+
+        assert_eq!(edits.len(), 1);
+        assert_eq!(edits[0].range().start(), Position::new(1, 4));
+        assert_eq!(edits[0].range().end(), Position::new(1, 13));
+        assert_eq!(
+            formatted,
+            "\
+pub struct Player {
+    level: i64
+    name:String
 }
 "
         );

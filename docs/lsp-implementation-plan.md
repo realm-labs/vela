@@ -932,6 +932,8 @@ Purpose: provide deterministic source formatting without losing comments.
     format one selected nested member while preserving surrounding text.
   - Indented nested method selections now preserve enclosing member indentation
     and avoid duplicating the following line break.
+  - Struct fields, enum variants, and enum record fields now use parser-owned
+    spans for selected nested member formatting.
 - [~] Implement full document formatting.
   - Native LSP full-document formatting now uses the token/trivia formatter
     for spacing, brace indentation, comment preservation, and final newline.
@@ -971,6 +973,8 @@ Tests:
 - [x] `lsp_range_formatting_formats_selected_impl_method`
 - [x] `range_formatting_preserves_nested_method_indent`
 - [x] `lsp_range_formatting_preserves_nested_method_indent`
+- [x] `range_formatting_preserves_struct_field_indent`
+- [x] `lsp_range_formatting_preserves_struct_field_indent`
 
 Validation:
 
