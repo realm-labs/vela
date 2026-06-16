@@ -992,7 +992,10 @@ Purpose: package native LSP for real editors while keeping plugins thin.
     project-derived indexes.
 - [ ] Package VS Code extension as thin launcher/config UI.
 - [ ] Package Zed extension as thin launcher/config UI.
-- [ ] Document manual setup for editors that can launch generic LSP servers.
+- [x] Document manual setup for editors that can launch generic LSP servers.
+  - `docs/lsp-editor-setup.md` documents stdio launch, `vela.toml`,
+    `--root`/`--schema` fallback flags, initialization options, and generic
+    client wiring without moving behavior into editor plugins.
 - [ ] Add release matrix for Windows, macOS, and Linux binaries.
 - [ ] Keep feature behavior out of editor-specific plugins.
 
