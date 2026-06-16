@@ -2,7 +2,7 @@ use std::fs;
 
 use crate::tests::{LspServer, notification, notification_value, request, response_value};
 
-use super::{assert_reference, file_uri, line, temp_workspace};
+use super::{assert_highlight, assert_reference, file_uri, line, temp_workspace};
 
 #[test]
 fn lsp_references_find_schema_field_reads_and_writes() {
@@ -438,6 +438,224 @@ pub fn main(player: Rewardable) -> i64 {
         &uri,
         2,
         line(text, 2).find("grant").expect("second method call"),
+    );
+
+    fs::remove_dir_all(&root).expect("temporary workspace should be removable");
+}
+
+#[test]
+fn lsp_document_highlight_marks_schema_method_calls() {
+    let root = temp_workspace();
+    let config_path = root.join("vela.toml");
+    let schema_path = root.join("target").join("vela").join("schema.json");
+    fs::create_dir_all(schema_path.parent().expect("schema should have parent"))
+        .expect("schema directory should be creatable");
+    fs::write(
+        &config_path,
+        r#"
+            [workspace]
+            roots = ["scripts"]
+
+            [host]
+            schema = "target/vela/schema.json"
+        "#,
+    )
+    .expect("vela.toml should be writable");
+
+    let schema_text = "\
+pub fn grant() { return 1 }
+pub fn preview() { return 1 }";
+    let grant_start = schema_text
+        .find("grant")
+        .expect("schema grant marker should exist");
+    let preview_start = schema_text
+        .find("preview")
+        .expect("schema preview marker should exist");
+    fs::write(
+        &schema_path,
+        serde_json::json!({
+            "formatVersion": 1,
+            "facts": {
+                "types": [
+                    {
+                        "name": "Player",
+                        "fact": { "kind": "host", "name": "Player" }
+                    }
+                ],
+                "traits": [
+                    {
+                        "name": "Rewardable",
+                        "fact": { "kind": "trait", "name": "Rewardable" }
+                    }
+                ],
+                "methods": [
+                    {
+                        "owner": "Player",
+                        "name": "grant",
+                        "fact": {
+                            "kind": "function",
+                            "params": [{ "kind": "primitive", "name": "i64" }],
+                            "returns": { "kind": "primitive", "name": "i64" }
+                        },
+                        "sourceSpan": {
+                            "source": 1,
+                            "start": grant_start,
+                            "end": grant_start + "grant".len()
+                        }
+                    }
+                ],
+                "traitMethods": [
+                    {
+                        "owner": "Rewardable",
+                        "name": "preview",
+                        "fact": {
+                            "kind": "function",
+                            "params": [{ "kind": "primitive", "name": "i64" }],
+                            "returns": { "kind": "primitive", "name": "i64" }
+                        },
+                        "sourceSpan": {
+                            "source": 1,
+                            "start": preview_start,
+                            "end": preview_start + "preview".len()
+                        }
+                    }
+                ]
+            }
+        })
+        .to_string(),
+    )
+    .expect("schema should be writable");
+
+    let mut server = LspServer::new();
+    let initialize = response_value(server.handle_json(&request(
+        1,
+        "initialize",
+        serde_json::json!({
+            "processId": null,
+            "rootUri": file_uri(&root),
+            "capabilities": {}
+        }),
+    )));
+    assert_eq!(
+        initialize["result"]["capabilities"]["documentHighlightProvider"],
+        true
+    );
+    let _ = server.handle_json(&notification(
+        "workspace/didChangeWatchedFiles",
+        serde_json::json!({
+            "changes": [{ "uri": file_uri(&config_path), "type": 1 }]
+        }),
+    ));
+
+    let schema_uri = file_uri(&root.join("scripts").join("_schema_defs.vela"));
+    let _ = notification_value(server.handle_json(&notification(
+        "textDocument/didOpen",
+        serde_json::json!({
+            "textDocument": {
+                "uri": schema_uri,
+                "languageId": "vela",
+                "version": 1,
+                "text": schema_text
+            }
+        }),
+    )));
+
+    let text = "\
+pub fn main(player: Player, rewardable: Rewardable) -> i64 {
+    let first = player.grant(1)
+    let second = player.grant(first)
+    return rewardable.preview(second)
+}";
+    let uri = file_uri(&root.join("scripts").join("game").join("main.vela"));
+    let _ = notification_value(server.handle_json(&notification(
+        "textDocument/didOpen",
+        serde_json::json!({
+            "textDocument": {
+                "uri": uri,
+                "languageId": "vela",
+                "version": 1,
+                "text": text
+            }
+        }),
+    )));
+
+    let grant_response = response_value(server.handle_json(&request(
+        2,
+        "textDocument/documentHighlight",
+        serde_json::json!({
+            "textDocument": { "uri": uri },
+            "position": {
+                "line": 1,
+                "character": line(text, 1).find("grant").expect("first grant call")
+            }
+        }),
+    )));
+    let grant_highlights = grant_response["result"]
+        .as_array()
+        .expect("documentHighlight response should be an array");
+
+    assert_eq!(grant_highlights.len(), 2, "{grant_highlights:?}");
+    assert_highlight(
+        grant_highlights,
+        1,
+        line(text, 1).find("grant").expect("first grant call"),
+        1,
+    );
+    assert_highlight(
+        grant_highlights,
+        2,
+        line(text, 2).find("grant").expect("second grant call"),
+        1,
+    );
+
+    let preview_response = response_value(server.handle_json(&request(
+        3,
+        "textDocument/documentHighlight",
+        serde_json::json!({
+            "textDocument": { "uri": uri },
+            "position": {
+                "line": 3,
+                "character": line(text, 3).find("preview").expect("trait method call")
+            }
+        }),
+    )));
+    let preview_highlights = preview_response["result"]
+        .as_array()
+        .expect("documentHighlight response should be an array");
+
+    assert_eq!(preview_highlights.len(), 1, "{preview_highlights:?}");
+    assert_highlight(
+        preview_highlights,
+        3,
+        line(text, 3).find("preview").expect("trait method call"),
+        1,
+    );
+
+    let declaration_response = response_value(server.handle_json(&request(
+        4,
+        "textDocument/documentHighlight",
+        serde_json::json!({
+            "textDocument": { "uri": schema_uri },
+            "position": {
+                "line": 0,
+                "character": line(schema_text, 0).find("grant").expect("schema method")
+            }
+        }),
+    )));
+    let declaration_highlights = declaration_response["result"]
+        .as_array()
+        .expect("documentHighlight response should be an array");
+
+    assert_eq!(
+        declaration_highlights.len(),
+        1,
+        "{declaration_highlights:?}"
+    );
+    assert_highlight(
+        declaration_highlights,
+        0,
+        line(schema_text, 0).find("grant").expect("schema method"),
+        1,
     );
 
     fs::remove_dir_all(&root).expect("temporary workspace should be removable");

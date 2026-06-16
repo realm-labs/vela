@@ -603,6 +603,8 @@ Purpose: support workspace navigation and prepare rename.
     active document.
   - [x] Serve source-owned trait declaration/impl highlights in the active
     document.
+  - [x] Serve schema-backed method and trait-method call highlights in the
+    active document.
 - [~] Implement incoming and outgoing call hierarchy for script functions and
   methods where calls are statically resolved.
   - [x] Serve initial source-backed script function prepare, incoming, and
@@ -644,6 +646,8 @@ Tests:
 - [x] `document_highlight_marks_script_method_calls`
 - [x] `lsp_document_highlight_marks_script_method_calls`
 - [x] `document_highlight_marks_trait_impl_uses`
+- [x] `document_highlight_marks_schema_method_calls`
+- [x] `lsp_document_highlight_marks_schema_method_calls`
 - [x] `call_hierarchy_uses_resolved_call_graph`
 - [x] `lsp_call_hierarchy_uses_resolved_call_graph`
 - [x] `call_hierarchy_uses_resolved_script_method_calls`
