@@ -924,9 +924,8 @@ Purpose: expose gradual type facts without implying static typing.
   - Host field paths with stable schema facts now expose type labels while
     suppressing method callees and dynamic `Any` fields.
 - [~] Suppress hints at dynamic `Any` boundaries.
-  - Local, lambda, and host-path type inlay hints suppress `Any`; remaining
-    hint families still need equivalent dynamic-boundary checks as they are
-    added.
+  - Local, lambda, and host-path type inlay hints suppress `Any`; tuple-variant
+    payload-name hints suppress dynamic payload facts.
   - Parameter name hints suppress unstable `Any`/unknown parameter facts before
     emitting labels.
 
@@ -939,12 +938,14 @@ Tests:
 - [x] `inlay_hints_show_enum_variant_payload_names`
 - [x] `inlay_hints_degrade_to_any_without_schema`
 - [x] `inlay_hints_suppress_any_schema_function_parameters`
+- [x] `inlay_hints_suppress_any_enum_variant_payloads`
 - [x] `lsp_inlay_hints_show_parameter_names`
 - [x] `lsp_inlay_hints_show_local_typefacts`
 - [x] `lsp_inlay_hints_show_lambda_parameter_facts`
 - [x] `lsp_inlay_hints_show_host_path_typefacts`
 - [x] `lsp_inlay_hints_show_enum_variant_payload_names`
 - [x] `lsp_inlay_hints_suppress_any_schema_function_parameters`
+- [x] `lsp_inlay_hints_suppress_any_enum_variant_payloads`
 - [x] `lsp_inlay_hints_respect_requested_range`
 
 Validation:

@@ -39,6 +39,34 @@ fn inlay_hints_suppress_any_schema_function_parameters() {
     );
 }
 
+#[test]
+fn inlay_hints_suppress_any_enum_variant_payloads() {
+    let document = DocumentId::from("/workspace/scripts/game/main.vela");
+    let text = r#"enum Payload {
+    Dynamic(raw: Any, count: i64),
+    Stable(name: String, count: i64),
+}
+pub fn main() {
+    Payload::Dynamic("raw", 1)
+    Payload::Stable("ok", 2)
+}"#;
+    let databases = databases_for(vec![SourceFileSnapshot::new(document.clone(), text)]);
+
+    let hints = databases.inlay_hints(
+        &document,
+        DiagnosticRange::new(Position::new(0, 0), Position::new(8, 0)),
+    );
+
+    assert_eq!(
+        hint_labels(&hints),
+        vec![
+            (Position::new(5, 28), "count:".to_owned()),
+            (Position::new(6, 20), "name:".to_owned()),
+            (Position::new(6, 26), "count:".to_owned())
+        ]
+    );
+}
+
 fn hint_labels(hints: &[InlayHint]) -> Vec<(Position, String)> {
     hints
         .iter()
