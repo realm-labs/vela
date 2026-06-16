@@ -562,6 +562,7 @@ Purpose: support workspace navigation and prepare rename.
     match-pattern uses.
   - [x] Index source-owned inherent script method declarations and typed
     receiver call sites.
+  - [x] Index source-owned trait declarations and `impl Trait for Type` uses.
 - [~] Track reference kind: read, write, call, type use, import, pattern,
   declaration.
   - [x] Track local declaration and read reference kinds.
@@ -582,12 +583,16 @@ Purpose: support workspace navigation and prepare rename.
     request.
   - [x] Serve source-owned script method references through the native LSP
     request.
+  - [x] Serve source-owned trait impl references through the native LSP
+    request.
 - [~] Implement `textDocument/documentHighlight`.
   - [x] Serve local declaration/read highlights through the native LSP request.
   - [x] Serve imported script function import/read highlights in the active
     document.
   - [x] Serve source-owned script method declaration/call highlights in the
     active document.
+  - [x] Serve source-owned trait declaration/impl highlights in the active
+    document.
 - [~] Implement incoming and outgoing call hierarchy for script functions and
   methods where calls are statically resolved.
   - [x] Serve initial source-backed script function prepare, incoming, and
@@ -607,6 +612,8 @@ Tests:
 - [x] `lsp_references_find_enum_variant_constructors_and_patterns`
 - [x] `references_find_script_method_calls`
 - [x] `lsp_references_find_script_method_calls`
+- [x] `references_find_trait_impl_uses`
+- [x] `lsp_references_find_trait_impl_uses`
 - [x] `document_highlight_marks_local_declaration_and_reads`
 - [x] `document_highlight_marks_import_and_calls_in_active_document`
 - [x] `lsp_document_highlight_marks_local_declaration_and_reads`
@@ -614,6 +621,7 @@ Tests:
 - [x] `lsp_document_highlight_marks_read_write_call`
 - [x] `document_highlight_marks_script_method_calls`
 - [x] `lsp_document_highlight_marks_script_method_calls`
+- [x] `document_highlight_marks_trait_impl_uses`
 - [x] `call_hierarchy_uses_resolved_call_graph`
 - [x] `lsp_call_hierarchy_uses_resolved_call_graph`
 - [x] `call_hierarchy_uses_resolved_script_method_calls`

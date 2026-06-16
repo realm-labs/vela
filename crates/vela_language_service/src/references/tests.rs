@@ -263,6 +263,61 @@ pub fn main(reward: Reward) -> i64 {
 }
 
 #[test]
+fn references_find_trait_impl_uses() {
+    let document = DocumentId::from("/workspace/scripts/game/main.vela");
+    let text = "\
+pub trait Rewardable {
+    fn grant(self, amount: i64) -> i64;
+}
+
+pub struct Player {
+    level: i64
+}
+
+pub struct Chest {
+    amount: i64
+}
+
+impl Rewardable for Player {
+    fn grant(self, amount: i64) -> i64 { return amount }
+}
+
+impl Rewardable for Chest {
+    fn grant(self, amount: i64) -> i64 { return amount }
+}";
+    let databases = databases_for(vec![SourceFileSnapshot::new(document.clone(), text)]);
+
+    let references = databases.references(
+        &document,
+        Position::new(
+            12,
+            line(text, 12).find("Rewardable").expect("first impl use"),
+        ),
+        true,
+    );
+
+    assert_eq!(references.len(), 3, "{references:?}");
+    assert_reference(
+        &references,
+        0,
+        line(text, 0).find("Rewardable").expect("trait declaration"),
+        ReferenceKind::Declaration,
+    );
+    assert_reference(
+        &references,
+        12,
+        line(text, 12).find("Rewardable").expect("first impl use"),
+        ReferenceKind::Read,
+    );
+    assert_reference(
+        &references,
+        16,
+        line(text, 16).find("Rewardable").expect("second impl use"),
+        ReferenceKind::Read,
+    );
+}
+
+#[test]
 fn document_highlight_marks_local_declaration_and_reads() {
     let document = DocumentId::from("/workspace/scripts/game/main.vela");
     let text = "\
@@ -450,6 +505,41 @@ pub fn main(reward: Reward) -> i64 {
         10,
         line(text, 10).find("grant").expect("second method call"),
         DocumentHighlightKind::Call,
+    );
+}
+
+#[test]
+fn document_highlight_marks_trait_impl_uses() {
+    let document = DocumentId::from("/workspace/scripts/game/main.vela");
+    let text = "\
+pub trait Rewardable {
+    fn grant(self, amount: i64) -> i64;
+}
+
+pub struct Player { level: i64 }
+
+impl Rewardable for Player {
+    fn grant(self, amount: i64) -> i64 { return amount }
+}";
+    let databases = databases_for(vec![SourceFileSnapshot::new(document.clone(), text)]);
+
+    let highlights = databases.document_highlights(
+        &document,
+        Position::new(6, line(text, 6).find("Rewardable").expect("impl use")),
+    );
+
+    assert_eq!(highlights.len(), 2, "{highlights:?}");
+    assert_highlight(
+        &highlights,
+        0,
+        line(text, 0).find("Rewardable").expect("trait declaration"),
+        DocumentHighlightKind::Text,
+    );
+    assert_highlight(
+        &highlights,
+        6,
+        line(text, 6).find("Rewardable").expect("impl use"),
+        DocumentHighlightKind::Read,
     );
 }
 

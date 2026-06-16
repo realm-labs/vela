@@ -3,6 +3,7 @@ use vela_common::{SourceId, Span};
 use vela_hir::binding::{BindingMap, BindingResolution, LocalBinding};
 use vela_hir::ids::{HirDeclId, HirLocalId};
 use vela_hir::module_graph::{Declaration, DeclarationKind, ImportResolution, ModuleGraph};
+use vela_hir::type_hint::ImplMetadataKind;
 use vela_syntax::lexer::lex;
 use vela_syntax::token::TokenKind;
 
@@ -89,6 +90,11 @@ struct EnumVariantReferenceTarget {
     variant: String,
 }
 
+#[derive(Debug, Clone, Eq, PartialEq)]
+struct TraitReferenceTarget {
+    owner: HirDeclId,
+}
+
 impl LanguageServiceDatabases {
     #[must_use]
     pub fn document_highlights(
@@ -126,6 +132,9 @@ impl LanguageServiceDatabases {
         let graph = self.hir_db().graph();
         let facts = AnalysisFacts::from_module_graph(graph);
 
+        if let Some(target) = trait_declaration_target(graph, source_id, source.text(), &token) {
+            return self.trait_references(&target, include_declaration);
+        }
         if let Some(target) =
             script_field_declaration_target(graph, source_id, source.text(), &token)
         {
@@ -173,6 +182,10 @@ impl LanguageServiceDatabases {
             ) {
                 return methods::script_method_references(self, &target, include_declaration);
             }
+        }
+
+        if let Some(target) = trait_impl_use_target(graph, source_id, source.text(), &token) {
+            return self.trait_references(&target, include_declaration);
         }
 
         if let Some(declaration) = graph.declarations().find(|declaration| {
@@ -282,6 +295,38 @@ impl LanguageServiceDatabases {
                         | BindingResolution::QualifiedPath(_) => None,
                     }),
             );
+        }
+
+        references.sort_by_key(|reference| {
+            let start = reference.range.start();
+            (
+                reference.document_id.as_str().to_owned(),
+                start.line,
+                start.character,
+                reference.kind,
+            )
+        });
+        references
+    }
+
+    fn trait_references(
+        &self,
+        target: &TraitReferenceTarget,
+        include_declaration: bool,
+    ) -> Vec<Reference> {
+        let graph = self.hir_db().graph();
+        let mut references = Vec::new();
+
+        if include_declaration
+            && let Some(declaration) = graph.declaration(target.owner)
+            && let Some(reference) =
+                self.reference_for_declaration(declaration, ReferenceKind::Declaration)
+        {
+            references.push(reference);
+        }
+
+        for source in self.source_db().records().values() {
+            references.extend(trait_impl_use_references_for_source(graph, source, target));
         }
 
         references.sort_by_key(|reference| {
@@ -464,6 +509,26 @@ impl LanguageServiceDatabases {
     }
 }
 
+fn trait_declaration_target(
+    graph: &ModuleGraph,
+    source_id: SourceId,
+    text: &str,
+    token: &ReferenceToken,
+) -> Option<TraitReferenceTarget> {
+    let start = u32::try_from(token.range.start).ok()?;
+    graph
+        .declarations()
+        .find(|declaration| {
+            declaration.kind == DeclarationKind::Trait
+                && declaration.span.source == source_id
+                && declaration.span.contains(start)
+                && token_text(text, token.range) == Some(declaration.name.as_str())
+        })
+        .map(|declaration| TraitReferenceTarget {
+            owner: declaration.id,
+        })
+}
+
 fn script_field_declaration_target(
     graph: &ModuleGraph,
     source_id: SourceId,
@@ -520,6 +585,107 @@ fn enum_variant_declaration_target(
         }
     }
     None
+}
+
+fn trait_impl_use_target(
+    graph: &ModuleGraph,
+    source_id: SourceId,
+    text: &str,
+    token: &ReferenceToken,
+) -> Option<TraitReferenceTarget> {
+    graph.declarations().find_map(|declaration| {
+        let metadata = graph.impl_metadata(declaration.id)?;
+        let ImplMetadataKind::Trait { trait_path } = &metadata.kind else {
+            return None;
+        };
+        if declaration.span.source != source_id {
+            return None;
+        }
+        let span_range = span_text_range(declaration.span)?;
+        let name_range = trait_path_name_range_in_text(text, span_range, trait_path)?;
+        if !(name_range.start <= token.range.start && token.range.end <= name_range.end) {
+            return None;
+        }
+        trait_declaration_for_path(graph, trait_path).map(|owner| TraitReferenceTarget { owner })
+    })
+}
+
+fn trait_impl_use_references_for_source(
+    graph: &ModuleGraph,
+    source: &crate::SourceRecord,
+    target: &TraitReferenceTarget,
+) -> Vec<Reference> {
+    let mut references = Vec::new();
+    let source_id = source.source_id();
+    let text = source.text();
+    for declaration in graph.declarations() {
+        let Some(metadata) = graph.impl_metadata(declaration.id) else {
+            continue;
+        };
+        let ImplMetadataKind::Trait { trait_path } = &metadata.kind else {
+            continue;
+        };
+        if declaration.span.source != source_id
+            || trait_declaration_for_path(graph, trait_path) != Some(target.owner)
+        {
+            continue;
+        }
+        let Some(span_range) = span_text_range(declaration.span) else {
+            continue;
+        };
+        let Some(name_range) = trait_path_name_range_in_text(text, span_range, trait_path) else {
+            continue;
+        };
+        references.push(Reference {
+            document_id: source.document_id().clone(),
+            range: diagnostic_range(text, name_range),
+            kind: ReferenceKind::Read,
+        });
+    }
+    references
+}
+
+fn trait_declaration_for_path(graph: &ModuleGraph, trait_path: &[String]) -> Option<HirDeclId> {
+    graph.declarations().find_map(|declaration| {
+        (declaration.kind == DeclarationKind::Trait
+            && declaration_path_matches(graph, declaration, trait_path))
+        .then_some(declaration.id)
+    })
+}
+
+fn declaration_path_matches(
+    graph: &ModuleGraph,
+    declaration: &Declaration,
+    path: &[String],
+) -> bool {
+    if path.len() == 1 {
+        return path.first().is_some_and(|name| name == &declaration.name);
+    }
+    qualified_declaration_name(graph, declaration) == path.join("::")
+}
+
+fn trait_path_name_range_in_text(
+    text: &str,
+    range: TextRange,
+    trait_path: &[String],
+) -> Option<TextRange> {
+    let name = trait_path.last()?;
+    let full_path = trait_path.join("::");
+    if !full_path.is_empty()
+        && let Some(full_range) = path_range_in_text(text, range, &full_path)
+    {
+        return Some(TextRange::new(full_range.end - name.len(), full_range.end));
+    }
+    name_range_in_text(text, range, name)
+}
+
+fn path_range_in_text(text: &str, range: TextRange, path: &str) -> Option<TextRange> {
+    let slice = text.get(range.start..range.end)?;
+    slice.match_indices(path).find_map(|(offset, matched)| {
+        let start = range.start + offset;
+        let end = start + matched.len();
+        is_identifier_boundary(text, start, end).then(|| TextRange::new(start, end))
+    })
 }
 
 fn script_field_use_target(

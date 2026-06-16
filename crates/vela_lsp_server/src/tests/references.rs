@@ -388,6 +388,88 @@ pub fn main(reward: Reward) -> i64 {
 }
 
 #[test]
+fn lsp_references_find_trait_impl_uses() {
+    let mut server = LspServer::new();
+    let _ = response_value(server.handle_json(&request(
+        1,
+        "initialize",
+        serde_json::json!({
+            "processId": null,
+            "rootUri": "file:///workspace/scripts",
+            "capabilities": {}
+        }),
+    )));
+    let text = "\
+pub trait Rewardable {
+    fn grant(self, amount: i64) -> i64;
+}
+
+pub struct Player {
+    level: i64
+}
+
+pub struct Chest {
+    amount: i64
+}
+
+impl Rewardable for Player {
+    fn grant(self, amount: i64) -> i64 { return amount }
+}
+
+impl Rewardable for Chest {
+    fn grant(self, amount: i64) -> i64 { return amount }
+}";
+    let uri = "file:///workspace/scripts/game/main.vela";
+    let _ = notification_value(server.handle_json(&notification(
+        "textDocument/didOpen",
+        serde_json::json!({
+            "textDocument": {
+                "uri": uri,
+                "languageId": "vela",
+                "version": 1,
+                "text": text
+            }
+        }),
+    )));
+
+    let response = response_value(server.handle_json(&request(
+        2,
+        "textDocument/references",
+        serde_json::json!({
+            "textDocument": { "uri": uri },
+            "position": {
+                "line": 12,
+                "character": line(text, 12).find("Rewardable").expect("first impl use")
+            },
+            "context": { "includeDeclaration": true }
+        }),
+    )));
+    let references = response["result"]
+        .as_array()
+        .expect("references response should be an array");
+
+    assert_eq!(references.len(), 3);
+    assert_reference(
+        references,
+        uri,
+        0,
+        line(text, 0).find("Rewardable").expect("trait declaration"),
+    );
+    assert_reference(
+        references,
+        uri,
+        12,
+        line(text, 12).find("Rewardable").expect("first impl use"),
+    );
+    assert_reference(
+        references,
+        uri,
+        16,
+        line(text, 16).find("Rewardable").expect("second impl use"),
+    );
+}
+
+#[test]
 fn lsp_document_highlight_marks_local_declaration_and_reads() {
     let mut server = LspServer::new();
     let initialize = response_value(server.handle_json(&request(

@@ -161,7 +161,9 @@ declarations plus typed receiver call sites, and
 `textDocument/documentHighlight` marks same-document method declarations and
 calls. Source-owned inherent script methods also participate in
 `textDocument/prepareCallHierarchy`, incoming calls, and outgoing calls for
-typed receiver call sites.
+typed receiver call sites. Source-owned trait declarations and
+`impl Trait for Type` paths now participate in `textDocument/references` and
+same-document highlights; schema-backed references remain open.
 
 ## Current Milestone State
 
