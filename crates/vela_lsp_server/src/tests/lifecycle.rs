@@ -70,6 +70,13 @@ fn lsp_initialize_reports_capabilities() {
         serde_json::json!(true)
     );
     assert_eq!(
+        response["result"]["capabilities"]["documentOnTypeFormattingProvider"],
+        serde_json::json!({
+            "firstTriggerCharacter": "}",
+            "moreTriggerCharacter": ["\n"]
+        })
+    );
+    assert_eq!(
         response["result"]["capabilities"]["documentSymbolProvider"],
         serde_json::json!(true)
     );

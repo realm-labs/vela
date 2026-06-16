@@ -3,6 +3,7 @@ use vela_common::SourceId;
 use vela_syntax::formatting::{
     FormatElementKind, TriviaKind, extract_format_elements, format_source,
 };
+use vela_syntax::token::{Symbol, TokenKind};
 
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub struct FormattingIr {
@@ -117,6 +118,32 @@ impl LanguageServiceDatabases {
 
         trailing_whitespace_edits(source.text(), range)
     }
+
+    #[must_use]
+    pub fn on_type_formatting(
+        &self,
+        document_id: &DocumentId,
+        position: Position,
+        trigger: &str,
+    ) -> Vec<TextEdit> {
+        if !matches!(trigger, "}" | "\n") {
+            return Vec::new();
+        }
+        let Some(source) = self.source_db().records().get(document_id) else {
+            return Vec::new();
+        };
+        let line_index = LineIndex::new(source.text());
+        let range = current_construct_range(
+            source.source_id(),
+            source.text(),
+            &line_index,
+            position,
+            trigger,
+        )
+        .unwrap_or_else(|| current_line_range(source.text(), &line_index, position));
+
+        trailing_whitespace_edits(source.text(), range)
+    }
 }
 
 fn service_segment_kind(kind: &FormatElementKind) -> FormattingSegmentKind {
@@ -132,6 +159,107 @@ fn service_segment_kind(kind: &FormatElementKind) -> FormattingSegmentKind {
 
 fn format_document(source_id: SourceId, source: &str) -> String {
     format_source(source_id, source).text().to_owned()
+}
+
+fn current_construct_range(
+    source_id: SourceId,
+    source: &str,
+    line_index: &LineIndex,
+    position: Position,
+    trigger: &str,
+) -> Option<DiagnosticRange> {
+    let offset = line_index.offset(position).min(source.len());
+    let stream = extract_format_elements(source_id, source);
+    let tokens = stream
+        .elements()
+        .iter()
+        .filter_map(|element| match element.kind() {
+            FormatElementKind::Token(TokenKind::Symbol(symbol)) => Some((*symbol, element.span())),
+            _ => None,
+        })
+        .collect::<Vec<_>>();
+
+    if trigger == "}"
+        && let Some(index) = tokens
+            .iter()
+            .rposition(|(symbol, span)| *symbol == Symbol::RBrace && (span.end as usize) <= offset)
+    {
+        return matching_brace_range(&tokens, index, line_index);
+    }
+
+    let mut stack = Vec::new();
+    for (index, (symbol, span)) in tokens.iter().enumerate() {
+        if (span.start as usize) > offset {
+            break;
+        }
+        match symbol {
+            Symbol::LBrace => stack.push(index),
+            Symbol::RBrace => {
+                stack.pop();
+            }
+            _ => {}
+        }
+    }
+
+    let open_index = stack.pop()?;
+    let end = matching_close_offset(&tokens, open_index).unwrap_or(offset);
+    Some(DiagnosticRange::new(
+        line_index.position(tokens[open_index].1.start as usize),
+        line_index.position(end),
+    ))
+}
+
+fn matching_brace_range(
+    tokens: &[(Symbol, vela_common::Span)],
+    close_index: usize,
+    line_index: &LineIndex,
+) -> Option<DiagnosticRange> {
+    let mut depth = 0_usize;
+    for index in (0..=close_index).rev() {
+        match tokens[index].0 {
+            Symbol::RBrace => depth = depth.saturating_add(1),
+            Symbol::LBrace => {
+                depth = depth.saturating_sub(1);
+                if depth == 0 {
+                    return Some(DiagnosticRange::new(
+                        line_index.position(tokens[index].1.start as usize),
+                        line_index.position(tokens[close_index].1.end as usize),
+                    ));
+                }
+            }
+            _ => {}
+        }
+    }
+    None
+}
+
+fn matching_close_offset(
+    tokens: &[(Symbol, vela_common::Span)],
+    open_index: usize,
+) -> Option<usize> {
+    let mut depth = 0_usize;
+    for (symbol, span) in tokens.iter().skip(open_index) {
+        match symbol {
+            Symbol::LBrace => depth = depth.saturating_add(1),
+            Symbol::RBrace => {
+                depth = depth.saturating_sub(1);
+                if depth == 0 {
+                    return Some(span.end as usize);
+                }
+            }
+            _ => {}
+        }
+    }
+    None
+}
+
+fn current_line_range(source: &str, line_index: &LineIndex, position: Position) -> DiagnosticRange {
+    let offset = line_index.offset(position).min(source.len());
+    let start = source[..offset].rfind('\n').map_or(0, |index| index + 1);
+    let end = source[offset..]
+        .find('\n')
+        .map_or(source.len(), |index| offset + index + 1);
+    DiagnosticRange::new(line_index.position(start), line_index.position(end))
 }
 
 fn trailing_whitespace_edits(source: &str, range: DiagnosticRange) -> Vec<TextEdit> {
@@ -216,6 +344,11 @@ mod tests {
     fn range_format_source(source: &str, range: DiagnosticRange) -> Vec<TextEdit> {
         let (databases, document_id) = project_databases(source);
         databases.range_formatting(&document_id, range)
+    }
+
+    fn on_type_format_source(source: &str, position: Position, trigger: &str) -> Vec<TextEdit> {
+        let (databases, document_id) = project_databases(source);
+        databases.on_type_formatting(&document_id, position, trigger)
     }
 
     fn formatting_ir(source: &str) -> FormattingIr {
@@ -317,6 +450,47 @@ impl Player {
         assert_eq!(edits[0].range().start(), Position::new(1, 12));
         assert_eq!(edits[0].range().end(), Position::new(1, 15));
         assert_eq!(formatted, "pub fn main() {   \n    return 1\n}\n");
+    }
+
+    #[test]
+    fn on_type_formatting_only_edits_current_construct() {
+        let source = "\
+pub fn main() {   
+    return 1   
+}
+
+pub fn other() {   
+    return 2   
+}
+";
+        let edits = on_type_format_source(source, Position::new(2, 1), "}");
+        let formatted = apply_range_edits(source, &edits);
+
+        assert_eq!(edits.len(), 2);
+        assert_eq!(edits[0].range().start(), Position::new(0, 15));
+        assert_eq!(edits[0].range().end(), Position::new(0, 18));
+        assert_eq!(edits[1].range().start(), Position::new(1, 12));
+        assert_eq!(edits[1].range().end(), Position::new(1, 15));
+        assert_eq!(
+            formatted,
+            "\
+pub fn main() {
+    return 1
+}
+
+pub fn other() {   
+    return 2   
+}
+"
+        );
+    }
+
+    #[test]
+    fn on_type_formatting_ignores_unsupported_trigger() {
+        let source = "pub fn main() {   \n    return 1   \n}\n";
+        let edits = on_type_format_source(source, Position::new(0, 16), "(");
+
+        assert!(edits.is_empty());
     }
 
     #[test]

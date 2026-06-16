@@ -957,6 +957,14 @@ parameterization such as `String<T>`, and callable signature syntax such as
 `Function<T>` remain rejected. Unparameterized `Array`, `Map`, `Set`,
 `Iterator`, `Option`, and `Result` remain valid erased contracts.
 
+### LSP On-Type Formatting Scope
+
+Native on-type formatting is conservative: it may respond to closing brace and
+newline triggers, but edits must be limited to the current brace-delimited
+construct or a current-line fallback. Broader AST-aware reflow remains a later
+formatter capability and must not be reached through whole-document edits while
+the user is typing.
+
 ## Validation Rules
 
 - Multi-level `super` scan must return no matches:

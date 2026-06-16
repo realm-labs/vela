@@ -34,6 +34,10 @@ pub(crate) fn initialize_result() -> JsonValue {
             "foldingRangeProvider": true,
             "documentFormattingProvider": true,
             "documentRangeFormattingProvider": true,
+            "documentOnTypeFormattingProvider": {
+                "firstTriggerCharacter": "}",
+                "moreTriggerCharacter": ["\n"]
+            },
             "selectionRangeProvider": true,
             "semanticTokensProvider": {
                 "legend": semantic_tokens::semantic_tokens_legend(),

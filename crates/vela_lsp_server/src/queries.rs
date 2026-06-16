@@ -20,6 +20,7 @@ use crate::{
     protocol::CallHierarchyPrepareParams,
     protocol::CodeActionParams,
     protocol::DocumentFormattingParams,
+    protocol::DocumentOnTypeFormattingParams,
     protocol::DocumentRangeFormattingParams,
     protocol::DocumentSymbolParams,
     protocol::FoldingRangeParams,
@@ -477,6 +478,36 @@ impl LspServer {
         let edits = self
             .databases
             .range_formatting(&document_id, service_range(params.range));
+
+        JsonRpcResult::Response(success_response(id, lsp_text_edits(&edits)))
+    }
+
+    pub(crate) fn on_type_formatting(
+        &mut self,
+        id: Option<RequestId>,
+        params: JsonValue,
+    ) -> JsonRpcResult {
+        let Some(id) = id else {
+            return JsonRpcResult::None;
+        };
+        let params = match serde_json::from_value::<DocumentOnTypeFormattingParams>(params) {
+            Ok(params) => params,
+            Err(error) => {
+                return JsonRpcResult::Response(error_response(
+                    Some(id),
+                    ErrorCode::InvalidRequest,
+                    format!("invalid onTypeFormatting params: {error}"),
+                ));
+            }
+        };
+
+        let document_id = DocumentId::from(params.text_document.uri);
+        self.refresh_databases_for_query(&document_id);
+        let edits = self.databases.on_type_formatting(
+            &document_id,
+            service_position(params.position),
+            &params.ch,
+        );
 
         JsonRpcResult::Response(success_response(id, lsp_text_edits(&edits)))
     }

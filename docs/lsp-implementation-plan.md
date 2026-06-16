@@ -706,7 +706,10 @@ Purpose: provide deterministic source formatting without losing comments.
 - [~] Implement full document formatting.
   - Native LSP full-document formatting now uses the token/trivia formatter
     for spacing, brace indentation, comment preservation, and final newline.
-- [ ] Implement on-type formatting only after full/range formatting is stable.
+- [~] Implement on-type formatting only after full/range formatting is stable.
+  - Initial native LSP support handles `}` and newline triggers by limiting
+    trailing-whitespace cleanup to the current brace-delimited construct or
+    current line fallback.
 - [x] Add idempotence tests and malformed-source fallback behavior.
 
 Tests:
@@ -721,7 +724,8 @@ Tests:
 - [x] `formatting_preserves_comments_while_formatting_blocks`
 - [x] `formatting_formats_item_declarations`
 - [x] `lsp_document_formatting_formats_declarations`
-- [ ] `on_type_formatting_only_edits_current_construct`
+- [x] `on_type_formatting_only_edits_current_construct`
+- [x] `lsp_on_type_formatting_only_edits_current_construct`
 - [x] `lsp_document_formatting_returns_full_document_edit`
 - [x] `lsp_document_formatting_returns_empty_edits_when_idempotent`
 - [x] `lsp_range_formatting_limits_edits_to_range`

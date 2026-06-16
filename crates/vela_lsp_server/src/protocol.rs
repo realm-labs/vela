@@ -63,6 +63,16 @@ pub(crate) struct DocumentRangeFormattingParams {
 
 #[derive(Debug, Clone, Deserialize)]
 #[serde(rename_all = "camelCase")]
+pub(crate) struct DocumentOnTypeFormattingParams {
+    pub(crate) text_document: TextDocumentIdentifier,
+    pub(crate) position: LspPosition,
+    pub(crate) ch: String,
+    #[allow(dead_code)]
+    pub(crate) options: FormattingOptions,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub(crate) struct FormattingOptions {
     #[allow(dead_code)]
     pub(crate) tab_size: u32,

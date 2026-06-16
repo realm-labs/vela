@@ -141,6 +141,7 @@ impl LspServer {
             "textDocument/foldingRange" => self.folding_range(message.id, message.params),
             "textDocument/formatting" => self.formatting(message.id, message.params),
             "textDocument/rangeFormatting" => self.range_formatting(message.id, message.params),
+            "textDocument/onTypeFormatting" => self.on_type_formatting(message.id, message.params),
             "textDocument/selectionRange" => self.selection_range(message.id, message.params),
             "textDocument/semanticTokens/full" => {
                 self.semantic_tokens_full(message.id, message.params)
