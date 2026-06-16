@@ -947,6 +947,8 @@ Purpose: provide deterministic source formatting without losing comments.
     token/trivia formatter while preserving surrounding text.
   - `}` triggers on completed impl/trait methods now reflow the innermost
     parser-owned nested member while preserving enclosing indentation.
+  - `}` triggers on completed enum record variants now reflow the nested
+    parser-owned record fields without formatting the enclosing enum.
 - [x] Add idempotence tests and malformed-source fallback behavior.
 
 Tests:
@@ -969,6 +971,8 @@ Tests:
 - [x] `lsp_on_type_formatting_reflows_completed_multiline_item`
 - [x] `on_type_formatting_reflows_completed_nested_method`
 - [x] `lsp_on_type_formatting_reflows_completed_nested_method`
+- [x] `on_type_formatting_reflows_completed_enum_record_variant`
+- [x] `lsp_on_type_formatting_reflows_completed_enum_record_variant`
 - [x] `lsp_document_formatting_returns_full_document_edit`
 - [x] `lsp_document_formatting_returns_empty_edits_when_idempotent`
 - [x] `lsp_range_formatting_limits_edits_to_range`

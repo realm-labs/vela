@@ -310,6 +310,27 @@ fn selected_item_offsets(
         return None;
     }
 
+    if range.kind == SelectableFormatRangeKind::EnumRecordVariant
+        && source.get(range.end..end)?.chars().all(char::is_whitespace)
+    {
+        let variant_group = SelectableFormatGroup {
+            start: range.start,
+            end: range.end,
+        };
+        let members = ranges
+            .iter()
+            .copied()
+            .filter(|member| member.group == Some(variant_group))
+            .collect::<Vec<_>>();
+        if !members.is_empty() {
+            return Some(SelectedFormatRange {
+                start: range.start,
+                end,
+                members,
+            });
+        }
+    }
+
     let mut members = vec![*range];
     let mut cursor = range.end;
     while !source.get(cursor..end)?.chars().all(char::is_whitespace) {
@@ -341,6 +362,7 @@ struct SelectableFormatRange {
     start: usize,
     end: usize,
     group: Option<SelectableFormatGroup>,
+    kind: SelectableFormatRangeKind,
 }
 
 #[derive(Debug, Clone, Eq, PartialEq)]
@@ -356,6 +378,13 @@ struct SelectableFormatGroup {
     end: usize,
 }
 
+#[derive(Debug, Clone, Copy, Eq, PartialEq)]
+enum SelectableFormatRangeKind {
+    Item,
+    NestedMember,
+    EnumRecordVariant,
+}
+
 fn selectable_format_ranges(parsed: &SourceFile) -> Vec<SelectableFormatRange> {
     let mut ranges = Vec::new();
     for item in &parsed.items {
@@ -367,6 +396,7 @@ fn selectable_format_ranges(parsed: &SourceFile) -> Vec<SelectableFormatRange> {
             start: item_span.start,
             end: item_span.end,
             group: None,
+            kind: SelectableFormatRangeKind::Item,
         });
         match &item.kind {
             ItemKind::Trait(trait_item) => {
@@ -378,6 +408,7 @@ fn selectable_format_ranges(parsed: &SourceFile) -> Vec<SelectableFormatRange> {
                             start: method.span.start as usize,
                             end: method.span.end as usize,
                             group: Some(item_span),
+                            kind: SelectableFormatRangeKind::NestedMember,
                         }),
                 );
             }
@@ -390,6 +421,7 @@ fn selectable_format_ranges(parsed: &SourceFile) -> Vec<SelectableFormatRange> {
                             start: method.span.start as usize,
                             end: method.span.end as usize,
                             group: Some(item_span),
+                            kind: SelectableFormatRangeKind::NestedMember,
                         }),
                 );
             }
@@ -402,6 +434,7 @@ fn selectable_format_ranges(parsed: &SourceFile) -> Vec<SelectableFormatRange> {
                             start: field.span.start as usize,
                             end: field.span.end as usize,
                             group: Some(item_span),
+                            kind: SelectableFormatRangeKind::NestedMember,
                         }),
                 );
             }
@@ -415,12 +448,21 @@ fn selectable_format_ranges(parsed: &SourceFile) -> Vec<SelectableFormatRange> {
                         start: variant_span.start,
                         end: variant_span.end,
                         group: Some(item_span),
+                        kind: match &variant.fields {
+                            EnumVariantFields::Record(_) => {
+                                SelectableFormatRangeKind::EnumRecordVariant
+                            }
+                            EnumVariantFields::Unit | EnumVariantFields::Tuple(_) => {
+                                SelectableFormatRangeKind::NestedMember
+                            }
+                        },
                     });
                     if let EnumVariantFields::Record(fields) = &variant.fields {
                         ranges.extend(fields.iter().map(|field| SelectableFormatRange {
                             start: field.span.start as usize,
                             end: field.span.end as usize,
                             group: Some(variant_span),
+                            kind: SelectableFormatRangeKind::NestedMember,
                         }));
                     }
                 }
@@ -1029,6 +1071,37 @@ impl Player {
         return amount
     }
     fn hurt(amount:i64)->i64{return amount}
+}
+"
+        );
+    }
+
+    #[test]
+    fn on_type_formatting_reflows_completed_enum_record_variant() {
+        let source = "\
+pub enum Reward {
+    Coins {
+        amount:i64
+        label:String
+    }
+    None
+}
+";
+        let edits = on_type_format_source(source, Position::new(4, 5), "}");
+        let formatted = apply_range_edits(source, &edits);
+
+        assert_eq!(edits.len(), 1);
+        assert_eq!(edits[0].range().start(), Position::new(1, 4));
+        assert_eq!(edits[0].range().end(), Position::new(5, 0));
+        assert_eq!(
+            formatted,
+            "\
+pub enum Reward {
+    Coins {
+        amount: i64
+        label: String
+    }
+    None
 }
 "
         );

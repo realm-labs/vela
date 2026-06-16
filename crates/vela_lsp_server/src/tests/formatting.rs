@@ -771,3 +771,61 @@ impl Player {
         "fn heal(amount: i64) -> i64 {\n        return amount\n    }\n"
     );
 }
+
+#[test]
+fn lsp_on_type_formatting_reflows_completed_enum_record_variant() {
+    let mut server = LspServer::new();
+    let _ = response_value(server.handle_json(&request(
+        1,
+        "initialize",
+        serde_json::json!({
+            "processId": null,
+            "rootUri": "file:///workspace/scripts",
+            "capabilities": {}
+        }),
+    )));
+    let uri = "file:///workspace/scripts/game/main.vela";
+    let _ = notification_value(server.handle_json(&notification(
+        "textDocument/didOpen",
+        serde_json::json!({
+            "textDocument": {
+                "uri": uri,
+                "languageId": "vela",
+                "version": 1,
+                "text": "\
+pub enum Reward {
+    Coins {
+        amount:i64
+        label:String
+    }
+    None
+}
+"
+            }
+        }),
+    )));
+
+    let response = response_value(server.handle_json(&request(
+        2,
+        "textDocument/onTypeFormatting",
+        serde_json::json!({
+            "textDocument": { "uri": uri },
+            "position": { "line": 4, "character": 5 },
+            "ch": "}",
+            "options": { "tabSize": 4, "insertSpaces": true }
+        }),
+    )));
+    let edits = response["result"]
+        .as_array()
+        .expect("onTypeFormatting should return edits");
+
+    assert_eq!(edits.len(), 1);
+    assert_eq!(edits[0]["range"]["start"]["line"], 1);
+    assert_eq!(edits[0]["range"]["start"]["character"], 4);
+    assert_eq!(edits[0]["range"]["end"]["line"], 5);
+    assert_eq!(edits[0]["range"]["end"]["character"], 0);
+    assert_eq!(
+        edits[0]["newText"],
+        "Coins {\n        amount: i64\n        label: String\n    }\n"
+    );
+}
