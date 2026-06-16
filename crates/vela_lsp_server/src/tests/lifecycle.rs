@@ -1,4 +1,6 @@
-use super::{JsonRpcResult, JsonValue, LspServer, notification, request, response_value};
+use super::{
+    JsonRpcResult, JsonValue, LspServer, notification, notification_value, request, response_value,
+};
 
 #[test]
 fn lsp_initialize_reports_capabilities() {
@@ -145,6 +147,57 @@ fn lsp_initialized_notification_has_no_response() {
 
     assert!(server.is_initialized());
     assert_eq!(result, JsonRpcResult::None);
+}
+
+#[test]
+fn lsp_initialized_registers_watched_files_when_supported() {
+    let mut server = LspServer::new();
+    let _ = response_value(server.handle_json(&request(
+        1,
+        "initialize",
+        serde_json::json!({
+            "processId": null,
+            "rootUri": "file:///workspace",
+            "initializationOptions": {
+                "host": {
+                    "schema": "target/vela/schema.json"
+                }
+            },
+            "capabilities": {
+                "workspace": {
+                    "didChangeWatchedFiles": {
+                        "dynamicRegistration": true
+                    }
+                }
+            }
+        }),
+    )));
+
+    let registration =
+        notification_value(server.handle_json(&notification("initialized", serde_json::json!({}))));
+
+    assert_eq!(registration["jsonrpc"], "2.0");
+    assert_eq!(registration["method"], "client/registerCapability");
+    let watched_files = &registration["params"]["registrations"][0];
+    assert_eq!(watched_files["id"], "vela/watched-files");
+    assert_eq!(watched_files["method"], "workspace/didChangeWatchedFiles");
+    let watchers = watched_files["registerOptions"]["watchers"]
+        .as_array()
+        .expect("watcher registration should include watchers");
+    assert!(watchers.iter().all(|watcher| watcher["kind"] == 7));
+    assert!(watchers.iter().any(|watcher| {
+        watcher["globPattern"]["baseUri"] == "file:///workspace"
+            && watcher["globPattern"]["pattern"] == "**/*.vela"
+    }));
+    assert!(watchers.iter().any(|watcher| {
+        watcher["globPattern"]["baseUri"] == "file:///workspace"
+            && watcher["globPattern"]["pattern"] == "vela.toml"
+    }));
+    assert!(watchers.iter().any(|watcher| {
+        watcher["globPattern"]
+            .as_str()
+            .is_some_and(|pattern| pattern.ends_with("/workspace/target/vela/schema.json"))
+    }));
 }
 
 #[test]

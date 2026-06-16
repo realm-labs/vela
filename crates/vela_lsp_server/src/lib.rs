@@ -2,6 +2,7 @@
 
 mod call_hierarchy;
 mod capabilities;
+mod client;
 mod code_action;
 mod completion;
 mod config;
@@ -19,6 +20,7 @@ mod semantic_tokens;
 mod signature;
 pub mod stdio;
 mod symbols;
+mod watching;
 
 use std::collections::{BTreeMap, BTreeSet};
 use std::path::{Path, PathBuf};
@@ -34,6 +36,7 @@ use vela_language_service::{
 };
 
 use crate::capabilities::initialize_result;
+use crate::client::{InitializeParams, WorkspaceFolder};
 use crate::config::{EditorConfiguration, workspace_config_from_roots_and_editor_config};
 
 pub use crate::config::LaunchConfiguration;
@@ -59,6 +62,7 @@ pub struct LspServer {
     disk_sources: BTreeMap<DocumentId, SourceFileSnapshot>,
     open_documents: BTreeSet<DocumentId>,
     client_supports_work_done_progress: bool,
+    client_supports_watched_file_registration: bool,
     initialized: bool,
     shutdown_requested: bool,
     exited: bool,
@@ -188,18 +192,26 @@ impl LspServer {
         );
         self.reload_schema_from_config();
         self.client_supports_work_done_progress = params.capabilities.supports_work_done_progress();
+        self.client_supports_watched_file_registration =
+            params.capabilities.supports_watched_file_registration();
         JsonRpcResult::Response(success_response(id, initialize_result()))
     }
 
     fn initialized(&mut self, id: Option<RequestId>) -> JsonRpcResult {
         self.initialized = true;
-        id.map_or(JsonRpcResult::None, |id| {
-            JsonRpcResult::Response(error_response(
+        if let Some(id) = id {
+            return JsonRpcResult::Response(error_response(
                 Some(id),
                 ErrorCode::InvalidRequest,
                 "`initialized` must be sent as a notification",
-            ))
-        })
+            ));
+        }
+        if self.client_supports_watched_file_registration {
+            watching::registration_request(self.config.as_ref(), &self.workspace_roots)
+                .map_or(JsonRpcResult::None, JsonRpcResult::Notification)
+        } else {
+            JsonRpcResult::None
+        }
     }
 
     fn shutdown(&mut self, id: Option<RequestId>) -> JsonRpcResult {
@@ -698,44 +710,6 @@ struct JsonRpcMessage {
 #[derive(Debug, Clone, Deserialize)]
 struct CancelRequestParams {
     id: RequestId,
-}
-
-#[derive(Debug, Clone, Default, Deserialize)]
-#[serde(rename_all = "camelCase")]
-struct InitializeParams {
-    root_uri: Option<String>,
-    workspace_folders: Option<Vec<WorkspaceFolder>>,
-    initialization_options: Option<EditorConfiguration>,
-    #[serde(default)]
-    capabilities: ClientCapabilities,
-}
-
-#[derive(Debug, Clone, Default, Deserialize)]
-#[serde(rename_all = "camelCase")]
-struct ClientCapabilities {
-    window: Option<WindowClientCapabilities>,
-}
-
-impl ClientCapabilities {
-    fn supports_work_done_progress(&self) -> bool {
-        self.window
-            .as_ref()
-            .is_some_and(|window| window.work_done_progress)
-    }
-}
-
-#[derive(Debug, Clone, Default, Deserialize)]
-#[serde(rename_all = "camelCase")]
-struct WindowClientCapabilities {
-    work_done_progress: bool,
-}
-
-#[derive(Debug, Clone, Deserialize)]
-#[serde(rename_all = "camelCase")]
-struct WorkspaceFolder {
-    uri: String,
-    #[allow(dead_code)]
-    name: Option<String>,
 }
 
 #[derive(Debug, Clone, Deserialize)]

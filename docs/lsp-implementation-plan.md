@@ -931,9 +931,11 @@ cargo test -p vela_lsp_server inlay
 
 Purpose: make the server robust in real projects.
 
-- [ ] Watch `.vela` sources under configured roots.
-- [ ] Watch `vela.toml`.
+- [x] Watch `.vela` sources under configured roots.
+- [x] Watch `vela.toml`.
 - [x] Watch host schema artifact.
+- [x] Register watched files with clients that support dynamic watcher
+  registration.
 - [x] Debounce file events.
   - Watched-file notifications coalesce duplicate URI events within each
     batch, applying only the final event per URI while preserving final-event
@@ -956,6 +958,7 @@ Tests:
 - [x] `schema_watch_clears_diagnostic_after_valid_reload`
 - [x] `workspace_folder_change_reindexes_project`
 - [x] `watched_file_batch_coalesces_to_last_event_per_uri`
+- [x] `lsp_initialized_registers_watched_files_when_supported`
 
 Validation:
 

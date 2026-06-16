@@ -161,6 +161,11 @@ advertises and serves `textDocument/declaration` plus
 `textDocument/typeDefinition` using the same source/schema-backed spans as
 go-to-definition.
 
+M20.5 Phase 16 update: clients that support dynamic watched-file registration
+now receive a `client/registerCapability` request for configured `.vela`
+source roots, workspace `vela.toml`, and the configured host schema artifact
+after `initialized`.
+
 M20.5 Phase 11 update: source-owned inherent script methods now participate in
 the editor reference index. `textDocument/references` returns method
 declarations plus typed receiver call sites, and
