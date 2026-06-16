@@ -326,6 +326,79 @@ fn main() -> QuestState {
 }
 
 #[test]
+fn source_backed_schema_type_rename_updates_type_hints() {
+    let main = DocumentId::from("/workspace/scripts/game/main.vela");
+    let schema = DocumentId::from("/workspace/scripts/_schema_defs.vela");
+    let main_text = "\
+pub fn spawn(player: Player) -> Player {
+    return player
+}";
+    let schema_text = "pub fn Player() { return 1 }";
+    let mut databases = databases_for(vec![
+        SourceFileSnapshot::new(main.clone(), main_text),
+        SourceFileSnapshot::new(schema.clone(), schema_text),
+    ]);
+    let schema_record = databases
+        .source_db()
+        .records()
+        .get(&schema)
+        .expect("schema source should be indexed");
+    let target_start = schema_text.find("Player").expect("schema marker");
+    let artifact = serde_json::json!({
+        "formatVersion": 1,
+        "facts": {
+            "types": [
+                {
+                    "name": "Player",
+                    "fact": { "kind": "host", "name": "Player" },
+                    "sourceSpan": {
+                        "source": schema_record.source_id().get(),
+                        "start": target_start,
+                        "end": target_start + "Player".len()
+                    }
+                }
+            ]
+        }
+    })
+    .to_string();
+    databases.load_schema_artifact_json("/workspace/target/vela/schema.json", &artifact);
+
+    let prepare = databases
+        .prepare_rename(
+            &main,
+            Position::new(
+                0,
+                line(main_text, 0).find("Player").expect("parameter type"),
+            ),
+        )
+        .expect("source-backed schema type should be renameable from a type hint");
+
+    assert_eq!(prepare.placeholder(), "Player");
+    assert_eq!(prepare.range().start(), Position::new(0, 21));
+
+    let edit = databases
+        .rename(
+            &main,
+            Position::new(
+                0,
+                line(main_text, 0).find("Player").expect("parameter type"),
+            ),
+            "Actor",
+        )
+        .expect("source-backed schema type rename should produce edits");
+
+    let schema_edit = document_edit(&edit, &schema);
+    assert_eq!(schema_edit.edits().len(), 1);
+    assert_edit_at(schema_edit.edits(), 0, 7, "Actor");
+
+    let main_edit = document_edit(&edit, &main);
+    assert_eq!(main_edit.edits().len(), 2);
+    assert_edit_at(main_edit.edits(), 0, 21, "Actor");
+    assert_edit_at(main_edit.edits(), 0, 32, "Actor");
+    assert!(edit.risks().is_empty());
+}
+
+#[test]
 fn source_backed_schema_field_rename_updates_member_uses() {
     let main = DocumentId::from("/workspace/scripts/game/main.vela");
     let schema = DocumentId::from("/workspace/scripts/_schema_defs.vela");

@@ -872,6 +872,139 @@ pub fn main(player: Player) -> i64 {
 }
 
 #[test]
+fn lsp_source_backed_schema_type_rename_updates_type_hints() {
+    let root = temp_workspace();
+    let config_path = root.join("vela.toml");
+    let schema_path = root.join("target").join("vela").join("schema.json");
+    fs::create_dir_all(schema_path.parent().expect("schema should have parent"))
+        .expect("schema directory should be creatable");
+    fs::write(
+        &config_path,
+        r#"
+            [workspace]
+            roots = ["scripts"]
+
+            [host]
+            schema = "target/vela/schema.json"
+        "#,
+    )
+    .expect("vela.toml should be writable");
+
+    let schema_text = "pub fn Player() { return 1 }";
+    let target_start = schema_text.find("Player").expect("schema marker");
+    fs::write(
+        &schema_path,
+        serde_json::json!({
+            "formatVersion": 1,
+            "facts": {
+                "types": [
+                    {
+                        "name": "Player",
+                        "fact": { "kind": "host", "name": "Player" },
+                        "sourceSpan": {
+                            "source": 1,
+                            "start": target_start,
+                            "end": target_start + "Player".len()
+                        }
+                    }
+                ]
+            }
+        })
+        .to_string(),
+    )
+    .expect("schema should be writable");
+
+    let mut server = LspServer::new();
+    let _ = response_value(server.handle_json(&request(
+        1,
+        "initialize",
+        serde_json::json!({
+            "processId": null,
+            "rootUri": file_uri(&root),
+            "capabilities": {}
+        }),
+    )));
+    let _ = server.handle_json(&notification(
+        "workspace/didChangeWatchedFiles",
+        serde_json::json!({
+            "changes": [{ "uri": file_uri(&config_path), "type": 1 }]
+        }),
+    ));
+
+    let schema_uri = file_uri(&root.join("scripts").join("_schema_defs.vela"));
+    let _ = notification_value(server.handle_json(&notification(
+        "textDocument/didOpen",
+        serde_json::json!({
+            "textDocument": {
+                "uri": schema_uri,
+                "languageId": "vela",
+                "version": 1,
+                "text": schema_text
+            }
+        }),
+    )));
+
+    let text = "\
+pub fn spawn(player: Player) -> Player {
+    return player
+}";
+    let uri = file_uri(&root.join("scripts").join("game").join("main.vela"));
+    let _ = notification_value(server.handle_json(&notification(
+        "textDocument/didOpen",
+        serde_json::json!({
+            "textDocument": {
+                "uri": uri,
+                "languageId": "vela",
+                "version": 1,
+                "text": text
+            }
+        }),
+    )));
+
+    let prepare = response_value(server.handle_json(&request(
+        2,
+        "textDocument/prepareRename",
+        serde_json::json!({
+            "textDocument": { "uri": uri },
+            "position": {
+                "line": 0,
+                "character": line(text, 0).find("Player").expect("parameter type")
+            }
+        }),
+    )));
+    assert_eq!(prepare["result"]["placeholder"], "Player");
+    assert_eq!(prepare["result"]["range"]["start"]["line"], 0);
+    assert_eq!(prepare["result"]["range"]["start"]["character"], 21);
+
+    let rename = response_value(server.handle_json(&request(
+        3,
+        "textDocument/rename",
+        serde_json::json!({
+            "textDocument": { "uri": uri },
+            "position": {
+                "line": 0,
+                "character": line(text, 0).find("Player").expect("parameter type")
+            },
+            "newName": "Actor"
+        }),
+    )));
+    let main_edits = rename["result"]["changes"][uri.as_str()]
+        .as_array()
+        .expect("type rename should return main edits");
+    let schema_edits = rename["result"]["changes"][schema_uri.as_str()]
+        .as_array()
+        .expect("type rename should return schema edits");
+
+    assert_eq!(main_edits.len(), 2);
+    assert_text_edit(main_edits, 0, 21, "Actor");
+    assert_text_edit(main_edits, 0, 32, "Actor");
+    assert_eq!(schema_edits.len(), 1);
+    assert_text_edit(schema_edits, 0, 7, "Actor");
+
+    fs::remove_dir_all(&root).expect("temporary workspace should be removable");
+}
+
+#[test]
 fn lsp_public_export_rename_reports_hot_reload_risk() {
     let mut server = LspServer::new();
     let _ = response_value(server.handle_json(&request(

@@ -188,6 +188,7 @@ impl LanguageServiceDatabases {
             RenameTarget::SchemaMember(target) => {
                 schema::rename_schema_member(self, target, new_name)
             }
+            RenameTarget::SchemaType(target) => schema::rename_schema_type(self, target, new_name),
             RenameTarget::EnumVariant(target) => {
                 variants::rename_enum_variant(self, target, new_name)
             }
@@ -423,6 +424,7 @@ enum RenameTarget<'a> {
     ScriptField(fields::ScriptFieldRenameTarget),
     ScriptMethod(methods::ScriptMethodRenameTarget),
     SchemaMember(schema::SchemaMemberRenameTarget),
+    SchemaType(schema::SchemaTypeRenameTarget),
     EnumVariant(variants::EnumVariantRenameTarget),
 }
 
@@ -434,6 +436,7 @@ impl RenameTarget<'_> {
             Self::ScriptField(target) => target.token.range,
             Self::ScriptMethod(target) => target.token.range,
             Self::SchemaMember(target) => target.token.range,
+            Self::SchemaType(target) => target.token.range,
             Self::EnumVariant(target) => target.token.range,
         }
     }
@@ -445,6 +448,7 @@ impl RenameTarget<'_> {
             Self::ScriptField(target) => &target.field,
             Self::ScriptMethod(target) => &target.method,
             Self::SchemaMember(target) => &target.member,
+            Self::SchemaType(target) => &target.name,
             Self::EnumVariant(target) => &target.variant,
         }
     }
@@ -488,6 +492,9 @@ fn rename_target<'a>(
     }
     if let Some(target) = schema::schema_member_declaration_target(databases, source_id, &token) {
         return Some(RenameTarget::SchemaMember(target));
+    }
+    if let Some(target) = schema::schema_type_declaration_target(databases, source_id, &token) {
+        return Some(RenameTarget::SchemaType(target));
     }
 
     for declaration in graph.declarations() {
@@ -542,6 +549,9 @@ fn rename_target<'a>(
                 declaration: target,
                 token,
             }));
+        }
+        if let Some(target) = schema::schema_type_use_target(databases, declaration, text, &token) {
+            return Some(RenameTarget::SchemaType(target));
         }
         if let Some(target) =
             fields::script_field_use_target(graph, &facts, text, source_id, bindings, &token)
@@ -710,7 +720,7 @@ fn imported_declaration_for_name(
     })
 }
 
-fn for_each_type_hint_in_declaration(
+pub(super) fn for_each_type_hint_in_declaration(
     graph: &ModuleGraph,
     declaration: &Declaration,
     mut visit: impl FnMut(&HirTypeHint),
@@ -803,7 +813,11 @@ fn visit_type_hint_and_args(hint: &HirTypeHint, visit: &mut impl FnMut(&HirTypeH
     }
 }
 
-fn type_hint_name_range(text: &str, hint: &HirTypeHint, name: &str) -> Option<TextRange> {
+pub(super) fn type_hint_name_range(
+    text: &str,
+    hint: &HirTypeHint,
+    name: &str,
+) -> Option<TextRange> {
     let span_range = span_text_range(hint.span)?;
     last_name_range_in_text(text, span_range, name)
 }
