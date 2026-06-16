@@ -1,3 +1,7 @@
+use std::fs;
+use std::path::{Path, PathBuf};
+use std::time::{SystemTime, UNIX_EPOCH};
+
 use super::{LspServer, notification, notification_value, request, response_value};
 
 #[test]
@@ -147,4 +151,113 @@ fn lsp_hover_reports_stdlib_method_fact() {
         value.contains("_method_: Function(Function(i64) -> bool) -> Array(i64)"),
         "{value}"
     );
+}
+
+#[test]
+fn lsp_hover_reports_schema_trait_method_fact() {
+    let root = temp_workspace();
+    let schema_path = root.join("target").join("vela").join("schema.json");
+    fs::create_dir_all(schema_path.parent().expect("schema should have parent"))
+        .expect("schema directory should be creatable");
+    fs::write(&schema_path, schema_with_rewardable_trait_method())
+        .expect("schema artifact should be writable");
+
+    let mut server = LspServer::new();
+    let _ = response_value(server.handle_json(&request(
+        1,
+        "initialize",
+        serde_json::json!({
+            "processId": null,
+            "rootUri": file_uri(&root),
+            "initializationOptions": {
+                "workspace": {
+                    "roots": [file_uri(&root.join("scripts"))]
+                },
+                "host": {
+                    "schema": file_uri(&schema_path)
+                }
+            },
+            "capabilities": {}
+        }),
+    )));
+    let main_uri = file_uri(&root.join("scripts").join("game").join("main.vela"));
+    let text = "pub fn main(rewardable: Rewardable) { rewardable.preview(1) }";
+    let _ = notification_value(server.handle_json(&notification(
+        "textDocument/didOpen",
+        serde_json::json!({
+            "textDocument": {
+                "uri": main_uri,
+                "languageId": "vela",
+                "version": 1,
+                "text": text
+            }
+        }),
+    )));
+
+    let response = response_value(server.handle_json(&request(
+        2,
+        "textDocument/hover",
+        serde_json::json!({
+            "textDocument": { "uri": main_uri },
+            "position": {
+                "line": 0,
+                "character": text.find("preview").unwrap_or_else(|| {
+                    panic!("hover fixture should contain trait method")
+                })
+            }
+        }),
+    )));
+
+    let value = response["result"]["contents"]["value"]
+        .as_str()
+        .expect("hover contents should be markdown");
+    assert!(value.contains("Rewardable.preview"), "{value}");
+    assert!(value.contains("_method_: Function(i64) -> bool"), "{value}");
+    fs::remove_dir_all(&root).expect("temporary workspace should be removable");
+}
+
+fn temp_workspace() -> PathBuf {
+    let suffix = match SystemTime::now().duration_since(UNIX_EPOCH) {
+        Ok(duration) => duration.as_nanos(),
+        Err(error) => panic!("system time should be after UNIX_EPOCH: {error}"),
+    };
+    let root =
+        std::env::temp_dir().join(format!("vela_lsp_hover_{}_{}", std::process::id(), suffix));
+    fs::create_dir_all(root.join("scripts").join("game"))
+        .expect("temporary workspace should be creatable");
+    root
+}
+
+fn file_uri(path: &Path) -> String {
+    let path = path.display().to_string().replace('\\', "/");
+    if path.starts_with('/') {
+        format!("file://{path}")
+    } else {
+        format!("file:///{path}")
+    }
+}
+
+fn schema_with_rewardable_trait_method() -> &'static str {
+    r#"{
+        "formatVersion": 1,
+        "facts": {
+            "traits": [
+                {
+                    "name": "Rewardable",
+                    "fact": { "kind": "trait", "name": "Rewardable" }
+                }
+            ],
+            "traitMethods": [
+                {
+                    "owner": "Rewardable",
+                    "name": "preview",
+                    "fact": {
+                        "kind": "function",
+                        "params": [{ "kind": "primitive", "name": "i64" }],
+                        "returns": { "kind": "primitive", "name": "bool" }
+                    }
+                }
+            ]
+        }
+    }"#
 }

@@ -197,13 +197,13 @@ schema, stdlib function, source method, schema host/trait method, and stdlib
 callback method signatures, and the LSP fixtures cover the same signature
 paths.
 
-M20.5 Phase 8 update: hover now reports stdlib global function facts and
-typed stdlib receiver-method facts through both `vela_language_service` and
-`textDocument/hover` fixtures. `vela_language_service` now exposes explicit
-declaration and type-definition navigation queries, and `vela_lsp_server`
-advertises and serves `textDocument/declaration` plus
-`textDocument/typeDefinition` using the same source/schema-backed spans as
-go-to-definition.
+M20.5 Phase 8 update: hover now reports stdlib global function facts,
+typed stdlib receiver-method facts, and schema-backed trait receiver method
+facts through both `vela_language_service` and `textDocument/hover` fixtures.
+`vela_language_service` now exposes explicit declaration and type-definition
+navigation queries, and `vela_lsp_server` advertises and serves
+`textDocument/declaration` plus `textDocument/typeDefinition` using the same
+source/schema-backed spans as go-to-definition.
 
 M20.5 Phase 16 update: clients that support dynamic watched-file registration
 now receive a `client/registerCapability` request for configured `.vela`

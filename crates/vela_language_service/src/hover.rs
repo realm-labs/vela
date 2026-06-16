@@ -161,7 +161,7 @@ impl LanguageServiceDatabases {
                 docs: None,
             });
         }
-        schema.method_fact(&owner, &token.text).map(|fact| Hover {
+        schema_method_fact(schema, &owner, &token.text).map(|fact| Hover {
             range,
             label: format!("{owner}.{}", token.text),
             kind: HoverKind::Method,
@@ -208,6 +208,16 @@ impl LanguageServiceDatabases {
                 docs: None,
             })
     }
+}
+
+fn schema_method_fact<'a>(
+    schema: &'a RegistryFacts,
+    owner: &str,
+    method: &str,
+) -> Option<&'a TypeFact> {
+    schema
+        .method_fact(owner, method)
+        .or_else(|| schema.trait_method_fact(owner, method))
 }
 
 fn stdlib_function_hover(name: &str, range: DiagnosticRange) -> Option<Hover> {
@@ -424,6 +434,8 @@ fn schema_fact_for_local_hint(binding: &LocalBinding, schema: &RegistryFacts) ->
         schema
             .type_fact(&qualified)
             .or_else(|| hint.path.last().and_then(|name| schema.type_fact(name)))
+            .or_else(|| schema.trait_fact(&qualified))
+            .or_else(|| hint.path.last().and_then(|name| schema.trait_fact(name)))
             .cloned()
     } else {
         None
@@ -432,9 +444,10 @@ fn schema_fact_for_local_hint(binding: &LocalBinding, schema: &RegistryFacts) ->
 
 fn fact_owner_name(fact: &TypeFact) -> Option<String> {
     match fact {
-        TypeFact::Host { name } | TypeFact::Record { name } | TypeFact::Enum { name, .. } => {
-            Some(name.clone())
-        }
+        TypeFact::Host { name }
+        | TypeFact::Record { name }
+        | TypeFact::Enum { name, .. }
+        | TypeFact::Trait { name } => Some(name.clone()),
         _ => None,
     }
 }
@@ -449,6 +462,7 @@ fn function_detail(schema: &RegistryFacts, name: &str, fact: &TypeFact) -> Strin
 fn method_detail(schema: &RegistryFacts, owner: &str, method: &str, fact: &TypeFact) -> String {
     let effects = schema
         .method_effect_fact(owner, method)
+        .or_else(|| schema.trait_method_effect_fact(owner, method))
         .map_or_else(|| "effects: unknown".to_owned(), effect_detail);
     let permissions = schema.method_access_fact(owner, method).map_or_else(
         || "none".to_owned(),
@@ -620,6 +634,31 @@ mod tests {
         assert!(hover.detail().contains("Function(i64) -> bool"));
         assert!(hover.detail().contains("effects: writes_host"));
         assert!(hover.detail().contains("permissions: player.reward"));
+    }
+
+    #[test]
+    fn hover_reports_schema_trait_method_fact() {
+        let document = DocumentId::from("/workspace/scripts/game/main.vela");
+        let text = "pub fn main(rewardable: Rewardable) { rewardable.preview(1) }";
+        let mut schema = RegistryFacts::default();
+        schema.insert_trait("Rewardable", TypeFact::trait_type("Rewardable"));
+        schema.insert_trait_method(
+            "Rewardable",
+            "preview",
+            TypeFact::function(vec![TypeFact::I64], TypeFact::BOOL),
+        );
+        let databases = databases_for(&document, text, schema);
+
+        let hover = databases
+            .hover(
+                &document,
+                Position::new(0, text.find("preview").expect("trait method name")),
+            )
+            .expect("hover should resolve schema trait method");
+
+        assert_eq!(hover.kind(), HoverKind::Method);
+        assert_eq!(hover.label(), "Rewardable.preview");
+        assert!(hover.detail().contains("Function(i64) -> bool"));
     }
 
     #[test]
