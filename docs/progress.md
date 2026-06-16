@@ -159,7 +159,8 @@ artifacts or tagged releases. The VS Code package under `editors/vscode` is a
 thin launcher/configuration extension for the native server and keeps feature
 behavior in the shared LSP/language-service layers. The Zed package under
 `editors/zed` follows the same boundary with Vela language metadata and a
-native-server stdio command hook.
+native-server stdio command hook. Both editor package validators now assert
+that launcher packages do not implement LSP request behavior.
 
 M20.5 Phase 8 update: `vela_language_service` now exposes explicit
 declaration and type-definition navigation queries, and `vela_lsp_server`

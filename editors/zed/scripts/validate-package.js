@@ -15,6 +15,21 @@ function assert(condition, message) {
   }
 }
 
+function assertThinLauncher(source, label) {
+  const forbiddenProtocolHandlers = [
+    "textDocument/",
+    "workspace/symbol",
+    "workspace/executeCommand",
+    "publishDiagnostics",
+    "semanticTokens",
+    "completionItem/resolve",
+    "$/progress"
+  ];
+  for (const marker of forbiddenProtocolHandlers) {
+    assert(!source.includes(marker), `${label} must not implement ${marker} behavior`);
+  }
+}
+
 function hasTomlValue(text, key, value) {
   return text.split(/\r?\n/).some((line) => line.trim() === `${key} = ${value}`);
 }
@@ -44,9 +59,6 @@ assert(
   extensionRs.includes("vela_lsp_server") && extensionRs.includes("--stdio"),
   "extension launcher must start vela_lsp_server over stdio"
 );
-assert(
-  !extensionRs.includes("textDocument/") && !extensionRs.includes("workspace/"),
-  "editor package must not implement LSP request behavior"
-);
+assertThinLauncher(extensionRs, "Zed extension");
 
-console.log("Zed extension package metadata is valid.");
+console.log("Zed extension package metadata and launcher boundary are valid.");

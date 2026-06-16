@@ -1012,9 +1012,10 @@ Purpose: package native LSP for real editors while keeping plugins thin.
     `vela_lsp_server` artifacts for Linux, macOS, and Windows, emits SHA-256
     checksum files, uploads workflow artifacts, and publishes tagged `v*`
     releases.
-- [~] Keep feature behavior out of editor-specific plugins.
+- [x] Keep feature behavior out of editor-specific plugins.
   - The VS Code and Zed packages only contribute launcher/configuration
-    metadata; editor packaging must continue to avoid language-service logic.
+    metadata; package validators assert that the editor integrations do not
+    implement LSP request behavior.
 
 Tests:
 

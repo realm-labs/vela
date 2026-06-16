@@ -15,6 +15,21 @@ function assert(condition, message) {
   }
 }
 
+function assertThinLauncher(source, label) {
+  const forbiddenProtocolHandlers = [
+    "textDocument/",
+    "workspace/symbol",
+    "workspace/executeCommand",
+    "publishDiagnostics",
+    "semanticTokens",
+    "completionItem/resolve",
+    "$/progress"
+  ];
+  for (const marker of forbiddenProtocolHandlers) {
+    assert(!source.includes(marker), `${label} must not implement ${marker} behavior`);
+  }
+}
+
 const manifest = readJson("package.json");
 assert(manifest.main === "./extension.js", "package main must point at extension.js");
 assert(manifest.activationEvents.includes("onLanguage:vela"), "Vela language activation is missing");
@@ -36,4 +51,10 @@ assert(languageConfiguration.comments.lineComment === "//", "line comment config
 const grammarJson = readJson(grammar.path);
 assert(grammarJson.scopeName === "source.vela", "grammar scopeName must match manifest");
 
-console.log("VS Code extension package metadata is valid.");
+const extensionSource = fs.readFileSync(path.join(root, "extension.js"), "utf8");
+assert(extensionSource.includes("LanguageClient"), "extension must use vscode-languageclient");
+assert(extensionSource.includes("serverCommand"), "extension must provide server command discovery");
+assert(extensionSource.includes("initializationOptions"), "extension must pass initialization options");
+assertThinLauncher(extensionSource, "VS Code extension");
+
+console.log("VS Code extension package metadata and launcher boundary are valid.");
