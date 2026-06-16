@@ -1072,7 +1072,9 @@ Purpose: prove the LSP track is complete enough to run alongside runtime work.
 - [x] Run all LSP JSON-RPC fixture tests.
   - Verified with `cargo test -p vela_lsp_server`: 110 library tests, 3
     CLI/main tests, and doctests passed.
-- [ ] Run parser/HIR/analysis focused tests.
+- [x] Run parser/HIR/analysis focused tests.
+  - Verified with `cargo test -p vela_syntax`, `cargo test -p vela_hir`, and
+    `cargo test -p vela_analysis`.
 - [ ] Run many-file synthetic scale checkpoint approaching one million total
   lines.
 - [ ] Run full workspace validation.
