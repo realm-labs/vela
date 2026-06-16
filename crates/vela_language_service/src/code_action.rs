@@ -68,6 +68,11 @@ impl LanguageServiceDatabases {
                     source.text(),
                     diagnostic,
                 ));
+                actions.extend(fill_missing_record_field_actions(
+                    document_id,
+                    source.text(),
+                    diagnostic,
+                ));
                 actions
             })
             .collect()
@@ -267,6 +272,95 @@ fn fill_match_arm_actions(
     }]
 }
 
+fn fill_missing_record_field_actions(
+    document_id: &DocumentId,
+    text: &str,
+    diagnostic: &ServiceDiagnostic,
+) -> Vec<CodeAction> {
+    if diagnostic.code() != Some("analysis::missing_constructor_field") {
+        return Vec::new();
+    }
+    let Some(field) = backticked_tokens(diagnostic.message()).first().copied() else {
+        return Vec::new();
+    };
+    let Some(range) = diagnostic.range() else {
+        return Vec::new();
+    };
+    let Some((insert_range, edit_text)) = record_field_insertion(text, range, field) else {
+        return Vec::new();
+    };
+
+    vec![CodeAction {
+        title: format!("Add missing field `{field}`"),
+        kind: CodeActionKind::QuickFix,
+        edit: WorkspaceEdit::new(vec![DocumentTextEdit::new(
+            document_id.clone(),
+            vec![TextEdit::new(insert_range, edit_text)],
+        )]),
+    }]
+}
+
+fn record_field_insertion(
+    text: &str,
+    diagnostic_range: DiagnosticRange,
+    field: &str,
+) -> Option<(DiagnosticRange, String)> {
+    let line_index = LineIndex::new(text);
+    let start = line_index.offset(diagnostic_range.start());
+    let end = line_index.offset(diagnostic_range.end());
+    let constructor = text.get(start..end)?;
+    let open = start + constructor.find('{')?;
+    let close = start + constructor.rfind('}')?;
+    let has_fields = !text.get(open + 1..close)?.trim().is_empty();
+
+    if !constructor.contains('\n') {
+        let edit_text = if has_fields {
+            format!(", {field}: null")
+        } else {
+            format!(" {field}: null ")
+        };
+        let position = line_index.position(close);
+        return Some((DiagnosticRange::new(position, position), edit_text));
+    }
+
+    let field_indent = format!("{}    ", closing_indent(text, close)?);
+    if !has_fields {
+        let position = line_index.position(close);
+        return Some((
+            DiagnosticRange::new(position, position),
+            format!("\n{field_indent}{field}: null,\n"),
+        ));
+    }
+
+    let (last_offset, last_char) = text
+        .get(..close)?
+        .char_indices()
+        .rev()
+        .find(|(_, ch)| !ch.is_whitespace())?;
+    let replace_start = last_offset + last_char.len_utf8();
+    let replacement = if last_char == ',' {
+        format!("\n{field_indent}{field}: null,\n")
+    } else {
+        format!(",\n{field_indent}{field}: null,\n")
+    };
+    Some((
+        DiagnosticRange::new(
+            line_index.position(replace_start),
+            line_index.position(close),
+        ),
+        replacement,
+    ))
+}
+
+fn closing_indent(text: &str, close: usize) -> Option<&str> {
+    let line_start = text
+        .get(..close)?
+        .rfind('\n')
+        .map_or(0, |offset| offset + 1);
+    let indent = text.get(line_start..close)?;
+    indent.chars().all(char::is_whitespace).then_some(indent)
+}
+
 fn missing_variants(diagnostic: &ServiceDiagnostic) -> Vec<String> {
     diagnostic
         .labels()
@@ -324,10 +418,24 @@ fn position_le(left: Position, right: Position) -> bool {
 }
 
 fn backticked_token(message: &str) -> Option<&str> {
-    let start = message.find('`')? + '`'.len_utf8();
-    let end = message[start..].find('`')? + start;
-    let token = &message[start..end];
-    (!token.is_empty()).then_some(token)
+    backticked_tokens(message).into_iter().next()
+}
+
+fn backticked_tokens(message: &str) -> Vec<&str> {
+    let mut tokens = Vec::new();
+    let mut remaining = message;
+    while let Some(start) = remaining.find('`') {
+        let token_start = start + '`'.len_utf8();
+        let Some(token_end) = remaining[token_start..].find('`') else {
+            break;
+        };
+        let token = &remaining[token_start..token_start + token_end];
+        if !token.is_empty() {
+            tokens.push(token);
+        }
+        remaining = &remaining[token_start + token_end + '`'.len_utf8()..];
+    }
+    tokens
 }
 
 fn narrowed_token_range(
@@ -460,6 +568,66 @@ pub fn main(maybe_name: Option<String>) {
         assert_eq!(edit.range().start(), Position::new(3, 4));
         assert_eq!(edit.range().end(), Position::new(3, 4));
         assert_eq!(edit.new_text(), "    Option::None => null,\n    ");
+    }
+
+    #[test]
+    fn code_action_adds_missing_record_fields() {
+        let document = DocumentId::from("/workspace/scripts/game/main.vela");
+        let text = "\
+struct Reward {
+    amount: i64,
+    reason: String = \"quest\",
+}
+
+pub fn main() {
+    return Reward { reason: \"bonus\" }
+}";
+        let files = vec![SourceFileSnapshot::new(document.clone(), text)];
+        let config = WorkspaceConfig::workspace([WorkspaceRoot::from("/workspace/scripts")]);
+        let project = assemble_project_sources(&config, &files, &Workspace::new().snapshot());
+        let mut databases = LanguageServiceDatabases::new();
+        databases.update(&project);
+        let diagnostics = databases.diagnostics_for_document(&document);
+        assert!(
+            diagnostics.diagnostics().iter().any(|diagnostic| {
+                diagnostic.code() == Some("analysis::missing_constructor_field")
+            }),
+            "{:?}",
+            diagnostics.diagnostics()
+        );
+
+        let constructor_start = text
+            .find("return Reward {")
+            .map(|offset| offset + "return ".len())
+            .expect("record constructor");
+        let constructor_end = text[constructor_start..]
+            .find('}')
+            .map(|offset| constructor_start + offset + 1)
+            .expect("record constructor close");
+        let index = LineIndex::new(text);
+        let actions = databases.code_actions(
+            &document,
+            DiagnosticRange::new(
+                index.position(constructor_start),
+                index.position(constructor_end),
+            ),
+        );
+
+        let action = actions
+            .iter()
+            .find(|action| action.title() == "Add missing field `amount`")
+            .expect("missing record field quick fix should exist");
+        assert_eq!(action.kind(), CodeActionKind::QuickFix);
+        let document_edit = &action.edit().document_edits()[0];
+        assert_eq!(document_edit.document_id(), &document);
+        let edit = &document_edit.edits()[0];
+        let close = text[constructor_start..]
+            .find('}')
+            .map(|offset| constructor_start + offset)
+            .expect("record constructor close");
+        assert_eq!(edit.range().start(), index.position(close));
+        assert_eq!(edit.range().end(), index.position(close));
+        assert_eq!(edit.new_text(), ", amount: null");
     }
 
     #[test]

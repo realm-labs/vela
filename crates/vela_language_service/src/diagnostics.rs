@@ -372,8 +372,30 @@ impl LanguageServiceDatabases {
         }
 
         if let Some(parsed) = self.parse_db().parsed_source(document_id) {
+            let graph = self.hir_db().graph();
+            let source_diagnostics = self
+                .project_db()
+                .module_by_document()
+                .get(document_id)
+                .and_then(|module_path| graph.module_id(module_path))
+                .map_or_else(
+                    || {
+                        vela_analysis::diagnostics::source_diagnostics(
+                            parsed,
+                            self.schema_db().facts(),
+                        )
+                    },
+                    |module| {
+                        vela_analysis::diagnostics::source_diagnostics_in_module(
+                            parsed,
+                            graph,
+                            module,
+                            self.schema_db().facts(),
+                        )
+                    },
+                );
             diagnostics.extend(
-                vela_analysis::diagnostics::source_diagnostics(parsed, self.schema_db().facts())
+                source_diagnostics
                     .iter()
                     .map(|diagnostic| self.convert_diagnostic(diagnostic)),
             );

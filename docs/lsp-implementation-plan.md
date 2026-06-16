@@ -673,7 +673,7 @@ Purpose: turn structured diagnostics into safe edits.
 - [x] Add import insertion for unresolved qualified symbols.
 - [ ] Add remove-unused-import action after unused diagnostics exist.
 - [x] Add fill missing match arms when enum facts are known.
-- [ ] Add add missing record fields for known constructors.
+- [x] Add missing record fields for known constructors.
 - [ ] Add convert simple `if` null checks into Option/Result guard idioms only
   if syntax ownership is unambiguous.
 - [x] Add quick-fix tests for range stability under open overlays.
@@ -683,7 +683,7 @@ Tests:
 - [x] `code_action_fixes_unknown_field_typo`
 - [x] `code_action_inserts_missing_import`
 - [x] `code_action_fills_enum_match_arms`
-- [ ] `code_action_adds_missing_record_fields`
+- [x] `code_action_adds_missing_record_fields`
 - [x] `code_action_rejects_ambiguous_dynamic_fix`
 
 Validation:
