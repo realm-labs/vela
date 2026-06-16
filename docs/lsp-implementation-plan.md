@@ -372,6 +372,8 @@ Purpose: make common authoring flows fast and schema-aware.
 - [x] Add cursor-context extraction in `vela_language_service`.
 - [~] Complete locals, parameters, captures, declarations, modules, imports,
   stdlib APIs, fields, methods, variants, traits, and type hints.
+  - Type-hint completion now suggests builtin type-hint names plus
+    source/schema types and traits while suppressing value/function items.
 - [~] Complete named arguments and defaulted parameters.
   - Initial service and LSP completion support source-backed script function
     parameters, unused named-argument filtering, defaulted-parameter detail,
@@ -387,6 +389,7 @@ Purpose: make common authoring flows fast and schema-aware.
 - [x] Complete host members from schema facts.
 - [~] Add trigger-character behavior for `.`, `::`, `{`, `(`, `,`, and `|`.
   - [x] Advertise trigger characters for the implemented LSP completion request.
+  - [x] Complete type hints at `:` trigger positions for typed declarations.
   - [x] Complete stdlib callback lambda parameter names at `|` trigger
     positions for typed receivers.
 - [x] Add signature help for script functions, native functions, methods, and
@@ -404,6 +407,8 @@ Tests:
 - [x] `lsp_completion_uses_loaded_schema_facts`
 - [x] `lambda_parameter_completion_suggests_stdlib_callback_item`
 - [x] `lsp_lambda_parameter_completion_uses_pipe_trigger_context`
+- [x] `type_hint_completion_suggests_only_type_items`
+- [x] `lsp_type_hint_completion_uses_colon_trigger_context`
 - [x] `member_completion_uses_host_schema_facts`
 - [x] `module_completion_follows_import_context`
 - [x] `record_field_completion_requires_known_type`

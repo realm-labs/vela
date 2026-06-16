@@ -20,6 +20,7 @@ use crate::{DocumentId, LanguageServiceDatabases, LineIndex, Position, SourceRec
 mod lambda_parameter;
 mod map_key;
 mod named_argument;
+mod type_hint;
 
 use lambda_parameter::{
     LambdaParameterContext, lambda_parameter_completion_context, lambda_parameter_completion_items,
@@ -28,6 +29,7 @@ use map_key::{
     MapKeyContext, map_key_at, map_key_completion_items as map_key_context_completion_items,
 };
 use named_argument::{named_argument_completion_context, script_function_parameter_completions};
+use type_hint::{type_hint_completion_context, type_hint_completion_items};
 
 #[derive(Debug, Clone, Copy, Eq, Ord, PartialEq, PartialOrd)]
 pub enum CompletionKind {
@@ -68,6 +70,7 @@ pub enum CompletionContextKind {
     MapKey,
     NamedArgument,
     LambdaParameter,
+    TypeHint,
 }
 
 #[derive(Debug, Clone, Eq, PartialEq)]
@@ -200,6 +203,7 @@ impl LanguageServiceDatabases {
             CompletionContextKind::LambdaParameter => {
                 self.lambda_parameter_completion_items(document_id, &context)
             }
+            CompletionContextKind::TypeHint => self.type_hint_completion_items(&context),
         };
         CompletionList { context, items }
     }
@@ -339,6 +343,14 @@ impl LanguageServiceDatabases {
         };
         lambda_parameter_completion_items(&receiver_fact, lambda_parameter, context.prefix())
     }
+
+    fn type_hint_completion_items(&self, context: &CompletionContext) -> Vec<CompletionItem> {
+        type_hint_completion_items(
+            self.hir_db().graph(),
+            self.schema_db().facts(),
+            context.prefix(),
+        )
+    }
 }
 
 impl CompletionContext {
@@ -379,6 +391,20 @@ fn completion_context(
             map_key: None,
             call_arguments: None,
             lambda_parameter: Some(lambda_parameter),
+        };
+    }
+
+    if type_hint_completion_context(text, prefix_start) {
+        return CompletionContext {
+            kind: CompletionContextKind::TypeHint,
+            prefix: prefix.to_owned(),
+            replace_range: TextRange::new(prefix_start, offset),
+            module_base: None,
+            member_receiver: None,
+            record_constructor: None,
+            map_key: None,
+            call_arguments: None,
+            lambda_parameter: None,
         };
     }
 
