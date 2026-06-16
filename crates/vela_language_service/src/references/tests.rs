@@ -543,6 +543,104 @@ impl Rewardable for Player {
     );
 }
 
+#[test]
+fn references_find_schema_field_reads_and_writes() {
+    let main = DocumentId::from("/workspace/scripts/game/main.vela");
+    let schema = DocumentId::from("/workspace/scripts/schema_defs.vela");
+    let main_text = "\
+pub fn main(player: Player) -> i64 {
+    let first = player.level
+    player.level += 1
+    return player.level + first
+}";
+    let schema_text = "pub fn level() { return 1 }";
+    let mut databases = databases_for(vec![
+        SourceFileSnapshot::new(main.clone(), main_text),
+        SourceFileSnapshot::new(schema.clone(), schema_text),
+    ]);
+    let schema_record = databases
+        .source_db()
+        .records()
+        .get(&schema)
+        .expect("schema source should be indexed");
+    let target_start = schema_text
+        .find("level")
+        .expect("schema marker should exist");
+    let target_end = target_start + "level".len();
+    let artifact = serde_json::json!({
+        "formatVersion": 1,
+        "facts": {
+            "types": [
+                {
+                    "name": "Player",
+                    "fact": { "kind": "host", "name": "Player" }
+                }
+            ],
+            "fields": [
+                {
+                    "owner": "Player",
+                    "name": "level",
+                    "fact": { "kind": "primitive", "name": "i64" },
+                    "sourceSpan": {
+                        "source": schema_record.source_id().get(),
+                        "start": target_start,
+                        "end": target_end
+                    }
+                }
+            ]
+        }
+    })
+    .to_string();
+    databases.load_schema_artifact_json("/workspace/target/vela/schema.json", &artifact);
+
+    let references = databases.references(
+        &main,
+        Position::new(1, line(main_text, 1).find("level").expect("field read")),
+        true,
+    );
+
+    assert_eq!(references.len(), 4, "{references:?}");
+    assert_reference_in_document(
+        &references,
+        &schema,
+        0,
+        schema_text.find("level").expect("schema field declaration"),
+        ReferenceKind::Declaration,
+    );
+    assert_reference_in_document(
+        &references,
+        &main,
+        1,
+        line(main_text, 1).find("level").expect("field read"),
+        ReferenceKind::Read,
+    );
+    assert_reference_in_document(
+        &references,
+        &main,
+        2,
+        line(main_text, 2).find("level").expect("field write"),
+        ReferenceKind::Write,
+    );
+    assert_reference_in_document(
+        &references,
+        &main,
+        3,
+        line(main_text, 3).find("level").expect("second field read"),
+        ReferenceKind::Read,
+    );
+
+    let declaration_references = databases.references(
+        &schema,
+        Position::new(
+            0,
+            schema_text.find("level").expect("schema field declaration"),
+        ),
+        true,
+    );
+
+    assert_eq!(declaration_references, references);
+}
+
 fn assert_reference(references: &[Reference], line: usize, character: usize, kind: ReferenceKind) {
     assert!(
         references.iter().any(|reference| {

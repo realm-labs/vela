@@ -563,6 +563,8 @@ Purpose: support workspace navigation and prepare rename.
   - [x] Index source-owned inherent script method declarations and typed
     receiver call sites.
   - [x] Index source-owned trait declarations and `impl Trait for Type` uses.
+  - [x] Index schema-backed field declarations with source spans plus typed
+    host receiver read/write member uses.
 - [~] Track reference kind: read, write, call, type use, import, pattern,
   declaration.
   - [x] Track local declaration and read reference kinds.
@@ -585,6 +587,7 @@ Purpose: support workspace navigation and prepare rename.
     request.
   - [x] Serve source-owned trait impl references through the native LSP
     request.
+  - [x] Serve schema-backed field references through the native LSP request.
 - [~] Implement `textDocument/documentHighlight`.
   - [x] Serve local declaration/read highlights through the native LSP request.
   - [x] Serve imported script function import/read highlights in the active
@@ -614,6 +617,8 @@ Tests:
 - [x] `lsp_references_find_script_method_calls`
 - [x] `references_find_trait_impl_uses`
 - [x] `lsp_references_find_trait_impl_uses`
+- [x] `references_find_schema_field_reads_and_writes`
+- [x] `lsp_references_find_schema_field_reads_and_writes`
 - [x] `document_highlight_marks_local_declaration_and_reads`
 - [x] `document_highlight_marks_import_and_calls_in_active_document`
 - [x] `lsp_document_highlight_marks_local_declaration_and_reads`
