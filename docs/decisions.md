@@ -167,6 +167,13 @@ receiver diagnostics, parser diagnostics, HIR diagnostics, and non-schema
 analysis diagnostics should still be published from the available source
 facts.
 
+LSP code actions may apply structured quick fixes and source-owned refactors,
+but semantic rewrites such as null-check to Option/Result guard conversion
+must wait for a structured diagnostic or syntax pattern that proves the edit is
+local, source-owned, and semantics-preserving. The server must reject dynamic
+receiver typo fixes and ambiguous imports rather than invent type facts or
+choose arbitrary declarations.
+
 Schema artifacts may omit `schemaVersion` and `schemaHash` while exporters are
 still simple, but any provided metadata is validated at load time. `schemaHash`
 is a 64-bit FNV-1a hash of the canonical `RegistryFacts` payload represented by

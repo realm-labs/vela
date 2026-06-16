@@ -383,3 +383,46 @@ fn lsp_code_action_rejects_ambiguous_import_fix() {
 
     assert_eq!(response["result"], serde_json::json!([]));
 }
+
+#[test]
+fn lsp_code_action_rejects_dynamic_receiver_typo_fix() {
+    let mut server = LspServer::new();
+    let _ = response_value(server.handle_json(&request(
+        1,
+        "initialize",
+        serde_json::json!({
+            "processId": null,
+            "rootUri": "file:///workspace/scripts",
+            "capabilities": {}
+        }),
+    )));
+    let text = "pub fn main(player) { return player.levle }";
+    let uri = "file:///workspace/scripts/game/main.vela";
+    let _ = notification_value(server.handle_json(&notification(
+        "textDocument/didOpen",
+        serde_json::json!({
+            "textDocument": {
+                "uri": uri,
+                "languageId": "vela",
+                "version": 1,
+                "text": text
+            }
+        }),
+    )));
+
+    let typo_start = text.find("levle").expect("dynamic receiver typo");
+    let response = response_value(server.handle_json(&request(
+        2,
+        "textDocument/codeAction",
+        serde_json::json!({
+            "textDocument": { "uri": uri },
+            "range": {
+                "start": { "line": 0, "character": typo_start },
+                "end": { "line": 0, "character": typo_start + "levle".len() }
+            },
+            "context": { "diagnostics": [] }
+        }),
+    )));
+
+    assert_eq!(response["result"], serde_json::json!([]));
+}
