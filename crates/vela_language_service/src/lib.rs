@@ -52,6 +52,7 @@ pub use rename::{
 };
 pub use schema::{
     SCHEMA_ARTIFACT_FORMAT_VERSION, SchemaArtifact, SchemaArtifactError, SchemaArtifactFacts,
+    SchemaSourceLocations,
 };
 pub use selection::SelectionRange;
 pub use semantic_tokens::{

@@ -26,6 +26,7 @@ impl Definition {
 #[derive(Debug, Clone, Eq, PartialEq)]
 struct DefinitionToken {
     range: TextRange,
+    text: String,
 }
 
 impl LanguageServiceDatabases {
@@ -47,17 +48,19 @@ impl LanguageServiceDatabases {
             if let Some(definition) = definition_from_resolution_at_token(bindings, &token, self) {
                 return Some(definition);
             }
-            if let Some(binding) = local_declaration_at_token(bindings, &token) {
+            if let Some(binding) = local_declaration_at_token(bindings, &token, self) {
                 return self.definition_from_span(binding.span);
             }
         }
 
-        graph
-            .declarations()
-            .find(|declaration| {
-                declaration.span.source == source_id && declaration.span.contains(offset)
-            })
-            .and_then(|declaration| self.definition_from_span(declaration.span))
+        self.schema_definition_for_token(&token).or_else(|| {
+            graph
+                .declarations()
+                .find(|declaration| {
+                    declaration.span.source == source_id && declaration.span.contains(offset)
+                })
+                .and_then(|declaration| self.definition_from_span(declaration.span))
+        })
     }
 
     fn definition_from_span(&self, span: Span) -> Option<Definition> {
@@ -76,6 +79,15 @@ impl LanguageServiceDatabases {
             .records()
             .values()
             .find(|record| record.source_id() == source_id)
+    }
+
+    fn schema_definition_for_token(&self, token: &DefinitionToken) -> Option<Definition> {
+        let locations = self.schema_db().source_locations();
+        let span = locations
+            .type_span(&token.text)
+            .or_else(|| locations.trait_span(&token.text))
+            .or_else(|| locations.function_span(&token.text))?;
+        self.definition_from_span(span)
     }
 }
 
@@ -113,6 +125,7 @@ fn definition_from_resolution_at_token(
 fn local_declaration_at_token<'a>(
     bindings: &'a BindingMap,
     token: &DefinitionToken,
+    databases: &LanguageServiceDatabases,
 ) -> Option<&'a LocalBinding> {
     bindings.locals().find(|binding| {
         let Ok(start) = usize::try_from(binding.span.start) else {
@@ -121,14 +134,25 @@ fn local_declaration_at_token<'a>(
         let Ok(end) = usize::try_from(binding.span.end) else {
             return false;
         };
-        start <= token.range.start && token.range.end <= end
+        let Some(source) = databases.source_record_for(binding.span.source) else {
+            return false;
+        };
+        let Some(name_range) =
+            name_range_in_text(source.text(), TextRange::new(start, end), &binding.name)
+        else {
+            return false;
+        };
+        name_range.start <= token.range.start && token.range.end <= name_range.end
     })
 }
 
 fn definition_token_at(text: &str, position: Position) -> Option<DefinitionToken> {
     let offset = LineIndex::new(text).offset(position);
     let range = identifier_range_at(text, offset)?;
-    Some(DefinitionToken { range })
+    Some(DefinitionToken {
+        text: text[range.start..range.end].to_owned(),
+        range,
+    })
 }
 
 fn identifier_range_at(text: &str, offset: usize) -> Option<TextRange> {
@@ -151,6 +175,13 @@ fn diagnostic_range(text: &str, range: TextRange) -> DiagnosticRange {
         line_index.position(range.start),
         line_index.position(range.end),
     )
+}
+
+fn name_range_in_text(text: &str, range: TextRange, name: &str) -> Option<TextRange> {
+    let slice = text.get(range.start..range.end)?;
+    let relative = slice.find(name)?;
+    let start = range.start + relative;
+    Some(TextRange::new(start, start + name.len()))
 }
 
 fn is_identifier_continue(ch: char) -> bool {
@@ -208,6 +239,57 @@ mod tests {
         assert_eq!(definition.document_id(), &helper);
         assert_eq!(definition.range().start().line, 0);
         assert_eq!(definition.range().start().character, 0);
+    }
+
+    #[test]
+    fn definition_follows_schema_source_span() {
+        let main = DocumentId::from("/workspace/scripts/game/main.vela");
+        let schema_source = DocumentId::from("/workspace/scripts/schema_defs.vela");
+        let main_text = "pub fn main(player: Player) { return 1 }";
+        let schema_text = "pub fn host_player_schema() { return 1 }";
+        let mut databases = databases_for(vec![
+            SourceFileSnapshot::new(main.clone(), main_text),
+            SourceFileSnapshot::new(schema_source.clone(), schema_text),
+        ]);
+        let schema_record = databases
+            .source_db()
+            .records()
+            .get(&schema_source)
+            .expect("schema source should be indexed");
+        let target_start = schema_text
+            .find("host_player_schema")
+            .expect("schema marker should exist");
+        let target_end = target_start + "host_player_schema".len();
+        let artifact = serde_json::json!({
+            "formatVersion": 1,
+            "facts": {
+                "types": [
+                    {
+                        "name": "Player",
+                        "fact": { "kind": "host", "name": "Player" },
+                        "sourceSpan": {
+                            "source": schema_record.source_id().get(),
+                            "start": target_start,
+                            "end": target_end
+                        }
+                    }
+                ]
+            }
+        })
+        .to_string();
+        databases.load_schema_artifact_json("/workspace/target/vela/schema.json", &artifact);
+
+        let definition = databases
+            .definition(
+                &main,
+                Position::new(0, main_text.find("Player").expect("type hint should exist")),
+            )
+            .expect("definition should resolve schema source span");
+
+        assert_eq!(definition.document_id(), &schema_source);
+        assert_eq!(definition.range().start().line, 0);
+        assert_eq!(definition.range().start().character, target_start);
+        assert_eq!(definition.range().end().character, target_end);
     }
 
     fn databases_for(files: Vec<SourceFileSnapshot>) -> LanguageServiceDatabases {

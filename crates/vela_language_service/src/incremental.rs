@@ -14,7 +14,10 @@ use vela_syntax::ast::{
 };
 use vela_syntax::parser::parse_source;
 
-use crate::{DocumentId, ProjectSources, SchemaArtifact, SourceVersion, WorkspaceGeneration};
+use crate::{
+    DocumentId, ProjectSources, SchemaArtifact, SchemaSourceLocations, SourceVersion,
+    WorkspaceGeneration,
+};
 
 #[derive(Debug, Clone)]
 pub struct SourceRecord {
@@ -348,6 +351,7 @@ impl SchemaDiagnostic {
 #[derive(Debug, Clone, Default)]
 pub struct SchemaDb {
     facts: RegistryFacts,
+    source_locations: SchemaSourceLocations,
     diagnostics: Vec<SchemaDiagnostic>,
 }
 
@@ -358,22 +362,36 @@ impl SchemaDb {
     }
 
     #[must_use]
+    pub const fn source_locations(&self) -> &SchemaSourceLocations {
+        &self.source_locations
+    }
+
+    #[must_use]
     pub fn diagnostics(&self) -> &[SchemaDiagnostic] {
         &self.diagnostics
     }
 
     pub fn clear(&mut self) {
         self.facts = RegistryFacts::default();
+        self.source_locations = SchemaSourceLocations::default();
         self.diagnostics.clear();
     }
 
     pub fn set_facts(&mut self, facts: RegistryFacts) {
         self.facts = facts;
+        self.source_locations = SchemaSourceLocations::default();
+        self.diagnostics.clear();
+    }
+
+    pub fn set_artifact(&mut self, artifact: SchemaArtifact) {
+        self.source_locations = artifact.source_locations();
+        self.facts = artifact.to_registry_facts();
         self.diagnostics.clear();
     }
 
     pub fn set_missing(&mut self, schema_path: impl Into<String>) {
         self.facts = RegistryFacts::default();
+        self.source_locations = SchemaSourceLocations::default();
         self.diagnostics = vec![SchemaDiagnostic::new(format!(
             "host schema `{}` is unavailable; host facts degrade to Any",
             schema_path.into()
@@ -382,6 +400,7 @@ impl SchemaDb {
 
     pub fn set_invalid(&mut self, schema_path: impl Into<String>, message: impl Into<String>) {
         self.facts = RegistryFacts::default();
+        self.source_locations = SchemaSourceLocations::default();
         self.diagnostics = vec![SchemaDiagnostic::new(format!(
             "host schema `{}` is invalid: {}; host facts degrade to Any",
             schema_path.into(),
@@ -663,7 +682,7 @@ impl LanguageServiceDatabases {
 
     pub fn load_schema_artifact_json(&mut self, schema_path: &str, source: &str) {
         match SchemaArtifact::from_json(source) {
-            Ok(artifact) => self.schema_db.set_facts(artifact.to_registry_facts()),
+            Ok(artifact) => self.schema_db.set_artifact(artifact),
             Err(error) => self.schema_db.set_invalid(schema_path, error.message()),
         }
     }

@@ -334,6 +334,8 @@ Purpose: provide host-aware editor tooling without running host code.
 - [x] Define a schema artifact format for `TypeRegistry`/`RegistryFacts`.
 - [~] Export type, field, method, variant, trait, module, function, docs,
   effect, permission, type-hint, stable-ID, and source-span metadata.
+  - Schema artifacts now accept optional `sourceSpan` metadata for exported
+    type, trait, member, variant, method, trait-method, and function facts.
 - [x] Load schema artifacts into language-service schema facts.
 - [ ] Validate schema version/hash compatibility.
 - [~] Report missing, stale, or invalid schema diagnostics.
@@ -347,7 +349,7 @@ Tests:
 - [x] `schema_watch_clears_diagnostic_after_valid_reload`
 - [ ] `missing_schema_keeps_syntax_diagnostics_available`
 - [ ] `schema_reload_updates_host_member_completion`
-- [ ] `schema_source_spans_enable_definition`
+- [x] `schema_source_spans_enable_definition`
 
 Validation:
 
@@ -415,7 +417,10 @@ Purpose: expose semantic facts and navigation.
   where known.
 - [x] Implement go to definition for local bindings.
 - [x] Implement go to definition for imported module declarations.
-- [ ] Implement go to definition for schema items with source spans.
+- [~] Implement go to definition for schema items with source spans.
+  - Initial service and LSP definition support schema type, trait, and
+    function source spans when the referenced schema `SourceId` exists in the
+    current workspace snapshot.
 - [ ] Implement go to declaration/type definition where LSP clients separate
   those requests.
 
@@ -427,7 +432,8 @@ Tests:
 - [x] `definition_follows_local_binding`
 - [x] `definition_follows_imported_module_declaration`
 - [x] `lsp_definition_follows_open_overlay_local_binding`
-- [ ] `definition_follows_schema_source_span`
+- [x] `definition_follows_schema_source_span`
+- [x] `lsp_definition_follows_schema_source_span`
 
 Validation:
 

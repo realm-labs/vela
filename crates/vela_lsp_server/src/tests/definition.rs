@@ -1,3 +1,7 @@
+use std::fs;
+use std::path::{Path, PathBuf};
+use std::time::{SystemTime, UNIX_EPOCH};
+
 use super::{LspServer, notification, notification_value, request, response_value};
 
 #[test]
@@ -48,4 +52,124 @@ fn lsp_definition_follows_open_overlay_local_binding() {
         response["result"]["range"]["start"]["character"],
         text.find("amount").expect("parameter declaration")
     );
+}
+
+#[test]
+fn lsp_definition_follows_schema_source_span() {
+    let root = temp_workspace();
+    let config_path = root.join("vela.toml");
+    let schema_path = root.join("target").join("vela").join("schema.json");
+    fs::create_dir_all(schema_path.parent().expect("schema should have parent"))
+        .expect("schema directory should be creatable");
+    let text = "pub fn main(player: Player) { return 1 }";
+    let target_start = text
+        .find("main")
+        .expect("schema target marker should exist");
+    let target_end = target_start + "main".len();
+    fs::write(
+        &config_path,
+        r#"
+            [workspace]
+            roots = ["scripts"]
+
+            [host]
+            schema = "target/vela/schema.json"
+        "#,
+    )
+    .expect("vela.toml should be writable");
+    fs::write(
+        &schema_path,
+        serde_json::json!({
+            "formatVersion": 1,
+            "facts": {
+                "types": [
+                    {
+                        "name": "Player",
+                        "fact": { "kind": "host", "name": "Player" },
+                        "sourceSpan": {
+                            "source": 1,
+                            "start": target_start,
+                            "end": target_end
+                        }
+                    }
+                ]
+            }
+        })
+        .to_string(),
+    )
+    .expect("schema should be writable");
+
+    let mut server = LspServer::new();
+    let _ = response_value(server.handle_json(&request(
+        1,
+        "initialize",
+        serde_json::json!({
+            "processId": null,
+            "rootUri": file_uri(&root),
+            "capabilities": {}
+        }),
+    )));
+    let _ = server.handle_json(&notification(
+        "workspace/didChangeWatchedFiles",
+        serde_json::json!({
+            "changes": [{ "uri": file_uri(&config_path), "type": 1 }]
+        }),
+    ));
+    let main_uri = file_uri(&root.join("scripts").join("game").join("main.vela"));
+    let _ = notification_value(server.handle_json(&notification(
+        "textDocument/didOpen",
+        serde_json::json!({
+            "textDocument": {
+                "uri": main_uri,
+                "languageId": "vela",
+                "version": 1,
+                "text": text
+            }
+        }),
+    )));
+
+    let response = response_value(server.handle_json(&request(
+        2,
+        "textDocument/definition",
+        serde_json::json!({
+            "textDocument": { "uri": main_uri },
+            "position": {
+                "line": 0,
+                "character": text.find("Player").expect("type hint should exist")
+            }
+        }),
+    )));
+
+    assert_eq!(response["result"]["uri"], main_uri);
+    assert_eq!(response["result"]["range"]["start"]["line"], 0);
+    assert_eq!(
+        response["result"]["range"]["start"]["character"],
+        target_start
+    );
+    assert_eq!(response["result"]["range"]["end"]["character"], target_end);
+    fs::remove_dir_all(root).expect("temporary workspace should be removable");
+}
+
+fn temp_workspace() -> PathBuf {
+    let suffix = match SystemTime::now().duration_since(UNIX_EPOCH) {
+        Ok(duration) => duration.as_nanos(),
+        Err(error) => panic!("system time should be after UNIX_EPOCH: {error}"),
+    };
+    let root = std::env::temp_dir().join(format!(
+        "vela_lsp_server_definition_{}_{}",
+        std::process::id(),
+        suffix
+    ));
+    fs::create_dir_all(root.join("scripts").join("game"))
+        .expect("temporary workspace should be creatable");
+    root
+}
+
+fn file_uri(path: &Path) -> String {
+    let path = path.display().to_string().replace('\\', "/");
+    if path.starts_with('/') {
+        format!("file://{path}")
+    } else {
+        format!("file:///{path}")
+    }
 }

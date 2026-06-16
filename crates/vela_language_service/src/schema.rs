@@ -1,10 +1,12 @@
+use std::collections::BTreeMap;
+
 use serde::{Deserialize, Serialize};
 use vela_analysis::registry::{
     RegistryEffectFact, RegistryFacts, RegistryFieldAccessFact, RegistryFunctionFact,
     RegistryIndexCapabilityFact, RegistryMemberFact, RegistryMethodAccessFact,
 };
 use vela_analysis::type_fact::TypeFact;
-use vela_common::PrimitiveTag;
+use vela_common::{PrimitiveTag, SourceId, Span};
 
 pub const SCHEMA_ARTIFACT_FORMAT_VERSION: u32 = 1;
 
@@ -72,6 +74,11 @@ impl SchemaArtifact {
         self.facts.to_registry_facts()
     }
 
+    #[must_use]
+    pub fn source_locations(&self) -> SchemaSourceLocations {
+        self.facts.source_locations()
+    }
+
     fn validate(&self) -> Result<(), SchemaArtifactError> {
         if self.format_version != SCHEMA_ARTIFACT_FORMAT_VERSION {
             return Err(SchemaArtifactError::new(format!(
@@ -80,6 +87,77 @@ impl SchemaArtifact {
             )));
         }
         Ok(())
+    }
+}
+
+#[derive(Debug, Clone, Default, Eq, PartialEq)]
+pub struct SchemaSourceLocations {
+    types: BTreeMap<String, Span>,
+    traits: BTreeMap<String, Span>,
+    fields: BTreeMap<(String, String), Span>,
+    variants: BTreeMap<(String, String), Span>,
+    methods: BTreeMap<(String, String), Span>,
+    trait_methods: BTreeMap<(String, String), Span>,
+    functions: BTreeMap<String, Span>,
+}
+
+impl SchemaSourceLocations {
+    #[must_use]
+    pub fn type_span(&self, name: &str) -> Option<Span> {
+        self.types.get(name).copied()
+    }
+
+    #[must_use]
+    pub fn trait_span(&self, name: &str) -> Option<Span> {
+        self.traits.get(name).copied()
+    }
+
+    #[must_use]
+    pub fn field_span(&self, owner: &str, name: &str) -> Option<Span> {
+        self.fields
+            .get(&(owner.to_owned(), name.to_owned()))
+            .copied()
+    }
+
+    #[must_use]
+    pub fn variant_span(&self, owner: &str, name: &str) -> Option<Span> {
+        self.variants
+            .get(&(owner.to_owned(), name.to_owned()))
+            .copied()
+    }
+
+    #[must_use]
+    pub fn method_span(&self, owner: &str, name: &str) -> Option<Span> {
+        self.methods
+            .get(&(owner.to_owned(), name.to_owned()))
+            .copied()
+    }
+
+    #[must_use]
+    pub fn trait_method_span(&self, owner: &str, name: &str) -> Option<Span> {
+        self.trait_methods
+            .get(&(owner.to_owned(), name.to_owned()))
+            .copied()
+    }
+
+    #[must_use]
+    pub fn function_span(&self, name: &str) -> Option<Span> {
+        self.functions
+            .get(name)
+            .copied()
+            .or_else(|| self.unique_function_segment_span(name))
+    }
+
+    fn unique_function_segment_span(&self, name: &str) -> Option<Span> {
+        let mut matches = self.functions.iter().filter_map(|(function, span)| {
+            function
+                .rsplit("::")
+                .next()
+                .is_some_and(|segment| segment == name)
+                .then_some(*span)
+        });
+        let first = matches.next()?;
+        matches.next().is_none().then_some(first)
     }
 }
 
@@ -225,12 +303,82 @@ impl SchemaArtifactFacts {
         }
         facts
     }
+
+    fn source_locations(&self) -> SchemaSourceLocations {
+        let mut locations = SchemaSourceLocations::default();
+        for entry in &self.types {
+            if let Some(span) = entry.source_span.and_then(SchemaSourceSpan::to_span) {
+                locations.types.insert(entry.name.clone(), span);
+            }
+        }
+        for entry in &self.traits {
+            if let Some(span) = entry.source_span.and_then(SchemaSourceSpan::to_span) {
+                locations.traits.insert(entry.name.clone(), span);
+            }
+        }
+        for entry in &self.fields {
+            if let Some(span) = entry.source_span.and_then(SchemaSourceSpan::to_span) {
+                locations
+                    .fields
+                    .insert((entry.owner.clone(), entry.name.clone()), span);
+            }
+        }
+        for entry in &self.variants {
+            if let Some(span) = entry.source_span.and_then(SchemaSourceSpan::to_span) {
+                locations
+                    .variants
+                    .insert((entry.owner.clone(), entry.name.clone()), span);
+            }
+        }
+        for entry in &self.methods {
+            if let Some(span) = entry.source_span.and_then(SchemaSourceSpan::to_span) {
+                locations
+                    .methods
+                    .insert((entry.owner.clone(), entry.name.clone()), span);
+            }
+        }
+        for entry in &self.trait_methods {
+            if let Some(span) = entry.source_span.and_then(SchemaSourceSpan::to_span) {
+                locations
+                    .trait_methods
+                    .insert((entry.owner.clone(), entry.name.clone()), span);
+            }
+        }
+        for entry in &self.functions {
+            if let Some(span) = entry.source_span.and_then(SchemaSourceSpan::to_span) {
+                locations.functions.insert(entry.name.clone(), span);
+            }
+        }
+        locations
+    }
+}
+
+#[derive(Debug, Clone, Copy, Deserialize, Eq, PartialEq, Serialize)]
+#[serde(rename_all = "camelCase")]
+struct SchemaSourceSpan {
+    source: u32,
+    start: u32,
+    end: u32,
+}
+
+impl SchemaSourceSpan {
+    fn to_span(self) -> Option<Span> {
+        (self.start <= self.end)
+            .then(|| Span::new(SourceId::new(self.source), self.start, self.end))
+    }
 }
 
 #[derive(Debug, Clone, Deserialize, Eq, PartialEq, Serialize)]
 struct SchemaNamedFact {
     name: String,
     fact: SchemaTypeFact,
+    #[serde(
+        default,
+        rename = "sourceSpan",
+        alias = "source_span",
+        skip_serializing_if = "Option::is_none"
+    )]
+    source_span: Option<SchemaSourceSpan>,
 }
 
 impl SchemaNamedFact {
@@ -238,6 +386,7 @@ impl SchemaNamedFact {
         Self {
             name: name.into(),
             fact: SchemaTypeFact::from_type_fact(fact),
+            source_span: None,
         }
     }
 }
@@ -247,6 +396,13 @@ struct SchemaMemberFact {
     owner: String,
     name: String,
     fact: SchemaTypeFact,
+    #[serde(
+        default,
+        rename = "sourceSpan",
+        alias = "source_span",
+        skip_serializing_if = "Option::is_none"
+    )]
+    source_span: Option<SchemaSourceSpan>,
 }
 
 impl From<RegistryMemberFact> for SchemaMemberFact {
@@ -255,6 +411,7 @@ impl From<RegistryMemberFact> for SchemaMemberFact {
             owner: value.owner,
             name: value.name,
             fact: SchemaTypeFact::from_type_fact(&value.fact),
+            source_span: None,
         }
     }
 }
@@ -263,6 +420,13 @@ impl From<RegistryMemberFact> for SchemaMemberFact {
 struct SchemaFunctionFact {
     name: String,
     fact: SchemaTypeFact,
+    #[serde(
+        default,
+        rename = "sourceSpan",
+        alias = "source_span",
+        skip_serializing_if = "Option::is_none"
+    )]
+    source_span: Option<SchemaSourceSpan>,
 }
 
 impl From<RegistryFunctionFact> for SchemaFunctionFact {
@@ -270,6 +434,7 @@ impl From<RegistryFunctionFact> for SchemaFunctionFact {
         Self {
             name: value.name,
             fact: SchemaTypeFact::from_type_fact(&value.fact),
+            source_span: None,
         }
     }
 }
