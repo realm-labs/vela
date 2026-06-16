@@ -388,8 +388,8 @@ Purpose: make common authoring flows fast and schema-aware.
 - [~] Add signature help for script functions, native functions, methods, and
   callbacks.
   - Initial service and LSP signature help support script function calls,
-    source-owned inherent method calls, and schema-backed host method calls.
-    Callback-style signature help remains open.
+    source-owned inherent method calls, schema-backed host method calls, and
+    stdlib callback method calls.
 
 Tests:
 
@@ -411,8 +411,10 @@ Tests:
 - [x] `lsp_signature_help_tracks_active_parameter`
 - [x] `signature_help_resolves_script_method_call`
 - [x] `signature_help_resolves_schema_method_call`
+- [x] `signature_help_resolves_stdlib_callback_method_call`
 - [x] `lsp_signature_help_resolves_script_method_call`
 - [x] `lsp_signature_help_resolves_schema_method_call`
+- [x] `lsp_signature_help_resolves_stdlib_callback_method_call`
 
 Validation:
 

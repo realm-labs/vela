@@ -1,5 +1,6 @@
 use vela_analysis::facts::AnalysisFacts;
 use vela_analysis::hints::type_fact_from_hint;
+use vela_analysis::stdlib::{LambdaFact, StdlibMethodFact, stdlib_method_fact_with_lambda_arity};
 use vela_analysis::type_fact::TypeFact;
 use vela_common::{SourceId, Span};
 use vela_hir::binding::{BindingMap, BindingResolution};
@@ -72,6 +73,7 @@ impl SignatureParameter {
 struct CallContext {
     callee: String,
     callee_range: TextRange,
+    args_prefix: String,
     active_parameter: usize,
 }
 
@@ -157,6 +159,7 @@ impl LanguageServiceDatabases {
                 };
                 let mut signatures = self.script_method_signatures(&lookup);
                 signatures.extend(self.schema_method_signatures(&lookup));
+                signatures.extend(self.stdlib_method_signatures(&lookup, &context.args_prefix));
                 (!signatures.is_empty()).then_some(signatures)
             })
     }
@@ -305,6 +308,33 @@ impl LanguageServiceDatabases {
         }]
     }
 
+    fn stdlib_method_signatures(
+        &self,
+        lookup: &MemberCallLookup<'_>,
+        args_prefix: &str,
+    ) -> Vec<SignatureInformation> {
+        let Some(receiver) = schema_receiver_type_fact(
+            lookup.text,
+            lookup.source_id,
+            lookup.bindings,
+            lookup.facts,
+            self.schema_db().facts(),
+            lookup.method_range,
+        ) else {
+            return Vec::new();
+        };
+        let lambda_param_count = first_lambda_param_count(args_prefix);
+        let Some(fact) = stdlib_method_fact_with_lambda_arity(
+            &receiver,
+            lookup.method,
+            None,
+            lambda_param_count,
+        ) else {
+            return Vec::new();
+        };
+        vec![stdlib_method_signature_information(&fact)]
+    }
+
     fn script_signatures(&self, callee: &str) -> Vec<SignatureInformation> {
         let graph = self.hir_db().graph();
         let facts = AnalysisFacts::from_module_graph(graph);
@@ -437,10 +467,12 @@ fn call_context_at(text: &str, position: Position) -> Option<CallContext> {
     let offset = LineIndex::new(text).offset(position);
     let open = active_call_open(text, offset)?;
     let (callee, callee_range) = callee_before_open(text, open)?;
+    let args_prefix = text[open + 1..offset].to_owned();
     Some(CallContext {
         callee,
         callee_range,
-        active_parameter: active_parameter_index(&text[open + 1..offset]),
+        active_parameter: active_parameter_index(&args_prefix),
+        args_prefix,
     })
 }
 
@@ -472,11 +504,13 @@ fn callee_before_open(text: &str, open: usize) -> Option<(String, TextRange)> {
 fn active_parameter_index(args_text: &str) -> usize {
     let mut depth = 0usize;
     let mut active = 0usize;
+    let mut lambda_params = false;
     for ch in args_text.chars() {
         match ch {
+            '|' => lambda_params = !lambda_params,
             '(' | '[' | '{' => depth = depth.saturating_add(1),
             ')' | ']' | '}' => depth = depth.saturating_sub(1),
-            ',' if depth == 0 => active = active.saturating_add(1),
+            ',' if depth == 0 && !lambda_params => active = active.saturating_add(1),
             _ => {}
         }
     }
@@ -537,6 +571,60 @@ fn schema_parameters(params: &[TypeFact]) -> Vec<SignatureParameter> {
             type_fact: fact.clone(),
         })
         .collect()
+}
+
+fn stdlib_method_signature_information(fact: &StdlibMethodFact) -> SignatureInformation {
+    let parameters = stdlib_method_parameters(fact);
+    SignatureInformation {
+        label: signature_label(
+            &format!("{}.{}", fact.receiver.display_name(), fact.method),
+            &parameters,
+            &fact.returns,
+        ),
+        parameters,
+    }
+}
+
+fn stdlib_method_parameters(fact: &StdlibMethodFact) -> Vec<SignatureParameter> {
+    fact.params
+        .iter()
+        .enumerate()
+        .map(|(index, param)| {
+            let name = if is_lambda_parameter(param, fact.lambda.as_ref()) {
+                "callback".to_owned()
+            } else {
+                format!("arg{index}")
+            };
+            SignatureParameter {
+                label: format!("{name}: {}", param.display_name()),
+                type_fact: param.clone(),
+            }
+        })
+        .collect()
+}
+
+fn is_lambda_parameter(param: &TypeFact, lambda: Option<&LambdaFact>) -> bool {
+    let Some(lambda) = lambda else {
+        return false;
+    };
+    param == &TypeFact::function(lambda.params.clone(), lambda.returns.clone())
+}
+
+fn first_lambda_param_count(args_text: &str) -> Option<usize> {
+    let start = args_text.find('|')?;
+    let rest = &args_text[start + 1..];
+    let end = rest.find('|')?;
+    let params = rest[..end].trim();
+    if params.is_empty() {
+        Some(0)
+    } else {
+        Some(
+            params
+                .split(',')
+                .filter(|param| !param.trim().is_empty())
+                .count(),
+        )
+    }
 }
 
 fn receiver_type_fact(
@@ -851,5 +939,41 @@ mod tests {
             "Player.grant(arg0: i64, arg1: i64) -> bool"
         );
         assert_eq!(help.signatures()[0].parameters()[1].label(), "arg1: i64");
+    }
+
+    #[test]
+    fn signature_help_resolves_stdlib_callback_method_call() {
+        let document = DocumentId::from("/workspace/scripts/game/main.vela");
+        let text = r#"
+            pub fn main(scores: Array<i64>) {
+                scores.filter(|score| score > 0)
+            }
+        "#;
+        let files = vec![SourceFileSnapshot::new(document.clone(), text)];
+        let config = WorkspaceConfig::workspace([WorkspaceRoot::from("/workspace/scripts")]);
+        let project = assemble_project_sources(&config, &files, &Workspace::new().snapshot());
+        let mut databases = LanguageServiceDatabases::new();
+        databases.update(&project);
+
+        let filter_line = text.lines().nth(2).expect("filter line should exist");
+        let position = Position::new(
+            2,
+            filter_line
+                .find("score >")
+                .expect("lambda body should contain score"),
+        );
+        let help = databases
+            .signature_help(&document, position)
+            .expect("signature help should resolve stdlib callback method");
+
+        assert_eq!(help.active_parameter(), 0);
+        assert_eq!(
+            help.signatures()[0].label(),
+            "Array(i64).filter(callback: Function(i64) -> bool) -> Array(i64)"
+        );
+        assert_eq!(
+            help.signatures()[0].parameters()[0].label(),
+            "callback: Function(i64) -> bool"
+        );
     }
 }

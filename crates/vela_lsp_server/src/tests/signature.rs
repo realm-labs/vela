@@ -183,6 +183,65 @@ fn lsp_signature_help_resolves_schema_method_call() {
     fs::remove_dir_all(&root).expect("temporary workspace should be removable");
 }
 
+#[test]
+fn lsp_signature_help_resolves_stdlib_callback_method_call() {
+    let mut server = LspServer::new();
+    let _ = response_value(server.handle_json(&request(
+        1,
+        "initialize",
+        serde_json::json!({
+            "processId": null,
+            "rootUri": "file:///workspace/scripts",
+            "capabilities": {}
+        }),
+    )));
+    let uri = "file:///workspace/scripts/game/main.vela";
+    let text = "\
+pub fn main(scores: Array<i64>) {
+    scores.filter(|score| score > 0)
+}";
+    let _ = notification_value(server.handle_json(&notification(
+        "textDocument/didOpen",
+        serde_json::json!({
+            "textDocument": {
+                "uri": uri,
+                "languageId": "vela",
+                "version": 1,
+                "text": text
+            }
+        }),
+    )));
+
+    let call_line = text
+        .lines()
+        .nth(1)
+        .expect("fixture should contain filter call");
+    let response = response_value(server.handle_json(&request(
+        2,
+        "textDocument/signatureHelp",
+        serde_json::json!({
+            "textDocument": { "uri": uri },
+            "position": {
+                "line": 1,
+                "character": call_line.find("score >").unwrap_or_else(|| {
+                    panic!("signature fixture should contain lambda body")
+                })
+            }
+        }),
+    )));
+
+    assert_eq!(response["result"]["activeSignature"], 0);
+    assert_eq!(response["result"]["activeParameter"], 0);
+    assert_eq!(
+        response["result"]["signatures"][0]["label"],
+        "Array(i64).filter(callback: Function(i64) -> bool) -> Array(i64)"
+    );
+    assert_eq!(
+        response["result"]["signatures"][0]["parameters"][0]["label"],
+        "callback: Function(i64) -> bool"
+    );
+}
+
 fn temp_workspace() -> PathBuf {
     let suffix = match SystemTime::now().duration_since(UNIX_EPOCH) {
         Ok(duration) => duration.as_nanos(),
