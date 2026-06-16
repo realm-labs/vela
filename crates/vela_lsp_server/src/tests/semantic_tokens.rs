@@ -1,4 +1,9 @@
 use super::{LspServer, notification, notification_value, request, response_value};
+use std::{
+    fs,
+    path::{Path, PathBuf},
+    time::{SystemTime, UNIX_EPOCH},
+};
 
 #[derive(Debug, Clone, Copy, Eq, PartialEq)]
 struct DecodedToken {
@@ -385,6 +390,151 @@ impl Reward {
     );
 }
 
+#[test]
+fn lsp_semantic_tokens_classify_host_and_builtin_member_uses() {
+    let root = temp_workspace();
+    let config_path = root.join("vela.toml");
+    let schema_path = root.join("target").join("vela").join("schema.json");
+    fs::create_dir_all(schema_path.parent().expect("schema should have parent"))
+        .expect("schema directory should be creatable");
+    fs::write(
+        &config_path,
+        r#"
+            [workspace]
+            roots = ["scripts"]
+
+            [host]
+            schema = "target/vela/schema.json"
+        "#,
+    )
+    .expect("vela.toml should be writable");
+    fs::write(
+        &schema_path,
+        r#"{
+            "formatVersion": 1,
+            "facts": {
+                "types": [
+                    {
+                        "name": "Player",
+                        "fact": { "kind": "host", "name": "Player" }
+                    }
+                ],
+                "fields": [
+                    {
+                        "owner": "Player",
+                        "name": "level",
+                        "fact": { "kind": "primitive", "name": "i64" }
+                    }
+                ],
+                "methods": [
+                    {
+                        "owner": "Player",
+                        "name": "grant",
+                        "fact": {
+                            "kind": "function",
+                            "params": [{ "kind": "primitive", "name": "i64" }],
+                            "returns": { "kind": "primitive", "name": "i64" }
+                        }
+                    }
+                ]
+            }
+        }"#,
+    )
+    .expect("schema should be writable");
+
+    let mut server = LspServer::new();
+    let initialize = response_value(server.handle_json(&request(
+        1,
+        "initialize",
+        serde_json::json!({
+            "processId": null,
+            "rootUri": file_uri(&root),
+            "capabilities": {}
+        }),
+    )));
+    let _ = server.handle_json(&notification(
+        "workspace/didChangeWatchedFiles",
+        serde_json::json!({
+            "changes": [{ "uri": file_uri(&config_path), "type": 1 }]
+        }),
+    ));
+    let token_types =
+        initialize["result"]["capabilities"]["semanticTokensProvider"]["legend"]["tokenTypes"]
+            .as_array()
+            .expect("semantic token legend should list token types");
+    let token_modifiers = initialize["result"]["capabilities"]["semanticTokensProvider"]["legend"]
+        ["tokenModifiers"]
+        .as_array()
+        .expect("semantic token legend should list token modifiers");
+    let property = token_type_index(token_types, "property");
+    let method = token_type_index(token_types, "method");
+    let host = token_modifier_bit(token_modifiers, "host");
+    let builtin = token_modifier_bit(token_modifiers, "defaultLibrary");
+
+    let text = "\
+pub fn main(player: Player, names: Array<String>) -> i64 {
+    let level = player.level
+    player.grant(level)
+    return names.len()
+}";
+    let uri = file_uri(&root.join("scripts").join("game").join("main.vela"));
+    let _ = notification_value(server.handle_json(&notification(
+        "textDocument/didOpen",
+        serde_json::json!({
+            "textDocument": {
+                "uri": uri,
+                "languageId": "vela",
+                "version": 1,
+                "text": text
+            }
+        }),
+    )));
+
+    let response = response_value(server.handle_json(&request(
+        2,
+        "textDocument/semanticTokens/full",
+        serde_json::json!({
+            "textDocument": { "uri": uri }
+        }),
+    )));
+    let tokens = decode_tokens(
+        response["result"]["data"]
+            .as_array()
+            .expect("semantic token response should include data"),
+    );
+
+    assert_token_at(
+        &tokens,
+        1,
+        line(text, 1)
+            .rfind("level")
+            .expect("host field use should exist"),
+        "level".len(),
+        property,
+        host,
+    );
+    assert_token_at(
+        &tokens,
+        2,
+        line(text, 2)
+            .find("grant")
+            .expect("host method use should exist"),
+        "grant".len(),
+        method,
+        host,
+    );
+    assert_token_at(
+        &tokens,
+        3,
+        line(text, 3)
+            .find("len")
+            .expect("stdlib method use should exist"),
+        "len".len(),
+        method,
+        builtin,
+    );
+}
+
 fn token_type_index(token_types: &[serde_json::Value], name: &str) -> u64 {
     token_types
         .iter()
@@ -458,4 +608,19 @@ fn assert_token_at(
 
 fn line(text: &str, line: usize) -> &str {
     text.lines().nth(line).expect("line should exist")
+}
+
+fn temp_workspace() -> PathBuf {
+    let mut path = std::env::temp_dir();
+    let unique = SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .expect("system clock should be after epoch")
+        .as_nanos();
+    path.push(format!("vela-lsp-semantic-token-test-{unique}"));
+    fs::create_dir_all(&path).expect("temporary workspace should be creatable");
+    path
+}
+
+fn file_uri(path: &Path) -> String {
+    format!("file://{}", path.display())
 }

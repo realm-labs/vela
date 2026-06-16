@@ -1,9 +1,12 @@
 use std::collections::BTreeMap;
 
+use vela_analysis::{
+    facts::AnalysisFacts, registry::RegistryFacts, stdlib::stdlib_method_fact, type_fact::TypeFact,
+};
 use vela_common::{SourceId, Span};
 use vela_hir::binding::{BindingMap, BindingResolution, LocalBinding, LocalBindingKind};
 use vela_hir::module_graph::{Declaration, DeclarationKind, ModuleGraph};
-use vela_hir::type_hint::EnumVariantFieldsHint;
+use vela_hir::type_hint::{EnumVariantFieldsHint, HirTypeHint};
 use vela_syntax::lexer::lex;
 use vela_syntax::token::{Keyword, Symbol, Token, TokenKind};
 
@@ -257,6 +260,8 @@ impl LanguageServiceDatabases {
         tokens: &[Token],
     ) -> BTreeMap<(usize, usize), SemanticTokenClassification> {
         let mut classifications = BTreeMap::new();
+        let graph = self.hir_db().graph();
+        let facts = AnalysisFacts::from_module_graph(graph);
         for token in tokens {
             let TokenKind::Ident(name) = &token.kind else {
                 continue;
@@ -265,7 +270,7 @@ impl LanguageServiceDatabases {
                 continue;
             };
             if let Some(classification) =
-                self.semantic_classification_for_identifier(source_id, text, name, range)
+                self.semantic_classification_for_identifier(source_id, text, name, range, &facts)
             {
                 classifications.insert((range.start, range.end), classification);
             }
@@ -279,9 +284,11 @@ impl LanguageServiceDatabases {
         text: &str,
         name: &str,
         range: TextRange,
+        facts: &AnalysisFacts,
     ) -> Option<SemanticTokenClassification> {
         let span = span_for_range(source_id, range)?;
         let graph = self.hir_db().graph();
+        let schema = self.schema_db().facts();
 
         for declaration in graph.declarations() {
             if declaration.span.source != source_id || !declaration.span.contains(span.start) {
@@ -293,6 +300,11 @@ impl LanguageServiceDatabases {
                 return Some(classification);
             }
             if let Some(bindings) = graph.bindings(declaration.id) {
+                if let Some(classification) =
+                    member_use_classification(graph, bindings, facts, schema, text, name, range)
+                {
+                    return Some(classification);
+                }
                 if let Some(classification) =
                     local_declaration_classification(bindings, name, range)
                 {
@@ -316,6 +328,259 @@ impl LanguageServiceDatabases {
             })
             .map(declaration_classification)
     }
+}
+
+fn member_use_classification(
+    graph: &ModuleGraph,
+    bindings: &BindingMap,
+    facts: &AnalysisFacts,
+    schema: &RegistryFacts,
+    text: &str,
+    name: &str,
+    range: TextRange,
+) -> Option<SemanticTokenClassification> {
+    let receiver_range = member_receiver_range(text, range.start)?;
+    let receiver_span = span_for_range(
+        graph.declaration(bindings.declaration)?.span.source,
+        receiver_range,
+    )?;
+    let receiver = bindings
+        .resolution_at_span(receiver_span)
+        .and_then(|resolution| type_fact_for_resolution(resolution, bindings, facts, schema))?;
+    let is_call = next_non_whitespace(text, range.end) == Some('(');
+
+    if is_call
+        && let Some(classification) = method_use_classification(graph, schema, &receiver, name)
+    {
+        return Some(classification);
+    }
+
+    field_use_classification(graph, schema, &receiver, name).or_else(|| {
+        is_call
+            .then(|| stdlib_method_fact(&receiver, name, None))
+            .flatten()
+            .map(|_| {
+                SemanticTokenClassification::new(
+                    SemanticTokenType::Method,
+                    SemanticTokenModifiers::BUILTIN,
+                )
+            })
+    })
+}
+
+fn method_use_classification(
+    graph: &ModuleGraph,
+    schema: &RegistryFacts,
+    receiver: &TypeFact,
+    name: &str,
+) -> Option<SemanticTokenClassification> {
+    if schema_method_exists(schema, receiver, name) {
+        return Some(SemanticTokenClassification::new(
+            SemanticTokenType::Method,
+            host_modifier(receiver),
+        ));
+    }
+    if stdlib_method_fact(receiver, name, None).is_some() {
+        return Some(SemanticTokenClassification::new(
+            SemanticTokenType::Method,
+            SemanticTokenModifiers::BUILTIN,
+        ));
+    }
+    script_method_exists(graph, receiver, name).then(|| {
+        SemanticTokenClassification::new(SemanticTokenType::Method, SemanticTokenModifiers::NONE)
+    })
+}
+
+fn field_use_classification(
+    graph: &ModuleGraph,
+    schema: &RegistryFacts,
+    receiver: &TypeFact,
+    name: &str,
+) -> Option<SemanticTokenClassification> {
+    if schema_field_exists(schema, receiver, name) {
+        return Some(SemanticTokenClassification::new(
+            SemanticTokenType::Property,
+            host_modifier(receiver),
+        ));
+    }
+    script_field_exists(graph, receiver, name).then(|| {
+        SemanticTokenClassification::new(SemanticTokenType::Property, SemanticTokenModifiers::NONE)
+    })
+}
+
+fn type_fact_for_resolution(
+    resolution: &BindingResolution,
+    bindings: &BindingMap,
+    facts: &AnalysisFacts,
+    schema: &RegistryFacts,
+) -> Option<TypeFact> {
+    match resolution {
+        BindingResolution::Local(local) => {
+            let binding = bindings.local(*local)?;
+            facts
+                .local(*local)
+                .cloned()
+                .filter(|fact| !matches!(fact, TypeFact::Unknown))
+                .or_else(|| schema_fact_for_local_hint(binding.type_hint.as_ref(), schema))
+        }
+        BindingResolution::Declaration(declaration) => facts.declaration(*declaration).cloned(),
+        BindingResolution::Import(_) | BindingResolution::QualifiedPath(_) => None,
+    }
+}
+
+fn schema_fact_for_local_hint(
+    hint: Option<&HirTypeHint>,
+    schema: &RegistryFacts,
+) -> Option<TypeFact> {
+    let hint = hint?;
+    if hint.args.is_empty() {
+        let qualified = hint.path.join("::");
+        schema
+            .type_fact(&qualified)
+            .or_else(|| hint.path.last().and_then(|name| schema.type_fact(name)))
+            .cloned()
+    } else {
+        None
+    }
+}
+
+fn schema_method_exists(schema: &RegistryFacts, receiver: &TypeFact, method: &str) -> bool {
+    owner_names(receiver).iter().any(|owner| {
+        schema.method_fact(owner, method).is_some()
+            || schema.trait_method_fact(owner, method).is_some()
+    })
+}
+
+fn schema_field_exists(schema: &RegistryFacts, receiver: &TypeFact, field: &str) -> bool {
+    owner_names(receiver)
+        .iter()
+        .any(|owner| schema.field_fact(owner, field).is_some())
+}
+
+fn script_method_exists(graph: &ModuleGraph, receiver: &TypeFact, method: &str) -> bool {
+    let owner_names = owner_names(receiver);
+    graph.declarations().any(|declaration| {
+        if !matches!(declaration.kind, DeclarationKind::Impl) {
+            return false;
+        }
+        let Some(metadata) = graph.impl_metadata(declaration.id) else {
+            return false;
+        };
+        let targets = impl_target_names(graph, declaration, &metadata.target_path);
+        targets.iter().any(|target| owner_names.contains(target))
+            && metadata.methods.iter().any(|entry| entry.name == method)
+    })
+}
+
+fn script_field_exists(graph: &ModuleGraph, receiver: &TypeFact, field: &str) -> bool {
+    let owner_names = owner_names(receiver);
+    graph.declarations().any(|declaration| {
+        if !matches!(declaration.kind, DeclarationKind::Struct) {
+            return false;
+        }
+        owner_names
+            .iter()
+            .any(|owner| declaration_name_matches(graph, declaration, owner))
+            && graph
+                .struct_shape(declaration.id)
+                .is_some_and(|shape| shape.fields.iter().any(|entry| entry.name == field))
+    })
+}
+
+fn owner_names(receiver: &TypeFact) -> Vec<String> {
+    let Some(owner) = receiver_owner_name(receiver) else {
+        return Vec::new();
+    };
+    let mut names = vec![owner.clone()];
+    if let Some(short) = owner.rsplit("::").next()
+        && short != owner
+    {
+        names.push(short.to_owned());
+    }
+    names
+}
+
+fn receiver_owner_name(receiver: &TypeFact) -> Option<String> {
+    match receiver {
+        TypeFact::Host { name } | TypeFact::Record { name } | TypeFact::Trait { name } => {
+            Some(name.clone())
+        }
+        TypeFact::Enum {
+            name,
+            variant: Some(variant),
+        } => Some(format!("{name}::{variant}")),
+        TypeFact::Enum {
+            name,
+            variant: None,
+        } => Some(name.clone()),
+        _ => None,
+    }
+}
+
+fn host_modifier(receiver: &TypeFact) -> SemanticTokenModifiers {
+    if matches!(receiver, TypeFact::Host { .. }) {
+        SemanticTokenModifiers::HOST
+    } else {
+        SemanticTokenModifiers::NONE
+    }
+}
+
+fn impl_target_names(
+    graph: &ModuleGraph,
+    declaration: &Declaration,
+    target_path: &[String],
+) -> Vec<String> {
+    let raw = target_path.join("::");
+    let mut names = vec![raw.clone()];
+    if target_path.len() == 1
+        && let Some(module_path) = graph.module_path(declaration.module)
+    {
+        let qualified = module_path
+            .segments()
+            .iter()
+            .chain(target_path.iter())
+            .cloned()
+            .collect::<Vec<_>>()
+            .join("::");
+        if qualified != raw {
+            names.push(qualified);
+        }
+    }
+    names
+}
+
+fn declaration_name_matches(graph: &ModuleGraph, declaration: &Declaration, owner: &str) -> bool {
+    declaration.name == owner || qualified_declaration_name(graph, declaration) == owner
+}
+
+fn qualified_declaration_name(graph: &ModuleGraph, declaration: &Declaration) -> String {
+    graph
+        .module_path(declaration.module)
+        .map(|path| {
+            path.segments()
+                .iter()
+                .chain(std::iter::once(&declaration.name))
+                .cloned()
+                .collect::<Vec<_>>()
+                .join("::")
+        })
+        .unwrap_or_else(|| declaration.name.clone())
+}
+
+fn member_receiver_range(text: &str, member_start: usize) -> Option<TextRange> {
+    let before_member = text.get(..member_start)?.trim_end();
+    let before_dot = before_member.strip_suffix('.')?.trim_end();
+    let end = before_dot.len();
+    let start = before_dot
+        .char_indices()
+        .rev()
+        .find_map(|(index, ch)| (!is_identifier_continue(ch)).then_some(index + ch.len_utf8()))
+        .unwrap_or(0);
+    (start < end).then(|| TextRange::new(start, end))
+}
+
+fn next_non_whitespace(text: &str, offset: usize) -> Option<char> {
+    text.get(offset..)?.chars().find(|ch| !ch.is_whitespace())
 }
 
 fn local_declaration_classification(
@@ -687,315 +952,4 @@ fn token_range(span: vela_common::Span) -> Option<TextRange> {
 }
 
 #[cfg(test)]
-mod tests {
-    use super::*;
-    use crate::{
-        SourceFileSnapshot, Workspace, WorkspaceConfig, WorkspaceRoot, assemble_project_sources,
-    };
-
-    #[test]
-    fn semantic_tokens_cover_lexical_classes() {
-        let document = DocumentId::from("/workspace/scripts/game/main.vela");
-        let text = "pub fn main() { let bytes = b\"ok\" return bytes + 1 }";
-        let databases = databases_for(vec![SourceFileSnapshot::new(document.clone(), text)]);
-
-        let tokens = databases.semantic_tokens(&document);
-
-        assert_token_at(
-            &tokens,
-            0,
-            text.find("pub").expect("keyword should exist"),
-            "pub".len(),
-            SemanticTokenType::Keyword,
-            SemanticTokenModifiers::NONE,
-        );
-        assert_token_at(
-            &tokens,
-            0,
-            text.find("b\"ok\"").expect("bytes literal should exist"),
-            "b\"ok\"".len(),
-            SemanticTokenType::Bytes,
-            SemanticTokenModifiers::NONE,
-        );
-        assert_token_at(
-            &tokens,
-            0,
-            text.find('+').expect("operator should exist"),
-            1,
-            SemanticTokenType::Operator,
-            SemanticTokenModifiers::NONE,
-        );
-        assert_token_at(
-            &tokens,
-            0,
-            text.find('1').expect("number should exist"),
-            1,
-            SemanticTokenType::Number,
-            SemanticTokenModifiers::NONE,
-        );
-    }
-
-    #[test]
-    fn semantic_tokens_mark_resolved_symbols() {
-        let main = DocumentId::from("/workspace/scripts/game/main.vela");
-        let helper = DocumentId::from("/workspace/scripts/game/reward.vela");
-        let main_text = "\
-use game::reward::grant
-pub fn main(amount: i64) -> i64 {
-    let next = grant(amount)
-    return next
-}";
-        let databases = databases_for(vec![
-            SourceFileSnapshot::new(main.clone(), main_text),
-            SourceFileSnapshot::new(helper, "pub fn grant(amount: i64) -> i64 { return amount }"),
-        ]);
-
-        let tokens = databases.semantic_tokens(&main);
-
-        assert_token_at(
-            &tokens,
-            1,
-            line(main_text, 1).find("main").expect("main should exist"),
-            "main".len(),
-            SemanticTokenType::Function,
-            SemanticTokenModifiers::DECLARATION.union(SemanticTokenModifiers::DEFINITION),
-        );
-        assert_token_at(
-            &tokens,
-            1,
-            line(main_text, 1)
-                .find("amount")
-                .expect("parameter should exist"),
-            "amount".len(),
-            SemanticTokenType::Parameter,
-            SemanticTokenModifiers::DECLARATION,
-        );
-        assert_token_at(
-            &tokens,
-            2,
-            line(main_text, 2).find("next").expect("local should exist"),
-            "next".len(),
-            SemanticTokenType::Variable,
-            SemanticTokenModifiers::DECLARATION,
-        );
-        assert_token_at(
-            &tokens,
-            2,
-            line(main_text, 2).find("grant").expect("call should exist"),
-            "grant".len(),
-            SemanticTokenType::Function,
-            SemanticTokenModifiers::NONE,
-        );
-        assert_token_at(
-            &tokens,
-            2,
-            line(main_text, 2)
-                .find("amount")
-                .expect("argument should exist"),
-            "amount".len(),
-            SemanticTokenType::Parameter,
-            SemanticTokenModifiers::NONE,
-        );
-        assert_token_at(
-            &tokens,
-            3,
-            line(main_text, 3)
-                .find("next")
-                .expect("return value should exist"),
-            "next".len(),
-            SemanticTokenType::Variable,
-            SemanticTokenModifiers::NONE,
-        );
-    }
-
-    #[test]
-    fn semantic_tokens_include_comments() {
-        let document = DocumentId::from("/workspace/scripts/game/main.vela");
-        let text = "\
-#! /usr/bin/env vela
-// setup
-pub fn main() {
-    let text = \"not // a comment\"
-    /* outer
-       /* nested */
-       done */
-    return text
-}";
-        let databases = databases_for(vec![SourceFileSnapshot::new(document.clone(), text)]);
-
-        let tokens = databases.semantic_tokens(&document);
-
-        assert_token_at(
-            &tokens,
-            0,
-            0,
-            line(text, 0).len(),
-            SemanticTokenType::Comment,
-            SemanticTokenModifiers::NONE,
-        );
-        assert_token_at(
-            &tokens,
-            1,
-            0,
-            line(text, 1).len(),
-            SemanticTokenType::Comment,
-            SemanticTokenModifiers::NONE,
-        );
-        assert_token_at(
-            &tokens,
-            4,
-            line(text, 4)
-                .find("/* outer")
-                .expect("block comment should exist"),
-            "/* outer".len(),
-            SemanticTokenType::Comment,
-            SemanticTokenModifiers::NONE,
-        );
-        assert_token_at(
-            &tokens,
-            5,
-            0,
-            line(text, 5).len(),
-            SemanticTokenType::Comment,
-            SemanticTokenModifiers::NONE,
-        );
-        assert_token_at(
-            &tokens,
-            6,
-            0,
-            line(text, 6).len(),
-            SemanticTokenType::Comment,
-            SemanticTokenModifiers::NONE,
-        );
-        assert!(
-            tokens.tokens().iter().all(|token| {
-                token.start().line != 3
-                    || token.token_type() != SemanticTokenType::Comment
-                    || token.start().character
-                        != line(text, 3)
-                            .find("//")
-                            .expect("string should contain comment marker")
-            }),
-            "string contents must not produce comment tokens: {:?}",
-            tokens.tokens()
-        );
-    }
-
-    #[test]
-    fn semantic_tokens_classify_script_members() {
-        let document = DocumentId::from("/workspace/scripts/game/main.vela");
-        let text = "\
-pub struct Reward {
-    amount: i64
-}
-
-pub enum Progress {
-    Started
-    Active { quest_id: String }
-    Finished(result: String)
-}
-
-pub trait Scored {
-    fn score(value: Reward) -> i64
-}
-
-impl Reward {
-    fn bonus(value: Reward) -> i64 { return 1 }
-}";
-        let databases = databases_for(vec![SourceFileSnapshot::new(document.clone(), text)]);
-
-        let tokens = databases.semantic_tokens(&document);
-        let member_modifiers =
-            SemanticTokenModifiers::DECLARATION.union(SemanticTokenModifiers::DEFINITION);
-
-        assert_token_at(
-            &tokens,
-            1,
-            line(text, 1).find("amount").expect("field should exist"),
-            "amount".len(),
-            SemanticTokenType::Field,
-            member_modifiers,
-        );
-        assert_token_at(
-            &tokens,
-            5,
-            line(text, 5).find("Started").expect("variant should exist"),
-            "Started".len(),
-            SemanticTokenType::EnumMember,
-            member_modifiers,
-        );
-        assert_token_at(
-            &tokens,
-            6,
-            line(text, 6)
-                .find("quest_id")
-                .expect("record variant field should exist"),
-            "quest_id".len(),
-            SemanticTokenType::Field,
-            member_modifiers,
-        );
-        assert_token_at(
-            &tokens,
-            7,
-            line(text, 7)
-                .find("result")
-                .expect("tuple variant field should exist"),
-            "result".len(),
-            SemanticTokenType::Field,
-            member_modifiers,
-        );
-        assert_token_at(
-            &tokens,
-            11,
-            line(text, 11)
-                .find("score")
-                .expect("trait method should exist"),
-            "score".len(),
-            SemanticTokenType::Method,
-            member_modifiers,
-        );
-        assert_token_at(
-            &tokens,
-            15,
-            line(text, 15)
-                .find("bonus")
-                .expect("impl method should exist"),
-            "bonus".len(),
-            SemanticTokenType::Method,
-            member_modifiers,
-        );
-    }
-
-    fn assert_token_at(
-        tokens: &SemanticTokens,
-        line: usize,
-        character: usize,
-        length: usize,
-        token_type: SemanticTokenType,
-        modifiers: SemanticTokenModifiers,
-    ) {
-        assert!(
-            tokens.tokens().iter().any(|token| {
-                token.start().line == line
-                    && token.start().character == character
-                    && token.length() == length
-                    && token.token_type() == token_type
-                    && token.modifiers() == modifiers
-            }),
-            "{:?}",
-            tokens.tokens()
-        );
-    }
-
-    fn line(text: &str, line: usize) -> &str {
-        text.lines().nth(line).expect("line should exist")
-    }
-
-    fn databases_for(files: Vec<SourceFileSnapshot>) -> LanguageServiceDatabases {
-        let config = WorkspaceConfig::workspace([WorkspaceRoot::from("/workspace/scripts")]);
-        let project = assemble_project_sources(&config, &files, &Workspace::new().snapshot());
-        let mut databases = LanguageServiceDatabases::new();
-        databases.update(&project);
-        databases
-    }
-}
+mod tests;

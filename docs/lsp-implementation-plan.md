@@ -472,6 +472,8 @@ Purpose: provide syntax and semantic highlighting without changing semantics.
   deprecated, builtin, host, and unresolved symbols.
   - [x] Add declaration, definition, readonly, and unresolved modifiers for
     script declarations and binding-map resolutions.
+  - [x] Add host modifiers for schema-backed member accesses and builtin
+    modifiers for stdlib member method accesses.
 - [~] Add token classes for modules, functions, methods, fields, variables,
   parameters, types, traits, enum variants, properties, keywords, numbers,
   strings, bytes, comments, operators, attributes, and macros.
@@ -483,6 +485,8 @@ Purpose: provide syntax and semantic highlighting without changing semantics.
     classes without changing parser tokenization.
   - [x] Add script-owned struct field, enum variant, enum payload field,
     trait method, and impl method declaration token classes.
+  - [x] Add member-use token classes for script fields/methods, schema-backed
+    host fields/methods, and stdlib member methods.
 - [ ] Implement full semantic tokens.
 - [ ] Implement semantic token delta only after generation-stable token caches
   exist.
@@ -497,6 +501,9 @@ Tests:
 - [x] `lsp_semantic_tokens_include_comments`
 - [x] `semantic_tokens_classify_script_members`
 - [x] `lsp_semantic_tokens_classify_script_members`
+- [x] `semantic_tokens_classify_script_member_uses`
+- [x] `semantic_tokens_classify_schema_and_stdlib_member_uses`
+- [x] `lsp_semantic_tokens_classify_host_and_builtin_member_uses`
 - [ ] `semantic_tokens_degrade_under_parse_errors`
 - [ ] `semantic_token_delta_matches_full_tokens`
 
