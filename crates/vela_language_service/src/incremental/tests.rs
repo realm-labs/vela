@@ -408,3 +408,35 @@ fn larger_synthetic_workspace_reports_indexing_metrics() {
     assert_eq!(report.reparsed_documents().len(), 1);
     assert_eq!(report.hir_invalidated_modules().len(), 1);
 }
+
+#[test]
+#[ignore = "explicit Phase 18 scale checkpoint for roughly one million lines"]
+fn million_line_synthetic_workspace_checkpoint_avoids_full_rebuild_per_edit() {
+    const MODULES: usize = 2_048;
+    const LINES_PER_MODULE: usize = 512;
+
+    let mut files = (0..MODULES)
+        .map(|index| scaled_file(index, LINES_PER_MODULE, index))
+        .collect::<Vec<_>>();
+    let mut db = LanguageServiceDatabases::new();
+
+    let initial = db.update(&project(&files));
+
+    assert_eq!(initial.metrics().source_count(), MODULES);
+    assert_eq!(initial.metrics().parsed_document_count(), MODULES);
+    assert_eq!(initial.metrics().reparsed_document_count(), MODULES);
+    assert_eq!(initial.metrics().hir_rebuild_count(), 1);
+    assert!(initial.metrics().total_lines() >= 1_000_000);
+    assert!(initial.metrics().total_bytes() >= initial.metrics().total_lines());
+
+    files[1_337] = scaled_file(1_337, LINES_PER_MODULE, 13_370);
+    let report = db.update(&project(&files));
+
+    assert_eq!(report.metrics().source_count(), MODULES);
+    assert_eq!(report.metrics().parsed_document_count(), MODULES);
+    assert_eq!(report.metrics().reparsed_document_count(), 1);
+    assert_eq!(report.metrics().hir_rebuild_count(), 0);
+    assert_eq!(report.reparsed_documents().len(), 1);
+    assert_eq!(report.hir_invalidated_modules().len(), 1);
+    assert!(report.metrics().total_lines() >= 1_000_000);
+}

@@ -167,8 +167,11 @@ vela_language_service` passes all 146 language-service unit tests plus
 doctests, and `cargo test -p vela_lsp_server` passes all 110 library tests, 3
 CLI/main tests, and doctests. Parser/HIR/analysis focused tests also pass with
 `cargo test -p vela_syntax`, `cargo test -p vela_hir`, and `cargo test -p
-vela_analysis`. Larger scale validation and full workspace validation remain
-to be run before M20.5 can be marked complete enough.
+vela_analysis`. The explicit many-file scale checkpoint
+`cargo test -p vela_language_service million_line_synthetic_workspace_checkpoint
+-- --ignored` passes at roughly one million synthetic lines while preserving
+single-file reparse and no full HIR rebuild on edit. Full workspace validation
+remains to be run before M20.5 can be marked complete enough.
 
 M20.5 Phase 7 update: `textDocument/signatureHelp` now resolves stdlib
 function calls, typed source-owned inherent method calls, schema-backed host

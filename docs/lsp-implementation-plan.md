@@ -234,16 +234,18 @@ Tests:
 - [x] `open_file_recomputation_is_scheduled_before_workspace_work`
 - [x] `scale_fixture_avoids_full_rebuild_per_edit`
 - [x] `larger_synthetic_workspace_reports_indexing_metrics`
+- [x] `million_line_synthetic_workspace_checkpoint_avoids_full_rebuild_per_edit`
 
 Validation:
 
 ```bash
 cargo test -p vela_language_service incremental
+cargo test -p vela_language_service million_line_synthetic_workspace_checkpoint -- --ignored
 ```
 
 Scale checkpoint:
 
-- [~] Synthetic workspace approaches one million total lines across many files
+- [x] Synthetic workspace approaches one million total lines across many files
   and modules, not one unusually large source file.
 - [x] Initial indexing reports timing and source-size metrics.
 - [x] Single-file edit avoids full project parse.
@@ -1075,8 +1077,11 @@ Purpose: prove the LSP track is complete enough to run alongside runtime work.
 - [x] Run parser/HIR/analysis focused tests.
   - Verified with `cargo test -p vela_syntax`, `cargo test -p vela_hir`, and
     `cargo test -p vela_analysis`.
-- [ ] Run many-file synthetic scale checkpoint approaching one million total
+- [x] Run many-file synthetic scale checkpoint approaching one million total
   lines.
+  - Verified with `cargo test -p vela_language_service
+    million_line_synthetic_workspace_checkpoint -- --ignored`: 1 explicit
+    million-line scale checkpoint passed.
 - [ ] Run full workspace validation.
 - [ ] Update `docs/progress.md` with completed LSP capability coverage.
 - [ ] Archive long scale logs only if needed for later audit.
