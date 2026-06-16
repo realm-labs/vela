@@ -155,6 +155,84 @@ pub fn main(amount: i64) -> i64 {
 }
 
 #[test]
+fn lsp_references_find_field_reads_and_writes() {
+    let mut server = LspServer::new();
+    let _ = response_value(server.handle_json(&request(
+        1,
+        "initialize",
+        serde_json::json!({
+            "processId": null,
+            "rootUri": "file:///workspace/scripts",
+            "capabilities": {}
+        }),
+    )));
+    let text = "\
+pub struct Reward {
+    amount: i64
+}
+
+pub fn main(reward: Reward) -> i64 {
+    let first = reward.amount
+    reward.amount += 1
+    return reward.amount + first
+}";
+    let uri = "file:///workspace/scripts/game/main.vela";
+    let _ = notification_value(server.handle_json(&notification(
+        "textDocument/didOpen",
+        serde_json::json!({
+            "textDocument": {
+                "uri": uri,
+                "languageId": "vela",
+                "version": 1,
+                "text": text
+            }
+        }),
+    )));
+
+    let response = response_value(server.handle_json(&request(
+        2,
+        "textDocument/references",
+        serde_json::json!({
+            "textDocument": { "uri": uri },
+            "position": {
+                "line": 5,
+                "character": line(text, 5).find("amount").expect("first field read")
+            },
+            "context": { "includeDeclaration": true }
+        }),
+    )));
+    let references = response["result"]
+        .as_array()
+        .expect("references response should be an array");
+
+    assert_eq!(references.len(), 4);
+    assert_reference(
+        references,
+        uri,
+        1,
+        line(text, 1).find("amount").expect("field declaration"),
+    );
+    assert_reference(
+        references,
+        uri,
+        5,
+        line(text, 5).find("amount").expect("first field read"),
+    );
+    assert_reference(
+        references,
+        uri,
+        6,
+        line(text, 6).find("amount").expect("field write"),
+    );
+    assert_reference(
+        references,
+        uri,
+        7,
+        line(text, 7).find("amount").expect("second field read"),
+    );
+}
+
+#[test]
 fn lsp_document_highlight_marks_local_declaration_and_reads() {
     let mut server = LspServer::new();
     let initialize = response_value(server.handle_json(&request(
