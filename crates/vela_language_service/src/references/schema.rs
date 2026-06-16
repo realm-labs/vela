@@ -1,6 +1,7 @@
 use vela_analysis::{facts::AnalysisFacts, registry::RegistryFacts, type_fact::TypeFact};
 use vela_common::{SourceId, Span};
 use vela_hir::binding::{BindingMap, BindingResolution};
+use vela_syntax::ast::SourceFile;
 use vela_syntax::lexer::lex;
 use vela_syntax::token::TokenKind;
 
@@ -8,8 +9,8 @@ use crate::{LanguageServiceDatabases, TextRange};
 
 use super::{
     Reference, ReferenceKind, ReferenceToken, diagnostic_range, is_call_callee,
-    member_receiver_range, path_ending_at, resolved_use_reference_kind, span_text_range,
-    token_text, type_fact_for_resolution,
+    member_receiver_range, name_range_in_text, path_ending_at, record_fields,
+    resolved_use_reference_kind, span_text_range, token_text, type_fact_for_resolution,
 };
 
 #[derive(Debug, Clone, Eq, PartialEq)]
@@ -89,6 +90,14 @@ pub(super) fn schema_field_references(
             target,
             graph,
         ));
+        if let Some(parsed) = databases.parse_db().parsed_source(source.document_id()) {
+            references.extend(schema_record_field_references_for_source(
+                databases.schema_db().facts(),
+                parsed,
+                source,
+                target,
+            ));
+        }
     }
 
     sort_references(&mut references);
@@ -264,6 +273,35 @@ pub(super) fn schema_variant_use_target(
     schema_variant_target_for_path(databases.schema_db().facts(), &path)
 }
 
+pub(super) fn schema_record_field_use_target(
+    databases: &LanguageServiceDatabases,
+    parsed: &SourceFile,
+    text: &str,
+    token: &ReferenceToken,
+) -> Option<SchemaFieldReferenceTarget> {
+    let field = token_text(text, token.range)?;
+    let mut target = None;
+    record_fields::for_each_explicit_record_field(parsed, |path, record_field| {
+        if target.is_some() || record_field.name != field {
+            return;
+        }
+        let Some(span_range) = span_text_range(record_field.span) else {
+            return;
+        };
+        let Some(name_range) = name_range_in_text(text, span_range, &record_field.name) else {
+            return;
+        };
+        if name_range.start <= token.range.start && token.range.end <= name_range.end {
+            target = schema_field_target_for_constructor_path(
+                databases.schema_db().facts(),
+                path,
+                field,
+            );
+        }
+    });
+    target
+}
+
 fn reference_for_schema_method_declaration(
     databases: &LanguageServiceDatabases,
     target: &SchemaMethodReferenceTarget,
@@ -428,6 +466,38 @@ fn schema_field_use_references_for_source(
     references
 }
 
+fn schema_record_field_references_for_source(
+    schema: &RegistryFacts,
+    parsed: &SourceFile,
+    source: &crate::SourceRecord,
+    target: &SchemaFieldReferenceTarget,
+) -> Vec<Reference> {
+    let mut references = Vec::new();
+    let text = source.text();
+    record_fields::for_each_explicit_record_field(parsed, |path, field| {
+        if field.name != target.field {
+            return;
+        }
+        if schema_field_target_for_constructor_path(schema, path, &target.field).as_ref()
+            != Some(target)
+        {
+            return;
+        }
+        let Some(span_range) = span_text_range(field.span) else {
+            return;
+        };
+        let Some(name_range) = name_range_in_text(text, span_range, &field.name) else {
+            return;
+        };
+        references.push(Reference {
+            document_id: source.document_id().clone(),
+            range: diagnostic_range(text, name_range),
+            kind: ReferenceKind::Read,
+        });
+    });
+    references
+}
+
 fn schema_variant_use_references_for_source(
     schema: &RegistryFacts,
     source: &crate::SourceRecord,
@@ -491,6 +561,44 @@ fn schema_field_target_for_member(
         owner,
         field: field.to_owned(),
     })
+}
+
+fn schema_field_target_for_constructor_path(
+    schema: &RegistryFacts,
+    path: &[String],
+    field: &str,
+) -> Option<SchemaFieldReferenceTarget> {
+    let mut owners = schema_constructor_owner_candidates(schema, path, field).into_iter();
+    let owner = owners.next()?;
+    owners
+        .next()
+        .is_none()
+        .then_some(SchemaFieldReferenceTarget {
+            owner,
+            field: field.to_owned(),
+        })
+}
+
+fn schema_constructor_owner_candidates(
+    schema: &RegistryFacts,
+    path: &[String],
+    field: &str,
+) -> Vec<String> {
+    let qualified = path.join("::");
+    let short = path.last().cloned();
+    schema
+        .fields()
+        .filter_map(move |candidate| {
+            if candidate.name != field {
+                return None;
+            }
+            let exact = candidate.owner == qualified;
+            let short_match = short
+                .as_deref()
+                .is_some_and(|name| candidate.owner.rsplit("::").next() == Some(name));
+            (exact || short_match).then_some(candidate.owner)
+        })
+        .collect()
 }
 
 fn schema_variant_target_for_path(

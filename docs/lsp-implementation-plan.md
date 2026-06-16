@@ -619,6 +619,7 @@ Purpose: support workspace navigation and prepare rename.
   - [x] Index source-owned trait declarations and `impl Trait for Type` uses.
   - [x] Index schema-backed field declarations with source spans plus typed
     host receiver read/write member uses.
+  - [x] Index explicit schema-backed record-constructor field labels.
   - [x] Index schema-backed method declarations with source spans plus typed
     host receiver call sites.
   - [x] Index schema-backed trait-method declarations with source spans plus
@@ -634,6 +635,7 @@ Purpose: support workspace navigation and prepare rename.
   - [x] Track source-owned script struct field declaration/read/write
     reference kinds.
   - [x] Track explicit source-owned record-constructor field labels as reads.
+  - [x] Track explicit schema-backed record-constructor field labels as reads.
   - [x] Track source-owned enum variant declaration/read/pattern reference
     kinds.
   - [x] Track schema-backed variant declaration/read/pattern reference kinds.
@@ -652,6 +654,8 @@ Purpose: support workspace navigation and prepare rename.
   - [x] Serve source-owned trait impl references through the native LSP
     request.
   - [x] Serve schema-backed field references through the native LSP request.
+  - [x] Serve explicit schema-backed record-constructor field label references
+    through the native LSP request.
   - [x] Serve schema-backed method references through the native LSP request.
   - [x] Serve schema-backed trait-method references through the native LSP
     request.
@@ -699,6 +703,8 @@ Tests:
 - [x] `lsp_references_find_trait_impl_uses`
 - [x] `references_find_schema_field_reads_and_writes`
 - [x] `lsp_references_find_schema_field_reads_and_writes`
+- [x] `references_find_schema_record_constructor_field_labels`
+- [x] `lsp_references_find_schema_record_constructor_field_labels`
 - [x] `references_find_schema_method_calls`
 - [x] `lsp_references_find_schema_method_calls`
 - [x] `references_find_schema_trait_method_calls`

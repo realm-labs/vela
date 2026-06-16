@@ -13,6 +13,7 @@ use crate::{
 
 mod fields;
 mod methods;
+mod record_fields;
 pub(crate) mod schema;
 
 #[derive(Debug, Clone, Copy, Eq, Ord, PartialEq, PartialOrd)]
@@ -171,6 +172,12 @@ impl LanguageServiceDatabases {
             }
             if let Some(target) = schema::schema_variant_use_target(self, source.text(), &token) {
                 return schema::schema_variant_references(self, &target, include_declaration);
+            }
+            if let Some(parsed) = self.parse_db().parsed_source(document_id)
+                && let Some(target) =
+                    schema::schema_record_field_use_target(self, parsed, source.text(), &token)
+            {
+                return schema::schema_field_references(self, &target, include_declaration);
             }
             if let Some(parsed) = self.parse_db().parsed_source(document_id)
                 && let Some(target) =
@@ -1041,5 +1048,7 @@ fn is_identifier_continue(ch: char) -> bool {
 mod field_tests;
 #[cfg(test)]
 mod highlight_tests;
+#[cfg(test)]
+mod schema_field_tests;
 #[cfg(test)]
 mod tests;
