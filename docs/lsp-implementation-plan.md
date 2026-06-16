@@ -337,14 +337,17 @@ Purpose: provide host-aware editor tooling without running host code.
   - Schema artifacts now accept optional `sourceSpan` metadata for exported
     type, trait, member, variant, method, trait-method, and function facts.
 - [x] Load schema artifacts into language-service schema facts.
-- [ ] Validate schema version/hash compatibility.
+- [x] Validate schema version/hash compatibility.
 - [~] Report missing, stale, or invalid schema diagnostics.
 - [x] Watch schema artifact changes through the LSP server.
 
 Tests:
 
 - [x] `schema_export_round_trips_registry_facts`
+- [x] `schema_hash_compatibility_accepts_matching_facts`
+- [x] `schema_hash_compatibility_rejects_stale_facts`
 - [x] `invalid_schema_reports_diagnostic`
+- [x] `invalid_schema_metadata_reports_diagnostic`
 - [x] `schema_watch_publishes_invalid_schema_diagnostic`
 - [x] `schema_watch_clears_diagnostic_after_valid_reload`
 - [x] `missing_schema_keeps_syntax_diagnostics_available`

@@ -155,6 +155,12 @@ receiver diagnostics, parser diagnostics, HIR diagnostics, and non-schema
 analysis diagnostics should still be published from the available source
 facts.
 
+Schema artifacts may omit `schemaVersion` and `schemaHash` while exporters are
+still simple, but any provided metadata is validated at load time. `schemaHash`
+is a 64-bit FNV-1a hash of the canonical `RegistryFacts` payload represented by
+the artifact, formatted as decimal or `0x`-prefixed hexadecimal. A mismatch is
+treated as an invalid or stale schema and host facts degrade to `Any`.
+
 ### Function Identity
 
 Vela does not support function overloading. A module has one function per

@@ -9,6 +9,8 @@ use vela_analysis::type_fact::TypeFact;
 use vela_common::{PrimitiveTag, SourceId, Span};
 
 pub const SCHEMA_ARTIFACT_FORMAT_VERSION: u32 = 1;
+const SCHEMA_HASH_OFFSET: u64 = 0xcbf2_9ce4_8422_2325;
+const SCHEMA_HASH_PRIME: u64 = 0x0000_0100_0000_01b3;
 
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub struct SchemaArtifactError {
@@ -75,6 +77,20 @@ impl SchemaArtifact {
     }
 
     #[must_use]
+    pub fn schema_version(&self) -> Option<&str> {
+        self.schema_version.as_deref()
+    }
+
+    #[must_use]
+    pub fn schema_hash(&self) -> Option<&str> {
+        self.schema_hash.as_deref()
+    }
+
+    pub fn computed_schema_hash(&self) -> Result<u64, SchemaArtifactError> {
+        self.facts.compatibility_hash()
+    }
+
+    #[must_use]
     pub fn source_locations(&self) -> SchemaSourceLocations {
         self.facts.source_locations()
     }
@@ -86,8 +102,51 @@ impl SchemaArtifact {
                 self.format_version, SCHEMA_ARTIFACT_FORMAT_VERSION
             )));
         }
+        if self
+            .schema_version
+            .as_deref()
+            .is_some_and(|version| version.trim().is_empty())
+        {
+            return Err(SchemaArtifactError::new(
+                "schemaVersion must be non-empty when present",
+            ));
+        }
+        if let Some(schema_hash) = self.schema_hash.as_deref() {
+            let declared = parse_schema_hash(schema_hash)?;
+            let computed = self.computed_schema_hash()?;
+            if declared != computed {
+                return Err(SchemaArtifactError::new(format!(
+                    "schema hash mismatch: artifact declares {}, computed 0x{computed:016x}",
+                    schema_hash.trim()
+                )));
+            }
+        }
         Ok(())
     }
+}
+
+fn parse_schema_hash(value: &str) -> Result<u64, SchemaArtifactError> {
+    let trimmed = value.trim();
+    if trimmed.is_empty() {
+        return Err(SchemaArtifactError::new(
+            "schemaHash must be non-empty when present",
+        ));
+    }
+    if let Some(hex) = trimmed
+        .strip_prefix("0x")
+        .or_else(|| trimmed.strip_prefix("0X"))
+    {
+        return u64::from_str_radix(hex, 16).map_err(|_| {
+            SchemaArtifactError::new(format!(
+                "schemaHash `{trimmed}` must be a decimal u64 or 0x-prefixed hexadecimal u64"
+            ))
+        });
+    }
+    trimmed.parse::<u64>().map_err(|_| {
+        SchemaArtifactError::new(format!(
+            "schemaHash `{trimmed}` must be a decimal u64 or 0x-prefixed hexadecimal u64"
+        ))
+    })
 }
 
 #[derive(Debug, Clone, Default, Eq, PartialEq)]
@@ -304,6 +363,14 @@ impl SchemaArtifactFacts {
         facts
     }
 
+    fn compatibility_hash(&self) -> Result<u64, SchemaArtifactError> {
+        let canonical_facts = Self::from_registry_facts(&self.to_registry_facts());
+        let payload = serde_json::to_vec(&canonical_facts).map_err(|error| {
+            SchemaArtifactError::new(format!("failed to encode canonical schema facts: {error}"))
+        })?;
+        Ok(fnv1a64(&payload))
+    }
+
     fn source_locations(&self) -> SchemaSourceLocations {
         let mut locations = SchemaSourceLocations::default();
         for entry in &self.types {
@@ -351,6 +418,15 @@ impl SchemaArtifactFacts {
         }
         locations
     }
+}
+
+fn fnv1a64(bytes: &[u8]) -> u64 {
+    let mut hash = SCHEMA_HASH_OFFSET;
+    for byte in bytes {
+        hash ^= u64::from(*byte);
+        hash = hash.wrapping_mul(SCHEMA_HASH_PRIME);
+    }
+    if hash == 0 { 1 } else { hash }
 }
 
 #[derive(Debug, Clone, Copy, Deserialize, Eq, PartialEq, Serialize)]
@@ -857,6 +933,47 @@ mod tests {
     }
 
     #[test]
+    fn schema_hash_compatibility_accepts_matching_facts() {
+        let facts = sample_facts();
+        let mut artifact = SchemaArtifact::from_registry_facts(&facts);
+        let computed = artifact
+            .computed_schema_hash()
+            .expect("schema hash should be computable");
+        let expected_hash = format!("0x{computed:016x}");
+        artifact.schema_version = Some("2026-06-16T00:00:00Z".to_owned());
+        artifact.schema_hash = Some(expected_hash.clone());
+        let json = artifact
+            .to_json()
+            .expect("schema artifact should encode as JSON");
+
+        let parsed =
+            SchemaArtifact::from_json(&json).expect("matching schema hash should validate");
+
+        assert_eq!(parsed.schema_version(), Some("2026-06-16T00:00:00Z"));
+        assert_eq!(parsed.schema_hash(), Some(expected_hash.as_str()));
+        assert_eq!(parsed.to_registry_facts(), facts);
+    }
+
+    #[test]
+    fn schema_hash_compatibility_rejects_stale_facts() {
+        let facts = sample_facts();
+        let mut artifact = SchemaArtifact::from_registry_facts(&facts);
+        artifact.schema_hash = Some("0x0000000000000001".to_owned());
+        let json = artifact
+            .to_json()
+            .expect("schema artifact should encode as JSON");
+
+        let error = SchemaArtifact::from_json(&json)
+            .expect_err("stale schema hash should fail compatibility validation");
+
+        assert!(
+            error.message().contains("schema hash mismatch"),
+            "{}",
+            error.message()
+        );
+    }
+
+    #[test]
     fn invalid_schema_reports_diagnostic() {
         let error = SchemaArtifact::from_json(r#"{ "formatVersion": 999 }"#)
             .expect_err("unsupported format version should fail");
@@ -867,6 +984,29 @@ mod tests {
                 .contains("unsupported schema artifact format version"),
             "{}",
             error.message()
+        );
+    }
+
+    #[test]
+    fn invalid_schema_metadata_reports_diagnostic() {
+        let mut databases = LanguageServiceDatabases::new();
+        databases.load_schema_artifact_json(
+            "/workspace/target/vela/schema.json",
+            r#"{ "formatVersion": 1, "schemaVersion": " ", "facts": {} }"#,
+        );
+
+        let diagnostics = databases.schema_db().diagnostics();
+        assert_eq!(diagnostics.len(), 1);
+        assert!(
+            diagnostics[0]
+                .message()
+                .contains("schemaVersion must be non-empty"),
+            "{}",
+            diagnostics[0].message()
+        );
+        assert!(
+            databases.schema_db().facts().types().next().is_none(),
+            "invalid schema metadata should not install facts"
         );
     }
 
