@@ -253,9 +253,17 @@ impl Parser {
 
         while !self.at_eof() && !self.check_symbol(Symbol::RBrace) {
             let attrs = self.parse_attributes();
-            if self.eat_keyword(Keyword::Fn).is_some() {
+            if let Some(fn_token) = self.eat_keyword(Keyword::Fn) {
                 if let Some(function) = self.parse_function_item() {
-                    methods.push(ImplMethod { attrs, function });
+                    let span_start = attrs
+                        .first()
+                        .map_or(fn_token.span.start, |attr| attr.span.start);
+                    let span = Span::new(fn_token.span.source, span_start, function.body.span.end);
+                    methods.push(ImplMethod {
+                        attrs,
+                        function,
+                        span,
+                    });
                 }
             } else {
                 self.error_here("expected impl method");

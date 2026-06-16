@@ -144,6 +144,7 @@ pub enum ImplKind {
 pub struct ImplMethod {
     pub attrs: Vec<Attribute>,
     pub function: FunctionItem,
+    pub span: Span,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]

@@ -1,6 +1,6 @@
 use crate::{DiagnosticRange, DocumentId, LanguageServiceDatabases, LineIndex, Position, TextEdit};
 use vela_common::SourceId;
-use vela_syntax::ast::SourceFile;
+use vela_syntax::ast::{ItemKind, SourceFile};
 use vela_syntax::formatting::{
     FormatElementKind, TriviaKind, extract_format_elements, format_source,
 };
@@ -214,27 +214,66 @@ fn selected_item_offsets(
         return None;
     }
 
-    let item = parsed.items.iter().find(|item| {
-        let item_start = item.span.start as usize;
-        item_start >= start
-            && item_start < end
+    let ranges = selectable_format_ranges(parsed);
+    let range = ranges.iter().find(|range| {
+        range.start >= start
+            && range.start < end
             && source
-                .get(start..item_start)
+                .get(start..range.start)
                 .is_some_and(|prefix| prefix.chars().all(char::is_whitespace))
     })?;
-    let item_start = item.span.start as usize;
-    let item_end = item.span.end as usize;
-    if item_end > end || !source.get(item_end..end)?.chars().all(char::is_whitespace) {
-        return None;
-    }
-    if parsed.items.iter().any(|item| {
-        let other_start = item.span.start as usize;
-        other_start != item_start && other_start > start && other_start < end
-    }) {
+    if range.end > end || !source.get(range.end..end)?.chars().all(char::is_whitespace) {
         return None;
     }
 
-    Some((item_start, end))
+    Some((range.start, end))
+}
+
+#[derive(Debug, Clone, Copy, Eq, PartialEq)]
+struct SelectableFormatRange {
+    start: usize,
+    end: usize,
+}
+
+fn selectable_format_ranges(parsed: &SourceFile) -> Vec<SelectableFormatRange> {
+    let mut ranges = Vec::new();
+    for item in &parsed.items {
+        ranges.push(SelectableFormatRange {
+            start: item.span.start as usize,
+            end: item.span.end as usize,
+        });
+        match &item.kind {
+            ItemKind::Trait(trait_item) => {
+                ranges.extend(
+                    trait_item
+                        .methods
+                        .iter()
+                        .map(|method| SelectableFormatRange {
+                            start: method.span.start as usize,
+                            end: method.span.end as usize,
+                        }),
+                );
+            }
+            ItemKind::Impl(impl_item) => {
+                ranges.extend(
+                    impl_item
+                        .methods
+                        .iter()
+                        .map(|method| SelectableFormatRange {
+                            start: method.span.start as usize,
+                            end: method.span.end as usize,
+                        }),
+                );
+            }
+            ItemKind::Use(_)
+            | ItemKind::Const(_)
+            | ItemKind::Global(_)
+            | ItemKind::Function(_)
+            | ItemKind::Struct(_)
+            | ItemKind::Enum(_) => {}
+        }
+    }
+    ranges
 }
 
 fn completed_item_formatting_edit(
@@ -597,11 +636,29 @@ pub fn other(){return 2}
         assert_eq!(edits[0].range().end(), Position::new(3, 0));
         assert_eq!(
             formatted,
-            "\n\npub fn main() {
-    return 1
-}
+            "\n\npub fn main() {\n    return 1\n}\n\npub fn other(){return 2}\n"
+        );
+    }
 
-pub fn other(){return 2}
+    #[test]
+    fn range_formatting_formats_selected_impl_method() {
+        let source = "impl Player{fn heal(amount:i64)->i64{return amount}fn hurt(amount:i64)->i64{return amount}}\n";
+        let edits = range_format_source(
+            source,
+            DiagnosticRange::new(Position::new(0, 12), Position::new(0, 51)),
+        );
+        let formatted = apply_range_edits(source, &edits);
+
+        assert_eq!(edits.len(), 1);
+        assert_eq!(edits[0].range().start(), Position::new(0, 12));
+        assert_eq!(edits[0].range().end(), Position::new(0, 51));
+        assert_eq!(
+            formatted,
+            "\
+impl Player{fn heal(amount: i64) -> i64 {
+    return amount
+}
+fn hurt(amount:i64)->i64{return amount}}
 "
         );
     }

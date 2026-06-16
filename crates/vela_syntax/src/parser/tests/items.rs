@@ -129,17 +129,15 @@ impl Damageable for Player {
 
 #[test]
 fn parses_inherent_impl_methods() {
-    let parsed = parse_source(
-        source_id(),
-        r#"
+    let source = r#"
 struct Player { level }
 impl Player {
     fn bonus(self, amount) {
         return self.level + amount;
     }
 }
-"#,
-    );
+"#;
+    let parsed = parse_source(source_id(), source);
 
     assert!(parsed.diagnostics.is_empty(), "{:?}", parsed.diagnostics);
     let ItemKind::Impl(impl_item) = &parsed.items[1].kind else {
@@ -149,6 +147,12 @@ impl Player {
     assert_eq!(impl_item.target_path, ["Player"]);
     assert_eq!(impl_item.methods.len(), 1);
     assert_eq!(impl_item.methods[0].function.name, "bonus");
+    let method_start = source.find("fn bonus").expect("method start");
+    let method_end = source.find("\n    }\n}").expect("method end") + "\n    }".len();
+    assert_eq!(
+        impl_item.methods[0].span,
+        Span::new(source_id(), method_start as u32, method_end as u32)
+    );
 }
 
 #[test]

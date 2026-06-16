@@ -928,6 +928,8 @@ Purpose: provide deterministic source formatting without losing comments.
     the selected item while preserving unselected text.
   - Whitespace-padded selections around one top-level item normalize to that
     item span before applying the token/trivia formatter.
+  - Impl and trait method selections now use parser-owned method spans to
+    format one selected nested member while preserving surrounding text.
 - [~] Implement full document formatting.
   - Native LSP full-document formatting now uses the token/trivia formatter
     for spacing, brace indentation, comment preservation, and final newline.
@@ -962,6 +964,9 @@ Tests:
 - [x] `lsp_range_formatting_formats_selected_item`
 - [x] `range_formatting_formats_item_with_leading_blank_selection`
 - [x] `lsp_range_formatting_formats_item_with_leading_blank_selection`
+- [x] `parses_inherent_impl_methods`
+- [x] `range_formatting_formats_selected_impl_method`
+- [x] `lsp_range_formatting_formats_selected_impl_method`
 
 Validation:
 
