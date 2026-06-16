@@ -387,6 +387,9 @@ Purpose: make common authoring flows fast and schema-aware.
   - [x] Advertise trigger characters for the implemented LSP completion request.
 - [~] Add signature help for script functions, native functions, methods, and
   callbacks.
+  - Initial service and LSP signature help support script function calls,
+    source-owned inherent method calls, and schema-backed host method calls.
+    Callback-style signature help remains open.
 
 Tests:
 
@@ -406,6 +409,9 @@ Tests:
 - [x] `lsp_map_key_completion_suggests_schema_enum_variants`
 - [x] `signature_help_tracks_active_parameter`
 - [x] `lsp_signature_help_tracks_active_parameter`
+- [x] `signature_help_resolves_script_method_call`
+- [x] `signature_help_resolves_schema_method_call`
+- [x] `lsp_signature_help_resolves_script_method_call`
 
 Validation:
 

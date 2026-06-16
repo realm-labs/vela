@@ -711,6 +711,66 @@ mod signature {
             "bonus: i64"
         );
     }
+
+    #[test]
+    fn lsp_signature_help_resolves_script_method_call() {
+        let mut server = LspServer::new();
+        let _ = response_value(server.handle_json(&request(
+            1,
+            "initialize",
+            serde_json::json!({
+                "processId": null,
+                "rootUri": "file:///workspace/scripts",
+                "capabilities": {}
+            }),
+        )));
+        let text = "\
+struct Player { level: i64 }
+impl Player {
+    fn grant(self, amount: i64, bonus: i64) -> i64 { return amount + bonus }
+}
+pub fn main(player: Player) { player.grant(1, 2) }";
+        let _ = notification_value(server.handle_json(&notification(
+            "textDocument/didOpen",
+            serde_json::json!({
+                "textDocument": {
+                    "uri": "file:///workspace/scripts/game/main.vela",
+                    "languageId": "vela",
+                    "version": 1,
+                    "text": text
+                }
+            }),
+        )));
+
+        let call_line = text
+            .lines()
+            .nth(4)
+            .expect("fixture should contain method call");
+        let response = response_value(server.handle_json(&request(
+            2,
+            "textDocument/signatureHelp",
+            serde_json::json!({
+                "textDocument": { "uri": "file:///workspace/scripts/game/main.vela" },
+                "position": {
+                    "line": 4,
+                    "character": call_line.find("2)").unwrap_or_else(|| {
+                        panic!("signature fixture should contain second argument")
+                    })
+                }
+            }),
+        )));
+
+        assert_eq!(response["result"]["activeSignature"], 0);
+        assert_eq!(response["result"]["activeParameter"], 1);
+        assert_eq!(
+            response["result"]["signatures"][0]["label"],
+            "Player.grant(amount: i64, bonus: i64) -> i64"
+        );
+        assert_eq!(
+            response["result"]["signatures"][0]["parameters"][1]["label"],
+            "bonus: i64"
+        );
+    }
 }
 
 mod call_hierarchy;

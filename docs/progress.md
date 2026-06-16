@@ -162,6 +162,12 @@ behavior in the shared LSP/language-service layers. The Zed package under
 native-server stdio command hook. Both editor package validators now assert
 that launcher packages do not implement LSP request behavior.
 
+M20.5 Phase 7 update: `textDocument/signatureHelp` now resolves typed
+source-owned inherent method calls and schema-backed host method calls in
+addition to script and schema function calls. The language service tests cover
+source and schema method signatures, and the LSP fixture covers source-owned
+method calls. Callback-style signature help remains open.
+
 M20.5 Phase 8 update: `vela_language_service` now exposes explicit
 declaration and type-definition navigation queries, and `vela_lsp_server`
 advertises and serves `textDocument/declaration` plus

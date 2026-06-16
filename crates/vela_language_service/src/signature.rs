@@ -1,10 +1,12 @@
 use vela_analysis::facts::AnalysisFacts;
 use vela_analysis::hints::type_fact_from_hint;
 use vela_analysis::type_fact::TypeFact;
+use vela_common::{SourceId, Span};
+use vela_hir::binding::{BindingMap, BindingResolution};
 use vela_hir::module_graph::{DeclarationKind, ModuleGraph};
-use vela_hir::type_hint::{EnumVariantFieldsHint, HirTypeHint};
+use vela_hir::type_hint::{EnumVariantFieldsHint, HirTypeHint, ImplMetadataKind};
 
-use crate::{DocumentId, LanguageServiceDatabases, LineIndex, Position};
+use crate::{DocumentId, LanguageServiceDatabases, LineIndex, Position, TextRange};
 
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub struct SignatureHelp {
@@ -69,7 +71,18 @@ impl SignatureParameter {
 #[derive(Debug, Clone, Eq, PartialEq)]
 struct CallContext {
     callee: String,
+    callee_range: TextRange,
     active_parameter: usize,
+}
+
+struct MemberCallLookup<'a> {
+    graph: &'a ModuleGraph,
+    facts: &'a AnalysisFacts,
+    text: &'a str,
+    source_id: SourceId,
+    bindings: &'a BindingMap,
+    method: &'a str,
+    method_range: TextRange,
 }
 
 impl LanguageServiceDatabases {
@@ -81,7 +94,8 @@ impl LanguageServiceDatabases {
     ) -> Option<SignatureHelp> {
         let source = self.source_db().records().get(document_id)?;
         let context = call_context_at(source.text(), position)?;
-        let signatures = self.signature_candidates(&context.callee);
+        let signatures =
+            self.signature_candidates_for_context(source.source_id(), source.text(), &context);
         if signatures.is_empty() {
             return None;
         }
@@ -98,6 +112,197 @@ impl LanguageServiceDatabases {
         signatures.extend(self.script_variant_signatures(callee));
         signatures.extend(self.schema_signatures(callee));
         signatures
+    }
+
+    fn signature_candidates_for_context(
+        &self,
+        source_id: SourceId,
+        text: &str,
+        context: &CallContext,
+    ) -> Vec<SignatureInformation> {
+        if let Some(signatures) = self.member_signatures(source_id, text, context)
+            && !signatures.is_empty()
+        {
+            return signatures;
+        }
+        self.signature_candidates(&context.callee)
+    }
+
+    fn member_signatures(
+        &self,
+        source_id: SourceId,
+        text: &str,
+        context: &CallContext,
+    ) -> Option<Vec<SignatureInformation>> {
+        let (_receiver, method) = context.callee.rsplit_once('.')?;
+        if method.is_empty() {
+            return None;
+        }
+        let method_range = TextRange::new(
+            context.callee_range.end.saturating_sub(method.len()),
+            context.callee_range.end,
+        );
+        let graph = self.hir_db().graph();
+        let facts = AnalysisFacts::from_module_graph(graph);
+        self.bindings_at(source_id, method_range.start)
+            .find_map(|bindings| {
+                let lookup = MemberCallLookup {
+                    graph,
+                    facts: &facts,
+                    text,
+                    source_id,
+                    bindings,
+                    method,
+                    method_range,
+                };
+                let mut signatures = self.script_method_signatures(&lookup);
+                signatures.extend(self.schema_method_signatures(&lookup));
+                (!signatures.is_empty()).then_some(signatures)
+            })
+    }
+
+    fn bindings_at<'a>(
+        &'a self,
+        source_id: SourceId,
+        offset: usize,
+    ) -> impl Iterator<Item = &'a BindingMap> + 'a {
+        let start = u32::try_from(offset).ok();
+        self.hir_db()
+            .graph()
+            .declarations()
+            .filter_map(move |declaration| {
+                let start = start?;
+                if declaration.span.source != source_id || !declaration.span.contains(start) {
+                    return None;
+                }
+                match declaration.kind {
+                    DeclarationKind::Function => self.hir_db().graph().bindings(declaration.id),
+                    DeclarationKind::Trait => self.bindings_for_trait_method(declaration.id, start),
+                    DeclarationKind::Impl => self.bindings_for_impl_method(declaration.id, start),
+                    DeclarationKind::Const
+                    | DeclarationKind::Struct
+                    | DeclarationKind::Enum
+                    | DeclarationKind::Global => None,
+                }
+            })
+    }
+
+    fn bindings_for_trait_method(
+        &self,
+        declaration: vela_hir::ids::HirDeclId,
+        offset: u32,
+    ) -> Option<&BindingMap> {
+        self.hir_db()
+            .graph()
+            .trait_shape(declaration)?
+            .methods
+            .iter()
+            .find_map(|method| {
+                let body_span = method.default_body_span?;
+                body_span
+                    .contains(offset)
+                    .then(|| {
+                        method.default_body_node.and_then(|node| {
+                            self.hir_db().graph().trait_default_method_bindings(node)
+                        })
+                    })
+                    .flatten()
+            })
+    }
+
+    fn bindings_for_impl_method(
+        &self,
+        declaration: vela_hir::ids::HirDeclId,
+        offset: u32,
+    ) -> Option<&BindingMap> {
+        self.hir_db()
+            .graph()
+            .impl_metadata(declaration)?
+            .methods
+            .iter()
+            .find_map(|method| {
+                method
+                    .span
+                    .contains(offset)
+                    .then(|| self.hir_db().graph().impl_method_bindings(method.node))
+                    .flatten()
+            })
+    }
+
+    fn script_method_signatures(&self, lookup: &MemberCallLookup<'_>) -> Vec<SignatureInformation> {
+        let Some(receiver) = receiver_type_fact(
+            lookup.text,
+            lookup.source_id,
+            lookup.bindings,
+            lookup.facts,
+            lookup.method_range,
+        ) else {
+            return Vec::new();
+        };
+        let owner_names = record_owner_names(&receiver);
+        lookup
+            .graph
+            .declarations()
+            .filter_map(|declaration| {
+                if declaration.kind != DeclarationKind::Impl {
+                    return None;
+                }
+                let metadata = lookup.graph.impl_metadata(declaration.id)?;
+                if !matches!(metadata.kind, ImplMetadataKind::Inherent) {
+                    return None;
+                }
+                let matches_owner = owner_names.iter().any(|owner| {
+                    metadata
+                        .target_path
+                        .last()
+                        .is_some_and(|name| name == owner)
+                        || metadata.target_path.join("::") == *owner
+                });
+                if !matches_owner {
+                    return None;
+                }
+                let method = metadata
+                    .methods
+                    .iter()
+                    .find(|entry| entry.name == lookup.method)?;
+                let owner = metadata.target_path.join("::");
+                Some(method_signature_information(
+                    lookup.graph,
+                    self.schema_db().facts(),
+                    &format!("{owner}.{}", method.name),
+                    &method.signature,
+                ))
+            })
+            .collect()
+    }
+
+    fn schema_method_signatures(&self, lookup: &MemberCallLookup<'_>) -> Vec<SignatureInformation> {
+        let Some(receiver) = schema_receiver_type_fact(
+            lookup.text,
+            lookup.source_id,
+            lookup.bindings,
+            lookup.facts,
+            self.schema_db().facts(),
+            lookup.method_range,
+        ) else {
+            return Vec::new();
+        };
+        let Some((owner, fact)) =
+            schema_method_fact_for_receiver(self.schema_db().facts(), &receiver, lookup.method)
+        else {
+            return Vec::new();
+        };
+        let TypeFact::Function { params, returns } = fact else {
+            return Vec::new();
+        };
+        vec![SignatureInformation {
+            label: signature_label(
+                &format!("{}.{method}", owner, method = lookup.method),
+                &schema_parameters(params),
+                returns,
+            ),
+            parameters: schema_parameters(params),
+        }]
     }
 
     fn script_signatures(&self, callee: &str) -> Vec<SignatureInformation> {
@@ -231,9 +436,10 @@ impl LanguageServiceDatabases {
 fn call_context_at(text: &str, position: Position) -> Option<CallContext> {
     let offset = LineIndex::new(text).offset(position);
     let open = active_call_open(text, offset)?;
-    let callee = callee_before_open(text, open)?;
+    let (callee, callee_range) = callee_before_open(text, open)?;
     Some(CallContext {
         callee,
+        callee_range,
         active_parameter: active_parameter_index(&text[open + 1..offset]),
     })
 }
@@ -252,7 +458,7 @@ fn active_call_open(text: &str, offset: usize) -> Option<usize> {
     stack.pop()
 }
 
-fn callee_before_open(text: &str, open: usize) -> Option<String> {
+fn callee_before_open(text: &str, open: usize) -> Option<(String, TextRange)> {
     let before = text[..open].trim_end();
     let end = before.len();
     let start = before
@@ -260,7 +466,7 @@ fn callee_before_open(text: &str, open: usize) -> Option<String> {
         .rev()
         .find_map(|(index, ch)| (!is_callee_continue(ch)).then_some(index + ch.len_utf8()))
         .unwrap_or(0);
-    (start < end).then(|| before[start..end].to_owned())
+    (start < end).then(|| (before[start..end].to_owned(), TextRange::new(start, end)))
 }
 
 fn active_parameter_index(args_text: &str) -> usize {
@@ -288,6 +494,199 @@ fn signature_label(name: &str, parameters: &[SignatureParameter], returns: &Type
         .collect::<Vec<_>>()
         .join(", ");
     format!("{name}({params}) -> {}", returns.display_name())
+}
+
+fn method_signature_information(
+    graph: &ModuleGraph,
+    schema: &vela_analysis::registry::RegistryFacts,
+    name: &str,
+    signature: &vela_hir::type_hint::FunctionSignature,
+) -> SignatureInformation {
+    let parameters = signature
+        .params
+        .iter()
+        .filter(|param| param.name != "self")
+        .map(|param| {
+            let type_fact = param.type_hint.as_ref().map_or(TypeFact::Unknown, |hint| {
+                signature_type_fact(graph, hint, schema)
+            });
+            SignatureParameter {
+                label: format!("{}: {}", param.name, type_fact.display_name()),
+                type_fact,
+            }
+        })
+        .collect::<Vec<_>>();
+    let returns = signature
+        .return_type
+        .as_ref()
+        .map_or(TypeFact::Unknown, |hint| {
+            signature_type_fact(graph, hint, schema)
+        });
+    SignatureInformation {
+        label: signature_label(name, &parameters, &returns),
+        parameters,
+    }
+}
+
+fn schema_parameters(params: &[TypeFact]) -> Vec<SignatureParameter> {
+    params
+        .iter()
+        .enumerate()
+        .map(|(index, fact)| SignatureParameter {
+            label: format!("arg{index}: {}", fact.display_name()),
+            type_fact: fact.clone(),
+        })
+        .collect()
+}
+
+fn receiver_type_fact(
+    text: &str,
+    source_id: SourceId,
+    bindings: &BindingMap,
+    facts: &AnalysisFacts,
+    method_range: TextRange,
+) -> Option<TypeFact> {
+    let span = receiver_span(text, source_id, method_range)?;
+    let resolution = bindings.resolution_at_span(span)?;
+    type_fact_for_resolution(resolution, facts)
+}
+
+fn schema_receiver_type_fact(
+    text: &str,
+    source_id: SourceId,
+    bindings: &BindingMap,
+    facts: &AnalysisFacts,
+    schema: &vela_analysis::registry::RegistryFacts,
+    method_range: TextRange,
+) -> Option<TypeFact> {
+    let span = receiver_span(text, source_id, method_range)?;
+    let resolution = bindings.resolution_at_span(span)?;
+    match resolution {
+        BindingResolution::Local(local) => facts
+            .local(*local)
+            .cloned()
+            .filter(|fact| !matches!(fact, TypeFact::Unknown))
+            .or_else(|| {
+                bindings
+                    .local(*local)
+                    .and_then(|binding| schema_fact_for_hint(binding.type_hint.as_ref()?, schema))
+            }),
+        BindingResolution::Declaration(declaration) => facts.declaration(*declaration).cloned(),
+        BindingResolution::Import(_) | BindingResolution::QualifiedPath(_) => None,
+    }
+}
+
+fn receiver_span(text: &str, source_id: SourceId, method_range: TextRange) -> Option<Span> {
+    let receiver = member_receiver_range(text, method_range.start)?;
+    let start = u32::try_from(receiver.start).ok()?;
+    let end = u32::try_from(receiver.end).ok()?;
+    Some(Span::new(source_id, start, end))
+}
+
+fn member_receiver_range(text: &str, member_start: usize) -> Option<TextRange> {
+    let before_member = text.get(..member_start)?.trim_end();
+    let before_dot = before_member.strip_suffix('.')?.trim_end();
+    let end = before_dot.len();
+    let start = before_dot
+        .char_indices()
+        .rev()
+        .find_map(|(index, ch)| (!is_identifier_continue(ch)).then_some(index + ch.len_utf8()))
+        .unwrap_or(0);
+    (start < end).then(|| TextRange::new(start, end))
+}
+
+fn is_identifier_continue(ch: char) -> bool {
+    ch == '_' || ch.is_ascii_alphanumeric()
+}
+
+fn type_fact_for_resolution(
+    resolution: &BindingResolution,
+    facts: &AnalysisFacts,
+) -> Option<TypeFact> {
+    match resolution {
+        BindingResolution::Local(local) => facts
+            .local(*local)
+            .cloned()
+            .filter(|fact| !matches!(fact, TypeFact::Unknown)),
+        BindingResolution::Declaration(declaration) => facts.declaration(*declaration).cloned(),
+        BindingResolution::Import(_) | BindingResolution::QualifiedPath(_) => None,
+    }
+}
+
+fn schema_method_fact_for_receiver<'a>(
+    schema: &'a vela_analysis::registry::RegistryFacts,
+    receiver: &TypeFact,
+    method: &str,
+) -> Option<(String, &'a TypeFact)> {
+    owner_names(receiver).into_iter().find_map(|owner| {
+        schema
+            .method_fact(&owner, method)
+            .or_else(|| schema.trait_method_fact(&owner, method))
+            .map(|fact| (owner, fact))
+    })
+}
+
+fn owner_names(receiver: &TypeFact) -> Vec<String> {
+    let mut owners = record_owner_names(receiver);
+    if let TypeFact::Host { name } | TypeFact::Trait { name } = receiver {
+        push_owner_name(&mut owners, name);
+        if let Some(short) = name.rsplit("::").next()
+            && short != name
+        {
+            push_owner_name(&mut owners, short);
+        }
+    }
+    owners
+}
+
+fn record_owner_names(receiver: &TypeFact) -> Vec<String> {
+    let mut owners = Vec::new();
+    collect_record_owner_names(receiver, &mut owners);
+    owners
+}
+
+fn collect_record_owner_names(receiver: &TypeFact, owners: &mut Vec<String>) {
+    match receiver {
+        TypeFact::Record { name } => {
+            push_owner_name(owners, name);
+            if let Some(short) = name.rsplit("::").next()
+                && short != name
+            {
+                push_owner_name(owners, short);
+            }
+        }
+        TypeFact::Union(facts) => {
+            for fact in facts {
+                collect_record_owner_names(fact, owners);
+            }
+        }
+        TypeFact::Unknown
+        | TypeFact::Never
+        | TypeFact::Any
+        | TypeFact::Primitive(_)
+        | TypeFact::Range
+        | TypeFact::Array { .. }
+        | TypeFact::Map { .. }
+        | TypeFact::Set { .. }
+        | TypeFact::Iterator { .. }
+        | TypeFact::Option { .. }
+        | TypeFact::OptionSome { .. }
+        | TypeFact::OptionNone
+        | TypeFact::Result { .. }
+        | TypeFact::ResultOk { .. }
+        | TypeFact::ResultErr { .. }
+        | TypeFact::Function { .. }
+        | TypeFact::Enum { .. }
+        | TypeFact::Host { .. }
+        | TypeFact::Trait { .. }
+        | TypeFact::Module { .. } => {}
+    }
+}
+
+fn push_owner_name(owners: &mut Vec<String>, name: &str) {
+    if !owners.iter().any(|owner| owner == name) {
+        owners.push(name.to_owned());
+    }
 }
 
 fn variant_callee_matches(callee: &str, enum_name: &str, owner: &str, variant: &str) -> bool {
@@ -381,5 +780,76 @@ mod tests {
             "grant(player: Player, amount: i64) -> bool"
         );
         assert_eq!(help.signatures()[0].parameters()[1].label(), "amount: i64");
+    }
+
+    #[test]
+    fn signature_help_resolves_script_method_call() {
+        let document = DocumentId::from("/workspace/scripts/game/main.vela");
+        let text = r#"
+            struct Player { level: i64 }
+            impl Player {
+                fn grant(self, amount: i64, bonus: i64) -> i64 { return amount + bonus }
+            }
+            pub fn main(player: Player) { player.grant(1, 2) }
+        "#;
+        let files = vec![SourceFileSnapshot::new(document.clone(), text)];
+        let config = WorkspaceConfig::workspace([WorkspaceRoot::from("/workspace/scripts")]);
+        let project = assemble_project_sources(&config, &files, &Workspace::new().snapshot());
+        let mut databases = LanguageServiceDatabases::new();
+        databases.update(&project);
+
+        let main_line = text.lines().nth(5).expect("main line should exist");
+        let argument_offset = main_line
+            .find("2)")
+            .expect("second argument should exist in method call");
+        let position = Position::new(5, argument_offset);
+        let help = databases
+            .signature_help(&document, position)
+            .expect("signature help should resolve script method");
+
+        assert_eq!(help.active_parameter(), 1);
+        assert_eq!(
+            help.signatures()[0].label(),
+            "Player.grant(amount: i64, bonus: i64) -> i64"
+        );
+        assert_eq!(help.signatures()[0].parameters()[0].label(), "amount: i64");
+        assert_eq!(help.signatures()[0].parameters()[1].label(), "bonus: i64");
+    }
+
+    #[test]
+    fn signature_help_resolves_schema_method_call() {
+        let document = DocumentId::from("/workspace/scripts/game/main.vela");
+        let text = r#"
+            pub fn main(player: Player) { player.grant(1, 2) }
+        "#;
+        let files = vec![SourceFileSnapshot::new(document.clone(), text)];
+        let config = WorkspaceConfig::workspace([WorkspaceRoot::from("/workspace/scripts")]);
+        let project = assemble_project_sources(&config, &files, &Workspace::new().snapshot());
+        let mut databases = LanguageServiceDatabases::new();
+        let mut schema = RegistryFacts::default();
+        schema.insert_type("Player", TypeFact::host("Player"));
+        schema.insert_method(
+            "Player",
+            "grant",
+            TypeFact::function(vec![TypeFact::I64, TypeFact::I64], TypeFact::BOOL),
+        );
+        databases.set_schema_facts(schema);
+        databases.update(&project);
+
+        let main_line = text.lines().nth(1).expect("main line should exist");
+        let argument_offset = main_line
+            .find("2)")
+            .expect("second argument should exist in method call");
+        let position = Position::new(1, argument_offset);
+        let help = databases
+            .signature_help(&document, position)
+            .expect("signature help should resolve schema method");
+
+        assert_eq!(help.active_parameter(), 1);
+        assert_eq!(
+            help.signatures()[0].label(),
+            "Player.grant(arg0: i64, arg1: i64) -> bool"
+        );
+        assert_eq!(help.signatures()[0].parameters()[1].label(), "arg1: i64");
     }
 }
