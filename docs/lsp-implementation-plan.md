@@ -386,7 +386,7 @@ Purpose: make common authoring flows fast and schema-aware.
   - Initial service and LSP completion detect map-key cursor contexts,
     suggest unused script/schema enum variants for typed `Map<Enum, V>` keys,
     and suppress global fallback for untyped map literals.
-- [x] Complete host members from schema facts.
+- [x] Complete host and trait receiver members from schema facts.
 - [~] Add trigger-character behavior for `.`, `::`, `{`, `(`, `,`, and `|`.
   - [x] Advertise trigger characters for the implemented LSP completion request.
   - [x] Complete type hints at `:` trigger positions for typed declarations.
@@ -410,6 +410,8 @@ Tests:
 - [x] `type_hint_completion_suggests_only_type_items`
 - [x] `lsp_type_hint_completion_uses_colon_trigger_context`
 - [x] `member_completion_uses_host_schema_facts`
+- [x] `member_completion_uses_schema_trait_method_facts`
+- [x] `lsp_member_completion_uses_schema_trait_method_facts`
 - [x] `module_completion_follows_import_context`
 - [x] `record_field_completion_requires_known_type`
 - [x] `record_field_completion_uses_schema_facts`

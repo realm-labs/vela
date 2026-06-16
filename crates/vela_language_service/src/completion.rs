@@ -855,7 +855,9 @@ fn schema_fact_for_hint(
         let qualified = hint.path.join("::");
         schema
             .type_fact(&qualified)
+            .or_else(|| schema.trait_fact(&qualified))
             .or_else(|| hint.path.last().and_then(|name| schema.type_fact(name)))
+            .or_else(|| hint.path.last().and_then(|name| schema.trait_fact(name)))
             .cloned()
     } else {
         None

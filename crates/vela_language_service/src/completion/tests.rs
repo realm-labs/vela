@@ -90,6 +90,33 @@ fn member_completion_uses_host_schema_facts() {
 }
 
 #[test]
+fn member_completion_uses_schema_trait_method_facts() {
+    let document = DocumentId::from("/workspace/scripts/game/main.vela");
+    let text = "pub fn main(rewardable: Rewardable) { rewardable.pr }";
+    let files = vec![SourceFileSnapshot::new(document.clone(), text)];
+    let config = WorkspaceConfig::workspace([WorkspaceRoot::from("/workspace/scripts")]);
+    let project = assemble_project_sources(&config, &files, &Workspace::new().snapshot());
+    let mut databases = LanguageServiceDatabases::new();
+    let mut schema = RegistryFacts::default();
+    schema.insert_trait("Rewardable", TypeFact::trait_type("Rewardable"));
+    schema.insert_trait_method(
+        "Rewardable",
+        "preview",
+        TypeFact::function(vec![TypeFact::I64], TypeFact::BOOL),
+    );
+    databases.set_schema_facts(schema);
+    databases.update(&project);
+
+    let completions = databases.completion_items(
+        &document,
+        Position::new(0, text.find("pr }").expect("member prefix") + "pr".len()),
+    );
+
+    assert_eq!(completions.context().kind(), CompletionContextKind::Member);
+    assert_completion(&completions, "preview", CompletionKind::Method);
+}
+
+#[test]
 fn record_field_completion_requires_known_type() {
     let document = DocumentId::from("/workspace/scripts/game/main.vela");
     let text = "pub struct Player { id: String level: i64 }\npub fn main() { let player = Player { id: \"p1\", le } }";

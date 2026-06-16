@@ -189,13 +189,15 @@ passes with `cargo fmt --all -- --check`,
 `cargo test --workspace`. M20.5 is now complete enough; remaining broader LSP
 refinements are non-blocking follow-up work.
 
-M20.5 Phase 7 update: `textDocument/signatureHelp` now resolves stdlib
-function calls, typed source-owned inherent method calls, schema-backed host
-and trait receiver method calls, and stdlib callback method calls in addition
-to script and schema function calls. The language service tests cover script,
-schema, stdlib function, source method, schema host/trait method, and stdlib
-callback method signatures, and the LSP fixtures cover the same signature
-paths.
+M20.5 Phase 7 update: completion now resolves schema-backed trait receiver
+method members in addition to schema-backed host receiver members.
+`textDocument/signatureHelp` now resolves stdlib function calls, typed
+source-owned inherent method calls, schema-backed host and trait receiver
+method calls, and stdlib callback method calls in addition to script and
+schema function calls. The language service tests cover schema host/trait
+member completion plus script, schema, stdlib function, source method, schema
+host/trait method, and stdlib callback method signatures, and the LSP fixtures
+cover the same paths.
 
 M20.5 Phase 8 update: hover now reports stdlib global function facts,
 typed stdlib receiver-method facts, and schema-backed trait receiver method
