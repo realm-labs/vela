@@ -714,6 +714,7 @@ mod signature {
 
 mod call_hierarchy;
 mod definition;
+mod file_watching_coalescing;
 mod folding;
 mod hover;
 mod references;

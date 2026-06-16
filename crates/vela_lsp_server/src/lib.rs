@@ -326,7 +326,7 @@ impl LspServer {
             }
         };
 
-        for change in params.changes {
+        for change in coalesced_watched_file_changes(params.changes) {
             if change.kind == FILE_CHANGE_DELETED {
                 self.remove_watched_file(&change.uri);
             } else {
@@ -799,6 +799,20 @@ struct FileEvent {
     uri: String,
     #[serde(rename = "type")]
     kind: u8,
+}
+
+fn coalesced_watched_file_changes(changes: Vec<FileEvent>) -> Vec<FileEvent> {
+    let mut latest_by_uri = std::collections::BTreeMap::<String, (usize, u8)>::new();
+    for (index, change) in changes.into_iter().enumerate() {
+        latest_by_uri.insert(change.uri, (index, change.kind));
+    }
+
+    let mut events = latest_by_uri
+        .into_iter()
+        .map(|(uri, (index, kind))| (index, FileEvent { uri, kind }))
+        .collect::<Vec<_>>();
+    events.sort_by_key(|(index, _)| *index);
+    events.into_iter().map(|(_, event)| event).collect()
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize, PartialEq, Eq, PartialOrd, Ord)]

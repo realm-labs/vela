@@ -926,7 +926,10 @@ Purpose: make the server robust in real projects.
 - [ ] Watch `.vela` sources under configured roots.
 - [ ] Watch `vela.toml`.
 - [x] Watch host schema artifact.
-- [ ] Debounce file events.
+- [x] Debounce file events.
+  - Watched-file notifications coalesce duplicate URI events within each
+    batch, applying only the final event per URI while preserving final-event
+    order for deterministic config/source/schema processing.
 - [~] Handle created, changed, deleted, and renamed files.
   - [x] Created and changed `.vela` files update disk snapshots.
   - [x] Deleted `.vela` files remove disk snapshots and republish open diagnostics.
@@ -944,6 +947,7 @@ Tests:
 - [x] `schema_watch_publishes_invalid_schema_diagnostic`
 - [x] `schema_watch_clears_diagnostic_after_valid_reload`
 - [x] `workspace_folder_change_reindexes_project`
+- [x] `watched_file_batch_coalesces_to_last_event_per_uri`
 
 Validation:
 
