@@ -18,7 +18,8 @@ use vela_hir::type_hint::{
 };
 
 use crate::{
-    DiagnosticRange, DocumentId, LanguageServiceDatabases, LineIndex, Position, TextRange,
+    DiagnosticRange, DocumentId, LanguageServiceDatabases, LineIndex, Position, QueryContext,
+    TextRange,
 };
 
 #[derive(Debug, Clone, Copy, Eq, PartialEq)]
@@ -83,11 +84,12 @@ struct HoverToken {
 impl LanguageServiceDatabases {
     #[must_use]
     pub fn hover(&self, document_id: &DocumentId, position: Position) -> Option<Hover> {
-        let source = self.source_db().records().get(document_id)?;
-        let token = hover_token_at(source.text(), position)?;
+        let query = QueryContext::from_databases(self, document_id, position)?;
+        let source = query.source_record()?;
+        let token = hover_token_at(query.text(), query.position())?;
         let source_id = source.source_id();
         let offset = u32::try_from(token.range.start).ok()?;
-        let range = diagnostic_range(source.text(), token.range);
+        let range = diagnostic_range(query.text(), token.range);
         let graph = self.hir_db().graph();
         let facts = AnalysisFacts::from_module_graph(graph);
 
@@ -114,7 +116,7 @@ impl LanguageServiceDatabases {
         }
 
         if let Some(hover) =
-            self.import_hover(document_id, source.text(), source_id, &facts, &token, range)
+            self.import_hover(document_id, query.text(), source_id, &facts, &token, range)
         {
             return Some(hover);
         }
@@ -124,7 +126,7 @@ impl LanguageServiceDatabases {
         }
 
         if let Some(hover) =
-            script_method_hover_at_token(graph, source.text(), source_id, &token, range)
+            script_method_hover_at_token(graph, query.text(), source_id, &token, range)
         {
             return Some(hover);
         }
