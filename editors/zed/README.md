@@ -10,6 +10,19 @@ server over stdio. Language intelligence remains implemented by
 
 Install `vela_lsp_server` on `PATH`, or unpack one of the native release
 artifacts from the `LSP Release` workflow and expose the binary to Zed.
+Zed compiles this Rust extension before launching the server, so local dev
+installs also need the Rust WASI target used by the installed Zed version:
+
+```bash
+rustup target add wasm32-wasip1
+```
+
+Recent Zed/Rust toolchains may use `wasm32-wasip2`; installing both targets is
+safe when switching between Zed channels:
+
+```bash
+rustup target add wasm32-wasip2
+```
 
 Project configuration still belongs in `vela.toml`:
 

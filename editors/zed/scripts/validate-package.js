@@ -66,12 +66,15 @@ assert(hasTomlValue(languageConfig, "name", '"Vela"'), "language name is missing
 assert(hasTomlValue(languageConfig, "grammar", '"vela"'), "grammar name is missing");
 assert(hasTomlValue(languageConfig, "path_suffixes", '["vela"]'), "path suffix is missing");
 
-const extensionRs = read("src/extension.rs");
+const extensionRs = read("src/lib.rs");
 assert(
   extensionRs.includes("vela_lsp_server") && extensionRs.includes("--stdio"),
   "extension launcher must start vela_lsp_server over stdio"
 );
 assertThinLauncher(extensionRs, "Zed extension");
+
+const cargoManifest = read("Cargo.toml");
+assert(cargoManifest.includes("[workspace]"), "Zed extension crate must be isolated from the root workspace");
 
 const grammarRoot = path.join(root, "grammars", "vela");
 assert(fs.existsSync(path.join(grammarRoot, "grammar.js")), "tree-sitter grammar.js is missing");
