@@ -1,11 +1,9 @@
-use std::collections::{BTreeMap, HashSet};
+use std::collections::BTreeMap;
 
 use vela_analysis::{registry::RegistryFacts, type_fact::TypeFact};
 use vela_common::{SourceId, Span};
 use vela_hir::module_graph::Declaration;
 use vela_hir::type_hint::HirTypeHint;
-use vela_syntax::lexer::lex;
-use vela_syntax::token::TokenKind;
 
 use crate::{
     DocumentId, LanguageServiceDatabases, QueryContext, TextRange, member_access, path_calls,
@@ -567,9 +565,7 @@ fn push_schema_variant_use_edits(
     edits_by_document: &mut BTreeMap<DocumentId, Vec<TextEdit>>,
 ) {
     for source in databases.source_db().records().values() {
-        let source_id = source.source_id();
         let text = source.text();
-        let mut shared_ranges = HashSet::new();
         if let Some(parsed) = databases.parse_db().parsed_source(source.document_id()) {
             for site in path_calls::path_expression_sites(parsed, text) {
                 if site
@@ -580,7 +576,6 @@ fn push_schema_variant_use_edits(
                     continue;
                 }
                 let range = site.segment_range;
-                shared_ranges.insert((range.start, range.end));
                 push_schema_variant_use_edit_for_range(
                     databases,
                     source,
@@ -602,7 +597,6 @@ fn push_schema_variant_use_edits(
                     continue;
                 }
                 let range = site.segment_range;
-                shared_ranges.insert((range.start, range.end));
                 push_schema_variant_use_edit_for_range(
                     databases,
                     source,
@@ -613,20 +607,6 @@ fn push_schema_variant_use_edits(
                     edits_by_document,
                 );
             }
-        }
-        for range in schema_variant_use_ranges(source_id, text, target) {
-            if shared_ranges.contains(&(range.start, range.end)) {
-                continue;
-            }
-            push_schema_variant_use_edit_for_range(
-                databases,
-                source,
-                text,
-                range,
-                target,
-                new_name,
-                edits_by_document,
-            );
         }
     }
 }
@@ -1000,33 +980,6 @@ fn receiver_owner_name(receiver: &TypeFact) -> Option<String> {
         } => Some(name.clone()),
         _ => None,
     }
-}
-
-fn schema_variant_use_ranges(
-    source_id: SourceId,
-    text: &str,
-    target: &SchemaVariantRenameTarget,
-) -> Vec<TextRange> {
-    lex(source_id, text)
-        .tokens
-        .into_iter()
-        .filter_map(|token| match token.kind {
-            TokenKind::Ident(name) if name == target.variant => {
-                let range = span_text_range(token.span)?;
-                path_ending_at(text, range).map(|_| range)
-            }
-            TokenKind::Ident(_)
-            | TokenKind::Int(_)
-            | TokenKind::Float(_)
-            | TokenKind::Char(_)
-            | TokenKind::String(_)
-            | TokenKind::InterpolatedString(_)
-            | TokenKind::Bytes(_)
-            | TokenKind::Keyword(_)
-            | TokenKind::Symbol(_)
-            | TokenKind::Eof => None,
-        })
-        .collect()
 }
 
 fn schema_variant_target_for_path(

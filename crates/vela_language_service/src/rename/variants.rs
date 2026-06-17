@@ -1,12 +1,10 @@
-use std::collections::{BTreeMap, HashSet};
+use std::collections::BTreeMap;
 
 use vela_common::SourceId;
 use vela_hir::binding::{BindingMap, BindingResolution};
 use vela_hir::ids::HirDeclId;
 use vela_hir::module_graph::{DeclarationKind, ModuleGraph};
 use vela_syntax::ast::Visibility;
-use vela_syntax::lexer::lex;
-use vela_syntax::token::TokenKind;
 
 use crate::{DocumentId, LanguageServiceDatabases, TextRange, path_calls};
 
@@ -153,9 +151,7 @@ fn push_enum_variant_use_edits(
 ) {
     let graph = databases.hir_db().graph();
     for source in databases.source_db().records().values() {
-        let source_id = source.source_id();
         let text = source.text();
-        let mut shared_ranges = HashSet::new();
         if let Some(parsed) = databases.parse_db().parsed_source(source.document_id()) {
             for site in path_calls::path_expression_sites(parsed, text) {
                 if site
@@ -166,7 +162,6 @@ fn push_enum_variant_use_edits(
                     continue;
                 }
                 let range = site.segment_range;
-                shared_ranges.insert((range.start, range.end));
                 push_enum_variant_use_edit_for_range(
                     graph,
                     source,
@@ -188,7 +183,6 @@ fn push_enum_variant_use_edits(
                     continue;
                 }
                 let range = site.segment_range;
-                shared_ranges.insert((range.start, range.end));
                 push_enum_variant_use_edit_for_range(
                     graph,
                     source,
@@ -199,20 +193,6 @@ fn push_enum_variant_use_edits(
                     edits_by_document,
                 );
             }
-        }
-        for range in path_segment_ranges(source_id, text, &target.variant) {
-            if shared_ranges.contains(&(range.start, range.end)) {
-                continue;
-            }
-            push_enum_variant_use_edit_for_range(
-                graph,
-                source,
-                text,
-                range,
-                target,
-                new_name,
-                edits_by_document,
-            );
         }
     }
 }
@@ -274,29 +254,6 @@ fn enum_variant_name_conflicts(
             .iter()
             .any(|variant| variant.name == new_name && variant.name != target.variant)
     })
-}
-
-fn path_segment_ranges(source_id: SourceId, text: &str, name: &str) -> Vec<TextRange> {
-    lex(source_id, text)
-        .tokens
-        .into_iter()
-        .filter_map(|token| match token.kind {
-            TokenKind::Ident(token_name) if token_name == name => {
-                let range = span_text_range(token.span)?;
-                path_ending_at(text, range).map(|_| range)
-            }
-            TokenKind::Ident(_)
-            | TokenKind::Int(_)
-            | TokenKind::Float(_)
-            | TokenKind::Char(_)
-            | TokenKind::String(_)
-            | TokenKind::InterpolatedString(_)
-            | TokenKind::Bytes(_)
-            | TokenKind::Keyword(_)
-            | TokenKind::Symbol(_)
-            | TokenKind::Eof => None,
-        })
-        .collect()
 }
 
 fn path_ending_at(text: &str, range: TextRange) -> Option<Vec<String>> {

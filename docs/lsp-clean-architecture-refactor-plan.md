@@ -377,15 +377,14 @@ Purpose: classify the cursor once and reuse it across features.
   instead of tokenizing identifiers and reconstructing callees from source
   text, and schema function rename target selection consumes the same shared
   parsed path-call sites before falling back to legacy call-name
-  reconstruction. Source enum variant rename edit collection now consumes
-  shared parsed expression and pattern path sites for constructor-like and
-  pattern uses before falling back to the legacy token scanner. Schema
-  variant rename edit collection uses the same parsed expression and pattern
-  path sites, and schema variant rename target selection consumes expression
-  path sites before falling back to legacy path reconstruction. Source enum
-  variant references now consume shared parsed expression and pattern path
-  sites before the fallback scanner. Schema variant references now use the
-  same parsed expression and pattern path sites before fallback scanning.
+  reconstruction. Source and schema enum variant rename edit collection now
+  consumes shared parsed expression and pattern path sites for
+  constructor-like and pattern uses instead of falling back to legacy token
+  range scanners. Schema variant rename target selection consumes expression
+  path sites before falling back to legacy path reconstruction. Source and
+  schema enum variant references now consume the same shared parsed
+  expression and pattern path sites without a feature-local token range
+  fallback.
   Schema variant go-to-definition now
   resolves constructor-like expression paths from the shared parsed path sites
   before falling back to the legacy token path reconstruction.

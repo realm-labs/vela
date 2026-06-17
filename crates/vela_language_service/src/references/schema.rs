@@ -1,10 +1,6 @@
-use std::collections::HashSet;
-
 use vela_analysis::{registry::RegistryFacts, type_fact::TypeFact};
 use vela_common::SourceId;
 use vela_syntax::ast::SourceFile;
-use vela_syntax::lexer::lex;
-use vela_syntax::token::TokenKind;
 
 use crate::{LanguageServiceDatabases, TextRange, member_access, path_calls, query_context};
 
@@ -481,9 +477,7 @@ fn schema_variant_use_references_for_source(
     target: &SchemaVariantReferenceTarget,
 ) -> Vec<Reference> {
     let mut references = Vec::new();
-    let source_id = source.source_id();
     let text = source.text();
-    let mut shared_ranges = HashSet::new();
     if let Some(parsed) = databases.parse_db().parsed_source(source.document_id()) {
         for site in path_calls::path_expression_sites(parsed, text) {
             if site
@@ -497,7 +491,6 @@ fn schema_variant_use_references_for_source(
                 continue;
             }
             let range = site.segment_range;
-            shared_ranges.insert((range.start, range.end));
             references.push(Reference {
                 document_id: source.document_id().clone(),
                 range: diagnostic_range(text, range),
@@ -518,7 +511,6 @@ fn schema_variant_use_references_for_source(
                 continue;
             }
             let range = site.segment_range;
-            shared_ranges.insert((range.start, range.end));
             references.push(Reference {
                 document_id: source.document_id().clone(),
                 range: diagnostic_range(text, range),
@@ -526,30 +518,7 @@ fn schema_variant_use_references_for_source(
             });
         }
     }
-    for range in schema_variant_ranges(source_id, text, &target.variant) {
-        if shared_ranges.contains(&(range.start, range.end)) {
-            continue;
-        }
-        push_schema_variant_use_reference_for_range(schema, source, target, range, &mut references);
-    }
     references
-}
-
-fn push_schema_variant_use_reference_for_range(
-    schema: &RegistryFacts,
-    source: &crate::SourceRecord,
-    target: &SchemaVariantReferenceTarget,
-    range: TextRange,
-    references: &mut Vec<Reference>,
-) {
-    let text = source.text();
-    if schema_variant_target_for_path_range(schema, text, range).as_ref() == Some(target) {
-        references.push(Reference {
-            document_id: source.document_id().clone(),
-            range: diagnostic_range(text, range),
-            kind: schema_variant_reference_kind(text, range),
-        });
-    }
 }
 
 fn schema_record_variant_pattern_field_use_target(
@@ -682,15 +651,6 @@ fn schema_variant_target_for_path(
         })
 }
 
-fn schema_variant_target_for_path_range(
-    schema: &RegistryFacts,
-    text: &str,
-    range: TextRange,
-) -> Option<SchemaVariantReferenceTarget> {
-    let path = path_ending_at(text, range)?;
-    schema_variant_target_for_path(schema, &path)
-}
-
 fn schema_method_owner(
     schema: &RegistryFacts,
     receiver: &TypeFact,
@@ -741,29 +701,6 @@ fn receiver_owner_name(receiver: &TypeFact) -> Option<String> {
         } => Some(name.clone()),
         _ => None,
     }
-}
-
-fn schema_variant_ranges(source_id: SourceId, text: &str, variant: &str) -> Vec<TextRange> {
-    lex(source_id, text)
-        .tokens
-        .into_iter()
-        .filter_map(|token| match token.kind {
-            TokenKind::Ident(name) if name == variant => {
-                let range = span_text_range(token.span)?;
-                path_ending_at(text, range).map(|_| range)
-            }
-            TokenKind::Ident(_)
-            | TokenKind::Int(_)
-            | TokenKind::Float(_)
-            | TokenKind::Char(_)
-            | TokenKind::String(_)
-            | TokenKind::InterpolatedString(_)
-            | TokenKind::Bytes(_)
-            | TokenKind::Keyword(_)
-            | TokenKind::Symbol(_)
-            | TokenKind::Eof => None,
-        })
-        .collect()
 }
 
 fn schema_variant_reference_kind(text: &str, range: TextRange) -> ReferenceKind {
