@@ -356,8 +356,11 @@ Purpose: replace coarse global completion with context-specific producers.
   types, source and schema traits, module path segments, and qualified
   type-path segments while excluding function-only candidates. Vela has no
   type aliases yet.
-- [ ] Keep member and record producers receiver-aware. Do not leak unrelated
+- [x] Keep member and record producers receiver-aware. Do not leak unrelated
   globals into member contexts.
+  Member completion resolves host and schema trait receiver facts without
+  falling back to global candidates, and record-field completion requires a
+  known source or schema constructor before offering fields.
 - [ ] Add a `CompletionAccumulator` that accepts candidates, de-duplicates by
   lookup identity and edit range, and applies relevance metadata without
   client-specific fuzzy filtering.
