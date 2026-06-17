@@ -360,12 +360,7 @@ pub(super) fn schema_function_use_target(
             });
         }
     }
-    let callee = function_call_name_at(text, token.range)?;
-    let target = schema_function_target_for_name(databases, &callee)?;
-    source_backed_schema_function_target(databases, target).map(|mut target| {
-        target.token = token.clone();
-        target
-    })
+    None
 }
 
 pub(super) fn schema_variant_use_target(
@@ -1061,22 +1056,6 @@ fn schema_function_target_for_name(
         })
 }
 
-fn function_call_name_at(text: &str, token_range: TextRange) -> Option<String> {
-    if !is_call_callee(text, token_range) {
-        return None;
-    }
-    let before_token = text.get(..token_range.start)?;
-    let start = before_token
-        .char_indices()
-        .rev()
-        .find_map(|(index, ch)| (!is_function_path_continue(ch)).then_some(index + ch.len_utf8()))
-        .unwrap_or(0);
-    if before_token.get(..start)?.trim_end().ends_with('.') {
-        return None;
-    }
-    text.get(start..token_range.end).map(str::to_owned)
-}
-
 fn path_ending_at(text: &str, range: TextRange) -> Option<Vec<String>> {
     let mut path = vec![token_text(text, range)?.to_owned()];
     let mut cursor = range.start;
@@ -1113,15 +1092,6 @@ fn schema_function_renamed_name(name: &str, new_segment: &str) -> String {
     } else {
         new_segment.to_owned()
     }
-}
-
-fn is_call_callee(text: &str, range: TextRange) -> bool {
-    text.get(range.end..)
-        .is_some_and(|suffix| suffix.trim_start().starts_with('('))
-}
-
-fn is_function_path_continue(ch: char) -> bool {
-    ch == '_' || ch == ':' || ch.is_ascii_alphanumeric()
 }
 
 fn is_identifier_continue(ch: char) -> bool {

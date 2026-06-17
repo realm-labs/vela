@@ -376,8 +376,8 @@ Purpose: classify the cursor once and reuse it across features.
   function rename edit collection now consumes shared parsed path-call sites
   instead of tokenizing identifiers and reconstructing callees from source
   text, and schema function rename target selection consumes the same shared
-  parsed path-call sites before falling back to legacy call-name
-  reconstruction. Source and schema enum variant rename edit collection now
+  parsed path-call sites without legacy call-name reconstruction. Source and
+  schema enum variant rename edit collection now
   consumes shared parsed expression and pattern path sites for
   constructor-like and pattern uses instead of falling back to legacy token
   range scanners. Schema variant rename target selection consumes expression
