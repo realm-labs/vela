@@ -530,7 +530,10 @@ high-quality metadata.
   LSP projection preserves producer-owned `sortText` when present, derives
   stable fallback sort keys from service relevance otherwise, and marks the
   first service-ranked item as `preselect`.
-- [ ] Project deprecation into LSP tags.
+- [x] Project deprecation into LSP tags.
+  Service completion deprecation metadata projects to LSP `CompletionItemTag`
+  value `1`; producer-owned deprecated candidates remain separate from the
+  protocol projection path.
 - [~] Add or preserve lazy resolve support for docs and expensive detail when
   it becomes useful.
   Schema-backed completion documentation is now projected eagerly from
