@@ -1,82 +1,21 @@
 use vela_syntax::ast::SourceFile;
 
+use crate::callable_context::{
+    CallableFacts, callable_facts, member_callable_facts, source_callable_facts,
+};
 use crate::{
     CursorContext, CursorContextKind, DocumentId, DocumentSnapshot, LanguageServiceDatabases,
     Position, SourceRecord, SourceVersion, TextRange, WorkspaceGeneration, WorkspaceSnapshot,
     cursor_context_at,
 };
 use vela_analysis::facts::AnalysisFacts;
-use vela_analysis::hints::type_fact_from_hint;
 use vela_analysis::registry::RegistryFacts;
-use vela_analysis::stdlib::{StdlibFunctionFact, stdlib_function_completion_facts};
 use vela_analysis::type_fact::TypeFact;
 use vela_common::{SourceId, Span};
 use vela_hir::binding::{BindingMap, BindingResolution, LocalBinding};
 use vela_hir::ids::HirDeclId;
 use vela_hir::module_graph::{DeclarationKind, ModuleGraph, ModulePath};
-use vela_hir::type_hint::{EnumVariantFieldsHint, HirTypeHint};
-
-#[derive(Debug, Clone, Copy, Eq, PartialEq)]
-pub enum CallableOrigin {
-    Source,
-    SourceVariant,
-    Schema,
-    Stdlib,
-}
-
-#[derive(Debug, Clone, Eq, PartialEq)]
-pub struct CallableFacts {
-    name: String,
-    params: Vec<CallableParameterFacts>,
-    returns: TypeFact,
-    origin: CallableOrigin,
-}
-
-impl CallableFacts {
-    #[must_use]
-    pub fn name(&self) -> &str {
-        &self.name
-    }
-
-    #[must_use]
-    pub fn params(&self) -> &[CallableParameterFacts] {
-        &self.params
-    }
-
-    #[must_use]
-    pub const fn returns(&self) -> &TypeFact {
-        &self.returns
-    }
-
-    #[must_use]
-    pub const fn origin(&self) -> CallableOrigin {
-        self.origin
-    }
-}
-
-#[derive(Debug, Clone, Eq, PartialEq)]
-pub struct CallableParameterFacts {
-    name: String,
-    type_fact: TypeFact,
-    defaulted: bool,
-}
-
-impl CallableParameterFacts {
-    #[must_use]
-    pub fn name(&self) -> &str {
-        &self.name
-    }
-
-    #[must_use]
-    pub const fn type_fact(&self) -> &TypeFact {
-        &self.type_fact
-    }
-
-    #[must_use]
-    pub const fn defaulted(&self) -> bool {
-        self.defaulted
-    }
-}
+use vela_hir::type_hint::HirTypeHint;
 
 #[derive(Debug, Clone, Copy, Eq, PartialEq)]
 pub struct CallArgumentFacts<'a> {
@@ -292,6 +231,20 @@ impl<'a> QueryContext<'a> {
     }
 
     #[must_use]
+    pub fn member_callable_facts(
+        &self,
+        databases: &LanguageServiceDatabases,
+        receiver_range: TextRange,
+        method: &str,
+        args_prefix: &str,
+    ) -> Vec<CallableFacts> {
+        let Some(source_id) = self.source_id() else {
+            return Vec::new();
+        };
+        member_callable_facts(databases, source_id, receiver_range, method, args_prefix)
+    }
+
+    #[must_use]
     pub const fn cursor(&self) -> &CursorContext {
         &self.cursor
     }
@@ -469,225 +422,6 @@ pub(crate) fn type_fact_for_source_range(
     })
 }
 
-pub(crate) fn source_callable_facts(
-    databases: &LanguageServiceDatabases,
-    callee: &str,
-) -> Vec<CallableFacts> {
-    let graph = databases.hir_db().graph();
-    let facts = AnalysisFacts::from_module_graph(graph);
-    let schema = databases.schema_db().facts();
-    graph
-        .declarations()
-        .filter(|declaration| {
-            declaration.kind == DeclarationKind::Function
-                && (declaration.name == callee
-                    || qualified_declaration_label(graph, declaration.id) == callee)
-        })
-        .filter_map(|declaration| {
-            let signature = graph.function_signature(declaration.id)?;
-            let inferred = facts.declaration(declaration.id);
-            let inferred_params = match inferred {
-                Some(TypeFact::Function { params, .. }) => params.as_slice(),
-                _ => &[],
-            };
-            let inferred_returns = match inferred {
-                Some(TypeFact::Function { returns, .. }) => Some(returns),
-                _ => None,
-            };
-            let params = signature
-                .params
-                .iter()
-                .enumerate()
-                .map(|(index, param)| {
-                    let type_fact = inferred_params
-                        .get(index)
-                        .cloned()
-                        .filter(|fact| !matches!(fact, TypeFact::Unknown))
-                        .or_else(|| {
-                            param
-                                .type_hint
-                                .as_ref()
-                                .map(|hint| query_type_fact_from_hint(graph, hint, schema))
-                        })
-                        .unwrap_or(TypeFact::Unknown);
-                    CallableParameterFacts {
-                        name: param.name.clone(),
-                        type_fact,
-                        defaulted: param.default_value_span.is_some(),
-                    }
-                })
-                .collect::<Vec<_>>();
-            let returns = match inferred_returns {
-                Some(fact) if !matches!(fact.as_ref(), TypeFact::Unknown) => fact.as_ref().clone(),
-                _ => signature
-                    .return_type
-                    .as_ref()
-                    .map(|hint| query_type_fact_from_hint(graph, hint, schema))
-                    .unwrap_or(TypeFact::Unknown),
-            };
-            Some(CallableFacts {
-                name: declaration.name.clone(),
-                params,
-                returns,
-                origin: CallableOrigin::Source,
-            })
-        })
-        .collect()
-}
-
-pub(crate) fn callable_facts(
-    databases: &LanguageServiceDatabases,
-    callee: &str,
-) -> Vec<CallableFacts> {
-    let mut facts = source_callable_facts(databases, callee);
-    facts.extend(source_variant_callable_facts(databases, callee));
-    facts.extend(schema_callable_facts(databases.schema_db().facts(), callee));
-    facts.extend(stdlib_callable_facts(callee));
-    facts
-}
-
-fn source_variant_callable_facts(
-    databases: &LanguageServiceDatabases,
-    callee: &str,
-) -> Vec<CallableFacts> {
-    let graph = databases.hir_db().graph();
-    let schema = databases.schema_db().facts();
-    graph
-        .declarations()
-        .filter(|declaration| declaration.kind == DeclarationKind::Enum)
-        .filter_map(|declaration| {
-            let owner = qualified_declaration_label(graph, declaration.id);
-            let shape = graph.enum_shape(declaration.id)?;
-            Some((declaration, owner, shape))
-        })
-        .flat_map(|(declaration, owner, shape)| {
-            shape.variants.iter().filter_map(move |variant| {
-                if !variant_callable_name_matches(
-                    callee,
-                    declaration.name.as_str(),
-                    &owner,
-                    &variant.name,
-                ) {
-                    return None;
-                }
-                let EnumVariantFieldsHint::Tuple(fields) = &variant.fields else {
-                    return None;
-                };
-                let params = fields
-                    .iter()
-                    .map(|field| CallableParameterFacts {
-                        name: field.name.clone(),
-                        type_fact: field.type_hint.as_ref().map_or(TypeFact::Unknown, |hint| {
-                            query_type_fact_from_hint(graph, hint, schema)
-                        }),
-                        defaulted: false,
-                    })
-                    .collect::<Vec<_>>();
-                Some(CallableFacts {
-                    name: format!("{owner}::{}", variant.name),
-                    params,
-                    returns: TypeFact::enum_type(&owner, Some(&variant.name)),
-                    origin: CallableOrigin::SourceVariant,
-                })
-            })
-        })
-        .collect()
-}
-
-fn schema_callable_facts(schema: &RegistryFacts, callee: &str) -> Vec<CallableFacts> {
-    schema
-        .functions()
-        .filter(|function| callable_name_matches(&function.name, callee))
-        .filter_map(|function| {
-            let TypeFact::Function { params, returns } = function.fact else {
-                return None;
-            };
-            Some(CallableFacts {
-                name: function.name.clone(),
-                params: indexed_callable_parameters(params),
-                returns: *returns,
-                origin: CallableOrigin::Schema,
-            })
-        })
-        .collect()
-}
-
-fn stdlib_callable_facts(callee: &str) -> Vec<CallableFacts> {
-    stdlib_function_completion_facts()
-        .into_iter()
-        .filter(|fact| callable_name_matches(fact.name, callee))
-        .map(stdlib_callable_fact)
-        .collect()
-}
-
-fn stdlib_callable_fact(fact: StdlibFunctionFact) -> CallableFacts {
-    CallableFacts {
-        name: fact.name.to_owned(),
-        params: indexed_callable_parameters(fact.params),
-        returns: fact.returns,
-        origin: CallableOrigin::Stdlib,
-    }
-}
-
-fn indexed_callable_parameters(params: Vec<TypeFact>) -> Vec<CallableParameterFacts> {
-    params
-        .into_iter()
-        .enumerate()
-        .map(|(index, type_fact)| CallableParameterFacts {
-            name: format!("arg{index}"),
-            type_fact,
-            defaulted: false,
-        })
-        .collect()
-}
-
-fn callable_name_matches(name: &str, callee: &str) -> bool {
-    name == callee
-        || name
-            .rsplit("::")
-            .next()
-            .is_some_and(|segment| segment == callee)
-}
-
-fn variant_callable_name_matches(
-    callee: &str,
-    enum_name: &str,
-    owner: &str,
-    variant: &str,
-) -> bool {
-    callee == variant
-        || callee == format!("{enum_name}::{variant}")
-        || callee == format!("{owner}::{variant}")
-}
-
-fn query_type_fact_from_hint(
-    graph: &ModuleGraph,
-    hint: &HirTypeHint,
-    schema: &RegistryFacts,
-) -> TypeFact {
-    let fact = type_fact_from_hint(graph, hint);
-    if matches!(fact, TypeFact::Unknown) {
-        schema_fact_for_hint(hint, schema).unwrap_or(TypeFact::Unknown)
-    } else {
-        fact
-    }
-}
-
-pub(crate) fn qualified_declaration_label(graph: &ModuleGraph, declaration: HirDeclId) -> String {
-    let Some(declaration) = graph.declaration(declaration) else {
-        return String::new();
-    };
-    let Some(module_path) = graph.module_path(declaration.module) else {
-        return declaration.name.clone();
-    };
-    let module = module_path.join();
-    if module.is_empty() {
-        declaration.name.clone()
-    } else {
-        format!("{module}::{}", declaration.name)
-    }
-}
-
 fn query_bindings<'a>(
     databases: &'a LanguageServiceDatabases,
     source: &SourceRecord,
@@ -762,6 +496,7 @@ fn bindings_for_impl_method(
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::callable_context::CallableOrigin;
     use crate::{
         LineIndex, SourceFileSnapshot, Workspace, WorkspaceConfig, WorkspaceRoot,
         assemble_project_sources,
@@ -1122,5 +857,118 @@ mod tests {
             stdlib_callable.params()[0].type_fact().display_name(),
             "i64 | f64"
         );
+    }
+
+    #[test]
+    fn query_context_exposes_member_callable_facts() {
+        let document = DocumentId::from("/workspace/scripts/game/main.vela");
+        let source = "struct Player { level: i64 }\n\
+                      impl Player { fn grant(self, amount: i64, bonus: i64) -> i64 { return amount + bonus } }\n\
+                      fn main(player: Player, enemy: Enemy, scores: Array<i64>) { player.grant(1, ); enemy.preview(1, ); scores.filter(|score| score > 0) }";
+        let config = WorkspaceConfig::workspace([WorkspaceRoot::from("/workspace/scripts")]);
+        let workspace = Workspace::new();
+        let files = vec![SourceFileSnapshot::new(document.clone(), source)];
+        let project = assemble_project_sources(&config, &files, &workspace.snapshot());
+        let mut databases = LanguageServiceDatabases::new();
+        let mut schema = vela_analysis::registry::RegistryFacts::default();
+        schema.insert_type("Enemy", TypeFact::host("Enemy"));
+        schema.insert_method(
+            "Enemy",
+            "preview",
+            TypeFact::function(vec![TypeFact::I64, TypeFact::I64], TypeFact::BOOL),
+        );
+        databases.set_schema_facts(schema);
+        databases.update(&project);
+        let line_index = LineIndex::new(source);
+
+        let source_position =
+            line_index.position(source.find("grant(1, )").expect("source method call") + 9);
+        let source_context = QueryContext::from_databases(&databases, &document, source_position)
+            .expect("source method query");
+        let source_call = source_context
+            .call_argument_facts()
+            .expect("source method call facts");
+        let (_, source_method) = source_call
+            .callee()
+            .rsplit_once('.')
+            .expect("source method callee");
+        let source_callables = source_context.member_callable_facts(
+            &databases,
+            source_call
+                .member_receiver()
+                .expect("source method receiver"),
+            source_method,
+            source_call.args_prefix(),
+        );
+        let source_callable = source_callables
+            .iter()
+            .find(|callable| callable.origin() == CallableOrigin::SourceMethod)
+            .expect("source method callable facts");
+        assert_eq!(source_callable.name(), "Player.grant");
+        assert_eq!(source_callable.returns().display_name(), "i64");
+        assert_eq!(source_callable.params()[0].name(), "amount");
+        assert_eq!(
+            source_callable.params()[0].type_fact().display_name(),
+            "i64"
+        );
+        assert_eq!(source_callable.params()[1].name(), "bonus");
+
+        let schema_position =
+            line_index.position(source.find("preview(1, )").expect("schema method call") + 11);
+        let schema_context = QueryContext::from_databases(&databases, &document, schema_position)
+            .expect("schema method query");
+        let schema_call = schema_context
+            .call_argument_facts()
+            .expect("schema method call facts");
+        let (_, schema_method) = schema_call
+            .callee()
+            .rsplit_once('.')
+            .expect("schema method callee");
+        let schema_callables = schema_context.member_callable_facts(
+            &databases,
+            schema_call
+                .member_receiver()
+                .expect("schema method receiver"),
+            schema_method,
+            schema_call.args_prefix(),
+        );
+        let schema_callable = schema_callables
+            .iter()
+            .find(|callable| callable.origin() == CallableOrigin::SchemaMethod)
+            .expect("schema method callable facts");
+        assert_eq!(schema_callable.name(), "Enemy.preview");
+        assert_eq!(schema_callable.returns().display_name(), "bool");
+        assert_eq!(schema_callable.params()[1].name(), "arg1");
+
+        let stdlib_position =
+            line_index.position(source.find("score >").expect("stdlib lambda body"));
+        let stdlib_context = QueryContext::from_databases(&databases, &document, stdlib_position)
+            .expect("stdlib method query");
+        let stdlib_call = stdlib_context
+            .call_argument_facts()
+            .expect("stdlib method call facts");
+        let (_, stdlib_method) = stdlib_call
+            .callee()
+            .rsplit_once('.')
+            .expect("stdlib method callee");
+        let stdlib_callables = stdlib_context.member_callable_facts(
+            &databases,
+            stdlib_call
+                .member_receiver()
+                .expect("stdlib method receiver"),
+            stdlib_method,
+            stdlib_call.args_prefix(),
+        );
+        let stdlib_callable = stdlib_callables
+            .iter()
+            .find(|callable| callable.origin() == CallableOrigin::StdlibMethod)
+            .expect("stdlib method callable facts");
+        assert_eq!(stdlib_callable.name(), "Array(i64).filter");
+        assert_eq!(stdlib_callable.params()[0].name(), "callback");
+        assert_eq!(
+            stdlib_callable.params()[0].type_fact().display_name(),
+            "Function(i64) -> bool"
+        );
+        assert_eq!(stdlib_callable.returns().display_name(), "Array(i64)");
     }
 }

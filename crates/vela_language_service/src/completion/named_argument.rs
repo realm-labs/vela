@@ -1,5 +1,5 @@
 use crate::CallArgumentFacts;
-use crate::query_context::CallableFacts;
+use crate::callable_context::CallableFacts;
 
 use super::{
     CallArgumentContext, CompletionInsertFormat, CompletionItem, CompletionKind,

@@ -1,12 +1,8 @@
-use vela_analysis::hints::type_fact_from_hint;
-use vela_analysis::stdlib::{LambdaFact, StdlibMethodFact, stdlib_method_fact_with_lambda_arity};
 use vela_analysis::type_fact::TypeFact;
 use vela_common::SourceId;
-use vela_hir::module_graph::{DeclarationKind, ModuleGraph};
-use vela_hir::type_hint::{HirTypeHint, ImplMetadataKind};
 
-use crate::query_context::{
-    CallableFacts, CallableOrigin, callable_facts, type_fact_for_source_range,
+use crate::callable_context::{
+    CallableFacts, CallableOrigin, callable_facts, member_callable_facts,
 };
 use crate::{DocumentId, LanguageServiceDatabases, Position, QueryContext, TextRange};
 
@@ -78,12 +74,6 @@ struct CallContext {
     active_parameter: usize,
 }
 
-struct MemberCallLookup<'a> {
-    graph: &'a ModuleGraph,
-    receiver: &'a TypeFact,
-    method: &'a str,
-}
-
 impl LanguageServiceDatabases {
     #[must_use]
     pub fn signature_help(
@@ -153,6 +143,10 @@ impl LanguageServiceDatabases {
         let mut signatures = callable_signatures_by_origin(callables, CallableOrigin::Source);
         signatures.extend(callable_signatures_by_origin(
             callables,
+            CallableOrigin::SourceMethod,
+        ));
+        signatures.extend(callable_signatures_by_origin(
+            callables,
             CallableOrigin::SourceVariant,
         ));
         signatures.extend(callable_signatures_by_origin(
@@ -161,7 +155,15 @@ impl LanguageServiceDatabases {
         ));
         signatures.extend(callable_signatures_by_origin(
             callables,
+            CallableOrigin::SchemaMethod,
+        ));
+        signatures.extend(callable_signatures_by_origin(
+            callables,
             CallableOrigin::Stdlib,
+        ));
+        signatures.extend(callable_signatures_by_origin(
+            callables,
+            CallableOrigin::StdlibMethod,
         ));
         signatures
     }
@@ -176,93 +178,15 @@ impl LanguageServiceDatabases {
             return None;
         }
         let receiver_range = context.member_receiver?;
-        let receiver = type_fact_for_source_range(self, source_id, receiver_range)?;
-        let graph = self.hir_db().graph();
-        let lookup = MemberCallLookup {
-            graph,
-            receiver: &receiver,
+        let callables = member_callable_facts(
+            self,
+            source_id,
+            receiver_range,
             method,
-        };
-        let mut signatures = self.script_method_signatures(&lookup);
-        signatures.extend(self.schema_method_signatures(&lookup));
-        signatures.extend(self.stdlib_method_signatures(&lookup, &context.args_prefix));
+            &context.args_prefix,
+        );
+        let signatures = self.signature_candidates_from_callables(&callables);
         (!signatures.is_empty()).then_some(signatures)
-    }
-
-    fn script_method_signatures(&self, lookup: &MemberCallLookup<'_>) -> Vec<SignatureInformation> {
-        let owner_names = record_owner_names(lookup.receiver);
-        lookup
-            .graph
-            .declarations()
-            .filter_map(|declaration| {
-                if declaration.kind != DeclarationKind::Impl {
-                    return None;
-                }
-                let metadata = lookup.graph.impl_metadata(declaration.id)?;
-                if !matches!(metadata.kind, ImplMetadataKind::Inherent) {
-                    return None;
-                }
-                let matches_owner = owner_names.iter().any(|owner| {
-                    metadata
-                        .target_path
-                        .last()
-                        .is_some_and(|name| name == owner)
-                        || metadata.target_path.join("::") == *owner
-                });
-                if !matches_owner {
-                    return None;
-                }
-                let method = metadata
-                    .methods
-                    .iter()
-                    .find(|entry| entry.name == lookup.method)?;
-                let owner = metadata.target_path.join("::");
-                Some(method_signature_information(
-                    lookup.graph,
-                    self.schema_db().facts(),
-                    &format!("{owner}.{}", method.name),
-                    &method.signature,
-                ))
-            })
-            .collect()
-    }
-
-    fn schema_method_signatures(&self, lookup: &MemberCallLookup<'_>) -> Vec<SignatureInformation> {
-        let Some((owner, fact)) = schema_method_fact_for_receiver(
-            self.schema_db().facts(),
-            lookup.receiver,
-            lookup.method,
-        ) else {
-            return Vec::new();
-        };
-        let TypeFact::Function { params, returns } = fact else {
-            return Vec::new();
-        };
-        vec![SignatureInformation {
-            label: signature_label(
-                &format!("{}.{method}", owner, method = lookup.method),
-                &schema_parameters(params),
-                returns,
-            ),
-            parameters: schema_parameters(params),
-        }]
-    }
-
-    fn stdlib_method_signatures(
-        &self,
-        lookup: &MemberCallLookup<'_>,
-        args_prefix: &str,
-    ) -> Vec<SignatureInformation> {
-        let lambda_param_count = first_lambda_param_count(args_prefix);
-        let Some(fact) = stdlib_method_fact_with_lambda_arity(
-            lookup.receiver,
-            lookup.method,
-            None,
-            lambda_param_count,
-        ) else {
-            return Vec::new();
-        };
-        vec![stdlib_method_signature_information(&fact)]
     }
 }
 
@@ -283,38 +207,6 @@ fn signature_label(name: &str, parameters: &[SignatureParameter], returns: &Type
         .collect::<Vec<_>>()
         .join(", ");
     format!("{name}({params}) -> {}", returns.display_name())
-}
-
-fn method_signature_information(
-    graph: &ModuleGraph,
-    schema: &vela_analysis::registry::RegistryFacts,
-    name: &str,
-    signature: &vela_hir::type_hint::FunctionSignature,
-) -> SignatureInformation {
-    let parameters = signature
-        .params
-        .iter()
-        .filter(|param| param.name != "self")
-        .map(|param| {
-            let type_fact = param.type_hint.as_ref().map_or(TypeFact::Unknown, |hint| {
-                signature_type_fact(graph, hint, schema)
-            });
-            SignatureParameter {
-                label: format!("{}: {}", param.name, type_fact.display_name()),
-                type_fact,
-            }
-        })
-        .collect::<Vec<_>>();
-    let returns = signature
-        .return_type
-        .as_ref()
-        .map_or(TypeFact::Unknown, |hint| {
-            signature_type_fact(graph, hint, schema)
-        });
-    SignatureInformation {
-        label: signature_label(name, &parameters, &returns),
-        parameters,
-    }
 }
 
 fn callable_signature_information(callable: &CallableFacts) -> SignatureInformation {
@@ -344,176 +236,6 @@ fn callable_signatures_by_origin(
         .filter(|callable| callable.origin() == origin)
         .map(callable_signature_information)
         .collect()
-}
-
-fn schema_parameters(params: &[TypeFact]) -> Vec<SignatureParameter> {
-    params
-        .iter()
-        .enumerate()
-        .map(|(index, fact)| SignatureParameter {
-            label: format!("arg{index}: {}", fact.display_name()),
-            type_fact: fact.clone(),
-        })
-        .collect()
-}
-
-fn stdlib_method_signature_information(fact: &StdlibMethodFact) -> SignatureInformation {
-    let parameters = stdlib_method_parameters(fact);
-    SignatureInformation {
-        label: signature_label(
-            &format!("{}.{}", fact.receiver.display_name(), fact.method),
-            &parameters,
-            &fact.returns,
-        ),
-        parameters,
-    }
-}
-
-fn stdlib_method_parameters(fact: &StdlibMethodFact) -> Vec<SignatureParameter> {
-    fact.params
-        .iter()
-        .enumerate()
-        .map(|(index, param)| {
-            let name = if is_lambda_parameter(param, fact.lambda.as_ref()) {
-                "callback".to_owned()
-            } else {
-                format!("arg{index}")
-            };
-            SignatureParameter {
-                label: format!("{name}: {}", param.display_name()),
-                type_fact: param.clone(),
-            }
-        })
-        .collect()
-}
-
-fn is_lambda_parameter(param: &TypeFact, lambda: Option<&LambdaFact>) -> bool {
-    let Some(lambda) = lambda else {
-        return false;
-    };
-    param == &TypeFact::function(lambda.params.clone(), lambda.returns.clone())
-}
-
-fn first_lambda_param_count(args_text: &str) -> Option<usize> {
-    let start = args_text.find('|')?;
-    let rest = &args_text[start + 1..];
-    let end = rest.find('|')?;
-    let params = rest[..end].trim();
-    if params.is_empty() {
-        Some(0)
-    } else {
-        Some(
-            params
-                .split(',')
-                .filter(|param| !param.trim().is_empty())
-                .count(),
-        )
-    }
-}
-
-fn schema_method_fact_for_receiver<'a>(
-    schema: &'a vela_analysis::registry::RegistryFacts,
-    receiver: &TypeFact,
-    method: &str,
-) -> Option<(String, &'a TypeFact)> {
-    owner_names(receiver).into_iter().find_map(|owner| {
-        schema
-            .method_fact(&owner, method)
-            .or_else(|| schema.trait_method_fact(&owner, method))
-            .map(|fact| (owner, fact))
-    })
-}
-
-fn owner_names(receiver: &TypeFact) -> Vec<String> {
-    let mut owners = record_owner_names(receiver);
-    if let TypeFact::Host { name } | TypeFact::Trait { name } = receiver {
-        push_owner_name(&mut owners, name);
-        if let Some(short) = name.rsplit("::").next()
-            && short != name
-        {
-            push_owner_name(&mut owners, short);
-        }
-    }
-    owners
-}
-
-fn record_owner_names(receiver: &TypeFact) -> Vec<String> {
-    let mut owners = Vec::new();
-    collect_record_owner_names(receiver, &mut owners);
-    owners
-}
-
-fn collect_record_owner_names(receiver: &TypeFact, owners: &mut Vec<String>) {
-    match receiver {
-        TypeFact::Record { name } => {
-            push_owner_name(owners, name);
-            if let Some(short) = name.rsplit("::").next()
-                && short != name
-            {
-                push_owner_name(owners, short);
-            }
-        }
-        TypeFact::Union(facts) => {
-            for fact in facts {
-                collect_record_owner_names(fact, owners);
-            }
-        }
-        TypeFact::Unknown
-        | TypeFact::Never
-        | TypeFact::Any
-        | TypeFact::Primitive(_)
-        | TypeFact::Range
-        | TypeFact::Array { .. }
-        | TypeFact::Map { .. }
-        | TypeFact::Set { .. }
-        | TypeFact::Iterator { .. }
-        | TypeFact::Option { .. }
-        | TypeFact::OptionSome { .. }
-        | TypeFact::OptionNone
-        | TypeFact::Result { .. }
-        | TypeFact::ResultOk { .. }
-        | TypeFact::ResultErr { .. }
-        | TypeFact::Function { .. }
-        | TypeFact::Enum { .. }
-        | TypeFact::Host { .. }
-        | TypeFact::Trait { .. }
-        | TypeFact::Module { .. } => {}
-    }
-}
-
-fn push_owner_name(owners: &mut Vec<String>, name: &str) {
-    if !owners.iter().any(|owner| owner == name) {
-        owners.push(name.to_owned());
-    }
-}
-
-fn signature_type_fact(
-    graph: &ModuleGraph,
-    hint: &HirTypeHint,
-    schema: &vela_analysis::registry::RegistryFacts,
-) -> TypeFact {
-    let fact = type_fact_from_hint(graph, hint);
-    if matches!(fact, TypeFact::Unknown) {
-        schema_fact_for_hint(hint, schema).unwrap_or(TypeFact::Unknown)
-    } else {
-        fact
-    }
-}
-
-fn schema_fact_for_hint(
-    hint: &HirTypeHint,
-    schema: &vela_analysis::registry::RegistryFacts,
-) -> Option<TypeFact> {
-    if !hint.args.is_empty() {
-        return None;
-    }
-    let qualified = hint.path.join("::");
-    schema
-        .type_fact(&qualified)
-        .or_else(|| hint.path.last().and_then(|name| schema.type_fact(name)))
-        .or_else(|| schema.trait_fact(&qualified))
-        .or_else(|| hint.path.last().and_then(|name| schema.trait_fact(name)))
-        .cloned()
 }
 
 #[cfg(test)]

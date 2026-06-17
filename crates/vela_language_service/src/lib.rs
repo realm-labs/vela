@@ -1,6 +1,7 @@
 //! Editor-neutral language-service workspace state.
 
 mod call_hierarchy;
+mod callable_context;
 mod code_action;
 mod completion;
 mod cursor_context;
