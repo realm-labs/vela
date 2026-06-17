@@ -14,11 +14,12 @@ use vela_common::{SourceId, Span};
 use vela_hir::binding::{BindingMap, BindingResolution, LocalBinding};
 use vela_hir::ids::HirDeclId;
 use vela_hir::module_graph::{DeclarationKind, ModuleGraph, ModulePath};
-use vela_hir::type_hint::HirTypeHint;
+use vela_hir::type_hint::{EnumVariantFieldsHint, HirTypeHint};
 
 #[derive(Debug, Clone, Copy, Eq, PartialEq)]
 pub enum CallableOrigin {
     Source,
+    SourceVariant,
     Schema,
     Stdlib,
 }
@@ -539,9 +540,58 @@ pub(crate) fn callable_facts(
     callee: &str,
 ) -> Vec<CallableFacts> {
     let mut facts = source_callable_facts(databases, callee);
+    facts.extend(source_variant_callable_facts(databases, callee));
     facts.extend(schema_callable_facts(databases.schema_db().facts(), callee));
     facts.extend(stdlib_callable_facts(callee));
     facts
+}
+
+fn source_variant_callable_facts(
+    databases: &LanguageServiceDatabases,
+    callee: &str,
+) -> Vec<CallableFacts> {
+    let graph = databases.hir_db().graph();
+    let schema = databases.schema_db().facts();
+    graph
+        .declarations()
+        .filter(|declaration| declaration.kind == DeclarationKind::Enum)
+        .filter_map(|declaration| {
+            let owner = qualified_declaration_label(graph, declaration.id);
+            let shape = graph.enum_shape(declaration.id)?;
+            Some((declaration, owner, shape))
+        })
+        .flat_map(|(declaration, owner, shape)| {
+            shape.variants.iter().filter_map(move |variant| {
+                if !variant_callable_name_matches(
+                    callee,
+                    declaration.name.as_str(),
+                    &owner,
+                    &variant.name,
+                ) {
+                    return None;
+                }
+                let EnumVariantFieldsHint::Tuple(fields) = &variant.fields else {
+                    return None;
+                };
+                let params = fields
+                    .iter()
+                    .map(|field| CallableParameterFacts {
+                        name: field.name.clone(),
+                        type_fact: field.type_hint.as_ref().map_or(TypeFact::Unknown, |hint| {
+                            query_type_fact_from_hint(graph, hint, schema)
+                        }),
+                        defaulted: false,
+                    })
+                    .collect::<Vec<_>>();
+                Some(CallableFacts {
+                    name: format!("{owner}::{}", variant.name),
+                    params,
+                    returns: TypeFact::enum_type(&owner, Some(&variant.name)),
+                    origin: CallableOrigin::SourceVariant,
+                })
+            })
+        })
+        .collect()
 }
 
 fn schema_callable_facts(schema: &RegistryFacts, callee: &str) -> Vec<CallableFacts> {
@@ -597,6 +647,17 @@ fn callable_name_matches(name: &str, callee: &str) -> bool {
             .rsplit("::")
             .next()
             .is_some_and(|segment| segment == callee)
+}
+
+fn variant_callable_name_matches(
+    callee: &str,
+    enum_name: &str,
+    owner: &str,
+    variant: &str,
+) -> bool {
+    callee == variant
+        || callee == format!("{enum_name}::{variant}")
+        || callee == format!("{owner}::{variant}")
 }
 
 fn query_type_fact_from_hint(
@@ -987,7 +1048,7 @@ mod tests {
     #[test]
     fn query_context_exposes_source_callable_facts() {
         let document = DocumentId::from("/workspace/scripts/game/main.vela");
-        let source = "fn grant(player: Player, amount: i64) -> bool { return true }\nfn main(player: Player) { grant(player, ) }";
+        let source = "enum QuestState { Finished(quest_id: String) }\nfn grant(player: Player, amount: i64) -> bool { return true }\nfn main(player: Player) { grant(player, ) }";
         let config = WorkspaceConfig::workspace([WorkspaceRoot::from("/workspace/scripts")]);
         let workspace = Workspace::new();
         let files = vec![SourceFileSnapshot::new(document.clone(), source)];
@@ -1001,8 +1062,8 @@ mod tests {
         );
         databases.set_schema_facts(schema);
         databases.update(&project);
-        let line = source.lines().nth(1).expect("main line");
-        let position = Position::new(1, line.find(", )").expect("argument hole") + 2);
+        let position =
+            LineIndex::new(source).position(source.find(", )").expect("argument hole") + 2);
         let context = QueryContext::from_databases(&databases, &document, position)
             .expect("database document exists");
 
@@ -1031,6 +1092,22 @@ mod tests {
         assert_eq!(schema_callable.params()[0].name(), "arg0");
         assert_eq!(
             schema_callable.params()[0].type_fact().display_name(),
+            "String"
+        );
+
+        let variant_callables = context.callable_facts(&databases, "Finished");
+        let variant_callable = variant_callables
+            .iter()
+            .find(|callable| callable.origin() == CallableOrigin::SourceVariant)
+            .expect("source enum variant callable facts");
+        assert_eq!(variant_callable.name(), "game::main::QuestState::Finished");
+        assert_eq!(
+            variant_callable.returns(),
+            &TypeFact::enum_type("game::main::QuestState", Some("Finished"))
+        );
+        assert_eq!(variant_callable.params()[0].name(), "quest_id");
+        assert_eq!(
+            variant_callable.params()[0].type_fact().display_name(),
             "String"
         );
 

@@ -3,11 +3,10 @@ use vela_analysis::stdlib::{LambdaFact, StdlibMethodFact, stdlib_method_fact_wit
 use vela_analysis::type_fact::TypeFact;
 use vela_common::SourceId;
 use vela_hir::module_graph::{DeclarationKind, ModuleGraph};
-use vela_hir::type_hint::{EnumVariantFieldsHint, HirTypeHint, ImplMetadataKind};
+use vela_hir::type_hint::{HirTypeHint, ImplMetadataKind};
 
 use crate::query_context::{
-    CallableFacts, CallableOrigin, callable_facts, qualified_declaration_label,
-    type_fact_for_source_range,
+    CallableFacts, CallableOrigin, callable_facts, type_fact_for_source_range,
 };
 use crate::{DocumentId, LanguageServiceDatabases, Position, QueryContext, TextRange};
 
@@ -109,7 +108,7 @@ impl LanguageServiceDatabases {
 
     pub(crate) fn signature_candidates(&self, callee: &str) -> Vec<SignatureInformation> {
         let callables = callable_facts(self, callee);
-        self.signature_candidates_from_callables(callee, &callables)
+        self.signature_candidates_from_callables(&callables)
     }
 
     pub(crate) fn signature_candidates_for_member_call(
@@ -141,7 +140,7 @@ impl LanguageServiceDatabases {
         }
         if let Some(query) = query {
             let callables = query.callable_facts(self, &context.callee);
-            self.signature_candidates_from_callables(&context.callee, &callables)
+            self.signature_candidates_from_callables(&callables)
         } else {
             self.signature_candidates(&context.callee)
         }
@@ -149,11 +148,13 @@ impl LanguageServiceDatabases {
 
     fn signature_candidates_from_callables(
         &self,
-        callee: &str,
         callables: &[CallableFacts],
     ) -> Vec<SignatureInformation> {
         let mut signatures = callable_signatures_by_origin(callables, CallableOrigin::Source);
-        signatures.extend(self.script_variant_signatures(callee));
+        signatures.extend(callable_signatures_by_origin(
+            callables,
+            CallableOrigin::SourceVariant,
+        ));
         signatures.extend(callable_signatures_by_origin(
             callables,
             CallableOrigin::Schema,
@@ -262,54 +263,6 @@ impl LanguageServiceDatabases {
             return Vec::new();
         };
         vec![stdlib_method_signature_information(&fact)]
-    }
-
-    fn script_variant_signatures(&self, callee: &str) -> Vec<SignatureInformation> {
-        let graph = self.hir_db().graph();
-        graph
-            .declarations()
-            .filter(|declaration| declaration.kind == DeclarationKind::Enum)
-            .filter_map(|declaration| {
-                let owner = qualified_declaration_label(graph, declaration.id);
-                let shape = graph.enum_shape(declaration.id)?;
-                Some((declaration, owner, shape))
-            })
-            .flat_map(|(declaration, owner, shape)| {
-                shape.variants.iter().filter_map(move |variant| {
-                    if !variant_callee_matches(
-                        callee,
-                        declaration.name.as_str(),
-                        &owner,
-                        &variant.name,
-                    ) {
-                        return None;
-                    }
-                    let EnumVariantFieldsHint::Tuple(fields) = &variant.fields else {
-                        return None;
-                    };
-                    let parameters = fields
-                        .iter()
-                        .map(|field| {
-                            let fact = field.type_hint.as_ref().map_or(TypeFact::Unknown, |hint| {
-                                signature_type_fact(graph, hint, self.schema_db().facts())
-                            });
-                            SignatureParameter {
-                                label: format!("{}: {}", field.name, fact.display_name()),
-                                type_fact: fact,
-                            }
-                        })
-                        .collect::<Vec<_>>();
-                    Some(SignatureInformation {
-                        label: signature_label(
-                            &format!("{owner}::{}", variant.name),
-                            &parameters,
-                            &TypeFact::enum_type(&owner, Some(&variant.name)),
-                        ),
-                        parameters,
-                    })
-                })
-            })
-            .collect()
     }
 }
 
@@ -534,12 +487,6 @@ fn push_owner_name(owners: &mut Vec<String>, name: &str) {
     }
 }
 
-fn variant_callee_matches(callee: &str, enum_name: &str, owner: &str, variant: &str) -> bool {
-    callee == variant
-        || callee == format!("{enum_name}::{variant}")
-        || callee == format!("{owner}::{variant}")
-}
-
 fn signature_type_fact(
     graph: &ModuleGraph,
     hint: &HirTypeHint,
@@ -673,6 +620,36 @@ mod tests {
         );
         assert_eq!(help.signatures()[0].parameters()[0].label(), "amount: i64");
         assert_eq!(help.signatures()[0].parameters()[1].label(), "bonus: i64");
+    }
+
+    #[test]
+    fn signature_help_resolves_source_enum_variant_call() {
+        let document = DocumentId::from("/workspace/scripts/game/main.vela");
+        let text = r#"
+            enum QuestState { Finished(quest_id: String) }
+            pub fn main() { Finished("quest-1") }
+        "#;
+        let files = vec![SourceFileSnapshot::new(document.clone(), text)];
+        let config = WorkspaceConfig::workspace([WorkspaceRoot::from("/workspace/scripts")]);
+        let project = assemble_project_sources(&config, &files, &Workspace::new().snapshot());
+        let mut databases = LanguageServiceDatabases::new();
+        databases.update(&project);
+
+        let main_line = text.lines().nth(2).expect("main line should exist");
+        let position = Position::new(2, main_line.find("\"quest").expect("variant argument"));
+        let help = databases
+            .signature_help(&document, position)
+            .expect("signature help should resolve enum variant");
+
+        assert_eq!(help.active_parameter(), 0);
+        assert_eq!(
+            help.signatures()[0].label(),
+            "game::main::QuestState::Finished(quest_id: String) -> game::main::QuestState::Finished"
+        );
+        assert_eq!(
+            help.signatures()[0].parameters()[0].label(),
+            "quest_id: String"
+        );
     }
 
     #[test]
