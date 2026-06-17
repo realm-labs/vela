@@ -460,15 +460,17 @@ Purpose: replace coarse global completion with context-specific producers.
   and module names are not offered because Vela's syntax does not support them
   as items; module and source declaration completions stay in module-path,
   expression, and type contexts where they are syntactically meaningful.
-- [~] Add expression producers for locals, parameters, functions, methods,
+- [x] Add expression producers for locals, parameters, functions, methods,
   variants, builtin values, stdlib functions, and schema facts that are legal
   in expression position.
   Module-path expression completion now includes source and schema enum
   variants for `Enum::Va` style constructors. Expression producer separation
   now has focused local-binding, builtin-value, source const/function/type,
   schema type/function, stdlib function, source module, and expression
-  coordinator producer modules; finer method and variant producer families
-  remain open.
+  coordinator producer modules. Method completion remains receiver-owned in
+  member contexts, while enum variants remain qualified module-path, pattern,
+  record/map-key, and constructor-context candidates instead of leaking as
+  unqualified expression globals.
 - [x] Add type producers for builtin types, script types, schema types,
   modules, traits, and type aliases when those exist.
   Type-position completion now offers builtin type hints, source and schema
