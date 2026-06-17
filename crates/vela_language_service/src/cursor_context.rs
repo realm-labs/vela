@@ -1,5 +1,6 @@
 use vela_syntax::ast::{
-    Block, ElseBranch, Expr, ExprKind, FunctionItem, ItemKind, SourceFile, Stmt, StmtKind,
+    Block, ElseBranch, EnumVariantFields, Expr, ExprKind, FunctionItem, ItemKind, SourceFile, Stmt,
+    StmtKind, StructField,
 };
 
 use vela_common::Span;
@@ -80,6 +81,10 @@ pub fn cursor_context_at(
 
     if is_lambda_parameter_context(text, offset) {
         return context(CursorContextKind::LambdaParameter, prefix_start, prefix);
+    }
+
+    if parsed.is_some_and(|source| is_record_type_field_context(text, source, prefix_start)) {
+        return context(CursorContextKind::RecordTypeField, prefix_start, prefix);
     }
 
     if is_type_context(text, prefix_start) {
@@ -252,6 +257,44 @@ fn is_record_expression_field_context(source: &SourceFile, offset: usize) -> boo
         ItemKind::Function(item) => record_field_for_function(item, offset),
         _ => false,
     })
+}
+
+fn is_record_type_field_context(text: &str, source: &SourceFile, offset: usize) -> bool {
+    let Some(offset) = u32::try_from(offset).ok() else {
+        return false;
+    };
+    source.items.iter().any(|item| match &item.kind {
+        ItemKind::Struct(item) => item
+            .fields
+            .iter()
+            .any(|field| field_name_contains(text, field, offset)),
+        ItemKind::Enum(item) => item.variants.iter().any(|variant| match &variant.fields {
+            EnumVariantFields::Record(fields) => fields
+                .iter()
+                .any(|field| field_name_contains(text, field, offset)),
+            EnumVariantFields::Unit | EnumVariantFields::Tuple(_) => false,
+        }),
+        _ => false,
+    })
+}
+
+fn field_name_contains(text: &str, field: &StructField, offset: u32) -> bool {
+    let Some(range) = field_name_range(text, field) else {
+        return false;
+    };
+    let Some(offset) = usize::try_from(offset).ok() else {
+        return false;
+    };
+    range.start <= offset && offset <= range.end
+}
+
+fn field_name_range(text: &str, field: &StructField) -> Option<TextRange> {
+    let start = usize::try_from(field.span.start).ok()?;
+    let end = usize::try_from(field.span.end).ok()?;
+    let field_text = text.get(start..end)?;
+    let name_start = field_text.find(&field.name)?;
+    let start = start + name_start;
+    Some(TextRange::new(start, start + field.name.len()))
 }
 
 fn record_field_for_function(function: &FunctionItem, offset: u32) -> bool {
@@ -905,6 +948,27 @@ mod tests {
         let cursor = classify(text, "xp");
 
         assert_eq!(cursor.kind(), CursorContextKind::RecordExpressionField);
+    }
+
+    #[test]
+    fn cursor_context_classifies_record_type_fields() {
+        let cursor = classify("pub struct Player { le }", "le");
+
+        assert_eq!(cursor.kind(), CursorContextKind::RecordTypeField);
+    }
+
+    #[test]
+    fn cursor_context_classifies_enum_record_variant_fields() {
+        let cursor = classify("pub enum Quest { Reward { am } }", "am");
+
+        assert_eq!(cursor.kind(), CursorContextKind::RecordTypeField);
+    }
+
+    #[test]
+    fn cursor_context_keeps_record_type_field_type_hints_as_type_context() {
+        let cursor = classify("pub struct Player { level: Score }", "Score");
+
+        assert_eq!(cursor.kind(), CursorContextKind::Type);
     }
 
     #[test]

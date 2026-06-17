@@ -283,9 +283,9 @@ Purpose: classify the cursor once and reuse it across features.
   and unknown/error recovery.
 - [~] Make cursor classification syntax-owned. Prefer parser/token structure
   and source spans over ad hoc substring checks.
-  Record-field, map-key, complete member-access receiver, and call-argument
-  callee contexts now use parsed expression spans; incomplete member access
-  keeps a text fallback for recovery.
+  Record expression fields, record type fields, map keys, complete
+  member-access receivers, and call-argument callee contexts now use parsed
+  spans; incomplete member access keeps a text fallback for recovery.
 - [~] Include expected syntactic role, local scope, module scope, receiver
   expression facts, path qualifier facts, callable facts, and replacement
   range where available.
