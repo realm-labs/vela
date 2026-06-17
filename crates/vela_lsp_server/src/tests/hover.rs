@@ -496,6 +496,7 @@ fn lsp_hover_reports_schema_trait_method_fact() {
         .expect("hover contents should be markdown");
     assert!(value.contains("Rewardable.preview"), "{value}");
     assert!(value.contains("_method_: Function(i64) -> bool"), "{value}");
+    assert!(value.contains("Preview a reward."), "{value}");
     fs::remove_dir_all(&root).expect("temporary workspace should be removable");
 }
 
@@ -559,6 +560,7 @@ fn lsp_hover_reports_schema_enum_variant_fact() {
         .expect("hover contents should be markdown");
     assert!(value.contains("QuestState::Active"), "{value}");
     assert!(value.contains("_variant_: QuestState::Active"), "{value}");
+    assert!(value.contains("Active quest state."), "{value}");
     fs::remove_dir_all(&root).expect("temporary workspace should be removable");
 }
 
@@ -590,7 +592,8 @@ fn schema_with_rewardable_trait_method() -> &'static str {
             "traits": [
                 {
                     "name": "Rewardable",
-                    "fact": { "kind": "trait", "name": "Rewardable" }
+                    "fact": { "kind": "trait", "name": "Rewardable" },
+                    "docs": "Rewardable host trait."
                 }
             ],
             "traitMethods": [
@@ -601,7 +604,8 @@ fn schema_with_rewardable_trait_method() -> &'static str {
                         "kind": "function",
                         "params": [{ "kind": "primitive", "name": "i64" }],
                         "returns": { "kind": "primitive", "name": "bool" }
-                    }
+                    },
+                    "docs": "Preview a reward."
                 }
             ]
         }
@@ -622,7 +626,8 @@ fn schema_with_quest_state_variant() -> &'static str {
                 {
                     "owner": "QuestState",
                     "name": "Active",
-                    "fact": { "kind": "enum", "name": "QuestState", "variant": "Active" }
+                    "fact": { "kind": "enum", "name": "QuestState", "variant": "Active" },
+                    "docs": "Active quest state."
                 }
             ]
         }

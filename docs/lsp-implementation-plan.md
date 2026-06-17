@@ -338,6 +338,8 @@ Purpose: provide host-aware editor tooling without running host code.
   effect, permission, type-hint, stable-ID, and source-span metadata.
   - Schema artifacts now accept optional `sourceSpan` metadata for exported
     type, trait, member, variant, method, trait-method, and function facts.
+  - Schema artifacts now round-trip optional docs metadata for type, trait,
+    field, variant, method, trait-method, and function facts.
 - [x] Load schema artifacts into language-service schema facts.
 - [x] Validate schema version/hash compatibility.
 - [~] Report missing, stale, or invalid schema diagnostics.
@@ -348,6 +350,7 @@ Tests:
 - [x] `schema_export_round_trips_registry_facts`
 - [x] `schema_hash_compatibility_accepts_matching_facts`
 - [x] `schema_hash_compatibility_rejects_stale_facts`
+- [x] `schema_artifact_accepts_docs_metadata`
 - [x] `invalid_schema_reports_diagnostic`
 - [x] `invalid_schema_metadata_reports_diagnostic`
 - [x] `schema_watch_publishes_invalid_schema_diagnostic`
@@ -457,6 +460,9 @@ Purpose: expose semantic facts and navigation.
     and missing-schema type-hint degradation.
 - [~] Include docs, type facts, effects, permissions, origins, and source spans
   where known.
+  - Schema-backed hover now surfaces docs copied through the static schema
+    artifact for types, fields, variants, methods, trait methods, and
+    functions.
 - [x] Implement go to definition for local bindings.
 - [x] Implement go to definition for imported module declarations.
 - [~] Implement go to definition for schema items with source spans.
@@ -480,6 +486,7 @@ Tests:
 - [x] `hover_degrades_to_any_without_schema`
 - [x] `hover_reports_effects_and_permissions`
 - [x] `hover_reports_schema_trait_method_fact`
+- [x] `hover_reports_schema_type_field_and_function_docs`
 - [x] `hover_reports_schema_enum_variant_fact`
 - [x] `hover_reports_source_struct_field_fact`
 - [x] `hover_reports_source_method_fact`

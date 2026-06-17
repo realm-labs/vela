@@ -31,7 +31,7 @@ pub(super) fn member_hover(
             label: format!("{owner}.{member}"),
             kind: HoverKind::Field,
             detail,
-            docs: None,
+            docs: schema.field_docs(&owner, member).map(str::to_owned),
         });
     }
     method_fact(schema, &owner, member).map(|fact| Hover {
@@ -39,7 +39,7 @@ pub(super) fn member_hover(
         label: format!("{owner}.{member}"),
         kind: HoverKind::Method,
         detail: method_detail(schema, &owner, member, fact),
-        docs: None,
+        docs: method_docs(schema, &owner, member).map(str::to_owned),
     })
 }
 
@@ -54,7 +54,7 @@ pub(super) fn symbol_hover(
             label: name.to_owned(),
             kind: HoverKind::Type,
             detail: fact.display_name(),
-            docs: None,
+            docs: schema.type_docs(name).map(str::to_owned),
         });
     }
     if let Some(fact) = schema.trait_fact(name) {
@@ -63,7 +63,7 @@ pub(super) fn symbol_hover(
             label: name.to_owned(),
             kind: HoverKind::Type,
             detail: fact.display_name(),
-            docs: None,
+            docs: schema.trait_docs(name).map(str::to_owned),
         });
     }
     schema
@@ -81,7 +81,7 @@ pub(super) fn symbol_hover(
             label: function.name.clone(),
             kind: HoverKind::Function,
             detail: function_detail(schema, &function.name, &function.fact),
-            docs: None,
+            docs: schema.function_docs(&function.name).map(str::to_owned),
         })
         .or_else(|| qualified_variant_hover(schema, name, range))
         .or_else(|| unique_variant_hover(schema, name, range))
@@ -98,7 +98,7 @@ fn qualified_variant_hover(
         label: name.to_owned(),
         kind: HoverKind::Variant,
         detail: fact.display_name(),
-        docs: None,
+        docs: schema.variant_docs(owner, variant).map(str::to_owned),
     })
 }
 
@@ -116,7 +116,9 @@ fn unique_variant_hover(
             label,
             kind: HoverKind::Variant,
             detail: variant.fact.display_name(),
-            docs: None,
+            docs: schema
+                .variant_docs(&variant.owner, &variant.name)
+                .map(str::to_owned),
         }
     })
 }
@@ -125,6 +127,12 @@ fn method_fact<'a>(schema: &'a RegistryFacts, owner: &str, method: &str) -> Opti
     schema
         .method_fact(owner, method)
         .or_else(|| schema.trait_method_fact(owner, method))
+}
+
+fn method_docs<'a>(schema: &'a RegistryFacts, owner: &str, method: &str) -> Option<&'a str> {
+    schema
+        .method_docs(owner, method)
+        .or_else(|| schema.trait_method_docs(owner, method))
 }
 
 fn function_detail(schema: &RegistryFacts, name: &str, fact: &TypeFact) -> String {

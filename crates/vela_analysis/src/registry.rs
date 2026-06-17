@@ -243,13 +243,20 @@ impl RegistryEffectFact {
 #[derive(Clone, Debug, Default, Eq, PartialEq)]
 pub struct RegistryFacts {
     types: BTreeMap<String, TypeFact>,
+    type_docs: BTreeMap<String, String>,
     traits: BTreeMap<String, TypeFact>,
+    trait_docs: BTreeMap<String, String>,
     fields: BTreeMap<(String, String), TypeFact>,
+    field_docs: BTreeMap<(String, String), String>,
     field_access: BTreeMap<(String, String), RegistryFieldAccessFact>,
     variants: BTreeMap<(String, String), TypeFact>,
+    variant_docs: BTreeMap<(String, String), String>,
     methods: BTreeMap<(String, String), TypeFact>,
+    method_docs: BTreeMap<(String, String), String>,
     trait_methods: BTreeMap<(String, String), TypeFact>,
+    trait_method_docs: BTreeMap<(String, String), String>,
     functions: BTreeMap<String, TypeFact>,
+    function_docs: BTreeMap<String, String>,
     index_capabilities: BTreeMap<String, RegistryIndexCapabilityFact>,
     method_effects: BTreeMap<(String, String), RegistryEffectFact>,
     method_access: BTreeMap<(String, String), RegistryMethodAccessFact>,
@@ -265,6 +272,9 @@ impl RegistryFacts {
         for desc in registry.types() {
             let type_fact = type_desc_fact(desc);
             facts.types.insert(desc.key.name.clone(), type_fact.clone());
+            if let Some(docs) = &desc.docs {
+                facts.type_docs.insert(desc.key.name.clone(), docs.clone());
+            }
             if let Some(capability) = &desc.index_capability {
                 facts.index_capabilities.insert(
                     desc.key.name.clone(),
@@ -281,6 +291,9 @@ impl RegistryFacts {
                         .as_deref()
                         .map_or(TypeFact::Unknown, |hint| registry_hint_fact(registry, hint)),
                 );
+                if let Some(docs) = &field.docs {
+                    facts.field_docs.insert(key.clone(), docs.clone());
+                }
                 facts.field_access.insert(
                     key,
                     RegistryFieldAccessFact::new(&desc.key.name, &field.name, field),
@@ -292,6 +305,9 @@ impl RegistryFacts {
                 facts
                     .methods
                     .insert(key.clone(), method_desc_fact(registry, method));
+                if let Some(docs) = &method.docs {
+                    facts.method_docs.insert(key.clone(), docs.clone());
+                }
                 facts
                     .method_effects
                     .insert(key.clone(), method_effect_fact(&method.effects));
@@ -306,13 +322,23 @@ impl RegistryFacts {
                     .traits
                     .entry(trait_desc.name.clone())
                     .or_insert_with(|| TypeFact::trait_type(&trait_desc.name));
+                if let Some(docs) = &trait_desc.docs {
+                    facts
+                        .trait_docs
+                        .entry(trait_desc.name.clone())
+                        .or_insert_with(|| docs.clone());
+                }
             }
 
             for variant in &desc.variants {
+                let variant_key = (desc.key.name.clone(), variant.name.clone());
                 facts.variants.insert(
-                    (desc.key.name.clone(), variant.name.clone()),
+                    variant_key.clone(),
                     TypeFact::enum_type(&desc.key.name, Some(&variant.name)),
                 );
+                if let Some(docs) = &variant.docs {
+                    facts.variant_docs.insert(variant_key, docs.clone());
+                }
                 for field in &variant.fields {
                     let owner = format!("{}::{}", desc.key.name, variant.name);
                     let key = (owner.clone(), field.name.clone());
@@ -323,6 +349,9 @@ impl RegistryFacts {
                             .as_deref()
                             .map_or(TypeFact::Unknown, |hint| registry_hint_fact(registry, hint)),
                     );
+                    if let Some(docs) = &field.docs {
+                        facts.field_docs.insert(key.clone(), docs.clone());
+                    }
                     facts
                         .field_access
                         .insert(key, RegistryFieldAccessFact::new(owner, &field.name, field));
@@ -335,6 +364,11 @@ impl RegistryFacts {
                 function.name.clone(),
                 function_desc_fact(registry, function),
             );
+            if let Some(docs) = &function.docs {
+                facts
+                    .function_docs
+                    .insert(function.name.clone(), docs.clone());
+            }
             facts.function_effects.insert(
                 function.name.clone(),
                 function_effect_fact(&function.effects),
@@ -346,15 +380,23 @@ impl RegistryFacts {
                 .traits
                 .entry(trait_desc.name.clone())
                 .or_insert_with(|| TypeFact::trait_type(&trait_desc.name));
+            if let Some(docs) = &trait_desc.docs {
+                facts
+                    .trait_docs
+                    .entry(trait_desc.name.clone())
+                    .or_insert_with(|| docs.clone());
+            }
             for method in &trait_desc.methods {
-                facts.trait_methods.insert(
-                    (trait_desc.name.clone(), method.name.clone()),
-                    trait_method_desc_fact(registry, method),
-                );
-                facts.trait_method_effects.insert(
-                    (trait_desc.name.clone(), method.name.clone()),
-                    RegistryEffectFact::pure(),
-                );
+                let key = (trait_desc.name.clone(), method.name.clone());
+                facts
+                    .trait_methods
+                    .insert(key.clone(), trait_method_desc_fact(registry, method));
+                facts
+                    .trait_method_effects
+                    .insert(key.clone(), RegistryEffectFact::pure());
+                if let Some(docs) = &method.docs {
+                    facts.trait_method_docs.insert(key, docs.clone());
+                }
             }
         }
 
@@ -373,6 +415,11 @@ impl RegistryFacts {
     }
 
     #[must_use]
+    pub fn type_docs(&self, name: &str) -> Option<&str> {
+        self.type_docs.get(name).map(String::as_str)
+    }
+
+    #[must_use]
     pub fn trait_fact(&self, name: &str) -> Option<&TypeFact> {
         self.traits.get(name)
     }
@@ -382,8 +429,20 @@ impl RegistryFacts {
     }
 
     #[must_use]
+    pub fn trait_docs(&self, name: &str) -> Option<&str> {
+        self.trait_docs.get(name).map(String::as_str)
+    }
+
+    #[must_use]
     pub fn field_fact(&self, owner: &str, field: &str) -> Option<&TypeFact> {
         self.fields.get(&(owner.to_owned(), field.to_owned()))
+    }
+
+    #[must_use]
+    pub fn field_docs(&self, owner: &str, field: &str) -> Option<&str> {
+        self.field_docs
+            .get(&(owner.to_owned(), field.to_owned()))
+            .map(String::as_str)
     }
 
     #[must_use]
@@ -420,6 +479,13 @@ impl RegistryFacts {
             .collect()
     }
 
+    #[must_use]
+    pub fn variant_docs(&self, owner: &str, variant: &str) -> Option<&str> {
+        self.variant_docs
+            .get(&(owner.to_owned(), variant.to_owned()))
+            .map(String::as_str)
+    }
+
     pub fn variants(&self) -> impl Iterator<Item = RegistryMemberFact> + '_ {
         self.variants
             .iter()
@@ -429,6 +495,13 @@ impl RegistryFacts {
     #[must_use]
     pub fn method_fact(&self, owner: &str, method: &str) -> Option<&TypeFact> {
         self.methods.get(&(owner.to_owned(), method.to_owned()))
+    }
+
+    #[must_use]
+    pub fn method_docs(&self, owner: &str, method: &str) -> Option<&str> {
+        self.method_docs
+            .get(&(owner.to_owned(), method.to_owned()))
+            .map(String::as_str)
     }
 
     #[must_use]
@@ -460,6 +533,13 @@ impl RegistryFacts {
     }
 
     #[must_use]
+    pub fn trait_method_docs(&self, trait_name: &str, method: &str) -> Option<&str> {
+        self.trait_method_docs
+            .get(&(trait_name.to_owned(), method.to_owned()))
+            .map(String::as_str)
+    }
+
+    #[must_use]
     pub fn trait_method_effect_fact(
         &self,
         trait_name: &str,
@@ -478,6 +558,11 @@ impl RegistryFacts {
     #[must_use]
     pub fn function_fact(&self, name: &str) -> Option<&TypeFact> {
         self.functions.get(name)
+    }
+
+    #[must_use]
+    pub fn function_docs(&self, name: &str) -> Option<&str> {
+        self.function_docs.get(name).map(String::as_str)
     }
 
     #[must_use]
@@ -537,8 +622,16 @@ impl RegistryFacts {
         self.types.insert(name.into(), fact);
     }
 
+    pub fn insert_type_docs(&mut self, name: impl Into<String>, docs: impl Into<String>) {
+        self.type_docs.insert(name.into(), docs.into());
+    }
+
     pub fn insert_trait(&mut self, name: impl Into<String>, fact: TypeFact) {
         self.traits.insert(name.into(), fact);
+    }
+
+    pub fn insert_trait_docs(&mut self, name: impl Into<String>, docs: impl Into<String>) {
+        self.trait_docs.insert(name.into(), docs.into());
     }
 
     pub fn insert_field(
@@ -548,6 +641,16 @@ impl RegistryFacts {
         fact: TypeFact,
     ) {
         self.fields.insert((owner.into(), name.into()), fact);
+    }
+
+    pub fn insert_field_docs(
+        &mut self,
+        owner: impl Into<String>,
+        name: impl Into<String>,
+        docs: impl Into<String>,
+    ) {
+        self.field_docs
+            .insert((owner.into(), name.into()), docs.into());
     }
 
     pub fn insert_field_access(&mut self, access: RegistryFieldAccessFact) {
@@ -564,6 +667,16 @@ impl RegistryFacts {
         self.variants.insert((owner.into(), name.into()), fact);
     }
 
+    pub fn insert_variant_docs(
+        &mut self,
+        owner: impl Into<String>,
+        name: impl Into<String>,
+        docs: impl Into<String>,
+    ) {
+        self.variant_docs
+            .insert((owner.into(), name.into()), docs.into());
+    }
+
     pub fn insert_method(
         &mut self,
         owner: impl Into<String>,
@@ -571,6 +684,16 @@ impl RegistryFacts {
         fact: TypeFact,
     ) {
         self.methods.insert((owner.into(), name.into()), fact);
+    }
+
+    pub fn insert_method_docs(
+        &mut self,
+        owner: impl Into<String>,
+        name: impl Into<String>,
+        docs: impl Into<String>,
+    ) {
+        self.method_docs
+            .insert((owner.into(), name.into()), docs.into());
     }
 
     pub fn insert_method_effect(
@@ -597,6 +720,16 @@ impl RegistryFacts {
         self.trait_methods.insert((owner.into(), name.into()), fact);
     }
 
+    pub fn insert_trait_method_docs(
+        &mut self,
+        owner: impl Into<String>,
+        name: impl Into<String>,
+        docs: impl Into<String>,
+    ) {
+        self.trait_method_docs
+            .insert((owner.into(), name.into()), docs.into());
+    }
+
     pub fn insert_trait_method_effect(
         &mut self,
         owner: impl Into<String>,
@@ -609,6 +742,10 @@ impl RegistryFacts {
 
     pub fn insert_function(&mut self, name: impl Into<String>, fact: TypeFact) {
         self.functions.insert(name.into(), fact);
+    }
+
+    pub fn insert_function_docs(&mut self, name: impl Into<String>, docs: impl Into<String>) {
+        self.function_docs.insert(name.into(), docs.into());
     }
 
     pub fn insert_function_effect(&mut self, name: impl Into<String>, effect: RegistryEffectFact) {
@@ -776,14 +913,16 @@ fn collect_trait_methods(registry: &TypeRegistry, facts: &mut RegistryFacts) {
     for type_desc in registry.types() {
         for trait_desc in &type_desc.traits {
             for method in &trait_desc.methods {
-                facts.trait_methods.insert(
-                    (trait_desc.name.clone(), method.name.clone()),
-                    trait_method_desc_fact(registry, method),
-                );
-                facts.trait_method_effects.insert(
-                    (trait_desc.name.clone(), method.name.clone()),
-                    RegistryEffectFact::pure(),
-                );
+                let key = (trait_desc.name.clone(), method.name.clone());
+                facts
+                    .trait_methods
+                    .insert(key.clone(), trait_method_desc_fact(registry, method));
+                facts
+                    .trait_method_effects
+                    .insert(key.clone(), RegistryEffectFact::pure());
+                if let Some(docs) = &method.docs {
+                    facts.trait_method_docs.insert(key, docs.clone());
+                }
             }
         }
     }
@@ -806,21 +945,30 @@ mod tests {
     fn registry_facts_cover_types_fields_methods_and_functions() {
         let player = TypeDesc::new(TypeKey::new(TypeId::new(1), "Player"))
             .host_type(HostTypeId::new(1))
-            .field(FieldDesc::new(FieldId::new(1), "level").type_hint("i64"))
+            .docs("Player host object.")
+            .field(
+                FieldDesc::new(FieldId::new(1), "level")
+                    .type_hint("i64")
+                    .docs("Current player level."),
+            )
             .field(FieldDesc::new(FieldId::new(2), "inventory").type_hint("Inventory"))
             .method(
                 MethodDesc::new(HostMethodId::new(1), "grant_exp")
                     .param(MethodParamDesc::new("amount").type_hint("i64"))
                     .return_type("bool")
+                    .docs("Grant player experience.")
                     .effects(MethodEffectSet::host_write())
                     .access(MethodAccess::new().require_permission("player.reward")),
             )
             .trait_impl(
-                TraitDesc::new("Damageable").method(
-                    TraitMethodDesc::new(MethodId::new(1), "damage")
-                        .param(MethodParamDesc::new("amount").type_hint("i64"))
-                        .return_type("bool"),
-                ),
+                TraitDesc::new("Damageable")
+                    .docs("Can receive damage.")
+                    .method(
+                        TraitMethodDesc::new(MethodId::new(1), "damage")
+                            .param(MethodParamDesc::new("amount").type_hint("i64"))
+                            .return_type("bool")
+                            .docs("Apply damage."),
+                    ),
             );
         let inventory = TypeDesc::new(TypeKey::new(TypeId::new(2), "Inventory"))
             .kind(TypeKind::ScriptStruct)
@@ -829,7 +977,12 @@ mod tests {
             .kind(TypeKind::ScriptEnum)
             .variant(
                 VariantDesc::new(VariantId::new(1), "Active")
-                    .field(FieldDesc::new(FieldId::new(1), "quest_id").type_hint("String")),
+                    .docs("Active quest state.")
+                    .field(
+                        FieldDesc::new(FieldId::new(1), "quest_id")
+                            .type_hint("String")
+                            .docs("Active quest id."),
+                    ),
             );
 
         let mut registry = TypeRegistry::new();
@@ -840,7 +993,8 @@ mod tests {
             FunctionDesc::new(FunctionId::new(1), "game::reward::grant")
                 .param(FunctionParamDesc::new("player").type_hint("Player"))
                 .param(FunctionParamDesc::new("amount").type_hint("i64"))
-                .return_type("bool"),
+                .return_type("bool")
+                .docs("Grant reward from a script module."),
         );
 
         let facts = RegistryFacts::from_registry(&registry);
@@ -892,6 +1046,32 @@ mod tests {
         assert_eq!(
             facts.trait_method_fact("Damageable", "damage"),
             Some(&TypeFact::function(vec![TypeFact::I64], TypeFact::BOOL))
+        );
+        assert_eq!(facts.type_docs("Player"), Some("Player host object."));
+        assert_eq!(
+            facts.field_docs("Player", "level"),
+            Some("Current player level.")
+        );
+        assert_eq!(
+            facts.method_docs("Player", "grant_exp"),
+            Some("Grant player experience.")
+        );
+        assert_eq!(facts.trait_docs("Damageable"), Some("Can receive damage."));
+        assert_eq!(
+            facts.trait_method_docs("Damageable", "damage"),
+            Some("Apply damage.")
+        );
+        assert_eq!(
+            facts.variant_docs("QuestState", "Active"),
+            Some("Active quest state.")
+        );
+        assert_eq!(
+            facts.field_docs("QuestState::Active", "quest_id"),
+            Some("Active quest id.")
+        );
+        assert_eq!(
+            facts.function_docs("game::reward::grant"),
+            Some("Grant reward from a script module.")
         );
     }
 

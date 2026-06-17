@@ -257,19 +257,37 @@ impl SchemaArtifactFacts {
         Self {
             types: facts
                 .types()
-                .map(|(name, fact)| SchemaNamedFact::new(name, fact))
+                .map(|(name, fact)| SchemaNamedFact::new(name, fact, facts.type_docs(name)))
                 .collect(),
             traits: facts
                 .traits()
-                .map(|(name, fact)| SchemaNamedFact::new(name, fact))
+                .map(|(name, fact)| SchemaNamedFact::new(name, fact, facts.trait_docs(name)))
                 .collect(),
-            fields: facts.fields().map(SchemaMemberFact::from).collect(),
+            fields: facts
+                .fields()
+                .map(|member| {
+                    let docs = facts.field_docs(&member.owner, &member.name);
+                    SchemaMemberFact::from_registry_member(member, docs)
+                })
+                .collect(),
             field_access: facts
                 .field_accesses()
                 .map(SchemaFieldAccessFact::from)
                 .collect(),
-            variants: facts.variants().map(SchemaMemberFact::from).collect(),
-            methods: facts.methods().map(SchemaMemberFact::from).collect(),
+            variants: facts
+                .variants()
+                .map(|member| {
+                    let docs = facts.variant_docs(&member.owner, &member.name);
+                    SchemaMemberFact::from_registry_member(member, docs)
+                })
+                .collect(),
+            methods: facts
+                .methods()
+                .map(|member| {
+                    let docs = facts.method_docs(&member.owner, &member.name);
+                    SchemaMemberFact::from_registry_member(member, docs)
+                })
+                .collect(),
             method_effects: facts
                 .method_effects()
                 .map(SchemaMemberEffectFact::from)
@@ -278,12 +296,24 @@ impl SchemaArtifactFacts {
                 .method_accesses()
                 .map(SchemaMethodAccessFact::from)
                 .collect(),
-            trait_methods: facts.trait_methods().map(SchemaMemberFact::from).collect(),
+            trait_methods: facts
+                .trait_methods()
+                .map(|member| {
+                    let docs = facts.trait_method_docs(&member.owner, &member.name);
+                    SchemaMemberFact::from_registry_member(member, docs)
+                })
+                .collect(),
             trait_method_effects: facts
                 .trait_method_effects()
                 .map(SchemaMemberEffectFact::from)
                 .collect(),
-            functions: facts.functions().map(SchemaFunctionFact::from).collect(),
+            functions: facts
+                .functions()
+                .map(|function| {
+                    let docs = facts.function_docs(&function.name);
+                    SchemaFunctionFact::from_registry_function(function, docs)
+                })
+                .collect(),
             function_effects: facts
                 .function_effects()
                 .map(|(name, effect)| SchemaFunctionEffectFact::new(name, effect))
@@ -299,9 +329,15 @@ impl SchemaArtifactFacts {
         let mut facts = RegistryFacts::default();
         for entry in &self.types {
             facts.insert_type(entry.name.clone(), entry.fact.to_type_fact());
+            if let Some(docs) = &entry.docs {
+                facts.insert_type_docs(entry.name.clone(), docs.clone());
+            }
         }
         for entry in &self.traits {
             facts.insert_trait(entry.name.clone(), entry.fact.to_type_fact());
+            if let Some(docs) = &entry.docs {
+                facts.insert_trait_docs(entry.name.clone(), docs.clone());
+            }
         }
         for entry in &self.fields {
             facts.insert_field(
@@ -309,6 +345,9 @@ impl SchemaArtifactFacts {
                 entry.name.clone(),
                 entry.fact.to_type_fact(),
             );
+            if let Some(docs) = &entry.docs {
+                facts.insert_field_docs(entry.owner.clone(), entry.name.clone(), docs.clone());
+            }
         }
         for access in &self.field_access {
             facts.insert_field_access(access.to_registry_fact());
@@ -319,6 +358,9 @@ impl SchemaArtifactFacts {
                 entry.name.clone(),
                 entry.fact.to_type_fact(),
             );
+            if let Some(docs) = &entry.docs {
+                facts.insert_variant_docs(entry.owner.clone(), entry.name.clone(), docs.clone());
+            }
         }
         for entry in &self.methods {
             facts.insert_method(
@@ -326,6 +368,9 @@ impl SchemaArtifactFacts {
                 entry.name.clone(),
                 entry.fact.to_type_fact(),
             );
+            if let Some(docs) = &entry.docs {
+                facts.insert_method_docs(entry.owner.clone(), entry.name.clone(), docs.clone());
+            }
         }
         for effect in &self.method_effects {
             facts.insert_method_effect(
@@ -343,6 +388,13 @@ impl SchemaArtifactFacts {
                 entry.name.clone(),
                 entry.fact.to_type_fact(),
             );
+            if let Some(docs) = &entry.docs {
+                facts.insert_trait_method_docs(
+                    entry.owner.clone(),
+                    entry.name.clone(),
+                    docs.clone(),
+                );
+            }
         }
         for effect in &self.trait_method_effects {
             facts.insert_trait_method_effect(
@@ -353,6 +405,9 @@ impl SchemaArtifactFacts {
         }
         for entry in &self.functions {
             facts.insert_function(entry.name.clone(), entry.fact.to_type_fact());
+            if let Some(docs) = &entry.docs {
+                facts.insert_function_docs(entry.name.clone(), docs.clone());
+            }
         }
         for effect in &self.function_effects {
             facts.insert_function_effect(effect.name.clone(), effect.effect.to_registry_fact());
@@ -448,6 +503,8 @@ impl SchemaSourceSpan {
 struct SchemaNamedFact {
     name: String,
     fact: SchemaTypeFact,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    docs: Option<String>,
     #[serde(
         default,
         rename = "sourceSpan",
@@ -458,10 +515,11 @@ struct SchemaNamedFact {
 }
 
 impl SchemaNamedFact {
-    fn new(name: impl Into<String>, fact: &TypeFact) -> Self {
+    fn new(name: impl Into<String>, fact: &TypeFact, docs: Option<&str>) -> Self {
         Self {
             name: name.into(),
             fact: SchemaTypeFact::from_type_fact(fact),
+            docs: docs.map(str::to_owned),
             source_span: None,
         }
     }
@@ -472,6 +530,8 @@ struct SchemaMemberFact {
     owner: String,
     name: String,
     fact: SchemaTypeFact,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    docs: Option<String>,
     #[serde(
         default,
         rename = "sourceSpan",
@@ -481,12 +541,13 @@ struct SchemaMemberFact {
     source_span: Option<SchemaSourceSpan>,
 }
 
-impl From<RegistryMemberFact> for SchemaMemberFact {
-    fn from(value: RegistryMemberFact) -> Self {
+impl SchemaMemberFact {
+    fn from_registry_member(value: RegistryMemberFact, docs: Option<&str>) -> Self {
         Self {
             owner: value.owner,
             name: value.name,
             fact: SchemaTypeFact::from_type_fact(&value.fact),
+            docs: docs.map(str::to_owned),
             source_span: None,
         }
     }
@@ -496,6 +557,8 @@ impl From<RegistryMemberFact> for SchemaMemberFact {
 struct SchemaFunctionFact {
     name: String,
     fact: SchemaTypeFact,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    docs: Option<String>,
     #[serde(
         default,
         rename = "sourceSpan",
@@ -505,11 +568,12 @@ struct SchemaFunctionFact {
     source_span: Option<SchemaSourceSpan>,
 }
 
-impl From<RegistryFunctionFact> for SchemaFunctionFact {
-    fn from(value: RegistryFunctionFact) -> Self {
+impl SchemaFunctionFact {
+    fn from_registry_function(value: RegistryFunctionFact, docs: Option<&str>) -> Self {
         Self {
             name: value.name,
             fact: SchemaTypeFact::from_type_fact(&value.fact),
+            docs: docs.map(str::to_owned),
             source_span: None,
         }
     }
@@ -874,8 +938,11 @@ mod tests {
     fn sample_facts() -> RegistryFacts {
         let mut facts = RegistryFacts::default();
         facts.insert_type("Player", TypeFact::host("Player"));
+        facts.insert_type_docs("Player", "Player host object.");
         facts.insert_trait("Rewardable", TypeFact::trait_type("Rewardable"));
+        facts.insert_trait_docs("Rewardable", "Rewardable host trait.");
         facts.insert_field("Player", "level", TypeFact::I64);
+        facts.insert_field_docs("Player", "level", "Current player level.");
         facts.insert_field_access(RegistryFieldAccessFact {
             owner: "Player".to_owned(),
             name: "level".to_owned(),
@@ -890,6 +957,7 @@ mod tests {
             "grant_exp",
             TypeFact::function(vec![TypeFact::I64], TypeFact::BOOL),
         );
+        facts.insert_method_docs("Player", "grant_exp", "Grant player experience.");
         facts.insert_method_effect("Player", "grant_exp", RegistryEffectFact::host_write());
         facts.insert_method_access(RegistryMethodAccessFact {
             owner: "Player".to_owned(),
@@ -905,7 +973,20 @@ mod tests {
                 TypeFact::BOOL,
             ),
         );
+        facts.insert_function_docs("game::reward::grant", "Grant reward.");
         facts.insert_function_effect("game::reward::grant", RegistryEffectFact::host_write());
+        facts.insert_variant(
+            "QuestState",
+            "Active",
+            TypeFact::enum_type("QuestState", Some("Active")),
+        );
+        facts.insert_variant_docs("QuestState", "Active", "Active quest state.");
+        facts.insert_trait_method(
+            "Rewardable",
+            "preview",
+            TypeFact::function(vec![TypeFact::I64], TypeFact::BOOL),
+        );
+        facts.insert_trait_method_docs("Rewardable", "preview", "Preview reward.");
         facts.insert_index_capability(RegistryIndexCapabilityFact {
             owner: "Inventory".to_owned(),
             readable: true,
@@ -930,6 +1011,56 @@ mod tests {
         let round_tripped = parsed.to_registry_facts();
 
         assert_eq!(round_tripped, facts);
+    }
+
+    #[test]
+    fn schema_artifact_accepts_docs_metadata() {
+        let artifact = SchemaArtifact::from_json(
+            r#"{
+                "formatVersion": 1,
+                "facts": {
+                    "types": [
+                        {
+                            "name": "Player",
+                            "fact": { "kind": "host", "name": "Player" },
+                            "docs": "Player host object."
+                        }
+                    ],
+                    "fields": [
+                        {
+                            "owner": "Player",
+                            "name": "level",
+                            "fact": { "kind": "primitive", "name": "i64" },
+                            "docs": "Current player level."
+                        }
+                    ],
+                    "functions": [
+                        {
+                            "name": "game::reward::grant",
+                            "fact": {
+                                "kind": "function",
+                                "params": [{ "kind": "host", "name": "Player" }],
+                                "returns": { "kind": "primitive", "name": "bool" }
+                            },
+                            "docs": "Grant reward."
+                        }
+                    ]
+                }
+            }"#,
+        )
+        .expect("schema docs metadata should decode");
+
+        let facts = artifact.to_registry_facts();
+
+        assert_eq!(facts.type_docs("Player"), Some("Player host object."));
+        assert_eq!(
+            facts.field_docs("Player", "level"),
+            Some("Current player level.")
+        );
+        assert_eq!(
+            facts.function_docs("game::reward::grant"),
+            Some("Grant reward.")
+        );
     }
 
     #[test]

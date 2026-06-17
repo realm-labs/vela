@@ -147,6 +147,10 @@ JIT remain separate roadmap tracks.
 | M22 | Not started | Cranelift JIT follows interpreter/cache/debugger/conformance stability. |
 | M23 | Not started | Release hardening, public docs, validation gates, and performance targets. |
 
+M20.5 schema hover update: schema artifacts now carry optional docs metadata
+for exported facts, and schema-backed hovers surface docs for types, fields,
+variants, methods, trait methods, and functions.
+
 M20.5 Phase 15 update: parameter-name inlay hints now cover typed source and
 schema method calls in addition to script/schema function calls. The hint
 suppression path treats dynamic or unknown source and schema function/method

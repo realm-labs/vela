@@ -35,6 +35,7 @@ fn hover_reports_effects_and_permissions() {
         TypeFact::function(vec![TypeFact::I64], TypeFact::BOOL),
     );
     schema.insert_method_effect("Player", "grant", RegistryEffectFact::host_write());
+    schema.insert_method_docs("Player", "grant", "Grant player rewards.");
     schema.insert_method_access(vela_analysis::registry::RegistryMethodAccessFact {
         owner: "Player".to_owned(),
         name: "grant".to_owned(),
@@ -56,6 +57,7 @@ fn hover_reports_effects_and_permissions() {
     assert!(hover.detail().contains("Function(i64) -> bool"));
     assert!(hover.detail().contains("effects: writes_host"));
     assert!(hover.detail().contains("permissions: player.reward"));
+    assert_eq!(hover.docs(), Some("Grant player rewards."));
 }
 
 #[test]
@@ -69,6 +71,7 @@ fn hover_reports_schema_trait_method_fact() {
         "preview",
         TypeFact::function(vec![TypeFact::I64], TypeFact::BOOL),
     );
+    schema.insert_trait_method_docs("Rewardable", "preview", "Preview a reward.");
     let databases = databases_for(&document, text, schema);
 
     let hover = databases
@@ -81,6 +84,65 @@ fn hover_reports_schema_trait_method_fact() {
     assert_eq!(hover.kind(), HoverKind::Method);
     assert_eq!(hover.label(), "Rewardable.preview");
     assert!(hover.detail().contains("Function(i64) -> bool"));
+    assert_eq!(hover.docs(), Some("Preview a reward."));
+}
+
+#[test]
+fn hover_reports_schema_type_field_and_function_docs() {
+    let document = DocumentId::from("/workspace/scripts/game/main.vela");
+    let text = "pub fn main(player: Player) {\n    player.level\n    grant(player)\n}";
+    let mut schema = RegistryFacts::default();
+    schema.insert_type("Player", TypeFact::host("Player"));
+    schema.insert_type_docs("Player", "Player host object.");
+    schema.insert_field("Player", "level", TypeFact::I64);
+    schema.insert_field_docs("Player", "level", "Current player level.");
+    schema.insert_function(
+        "grant",
+        TypeFact::function(vec![TypeFact::host("Player")], TypeFact::BOOL),
+    );
+    schema.insert_function_docs("grant", "Grant a player reward.");
+    let databases = databases_for(&document, text, schema);
+
+    let type_hover = databases
+        .hover(
+            &document,
+            Position::new(0, text.find("Player").expect("type hint")),
+        )
+        .expect("hover should resolve schema type docs");
+    assert_eq!(type_hover.kind(), HoverKind::Type);
+    assert_eq!(type_hover.docs(), Some("Player host object."));
+
+    let field_hover = databases
+        .hover(
+            &document,
+            Position::new(
+                1,
+                text.lines()
+                    .nth(1)
+                    .expect("field line")
+                    .find("level")
+                    .expect("field name"),
+            ),
+        )
+        .expect("hover should resolve schema field docs");
+    assert_eq!(field_hover.kind(), HoverKind::Field);
+    assert_eq!(field_hover.docs(), Some("Current player level."));
+
+    let function_hover = databases
+        .hover(
+            &document,
+            Position::new(
+                2,
+                text.lines()
+                    .nth(2)
+                    .expect("function line")
+                    .find("grant")
+                    .expect("function name"),
+            ),
+        )
+        .expect("hover should resolve schema function docs");
+    assert_eq!(function_hover.kind(), HoverKind::Function);
+    assert_eq!(function_hover.docs(), Some("Grant a player reward."));
 }
 
 #[test]
@@ -341,6 +403,7 @@ fn hover_reports_schema_enum_variant_fact() {
         "Active",
         TypeFact::enum_type("QuestState", Some("Active")),
     );
+    schema.insert_variant_docs("QuestState", "Active", "Active quest state.");
     let databases = databases_for(&document, text, schema);
 
     let hover = databases
@@ -353,6 +416,7 @@ fn hover_reports_schema_enum_variant_fact() {
     assert_eq!(hover.kind(), HoverKind::Variant);
     assert_eq!(hover.label(), "QuestState::Active");
     assert_eq!(hover.detail(), "QuestState::Active");
+    assert_eq!(hover.docs(), Some("Active quest state."));
 }
 
 fn databases_for(
