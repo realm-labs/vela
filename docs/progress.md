@@ -210,13 +210,13 @@ M20.5 Phase 8 update: hover now reports stdlib global function facts,
 typed stdlib receiver-method facts, and schema-backed trait receiver method
 facts through both `vela_language_service` and `textDocument/hover` fixtures.
 Source-owned struct field declarations/member uses, source-owned method
-declarations/typed receiver calls, and source-owned enum variant
-declarations/constructor uses now report facts through the same hover path,
-including docs where the HIR metadata carries them. `vela_language_service`
-now exposes explicit declaration and type-definition navigation queries, and
-`vela_lsp_server` advertises and serves `textDocument/declaration` plus
-`textDocument/typeDefinition` using the same source/schema-backed spans as
-go-to-definition.
+declarations plus typed record and trait receiver calls, and source-owned enum
+variant declarations/constructor uses now report facts through the same hover
+path, including docs where the HIR metadata carries them.
+`vela_language_service` now exposes explicit declaration and type-definition
+navigation queries, and `vela_lsp_server` advertises and serves
+`textDocument/declaration` plus `textDocument/typeDefinition` using the same
+source/schema-backed spans as go-to-definition.
 
 M20.5 Phase 16 update: clients that support dynamic watched-file registration
 now receive a `client/registerCapability` request for configured `.vela`

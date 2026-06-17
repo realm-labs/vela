@@ -450,10 +450,10 @@ Purpose: expose semantic facts and navigation.
 - [~] Hover locals, parameters, captures, declarations, modules, functions,
   methods, fields, variants, traits, and type hints.
   - Initial hover support now covers script parameters/declarations,
-    source-owned struct fields, source-owned method declarations and typed
-    receiver calls, source-owned enum variants, schema-backed host members and
-    trait receiver methods, stdlib functions, stdlib receiver methods, and
-    missing-schema type-hint degradation.
+    source-owned struct fields, source-owned method declarations plus typed
+    record and trait receiver calls, source-owned enum variants, schema-backed
+    host members and trait receiver methods, stdlib functions, stdlib receiver
+    methods, and missing-schema type-hint degradation.
 - [~] Include docs, type facts, effects, permissions, origins, and source spans
   where known.
 - [x] Implement go to definition for local bindings.
@@ -476,6 +476,7 @@ Tests:
 - [x] `hover_reports_source_struct_field_fact`
 - [x] `hover_reports_source_method_fact`
 - [x] `hover_reports_source_trait_method_docs`
+- [x] `hover_reports_source_trait_receiver_method_fact`
 - [x] `hover_reports_source_enum_variant_fact`
 - [x] `hover_reports_stdlib_function_fact`
 - [x] `hover_reports_stdlib_method_fact`
@@ -483,6 +484,7 @@ Tests:
 - [x] `lsp_hover_reports_schema_trait_method_fact`
 - [x] `lsp_hover_reports_source_struct_field_fact`
 - [x] `lsp_hover_reports_source_method_fact`
+- [x] `lsp_hover_reports_source_trait_receiver_method_fact`
 - [x] `lsp_hover_reports_source_enum_variant_fact`
 - [x] `lsp_hover_reports_stdlib_function_fact`
 - [x] `lsp_hover_reports_stdlib_method_fact`

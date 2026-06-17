@@ -231,6 +231,40 @@ fn hover_reports_source_trait_method_docs() {
 }
 
 #[test]
+fn hover_reports_source_trait_receiver_method_fact() {
+    let document = DocumentId::from("/workspace/scripts/game/main.vela");
+    let text = r#"trait Rewardable {
+    #[doc("Preview reward")]
+    fn preview(amount: i64) -> bool
+}
+pub fn main(rewardable: Rewardable) {
+    return rewardable.preview(1)
+}"#;
+    let databases = databases_for(&document, text, RegistryFacts::default());
+    let use_line = text
+        .lines()
+        .nth(5)
+        .expect("trait method use line should exist");
+
+    let hover = databases
+        .hover(
+            &document,
+            Position::new(
+                5,
+                use_line
+                    .find("preview")
+                    .expect("trait method use should exist"),
+            ),
+        )
+        .expect("hover should resolve trait receiver method use");
+
+    assert_eq!(hover.kind(), HoverKind::Method);
+    assert_eq!(hover.label(), "game::main::Rewardable.preview");
+    assert_eq!(hover.detail(), "(amount: i64) -> bool");
+    assert_eq!(hover.docs(), Some("Preview reward"));
+}
+
+#[test]
 fn hover_reports_source_enum_variant_fact() {
     let document = DocumentId::from("/workspace/scripts/game/main.vela");
     let text = r#"enum QuestState {

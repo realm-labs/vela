@@ -265,6 +265,63 @@ pub fn main(player: Player) {
 }
 
 #[test]
+fn lsp_hover_reports_source_trait_receiver_method_fact() {
+    let mut server = LspServer::new();
+    let _ = response_value(server.handle_json(&request(
+        1,
+        "initialize",
+        serde_json::json!({
+            "processId": null,
+            "rootUri": "file:///workspace/scripts",
+            "capabilities": {}
+        }),
+    )));
+    let text = r#"trait Rewardable {
+    #[doc("Preview reward")]
+    fn preview(amount: i64) -> bool
+}
+pub fn main(rewardable: Rewardable) {
+    return rewardable.preview(1)
+}"#;
+    let method_line = text
+        .lines()
+        .nth(5)
+        .expect("trait method use line should exist");
+    let _ = notification_value(server.handle_json(&notification(
+        "textDocument/didOpen",
+        serde_json::json!({
+            "textDocument": {
+                "uri": "file:///workspace/scripts/game/main.vela",
+                "languageId": "vela",
+                "version": 1,
+                "text": text
+            }
+        }),
+    )));
+
+    let response = response_value(server.handle_json(&request(
+        2,
+        "textDocument/hover",
+        serde_json::json!({
+            "textDocument": { "uri": "file:///workspace/scripts/game/main.vela" },
+            "position": {
+                "line": 5,
+                "character": method_line.find("preview").unwrap_or_else(|| {
+                    panic!("hover fixture should contain trait method use")
+                })
+            }
+        }),
+    )));
+
+    let value = response["result"]["contents"]["value"]
+        .as_str()
+        .expect("hover contents should be markdown");
+    assert!(value.contains("game::main::Rewardable.preview"), "{value}");
+    assert!(value.contains("_method_: (amount: i64) -> bool"), "{value}");
+    assert!(value.contains("Preview reward"), "{value}");
+}
+
+#[test]
 fn lsp_hover_reports_source_enum_variant_fact() {
     let mut server = LspServer::new();
     let _ = response_value(server.handle_json(&request(

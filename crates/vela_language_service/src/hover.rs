@@ -156,6 +156,11 @@ impl LanguageServiceDatabases {
         {
             return Some(hover);
         }
+        if let Some(hover) =
+            script_trait_method_hover(self.hir_db().graph(), &receiver_fact, &token.text, range)
+        {
+            return Some(hover);
+        }
         if let Some(hover) = self.schema_member_hover(&receiver_fact, token, range) {
             return Some(hover);
         }
@@ -485,6 +490,30 @@ fn script_method_hover(
     })
 }
 
+fn script_trait_method_hover(
+    graph: &vela_hir::module_graph::ModuleGraph,
+    receiver: &TypeFact,
+    method: &str,
+    range: DiagnosticRange,
+) -> Option<Hover> {
+    let owner_names = trait_owner_names(receiver);
+    graph.declarations().find_map(|declaration| {
+        if declaration.kind != DeclarationKind::Trait
+            || !owner_names
+                .iter()
+                .any(|owner| declaration_name_matches(graph, declaration, owner))
+        {
+            return None;
+        }
+        graph
+            .trait_shape(declaration.id)?
+            .methods
+            .iter()
+            .find(|entry| entry.name == method)
+            .map(|entry| trait_method_hover(graph, declaration, entry, range))
+    })
+}
+
 fn struct_field_hover(
     graph: &vela_hir::module_graph::ModuleGraph,
     declaration: &Declaration,
@@ -766,17 +795,88 @@ fn fact_owner_name(fact: &TypeFact) -> Option<String> {
 }
 
 fn record_owner_names(fact: &TypeFact) -> Vec<String> {
+    let mut names = Vec::new();
+    collect_record_owner_names(fact, &mut names);
+    names
+}
+
+fn collect_record_owner_names(fact: &TypeFact, names: &mut Vec<String>) {
     match fact {
-        TypeFact::Record { name } => {
-            let mut names = vec![name.clone()];
-            if let Some(short) = name.rsplit("::").next()
-                && short != name
-            {
-                names.push(short.to_owned());
+        TypeFact::Record { name } => push_owner_names(names, name),
+        TypeFact::Union(facts) => {
+            for fact in facts {
+                collect_record_owner_names(fact, names);
             }
-            names
         }
-        _ => Vec::new(),
+        TypeFact::Unknown
+        | TypeFact::Never
+        | TypeFact::Any
+        | TypeFact::Primitive(_)
+        | TypeFact::Range
+        | TypeFact::Array { .. }
+        | TypeFact::Map { .. }
+        | TypeFact::Set { .. }
+        | TypeFact::Iterator { .. }
+        | TypeFact::Option { .. }
+        | TypeFact::OptionSome { .. }
+        | TypeFact::OptionNone
+        | TypeFact::Result { .. }
+        | TypeFact::ResultOk { .. }
+        | TypeFact::ResultErr { .. }
+        | TypeFact::Function { .. }
+        | TypeFact::Enum { .. }
+        | TypeFact::Host { .. }
+        | TypeFact::Trait { .. }
+        | TypeFact::Module { .. } => {}
+    }
+}
+
+fn trait_owner_names(fact: &TypeFact) -> Vec<String> {
+    let mut names = Vec::new();
+    collect_trait_owner_names(fact, &mut names);
+    names
+}
+
+fn collect_trait_owner_names(fact: &TypeFact, names: &mut Vec<String>) {
+    match fact {
+        TypeFact::Trait { name } => push_owner_names(names, name),
+        TypeFact::Union(facts) => {
+            for fact in facts {
+                collect_trait_owner_names(fact, names);
+            }
+        }
+        TypeFact::Unknown
+        | TypeFact::Never
+        | TypeFact::Any
+        | TypeFact::Primitive(_)
+        | TypeFact::Range
+        | TypeFact::Array { .. }
+        | TypeFact::Map { .. }
+        | TypeFact::Set { .. }
+        | TypeFact::Iterator { .. }
+        | TypeFact::Option { .. }
+        | TypeFact::OptionSome { .. }
+        | TypeFact::OptionNone
+        | TypeFact::Result { .. }
+        | TypeFact::ResultOk { .. }
+        | TypeFact::ResultErr { .. }
+        | TypeFact::Function { .. }
+        | TypeFact::Enum { .. }
+        | TypeFact::Host { .. }
+        | TypeFact::Record { .. }
+        | TypeFact::Module { .. } => {}
+    }
+}
+
+fn push_owner_names(names: &mut Vec<String>, name: &str) {
+    if !names.iter().any(|owner| owner == name) {
+        names.push(name.to_owned());
+    }
+    if let Some(short) = name.rsplit("::").next()
+        && short != name
+        && !names.iter().any(|owner| owner == short)
+    {
+        names.push(short.to_owned());
     }
 }
 
