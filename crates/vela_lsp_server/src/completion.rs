@@ -1,24 +1,48 @@
 use serde_json::{Value as JsonValue, json};
-use vela_language_service::{CompletionKind, CompletionList};
+use vela_language_service::{CompletionKind, CompletionList, LineIndex, TextRange};
 
-pub(crate) fn lsp_completion_list(completions: &CompletionList) -> JsonValue {
+pub(crate) fn lsp_completion_list(
+    completions: &CompletionList,
+    line_index: &LineIndex,
+) -> JsonValue {
     json!({
         "isIncomplete": false,
-        "items": completions.items().iter().map(lsp_completion_item).collect::<Vec<_>>()
+        "items": completions.items().iter().enumerate().map(|(index, item)| {
+            lsp_completion_item(
+                item,
+                completions.context().replace_range(),
+                line_index,
+                index == 0,
+            )
+        }).collect::<Vec<_>>()
     })
 }
 
-fn lsp_completion_item(item: &vela_language_service::CompletionItem) -> JsonValue {
+fn lsp_completion_item(
+    item: &vela_language_service::CompletionItem,
+    replace_range: TextRange,
+    line_index: &LineIndex,
+    preselect: bool,
+) -> JsonValue {
     let mut value = json!({
         "label": item.label(),
         "kind": lsp_completion_kind(item.kind()),
         "detail": item.detail(),
+        "filterText": item.label(),
+        "labelDetails": {
+            "detail": item.detail()
+        },
+        "preselect": preselect,
         "data": {
             "source": "vela"
         }
     });
     if let Some(insert_text) = item.insert_text() {
         value["insertText"] = json!(insert_text);
+        value["textEdit"] = json!({
+            "range": lsp_range(replace_range, line_index),
+            "newText": insert_text
+        });
     } else if matches!(
         item.kind(),
         CompletionKind::Function | CompletionKind::Method
@@ -30,6 +54,21 @@ fn lsp_completion_item(item: &vela_language_service::CompletionItem) -> JsonValu
         value["sortText"] = json!(sort_text);
     }
     value
+}
+
+fn lsp_range(range: TextRange, line_index: &LineIndex) -> JsonValue {
+    let start = line_index.position(range.start);
+    let end = line_index.position(range.end);
+    json!({
+        "start": {
+            "line": start.line,
+            "character": start.character
+        },
+        "end": {
+            "line": end.line,
+            "character": end.character
+        }
+    })
 }
 
 fn lsp_completion_kind(kind: CompletionKind) -> u8 {

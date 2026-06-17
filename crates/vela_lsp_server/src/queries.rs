@@ -1,5 +1,5 @@
 use serde_json::Value as JsonValue;
-use vela_language_service::DocumentId;
+use vela_language_service::{DocumentId, LineIndex};
 
 use crate::{
     ErrorCode, JsonRpcResult, LspServer, RequestId,
@@ -99,8 +99,20 @@ impl LspServer {
         let completions = self
             .databases
             .completion_items(&document_id, service_position(params.position));
+        let line_index = self
+            .databases
+            .source_db()
+            .records()
+            .get(&document_id)
+            .map_or_else(
+                || LineIndex::new(""),
+                |source| LineIndex::new(source.text()),
+            );
 
-        JsonRpcResult::Response(success_response(id, lsp_completion_list(&completions)))
+        JsonRpcResult::Response(success_response(
+            id,
+            lsp_completion_list(&completions, &line_index),
+        ))
     }
 
     pub(crate) fn signature_help(

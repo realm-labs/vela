@@ -200,6 +200,21 @@ fn lsp_item_boundary_completion_projects_keyword_items() {
     )));
 
     assert_completion_insert_text(&response, "fn", 14, "function declaration", "fn ");
+    assert_completion_projection(
+        &response,
+        "fn",
+        serde_json::json!({
+            "range": {
+                "start": { "line": 0, "character": 0 },
+                "end": { "line": 0, "character": 1 }
+            },
+            "newText": "fn "
+        }),
+        "fn",
+        "0000_00_fn",
+        serde_json::json!({ "detail": "function declaration" }),
+        true,
+    );
 }
 
 #[test]
@@ -633,12 +648,40 @@ fn assert_completion_snippet(
     );
 }
 
+fn assert_completion_projection(
+    response: &serde_json::Value,
+    label: &str,
+    text_edit: serde_json::Value,
+    filter_text: &str,
+    sort_text: &str,
+    label_details: serde_json::Value,
+    preselect: bool,
+) {
+    let item = completion_item(response, label);
+    assert_eq!(item["textEdit"], text_edit);
+    assert_eq!(item["filterText"], filter_text);
+    assert_eq!(item["sortText"], sort_text);
+    assert_eq!(item["labelDetails"], label_details);
+    assert_eq!(item["preselect"], preselect);
+}
+
 fn assert_no_completion(response: &serde_json::Value, label: &str) {
     assert_eq!(response["result"]["isIncomplete"], false);
     let Some(items) = response["result"]["items"].as_array() else {
         panic!("completion response should contain items");
     };
     assert!(items.iter().all(|item| item["label"] != label), "{items:?}");
+}
+
+fn completion_item<'a>(response: &'a serde_json::Value, label: &str) -> &'a serde_json::Value {
+    assert_eq!(response["result"]["isIncomplete"], false);
+    let Some(items) = response["result"]["items"].as_array() else {
+        panic!("completion response should contain items");
+    };
+    items
+        .iter()
+        .find(|item| item["label"] == label)
+        .unwrap_or_else(|| panic!("completion {label} should exist in {items:?}"))
 }
 
 fn temp_workspace() -> PathBuf {
