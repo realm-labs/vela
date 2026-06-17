@@ -14,10 +14,11 @@ use vela_syntax::ast::{
     Block, ElseBranch, Expr, ExprKind, FunctionItem, ItemKind, SourceFile, Stmt, StmtKind,
 };
 
-use crate::{CursorContextKind, ModulePathRole, QueryContext};
+use crate::QueryContext;
 use crate::{DocumentId, LanguageServiceDatabases, Position, TextRange};
 
 mod accumulator;
+mod context;
 mod item;
 mod lambda_parameter;
 mod map_key;
@@ -34,12 +35,13 @@ pub use model::{
     CompletionRelevance, CompletionResolvePayload, CompletionSymbol, CompletionTextEdit,
 };
 
+use context::completion_context;
 use item::item_keyword_completions;
-use lambda_parameter::{lambda_parameter_completion_context, lambda_parameter_completion_items};
-use map_key::{map_key_at, map_key_completion_items as map_key_context_completion_items};
+use lambda_parameter::lambda_parameter_completion_items;
+use map_key::map_key_completion_items as map_key_context_completion_items;
 use model::{CallArgumentContext, MemberReceiver, RecordConstructor};
 use module_path::module_path_completion_items as module_path_context_completion_items;
-use named_argument::{named_argument_completion_context, script_function_parameter_completions};
+use named_argument::script_function_parameter_completions;
 use pattern::pattern_completion_items as pattern_context_completion_items;
 use statement::statement_keyword_completions;
 use type_hint::type_hint_completion_items;
@@ -332,203 +334,6 @@ impl LanguageServiceDatabases {
             context.module_base(),
         )
     }
-}
-
-fn completion_context(query: &QueryContext<'_>) -> CompletionContext {
-    let text = query.text();
-    let cursor = query.cursor();
-    let offset = cursor.replace_range().end;
-    let prefix_start = cursor.replace_range().start;
-    let prefix = cursor.prefix();
-
-    let shared_lambda_receiver = query
-        .member_receiver_range()
-        .map(|range| MemberReceiver { range });
-    let shared_lambda_method = query.lambda_method_range().zip(query.lambda_method_text());
-    if let Some(lambda_parameter) = lambda_parameter_completion_context(
-        text,
-        offset,
-        shared_lambda_receiver,
-        query.call_open_offset(),
-        shared_lambda_method,
-    ) {
-        return CompletionContext {
-            kind: CompletionContextKind::LambdaParameter,
-            prefix: prefix.to_owned(),
-            replace_range: TextRange::new(prefix_start, offset),
-            module_base: None,
-            member_receiver: None,
-            record_constructor: None,
-            map_key: None,
-            call_arguments: None,
-            lambda_parameter: Some(lambda_parameter),
-        };
-    }
-
-    if cursor.kind() == CursorContextKind::Type {
-        return CompletionContext {
-            kind: CompletionContextKind::TypeHint,
-            prefix: prefix.to_owned(),
-            replace_range: TextRange::new(prefix_start, offset),
-            module_base: None,
-            member_receiver: None,
-            record_constructor: None,
-            map_key: None,
-            call_arguments: None,
-            lambda_parameter: None,
-        };
-    }
-
-    if cursor.kind() == CursorContextKind::RecordExpressionField
-        && let Some(mut record_constructor) = query
-            .parsed_source()
-            .and_then(|source| record_constructor_at(source, offset))
-    {
-        record_constructor.current_module = query
-            .module_path()
-            .map(|module| module.segments().to_vec())
-            .unwrap_or_default();
-        return CompletionContext {
-            kind: CompletionContextKind::RecordField,
-            prefix: prefix.to_owned(),
-            replace_range: TextRange::new(prefix_start, offset),
-            module_base: None,
-            member_receiver: None,
-            record_constructor: Some(record_constructor),
-            map_key: None,
-            call_arguments: None,
-            lambda_parameter: None,
-        };
-    }
-
-    if cursor.kind() == CursorContextKind::MapKey
-        && let Some(mut map_key) = query
-            .parsed_source()
-            .and_then(|source| map_key_at(source, offset))
-    {
-        map_key.current_module = query
-            .module_path()
-            .map(|module| module.segments().to_vec())
-            .unwrap_or_default();
-        return CompletionContext {
-            kind: CompletionContextKind::MapKey,
-            prefix: prefix.to_owned(),
-            replace_range: TextRange::new(prefix_start, offset),
-            module_base: None,
-            member_receiver: None,
-            record_constructor: None,
-            map_key: Some(map_key),
-            call_arguments: None,
-            lambda_parameter: None,
-        };
-    }
-
-    if cursor.kind() == CursorContextKind::Pattern {
-        return CompletionContext {
-            kind: CompletionContextKind::Pattern,
-            prefix: prefix.to_owned(),
-            replace_range: TextRange::new(prefix_start, offset),
-            module_base: None,
-            member_receiver: None,
-            record_constructor: None,
-            map_key: None,
-            call_arguments: None,
-            lambda_parameter: None,
-        };
-    }
-
-    if cursor.kind() == CursorContextKind::MemberAccess {
-        let member_receiver = query
-            .member_receiver_range()
-            .map(|range| MemberReceiver { range });
-        return CompletionContext {
-            kind: CompletionContextKind::Member,
-            prefix: prefix.to_owned(),
-            replace_range: TextRange::new(prefix_start, offset),
-            module_base: None,
-            member_receiver,
-            record_constructor: None,
-            map_key: None,
-            call_arguments: None,
-            lambda_parameter: None,
-        };
-    }
-
-    if let Some(module_base) = cursor.module_base() {
-        if cursor.module_path_role() == ModulePathRole::Type {
-            return CompletionContext {
-                kind: CompletionContextKind::TypeHint,
-                prefix: prefix.to_owned(),
-                replace_range: TextRange::new(prefix_start, offset),
-                module_base: Some(module_base.to_owned()),
-                member_receiver: None,
-                record_constructor: None,
-                map_key: None,
-                call_arguments: None,
-                lambda_parameter: None,
-            };
-        }
-        return CompletionContext {
-            kind: CompletionContextKind::ModulePath,
-            prefix: prefix.to_owned(),
-            replace_range: TextRange::new(prefix_start, offset),
-            module_base: Some(module_base.to_owned()),
-            member_receiver: None,
-            record_constructor: None,
-            map_key: None,
-            call_arguments: None,
-            lambda_parameter: None,
-        };
-    }
-
-    if cursor.kind() == CursorContextKind::CallArgument
-        && let Some(call_arguments) = named_argument_completion_context(
-            text,
-            query.cursor().replace_range().end,
-            query.call_open_offset(),
-            query_call_callee(query),
-        )
-    {
-        return CompletionContext {
-            kind: CompletionContextKind::NamedArgument,
-            prefix: prefix.to_owned(),
-            replace_range: TextRange::new(prefix_start, offset),
-            module_base: None,
-            member_receiver: None,
-            record_constructor: None,
-            map_key: None,
-            call_arguments: Some(call_arguments),
-            lambda_parameter: None,
-        };
-    }
-
-    if cursor.kind() == CursorContextKind::Item {
-        return CompletionContext::item(prefix_start, prefix);
-    }
-
-    if cursor.kind() == CursorContextKind::Statement {
-        return CompletionContext {
-            kind: CompletionContextKind::Statement,
-            prefix: prefix.to_owned(),
-            replace_range: TextRange::new(prefix_start, offset),
-            module_base: None,
-            member_receiver: None,
-            record_constructor: None,
-            map_key: None,
-            call_arguments: None,
-            lambda_parameter: None,
-        };
-    }
-
-    if cursor.kind() == CursorContextKind::Expression {
-        return CompletionContext::expression(prefix_start, prefix);
-    }
-
-    CompletionContext::global(prefix_start, prefix)
-}
-
-fn query_call_callee<'a>(query: &'a QueryContext<'_>) -> Option<(TextRange, &'a str)> {
-    Some((query.call_callee_range()?, query.call_callee_text()?))
 }
 
 fn record_constructor_at(source: &SourceFile, offset: usize) -> Option<RecordConstructor> {
