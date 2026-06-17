@@ -1,3 +1,5 @@
+use std::collections::HashSet;
+
 use vela_analysis::type_fact::TypeFact;
 use vela_common::{SourceId, Span};
 use vela_hir::binding::{BindingMap, BindingResolution, LocalBinding};
@@ -9,7 +11,7 @@ use vela_syntax::token::TokenKind;
 
 use crate::{
     DiagnosticRange, DocumentId, LanguageServiceDatabases, LineIndex, Position, QueryContext,
-    TextRange,
+    TextRange, path_calls,
 };
 
 mod fields;
@@ -444,7 +446,7 @@ impl LanguageServiceDatabases {
 
         for source in self.source_db().records().values() {
             references.extend(enum_variant_use_references_for_source(
-                graph, source, target,
+                self, graph, source, target,
             ));
         }
 
@@ -736,6 +738,7 @@ fn enum_variant_use_target(
 }
 
 fn enum_variant_use_references_for_source(
+    databases: &LanguageServiceDatabases,
     graph: &ModuleGraph,
     source: &crate::SourceRecord,
     target: &EnumVariantReferenceTarget,
@@ -743,33 +746,68 @@ fn enum_variant_use_references_for_source(
     let mut references = Vec::new();
     let source_id = source.source_id();
     let text = source.text();
-    for range in path_segment_ranges(source_id, text, &target.variant) {
-        let Some(start) = u32::try_from(range.start).ok() else {
-            continue;
-        };
-        for declaration in graph.declarations() {
-            if declaration.span.source != source_id || !declaration.span.contains(start) {
+    let mut shared_ranges = HashSet::new();
+    if let Some(parsed) = databases.parse_db().parsed_source(source.document_id()) {
+        for site in path_calls::path_expression_sites(parsed, text) {
+            if site
+                .path
+                .last()
+                .is_none_or(|segment| segment != &target.variant)
+            {
                 continue;
             }
-            let Some(bindings) = graph.bindings(declaration.id) else {
-                continue;
-            };
-            let Some(found) =
-                enum_variant_use_target(graph, bindings, text, &ReferenceToken { range })
-            else {
-                continue;
-            };
-            if found.target == *target {
-                references.push(Reference {
-                    document_id: source.document_id().clone(),
-                    range: diagnostic_range(text, range),
-                    kind: found.kind,
-                });
-                break;
-            }
+            let range = site.segment_range;
+            shared_ranges.insert((range.start, range.end));
+            push_enum_variant_use_reference_for_range(
+                graph,
+                source,
+                target,
+                range,
+                &mut references,
+            );
         }
     }
+    for range in path_segment_ranges(source_id, text, &target.variant) {
+        if shared_ranges.contains(&(range.start, range.end)) {
+            continue;
+        }
+        push_enum_variant_use_reference_for_range(graph, source, target, range, &mut references);
+    }
     references
+}
+
+fn push_enum_variant_use_reference_for_range(
+    graph: &ModuleGraph,
+    source: &crate::SourceRecord,
+    target: &EnumVariantReferenceTarget,
+    range: TextRange,
+    references: &mut Vec<Reference>,
+) {
+    let source_id = source.source_id();
+    let text = source.text();
+    let Some(start) = u32::try_from(range.start).ok() else {
+        return;
+    };
+    for declaration in graph.declarations() {
+        if declaration.span.source != source_id || !declaration.span.contains(start) {
+            continue;
+        }
+        let Some(bindings) = graph.bindings(declaration.id) else {
+            continue;
+        };
+        let Some(found) = enum_variant_use_target(graph, bindings, text, &ReferenceToken { range })
+        else {
+            continue;
+        };
+        if found.target == *target {
+            references.push(Reference {
+                document_id: source.document_id().clone(),
+                range: diagnostic_range(text, range),
+                kind: found.kind,
+            });
+            break;
+        }
+    }
 }
 
 fn enum_variant_exists(graph: &ModuleGraph, owner: HirDeclId, variant: &str) -> bool {

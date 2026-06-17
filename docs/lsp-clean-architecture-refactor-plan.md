@@ -380,7 +380,9 @@ Purpose: classify the cursor once and reuse it across features.
   on the existing scanner until pattern paths carry source spans. Schema
   variant rename edit collection uses the same parsed expression path sites for
   constructor-like uses while retaining pattern fallback scanning for spanless
-  pattern paths.
+  pattern paths. Source enum variant references now consume the shared parsed
+  expression path sites for constructor-like uses while retaining the existing
+  fallback scanner for pattern paths.
   `CursorContext` now exposes the identifier token range under the request
   cursor, and rename target selection consumes that shared range instead of
   running its own first-step token scanner. Lambda-parameter contexts now
