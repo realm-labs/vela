@@ -262,6 +262,7 @@ pub(super) struct RecordConstructor {
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub(super) struct CallArgumentContext {
     pub(super) callee: String,
+    pub(super) callee_range: Option<TextRange>,
     pub(super) used_names: Vec<String>,
 }
 
@@ -284,6 +285,13 @@ impl CompletionContext {
     #[must_use]
     pub fn module_base(&self) -> Option<&str> {
         self.module_base.as_deref()
+    }
+
+    #[must_use]
+    pub fn call_callee_range(&self) -> Option<TextRange> {
+        self.call_arguments
+            .as_ref()
+            .and_then(|context| context.callee_range)
     }
 
     pub(super) fn global(prefix_start: usize, prefix: &str) -> Self {

@@ -56,8 +56,11 @@ impl LanguageServiceDatabases {
         };
         let context = completion_context(&query);
         if matches!(context.kind, CompletionContextKind::Global)
-            && let Some(named_context) =
-                named_argument_completion_context(query.text(), query.position())
+            && let Some(named_context) = named_argument_completion_context(
+                query.text(),
+                query.position(),
+                query_call_callee(&query),
+            )
         {
             let mut context = context.clone();
             context.kind = CompletionContextKind::NamedArgument;
@@ -490,6 +493,23 @@ fn completion_context(query: &QueryContext<'_>) -> CompletionContext {
         };
     }
 
+    if cursor.kind() == CursorContextKind::CallArgument
+        && let Some(call_arguments) =
+            named_argument_completion_context(text, query.position(), query_call_callee(query))
+    {
+        return CompletionContext {
+            kind: CompletionContextKind::NamedArgument,
+            prefix: prefix.to_owned(),
+            replace_range: TextRange::new(prefix_start, offset),
+            module_base: None,
+            member_receiver: None,
+            record_constructor: None,
+            map_key: None,
+            call_arguments: Some(call_arguments),
+            lambda_parameter: None,
+        };
+    }
+
     if cursor.kind() == CursorContextKind::Item {
         return CompletionContext::item(prefix_start, prefix);
     }
@@ -513,6 +533,10 @@ fn completion_context(query: &QueryContext<'_>) -> CompletionContext {
     }
 
     CompletionContext::global(prefix_start, prefix)
+}
+
+fn query_call_callee<'a>(query: &'a QueryContext<'_>) -> Option<(TextRange, &'a str)> {
+    Some((query.call_callee_range()?, query.call_callee_text()?))
 }
 
 fn record_constructor_at(source: &SourceFile, offset: usize) -> Option<RecordConstructor> {

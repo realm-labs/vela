@@ -512,6 +512,13 @@ pub fn main(player: Player) { grant(player: player, ) }
         completions.context().kind(),
         CompletionContextKind::NamedArgument
     );
+    let call_start = text
+        .rfind("grant(player: player")
+        .expect("main call should be present");
+    assert_eq!(
+        completions.context().call_callee_range(),
+        Some(TextRange::new(call_start, call_start + "grant".len()))
+    );
     assert_no_completion(&completions, "player");
     assert_completion(&completions, "amount", CompletionKind::Parameter);
     assert_completion(&completions, "reason", CompletionKind::Parameter);

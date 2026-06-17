@@ -2,7 +2,7 @@ use vela_analysis::facts::AnalysisFacts;
 use vela_analysis::type_fact::TypeFact;
 use vela_hir::module_graph::{DeclarationKind, ModuleGraph};
 
-use crate::{LineIndex, Position};
+use crate::{LineIndex, Position, TextRange};
 
 use super::{
     CallArgumentContext, CompletionInsertFormat, CompletionItem, CompletionKind,
@@ -12,10 +12,15 @@ use super::{
 pub(super) fn named_argument_completion_context(
     text: &str,
     position: Position,
+    shared_callee: Option<(TextRange, &str)>,
 ) -> Option<CallArgumentContext> {
     let offset = LineIndex::new(text).offset(position);
     let open = active_call_open(text, offset)?;
-    let callee = callee_before_open(text, open)?;
+    let fallback_callee = || callee_before_open(text, open);
+    let (callee, callee_range) = shared_callee
+        .filter(|(range, _)| range.end <= open)
+        .map(|(range, callee)| (callee.to_owned(), Some(range)))
+        .or_else(fallback_callee)?;
     let args_before_cursor = &text[open + 1..offset];
     let current_arg = current_argument_text(args_before_cursor);
     if current_arg.contains(':') || !is_argument_name_prefix(current_arg.trim_start()) {
@@ -23,6 +28,7 @@ pub(super) fn named_argument_completion_context(
     }
     Some(CallArgumentContext {
         callee,
+        callee_range,
         used_names: used_named_arguments(args_before_cursor),
     })
 }
@@ -103,7 +109,7 @@ fn active_call_open(text: &str, offset: usize) -> Option<usize> {
     stack.pop()
 }
 
-fn callee_before_open(text: &str, open: usize) -> Option<String> {
+fn callee_before_open(text: &str, open: usize) -> Option<(String, Option<TextRange>)> {
     let before = text[..open].trim_end();
     let end = before.len();
     let start = before
@@ -111,7 +117,12 @@ fn callee_before_open(text: &str, open: usize) -> Option<String> {
         .rev()
         .find_map(|(index, ch)| (!is_callee_continue(ch)).then_some(index + ch.len_utf8()))
         .unwrap_or(0);
-    (start < end).then(|| before[start..end].to_owned())
+    (start < end).then(|| {
+        (
+            before[start..end].to_owned(),
+            Some(TextRange::new(start, end)),
+        )
+    })
 }
 
 fn current_argument_text(args_before_cursor: &str) -> &str {
