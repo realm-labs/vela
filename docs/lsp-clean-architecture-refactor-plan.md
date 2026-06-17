@@ -310,7 +310,8 @@ Purpose: classify the cursor once and reuse it across features.
   scanner. Call-argument contexts now expose the active call opening offset,
   and `QueryContext` exposes the active argument prefix text, so
   named-argument completion and signature help no longer slice that range
-  independently. Lambda
+  independently. `QueryContext` also exposes the active call parameter index,
+  so signature help no longer owns top-level argument counting. Lambda
   callback contexts now expose the callback call opening offset alongside the
   shared receiver and method facts, so lambda-parameter completion no longer
   reconstructs member callees locally. Completion no longer has a global

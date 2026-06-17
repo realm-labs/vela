@@ -481,28 +481,13 @@ fn call_context_from_query(query: &QueryContext<'_>) -> Option<CallContext> {
     }
     let callee = query.call_callee_text()?.to_owned();
     let args_prefix = query.call_args_prefix_text()?.to_owned();
+    let active_parameter = query.call_active_parameter_index()?;
     Some(CallContext {
         callee,
         member_receiver: query.call_member_receiver_range(),
-        active_parameter: active_parameter_index(&args_prefix),
+        active_parameter,
         args_prefix,
     })
-}
-
-fn active_parameter_index(args_text: &str) -> usize {
-    let mut depth = 0usize;
-    let mut active = 0usize;
-    let mut lambda_params = false;
-    for ch in args_text.chars() {
-        match ch {
-            '|' => lambda_params = !lambda_params,
-            '(' | '[' | '{' => depth = depth.saturating_add(1),
-            ')' | ']' | '}' => depth = depth.saturating_sub(1),
-            ',' if depth == 0 && !lambda_params => active = active.saturating_add(1),
-            _ => {}
-        }
-    }
-    active
 }
 
 fn signature_label(name: &str, parameters: &[SignatureParameter], returns: &TypeFact) -> String {

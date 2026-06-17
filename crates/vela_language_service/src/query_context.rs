@@ -184,6 +184,12 @@ impl<'a> QueryContext<'a> {
     }
 
     #[must_use]
+    pub fn call_active_parameter_index(&self) -> Option<usize> {
+        self.call_args_prefix_text()
+            .map(active_call_parameter_index)
+    }
+
+    #[must_use]
     pub fn member_receiver_text(&self) -> Option<&str> {
         text_range(self.text(), self.member_receiver_range()?)
     }
@@ -231,6 +237,22 @@ impl<'a> QueryContext<'a> {
 
 fn text_range(text: &str, range: TextRange) -> Option<&str> {
     text.get(range.start..range.end)
+}
+
+fn active_call_parameter_index(args_text: &str) -> usize {
+    let mut depth = 0usize;
+    let mut active = 0usize;
+    let mut lambda_params = false;
+    for ch in args_text.chars() {
+        match ch {
+            '|' => lambda_params = !lambda_params,
+            '(' | '[' | '{' => depth = depth.saturating_add(1),
+            ')' | ']' | '}' => depth = depth.saturating_sub(1),
+            ',' if depth == 0 && !lambda_params => active = active.saturating_add(1),
+            _ => {}
+        }
+    }
+    active
 }
 
 fn query_bindings<'a>(
@@ -396,6 +418,7 @@ mod tests {
             source.find("grant(").map(|index| index + "grant".len())
         );
         assert_eq!(call_context.call_args_prefix_text(), Some("c"));
+        assert_eq!(call_context.call_active_parameter_index(), Some(0));
 
         let method_call_offset =
             source.find("filter(player").expect("method call") + "filter(".len();
@@ -418,6 +441,7 @@ mod tests {
             Some("scores")
         );
         assert_eq!(method_call_context.call_args_prefix_text(), Some(""));
+        assert_eq!(method_call_context.call_active_parameter_index(), Some(0));
 
         let lambda_offset = source.find("|)").expect("lambda pipe") + "|".len();
         let lambda_context = QueryContext::from_databases(
@@ -444,5 +468,43 @@ mod tests {
             Some(TextRange::new(lambda_offset, lambda_offset))
         );
         assert_eq!(lambda_context.lambda_parameters_text(), Some(""));
+    }
+
+    #[test]
+    fn query_context_exposes_active_call_parameter_index() {
+        let document = DocumentId::from("/workspace/scripts/game/main.vela");
+        let source = "pub fn main(player: Player) { grant(player, current_player().level, map(|left, right| left), final); }";
+        let config = WorkspaceConfig::workspace([WorkspaceRoot::from("/workspace/scripts")]);
+        let workspace = Workspace::new();
+        let files = vec![SourceFileSnapshot::new(document.clone(), source)];
+        let project = assemble_project_sources(&config, &files, &workspace.snapshot());
+        let mut databases = LanguageServiceDatabases::new();
+        databases.update(&project);
+
+        let second_arg_offset = source.find("current_player").expect("second arg") + "c".len();
+        let second_arg_context = QueryContext::from_databases(
+            &databases,
+            &document,
+            LineIndex::new(source).position(second_arg_offset),
+        )
+        .expect("second arg query");
+        assert_eq!(
+            second_arg_context.call_args_prefix_text(),
+            Some("player, c")
+        );
+        assert_eq!(second_arg_context.call_active_parameter_index(), Some(1));
+
+        let after_lambda_offset = source.find("final").expect("outer final arg") + "f".len();
+        let after_lambda_context = QueryContext::from_databases(
+            &databases,
+            &document,
+            LineIndex::new(source).position(after_lambda_offset),
+        )
+        .expect("after lambda query");
+        assert_eq!(
+            after_lambda_context.call_args_prefix_text(),
+            Some("player, current_player().level, map(|left, right| left), f")
+        );
+        assert_eq!(after_lambda_context.call_active_parameter_index(), Some(3));
     }
 }
