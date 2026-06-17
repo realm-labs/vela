@@ -88,6 +88,28 @@ fn hover_reports_schema_trait_method_fact() {
 }
 
 #[test]
+fn hover_reports_schema_trait_fact() {
+    let document = DocumentId::from("/workspace/scripts/game/main.vela");
+    let text = "pub fn main(rewardable: Rewardable) { return rewardable }";
+    let mut schema = RegistryFacts::default();
+    schema.insert_trait("Rewardable", TypeFact::trait_type("Rewardable"));
+    schema.insert_trait_docs("Rewardable", "Rewardable host trait.");
+    let databases = databases_for(&document, text, schema);
+
+    let hover = databases
+        .hover(
+            &document,
+            Position::new(0, text.find("Rewardable").expect("trait type hint")),
+        )
+        .expect("hover should resolve schema trait");
+
+    assert_eq!(hover.kind(), HoverKind::Trait);
+    assert_eq!(hover.label(), "Rewardable");
+    assert_eq!(hover.detail(), "Rewardable");
+    assert_eq!(hover.docs(), Some("Rewardable host trait."));
+}
+
+#[test]
 fn hover_reports_schema_type_field_and_function_docs() {
     let document = DocumentId::from("/workspace/scripts/game/main.vela");
     let text = "pub fn main(player: Player) {\n    player.level\n    grant(player)\n}";
@@ -332,6 +354,43 @@ fn hover_reports_source_trait_method_docs() {
     assert_eq!(hover.label(), "game::main::Rewardable.preview");
     assert_eq!(hover.detail(), "(amount: i64) -> bool");
     assert_eq!(hover.docs(), Some("Preview reward"));
+}
+
+#[test]
+fn hover_reports_source_trait_fact() {
+    let document = DocumentId::from("/workspace/scripts/game/main.vela");
+    let text = r#"#[doc("Rewardable script trait")]
+trait Rewardable {
+    fn preview(amount: i64) -> bool
+}
+pub fn main(rewardable: Rewardable) {
+    return rewardable
+}"#;
+    let databases = databases_for(&document, text, RegistryFacts::default());
+
+    let declaration_hover = databases
+        .hover(&document, Position::new(1, 6))
+        .expect("hover should resolve trait declaration");
+    assert_eq!(declaration_hover.kind(), HoverKind::Trait);
+    assert_eq!(declaration_hover.label(), "game::main::Rewardable");
+    assert_eq!(declaration_hover.detail(), "game::main::Rewardable");
+    assert_eq!(declaration_hover.docs(), Some("Rewardable script trait"));
+
+    let hint_line = text.lines().nth(4).expect("trait hint line should exist");
+    let hint_hover = databases
+        .hover(
+            &document,
+            Position::new(
+                4,
+                hint_line
+                    .find("Rewardable")
+                    .expect("trait hint should exist"),
+            ),
+        )
+        .expect("hover should resolve trait type hint");
+    assert_eq!(hint_hover.kind(), HoverKind::Trait);
+    assert_eq!(hint_hover.label(), "game::main::Rewardable");
+    assert_eq!(hint_hover.detail(), "game::main::Rewardable");
 }
 
 #[test]

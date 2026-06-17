@@ -429,6 +429,58 @@ pub fn main(rewardable: Rewardable) {
 }
 
 #[test]
+fn lsp_hover_reports_source_trait_fact() {
+    let mut server = LspServer::new();
+    let _ = response_value(server.handle_json(&request(
+        1,
+        "initialize",
+        serde_json::json!({
+            "processId": null,
+            "rootUri": "file:///workspace/scripts",
+            "capabilities": {}
+        }),
+    )));
+    let text = r#"#[doc("Rewardable script trait")]
+trait Rewardable {
+    fn preview(amount: i64) -> bool
+}
+pub fn main(rewardable: Rewardable) {
+    return rewardable
+}"#;
+    let uri = "file:///workspace/scripts/game/main.vela";
+    let _ = notification_value(server.handle_json(&notification(
+        "textDocument/didOpen",
+        serde_json::json!({
+            "textDocument": {
+                "uri": uri,
+                "languageId": "vela",
+                "version": 1,
+                "text": text
+            }
+        }),
+    )));
+
+    let response = response_value(server.handle_json(&request(
+        2,
+        "textDocument/hover",
+        serde_json::json!({
+            "textDocument": { "uri": uri },
+            "position": {
+                "line": 1,
+                "character": text.lines().nth(1).unwrap_or_default().find("Rewardable").unwrap_or(0)
+            }
+        }),
+    )));
+
+    let value = response["result"]["contents"]["value"]
+        .as_str()
+        .expect("hover contents should be markdown");
+    assert!(value.contains("game::main::Rewardable"), "{value}");
+    assert!(value.contains("_trait_: game::main::Rewardable"), "{value}");
+    assert!(value.contains("Rewardable script trait"), "{value}");
+}
+
+#[test]
 fn lsp_hover_reports_source_enum_variant_fact() {
     let mut server = LspServer::new();
     let _ = response_value(server.handle_json(&request(
@@ -549,6 +601,70 @@ fn lsp_hover_reports_schema_trait_method_fact() {
 }
 
 #[test]
+fn lsp_hover_reports_schema_trait_fact() {
+    let root = temp_workspace();
+    let schema_path = root.join("target").join("vela").join("schema.json");
+    fs::create_dir_all(schema_path.parent().expect("schema should have parent"))
+        .expect("schema directory should be creatable");
+    fs::write(&schema_path, schema_with_rewardable_trait())
+        .expect("schema artifact should be writable");
+
+    let mut server = LspServer::new();
+    let _ = response_value(server.handle_json(&request(
+        1,
+        "initialize",
+        serde_json::json!({
+            "processId": null,
+            "rootUri": file_uri(&root),
+            "initializationOptions": {
+                "workspace": {
+                    "roots": [file_uri(&root.join("scripts"))]
+                },
+                "host": {
+                    "schema": file_uri(&schema_path)
+                }
+            },
+            "capabilities": {}
+        }),
+    )));
+    let uri = file_uri(&root.join("scripts").join("game").join("main.vela"));
+    let text = "pub fn main(rewardable: Rewardable) { return rewardable }";
+    let _ = notification_value(server.handle_json(&notification(
+        "textDocument/didOpen",
+        serde_json::json!({
+            "textDocument": {
+                "uri": uri,
+                "languageId": "vela",
+                "version": 1,
+                "text": text
+            }
+        }),
+    )));
+
+    let response = response_value(server.handle_json(&request(
+        2,
+        "textDocument/hover",
+        serde_json::json!({
+            "textDocument": { "uri": uri },
+            "position": {
+                "line": 0,
+                "character": text.find("Rewardable").unwrap_or_else(|| {
+                    panic!("hover fixture should contain schema trait")
+                })
+            }
+        }),
+    )));
+
+    let value = response["result"]["contents"]["value"]
+        .as_str()
+        .expect("hover contents should be markdown");
+    assert!(value.contains("Rewardable"), "{value}");
+    assert!(value.contains("_trait_: Rewardable"), "{value}");
+    assert!(value.contains("Rewardable host trait."), "{value}");
+    fs::remove_dir_all(&root).expect("temporary workspace should be removable");
+}
+
+#[test]
 fn lsp_hover_reports_schema_enum_variant_fact() {
     let root = temp_workspace();
     let schema_path = root.join("target").join("vela").join("schema.json");
@@ -654,6 +770,21 @@ fn schema_with_rewardable_trait_method() -> &'static str {
                         "returns": { "kind": "primitive", "name": "bool" }
                     },
                     "docs": "Preview a reward."
+                }
+            ]
+        }
+    }"#
+}
+
+fn schema_with_rewardable_trait() -> &'static str {
+    r#"{
+        "formatVersion": 1,
+        "facts": {
+            "traits": [
+                {
+                    "name": "Rewardable",
+                    "fact": { "kind": "trait", "name": "Rewardable" },
+                    "docs": "Rewardable host trait."
                 }
             ]
         }

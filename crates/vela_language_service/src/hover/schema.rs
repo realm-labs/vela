@@ -61,7 +61,7 @@ pub(super) fn symbol_hover(
         return Some(Hover {
             range,
             label: name.to_owned(),
-            kind: HoverKind::Type,
+            kind: HoverKind::Trait,
             detail: fact.display_name(),
             docs: schema.trait_docs(name).map(str::to_owned),
         });

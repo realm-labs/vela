@@ -29,6 +29,7 @@ pub enum HoverKind {
     Const,
     Function,
     Type,
+    Trait,
     Field,
     Method,
     Variant,
@@ -144,7 +145,8 @@ impl LanguageServiceDatabases {
             return Some(hover);
         }
 
-        schema::symbol_hover(self.schema_db().facts(), &token.text, range)
+        source_type_hint_hover(graph, &facts, &token.text, range)
+            .or_else(|| schema::symbol_hover(self.schema_db().facts(), &token.text, range))
             .or_else(|| stdlib_function_hover(&token.text, range))
             .or_else(|| type_hint_hover(self.schema_db().facts(), &token.text, range))
     }
@@ -668,7 +670,8 @@ fn hover_from_declaration(
         DeclarationKind::Const => HoverKind::Const,
         DeclarationKind::Global => HoverKind::Global,
         DeclarationKind::Function => HoverKind::Function,
-        DeclarationKind::Struct | DeclarationKind::Enum | DeclarationKind::Trait => HoverKind::Type,
+        DeclarationKind::Struct | DeclarationKind::Enum => HoverKind::Type,
+        DeclarationKind::Trait => HoverKind::Trait,
         DeclarationKind::Impl => HoverKind::Unknown,
     };
     Hover {
@@ -716,6 +719,27 @@ fn local_hover(binding: &LocalBinding, fact: TypeFact, range: DiagnosticRange) -
         detail: fact.display_name(),
         docs: None,
     }
+}
+
+fn source_type_hint_hover(
+    graph: &vela_hir::module_graph::ModuleGraph,
+    facts: &AnalysisFacts,
+    name: &str,
+    range: DiagnosticRange,
+) -> Option<Hover> {
+    starts_like_type_name(name).then_some(())?;
+    graph
+        .declarations()
+        .filter(|declaration| {
+            matches!(
+                declaration.kind,
+                DeclarationKind::Struct | DeclarationKind::Enum | DeclarationKind::Trait
+            )
+        })
+        .find(|declaration| {
+            declaration.name == name || qualified_declaration_label(graph, declaration) == name
+        })
+        .map(|declaration| hover_from_declaration(graph, facts, declaration, range))
 }
 
 fn local_fact(binding: &LocalBinding, facts: &AnalysisFacts) -> Option<TypeFact> {

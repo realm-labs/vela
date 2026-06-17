@@ -32,6 +32,7 @@ fn hover_kind(kind: HoverKind) -> &'static str {
         HoverKind::Const => "const",
         HoverKind::Function => "function",
         HoverKind::Type => "type",
+        HoverKind::Trait => "trait",
         HoverKind::Field => "field",
         HoverKind::Method => "method",
         HoverKind::Variant => "variant",

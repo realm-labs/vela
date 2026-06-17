@@ -207,6 +207,11 @@ M20.5 Phase 8 update: source global hover now has a first-class `global`
 kind through the editor-neutral service and native LSP markdown, with HIR
 declaration metadata used as a fallback when analysis facts are unknown.
 
+M20.5 Phase 8 update: source and schema trait hovers now use a first-class
+`trait` kind through the language service and native LSP markdown. Source
+type-hint hover now consults module-graph type declarations before falling
+back to schema or unknown type-hint degradation.
+
 M20.5 Phase 7 update: completion now resolves schema-backed trait receiver
 method members in addition to schema-backed host receiver members.
 `textDocument/signatureHelp` now resolves stdlib function calls, typed

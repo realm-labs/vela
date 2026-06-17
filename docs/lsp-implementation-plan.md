@@ -454,10 +454,11 @@ Purpose: expose semantic facts and navigation.
   methods, fields, variants, traits, and type hints.
   - Initial hover support now covers script parameters/declarations,
     source-owned globals, source-owned struct fields, source-owned method
-    declarations plus typed record and trait receiver calls, source-owned enum
-    variants, schema-backed host members and trait receiver methods,
-    schema-backed enum variants, stdlib functions, stdlib receiver methods,
-    imported module path segments, and missing-schema type-hint degradation.
+    declarations plus typed record and trait receiver calls, source-owned
+    traits and trait type hints, source-owned enum variants, schema-backed host
+    members and trait receiver methods, schema-backed traits and enum variants,
+    stdlib functions, stdlib receiver methods, imported module path segments,
+    and missing-schema type-hint degradation.
 - [~] Include docs, type facts, effects, permissions, origins, and source spans
   where known.
   - Schema-backed hover now surfaces docs copied through the static schema
@@ -486,11 +487,13 @@ Tests:
 - [x] `hover_degrades_to_any_without_schema`
 - [x] `hover_reports_effects_and_permissions`
 - [x] `hover_reports_schema_trait_method_fact`
+- [x] `hover_reports_schema_trait_fact`
 - [x] `hover_reports_schema_type_field_and_function_docs`
 - [x] `hover_reports_schema_enum_variant_fact`
 - [x] `hover_reports_source_global_fact`
 - [x] `hover_reports_source_struct_field_fact`
 - [x] `hover_reports_source_method_fact`
+- [x] `hover_reports_source_trait_fact`
 - [x] `hover_reports_source_trait_method_docs`
 - [x] `hover_reports_source_trait_receiver_method_fact`
 - [x] `hover_reports_source_enum_variant_fact`
@@ -500,10 +503,12 @@ Tests:
 - [x] `lsp_hover_reports_open_overlay_parameter_fact`
 - [x] `lsp_hover_reports_source_global_fact`
 - [x] `lsp_hover_reports_imported_module_path_fact`
+- [x] `lsp_hover_reports_schema_trait_fact`
 - [x] `lsp_hover_reports_schema_trait_method_fact`
 - [x] `lsp_hover_reports_schema_enum_variant_fact`
 - [x] `lsp_hover_reports_source_struct_field_fact`
 - [x] `lsp_hover_reports_source_method_fact`
+- [x] `lsp_hover_reports_source_trait_fact`
 - [x] `lsp_hover_reports_source_trait_receiver_method_fact`
 - [x] `lsp_hover_reports_source_enum_variant_fact`
 - [x] `lsp_hover_reports_stdlib_function_fact`
