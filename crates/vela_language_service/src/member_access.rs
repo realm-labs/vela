@@ -8,6 +8,13 @@ use vela_syntax::ast::{
 use crate::TextRange;
 
 #[derive(Debug, Clone, Eq, PartialEq)]
+pub(crate) struct MemberAccessSite {
+    pub(crate) member: String,
+    pub(crate) member_range: TextRange,
+    pub(crate) receiver_range: TextRange,
+}
+
+#[derive(Debug, Clone, Eq, PartialEq)]
 pub(crate) struct MemberCallSite {
     pub(crate) member: String,
     pub(crate) member_range: TextRange,
@@ -17,6 +24,7 @@ pub(crate) struct MemberCallSite {
 #[derive(Default)]
 struct MemberAccessCollector {
     receiver_ranges: BTreeMap<(usize, usize), TextRange>,
+    access_sites: Vec<MemberAccessSite>,
     call_sites: Vec<MemberCallSite>,
 }
 
@@ -30,6 +38,12 @@ pub(crate) fn member_call_sites(parsed: &SourceFile) -> Vec<MemberCallSite> {
     let mut collector = MemberAccessCollector::default();
     collector.collect_source_file(parsed);
     collector.call_sites
+}
+
+pub(crate) fn member_access_sites(parsed: &SourceFile) -> Vec<MemberAccessSite> {
+    let mut collector = MemberAccessCollector::default();
+    collector.collect_source_file(parsed);
+    collector.access_sites
 }
 
 impl MemberAccessCollector {
@@ -213,6 +227,11 @@ impl MemberAccessCollector {
         };
         self.receiver_ranges
             .insert((member.start, member.end), receiver);
+        self.access_sites.push(MemberAccessSite {
+            member: name.to_owned(),
+            member_range: member,
+            receiver_range: receiver,
+        });
     }
 
     fn record_call_site(&mut self, callee: &Expr) {
@@ -303,6 +322,43 @@ fn main(player: Player) {
                     call_receiver_start + "player".len()
                 ),
             }]
+        );
+    }
+
+    #[test]
+    fn member_access_sites_include_field_and_method_members() {
+        let source = "\
+fn main(player: Player) {
+    player.grant(player.level)
+}";
+        let parsed = parse_source(SourceId::new(1), source);
+
+        let sites = member_access_sites(&parsed);
+
+        let grant_receiver_start = source.find("player.grant").expect("method receiver");
+        let grant_start = grant_receiver_start + "player.".len();
+        let level_receiver_start = source.find("player.level").expect("field receiver");
+        let level_start = level_receiver_start + "player.".len();
+        assert_eq!(
+            sites,
+            vec![
+                MemberAccessSite {
+                    member: "grant".to_owned(),
+                    member_range: TextRange::new(grant_start, grant_start + "grant".len()),
+                    receiver_range: TextRange::new(
+                        grant_receiver_start,
+                        grant_receiver_start + "player".len()
+                    ),
+                },
+                MemberAccessSite {
+                    member: "level".to_owned(),
+                    member_range: TextRange::new(level_start, level_start + "level".len()),
+                    receiver_range: TextRange::new(
+                        level_receiver_start,
+                        level_receiver_start + "player".len()
+                    ),
+                },
+            ]
         );
     }
 }

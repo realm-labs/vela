@@ -358,9 +358,10 @@ Purpose: classify the cursor once and reuse it across features.
   receiver ranges and shared receiver type facts instead of running
   feature-local member receiver recovery for the cursor token. Source method
   reference scans now consume shared AST member-call sites instead of lexing
-  all identifiers and scanning backward for receivers. Prepare-rename and
-  rename now resolve the selected source/schema member target from the same
-  query-owned receiver ranges and type facts, preserving explicit
+  all identifiers and scanning backward for receivers, and source field
+  reference scans consume shared AST member-access sites the same way.
+  Prepare-rename and rename now resolve the selected source/schema member
+  target from the same query-owned receiver ranges and type facts, preserving explicit
   `self.method()` handling without local receiver scanning.
   `CursorContext` now exposes the identifier token range under the request
   cursor, and rename target selection consumes that shared range instead of

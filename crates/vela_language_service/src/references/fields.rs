@@ -1,18 +1,15 @@
-use vela_analysis::{facts::AnalysisFacts, type_fact::TypeFact};
-use vela_common::{SourceId, Span};
-use vela_hir::binding::BindingMap;
+use vela_analysis::type_fact::TypeFact;
+use vela_common::SourceId;
 use vela_hir::ids::HirDeclId;
 use vela_hir::module_graph::{Declaration, DeclarationKind, ModuleGraph};
 use vela_syntax::ast::SourceFile;
-use vela_syntax::lexer::lex;
-use vela_syntax::token::TokenKind;
 
-use crate::{LanguageServiceDatabases, TextRange};
+use crate::{LanguageServiceDatabases, member_access, query_context};
 
 use super::{
     Reference, ReferenceKind, ReferenceToken, declaration_name_matches, diagnostic_range,
-    member_receiver_range, name_range_in_text, record_fields, record_owner_names,
-    resolved_use_reference_kind, span_text_range, token_text, type_fact_for_resolution,
+    name_range_in_text, record_fields, record_owner_names, resolved_use_reference_kind,
+    span_text_range, token_text,
 };
 
 #[derive(Debug, Clone, Eq, PartialEq)]
@@ -27,7 +24,6 @@ pub(super) fn script_field_references(
     include_declaration: bool,
 ) -> Vec<Reference> {
     let graph = databases.hir_db().graph();
-    let facts = AnalysisFacts::from_module_graph(graph);
     let mut references = Vec::new();
 
     if include_declaration
@@ -38,7 +34,7 @@ pub(super) fn script_field_references(
 
     for source in databases.source_db().records().values() {
         references.extend(script_field_use_references_for_source(
-            graph, &facts, source, target,
+            databases, graph, source, target,
         ));
         if let Some(parsed) = databases.parse_db().parsed_source(source.document_id()) {
             references.extend(script_record_field_references_for_source(
@@ -151,44 +147,33 @@ fn reference_for_script_field_declaration(
 }
 
 fn script_field_use_references_for_source(
+    databases: &LanguageServiceDatabases,
     graph: &ModuleGraph,
-    facts: &AnalysisFacts,
     source: &crate::SourceRecord,
     target: &FieldReferenceTarget,
 ) -> Vec<Reference> {
     let mut references = Vec::new();
     let source_id = source.source_id();
     let text = source.text();
-    for range in member_field_ranges(source_id, text, &target.field) {
-        let Some(start) = u32::try_from(range.start).ok() else {
+    let Some(parsed) = databases.parse_db().parsed_source(source.document_id()) else {
+        return references;
+    };
+    for site in member_access::member_access_sites(parsed) {
+        if site.member != target.field {
             continue;
-        };
-        for declaration in graph.declarations() {
-            if declaration.span.source != source_id || !declaration.span.contains(start) {
-                continue;
-            }
-            let Some(bindings) = graph.bindings(declaration.id) else {
-                continue;
-            };
-            if script_field_target_for_member(
-                graph,
-                facts,
-                text,
-                source_id,
-                bindings,
-                &target.field,
-                range,
-            )
+        }
+        if query_context::type_fact_for_source_range(databases, source_id, site.receiver_range)
+            .and_then(|receiver| {
+                script_field_target_for_receiver_fact(graph, &receiver, &target.field)
+            })
             .as_ref()
-                == Some(target)
-            {
-                references.push(Reference {
-                    document_id: source.document_id().clone(),
-                    range: diagnostic_range(text, range),
-                    kind: resolved_use_reference_kind(text, range),
-                });
-                break;
-            }
+            == Some(target)
+        {
+            references.push(Reference {
+                document_id: source.document_id().clone(),
+                range: diagnostic_range(text, site.member_range),
+                kind: resolved_use_reference_kind(text, site.member_range),
+            });
         }
     }
     references
@@ -224,28 +209,6 @@ fn script_record_field_references_for_source(
         });
     });
     references
-}
-
-fn script_field_target_for_member(
-    graph: &ModuleGraph,
-    facts: &AnalysisFacts,
-    text: &str,
-    source_id: SourceId,
-    bindings: &BindingMap,
-    field: &str,
-    member_range: TextRange,
-) -> Option<FieldReferenceTarget> {
-    let receiver = member_receiver_range(text, member_range.start)?;
-    let start = u32::try_from(receiver.start).ok()?;
-    let end = u32::try_from(receiver.end).ok()?;
-    let span = Span::new(source_id, start, end);
-    let resolution = bindings.resolution_at_span(span)?;
-    let receiver = type_fact_for_resolution(resolution, facts)?;
-    let owner = script_field_owner(graph, &receiver, field)?;
-    Some(FieldReferenceTarget {
-        owner,
-        field: field.to_owned(),
-    })
 }
 
 fn script_field_target_for_constructor_path(
@@ -303,27 +266,4 @@ fn constructor_path_matches(
                     .eq(segments.iter())
             }),
     }
-}
-
-fn member_field_ranges(source_id: SourceId, text: &str, field: &str) -> Vec<TextRange> {
-    lex(source_id, text)
-        .tokens
-        .into_iter()
-        .filter_map(|token| match token.kind {
-            TokenKind::Ident(name) if name == field => {
-                let range = span_text_range(token.span)?;
-                member_receiver_range(text, range.start).map(|_| range)
-            }
-            TokenKind::Ident(_)
-            | TokenKind::Int(_)
-            | TokenKind::Float(_)
-            | TokenKind::Char(_)
-            | TokenKind::String(_)
-            | TokenKind::InterpolatedString(_)
-            | TokenKind::Bytes(_)
-            | TokenKind::Keyword(_)
-            | TokenKind::Symbol(_)
-            | TokenKind::Eof => None,
-        })
-        .collect()
 }
