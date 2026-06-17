@@ -185,6 +185,7 @@ impl LanguageServiceDatabases {
             member_receiver.and_then(|receiver| query.type_fact_for_range(self, receiver));
         let target = rename_target(
             self,
+            &query,
             source_id,
             query.text(),
             RenameToken {
@@ -222,6 +223,7 @@ impl LanguageServiceDatabases {
             member_receiver.and_then(|receiver| query.type_fact_for_range(self, receiver));
         let target = rename_target(
             self,
+            &query,
             source_id,
             query.text(),
             RenameToken {
@@ -541,6 +543,7 @@ struct DeclarationRenameTarget<'a> {
 
 fn rename_target<'a>(
     databases: &'a LanguageServiceDatabases,
+    query: &QueryContext<'_>,
     source_id: SourceId,
     text: &str,
     token: RenameToken,
@@ -630,7 +633,7 @@ fn rename_target<'a>(
         if let Some(target) = schema::schema_type_use_target(databases, declaration, text, &token) {
             return Some(RenameTarget::SchemaType(target));
         }
-        if let Some(target) = schema::schema_function_use_target(databases, text, &token) {
+        if let Some(target) = schema::schema_function_use_target(databases, query, text, &token) {
             return Some(RenameTarget::SchemaFunction(target));
         }
         if let Some(target) = schema::schema_variant_use_target(databases, text, &token) {

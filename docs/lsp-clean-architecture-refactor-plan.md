@@ -375,9 +375,12 @@ Purpose: classify the cursor once and reuse it across features.
   receiver facts instead of feature-local member receiver scanning. Schema
   function rename edit collection now consumes shared parsed path-call sites
   instead of tokenizing identifiers and reconstructing callees from source
-  text. Source enum variant rename edit collection now consumes shared parsed
-  expression path sites for constructor-like uses and leaves pattern path uses
-  on the existing scanner until pattern paths carry source spans. Schema
+  text, and schema function rename target selection consumes the same shared
+  parsed path-call sites before falling back to legacy call-name
+  reconstruction. Source enum variant rename edit collection now consumes
+  shared parsed expression path sites for constructor-like uses and leaves
+  pattern path uses on the existing scanner until pattern paths carry source
+  spans. Schema
   variant rename edit collection uses the same parsed expression path sites for
   constructor-like uses while retaining pattern fallback scanning for spanless
   pattern paths. Source enum variant references now consume the shared parsed

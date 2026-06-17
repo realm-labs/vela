@@ -8,7 +8,8 @@ use vela_syntax::lexer::lex;
 use vela_syntax::token::TokenKind;
 
 use crate::{
-    DocumentId, LanguageServiceDatabases, TextRange, member_access, path_calls, query_context,
+    DocumentId, LanguageServiceDatabases, QueryContext, TextRange, member_access, path_calls,
+    query_context,
 };
 
 use super::{
@@ -342,9 +343,25 @@ pub(super) fn schema_type_use_target(
 
 pub(super) fn schema_function_use_target(
     databases: &LanguageServiceDatabases,
+    query: &QueryContext<'_>,
     text: &str,
     token: &RenameToken,
 ) -> Option<SchemaFunctionRenameTarget> {
+    if let Some(source) = query.source_record()
+        && let Some(parsed) = databases.parse_db().parsed_source(source.document_id())
+    {
+        for site in path_calls::path_call_sites(parsed, text) {
+            if site.segment_range != token.range {
+                continue;
+            }
+            let callee = site.path.join("::");
+            let target = schema_function_target_for_name(databases, &callee)?;
+            return source_backed_schema_function_target(databases, target).map(|mut target| {
+                target.token = token.clone();
+                target
+            });
+        }
+    }
     let callee = function_call_name_at(text, token.range)?;
     let target = schema_function_target_for_name(databases, &callee)?;
     source_backed_schema_function_target(databases, target).map(|mut target| {
