@@ -806,6 +806,7 @@ Tests:
 - [x] `references_find_schema_record_constructor_field_labels`
 - [x] `lsp_references_find_schema_record_constructor_field_labels`
 - [x] `references_find_schema_record_constructor_shorthand_field_labels`
+- [x] `lsp_references_find_schema_record_constructor_shorthand_field_labels`
 - [x] `references_find_schema_record_variant_field_labels_and_patterns`
 - [x] `lsp_references_find_schema_record_variant_field_labels_and_patterns`
 - [x] `references_find_schema_method_calls`

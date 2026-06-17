@@ -289,6 +289,10 @@ constructor reads and match-pattern uses. Schema-backed methods and trait
 methods with source spans now participate in `textDocument/prepareCallHierarchy`,
 incoming calls, and script-caller outgoing calls for typed receiver call sites.
 
+M20.5 Phase 11 update: native LSP reference fixtures now also cover
+schema-backed record-constructor shorthand field labels, matching the existing
+language-service shorthand coverage and explicit-label LSP fixture path.
+
 M20.5 Phase 13 update: the conditional null-check to Option/Result guard
 rewrite is intentionally deferred until a structured diagnostic or syntax
 pattern can prove the rewrite is local, source-owned, and
