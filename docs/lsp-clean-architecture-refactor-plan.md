@@ -568,9 +568,12 @@ and semantic tokens use the same identities and display primitives.
   declarations, modules, fields, methods, variants, builtin facts, stdlib
   facts, and schema-owned facts.
   A shared `SymbolRef` identity now exists in `vela_language_service`, and the
-  completion model reuses it through the existing `CompletionSymbol` export;
-  hover, definition, references, rename, symbols, inlay hints, and diagnostics
-  still need to converge on the shared identity directly.
+  completion model reuses it through the existing `CompletionSymbol` export.
+  Hover and definition now build a shared cursor `SymbolTarget` that carries
+  schema and builtin `SymbolRef` classification for schema member, variant,
+  type, trait, function, and stdlib targets; references, rename, symbols,
+  inlay hints, diagnostics, and broader source/local identities still need to
+  converge on the shared identity directly.
 - [~] Route hover labels, completion details, signature labels, symbol labels,
   inlay labels, and diagnostics through `DisplayParts` or equivalent
   structured display helpers.
@@ -580,8 +583,13 @@ and semantic tokens use the same identities and display primitives.
   completion details now render through it while preserving the existing
   user-visible strings; prose completion details, remaining hover details,
   broader symbol labels, and diagnostics still need to converge on it.
-- [ ] Make go-to-definition and hover resolve symbols through the shared
+- [~] Make go-to-definition and hover resolve symbols through the shared
   cursor context before falling back to feature-local logic.
+  Hover and definition now consume a shared `SymbolTarget` built from
+  `QueryContext` identifier ranges, member receiver facts, schema source-span
+  lookups, and schema/builtin `SymbolRef` classification. Source declarations,
+  locals, imports, and script-owned member fallbacks still need deeper shared
+  symbol resolution before this item is complete.
 - [ ] Ensure schema-owned symbols can be displayed and completed without
   pretending they have source definitions.
 - [ ] Preserve source-span accuracy for script-owned symbols.

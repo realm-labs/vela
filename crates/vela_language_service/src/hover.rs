@@ -19,7 +19,7 @@ use vela_hir::type_hint::{
 
 use crate::{
     DiagnosticRange, DisplayParts, DocumentId, LanguageServiceDatabases, LineIndex, Position,
-    QueryContext, TextRange,
+    QueryContext, TextRange, symbol_target::SymbolTarget,
 };
 
 #[derive(Debug, Clone, Copy, Eq, PartialEq)]
@@ -74,27 +74,19 @@ impl Hover {
     }
 }
 
-#[derive(Debug, Clone, Eq, PartialEq)]
-struct HoverToken {
-    text: String,
-    range: TextRange,
-    member_receiver: Option<TextRange>,
-}
-
 impl LanguageServiceDatabases {
     #[must_use]
     pub fn hover(&self, document_id: &DocumentId, position: Position) -> Option<Hover> {
         let query = QueryContext::from_databases(self, document_id, position)?;
-        let token = hover_token_at(&query)?;
+        let target = SymbolTarget::from_query(self, &query)?;
         let source_id = query.source_id()?;
-        let offset = u32::try_from(token.range.start).ok()?;
-        let range = diagnostic_range(query.text(), token.range);
+        let offset = u32::try_from(target.range().start).ok()?;
+        let range = diagnostic_range(query.text(), target.range());
         let graph = self.hir_db().graph();
         let facts = AnalysisFacts::from_module_graph(graph);
 
-        if let Some(receiver) = token.member_receiver
-            && let Some(receiver_fact) = query.type_fact_for_range(self, receiver)
-            && let Some(hover) = self.member_hover(&receiver_fact, &token, range)
+        if let Some(receiver_fact) = target.member_receiver_fact()
+            && let Some(hover) = self.member_hover(receiver_fact, &target, range)
         {
             return Some(hover);
         }
@@ -105,33 +97,36 @@ impl LanguageServiceDatabases {
             }
             if let Some(bindings) = graph.bindings(declaration.id) {
                 if let Some(hover) =
-                    hover_from_resolution_at_token(bindings, &facts, &token, range, self)
+                    hover_from_resolution_at_target(bindings, &facts, &target, range, self)
                 {
                     return Some(hover);
                 }
-                if let Some(hover) = hover_from_local_declaration(bindings, &facts, &token, range) {
+                if let Some(hover) = hover_from_local_declaration(bindings, &facts, &target, range)
+                {
                     return Some(hover);
                 }
             }
         }
 
         if let Some(hover) =
-            self.import_hover(document_id, query.text(), source_id, &facts, &token, range)
+            self.import_hover(document_id, query.text(), source_id, &facts, &target, range)
         {
             return Some(hover);
         }
 
-        if let Some(hover) = struct_field_hover_at_token(graph, source_id, offset, &token, range) {
+        if let Some(hover) = struct_field_hover_at_target(graph, source_id, offset, &target, range)
+        {
             return Some(hover);
         }
 
         if let Some(hover) =
-            script_method_hover_at_token(graph, query.text(), source_id, &token, range)
+            script_method_hover_at_target(graph, query.text(), source_id, &target, range)
         {
             return Some(hover);
         }
 
-        if let Some(hover) = enum_variant_hover_at_token(graph, source_id, offset, &token, range) {
+        if let Some(hover) = enum_variant_hover_at_target(graph, source_id, offset, &target, range)
+        {
             return Some(hover);
         }
 
@@ -140,46 +135,49 @@ impl LanguageServiceDatabases {
             .find(|declaration| {
                 declaration.span.source == source_id
                     && declaration.span.contains(offset)
-                    && declaration.name == token.text
+                    && declaration.name == target.text()
             })
             .map(|declaration| hover_from_declaration(graph, &facts, declaration, range))
         {
             return Some(hover);
         }
 
-        source_type_hint_hover(graph, &facts, &token.text, range)
-            .or_else(|| schema::symbol_hover(self.schema_db().facts(), &token.text, range))
-            .or_else(|| stdlib_function_hover(&token.text, range))
-            .or_else(|| type_hint_hover(self.schema_db().facts(), &token.text, range))
+        source_type_hint_hover(graph, &facts, target.text(), range)
+            .or_else(|| schema::symbol_hover(self.schema_db().facts(), target.text(), range))
+            .or_else(|| stdlib_function_hover(target.text(), range))
+            .or_else(|| type_hint_hover(self.schema_db().facts(), target.text(), range))
     }
 
     fn member_hover(
         &self,
         receiver_fact: &TypeFact,
-        token: &HoverToken,
+        target: &SymbolTarget,
         range: DiagnosticRange,
     ) -> Option<Hover> {
         if let Some(hover) =
-            script_member_hover(self.hir_db().graph(), receiver_fact, &token.text, range)
+            script_member_hover(self.hir_db().graph(), receiver_fact, target.text(), range)
         {
             return Some(hover);
         }
         if let Some(hover) =
-            script_method_hover(self.hir_db().graph(), receiver_fact, &token.text, range)
+            script_method_hover(self.hir_db().graph(), receiver_fact, target.text(), range)
         {
             return Some(hover);
         }
         if let Some(hover) =
-            script_trait_method_hover(self.hir_db().graph(), receiver_fact, &token.text, range)
+            script_trait_method_hover(self.hir_db().graph(), receiver_fact, target.text(), range)
         {
             return Some(hover);
         }
-        if let Some(hover) =
-            schema::member_hover(self.schema_db().facts(), receiver_fact, &token.text, range)
-        {
+        if let Some(hover) = schema::member_hover(
+            self.schema_db().facts(),
+            receiver_fact,
+            target.text(),
+            range,
+        ) {
             return Some(hover);
         }
-        stdlib_method_hover(receiver_fact, &token.text, range)
+        stdlib_method_hover(receiver_fact, target.text(), range)
     }
 
     fn import_hover(
@@ -188,7 +186,7 @@ impl LanguageServiceDatabases {
         text: &str,
         source_id: vela_common::SourceId,
         facts: &AnalysisFacts,
-        token: &HoverToken,
+        target: &SymbolTarget,
         range: DiagnosticRange,
     ) -> Option<Hover> {
         let graph = self.hir_db().graph();
@@ -198,7 +196,7 @@ impl LanguageServiceDatabases {
             if import.span.source != source_id {
                 return None;
             }
-            let segment = import_path_segment_at(text, import, token)?;
+            let segment = import_path_segment_at(text, import, target)?;
             if segment + 1 == import.path.len() {
                 let ImportResolution::Declaration(declaration) = import.resolution?;
                 let declaration = graph.declaration(declaration)?;
@@ -222,9 +220,9 @@ fn module_hover(graph: &ModuleGraph, path: &[String], range: DiagnosticRange) ->
     })
 }
 
-fn import_path_segment_at(text: &str, import: &Import, token: &HoverToken) -> Option<usize> {
+fn import_path_segment_at(text: &str, import: &Import, target: &SymbolTarget) -> Option<usize> {
     let range = span_text_range(import.span)?;
-    if token.range.start < range.start || range.end < token.range.end {
+    if target.range().start < range.start || range.end < target.range().end {
         return None;
     }
     let slice = text.get(range.start..range.end)?;
@@ -233,7 +231,7 @@ fn import_path_segment_at(text: &str, import: &Import, token: &HoverToken) -> Op
         let mut segment_start = range.start + relative;
         for (index, segment) in import.path.iter().enumerate() {
             let segment_end = segment_start + segment.len();
-            if segment_start <= token.range.start && token.range.end <= segment_end {
+            if segment_start <= target.range().start && target.range().end <= segment_end {
                 return Some(index);
             }
             segment_start = segment_end + "::".len();
@@ -272,10 +270,10 @@ fn stdlib_method_hover(receiver: &TypeFact, method: &str, range: DiagnosticRange
     })
 }
 
-fn hover_from_resolution_at_token(
+fn hover_from_resolution_at_target(
     bindings: &BindingMap,
     facts: &AnalysisFacts,
-    token: &HoverToken,
+    target: &SymbolTarget,
     range: DiagnosticRange,
     databases: &LanguageServiceDatabases,
 ) -> Option<Hover> {
@@ -287,8 +285,8 @@ fn hover_from_resolution_at_token(
             let start = usize::try_from(expression.span.start).ok()?;
             let end = usize::try_from(expression.span.end).ok()?;
             (expression.span.source == graph.declaration(bindings.declaration)?.span.source
-                && start <= token.range.start
-                && token.range.end <= end)
+                && start <= target.range().start
+                && target.range().end <= end)
                 .then_some(resolution)
         })?;
     match resolution {
@@ -299,7 +297,7 @@ fn hover_from_resolution_at_token(
         }
         BindingResolution::Declaration(declaration) => {
             graph.declaration(*declaration).map(|declaration| {
-                enum_variant_hover_for_declaration(graph, declaration, &token.text, range)
+                enum_variant_hover_for_declaration(graph, declaration, target.text(), range)
                     .unwrap_or_else(|| hover_from_declaration(graph, facts, declaration, range))
             })
         }
@@ -327,11 +325,11 @@ fn hover_from_resolution_at_token(
     }
 }
 
-fn enum_variant_hover_at_token(
+fn enum_variant_hover_at_target(
     graph: &vela_hir::module_graph::ModuleGraph,
     source_id: vela_common::SourceId,
     offset: u32,
-    token: &HoverToken,
+    target: &SymbolTarget,
     range: DiagnosticRange,
 ) -> Option<Hover> {
     graph.declarations().find_map(|declaration| {
@@ -345,17 +343,17 @@ fn enum_variant_hover_at_token(
             .find(|variant| {
                 variant.span.source == source_id
                     && variant.span.contains(offset)
-                    && variant.name == token.text
+                    && variant.name == target.text()
             })
             .map(|variant| enum_variant_hover(graph, declaration, variant, range))
     })
 }
 
-fn struct_field_hover_at_token(
+fn struct_field_hover_at_target(
     graph: &vela_hir::module_graph::ModuleGraph,
     source_id: vela_common::SourceId,
     offset: u32,
-    token: &HoverToken,
+    target: &SymbolTarget,
     range: DiagnosticRange,
 ) -> Option<Hover> {
     graph.declarations().find_map(|declaration| {
@@ -369,7 +367,7 @@ fn struct_field_hover_at_token(
             .find(|field| {
                 field.span.source == source_id
                     && field.span.contains(offset)
-                    && field.name == token.text
+                    && field.name == target.text()
             })
             .map(|field| struct_field_hover(graph, declaration, field, range))
     })
@@ -399,11 +397,11 @@ fn script_member_hover(
     })
 }
 
-fn script_method_hover_at_token(
+fn script_method_hover_at_target(
     graph: &vela_hir::module_graph::ModuleGraph,
     text: &str,
     source_id: vela_common::SourceId,
-    token: &HoverToken,
+    target: &SymbolTarget,
     range: DiagnosticRange,
 ) -> Option<Hover> {
     graph
@@ -415,11 +413,11 @@ fn script_method_hover_at_token(
                     .methods
                     .iter()
                     .find(|method| {
-                        method.name == token.text
+                        method.name == target.text()
                             && method_name_range_in_text(text, declaration.span, &method.name)
                                 .is_some_and(|name_range| {
-                                    name_range.start <= token.range.start
-                                        && token.range.end <= name_range.end
+                                    name_range.start <= target.range().start
+                                        && target.range().end <= name_range.end
                                 })
                     })
                     .map(|method| impl_method_hover(graph, declaration, metadata, method, range))
@@ -430,11 +428,11 @@ fn script_method_hover_at_token(
                     .methods
                     .iter()
                     .find(|method| {
-                        method.name == token.text
+                        method.name == target.text()
                             && method_name_range_in_text(text, declaration.span, &method.name)
                                 .is_some_and(|name_range| {
-                                    name_range.start <= token.range.start
-                                        && token.range.end <= name_range.end
+                                    name_range.start <= target.range().start
+                                        && target.range().end <= name_range.end
                                 })
                     })
                     .map(|method| trait_method_hover(graph, declaration, method, range))
@@ -627,21 +625,22 @@ fn enum_variant_detail(owner: &str, variant: &EnumVariantHint) -> String {
 fn hover_from_local_declaration(
     bindings: &BindingMap,
     facts: &AnalysisFacts,
-    token: &HoverToken,
+    target: &SymbolTarget,
     range: DiagnosticRange,
 ) -> Option<Hover> {
     bindings.locals().find_map(|binding| {
         let start = usize::try_from(binding.span.start).ok()?;
         let end = usize::try_from(binding.span.end).ok()?;
-        (binding.name == token.text && start <= token.range.start && token.range.end <= end).then(
-            || {
+        (binding.name == target.text()
+            && start <= target.range().start
+            && target.range().end <= end)
+            .then(|| {
                 local_hover(
                     binding,
                     local_fact(binding, facts).unwrap_or(TypeFact::Unknown),
                     range,
                 )
-            },
-        )
+            })
     })
 }
 
@@ -966,17 +965,6 @@ fn qualified_declaration_label(
     } else {
         format!("{module}::{}", declaration.name)
     }
-}
-
-fn hover_token_at(query: &QueryContext<'_>) -> Option<HoverToken> {
-    let text = query.text();
-    let range = query.identifier_range()?;
-    let text_value = text[range.start..range.end].to_owned();
-    Some(HoverToken {
-        text: text_value,
-        range,
-        member_receiver: query.member_receiver_range(),
-    })
 }
 
 fn diagnostic_range(text: &str, range: TextRange) -> DiagnosticRange {

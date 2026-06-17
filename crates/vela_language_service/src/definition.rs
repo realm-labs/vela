@@ -1,10 +1,9 @@
-use vela_analysis::{registry::RegistryFacts, type_fact::TypeFact};
 use vela_common::{SourceId, Span};
 use vela_hir::binding::{BindingMap, BindingResolution, LocalBinding};
 
 use crate::{
     DiagnosticRange, DocumentId, LanguageServiceDatabases, LineIndex, Position, QueryContext,
-    TextRange, path_calls,
+    TextRange, symbol_target::SymbolTarget,
 };
 
 #[derive(Debug, Clone, Eq, PartialEq)]
@@ -25,30 +24,27 @@ impl Definition {
     }
 }
 
-#[derive(Debug, Clone, Eq, PartialEq)]
-struct DefinitionToken {
-    range: TextRange,
-    text: String,
-    member_receiver: Option<TextRange>,
-}
-
 impl LanguageServiceDatabases {
     #[must_use]
     pub fn definition(&self, document_id: &DocumentId, position: Position) -> Option<Definition> {
         let query = QueryContext::from_databases(self, document_id, position)?;
-        let token = definition_token_at(&query)?;
+        let target = SymbolTarget::from_query(self, &query)?;
         let source_id = query.source_id()?;
-        let offset = u32::try_from(token.range.start).ok()?;
+        let offset = u32::try_from(target.range().start).ok()?;
         let graph = self.hir_db().graph();
 
-        if let Some(receiver) = token.member_receiver
-            && let Some(receiver_fact) = query.type_fact_for_range(self, receiver)
-            && let Some(definition) = self.schema_member_definition(&receiver_fact, &token)
+        if target.is_schema_symbol()
+            && let Some(definition) = target
+                .schema_member_span(self)
+                .and_then(|span| self.definition_from_span(span))
         {
             return Some(definition);
         }
 
-        if let Some(definition) = self.schema_variant_definition(&query, &token) {
+        if let Some(definition) = target
+            .schema_variant_span(self, &query)
+            .and_then(|span| self.definition_from_span(span))
+        {
             return Some(definition);
         }
 
@@ -59,15 +55,16 @@ impl LanguageServiceDatabases {
             let Some(bindings) = graph.bindings(declaration.id) else {
                 continue;
             };
-            if let Some(definition) = definition_from_resolution_at_token(bindings, &token, self) {
+            if let Some(definition) = definition_from_resolution_at_target(bindings, &target, self)
+            {
                 return Some(definition);
             }
-            if let Some(binding) = local_declaration_at_token(bindings, &token, self) {
+            if let Some(binding) = local_declaration_at_target(bindings, &target, self) {
                 return self.definition_from_span(binding.span);
             }
         }
 
-        self.schema_definition_for_token(&token).or_else(|| {
+        self.schema_definition_for_target(&target).or_else(|| {
             graph
                 .declarations()
                 .find(|declaration| {
@@ -128,64 +125,19 @@ impl LanguageServiceDatabases {
             .find(|record| record.source_id() == source_id)
     }
 
-    fn schema_definition_for_token(&self, token: &DefinitionToken) -> Option<Definition> {
-        let locations = self.schema_db().source_locations();
-        let span = locations
-            .type_span(&token.text)
-            .or_else(|| locations.trait_span(&token.text))
-            .or_else(|| locations.function_span(&token.text))?;
-        self.definition_from_span(span)
-    }
-
-    fn schema_member_definition(
-        &self,
-        receiver_fact: &TypeFact,
-        token: &DefinitionToken,
-    ) -> Option<Definition> {
-        let owner = fact_owner_name(receiver_fact)?;
-        let locations = self.schema_db().source_locations();
-        let span = locations
-            .field_span(&owner, &token.text)
-            .or_else(|| locations.method_span(&owner, &token.text))
-            .or_else(|| locations.trait_method_span(&owner, &token.text))?;
-        self.definition_from_span(span)
-    }
-
-    fn schema_variant_definition(
-        &self,
-        query: &QueryContext<'_>,
-        token: &DefinitionToken,
-    ) -> Option<Definition> {
-        let text = query.text();
-        if let Some(source) = query.source_record()
-            && let Some(parsed) = self.parse_db().parsed_source(source.document_id())
-        {
-            for site in path_calls::path_expression_sites(parsed, text) {
-                if site.segment_range != token.range {
-                    continue;
-                }
-                let Some((variant, owner_segments)) = site.path.split_last() else {
-                    continue;
-                };
-                let Some(owner) =
-                    schema_variant_owner(self.schema_db().facts(), owner_segments, variant)
-                else {
-                    continue;
-                };
-                let span = self
-                    .schema_db()
-                    .source_locations()
-                    .variant_span(&owner, variant)?;
-                return self.definition_from_span(span);
-            }
+    fn schema_definition_for_target(&self, target: &SymbolTarget) -> Option<Definition> {
+        if !target.is_schema_symbol() {
+            return None;
         }
-        None
+        target
+            .schema_symbol_span(self)
+            .and_then(|span| self.definition_from_span(span))
     }
 }
 
-fn definition_from_resolution_at_token(
+fn definition_from_resolution_at_target(
     bindings: &BindingMap,
-    token: &DefinitionToken,
+    target: &SymbolTarget,
     databases: &LanguageServiceDatabases,
 ) -> Option<Definition> {
     let graph = databases.hir_db().graph();
@@ -195,7 +147,7 @@ fn definition_from_resolution_at_token(
             let expression = bindings.expression(expression)?;
             let start = usize::try_from(expression.span.start).ok()?;
             let end = usize::try_from(expression.span.end).ok()?;
-            (start <= token.range.start && token.range.end <= end)
+            (start <= target.range().start && target.range().end <= end)
                 .then_some((end.saturating_sub(start), resolution))
         })
         .min_by_key(|(len, _)| *len)?
@@ -214,9 +166,9 @@ fn definition_from_resolution_at_token(
     }
 }
 
-fn local_declaration_at_token<'a>(
+fn local_declaration_at_target<'a>(
     bindings: &'a BindingMap,
-    token: &DefinitionToken,
+    target: &SymbolTarget,
     databases: &LanguageServiceDatabases,
 ) -> Option<&'a LocalBinding> {
     bindings.locals().find(|binding| {
@@ -234,17 +186,7 @@ fn local_declaration_at_token<'a>(
         else {
             return false;
         };
-        name_range.start <= token.range.start && token.range.end <= name_range.end
-    })
-}
-
-fn definition_token_at(query: &QueryContext<'_>) -> Option<DefinitionToken> {
-    let text = query.text();
-    let range = query.identifier_range()?;
-    Some(DefinitionToken {
-        text: text[range.start..range.end].to_owned(),
-        range,
-        member_receiver: query.member_receiver_range(),
+        name_range.start <= target.range().start && target.range().end <= name_range.end
     })
 }
 
@@ -261,44 +203,6 @@ fn name_range_in_text(text: &str, range: TextRange, name: &str) -> Option<TextRa
     let relative = slice.find(name)?;
     let start = range.start + relative;
     Some(TextRange::new(start, start + name.len()))
-}
-
-fn fact_owner_name(fact: &TypeFact) -> Option<String> {
-    match fact {
-        TypeFact::Host { name }
-        | TypeFact::Record { name }
-        | TypeFact::Enum { name, .. }
-        | TypeFact::Trait { name } => Some(name.clone()),
-        _ => None,
-    }
-}
-
-fn schema_variant_owner(
-    schema: &RegistryFacts,
-    owner_segments: &[String],
-    variant: &str,
-) -> Option<String> {
-    if owner_segments.is_empty() {
-        return None;
-    }
-    let owner = owner_segments.join("::");
-    if schema.variant_fact(&owner, variant).is_some() {
-        return Some(owner);
-    }
-    if owner.contains("::") {
-        return None;
-    }
-    let mut matches = schema.variants().filter_map(|candidate| {
-        (candidate.name == variant
-            && candidate
-                .owner
-                .rsplit("::")
-                .next()
-                .is_some_and(|short| short == owner))
-        .then_some(candidate.owner)
-    });
-    let matched = matches.next()?;
-    matches.next().is_none().then_some(matched)
 }
 
 #[cfg(test)]
@@ -757,6 +661,83 @@ fn main() {
                 ),
             )
             .expect("definition should resolve schema variant source span");
+
+        assert_eq!(definition.document_id(), &schema_source);
+        assert_eq!(definition.range().start().character, target_start);
+        assert_eq!(definition.range().end().character, target_end);
+    }
+
+    #[test]
+    fn definition_follows_qualified_schema_variant_when_name_is_not_unique() {
+        let main = DocumentId::from("/workspace/scripts/game/main.vela");
+        let schema_source = DocumentId::from("/workspace/scripts/schema_defs.vela");
+        let main_text = "pub fn main() { return QuestState::Active }";
+        let schema_text = "pub fn active_marker() { return 1 }";
+        let mut databases = databases_for(vec![
+            SourceFileSnapshot::new(main.clone(), main_text),
+            SourceFileSnapshot::new(schema_source.clone(), schema_text),
+        ]);
+        let schema_record = databases
+            .source_db()
+            .records()
+            .get(&schema_source)
+            .expect("schema source should be indexed");
+        let target_start = schema_text
+            .find("active_marker")
+            .expect("schema marker should exist");
+        let target_end = target_start + "active_marker".len();
+        let artifact = serde_json::json!({
+            "formatVersion": 1,
+            "facts": {
+                "types": [
+                    {
+                        "name": "QuestState",
+                        "fact": { "kind": "enum", "name": "QuestState", "variant": null }
+                    },
+                    {
+                        "name": "OtherState",
+                        "fact": { "kind": "enum", "name": "OtherState", "variant": null }
+                    }
+                ],
+                "variants": [
+                    {
+                        "owner": "QuestState",
+                        "name": "Active",
+                        "fact": {
+                            "kind": "enum",
+                            "name": "QuestState",
+                            "variant": "Active"
+                        },
+                        "sourceSpan": {
+                            "source": schema_record.source_id().get(),
+                            "start": target_start,
+                            "end": target_end
+                        }
+                    },
+                    {
+                        "owner": "OtherState",
+                        "name": "Active",
+                        "fact": {
+                            "kind": "enum",
+                            "name": "OtherState",
+                            "variant": "Active"
+                        }
+                    }
+                ]
+            }
+        })
+        .to_string();
+        databases.load_schema_artifact_json("/workspace/target/vela/schema.json", &artifact);
+
+        let definition = databases
+            .definition(
+                &main,
+                Position::new(
+                    0,
+                    main_text.find("Active").expect("variant use should exist"),
+                ),
+            )
+            .expect("definition should resolve qualified schema variant source span");
 
         assert_eq!(definition.document_id(), &schema_source);
         assert_eq!(definition.range().start().character, target_start);
