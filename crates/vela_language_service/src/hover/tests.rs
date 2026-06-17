@@ -58,6 +58,10 @@ fn hover_reports_effects_and_permissions() {
     assert!(hover.detail().contains("effects: writes_host"));
     assert!(hover.detail().contains("permissions: player.reward"));
     assert_eq!(hover.docs(), Some("Grant player rewards."));
+    assert_eq!(
+        hover.symbol(),
+        Some(&SymbolRef::Schema("Player.grant".to_owned()))
+    );
 }
 
 #[test]
@@ -85,6 +89,10 @@ fn hover_reports_schema_trait_method_fact() {
     assert_eq!(hover.label(), "Rewardable.preview");
     assert!(hover.detail().contains("Function(i64) -> bool"));
     assert_eq!(hover.docs(), Some("Preview a reward."));
+    assert_eq!(
+        hover.symbol(),
+        Some(&SymbolRef::Schema("Rewardable.preview".to_owned()))
+    );
 }
 
 #[test]
@@ -107,6 +115,10 @@ fn hover_reports_schema_trait_fact() {
     assert_eq!(hover.label(), "Rewardable");
     assert_eq!(hover.detail(), "Rewardable");
     assert_eq!(hover.docs(), Some("Rewardable host trait."));
+    assert_eq!(
+        hover.symbol(),
+        Some(&SymbolRef::Schema("Rewardable".to_owned()))
+    );
 }
 
 #[test]
@@ -133,6 +145,10 @@ fn hover_reports_schema_type_field_and_function_docs() {
         .expect("hover should resolve schema type docs");
     assert_eq!(type_hover.kind(), HoverKind::Type);
     assert_eq!(type_hover.docs(), Some("Player host object."));
+    assert_eq!(
+        type_hover.symbol(),
+        Some(&SymbolRef::Schema("Player".to_owned()))
+    );
 
     let field_hover = databases
         .hover(
@@ -149,6 +165,10 @@ fn hover_reports_schema_type_field_and_function_docs() {
         .expect("hover should resolve schema field docs");
     assert_eq!(field_hover.kind(), HoverKind::Field);
     assert_eq!(field_hover.docs(), Some("Current player level."));
+    assert_eq!(
+        field_hover.symbol(),
+        Some(&SymbolRef::Schema("Player.level".to_owned()))
+    );
 
     let function_hover = databases
         .hover(
@@ -165,6 +185,10 @@ fn hover_reports_schema_type_field_and_function_docs() {
         .expect("hover should resolve schema function docs");
     assert_eq!(function_hover.kind(), HoverKind::Function);
     assert_eq!(function_hover.docs(), Some("Grant a player reward."));
+    assert_eq!(
+        function_hover.symbol(),
+        Some(&SymbolRef::Schema("grant".to_owned()))
+    );
 }
 
 #[test]
@@ -223,6 +247,10 @@ fn hover_reports_stdlib_function_fact() {
         hover.detail(),
         "Function(i64 | f64, i64 | f64) -> i64 | f64"
     );
+    assert_eq!(
+        hover.symbol(),
+        Some(&SymbolRef::Builtin("math::max".to_owned()))
+    );
 }
 
 #[test]
@@ -243,6 +271,10 @@ fn hover_reports_stdlib_method_fact() {
     assert_eq!(
         hover.detail(),
         "Function(Function(i64) -> bool) -> Array(i64)"
+    );
+    assert_eq!(
+        hover.symbol(),
+        Some(&SymbolRef::Builtin("Array(i64).filter".to_owned()))
     );
 }
 
@@ -495,6 +527,10 @@ fn hover_reports_schema_enum_variant_fact() {
     assert_eq!(hover.label(), "QuestState::Active");
     assert_eq!(hover.detail(), "QuestState::Active");
     assert_eq!(hover.docs(), Some("Active quest state."));
+    assert_eq!(
+        hover.symbol(),
+        Some(&SymbolRef::Schema("QuestState::Active".to_owned()))
+    );
 }
 
 fn databases_for(

@@ -1,7 +1,7 @@
 use vela_analysis::registry::{RegistryEffectFact, RegistryFacts};
 use vela_analysis::type_fact::TypeFact;
 
-use crate::DiagnosticRange;
+use crate::{DiagnosticRange, SymbolRef};
 
 use super::{Hover, HoverKind};
 
@@ -32,6 +32,7 @@ pub(super) fn member_hover(
             kind: HoverKind::Field,
             detail,
             docs: schema.field_docs(&owner, member).map(str::to_owned),
+            symbol: Some(SymbolRef::Schema(format!("{owner}.{member}"))),
         });
     }
     method_fact(schema, &owner, member).map(|fact| Hover {
@@ -40,6 +41,7 @@ pub(super) fn member_hover(
         kind: HoverKind::Method,
         detail: method_detail(schema, &owner, member, fact),
         docs: method_docs(schema, &owner, member).map(str::to_owned),
+        symbol: Some(SymbolRef::Schema(format!("{owner}.{member}"))),
     })
 }
 
@@ -55,6 +57,7 @@ pub(super) fn symbol_hover(
             kind: HoverKind::Type,
             detail: fact.display_name(),
             docs: schema.type_docs(name).map(str::to_owned),
+            symbol: Some(SymbolRef::Schema(name.to_owned())),
         });
     }
     if let Some(fact) = schema.trait_fact(name) {
@@ -64,6 +67,7 @@ pub(super) fn symbol_hover(
             kind: HoverKind::Trait,
             detail: fact.display_name(),
             docs: schema.trait_docs(name).map(str::to_owned),
+            symbol: Some(SymbolRef::Schema(name.to_owned())),
         });
     }
     schema
@@ -82,6 +86,7 @@ pub(super) fn symbol_hover(
             kind: HoverKind::Function,
             detail: function_detail(schema, &function.name, &function.fact),
             docs: schema.function_docs(&function.name).map(str::to_owned),
+            symbol: Some(SymbolRef::Schema(function.name.clone())),
         })
         .or_else(|| qualified_variant_hover(schema, name, range))
         .or_else(|| unique_variant_hover(schema, name, range))
@@ -99,6 +104,7 @@ fn qualified_variant_hover(
         kind: HoverKind::Variant,
         detail: fact.display_name(),
         docs: schema.variant_docs(owner, variant).map(str::to_owned),
+        symbol: Some(SymbolRef::Schema(name.to_owned())),
     })
 }
 
@@ -119,6 +125,10 @@ fn unique_variant_hover(
             docs: schema
                 .variant_docs(&variant.owner, &variant.name)
                 .map(str::to_owned),
+            symbol: Some(SymbolRef::Schema(format!(
+                "{}::{}",
+                variant.owner, variant.name
+            ))),
         }
     })
 }

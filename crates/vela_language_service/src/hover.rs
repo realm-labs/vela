@@ -19,7 +19,7 @@ use vela_hir::type_hint::{
 
 use crate::{
     DiagnosticRange, DisplayParts, DocumentId, LanguageServiceDatabases, LineIndex, Position,
-    QueryContext, TextRange, symbol_target::SymbolTarget,
+    QueryContext, SymbolRef, TextRange, symbol_target::SymbolTarget,
 };
 
 #[derive(Debug, Clone, Copy, Eq, PartialEq)]
@@ -45,6 +45,7 @@ pub struct Hover {
     kind: HoverKind,
     detail: String,
     docs: Option<String>,
+    symbol: Option<SymbolRef>,
 }
 
 impl Hover {
@@ -71,6 +72,11 @@ impl Hover {
     #[must_use]
     pub fn docs(&self) -> Option<&str> {
         self.docs.as_deref()
+    }
+
+    #[must_use]
+    pub fn symbol(&self) -> Option<&SymbolRef> {
+        self.symbol.as_ref()
     }
 }
 
@@ -217,6 +223,7 @@ fn module_hover(graph: &ModuleGraph, path: &[String], range: DiagnosticRange) ->
         kind: HoverKind::Module,
         detail: DisplayParts::keyword_symbol("module", &label).render(),
         docs: None,
+        symbol: None,
     })
 }
 
@@ -257,6 +264,7 @@ fn stdlib_function_hover(name: &str, range: DiagnosticRange) -> Option<Hover> {
             kind: HoverKind::Function,
             detail: stdlib_function_detail(&function),
             docs: None,
+            symbol: Some(SymbolRef::Builtin(function.name.to_owned())),
         })
 }
 
@@ -267,6 +275,11 @@ fn stdlib_method_hover(receiver: &TypeFact, method: &str, range: DiagnosticRange
         kind: HoverKind::Method,
         detail: stdlib_method_detail(&fact),
         docs: None,
+        symbol: Some(SymbolRef::Builtin(format!(
+            "{}.{}",
+            receiver.display_name(),
+            fact.method
+        ))),
     })
 }
 
@@ -307,6 +320,7 @@ fn hover_from_resolution_at_target(
             kind: HoverKind::Unknown,
             detail: "unresolved import".to_owned(),
             docs: None,
+            symbol: None,
         }),
         BindingResolution::QualifiedPath(path) => {
             let qualified = path.join("::");
@@ -319,6 +333,7 @@ fn hover_from_resolution_at_target(
                         kind: HoverKind::Unknown,
                         detail: "unresolved qualified path".to_owned(),
                         docs: None,
+                        symbol: None,
                     })
                 })
         }
@@ -511,6 +526,7 @@ fn struct_field_hover(
         kind: HoverKind::Field,
         detail: struct_field_detail(field),
         docs: attr_docs(&field.attrs),
+        symbol: None,
     }
 }
 
@@ -528,6 +544,7 @@ fn impl_method_hover(
         kind: HoverKind::Method,
         detail: signature_detail(&method.signature),
         docs: None,
+        symbol: None,
     }
 }
 
@@ -544,6 +561,7 @@ fn trait_method_hover(
         kind: HoverKind::Method,
         detail: signature_detail(&method.signature),
         docs: attr_docs(&method.attrs),
+        symbol: None,
     }
 }
 
@@ -596,6 +614,7 @@ fn enum_variant_hover(
         kind: HoverKind::Variant,
         detail: enum_variant_detail(&owner, variant),
         docs: attr_docs(&variant.attrs),
+        symbol: None,
     }
 }
 
@@ -672,6 +691,7 @@ fn hover_from_declaration(
         kind,
         detail,
         docs: declaration_docs(graph, declaration),
+        symbol: None,
     }
 }
 
@@ -710,6 +730,7 @@ fn local_hover(binding: &LocalBinding, fact: TypeFact, range: DiagnosticRange) -
         kind,
         detail: fact.display_name(),
         docs: None,
+        symbol: None,
     }
 }
 
@@ -749,6 +770,7 @@ fn type_hint_hover(schema: &RegistryFacts, name: &str, range: DiagnosticRange) -
             .unwrap_or(TypeFact::Any)
             .display_name(),
         docs: None,
+        symbol: None,
     })
 }
 
