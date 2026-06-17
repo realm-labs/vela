@@ -10,16 +10,12 @@ use super::{
 };
 
 pub(super) fn named_argument_completion_context(
-    text: &str,
-    offset: usize,
-    call_open: Option<usize>,
+    args_before_cursor: Option<&str>,
     shared_callee: Option<(TextRange, &str)>,
 ) -> Option<CallArgumentContext> {
-    let open = call_open?;
-    let (callee, callee_range) = shared_callee
-        .filter(|(range, _)| range.end <= open)
-        .map(|(range, callee)| (callee.to_owned(), Some(range)))?;
-    let args_before_cursor = &text[open + 1..offset];
+    let args_before_cursor = args_before_cursor?;
+    let (callee, callee_range) =
+        shared_callee.map(|(range, callee)| (callee.to_owned(), Some(range)))?;
     let current_arg = current_argument_text(args_before_cursor);
     if current_arg.contains(':') || !is_argument_name_prefix(current_arg.trim_start()) {
         return None;

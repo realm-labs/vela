@@ -479,11 +479,8 @@ fn call_context_from_query(query: &QueryContext<'_>) -> Option<CallContext> {
     if query.cursor().kind() != CursorContextKind::CallArgument {
         return None;
     }
-    let text = query.text();
-    let offset = query.cursor().replace_range().end;
-    let open = query.call_open_offset()?;
     let callee = query.call_callee_text()?.to_owned();
-    let args_prefix = text[open + 1..offset].to_owned();
+    let args_prefix = query.call_args_prefix_text()?.to_owned();
     Some(CallContext {
         callee,
         member_receiver: query.call_member_receiver_range(),

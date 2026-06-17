@@ -177,6 +177,13 @@ impl<'a> QueryContext<'a> {
     }
 
     #[must_use]
+    pub fn call_args_prefix_text(&self) -> Option<&str> {
+        let open = self.call_open_offset()?;
+        let end = self.cursor.replace_range().end;
+        self.text().get(open + 1..end)
+    }
+
+    #[must_use]
     pub fn member_receiver_text(&self) -> Option<&str> {
         text_range(self.text(), self.member_receiver_range()?)
     }
@@ -388,6 +395,7 @@ mod tests {
             call_context.call_open_offset(),
             source.find("grant(").map(|index| index + "grant".len())
         );
+        assert_eq!(call_context.call_args_prefix_text(), Some("c"));
 
         let method_call_offset =
             source.find("filter(player").expect("method call") + "filter(".len();
@@ -409,6 +417,7 @@ mod tests {
             method_call_context.call_member_receiver_text(),
             Some("scores")
         );
+        assert_eq!(method_call_context.call_args_prefix_text(), Some(""));
 
         let lambda_offset = source.find("|)").expect("lambda pipe") + "|".len();
         let lambda_context = QueryContext::from_databases(

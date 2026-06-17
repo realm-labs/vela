@@ -8,7 +8,6 @@ use super::{
 };
 
 pub(super) fn completion_context(query: &QueryContext<'_>) -> CompletionContext {
-    let text = query.text();
     let cursor = query.cursor();
     let offset = cursor.replace_range().end;
     let prefix_start = cursor.replace_range().start;
@@ -155,9 +154,7 @@ pub(super) fn completion_context(query: &QueryContext<'_>) -> CompletionContext 
 
     if cursor.kind() == CursorContextKind::CallArgument
         && let Some(call_arguments) = named_argument_completion_context(
-            text,
-            query.cursor().replace_range().end,
-            query.call_open_offset(),
+            query.call_args_prefix_text(),
             query_call_callee(query),
         )
     {

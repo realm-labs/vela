@@ -308,7 +308,9 @@ Purpose: classify the cursor once and reuse it across features.
   recovery. Type-hint completion now
   consumes `CursorContextKind::Type` rather than running its own type-context
   scanner. Call-argument contexts now expose the active call opening offset,
-  so named-argument completion no longer re-scans call nesting. Lambda
+  and `QueryContext` exposes the active argument prefix text, so
+  named-argument completion and signature help no longer slice that range
+  independently. Lambda
   callback contexts now expose the callback call opening offset alongside the
   shared receiver and method facts, so lambda-parameter completion no longer
   reconstructs member callees locally. Completion no longer has a global
