@@ -154,6 +154,60 @@ fn lsp_hover_reports_stdlib_method_fact() {
 }
 
 #[test]
+fn lsp_hover_reports_source_struct_field_fact() {
+    let mut server = LspServer::new();
+    let _ = response_value(server.handle_json(&request(
+        1,
+        "initialize",
+        serde_json::json!({
+            "processId": null,
+            "rootUri": "file:///workspace/scripts",
+            "capabilities": {}
+        }),
+    )));
+    let text = r#"struct Player {
+    #[doc("Current level")]
+    level: i64,
+}
+pub fn main(player: Player) {
+    return player.level
+}"#;
+    let field_line = text.lines().nth(5).expect("field use line should exist");
+    let _ = notification_value(server.handle_json(&notification(
+        "textDocument/didOpen",
+        serde_json::json!({
+            "textDocument": {
+                "uri": "file:///workspace/scripts/game/main.vela",
+                "languageId": "vela",
+                "version": 1,
+                "text": text
+            }
+        }),
+    )));
+
+    let response = response_value(server.handle_json(&request(
+        2,
+        "textDocument/hover",
+        serde_json::json!({
+            "textDocument": { "uri": "file:///workspace/scripts/game/main.vela" },
+            "position": {
+                "line": 5,
+                "character": field_line.find("level").unwrap_or_else(|| {
+                    panic!("hover fixture should contain field use")
+                })
+            }
+        }),
+    )));
+
+    let value = response["result"]["contents"]["value"]
+        .as_str()
+        .expect("hover contents should be markdown");
+    assert!(value.contains("game::main::Player.level"), "{value}");
+    assert!(value.contains("_field_: i64"), "{value}");
+    assert!(value.contains("Current level"), "{value}");
+}
+
+#[test]
 fn lsp_hover_reports_source_enum_variant_fact() {
     let mut server = LspServer::new();
     let _ = response_value(server.handle_json(&request(

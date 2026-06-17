@@ -8,7 +8,7 @@ use vela_common::Span;
 use vela_hir::attributes::HirAttribute;
 use vela_hir::binding::{BindingMap, BindingResolution, LocalBinding, LocalBindingKind};
 use vela_hir::module_graph::{Declaration, DeclarationKind};
-use vela_hir::type_hint::{EnumVariantFieldsHint, EnumVariantHint};
+use vela_hir::type_hint::{EnumVariantFieldsHint, EnumVariantHint, StructFieldHint};
 
 use crate::{
     DiagnosticRange, DocumentId, LanguageServiceDatabases, LineIndex, Position, TextRange,
@@ -104,6 +104,10 @@ impl LanguageServiceDatabases {
             }
         }
 
+        if let Some(hover) = struct_field_hover_at_token(graph, source_id, offset, &token, range) {
+            return Some(hover);
+        }
+
         if let Some(hover) = enum_variant_hover_at_token(graph, source_id, offset, &token, range) {
             return Some(hover);
         }
@@ -133,6 +137,11 @@ impl LanguageServiceDatabases {
         range: DiagnosticRange,
     ) -> Option<Hover> {
         let receiver_fact = member_receiver_fact(self, document_id, receiver)?;
+        if let Some(hover) =
+            script_member_hover(self.hir_db().graph(), &receiver_fact, &token.text, range)
+        {
+            return Some(hover);
+        }
         if let Some(hover) = self.schema_member_hover(&receiver_fact, token, range) {
             return Some(hover);
         }
@@ -335,6 +344,77 @@ fn enum_variant_hover_at_token(
             })
             .map(|variant| enum_variant_hover(graph, declaration, variant, range))
     })
+}
+
+fn struct_field_hover_at_token(
+    graph: &vela_hir::module_graph::ModuleGraph,
+    source_id: vela_common::SourceId,
+    offset: u32,
+    token: &HoverToken,
+    range: DiagnosticRange,
+) -> Option<Hover> {
+    graph.declarations().find_map(|declaration| {
+        if declaration.kind != DeclarationKind::Struct {
+            return None;
+        }
+        graph
+            .struct_shape(declaration.id)?
+            .fields
+            .iter()
+            .find(|field| {
+                field.span.source == source_id
+                    && field.span.contains(offset)
+                    && field.name == token.text
+            })
+            .map(|field| struct_field_hover(graph, declaration, field, range))
+    })
+}
+
+fn script_member_hover(
+    graph: &vela_hir::module_graph::ModuleGraph,
+    receiver: &TypeFact,
+    member: &str,
+    range: DiagnosticRange,
+) -> Option<Hover> {
+    let owner_names = record_owner_names(receiver);
+    graph.declarations().find_map(|declaration| {
+        if declaration.kind != DeclarationKind::Struct
+            || !owner_names
+                .iter()
+                .any(|owner| declaration_name_matches(graph, declaration, owner))
+        {
+            return None;
+        }
+        graph
+            .struct_shape(declaration.id)?
+            .fields
+            .iter()
+            .find(|field| field.name == member)
+            .map(|field| struct_field_hover(graph, declaration, field, range))
+    })
+}
+
+fn struct_field_hover(
+    graph: &vela_hir::module_graph::ModuleGraph,
+    declaration: &Declaration,
+    field: &StructFieldHint,
+    range: DiagnosticRange,
+) -> Hover {
+    let owner = qualified_declaration_label(graph, declaration);
+    Hover {
+        range,
+        label: format!("{owner}.{}", field.name),
+        kind: HoverKind::Field,
+        detail: struct_field_detail(field),
+        docs: attr_docs(&field.attrs),
+    }
+}
+
+fn struct_field_detail(field: &StructFieldHint) -> String {
+    field
+        .type_hint
+        .as_ref()
+        .map_or_else(|| TypeFact::Any.display_name(), |hint| hint.display())
 }
 
 fn enum_variant_hover_for_declaration(
@@ -541,6 +621,21 @@ fn fact_owner_name(fact: &TypeFact) -> Option<String> {
         | TypeFact::Trait { name } => Some(name.clone()),
         _ => None,
     }
+}
+
+fn record_owner_names(fact: &TypeFact) -> Vec<String> {
+    match fact {
+        TypeFact::Record { name } => vec![name.clone()],
+        _ => Vec::new(),
+    }
+}
+
+fn declaration_name_matches(
+    graph: &vela_hir::module_graph::ModuleGraph,
+    declaration: &Declaration,
+    owner: &str,
+) -> bool {
+    declaration.name == owner || qualified_declaration_label(graph, declaration) == owner
 }
 
 fn function_detail(schema: &RegistryFacts, name: &str, fact: &TypeFact) -> String {
@@ -813,6 +908,39 @@ mod tests {
             hover.detail(),
             "Function(Function(i64) -> bool) -> Array(i64)"
         );
+    }
+
+    #[test]
+    fn hover_reports_source_struct_field_fact() {
+        let document = DocumentId::from("/workspace/scripts/game/main.vela");
+        let text = r#"struct Player {
+    #[doc("Current level")]
+    level: i64,
+}
+pub fn main(player: Player) {
+    return player.level
+}"#;
+        let databases = databases_for(&document, text, RegistryFacts::default());
+        let use_line = text.lines().nth(5).expect("field use line should exist");
+
+        let use_hover = databases
+            .hover(
+                &document,
+                Position::new(5, use_line.find("level").expect("field use should exist")),
+            )
+            .expect("hover should resolve field use");
+        assert_eq!(use_hover.kind(), HoverKind::Field);
+        assert_eq!(use_hover.label(), "game::main::Player.level");
+        assert_eq!(use_hover.detail(), "i64");
+        assert_eq!(use_hover.docs(), Some("Current level"));
+
+        let declaration_hover = databases
+            .hover(&document, Position::new(2, 4))
+            .expect("hover should resolve field declaration");
+        assert_eq!(declaration_hover.kind(), HoverKind::Field);
+        assert_eq!(declaration_hover.label(), "game::main::Player.level");
+        assert_eq!(declaration_hover.detail(), "i64");
+        assert_eq!(declaration_hover.docs(), Some("Current level"));
     }
 
     #[test]

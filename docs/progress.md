@@ -209,12 +209,12 @@ against the focused service, analysis, LSP fixture, and capability tests.
 M20.5 Phase 8 update: hover now reports stdlib global function facts,
 typed stdlib receiver-method facts, and schema-backed trait receiver method
 facts through both `vela_language_service` and `textDocument/hover` fixtures.
-Source-owned enum variant declarations and constructor uses now report variant
-facts and docs through the same hover path. `vela_language_service` now exposes
-explicit declaration and type-definition navigation queries, and
-`vela_lsp_server` advertises and serves `textDocument/declaration` plus
-`textDocument/typeDefinition` using the same source/schema-backed spans as
-go-to-definition.
+Source-owned struct field declarations/member uses and source-owned enum
+variant declarations/constructor uses now report facts and docs through the
+same hover path. `vela_language_service` now exposes explicit declaration and
+type-definition navigation queries, and `vela_lsp_server` advertises and
+serves `textDocument/declaration` plus `textDocument/typeDefinition` using the
+same source/schema-backed spans as go-to-definition.
 
 M20.5 Phase 16 update: clients that support dynamic watched-file registration
 now receive a `client/registerCapability` request for configured `.vela`
@@ -240,6 +240,13 @@ in `textDocument/references` and `textDocument/documentHighlight` for
 constructor reads and match-pattern uses. Schema-backed methods and trait
 methods with source spans now participate in `textDocument/prepareCallHierarchy`,
 incoming calls, and script-caller outgoing calls for typed receiver call sites.
+
+M20.5 Phase 13 update: the conditional null-check to Option/Result guard
+rewrite is intentionally deferred until a structured diagnostic or syntax
+pattern can prove the rewrite is local, source-owned, and
+semantics-preserving. Current code actions remain diagnostic-backed and keep
+ambiguous/dynamic fixes rejected rather than offering speculative semantic
+rewrites.
 
 ## Current Milestone State
 

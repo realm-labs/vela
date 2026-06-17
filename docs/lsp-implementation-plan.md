@@ -450,9 +450,9 @@ Purpose: expose semantic facts and navigation.
 - [~] Hover locals, parameters, captures, declarations, modules, functions,
   methods, fields, variants, traits, and type hints.
   - Initial hover support now covers script parameters/declarations,
-    source-owned enum variants, schema-backed host members and trait receiver
-    methods, stdlib functions, stdlib receiver methods, and missing-schema
-    type-hint degradation.
+    source-owned struct fields, source-owned enum variants, schema-backed host
+    members and trait receiver methods, stdlib functions, stdlib receiver
+    methods, and missing-schema type-hint degradation.
 - [~] Include docs, type facts, effects, permissions, origins, and source spans
   where known.
 - [x] Implement go to definition for local bindings.
@@ -472,11 +472,13 @@ Tests:
 - [x] `hover_degrades_to_any_without_schema`
 - [x] `hover_reports_effects_and_permissions`
 - [x] `hover_reports_schema_trait_method_fact`
+- [x] `hover_reports_source_struct_field_fact`
 - [x] `hover_reports_source_enum_variant_fact`
 - [x] `hover_reports_stdlib_function_fact`
 - [x] `hover_reports_stdlib_method_fact`
 - [x] `lsp_hover_reports_open_overlay_parameter_fact`
 - [x] `lsp_hover_reports_schema_trait_method_fact`
+- [x] `lsp_hover_reports_source_struct_field_fact`
 - [x] `lsp_hover_reports_source_enum_variant_fact`
 - [x] `lsp_hover_reports_stdlib_function_fact`
 - [x] `lsp_hover_reports_stdlib_method_fact`
@@ -884,10 +886,12 @@ Purpose: turn structured diagnostics into safe edits.
 - [x] Add remove-unused-import action after unused diagnostics exist.
 - [x] Add fill missing match arms when enum facts are known.
 - [x] Add missing record fields for known constructors.
-- [ ] Add convert simple `if` null checks into Option/Result guard idioms only
-  if syntax ownership is unambiguous.
+- [x] Defer simple `if` null-check to Option/Result guard rewrites until
+  syntax ownership is unambiguous.
   - No action is offered until a structured diagnostic or syntax pattern can
     prove the rewrite is local, source-owned, and semantics-preserving.
+  - Current coverage keeps code actions diagnostic-backed and rejects
+    ambiguous/dynamic fixes rather than offering speculative semantic rewrites.
 - [x] Add quick-fix tests for range stability under open overlays.
 
 Tests:
