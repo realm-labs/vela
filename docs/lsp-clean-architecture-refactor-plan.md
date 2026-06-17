@@ -383,7 +383,9 @@ Purpose: classify the cursor once and reuse it across features.
   spans. Schema
   variant rename edit collection uses the same parsed expression path sites for
   constructor-like uses while retaining pattern fallback scanning for spanless
-  pattern paths. Source enum variant references now consume the shared parsed
+  pattern paths, and schema variant rename target selection consumes those
+  parsed expression path sites before falling back to legacy path
+  reconstruction. Source enum variant references now consume the shared parsed
   expression path sites for constructor-like uses while retaining the existing
   fallback scanner for pattern paths. Schema variant references now use the
   same parsed expression path sites for constructor-like uses while preserving

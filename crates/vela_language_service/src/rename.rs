@@ -636,7 +636,7 @@ fn rename_target<'a>(
         if let Some(target) = schema::schema_function_use_target(databases, query, text, &token) {
             return Some(RenameTarget::SchemaFunction(target));
         }
-        if let Some(target) = schema::schema_variant_use_target(databases, text, &token) {
+        if let Some(target) = schema::schema_variant_use_target(databases, query, text, &token) {
             return Some(RenameTarget::SchemaVariant(target));
         }
         if let Some(target) = member_receiver_fact.and_then(|receiver| {

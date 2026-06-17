@@ -372,12 +372,25 @@ pub(super) fn schema_function_use_target(
 
 pub(super) fn schema_variant_use_target(
     databases: &LanguageServiceDatabases,
+    query: &QueryContext<'_>,
     text: &str,
     token: &RenameToken,
 ) -> Option<SchemaVariantRenameTarget> {
-    let path = path_ending_at(text, token.range)?;
-    let target = schema_variant_target_for_path(databases, &path)?;
-    source_backed_schema_variant_target(databases, target).map(|mut target| {
+    if let Some(source) = query.source_record()
+        && let Some(parsed) = databases.parse_db().parsed_source(source.document_id())
+    {
+        for site in path_calls::path_expression_sites(parsed, text) {
+            if site.segment_range != token.range {
+                continue;
+            }
+            let target = schema_variant_target_for_path(databases, &site.path)?;
+            return source_backed_schema_variant_target(databases, target).map(|mut target| {
+                target.token = token.clone();
+                target
+            });
+        }
+    }
+    schema_variant_use_target_for_range(databases, text, token.range).map(|mut target| {
         target.token = token.clone();
         target
     })
@@ -605,7 +618,7 @@ fn push_schema_variant_use_edit_for_range(
     new_name: &str,
     edits_by_document: &mut BTreeMap<DocumentId, Vec<TextEdit>>,
 ) {
-    if schema_variant_use_target(databases, text, &RenameToken { range })
+    if schema_variant_use_target_for_range(databases, text, range)
         .is_some_and(|found| found.owner == target.owner && found.variant == target.variant)
     {
         edits_by_document
@@ -616,6 +629,16 @@ fn push_schema_variant_use_edit_for_range(
                 new_text: new_name.to_owned(),
             });
     }
+}
+
+fn schema_variant_use_target_for_range(
+    databases: &LanguageServiceDatabases,
+    text: &str,
+    range: TextRange,
+) -> Option<SchemaVariantRenameTarget> {
+    let path = path_ending_at(text, range)?;
+    let target = schema_variant_target_for_path(databases, &path)?;
+    source_backed_schema_variant_target(databases, target)
 }
 
 fn push_schema_member_use_edits(
