@@ -1,5 +1,7 @@
 use serde_json::{Value as JsonValue, json};
-use vela_language_service::{CompletionKind, CompletionList, LineIndex, TextRange};
+use vela_language_service::{
+    CompletionInsertFormat, CompletionKind, CompletionList, LineIndex, TextRange,
+};
 
 pub(crate) fn lsp_completion_list(
     completions: &CompletionList,
@@ -43,12 +45,9 @@ fn lsp_completion_item(
             "range": lsp_range(replace_range, line_index),
             "newText": insert_text
         });
-    } else if matches!(
-        item.kind(),
-        CompletionKind::Function | CompletionKind::Method
-    ) {
-        value["insertText"] = json!(format!("{}($0)", item.label()));
-        value["insertTextFormat"] = json!(2);
+        if matches!(item.insert_format(), CompletionInsertFormat::Snippet) {
+            value["insertTextFormat"] = json!(2);
+        }
     }
     if let Some(sort_text) = item.sort_text() {
         value["sortText"] = json!(sort_text);

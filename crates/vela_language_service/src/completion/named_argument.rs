@@ -5,8 +5,8 @@ use vela_hir::module_graph::{DeclarationKind, ModuleGraph};
 use crate::{LineIndex, Position};
 
 use super::{
-    CallArgumentContext, CompletionItem, CompletionKind, completion_type_fact,
-    is_identifier_continue,
+    CallArgumentContext, CompletionInsertFormat, CompletionItem, CompletionKind,
+    completion_type_fact, is_identifier_continue,
 };
 
 pub(super) fn named_argument_completion_context(
@@ -77,6 +77,7 @@ pub(super) fn script_function_parameter_completions(
                             kind: CompletionKind::Parameter,
                             detail,
                             insert_text: Some(format!("{}: ", param.name)),
+                            insert_format: CompletionInsertFormat::PlainText,
                             sort_text: None,
                         }
                     })

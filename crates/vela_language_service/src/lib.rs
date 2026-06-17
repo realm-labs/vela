@@ -26,7 +26,8 @@ mod workspace;
 pub use call_hierarchy::{CallHierarchyItem, IncomingCall, OutgoingCall};
 pub use code_action::{CodeAction, CodeActionKind};
 pub use completion::{
-    CompletionContext, CompletionContextKind, CompletionItem, CompletionKind, CompletionList,
+    CompletionContext, CompletionContextKind, CompletionInsertFormat, CompletionItem,
+    CompletionKind, CompletionList,
 };
 pub use cursor_context::{CursorContext, CursorContextKind, cursor_context_at};
 pub use definition::Definition;

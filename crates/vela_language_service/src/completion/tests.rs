@@ -134,6 +134,12 @@ fn statement_completion_suggests_statement_keywords() {
     assert_completion(&completions, "return", CompletionKind::Keyword);
     assert_completion(&completions, "helper", CompletionKind::Function);
     assert_no_completion(&completions, "fn");
+    let let_item = completion(&completions, "let");
+    assert_eq!(let_item.insert_text(), Some("let "));
+    assert_eq!(let_item.insert_format(), CompletionInsertFormat::PlainText);
+    let helper = completion(&completions, "helper");
+    assert_eq!(helper.insert_text(), Some("helper($0)"));
+    assert_eq!(helper.insert_format(), CompletionInsertFormat::Snippet);
 }
 
 #[test]
@@ -417,9 +423,11 @@ pub fn main(player: Player) { grant(player: player, ) }
     let amount = completion(&completions, "amount");
     assert_eq!(amount.detail(), "i64");
     assert_eq!(amount.insert_text(), Some("amount: "));
+    assert_eq!(amount.insert_format(), CompletionInsertFormat::PlainText);
     let reason = completion(&completions, "reason");
     assert_eq!(reason.detail(), "String (defaulted)");
     assert_eq!(reason.insert_text(), Some("reason: "));
+    assert_eq!(reason.insert_format(), CompletionInsertFormat::PlainText);
 }
 
 #[test]

@@ -1,7 +1,8 @@
 use vela_hir::module_graph::{Declaration, DeclarationKind, ModuleGraph};
 
 use crate::completion::{
-    CompletionItem, CompletionKind, dedupe_and_filter_service_items, label_segment_matches,
+    CompletionInsertFormat, CompletionItem, CompletionKind, dedupe_and_filter_service_items,
+    label_segment_matches,
 };
 
 pub(super) fn pattern_completion_items(
@@ -30,6 +31,7 @@ fn script_pattern_variant_completions(
                 kind: CompletionKind::Variant,
                 detail: detail.clone(),
                 insert_text: None,
+                insert_format: CompletionInsertFormat::PlainText,
                 sort_text: None,
             }))
         })
@@ -62,6 +64,7 @@ fn schema_pattern_variant_completions(
             kind: CompletionKind::Variant,
             detail: variant.owner,
             insert_text: None,
+            insert_format: CompletionInsertFormat::PlainText,
             sort_text: None,
         })
         .collect()

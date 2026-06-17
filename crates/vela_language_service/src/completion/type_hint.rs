@@ -9,7 +9,7 @@ use vela_analysis::{
 };
 use vela_hir::module_graph::ModuleGraph;
 
-use super::{CompletionItem, CompletionKind, label_segment_matches};
+use super::{CompletionInsertFormat, CompletionItem, CompletionKind, label_segment_matches};
 
 pub(super) fn type_hint_completion_context(text: &str, prefix_start: usize) -> bool {
     let Some(before_prefix) = text.get(..prefix_start) else {
@@ -88,6 +88,7 @@ fn builtin_type_hint_completions() -> Vec<CompletionItem> {
         kind: CompletionKind::Type,
         detail: fact.display_name(),
         insert_text: None,
+        insert_format: CompletionInsertFormat::PlainText,
         sort_text: None,
     })
     .collect()
@@ -99,6 +100,7 @@ fn service_item_from_analysis(item: AnalysisCompletionItem) -> CompletionItem {
         kind: CompletionKind::from(item.kind),
         detail: item.fact.display_name(),
         insert_text: None,
+        insert_format: CompletionInsertFormat::PlainText,
         sort_text: None,
     }
 }

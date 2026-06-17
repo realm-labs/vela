@@ -328,7 +328,10 @@ Purpose: replace coarse global completion with context-specific producers.
   expression completion context while preserving the current expression
   candidate set. Pattern and statement completions have native LSP projection
   fixtures. Broader expression producer-family separation remains open.
-- [ ] Add keyword and snippet completions as first-class completion kinds.
+- [~] Add keyword and snippet completions as first-class completion kinds.
+  Keyword items are first-class service `CompletionKind::Keyword`, and
+  callable snippets now carry explicit editor-neutral insert-format metadata
+  through service items. Broader standalone snippet item kinds remain open.
 - [ ] Add item-boundary producers for `fn`, `struct`, `enum`, `trait`, `impl`,
   `let`, `const`, imports, modules, and source declarations that are legal in
   that context.
@@ -366,7 +369,7 @@ high-quality metadata.
   differ.
 - [ ] Set `labelDetails` for signatures, modules, receiver types, and return
   types where the client supports it.
-- [ ] Set `insertTextFormat` from snippet intent rather than hard-coded
+- [x] Set `insertTextFormat` from snippet intent rather than hard-coded
   function heuristics.
 - [ ] Project relevance into stable `sortText` and `preselect`.
 - [ ] Project deprecation into LSP tags.

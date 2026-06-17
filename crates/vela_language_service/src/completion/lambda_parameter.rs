@@ -2,7 +2,9 @@ use vela_analysis::{stdlib::stdlib_method_fact_with_lambda_arity, type_fact::Typ
 
 use crate::TextRange;
 
-use super::{CompletionItem, CompletionKind, MemberReceiver, label_segment_matches};
+use super::{
+    CompletionInsertFormat, CompletionItem, CompletionKind, MemberReceiver, label_segment_matches,
+};
 
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub(super) struct LambdaParameterContext {
@@ -63,6 +65,7 @@ pub(super) fn lambda_parameter_completion_items(
                 kind: CompletionKind::Parameter,
                 detail: param.display_name(),
                 insert_text: None,
+                insert_format: CompletionInsertFormat::PlainText,
                 sort_text: None,
             })
         })

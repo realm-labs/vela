@@ -53,6 +53,12 @@ pub enum CompletionKind {
     Parameter,
 }
 
+#[derive(Debug, Clone, Copy, Eq, PartialEq)]
+pub enum CompletionInsertFormat {
+    PlainText,
+    Snippet,
+}
+
 impl From<AnalysisCompletionKind> for CompletionKind {
     fn from(value: AnalysisCompletionKind) -> Self {
         match value {
@@ -91,6 +97,7 @@ pub struct CompletionItem {
     kind: CompletionKind,
     detail: String,
     insert_text: Option<String>,
+    insert_format: CompletionInsertFormat,
     sort_text: Option<String>,
 }
 
@@ -113,6 +120,11 @@ impl CompletionItem {
     #[must_use]
     pub fn insert_text(&self) -> Option<&str> {
         self.insert_text.as_deref()
+    }
+
+    #[must_use]
+    pub const fn insert_format(&self) -> CompletionInsertFormat {
+        self.insert_format
     }
 
     #[must_use]
@@ -321,12 +333,15 @@ impl LanguageServiceDatabases {
             } else {
                 item.kind.into()
             };
+            let insert_text = callable_insert_text(kind, &label);
+            let insert_format = completion_insert_format(insert_text.as_ref());
             service_items.push(CompletionItem {
                 sort_text: Some(completion_sort_text(kind, &label, context.prefix())),
                 label,
                 kind,
                 detail: item.fact.display_name(),
-                insert_text: None,
+                insert_text,
+                insert_format,
             });
         }
         dedupe_and_filter_service_items(service_items, |item| {
@@ -365,6 +380,7 @@ impl LanguageServiceDatabases {
                     kind,
                     detail: fact.display_name(),
                     insert_text: None,
+                    insert_format: CompletionInsertFormat::PlainText,
                 }
             })
             .collect::<Vec<_>>();
@@ -898,6 +914,8 @@ fn dedupe_and_filter_items(
     let mut deduped = BTreeMap::new();
     for item in items.into_iter().filter(matches_context) {
         let kind = item.kind.into();
+        let insert_text = callable_insert_text(kind, &item.label);
+        let insert_format = completion_insert_format(insert_text.as_ref());
         deduped
             .entry((item.label.clone(), kind))
             .or_insert_with(|| CompletionItem {
@@ -905,10 +923,24 @@ fn dedupe_and_filter_items(
                 label: item.label,
                 kind,
                 detail: item.fact.display_name(),
-                insert_text: None,
+                insert_text,
+                insert_format,
             });
     }
     sorted_completion_items(deduped.into_values().collect())
+}
+
+fn callable_insert_text(kind: CompletionKind, label: &str) -> Option<String> {
+    matches!(kind, CompletionKind::Function | CompletionKind::Method)
+        .then(|| format!("{label}($0)"))
+}
+
+fn completion_insert_format(insert_text: Option<&String>) -> CompletionInsertFormat {
+    if insert_text.is_some_and(|text| text.contains("$0")) {
+        CompletionInsertFormat::Snippet
+    } else {
+        CompletionInsertFormat::PlainText
+    }
 }
 
 fn relative_current_module_items(
@@ -1059,6 +1091,7 @@ fn field_completion_from_hint(graph: &ModuleGraph, field: &StructFieldHint) -> C
         kind: CompletionKind::Field,
         detail: fact.display_name(),
         insert_text: None,
+        insert_format: CompletionInsertFormat::PlainText,
         sort_text: None,
     }
 }
@@ -1077,6 +1110,7 @@ fn schema_record_field_completions(
             kind: CompletionKind::Field,
             detail: field.fact.display_name(),
             insert_text: None,
+            insert_format: CompletionInsertFormat::PlainText,
             sort_text: None,
         })
         .collect()

@@ -1,4 +1,4 @@
-use super::{CompletionItem, CompletionKind};
+use super::{CompletionInsertFormat, CompletionItem, CompletionKind};
 
 pub(super) fn statement_keyword_completions(prefix: &str) -> Vec<CompletionItem> {
     [
@@ -17,6 +17,7 @@ pub(super) fn statement_keyword_completions(prefix: &str) -> Vec<CompletionItem>
         kind: CompletionKind::Keyword,
         detail: detail.to_owned(),
         insert_text: Some(insert_text.to_owned()),
+        insert_format: CompletionInsertFormat::PlainText,
         sort_text: Some(keyword_sort_text(label)),
     })
     .collect()

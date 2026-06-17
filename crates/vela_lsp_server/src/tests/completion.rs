@@ -713,15 +713,16 @@ fn assert_completion_insert_text(
     let Some(items) = response["result"]["items"].as_array() else {
         panic!("completion response should contain items");
     };
-    assert!(
-        items.iter().any(|item| {
+    let item = items
+        .iter()
+        .find(|item| {
             item["label"] == label
                 && item["kind"] == kind
                 && item["detail"] == detail
                 && item["insertText"] == insert_text
-        }),
-        "{items:?}"
-    );
+        })
+        .unwrap_or_else(|| panic!("missing completion item in {items:?}"));
+    assert!(item.get("insertTextFormat").is_none(), "{items:?}");
 }
 
 fn assert_completion_snippet(
@@ -735,16 +736,18 @@ fn assert_completion_snippet(
     let Some(items) = response["result"]["items"].as_array() else {
         panic!("completion response should contain items");
     };
-    assert!(
-        items.iter().any(|item| {
+    let item = items
+        .iter()
+        .find(|item| {
             item["label"] == label
                 && item["kind"] == kind
                 && item["detail"] == detail
                 && item["insertText"] == insert_text
                 && item["insertTextFormat"] == 2
-        }),
-        "{items:?}"
-    );
+        })
+        .unwrap_or_else(|| panic!("missing snippet completion item in {items:?}"));
+    assert_eq!(item["textEdit"]["newText"], insert_text);
+    assert!(item["insertTextFormat"] == 2, "{items:?}");
 }
 
 fn assert_completion_projection(

@@ -6,7 +6,8 @@ use vela_syntax::ast::{
 };
 
 use crate::completion::{
-    CompletionItem, CompletionKind, dedupe_and_filter_service_items, label_segment_matches,
+    CompletionInsertFormat, CompletionItem, CompletionKind, dedupe_and_filter_service_items,
+    label_segment_matches,
 };
 
 #[derive(Debug, Clone, Eq, PartialEq)]
@@ -241,6 +242,7 @@ fn script_enum_variant_key_completions(
             kind: CompletionKind::Variant,
             detail: key_hint.display(),
             insert_text: None,
+            insert_format: CompletionInsertFormat::PlainText,
             sort_text: None,
         })
         .collect()
@@ -273,6 +275,7 @@ fn schema_enum_variant_key_completions(
             kind: CompletionKind::Variant,
             detail: key_hint.display(),
             insert_text: None,
+            insert_format: CompletionInsertFormat::PlainText,
             sort_text: None,
         })
         .collect()
