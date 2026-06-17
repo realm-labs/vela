@@ -367,7 +367,8 @@ Purpose: classify the cursor once and reuse it across features.
   and type facts, preserving explicit
   `self.method()` handling without local receiver scanning; source method
   rename edit collection now also consumes shared AST member-call sites with
-  explicit `self.method()` owner recovery.
+  explicit `self.method()` owner recovery, and source field rename edit
+  collection consumes shared AST member-access sites.
   `CursorContext` now exposes the identifier token range under the request
   cursor, and rename target selection consumes that shared range instead of
   running its own first-step token scanner. Lambda-parameter contexts now
