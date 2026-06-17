@@ -154,6 +154,62 @@ fn lsp_hover_reports_stdlib_method_fact() {
 }
 
 #[test]
+fn lsp_hover_reports_source_enum_variant_fact() {
+    let mut server = LspServer::new();
+    let _ = response_value(server.handle_json(&request(
+        1,
+        "initialize",
+        serde_json::json!({
+            "processId": null,
+            "rootUri": "file:///workspace/scripts",
+            "capabilities": {}
+        }),
+    )));
+    let text = r#"enum QuestState {
+    Active(quest_id: String, count: i64),
+    Done,
+}
+pub fn main() {
+    return QuestState::Active("quest-1", 3)
+}"#;
+    let variant_line = text.lines().nth(5).expect("variant use line should exist");
+    let _ = notification_value(server.handle_json(&notification(
+        "textDocument/didOpen",
+        serde_json::json!({
+            "textDocument": {
+                "uri": "file:///workspace/scripts/game/main.vela",
+                "languageId": "vela",
+                "version": 1,
+                "text": text
+            }
+        }),
+    )));
+
+    let response = response_value(server.handle_json(&request(
+        2,
+        "textDocument/hover",
+        serde_json::json!({
+            "textDocument": { "uri": "file:///workspace/scripts/game/main.vela" },
+            "position": {
+                "line": 5,
+                "character": variant_line.find("Active").unwrap_or_else(|| {
+                    panic!("hover fixture should contain variant constructor")
+                })
+            }
+        }),
+    )));
+
+    let value = response["result"]["contents"]["value"]
+        .as_str()
+        .expect("hover contents should be markdown");
+    assert!(value.contains("game::main::QuestState::Active"), "{value}");
+    assert!(
+        value.contains("_variant_: game::main::QuestState::Active(quest_id, count)"),
+        "{value}"
+    );
+}
+
+#[test]
 fn lsp_hover_reports_schema_trait_method_fact() {
     let root = temp_workspace();
     let schema_path = root.join("target").join("vela").join("schema.json");

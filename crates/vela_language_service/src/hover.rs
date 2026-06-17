@@ -5,8 +5,10 @@ use vela_analysis::stdlib::{
 };
 use vela_analysis::type_fact::TypeFact;
 use vela_common::Span;
+use vela_hir::attributes::HirAttribute;
 use vela_hir::binding::{BindingMap, BindingResolution, LocalBinding, LocalBindingKind};
 use vela_hir::module_graph::{Declaration, DeclarationKind};
+use vela_hir::type_hint::{EnumVariantFieldsHint, EnumVariantHint};
 
 use crate::{
     DiagnosticRange, DocumentId, LanguageServiceDatabases, LineIndex, Position, TextRange,
@@ -21,6 +23,7 @@ pub enum HoverKind {
     Type,
     Field,
     Method,
+    Variant,
     Module,
     Unknown,
 }
@@ -99,6 +102,10 @@ impl LanguageServiceDatabases {
                     return Some(hover);
                 }
             }
+        }
+
+        if let Some(hover) = enum_variant_hover_at_token(graph, source_id, offset, &token, range) {
+            return Some(hover);
         }
 
         if let Some(hover) = graph
@@ -275,9 +282,12 @@ fn hover_from_resolution_at_token(
             let fact = local_fact(binding, facts).unwrap_or(TypeFact::Unknown);
             Some(local_hover(binding, fact, range))
         }
-        BindingResolution::Declaration(declaration) => graph
-            .declaration(*declaration)
-            .map(|declaration| hover_from_declaration(graph, facts, declaration, range)),
+        BindingResolution::Declaration(declaration) => {
+            graph.declaration(*declaration).map(|declaration| {
+                enum_variant_hover_for_declaration(graph, declaration, &token.text, range)
+                    .unwrap_or_else(|| hover_from_declaration(graph, facts, declaration, range))
+            })
+        }
         BindingResolution::Import(name) => Some(Hover {
             range,
             label: name.clone(),
@@ -299,6 +309,87 @@ fn hover_from_resolution_at_token(
                         docs: None,
                     })
                 })
+        }
+    }
+}
+
+fn enum_variant_hover_at_token(
+    graph: &vela_hir::module_graph::ModuleGraph,
+    source_id: vela_common::SourceId,
+    offset: u32,
+    token: &HoverToken,
+    range: DiagnosticRange,
+) -> Option<Hover> {
+    graph.declarations().find_map(|declaration| {
+        if declaration.kind != DeclarationKind::Enum {
+            return None;
+        }
+        graph
+            .enum_shape(declaration.id)?
+            .variants
+            .iter()
+            .find(|variant| {
+                variant.span.source == source_id
+                    && variant.span.contains(offset)
+                    && variant.name == token.text
+            })
+            .map(|variant| enum_variant_hover(graph, declaration, variant, range))
+    })
+}
+
+fn enum_variant_hover_for_declaration(
+    graph: &vela_hir::module_graph::ModuleGraph,
+    declaration: &Declaration,
+    variant_name: &str,
+    range: DiagnosticRange,
+) -> Option<Hover> {
+    if declaration.kind != DeclarationKind::Enum {
+        return None;
+    }
+    graph
+        .enum_shape(declaration.id)?
+        .variants
+        .iter()
+        .find(|variant| variant.name == variant_name)
+        .map(|variant| enum_variant_hover(graph, declaration, variant, range))
+}
+
+fn enum_variant_hover(
+    graph: &vela_hir::module_graph::ModuleGraph,
+    declaration: &Declaration,
+    variant: &EnumVariantHint,
+    range: DiagnosticRange,
+) -> Hover {
+    let owner = qualified_declaration_label(graph, declaration);
+    let label = format!("{owner}::{}", variant.name);
+    Hover {
+        range,
+        label,
+        kind: HoverKind::Variant,
+        detail: enum_variant_detail(&owner, variant),
+        docs: attr_docs(&variant.attrs),
+    }
+}
+
+fn enum_variant_detail(owner: &str, variant: &EnumVariantHint) -> String {
+    let fact = TypeFact::enum_type(owner, Some(&variant.name));
+    match &variant.fields {
+        EnumVariantFieldsHint::Unit => fact.display_name(),
+        EnumVariantFieldsHint::Tuple(fields) => {
+            let fields = fields
+                .iter()
+                .map(|field| field.name.as_str())
+                .collect::<Vec<_>>()
+                .join(", ");
+            format!("{}({fields})", fact.display_name())
+        }
+        EnumVariantFieldsHint::Record(fields) => {
+            let fields = fields
+                .iter()
+                .map(|field| field.name.as_str())
+                .collect::<Vec<_>>()
+                .join(", ");
+            format!("{} {{ {fields} }}", fact.display_name())
         }
     }
 }
@@ -498,8 +589,11 @@ fn declaration_docs(
     graph: &vela_hir::module_graph::ModuleGraph,
     declaration: &Declaration,
 ) -> Option<String> {
-    graph
-        .declaration_attrs(declaration.id)
+    attr_docs(graph.declaration_attrs(declaration.id))
+}
+
+fn attr_docs(attrs: &[HirAttribute]) -> Option<String> {
+    attrs
         .iter()
         .find(|attr| attr.name == "doc")
         .map(|attr| attr.string_value().to_owned())
@@ -719,6 +813,46 @@ mod tests {
             hover.detail(),
             "Function(Function(i64) -> bool) -> Array(i64)"
         );
+    }
+
+    #[test]
+    fn hover_reports_source_enum_variant_fact() {
+        let document = DocumentId::from("/workspace/scripts/game/main.vela");
+        let text = r#"enum QuestState {
+    #[doc("Active quest")]
+    Active(quest_id: String, count: i64),
+    Done,
+}
+pub fn main() {
+    return QuestState::Active("quest-1", 3)
+}"#;
+        let databases = databases_for(&document, text, RegistryFacts::default());
+        let constructor_line = text.lines().nth(6).expect("constructor line should exist");
+
+        let use_hover = databases
+            .hover(
+                &document,
+                Position::new(
+                    6,
+                    constructor_line
+                        .find("Active")
+                        .expect("variant constructor should exist"),
+                ),
+            )
+            .expect("hover should resolve variant constructor use");
+        assert_eq!(use_hover.kind(), HoverKind::Variant);
+        assert_eq!(use_hover.label(), "game::main::QuestState::Active");
+        assert_eq!(
+            use_hover.detail(),
+            "game::main::QuestState::Active(quest_id, count)"
+        );
+
+        let declaration_hover = databases
+            .hover(&document, Position::new(2, 4))
+            .expect("hover should resolve variant declaration");
+        assert_eq!(declaration_hover.kind(), HoverKind::Variant);
+        assert_eq!(declaration_hover.label(), "game::main::QuestState::Active");
+        assert_eq!(declaration_hover.docs(), Some("Active quest"));
     }
 
     fn databases_for(

@@ -209,10 +209,12 @@ against the focused service, analysis, LSP fixture, and capability tests.
 M20.5 Phase 8 update: hover now reports stdlib global function facts,
 typed stdlib receiver-method facts, and schema-backed trait receiver method
 facts through both `vela_language_service` and `textDocument/hover` fixtures.
-`vela_language_service` now exposes explicit declaration and type-definition
-navigation queries, and `vela_lsp_server` advertises and serves
-`textDocument/declaration` plus `textDocument/typeDefinition` using the same
-source/schema-backed spans as go-to-definition.
+Source-owned enum variant declarations and constructor uses now report variant
+facts and docs through the same hover path. `vela_language_service` now exposes
+explicit declaration and type-definition navigation queries, and
+`vela_lsp_server` advertises and serves `textDocument/declaration` plus
+`textDocument/typeDefinition` using the same source/schema-backed spans as
+go-to-definition.
 
 M20.5 Phase 16 update: clients that support dynamic watched-file registration
 now receive a `client/registerCapability` request for configured `.vela`

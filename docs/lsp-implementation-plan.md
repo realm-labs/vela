@@ -450,8 +450,9 @@ Purpose: expose semantic facts and navigation.
 - [~] Hover locals, parameters, captures, declarations, modules, functions,
   methods, fields, variants, traits, and type hints.
   - Initial hover support now covers script parameters/declarations,
-    schema-backed host members and trait receiver methods, stdlib functions,
-    stdlib receiver methods, and missing-schema type-hint degradation.
+    source-owned enum variants, schema-backed host members and trait receiver
+    methods, stdlib functions, stdlib receiver methods, and missing-schema
+    type-hint degradation.
 - [~] Include docs, type facts, effects, permissions, origins, and source spans
   where known.
 - [x] Implement go to definition for local bindings.
@@ -471,10 +472,12 @@ Tests:
 - [x] `hover_degrades_to_any_without_schema`
 - [x] `hover_reports_effects_and_permissions`
 - [x] `hover_reports_schema_trait_method_fact`
+- [x] `hover_reports_source_enum_variant_fact`
 - [x] `hover_reports_stdlib_function_fact`
 - [x] `hover_reports_stdlib_method_fact`
 - [x] `lsp_hover_reports_open_overlay_parameter_fact`
 - [x] `lsp_hover_reports_schema_trait_method_fact`
+- [x] `lsp_hover_reports_source_enum_variant_fact`
 - [x] `lsp_hover_reports_stdlib_function_fact`
 - [x] `lsp_hover_reports_stdlib_method_fact`
 - [x] `definition_follows_local_binding`
