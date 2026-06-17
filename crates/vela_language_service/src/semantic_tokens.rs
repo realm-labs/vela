@@ -15,6 +15,7 @@ use vela_syntax::token::{Keyword, Symbol, Token, TokenKind};
 
 use crate::{DocumentId, LanguageServiceDatabases, LineIndex, Position, TextRange};
 
+mod import_paths;
 mod type_hints;
 
 #[derive(Debug, Clone, Eq, PartialEq)]
@@ -379,6 +380,10 @@ impl LanguageServiceDatabases {
         let span = span_for_range(source_id, range)?;
         let graph = self.hir_db().graph();
         let schema = self.schema_db().facts();
+
+        if let Some(classification) = import_paths::classification(graph, text, name, range, span) {
+            return Some(classification);
+        }
 
         for declaration in graph.declarations() {
             if declaration.span.source != source_id || !declaration.span.contains(span.start) {

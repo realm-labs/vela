@@ -190,6 +190,11 @@ M20.5 Phase 10 update: native LSP semantic-token fixtures now cover
 source-owned field and inherent-method call-site classifications, matching the
 existing language-service member-use classification path.
 
+M20.5 Phase 10 update: semantic tokens now classify imported module path
+segments as module/namespace tokens through both the language service and
+native LSP server while preserving the resolved declaration class for the
+imported item.
+
 M20.5 Phase 13 update: native LSP code-action fixtures now cover open-overlay
 range stability for schema-backed typo repairs when disk snapshots differ from
 the active editor buffer.

@@ -637,6 +637,8 @@ Purpose: provide syntax and semantic highlighting without changing semantics.
     classes without changing parser tokenization.
   - [x] Add script-owned struct field, enum variant, enum payload field,
     trait method, and impl method declaration token classes.
+  - [x] Add imported module path segment token classes while preserving the
+    resolved declaration class for the imported item.
   - [x] Add member-use token classes for script fields/methods, schema-backed
     host fields/methods, and stdlib member methods.
   - [x] Add source-owned trait receiver method call classification through
@@ -658,6 +660,8 @@ Tests:
 - [x] `lsp_semantic_tokens_cover_lexical_classes`
 - [x] `semantic_tokens_mark_resolved_symbols`
 - [x] `lsp_semantic_tokens_mark_resolved_symbols`
+- [x] `semantic_tokens_classify_import_module_path_segments`
+- [x] `lsp_semantic_tokens_classify_import_module_path_segments`
 - [x] `semantic_tokens_include_comments`
 - [x] `lsp_semantic_tokens_include_comments`
 - [x] `semantic_tokens_classify_script_members`

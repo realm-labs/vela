@@ -119,6 +119,50 @@ pub fn main(amount: i64) -> i64 {
 }
 
 #[test]
+fn semantic_tokens_classify_import_module_path_segments() {
+    let main = DocumentId::from("/workspace/scripts/game/main.vela");
+    let helper = DocumentId::from("/workspace/scripts/game/reward.vela");
+    let main_text = "\
+use game::reward::grant
+pub fn main() -> i64 {
+    return grant()
+}";
+    let databases = databases_for(vec![
+        SourceFileSnapshot::new(main.clone(), main_text),
+        SourceFileSnapshot::new(helper, "pub fn grant() -> i64 { return 1 }"),
+    ]);
+
+    let tokens = databases.semantic_tokens(&main);
+
+    assert_token_at(
+        &tokens,
+        0,
+        line(main_text, 0).find("game").expect("module root"),
+        "game".len(),
+        SemanticTokenType::Module,
+        SemanticTokenModifiers::NONE,
+    );
+    assert_token_at(
+        &tokens,
+        0,
+        line(main_text, 0).find("reward").expect("module leaf"),
+        "reward".len(),
+        SemanticTokenType::Module,
+        SemanticTokenModifiers::NONE,
+    );
+    assert_token_at(
+        &tokens,
+        0,
+        line(main_text, 0)
+            .find("grant")
+            .expect("imported declaration"),
+        "grant".len(),
+        SemanticTokenType::Function,
+        SemanticTokenModifiers::NONE,
+    );
+}
+
+#[test]
 fn semantic_tokens_include_comments() {
     let document = DocumentId::from("/workspace/scripts/game/main.vela");
     let text = "\
