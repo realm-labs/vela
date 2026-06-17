@@ -1,15 +1,17 @@
 use vela_common::{SourceId, Span};
 use vela_hir::binding::{BindingMap, BindingResolution, LocalBinding};
+use vela_hir::module_graph::{Declaration, ModuleGraph};
 
 use crate::{
     DiagnosticRange, DocumentId, LanguageServiceDatabases, LineIndex, Position, QueryContext,
-    TextRange, symbol_target::SymbolTarget,
+    SymbolRef, TextRange, symbol_target::SymbolTarget,
 };
 
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub struct Definition {
     document_id: DocumentId,
     range: DiagnosticRange,
+    symbol: Option<SymbolRef>,
 }
 
 impl Definition {
@@ -21,6 +23,11 @@ impl Definition {
     #[must_use]
     pub const fn range(&self) -> DiagnosticRange {
         self.range
+    }
+
+    #[must_use]
+    pub fn symbol(&self) -> Option<&SymbolRef> {
+        self.symbol.as_ref()
     }
 }
 
@@ -34,16 +41,16 @@ impl LanguageServiceDatabases {
         let graph = self.hir_db().graph();
 
         if target.is_schema_symbol()
-            && let Some(definition) = target
-                .schema_member_span(self)
-                .and_then(|span| self.definition_from_span(span))
+            && let Some(definition) = target.schema_member_span(self).and_then(|span| {
+                self.definition_from_span_with_symbol(span, target.symbol().cloned())
+            })
         {
             return Some(definition);
         }
 
         if let Some(definition) = target
-            .schema_variant_span(self, &query)
-            .and_then(|span| self.definition_from_span(span))
+            .schema_variant_target(self, &query)
+            .and_then(|(span, symbol)| self.definition_from_span_with_symbol(span, Some(symbol)))
         {
             return Some(definition);
         }
@@ -60,7 +67,10 @@ impl LanguageServiceDatabases {
                 return Some(definition);
             }
             if let Some(binding) = local_declaration_at_target(bindings, &target, self) {
-                return self.definition_from_span(binding.span);
+                return self.definition_from_span_with_symbol(
+                    binding.span,
+                    Some(SymbolRef::Local(binding.name.clone())),
+                );
             }
         }
 
@@ -88,7 +98,11 @@ impl LanguageServiceDatabases {
         self.definition(document_id, position)
     }
 
-    fn definition_from_span(&self, span: Span) -> Option<Definition> {
+    fn definition_from_span_with_symbol(
+        &self,
+        span: Span,
+        symbol: Option<SymbolRef>,
+    ) -> Option<Definition> {
         let source = self.source_record_for(span.source)?;
         let start = usize::try_from(span.start).ok()?;
         let end = usize::try_from(span.end).ok()?;
@@ -96,13 +110,11 @@ impl LanguageServiceDatabases {
         Some(Definition {
             document_id: source.document_id().clone(),
             range,
+            symbol,
         })
     }
 
-    fn definition_from_declaration(
-        &self,
-        declaration: &vela_hir::module_graph::Declaration,
-    ) -> Option<Definition> {
+    fn definition_from_declaration(&self, declaration: &Declaration) -> Option<Definition> {
         let source = self.source_record_for(declaration.span.source)?;
         let start = usize::try_from(declaration.span.start).ok()?;
         let end = usize::try_from(declaration.span.end).ok()?;
@@ -115,6 +127,8 @@ impl LanguageServiceDatabases {
         Some(Definition {
             document_id: source.document_id().clone(),
             range: diagnostic_range(source.text(), range),
+            symbol: source_declaration_symbol_name(self.hir_db().graph(), declaration)
+                .map(SymbolRef::Source),
         })
     }
 
@@ -131,7 +145,7 @@ impl LanguageServiceDatabases {
         }
         target
             .schema_symbol_span(self)
-            .and_then(|span| self.definition_from_span(span))
+            .and_then(|span| self.definition_from_span_with_symbol(span, target.symbol().cloned()))
     }
 }
 
@@ -156,13 +170,28 @@ fn definition_from_resolution_at_target(
     match resolution {
         BindingResolution::Local(local) => {
             let binding = bindings.local(*local)?;
-            databases.definition_from_span(binding.span)
+            databases.definition_from_span_with_symbol(
+                binding.span,
+                Some(SymbolRef::Local(binding.name.clone())),
+            )
         }
         BindingResolution::Declaration(declaration) => {
             let declaration = graph.declaration(*declaration)?;
             databases.definition_from_declaration(declaration)
         }
         BindingResolution::Import(_) | BindingResolution::QualifiedPath(_) => None,
+    }
+}
+
+fn source_declaration_symbol_name(
+    graph: &ModuleGraph,
+    declaration: &Declaration,
+) -> Option<String> {
+    let module_path = graph.module_path(declaration.module)?;
+    if module_path.segments().is_empty() {
+        Some(declaration.name.clone())
+    } else {
+        Some(format!("{}::{}", module_path.join(), declaration.name))
     }
 }
 
@@ -232,6 +261,10 @@ mod tests {
             text.find("amount")
                 .expect("parameter declaration should exist")
         );
+        assert_eq!(
+            definition.symbol(),
+            Some(&SymbolRef::Local("amount".into()))
+        );
     }
 
     #[test]
@@ -253,6 +286,10 @@ mod tests {
             declaration.range().start().character,
             text.find("amount")
                 .expect("parameter declaration should exist")
+        );
+        assert_eq!(
+            declaration.symbol(),
+            Some(&SymbolRef::Local("amount".into()))
         );
     }
 
@@ -288,6 +325,10 @@ fn main() {
         assert_eq!(definition.document_id(), &document);
         assert_eq!(definition.range().start().line, 1);
         assert_eq!(definition.range().start().character, 3);
+        assert_eq!(
+            definition.symbol(),
+            Some(&SymbolRef::Source("game::main::add_mixed".into()))
+        );
     }
 
     #[test]
@@ -339,6 +380,10 @@ fn main() {
         assert_eq!(definition.range().start().line, 0);
         assert_eq!(definition.range().start().character, target_start);
         assert_eq!(definition.range().end().character, target_end);
+        assert_eq!(
+            definition.symbol(),
+            Some(&SymbolRef::Schema("Player".into()))
+        );
     }
 
     #[test]
@@ -365,6 +410,10 @@ fn main() {
         assert_eq!(
             definition.range().start().character,
             helper_text.find("grant").expect("helper function name")
+        );
+        assert_eq!(
+            definition.symbol(),
+            Some(&SymbolRef::Source("game::helper::grant".into()))
         );
     }
 
@@ -417,6 +466,10 @@ fn main() {
         assert_eq!(definition.range().start().line, 0);
         assert_eq!(definition.range().start().character, target_start);
         assert_eq!(definition.range().end().character, target_end);
+        assert_eq!(
+            definition.symbol(),
+            Some(&SymbolRef::Schema("Player".into()))
+        );
     }
 
     #[test]
@@ -474,6 +527,10 @@ fn main() {
         assert_eq!(definition.document_id(), &schema_source);
         assert_eq!(definition.range().start().character, target_start);
         assert_eq!(definition.range().end().character, target_end);
+        assert_eq!(
+            definition.symbol(),
+            Some(&SymbolRef::Schema("Player.level".into()))
+        );
     }
 
     #[test]
@@ -535,6 +592,10 @@ fn main() {
         assert_eq!(definition.document_id(), &schema_source);
         assert_eq!(definition.range().start().character, target_start);
         assert_eq!(definition.range().end().character, target_end);
+        assert_eq!(
+            definition.symbol(),
+            Some(&SymbolRef::Schema("Player.grant".into()))
+        );
     }
 
     #[test]
@@ -601,6 +662,10 @@ fn main() {
         assert_eq!(definition.document_id(), &schema_source);
         assert_eq!(definition.range().start().character, target_start);
         assert_eq!(definition.range().end().character, target_end);
+        assert_eq!(
+            definition.symbol(),
+            Some(&SymbolRef::Schema("Rewardable.preview".into()))
+        );
     }
 
     #[test]
@@ -665,6 +730,10 @@ fn main() {
         assert_eq!(definition.document_id(), &schema_source);
         assert_eq!(definition.range().start().character, target_start);
         assert_eq!(definition.range().end().character, target_end);
+        assert_eq!(
+            definition.symbol(),
+            Some(&SymbolRef::Schema("QuestState::Active".into()))
+        );
     }
 
     #[test]
@@ -742,6 +811,10 @@ fn main() {
         assert_eq!(definition.document_id(), &schema_source);
         assert_eq!(definition.range().start().character, target_start);
         assert_eq!(definition.range().end().character, target_end);
+        assert_eq!(
+            definition.symbol(),
+            Some(&SymbolRef::Schema("QuestState::Active".into()))
+        );
     }
 
     #[test]

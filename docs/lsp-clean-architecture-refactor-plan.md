@@ -571,7 +571,9 @@ and semantic tokens use the same identities and display primitives.
   completion model reuses it through the existing `CompletionSymbol` export.
   Hover and definition now build a shared cursor `SymbolTarget` that carries
   schema and builtin `SymbolRef` classification for schema member, variant,
-  type, trait, function, and stdlib targets; references, rename, symbols,
+  type, trait, function, and stdlib targets, and definition results now expose
+  `SymbolRef` identity for local bindings, source declarations, and schema
+  facts while keeping LSP projection protocol-neutral; references, rename,
   inlay hints, diagnostics, and broader source/local identities still need to
   converge on the shared identity directly. Document symbols now expose
   `SymbolRef` identity for source declarations and nested source-owned

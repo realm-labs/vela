@@ -46,6 +46,10 @@ impl SymbolTarget {
         self.member_receiver_fact.as_ref()
     }
 
+    pub(crate) fn symbol(&self) -> Option<&SymbolRef> {
+        self.symbol.as_ref()
+    }
+
     pub(crate) fn is_schema_symbol(&self) -> bool {
         matches!(self.symbol, Some(SymbolRef::Schema(_)))
     }
@@ -70,11 +74,11 @@ impl SymbolTarget {
             .or_else(|| locations.trait_method_span(&owner, &self.text))
     }
 
-    pub(crate) fn schema_variant_span(
+    pub(crate) fn schema_variant_target(
         &self,
         databases: &LanguageServiceDatabases,
         query: &QueryContext<'_>,
-    ) -> Option<Span> {
+    ) -> Option<(Span, SymbolRef)> {
         let text = query.text();
         let source = query.source_record()?;
         let parsed = databases.parse_db().parsed_source(source.document_id())?;
@@ -90,10 +94,11 @@ impl SymbolTarget {
             else {
                 continue;
             };
-            return databases
+            let span = databases
                 .schema_db()
                 .source_locations()
-                .variant_span(&owner, variant);
+                .variant_span(&owner, variant)?;
+            return Some((span, SymbolRef::Schema(format!("{owner}::{variant}"))));
         }
         None
     }
