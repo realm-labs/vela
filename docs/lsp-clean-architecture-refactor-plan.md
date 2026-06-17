@@ -375,7 +375,9 @@ Purpose: classify the cursor once and reuse it across features.
   receiver facts instead of feature-local member receiver scanning. Schema
   function rename edit collection now consumes shared parsed path-call sites
   instead of tokenizing identifiers and reconstructing callees from source
-  text.
+  text. Source enum variant rename edit collection now consumes shared parsed
+  expression path sites for constructor-like uses and leaves pattern path uses
+  on the existing scanner until pattern paths carry source spans.
   `CursorContext` now exposes the identifier token range under the request
   cursor, and rename target selection consumes that shared range instead of
   running its own first-step token scanner. Lambda-parameter contexts now

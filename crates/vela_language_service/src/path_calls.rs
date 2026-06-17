@@ -12,18 +12,36 @@ pub(crate) struct PathCallSite {
     pub(crate) segment_range: TextRange,
 }
 
+#[derive(Debug, Clone, Eq, PartialEq)]
+pub(crate) struct PathExpressionSite {
+    pub(crate) path: Vec<String>,
+    pub(crate) segment_range: TextRange,
+}
+
 pub(crate) fn path_call_sites(source: &SourceFile, text: &str) -> Vec<PathCallSite> {
     let mut collector = PathCallCollector {
         text,
-        sites: Vec::new(),
+        call_sites: Vec::new(),
+        expression_sites: Vec::new(),
     };
     collector.collect_source_file(source);
-    collector.sites
+    collector.call_sites
+}
+
+pub(crate) fn path_expression_sites(source: &SourceFile, text: &str) -> Vec<PathExpressionSite> {
+    let mut collector = PathCallCollector {
+        text,
+        call_sites: Vec::new(),
+        expression_sites: Vec::new(),
+    };
+    collector.collect_source_file(source);
+    collector.expression_sites
 }
 
 struct PathCallCollector<'a> {
     text: &'a str,
-    sites: Vec<PathCallSite>,
+    call_sites: Vec<PathCallSite>,
+    expression_sites: Vec<PathExpressionSite>,
 }
 
 impl PathCallCollector<'_> {
@@ -119,7 +137,8 @@ impl PathCallCollector<'_> {
 
     fn collect_expr(&mut self, expr: &Expr) {
         match &expr.kind {
-            ExprKind::Literal(_) | ExprKind::Path(_) | ExprKind::SelfValue | ExprKind::Error => {}
+            ExprKind::Path(path) => self.record_path_expression(expr.span, path),
+            ExprKind::Literal(_) | ExprKind::SelfValue | ExprKind::Error => {}
             ExprKind::InterpolatedString(parts) => {
                 for part in parts {
                     if let InterpolatedStringPart::Expr(expr) = part {
@@ -158,7 +177,8 @@ impl PathCallCollector<'_> {
                     self.collect_map_entry(entry);
                 }
             }
-            ExprKind::Record { fields, .. } => {
+            ExprKind::Record { path, fields } => {
+                self.record_path_expression(expr.span, path);
                 for field in fields {
                     if let Some(value) = &field.value {
                         self.collect_expr(value);
@@ -221,8 +241,21 @@ impl PathCallCollector<'_> {
         let Some(segment_range) = last_segment_range(self.text, callee.span, last_segment) else {
             return;
         };
-        self.sites.push(PathCallSite {
+        self.call_sites.push(PathCallSite {
             path: path.clone(),
+            segment_range,
+        });
+    }
+
+    fn record_path_expression(&mut self, span: Span, path: &[String]) {
+        let Some(last_segment) = path.last() else {
+            return;
+        };
+        let Some(segment_range) = last_segment_range(self.text, span, last_segment) else {
+            return;
+        };
+        self.expression_sites.push(PathExpressionSite {
+            path: path.to_vec(),
             segment_range,
         });
     }
@@ -253,4 +286,39 @@ fn is_identifier_boundary(text: &str, start: usize, end: usize) -> bool {
 
 fn is_identifier_continue(ch: char) -> bool {
     ch == '_' || ch.is_ascii_alphanumeric()
+}
+
+#[cfg(test)]
+mod tests {
+    use vela_common::SourceId;
+    use vela_syntax::parser::parse_source;
+
+    use super::*;
+
+    #[test]
+    fn path_expression_sites_include_paths_and_record_constructors() {
+        let source = "\
+fn main(state: QuestState) {
+    let next = QuestState::Active
+    let wrapped = QuestState::Active { count: 1 }
+}";
+        let parsed = parse_source(SourceId::new(1), source);
+
+        let sites = path_expression_sites(&parsed, source);
+
+        let plain_start =
+            source.find("QuestState::Active").expect("path expression") + "QuestState::".len();
+        let record_start = source
+            .rfind("QuestState::Active")
+            .expect("record constructor")
+            + "QuestState::".len();
+        assert!(sites.contains(&PathExpressionSite {
+            path: vec!["QuestState".to_owned(), "Active".to_owned()],
+            segment_range: TextRange::new(plain_start, plain_start + "Active".len()),
+        }));
+        assert!(sites.contains(&PathExpressionSite {
+            path: vec!["QuestState".to_owned(), "Active".to_owned()],
+            segment_range: TextRange::new(record_start, record_start + "Active".len()),
+        }));
+    }
 }

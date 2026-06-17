@@ -1,4 +1,4 @@
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, HashSet};
 
 use vela_common::SourceId;
 use vela_hir::binding::{BindingMap, BindingResolution};
@@ -8,7 +8,7 @@ use vela_syntax::ast::Visibility;
 use vela_syntax::lexer::lex;
 use vela_syntax::token::TokenKind;
 
-use crate::{DocumentId, LanguageServiceDatabases, TextRange};
+use crate::{DocumentId, LanguageServiceDatabases, TextRange, path_calls};
 
 use super::{
     RenameToken, TextEdit, WorkspaceEdit, diagnostic_range, document_text_edit_for_rename,
@@ -155,32 +155,76 @@ fn push_enum_variant_use_edits(
     for source in databases.source_db().records().values() {
         let source_id = source.source_id();
         let text = source.text();
-        for range in path_segment_ranges(source_id, text, &target.variant) {
-            let Some(start) = u32::try_from(range.start).ok() else {
-                continue;
-            };
-            for declaration in graph.declarations() {
-                if declaration.span.source != source_id || !declaration.span.contains(start) {
-                    continue;
-                }
-                let Some(bindings) = graph.bindings(declaration.id) else {
-                    continue;
-                };
-                if enum_variant_use_target(graph, bindings, text, &RenameToken { range })
-                    .is_some_and(|found| {
-                        found.owner == target.owner && found.variant == target.variant
-                    })
+        let mut shared_ranges = HashSet::new();
+        if let Some(parsed) = databases.parse_db().parsed_source(source.document_id()) {
+            for site in path_calls::path_expression_sites(parsed, text) {
+                if site
+                    .path
+                    .last()
+                    .is_none_or(|segment| segment != &target.variant)
                 {
-                    edits_by_document
-                        .entry(source.document_id().clone())
-                        .or_default()
-                        .push(TextEdit {
-                            range: diagnostic_range(text, range),
-                            new_text: new_name.to_owned(),
-                        });
-                    break;
+                    continue;
                 }
+                let range = site.segment_range;
+                shared_ranges.insert((range.start, range.end));
+                push_enum_variant_use_edit_for_range(
+                    graph,
+                    source,
+                    text,
+                    range,
+                    target,
+                    new_name,
+                    edits_by_document,
+                );
             }
+        }
+        for range in path_segment_ranges(source_id, text, &target.variant) {
+            if shared_ranges.contains(&(range.start, range.end)) {
+                continue;
+            }
+            push_enum_variant_use_edit_for_range(
+                graph,
+                source,
+                text,
+                range,
+                target,
+                new_name,
+                edits_by_document,
+            );
+        }
+    }
+}
+
+fn push_enum_variant_use_edit_for_range(
+    graph: &ModuleGraph,
+    source: &crate::SourceRecord,
+    text: &str,
+    range: TextRange,
+    target: &EnumVariantRenameTarget,
+    new_name: &str,
+    edits_by_document: &mut BTreeMap<DocumentId, Vec<TextEdit>>,
+) {
+    let Some(start) = u32::try_from(range.start).ok() else {
+        return;
+    };
+    for declaration in graph.declarations() {
+        if declaration.span.source != source.source_id() || !declaration.span.contains(start) {
+            continue;
+        }
+        let Some(bindings) = graph.bindings(declaration.id) else {
+            continue;
+        };
+        if enum_variant_use_target(graph, bindings, text, &RenameToken { range })
+            .is_some_and(|found| found.owner == target.owner && found.variant == target.variant)
+        {
+            edits_by_document
+                .entry(source.document_id().clone())
+                .or_default()
+                .push(TextEdit {
+                    range: diagnostic_range(text, range),
+                    new_text: new_name.to_owned(),
+                });
+            break;
         }
     }
 }
