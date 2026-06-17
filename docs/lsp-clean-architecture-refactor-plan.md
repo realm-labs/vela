@@ -564,9 +564,13 @@ cargo test -p vela_lsp_server completion
 Purpose: make hover, signature help, definition, symbols, references, rename,
 and semantic tokens use the same identities and display primitives.
 
-- [ ] Introduce `SymbolRef` or equivalent identity for local bindings, source
+- [~] Introduce `SymbolRef` or equivalent identity for local bindings, source
   declarations, modules, fields, methods, variants, builtin facts, stdlib
   facts, and schema-owned facts.
+  A shared `SymbolRef` identity now exists in `vela_language_service`, and the
+  completion model reuses it through the existing `CompletionSymbol` export;
+  hover, definition, references, rename, symbols, inlay hints, and diagnostics
+  still need to converge on the shared identity directly.
 - [ ] Route hover labels, completion details, signature labels, symbol labels,
   inlay labels, and diagnostics through `DisplayParts` or equivalent
   structured display helpers.

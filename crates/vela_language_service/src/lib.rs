@@ -22,6 +22,7 @@ mod schema;
 mod selection;
 mod semantic_tokens;
 mod signature;
+mod symbol_ref;
 mod symbols;
 mod text;
 mod workspace;
@@ -69,6 +70,7 @@ pub use semantic_tokens::{
     SemanticTokenType, SemanticTokens,
 };
 pub use signature::{SignatureHelp, SignatureInformation, SignatureParameter};
+pub use symbol_ref::SymbolRef;
 pub use symbols::{DocumentSymbol, DocumentSymbolKind, WorkspaceSymbol, WorkspaceSymbolLocation};
 pub use text::{LineIndex, Position, TextRange};
 pub use workspace::{

@@ -120,13 +120,7 @@ impl CompletionLabelDetails {
     }
 }
 
-#[derive(Debug, Clone, Eq, PartialEq)]
-pub enum CompletionSymbol {
-    Source(String),
-    Schema(String),
-    Builtin(String),
-    Local(String),
-}
+pub use crate::symbol_ref::SymbolRef as CompletionSymbol;
 
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub enum CompletionResolvePayload {
