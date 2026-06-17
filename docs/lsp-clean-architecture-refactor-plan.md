@@ -17,17 +17,27 @@
 ## 0. Codex Goal
 
 ```text
-/goal Rebuild Vela's native LSP architecture from
-docs/lsp-clean-architecture-refactor-plan.md. Treat docs/goal.md as the
-product roadmap, docs/architecture.md and docs/architecture/*.md as the
-technical contract, docs/architecture/lsp.md and docs/lsp-implementation-plan.md
-as the native LSP ownership and capability contract, docs/progress.md as the
-current milestone state, and docs/decisions.md as the durable decision index.
-Use ~/CLionProjects/rust-analyzer as the local rust-analyzer reference root
-for architecture comparison, especially its split between completion context
+/goal Execute the complete clean LSP architecture refactor plan in
+docs/lsp-clean-architecture-refactor-plan.md from the first unchecked
+phase/task through final acceptance. This goal is complete only when every
+phase checklist item in this execution document, every acceptance criterion in
+Section 15, and the required Phase 9 cleanup/docs updates are complete and
+validated; it is not complete after Phase 1, after fixing completion alone, or
+after any single checkpoint. On each turn or resume, read docs/goal.md,
+docs/architecture.md, docs/architecture/*.md, docs/architecture/lsp.md,
+docs/lsp-implementation-plan.md, docs/progress.md, docs/decisions.md, and this
+execution document, inspect the current git diff, then choose the smallest
+verifiable task that advances the earliest incomplete phase. Implement that
+task, validate it with the focused tests named in this document plus any
+relevant workspace checks, update this plan's checklist/progress notes and
+durable docs when status or decisions change, commit a small Conventional
+Commit checkpoint, and continue to the next incomplete task rather than
+shrinking the goal to the checkpoint just finished. Use
+~/CLionProjects/rust-analyzer as the local rust-analyzer reference root for
+architecture comparison, especially its split between completion context
 construction, feature-specific producers, rich editor-neutral completion item
 models, and LSP protocol projection. Treat completion as the first visible
-failure to fix, but design the refactor for the full LSP surface:
+failure to fix, but keep the refactor scoped to the full LSP surface:
 diagnostics, completion, signature help, hover, definition, symbols, semantic
 tokens, references, rename, code actions, formatting, inlay hints, workspace
 snapshots, cancellation, configuration, and completion-specific scale behavior
@@ -39,9 +49,9 @@ patching, analysis-only editor tooling, no runtime script execution for LSP
 queries, no live host-state reads, no TypeRegistry mutation, no new language
 semantics, and no custom full IDE product. Replace obsolete
 language-service/LSP-server internals instead of carrying compatibility shims.
-Validate each checkpoint with focused language-service model tests, LSP
-JSON-RPC or conversion fixtures, existing feature tests, docs, and relevant
-workspace checks. Commit small Conventional Commit checkpoints.
+If a real external decision blocks progress, update docs/blocked.md and leave
+the goal active or blocked explicitly; otherwise keep advancing the next
+unchecked task until the entire plan is complete.
 ```
 
 ---
