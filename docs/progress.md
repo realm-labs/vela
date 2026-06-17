@@ -151,6 +151,10 @@ M20.5 schema hover update: schema artifacts now carry optional docs metadata
 for exported facts, and schema-backed hovers surface docs for types, fields,
 variants, methods, trait methods, and functions.
 
+M20.5 Phase 8 update: native LSP hover fixtures now cover schema method
+effects and required permissions loaded from the static schema artifact,
+matching the language-service metadata surface.
+
 M20.5 Phase 8 update: native LSP hover fixtures now cover missing-schema
 type-hint degradation, matching the language service's `Any` fallback without
 running host code.

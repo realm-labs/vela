@@ -582,6 +582,72 @@ pub fn main() {
 }
 
 #[test]
+fn lsp_hover_reports_effects_and_permissions() {
+    let root = temp_workspace();
+    let schema_path = root.join("target").join("vela").join("schema.json");
+    fs::create_dir_all(schema_path.parent().expect("schema should have parent"))
+        .expect("schema directory should be creatable");
+    fs::write(&schema_path, schema_with_player_grant_method())
+        .expect("schema artifact should be writable");
+
+    let mut server = LspServer::new();
+    let _ = response_value(server.handle_json(&request(
+        1,
+        "initialize",
+        serde_json::json!({
+            "processId": null,
+            "rootUri": file_uri(&root),
+            "initializationOptions": {
+                "workspace": {
+                    "roots": [file_uri(&root.join("scripts"))]
+                },
+                "host": {
+                    "schema": file_uri(&schema_path)
+                }
+            },
+            "capabilities": {}
+        }),
+    )));
+    let main_uri = file_uri(&root.join("scripts").join("game").join("main.vela"));
+    let text = "pub fn main(player: Player) { player.grant(1) }";
+    let _ = notification_value(server.handle_json(&notification(
+        "textDocument/didOpen",
+        serde_json::json!({
+            "textDocument": {
+                "uri": main_uri,
+                "languageId": "vela",
+                "version": 1,
+                "text": text
+            }
+        }),
+    )));
+
+    let response = response_value(server.handle_json(&request(
+        2,
+        "textDocument/hover",
+        serde_json::json!({
+            "textDocument": { "uri": main_uri },
+            "position": {
+                "line": 0,
+                "character": text.find("grant").unwrap_or_else(|| {
+                    panic!("hover fixture should contain schema method")
+                })
+            }
+        }),
+    )));
+
+    let value = response["result"]["contents"]["value"]
+        .as_str()
+        .expect("hover contents should be markdown");
+    assert!(value.contains("Player.grant"), "{value}");
+    assert!(value.contains("_method_: Function(i64) -> bool"), "{value}");
+    assert!(value.contains("effects: writes_host"), "{value}");
+    assert!(value.contains("permissions: player.reward"), "{value}");
+    assert!(value.contains("Grant player rewards."), "{value}");
+    fs::remove_dir_all(&root).expect("temporary workspace should be removable");
+}
+
+#[test]
 fn lsp_hover_reports_schema_trait_method_fact() {
     let root = temp_workspace();
     let schema_path = root.join("target").join("vela").join("schema.json");
@@ -792,6 +858,59 @@ fn file_uri(path: &Path) -> String {
     } else {
         format!("file:///{path}")
     }
+}
+
+fn schema_with_player_grant_method() -> &'static str {
+    r#"{
+        "formatVersion": 1,
+        "facts": {
+            "types": [
+                {
+                    "name": "Player",
+                    "fact": { "kind": "host", "name": "Player" }
+                }
+            ],
+            "methods": [
+                {
+                    "owner": "Player",
+                    "name": "grant",
+                    "fact": {
+                        "kind": "function",
+                        "params": [{ "kind": "primitive", "name": "i64" }],
+                        "returns": { "kind": "primitive", "name": "bool" }
+                    },
+                    "docs": "Grant player rewards."
+                }
+            ],
+            "methodEffects": [
+                {
+                    "owner": "Player",
+                    "name": "grant",
+                    "effect": {
+                        "readsHost": false,
+                        "writesHost": true,
+                        "emitsEvents": false,
+                        "readsTime": false,
+                        "usesRandom": false,
+                        "readsIo": false,
+                        "writesIo": false,
+                        "readsReflection": false,
+                        "writesReflection": false,
+                        "callsReflection": false
+                    }
+                }
+            ],
+            "methodAccess": [
+                {
+                    "owner": "Player",
+                    "name": "grant",
+                    "public": true,
+                    "reflect_callable": true,
+                    "required_permissions": ["player.reward"]
+                }
+            ]
+        }
+    }"#
 }
 
 fn schema_with_rewardable_trait_method() -> &'static str {
