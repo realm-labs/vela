@@ -501,6 +501,7 @@ Tests:
 - [x] `hover_reports_stdlib_method_fact`
 - [x] `hover_reports_imported_module_path_fact`
 - [x] `lsp_hover_reports_open_overlay_parameter_fact`
+- [x] `lsp_hover_degrades_to_any_without_schema`
 - [x] `lsp_hover_reports_source_global_fact`
 - [x] `lsp_hover_reports_imported_module_path_fact`
 - [x] `lsp_hover_reports_schema_trait_fact`

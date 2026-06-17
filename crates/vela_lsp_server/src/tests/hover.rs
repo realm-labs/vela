@@ -56,6 +56,51 @@ fn lsp_hover_reports_open_overlay_parameter_fact() {
 }
 
 #[test]
+fn lsp_hover_degrades_to_any_without_schema() {
+    let mut server = LspServer::new();
+    let _ = response_value(server.handle_json(&request(
+        1,
+        "initialize",
+        serde_json::json!({
+            "processId": null,
+            "rootUri": "file:///workspace/scripts",
+            "capabilities": {}
+        }),
+    )));
+    let text = "pub fn main(player: Player) { return player }";
+    let uri = "file:///workspace/scripts/game/main.vela";
+    let _ = notification_value(server.handle_json(&notification(
+        "textDocument/didOpen",
+        serde_json::json!({
+            "textDocument": {
+                "uri": uri,
+                "languageId": "vela",
+                "version": 1,
+                "text": text
+            }
+        }),
+    )));
+
+    let response = response_value(server.handle_json(&request(
+        2,
+        "textDocument/hover",
+        serde_json::json!({
+            "textDocument": { "uri": uri },
+            "position": {
+                "line": 0,
+                "character": text.find("Player").expect("type hint")
+            }
+        }),
+    )));
+
+    let value = response["result"]["contents"]["value"]
+        .as_str()
+        .expect("hover contents should be markdown");
+    assert!(value.contains("```vela\nPlayer\n```"), "{value}");
+    assert!(value.contains("_type_: Any"), "{value}");
+}
+
+#[test]
 fn lsp_hover_reports_source_global_fact() {
     let mut server = LspServer::new();
     let _ = response_value(server.handle_json(&request(
