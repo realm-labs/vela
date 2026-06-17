@@ -148,13 +148,23 @@ impl<'a> QueryContext<'a> {
     }
 
     #[must_use]
+    pub const fn member_receiver_range(&self) -> Option<TextRange> {
+        self.cursor.member_receiver()
+    }
+
+    #[must_use]
     pub fn member_receiver_text(&self) -> Option<&str> {
-        text_range(self.text(), self.cursor.member_receiver()?)
+        text_range(self.text(), self.member_receiver_range()?)
+    }
+
+    #[must_use]
+    pub const fn call_callee_range(&self) -> Option<TextRange> {
+        self.cursor.call_callee()
     }
 
     #[must_use]
     pub fn call_callee_text(&self) -> Option<&str> {
-        text_range(self.text(), self.cursor.call_callee()?)
+        text_range(self.text(), self.call_callee_range()?)
     }
 }
 
@@ -271,6 +281,14 @@ mod tests {
             LineIndex::new(source).position(member_offset),
         )
         .expect("member query");
+        let expected_receiver_start = source.find("player.level").expect("receiver occurrence");
+        assert_eq!(
+            member_context.member_receiver_range(),
+            Some(TextRange::new(
+                expected_receiver_start,
+                expected_receiver_start + "player".len()
+            ))
+        );
         assert_eq!(member_context.member_receiver_text(), Some("player"));
 
         let call_offset = source.find("current_player().level").expect("call arg") + 1;
@@ -280,6 +298,14 @@ mod tests {
             LineIndex::new(source).position(call_offset),
         )
         .expect("call query");
+        let expected_callee_start = source.find("grant(").expect("callee occurrence");
+        assert_eq!(
+            call_context.call_callee_range(),
+            Some(TextRange::new(
+                expected_callee_start,
+                expected_callee_start + "grant".len()
+            ))
+        );
         assert_eq!(call_context.call_callee_text(), Some("grant"));
     }
 }

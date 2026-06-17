@@ -447,8 +447,8 @@ fn completion_context(query: &QueryContext<'_>) -> CompletionContext {
     }
 
     if cursor.kind() == CursorContextKind::MemberAccess {
-        let member_receiver = cursor
-            .member_receiver()
+        let member_receiver = query
+            .member_receiver_range()
             .map(|range| MemberReceiver { range });
         return CompletionContext {
             kind: CompletionContextKind::Member,
