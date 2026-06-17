@@ -764,6 +764,8 @@ Purpose: support workspace navigation and prepare rename.
     active document.
   - [x] Serve source-owned trait declaration/impl highlights in the active
     document.
+  - [x] Serve schema-backed field read/write highlights in the active
+    document.
   - [x] Serve schema-backed method and trait-method call highlights in the
     active document.
   - [x] Serve schema-backed variant constructor and pattern highlights in the
@@ -823,6 +825,8 @@ Tests:
 - [x] `document_highlight_marks_script_method_calls`
 - [x] `lsp_document_highlight_marks_script_method_calls`
 - [x] `document_highlight_marks_trait_impl_uses`
+- [x] `document_highlight_marks_schema_field_reads_and_writes`
+- [x] `lsp_document_highlight_marks_schema_field_reads_and_writes`
 - [x] `document_highlight_marks_schema_method_calls`
 - [x] `lsp_document_highlight_marks_schema_method_calls`
 - [x] `document_highlight_marks_schema_variant_uses`

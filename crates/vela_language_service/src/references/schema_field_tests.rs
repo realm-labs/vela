@@ -182,6 +182,85 @@ pub fn main(player: Player) -> i64 {
 }
 
 #[test]
+fn document_highlight_marks_schema_field_reads_and_writes() {
+    let main = DocumentId::from("/workspace/scripts/game/main.vela");
+    let schema = DocumentId::from("/workspace/scripts/schema_defs.vela");
+    let main_text = "\
+pub fn main(player: Player) -> i64 {
+    let first = player.level
+    player.level += 1
+    return player.level + first
+}";
+    let schema_text = "pub fn level() { return 1 }";
+    let mut databases = databases_for(vec![
+        SourceFileSnapshot::new(main.clone(), main_text),
+        SourceFileSnapshot::new(schema.clone(), schema_text),
+    ]);
+    let schema_record = databases
+        .source_db()
+        .records()
+        .get(&schema)
+        .expect("schema source should be indexed");
+    let target_start = schema_text
+        .find("level")
+        .expect("schema marker should exist");
+    let target_end = target_start + "level".len();
+    let artifact = serde_json::json!({
+        "formatVersion": 1,
+        "facts": {
+            "types": [
+                {
+                    "name": "Player",
+                    "fact": { "kind": "host", "name": "Player" }
+                }
+            ],
+            "fields": [
+                {
+                    "owner": "Player",
+                    "name": "level",
+                    "fact": { "kind": "primitive", "name": "i64" },
+                    "sourceSpan": {
+                        "source": schema_record.source_id().get(),
+                        "start": target_start,
+                        "end": target_end
+                    }
+                }
+            ]
+        }
+    })
+    .to_string();
+    databases.load_schema_artifact_json("/workspace/target/vela/schema.json", &artifact);
+
+    let highlights = databases.document_highlights(
+        &main,
+        Position::new(
+            1,
+            line(main_text, 1).find("level").expect("first field read"),
+        ),
+    );
+
+    assert_eq!(highlights.len(), 3, "{highlights:?}");
+    assert_highlight(
+        &highlights,
+        1,
+        line(main_text, 1).find("level").expect("first field read"),
+        DocumentHighlightKind::Read,
+    );
+    assert_highlight(
+        &highlights,
+        2,
+        line(main_text, 2).find("level").expect("field write"),
+        DocumentHighlightKind::Write,
+    );
+    assert_highlight(
+        &highlights,
+        3,
+        line(main_text, 3).find("level").expect("second field read"),
+        DocumentHighlightKind::Read,
+    );
+}
+
+#[test]
 fn references_find_schema_record_variant_field_labels_and_patterns() {
     let main = DocumentId::from("/workspace/scripts/game/main.vela");
     let schema = DocumentId::from("/workspace/scripts/schema_defs.vela");
@@ -299,6 +378,22 @@ fn assert_reference_in_document(
                 && reference.kind() == kind
         }),
         "{references:?}"
+    );
+}
+
+fn assert_highlight(
+    highlights: &[DocumentHighlight],
+    line: usize,
+    character: usize,
+    kind: DocumentHighlightKind,
+) {
+    assert!(
+        highlights.iter().any(|highlight| {
+            highlight.range().start().line == line
+                && highlight.range().start().character == character
+                && highlight.kind() == kind
+        }),
+        "{highlights:?}"
     );
 }
 

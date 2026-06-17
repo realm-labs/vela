@@ -293,6 +293,10 @@ M20.5 Phase 11 update: native LSP reference fixtures now also cover
 schema-backed record-constructor shorthand field labels, matching the existing
 language-service shorthand coverage and explicit-label LSP fixture path.
 
+M20.5 Phase 11 update: document highlights now have explicit language-service
+and native LSP coverage for schema-backed field reads and writes in the active
+document, matching the existing schema method and variant highlight paths.
+
 M20.5 Phase 13 update: the conditional null-check to Option/Result guard
 rewrite is intentionally deferred until a structured diagnostic or syntax
 pattern can prove the rewrite is local, source-owned, and
