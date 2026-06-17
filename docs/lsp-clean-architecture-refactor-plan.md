@@ -148,6 +148,36 @@ Shared service concepts:
   `sortText`, `preselect`, and secondary grouping without hard-coding protocol
   behavior in producers.
 
+Million-line completion requirements:
+
+- Completion must not rebuild the whole workspace on a keystroke. It may use
+  the current open-document overlay, the last complete project snapshot, and
+  stale-but-valid background indexes while newer background work is pending.
+- Item, module, type, function, field, method, variant, local, import, stdlib,
+  and schema candidates need precomputed or incrementally maintained indexes.
+  A completion request should join the small set of indexes relevant to the
+  `CursorContextKind`, not scan every parsed file.
+- Editing a function body should avoid invalidating module-level declaration
+  indexes unless the edit changes declarations, imports, public signatures, or
+  other module fingerprints.
+- Prefix/lookup filtering should run against indexed candidate identities. The
+  producer should avoid materializing full documentation or expensive display
+  strings until an item survives context and prefix narrowing or is resolved
+  lazily.
+- Member completion must be receiver-scoped. For known receivers, query the
+  source/schema/builtin member tables for that type or trait set; do not scan
+  global declarations.
+- Top-level and type-position completion must use item/type indexes directly
+  and exclude expression-only stdlib facts before ranking.
+- Completion ranking should be bounded and deterministic. Relevance scoring
+  can sort the final candidate set, but producer selection must keep that set
+  small enough for interactive latency.
+- Long-running index refreshes must be cancellable or generation-checked so an
+  old completion result is never published over a newer buffer state.
+- Scale tests must include completion-specific checkpoints against synthetic
+  many-file workspaces near the one-million-line target, not only diagnostics
+  or indexing checkpoints.
+
 Feature ownership:
 
 - `vela_language_service` owns all query construction, cursor classification,
@@ -399,6 +429,16 @@ cargo test -p vela_lsp_server formatting
 Purpose: make the new model viable for large workspaces and real editors.
 
 - [ ] Audit request paths for avoidable per-keystroke full-workspace rebuilds.
+- [ ] Add completion-specific scale tests for item, expression, type, member,
+  and module-path contexts in synthetic many-file workspaces near the
+  one-million-line target.
+- [ ] Add or reuse incremental declaration, import, type, member, stdlib,
+  schema, local-scope, and reference indexes so completion producers can query
+  context-relevant candidate sets without scanning all files.
+- [ ] Track module fingerprints so body-only edits preserve declaration and
+  import indexes.
+- [ ] Bound eager completion rendering. Defer expensive docs/detail formatting
+  until after context filtering, prefix narrowing, or resolve.
 - [ ] Keep open-document queries prioritized over disk-only modules.
 - [ ] Use workspace generation IDs to discard stale results.
 - [ ] Keep cancellation checks at query construction and expensive producer
