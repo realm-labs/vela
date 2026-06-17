@@ -73,6 +73,7 @@ impl From<AnalysisCompletionKind> for CompletionKind {
 pub enum CompletionContextKind {
     Item,
     Statement,
+    Expression,
     Global,
     ModulePath,
     Member,
@@ -212,6 +213,7 @@ impl LanguageServiceDatabases {
         }
         let items = match context.kind {
             CompletionContextKind::Global => self.global_completion_items(&query, &context),
+            CompletionContextKind::Expression => self.expression_completion_items(&query, &context),
             CompletionContextKind::Item => self.item_completion_items(&context),
             CompletionContextKind::Statement => self.statement_completion_items(&query, &context),
             CompletionContextKind::ModulePath => self.module_path_completion_items(&context),
@@ -261,6 +263,14 @@ impl LanguageServiceDatabases {
         dedupe_and_filter_service_items(items, |item| {
             label_segment_matches(&item.label, context.prefix())
         })
+    }
+
+    fn expression_completion_items(
+        &self,
+        query: &QueryContext<'_>,
+        context: &CompletionContext,
+    ) -> Vec<CompletionItem> {
+        self.global_completion_items(query, context)
     }
 
     fn item_completion_items(&self, context: &CompletionContext) -> Vec<CompletionItem> {
@@ -532,6 +542,20 @@ impl CompletionContext {
             lambda_parameter: None,
         }
     }
+
+    fn expression(prefix_start: usize, prefix: &str) -> Self {
+        Self {
+            kind: CompletionContextKind::Expression,
+            prefix: prefix.to_owned(),
+            replace_range: TextRange::new(prefix_start, prefix_start + prefix.len()),
+            module_base: None,
+            member_receiver: None,
+            record_constructor: None,
+            map_key: None,
+            call_arguments: None,
+            lambda_parameter: None,
+        }
+    }
 }
 
 fn completion_context(query: &QueryContext<'_>) -> CompletionContext {
@@ -673,6 +697,10 @@ fn completion_context(query: &QueryContext<'_>) -> CompletionContext {
             call_arguments: None,
             lambda_parameter: None,
         };
+    }
+
+    if cursor.kind() == CursorContextKind::Expression {
+        return CompletionContext::expression(prefix_start, prefix);
     }
 
     CompletionContext::global(prefix_start, prefix)

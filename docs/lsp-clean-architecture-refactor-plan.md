@@ -324,8 +324,10 @@ Purpose: replace coarse global completion with context-specific producers.
   selected by `CursorContextKind`.
   Pattern cursor contexts now route to a dedicated source/schema enum-variant
   producer and statement cursor contexts now route to statement keyword
-  completions; both have native LSP projection fixtures. Broader
-  expression/global producer separation remains open.
+  completions; expression cursor contexts now route through an explicit
+  expression completion context while preserving the current expression
+  candidate set. Pattern and statement completions have native LSP projection
+  fixtures. Broader expression producer-family separation remains open.
 - [ ] Add keyword and snippet completions as first-class completion kinds.
 - [ ] Add item-boundary producers for `fn`, `struct`, `enum`, `trait`, `impl`,
   `let`, `const`, imports, modules, and source declarations that are legal in

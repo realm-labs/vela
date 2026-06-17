@@ -32,7 +32,7 @@ fn completion_uses_open_overlay_facts() {
 }
 
 #[test]
-fn global_completion_uses_schema_facts() {
+fn expression_completion_uses_schema_facts() {
     let document = DocumentId::from("/workspace/scripts/game/main.vela");
     let files = vec![SourceFileSnapshot::new(
         document.clone(),
@@ -52,6 +52,10 @@ fn global_completion_uses_schema_facts() {
 
     let completions = databases.completion_items(&document, Position::new(0, 18));
 
+    assert_eq!(
+        completions.context().kind(),
+        CompletionContextKind::Expression
+    );
     assert_completion(&completions, "Player", CompletionKind::Type);
     assert_no_completion(&completions, "spawn_player");
 }
@@ -323,7 +327,7 @@ fn module_path_completion_uses_stdlib_function_segments() {
 }
 
 #[test]
-fn global_completion_prefers_current_module_declarations_and_locals() {
+fn expression_completion_prefers_current_module_declarations_and_locals() {
     let document = DocumentId::from("/workspace/scripts/game/main.vela");
     let text = "pub struct Player { level: i64 }\npub fn main(amount: i64) { let ammo = 1; am }";
     let files = vec![SourceFileSnapshot::new(document.clone(), text)];
@@ -341,13 +345,17 @@ fn global_completion_prefers_current_module_declarations_and_locals() {
         ),
     );
 
+    assert_eq!(
+        completions.context().kind(),
+        CompletionContextKind::Expression
+    );
     assert_completion(&completions, "amount", CompletionKind::Parameter);
     assert_completion(&completions, "ammo", CompletionKind::Binding);
     assert_eq!(completions.items()[0].label(), "amount");
 }
 
 #[test]
-fn global_completion_uses_unqualified_current_module_structs() {
+fn expression_completion_uses_unqualified_current_module_structs() {
     let document = DocumentId::from("/workspace/scripts/game/main.vela");
     let text = "pub struct Player { level: i64 }\npub fn main() { Pla }";
     let files = vec![SourceFileSnapshot::new(document.clone(), text)];
@@ -365,6 +373,10 @@ fn global_completion_uses_unqualified_current_module_structs() {
         ),
     );
 
+    assert_eq!(
+        completions.context().kind(),
+        CompletionContextKind::Expression
+    );
     assert_completion(&completions, "Player", CompletionKind::Type);
     assert_no_completion(&completions, "game::main::Player");
 }
