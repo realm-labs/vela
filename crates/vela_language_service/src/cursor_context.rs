@@ -176,6 +176,7 @@ pub fn cursor_context_at(
     if let Some(open) = active_call_open(text, offset) {
         let mut cursor = context(CursorContextKind::CallArgument, prefix_start, prefix);
         cursor.call_open = Some(open);
+        cursor.call_callee = call_callee_before_open(text, open);
         return cursor;
     }
 
@@ -1144,6 +1145,17 @@ fn active_call_open(text: &str, offset: usize) -> Option<usize> {
     stack.pop()
 }
 
+fn call_callee_before_open(text: &str, open: usize) -> Option<TextRange> {
+    let before = text.get(..open)?.trim_end();
+    let end = before.len();
+    let start = before
+        .char_indices()
+        .rev()
+        .find_map(|(index, ch)| (!is_callee_continue(ch)).then_some(index + ch.len_utf8()))
+        .unwrap_or(0);
+    (start < end).then(|| TextRange::new(start, end))
+}
+
 fn offset_is_inside_item(source: &SourceFile, offset: usize) -> bool {
     let Some(offset) = u32::try_from(offset).ok() else {
         return false;
@@ -1206,6 +1218,10 @@ fn is_module_path_continue(ch: char) -> bool {
 }
 
 fn is_member_receiver_continue(ch: char) -> bool {
+    is_identifier_continue(ch) || ch == ':' || ch == '.'
+}
+
+fn is_callee_continue(ch: char) -> bool {
     is_identifier_continue(ch) || ch == ':' || ch == '.'
 }
 

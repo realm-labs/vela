@@ -219,4 +219,5 @@ fn cursor_context_recovers_useful_roles_in_incomplete_source() {
     let call_text = "pub fn main() { grant(";
     let call_cursor = classify_offset(call_text, call_text.len());
     assert_eq!(call_cursor.kind(), CursorContextKind::CallArgument);
+    assert_eq!(call_cursor.call_callee(), Some(TextRange::new(16, 21)));
 }

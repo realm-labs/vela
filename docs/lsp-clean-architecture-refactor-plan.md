@@ -310,8 +310,10 @@ Purpose: classify the cursor once and reuse it across features.
   fallback that reclassifies named arguments outside
   `CursorContextKind::CallArgument`. Record-field and map-key completion now
   only run their producer-specific fact extraction after shared cursor
-  classification selects the matching kind. Broader callable semantic facts
-  remain feature-owned follow-up work.
+  classification selects the matching kind. Incomplete call recovery now
+  attaches fallback callee ranges in `CursorContext`, so named-argument
+  completion no longer has a producer-local callee scanner. Broader callable
+  semantic facts remain feature-owned follow-up work.
 - [x] Keep classification tolerant of incomplete source and parser recovery.
 - [x] Route completion, hover, signature help, definition, and rename prepare
   through the shared context where practical.

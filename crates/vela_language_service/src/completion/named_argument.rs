@@ -16,11 +16,9 @@ pub(super) fn named_argument_completion_context(
     shared_callee: Option<(TextRange, &str)>,
 ) -> Option<CallArgumentContext> {
     let open = call_open?;
-    let fallback_callee = || callee_before_open(text, open);
     let (callee, callee_range) = shared_callee
         .filter(|(range, _)| range.end <= open)
-        .map(|(range, callee)| (callee.to_owned(), Some(range)))
-        .or_else(fallback_callee)?;
+        .map(|(range, callee)| (callee.to_owned(), Some(range)))?;
     let args_before_cursor = &text[open + 1..offset];
     let current_arg = current_argument_text(args_before_cursor);
     if current_arg.contains(':') || !is_argument_name_prefix(current_arg.trim_start()) {
@@ -95,22 +93,6 @@ pub(super) fn script_function_parameter_completions(
         .collect()
 }
 
-fn callee_before_open(text: &str, open: usize) -> Option<(String, Option<TextRange>)> {
-    let before = text[..open].trim_end();
-    let end = before.len();
-    let start = before
-        .char_indices()
-        .rev()
-        .find_map(|(index, ch)| (!is_callee_continue(ch)).then_some(index + ch.len_utf8()))
-        .unwrap_or(0);
-    (start < end).then(|| {
-        (
-            before[start..end].to_owned(),
-            Some(TextRange::new(start, end)),
-        )
-    })
-}
-
 fn current_argument_text(args_before_cursor: &str) -> &str {
     let mut depth = 0_usize;
     let mut start = 0_usize;
@@ -175,10 +157,6 @@ fn top_level_colon(argument: &str) -> Option<usize> {
 fn is_argument_name_prefix(text: &str) -> bool {
     text.chars()
         .all(|ch| is_identifier_continue(ch) || ch.is_whitespace())
-}
-
-fn is_callee_continue(ch: char) -> bool {
-    ch == '_' || ch == ':' || ch == '.' || ch.is_ascii_alphanumeric()
 }
 
 fn qualified_declaration_label(
