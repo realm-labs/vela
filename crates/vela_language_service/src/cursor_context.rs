@@ -107,6 +107,7 @@ pub fn cursor_context_at(
         let mut cursor = context(CursorContextKind::LambdaParameter, prefix_start, prefix);
         if let Some(call) = lambda_call_before_pipe(text, offset) {
             cursor.member_receiver = Some(call.receiver);
+            cursor.call_open = Some(call.open);
             cursor.lambda_method = Some(call.method);
         }
         return cursor;
@@ -285,6 +286,7 @@ fn is_lambda_parameter_prefix(params: &str) -> bool {
 }
 
 struct LambdaCallRanges {
+    open: usize,
     receiver: TextRange,
     method: TextRange,
 }
@@ -293,10 +295,10 @@ fn lambda_call_before_pipe(text: &str, offset: usize) -> Option<LambdaCallRanges
     let before = text.get(..offset)?;
     let pipe = before.rfind('|')?;
     let open = active_call_open(before, pipe)?;
-    member_callee_ranges(before.get(..open)?.trim_end())
+    member_callee_ranges(before.get(..open)?.trim_end(), open)
 }
 
-fn member_callee_ranges(callee: &str) -> Option<LambdaCallRanges> {
+fn member_callee_ranges(callee: &str, open: usize) -> Option<LambdaCallRanges> {
     let method_end = callee.len();
     let method_start = callee[..method_end]
         .char_indices()
@@ -313,6 +315,7 @@ fn member_callee_ranges(callee: &str) -> Option<LambdaCallRanges> {
         .find_map(|(index, ch)| (!is_member_receiver_continue(ch)).then_some(index + ch.len_utf8()))
         .unwrap_or(0);
     (receiver_start < receiver_end).then(|| LambdaCallRanges {
+        open,
         receiver: TextRange::new(receiver_start, receiver_end),
         method: TextRange::new(method_start, method_end),
     })

@@ -303,8 +303,11 @@ Purpose: classify the cursor once and reuse it across features.
   instead of completion re-scanning source text. Type-hint completion now
   consumes `CursorContextKind::Type` rather than running its own type-context
   scanner. Call-argument contexts now expose the active call opening offset,
-  so named-argument completion no longer re-scans call nesting. Broader
-  callable semantic facts remain feature-owned follow-up work.
+  so named-argument completion no longer re-scans call nesting. Lambda
+  callback contexts now expose the callback call opening offset alongside the
+  shared receiver and method facts, so lambda-parameter completion no longer
+  reconstructs member callees locally. Broader callable semantic facts remain
+  feature-owned follow-up work.
 - [x] Keep classification tolerant of incomplete source and parser recovery.
 - [x] Route completion, hover, signature help, definition, and rename prepare
   through the shared context where practical.

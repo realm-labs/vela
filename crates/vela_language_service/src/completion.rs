@@ -365,6 +365,7 @@ fn completion_context(query: &QueryContext<'_>) -> CompletionContext {
         text,
         offset,
         shared_lambda_receiver,
+        query.call_open_offset(),
         shared_lambda_method,
     ) {
         return CompletionContext {

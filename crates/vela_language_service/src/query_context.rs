@@ -366,6 +366,10 @@ mod tests {
                 expected_method_start + "filter".len()
             ))
         );
+        assert_eq!(
+            lambda_context.call_open_offset(),
+            source.find("filter(").map(|index| index + "filter".len())
+        );
         assert_eq!(lambda_context.lambda_method_text(), Some("filter"));
     }
 }

@@ -18,6 +18,7 @@ pub(super) fn lambda_parameter_completion_context(
     text: &str,
     offset: usize,
     shared_receiver: Option<MemberReceiver>,
+    call_open: Option<usize>,
     shared_method: Option<(TextRange, &str)>,
 ) -> Option<LambdaParameterContext> {
     let before = text.get(..offset)?;
@@ -26,15 +27,17 @@ pub(super) fn lambda_parameter_completion_context(
     if !is_lambda_parameter_prefix(params) {
         return None;
     }
-    let open_paren = call_open_before_pipe(before, pipe)?;
-    let callee = before.get(..open_paren)?.trim_end();
-    let (receiver, fallback_method, fallback_method_range) = member_callee(callee)?;
+    let open_paren = call_open?;
+    let receiver = shared_receiver?;
     let (method, method_range) = shared_method
         .filter(|(range, _)| range.end <= open_paren)
         .map(|(range, method)| (method.to_owned(), Some(range)))
-        .unwrap_or((fallback_method, Some(fallback_method_range)));
+        .unwrap_or_default();
+    if method.is_empty() {
+        return None;
+    }
     Some(LambdaParameterContext {
-        receiver: shared_receiver.unwrap_or(receiver),
+        receiver,
         method,
         method_range,
         used_names: used_lambda_parameter_names(params),
@@ -81,48 +84,6 @@ pub(super) fn lambda_parameter_completion_items(
         .collect()
 }
 
-fn call_open_before_pipe(before: &str, pipe: usize) -> Option<usize> {
-    let mut depth = 0usize;
-    for (index, ch) in before[..pipe].char_indices().rev() {
-        match ch {
-            ')' | ']' | '}' => depth = depth.saturating_add(1),
-            '(' if depth == 0 => return Some(index),
-            '(' | '[' | '{' => depth = depth.saturating_sub(1),
-            _ => {}
-        }
-    }
-    None
-}
-
-fn member_callee(callee: &str) -> Option<(MemberReceiver, String, TextRange)> {
-    let method_end = callee.len();
-    let method_start = callee[..method_end]
-        .char_indices()
-        .rev()
-        .find_map(|(index, ch)| (!is_identifier_continue(ch)).then_some(index + ch.len_utf8()))?;
-    let method = callee.get(method_start..method_end)?;
-    if method.is_empty() {
-        return None;
-    }
-    let dot = callee[..method_start].trim_end().strip_suffix('.')?;
-    let receiver_end = dot.len();
-    let receiver_start = dot
-        .char_indices()
-        .rev()
-        .find_map(|(index, ch)| (!is_receiver_continue(ch)).then_some(index + ch.len_utf8()))
-        .unwrap_or(0);
-    if receiver_start >= receiver_end {
-        return None;
-    }
-    Some((
-        MemberReceiver {
-            range: TextRange::new(receiver_start, receiver_end),
-        },
-        method.to_owned(),
-        TextRange::new(method_start, method_end),
-    ))
-}
-
 fn used_lambda_parameter_names(params: &str) -> Vec<String> {
     params
         .split(',')
@@ -148,10 +109,6 @@ fn is_identifier_prefix(value: &str) -> bool {
 
 fn is_identifier_continue(ch: char) -> bool {
     ch == '_' || ch.is_ascii_alphanumeric()
-}
-
-fn is_receiver_continue(ch: char) -> bool {
-    is_identifier_continue(ch) || ch == ':' || ch == '.'
 }
 
 fn lambda_parameter_name(params: &[TypeFact], index: usize) -> &'static str {
