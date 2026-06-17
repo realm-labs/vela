@@ -306,7 +306,9 @@ Purpose: classify the cursor once and reuse it across features.
   so named-argument completion no longer re-scans call nesting. Lambda
   callback contexts now expose the callback call opening offset alongside the
   shared receiver and method facts, so lambda-parameter completion no longer
-  reconstructs member callees locally. Broader callable semantic facts remain
+  reconstructs member callees locally. Completion no longer has a global
+  fallback that reclassifies named arguments outside
+  `CursorContextKind::CallArgument`. Broader callable semantic facts remain
   feature-owned follow-up work.
 - [x] Keep classification tolerant of incomplete source and parser recovery.
 - [x] Route completion, hover, signature help, definition, and rename prepare

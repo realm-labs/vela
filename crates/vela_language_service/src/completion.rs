@@ -53,22 +53,6 @@ impl LanguageServiceDatabases {
             return empty_completion_list(CompletionContext::global(0, ""));
         };
         let context = completion_context(&query);
-        if matches!(context.kind, CompletionContextKind::Global)
-            && let Some(named_context) = named_argument_completion_context(
-                query.text(),
-                query.cursor().replace_range().end,
-                query.call_open_offset(),
-                query_call_callee(&query),
-            )
-        {
-            let mut context = context.clone();
-            context.kind = CompletionContextKind::NamedArgument;
-            context.call_arguments = Some(named_context);
-            let items = self.named_argument_completion_items(&context);
-            if !items.is_empty() {
-                return CompletionList { context, items };
-            }
-        }
         let items = match context.kind {
             CompletionContextKind::Global => self.global_completion_items(&query, &context),
             CompletionContextKind::Expression => self.expression_completion_items(&query, &context),
