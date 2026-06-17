@@ -95,10 +95,27 @@ For local extension validation:
 node editors/zed/scripts/validate-package.js
 ```
 
-Put `vela_lsp_server` on `PATH`, or unpack a release artifact and expose the
-binary to Zed. Project roots and schema configuration still come from
-`vela.toml`; the Zed package does not implement Vela analysis or LSP request
-behavior.
+For local development, point Zed at a locally built server binary with a
+workspace `.zed/settings.json` file:
+
+```json
+{
+  "lsp": {
+    "vela-language-server": {
+      "binary": {
+        "path": "/absolute/path/to/vela/target/debug/vela_lsp_server",
+        "arguments": ["--stdio"]
+      }
+    }
+  }
+}
+```
+
+The extension also accepts the shorter compatibility key `lsp.vela.binary`.
+If neither setting is present, put `vela_lsp_server` on `PATH`, or unpack a
+release artifact and expose the binary to Zed. Project roots and schema
+configuration still come from `vela.toml`; the Zed package does not implement
+Vela analysis or LSP request behavior.
 
 ## Project Configuration
 

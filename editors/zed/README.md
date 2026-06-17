@@ -13,8 +13,26 @@ as an ignored build/cache directory rather than a source directory.
 
 ## Server Binary
 
-Install `vela_lsp_server` on `PATH`, or unpack one of the native release
-artifacts from the `LSP Release` workflow and expose the binary to Zed.
+For local development, point Zed at a locally built server binary with a
+workspace `.zed/settings.json` file:
+
+```json
+{
+  "lsp": {
+    "vela-language-server": {
+      "binary": {
+        "path": "/absolute/path/to/vela/target/debug/vela_lsp_server",
+        "arguments": ["--stdio"]
+      }
+    }
+  }
+}
+```
+
+The extension also accepts the shorter compatibility key `lsp.vela.binary`.
+If neither setting is present, install `vela_lsp_server` on `PATH`, or unpack
+one of the native release artifacts from the `LSP Release` workflow and expose
+the binary to Zed.
 Zed compiles this Rust extension before launching the server, so local dev
 installs also need the Rust WASI target used by the installed Zed version:
 
