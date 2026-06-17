@@ -342,9 +342,13 @@ Purpose: replace coarse global completion with context-specific producers.
   `const`, `global`, and `pub`. Top-level `let` is not offered because Vela's
   syntax does not support it as an item; module/source-declaration follow-ups
   remain open where they are syntactically meaningful.
-- [ ] Add expression producers for locals, parameters, functions, methods,
+- [~] Add expression producers for locals, parameters, functions, methods,
   variants, builtin values, stdlib functions, and schema facts that are legal
   in expression position.
+  Module-path expression completion now includes source and schema enum
+  variants for `Enum::Va` style constructors. Broader expression producer
+  separation for locals, values, functions, methods, and builtin/schema facts
+  remains open.
 - [ ] Add type producers for builtin types, script types, schema types,
   modules, traits, and type aliases when those exist.
 - [ ] Keep member and record producers receiver-aware. Do not leak unrelated

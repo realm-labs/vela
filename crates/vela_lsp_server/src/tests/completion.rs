@@ -89,6 +89,49 @@ fn lsp_module_path_completion_snippets_stdlib_functions() {
 }
 
 #[test]
+fn lsp_module_path_completion_projects_source_enum_variants() {
+    let mut server = LspServer::new();
+    let _ = response_value(server.handle_json(&request(
+        1,
+        "initialize",
+        serde_json::json!({
+            "processId": null,
+            "rootUri": "file:///workspace/scripts",
+            "capabilities": {}
+        }),
+    )));
+    let uri = "file:///workspace/scripts/game/main.vela";
+    let text = "pub enum QuestState { Started, Completed }\npub fn main() { QuestState::Co }";
+    let _ = notification_value(server.handle_json(&notification(
+        "textDocument/didOpen",
+        serde_json::json!({
+            "textDocument": {
+                "uri": uri,
+                "languageId": "vela",
+                "version": 1,
+                "text": text
+            }
+        }),
+    )));
+    let main_line = text.lines().nth(1).expect("main line");
+
+    let response = response_value(server.handle_json(&request(
+        2,
+        "textDocument/completion",
+        serde_json::json!({
+            "textDocument": { "uri": uri },
+            "position": {
+                "line": 1,
+                "character": main_line.find("Co }").expect("variant prefix") + "Co".len()
+            }
+        }),
+    )));
+
+    assert_completion(&response, "Completed", 20, "game::main::QuestState");
+    assert_no_completion(&response, "Started");
+}
+
+#[test]
 fn lsp_completion_uses_loaded_schema_facts() {
     let root = temp_workspace();
     let config_path = root.join("vela.toml");

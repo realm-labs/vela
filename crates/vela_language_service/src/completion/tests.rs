@@ -345,6 +345,74 @@ fn module_path_completion_uses_stdlib_function_segments() {
 }
 
 #[test]
+fn module_path_completion_suggests_source_enum_variants() {
+    let document = DocumentId::from("/workspace/scripts/game/main.vela");
+    let text = "pub enum QuestState { Started, Completed }\npub fn main() { QuestState::Co }";
+    let files = vec![SourceFileSnapshot::new(document.clone(), text)];
+    let config = WorkspaceConfig::workspace([WorkspaceRoot::from("/workspace/scripts")]);
+    let project = assemble_project_sources(&config, &files, &Workspace::new().snapshot());
+    let mut databases = LanguageServiceDatabases::new();
+    databases.update(&project);
+    let main_line = text.lines().nth(1).expect("main line");
+
+    let completions = databases.completion_items(
+        &document,
+        Position::new(
+            1,
+            main_line.find("Co }").expect("variant prefix") + "Co".len(),
+        ),
+    );
+
+    assert_eq!(
+        completions.context().kind(),
+        CompletionContextKind::ModulePath
+    );
+    assert_eq!(completions.context().module_base(), Some("QuestState"));
+    assert_completion(&completions, "Completed", CompletionKind::Variant);
+    assert_no_completion(&completions, "Started");
+}
+
+#[test]
+fn module_path_completion_suggests_schema_enum_variants() {
+    let document = DocumentId::from("/workspace/scripts/game/main.vela");
+    let text = "pub fn main() { QuestState::Fi }";
+    let files = vec![SourceFileSnapshot::new(document.clone(), text)];
+    let config = WorkspaceConfig::workspace([WorkspaceRoot::from("/workspace/scripts")]);
+    let project = assemble_project_sources(&config, &files, &Workspace::new().snapshot());
+    let mut databases = LanguageServiceDatabases::new();
+    let mut schema = RegistryFacts::default();
+    schema.insert_type(
+        "QuestState",
+        TypeFact::enum_type("QuestState", None::<String>),
+    );
+    schema.insert_variant(
+        "QuestState",
+        "Active",
+        TypeFact::enum_type("QuestState", Some("Active")),
+    );
+    schema.insert_variant(
+        "QuestState",
+        "Finished",
+        TypeFact::enum_type("QuestState", Some("Finished")),
+    );
+    databases.set_schema_facts(schema);
+    databases.update(&project);
+
+    let completions = databases.completion_items(
+        &document,
+        Position::new(0, text.find("Fi }").expect("variant prefix") + "Fi".len()),
+    );
+
+    assert_eq!(
+        completions.context().kind(),
+        CompletionContextKind::ModulePath
+    );
+    assert_eq!(completions.context().module_base(), Some("QuestState"));
+    assert_completion(&completions, "Finished", CompletionKind::Variant);
+    assert_no_completion(&completions, "Active");
+}
+
+#[test]
 fn expression_completion_prefers_current_module_declarations_and_locals() {
     let document = DocumentId::from("/workspace/scripts/game/main.vela");
     let text = "pub struct Player { level: i64 }\npub fn main(amount: i64) { let ammo = 1; am }";
