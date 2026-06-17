@@ -250,6 +250,30 @@ impl LanguageServiceDatabases {
                 detail: function_detail(schema, &function.name, &function.fact),
                 docs: None,
             })
+            .or_else(|| {
+                let (owner, variant) = name.rsplit_once("::")?;
+                schema.variant_fact(owner, variant).map(|fact| Hover {
+                    range,
+                    label: name.to_owned(),
+                    kind: HoverKind::Variant,
+                    detail: fact.display_name(),
+                    docs: None,
+                })
+            })
+            .or_else(|| {
+                let mut variants = schema.variants().filter(|variant| variant.name == name);
+                let variant = variants.next()?;
+                variants.next().is_none().then(|| {
+                    let label = format!("{}::{}", variant.owner, variant.name);
+                    Hover {
+                        range,
+                        label,
+                        kind: HoverKind::Variant,
+                        detail: variant.fact.display_name(),
+                        docs: None,
+                    }
+                })
+            })
     }
 
     fn import_hover(

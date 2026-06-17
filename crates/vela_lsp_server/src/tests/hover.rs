@@ -499,6 +499,69 @@ fn lsp_hover_reports_schema_trait_method_fact() {
     fs::remove_dir_all(&root).expect("temporary workspace should be removable");
 }
 
+#[test]
+fn lsp_hover_reports_schema_enum_variant_fact() {
+    let root = temp_workspace();
+    let schema_path = root.join("target").join("vela").join("schema.json");
+    fs::create_dir_all(schema_path.parent().expect("schema should have parent"))
+        .expect("schema directory should be creatable");
+    fs::write(&schema_path, schema_with_quest_state_variant())
+        .expect("schema artifact should be writable");
+
+    let mut server = LspServer::new();
+    let _ = response_value(server.handle_json(&request(
+        1,
+        "initialize",
+        serde_json::json!({
+            "processId": null,
+            "rootUri": file_uri(&root),
+            "initializationOptions": {
+                "workspace": {
+                    "roots": [file_uri(&root.join("scripts"))]
+                },
+                "host": {
+                    "schema": file_uri(&schema_path)
+                }
+            },
+            "capabilities": {}
+        }),
+    )));
+    let main_uri = file_uri(&root.join("scripts").join("game").join("main.vela"));
+    let text = "pub fn main() { return QuestState::Active }";
+    let _ = notification_value(server.handle_json(&notification(
+        "textDocument/didOpen",
+        serde_json::json!({
+            "textDocument": {
+                "uri": main_uri,
+                "languageId": "vela",
+                "version": 1,
+                "text": text
+            }
+        }),
+    )));
+
+    let response = response_value(server.handle_json(&request(
+        2,
+        "textDocument/hover",
+        serde_json::json!({
+            "textDocument": { "uri": main_uri },
+            "position": {
+                "line": 0,
+                "character": text.find("Active").unwrap_or_else(|| {
+                    panic!("hover fixture should contain schema variant")
+                })
+            }
+        }),
+    )));
+
+    let value = response["result"]["contents"]["value"]
+        .as_str()
+        .expect("hover contents should be markdown");
+    assert!(value.contains("QuestState::Active"), "{value}");
+    assert!(value.contains("_variant_: QuestState::Active"), "{value}");
+    fs::remove_dir_all(&root).expect("temporary workspace should be removable");
+}
+
 fn temp_workspace() -> PathBuf {
     let suffix = match SystemTime::now().duration_since(UNIX_EPOCH) {
         Ok(duration) => duration.as_nanos(),
@@ -539,6 +602,27 @@ fn schema_with_rewardable_trait_method() -> &'static str {
                         "params": [{ "kind": "primitive", "name": "i64" }],
                         "returns": { "kind": "primitive", "name": "bool" }
                     }
+                }
+            ]
+        }
+    }"#
+}
+
+fn schema_with_quest_state_variant() -> &'static str {
+    r#"{
+        "formatVersion": 1,
+        "facts": {
+            "types": [
+                {
+                    "name": "QuestState",
+                    "fact": { "kind": "enum", "name": "QuestState", "variant": null }
+                }
+            ],
+            "variants": [
+                {
+                    "owner": "QuestState",
+                    "name": "Active",
+                    "fact": { "kind": "enum", "name": "QuestState", "variant": "Active" }
                 }
             ]
         }

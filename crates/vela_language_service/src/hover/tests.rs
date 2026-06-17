@@ -327,6 +327,34 @@ pub fn main() {
     assert_eq!(declaration_hover.docs(), Some("Active quest"));
 }
 
+#[test]
+fn hover_reports_schema_enum_variant_fact() {
+    let document = DocumentId::from("/workspace/scripts/game/main.vela");
+    let text = "pub fn main() { return QuestState::Active }";
+    let mut schema = RegistryFacts::default();
+    schema.insert_type(
+        "QuestState",
+        TypeFact::enum_type("QuestState", None::<String>),
+    );
+    schema.insert_variant(
+        "QuestState",
+        "Active",
+        TypeFact::enum_type("QuestState", Some("Active")),
+    );
+    let databases = databases_for(&document, text, schema);
+
+    let hover = databases
+        .hover(
+            &document,
+            Position::new(0, text.find("Active").expect("variant use should exist")),
+        )
+        .expect("hover should resolve schema enum variant");
+
+    assert_eq!(hover.kind(), HoverKind::Variant);
+    assert_eq!(hover.label(), "QuestState::Active");
+    assert_eq!(hover.detail(), "QuestState::Active");
+}
+
 fn databases_for(
     document: &DocumentId,
     text: &str,
