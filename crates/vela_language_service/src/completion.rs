@@ -1,7 +1,4 @@
-use vela_analysis::completion::{
-    CompletionItem as AnalysisCompletionItem, declaration_completions, global_completions,
-    member_completions, module_completions,
-};
+use vela_analysis::completion::member_completions;
 use vela_analysis::facts::AnalysisFacts;
 use vela_analysis::hints::type_fact_from_hint;
 use vela_analysis::registry::RegistryFacts;
@@ -15,7 +12,9 @@ use crate::QueryContext;
 use crate::{DocumentId, LanguageServiceDatabases, Position, TextRange};
 
 mod accumulator;
+mod analysis_item;
 mod context;
+mod expression;
 mod item;
 mod lambda_parameter;
 mod local;
@@ -35,9 +34,12 @@ pub use model::{
 };
 
 use context::completion_context;
+use expression::{
+    expression_completion_items as expression_context_completion_items,
+    global_completion_items as global_context_completion_items,
+};
 use item::item_keyword_completions;
 use lambda_parameter::lambda_parameter_completion_items;
-use local::local_completion_items as local_context_completion_items;
 use map_key::map_key_completion_items as map_key_context_completion_items;
 use model::{CallArgumentContext, MemberReceiver};
 use module_path::module_path_completion_items as module_path_context_completion_items;
@@ -48,6 +50,7 @@ use statement::statement_keyword_completions;
 use type_hint::type_hint_completion_items;
 
 use accumulator::CompletionAccumulator;
+use analysis_item::service_item_from_analysis_completion;
 
 impl LanguageServiceDatabases {
     #[must_use]
@@ -80,40 +83,12 @@ impl LanguageServiceDatabases {
         query: &QueryContext<'_>,
         context: &CompletionContext,
     ) -> Vec<CompletionItem> {
-        let current_module = query
-            .module_path()
-            .map(|module| module.join())
-            .unwrap_or_default();
-        let graph = self.hir_db().graph();
-        let facts = AnalysisFacts::from_module_graph(graph);
-        let mut items = local_context_completion_items(graph, query, context);
-        items.extend(dedupe_and_filter_items(
-            global_completions(self.schema_db().facts()),
-            context.replace_range(),
-            context.prefix(),
-            Some(self.schema_db().facts()),
-            |item| label_segment_matches(&item.label, context.prefix()),
-        ));
-        items.extend(dedupe_and_filter_items(
-            relative_current_module_items(
-                declaration_completions(graph, &facts),
-                current_module.as_str(),
-            ),
-            context.replace_range(),
-            context.prefix(),
-            None,
-            |item| label_segment_matches(&item.label, context.prefix()),
-        ));
-        items.extend(dedupe_and_filter_items(
-            module_completions(graph),
-            context.replace_range(),
-            context.prefix(),
-            None,
-            |item| label_segment_matches(&item.label, context.prefix()),
-        ));
-        dedupe_and_filter_service_items(items, context.replace_range(), context.prefix(), |item| {
-            label_segment_matches(&item.label, context.prefix())
-        })
+        global_context_completion_items(
+            self.hir_db().graph(),
+            self.schema_db().facts(),
+            query,
+            context,
+        )
     }
 
     fn expression_completion_items(
@@ -121,7 +96,12 @@ impl LanguageServiceDatabases {
         query: &QueryContext<'_>,
         context: &CompletionContext,
     ) -> Vec<CompletionItem> {
-        self.global_completion_items(query, context)
+        expression_context_completion_items(
+            self.hir_db().graph(),
+            self.schema_db().facts(),
+            query,
+            context,
+        )
     }
 
     fn item_completion_items(&self, context: &CompletionContext) -> Vec<CompletionItem> {
@@ -293,61 +273,6 @@ fn is_identifier_continue(ch: char) -> bool {
     ch == '_' || ch.is_ascii_alphanumeric()
 }
 
-fn dedupe_and_filter_items(
-    items: Vec<AnalysisCompletionItem>,
-    replace_range: TextRange,
-    prefix: &str,
-    schema: Option<&RegistryFacts>,
-    matches_context: impl Fn(&AnalysisCompletionItem) -> bool,
-) -> Vec<CompletionItem> {
-    let mut accumulator = CompletionAccumulator::new(replace_range, prefix);
-    for item in items.into_iter().filter(matches_context) {
-        let completion = service_item_from_analysis_completion(item, prefix);
-        accumulator.add(enrich_analysis_completion_item(completion, schema));
-    }
-    accumulator.into_items()
-}
-
-fn service_item_from_analysis_completion(
-    item: AnalysisCompletionItem,
-    prefix: &str,
-) -> CompletionItem {
-    let kind = item.kind.into();
-    let insert_text = callable_insert_text(kind, &item.label);
-    let insert_format = completion_insert_format(insert_text.as_ref());
-    CompletionItem {
-        sort_text: Some(completion_sort_text(kind, &item.label, prefix)),
-        metadata: Default::default(),
-        label: item.label,
-        kind,
-        detail: item.fact.display_name(),
-        insert_text,
-        insert_format,
-    }
-}
-
-fn enrich_analysis_completion_item(
-    item: CompletionItem,
-    schema: Option<&RegistryFacts>,
-) -> CompletionItem {
-    let Some(schema) = schema else {
-        return item;
-    };
-    let label = item.label().to_owned();
-    match item.kind() {
-        CompletionKind::Type if schema.type_fact(&label).is_some() => item
-            .with_documentation(schema.type_docs(&label))
-            .with_symbol(CompletionSymbol::Schema(label)),
-        CompletionKind::Trait if schema.trait_fact(&label).is_some() => item
-            .with_documentation(schema.trait_docs(&label))
-            .with_symbol(CompletionSymbol::Schema(label)),
-        CompletionKind::Function if schema.function_fact(&label).is_some() => item
-            .with_documentation(schema.function_docs(&label))
-            .with_symbol(CompletionSymbol::Schema(label)),
-        _ => item,
-    }
-}
-
 fn enrich_schema_member_completion_item(
     item: CompletionItem,
     schema: &RegistryFacts,
@@ -388,42 +313,6 @@ fn schema_completion_owner(fact: &TypeFact) -> Option<String> {
     }
 }
 
-fn callable_insert_text(kind: CompletionKind, label: &str) -> Option<String> {
-    matches!(kind, CompletionKind::Function | CompletionKind::Method)
-        .then(|| format!("{label}($0)"))
-}
-
-fn completion_insert_format(insert_text: Option<&String>) -> CompletionInsertFormat {
-    if insert_text.is_some_and(|text| text.contains("$0")) {
-        CompletionInsertFormat::Snippet
-    } else {
-        CompletionInsertFormat::PlainText
-    }
-}
-
-fn relative_current_module_items(
-    items: Vec<AnalysisCompletionItem>,
-    current_module: &str,
-) -> Vec<AnalysisCompletionItem> {
-    if current_module.is_empty() {
-        return items;
-    }
-    let prefix = format!("{current_module}::");
-    items
-        .into_iter()
-        .map(|mut item| {
-            if let Some(relative_label) = item
-                .label
-                .strip_prefix(&prefix)
-                .filter(|relative| !relative.contains("::"))
-            {
-                item.label = relative_label.to_owned();
-            }
-            item
-        })
-        .collect()
-}
-
 fn dedupe_and_filter_service_items(
     items: Vec<CompletionItem>,
     replace_range: TextRange,
@@ -433,43 +322,6 @@ fn dedupe_and_filter_service_items(
     let mut accumulator = CompletionAccumulator::new(replace_range, prefix);
     accumulator.add_many_matching(items, matches_context);
     accumulator.into_items()
-}
-
-fn completion_sort_text(kind: CompletionKind, label: &str, prefix: &str) -> String {
-    format!(
-        "{:04}_{:02}_{}",
-        completion_kind_rank(kind),
-        completion_match_rank(label, prefix),
-        label
-    )
-}
-
-fn completion_kind_rank(kind: CompletionKind) -> u16 {
-    match kind {
-        CompletionKind::Parameter => 0,
-        CompletionKind::Keyword => 0,
-        CompletionKind::Binding => 1,
-        CompletionKind::Const => 10,
-        CompletionKind::Module => 20,
-        CompletionKind::Type | CompletionKind::Trait => 30,
-        CompletionKind::Function | CompletionKind::Method => 40,
-        CompletionKind::Field => 50,
-        CompletionKind::Variant => 60,
-    }
-}
-
-fn completion_match_rank(label: &str, prefix: &str) -> u8 {
-    if prefix.is_empty() || label.starts_with(prefix) {
-        return 0;
-    }
-    if label
-        .rsplit("::")
-        .next()
-        .is_some_and(|segment| segment.starts_with(prefix))
-    {
-        return 1;
-    }
-    2
 }
 
 fn completion_type_fact(
