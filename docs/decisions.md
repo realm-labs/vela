@@ -194,6 +194,18 @@ is a 64-bit FNV-1a hash of the canonical `RegistryFacts` payload represented by
 the artifact, formatted as decimal or `0x`-prefixed hexadecimal. A mismatch is
 treated as an invalid or stale schema and host facts degrade to `Any`.
 
+The next native LSP cleanup rewrites language-service feature queries around a
+shared editor-neutral query model: request context, cursor context, symbol
+identity, display parts, edit plans, rich completion items, relevance metadata,
+and protocol projection boundaries. This refactor may break and delete the
+current coarse completion model, thin completion item shape, feature-local
+cursor scanners, and LSP conversion assumptions rather than preserving
+compatibility shims. It should borrow rust-analyzer's high-level separation of
+context construction, feature producers, item models, and LSP projection while
+avoiding Rust-specific macro, trait-solver, and full Salsa complexity unless a
+Vela-specific need appears. The execution plan lives in
+[lsp-clean-architecture-refactor-plan.md](lsp-clean-architecture-refactor-plan.md).
+
 ### Function Identity
 
 Vela does not support function overloading. A module has one function per
