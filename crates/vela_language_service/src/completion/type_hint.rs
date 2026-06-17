@@ -1,7 +1,7 @@
 use vela_analysis::{
     completion::{
         CompletionItem as AnalysisCompletionItem, CompletionKind as AnalysisCompletionKind,
-        declaration_completions, type_completions,
+        declaration_completions, module_completions, type_completions,
     },
     facts::AnalysisFacts,
     registry::RegistryFacts,
@@ -28,12 +28,28 @@ pub(super) fn type_hint_completion_context(text: &str, prefix_start: usize) -> b
     inside_builtin_type_args(trimmed)
 }
 
+pub(super) fn type_hint_module_path_context(text: &str, prefix_start: usize) -> Option<String> {
+    let before_prefix = text.get(..prefix_start)?;
+    let trimmed = before_prefix.trim_end();
+    let before_colons = trimmed.strip_suffix("::")?;
+    let path_start = module_path_start(before_colons);
+    let module_base = before_colons[path_start..].trim_matches(':');
+    if module_base.is_empty() || !type_hint_completion_context(text, path_start) {
+        return None;
+    }
+    Some(module_base.to_owned())
+}
+
 pub(super) fn type_hint_completion_items(
     graph: &ModuleGraph,
     schema: &RegistryFacts,
     prefix: &str,
+    module_base: Option<&str>,
 ) -> Vec<CompletionItem> {
     let facts = AnalysisFacts::from_module_graph(graph);
+    if let Some(module_base) = module_base {
+        return qualified_type_hint_completion_items(graph, schema, &facts, prefix, module_base);
+    }
     let mut items = builtin_type_hint_completions();
     items.extend(
         type_completions(schema)
@@ -51,9 +67,75 @@ pub(super) fn type_hint_completion_items(
             })
             .map(service_item_from_analysis),
     );
+    items.extend(
+        module_completions(graph)
+            .into_iter()
+            .map(service_item_from_analysis),
+    );
     super::dedupe_and_filter_service_items(items, |item| {
         label_segment_matches(item.label(), prefix)
     })
+}
+
+fn qualified_type_hint_completion_items(
+    graph: &ModuleGraph,
+    schema: &RegistryFacts,
+    facts: &AnalysisFacts,
+    prefix: &str,
+    module_base: &str,
+) -> Vec<CompletionItem> {
+    let mut items = type_completions(schema);
+    items.extend(
+        declaration_completions(graph, facts)
+            .into_iter()
+            .filter(is_type_position_analysis_item),
+    );
+    items.extend(module_completions(graph));
+    super::dedupe_and_filter_service_items(
+        items
+            .into_iter()
+            .filter_map(|item| service_item_for_qualified_type_path(item, module_base, prefix))
+            .collect(),
+        |item| label_segment_matches(item.label(), prefix),
+    )
+}
+
+fn service_item_for_qualified_type_path(
+    item: AnalysisCompletionItem,
+    module_base: &str,
+    prefix: &str,
+) -> Option<CompletionItem> {
+    if !is_type_position_analysis_item(&item) {
+        return None;
+    }
+    let suffix = item
+        .label
+        .strip_prefix(module_base)
+        .and_then(|suffix| suffix.strip_prefix("::"))?;
+    if !suffix.starts_with(prefix) {
+        return None;
+    }
+    let label = suffix
+        .split_once("::")
+        .map_or(suffix, |(segment, _)| segment)
+        .to_owned();
+    Some(CompletionItem {
+        label,
+        kind: CompletionKind::from(item.kind),
+        detail: item.fact.display_name(),
+        insert_text: None,
+        insert_format: CompletionInsertFormat::PlainText,
+        sort_text: None,
+    })
+}
+
+fn is_type_position_analysis_item(item: &AnalysisCompletionItem) -> bool {
+    matches!(
+        item.kind,
+        AnalysisCompletionKind::Type
+            | AnalysisCompletionKind::Trait
+            | AnalysisCompletionKind::Module
+    )
 }
 
 fn builtin_type_hint_completions() -> Vec<CompletionItem> {
@@ -155,6 +237,16 @@ fn unmatched_type_arg_open(trimmed: &str) -> Option<usize> {
     None
 }
 
+fn module_path_start(before_colons: &str) -> usize {
+    before_colons
+        .char_indices()
+        .rev()
+        .find_map(|(index, ch)| {
+            (!is_identifier_continue(ch) && ch != ':').then_some(index + ch.len_utf8())
+        })
+        .unwrap_or(0)
+}
+
 fn is_identifier(value: &str) -> bool {
     !value.is_empty() && value.chars().all(is_identifier_continue)
 }
@@ -231,6 +323,66 @@ mod tests {
             CompletionContextKind::TypeHint
         );
         assert_completion(&completions, "i64", CompletionKind::Type);
+    }
+
+    #[test]
+    fn type_hint_completion_suggests_modules() {
+        let main = DocumentId::from("/workspace/scripts/game/main.vela");
+        let reward = DocumentId::from("/workspace/scripts/game/reward.vela");
+        let files = vec![
+            SourceFileSnapshot::new(main.clone(), "pub fn main(item: ga) { return 1 }"),
+            SourceFileSnapshot::new(reward, "pub struct Reward { amount: i64 }"),
+        ];
+        let config = WorkspaceConfig::workspace([WorkspaceRoot::from("/workspace/scripts")]);
+        let project = assemble_project_sources(&config, &files, &Workspace::new().snapshot());
+        let mut databases = LanguageServiceDatabases::new();
+        databases.update(&project);
+
+        let text = files[0].text();
+        let completions = databases.completion_items(
+            &main,
+            Position::new(0, text.find("ga)").expect("module prefix") + "ga".len()),
+        );
+
+        assert_eq!(
+            completions.context().kind(),
+            CompletionContextKind::TypeHint
+        );
+        assert_completion(&completions, "game", CompletionKind::Module);
+    }
+
+    #[test]
+    fn qualified_type_hint_completion_suggests_only_type_path_items() {
+        let main = DocumentId::from("/workspace/scripts/game/main.vela");
+        let reward = DocumentId::from("/workspace/scripts/game/reward.vela");
+        let files = vec![
+            SourceFileSnapshot::new(
+                main.clone(),
+                "pub fn main(item: game::reward::Re) { return 1 }",
+            ),
+            SourceFileSnapshot::new(
+                reward,
+                "pub struct Reward { amount: i64 }\npub fn redeem() { return 1 }",
+            ),
+        ];
+        let config = WorkspaceConfig::workspace([WorkspaceRoot::from("/workspace/scripts")]);
+        let project = assemble_project_sources(&config, &files, &Workspace::new().snapshot());
+        let mut databases = LanguageServiceDatabases::new();
+        databases.update(&project);
+
+        let text = files[0].text();
+        let completions = databases.completion_items(
+            &main,
+            Position::new(0, text.find("Re)").expect("type prefix") + "Re".len()),
+        );
+
+        assert_eq!(
+            completions.context().kind(),
+            CompletionContextKind::TypeHint
+        );
+        assert_eq!(completions.context().module_base(), Some("game::reward"));
+        assert_completion(&completions, "Reward", CompletionKind::Type);
+        assert_no_completion(&completions, "redeem");
     }
 
     fn databases_for(document: DocumentId, text: &str) -> LanguageServiceDatabases {

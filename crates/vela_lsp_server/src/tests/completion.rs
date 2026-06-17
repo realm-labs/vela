@@ -685,6 +685,61 @@ fn lsp_type_hint_completion_uses_colon_trigger_context() {
 }
 
 #[test]
+fn lsp_qualified_type_hint_completion_projects_type_path_items() {
+    let mut server = LspServer::new();
+    let _ = response_value(server.handle_json(&request(
+        1,
+        "initialize",
+        serde_json::json!({
+            "processId": null,
+            "rootUri": "file:///workspace/scripts",
+            "capabilities": {}
+        }),
+    )));
+    let main_uri = "file:///workspace/scripts/game/main.vela";
+    let reward_uri = "file:///workspace/scripts/game/reward.vela";
+    let main_text = "pub fn main(item: game::reward::Re) { return 1 }";
+    let reward_text = "pub struct Reward { amount: i64 }\npub fn redeem() { return 1 }";
+    let _ = notification_value(server.handle_json(&notification(
+        "textDocument/didOpen",
+        serde_json::json!({
+            "textDocument": {
+                "uri": main_uri,
+                "languageId": "vela",
+                "version": 1,
+                "text": main_text
+            }
+        }),
+    )));
+    let _ = notification_value(server.handle_json(&notification(
+        "textDocument/didOpen",
+        serde_json::json!({
+            "textDocument": {
+                "uri": reward_uri,
+                "languageId": "vela",
+                "version": 1,
+                "text": reward_text
+            }
+        }),
+    )));
+
+    let response = response_value(server.handle_json(&request(
+        2,
+        "textDocument/completion",
+        serde_json::json!({
+            "textDocument": { "uri": main_uri },
+            "position": {
+                "line": 0,
+                "character": main_text.find("Re)").expect("type prefix") + "Re".len()
+            }
+        }),
+    )));
+
+    assert_completion(&response, "Reward", 22, "game::reward::Reward");
+    assert_no_completion(&response, "redeem");
+}
+
+#[test]
 fn lsp_pattern_completion_projects_enum_variants() {
     let mut server = LspServer::new();
     let _ = response_value(server.handle_json(&request(

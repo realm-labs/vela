@@ -350,8 +350,12 @@ Purpose: replace coarse global completion with context-specific producers.
   variants for `Enum::Va` style constructors. Broader expression producer
   separation for locals, values, functions, methods, and builtin/schema facts
   remains open.
-- [ ] Add type producers for builtin types, script types, schema types,
+- [x] Add type producers for builtin types, script types, schema types,
   modules, traits, and type aliases when those exist.
+  Type-position completion now offers builtin type hints, source and schema
+  types, source and schema traits, module path segments, and qualified
+  type-path segments while excluding function-only candidates. Vela has no
+  type aliases yet.
 - [ ] Keep member and record producers receiver-aware. Do not leak unrelated
   globals into member contexts.
 - [ ] Add a `CompletionAccumulator` that accepts candidates, de-duplicates by

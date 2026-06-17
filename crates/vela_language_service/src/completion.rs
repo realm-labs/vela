@@ -41,7 +41,9 @@ use module_path::module_path_completion_items as module_path_context_completion_
 use named_argument::{named_argument_completion_context, script_function_parameter_completions};
 use pattern::pattern_completion_items as pattern_context_completion_items;
 use statement::statement_keyword_completions;
-use type_hint::{type_hint_completion_context, type_hint_completion_items};
+use type_hint::{
+    type_hint_completion_context, type_hint_completion_items, type_hint_module_path_context,
+};
 
 impl LanguageServiceDatabases {
     #[must_use]
@@ -327,6 +329,7 @@ impl LanguageServiceDatabases {
             self.hir_db().graph(),
             self.schema_db().facts(),
             context.prefix(),
+            context.module_base(),
         )
     }
 }
@@ -441,6 +444,19 @@ fn completion_context(query: &QueryContext<'_>) -> CompletionContext {
     }
 
     if let Some(module_base) = cursor.module_base() {
+        if let Some(type_module_base) = type_hint_module_path_context(text, prefix_start) {
+            return CompletionContext {
+                kind: CompletionContextKind::TypeHint,
+                prefix: prefix.to_owned(),
+                replace_range: TextRange::new(prefix_start, offset),
+                module_base: Some(type_module_base),
+                member_receiver: None,
+                record_constructor: None,
+                map_key: None,
+                call_arguments: None,
+                lambda_parameter: None,
+            };
+        }
         return CompletionContext {
             kind: CompletionContextKind::ModulePath,
             prefix: prefix.to_owned(),
