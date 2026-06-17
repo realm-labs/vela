@@ -1,5 +1,7 @@
 use vela_analysis::facts::AnalysisFacts;
-use vela_analysis::registry::{RegistryEffectFact, RegistryFacts};
+mod schema;
+
+use vela_analysis::registry::RegistryFacts;
 use vela_analysis::stdlib::{
     StdlibFunctionFact, StdlibMethodFact, stdlib_function_completion_facts, stdlib_method_fact,
 };
@@ -141,7 +143,7 @@ impl LanguageServiceDatabases {
             return Some(hover);
         }
 
-        self.schema_symbol_hover(&token.text, range)
+        schema::symbol_hover(self.schema_db().facts(), &token.text, range)
             .or_else(|| stdlib_function_hover(&token.text, range))
             .or_else(|| type_hint_hover(self.schema_db().facts(), &token.text, range))
     }
@@ -169,111 +171,12 @@ impl LanguageServiceDatabases {
         {
             return Some(hover);
         }
-        if let Some(hover) = self.schema_member_hover(&receiver_fact, token, range) {
+        if let Some(hover) =
+            schema::member_hover(self.schema_db().facts(), &receiver_fact, &token.text, range)
+        {
             return Some(hover);
         }
         stdlib_method_hover(&receiver_fact, &token.text, range)
-    }
-
-    fn schema_member_hover(
-        &self,
-        receiver_fact: &TypeFact,
-        token: &HoverToken,
-        range: DiagnosticRange,
-    ) -> Option<Hover> {
-        let owner = fact_owner_name(receiver_fact)?;
-        let schema = self.schema_db().facts();
-        if let Some(fact) = schema.field_fact(&owner, &token.text) {
-            let detail = schema
-                .field_access_fact(&owner, &token.text)
-                .map_or_else(|| fact.display_name(), |access| {
-                    let permissions = permissions_detail(&access.required_permissions);
-                    format!(
-                        "{}; writable: {}; reflect_readable: {}; reflect_writable: {}; permissions: {permissions}",
-                        fact.display_name(),
-                        access.writable,
-                        access.reflect_readable,
-                        access.reflect_writable
-                    )
-                });
-            return Some(Hover {
-                range,
-                label: format!("{owner}.{}", token.text),
-                kind: HoverKind::Field,
-                detail,
-                docs: None,
-            });
-        }
-        schema_method_fact(schema, &owner, &token.text).map(|fact| Hover {
-            range,
-            label: format!("{owner}.{}", token.text),
-            kind: HoverKind::Method,
-            detail: method_detail(schema, &owner, &token.text, fact),
-            docs: None,
-        })
-    }
-
-    fn schema_symbol_hover(&self, name: &str, range: DiagnosticRange) -> Option<Hover> {
-        let schema = self.schema_db().facts();
-        if let Some(fact) = schema.type_fact(name) {
-            return Some(Hover {
-                range,
-                label: name.to_owned(),
-                kind: HoverKind::Type,
-                detail: fact.display_name(),
-                docs: None,
-            });
-        }
-        if let Some(fact) = schema.trait_fact(name) {
-            return Some(Hover {
-                range,
-                label: name.to_owned(),
-                kind: HoverKind::Type,
-                detail: fact.display_name(),
-                docs: None,
-            });
-        }
-        schema
-            .functions()
-            .find(|function| {
-                function.name == name
-                    || function
-                        .name
-                        .rsplit("::")
-                        .next()
-                        .is_some_and(|segment| segment == name)
-            })
-            .map(|function| Hover {
-                range,
-                label: function.name.clone(),
-                kind: HoverKind::Function,
-                detail: function_detail(schema, &function.name, &function.fact),
-                docs: None,
-            })
-            .or_else(|| {
-                let (owner, variant) = name.rsplit_once("::")?;
-                schema.variant_fact(owner, variant).map(|fact| Hover {
-                    range,
-                    label: name.to_owned(),
-                    kind: HoverKind::Variant,
-                    detail: fact.display_name(),
-                    docs: None,
-                })
-            })
-            .or_else(|| {
-                let mut variants = schema.variants().filter(|variant| variant.name == name);
-                let variant = variants.next()?;
-                variants.next().is_none().then(|| {
-                    let label = format!("{}::{}", variant.owner, variant.name);
-                    Hover {
-                        range,
-                        label,
-                        kind: HoverKind::Variant,
-                        detail: variant.fact.display_name(),
-                        docs: None,
-                    }
-                })
-            })
     }
 
     fn import_hover(
@@ -334,16 +237,6 @@ fn import_path_segment_at(text: &str, import: &Import, token: &HoverToken) -> Op
         }
         None
     })
-}
-
-fn schema_method_fact<'a>(
-    schema: &'a RegistryFacts,
-    owner: &str,
-    method: &str,
-) -> Option<&'a TypeFact> {
-    schema
-        .method_fact(owner, method)
-        .or_else(|| schema.trait_method_fact(owner, method))
 }
 
 fn stdlib_function_hover(name: &str, range: DiagnosticRange) -> Option<Hover> {
@@ -416,8 +309,7 @@ fn hover_from_resolution_at_token(
         }),
         BindingResolution::QualifiedPath(path) => {
             let qualified = path.join("::");
-            databases
-                .schema_symbol_hover(&qualified, range)
+            schema::symbol_hover(databases.schema_db().facts(), &qualified, range)
                 .or_else(|| stdlib_function_hover(&qualified, range))
                 .or_else(|| {
                     Some(Hover {
@@ -875,16 +767,6 @@ fn schema_fact_for_local_hint(binding: &LocalBinding, schema: &RegistryFacts) ->
     }
 }
 
-fn fact_owner_name(fact: &TypeFact) -> Option<String> {
-    match fact {
-        TypeFact::Host { name }
-        | TypeFact::Record { name }
-        | TypeFact::Enum { name, .. }
-        | TypeFact::Trait { name } => Some(name.clone()),
-        _ => None,
-    }
-}
-
 fn record_owner_names(fact: &TypeFact) -> Vec<String> {
     let mut names = Vec::new();
     collect_record_owner_names(fact, &mut names);
@@ -1063,46 +945,12 @@ fn preceded_by_fn_keyword(text: &str, start: usize) -> bool {
         .is_none_or(|ch| !is_identifier_continue(ch))
 }
 
-fn function_detail(schema: &RegistryFacts, name: &str, fact: &TypeFact) -> String {
-    let effects = schema
-        .function_effect_fact(name)
-        .map_or_else(|| "effects: unknown".to_owned(), effect_detail);
-    format!("{}; {effects}", fact.display_name())
-}
-
-fn method_detail(schema: &RegistryFacts, owner: &str, method: &str, fact: &TypeFact) -> String {
-    let effects = schema
-        .method_effect_fact(owner, method)
-        .or_else(|| schema.trait_method_effect_fact(owner, method))
-        .map_or_else(|| "effects: unknown".to_owned(), effect_detail);
-    let permissions = schema.method_access_fact(owner, method).map_or_else(
-        || "none".to_owned(),
-        |access| permissions_detail(&access.required_permissions),
-    );
-    format!(
-        "{}; {effects}; permissions: {permissions}",
-        fact.display_name()
-    )
-}
-
 fn stdlib_function_detail(function: &StdlibFunctionFact) -> String {
     TypeFact::function(function.params.clone(), function.returns.clone()).display_name()
 }
 
 fn stdlib_method_detail(method: &StdlibMethodFact) -> String {
     TypeFact::function(method.params.clone(), method.returns.clone()).display_name()
-}
-
-fn effect_detail(effect: &RegistryEffectFact) -> String {
-    format!("effects: {}", effect.display_name())
-}
-
-fn permissions_detail(permissions: &[String]) -> String {
-    if permissions.is_empty() {
-        "none".to_owned()
-    } else {
-        permissions.join(", ")
-    }
 }
 
 fn declaration_docs(
