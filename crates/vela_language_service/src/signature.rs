@@ -120,6 +120,23 @@ impl LanguageServiceDatabases {
         signatures
     }
 
+    pub(crate) fn signature_candidates_for_callee_range(
+        &self,
+        source_id: SourceId,
+        text: &str,
+        callee: String,
+        callee_range: TextRange,
+        args_prefix: String,
+    ) -> Vec<SignatureInformation> {
+        let context = CallContext {
+            callee,
+            callee_range,
+            args_prefix,
+            active_parameter: 0,
+        };
+        self.signature_candidates_for_context(source_id, text, &context)
+    }
+
     fn signature_candidates_for_context(
         &self,
         source_id: SourceId,

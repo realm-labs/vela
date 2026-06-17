@@ -1019,8 +1019,9 @@ cargo test -p vela_syntax formatting
 Purpose: expose gradual type facts without implying static typing.
 
 - [~] Add parameter name hints for calls.
-  - Initial native support exposes script and schema function parameter labels
-    through `textDocument/inlayHint` and suppresses already named arguments.
+  - Initial native support exposes script/schema function and typed
+    source/schema method parameter labels through `textDocument/inlayHint` and
+    suppresses already named arguments.
   - Parameter hints suppress schema/script/variant parameters whose facts cross
     dynamic `Any` or unknown boundaries.
 - [x] Add inferred local type hints from stable TypeFacts.
@@ -1044,6 +1045,7 @@ Purpose: expose gradual type facts without implying static typing.
 Tests:
 
 - [x] `inlay_hints_show_parameter_names`
+- [x] `inlay_hints_show_source_method_parameter_names`
 - [x] `inlay_hints_show_stable_local_typefacts`
 - [x] `inlay_hints_show_lambda_parameter_facts`
 - [x] `inlay_hints_show_host_path_typefacts`
@@ -1052,6 +1054,7 @@ Tests:
 - [x] `inlay_hints_suppress_any_schema_function_parameters`
 - [x] `inlay_hints_suppress_any_enum_variant_payloads`
 - [x] `lsp_inlay_hints_show_parameter_names`
+- [x] `lsp_inlay_hints_show_source_method_parameter_names`
 - [x] `lsp_inlay_hints_show_local_typefacts`
 - [x] `lsp_inlay_hints_show_lambda_parameter_facts`
 - [x] `lsp_inlay_hints_show_host_path_typefacts`

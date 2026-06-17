@@ -106,6 +106,68 @@ fn lsp_inlay_hints_respect_requested_range() {
 }
 
 #[test]
+fn lsp_inlay_hints_show_source_method_parameter_names() {
+    let mut server = LspServer::new();
+    let _ = response_value(server.handle_json(&request(
+        1,
+        "initialize",
+        serde_json::json!({
+            "processId": null,
+            "rootUri": "file:///workspace/scripts",
+            "capabilities": {}
+        }),
+    )));
+    let uri = "file:///workspace/scripts/game/main.vela";
+    let text = r#"struct Player { level: i64 }
+impl Player {
+    fn grant(self, amount: i64, bonus: i64) -> i64 { return amount + bonus }
+}
+pub fn main(player: Player) { player.grant(1, 2) }"#;
+    let main_line = text.lines().nth(4).expect("main line should exist");
+    let _ = notification_value(server.handle_json(&notification(
+        "textDocument/didOpen",
+        serde_json::json!({
+            "textDocument": {
+                "uri": uri,
+                "languageId": "vela",
+                "version": 1,
+                "text": text
+            }
+        }),
+    )));
+
+    let response = response_value(server.handle_json(&request(
+        2,
+        "textDocument/inlayHint",
+        serde_json::json!({
+            "textDocument": { "uri": uri },
+            "range": {
+                "start": { "line": 0, "character": 0 },
+                "end": { "line": 4, "character": main_line.len() }
+            }
+        }),
+    )));
+
+    assert_eq!(
+        response["result"],
+        serde_json::json!([
+            {
+                "position": { "line": 4, "character": main_line.find("1,").expect("first arg") },
+                "label": "amount:",
+                "kind": 2,
+                "paddingRight": true
+            },
+            {
+                "position": { "line": 4, "character": main_line.find("2)").expect("second arg") },
+                "label": "bonus:",
+                "kind": 2,
+                "paddingRight": true
+            }
+        ])
+    );
+}
+
+#[test]
 fn lsp_inlay_hints_show_local_typefacts() {
     let mut server = LspServer::new();
     let _ = response_value(server.handle_json(&request(
@@ -373,6 +435,12 @@ fn lsp_inlay_hints_show_host_path_typefacts() {
                 "label": ": i64",
                 "kind": 1,
                 "paddingRight": true
+            },
+            {
+                "position": { "line": 4, "character": 17 },
+                "label": "arg0:",
+                "kind": 2,
+                "paddingRight": true
             }
         ])
     );
@@ -432,6 +500,20 @@ fn lsp_inlay_hints_suppress_any_schema_function_parameters() {
                             "returns": { "kind": "primitive", "name": "i64" }
                         }
                     }
+                ],
+                "methods": [
+                    {
+                        "owner": "Player",
+                        "name": "grant",
+                        "fact": {
+                            "kind": "function",
+                            "params": [
+                                { "kind": "any" },
+                                { "kind": "primitive", "name": "i64" }
+                            ],
+                            "returns": { "kind": "primitive", "name": "i64" }
+                        }
+                    }
                 ]
             }
         }"#,
@@ -458,6 +540,7 @@ fn lsp_inlay_hints_suppress_any_schema_function_parameters() {
     let text = r#"pub fn main(player: Player) {
     host_dynamic(player, 10)
     host_stable(player, 10)
+    player.grant(player, 10)
 }"#;
     let _ = notification_value(server.handle_json(&notification(
         "textDocument/didOpen",
@@ -478,7 +561,7 @@ fn lsp_inlay_hints_suppress_any_schema_function_parameters() {
             "textDocument": { "uri": uri },
             "range": {
                 "start": { "line": 0, "character": 0 },
-                "end": { "line": 4, "character": 0 }
+                "end": { "line": 5, "character": 0 }
             }
         }),
     )));
@@ -500,6 +583,12 @@ fn lsp_inlay_hints_suppress_any_schema_function_parameters() {
             },
             {
                 "position": { "line": 2, "character": 24 },
+                "label": "arg1:",
+                "kind": 2,
+                "paddingRight": true
+            },
+            {
+                "position": { "line": 3, "character": 25 },
                 "label": "arg1:",
                 "kind": 2,
                 "paddingRight": true

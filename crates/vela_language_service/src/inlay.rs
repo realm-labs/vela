@@ -6,6 +6,7 @@ use vela_analysis::{
     stdlib::stdlib_method_fact_with_lambda_arity,
     type_fact::TypeFact,
 };
+use vela_common::SourceId;
 use vela_hir::module_graph::ModuleGraph;
 use vela_hir::type_hint::HirTypeHint;
 use vela_syntax::ast::{
@@ -13,7 +14,9 @@ use vela_syntax::ast::{
     Stmt, StmtKind, TypeHint,
 };
 
-use crate::{DiagnosticRange, DocumentId, LanguageServiceDatabases, LineIndex, Position};
+use crate::{
+    DiagnosticRange, DocumentId, LanguageServiceDatabases, LineIndex, Position, TextRange,
+};
 
 #[derive(Debug, Clone, Copy, Eq, PartialEq)]
 pub enum InlayHintKind {
@@ -41,6 +44,30 @@ impl DiagnosticRangeOffsets {
 
     const fn contains(self, offset: usize) -> bool {
         self.start <= offset && offset <= self.end
+    }
+}
+
+#[derive(Clone, Copy)]
+struct ParameterHintContext<'a> {
+    source_id: SourceId,
+    source_text: &'a str,
+    line_index: &'a LineIndex,
+    range: DiagnosticRangeOffsets,
+}
+
+impl<'a> ParameterHintContext<'a> {
+    const fn new(
+        source_id: SourceId,
+        source_text: &'a str,
+        line_index: &'a LineIndex,
+        range: DiagnosticRangeOffsets,
+    ) -> Self {
+        Self {
+            source_id,
+            source_text,
+            line_index,
+            range,
+        }
     }
 }
 
@@ -120,31 +147,28 @@ impl LanguageServiceDatabases {
         let line_index = LineIndex::new(source.text());
         let range_start = line_index.offset(range.start());
         let range_end = line_index.offset(range.end());
+        let range_offsets = DiagnosticRangeOffsets::new(range_start, range_end);
+        let parameter_context = ParameterHintContext::new(
+            source.source_id(),
+            source.text(),
+            &line_index,
+            range_offsets,
+        );
         let mut hints = Vec::new();
 
         for item in &parsed.items {
             match &item.kind {
-                ItemKind::Const(item) => self.collect_expr_parameter_hints(
-                    &item.value,
-                    &line_index,
-                    range_start,
-                    range_end,
-                    &mut hints,
-                ),
-                ItemKind::Function(function) => self.collect_function_parameter_hints(
-                    function,
-                    &line_index,
-                    range_start,
-                    range_end,
-                    &mut hints,
-                ),
+                ItemKind::Const(item) => {
+                    self.collect_expr_parameter_hints(&item.value, parameter_context, &mut hints);
+                }
+                ItemKind::Function(function) => {
+                    self.collect_function_parameter_hints(function, parameter_context, &mut hints);
+                }
                 ItemKind::Impl(item) => {
                     for method in &item.methods {
                         self.collect_function_parameter_hints(
                             &method.function,
-                            &line_index,
-                            range_start,
-                            range_end,
+                            parameter_context,
                             &mut hints,
                         );
                     }
@@ -152,13 +176,7 @@ impl LanguageServiceDatabases {
                 ItemKind::Trait(item) => {
                     for method in &item.methods {
                         if let Some(body) = &method.default_body {
-                            self.collect_block_parameter_hints(
-                                body,
-                                &line_index,
-                                range_start,
-                                range_end,
-                                &mut hints,
-                            );
+                            self.collect_block_parameter_hints(body, parameter_context, &mut hints);
                         }
                     }
                 }
@@ -175,7 +193,7 @@ impl LanguageServiceDatabases {
         let mut type_collector = TypeHintCollector::new(
             source.text(),
             &line_index,
-            DiagnosticRangeOffsets::new(range_start, range_end),
+            range_offsets,
             TypeHintContext::new(graph, &facts, schema),
             &mut hints,
         );
@@ -210,85 +228,49 @@ impl LanguageServiceDatabases {
     fn collect_function_parameter_hints(
         &self,
         function: &FunctionItem,
-        line_index: &LineIndex,
-        range_start: usize,
-        range_end: usize,
+        context: ParameterHintContext<'_>,
         hints: &mut Vec<InlayHint>,
     ) {
         for param in &function.params {
             if let Some(default) = &param.default_value {
-                self.collect_expr_parameter_hints(
-                    default,
-                    line_index,
-                    range_start,
-                    range_end,
-                    hints,
-                );
+                self.collect_expr_parameter_hints(default, context, hints);
             }
         }
-        self.collect_block_parameter_hints(
-            &function.body,
-            line_index,
-            range_start,
-            range_end,
-            hints,
-        );
+        self.collect_block_parameter_hints(&function.body, context, hints);
     }
 
     fn collect_block_parameter_hints(
         &self,
         block: &Block,
-        line_index: &LineIndex,
-        range_start: usize,
-        range_end: usize,
+        context: ParameterHintContext<'_>,
         hints: &mut Vec<InlayHint>,
     ) {
         for statement in &block.statements {
-            self.collect_stmt_parameter_hints(statement, line_index, range_start, range_end, hints);
+            self.collect_stmt_parameter_hints(statement, context, hints);
         }
     }
 
     fn collect_stmt_parameter_hints(
         &self,
         statement: &Stmt,
-        line_index: &LineIndex,
-        range_start: usize,
-        range_end: usize,
+        context: ParameterHintContext<'_>,
         hints: &mut Vec<InlayHint>,
     ) {
         match &statement.kind {
             StmtKind::Let { value, .. } | StmtKind::Return(value) => {
                 if let Some(expr) = value {
-                    self.collect_expr_parameter_hints(
-                        expr,
-                        line_index,
-                        range_start,
-                        range_end,
-                        hints,
-                    );
+                    self.collect_expr_parameter_hints(expr, context, hints);
                 }
             }
             StmtKind::For { iterable, body, .. } => {
-                self.collect_expr_parameter_hints(
-                    iterable,
-                    line_index,
-                    range_start,
-                    range_end,
-                    hints,
-                );
-                self.collect_block_parameter_hints(body, line_index, range_start, range_end, hints);
+                self.collect_expr_parameter_hints(iterable, context, hints);
+                self.collect_block_parameter_hints(body, context, hints);
             }
             StmtKind::Expr(expr) => {
-                self.collect_expr_parameter_hints(expr, line_index, range_start, range_end, hints);
+                self.collect_expr_parameter_hints(expr, context, hints);
             }
             StmtKind::Block(block) => {
-                self.collect_block_parameter_hints(
-                    block,
-                    line_index,
-                    range_start,
-                    range_end,
-                    hints,
-                );
+                self.collect_block_parameter_hints(block, context, hints);
             }
             StmtKind::Break | StmtKind::Continue => {}
         }
@@ -297,14 +279,12 @@ impl LanguageServiceDatabases {
     fn collect_expr_parameter_hints(
         &self,
         expr: &Expr,
-        line_index: &LineIndex,
-        range_start: usize,
-        range_end: usize,
+        context: ParameterHintContext<'_>,
         hints: &mut Vec<InlayHint>,
     ) {
         match &expr.kind {
             ExprKind::Unary { expr, .. } | ExprKind::Try(expr) => {
-                self.collect_expr_parameter_hints(expr, line_index, range_start, range_end, hints);
+                self.collect_expr_parameter_hints(expr, context, hints);
             }
             ExprKind::Binary { left, right, .. }
             | ExprKind::Assign {
@@ -312,129 +292,62 @@ impl LanguageServiceDatabases {
                 value: right,
                 ..
             } => {
-                self.collect_expr_parameter_hints(left, line_index, range_start, range_end, hints);
-                self.collect_expr_parameter_hints(right, line_index, range_start, range_end, hints);
+                self.collect_expr_parameter_hints(left, context, hints);
+                self.collect_expr_parameter_hints(right, context, hints);
             }
             ExprKind::Field { base, .. } => {
-                self.collect_expr_parameter_hints(base, line_index, range_start, range_end, hints);
+                self.collect_expr_parameter_hints(base, context, hints);
             }
             ExprKind::Call { callee, args } => {
-                self.collect_call_parameter_hints(
-                    callee,
-                    args,
-                    line_index,
-                    range_start,
-                    range_end,
-                    hints,
-                );
-                self.collect_expr_parameter_hints(
-                    callee,
-                    line_index,
-                    range_start,
-                    range_end,
-                    hints,
-                );
+                self.collect_call_parameter_hints(callee, args, context, hints);
+                self.collect_expr_parameter_hints(callee, context, hints);
                 for arg in args {
-                    self.collect_expr_parameter_hints(
-                        &arg.value,
-                        line_index,
-                        range_start,
-                        range_end,
-                        hints,
-                    );
+                    self.collect_expr_parameter_hints(&arg.value, context, hints);
                 }
             }
             ExprKind::Index { base, index } => {
-                self.collect_expr_parameter_hints(base, line_index, range_start, range_end, hints);
-                self.collect_expr_parameter_hints(index, line_index, range_start, range_end, hints);
+                self.collect_expr_parameter_hints(base, context, hints);
+                self.collect_expr_parameter_hints(index, context, hints);
             }
             ExprKind::Array(items) => {
                 for item in items {
-                    self.collect_expr_parameter_hints(
-                        item,
-                        line_index,
-                        range_start,
-                        range_end,
-                        hints,
-                    );
+                    self.collect_expr_parameter_hints(item, context, hints);
                 }
             }
             ExprKind::Map(entries) => {
                 for entry in entries {
-                    self.collect_expr_parameter_hints(
-                        &entry.key,
-                        line_index,
-                        range_start,
-                        range_end,
-                        hints,
-                    );
-                    self.collect_expr_parameter_hints(
-                        &entry.value,
-                        line_index,
-                        range_start,
-                        range_end,
-                        hints,
-                    );
+                    self.collect_expr_parameter_hints(&entry.key, context, hints);
+                    self.collect_expr_parameter_hints(&entry.value, context, hints);
                 }
             }
             ExprKind::Record { fields, .. } => {
                 for field in fields {
                     if let Some(value) = &field.value {
-                        self.collect_expr_parameter_hints(
-                            value,
-                            line_index,
-                            range_start,
-                            range_end,
-                            hints,
-                        );
+                        self.collect_expr_parameter_hints(value, context, hints);
                     }
                 }
             }
             ExprKind::Lambda { params, body } => {
                 for param in params {
                     if let Some(default) = &param.default_value {
-                        self.collect_expr_parameter_hints(
-                            default,
-                            line_index,
-                            range_start,
-                            range_end,
-                            hints,
-                        );
+                        self.collect_expr_parameter_hints(default, context, hints);
                     }
                 }
-                self.collect_expr_parameter_hints(body, line_index, range_start, range_end, hints);
+                self.collect_expr_parameter_hints(body, context, hints);
             }
             ExprKind::If(if_expr) => {
-                self.collect_if_parameter_hints(if_expr, line_index, range_start, range_end, hints);
+                self.collect_if_parameter_hints(if_expr, context, hints);
             }
             ExprKind::Match(match_expr) => {
-                self.collect_match_parameter_hints(
-                    match_expr,
-                    line_index,
-                    range_start,
-                    range_end,
-                    hints,
-                );
+                self.collect_match_parameter_hints(match_expr, context, hints);
             }
             ExprKind::Block(block) => {
-                self.collect_block_parameter_hints(
-                    block,
-                    line_index,
-                    range_start,
-                    range_end,
-                    hints,
-                );
+                self.collect_block_parameter_hints(block, context, hints);
             }
             ExprKind::InterpolatedString(parts) => {
                 for part in parts {
                     if let vela_syntax::ast::InterpolatedStringPart::Expr(expr) = part {
-                        self.collect_expr_parameter_hints(
-                            expr,
-                            line_index,
-                            range_start,
-                            range_end,
-                            hints,
-                        );
+                        self.collect_expr_parameter_hints(expr, context, hints);
                     }
                 }
             }
@@ -445,37 +358,17 @@ impl LanguageServiceDatabases {
     fn collect_if_parameter_hints(
         &self,
         if_expr: &IfExpr,
-        line_index: &LineIndex,
-        range_start: usize,
-        range_end: usize,
+        context: ParameterHintContext<'_>,
         hints: &mut Vec<InlayHint>,
     ) {
-        self.collect_expr_parameter_hints(
-            &if_expr.condition,
-            line_index,
-            range_start,
-            range_end,
-            hints,
-        );
-        self.collect_block_parameter_hints(
-            &if_expr.then_branch,
-            line_index,
-            range_start,
-            range_end,
-            hints,
-        );
+        self.collect_expr_parameter_hints(&if_expr.condition, context, hints);
+        self.collect_block_parameter_hints(&if_expr.then_branch, context, hints);
         match &if_expr.else_branch {
             Some(ElseBranch::If(if_expr)) => {
-                self.collect_if_parameter_hints(if_expr, line_index, range_start, range_end, hints);
+                self.collect_if_parameter_hints(if_expr, context, hints);
             }
             Some(ElseBranch::Block(block)) => {
-                self.collect_block_parameter_hints(
-                    block,
-                    line_index,
-                    range_start,
-                    range_end,
-                    hints,
-                );
+                self.collect_block_parameter_hints(block, context, hints);
             }
             None => {}
         }
@@ -484,23 +377,15 @@ impl LanguageServiceDatabases {
     fn collect_match_parameter_hints(
         &self,
         match_expr: &MatchExpr,
-        line_index: &LineIndex,
-        range_start: usize,
-        range_end: usize,
+        context: ParameterHintContext<'_>,
         hints: &mut Vec<InlayHint>,
     ) {
-        self.collect_expr_parameter_hints(
-            &match_expr.scrutinee,
-            line_index,
-            range_start,
-            range_end,
-            hints,
-        );
+        self.collect_expr_parameter_hints(&match_expr.scrutinee, context, hints);
         for arm in &match_expr.arms {
             if let Some(guard) = &arm.guard {
-                self.collect_expr_parameter_hints(guard, line_index, range_start, range_end, hints);
+                self.collect_expr_parameter_hints(guard, context, hints);
             }
-            self.collect_expr_parameter_hints(&arm.body, line_index, range_start, range_end, hints);
+            self.collect_expr_parameter_hints(&arm.body, context, hints);
         }
     }
 
@@ -508,15 +393,14 @@ impl LanguageServiceDatabases {
         &self,
         callee: &Expr,
         args: &[Argument],
-        line_index: &LineIndex,
-        range_start: usize,
-        range_end: usize,
+        context: ParameterHintContext<'_>,
         hints: &mut Vec<InlayHint>,
     ) {
-        let Some(callee) = callee_label(callee) else {
-            return;
-        };
-        let Some(signature) = self.signature_candidates(&callee).into_iter().next() else {
+        let Some(signature) = self
+            .call_signature_candidates(callee, args, context.source_id, context.source_text)
+            .into_iter()
+            .next()
+        else {
             return;
         };
 
@@ -524,10 +408,13 @@ impl LanguageServiceDatabases {
             if arg.name.is_some() {
                 continue;
             }
+            if matches!(arg.value.kind, ExprKind::Lambda { .. }) {
+                continue;
+            }
             let Ok(offset) = usize::try_from(arg.value.span.start) else {
                 continue;
             };
-            if offset < range_start || offset > range_end {
+            if !context.range.contains(offset) {
                 continue;
             }
             let Some(label) = signature
@@ -538,12 +425,76 @@ impl LanguageServiceDatabases {
                 continue;
             };
             hints.push(InlayHint {
-                position: line_index.position(offset),
+                position: context.line_index.position(offset),
                 label,
                 kind: InlayHintKind::Parameter,
             });
         }
     }
+
+    fn call_signature_candidates(
+        &self,
+        callee: &Expr,
+        args: &[Argument],
+        source_id: SourceId,
+        source_text: &str,
+    ) -> Vec<crate::SignatureInformation> {
+        if let Some((callee_text, callee_range)) =
+            member_callee_text_and_range(callee, args, source_text)
+            && callee_text.contains('.')
+        {
+            return self.signature_candidates_for_callee_range(
+                source_id,
+                source_text,
+                callee_text,
+                callee_range,
+                args_prefix(args, source_text),
+            );
+        }
+
+        let Some(callee) = callee_label(callee) else {
+            return Vec::new();
+        };
+        self.signature_candidates(&callee)
+    }
+}
+
+fn member_callee_text_and_range(
+    callee: &Expr,
+    args: &[Argument],
+    source_text: &str,
+) -> Option<(String, TextRange)> {
+    let ExprKind::Field { base, .. } = &callee.kind else {
+        return None;
+    };
+    let start = usize::try_from(base.span.start).ok()?;
+    let first_arg_start = args
+        .first()
+        .and_then(|arg| usize::try_from(arg.value.span.start).ok())?;
+    let open = source_text[..first_arg_start].rfind('(')?;
+    let end = source_text[..open].trim_end().len();
+    let text = source_text.get(start..end)?.trim().to_owned();
+    (!text.is_empty()).then(|| (text, TextRange::new(start, end)))
+}
+
+fn args_prefix(args: &[Argument], source_text: &str) -> String {
+    let Some(last_arg) = args.last() else {
+        return String::new();
+    };
+    let Ok(end) = usize::try_from(last_arg.value.span.end) else {
+        return String::new();
+    };
+    let open = args
+        .first()
+        .and_then(|arg| usize::try_from(arg.value.span.start).ok())
+        .and_then(|first_arg_start| source_text[..first_arg_start].rfind('('));
+    let Some(open) = open else {
+        return String::new();
+    };
+    source_text
+        .get(open + '('.len_utf8()..end.min(source_text.len()))
+        .unwrap_or_default()
+        .to_owned()
 }
 
 impl TypeHintCollector<'_, '_> {
@@ -818,10 +769,16 @@ fn type_fact_from_syntax_hint(hint: &TypeHint, context: TypeHintContext<'_>) -> 
         context
             .schema
             .type_fact(&qualified)
+            .or_else(|| context.schema.trait_fact(&qualified))
             .or_else(|| {
                 hint.path
                     .last()
                     .and_then(|name| context.schema.type_fact(name))
+            })
+            .or_else(|| {
+                hint.path
+                    .last()
+                    .and_then(|name| context.schema.trait_fact(name))
             })
             .cloned()
             .unwrap_or(TypeFact::Unknown)
@@ -924,230 +881,4 @@ fn callee_label(callee: &Expr) -> Option<String> {
 #[cfg(test)]
 mod suppression_tests;
 #[cfg(test)]
-mod tests {
-    use super::*;
-    use crate::{
-        SourceFileSnapshot, Workspace, WorkspaceConfig, WorkspaceRoot, assemble_project_sources,
-    };
-    use vela_analysis::type_fact::TypeFact;
-
-    fn databases_for(files: Vec<SourceFileSnapshot>) -> LanguageServiceDatabases {
-        let config = WorkspaceConfig::workspace([WorkspaceRoot::from("/workspace/scripts")]);
-        let project = assemble_project_sources(&config, &files, &Workspace::new().snapshot());
-        let mut databases = LanguageServiceDatabases::new();
-        databases.update(&project);
-        databases
-    }
-
-    #[test]
-    fn inlay_hints_show_parameter_names() {
-        let document = DocumentId::from("/workspace/scripts/game/main.vela");
-        let text = "pub fn grant(amount: i64, reason: String) -> i64 { return amount }\npub fn main() { return grant(10, \"quest\") }";
-        let databases = databases_for(vec![SourceFileSnapshot::new(document.clone(), text)]);
-
-        let hints = databases.inlay_hints(
-            &document,
-            DiagnosticRange::new(Position::new(1, 0), Position::new(1, 80)),
-        );
-
-        assert_eq!(
-            hint_labels(&hints),
-            vec![
-                (Position::new(1, 29), "amount:".to_owned()),
-                (Position::new(1, 33), "reason:".to_owned())
-            ]
-        );
-        assert!(
-            hints
-                .iter()
-                .all(|hint| hint.kind() == InlayHintKind::Parameter)
-        );
-    }
-
-    #[test]
-    fn inlay_hints_skip_named_arguments_and_unknown_calls() {
-        let document = DocumentId::from("/workspace/scripts/game/main.vela");
-        let text = "pub fn grant(amount: i64) -> i64 { return amount }\npub fn main() { return grant(amount = 10) + missing(1) }";
-        let databases = databases_for(vec![SourceFileSnapshot::new(document.clone(), text)]);
-
-        let hints = databases.inlay_hints(
-            &document,
-            DiagnosticRange::new(Position::new(1, 0), Position::new(1, 90)),
-        );
-
-        assert!(hints.is_empty());
-    }
-
-    #[test]
-    fn inlay_hints_show_stable_local_typefacts() {
-        let document = DocumentId::from("/workspace/scripts/game/main.vela");
-        let text = r#"const BONUS: i64 = 10
-pub fn main() {
-    let total = 1 + 2;
-    let next = total + 1;
-    let scripted = BONUS;
-    let explicit: i64 = 3;
-    let dynamic = host_any();
-}"#;
-        let mut databases = databases_for(vec![SourceFileSnapshot::new(document.clone(), text)]);
-        let mut schema = vela_analysis::registry::RegistryFacts::default();
-        schema.insert_function("host_any", TypeFact::function(Vec::new(), TypeFact::Any));
-        databases.set_schema_facts(schema);
-
-        let hints = databases.inlay_hints(
-            &document,
-            DiagnosticRange::new(Position::new(0, 0), Position::new(7, 0)),
-        );
-
-        assert_eq!(
-            hint_labels(&hints),
-            vec![
-                (Position::new(2, 13), ": i64".to_owned()),
-                (Position::new(3, 12), ": i64".to_owned()),
-                (Position::new(4, 16), ": i64".to_owned())
-            ]
-        );
-        assert!(hints.iter().all(|hint| hint.kind() == InlayHintKind::Type));
-    }
-
-    #[test]
-    fn inlay_hints_show_lambda_parameter_facts() {
-        let document = DocumentId::from("/workspace/scripts/game/main.vela");
-        let text = r#"pub fn main() {
-    let scores: Array<i64> = [1, 2, 3];
-    let doubled: Array<i64> = scores.map(|score| score + 1);
-    let rewards: Map<String, i64> = {"gold": 1};
-    let mapped: Map<String, i64> = rewards.map_values(|value| value + 1);
-    let filtered: Map<String, i64> = rewards.filter(|key, value| key.len() > value);
-}"#;
-        let databases = databases_for(vec![SourceFileSnapshot::new(document.clone(), text)]);
-
-        let hints = databases.inlay_hints(
-            &document,
-            DiagnosticRange::new(Position::new(0, 0), Position::new(7, 0)),
-        );
-
-        assert_eq!(
-            hint_labels(&hints),
-            vec![
-                (Position::new(2, 47), ": i64".to_owned()),
-                (Position::new(4, 60), ": i64".to_owned()),
-                (Position::new(5, 56), ": String".to_owned()),
-                (Position::new(5, 63), ": i64".to_owned())
-            ]
-        );
-        assert!(hints.iter().all(|hint| hint.kind() == InlayHintKind::Type));
-    }
-
-    #[test]
-    fn inlay_hints_show_host_path_typefacts() {
-        let document = DocumentId::from("/workspace/scripts/game/main.vela");
-        let text = r#"pub fn main(player: Player) {
-    let next = player.level + 1;
-    player.level += next;
-    let dynamic = player.mystery;
-    player.grant(next);
-}"#;
-        let mut databases = databases_for(vec![SourceFileSnapshot::new(document.clone(), text)]);
-        let mut schema = vela_analysis::registry::RegistryFacts::default();
-        schema.insert_type("Player", TypeFact::host("Player"));
-        schema.insert_field("Player", "level", TypeFact::I64);
-        schema.insert_field("Player", "mystery", TypeFact::Any);
-        schema.insert_method(
-            "Player",
-            "grant",
-            TypeFact::function(vec![TypeFact::I64], TypeFact::I64),
-        );
-        databases.set_schema_facts(schema);
-
-        let hints = databases.inlay_hints(
-            &document,
-            DiagnosticRange::new(Position::new(0, 0), Position::new(6, 0)),
-        );
-
-        assert_eq!(
-            hint_labels(&hints),
-            vec![
-                (Position::new(1, 12), ": i64".to_owned()),
-                (Position::new(1, 27), ": i64".to_owned()),
-                (Position::new(2, 16), ": i64".to_owned())
-            ]
-        );
-        assert!(hints.iter().all(|hint| hint.kind() == InlayHintKind::Type));
-    }
-
-    #[test]
-    fn inlay_hints_show_enum_variant_payload_names() {
-        let document = DocumentId::from("/workspace/scripts/game/main.vela");
-        let text = r#"enum QuestProgress {
-    Active(quest_id: String, count: i64),
-    Done,
-}
-pub fn main() {
-    let active = QuestProgress::Active("quest-1", 3);
-}"#;
-        let databases = databases_for(vec![SourceFileSnapshot::new(document.clone(), text)]);
-
-        let hints = databases.inlay_hints(
-            &document,
-            DiagnosticRange::new(Position::new(0, 0), Position::new(7, 0)),
-        );
-
-        assert_eq!(
-            hint_labels(&hints),
-            vec![
-                (Position::new(5, 39), "quest_id:".to_owned()),
-                (Position::new(5, 50), "count:".to_owned())
-            ]
-        );
-        assert!(
-            hints
-                .iter()
-                .all(|hint| hint.kind() == InlayHintKind::Parameter)
-        );
-    }
-
-    #[test]
-    fn inlay_hints_degrade_to_any_without_schema() {
-        let document = DocumentId::from("/workspace/scripts/game/main.vela");
-        let text = "pub fn main() { return host_grant(10) }";
-        let databases = databases_for(vec![SourceFileSnapshot::new(document.clone(), text)]);
-
-        let hints = databases.inlay_hints(
-            &document,
-            DiagnosticRange::new(Position::new(0, 0), Position::new(0, 80)),
-        );
-
-        assert!(hints.is_empty());
-    }
-
-    #[test]
-    fn inlay_hints_use_schema_function_names() {
-        let document = DocumentId::from("/workspace/scripts/game/main.vela");
-        let text = "pub fn main() { return host_grant(10) }";
-        let mut databases = databases_for(vec![SourceFileSnapshot::new(document.clone(), text)]);
-        let mut schema = vela_analysis::registry::RegistryFacts::default();
-        schema.insert_function(
-            "host_grant",
-            TypeFact::function(vec![TypeFact::I64], TypeFact::I64),
-        );
-        databases.set_schema_facts(schema);
-
-        let hints = databases.inlay_hints(
-            &document,
-            DiagnosticRange::new(Position::new(0, 0), Position::new(0, 80)),
-        );
-
-        assert_eq!(
-            hint_labels(&hints),
-            vec![(Position::new(0, 34), "arg0:".to_owned())]
-        );
-    }
-
-    fn hint_labels(hints: &[InlayHint]) -> Vec<(Position, String)> {
-        hints
-            .iter()
-            .map(|hint| (hint.position(), hint.label().to_owned()))
-            .collect()
-    }
-}
+mod tests;

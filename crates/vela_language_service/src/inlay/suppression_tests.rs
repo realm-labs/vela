@@ -10,6 +10,7 @@ fn inlay_hints_suppress_any_schema_function_parameters() {
     let text = r#"pub fn main(player: Player) {
     host_dynamic(player, 10)
     host_stable(player, 10)
+    player.grant(player, 10)
 }"#;
     let mut databases = databases_for(vec![SourceFileSnapshot::new(document.clone(), text)]);
     let mut schema = vela_analysis::registry::RegistryFacts::default();
@@ -22,11 +23,16 @@ fn inlay_hints_suppress_any_schema_function_parameters() {
         "host_stable",
         TypeFact::function(vec![TypeFact::host("Player"), TypeFact::I64], TypeFact::I64),
     );
+    schema.insert_method(
+        "Player",
+        "grant",
+        TypeFact::function(vec![TypeFact::Any, TypeFact::I64], TypeFact::I64),
+    );
     databases.set_schema_facts(schema);
 
     let hints = databases.inlay_hints(
         &document,
-        DiagnosticRange::new(Position::new(0, 0), Position::new(4, 0)),
+        DiagnosticRange::new(Position::new(0, 0), Position::new(5, 0)),
     );
 
     assert_eq!(
@@ -34,7 +40,8 @@ fn inlay_hints_suppress_any_schema_function_parameters() {
         vec![
             (Position::new(1, 25), "arg1:".to_owned()),
             (Position::new(2, 16), "arg0:".to_owned()),
-            (Position::new(2, 24), "arg1:".to_owned())
+            (Position::new(2, 24), "arg1:".to_owned()),
+            (Position::new(3, 25), "arg1:".to_owned())
         ]
     );
 }

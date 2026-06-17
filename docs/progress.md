@@ -147,6 +147,12 @@ JIT remain separate roadmap tracks.
 | M22 | Not started | Cranelift JIT follows interpreter/cache/debugger/conformance stability. |
 | M23 | Not started | Release hardening, public docs, validation gates, and performance targets. |
 
+M20.5 Phase 15 update: parameter-name inlay hints now cover typed source and
+schema method calls in addition to script/schema function calls. The hint
+suppression path also treats dynamic or unknown schema method parameters the
+same way as schema function parameters, while keeping lambda callback
+arguments and explicit annotations quiet.
+
 M20.5 Phase 14 update: selected struct fields, enum record fields, adjacent
 nested declaration member groups, completed multi-line top-level items,
 completed nested impl/trait methods, and completed enum record variants now
