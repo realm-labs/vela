@@ -5,6 +5,7 @@ use crate::{
     SourceVersion, WorkspaceGeneration, WorkspaceSnapshot, cursor_context_at,
 };
 use vela_common::SourceId;
+use vela_hir::binding::BindingMap;
 use vela_hir::module_graph::ModulePath;
 
 #[derive(Debug, Clone)]
@@ -43,6 +44,7 @@ pub struct QueryContext<'a> {
     generation: WorkspaceGeneration,
     source: QuerySource<'a>,
     parsed: Option<&'a SourceFile>,
+    bindings: Option<&'a BindingMap>,
     cursor: CursorContext,
 }
 
@@ -61,6 +63,7 @@ impl<'a> QueryContext<'a> {
             generation: snapshot.generation(),
             source: QuerySource::Snapshot(document),
             parsed: None,
+            bindings: None,
             cursor,
         })
     }
@@ -74,12 +77,14 @@ impl<'a> QueryContext<'a> {
         let source = databases.source_db().records().get(document_id)?;
         let parsed = databases.parse_db().parsed_source(document_id);
         let cursor = cursor_context_at(source.text(), position, parsed);
+        let bindings = query_bindings(databases, source, cursor.replace_range().end);
         Some(Self {
             document_id: document_id.clone(),
             position,
             generation: databases.generation(),
             source: QuerySource::Database(source),
             parsed,
+            bindings,
             cursor,
         })
     }
@@ -133,9 +138,29 @@ impl<'a> QueryContext<'a> {
     }
 
     #[must_use]
+    pub const fn bindings(&self) -> Option<&BindingMap> {
+        self.bindings
+    }
+
+    #[must_use]
     pub const fn cursor(&self) -> &CursorContext {
         &self.cursor
     }
+}
+
+fn query_bindings<'a>(
+    databases: &'a LanguageServiceDatabases,
+    source: &SourceRecord,
+    offset: usize,
+) -> Option<&'a BindingMap> {
+    let offset = u32::try_from(offset).ok()?;
+    let source_id = source.source_id();
+    let graph = databases.hir_db().graph();
+    graph.declarations().find_map(|declaration| {
+        (declaration.span.source == source_id && declaration.span.contains(offset))
+            .then(|| graph.bindings(declaration.id))
+            .flatten()
+    })
 }
 
 #[cfg(test)]
@@ -171,6 +196,7 @@ mod tests {
         assert!(context.module_path().is_none());
         assert!(context.source_record().is_none());
         assert!(context.parsed_source().is_none());
+        assert!(context.bindings().is_none());
     }
 
     #[test]
@@ -198,6 +224,13 @@ mod tests {
         assert_eq!(context.cursor().prefix(), "le");
         assert_eq!(context.source_id(), Some(SourceId::new(1)));
         assert!(context.parsed_source().is_some());
+        assert!(
+            context
+                .bindings()
+                .expect("bindings")
+                .locals()
+                .any(|local| local.name == "player")
+        );
         assert_eq!(
             context.module_path().expect("module path").segments(),
             &["game".to_owned(), "main".to_owned()]

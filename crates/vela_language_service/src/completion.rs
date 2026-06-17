@@ -205,7 +205,7 @@ impl LanguageServiceDatabases {
             }
         }
         let items = match context.kind {
-            CompletionContextKind::Global => self.global_completion_items(document_id, &context),
+            CompletionContextKind::Global => self.global_completion_items(&query, &context),
             CompletionContextKind::Item => self.item_completion_items(&context),
             CompletionContextKind::ModulePath => self.module_path_completion_items(&context),
             CompletionContextKind::Member => self.member_completion_items(document_id, &context),
@@ -222,18 +222,16 @@ impl LanguageServiceDatabases {
 
     fn global_completion_items(
         &self,
-        document_id: &DocumentId,
+        query: &QueryContext<'_>,
         context: &CompletionContext,
     ) -> Vec<CompletionItem> {
-        let current_module = self
-            .source_db()
-            .records()
-            .get(document_id)
-            .map(|source| source.module_path().join())
+        let current_module = query
+            .module_path()
+            .map(|module| module.join())
             .unwrap_or_default();
         let graph = self.hir_db().graph();
         let facts = AnalysisFacts::from_module_graph(graph);
-        let mut items = self.local_completion_items(document_id, context);
+        let mut items = self.local_completion_items(query, context);
         items.extend(dedupe_and_filter_items(
             global_completions(self.schema_db().facts()),
             context.prefix(),
@@ -308,23 +306,15 @@ impl LanguageServiceDatabases {
 
     fn local_completion_items(
         &self,
-        document_id: &DocumentId,
+        query: &QueryContext<'_>,
         context: &CompletionContext,
     ) -> Vec<CompletionItem> {
-        let Some(source) = self.source_db().records().get(document_id) else {
-            return Vec::new();
-        };
-        let source_id = source.source_id();
         let Some(offset) = u32::try_from(context.replace_range().end).ok() else {
             return Vec::new();
         };
         let graph = self.hir_db().graph();
         let facts = AnalysisFacts::from_module_graph(graph);
-        let Some(bindings) = graph.declarations().find_map(|declaration| {
-            (declaration.span.source == source_id && declaration.span.contains(offset))
-                .then(|| graph.bindings(declaration.id))
-                .flatten()
-        }) else {
+        let Some(bindings) = query.bindings() else {
             return Vec::new();
         };
         let mut items = bindings
