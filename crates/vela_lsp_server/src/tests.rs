@@ -646,6 +646,75 @@ mod file_watching {
     }
 
     #[test]
+    fn schema_delete_publishes_missing_schema_diagnostic() {
+        let root = temp_workspace();
+        let config_path = root.join("vela.toml");
+        let schema_path = root.join("target").join("vela").join("schema.json");
+        fs::create_dir_all(schema_path.parent().expect("schema should have parent"))
+            .expect("schema directory should be creatable");
+        fs::write(
+            &config_path,
+            r#"
+                [workspace]
+                roots = ["scripts"]
+
+                [host]
+                schema = "target/vela/schema.json"
+            "#,
+        )
+        .expect("vela.toml should be writable");
+        fs::write(&schema_path, valid_schema_artifact()).expect("schema should be writable");
+
+        let mut server = LspServer::new();
+        let _ = server.handle_json(&request(
+            1,
+            "initialize",
+            serde_json::json!({
+                "processId": null,
+                "rootUri": file_uri(&root),
+                "capabilities": {}
+            }),
+        ));
+        let loaded = notification_values(server.handle_json(&notification(
+            "workspace/didChangeWatchedFiles",
+            serde_json::json!({
+                "changes": [{ "uri": file_uri(&config_path), "type": 1 }]
+            }),
+        )));
+        assert_eq!(loaded.len(), 1, "{loaded:?}");
+        assert!(
+            loaded[0]["params"]["diagnostics"]
+                .as_array()
+                .is_some_and(Vec::is_empty),
+            "{loaded:?}"
+        );
+
+        fs::remove_file(&schema_path).expect("schema should be removable");
+        let missing = notification_values(server.handle_json(&notification(
+            "workspace/didChangeWatchedFiles",
+            serde_json::json!({
+                "changes": [{ "uri": file_uri(&schema_path), "type": 3 }]
+            }),
+        )));
+
+        assert_eq!(missing.len(), 1, "{missing:?}");
+        assert_eq!(missing[0]["params"]["uri"], file_uri(&schema_path));
+        let diagnostics = missing[0]["params"]["diagnostics"]
+            .as_array()
+            .expect("schema diagnostics should be an array");
+        assert!(
+            diagnostics.iter().any(|diagnostic| {
+                diagnostic["code"] == "schema::diagnostic"
+                    && diagnostic["message"]
+                        .as_str()
+                        .is_some_and(|message| message.contains("host schema"))
+            }),
+            "{diagnostics:?}"
+        );
+        fs::remove_dir_all(&root).expect("temporary workspace should be removable");
+    }
+
+    #[test]
     fn file_create_adds_module() {
         let root = temp_workspace();
         let (config_path, helper_path) = write_workspace(&root, "helper");

@@ -216,6 +216,10 @@ M20.5 Phase 16 update: deleting `vela.toml` now has explicit watcher coverage
 that clears published configuration diagnostics and returns the server to
 workspace-root/editor fallback configuration.
 
+M20.5 Phase 16 update: deleting a configured host schema artifact now has
+explicit watcher coverage that publishes the missing-schema diagnostic without
+running host code.
+
 M20.5 Phase 7 update: completion now resolves schema-backed trait receiver
 method members in addition to schema-backed host receiver members.
 `textDocument/signatureHelp` now resolves stdlib function calls, typed
