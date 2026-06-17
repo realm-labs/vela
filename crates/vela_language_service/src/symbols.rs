@@ -19,6 +19,7 @@ pub struct DocumentSymbol {
     range: DiagnosticRange,
     selection_range: DiagnosticRange,
     children: Vec<DocumentSymbol>,
+    symbol: SymbolRef,
 }
 
 impl DocumentSymbol {
@@ -50,6 +51,11 @@ impl DocumentSymbol {
     #[must_use]
     pub fn children(&self) -> &[DocumentSymbol] {
         &self.children
+    }
+
+    #[must_use]
+    pub const fn symbol(&self) -> &SymbolRef {
+        &self.symbol
     }
 }
 
@@ -344,7 +350,8 @@ fn symbol_from_declaration(
     source: &SourceRecord,
 ) -> Option<DocumentSymbol> {
     let kind = kind_for_declaration(declaration.kind);
-    let children = children_for_declaration(graph, declaration, source);
+    let symbol_name = source_declaration_symbol_name(graph, declaration)?;
+    let children = children_for_declaration(graph, declaration, source, &symbol_name);
     symbol_from_span(
         source,
         declaration.span,
@@ -352,7 +359,20 @@ fn symbol_from_declaration(
         detail_for_declaration(graph, declaration),
         kind,
         children,
+        SymbolRef::Source(symbol_name),
     )
+}
+
+fn source_declaration_symbol_name(
+    graph: &ModuleGraph,
+    declaration: &Declaration,
+) -> Option<String> {
+    let module_path = graph.module_path(declaration.module)?;
+    if module_path.segments().is_empty() {
+        Some(declaration.name.clone())
+    } else {
+        Some(DisplayParts::qualified(&module_path.join(), &declaration.name).render())
+    }
 }
 
 fn kind_for_declaration(kind: DeclarationKind) -> DocumentSymbolKind {
@@ -371,6 +391,7 @@ fn children_for_declaration(
     graph: &ModuleGraph,
     declaration: &Declaration,
     source: &SourceRecord,
+    parent_symbol: &str,
 ) -> Vec<DocumentSymbol> {
     match declaration.kind {
         DeclarationKind::Struct => graph
@@ -385,6 +406,7 @@ fn children_for_declaration(
                     field.type_hint.as_ref().map(|hint| hint.display()),
                     DocumentSymbolKind::Field,
                     Vec::new(),
+                    SymbolRef::Source(format!("{parent_symbol}.{}", field.name)),
                 )
             })
             .collect(),
@@ -398,6 +420,7 @@ fn children_for_declaration(
                     EnumVariantFieldsHint::Tuple(params) => params
                         .iter()
                         .filter_map(|param| {
+                            let variant_symbol = format!("{parent_symbol}::{}", variant.name);
                             symbol_from_span(
                                 source,
                                 param.span,
@@ -405,12 +428,14 @@ fn children_for_declaration(
                                 param.type_hint.as_ref().map(|hint| hint.display()),
                                 DocumentSymbolKind::Field,
                                 Vec::new(),
+                                SymbolRef::Source(format!("{variant_symbol}.{}", param.name)),
                             )
                         })
                         .collect(),
                     EnumVariantFieldsHint::Record(fields) => fields
                         .iter()
                         .filter_map(|field| {
+                            let variant_symbol = format!("{parent_symbol}::{}", variant.name);
                             symbol_from_span(
                                 source,
                                 field.span,
@@ -418,10 +443,12 @@ fn children_for_declaration(
                                 field.type_hint.as_ref().map(|hint| hint.display()),
                                 DocumentSymbolKind::Field,
                                 Vec::new(),
+                                SymbolRef::Source(format!("{variant_symbol}.{}", field.name)),
                             )
                         })
                         .collect(),
                 };
+                let variant_symbol = format!("{parent_symbol}::{}", variant.name);
                 symbol_from_span(
                     source,
                     variant.span,
@@ -429,6 +456,7 @@ fn children_for_declaration(
                     None,
                     DocumentSymbolKind::EnumMember,
                     children,
+                    SymbolRef::Source(variant_symbol),
                 )
             })
             .collect(),
@@ -444,6 +472,7 @@ fn children_for_declaration(
                     Some(signature_detail(&method.signature)),
                     DocumentSymbolKind::Method,
                     Vec::new(),
+                    SymbolRef::Source(format!("{parent_symbol}.{}", method.name)),
                 )
             })
             .collect(),
@@ -459,6 +488,7 @@ fn children_for_declaration(
                     Some(signature_detail(&method.signature)),
                     DocumentSymbolKind::Method,
                     Vec::new(),
+                    SymbolRef::Source(format!("{parent_symbol}.{}", method.name)),
                 )
             })
             .collect(),
@@ -502,6 +532,7 @@ fn symbol_from_span(
     detail: Option<String>,
     kind: DocumentSymbolKind,
     children: Vec<DocumentSymbol>,
+    symbol: SymbolRef,
 ) -> Option<DocumentSymbol> {
     if span.source != source.source_id() {
         return None;
@@ -516,6 +547,7 @@ fn symbol_from_span(
         range,
         selection_range,
         children,
+        symbol,
     })
 }
 
@@ -688,7 +720,15 @@ pub fn main(amount: i64) -> i64 { return amount }";
         );
         let player = symbol(&symbols, "Player");
         assert_eq!(player.kind(), DocumentSymbolKind::Struct);
+        assert_eq!(
+            player.symbol(),
+            &SymbolRef::Source("game::main::Player".to_owned())
+        );
         assert_eq!(symbol_names(player.children()), ["level", "name"]);
+        assert_eq!(
+            player.children()[0].symbol(),
+            &SymbolRef::Source("game::main::Player.level".to_owned())
+        );
         assert_eq!(
             player.children()[0].selection_range().start().line,
             3,
@@ -697,21 +737,45 @@ pub fn main(amount: i64) -> i64 { return amount }";
 
         let reward = symbol(&symbols, "Reward");
         assert_eq!(reward.kind(), DocumentSymbolKind::Enum);
+        assert_eq!(
+            reward.symbol(),
+            &SymbolRef::Source("game::main::Reward".to_owned())
+        );
         assert_eq!(symbol_names(reward.children()), ["None", "Coins", "Item"]);
+        assert_eq!(
+            reward.children()[1].symbol(),
+            &SymbolRef::Source("game::main::Reward::Coins".to_owned())
+        );
         assert_eq!(symbol_names(reward.children()[1].children()), ["amount"]);
+        assert_eq!(
+            reward.children()[1].children()[0].symbol(),
+            &SymbolRef::Source("game::main::Reward::Coins.amount".to_owned())
+        );
         assert_eq!(symbol_names(reward.children()[2].children()), ["id"]);
 
         let damageable = symbol(&symbols, "Damageable");
         assert_eq!(damageable.kind(), DocumentSymbolKind::Interface);
         assert_eq!(symbol_names(damageable.children()), ["damage"]);
+        assert_eq!(
+            damageable.children()[0].symbol(),
+            &SymbolRef::Source("game::main::Damageable.damage".to_owned())
+        );
 
         let impl_player = symbol(&symbols, "impl Player");
         assert_eq!(impl_player.kind(), DocumentSymbolKind::Object);
         assert_eq!(symbol_names(impl_player.children()), ["heal"]);
+        assert_eq!(
+            impl_player.children()[0].symbol(),
+            &SymbolRef::Source("game::main::impl Player.heal".to_owned())
+        );
 
         let main = symbol(&symbols, "main");
         assert_eq!(main.detail(), Some("(amount: i64) -> i64"));
         assert_eq!(main.kind(), DocumentSymbolKind::Function);
+        assert_eq!(
+            main.symbol(),
+            &SymbolRef::Source("game::main::main".to_owned())
+        );
     }
 
     #[test]
