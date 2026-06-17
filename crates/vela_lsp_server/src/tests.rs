@@ -292,6 +292,7 @@ mod rename_schema;
 mod schema_reload;
 mod selection;
 mod semantic_tokens;
+mod semantic_tokens_schema;
 mod semantic_tokens_schema_trait;
 mod signature;
 mod symbols;
