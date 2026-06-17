@@ -8,7 +8,7 @@ use vela_analysis::stdlib::{
 use vela_analysis::type_fact::TypeFact;
 use vela_common::SourceId;
 use vela_hir::module_graph::{DeclarationKind, ModuleGraph};
-use vela_hir::type_hint::{EnumVariantFieldsHint, HirTypeHint};
+use vela_hir::type_hint::{EnumVariantFieldsHint, HirTypeHint, ImplMetadataKind};
 
 use crate::query_context::type_fact_for_source_range;
 use crate::{LanguageServiceDatabases, TextRange};
@@ -183,6 +183,18 @@ fn source_method_callable_facts(
     receiver: &TypeFact,
     method: &str,
 ) -> Vec<CallableFacts> {
+    let mut facts = source_impl_method_callable_facts(databases, receiver, method);
+    facts.extend(source_trait_method_callable_facts(
+        databases, receiver, method,
+    ));
+    facts
+}
+
+fn source_impl_method_callable_facts(
+    databases: &LanguageServiceDatabases,
+    receiver: &TypeFact,
+    method: &str,
+) -> Vec<CallableFacts> {
     let graph = databases.hir_db().graph();
     let schema = databases.schema_db().facts();
     let owner_names = record_owner_names(receiver);
@@ -193,12 +205,6 @@ fn source_method_callable_facts(
                 return None;
             }
             let metadata = graph.impl_metadata(declaration.id)?;
-            if !matches!(
-                metadata.kind,
-                vela_hir::type_hint::ImplMetadataKind::Inherent
-            ) {
-                return None;
-            }
             let matches_owner = owner_names.iter().any(|owner| {
                 metadata
                     .target_path
@@ -210,7 +216,101 @@ fn source_method_callable_facts(
                 return None;
             }
             let method = metadata.methods.iter().find(|entry| entry.name == method)?;
-            let owner = metadata.target_path.join("::");
+            let owner = impl_method_owner_label(metadata);
+            Some(callable_facts_from_signature(
+                graph,
+                schema,
+                format!("{owner}.{}", method.name),
+                &method.signature,
+                CallableOrigin::SourceMethod,
+                true,
+            ))
+        })
+        .collect()
+}
+
+fn source_trait_method_callable_facts(
+    databases: &LanguageServiceDatabases,
+    receiver: &TypeFact,
+    method: &str,
+) -> Vec<CallableFacts> {
+    let graph = databases.hir_db().graph();
+    let schema = databases.schema_db().facts();
+    let mut facts = source_trait_receiver_method_callable_facts(graph, schema, receiver, method);
+    facts.extend(source_trait_impl_default_callable_facts(
+        graph, schema, receiver, method,
+    ));
+    facts
+}
+
+fn source_trait_receiver_method_callable_facts(
+    graph: &ModuleGraph,
+    schema: &RegistryFacts,
+    receiver: &TypeFact,
+    method: &str,
+) -> Vec<CallableFacts> {
+    let owner_names = trait_owner_names(receiver);
+    graph
+        .declarations()
+        .filter_map(|declaration| {
+            if declaration.kind != DeclarationKind::Trait
+                || !owner_names
+                    .iter()
+                    .any(|owner| declaration_name_matches(graph, declaration.id, owner))
+            {
+                return None;
+            }
+            let owner = qualified_declaration_label(graph, declaration.id);
+            let method = graph
+                .trait_shape(declaration.id)?
+                .methods
+                .iter()
+                .find(|entry| entry.name == method)?;
+            Some(callable_facts_from_signature(
+                graph,
+                schema,
+                format!("{owner}.{}", method.name),
+                &method.signature,
+                CallableOrigin::SourceMethod,
+                true,
+            ))
+        })
+        .collect()
+}
+
+fn source_trait_impl_default_callable_facts(
+    graph: &ModuleGraph,
+    schema: &RegistryFacts,
+    receiver: &TypeFact,
+    method: &str,
+) -> Vec<CallableFacts> {
+    let owner_names = record_owner_names(receiver);
+    graph
+        .declarations()
+        .filter_map(|declaration| {
+            if declaration.kind != DeclarationKind::Impl {
+                return None;
+            }
+            let metadata = graph.impl_metadata(declaration.id)?;
+            let ImplMetadataKind::Trait { trait_path } = &metadata.kind else {
+                return None;
+            };
+            if metadata.methods.iter().any(|entry| entry.name == method) {
+                return None;
+            }
+            let matches_owner = owner_names
+                .iter()
+                .any(|owner| impl_target_matches(&metadata.target_path, owner));
+            if !matches_owner {
+                return None;
+            }
+            let trait_declaration = trait_declaration_for_path(graph, trait_path)?;
+            let owner = qualified_declaration_label(graph, trait_declaration);
+            let method = graph
+                .trait_shape(trait_declaration)?
+                .methods
+                .iter()
+                .find(|entry| entry.name == method && entry.has_default)?;
             Some(callable_facts_from_signature(
                 graph,
                 schema,
@@ -440,6 +540,48 @@ fn schema_method_fact_for_receiver<'a>(
     })
 }
 
+fn impl_method_owner_label(metadata: &vela_hir::type_hint::ImplMetadata) -> String {
+    match &metadata.kind {
+        ImplMetadataKind::Inherent => metadata.target_path.join("::"),
+        ImplMetadataKind::Trait { trait_path } => {
+            format!(
+                "{} for {}",
+                trait_path.join("::"),
+                metadata.target_path.join("::")
+            )
+        }
+    }
+}
+
+fn trait_declaration_for_path(
+    graph: &ModuleGraph,
+    trait_path: &[String],
+) -> Option<vela_hir::ids::HirDeclId> {
+    let owner = trait_path.join("::");
+    graph
+        .declarations()
+        .find(|declaration| {
+            declaration.kind == DeclarationKind::Trait
+                && declaration_name_matches(graph, declaration.id, &owner)
+        })
+        .map(|declaration| declaration.id)
+}
+
+fn declaration_name_matches(
+    graph: &ModuleGraph,
+    declaration: vela_hir::ids::HirDeclId,
+    owner: &str,
+) -> bool {
+    let Some(declaration) = graph.declaration(declaration) else {
+        return false;
+    };
+    declaration.name == owner || qualified_declaration_label(graph, declaration.id) == owner
+}
+
+fn impl_target_matches(path: &[String], owner: &str) -> bool {
+    path.last().is_some_and(|name| name == owner) || path.join("::") == owner
+}
+
 fn owner_names(receiver: &TypeFact) -> Vec<String> {
     let mut owners = record_owner_names(receiver);
     if let TypeFact::Host { name } | TypeFact::Trait { name } = receiver {
@@ -450,6 +592,12 @@ fn owner_names(receiver: &TypeFact) -> Vec<String> {
             push_owner_name(&mut owners, short);
         }
     }
+    owners
+}
+
+fn trait_owner_names(receiver: &TypeFact) -> Vec<String> {
+    let mut owners = Vec::new();
+    collect_trait_owner_names(receiver, &mut owners);
     owners
 }
 
@@ -493,6 +641,44 @@ fn collect_record_owner_names(receiver: &TypeFact, owners: &mut Vec<String>) {
         | TypeFact::Enum { .. }
         | TypeFact::Host { .. }
         | TypeFact::Trait { .. }
+        | TypeFact::Module { .. } => {}
+    }
+}
+
+fn collect_trait_owner_names(receiver: &TypeFact, owners: &mut Vec<String>) {
+    match receiver {
+        TypeFact::Trait { name } => {
+            push_owner_name(owners, name);
+            if let Some(short) = name.rsplit("::").next()
+                && short != name
+            {
+                push_owner_name(owners, short);
+            }
+        }
+        TypeFact::Union(facts) => {
+            for fact in facts {
+                collect_trait_owner_names(fact, owners);
+            }
+        }
+        TypeFact::Unknown
+        | TypeFact::Never
+        | TypeFact::Any
+        | TypeFact::Primitive(_)
+        | TypeFact::Range
+        | TypeFact::Array { .. }
+        | TypeFact::Map { .. }
+        | TypeFact::Set { .. }
+        | TypeFact::Iterator { .. }
+        | TypeFact::Option { .. }
+        | TypeFact::OptionSome { .. }
+        | TypeFact::OptionNone
+        | TypeFact::Result { .. }
+        | TypeFact::ResultOk { .. }
+        | TypeFact::ResultErr { .. }
+        | TypeFact::Function { .. }
+        | TypeFact::Enum { .. }
+        | TypeFact::Host { .. }
+        | TypeFact::Record { .. }
         | TypeFact::Module { .. } => {}
     }
 }

@@ -353,6 +353,109 @@ mod tests {
     }
 
     #[test]
+    fn signature_help_resolves_source_trait_receiver_method_call() {
+        let document = DocumentId::from("/workspace/scripts/game/main.vela");
+        let text = r#"
+            trait Rewardable {
+                fn preview(self, amount: i64, bonus: i64) -> i64 { return amount + bonus }
+            }
+            pub fn main(rewardable: Rewardable) { rewardable.preview(1, 2) }
+        "#;
+        let files = vec![SourceFileSnapshot::new(document.clone(), text)];
+        let config = WorkspaceConfig::workspace([WorkspaceRoot::from("/workspace/scripts")]);
+        let project = assemble_project_sources(&config, &files, &Workspace::new().snapshot());
+        let mut databases = LanguageServiceDatabases::new();
+        databases.update(&project);
+
+        let main_line = text.lines().nth(4).expect("main line should exist");
+        let argument_offset = main_line
+            .find("2)")
+            .expect("second argument should exist in trait method call");
+        let position = Position::new(4, argument_offset);
+        let help = databases
+            .signature_help(&document, position)
+            .expect("signature help should resolve source trait receiver method");
+
+        assert_eq!(help.active_parameter(), 1);
+        assert_eq!(
+            help.signatures()[0].label(),
+            "game::main::Rewardable.preview(amount: i64, bonus: i64) -> i64"
+        );
+        assert_eq!(help.signatures()[0].parameters()[0].name(), "amount");
+        assert_eq!(help.signatures()[0].parameters()[1].name(), "bonus");
+    }
+
+    #[test]
+    fn signature_help_resolves_source_trait_impl_method_call() {
+        let document = DocumentId::from("/workspace/scripts/game/main.vela");
+        let text = r#"
+            trait Rewardable { fn grant(self, amount: i64, bonus: i64) -> i64; }
+            struct Player { level: i64 }
+            impl Rewardable for Player {
+                fn grant(self, amount: i64, bonus: i64) -> i64 { return amount + bonus }
+            }
+            pub fn main(player: Player) { player.grant(1, 2) }
+        "#;
+        let files = vec![SourceFileSnapshot::new(document.clone(), text)];
+        let config = WorkspaceConfig::workspace([WorkspaceRoot::from("/workspace/scripts")]);
+        let project = assemble_project_sources(&config, &files, &Workspace::new().snapshot());
+        let mut databases = LanguageServiceDatabases::new();
+        databases.update(&project);
+
+        let main_line = text.lines().nth(6).expect("main line should exist");
+        let argument_offset = main_line
+            .find("2)")
+            .expect("second argument should exist in trait impl method call");
+        let position = Position::new(6, argument_offset);
+        let help = databases
+            .signature_help(&document, position)
+            .expect("signature help should resolve source trait impl method");
+
+        assert_eq!(help.active_parameter(), 1);
+        assert_eq!(
+            help.signatures()[0].label(),
+            "Rewardable for Player.grant(amount: i64, bonus: i64) -> i64"
+        );
+        assert_eq!(help.signatures()[0].parameters()[0].name(), "amount");
+        assert_eq!(help.signatures()[0].parameters()[1].name(), "bonus");
+    }
+
+    #[test]
+    fn signature_help_resolves_source_trait_default_method_on_record_call() {
+        let document = DocumentId::from("/workspace/scripts/game/main.vela");
+        let text = r#"
+            trait Rewardable {
+                fn grant(self, amount: i64, bonus: i64) -> i64 { return amount + bonus }
+            }
+            struct Player { level: i64 }
+            impl Rewardable for Player {}
+            pub fn main(player: Player) { player.grant(1, 2) }
+        "#;
+        let files = vec![SourceFileSnapshot::new(document.clone(), text)];
+        let config = WorkspaceConfig::workspace([WorkspaceRoot::from("/workspace/scripts")]);
+        let project = assemble_project_sources(&config, &files, &Workspace::new().snapshot());
+        let mut databases = LanguageServiceDatabases::new();
+        databases.update(&project);
+
+        let main_line = text.lines().nth(6).expect("main line should exist");
+        let argument_offset = main_line
+            .find("2)")
+            .expect("second argument should exist in trait default method call");
+        let position = Position::new(6, argument_offset);
+        let help = databases
+            .signature_help(&document, position)
+            .expect("signature help should resolve source trait default method");
+
+        assert_eq!(help.active_parameter(), 1);
+        assert_eq!(
+            help.signatures()[0].label(),
+            "game::main::Rewardable.grant(amount: i64, bonus: i64) -> i64"
+        );
+        assert_eq!(help.signatures()[0].parameters()[0].name(), "amount");
+        assert_eq!(help.signatures()[0].parameters()[1].name(), "bonus");
+    }
+
+    #[test]
     fn signature_help_resolves_source_enum_variant_call() {
         let document = DocumentId::from("/workspace/scripts/game/main.vela");
         let text = r#"
