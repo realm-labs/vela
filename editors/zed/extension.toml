@@ -8,10 +8,7 @@ repository = "https://github.com/realm-labs/vela"
 
 [language_servers.vela-language-server]
 name = "Vela Language Server"
-language = "Vela"
-
-[languages.Vela]
-language_servers = ["vela-language-server"]
+languages = ["Vela"]
 
 [grammars.vela]
 repository = "file://./grammars/vela"

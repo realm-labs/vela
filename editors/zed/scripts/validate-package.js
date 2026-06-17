@@ -41,7 +41,14 @@ assert(
   manifest.includes("[language_servers.vela-language-server]"),
   "language server section is missing"
 );
-assert(manifest.includes("[languages.Vela]"), "Vela language section is missing");
+assert(
+  !manifest.includes("[languages."),
+  "extension.toml must not use [languages.*] tables; Zed expects language server languages lists"
+);
+assert(
+  manifest.includes('languages = ["Vela"]'),
+  "Vela language server must list the Vela language from languages/vela/config.toml"
+);
 assert(manifest.includes("[grammars.vela]"), "Vela grammar section is missing");
 assert(
   manifest.includes('repository = "file://./grammars/vela"'),
@@ -54,11 +61,6 @@ const languageConfig = read(languageConfigPath);
 assert(hasTomlValue(languageConfig, "name", '"Vela"'), "language name is missing");
 assert(hasTomlValue(languageConfig, "grammar", '"vela"'), "grammar name is missing");
 assert(hasTomlValue(languageConfig, "path_suffixes", '["vela"]'), "path suffix is missing");
-assert(
-  languageConfig.includes('language_servers = ["vela-language-server"]') ||
-    manifest.includes('language_servers = ["vela-language-server"]'),
-  "Vela language must reference the native language server"
-);
 
 const extensionRs = read("src/extension.rs");
 assert(
