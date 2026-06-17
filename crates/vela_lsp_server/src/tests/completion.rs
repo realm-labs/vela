@@ -590,6 +590,60 @@ fn lsp_type_hint_completion_uses_colon_trigger_context() {
     assert_no_completion(&response, "game::main::helper");
 }
 
+#[test]
+fn lsp_pattern_completion_projects_enum_variants() {
+    let mut server = LspServer::new();
+    let _ = response_value(server.handle_json(&request(
+        1,
+        "initialize",
+        serde_json::json!({
+            "processId": null,
+            "rootUri": "file:///workspace/scripts",
+            "capabilities": {}
+        }),
+    )));
+    let uri = "file:///workspace/scripts/game/main.vela";
+    let text = r#"
+pub enum QuestState {
+    Started
+    Completed
+}
+pub fn helper() { return 1 }
+pub fn main(state: QuestState) {
+    match state {
+        Co
+    }
+}
+"#;
+    let _ = notification_value(server.handle_json(&notification(
+        "textDocument/didOpen",
+        serde_json::json!({
+            "textDocument": {
+                "uri": uri,
+                "languageId": "vela",
+                "version": 1,
+                "text": text
+            }
+        }),
+    )));
+    let pattern_line = text.lines().nth(8).expect("pattern line should exist");
+
+    let response = response_value(server.handle_json(&request(
+        2,
+        "textDocument/completion",
+        serde_json::json!({
+            "textDocument": { "uri": uri },
+            "position": {
+                "line": 8,
+                "character": pattern_line.find("Co").expect("pattern prefix") + "Co".len()
+            }
+        }),
+    )));
+
+    assert_completion(&response, "Completed", 20, "QuestState");
+    assert_no_completion(&response, "helper");
+}
+
 fn assert_completion(response: &serde_json::Value, label: &str, kind: u8, detail: &str) {
     assert_eq!(response["result"]["isIncomplete"], false);
     let Some(items) = response["result"]["items"].as_array() else {

@@ -317,8 +317,11 @@ Purpose: replace coarse global completion with context-specific producers.
 
 - [ ] Split completion into focused modules such as context, item, relevance,
   producers, render, and tests when file size or responsibility requires it.
-- [ ] Replace `CompletionContextKind::Global` style dispatch with producers
+- [~] Replace `CompletionContextKind::Global` style dispatch with producers
   selected by `CursorContextKind`.
+  Pattern cursor contexts now route to a dedicated source/schema enum-variant
+  producer and have a native LSP projection fixture; broader expression/global
+  producer separation remains open.
 - [ ] Add keyword and snippet completions as first-class completion kinds.
 - [ ] Add item-boundary producers for `fn`, `struct`, `enum`, `trait`, `impl`,
   `let`, `const`, imports, modules, and source declarations that are legal in

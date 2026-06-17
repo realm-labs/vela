@@ -475,6 +475,88 @@ pub fn main() {
 }
 
 #[test]
+fn pattern_completion_suggests_source_enum_variants() {
+    let document = DocumentId::from("/workspace/scripts/game/main.vela");
+    let text = r#"
+pub enum QuestState {
+    Started
+    Completed
+}
+pub fn helper() { return 1 }
+pub fn main(state: QuestState) {
+    match state {
+        Co
+    }
+}
+"#;
+    let files = vec![SourceFileSnapshot::new(document.clone(), text)];
+    let config = WorkspaceConfig::workspace([WorkspaceRoot::from("/workspace/scripts")]);
+    let project = assemble_project_sources(&config, &files, &Workspace::new().snapshot());
+    let mut databases = LanguageServiceDatabases::new();
+    databases.update(&project);
+    let pattern_line = text.lines().nth(8).expect("pattern line should exist");
+
+    let completions = databases.completion_items(
+        &document,
+        Position::new(
+            8,
+            pattern_line.find("Co").expect("pattern prefix") + "Co".len(),
+        ),
+    );
+
+    assert_eq!(completions.context().kind(), CompletionContextKind::Pattern);
+    assert_completion(&completions, "Completed", CompletionKind::Variant);
+    assert_no_completion(&completions, "helper");
+}
+
+#[test]
+fn pattern_completion_suggests_schema_enum_variants() {
+    let document = DocumentId::from("/workspace/scripts/game/main.vela");
+    let text = r#"
+pub fn activate() { return true }
+pub fn main(state: QuestState) {
+    match state {
+        Act
+    }
+}
+"#;
+    let files = vec![SourceFileSnapshot::new(document.clone(), text)];
+    let config = WorkspaceConfig::workspace([WorkspaceRoot::from("/workspace/scripts")]);
+    let project = assemble_project_sources(&config, &files, &Workspace::new().snapshot());
+    let mut databases = LanguageServiceDatabases::new();
+    let mut schema = RegistryFacts::default();
+    schema.insert_type(
+        "QuestState",
+        TypeFact::enum_type("QuestState", None::<String>),
+    );
+    schema.insert_variant(
+        "QuestState",
+        "Active",
+        TypeFact::enum_type("QuestState", Some("Active")),
+    );
+    schema.insert_variant(
+        "QuestState",
+        "Finished",
+        TypeFact::enum_type("QuestState", Some("Finished")),
+    );
+    databases.set_schema_facts(schema);
+    databases.update(&project);
+    let pattern_line = text.lines().nth(4).expect("pattern line should exist");
+
+    let completions = databases.completion_items(
+        &document,
+        Position::new(
+            4,
+            pattern_line.find("Act").expect("pattern prefix") + "Act".len(),
+        ),
+    );
+
+    assert_eq!(completions.context().kind(), CompletionContextKind::Pattern);
+    assert_completion(&completions, "Active", CompletionKind::Variant);
+    assert_no_completion(&completions, "activate");
+}
+
+#[test]
 fn member_context_is_detected_without_global_fallback() {
     let document = DocumentId::from("/workspace/scripts/game/main.vela");
     let files = vec![SourceFileSnapshot::new(

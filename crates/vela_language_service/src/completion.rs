@@ -73,6 +73,7 @@ pub enum CompletionContextKind {
     Member,
     RecordField,
     MapKey,
+    Pattern,
     NamedArgument,
     LambdaParameter,
     TypeHint,
@@ -211,6 +212,7 @@ impl LanguageServiceDatabases {
             CompletionContextKind::Member => self.member_completion_items(document_id, &context),
             CompletionContextKind::RecordField => self.record_field_completion_items(&context),
             CompletionContextKind::MapKey => self.map_key_completion_items(&context),
+            CompletionContextKind::Pattern => self.pattern_completion_items(&query, &context),
             CompletionContextKind::NamedArgument => self.named_argument_completion_items(&context),
             CompletionContextKind::LambdaParameter => {
                 self.lambda_parameter_completion_items(document_id, &context)
@@ -441,6 +443,23 @@ impl LanguageServiceDatabases {
         )
     }
 
+    fn pattern_completion_items(
+        &self,
+        query: &QueryContext<'_>,
+        context: &CompletionContext,
+    ) -> Vec<CompletionItem> {
+        let current_module = query
+            .module_path()
+            .map(|module| module.segments().to_vec())
+            .unwrap_or_default();
+        let graph = self.hir_db().graph();
+        let mut items = script_pattern_variant_completions(graph, &current_module);
+        items.extend(schema_pattern_variant_completions(self.schema_db().facts()));
+        dedupe_and_filter_service_items(items, |item| {
+            label_segment_matches(item.label(), context.prefix())
+        })
+    }
+
     fn lambda_parameter_completion_items(
         &self,
         document_id: &DocumentId,
@@ -569,6 +588,20 @@ fn completion_context(query: &QueryContext<'_>) -> CompletionContext {
             member_receiver: None,
             record_constructor: None,
             map_key: Some(map_key),
+            call_arguments: None,
+            lambda_parameter: None,
+        };
+    }
+
+    if cursor.kind() == CursorContextKind::Pattern {
+        return CompletionContext {
+            kind: CompletionContextKind::Pattern,
+            prefix: prefix.to_owned(),
+            replace_range: TextRange::new(prefix_start, offset),
+            module_base: None,
+            member_receiver: None,
+            record_constructor: None,
+            map_key: None,
             call_arguments: None,
             lambda_parameter: None,
         };
@@ -982,6 +1015,58 @@ fn schema_record_field_completions(
             label: field.name,
             kind: CompletionKind::Field,
             detail: field.fact.display_name(),
+            insert_text: None,
+            sort_text: None,
+        })
+        .collect()
+}
+
+fn script_pattern_variant_completions(
+    graph: &ModuleGraph,
+    current_module: &[String],
+) -> Vec<CompletionItem> {
+    graph
+        .declarations()
+        .filter(|declaration| declaration.kind == DeclarationKind::Enum)
+        .filter_map(|declaration| {
+            let shape = graph.enum_shape(declaration.id)?;
+            let detail = enum_pattern_detail(graph, declaration, current_module);
+            Some(shape.variants.iter().map(move |variant| CompletionItem {
+                label: variant.name.clone(),
+                kind: CompletionKind::Variant,
+                detail: detail.clone(),
+                insert_text: None,
+                sort_text: None,
+            }))
+        })
+        .flatten()
+        .collect()
+}
+
+fn enum_pattern_detail(
+    graph: &ModuleGraph,
+    declaration: &vela_hir::module_graph::Declaration,
+    current_module: &[String],
+) -> String {
+    let Some(module_path) = graph.module_path(declaration.module) else {
+        return declaration.name.clone();
+    };
+    if module_path.segments() == current_module {
+        declaration.name.clone()
+    } else {
+        format!("{}::{}", module_path.join(), declaration.name)
+    }
+}
+
+fn schema_pattern_variant_completions(
+    schema: &vela_analysis::registry::RegistryFacts,
+) -> Vec<CompletionItem> {
+    schema
+        .variants()
+        .map(|variant| CompletionItem {
+            label: variant.name,
+            kind: CompletionKind::Variant,
+            detail: variant.owner,
             insert_text: None,
             sort_text: None,
         })
