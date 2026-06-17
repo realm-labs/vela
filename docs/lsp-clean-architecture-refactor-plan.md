@@ -327,8 +327,10 @@ Purpose: classify the cursor once and reuse it across features.
   selection consumes that shared range instead of running its own first-step
   token scanner. Lambda-parameter contexts now expose the current parameter
   list range, and lambda completion consumes that shared text instead of
-  finding the `|` pipe locally. Broader callable semantic facts remain
-  feature-owned follow-up work.
+  finding the `|` pipe locally. Definition and hover now consume the shared
+  identifier token range from `QueryContext` instead of recomputing the cursor
+  token locally. Broader callable semantic facts remain feature-owned
+  follow-up work.
 - [x] Keep classification tolerant of incomplete source and parser recovery.
 - [x] Route completion, hover, signature help, definition, and rename prepare
   through the shared context where practical.

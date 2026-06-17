@@ -219,27 +219,12 @@ fn local_declaration_at_token<'a>(
 
 fn definition_token_at(query: &QueryContext<'_>) -> Option<DefinitionToken> {
     let text = query.text();
-    let offset = LineIndex::new(text).offset(query.position());
-    let range = identifier_range_at(text, offset)?;
+    let range = query.identifier_range()?;
     Some(DefinitionToken {
         text: text[range.start..range.end].to_owned(),
         range,
         member_receiver: query.member_receiver_range(),
     })
-}
-
-fn identifier_range_at(text: &str, offset: usize) -> Option<TextRange> {
-    let offset = offset.min(text.len());
-    let start = text[..offset]
-        .char_indices()
-        .rev()
-        .find_map(|(index, ch)| (!is_identifier_continue(ch)).then_some(index + ch.len_utf8()))
-        .unwrap_or(0);
-    let end = text[offset..]
-        .char_indices()
-        .find_map(|(index, ch)| (!is_identifier_continue(ch)).then_some(offset + index))
-        .unwrap_or(text.len());
-    (start < end).then(|| TextRange::new(start, end))
 }
 
 fn diagnostic_range(text: &str, range: TextRange) -> DiagnosticRange {
