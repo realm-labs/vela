@@ -1,10 +1,12 @@
+use std::collections::HashSet;
+
 use vela_analysis::{registry::RegistryFacts, type_fact::TypeFact};
 use vela_common::SourceId;
 use vela_syntax::ast::SourceFile;
 use vela_syntax::lexer::lex;
 use vela_syntax::token::TokenKind;
 
-use crate::{LanguageServiceDatabases, TextRange, member_access, query_context};
+use crate::{LanguageServiceDatabases, TextRange, member_access, path_calls, query_context};
 
 use super::{
     Reference, ReferenceKind, ReferenceToken, diagnostic_range, name_range_in_text, path_ending_at,
@@ -118,6 +120,7 @@ pub(super) fn schema_variant_references(
 
     for source in databases.source_db().records().values() {
         references.extend(schema_variant_use_references_for_source(
+            databases,
             databases.schema_db().facts(),
             source,
             target,
@@ -472,6 +475,7 @@ fn schema_record_variant_pattern_field_references_for_source(
 }
 
 fn schema_variant_use_references_for_source(
+    databases: &LanguageServiceDatabases,
     schema: &RegistryFacts,
     source: &crate::SourceRecord,
     target: &SchemaVariantReferenceTarget,
@@ -479,8 +483,21 @@ fn schema_variant_use_references_for_source(
     let mut references = Vec::new();
     let source_id = source.source_id();
     let text = source.text();
-    for range in schema_variant_ranges(source_id, text, &target.variant) {
-        if schema_variant_target_for_path_range(schema, text, range).as_ref() == Some(target) {
+    let mut shared_ranges = HashSet::new();
+    if let Some(parsed) = databases.parse_db().parsed_source(source.document_id()) {
+        for site in path_calls::path_expression_sites(parsed, text) {
+            if site
+                .path
+                .last()
+                .is_none_or(|segment| segment != &target.variant)
+            {
+                continue;
+            }
+            if schema_variant_target_for_path(schema, &site.path).as_ref() != Some(target) {
+                continue;
+            }
+            let range = site.segment_range;
+            shared_ranges.insert((range.start, range.end));
             references.push(Reference {
                 document_id: source.document_id().clone(),
                 range: diagnostic_range(text, range),
@@ -488,7 +505,30 @@ fn schema_variant_use_references_for_source(
             });
         }
     }
+    for range in schema_variant_ranges(source_id, text, &target.variant) {
+        if shared_ranges.contains(&(range.start, range.end)) {
+            continue;
+        }
+        push_schema_variant_use_reference_for_range(schema, source, target, range, &mut references);
+    }
     references
+}
+
+fn push_schema_variant_use_reference_for_range(
+    schema: &RegistryFacts,
+    source: &crate::SourceRecord,
+    target: &SchemaVariantReferenceTarget,
+    range: TextRange,
+    references: &mut Vec<Reference>,
+) {
+    let text = source.text();
+    if schema_variant_target_for_path_range(schema, text, range).as_ref() == Some(target) {
+        references.push(Reference {
+            document_id: source.document_id().clone(),
+            range: diagnostic_range(text, range),
+            kind: schema_variant_reference_kind(text, range),
+        });
+    }
 }
 
 fn schema_record_variant_pattern_field_use_target(

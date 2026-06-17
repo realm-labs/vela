@@ -382,7 +382,9 @@ Purpose: classify the cursor once and reuse it across features.
   constructor-like uses while retaining pattern fallback scanning for spanless
   pattern paths. Source enum variant references now consume the shared parsed
   expression path sites for constructor-like uses while retaining the existing
-  fallback scanner for pattern paths.
+  fallback scanner for pattern paths. Schema variant references now use the
+  same parsed expression path sites for constructor-like uses while preserving
+  fallback scanning for pattern paths.
   `CursorContext` now exposes the identifier token range under the request
   cursor, and rename target selection consumes that shared range instead of
   running its own first-step token scanner. Lambda-parameter contexts now
