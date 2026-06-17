@@ -83,7 +83,13 @@ be deleted when their replacements are verified.
 ## 3. rust-analyzer Ideas To Borrow
 
 Borrow the architecture ideas, not Rust-specific implementation complexity.
-Useful reference areas in rust-analyzer:
+Use this local checkout as the source reference root:
+
+```text
+~/CLionProjects/rust-analyzer
+```
+
+Useful reference areas in rust-analyzer, with paths relative to that root:
 
 - `crates/ide-completion/src/lib.rs`: completion is split into context
   construction and completion production. The engine produces candidates and
