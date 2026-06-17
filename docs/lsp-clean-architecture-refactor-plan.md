@@ -317,14 +317,15 @@ Purpose: replace coarse global completion with context-specific producers.
 
 - [~] Split completion into focused modules such as context, item, relevance,
   producers, render, and tests when file size or responsibility requires it.
-  Item, type-hint, map-key, named-argument, lambda-parameter, and pattern
-  producers now live in focused modules; broader context/relevance/render
-  separation remains open.
+  Item, statement, type-hint, map-key, named-argument, lambda-parameter, and
+  pattern producers now live in focused modules; broader
+  context/relevance/render separation remains open.
 - [~] Replace `CompletionContextKind::Global` style dispatch with producers
   selected by `CursorContextKind`.
   Pattern cursor contexts now route to a dedicated source/schema enum-variant
-  producer and have a native LSP projection fixture; broader expression/global
-  producer separation remains open.
+  producer and statement cursor contexts now route to statement keyword
+  completions; both have native LSP projection fixtures. Broader
+  expression/global producer separation remains open.
 - [ ] Add keyword and snippet completions as first-class completion kinds.
 - [ ] Add item-boundary producers for `fn`, `struct`, `enum`, `trait`, `impl`,
   `let`, `const`, imports, modules, and source declarations that are legal in

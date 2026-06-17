@@ -102,6 +102,37 @@ fn item_boundary_completion_ranks_struct_keyword_before_globals() {
 }
 
 #[test]
+fn statement_completion_suggests_statement_keywords() {
+    let document = DocumentId::from("/workspace/scripts/game/main.vela");
+    let text = "pub fn helper() { return 1 }\npub fn main() { return 1 }";
+    let files = vec![SourceFileSnapshot::new(document.clone(), text)];
+    let config = WorkspaceConfig::workspace([WorkspaceRoot::from("/workspace/scripts")]);
+    let project = assemble_project_sources(&config, &files, &Workspace::new().snapshot());
+    let mut databases = LanguageServiceDatabases::new();
+    databases.update(&project);
+    let main_line = text.lines().nth(1).expect("main line should exist");
+
+    let completions = databases.completion_items(
+        &document,
+        Position::new(
+            1,
+            main_line
+                .find("return")
+                .expect("statement start should exist"),
+        ),
+    );
+
+    assert_eq!(
+        completions.context().kind(),
+        CompletionContextKind::Statement
+    );
+    assert_completion(&completions, "let", CompletionKind::Keyword);
+    assert_completion(&completions, "return", CompletionKind::Keyword);
+    assert_completion(&completions, "helper", CompletionKind::Function);
+    assert_no_completion(&completions, "fn");
+}
+
+#[test]
 fn member_completion_uses_host_schema_facts() {
     let document = DocumentId::from("/workspace/scripts/game/main.vela");
     let text = "pub fn main(player: Player) { player.le }";

@@ -218,6 +218,51 @@ fn lsp_item_boundary_completion_projects_keyword_items() {
 }
 
 #[test]
+fn lsp_statement_completion_projects_statement_keywords() {
+    let mut server = LspServer::new();
+    let _ = response_value(server.handle_json(&request(
+        1,
+        "initialize",
+        serde_json::json!({
+            "processId": null,
+            "rootUri": "file:///workspace/scripts",
+            "capabilities": {}
+        }),
+    )));
+    let uri = "file:///workspace/scripts/game/main.vela";
+    let text = "pub fn helper() { return 1 }\npub fn main() { return 1 }";
+    let _ = notification_value(server.handle_json(&notification(
+        "textDocument/didOpen",
+        serde_json::json!({
+            "textDocument": {
+                "uri": uri,
+                "languageId": "vela",
+                "version": 1,
+                "text": text
+            }
+        }),
+    )));
+    let main_line = text.lines().nth(1).expect("main line should exist");
+
+    let response = response_value(server.handle_json(&request(
+        2,
+        "textDocument/completion",
+        serde_json::json!({
+            "textDocument": { "uri": uri },
+            "position": {
+                "line": 1,
+                "character": main_line.find("return").expect("statement start should exist")
+            }
+        }),
+    )));
+
+    assert_completion_insert_text(&response, "let", 14, "local binding", "let ");
+    assert_completion_insert_text(&response, "return", 14, "return statement", "return ");
+    assert_completion(&response, "helper", 3, "Function() -> unknown");
+    assert_no_completion(&response, "fn");
+}
+
+#[test]
 fn lsp_member_completion_uses_host_schema_facts() {
     let root = temp_workspace();
     let config_path = root.join("vela.toml");

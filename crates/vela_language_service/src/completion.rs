@@ -23,6 +23,7 @@ mod lambda_parameter;
 mod map_key;
 mod named_argument;
 mod pattern;
+mod statement;
 mod type_hint;
 
 use item::item_keyword_completions;
@@ -34,6 +35,7 @@ use map_key::{
 };
 use named_argument::{named_argument_completion_context, script_function_parameter_completions};
 use pattern::pattern_completion_items as pattern_context_completion_items;
+use statement::statement_keyword_completions;
 use type_hint::{type_hint_completion_context, type_hint_completion_items};
 
 #[derive(Debug, Clone, Copy, Eq, Ord, PartialEq, PartialOrd)]
@@ -70,6 +72,7 @@ impl From<AnalysisCompletionKind> for CompletionKind {
 #[derive(Debug, Clone, Copy, Eq, PartialEq)]
 pub enum CompletionContextKind {
     Item,
+    Statement,
     Global,
     ModulePath,
     Member,
@@ -210,6 +213,7 @@ impl LanguageServiceDatabases {
         let items = match context.kind {
             CompletionContextKind::Global => self.global_completion_items(&query, &context),
             CompletionContextKind::Item => self.item_completion_items(&context),
+            CompletionContextKind::Statement => self.statement_completion_items(&query, &context),
             CompletionContextKind::ModulePath => self.module_path_completion_items(&context),
             CompletionContextKind::Member => self.member_completion_items(document_id, &context),
             CompletionContextKind::RecordField => self.record_field_completion_items(&context),
@@ -261,6 +265,18 @@ impl LanguageServiceDatabases {
 
     fn item_completion_items(&self, context: &CompletionContext) -> Vec<CompletionItem> {
         dedupe_and_filter_service_items(item_keyword_completions(context.prefix()), |item| {
+            label_segment_matches(item.label(), context.prefix())
+        })
+    }
+
+    fn statement_completion_items(
+        &self,
+        query: &QueryContext<'_>,
+        context: &CompletionContext,
+    ) -> Vec<CompletionItem> {
+        let mut items = statement_keyword_completions(context.prefix());
+        items.extend(self.global_completion_items(query, context));
+        dedupe_and_filter_service_items(items, |item| {
             label_segment_matches(item.label(), context.prefix())
         })
     }
@@ -643,6 +659,20 @@ fn completion_context(query: &QueryContext<'_>) -> CompletionContext {
 
     if cursor.kind() == CursorContextKind::Item {
         return CompletionContext::item(prefix_start, prefix);
+    }
+
+    if cursor.kind() == CursorContextKind::Statement {
+        return CompletionContext {
+            kind: CompletionContextKind::Statement,
+            prefix: prefix.to_owned(),
+            replace_range: TextRange::new(prefix_start, offset),
+            module_base: None,
+            member_receiver: None,
+            record_constructor: None,
+            map_key: None,
+            call_arguments: None,
+            lambda_parameter: None,
+        };
     }
 
     CompletionContext::global(prefix_start, prefix)
