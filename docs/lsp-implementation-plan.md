@@ -311,6 +311,7 @@ Purpose: expose the service through a native LSP binary.
 Tests:
 
 - [x] `lsp_initialize_reports_capabilities`
+- [x] `lsp_initialized_notification_has_no_response`
 - [x] `lsp_did_open_publishes_diagnostics`
 - [x] `lsp_did_change_replaces_document_text`
 - [x] `lsp_did_change_applies_incremental_text_edit`
@@ -413,6 +414,7 @@ Tests:
 - [x] `type_hint_completion_suggests_only_type_items`
 - [x] `lsp_type_hint_completion_uses_colon_trigger_context`
 - [x] `member_completion_uses_host_schema_facts`
+- [x] `lsp_member_completion_uses_host_schema_facts`
 - [x] `member_completion_uses_schema_trait_method_facts`
 - [x] `lsp_member_completion_uses_schema_trait_method_facts`
 - [x] `module_completion_follows_import_context`
@@ -919,7 +921,9 @@ Tests:
 - [x] `lsp_private_function_rename_updates_imports`
 - [x] `private_value_declaration_rename_updates_uses`
 - [x] `lsp_private_value_declaration_rename_updates_uses`
+- [x] `lsp_private_type_declaration_rename_updates_type_hints`
 - [x] `public_export_rename_reports_hot_reload_risk`
+- [x] `lsp_public_export_rename_reports_hot_reload_risk`
 - [x] `rename_rejects_scope_collision`
 - [x] `rename_rejects_module_declaration_collision`
 - [x] `lsp_rename_rejects_module_declaration_collision`
