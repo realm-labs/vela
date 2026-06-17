@@ -15,6 +15,62 @@ fn lsp_declaration_follows_open_overlay_local_binding() {
 }
 
 #[test]
+fn lsp_definition_follows_function_call_after_qualified_stdlib_call() {
+    let mut server = LspServer::new();
+    let _ = response_value(server.handle_json(&request(
+        1,
+        "initialize",
+        serde_json::json!({
+            "processId": null,
+            "rootUri": "file:///workspace/scripts",
+            "capabilities": {}
+        }),
+    )));
+    let uri = "file:///workspace/scripts/game/main.vela";
+    let text = r#"
+fn add_mixed(value) {
+    math::abs(value);
+    return value + 1i8;
+}
+
+fn main() {
+    return add_mixed(1);
+}
+"#;
+    let _ = notification_value(server.handle_json(&notification(
+        "textDocument/didOpen",
+        serde_json::json!({
+            "textDocument": {
+                "uri": uri,
+                "languageId": "vela",
+                "version": 1,
+                "text": text
+            }
+        }),
+    )));
+    let call_line = text.lines().nth(7).expect("call line should exist");
+
+    let response = response_value(server.handle_json(&request(
+        2,
+        "textDocument/definition",
+        serde_json::json!({
+            "textDocument": { "uri": uri },
+            "position": {
+                "line": 7,
+                "character": call_line
+                    .find("add_mixed")
+                    .expect("call should contain function name")
+            }
+        }),
+    )));
+
+    assert_eq!(response["result"]["uri"], uri);
+    assert_eq!(response["result"]["range"]["start"]["line"], 1);
+    assert_eq!(response["result"]["range"]["start"]["character"], 3);
+    assert_eq!(response["result"]["range"]["end"]["character"], 12);
+}
+
+#[test]
 fn lsp_definition_follows_schema_source_span() {
     assert_schema_source_navigation("textDocument/definition");
 }

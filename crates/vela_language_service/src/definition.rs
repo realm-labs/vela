@@ -69,7 +69,7 @@ impl LanguageServiceDatabases {
                 .find(|declaration| {
                     declaration.span.source == source_id && declaration.span.contains(offset)
                 })
-                .and_then(|declaration| self.definition_from_span(declaration.span))
+                .and_then(|declaration| self.definition_from_declaration(declaration))
         })
     }
 
@@ -95,6 +95,25 @@ impl LanguageServiceDatabases {
         Some(Definition {
             document_id: source.document_id().clone(),
             range,
+        })
+    }
+
+    fn definition_from_declaration(
+        &self,
+        declaration: &vela_hir::module_graph::Declaration,
+    ) -> Option<Definition> {
+        let source = self.source_record_for(declaration.span.source)?;
+        let start = usize::try_from(declaration.span.start).ok()?;
+        let end = usize::try_from(declaration.span.end).ok()?;
+        let range = name_range_in_text(
+            source.text(),
+            TextRange::new(start, end),
+            declaration.name.as_str(),
+        )
+        .unwrap_or(TextRange::new(start, end));
+        Some(Definition {
+            document_id: source.document_id().clone(),
+            range: diagnostic_range(source.text(), range),
         })
     }
 
@@ -167,7 +186,7 @@ fn definition_from_resolution_at_token(
         }
         BindingResolution::Declaration(declaration) => {
             let declaration = graph.declaration(*declaration)?;
-            databases.definition_from_span(declaration.span)
+            databases.definition_from_declaration(declaration)
         }
         BindingResolution::Import(_) | BindingResolution::QualifiedPath(_) => None,
     }
@@ -427,6 +446,40 @@ mod tests {
     }
 
     #[test]
+    fn definition_follows_function_call_after_qualified_stdlib_call() {
+        let document = DocumentId::from("/workspace/scripts/game/main.vela");
+        let text = r#"
+fn add_mixed(value) {
+    math::abs(value);
+    return value + 1i8;
+}
+
+fn main() {
+    return add_mixed(1);
+}
+"#;
+        let databases = databases_for(vec![SourceFileSnapshot::new(document.clone(), text)]);
+
+        let definition = databases
+            .definition(
+                &document,
+                Position::new(
+                    7,
+                    text.lines()
+                        .nth(7)
+                        .expect("call line")
+                        .find("add_mixed")
+                        .expect("call should exist"),
+                ),
+            )
+            .expect("definition should resolve function call");
+
+        assert_eq!(definition.document_id(), &document);
+        assert_eq!(definition.range().start().line, 1);
+        assert_eq!(definition.range().start().character, 3);
+    }
+
+    #[test]
     fn type_definition_follows_schema_source_span() {
         let main = DocumentId::from("/workspace/scripts/game/main.vela");
         let schema_source = DocumentId::from("/workspace/scripts/schema_defs.vela");
@@ -498,7 +551,10 @@ mod tests {
 
         assert_eq!(definition.document_id(), &helper);
         assert_eq!(definition.range().start().line, 0);
-        assert_eq!(definition.range().start().character, 0);
+        assert_eq!(
+            definition.range().start().character,
+            helper_text.find("grant").expect("helper function name")
+        );
     }
 
     #[test]
