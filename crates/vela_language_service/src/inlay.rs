@@ -14,6 +14,9 @@ use vela_syntax::ast::{
     Stmt, StmtKind, TypeHint,
 };
 
+use crate::callable_context::{
+    CallableFacts, CallableParameterFacts, callable_facts, member_callable_facts,
+};
 use crate::{
     DiagnosticRange, DocumentId, LanguageServiceDatabases, LineIndex, Position, TextRange,
 };
@@ -396,8 +399,8 @@ impl LanguageServiceDatabases {
         context: ParameterHintContext<'_>,
         hints: &mut Vec<InlayHint>,
     ) {
-        let Some(signature) = self
-            .call_signature_candidates(callee, args, context.source_id, context.source_text)
+        let Some(callable) = self
+            .call_callable_candidates(callee, args, context.source_id, context.source_text)
             .into_iter()
             .next()
         else {
@@ -417,11 +420,7 @@ impl LanguageServiceDatabases {
             if !context.range.contains(offset) {
                 continue;
             }
-            let Some(label) = signature
-                .parameters()
-                .get(index)
-                .and_then(parameter_hint_label)
-            else {
+            let Some(label) = callable.params().get(index).and_then(parameter_hint_label) else {
                 continue;
             };
             hints.push(InlayHint {
@@ -432,49 +431,37 @@ impl LanguageServiceDatabases {
         }
     }
 
-    fn call_signature_candidates(
+    fn call_callable_candidates(
         &self,
         callee: &Expr,
         args: &[Argument],
         source_id: SourceId,
         source_text: &str,
-    ) -> Vec<crate::SignatureInformation> {
-        if let Some((callee_text, receiver_range)) =
-            member_callee_text_and_range(callee, args, source_text)
-            && callee_text.contains('.')
-        {
-            return self.signature_candidates_for_member_call(
+    ) -> Vec<CallableFacts> {
+        if let Some((method, receiver_range)) = member_method_and_receiver_range(callee) {
+            return member_callable_facts(
+                self,
                 source_id,
-                callee_text,
                 receiver_range,
-                args_prefix(args, source_text),
+                method,
+                &args_prefix(args, source_text),
             );
         }
 
         let Some(callee) = callee_label(callee) else {
             return Vec::new();
         };
-        self.signature_candidates(&callee)
+        callable_facts(self, &callee)
     }
 }
 
-fn member_callee_text_and_range(
-    callee: &Expr,
-    args: &[Argument],
-    source_text: &str,
-) -> Option<(String, TextRange)> {
-    let ExprKind::Field { base, .. } = &callee.kind else {
+fn member_method_and_receiver_range(callee: &Expr) -> Option<(&str, TextRange)> {
+    let ExprKind::Field { base, name } = &callee.kind else {
         return None;
     };
     let start = usize::try_from(base.span.start).ok()?;
     let receiver_end = usize::try_from(base.span.end).ok()?;
-    let first_arg_start = args
-        .first()
-        .and_then(|arg| usize::try_from(arg.value.span.start).ok())?;
-    let open = source_text[..first_arg_start].rfind('(')?;
-    let end = source_text[..open].trim_end().len();
-    let text = source_text.get(start..end)?.trim().to_owned();
-    (!text.is_empty()).then(|| (text, TextRange::new(start, receiver_end)))
+    Some((name.as_str(), TextRange::new(start, receiver_end)))
 }
 
 fn args_prefix(args: &[Argument], source_text: &str) -> String {
@@ -727,7 +714,7 @@ impl TypeHintCollector<'_, '_> {
     }
 }
 
-fn parameter_hint_label(parameter: &crate::SignatureParameter) -> Option<String> {
+fn parameter_hint_label(parameter: &CallableParameterFacts) -> Option<String> {
     if !is_stable_type_fact(parameter.type_fact()) {
         return None;
     }

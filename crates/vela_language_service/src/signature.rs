@@ -107,22 +107,6 @@ impl LanguageServiceDatabases {
         self.signature_candidates_from_callables(&callables)
     }
 
-    pub(crate) fn signature_candidates_for_member_call(
-        &self,
-        source_id: SourceId,
-        callee: String,
-        member_receiver: TextRange,
-        args_prefix: String,
-    ) -> Vec<SignatureInformation> {
-        let context = CallContext {
-            callee,
-            member_receiver: Some(member_receiver),
-            args_prefix,
-            active_parameter: 0,
-        };
-        self.signature_candidates_for_context(None, source_id, &context)
-    }
-
     fn signature_candidates_for_context(
         &self,
         query: Option<&QueryContext<'_>>,

@@ -343,6 +343,10 @@ Purpose: classify the cursor once and reuse it across features.
   with parameter names, default markers, type facts, and return facts; named
   argument completion and source function signature help consume that shared
   callable model instead of rebuilding source function facts separately.
+  Parameter inlay hints now consume AST-owned member receiver spans and shared
+  callable facts directly, deleting the feature-local member callee
+  source-slice scanner while leaving the broader feature-local cursor scanner
+  audit open.
   `CursorContext` now exposes the identifier token range under the request
   cursor, and rename target selection consumes that shared range instead of
   running its own first-step token scanner. Lambda-parameter contexts now
