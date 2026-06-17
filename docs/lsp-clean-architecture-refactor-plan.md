@@ -443,8 +443,10 @@ Purpose: replace coarse global completion with context-specific producers.
   documentation, relevance, deprecation, symbol identity, and resolve payload.
   The accumulator populates derived lookup/filter/range/text-edit and
   relevance metadata; schema-backed type, field, method, and enum-variant
-  producers now populate docs and schema symbol identity. Producer-owned
-  deprecation and resolve payloads remain open.
+  producers now populate docs and schema symbol identity. Source declaration
+  producers now preserve fully qualified source symbol identity while keeping
+  current-module display labels relative. Producer-owned deprecation and
+  resolve payloads remain open.
 
 Tests:
 

@@ -190,6 +190,10 @@ fn statement_completion_suggests_statement_keywords() {
     let helper = completion(&completions, "helper");
     assert_eq!(helper.insert_text(), Some("helper($0)"));
     assert_eq!(helper.insert_format(), CompletionInsertFormat::Snippet);
+    assert_eq!(
+        helper.symbol(),
+        Some(&CompletionSymbol::Source("game::main::helper".to_owned()))
+    );
 }
 
 #[test]

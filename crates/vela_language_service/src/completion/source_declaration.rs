@@ -10,7 +10,8 @@ use vela_hir::module_graph::ModuleGraph;
 use crate::{QueryContext, TextRange};
 
 use super::{
-    CompletionItem, analysis_item::dedupe_and_filter_analysis_items, label_segment_matches,
+    CompletionItem, CompletionSymbol, accumulator::CompletionAccumulator,
+    analysis_item::service_item_from_analysis_completion, label_segment_matches,
 };
 
 pub(super) fn source_const_completion_items(
@@ -61,26 +62,38 @@ fn source_declaration_completion_items(
         .map(|module| module.join())
         .unwrap_or_default();
     let facts = AnalysisFacts::from_module_graph(graph);
-    dedupe_and_filter_analysis_items(
-        relative_current_module_items(declaration_completions(graph, &facts), &current_module),
-        replace_range,
-        prefix,
-        None,
-        |item| accepts_kind(item.kind) && label_segment_matches(&item.label, prefix),
-    )
+    let mut accumulator = CompletionAccumulator::new(replace_range, prefix);
+    for (item, symbol) in
+        relative_current_module_items(declaration_completions(graph, &facts), &current_module)
+    {
+        if accepts_kind(item.kind) && label_segment_matches(&item.label, prefix) {
+            accumulator.add(
+                service_item_from_analysis_completion(item, prefix)
+                    .with_symbol(CompletionSymbol::Source(symbol)),
+            );
+        }
+    }
+    accumulator.into_items()
 }
 
 fn relative_current_module_items(
     items: Vec<AnalysisCompletionItem>,
     current_module: &str,
-) -> Vec<AnalysisCompletionItem> {
+) -> Vec<(AnalysisCompletionItem, String)> {
     if current_module.is_empty() {
-        return items;
+        return items
+            .into_iter()
+            .map(|item| {
+                let symbol = item.label.clone();
+                (item, symbol)
+            })
+            .collect();
     }
     let prefix = format!("{current_module}::");
     items
         .into_iter()
         .map(|mut item| {
+            let symbol = item.label.clone();
             if let Some(relative_label) = item
                 .label
                 .strip_prefix(&prefix)
@@ -88,7 +101,7 @@ fn relative_current_module_items(
             {
                 item.label = relative_label.to_owned();
             }
-            item
+            (item, symbol)
         })
         .collect()
 }
