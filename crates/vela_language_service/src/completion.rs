@@ -1,10 +1,7 @@
 use vela_analysis::completion::member_completions;
-use vela_analysis::facts::AnalysisFacts;
 use vela_analysis::hints::type_fact_from_hint;
 use vela_analysis::registry::RegistryFacts;
 use vela_analysis::type_fact::TypeFact;
-use vela_common::Span;
-use vela_hir::binding::{BindingMap, BindingResolution, LocalBinding};
 use vela_hir::module_graph::ModuleGraph;
 use vela_hir::type_hint::HirTypeHint;
 
@@ -71,13 +68,13 @@ impl LanguageServiceDatabases {
             CompletionContextKind::Item => self.item_completion_items(&context),
             CompletionContextKind::Statement => self.statement_completion_items(&query, &context),
             CompletionContextKind::ModulePath => self.module_path_completion_items(&context),
-            CompletionContextKind::Member => self.member_completion_items(document_id, &context),
+            CompletionContextKind::Member => self.member_completion_items(&query, &context),
             CompletionContextKind::RecordField => self.record_field_completion_items(&context),
             CompletionContextKind::MapKey => self.map_key_completion_items(&context),
             CompletionContextKind::Pattern => self.pattern_completion_items(&query, &context),
             CompletionContextKind::NamedArgument => self.named_argument_completion_items(&context),
             CompletionContextKind::LambdaParameter => {
-                self.lambda_parameter_completion_items(document_id, &context)
+                self.lambda_parameter_completion_items(&query, &context)
             }
             CompletionContextKind::TypeHint => self.type_hint_completion_items(&context),
         };
@@ -133,13 +130,13 @@ impl LanguageServiceDatabases {
 
     fn member_completion_items(
         &self,
-        document_id: &DocumentId,
+        query: &QueryContext<'_>,
         context: &CompletionContext,
     ) -> Vec<CompletionItem> {
         let Some(receiver) = context.member_receiver.as_ref() else {
             return Vec::new();
         };
-        let Some(receiver_fact) = self.member_receiver_fact(document_id, receiver) else {
+        let Some(receiver_fact) = query.type_fact_for_range(self, receiver.range) else {
             return Vec::new();
         };
         let schema = self.schema_db().facts();
@@ -155,29 +152,6 @@ impl LanguageServiceDatabases {
             })
             .collect::<Vec<_>>();
         dedupe_and_filter_service_items(items, context.replace_range(), context.prefix(), |_| true)
-    }
-
-    fn member_receiver_fact(
-        &self,
-        document_id: &DocumentId,
-        receiver: &MemberReceiver,
-    ) -> Option<TypeFact> {
-        let source = self.source_db().records().get(document_id)?;
-        let source_id = source.source_id();
-        let start = u32::try_from(receiver.range.start).ok()?;
-        let end = u32::try_from(receiver.range.end).ok()?;
-        let receiver_span = Span::new(source_id, start, end);
-        let graph = self.hir_db().graph();
-        let facts = AnalysisFacts::from_module_graph(graph);
-
-        graph.declarations().find_map(|declaration| {
-            if declaration.span.source != source_id || !declaration.span.contains(start) {
-                return None;
-            }
-            let bindings = graph.bindings(declaration.id)?;
-            let resolution = bindings.resolution_at_span(receiver_span)?;
-            type_fact_for_resolution(resolution, bindings, &facts, self.schema_db().facts())
-        })
     }
 
     fn record_field_completion_items(&self, context: &CompletionContext) -> Vec<CompletionItem> {
@@ -242,14 +216,13 @@ impl LanguageServiceDatabases {
 
     fn lambda_parameter_completion_items(
         &self,
-        document_id: &DocumentId,
+        query: &QueryContext<'_>,
         context: &CompletionContext,
     ) -> Vec<CompletionItem> {
         let Some(lambda_parameter) = context.lambda_parameter.as_ref() else {
             return Vec::new();
         };
-        let Some(receiver_fact) =
-            self.member_receiver_fact(document_id, &lambda_parameter.receiver)
+        let Some(receiver_fact) = query.type_fact_for_range(self, lambda_parameter.receiver.range)
         else {
             return Vec::new();
         };
@@ -342,32 +315,6 @@ fn label_segment_matches(label: &str, prefix: &str) -> bool {
             .rsplit("::")
             .next()
             .is_some_and(|segment| segment.starts_with(prefix))
-}
-
-fn type_fact_for_resolution(
-    resolution: &BindingResolution,
-    bindings: &BindingMap,
-    facts: &AnalysisFacts,
-    schema: &vela_analysis::registry::RegistryFacts,
-) -> Option<TypeFact> {
-    match resolution {
-        BindingResolution::Local(local) => {
-            let binding = bindings.local(*local)?;
-            let fact = facts.local(*local).cloned();
-            fact.filter(|fact| !matches!(fact, TypeFact::Unknown))
-                .or_else(|| schema_fact_for_local_hint(binding, schema))
-        }
-        BindingResolution::Declaration(declaration) => facts.declaration(*declaration).cloned(),
-        BindingResolution::Import(_) | BindingResolution::QualifiedPath(_) => None,
-    }
-}
-
-fn schema_fact_for_local_hint(
-    binding: &LocalBinding,
-    schema: &vela_analysis::registry::RegistryFacts,
-) -> Option<TypeFact> {
-    let hint = binding.type_hint.as_ref()?;
-    schema_fact_for_hint(hint, schema)
 }
 
 fn schema_fact_for_hint(

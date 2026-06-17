@@ -93,7 +93,8 @@ impl LanguageServiceDatabases {
         let facts = AnalysisFacts::from_module_graph(graph);
 
         if let Some(receiver) = token.member_receiver
-            && let Some(hover) = self.member_hover(document_id, receiver, &token, range)
+            && let Some(receiver_fact) = query.type_fact_for_range(self, receiver)
+            && let Some(hover) = self.member_hover(&receiver_fact, &token, range)
         {
             return Some(hover);
         }
@@ -154,33 +155,31 @@ impl LanguageServiceDatabases {
 
     fn member_hover(
         &self,
-        document_id: &DocumentId,
-        receiver: TextRange,
+        receiver_fact: &TypeFact,
         token: &HoverToken,
         range: DiagnosticRange,
     ) -> Option<Hover> {
-        let receiver_fact = member_receiver_fact(self, document_id, receiver)?;
         if let Some(hover) =
-            script_member_hover(self.hir_db().graph(), &receiver_fact, &token.text, range)
+            script_member_hover(self.hir_db().graph(), receiver_fact, &token.text, range)
         {
             return Some(hover);
         }
         if let Some(hover) =
-            script_method_hover(self.hir_db().graph(), &receiver_fact, &token.text, range)
+            script_method_hover(self.hir_db().graph(), receiver_fact, &token.text, range)
         {
             return Some(hover);
         }
         if let Some(hover) =
-            script_trait_method_hover(self.hir_db().graph(), &receiver_fact, &token.text, range)
+            script_trait_method_hover(self.hir_db().graph(), receiver_fact, &token.text, range)
         {
             return Some(hover);
         }
         if let Some(hover) =
-            schema::member_hover(self.schema_db().facts(), &receiver_fact, &token.text, range)
+            schema::member_hover(self.schema_db().facts(), receiver_fact, &token.text, range)
         {
             return Some(hover);
         }
-        stdlib_method_hover(&receiver_fact, &token.text, range)
+        stdlib_method_hover(receiver_fact, &token.text, range)
     }
 
     fn import_hover(
@@ -759,64 +758,6 @@ fn type_hint_hover(schema: &RegistryFacts, name: &str, range: DiagnosticRange) -
             .display_name(),
         docs: None,
     })
-}
-
-fn member_receiver_fact(
-    databases: &LanguageServiceDatabases,
-    document_id: &DocumentId,
-    receiver: TextRange,
-) -> Option<TypeFact> {
-    let source = databases.source_db().records().get(document_id)?;
-    let source_id = source.source_id();
-    let start = u32::try_from(receiver.start).ok()?;
-    let end = u32::try_from(receiver.end).ok()?;
-    let receiver_span = Span::new(source_id, start, end);
-    let graph = databases.hir_db().graph();
-    let facts = AnalysisFacts::from_module_graph(graph);
-
-    graph.declarations().find_map(|declaration| {
-        if declaration.span.source != source_id || !declaration.span.contains(start) {
-            return None;
-        }
-        let bindings = graph.bindings(declaration.id)?;
-        let resolution = bindings.resolution_at_span(receiver_span)?;
-        type_fact_for_resolution(resolution, bindings, &facts, databases.schema_db().facts())
-    })
-}
-
-fn type_fact_for_resolution(
-    resolution: &BindingResolution,
-    bindings: &BindingMap,
-    facts: &AnalysisFacts,
-    schema: &RegistryFacts,
-) -> Option<TypeFact> {
-    match resolution {
-        BindingResolution::Local(local) => {
-            let binding = bindings.local(*local)?;
-            facts
-                .local(*local)
-                .cloned()
-                .filter(|fact| !matches!(fact, TypeFact::Unknown))
-                .or_else(|| schema_fact_for_local_hint(binding, schema))
-        }
-        BindingResolution::Declaration(declaration) => facts.declaration(*declaration).cloned(),
-        BindingResolution::Import(_) | BindingResolution::QualifiedPath(_) => None,
-    }
-}
-
-fn schema_fact_for_local_hint(binding: &LocalBinding, schema: &RegistryFacts) -> Option<TypeFact> {
-    let hint = binding.type_hint.as_ref()?;
-    if hint.args.is_empty() {
-        let qualified = hint.path.join("::");
-        schema
-            .type_fact(&qualified)
-            .or_else(|| hint.path.last().and_then(|name| schema.type_fact(name)))
-            .or_else(|| schema.trait_fact(&qualified))
-            .or_else(|| hint.path.last().and_then(|name| schema.trait_fact(name)))
-            .cloned()
-    } else {
-        None
-    }
 }
 
 fn record_owner_names(fact: &TypeFact) -> Vec<String> {

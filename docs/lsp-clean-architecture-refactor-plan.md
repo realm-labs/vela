@@ -333,16 +333,19 @@ Purpose: classify the cursor once and reuse it across features.
   for method callees, and signature help consumes that shared call receiver
   range for method signature lookup. Definition and hover now consume the
   shared member receiver range from `QueryContext` for schema/member lookup
-  instead of re-scanning member receivers locally. `CursorContext` now exposes
-  the identifier token range under the request cursor, and rename target
-  selection consumes that shared range instead of running its own first-step
-  token scanner. Lambda-parameter contexts now expose the current parameter
-  list range, and lambda completion consumes that shared text instead of
-  finding the `|` pipe locally. Definition and hover now consume the shared
-  identifier token range from `QueryContext` instead of recomputing the cursor
-  token locally, and references plus call hierarchy preparation use the same
-  shared identifier token for their initial request target. Broader callable
-  semantic facts remain feature-owned follow-up work.
+  instead of re-scanning member receivers locally. `QueryContext` now exposes
+  shared range-to-`TypeFact` lookup with schema type-hint fallback; member
+  completion, lambda-parameter completion, hover, and definition consume it for
+  receiver semantic facts instead of keeping separate receiver fact walkers.
+  `CursorContext` now exposes the identifier token range under the request
+  cursor, and rename target selection consumes that shared range instead of
+  running its own first-step token scanner. Lambda-parameter contexts now
+  expose the current parameter list range, and lambda completion consumes that
+  shared text instead of finding the `|` pipe locally. Definition and hover now
+  consume the shared identifier token range from `QueryContext` instead of
+  recomputing the cursor token locally, and references plus call hierarchy
+  preparation use the same shared identifier token for their initial request
+  target. Broader callable semantic facts remain feature-owned follow-up work.
 - [x] Keep classification tolerant of incomplete source and parser recovery.
 - [x] Route completion, hover, signature help, definition, and rename prepare
   through the shared context where practical.

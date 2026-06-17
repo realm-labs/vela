@@ -1,4 +1,4 @@
-use vela_analysis::{facts::AnalysisFacts, registry::RegistryFacts, type_fact::TypeFact};
+use vela_analysis::{registry::RegistryFacts, type_fact::TypeFact};
 use vela_common::{SourceId, Span};
 use vela_hir::binding::{BindingMap, BindingResolution, LocalBinding};
 
@@ -41,7 +41,10 @@ impl LanguageServiceDatabases {
         let offset = u32::try_from(token.range.start).ok()?;
         let graph = self.hir_db().graph();
 
-        if let Some(definition) = self.schema_member_definition(document_id, &token) {
+        if let Some(receiver) = token.member_receiver
+            && let Some(receiver_fact) = query.type_fact_for_range(self, receiver)
+            && let Some(definition) = self.schema_member_definition(&receiver_fact, &token)
+        {
             return Some(definition);
         }
 
@@ -136,12 +139,10 @@ impl LanguageServiceDatabases {
 
     fn schema_member_definition(
         &self,
-        document_id: &DocumentId,
+        receiver_fact: &TypeFact,
         token: &DefinitionToken,
     ) -> Option<Definition> {
-        let receiver = token.member_receiver?;
-        let receiver_fact = member_receiver_fact(self, document_id, receiver)?;
-        let owner = fact_owner_name(&receiver_fact)?;
+        let owner = fact_owner_name(receiver_fact)?;
         let locations = self.schema_db().source_locations();
         let span = locations
             .field_span(&owner, &token.text)
@@ -240,64 +241,6 @@ fn name_range_in_text(text: &str, range: TextRange, name: &str) -> Option<TextRa
     let relative = slice.find(name)?;
     let start = range.start + relative;
     Some(TextRange::new(start, start + name.len()))
-}
-
-fn member_receiver_fact(
-    databases: &LanguageServiceDatabases,
-    document_id: &DocumentId,
-    receiver: TextRange,
-) -> Option<TypeFact> {
-    let source = databases.source_db().records().get(document_id)?;
-    let source_id = source.source_id();
-    let start = u32::try_from(receiver.start).ok()?;
-    let end = u32::try_from(receiver.end).ok()?;
-    let receiver_span = Span::new(source_id, start, end);
-    let graph = databases.hir_db().graph();
-    let facts = AnalysisFacts::from_module_graph(graph);
-
-    graph.declarations().find_map(|declaration| {
-        if declaration.span.source != source_id || !declaration.span.contains(start) {
-            return None;
-        }
-        let bindings = graph.bindings(declaration.id)?;
-        let resolution = bindings.resolution_at_span(receiver_span)?;
-        type_fact_for_resolution(resolution, bindings, &facts, databases.schema_db().facts())
-    })
-}
-
-fn type_fact_for_resolution(
-    resolution: &BindingResolution,
-    bindings: &BindingMap,
-    facts: &AnalysisFacts,
-    schema: &RegistryFacts,
-) -> Option<TypeFact> {
-    match resolution {
-        BindingResolution::Local(local) => {
-            let binding = bindings.local(*local)?;
-            facts
-                .local(*local)
-                .cloned()
-                .filter(|fact| !matches!(fact, TypeFact::Unknown))
-                .or_else(|| schema_fact_for_local_hint(binding, schema))
-        }
-        BindingResolution::Declaration(declaration) => facts.declaration(*declaration).cloned(),
-        BindingResolution::Import(_) | BindingResolution::QualifiedPath(_) => None,
-    }
-}
-
-fn schema_fact_for_local_hint(binding: &LocalBinding, schema: &RegistryFacts) -> Option<TypeFact> {
-    let hint = binding.type_hint.as_ref()?;
-    if hint.args.is_empty() {
-        let qualified = hint.path.join("::");
-        schema
-            .type_fact(&qualified)
-            .or_else(|| hint.path.last().and_then(|name| schema.type_fact(name)))
-            .or_else(|| schema.trait_fact(&qualified))
-            .or_else(|| hint.path.last().and_then(|name| schema.trait_fact(name)))
-            .cloned()
-    } else {
-        None
-    }
 }
 
 fn fact_owner_name(fact: &TypeFact) -> Option<String> {

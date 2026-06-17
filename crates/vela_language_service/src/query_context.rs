@@ -5,9 +5,13 @@ use crate::{
     Position, SourceRecord, SourceVersion, TextRange, WorkspaceGeneration, WorkspaceSnapshot,
     cursor_context_at,
 };
-use vela_common::SourceId;
-use vela_hir::binding::{BindingMap, LocalBinding};
+use vela_analysis::facts::AnalysisFacts;
+use vela_analysis::registry::RegistryFacts;
+use vela_analysis::type_fact::TypeFact;
+use vela_common::{SourceId, Span};
+use vela_hir::binding::{BindingMap, BindingResolution, LocalBinding};
 use vela_hir::module_graph::ModulePath;
+use vela_hir::type_hint::HirTypeHint;
 
 #[derive(Debug, Clone, Copy, Eq, PartialEq)]
 pub struct CallArgumentFacts<'a> {
@@ -195,6 +199,28 @@ impl<'a> QueryContext<'a> {
     }
 
     #[must_use]
+    pub fn type_fact_for_range(
+        &self,
+        databases: &LanguageServiceDatabases,
+        range: TextRange,
+    ) -> Option<TypeFact> {
+        let source_id = self.source_id()?;
+        let start = u32::try_from(range.start).ok()?;
+        let end = u32::try_from(range.end).ok()?;
+        let span = Span::new(source_id, start, end);
+        let graph = databases.hir_db().graph();
+        let facts = AnalysisFacts::from_module_graph(graph);
+        graph.declarations().find_map(|declaration| {
+            if declaration.span.source != source_id || !declaration.span.contains(start) {
+                return None;
+            }
+            let bindings = graph.bindings(declaration.id)?;
+            let resolution = bindings.resolution_at_span(span)?;
+            type_fact_for_resolution(resolution, bindings, &facts, databases.schema_db().facts())
+        })
+    }
+
+    #[must_use]
     pub const fn cursor(&self) -> &CursorContext {
         &self.cursor
     }
@@ -317,6 +343,43 @@ fn active_call_parameter_index(args_text: &str) -> usize {
         }
     }
     active
+}
+
+fn type_fact_for_resolution(
+    resolution: &BindingResolution,
+    bindings: &BindingMap,
+    facts: &AnalysisFacts,
+    schema: &RegistryFacts,
+) -> Option<TypeFact> {
+    match resolution {
+        BindingResolution::Local(local) => {
+            let binding = bindings.local(*local)?;
+            facts
+                .local(*local)
+                .cloned()
+                .filter(|fact| !matches!(fact, TypeFact::Unknown))
+                .or_else(|| schema_fact_for_local_hint(binding, schema))
+        }
+        BindingResolution::Declaration(declaration) => facts.declaration(*declaration).cloned(),
+        BindingResolution::Import(_) | BindingResolution::QualifiedPath(_) => None,
+    }
+}
+
+fn schema_fact_for_local_hint(binding: &LocalBinding, schema: &RegistryFacts) -> Option<TypeFact> {
+    schema_fact_for_hint(binding.type_hint.as_ref()?, schema)
+}
+
+fn schema_fact_for_hint(hint: &HirTypeHint, schema: &RegistryFacts) -> Option<TypeFact> {
+    if !hint.args.is_empty() {
+        return None;
+    }
+    let qualified = hint.path.join("::");
+    schema
+        .type_fact(&qualified)
+        .or_else(|| schema.trait_fact(&qualified))
+        .or_else(|| hint.path.last().and_then(|name| schema.type_fact(name)))
+        .or_else(|| hint.path.last().and_then(|name| schema.trait_fact(name)))
+        .cloned()
 }
 
 fn query_bindings<'a>(
@@ -516,6 +579,17 @@ mod tests {
         assert_eq!(
             method_call_context.call_member_receiver_text(),
             Some("scores")
+        );
+        assert_eq!(
+            method_call_context
+                .type_fact_for_range(
+                    &databases,
+                    method_call_context
+                        .call_member_receiver_range()
+                        .expect("call member receiver")
+                )
+                .map(|fact| fact.display_name()),
+            Some("Array(i64)".to_owned())
         );
         assert_eq!(method_call_context.call_args_prefix_text(), Some(""));
         assert_eq!(method_call_context.call_active_parameter_index(), Some(0));
