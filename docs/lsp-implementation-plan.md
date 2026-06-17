@@ -1143,6 +1143,8 @@ Purpose: make the server robust in real projects.
   - [x] Created and changed `.vela` files update disk snapshots.
   - [x] Deleted `.vela` files remove disk snapshots and republish open diagnostics.
   - [x] Renamed `.vela` files update module paths.
+  - [x] Deleted `vela.toml` files clear configuration diagnostics and fall
+    back to workspace-root/editor configuration.
 - [x] Rebuild module path index after file moves.
 - [x] Surface configuration diagnostics.
 - [x] Support workspace folder changes.
@@ -1153,6 +1155,7 @@ Tests:
 - [x] `file_delete_reports_removed_imports`
 - [x] `file_rename_updates_module_path`
 - [x] `invalid_vela_toml_publishes_config_diagnostic`
+- [x] `deleting_vela_toml_clears_config_diagnostic`
 - [x] `schema_watch_publishes_invalid_schema_diagnostic`
 - [x] `schema_watch_clears_diagnostic_after_valid_reload`
 - [x] `workspace_folder_change_reindexes_project`

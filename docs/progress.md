@@ -212,6 +212,10 @@ M20.5 Phase 8 update: source and schema trait hovers now use a first-class
 type-hint hover now consults module-graph type declarations before falling
 back to schema or unknown type-hint degradation.
 
+M20.5 Phase 16 update: deleting `vela.toml` now has explicit watcher coverage
+that clears published configuration diagnostics and returns the server to
+workspace-root/editor fallback configuration.
+
 M20.5 Phase 7 update: completion now resolves schema-backed trait receiver
 method members in addition to schema-backed host receiver members.
 `textDocument/signatureHelp` now resolves stdlib function calls, typed

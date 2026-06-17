@@ -485,6 +485,59 @@ mod file_watching {
     }
 
     #[test]
+    fn deleting_vela_toml_clears_config_diagnostic() {
+        let root = temp_workspace();
+        let config_path = root.join("vela.toml");
+        fs::write(&config_path, "[workspace]\nroots = \"scripts\"\n")
+            .expect("invalid vela.toml should be writable");
+        let mut server = LspServer::new();
+        let _ = server.handle_json(&request(
+            1,
+            "initialize",
+            serde_json::json!({
+                "processId": null,
+                "rootUri": file_uri(&root),
+                "capabilities": {}
+            }),
+        ));
+        let invalid = notification_values(server.handle_json(&notification(
+            "workspace/didChangeWatchedFiles",
+            serde_json::json!({
+                "changes": [{ "uri": file_uri(&config_path), "type": 1 }]
+            }),
+        )));
+        assert_eq!(invalid.len(), 1);
+        assert_eq!(invalid[0]["params"]["uri"], file_uri(&config_path));
+        let diagnostics = invalid[0]["params"]["diagnostics"]
+            .as_array()
+            .expect("config diagnostics should be an array");
+        assert!(
+            diagnostics
+                .iter()
+                .any(|diagnostic| diagnostic["code"] == "project::diagnostic"),
+            "{diagnostics:?}"
+        );
+
+        fs::remove_file(&config_path).expect("invalid vela.toml should be removable");
+        let cleared = notification_values(server.handle_json(&notification(
+            "workspace/didChangeWatchedFiles",
+            serde_json::json!({
+                "changes": [{ "uri": file_uri(&config_path), "type": 3 }]
+            }),
+        )));
+
+        assert_eq!(cleared.len(), 1);
+        assert_eq!(cleared[0]["params"]["uri"], file_uri(&config_path));
+        assert!(
+            cleared[0]["params"]["diagnostics"]
+                .as_array()
+                .is_some_and(Vec::is_empty),
+            "{cleared:?}"
+        );
+        fs::remove_dir_all(&root).expect("temporary workspace should be removable");
+    }
+
+    #[test]
     fn schema_watch_publishes_invalid_schema_diagnostic() {
         let root = temp_workspace();
         let config_path = root.join("vela.toml");
