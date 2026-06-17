@@ -505,6 +505,27 @@ fn schema_variant_use_references_for_source(
             });
         }
     }
+    if let Some(parsed) = databases.parse_db().parsed_source(source.document_id()) {
+        for site in path_calls::pattern_path_sites(parsed, text) {
+            if site
+                .path
+                .last()
+                .is_none_or(|segment| segment != &target.variant)
+            {
+                continue;
+            }
+            if schema_variant_target_for_path(schema, &site.path).as_ref() != Some(target) {
+                continue;
+            }
+            let range = site.segment_range;
+            shared_ranges.insert((range.start, range.end));
+            references.push(Reference {
+                document_id: source.document_id().clone(),
+                range: diagnostic_range(text, range),
+                kind: schema_variant_reference_kind(text, range),
+            });
+        }
+    }
     for range in schema_variant_ranges(source_id, text, &target.variant) {
         if shared_ranges.contains(&(range.start, range.end)) {
             continue;

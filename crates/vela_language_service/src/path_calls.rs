@@ -1,7 +1,7 @@
 use vela_common::Span;
 use vela_syntax::ast::{
     Argument, Block, ElseBranch, Expr, ExprKind, IfExpr, InterpolatedStringPart, ItemKind,
-    MapEntry, MatchArm, SourceFile, Stmt, StmtKind,
+    MapEntry, MatchExpr, Pattern, SourceFile, Stmt, StmtKind,
 };
 
 use crate::TextRange;
@@ -18,11 +18,18 @@ pub(crate) struct PathExpressionSite {
     pub(crate) segment_range: TextRange,
 }
 
+#[derive(Debug, Clone, Eq, PartialEq)]
+pub(crate) struct PatternPathSite {
+    pub(crate) path: Vec<String>,
+    pub(crate) segment_range: TextRange,
+}
+
 pub(crate) fn path_call_sites(source: &SourceFile, text: &str) -> Vec<PathCallSite> {
     let mut collector = PathCallCollector {
         text,
         call_sites: Vec::new(),
         expression_sites: Vec::new(),
+        pattern_sites: Vec::new(),
     };
     collector.collect_source_file(source);
     collector.call_sites
@@ -33,15 +40,28 @@ pub(crate) fn path_expression_sites(source: &SourceFile, text: &str) -> Vec<Path
         text,
         call_sites: Vec::new(),
         expression_sites: Vec::new(),
+        pattern_sites: Vec::new(),
     };
     collector.collect_source_file(source);
     collector.expression_sites
+}
+
+pub(crate) fn pattern_path_sites(source: &SourceFile, text: &str) -> Vec<PatternPathSite> {
+    let mut collector = PathCallCollector {
+        text,
+        call_sites: Vec::new(),
+        expression_sites: Vec::new(),
+        pattern_sites: Vec::new(),
+    };
+    collector.collect_source_file(source);
+    collector.pattern_sites
 }
 
 struct PathCallCollector<'a> {
     text: &'a str,
     call_sites: Vec<PathCallSite>,
     expression_sites: Vec<PathExpressionSite>,
+    pattern_sites: Vec<PatternPathSite>,
 }
 
 impl PathCallCollector<'_> {
@@ -126,7 +146,20 @@ impl PathCallCollector<'_> {
                 }
             }
             StmtKind::Break | StmtKind::Continue => {}
-            StmtKind::For { iterable, body, .. } => {
+            StmtKind::For {
+                index_pattern,
+                pattern,
+                iterable,
+                body,
+            } => {
+                let pattern_region = TextRange::new(
+                    usize::try_from(statement.span.start).unwrap_or_default(),
+                    usize::try_from(iterable.span.start).unwrap_or_default(),
+                );
+                if let Some(index_pattern) = index_pattern {
+                    self.collect_pattern(index_pattern, pattern_region);
+                }
+                self.collect_pattern(pattern, pattern_region);
                 self.collect_expr(iterable);
                 self.collect_block(body);
             }
@@ -196,9 +229,7 @@ impl PathCallCollector<'_> {
             ExprKind::If(if_expr) => self.collect_if(if_expr),
             ExprKind::Match(match_expr) => {
                 self.collect_expr(&match_expr.scrutinee);
-                for arm in &match_expr.arms {
-                    self.collect_match_arm(arm);
-                }
+                self.collect_match(match_expr);
             }
             ExprKind::Block(block) => self.collect_block(block),
         }
@@ -224,11 +255,21 @@ impl PathCallCollector<'_> {
         }
     }
 
-    fn collect_match_arm(&mut self, arm: &MatchArm) {
-        if let Some(guard) = &arm.guard {
-            self.collect_expr(guard);
+    fn collect_match(&mut self, match_expr: &MatchExpr) {
+        let mut arm_start = usize::try_from(match_expr.scrutinee.span.end).unwrap_or_default();
+        for arm in &match_expr.arms {
+            let arm_end = arm
+                .guard
+                .as_ref()
+                .map_or(arm.body.span.start, |guard| guard.span.start);
+            let arm_end = usize::try_from(arm_end).unwrap_or_default();
+            self.collect_pattern(&arm.pattern, TextRange::new(arm_start, arm_end));
+            if let Some(guard) = &arm.guard {
+                self.collect_expr(guard);
+            }
+            self.collect_expr(&arm.body);
+            arm_start = usize::try_from(arm.body.span.end).unwrap_or(arm_start);
         }
-        self.collect_expr(&arm.body);
     }
 
     fn record_path_call(&mut self, callee: &Expr) {
@@ -259,6 +300,42 @@ impl PathCallCollector<'_> {
             segment_range,
         });
     }
+
+    fn collect_pattern(&mut self, pattern: &Pattern, search_range: TextRange) {
+        match pattern {
+            Pattern::Path(path) => self.record_pattern_path(path, search_range),
+            Pattern::TupleVariant { path, fields } => {
+                self.record_pattern_path(path, search_range);
+                for field in fields {
+                    self.collect_pattern(field, search_range);
+                }
+            }
+            Pattern::RecordVariant { path, fields } => {
+                self.record_pattern_path(path, search_range);
+                for field in fields {
+                    if let Some(pattern) = &field.pattern {
+                        let field_start =
+                            usize::try_from(field.span.start).unwrap_or(search_range.start);
+                        self.collect_pattern(
+                            pattern,
+                            TextRange::new(field_start, search_range.end),
+                        );
+                    }
+                }
+            }
+            Pattern::Binding(_) | Pattern::Wildcard | Pattern::Literal(_) => {}
+        }
+    }
+
+    fn record_pattern_path(&mut self, path: &[String], search_range: TextRange) {
+        let Some(segment_range) = path_last_segment_range(self.text, search_range, path) else {
+            return;
+        };
+        self.pattern_sites.push(PatternPathSite {
+            path: path.to_vec(),
+            segment_range,
+        });
+    }
 }
 
 fn last_segment_range(text: &str, span: Span, segment: &str) -> Option<TextRange> {
@@ -268,6 +345,18 @@ fn last_segment_range(text: &str, span: Span, segment: &str) -> Option<TextRange
         let start = range.start + offset;
         let end = start + matched.len();
         is_identifier_boundary(text, start, end).then(|| TextRange::new(start, end))
+    })
+}
+
+fn path_last_segment_range(text: &str, range: TextRange, path: &[String]) -> Option<TextRange> {
+    let last_segment = path.last()?;
+    let joined = path.join("::");
+    let slice = text.get(range.start..range.end)?;
+    slice.find(&joined).and_then(|offset| {
+        let path_start = range.start + offset;
+        let path_end = path_start + joined.len();
+        is_identifier_boundary(text, path_start, path_end)
+            .then(|| TextRange::new(path_end - last_segment.len(), path_end))
     })
 }
 
@@ -319,6 +408,42 @@ fn main(state: QuestState) {
         assert!(sites.contains(&PathExpressionSite {
             path: vec!["QuestState".to_owned(), "Active".to_owned()],
             segment_range: TextRange::new(record_start, record_start + "Active".len()),
+        }));
+    }
+
+    #[test]
+    fn pattern_path_sites_include_match_and_for_patterns() {
+        let source = "\
+fn main(states) {
+    for QuestState::Active { count } in states {}
+    match state {
+        QuestState::Done => 1
+        QuestState::Active { count } => count
+    }
+}";
+        let parsed = parse_source(SourceId::new(1), source);
+
+        let sites = pattern_path_sites(&parsed, source);
+
+        let for_start =
+            source.find("QuestState::Active").expect("for pattern") + "QuestState::".len();
+        let done_start =
+            source.find("QuestState::Done").expect("match path pattern") + "QuestState::".len();
+        let match_active_start = source
+            .rfind("QuestState::Active")
+            .expect("match record pattern")
+            + "QuestState::".len();
+        assert!(sites.contains(&PatternPathSite {
+            path: vec!["QuestState".to_owned(), "Active".to_owned()],
+            segment_range: TextRange::new(for_start, for_start + "Active".len()),
+        }));
+        assert!(sites.contains(&PatternPathSite {
+            path: vec!["QuestState".to_owned(), "Done".to_owned()],
+            segment_range: TextRange::new(done_start, done_start + "Done".len()),
+        }));
+        assert!(sites.contains(&PatternPathSite {
+            path: vec!["QuestState".to_owned(), "Active".to_owned()],
+            segment_range: TextRange::new(match_active_start, match_active_start + "Active".len()),
         }));
     }
 }

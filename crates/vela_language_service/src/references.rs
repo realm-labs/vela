@@ -767,6 +767,26 @@ fn enum_variant_use_references_for_source(
             );
         }
     }
+    if let Some(parsed) = databases.parse_db().parsed_source(source.document_id()) {
+        for site in path_calls::pattern_path_sites(parsed, text) {
+            if site
+                .path
+                .last()
+                .is_none_or(|segment| segment != &target.variant)
+            {
+                continue;
+            }
+            let range = site.segment_range;
+            shared_ranges.insert((range.start, range.end));
+            push_enum_variant_use_reference_for_range(
+                graph,
+                source,
+                target,
+                range,
+                &mut references,
+            );
+        }
+    }
     for range in path_segment_ranges(source_id, text, &target.variant) {
         if shared_ranges.contains(&(range.start, range.end)) {
             continue;

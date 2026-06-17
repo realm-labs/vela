@@ -378,18 +378,15 @@ Purpose: classify the cursor once and reuse it across features.
   text, and schema function rename target selection consumes the same shared
   parsed path-call sites before falling back to legacy call-name
   reconstruction. Source enum variant rename edit collection now consumes
-  shared parsed expression path sites for constructor-like uses and leaves
-  pattern path uses on the existing scanner until pattern paths carry source
-  spans. Schema
-  variant rename edit collection uses the same parsed expression path sites for
-  constructor-like uses while retaining pattern fallback scanning for spanless
-  pattern paths, and schema variant rename target selection consumes those
-  parsed expression path sites before falling back to legacy path
-  reconstruction. Source enum variant references now consume the shared parsed
-  expression path sites for constructor-like uses while retaining the existing
-  fallback scanner for pattern paths. Schema variant references now use the
-  same parsed expression path sites for constructor-like uses while preserving
-  fallback scanning for pattern paths. Schema variant go-to-definition now
+  shared parsed expression and pattern path sites for constructor-like and
+  pattern uses before falling back to the legacy token scanner. Schema
+  variant rename edit collection uses the same parsed expression and pattern
+  path sites, and schema variant rename target selection consumes expression
+  path sites before falling back to legacy path reconstruction. Source enum
+  variant references now consume shared parsed expression and pattern path
+  sites before the fallback scanner. Schema variant references now use the
+  same parsed expression and pattern path sites before fallback scanning.
+  Schema variant go-to-definition now
   resolves constructor-like expression paths from the shared parsed path sites
   before falling back to the legacy token path reconstruction.
   `CursorContext` now exposes the identifier token range under the request

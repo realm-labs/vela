@@ -178,6 +178,28 @@ fn push_enum_variant_use_edits(
                 );
             }
         }
+        if let Some(parsed) = databases.parse_db().parsed_source(source.document_id()) {
+            for site in path_calls::pattern_path_sites(parsed, text) {
+                if site
+                    .path
+                    .last()
+                    .is_none_or(|segment| segment != &target.variant)
+                {
+                    continue;
+                }
+                let range = site.segment_range;
+                shared_ranges.insert((range.start, range.end));
+                push_enum_variant_use_edit_for_range(
+                    graph,
+                    source,
+                    text,
+                    range,
+                    target,
+                    new_name,
+                    edits_by_document,
+                );
+            }
+        }
         for range in path_segment_ranges(source_id, text, &target.variant) {
             if shared_ranges.contains(&(range.start, range.end)) {
                 continue;
