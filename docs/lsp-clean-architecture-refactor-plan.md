@@ -412,9 +412,9 @@ Purpose: replace coarse global completion with context-specific producers.
   in expression position.
   Module-path expression completion now includes source and schema enum
   variants for `Enum::Va` style constructors. Expression producer separation
-  now has focused local-binding, source const/function/type, schema
-  type/function, stdlib function, source module, and expression coordinator
-  producer modules; finer builtin value, method, and variant producer families
+  now has focused local-binding, builtin-value, source const/function/type,
+  schema type/function, stdlib function, source module, and expression
+  coordinator producer modules; finer method and variant producer families
   remain open.
 - [x] Add type producers for builtin types, script types, schema types,
   modules, traits, and type aliases when those exist.

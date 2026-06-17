@@ -61,6 +61,33 @@ fn expression_completion_uses_schema_facts() {
 }
 
 #[test]
+fn expression_completion_suggests_builtin_values() {
+    let document = DocumentId::from("/workspace/scripts/game/main.vela");
+    let text = "pub fn main() { f }";
+    let files = vec![SourceFileSnapshot::new(document.clone(), text)];
+    let config = WorkspaceConfig::workspace([WorkspaceRoot::from("/workspace/scripts")]);
+    let project = assemble_project_sources(&config, &files, &Workspace::new().snapshot());
+    let mut databases = LanguageServiceDatabases::new();
+    databases.update(&project);
+
+    let completions = databases.completion_items(
+        &document,
+        Position::new(0, text.find("f }").expect("value prefix") + "f".len()),
+    );
+
+    assert_eq!(
+        completions.context().kind(),
+        CompletionContextKind::Expression
+    );
+    let value = completion(&completions, "false");
+    assert_eq!(value.kind(), CompletionKind::Value);
+    assert_eq!(value.detail(), "bool");
+    assert_eq!(value.sort_text(), Some("0005_00_false"));
+    assert_no_completion(&completions, "true");
+    assert_no_completion(&completions, "null");
+}
+
+#[test]
 fn expression_completion_carries_schema_function_metadata() {
     let document = DocumentId::from("/workspace/scripts/game/main.vela");
     let text = "pub fn main() { spa }";

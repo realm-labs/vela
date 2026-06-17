@@ -4,7 +4,9 @@ use vela_hir::module_graph::ModuleGraph;
 use crate::QueryContext;
 
 use super::{
-    CompletionContext, CompletionItem, dedupe_and_filter_service_items, label_segment_matches,
+    CompletionContext, CompletionItem,
+    builtin_value::builtin_value_completion_items,
+    dedupe_and_filter_service_items, label_segment_matches,
     local::local_completion_items,
     schema_function::schema_function_completion_items,
     schema_type::schema_type_completion_items,
@@ -23,6 +25,7 @@ pub(super) fn expression_completion_items(
     context: &CompletionContext,
 ) -> Vec<CompletionItem> {
     let mut items = local_completion_items(graph, query, context);
+    items.extend(builtin_value_completion_items(context.prefix()));
     items.extend(schema_type_completion_items(
         schema,
         context.replace_range(),

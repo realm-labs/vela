@@ -55,6 +55,7 @@ fn completion_kind_rank(kind: CompletionKind) -> u16 {
         CompletionKind::Keyword => 0,
         CompletionKind::Snippet => 0,
         CompletionKind::Binding => 1,
+        CompletionKind::Value => 5,
         CompletionKind::Const => 10,
         CompletionKind::Module => 20,
         CompletionKind::Type | CompletionKind::Trait => 30,

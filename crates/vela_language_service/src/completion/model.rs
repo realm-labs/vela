@@ -10,6 +10,7 @@ pub enum CompletionKind {
     Keyword,
     Snippet,
     Binding,
+    Value,
     Const,
     Field,
     Method,

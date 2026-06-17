@@ -7,6 +7,7 @@ use crate::{DocumentId, LanguageServiceDatabases, Position, TextRange};
 
 mod accumulator;
 mod analysis_item;
+mod builtin_value;
 mod context;
 mod expression;
 mod item;

@@ -41,6 +41,52 @@ fn lsp_completion_uses_open_overlay_declarations() {
 }
 
 #[test]
+fn lsp_expression_completion_projects_builtin_values() {
+    let mut server = LspServer::new();
+    let _ = response_value(server.handle_json(&request(
+        1,
+        "initialize",
+        serde_json::json!({
+            "processId": null,
+            "rootUri": "file:///workspace/scripts",
+            "capabilities": {}
+        }),
+    )));
+    let uri = "file:///workspace/scripts/game/main.vela";
+    let text = "pub fn main() { f }";
+    let _ = notification_value(server.handle_json(&notification(
+        "textDocument/didOpen",
+        serde_json::json!({
+            "textDocument": {
+                "uri": uri,
+                "languageId": "vela",
+                "version": 1,
+                "text": text
+            }
+        }),
+    )));
+
+    let response = response_value(server.handle_json(&request(
+        2,
+        "textDocument/completion",
+        serde_json::json!({
+            "textDocument": { "uri": uri },
+            "position": {
+                "line": 0,
+                "character": text.find("f }").expect("value prefix") + "f".len()
+            }
+        }),
+    )));
+
+    assert_completion(&response, "false", 12, "bool");
+    assert_no_completion(&response, "true");
+    assert_no_completion(&response, "null");
+    let value = completion_item(&response, "false");
+    assert_eq!(value["sortText"], "0005_00_false");
+    assert!(value.get("insertText").is_none(), "{value:?}");
+}
+
+#[test]
 fn lsp_module_path_completion_snippets_stdlib_functions() {
     let mut server = LspServer::new();
     let _ = response_value(server.handle_json(&request(

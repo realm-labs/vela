@@ -116,6 +116,7 @@ fn lsp_completion_kind(kind: CompletionKind) -> u8 {
         CompletionKind::Keyword => 14,
         CompletionKind::Snippet => 15,
         CompletionKind::Binding => 6,
+        CompletionKind::Value => 12,
         CompletionKind::Const => 21,
         CompletionKind::Field => 5,
         CompletionKind::Method => 2,
