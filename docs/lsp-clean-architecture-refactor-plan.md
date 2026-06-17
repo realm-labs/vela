@@ -368,10 +368,16 @@ Purpose: replace coarse global completion with context-specific producers.
   candidates, de-duplicates by lookup identity plus replacement range, and
   applies deterministic service-owned relevance ordering while leaving fuzzy
   filtering to the editor/projection layer.
-- [ ] Add a rich editor-neutral `CompletionItem` model with label, lookup,
+- [~] Add a rich editor-neutral `CompletionItem` model with label, lookup,
   detail, documentation, kind, source range, text edit, snippet intent,
   filter text, label details, relevance, deprecation, symbol identity, and
   optional resolve payload.
+  The service item model now carries editor-neutral metadata fields for lookup
+  identity, source range, text edit, filter text, label details,
+  documentation, relevance, deprecation, symbol identity, and resolve payload.
+  The accumulator currently populates derived lookup/filter/range/text-edit
+  and relevance metadata; producer-owned docs, deprecation, symbols, and
+  resolve payloads remain open.
 
 Tests:
 
@@ -386,9 +392,9 @@ cargo test -p vela_language_service completion
 Purpose: keep LSP protocol behavior out of producers while giving editors
 high-quality metadata.
 
-- [ ] Convert service completion items to LSP completion items using source
+- [~] Convert service completion items to LSP completion items using source
   ranges and text edits supplied by the service item.
-- [ ] Set `filterText` from lookup identity when label text and inserted text
+- [~] Set `filterText` from lookup identity when label text and inserted text
   differ.
 - [ ] Set `labelDetails` for signatures, modules, receiver types, and return
   types where the client supports it.

@@ -139,6 +139,7 @@ fn service_item_for_qualified_type_path(
         insert_text: None,
         insert_format: CompletionInsertFormat::PlainText,
         sort_text: None,
+        metadata: Default::default(),
     })
 }
 
@@ -185,6 +186,7 @@ fn builtin_type_hint_completions() -> Vec<CompletionItem> {
         insert_text: None,
         insert_format: CompletionInsertFormat::PlainText,
         sort_text: None,
+        metadata: Default::default(),
     })
     .collect()
 }
@@ -197,6 +199,7 @@ fn service_item_from_analysis(item: AnalysisCompletionItem) -> CompletionItem {
         insert_text: None,
         insert_format: CompletionInsertFormat::PlainText,
         sort_text: None,
+        metadata: Default::default(),
     }
 }
 

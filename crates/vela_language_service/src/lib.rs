@@ -27,7 +27,8 @@ pub use call_hierarchy::{CallHierarchyItem, IncomingCall, OutgoingCall};
 pub use code_action::{CodeAction, CodeActionKind};
 pub use completion::{
     CompletionContext, CompletionContextKind, CompletionInsertFormat, CompletionItem,
-    CompletionKind, CompletionList,
+    CompletionItemMetadata, CompletionKind, CompletionLabelDetails, CompletionList,
+    CompletionRelevance, CompletionResolvePayload, CompletionSymbol, CompletionTextEdit,
 };
 pub use cursor_context::{CursorContext, CursorContextKind, cursor_context_at};
 pub use definition::Definition;

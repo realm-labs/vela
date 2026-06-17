@@ -1,6 +1,7 @@
 use serde_json::{Value as JsonValue, json};
 use vela_language_service::{
-    CompletionInsertFormat, CompletionKind, CompletionList, LineIndex, TextRange,
+    CompletionInsertFormat, CompletionKind, CompletionLabelDetails, CompletionList, LineIndex,
+    TextRange,
 };
 
 pub(crate) fn lsp_completion_list(
@@ -30,10 +31,8 @@ fn lsp_completion_item(
         "label": item.label(),
         "kind": lsp_completion_kind(item.kind()),
         "detail": item.detail(),
-        "filterText": item.label(),
-        "labelDetails": {
-            "detail": item.detail()
-        },
+        "filterText": item.filter_text(),
+        "labelDetails": lsp_label_details(item.label_details()),
         "preselect": preselect,
         "data": {
             "source": "vela"
@@ -41,16 +40,36 @@ fn lsp_completion_item(
     });
     if let Some(insert_text) = item.insert_text() {
         value["insertText"] = json!(insert_text);
+    }
+    if let Some(text_edit) = item.text_edit() {
+        value["textEdit"] = json!({
+            "range": lsp_range(text_edit.range(), line_index),
+            "newText": text_edit.new_text()
+        });
+    } else if item.source_range().is_some() && item.insert_text().is_some() {
         value["textEdit"] = json!({
             "range": lsp_range(replace_range, line_index),
-            "newText": insert_text
+            "newText": item.insert_text().expect("checked insert text")
         });
-        if matches!(item.insert_format(), CompletionInsertFormat::Snippet) {
-            value["insertTextFormat"] = json!(2);
-        }
+    }
+    if item.insert_text().is_some()
+        && matches!(item.insert_format(), CompletionInsertFormat::Snippet)
+    {
+        value["insertTextFormat"] = json!(2);
     }
     if let Some(sort_text) = item.sort_text() {
         value["sortText"] = json!(sort_text);
+    }
+    value
+}
+
+fn lsp_label_details(details: &CompletionLabelDetails) -> JsonValue {
+    let mut value = json!({});
+    if let Some(detail) = details.detail() {
+        value["detail"] = json!(detail);
+    }
+    if let Some(description) = details.description() {
+        value["description"] = json!(description);
     }
     value
 }

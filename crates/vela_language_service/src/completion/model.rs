@@ -65,6 +65,76 @@ pub struct CompletionItem {
     pub(super) insert_text: Option<String>,
     pub(super) insert_format: CompletionInsertFormat,
     pub(super) sort_text: Option<String>,
+    pub(super) metadata: CompletionItemMetadata,
+}
+
+#[derive(Debug, Clone, Eq, PartialEq, Default)]
+pub struct CompletionItemMetadata {
+    pub(super) lookup: Option<String>,
+    pub(super) source_range: Option<TextRange>,
+    pub(super) text_edit: Option<CompletionTextEdit>,
+    pub(super) filter_text: Option<String>,
+    pub(super) label_details: CompletionLabelDetails,
+    pub(super) documentation: Option<String>,
+    pub(super) relevance: CompletionRelevance,
+    pub(super) deprecated: bool,
+    pub(super) symbol: Option<CompletionSymbol>,
+    pub(super) resolve: Option<CompletionResolvePayload>,
+}
+
+#[derive(Debug, Clone, Eq, PartialEq)]
+pub struct CompletionTextEdit {
+    pub(super) range: TextRange,
+    pub(super) new_text: String,
+}
+
+impl CompletionTextEdit {
+    #[must_use]
+    pub const fn range(&self) -> TextRange {
+        self.range
+    }
+
+    #[must_use]
+    pub fn new_text(&self) -> &str {
+        &self.new_text
+    }
+}
+
+#[derive(Debug, Clone, Eq, PartialEq, Default)]
+pub struct CompletionLabelDetails {
+    pub(super) detail: Option<String>,
+    pub(super) description: Option<String>,
+}
+
+impl CompletionLabelDetails {
+    #[must_use]
+    pub fn detail(&self) -> Option<&str> {
+        self.detail.as_deref()
+    }
+
+    #[must_use]
+    pub fn description(&self) -> Option<&str> {
+        self.description.as_deref()
+    }
+}
+
+#[derive(Debug, Clone, Copy, Eq, Ord, PartialEq, PartialOrd, Default)]
+pub struct CompletionRelevance {
+    pub(super) kind_rank: u16,
+    pub(super) match_rank: u8,
+}
+
+#[derive(Debug, Clone, Eq, PartialEq)]
+pub enum CompletionSymbol {
+    Source(String),
+    Schema(String),
+    Builtin(String),
+    Local(String),
+}
+
+#[derive(Debug, Clone, Eq, PartialEq)]
+pub enum CompletionResolvePayload {
+    Documentation { symbol: CompletionSymbol },
 }
 
 impl CompletionItem {
@@ -86,6 +156,59 @@ impl CompletionItem {
     #[must_use]
     pub fn insert_text(&self) -> Option<&str> {
         self.insert_text.as_deref()
+    }
+
+    #[must_use]
+    pub fn lookup(&self) -> &str {
+        self.metadata.lookup.as_deref().unwrap_or(&self.label)
+    }
+
+    #[must_use]
+    pub fn filter_text(&self) -> &str {
+        self.metadata
+            .filter_text
+            .as_deref()
+            .unwrap_or_else(|| self.lookup())
+    }
+
+    #[must_use]
+    pub fn source_range(&self) -> Option<TextRange> {
+        self.metadata.source_range
+    }
+
+    #[must_use]
+    pub fn text_edit(&self) -> Option<&CompletionTextEdit> {
+        self.metadata.text_edit.as_ref()
+    }
+
+    #[must_use]
+    pub fn label_details(&self) -> &CompletionLabelDetails {
+        &self.metadata.label_details
+    }
+
+    #[must_use]
+    pub fn documentation(&self) -> Option<&str> {
+        self.metadata.documentation.as_deref()
+    }
+
+    #[must_use]
+    pub const fn relevance(&self) -> CompletionRelevance {
+        self.metadata.relevance
+    }
+
+    #[must_use]
+    pub const fn deprecated(&self) -> bool {
+        self.metadata.deprecated
+    }
+
+    #[must_use]
+    pub fn symbol(&self) -> Option<&CompletionSymbol> {
+        self.metadata.symbol.as_ref()
+    }
+
+    #[must_use]
+    pub fn resolve_payload(&self) -> Option<&CompletionResolvePayload> {
+        self.metadata.resolve.as_ref()
     }
 
     #[must_use]

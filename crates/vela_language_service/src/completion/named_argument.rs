@@ -79,6 +79,7 @@ pub(super) fn script_function_parameter_completions(
                             insert_text: Some(format!("{}: ", param.name)),
                             insert_format: CompletionInsertFormat::PlainText,
                             sort_text: None,
+                            metadata: Default::default(),
                         }
                     })
                     .collect::<Vec<_>>(),

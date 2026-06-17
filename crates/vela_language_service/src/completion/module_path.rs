@@ -75,6 +75,7 @@ fn service_item_for_module_path(
     let insert_format = completion_insert_format(insert_text.as_ref());
     Some(CompletionItem {
         sort_text: Some(completion_sort_text(kind, &label, prefix)),
+        metadata: Default::default(),
         label,
         kind,
         detail: item.fact.display_name(),
@@ -101,6 +102,7 @@ fn script_enum_variant_path_completions(
                 detail: owner.clone(),
                 insert_text: None,
                 insert_format: CompletionInsertFormat::PlainText,
+                metadata: Default::default(),
                 sort_text: Some(completion_sort_text(
                     CompletionKind::Variant,
                     &variant.name,
@@ -129,6 +131,7 @@ fn schema_enum_variant_path_completions(
                 insert_text: None,
                 insert_format: CompletionInsertFormat::PlainText,
                 sort_text: Some(sort_text),
+                metadata: Default::default(),
             }
         })
         .collect()

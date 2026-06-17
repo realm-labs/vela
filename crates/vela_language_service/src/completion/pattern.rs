@@ -39,6 +39,7 @@ fn script_pattern_variant_completions(
                 insert_text: None,
                 insert_format: CompletionInsertFormat::PlainText,
                 sort_text: None,
+                metadata: Default::default(),
             }))
         })
         .flatten()
@@ -72,6 +73,7 @@ fn schema_pattern_variant_completions(
             insert_text: None,
             insert_format: CompletionInsertFormat::PlainText,
             sort_text: None,
+            metadata: Default::default(),
         })
         .collect()
 }

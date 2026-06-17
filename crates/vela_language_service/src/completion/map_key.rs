@@ -248,6 +248,7 @@ fn script_enum_variant_key_completions(
             insert_text: None,
             insert_format: CompletionInsertFormat::PlainText,
             sort_text: None,
+            metadata: Default::default(),
         })
         .collect()
 }
@@ -281,6 +282,7 @@ fn schema_enum_variant_key_completions(
             insert_text: None,
             insert_format: CompletionInsertFormat::PlainText,
             sort_text: None,
+            metadata: Default::default(),
         })
         .collect()
 }

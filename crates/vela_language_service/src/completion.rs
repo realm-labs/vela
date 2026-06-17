@@ -29,7 +29,8 @@ mod type_hint;
 
 pub use model::{
     CompletionContext, CompletionContextKind, CompletionInsertFormat, CompletionItem,
-    CompletionKind, CompletionList,
+    CompletionItemMetadata, CompletionKind, CompletionLabelDetails, CompletionList,
+    CompletionRelevance, CompletionResolvePayload, CompletionSymbol, CompletionTextEdit,
 };
 
 use item::item_keyword_completions;
@@ -186,6 +187,7 @@ impl LanguageServiceDatabases {
                 let fact = facts.local(local.id).cloned().unwrap_or(TypeFact::Unknown);
                 CompletionItem {
                     sort_text: Some(local_sort_text(kind, &local.name)),
+                    metadata: Default::default(),
                     label: local.name.clone(),
                     kind,
                     detail: fact.display_name(),
@@ -699,6 +701,7 @@ fn dedupe_and_filter_items(
         let insert_format = completion_insert_format(insert_text.as_ref());
         accumulator.add(CompletionItem {
             sort_text: Some(completion_sort_text(kind, &item.label, prefix)),
+            metadata: Default::default(),
             label: item.label,
             kind,
             detail: item.fact.display_name(),
@@ -860,6 +863,7 @@ fn field_completion_from_hint(graph: &ModuleGraph, field: &StructFieldHint) -> C
         insert_text: None,
         insert_format: CompletionInsertFormat::PlainText,
         sort_text: None,
+        metadata: Default::default(),
     }
 }
 
@@ -879,6 +883,7 @@ fn schema_record_field_completions(
             insert_text: None,
             insert_format: CompletionInsertFormat::PlainText,
             sort_text: None,
+            metadata: Default::default(),
         })
         .collect()
 }

@@ -67,6 +67,7 @@ pub(super) fn lambda_parameter_completion_items(
                 insert_text: None,
                 insert_format: CompletionInsertFormat::PlainText,
                 sort_text: None,
+                metadata: Default::default(),
             })
         })
         .collect()

@@ -2,7 +2,7 @@ use std::collections::BTreeMap;
 
 use crate::TextRange;
 
-use super::{CompletionItem, CompletionKind};
+use super::{CompletionItem, CompletionKind, CompletionRelevance, CompletionTextEdit};
 
 #[derive(Debug)]
 pub(super) struct CompletionAccumulator {
@@ -18,12 +18,6 @@ struct CompletionIdentity {
     replace_end: usize,
 }
 
-#[derive(Debug, Clone, Copy, Eq, PartialEq)]
-struct CompletionRelevance {
-    kind_rank: u16,
-    match_rank: u8,
-}
-
 impl CompletionAccumulator {
     pub(super) fn new(replace_range: TextRange, prefix: &str) -> Self {
         Self {
@@ -34,15 +28,16 @@ impl CompletionAccumulator {
     }
 
     pub(super) fn add(&mut self, item: CompletionItem) {
+        let item = self.prepare_item(item);
         let identity = CompletionIdentity {
-            lookup: item.lookup_identity(),
+            lookup: item.lookup().to_owned(),
             replace_start: self.replace_range.start,
             replace_end: self.replace_range.end,
         };
         self.items
             .entry(identity)
             .and_modify(|existing| {
-                if completion_item_order(&item, existing, &self.prefix).is_lt() {
+                if completion_item_order(&item, existing).is_lt() {
                     *existing = item.clone();
                 }
             })
@@ -67,53 +62,46 @@ impl CompletionAccumulator {
 
     pub(super) fn into_items(self) -> Vec<CompletionItem> {
         let mut items = self.items.into_values().collect::<Vec<_>>();
-        items.sort_by(|left, right| completion_item_order(left, right, &self.prefix));
+        items.sort_by(completion_item_order);
         items
     }
-}
 
-impl CompletionItem {
-    fn lookup_identity(&self) -> String {
-        self.label.clone()
+    fn prepare_item(&self, mut item: CompletionItem) -> CompletionItem {
+        let lookup = item
+            .metadata
+            .lookup
+            .get_or_insert_with(|| item.label.clone())
+            .clone();
+        item.metadata
+            .filter_text
+            .get_or_insert_with(|| lookup.clone());
+        item.metadata.source_range.get_or_insert(self.replace_range);
+        if item.metadata.text_edit.is_none()
+            && let Some(insert_text) = item.insert_text.clone()
+        {
+            item.metadata.text_edit = Some(CompletionTextEdit {
+                range: self.replace_range,
+                new_text: insert_text,
+            });
+        }
+        item.metadata
+            .label_details
+            .detail
+            .get_or_insert_with(|| item.detail.clone());
+        item.metadata.relevance = CompletionRelevance {
+            kind_rank: completion_kind_rank(item.kind),
+            match_rank: completion_match_rank(&item.label, &self.prefix),
+        };
+        item
     }
 }
 
-fn completion_item_order(
-    left: &CompletionItem,
-    right: &CompletionItem,
-    prefix: &str,
-) -> std::cmp::Ordering {
+fn completion_item_order(left: &CompletionItem, right: &CompletionItem) -> std::cmp::Ordering {
     left.sort_text
         .cmp(&right.sort_text)
-        .then_with(|| {
-            CompletionRelevance::for_item(left, prefix)
-                .cmp(&CompletionRelevance::for_item(right, prefix))
-        })
+        .then_with(|| left.relevance().cmp(&right.relevance()))
         .then_with(|| left.label.cmp(&right.label))
         .then_with(|| left.kind.cmp(&right.kind))
-}
-
-impl CompletionRelevance {
-    fn for_item(item: &CompletionItem, prefix: &str) -> Self {
-        Self {
-            kind_rank: completion_kind_rank(item.kind),
-            match_rank: completion_match_rank(&item.label, prefix),
-        }
-    }
-}
-
-impl Ord for CompletionRelevance {
-    fn cmp(&self, other: &Self) -> std::cmp::Ordering {
-        self.kind_rank
-            .cmp(&other.kind_rank)
-            .then_with(|| self.match_rank.cmp(&other.match_rank))
-    }
-}
-
-impl PartialOrd for CompletionRelevance {
-    fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
-        Some(self.cmp(other))
-    }
 }
 
 fn completion_kind_rank(kind: CompletionKind) -> u16 {
@@ -207,6 +195,7 @@ mod tests {
             insert_text: None,
             insert_format: CompletionInsertFormat::PlainText,
             sort_text,
+            metadata: Default::default(),
         }
     }
 }

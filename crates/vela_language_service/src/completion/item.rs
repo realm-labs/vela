@@ -37,6 +37,7 @@ pub(super) fn item_keyword_completions(prefix: &str) -> Vec<CompletionItem> {
         insert_text: Some(insert_text.to_owned()),
         insert_format: CompletionInsertFormat::Snippet,
         sort_text: Some(keyword_sort_text(label)),
+        metadata: Default::default(),
     })
     .collect()
 }
