@@ -1059,6 +1059,8 @@ Purpose: provide deterministic source formatting without losing comments.
     item span before applying the token/trivia formatter.
   - Impl and trait method selections now use parser-owned method spans to
     format one selected nested member while preserving surrounding text.
+  - Exact bodyless trait method selections avoid injecting a trailing newline
+    before unselected same-line separator whitespace.
   - Indented nested method selections now preserve enclosing member indentation
     and avoid duplicating the following line break.
   - Struct fields, enum variants, and enum record fields now use parser-owned
@@ -1113,6 +1115,8 @@ Tests:
 - [x] `parses_inherent_impl_methods`
 - [x] `range_formatting_formats_selected_impl_method`
 - [x] `lsp_range_formatting_formats_selected_impl_method`
+- [x] `range_formatting_formats_selected_trait_method`
+- [x] `lsp_range_formatting_formats_selected_trait_method`
 - [x] `range_formatting_preserves_nested_method_indent`
 - [x] `lsp_range_formatting_preserves_nested_method_indent`
 - [x] `range_formatting_preserves_struct_field_indent`

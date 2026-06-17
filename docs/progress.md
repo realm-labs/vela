@@ -184,6 +184,10 @@ use parser-owned spans for context-aware formatting through both the language
 service and native LSP server. Remaining formatting follow-up is richer
 AST-aware formatter polish rather than a named blocking LSP capability gap.
 
+M20.5 Phase 14 update: range formatting now has service and native LSP
+coverage for exact bodyless trait method selections, preserving surrounding
+same-line text without injecting an extra newline into unselected whitespace.
+
 M20.5 Phase 10 update: semantic tokens now classify source-owned trait
 receiver method call sites and host-modified schema-backed trait receiver
 method call sites through both the language service and native LSP server,

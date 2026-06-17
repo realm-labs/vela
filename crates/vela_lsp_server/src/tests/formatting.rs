@@ -336,6 +336,58 @@ fn lsp_range_formatting_formats_selected_impl_method() {
 }
 
 #[test]
+fn lsp_range_formatting_formats_selected_trait_method() {
+    let mut server = LspServer::new();
+    let _ = response_value(server.handle_json(&request(
+        1,
+        "initialize",
+        serde_json::json!({
+            "processId": null,
+            "rootUri": "file:///workspace/scripts",
+            "capabilities": {}
+        }),
+    )));
+    let uri = "file:///workspace/scripts/game/main.vela";
+    let text = "pub trait Rewardable{fn preview(amount:i64)->i64 fn other(amount:i64)->i64}\n";
+    let start = text.find("fn preview").expect("selected method");
+    let end = start + "fn preview(amount:i64)->i64".len();
+    let _ = notification_value(server.handle_json(&notification(
+        "textDocument/didOpen",
+        serde_json::json!({
+            "textDocument": {
+                "uri": uri,
+                "languageId": "vela",
+                "version": 1,
+                "text": text
+            }
+        }),
+    )));
+
+    let response = response_value(server.handle_json(&request(
+        2,
+        "textDocument/rangeFormatting",
+        serde_json::json!({
+            "textDocument": { "uri": uri },
+            "range": {
+                "start": { "line": 0, "character": start },
+                "end": { "line": 0, "character": end }
+            },
+            "options": { "tabSize": 4, "insertSpaces": true }
+        }),
+    )));
+    let edits = response["result"]
+        .as_array()
+        .expect("rangeFormatting should return edits");
+
+    assert_eq!(edits.len(), 1);
+    assert_eq!(edits[0]["range"]["start"]["line"], 0);
+    assert_eq!(edits[0]["range"]["start"]["character"], start);
+    assert_eq!(edits[0]["range"]["end"]["line"], 0);
+    assert_eq!(edits[0]["range"]["end"]["character"], end);
+    assert_eq!(edits[0]["newText"], "fn preview(amount: i64) -> i64");
+}
+
+#[test]
 fn lsp_range_formatting_preserves_nested_method_indent() {
     let mut server = LspServer::new();
     let _ = response_value(server.handle_json(&request(

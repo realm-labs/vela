@@ -192,11 +192,12 @@ fn selected_item_formatting_edit(
     let end = line_index.offset(range.end());
     let selection = selected_item_offsets(source, parsed, start, end)?;
     let selected = source.get(selection.start..selection.end)?;
-    let formatted = if selection.members.len() > 1 {
+    let mut formatted = if selection.members.len() > 1 {
         format_selected_members(source_id, source, &selection)
     } else {
         format_selected_range(source_id, source, selected, selection.start, selection.end)
     };
+    trim_nested_member_newline_before_inline_gap(source, &selection, &mut formatted);
     (formatted != selected).then(|| {
         TextEdit::new(
             DiagnosticRange::new(
@@ -206,6 +207,32 @@ fn selected_item_formatting_edit(
             formatted,
         )
     })
+}
+
+fn trim_nested_member_newline_before_inline_gap(
+    source: &str,
+    selection: &SelectedFormatRange,
+    formatted: &mut String,
+) {
+    if !matches!(
+        selection.members.as_slice(),
+        [SelectableFormatRange {
+            kind: SelectableFormatRangeKind::NestedMember,
+            ..
+        }]
+    ) {
+        return;
+    }
+    if source
+        .get(selection.start..selection.end)
+        .is_some_and(|selected| !selected.ends_with('\n'))
+        && source
+            .get(selection.end..)
+            .is_some_and(|suffix| suffix.starts_with(' ') || suffix.starts_with('\t'))
+        && formatted.ends_with('\n')
+    {
+        formatted.pop();
+    }
 }
 
 fn format_selected_members(
@@ -850,6 +877,27 @@ pub fn other(){return 2}
         assert_eq!(
             formatted,
             "impl Player{fn heal(amount: i64) -> i64 {\n    return amount\n}\nfn hurt(amount:i64)->i64{return amount}}\n"
+        );
+    }
+
+    #[test]
+    fn range_formatting_formats_selected_trait_method() {
+        let source =
+            "pub trait Rewardable{fn preview(amount:i64)->i64 fn other(amount:i64)->i64}\n";
+        let start = source.find("fn preview").expect("selected method");
+        let end = start + "fn preview(amount:i64)->i64".len();
+        let edits = range_format_source(
+            source,
+            DiagnosticRange::new(Position::new(0, start), Position::new(0, end)),
+        );
+        let formatted = apply_range_edits(source, &edits);
+
+        assert_eq!(edits.len(), 1);
+        assert_eq!(edits[0].range().start(), Position::new(0, start));
+        assert_eq!(edits[0].range().end(), Position::new(0, end));
+        assert_eq!(
+            formatted,
+            "pub trait Rewardable{fn preview(amount: i64) -> i64 fn other(amount:i64)->i64}\n"
         );
     }
 
