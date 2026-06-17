@@ -1,8 +1,8 @@
 use std::collections::BTreeMap;
 
 use vela_analysis::completion::{
-    CompletionItem as AnalysisCompletionItem, CompletionKind as AnalysisCompletionKind,
-    declaration_completions, global_completions, member_completions, module_completions,
+    CompletionItem as AnalysisCompletionItem, declaration_completions, global_completions,
+    member_completions, module_completions,
 };
 use vela_analysis::facts::AnalysisFacts;
 use vela_analysis::hints::type_fact_from_hint;
@@ -21,188 +21,25 @@ use crate::{DocumentId, LanguageServiceDatabases, Position, TextRange};
 mod item;
 mod lambda_parameter;
 mod map_key;
+mod model;
 mod named_argument;
 mod pattern;
 mod statement;
 mod type_hint;
 
+pub use model::{
+    CompletionContext, CompletionContextKind, CompletionInsertFormat, CompletionItem,
+    CompletionKind, CompletionList,
+};
+
 use item::item_keyword_completions;
-use lambda_parameter::{
-    LambdaParameterContext, lambda_parameter_completion_context, lambda_parameter_completion_items,
-};
-use map_key::{
-    MapKeyContext, map_key_at, map_key_completion_items as map_key_context_completion_items,
-};
+use lambda_parameter::{lambda_parameter_completion_context, lambda_parameter_completion_items};
+use map_key::{map_key_at, map_key_completion_items as map_key_context_completion_items};
+use model::{CallArgumentContext, MemberReceiver, RecordConstructor};
 use named_argument::{named_argument_completion_context, script_function_parameter_completions};
 use pattern::pattern_completion_items as pattern_context_completion_items;
 use statement::statement_keyword_completions;
 use type_hint::{type_hint_completion_context, type_hint_completion_items};
-
-#[derive(Debug, Clone, Copy, Eq, Ord, PartialEq, PartialOrd)]
-pub enum CompletionKind {
-    Keyword,
-    Binding,
-    Const,
-    Field,
-    Method,
-    Module,
-    Variant,
-    Function,
-    Type,
-    Trait,
-    Parameter,
-}
-
-#[derive(Debug, Clone, Copy, Eq, PartialEq)]
-pub enum CompletionInsertFormat {
-    PlainText,
-    Snippet,
-}
-
-impl From<AnalysisCompletionKind> for CompletionKind {
-    fn from(value: AnalysisCompletionKind) -> Self {
-        match value {
-            AnalysisCompletionKind::Binding => Self::Binding,
-            AnalysisCompletionKind::Const => Self::Const,
-            AnalysisCompletionKind::Field => Self::Field,
-            AnalysisCompletionKind::Method => Self::Method,
-            AnalysisCompletionKind::Module => Self::Module,
-            AnalysisCompletionKind::Variant => Self::Variant,
-            AnalysisCompletionKind::Function => Self::Function,
-            AnalysisCompletionKind::Type => Self::Type,
-            AnalysisCompletionKind::Trait => Self::Trait,
-        }
-    }
-}
-
-#[derive(Debug, Clone, Copy, Eq, PartialEq)]
-pub enum CompletionContextKind {
-    Item,
-    Statement,
-    Expression,
-    Global,
-    ModulePath,
-    Member,
-    RecordField,
-    MapKey,
-    Pattern,
-    NamedArgument,
-    LambdaParameter,
-    TypeHint,
-}
-
-#[derive(Debug, Clone, Eq, PartialEq)]
-pub struct CompletionItem {
-    label: String,
-    kind: CompletionKind,
-    detail: String,
-    insert_text: Option<String>,
-    insert_format: CompletionInsertFormat,
-    sort_text: Option<String>,
-}
-
-impl CompletionItem {
-    #[must_use]
-    pub fn label(&self) -> &str {
-        &self.label
-    }
-
-    #[must_use]
-    pub const fn kind(&self) -> CompletionKind {
-        self.kind
-    }
-
-    #[must_use]
-    pub fn detail(&self) -> &str {
-        &self.detail
-    }
-
-    #[must_use]
-    pub fn insert_text(&self) -> Option<&str> {
-        self.insert_text.as_deref()
-    }
-
-    #[must_use]
-    pub const fn insert_format(&self) -> CompletionInsertFormat {
-        self.insert_format
-    }
-
-    #[must_use]
-    pub fn sort_text(&self) -> Option<&str> {
-        self.sort_text.as_deref()
-    }
-}
-
-#[derive(Debug, Clone, Eq, PartialEq)]
-pub struct CompletionContext {
-    kind: CompletionContextKind,
-    prefix: String,
-    replace_range: TextRange,
-    module_base: Option<String>,
-    member_receiver: Option<MemberReceiver>,
-    record_constructor: Option<RecordConstructor>,
-    map_key: Option<MapKeyContext>,
-    call_arguments: Option<CallArgumentContext>,
-    lambda_parameter: Option<LambdaParameterContext>,
-}
-
-#[derive(Debug, Clone, Eq, PartialEq)]
-struct MemberReceiver {
-    range: TextRange,
-}
-
-#[derive(Debug, Clone, Eq, PartialEq)]
-struct RecordConstructor {
-    path: Vec<String>,
-    field_names: Vec<String>,
-    current_module: Vec<String>,
-}
-
-#[derive(Debug, Clone, Eq, PartialEq)]
-struct CallArgumentContext {
-    callee: String,
-    used_names: Vec<String>,
-}
-
-impl CompletionContext {
-    #[must_use]
-    pub const fn kind(&self) -> CompletionContextKind {
-        self.kind
-    }
-
-    #[must_use]
-    pub fn prefix(&self) -> &str {
-        &self.prefix
-    }
-
-    #[must_use]
-    pub const fn replace_range(&self) -> TextRange {
-        self.replace_range
-    }
-
-    #[must_use]
-    pub fn module_base(&self) -> Option<&str> {
-        self.module_base.as_deref()
-    }
-}
-
-#[derive(Debug, Clone, Eq, PartialEq)]
-pub struct CompletionList {
-    context: CompletionContext,
-    items: Vec<CompletionItem>,
-}
-
-impl CompletionList {
-    #[must_use]
-    pub fn context(&self) -> &CompletionContext {
-        &self.context
-    }
-
-    #[must_use]
-    pub fn items(&self) -> &[CompletionItem] {
-        &self.items
-    }
-}
 
 impl LanguageServiceDatabases {
     #[must_use]
@@ -527,50 +364,6 @@ impl LanguageServiceDatabases {
             self.schema_db().facts(),
             context.prefix(),
         )
-    }
-}
-
-impl CompletionContext {
-    fn global(prefix_start: usize, prefix: &str) -> Self {
-        Self {
-            kind: CompletionContextKind::Global,
-            prefix: prefix.to_owned(),
-            replace_range: TextRange::new(prefix_start, prefix_start + prefix.len()),
-            module_base: None,
-            member_receiver: None,
-            record_constructor: None,
-            map_key: None,
-            call_arguments: None,
-            lambda_parameter: None,
-        }
-    }
-
-    fn item(prefix_start: usize, prefix: &str) -> Self {
-        Self {
-            kind: CompletionContextKind::Item,
-            prefix: prefix.to_owned(),
-            replace_range: TextRange::new(prefix_start, prefix_start + prefix.len()),
-            module_base: None,
-            member_receiver: None,
-            record_constructor: None,
-            map_key: None,
-            call_arguments: None,
-            lambda_parameter: None,
-        }
-    }
-
-    fn expression(prefix_start: usize, prefix: &str) -> Self {
-        Self {
-            kind: CompletionContextKind::Expression,
-            prefix: prefix.to_owned(),
-            replace_range: TextRange::new(prefix_start, prefix_start + prefix.len()),
-            module_base: None,
-            member_receiver: None,
-            record_constructor: None,
-            map_key: None,
-            call_arguments: None,
-            lambda_parameter: None,
-        }
     }
 }
 
