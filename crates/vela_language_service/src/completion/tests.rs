@@ -57,6 +57,51 @@ fn global_completion_uses_schema_facts() {
 }
 
 #[test]
+fn item_boundary_completion_ranks_fn_keyword_before_callables() {
+    let document = DocumentId::from("/workspace/scripts/game/main.vela");
+    let text = "f";
+    let files = vec![SourceFileSnapshot::new(document.clone(), text)];
+    let config = WorkspaceConfig::workspace([WorkspaceRoot::from("/workspace/scripts")]);
+    let project = assemble_project_sources(&config, &files, &Workspace::new().snapshot());
+    let mut databases = LanguageServiceDatabases::new();
+    let mut schema = RegistryFacts::default();
+    schema.insert_function(
+        "fetch_player",
+        TypeFact::function(Vec::new(), TypeFact::host("Player")),
+    );
+    databases.set_schema_facts(schema);
+    databases.update(&project);
+
+    let completions = databases.completion_items(&document, Position::new(0, text.len()));
+
+    assert_eq!(completions.context().kind(), CompletionContextKind::Item);
+    assert_completion(&completions, "fn", CompletionKind::Keyword);
+    assert_no_completion(&completions, "fetch_player");
+    assert_eq!(completions.items()[0].label(), "fn");
+}
+
+#[test]
+fn item_boundary_completion_ranks_struct_keyword_before_globals() {
+    let document = DocumentId::from("/workspace/scripts/game/main.vela");
+    let text = "st";
+    let files = vec![SourceFileSnapshot::new(document.clone(), text)];
+    let config = WorkspaceConfig::workspace([WorkspaceRoot::from("/workspace/scripts")]);
+    let project = assemble_project_sources(&config, &files, &Workspace::new().snapshot());
+    let mut databases = LanguageServiceDatabases::new();
+    let mut schema = RegistryFacts::default();
+    schema.insert_function("stabilize", TypeFact::function(Vec::new(), TypeFact::BOOL));
+    databases.set_schema_facts(schema);
+    databases.update(&project);
+
+    let completions = databases.completion_items(&document, Position::new(0, text.len()));
+
+    assert_eq!(completions.context().kind(), CompletionContextKind::Item);
+    assert_completion(&completions, "struct", CompletionKind::Keyword);
+    assert_no_completion(&completions, "stabilize");
+    assert_eq!(completions.items()[0].label(), "struct");
+}
+
+#[test]
 fn member_completion_uses_host_schema_facts() {
     let document = DocumentId::from("/workspace/scripts/game/main.vela");
     let text = "pub fn main(player: Player) { player.le }";

@@ -235,7 +235,7 @@ its focused tests and validation command pass.
 
 Purpose: write the failing tests before replacing the model.
 
-- [ ] Add language-service completion fixtures for item-boundary keyword
+- [x] Add language-service completion fixtures for item-boundary keyword
   completion:
   - typing `f` at a top-level item boundary ranks `fn` before stdlib symbols.
   - typing `st` at a top-level item boundary ranks `struct` before unrelated
@@ -243,8 +243,10 @@ Purpose: write the failing tests before replacing the model.
   - item-boundary completion does not offer expression-only stdlib functions.
 - [ ] Add statement, expression, type-hint, member, record-field, module-path,
   call-argument, and lambda-parameter cursor-context classification fixtures.
-- [ ] Add LSP completion conversion fixtures for replacement ranges,
+- [~] Add LSP completion conversion fixtures for replacement ranges,
   `filterText`, `sortText`, snippets, label details, and preselect behavior.
+  Initial item-keyword kind/detail/insert-text projection is covered; rich
+  replacement ranges, filter text, label details, and preselect behavior remain.
 - [ ] Add regression fixtures showing that existing member, type, module,
   record, and schema completions still work in their proper contexts.
 - [ ] Add at least one stale-generation or cancellation fixture if existing

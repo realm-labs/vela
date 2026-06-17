@@ -34,6 +34,7 @@ fn lsp_completion_item(item: &vela_language_service::CompletionItem) -> JsonValu
 
 fn lsp_completion_kind(kind: CompletionKind) -> u8 {
     match kind {
+        CompletionKind::Keyword => 14,
         CompletionKind::Binding => 6,
         CompletionKind::Const => 21,
         CompletionKind::Field => 5,

@@ -17,11 +17,13 @@ use vela_syntax::ast::{
 
 use crate::{DocumentId, LanguageServiceDatabases, LineIndex, Position, SourceRecord, TextRange};
 
+mod item;
 mod lambda_parameter;
 mod map_key;
 mod named_argument;
 mod type_hint;
 
+use item::item_keyword_completions;
 use lambda_parameter::{
     LambdaParameterContext, lambda_parameter_completion_context, lambda_parameter_completion_items,
 };
@@ -33,6 +35,7 @@ use type_hint::{type_hint_completion_context, type_hint_completion_items};
 
 #[derive(Debug, Clone, Copy, Eq, Ord, PartialEq, PartialOrd)]
 pub enum CompletionKind {
+    Keyword,
     Binding,
     Const,
     Field,
@@ -63,6 +66,7 @@ impl From<AnalysisCompletionKind> for CompletionKind {
 
 #[derive(Debug, Clone, Copy, Eq, PartialEq)]
 pub enum CompletionContextKind {
+    Item,
     Global,
     ModulePath,
     Member,
@@ -201,6 +205,7 @@ impl LanguageServiceDatabases {
         }
         let items = match context.kind {
             CompletionContextKind::Global => self.global_completion_items(document_id, &context),
+            CompletionContextKind::Item => self.item_completion_items(&context),
             CompletionContextKind::ModulePath => self.module_path_completion_items(&context),
             CompletionContextKind::Member => self.member_completion_items(document_id, &context),
             CompletionContextKind::RecordField => self.record_field_completion_items(&context),
@@ -248,6 +253,12 @@ impl LanguageServiceDatabases {
         ));
         dedupe_and_filter_service_items(items, |item| {
             label_segment_matches(&item.label, context.prefix())
+        })
+    }
+
+    fn item_completion_items(&self, context: &CompletionContext) -> Vec<CompletionItem> {
+        dedupe_and_filter_service_items(item_keyword_completions(context.prefix()), |item| {
+            label_segment_matches(item.label(), context.prefix())
         })
     }
 
@@ -478,6 +489,20 @@ impl CompletionContext {
             lambda_parameter: None,
         }
     }
+
+    fn item(prefix_start: usize, prefix: &str) -> Self {
+        Self {
+            kind: CompletionContextKind::Item,
+            prefix: prefix.to_owned(),
+            replace_range: TextRange::new(prefix_start, prefix_start + prefix.len()),
+            module_base: None,
+            member_receiver: None,
+            record_constructor: None,
+            map_key: None,
+            call_arguments: None,
+            lambda_parameter: None,
+        }
+    }
 }
 
 fn completion_context(
@@ -580,7 +605,36 @@ fn completion_context(
         };
     }
 
+    if is_item_boundary_context(text, prefix_start, parsed) {
+        return CompletionContext::item(prefix_start, prefix);
+    }
+
     CompletionContext::global(prefix_start, prefix)
+}
+
+fn is_item_boundary_context(text: &str, prefix_start: usize, parsed: Option<&SourceFile>) -> bool {
+    if parsed.is_some_and(|source| offset_is_inside_item(source, prefix_start)) {
+        return false;
+    }
+    let before_prefix = text[..prefix_start].trim_end();
+    before_prefix.is_empty()
+        || before_prefix.ends_with('}')
+        || before_prefix.ends_with(';')
+        || before_prefix
+            .rsplit('\n')
+            .next()
+            .is_some_and(can_continue_item_prefix)
+}
+
+fn offset_is_inside_item(source: &SourceFile, offset: usize) -> bool {
+    let Some(offset) = u32::try_from(offset).ok() else {
+        return false;
+    };
+    source.items.iter().any(|item| item.span.contains(offset))
+}
+
+fn can_continue_item_prefix(line: &str) -> bool {
+    matches!(line.trim_start(), "pub" | "pub ")
 }
 
 fn record_constructor_at(source: &SourceFile, offset: usize) -> Option<RecordConstructor> {
@@ -882,6 +936,7 @@ fn completion_sort_text(kind: CompletionKind, label: &str, prefix: &str) -> Stri
 fn local_sort_text(kind: CompletionKind, label: &str) -> String {
     let rank = match kind {
         CompletionKind::Parameter => 0,
+        CompletionKind::Keyword => 0,
         CompletionKind::Binding => 1,
         _ => 2,
     };
@@ -891,6 +946,7 @@ fn local_sort_text(kind: CompletionKind, label: &str) -> String {
 fn completion_kind_rank(kind: CompletionKind) -> u16 {
     match kind {
         CompletionKind::Parameter => 0,
+        CompletionKind::Keyword => 0,
         CompletionKind::Binding => 1,
         CompletionKind::Const => 10,
         CompletionKind::Module => 20,
