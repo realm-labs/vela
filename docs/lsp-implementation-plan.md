@@ -893,6 +893,7 @@ Purpose: provide safe refactoring without changing runtime contracts.
   or import aliases.
   - [x] Reject local binding renames that collide with an existing function
     binding.
+  - [x] Reject same-module declaration collisions through native LSP rename.
 - [~] Report hot-reload ABI/schema risk for exported API rename.
   - [x] Public script function renames carry hot-reload ABI risk metadata in
     service workspace edits and LSP change annotations.
@@ -915,6 +916,8 @@ Tests:
 - [x] `lsp_private_value_declaration_rename_updates_uses`
 - [x] `public_export_rename_reports_hot_reload_risk`
 - [x] `rename_rejects_scope_collision`
+- [x] `rename_rejects_module_declaration_collision`
+- [x] `lsp_rename_rejects_module_declaration_collision`
 - [x] `private_struct_field_rename_updates_member_uses`
 - [x] `lsp_private_struct_field_rename_updates_member_uses`
 - [x] `private_method_rename_updates_typed_receiver_calls`

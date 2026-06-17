@@ -287,6 +287,7 @@ mod folding;
 mod hover;
 mod references;
 mod rename;
+mod rename_collisions;
 mod rename_schema;
 mod schema_reload;
 mod selection;

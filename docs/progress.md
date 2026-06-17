@@ -151,6 +151,10 @@ M20.5 schema hover update: schema artifacts now carry optional docs metadata
 for exported facts, and schema-backed hovers surface docs for types, fields,
 variants, methods, trait methods, and functions.
 
+M20.5 Phase 12 update: native LSP rename fixtures now cover same-module
+declaration collision rejection, matching the language-service module
+declaration collision guard.
+
 M20.5 Phase 15 update: parameter-name inlay hints now cover typed source and
 schema method calls in addition to script/schema function calls. The hint
 suppression path treats dynamic or unknown source and schema function/method
