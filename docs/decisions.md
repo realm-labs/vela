@@ -194,6 +194,12 @@ is a 64-bit FNV-1a hash of the canonical `RegistryFacts` payload represented by
 the artifact, formatted as decimal or `0x`-prefixed hexadecimal. A mismatch is
 treated as an invalid or stale schema and host facts degrade to `Any`.
 
+Editor callable facts may expose schema enum tuple variants as constructors
+only when the schema fields for `Enum::Variant` are numeric reflected tuple
+field names such as `0` and `1`. Named schema variant fields are treated as
+record-style fields and must not be ordered into callable parameters until the
+schema contract carries explicit constructor shape/order metadata.
+
 The next native LSP cleanup rewrites language-service feature queries around a
 shared editor-neutral query model: request context, cursor context, symbol
 identity, display parts, edit plans, rich completion items, relevance metadata,

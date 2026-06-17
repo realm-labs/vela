@@ -2,6 +2,7 @@ use super::*;
 use crate::{
     SourceFileSnapshot, Workspace, WorkspaceConfig, WorkspaceRoot, assemble_project_sources,
 };
+use vela_analysis::registry::RegistryFacts;
 use vela_analysis::type_fact::TypeFact;
 
 fn databases_for(files: Vec<SourceFileSnapshot>) -> LanguageServiceDatabases {
@@ -207,6 +208,57 @@ pub fn main() {
         vec![
             (Position::new(5, 39), "quest_id:".to_owned()),
             (Position::new(5, 50), "count:".to_owned())
+        ]
+    );
+    assert!(
+        hints
+            .iter()
+            .all(|hint| hint.kind() == InlayHintKind::Parameter)
+    );
+}
+
+#[test]
+fn inlay_hints_show_schema_tuple_variant_payload_names() {
+    let document = DocumentId::from("/workspace/scripts/game/main.vela");
+    let text = r#"pub fn main() { QuestState::Active("quest-1", 3) }"#;
+    let config = WorkspaceConfig::workspace([WorkspaceRoot::from("/workspace/scripts")]);
+    let project = assemble_project_sources(
+        &config,
+        &[SourceFileSnapshot::new(document.clone(), text)],
+        &Workspace::new().snapshot(),
+    );
+    let mut databases = LanguageServiceDatabases::new();
+    let mut schema = RegistryFacts::default();
+    schema.insert_type(
+        "QuestState",
+        TypeFact::enum_type("QuestState", None::<String>),
+    );
+    schema.insert_variant(
+        "QuestState",
+        "Active",
+        TypeFact::enum_type("QuestState", Some("Active")),
+    );
+    schema.insert_field("QuestState::Active", "0", TypeFact::STRING);
+    schema.insert_field("QuestState::Active", "1", TypeFact::I64);
+    databases.set_schema_facts(schema);
+    databases.update(&project);
+
+    let hints = databases.inlay_hints(
+        &document,
+        DiagnosticRange::new(Position::new(0, 0), Position::new(0, text.len())),
+    );
+
+    assert_eq!(
+        hint_labels(&hints),
+        vec![
+            (
+                Position::new(0, text.find("\"quest-1\"").expect("first argument")),
+                "arg0:".to_owned()
+            ),
+            (
+                Position::new(0, text.find(", 3").expect("second argument") + 2),
+                "arg1:".to_owned()
+            )
         ]
     );
     assert!(

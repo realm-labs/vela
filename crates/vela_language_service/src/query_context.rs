@@ -795,6 +795,23 @@ mod tests {
             "host::spawn",
             TypeFact::function(vec![TypeFact::STRING], TypeFact::host("Player")),
         );
+        schema.insert_type(
+            "QuestProgress",
+            TypeFact::enum_type("QuestProgress", None::<String>),
+        );
+        schema.insert_variant(
+            "QuestProgress",
+            "Active",
+            TypeFact::enum_type("QuestProgress", Some("Active")),
+        );
+        schema.insert_field("QuestProgress::Active", "0", TypeFact::STRING);
+        schema.insert_field("QuestProgress::Active", "1", TypeFact::I64);
+        schema.insert_variant(
+            "QuestProgress",
+            "Named",
+            TypeFact::enum_type("QuestProgress", Some("Named")),
+        );
+        schema.insert_field("QuestProgress::Named", "quest_id", TypeFact::STRING);
         databases.set_schema_facts(schema);
         databases.update(&project);
         let position =
@@ -844,6 +861,31 @@ mod tests {
         assert_eq!(
             variant_callable.params()[0].type_fact().display_name(),
             "String"
+        );
+
+        let schema_variant_callables = context.callable_facts(&databases, "Active");
+        let schema_variant_callable = schema_variant_callables
+            .iter()
+            .find(|callable| callable.origin() == CallableOrigin::SchemaVariant)
+            .expect("schema enum variant callable facts");
+        assert_eq!(schema_variant_callable.name(), "QuestProgress::Active");
+        assert_eq!(
+            schema_variant_callable.returns(),
+            &TypeFact::enum_type("QuestProgress", Some("Active"))
+        );
+        assert_eq!(schema_variant_callable.params()[0].name(), "arg0");
+        assert_eq!(
+            schema_variant_callable.params()[0]
+                .type_fact()
+                .display_name(),
+            "String"
+        );
+        assert_eq!(schema_variant_callable.params()[1].name(), "arg1");
+        assert!(
+            context
+                .callable_facts(&databases, "Named")
+                .iter()
+                .all(|callable| callable.origin() != CallableOrigin::SchemaVariant)
         );
 
         let stdlib_callables = context.callable_facts(&databases, "max");

@@ -18,6 +18,7 @@ pub enum CallableOrigin {
     Source,
     SourceMethod,
     SourceVariant,
+    SchemaVariant,
     Schema,
     SchemaMethod,
     Stdlib,
@@ -150,6 +151,10 @@ pub(crate) fn callable_facts(
 ) -> Vec<CallableFacts> {
     let mut facts = source_callable_facts(databases, callee);
     facts.extend(source_variant_callable_facts(databases, callee));
+    facts.extend(schema_variant_callable_facts(
+        databases.schema_db().facts(),
+        callee,
+    ));
     facts.extend(schema_callable_facts(databases.schema_db().facts(), callee));
     facts.extend(stdlib_callable_facts(callee));
     facts
@@ -420,6 +425,71 @@ fn schema_callable_facts(schema: &RegistryFacts, callee: &str) -> Vec<CallableFa
             })
         })
         .collect()
+}
+
+fn schema_variant_callable_facts(schema: &RegistryFacts, callee: &str) -> Vec<CallableFacts> {
+    schema
+        .variants()
+        .filter(|variant| {
+            variant_callable_name_matches(callee, &variant.owner, &variant.owner, &variant.name)
+        })
+        .filter_map(|variant| {
+            let owner = format!("{}::{}", variant.owner, variant.name);
+            let params = schema_variant_parameters(schema, &owner);
+            if params.is_empty() {
+                return None;
+            }
+            Some(CallableFacts {
+                name: owner,
+                params,
+                returns: variant.fact,
+                origin: CallableOrigin::SchemaVariant,
+            })
+        })
+        .collect()
+}
+
+fn schema_variant_parameters(
+    schema: &RegistryFacts,
+    variant_owner: &str,
+) -> Vec<CallableParameterFacts> {
+    let mut fields = schema
+        .fields()
+        .filter(|field| field.owner == variant_owner)
+        .collect::<Vec<_>>();
+    if fields
+        .iter()
+        .any(|field| field.name.parse::<usize>().is_err())
+    {
+        return Vec::new();
+    }
+    fields.sort_by(|left, right| {
+        let left = left
+            .name
+            .parse::<usize>()
+            .expect("schema variant parameter field should be numeric");
+        let right = right
+            .name
+            .parse::<usize>()
+            .expect("schema variant parameter field should be numeric");
+        left.cmp(&right)
+    });
+    fields
+        .into_iter()
+        .map(|field| CallableParameterFacts {
+            name: schema_variant_parameter_name(&field.name),
+            type_fact: field.fact,
+            defaulted: false,
+        })
+        .collect()
+}
+
+fn schema_variant_parameter_name(name: &str) -> String {
+    if name.chars().all(|ch| ch.is_ascii_digit()) {
+        format!("arg{name}")
+    } else {
+        name.to_owned()
+    }
 }
 
 fn stdlib_callable_facts(callee: &str) -> Vec<CallableFacts> {

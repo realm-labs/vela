@@ -141,6 +141,10 @@ impl LanguageServiceDatabases {
         ));
         signatures.extend(callable_signatures_by_origin(
             callables,
+            CallableOrigin::SchemaVariant,
+        ));
+        signatures.extend(callable_signatures_by_origin(
+            callables,
             CallableOrigin::Schema,
         ));
         signatures.extend(callable_signatures_by_origin(
@@ -467,6 +471,46 @@ mod tests {
             help.signatures()[0].parameters()[0].label(),
             "quest_id: String"
         );
+    }
+
+    #[test]
+    fn signature_help_resolves_schema_enum_variant_call() {
+        let document = DocumentId::from("/workspace/scripts/game/main.vela");
+        let text = r#"
+            pub fn main() { QuestState::Active("quest-1", 3) }
+        "#;
+        let files = vec![SourceFileSnapshot::new(document.clone(), text)];
+        let config = WorkspaceConfig::workspace([WorkspaceRoot::from("/workspace/scripts")]);
+        let project = assemble_project_sources(&config, &files, &Workspace::new().snapshot());
+        let mut databases = LanguageServiceDatabases::new();
+        let mut schema = RegistryFacts::default();
+        schema.insert_type(
+            "QuestState",
+            TypeFact::enum_type("QuestState", None::<String>),
+        );
+        schema.insert_variant(
+            "QuestState",
+            "Active",
+            TypeFact::enum_type("QuestState", Some("Active")),
+        );
+        schema.insert_field("QuestState::Active", "0", TypeFact::STRING);
+        schema.insert_field("QuestState::Active", "1", TypeFact::I64);
+        databases.set_schema_facts(schema);
+        databases.update(&project);
+
+        let main_line = text.lines().nth(1).expect("main line should exist");
+        let position = Position::new(1, main_line.find(", 3").expect("second argument") + 2);
+        let help = databases
+            .signature_help(&document, position)
+            .expect("signature help should resolve schema enum variant");
+
+        assert_eq!(help.active_parameter(), 1);
+        assert_eq!(
+            help.signatures()[0].label(),
+            "QuestState::Active(arg0: String, arg1: i64) -> QuestState::Active"
+        );
+        assert_eq!(help.signatures()[0].parameters()[0].label(), "arg0: String");
+        assert_eq!(help.signatures()[0].parameters()[1].label(), "arg1: i64");
     }
 
     #[test]

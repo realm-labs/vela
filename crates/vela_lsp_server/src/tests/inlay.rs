@@ -769,6 +769,84 @@ pub fn main() {
 }
 
 #[test]
+fn lsp_inlay_hints_show_schema_tuple_variant_payload_names() {
+    let root = temp_workspace();
+    let schema_path = root.join("target").join("vela").join("schema.json");
+    fs::create_dir_all(schema_path.parent().expect("schema should have parent"))
+        .expect("schema directory should be creatable");
+    fs::write(&schema_path, schema_with_quest_state_tuple_variant())
+        .expect("schema artifact should be writable");
+
+    let mut server = LspServer::new();
+    let _ = response_value(server.handle_json(&request(
+        1,
+        "initialize",
+        serde_json::json!({
+            "processId": null,
+            "rootUri": file_uri(&root),
+            "initializationOptions": {
+                "workspace": {
+                    "roots": [file_uri(&root.join("scripts"))]
+                },
+                "host": {
+                    "schema": file_uri(&schema_path)
+                }
+            },
+            "capabilities": {}
+        }),
+    )));
+    let uri = file_uri(&root.join("scripts").join("game").join("main.vela"));
+    let text = r#"pub fn main() { QuestState::Active("quest-1", 3) }"#;
+    let _ = notification_value(server.handle_json(&notification(
+        "textDocument/didOpen",
+        serde_json::json!({
+            "textDocument": {
+                "uri": uri,
+                "languageId": "vela",
+                "version": 1,
+                "text": text
+            }
+        }),
+    )));
+
+    let response = response_value(server.handle_json(&request(
+        2,
+        "textDocument/inlayHint",
+        serde_json::json!({
+            "textDocument": { "uri": uri },
+            "range": {
+                "start": { "line": 0, "character": 0 },
+                "end": { "line": 0, "character": text.len() }
+            }
+        }),
+    )));
+
+    assert_eq!(
+        response["result"],
+        serde_json::json!([
+            {
+                "position": {
+                    "line": 0,
+                    "character": text.find("\"quest-1\"").expect("first argument")
+                },
+                "label": "arg0:",
+                "kind": 2,
+                "paddingRight": true
+            },
+            {
+                "position": {
+                    "line": 0,
+                    "character": text.find(", 3").expect("second argument") + 2
+                },
+                "label": "arg1:",
+                "kind": 2,
+                "paddingRight": true
+            }
+        ])
+    );
+}
+
+#[test]
 fn lsp_inlay_hints_suppress_any_enum_variant_payloads() {
     let mut server = LspServer::new();
     let _ = response_value(server.handle_json(&request(
@@ -857,4 +935,37 @@ fn file_uri(path: &Path) -> String {
     } else {
         format!("file:///{path}")
     }
+}
+
+fn schema_with_quest_state_tuple_variant() -> &'static str {
+    r#"{
+        "formatVersion": 1,
+        "facts": {
+            "types": [
+                {
+                    "name": "QuestState",
+                    "fact": { "kind": "enum", "name": "QuestState", "variant": null }
+                }
+            ],
+            "variants": [
+                {
+                    "owner": "QuestState",
+                    "name": "Active",
+                    "fact": { "kind": "enum", "name": "QuestState", "variant": "Active" }
+                }
+            ],
+            "fields": [
+                {
+                    "owner": "QuestState::Active",
+                    "name": "0",
+                    "fact": { "kind": "primitive", "name": "string" }
+                },
+                {
+                    "owner": "QuestState::Active",
+                    "name": "1",
+                    "fact": { "kind": "primitive", "name": "i64" }
+                }
+            ]
+        }
+    }"#
 }

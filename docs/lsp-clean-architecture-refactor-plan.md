@@ -398,11 +398,12 @@ Purpose: classify the cursor once and reuse it across features.
   recomputing the cursor token locally, and references plus call hierarchy
   preparation use the same shared identifier token for their initial request
   target. Broader callable semantic facts now include direct source, schema,
-  and stdlib function callables, source enum tuple variant callables, and
-  source inherent/trait/default, schema host/trait, and stdlib method callables
-  shared by signature help, while named-argument completion continues to
-  consume the source function subset; broader schema/record variant callable
-  families remain feature-owned follow-up work.
+  and stdlib function callables, source and schema enum tuple variant
+  callables, and source inherent/trait/default, schema host/trait, and stdlib
+  method callables shared by signature help and inlay hints, while
+  named-argument completion continues to consume the source function subset;
+  schema record/named variant constructor families remain deferred until the
+  schema contract carries constructor order.
 - [x] Keep classification tolerant of incomplete source and parser recovery.
 - [x] Route completion, hover, signature help, definition, and rename prepare
   through the shared context where practical.
