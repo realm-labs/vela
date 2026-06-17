@@ -343,14 +343,15 @@ Purpose: replace coarse global completion with context-specific producers.
   focused context module, analysis-backed item rendering now lives in a shared
   helper module, and the editor-neutral completion model now lives in a
   focused model module; broader relevance separation remains open.
-- [~] Replace `CompletionContextKind::Global` style dispatch with producers
+- [x] Replace `CompletionContextKind::Global` style dispatch with producers
   selected by `CursorContextKind`.
   Pattern cursor contexts now route to a dedicated source/schema enum-variant
   producer and statement cursor contexts now route to statement keyword
   completions; expression cursor contexts now route through an explicit
   expression completion context while preserving the current expression
-  candidate set. Pattern and statement completions have native LSP projection
-  fixtures. Broader expression producer-family separation remains open.
+  candidate set. The obsolete `CompletionContextKind::Global` variant is
+  removed, and fallback completion uses expression recovery instead. Pattern
+  and statement completions have native LSP projection fixtures.
 - [~] Add keyword and snippet completions as first-class completion kinds.
   Keyword items are first-class service `CompletionKind::Keyword`, and
   callable snippets now carry explicit editor-neutral insert-format metadata

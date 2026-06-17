@@ -56,11 +56,10 @@ impl LanguageServiceDatabases {
     #[must_use]
     pub fn completion_items(&self, document_id: &DocumentId, position: Position) -> CompletionList {
         let Some(query) = QueryContext::from_databases(self, document_id, position) else {
-            return empty_completion_list(CompletionContext::global(0, ""));
+            return empty_completion_list(CompletionContext::expression(0, ""));
         };
         let context = completion_context(&query);
         let items = match context.kind {
-            CompletionContextKind::Global => self.global_completion_items(&query, &context),
             CompletionContextKind::Expression => self.expression_completion_items(&query, &context),
             CompletionContextKind::Item => self.item_completion_items(&context),
             CompletionContextKind::Statement => self.statement_completion_items(&query, &context),
@@ -76,19 +75,6 @@ impl LanguageServiceDatabases {
             CompletionContextKind::TypeHint => self.type_hint_completion_items(&context),
         };
         CompletionList { context, items }
-    }
-
-    fn global_completion_items(
-        &self,
-        query: &QueryContext<'_>,
-        context: &CompletionContext,
-    ) -> Vec<CompletionItem> {
-        global_context_completion_items(
-            self.hir_db().graph(),
-            self.schema_db().facts(),
-            query,
-            context,
-        )
     }
 
     fn expression_completion_items(
@@ -119,7 +105,12 @@ impl LanguageServiceDatabases {
         context: &CompletionContext,
     ) -> Vec<CompletionItem> {
         let mut items = statement_keyword_completions(context.prefix());
-        items.extend(self.global_completion_items(query, context));
+        items.extend(global_context_completion_items(
+            self.hir_db().graph(),
+            self.schema_db().facts(),
+            query,
+            context,
+        ));
         dedupe_and_filter_service_items(items, context.replace_range(), context.prefix(), |item| {
             label_segment_matches(item.label(), context.prefix())
         })

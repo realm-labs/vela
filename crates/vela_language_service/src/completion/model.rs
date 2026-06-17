@@ -46,7 +46,6 @@ pub enum CompletionContextKind {
     Item,
     Statement,
     Expression,
-    Global,
     ModulePath,
     Member,
     RecordField,
@@ -321,20 +320,6 @@ impl CompletionContext {
                     .as_ref()
                     .and_then(|context| context.method_range)
             })
-    }
-
-    pub(super) fn global(prefix_start: usize, prefix: &str) -> Self {
-        Self {
-            kind: CompletionContextKind::Global,
-            prefix: prefix.to_owned(),
-            replace_range: TextRange::new(prefix_start, prefix_start + prefix.len()),
-            module_base: None,
-            member_receiver: None,
-            record_constructor: None,
-            map_key: None,
-            call_arguments: None,
-            lambda_parameter: None,
-        }
     }
 
     pub(super) fn item(prefix_start: usize, prefix: &str) -> Self {

@@ -197,7 +197,7 @@ pub(super) fn completion_context(query: &QueryContext<'_>) -> CompletionContext 
         return CompletionContext::expression(prefix_start, prefix);
     }
 
-    CompletionContext::global(prefix_start, prefix)
+    CompletionContext::expression(prefix_start, prefix)
 }
 
 fn query_call_callee<'a>(query: &'a QueryContext<'_>) -> Option<(TextRange, &'a str)> {
