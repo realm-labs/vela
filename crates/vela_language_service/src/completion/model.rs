@@ -73,7 +73,7 @@ pub struct CompletionItem {
 #[derive(Debug, Clone, Eq, PartialEq, Default)]
 pub struct CompletionItemMetadata {
     pub(super) lookup: Option<String>,
-    pub(super) source_range: Option<TextRange>,
+    pub(super) edit_range: Option<TextRange>,
     pub(super) text_edit: Option<CompletionTextEdit>,
     pub(super) filter_text: Option<String>,
     pub(super) label_details: CompletionLabelDetails,
@@ -162,8 +162,8 @@ impl CompletionItem {
     }
 
     #[must_use]
-    pub fn source_range(&self) -> Option<TextRange> {
-        self.metadata.source_range
+    pub fn edit_range(&self) -> Option<TextRange> {
+        self.metadata.edit_range
     }
 
     #[must_use]

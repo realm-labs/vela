@@ -8,7 +8,7 @@ use vela_syntax::ast::{
 };
 
 use super::{
-    CompletionContext, CompletionInsertFormat, CompletionItem, CompletionKind,
+    CompletionContext, CompletionInsertFormat, CompletionItem, CompletionKind, CompletionSymbol,
     accumulator::CompletionAccumulator, display_type_detail, model::RecordConstructor,
 };
 
@@ -288,14 +288,20 @@ fn schema_record_field_completions(
     schema
         .fields()
         .filter(|field| field.owner == owner || Some(field.owner.as_str()) == short_owner)
-        .map(|field| CompletionItem {
-            label: field.name,
-            kind: CompletionKind::Field,
-            detail: display_type_detail(field.fact.display_name()),
-            insert_text: None,
-            insert_format: CompletionInsertFormat::PlainText,
-            sort_text: None,
-            metadata: Default::default(),
+        .map(|field| {
+            let owner = field.owner;
+            let name = field.name;
+            CompletionItem {
+                label: name.clone(),
+                kind: CompletionKind::Field,
+                detail: display_type_detail(field.fact.display_name()),
+                insert_text: None,
+                insert_format: CompletionInsertFormat::PlainText,
+                sort_text: None,
+                metadata: Default::default(),
+            }
+            .with_documentation(schema.field_docs(&owner, &name))
+            .with_symbol(CompletionSymbol::Schema(format!("{owner}.{name}")))
         })
         .collect()
 }

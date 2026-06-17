@@ -13,7 +13,6 @@ pub(crate) fn lsp_completion_list(
         "items": completions.items().iter().enumerate().map(|(index, item)| {
             lsp_completion_item(
                 item,
-                completions.context().replace_range(),
                 line_index,
                 index == 0,
             )
@@ -23,7 +22,6 @@ pub(crate) fn lsp_completion_list(
 
 fn lsp_completion_item(
     item: &vela_language_service::CompletionItem,
-    replace_range: TextRange,
     line_index: &LineIndex,
     preselect: bool,
 ) -> JsonValue {
@@ -50,10 +48,10 @@ fn lsp_completion_item(
             "range": lsp_range(text_edit.range(), line_index),
             "newText": text_edit.new_text()
         });
-    } else if item.source_range().is_some() && item.insert_text().is_some() {
+    } else if let (Some(edit_range), Some(insert_text)) = (item.edit_range(), item.insert_text()) {
         value["textEdit"] = json!({
-            "range": lsp_range(replace_range, line_index),
-            "newText": item.insert_text().expect("checked insert text")
+            "range": lsp_range(edit_range, line_index),
+            "newText": insert_text
         });
     }
     if item.insert_text().is_some()

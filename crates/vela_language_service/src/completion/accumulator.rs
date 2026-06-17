@@ -78,7 +78,7 @@ impl CompletionAccumulator {
         item.metadata
             .filter_text
             .get_or_insert_with(|| lookup.clone());
-        item.metadata.source_range.get_or_insert(self.replace_range);
+        item.metadata.edit_range.get_or_insert(self.replace_range);
         if item.metadata.text_edit.is_none()
             && let Some(insert_text) = item.insert_text.clone()
         {

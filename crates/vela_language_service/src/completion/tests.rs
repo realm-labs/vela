@@ -387,6 +387,7 @@ fn record_field_completion_uses_schema_facts() {
     let mut schema = RegistryFacts::default();
     schema.insert_type("Player", TypeFact::host("Player"));
     schema.insert_field("Player", "level", TypeFact::I64);
+    schema.insert_field_docs("Player", "level", "Current player level.");
     schema.insert_field("Player", "name", TypeFact::STRING);
     databases.set_schema_facts(schema);
     databases.update(&project);
@@ -402,6 +403,12 @@ fn record_field_completion_uses_schema_facts() {
     );
     assert_completion(&completions, "level", CompletionKind::Field);
     assert_no_completion(&completions, "name");
+    let level = completion(&completions, "level");
+    assert_eq!(level.documentation(), Some("Current player level."));
+    assert_eq!(
+        level.symbol(),
+        Some(&CompletionSymbol::Schema("Player.level".to_owned()))
+    );
 }
 
 #[test]

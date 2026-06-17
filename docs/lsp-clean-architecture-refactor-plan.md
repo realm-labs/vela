@@ -590,8 +590,13 @@ and semantic tokens use the same identities and display primitives.
   lookups, and schema/builtin `SymbolRef` classification. Source declarations,
   locals, imports, and script-owned member fallbacks still need deeper shared
   symbol resolution before this item is complete.
-- [ ] Ensure schema-owned symbols can be displayed and completed without
+- [~] Ensure schema-owned symbols can be displayed and completed without
   pretending they have source definitions.
+  Completion edit metadata now uses editor-neutral `edit_range` naming instead
+  of source-definition terminology, and schema-backed record field completions
+  carry schema documentation plus `SymbolRef::Schema` identity through LSP
+  projection. Remaining schema-owned surfaces should be audited before this is
+  considered complete.
 - [ ] Preserve source-span accuracy for script-owned symbols.
 
 Tests:
