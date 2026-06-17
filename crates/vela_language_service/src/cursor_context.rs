@@ -278,8 +278,14 @@ fn is_lambda_parameter_context(text: &str, offset: usize) -> bool {
     let Some(pipe) = before.rfind('|') else {
         return false;
     };
+    let Some(open) = active_call_open(before, pipe) else {
+        return false;
+    };
+    if before[open + 1..pipe].contains('|') {
+        return false;
+    }
     let params = &before[pipe + 1..];
-    is_lambda_parameter_prefix(params) && active_call_open(before, pipe).is_some()
+    is_lambda_parameter_prefix(params)
 }
 
 fn is_lambda_parameter_prefix(params: &str) -> bool {

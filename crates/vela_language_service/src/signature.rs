@@ -10,7 +10,9 @@ use vela_hir::binding::{BindingMap, BindingResolution};
 use vela_hir::module_graph::{DeclarationKind, ModuleGraph};
 use vela_hir::type_hint::{EnumVariantFieldsHint, HirTypeHint, ImplMetadataKind};
 
-use crate::{DocumentId, LanguageServiceDatabases, LineIndex, Position, QueryContext, TextRange};
+use crate::{
+    CursorContextKind, DocumentId, LanguageServiceDatabases, Position, QueryContext, TextRange,
+};
 
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub struct SignatureHelp {
@@ -99,7 +101,7 @@ impl LanguageServiceDatabases {
     ) -> Option<SignatureHelp> {
         let query = QueryContext::from_databases(self, document_id, position)?;
         let source_id = query.source_id()?;
-        let context = call_context_at(query.text(), query.position())?;
+        let context = call_context_from_query(&query)?;
         let signatures = self.signature_candidates_for_context(source_id, query.text(), &context);
         if signatures.is_empty() {
             return None;
@@ -484,10 +486,15 @@ impl LanguageServiceDatabases {
     }
 }
 
-fn call_context_at(text: &str, position: Position) -> Option<CallContext> {
-    let offset = LineIndex::new(text).offset(position);
-    let open = active_call_open(text, offset)?;
-    let (callee, callee_range) = callee_before_open(text, open)?;
+fn call_context_from_query(query: &QueryContext<'_>) -> Option<CallContext> {
+    if query.cursor().kind() != CursorContextKind::CallArgument {
+        return None;
+    }
+    let text = query.text();
+    let offset = query.cursor().replace_range().end;
+    let open = query.call_open_offset()?;
+    let callee_range = query.call_callee_range()?;
+    let callee = query.call_callee_text()?.to_owned();
     let args_prefix = text[open + 1..offset].to_owned();
     Some(CallContext {
         callee,
@@ -495,31 +502,6 @@ fn call_context_at(text: &str, position: Position) -> Option<CallContext> {
         active_parameter: active_parameter_index(&args_prefix),
         args_prefix,
     })
-}
-
-fn active_call_open(text: &str, offset: usize) -> Option<usize> {
-    let mut stack = Vec::new();
-    for (index, ch) in text[..offset].char_indices() {
-        match ch {
-            '(' => stack.push(index),
-            ')' => {
-                stack.pop();
-            }
-            _ => {}
-        }
-    }
-    stack.pop()
-}
-
-fn callee_before_open(text: &str, open: usize) -> Option<(String, TextRange)> {
-    let before = text[..open].trim_end();
-    let end = before.len();
-    let start = before
-        .char_indices()
-        .rev()
-        .find_map(|(index, ch)| (!is_callee_continue(ch)).then_some(index + ch.len_utf8()))
-        .unwrap_or(0);
-    (start < end).then(|| (before[start..end].to_owned(), TextRange::new(start, end)))
 }
 
 fn active_parameter_index(args_text: &str) -> usize {
@@ -536,10 +518,6 @@ fn active_parameter_index(args_text: &str) -> usize {
         }
     }
     active
-}
-
-fn is_callee_continue(ch: char) -> bool {
-    ch == '_' || ch == ':' || ch == '.' || ch.is_ascii_alphanumeric()
 }
 
 fn signature_label(name: &str, parameters: &[SignatureParameter], returns: &TypeFact) -> String {
@@ -880,7 +858,8 @@ mod tests {
 
     use super::*;
     use crate::{
-        SourceFileSnapshot, Workspace, WorkspaceConfig, WorkspaceRoot, assemble_project_sources,
+        LineIndex, SourceFileSnapshot, Workspace, WorkspaceConfig, WorkspaceRoot,
+        assemble_project_sources,
     };
 
     #[test]
@@ -914,6 +893,35 @@ mod tests {
             "grant(player: Player, amount: i64) -> bool"
         );
         assert_eq!(help.signatures()[0].parameters()[1].label(), "amount: i64");
+    }
+
+    #[test]
+    fn signature_help_uses_shared_context_for_incomplete_calls() {
+        let document = DocumentId::from("/workspace/scripts/game/main.vela");
+        let text = r#"
+            pub fn grant(player: Player, amount: i64) -> bool { return true }
+            pub fn main(player: Player) { grant(
+        "#;
+        let files = vec![SourceFileSnapshot::new(document.clone(), text)];
+        let config = WorkspaceConfig::workspace([WorkspaceRoot::from("/workspace/scripts")]);
+        let project = assemble_project_sources(&config, &files, &Workspace::new().snapshot());
+        let mut databases = LanguageServiceDatabases::new();
+        let mut schema = RegistryFacts::default();
+        schema.insert_type("Player", TypeFact::host("Player"));
+        databases.set_schema_facts(schema);
+        databases.update(&project);
+
+        let line_index = LineIndex::new(text);
+        let position = line_index.position(text.find("grant(").expect("call") + "grant(".len());
+        let help = databases
+            .signature_help(&document, position)
+            .expect("signature help should resolve incomplete call");
+
+        assert_eq!(help.active_parameter(), 0);
+        assert_eq!(
+            help.signatures()[0].label(),
+            "grant(player: Player, amount: i64) -> bool"
+        );
     }
 
     #[test]

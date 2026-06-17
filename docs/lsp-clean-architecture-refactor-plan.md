@@ -314,8 +314,12 @@ Purpose: classify the cursor once and reuse it across features.
   only run their producer-specific fact extraction after shared cursor
   classification selects the matching kind. Incomplete call recovery now
   attaches fallback callee ranges in `CursorContext`, so named-argument
-  completion no longer has a producer-local callee scanner. Broader callable
-  semantic facts remain feature-owned follow-up work.
+  completion no longer has a producer-local callee scanner. Signature help now
+  consumes the shared call-argument callee range and active call opening
+  offset instead of reconstructing active calls locally, and lambda body
+  expressions remain call-argument contexts instead of being reclassified as
+  lambda parameters. Broader callable semantic facts remain feature-owned
+  follow-up work.
 - [x] Keep classification tolerant of incomplete source and parser recovery.
 - [x] Route completion, hover, signature help, definition, and rename prepare
   through the shared context where practical.

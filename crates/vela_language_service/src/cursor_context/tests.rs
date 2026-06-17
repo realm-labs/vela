@@ -152,6 +152,16 @@ fn cursor_context_classifies_lambda_parameters() {
 }
 
 #[test]
+fn cursor_context_keeps_lambda_body_as_call_argument() {
+    let text = "pub fn main(items) { items.filter(|item| value) }";
+    let cursor = classify(text, "value");
+    let callee = cursor.call_callee().expect("callee range");
+
+    assert_eq!(cursor.kind(), CursorContextKind::CallArgument);
+    assert_eq!(&text[callee.start..callee.end], "items.filter");
+}
+
+#[test]
 fn cursor_context_classifies_for_loop_patterns() {
     let cursor = classify("pub fn main(items) { for re in items { } }", "re");
 
