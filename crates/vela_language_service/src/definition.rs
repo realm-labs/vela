@@ -44,6 +44,10 @@ impl LanguageServiceDatabases {
             return Some(definition);
         }
 
+        if let Some(definition) = self.schema_variant_definition(source.text(), &token) {
+            return Some(definition);
+        }
+
         for declaration in graph.declarations() {
             if declaration.span.source != source_id || !declaration.span.contains(offset) {
                 continue;
@@ -123,6 +127,17 @@ impl LanguageServiceDatabases {
             .field_span(&owner, &token.text)
             .or_else(|| locations.method_span(&owner, &token.text))
             .or_else(|| locations.trait_method_span(&owner, &token.text))?;
+        self.definition_from_span(span)
+    }
+
+    fn schema_variant_definition(&self, text: &str, token: &DefinitionToken) -> Option<Definition> {
+        let path = path_ending_at(text, token.range)?;
+        let (variant, owner_segments) = path.split_last()?;
+        let owner = schema_variant_owner(self.schema_db().facts(), owner_segments, variant)?;
+        let span = self
+            .schema_db()
+            .source_locations()
+            .variant_span(&owner, variant)?;
         self.definition_from_span(span)
     }
 }
@@ -300,6 +315,60 @@ fn member_receiver_range(text: &str, member_start: usize) -> Option<TextRange> {
         .find_map(|(index, ch)| (!is_identifier_continue(ch)).then_some(index + ch.len_utf8()))
         .unwrap_or(0);
     (start < end).then(|| TextRange::new(start, end))
+}
+
+fn path_ending_at(text: &str, range: TextRange) -> Option<Vec<String>> {
+    let mut path = vec![text.get(range.start..range.end)?.to_owned()];
+    let mut cursor = range.start;
+    loop {
+        let before_segment = text.get(..cursor)?.trim_end();
+        let Some(before_separator) = before_segment.strip_suffix("::").map(str::trim_end) else {
+            break;
+        };
+        let end = before_separator.len();
+        let start = before_separator
+            .char_indices()
+            .rev()
+            .find_map(|(index, ch)| (!is_identifier_continue(ch)).then_some(index + ch.len_utf8()))
+            .unwrap_or(0);
+        if start == end {
+            break;
+        }
+        path.push(text.get(start..end)?.to_owned());
+        cursor = start;
+    }
+    (path.len() > 1).then(|| {
+        path.reverse();
+        path
+    })
+}
+
+fn schema_variant_owner(
+    schema: &RegistryFacts,
+    owner_segments: &[String],
+    variant: &str,
+) -> Option<String> {
+    if owner_segments.is_empty() {
+        return None;
+    }
+    let owner = owner_segments.join("::");
+    if schema.variant_fact(&owner, variant).is_some() {
+        return Some(owner);
+    }
+    if owner.contains("::") {
+        return None;
+    }
+    let mut matches = schema.variants().filter_map(|candidate| {
+        (candidate.name == variant
+            && candidate
+                .owner
+                .rsplit("::")
+                .next()
+                .is_some_and(|short| short == owner))
+        .then_some(candidate.owner)
+    });
+    let matched = matches.next()?;
+    matches.next().is_none().then_some(matched)
 }
 
 fn is_identifier_continue(ch: char) -> bool {
@@ -661,6 +730,70 @@ mod tests {
                 ),
             )
             .expect("definition should resolve schema trait method source span");
+
+        assert_eq!(definition.document_id(), &schema_source);
+        assert_eq!(definition.range().start().character, target_start);
+        assert_eq!(definition.range().end().character, target_end);
+    }
+
+    #[test]
+    fn definition_follows_schema_variant_source_span() {
+        let main = DocumentId::from("/workspace/scripts/game/main.vela");
+        let schema_source = DocumentId::from("/workspace/scripts/schema_defs.vela");
+        let main_text = "pub fn main() { return QuestState::Active }";
+        let schema_text = "pub fn active_marker() { return 1 }";
+        let mut databases = databases_for(vec![
+            SourceFileSnapshot::new(main.clone(), main_text),
+            SourceFileSnapshot::new(schema_source.clone(), schema_text),
+        ]);
+        let schema_record = databases
+            .source_db()
+            .records()
+            .get(&schema_source)
+            .expect("schema source should be indexed");
+        let target_start = schema_text
+            .find("active_marker")
+            .expect("schema marker should exist");
+        let target_end = target_start + "active_marker".len();
+        let artifact = serde_json::json!({
+            "formatVersion": 1,
+            "facts": {
+                "types": [
+                    {
+                        "name": "QuestState",
+                        "fact": { "kind": "enum", "name": "QuestState", "variant": null }
+                    }
+                ],
+                "variants": [
+                    {
+                        "owner": "QuestState",
+                        "name": "Active",
+                        "fact": {
+                            "kind": "enum",
+                            "name": "QuestState",
+                            "variant": "Active"
+                        },
+                        "sourceSpan": {
+                            "source": schema_record.source_id().get(),
+                            "start": target_start,
+                            "end": target_end
+                        }
+                    }
+                ]
+            }
+        })
+        .to_string();
+        databases.load_schema_artifact_json("/workspace/target/vela/schema.json", &artifact);
+
+        let definition = databases
+            .definition(
+                &main,
+                Position::new(
+                    0,
+                    main_text.find("Active").expect("variant use should exist"),
+                ),
+            )
+            .expect("definition should resolve schema variant source span");
 
         assert_eq!(definition.document_id(), &schema_source);
         assert_eq!(definition.range().start().character, target_start);

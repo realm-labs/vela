@@ -466,6 +466,9 @@ Purpose: expose semantic facts and navigation.
   - Schema-backed field, method, and trait-method member uses now follow
     schema source spans when the referenced schema `SourceId` exists in the
     current workspace snapshot.
+  - Schema-backed enum variant qualified paths now follow schema source spans
+    when the referenced schema `SourceId` exists in the current workspace
+    snapshot.
 - [~] Implement go to declaration/type definition where LSP clients separate
   those requests.
   - Initial language-service and LSP support routes `textDocument/declaration`
@@ -501,8 +504,10 @@ Tests:
 - [x] `definition_follows_schema_field_source_span`
 - [x] `definition_follows_schema_method_source_span`
 - [x] `definition_follows_schema_trait_method_source_span`
+- [x] `definition_follows_schema_variant_source_span`
 - [x] `lsp_definition_follows_schema_source_span`
 - [x] `lsp_definition_follows_schema_field_source_span`
+- [x] `lsp_definition_follows_schema_variant_source_span`
 - [x] `declaration_follows_local_binding`
 - [x] `type_definition_follows_schema_source_span`
 - [x] `lsp_declaration_follows_open_overlay_local_binding`
