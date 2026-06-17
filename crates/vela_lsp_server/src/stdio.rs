@@ -24,6 +24,7 @@ where
     while let Some(message) = transport.read_message()? {
         let result = server.handle_json(&message);
         transport.write_result(result)?;
+        transport.flush()?;
         if server.is_exited() {
             break;
         }
@@ -115,5 +116,57 @@ where
 
     fn flush(&mut self) -> io::Result<()> {
         self.writer.flush()
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use std::io::{self, Cursor, Write};
+
+    #[test]
+    fn stdio_flushes_after_each_response_before_stream_end() {
+        let initialize = serde_json::json!({
+            "jsonrpc": "2.0",
+            "id": 1,
+            "method": "initialize",
+            "params": {
+                "processId": null,
+                "capabilities": {}
+            }
+        })
+        .to_string();
+        let input = format!("Content-Length: {}\r\n\r\n{initialize}", initialize.len());
+        let mut writer = FlushCountingWriter::default();
+
+        super::run_stdio(Cursor::new(input.into_bytes()), &mut writer)
+            .expect("stdio transport should flush initialize response");
+
+        assert!(
+            writer.flush_count >= 2,
+            "expected one flush after the response and one final flush, got {}",
+            writer.flush_count
+        );
+        assert!(
+            String::from_utf8_lossy(&writer.bytes).contains("\"id\":1"),
+            "initialize response should be written"
+        );
+    }
+
+    #[derive(Default)]
+    struct FlushCountingWriter {
+        bytes: Vec<u8>,
+        flush_count: usize,
+    }
+
+    impl Write for FlushCountingWriter {
+        fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
+            self.bytes.extend_from_slice(buf);
+            Ok(buf.len())
+        }
+
+        fn flush(&mut self) -> io::Result<()> {
+            self.flush_count += 1;
+            Ok(())
+        }
     }
 }
