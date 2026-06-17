@@ -6,6 +6,11 @@ grammar, Tree-sitter highlight/indent/outline queries, and starts the native
 server over stdio. Language intelligence remains implemented by
 `vela_lsp_server` and `vela_language_service`.
 
+The Tree-sitter grammar source lives outside this extension directory at
+`../tree-sitter-vela`. Zed checks grammar repositories out under
+`grammars/<name>` while compiling a dev extension, so `grammars/vela` is kept
+as an ignored build/cache directory rather than a source directory.
+
 ## Server Binary
 
 Install `vela_lsp_server` on `PATH`, or unpack one of the native release
@@ -40,7 +45,7 @@ From the repository root:
 
 ```bash
 node editors/zed/scripts/validate-package.js
-cd editors/zed/grammars/vela
+cd editors/tree-sitter-vela
 npx --yes tree-sitter-cli@0.25.10 generate
-npx --yes tree-sitter-cli@0.25.10 parse --quiet ../../../../site/src/syntax/fixtures/complete.vela
+npx --yes tree-sitter-cli@0.25.10 parse --quiet ../../site/src/syntax/fixtures/complete.vela
 ```

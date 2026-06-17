@@ -4,6 +4,7 @@ const fs = require("fs");
 const path = require("path");
 
 const root = path.resolve(__dirname, "..");
+const repositoryRoot = path.resolve(root, "..", "..").replace(/\\/g, "/");
 
 function read(relativePath) {
   return fs.readFileSync(path.join(root, relativePath), "utf8");
@@ -51,12 +52,16 @@ assert(
 );
 assert(manifest.includes("[grammars.vela]"), "Vela grammar section is missing");
 assert(
-  manifest.includes('repository = "file://./grammars/vela"'),
-  "Vela grammar must use the packaged local tree-sitter grammar"
+  manifest.includes(`repository = "${repositoryRoot}"`),
+  "Vela grammar must use the repository root as the local grammar checkout source"
 );
 assert(
-  manifest.includes('rev = "HEAD"'),
+  manifest.includes('rev = "master"'),
   "Vela grammar must include a rev field for Zed extension manifest parsing"
+);
+assert(
+  manifest.includes('path = "editors/tree-sitter-vela"'),
+  "Vela grammar must use the grammar source path inside the repository checkout"
 );
 
 const languageConfigPath = "languages/vela/config.toml";
@@ -76,10 +81,11 @@ assertThinLauncher(extensionRs, "Zed extension");
 const cargoManifest = read("Cargo.toml");
 assert(cargoManifest.includes("[workspace]"), "Zed extension crate must be isolated from the root workspace");
 
-const grammarRoot = path.join(root, "grammars", "vela");
+const grammarRoot = path.resolve(root, "..", "tree-sitter-vela");
 assert(fs.existsSync(path.join(grammarRoot, "grammar.js")), "tree-sitter grammar.js is missing");
 assert(fs.existsSync(path.join(grammarRoot, "tree-sitter.json")), "tree-sitter.json is missing");
 assert(fs.existsSync(path.join(grammarRoot, "src", "parser.c")), "generated parser.c is missing");
+assert(!fs.existsSync(path.join(root, "grammars", "vela")), "Zed grammar checkout directory must not contain source files");
 assert(fs.existsSync(path.join(root, "languages", "vela", "highlights.scm")), "highlights query is missing");
 assert(fs.existsSync(path.join(root, "languages", "vela", "brackets.scm")), "brackets query is missing");
 assert(fs.existsSync(path.join(root, "languages", "vela", "indents.scm")), "indents query is missing");

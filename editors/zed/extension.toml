@@ -11,5 +11,6 @@ name = "Vela Language Server"
 languages = ["Vela"]
 
 [grammars.vela]
-repository = "file://./grammars/vela"
-rev = "HEAD"
+repository = "C:/Users/dairc/IdeaProjects/vela"
+rev = "master"
+path = "editors/tree-sitter-vela"
