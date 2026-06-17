@@ -1,3 +1,4 @@
+use vela_analysis::{facts::AnalysisFacts, registry::RegistryFacts, type_fact::TypeFact};
 use vela_common::{SourceId, Span};
 use vela_hir::binding::{BindingMap, BindingResolution, LocalBinding};
 
@@ -27,6 +28,7 @@ impl Definition {
 struct DefinitionToken {
     range: TextRange,
     text: String,
+    member_receiver: Option<TextRange>,
 }
 
 impl LanguageServiceDatabases {
@@ -37,6 +39,10 @@ impl LanguageServiceDatabases {
         let source_id = source.source_id();
         let offset = u32::try_from(token.range.start).ok()?;
         let graph = self.hir_db().graph();
+
+        if let Some(definition) = self.schema_member_definition(document_id, &token) {
+            return Some(definition);
+        }
 
         for declaration in graph.declarations() {
             if declaration.span.source != source_id || !declaration.span.contains(offset) {
@@ -103,6 +109,22 @@ impl LanguageServiceDatabases {
             .or_else(|| locations.function_span(&token.text))?;
         self.definition_from_span(span)
     }
+
+    fn schema_member_definition(
+        &self,
+        document_id: &DocumentId,
+        token: &DefinitionToken,
+    ) -> Option<Definition> {
+        let receiver = token.member_receiver?;
+        let receiver_fact = member_receiver_fact(self, document_id, receiver)?;
+        let owner = fact_owner_name(&receiver_fact)?;
+        let locations = self.schema_db().source_locations();
+        let span = locations
+            .field_span(&owner, &token.text)
+            .or_else(|| locations.method_span(&owner, &token.text))
+            .or_else(|| locations.trait_method_span(&owner, &token.text))?;
+        self.definition_from_span(span)
+    }
 }
 
 fn definition_from_resolution_at_token(
@@ -163,9 +185,11 @@ fn local_declaration_at_token<'a>(
 fn definition_token_at(text: &str, position: Position) -> Option<DefinitionToken> {
     let offset = LineIndex::new(text).offset(position);
     let range = identifier_range_at(text, offset)?;
+    let member_receiver = member_receiver_range(text, range.start);
     Some(DefinitionToken {
         text: text[range.start..range.end].to_owned(),
         range,
+        member_receiver,
     })
 }
 
@@ -196,6 +220,86 @@ fn name_range_in_text(text: &str, range: TextRange, name: &str) -> Option<TextRa
     let relative = slice.find(name)?;
     let start = range.start + relative;
     Some(TextRange::new(start, start + name.len()))
+}
+
+fn member_receiver_fact(
+    databases: &LanguageServiceDatabases,
+    document_id: &DocumentId,
+    receiver: TextRange,
+) -> Option<TypeFact> {
+    let source = databases.source_db().records().get(document_id)?;
+    let source_id = source.source_id();
+    let start = u32::try_from(receiver.start).ok()?;
+    let end = u32::try_from(receiver.end).ok()?;
+    let receiver_span = Span::new(source_id, start, end);
+    let graph = databases.hir_db().graph();
+    let facts = AnalysisFacts::from_module_graph(graph);
+
+    graph.declarations().find_map(|declaration| {
+        if declaration.span.source != source_id || !declaration.span.contains(start) {
+            return None;
+        }
+        let bindings = graph.bindings(declaration.id)?;
+        let resolution = bindings.resolution_at_span(receiver_span)?;
+        type_fact_for_resolution(resolution, bindings, &facts, databases.schema_db().facts())
+    })
+}
+
+fn type_fact_for_resolution(
+    resolution: &BindingResolution,
+    bindings: &BindingMap,
+    facts: &AnalysisFacts,
+    schema: &RegistryFacts,
+) -> Option<TypeFact> {
+    match resolution {
+        BindingResolution::Local(local) => {
+            let binding = bindings.local(*local)?;
+            facts
+                .local(*local)
+                .cloned()
+                .filter(|fact| !matches!(fact, TypeFact::Unknown))
+                .or_else(|| schema_fact_for_local_hint(binding, schema))
+        }
+        BindingResolution::Declaration(declaration) => facts.declaration(*declaration).cloned(),
+        BindingResolution::Import(_) | BindingResolution::QualifiedPath(_) => None,
+    }
+}
+
+fn schema_fact_for_local_hint(binding: &LocalBinding, schema: &RegistryFacts) -> Option<TypeFact> {
+    let hint = binding.type_hint.as_ref()?;
+    if hint.args.is_empty() {
+        let qualified = hint.path.join("::");
+        schema
+            .type_fact(&qualified)
+            .or_else(|| hint.path.last().and_then(|name| schema.type_fact(name)))
+            .or_else(|| schema.trait_fact(&qualified))
+            .or_else(|| hint.path.last().and_then(|name| schema.trait_fact(name)))
+            .cloned()
+    } else {
+        None
+    }
+}
+
+fn fact_owner_name(fact: &TypeFact) -> Option<String> {
+    match fact {
+        TypeFact::Host { name }
+        | TypeFact::Record { name }
+        | TypeFact::Enum { name, .. }
+        | TypeFact::Trait { name } => Some(name.clone()),
+        _ => None,
+    }
+}
+
+fn member_receiver_range(text: &str, member_start: usize) -> Option<TextRange> {
+    let before_member = text[..member_start].trim_end();
+    let before_dot = before_member.strip_suffix('.')?.trim_end();
+    let end = before_dot.len();
+    let start = before_dot
+        .char_indices()
+        .rev()
+        .find_map(|(index, ch)| (!is_identifier_continue(ch)).then_some(index + ch.len_utf8()))
+        .unwrap_or(0);
+    (start < end).then(|| TextRange::new(start, end))
 }
 
 fn is_identifier_continue(ch: char) -> bool {
@@ -375,6 +479,190 @@ mod tests {
 
         assert_eq!(definition.document_id(), &schema_source);
         assert_eq!(definition.range().start().line, 0);
+        assert_eq!(definition.range().start().character, target_start);
+        assert_eq!(definition.range().end().character, target_end);
+    }
+
+    #[test]
+    fn definition_follows_schema_field_source_span() {
+        let main = DocumentId::from("/workspace/scripts/game/main.vela");
+        let schema_source = DocumentId::from("/workspace/scripts/schema_defs.vela");
+        let main_text = "pub fn main(player: Player) { return player.level }";
+        let schema_text = "pub fn level_marker() { return 1 }";
+        let mut databases = databases_for(vec![
+            SourceFileSnapshot::new(main.clone(), main_text),
+            SourceFileSnapshot::new(schema_source.clone(), schema_text),
+        ]);
+        let schema_record = databases
+            .source_db()
+            .records()
+            .get(&schema_source)
+            .expect("schema source should be indexed");
+        let target_start = schema_text
+            .find("level_marker")
+            .expect("schema marker should exist");
+        let target_end = target_start + "level_marker".len();
+        let artifact = serde_json::json!({
+            "formatVersion": 1,
+            "facts": {
+                "types": [
+                    {
+                        "name": "Player",
+                        "fact": { "kind": "host", "name": "Player" }
+                    }
+                ],
+                "fields": [
+                    {
+                        "owner": "Player",
+                        "name": "level",
+                        "fact": { "kind": "primitive", "name": "i64" },
+                        "sourceSpan": {
+                            "source": schema_record.source_id().get(),
+                            "start": target_start,
+                            "end": target_end
+                        }
+                    }
+                ]
+            }
+        })
+        .to_string();
+        databases.load_schema_artifact_json("/workspace/target/vela/schema.json", &artifact);
+
+        let definition = databases
+            .definition(
+                &main,
+                Position::new(0, main_text.find("level").expect("field use should exist")),
+            )
+            .expect("definition should resolve schema field source span");
+
+        assert_eq!(definition.document_id(), &schema_source);
+        assert_eq!(definition.range().start().character, target_start);
+        assert_eq!(definition.range().end().character, target_end);
+    }
+
+    #[test]
+    fn definition_follows_schema_method_source_span() {
+        let main = DocumentId::from("/workspace/scripts/game/main.vela");
+        let schema_source = DocumentId::from("/workspace/scripts/schema_defs.vela");
+        let main_text = "pub fn main(player: Player) { return player.grant(1) }";
+        let schema_text = "pub fn grant_marker() { return true }";
+        let mut databases = databases_for(vec![
+            SourceFileSnapshot::new(main.clone(), main_text),
+            SourceFileSnapshot::new(schema_source.clone(), schema_text),
+        ]);
+        let schema_record = databases
+            .source_db()
+            .records()
+            .get(&schema_source)
+            .expect("schema source should be indexed");
+        let target_start = schema_text
+            .find("grant_marker")
+            .expect("schema marker should exist");
+        let target_end = target_start + "grant_marker".len();
+        let artifact = serde_json::json!({
+            "formatVersion": 1,
+            "facts": {
+                "types": [
+                    {
+                        "name": "Player",
+                        "fact": { "kind": "host", "name": "Player" }
+                    }
+                ],
+                "methods": [
+                    {
+                        "owner": "Player",
+                        "name": "grant",
+                        "fact": {
+                            "kind": "function",
+                            "params": [{ "kind": "primitive", "name": "i64" }],
+                            "returns": { "kind": "primitive", "name": "bool" }
+                        },
+                        "sourceSpan": {
+                            "source": schema_record.source_id().get(),
+                            "start": target_start,
+                            "end": target_end
+                        }
+                    }
+                ]
+            }
+        })
+        .to_string();
+        databases.load_schema_artifact_json("/workspace/target/vela/schema.json", &artifact);
+
+        let definition = databases
+            .definition(
+                &main,
+                Position::new(0, main_text.find("grant").expect("method use should exist")),
+            )
+            .expect("definition should resolve schema method source span");
+
+        assert_eq!(definition.document_id(), &schema_source);
+        assert_eq!(definition.range().start().character, target_start);
+        assert_eq!(definition.range().end().character, target_end);
+    }
+
+    #[test]
+    fn definition_follows_schema_trait_method_source_span() {
+        let main = DocumentId::from("/workspace/scripts/game/main.vela");
+        let schema_source = DocumentId::from("/workspace/scripts/schema_defs.vela");
+        let main_text = "pub fn main(rewardable: Rewardable) { return rewardable.preview(1) }";
+        let schema_text = "pub fn preview_marker() { return true }";
+        let mut databases = databases_for(vec![
+            SourceFileSnapshot::new(main.clone(), main_text),
+            SourceFileSnapshot::new(schema_source.clone(), schema_text),
+        ]);
+        let schema_record = databases
+            .source_db()
+            .records()
+            .get(&schema_source)
+            .expect("schema source should be indexed");
+        let target_start = schema_text
+            .find("preview_marker")
+            .expect("schema marker should exist");
+        let target_end = target_start + "preview_marker".len();
+        let artifact = serde_json::json!({
+            "formatVersion": 1,
+            "facts": {
+                "traits": [
+                    {
+                        "name": "Rewardable",
+                        "fact": { "kind": "trait", "name": "Rewardable" }
+                    }
+                ],
+                "traitMethods": [
+                    {
+                        "owner": "Rewardable",
+                        "name": "preview",
+                        "fact": {
+                            "kind": "function",
+                            "params": [{ "kind": "primitive", "name": "i64" }],
+                            "returns": { "kind": "primitive", "name": "bool" }
+                        },
+                        "sourceSpan": {
+                            "source": schema_record.source_id().get(),
+                            "start": target_start,
+                            "end": target_end
+                        }
+                    }
+                ]
+            }
+        })
+        .to_string();
+        databases.load_schema_artifact_json("/workspace/target/vela/schema.json", &artifact);
+
+        let definition = databases
+            .definition(
+                &main,
+                Position::new(
+                    0,
+                    main_text
+                        .find("preview")
+                        .expect("trait method use should exist"),
+                ),
+            )
+            .expect("definition should resolve schema trait method source span");
+
+        assert_eq!(definition.document_id(), &schema_source);
         assert_eq!(definition.range().start().character, target_start);
         assert_eq!(definition.range().end().character, target_end);
     }

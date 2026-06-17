@@ -24,6 +24,122 @@ fn lsp_type_definition_follows_schema_source_span() {
     assert_schema_source_navigation("textDocument/typeDefinition");
 }
 
+#[test]
+fn lsp_definition_follows_schema_field_source_span() {
+    let root = temp_workspace();
+    let config_path = root.join("vela.toml");
+    let schema_path = root.join("target").join("vela").join("schema.json");
+    fs::create_dir_all(schema_path.parent().expect("schema should have parent"))
+        .expect("schema directory should be creatable");
+    let schema_text = "pub fn level_marker() { return 1 }";
+    let target_start = schema_text
+        .find("level_marker")
+        .expect("schema target marker should exist");
+    let target_end = target_start + "level_marker".len();
+    fs::write(
+        &config_path,
+        r#"
+            [workspace]
+            roots = ["scripts"]
+
+            [host]
+            schema = "target/vela/schema.json"
+        "#,
+    )
+    .expect("vela.toml should be writable");
+    fs::write(
+        &schema_path,
+        serde_json::json!({
+            "formatVersion": 1,
+            "facts": {
+                "types": [
+                    {
+                        "name": "Player",
+                        "fact": { "kind": "host", "name": "Player" }
+                    }
+                ],
+                "fields": [
+                    {
+                        "owner": "Player",
+                        "name": "level",
+                        "fact": { "kind": "primitive", "name": "i64" },
+                        "sourceSpan": {
+                            "source": 1,
+                            "start": target_start,
+                            "end": target_end
+                        }
+                    }
+                ]
+            }
+        })
+        .to_string(),
+    )
+    .expect("schema should be writable");
+
+    let mut server = LspServer::new();
+    let _ = response_value(server.handle_json(&request(
+        1,
+        "initialize",
+        serde_json::json!({
+            "processId": null,
+            "rootUri": file_uri(&root),
+            "capabilities": {}
+        }),
+    )));
+    let _ = server.handle_json(&notification(
+        "workspace/didChangeWatchedFiles",
+        serde_json::json!({
+            "changes": [{ "uri": file_uri(&config_path), "type": 1 }]
+        }),
+    ));
+    let schema_uri = file_uri(&root.join("scripts").join("_schema_defs.vela"));
+    let _ = notification_value(server.handle_json(&notification(
+        "textDocument/didOpen",
+        serde_json::json!({
+            "textDocument": {
+                "uri": schema_uri,
+                "languageId": "vela",
+                "version": 1,
+                "text": schema_text
+            }
+        }),
+    )));
+    let main_uri = file_uri(&root.join("scripts").join("game").join("main.vela"));
+    let main_text = "pub fn main(player: Player) { return player.level }";
+    let _ = notification_value(server.handle_json(&notification(
+        "textDocument/didOpen",
+        serde_json::json!({
+            "textDocument": {
+                "uri": main_uri,
+                "languageId": "vela",
+                "version": 1,
+                "text": main_text
+            }
+        }),
+    )));
+
+    let response = response_value(server.handle_json(&request(
+        2,
+        "textDocument/definition",
+        serde_json::json!({
+            "textDocument": { "uri": main_uri },
+            "position": {
+                "line": 0,
+                "character": main_text.find("level").expect("field use should exist")
+            }
+        }),
+    )));
+
+    assert_eq!(response["result"]["uri"], schema_uri);
+    assert_eq!(response["result"]["range"]["start"]["line"], 0);
+    assert_eq!(
+        response["result"]["range"]["start"]["character"],
+        target_start
+    );
+    assert_eq!(response["result"]["range"]["end"]["character"], target_end);
+    fs::remove_dir_all(root).expect("temporary workspace should be removable");
+}
+
 fn assert_local_binding_navigation(method: &str) {
     let mut server = LspServer::new();
     let _ = response_value(server.handle_json(&request(
