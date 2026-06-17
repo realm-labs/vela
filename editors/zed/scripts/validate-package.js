@@ -54,6 +54,10 @@ assert(
   manifest.includes('repository = "file://./grammars/vela"'),
   "Vela grammar must use the packaged local tree-sitter grammar"
 );
+assert(
+  manifest.includes('rev = "HEAD"'),
+  "Vela grammar must include a rev field for Zed extension manifest parsing"
+);
 
 const languageConfigPath = "languages/vela/config.toml";
 assert(fs.existsSync(path.join(root, languageConfigPath)), "language config is missing");

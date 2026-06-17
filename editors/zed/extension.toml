@@ -12,3 +12,4 @@ languages = ["Vela"]
 
 [grammars.vela]
 repository = "file://./grammars/vela"
+rev = "HEAD"
