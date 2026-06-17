@@ -3,7 +3,8 @@ use vela_common::{SourceId, Span};
 use vela_hir::binding::{BindingMap, BindingResolution, LocalBinding};
 
 use crate::{
-    DiagnosticRange, DocumentId, LanguageServiceDatabases, LineIndex, Position, TextRange,
+    DiagnosticRange, DocumentId, LanguageServiceDatabases, LineIndex, Position, QueryContext,
+    TextRange,
 };
 
 #[derive(Debug, Clone, Eq, PartialEq)]
@@ -34,8 +35,9 @@ struct DefinitionToken {
 impl LanguageServiceDatabases {
     #[must_use]
     pub fn definition(&self, document_id: &DocumentId, position: Position) -> Option<Definition> {
-        let source = self.source_db().records().get(document_id)?;
-        let token = definition_token_at(source.text(), position)?;
+        let query = QueryContext::from_databases(self, document_id, position)?;
+        let source = query.source_record()?;
+        let token = definition_token_at(query.text(), query.position())?;
         let source_id = source.source_id();
         let offset = u32::try_from(token.range.start).ok()?;
         let graph = self.hir_db().graph();
@@ -44,7 +46,7 @@ impl LanguageServiceDatabases {
             return Some(definition);
         }
 
-        if let Some(definition) = self.schema_variant_definition(source.text(), &token) {
+        if let Some(definition) = self.schema_variant_definition(query.text(), &token) {
             return Some(definition);
         }
 

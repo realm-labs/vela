@@ -10,8 +10,8 @@ use vela_syntax::ast::Visibility;
 use vela_syntax::token::Keyword;
 
 use crate::{
-    DiagnosticRange, DocumentId, LanguageServiceDatabases, LineIndex, Position, SourceVersion,
-    TextRange,
+    DiagnosticRange, DocumentId, LanguageServiceDatabases, LineIndex, Position, QueryContext,
+    SourceVersion, TextRange,
 };
 
 mod fields;
@@ -176,9 +176,10 @@ impl LanguageServiceDatabases {
         document_id: &DocumentId,
         position: Position,
     ) -> Option<PrepareRename> {
-        let source = self.source_db().records().get(document_id)?;
-        let target = rename_target(self, source.source_id(), source.text(), position)?;
-        let token_range = diagnostic_range(source.text(), target.token_range());
+        let query = QueryContext::from_databases(self, document_id, position)?;
+        let source = query.source_record()?;
+        let target = rename_target(self, source.source_id(), query.text(), query.position())?;
+        let token_range = diagnostic_range(query.text(), target.token_range());
         Some(PrepareRename {
             document_id: document_id.clone(),
             range: token_range,
@@ -196,11 +197,12 @@ impl LanguageServiceDatabases {
         if !is_valid_rename_identifier(new_name) {
             return None;
         }
-        let source = self.source_db().records().get(document_id)?;
-        let target = rename_target(self, source.source_id(), source.text(), position)?;
+        let query = QueryContext::from_databases(self, document_id, position)?;
+        let source = query.source_record()?;
+        let target = rename_target(self, source.source_id(), query.text(), query.position())?;
         match target {
             RenameTarget::Local(target) => {
-                self.rename_local(document_id, source.text(), target, new_name)
+                self.rename_local(document_id, query.text(), target, new_name)
             }
             RenameTarget::Declaration(target) => self.rename_declaration(target, new_name),
             RenameTarget::ScriptField(target) => {

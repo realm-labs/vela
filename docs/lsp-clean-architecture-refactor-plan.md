@@ -287,11 +287,11 @@ Purpose: classify the cursor once and reuse it across features.
   expression facts, path qualifier facts, callable facts, and replacement
   range where available.
 - [ ] Keep classification tolerant of incomplete source and parser recovery.
-- [~] Route completion, hover, signature help, definition, and rename prepare
+- [x] Route completion, hover, signature help, definition, and rename prepare
   through the shared context where practical.
-  Completion, signature help, and hover now build request-local source, parse,
-  cursor, module, and generation facts through `QueryContext`; the other
-  feature routes remain follow-up work.
+  Completion, signature help, hover, definition, prepare-rename, and rename
+  now build request-local source, parse, cursor, module, and generation facts
+  through `QueryContext`.
 
 Tests:
 
