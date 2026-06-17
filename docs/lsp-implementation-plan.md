@@ -1018,7 +1018,7 @@ cargo test -p vela_syntax formatting
 
 Purpose: expose gradual type facts without implying static typing.
 
-- [~] Add parameter name hints for calls.
+- [x] Add parameter name hints for calls.
   - Initial native support exposes script/schema function and typed
     source/schema method parameter labels through `textDocument/inlayHint` and
     suppresses already named arguments.
@@ -1036,7 +1036,7 @@ Purpose: expose gradual type facts without implying static typing.
 - [x] Add host path type hints from schema facts.
   - Host field paths with stable schema facts now expose type labels while
     suppressing method callees and dynamic `Any` fields.
-- [~] Suppress hints at dynamic `Any` boundaries.
+- [x] Suppress hints at dynamic `Any` boundaries.
   - Local, lambda, and host-path type inlay hints suppress `Any`; tuple-variant
     payload-name hints suppress dynamic payload facts.
   - Parameter name hints suppress unstable `Any`/unknown parameter facts before
@@ -1052,6 +1052,7 @@ Tests:
 - [x] `inlay_hints_show_enum_variant_payload_names`
 - [x] `inlay_hints_degrade_to_any_without_schema`
 - [x] `inlay_hints_suppress_any_schema_function_parameters`
+- [x] `inlay_hints_suppress_any_source_function_and_method_parameters`
 - [x] `inlay_hints_suppress_any_enum_variant_payloads`
 - [x] `lsp_inlay_hints_show_parameter_names`
 - [x] `lsp_inlay_hints_show_source_method_parameter_names`
@@ -1060,6 +1061,7 @@ Tests:
 - [x] `lsp_inlay_hints_show_host_path_typefacts`
 - [x] `lsp_inlay_hints_show_enum_variant_payload_names`
 - [x] `lsp_inlay_hints_suppress_any_schema_function_parameters`
+- [x] `lsp_inlay_hints_suppress_any_source_function_and_method_parameters`
 - [x] `lsp_inlay_hints_suppress_any_enum_variant_payloads`
 - [x] `lsp_inlay_hints_respect_requested_range`
 

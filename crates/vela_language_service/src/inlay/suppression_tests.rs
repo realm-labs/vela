@@ -47,6 +47,34 @@ fn inlay_hints_suppress_any_schema_function_parameters() {
 }
 
 #[test]
+fn inlay_hints_suppress_any_source_function_and_method_parameters() {
+    let document = DocumentId::from("/workspace/scripts/game/main.vela");
+    let text = r#"struct Player { level: i64 }
+fn dynamic(raw: Any, count: i64) -> i64 { return count }
+impl Player {
+    fn grant(self, raw: Any, count: i64) -> i64 { return count }
+}
+pub fn main(player: Player) {
+    dynamic("raw", 1)
+    player.grant("raw", 2)
+}"#;
+    let databases = databases_for(vec![SourceFileSnapshot::new(document.clone(), text)]);
+
+    let hints = databases.inlay_hints(
+        &document,
+        DiagnosticRange::new(Position::new(0, 0), Position::new(9, 0)),
+    );
+
+    assert_eq!(
+        hint_labels(&hints),
+        vec![
+            (Position::new(6, 19), "count:".to_owned()),
+            (Position::new(7, 24), "count:".to_owned())
+        ]
+    );
+}
+
+#[test]
 fn inlay_hints_suppress_any_enum_variant_payloads() {
     let document = DocumentId::from("/workspace/scripts/game/main.vela");
     let text = r#"enum Payload {
