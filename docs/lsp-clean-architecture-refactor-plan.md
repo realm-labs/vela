@@ -332,10 +332,16 @@ Purpose: replace coarse global completion with context-specific producers.
 - [~] Add keyword and snippet completions as first-class completion kinds.
   Keyword items are first-class service `CompletionKind::Keyword`, and
   callable snippets now carry explicit editor-neutral insert-format metadata
-  through service items. Broader standalone snippet item kinds remain open.
-- [ ] Add item-boundary producers for `fn`, `struct`, `enum`, `trait`, `impl`,
+  through service items. Item-boundary declaration snippets now carry explicit
+  snippet intent. Broader standalone snippet item kinds remain open.
+- [~] Add item-boundary producers for `fn`, `struct`, `enum`, `trait`, `impl`,
   `let`, `const`, imports, modules, and source declarations that are legal in
   that context.
+  Top-level declaration keywords now come from an item-boundary producer with
+  declaration snippets for `fn`, `struct`, `enum`, `trait`, `impl`, `use`,
+  `const`, `global`, and `pub`. Top-level `let` is not offered because Vela's
+  syntax does not support it as an item; module/source-declaration follow-ups
+  remain open where they are syntactically meaningful.
 - [ ] Add expression producers for locals, parameters, functions, methods,
   variants, builtin values, stdlib functions, and schema facts that are legal
   in expression position.

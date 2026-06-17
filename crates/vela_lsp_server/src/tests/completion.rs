@@ -199,7 +199,13 @@ fn lsp_item_boundary_completion_projects_keyword_items() {
         }),
     )));
 
-    assert_completion_insert_text(&response, "fn", 14, "function declaration", "fn ");
+    assert_completion_snippet(
+        &response,
+        "fn",
+        14,
+        "function declaration",
+        "fn ${1:name}(${2:params}) {\n    $0\n}",
+    );
     assert_completion_projection(
         &response,
         "fn",
@@ -208,7 +214,7 @@ fn lsp_item_boundary_completion_projects_keyword_items() {
                 "start": { "line": 0, "character": 0 },
                 "end": { "line": 0, "character": 1 }
             },
-            "newText": "fn "
+            "newText": "fn ${1:name}(${2:params}) {\n    $0\n}"
         }),
         "fn",
         "0000_00_fn",
