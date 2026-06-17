@@ -15,8 +15,8 @@ use vela_syntax::ast::{
     Block, ElseBranch, Expr, ExprKind, FunctionItem, ItemKind, SourceFile, Stmt, StmtKind,
 };
 
-use crate::{CursorContextKind, cursor_context_at};
-use crate::{DocumentId, LanguageServiceDatabases, Position, SourceRecord, TextRange};
+use crate::{CursorContextKind, QueryContext};
+use crate::{DocumentId, LanguageServiceDatabases, Position, TextRange};
 
 mod item;
 mod lambda_parameter;
@@ -188,13 +188,13 @@ impl CompletionList {
 impl LanguageServiceDatabases {
     #[must_use]
     pub fn completion_items(&self, document_id: &DocumentId, position: Position) -> CompletionList {
-        let Some(source) = self.source_db().records().get(document_id) else {
+        let Some(query) = QueryContext::from_databases(self, document_id, position) else {
             return empty_completion_list(CompletionContext::global(0, ""));
         };
-        let context =
-            completion_context(source, position, self.parse_db().parsed_source(document_id));
+        let context = completion_context(&query);
         if matches!(context.kind, CompletionContextKind::Global)
-            && let Some(named_context) = named_argument_completion_context(source.text(), position)
+            && let Some(named_context) =
+                named_argument_completion_context(query.text(), query.position())
         {
             let mut context = context.clone();
             context.kind = CompletionContextKind::NamedArgument;
@@ -506,13 +506,9 @@ impl CompletionContext {
     }
 }
 
-fn completion_context(
-    source: &SourceRecord,
-    position: Position,
-    parsed: Option<&SourceFile>,
-) -> CompletionContext {
-    let text = source.text();
-    let cursor = cursor_context_at(text, position, parsed);
+fn completion_context(query: &QueryContext<'_>) -> CompletionContext {
+    let text = query.text();
+    let cursor = query.cursor();
     let offset = cursor.replace_range().end;
     let prefix_start = cursor.replace_range().start;
     let prefix = cursor.prefix();
@@ -546,10 +542,14 @@ fn completion_context(
         };
     }
 
-    if let Some(mut record_constructor) =
-        parsed.and_then(|source| record_constructor_at(source, offset))
+    if let Some(mut record_constructor) = query
+        .parsed_source()
+        .and_then(|source| record_constructor_at(source, offset))
     {
-        record_constructor.current_module = source.module_path().segments().to_vec();
+        record_constructor.current_module = query
+            .source_record()
+            .map(|source| source.module_path().segments().to_vec())
+            .unwrap_or_default();
         return CompletionContext {
             kind: CompletionContextKind::RecordField,
             prefix: prefix.to_owned(),
@@ -563,8 +563,14 @@ fn completion_context(
         };
     }
 
-    if let Some(mut map_key) = parsed.and_then(|source| map_key_at(source, offset)) {
-        map_key.current_module = source.module_path().segments().to_vec();
+    if let Some(mut map_key) = query
+        .parsed_source()
+        .and_then(|source| map_key_at(source, offset))
+    {
+        map_key.current_module = query
+            .source_record()
+            .map(|source| source.module_path().segments().to_vec())
+            .unwrap_or_default();
         return CompletionContext {
             kind: CompletionContextKind::MapKey,
             prefix: prefix.to_owned(),

@@ -12,6 +12,7 @@ mod hover;
 mod incremental;
 mod inlay;
 mod project;
+mod query_context;
 mod references;
 mod rename;
 mod schema;
@@ -48,6 +49,7 @@ pub use project::{
     SourceFileSnapshot, WorkspaceConfig, WorkspaceRoot, assemble_project_sources,
     missing_import_diagnostics,
 };
+pub use query_context::QueryContext;
 pub use references::{DocumentHighlight, DocumentHighlightKind, Reference, ReferenceKind};
 pub use rename::{
     DocumentTextEdit, PrepareRename, RenameRisk, RenameRiskKind, TextEdit, WorkspaceEdit,

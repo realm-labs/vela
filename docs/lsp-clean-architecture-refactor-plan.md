@@ -275,7 +275,7 @@ cargo test -p vela_lsp_server completion
 
 Purpose: classify the cursor once and reuse it across features.
 
-- [ ] Add a focused query-context module in `vela_language_service` that
+- [x] Add a focused query-context module in `vela_language_service` that
   builds request-local facts from a `WorkspaceSnapshot`.
 - [x] Add `CursorContextKind` variants for item, statement, expression, type,
   pattern, use/import, module path, member access, record expression field,
@@ -289,6 +289,9 @@ Purpose: classify the cursor once and reuse it across features.
 - [ ] Keep classification tolerant of incomplete source and parser recovery.
 - [~] Route completion, hover, signature help, definition, and rename prepare
   through the shared context where practical.
+  Completion now builds its request-local source, parse, cursor, module, and
+  generation facts through `QueryContext`; the other feature routes remain
+  follow-up work.
 
 Tests:
 
