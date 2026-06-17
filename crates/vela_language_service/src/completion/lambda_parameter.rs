@@ -15,15 +15,12 @@ pub(super) struct LambdaParameterContext {
 }
 
 pub(super) fn lambda_parameter_completion_context(
-    text: &str,
-    offset: usize,
+    parameters: Option<&str>,
     shared_receiver: Option<MemberReceiver>,
     call_open: Option<usize>,
     shared_method: Option<(TextRange, &str)>,
 ) -> Option<LambdaParameterContext> {
-    let before = text.get(..offset)?;
-    let pipe = before.rfind('|')?;
-    let params = before.get(pipe + 1..)?;
+    let params = parameters?;
     if !is_lambda_parameter_prefix(params) {
         return None;
     }

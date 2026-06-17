@@ -46,6 +46,7 @@ pub struct CursorContext {
     call_open: Option<usize>,
     call_callee: Option<TextRange>,
     call_member_receiver: Option<TextRange>,
+    lambda_parameters: Option<TextRange>,
     lambda_method: Option<TextRange>,
 }
 
@@ -104,6 +105,11 @@ impl CursorContext {
     pub const fn lambda_method(&self) -> Option<TextRange> {
         self.lambda_method
     }
+
+    #[must_use]
+    pub const fn lambda_parameters(&self) -> Option<TextRange> {
+        self.lambda_parameters
+    }
 }
 
 #[must_use]
@@ -118,13 +124,14 @@ pub fn cursor_context_at(
     let prefix = text[prefix_start..offset].to_owned();
     let before_prefix = &text[..prefix_start];
 
-    if is_lambda_parameter_context(text, offset) {
+    if let Some(parameters) = lambda_parameter_range(text, offset) {
         let mut cursor = context(
             CursorContextKind::LambdaParameter,
             prefix_start,
             prefix,
             identifier_range,
         );
+        cursor.lambda_parameters = Some(parameters);
         if let Some(call) = lambda_call_before_pipe(text, offset) {
             cursor.member_receiver = Some(call.receiver);
             cursor.call_open = Some(call.open);
@@ -303,6 +310,7 @@ fn context(
         call_open: None,
         call_callee: None,
         call_member_receiver: None,
+        lambda_parameters: None,
         lambda_method: None,
     }
 }
@@ -371,21 +379,15 @@ fn is_item_boundary_context(text: &str, prefix_start: usize, parsed: Option<&Sou
             == "pub"
 }
 
-fn is_lambda_parameter_context(text: &str, offset: usize) -> bool {
-    let Some(before) = text.get(..offset) else {
-        return false;
-    };
-    let Some(pipe) = before.rfind('|') else {
-        return false;
-    };
-    let Some(open) = active_call_open(before, pipe) else {
-        return false;
-    };
+fn lambda_parameter_range(text: &str, offset: usize) -> Option<TextRange> {
+    let before = text.get(..offset)?;
+    let pipe = before.rfind('|')?;
+    let open = active_call_open(before, pipe)?;
     if before[open + 1..pipe].contains('|') {
-        return false;
+        return None;
     }
-    let params = &before[pipe + 1..];
-    is_lambda_parameter_prefix(params)
+    let start = pipe + '|'.len_utf8();
+    is_lambda_parameter_prefix(&before[start..]).then(|| TextRange::new(start, offset))
 }
 
 fn is_lambda_parameter_prefix(params: &str) -> bool {

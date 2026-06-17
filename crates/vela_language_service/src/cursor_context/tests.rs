@@ -181,11 +181,13 @@ fn cursor_context_classifies_lambda_parameters() {
     let cursor = classify(text, "|");
     let receiver = cursor.member_receiver().expect("receiver range");
     let method = cursor.lambda_method().expect("method range");
+    let parameters = cursor.lambda_parameters().expect("parameter range");
 
     assert_eq!(cursor.kind(), CursorContextKind::LambdaParameter);
     assert_eq!(cursor.prefix(), "");
     assert_eq!(&text[receiver.start..receiver.end], "items");
     assert_eq!(&text[method.start..method.end], "map");
+    assert_eq!(&text[parameters.start..parameters.end], "");
 }
 
 #[test]

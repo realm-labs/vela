@@ -210,6 +210,16 @@ impl<'a> QueryContext<'a> {
     pub fn lambda_method_text(&self) -> Option<&str> {
         text_range(self.text(), self.lambda_method_range()?)
     }
+
+    #[must_use]
+    pub const fn lambda_parameters_range(&self) -> Option<TextRange> {
+        self.cursor.lambda_parameters()
+    }
+
+    #[must_use]
+    pub fn lambda_parameters_text(&self) -> Option<&str> {
+        text_range(self.text(), self.lambda_parameters_range()?)
+    }
 }
 
 fn text_range(text: &str, range: TextRange) -> Option<&str> {
@@ -420,5 +430,10 @@ mod tests {
             source.find("map(").map(|index| index + "map".len())
         );
         assert_eq!(lambda_context.lambda_method_text(), Some("map"));
+        assert_eq!(
+            lambda_context.lambda_parameters_range(),
+            Some(TextRange::new(lambda_offset, lambda_offset))
+        );
+        assert_eq!(lambda_context.lambda_parameters_text(), Some(""));
     }
 }

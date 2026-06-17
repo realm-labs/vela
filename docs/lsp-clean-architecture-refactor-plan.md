@@ -325,8 +325,10 @@ Purpose: classify the cursor once and reuse it across features.
   instead of re-scanning member receivers locally. `CursorContext` now exposes
   the identifier token range under the request cursor, and rename target
   selection consumes that shared range instead of running its own first-step
-  token scanner. Broader callable semantic facts remain feature-owned
-  follow-up work.
+  token scanner. Lambda-parameter contexts now expose the current parameter
+  list range, and lambda completion consumes that shared text instead of
+  finding the `|` pipe locally. Broader callable semantic facts remain
+  feature-owned follow-up work.
 - [x] Keep classification tolerant of incomplete source and parser recovery.
 - [x] Route completion, hover, signature help, definition, and rename prepare
   through the shared context where practical.

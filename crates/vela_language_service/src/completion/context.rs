@@ -19,8 +19,7 @@ pub(super) fn completion_context(query: &QueryContext<'_>) -> CompletionContext 
         .map(|range| MemberReceiver { range });
     let shared_lambda_method = query.lambda_method_range().zip(query.lambda_method_text());
     if let Some(lambda_parameter) = lambda_parameter_completion_context(
-        text,
-        offset,
+        query.lambda_parameters_text(),
         shared_lambda_receiver,
         query.call_open_offset(),
         shared_lambda_method,
