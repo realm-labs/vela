@@ -336,8 +336,9 @@ Purpose: replace coarse global completion with context-specific producers.
 
 - [~] Split completion into focused modules such as context, item, relevance,
   producers, render, and tests when file size or responsibility requires it.
-  Item, statement, type-hint, record-field, map-key, named-argument,
-  lambda-parameter, and pattern producers now live in focused modules,
+  Item, statement, local-binding, type-hint, record-field, map-key,
+  named-argument, lambda-parameter, and pattern producers now live in focused
+  modules,
   module-path candidate construction now lives in its own focused producer
   module, completion context construction now lives in a focused context
   module, and the editor-neutral completion model now lives in a focused model

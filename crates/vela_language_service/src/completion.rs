@@ -7,7 +7,7 @@ use vela_analysis::hints::type_fact_from_hint;
 use vela_analysis::registry::RegistryFacts;
 use vela_analysis::type_fact::TypeFact;
 use vela_common::Span;
-use vela_hir::binding::{BindingMap, BindingResolution, LocalBinding, LocalBindingKind};
+use vela_hir::binding::{BindingMap, BindingResolution, LocalBinding};
 use vela_hir::module_graph::ModuleGraph;
 use vela_hir::type_hint::HirTypeHint;
 
@@ -18,6 +18,7 @@ mod accumulator;
 mod context;
 mod item;
 mod lambda_parameter;
+mod local;
 mod map_key;
 mod model;
 mod module_path;
@@ -36,6 +37,7 @@ pub use model::{
 use context::completion_context;
 use item::item_keyword_completions;
 use lambda_parameter::lambda_parameter_completion_items;
+use local::local_completion_items as local_context_completion_items;
 use map_key::map_key_completion_items as map_key_context_completion_items;
 use model::{CallArgumentContext, MemberReceiver};
 use module_path::module_path_completion_items as module_path_context_completion_items;
@@ -84,7 +86,7 @@ impl LanguageServiceDatabases {
             .unwrap_or_default();
         let graph = self.hir_db().graph();
         let facts = AnalysisFacts::from_module_graph(graph);
-        let mut items = self.local_completion_items(query, context);
+        let mut items = local_context_completion_items(graph, query, context);
         items.extend(dedupe_and_filter_items(
             global_completions(self.schema_db().facts()),
             context.replace_range(),
@@ -149,41 +151,6 @@ impl LanguageServiceDatabases {
             self.schema_db().facts(),
             context,
         )
-    }
-
-    fn local_completion_items(
-        &self,
-        query: &QueryContext<'_>,
-        context: &CompletionContext,
-    ) -> Vec<CompletionItem> {
-        let graph = self.hir_db().graph();
-        let facts = AnalysisFacts::from_module_graph(graph);
-        let items = query
-            .local_bindings_before_cursor()
-            .filter(|local| local.name.starts_with(context.prefix()))
-            .map(|local| {
-                let kind = match local.kind {
-                    LocalBindingKind::Parameter => CompletionKind::Parameter,
-                    LocalBindingKind::Let
-                    | LocalBindingKind::For
-                    | LocalBindingKind::LambdaParameter
-                    | LocalBindingKind::Pattern => CompletionKind::Binding,
-                };
-                let fact = facts.local(local.id).cloned().unwrap_or(TypeFact::Unknown);
-                CompletionItem {
-                    sort_text: Some(local_sort_text(kind, &local.name)),
-                    metadata: Default::default(),
-                    label: local.name.clone(),
-                    kind,
-                    detail: fact.display_name(),
-                    insert_text: None,
-                    insert_format: CompletionInsertFormat::PlainText,
-                }
-            })
-            .collect::<Vec<_>>();
-        let mut accumulator = CompletionAccumulator::new(context.replace_range(), context.prefix());
-        accumulator.add_many(items);
-        accumulator.into_items()
     }
 
     fn member_completion_items(
@@ -475,16 +442,6 @@ fn completion_sort_text(kind: CompletionKind, label: &str, prefix: &str) -> Stri
         completion_match_rank(label, prefix),
         label
     )
-}
-
-fn local_sort_text(kind: CompletionKind, label: &str) -> String {
-    let rank = match kind {
-        CompletionKind::Parameter => 0,
-        CompletionKind::Keyword => 0,
-        CompletionKind::Binding => 1,
-        _ => 2,
-    };
-    format!("{rank:04}_00_{label}")
 }
 
 fn completion_kind_rank(kind: CompletionKind) -> u16 {
