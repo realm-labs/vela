@@ -207,6 +207,7 @@ fn hover_reports_script_parameter_fact() {
     assert_eq!(hover.kind(), HoverKind::Parameter);
     assert_eq!(hover.label(), "amount");
     assert_eq!(hover.detail(), "i64");
+    assert_eq!(hover.symbol(), Some(&SymbolRef::Local("amount".to_owned())));
 }
 
 #[test]
@@ -226,6 +227,10 @@ fn hover_reports_source_global_fact() {
     assert_eq!(hover.kind(), HoverKind::Global);
     assert_eq!(hover.label(), "game::main::score");
     assert_eq!(hover.detail(), "i64");
+    assert_eq!(
+        hover.symbol(),
+        Some(&SymbolRef::Source("game::main::score".to_owned()))
+    );
 }
 
 #[test]
@@ -324,6 +329,10 @@ pub fn main(player: Player) {
     assert_eq!(use_hover.label(), "game::main::Player.level");
     assert_eq!(use_hover.detail(), "i64");
     assert_eq!(use_hover.docs(), Some("Current level"));
+    assert_eq!(
+        use_hover.symbol(),
+        Some(&SymbolRef::Source("game::main::Player.level".to_owned()))
+    );
 
     let declaration_hover = databases
         .hover(&document, Position::new(2, 4))
@@ -332,6 +341,10 @@ pub fn main(player: Player) {
     assert_eq!(declaration_hover.label(), "game::main::Player.level");
     assert_eq!(declaration_hover.detail(), "i64");
     assert_eq!(declaration_hover.docs(), Some("Current level"));
+    assert_eq!(
+        declaration_hover.symbol(),
+        Some(&SymbolRef::Source("game::main::Player.level".to_owned()))
+    );
 }
 
 #[test]
@@ -360,6 +373,10 @@ pub fn main(player: Player) {
     assert_eq!(use_hover.kind(), HoverKind::Method);
     assert_eq!(use_hover.label(), "game::main::Player.grant");
     assert_eq!(use_hover.detail(), "(amount: i64) -> bool");
+    assert_eq!(
+        use_hover.symbol(),
+        Some(&SymbolRef::Source("game::main::Player.grant".to_owned()))
+    );
 
     let declaration_hover = databases
         .hover(&document, Position::new(4, 7))
@@ -367,6 +384,10 @@ pub fn main(player: Player) {
     assert_eq!(declaration_hover.kind(), HoverKind::Method);
     assert_eq!(declaration_hover.label(), "game::main::Player.grant");
     assert_eq!(declaration_hover.detail(), "(amount: i64) -> bool");
+    assert_eq!(
+        declaration_hover.symbol(),
+        Some(&SymbolRef::Source("game::main::Player.grant".to_owned()))
+    );
 }
 
 #[test]
@@ -386,6 +407,12 @@ fn hover_reports_source_trait_method_docs() {
     assert_eq!(hover.label(), "game::main::Rewardable.preview");
     assert_eq!(hover.detail(), "(amount: i64) -> bool");
     assert_eq!(hover.docs(), Some("Preview reward"));
+    assert_eq!(
+        hover.symbol(),
+        Some(&SymbolRef::Source(
+            "game::main::Rewardable.preview".to_owned()
+        ))
+    );
 }
 
 #[test]
@@ -407,6 +434,10 @@ pub fn main(rewardable: Rewardable) {
     assert_eq!(declaration_hover.label(), "game::main::Rewardable");
     assert_eq!(declaration_hover.detail(), "game::main::Rewardable");
     assert_eq!(declaration_hover.docs(), Some("Rewardable script trait"));
+    assert_eq!(
+        declaration_hover.symbol(),
+        Some(&SymbolRef::Source("game::main::Rewardable".to_owned()))
+    );
 
     let hint_line = text.lines().nth(4).expect("trait hint line should exist");
     let hint_hover = databases
@@ -423,6 +454,10 @@ pub fn main(rewardable: Rewardable) {
     assert_eq!(hint_hover.kind(), HoverKind::Trait);
     assert_eq!(hint_hover.label(), "game::main::Rewardable");
     assert_eq!(hint_hover.detail(), "game::main::Rewardable");
+    assert_eq!(
+        hint_hover.symbol(),
+        Some(&SymbolRef::Source("game::main::Rewardable".to_owned()))
+    );
 }
 
 #[test]
@@ -457,6 +492,12 @@ pub fn main(rewardable: Rewardable) {
     assert_eq!(hover.label(), "game::main::Rewardable.preview");
     assert_eq!(hover.detail(), "(amount: i64) -> bool");
     assert_eq!(hover.docs(), Some("Preview reward"));
+    assert_eq!(
+        hover.symbol(),
+        Some(&SymbolRef::Source(
+            "game::main::Rewardable.preview".to_owned()
+        ))
+    );
 }
 
 #[test]
@@ -490,6 +531,12 @@ pub fn main() {
         use_hover.detail(),
         "game::main::QuestState::Active(quest_id, count)"
     );
+    assert_eq!(
+        use_hover.symbol(),
+        Some(&SymbolRef::Source(
+            "game::main::QuestState::Active".to_owned()
+        ))
+    );
 
     let declaration_hover = databases
         .hover(&document, Position::new(2, 4))
@@ -497,6 +544,12 @@ pub fn main() {
     assert_eq!(declaration_hover.kind(), HoverKind::Variant);
     assert_eq!(declaration_hover.label(), "game::main::QuestState::Active");
     assert_eq!(declaration_hover.docs(), Some("Active quest"));
+    assert_eq!(
+        declaration_hover.symbol(),
+        Some(&SymbolRef::Source(
+            "game::main::QuestState::Active".to_owned()
+        ))
+    );
 }
 
 #[test]

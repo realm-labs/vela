@@ -526,7 +526,7 @@ fn struct_field_hover(
         kind: HoverKind::Field,
         detail: struct_field_detail(field),
         docs: attr_docs(&field.attrs),
-        symbol: None,
+        symbol: Some(SymbolRef::Source(format!("{owner}.{}", field.name))),
     }
 }
 
@@ -544,7 +544,7 @@ fn impl_method_hover(
         kind: HoverKind::Method,
         detail: signature_detail(&method.signature),
         docs: None,
-        symbol: None,
+        symbol: Some(SymbolRef::Source(format!("{owner}.{}", method.name))),
     }
 }
 
@@ -561,7 +561,7 @@ fn trait_method_hover(
         kind: HoverKind::Method,
         detail: signature_detail(&method.signature),
         docs: attr_docs(&method.attrs),
-        symbol: None,
+        symbol: Some(SymbolRef::Source(format!("{owner}.{}", method.name))),
     }
 }
 
@@ -614,7 +614,7 @@ fn enum_variant_hover(
         kind: HoverKind::Variant,
         detail: enum_variant_detail(&owner, variant),
         docs: attr_docs(&variant.attrs),
-        symbol: None,
+        symbol: Some(SymbolRef::Source(format!("{owner}::{}", variant.name))),
     }
 }
 
@@ -691,7 +691,10 @@ fn hover_from_declaration(
         kind,
         detail,
         docs: declaration_docs(graph, declaration),
-        symbol: None,
+        symbol: Some(SymbolRef::Source(qualified_declaration_label(
+            graph,
+            declaration,
+        ))),
     }
 }
 
@@ -730,7 +733,7 @@ fn local_hover(binding: &LocalBinding, fact: TypeFact, range: DiagnosticRange) -
         kind,
         detail: fact.display_name(),
         docs: None,
-        symbol: None,
+        symbol: Some(SymbolRef::Local(binding.name.clone())),
     }
 }
 

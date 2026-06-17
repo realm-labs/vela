@@ -577,8 +577,9 @@ and semantic tokens use the same identities and display primitives.
   `SymbolRef` identity for source declarations and nested source-owned
   members, and workspace symbols expose `SymbolRef` identity for source files,
   modules, source declarations, and schema facts while keeping LSP projection
-  protocol-neutral. Hover results now carry `SymbolRef` identity for schema
-  and builtin symbols when the target resolves to those non-source facts.
+  protocol-neutral. Hover results now carry `SymbolRef` identity for source
+  declarations, source-owned members, locals, schema facts, and builtin
+  symbols.
 - [~] Route hover labels, completion details, signature labels, symbol labels,
   inlay labels, and diagnostics through `DisplayParts` or equivalent
   structured display helpers.
