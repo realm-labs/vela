@@ -103,6 +103,7 @@ pub enum DocumentSymbolKind {
     Function,
     Interface,
     Method,
+    Module,
     Object,
     Struct,
     TypeParameter,
@@ -132,8 +133,9 @@ impl LanguageServiceDatabases {
     pub fn workspace_symbols(&self, query: &str) -> Vec<WorkspaceSymbol> {
         let query = query.trim();
         let mut symbols = self
-            .script_workspace_symbols(query)
+            .module_workspace_symbols(query)
             .into_iter()
+            .chain(self.script_workspace_symbols(query))
             .chain(self.schema_workspace_symbols(query))
             .collect::<Vec<_>>();
         symbols.sort_by(|left, right| {
@@ -142,6 +144,33 @@ impl LanguageServiceDatabases {
                 .then(left.kind_name().cmp(right.kind_name()))
         });
         symbols
+    }
+
+    fn module_workspace_symbols(&self, query: &str) -> Vec<WorkspaceSymbol> {
+        self.project_db()
+            .module_by_document()
+            .iter()
+            .filter_map(|(document_id, module_path)| {
+                let name = module_path.join();
+                if name.is_empty() || !symbol_matches(query, &name) {
+                    return None;
+                }
+                let source = self.source_db().records().get(document_id)?;
+                Some(WorkspaceSymbol {
+                    name,
+                    detail: None,
+                    kind: DocumentSymbolKind::Module,
+                    container_name: parent_module_name(module_path.segments()),
+                    location: WorkspaceSymbolLocation::Source {
+                        document_id: document_id.clone(),
+                        range: diagnostic_range(
+                            source.text(),
+                            TextRange::new(0, source.text().len()),
+                        ),
+                    },
+                })
+            })
+            .collect()
     }
 
     fn script_workspace_symbols(&self, query: &str) -> Vec<WorkspaceSymbol> {
@@ -237,12 +266,17 @@ impl WorkspaceSymbol {
             DocumentSymbolKind::Function => "function",
             DocumentSymbolKind::Interface => "interface",
             DocumentSymbolKind::Method => "method",
+            DocumentSymbolKind::Module => "module",
             DocumentSymbolKind::Object => "object",
             DocumentSymbolKind::Struct => "struct",
             DocumentSymbolKind::TypeParameter => "type_parameter",
             DocumentSymbolKind::Variable => "variable",
         }
     }
+}
+
+fn parent_module_name(segments: &[String]) -> Option<String> {
+    (segments.len() > 1).then(|| segments[..segments.len() - 1].join("::"))
 }
 
 fn symbol_from_declaration(
@@ -612,6 +646,28 @@ pub fn main(amount: i64) -> i64 { return amount }";
                 .iter()
                 .any(|symbol| symbol.name() == "game::reward::grant"
                     && symbol.container_name() == Some("game::reward")),
+            "{symbols:?}"
+        );
+    }
+
+    #[test]
+    fn workspace_symbols_include_module_symbols() {
+        let main = DocumentId::from("/workspace/scripts/game/main.vela");
+        let reward = DocumentId::from("/workspace/scripts/game/reward.vela");
+        let databases = databases_for(vec![
+            SourceFileSnapshot::new(main, "pub fn main() -> i64 { return 1 }"),
+            SourceFileSnapshot::new(reward.clone(), "pub fn grant() -> i64 { return 1 }"),
+        ]);
+
+        let symbols = databases.workspace_symbols("game::reward");
+
+        assert!(
+            symbols.iter().any(|symbol| symbol.name() == "game::reward"
+                && symbol.kind() == DocumentSymbolKind::Module
+                && matches!(
+                    symbol.location(),
+                    WorkspaceSymbolLocation::Source { document_id, .. } if document_id == &reward
+                )),
             "{symbols:?}"
         );
     }

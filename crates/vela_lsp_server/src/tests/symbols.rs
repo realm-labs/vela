@@ -180,6 +180,50 @@ fn lsp_workspace_symbols_include_script_and_schema_symbols() {
     fs::remove_dir_all(&root).expect("temporary workspace should be removable");
 }
 
+#[test]
+fn lsp_workspace_symbols_include_module_symbols() {
+    let mut server = LspServer::new();
+    let _ = response_value(server.handle_json(&request(
+        1,
+        "initialize",
+        serde_json::json!({
+            "processId": null,
+            "rootUri": "file:///workspace/scripts",
+            "capabilities": {}
+        }),
+    )));
+    let uri = "file:///workspace/scripts/game/reward.vela";
+    let _ = notification_value(server.handle_json(&notification(
+        "textDocument/didOpen",
+        serde_json::json!({
+            "textDocument": {
+                "uri": uri,
+                "languageId": "vela",
+                "version": 1,
+                "text": "pub fn grant() -> i64 { return 1 }"
+            }
+        }),
+    )));
+
+    let response = response_value(server.handle_json(&request(
+        2,
+        "workspace/symbol",
+        serde_json::json!({ "query": "game::reward" }),
+    )));
+    let symbols = response["result"]
+        .as_array()
+        .expect("workspace/symbol should return an array");
+
+    assert!(
+        symbols.iter().any(|symbol| {
+            symbol["name"] == "game::reward"
+                && symbol["kind"] == 2
+                && symbol["location"]["uri"] == uri
+        }),
+        "{symbols:?}"
+    );
+}
+
 fn temp_workspace() -> PathBuf {
     let suffix = match SystemTime::now().duration_since(UNIX_EPOCH) {
         Ok(duration) => duration.as_nanos(),
