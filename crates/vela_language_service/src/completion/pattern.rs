@@ -4,7 +4,8 @@ use crate::{
     TextRange,
     completion::{
         CompletionInsertFormat, CompletionItem, CompletionKind, CompletionSymbol,
-        dedupe_and_filter_service_items, label_segment_matches,
+        dedupe_and_filter_service_items, display_qualified_detail, display_type_detail,
+        label_segment_matches,
     },
 };
 
@@ -57,7 +58,7 @@ fn enum_pattern_detail(
     if module_path.segments() == current_module {
         declaration.name.clone()
     } else {
-        format!("{}::{}", module_path.join(), declaration.name)
+        display_qualified_detail(&module_path.join(), &declaration.name)
     }
 }
 
@@ -72,7 +73,7 @@ fn schema_pattern_variant_completions(
             CompletionItem {
                 label: name.clone(),
                 kind: CompletionKind::Variant,
-                detail: owner.clone(),
+                detail: display_type_detail(&owner),
                 insert_text: None,
                 insert_format: CompletionInsertFormat::PlainText,
                 sort_text: None,

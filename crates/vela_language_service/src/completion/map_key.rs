@@ -9,7 +9,7 @@ use crate::{
     TextRange,
     completion::{
         CompletionInsertFormat, CompletionItem, CompletionKind, CompletionSymbol,
-        dedupe_and_filter_service_items, label_segment_matches,
+        dedupe_and_filter_service_items, display_type_detail, label_segment_matches,
     },
 };
 
@@ -244,7 +244,7 @@ fn script_enum_variant_key_completions(
         .map(|variant| CompletionItem {
             label: variant.name.clone(),
             kind: CompletionKind::Variant,
-            detail: key_hint.display(),
+            detail: display_type_detail(key_hint.display()),
             insert_text: None,
             insert_format: CompletionInsertFormat::PlainText,
             sort_text: None,
@@ -281,7 +281,7 @@ fn schema_enum_variant_key_completions(
             CompletionItem {
                 label: name.clone(),
                 kind: CompletionKind::Variant,
-                detail: key_hint.display(),
+                detail: display_type_detail(key_hint.display()),
                 insert_text: None,
                 insert_format: CompletionInsertFormat::PlainText,
                 sort_text: None,

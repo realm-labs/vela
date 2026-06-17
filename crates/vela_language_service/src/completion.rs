@@ -2,6 +2,7 @@ use vela_analysis::completion::member_completions;
 use vela_analysis::registry::RegistryFacts;
 use vela_analysis::type_fact::TypeFact;
 
+use crate::DisplayParts;
 use crate::QueryContext;
 use crate::{DocumentId, LanguageServiceDatabases, Position, TextRange};
 
@@ -309,6 +310,14 @@ fn empty_completion_list(context: CompletionContext) -> CompletionList {
         context,
         items: Vec::new(),
     }
+}
+
+pub(super) fn display_type_detail(text: impl AsRef<str>) -> String {
+    DisplayParts::type_name(text.as_ref()).render()
+}
+
+pub(super) fn display_qualified_detail(owner: &str, member: &str) -> String {
+    DisplayParts::qualified(owner, member).render()
 }
 
 #[cfg(test)]

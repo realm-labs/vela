@@ -7,7 +7,7 @@ use crate::QueryContext;
 
 use super::{
     CompletionContext, CompletionInsertFormat, CompletionItem, CompletionKind,
-    accumulator::CompletionAccumulator, relevance::completion_sort_text,
+    accumulator::CompletionAccumulator, display_type_detail, relevance::completion_sort_text,
 };
 
 pub(super) fn local_completion_items(
@@ -33,7 +33,7 @@ pub(super) fn local_completion_items(
                 metadata: Default::default(),
                 label: local.name.clone(),
                 kind,
-                detail: fact.display_name(),
+                detail: display_type_detail(fact.display_name()),
                 insert_text: None,
                 insert_format: CompletionInsertFormat::PlainText,
             }

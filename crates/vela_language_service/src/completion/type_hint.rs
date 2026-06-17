@@ -12,7 +12,8 @@ use vela_hir::module_graph::ModuleGraph;
 use crate::TextRange;
 
 use super::{
-    CompletionInsertFormat, CompletionItem, CompletionKind, CompletionSymbol, label_segment_matches,
+    CompletionInsertFormat, CompletionItem, CompletionKind, CompletionSymbol, display_type_detail,
+    label_segment_matches,
 };
 
 pub(super) fn type_hint_completion_items(
@@ -108,7 +109,7 @@ fn service_item_for_qualified_type_path(
     Some(CompletionItem {
         label,
         kind: CompletionKind::from(item.kind),
-        detail: item.fact.display_name(),
+        detail: display_type_detail(item.fact.display_name()),
         insert_text: None,
         insert_format: CompletionInsertFormat::PlainText,
         sort_text: None,
@@ -155,7 +156,7 @@ fn builtin_type_hint_completions() -> Vec<CompletionItem> {
     .map(|(label, fact)| CompletionItem {
         label: label.to_owned(),
         kind: CompletionKind::Type,
-        detail: fact.display_name(),
+        detail: display_type_detail(fact.display_name()),
         insert_text: None,
         insert_format: CompletionInsertFormat::PlainText,
         sort_text: None,
@@ -168,7 +169,7 @@ fn service_item_from_analysis(item: AnalysisCompletionItem) -> CompletionItem {
     CompletionItem {
         label: item.label,
         kind: CompletionKind::from(item.kind),
-        detail: item.fact.display_name(),
+        detail: display_type_detail(item.fact.display_name()),
         insert_text: None,
         insert_format: CompletionInsertFormat::PlainText,
         sort_text: None,

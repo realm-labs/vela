@@ -9,7 +9,7 @@ use vela_syntax::ast::{
 
 use super::{
     CompletionContext, CompletionInsertFormat, CompletionItem, CompletionKind,
-    accumulator::CompletionAccumulator, model::RecordConstructor,
+    accumulator::CompletionAccumulator, display_type_detail, model::RecordConstructor,
 };
 
 pub(super) fn record_constructor_at(
@@ -271,7 +271,7 @@ fn field_completion_from_hint(graph: &ModuleGraph, field: &StructFieldHint) -> C
     CompletionItem {
         label: field.name.clone(),
         kind: CompletionKind::Field,
-        detail: fact.display_name(),
+        detail: display_type_detail(fact.display_name()),
         insert_text: None,
         insert_format: CompletionInsertFormat::PlainText,
         sort_text: None,
@@ -291,7 +291,7 @@ fn schema_record_field_completions(
         .map(|field| CompletionItem {
             label: field.name,
             kind: CompletionKind::Field,
-            detail: field.fact.display_name(),
+            detail: display_type_detail(field.fact.display_name()),
             insert_text: None,
             insert_format: CompletionInsertFormat::PlainText,
             sort_text: None,

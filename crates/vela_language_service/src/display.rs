@@ -62,6 +62,13 @@ impl DisplayParts {
     }
 
     #[must_use]
+    pub fn type_name(type_name: &str) -> Self {
+        let mut parts = Self::new();
+        parts.push(DisplayPartKind::Type, type_name);
+        parts
+    }
+
+    #[must_use]
     pub fn keyword_symbol(keyword: &str, symbol: &str) -> Self {
         let mut parts = Self::new();
         parts.push(DisplayPartKind::Text, keyword);
@@ -202,6 +209,7 @@ mod tests {
     fn inlay_labels_render_existing_text_shape() {
         assert_eq!(DisplayParts::parameter_hint("amount").render(), "amount:");
         assert_eq!(DisplayParts::type_annotation("i64").render(), ": i64");
+        assert_eq!(DisplayParts::type_name("i64").render(), "i64");
     }
 
     #[test]

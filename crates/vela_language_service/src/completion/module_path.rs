@@ -11,7 +11,8 @@ use vela_hir::module_graph::{Declaration, DeclarationKind, ModuleGraph};
 use super::{
     CompletionContext, CompletionInsertFormat, CompletionItem, CompletionKind, CompletionSymbol,
     analysis_item::{callable_insert_text, completion_insert_format},
-    dedupe_and_filter_service_items, label_segment_matches,
+    dedupe_and_filter_service_items, display_qualified_detail, display_type_detail,
+    label_segment_matches,
     relevance::completion_sort_text,
 };
 
@@ -79,7 +80,7 @@ fn service_item_for_module_path(
         metadata: Default::default(),
         label,
         kind,
-        detail: item.fact.display_name(),
+        detail: display_type_detail(item.fact.display_name()),
         insert_text,
         insert_format,
     })
@@ -100,7 +101,7 @@ fn script_enum_variant_path_completions(
             Some(shape.variants.iter().map(move |variant| CompletionItem {
                 label: variant.name.clone(),
                 kind: CompletionKind::Variant,
-                detail: owner.clone(),
+                detail: display_type_detail(&owner),
                 insert_text: None,
                 insert_format: CompletionInsertFormat::PlainText,
                 metadata: Default::default(),
@@ -130,7 +131,7 @@ fn schema_enum_variant_path_completions(
             CompletionItem {
                 label: name.clone(),
                 kind: CompletionKind::Variant,
-                detail: owner.clone(),
+                detail: display_type_detail(&owner),
                 insert_text: None,
                 insert_format: CompletionInsertFormat::PlainText,
                 sort_text: Some(sort_text),
@@ -153,7 +154,10 @@ fn declaration_owner_label(graph: &ModuleGraph, declaration: &Declaration) -> Op
     if module_path.segments().is_empty() {
         Some(declaration.name.clone())
     } else {
-        Some(format!("{}::{}", module_path.join(), declaration.name))
+        Some(display_qualified_detail(
+            &module_path.join(),
+            &declaration.name,
+        ))
     }
 }
 
