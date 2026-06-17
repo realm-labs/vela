@@ -817,6 +817,35 @@ pub fn main(amount: i64) -> i64 {
 }
 
 #[test]
+fn function_rename_rejects_import_alias_collision() {
+    let main = DocumentId::from("/workspace/scripts/game/main.vela");
+    let reward = DocumentId::from("/workspace/scripts/game/reward.vela");
+    let bonus = DocumentId::from("/workspace/scripts/game/bonus.vela");
+    let main_text = "\
+use game::reward::grant
+use game::bonus::score as award
+pub fn main() -> i64 {
+    return grant() + award()
+}";
+    let reward_text = "pub fn grant() -> i64 { return 1 }";
+    let bonus_text = "pub fn score() -> i64 { return 2 }";
+    let databases = databases_for(vec![
+        SourceFileSnapshot::new(main.clone(), main_text),
+        SourceFileSnapshot::new(reward, reward_text),
+        SourceFileSnapshot::new(bonus, bonus_text),
+    ]);
+
+    assert_eq!(
+        databases.rename(
+            &main,
+            Position::new(3, line(main_text, 3).find("grant").expect("grant call")),
+            "award",
+        ),
+        None
+    );
+}
+
+#[test]
 fn host_schema_rename_is_not_editable() {
     let document = DocumentId::from("/workspace/scripts/game/main.vela");
     let text = "pub fn main(player: Player) { return player.level }";

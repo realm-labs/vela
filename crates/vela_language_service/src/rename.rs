@@ -4,7 +4,7 @@ use vela_analysis::facts::AnalysisFacts;
 use vela_common::{SourceId, Span};
 use vela_hir::binding::{BindingMap, BindingResolution, LocalBinding};
 use vela_hir::ids::{HirDeclId, HirLocalId};
-use vela_hir::module_graph::{Declaration, DeclarationKind, ImportResolution, ModuleGraph};
+use vela_hir::module_graph::{Declaration, DeclarationKind, Import, ImportResolution, ModuleGraph};
 use vela_hir::type_hint::{EnumVariantFieldsHint, FunctionSignature, HirTypeHint};
 use vela_syntax::ast::Visibility;
 use vela_syntax::token::Keyword;
@@ -964,6 +964,49 @@ fn declaration_name_conflicts(
         .module(declaration.module)
         .and_then(|declarations| declarations.get(new_name))
         .is_some_and(|existing| existing != declaration.id)
+        || import_binding_name_conflicts(graph, declaration, new_name)
+}
+
+fn import_binding_name_conflicts(
+    graph: &ModuleGraph,
+    declaration: &Declaration,
+    new_name: &str,
+) -> bool {
+    let target = ImportResolution::Declaration(declaration.id);
+    for module in graph.module_ids() {
+        let Some(imports) = graph.imports(module) else {
+            continue;
+        };
+        if !imports
+            .iter()
+            .any(|import| import.resolution == Some(target) && import.alias.is_none())
+        {
+            continue;
+        }
+        if graph
+            .module(module)
+            .and_then(|declarations| declarations.get(new_name))
+            .is_some_and(|existing| existing != declaration.id)
+        {
+            return true;
+        }
+        if imports.iter().any(|import| {
+            if import.resolution == Some(target) && import.alias.is_none() {
+                return false;
+            }
+            import_binding_name(import).is_some_and(|name| name == new_name)
+        }) {
+            return true;
+        }
+    }
+    false
+}
+
+fn import_binding_name(import: &Import) -> Option<&str> {
+    import
+        .alias
+        .as_deref()
+        .or_else(|| import.path.last().map(String::as_str))
 }
 
 fn rename_risks_for_declaration(declaration: &Declaration) -> Vec<RenameRisk> {
