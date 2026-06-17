@@ -4,7 +4,7 @@ use super::{
     CompletionContext, CompletionContextKind,
     lambda_parameter::lambda_parameter_completion_context, map_key::map_key_at,
     model::MemberReceiver, named_argument::named_argument_completion_context,
-    record_constructor_at,
+    record_field::record_constructor_at,
 };
 
 pub(super) fn completion_context(query: &QueryContext<'_>) -> CompletionContext {

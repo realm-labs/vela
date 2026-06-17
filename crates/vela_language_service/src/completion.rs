@@ -8,11 +8,8 @@ use vela_analysis::registry::RegistryFacts;
 use vela_analysis::type_fact::TypeFact;
 use vela_common::Span;
 use vela_hir::binding::{BindingMap, BindingResolution, LocalBinding, LocalBindingKind};
-use vela_hir::module_graph::{DeclarationKind, ModuleGraph};
-use vela_hir::type_hint::{HirTypeHint, StructFieldHint};
-use vela_syntax::ast::{
-    Block, ElseBranch, Expr, ExprKind, FunctionItem, ItemKind, SourceFile, Stmt, StmtKind,
-};
+use vela_hir::module_graph::ModuleGraph;
+use vela_hir::type_hint::HirTypeHint;
 
 use crate::QueryContext;
 use crate::{DocumentId, LanguageServiceDatabases, Position, TextRange};
@@ -26,6 +23,7 @@ mod model;
 mod module_path;
 mod named_argument;
 mod pattern;
+mod record_field;
 mod statement;
 mod type_hint;
 
@@ -39,10 +37,11 @@ use context::completion_context;
 use item::item_keyword_completions;
 use lambda_parameter::lambda_parameter_completion_items;
 use map_key::map_key_completion_items as map_key_context_completion_items;
-use model::{CallArgumentContext, MemberReceiver, RecordConstructor};
+use model::{CallArgumentContext, MemberReceiver};
 use module_path::module_path_completion_items as module_path_context_completion_items;
 use named_argument::script_function_parameter_completions;
 use pattern::pattern_completion_items as pattern_context_completion_items;
+use record_field::record_field_completion_items as record_field_context_completion_items;
 use statement::statement_keyword_completions;
 use type_hint::type_hint_completion_items;
 
@@ -237,24 +236,11 @@ impl LanguageServiceDatabases {
     }
 
     fn record_field_completion_items(&self, context: &CompletionContext) -> Vec<CompletionItem> {
-        let Some(constructor) = context.record_constructor.as_ref() else {
-            return Vec::new();
-        };
-        let graph = self.hir_db().graph();
-        let mut items = script_record_field_completions(graph, constructor);
-        items.extend(schema_record_field_completions(
+        record_field_context_completion_items(
+            self.hir_db().graph(),
             self.schema_db().facts(),
-            constructor,
-        ));
-        let existing_fields = constructor
-            .field_names
-            .iter()
-            .map(String::as_str)
-            .collect::<Vec<_>>();
-        dedupe_and_filter_service_items(items, context.replace_range(), context.prefix(), |item| {
-            !existing_fields.contains(&item.label())
-                && label_segment_matches(item.label(), context.prefix())
-        })
+            context,
+        )
     }
 
     fn named_argument_completion_items(&self, context: &CompletionContext) -> Vec<CompletionItem> {
@@ -333,186 +319,6 @@ impl LanguageServiceDatabases {
             context.prefix(),
             context.module_base(),
         )
-    }
-}
-
-fn record_constructor_at(source: &SourceFile, offset: usize) -> Option<RecordConstructor> {
-    let offset = u32::try_from(offset).ok()?;
-    for item in &source.items {
-        match &item.kind {
-            ItemKind::Const(item) => {
-                if let Some(context) = record_constructor_for_expr(&item.value, offset) {
-                    return Some(context);
-                }
-            }
-            ItemKind::Function(item) => {
-                if let Some(context) = record_constructor_for_function(item, offset) {
-                    return Some(context);
-                }
-            }
-            _ => {}
-        }
-    }
-    None
-}
-
-fn record_constructor_for_function(
-    function: &FunctionItem,
-    offset: u32,
-) -> Option<RecordConstructor> {
-    for param in &function.params {
-        if let Some(value) = param.default_value.as_ref()
-            && let Some(context) = record_constructor_for_expr(value, offset)
-        {
-            return Some(context);
-        }
-    }
-    record_constructor_for_block(&function.body, offset)
-}
-
-fn record_constructor_for_block(block: &Block, offset: u32) -> Option<RecordConstructor> {
-    if !block.span.contains(offset) {
-        return None;
-    }
-    for statement in &block.statements {
-        if let Some(context) = record_constructor_for_statement(statement, offset) {
-            return Some(context);
-        }
-    }
-    None
-}
-
-fn record_constructor_for_statement(statement: &Stmt, offset: u32) -> Option<RecordConstructor> {
-    if !statement.span.contains(offset) {
-        return None;
-    }
-    match &statement.kind {
-        StmtKind::Let { value, .. } => value
-            .as_ref()
-            .and_then(|value| record_constructor_for_expr(value, offset)),
-        StmtKind::Expr(value) => record_constructor_for_expr(value, offset),
-        StmtKind::Return(Some(value)) => record_constructor_for_expr(value, offset),
-        StmtKind::Return(None) | StmtKind::Break | StmtKind::Continue => None,
-        StmtKind::For { iterable, body, .. } => record_constructor_for_expr(iterable, offset)
-            .or_else(|| record_constructor_for_block(body, offset)),
-        StmtKind::Block(block) => record_constructor_for_block(block, offset),
-    }
-}
-
-fn record_constructor_for_expr(expr: &Expr, offset: u32) -> Option<RecordConstructor> {
-    if !expr.span.contains(offset) {
-        return None;
-    }
-    match &expr.kind {
-        ExprKind::Record { path, fields } => {
-            for field in fields {
-                if let Some(value) = field.value.as_ref()
-                    && let Some(context) = record_constructor_for_expr(value, offset)
-                {
-                    return Some(context);
-                }
-            }
-            Some(RecordConstructor {
-                path: path.clone(),
-                field_names: fields.iter().map(|field| field.name.clone()).collect(),
-                current_module: Vec::new(),
-            })
-        }
-        ExprKind::Unary { expr, .. } | ExprKind::Try(expr) => {
-            record_constructor_for_expr(expr, offset)
-        }
-        ExprKind::Binary { left, right, .. }
-        | ExprKind::Assign {
-            target: left,
-            value: right,
-            ..
-        } => record_constructor_for_expr(left, offset)
-            .or_else(|| record_constructor_for_expr(right, offset)),
-        ExprKind::Field { base, .. } => record_constructor_for_expr(base, offset),
-        ExprKind::Call { callee, args } => {
-            record_constructor_for_expr(callee, offset).or_else(|| {
-                args.iter()
-                    .find_map(|arg| record_constructor_for_expr(&arg.value, offset))
-            })
-        }
-        ExprKind::Index { base, index } => record_constructor_for_expr(base, offset)
-            .or_else(|| record_constructor_for_expr(index, offset)),
-        ExprKind::Array(values) => values
-            .iter()
-            .find_map(|value| record_constructor_for_expr(value, offset)),
-        ExprKind::Map(entries) => entries.iter().find_map(|entry| {
-            record_constructor_for_expr(&entry.key, offset)
-                .or_else(|| record_constructor_for_expr(&entry.value, offset))
-        }),
-        ExprKind::Lambda { params, body } => params
-            .iter()
-            .filter_map(|param| param.default_value.as_ref())
-            .find_map(|value| record_constructor_for_expr(value, offset))
-            .or_else(|| record_constructor_for_expr(body, offset)),
-        ExprKind::If(if_expr) => record_constructor_for_expr(&if_expr.condition, offset)
-            .or_else(|| record_constructor_for_block(&if_expr.then_branch, offset))
-            .or_else(|| {
-                if_expr
-                    .else_branch
-                    .as_ref()
-                    .and_then(|branch| match branch {
-                        ElseBranch::Block(block) => record_constructor_for_block(block, offset),
-                        ElseBranch::If(if_expr) => record_constructor_for_if(if_expr, offset),
-                    })
-            }),
-        ExprKind::Match(match_expr) => record_constructor_for_expr(&match_expr.scrutinee, offset)
-            .or_else(|| {
-                match_expr
-                    .arms
-                    .iter()
-                    .find_map(|arm| record_constructor_for_expr(&arm.body, offset))
-            }),
-        ExprKind::Block(block) => record_constructor_for_block(block, offset),
-        ExprKind::Literal(_)
-        | ExprKind::InterpolatedString(_)
-        | ExprKind::Path(_)
-        | ExprKind::SelfValue
-        | ExprKind::Error => None,
-    }
-}
-
-fn record_constructor_for_if(
-    if_expr: &vela_syntax::ast::IfExpr,
-    offset: u32,
-) -> Option<RecordConstructor> {
-    if !if_expr.condition.span.contains(offset)
-        && !if_expr.then_branch.span.contains(offset)
-        && !if_expr
-            .else_branch
-            .as_ref()
-            .is_some_and(|branch| else_branch_contains(branch, offset))
-    {
-        return None;
-    }
-    record_constructor_for_expr(&if_expr.condition, offset)
-        .or_else(|| record_constructor_for_block(&if_expr.then_branch, offset))
-        .or_else(|| {
-            if_expr
-                .else_branch
-                .as_ref()
-                .and_then(|branch| match branch {
-                    ElseBranch::Block(block) => record_constructor_for_block(block, offset),
-                    ElseBranch::If(if_expr) => record_constructor_for_if(if_expr, offset),
-                })
-        })
-}
-
-fn else_branch_contains(branch: &ElseBranch, offset: u32) -> bool {
-    match branch {
-        ElseBranch::If(if_expr) => {
-            if_expr.condition.span.contains(offset)
-                || if_expr.then_branch.span.contains(offset)
-                || if_expr
-                    .else_branch
-                    .as_ref()
-                    .is_some_and(|branch| else_branch_contains(branch, offset))
-        }
-        ElseBranch::Block(block) => block.span.contains(offset),
     }
 }
 
@@ -707,88 +513,6 @@ fn completion_match_rank(label: &str, prefix: &str) -> u8 {
         return 1;
     }
     2
-}
-
-fn script_record_field_completions(
-    graph: &ModuleGraph,
-    constructor: &RecordConstructor,
-) -> Vec<CompletionItem> {
-    let Some(declaration) = script_record_constructor_declaration(graph, constructor) else {
-        return Vec::new();
-    };
-    let Some(shape) = graph.struct_shape(declaration.id) else {
-        return Vec::new();
-    };
-    shape
-        .fields
-        .iter()
-        .map(|field| field_completion_from_hint(graph, field))
-        .collect()
-}
-
-fn script_record_constructor_declaration<'a>(
-    graph: &'a ModuleGraph,
-    constructor: &RecordConstructor,
-) -> Option<&'a vela_hir::module_graph::Declaration> {
-    let name = constructor.path.last()?;
-    graph.declarations().find(|declaration| {
-        declaration.kind == DeclarationKind::Struct
-            && declaration.name == *name
-            && record_constructor_path_matches(graph, declaration, constructor)
-    })
-}
-
-fn record_constructor_path_matches(
-    graph: &ModuleGraph,
-    declaration: &vela_hir::module_graph::Declaration,
-    constructor: &RecordConstructor,
-) -> bool {
-    let Some(module_path) = graph.module_path(declaration.module) else {
-        return false;
-    };
-    let path = &constructor.path;
-    if path.len() == 1 {
-        return module_path.segments() == constructor.current_module;
-    }
-    let expected = path[..path.len().saturating_sub(1)].join("::");
-    module_path.join() == expected
-}
-
-fn field_completion_from_hint(graph: &ModuleGraph, field: &StructFieldHint) -> CompletionItem {
-    let fact = field
-        .type_hint
-        .as_ref()
-        .map_or(TypeFact::Unknown, |hint| type_fact_from_hint(graph, hint));
-    CompletionItem {
-        label: field.name.clone(),
-        kind: CompletionKind::Field,
-        detail: fact.display_name(),
-        insert_text: None,
-        insert_format: CompletionInsertFormat::PlainText,
-        sort_text: None,
-        metadata: Default::default(),
-    }
-}
-
-fn schema_record_field_completions(
-    schema: &vela_analysis::registry::RegistryFacts,
-    constructor: &RecordConstructor,
-) -> Vec<CompletionItem> {
-    let owner = constructor.path.join("::");
-    let short_owner = constructor.path.last().map(String::as_str);
-    schema
-        .fields()
-        .filter(|field| field.owner == owner || Some(field.owner.as_str()) == short_owner)
-        .map(|field| CompletionItem {
-            label: field.name,
-            kind: CompletionKind::Field,
-            detail: field.fact.display_name(),
-            insert_text: None,
-            insert_format: CompletionInsertFormat::PlainText,
-            sort_text: None,
-            metadata: Default::default(),
-        })
-        .collect()
 }
 
 fn completion_type_fact(

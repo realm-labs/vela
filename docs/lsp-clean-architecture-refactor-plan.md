@@ -336,12 +336,12 @@ Purpose: replace coarse global completion with context-specific producers.
 
 - [~] Split completion into focused modules such as context, item, relevance,
   producers, render, and tests when file size or responsibility requires it.
-  Item, statement, type-hint, map-key, named-argument, lambda-parameter, and
-  pattern producers now live in focused modules, module-path candidate
-  construction now lives in its own focused producer module, completion
-  context construction now lives in a focused context module, and the
-  editor-neutral completion model now lives in a focused model module; broader
-  relevance/render separation remains open.
+  Item, statement, type-hint, record-field, map-key, named-argument,
+  lambda-parameter, and pattern producers now live in focused modules,
+  module-path candidate construction now lives in its own focused producer
+  module, completion context construction now lives in a focused context
+  module, and the editor-neutral completion model now lives in a focused model
+  module; broader relevance/render separation remains open.
 - [~] Replace `CompletionContextKind::Global` style dispatch with producers
   selected by `CursorContextKind`.
   Pattern cursor contexts now route to a dedicated source/schema enum-variant
