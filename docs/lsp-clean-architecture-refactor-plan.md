@@ -368,7 +368,9 @@ Purpose: classify the cursor once and reuse it across features.
   `self.method()` handling without local receiver scanning; source method
   rename edit collection now also consumes shared AST member-call sites with
   explicit `self.method()` owner recovery, and source field rename edit
-  collection consumes shared AST member-access sites.
+  collection consumes shared AST member-access sites. Schema member rename edit
+  collection now consumes shared AST member-call/access sites with query-owned
+  receiver facts instead of feature-local member receiver scanning.
   `CursorContext` now exposes the identifier token range under the request
   cursor, and rename target selection consumes that shared range instead of
   running its own first-step token scanner. Lambda-parameter contexts now

@@ -1,14 +1,13 @@
 use std::collections::BTreeMap;
 
-use vela_analysis::{facts::AnalysisFacts, registry::RegistryFacts, type_fact::TypeFact};
+use vela_analysis::{registry::RegistryFacts, type_fact::TypeFact};
 use vela_common::{SourceId, Span};
-use vela_hir::binding::{BindingMap, BindingResolution};
 use vela_hir::module_graph::Declaration;
 use vela_hir::type_hint::HirTypeHint;
 use vela_syntax::lexer::lex;
 use vela_syntax::token::TokenKind;
 
-use crate::{DocumentId, LanguageServiceDatabases, TextRange};
+use crate::{DocumentId, LanguageServiceDatabases, TextRange, member_access, query_context};
 
 use super::{
     RenameToken, TextEdit, WorkspaceEdit, diagnostic_range, document_text_edit_for_rename,
@@ -28,6 +27,12 @@ pub(super) struct SchemaMemberRenameTarget {
     pub(super) member: String,
     pub(super) kind: SchemaMemberRenameKind,
     pub(super) token: RenameToken,
+}
+
+struct SchemaMemberSite {
+    member_range: TextRange,
+    receiver_range: TextRange,
+    is_call: bool,
 }
 
 #[derive(Debug, Clone, Copy, Eq, PartialEq)]
@@ -359,43 +364,6 @@ pub(super) fn schema_variant_use_target(
     })
 }
 
-pub(super) fn schema_member_use_target(
-    databases: &LanguageServiceDatabases,
-    facts: &AnalysisFacts,
-    text: &str,
-    source_id: SourceId,
-    bindings: &BindingMap,
-    token: &RenameToken,
-) -> Option<SchemaMemberRenameTarget> {
-    let member = token_text(text, token.range)?;
-    let schema = databases.schema_db().facts();
-    let target = if is_call_callee(text, token.range) {
-        schema_method_target_for_member(
-            schema,
-            facts,
-            text,
-            source_id,
-            bindings,
-            member,
-            token.range,
-        )
-    } else {
-        schema_field_target_for_member(
-            schema,
-            facts,
-            text,
-            source_id,
-            bindings,
-            member,
-            token.range,
-        )
-    }?;
-    source_backed_schema_target(databases, target).map(|mut target| {
-        target.token = token.clone();
-        target
-    })
-}
-
 pub(super) fn schema_member_target_for_receiver_fact(
     databases: &LanguageServiceDatabases,
     receiver: &TypeFact,
@@ -581,46 +549,87 @@ fn push_schema_member_use_edits(
     new_name: &str,
     edits_by_document: &mut BTreeMap<DocumentId, Vec<TextEdit>>,
 ) {
-    let graph = databases.hir_db().graph();
-    let facts = AnalysisFacts::from_module_graph(graph);
     for source in databases.source_db().records().values() {
-        let source_id = source.source_id();
-        let text = source.text();
-        for range in schema_member_use_ranges(source_id, text, target) {
-            let Some(start) = u32::try_from(range.start).ok() else {
-                continue;
-            };
-            for declaration in graph.declarations() {
-                if declaration.span.source != source_id || !declaration.span.contains(start) {
-                    continue;
+        let Some(parsed) = databases.parse_db().parsed_source(source.document_id()) else {
+            continue;
+        };
+        match target.kind {
+            SchemaMemberRenameKind::Field => {
+                for site in member_access::member_access_sites(parsed) {
+                    if site.member != target.member {
+                        continue;
+                    }
+                    push_schema_member_site_edit(
+                        databases,
+                        source,
+                        SchemaMemberSite {
+                            member_range: site.member_range,
+                            receiver_range: site.receiver_range,
+                            is_call: false,
+                        },
+                        target,
+                        new_name,
+                        edits_by_document,
+                    );
                 }
-                let Some(bindings) = graph.bindings(declaration.id) else {
-                    continue;
-                };
-                if schema_member_use_target(
-                    databases,
-                    &facts,
-                    text,
-                    source_id,
-                    bindings,
-                    &RenameToken { range },
-                )
-                .is_some_and(|found| {
-                    found.owner == target.owner
-                        && found.member == target.member
-                        && found.kind == target.kind
-                }) {
-                    edits_by_document
-                        .entry(source.document_id().clone())
-                        .or_default()
-                        .push(TextEdit {
-                            range: diagnostic_range(text, range),
-                            new_text: new_name.to_owned(),
-                        });
-                    break;
+            }
+            SchemaMemberRenameKind::Method | SchemaMemberRenameKind::TraitMethod => {
+                for site in member_access::member_call_sites(parsed) {
+                    if site.member != target.member {
+                        continue;
+                    }
+                    push_schema_member_site_edit(
+                        databases,
+                        source,
+                        SchemaMemberSite {
+                            member_range: site.member_range,
+                            receiver_range: site.receiver_range,
+                            is_call: true,
+                        },
+                        target,
+                        new_name,
+                        edits_by_document,
+                    );
                 }
             }
         }
+    }
+}
+
+fn push_schema_member_site_edit(
+    databases: &LanguageServiceDatabases,
+    source: &crate::SourceRecord,
+    site: SchemaMemberSite,
+    target: &SchemaMemberRenameTarget,
+    new_name: &str,
+    edits_by_document: &mut BTreeMap<DocumentId, Vec<TextEdit>>,
+) {
+    let Some(receiver) = query_context::type_fact_for_source_range(
+        databases,
+        source.source_id(),
+        site.receiver_range,
+    ) else {
+        return;
+    };
+    if schema_member_target_for_receiver_fact(
+        databases,
+        &receiver,
+        &target.member,
+        site.is_call,
+        &RenameToken {
+            range: site.member_range,
+        },
+    )
+    .is_some_and(|found| {
+        found.owner == target.owner && found.member == target.member && found.kind == target.kind
+    }) {
+        edits_by_document
+            .entry(source.document_id().clone())
+            .or_default()
+            .push(TextEdit {
+                range: diagnostic_range(source.text(), site.member_range),
+                new_text: new_name.to_owned(),
+            });
     }
 }
 
@@ -821,106 +830,6 @@ fn schema_member_name_conflicts(
     }
 }
 
-fn schema_method_target_for_member(
-    schema: &RegistryFacts,
-    facts: &AnalysisFacts,
-    text: &str,
-    source_id: SourceId,
-    bindings: &BindingMap,
-    method: &str,
-    member_range: TextRange,
-) -> Option<SchemaMemberRenameTarget> {
-    let receiver = member_receiver_range(text, member_range.start)?;
-    let start = u32::try_from(receiver.start).ok()?;
-    let end = u32::try_from(receiver.end).ok()?;
-    let span = Span::new(source_id, start, end);
-    let resolution = bindings.resolution_at_span(span)?;
-    let receiver = schema_type_fact_for_resolution(resolution, bindings, facts, schema)?;
-    let (owner, kind) = schema_method_owner(schema, &receiver, method)?;
-    Some(SchemaMemberRenameTarget {
-        owner,
-        member: method.to_owned(),
-        kind,
-        token: RenameToken {
-            range: member_range,
-        },
-    })
-}
-
-fn schema_field_target_for_member(
-    schema: &RegistryFacts,
-    facts: &AnalysisFacts,
-    text: &str,
-    source_id: SourceId,
-    bindings: &BindingMap,
-    field: &str,
-    member_range: TextRange,
-) -> Option<SchemaMemberRenameTarget> {
-    let receiver = member_receiver_range(text, member_range.start)?;
-    let start = u32::try_from(receiver.start).ok()?;
-    let end = u32::try_from(receiver.end).ok()?;
-    let span = Span::new(source_id, start, end);
-    let resolution = bindings.resolution_at_span(span)?;
-    let receiver = schema_type_fact_for_resolution(resolution, bindings, facts, schema)?;
-    let owner = schema_field_owner(schema, &receiver, field)?;
-    Some(SchemaMemberRenameTarget {
-        owner,
-        member: field.to_owned(),
-        kind: SchemaMemberRenameKind::Field,
-        token: RenameToken {
-            range: member_range,
-        },
-    })
-}
-
-fn schema_type_fact_for_resolution(
-    resolution: &BindingResolution,
-    bindings: &BindingMap,
-    facts: &AnalysisFacts,
-    schema: &RegistryFacts,
-) -> Option<TypeFact> {
-    match resolution {
-        BindingResolution::Local(local) => {
-            let binding = bindings.local(*local)?;
-            type_fact_for_resolution(resolution, facts)
-                .or_else(|| schema_fact_for_hint(binding.type_hint.as_ref(), schema))
-        }
-        BindingResolution::Declaration(_) => type_fact_for_resolution(resolution, facts),
-        BindingResolution::Import(_) | BindingResolution::QualifiedPath(_) => None,
-    }
-}
-
-fn type_fact_for_resolution(
-    resolution: &BindingResolution,
-    facts: &AnalysisFacts,
-) -> Option<TypeFact> {
-    match resolution {
-        BindingResolution::Local(local) => facts
-            .local(*local)
-            .cloned()
-            .filter(|fact| !matches!(fact, TypeFact::Unknown)),
-        BindingResolution::Declaration(declaration) => facts.declaration(*declaration).cloned(),
-        BindingResolution::Import(_) | BindingResolution::QualifiedPath(_) => None,
-    }
-}
-
-fn schema_fact_for_hint(
-    hint: Option<&vela_hir::type_hint::HirTypeHint>,
-    schema: &RegistryFacts,
-) -> Option<TypeFact> {
-    let hint = hint?;
-    if !hint.args.is_empty() {
-        return None;
-    }
-    let qualified = hint.path.join("::");
-    schema
-        .type_fact(&qualified)
-        .or_else(|| schema.trait_fact(&qualified))
-        .or_else(|| hint.path.last().and_then(|name| schema.type_fact(name)))
-        .or_else(|| hint.path.last().and_then(|name| schema.trait_fact(name)))
-        .cloned()
-}
-
 fn schema_method_owner(
     schema: &RegistryFacts,
     receiver: &TypeFact,
@@ -1012,42 +921,6 @@ fn schema_variant_use_ranges(
             TokenKind::Ident(name) if name == target.variant => {
                 let range = span_text_range(token.span)?;
                 path_ending_at(text, range).map(|_| range)
-            }
-            TokenKind::Ident(_)
-            | TokenKind::Int(_)
-            | TokenKind::Float(_)
-            | TokenKind::Char(_)
-            | TokenKind::String(_)
-            | TokenKind::InterpolatedString(_)
-            | TokenKind::Bytes(_)
-            | TokenKind::Keyword(_)
-            | TokenKind::Symbol(_)
-            | TokenKind::Eof => None,
-        })
-        .collect()
-}
-
-fn schema_member_use_ranges(
-    source_id: SourceId,
-    text: &str,
-    target: &SchemaMemberRenameTarget,
-) -> Vec<TextRange> {
-    lex(source_id, text)
-        .tokens
-        .into_iter()
-        .filter_map(|token| match token.kind {
-            TokenKind::Ident(name) if name == target.member => {
-                let range = span_text_range(token.span)?;
-                match target.kind {
-                    SchemaMemberRenameKind::Field => {
-                        member_receiver_range(text, range.start).map(|_| range)
-                    }
-                    SchemaMemberRenameKind::Method | SchemaMemberRenameKind::TraitMethod => {
-                        (is_call_callee(text, range)
-                            && member_receiver_range(text, range.start).is_some())
-                        .then_some(range)
-                    }
-                }
             }
             TokenKind::Ident(_)
             | TokenKind::Int(_)
@@ -1194,18 +1067,6 @@ fn schema_function_renamed_name(name: &str, new_segment: &str) -> String {
     } else {
         new_segment.to_owned()
     }
-}
-
-fn member_receiver_range(text: &str, member_start: usize) -> Option<TextRange> {
-    let before_member = text.get(..member_start)?.trim_end();
-    let before_dot = before_member.strip_suffix('.')?.trim_end();
-    let end = before_dot.len();
-    let start = before_dot
-        .char_indices()
-        .rev()
-        .find_map(|(index, ch)| (!is_identifier_continue(ch)).then_some(index + ch.len_utf8()))
-        .unwrap_or(0);
-    (start < end).then(|| TextRange::new(start, end))
 }
 
 fn is_call_callee(text: &str, range: TextRange) -> bool {
