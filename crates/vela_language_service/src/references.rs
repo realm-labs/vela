@@ -4,6 +4,7 @@ use vela_hir::binding::{BindingMap, BindingResolution, LocalBinding};
 use vela_hir::ids::{HirDeclId, HirLocalId};
 use vela_hir::module_graph::{Declaration, DeclarationKind, ImportResolution, ModuleGraph};
 use vela_hir::type_hint::ImplMetadataKind;
+use vela_syntax::ast::SourceFile;
 
 use crate::{
     DiagnosticRange, DocumentId, LanguageServiceDatabases, LineIndex, Position, QueryContext,
@@ -133,6 +134,7 @@ impl LanguageServiceDatabases {
             return Vec::new();
         };
         let graph = self.hir_db().graph();
+        let parsed_source = self.parse_db().parsed_source(document_id);
 
         if let Some(target) = trait_declaration_target(graph, source_id, source.text(), &token) {
             return self.trait_references(&target, include_declaration);
@@ -188,10 +190,14 @@ impl LanguageServiceDatabases {
             if let Some(local) = local_reference_target(source.text(), bindings, &token) {
                 return self.local_references(bindings, local, include_declaration);
             }
-            if let Some(target) = enum_variant_use_target(graph, bindings, source.text(), &token) {
+            if let Some(target) =
+                enum_variant_use_target(graph, bindings, parsed_source, source.text(), &token)
+            {
                 return self.enum_variant_references(&target.target, include_declaration);
             }
-            if let Some(target) = schema::schema_variant_use_target(self, source.text(), &token) {
+            if let Some(target) =
+                schema::schema_variant_use_target(self, parsed_source, source.text(), &token)
+            {
                 return schema::schema_variant_references(self, &target, include_declaration);
             }
             if let Some(parsed) = self.parse_db().parsed_source(document_id)
@@ -696,15 +702,44 @@ struct EnumVariantUseTarget {
     kind: ReferenceKind,
 }
 
+struct EnumVariantUseReferenceSite<'a> {
+    source: &'a crate::SourceRecord,
+    text: &'a str,
+    path: &'a [String],
+    range: TextRange,
+}
+
 fn enum_variant_use_target(
     graph: &ModuleGraph,
     bindings: &BindingMap,
+    parsed: Option<&SourceFile>,
     text: &str,
     token: &ReferenceToken,
 ) -> Option<EnumVariantUseTarget> {
-    let path = path_ending_at(text, token.range)?;
+    if let Some(parsed) = parsed {
+        for site in path_calls::path_expression_sites(parsed, text) {
+            if site.segment_range == token.range {
+                return enum_variant_use_target_for_path(graph, bindings, &site.path, text, token);
+            }
+        }
+        for site in path_calls::pattern_path_sites(parsed, text) {
+            if site.segment_range == token.range {
+                return enum_variant_use_target_for_path(graph, bindings, &site.path, text, token);
+            }
+        }
+    }
+    None
+}
+
+fn enum_variant_use_target_for_path(
+    graph: &ModuleGraph,
+    bindings: &BindingMap,
+    path: &[String],
+    text: &str,
+    token: &ReferenceToken,
+) -> Option<EnumVariantUseTarget> {
     let variant = path.last()?;
-    if let Some(BindingResolution::Declaration(owner)) = bindings.pattern_resolution(&path)
+    if let Some(BindingResolution::Declaration(owner)) = bindings.pattern_resolution(path)
         && enum_variant_exists(graph, *owner, variant)
     {
         return Some(EnumVariantUseTarget {
@@ -750,12 +785,15 @@ fn enum_variant_use_references_for_source(
             {
                 continue;
             }
-            let range = site.segment_range;
-            push_enum_variant_use_reference_for_range(
+            push_enum_variant_use_reference_for_path(
                 graph,
-                source,
+                EnumVariantUseReferenceSite {
+                    source,
+                    text,
+                    path: &site.path,
+                    range: site.segment_range,
+                },
                 target,
-                range,
                 &mut references,
             );
         }
@@ -769,12 +807,15 @@ fn enum_variant_use_references_for_source(
             {
                 continue;
             }
-            let range = site.segment_range;
-            push_enum_variant_use_reference_for_range(
+            push_enum_variant_use_reference_for_path(
                 graph,
-                source,
+                EnumVariantUseReferenceSite {
+                    source,
+                    text,
+                    path: &site.path,
+                    range: site.segment_range,
+                },
                 target,
-                range,
                 &mut references,
             );
         }
@@ -782,16 +823,14 @@ fn enum_variant_use_references_for_source(
     references
 }
 
-fn push_enum_variant_use_reference_for_range(
+fn push_enum_variant_use_reference_for_path(
     graph: &ModuleGraph,
-    source: &crate::SourceRecord,
+    site: EnumVariantUseReferenceSite<'_>,
     target: &EnumVariantReferenceTarget,
-    range: TextRange,
     references: &mut Vec<Reference>,
 ) {
-    let source_id = source.source_id();
-    let text = source.text();
-    let Some(start) = u32::try_from(range.start).ok() else {
+    let source_id = site.source.source_id();
+    let Some(start) = u32::try_from(site.range.start).ok() else {
         return;
     };
     for declaration in graph.declarations() {
@@ -801,14 +840,19 @@ fn push_enum_variant_use_reference_for_range(
         let Some(bindings) = graph.bindings(declaration.id) else {
             continue;
         };
-        let Some(found) = enum_variant_use_target(graph, bindings, text, &ReferenceToken { range })
-        else {
+        let Some(found) = enum_variant_use_target_for_path(
+            graph,
+            bindings,
+            site.path,
+            site.text,
+            &ReferenceToken { range: site.range },
+        ) else {
             continue;
         };
         if found.target == *target {
             references.push(Reference {
-                document_id: source.document_id().clone(),
-                range: diagnostic_range(text, range),
+                document_id: site.source.document_id().clone(),
+                range: diagnostic_range(site.text, site.range),
                 kind: found.kind,
             });
             break;
@@ -820,32 +864,6 @@ fn enum_variant_exists(graph: &ModuleGraph, owner: HirDeclId, variant: &str) -> 
     graph
         .enum_shape(owner)
         .is_some_and(|shape| shape.variants.iter().any(|entry| entry.name == variant))
-}
-
-fn path_ending_at(text: &str, range: TextRange) -> Option<Vec<String>> {
-    let mut path = vec![token_text(text, range)?.to_owned()];
-    let mut cursor = range.start;
-    loop {
-        let before_segment = text.get(..cursor)?.trim_end();
-        let Some(before_separator) = before_segment.strip_suffix("::").map(str::trim_end) else {
-            break;
-        };
-        let end = before_separator.len();
-        let start = before_separator
-            .char_indices()
-            .rev()
-            .find_map(|(index, ch)| (!is_identifier_continue(ch)).then_some(index + ch.len_utf8()))
-            .unwrap_or(0);
-        if start == end {
-            break;
-        }
-        path.push(text.get(start..end)?.to_owned());
-        cursor = start;
-    }
-    (path.len() > 1).then(|| {
-        path.reverse();
-        path
-    })
 }
 
 fn record_owner_names(receiver: &TypeFact) -> Vec<String> {

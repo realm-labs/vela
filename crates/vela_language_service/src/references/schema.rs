@@ -5,9 +5,8 @@ use vela_syntax::ast::SourceFile;
 use crate::{LanguageServiceDatabases, TextRange, member_access, path_calls, query_context};
 
 use super::{
-    Reference, ReferenceKind, ReferenceToken, diagnostic_range, name_range_in_text, path_ending_at,
-    record_fields, record_variant_patterns, resolved_use_reference_kind, span_text_range,
-    token_text,
+    Reference, ReferenceKind, ReferenceToken, diagnostic_range, name_range_in_text, record_fields,
+    record_variant_patterns, resolved_use_reference_kind, span_text_range, token_text,
 };
 
 #[derive(Debug, Clone, Eq, PartialEq)]
@@ -221,11 +220,22 @@ pub(super) fn schema_field_declaration_target(
 
 pub(super) fn schema_variant_use_target(
     databases: &LanguageServiceDatabases,
+    parsed: Option<&SourceFile>,
     text: &str,
     token: &ReferenceToken,
 ) -> Option<SchemaVariantReferenceTarget> {
-    let path = path_ending_at(text, token.range)?;
-    schema_variant_target_for_path(databases.schema_db().facts(), &path)
+    let parsed = parsed?;
+    for site in path_calls::path_expression_sites(parsed, text) {
+        if site.segment_range == token.range {
+            return schema_variant_target_for_path(databases.schema_db().facts(), &site.path);
+        }
+    }
+    for site in path_calls::pattern_path_sites(parsed, text) {
+        if site.segment_range == token.range {
+            return schema_variant_target_for_path(databases.schema_db().facts(), &site.path);
+        }
+    }
+    None
 }
 
 pub(super) fn schema_record_field_use_target(

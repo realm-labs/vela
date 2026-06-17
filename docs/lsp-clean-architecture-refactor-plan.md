@@ -383,10 +383,9 @@ Purpose: classify the cursor once and reuse it across features.
   range scanners. Source enum variant rename target selection consumes parsed
   expression and pattern path sites without legacy path reconstruction. Schema
   variant rename target selection consumes expression path sites without legacy
-  path reconstruction. Source and
-  schema enum variant references now consume the same shared parsed
-  expression and pattern path sites without a feature-local token range
-  fallback.
+  path reconstruction. Source and schema enum variant reference target
+  selection and reference scans now consume the same shared parsed expression
+  and pattern path sites without a feature-local token range fallback.
   Schema variant go-to-definition now resolves constructor-like expression paths
   only from the shared parsed path sites, without legacy token path
   reconstruction.
