@@ -7,7 +7,9 @@ use vela_hir::type_hint::HirTypeHint;
 use vela_syntax::lexer::lex;
 use vela_syntax::token::TokenKind;
 
-use crate::{DocumentId, LanguageServiceDatabases, TextRange, member_access, query_context};
+use crate::{
+    DocumentId, LanguageServiceDatabases, TextRange, member_access, path_calls, query_context,
+};
 
 use super::{
     RenameToken, TextEdit, WorkspaceEdit, diagnostic_range, document_text_edit_for_rename,
@@ -502,15 +504,25 @@ fn push_schema_function_use_edits(
     let target_segment = schema_function_segment(&target.name);
     for source in databases.source_db().records().values() {
         let text = source.text();
-        for range in schema_function_use_ranges(source.source_id(), text, target_segment) {
-            if schema_function_use_target(databases, text, &RenameToken { range })
+        let Some(parsed) = databases.parse_db().parsed_source(source.document_id()) else {
+            continue;
+        };
+        for site in path_calls::path_call_sites(parsed, text) {
+            if site
+                .path
+                .last()
+                .is_none_or(|segment| segment != target_segment)
+            {
+                continue;
+            }
+            if schema_function_target_for_name(databases, &site.path.join("::"))
                 .is_some_and(|found| found.name == target.name)
             {
                 edits_by_document
                     .entry(source.document_id().clone())
                     .or_default()
                     .push(TextEdit {
-                        range: diagnostic_range(text, range),
+                        range: diagnostic_range(text, site.segment_range),
                         new_text: new_name.to_owned(),
                     });
             }
@@ -880,33 +892,6 @@ fn receiver_owner_name(receiver: &TypeFact) -> Option<String> {
         } => Some(name.clone()),
         _ => None,
     }
-}
-
-fn schema_function_use_ranges(
-    source_id: SourceId,
-    text: &str,
-    target_segment: &str,
-) -> Vec<TextRange> {
-    lex(source_id, text)
-        .tokens
-        .into_iter()
-        .filter_map(|token| match token.kind {
-            TokenKind::Ident(name) if name == target_segment => {
-                let range = span_text_range(token.span)?;
-                function_call_name_at(text, range).map(|_| range)
-            }
-            TokenKind::Ident(_)
-            | TokenKind::Int(_)
-            | TokenKind::Float(_)
-            | TokenKind::Char(_)
-            | TokenKind::String(_)
-            | TokenKind::InterpolatedString(_)
-            | TokenKind::Bytes(_)
-            | TokenKind::Keyword(_)
-            | TokenKind::Symbol(_)
-            | TokenKind::Eof => None,
-        })
-        .collect()
 }
 
 fn schema_variant_use_ranges(
