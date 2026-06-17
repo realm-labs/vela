@@ -17,20 +17,31 @@
 ## 0. Codex Goal
 
 ```text
-/goal Rebuild Vela's native LSP architecture around a clean, editor-neutral
-query model inspired by rust-analyzer's separation of cursor context,
-feature-specific producers, rich editor-neutral result items, and LSP protocol
-projection. Treat completion as the first visible failure to fix, but design
-the refactor for the full LSP surface: diagnostics, completion, signature
-help, hover, definition, symbols, semantic tokens, references, rename, code
-actions, formatting, inlay hints, workspace snapshots, cancellation, and
-configuration. Replace obsolete language-service and LSP-server internals
-instead of carrying compatibility shims. Keep the architecture analysis-only:
-do not execute scripts, inspect live host state, mutate TypeRegistry, add new
-language semantics, or build a custom IDE. Validate each checkpoint with
-focused language-service model tests, LSP JSON-RPC or conversion fixtures,
-existing feature tests, docs, and relevant workspace checks. Commit small
-Conventional Commit checkpoints.
+/goal Rebuild Vela's native LSP architecture from
+docs/lsp-clean-architecture-refactor-plan.md. Treat docs/goal.md as the
+product roadmap, docs/architecture.md and docs/architecture/*.md as the
+technical contract, docs/architecture/lsp.md and docs/lsp-implementation-plan.md
+as the native LSP ownership and capability contract, docs/progress.md as the
+current milestone state, and docs/decisions.md as the durable decision index.
+Use ~/CLionProjects/rust-analyzer as the local rust-analyzer reference root
+for architecture comparison, especially its split between completion context
+construction, feature-specific producers, rich editor-neutral completion item
+models, and LSP protocol projection. Treat completion as the first visible
+failure to fix, but design the refactor for the full LSP surface:
+diagnostics, completion, signature help, hover, definition, symbols, semantic
+tokens, references, rename, code actions, formatting, inlay hints, workspace
+snapshots, cancellation, configuration, and completion-specific scale behavior
+near the one-million-line workspace target. Preserve standing product
+constraints: no general script-language generics, no Rust &mut exposed to
+scripts, all host mutation through HostRef, HostPath, PathProxy, and
+HostAccess, reflection without runtime type-structure mutation or monkey
+patching, analysis-only editor tooling, no runtime script execution for LSP
+queries, no live host-state reads, no TypeRegistry mutation, no new language
+semantics, and no custom full IDE product. Replace obsolete
+language-service/LSP-server internals instead of carrying compatibility shims.
+Validate each checkpoint with focused language-service model tests, LSP
+JSON-RPC or conversion fixtures, existing feature tests, docs, and relevant
+workspace checks. Commit small Conventional Commit checkpoints.
 ```
 
 ---
