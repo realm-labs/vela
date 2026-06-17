@@ -254,6 +254,13 @@ fn lsp_completion_uses_loaded_schema_facts() {
     let player = completion_item(&response, "Player");
     assert_eq!(player["sortText"], "0030_00_Player");
     assert_eq!(player["preselect"], true);
+    assert_eq!(
+        player["data"]["resolve"],
+        serde_json::json!({
+            "kind": "documentation",
+            "symbol": { "kind": "schema", "name": "Player" }
+        })
+    );
     assert_completion_documentation(&response, "Player", "Player host object.");
     fs::remove_dir_all(&root).expect("temporary workspace should be removable");
 }

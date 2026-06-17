@@ -518,11 +518,13 @@ cargo test -p vela_language_service completion
 Purpose: keep LSP protocol behavior out of producers while giving editors
 high-quality metadata.
 
-- [~] Convert service completion items to LSP completion items using source
+- [x] Convert service completion items to LSP completion items using source
   ranges and text edits supplied by the service item.
   Service snippet completion kinds now project to LSP `CompletionItemKind`
   `Snippet`, while insert text format still comes from service-owned snippet
-  intent.
+  intent. LSP projection consumes service-owned text edits when present,
+  preserves label/filter/sort/preselect metadata, and keeps service resolve
+  payloads in `CompletionItem.data`.
 - [x] Set `filterText` from lookup identity when label text and inserted text
   differ.
 - [x] Set `labelDetails` for signatures, modules, receiver types, and return
@@ -537,11 +539,12 @@ high-quality metadata.
   Service completion deprecation metadata projects to LSP `CompletionItemTag`
   value `1`; producer-owned deprecated candidates remain separate from the
   protocol projection path.
-- [~] Add or preserve lazy resolve support for docs and expensive detail when
+- [x] Add or preserve lazy resolve support for docs and expensive detail when
   it becomes useful.
   Schema-backed completion documentation is now projected eagerly from
-  service-owned metadata; lazy resolve payloads for expensive docs/details
-  remain open.
+  service-owned metadata, and service-owned documentation resolve payloads are
+  preserved in LSP `data` while `completionItem/resolve` remains unadvertised
+  until a concrete resolve handler is needed.
 - [ ] Add protocol fixtures for common editor clients, including Zed's
   completion behavior.
 

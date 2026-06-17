@@ -1,7 +1,7 @@
 use serde_json::{Value as JsonValue, json};
 use vela_language_service::{
-    CompletionInsertFormat, CompletionKind, CompletionLabelDetails, CompletionList, LineIndex,
-    TextRange,
+    CompletionInsertFormat, CompletionKind, CompletionLabelDetails, CompletionList,
+    CompletionResolvePayload, CompletionSymbol, LineIndex, TextRange,
 };
 
 pub(crate) fn lsp_completion_list(
@@ -27,6 +27,12 @@ fn lsp_completion_item(
     line_index: &LineIndex,
     preselect: bool,
 ) -> JsonValue {
+    let mut data = json!({
+        "source": "vela"
+    });
+    if let Some(payload) = item.resolve_payload() {
+        data["resolve"] = lsp_resolve_payload(payload);
+    }
     let mut value = json!({
         "label": item.label(),
         "kind": lsp_completion_kind(item.kind()),
@@ -34,9 +40,7 @@ fn lsp_completion_item(
         "filterText": item.filter_text(),
         "labelDetails": lsp_label_details(item.label_details()),
         "preselect": preselect,
-        "data": {
-            "source": "vela"
-        }
+        "data": data
     });
     if let Some(insert_text) = item.insert_text() {
         value["insertText"] = json!(insert_text);
@@ -68,6 +72,24 @@ fn lsp_completion_item(
         value["tags"] = json!([1]);
     }
     value
+}
+
+fn lsp_resolve_payload(payload: &CompletionResolvePayload) -> JsonValue {
+    match payload {
+        CompletionResolvePayload::Documentation { symbol } => json!({
+            "kind": "documentation",
+            "symbol": lsp_completion_symbol(symbol)
+        }),
+    }
+}
+
+fn lsp_completion_symbol(symbol: &CompletionSymbol) -> JsonValue {
+    match symbol {
+        CompletionSymbol::Source(name) => json!({ "kind": "source", "name": name }),
+        CompletionSymbol::Schema(name) => json!({ "kind": "schema", "name": name }),
+        CompletionSymbol::Builtin(name) => json!({ "kind": "builtin", "name": name }),
+        CompletionSymbol::Local(name) => json!({ "kind": "local", "name": name }),
+    }
 }
 
 fn lsp_sort_text(item: &vela_language_service::CompletionItem, preselect: bool) -> String {
