@@ -10,6 +10,7 @@ use super::{
 pub(super) struct LambdaParameterContext {
     pub(super) receiver: MemberReceiver,
     pub(super) method: String,
+    pub(super) method_range: Option<TextRange>,
     pub(super) used_names: Vec<String>,
 }
 
@@ -17,6 +18,7 @@ pub(super) fn lambda_parameter_completion_context(
     text: &str,
     offset: usize,
     shared_receiver: Option<MemberReceiver>,
+    shared_method: Option<(TextRange, &str)>,
 ) -> Option<LambdaParameterContext> {
     let before = text.get(..offset)?;
     let pipe = before.rfind('|')?;
@@ -26,10 +28,15 @@ pub(super) fn lambda_parameter_completion_context(
     }
     let open_paren = call_open_before_pipe(before, pipe)?;
     let callee = before.get(..open_paren)?.trim_end();
-    let (receiver, method) = member_callee(callee)?;
+    let (receiver, fallback_method, fallback_method_range) = member_callee(callee)?;
+    let (method, method_range) = shared_method
+        .filter(|(range, _)| range.end <= open_paren)
+        .map(|(range, method)| (method.to_owned(), Some(range)))
+        .unwrap_or((fallback_method, Some(fallback_method_range)));
     Some(LambdaParameterContext {
         receiver: shared_receiver.unwrap_or(receiver),
         method,
+        method_range,
         used_names: used_lambda_parameter_names(params),
     })
 }
@@ -87,7 +94,7 @@ fn call_open_before_pipe(before: &str, pipe: usize) -> Option<usize> {
     None
 }
 
-fn member_callee(callee: &str) -> Option<(MemberReceiver, String)> {
+fn member_callee(callee: &str) -> Option<(MemberReceiver, String, TextRange)> {
     let method_end = callee.len();
     let method_start = callee[..method_end]
         .char_indices()
@@ -112,6 +119,7 @@ fn member_callee(callee: &str) -> Option<(MemberReceiver, String)> {
             range: TextRange::new(receiver_start, receiver_end),
         },
         method.to_owned(),
+        TextRange::new(method_start, method_end),
     ))
 }
 
@@ -185,7 +193,12 @@ mod tests {
             .context()
             .member_receiver_range()
             .expect("receiver range");
+        let method = completions
+            .context()
+            .call_callee_range()
+            .expect("method range");
         assert_eq!(&text[receiver.start..receiver.end], "scores");
+        assert_eq!(&text[method.start..method.end], "filter");
         assert_completion(&completions, "item", "i64");
     }
 

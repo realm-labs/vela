@@ -367,9 +367,13 @@ fn completion_context(query: &QueryContext<'_>) -> CompletionContext {
     let shared_lambda_receiver = query
         .member_receiver_range()
         .map(|range| MemberReceiver { range });
-    if let Some(lambda_parameter) =
-        lambda_parameter_completion_context(text, offset, shared_lambda_receiver)
-    {
+    let shared_lambda_method = query.lambda_method_range().zip(query.lambda_method_text());
+    if let Some(lambda_parameter) = lambda_parameter_completion_context(
+        text,
+        offset,
+        shared_lambda_receiver,
+        shared_lambda_method,
+    ) {
         return CompletionContext {
             kind: CompletionContextKind::LambdaParameter,
             prefix: prefix.to_owned(),

@@ -34,6 +34,7 @@ pub struct CursorContext {
     module_base: Option<String>,
     member_receiver: Option<TextRange>,
     call_callee: Option<TextRange>,
+    lambda_method: Option<TextRange>,
 }
 
 impl CursorContext {
@@ -66,6 +67,11 @@ impl CursorContext {
     pub const fn call_callee(&self) -> Option<TextRange> {
         self.call_callee
     }
+
+    #[must_use]
+    pub const fn lambda_method(&self) -> Option<TextRange> {
+        self.lambda_method
+    }
 }
 
 #[must_use]
@@ -81,7 +87,10 @@ pub fn cursor_context_at(
 
     if is_lambda_parameter_context(text, offset) {
         let mut cursor = context(CursorContextKind::LambdaParameter, prefix_start, prefix);
-        cursor.member_receiver = lambda_member_receiver_before_pipe(text, offset);
+        if let Some(call) = lambda_call_before_pipe(text, offset) {
+            cursor.member_receiver = Some(call.receiver);
+            cursor.lambda_method = Some(call.method);
+        }
         return cursor;
     }
 
@@ -166,6 +175,7 @@ fn context(kind: CursorContextKind, prefix_start: usize, prefix: String) -> Curs
         module_base: None,
         member_receiver: None,
         call_callee: None,
+        lambda_method: None,
     }
 }
 
@@ -254,14 +264,19 @@ fn is_lambda_parameter_prefix(params: &str) -> bool {
         .all(|ch| ch.is_whitespace() || ch == ',' || is_identifier_continue(ch))
 }
 
-fn lambda_member_receiver_before_pipe(text: &str, offset: usize) -> Option<TextRange> {
+struct LambdaCallRanges {
+    receiver: TextRange,
+    method: TextRange,
+}
+
+fn lambda_call_before_pipe(text: &str, offset: usize) -> Option<LambdaCallRanges> {
     let before = text.get(..offset)?;
     let pipe = before.rfind('|')?;
     let open = active_call_open(before, pipe)?;
-    member_receiver_from_callee(before.get(..open)?.trim_end())
+    member_callee_ranges(before.get(..open)?.trim_end())
 }
 
-fn member_receiver_from_callee(callee: &str) -> Option<TextRange> {
+fn member_callee_ranges(callee: &str) -> Option<LambdaCallRanges> {
     let method_end = callee.len();
     let method_start = callee[..method_end]
         .char_indices()
@@ -277,7 +292,10 @@ fn member_receiver_from_callee(callee: &str) -> Option<TextRange> {
         .rev()
         .find_map(|(index, ch)| (!is_member_receiver_continue(ch)).then_some(index + ch.len_utf8()))
         .unwrap_or(0);
-    (receiver_start < receiver_end).then(|| TextRange::new(receiver_start, receiver_end))
+    (receiver_start < receiver_end).then(|| LambdaCallRanges {
+        receiver: TextRange::new(receiver_start, receiver_end),
+        method: TextRange::new(method_start, method_end),
+    })
 }
 
 fn is_record_expression_field_context(source: &SourceFile, offset: usize) -> bool {

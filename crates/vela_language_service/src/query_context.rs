@@ -166,6 +166,16 @@ impl<'a> QueryContext<'a> {
     pub fn call_callee_text(&self) -> Option<&str> {
         text_range(self.text(), self.call_callee_range()?)
     }
+
+    #[must_use]
+    pub const fn lambda_method_range(&self) -> Option<TextRange> {
+        self.cursor.lambda_method()
+    }
+
+    #[must_use]
+    pub fn lambda_method_text(&self) -> Option<&str> {
+        text_range(self.text(), self.lambda_method_range()?)
+    }
 }
 
 fn text_range(text: &str, range: TextRange) -> Option<&str> {
@@ -266,7 +276,7 @@ mod tests {
     fn query_context_exposes_cursor_receiver_and_callee_text() {
         let document = DocumentId::from("/workspace/scripts/game/main.vela");
         let source = "pub fn current_player() -> Player { return Player { level: 1 } }\n\
-                      pub fn main(player: Player) { player.level; grant(current_player().level) }";
+                      pub fn main(player: Player, scores: Array<i64>) { player.level; grant(current_player().level); scores.filter(|) }";
         let config = WorkspaceConfig::workspace([WorkspaceRoot::from("/workspace/scripts")]);
         let workspace = Workspace::new();
         let files = vec![SourceFileSnapshot::new(document.clone(), source)];
@@ -307,5 +317,22 @@ mod tests {
             ))
         );
         assert_eq!(call_context.call_callee_text(), Some("grant"));
+
+        let lambda_offset = source.find("|)").expect("lambda pipe") + "|".len();
+        let lambda_context = QueryContext::from_databases(
+            &databases,
+            &document,
+            LineIndex::new(source).position(lambda_offset),
+        )
+        .expect("lambda query");
+        let expected_method_start = source.find(".filter").expect("lambda method") + ".".len();
+        assert_eq!(
+            lambda_context.lambda_method_range(),
+            Some(TextRange::new(
+                expected_method_start,
+                expected_method_start + "filter".len()
+            ))
+        );
+        assert_eq!(lambda_context.lambda_method_text(), Some("filter"));
     }
 }

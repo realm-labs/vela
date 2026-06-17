@@ -316,6 +316,11 @@ impl CompletionContext {
         self.call_arguments
             .as_ref()
             .and_then(|context| context.callee_range)
+            .or_else(|| {
+                self.lambda_parameter
+                    .as_ref()
+                    .and_then(|context| context.method_range)
+            })
     }
 
     pub(super) fn global(prefix_start: usize, prefix: &str) -> Self {
