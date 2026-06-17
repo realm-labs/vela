@@ -439,7 +439,7 @@ impl LanguageServiceDatabases {
         source_id: SourceId,
         source_text: &str,
     ) -> Vec<crate::SignatureInformation> {
-        if let Some((callee_text, callee_range)) =
+        if let Some((callee_text, callee_range, receiver_range)) =
             member_callee_text_and_range(callee, args, source_text)
             && callee_text.contains('.')
         {
@@ -448,6 +448,7 @@ impl LanguageServiceDatabases {
                 source_text,
                 callee_text,
                 callee_range,
+                Some(receiver_range),
                 args_prefix(args, source_text),
             );
         }
@@ -463,18 +464,25 @@ fn member_callee_text_and_range(
     callee: &Expr,
     args: &[Argument],
     source_text: &str,
-) -> Option<(String, TextRange)> {
+) -> Option<(String, TextRange, TextRange)> {
     let ExprKind::Field { base, .. } = &callee.kind else {
         return None;
     };
     let start = usize::try_from(base.span.start).ok()?;
+    let receiver_end = usize::try_from(base.span.end).ok()?;
     let first_arg_start = args
         .first()
         .and_then(|arg| usize::try_from(arg.value.span.start).ok())?;
     let open = source_text[..first_arg_start].rfind('(')?;
     let end = source_text[..open].trim_end().len();
     let text = source_text.get(start..end)?.trim().to_owned();
-    (!text.is_empty()).then(|| (text, TextRange::new(start, end)))
+    (!text.is_empty()).then(|| {
+        (
+            text,
+            TextRange::new(start, end),
+            TextRange::new(start, receiver_end),
+        )
+    })
 }
 
 fn args_prefix(args: &[Argument], source_text: &str) -> String {

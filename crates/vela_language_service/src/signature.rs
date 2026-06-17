@@ -127,11 +127,12 @@ impl LanguageServiceDatabases {
         text: &str,
         callee: String,
         callee_range: TextRange,
+        member_receiver: Option<TextRange>,
         args_prefix: String,
     ) -> Vec<SignatureInformation> {
         let context = CallContext {
             callee,
-            member_receiver: member_receiver_range(text, callee_range),
+            member_receiver: member_receiver.or_else(|| member_receiver_range(text, callee_range)),
             args_prefix,
             active_parameter: 0,
         };
