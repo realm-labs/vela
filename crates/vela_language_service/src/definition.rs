@@ -800,6 +800,190 @@ mod tests {
         assert_eq!(definition.range().end().character, target_end);
     }
 
+    #[test]
+    fn type_definition_follows_schema_field_source_span() {
+        assert_schema_member_type_definition(
+            "pub fn main(player: Player) { return player.level }",
+            "level",
+            "pub fn level_marker() { return 1 }",
+            "level_marker",
+            |source, start, end| {
+                serde_json::json!({
+                    "types": [
+                        {
+                            "name": "Player",
+                            "fact": { "kind": "host", "name": "Player" }
+                        }
+                    ],
+                    "fields": [
+                        {
+                            "owner": "Player",
+                            "name": "level",
+                            "fact": { "kind": "primitive", "name": "i64" },
+                            "sourceSpan": {
+                                "source": source,
+                                "start": start,
+                                "end": end
+                            }
+                        }
+                    ]
+                })
+            },
+        );
+    }
+
+    #[test]
+    fn type_definition_follows_schema_method_source_span() {
+        assert_schema_member_type_definition(
+            "pub fn main(player: Player) { return player.grant(1) }",
+            "grant",
+            "pub fn grant_marker() { return true }",
+            "grant_marker",
+            |source, start, end| {
+                serde_json::json!({
+                    "types": [
+                        {
+                            "name": "Player",
+                            "fact": { "kind": "host", "name": "Player" }
+                        }
+                    ],
+                    "methods": [
+                        {
+                            "owner": "Player",
+                            "name": "grant",
+                            "fact": {
+                                "kind": "function",
+                                "params": [{ "kind": "primitive", "name": "i64" }],
+                                "returns": { "kind": "primitive", "name": "bool" }
+                            },
+                            "sourceSpan": {
+                                "source": source,
+                                "start": start,
+                                "end": end
+                            }
+                        }
+                    ]
+                })
+            },
+        );
+    }
+
+    #[test]
+    fn type_definition_follows_schema_trait_method_source_span() {
+        assert_schema_member_type_definition(
+            "pub fn main(rewardable: Rewardable) { return rewardable.preview(1) }",
+            "preview",
+            "pub fn preview_marker() { return true }",
+            "preview_marker",
+            |source, start, end| {
+                serde_json::json!({
+                    "traits": [
+                        {
+                            "name": "Rewardable",
+                            "fact": { "kind": "trait", "name": "Rewardable" }
+                        }
+                    ],
+                    "traitMethods": [
+                        {
+                            "owner": "Rewardable",
+                            "name": "preview",
+                            "fact": {
+                                "kind": "function",
+                                "params": [{ "kind": "primitive", "name": "i64" }],
+                                "returns": { "kind": "primitive", "name": "bool" }
+                            },
+                            "sourceSpan": {
+                                "source": source,
+                                "start": start,
+                                "end": end
+                            }
+                        }
+                    ]
+                })
+            },
+        );
+    }
+
+    #[test]
+    fn type_definition_follows_schema_variant_source_span() {
+        let main_text = "pub fn main() { return QuestState::Active }";
+        assert_schema_member_type_definition(
+            main_text,
+            "Active",
+            "pub fn active_marker() { return 1 }",
+            "active_marker",
+            |source, start, end| {
+                serde_json::json!({
+                    "types": [
+                        {
+                            "name": "QuestState",
+                            "fact": { "kind": "enum", "name": "QuestState", "variant": null }
+                        }
+                    ],
+                    "variants": [
+                        {
+                            "owner": "QuestState",
+                            "name": "Active",
+                            "fact": {
+                                "kind": "enum",
+                                "name": "QuestState",
+                                "variant": "Active"
+                            },
+                            "sourceSpan": {
+                                "source": source,
+                                "start": start,
+                                "end": end
+                            }
+                        }
+                    ]
+                })
+            },
+        );
+    }
+
+    fn assert_schema_member_type_definition<F>(
+        main_text: &str,
+        usage_needle: &str,
+        schema_text: &str,
+        schema_marker: &str,
+        facts: F,
+    ) where
+        F: FnOnce(u32, usize, usize) -> serde_json::Value,
+    {
+        let main = DocumentId::from("/workspace/scripts/game/main.vela");
+        let schema_source = DocumentId::from("/workspace/scripts/schema_defs.vela");
+        let mut databases = databases_for(vec![
+            SourceFileSnapshot::new(main.clone(), main_text),
+            SourceFileSnapshot::new(schema_source.clone(), schema_text),
+        ]);
+        let schema_record = databases
+            .source_db()
+            .records()
+            .get(&schema_source)
+            .expect("schema source should be indexed");
+        let target_start = schema_text
+            .find(schema_marker)
+            .expect("schema marker should exist");
+        let target_end = target_start + schema_marker.len();
+        let artifact = serde_json::json!({
+            "formatVersion": 1,
+            "facts": facts(schema_record.source_id().get(), target_start, target_end)
+        })
+        .to_string();
+        databases.load_schema_artifact_json("/workspace/target/vela/schema.json", &artifact);
+
+        let definition = databases
+            .type_definition(
+                &main,
+                Position::new(0, main_text.find(usage_needle).expect("usage should exist")),
+            )
+            .expect("type definition should resolve schema source span");
+
+        assert_eq!(definition.document_id(), &schema_source);
+        assert_eq!(definition.range().start().character, target_start);
+        assert_eq!(definition.range().end().character, target_end);
+    }
+
     fn databases_for(files: Vec<SourceFileSnapshot>) -> LanguageServiceDatabases {
         let config = WorkspaceConfig::workspace([WorkspaceRoot::from("/workspace/scripts")]);
         let project = assemble_project_sources(&config, &files, &Workspace::new().snapshot());

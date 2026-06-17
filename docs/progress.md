@@ -236,6 +236,11 @@ M20.5 Phase 8 update: native LSP declaration fixtures now cover schema-backed
 field source spans as well, closing the explicit protocol fixture parity gap
 with schema field definitions.
 
+M20.5 Phase 8 update: language-service and native LSP type-definition fixtures
+now cover schema-backed field, host-method, trait-method, and enum-variant
+source spans, matching the existing definition/declaration navigation path for
+clients that issue `textDocument/typeDefinition` separately.
+
 M20.5 Phase 7 update: completion now resolves schema-backed trait receiver
 method members in addition to schema-backed host receiver members.
 `textDocument/signatureHelp` now resolves stdlib function calls, typed

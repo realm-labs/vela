@@ -39,6 +39,11 @@ fn lsp_declaration_follows_schema_field_source_span() {
     assert_schema_field_source_navigation("textDocument/declaration");
 }
 
+#[test]
+fn lsp_type_definition_follows_schema_field_source_span() {
+    assert_schema_field_source_navigation("textDocument/typeDefinition");
+}
+
 fn assert_schema_field_source_navigation(request_method: &str) {
     let root = temp_workspace();
     let config_path = root.join("vela.toml");
@@ -156,45 +161,22 @@ fn assert_schema_field_source_navigation(request_method: &str) {
 
 #[test]
 fn lsp_definition_follows_schema_method_source_span() {
-    assert_schema_member_source_navigation(
-        "textDocument/definition",
-        "pub fn grant_marker() { return 1 }",
-        "grant_marker",
-        "pub fn main(player: Player) { return player.grant(1) }",
-        "grant",
-        |target_start, target_end| {
-            serde_json::json!({
-                "types": [
-                    {
-                        "name": "Player",
-                        "fact": { "kind": "host", "name": "Player" }
-                    }
-                ],
-                "methods": [
-                    {
-                        "owner": "Player",
-                        "name": "grant",
-                        "fact": {
-                            "kind": "function",
-                            "params": [{ "kind": "primitive", "name": "i64" }],
-                            "returns": { "kind": "primitive", "name": "bool" }
-                        },
-                        "sourceSpan": {
-                            "source": 1,
-                            "start": target_start,
-                            "end": target_end
-                        }
-                    }
-                ]
-            })
-        },
-    );
+    assert_schema_host_method_source_navigation("textDocument/definition");
 }
 
 #[test]
 fn lsp_declaration_follows_schema_method_source_span() {
+    assert_schema_host_method_source_navigation("textDocument/declaration");
+}
+
+#[test]
+fn lsp_type_definition_follows_schema_method_source_span() {
+    assert_schema_host_method_source_navigation("textDocument/typeDefinition");
+}
+
+fn assert_schema_host_method_source_navigation(request_method: &str) {
     assert_schema_member_source_navigation(
-        "textDocument/declaration",
+        request_method,
         "pub fn grant_marker() { return 1 }",
         "grant_marker",
         "pub fn main(player: Player) { return player.grant(1) }",
@@ -230,45 +212,22 @@ fn lsp_declaration_follows_schema_method_source_span() {
 
 #[test]
 fn lsp_definition_follows_schema_trait_method_source_span() {
-    assert_schema_member_source_navigation(
-        "textDocument/definition",
-        "pub fn preview_marker() { return 1 }",
-        "preview_marker",
-        "pub fn main(rewardable: Rewardable) { return rewardable.preview(1) }",
-        "preview",
-        |target_start, target_end| {
-            serde_json::json!({
-                "traits": [
-                    {
-                        "name": "Rewardable",
-                        "fact": { "kind": "trait", "name": "Rewardable" }
-                    }
-                ],
-                "traitMethods": [
-                    {
-                        "owner": "Rewardable",
-                        "name": "preview",
-                        "fact": {
-                            "kind": "function",
-                            "params": [{ "kind": "primitive", "name": "i64" }],
-                            "returns": { "kind": "primitive", "name": "bool" }
-                        },
-                        "sourceSpan": {
-                            "source": 1,
-                            "start": target_start,
-                            "end": target_end
-                        }
-                    }
-                ]
-            })
-        },
-    );
+    assert_schema_trait_method_source_navigation("textDocument/definition");
 }
 
 #[test]
 fn lsp_declaration_follows_schema_trait_method_source_span() {
+    assert_schema_trait_method_source_navigation("textDocument/declaration");
+}
+
+#[test]
+fn lsp_type_definition_follows_schema_trait_method_source_span() {
+    assert_schema_trait_method_source_navigation("textDocument/typeDefinition");
+}
+
+fn assert_schema_trait_method_source_navigation(request_method: &str) {
     assert_schema_member_source_navigation(
-        "textDocument/declaration",
+        request_method,
         "pub fn preview_marker() { return 1 }",
         "preview_marker",
         "pub fn main(rewardable: Rewardable) { return rewardable.preview(1) }",
@@ -310,6 +269,11 @@ fn lsp_definition_follows_schema_variant_source_span() {
 #[test]
 fn lsp_declaration_follows_schema_variant_source_span() {
     assert_schema_variant_source_navigation("textDocument/declaration");
+}
+
+#[test]
+fn lsp_type_definition_follows_schema_variant_source_span() {
+    assert_schema_variant_source_navigation("textDocument/typeDefinition");
 }
 
 fn assert_schema_variant_source_navigation(request_method: &str) {
