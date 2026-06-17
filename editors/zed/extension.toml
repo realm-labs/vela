@@ -5,6 +5,7 @@ schema_version = 1
 authors = ["Vela contributors"]
 description = "Thin Zed launcher for the native Vela language server."
 repository = "https://github.com/realm-labs/vela"
+languages = ["languages/vela"]
 
 [language_servers.vela-language-server]
 name = "Vela Language Server"

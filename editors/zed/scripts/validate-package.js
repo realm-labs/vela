@@ -39,6 +39,10 @@ const manifest = read("extension.toml");
 assert(hasTomlValue(manifest, "id", '"vela"'), "extension id must be vela");
 assert(hasTomlValue(manifest, "schema_version", "1"), "schema_version must be 1");
 assert(
+  manifest.includes('languages = ["languages/vela"]'),
+  "extension.toml must register the Vela language config path"
+);
+assert(
   manifest.includes("[language_servers.vela-language-server]"),
   "language server section is missing"
 );
