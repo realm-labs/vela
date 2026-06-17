@@ -22,6 +22,16 @@ fn cursor_context_classifies_item_boundary_keywords() {
 }
 
 #[test]
+fn cursor_context_exposes_identifier_range_under_cursor() {
+    let text = "pub fn main(player) { player.level }";
+    let offset = text.find("level").expect("level") + "le".len();
+    let cursor = classify_offset(text, offset);
+
+    assert_eq!(cursor.identifier_range(), Some(TextRange::new(29, 34)));
+    assert_eq!(&text[29..34], "level");
+}
+
+#[test]
 fn cursor_context_classifies_type_hints() {
     let cursor = classify("pub fn main(player: Pl) { return 1 }", "Pl");
 

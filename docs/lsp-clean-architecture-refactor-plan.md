@@ -322,8 +322,11 @@ Purpose: classify the cursor once and reuse it across features.
   for method callees, and signature help consumes that shared call receiver
   range for method signature lookup. Definition and hover now consume the
   shared member receiver range from `QueryContext` for schema/member lookup
-  instead of re-scanning member receivers locally. Broader callable semantic
-  facts remain feature-owned follow-up work.
+  instead of re-scanning member receivers locally. `CursorContext` now exposes
+  the identifier token range under the request cursor, and rename target
+  selection consumes that shared range instead of running its own first-step
+  token scanner. Broader callable semantic facts remain feature-owned
+  follow-up work.
 - [x] Keep classification tolerant of incomplete source and parser recovery.
 - [x] Route completion, hover, signature help, definition, and rename prepare
   through the shared context where practical.

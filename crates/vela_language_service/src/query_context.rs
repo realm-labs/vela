@@ -157,6 +157,16 @@ impl<'a> QueryContext<'a> {
     }
 
     #[must_use]
+    pub const fn identifier_range(&self) -> Option<TextRange> {
+        self.cursor.identifier_range()
+    }
+
+    #[must_use]
+    pub fn identifier_text(&self) -> Option<&str> {
+        text_range(self.text(), self.identifier_range()?)
+    }
+
+    #[must_use]
     pub const fn member_receiver_range(&self) -> Option<TextRange> {
         self.cursor.member_receiver()
     }
@@ -251,6 +261,8 @@ mod tests {
         assert_eq!(context.version(), SourceVersion::new(2));
         assert_eq!(context.text(), "st");
         assert_eq!(context.cursor().prefix(), "st");
+        assert_eq!(context.identifier_range(), Some(TextRange::new(0, 2)));
+        assert_eq!(context.identifier_text(), Some("st"));
         assert_eq!(context.source_id(), None);
         assert!(context.module_path().is_none());
         assert!(context.source_record().is_none());
@@ -282,6 +294,12 @@ mod tests {
         assert_eq!(context.generation(), databases.generation());
         assert_eq!(context.text(), source);
         assert_eq!(context.cursor().prefix(), "le");
+        let field_start = source.find("le };").expect("field prefix");
+        assert_eq!(
+            context.identifier_range(),
+            Some(TextRange::new(field_start, field_start + "le".len()))
+        );
+        assert_eq!(context.identifier_text(), Some("le"));
         assert_eq!(context.source_id(), Some(SourceId::new(1)));
         assert!(context.parsed_source().is_some());
         assert!(

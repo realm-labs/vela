@@ -178,7 +178,14 @@ impl LanguageServiceDatabases {
     ) -> Option<PrepareRename> {
         let query = QueryContext::from_databases(self, document_id, position)?;
         let source_id = query.source_id()?;
-        let target = rename_target(self, source_id, query.text(), query.position())?;
+        let target = rename_target(
+            self,
+            source_id,
+            query.text(),
+            RenameToken {
+                range: query.identifier_range()?,
+            },
+        )?;
         let token_range = diagnostic_range(query.text(), target.token_range());
         Some(PrepareRename {
             document_id: document_id.clone(),
@@ -199,7 +206,14 @@ impl LanguageServiceDatabases {
         }
         let query = QueryContext::from_databases(self, document_id, position)?;
         let source_id = query.source_id()?;
-        let target = rename_target(self, source_id, query.text(), query.position())?;
+        let target = rename_target(
+            self,
+            source_id,
+            query.text(),
+            RenameToken {
+                range: query.identifier_range()?,
+            },
+        )?;
         match target {
             RenameTarget::Local(target) => {
                 self.rename_local(document_id, query.text(), target, new_name)
@@ -511,10 +525,9 @@ fn rename_target<'a>(
     databases: &'a LanguageServiceDatabases,
     source_id: SourceId,
     text: &str,
-    position: Position,
+    token: RenameToken,
 ) -> Option<RenameTarget<'a>> {
     let graph = databases.hir_db().graph();
-    let token = rename_token_at(text, position)?;
     let offset = u32::try_from(token.range.start).ok()?;
     let facts = AnalysisFacts::from_module_graph(graph);
 
@@ -1032,26 +1045,6 @@ fn is_valid_rename_identifier(name: &str) -> bool {
         .is_some_and(|ch| ch == '_' || ch.is_ascii_alphabetic())
         && chars.all(is_identifier_continue)
         && Keyword::from_text(name).is_none()
-}
-
-fn rename_token_at(text: &str, position: Position) -> Option<RenameToken> {
-    let offset = LineIndex::new(text).offset(position);
-    let range = identifier_range_at(text, offset)?;
-    Some(RenameToken { range })
-}
-
-fn identifier_range_at(text: &str, offset: usize) -> Option<TextRange> {
-    let offset = offset.min(text.len());
-    let start = text[..offset]
-        .char_indices()
-        .rev()
-        .find_map(|(index, ch)| (!is_identifier_continue(ch)).then_some(index + ch.len_utf8()))
-        .unwrap_or(0);
-    let end = text[offset..]
-        .char_indices()
-        .find_map(|(index, ch)| (!is_identifier_continue(ch)).then_some(offset + index))
-        .unwrap_or(text.len());
-    (start < end).then(|| TextRange::new(start, end))
 }
 
 fn diagnostic_range(text: &str, range: TextRange) -> DiagnosticRange {

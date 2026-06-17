@@ -38,6 +38,7 @@ pub enum ModulePathRole {
 pub struct CursorContext {
     kind: CursorContextKind,
     prefix: String,
+    identifier_range: Option<TextRange>,
     replace_range: TextRange,
     module_base: Option<String>,
     module_path_role: ModulePathRole,
@@ -62,6 +63,11 @@ impl CursorContext {
     #[must_use]
     pub const fn replace_range(&self) -> TextRange {
         self.replace_range
+    }
+
+    #[must_use]
+    pub const fn identifier_range(&self) -> Option<TextRange> {
+        self.identifier_range
     }
 
     #[must_use]
@@ -108,11 +114,17 @@ pub fn cursor_context_at(
 ) -> CursorContext {
     let offset = LineIndex::new(text).offset(position);
     let prefix_start = identifier_prefix_start(text, offset);
+    let identifier_range = identifier_range_at(text, offset);
     let prefix = text[prefix_start..offset].to_owned();
     let before_prefix = &text[..prefix_start];
 
     if is_lambda_parameter_context(text, offset) {
-        let mut cursor = context(CursorContextKind::LambdaParameter, prefix_start, prefix);
+        let mut cursor = context(
+            CursorContextKind::LambdaParameter,
+            prefix_start,
+            prefix,
+            identifier_range,
+        );
         if let Some(call) = lambda_call_before_pipe(text, offset) {
             cursor.member_receiver = Some(call.receiver);
             cursor.call_open = Some(call.open);
@@ -122,15 +134,30 @@ pub fn cursor_context_at(
     }
 
     if parsed.is_some_and(|source| is_pattern_context(text, source, prefix_start)) {
-        return context(CursorContextKind::Pattern, prefix_start, prefix);
+        return context(
+            CursorContextKind::Pattern,
+            prefix_start,
+            prefix,
+            identifier_range,
+        );
     }
 
     if parsed.is_some_and(|source| is_record_type_field_context(text, source, prefix_start)) {
-        return context(CursorContextKind::RecordTypeField, prefix_start, prefix);
+        return context(
+            CursorContextKind::RecordTypeField,
+            prefix_start,
+            prefix,
+            identifier_range,
+        );
     }
 
     if is_type_context(text, prefix_start) {
-        return context(CursorContextKind::Type, prefix_start, prefix);
+        return context(
+            CursorContextKind::Type,
+            prefix_start,
+            prefix,
+            identifier_range,
+        );
     }
 
     if parsed.is_some_and(|source| is_record_expression_field_context(source, prefix_start)) {
@@ -138,44 +165,80 @@ pub fn cursor_context_at(
             CursorContextKind::RecordExpressionField,
             prefix_start,
             prefix,
+            identifier_range,
         );
     }
 
     if parsed.is_some_and(|source| is_map_key_context(source, prefix_start)) {
-        return context(CursorContextKind::MapKey, prefix_start, prefix);
+        return context(
+            CursorContextKind::MapKey,
+            prefix_start,
+            prefix,
+            identifier_range,
+        );
     }
 
     if let Some(receiver) =
         parsed.and_then(|source| member_receiver_for_source(source, prefix_start))
     {
-        let mut cursor = context(CursorContextKind::MemberAccess, prefix_start, prefix);
+        let mut cursor = context(
+            CursorContextKind::MemberAccess,
+            prefix_start,
+            prefix,
+            identifier_range,
+        );
         cursor.member_receiver = Some(receiver);
         return cursor;
     }
 
     if let Some(receiver) = recovered_member_receiver_before_dot(text, prefix_start) {
-        let mut cursor = context(CursorContextKind::MemberAccess, prefix_start, prefix);
+        let mut cursor = context(
+            CursorContextKind::MemberAccess,
+            prefix_start,
+            prefix,
+            identifier_range,
+        );
         cursor.member_receiver = Some(receiver);
         return cursor;
     }
 
     if let Some(module_path) = module_path_before_colons(text, before_prefix) {
-        let mut cursor = context(CursorContextKind::ModulePath, prefix_start, prefix);
+        let mut cursor = context(
+            CursorContextKind::ModulePath,
+            prefix_start,
+            prefix,
+            identifier_range,
+        );
         cursor.module_base = Some(module_path.base);
         cursor.module_path_role = module_path.role;
         return cursor;
     }
 
     if is_use_import_context(text, prefix_start) {
-        return context(CursorContextKind::UseImport, prefix_start, prefix);
+        return context(
+            CursorContextKind::UseImport,
+            prefix_start,
+            prefix,
+            identifier_range,
+        );
     }
 
     if is_item_boundary_context(text, prefix_start, parsed) {
-        return context(CursorContextKind::Item, prefix_start, prefix);
+        return context(
+            CursorContextKind::Item,
+            prefix_start,
+            prefix,
+            identifier_range,
+        );
     }
 
     if let Some(call) = parsed.and_then(|source| call_callee_for_source(source, prefix_start)) {
-        let mut cursor = context(CursorContextKind::CallArgument, prefix_start, prefix);
+        let mut cursor = context(
+            CursorContextKind::CallArgument,
+            prefix_start,
+            prefix,
+            identifier_range,
+        );
         cursor.call_open = active_call_open(text, offset);
         cursor.call_callee = Some(call.callee);
         cursor.call_member_receiver = call.member_receiver;
@@ -183,7 +246,12 @@ pub fn cursor_context_at(
     }
 
     if let Some(open) = active_call_open(text, offset) {
-        let mut cursor = context(CursorContextKind::CallArgument, prefix_start, prefix);
+        let mut cursor = context(
+            CursorContextKind::CallArgument,
+            prefix_start,
+            prefix,
+            identifier_range,
+        );
         cursor.call_open = Some(open);
         cursor.call_callee = call_callee_before_open(text, open);
         cursor.call_member_receiver = cursor
@@ -193,20 +261,41 @@ pub fn cursor_context_at(
     }
 
     if prefix.is_empty() && is_statement_context(parsed, prefix_start) {
-        return context(CursorContextKind::Statement, prefix_start, prefix);
+        return context(
+            CursorContextKind::Statement,
+            prefix_start,
+            prefix,
+            identifier_range,
+        );
     }
 
     if parsed.is_some_and(|source| offset_is_inside_item(source, prefix_start)) {
-        return context(CursorContextKind::Expression, prefix_start, prefix);
+        return context(
+            CursorContextKind::Expression,
+            prefix_start,
+            prefix,
+            identifier_range,
+        );
     }
 
-    context(CursorContextKind::Unknown, prefix_start, prefix)
+    context(
+        CursorContextKind::Unknown,
+        prefix_start,
+        prefix,
+        identifier_range,
+    )
 }
 
-fn context(kind: CursorContextKind, prefix_start: usize, prefix: String) -> CursorContext {
+fn context(
+    kind: CursorContextKind,
+    prefix_start: usize,
+    prefix: String,
+    identifier_range: Option<TextRange>,
+) -> CursorContext {
     CursorContext {
         kind,
         replace_range: TextRange::new(prefix_start, prefix_start + prefix.len()),
+        identifier_range,
         prefix,
         module_base: None,
         module_path_role: ModulePathRole::Expression,
@@ -1329,6 +1418,16 @@ fn identifier_prefix_start(text: &str, offset: usize) -> usize {
         .rev()
         .find_map(|(index, ch)| (!is_identifier_continue(ch)).then_some(index + ch.len_utf8()))
         .unwrap_or(0)
+}
+
+fn identifier_range_at(text: &str, offset: usize) -> Option<TextRange> {
+    let offset = offset.min(text.len());
+    let start = identifier_prefix_start(text, offset);
+    let end = text[offset..]
+        .char_indices()
+        .find_map(|(index, ch)| (!is_identifier_continue(ch)).then_some(offset + index))
+        .unwrap_or(text.len());
+    (start < end).then(|| TextRange::new(start, end))
 }
 
 struct ModulePathContext {
