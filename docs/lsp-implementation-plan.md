@@ -651,6 +651,7 @@ Tests:
 - [x] `semantic_tokens_classify_script_members`
 - [x] `lsp_semantic_tokens_classify_script_members`
 - [x] `semantic_tokens_classify_script_member_uses`
+- [x] `lsp_semantic_tokens_classify_script_member_uses`
 - [x] `semantic_tokens_classify_script_trait_method_uses`
 - [x] `lsp_semantic_tokens_classify_script_trait_method_uses`
 - [x] `semantic_tokens_classify_schema_and_stdlib_member_uses`

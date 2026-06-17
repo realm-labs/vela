@@ -186,6 +186,10 @@ method call sites through both the language service and native LSP server,
 matching the existing reference and call-hierarchy treatment for typed trait
 receivers.
 
+M20.5 Phase 10 update: native LSP semantic-token fixtures now cover
+source-owned field and inherent-method call-site classifications, matching the
+existing language-service member-use classification path.
+
 M20.5 Phase 17 update: editor initialization options and
 `workspace/didChangeConfiguration` settings now map `workspace.roots` and
 `host.schema` into the server `WorkspaceConfig`, native `--root` and

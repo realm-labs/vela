@@ -476,6 +476,85 @@ impl Reward {
 }
 
 #[test]
+fn lsp_semantic_tokens_classify_script_member_uses() {
+    let mut server = LspServer::new();
+    let initialize = response_value(server.handle_json(&request(
+        1,
+        "initialize",
+        serde_json::json!({
+            "processId": null,
+            "rootUri": "file:///workspace/scripts",
+            "capabilities": {}
+        }),
+    )));
+    let token_types =
+        initialize["result"]["capabilities"]["semanticTokensProvider"]["legend"]["tokenTypes"]
+            .as_array()
+            .expect("semantic token legend should list token types");
+    let property = token_type_index(token_types, "property");
+    let method = token_type_index(token_types, "method");
+
+    let text = "\
+pub struct Reward {
+    amount: i64
+}
+
+impl Reward {
+    fn bonus(value: Reward) -> i64 { return value.amount }
+}
+
+pub fn main(reward: Reward) -> i64 {
+    return reward.amount + reward.bonus()
+}";
+    let uri = "file:///workspace/scripts/game/main.vela";
+    let _ = notification_value(server.handle_json(&notification(
+        "textDocument/didOpen",
+        serde_json::json!({
+            "textDocument": {
+                "uri": uri,
+                "languageId": "vela",
+                "version": 1,
+                "text": text
+            }
+        }),
+    )));
+
+    let response = response_value(server.handle_json(&request(
+        2,
+        "textDocument/semanticTokens/full",
+        serde_json::json!({
+            "textDocument": { "uri": uri }
+        }),
+    )));
+    let tokens = decode_tokens(
+        response["result"]["data"]
+            .as_array()
+            .expect("semantic token response should include data"),
+    );
+
+    assert_token_at(
+        &tokens,
+        9,
+        line(text, 9)
+            .find("amount")
+            .expect("field use should exist"),
+        "amount".len(),
+        property,
+        0,
+    );
+    assert_token_at(
+        &tokens,
+        9,
+        line(text, 9)
+            .find("bonus")
+            .expect("method use should exist"),
+        "bonus".len(),
+        method,
+        0,
+    );
+}
+
+#[test]
 fn lsp_semantic_tokens_classify_script_trait_method_uses() {
     let mut server = LspServer::new();
     let initialize = response_value(server.handle_json(&request(
