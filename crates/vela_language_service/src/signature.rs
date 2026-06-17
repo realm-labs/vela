@@ -10,7 +10,7 @@ use vela_hir::binding::{BindingMap, BindingResolution};
 use vela_hir::module_graph::{DeclarationKind, ModuleGraph};
 use vela_hir::type_hint::{EnumVariantFieldsHint, HirTypeHint, ImplMetadataKind};
 
-use crate::{DocumentId, LanguageServiceDatabases, LineIndex, Position, TextRange};
+use crate::{DocumentId, LanguageServiceDatabases, LineIndex, Position, QueryContext, TextRange};
 
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub struct SignatureHelp {
@@ -97,10 +97,11 @@ impl LanguageServiceDatabases {
         document_id: &DocumentId,
         position: Position,
     ) -> Option<SignatureHelp> {
-        let source = self.source_db().records().get(document_id)?;
-        let context = call_context_at(source.text(), position)?;
+        let query = QueryContext::from_databases(self, document_id, position)?;
+        let source = query.source_record()?;
+        let context = call_context_at(query.text(), query.position())?;
         let signatures =
-            self.signature_candidates_for_context(source.source_id(), source.text(), &context);
+            self.signature_candidates_for_context(source.source_id(), query.text(), &context);
         if signatures.is_empty() {
             return None;
         }

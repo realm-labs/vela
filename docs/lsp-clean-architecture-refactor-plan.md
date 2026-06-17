@@ -289,9 +289,9 @@ Purpose: classify the cursor once and reuse it across features.
 - [ ] Keep classification tolerant of incomplete source and parser recovery.
 - [~] Route completion, hover, signature help, definition, and rename prepare
   through the shared context where practical.
-  Completion now builds its request-local source, parse, cursor, module, and
-  generation facts through `QueryContext`; the other feature routes remain
-  follow-up work.
+  Completion and signature help now build request-local source, parse, cursor,
+  module, and generation facts through `QueryContext`; the other feature
+  routes remain follow-up work.
 
 Tests:
 
