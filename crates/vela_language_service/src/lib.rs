@@ -30,7 +30,7 @@ pub use completion::{
     CompletionItemMetadata, CompletionKind, CompletionLabelDetails, CompletionList,
     CompletionRelevance, CompletionResolvePayload, CompletionSymbol, CompletionTextEdit,
 };
-pub use cursor_context::{CursorContext, CursorContextKind, cursor_context_at};
+pub use cursor_context::{CursorContext, CursorContextKind, ModulePathRole, cursor_context_at};
 pub use definition::Definition;
 pub use diagnostics::{
     DiagnosticCandidate, DiagnosticLabel, DiagnosticRange, DiagnosticRepairHint, DiagnosticStatus,

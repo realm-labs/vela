@@ -59,6 +59,16 @@ fn cursor_context_classifies_module_path() {
 
     assert_eq!(cursor.kind(), CursorContextKind::ModulePath);
     assert_eq!(cursor.module_base(), Some("game"));
+    assert_eq!(cursor.module_path_role(), ModulePathRole::Expression);
+}
+
+#[test]
+fn cursor_context_marks_type_module_path_role() {
+    let cursor = classify("pub fn main(item: game::reward::Re) { }", "Re");
+
+    assert_eq!(cursor.kind(), CursorContextKind::ModulePath);
+    assert_eq!(cursor.module_base(), Some("game::reward"));
+    assert_eq!(cursor.module_path_role(), ModulePathRole::Type);
 }
 
 #[test]

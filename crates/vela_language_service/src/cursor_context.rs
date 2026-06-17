@@ -26,12 +26,19 @@ pub enum CursorContextKind {
     Unknown,
 }
 
+#[derive(Debug, Clone, Copy, Eq, PartialEq)]
+pub enum ModulePathRole {
+    Expression,
+    Type,
+}
+
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub struct CursorContext {
     kind: CursorContextKind,
     prefix: String,
     replace_range: TextRange,
     module_base: Option<String>,
+    module_path_role: ModulePathRole,
     member_receiver: Option<TextRange>,
     call_callee: Option<TextRange>,
     lambda_method: Option<TextRange>,
@@ -56,6 +63,11 @@ impl CursorContext {
     #[must_use]
     pub fn module_base(&self) -> Option<&str> {
         self.module_base.as_deref()
+    }
+
+    #[must_use]
+    pub const fn module_path_role(&self) -> ModulePathRole {
+        self.module_path_role
     }
 
     #[must_use]
@@ -132,9 +144,10 @@ pub fn cursor_context_at(
         return cursor;
     }
 
-    if let Some(module_base) = module_base_before_colons(before_prefix) {
+    if let Some(module_path) = module_path_before_colons(text, before_prefix) {
         let mut cursor = context(CursorContextKind::ModulePath, prefix_start, prefix);
-        cursor.module_base = Some(module_base);
+        cursor.module_base = Some(module_path.base);
+        cursor.module_path_role = module_path.role;
         return cursor;
     }
 
@@ -173,6 +186,7 @@ fn context(kind: CursorContextKind, prefix_start: usize, prefix: String) -> Curs
         replace_range: TextRange::new(prefix_start, prefix_start + prefix.len()),
         prefix,
         module_base: None,
+        module_path_role: ModulePathRole::Expression,
         member_receiver: None,
         call_callee: None,
         lambda_method: None,
@@ -1136,15 +1150,27 @@ fn identifier_prefix_start(text: &str, offset: usize) -> usize {
         .unwrap_or(0)
 }
 
-fn module_base_before_colons(before_prefix: &str) -> Option<String> {
+struct ModulePathContext {
+    base: String,
+    role: ModulePathRole,
+}
+
+fn module_path_before_colons(text: &str, before_prefix: &str) -> Option<ModulePathContext> {
     let before_colons = before_prefix.strip_suffix("::")?;
-    let start = before_colons
+    let path_start = before_colons
         .char_indices()
         .rev()
         .find_map(|(index, ch)| (!is_module_path_continue(ch)).then_some(index + ch.len_utf8()))
         .unwrap_or(0);
-    let module_base = before_colons[start..].trim_matches(':');
-    (!module_base.is_empty()).then(|| module_base.to_owned())
+    let module_base = before_colons[path_start..].trim_matches(':');
+    (!module_base.is_empty()).then(|| ModulePathContext {
+        base: module_base.to_owned(),
+        role: if is_type_context(text, path_start) {
+            ModulePathRole::Type
+        } else {
+            ModulePathRole::Expression
+        },
+    })
 }
 
 fn member_receiver_before_dot(before_prefix: &str) -> Option<TextRange> {

@@ -32,18 +32,6 @@ pub(super) fn type_hint_completion_context(text: &str, prefix_start: usize) -> b
     inside_builtin_type_args(trimmed)
 }
 
-pub(super) fn type_hint_module_path_context(text: &str, prefix_start: usize) -> Option<String> {
-    let before_prefix = text.get(..prefix_start)?;
-    let trimmed = before_prefix.trim_end();
-    let before_colons = trimmed.strip_suffix("::")?;
-    let path_start = module_path_start(before_colons);
-    let module_base = before_colons[path_start..].trim_matches(':');
-    if module_base.is_empty() || !type_hint_completion_context(text, path_start) {
-        return None;
-    }
-    Some(module_base.to_owned())
-}
-
 pub(super) fn type_hint_completion_items(
     graph: &ModuleGraph,
     schema: &RegistryFacts,
@@ -268,16 +256,6 @@ fn unmatched_type_arg_open(trimmed: &str) -> Option<usize> {
         }
     }
     None
-}
-
-fn module_path_start(before_colons: &str) -> usize {
-    before_colons
-        .char_indices()
-        .rev()
-        .find_map(|(index, ch)| {
-            (!is_identifier_continue(ch) && ch != ':').then_some(index + ch.len_utf8())
-        })
-        .unwrap_or(0)
 }
 
 fn is_identifier(value: &str) -> bool {

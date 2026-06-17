@@ -14,7 +14,7 @@ use vela_syntax::ast::{
     Block, ElseBranch, Expr, ExprKind, FunctionItem, ItemKind, SourceFile, Stmt, StmtKind,
 };
 
-use crate::{CursorContextKind, QueryContext};
+use crate::{CursorContextKind, ModulePathRole, QueryContext};
 use crate::{DocumentId, LanguageServiceDatabases, Position, TextRange};
 
 mod accumulator;
@@ -42,9 +42,7 @@ use module_path::module_path_completion_items as module_path_context_completion_
 use named_argument::{named_argument_completion_context, script_function_parameter_completions};
 use pattern::pattern_completion_items as pattern_context_completion_items;
 use statement::statement_keyword_completions;
-use type_hint::{
-    type_hint_completion_context, type_hint_completion_items, type_hint_module_path_context,
-};
+use type_hint::{type_hint_completion_context, type_hint_completion_items};
 
 use accumulator::CompletionAccumulator;
 
@@ -470,12 +468,12 @@ fn completion_context(query: &QueryContext<'_>) -> CompletionContext {
     }
 
     if let Some(module_base) = cursor.module_base() {
-        if let Some(type_module_base) = type_hint_module_path_context(text, prefix_start) {
+        if cursor.module_path_role() == ModulePathRole::Type {
             return CompletionContext {
                 kind: CompletionContextKind::TypeHint,
                 prefix: prefix.to_owned(),
                 replace_range: TextRange::new(prefix_start, offset),
-                module_base: Some(type_module_base),
+                module_base: Some(module_base.to_owned()),
                 member_receiver: None,
                 record_constructor: None,
                 map_key: None,

@@ -298,7 +298,9 @@ Purpose: classify the cursor once and reuse it across features.
   lambda-parameter completion now consumes the shared receiver and method
   ranges. Top-level function local binding facts are request-local, and
   `QueryContext` now exposes locals visible before the cursor for completion;
-  broader callable semantic facts remain feature-owned follow-up work.
+  module path qualifiers now carry type-vs-expression role in `CursorContext`
+  instead of completion re-scanning source text. Broader callable semantic
+  facts remain feature-owned follow-up work.
 - [x] Keep classification tolerant of incomplete source and parser recovery.
 - [x] Route completion, hover, signature help, definition, and rename prepare
   through the shared context where practical.
