@@ -203,6 +203,10 @@ M20.5 Phase 9 update: workspace symbols now include source-file symbols with
 LSP `SymbolKind.File` mappings and module detail/source locations, closing the
 file/module/class/function/method/field/enum/variant symbol-kind checklist.
 
+M20.5 Phase 8 update: source global hover now has a first-class `global`
+kind through the editor-neutral service and native LSP markdown, with HIR
+declaration metadata used as a fallback when analysis facts are unknown.
+
 M20.5 Phase 7 update: completion now resolves schema-backed trait receiver
 method members in addition to schema-backed host receiver members.
 `textDocument/signatureHelp` now resolves stdlib function calls, typed

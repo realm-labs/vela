@@ -28,6 +28,7 @@ fn hover_kind(kind: HoverKind) -> &'static str {
     match kind {
         HoverKind::Local => "local",
         HoverKind::Parameter => "parameter",
+        HoverKind::Global => "global",
         HoverKind::Const => "const",
         HoverKind::Function => "function",
         HoverKind::Type => "type",

@@ -164,6 +164,25 @@ fn hover_reports_script_parameter_fact() {
 }
 
 #[test]
+fn hover_reports_source_global_fact() {
+    let document = DocumentId::from("/workspace/scripts/game/main.vela");
+    let text = "global score: i64\npub fn main() -> i64 { return score }";
+    let databases = databases_for(&document, text, RegistryFacts::default());
+    let use_line = text.lines().nth(1).expect("global use line should exist");
+
+    let hover = databases
+        .hover(
+            &document,
+            Position::new(1, use_line.find("score").expect("global use should exist")),
+        )
+        .expect("hover should resolve global use");
+
+    assert_eq!(hover.kind(), HoverKind::Global);
+    assert_eq!(hover.label(), "game::main::score");
+    assert_eq!(hover.detail(), "i64");
+}
+
+#[test]
 fn hover_reports_stdlib_function_fact() {
     let document = DocumentId::from("/workspace/scripts/game/main.vela");
     let text = "pub fn main() { math::max(1, 2) }";

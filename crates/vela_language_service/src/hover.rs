@@ -25,6 +25,7 @@ use crate::{
 pub enum HoverKind {
     Local,
     Parameter,
+    Global,
     Const,
     Function,
     Type,
@@ -655,24 +656,50 @@ fn hover_from_declaration(
     declaration: &Declaration,
     range: DiagnosticRange,
 ) -> Hover {
-    let fact = facts
+    let detail = facts
         .declaration(declaration.id)
-        .cloned()
-        .unwrap_or(TypeFact::Unknown);
+        .filter(|fact| !matches!(fact, TypeFact::Unknown))
+        .map_or_else(
+            || declaration_hover_detail(graph, declaration),
+            TypeFact::display_name,
+        );
     let label = qualified_declaration_label(graph, declaration);
     let kind = match declaration.kind {
         DeclarationKind::Const => HoverKind::Const,
+        DeclarationKind::Global => HoverKind::Global,
         DeclarationKind::Function => HoverKind::Function,
         DeclarationKind::Struct | DeclarationKind::Enum | DeclarationKind::Trait => HoverKind::Type,
-        DeclarationKind::Global | DeclarationKind::Impl => HoverKind::Unknown,
+        DeclarationKind::Impl => HoverKind::Unknown,
     };
     Hover {
         range,
         label,
         kind,
-        detail: fact.display_name(),
+        detail,
         docs: declaration_docs(graph, declaration),
     }
+}
+
+fn declaration_hover_detail(
+    graph: &vela_hir::module_graph::ModuleGraph,
+    declaration: &Declaration,
+) -> String {
+    match declaration.kind {
+        DeclarationKind::Const => graph
+            .const_metadata(declaration.id)
+            .and_then(|metadata| metadata.type_hint.as_ref().map(|hint| hint.display())),
+        DeclarationKind::Global => graph
+            .global_metadata(declaration.id)
+            .map(|metadata| metadata.type_hint.display()),
+        DeclarationKind::Function => graph
+            .function_signature(declaration.id)
+            .map(signature_detail),
+        DeclarationKind::Struct
+        | DeclarationKind::Enum
+        | DeclarationKind::Trait
+        | DeclarationKind::Impl => None,
+    }
+    .unwrap_or_else(|| TypeFact::Unknown.display_name())
 }
 
 fn local_hover(binding: &LocalBinding, fact: TypeFact, range: DiagnosticRange) -> Hover {

@@ -56,6 +56,54 @@ fn lsp_hover_reports_open_overlay_parameter_fact() {
 }
 
 #[test]
+fn lsp_hover_reports_source_global_fact() {
+    let mut server = LspServer::new();
+    let _ = response_value(server.handle_json(&request(
+        1,
+        "initialize",
+        serde_json::json!({
+            "processId": null,
+            "rootUri": "file:///workspace/scripts",
+            "capabilities": {}
+        }),
+    )));
+    let text = "global score: i64\npub fn main() -> i64 { return score }";
+    let uri = "file:///workspace/scripts/game/main.vela";
+    let _ = notification_value(server.handle_json(&notification(
+        "textDocument/didOpen",
+        serde_json::json!({
+            "textDocument": {
+                "uri": uri,
+                "languageId": "vela",
+                "version": 1,
+                "text": text
+            }
+        }),
+    )));
+    let use_line = text.lines().nth(1).expect("global use line should exist");
+
+    let response = response_value(server.handle_json(&request(
+        2,
+        "textDocument/hover",
+        serde_json::json!({
+            "textDocument": { "uri": uri },
+            "position": {
+                "line": 1,
+                "character": use_line.find("score").unwrap_or_else(|| {
+                    panic!("hover fixture should contain global use")
+                })
+            }
+        }),
+    )));
+
+    let value = response["result"]["contents"]["value"]
+        .as_str()
+        .expect("hover contents should be markdown");
+    assert!(value.contains("game::main::score"), "{value}");
+    assert!(value.contains("_global_: i64"), "{value}");
+}
+
+#[test]
 fn lsp_hover_reports_stdlib_function_fact() {
     let mut server = LspServer::new();
     let _ = response_value(server.handle_json(&request(
