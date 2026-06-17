@@ -251,7 +251,7 @@ Purpose: write the failing tests before replacing the model.
   - typing `st` at a top-level item boundary ranks `struct` before unrelated
     globals.
   - item-boundary completion does not offer expression-only stdlib functions.
-- [ ] Add statement, expression, type-hint, member, record-field, module-path,
+- [x] Add statement, expression, type-hint, member, record-field, module-path,
   call-argument, and lambda-parameter cursor-context classification fixtures.
 - [~] Add LSP completion conversion fixtures for replacement ranges,
   `filterText`, `sortText`, snippets, label details, and preselect behavior.

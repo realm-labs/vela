@@ -1,4 +1,6 @@
-use vela_syntax::ast::{SourceFile, Stmt, StmtKind};
+use vela_syntax::ast::{
+    Block, ElseBranch, Expr, ExprKind, FunctionItem, ItemKind, SourceFile, Stmt, StmtKind,
+};
 
 use crate::{LineIndex, Position, TextRange};
 
@@ -74,6 +76,18 @@ pub fn cursor_context_at(
 
     if is_type_context(text, prefix_start) {
         return context(CursorContextKind::Type, prefix_start, prefix);
+    }
+
+    if parsed.is_some_and(|source| is_record_expression_field_context(source, prefix_start)) {
+        return context(
+            CursorContextKind::RecordExpressionField,
+            prefix_start,
+            prefix,
+        );
+    }
+
+    if parsed.is_some_and(|source| is_map_key_context(source, prefix_start)) {
+        return context(CursorContextKind::MapKey, prefix_start, prefix);
     }
 
     if before_prefix.ends_with('.') {
@@ -206,6 +220,242 @@ fn is_lambda_parameter_prefix(params: &str) -> bool {
         .all(|ch| ch.is_whitespace() || ch == ',' || is_identifier_continue(ch))
 }
 
+fn is_record_expression_field_context(source: &SourceFile, offset: usize) -> bool {
+    let Some(offset) = u32::try_from(offset).ok() else {
+        return false;
+    };
+    source.items.iter().any(|item| match &item.kind {
+        ItemKind::Const(item) => record_field_for_expr(&item.value, offset),
+        ItemKind::Function(item) => record_field_for_function(item, offset),
+        _ => false,
+    })
+}
+
+fn record_field_for_function(function: &FunctionItem, offset: u32) -> bool {
+    function
+        .params
+        .iter()
+        .filter_map(|param| param.default_value.as_ref())
+        .any(|value| record_field_for_expr(value, offset))
+        || record_field_for_block(&function.body, offset)
+}
+
+fn record_field_for_block(block: &Block, offset: u32) -> bool {
+    block.span.contains(offset)
+        && block
+            .statements
+            .iter()
+            .any(|statement| record_field_for_statement(statement, offset))
+}
+
+fn record_field_for_statement(statement: &Stmt, offset: u32) -> bool {
+    if !statement.span.contains(offset) {
+        return false;
+    }
+    match &statement.kind {
+        StmtKind::Let { value, .. } => value
+            .as_ref()
+            .is_some_and(|value| record_field_for_expr(value, offset)),
+        StmtKind::Expr(value) | StmtKind::Return(Some(value)) => {
+            record_field_for_expr(value, offset)
+        }
+        StmtKind::For { iterable, body, .. } => {
+            record_field_for_expr(iterable, offset) || record_field_for_block(body, offset)
+        }
+        StmtKind::Block(block) => record_field_for_block(block, offset),
+        StmtKind::Return(None) | StmtKind::Break | StmtKind::Continue => false,
+    }
+}
+
+fn record_field_for_expr(expr: &Expr, offset: u32) -> bool {
+    if !expr.span.contains(offset) {
+        return false;
+    }
+    match &expr.kind {
+        ExprKind::Record { .. } => true,
+        ExprKind::Unary { expr, .. } | ExprKind::Try(expr) => record_field_for_expr(expr, offset),
+        ExprKind::Binary { left, right, .. }
+        | ExprKind::Assign {
+            target: left,
+            value: right,
+            ..
+        } => record_field_for_expr(left, offset) || record_field_for_expr(right, offset),
+        ExprKind::Field { base, .. } => record_field_for_expr(base, offset),
+        ExprKind::Call { callee, args } => {
+            record_field_for_expr(callee, offset)
+                || args
+                    .iter()
+                    .any(|arg| record_field_for_expr(&arg.value, offset))
+        }
+        ExprKind::Index { base, index } => {
+            record_field_for_expr(base, offset) || record_field_for_expr(index, offset)
+        }
+        ExprKind::Array(values) => values
+            .iter()
+            .any(|value| record_field_for_expr(value, offset)),
+        ExprKind::Map(entries) => entries.iter().any(|entry| {
+            record_field_for_expr(&entry.key, offset) || record_field_for_expr(&entry.value, offset)
+        }),
+        ExprKind::Lambda { params, body } => {
+            params
+                .iter()
+                .filter_map(|param| param.default_value.as_ref())
+                .any(|value| record_field_for_expr(value, offset))
+                || record_field_for_expr(body, offset)
+        }
+        ExprKind::If(if_expr) => {
+            record_field_for_expr(&if_expr.condition, offset)
+                || record_field_for_block(&if_expr.then_branch, offset)
+                || if_expr
+                    .else_branch
+                    .as_ref()
+                    .is_some_and(|branch| record_field_for_else_branch(branch, offset))
+        }
+        ExprKind::Match(match_expr) => {
+            record_field_for_expr(&match_expr.scrutinee, offset)
+                || match_expr
+                    .arms
+                    .iter()
+                    .any(|arm| record_field_for_expr(&arm.body, offset))
+        }
+        ExprKind::Block(block) => record_field_for_block(block, offset),
+        ExprKind::Literal(_)
+        | ExprKind::InterpolatedString(_)
+        | ExprKind::Path(_)
+        | ExprKind::SelfValue
+        | ExprKind::Error => false,
+    }
+}
+
+fn record_field_for_else_branch(branch: &ElseBranch, offset: u32) -> bool {
+    match branch {
+        ElseBranch::Block(block) => record_field_for_block(block, offset),
+        ElseBranch::If(if_expr) => {
+            record_field_for_expr(&if_expr.condition, offset)
+                || record_field_for_block(&if_expr.then_branch, offset)
+                || if_expr
+                    .else_branch
+                    .as_ref()
+                    .is_some_and(|branch| record_field_for_else_branch(branch, offset))
+        }
+    }
+}
+
+fn is_map_key_context(source: &SourceFile, offset: usize) -> bool {
+    let Some(offset) = u32::try_from(offset).ok() else {
+        return false;
+    };
+    source.items.iter().any(|item| match &item.kind {
+        ItemKind::Const(item) => map_key_for_expr(&item.value, offset),
+        ItemKind::Function(item) => {
+            item.params
+                .iter()
+                .filter_map(|param| param.default_value.as_ref())
+                .any(|value| map_key_for_expr(value, offset))
+                || map_key_for_block(&item.body, offset)
+        }
+        _ => false,
+    })
+}
+
+fn map_key_for_block(block: &Block, offset: u32) -> bool {
+    block.span.contains(offset)
+        && block
+            .statements
+            .iter()
+            .any(|statement| map_key_for_statement(statement, offset))
+}
+
+fn map_key_for_statement(statement: &Stmt, offset: u32) -> bool {
+    if !statement.span.contains(offset) {
+        return false;
+    }
+    match &statement.kind {
+        StmtKind::Let { value, .. } => value
+            .as_ref()
+            .is_some_and(|value| map_key_for_expr(value, offset)),
+        StmtKind::Expr(value) | StmtKind::Return(Some(value)) => map_key_for_expr(value, offset),
+        StmtKind::For { iterable, body, .. } => {
+            map_key_for_expr(iterable, offset) || map_key_for_block(body, offset)
+        }
+        StmtKind::Block(block) => map_key_for_block(block, offset),
+        StmtKind::Return(None) | StmtKind::Break | StmtKind::Continue => false,
+    }
+}
+
+fn map_key_for_expr(expr: &Expr, offset: u32) -> bool {
+    if !expr.span.contains(offset) {
+        return false;
+    }
+    match &expr.kind {
+        ExprKind::Map(entries) => entries
+            .iter()
+            .any(|entry| entry.key.span.contains(offset) || map_key_for_expr(&entry.value, offset)),
+        ExprKind::Unary { expr, .. } | ExprKind::Try(expr) => map_key_for_expr(expr, offset),
+        ExprKind::Binary { left, right, .. }
+        | ExprKind::Assign {
+            target: left,
+            value: right,
+            ..
+        } => map_key_for_expr(left, offset) || map_key_for_expr(right, offset),
+        ExprKind::Field { base, .. } => map_key_for_expr(base, offset),
+        ExprKind::Call { callee, args } => {
+            map_key_for_expr(callee, offset)
+                || args.iter().any(|arg| map_key_for_expr(&arg.value, offset))
+        }
+        ExprKind::Index { base, index } => {
+            map_key_for_expr(base, offset) || map_key_for_expr(index, offset)
+        }
+        ExprKind::Array(values) => values.iter().any(|value| map_key_for_expr(value, offset)),
+        ExprKind::Record { fields, .. } => fields
+            .iter()
+            .filter_map(|field| field.value.as_ref())
+            .any(|value| map_key_for_expr(value, offset)),
+        ExprKind::Lambda { params, body } => {
+            params
+                .iter()
+                .filter_map(|param| param.default_value.as_ref())
+                .any(|value| map_key_for_expr(value, offset))
+                || map_key_for_expr(body, offset)
+        }
+        ExprKind::If(if_expr) => {
+            map_key_for_expr(&if_expr.condition, offset)
+                || map_key_for_block(&if_expr.then_branch, offset)
+                || if_expr
+                    .else_branch
+                    .as_ref()
+                    .is_some_and(|branch| map_key_for_else_branch(branch, offset))
+        }
+        ExprKind::Match(match_expr) => {
+            map_key_for_expr(&match_expr.scrutinee, offset)
+                || match_expr
+                    .arms
+                    .iter()
+                    .any(|arm| map_key_for_expr(&arm.body, offset))
+        }
+        ExprKind::Block(block) => map_key_for_block(block, offset),
+        ExprKind::Literal(_)
+        | ExprKind::InterpolatedString(_)
+        | ExprKind::Path(_)
+        | ExprKind::SelfValue
+        | ExprKind::Error => false,
+    }
+}
+
+fn map_key_for_else_branch(branch: &ElseBranch, offset: u32) -> bool {
+    match branch {
+        ElseBranch::Block(block) => map_key_for_block(block, offset),
+        ElseBranch::If(if_expr) => {
+            map_key_for_expr(&if_expr.condition, offset)
+                || map_key_for_block(&if_expr.then_branch, offset)
+                || if_expr
+                    .else_branch
+                    .as_ref()
+                    .is_some_and(|branch| map_key_for_else_branch(branch, offset))
+        }
+    }
+}
+
 fn is_statement_context(parsed: Option<&SourceFile>, prefix_start: usize) -> bool {
     let Some(offset) = u32::try_from(prefix_start).ok() else {
         return false;
@@ -313,6 +563,12 @@ mod tests {
         cursor_context_at(text, LineIndex::new(text).position(offset), Some(&parsed))
     }
 
+    fn classify_before(text: &str, needle: &str) -> CursorContext {
+        let offset = text.find(needle).expect("needle should exist");
+        let parsed = parse_source(SourceId::new(1), text);
+        cursor_context_at(text, LineIndex::new(text).position(offset), Some(&parsed))
+    }
+
     fn classify_offset(text: &str, offset: usize) -> CursorContext {
         let parsed = parse_source(SourceId::new(1), text);
         cursor_context_at(text, LineIndex::new(text).position(offset), Some(&parsed))
@@ -334,6 +590,13 @@ mod tests {
     }
 
     #[test]
+    fn cursor_context_classifies_use_import_context() {
+        let cursor = classify("use re", "re");
+
+        assert_eq!(cursor.kind(), CursorContextKind::UseImport);
+    }
+
+    #[test]
     fn cursor_context_classifies_member_access() {
         let cursor = classify("pub fn main(player) { player.le }", "le");
 
@@ -350,10 +613,34 @@ mod tests {
     }
 
     #[test]
+    fn cursor_context_classifies_record_expression_fields() {
+        let text = "pub struct Player { level: i64 }\npub fn main() { let player = Player { xp } }";
+        let cursor = classify(text, "xp");
+
+        assert_eq!(cursor.kind(), CursorContextKind::RecordExpressionField);
+    }
+
+    #[test]
+    fn cursor_context_classifies_map_keys() {
+        let text = "pub fn main() { let rewards: Map<QuestState, i64> = { Co: 2 } }";
+        let cursor = classify(text, "Co");
+
+        assert_eq!(cursor.kind(), CursorContextKind::MapKey);
+    }
+
+    #[test]
     fn cursor_context_classifies_call_arguments() {
         let cursor = classify("pub fn main() { grant(am) }", "am");
 
         assert_eq!(cursor.kind(), CursorContextKind::CallArgument);
+    }
+
+    #[test]
+    fn cursor_context_classifies_lambda_parameters() {
+        let cursor = classify_before("pub fn main(items) { items.map(|it| it) }", "| it");
+
+        assert_eq!(cursor.kind(), CursorContextKind::LambdaParameter);
+        assert_eq!(cursor.prefix(), "it");
     }
 
     #[test]
