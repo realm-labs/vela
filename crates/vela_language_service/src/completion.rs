@@ -364,7 +364,12 @@ fn completion_context(query: &QueryContext<'_>) -> CompletionContext {
     let prefix_start = cursor.replace_range().start;
     let prefix = cursor.prefix();
 
-    if let Some(lambda_parameter) = lambda_parameter_completion_context(text, offset) {
+    let shared_lambda_receiver = query
+        .member_receiver_range()
+        .map(|range| MemberReceiver { range });
+    if let Some(lambda_parameter) =
+        lambda_parameter_completion_context(text, offset, shared_lambda_receiver)
+    {
         return CompletionContext {
             kind: CompletionContextKind::LambdaParameter,
             prefix: prefix.to_owned(),

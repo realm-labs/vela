@@ -288,6 +288,18 @@ impl CompletionContext {
     }
 
     #[must_use]
+    pub fn member_receiver_range(&self) -> Option<TextRange> {
+        self.member_receiver
+            .as_ref()
+            .map(|receiver| receiver.range)
+            .or_else(|| {
+                self.lambda_parameter
+                    .as_ref()
+                    .map(|context| context.receiver.range)
+            })
+    }
+
+    #[must_use]
     pub fn call_callee_range(&self) -> Option<TextRange> {
         self.call_arguments
             .as_ref()

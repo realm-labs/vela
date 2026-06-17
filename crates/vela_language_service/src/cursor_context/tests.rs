@@ -8,12 +8,6 @@ fn classify(text: &str, needle: &str) -> CursorContext {
     cursor_context_at(text, LineIndex::new(text).position(offset), Some(&parsed))
 }
 
-fn classify_before(text: &str, needle: &str) -> CursorContext {
-    let offset = text.find(needle).expect("needle should exist");
-    let parsed = parse_source(SourceId::new(1), text);
-    cursor_context_at(text, LineIndex::new(text).position(offset), Some(&parsed))
-}
-
 fn classify_offset(text: &str, offset: usize) -> CursorContext {
     let parsed = parse_source(SourceId::new(1), text);
     cursor_context_at(text, LineIndex::new(text).position(offset), Some(&parsed))
@@ -126,10 +120,13 @@ fn cursor_context_uses_inner_syntax_callee_for_nested_call_arguments() {
 
 #[test]
 fn cursor_context_classifies_lambda_parameters() {
-    let cursor = classify_before("pub fn main(items) { items.map(|it| it) }", "| it");
+    let text = "pub fn main(items) { items.map(|it| it) }";
+    let cursor = classify(text, "|");
+    let receiver = cursor.member_receiver().expect("receiver range");
 
     assert_eq!(cursor.kind(), CursorContextKind::LambdaParameter);
-    assert_eq!(cursor.prefix(), "it");
+    assert_eq!(cursor.prefix(), "");
+    assert_eq!(&text[receiver.start..receiver.end], "items");
 }
 
 #[test]

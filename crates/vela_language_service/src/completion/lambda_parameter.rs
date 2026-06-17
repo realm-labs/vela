@@ -16,6 +16,7 @@ pub(super) struct LambdaParameterContext {
 pub(super) fn lambda_parameter_completion_context(
     text: &str,
     offset: usize,
+    shared_receiver: Option<MemberReceiver>,
 ) -> Option<LambdaParameterContext> {
     let before = text.get(..offset)?;
     let pipe = before.rfind('|')?;
@@ -27,7 +28,7 @@ pub(super) fn lambda_parameter_completion_context(
     let callee = before.get(..open_paren)?.trim_end();
     let (receiver, method) = member_callee(callee)?;
     Some(LambdaParameterContext {
-        receiver,
+        receiver: shared_receiver.unwrap_or(receiver),
         method,
         used_names: used_lambda_parameter_names(params),
     })
@@ -180,6 +181,11 @@ mod tests {
             completions.context().kind(),
             CompletionContextKind::LambdaParameter
         );
+        let receiver = completions
+            .context()
+            .member_receiver_range()
+            .expect("receiver range");
+        assert_eq!(&text[receiver.start..receiver.end], "scores");
         assert_completion(&completions, "item", "i64");
     }
 

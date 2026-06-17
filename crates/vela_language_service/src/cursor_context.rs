@@ -80,7 +80,9 @@ pub fn cursor_context_at(
     let before_prefix = &text[..prefix_start];
 
     if is_lambda_parameter_context(text, offset) {
-        return context(CursorContextKind::LambdaParameter, prefix_start, prefix);
+        let mut cursor = context(CursorContextKind::LambdaParameter, prefix_start, prefix);
+        cursor.member_receiver = lambda_member_receiver_before_pipe(text, offset);
+        return cursor;
     }
 
     if parsed.is_some_and(|source| is_pattern_context(text, source, prefix_start)) {
@@ -250,6 +252,32 @@ fn is_lambda_parameter_prefix(params: &str) -> bool {
     params
         .chars()
         .all(|ch| ch.is_whitespace() || ch == ',' || is_identifier_continue(ch))
+}
+
+fn lambda_member_receiver_before_pipe(text: &str, offset: usize) -> Option<TextRange> {
+    let before = text.get(..offset)?;
+    let pipe = before.rfind('|')?;
+    let open = active_call_open(before, pipe)?;
+    member_receiver_from_callee(before.get(..open)?.trim_end())
+}
+
+fn member_receiver_from_callee(callee: &str) -> Option<TextRange> {
+    let method_end = callee.len();
+    let method_start = callee[..method_end]
+        .char_indices()
+        .rev()
+        .find_map(|(index, ch)| (!is_identifier_continue(ch)).then_some(index + ch.len_utf8()))?;
+    if callee.get(method_start..method_end)?.is_empty() {
+        return None;
+    }
+    let dot = callee[..method_start].trim_end().strip_suffix('.')?;
+    let receiver_end = dot.len();
+    let receiver_start = dot
+        .char_indices()
+        .rev()
+        .find_map(|(index, ch)| (!is_member_receiver_continue(ch)).then_some(index + ch.len_utf8()))
+        .unwrap_or(0);
+    (receiver_start < receiver_end).then(|| TextRange::new(receiver_start, receiver_end))
 }
 
 fn is_record_expression_field_context(source: &SourceFile, offset: usize) -> bool {
@@ -1122,6 +1150,10 @@ fn is_identifier_continue(ch: char) -> bool {
 
 fn is_module_path_continue(ch: char) -> bool {
     is_identifier_continue(ch) || ch == ':'
+}
+
+fn is_member_receiver_continue(ch: char) -> bool {
+    is_identifier_continue(ch) || ch == ':' || ch == '.'
 }
 
 #[cfg(test)]
