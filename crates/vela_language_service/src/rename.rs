@@ -552,6 +552,9 @@ fn rename_target<'a>(
 ) -> Option<RenameTarget<'a>> {
     let graph = databases.hir_db().graph();
     let offset = u32::try_from(token.range.start).ok()?;
+    let parsed_source = query
+        .source_record()
+        .and_then(|source| databases.parse_db().parsed_source(source.document_id()));
 
     if let Some(target) = fields::script_field_declaration_target(graph, source_id, text, &token) {
         return Some(RenameTarget::ScriptField(target));
@@ -610,7 +613,9 @@ fn rename_target<'a>(
                 placeholder: binding.name.clone(),
             }));
         }
-        if let Some(target) = variants::enum_variant_use_target(graph, bindings, text, &token) {
+        if let Some(target) =
+            variants::enum_variant_use_target(graph, bindings, parsed_source, text, &token)
+        {
             return Some(RenameTarget::EnumVariant(target));
         }
         if let Some(declaration_id) = declaration_use_at_token(bindings, &token)

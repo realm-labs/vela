@@ -4,13 +4,13 @@ use vela_common::SourceId;
 use vela_hir::binding::{BindingMap, BindingResolution};
 use vela_hir::ids::HirDeclId;
 use vela_hir::module_graph::{DeclarationKind, ModuleGraph};
-use vela_syntax::ast::Visibility;
+use vela_syntax::ast::{SourceFile, Visibility};
 
 use crate::{DocumentId, LanguageServiceDatabases, TextRange, path_calls};
 
 use super::{
     RenameToken, TextEdit, WorkspaceEdit, diagnostic_range, document_text_edit_for_rename,
-    is_identifier_continue, name_range_in_text, span_text_range, token_text,
+    name_range_in_text, span_text_range,
 };
 
 #[derive(Debug, Clone, Eq, PartialEq)]
@@ -18,6 +18,13 @@ pub(super) struct EnumVariantRenameTarget {
     pub(super) owner: HirDeclId,
     pub(super) variant: String,
     pub(super) token: RenameToken,
+}
+
+struct EnumVariantUseEditSite<'a> {
+    source: &'a crate::SourceRecord,
+    text: &'a str,
+    path: &'a [String],
+    range: TextRange,
 }
 
 pub(super) fn rename_enum_variant(
@@ -86,12 +93,33 @@ pub(super) fn enum_variant_declaration_target(
 pub(super) fn enum_variant_use_target(
     graph: &ModuleGraph,
     bindings: &BindingMap,
+    parsed: Option<&SourceFile>,
     text: &str,
     token: &RenameToken,
 ) -> Option<EnumVariantRenameTarget> {
-    let path = path_ending_at(text, token.range)?;
+    if let Some(parsed) = parsed {
+        for site in path_calls::path_expression_sites(parsed, text) {
+            if site.segment_range == token.range {
+                return enum_variant_use_target_for_path(graph, bindings, &site.path, token);
+            }
+        }
+        for site in path_calls::pattern_path_sites(parsed, text) {
+            if site.segment_range == token.range {
+                return enum_variant_use_target_for_path(graph, bindings, &site.path, token);
+            }
+        }
+    }
+    None
+}
+
+fn enum_variant_use_target_for_path(
+    graph: &ModuleGraph,
+    bindings: &BindingMap,
+    path: &[String],
+    token: &RenameToken,
+) -> Option<EnumVariantRenameTarget> {
     let variant = path.last()?;
-    if let Some(BindingResolution::Declaration(owner)) = bindings.pattern_resolution(&path)
+    if let Some(BindingResolution::Declaration(owner)) = bindings.pattern_resolution(path)
         && can_rename_enum_variant(graph, *owner, variant)
     {
         return Some(EnumVariantRenameTarget {
@@ -100,7 +128,6 @@ pub(super) fn enum_variant_use_target(
             token: token.clone(),
         });
     }
-
     match narrowest_resolution_at_token(bindings, token)? {
         BindingResolution::Declaration(owner)
             if can_rename_enum_variant(graph, *owner, variant) =>
@@ -161,12 +188,14 @@ fn push_enum_variant_use_edits(
                 {
                     continue;
                 }
-                let range = site.segment_range;
-                push_enum_variant_use_edit_for_range(
+                push_enum_variant_use_edit_for_path(
                     graph,
-                    source,
-                    text,
-                    range,
+                    EnumVariantUseEditSite {
+                        source,
+                        text,
+                        path: &site.path,
+                        range: site.segment_range,
+                    },
                     target,
                     new_name,
                     edits_by_document,
@@ -182,12 +211,14 @@ fn push_enum_variant_use_edits(
                 {
                     continue;
                 }
-                let range = site.segment_range;
-                push_enum_variant_use_edit_for_range(
+                push_enum_variant_use_edit_for_path(
                     graph,
-                    source,
-                    text,
-                    range,
+                    EnumVariantUseEditSite {
+                        source,
+                        text,
+                        path: &site.path,
+                        range: site.segment_range,
+                    },
                     target,
                     new_name,
                     edits_by_document,
@@ -197,33 +228,36 @@ fn push_enum_variant_use_edits(
     }
 }
 
-fn push_enum_variant_use_edit_for_range(
+fn push_enum_variant_use_edit_for_path(
     graph: &ModuleGraph,
-    source: &crate::SourceRecord,
-    text: &str,
-    range: TextRange,
+    site: EnumVariantUseEditSite<'_>,
     target: &EnumVariantRenameTarget,
     new_name: &str,
     edits_by_document: &mut BTreeMap<DocumentId, Vec<TextEdit>>,
 ) {
-    let Some(start) = u32::try_from(range.start).ok() else {
+    let Some(start) = u32::try_from(site.range.start).ok() else {
         return;
     };
     for declaration in graph.declarations() {
-        if declaration.span.source != source.source_id() || !declaration.span.contains(start) {
+        if declaration.span.source != site.source.source_id() || !declaration.span.contains(start) {
             continue;
         }
         let Some(bindings) = graph.bindings(declaration.id) else {
             continue;
         };
-        if enum_variant_use_target(graph, bindings, text, &RenameToken { range })
-            .is_some_and(|found| found.owner == target.owner && found.variant == target.variant)
+        if enum_variant_use_target_for_path(
+            graph,
+            bindings,
+            site.path,
+            &RenameToken { range: site.range },
+        )
+        .is_some_and(|found| found.owner == target.owner && found.variant == target.variant)
         {
             edits_by_document
-                .entry(source.document_id().clone())
+                .entry(site.source.document_id().clone())
                 .or_default()
                 .push(TextEdit {
-                    range: diagnostic_range(text, range),
+                    range: diagnostic_range(site.text, site.range),
                     new_text: new_name.to_owned(),
                 });
             break;
@@ -253,32 +287,6 @@ fn enum_variant_name_conflicts(
             .variants
             .iter()
             .any(|variant| variant.name == new_name && variant.name != target.variant)
-    })
-}
-
-fn path_ending_at(text: &str, range: TextRange) -> Option<Vec<String>> {
-    let mut path = vec![token_text(text, range)?.to_owned()];
-    let mut cursor = range.start;
-    loop {
-        let before_segment = text.get(..cursor)?.trim_end();
-        let Some(before_separator) = before_segment.strip_suffix("::").map(str::trim_end) else {
-            break;
-        };
-        let end = before_separator.len();
-        let start = before_separator
-            .char_indices()
-            .rev()
-            .find_map(|(index, ch)| (!is_identifier_continue(ch)).then_some(index + ch.len_utf8()))
-            .unwrap_or(0);
-        if start == end {
-            break;
-        }
-        path.push(text.get(start..end)?.to_owned());
-        cursor = start;
-    }
-    (path.len() > 1).then(|| {
-        path.reverse();
-        path
     })
 }
 
