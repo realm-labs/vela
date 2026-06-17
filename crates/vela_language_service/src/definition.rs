@@ -4,7 +4,7 @@ use vela_hir::binding::{BindingMap, BindingResolution, LocalBinding};
 
 use crate::{
     DiagnosticRange, DocumentId, LanguageServiceDatabases, LineIndex, Position, QueryContext,
-    TextRange,
+    TextRange, path_calls,
 };
 
 #[derive(Debug, Clone, Eq, PartialEq)]
@@ -48,7 +48,7 @@ impl LanguageServiceDatabases {
             return Some(definition);
         }
 
-        if let Some(definition) = self.schema_variant_definition(query.text(), &token) {
+        if let Some(definition) = self.schema_variant_definition(&query, &token) {
             return Some(definition);
         }
 
@@ -151,7 +151,34 @@ impl LanguageServiceDatabases {
         self.definition_from_span(span)
     }
 
-    fn schema_variant_definition(&self, text: &str, token: &DefinitionToken) -> Option<Definition> {
+    fn schema_variant_definition(
+        &self,
+        query: &QueryContext<'_>,
+        token: &DefinitionToken,
+    ) -> Option<Definition> {
+        let text = query.text();
+        if let Some(source) = query.source_record()
+            && let Some(parsed) = self.parse_db().parsed_source(source.document_id())
+        {
+            for site in path_calls::path_expression_sites(parsed, text) {
+                if site.segment_range != token.range {
+                    continue;
+                }
+                let Some((variant, owner_segments)) = site.path.split_last() else {
+                    continue;
+                };
+                let Some(owner) =
+                    schema_variant_owner(self.schema_db().facts(), owner_segments, variant)
+                else {
+                    continue;
+                };
+                let span = self
+                    .schema_db()
+                    .source_locations()
+                    .variant_span(&owner, variant)?;
+                return self.definition_from_span(span);
+            }
+        }
         let path = path_ending_at(text, token.range)?;
         let (variant, owner_segments) = path.split_last()?;
         let owner = schema_variant_owner(self.schema_db().facts(), owner_segments, variant)?;

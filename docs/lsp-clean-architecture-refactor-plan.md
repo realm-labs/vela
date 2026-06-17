@@ -384,7 +384,9 @@ Purpose: classify the cursor once and reuse it across features.
   expression path sites for constructor-like uses while retaining the existing
   fallback scanner for pattern paths. Schema variant references now use the
   same parsed expression path sites for constructor-like uses while preserving
-  fallback scanning for pattern paths.
+  fallback scanning for pattern paths. Schema variant go-to-definition now
+  resolves constructor-like expression paths from the shared parsed path sites
+  before falling back to the legacy token path reconstruction.
   `CursorContext` now exposes the identifier token range under the request
   cursor, and rename target selection consumes that shared range instead of
   running its own first-step token scanner. Lambda-parameter contexts now
