@@ -257,7 +257,53 @@ fn lsp_definition_follows_schema_trait_method_source_span() {
 }
 
 #[test]
+fn lsp_declaration_follows_schema_trait_method_source_span() {
+    assert_schema_member_source_navigation(
+        "textDocument/declaration",
+        "pub fn preview_marker() { return 1 }",
+        "preview_marker",
+        "pub fn main(rewardable: Rewardable) { return rewardable.preview(1) }",
+        "preview",
+        |target_start, target_end| {
+            serde_json::json!({
+                "traits": [
+                    {
+                        "name": "Rewardable",
+                        "fact": { "kind": "trait", "name": "Rewardable" }
+                    }
+                ],
+                "traitMethods": [
+                    {
+                        "owner": "Rewardable",
+                        "name": "preview",
+                        "fact": {
+                            "kind": "function",
+                            "params": [{ "kind": "primitive", "name": "i64" }],
+                            "returns": { "kind": "primitive", "name": "bool" }
+                        },
+                        "sourceSpan": {
+                            "source": 1,
+                            "start": target_start,
+                            "end": target_end
+                        }
+                    }
+                ]
+            })
+        },
+    );
+}
+
+#[test]
 fn lsp_definition_follows_schema_variant_source_span() {
+    assert_schema_variant_source_navigation("textDocument/definition");
+}
+
+#[test]
+fn lsp_declaration_follows_schema_variant_source_span() {
+    assert_schema_variant_source_navigation("textDocument/declaration");
+}
+
+fn assert_schema_variant_source_navigation(request_method: &str) {
     let root = temp_workspace();
     let config_path = root.join("vela.toml");
     let schema_path = root.join("target").join("vela").join("schema.json");
@@ -356,7 +402,7 @@ fn lsp_definition_follows_schema_variant_source_span() {
 
     let response = response_value(server.handle_json(&request(
         2,
-        "textDocument/definition",
+        request_method,
         serde_json::json!({
             "textDocument": { "uri": main_uri },
             "position": {

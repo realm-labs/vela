@@ -531,6 +531,8 @@ Tests:
 - [x] `lsp_declaration_follows_open_overlay_local_binding`
 - [x] `lsp_declaration_follows_schema_source_span`
 - [x] `lsp_declaration_follows_schema_method_source_span`
+- [x] `lsp_declaration_follows_schema_trait_method_source_span`
+- [x] `lsp_declaration_follows_schema_variant_source_span`
 - [x] `lsp_type_definition_follows_schema_source_span`
 
 Validation:
