@@ -98,10 +98,9 @@ impl LanguageServiceDatabases {
         position: Position,
     ) -> Option<SignatureHelp> {
         let query = QueryContext::from_databases(self, document_id, position)?;
-        let source = query.source_record()?;
+        let source_id = query.source_id()?;
         let context = call_context_at(query.text(), query.position())?;
-        let signatures =
-            self.signature_candidates_for_context(source.source_id(), query.text(), &context);
+        let signatures = self.signature_candidates_for_context(source_id, query.text(), &context);
         if signatures.is_empty() {
             return None;
         }

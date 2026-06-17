@@ -286,6 +286,8 @@ Purpose: classify the cursor once and reuse it across features.
 - [~] Include expected syntactic role, local scope, module scope, receiver
   expression facts, path qualifier facts, callable facts, and replacement
   range where available.
+  `QueryContext` now exposes request source id and module path facts directly;
+  local/callable facts remain feature-owned follow-up work.
 - [x] Keep classification tolerant of incomplete source and parser recovery.
 - [x] Route completion, hover, signature help, definition, and rename prepare
   through the shared context where practical.

@@ -547,8 +547,8 @@ fn completion_context(query: &QueryContext<'_>) -> CompletionContext {
         .and_then(|source| record_constructor_at(source, offset))
     {
         record_constructor.current_module = query
-            .source_record()
-            .map(|source| source.module_path().segments().to_vec())
+            .module_path()
+            .map(|module| module.segments().to_vec())
             .unwrap_or_default();
         return CompletionContext {
             kind: CompletionContextKind::RecordField,
@@ -568,8 +568,8 @@ fn completion_context(query: &QueryContext<'_>) -> CompletionContext {
         .and_then(|source| map_key_at(source, offset))
     {
         map_key.current_module = query
-            .source_record()
-            .map(|source| source.module_path().segments().to_vec())
+            .module_path()
+            .map(|module| module.segments().to_vec())
             .unwrap_or_default();
         return CompletionContext {
             kind: CompletionContextKind::MapKey,

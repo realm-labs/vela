@@ -36,9 +36,8 @@ impl LanguageServiceDatabases {
     #[must_use]
     pub fn definition(&self, document_id: &DocumentId, position: Position) -> Option<Definition> {
         let query = QueryContext::from_databases(self, document_id, position)?;
-        let source = query.source_record()?;
         let token = definition_token_at(query.text(), query.position())?;
-        let source_id = source.source_id();
+        let source_id = query.source_id()?;
         let offset = u32::try_from(token.range.start).ok()?;
         let graph = self.hir_db().graph();
 

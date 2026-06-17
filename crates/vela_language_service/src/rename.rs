@@ -177,8 +177,8 @@ impl LanguageServiceDatabases {
         position: Position,
     ) -> Option<PrepareRename> {
         let query = QueryContext::from_databases(self, document_id, position)?;
-        let source = query.source_record()?;
-        let target = rename_target(self, source.source_id(), query.text(), query.position())?;
+        let source_id = query.source_id()?;
+        let target = rename_target(self, source_id, query.text(), query.position())?;
         let token_range = diagnostic_range(query.text(), target.token_range());
         Some(PrepareRename {
             document_id: document_id.clone(),
@@ -198,8 +198,8 @@ impl LanguageServiceDatabases {
             return None;
         }
         let query = QueryContext::from_databases(self, document_id, position)?;
-        let source = query.source_record()?;
-        let target = rename_target(self, source.source_id(), query.text(), query.position())?;
+        let source_id = query.source_id()?;
+        let target = rename_target(self, source_id, query.text(), query.position())?;
         match target {
             RenameTarget::Local(target) => {
                 self.rename_local(document_id, query.text(), target, new_name)

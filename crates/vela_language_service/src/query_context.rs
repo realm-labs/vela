@@ -4,6 +4,8 @@ use crate::{
     CursorContext, DocumentId, DocumentSnapshot, LanguageServiceDatabases, Position, SourceRecord,
     SourceVersion, WorkspaceGeneration, WorkspaceSnapshot, cursor_context_at,
 };
+use vela_common::SourceId;
+use vela_hir::module_graph::ModulePath;
 
 #[derive(Debug, Clone)]
 enum QuerySource<'a> {
@@ -113,6 +115,19 @@ impl<'a> QueryContext<'a> {
     }
 
     #[must_use]
+    pub const fn source_id(&self) -> Option<SourceId> {
+        match self.source_record() {
+            Some(source) => Some(source.source_id()),
+            None => None,
+        }
+    }
+
+    #[must_use]
+    pub fn module_path(&self) -> Option<&ModulePath> {
+        self.source_record().map(SourceRecord::module_path)
+    }
+
+    #[must_use]
     pub const fn parsed_source(&self) -> Option<&SourceFile> {
         self.parsed
     }
@@ -152,6 +167,8 @@ mod tests {
         assert_eq!(context.version(), SourceVersion::new(2));
         assert_eq!(context.text(), "st");
         assert_eq!(context.cursor().prefix(), "st");
+        assert_eq!(context.source_id(), None);
+        assert!(context.module_path().is_none());
         assert!(context.source_record().is_none());
         assert!(context.parsed_source().is_none());
     }
@@ -179,13 +196,10 @@ mod tests {
         assert_eq!(context.generation(), databases.generation());
         assert_eq!(context.text(), source);
         assert_eq!(context.cursor().prefix(), "le");
+        assert_eq!(context.source_id(), Some(SourceId::new(1)));
         assert!(context.parsed_source().is_some());
         assert_eq!(
-            context
-                .source_record()
-                .expect("source record")
-                .module_path()
-                .segments(),
+            context.module_path().expect("module path").segments(),
             &["game".to_owned(), "main".to_owned()]
         );
     }
