@@ -971,7 +971,11 @@ Purpose: turn structured diagnostics into safe edits.
 Tests:
 
 - [x] `code_action_fixes_unknown_field_typo`
+- [x] `lsp_code_action_fixes_unknown_field_typo`
 - [x] `code_action_inserts_missing_import`
+- [x] `lsp_code_action_inserts_missing_import`
+- [x] `code_action_ranges_follow_open_overlay_text`
+- [x] `lsp_code_action_ranges_follow_open_overlay_text`
 - [x] `unused_import_reports_warning`
 - [x] `unused_import_ignores_type_hint_use`
 - [x] `code_action_removes_unused_import`

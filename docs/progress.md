@@ -190,6 +190,10 @@ M20.5 Phase 10 update: native LSP semantic-token fixtures now cover
 source-owned field and inherent-method call-site classifications, matching the
 existing language-service member-use classification path.
 
+M20.5 Phase 13 update: native LSP code-action fixtures now cover open-overlay
+range stability for schema-backed typo repairs when disk snapshots differ from
+the active editor buffer.
+
 M20.5 Phase 17 update: editor initialization options and
 `workspace/didChangeConfiguration` settings now map `workspace.roots` and
 `host.schema` into the server `WorkspaceConfig`, native `--root` and
