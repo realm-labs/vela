@@ -42,9 +42,12 @@ pub(super) fn module_path_completion_items(
             service_items.push(service_item);
         }
     }
-    dedupe_and_filter_service_items(service_items, |item| {
-        label_segment_matches(item.label(), context.prefix())
-    })
+    dedupe_and_filter_service_items(
+        service_items,
+        context.replace_range(),
+        context.prefix(),
+        |item| label_segment_matches(item.label(), context.prefix()),
+    )
 }
 
 fn service_item_for_module_path(

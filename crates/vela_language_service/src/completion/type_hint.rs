@@ -9,6 +9,8 @@ use vela_analysis::{
 };
 use vela_hir::module_graph::ModuleGraph;
 
+use crate::TextRange;
+
 use super::{CompletionInsertFormat, CompletionItem, CompletionKind, label_segment_matches};
 
 pub(super) fn type_hint_completion_context(text: &str, prefix_start: usize) -> bool {
@@ -43,12 +45,20 @@ pub(super) fn type_hint_module_path_context(text: &str, prefix_start: usize) -> 
 pub(super) fn type_hint_completion_items(
     graph: &ModuleGraph,
     schema: &RegistryFacts,
+    replace_range: TextRange,
     prefix: &str,
     module_base: Option<&str>,
 ) -> Vec<CompletionItem> {
     let facts = AnalysisFacts::from_module_graph(graph);
     if let Some(module_base) = module_base {
-        return qualified_type_hint_completion_items(graph, schema, &facts, prefix, module_base);
+        return qualified_type_hint_completion_items(
+            graph,
+            schema,
+            &facts,
+            replace_range,
+            prefix,
+            module_base,
+        );
     }
     let mut items = builtin_type_hint_completions();
     items.extend(
@@ -72,7 +82,7 @@ pub(super) fn type_hint_completion_items(
             .into_iter()
             .map(service_item_from_analysis),
     );
-    super::dedupe_and_filter_service_items(items, |item| {
+    super::dedupe_and_filter_service_items(items, replace_range, prefix, |item| {
         label_segment_matches(item.label(), prefix)
     })
 }
@@ -81,6 +91,7 @@ fn qualified_type_hint_completion_items(
     graph: &ModuleGraph,
     schema: &RegistryFacts,
     facts: &AnalysisFacts,
+    replace_range: TextRange,
     prefix: &str,
     module_base: &str,
 ) -> Vec<CompletionItem> {
@@ -96,6 +107,8 @@ fn qualified_type_hint_completion_items(
             .into_iter()
             .filter_map(|item| service_item_for_qualified_type_path(item, module_base, prefix))
             .collect(),
+        replace_range,
+        prefix,
         |item| label_segment_matches(item.label(), prefix),
     )
 }

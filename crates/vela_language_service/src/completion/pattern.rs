@@ -1,19 +1,25 @@
 use vela_hir::module_graph::{Declaration, DeclarationKind, ModuleGraph};
 
-use crate::completion::{
-    CompletionInsertFormat, CompletionItem, CompletionKind, dedupe_and_filter_service_items,
-    label_segment_matches,
+use crate::{
+    TextRange,
+    completion::{
+        CompletionInsertFormat, CompletionItem, CompletionKind, dedupe_and_filter_service_items,
+        label_segment_matches,
+    },
 };
 
 pub(super) fn pattern_completion_items(
     graph: &ModuleGraph,
     schema: &vela_analysis::registry::RegistryFacts,
     current_module: &[String],
+    replace_range: TextRange,
     prefix: &str,
 ) -> Vec<CompletionItem> {
     let mut items = script_pattern_variant_completions(graph, current_module);
     items.extend(schema_pattern_variant_completions(schema));
-    dedupe_and_filter_service_items(items, |item| label_segment_matches(item.label(), prefix))
+    dedupe_and_filter_service_items(items, replace_range, prefix, |item| {
+        label_segment_matches(item.label(), prefix)
+    })
 }
 
 fn script_pattern_variant_completions(

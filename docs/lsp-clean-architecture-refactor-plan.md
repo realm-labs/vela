@@ -361,9 +361,13 @@ Purpose: replace coarse global completion with context-specific producers.
   Member completion resolves host and schema trait receiver facts without
   falling back to global candidates, and record-field completion requires a
   known source or schema constructor before offering fields.
-- [ ] Add a `CompletionAccumulator` that accepts candidates, de-duplicates by
+- [x] Add a `CompletionAccumulator` that accepts candidates, de-duplicates by
   lookup identity and edit range, and applies relevance metadata without
   client-specific fuzzy filtering.
+  Completion aggregation now uses a focused accumulator that accepts service
+  candidates, de-duplicates by lookup identity plus replacement range, and
+  applies deterministic service-owned relevance ordering while leaving fuzzy
+  filtering to the editor/projection layer.
 - [ ] Add a rich editor-neutral `CompletionItem` model with label, lookup,
   detail, documentation, kind, source range, text edit, snippet intent,
   filter text, label details, relevance, deprecation, symbol identity, and

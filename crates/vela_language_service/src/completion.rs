@@ -1,5 +1,3 @@
-use std::collections::BTreeMap;
-
 use vela_analysis::completion::{
     CompletionItem as AnalysisCompletionItem, declaration_completions, global_completions,
     member_completions, module_completions,
@@ -18,6 +16,7 @@ use vela_syntax::ast::{
 use crate::{CursorContextKind, QueryContext};
 use crate::{DocumentId, LanguageServiceDatabases, Position, TextRange};
 
+mod accumulator;
 mod item;
 mod lambda_parameter;
 mod map_key;
@@ -44,6 +43,8 @@ use statement::statement_keyword_completions;
 use type_hint::{
     type_hint_completion_context, type_hint_completion_items, type_hint_module_path_context,
 };
+
+use accumulator::CompletionAccumulator;
 
 impl LanguageServiceDatabases {
     #[must_use]
@@ -97,6 +98,7 @@ impl LanguageServiceDatabases {
         let mut items = self.local_completion_items(query, context);
         items.extend(dedupe_and_filter_items(
             global_completions(self.schema_db().facts()),
+            context.replace_range(),
             context.prefix(),
             |item| label_segment_matches(&item.label, context.prefix()),
         ));
@@ -105,15 +107,17 @@ impl LanguageServiceDatabases {
                 declaration_completions(graph, &facts),
                 current_module.as_str(),
             ),
+            context.replace_range(),
             context.prefix(),
             |item| label_segment_matches(&item.label, context.prefix()),
         ));
         items.extend(dedupe_and_filter_items(
             module_completions(graph),
+            context.replace_range(),
             context.prefix(),
             |item| label_segment_matches(&item.label, context.prefix()),
         ));
-        dedupe_and_filter_service_items(items, |item| {
+        dedupe_and_filter_service_items(items, context.replace_range(), context.prefix(), |item| {
             label_segment_matches(&item.label, context.prefix())
         })
     }
@@ -127,9 +131,12 @@ impl LanguageServiceDatabases {
     }
 
     fn item_completion_items(&self, context: &CompletionContext) -> Vec<CompletionItem> {
-        dedupe_and_filter_service_items(item_keyword_completions(context.prefix()), |item| {
-            label_segment_matches(item.label(), context.prefix())
-        })
+        dedupe_and_filter_service_items(
+            item_keyword_completions(context.prefix()),
+            context.replace_range(),
+            context.prefix(),
+            |item| label_segment_matches(item.label(), context.prefix()),
+        )
     }
 
     fn statement_completion_items(
@@ -139,7 +146,7 @@ impl LanguageServiceDatabases {
     ) -> Vec<CompletionItem> {
         let mut items = statement_keyword_completions(context.prefix());
         items.extend(self.global_completion_items(query, context));
-        dedupe_and_filter_service_items(items, |item| {
+        dedupe_and_filter_service_items(items, context.replace_range(), context.prefix(), |item| {
             label_segment_matches(item.label(), context.prefix())
         })
     }
@@ -165,7 +172,7 @@ impl LanguageServiceDatabases {
         let Some(bindings) = query.bindings() else {
             return Vec::new();
         };
-        let mut items = bindings
+        let items = bindings
             .locals()
             .filter(|local| local.span.end <= offset && local.name.starts_with(context.prefix()))
             .map(|local| {
@@ -187,13 +194,9 @@ impl LanguageServiceDatabases {
                 }
             })
             .collect::<Vec<_>>();
-        items.sort_by(|left, right| {
-            left.sort_text
-                .cmp(&right.sort_text)
-                .then_with(|| left.label.cmp(&right.label))
-                .then_with(|| left.kind.cmp(&right.kind))
-        });
-        items
+        let mut accumulator = CompletionAccumulator::new(context.replace_range(), context.prefix());
+        accumulator.add_many(items);
+        accumulator.into_items()
     }
 
     fn member_completion_items(
@@ -209,6 +212,7 @@ impl LanguageServiceDatabases {
         };
         dedupe_and_filter_items(
             member_completions(self.schema_db().facts(), &receiver_fact),
+            context.replace_range(),
             context.prefix(),
             |item| label_segment_matches(&item.label, context.prefix()),
         )
@@ -252,7 +256,7 @@ impl LanguageServiceDatabases {
             .iter()
             .map(String::as_str)
             .collect::<Vec<_>>();
-        dedupe_and_filter_service_items(items, |item| {
+        dedupe_and_filter_service_items(items, context.replace_range(), context.prefix(), |item| {
             !existing_fields.contains(&item.label())
                 && label_segment_matches(item.label(), context.prefix())
         })
@@ -273,7 +277,7 @@ impl LanguageServiceDatabases {
             &call.callee,
             &used_names,
         );
-        dedupe_and_filter_service_items(items, |item| {
+        dedupe_and_filter_service_items(items, context.replace_range(), context.prefix(), |item| {
             label_segment_matches(item.label(), context.prefix())
         })
     }
@@ -286,6 +290,7 @@ impl LanguageServiceDatabases {
             self.hir_db().graph(),
             self.schema_db().facts(),
             map_key,
+            context.replace_range(),
             context.prefix(),
         )
     }
@@ -304,6 +309,7 @@ impl LanguageServiceDatabases {
             graph,
             self.schema_db().facts(),
             &current_module,
+            context.replace_range(),
             context.prefix(),
         )
     }
@@ -328,6 +334,7 @@ impl LanguageServiceDatabases {
         type_hint_completion_items(
             self.hir_db().graph(),
             self.schema_db().facts(),
+            context.replace_range(),
             context.prefix(),
             context.module_base(),
         )
@@ -681,26 +688,25 @@ fn is_identifier_continue(ch: char) -> bool {
 
 fn dedupe_and_filter_items(
     items: Vec<AnalysisCompletionItem>,
+    replace_range: TextRange,
     prefix: &str,
     matches_context: impl Fn(&AnalysisCompletionItem) -> bool,
 ) -> Vec<CompletionItem> {
-    let mut deduped = BTreeMap::new();
+    let mut accumulator = CompletionAccumulator::new(replace_range, prefix);
     for item in items.into_iter().filter(matches_context) {
         let kind = item.kind.into();
         let insert_text = callable_insert_text(kind, &item.label);
         let insert_format = completion_insert_format(insert_text.as_ref());
-        deduped
-            .entry((item.label.clone(), kind))
-            .or_insert_with(|| CompletionItem {
-                sort_text: Some(completion_sort_text(kind, &item.label, prefix)),
-                label: item.label,
-                kind,
-                detail: item.fact.display_name(),
-                insert_text,
-                insert_format,
-            });
+        accumulator.add(CompletionItem {
+            sort_text: Some(completion_sort_text(kind, &item.label, prefix)),
+            label: item.label,
+            kind,
+            detail: item.fact.display_name(),
+            insert_text,
+            insert_format,
+        });
     }
-    sorted_completion_items(deduped.into_values().collect())
+    accumulator.into_items()
 }
 
 fn callable_insert_text(kind: CompletionKind, label: &str) -> Option<String> {
@@ -741,25 +747,13 @@ fn relative_current_module_items(
 
 fn dedupe_and_filter_service_items(
     items: Vec<CompletionItem>,
+    replace_range: TextRange,
+    prefix: &str,
     matches_context: impl Fn(&CompletionItem) -> bool,
 ) -> Vec<CompletionItem> {
-    let mut deduped = BTreeMap::new();
-    for item in items.into_iter().filter(matches_context) {
-        deduped
-            .entry((item.label.clone(), item.kind))
-            .or_insert(item);
-    }
-    sorted_completion_items(deduped.into_values().collect())
-}
-
-fn sorted_completion_items(mut items: Vec<CompletionItem>) -> Vec<CompletionItem> {
-    items.sort_by(|left, right| {
-        left.sort_text
-            .cmp(&right.sort_text)
-            .then_with(|| left.label.cmp(&right.label))
-            .then_with(|| left.kind.cmp(&right.kind))
-    });
-    items
+    let mut accumulator = CompletionAccumulator::new(replace_range, prefix);
+    accumulator.add_many_matching(items, matches_context);
+    accumulator.into_items()
 }
 
 fn completion_sort_text(kind: CompletionKind, label: &str, prefix: &str) -> String {

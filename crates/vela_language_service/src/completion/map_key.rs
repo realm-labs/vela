@@ -5,9 +5,12 @@ use vela_syntax::ast::{
     Block, ElseBranch, Expr, ExprKind, FunctionItem, ItemKind, SourceFile, Stmt, StmtKind,
 };
 
-use crate::completion::{
-    CompletionInsertFormat, CompletionItem, CompletionKind, dedupe_and_filter_service_items,
-    label_segment_matches,
+use crate::{
+    TextRange,
+    completion::{
+        CompletionInsertFormat, CompletionItem, CompletionKind, dedupe_and_filter_service_items,
+        label_segment_matches,
+    },
 };
 
 #[derive(Debug, Clone, Eq, PartialEq)]
@@ -33,6 +36,7 @@ pub(super) fn map_key_completion_items(
     graph: &ModuleGraph,
     schema: &vela_analysis::registry::RegistryFacts,
     map_key: &MapKeyContext,
+    replace_range: TextRange,
     prefix: &str,
 ) -> Vec<CompletionItem> {
     let Some(key_hint) = map_key.key_hint.as_ref() else {
@@ -45,7 +49,7 @@ pub(super) fn map_key_completion_items(
         .iter()
         .filter_map(|key| key.last().map(String::as_str))
         .collect::<Vec<_>>();
-    dedupe_and_filter_service_items(items, |item| {
+    dedupe_and_filter_service_items(items, replace_range, prefix, |item| {
         !used_keys.contains(&item.label()) && label_segment_matches(item.label(), prefix)
     })
 }
