@@ -61,6 +61,44 @@ fn expression_completion_uses_schema_facts() {
 }
 
 #[test]
+fn expression_completion_carries_schema_function_metadata() {
+    let document = DocumentId::from("/workspace/scripts/game/main.vela");
+    let text = "pub fn main() { spa }";
+    let files = vec![SourceFileSnapshot::new(document.clone(), text)];
+    let config = WorkspaceConfig::workspace([WorkspaceRoot::from("/workspace/scripts")]);
+    let project = assemble_project_sources(&config, &files, &Workspace::new().snapshot());
+    let mut databases = LanguageServiceDatabases::new();
+    let mut schema = RegistryFacts::default();
+    schema.insert_function(
+        "spawn_player",
+        TypeFact::function(vec![TypeFact::STRING], TypeFact::host("Player")),
+    );
+    schema.insert_function_docs("spawn_player", "Spawn a player host object.");
+    databases.set_schema_facts(schema);
+    databases.update(&project);
+
+    let completions = databases.completion_items(
+        &document,
+        Position::new(0, text.find("spa").expect("function prefix") + "spa".len()),
+    );
+
+    assert_eq!(
+        completions.context().kind(),
+        CompletionContextKind::Expression
+    );
+    let function = completion(&completions, "spawn_player");
+    assert_eq!(function.kind(), CompletionKind::Function);
+    assert_eq!(
+        function.documentation(),
+        Some("Spawn a player host object.")
+    );
+    assert_eq!(
+        function.symbol(),
+        Some(&CompletionSymbol::Schema("spawn_player".to_owned()))
+    );
+}
+
+#[test]
 fn item_boundary_completion_ranks_fn_snippet_before_callables() {
     let document = DocumentId::from("/workspace/scripts/game/main.vela");
     let text = "f";

@@ -25,10 +25,12 @@ mod named_argument;
 mod pattern;
 mod record_field;
 mod relevance;
-mod schema_global;
+mod schema_function;
+mod schema_type;
 mod source_declaration;
 mod source_module;
 mod statement;
+mod stdlib_function;
 mod type_hint;
 
 pub use model::{

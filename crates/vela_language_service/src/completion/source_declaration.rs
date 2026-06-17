@@ -1,5 +1,8 @@
 use vela_analysis::{
-    completion::{CompletionItem as AnalysisCompletionItem, declaration_completions},
+    completion::{
+        CompletionItem as AnalysisCompletionItem, CompletionKind as AnalysisCompletionKind,
+        declaration_completions,
+    },
     facts::AnalysisFacts,
 };
 use vela_hir::module_graph::ModuleGraph;
@@ -10,11 +13,48 @@ use super::{
     CompletionItem, analysis_item::dedupe_and_filter_analysis_items, label_segment_matches,
 };
 
-pub(super) fn source_declaration_completion_items(
+pub(super) fn source_const_completion_items(
     graph: &ModuleGraph,
     query: &QueryContext<'_>,
     replace_range: TextRange,
     prefix: &str,
+) -> Vec<CompletionItem> {
+    source_declaration_completion_items(graph, query, replace_range, prefix, |kind| {
+        matches!(kind, AnalysisCompletionKind::Const)
+    })
+}
+
+pub(super) fn source_function_completion_items(
+    graph: &ModuleGraph,
+    query: &QueryContext<'_>,
+    replace_range: TextRange,
+    prefix: &str,
+) -> Vec<CompletionItem> {
+    source_declaration_completion_items(graph, query, replace_range, prefix, |kind| {
+        matches!(kind, AnalysisCompletionKind::Function)
+    })
+}
+
+pub(super) fn source_type_completion_items(
+    graph: &ModuleGraph,
+    query: &QueryContext<'_>,
+    replace_range: TextRange,
+    prefix: &str,
+) -> Vec<CompletionItem> {
+    source_declaration_completion_items(graph, query, replace_range, prefix, |kind| {
+        matches!(
+            kind,
+            AnalysisCompletionKind::Type | AnalysisCompletionKind::Trait
+        )
+    })
+}
+
+fn source_declaration_completion_items(
+    graph: &ModuleGraph,
+    query: &QueryContext<'_>,
+    replace_range: TextRange,
+    prefix: &str,
+    accepts_kind: impl Fn(AnalysisCompletionKind) -> bool,
 ) -> Vec<CompletionItem> {
     let current_module = query
         .module_path()
@@ -26,7 +66,7 @@ pub(super) fn source_declaration_completion_items(
         replace_range,
         prefix,
         None,
-        |item| label_segment_matches(&item.label, prefix),
+        |item| accepts_kind(item.kind) && label_segment_matches(&item.label, prefix),
     )
 }
 
