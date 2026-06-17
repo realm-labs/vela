@@ -617,6 +617,19 @@ pub(crate) fn schema_method_target_for_member(
     })
 }
 
+pub(crate) fn schema_method_target_for_receiver_fact(
+    schema: &RegistryFacts,
+    receiver: &TypeFact,
+    method: &str,
+) -> Option<SchemaMethodReferenceTarget> {
+    let (owner, kind) = schema_method_owner(schema, receiver, method)?;
+    Some(SchemaMethodReferenceTarget {
+        owner,
+        method: method.to_owned(),
+        kind,
+    })
+}
+
 fn schema_field_target_for_member(
     schema: &RegistryFacts,
     facts: &AnalysisFacts,

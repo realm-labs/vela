@@ -348,7 +348,10 @@ Purpose: classify the cursor once and reuse it across features.
   source-slice scanner while leaving the broader feature-local cursor scanner
   audit open. Semantic token member-use classification now consumes a parsed
   field-expression receiver range map instead of recovering member receivers
-  with a backwards text scanner for each identifier token.
+  with a backwards text scanner for each identifier token. Call hierarchy
+  preparation now resolves method-call targets from `QueryContext` member
+  receiver ranges and shared receiver type facts instead of recovering the
+  selected call receiver locally.
   `CursorContext` now exposes the identifier token range under the request
   cursor, and rename target selection consumes that shared range instead of
   running its own first-step token scanner. Lambda-parameter contexts now

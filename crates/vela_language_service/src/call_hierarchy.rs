@@ -114,7 +114,6 @@ impl LanguageServiceDatabases {
             return Vec::new();
         };
         let graph = self.hir_db().graph();
-        let facts = AnalysisFacts::from_module_graph(graph);
 
         if let Some(target) = self.schema_method_declaration_target(source_id, &token)
             && let Some(item) = self.call_hierarchy_item_for_target(&target)
@@ -160,15 +159,21 @@ impl LanguageServiceDatabases {
             let Some(method_name) = token_text(source.text(), token.range) else {
                 continue;
             };
-            if let Some(target) = method_target_for_member(
-                graph,
-                &facts,
-                self.schema_db().facts(),
-                source,
-                scope.bindings,
-                method_name,
-                token.range,
-            ) && let Some(item) = self.call_hierarchy_item_for_target(&target)
+            let target = query
+                .member_receiver_range()
+                .or_else(|| query.call_member_receiver_range())
+                .filter(|_| is_call_callee(source.text(), token.range))
+                .and_then(|receiver| query.type_fact_for_range(self, receiver))
+                .and_then(|receiver| {
+                    method_target_for_receiver_fact(
+                        graph,
+                        self.schema_db().facts(),
+                        &receiver,
+                        method_name,
+                    )
+                });
+            if let Some(target) = target
+                && let Some(item) = self.call_hierarchy_item_for_target(&target)
             {
                 return vec![item];
             }
@@ -829,6 +834,23 @@ fn method_target_for_member(
         )
         .map(CallHierarchyTarget::SchemaMethod)
     })
+}
+
+fn method_target_for_receiver_fact(
+    graph: &ModuleGraph,
+    schema: &RegistryFacts,
+    receiver: &TypeFact,
+    method: &str,
+) -> Option<CallHierarchyTarget> {
+    script_method_owner(graph, receiver, method)
+        .map(CallHierarchyTarget::Method)
+        .or_else(|| {
+            trait_method_owner(graph, receiver, method).map(CallHierarchyTarget::TraitMethod)
+        })
+        .or_else(|| {
+            reference_schema::schema_method_target_for_receiver_fact(schema, receiver, method)
+                .map(CallHierarchyTarget::SchemaMethod)
+        })
 }
 
 fn script_method_target_for_member(
