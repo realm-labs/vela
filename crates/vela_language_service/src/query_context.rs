@@ -5,7 +5,7 @@ use crate::{
     SourceVersion, TextRange, WorkspaceGeneration, WorkspaceSnapshot, cursor_context_at,
 };
 use vela_common::SourceId;
-use vela_hir::binding::BindingMap;
+use vela_hir::binding::{BindingMap, LocalBinding};
 use vela_hir::module_graph::ModulePath;
 
 #[derive(Debug, Clone)]
@@ -142,6 +142,15 @@ impl<'a> QueryContext<'a> {
         self.bindings
     }
 
+    pub fn local_bindings_before_cursor(&self) -> impl Iterator<Item = &LocalBinding> + '_ {
+        let offset = u32::try_from(self.cursor.replace_range().end).ok();
+        self.bindings.into_iter().flat_map(move |bindings| {
+            bindings
+                .locals()
+                .filter(move |local| offset.is_some_and(|offset| local.span.end <= offset))
+        })
+    }
+
     #[must_use]
     pub const fn cursor(&self) -> &CursorContext {
         &self.cursor
@@ -237,7 +246,8 @@ mod tests {
     #[test]
     fn query_context_from_databases_carries_parsed_source_and_module_facts() {
         let document = DocumentId::from("/workspace/scripts/game/main.vela");
-        let source = "struct Player { level: i64 }\nfn main() { let player = Player { le } }";
+        let source =
+            "struct Player { level: i64 }\nfn main() { let player = Player { le }; let after = 1 }";
         let config = WorkspaceConfig::workspace([WorkspaceRoot::from("/workspace/scripts")]);
         let workspace = Workspace::new();
         let files = vec![SourceFileSnapshot::new(document.clone(), source)];
@@ -266,6 +276,20 @@ mod tests {
                 .locals()
                 .any(|local| local.name == "player")
         );
+        let visible_locals = context
+            .local_bindings_before_cursor()
+            .map(|local| local.name.as_str())
+            .collect::<Vec<_>>();
+        assert!(visible_locals.is_empty());
+        let local_position =
+            LineIndex::new(source).position(source.find("let after").expect("second statement"));
+        let local_context = QueryContext::from_databases(&databases, &document, local_position)
+            .expect("local query");
+        let visible_locals = local_context
+            .local_bindings_before_cursor()
+            .map(|local| local.name.as_str())
+            .collect::<Vec<_>>();
+        assert_eq!(visible_locals, vec!["player"]);
         assert_eq!(
             context.module_path().expect("module path").segments(),
             &["game".to_owned(), "main".to_owned()]

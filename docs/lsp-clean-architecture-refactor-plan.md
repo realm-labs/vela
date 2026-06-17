@@ -296,8 +296,9 @@ Purpose: classify the cursor once and reuse it across features.
   facts; completion member context now consumes the shared receiver range,
   named-argument completion now carries the shared call callee range, and
   lambda-parameter completion now consumes the shared receiver and method
-  ranges. Top-level function local binding facts are request-local; broader
-  callable semantic facts remain feature-owned follow-up work.
+  ranges. Top-level function local binding facts are request-local, and
+  `QueryContext` now exposes locals visible before the cursor for completion;
+  broader callable semantic facts remain feature-owned follow-up work.
 - [x] Keep classification tolerant of incomplete source and parser recovery.
 - [x] Route completion, hover, signature help, definition, and rename prepare
   through the shared context where practical.

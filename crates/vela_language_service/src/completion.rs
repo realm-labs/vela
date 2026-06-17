@@ -172,17 +172,11 @@ impl LanguageServiceDatabases {
         query: &QueryContext<'_>,
         context: &CompletionContext,
     ) -> Vec<CompletionItem> {
-        let Some(offset) = u32::try_from(context.replace_range().end).ok() else {
-            return Vec::new();
-        };
         let graph = self.hir_db().graph();
         let facts = AnalysisFacts::from_module_graph(graph);
-        let Some(bindings) = query.bindings() else {
-            return Vec::new();
-        };
-        let items = bindings
-            .locals()
-            .filter(|local| local.span.end <= offset && local.name.starts_with(context.prefix()))
+        let items = query
+            .local_bindings_before_cursor()
+            .filter(|local| local.name.starts_with(context.prefix()))
             .map(|local| {
                 let kind = match local.kind {
                     LocalBindingKind::Parameter => CompletionKind::Parameter,
