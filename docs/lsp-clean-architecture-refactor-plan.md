@@ -302,8 +302,9 @@ Purpose: classify the cursor once and reuse it across features.
   module path qualifiers now carry type-vs-expression role in `CursorContext`
   instead of completion re-scanning source text. Type-hint completion now
   consumes `CursorContextKind::Type` rather than running its own type-context
-  scanner. Broader callable semantic facts remain feature-owned follow-up
-  work.
+  scanner. Call-argument contexts now expose the active call opening offset,
+  so named-argument completion no longer re-scans call nesting. Broader
+  callable semantic facts remain feature-owned follow-up work.
 - [x] Keep classification tolerant of incomplete source and parser recovery.
 - [x] Route completion, hover, signature help, definition, and rename prepare
   through the shared context where practical.

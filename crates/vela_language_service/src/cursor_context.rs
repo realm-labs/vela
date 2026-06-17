@@ -40,6 +40,7 @@ pub struct CursorContext {
     module_base: Option<String>,
     module_path_role: ModulePathRole,
     member_receiver: Option<TextRange>,
+    call_open: Option<usize>,
     call_callee: Option<TextRange>,
     lambda_method: Option<TextRange>,
 }
@@ -73,6 +74,11 @@ impl CursorContext {
     #[must_use]
     pub const fn member_receiver(&self) -> Option<TextRange> {
         self.member_receiver
+    }
+
+    #[must_use]
+    pub const fn call_open(&self) -> Option<usize> {
+        self.call_open
     }
 
     #[must_use]
@@ -161,12 +167,15 @@ pub fn cursor_context_at(
 
     if let Some(callee) = parsed.and_then(|source| call_callee_for_source(source, prefix_start)) {
         let mut cursor = context(CursorContextKind::CallArgument, prefix_start, prefix);
+        cursor.call_open = active_call_open(text, offset);
         cursor.call_callee = Some(callee);
         return cursor;
     }
 
-    if is_call_argument_context(text, offset) {
-        return context(CursorContextKind::CallArgument, prefix_start, prefix);
+    if let Some(open) = active_call_open(text, offset) {
+        let mut cursor = context(CursorContextKind::CallArgument, prefix_start, prefix);
+        cursor.call_open = Some(open);
+        return cursor;
     }
 
     if prefix.is_empty() && is_statement_context(parsed, prefix_start) {
@@ -188,6 +197,7 @@ fn context(kind: CursorContextKind, prefix_start: usize, prefix: String) -> Curs
         module_base: None,
         module_path_role: ModulePathRole::Expression,
         member_receiver: None,
+        call_open: None,
         call_callee: None,
         lambda_method: None,
     }
@@ -255,10 +265,6 @@ fn is_item_boundary_context(text: &str, prefix_start: usize, parsed: Option<&Sou
             .trim_start()
             .trim_end()
             == "pub"
-}
-
-fn is_call_argument_context(text: &str, offset: usize) -> bool {
-    active_call_open(text, offset).is_some()
 }
 
 fn is_lambda_parameter_context(text: &str, offset: usize) -> bool {

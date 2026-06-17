@@ -162,6 +162,11 @@ impl<'a> QueryContext<'a> {
     }
 
     #[must_use]
+    pub const fn call_open_offset(&self) -> Option<usize> {
+        self.cursor.call_open()
+    }
+
+    #[must_use]
     pub fn member_receiver_text(&self) -> Option<&str> {
         text_range(self.text(), self.member_receiver_range()?)
     }
@@ -341,6 +346,10 @@ mod tests {
             ))
         );
         assert_eq!(call_context.call_callee_text(), Some("grant"));
+        assert_eq!(
+            call_context.call_open_offset(),
+            source.find("grant(").map(|index| index + "grant".len())
+        );
 
         let lambda_offset = source.find("|)").expect("lambda pipe") + "|".len();
         let lambda_context = QueryContext::from_databases(

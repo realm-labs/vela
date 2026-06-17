@@ -2,7 +2,7 @@ use vela_analysis::facts::AnalysisFacts;
 use vela_analysis::type_fact::TypeFact;
 use vela_hir::module_graph::{DeclarationKind, ModuleGraph};
 
-use crate::{LineIndex, Position, TextRange};
+use crate::TextRange;
 
 use super::{
     CallArgumentContext, CompletionInsertFormat, CompletionItem, CompletionKind,
@@ -11,11 +11,11 @@ use super::{
 
 pub(super) fn named_argument_completion_context(
     text: &str,
-    position: Position,
+    offset: usize,
+    call_open: Option<usize>,
     shared_callee: Option<(TextRange, &str)>,
 ) -> Option<CallArgumentContext> {
-    let offset = LineIndex::new(text).offset(position);
-    let open = active_call_open(text, offset)?;
+    let open = call_open?;
     let fallback_callee = || callee_before_open(text, open);
     let (callee, callee_range) = shared_callee
         .filter(|(range, _)| range.end <= open)
@@ -93,20 +93,6 @@ pub(super) fn script_function_parameter_completions(
         })
         .flatten()
         .collect()
-}
-
-fn active_call_open(text: &str, offset: usize) -> Option<usize> {
-    let mut stack = Vec::new();
-    for (index, ch) in text[..offset].char_indices() {
-        match ch {
-            '(' => stack.push(index),
-            ')' => {
-                stack.pop();
-            }
-            _ => {}
-        }
-    }
-    stack.pop()
 }
 
 fn callee_before_open(text: &str, open: usize) -> Option<(String, Option<TextRange>)> {

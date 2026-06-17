@@ -56,7 +56,8 @@ impl LanguageServiceDatabases {
         if matches!(context.kind, CompletionContextKind::Global)
             && let Some(named_context) = named_argument_completion_context(
                 query.text(),
-                query.position(),
+                query.cursor().replace_range().end,
+                query.call_open_offset(),
                 query_call_callee(&query),
             )
         {
@@ -494,8 +495,12 @@ fn completion_context(query: &QueryContext<'_>) -> CompletionContext {
     }
 
     if cursor.kind() == CursorContextKind::CallArgument
-        && let Some(call_arguments) =
-            named_argument_completion_context(text, query.position(), query_call_callee(query))
+        && let Some(call_arguments) = named_argument_completion_context(
+            text,
+            query.cursor().replace_range().end,
+            query.call_open_offset(),
+            query_call_callee(query),
+        )
     {
         return CompletionContext {
             kind: CompletionContextKind::NamedArgument,
