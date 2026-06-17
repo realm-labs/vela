@@ -346,7 +346,9 @@ Purpose: classify the cursor once and reuse it across features.
   Parameter inlay hints now consume AST-owned member receiver spans and shared
   callable facts directly, deleting the feature-local member callee
   source-slice scanner while leaving the broader feature-local cursor scanner
-  audit open.
+  audit open. Semantic token member-use classification now consumes a parsed
+  field-expression receiver range map instead of recovering member receivers
+  with a backwards text scanner for each identifier token.
   `CursorContext` now exposes the identifier token range under the request
   cursor, and rename target selection consumes that shared range instead of
   running its own first-step token scanner. Lambda-parameter contexts now

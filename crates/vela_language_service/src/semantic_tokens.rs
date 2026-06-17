@@ -16,6 +16,7 @@ use vela_syntax::token::{Keyword, Symbol, Token, TokenKind};
 use crate::{DocumentId, LanguageServiceDatabases, LineIndex, Position, TextRange};
 
 mod import_paths;
+mod member_receivers;
 mod type_hints;
 
 #[derive(Debug, Clone, Eq, PartialEq)]
@@ -275,8 +276,17 @@ impl LanguageServiceDatabases {
         };
         let line_index = LineIndex::new(source.text());
         let lexed = lex(source.source_id(), source.text());
-        let classifications =
-            self.semantic_token_classifications(source.source_id(), source.text(), &lexed.tokens);
+        let member_receivers = self
+            .parse_db()
+            .parsed_source(document_id)
+            .map(member_receivers::member_receiver_ranges)
+            .unwrap_or_default();
+        let classifications = self.semantic_token_classifications(
+            source.source_id(),
+            source.text(),
+            &lexed.tokens,
+            &member_receivers,
+        );
         let mut semantic_tokens = Vec::new();
 
         for range in comment_ranges(source.text(), &lexed.tokens) {
@@ -349,6 +359,7 @@ impl LanguageServiceDatabases {
         source_id: SourceId,
         text: &str,
         tokens: &[Token],
+        member_receivers: &BTreeMap<(usize, usize), TextRange>,
     ) -> BTreeMap<(usize, usize), SemanticTokenClassification> {
         let mut classifications = BTreeMap::new();
         let graph = self.hir_db().graph();
@@ -360,9 +371,14 @@ impl LanguageServiceDatabases {
             let Some(range) = token_range(token.span) else {
                 continue;
             };
-            if let Some(classification) =
-                self.semantic_classification_for_identifier(source_id, text, name, range, &facts)
-            {
+            if let Some(classification) = self.semantic_classification_for_identifier(
+                source_id,
+                text,
+                name,
+                range,
+                &facts,
+                member_receivers,
+            ) {
                 classifications.insert((range.start, range.end), classification);
             }
         }
@@ -376,6 +392,7 @@ impl LanguageServiceDatabases {
         name: &str,
         range: TextRange,
         facts: &AnalysisFacts,
+        member_receivers: &BTreeMap<(usize, usize), TextRange>,
     ) -> Option<SemanticTokenClassification> {
         let span = span_for_range(source_id, range)?;
         let graph = self.hir_db().graph();
@@ -400,8 +417,16 @@ impl LanguageServiceDatabases {
                 return Some(classification);
             }
             if let Some(bindings) = graph.bindings(declaration.id) {
+                let member_context = MemberUseContext {
+                    graph,
+                    bindings,
+                    facts,
+                    schema,
+                    text,
+                    member_receivers,
+                };
                 if let Some(classification) =
-                    member_use_classification(graph, bindings, facts, schema, text, name, range)
+                    member_use_classification(&member_context, name, range)
                 {
                     return Some(classification);
                 }
@@ -465,31 +490,35 @@ fn semantic_token_count_from_result_id(result_id: &str) -> usize {
 }
 
 fn member_use_classification(
-    graph: &ModuleGraph,
-    bindings: &BindingMap,
-    facts: &AnalysisFacts,
-    schema: &RegistryFacts,
-    text: &str,
+    context: &MemberUseContext<'_>,
     name: &str,
     range: TextRange,
 ) -> Option<SemanticTokenClassification> {
-    let receiver_range = member_receiver_range(text, range.start)?;
+    let receiver_range = *context.member_receivers.get(&(range.start, range.end))?;
     let receiver_span = span_for_range(
-        graph.declaration(bindings.declaration)?.span.source,
+        context
+            .graph
+            .declaration(context.bindings.declaration)?
+            .span
+            .source,
         receiver_range,
     )?;
-    let receiver = bindings
+    let receiver = context
+        .bindings
         .resolution_at_span(receiver_span)
-        .and_then(|resolution| type_fact_for_resolution(resolution, bindings, facts, schema))?;
-    let is_call = next_non_whitespace(text, range.end) == Some('(');
+        .and_then(|resolution| {
+            type_fact_for_resolution(resolution, context.bindings, context.facts, context.schema)
+        })?;
+    let is_call = next_non_whitespace(context.text, range.end) == Some('(');
 
     if is_call
-        && let Some(classification) = method_use_classification(graph, schema, &receiver, name)
+        && let Some(classification) =
+            method_use_classification(context.graph, context.schema, &receiver, name)
     {
         return Some(classification);
     }
 
-    field_use_classification(graph, schema, &receiver, name).or_else(|| {
+    field_use_classification(context.graph, context.schema, &receiver, name).or_else(|| {
         is_call
             .then(|| stdlib_method_fact(&receiver, name, None))
             .flatten()
@@ -500,6 +529,15 @@ fn member_use_classification(
                 )
             })
     })
+}
+
+struct MemberUseContext<'a> {
+    graph: &'a ModuleGraph,
+    bindings: &'a BindingMap,
+    facts: &'a AnalysisFacts,
+    schema: &'a RegistryFacts,
+    text: &'a str,
+    member_receivers: &'a BTreeMap<(usize, usize), TextRange>,
 }
 
 fn method_use_classification(
@@ -724,18 +762,6 @@ fn qualified_declaration_name(graph: &ModuleGraph, declaration: &Declaration) ->
                 .join("::")
         })
         .unwrap_or_else(|| declaration.name.clone())
-}
-
-fn member_receiver_range(text: &str, member_start: usize) -> Option<TextRange> {
-    let before_member = text.get(..member_start)?.trim_end();
-    let before_dot = before_member.strip_suffix('.')?.trim_end();
-    let end = before_dot.len();
-    let start = before_dot
-        .char_indices()
-        .rev()
-        .find_map(|(index, ch)| (!is_identifier_continue(ch)).then_some(index + ch.len_utf8()))
-        .unwrap_or(0);
-    (start < end).then(|| TextRange::new(start, end))
 }
 
 fn next_non_whitespace(text: &str, offset: usize) -> Option<char> {
