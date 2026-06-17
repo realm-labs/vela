@@ -365,7 +365,9 @@ Purpose: classify the cursor once and reuse it across features.
   feature-local receiver scanning. Prepare-rename and rename now resolve the
   selected source/schema member target from the same query-owned receiver ranges
   and type facts, preserving explicit
-  `self.method()` handling without local receiver scanning.
+  `self.method()` handling without local receiver scanning; source method
+  rename edit collection now also consumes shared AST member-call sites with
+  explicit `self.method()` owner recovery.
   `CursorContext` now exposes the identifier token range under the request
   cursor, and rename target selection consumes that shared range instead of
   running its own first-step token scanner. Lambda-parameter contexts now

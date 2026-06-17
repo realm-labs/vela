@@ -1,15 +1,12 @@
 use std::collections::BTreeMap;
 
-use vela_analysis::{facts::AnalysisFacts, type_fact::TypeFact};
-use vela_common::{SourceId, Span};
-use vela_hir::binding::{BindingMap, BindingResolution};
+use vela_analysis::type_fact::TypeFact;
+use vela_common::SourceId;
 use vela_hir::ids::HirDeclId;
 use vela_hir::module_graph::{DeclarationKind, ModuleGraph};
 use vela_hir::type_hint::ImplMetadataKind;
-use vela_syntax::lexer::lex;
-use vela_syntax::token::TokenKind;
 
-use crate::{DocumentId, LanguageServiceDatabases, TextRange};
+use crate::{DocumentId, LanguageServiceDatabases, TextRange, member_access, query_context};
 
 use super::{
     RenameToken, TextEdit, WorkspaceEdit, diagnostic_range, document_text_edit_for_rename,
@@ -147,42 +144,25 @@ fn push_script_method_use_edits(
     edits_by_document: &mut BTreeMap<DocumentId, Vec<TextEdit>>,
 ) {
     let graph = databases.hir_db().graph();
-    let facts = AnalysisFacts::from_module_graph(graph);
     for source in databases.source_db().records().values() {
-        let source_id = source.source_id();
         let text = source.text();
-        let lookup = MethodLookup {
-            graph,
-            facts: &facts,
-            text,
-            source_id,
+        let Some(parsed) = databases.parse_db().parsed_source(source.document_id()) else {
+            continue;
         };
-        for range in member_method_ranges(source_id, text, &target.method) {
-            let Some(start) = u32::try_from(range.start).ok() else {
+        for site in member_access::member_call_sites(parsed) {
+            if site.member != target.method {
                 continue;
-            };
-            for declaration in graph.declarations() {
-                if declaration.span.source != source_id || !declaration.span.contains(start) {
-                    continue;
-                }
-                if script_method_target_for_member(
-                    lookup,
-                    declaration.id,
-                    graph.bindings(declaration.id),
-                    &target.method,
-                    range,
-                )
+            }
+            if script_method_target_for_call_site(databases, graph, source, &site, &target.method)
                 .is_some_and(|found| found.owner == target.owner && found.method == target.method)
-                {
-                    edits_by_document
-                        .entry(source.document_id().clone())
-                        .or_default()
-                        .push(TextEdit {
-                            range: diagnostic_range(text, range),
-                            new_text: new_name.to_owned(),
-                        });
-                    break;
-                }
+            {
+                edits_by_document
+                    .entry(source.document_id().clone())
+                    .or_default()
+                    .push(TextEdit {
+                        range: diagnostic_range(text, site.member_range),
+                        new_text: new_name.to_owned(),
+                    });
             }
         }
     }
@@ -194,37 +174,33 @@ struct ScriptMethodTarget {
     method: String,
 }
 
-#[derive(Clone, Copy)]
-struct MethodLookup<'a> {
-    graph: &'a ModuleGraph,
-    facts: &'a AnalysisFacts,
-    text: &'a str,
-    source_id: SourceId,
-}
-
-fn script_method_target_for_member(
-    lookup: MethodLookup<'_>,
-    scope_owner: HirDeclId,
-    bindings: Option<&BindingMap>,
+fn script_method_target_for_call_site(
+    databases: &LanguageServiceDatabases,
+    graph: &ModuleGraph,
+    source: &crate::SourceRecord,
+    site: &member_access::MemberCallSite,
     method: &str,
-    member_range: TextRange,
 ) -> Option<ScriptMethodTarget> {
-    let receiver = member_receiver_range(lookup.text, member_range.start)?;
-    if token_text(lookup.text, receiver) == Some("self")
-        && script_method_exists_in_inherent_impl(lookup.graph, scope_owner, method)
-    {
-        return Some(ScriptMethodTarget {
-            owner: scope_owner,
-            method: method.to_owned(),
-        });
+    if token_text(source.text(), site.receiver_range) == Some("self") {
+        let start = u32::try_from(site.member_range.start).ok()?;
+        for declaration in graph.declarations() {
+            if declaration.span.source != source.source_id() || !declaration.span.contains(start) {
+                continue;
+            }
+            if script_method_exists_in_inherent_impl(graph, declaration.id, method) {
+                return Some(ScriptMethodTarget {
+                    owner: declaration.id,
+                    method: method.to_owned(),
+                });
+            }
+        }
     }
-    let bindings = bindings?;
-    let start = u32::try_from(receiver.start).ok()?;
-    let end = u32::try_from(receiver.end).ok()?;
-    let span = Span::new(lookup.source_id, start, end);
-    let resolution = bindings.resolution_at_span(span)?;
-    let receiver = type_fact_for_resolution(resolution, lookup.facts)?;
-    let owner = script_method_owner(lookup.graph, &receiver, method)?;
+    let receiver = query_context::type_fact_for_source_range(
+        databases,
+        source.source_id(),
+        site.receiver_range,
+    )?;
+    let owner = script_method_owner(graph, &receiver, method)?;
     Some(ScriptMethodTarget {
         owner,
         method: method.to_owned(),
@@ -282,30 +258,6 @@ fn script_method_name_conflicts(
     })
 }
 
-fn member_method_ranges(source_id: SourceId, text: &str, method: &str) -> Vec<TextRange> {
-    lex(source_id, text)
-        .tokens
-        .into_iter()
-        .filter_map(|token| match token.kind {
-            TokenKind::Ident(name) if name == method => {
-                let range = span_text_range(token.span)?;
-                (is_call_callee(text, range) && member_receiver_range(text, range.start).is_some())
-                    .then_some(range)
-            }
-            TokenKind::Ident(_)
-            | TokenKind::Int(_)
-            | TokenKind::Float(_)
-            | TokenKind::Char(_)
-            | TokenKind::String(_)
-            | TokenKind::InterpolatedString(_)
-            | TokenKind::Bytes(_)
-            | TokenKind::Keyword(_)
-            | TokenKind::Symbol(_)
-            | TokenKind::Eof => None,
-        })
-        .collect()
-}
-
 fn method_name_range_in_text(text: &str, range: TextRange, name: &str) -> Option<TextRange> {
     let slice = text.get(range.start..range.end)?;
     slice.match_indices(name).find_map(|(offset, matched)| {
@@ -333,37 +285,6 @@ fn preceded_by_fn_keyword(text: &str, start: usize) -> bool {
         .get(..word_start)
         .and_then(|prefix| prefix.chars().next_back())
         .is_none_or(|ch| !is_identifier_continue(ch))
-}
-
-fn is_call_callee(text: &str, range: TextRange) -> bool {
-    text.get(range.end..)
-        .is_some_and(|suffix| suffix.trim_start().starts_with('('))
-}
-
-fn member_receiver_range(text: &str, member_start: usize) -> Option<TextRange> {
-    let before_member = text.get(..member_start)?.trim_end();
-    let before_dot = before_member.strip_suffix('.')?.trim_end();
-    let end = before_dot.len();
-    let start = before_dot
-        .char_indices()
-        .rev()
-        .find_map(|(index, ch)| (!is_identifier_continue(ch)).then_some(index + ch.len_utf8()))
-        .unwrap_or(0);
-    (start < end).then(|| TextRange::new(start, end))
-}
-
-fn type_fact_for_resolution(
-    resolution: &BindingResolution,
-    facts: &AnalysisFacts,
-) -> Option<TypeFact> {
-    match resolution {
-        BindingResolution::Local(local) => facts
-            .local(*local)
-            .cloned()
-            .filter(|fact| !matches!(fact, TypeFact::Unknown)),
-        BindingResolution::Declaration(declaration) => facts.declaration(*declaration).cloned(),
-        BindingResolution::Import(_) | BindingResolution::QualifiedPath(_) => None,
-    }
 }
 
 fn record_owner_names(receiver: &TypeFact) -> Vec<String> {
