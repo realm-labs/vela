@@ -2,7 +2,10 @@ use std::collections::BTreeMap;
 
 use crate::TextRange;
 
-use super::{CompletionItem, CompletionKind, CompletionRelevance, CompletionTextEdit};
+use super::{
+    CompletionItem, CompletionTextEdit,
+    relevance::{completion_item_order, completion_relevance},
+};
 
 #[derive(Debug)]
 pub(super) struct CompletionAccumulator {
@@ -88,48 +91,9 @@ impl CompletionAccumulator {
             .label_details
             .detail
             .get_or_insert_with(|| item.detail.clone());
-        item.metadata.relevance = CompletionRelevance {
-            kind_rank: completion_kind_rank(item.kind),
-            match_rank: completion_match_rank(&item.label, &self.prefix),
-        };
+        item.metadata.relevance = completion_relevance(item.kind, &item.label, &self.prefix);
         item
     }
-}
-
-fn completion_item_order(left: &CompletionItem, right: &CompletionItem) -> std::cmp::Ordering {
-    left.sort_text
-        .cmp(&right.sort_text)
-        .then_with(|| left.relevance().cmp(&right.relevance()))
-        .then_with(|| left.label.cmp(&right.label))
-        .then_with(|| left.kind.cmp(&right.kind))
-}
-
-fn completion_kind_rank(kind: CompletionKind) -> u16 {
-    match kind {
-        CompletionKind::Parameter => 0,
-        CompletionKind::Keyword => 0,
-        CompletionKind::Binding => 1,
-        CompletionKind::Const => 10,
-        CompletionKind::Module => 20,
-        CompletionKind::Type | CompletionKind::Trait => 30,
-        CompletionKind::Function | CompletionKind::Method => 40,
-        CompletionKind::Field => 50,
-        CompletionKind::Variant => 60,
-    }
-}
-
-fn completion_match_rank(label: &str, prefix: &str) -> u8 {
-    if prefix.is_empty() || label.starts_with(prefix) {
-        return 0;
-    }
-    if label
-        .rsplit("::")
-        .next()
-        .is_some_and(|segment| segment.starts_with(prefix))
-    {
-        return 1;
-    }
-    2
 }
 
 #[cfg(test)]

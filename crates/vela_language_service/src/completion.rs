@@ -24,14 +24,16 @@ mod module_path;
 mod named_argument;
 mod pattern;
 mod record_field;
+mod relevance;
 mod statement;
 mod type_hint;
 
 pub use model::{
     CompletionContext, CompletionContextKind, CompletionInsertFormat, CompletionItem,
     CompletionItemMetadata, CompletionKind, CompletionLabelDetails, CompletionList,
-    CompletionRelevance, CompletionResolvePayload, CompletionSymbol, CompletionTextEdit,
+    CompletionResolvePayload, CompletionSymbol, CompletionTextEdit,
 };
+pub use relevance::CompletionRelevance;
 
 use context::completion_context;
 use expression::{

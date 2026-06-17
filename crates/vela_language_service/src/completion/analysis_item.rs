@@ -5,7 +5,7 @@ use crate::TextRange;
 
 use super::{
     CompletionInsertFormat, CompletionItem, CompletionKind, CompletionSymbol,
-    accumulator::CompletionAccumulator,
+    accumulator::CompletionAccumulator, relevance::completion_sort_text,
 };
 
 pub(super) fn dedupe_and_filter_analysis_items(
@@ -74,41 +74,4 @@ pub(super) fn completion_insert_format(insert_text: Option<&String>) -> Completi
     } else {
         CompletionInsertFormat::PlainText
     }
-}
-
-pub(super) fn completion_sort_text(kind: CompletionKind, label: &str, prefix: &str) -> String {
-    format!(
-        "{:04}_{:02}_{}",
-        completion_kind_rank(kind),
-        completion_match_rank(label, prefix),
-        label
-    )
-}
-
-fn completion_kind_rank(kind: CompletionKind) -> u16 {
-    match kind {
-        CompletionKind::Parameter => 0,
-        CompletionKind::Keyword => 0,
-        CompletionKind::Binding => 1,
-        CompletionKind::Const => 10,
-        CompletionKind::Module => 20,
-        CompletionKind::Type | CompletionKind::Trait => 30,
-        CompletionKind::Function | CompletionKind::Method => 40,
-        CompletionKind::Field => 50,
-        CompletionKind::Variant => 60,
-    }
-}
-
-fn completion_match_rank(label: &str, prefix: &str) -> u8 {
-    if prefix.is_empty() || label.starts_with(prefix) {
-        return 0;
-    }
-    if label
-        .rsplit("::")
-        .next()
-        .is_some_and(|segment| segment.starts_with(prefix))
-    {
-        return 1;
-    }
-    2
 }

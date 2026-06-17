@@ -7,7 +7,7 @@ use crate::QueryContext;
 
 use super::{
     CompletionContext, CompletionInsertFormat, CompletionItem, CompletionKind,
-    accumulator::CompletionAccumulator,
+    accumulator::CompletionAccumulator, relevance::completion_sort_text,
 };
 
 pub(super) fn local_completion_items(
@@ -29,7 +29,7 @@ pub(super) fn local_completion_items(
             };
             let fact = facts.local(local.id).cloned().unwrap_or(TypeFact::Unknown);
             CompletionItem {
-                sort_text: Some(local_sort_text(kind, &local.name)),
+                sort_text: Some(completion_sort_text(kind, &local.name, "")),
                 metadata: Default::default(),
                 label: local.name.clone(),
                 kind,
@@ -42,14 +42,4 @@ pub(super) fn local_completion_items(
     let mut accumulator = CompletionAccumulator::new(context.replace_range(), context.prefix());
     accumulator.add_many(items);
     accumulator.into_items()
-}
-
-fn local_sort_text(kind: CompletionKind, label: &str) -> String {
-    let rank = match kind {
-        CompletionKind::Parameter => 0,
-        CompletionKind::Keyword => 0,
-        CompletionKind::Binding => 1,
-        _ => 2,
-    };
-    format!("{rank:04}_00_{label}")
 }

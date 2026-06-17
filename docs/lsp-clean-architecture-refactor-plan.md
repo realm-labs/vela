@@ -340,7 +340,7 @@ cargo test -p vela_language_service completion
 
 Purpose: replace coarse global completion with context-specific producers.
 
-- [~] Split completion into focused modules such as context, item, relevance,
+- [x] Split completion into focused modules such as context, item, relevance,
   producers, render, and tests when file size or responsibility requires it.
   Item, statement, local-binding, expression/global, type-hint, record-field,
   map-key, named-argument, lambda-parameter, and pattern producers now live in
@@ -348,7 +348,9 @@ Purpose: replace coarse global completion with context-specific producers.
   focused producer module, completion context construction now lives in a
   focused context module, analysis-backed item rendering now lives in a shared
   helper module, and the editor-neutral completion model now lives in a
-  focused model module; broader relevance separation remains open.
+  focused model module. Relevance ranking, match ranking, sort-text
+  construction, and accumulator ordering now live in a focused relevance
+  module.
 - [x] Replace `CompletionContextKind::Global` style dispatch with producers
   selected by `CursorContextKind`.
   Pattern cursor contexts now route to a dedicated source/schema enum-variant

@@ -2,6 +2,7 @@ use vela_analysis::completion::CompletionKind as AnalysisCompletionKind;
 
 use crate::TextRange;
 
+use super::relevance::CompletionRelevance;
 use super::{lambda_parameter::LambdaParameterContext, map_key::MapKeyContext};
 
 #[derive(Debug, Clone, Copy, Eq, Ord, PartialEq, PartialOrd)]
@@ -114,24 +115,6 @@ impl CompletionLabelDetails {
     #[must_use]
     pub fn description(&self) -> Option<&str> {
         self.description.as_deref()
-    }
-}
-
-#[derive(Debug, Clone, Copy, Eq, Ord, PartialEq, PartialOrd, Default)]
-pub struct CompletionRelevance {
-    pub(super) kind_rank: u16,
-    pub(super) match_rank: u8,
-}
-
-impl CompletionRelevance {
-    #[must_use]
-    pub const fn kind_rank(&self) -> u16 {
-        self.kind_rank
-    }
-
-    #[must_use]
-    pub const fn match_rank(&self) -> u8 {
-        self.match_rank
     }
 }
 

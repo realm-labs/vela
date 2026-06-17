@@ -10,8 +10,9 @@ use vela_hir::module_graph::{Declaration, DeclarationKind, ModuleGraph};
 
 use super::{
     CompletionContext, CompletionInsertFormat, CompletionItem, CompletionKind, CompletionSymbol,
-    analysis_item::{callable_insert_text, completion_insert_format, completion_sort_text},
+    analysis_item::{callable_insert_text, completion_insert_format},
     dedupe_and_filter_service_items, label_segment_matches,
+    relevance::completion_sort_text,
 };
 
 pub(super) fn module_path_completion_items(

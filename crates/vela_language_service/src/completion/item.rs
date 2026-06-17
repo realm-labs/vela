@@ -1,4 +1,6 @@
-use super::{CompletionInsertFormat, CompletionItem, CompletionKind};
+use super::{
+    CompletionInsertFormat, CompletionItem, CompletionKind, relevance::completion_sort_text,
+};
 
 pub(super) fn item_keyword_completions(prefix: &str) -> Vec<CompletionItem> {
     [
@@ -36,12 +38,8 @@ pub(super) fn item_keyword_completions(prefix: &str) -> Vec<CompletionItem> {
         detail: detail.to_owned(),
         insert_text: Some(insert_text.to_owned()),
         insert_format: CompletionInsertFormat::Snippet,
-        sort_text: Some(keyword_sort_text(label)),
+        sort_text: Some(completion_sort_text(CompletionKind::Keyword, label, "")),
         metadata: Default::default(),
     })
     .collect()
-}
-
-fn keyword_sort_text(label: &str) -> String {
-    format!("0000_00_{label}")
 }
